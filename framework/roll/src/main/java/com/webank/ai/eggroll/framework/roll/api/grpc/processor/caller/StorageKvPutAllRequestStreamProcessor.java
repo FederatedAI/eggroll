@@ -19,7 +19,7 @@ package com.webank.ai.eggroll.framework.roll.api.grpc.processor.caller;
 import com.google.common.collect.Lists;
 import com.webank.ai.eggroll.api.storage.Kv;
 import com.webank.ai.eggroll.core.api.grpc.client.crud.BaseStreamProcessor;
-import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Node;
+import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node;
 import com.webank.ai.eggroll.framework.roll.service.model.OperandBroker;
 import io.grpc.stub.StreamObserver;
 import org.apache.logging.log4j.LogManager;

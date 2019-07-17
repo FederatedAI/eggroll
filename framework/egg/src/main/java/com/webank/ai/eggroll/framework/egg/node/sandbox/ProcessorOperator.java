@@ -57,13 +57,12 @@ public class ProcessorOperator {
     private static final String checkStatusCmdScriptTemplate = "#!/bin/bash;ps aux | grep processor.py | grep %s | wc -l";
 
     public synchronized void init() throws IOException {
-        Properties properties = serverConf.getProperties();
-        String venv = properties.getProperty("processor.venv");
-        String dataDir = properties.getProperty("data.dir");
-        String processorPath = properties.getProperty("processor.path");
-        String pythonPath = properties.getProperty("python.path");
+        String venv = serverConf.getProperty("processor.venv");
+        String dataDir = serverConf.getProperty("data.dir");
+        String processorPath = serverConf.getProperty("processor.path");
+        String pythonPath = serverConf.getProperty("python.path");
 
-        processLogDir = properties.getProperty("processor.log.dir", pythonPath + "/logs");
+        processLogDir = serverConf.getProperty("processor.log.dir", pythonPath + "/logs");
 
         File tempStartScript = File.createTempFile("python-processor-starter-", ".sh");
         tempStartScript.deleteOnExit();

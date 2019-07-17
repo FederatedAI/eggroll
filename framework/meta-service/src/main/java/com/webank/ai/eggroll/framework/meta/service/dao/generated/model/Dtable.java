@@ -391,7 +391,7 @@ public class Dtable implements Serializable {
         if (getClass() != that.getClass()) {
             return false;
         }
-        com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Dtable other = (com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Dtable) that;
+        com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable other = (com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable) that;
         return (this.getTableId() == null ? other.getTableId() == null : this.getTableId().equals(other.getTableId()))
                 && (this.getNamespace() == null ? other.getNamespace() == null : this.getNamespace().equals(other.getNamespace()))
                 && (this.getTableName() == null ? other.getTableName() == null : this.getTableName().equals(other.getTableName()))

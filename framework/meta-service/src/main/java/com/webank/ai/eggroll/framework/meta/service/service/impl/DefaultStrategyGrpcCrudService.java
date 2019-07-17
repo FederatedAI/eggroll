@@ -24,6 +24,8 @@ import com.webank.ai.eggroll.core.helper.ParamValidationHelper;
 import com.webank.ai.eggroll.core.serdes.impl.ByteStringSerDesHelper;
 import com.webank.ai.eggroll.core.utils.ErrorUtils;
 import com.webank.ai.eggroll.core.utils.ToStringUtils;
+import com.webank.ai.eggroll.core.utils.TypeConversionUtils;
+import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node;
 import com.webank.ai.eggroll.framework.meta.service.factory.DaoServiceFactory;
 import com.webank.ai.eggroll.framework.meta.service.service.CrudServerProcessor;
 import com.webank.ai.eggroll.framework.meta.service.service.GrpcCrudService;
@@ -34,6 +36,7 @@ import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Service;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
 
 @Service(value = "grpcCrudService")
 @Scope("prototype")
@@ -53,12 +56,18 @@ public class DefaultStrategyGrpcCrudService implements GrpcCrudService {
     @Autowired
     private GrpcServerWrapper grpcServerWrapper;
 
+    private TypeConversionUtils typeConversionUtils;
+
+    private static final String compatibleName = "com.webank.ai.fate.eggroll.meta.service.dao.generated.model";
+    private static final String currentName = "com.webank.ai.eggroll.framework.meta.service.dao.generated.model";
+
     private GenericDaoService genericDaoService;
     private Class recordClass;
 
     @Override
     public void init(Class recordClass) {
         this.recordClass = recordClass;
+        this.typeConversionUtils = new TypeConversionUtils();
 
         if (genericDaoService == null) {
             String methodName = "create" + recordClass.getSimpleName() + "DaoService";
@@ -186,7 +195,7 @@ public class DefaultStrategyGrpcCrudService implements GrpcCrudService {
     }
 
 
-    public <T> void processCrudRequestInternal(BasicMeta.CallRequest request,
+/*    public <T> void processCrudRequestInternal(BasicMeta.CallRequest request,
                                                StreamObserver response,
                                                CrudServerProcessor<T> crudServerProcessor) {
         BasicMeta.CallResponse result = null;
@@ -212,7 +221,7 @@ public class DefaultStrategyGrpcCrudService implements GrpcCrudService {
         } catch (Exception e) {
             response.onError(errorUtils.toGrpcRuntimeException(e));
         }
-    }
+    }*/
 
     @Override
     public <T> void processCrudRequest(BasicMeta.CallRequest request,
@@ -224,11 +233,32 @@ public class DefaultStrategyGrpcCrudService implements GrpcCrudService {
 
             BasicMeta.Data requestData = request.getParam();
 
+            boolean compatible = false;
+            String paramType = requestData.getType();
 
-            Object record = byteStringSerDesHelper.deserialize(requestData.getData(), Class.forName(requestData.getType()));
+            if (paramType.contains(compatibleName)) {
+                compatible = true;
+            }
+
+            Object record = byteStringSerDesHelper.deserialize(requestData.getData(), Class.forName(paramType));
+
+            if (compatible) {
+                record = typeConversionUtils.toCurrentNode((com.webank.ai.fate.eggroll.meta.service.dao.generated.model.Node) record);
+            }
             Object callResult = processCrudRequest(record, crudServerProcessor);
 
-            result = callMetaModelFactory.createNormalCallResponse(callResult);
+            if (!compatible) {
+                result = callMetaModelFactory.createNormalCallResponse(callResult);
+            } else {
+                ArrayList<Node> arrayCurrentResult = (ArrayList<Node>) callResult;
+                ArrayList<com.webank.ai.fate.eggroll.meta.service.dao.generated.model.Node> arrayCompatibleResult = new ArrayList<>();
+                for (Node node : arrayCurrentResult) {
+                    arrayCompatibleResult.add(typeConversionUtils.toCompatibleNode(node));
+                }
+
+                result = callMetaModelFactory.createNormalCallResponse(arrayCompatibleResult);
+            }
+
 
             responseObserver.onNext(result);
             responseObserver.onCompleted();

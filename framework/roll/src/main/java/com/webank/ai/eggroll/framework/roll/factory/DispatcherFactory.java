@@ -18,7 +18,7 @@ package com.webank.ai.eggroll.framework.roll.factory;
 
 import com.webank.ai.eggroll.core.io.StoreInfo;
 import com.webank.ai.eggroll.core.model.Dispatchers;
-import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Node;
+import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node;
 import com.webank.ai.eggroll.framework.roll.service.model.DispatchResult;
 import com.webank.ai.eggroll.framework.roll.strategy.DispatchPolicy;
 import com.webank.ai.eggroll.framework.roll.strategy.Dispatcher;

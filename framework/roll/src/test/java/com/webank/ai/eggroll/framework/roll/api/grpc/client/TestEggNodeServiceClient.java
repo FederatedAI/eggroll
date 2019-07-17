@@ -17,7 +17,7 @@
 package com.webank.ai.eggroll.framework.roll.api.grpc.client;
 
 import com.webank.ai.eggroll.api.core.BasicMeta;
-import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Node;
+import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;

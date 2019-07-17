@@ -17,7 +17,7 @@
 package com.webank.ai.eggroll.core.api.grpc.client.crud;
 
 import com.webank.ai.eggroll.api.framework.meta.service.ClusterMetaServiceGrpc;
-import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Node;
+import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 

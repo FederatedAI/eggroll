@@ -18,7 +18,7 @@ package com.webank.ai.eggroll.core.io;
 
 import com.webank.ai.eggroll.api.storage.StorageBasic;
 import com.webank.ai.eggroll.core.constant.MetaConstants;
-import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Dtable;
+import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable;
 import lombok.Builder;
 import lombok.Data;
 import org.apache.logging.log4j.LogManager;

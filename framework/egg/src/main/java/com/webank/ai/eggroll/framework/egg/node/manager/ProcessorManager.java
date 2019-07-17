@@ -36,7 +36,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
+import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Component
@@ -61,14 +63,15 @@ public class ProcessorManager {
     private ArrayList<Integer> availableProcessorMirror;
     private volatile int lastPort;
     private final Object availableProcessorsLock;
-    private final Path statusPath;
+    private Path statusPath;
     private int maxProcessorCount;
     private AtomicInteger lastScheduledProcessor;
+    private AtomicBoolean inited;
 
-    private static final int START_PORT_NOT_INCLUDED = 50000;
-    private static final String statusFileLocation = "/tmp/FATE/node-manager/processor-manager";
-    private static final int PROCESSOR_COUNT = Runtime.getRuntime().availableProcessors();
-    private static final Logger LOGGER = LogManager.getLogger();
+    private int START_PORT_NOT_INCLUDED = 50000;
+    private String statusFileLocation;
+    private final int PROCESSOR_COUNT = Runtime.getRuntime().availableProcessors();
+    private final Logger LOGGER = LogManager.getLogger();
 
     public ProcessorManager() {
         availableProcessors = Sets.newConcurrentHashSet();
@@ -77,11 +80,20 @@ public class ProcessorManager {
         availableProcessorsLock = new Object();
 
         lastScheduledProcessor = new AtomicInteger(0);
-        statusPath = Paths.get(statusFileLocation);
+        inited = new AtomicBoolean(false);
     }
 
-    @PostConstruct
     public void init() {
+        if (inited.get()) {
+            return;
+        }
+
+        Properties properties = serverConf.getProperties();
+        statusFileLocation = properties.getProperty("egg.status.store", "/tmp/Eggroll/node-manager/") + "/processor-manager";
+        statusPath = Paths.get(statusFileLocation);
+
+        START_PORT_NOT_INCLUDED = Integer.valueOf(properties.getProperty("egg.processor.start.port", "50000"));
+
         if (Files.exists(statusPath)) {
             LOGGER.info("[EGG][PROCESSOR][MANAGER] restoring processors");
             try {
@@ -102,6 +114,7 @@ public class ProcessorManager {
         }
 
         LOGGER.info("[EGG][PROCESSOR][MANAGER] restored processors: {}", availableProcessors);
+        inited.compareAndSet(false, true);
     }
 
     /**
@@ -109,6 +122,7 @@ public class ProcessorManager {
      * @return port of available processor
      */
     public int get() {
+        init();
         initProcessorCount();
         int resultPort = lastPort + 1;
         if (availableProcessors.size() < maxProcessorCount) {
@@ -147,6 +161,7 @@ public class ProcessorManager {
     }
 
     public ArrayList<Integer> getAllPossible() {
+        init();
         initProcessorCount();
 
         if (availableProcessors.size() != maxProcessorCount) {
@@ -172,6 +187,7 @@ public class ProcessorManager {
     }
 
     public boolean kill(int port) {
+        init();
         boolean result = false;
         synchronized (availableProcessorsLock) {
             if (availableProcessors.contains(port)) {
@@ -198,6 +214,7 @@ public class ProcessorManager {
     }
 
     public boolean killAll() {
+        init();
         boolean result = true;
         synchronized (availableProcessorsLock) {
             for (Integer port : availableProcessors) {

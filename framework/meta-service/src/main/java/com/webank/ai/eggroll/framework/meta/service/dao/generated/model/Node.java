@@ -331,7 +331,7 @@ public class Node implements Serializable {
         if (getClass() != that.getClass()) {
             return false;
         }
-        com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Node other = (com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Node) that;
+        com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node other = (com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node) that;
         return (this.getNodeId() == null ? other.getNodeId() == null : this.getNodeId().equals(other.getNodeId()))
                 && (this.getHost() == null ? other.getHost() == null : this.getHost().equals(other.getHost()))
                 && (this.getIp() == null ? other.getIp() == null : this.getIp().equals(other.getIp()))

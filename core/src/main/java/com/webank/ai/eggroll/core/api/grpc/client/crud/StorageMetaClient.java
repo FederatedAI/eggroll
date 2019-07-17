@@ -21,9 +21,9 @@ import com.google.common.collect.Lists;
 import com.webank.ai.eggroll.api.framework.meta.service.StorageMetaServiceGrpc;
 import com.webank.ai.eggroll.core.io.StoreInfo;
 import com.webank.ai.eggroll.core.model.NodeStatus;
-import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Dtable;
-import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Fragment;
-import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Node;
+import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable;
+import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Fragment;
+import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
