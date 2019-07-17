@@ -43,11 +43,9 @@ public class DefaultServerConf implements ServerConf {
 
     private Properties properties;
 
-    private List<BindableService> bindableServices;
     private List<ServerServiceDefinition> serverServiceDefinitions;
 
     public DefaultServerConf() {
-        bindableServices = Lists.newLinkedList();
         serverServiceDefinitions = Lists.newLinkedList();
     }
 
@@ -66,17 +64,18 @@ public class DefaultServerConf implements ServerConf {
         return port;
     }
 
+    @Override
+    public String getProperty(String key) {
+        return properties.getProperty(key);
+    }
+
+    @Override
+    public String getProperty(String key, String defaultValue) {
+        return properties.getProperty(key, defaultValue);
+    }
+
     public DefaultServerConf setPort(int port) {
         this.port = port;
-        return this;
-    }
-
-    public List<BindableService> getBindableServices() {
-        return bindableServices;
-    }
-
-    public DefaultServerConf setBindableServices(List<BindableService> bindableServices) {
-        this.bindableServices = bindableServices;
         return this;
     }
 
@@ -91,7 +90,7 @@ public class DefaultServerConf implements ServerConf {
 
     @Override
     public DefaultServerConf addService(BindableService service) {
-        this.bindableServices.add(service);
+        this.serverServiceDefinitions.add(service.bindService());
         return this;
     }
 

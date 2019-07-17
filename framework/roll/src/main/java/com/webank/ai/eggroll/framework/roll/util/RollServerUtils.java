@@ -23,7 +23,7 @@ import com.webank.ai.eggroll.core.model.NodeStatus;
 import com.webank.ai.eggroll.core.model.NodeType;
 import com.webank.ai.eggroll.core.server.ServerConf;
 import com.webank.ai.eggroll.core.utils.TypeConversionUtils;
-import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Node;
+import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;

@@ -17,7 +17,7 @@
 package com.webank.ai.eggroll.framework.roll.service.model;
 
 import com.webank.ai.eggroll.core.io.StoreInfo;
-import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Node;
+import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 

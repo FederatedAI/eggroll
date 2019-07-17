@@ -301,7 +301,7 @@ public class Result implements Serializable {
         if (getClass() != that.getClass()) {
             return false;
         }
-        com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Result other = (com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Result) that;
+        com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Result other = (com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Result) that;
         return (this.getResultId() == null ? other.getResultId() == null : this.getResultId().equals(other.getResultId()))
                 && (this.getResultName() == null ? other.getResultName() == null : this.getResultName().equals(other.getResultName()))
                 && (this.getResultType() == null ? other.getResultType() == null : this.getResultType().equals(other.getResultType()))

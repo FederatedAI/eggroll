@@ -16,8 +16,8 @@
 
 package com.webank.ai.eggroll.framework.roll.api.grpc.client;
 
-import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Fragment;
-import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Node;
+import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Fragment;
+import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node;
 import com.webank.ai.eggroll.framework.roll.helper.NodeHelper;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
