@@ -19,7 +19,7 @@ package com.webank.ai.eggroll.framework.roll.factory;
 import com.webank.ai.eggroll.api.core.BasicMeta;
 import com.webank.ai.eggroll.api.storage.Kv;
 import com.webank.ai.eggroll.core.io.StoreInfo;
-import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Node;
+import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node;
 import com.webank.ai.eggroll.framework.roll.api.grpc.client.EggProcessServiceClient;
 import com.webank.ai.eggroll.framework.roll.service.async.callback.CountProcessListenableFutureCallback;
 import com.webank.ai.eggroll.framework.roll.service.async.callback.DefaultRollProcessListenableFutureCallback;

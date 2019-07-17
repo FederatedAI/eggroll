@@ -18,7 +18,7 @@ package com.webank.ai.eggroll.framework.roll.factory;
 
 import com.webank.ai.eggroll.api.storage.Kv;
 import com.webank.ai.eggroll.core.io.StoreInfo;
-import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Node;
+import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node;
 import com.webank.ai.eggroll.framework.roll.api.grpc.observer.kv.roll.RollKvPutAllServerRequestStreamObserver;
 import com.webank.ai.eggroll.framework.roll.api.grpc.observer.kv.storage.StorageKvPutAllServerRequestStreamObserver;
 import io.grpc.stub.StreamObserver;

@@ -32,7 +32,7 @@ import com.webank.ai.eggroll.driver.clustercomm.transfer.utils.PrintUtils;
 import com.webank.ai.eggroll.driver.clustercomm.transfer.utils.TransferPojoUtils;
 import com.webank.ai.eggroll.driver.clustercomm.transfer.model.TransferBroker;
 import com.webank.ai.eggroll.driver.clustercomm.utils.ClusterCommServerUtils;
-import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Dtable;
+import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable;
 import com.webank.ai.eggroll.framework.roll.api.grpc.client.RollKvServiceClient;
 import com.webank.ai.eggroll.framework.roll.factory.RollModelFactory;
 import com.webank.ai.eggroll.framework.roll.service.model.OperandBroker;
@@ -87,7 +87,7 @@ public class DtableRecvConsumeAction extends BaseRecvConsumeAction {
 
     @Override
     public void onInit() {
-        LOGGER.info("[CLUSTERCOMM][SEND][DTABLE][CONSUMER] DtableRecvConsumeAction.onInit. transferMetaId: {}",
+        LOGGER.info("[CLUSTERCOMM][RECV][DTABLE][CONSUMER] DtableRecvConsumeAction.onInit. transferMetaId: {}",
                 transferMetaId);
         super.onInit();
 

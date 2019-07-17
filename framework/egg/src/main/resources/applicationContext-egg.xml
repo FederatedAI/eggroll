@@ -33,7 +33,7 @@
     <task:executor id="grpcServiceExecutor" pool-size="10-600" queue-capacity="0" keep-alive="30"/>
     <task:executor id="grpcClientExecutor" pool-size="10-600" queue-capacity="0" keep-alive="30"/>
 
-    <task:scheduler id="routineScheduler" pool-size="5"/>
+    <!--<task:scheduler id="routineScheduler" pool-size="5"/>-->
     <!--<task:scheduled-tasks scheduler="routineScheduler">
     </task:scheduled-tasks>-->
 </beans>

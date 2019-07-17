@@ -620,7 +620,7 @@ In-place computing does not apply.
 
 **Returns:**
 
-+ **dtable** (DTable): A new table containing results.
++ **result** (object): Reduce result.
 
 **Example:**
 
