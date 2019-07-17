@@ -35,7 +35,7 @@
 
     <bean id="configProperties" class="org.springframework.beans.factory.config.PropertiesFactoryBean">
         <property name="locations">
-            <value>classpath*:jdbc.properties</value>
+            <value>classpath*:meta-service.properties</value>
         </property>
     </bean>
 

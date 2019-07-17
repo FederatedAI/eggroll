@@ -19,7 +19,7 @@ package com.webank.ai.eggroll.framework.roll.api.grpc.observer.kv.storage;
 import com.webank.ai.eggroll.api.storage.Kv;
 import com.webank.ai.eggroll.core.api.grpc.observer.BaseCalleeRequestStreamObserver;
 import com.webank.ai.eggroll.core.io.StoreInfo;
-import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Node;
+import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node;
 import io.grpc.stub.StreamObserver;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;

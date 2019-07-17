@@ -25,7 +25,7 @@ import com.webank.ai.eggroll.core.utils.ToStringUtils;
 import com.webank.ai.eggroll.core.utils.TypeConversionUtils;
 import com.webank.ai.eggroll.driver.clustercomm.utils.ClusterCommServerUtils;
 import com.webank.ai.eggroll.driver.clustercomm.transfer.service.ProxySelectionService;
-import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Node;
+import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;

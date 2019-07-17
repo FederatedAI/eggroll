@@ -17,7 +17,7 @@
 package com.webank.ai.eggroll.framework.meta.service.dao;
 
 import com.webank.ai.eggroll.framework.meta.service.dao.generated.mapper.DtableMapper;
-import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Dtable;
+import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable;
 import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.DtableExample;
 import com.webank.ai.eggroll.framework.meta.service.factory.DaoServiceFactory;
 import com.webank.ai.eggroll.framework.meta.service.service.impl.GenericDaoService;

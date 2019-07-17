@@ -21,8 +21,8 @@ import com.webank.ai.eggroll.api.core.DataStructure;
 import com.webank.ai.eggroll.api.storage.Kv;
 import com.webank.ai.eggroll.api.storage.StorageBasic;
 import com.webank.ai.eggroll.core.model.DtableStatus;
-import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Dtable;
-import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Node;
+import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable;
+import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
@@ -152,6 +152,38 @@ public class TypeConversionUtils {
                     .setValue(rawEntry.getValue())
                     .build();
         }
+
+        return result;
+    }
+
+    public Node toCurrentNode(com.webank.ai.fate.eggroll.meta.service.dao.generated.model.Node other) {
+        Node result = new Node();
+
+        result.setCreatedAt(other.getCreatedAt());
+        result.setHost(other.getHost());
+        result.setIp(other.getIp());
+        result.setLastHeartbeatAt(other.getLastHeartbeatAt());
+        result.setNodeId(other.getNodeId());
+        result.setPort(other.getPort());
+        result.setStatus(other.getStatus());
+        result.setType(other.getType());
+        result.setUpdatedAt(other.getUpdatedAt());
+
+        return result;
+    }
+
+    public com.webank.ai.fate.eggroll.meta.service.dao.generated.model.Node toCompatibleNode(Node other) {
+        com.webank.ai.fate.eggroll.meta.service.dao.generated.model.Node result = new com.webank.ai.fate.eggroll.meta.service.dao.generated.model.Node();
+
+        result.setCreatedAt(other.getCreatedAt());
+        result.setHost(other.getHost());
+        result.setIp(other.getIp());
+        result.setLastHeartbeatAt(other.getLastHeartbeatAt());
+        result.setNodeId(other.getNodeId());
+        result.setPort(other.getPort());
+        result.setStatus(other.getStatus());
+        result.setType(other.getType());
+        result.setUpdatedAt(other.getUpdatedAt());
 
         return result;
     }

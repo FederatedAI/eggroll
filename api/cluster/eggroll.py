@@ -30,10 +30,10 @@ from eggroll.api.proto import kv_pb2, kv_pb2_grpc, processor_pb2, processor_pb2_
 from eggroll.api.utils import cloudpickle
 from eggroll.api.utils.core import string_to_bytes, bytes_to_string
 from eggroll.api.utils.iter_utils import split_every
-from eggroll.api.core import EggRollContext
+from eggroll.api.core import EggRollSession
 
 
-def init(job_id=None, server_conf_path="eggroll/conf/server_conf.json", eggroll_context=None):
+def init(job_id=None, server_conf_path="eggroll/conf/server_conf.json", eggroll_session=None):
     if job_id is None:
         job_id = str(uuid.uuid1())
     global LOGGER
@@ -42,9 +42,9 @@ def init(job_id=None, server_conf_path="eggroll/conf/server_conf.json", eggroll_
     _roll_host = server_conf.get("servers").get("roll").get("host")
     _roll_port = server_conf.get("servers").get("roll").get("port")
 
-    if not eggroll_context:
-        eggroll_context = EggRollContext()
-    _EggRoll(job_id, _roll_host, _roll_port, eggroll_context=eggroll_context)
+    if not eggroll_session:
+        eggroll_session = EggRollSession()
+    _EggRoll(job_id, _roll_host, _roll_port, eggroll_context=eggroll_session)
 
 
 def _get_meta(_table):

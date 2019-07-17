@@ -18,7 +18,7 @@ package com.webank.ai.eggroll.framework.roll.strategy;
 
 import com.google.protobuf.ByteString;
 import com.webank.ai.eggroll.core.io.StoreInfo;
-import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Node;
+import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node;
 
 public interface Dispatcher {
     public Node dispatch(StoreInfo storeInfo, ByteString dataKey);

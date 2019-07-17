@@ -108,14 +108,18 @@ public class TransferBrokerConsumer implements Runnable, TransferBrokerListener 
 
                 long now = System.currentTimeMillis();
                 if (!latchAwaitResult) {
-                    LOGGER.info("[CLUSTERCOMM][CONSUMER] updating status. transferBroker: {}. isClosable: {}, queueSize: {}, isFinished: {}",
-                            this, transferBroker.isClosable(), transferBroker.getQueueSize(), transferBroker.isFinished());
-
-                    if (!transferBroker.isReady()) {
-                        if (now - startIdleTime > maxIdleTime) {
-                            LOGGER.info("[CLUSTERCOMM][CONSUMER] timeout for transferMetaId: {}");
-                            break;
+                    if (transferBroker != null) {
+                        LOGGER.info("[CLUSTERCOMM][CONSUMER] updating status. transferBroker: {}. isClosable: {}, queueSize: {}, isFinished: {}",
+                                this, transferBroker.isClosable(), transferBroker.getQueueSize(), transferBroker.isFinished());
+                        if (!transferBroker.isReady()) {
+                            if (now - startIdleTime > maxIdleTime) {
+                                LOGGER.info("[CLUSTERCOMM][CONSUMER] timeout for transferMetaId: {}");
+                                break;
+                            }
+                            continue;
                         }
+                    } else {
+                        LOGGER.info("[CLUSTERCOMM][CONSUMER] waiting for initialization");
                         continue;
                     }
                 }

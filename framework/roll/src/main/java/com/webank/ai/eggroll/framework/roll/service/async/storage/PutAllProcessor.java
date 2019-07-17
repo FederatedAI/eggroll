@@ -20,7 +20,7 @@ import com.webank.ai.eggroll.api.core.BasicMeta;
 import com.webank.ai.eggroll.core.factory.ReturnStatusFactory;
 import com.webank.ai.eggroll.core.io.StoreInfo;
 import com.webank.ai.eggroll.core.utils.ErrorUtils;
-import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Node;
+import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node;
 import com.webank.ai.eggroll.framework.roll.api.grpc.client.StorageServiceClient;
 import com.webank.ai.eggroll.framework.roll.service.model.OperandBroker;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -241,7 +241,7 @@ public class Task implements Serializable {
         if (getClass() != that.getClass()) {
             return false;
         }
-        com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Task other = (com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Task) that;
+        com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Task other = (com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Task) that;
         return (this.getTaskId() == null ? other.getTaskId() == null : this.getTaskId().equals(other.getTaskId()))
                 && (this.getTaskName() == null ? other.getTaskName() == null : this.getTaskName().equals(other.getTaskName()))
                 && (this.getTaskType() == null ? other.getTaskType() == null : this.getTaskType().equals(other.getTaskType()))

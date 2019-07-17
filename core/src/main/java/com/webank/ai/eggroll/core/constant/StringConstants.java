@@ -32,4 +32,7 @@ public class StringConstants {
     public static final String ROLE_EGG = "egg";
     public static final String ROLE_ROLL = "roll";
     public static final String ROLE_EGGROLL = "eggroll";
+    public static final String EGGROLL_COMPATIBLE_ENABLED = "eggroll.compatible.enabled";
+    public static final String FALSE = "false";
+    public static final String TRUE = "true";
 }
