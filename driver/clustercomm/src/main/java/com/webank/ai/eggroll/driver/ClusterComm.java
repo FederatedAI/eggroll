@@ -16,16 +16,15 @@
 
 package com.webank.ai.eggroll.driver;
 
-import com.sun.xml.internal.ws.api.server.ServiceDefinition;
 import com.webank.ai.eggroll.core.api.grpc.access.AccessRedirector;
 import com.webank.ai.eggroll.core.constant.StringConstants;
 import com.webank.ai.eggroll.core.factory.DefaultGrpcServerFactory;
 import com.webank.ai.eggroll.core.server.BaseEggRollServer;
 import com.webank.ai.eggroll.core.server.DefaultServerConf;
 import com.webank.ai.eggroll.core.utils.ErrorUtils;
-import com.webank.ai.eggroll.driver.clustercomm.transfer.communication.TransferJobScheduler;
 import com.webank.ai.eggroll.driver.clustercomm.transfer.api.grpc.server.ProxyServiceImpl;
 import com.webank.ai.eggroll.driver.clustercomm.transfer.api.grpc.server.TransferSubmitServiceImpl;
+import com.webank.ai.eggroll.driver.clustercomm.transfer.communication.TransferJobScheduler;
 import com.webank.ai.eggroll.framework.storage.service.server.ObjectStoreServicer;
 import io.grpc.Server;
 import io.grpc.ServerInterceptors;
