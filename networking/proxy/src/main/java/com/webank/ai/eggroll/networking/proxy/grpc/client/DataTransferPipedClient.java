@@ -20,16 +20,16 @@ import com.google.common.base.Preconditions;
 import com.webank.ai.eggroll.api.core.BasicMeta;
 import com.webank.ai.eggroll.api.networking.proxy.DataTransferServiceGrpc;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
-import com.webank.ai.eggroll.networking.proxy.factory.GrpcStreamObserverFactory;
-import com.webank.ai.eggroll.networking.proxy.factory.GrpcStubFactory;
+import com.webank.ai.eggroll.core.utils.ErrorUtils;
+import com.webank.ai.eggroll.core.utils.ToStringUtils;
+import com.webank.ai.eggroll.networking.proxy.factory.ProxyGrpcStreamObserverFactory;
+import com.webank.ai.eggroll.networking.proxy.factory.ProxyGrpcStubFactory;
 import com.webank.ai.eggroll.networking.proxy.infra.Pipe;
 import com.webank.ai.eggroll.networking.proxy.infra.ResultCallback;
 import com.webank.ai.eggroll.networking.proxy.infra.impl.PacketQueueSingleResultPipe;
 import com.webank.ai.eggroll.networking.proxy.infra.impl.SingleResultCallback;
-import com.webank.ai.eggroll.networking.proxy.model.ServerConf;
+import com.webank.ai.eggroll.networking.proxy.model.ProxyServerConf;
 import com.webank.ai.eggroll.networking.proxy.service.FdnRouter;
-import com.webank.ai.eggroll.networking.proxy.util.ErrorUtils;
-import com.webank.ai.eggroll.networking.proxy.util.ToStringUtils;
 import io.grpc.stub.StreamObserver;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
@@ -46,11 +46,11 @@ import java.util.concurrent.TimeUnit;
 public class DataTransferPipedClient {
     private static final Logger LOGGER = LogManager.getLogger(DataTransferPipedClient.class);
     @Autowired
-    private GrpcStubFactory grpcStubFactory;
+    private ProxyGrpcStubFactory proxyGrpcStubFactory;
     @Autowired
-    private GrpcStreamObserverFactory grpcStreamObserverFactory;
+    private ProxyGrpcStreamObserverFactory proxyGrpcStreamObserverFactory;
     @Autowired
-    private ServerConf serverConf;
+    private ProxyServerConf proxyServerConf;
     @Autowired
     private FdnRouter fdnRouter;
     @Autowired
@@ -84,7 +84,7 @@ public class DataTransferPipedClient {
         final ResultCallback<Proxy.Metadata> resultCallback = new SingleResultCallback<Proxy.Metadata>();
 
         StreamObserver<Proxy.Metadata> responseObserver =
-                grpcStreamObserverFactory.createClientPushResponseStreamObserver(resultCallback, finishLatch);
+                proxyGrpcStreamObserverFactory.createClientPushResponseStreamObserver(resultCallback, finishLatch);
 
         StreamObserver<Proxy.Packet> requestObserver = stub.push(responseObserver);
         LOGGER.info("[PUSH][CLIENT] push stub: {}, metadata: {}",
@@ -154,7 +154,7 @@ public class DataTransferPipedClient {
         final CountDownLatch finishLatch = new CountDownLatch(1);
 
         StreamObserver<Proxy.Packet> responseObserver =
-                grpcStreamObserverFactory.createClientPullResponseStreamObserver(pipe, finishLatch, metadata);
+                proxyGrpcStreamObserverFactory.createClientPullResponseStreamObserver(pipe, finishLatch, metadata);
 
         stub.pull(metadata, responseObserver);
         LOGGER.info("[PULL][CLIENT] pull stub: {}, metadata: {}",
@@ -184,7 +184,7 @@ public class DataTransferPipedClient {
                 packet.getHeader().getSrc(), packet.getHeader().getDst());
 
         final CountDownLatch finishLatch = new CountDownLatch(1);
-        StreamObserver<Proxy.Packet> responseObserver = grpcStreamObserverFactory
+        StreamObserver<Proxy.Packet> responseObserver = proxyGrpcStreamObserverFactory
                 .createClientUnaryCallResponseStreamObserver(pipe, finishLatch, packet.getHeader());
         stub.unaryCall(packet, responseObserver);
 
@@ -212,9 +212,9 @@ public class DataTransferPipedClient {
 
         DataTransferServiceGrpc.DataTransferServiceStub stub = null;
         if (endpoint == null) {
-            stub = grpcStubFactory.getAsyncStub(to);
+            stub = proxyGrpcStubFactory.getAsyncStub(to);
         } else {
-            stub = grpcStubFactory.getAsyncStub(endpoint);
+            stub = proxyGrpcStubFactory.getAsyncStub(endpoint);
         }
 
         LOGGER.info("[ROUTE] route info: {} routed to {}", toStringUtils.toOneLineString(to),

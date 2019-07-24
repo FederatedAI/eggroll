@@ -24,27 +24,42 @@ import random
 
 import grpc
 
+from eggroll.api import NamingPolicy, ComputingEngine
 from eggroll.api.utils import eggroll_serdes, file_utils
 from eggroll.api.utils.log_utils import getLogger
 from eggroll.api.proto import kv_pb2, kv_pb2_grpc, processor_pb2, processor_pb2_grpc, storage_basic_pb2
 from eggroll.api.utils import cloudpickle
 from eggroll.api.utils.core import string_to_bytes, bytes_to_string
 from eggroll.api.utils.iter_utils import split_every
-from eggroll.api.core import EggRollSession
+from eggroll.api.core import EggrollSession
+
+EGGROLL_ROLL_HOST = 'eggroll.roll.host'
+EGGROLL_ROLL_PORT = 'eggroll.roll.port'
 
 
-def init(job_id=None, server_conf_path="eggroll/conf/server_conf.json", eggroll_session=None):
+def init(session_id=None, server_conf_path="eggroll/conf/server_conf.json", eggroll_session=None, computing_engine_conf=None, naming_policy=NamingPolicy.DEFAULT, tag=None, job_id=None):
+    if session_id is None:
+        session_id = str(uuid.uuid1())
+
     if job_id is None:
-        job_id = str(uuid.uuid1())
+        job_id = session_id
     global LOGGER
     LOGGER = getLogger()
     server_conf = file_utils.load_json_conf(server_conf_path)
-    _roll_host = server_conf.get("servers").get("roll").get("host")
-    _roll_port = server_conf.get("servers").get("roll").get("port")
 
     if not eggroll_session:
-        eggroll_session = EggRollSession()
-    _EggRoll(job_id, _roll_host, _roll_port, eggroll_context=eggroll_session)
+        eggroll_session = EggrollSession(session_id=session_id,
+                                         computing_engine_conf=computing_engine_conf,
+                                         naming_policy=naming_policy,
+                                         tag=tag)
+
+    eggroll_session.add_conf('eggroll.server.conf.path', server_conf_path)
+    eggroll_session.add_conf(EGGROLL_ROLL_HOST, server_conf.get("servers").get("roll").get("host"))
+    eggroll_session.add_conf(EGGROLL_ROLL_PORT, server_conf.get("servers").get("roll").get("port"))
+
+    eggroll_runtime = _EggRoll(eggroll_session=eggroll_session)
+
+    eggroll_session.set_runtime(ComputingEngine.EGGROLL_DTABLE, eggroll_runtime)
 
 
 def _get_meta(_table):
@@ -200,7 +215,7 @@ class _DTable(object):
 
     @staticmethod
     def _repartition(dtable, partition_num, persistent=False, repartition_policy=None):
-        return dtable.save_as(str(uuid.uuid1()), _EggRoll.get_instance().job_id, partition_num, persistent=persistent)
+        return dtable.save_as(str(uuid.uuid1()), _EggRoll.get_instance().session_id, partition_num, persistent=persistent)
 
 class _EggRoll(object):
     value_serdes = eggroll_serdes.get_serdes()
@@ -215,19 +230,21 @@ class _EggRoll(object):
             raise EnvironmentError("eggroll should be initialized before use")
         return _EggRoll.instance
 
-    def __init__(self, job_id, host, port, eggroll_context):
+    def __init__(self, eggroll_session):
         if _EggRoll.instance is not None:
             raise EnvironmentError("eggroll should be initialized only once")
+        host = eggroll_session.get_conf(EGGROLL_ROLL_HOST)
+        port = eggroll_session.get_conf(EGGROLL_ROLL_PORT)
         self.channel = grpc.insecure_channel(target="{}:{}".format(host, port),
                                              options=[('grpc.max_send_message_length', -1),
                                                       ('grpc.max_receive_message_length', -1)])
-        self.job_id = job_id
+        self.session_id = eggroll_session.get_session_id()
         self.kv_stub = kv_pb2_grpc.KVServiceStub(self.channel)
         self.proc_stub = processor_pb2_grpc.ProcessServiceStub(self.channel)
-        self.eggroll_context = eggroll_context
+        self.eggroll_session = eggroll_session
         _EggRoll.instance = self
 
-        # todo: move to eggrollContext
+        # todo: move to eggrollSession
         try:
             self.host_name = socket.gethostname()
             self.host_ip = socket.gethostbyname(self.host_name)
@@ -250,7 +267,7 @@ class _EggRoll(object):
                     create_if_missing=True, error_if_exist=False,
                     persistent=False, chunk_size=100000, in_place_computing=False):
         if namespace is None:
-            namespace = _EggRoll.get_instance().job_id
+            namespace = _EggRoll.get_instance().session_id
         if name is None:
             name = str(uuid.uuid1())
         storage_locator = storage_basic_pb2.StorageLocator(type=storage_basic_pb2.LMDB, namespace=namespace,
@@ -278,7 +295,7 @@ class _EggRoll(object):
         LOGGER.debug("cleaned up: %s", _table)
 
     def generateUniqueId(self):
-        return self.unique_id_template % (self.job_id, self.host_name, self.host_ip, time.time(), random.randint(10000, 99999))
+        return self.unique_id_template % (self.session_id, self.host_name, self.host_ip, time.time(), random.randint(10000, 99999))
 
 
     @staticmethod
@@ -435,7 +452,7 @@ class _EggRoll(object):
             func_id = str(uuid.uuid1())
             func_bytes = b'blank'
 
-        return processor_pb2.TaskInfo(task_id=self.job_id,
+        return processor_pb2.TaskInfo(task_id=self.session_id,
                                       function_id=func_id,
                                       function_bytes=func_bytes,
                                       isInPlaceComputing=is_in_place_computing)
@@ -446,7 +463,7 @@ class _EggRoll(object):
 
         return processor_pb2.UnaryProcess(info=task_info,
                                           operand=operand,
-                                          conf=processor_pb2.ProcessConf(namingPolicy=self.eggroll_context.get_naming_policy().name))
+                                          session=self.eggroll_session.to_protobuf())
 
     def __do_unary_process(self, table: _DTable, user_func, stub_func):
         process = self.__create_unary_process(table=table, func=user_func)
@@ -466,7 +483,7 @@ class _EggRoll(object):
         return processor_pb2.BinaryProcess(info=task_info,
                                            left=left_op,
                                            right=right_op,
-                                           conf=processor_pb2.ProcessConf(namingPolicy=self.eggroll_context.get_naming_policy().name))
+                                           session=self.eggroll_session.to_protobuf())
 
     def __do_binary_process(self, left: _DTable, right: _DTable, user_func, stub_func):
         process = self.__create_binary_process(left=left, right=right, func=user_func)

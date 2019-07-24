@@ -18,8 +18,8 @@ package com.webank.ai.eggroll.networking.proxy.manager;
 
 
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
+import com.webank.ai.eggroll.core.utils.ToStringUtils;
 import com.webank.ai.eggroll.networking.proxy.model.StreamStat;
-import com.webank.ai.eggroll.networking.proxy.util.ToStringUtils;
 import io.grpc.netty.shaded.io.netty.util.internal.ConcurrentSet;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.text.StringSubstitutor;

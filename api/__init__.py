@@ -37,3 +37,7 @@ class StoreType(Enum):
 class NamingPolicy(Enum):
     DEFAULT = 'DEFAULT'
     ITER_AWARE = 'ITER_AWARE'
+
+class ComputingEngine(Enum):
+    EGGROLL = 'EGGROLL'
+    EGGROLL_DTABLE = 'EGGROLL_DTABLE'

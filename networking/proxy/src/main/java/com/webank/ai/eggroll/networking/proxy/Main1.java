@@ -18,7 +18,7 @@ package com.webank.ai.eggroll.networking.proxy;
 
 import com.webank.ai.eggroll.networking.proxy.factory.GrpcServerFactory;
 import com.webank.ai.eggroll.networking.proxy.factory.LocalBeanFactory;
-import com.webank.ai.eggroll.networking.proxy.model.ServerConf;
+import com.webank.ai.eggroll.networking.proxy.model.ProxyServerConf;
 import io.grpc.Server;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -36,25 +36,25 @@ public class Main1 {
 
         int port = 8888;
 
-        ServerConf serverConf = context.getBean(ServerConf.class);
+        ProxyServerConf proxyServerConf = context.getBean(ProxyServerConf.class);
 
-        serverConf.setCoordinator("10000");
-        serverConf.setSecureServer(false);
-        serverConf.setSecureClient(true);
+        proxyServerConf.setCoordinator("10000");
+        proxyServerConf.setSecureServer(false);
+        proxyServerConf.setSecureClient(true);
 /*
 
         serverConf.setServerKeyPath("/Users/max-webank/Documents/zmodem/server.key");
         serverConf.setServerCrtPath("/Users/max-webank/Documents/zmodem/server.crt");
 */
 
-        serverConf.setRouteTablePath("src/main/resources/route_tables/route_table1.json");
-        serverConf.setPort(port);
+        proxyServerConf.setRouteTablePath("src/main/resources/route_tables/route_table1.json");
+        proxyServerConf.setPort(port);
 
         LOGGER.info("Server started listening on port: {}", port);
 
-        Server server = serverFactory.createServer(serverConf);
+        Server server = serverFactory.createServer(proxyServerConf);
 
-        LOGGER.info("server conf: {}", serverConf);
+        LOGGER.info("server conf: {}", proxyServerConf);
 
         server.start();
         server.awaitTermination();

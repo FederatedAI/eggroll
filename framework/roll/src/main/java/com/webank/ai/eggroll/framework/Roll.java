@@ -64,7 +64,10 @@ public class Roll extends BaseEggRollServer {
 
             serverConf.addService(accessRedirector.redirect(rollKvServiceDefinition,
                     "com.webank.ai.eggroll.api.storage.KVService",
-                    "com.webank.ai.fate.api.eggroll.storage.KVService"));
+                    "com.webank.ai.fate.api.eggroll.storage.KVService"))
+                    .addService(accessRedirector.redirect(processService,
+                            "com.webank.ai.eggroll.api.computing.processor.ProcessService",
+                            "com.webank.ai.fate.api.eggroll.processor.ProcessService"));
         }
 
         Server server = serverFactory.createServer(serverConf);

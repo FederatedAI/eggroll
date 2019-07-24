@@ -25,17 +25,26 @@ message ProcessConf {
     string namingPolicy = 1;
 }
 
+message SessionInfo {
+    string sessionId = 1;
+    map<string, string> computingEngineConf = 2;
+    string namingPolicy = 3;
+    string tag = 4;
+}
+
 message TaskInfo {
     string task_id = 1;
     string function_id = 2;
     bytes function_bytes = 3;
     bool isInPlaceComputing = 4;
+    string computingEngine = 5;
 }
 
 message UnaryProcess {
     TaskInfo info = 1;
     com.webank.ai.eggroll.api.storage.StorageLocator operand = 2;
     ProcessConf conf = 3;
+    SessionInfo session = 20;
 }
 
 message BinaryProcess {
@@ -43,6 +52,7 @@ message BinaryProcess {
     com.webank.ai.eggroll.api.storage.StorageLocator left = 2;
     com.webank.ai.eggroll.api.storage.StorageLocator right = 3;
     ProcessConf conf = 4;
+    SessionInfo session = 20;
 }
 
 service ProcessService {
