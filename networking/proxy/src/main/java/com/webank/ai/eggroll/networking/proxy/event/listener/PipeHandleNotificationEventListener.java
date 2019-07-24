@@ -16,12 +16,12 @@
 
 package com.webank.ai.eggroll.networking.proxy.event.listener;
 
+import com.webank.ai.eggroll.core.utils.ToStringUtils;
 import com.webank.ai.eggroll.networking.proxy.event.model.PipeHandleNotificationEvent;
 import com.webank.ai.eggroll.networking.proxy.infra.Pipe;
 import com.webank.ai.eggroll.networking.proxy.infra.impl.PacketQueuePipe;
 import com.webank.ai.eggroll.networking.proxy.model.PipeHandlerInfo;
 import com.webank.ai.eggroll.networking.proxy.service.CascadedCaller;
-import com.webank.ai.eggroll.networking.proxy.util.ToStringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;

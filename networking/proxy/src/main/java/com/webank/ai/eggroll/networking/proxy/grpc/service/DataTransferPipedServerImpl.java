@@ -18,14 +18,14 @@ package com.webank.ai.eggroll.networking.proxy.grpc.service;
 
 import com.webank.ai.eggroll.api.networking.proxy.DataTransferServiceGrpc;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
+import com.webank.ai.eggroll.core.utils.ErrorUtils;
+import com.webank.ai.eggroll.core.utils.ToStringUtils;
 import com.webank.ai.eggroll.networking.proxy.event.model.PipeHandleNotificationEvent;
 import com.webank.ai.eggroll.networking.proxy.factory.EventFactory;
-import com.webank.ai.eggroll.networking.proxy.factory.GrpcStreamObserverFactory;
 import com.webank.ai.eggroll.networking.proxy.factory.PipeFactory;
+import com.webank.ai.eggroll.networking.proxy.factory.ProxyGrpcStreamObserverFactory;
 import com.webank.ai.eggroll.networking.proxy.infra.Pipe;
-import com.webank.ai.eggroll.networking.proxy.util.ErrorUtils;
 import com.webank.ai.eggroll.networking.proxy.util.Timeouts;
-import com.webank.ai.eggroll.networking.proxy.util.ToStringUtils;
 import io.grpc.stub.StreamObserver;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
@@ -45,7 +45,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
     @Autowired
     private ApplicationEventPublisher applicationEventPublisher;
     @Autowired
-    private GrpcStreamObserverFactory grpcStreamObserverFactory;
+    private ProxyGrpcStreamObserverFactory proxyGrpcStreamObserverFactory;
     @Autowired
     private Timeouts timeouts;
     @Autowired
@@ -70,7 +70,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
         applicationEventPublisher.publishEvent(event);
 */
 
-        StreamObserver<Proxy.Packet> requestObserver = grpcStreamObserverFactory
+        StreamObserver<Proxy.Packet> requestObserver = proxyGrpcStreamObserverFactory
                 .createServerPushRequestStreamObserver(pipe, responseObserver);
 
         return requestObserver;

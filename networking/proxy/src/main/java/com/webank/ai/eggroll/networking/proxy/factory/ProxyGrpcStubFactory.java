@@ -24,10 +24,11 @@ import com.google.common.cache.LoadingCache;
 import com.webank.ai.eggroll.api.core.BasicMeta;
 import com.webank.ai.eggroll.api.networking.proxy.DataTransferServiceGrpc;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
-import com.webank.ai.eggroll.networking.proxy.model.ServerConf;
+import com.webank.ai.eggroll.core.api.grpc.access.RedirectClientInterceptor;
+import com.webank.ai.eggroll.core.utils.ToStringUtils;
+import com.webank.ai.eggroll.networking.proxy.model.ProxyServerConf;
 import com.webank.ai.eggroll.networking.proxy.security.SimpleTrustAllCertsManagerFactory;
 import com.webank.ai.eggroll.networking.proxy.service.FdnRouter;
-import com.webank.ai.eggroll.networking.proxy.util.ToStringUtils;
 import io.grpc.ConnectivityState;
 import io.grpc.ManagedChannel;
 import io.grpc.netty.shaded.io.grpc.netty.GrpcSslContexts;
@@ -48,8 +49,8 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 
 @Component
-public class GrpcStubFactory {
-    private static final Logger LOGGER = LogManager.getLogger(GrpcStubFactory.class);
+public class ProxyGrpcStubFactory {
+    private static final Logger LOGGER = LogManager.getLogger(ProxyGrpcStubFactory.class);
     @Autowired
     private ApplicationContext applicationContext;
     @Autowired
@@ -57,12 +58,12 @@ public class GrpcStubFactory {
     @Autowired
     private FdnRouter fdnRouter;
     @Autowired
-    private ServerConf serverConf;
+    private ProxyServerConf proxyServerConf;
     @Autowired
     private ToStringUtils toStringUtils;
     private LoadingCache<BasicMeta.Endpoint, ManagedChannel> channelCache;
 
-    public GrpcStubFactory() {
+    public ProxyGrpcStubFactory() {
         channelCache = CacheBuilder.newBuilder()
                 .maximumSize(100)
                 .expireAfterWrite(20, TimeUnit.MINUTES)
@@ -190,13 +191,21 @@ public class GrpcStubFactory {
                 .retryBufferSize(16 << 20)
                 .maxRetryAttempts(20);      // todo: configurable
 
+        if (proxyServerConf.isCompatibleEnabled()) {
+            LOGGER.info("[PROXY] compatibility enabled");
+            builder.intercept(new RedirectClientInterceptor("com.webank.ai.eggroll.api.networking.proxy.DataTransferService",
+                    "com.webank.ai.fate.api.networking.proxy.DataTransferService"),
+                    new RedirectClientInterceptor("com.webank.ai.eggroll.api.networking.proxy.RouteService",
+                            "com.webank.ai.fate.api.networking.proxy.RouteService"));
+        }
+
         // if secure client defined and endpoint is not in intranet
-        if (serverConf.isSecureClient() &&
-                (!serverConf.isNeighbourInsecureChannelEnabled() || !fdnRouter.isIntranet(endpoint))) {
+        if (proxyServerConf.isSecureClient() &&
+                (!proxyServerConf.isNeighbourInsecureChannelEnabled() || !fdnRouter.isIntranet(endpoint))) {
             // todo: add configuration reading mechanism
-            File caCrt = new File(serverConf.getCaCrtPath());
-            File serverCrt = new File(serverConf.getServerCrtPath());
-            File serverKey = new File(serverConf.getServerKeyPath());
+            File caCrt = new File(proxyServerConf.getCaCrtPath());
+            File serverCrt = new File(proxyServerConf.getServerCrtPath());
+            File serverKey = new File(proxyServerConf.getServerKeyPath());
 
             SslContext sslContext = null;
             try {

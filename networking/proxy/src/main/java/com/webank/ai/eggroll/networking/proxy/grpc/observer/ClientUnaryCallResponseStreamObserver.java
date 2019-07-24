@@ -18,11 +18,11 @@ package com.webank.ai.eggroll.networking.proxy.grpc.observer;
 
 import com.google.protobuf.ByteString;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
+import com.webank.ai.eggroll.core.utils.ToStringUtils;
 import com.webank.ai.eggroll.networking.proxy.infra.Pipe;
 import com.webank.ai.eggroll.networking.proxy.manager.StatsManager;
-import com.webank.ai.eggroll.networking.proxy.model.ServerConf;
+import com.webank.ai.eggroll.networking.proxy.model.ProxyServerConf;
 import com.webank.ai.eggroll.networking.proxy.model.StreamStat;
-import com.webank.ai.eggroll.networking.proxy.util.ToStringUtils;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -49,7 +49,7 @@ public class ClientUnaryCallResponseStreamObserver implements StreamObserver<Pro
     @Autowired
     private ToStringUtils toStringUtils;
     @Autowired
-    private ServerConf serverConf;
+    private ProxyServerConf proxyServerConf;
     private StreamStat streamStat;
     private Proxy.Metadata metadata;
     private Pipe pipe;
@@ -85,13 +85,13 @@ public class ClientUnaryCallResponseStreamObserver implements StreamObserver<Pro
             init();
         }
 
-        if (serverConf.isDebugEnabled()) {
+        if (proxyServerConf.isDebugEnabled()) {
             DEBUGGING.info("[UNARYCALL][OBSERVER][ONNEXT]: {}", packet);
             DEBUGGING.info("-------------");
         }
 
-        if (serverConf.isAuditEnabled()
-                && packet.getHeader().getSrc().getPartyId().equals(serverConf.getCoordinator())) {
+        if (proxyServerConf.isAuditEnabled()
+                && packet.getHeader().getSrc().getPartyId().equals(proxyServerConf.getCoordinator())) {
             AUDIT.info(toStringUtils.toOneLineString(packet));
         }
 

@@ -35,4 +35,7 @@ public class StringConstants {
     public static final String EGGROLL_COMPATIBLE_ENABLED = "eggroll.compatible.enabled";
     public static final String FALSE = "false";
     public static final String TRUE = "true";
+
+    public static final String CLUSTER_COMM = "__clustercomm__";
+    public static final String FEDERATION = "__federation__";
 }

@@ -17,10 +17,11 @@
 package com.webank.ai.eggroll.networking.proxy.factory;
 
 import com.google.common.net.InetAddresses;
+import com.webank.ai.eggroll.core.api.grpc.access.AccessRedirector;
 import com.webank.ai.eggroll.networking.proxy.grpc.service.DataTransferPipedServerImpl;
 import com.webank.ai.eggroll.networking.proxy.grpc.service.RouteServerImpl;
 import com.webank.ai.eggroll.networking.proxy.manager.ServerConfManager;
-import com.webank.ai.eggroll.networking.proxy.model.ServerConf;
+import com.webank.ai.eggroll.networking.proxy.model.ProxyServerConf;
 import com.webank.ai.eggroll.networking.proxy.service.FdnRouter;
 import io.grpc.Server;
 import io.grpc.netty.shaded.io.grpc.netty.GrpcSslContexts;
@@ -67,35 +68,35 @@ public class GrpcServerFactory {
     @Autowired
     private RouteServerImpl routeServer;
 
-    public Server createServer(ServerConf serverConf) {
-        this.serverConfManager.setServerConf(serverConf);
+    public Server createServer(ProxyServerConf proxyServerConf) {
+        this.serverConfManager.setProxyServerConf(proxyServerConf);
 
-        String routeTablePath = serverConf.getRouteTablePath();
+        String routeTablePath = proxyServerConf.getRouteTablePath();
         fdnRouter.setRouteTable(routeTablePath);
 
-        if (serverConf.getPipe() != null) {
-            dataTransferPipedServer.setDefaultPipe(serverConf.getPipe());
-        } else if (serverConf.getPipeFactory() != null) {
-            dataTransferPipedServer.setPipeFactory(serverConf.getPipeFactory());
+        if (proxyServerConf.getPipe() != null) {
+            dataTransferPipedServer.setDefaultPipe(proxyServerConf.getPipe());
+        } else if (proxyServerConf.getPipeFactory() != null) {
+            dataTransferPipedServer.setPipeFactory(proxyServerConf.getPipeFactory());
         } else {
             dataTransferPipedServer.setPipeFactory(pipeFactory);
         }
 
         NettyServerBuilder serverBuilder = null;
 
-        if (StringUtils.isBlank(serverConf.getIp())) {
-            LOGGER.info("server build on port only :{}", serverConf.getPort());
+        if (StringUtils.isBlank(proxyServerConf.getIp())) {
+            LOGGER.info("server build on port only :{}", proxyServerConf.getPort());
             // LOGGER.warn("this may cause trouble in multiple network devices. you may want to consider binding to a ip");
-            serverBuilder = NettyServerBuilder.forPort(serverConf.getPort());
+            serverBuilder = NettyServerBuilder.forPort(proxyServerConf.getPort());
         } else {
-            LOGGER.info("server build on address {}:{}", serverConf.getIp(), serverConf.getPort());
+            LOGGER.info("server build on address {}:{}", proxyServerConf.getIp(), proxyServerConf.getPort());
             InetSocketAddress inetSocketAddress = new InetSocketAddress(
-                    InetAddresses.forString(serverConf.getIp()), serverConf.getPort());
+                    InetAddresses.forString(proxyServerConf.getIp()), proxyServerConf.getPort());
 
             LOGGER.info(inetSocketAddress);
             SocketAddress addr =
                     new InetSocketAddress(
-                            InetAddresses.forString(serverConf.getIp()), serverConf.getPort());
+                            InetAddresses.forString(proxyServerConf.getIp()), proxyServerConf.getPort());
             serverBuilder = NettyServerBuilder.forAddress(addr);
 
         }
@@ -114,10 +115,20 @@ public class GrpcServerFactory {
                 .maxConnectionAge(24, TimeUnit.HOURS)
                 .maxConnectionAgeGrace(24, TimeUnit.HOURS);
 
-        if (serverConf.isSecureServer()) {
-            String serverCrtPath = serverConf.getServerCrtPath().replaceAll("\\.\\./", "");
-            String serverKeyPath = serverConf.getServerKeyPath().replaceAll("\\.\\./", "");
-            String caCrtPath = serverConf.getCaCrtPath().replaceAll("\\.\\./", "");
+        if (proxyServerConf.isCompatibleEnabled()) {
+            AccessRedirector accessRedirector = new AccessRedirector();
+
+            serverBuilder.addService(accessRedirector.redirect(dataTransferPipedServer,
+                    "com.webank.ai.eggroll.api.networking.proxy.DataTransferService",
+                    "com.webank.ai.fate.api.networking.proxy.DataTransferService"))
+                    .addService(accessRedirector.redirect(routeServer, "com.webank.ai.eggroll.api.networking.proxy.RouteService",
+                            "com.webank.ai.fate.api.networking.proxy.RouteService"));
+        }
+
+        if (proxyServerConf.isSecureServer()) {
+            String serverCrtPath = proxyServerConf.getServerCrtPath().replaceAll("\\.\\./", "");
+            String serverKeyPath = proxyServerConf.getServerKeyPath().replaceAll("\\.\\./", "");
+            String caCrtPath = proxyServerConf.getCaCrtPath().replaceAll("\\.\\./", "");
 
             File serverCrt = new File(serverCrtPath);
             File serverKey = new File(serverKeyPath);
@@ -127,7 +138,7 @@ public class GrpcServerFactory {
                 SslContextBuilder sslContextBuilder = GrpcSslContexts.forServer(serverCrt, serverKey)
                         .trustManager(caCrt);
 
-                if (serverConf.isNeighbourInsecureChannelEnabled()) {
+                if (proxyServerConf.isNeighbourInsecureChannelEnabled()) {
                     sslContextBuilder.clientAuth(ClientAuth.OPTIONAL);
                 } else {
                     sslContextBuilder.clientAuth(ClientAuth.REQUIRE);
@@ -164,7 +175,7 @@ public class GrpcServerFactory {
     }
 
     public Server createServer(String confPath) throws IOException {
-        ServerConf serverConf = applicationContext.getBean(ServerConf.class);
+        ProxyServerConf proxyServerConf = applicationContext.getBean(ProxyServerConf.class);
         Properties properties = new Properties();
 
         Path absolutePath = Paths.get(confPath).toAbsolutePath();
@@ -177,46 +188,49 @@ public class GrpcServerFactory {
             if (coordinator == null) {
                 throw new IllegalArgumentException("coordinator cannot be null");
             } else {
-                serverConf.setCoordinator(coordinator);
+                proxyServerConf.setCoordinator(coordinator);
             }
 
             String ipString = properties.getProperty("ip", null);
-            serverConf.setIp(ipString);
+            proxyServerConf.setIp(ipString);
 
             String portString = properties.getProperty("port", null);
             if (portString == null) {
                 throw new IllegalArgumentException("port cannot be null");
             } else {
                 int port = Integer.valueOf(portString);
-                serverConf.setPort(port);
+                proxyServerConf.setPort(port);
             }
 
             String routeTablePath = properties.getProperty("route.table", null);
             if (routeTablePath == null) {
                 throw new IllegalArgumentException("route table cannot be null");
             } else {
-                serverConf.setRouteTablePath(routeTablePath);
+                proxyServerConf.setRouteTablePath(routeTablePath);
             }
+
+            boolean needCompatibility = Boolean.valueOf(properties.getProperty("eggroll.compatible.enabled", "false"));
+            proxyServerConf.setCompatibleEnabled(needCompatibility);
 
             String serverCrt = properties.getProperty("server.crt");
             String serverKey = properties.getProperty("server.key");
 
-            serverConf.setServerCrtPath(serverCrt);
-            serverConf.setServerKeyPath(serverKey);
+            proxyServerConf.setServerCrtPath(serverCrt);
+            proxyServerConf.setServerKeyPath(serverKey);
 
             if (StringUtils.isBlank(serverCrt) && StringUtils.isBlank(serverKey)) {
-                serverConf.setSecureServer(false);
+                proxyServerConf.setSecureServer(false);
             } else {
-                serverConf.setSecureServer(true);
+                proxyServerConf.setSecureServer(true);
             }
 
             String caCrt = properties.getProperty("ca.crt");
-            serverConf.setCaCrtPath(caCrt);
+            proxyServerConf.setCaCrtPath(caCrt);
 
             if (StringUtils.isBlank(caCrt)) {
-                serverConf.setSecureClient(false);
+                proxyServerConf.setSecureClient(false);
             } else {
-                serverConf.setSecureClient(true);
+                proxyServerConf.setSecureClient(true);
             }
 
             String logPropertiesPath = properties.getProperty("log.properties");
@@ -228,7 +242,7 @@ public class GrpcServerFactory {
                                 new ConfigurationSource(new FileInputStream(logConfFile), logConfFile);
                         Configurator.initialize(null, configurationSource);
 
-                        serverConf.setLogPropertiesPath(logPropertiesPath);
+                        proxyServerConf.setLogPropertiesPath(logPropertiesPath);
                         LOGGER.info("using log conf file: {}", logPropertiesPath);
                     } catch (Exception e) {
                         LOGGER.warn("failed to set log conf file at {}. using default conf", logPropertiesPath);
@@ -240,32 +254,32 @@ public class GrpcServerFactory {
             if (StringUtils.isNotBlank(isAuditEnabled)
                     && ("true".equals(isAuditEnabled.toLowerCase()))
                     || ("1".equals(isAuditEnabled))) {
-                serverConf.setAuditEnabled(true);
+                proxyServerConf.setAuditEnabled(true);
             } else {
-                serverConf.setAuditEnabled(false);
+                proxyServerConf.setAuditEnabled(false);
             }
 
             String isNeighbourInsecureChannelEnabled = properties.getProperty("neighbour.insecure.channel.enabled");
             if (StringUtils.isNotBlank(isNeighbourInsecureChannelEnabled)
                     && ("true".equals(isNeighbourInsecureChannelEnabled.toLowerCase()))
                     || ("1".equals(isNeighbourInsecureChannelEnabled))) {
-                serverConf.setNeighbourInsecureChannelEnabled(true);
+                proxyServerConf.setNeighbourInsecureChannelEnabled(true);
             } else {
-                serverConf.setNeighbourInsecureChannelEnabled(false);
+                proxyServerConf.setNeighbourInsecureChannelEnabled(false);
             }
 
             String isDebugEnabled = properties.getProperty("debug.enabled");
             if (StringUtils.isNotBlank(isDebugEnabled)
                     && ("true".equals(isDebugEnabled.toLowerCase()))
                     || ("1".equals(isDebugEnabled))) {
-                serverConf.setDebugEnabled(true);
+                proxyServerConf.setDebugEnabled(true);
             } else {
-                serverConf.setDebugEnabled(false);
+                proxyServerConf.setDebugEnabled(false);
             }
         } catch (Exception e) {
             LOGGER.error(e);
             throw e;
         }
-        return createServer(serverConf);
+        return createServer(proxyServerConf);
     }
 }

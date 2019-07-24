@@ -18,18 +18,18 @@ package com.webank.ai.eggroll.networking.proxy.grpc.observer;
 
 import com.google.protobuf.ByteString;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
+import com.webank.ai.eggroll.core.utils.ErrorUtils;
+import com.webank.ai.eggroll.core.utils.ToStringUtils;
 import com.webank.ai.eggroll.networking.proxy.event.model.PipeHandleNotificationEvent;
 import com.webank.ai.eggroll.networking.proxy.factory.EventFactory;
 import com.webank.ai.eggroll.networking.proxy.helper.ModelValidationHelper;
 import com.webank.ai.eggroll.networking.proxy.infra.Pipe;
 import com.webank.ai.eggroll.networking.proxy.infra.impl.PacketQueuePipe;
 import com.webank.ai.eggroll.networking.proxy.manager.StatsManager;
-import com.webank.ai.eggroll.networking.proxy.model.ServerConf;
+import com.webank.ai.eggroll.networking.proxy.model.ProxyServerConf;
 import com.webank.ai.eggroll.networking.proxy.model.StreamStat;
-import com.webank.ai.eggroll.networking.proxy.util.ErrorUtils;
 import com.webank.ai.eggroll.networking.proxy.util.PipeUtils;
 import com.webank.ai.eggroll.networking.proxy.util.Timeouts;
-import com.webank.ai.eggroll.networking.proxy.util.ToStringUtils;
 import io.grpc.Grpc;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
@@ -66,7 +66,7 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
     @Autowired
     private ToStringUtils toStringUtils;
     @Autowired
-    private ServerConf serverConf;
+    private ProxyServerConf proxyServerConf;
     @Autowired
     private ErrorUtils errorUtils;
     @Autowired
@@ -111,7 +111,7 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
                     toStringUtils.toOneLineString(inputMetadata.getDst()));
 
             if (StringUtils.isBlank(myCoordinator)) {
-                myCoordinator = serverConf.getCoordinator();
+                myCoordinator = proxyServerConf.getCoordinator();
             }
 
             if (inputMetadata.hasConf()) {
@@ -119,8 +119,8 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
                 completionWaitTimeout = timeouts.getCompletionWaitTimeout(inputMetadata);
             }
 
-            isAuditEnabled = serverConf.isAuditEnabled();
-            isDebugEnabled = serverConf.isDebugEnabled();
+            isAuditEnabled = proxyServerConf.isAuditEnabled();
+            isDebugEnabled = proxyServerConf.isDebugEnabled();
 
             // check if topics are valid
             if (!modelValidationHelper.checkTopic(inputMetadata.getDst())

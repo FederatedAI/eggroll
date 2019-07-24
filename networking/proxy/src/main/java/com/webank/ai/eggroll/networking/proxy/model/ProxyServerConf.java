@@ -21,8 +21,10 @@ import com.webank.ai.eggroll.networking.proxy.factory.PipeFactory;
 import com.webank.ai.eggroll.networking.proxy.infra.Pipe;
 import org.springframework.stereotype.Component;
 
+import java.util.Properties;
+
 @Component
-public class ServerConf {
+public class ProxyServerConf {
     private String ip;
     private int port;
 
@@ -45,6 +47,12 @@ public class ServerConf {
     private boolean isNeighbourInsecureChannelEnabled;
 
     private boolean isDebugEnabled;
+    private boolean isCompatibleEnabled;
+    private Properties properties;
+
+    public ProxyServerConf() {
+        properties = new Properties();
+    }
 
     @Override
     public String toString() {
@@ -185,5 +193,22 @@ public class ServerConf {
 
     public void setDebugEnabled(boolean debugEnabled) {
         isDebugEnabled = debugEnabled;
+    }
+
+    public String getProperty(String key) {
+        return properties.getProperty(key);
+    }
+
+    public String getProperty(String key, String defaultValue) {
+        return properties.getProperty(key, defaultValue);
+    }
+
+    public boolean isCompatibleEnabled() {
+        return isCompatibleEnabled;
+    }
+
+    public ProxyServerConf setCompatibleEnabled(boolean compatibleEnabled) {
+        isCompatibleEnabled = compatibleEnabled;
+        return this;
     }
 }
