@@ -14,6 +14,7 @@ _sym_db = _symbol_database.Default()
 
 import kv_pb2 as kv__pb2
 import storage_basic_pb2 as storage__basic__pb2
+import basic_meta_pb2 as basic__meta__pb2
 
 
 DESCRIPTOR = _descriptor.FileDescriptor(
@@ -21,9 +22,9 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='com.webank.ai.eggroll.api.computing.processor',
   syntax='proto3',
   serialized_options=None,
-  serialized_pb=_b('\n\x0fprocessor.proto\x12-com.webank.ai.eggroll.api.computing.processor\x1a\x08kv.proto\x1a\x13storage-basic.proto\"#\n\x0bProcessConf\x12\x14\n\x0cnamingPolicy\x18\x01 \x01(\t\"\xf1\x01\n\x0bSessionInfo\x12\x11\n\tsessionId\x18\x01 \x01(\t\x12p\n\x13\x63omputingEngineConf\x18\x02 \x03(\x0b\x32S.com.webank.ai.eggroll.api.computing.processor.SessionInfo.ComputingEngineConfEntry\x12\x14\n\x0cnamingPolicy\x18\x03 \x01(\t\x12\x0b\n\x03tag\x18\x04 \x01(\t\x1a:\n\x18\x43omputingEngineConfEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"}\n\x08TaskInfo\x12\x0f\n\x07task_id\x18\x01 \x01(\t\x12\x13\n\x0b\x66unction_id\x18\x02 \x01(\t\x12\x16\n\x0e\x66unction_bytes\x18\x03 \x01(\x0c\x12\x1a\n\x12isInPlaceComputing\x18\x04 \x01(\x08\x12\x17\n\x0f\x63omputingEngine\x18\x05 \x01(\t\"\xb0\x02\n\x0cUnaryProcess\x12\x45\n\x04info\x18\x01 \x01(\x0b\x32\x37.com.webank.ai.eggroll.api.computing.processor.TaskInfo\x12\x42\n\x07operand\x18\x02 \x01(\x0b\x32\x31.com.webank.ai.eggroll.api.storage.StorageLocator\x12H\n\x04\x63onf\x18\x03 \x01(\x0b\x32:.com.webank.ai.eggroll.api.computing.processor.ProcessConf\x12K\n\x07session\x18\x14 \x01(\x0b\x32:.com.webank.ai.eggroll.api.computing.processor.SessionInfo\"\xf0\x02\n\rBinaryProcess\x12\x45\n\x04info\x18\x01 \x01(\x0b\x32\x37.com.webank.ai.eggroll.api.computing.processor.TaskInfo\x12?\n\x04left\x18\x02 \x01(\x0b\x32\x31.com.webank.ai.eggroll.api.storage.StorageLocator\x12@\n\x05right\x18\x03 \x01(\x0b\x32\x31.com.webank.ai.eggroll.api.storage.StorageLocator\x12H\n\x04\x63onf\x18\x04 \x01(\x0b\x32:.com.webank.ai.eggroll.api.computing.processor.ProcessConf\x12K\n\x07session\x18\x14 \x01(\x0b\x32:.com.webank.ai.eggroll.api.computing.processor.SessionInfo2\xd7\n\n\x0eProcessService\x12u\n\x03map\x12;.com.webank.ai.eggroll.api.computing.processor.UnaryProcess\x1a\x31.com.webank.ai.eggroll.api.storage.StorageLocator\x12{\n\tmapValues\x12;.com.webank.ai.eggroll.api.computing.processor.UnaryProcess\x1a\x31.com.webank.ai.eggroll.api.storage.StorageLocator\x12w\n\x04join\x12<.com.webank.ai.eggroll.api.computing.processor.BinaryProcess\x1a\x31.com.webank.ai.eggroll.api.storage.StorageLocator\x12s\n\x06reduce\x12;.com.webank.ai.eggroll.api.computing.processor.UnaryProcess\x1a*.com.webank.ai.eggroll.api.storage.Operand0\x01\x12\x7f\n\rmapPartitions\x12;.com.webank.ai.eggroll.api.computing.processor.UnaryProcess\x1a\x31.com.webank.ai.eggroll.api.storage.StorageLocator\x12v\n\x04glom\x12;.com.webank.ai.eggroll.api.computing.processor.UnaryProcess\x1a\x31.com.webank.ai.eggroll.api.storage.StorageLocator\x12x\n\x06sample\x12;.com.webank.ai.eggroll.api.computing.processor.UnaryProcess\x1a\x31.com.webank.ai.eggroll.api.storage.StorageLocator\x12\x80\x01\n\rsubtractByKey\x12<.com.webank.ai.eggroll.api.computing.processor.BinaryProcess\x1a\x31.com.webank.ai.eggroll.api.storage.StorageLocator\x12x\n\x06\x66ilter\x12;.com.webank.ai.eggroll.api.computing.processor.UnaryProcess\x1a\x31.com.webank.ai.eggroll.api.storage.StorageLocator\x12x\n\x05union\x12<.com.webank.ai.eggroll.api.computing.processor.BinaryProcess\x1a\x31.com.webank.ai.eggroll.api.storage.StorageLocator\x12y\n\x07\x66latMap\x12;.com.webank.ai.eggroll.api.computing.processor.UnaryProcess\x1a\x31.com.webank.ai.eggroll.api.storage.StorageLocatorb\x06proto3')
+  serialized_pb=_b('\n\x0fprocessor.proto\x12-com.webank.ai.eggroll.api.computing.processor\x1a\x08kv.proto\x1a\x13storage-basic.proto\x1a\x10\x62\x61sic-meta.proto\"#\n\x0bProcessConf\x12\x14\n\x0cnamingPolicy\x18\x01 \x01(\t\"}\n\x08TaskInfo\x12\x0f\n\x07task_id\x18\x01 \x01(\t\x12\x13\n\x0b\x66unction_id\x18\x02 \x01(\t\x12\x16\n\x0e\x66unction_bytes\x18\x03 \x01(\x0c\x12\x1a\n\x12isInPlaceComputing\x18\x04 \x01(\x08\x12\x17\n\x0f\x63omputingEngine\x18\x05 \x01(\t\"\xa1\x02\n\x0cUnaryProcess\x12\x45\n\x04info\x18\x01 \x01(\x0b\x32\x37.com.webank.ai.eggroll.api.computing.processor.TaskInfo\x12\x42\n\x07operand\x18\x02 \x01(\x0b\x32\x31.com.webank.ai.eggroll.api.storage.StorageLocator\x12H\n\x04\x63onf\x18\x03 \x01(\x0b\x32:.com.webank.ai.eggroll.api.computing.processor.ProcessConf\x12<\n\x07session\x18\x14 \x01(\x0b\x32+.com.webank.ai.eggroll.api.core.SessionInfo\"\xe1\x02\n\rBinaryProcess\x12\x45\n\x04info\x18\x01 \x01(\x0b\x32\x37.com.webank.ai.eggroll.api.computing.processor.TaskInfo\x12?\n\x04left\x18\x02 \x01(\x0b\x32\x31.com.webank.ai.eggroll.api.storage.StorageLocator\x12@\n\x05right\x18\x03 \x01(\x0b\x32\x31.com.webank.ai.eggroll.api.storage.StorageLocator\x12H\n\x04\x63onf\x18\x04 \x01(\x0b\x32:.com.webank.ai.eggroll.api.computing.processor.ProcessConf\x12<\n\x07session\x18\x14 \x01(\x0b\x32+.com.webank.ai.eggroll.api.core.SessionInfo2\xd7\n\n\x0eProcessService\x12u\n\x03map\x12;.com.webank.ai.eggroll.api.computing.processor.UnaryProcess\x1a\x31.com.webank.ai.eggroll.api.storage.StorageLocator\x12{\n\tmapValues\x12;.com.webank.ai.eggroll.api.computing.processor.UnaryProcess\x1a\x31.com.webank.ai.eggroll.api.storage.StorageLocator\x12w\n\x04join\x12<.com.webank.ai.eggroll.api.computing.processor.BinaryProcess\x1a\x31.com.webank.ai.eggroll.api.storage.StorageLocator\x12s\n\x06reduce\x12;.com.webank.ai.eggroll.api.computing.processor.UnaryProcess\x1a*.com.webank.ai.eggroll.api.storage.Operand0\x01\x12\x7f\n\rmapPartitions\x12;.com.webank.ai.eggroll.api.computing.processor.UnaryProcess\x1a\x31.com.webank.ai.eggroll.api.storage.StorageLocator\x12v\n\x04glom\x12;.com.webank.ai.eggroll.api.computing.processor.UnaryProcess\x1a\x31.com.webank.ai.eggroll.api.storage.StorageLocator\x12x\n\x06sample\x12;.com.webank.ai.eggroll.api.computing.processor.UnaryProcess\x1a\x31.com.webank.ai.eggroll.api.storage.StorageLocator\x12\x80\x01\n\rsubtractByKey\x12<.com.webank.ai.eggroll.api.computing.processor.BinaryProcess\x1a\x31.com.webank.ai.eggroll.api.storage.StorageLocator\x12x\n\x06\x66ilter\x12;.com.webank.ai.eggroll.api.computing.processor.UnaryProcess\x1a\x31.com.webank.ai.eggroll.api.storage.StorageLocator\x12x\n\x05union\x12<.com.webank.ai.eggroll.api.computing.processor.BinaryProcess\x1a\x31.com.webank.ai.eggroll.api.storage.StorageLocator\x12y\n\x07\x66latMap\x12;.com.webank.ai.eggroll.api.computing.processor.UnaryProcess\x1a\x31.com.webank.ai.eggroll.api.storage.StorageLocatorb\x06proto3')
   ,
-  dependencies=[kv__pb2.DESCRIPTOR,storage__basic__pb2.DESCRIPTOR,])
+  dependencies=[kv__pb2.DESCRIPTOR,storage__basic__pb2.DESCRIPTOR,basic__meta__pb2.DESCRIPTOR,])
 
 
 
@@ -54,97 +55,8 @@ _PROCESSCONF = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=97,
-  serialized_end=132,
-)
-
-
-_SESSIONINFO_COMPUTINGENGINECONFENTRY = _descriptor.Descriptor(
-  name='ComputingEngineConfEntry',
-  full_name='com.webank.ai.eggroll.api.computing.processor.SessionInfo.ComputingEngineConfEntry',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='key', full_name='com.webank.ai.eggroll.api.computing.processor.SessionInfo.ComputingEngineConfEntry.key', index=0,
-      number=1, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=_b("").decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR),
-    _descriptor.FieldDescriptor(
-      name='value', full_name='com.webank.ai.eggroll.api.computing.processor.SessionInfo.ComputingEngineConfEntry.value', index=1,
-      number=2, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=_b("").decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  serialized_options=_b('8\001'),
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=318,
-  serialized_end=376,
-)
-
-_SESSIONINFO = _descriptor.Descriptor(
-  name='SessionInfo',
-  full_name='com.webank.ai.eggroll.api.computing.processor.SessionInfo',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='sessionId', full_name='com.webank.ai.eggroll.api.computing.processor.SessionInfo.sessionId', index=0,
-      number=1, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=_b("").decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR),
-    _descriptor.FieldDescriptor(
-      name='computingEngineConf', full_name='com.webank.ai.eggroll.api.computing.processor.SessionInfo.computingEngineConf', index=1,
-      number=2, type=11, cpp_type=10, label=3,
-      has_default_value=False, default_value=[],
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR),
-    _descriptor.FieldDescriptor(
-      name='namingPolicy', full_name='com.webank.ai.eggroll.api.computing.processor.SessionInfo.namingPolicy', index=2,
-      number=3, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=_b("").decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR),
-    _descriptor.FieldDescriptor(
-      name='tag', full_name='com.webank.ai.eggroll.api.computing.processor.SessionInfo.tag', index=3,
-      number=4, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=_b("").decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR),
-  ],
-  extensions=[
-  ],
-  nested_types=[_SESSIONINFO_COMPUTINGENGINECONFENTRY, ],
-  enum_types=[
-  ],
-  serialized_options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=135,
-  serialized_end=376,
+  serialized_start=115,
+  serialized_end=150,
 )
 
 
@@ -202,8 +114,8 @@ _TASKINFO = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=378,
-  serialized_end=503,
+  serialized_start=152,
+  serialized_end=277,
 )
 
 
@@ -254,8 +166,8 @@ _UNARYPROCESS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=506,
-  serialized_end=810,
+  serialized_start=280,
+  serialized_end=569,
 )
 
 
@@ -313,23 +225,20 @@ _BINARYPROCESS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=813,
-  serialized_end=1181,
+  serialized_start=572,
+  serialized_end=925,
 )
 
-_SESSIONINFO_COMPUTINGENGINECONFENTRY.containing_type = _SESSIONINFO
-_SESSIONINFO.fields_by_name['computingEngineConf'].message_type = _SESSIONINFO_COMPUTINGENGINECONFENTRY
 _UNARYPROCESS.fields_by_name['info'].message_type = _TASKINFO
 _UNARYPROCESS.fields_by_name['operand'].message_type = storage__basic__pb2._STORAGELOCATOR
 _UNARYPROCESS.fields_by_name['conf'].message_type = _PROCESSCONF
-_UNARYPROCESS.fields_by_name['session'].message_type = _SESSIONINFO
+_UNARYPROCESS.fields_by_name['session'].message_type = basic__meta__pb2._SESSIONINFO
 _BINARYPROCESS.fields_by_name['info'].message_type = _TASKINFO
 _BINARYPROCESS.fields_by_name['left'].message_type = storage__basic__pb2._STORAGELOCATOR
 _BINARYPROCESS.fields_by_name['right'].message_type = storage__basic__pb2._STORAGELOCATOR
 _BINARYPROCESS.fields_by_name['conf'].message_type = _PROCESSCONF
-_BINARYPROCESS.fields_by_name['session'].message_type = _SESSIONINFO
+_BINARYPROCESS.fields_by_name['session'].message_type = basic__meta__pb2._SESSIONINFO
 DESCRIPTOR.message_types_by_name['ProcessConf'] = _PROCESSCONF
-DESCRIPTOR.message_types_by_name['SessionInfo'] = _SESSIONINFO
 DESCRIPTOR.message_types_by_name['TaskInfo'] = _TASKINFO
 DESCRIPTOR.message_types_by_name['UnaryProcess'] = _UNARYPROCESS
 DESCRIPTOR.message_types_by_name['BinaryProcess'] = _BINARYPROCESS
@@ -341,21 +250,6 @@ ProcessConf = _reflection.GeneratedProtocolMessageType('ProcessConf', (_message.
   # @@protoc_insertion_point(class_scope:com.webank.ai.eggroll.api.computing.processor.ProcessConf)
   ))
 _sym_db.RegisterMessage(ProcessConf)
-
-SessionInfo = _reflection.GeneratedProtocolMessageType('SessionInfo', (_message.Message,), dict(
-
-  ComputingEngineConfEntry = _reflection.GeneratedProtocolMessageType('ComputingEngineConfEntry', (_message.Message,), dict(
-    DESCRIPTOR = _SESSIONINFO_COMPUTINGENGINECONFENTRY,
-    __module__ = 'processor_pb2'
-    # @@protoc_insertion_point(class_scope:com.webank.ai.eggroll.api.computing.processor.SessionInfo.ComputingEngineConfEntry)
-    ))
-  ,
-  DESCRIPTOR = _SESSIONINFO,
-  __module__ = 'processor_pb2'
-  # @@protoc_insertion_point(class_scope:com.webank.ai.eggroll.api.computing.processor.SessionInfo)
-  ))
-_sym_db.RegisterMessage(SessionInfo)
-_sym_db.RegisterMessage(SessionInfo.ComputingEngineConfEntry)
 
 TaskInfo = _reflection.GeneratedProtocolMessageType('TaskInfo', (_message.Message,), dict(
   DESCRIPTOR = _TASKINFO,
@@ -379,7 +273,6 @@ BinaryProcess = _reflection.GeneratedProtocolMessageType('BinaryProcess', (_mess
 _sym_db.RegisterMessage(BinaryProcess)
 
 
-_SESSIONINFO_COMPUTINGENGINECONFENTRY._options = None
 
 _PROCESSSERVICE = _descriptor.ServiceDescriptor(
   name='ProcessService',
@@ -387,8 +280,8 @@ _PROCESSSERVICE = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=0,
   serialized_options=None,
-  serialized_start=1184,
-  serialized_end=2551,
+  serialized_start=928,
+  serialized_end=2295,
   methods=[
   _descriptor.MethodDescriptor(
     name='map',

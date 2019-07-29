@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='com.webank.ai.eggroll.api.core',
   syntax='proto3',
   serialized_options=None,
-  serialized_pb=_b('\n\x10\x62\x61sic-meta.proto\x12\x1e\x63om.webank.ai.eggroll.api.core\"6\n\x08\x45ndpoint\x12\n\n\x02ip\x18\x01 \x01(\t\x12\x0c\n\x04port\x18\x02 \x01(\x05\x12\x10\n\x08hostname\x18\x03 \x01(\t\"H\n\tEndpoints\x12;\n\tendpoints\x18\x01 \x03(\x0b\x32(.com.webank.ai.eggroll.api.core.Endpoint\"H\n\x04\x44\x61ta\x12\x0e\n\x06isNull\x18\x01 \x01(\x08\x12\x14\n\x0chostLanguage\x18\x02 \x01(\t\x12\x0c\n\x04type\x18\x03 \x01(\t\x12\x0c\n\x04\x64\x61ta\x18\x04 \x01(\x0c\"F\n\x0cRepeatedData\x12\x36\n\x08\x64\x61talist\x18\x01 \x03(\x0b\x32$.com.webank.ai.eggroll.api.core.Data\"u\n\x0b\x43\x61llRequest\x12\x0f\n\x07isAsync\x18\x01 \x01(\x08\x12\x0f\n\x07timeout\x18\x02 \x01(\x03\x12\x0f\n\x07\x63ommand\x18\x03 \x01(\t\x12\x33\n\x05param\x18\x04 \x01(\x0b\x32$.com.webank.ai.eggroll.api.core.Data\"\x88\x01\n\x0c\x43\x61llResponse\x12\x42\n\x0creturnStatus\x18\x01 \x01(\x0b\x32,.com.webank.ai.eggroll.api.core.ReturnStatus\x12\x34\n\x06result\x18\x02 \x01(\x0b\x32$.com.webank.ai.eggroll.api.core.Data\"\"\n\x03Job\x12\r\n\x05jobId\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\"Y\n\x04Task\x12\x30\n\x03job\x18\x01 \x01(\x0b\x32#.com.webank.ai.eggroll.api.core.Job\x12\x0e\n\x06taskId\x18\x02 \x01(\x03\x12\x0f\n\x07tableId\x18\x03 \x01(\x03\"N\n\x06Result\x12\x32\n\x04task\x18\x01 \x01(\x0b\x32$.com.webank.ai.eggroll.api.core.Task\x12\x10\n\x08resultId\x18\x02 \x01(\x03\"-\n\x0cReturnStatus\x12\x0c\n\x04\x63ode\x18\x01 \x01(\x05\x12\x0f\n\x07message\x18\x02 \x01(\tb\x06proto3')
+  serialized_pb=_b('\n\x10\x62\x61sic-meta.proto\x12\x1e\x63om.webank.ai.eggroll.api.core\"6\n\x08\x45ndpoint\x12\n\n\x02ip\x18\x01 \x01(\t\x12\x0c\n\x04port\x18\x02 \x01(\x05\x12\x10\n\x08hostname\x18\x03 \x01(\t\"H\n\tEndpoints\x12;\n\tendpoints\x18\x01 \x03(\x0b\x32(.com.webank.ai.eggroll.api.core.Endpoint\"H\n\x04\x44\x61ta\x12\x0e\n\x06isNull\x18\x01 \x01(\x08\x12\x14\n\x0chostLanguage\x18\x02 \x01(\t\x12\x0c\n\x04type\x18\x03 \x01(\t\x12\x0c\n\x04\x64\x61ta\x18\x04 \x01(\x0c\"F\n\x0cRepeatedData\x12\x36\n\x08\x64\x61talist\x18\x01 \x03(\x0b\x32$.com.webank.ai.eggroll.api.core.Data\"u\n\x0b\x43\x61llRequest\x12\x0f\n\x07isAsync\x18\x01 \x01(\x08\x12\x0f\n\x07timeout\x18\x02 \x01(\x03\x12\x0f\n\x07\x63ommand\x18\x03 \x01(\t\x12\x33\n\x05param\x18\x04 \x01(\x0b\x32$.com.webank.ai.eggroll.api.core.Data\"\x88\x01\n\x0c\x43\x61llResponse\x12\x42\n\x0creturnStatus\x18\x01 \x01(\x0b\x32,.com.webank.ai.eggroll.api.core.ReturnStatus\x12\x34\n\x06result\x18\x02 \x01(\x0b\x32$.com.webank.ai.eggroll.api.core.Data\"\"\n\x03Job\x12\r\n\x05jobId\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\"Y\n\x04Task\x12\x30\n\x03job\x18\x01 \x01(\x0b\x32#.com.webank.ai.eggroll.api.core.Job\x12\x0e\n\x06taskId\x18\x02 \x01(\x03\x12\x0f\n\x07tableId\x18\x03 \x01(\x03\"N\n\x06Result\x12\x32\n\x04task\x18\x01 \x01(\x0b\x32$.com.webank.ai.eggroll.api.core.Task\x12\x10\n\x08resultId\x18\x02 \x01(\x03\"-\n\x0cReturnStatus\x12\x0c\n\x04\x63ode\x18\x01 \x01(\x05\x12\x0f\n\x07message\x18\x02 \x01(\t\"\xe2\x01\n\x0bSessionInfo\x12\x11\n\tsessionId\x18\x01 \x01(\t\x12\x61\n\x13\x63omputingEngineConf\x18\x02 \x03(\x0b\x32\x44.com.webank.ai.eggroll.api.core.SessionInfo.ComputingEngineConfEntry\x12\x14\n\x0cnamingPolicy\x18\x03 \x01(\t\x12\x0b\n\x03tag\x18\x04 \x01(\t\x1a:\n\x18\x43omputingEngineConfEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\x62\x06proto3')
 )
 
 
@@ -432,6 +432,95 @@ _RETURNSTATUS = _descriptor.Descriptor(
   serialized_end=838,
 )
 
+
+_SESSIONINFO_COMPUTINGENGINECONFENTRY = _descriptor.Descriptor(
+  name='ComputingEngineConfEntry',
+  full_name='com.webank.ai.eggroll.api.core.SessionInfo.ComputingEngineConfEntry',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='key', full_name='com.webank.ai.eggroll.api.core.SessionInfo.ComputingEngineConfEntry.key', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='value', full_name='com.webank.ai.eggroll.api.core.SessionInfo.ComputingEngineConfEntry.value', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=_b('8\001'),
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1009,
+  serialized_end=1067,
+)
+
+_SESSIONINFO = _descriptor.Descriptor(
+  name='SessionInfo',
+  full_name='com.webank.ai.eggroll.api.core.SessionInfo',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='sessionId', full_name='com.webank.ai.eggroll.api.core.SessionInfo.sessionId', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='computingEngineConf', full_name='com.webank.ai.eggroll.api.core.SessionInfo.computingEngineConf', index=1,
+      number=2, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='namingPolicy', full_name='com.webank.ai.eggroll.api.core.SessionInfo.namingPolicy', index=2,
+      number=3, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='tag', full_name='com.webank.ai.eggroll.api.core.SessionInfo.tag', index=3,
+      number=4, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[_SESSIONINFO_COMPUTINGENGINECONFENTRY, ],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=841,
+  serialized_end=1067,
+)
+
 _ENDPOINTS.fields_by_name['endpoints'].message_type = _ENDPOINT
 _REPEATEDDATA.fields_by_name['datalist'].message_type = _DATA
 _CALLREQUEST.fields_by_name['param'].message_type = _DATA
@@ -439,6 +528,8 @@ _CALLRESPONSE.fields_by_name['returnStatus'].message_type = _RETURNSTATUS
 _CALLRESPONSE.fields_by_name['result'].message_type = _DATA
 _TASK.fields_by_name['job'].message_type = _JOB
 _RESULT.fields_by_name['task'].message_type = _TASK
+_SESSIONINFO_COMPUTINGENGINECONFENTRY.containing_type = _SESSIONINFO
+_SESSIONINFO.fields_by_name['computingEngineConf'].message_type = _SESSIONINFO_COMPUTINGENGINECONFENTRY
 DESCRIPTOR.message_types_by_name['Endpoint'] = _ENDPOINT
 DESCRIPTOR.message_types_by_name['Endpoints'] = _ENDPOINTS
 DESCRIPTOR.message_types_by_name['Data'] = _DATA
@@ -449,6 +540,7 @@ DESCRIPTOR.message_types_by_name['Job'] = _JOB
 DESCRIPTOR.message_types_by_name['Task'] = _TASK
 DESCRIPTOR.message_types_by_name['Result'] = _RESULT
 DESCRIPTOR.message_types_by_name['ReturnStatus'] = _RETURNSTATUS
+DESCRIPTOR.message_types_by_name['SessionInfo'] = _SESSIONINFO
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 Endpoint = _reflection.GeneratedProtocolMessageType('Endpoint', (_message.Message,), dict(
@@ -521,5 +613,21 @@ ReturnStatus = _reflection.GeneratedProtocolMessageType('ReturnStatus', (_messag
   ))
 _sym_db.RegisterMessage(ReturnStatus)
 
+SessionInfo = _reflection.GeneratedProtocolMessageType('SessionInfo', (_message.Message,), dict(
 
+  ComputingEngineConfEntry = _reflection.GeneratedProtocolMessageType('ComputingEngineConfEntry', (_message.Message,), dict(
+    DESCRIPTOR = _SESSIONINFO_COMPUTINGENGINECONFENTRY,
+    __module__ = 'basic_meta_pb2'
+    # @@protoc_insertion_point(class_scope:com.webank.ai.eggroll.api.core.SessionInfo.ComputingEngineConfEntry)
+    ))
+  ,
+  DESCRIPTOR = _SESSIONINFO,
+  __module__ = 'basic_meta_pb2'
+  # @@protoc_insertion_point(class_scope:com.webank.ai.eggroll.api.core.SessionInfo)
+  ))
+_sym_db.RegisterMessage(SessionInfo)
+_sym_db.RegisterMessage(SessionInfo.ComputingEngineConfEntry)
+
+
+_SESSIONINFO_COMPUTINGENGINECONFENTRY._options = None
 # @@protoc_insertion_point(module_scope)

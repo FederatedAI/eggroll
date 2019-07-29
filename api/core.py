@@ -17,7 +17,7 @@
 from typing import MutableMapping
 
 from eggroll.api import NamingPolicy, ComputingEngine
-from eggroll.api.proto import processor_pb2
+from eggroll.api.proto.basic_meta_pb2 import SessionInfo
 
 class EggrollSession(object):
     def __init__(self, session_id, computing_engine_conf : MutableMapping = None, naming_policy : NamingPolicy = NamingPolicy.DEFAULT, tag=None):
@@ -59,7 +59,7 @@ class EggrollSession(object):
             func()
 
     def to_protobuf(self):
-        return processor_pb2.SessionInfo(sessionId=self._session_id,
+        return SessionInfo(sessionId=self._session_id,
                                          computingEngineConf=self._computing_engine_conf,
                                          namingPolicy=self._naming_policy.name,
                                          tag=self._tag)

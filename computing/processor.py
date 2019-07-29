@@ -24,7 +24,7 @@ import lmdb
 from cachetools import cached
 from grpc._cython import cygrpc
 from cachetools import LRUCache
-from eggroll.api.proto import kv_pb2, processor_pb2, processor_pb2_grpc, storage_basic_pb2
+from eggroll.api.proto import kv_pb2, processor_pb2, processor_pb2_grpc, storage_basic_pb2, basic_meta_pb2
 from enum import IntEnum
 import os
 import numpy as np

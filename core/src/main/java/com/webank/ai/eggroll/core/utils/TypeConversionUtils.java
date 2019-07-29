@@ -16,6 +16,7 @@
 
 package com.webank.ai.eggroll.core.utils;
 
+import com.google.common.collect.Maps;
 import com.webank.ai.eggroll.api.core.BasicMeta;
 import com.webank.ai.eggroll.api.core.DataStructure;
 import com.webank.ai.eggroll.api.storage.Kv;
@@ -26,6 +27,9 @@ import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
+
+import java.util.Map;
+import java.util.Properties;
 
 @Component
 @Scope("prototype")
@@ -184,6 +188,13 @@ public class TypeConversionUtils {
         result.setStatus(other.getStatus());
         result.setType(other.getType());
         result.setUpdatedAt(other.getUpdatedAt());
+
+        return result;
+    }
+
+    public Properties toProperties(Map<?, ?> conf) {
+        Properties result = new Properties();
+        result.putAll(conf);
 
         return result;
     }

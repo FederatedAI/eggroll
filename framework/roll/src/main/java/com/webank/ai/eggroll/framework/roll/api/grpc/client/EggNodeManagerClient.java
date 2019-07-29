@@ -25,7 +25,7 @@ import com.webank.ai.eggroll.core.model.DelayedResult;
 import com.webank.ai.eggroll.core.model.impl.SingleDelayedResult;
 import com.webank.ai.eggroll.core.utils.TypeConversionUtils;
 import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node;
-import com.webank.ai.eggroll.framework.roll.api.grpc.observer.processor.egg.node.EggNodeServiceEndpointToEndpointResponseObserver;
+import com.webank.ai.eggroll.framework.roll.api.grpc.observer.processor.node.EggNodeServiceEndpointToEndpointResponseObserver;
 import com.webank.ai.eggroll.framework.roll.factory.EggNodeServiceCallModelTemplateFactory;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
