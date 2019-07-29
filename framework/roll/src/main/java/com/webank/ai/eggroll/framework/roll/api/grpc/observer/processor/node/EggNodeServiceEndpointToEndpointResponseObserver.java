@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.webank.ai.eggroll.framework.roll.api.grpc.observer.processor.egg.node;
+package com.webank.ai.eggroll.framework.roll.api.grpc.observer.processor.node;
 
 import com.webank.ai.eggroll.api.core.BasicMeta.Endpoint;
 import com.webank.ai.eggroll.core.api.grpc.observer.CallerWithSameTypeDelayedResultResponseStreamObserver;

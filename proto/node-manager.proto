@@ -17,8 +17,15 @@
 syntax = "proto3";
 
 import "basic-meta.proto";
+import "computing-basic.proto";
 
 package com.webank.ai.eggroll.api.framework.egg;
+
+
+message ComputingEngineRequest {
+    com.webank.ai.eggroll.api.core.SessionInfo session = 1;
+    com.webank.ai.eggroll.api.computing.ComputingEngineDescriptor computingEngineDesc = 2;
+}
 
 service NodeService {
     rpc getProcessor (com.webank.ai.eggroll.api.core.Endpoint) returns (com.webank.ai.eggroll.api.core.Endpoint);
@@ -27,3 +34,8 @@ service NodeService {
     rpc killAllProcessors (com.webank.ai.eggroll.api.core.Endpoint) returns (com.webank.ai.eggroll.api.core.Endpoints);
 }
 
+service SessionService {
+    rpc getOrCreateSession (com.webank.ai.eggroll.api.core.SessionInfo) returns (com.webank.ai.eggroll.api.core.SessionInfo);
+    rpc stopSession (com.webank.ai.eggroll.api.core.SessionInfo) returns (com.webank.ai.eggroll.api.core.SessionInfo);
+    rpc getComputingEngine (ComputingEngineRequest) returns (com.webank.ai.eggroll.api.computing.ComputingEngineDescriptor);
+}

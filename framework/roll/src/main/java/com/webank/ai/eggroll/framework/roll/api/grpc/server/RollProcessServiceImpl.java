@@ -302,6 +302,9 @@ public class RollProcessServiceImpl extends ProcessServiceGrpc.ProcessServiceImp
             final CountDownLatch finishLatch = new CountDownLatch(fragments.size());
             final List<Throwable> subTaskThrowables = Collections.synchronizedList(Lists.newArrayList());
 
+            /**
+             * performing for each fragment
+             */
             for (Fragment fragment : fragments) {
                 StoreInfo storeInfoWithFragment = StoreInfo.copy(storeInfo);
                 storeInfoWithFragment.setFragment(fragment.getFragmentOrder());

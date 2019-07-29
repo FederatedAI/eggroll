@@ -157,7 +157,7 @@ public class GrpcChannelFactory {
             } else {
                 result = insecureChannelCache.get(endpoint);
             }
-            ConnectivityState state = result.getState(true);
+            // ConnectivityState state = result.getState(true);
             /*LOGGER.info("Managed channel state: isShutdown: {}, isTerminated: {}, state: {}",
                     result.isShutdown(), result.isTerminated(), state.name());*/
 

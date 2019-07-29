@@ -74,6 +74,9 @@ public class RuntimeUtils {
     }
 
     public boolean isPortAvailable(int port) {
+        if (port <= 0) {
+            return false;
+        }
         try (ServerSocket ignored = new ServerSocket(port)) {
             return true;
         } catch (IOException ignored) {
