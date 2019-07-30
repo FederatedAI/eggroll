@@ -27,7 +27,7 @@ import grpc
 from eggroll.api import NamingPolicy, ComputingEngine
 from eggroll.api.utils import eggroll_serdes, file_utils
 from eggroll.api.utils.log_utils import getLogger
-from eggroll.api.proto import kv_pb2, kv_pb2_grpc, processor_pb2, processor_pb2_grpc, storage_basic_pb2
+from eggroll.api.proto import kv_pb2, kv_pb2_grpc, processor_pb2, processor_pb2_grpc, storage_basic_pb2, node_manager_pb2, node_manager_pb2_grpc
 from eggroll.api.utils import cloudpickle
 from eggroll.api.utils.core import string_to_bytes, bytes_to_string
 from eggroll.api.utils.iter_utils import split_every
@@ -241,8 +241,11 @@ class _EggRoll(object):
         self.session_id = eggroll_session.get_session_id()
         self.kv_stub = kv_pb2_grpc.KVServiceStub(self.channel)
         self.proc_stub = processor_pb2_grpc.ProcessServiceStub(self.channel)
+        self.session_stub = node_manager_pb2_grpc.SessionServiceStub(self.channel)
         self.eggroll_session = eggroll_session
         _EggRoll.instance = self
+
+        self.session_stub.getOrCreateSession(self.eggroll_session.to_protobuf()
 
         # todo: move to eggrollSession
         try:
@@ -251,6 +254,12 @@ class _EggRoll(object):
         except socket.gaierror as e:
             self.host_name = 'unknown'
             self.host_ip = 'unknown'
+
+    def stop(self):
+        self.session_stub.stopSession(self.eggroll_session.to_protobuf())
+        self.eggroll_session.run_cleanup_tasks()
+        self.instance = None
+        self.channel.close()
 
     def table(self, name, namespace, partition=1,
               create_if_missing=True, error_if_exist=False,

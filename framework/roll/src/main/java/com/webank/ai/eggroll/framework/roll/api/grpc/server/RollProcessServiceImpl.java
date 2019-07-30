@@ -18,9 +18,9 @@ package com.webank.ai.eggroll.framework.roll.api.grpc.server;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.webank.ai.eggroll.api.core.BasicMeta;
 import com.webank.ai.eggroll.api.computing.processor.ProcessServiceGrpc;
 import com.webank.ai.eggroll.api.computing.processor.Processor;
+import com.webank.ai.eggroll.api.core.BasicMeta;
 import com.webank.ai.eggroll.api.storage.Kv;
 import com.webank.ai.eggroll.api.storage.StorageBasic;
 import com.webank.ai.eggroll.core.api.grpc.client.crud.StorageMetaClient;
@@ -29,19 +29,19 @@ import com.webank.ai.eggroll.core.api.grpc.server.GrpcServerWrapper;
 import com.webank.ai.eggroll.core.error.exception.MultipleRuntimeThrowables;
 import com.webank.ai.eggroll.core.error.exception.StorageNotExistsException;
 import com.webank.ai.eggroll.core.io.StoreInfo;
+import com.webank.ai.eggroll.core.model.ComputingEngine;
 import com.webank.ai.eggroll.core.model.NodeStatus;
 import com.webank.ai.eggroll.core.model.NodeType;
-import com.webank.ai.eggroll.core.utils.ErrorUtils;
-import com.webank.ai.eggroll.core.utils.NetworkingUtils;
-import com.webank.ai.eggroll.core.utils.RandomUtils;
-import com.webank.ai.eggroll.core.utils.ToStringUtils;
+import com.webank.ai.eggroll.core.utils.*;
 import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable;
 import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Fragment;
 import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node;
 import com.webank.ai.eggroll.framework.roll.api.grpc.client.EggProcessServiceClient;
+import com.webank.ai.eggroll.framework.roll.api.grpc.client.EggSessionServiceClient;
 import com.webank.ai.eggroll.framework.roll.factory.RollGrpcObserverFactory;
 import com.webank.ai.eggroll.framework.roll.factory.RollModelFactory;
 import com.webank.ai.eggroll.framework.roll.helper.NodeHelper;
+import com.webank.ai.eggroll.framework.roll.manager.RollSessionManager;
 import com.webank.ai.eggroll.framework.roll.service.async.processor.*;
 import com.webank.ai.eggroll.framework.roll.service.handler.ProcessServiceResultHandler;
 import com.webank.ai.eggroll.framework.roll.util.RollServerUtils;
@@ -60,7 +60,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-
 
 @Component
 @Scope("prototype")
@@ -81,15 +80,19 @@ public class RollProcessServiceImpl extends ProcessServiceGrpc.ProcessServiceImp
     @Autowired
     private GrpcServerWrapper grpcServerWrapper;
     @Autowired
-    private RollGrpcObserverFactory rollGrpcObserverFactory;
+    private TypeConversionUtils typeConversionUtils;
     @Autowired
     private RollModelFactory rollModelFactory;
     @Autowired
     private EggProcessServiceClient eggProcessServiceClient;
     @Autowired
+    private EggSessionServiceClient eggSessionServiceClient;
+    @Autowired
     private RollServerUtils rollServerUtils;
     @Autowired
     private NodeHelper nodeHelper;
+    @Autowired
+    private RollSessionManager rollSessionManager;
 
     @PostConstruct
     public void init() {
@@ -331,8 +334,18 @@ public class RollProcessServiceImpl extends ProcessServiceGrpc.ProcessServiceImp
 
                 Node selectedEggNode = eggPossibleNodes.get(i);*/
 
+                Node selectedEgg = nodeHelper.getNodeManager(target);
+                BasicMeta.SessionInfo sessionInfo = getSessionInfoFromRequest(request);
+
+                if (!rollSessionManager.isEggInitialized(sessionInfo.getSessionId(), selectedEgg)) {
+                    sessionInfo = rollSessionManager.getOrCreateSession(sessionInfo);
+                }
+
+                ComputingEngine computingEngine = eggSessionServiceClient.getComputingEngine(sessionInfo, selectedEgg);
+
                 // todo: scheduler: should become a module later
-                BasicMeta.Endpoint selectedEggProcessor = nodeHelper.getProcessorEndpoint(target);
+                //BasicMeta.Endpoint selectedEggProcessor = nodeHelper.getProcessorEndpoint(target);
+                BasicMeta.Endpoint computingEngineEndpoint = typeConversionUtils.toEndpoint(computingEngine);
 
                 // fill the fragment into the parameter
                 R dispatchRequest = buildDispatchRequest(request, fragment);
@@ -340,12 +353,12 @@ public class RollProcessServiceImpl extends ProcessServiceGrpc.ProcessServiceImp
                 // create processor
                 BaseProcessServiceProcessor<R, I> processor
                         = rollModelFactory.createBaseProcessServiceProcessor(
-                        processServiceProcessorClass, eggProcessServiceClient, dispatchRequest, selectedEggProcessor);
+                        processServiceProcessorClass, eggProcessServiceClient, dispatchRequest, computingEngineEndpoint);
 
                 ListenableFuture<I> resultFuture = asyncThreadPool.submitListenable(processor);
                 resultFuture.addCallback(rollModelFactory
                         .createDefaultRollProcessListenableCallback(
-                                results, subTaskThrowables, finishLatch, selectedEggProcessor.getIp(), selectedEggProcessor.getPort()));
+                                results, subTaskThrowables, finishLatch, computingEngineEndpoint.getIp(), computingEngineEndpoint.getPort()));
                 resultFutures.add(resultFuture);
             }
 
@@ -384,6 +397,17 @@ public class RollProcessServiceImpl extends ProcessServiceGrpc.ProcessServiceImp
                 result = ((Processor.UnaryProcess) request).getOperand();
             } else if (request instanceof Processor.BinaryProcess) {
                 result = ((Processor.BinaryProcess) request).getLeft();
+            }
+
+            return result;
+        }
+
+        private BasicMeta.SessionInfo getSessionInfoFromRequest(R request) {
+            BasicMeta.SessionInfo result = null;
+            if (request instanceof Processor.UnaryProcess) {
+                result = ((Processor.UnaryProcess) request).getSession();
+            } else if (request instanceof Processor.BinaryProcess) {
+                result = ((Processor.BinaryProcess) request).getSession();
             }
 
             return result;

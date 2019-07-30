@@ -23,6 +23,8 @@ cd $BASEDIR
 
 python -m grpc_tools.protoc -Ieggroll/proto --python_out=./eggroll/api/proto  basic-meta.proto
 
+python -m grpc_tools.protoc -Ieggroll/proto --python_out=./eggroll/api/proto  computing-basic.proto
+
 python -m grpc_tools.protoc -Ieggroll/proto --python_out=./eggroll/api/proto  storage-basic.proto
 
 python -m grpc_tools.protoc -Ieggroll/proto --python_out=./eggroll/api/proto --grpc_python_out=./eggroll/api/proto kv.proto
@@ -33,3 +35,4 @@ python -m grpc_tools.protoc -Ieggroll/proto --python_out=./eggroll/api/proto --g
 
 python -m grpc_tools.protoc -Ieggroll/proto --python_out=./eggroll/api/proto --grpc_python_out=./eggroll/api/proto proxy.proto
 
+python -m grpc_tools.protoc -Ieggroll/proto --python_out=./eggroll/api/proto --grpc_python_out=./eggroll/api/proto node-manager.proto
