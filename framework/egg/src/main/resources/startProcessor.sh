@@ -56,4 +56,4 @@ cmd="python ${engine_path} -p ${port} -d ${data_dir}"
 
 echo $PYTHON >> ${logs_dir}/test.log 2>&1
 mkdir -p ${logs_dir}
-${cmd} >> ${logs_dir}/processor-${port}.log 2>&1 &
+${cmd} >> ${logs_dir}/processor-${port}.log 2>&1

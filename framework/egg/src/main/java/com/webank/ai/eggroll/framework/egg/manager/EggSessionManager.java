@@ -15,7 +15,7 @@ import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Component
-public class SessionManager {
+public class EggSessionManager {
     @Autowired
     private PropertyGetter propertyGetter;
     @Autowired
@@ -25,7 +25,7 @@ public class SessionManager {
 
     private final Map<String, EggrollSession> sessionIdToResource;
 
-    public SessionManager() {
+    public EggSessionManager() {
         this.sessionIdToResource = new ConcurrentHashMap<>();
     }
 

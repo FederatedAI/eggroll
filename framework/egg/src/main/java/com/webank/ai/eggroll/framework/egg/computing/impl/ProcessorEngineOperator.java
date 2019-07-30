@@ -20,6 +20,7 @@ import javax.annotation.PostConstruct;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.management.ManagementFactory;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -110,21 +111,19 @@ public class ProcessorEngineOperator implements EngineOperator {
             valueBindingsMap.put(key, actualValue);
         }
 
-        Process engineProcess = null;
+        Process engineParentProcess = null;
 
         try {
-            while (engineProcess == null) {
+            while (engineParentProcess == null) {
                 port = lastPort.getAndIncrement();
                 if (runtimeUtils.isPortAvailable(port)) {
                     valueBindingsMap.put(PORT, String.valueOf(port));
 
                     String actualStartCmd = StringSubstitutor.replace(startCmdTemplate, valueBindingsMap);
                     LOGGER.info("[EGG][ENGINE][PROCESSOR] start cmd: {}", actualStartCmd);
-                    engineProcess = Runtime.getRuntime().exec(actualStartCmd);
-                    OutputStream stdout = engineProcess.getOutputStream();
-                    InputStream stderr = engineProcess.getInputStream();
+                    engineParentProcess = Runtime.getRuntime().exec(actualStartCmd);
 
-                    if (!engineProcess.isAlive()) {
+                    if (!engineParentProcess.isAlive()) {
                         throw new IllegalStateException("Processor engine dead: " + actualStartCmd);
                     }
                 }
@@ -134,12 +133,25 @@ public class ProcessorEngineOperator implements EngineOperator {
             throw new IllegalArgumentException(e);
         }
 
-        return new ComputingEngine(runtimeUtils.getMySiteLocalAddress(), port, computingEngine.getComputingEngineType(), engineProcess);
+        return new ComputingEngine(runtimeUtils.getMySiteLocalAddress(), port, computingEngine.getComputingEngineType(), engineParentProcess);
     }
 
     @Override
     public void stop(ComputingEngine computingEngine) {
-        computingEngine.getProcess().destroy();
+        Process engineParentProcess = computingEngine.getProcess();
+
+        try {
+            long pid = runtimeUtils.getPidOfProcess(engineParentProcess);
+            if (pid != -1) {
+                Process killer = Runtime.getRuntime().exec("pkill -P " + String.valueOf(pid));
+                killer.waitFor();
+            } else {
+                computingEngine.getProcess().destroy();
+            }
+        } catch (IOException | InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(e);
+        }
     }
 
     @Override
