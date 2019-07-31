@@ -2,17 +2,30 @@ package com.webank.ai.eggroll.framework.egg.manager;
 
 import com.webank.ai.eggroll.api.core.BasicMeta;
 import com.webank.ai.eggroll.core.model.ComputingEngine;
+import com.webank.ai.eggroll.core.retry.RetryException;
+import com.webank.ai.eggroll.core.retry.Retryer;
+import com.webank.ai.eggroll.core.retry.factory.RetryerBuilder;
+import com.webank.ai.eggroll.core.retry.factory.StopStrategies;
+import com.webank.ai.eggroll.core.retry.factory.WaitStrategies;
+import com.webank.ai.eggroll.core.retry.factory.WaitTimeStrategies;
 import com.webank.ai.eggroll.core.utils.PropertyGetter;
 import com.webank.ai.eggroll.core.utils.TypeConversionUtils;
 import com.webank.ai.eggroll.framework.egg.computing.EngineOperator;
 import com.webank.ai.eggroll.framework.egg.model.EggrollSession;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import javax.annotation.concurrent.GuardedBy;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
 @Component
 public class EggSessionManager {
@@ -22,11 +35,19 @@ public class EggSessionManager {
     private EngineOperator engineOperator;
     @Autowired
     private TypeConversionUtils typeConversionUtils;
+    @Autowired
+    private EngineStatusTracker engineStatusTracker;
 
+    @GuardedBy("sessionIdToResourceLock")
     private final Map<String, EggrollSession> sessionIdToResource;
+
+    private final Object sessionIdToResourceLock;
+
+    private static final Logger LOGGER = LogManager.getLogger();
 
     public EggSessionManager() {
         this.sessionIdToResource = new ConcurrentHashMap<>();
+        this.sessionIdToResourceLock = new Object();
     }
 
     public BasicMeta.SessionInfo getSession(String sessionId) {
@@ -41,22 +62,67 @@ public class EggSessionManager {
     }
 
     public boolean getOrCreateSession(BasicMeta.SessionInfo sessionInfo) {
+        boolean result = false;
+        String sessionId = sessionInfo.getSessionId();
+
+        if (sessionIdToResource.containsKey(sessionId)) {
+            result = true;
+            return result;
+        }
+        final EggrollSession eggrollSession = new EggrollSession(sessionInfo);
+        synchronized (sessionIdToResourceLock) {
+            if (!sessionIdToResource.containsKey(sessionId)) {
+                sessionIdToResource.putIfAbsent(sessionId, eggrollSession);
+            } else {
+                result = true;
+                return result;
+            }
+        }
+
         Properties sessionProperties = new Properties();
         sessionProperties.putAll(sessionInfo.getComputingEngineConfMap());
         String maxSessionEngineCountInConfString = propertyGetter.getPropertyWithTemporarySource("eggroll.computing.processor.session.max.count", "1", sessionProperties);
-        int maxSessionEngineCountInConf = Integer.valueOf(maxSessionEngineCountInConfString);
-
+        int maxSessionEngineCountInConf = Integer.parseInt(maxSessionEngineCountInConfString);
         int finalMaxSessionEngineCount = Math.max(maxSessionEngineCountInConf, 1);
         finalMaxSessionEngineCount = Math.min(finalMaxSessionEngineCount, 512);
 
-        EggrollSession eggrollSession = new EggrollSession(sessionInfo);
-        ComputingEngine computingEngine = new ComputingEngine(ComputingEngine.ComputingEngineType.EGGROLL);
+        ComputingEngine typeParamComputingEngine = new ComputingEngine(ComputingEngine.ComputingEngineType.EGGROLL);
         for (int i = 0; i < finalMaxSessionEngineCount; ++i) {
-            ComputingEngine engine = engineOperator.start(computingEngine, sessionProperties);
+            ComputingEngine engine = engineOperator.start(typeParamComputingEngine, sessionProperties);
             eggrollSession.addComputingEngine(engine);
         }
 
-        return sessionIdToResource.putIfAbsent(sessionInfo.getSessionId(), eggrollSession) == null;
+        Retryer<Boolean> allReadyRetryer = RetryerBuilder.<Boolean>newBuilder()
+                .retryIfResult(b -> Objects.equals(b, Boolean.FALSE))
+                .withStopStrategy(StopStrategies.stopAfterMaxDelay(5000))
+                .withWaitStrategy(WaitStrategies.threadSleepWait())
+                .withWaitTimeStrategy(WaitTimeStrategies.fixedWaitTime(100, TimeUnit.MILLISECONDS))
+                .build();
+
+        final Callable<Boolean> engineStatusChecker = () -> {
+            boolean isAllReady = true;
+            for (ComputingEngine engine : eggrollSession.getAllComputingEngines()) {
+                isAllReady = engineStatusTracker.addAliveEngine(engine);
+            }
+
+            return isAllReady;
+        };
+
+        try {
+            result = allReadyRetryer.call(engineStatusChecker);
+        } catch (ExecutionException e) {
+            Thread.currentThread().interrupt();
+            LOGGER.error("[EGG][SESSION] start engine failed in retries. sessionId: {}", sessionId);
+            stopSession(sessionId);
+            throw new RuntimeException(e);
+        } catch (RetryException e) {
+            Thread.currentThread().interrupt();
+            LOGGER.error("[EGG][SESSION] start engine failed after retries. sessionId: {}", sessionId);
+            stopSession(sessionId);
+            throw new RuntimeException(e);
+        }
+
+        return result;
     }
 
     public boolean stopSession(String sessionId) {
@@ -83,6 +149,7 @@ public class EggSessionManager {
         }
 
         ComputingEngine result = eggrollSession.getComputingEngine();
+
 
         if (!engineOperator.isAlive(result)) {
             // todo: remove dead computingEngine when restart is needed

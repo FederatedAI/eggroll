@@ -306,7 +306,7 @@ public class RollProcessServiceImpl extends ProcessServiceGrpc.ProcessServiceImp
             final List<Throwable> subTaskThrowables = Collections.synchronizedList(Lists.newArrayList());
 
             /**
-             * performing for each fragment
+             * doing for each fragment
              */
             for (Fragment fragment : fragments) {
                 StoreInfo storeInfoWithFragment = StoreInfo.copy(storeInfo);
@@ -321,30 +321,16 @@ public class RollProcessServiceImpl extends ProcessServiceGrpc.ProcessServiceImp
                         storeInfoWithFragment, fragmentNodeId, storageNode, target);
 
                 // get egg nodes whose ip is the same as storage
-
-                /*List<Node> eggPossibleNodes = eggTargetToNodes.get(target);
-                if (eggPossibleNodes == null || eggPossibleNodes.isEmpty()) {
-                    throw new ProcessorStateException("no valid egg for storeInfo: " + storeInfoWithFragment);
-                }
-
-                int i = 0;
-                if (eggPossibleNodes.size() > 1) {
-                    i = randomUtils.nextInt(0, eggPossibleNodes.size());
-                }
-
-                Node selectedEggNode = eggPossibleNodes.get(i);*/
-
                 Node selectedEgg = nodeHelper.getNodeManager(target);
                 BasicMeta.SessionInfo sessionInfo = getSessionInfoFromRequest(request);
+                String sessionId = sessionInfo.getSessionId();
 
-                if (!rollSessionManager.isEggInitialized(sessionInfo.getSessionId(), selectedEgg)) {
-                    sessionInfo = rollSessionManager.getOrCreateSession(sessionInfo);
+                // check if session is started on that specific egg
+                if (!rollSessionManager.isEggInitialized(sessionId, selectedEgg)) {
+                    rollSessionManager.initializeEgg(sessionInfo, selectedEgg);
                 }
 
                 ComputingEngine computingEngine = eggSessionServiceClient.getComputingEngine(sessionInfo, selectedEgg);
-
-                // todo: scheduler: should become a module later
-                //BasicMeta.Endpoint selectedEggProcessor = nodeHelper.getProcessorEndpoint(target);
                 BasicMeta.Endpoint computingEngineEndpoint = typeConversionUtils.toEndpoint(computingEngine);
 
                 // fill the fragment into the parameter
@@ -409,6 +395,8 @@ public class RollProcessServiceImpl extends ProcessServiceGrpc.ProcessServiceImp
             } else if (request instanceof Processor.BinaryProcess) {
                 result = ((Processor.BinaryProcess) request).getSession();
             }
+
+            LOGGER.info("MW: session in request: {}", toStringUtils.toOneLineString(result));
 
             return result;
         }

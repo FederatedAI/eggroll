@@ -204,7 +204,6 @@ public class TypeConversionUtils {
     public BasicMeta.Endpoint toEndpoint(ComputingEngine computingEngine) {
         Preconditions.checkNotNull(computingEngine);
         BasicMeta.Endpoint.Builder builder = BasicMeta.Endpoint.newBuilder()
-                .setHostname(computingEngine.getHost())
                 .setIp(computingEngine.getHost())
                 .setPort(computingEngine.getPort());
         return builder.build();

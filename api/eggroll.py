@@ -69,6 +69,13 @@ def parallelize(data: Iterable, include_key=False, name=None, partition=1, names
                                                chunk_size=chunk_size,
                                                in_place_computing=in_place_computing)
 
+def stop():
+    RuntimeInstance.EGGROLL.stop()
+    RuntimeInstance.EGGROLL = None
+
+def get_eggroll_session():
+    return RuntimeInstance.EGGROLL.get_eggroll_session()
+
 def cleanup(name, namespace, persistent=False):
     return RuntimeInstance.EGGROLL.cleanup(name=name, namespace=namespace, persistent=persistent)
 

@@ -245,7 +245,7 @@ class _EggRoll(object):
         self.eggroll_session = eggroll_session
         _EggRoll.instance = self
 
-        self.session_stub.getOrCreateSession(self.eggroll_session.to_protobuf()
+        self.session_stub.getOrCreateSession(self.eggroll_session.to_protobuf())
 
         # todo: move to eggrollSession
         try:
@@ -254,6 +254,9 @@ class _EggRoll(object):
         except socket.gaierror as e:
             self.host_name = 'unknown'
             self.host_ip = 'unknown'
+
+    def get_eggroll_session(self):
+        return self.eggroll_session
 
     def stop(self):
         self.session_stub.stopSession(self.eggroll_session.to_protobuf())
@@ -495,7 +498,7 @@ class _EggRoll(object):
                                            session=self.eggroll_session.to_protobuf())
 
     def __do_binary_process(self, left: _DTable, right: _DTable, user_func, stub_func):
-        process = self.__create_binary_process(left=left, right=right, func=user_func)
+        process = self.__create_binary_process(left=left, right=right, func=user_func, session=self.eggroll_session.to_protobuf())
 
         return stub_func(process)
 

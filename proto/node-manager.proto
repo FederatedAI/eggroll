@@ -27,11 +27,23 @@ message ComputingEngineRequest {
     com.webank.ai.eggroll.api.computing.ComputingEngineDescriptor computingEngineDesc = 2;
 }
 
+message HeartbeatRequest {
+    com.webank.ai.eggroll.api.core.Endpoint endpoint = 1;
+}
+
+message HeartbeatResponse {
+
+}
+
 service NodeService {
     rpc getProcessor (com.webank.ai.eggroll.api.core.Endpoint) returns (com.webank.ai.eggroll.api.core.Endpoint);
     rpc getAllPossibleProcessors (com.webank.ai.eggroll.api.core.Endpoint) returns (com.webank.ai.eggroll.api.core.Endpoints);
     rpc killProcessor (com.webank.ai.eggroll.api.core.Endpoint) returns (com.webank.ai.eggroll.api.core.Endpoint);
     rpc killAllProcessors (com.webank.ai.eggroll.api.core.Endpoint) returns (com.webank.ai.eggroll.api.core.Endpoints);
+}
+
+service NodeManagerService {
+    rpc heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
 }
 
 service SessionService {
