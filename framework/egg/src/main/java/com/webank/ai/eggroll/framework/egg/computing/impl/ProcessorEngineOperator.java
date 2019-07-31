@@ -39,9 +39,11 @@ public class ProcessorEngineOperator implements EngineOperator {
     private static final String LOGS_DIR = "logs-dir";
     private static final String BOOTSTRAP_SCRIPT = "bootstrap.script";
     private static final String START_PORT = "start.port";
+    private static final String NODE_MANAGER = "node-manager";
+    private static final String ENGINE_ADDR = "engine-addr";
     private static final String BASH = "/bin/bash";
 
-    private static String[] scriptArgs = {VENV, PYTHON_PATH, ENGINE_PATH, PORT, DATA_DIR, LOGS_DIR};
+    private static String[] scriptArgs = {VENV, PYTHON_PATH, ENGINE_PATH, PORT, DATA_DIR, LOGS_DIR, NODE_MANAGER, ENGINE_ADDR};
     private static final String startCmdTemplate;
 
     static {

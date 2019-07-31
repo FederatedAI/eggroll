@@ -21,7 +21,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='com.webank.ai.eggroll.api.framework.egg',
   syntax='proto3',
   serialized_options=None,
-  serialized_pb=_b('\n\x12node-manager.proto\x12\'com.webank.ai.eggroll.api.framework.egg\x1a\x10\x62\x61sic-meta.proto\x1a\x15\x63omputing-basic.proto\"\xb3\x01\n\x16\x43omputingEngineRequest\x12<\n\x07session\x18\x01 \x01(\x0b\x32+.com.webank.ai.eggroll.api.core.SessionInfo\x12[\n\x13\x63omputingEngineDesc\x18\x02 \x01(\x0b\x32>.com.webank.ai.eggroll.api.computing.ComputingEngineDescriptor2\xb1\x03\n\x0bNodeService\x12\x62\n\x0cgetProcessor\x12(.com.webank.ai.eggroll.api.core.Endpoint\x1a(.com.webank.ai.eggroll.api.core.Endpoint\x12o\n\x18getAllPossibleProcessors\x12(.com.webank.ai.eggroll.api.core.Endpoint\x1a).com.webank.ai.eggroll.api.core.Endpoints\x12\x63\n\rkillProcessor\x12(.com.webank.ai.eggroll.api.core.Endpoint\x1a(.com.webank.ai.eggroll.api.core.Endpoint\x12h\n\x11killAllProcessors\x12(.com.webank.ai.eggroll.api.core.Endpoint\x1a).com.webank.ai.eggroll.api.core.Endpoints2\x81\x03\n\x0eSessionService\x12n\n\x12getOrCreateSession\x12+.com.webank.ai.eggroll.api.core.SessionInfo\x1a+.com.webank.ai.eggroll.api.core.SessionInfo\x12g\n\x0bstopSession\x12+.com.webank.ai.eggroll.api.core.SessionInfo\x1a+.com.webank.ai.eggroll.api.core.SessionInfo\x12\x95\x01\n\x12getComputingEngine\x12?.com.webank.ai.eggroll.api.framework.egg.ComputingEngineRequest\x1a>.com.webank.ai.eggroll.api.computing.ComputingEngineDescriptorb\x06proto3')
+  serialized_pb=_b('\n\x12node-manager.proto\x12\'com.webank.ai.eggroll.api.framework.egg\x1a\x10\x62\x61sic-meta.proto\x1a\x15\x63omputing-basic.proto\"\xb3\x01\n\x16\x43omputingEngineRequest\x12<\n\x07session\x18\x01 \x01(\x0b\x32+.com.webank.ai.eggroll.api.core.SessionInfo\x12[\n\x13\x63omputingEngineDesc\x18\x02 \x01(\x0b\x32>.com.webank.ai.eggroll.api.computing.ComputingEngineDescriptor\"N\n\x10HeartbeatRequest\x12:\n\x08\x65ndpoint\x18\x01 \x01(\x0b\x32(.com.webank.ai.eggroll.api.core.Endpoint\"\x13\n\x11HeartbeatResponse2\xb1\x03\n\x0bNodeService\x12\x62\n\x0cgetProcessor\x12(.com.webank.ai.eggroll.api.core.Endpoint\x1a(.com.webank.ai.eggroll.api.core.Endpoint\x12o\n\x18getAllPossibleProcessors\x12(.com.webank.ai.eggroll.api.core.Endpoint\x1a).com.webank.ai.eggroll.api.core.Endpoints\x12\x63\n\rkillProcessor\x12(.com.webank.ai.eggroll.api.core.Endpoint\x1a(.com.webank.ai.eggroll.api.core.Endpoint\x12h\n\x11killAllProcessors\x12(.com.webank.ai.eggroll.api.core.Endpoint\x1a).com.webank.ai.eggroll.api.core.Endpoints2\x99\x01\n\x12NodeManagerService\x12\x82\x01\n\theartbeat\x12\x39.com.webank.ai.eggroll.api.framework.egg.HeartbeatRequest\x1a:.com.webank.ai.eggroll.api.framework.egg.HeartbeatResponse2\x81\x03\n\x0eSessionService\x12n\n\x12getOrCreateSession\x12+.com.webank.ai.eggroll.api.core.SessionInfo\x1a+.com.webank.ai.eggroll.api.core.SessionInfo\x12g\n\x0bstopSession\x12+.com.webank.ai.eggroll.api.core.SessionInfo\x1a+.com.webank.ai.eggroll.api.core.SessionInfo\x12\x95\x01\n\x12getComputingEngine\x12?.com.webank.ai.eggroll.api.framework.egg.ComputingEngineRequest\x1a>.com.webank.ai.eggroll.api.computing.ComputingEngineDescriptorb\x06proto3')
   ,
   dependencies=[basic__meta__pb2.DESCRIPTOR,computing__basic__pb2.DESCRIPTOR,])
 
@@ -65,9 +65,67 @@ _COMPUTINGENGINEREQUEST = _descriptor.Descriptor(
   serialized_end=284,
 )
 
+
+_HEARTBEATREQUEST = _descriptor.Descriptor(
+  name='HeartbeatRequest',
+  full_name='com.webank.ai.eggroll.api.framework.egg.HeartbeatRequest',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='endpoint', full_name='com.webank.ai.eggroll.api.framework.egg.HeartbeatRequest.endpoint', index=0,
+      number=1, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=286,
+  serialized_end=364,
+)
+
+
+_HEARTBEATRESPONSE = _descriptor.Descriptor(
+  name='HeartbeatResponse',
+  full_name='com.webank.ai.eggroll.api.framework.egg.HeartbeatResponse',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=366,
+  serialized_end=385,
+)
+
 _COMPUTINGENGINEREQUEST.fields_by_name['session'].message_type = basic__meta__pb2._SESSIONINFO
 _COMPUTINGENGINEREQUEST.fields_by_name['computingEngineDesc'].message_type = computing__basic__pb2._COMPUTINGENGINEDESCRIPTOR
+_HEARTBEATREQUEST.fields_by_name['endpoint'].message_type = basic__meta__pb2._ENDPOINT
 DESCRIPTOR.message_types_by_name['ComputingEngineRequest'] = _COMPUTINGENGINEREQUEST
+DESCRIPTOR.message_types_by_name['HeartbeatRequest'] = _HEARTBEATREQUEST
+DESCRIPTOR.message_types_by_name['HeartbeatResponse'] = _HEARTBEATRESPONSE
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 ComputingEngineRequest = _reflection.GeneratedProtocolMessageType('ComputingEngineRequest', (_message.Message,), dict(
@@ -77,6 +135,20 @@ ComputingEngineRequest = _reflection.GeneratedProtocolMessageType('ComputingEngi
   ))
 _sym_db.RegisterMessage(ComputingEngineRequest)
 
+HeartbeatRequest = _reflection.GeneratedProtocolMessageType('HeartbeatRequest', (_message.Message,), dict(
+  DESCRIPTOR = _HEARTBEATREQUEST,
+  __module__ = 'node_manager_pb2'
+  # @@protoc_insertion_point(class_scope:com.webank.ai.eggroll.api.framework.egg.HeartbeatRequest)
+  ))
+_sym_db.RegisterMessage(HeartbeatRequest)
+
+HeartbeatResponse = _reflection.GeneratedProtocolMessageType('HeartbeatResponse', (_message.Message,), dict(
+  DESCRIPTOR = _HEARTBEATRESPONSE,
+  __module__ = 'node_manager_pb2'
+  # @@protoc_insertion_point(class_scope:com.webank.ai.eggroll.api.framework.egg.HeartbeatResponse)
+  ))
+_sym_db.RegisterMessage(HeartbeatResponse)
+
 
 
 _NODESERVICE = _descriptor.ServiceDescriptor(
@@ -85,8 +157,8 @@ _NODESERVICE = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=0,
   serialized_options=None,
-  serialized_start=287,
-  serialized_end=720,
+  serialized_start=388,
+  serialized_end=821,
   methods=[
   _descriptor.MethodDescriptor(
     name='getProcessor',
@@ -130,14 +202,38 @@ _sym_db.RegisterServiceDescriptor(_NODESERVICE)
 DESCRIPTOR.services_by_name['NodeService'] = _NODESERVICE
 
 
+_NODEMANAGERSERVICE = _descriptor.ServiceDescriptor(
+  name='NodeManagerService',
+  full_name='com.webank.ai.eggroll.api.framework.egg.NodeManagerService',
+  file=DESCRIPTOR,
+  index=1,
+  serialized_options=None,
+  serialized_start=824,
+  serialized_end=977,
+  methods=[
+  _descriptor.MethodDescriptor(
+    name='heartbeat',
+    full_name='com.webank.ai.eggroll.api.framework.egg.NodeManagerService.heartbeat',
+    index=0,
+    containing_service=None,
+    input_type=_HEARTBEATREQUEST,
+    output_type=_HEARTBEATRESPONSE,
+    serialized_options=None,
+  ),
+])
+_sym_db.RegisterServiceDescriptor(_NODEMANAGERSERVICE)
+
+DESCRIPTOR.services_by_name['NodeManagerService'] = _NODEMANAGERSERVICE
+
+
 _SESSIONSERVICE = _descriptor.ServiceDescriptor(
   name='SessionService',
   full_name='com.webank.ai.eggroll.api.framework.egg.SessionService',
   file=DESCRIPTOR,
-  index=1,
+  index=2,
   serialized_options=None,
-  serialized_start=723,
-  serialized_end=1108,
+  serialized_start=980,
+  serialized_end=1365,
   methods=[
   _descriptor.MethodDescriptor(
     name='getOrCreateSession',

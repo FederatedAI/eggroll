@@ -99,6 +99,48 @@ def add_NodeServiceServicer_to_server(servicer, server):
   server.add_generic_rpc_handlers((generic_handler,))
 
 
+class NodeManagerServiceStub(object):
+  # missing associated documentation comment in .proto file
+  pass
+
+  def __init__(self, channel):
+    """Constructor.
+
+    Args:
+      channel: A grpc.Channel.
+    """
+    self.heartbeat = channel.unary_unary(
+        '/com.webank.ai.eggroll.api.framework.egg.NodeManagerService/heartbeat',
+        request_serializer=node__manager__pb2.HeartbeatRequest.SerializeToString,
+        response_deserializer=node__manager__pb2.HeartbeatResponse.FromString,
+        )
+
+
+class NodeManagerServiceServicer(object):
+  # missing associated documentation comment in .proto file
+  pass
+
+  def heartbeat(self, request, context):
+    # missing associated documentation comment in .proto file
+    pass
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
+
+def add_NodeManagerServiceServicer_to_server(servicer, server):
+  rpc_method_handlers = {
+      'heartbeat': grpc.unary_unary_rpc_method_handler(
+          servicer.heartbeat,
+          request_deserializer=node__manager__pb2.HeartbeatRequest.FromString,
+          response_serializer=node__manager__pb2.HeartbeatResponse.SerializeToString,
+      ),
+  }
+  generic_handler = grpc.method_handlers_generic_handler(
+      'com.webank.ai.eggroll.api.framework.egg.NodeManagerService', rpc_method_handlers)
+  server.add_generic_rpc_handlers((generic_handler,))
+
+
 class SessionServiceStub(object):
   # missing associated documentation comment in .proto file
   pass

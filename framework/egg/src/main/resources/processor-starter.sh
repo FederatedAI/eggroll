@@ -7,6 +7,8 @@ ONE_ARG_LIST=(
     "port"
     "data-dir"
     "logs-dir"
+    "node-manager"
+    "engine-addr"
 )
 
 opts=$(getopt \
@@ -42,6 +44,14 @@ while [[ $# -gt 0 ]]; do
             logs_dir=$2
             shift 2
             ;;
+        --node-manager)
+            node_manager=$2
+            shift 2
+            ;;
+        --engine-addr)
+            engine_addr=$2
+            shift 2
+            ;;
         *)
             break
             ;;
@@ -52,7 +62,7 @@ source ${venv}/bin/activate
 
 export PYTHONPATH=$PYTHONPATH:${python_path}
 PYTHON=${venv}/bin/python
-cmd="python ${engine_path} -p ${port} -d ${data_dir}"
+cmd="python ${engine_path} -p ${port} -d ${data_dir} -m ${node_manager} -a ${engine-addr}"
 
 echo $PYTHON >> ${logs_dir}/test.log 2>&1
 mkdir -p ${logs_dir}

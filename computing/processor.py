@@ -25,13 +25,16 @@ from cachetools import cached
 from grpc._cython import cygrpc
 from cachetools import LRUCache
 from eggroll.api.proto import kv_pb2, processor_pb2, processor_pb2_grpc, storage_basic_pb2, basic_meta_pb2
+from eggroll.api.proto import node_manager_pb2, node_manager_pb2_grpc
 from enum import IntEnum
 import os
 import numpy as np
 import hashlib
 import threading
+import socket
 
 _ONE_DAY_IN_SECONDS = 60 * 60 * 24
+_ONE_MIN_IN_SECONDS = 60
 
 log_utils.setDirectory()
 LOGGER = log_utils.getLogger()
@@ -142,7 +145,6 @@ class Processor(processor_pb2_grpc.ProcessServiceServicer):
                     dst_env.begin(db=Processor.get_default_db(dst_env), write=True) as dst_txn:
                 cursor = src_txn.cursor()
                 for k_bytes, v_bytes in cursor:
-                    count += 1
                     v = _serdes.deserialize(v_bytes)
 
                     v1 = _mapper(v)
@@ -494,20 +496,31 @@ class MDBEnv(object):
                 self.env = None
 
 
-def serve(socket, config):
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=5),
+def serve(args):
+    port = args['port']
+    config = args['config']
+    node_manager = args['node-manager']
+    engine_addr = args['engine-addr']
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=1),
                          options=[(cygrpc.ChannelArgKey.max_send_message_length, -1),
                                   (cygrpc.ChannelArgKey.max_receive_message_length, -1)])
     LOGGER.info("server starting at {}, data_dir: {}".format(socket, config))
     processor = Processor(config)
     processor_pb2_grpc.add_ProcessServiceServicer_to_server(
         processor, server)
-    server.add_insecure_port(socket)
+    server.add_insecure_port("{}:{}".format(engine_addr, port))
     server.start()
 
+    channel = grpc.insecure_channel(target=node_manager,
+                                             options=[('grpc.max_send_message_length', -1),
+                                                      ('grpc.max_receive_message_length', -1)]
+    node_manager_stub = node_manager_pb2_grpc.NodeManagerServiceStub(self.channel)
+
     try:
+        heartbeat_request = node_manager_pb2.HeartbeatRequest(basic_meta_pb2.Endpoint(ip=engine_addr, port=port))
         while True:
-            time.sleep(_ONE_DAY_IN_SECONDS)
+            node_manager_stub.heartbeat(heartbeat)
+            time.sleep(_ONE_MIN_IN_SECONDS)
     except KeyboardInterrupt:
         server.stop(0)
         sys.exit(0)
@@ -517,12 +530,11 @@ if __name__ == '__main__':
     from datetime import datetime
     parser = argparse.ArgumentParser()
     parser.add_argument('-s', '--socket')
-    parser.add_argument('-p', '--port', default=7888)
+    parser.add_argument('-p', '--port', default=49999)
     parser.add_argument('-d', '--dir', default=os.path.dirname(os.path.realpath(__file__)))
+    parser.add_argument('-m', '--node-manager', default="localhost:7888")
+    parser.add_argument('-a', "--engine-addr", default="localhost")
     args = parser.parse_args()
 
-    LOGGER.info("started at {}".format(str(datetime.now())))
-    if args.socket:
-        serve(args.socket, args.dir)
-    else:
-        serve("[::]:{}".format(args.port), args.dir)
+    LOGGER.info("processor {}:{} started at {}, node-manager at {}".format(args['engine-addr'], str(args['port']), str(datetime.now()), args['node-manager']))
+    serve(args)
