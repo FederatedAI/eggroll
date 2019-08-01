@@ -90,7 +90,7 @@ public class PriorityPropertyGetter implements PropertyGetter {
     }
 
     public String getPropertyInIterableInternal(CharSequence delimiter, String key, String defaultValue, Iterable<Properties> propsIter, int maxMatch) {
-        String result = null;
+        String result = defaultValue;
         List<String> matchedValues = Lists.newLinkedList();
 
         if (propsIter == null) {

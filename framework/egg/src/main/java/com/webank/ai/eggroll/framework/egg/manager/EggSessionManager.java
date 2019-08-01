@@ -9,6 +9,7 @@ import com.webank.ai.eggroll.core.retry.factory.StopStrategies;
 import com.webank.ai.eggroll.core.retry.factory.WaitStrategies;
 import com.webank.ai.eggroll.core.retry.factory.WaitTimeStrategies;
 import com.webank.ai.eggroll.core.utils.PropertyGetter;
+import com.webank.ai.eggroll.core.utils.ToStringUtils;
 import com.webank.ai.eggroll.core.utils.TypeConversionUtils;
 import com.webank.ai.eggroll.framework.egg.computing.EngineOperator;
 import com.webank.ai.eggroll.framework.egg.model.EggrollSession;
@@ -37,6 +38,8 @@ public class EggSessionManager {
     private TypeConversionUtils typeConversionUtils;
     @Autowired
     private EngineStatusTracker engineStatusTracker;
+    @Autowired
+    private ToStringUtils toStringUtils;
 
     @GuardedBy("sessionIdToResourceLock")
     private final Map<String, EggrollSession> sessionIdToResource;
@@ -99,25 +102,31 @@ public class EggSessionManager {
                 .withWaitTimeStrategy(WaitTimeStrategies.fixedWaitTime(100, TimeUnit.MILLISECONDS))
                 .build();
 
+        LOGGER.info("[EGG][SESSIONMANAGER] ready to check if processors are up");
         final Callable<Boolean> engineStatusChecker = () -> {
             boolean isAllReady = true;
             for (ComputingEngine engine : eggrollSession.getAllComputingEngines()) {
-                isAllReady = engineStatusTracker.addAliveEngine(engine);
+                isAllReady = engineStatusTracker.isEngineAlive(engine);
+                if (!isAllReady) {
+                    break;
+                }
             }
 
+            LOGGER.info("[EGG][SESSIONMANAGER] check result: {}", isAllReady);
             return isAllReady;
         };
 
         try {
             result = allReadyRetryer.call(engineStatusChecker);
+            LOGGER.info("[EGG][SESSIONMANAGER] returned check result: {}", result);
         } catch (ExecutionException e) {
             Thread.currentThread().interrupt();
-            LOGGER.error("[EGG][SESSION] start engine failed in retries. sessionId: {}", sessionId);
+            LOGGER.error("[EGG][SESSIONMANAGER] start engine failed in retries. sessionId: {}", sessionId);
             stopSession(sessionId);
             throw new RuntimeException(e);
         } catch (RetryException e) {
             Thread.currentThread().interrupt();
-            LOGGER.error("[EGG][SESSION] start engine failed after retries. sessionId: {}", sessionId);
+            LOGGER.error("[EGG][SESSIONMANAGER] start engine failed after retries. sessionId: {}", sessionId);
             stopSession(sessionId);
             throw new RuntimeException(e);
         }
@@ -142,7 +151,7 @@ public class EggSessionManager {
         return result;
     }
 
-    public ComputingEngine getComputeEngineDescriptor(String sessionId) {
+    public ComputingEngine getComputeEngine(String sessionId) {
         EggrollSession eggrollSession = sessionIdToResource.get(sessionId);
         if (eggrollSession == null) {
             throw new IllegalStateException("sessionId " + sessionId + " does not exist");
@@ -150,9 +159,9 @@ public class EggSessionManager {
 
         ComputingEngine result = eggrollSession.getComputingEngine();
 
-
         if (!engineOperator.isAlive(result)) {
             // todo: remove dead computingEngine when restart is needed
+            LOGGER.info("[EGG][SESSIONMANAGER] engine {} is dead, restarting.", toStringUtils.toOneLineString(result));
             ComputingEngine deadEngine = eggrollSession.removeComputingEngine(result);
             engineOperator.stopForcibly(result);
             result = engineOperator.start(result, typeConversionUtils.toProperties(eggrollSession.getSessionInfo().getComputingEngineConfMap()));

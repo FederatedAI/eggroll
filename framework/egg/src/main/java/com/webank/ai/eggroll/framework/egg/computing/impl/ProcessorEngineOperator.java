@@ -18,12 +18,10 @@ import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.lang.management.ManagementFactory;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Component
@@ -76,24 +74,30 @@ public class ProcessorEngineOperator implements EngineOperator {
     private String startScriptPath;
     private AtomicInteger lastPort;
     private int maxPort;
-
+    private AtomicBoolean inited;
 
     public ProcessorEngineOperator() {
         confPrefix = String.join(StringConstants.DOT, StringConstants.EGGROLL,
                 StringConstants.COMPUTING,
                 COMPUTING_ENGINE_NAME,
                 StringConstants.EMPTY);
+
+        inited = new AtomicBoolean(false);
     }
 
-    @PostConstruct
     public void init() {
+        if (inited.get()) {
+            return;
+        }
         String startPortString = propertyGetter.getProperty(confPrefix + START_PORT, "50000");
         lastPort = new AtomicInteger(Integer.valueOf(startPortString));
         maxPort = lastPort.get() + 5000;
+        inited.compareAndSet(false,true);
     }
 
     @Override
     public ComputingEngine start(ComputingEngine computingEngine, Properties prop) {
+        init();
         List<Properties> allSources = Lists.newArrayList();
         allSources.add(prop);
         allSources.addAll(propertyGetter.getAllSources());
@@ -105,7 +109,13 @@ public class ProcessorEngineOperator implements EngineOperator {
         String bootStrapScript = priorityPropertyGetter.getPropertyInIterable(confPrefix + BOOTSTRAP_SCRIPT, allSources);
         valueBindingsMap.put(BOOTSTRAP_SCRIPT, bootStrapScript);
         for (String key : scriptArgs) {
-            String actualValue = priorityPropertyGetter.getPropertyInIterable(confPrefix + key, allSources);
+            String actualValue = null;
+            if (key.equals(PYTHON_PATH)) {
+                actualValue = priorityPropertyGetter.getAllMatchingPropertiesInIterable(StringConstants.COLON, confPrefix + key, allSources);
+            } else {
+                actualValue = priorityPropertyGetter.getPropertyInIterable(confPrefix + key, allSources);
+            }
+
             if (StringUtils.isBlank(actualValue) && !key.equals(PORT)) {
                 throw new IllegalArgumentException("key: " +
                         key + " is blank when starting session");
@@ -158,12 +168,14 @@ public class ProcessorEngineOperator implements EngineOperator {
 
     @Override
     public ComputingEngine stopForcibly(ComputingEngine computingEngine) {
-        computingEngine.getProcess().destroyForcibly();
+        Process process = computingEngine.getProcess();
+        process.destroyForcibly();
         return computingEngine;
     }
 
     @Override
     public boolean isAlive(ComputingEngine computingEngine) {
-        return computingEngine.getProcess().isAlive();
+        Process process = computingEngine.getProcess();
+        return process != null && process.isAlive();
     }
 }

@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 @Scope("prototype")
-public class SessionServiceImpl extends SessionServiceGrpc.SessionServiceImplBase {
+public class EggSessionServiceImpl extends SessionServiceGrpc.SessionServiceImplBase {
     @Autowired
     private EggSessionManager eggSessionManager;
     @Autowired
@@ -69,7 +69,7 @@ public class SessionServiceImpl extends SessionServiceGrpc.SessionServiceImplBas
     public void getComputingEngine(NodeManager.ComputingEngineRequest request, StreamObserver<ComputingBasic.ComputingEngineDescriptor> responseObserver) {
         grpcServerWrapper.wrapGrpcServerRunnable(responseObserver, () -> {
             LOGGER.info("[EGG][SESSIONSERVICE] getComputeEngine. request: {}", toStringUtils.toOneLineString(request));
-            ComputingEngine computingEngine = eggSessionManager.getComputeEngineDescriptor(request.getSession().getSessionId());
+            ComputingEngine computingEngine = eggSessionManager.getComputeEngine(request.getSession().getSessionId());
 
             responseObserver.onNext(computingEngine.toProtobuf());
             responseObserver.onCompleted();

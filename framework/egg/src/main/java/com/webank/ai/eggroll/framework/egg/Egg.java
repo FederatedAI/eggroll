@@ -18,9 +18,9 @@ package com.webank.ai.eggroll.framework.egg;
 
 import com.webank.ai.eggroll.core.factory.DefaultGrpcServerFactory;
 import com.webank.ai.eggroll.core.server.DefaultServerConf;
+import com.webank.ai.eggroll.framework.egg.api.grpc.server.NodeManagerServiceImpl;
 import com.webank.ai.eggroll.framework.egg.api.grpc.server.NodeServiceImpl;
-import com.webank.ai.eggroll.framework.egg.api.grpc.server.SessionServiceImpl;
-import com.webank.ai.eggroll.framework.egg.node.manager.ProcessorManager;
+import com.webank.ai.eggroll.framework.egg.api.grpc.server.EggSessionServiceImpl;
 import io.grpc.Server;
 import org.apache.commons.cli.CommandLine;
 import org.apache.logging.log4j.LogManager;
@@ -55,11 +55,14 @@ public class Egg {
         processorManager.killAll();
         processorManager.getAllPossible();*/
 
-        SessionServiceImpl sessionService = context.getBean(SessionServiceImpl.class);
+        EggSessionServiceImpl sessionService = context.getBean(EggSessionServiceImpl.class);
+
+        NodeManagerServiceImpl nodeManagerService = context.getBean(NodeManagerServiceImpl.class);
 
         serverConf
                 .addService(nodeService)
-                .addService(sessionService);
+                .addService(sessionService)
+                .addService(nodeManagerService);
 
         Server server = serverFactory.createServer(serverConf);
 

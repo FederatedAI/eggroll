@@ -4,6 +4,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.webank.ai.eggroll.api.core.BasicMeta;
+import com.webank.ai.eggroll.core.constant.StringConstants;
 import com.webank.ai.eggroll.core.utils.TypeConversionUtils;
 import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node;
 import com.webank.ai.eggroll.framework.roll.api.grpc.client.EggSessionServiceClient;
@@ -100,7 +101,9 @@ public class RollSessionManager {
 
         // injecting ip for target engine - need to improve
         sessionInfo = sessionInfo.toBuilder()
-                .putComputingEngineConf("eggroll.computing.processor.engine-addr", target).build();
+                .putComputingEngineConf("eggroll.computing.processor.engine-addr", target)
+                .putComputingEngineConf("eggroll.computing.processor.node-manager", String.join(StringConstants.COLON, target, String.valueOf(node.getPort())))
+                .build();
         BasicMeta.SessionInfo initializedSessionInfo = eggSessionServiceClient.getOrCreateSession(sessionInfo, node);
         if (initializedSessionInfo != null) {
             initializedEndpoints.add(typeConversionUtils.toEndpoint(node));
