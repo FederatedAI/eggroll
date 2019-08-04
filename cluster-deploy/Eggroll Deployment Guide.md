@@ -22,7 +22,7 @@ The following is the server configuration information:
 
 <!--Each server in the same cluster should be able to SSH each other and communicate with each other.-->
 
-### 3.2. Software Version Requirements
+### 1.2. Software Version Requirements
 
 | Node                       | Node description | Install node                              | Notes                                                        |
 | -------------------------- | ---------------- | ----------------------------------------- | ------------------------------------------------------------ |
@@ -32,11 +32,11 @@ The following is the server configuration information:
 
 
 
-## 4.      Project Deployment
+## 2.      Project Deployment
 
 *<u>Note: The default installation directory is /data/projects/, and the execution user is app. It is modified according to the actual situation during installation.</u>*
 
-### 4.1. Project Pull
+### 2.1. Project Pull
 
 Go to the /data/projects/ directory of the execution node and execute the git command to pull the project from github:
 
@@ -45,7 +45,7 @@ cd /data/projects/
 git clone -b master https://github.com/WeBankFinTech/Eggroll.git
 ```
 
-### 4.2. Maven Packaging
+### 2.2. Maven Packaging
 
 Go into the project directory and do dependency packaging:
 
@@ -54,19 +54,19 @@ cd Eggroll
 mvn clean package -DskipTests
 ```
 
-### 4.3. Modify Configuration File
+### 2.3. Modify Configuration File
 
 There are two ways of deployment, please choose according to the actual deployment situation:
 
 1. Multi-node Cluster
 
-   This deployment method is suitable for deploying multiple modules on a multi-node cluster. Before deployment, the deployed nodes need to login to each target node confidentially. The deployment steps refer to steps 4.3.1.
+   This deployment method is suitable for deploying multiple modules on a multi-node cluster. Before deployment, the deployed nodes need to login to each target node confidentially. The deployment steps refer to steps 2.3.1.
 
 2.  Single-node Cluster
 
-   This deployment method is suitable for deploying multiple modules on a single node cluster. The deployment steps refer to steps 4.3.2.
+   This deployment method is suitable for deploying multiple modules on a single node cluster. The deployment steps refer to steps 2.3.2.
 
-#### 4.3.1. Multi-node Cluster
+#### 2.3.1. Multi-node Cluster
 
 This deployment is based on SSH secret-free. Before executing the script, make sure that the executing node can log in to the target IP to be deployed  secret-free.
 
@@ -163,7 +163,7 @@ sh auto-module-deploy.sh $module1_name $module2_name
 
 
 
-#### 4.3.2. Single-node Cluster
+#### 2.3.2. Single-node Cluster
 
 This is done by executing scripts on localhost-ip and supporting only a single-node cluster at a time.
 
@@ -210,13 +210,13 @@ If some modules fail to deploy or deploy some modules separately, execute the sc
 sh auto-module-deploy.sh $module1_name $module2_name
 ```
 
-## 5.     Configuration Check
+## 3.     Configuration Check
 
 After the execution, you can check whether the configuration of the corresponding module is accurate on each target server. Users can find a detailed configuration document in [cluster-deploy/doc](https://github.com/WeBankFinTech/Eggroll/cluster-deploy/doc) .
 
 
 
-## 6.     Start And Stop Service
+## 4.     Start And Stop Service
 
 Use ssh to log in to each node with **app user**. Go to the install directory and run the following command to start services:
 
