@@ -29,9 +29,7 @@ def init(session_id=None, mode: WorkMode = WorkMode.STANDALONE, server_conf_path
         return
     if not session_id:
         session_id = str(uuid.uuid1())
-        LoggerFactory.setDirectory()
-    else:
-        LoggerFactory.setDirectory(os.path.join(file_utils.get_project_base_directory(), 'logs', session_id))
+    LoggerFactory.setDirectory(os.path.join(file_utils.get_project_base_directory(), 'logs', session_id))
 
     if not job_id:
         job_id = session_id
