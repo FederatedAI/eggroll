@@ -497,15 +497,15 @@ class MDBEnv(object):
 
 
 def serve(args):
-    port = args['port']
-    config = args['config']
-    node_manager = args['node-manager']
-    engine_addr = args['engine-addr']
+    port = args.port
+    data_dir = args.data_dir
+    node_manager = args.node_manager
+    engine_addr = args.engine_addr
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=1),
                          options=[(cygrpc.ChannelArgKey.max_send_message_length, -1),
                                   (cygrpc.ChannelArgKey.max_receive_message_length, -1)])
-    LOGGER.info("server starting at {}, data_dir: {}".format(socket, config))
-    processor = Processor(config)
+    LOGGER.info("server starting at {}, data_dir: {}".format(port, data_dir))
+    processor = Processor(data_dir)
     processor_pb2_grpc.add_ProcessServiceServicer_to_server(
         processor, server)
     server.add_insecure_port("{}:{}".format(engine_addr, port))
@@ -537,5 +537,5 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     print(args['engine-addr'])
-    LOGGER.info("processor {}:{} started at {}, node-manager at {}".format(args['engine-addr'], str(args['port']), str(datetime.now()), args['node-manager']))
+    LOGGER.info("processor {}:{} started at {}, node-manager at {}".format(args.engine_addr, args.port, str(datetime.now()), args.node_manager))
     serve(args)

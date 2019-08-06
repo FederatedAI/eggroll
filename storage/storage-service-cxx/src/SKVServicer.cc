@@ -14,52 +14,54 @@
  * limitations under the License.
  */
 
-#include "LMDBServicer.h"
-
+#include "SKVServicer.h"
 
 using std::cout;
 using std::endl;
 using std::string;
 
-LMDBServicer::LMDBServicer() : LMDBServicer::LMDBServicer("/tmp") {}
+SKVServicer::SKVServicer() : SKVServicer::SKVServicer("/tmp") {}
 
-LMDBServicer::LMDBServicer(std::string dataDir) {
+SKVServicer::SKVServicer(std::string dataDir) {
     this->dataDir = dataDir;
 }
 
-LMDBServicer::~LMDBServicer() {
+SKVServicer::~SKVServicer() {
 
 }
 
 Status defaultStatus = Status::OK;
 
 // put an entry to table
-Status LMDBServicer::put(ServerContext *context, const Operand *request, Empty *response) {
+Status SKVServicer::put(ServerContext *context, const Operand *request, Empty *response) {
     std::exception_ptr eptr;
     try {
+        cout << "put request" << endl;
         LOG(INFO) << "put request" << endl;
-        LMDBStore lmdbStore = getStore(context);
+        shared_ptr<SKVStore> skvStore = SKVStoreManager::getStore(context, dataDir);
 
-        lmdbStore.put(request);
+        skvStore->put(request);
 
         LOG(INFO) << "put finished" << endl;
+        cout << "put finished" << endl;
     } catch (...) {
         eptr = std::current_exception();
     }
-    handle_eptr(eptr, __FILE__, __LINE__, "LMDBServicer::put");
+    handle_eptr(eptr, __FILE__, __LINE__, "SKVServicer::put");
 
     return Status::OK;
 }
 
 // put an entry to table if absent
-Status LMDBServicer::putIfAbsent(ServerContext *context, const Operand *request, Operand *response) {
+Status SKVServicer::putIfAbsent(ServerContext *context, const Operand *request, Operand *response) {
     std::exception_ptr eptr;
     try {
         LOG(INFO) << "putIfAbsent request" << endl;
         cout << "putIfAbsent request" << endl;
-        LMDBStore lmdbStore = getStore(context);
+        shared_ptr<SKVStore> skvStore = SKVStoreManager::getStore(context, dataDir);
 
-        string_view oldValue = lmdbStore.putIfAbsent(request);
+        string result;
+        string_view oldValue = skvStore->putIfAbsent(request, result);
 
         response->set_key(request->key());
         response->set_value(oldValue.data(), oldValue.size());
@@ -69,40 +71,41 @@ Status LMDBServicer::putIfAbsent(ServerContext *context, const Operand *request,
     } catch (...) {
         eptr = std::current_exception();
     }
-    handle_eptr(eptr, __FILE__, __LINE__, "LMDBServicer::putIfAbsent");
+    handle_eptr(eptr, __FILE__, __LINE__, "SKVServicer::putIfAbsent");
 
     return Status::OK;
 }
 
 // put entries to table (entries will be streaming in)
-Status LMDBServicer::putAll(ServerContext *context, ServerReader<Operand> *reader, Empty *response) {
+Status SKVServicer::putAll(ServerContext *context, ServerReader<Operand> *reader, Empty *response) {
     std::exception_ptr eptr;
     try {
         LOG(INFO) << "putAll request" << endl;
         cout << "putAll request" << endl;
-        LMDBStore lmdbStore = getStore(context);
+        shared_ptr<SKVStore> skvStore = SKVStoreManager::getStore(context, dataDir);
 
-        lmdbStore.putAll(reader);
+        skvStore->putAll(reader);
 
         LOG(INFO) << "putAllFinished" << endl;
         cout << "putAllFinished" << endl;
     } catch (...) {
         eptr = std::current_exception();
     }
-    handle_eptr(eptr, __FILE__, __LINE__, "LMDBServicer::putAll");
+    handle_eptr(eptr, __FILE__, __LINE__, "SKVServicer::putAll");
 
     return Status::OK;
 }
 
 // delete an entry from table
-Status LMDBServicer::delOne(ServerContext *context, const Operand *request, Operand *response) {
+Status SKVServicer::delOne(ServerContext *context, const Operand *request, Operand *response) {
     std::exception_ptr eptr;
     try {
         LOG(INFO) << "delOne request" << endl;
         cout << "delOne request" << endl;
-        LMDBStore lmdbStore = getStore(context);
+        shared_ptr<SKVStore> skvStore = SKVStoreManager::getStore(context, dataDir);
 
-        string_view oldValue = lmdbStore.delOne(request);
+        string result;
+        string_view oldValue = skvStore->delOne(request, result);
 
         response->set_key(request->key());
         response->set_value(oldValue.data(), oldValue.size());
@@ -112,77 +115,77 @@ Status LMDBServicer::delOne(ServerContext *context, const Operand *request, Oper
     } catch (...) {
         eptr = std::current_exception();
     }
-    handle_eptr(eptr, __FILE__, __LINE__, "LMDBServicer::delOne");
+    handle_eptr(eptr, __FILE__, __LINE__, "SKVServicer::delOne");
 
     return Status::OK;
 }
 
 // get an entry from table
-Status LMDBServicer::get(ServerContext *context, const Operand *request, Operand *response) {
+Status SKVServicer::get(ServerContext *context, const Operand *request, Operand *response) {
     std::exception_ptr eptr;
     try {
         LOG(INFO) << "get request" << endl;
         cout << "get request" << endl;
 
-        LMDBStore lmdbStore = getStore(context);
+        shared_ptr<SKVStore> skvStore = SKVStoreManager::getStore(context, dataDir);
 
-        string_view value;
-        string_view result = lmdbStore.get(request, value);
+        string value;
+        string_view result = skvStore->get(request, value);
 
         response->set_key(request->key());
         response->set_value(value.data(), value.size());
 
         LOG(INFO) << "get finished" << endl;
-        cout << "get finished" << endl;
+        cout << "get finished" << ", value: " << value << endl;
     } catch (...) {
         eptr = std::current_exception();
     }
-    handle_eptr(eptr, __FILE__, __LINE__, "LMDBServicer::get");
+    handle_eptr(eptr, __FILE__, __LINE__, "SKVServicer::get");
 
     return Status::OK;
 }
 
 // iterate through a table. Response entries are ordered
-Status LMDBServicer::iterate(ServerContext *context, const Range *request, ServerWriter<Operand> *writer) {
+Status SKVServicer::iterate(ServerContext *context, const Range *request, ServerWriter<Operand> *writer) {
     std::exception_ptr eptr;
     try {
         LOG(INFO) << "iterate request" << endl;
         cout << "iterate request" << endl;
-        LMDBStore lmdbStore = getStore(context);
+        shared_ptr<SKVStore> skvStore = SKVStoreManager::getStore(context, dataDir);
 
-        lmdbStore.iterate(request, writer);
+        skvStore->iterate(request, writer);
 
         LOG(INFO) << "iterate finished" << endl;
         cout << "iterate finished" << endl;
     } catch (...) {
         eptr = std::current_exception();
     }
-    handle_eptr(eptr, __FILE__, __LINE__, "LMDBServicer::iterate");
+    handle_eptr(eptr, __FILE__, __LINE__, "SKVServicer::iterate");
 
     return Status::OK;
 }
 
 // destroy a table
-Status LMDBServicer::destroy(ServerContext *context, const Empty *request, Empty *response) {
+Status SKVServicer::destroy(ServerContext *context, const Empty *request, Empty *response) {
     std::exception_ptr eptr;
     try {
         LOG(INFO) << "destroy request" << endl;
         cout << "destroy request" << endl;
-        LMDBStore lmdbStore = getStore(context);
+        shared_ptr<SKVStore> skvStore = SKVStoreManager::getStore(context, dataDir);
 
-        lmdbStore.destroy();
+        skvStore->destroy();
 
         LOG(INFO) << "destroy finished" << endl;
         cout << "destroy finished" << endl;
     } catch (...) {
         eptr = std::current_exception();
     }
-    handle_eptr(eptr, __FILE__, __LINE__, "LMDBServicer::destroy");
+    handle_eptr(eptr, __FILE__, __LINE__, "SKVServicer::destroy");
 
     return Status::OK;
 }
 
-Status LMDBServicer::destroyAll(ServerContext *context, const Empty *request, Empty *response) {
+Status SKVServicer::destroyAll(ServerContext *context, const Empty *request, Empty *response) {
     std::exception_ptr eptr;
     try {
         LOG(INFO) << "destroyAll request" << endl;
@@ -190,66 +193,74 @@ Status LMDBServicer::destroyAll(ServerContext *context, const Empty *request, Em
     } catch (...) {
         eptr = std::current_exception();
     }
-    handle_eptr(eptr, __FILE__, __LINE__, "LMDBServicer::destroyAll");
+    handle_eptr(eptr, __FILE__, __LINE__, "SKVServicer::destroyAll");
 
     return Status::OK;
 }
 
 // count record amount of a table
-Status LMDBServicer::count(ServerContext *context, const Empty *request, Count *response) {
+Status SKVServicer::count(ServerContext *context, const Empty *request, Count *response) {
     std::exception_ptr eptr;
     try {
         LOG(INFO) << "count request" << endl;
         cout << "count request" << endl;
-        LMDBStore lmdbStore = getStore(context);
+        shared_ptr<SKVStore> skvStore = SKVStoreManager::getStore(context, dataDir);
 
-        response->set_value(lmdbStore.count());
+        response->set_value(skvStore->count());
 
         LOG(INFO) << "count finished" << endl;
         cout << "count finished" << endl;
     } catch (...) {
         eptr = std::current_exception();
     }
-    handle_eptr(eptr, __FILE__, __LINE__, "LMDBServicer::count");
+    handle_eptr(eptr, __FILE__, __LINE__, "SKVServicer::count");
 
     return Status::OK;
 }
 
-Status LMDBServicer::createIfAbsent(ServerContext *context, const CreateTableInfo *request, CreateTableInfo *response) {
+Status SKVServicer::createIfAbsent(ServerContext *context, const CreateTableInfo *request, CreateTableInfo *response) {
     std::exception_ptr eptr;
     try {
         LOG(INFO) << "createIfAbsent request" << endl;
     } catch (...) {
         eptr = std::current_exception();
     }
-    handle_eptr(eptr, __FILE__, __LINE__, "LMDBServicer::createIfAbsent");
+    handle_eptr(eptr, __FILE__, __LINE__, "SKVServicer::createIfAbsent");
 
     return Status::OK;
 }
 
-void LMDBServicer::sayHello() {
+void SKVServicer::sayHello() {
     LOG(INFO) << "saying hello" << endl;
 }
 
-LMDBStore LMDBServicer::getStore(ServerContext *context) {
-    LMDBStore lmdbStore;
+shared_ptr<SKVStore> SKVServicer::getStore(ServerContext *context) {
+/*    shared_ptr<SKVStore> store = NULL;
     std::exception_ptr eptr;
     try {
         std::multimap <grpc::string_ref, grpc::string_ref> metadata = context->client_metadata();
 
         StoreInfo storeInfo(context);
 
-        bool result = lmdbStore.init(dataDir, storeInfo);
+        if (boost::iequals(storeInfo.getStoreType(), LEVEL_DB)) {
+            store = std::make_shared<RocksDBStore>();
+        } else {
+            store = std::make_shared<LMDBStore>();
+        }
+
+        bool result = store->init(dataDir, storeInfo);
 
         // todo: add exception if result is false
         if (!result) {
-            std::string errorMsg = "Unable to init LMDBStore. please check error log.";
+            std::string errorMsg = "Unable to init SKVStore. please check error log.";
             throw std::runtime_error(errorMsg);
         }
     } catch (...) {
         eptr = std::current_exception();
     }
-    handle_eptr(eptr, __FILE__, __LINE__, "LMDBServicer::getStore");
+    handle_eptr(eptr, __FILE__, __LINE__, "SKVServicer::getStore");
 
-    return lmdbStore;
+    return store;*/
+
+    return SKVStoreManager::getStore(context, dataDir);
 }

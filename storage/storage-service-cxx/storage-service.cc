@@ -23,7 +23,7 @@
 #include <grpcpp/grpcpp.h>
 #include <glog/logging.h>
 
-#include "src/LMDBServicer.h"
+#include "src/SKVServicer.h"
 #include "src/LMDBStore.h"
 #include "src/ExceptionHandler.h"
 
@@ -45,7 +45,7 @@ void RunServer(int port, string dataDir) {
         ss << "0.0.0.0:" << port;
         serverAddress = ss.str();
 
-        LMDBServicer lmdbServicer(dataDir);
+        SKVServicer lmdbServicer(dataDir);
 
         ServerBuilder builder;
         builder.AddListeningPort(serverAddress, grpc::InsecureServerCredentials());

@@ -14,17 +14,27 @@
  * limitations under the License.
  */
 
-#ifndef STORAGE_SERVICE_CXX_CONSTANTS_H
-#define STORAGE_SERVICE_CXX_CONSTANTS_H
+#ifndef STORAGE_SERVICE_CXX_STORAGEUTILS_H
+#define STORAGE_SERVICE_CXX_STORAGEUTILS_H
 
-#define STORE_TYPE "store_type"
-#define TABLE_NAME "table_name"
-#define NAME_SPACE "name_space"
-#define FRAGMENT "fragment"
+#include <string>
+#include <map>
+#include <memory>
+#include <iterator>
+#include <sstream>
 
-#define LEVEL_DB "level_db"
-#define LMDB_TEMPORARY "lmdb_temporary"
-#define IN_MEMORY "in_memory"
-#define LMDB "lmdb"
+#include <boost/filesystem.hpp>
+#include <boost/algorithm/string.hpp>
+#include <boost/utility/string_view.hpp>
 
-#endif //STORAGE_SERVICE_CXX_CONSTANTS_H
+#include "constants.h"
+#include "ExceptionHandler.h"
+#include "StoreInfo.h"
+
+class StorageUtils {
+public:
+    static std::string generateDbDir(const std::string& dataDir, StoreInfo& storeInfo);
+};
+
+
+#endif //STORAGE_SERVICE_CXX_STORAGEUTILS_H
