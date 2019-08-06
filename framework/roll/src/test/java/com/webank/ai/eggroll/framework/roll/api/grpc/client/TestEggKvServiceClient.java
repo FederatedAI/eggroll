@@ -26,6 +26,7 @@ import com.webank.ai.eggroll.core.io.StoreInfo;
 import com.webank.ai.eggroll.core.model.Bytes;
 import com.webank.ai.eggroll.core.server.ServerConf;
 import com.webank.ai.eggroll.core.utils.ToStringUtils;
+import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node;
 import com.webank.ai.eggroll.framework.roll.service.model.OperandBroker;
 import com.webank.ai.eggroll.framework.storage.service.model.enums.Stores;
 import org.apache.commons.lang3.StringUtils;
@@ -45,10 +46,12 @@ import java.util.concurrent.TimeUnit;
 
 @RunWith(SpringJUnit4ClassRunner.class)
 @ContextConfiguration(locations = {"classpath*:applicationContext-roll.xml"})
-public class TestRollKvServiceClient {
+public class TestEggKvServiceClient {
     private static final Logger LOGGER = LogManager.getLogger();
     @Autowired
-    private RollKvServiceClient rollKvServiceClient;
+    private StorageServiceClient storageServiceClient;
+    @Autowired
+    private StorageServiceClient anotherServiceClient;
     @Autowired
     private ToStringUtils toStringUtils;
     @Autowired
@@ -62,6 +65,7 @@ public class TestRollKvServiceClient {
     private String jobid1 = "jobid1";
     private String clusterCommTable = "__clustercomm__";
     private StoreInfo storeInfo;
+    private Node node;
 
     @Before
     public void init() throws Exception {
@@ -71,20 +75,9 @@ public class TestRollKvServiceClient {
                 .nameSpace(namespace)
                 .tableName(name)
                 .build();
-    }
-
-    @Test
-    public void testCreate() {
-        Kv.CreateTableInfo.Builder createTableInfoBuilder = Kv.CreateTableInfo.newBuilder();
-        StorageBasic.StorageLocator.Builder storageLocatorBuilder = StorageBasic.StorageLocator.newBuilder();
-        storageLocatorBuilder.setType(StorageBasic.StorageType.LMDB)
-                .setNamespace(namespace)
-                .setName(name);
-
-        createTableInfoBuilder.setStorageLocator(storageLocatorBuilder.build())
-                .setFragmentCount(10);
-
-        rollKvServiceClient.create(createTableInfoBuilder.build());
+        node = new Node();
+        node.setIp("127.0.0.1");
+        node.setPort(7778);
     }
 
     @Test
@@ -99,7 +92,7 @@ public class TestRollKvServiceClient {
                 .tableName(name)
                 .build();
 
-        rollKvServiceClient.put(operand, storeInfo);
+        storageServiceClient.put(operand, storeInfo, node);
     }
 
     @Test
@@ -109,20 +102,18 @@ public class TestRollKvServiceClient {
         Kv.Operand operand = operandBuilder.setKey(ByteString.copyFromUtf8("time")).setValue(ByteString.copyFromUtf8(String.valueOf(System.currentTimeMillis()))).build();
 
         StoreInfo storeInfo = StoreInfo.builder()
-                .type(Stores.LMDB.name())
+                .type(Stores.LEVEL_DB.name())
                 .nameSpace(namespace)
                 .tableName(name)
                 .build();
 
-        Kv.Operand result = rollKvServiceClient.putIfAbsent(operand, storeInfo);
+        Kv.Operand result = storageServiceClient.putIfAbsent(operand, storeInfo, node);
 
         LOGGER.info("putIfAbsent result: {}", result);
     }
 
     @Test
     public void testPutAll() {
-
-
         OperandBroker operandBroker = new OperandBroker();
         Kv.Operand.Builder operandBuilder = Kv.Operand.newBuilder();
         Kv.Operand operand1 = operandBuilder.setKey(ByteString.copyFromUtf8("time")).setValue(ByteString.copyFromUtf8(String.valueOf(System.currentTimeMillis()))).build();
@@ -144,7 +135,7 @@ public class TestRollKvServiceClient {
         operandBroker.put(operand5);
 
         operandBroker.setFinished();
-        rollKvServiceClient.putAll(operandBroker, storeInfo);
+        storageServiceClient.putAll(operandBroker, storeInfo, node);
     }
 
     @Test
@@ -166,7 +157,7 @@ public class TestRollKvServiceClient {
         }
 
         operandBroker.setFinished();
-        rollKvServiceClient.putAll(operandBroker, storeInfo);
+        storageServiceClient.putAll(operandBroker, storeInfo, node);
 
         operandBroker = new OperandBroker();
         for (int i = 1000; i < 1100; ++i) {
@@ -175,7 +166,7 @@ public class TestRollKvServiceClient {
         }
 
         operandBroker.setFinished();
-        rollKvServiceClient.putAll(operandBroker, storeInfo);
+        storageServiceClient.putAll(operandBroker, storeInfo, node);
     }
 
     @Test
@@ -184,16 +175,15 @@ public class TestRollKvServiceClient {
         Kv.Operand.Builder operandBuilder = Kv.Operand.newBuilder();
 
         StoreInfo storeInfo = StoreInfo.builder()
-                .type(Stores.LMDB.name())
+                .type(Stores.LEVEL_DB.name())
                 .nameSpace(namespace)
                 .tableName(name)
                 .build();
 
-
         Thread thread = new Thread(new Runnable() {
             @Override
             public void run() {
-                rollKvServiceClient.putAll(operandBroker, storeInfo);
+                storageServiceClient.putAll(operandBroker, storeInfo, node);
             }
         });
 
@@ -224,16 +214,16 @@ public class TestRollKvServiceClient {
     public void testDelete() {
         Kv.Operand.Builder operandBuilder = Kv.Operand.newBuilder();
 
-        Kv.Operand operand = operandBuilder.setKey(ByteString.copyFromUtf8("time")).setValue(ByteString.copyFromUtf8(String.valueOf(System.currentTimeMillis()))).build();
+        Kv.Operand operand = operandBuilder.setKey(ByteString.copyFromUtf8("lemon")).setValue(ByteString.copyFromUtf8(String.valueOf(System.currentTimeMillis()))).build();
 
         StoreInfo storeInfo = StoreInfo.builder()
-                .type(Stores.LMDB.name())
+                .type(Stores.LEVEL_DB.name())
                 .nameSpace(namespace)
                 .tableName(name)
                 .build();
 
-        rollKvServiceClient.put(operand, storeInfo);
-        Kv.Operand result = rollKvServiceClient.delete(operand, storeInfo);
+        storageServiceClient.put(operand, storeInfo, node);
+        Kv.Operand result = storageServiceClient.delete(operand, storeInfo, node);
 
         LOGGER.info("delete result: {}", result);
     }
@@ -242,15 +232,15 @@ public class TestRollKvServiceClient {
     public void testGet() {
         Kv.Operand.Builder operandBuilder = Kv.Operand.newBuilder();
 
-        Kv.Operand operand = operandBuilder.setKey(ByteString.copyFromUtf8("happy")).setValue(ByteString.copyFromUtf8(String.valueOf(System.currentTimeMillis()))).build();
+        Kv.Operand operand = operandBuilder.setKey(ByteString.copyFromUtf8("lemon")).setValue(ByteString.copyFromUtf8(String.valueOf(System.currentTimeMillis()))).build();
 
         StoreInfo storeInfo = StoreInfo.builder()
-                .type(Stores.LMDB.name())
+                .type(Stores.LEVEL_DB.name())
                 .nameSpace(namespace)
                 .tableName(name)
                 .build();
 
-        Kv.Operand result = rollKvServiceClient.get(operand, storeInfo);
+        Kv.Operand result = storageServiceClient.get(operand, storeInfo, node);
 
         LOGGER.info("get result: {}", result);
     }
@@ -259,30 +249,30 @@ public class TestRollKvServiceClient {
     public void testMultipleGet() {
         Kv.Operand.Builder operandBuilder = Kv.Operand.newBuilder();
 
-        Kv.Operand operand = operandBuilder.setKey(ByteString.copyFromUtf8("happy")).setValue(ByteString.copyFromUtf8(String.valueOf(System.currentTimeMillis()))).build();
+        Kv.Operand operand = operandBuilder.setKey(ByteString.copyFromUtf8("k0")).setValue(ByteString.copyFromUtf8(String.valueOf(System.currentTimeMillis()))).build();
 
         StoreInfo storeInfo = StoreInfo.builder()
-                .type(Stores.LMDB.name())
+                .type(Stores.LEVEL_DB.name())
                 .nameSpace(namespace)
                 .tableName(name)
                 .build();
         Kv.Operand result = null;
         for (int i = 0; i < 100000; ++i) {
-            result = rollKvServiceClient.get(operand, storeInfo);
+            result = storageServiceClient.get(operand, storeInfo, node);
         }
         LOGGER.info("get result: {}", result);
     }
 
     @Test
     public void testIterate() throws Exception {
-        Kv.Range range = Kv.Range.newBuilder().setStart(ByteString.copyFromUtf8("")).setEnd(ByteString.copyFromUtf8("")).setMinChunkSize(1000).build();
+        Kv.Range range = Kv.Range.newBuilder().setStart(ByteString.copyFromUtf8("k99999")).setEnd(ByteString.copyFromUtf8("")).setMinChunkSize(100).build();
         StoreInfo storeInfo = StoreInfo.builder()
-                .type(Stores.LMDB.name())
+                .type(Stores.LEVEL_DB.name())
                 .nameSpace(namespace)
                 .tableName(name)
                 .build();
-        OperandBroker operandBroker = rollKvServiceClient.iterate(range, storeInfo);
-        operandBroker = rollKvServiceClient.iterate(range, storeInfo);
+        OperandBroker operandBroker = storageServiceClient.iterate(range, storeInfo, node);
+        operandBroker = storageServiceClient.iterate(range, storeInfo, node);
 
         List<Kv.Operand> operands = Lists.newLinkedList();
 
@@ -319,9 +309,9 @@ public class TestRollKvServiceClient {
 
     @Test
     public void testIterateSegment() throws Exception {
-        Kv.Range range = Kv.Range.newBuilder().setStart(ByteString.copyFromUtf8("")).setEnd(ByteString.copyFromUtf8("")).setMinChunkSize(2<<20).build();
+        Kv.Range range = Kv.Range.newBuilder().setStart(ByteString.copyFromUtf8("")).setEnd(ByteString.copyFromUtf8("")).setMinChunkSize(1000).build();
         StoreInfo storeInfo = StoreInfo.builder()
-                .type(Stores.LMDB.name())
+                .type(Stores.LEVEL_DB.name())
                 .nameSpace(namespace)
                 .tableName(name)
                 .build();
@@ -340,7 +330,7 @@ public class TestRollKvServiceClient {
             operands.clear();
             LOGGER.info("range start: {}, end: {}, count: {}, correct count: {}, set count: {}",
                     range.getStart().toStringUtf8(), range.getEnd().toStringUtf8(), count, correctCount, bsSet.size());
-            OperandBroker operandBroker = rollKvServiceClient.iterate(range, storeInfo);
+            OperandBroker operandBroker = storageServiceClient.iterate(range, storeInfo, node);
 
             while (!operandBroker.isClosable()) {
                 operandBroker.awaitLatch(1, TimeUnit.SECONDS);
@@ -374,37 +364,24 @@ public class TestRollKvServiceClient {
     @Test
     public void testDestroy() {
         StoreInfo storeInfo = StoreInfo.builder()
-                .type(Stores.LMDB.name())
+                .type(Stores.LEVEL_DB.name())
                 .nameSpace(namespace)
                 .tableName(name)
                 .build();
 
-        rollKvServiceClient.destroy(storeInfo);
+        storageServiceClient.destroy(Kv.Empty.getDefaultInstance(), storeInfo, node);
 
         LOGGER.info("done destroy");
     }
 
     @Test
-    public void testDestroyAll() {
-        StoreInfo storeInfo = StoreInfo.builder()
-                .type(Stores.LMDB.name())
-                .nameSpace("ce46817e-13bf-11e9-8d62-4a00003fc630")
-                .tableName("*")
-                .build();
-
-        rollKvServiceClient.destroyAll(storeInfo);
-
-        LOGGER.info("done destroyAll");
-    }
-
-    @Test
     public void testCount() {
         StoreInfo storeInfo = StoreInfo.builder()
-                .type(Stores.LMDB.name())
+                .type(Stores.LEVEL_DB.name())
                 .nameSpace(namespace)
                 .tableName(name)
                 .build();
-        Kv.Count result = rollKvServiceClient.count(storeInfo);
+        Kv.Count result = storageServiceClient.count(Kv.Empty.getDefaultInstance(), storeInfo, node);
         LOGGER.info("count result: {}", result.getValue());
     }
 
@@ -415,10 +392,67 @@ public class TestRollKvServiceClient {
         operandBuilder.setKey(key)
                 .setValue(ByteString.copyFromUtf8(StringUtils.repeat("1", 10000000)));
 
-        rollKvServiceClient.put(operandBuilder.build(), storeInfo);
+        storageServiceClient.put(operandBuilder.build(), storeInfo, node);
 
         LOGGER.info("put finished");
-        Kv.Operand result = rollKvServiceClient.get(operandBuilder.clear().setKey(key).build(), storeInfo);
+        Kv.Operand result = storageServiceClient.get(operandBuilder.clear().setKey(key).build(), storeInfo, node);
         LOGGER.info("get done. length: {}", result.getValue().size());
+    }
+
+    @Test
+    public void testMultiPutAll() throws Exception {
+        OperandBroker operandBroker1 = new OperandBroker();
+        Kv.Operand.Builder operandBuilder1 = Kv.Operand.newBuilder();
+
+        OperandBroker operandBroker2 = new OperandBroker();
+        Kv.Operand.Builder operandBuilder2 = Kv.Operand.newBuilder();
+
+        StoreInfo storeInfo = StoreInfo.builder()
+                .type(Stores.LEVEL_DB.name())
+                .nameSpace(namespace)
+                .tableName(name)
+                .build();
+
+        Thread thread1 = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                storageServiceClient.putAll(operandBroker1, storeInfo, node);
+            }
+        });
+
+        Thread thread2 = new Thread(() -> {
+            anotherServiceClient.putAll(operandBroker2, storeInfo, node);
+        });
+
+        Kv.Operand operand = null;
+        int resetInterval = 10000;
+        int curCount = 0;
+        for (int i = 0; i < 100000; ++i) {
+            if (curCount <= 0) {
+                curCount = resetInterval;
+                LOGGER.info("current: {}", i);
+            }
+
+            --curCount;
+            //operand = operandBuilder.setKey(ByteString.copyFromUtf8(RandomStringUtils.randomAlphanumeric(20))).setValue(ByteString.copyFromUtf8("v" + i)).build();
+            operand = operandBuilder1.setKey(ByteString.copyFromUtf8("k" + i)).setValue(ByteString.copyFromUtf8("v" + i)).build();
+            operandBroker1.put(operand);
+
+            operand = operandBuilder1.setKey(ByteString.copyFromUtf8("K" + i)).setValue(ByteString.copyFromUtf8("V" + i)).build();
+            operandBroker2.put(operand);
+        }
+
+        operandBroker1.setFinished();
+        operandBroker2.setFinished();
+
+        thread1.start();
+
+        thread2.start();
+        thread1.join();
+        thread2.join();
+
+        Kv.Count result = storageServiceClient.count(Kv.Empty.getDefaultInstance(), storeInfo, node);
+        LOGGER.info("count result: {}", result.getValue());
+        //rollKvServiceClient.putAll(operandBroker, storeInfo);
     }
 }

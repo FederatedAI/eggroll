@@ -14,19 +14,21 @@
  * limitations under the License.
  */
 
-#ifndef STORAGE_SERVICE_CXX_LMDBSTORE_H
-#define STORAGE_SERVICE_CXX_LMDBSTORE_H
+#ifndef STORAGE_SERVICE_CXX_ROCKSDBSTORE_H
+#define STORAGE_SERVICE_CXX_ROCKSDBSTORE_H
+
+#include <string>
+#include "rocksdb/db.h"
+#include "rocksdb/slice.h"
+#include "rocksdb/options.h"
 
 #include "SKVStore.h"
-#include "lmdb++.h"
 
-#include "third_party/lmdb-safe/lmdb-safe.hh"
-
-class LMDBStore : public SKVStore {
+class RocksDBStore : public SKVStore {
 public:
-    LMDBStore();
-    LMDBStore(const LMDBStore& other);
-    ~LMDBStore();
+    RocksDBStore();
+    RocksDBStore(const RocksDBStore& other);
+    ~RocksDBStore();
     bool init(string& dbDir, StoreInfo& storeInfo);
     void put(const Operand* operand);
     long putAll(ServerReader<Operand>* reader);
@@ -38,18 +40,18 @@ public:
     long count();
     string toString();
 private:
-    lmdb::txn createTxn(bool isWrite);
-    lmdb::dbi createDbi(lmdb::txn txn);
-    lmdb::cursor createCursor(lmdb::txn txn, lmdb::dbi dbi);
     void iterateAll();
+    long PAYLOAD_THREASHOLD = 2L * 1024 * 1024;
 
     string _dbDir;
     StoreInfo storeInfo;
-
-    std::shared_ptr<MDBEnv> _env;
-    MDBDbi _dbi;
-
-    long PAYLOAD_THREASHOLD = 2L * 1024 * 1024;
+    /*
+     * this pointer should never be transferred out of a class instance.
+     * If there is a such requirement, consider wrapping it in a new class and us shared_ptr.
+     */
+    rocksdb::DB *_db;
+    bool _isDeleteOnExit = false;
 };
 
-#endif //STORAGE_SERVICE_CXX_LMDBSTORE_H
+
+#endif //STORAGE_SERVICE_CXX_ROCKSDBSTORE_H
