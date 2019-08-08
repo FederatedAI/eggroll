@@ -24,7 +24,7 @@ from eggroll.api import RuntimeInstance
 from eggroll.api.core import EggrollSession
 
 
-def init(session_id=None, mode: WorkMode = WorkMode.STANDALONE, server_conf_path="eggroll/conf/server_conf.json", eggroll_session : EggrollSession = None, computing_engine_conf=None, naming_policy=NamingPolicy.DEFAULT, tag=None, job_id=None):
+def init(session_id=None, mode: WorkMode = WorkMode.STANDALONE, server_conf_path="eggroll/conf/server_conf.json", eggroll_session : EggrollSession = None, computing_engine_conf=None, naming_policy=NamingPolicy.DEFAULT, tag=None, job_id=None, chunk_size=100000):
     if RuntimeInstance.EGGROLL:
         return
     if not session_id:
@@ -44,7 +44,7 @@ def init(session_id=None, mode: WorkMode = WorkMode.STANDALONE, server_conf_path
     elif mode == WorkMode.CLUSTER:
         from eggroll.api.cluster.eggroll import _EggRoll
         from eggroll.api.cluster.eggroll import init as c_init
-        c_init(session_id=session_id, server_conf_path=server_conf_path, computing_engine_conf=computing_engine_conf, naming_policy=naming_policy, tag=tag, job_id=job_id)
+        c_init(session_id=session_id, server_conf_path=server_conf_path, computing_engine_conf=computing_engine_conf, naming_policy=naming_policy, tag=tag, job_id=job_id, chunk_size=chunk_size)
         RuntimeInstance.EGGROLL = _EggRoll.get_instance()
     else:
         from eggroll.api.cluster import simple_roll
@@ -62,11 +62,10 @@ def table(name, namespace, partition=1, persistent=True, create_if_missing=True,
 
 
 def parallelize(data: Iterable, include_key=False, name=None, partition=1, namespace=None, persistent=False,
-                create_if_missing=True, error_if_exist=False, chunk_size=100000, in_place_computing=False):
+                create_if_missing=True, error_if_exist=False, in_place_computing=False):
     return RuntimeInstance.EGGROLL.parallelize(data=data, include_key=include_key, name=name, partition=partition,
                                                namespace=namespace,
                                                persistent=persistent,
-                                               chunk_size=chunk_size,
                                                in_place_computing=in_place_computing)
 
 def stop():
