@@ -110,7 +110,7 @@ public class StorageServiceClient {
     public void putAll(OperandBroker operandBroker, StoreInfo storeInfo, Node node) {
         boolean needReset = true;
         boolean hasError = false;
-        int resetInterval = 1000;
+        int resetInterval = 5000;
         int remaining = resetInterval;
         int resetCount = 0;
 

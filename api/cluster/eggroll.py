@@ -17,12 +17,13 @@
 import uuid
 from functools import partial
 from operator import is_not
-from typing import Iterable
+from typing import Iterable, Sequence
 import time
 import socket
 import random
 
 import grpc
+import copy
 
 from eggroll.api import NamingPolicy, ComputingEngine, StoreType
 from eggroll.api.utils import eggroll_serdes, file_utils
@@ -31,24 +32,34 @@ from eggroll.api.proto import kv_pb2, kv_pb2_grpc, processor_pb2, processor_pb2_
 from eggroll.api.utils import cloudpickle
 from eggroll.api.utils.core import string_to_bytes, bytes_to_string
 from eggroll.api.utils.iter_utils import split_every
+from eggroll.api.utils.iter_utils import split_every_yield
 from eggroll.api.core import EggrollSession
+from concurrent.futures import ProcessPoolExecutor
+from multiprocessing import cpu_count
 
 EGGROLL_ROLL_HOST = 'eggroll.roll.host'
 EGGROLL_ROLL_PORT = 'eggroll.roll.port'
 
+CHUNK_SIZE_MIN = 10000
+CHUNK_SIZE_DEFAULT = 100000
 
-def init(session_id=None, server_conf_path="eggroll/conf/server_conf.json", eggroll_session=None, computing_engine_conf=None, naming_policy=NamingPolicy.DEFAULT, tag=None, job_id=None):
+def init(session_id=None, server_conf_path="eggroll/conf/server_conf.json", eggroll_session=None, computing_engine_conf=None, naming_policy=NamingPolicy.DEFAULT, tag=None, job_id=None, chunk_size=CHUNK_SIZE_DEFAULT):
     if session_id is None:
         session_id = str(uuid.uuid1())
 
     if job_id is None:
         job_id = session_id
+
+    if chunk_size < CHUNK_SIZE_MIN:
+        chunk_size = CHUNK_SIZE_DEFAULT
+
     global LOGGER
     LOGGER = getLogger()
     server_conf = file_utils.load_json_conf(server_conf_path)
 
     if not eggroll_session:
         eggroll_session = EggrollSession(session_id=session_id,
+                                         chunk_size=chunk_size,
                                          computing_engine_conf=computing_engine_conf,
                                          naming_policy=naming_policy,
                                          tag=tag)
@@ -119,8 +130,8 @@ class _DTable(object):
     def put(self, k, v, use_serialize=True):
         _EggRoll.get_instance().put(self, k, v, use_serialize=use_serialize)
 
-    def put_all(self, kv_list: Iterable, use_serialize=True, chunk_size=100000):
-        return _EggRoll.get_instance().put_all(self, kv_list, use_serialize=use_serialize, chunk_size=chunk_size)
+    def put_all(self, kv_list: Iterable, use_serialize=True):
+        return _EggRoll.get_instance().put_all(self, kv_list, use_serialize=use_serialize)
 
     def get(self, k, use_serialize=True):
         return _EggRoll.get_instance().get(self, k, use_serialize=use_serialize)
@@ -234,18 +245,27 @@ class _EggRoll(object):
     unique_id_template = '_EggRoll_%s_%s_%s_%.20f_%d'
     host_name = 'unknown'
     host_ip = 'unknown'
-
+    chunk_size = CHUNK_SIZE_DEFAULT
+    
     @staticmethod
     def get_instance():
         if _EggRoll.instance is None:
             raise EnvironmentError("eggroll should be initialized before use")
         return _EggRoll.instance
 
+    def get_channel(self):
+        return self.channel
+
     def __init__(self, eggroll_session):
         if _EggRoll.instance is not None:
             raise EnvironmentError("eggroll should be initialized only once")
+
         host = eggroll_session.get_conf(EGGROLL_ROLL_HOST)
         port = eggroll_session.get_conf(EGGROLL_ROLL_PORT)
+        self.chunk_size = eggroll_session.get_chunk_size()
+        self.host = host
+        self.port = port
+
         self.channel = grpc.insecure_channel(target="{}:{}".format(host, port),
                                              options=[('grpc.max_send_message_length', -1),
                                                       ('grpc.max_receive_message_length', -1)])
@@ -288,7 +308,7 @@ class _EggRoll(object):
 
     def parallelize(self, data: Iterable, include_key=False, name=None, partition=1, namespace=None,
                     create_if_missing=True, error_if_exist=False,
-                    persistent=False, chunk_size=100000, in_place_computing=False, persistent_engine=StoreType.LMDB):
+                    persistent=False, in_place_computing=False, persistent_engine=StoreType.LMDB):
         if namespace is None:
             namespace = _EggRoll.get_instance().session_id
         if name is None:
@@ -301,7 +321,7 @@ class _EggRoll(object):
         _table = self._create_table(create_table_info)
         _table.set_in_place_computing(in_place_computing)
         _iter = data if include_key else enumerate(data)
-        _table.put_all(_iter, chunk_size=chunk_size)
+        _table.put_all(_iter)
         LOGGER.debug("created table: %s", _table)
         return _table
 
@@ -380,14 +400,49 @@ class _EggRoll(object):
         operand = self.kv_stub.putIfAbsent(kv_pb2.Operand(key=k, value=v), metadata=_get_meta(_table))
         return self._deserialize_operand(operand, use_serialize=use_serialize)
 
-    def put_all(self, _table, kvs: Iterable, use_serialize=True, chunk_size=100000, skip_chunk=0):
-        skipped_chunk = 0
-        for chunked_iter in split_every(kvs, chunk_size=chunk_size):
-            if skipped_chunk < skip_chunk:
-                skipped_chunk += 1
-            else:
-                self.kv_stub.putAll(self.__generate_operand(chunked_iter, use_serialize=use_serialize), metadata=_get_meta(_table))
+    def action(_table, host, port, chunked_iter, use_serialize):
+        _EggRoll.get_instance().get_channel().close()
+        _EggRoll.get_instance().channel = grpc.insecure_channel(target="{}:{}".format(host, port),
+                                             options=[('grpc.max_send_message_length', -1),
+                                                      ('grpc.max_receive_message_length', -1)])
 
+        _EggRoll.get_instance().kv_stub = kv_pb2_grpc.KVServiceStub(_EggRoll.get_instance().channel)
+        _EggRoll.get_instance().proc_stub = processor_pb2_grpc.ProcessServiceStub(_EggRoll.get_instance().channel)
+
+        operand = _EggRoll.get_instance().__generate_operand(chunked_iter, use_serialize)
+        _EggRoll.get_instance().kv_stub.putAll(operand, metadata=_get_meta(_table))
+
+    def put_all(self, _table, kvs: Iterable, use_serialize=True, skip_chunk=0):
+        skipped_chunk = 0
+
+        chunk_size = self.chunk_size 
+        if chunk_size < CHUNK_SIZE_MIN:
+            chunk_size = CHUNK_SIZE_DEFAULT
+
+        host = self.host
+        port = self.port
+        process_pool_size = cpu_count()
+
+        with ProcessPoolExecutor(process_pool_size) as executor:
+            if isinstance(kvs, Sequence):      # Sequence
+                for chunked_iter in split_every_yield(kvs, chunk_size):
+                    if skipped_chunk < skip_chunk:
+                        skipped_chunk += 1 
+                    else:
+                        future = executor.submit(_EggRoll.action, _table, host, port, chunked_iter, use_serialize) 
+            else:                              # other Iterable types
+                try:
+                    index = 0
+                    while True:                
+                        chunked_iter = split_every(kvs, index, chunk_size, skip_chunk)
+                        chunked_iter_ = copy.deepcopy(chunked_iter)
+                        next(chunked_iter_)
+                        future = executor.submit(_EggRoll.action, _table, host, port, chunked_iter, use_serialize) 
+                        index += 1
+                except StopIteration as e:
+                    LOGGER.debug("StopIteration")
+            executor.shutdown(wait=True);
+       
     def delete(self, _table, k, use_serialize=True):
         k = self.kv_to_bytes(k=k, use_serialize=use_serialize)
         operand = self.kv_stub.delOne(kv_pb2.Operand(key=k), metadata=_get_meta(_table))
