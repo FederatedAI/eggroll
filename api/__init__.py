@@ -16,7 +16,6 @@
 
 from enum import IntEnum, Enum
 
-
 class WorkMode(IntEnum):
     STANDALONE = 0
     CLUSTER = 1
@@ -32,6 +31,7 @@ class RuntimeInstance(object):
 class StoreType(Enum):
     IN_MEMORY = "IN_MEMORY"
     LMDB = "LMDB"
+    LEVEL_DB = "LEVEL_DB"
 
 
 class NamingPolicy(Enum):
@@ -41,3 +41,4 @@ class NamingPolicy(Enum):
 class ComputingEngine(Enum):
     EGGROLL = 'EGGROLL'
     EGGROLL_DTABLE = 'EGGROLL_DTABLE'
+
