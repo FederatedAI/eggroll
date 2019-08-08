@@ -25,7 +25,7 @@ import random
 import grpc
 import copy
 
-from eggroll.api import NamingPolicy, ComputingEngine
+from eggroll.api import NamingPolicy, ComputingEngine, StoreType
 from eggroll.api.utils import eggroll_serdes, file_utils
 from eggroll.api.utils.log_utils import getLogger
 from eggroll.api.proto import kv_pb2, kv_pb2_grpc, processor_pb2, processor_pb2_grpc, storage_basic_pb2, node_manager_pb2, node_manager_pb2_grpc
@@ -77,6 +77,17 @@ def _get_meta(_table):
     return ('store_type', _table._type), ('table_name', _table._name), ('name_space', _table._namespace)
 
 
+def to_pb_store_type(type : StoreType, persistent=False):
+    result = None
+    if not persistent:
+        result = storage_basic_pb2.IN_MEMORY
+    elif type == StoreType.LMDB:
+        result = storage_basic_pb2.LMDB
+    elif type == StoreType.LEVEL_DB:
+        result = storage_basic_pb2.LEVEL_DB
+    return result
+
+
 empty = kv_pb2.Empty()
 
 
@@ -109,10 +120,10 @@ class _DTable(object):
     Storage apis
     '''
 
-    def save_as(self, name, namespace, partition=None, use_serialize=True, persistent=True):
+    def save_as(self, name, namespace, partition=None, use_serialize=True, persistent=True, persistent_engine=StoreType.LMDB):
         if partition is None:
             partition = self._partitions
-        dup = _EggRoll.get_instance().table(name, namespace, partition=partition, in_place_computing=self.get_in_place_computing(), persistent=persistent)
+        dup = _EggRoll.get_instance().table(name, namespace, partition=partition, in_place_computing=self.get_in_place_computing(), persistent=persistent, persistent_engine=persistent_engine)
         dup.put_all(self.collect(use_serialize=use_serialize), use_serialize=use_serialize)
         return dup
 
@@ -286,8 +297,8 @@ class _EggRoll(object):
 
     def table(self, name, namespace, partition=1,
               create_if_missing=True, error_if_exist=False,
-              persistent=True, in_place_computing=False):
-        _type = storage_basic_pb2.LMDB if persistent else storage_basic_pb2.IN_MEMORY
+              persistent=True, in_place_computing=False, persistent_engine=StoreType.LMDB):
+        _type = to_pb_store_type(persistent_engine, persistent)
         storage_locator = storage_basic_pb2.StorageLocator(type=_type, namespace=namespace, name=name)
         create_table_info = kv_pb2.CreateTableInfo(storageLocator=storage_locator, fragmentCount=partition)
         _table = self._create_table(create_table_info)
@@ -297,14 +308,15 @@ class _EggRoll(object):
 
     def parallelize(self, data: Iterable, include_key=False, name=None, partition=1, namespace=None,
                     create_if_missing=True, error_if_exist=False,
-                    persistent=False, in_place_computing=False):
+                    persistent=False, in_place_computing=False, persistent_engine=StoreType.LMDB):
         if namespace is None:
             namespace = _EggRoll.get_instance().session_id
         if name is None:
             name = str(uuid.uuid1())
-        storage_locator = storage_basic_pb2.StorageLocator(type=storage_basic_pb2.LMDB, namespace=namespace,
-                                                           name=name) if persistent else storage_basic_pb2.StorageLocator(
-            type=storage_basic_pb2.IN_MEMORY, namespace=namespace, name=name)
+
+        type = to_pb_store_type(persistent_engine, persistent)
+
+        storage_locator = storage_basic_pb2.StorageLocator(type=type, namespace=namespace, name=name)
         create_table_info = kv_pb2.CreateTableInfo(storageLocator=storage_locator, fragmentCount=partition)
         _table = self._create_table(create_table_info)
         _table.set_in_place_computing(in_place_computing)
@@ -313,11 +325,11 @@ class _EggRoll(object):
         LOGGER.debug("created table: %s", _table)
         return _table
 
-    def cleanup(self, name, namespace, persistent):
+    def cleanup(self, name, namespace, persistent, persistent_engine=StoreType.LMDB):
         if namespace is None or name is None:
             raise ValueError("neither name nor namespace can be None")
 
-        _type = storage_basic_pb2.LMDB if persistent else storage_basic_pb2.IN_MEMORY
+        _type = to_pb_store_type(persistent_engine, persistent)
 
         storage_locator = storage_basic_pb2.StorageLocator(type=_type, namespace=namespace, name=name)
         _table = _DTable(storage_locator=storage_locator)
