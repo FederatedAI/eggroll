@@ -20,7 +20,7 @@ from typing import Iterable
 import uuid
 import os
 from eggroll.api import WorkMode, NamingPolicy, ComputingEngine
-from eggroll.api import RuntimeInstance
+from eggroll.api import RuntimeInstance, StoreType
 from eggroll.api.core import EggrollSession
 
 
@@ -44,7 +44,8 @@ def init(session_id=None, mode: WorkMode = WorkMode.STANDALONE, server_conf_path
     elif mode == WorkMode.CLUSTER:
         from eggroll.api.cluster.eggroll import _EggRoll
         from eggroll.api.cluster.eggroll import init as c_init
-        c_init(session_id=session_id, server_conf_path=server_conf_path, computing_engine_conf=computing_engine_conf, naming_policy=naming_policy, tag=tag, job_id=job_id)
+        c_init(session_id=session_id, server_conf_path=server_conf_path, computing_engine_conf=computing_engine_conf,
+               naming_policy=naming_policy, tag=tag, job_id=job_id)
         RuntimeInstance.EGGROLL = _EggRoll.get_instance()
     else:
         from eggroll.api.cluster import simple_roll
@@ -53,21 +54,25 @@ def init(session_id=None, mode: WorkMode = WorkMode.STANDALONE, server_conf_path
     RuntimeInstance.EGGROLL.table("__clustercomm__", job_id, partition=10)
 
 
-def table(name, namespace, partition=1, persistent=True, create_if_missing=True, error_if_exist=False, in_place_computing=False):
+def table(name, namespace, partition=1, persistent=True, create_if_missing=True, error_if_exist=False,
+          in_place_computing=False, persistent_engine=StoreType.LMDB):
     return RuntimeInstance.EGGROLL.table(name=name,
                                          namespace=namespace,
                                          partition=partition,
                                          persistent=persistent,
-                                         in_place_computing=in_place_computing)
+                                         in_place_computing=in_place_computing,
+                                         persistent_engine=persistent_engine)
 
 
 def parallelize(data: Iterable, include_key=False, name=None, partition=1, namespace=None, persistent=False,
-                create_if_missing=True, error_if_exist=False, chunk_size=100000, in_place_computing=False):
+                create_if_missing=True, error_if_exist=False, chunk_size=100000, in_place_computing=False,
+                persistent_engine=StoreType.LMDB):
     return RuntimeInstance.EGGROLL.parallelize(data=data, include_key=include_key, name=name, partition=partition,
                                                namespace=namespace,
                                                persistent=persistent,
                                                chunk_size=chunk_size,
-                                               in_place_computing=in_place_computing)
+                                               in_place_computing=in_place_computing,
+                                               persistent_engine=persistent_engine)
 
 def stop():
     RuntimeInstance.EGGROLL.stop()
