@@ -21,11 +21,11 @@ cd $BASEDIR
 
 
 
-python -m grpc_tools.protoc -Ieggroll/proto --python_out=./eggroll/api/proto  basic-meta.proto
+python -m grpc_tools.protoc -Ieggroll/proto --python_out=./eggroll/api/proto basic-meta.proto
 
-python -m grpc_tools.protoc -Ieggroll/proto --python_out=./eggroll/api/proto  computing-basic.proto
+python -m grpc_tools.protoc -Ieggroll/proto --python_out=./eggroll/api/proto computing-basic.proto
 
-python -m grpc_tools.protoc -Ieggroll/proto --python_out=./eggroll/api/proto  storage-basic.proto
+python -m grpc_tools.protoc -Ieggroll/proto --python_out=./eggroll/api/proto storage-basic.proto
 
 python -m grpc_tools.protoc -Ieggroll/proto --python_out=./eggroll/api/proto --grpc_python_out=./eggroll/api/proto kv.proto
 

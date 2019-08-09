@@ -517,7 +517,8 @@ def serve(args):
     node_manager_stub = node_manager_pb2_grpc.NodeManagerServiceStub(channel)
 
     try:
-        heartbeat_request = node_manager_pb2.HeartbeatRequest(basic_meta_pb2.Endpoint(ip=engine_addr, port=port))
+        port = int(port)
+        heartbeat_request = node_manager_pb2.HeartbeatRequest(endpoint=basic_meta_pb2.Endpoint(ip=engine_addr, port=port))
         while True:
             node_manager_stub.heartbeat(heartbeat_request)
             time.sleep(_ONE_MIN_IN_SECONDS)
@@ -536,6 +537,5 @@ if __name__ == '__main__':
     parser.add_argument('-a', "--engine-addr", default="localhost")
     args = parser.parse_args()
 
-    print(args['engine-addr'])
     LOGGER.info("processor {}:{} started at {}, node-manager at {}".format(args.engine_addr, args.port, str(datetime.now()), args.node_manager))
     serve(args)
