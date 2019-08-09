@@ -51,7 +51,7 @@ class EggrollSession(object):
     def get_tag(self):
         return self._tag
 
-    def add_clean_up_task(self, func):
+    def add_cleanup_task(self, func):
         self._cleanup_tasks.add(func)
 
     def run_cleanup_tasks(self):
