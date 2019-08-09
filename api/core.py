@@ -20,11 +20,11 @@ from eggroll.api import NamingPolicy, ComputingEngine
 from eggroll.api.proto.basic_meta_pb2 import SessionInfo
 
 class EggrollSession(object):
-    def __init__(self, session_id, chunk_size, computing_engine_conf : MutableMapping = None, naming_policy : NamingPolicy = NamingPolicy.DEFAULT, tag=None):
+    def __init__(self, session_id, chunk_size = 100000, computing_engine_conf : MutableMapping = None, naming_policy : NamingPolicy = NamingPolicy.DEFAULT, tag = None):
         if not computing_engine_conf:
             computing_engine_conf = dict()
         self._session_id = session_id
-        self._chunk_size= chunk_size
+        self._chunk_size = chunk_size
         self._computing_engine_conf = computing_engine_conf
         self._naming_policy = naming_policy
         self._tag = tag
@@ -81,3 +81,4 @@ class EggrollSession(object):
     def __str__(self):
         return "<EggrollSession: session_id: {}, computing_engine_conf: {}, naming_policy: {}, tag: {}, runtime: {}>"\
             .format(self._session_id, self.computing_engine_conf(), self._naming_policy.name, self._tag, self._runtime)
+
