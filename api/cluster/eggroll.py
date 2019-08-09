@@ -130,8 +130,8 @@ class _DTable(object):
     def put(self, k, v, use_serialize=True):
         _EggRoll.get_instance().put(self, k, v, use_serialize=use_serialize)
 
-    def put_all(self, kv_list: Iterable, use_serialize=True):
-        return _EggRoll.get_instance().put_all(self, kv_list, use_serialize=use_serialize)
+    def put_all(self, kv_list: Iterable, use_serialize=True, chunk_size=100000):
+        return _EggRoll.get_instance().put_all(self, kv_list, use_serialize=use_serialize, chunk_size=chunk_size)
 
     def get(self, k, use_serialize=True):
         return _EggRoll.get_instance().get(self, k, use_serialize=use_serialize)
@@ -292,7 +292,7 @@ class _EggRoll(object):
     def stop(self):
         self.session_stub.stopSession(self.eggroll_session.to_protobuf())
         self.eggroll_session.run_cleanup_tasks()
-        self.instance = None
+        _EggRoll.instance = None
         self.channel.close()
 
     def table(self, name, namespace, partition=1,
@@ -308,7 +308,7 @@ class _EggRoll(object):
 
     def parallelize(self, data: Iterable, include_key=False, name=None, partition=1, namespace=None,
                     create_if_missing=True, error_if_exist=False,
-                    persistent=False, in_place_computing=False, persistent_engine=StoreType.LMDB):
+                    persistent=False, chunk_size=100000, in_place_computing=False, persistent_engine=StoreType.LMDB):
         if namespace is None:
             namespace = _EggRoll.get_instance().session_id
         if name is None:
@@ -321,7 +321,7 @@ class _EggRoll(object):
         _table = self._create_table(create_table_info)
         _table.set_in_place_computing(in_place_computing)
         _iter = data if include_key else enumerate(data)
-        _table.put_all(_iter)
+        _table.put_all(_iter, chunk_size=chunk_size)
         LOGGER.debug("created table: %s", _table)
         return _table
 
@@ -412,7 +412,7 @@ class _EggRoll(object):
         operand = _EggRoll.get_instance().__generate_operand(chunked_iter, use_serialize)
         _EggRoll.get_instance().kv_stub.putAll(operand, metadata=_get_meta(_table))
 
-    def put_all(self, _table, kvs: Iterable, use_serialize=True, skip_chunk=0):
+    def put_all(self, _table, kvs: Iterable, use_serialize=True, chunk_size=100000, skip_chunk=0):
         skipped_chunk = 0
 
         chunk_size = self.chunk_size 
