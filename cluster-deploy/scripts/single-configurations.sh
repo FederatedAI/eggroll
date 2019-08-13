@@ -1,15 +1,15 @@
 #!/bin/bash                                                                                                                                                                                           
 
 user=app
-mysqldir=/data/projects/common/mysql/mysql-8.0.13
-javadir=/data/projects/common/jdk/jdk1.8.0_192
-venvdir=/data/projects/eggroll/venv
-dir=/data/projects/eggroll
+dir=$install_dir
+mysqldir=$mysql_install_dir
+javadir=$jdk_install_path
+venvdir=$python_virtualenv_path
 
-partylist=(10000)
-ip=
-exchange=
-jdbc=(ip name user passwd)
+partylist=($party_id)
+ip=$localhost_ip
+exchange=$change_ip
+jdbc=($mysql_ip $db_name $db_user $db_password)
 
 clustercomm_port=9394
 metaservice_port=8590
