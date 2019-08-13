@@ -3,11 +3,11 @@ import os,sys
 import json
 
 partyid="10000"
-exchangeip="127.0.0.1"
-clustercommip="127.0.0.1"
-fip="127.0.0.1"
-rollip="127.0.0.1"
-proxyip="127.0.0.1"
+exchangeip="***REMOVED***"
+clustercommip=""
+fip="***REMOVED***"
+rollip="***REMOVED***"
+proxyip="***REMOVED***"
 
 proxyport=9370
 exchangeport=9370

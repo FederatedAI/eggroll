@@ -17,13 +17,16 @@
 #
 
 eval action=\$$#
-dir=/data/projects/eggrolla
+installdir=/data/projects/eggrolla
 export JAVA_HOME=/data/projects/common/jdk/jdk1.8.0_192
 export PATH=$PATH:$JAVA_HOME/bin
 export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION='python'
-export PYTHONPATH=$dir/api
+export PYTHONPATH=$installdir/api
 modules=(clustercomm meta-service egg roll proxy storage-service-cxx)
 
+if ! test -e $installdir/logs/storage-service-cxx;then
+	mkdir -p $installdir/logs/storage-service-cxx
+fi
 
 main() {
 	case "$module" in
@@ -35,6 +38,7 @@ main() {
 			;;
 		egg)
 			main_class=com.webank.ai.eggroll.framework.egg.Egg
+			export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=''
 			;;
 		roll)
 			main_class=com.webank.ai.eggroll.framework.Roll
@@ -45,8 +49,9 @@ main() {
 		storage-service-cxx)
 			target=storage-service
 			port=7778
-			dirdata=$dir/data-dir
-			export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib:$dir/$module/third_party/lib
+			dirdata=$installdir/data-dir
+			export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib:$installdir/$module/third_party/lib
+			export GLOG_log_dir=$installdir/logs/storage-service-cxx
 			;;
 		*)
 			echo "usage: $module {clustercomm|meta-service|egg|roll|proxy}"
@@ -122,12 +127,6 @@ getpid() {
     fi
 }
 
-mklogsdir() {
-    if [[ ! -d "$dir/$module/logs" ]]; then
-        mkdir -p $dir/$module/logs
-    fi
-}
-
 status() {
     getpid
     if [[ -n ${pid} ]]; then
@@ -143,12 +142,11 @@ status() {
 start() {
     getpid
     if [[ $? -eq 1 ]]; then
-        mklogsdir
 		if [[ "$module" == "storage-service-cxx" ]]; then
-			$module/${target} -p $port -d ${dirdata} >> $dir/$module/logs/console.log 2>>$dir/$module/logs/error.log &
+			$module/${target} -p $port -d ${dirdata} >/dev/null 2>/dev/null &
 			echo $!>${module}/${module}_pid
         else
-			java -cp "$dir/${module}/conf/:${module}/lib/*:${module}/eggroll-${module}.jar" ${main_class} -c $dir/${module}/conf/${module}.properties >> $dir/${module}/logs/console.log 2>>$dir/${module}/logs/error.log &
+			java -cp "$installdir/${module}/conf/:packages/lib/*:packages/eggroll-${module}.jar" ${main_class} -c $installdir/${module}/conf/${module}.properties >/dev/null 2>/dev/null &
 			echo $!>${module}/${module}_pid
 		fi
 		getpid
@@ -190,6 +188,5 @@ case "$1" in
         multiple $@
         ;;
 esac
-
 
 

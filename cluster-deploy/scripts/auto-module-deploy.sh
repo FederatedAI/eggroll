@@ -31,7 +31,7 @@ echo "[INFO] the port of exchange is ${exchange_port}"
 
 cd $output_dir
 sed -i "s#export JAVA_HOME=.*#export JAVA_HOME=$javadir#g" ./services.sh
-sed -i "s#dir=.*#dir=$dir#g" ./services.sh
+sed -i "s#installdir=.*#installdir=$dir#g" ./services.sh
 sed -i "s/port=.*/port=${storage_port}/g" ./services.sh
 
 echo "[INFO] the path of JAVA_HOME is $javadir"
@@ -39,6 +39,7 @@ echo "[INFO] deploy Eggroll in directory: $dir"
 echo "====================================================="
 
 all() {
+	packages
 	for module in "${modules[@]}"; do
         echo
 		echo "[INFO] $module is deploying:"
@@ -51,6 +52,7 @@ all() {
 
 multiple() {
     total=$#
+	packages
     for (( i=1; i<total+1; i++)); do
         module=${!i//\//}
         echo
@@ -64,6 +66,38 @@ multiple() {
 
 usage() {
     echo "usage: $0 {all|[module1, ...]}"
+}
+
+packages() {
+	tar -czf packages.tar.gz packages services.sh
+	for ip in ${iplist[@]}
+	do
+		echo "=================================="
+		
+		if ssh -tt $user@$ip test -e $dir;then
+			echo "[INFO] $dir in $ip already exist"
+		else
+			echo "[INFO] $dir in $user@$ip is not exist,execute: mkdir -p $dir"
+			ssh -tt $user@$ip "mkdir -p $dir"
+			if ssh -tt $user@$ip test -e $dir;then
+				echo "[INFO] execute: mkdir -p $dir success"
+			else
+				echo "[ERROR] execute: mkdir -p $dir fail,please login $user@$ip and mkdir -p $dir"
+			fi
+		fi
+		
+		echo "[INFO] scp packages file to $user@$ip:"
+		scp packages.tar.gz $user@$ip:$dir
+		ssh -tt $user@$ip "cd $dir;tar -xzf packages.tar.gz;rm -f packages.tar.gz"
+		
+		if ssh -tt $user@$ip test -e $dir/packages;then
+			echo "[INFO] the packages of $ip has copyed success."
+		else
+			echo "[ERROR] the packages of $ip copyed fail,please try it again."
+		fi
+		
+		echo "-----------------------------------"
+	done
 }
 
 clustercomm() {
@@ -84,21 +118,9 @@ clustercomm() {
 		echo "[INFO] clustercomm/conf/clustercomm.properties of clustercomm in $partyid has been modified as follows:"
 		cat clustercomm/conf/clustercomm.properties | grep -v "#" | grep -v ^$
 		
-		tar -czf clustercomm.tar.gz clustercomm services.sh
+		tar -czf clustercomm.tar.gz clustercomm packages services.sh
 		
-		if ssh -tt $user@$clustercommip test -e $dir;then
-			echo "[INFO] scp clustercomm file to $user@$clustercommip:"
-		else
-			echo "[INFO] $dir in $user@$clustercommip is not exist,execute: mkdir -p $dir"
-			ssh -tt $user@$clustercommip "mkdir -p $dir"
-			if ssh -tt $user@$clustercommip test -e $dir;then
-				echo "[INFO] execute: mkdir -p $dir success"
-				echo "[INFO] scp clustercomm file to $user@$clustercommip:"
-			else
-				echo "[ERROR] execute: mkdir -p $dir fail,please login $user@$clustercommip and mkdir -p $dir"
-			fi
-		fi
-		
+		echo "[INFO] scp clustercomm file to $user@$clustercommip:"
 		scp clustercomm.tar.gz $user@$clustercommip:$dir
 		rm -f clustercomm.tar.gz
 		
@@ -135,21 +157,9 @@ metaservice() {
 		echo "[INFO] meta-service/conf/meta-service.properties of meta-service in $partyid has been modified as follows:"
 		cat meta-service/conf/meta-service.properties | grep -v "#" | grep -v ^$
 		
-		tar -czf meta-service.tar.gz meta-service services.sh
+		tar -czf meta-service.tar.gz meta-service
 		
-		if ssh -tt $user@$metaserviceip test -e $dir;then
-			echo "[INFO] scp meta-service file to $user@$metaserviceip:"
-		else
-			echo "[INFO] $dir in $user@$metaserviceip is not exist,execute: mkdir -p $dir"
-			ssh -tt $user@$metaserviceip "mkdir -p $dir"
-			if ssh -tt $user@$metaserviceip test -e $dir;then
-				echo "[INFO] execute: mkdir -p $dir success"
-				echo "[INFO] scp meta-service file to $user@$metaserviceip:"
-			else
-				echo "[ERROR] execute: mkdir -p $dir fail,please login $user@$metaserviceip and mkdir -p $dir"
-			fi
-		fi
-		
+		echo "[INFO] scp meta-service file to $user@$metaserviceip:"
 		scp meta-service.tar.gz $user@$metaserviceip:$dir
 		rm -f meta-service.tar.gz
 		
@@ -192,21 +202,9 @@ proxy() {
 		echo "[INFO] proxy/conf/route_table.json of proxy in $partyid has been modified as follows:"
 		cat proxy/conf/route_table.json | grep -v "#" | grep -v ^$
 		
-		tar -czf proxy.tar.gz proxy services.sh
+		tar -czf proxy.tar.gz proxy
 		
-		if ssh -tt $user@$proxyip test -e $dir;then
-			echo "[INFO] scp proxy file to $user@$proxyip:"
-		else
-			echo "[INFO] $dir in $user@$proxyip is not exist,execute: mkdir -p $dir"
-			ssh -tt $user@$proxyip "mkdir -p $dir"
-			if ssh -tt $user@$proxyip test -e $dir;then
-				echo "[INFO] execute: mkdir -p $dir success"
-				echo "[INFO] scp proxy file to $user@$proxyip:"
-			else
-				echo "[ERROR] execute: mkdir -p $dir fail,please login $user@$proxyip and mkdir -p $dir"
-			fi
-		fi
-		
+		echo "[INFO] scp proxy file to $user@$proxyip:"
 		scp proxy.tar.gz $user@$proxyip:$dir
 		rm -f proxy.tar.gz
 		
@@ -238,21 +236,9 @@ roll() {
 		echo "[INFO] roll/conf/roll.properties of roll in $partyid has been modified as follows:"
 		cat roll/conf/roll.properties | grep -v "#" | grep -v ^$
 		
-		tar -czf roll.tar.gz roll services.sh
+		tar -czf roll.tar.gz roll packages services.sh
 		
-		if ssh -tt $user@$rollip test -e $dir;then
-			echo "[INFO] scp roll file to $user@$rollip:"
-		else
-			echo "[INFO] $dir in $user@$rollip is not exist,execute: mkdir -p $dir"
-			ssh -tt $user@$rollip "mkdir -p $dir"
-			if ssh -tt $user@$rollip test -e $dir;then
-				echo "[INFO] execute: mkdir -p $dir success"
-				echo "[INFO] scp roll file to $user@$rollip:"
-			else
-				echo "[ERROR] execute: mkdir -p $dir fail,please login $user@$rollip and mkdir -p $dir"
-			fi
-		fi
-		
+		echo "[INFO] scp roll file to $user@$rollip:"
 		scp roll.tar.gz $user@$rollip:$dir
 		rm -f roll.tar.gz
 		
@@ -291,7 +277,7 @@ exchange() {
 		echo "[INFO] proxy/conf/route_table.json of exchange:$exchangeip has been modified as follows:"
 		cat proxy/conf/route_table.json | grep -v "#" | grep -v ^$
 		
-		tar -czf proxy.tar.gz proxy services.sh
+		tar -czf proxy.tar.gz proxy
 		
 		echo "[INFO] scp exchange file to $user@$exchangeip:"
 		scp proxy.tar.gz $user@$proxyip:$dir
@@ -314,17 +300,18 @@ egg() {
 		
 		sed -i "s/party.id=.*/party.id=$partyid/g" ./egg/conf/egg.properties
 		sed -i "s/service.port=.*/service.port=${egg_port}/g" ./egg/conf/egg.properties
-		sed -i "s#processor.venv=.*#processor.venv=${venvdir}#g" ./egg/conf/egg.properties
-		sed -i "s#processor.path=.*#processor.path=${dir}/api/eggroll/computing/processor.py#g" ./egg/conf/egg.properties
-		sed -i "s#processor.engine-path=.*#processor.engine-path=${dir}/api/eggroll/computing/processor.py#g" ./egg/conf/egg.properties
-		sed -i "s#data.dir=.*#data.dir=${dir}/data-dir#g" ./egg/conf/egg.properties
-		sed -i "s#data-dir=.*#data-dir=${dir}/data-dir#g" ./egg/conf/egg.properties
-		sed -i "s#python.path=.*#python.path=${dir}/api#g" ./egg/conf/egg.properties
-		sed -i "s#processor.log.dir=.*#processor.log.dir=${dir}/logs/processor#g" ./egg/conf/egg.properties
-		sed -i "s#processor.log-dir=.*#processor.log-dir=${dir}/logs/processor#g" ./egg/conf/egg.properties
-		sed -i "s#egg.status.store=.*#egg.status.store=/tmp/Eggroll/node-manager-$partyid#g" ./egg/conf/egg.properties
+		sed -i "s/engine.names=.*/engine.names=processor/g" ./egg/conf/egg.properties
+		sed -i "s#bootstrap.script=.*#bootstrap.script=${dir}/api/eggroll/framework/egg/src/main/resources/processor-starter.sh#g" ./egg/conf/egg.properties
 		sed -i "s#start.port=.*#start.port=${processor_port}#g" ./egg/conf/egg.properties
-		sed -i "s#max.processors.count=.*#max.processors.count=${processor_count}#g" ./egg/conf/egg.properties
+		sed -i "s#processor.venv=.*#processor.venv=${venvdir}#g" ./egg/conf/egg.properties
+		sed -i "s#processor.engine-path=.*#processor.engine-path=${dir}/api/eggroll/computing/processor.py#g" ./egg/conf/egg.properties
+		sed -i "s#data-dir=.*#data-dir=${dir}/data-dir#g" ./egg/conf/egg.properties
+		sed -i "s#processor.logs-dir=.*#processor.logs-dir=${dir}/logs/processor#g" ./egg/conf/egg.properties
+		sed -i "s#count=.*#count=${processor_count}#g" ./egg/conf/egg.properties
+		sed -i "20s#-I. -I.*#-I. -I$dir/storage-service-cxx/third_party/include#g" ./storage-service-cxx/Makefile
+		sed -i "34s#LDFLAGS += -L.*#LDFLAGS += -L$dir/storage-service-cxx/third_party/lib -llmdb -lboost_system -lboost_filesystem -lglog -lgpr#g" ./storage-service-cxx/Makefile
+		sed -i "36s#PROTOC =.*#PROTOC = $dir/storage-service-cxx/third_party/bin/protoc#g" ./storage-service-cxx/Makefile
+		sed -i "37s#GRPC_CPP_PLUGIN =.*#GRPC_CPP_PLUGIN = $dir/storage-service-cxx/third_party/bin/grpc_cpp_plugin#g" ./storage-service-cxx/Makefile
 		
 		echo "[INFO] egg/conf/egg.properties of egg in $partyid has been modified as follows:"
 		cat egg/conf/egg.properties | grep -v "#" | grep -v ^$
@@ -340,26 +327,13 @@ egg() {
 		echo "[INFO] api/eggroll/conf/server_conf.json of processor in $partyid has been modified as follows:"
 		cat api/eggroll/conf/server_conf.json | grep -v "#" | grep -v ^$
 		
-		tar -czf egg.tar.gz egg api storage-service-cxx  services.sh
+		tar -czf egg.tar.gz egg api storage-service-cxx
 		
 		eval egglist=\${egglist_$partyid[@]}
 		echo "[INFO] the egglist of $partyid is: $egglist"
 		for eggip in $egglist
 		do
-			
-			if ssh -tt $user@$eggip test -e $dir;then
-				echo "[INFO] scp egg file to $user@$eggip:"
-			else
-				echo "[INFO] $dir in $user@$eggip is not exist,execute: mkdir -p $dir"
-				ssh -tt $user@$eggip "mkdir -p $dir"
-				if ssh -tt $user@$eggip test -e $dir;then
-					echo "[INFO] execute: mkdir -p $dir success"
-					echo "[INFO] scp egg file to $user@$eggip:"
-				else
-					echo "[ERROR] execute: mkdir -p $dir fail,please login $user@$eggip and mkdir -p $dir"
-				fi
-			fi
-			
+			echo "[INFO] scp egg file to $user@$eggip:"
 			scp egg.tar.gz $user@$eggip:$dir
 			ssh -tt $user@$eggip "cd $dir;tar -xzf egg.tar.gz;rm -f egg.tar.gz;cd storage-service-cxx;make"
 			if ssh -tt $user@$eggip test -e $dir/egg;then
@@ -427,4 +401,3 @@ case "$1" in
         multiple $@
         ;;
 esac
-
