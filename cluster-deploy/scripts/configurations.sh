@@ -1,19 +1,21 @@
 #!/bin/bash                                                                                                                                                                                           
 
 user=app
-dir=$install_dir
-mysqldir=$mysql_install_dir
-javadir=$jdk_install_path
-venvdir=$python_virtualenv_path
+dir=/data/projects/eggroll
+mysqldir=/data/projects/common/mysql/mysql-8.0.13
+javadir=/data/projects/common/jdk/jdk1.8.0_192
+venvdir=/data/projects/eggroll/venv
 
-partylist=($party_id)
-exchange_$party_id=$exchange_ip
-clustercomm_$party_id=$clustercomm_ip
-metaservice_$party_id=$metaservice_ip
-proxy_$party_id=$proxy_ip
-roll_$party_id=$roll_ip	
-egglist_$party_id=($egg1_ip $egg2_ip $egg3_ip)
-jdbc_$party_id=($mysql_ip $db_name $db_user $db_password)
+partylist=(10000)
+iplist=()
+exchange_10000=
+clustercomm_10000=
+metaservice_10000=
+proxy_10000=
+roll_10000=
+egglist_10000=()
+jdbc_10000=(ip name user passwd)
+
 clustercomm_port=9394
 metaservice_port=8590
 proxy_port=9370

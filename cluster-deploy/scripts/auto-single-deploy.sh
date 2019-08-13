@@ -31,7 +31,7 @@ echo "[INFO] the port of exchange is ${exchange_port}"
 
 cd $output_dir
 sed -i "s#export JAVA_HOME=.*#export JAVA_HOME=$javadir#g" ./services.sh
-sed -i "s#dir=.*#dir=$dir#g" ./services.sh
+sed -i "s#installdir=.*#installdir=$dir#g" ./services.sh
 sed -i "s/port=.*/port=${storage_port}/g" ./services.sh
 
 if test -e $dir;then
@@ -47,7 +47,7 @@ else
 	fi
 fi
 
-cp ./services.sh $dir/
+cp -r ./services.sh ./packages $dir/
 
 echo "[INFO] the path of JAVA_HOME is $javadir"
 echo "[INFO] deploy Eggroll in directory: $dir"
@@ -195,14 +195,18 @@ egg() {
 	
 	sed -i "s/party.id=.*/party.id=$partyid/g" ./egg/conf/egg.properties
 	sed -i "s/service.port=.*/service.port=${egg_port}/g" ./egg/conf/egg.properties
+	sed -i "s/engine.names=.*/engine.names=processor/g" ./egg/conf/egg.properties
+	sed -i "s#bootstrap.script=.*#bootstrap.script=${dir}/api/eggroll/framework/egg/src/main/resources/processor-starter.sh#g" ./egg/conf/egg.properties
+	sed -i "s#start.port=.*#start.port=${processor_port}#g" ./egg/conf/egg.properties
 	sed -i "s#processor.venv=.*#processor.venv=${venvdir}#g" ./egg/conf/egg.properties
-	sed -i "s#processor.path=.*#processor.path=${dir}/api/eggroll/computing/processor.py#g" ./egg/conf/egg.properties
-	sed -i "s#data.dir=.*#data.dir=${dir}/data-dir#g" ./egg/conf/egg.properties
-	sed -i "s#python.path=.*#python.path=${dir}/api#g" ./egg/conf/egg.properties
-	sed -i "s#processor.log.dir=.*#processor.log.dir=${dir}/logs/processor#g" ./egg/conf/egg.properties
-	sed -i "s#egg.status.store=.*#egg.status.store=/tmp/Eggroll/node-manager-$partyid#g" ./egg/conf/egg.properties
-	sed -i "s#egg.processor.start.port=.*#start.port=${processor_port}#g" ./egg/conf/egg.properties
-	sed -i "s#max.processors.count=.*#max.processors.count=${processor_count}#g" ./egg/conf/egg.properties
+	sed -i "s#processor.engine-path=.*#processor.engine-path=${dir}/api/eggroll/computing/processor.py#g" ./egg/conf/egg.properties
+	sed -i "s#data-dir=.*#data-dir=${dir}/data-dir#g" ./egg/conf/egg.properties
+	sed -i "s#processor.logs-dir=.*#processor.logs-dir=${dir}/logs/processor#g" ./egg/conf/egg.properties
+	sed -i "s#count=.*#count=${processor_count}#g" ./egg/conf/egg.properties
+	sed -i "20s#-I. -I.*#-I. -I$dir/storage-service-cxx/third_party/include#g" ./storage-service-cxx/Makefile
+	sed -i "34s#LDFLAGS += -L.*#LDFLAGS += -L$dir/storage-service-cxx/third_party/lib -llmdb -lboost_system -lboost_filesystem -lglog -lgpr#g" ./storage-service-cxx/Makefile
+	sed -i "36s#PROTOC =.*#PROTOC = $dir/storage-service-cxx/third_party/bin/protoc#g" ./storage-service-cxx/Makefile
+	sed -i "37s#GRPC_CPP_PLUGIN =.*#GRPC_CPP_PLUGIN = $dir/storage-service-cxx/third_party/bin/grpc_cpp_plugin#g" ./storage-service-cxx/Makefile
 	
 	sed -i "s/clustercommip=.*/clustercommip=\"$ip\"/g" $cwd/modify_json.py
 	sed -i "s/clustercommport=.*/clustercommport=${clustercomm_port}/g" $cwd/modify_json.py
@@ -220,6 +224,10 @@ egg() {
 	else
 		echo "[ERROR] the egg is deployed fail,please try it again."
 	fi
+	
+	cd $dir/storage-service-cxx/
+	make
+	cd $output_dir
 	
 	echo "[INFO] $dir/egg/conf/egg.properties of egg in $partyid has been modified as follows:"
 	cat $dir/egg/conf/egg.properties | grep -v "#" | grep -v ^$
@@ -256,7 +264,7 @@ INSERT INTO node (ip, port, type, status) values ('$ip', '${egg_port}', 'EGG', '
 INSERT INTO node (ip, port, type, status) values ('$ip', '${storage_port}', 'STORAGE', 'HEALTHY');
 show tables;
 select * from node;
-exit;
+exit
 eeooff
 }
 
@@ -271,4 +279,3 @@ case "$1" in
         multiple $@
         ;;
 esac
-
