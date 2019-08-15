@@ -29,7 +29,7 @@ meta.service.port |meta-service port | defaults to 8590
 eggroll.compatible.enabled |compatibility enabled | true 
 
 ## 2.2. Meta-Service
-Meta-Service module stores metadata required by this arch.
+Meta-Service module stores metadata required by eggroll.
 ### 2.2.1. applicationContext-meta-service.xml
 No modification is required.
 ### 2.2.2. log4j2.properties
