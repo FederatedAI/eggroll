@@ -32,7 +32,8 @@ public class RuntimeConstants {
     public static BasicMeta.Endpoint getLocalEndpoint(int port) {
         BasicMeta.Endpoint.Builder builder
                 = BasicMeta.Endpoint.newBuilder()
-                .setHostname("localhost")
+                //.setHostname("localhost")
+                .setIp("127.0.0.1")
                 .setPort(port);
 
         return builder.build();

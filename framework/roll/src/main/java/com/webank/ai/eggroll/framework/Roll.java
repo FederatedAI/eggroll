@@ -23,6 +23,7 @@ import com.webank.ai.eggroll.core.server.BaseEggRollServer;
 import com.webank.ai.eggroll.core.server.DefaultServerConf;
 import com.webank.ai.eggroll.framework.roll.api.grpc.server.RollKvServiceImpl;
 import com.webank.ai.eggroll.framework.roll.api.grpc.server.RollProcessServiceImpl;
+import com.webank.ai.eggroll.framework.roll.api.grpc.server.RollSessionServiceImpl;
 import com.webank.ai.eggroll.framework.storage.service.server.ObjectStoreServicer;
 import io.grpc.Server;
 import io.grpc.ServerInterceptors;
@@ -51,11 +52,12 @@ public class Roll extends BaseEggRollServer {
         ServerServiceDefinition rollKvServiceDefinition = ServerInterceptors
                 .intercept(rollKvService, new ObjectStoreServicer.KvStoreInterceptor());
         RollProcessServiceImpl processService = context.getBean(RollProcessServiceImpl.class);
-
+        RollSessionServiceImpl rollSessionService = context.getBean(RollSessionServiceImpl.class);
 
         serverConf
                 .addService(rollKvServiceDefinition)
-                .addService(processService);
+                .addService(processService)
+                .addService(rollSessionService);
 
         boolean needCompatible = Boolean.valueOf(serverConf.getProperty(StringConstants.EGGROLL_COMPATIBLE_ENABLED, StringConstants.FALSE));
 
@@ -64,7 +66,10 @@ public class Roll extends BaseEggRollServer {
 
             serverConf.addService(accessRedirector.redirect(rollKvServiceDefinition,
                     "com.webank.ai.eggroll.api.storage.KVService",
-                    "com.webank.ai.fate.api.eggroll.storage.KVService"));
+                    "com.webank.ai.fate.api.eggroll.storage.KVService"))
+                    .addService(accessRedirector.redirect(processService,
+                            "com.webank.ai.eggroll.api.computing.processor.ProcessService",
+                            "com.webank.ai.fate.api.eggroll.processor.ProcessService"));
         }
 
         Server server = serverFactory.createServer(serverConf);

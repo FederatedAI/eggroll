@@ -24,6 +24,7 @@ import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.net.*;
 import java.util.Collections;
 import java.util.Enumeration;
@@ -74,10 +75,29 @@ public class RuntimeUtils {
     }
 
     public boolean isPortAvailable(int port) {
+        if (port <= 0) {
+            return false;
+        }
         try (ServerSocket ignored = new ServerSocket(port)) {
             return true;
         } catch (IOException ignored) {
             return false;
         }
+    }
+
+    public long getPidOfProcess(Process p) {
+        long pid = -1;
+
+        try {
+            if (p.getClass().getName().equals("java.lang.UNIXProcess")) {
+                Field f = p.getClass().getDeclaredField("pid");
+                f.setAccessible(true);
+                pid = f.getLong(p);
+                f.setAccessible(false);
+            }
+        } catch (Exception e) {
+            pid = -1;
+        }
+        return pid;
     }
 }

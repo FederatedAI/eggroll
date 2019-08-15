@@ -16,16 +16,22 @@
 
 package com.webank.ai.eggroll.core.utils;
 
+import com.google.common.base.Preconditions;
+import com.google.common.collect.Maps;
 import com.webank.ai.eggroll.api.core.BasicMeta;
 import com.webank.ai.eggroll.api.core.DataStructure;
 import com.webank.ai.eggroll.api.storage.Kv;
 import com.webank.ai.eggroll.api.storage.StorageBasic;
+import com.webank.ai.eggroll.core.model.ComputingEngine;
 import com.webank.ai.eggroll.core.model.DtableStatus;
 import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable;
 import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
+
+import java.util.Map;
+import java.util.Properties;
 
 @Component
 @Scope("prototype")
@@ -186,5 +192,20 @@ public class TypeConversionUtils {
         result.setUpdatedAt(other.getUpdatedAt());
 
         return result;
+    }
+
+    public Properties toProperties(Map<?, ?> conf) {
+        Properties result = new Properties();
+        result.putAll(conf);
+
+        return result;
+    }
+
+    public BasicMeta.Endpoint toEndpoint(ComputingEngine computingEngine) {
+        Preconditions.checkNotNull(computingEngine);
+        BasicMeta.Endpoint.Builder builder = BasicMeta.Endpoint.newBuilder()
+                .setIp(computingEngine.getHost())
+                .setPort(computingEngine.getPort());
+        return builder.build();
     }
 }

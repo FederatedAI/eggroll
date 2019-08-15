@@ -17,8 +17,8 @@
 package com.webank.ai.eggroll.networking.proxy.grpc.observer;
 
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
+import com.webank.ai.eggroll.core.utils.ToStringUtils;
 import com.webank.ai.eggroll.networking.proxy.infra.ResultCallback;
-import com.webank.ai.eggroll.networking.proxy.util.ToStringUtils;
 import io.grpc.stub.StreamObserver;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
@@ -32,7 +32,7 @@ import java.util.concurrent.CountDownLatch;
 @Component
 @Scope("prototype")
 public class ClientPushResponseStreamObserver implements StreamObserver<Proxy.Metadata> {
-    private static final Logger LOGGER = LogManager.getLogger(ClientPullResponseStreamObserver.class);
+    private static final Logger LOGGER = LogManager.getLogger(ClientPushResponseStreamObserver.class);
     private final CountDownLatch finishLatch;
     private final ResultCallback<Proxy.Metadata> resultCallback;
     @Autowired
@@ -54,7 +54,7 @@ public class ClientPushResponseStreamObserver implements StreamObserver<Proxy.Me
 
     @Override
     public void onError(Throwable throwable) {
-        LOGGER.error("[PUSH][CLIENTOBSERVER][ONERROR] error in push client: {}, metadata: {}", toStringUtils.toOneLineString(metadata));
+        LOGGER.error("[PUSH][CLIENTOBSERVER][ONERROR] error in push client, metadata: {}", toStringUtils.toOneLineString(metadata));
         LOGGER.error(ExceptionUtils.getStackTrace(throwable));
         finishLatch.countDown();
     }

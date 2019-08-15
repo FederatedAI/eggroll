@@ -18,11 +18,11 @@ package com.webank.ai.eggroll.networking.proxy.grpc.observer;
 
 import com.google.protobuf.ByteString;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
+import com.webank.ai.eggroll.core.utils.ToStringUtils;
 import com.webank.ai.eggroll.networking.proxy.infra.Pipe;
 import com.webank.ai.eggroll.networking.proxy.manager.StatsManager;
-import com.webank.ai.eggroll.networking.proxy.model.ServerConf;
+import com.webank.ai.eggroll.networking.proxy.model.ProxyServerConf;
 import com.webank.ai.eggroll.networking.proxy.model.StreamStat;
-import com.webank.ai.eggroll.networking.proxy.util.ToStringUtils;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import org.apache.commons.lang3.StringUtils;
@@ -48,7 +48,7 @@ public class ClientPullResponseStreamObserver implements StreamObserver<Proxy.Pa
     @Autowired
     private StatsManager statsManager;
     @Autowired
-    private ServerConf serverConf;
+    private ProxyServerConf proxyServerConf;
     @Autowired
     private ToStringUtils toStringUtils;
     private StreamStat streamStat;
@@ -86,11 +86,11 @@ public class ClientPullResponseStreamObserver implements StreamObserver<Proxy.Pa
         }
 
         if (StringUtils.isBlank(myCoordinator)) {
-            myCoordinator = serverConf.getCoordinator();
+            myCoordinator = proxyServerConf.getCoordinator();
         }
 
-        isAuditEnabled = serverConf.isAuditEnabled();
-        isDebugEnabled = serverConf.isDebugEnabled();
+        isAuditEnabled = proxyServerConf.isAuditEnabled();
+        isDebugEnabled = proxyServerConf.isDebugEnabled();
 
         isInited = true;
     }

@@ -24,20 +24,24 @@ import lmdb
 from cachetools import cached
 from grpc._cython import cygrpc
 from cachetools import LRUCache
-from eggroll.api.proto import kv_pb2, processor_pb2, processor_pb2_grpc, storage_basic_pb2
+from eggroll.api.proto import kv_pb2, processor_pb2, processor_pb2_grpc, storage_basic_pb2, basic_meta_pb2
+from eggroll.api.proto import node_manager_pb2, node_manager_pb2_grpc
+from enum import IntEnum
 import os
 import numpy as np
 import hashlib
 import threading
+import socket
 
 _ONE_DAY_IN_SECONDS = 60 * 60 * 24
+_ONE_MIN_IN_SECONDS = 60
 
 log_utils.setDirectory()
 LOGGER = log_utils.getLogger()
 
-PROCESS_RECV_FORMAT = "method {} receive task: {}"
+PROCESS_RECV_FORMAT = "session {} method {} receive task: {}"
 
-PROCESS_DONE_FORMAT = "method {} done response: {}"
+PROCESS_DONE_FORMAT = "session {} method {} done response: {}"
 LMDB_MAP_SIZE = 16 * 4_096 * 244_140        # follows storage-service-cxx's config here
 DEFAULT_DB = b'main'
 DELIMETER = '-'
@@ -48,13 +52,27 @@ def generator(serdes: eggroll_serdes.ABCSerdes, cursor):
     for k, v in cursor:
         yield serdes.deserialize(k), serdes.deserialize(v)
 
+class LogStage(IntEnum):
+    START = 0
+    END = 1
+
+def gen_log(stage: LogStage, session, method, content):
+    if stage == LogStage.START:
+        template = PROCESS_RECV_FORMAT
+    elif stage == LogStage.END:
+        template = PROCESS_DONE_FORMAT
+    else:
+        raise ValueError('illegal stage')
+
+    return template.format(session, method, content)
 
 class Processor(processor_pb2_grpc.ProcessServiceServicer):
 
     def __init__(self, data_dir):
         self._serdes = eggroll_serdes.get_serdes()
-        Processor.TEMP_DIR = os.sep.join([data_dir, 'lmdb_temporary'])
-        Processor.DATA_DIR = os.sep.join([data_dir, 'lmdb'])
+        Processor.TEMP_DIR = os.sep.join([data_dir, 'in_memory '])
+        Processor.LMDB_DIR = os.sep.join([data_dir, 'lmdb'])
+        Processor.LEVEL_DB_DIR = os.sep.join([data_dir, 'level_db'])
 
     @cached(cache=LRUCache(maxsize=100))
     def get_function(self, function_bytes):
@@ -66,11 +84,11 @@ class Processor(processor_pb2_grpc.ProcessServiceServicer):
             return pickle._loads(function_bytes)
 
     def map(self, request, context):
-        LOGGER.debug(PROCESS_RECV_FORMAT.format('map', request))
+        LOGGER.debug(gen_log(LogStage.START, request.session, 'map', request))
         task_info = request.info
         _mapper, _serdes = self.get_function_and_serdes(task_info)
         op = request.operand
-        rtn = self.__create_output_storage_locator(op, task_info, request.conf, False)
+        rtn = self.__create_output_storage_locator(op, task_info, request.session, False)
 
         src_db_path = Processor.get_path(op)
         dst_db_path = Processor.get_path(rtn)
@@ -84,16 +102,16 @@ class Processor(processor_pb2_grpc.ProcessServiceServicer):
                     k1, v1 = _mapper(k, v)
                     dst_txn.put(_serdes.serialize(k1), _serdes.serialize(v1))
                 cursor.close()
-        LOGGER.debug(PROCESS_DONE_FORMAT.format('map', rtn))
+        LOGGER.debug(gen_log(LogStage.END, request.session, 'map', rtn))
         return rtn
 
     def mapPartitions(self, request, context):
-        LOGGER.debug(PROCESS_RECV_FORMAT.format('mapPartitions', request))
+        LOGGER.debug(gen_log(LogStage.START, request.session, 'mapPartitions', request))
         task_info = request.info
         _mapper, _serdes = self.get_function_and_serdes(task_info)
         op = request.operand
 
-        rtn = self.__create_output_storage_locator(op, task_info, request.conf, True)
+        rtn = self.__create_output_storage_locator(op, task_info, request.session, True)
 
         src_db_path = Processor.get_path(op)
         dst_db_path = Processor.get_path(rtn)
@@ -107,20 +125,21 @@ class Processor(processor_pb2_grpc.ProcessServiceServicer):
                     k_bytes = cursor.key()
                     dst_txn.put(k_bytes, _serdes.serialize(v))
                 cursor.close()
-        LOGGER.debug(PROCESS_DONE_FORMAT.format('mapPartitions', rtn))
+        LOGGER.debug(gen_log(LogStage.END, request.session, 'mapPartitions', rtn))
         return rtn
 
     def mapValues(self, request, context):
-        LOGGER.debug(PROCESS_RECV_FORMAT.format('mapValues', request))
+        LOGGER.debug(gen_log(LogStage.START, request.session, 'mapValues', request))
         task_info = request.info
         is_in_place_computing = self.__get_in_place_computing(request)
 
         _mapper, _serdes = self.get_function_and_serdes(task_info)
         op = request.operand
 
-        rtn = self.__create_output_storage_locator(op, task_info, request.conf, True)
+        rtn = self.__create_output_storage_locator(op, task_info, request.session, True)
         src_db_path = Processor.get_path(op)
         dst_db_path = Processor.get_path(rtn)
+
         with MDBEnv(dst_db_path, create_if_missing=True) as dst_env, \
                 MDBEnv(src_db_path, create_if_missing=True) as src_env:
             with src_env.begin(db=Processor.get_default_db(src_env)) as src_txn, \
@@ -133,18 +152,18 @@ class Processor(processor_pb2_grpc.ProcessServiceServicer):
                     serialized_value = _serdes.serialize(v1)
                     dst_txn.put(k_bytes, serialized_value)
                 cursor.close()
-        LOGGER.debug(PROCESS_DONE_FORMAT.format('mapValues', rtn))
+        LOGGER.debug(gen_log(LogStage.END, request.session, 'mapValues', rtn))
         return rtn
 
     def join(self, request, context):
-        LOGGER.debug(PROCESS_RECV_FORMAT.format('join', request))
+        LOGGER.debug(gen_log(LogStage.START, request.session, 'join', request))
         task_info = request.info
         is_in_place_computing = self.__get_in_place_computing(request)
         _joiner, _serdes = self.get_function_and_serdes(task_info)
         left_op = request.left
         right_op = request.right
 
-        rtn = self.__create_output_storage_locator(left_op, task_info, request.conf, True)
+        rtn = self.__create_output_storage_locator(left_op, task_info, request.session, True)
         with MDBEnv(Processor.get_path(left_op), create_if_missing=True) as left_env, \
                 MDBEnv(Processor.get_path(right_op), create_if_missing=True) as right_env, \
                 MDBEnv(Processor.get_path(rtn), create_if_missing=True) as dst_env:
@@ -164,11 +183,11 @@ class Processor(processor_pb2_grpc.ProcessServiceServicer):
                     v3 = self._run_user_binary_logic(_joiner, v1, v2, is_swapped)
                     dst_txn.put(k_bytes, _serdes.serialize(v3))
                 cursor.close()
-        LOGGER.debug(PROCESS_DONE_FORMAT.format('join', rtn))
+        LOGGER.debug(gen_log(LogStage.END, request.session, 'join', rtn))
         return rtn
 
     def reduce(self, request, context):
-        LOGGER.debug(PROCESS_RECV_FORMAT.format('reduce', request))
+        LOGGER.debug(gen_log(LogStage.START, request.session, 'reduce', request))
         task_info = request.info
 
         _reducer, _serdes = self.get_function_and_serdes(task_info)
@@ -188,16 +207,16 @@ class Processor(processor_pb2_grpc.ProcessServiceServicer):
                     result_key_bytes = k_bytes
             rtn = kv_pb2.Operand(key=result_key_bytes, value=_serdes.serialize(value))
             yield rtn
-            LOGGER.debug(PROCESS_DONE_FORMAT.format('reduce', value))
+            LOGGER.debug(gen_log(LogStage.END, request.session, 'reduce', value))
 
     def glom(self, request, context):
-        LOGGER.debug(PROCESS_RECV_FORMAT.format('glom', request))
+        LOGGER.debug(gen_log(LogStage.START, request.session, 'glom', request))
         task_info = request.info
 
         op = request.operand
         _serdes = self._serdes
         src_db_path = Processor.get_path(op)
-        rtn = self.__create_output_storage_locator(op, task_info, request.conf, False)
+        rtn = self.__create_output_storage_locator(op, task_info, request.session, False)
         with MDBEnv(src_db_path, create_if_missing=True) as src_env, \
                 MDBEnv(Processor.get_path(rtn), create_if_missing=True) as dst_env:
             with src_env.begin(db=Processor.get_default_db(src_env)) as src_txn, \
@@ -210,18 +229,18 @@ class Processor(processor_pb2_grpc.ProcessServiceServicer):
                     k_bytes = k
                 if k_bytes is not None:
                     dst_txn.put(k_bytes, _serdes.serialize(v_list))
-        LOGGER.debug(PROCESS_DONE_FORMAT.format('glom', rtn))
+        LOGGER.debug(gen_log(LogStage.END, request.session, 'glom', rtn))
         return rtn
 
     def sample(self, request, context):
-        LOGGER.debug(PROCESS_RECV_FORMAT.format('send', request))
+        LOGGER.debug(gen_log(LogStage.START, request.session, 'send', request))
         task_info = request.info
 
         op = request.operand
         _func, _serdes = self.get_function_and_serdes(task_info)
         fraction, seed = _func()
         source_db_path = Processor.get_path(op)
-        rtn = self.__create_output_storage_locator(op, task_info, request.conf, False)
+        rtn = self.__create_output_storage_locator(op, task_info, request.session, False)
 
         with MDBEnv(Processor.get_path(rtn), create_if_missing=True) as dst_env, \
                 MDBEnv(source_db_path, create_if_missing=True) as src_env:
@@ -233,16 +252,16 @@ class Processor(processor_pb2_grpc.ProcessServiceServicer):
                     for k, v in cursor:
                         if random_state.rand() < fraction:
                             dst_txn.put(k, v)
-        LOGGER.debug(PROCESS_DONE_FORMAT.format('sample', rtn))
+        LOGGER.debug(gen_log(LogStage.END, request.session, 'sample', rtn))
         return rtn
 
     def subtractByKey(self, request, context):
-        LOGGER.debug(PROCESS_RECV_FORMAT.format('subtractByKey', request))
+        LOGGER.debug(gen_log(LogStage.START, request.session, 'subtractByKey', request))
         task_info = request.info
         is_in_place_computing = self.__get_in_place_computing(request)
         left_op = request.left
         right_op = request.right
-        rtn = self.__create_output_storage_locator(left_op, task_info, request.conf, True)
+        rtn = self.__create_output_storage_locator(left_op, task_info, request.session, True)
         with MDBEnv(Processor.get_path(left_op), create_if_missing=True) as left_env, \
                 MDBEnv(Processor.get_path(right_op), create_if_missing=True) as right_env, \
                 MDBEnv(Processor.get_path(rtn), create_if_missing=True) as dst_env:
@@ -259,18 +278,18 @@ class Processor(processor_pb2_grpc.ProcessServiceServicer):
                         if is_in_place_computing:
                             dst_txn.delete(k_bytes)
                 cursor.close()
-        LOGGER.debug(PROCESS_DONE_FORMAT.format('subtractByKey', rtn))
+        LOGGER.debug(gen_log(LogStage.END, request.session, 'subtractByKey', rtn))
         return rtn
 
     def filter(self, request, context):
-        LOGGER.debug(PROCESS_RECV_FORMAT.format('filter', request))
+        LOGGER.debug(gen_log(LogStage.START, request.session, 'filter', request))
         task_info = request.info
         is_in_place_computing = self.__get_in_place_computing(request)
 
         _filter, _serdes = self.get_function_and_serdes(task_info)
         op = request.operand
 
-        rtn = self.__create_output_storage_locator(op, task_info, request.conf, True)
+        rtn = self.__create_output_storage_locator(op, task_info, request.session, True)
 
         src_db_path = Processor.get_path(op)
         dst_db_path = Processor.get_path(rtn)
@@ -289,18 +308,18 @@ class Processor(processor_pb2_grpc.ProcessServiceServicer):
                         if is_in_place_computing:
                             dst_txn.delete(k_bytes)
                 cursor.close()
-        LOGGER.debug(PROCESS_DONE_FORMAT.format('filter', rtn))
+        LOGGER.debug(gen_log(LogStage.END, request.session, 'filter', rtn))
         return rtn
 
     def union(self, request, context):
-        LOGGER.debug(PROCESS_RECV_FORMAT.format('union', request))
+        LOGGER.debug(gen_log(LogStage.START, request.session, 'union', request))
         task_info = request.info
         is_in_place_computing = self.__get_in_place_computing(request)
         _func, _serdes = self.get_function_and_serdes(task_info)
         left_op = request.left
         right_op = request.right
 
-        rtn = self.__create_output_storage_locator(left_op, task_info, request.conf, True)
+        rtn = self.__create_output_storage_locator(left_op, task_info, request.session, True)
         with MDBEnv(Processor.get_path(left_op), create_if_missing=True) as left_env, \
                 MDBEnv(Processor.get_path(right_op), create_if_missing=True) as right_env, \
                 MDBEnv(Processor.get_path(rtn), create_if_missing=True) as dst_env:
@@ -328,16 +347,16 @@ class Processor(processor_pb2_grpc.ProcessServiceServicer):
                     if final_v_bytes is None:
                         dst_txn.put(k_bytes, right_v_bytes)
                 right_cursor.close()
-        LOGGER.debug(PROCESS_DONE_FORMAT.format('union', rtn))
+        LOGGER.debug(gen_log(LogStage.END, request.session, 'union', rtn))
         return rtn
 
     def flatMap(self, request, context):
-        LOGGER.debug(PROCESS_RECV_FORMAT.format('flatMap', request))
+        LOGGER.debug(gen_log(LogStage.START, request.session, 'flatMap', request))
         task_info = request.info
 
         _func, _serdes = self.get_function_and_serdes(task_info)
         op = request.operand
-        rtn = self.__create_output_storage_locator(op, task_info, request.conf, False)
+        rtn = self.__create_output_storage_locator(op, task_info, request.session, False)
 
         src_db_path = Processor.get_path(op)
         dst_db_path = Processor.get_path(rtn)
@@ -353,7 +372,7 @@ class Processor(processor_pb2_grpc.ProcessServiceServicer):
                     for result_k, result_v in map_result:
                         dst_txn.put(_serdes.serialize(result_k), _serdes.serialize(result_v))
                 cursor.close()
-        LOGGER.debug(PROCESS_DONE_FORMAT.format('flatMap', rtn))
+        LOGGER.debug(gen_log(LogStage.END, request.session, 'flatMap', rtn))
         return rtn
 
     def get_function_and_serdes(self, task_info: processor_pb2.TaskInfo):
@@ -374,10 +393,15 @@ class Processor(processor_pb2_grpc.ProcessServiceServicer):
 
     @staticmethod
     def _do_get_path(db_type, namespace, table, fragment):
+        dir_prefix = ''
         if db_type == storage_basic_pb2.IN_MEMORY:
-            path = os.sep.join([Processor.TEMP_DIR, namespace, table, str(fragment)])
+            dir_prefix = Processor.TEMP_DIR
+        elif db_type == storage_basic_pb2.LMDB:
+            dir_prefix = Processor.TEMP_DIR
         else:
-            path = os.sep.join([Processor.DATA_DIR, namespace, table, str(fragment)])
+            dir_prefix = Processor.LEVEL_DB_DIR
+
+        path = os.sep.join([dir_prefix, namespace, table, str(fragment)])
         return path
 
     @staticmethod
@@ -406,12 +430,12 @@ class Processor(processor_pb2_grpc.ProcessServiceServicer):
         else:
             return func(left, right)
 
-    def __create_output_storage_locator(self, src_op, task_info, process_conf, is_in_place_computing_effective):
+    def __create_output_storage_locator(self, src_op, task_info, session, is_in_place_computing_effective):
         if is_in_place_computing_effective:
             if self.__get_in_place_computing_from_task_info(task_info):
                 return src_op
 
-        naming_policy = process_conf.namingPolicy
+        naming_policy = session.namingPolicy
         LOGGER.info('naming policy in processor: {}'.format(naming_policy))
         if naming_policy == 'ITER_AWARE':
             storage_name = DELIMETER.join([src_op.namespace, src_op.name, storage_basic_pb2.StorageType.Name(src_op.type)])
@@ -428,7 +452,7 @@ class Processor(processor_pb2_grpc.ProcessServiceServicer):
                                                 type=storage_basic_pb2.IN_MEMORY)
 
     def __get_in_place_computing(self, request):
-        return request.info.isInPlaceComputing
+        return self.__get_in_place_computing_from_task_info(request.info)
 
     def __get_in_place_computing_from_task_info(self, task_info):
         return task_info.isInPlaceComputing
@@ -478,20 +502,32 @@ class MDBEnv(object):
                 self.env = None
 
 
-def serve(socket, config):
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=5),
+def serve(args):
+    port = args.port
+    data_dir = args.data_dir
+    node_manager = args.node_manager
+    engine_addr = args.engine_addr
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=1),
                          options=[(cygrpc.ChannelArgKey.max_send_message_length, -1),
                                   (cygrpc.ChannelArgKey.max_receive_message_length, -1)])
-    LOGGER.info("server starting at {}, data_dir: {}".format(socket, config))
-    processor = Processor(config)
+    LOGGER.info("server starting at {}, data_dir: {}".format(port, data_dir))
+    processor = Processor(data_dir)
     processor_pb2_grpc.add_ProcessServiceServicer_to_server(
         processor, server)
-    server.add_insecure_port(socket)
+    server.add_insecure_port("{}:{}".format(engine_addr, port))
     server.start()
 
+    channel = grpc.insecure_channel(target=node_manager,
+                                             options=[('grpc.max_send_message_length', -1),
+                                                      ('grpc.max_receive_message_length', -1)])
+    node_manager_stub = node_manager_pb2_grpc.NodeManagerServiceStub(channel)
+
     try:
+        port = int(port)
+        heartbeat_request = node_manager_pb2.HeartbeatRequest(endpoint=basic_meta_pb2.Endpoint(ip=engine_addr, port=port))
         while True:
-            time.sleep(_ONE_DAY_IN_SECONDS)
+            node_manager_stub.heartbeat(heartbeat_request)
+            time.sleep(_ONE_MIN_IN_SECONDS)
     except KeyboardInterrupt:
         server.stop(0)
         sys.exit(0)
@@ -501,12 +537,11 @@ if __name__ == '__main__':
     from datetime import datetime
     parser = argparse.ArgumentParser()
     parser.add_argument('-s', '--socket')
-    parser.add_argument('-p', '--port', default=7888)
+    parser.add_argument('-p', '--port', default=49999)
     parser.add_argument('-d', '--dir', default=os.path.dirname(os.path.realpath(__file__)))
+    parser.add_argument('-m', '--node-manager', default="localhost:7888")
+    parser.add_argument('-a', "--engine-addr", default="localhost")
     args = parser.parse_args()
 
-    LOGGER.info("started at {}".format(str(datetime.now())))
-    if args.socket:
-        serve(args.socket, args.dir)
-    else:
-        serve("[::]:{}".format(args.port), args.dir)
+    LOGGER.info("processor {}:{} started at {}, node-manager at {}".format(args.engine_addr, args.port, str(datetime.now()), args.node_manager))
+    serve(args)

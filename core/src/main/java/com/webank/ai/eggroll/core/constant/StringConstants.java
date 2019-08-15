@@ -17,10 +17,12 @@
 package com.webank.ai.eggroll.core.constant;
 
 public class StringConstants {
+    public static final CharSequence DOT = ".";
     public static final String COLON = ":";
     public static final String DASH = "-";
     public static final String UNDERLINE = "_";
     public static final String DOUBLE_UNDERLINES = "__";
+    public static final CharSequence COMMA = ",";
 
     public static final String HOST = "host";
     public static final String PORT = "port";
@@ -35,4 +37,14 @@ public class StringConstants {
     public static final String EGGROLL_COMPATIBLE_ENABLED = "eggroll.compatible.enabled";
     public static final String FALSE = "false";
     public static final String TRUE = "true";
+
+    public static final String CLUSTER_COMM = "__clustercomm__";
+    public static final String FEDERATION = "__federation__";
+    public static final String EGGROLL = "eggroll";
+
+    public static final String COMPUTING = "computing";
+    public static final String STORAGE = "storage";
+
+    public static final String EMPTY = "";
+    public static final CharSequence SPACE = " ";
 }

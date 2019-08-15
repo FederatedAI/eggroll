@@ -26,7 +26,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 @Scope("prototype")
-public class ToStringUtils {
+public class ProxyToStringUtils {
     private static final String NULL_STRING = "[null]";
     private static final String LEFT_BRACKET = "[";
     private static final String RIGHT_BRACKET = "]";
@@ -38,7 +38,7 @@ public class ToStringUtils {
     private static final String SEMICOLON = ";";
     private static final String COMMA = ",";
 
-    private static final Logger LOGGER = LogManager.getLogger(ToStringUtils.class);
+    private static final Logger LOGGER = LogManager.getLogger(ProxyToStringUtils.class);
 
     private JsonFormat.Printer protoPrinter = JsonFormat.printer()
             .preservingProtoFieldNames()

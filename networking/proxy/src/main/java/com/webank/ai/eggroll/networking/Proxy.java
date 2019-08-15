@@ -19,7 +19,7 @@ package com.webank.ai.eggroll.networking;
 import com.webank.ai.eggroll.networking.proxy.factory.GrpcServerFactory;
 import com.webank.ai.eggroll.networking.proxy.factory.LocalBeanFactory;
 import com.webank.ai.eggroll.networking.proxy.manager.ServerConfManager;
-import com.webank.ai.eggroll.networking.proxy.model.ServerConf;
+import com.webank.ai.eggroll.networking.proxy.model.ProxyServerConf;
 import io.grpc.Server;
 import org.apache.commons.cli.*;
 import org.apache.logging.log4j.LogManager;
@@ -57,10 +57,10 @@ public class Proxy {
         Server server = serverFactory.createServer(confFilePath);
 
         ServerConfManager serverConfManager = context.getBean(ServerConfManager.class);
-        ServerConf serverConf = serverConfManager.getServerConf();
+        ProxyServerConf proxyServerConf = serverConfManager.getProxyServerConf();
 
-        LOGGER.info("Server started listening on port: {}", serverConf.getPort());
-        LOGGER.info("server conf: {}", serverConf);
+        LOGGER.info("Server started listening on port: {}", proxyServerConf.getPort());
+        LOGGER.info("server conf: {}", proxyServerConf);
 
         server.start();
         server.awaitTermination();

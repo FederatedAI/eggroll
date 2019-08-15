@@ -22,7 +22,9 @@ import com.webank.ai.eggroll.api.core.BasicMeta;
 import com.webank.ai.eggroll.api.driver.clustercomm.ClusterComm;
 import com.webank.ai.eggroll.api.storage.Kv;
 import com.webank.ai.eggroll.api.storage.StorageBasic;
+import com.webank.ai.eggroll.core.constant.StringConstants;
 import com.webank.ai.eggroll.core.io.StoreInfo;
+import com.webank.ai.eggroll.core.server.ServerConf;
 import com.webank.ai.eggroll.driver.clustercomm.transfer.manager.RecvBrokerManager;
 import com.webank.ai.eggroll.driver.clustercomm.transfer.utils.TransferPojoUtils;
 import com.webank.ai.eggroll.driver.clustercomm.constant.ClusterCommConstants;
@@ -49,11 +51,17 @@ public class ObjectRecvConsumeLmdbAction extends BaseRecvConsumeAction {
     private RecvBrokerManager recvBrokerManager;
     @Autowired
     private RollKvServiceClient rollKvServiceClient;
+    @Autowired
+    private ServerConf serverConf;
+
     private ClusterComm.TransferMeta finalTransferMeta;
     private ByteString serializedObjectResult;
     private List<ByteString> serializedObjects;
     private long chunkCount = 0;
     private StorageBasic.StorageLocator clusterCommStorageLocator;
+    private StorageBasic.StorageLocator compatibleStorageLocator;
+
+    boolean needCompatible = false;
 
     public ObjectRecvConsumeLmdbAction(TransferBroker transferBroker) {
         super(transferBroker);
@@ -92,6 +100,19 @@ public class ObjectRecvConsumeLmdbAction extends BaseRecvConsumeAction {
 
         // create new table
         rollKvServiceClient.create(createTableInfo);
+
+        needCompatible = Boolean.valueOf(serverConf.getProperty(StringConstants.EGGROLL_COMPATIBLE_ENABLED, "false"));
+        if (needCompatible) {
+            compatibleStorageLocator = clusterCommStorageLocator.toBuilder()
+                    .setName(ClusterCommConstants.COMPATIBLE_OBJECT_STORAGE_NAMESPACE)
+                    .build();
+
+            Kv.CreateTableInfo compatibleCreateTableInfo = createTableInfo.toBuilder()
+                    .setStorageLocator(compatibleStorageLocator)
+                    .build();
+
+            rollKvServiceClient.create(compatibleCreateTableInfo);
+        }
     }
 
     @Override
@@ -115,12 +136,11 @@ public class ObjectRecvConsumeLmdbAction extends BaseRecvConsumeAction {
 
         serializedObjectResult = ByteString.copyFrom(serializedObjects);
 
-        LOGGER.info("[CLUSTERCOMM][SEND][OBJECT][CONSUMER] objectRecvConsumeAction.onComplete. total size: {}, total chunkCount: {}, transferMetaId: {}",
-                serializedObjectResult.size(), chunkCount, transferMetaId);
+        LOGGER.info("[CLUSTERCOMM][SEND][OBJECT][CONSUMER] objectRecvConsumeAction.onComplete. total size: {}, total chunkCount: {}, transferMetaId: {}, needCompatible: {}",
+                serializedObjectResult.size(), chunkCount, transferMetaId, needCompatible);
 
         BasicMeta.ReturnStatus result = null;
 
-        LOGGER.info("objectRecvConsumeAction: table created");
         StoreInfo storeInfo = StoreInfo.fromStorageLocator(clusterCommStorageLocator);
 
         Kv.Operand request = Kv.Operand.newBuilder()
@@ -130,7 +150,10 @@ public class ObjectRecvConsumeLmdbAction extends BaseRecvConsumeAction {
 
         // put operand
         rollKvServiceClient.put(request, storeInfo);
-        LOGGER.info("objectRecvConsumeAction: data put into table");
+        if (needCompatible) {
+            LOGGER.info("[CLUSTERCOMM] putting into clustercomm table for compatibility: {}", request.getKey().toStringUtf8());
+            rollKvServiceClient.put(request, StoreInfo.fromStorageLocator(compatibleStorageLocator));
+        }
 
         String transferMetaId = transferPojoUtils.generateTransferId(finalTransferMeta);
         recvBrokerManager.remove(transferMetaId);

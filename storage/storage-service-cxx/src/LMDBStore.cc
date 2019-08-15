@@ -31,26 +31,12 @@ LMDBStore::~LMDBStore() {
     LOG(INFO) << "[LMDBStore::~LMDBStore] dbDir: " << _dbDir << ", desctructor use count: " << _env.use_count() << endl;
 }
 
-bool LMDBStore::init(string dataDir, StoreInfo& storeInfo) {
-    std::stringstream ss;
+bool LMDBStore::init(string& dbDir, StoreInfo& storeInfo) {
     string delimiter = "/";
     bool result = true;
     std::exception_ptr eptr;
     try {
-        string storeType = LMDB_TEMPORARY;
-        if (boost::iequals(storeInfo.getStoreType(), LMDB)) {
-            storeType = LMDB;
-        }
-
-        cout << storeInfo.toString() << endl;
-
-        ss << dataDir
-           << delimiter << storeType
-           << delimiter << storeInfo.getNameSpace()
-           << delimiter << storeInfo.getTableName()
-           << delimiter << storeInfo.getFragment() << delimiter;
-
-        ss >> this->_dbDir;
+        this->_dbDir = dbDir;
 
         cout << "[LMDBStore::init] dbDir: " << _dbDir << endl;
         LOG(INFO) << "[LMDBStore::init] dbDir: " << _dbDir << endl;
@@ -130,19 +116,19 @@ long LMDBStore::putAll(ServerReader<Operand> *reader) {
     return i;
 }
 
-string_view LMDBStore::putIfAbsent(const Operand *operand) {
+string_view LMDBStore::putIfAbsent(const Operand *operand, string& result) {
     LOG(INFO) << "[LMDBStore::putIfAbsent] dbDir: " << _dbDir << endl;
     MDBRWTransaction rwtxn = _env->getRWTransaction();
-    string_view result;
+    string_view resultView;
     std::exception_ptr eptr;
     try {
         string_view key = operand->key();
-        int rc = rwtxn.get(_dbi, key, result);
+        int rc = rwtxn.get(_dbi, key, resultView);
         if (MDB_NOTFOUND == rc) {
             rwtxn.put(_dbi, key, operand->value());
-            result = operand->value();
+            resultView = operand->value();
         }
-        cout << "putIfAbsent. rc: " << rc << ", result: " << result << endl;
+        cout << "putIfAbsent. rc: " << rc << ", result: " << resultView << endl;
         rwtxn.commit();
     } catch (...) {
         eptr = std::current_exception();
@@ -150,10 +136,10 @@ string_view LMDBStore::putIfAbsent(const Operand *operand) {
     }
     handle_eptr(eptr, __FILE__, __LINE__, this->toString());
 
-    return result;
+    return resultView;
 }
 
-string_view LMDBStore::delOne(const Operand *operand) {
+string_view LMDBStore::delOne(const Operand *operand, string& result) {
     LOG(INFO) << "[LMDBStore::delOne] dbDir: " << _dbDir << endl;
     MDBRWTransaction rwtxn = _env->getRWTransaction();
     string_view oldValue;
@@ -244,14 +230,15 @@ long LMDBStore::count() {
     return result;
 }
 
-string_view LMDBStore::get(const Operand *operand) {
+string_view LMDBStore::get(const Operand *operand, string& result) {
     LOG(INFO) << "[LMDBStore::get] dbDir: " << _dbDir << endl;
-    string_view result;
+    string_view resultView;
     MDBROTransaction rotxn = _env->getROTransaction();
 
     std::exception_ptr eptr;
     try {
-        int found = rotxn.get(_dbi, operand->key(), result);
+        int found = rotxn.get(_dbi, operand->key(), resultView);
+        // result = resultView;
         cout << "found: " << found << ", result: " << result << endl;
     } catch (...) {
         eptr = std::current_exception();
@@ -259,7 +246,7 @@ string_view LMDBStore::get(const Operand *operand) {
     handle_eptr(eptr, __FILE__, __LINE__, this->toString());
 
     // iterateAll();
-    return result;
+    return resultView;
 }
 
 // (a, b]

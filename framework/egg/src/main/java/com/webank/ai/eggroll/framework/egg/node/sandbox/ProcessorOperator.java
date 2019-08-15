@@ -52,7 +52,7 @@ public class ProcessorOperator {
 
     private static final Logger LOGGER = LogManager.getLogger();
 
-    private static final String startCmdScriptTemplate = "#!/bin/bash;source %s/bin/activate;export PYTHONPATH=$PYTHONPATH:%s;python %s -p $1 -d %s >> %s/processor-$1.log 2>&1 &";
+    private static final String startCmdScriptTemplate = "#!/bin/bash;source %s/bin/activate;export PYTHONPATH=$PYTHONPATH:%s;mkdir -p %s;python %s -p $1 -d %s >> %s/processor-$1.log 2>&1 &";
     private static final String stopCmdScriptTemplate = "#!/bin/bash;kill -9 $(lsof -t -i:$1)";
     private static final String checkStatusCmdScriptTemplate = "#!/bin/bash;ps aux | grep processor.py | grep %s | wc -l";
 
@@ -66,7 +66,7 @@ public class ProcessorOperator {
 
         File tempStartScript = File.createTempFile("python-processor-starter-", ".sh");
         tempStartScript.deleteOnExit();
-        String startScriptContent = String.format(startCmdScriptTemplate, venv, pythonPath, processorPath, dataDir, processLogDir).replace(";", "\n");
+        String startScriptContent = String.format(startCmdScriptTemplate, venv, pythonPath, processLogDir, processorPath, dataDir, processLogDir).replace(";", "\n");
 
         try (BufferedWriter bw = new BufferedWriter(new FileWriterWithEncoding(tempStartScript, StandardCharsets.UTF_8))) {
             bw.write(startScriptContent);
