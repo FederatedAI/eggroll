@@ -76,7 +76,6 @@ public class ProcessorManager {
     public ProcessorManager() {
         availableProcessors = Sets.newConcurrentHashSet();
         availableProcessorMirror = Lists.newArrayListWithExpectedSize(PROCESSOR_COUNT);
-        lastPort = START_PORT_NOT_INCLUDED;
         availableProcessorsLock = new Object();
 
         lastScheduledProcessor = new AtomicInteger(0);
@@ -93,6 +92,8 @@ public class ProcessorManager {
         statusPath = Paths.get(statusFileLocation);
 
         START_PORT_NOT_INCLUDED = Integer.valueOf(properties.getProperty("egg.processor.start.port", "50000"));
+        lastPort = START_PORT_NOT_INCLUDED;
+        LOGGER.info("[EGG][PROCESSOR][MANAGER] port starting from {}", START_PORT_NOT_INCLUDED);
 
         if (Files.exists(statusPath)) {
             LOGGER.info("[EGG][PROCESSOR][MANAGER] restoring processors");

@@ -15,8 +15,18 @@
 from typing import Iterable, Sequence
 from itertools import islice, chain
 
+def split_every(original: Iterable, index, chunk_size, skip_chunk):
+    if not chunk_size:
+        chunk_size = 100000
 
-def split_every(original: Iterable, chunk_size):
+    full_iter = iter(original)
+    try:
+        slice_iter = islice(full_iter, (index+skip_chunk)*chunk_size, (index+skip_chunk+1)*chunk_size)
+        return slice_iter
+    except StopIteration as e:
+        return None 
+
+def split_every_yield(original: Iterable, chunk_size):
     if not chunk_size:
         chunk_size = 100000
 

@@ -52,9 +52,9 @@ public class MetaService extends BaseEggRollServer {
                 .addService(storageMetaService)
                 .addService(clusterMetaService);
 
-        boolean needCompatible = Boolean.valueOf(serverConf.getProperty(StringConstants.EGGROLL_COMPATIBLE_ENABLED, StringConstants.FALSE));
+        boolean needCompatibility = Boolean.valueOf(serverConf.getProperty(StringConstants.EGGROLL_COMPATIBLE_ENABLED, StringConstants.FALSE));
 
-        if (needCompatible) {
+        if (needCompatibility) {
             AccessRedirector accessRedirector = new AccessRedirector();
             serverConf
                     .addService(accessRedirector.redirect(storageMetaService,

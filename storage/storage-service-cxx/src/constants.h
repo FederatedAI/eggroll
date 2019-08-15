@@ -22,6 +22,7 @@
 #define NAME_SPACE "name_space"
 #define FRAGMENT "fragment"
 
+#define LEVEL_DB "level_db"
 #define LMDB_TEMPORARY "lmdb_temporary"
 #define IN_MEMORY "in_memory"
 #define LMDB "lmdb"

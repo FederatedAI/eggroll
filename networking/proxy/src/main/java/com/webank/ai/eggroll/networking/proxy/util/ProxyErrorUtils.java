@@ -16,7 +16,7 @@
 
 package com.webank.ai.eggroll.networking.proxy.util;
 
-import com.webank.ai.eggroll.networking.proxy.model.ServerConf;
+import com.webank.ai.eggroll.networking.proxy.model.ProxyServerConf;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -26,9 +26,9 @@ import org.springframework.stereotype.Component;
 
 @Component
 @Scope("prototype")
-public class ErrorUtils {
+public class ProxyErrorUtils {
     @Autowired
-    private ServerConf serverConf;
+    private ProxyServerConf proxyServerConf;
 
     public StatusRuntimeException toGrpcRuntimeException(Throwable throwable) {
         StatusRuntimeException result = null;
@@ -38,7 +38,7 @@ public class ErrorUtils {
         } else {
             result = Status.INTERNAL
                     .withCause(throwable)
-                    .withDescription("" + serverConf.getIp() + ":" + serverConf.getPort() + ": " + ExceptionUtils.getStackTrace(throwable))
+                    .withDescription("" + proxyServerConf.getIp() + ":" + proxyServerConf.getPort() + ": " + ExceptionUtils.getStackTrace(throwable))
                     .asRuntimeException();
         }
 

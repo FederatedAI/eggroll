@@ -24,7 +24,7 @@ import com.google.gson.JsonParser;
 import com.google.gson.stream.JsonReader;
 import com.webank.ai.eggroll.api.core.BasicMeta;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
-import com.webank.ai.eggroll.networking.proxy.model.ServerConf;
+import com.webank.ai.eggroll.networking.proxy.model.ProxyServerConf;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -47,7 +47,7 @@ public class ConfFileBasedFdnRouter implements FdnRouter {
     private static final Logger LOGGER = LogManager.getLogger(ConfFileBasedFdnRouter.class);
     private final BasicMeta.Endpoint emptyEndpoint;
     @Autowired
-    private ServerConf serverConf;
+    private ProxyServerConf proxyServerConf;
     private Map<String, Map<String, List<BasicMeta.Endpoint>>> routeTable;
     private Map<Proxy.Topic, BasicMeta.Endpoint> topicEndpointMapping;
     private BasicMeta.Endpoint.Builder endpointBuilder;
@@ -155,7 +155,7 @@ public class ConfFileBasedFdnRouter implements FdnRouter {
         boolean overridden = false;
 
         // 2nd priority: callback
-        if (callback != null && serverConf.getCoordinator().equals(coordinator)) {
+        if (callback != null && proxyServerConf.getCoordinator().equals(coordinator)) {
             String ip = callback.getIp();
             String hostname = callback.getHostname();
 
@@ -251,7 +251,7 @@ public class ConfFileBasedFdnRouter implements FdnRouter {
                 newRouteTable.put(coordinatorKey, roleTable);
             }
 
-            if (coordinatorKey.equals(serverConf.getCoordinator())) {
+            if (coordinatorKey.equals(proxyServerConf.getCoordinator())) {
                 isIntranet = true;
             }
 

@@ -21,4 +21,5 @@ import org.springframework.stereotype.Component;
 @Component
 public class ClusterCommConstants {
     public static final String OBJECT_STORAGE_NAMESPACE = "__clustercomm__";
+    public static final String COMPATIBLE_OBJECT_STORAGE_NAMESPACE = "__federation__";
 }

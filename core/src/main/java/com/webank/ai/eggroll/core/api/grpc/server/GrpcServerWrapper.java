@@ -25,6 +25,7 @@ import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Component
 @Scope("prototype")
@@ -33,18 +34,18 @@ public class GrpcServerWrapper {
     @Autowired
     private ErrorUtils errorUtils;
 
-    private volatile boolean inited = false;
+    private AtomicBoolean inited = new AtomicBoolean(false);
 
     @PostConstruct
     private void init() {
         if (errorUtils == null) {
             errorUtils = new ErrorUtils();
         }
-        inited = true;
+        inited.compareAndSet(false, true);
     }
 
     public void wrapGrpcServerRunnable(StreamObserver responseObserver, GrpcServerRunnable target) {
-        if (!inited) {
+        if (!inited.get()) {
             init();
         }
         try {

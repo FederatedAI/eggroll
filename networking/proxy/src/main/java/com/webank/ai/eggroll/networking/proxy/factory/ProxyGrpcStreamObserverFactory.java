@@ -17,13 +17,13 @@
 package com.webank.ai.eggroll.networking.proxy.factory;
 
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
+import com.webank.ai.eggroll.core.utils.ToStringUtils;
 import com.webank.ai.eggroll.networking.proxy.grpc.observer.ClientPullResponseStreamObserver;
 import com.webank.ai.eggroll.networking.proxy.grpc.observer.ClientPushResponseStreamObserver;
 import com.webank.ai.eggroll.networking.proxy.grpc.observer.ClientUnaryCallResponseStreamObserver;
 import com.webank.ai.eggroll.networking.proxy.grpc.observer.ServerPushRequestStreamObserver;
 import com.webank.ai.eggroll.networking.proxy.infra.Pipe;
 import com.webank.ai.eggroll.networking.proxy.infra.ResultCallback;
-import com.webank.ai.eggroll.networking.proxy.util.ToStringUtils;
 import io.grpc.stub.StreamObserver;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -33,8 +33,8 @@ import org.springframework.stereotype.Component;
 import java.util.concurrent.CountDownLatch;
 
 @Component
-public class GrpcStreamObserverFactory {
-    private static final Logger LOGGER = LogManager.getLogger(GrpcStreamObserverFactory.class);
+public class ProxyGrpcStreamObserverFactory {
+    private static final Logger LOGGER = LogManager.getLogger(ProxyGrpcStreamObserverFactory.class);
     @Autowired
     private LocalBeanFactory localBeanFactory;
     @Autowired

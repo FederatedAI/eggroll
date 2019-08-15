@@ -17,51 +17,22 @@
 #ifndef STORAGE_SERVICE_CXX_LMDBSTORE_H
 #define STORAGE_SERVICE_CXX_LMDBSTORE_H
 
-#include <algorithm>
-#include <array>
-#include <memory>
-#include <iostream>
-#include <string>
-#include <sstream>
-
-#include <sys/stat.h>
-#include <sys/types.h>
-
-#include <boost/filesystem.hpp>
-#include <boost/algorithm/string.hpp>
-#include <boost/utility/string_view.hpp>
-
-#include <grpcpp/grpcpp.h>
-#include <grpcpp/server_context.h>
-#include <glog/logging.h>
-
+#include "SKVStore.h"
 #include "lmdb++.h"
-#include "properties.h"
-#include "storage.pb.h"
-#include "storage.grpc.pb.h"
 
-#include "StoreInfo.h"
-#include "ExceptionHandler.h"
 #include "third_party/lmdb-safe/lmdb-safe.hh"
 
-using std::string;
-using com::webank::ai::eggroll::api::storage::Operand;
-using com::webank::ai::eggroll::api::storage::Range;
-using grpc::ServerReader;
-using grpc::ServerWriter;
-using eggroll::handle_eptr;
-
-class LMDBStore {
+class LMDBStore : public SKVStore {
 public:
     LMDBStore();
     LMDBStore(const LMDBStore& other);
     ~LMDBStore();
-    bool init(string dataDir, StoreInfo& storeInfo);
+    bool init(string& dbDir, StoreInfo& storeInfo);
     void put(const Operand* operand);
     long putAll(ServerReader<Operand>* reader);
-    string_view putIfAbsent(const Operand* operand);
-    string_view delOne(const Operand* operand);
-    string_view get(const Operand* operand);
+    string_view putIfAbsent(const Operand* operand, string& result);
+    string_view delOne(const Operand* operand, string& result);
+    string_view get(const Operand* operand, string& result);
     void iterate(const Range* range, ServerWriter<Operand>* writer);
     bool destroy();
     long count();

@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS `eggroll_meta`.`dtable` (
   `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
-CREATE UNIQUE INDEX `idx_u_table_n_tn` ON `eggroll_meta`.`dtable` (`namespace`(100), `table_name`(600), `status`(68));
+CREATE UNIQUE INDEX `idx_u_table_n_tn` ON `eggroll_meta`.`dtable` (`namespace`(100), `table_name`(600), `table_type`(68));
 CREATE INDEX `idx_table_np` ON `eggroll_meta`.`dtable` (`namespace`(768));
 CREATE INDEX `idx_table_tn` ON `eggroll_meta`.`dtable` (`table_name`(768));
 CREATE INDEX `idx_table_tt` ON `eggroll_meta`.`dtable` (`table_type`(255));
