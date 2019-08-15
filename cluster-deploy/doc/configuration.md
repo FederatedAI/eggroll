@@ -65,7 +65,7 @@ Exchange | Inter-party communication can use any amount of exchange, included 0 
 **a. Roll**
 
 For each Roll, a database record should be inserted:
-```
+```sql
 INSERT INTO node (ip, port, type, status) values 
 ('${roll_ip}', '${roll_port}', 'ROLL', 'HEALTHY')
 ```
@@ -73,7 +73,7 @@ INSERT INTO node (ip, port, type, status) values
 **b. Processor**
 
 For each Processor, a database record should be inserted:
-```
+```sql
 INSERT INTO node (ip, port, type, status) values 
 ('${processor_ip}', '${processor_port}', 'EGG', 'HEALTHY')
 ```
@@ -81,7 +81,7 @@ INSERT INTO node (ip, port, type, status) values
 **c. Storage-Service**
 
 For each Storage-Service, a database record should be inserted:
-```
+```sql
 INSERT INTO node (ip, port, type, status) values 
 ('${storage_service_ip}', '${storage_service_port}', 'STORAGE', 'HEALTHY')
 ```
@@ -93,7 +93,7 @@ No database record insertion is need for Clustercomm module at this stage.
 **e. Proxy**
 
 For each Proxy, a database record should be inserted:
-```
+```sql
 INSERT INTO node (ip, port, type, status) values 
 ('${proxy_ip}', '${proxy_port}', 'PROXY', 'HEALTHY')
 ```
@@ -128,28 +128,28 @@ ${partyId}        | clustercomm ip and port of own party | 127.0.0.yy / 9394
 
 example:
 
-```
+```json
 {
   "route_table": {
     "default": {
       "default": [
         {
-          "ip": "127.0.0.1",
-          "port": 9370
+          "ip": "127.0.0.1",  # ip address of exchange module
+          "port": 9370        # port of roll exchange module
         }
       ]
     },
     "10000": {
       "eggroll": [
         {
-          "ip": "127.0.0.1",
-          "port": 9370
+          "ip": "127.0.0.1",  # ip address of clustercomm module
+          "port": 9370        # port of roll clustercomm module
         }
       ]
     }
    },
   "permission": {
-    "default_allow": true
+    "default_allow": true     # default true
   }
 }
 ```
@@ -185,7 +185,7 @@ DATADIR                |data dir           | must be the same with processor's d
 ## 2.6. API
 APIs are interfaces exposed by the whole running architecture. Algorithm engineers / scientists can utilize Eggroll framework via API.
 ### 2.6.1 api/eggroll/conf/server_conf.json
-```
+```json
 {
   "servers": {
     "roll": {
