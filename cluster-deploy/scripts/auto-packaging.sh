@@ -9,7 +9,6 @@ base_dir=$eggroll_dir
 output_dir=$eggroll_dir/cluster-deploy/example-dir-tree
 
 cd $cwd
-source ./configurations.sh
 mkdir -p $output_dir/api/eggroll/
 mkdir -p $output_dir/packages
 
