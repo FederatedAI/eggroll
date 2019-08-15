@@ -49,7 +49,8 @@ RocksDBStore::~RocksDBStore() {
 }
 
 void printStatus(Status &s, const string& prefix) {
-    cout << prefix << ": code: " << s.code() << ", subcode: " << s.subcode() << endl;
+    cout << prefix << ": code: " << s.code() << ", subcode: " << s.subcode() << ", reason:" << s.ToString() << endl;
+    LOG(INFO) << prefix << ": code: " << s.code() << ", subcode: " << s.subcode() << ", reason:" << s.ToString() << endl;
 }
 
 bool RocksDBStore::init(string& dbDir, StoreInfo& storeInfo) {

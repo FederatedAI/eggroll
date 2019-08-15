@@ -396,8 +396,6 @@ public class RollProcessServiceImpl extends ProcessServiceGrpc.ProcessServiceImp
                 result = ((Processor.BinaryProcess) request).getSession();
             }
 
-            LOGGER.info("MW: session in request: {}", toStringUtils.toOneLineString(result));
-
             return result;
         }
 
