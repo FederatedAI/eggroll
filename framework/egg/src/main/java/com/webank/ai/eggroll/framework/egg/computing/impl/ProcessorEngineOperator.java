@@ -89,7 +89,8 @@ public class ProcessorEngineOperator implements EngineOperator {
         if (inited.get()) {
             return;
         }
-        String startPortString = propertyGetter.getProperty(confPrefix + START_PORT, "50000");
+
+        String startPortString = propertyGetter.getPropertyWithTemporarySource(confPrefix + START_PORT, "50000", serverConf.getProperties());
         lastPort = new AtomicInteger(Integer.valueOf(startPortString));
         maxPort = lastPort.get() + 5000;
         inited.compareAndSet(false,true);
