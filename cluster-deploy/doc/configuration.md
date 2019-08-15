@@ -29,7 +29,7 @@ meta.service.port |meta-service port | defaults to 8590
 eggroll.compatible.enabled |compatibility enabled | true 
 
 ## 2.2. Meta-Service
-Meta-Service module stores metadata required by Eggroll.
+Meta-Service module stores metadata required by this arch.
 ### 2.2.1. applicationContext-meta-service.xml
 No modification is required.
 ### 2.2.2. log4j2.properties
@@ -45,12 +45,12 @@ jdbc.username |database username | modify as needed
 jdbc.password |database password | modify as needed 
 target.project |target project. Required by mybatis-generator | fixed to meta-service 
 eggroll.compatible.enabled |compatibility enabled | true 
-### 2.2.5. Database Configurations
-#### 2.2.5.1. Database and Tables Creation
+### 2.2.4. Database Configurations
+#### 2.2.4.1. Database and Tables Creation
 Please run the following SQL in this project:
 framework/meta-service/src/main/resources/create-meta-service.sql
 
-#### 2.2.5.2. Adding Node Infomation
+#### 2.2.4.2. Adding Node Infomation
 To deploy Eggroll in a distributed environment (i.e. cluster deploy), following modules are minimum for **1** party:
 
 Module | Minimum requirement | Comments
@@ -208,15 +208,15 @@ APIs are interfaces exposed by the whole running architecture. Algorithm enginee
 
 Egg used to execute user-defined functions.
 
-### 2.6.1. applicationContext-egg.xml
+### 2.7.1. applicationContext-egg.xml
 
 No modification is required.
 
-### 2.6.2. log4j2.properties
+### 2.7.2. log4j2.properties
 
 No modification is required.
 
-### 2.6.2 egg/conf/egg.properties
+### 2.7.2 egg/conf/egg.properties
 
 | Item                                          | Meaning                          | Example / Value                                 |
 | --------------------------------------------- | -------------------------------- | ----------------------------------------------- |
