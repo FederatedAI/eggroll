@@ -1,6 +1,6 @@
 #!/bin/bash                                                                                                                                                                                           
 
-user=app
+user=$username
 dir=$install_dir
 mysqldir=$mysql_install_dir
 javadir=$jdk_install_path
