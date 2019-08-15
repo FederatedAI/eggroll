@@ -216,7 +216,7 @@ No modification is required.
 
 No modification is required.
 
-### 2.7.2 egg/conf/egg.properties
+### 2.7.3 egg/conf/egg.properties
 
 | Item                                          | Meaning                          | Example / Value                                 |
 | --------------------------------------------- | -------------------------------- | ----------------------------------------------- |
