@@ -17,8 +17,7 @@ The following is the server configuration information:
 | **Configuration**      | 16 core / 32G memory / 300G hard disk / 50M bandwidth        |
 | **Operating System**   | Version: CentOS Linux release 7.2                            |
 | **Dependency Package** | yum source gcc gcc-c++ make autoconfig openssl-devel supervisor gmp-devel mpfr-devel libmpc-devel libaio numactl autoconf automake libtool libffi-dev |
-| **Users**              | User: app owner:apps                                         |
-| **File System**        | 1. The 300G hard disk is mounted to the /data directory.                                                                                2. Created /data/projects directory, projects directory belongs to app:apps |
+| **File System**        | 1. The 300G hard disk is mounted to the /data directory.                                                                                2. Created /data/projects directory, projects directory belongs to deploy user. |
 
 <!--Each server in the same cluster should be able to SSH each other and communicate with each other.-->
 
@@ -34,7 +33,7 @@ The following is the server configuration information:
 
 ## 2.      Project Deployment
 
-*<u>Note: The default installation directory is /data/projects/, and the execution user is app. It is modified according to the actual situation during installation.</u>*
+*<u>Note: The default installation directory is /data/projects/. It is modified according to the actual situation during installation.</u>*
 
 ### 2.1. Project Pull
 
@@ -52,6 +51,8 @@ Go into the project directory and do dependency packaging:
 ```bash
 cd Eggroll
 mvn clean package -DskipTests
+cd cluster-deploy/scripts
+sh auto-packaging.sh
 ```
 
 ### 2.3. Modify Configuration File
@@ -70,10 +71,10 @@ There are two ways of deployment, please choose according to the actual deployme
 
 This deployment is based on SSH secret-free. Before executing the script, make sure that the executing node can log in to the target IP to be deployed  secret-free.
 
-1. Modify the configurations.sh configuration file as the following meaning：
+1. Modify the configurations.sh configuration file in directory Eggroll/cluster-deploy/scripts as the following meaning：
 
 ```bash
-user=$username					   (the user,egg app)
+user=$username					   (the username of deploy user)
 dir=$install_directory_path			(exist path eggroll prepare to install)
 mysqldir=$mysql_install_path		(mysql install absolute path)
 javadir=$jdk_install_path			(java_home absolute path)
@@ -107,10 +108,10 @@ processor_count=16
 
 <!--Every coincidence with '$' should be replaced with the actual value-->
 
-If you are deploying two clusters, add a different party_id configuration on configurations.sh as follows:
+If you are deploying two clusters, add a different party_id configuration on configurations.sh in directory Eggroll/cluster-deploy/scripts as follows:
 
 ```bash
-user=$username					   (the user,egg app)
+user=$username					   (the username of deploy user)
 dir=$install_directory_path			(exist path eggroll prepare to install)
 mysqldir=$mysql_install_path		(mysql install absolute path)
 javadir=$jdk_install_path			(java_home absolute path)
@@ -169,10 +170,10 @@ sh auto-module-deploy.sh $module1_name $module2_name
 
 This is done by executing scripts on localhost-ip and supporting only a single-node cluster at a time.
 
-1. Modify the single-configurations.sh configuration file as the following meaning：
+1. Modify the single-configurations.sh configuration file in directory Eggroll/cluster-deploy/scripts as the following meaning：
 
 ```bash
-user=$username					   (the user,egg app)
+user=$username					   (the username of deploy user)
 dir=$install_directory_path			(exist path eggroll prepare to install)
 mysqldir=$mysql_install_path		(mysql install absolute path)
 javadir=$jdk_install_path			(java_home absolute path)
@@ -202,7 +203,6 @@ processor_count=16
 2. Executing the script in turn:
 
 ```bash
-sh auto-packaging.sh
 sh auto-single-deploy.sh all
 ```
 
@@ -220,7 +220,7 @@ After the execution, you can check whether the configuration of the correspondin
 
 ## 4.     Start And Stop Service
 
-Use ssh to log in to each node with **app user**. Go to the install directory and run the following command to start services:
+Use ssh to log in to each node with **deploy user**. Go to the install directory and run the following command to start services:
 
 ```bash
 sh services.sh all start						  --start all module service on this server
@@ -232,4 +232,3 @@ And you can replace 'start' with 'status' to see the status of the process, repl
 ```bash
 sh services.sh all|$module_name start|stop|restart|status
 ```
-
