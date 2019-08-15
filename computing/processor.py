@@ -31,7 +31,7 @@ import hashlib
 import threading
 import traceback
 from multiprocessing import Process,Queue
-from eggroll.computing.storage_adapters  import *
+from eggroll.computing.storage_adapters import LmdbAdapter, RocksdbAdapter
 
 
 _ONE_DAY_IN_SECONDS = 60 * 60 * 24
