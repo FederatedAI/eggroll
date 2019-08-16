@@ -496,6 +496,14 @@ class _DTable(object):
         self._partitions = partitions
         self.schema = {}
         self._in_place_computing = in_place_computing
+        self.gc_enable = True
+
+    def __del__(self):
+        if self.gc_enable == False or self._type is not StoreType.IN_MEMORY:
+            return
+        if self._name == 'fragments' or self._name == '__clustercomm__' or self._name == '__status__':
+            return
+        self.destroy()
 
     def __str__(self):
         return "storage_type: {}, namespace: {}, name: {}, partitions: {}, in_place_computing: {}".format(self._type, self._namespace, self._name,
@@ -511,6 +519,14 @@ class _DTable(object):
         self._in_place_computing = is_in_place_computing
         return self
 
+    def set_gc_enable(self):
+        self.gc_enable = True
+
+    def set_gc_disable(self):
+        self.gc_enable = False
+
+    def copy(self):
+        return self.mapValues(lambda v: v)
 
     def _get_env_for_partition(self, p: int, write=False):
         return _get_env(self._type, self._namespace, self._name, str(p), write=write)
@@ -601,8 +617,13 @@ class _DTable(object):
         _table_key = ".".join([self._type, self._namespace, self._name])
         Standalone.get_instance().meta_table.delete(_table_key)
         _path = _get_db_path(self._type, self._namespace, self._name)
-        import shutil
-        shutil.rmtree(_path)
+        file_lock = str(file_utils.get_project_base_directory() + "/data/" + "_".join(
+            [self._type, self._namespace, self._name]) + ".lock")
+        if not os.path.exists(file_lock):
+            fd = os.open(file_lock, os.O_CREAT)
+            shutil.rmtree(_path, ignore_errors=True)
+            if os.path.exists(file_lock):
+                os.remove(file_lock)
 
     def collect(self, min_chunk_size=0, use_serialize=True):
         iterators = []

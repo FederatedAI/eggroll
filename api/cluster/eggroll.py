@@ -101,6 +101,15 @@ class _DTable(object):
         self._partitions = partitions
         self.schema = {}
         self._in_place_computing = in_place_computing
+        self.gc_enable = True
+
+    def __del__(self):
+        if not self.gc_enable or self._type is not storage_basic_pb2.IN_MEMORY:
+            return
+
+        if self._name == 'fragments' or self._name == '__clustercomm__' or self._name == '__status__':
+            return
+        _EggRoll.get_instance().destroy(self)
 
     def __str__(self):
         return "storage_type: {}, namespace: {}, name: {}, partitions: {}, in_place_computing: {}".format(self._type,
@@ -116,9 +125,17 @@ class _DTable(object):
         self._in_place_computing = is_in_place_computing
         return self
 
+    def set_gc_enable(self):
+        self.gc_enable = True
+
+    def set_gc_disable(self):
+        self.gc_enable = False
+
     '''
     Storage apis
     '''
+    def copy(self):
+        return self.mapValues(lambda v: v)
 
     def save_as(self, name, namespace, partition=None, use_serialize=True, persistent=True, persistent_engine=StoreType.LMDB):
         if partition is None:
