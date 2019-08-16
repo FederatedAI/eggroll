@@ -51,7 +51,7 @@ FILES=$(foreach dir,$(DIR),$(wildcard $(dir)/*.c))
 
 SRCS = $(wildcard *.cc)
 OBJS = $(patsubst %.c,%.o,$(FILES))
-VERSION = 0.3
+VERSION = 1.1
 
 vpath %.proto $(PROTOS_PATH)
 vpath %.cc ./src
