@@ -160,6 +160,7 @@ class ClusterCommRuntime(object):
                     '''
                     If it is a table, send the meta right away.
                     '''
+                    obj.set_gc_disable()
                     desc = cluster_comm_pb2.TransferDataDesc(transferDataType=cluster_comm_pb2.DTABLE,
                                                            storageLocator=self.__get_locator(obj),
                                                            taggedVariableName=_serdes.serialize(_tagged_key))

@@ -116,6 +116,7 @@ class ClusterCommRuntime(object):
                                                         _partyId)
                 _status_table = _get_meta_table(STATUS_TABLE_NAME, self.job_id)
                 if isinstance(obj, _DTable):
+                    obj.set_gc_disable()
                     _status_table.put(_tagged_key, (obj._type, obj._name, obj._namespace, obj._partitions))
                 else:
                     _table = _get_meta_table(OBJECT_STORAGE_NAME, self.job_id)
