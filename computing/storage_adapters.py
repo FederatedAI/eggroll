@@ -188,17 +188,14 @@ class RocksdbWriteBatch(SkvWriteBatch):
         self.key = k
         self.value = v
         self.batch.put(k, v)
-        if self.batch.count() > self.chunk_size:
-            self.write()
-            self.batch.clear()
+		self.write()
     
     def delete(self, k, v):
         self.adapter.db.delete(k, v)
 
     def write(self):
         self.adapter.db.write(self.batch)
-        it = self.adapter.db.iteritems()
-        it.seek_to_first()
+        self.batch.clear()
 
     def close(self):
         if self.batch:
