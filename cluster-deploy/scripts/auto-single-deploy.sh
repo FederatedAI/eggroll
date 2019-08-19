@@ -199,6 +199,7 @@ egg() {
 	sed -i "s#bootstrap.script=.*#bootstrap.script=${dir}/api/eggroll/framework/egg/src/main/resources/processor-starter.sh#g" ./egg/conf/egg.properties
 	sed -i "s#start.port=.*#start.port=${processor_port}#g" ./egg/conf/egg.properties
 	sed -i "s#processor.venv=.*#processor.venv=${venvdir}#g" ./egg/conf/egg.properties
+	sed -i "s#processor.python-path=.*#processor.python-path=${dir}/api#g" ./egg/conf/egg.properties
 	sed -i "s#processor.engine-path=.*#processor.engine-path=${dir}/api/eggroll/computing/processor.py#g" ./egg/conf/egg.properties
 	sed -i "s#data-dir=.*#data-dir=${dir}/data-dir#g" ./egg/conf/egg.properties
 	sed -i "s#processor.logs-dir=.*#processor.logs-dir=${dir}/logs/processor#g" ./egg/conf/egg.properties
