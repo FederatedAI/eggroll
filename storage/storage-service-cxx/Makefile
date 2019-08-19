@@ -26,7 +26,7 @@ LDFLAGS += -L./third_party/lib -L/usr/local/lib -lprotobuf -lgrpc++ -lgrpc\
            -lgrpc++_reflection\
            -ldl
 else
-LDFLAGS += -L/usr/local/lib -lprotobuf -lgrpc++ -lgrpc\
+LDFLAGS += -L./third_party/lib -L/usr/local/lib -lprotobuf -lgrpc++ -lgrpc\
            -Wl,--no-as-needed -lgrpc++_reflection -Wl,--as-needed\
            -ldl
 endif
@@ -51,7 +51,7 @@ FILES=$(foreach dir,$(DIR),$(wildcard $(dir)/*.c))
 
 SRCS = $(wildcard *.cc)
 OBJS = $(patsubst %.c,%.o,$(FILES))
-VERSION = 0.3
+VERSION = 1.1
 
 vpath %.proto $(PROTOS_PATH)
 vpath %.cc ./src

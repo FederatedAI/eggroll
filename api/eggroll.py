@@ -29,18 +29,16 @@ def init(session_id=None, mode: WorkMode = WorkMode.STANDALONE, server_conf_path
         return
     if not session_id:
         session_id = str(uuid.uuid1())
-        LoggerFactory.setDirectory()
-    else:
-        LoggerFactory.setDirectory(os.path.join(file_utils.get_project_base_directory(), 'logs', session_id))
+    LoggerFactory.setDirectory(os.path.join(file_utils.get_project_base_directory(), 'logs', session_id))
 
     if not job_id:
         job_id = session_id
     RuntimeInstance.MODE = mode
 
-    #eggroll_session = EggrollSession(naming_policy=naming_policy)
+    eggroll_session = EggrollSession(session_id=session_id, naming_policy=naming_policy)
     if mode == WorkMode.STANDALONE:
         from eggroll.api.standalone.eggroll import Standalone
-        RuntimeInstance.EGGROLL = Standalone(job_id=job_id, eggroll_session=eggroll_session)
+        RuntimeInstance.EGGROLL = Standalone(eggroll_session=eggroll_session)
     elif mode == WorkMode.CLUSTER:
         from eggroll.api.cluster.eggroll import _EggRoll
         from eggroll.api.cluster.eggroll import init as c_init

@@ -49,7 +49,8 @@ RocksDBStore::~RocksDBStore() {
 }
 
 void printStatus(Status &s, const string& prefix) {
-    cout << prefix << ": code: " << s.code() << ", subcode: " << s.subcode() << endl;
+    cout << prefix << ": code: " << s.code() << ", subcode: " << s.subcode() << ", reason:" << s.ToString() << endl;
+    LOG(INFO) << prefix << ": code: " << s.code() << ", subcode: " << s.subcode() << ", reason:" << s.ToString() << endl;
 }
 
 bool RocksDBStore::init(string& dbDir, StoreInfo& storeInfo) {
@@ -238,7 +239,8 @@ void RocksDBStore::iterate(const Range *range, ServerWriter<Operand> *writer) {
         string start = range->start();
         string end = range->end();
         long threshold = range->minchunksize() > 0 ? range->minchunksize() : PAYLOAD_THREASHOLD;
-        string_view keyView, valueView;
+        rocksdb::Slice keySlice, valueSlice;
+        rocksdb::Slice endSlice(end);
         bool locateStart = !start.empty();
         bool checkEnd = !end.empty();
         Operand operand;
@@ -252,19 +254,19 @@ void RocksDBStore::iterate(const Range *range, ServerWriter<Operand> *writer) {
             it->SeekToFirst();
         }
         while (it->Valid()) {
-            keyView = it->key().ToString();
+            keySlice = it->key();
 
-            if (bytesCount >= threshold || (checkEnd && keyView.compare(end) > 0)) {
+            if (bytesCount >= threshold || (checkEnd && keySlice.compare(endSlice) > 0)) {
                 break;
             }
-            valueView = it->value().ToString();
+            valueSlice = it->value();
 
-            operand.set_key(keyView.data(), keyView.size());
-            operand.set_value(valueView.data(), valueView.size());
+            operand.set_key(keySlice.data(), keySlice.size());
+            operand.set_value(valueSlice.data(), valueSlice.size());
 
             writer->Write(operand);
 
-            bytesCount += keyView.size() + valueView.size();
+            bytesCount += keySlice.size() + valueSlice.size();
             ++count;
             it->Next();
         }

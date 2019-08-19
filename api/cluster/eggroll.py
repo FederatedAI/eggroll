@@ -77,13 +77,13 @@ def _get_meta(_table):
     return ('store_type', _table._type), ('table_name', _table._name), ('name_space', _table._namespace)
 
 
-def to_pb_store_type(type : StoreType, persistent=False):
+def to_pb_store_type(_type : StoreType, persistent=False):
     result = None
     if not persistent:
         result = storage_basic_pb2.IN_MEMORY
-    elif type == StoreType.LMDB:
+    elif _type == StoreType.LMDB:
         result = storage_basic_pb2.LMDB
-    elif type == StoreType.LEVEL_DB:
+    elif _type == StoreType.LEVEL_DB:
         result = storage_basic_pb2.LEVEL_DB
     return result
 
@@ -331,9 +331,9 @@ class _EggRoll(object):
         if name is None:
             name = str(uuid.uuid1())
 
-        type = to_pb_store_type(persistent_engine, persistent)
+        _type = to_pb_store_type(persistent_engine, persistent)
 
-        storage_locator = storage_basic_pb2.StorageLocator(type=type, namespace=namespace, name=name)
+        storage_locator = storage_basic_pb2.StorageLocator(type=_type, namespace=namespace, name=name)
         create_table_info = kv_pb2.CreateTableInfo(storageLocator=storage_locator, fragmentCount=partition)
         _table = self._create_table(create_table_info)
         _table.set_in_place_computing(in_place_computing)
@@ -535,8 +535,8 @@ class _EggRoll(object):
     def flatMap(self, _table: _DTable, func):
         return self.__do_unary_process_and_create_table(table=_table, user_func=func, stub_func=self.proc_stub.flatMap)
 
-    def __create_storage_locator(self, namespace, name, type):
-        return storage_basic_pb2.StorageLocator(namespace=namespace, name=name, type=type)
+    def __create_storage_locator(self, namespace, name, _type):
+        return storage_basic_pb2.StorageLocator(namespace=namespace, name=name, type=_type)
 
     def __create_storage_locator_from_dtable(self, _table: _DTable):
         return self.__create_storage_locator(_table._namespace, _table._name, _table._type)
