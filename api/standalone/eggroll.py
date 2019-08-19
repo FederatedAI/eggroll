@@ -19,7 +19,6 @@ import pickle as c_pickle
 from eggroll.api import StoreType
 from eggroll.api.utils import cloudpickle as f_pickle, cache_utils, file_utils
 from eggroll.api.utils.core import string_to_bytes, bytes_to_string
-from eggroll.api.core import EggRollContext
 from heapq import heapify, heappop, heapreplace
 from typing import Iterable
 import uuid
@@ -43,25 +42,34 @@ DELIMETER_ENCODED = DELIMETER.encode()
 class Standalone:
     __instance = None
 
-    def __init__(self, job_id=None, eggroll_context=None):
+    def __init__(self, eggroll_session):
         self.data_dir = os.path.join(file_utils.get_project_base_directory(), 'data')
-        self.job_id = str(uuid.uuid1()) if job_id is None else "{}".format(job_id)
+        self.session_id = eggroll_session.get_session_id()
         self.meta_table = _DTable('__META__', '__META__', 'fragments', 10)
         self.pool = Executor()
         Standalone.__instance = self
-        if not eggroll_context:
-            eggroll_context = EggRollContext()
-        self.eggroll_context = eggroll_context
+
+        self.eggroll_session = eggroll_session
 
         self.unique_id_template = '_EggRoll_%s_%s_%s_%.20f_%d'
 
-        # todo: move to EggRollContext
+        # todo: move to eggrollSession
         try:
             self.host_name = socket.gethostname()
             self.host_ip = socket.gethostbyname(self.host_name)
         except socket.gaierror as e:
             self.host_name = 'unknown'
             self.host_ip = 'unknown'
+
+    def get_eggroll_session(self):
+        return self.eggroll_session
+
+    def stop(self):
+        self.session_stub.stopSession(self.eggroll_session.to_protobuf())
+        self.eggroll_session.run_cleanup_tasks()
+        self.instance = None
+        self.channel.close()
+
 
     def table(self, name, namespace, partition=1, create_if_missing=True, error_if_exist=False, persistent=True, in_place_computing=False):
         __type = StoreType.LMDB.value if persistent else StoreType.IN_MEMORY.value
@@ -81,7 +89,7 @@ class Standalone:
         if name is None:
             name = str(uuid.uuid1())
         if namespace is None:
-            namespace = self.job_id
+            namespace = self.session_id
         __table = self.table(name, namespace, partition, persistent=persistent, in_place_computing=in_place_computing)
         __table.put_all(_iter, chunk_size=chunk_size)
         return __table
@@ -105,17 +113,13 @@ class Standalone:
             shutil.rmtree(os.sep.join([_namespace_dir, table]))
 
     def generateUniqueId(self):
-        return self.unique_id_template % (self.job_id, self.host_name, self.host_ip, time.time(), random.randint(10000, 99999))
+        return self.unique_id_template % (self.session_id, self.host_name, self.host_ip, time.time(), random.randint(10000, 99999))
 
     @staticmethod
     def get_instance():
         if Standalone.__instance is None:
             raise EnvironmentError("eggroll should initialize before use")
         return Standalone.__instance
-
-    def get_context(self):
-        return self.eggroll_context
-
 
 def serialize(_obj):
     return c_pickle.dumps(_obj)
@@ -167,7 +171,7 @@ class _ProcessConf:
 
     @staticmethod
     def get_default():
-        return _ProcessConf(Standalone.get_instance().get_context().get_naming_policy().value)
+       return _ProcessConf(Standalone.get_instance().get_eggroll_session().get_naming_policy().value)
 
 class _Operand:
     def __init__(self, _type, namespace, name, partition):
@@ -695,11 +699,11 @@ class _DTable(object):
 
     @staticmethod
     def _repartition(dtable, partition_num, repartition_policy=None):
-        return dtable.save_as(str(uuid.uuid1()), Standalone.get_instance().job_id, partition_num)
+        return dtable.save_as(str(uuid.uuid1()), Standalone.get_instance().session_id, partition_num)
 
     def _submit_to_pool(self, func, _do_func):
         func_id, pickled_function = self._serialize_and_hash_func(func)
-        _task_info = _TaskInfo(Standalone.get_instance().job_id, func_id, pickled_function, self.get_in_place_computing())
+        _task_info = _TaskInfo(Standalone.get_instance().session_id, func_id, pickled_function, self.get_in_place_computing())
         results = []
         for p in range(self._partitions):
             _op = _Operand(self._type, self._namespace, self._name, p)
@@ -743,16 +747,16 @@ class _DTable(object):
         return Standalone.get_instance().table(result._name, result._namespace, self._partitions, persistent=False)
 
     def join(self, other, func):
-        _job_id = Standalone.get_instance().job_id
+        _session_id = Standalone.get_instance().session_id
         if other._partitions != self._partitions:
             if other.count() > self.count():
-                return self.save_as(str(uuid.uuid1()), _job_id, partition=other._partitions).join(other,
+                return self.save_as(str(uuid.uuid1()), _session_id, partition=other._partitions).join(other,
                                                                                                   func)
             else:
-                return self.join(other.save_as(str(uuid.uuid1()), _job_id, partition=self._partitions),
+                return self.join(other.save_as(str(uuid.uuid1()), _session_id, partition=self._partitions),
                                  func)
         func_id, pickled_function = self._serialize_and_hash_func(func)
-        _task_info = _TaskInfo(_job_id, func_id, pickled_function, self.get_in_place_computing())
+        _task_info = _TaskInfo(_session_id, func_id, pickled_function, self.get_in_place_computing())
         results = []
         for p in range(self._partitions):
             _left = _Operand(self._type, self._namespace, self._name, p)
@@ -771,14 +775,14 @@ class _DTable(object):
         return Standalone.get_instance().table(result._name, result._namespace, self._partitions, persistent=False)
 
     def subtractByKey(self, other):
-        _job_id = Standalone.get_instance().job_id
+        _session_id = Standalone.get_instance().session_id
         if other._partitions != self._partitions:
             if other.count() > self.count():
-                return self.save_as(str(uuid.uuid1()), _job_id, partition=other._partitions).subtractByKey(other)
+                return self.save_as(str(uuid.uuid1()), _session_id, partition=other._partitions).subtractByKey(other)
             else:
-                return self.union(other.save_as(str(uuid.uuid1()), _job_id, partition=self._partitions))
+                return self.union(other.save_as(str(uuid.uuid1()), _session_id, partition=self._partitions))
         func_id, pickled_function = self._serialize_and_hash_func(self._namespace + '.' + self._name + '-' + other._namespace + '.' + other._name)
-        _task_info = _TaskInfo(_job_id, func_id, pickled_function, self.get_in_place_computing())
+        _task_info = _TaskInfo(_session_id, func_id, pickled_function, self.get_in_place_computing())
         results = []
         for p in range(self._partitions):
             _left = _Operand(self._type, self._namespace, self._name, p)
@@ -797,16 +801,16 @@ class _DTable(object):
         return Standalone.get_instance().table(result._name, result._namespace, self._partitions, persistent=False)
 
     def union(self, other, func=lambda v1, v2 : v1):
-        _job_id = Standalone.get_instance().job_id
+        _session_id = Standalone.get_instance().session_id
         if other._partitions != self._partitions:
             if other.count() > self.count():
-                return self.save_as(str(uuid.uuid1()), _job_id, partition=other._partitions).union(other,
+                return self.save_as(str(uuid.uuid1()), _session_id, partition=other._partitions).union(other,
                                                                                                   func)
             else:
-                return self.union(other.save_as(str(uuid.uuid1()), _job_id, partition=self._partitions),
+                return self.union(other.save_as(str(uuid.uuid1()), _session_id, partition=self._partitions),
                                  func)
         func_id, pickled_function = self._serialize_and_hash_func(func)
-        _task_info = _TaskInfo(_job_id, func_id, pickled_function, self.get_in_place_computing())
+        _task_info = _TaskInfo(_session_id, func_id, pickled_function, self.get_in_place_computing())
         results = []
         for p in range(self._partitions):
             _left = _Operand(self._type, self._namespace, self._name, p)
