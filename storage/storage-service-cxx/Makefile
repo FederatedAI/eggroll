@@ -26,7 +26,7 @@ LDFLAGS += -L./third_party/lib -L/usr/local/lib -lprotobuf -lgrpc++ -lgrpc\
            -lgrpc++_reflection\
            -ldl
 else
-LDFLAGS += -L/usr/local/lib -lprotobuf -lgrpc++ -lgrpc\
+LDFLAGS += -L./third_party/lib -L/usr/local/lib -lprotobuf -lgrpc++ -lgrpc\
            -Wl,--no-as-needed -lgrpc++_reflection -Wl,--as-needed\
            -ldl
 endif
