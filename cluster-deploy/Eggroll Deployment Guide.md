@@ -16,7 +16,7 @@ The following is the server configuration information:
 | ---------------------- | ------------------------------------------------------------ |
 | **Configuration**      | 16 core / 32G memory / 300G hard disk / 50M bandwidth        |
 | **Operating System**   | Version: CentOS Linux release 7.2                            |
-| **Dependency Package** | yum source gcc gcc-c++ make autoconfig openssl-devel supervisor gmp-devel mpfr-devel libmpc-devel libaio numactl autoconf automake libtool libffi-dev |
+| **Dependency Package** | yum source gcc gcc-c++ make autoconfig openssl-devel supervisor gmp-devel mpfr-devel libmpc-devel libaio numactl autoconf automake libtool libffi-dev snappy snappy-devel zlib zlib-devel bzip2 bzip2-devel lz4-devel libasan |
 | **File System**        | 1. The 300G hard disk is mounted to the /data directory.                                                                                2. Created /data/projects directory, projects directory belongs to deploy user. |
 
 <!--Each server in the same cluster should be able to SSH each other and communicate with each other.-->
@@ -53,6 +53,8 @@ cd Eggroll
 mvn clean package -DskipTests
 cd cluster-deploy/scripts
 sh auto-packaging.sh
+wget https://webank-ai-1251170195.cos.ap-guangzhou.myqcloud.com/third_party_eggrollv1.tar.gz
+tar -xzvf third_party_eggrollv1.tar.gz -C storage/storage-service-cxx
 ```
 
 ### 2.3. Modify Configuration File
