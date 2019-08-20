@@ -1,6 +1,6 @@
 #!/bin/bash
 
-version=0.3
+version=1.1
 cwd=`pwd`
 
 cd ../../
