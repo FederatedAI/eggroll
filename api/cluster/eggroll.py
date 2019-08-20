@@ -104,12 +104,12 @@ class _DTable(object):
         self.gc_enable = True
 
     def __del__(self):
-        if not self.gc_enable or self._type is not storage_basic_pb2.IN_MEMORY:
+        if not self.gc_enable or self._type != 'IN_MEMORY':
             return
-
         if self._name == 'fragments' or self._name == '__clustercomm__' or self._name == '__status__':
             return
-        _EggRoll.get_instance().destroy(self)
+        if not _EggRoll.get_instance().is_stopped():
+            _EggRoll.get_instance().destroy(self)
 
     def __str__(self):
         return "storage_type: {}, namespace: {}, name: {}, partitions: {}, in_place_computing: {}".format(self._type,
@@ -311,6 +311,9 @@ class _EggRoll(object):
         self.eggroll_session.run_cleanup_tasks()
         _EggRoll.instance = None
         self.channel.close()
+
+    def is_stopped(self):
+        return (self.instance is None)
 
     def table(self, name, namespace, partition=1,
               create_if_missing=True, error_if_exist=False,

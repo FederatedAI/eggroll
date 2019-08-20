@@ -70,6 +70,8 @@ class Standalone:
         self.instance = None
         self.channel.close()
 
+    def is_stopped(self):
+        return (self.instance is None)
 
     def table(self, name, namespace, partition=1, create_if_missing=True, error_if_exist=False, persistent=True, in_place_computing=False):
         __type = StoreType.LMDB.value if persistent else StoreType.IN_MEMORY.value
@@ -503,11 +505,12 @@ class _DTable(object):
         self.gc_enable = True
 
     def __del__(self):
-        if self.gc_enable == False or self._type is not StoreType.IN_MEMORY:
+        if not self.gc_enable or self._type != 'IN_MEMORY':
             return
         if self._name == 'fragments' or self._name == '__clustercomm__' or self._name == '__status__':
             return
-        self.destroy()
+        if not Standalone.get_instance().is_stopped():
+            self.destroy()
 
     def __str__(self):
         return "storage_type: {}, namespace: {}, name: {}, partitions: {}, in_place_computing: {}".format(self._type, self._namespace, self._name,
