@@ -17,8 +17,8 @@
 #
 
 eval action=\$$#
-installdir=/data/projects/eggrolla
-export JAVA_HOME=/data/projects/common/jdk/jdk1.8.0_192
+installdir=
+export JAVA_HOME=
 export PATH=$PATH:$JAVA_HOME/bin
 export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION='python'
 export PYTHONPATH=$installdir/api
