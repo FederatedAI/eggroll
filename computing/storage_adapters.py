@@ -188,7 +188,7 @@ class RocksdbWriteBatch(SkvWriteBatch):
         self.key = k
         self.value = v
         self.batch.put(k, v)
-		self.write()
+        self.write()
     
     def delete(self, k, v):
         self.adapter.db.delete(k, v)

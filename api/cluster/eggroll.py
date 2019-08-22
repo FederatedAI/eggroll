@@ -104,12 +104,12 @@ class _DTable(object):
         self.gc_enable = True
 
     def __del__(self):
-        if not self.gc_enable or self._type is not storage_basic_pb2.IN_MEMORY:
+        if not self.gc_enable or self._type != storage_basic_pb2.StorageType.Name(storage_basic_pb2.IN_MEMORY):
             return
-
         if self._name == 'fragments' or self._name == '__clustercomm__' or self._name == '__status__':
             return
-        _EggRoll.get_instance().destroy(self)
+        if not _EggRoll.get_instance().is_stopped():
+            _EggRoll.get_instance().destroy(self)
 
     def __str__(self):
         return "storage_type: {}, namespace: {}, name: {}, partitions: {}, in_place_computing: {}".format(self._type,
@@ -141,7 +141,9 @@ class _DTable(object):
         if partition is None:
             partition = self._partitions
         dup = _EggRoll.get_instance().table(name, namespace, partition=partition, in_place_computing=self.get_in_place_computing(), persistent=persistent, persistent_engine=persistent_engine)
+        self.set_gc_disable()
         dup.put_all(self.collect(use_serialize=use_serialize), use_serialize=use_serialize)
+        self.set_gc_enable()
         return dup
 
     def put(self, k, v, use_serialize=True):
@@ -312,6 +314,9 @@ class _EggRoll(object):
         _EggRoll.instance = None
         self.channel.close()
 
+    def is_stopped(self):
+        return (self.instance is None)
+
     def table(self, name, namespace, partition=1,
               create_if_missing=True, error_if_exist=False,
               persistent=True, in_place_computing=False, persistent_engine=StoreType.LMDB):
@@ -418,6 +423,7 @@ class _EggRoll(object):
         return self._deserialize_operand(operand, use_serialize=use_serialize)
 
     def action(_table, host, port, chunked_iter, use_serialize):
+        _table.set_gc_disable()
         _EggRoll.get_instance().get_channel().close()
         _EggRoll.get_instance().channel = grpc.insecure_channel(target="{}:{}".format(host, port),
                                              options=[('grpc.max_send_message_length', -1),
@@ -458,7 +464,7 @@ class _EggRoll(object):
                         index += 1
                 except StopIteration as e:
                     LOGGER.debug("StopIteration")
-            executor.shutdown(wait=True);
+            executor.shutdown(wait=True)
        
     def delete(self, _table, k, use_serialize=True):
         k = self.kv_to_bytes(k=k, use_serialize=use_serialize)
