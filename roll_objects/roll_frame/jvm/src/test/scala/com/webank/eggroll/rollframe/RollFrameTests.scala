@@ -19,13 +19,19 @@ package com.webank.eggroll.rollframe
 import java.util.Random
 
 import com.webank.eggroll.blockstore.BlockStoreAdapter
-import com.webank.eggroll.command.GrpcCommandService
-import com.webank.eggroll.format.{ColumnarBatch, ColumnarReader, ColumnarSchema, ColumnarWriter}
+import com.webank.eggroll.command.{CommandService, GrpcCommandService}
+import com.webank.eggroll.format.{FrameBatch, FrameReader, FrameSchema, FrameWriter}
 import com.webank.eggroll.transfer.GrpcTransferService
 import io.grpc.ServerBuilder
-import org.junit.Test
+import org.junit.{Before, Test}
 
 class RollFrameTests {
+
+  @Before
+  def setup():Unit = {
+    CommandService.register("com.webank.eggroll.rollframe.EggFrame.runTask",
+      List(classOf[RollFrameGrpc.Task]),classOf[RollFrameGrpc.TaskResult])
+  }
   @Test
   def testColumnarReadWrite():Unit = {
     val schema =
@@ -39,7 +45,7 @@ class RollFrameTests {
         }
       """.stripMargin
     val path = "./tmp/unittests/RollFrameTests/testColumnarWrite/0"
-    val cw = new ColumnarWriter(schema, path)
+    val cw = new FrameWriter(schema, path)
     val valueCount = 10
     val fieldCount = 3
     val batchSize = 5
@@ -49,7 +55,7 @@ class RollFrameTests {
       )
     )
     cw.close()
-    val cr = new ColumnarReader(path)
+    val cr = new FrameReader(path)
     for( cb <- cr.getColumnarBatches){
       for( i <- 0 until fieldCount){
         val cv = cb.columnarVectors(i)
@@ -76,7 +82,7 @@ class RollFrameTests {
         }
       """.stripMargin
     val path = "./tmp/unittests/RollFrameTests/testColumnarWrite/0"
-    val cw = new ColumnarWriter(schema, path)
+    val cw = new FrameWriter(schema, path)
     val valueCount = 10
     val fieldCount = 3
     val batchSize = 5
@@ -89,7 +95,7 @@ class RollFrameTests {
     val path2 = "./tmp/unittests/RollFrameTests/testColumnarWrite/1"
     val eggFrame = new EggFrame
     val opts = Map("path" -> path2)
-    val cr = new ColumnarReader(path)
+    val cr = new FrameReader(path)
 //    for( cb <- cr.getColumnarBatches){
 //      eggFrame.write(cb, opts)
 //    }
@@ -135,7 +141,7 @@ class RollFrameTests {
           ]
         }
       """.stripMargin
-      val batch = new ColumnarBatch(new ColumnarSchema(schema), 2)
+      val batch = new FrameBatch(new FrameSchema(schema), 2)
       batch.writeDouble(0, 0, 0.0 + cb.readDouble(0,0))
       batch.writeDouble(0, 1, 0.1)
       batch.writeDouble(1, 0, 1.0)
@@ -198,11 +204,11 @@ class RollFrameTests {
     val fieldCount = 1000
     val schema = getSchema(fieldCount)
     val path = "./tmp/unittests/RollFrameTests/filedb/test1/a1/0"
-    val cw = new ColumnarWriter(schema, path)
+    val cw = new FrameWriter(schema, path)
     val valueCount = 100*1000 / 2
-    val batchSize = 100000 / 2
+    val batchSize = 100*1000 / 2
     cw.write(valueCount, batchSize,
-      (fid, cv) => (0 until valueCount).foreach(
+      (fid, cv) => (0 until batchSize).foreach(
 //        n => cv.writeDouble(n, fid * valueCount + n * 0.5)
         n => cv.writeDouble(n, fid  * new Random().nextDouble())
       )
@@ -223,7 +229,7 @@ class RollFrameTests {
     val rf = new RollFrameService(clusterManager.getRollFrameStore("a1","test1"))
     val fieldCount = 1000
     val schema = getSchema(fieldCount)
-    val zeroValue = new ColumnarBatch(new ColumnarSchema(schema), 1)
+    val zeroValue = new FrameBatch(new FrameSchema(schema), 1)
     rf.aggregate(zeroValue,{(x, y) =>
       try{
         for(f <- 0 until y.columnarVectors.size) {
@@ -247,5 +253,12 @@ class RollFrameTests {
       }
       a
     })
+  }
+
+  @Test
+  def testTmp():Unit = {
+//    val a = new Factory
+//    val b:Foo = a.create()
+//    println(b)
   }
 }
