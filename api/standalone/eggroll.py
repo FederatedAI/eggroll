@@ -67,11 +67,11 @@ class Standalone:
     def stop(self):
         self.session_stub.stopSession(self.eggroll_session.to_protobuf())
         self.eggroll_session.run_cleanup_tasks()
-        self.instance = None
+        self.__instance = None
         self.channel.close()
 
     def is_stopped(self):
-        return (self.instance is None)
+        return (self.__instance is None)
 
     def table(self, name, namespace, partition=1, create_if_missing=True, error_if_exist=False, persistent=True, in_place_computing=False):
         __type = StoreType.LMDB.value if persistent else StoreType.IN_MEMORY.value
