@@ -18,7 +18,7 @@ package com.webank.ai.eggroll.core.factory;
 
 import com.google.common.base.Preconditions;
 import com.webank.ai.eggroll.core.di.Singletons;
-import com.webank.eggroll.core.model.Endpoint;
+import com.webank.ai.eggroll.core.model.Endpoint;
 import io.grpc.ManagedChannel;
 import io.grpc.stub.AbstractStub;
 import java.lang.reflect.InvocationTargetException;

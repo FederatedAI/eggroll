@@ -16,14 +16,13 @@
 
 package com.webank.ai.eggroll.core.grpc.server;
 
-import com.webank.eggroll.core.error.handler.DefaultLoggingErrorHandler;
-import com.webank.eggroll.core.error.handler.ErrorHandler;
-import com.webank.eggroll.core.util.ErrorUtils;
+import com.webank.ai.eggroll.core.error.handler.DefaultLoggingErrorHandler;
+import com.webank.ai.eggroll.core.error.handler.ErrorHandler;
+import com.webank.ai.eggroll.core.util.ErrorUtils;
 import io.grpc.stub.StreamObserver;
 
 
 public class GrpcServerWrapper {
-
   private final ErrorHandler errorHandler = new DefaultLoggingErrorHandler();
 
   public void wrapGrpcServerRunnable(StreamObserver responseObserver, GrpcServerRunnable target) {

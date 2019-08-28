@@ -16,8 +16,8 @@
 
 package com.webank.ai.eggroll.core.grpc.client;
 
-import com.webank.eggroll.core.error.handler.ErrorHandler;
-import com.webank.eggroll.core.error.handler.InterruptAndRethrowRuntimeErrorHandler;
+import com.webank.ai.eggroll.core.error.handler.ErrorHandler;
+import com.webank.ai.eggroll.core.error.handler.InterruptAndRethrowRuntimeErrorHandler;
 import io.grpc.stub.ClientCallStreamObserver;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;

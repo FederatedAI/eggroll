@@ -17,9 +17,9 @@
 package com.webank.ai.eggroll.core.grpc.observer;
 
 import com.google.common.collect.Lists;
-import com.webank.eggroll.core.error.handler.DefaultLoggingErrorHandler;
-import com.webank.eggroll.core.error.handler.ErrorHandler;
-import com.webank.eggroll.core.util.ErrorUtils;
+import com.webank.ai.eggroll.core.error.handler.DefaultLoggingErrorHandler;
+import com.webank.ai.eggroll.core.error.handler.ErrorHandler;
+import com.webank.ai.eggroll.core.util.ErrorUtils;
 import io.grpc.stub.StreamObserver;
 import java.util.List;
 import org.apache.logging.log4j.LogManager;
