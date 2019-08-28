@@ -17,20 +17,47 @@
 package com.webank.eggroll.command
 
 import java.io.{PrintWriter, StringWriter}
-import java.lang.reflect.InvocationTargetException
+import java.lang.reflect.{InvocationTargetException, Method}
 import java.net.URI
 import java.util.concurrent.{CountDownLatch, TimeUnit}
 
-import com.google.protobuf.ByteString
+import com.google.protobuf.{ByteString, Message}
 import com.webank.eggroll.rollframe.{CommandServiceGrpc, RollFrameGrpc, ServerNode}
 import com.webank.eggroll.util.ThrowableCollection
 import io.grpc.ManagedChannelBuilder
 import io.grpc.stub.StreamObserver
 
+import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
+import scala.reflect.ClassTag
 
 class CommandService {
 
+}
+
+// TODO: organize service definitions
+object CommandService {
+  private val routes = TrieMap[String, (Any, Method)]()
+  def register(route:String, args:List[Class[_]], ret:Class[_],
+               clazz:Class[_] = null, method:String = null, service:Any = null):Unit =
+    this.synchronized {
+    if(routes.contains(route)) {
+      throw new IllegalStateException("route has been registered:" + route + "," + routes(route))
+    }
+    val methodNameIndex = route.lastIndexOf(".")
+    val methodName =  if(method != null) method else route.substring(methodNameIndex + 1)
+    val clz = if(clazz != null) clazz else Class.forName(route.substring(0, methodNameIndex))
+    val methodInstance = clz.getMethod(methodName, args:_*)
+    val serviceInstance = if(service != null) service else clz.newInstance()
+    routes.put(route, (serviceInstance,methodInstance))
+  }
+
+  def dispatch(route:String, args:AnyRef*):AnyRef = {
+    val (obj, method) = routes(route)
+    method.invoke(obj, args:_*)
+  }
+
+  def query(route: String):(Any, Method) = routes(route)
 }
 
 
@@ -38,7 +65,7 @@ class CommandURI(value: String) {
   import java.net.URLDecoder
   val uri = new URI(value)
 
-  val queryPairs = mutable.Map[String, String]()
+  private val queryPairs = mutable.Map[String, String]()
   for (pair <- uri.getQuery.split("&")) {
     val idx = pair.indexOf("=")
     val key = if (idx > 0) URLDecoder.decode(pair.substring(0, idx), "UTF-8") else pair
@@ -50,19 +77,29 @@ class CommandURI(value: String) {
     queryPairs(key)
   }
 }
+
+trait CommandServer {
+  def run():Unit
+}
 class GrpcCommandService extends CommandServiceGrpc.CommandServiceImplBase{
   override def call(request: RollFrameGrpc.CommandRequest,
                     responseObserver: StreamObserver[RollFrameGrpc.CommandResponse]): Unit = {
-    val url = new CommandURI(request.getUri)
-    val clazz = Class.forName(url.getQueryValue("class"))
-    val methodName = url.getQueryValue("method")
-    val service = clazz.newInstance()
+    val route = new CommandURI(request.getUri).getQueryValue("route")
+    val (_, method) = CommandService.query(route)
     try{
-      val resp = clazz.getMethod(methodName, classOf[Array[Byte]])
-        .invoke(service, request.getData.toByteArray).asInstanceOf[Array[Byte]]
-      responseObserver.onNext(
-        RollFrameGrpc.CommandResponse.newBuilder().setRequest(request).setData(ByteString.copyFrom(resp)).build())
-      responseObserver.onCompleted()
+      if(classOf[Message].isAssignableFrom(method.getReturnType)) {
+        require(method.getParameterTypes.length == 1, "only one parameter supported")
+        val req = method.getParameterTypes.head.getMethod("parseFrom", classOf[ByteString])
+                      .invoke(null,request.getData)
+        val resp = CommandService.dispatch(route, req)
+        // Should set request back?
+        responseObserver.onNext(
+          RollFrameGrpc.CommandResponse.newBuilder().setRequest(request)
+            .setData(resp.getClass.getMethod("toByteString").invoke(resp).asInstanceOf[ByteString]).build())
+        responseObserver.onCompleted()
+      } else {
+        throw new IllegalArgumentException("not supported resp type:" + method.getReturnType)
+      }
     } catch {
       case t: InvocationTargetException =>
         t.printStackTrace()
