@@ -20,7 +20,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
-    <groupId>com.webank.ai.eggroll</groupId>
+    <groupId>com.webank.eggroll</groupId>
     <artifactId>eggroll-all</artifactId>
     <version>${eggroll.version}</version>
     <relativePath>../../pom.xml</relativePath>
