@@ -577,7 +577,7 @@ class _EggRoll(object):
         return self._create_table_from_locator(resp, table)
 
 
-    def __create_binary_process(self, left: _DTable, right: _DTable, func):
+    def __create_binary_process(self, left: _DTable, right: _DTable, func, session):
         left_op = self.__create_storage_locator_from_dtable(left)
         right_op = self.__create_storage_locator_from_dtable(right)
         task_info = self.__create_task_info(func=func, is_in_place_computing=left.get_in_place_computing())
