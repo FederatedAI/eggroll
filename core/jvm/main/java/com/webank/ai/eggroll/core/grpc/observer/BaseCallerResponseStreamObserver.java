@@ -16,7 +16,7 @@
 
 package com.webank.ai.eggroll.core.grpc.observer;
 
-import com.webank.eggroll.core.util.ErrorUtils;
+import com.webank.ai.eggroll.core.util.ErrorUtils;
 import io.grpc.stub.StreamObserver;
 import java.util.concurrent.CountDownLatch;
 import org.apache.logging.log4j.LogManager;

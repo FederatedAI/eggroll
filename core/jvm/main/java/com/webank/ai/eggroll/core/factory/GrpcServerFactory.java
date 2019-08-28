@@ -16,13 +16,13 @@
 
 package com.webank.ai.eggroll.core.factory;
 
-import com.webank.eggroll.core.constant.CoreConfKeys;
-import com.webank.eggroll.core.constant.StringConstants;
-import com.webank.eggroll.core.model.Endpoint;
-import com.webank.eggroll.core.session.DefaultEggrollConf;
-import com.webank.eggroll.core.session.GrpcServerConf;
-import com.webank.eggroll.core.util.FileSystemUtils;
-import com.webank.eggroll.core.util.ThreadPoolUtils;
+import com.webank.ai.eggroll.core.constant.CoreConfKeys;
+import com.webank.ai.eggroll.core.constant.StringConstants;
+import com.webank.ai.eggroll.core.model.Endpoint;
+import com.webank.ai.eggroll.core.session.DefaultEggrollConf;
+import com.webank.ai.eggroll.core.session.GrpcServerConf;
+import com.webank.ai.eggroll.core.util.FileSystemUtils;
+import com.webank.ai.eggroll.core.util.ThreadPoolUtils;
 import io.grpc.Server;
 import io.grpc.ServerServiceDefinition;
 import io.grpc.netty.shaded.io.grpc.netty.GrpcSslContexts;
@@ -32,7 +32,6 @@ import io.grpc.netty.shaded.io.netty.handler.ssl.SslContextBuilder;
 import java.io.File;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import javax.net.ssl.SSLException;
 import org.apache.commons.lang3.StringUtils;
@@ -43,15 +42,7 @@ public class GrpcServerFactory {
 
   private static final Logger LOGGER = LogManager.getLogger();
 
-  private String prefix = "[GRPC][SERVER]";
-
-  public GrpcServerFactory() {
-
-  }
-
-  public GrpcServerFactory(CountDownLatch c, Object a) {
-
-  }
+  private String prefix = "[CORE][SERVER]";
 
   public Server createServer(GrpcServerConf grpcServerConf) {
     NettyServerBuilder serverBuilder = null;

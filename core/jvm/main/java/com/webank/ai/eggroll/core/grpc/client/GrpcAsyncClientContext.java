@@ -17,13 +17,13 @@
 package com.webank.ai.eggroll.core.grpc.client;
 
 import com.google.protobuf.Message;
+import com.webank.ai.eggroll.core.constant.StringConstants;
 import com.webank.ai.eggroll.core.di.Singletons;
+import com.webank.ai.eggroll.core.error.handler.ErrorHandler;
+import com.webank.ai.eggroll.core.error.handler.InterruptAndRethrowRuntimeErrorHandler;
 import com.webank.ai.eggroll.core.factory.GrpcStubFactory;
 import com.webank.ai.eggroll.core.grpc.observer.BaseCallerResponseStreamObserver;
-import com.webank.eggroll.core.constant.StringConstants;
-import com.webank.eggroll.core.error.handler.ErrorHandler;
-import com.webank.eggroll.core.error.handler.InterruptAndRethrowRuntimeErrorHandler;
-import com.webank.eggroll.core.model.Endpoint;
+import com.webank.ai.eggroll.core.model.Endpoint;
 import io.grpc.Metadata;
 import io.grpc.stub.AbstractStub;
 import io.grpc.stub.MetadataUtils;
