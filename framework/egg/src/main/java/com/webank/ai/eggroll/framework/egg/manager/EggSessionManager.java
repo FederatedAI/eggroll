@@ -159,7 +159,6 @@ public class EggSessionManager {
 
         ComputingEngine result = eggrollSession.getComputingEngine();
 
-        LOGGER.info("MW: engineOperator: {}", engineOperator);
         if (!engineOperator.isAlive(result)) {
             // todo: remove dead computingEngine when restart is needed
             LOGGER.info("[EGG][SESSIONMANAGER] engine {} is dead, restarting.", toStringUtils.toOneLineString(result));
