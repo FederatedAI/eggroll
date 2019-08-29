@@ -45,7 +45,10 @@ CHUNK_SIZE_DEFAULT = 100000
 
 def init(session_id=None, server_conf_path="eggroll/conf/server_conf.json", eggroll_session=None, computing_engine_conf=None, naming_policy=NamingPolicy.DEFAULT, tag=None, job_id=None, chunk_size=CHUNK_SIZE_DEFAULT):
     if session_id is None:
-        session_id = str(uuid.uuid1())
+        if job_id is not None:
+            session_id = job_id
+        else:
+            session_id = str(uuid.uuid1())
 
     if job_id is None:
         job_id = session_id

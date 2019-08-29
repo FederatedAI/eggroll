@@ -305,6 +305,11 @@ public class RollProcessServiceImpl extends ProcessServiceGrpc.ProcessServiceImp
             final CountDownLatch finishLatch = new CountDownLatch(fragments.size());
             final List<Throwable> subTaskThrowables = Collections.synchronizedList(Lists.newArrayList());
 
+            BasicMeta.SessionInfo sessionInfo = getSessionInfoFromRequest(request);
+            if (sessionInfo.equals(BasicMeta.SessionInfo.getDefaultInstance())) {
+                rollSessionManager.getOrCreateSession(sessionInfo);
+            }
+
             /**
              * doing for each fragment
              */
@@ -322,7 +327,6 @@ public class RollProcessServiceImpl extends ProcessServiceGrpc.ProcessServiceImp
 
                 // get egg nodes whose ip is the same as storage
                 Node selectedEgg = nodeHelper.getNodeManager(target);
-                BasicMeta.SessionInfo sessionInfo = getSessionInfoFromRequest(request);
                 String sessionId = sessionInfo.getSessionId();
 
                 // check if session is started on that specific egg
