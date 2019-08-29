@@ -9,6 +9,8 @@ import com.webank.ai.eggroll.core.utils.TypeConversionUtils;
 import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node;
 import com.webank.ai.eggroll.framework.roll.api.grpc.client.EggSessionServiceClient;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -26,6 +28,8 @@ public class RollSessionManager {
     private EggSessionServiceClient eggSessionServiceClient;
     @Autowired
     private TypeConversionUtils typeConversionUtils;
+
+    private static final Logger LOGGER = LogManager.getLogger();
 
     public RollSessionManager() {
         sessionLock = new Object();
@@ -76,6 +80,7 @@ public class RollSessionManager {
 
     public boolean initializeEgg(BasicMeta.SessionInfo sessionInfo, Node node) {
         boolean result = false;
+
         if (sessionInfo == null) {
             return result;
         }
@@ -121,6 +126,7 @@ public class RollSessionManager {
         Set<BasicMeta.Endpoint> initializedEndpoints = null;
         synchronized (sessionLock) {
             sessionInfo = sessionIdToSessions.get(sessionId);
+
             if (sessionInfo == null) {
                 return result;
             }

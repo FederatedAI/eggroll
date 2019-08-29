@@ -5,6 +5,7 @@
 * 2. **[Storage API] (#2)**
 * 3. **[Computing API] (#3)**
 * 4. **[Communication API] (#4)**
+* 5. **[Session API] (#5)**
 
 ---
 
@@ -142,6 +143,59 @@ Generates a unique ID each time it is invoked.
 ```
 
 --
+
+>``` python
+>get_eggroll_session()
+>```
+
+Gets the EggrollSession associated.
+
+**Parameters:**
+
++ None
+
+**Returns:**
+
++ **eggroll_session** (EggrollSession)
+
+**Example:**
+
+``` python
+>>> from arch import eggroll
+>>> from eggroll.api import WorkMode
+>>> from eggroll.api import NamingPolicy
+>>> eggroll.init('a', WorkMode.CLUSTER, NamingPolicy.ITER_AWARE)
+>>> eggroll.get_eggroll_session()
+```
+
+--
+
+>``` python
+>stop()
+>```
+
+Stops this eggroll session. Cleanup tasks will be run.
+
+**Parameters:**
+
++ None
+
+**Returns:**
+
++ None
+
+**Example:**
+
+``` python
+>>> from arch import eggroll
+>>> from eggroll.api import WorkMode
+>>> from eggroll.api import NamingPolicy
+>>> eggroll.init('a', WorkMode.CLUSTER, NamingPolicy.ITER_AWARE)
+>>> eggroll.stop()
+```
+
+--
+
 
 ## <a name="2">Storage API: class DTable</a>
 
@@ -796,4 +850,180 @@ Sends data to otehre parties. This method does not block.
 
 ``` python
 >>> clustercomm.remote(a, "RsaIntersectTransferVariable.rsa_pubkey", tag="{}".format(_tag))
+```
+
+
+## <a name="5">Session API: Eggroll Session</a>
+
+
+>`get_session_id()`
+
+Returns session id.
+
+**Parameters:**
+
++ None
+
+**Returns:**
+
++ **session_id** (string)
+
+**Example:**
+
+``` python
+>>> session = eggroll.get_eggroll_session()
+>>> session.get_session_id()
+'session_id'
+```
+
+--
+
+>`get_chunk_size()`
+
+Returns chunk size of this session. Chunk size is used in putting big data into a table.
+
+**Parameters:**
+
++ None
+
+**Returns:**
+
++ **chunk_size** (int)
+
+**Example:**
+
+``` python
+>>> session = eggroll.get_eggroll_session()
+>>> session.get_chunk_size()
+100000
+```
+
+--
+
+>`add_conf()`
+
+Adds runtime conf to compute engine.
+
+**Parameters:**
+
++ **key** (string): key to be passed to computing engine.
++ **value** (object): values to be passed to computing engine. Value will be converted to string before actual storage.
+
+**Returns:**
+
++ None
+
+**Example:**
+
+``` python
+>>> session = eggroll.get_eggroll_session()
+>>> session.add_conf('eggroll.computing.processor.venv', '/data/projects/eggrolla/venv')
+```
+
+--
+
+>`get_conf()`
+
+Gets runtime conf.
+
+**Parameters:**
+
++ **key** (string): key to be passed to computing engine.
+
+**Returns:**
+
++ **value** (object): values to be passed to computing engine. 
+
+**Example:**
+
+``` python
+>>> session = eggroll.get_eggroll_session()
+>>> session.get_conf('eggroll.computing.processor.python-path')
+'/data/projects/eggrolla/api'
+```
+
+--
+
+>`has_conf()`
+
+Checks if a runtime conf exists or already be set.
+
+**Parameters:**
+
++ **key** (string): key to be passed to computing engine.
+
+**Returns:**
+
++ **is_exists** (boolean): Whether the conf exists in conf. 
+
+**Example:**
+
+``` python
+>>> session = eggroll.get_eggroll_session()
+>>> session.has_conf('eggroll.computing.processor.python-path')
+True
+```
+
+--
+
+>`get_naming_policy()`
+
+Returns naming policy of the current session.
+
+**Parameters:**
+
++ None
+
+**Returns:**
+
++ **naming_policy** (NamingPolicy): Naming policy of the current session. 
+
+**Example:**
+
+``` python
+>>> session = eggroll.get_eggroll_session()
+>>> session.get_naming_policy()
+NamingPolicy.ITER_AWARE
+```
+
+--
+
+>`add_cleanup_task(func)`
+
+Adds cleanup task to this session. Cleanup task will be run when session completes.
+
+**Parameters:**
+
++ **func** (function): Function to be run.
+
+**Returns:**
+
++ None 
+
+**Example:**
+
+``` python
+>>> session = eggroll.get_eggroll_session()
+>>> session.add_cleanup_task(lambda : print('hello'))
+```
+
+--
+
+>`run_cleanup_task(func)`
+
+Runs cleanup task added to this session. This method will be run when session stops.
+
+**Parameters:**
+
++ None
+
+**Returns:**
+
++ None 
+
+**Example:**
+
+``` python
+>>> session = eggroll.get_eggroll_session()
+>>> session.run_cleanup_task()
 ```
