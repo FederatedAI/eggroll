@@ -21,12 +21,16 @@ import com.webank.ai.eggroll.api.core.BasicMeta;
 import com.webank.ai.eggroll.api.networking.proxy.DataTransferServiceGrpc;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy.Metadata;
+import com.webank.ai.eggroll.api.networking.proxy.Proxy.Packet;
+import com.webank.ai.eggroll.rollsite.grpc.observer.UnaryCallServerRequestStreamObserver;
 import com.webank.ai.eggroll.rollsite.factory.ProxyGrpcStreamObserverFactory;
 import com.webank.ai.eggroll.rollsite.factory.ProxyGrpcStubFactory;
 import com.webank.ai.eggroll.rollsite.factory.TransferServiceFactory;
 import com.webank.ai.eggroll.rollsite.grpc.core.api.grpc.client.GrpcAsyncClientContext;
 import com.webank.ai.eggroll.rollsite.grpc.core.api.grpc.client.GrpcStreamingClientTemplate;
 import com.webank.ai.eggroll.rollsite.grpc.core.constant.RuntimeConstants;
+import com.webank.ai.eggroll.rollsite.grpc.core.model.DelayedResult;
+import com.webank.ai.eggroll.rollsite.grpc.core.model.impl.SingleDelayedResult;
 import com.webank.ai.eggroll.rollsite.grpc.core.server.DefaultServerConf;
 import com.webank.ai.eggroll.rollsite.grpc.core.utils.ErrorUtils;
 import com.webank.ai.eggroll.rollsite.grpc.core.utils.ToStringUtils;
@@ -38,6 +42,7 @@ import com.webank.ai.eggroll.rollsite.infra.impl.SingleResultCallback;
 import com.webank.ai.eggroll.rollsite.model.ProxyServerConf;
 import com.webank.ai.eggroll.rollsite.service.FdnRouter;
 import io.grpc.stub.StreamObserver;
+import java.lang.reflect.InvocationTargetException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -237,7 +242,7 @@ public class DataTransferPipedClient {
         responseObserver.onCompleted();
     }
 
-    public void unaryCall(Proxy.Packet packet, Pipe pipe) {
+    public void unaryCall_(Proxy.Packet packet, Pipe pipe) {
         Preconditions.checkNotNull(packet);
         Proxy.Metadata header = packet.getHeader();
         String onelineStringMetadata = toStringUtils.toOneLineString(header);
@@ -266,6 +271,35 @@ public class DataTransferPipedClient {
         }
 
         responseObserver.onCompleted();
+    }
+
+    public Proxy.Packet unaryCall(Proxy.Packet request, Pipe pipe) {
+        DelayedResult<Packet> delayedResult = new SingleDelayedResult<>();
+        GrpcAsyncClientContext<DataTransferServiceGrpc.DataTransferServiceStub, Proxy.Packet, Proxy.Packet> context
+            = transferServiceFactory.createUnaryCallClientGrpcAsyncClientContext();
+
+        BasicMeta.Endpoint.Builder builder = BasicMeta.Endpoint.newBuilder();
+        endpoint = builder.setIp("localhost").setPort(8888).build();
+
+        context.setLatchInitCount(1)
+            .setEndpoint(endpoint)
+            .setSecureRequest(defaultServerConf.isSecureClient())
+            .setFinishTimeout(RuntimeConstants.DEFAULT_WAIT_TIME, RuntimeConstants.DEFAULT_TIMEUNIT)
+            .setCalleeStreamingMethodInvoker(DataTransferServiceGrpc.DataTransferServiceStub::unaryCall)
+            .setCallerStreamObserverClassAndArguments(UnaryCallServerRequestStreamObserver.class, delayedResult);
+
+        GrpcStreamingClientTemplate<DataTransferServiceGrpc.DataTransferServiceStub, Proxy.Packet, Proxy.Packet> template
+            = transferServiceFactory.createUnaryCallClientTemplate();
+        template.setGrpcAsyncClientContext(context);
+
+        Proxy.Packet result = null;
+        try {
+            result = template.calleeStreamingRpcWithImmediateDelayedResult(request, delayedResult);
+        } catch (InvocationTargetException e) {
+            throw new RuntimeException(e);
+        }
+
+        return result;
     }
 
     private DataTransferServiceGrpc.DataTransferServiceStub getStub(Proxy.Topic from, Proxy.Topic to) {

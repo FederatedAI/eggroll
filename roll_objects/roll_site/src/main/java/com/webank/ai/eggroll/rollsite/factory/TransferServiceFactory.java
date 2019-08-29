@@ -36,6 +36,10 @@ public class TransferServiceFactory {
     private GrpcStreamingClientTemplate<DataTransferServiceGrpc.DataTransferServiceStub, Proxy.Packet, Proxy.Metadata> nonSpringPushTemplate;
     @Autowired
     private GrpcAsyncClientContext<DataTransferServiceGrpc.DataTransferServiceStub, Proxy.Packet, Proxy.Metadata> nonSpringPushContext;
+    @Autowired
+    private GrpcStreamingClientTemplate<DataTransferServiceGrpc.DataTransferServiceStub, Proxy.Packet, Proxy.Packet> nonSpringUnaryCallTemplate;
+    @Autowired
+    private GrpcAsyncClientContext<DataTransferServiceGrpc.DataTransferServiceStub, Proxy.Packet, Proxy.Packet> nonSpringUnaryCallContext;
     public TransferServiceFactory() {
     }
 
@@ -43,6 +47,17 @@ public class TransferServiceFactory {
     createPushClientGrpcAsyncClientContext() {
         return applicationContext.getBean(nonSpringPushContext.getClass())
                 .setStubClass(DataTransferServiceGrpc.DataTransferServiceStub.class);
+    }
+
+    public GrpcAsyncClientContext<DataTransferServiceGrpc.DataTransferServiceStub, Proxy.Packet, Proxy.Packet>
+    createUnaryCallClientGrpcAsyncClientContext() {
+        return applicationContext.getBean(nonSpringUnaryCallContext.getClass())
+            .setStubClass(DataTransferServiceGrpc.DataTransferServiceStub.class);
+    }
+
+    public GrpcStreamingClientTemplate<DataTransferServiceGrpc.DataTransferServiceStub, Proxy.Packet, Proxy.Packet>
+    createUnaryCallClientTemplate() {
+        return applicationContext.getBean(nonSpringUnaryCallTemplate.getClass());
     }
 
     public GrpcStreamingClientTemplate<DataTransferServiceStub, Packet, Metadata>
