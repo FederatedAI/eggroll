@@ -73,4 +73,24 @@ class RollSiteRuntime(object):
             stub = proxy_pb2_grpc.DataTransferServiceStub(channel)
             response = stub.pull()
 
+    def unaryCall(self, obj):
+        task_info = proxy_pb2.Task(taskId="testTaskId", model=proxy_pb2.Model(name="taskName", dataKey="testKey"))
+        topic_src = proxy_pb2.Topic(name="test", partyId="10001",
+                                    role="host", callback=None)
+        topic_dst = proxy_pb2.Topic(name="test", partyId="10002",
+                                    role="guest", callback=None)
+        command_test = proxy_pb2.Command()
+        conf_test = proxy_pb2.Conf(overallTimeout=1000,
+                                   completionWaitTimeout=1000,
+                                   packetIntervalTimeout=1000,
+                                   maxRetries=10)
 
+        metadata = proxy_pb2.Metadata(task=task_info,
+                                      src=topic_src,
+                                      dst=topic_dst,
+                                      command=command_test,
+                                      seq=0, ack=0,
+                                      conf=conf_test)
+        data = proxy_pb2.Data(key="hello", value=obj.encode())
+        packet = proxy_pb2.Packet(header=metadata, body=data)
+        self.stub.unaryCall(packet)
