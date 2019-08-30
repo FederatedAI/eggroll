@@ -24,6 +24,5 @@ import io.grpc.stub.StreamObserver;
  * S: Stub type R: calleR type E: calleE type
  */
 public interface GrpcCallerStreamingStubMethodInvoker<S, R, E> {
-
   public StreamObserver<R> invoke(S stub, StreamObserver<E> responseObserver);
 }

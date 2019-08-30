@@ -17,6 +17,7 @@
 package com.webank.eggroll.core.concurrent;
 
 
+import com.webank.eggroll.core.model.StateTrackable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -24,8 +25,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class AwaitSettableFuture<V> implements Future<V> {
-
+public class AwaitSettableFuture<V> implements Future<V>, StateTrackable {
   private final CountDownLatch finishLatch;
   private V result;
   private Throwable cause;
@@ -175,6 +175,7 @@ public class AwaitSettableFuture<V> implements Future<V> {
     }
   }
 
+  @Override
   public boolean hasError() {
     if (state.get() == EXCEPTIONAL) {
       if (cause != null) {
@@ -187,6 +188,7 @@ public class AwaitSettableFuture<V> implements Future<V> {
     }
   }
 
+  @Override
   public Throwable getError() {
     return cause;
   }

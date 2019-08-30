@@ -14,18 +14,13 @@
  * limitations under the License.
  */
 
-package com.webank.eggroll.core.grpc.client;
+package com.webank.eggroll.core.model;
 
+public interface StateTrackable {
 
-public interface StreamProcessor<T> {
+  public boolean isDone();
 
-  public void onInit();
+  public boolean hasError();
 
-  public void onProcess();
-
-  public void onError(Throwable t);
-
-  public void onComplete();
-
-  public void notifyReady();
+  public Throwable getError();
 }

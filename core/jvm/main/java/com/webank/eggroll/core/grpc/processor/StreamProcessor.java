@@ -14,15 +14,18 @@
  * limitations under the License.
  */
 
-package com.webank.eggroll.core.grpc.client;
+package com.webank.eggroll.core.grpc.processor;
 
-import io.grpc.stub.StreamObserver;
 
-/**
- * SAM Interface for callee streaming
- * <p>
- * S: Stub type R: calleR type E: calleE type
- */
-public interface GrpcCalleeStreamingStubMethodInvoker<S, R, E> {
-  public void invoke(S stub, R request, StreamObserver<E> responseObserver);
+public interface StreamProcessor<T> {
+
+  public void onInit();
+
+  public void onProcess();
+
+  public void onError(Throwable t);
+
+  public void onComplete();
+
+  public void notifyReady();
 }
