@@ -18,9 +18,9 @@ package com.webank.eggroll.core.util;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import org.apache.commons.lang3.reflect.ConstructorUtils;
 
 public class ReflectionUtils {
-
   public static <T> Constructor<T> findDeclaredConstructor(Class<T> clazz, Object... cArgs)
       throws NoSuchMethodException {
 
@@ -32,10 +32,11 @@ public class ReflectionUtils {
     return constructor.newInstance(initArgs);
   }
 
+  // todo: use ConstructorUtils but perform proper caching to avoid multiple reflection operations
   public static <T> T newInstance(Class<T> clazz, Object... initArgs)
       throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
     Constructor<T> constructor = findDeclaredConstructor(clazz, initArgs);
 
-    return constructor.newInstance(initArgs);
+    return ConstructorUtils.invokeConstructor(clazz, initArgs);
   }
 }

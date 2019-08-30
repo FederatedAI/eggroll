@@ -19,9 +19,9 @@ package com.webank.eggroll.core.di;
 import com.google.common.base.Preconditions;
 import com.webank.eggroll.core.error.handler.DefaultLoggingErrorHandler;
 import com.webank.eggroll.core.error.handler.ErrorHandler;
+import com.webank.eggroll.core.util.ReflectionUtils;
 import java.lang.reflect.InvocationTargetException;
 import java.util.concurrent.ConcurrentHashMap;
-import org.apache.commons.lang3.reflect.ConstructorUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -39,7 +39,7 @@ public class Singletons {
     if (!singletonPool.containsKey(clazz.getCanonicalName())) {
       synchronized (singletonPoolLock) {
         if (!singletonPool.containsKey(clazz.getCanonicalName())) {
-          T singleton = ConstructorUtils.invokeConstructor(clazz, initArgs);
+          T singleton = ReflectionUtils.newInstance(clazz, initArgs);
           singletonPool.put(clazz.getCanonicalName(), singleton);
         }
       }

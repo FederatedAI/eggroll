@@ -20,7 +20,6 @@ import com.webank.eggroll.core.factory.GrpcServerFactory;
 import com.webank.eggroll.core.grpc.observer.BaseCallerResponseStreamObserver;
 import java.lang.reflect.Constructor;
 import java.util.concurrent.CountDownLatch;
-import org.apache.commons.lang3.reflect.ConstructorUtils;
 import org.junit.Test;
 
 public class TestReflectionUtils {
@@ -52,8 +51,7 @@ public class TestReflectionUtils {
 
   @Test
   public void testNewInstanceWithNoInitArgs() throws Exception {
-    GrpcServerFactory grpcServerFactory = ConstructorUtils
-        .invokeConstructor(GrpcServerFactory.class);
+    GrpcServerFactory grpcServerFactory = ReflectionUtils.newInstance(GrpcServerFactory.class);
     assert (grpcServerFactory != null);
   }
 
