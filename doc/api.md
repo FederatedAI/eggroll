@@ -138,7 +138,7 @@ Generates a unique ID each time it is invoked.
 
 ``` python
 >>> eggroll.generateUniqueId()
-'_EggRoll_a_VM_hostname_centos_192.168.1.1_1560843036.15374231338500976562_66698'
+'_EggRoll_a_HOSTNAME_centos_192.168.0.1_1560843036.15374231338500976562_66698'
 ```
 
 --
