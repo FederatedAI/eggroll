@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.webank.eggroll.core.grpc.client;
+package com.webank.eggroll.core.grpc.processor;
 
 import com.webank.eggroll.core.error.handler.ErrorHandler;
 import com.webank.eggroll.core.error.handler.InterruptAndRethrowRuntimeErrorHandler;
@@ -29,28 +29,32 @@ import org.apache.logging.log4j.Logger;
 
 public abstract class BaseClientCallStreamProcessor<R> implements StreamProcessor<R> {
 
-  protected ClientCallStreamObserver<R> streamObserver;
+  protected ClientCallStreamObserver<R> clientCallStreamObserver;
   private Lock conditionLock;
   protected Condition streamReady;
   protected ErrorHandler errorHandler = new InterruptAndRethrowRuntimeErrorHandler();
 
   private final Logger LOGGER = LogManager.getLogger(this.getClass());
 
-  public BaseClientCallStreamProcessor(ClientCallStreamObserver<R> streamObserver) {
-    this.streamObserver = streamObserver;
+  public BaseClientCallStreamProcessor(ClientCallStreamObserver<R> clientCallStreamObserver) {
+    this.clientCallStreamObserver = clientCallStreamObserver;
     this.conditionLock = new ReentrantLock();
     this.streamReady = conditionLock.newCondition();
   }
 
   @Override
+  public void onInit() {
+  }
+
+  @Override
   public void onProcess() {
     try {
-      if (streamObserver.isReady()) {
+      if (clientCallStreamObserver.isReady()) {
         return;
       }
 
       boolean awaitResult = streamReady.await(10, TimeUnit.MINUTES);
-      if (!awaitResult && !streamObserver.isReady()) {
+      if (!awaitResult && !clientCallStreamObserver.isReady()) {
         throw new TimeoutException("stream processor await timeout");
       }
     } catch (Exception e) {
@@ -59,17 +63,17 @@ public abstract class BaseClientCallStreamProcessor<R> implements StreamProcesso
   }
 
   @Override
-  public void onComplete() {
-    try {
-      streamObserver.onCompleted();
-    } catch (Exception e) {
-      onError(e);
-    }
+  public void onError(Throwable t) {
+    errorHandler.handleError(t);
   }
 
   @Override
-  public void onError(Throwable t) {
-    errorHandler.handleError(t);
+  public void onComplete() {
+    try {
+      clientCallStreamObserver.onCompleted();
+    } catch (Exception e) {
+      onError(e);
+    }
   }
 
   @Override

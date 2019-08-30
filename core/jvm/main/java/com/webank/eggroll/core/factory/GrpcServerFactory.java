@@ -39,7 +39,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 public class GrpcServerFactory {
-
   private static final Logger LOGGER = LogManager.getLogger();
 
   private String prefix = "[CORE][SERVER]";
@@ -50,6 +49,10 @@ public class GrpcServerFactory {
     Endpoint endpoint = grpcServerConf.endpoint();
     String host = endpoint.host();
     int port = endpoint.port();
+
+    if (port <= 0) {
+      throw new IllegalArgumentException(prefix + " cannot listen to port <= 0");
+    }
 
     if (StringUtils.isBlank(host)) {
       LOGGER.debug("{} build on port only: {}", prefix, port);

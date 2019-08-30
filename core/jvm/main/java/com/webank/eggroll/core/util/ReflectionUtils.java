@@ -23,21 +23,8 @@ public class ReflectionUtils {
 
   public static <T> Constructor<T> findDeclaredConstructor(Class<T> clazz, Object... cArgs)
       throws NoSuchMethodException {
-    Class<?>[] cArgsType = new Class<?>[cArgs.length];
 
-    int i = 0;
-    for (Object cArg : cArgs) {
-      if (cArg != null) {
-        cArgsType[i] = cArg.getClass();
-      } else {
-        cArgsType[i] = Object.class;
-      }
-      ++i;
-    }
-
-    Constructor<T> result = clazz.getDeclaredConstructor(cArgsType);
-
-    return result;
+    return null;
   }
 
   public static <T> T newInstance(Constructor<T> constructor, Object... initArgs)

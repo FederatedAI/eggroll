@@ -13,16 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+syntax = "proto3";
 
-package com.webank.eggroll.core.grpc.client;
+package com.webank.eggroll.grpc.test;
 
-import io.grpc.stub.StreamObserver;
+message HelloRequest {
+  string msg = 1;
+}
 
-/**
- * SAM Interface for callee streaming
- * <p>
- * S: Stub type R: calleR type E: calleE type
- */
-public interface GrpcCalleeStreamingStubMethodInvoker<S, R, E> {
-  public void invoke(S stub, R request, StreamObserver<E> responseObserver);
+message HelloResponse {
+  string msg = 1;
+}
+
+service HelloService {
+  rpc unaryCall (HelloRequest) returns (HelloResponse);
+  rpc push (stream HelloRequest) returns (HelloResponse);
+  rpc pull (HelloRequest) returns (HelloResponse);
 }

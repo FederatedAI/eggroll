@@ -16,11 +16,11 @@
 
 package com.webank.eggroll.core.factory;
 
-import com.webank.eggroll.core.grpc.client.StreamProcessor;
-import com.webank.eggroll.core.util.ReflectionUtils;
+import com.webank.eggroll.core.grpc.processor.StreamProcessor;
 import io.grpc.stub.StreamObserver;
 import java.lang.reflect.InvocationTargetException;
 import java.util.concurrent.CountDownLatch;
+import org.apache.commons.lang3.reflect.ConstructorUtils;
 
 public class GrpcStreamComponentFactory {
 
@@ -39,8 +39,8 @@ public class GrpcStreamComponentFactory {
     T result = null;
 
     try {
-      result = ReflectionUtils
-          .newInstance(soClass, concatInitArgs(specificInitArgs, fixedInitArgs));
+      result = ConstructorUtils
+          .invokeConstructor(soClass, concatInitArgs(specificInitArgs, fixedInitArgs));
     } catch (NoSuchMethodException | IllegalAccessException
         | InvocationTargetException | InstantiationException e) {
       Thread.currentThread().interrupt();

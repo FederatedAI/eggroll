@@ -14,15 +14,22 @@
  * limitations under the License.
  */
 
-package com.webank.eggroll.core.grpc.client;
+package com.webank.eggroll.core.grpc.observer;
 
-import io.grpc.stub.StreamObserver;
+import com.webank.eggroll.core.concurrent.AwaitSettableFuture;
+import java.util.concurrent.CountDownLatch;
 
-/**
- * SAM Interface for callee streaming
- * <p>
- * S: Stub type R: calleR type E: calleE type
- */
-public interface GrpcCalleeStreamingStubMethodInvoker<S, R, E> {
-  public void invoke(S stub, R request, StreamObserver<E> responseObserver);
+public class SameTypeFutureCallerResponseStreamObserver<R, E> extends
+    BaseFutureCallerResponseStreamObserver<R, E, E> {
+
+  public SameTypeFutureCallerResponseStreamObserver(
+      CountDownLatch finishLatch,
+      AwaitSettableFuture<E> asFuture) {
+    super(finishLatch, asFuture);
+  }
+
+  @Override
+  public void onNext(E value) {
+    asFuture.setResult(value);
+  }
 }

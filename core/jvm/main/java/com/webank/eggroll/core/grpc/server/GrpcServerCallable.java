@@ -20,5 +20,4 @@ import java.util.concurrent.Callable;
 
 public interface GrpcServerCallable<T> extends Callable<T> {
 
-  public T run() throws Throwable;
 }

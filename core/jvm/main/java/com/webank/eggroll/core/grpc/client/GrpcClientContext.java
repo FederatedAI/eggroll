@@ -23,6 +23,7 @@ import com.webank.eggroll.core.error.handler.ErrorHandler;
 import com.webank.eggroll.core.error.handler.InterruptAndRethrowRuntimeErrorHandler;
 import com.webank.eggroll.core.factory.GrpcStubFactory;
 import com.webank.eggroll.core.grpc.observer.BaseCallerResponseStreamObserver;
+import com.webank.eggroll.core.grpc.processor.StreamProcessor;
 import com.webank.eggroll.core.model.Endpoint;
 import io.grpc.Metadata;
 import io.grpc.stub.AbstractStub;
@@ -40,7 +41,7 @@ import org.apache.logging.log4j.Logger;
  * <p>
  * S: Stub type R: calleR type E: calleE type
  */
-public class GrpcAsyncClientContext<S extends AbstractStub, R extends Message, E extends Message> {
+public class GrpcClientContext<S extends AbstractStub, R extends Message, E extends Message> {
 
   private static final Logger LOGGER = LogManager.getLogger();
 
@@ -52,8 +53,8 @@ public class GrpcAsyncClientContext<S extends AbstractStub, R extends Message, E
   private GrpcCallerStreamingStubMethodInvoker<S, R, E> callerStreamingMethodInvoker;
   private GrpcCalleeStreamingStubMethodInvoker<S, R, E> calleeStreamingMethodInvoker;
   private StreamProcessor<R> requestStreamProcessor;
-  private long attemptTimeout;
-  private TimeUnit attemptTimeoutUnit;
+  private long attemptTimeout = 10;
+  private TimeUnit attemptTimeoutUnit = TimeUnit.MINUTES;
   private Object[] streamObserverInitArgs;
   private Class<? extends StreamProcessor> requestStreamProcessorClass;
   private Object[] requestStreamProcessorInitArgs;
@@ -85,7 +86,7 @@ public class GrpcAsyncClientContext<S extends AbstractStub, R extends Message, E
     return errorHandler;
   }
 
-  public GrpcAsyncClientContext<S, R, E> setErrorHandler(
+  public GrpcClientContext<S, R, E> setErrorHandler(
       ErrorHandler errorHandler) {
     this.errorHandler = errorHandler;
     return this;
@@ -95,7 +96,7 @@ public class GrpcAsyncClientContext<S extends AbstractStub, R extends Message, E
     return callerStreamObserverClass;
   }
 
-  public GrpcAsyncClientContext<S, R, E> setCallerStreamObserverClass(
+  public GrpcClientContext<S, R, E> setCallerStreamObserverClass(
       Class<? extends BaseCallerResponseStreamObserver> callerStreamObserverClass) {
     this.callerStreamObserverClass = callerStreamObserverClass;
     return this;
@@ -105,7 +106,7 @@ public class GrpcAsyncClientContext<S extends AbstractStub, R extends Message, E
     return callerStreamingMethodInvoker;
   }
 
-  public GrpcAsyncClientContext<S, R, E> setCallerStreamingMethodInvoker(
+  public GrpcClientContext<S, R, E> setCallerStreamingMethodInvoker(
       GrpcCallerStreamingStubMethodInvoker<S, R, E> callerStreamingMethodInvoker) {
     this.callerStreamingMethodInvoker = callerStreamingMethodInvoker;
     return this;
@@ -115,7 +116,7 @@ public class GrpcAsyncClientContext<S extends AbstractStub, R extends Message, E
     return calleeStreamingMethodInvoker;
   }
 
-  public GrpcAsyncClientContext<S, R, E> setCalleeStreamingMethodInvoker(
+  public GrpcClientContext<S, R, E> setCalleeStreamingMethodInvoker(
       GrpcCalleeStreamingStubMethodInvoker<S, R, E> calleeStreamingMethodInvoker) {
     this.calleeStreamingMethodInvoker = calleeStreamingMethodInvoker;
     return this;
@@ -125,7 +126,7 @@ public class GrpcAsyncClientContext<S extends AbstractStub, R extends Message, E
     return requestStreamProcessor;
   }
 
-  public GrpcAsyncClientContext<S, R, E> setRequestStreamProcessor(
+  public GrpcClientContext<S, R, E> setRequestStreamProcessor(
       StreamProcessor<R> requestStreamProcessor) {
     this.requestStreamProcessor = requestStreamProcessor;
     return this;
@@ -135,26 +136,17 @@ public class GrpcAsyncClientContext<S extends AbstractStub, R extends Message, E
     return attemptTimeout;
   }
 
-  public GrpcAsyncClientContext<S, R, E> setAttemptTimeout(long attemptTimeout) {
-    this.attemptTimeout = attemptTimeout;
-    return this;
-  }
 
   public TimeUnit getAttemptTimeoutUnit() {
     return attemptTimeoutUnit;
   }
 
-  public GrpcAsyncClientContext<S, R, E> setAttemptTimeoutUnit(
-      TimeUnit attemptTimeoutUnit) {
-    this.attemptTimeoutUnit = attemptTimeoutUnit;
-    return this;
-  }
 
   public Object[] getStreamObserverInitArgs() {
     return streamObserverInitArgs;
   }
 
-  public GrpcAsyncClientContext<S, R, E> setStreamObserverInitArgs(
+  public GrpcClientContext<S, R, E> setStreamObserverInitArgs(
       Object[] streamObserverInitArgs) {
     this.streamObserverInitArgs = streamObserverInitArgs;
     return this;
@@ -164,7 +156,7 @@ public class GrpcAsyncClientContext<S extends AbstractStub, R extends Message, E
     return requestStreamProcessorClass;
   }
 
-  public GrpcAsyncClientContext<S, R, E> setRequestStreamProcessorClass(
+  public GrpcClientContext<S, R, E> setRequestStreamProcessorClass(
       Class<? extends StreamProcessor> requestStreamProcessorClass) {
     this.requestStreamProcessorClass = requestStreamProcessorClass;
     return this;
@@ -174,7 +166,7 @@ public class GrpcAsyncClientContext<S extends AbstractStub, R extends Message, E
     return requestStreamProcessorInitArgs;
   }
 
-  public GrpcAsyncClientContext<S, R, E> setRequestStreamProcessorInitArgs(
+  public GrpcClientContext<S, R, E> setRequestStreamProcessorInitArgs(
       Object[] requestStreamProcessorInitArgs) {
     this.requestStreamProcessorInitArgs = requestStreamProcessorInitArgs;
     return this;
@@ -184,7 +176,7 @@ public class GrpcAsyncClientContext<S extends AbstractStub, R extends Message, E
     return stub;
   }
 
-  public GrpcAsyncClientContext<S, R, E> setStub(S stub) {
+  public GrpcClientContext<S, R, E> setStub(S stub) {
     this.stub = stub;
     return this;
   }
@@ -193,7 +185,7 @@ public class GrpcAsyncClientContext<S extends AbstractStub, R extends Message, E
     return stubClass;
   }
 
-  public GrpcAsyncClientContext<S, R, E> setStubClass(
+  public GrpcClientContext<S, R, E> setStubClass(
       Class<? extends AbstractStub> stubClass) {
     this.stubClass = stubClass;
     return this;
@@ -203,7 +195,7 @@ public class GrpcAsyncClientContext<S extends AbstractStub, R extends Message, E
     return grpcClass;
   }
 
-  public GrpcAsyncClientContext<S, R, E> setGrpcClass(Class<?> grpcClass) {
+  public GrpcClientContext<S, R, E> setGrpcClass(Class<?> grpcClass) {
     this.grpcClass = grpcClass;
     return this;
   }
@@ -212,7 +204,7 @@ public class GrpcAsyncClientContext<S extends AbstractStub, R extends Message, E
     return grpcMetadata;
   }
 
-  public GrpcAsyncClientContext<S, R, E> setGrpcMetadata(Metadata grpcMetadata) {
+  public GrpcClientContext<S, R, E> setGrpcMetadata(Metadata grpcMetadata) {
     this.grpcMetadata = grpcMetadata;
     return this;
   }
@@ -221,17 +213,20 @@ public class GrpcAsyncClientContext<S extends AbstractStub, R extends Message, E
     return serverEndpoint;
   }
 
-  public GrpcAsyncClientContext<S, R, E> setServerEndpoint(
-      Endpoint serverEndpoint) {
+  public GrpcClientContext<S, R, E> setServerEndpoint(Endpoint serverEndpoint) {
     this.serverEndpoint = serverEndpoint;
     return this;
+  }
+
+  public GrpcClientContext<S, R, E> setServerEndpoint(String host, int port) {
+    return setServerEndpoint(new Endpoint(host, port));
   }
 
   public int getLatchInitCount() {
     return latchInitCount;
   }
 
-  public GrpcAsyncClientContext<S, R, E> setLatchInitCount(int latchInitCount) {
+  public GrpcClientContext<S, R, E> setLatchInitCount(int latchInitCount) {
     this.latchInitCount = latchInitCount;
     return this;
   }
@@ -240,12 +235,12 @@ public class GrpcAsyncClientContext<S extends AbstractStub, R extends Message, E
     return isSecureRequest;
   }
 
-  public GrpcAsyncClientContext<S, R, E> setSecureRequest(boolean secureRequest) {
+  public GrpcClientContext<S, R, E> setSecureRequest(boolean secureRequest) {
     isSecureRequest = secureRequest;
     return this;
   }
 
-  public GrpcAsyncClientContext<S, R, E> setCallerStreamObserverClassAndInitArgs(
+  public GrpcClientContext<S, R, E> setCallerStreamObserverClassAndInitArgs(
       Class<? extends BaseCallerResponseStreamObserver> callerStreamObserverClass,
       Object... specificInitArgs) {
     this.callerStreamObserverClass = callerStreamObserverClass;
@@ -253,7 +248,7 @@ public class GrpcAsyncClientContext<S extends AbstractStub, R extends Message, E
     return this;
   }
 
-  public GrpcAsyncClientContext<S, R, E> setRequestStreamProcessorClassAndArgs(
+  public GrpcClientContext<S, R, E> setRequestStreamProcessorClassAndArgs(
       Class<? extends StreamProcessor<R>> streamProcessorClass,
       Object... constructorArgs) {
     this.requestStreamProcessorClass = streamProcessorClass;
@@ -261,7 +256,7 @@ public class GrpcAsyncClientContext<S extends AbstractStub, R extends Message, E
     return this;
   }
 
-  public GrpcAsyncClientContext<S, R, E> setAttemptTimeout(long attemptTimeout,
+  public GrpcClientContext<S, R, E> setAttemptTimeout(long attemptTimeout,
       TimeUnit attemptTimeoutUnit) {
     this.attemptTimeout = attemptTimeout;
     this.attemptTimeoutUnit = attemptTimeoutUnit;

@@ -16,19 +16,25 @@
 
 package com.webank.eggroll.core.grpc.observer;
 
-import com.webank.eggroll.core.grpc.client.StreamProcessor;
+import com.webank.eggroll.core.grpc.processor.StreamProcessor;
 import io.grpc.stub.ClientCallStreamObserver;
 import io.grpc.stub.ClientResponseObserver;
 import java.util.concurrent.CountDownLatch;
 
-public class BaseManualFlowControlCallerResponseStreamObserver<R, E> extends
+/**
+ * Base caller response stream observer with Manual Flow Control (MFC) aware
+ *
+ * @param <R> calleR type
+ * @param <E> calleE type
+ */
+public class BaseMFCCallerResponseStreamObserver<R, E> extends
     BaseCallerResponseStreamObserver<R, E> implements
     ClientResponseObserver<R, E> {
 
   private ClientCallStreamObserver<R> requestStream;
   private StreamProcessor<R> streamProcessor;
 
-  public BaseManualFlowControlCallerResponseStreamObserver(CountDownLatch finishLatch,
+  public BaseMFCCallerResponseStreamObserver(CountDownLatch finishLatch,
       StreamProcessor<R> streamProcessor) {
     super(finishLatch);
     this.streamProcessor = streamProcessor;

@@ -17,9 +17,11 @@
 package com.webank.eggroll.core.di;
 
 import com.google.common.base.Preconditions;
+import com.webank.eggroll.core.error.handler.DefaultLoggingErrorHandler;
+import com.webank.eggroll.core.error.handler.ErrorHandler;
 import java.lang.reflect.InvocationTargetException;
 import java.util.concurrent.ConcurrentHashMap;
-import javax.annotation.Nullable;
+import org.apache.commons.lang3.reflect.ConstructorUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -27,17 +29,17 @@ public class Singletons {
 
   private static final Object singletonPoolLock = new Object();
   private static final ConcurrentHashMap<String, Object> singletonPool = new ConcurrentHashMap<>();
+  private static final ErrorHandler errorHandler = new DefaultLoggingErrorHandler();
   private static final Logger LOGGER = LogManager.getLogger();
 
   @SuppressWarnings("unchecked")
-  public static <T> T get(Class<T> clazz, @Nullable Class<?>[] constructorTypes,
-      @Nullable Object[] initArgs)
+  public static <T> T get(Class<T> clazz, Object... initArgs)
       throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
     Preconditions.checkNotNull(clazz);
     if (!singletonPool.containsKey(clazz.getCanonicalName())) {
       synchronized (singletonPoolLock) {
         if (!singletonPool.containsKey(clazz.getCanonicalName())) {
-          T singleton = clazz.getDeclaredConstructor(constructorTypes).newInstance(initArgs);
+          T singleton = ConstructorUtils.invokeConstructor(clazz, initArgs);
           singletonPool.put(clazz.getCanonicalName(), singleton);
         }
       }
@@ -46,13 +48,13 @@ public class Singletons {
     return (T) singletonPool.get(clazz.getCanonicalName());
   }
 
-  public static <T> T getNoCheck(Class<T> clazz) {
+  public static <T> T getNoCheck(Class<T> clazz, Object... initArgs) {
     T result = null;
 
     try {
-      result = get(clazz, null, null);
+      result = get(clazz, initArgs);
     } catch (ReflectiveOperationException e) {
-      LOGGER.error("Error in getting singleton for " + clazz.getCanonicalName(), e);
+      errorHandler.handleError("Error in getting singleton for " + clazz.getCanonicalName(), e);
     }
 
     return result;

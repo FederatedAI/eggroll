@@ -39,7 +39,7 @@ public class GrpcServerWrapper {
     T result = null;
 
     try {
-      result = target.run();
+      result = target.call();
     } catch (Throwable t) {
       errorHandler.handleError(t);
       responseObserver.onError(ErrorUtils.toGrpcRuntimeException(t));

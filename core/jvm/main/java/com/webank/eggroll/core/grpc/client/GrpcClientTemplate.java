@@ -18,10 +18,13 @@ package com.webank.eggroll.core.grpc.client;
 
 import com.google.protobuf.Message;
 import com.webank.eggroll.core.concurrent.AwaitSettableFuture;
+import com.webank.eggroll.core.di.Singletons;
 import com.webank.eggroll.core.error.handler.DefaultLoggingErrorHandler;
 import com.webank.eggroll.core.error.handler.ErrorHandler;
 import com.webank.eggroll.core.error.handler.InterruptAndRethrowRuntimeErrorHandler;
 import com.webank.eggroll.core.factory.GrpcStreamComponentFactory;
+import com.webank.eggroll.core.grpc.processor.BaseClientCallStreamProcessor;
+import com.webank.eggroll.core.grpc.processor.StreamProcessor;
 import com.webank.eggroll.core.util.ErrorUtils;
 import io.grpc.stub.AbstractStub;
 import io.grpc.stub.StreamObserver;
@@ -38,38 +41,45 @@ import org.apache.logging.log4j.Logger;
 public class GrpcClientTemplate<S extends AbstractStub, R extends Message, E extends Message> {
 
   private static final Logger LOGGER = LogManager.getLogger();
-  private GrpcStreamComponentFactory grpcStreamComponentFactory;
-  private GrpcAsyncClientContext<S, R, E> grpcAsyncClientContext;
+  private final GrpcStreamComponentFactory grpcStreamComponentFactory;
+  private GrpcClientContext<S, R, E> grpcClientContext;
   private StreamProcessor<R> streamProcessor;
   private StreamObserver<R> requestObserver;
-  private ErrorHandler loggingErrorHandler = new DefaultLoggingErrorHandler();
-  private ErrorHandler rethrowErrorHandler = new InterruptAndRethrowRuntimeErrorHandler();
+  private final ErrorHandler loggingErrorHandler;
+  private final ErrorHandler rethrowErrorHandler;
 
-  public GrpcClientTemplate<S, R, E> setGrpcAsyncClientContext(
-      GrpcAsyncClientContext<S, R, E> grpcAsyncClientContext) {
-    this.grpcAsyncClientContext = grpcAsyncClientContext;
+
+  public GrpcClientTemplate() {
+    grpcStreamComponentFactory = Singletons.getNoCheck(GrpcStreamComponentFactory.class);
+    loggingErrorHandler = new DefaultLoggingErrorHandler();
+    rethrowErrorHandler = new InterruptAndRethrowRuntimeErrorHandler();
+  }
+
+  public GrpcClientTemplate<S, R, E> setGrpcClientContext(
+      GrpcClientContext<S, R, E> grpcClientContext) {
+    this.grpcClientContext = grpcClientContext;
     return this;
   }
 
   public void initCallerStreamingRpc() {
-    S stub = grpcAsyncClientContext.createStub();
+    S stub = grpcClientContext.createStub();
 
-    CountDownLatch finishLatch = grpcAsyncClientContext.createFinishLatch();
+    CountDownLatch finishLatch = grpcClientContext.createFinishLatch();
 
     @SuppressWarnings("unchecked")
     StreamObserver<E> responseObserver
         = (StreamObserver<E>) grpcStreamComponentFactory.createCallerResponseStreamObserver(
-        grpcAsyncClientContext.getCallerStreamObserverClass(),
+        grpcClientContext.getCallerStreamObserverClass(),
         finishLatch,
-        grpcAsyncClientContext.getStreamObserverInitArgs());
+        grpcClientContext.getStreamObserverInitArgs());
 
-    requestObserver = grpcAsyncClientContext.getCallerStreamingMethodInvoker()
+    requestObserver = grpcClientContext.getCallerStreamingMethodInvoker()
         .invoke(stub, responseObserver);
 
     streamProcessor = (StreamProcessor<R>) grpcStreamComponentFactory
-        .createStreamProcessor(grpcAsyncClientContext.getRequestStreamProcessorClass(),
+        .createStreamProcessor(grpcClientContext.getRequestStreamProcessorClass(),
             requestObserver,
-            grpcAsyncClientContext.getRequestStreamProcessorInitArgs());
+            grpcClientContext.getRequestStreamProcessorInitArgs());
 
     streamProcessor.onInit();
   }
@@ -92,29 +102,29 @@ public class GrpcClientTemplate<S extends AbstractStub, R extends Message, E ext
       }
     }
 
-    grpcAsyncClientContext.awaitFinish(grpcAsyncClientContext.getAttemptTimeout(),
-        grpcAsyncClientContext.getAttemptTimeoutUnit(),
-        grpcAsyncClientContext.getErrorHandler());
+    grpcClientContext.awaitFinish(grpcClientContext.getAttemptTimeout(),
+        grpcClientContext.getAttemptTimeoutUnit(),
+        grpcClientContext.getErrorHandler());
   }
 
   public void calleeStreamingRpc(R request) {
-    S stub = grpcAsyncClientContext.createStub();
+    S stub = grpcClientContext.createStub();
 
-    CountDownLatch finishLatch = grpcAsyncClientContext.createFinishLatch();
+    CountDownLatch finishLatch = grpcClientContext.createFinishLatch();
 
     @SuppressWarnings("unchecked")
     StreamObserver<E> responseObserver
         = (StreamObserver<E>) grpcStreamComponentFactory.createCallerResponseStreamObserver(
-        grpcAsyncClientContext.getCallerStreamObserverClass(),
+        grpcClientContext.getCallerStreamObserverClass(),
         finishLatch,
-        grpcAsyncClientContext.getStreamObserverInitArgs());
+        grpcClientContext.getStreamObserverInitArgs());
 
-    grpcAsyncClientContext.getCalleeStreamingMethodInvoker()
+    grpcClientContext.getCalleeStreamingMethodInvoker()
         .invoke(stub, request, responseObserver);
 
-    grpcAsyncClientContext.awaitFinish(grpcAsyncClientContext.getAttemptTimeout(),
-        grpcAsyncClientContext.getAttemptTimeoutUnit(),
-        grpcAsyncClientContext.getErrorHandler());
+    grpcClientContext.awaitFinish(grpcClientContext.getAttemptTimeout(),
+        grpcClientContext.getAttemptTimeoutUnit(),
+        grpcClientContext.getErrorHandler());
 
     try {
       responseObserver.onCompleted();
@@ -133,6 +143,7 @@ public class GrpcClientTemplate<S extends AbstractStub, R extends Message, E ext
     }
 
     T result = delayedResult.getNow();
+
     return result;
   }
 
