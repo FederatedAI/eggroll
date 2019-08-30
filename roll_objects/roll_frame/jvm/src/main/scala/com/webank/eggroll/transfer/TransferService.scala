@@ -25,15 +25,17 @@ import io.grpc.stub.StreamObserver
 
 import scala.collection.concurrent.TrieMap
 
-class TransferService {
+case class BatchData(headerSize:Int, header:Array[Byte], bodySize:Int, body:Array[Byte])
+case class BatchID(id: Array[Byte])
+
+trait TransferService {
 
 }
 
 
 object GrpcTransferService {
-  val map = TrieMap[String, BlockingQueue[RollFrameGrpc.Batch]]()
+  private val map = TrieMap[String, BlockingQueue[RollFrameGrpc.Batch]]()
 
-  //  def getQueue(key: Array[Byte]):BlockingQueue[RollFrameGrpc.Batch] = map(key)
   def getOrCreateQueue(key: String):BlockingQueue[RollFrameGrpc.Batch] = this.synchronized {
     if(!map.contains(key)) {
       map.put(key, new LinkedBlockingQueue[RollFrameGrpc.Batch]())
