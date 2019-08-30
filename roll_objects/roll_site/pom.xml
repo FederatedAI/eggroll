@@ -22,7 +22,7 @@
     <artifactId>eggroll-rollsite</artifactId>
 
     <parent>
-        <groupId>com.webank.ai.eggroll</groupId>
+        <groupId>com.webank.eggroll</groupId>
         <artifactId>eggroll-rollobjects</artifactId>
         <version>${eggroll.version}</version>
     </parent>
