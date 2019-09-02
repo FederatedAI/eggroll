@@ -64,8 +64,8 @@ class ClusterCommRuntime(object):
             raise EnvironmentError("clustercomm should be initialized before use")
         return ClusterCommRuntime.instance
 
-    def __init__(self, job_id, party_id, role, runtime_conf):
-        self.trans_conf = file_utils.load_json_conf('conf/transfer_conf.json')
+    def __init__(self, job_id, party_id, role, runtime_conf, trans_conf="eggroll/conf/transfer_conf.json"):
+        self.trans_conf = file_utils.load_json_conf(trans_conf)
         self.job_id = job_id
         self.party_id = party_id
         self.role = role
