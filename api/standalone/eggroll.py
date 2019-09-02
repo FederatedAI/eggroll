@@ -65,10 +65,8 @@ class Standalone:
         return self.eggroll_session
 
     def stop(self):
-        self.session_stub.stopSession(self.eggroll_session.to_protobuf())
         self.eggroll_session.run_cleanup_tasks()
         self.__instance = None
-        self.channel.close()
 
     def is_stopped(self):
         return (self.__instance is None)
@@ -509,7 +507,7 @@ class _DTable(object):
             return
         if self._name == 'fragments' or self._name == '__clustercomm__' or self._name == '__status__':
             return
-        if not Standalone.get_instance().is_stopped():
+        if Standalone.__instance is not None and not Standalone.get_instance().is_stopped():
             self.destroy()
 
     def __str__(self):
