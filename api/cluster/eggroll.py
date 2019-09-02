@@ -108,7 +108,7 @@ class _DTable(object):
             return
         if self._name == 'fragments' or self._name == '__clustercomm__' or self._name == '__status__':
             return
-        if not _EggRoll.get_instance().is_stopped():
+        if _EggRoll.instance is not None and not _EggRoll.get_instance().is_stopped():
             _EggRoll.get_instance().destroy(self)
 
     def __str__(self):
