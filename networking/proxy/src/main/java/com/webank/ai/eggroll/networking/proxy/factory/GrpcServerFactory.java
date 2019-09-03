@@ -115,15 +115,14 @@ public class GrpcServerFactory {
                 .maxConnectionAge(24, TimeUnit.HOURS)
                 .maxConnectionAgeGrace(24, TimeUnit.HOURS);
 
-        if (proxyServerConf.isCompatibleEnabled()) {
-            AccessRedirector accessRedirector = new AccessRedirector();
+        AccessRedirector accessRedirector = new AccessRedirector();
 
-            serverBuilder.addService(accessRedirector.redirect(dataTransferPipedServer,
-                    "com.webank.ai.eggroll.api.networking.proxy.DataTransferService",
-                    "com.webank.ai.fate.api.networking.proxy.DataTransferService"))
-                    .addService(accessRedirector.redirect(routeServer, "com.webank.ai.eggroll.api.networking.proxy.RouteService",
-                            "com.webank.ai.fate.api.networking.proxy.RouteService"));
-        }
+        serverBuilder.addService(accessRedirector.redirect(dataTransferPipedServer,
+                "com.webank.ai.eggroll.api.networking.proxy.DataTransferService",
+                "com.webank.ai.fate.api.networking.proxy.DataTransferService"))
+                .addService(accessRedirector.redirect(routeServer, "com.webank.ai.eggroll.api.networking.proxy.RouteService",
+                        "com.webank.ai.fate.api.networking.proxy.RouteService"));
+
 
         if (proxyServerConf.isSecureServer()) {
             String serverCrtPath = proxyServerConf.getServerCrtPath().replaceAll("\\.\\./", "");

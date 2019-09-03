@@ -64,11 +64,11 @@ class PickleSerdes(ABCSerdes):
 
 
 deserialize_blacklist = [b'eval', b'execfile', b'compile', b'open', b'file', b'system', b'popen', b'popen2', b'popen3',
-                          b'popen4', b'fdopen', b'tmpfile', b'fchmod', b'fchown', b'open', b'openpty', b'read', b'pipe',
+                          b'popen4', b'fdopen', b'tmpfile', b'fchmod', b'fchown', b'open', b'openpty', b'pipe',
                           b'chdir', b'fchdir', b'chroot', b'chmod', b'chown', b'link', b'lchown', b'listdir', b'lstat',
                           b'mkfifo', b'mknod', b'access', b'mkdir', b'makedirs', b'readlink', b'remove', b'removedirs',
                           b'rename', b'renames', b'rmdir', b'tempnam', b'tmpnam', b'unlink', b'walk', b'execl',
-                          b'execle', b'execlp', b'execv', b'execve', b'dup', b'dup2', b'execvp', b'execvpe', b'fork',
+                          b'execle', b'execlp', b'execv', b'execve', b'dup2', b'execvp', b'execvpe',
                           b'forkpty', b'kill', b'spawnl', b'spawnle', b'spawnlp', b'spawnlpe', b'spawnv', b'spawnve',
                           b'spawnvp', b'spawnvpe', b'load', b'loads', b'load', b'loads', b'call', b'check_call',
                           b'check_output', b'Popen', b'getstatusoutput', b'getoutput', b'getstatus',
@@ -76,6 +76,8 @@ deserialize_blacklist = [b'eval', b'execfile', b'compile', b'open', b'file', b's
                           b'listdir', b'opendir', b'open', b'popen2', b'popen3', b'popen4', b'timeit', b'repeat',
                           b'call_tracing', b'interact', b'compile_command', b'compile_command', b'spawn', b'open',
                           b'fileopen', b'popen']
+
+future_blacklist = [b'read', b'dup', b'fork']
 
 serdes_cache = {}
 for cls in ABCSerdes.__subclasses__():
