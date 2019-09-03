@@ -168,7 +168,7 @@ class RollSiteRuntime(object):
 
     def pull(self, key: str):
         #先发送unaryCall，等待对方push数据过来。
-        self.unaryCall(key)
+        self.unaryCall(key, )
         #wait()等待完成条件，表示已经接收到结果，然后get结果。
         task_info = proxy_pb2.Task(taskId="testTaskId", model=proxy_pb2.Model(name="taskName", dataKey="testKey"))
         topic_src = proxy_pb2.Topic(name="test", partyId="10001",
