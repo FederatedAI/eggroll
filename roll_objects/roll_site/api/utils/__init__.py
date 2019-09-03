@@ -14,14 +14,4 @@
 #  limitations under the License.
 #
 
-from api import rollsite
-
-if __name__ == '__main__':
-    #ggroll.init("atest")
-    rollsite.init("atest", "role_conf", "eggroll/conf/server_conf.json")
-    _tag = "Hello"
-    a = _tag
-    rollsite.push_sync(a, "test_push_name", tag="{}".format(_tag))
-    rollsite.pull_sync(a, "test_pull_name", tag="{}".format(_tag))
-
 
