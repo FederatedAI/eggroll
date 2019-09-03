@@ -133,7 +133,7 @@ Status SKVServicer::get(ServerContext *context, const Operand *request, Operand 
         string_view result = skvStore->get(request, value);
 
         response->set_key(request->key());
-        response->set_value(value.data(), value.size());
+        response->set_value(result.data(), result.size());
 
         LOG(INFO) << "get finished" << endl;
         cout << "get finished" << ", value: " << value << endl;
