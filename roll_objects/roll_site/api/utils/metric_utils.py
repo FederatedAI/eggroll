@@ -14,14 +14,27 @@
 #  limitations under the License.
 #
 
-from api import rollsite
+import time
+from eggroll.api.utils import log_utils
 
-if __name__ == '__main__':
-    #ggroll.init("atest")
-    rollsite.init("atest", "role_conf", "eggroll/conf/server_conf.json")
-    _tag = "Hello"
-    a = _tag
-    rollsite.push_sync(a, "test_push_name", tag="{}".format(_tag))
-    rollsite.pull_sync(a, "test_pull_name", tag="{}".format(_tag))
+LOGGER = log_utils.getLogger()
 
 
+def record_metrics(func):
+    from functools import wraps
+
+    @wraps(func)
+    def wrapper(*args, **kw):
+        try:
+            start = time.process_time()
+            result = func(*args, **kw)
+            result_status = 'success'
+        except Exception:
+            result_status = 'error'
+            raise
+        finally:
+            end = time.process_time()
+            LOGGER.debug('{}.{}: {} status: {}'.format(func.__module__, func.__name__, end - start, result_status))
+        return result
+
+    return wrapper
