@@ -207,13 +207,19 @@ class _DTable(object):
     def map(self, func):
         _intermediate_result = _EggRoll.get_instance().map(self, func)
         return _intermediate_result.save_as(str(uuid.uuid1()), _intermediate_result._namespace,
-                                            partition=_intermediate_result._partitions)
+                                            partition=_intermediate_result._partitions, persistent=False)
 
     def mapValues(self, func):
         return _EggRoll.get_instance().map_values(self, func)
 
     def mapPartitions(self, func):
         return _EggRoll.get_instance().map_partitions(self, func)
+
+    def mapPartitions2(self, func, need_shuffle=True):
+        if need_shuffle:
+            return _EggRoll.get_instance().map_partitions2(self, func)
+        else:
+            return _EggRoll.get_instance().map_partitions(self, func)
 
     def reduce(self, func):
         return _EggRoll.get_instance().reduce(self, func)
@@ -500,6 +506,9 @@ class _EggRoll(object):
 
     def map_partitions(self, _table: _DTable, func):
         return self.__do_unary_process_and_create_table(table=_table, user_func=func, stub_func=self.proc_stub.mapPartitions)
+
+    def map_partitions2(self, _table: _DTable, func):
+        return self.__do_unary_process_and_create_table(table=_table, user_func=func, stub_func=self.proc_stub.mapPartitions2)
 
     def reduce(self, _table: _DTable, func):
         unary_p = self.__create_unary_process(table=_table, func=func)

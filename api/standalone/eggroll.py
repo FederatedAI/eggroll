@@ -261,6 +261,24 @@ def do_map_partitions(p: _UnaryProcess):
     return rtn
 
 
+def do_map_partitions2(p: _UnaryProcess):
+    _mapper = __get_function(p._info)
+    op = p._operand
+    rtn = __create_output_operand(op, p._info, p._process_conf, False)
+    source_env = op.as_env()
+    dst_env = rtn.as_env(write=True)
+    serialize = c_pickle.dumps
+    with source_env.begin() as source_txn:
+        with dst_env.begin(write=True) as dst_txn:
+            cursor = source_txn.cursor()
+            v = _mapper(_generator_from_cursor(cursor))
+            if cursor.last():
+                for k1, v1 in v:
+                    dst_txn.put(serialize(k1), serialize(v1))
+            cursor.close()
+    return rtn
+
+
 def do_map_values(p: _UnaryProcess):
     _mapper = __get_function(p._info)
     is_in_place_computing = __get_is_in_place_computing(p._info)
@@ -727,6 +745,15 @@ class _DTable(object):
 
     def mapPartitions(self, func):
         results = self._submit_to_pool(func, do_map_partitions)
+        for r in results:
+            result = r.result()
+        return Standalone.get_instance().table(result._name, result._namespace, self._partitions, persistent=False)
+
+    def mapPartitions2(self, func, need_shuffle=True):
+        if need_shuffle:
+            results = self._submit_to_pool(func, do_map_partitions2)
+        else:
+            results = self._submit_to_pool(func, do_map_partitions)
         for r in results:
             result = r.result()
         return Standalone.get_instance().table(result._name, result._namespace, self._partitions, persistent=False)

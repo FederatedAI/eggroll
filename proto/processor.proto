@@ -54,6 +54,7 @@ service ProcessService {
     rpc join (BinaryProcess) returns (com.webank.ai.eggroll.api.storage.StorageLocator);
     rpc reduce (UnaryProcess) returns (stream com.webank.ai.eggroll.api.storage.Operand);
     rpc mapPartitions (UnaryProcess) returns (com.webank.ai.eggroll.api.storage.StorageLocator);
+    rpc mapPartitions2 (UnaryProcess) returns (com.webank.ai.eggroll.api.storage.StorageLocator);
     rpc glom (UnaryProcess) returns (com.webank.ai.eggroll.api.storage.StorageLocator);
     rpc sample (UnaryProcess) returns (com.webank.ai.eggroll.api.storage.StorageLocator);
 
