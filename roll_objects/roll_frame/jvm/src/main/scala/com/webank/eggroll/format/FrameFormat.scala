@@ -22,11 +22,12 @@ import java.nio.channels.Channels
 import com.webank.eggroll.blockstore._
 import org.apache.arrow.flatbuf.MessageHeader
 import org.apache.arrow.memory.{BufferAllocator, RootAllocator}
+import org.apache.arrow.vector._
+import org.apache.arrow.vector.complex.FixedSizeListVector
 import org.apache.arrow.vector.dictionary.DictionaryProvider
 import org.apache.arrow.vector.ipc.message._
 import org.apache.arrow.vector.ipc.{ArrowReader, ArrowStreamReader, ArrowStreamWriter, ReadChannel}
 import org.apache.arrow.vector.types.pojo.Schema
-import org.apache.arrow.vector.{FieldVector, Float8Vector, VectorSchemaRoot, VectorUnloader}
 
 import scala.collection.JavaConverters._
 import scala.collection.concurrent.TrieMap
@@ -113,21 +114,39 @@ class JvmFrameStoreAdapter(path: String) extends FrameStoreAdapter  {
   // TODO : clear ?
   override def close(): Unit = {}
 }
-class FrameBatch(val columnarVectors:List[FrameVector], var rowCount:Int = -1) {
+class FrameBatch(val columnarVectors: Array[FrameVector], var rowCount:Int = -1) {
   def this(columnarSchema: FrameSchema, rowCount:Int){
-    this(columnarSchema.columnarVectors, rowCount)
+    this(columnarSchema.columnarVectors.toArray, rowCount)
     allocateNew()
-  }
-  def readDouble(field:Int, row: Int):Double = {
-    columnarVectors(field).readDouble(row)
   }
   private def allocateNew():Unit = {
     require(rowCount >= 0)
     columnarVectors.foreach(_.valueCount(rowCount))
   }
-  def writeDouble(field:Int, row: Int, item: Double): Unit = {
-    columnarVectors(field).writeDouble(row, item)
-  }
+
+  def readDouble(field:Int, row: Int):Double = columnarVectors(field).readDouble(row)
+
+  def writeDouble(field:Int, row: Int, item: Double): Unit = columnarVectors(field).writeDouble(row, item)
+
+  def readLong(field:Int, row: Int):Long = columnarVectors(field).readLong(row)
+
+  def writeLong(field:Int, row: Int, item: Long): Unit = columnarVectors(field).writeLong(row, item)
+
+  def readInt(field:Int, row: Int):Int = columnarVectors(field).readInt(row)
+
+  def writeInt(field:Int, row: Int, item: Int): Unit = columnarVectors(field).writeInt(row, item)
+
+  // TODO: create when init schema
+//  def createIntArray(field: Int): Unit = columnarVectors(field).asInstanceOf[FixedSizeListVector]
+//    .addOrGetVector(new FieldType(false, new ArrowType.Int(32, true), null, null))
+//
+//  def createDoubleArray(field: Int): Unit = columnarVectors(field).asInstanceOf[FixedSizeListVector]
+//    .addOrGetVector(new FieldType(false, new ArrowType.FloatingPoint(FloatingPointPrecision.DOUBLE), null, null))
+//
+//  def createLongArray(field: Int): Unit = columnarVectors(field).asInstanceOf[FixedSizeListVector]
+//    .addOrGetVector(FieldType.nullable(new ArrowType.Int(64, true)))
+//
+  def getValueVector(field: Int,  row:Int): FrameArrayVector = columnarVectors(field).getValueVector(row)
 }
 
 class FrameVector(val fieldVector: FieldVector) {
@@ -137,8 +156,32 @@ class FrameVector(val fieldVector: FieldVector) {
     fieldVector.allocateNew()
     fieldVector.setValueCount(count)
   }
+  // TODO:  not safe set
   def readDouble(index: Int):Double = fieldVector.asInstanceOf[Float8Vector].get(index)
   def writeDouble(index:Int, item: Double):Unit = fieldVector.asInstanceOf[Float8Vector].setSafe(index, item)
+  def readLong(index:Int):Long = fieldVector.asInstanceOf[BigIntVector].get(index)
+  def writeLong(index:Int, item: Long):Unit = fieldVector.asInstanceOf[BigIntVector].setSafe(index, item)
+  def readInt(index:Int):Int = fieldVector.asInstanceOf[IntVector].get(index)
+  def writeInt(index:Int, item: Int):Unit = fieldVector.asInstanceOf[IntVector].setSafe(index, item)
+
+  def getValueVector(index: Int) = new FrameArrayVector(fieldVector.asInstanceOf[FixedSizeListVector], index)
+
+}
+
+class FrameArrayVector(fieldVector: FixedSizeListVector, val rowIndex:Int)
+  extends FrameVector(fieldVector.getDataVector) {
+  override def valueCount(count: Int): Unit = throw new UnsupportedOperationException("can't change value count")
+
+  override def valueCount: Int = fieldVector.getListSize
+
+  override def readDouble(index: Int): Double = super.readDouble(rowIndex * valueCount + index)
+
+  override def writeDouble(index: Int, item: Double): Unit = super.writeDouble(rowIndex * valueCount + index, item)
+
+  override def readLong(index: Int): Long = super.readLong(rowIndex * valueCount + index)
+  override def writeLong(index: Int, item: Long): Unit = super.writeLong(rowIndex * valueCount + index, item)
+  override def readInt(index: Int): Int = super.readInt(rowIndex * valueCount + index)
+  override def writeInt(index: Int, item: Int): Unit = super.writeInt(rowIndex * valueCount + index, item)
 }
 
 class FrameReader(val arrowReader: ArrowStreamReusableReader) { self =>
@@ -175,7 +218,7 @@ class FrameReader(val arrowReader: ArrowStreamReusableReader) { self =>
         // TODO: refactor
         if(nextItem == null) throw new Exception("end")
         new FrameBatch(
-          nextItem.getFieldVectors.asScala.map(new FrameVector(_)).toList,
+          nextItem.getFieldVectors.asScala.map(new FrameVector(_)).toArray,
           nextItem.getRowCount)
       }
     }
@@ -289,10 +332,10 @@ class FrameWriter(val rootSchema: VectorSchemaRoot, val arrowWriter: ArrowStream
   }
 
   def this(columnarBatch: FrameBatch, adapter: BlockStoreAdapter) {
-    this(new VectorSchemaRoot(columnarBatch.columnarVectors.map(_.fieldVector).asJava), adapter.getOutputStream())
+    this(new VectorSchemaRoot(columnarBatch.columnarVectors.map(_.fieldVector).toIterable.asJava), adapter.getOutputStream())
   }
   def this(columnarBatch: FrameBatch, outputStream: OutputStream) {
-    this(new VectorSchemaRoot(columnarBatch.columnarVectors.map(_.fieldVector).asJava), outputStream)
+    this(new VectorSchemaRoot(columnarBatch.columnarVectors.map(_.fieldVector).toIterable.asJava), outputStream)
   }
   def this(schema: String, adapter: BlockStoreAdapter) {
     this(VectorSchemaRoot.create(Schema.fromJSON(schema), new RootAllocator(Integer.MAX_VALUE)), adapter.getOutputStream())
@@ -332,7 +375,7 @@ class FrameWriter(val rootSchema: VectorSchemaRoot, val arrowWriter: ArrowStream
     arrowWriter.writeBatch()
   }
   def writeSibling(columnarBatch: FrameBatch):Unit = {
-    val sibling = new VectorSchemaRoot(columnarBatch.columnarVectors.map(_.fieldVector).asJava)
+    val sibling = new VectorSchemaRoot(columnarBatch.columnarVectors.map(_.fieldVector).toIterable.asJava)
     sibling.setRowCount(sibling.getFieldVectors.get(0).getValueCount)
     arrowWriter.writeSibling(sibling)
   }

@@ -261,8 +261,8 @@ class RollFrameTests {
           for(i <- 0 until fv.valueCount) {
             sum += fv.readDouble(i)
           }
-//          x.writeDouble(f,0, sum)
-          x.writeDouble(f,0, fv.valueCount)
+          x.writeDouble(f,0, sum)
+//          x.writeDouble(f,0, fv.valueCount)
         }
       } catch {
         case t:Throwable => t.printStackTrace()
@@ -280,9 +280,41 @@ class RollFrameTests {
   }
 
   @Test
+  def testFrameDataType():Unit = {
+    val schema =
+      """
+        {
+          "fields": [
+          {"name":"double1", "type": {"name" : "floatingpoint","precision" : "DOUBLE"}},
+          {"name":"long1", "type": {"name" : "int","bitWidth" : 64,"isSigned":true}},
+          {"name":"longarray1", "type": {"name" : "fixedsizelist","listSize" : 10}, "children":[{"name":"$data$", "type": {"name" : "int","bitWidth" : 64,"isSigned":true}}]}
+          ]
+        }
+      """.stripMargin
+
+    val zeroValue = new FrameBatch(new FrameSchema(schema), 1)
+    zeroValue.writeDouble(0, 0, 1.2)
+    zeroValue.writeLong(1, 0, 22)
+    val arr = zeroValue.getValueVector(2, 0)
+    (0 until 10).foreach( i=> arr.writeLong(i, i * 100))
+    val outputStore = FrameStoreAdapter(Map("path" -> "./tmp/unittests/RollFrameTests/filedb/test1/type_test", "type"->"file"))
+    outputStore.append(zeroValue)
+    outputStore.close()
+    assert(zeroValue.readDouble(0, 0) == 1.2)
+    assert(zeroValue.readLong(1, 0) == 22)
+    assert(arr.readLong(0) == 0)
+    val inputStore = FrameStoreAdapter(Map("path" -> "./tmp/unittests/RollFrameTests/filedb/test1/type_test", "type"->"file"))
+    for(b <- inputStore.readAll()) {
+      println(b.readDouble(0,0))
+      println(b.readLong(1,0))
+      println()
+      (0 until 10).foreach(i => print(b.getValueVector(2, 0).readLong(i) + " "))
+    }
+
+  }
+
+  @Test
   def testTmp():Unit = {
-//    val a = new Factory
-//    val b:Foo = a.create()
-//    println(b)
+
   }
 }
