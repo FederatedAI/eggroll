@@ -244,6 +244,17 @@ class RollPairProcessor(processor_pb2_grpc.ProcessServiceServicer):
         return self._run_unary("mapPartitions", mapPartitions_wrapper, request,context, False)
 
     @_exception_logger
+    def mapPartitions2(self, request, context):
+        def mapPartitions2_wrapper(src_it, dst_wb,src_serde, dst_serde, functor, is_in_place_computing):
+            if is_in_place_computing:
+                raise NotImplementedError()
+            v = functor(generator(src_serde, src_it))
+            if src_it.last():
+                for k1, v1 in v:
+                    dst_wb.put(dst_serde.serialize(k1), dst_serde.serialize(v1))
+        return self._run_unary("mapPartitions2", mapPartitions2_wrapper, request,context, False)
+
+    @_exception_logger
     def flatMap(self, request, context):
         def flatMap_wrapper(src_it, dst_wb, src_serde, dst_serde, functor, is_in_place_computing):
             if is_in_place_computing:
