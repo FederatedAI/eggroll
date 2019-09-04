@@ -8,6 +8,7 @@ import com.webank.ai.eggroll.core.retry.factory.RetryerBuilder;
 import com.webank.ai.eggroll.core.retry.factory.StopStrategies;
 import com.webank.ai.eggroll.core.retry.factory.WaitStrategies;
 import com.webank.ai.eggroll.core.retry.factory.WaitTimeStrategies;
+import com.webank.ai.eggroll.core.server.ServerConf;
 import com.webank.ai.eggroll.core.utils.PropertyGetter;
 import com.webank.ai.eggroll.core.utils.ToStringUtils;
 import com.webank.ai.eggroll.core.utils.TypeConversionUtils;
@@ -40,6 +41,8 @@ public class EggSessionManager {
     private EngineStatusTracker engineStatusTracker;
     @Autowired
     private ToStringUtils toStringUtils;
+    @Autowired
+    private ServerConf serverConf;
 
     @GuardedBy("sessionIdToResourceLock")
     private final Map<String, EggrollSession> sessionIdToResource;
@@ -88,6 +91,8 @@ public class EggSessionManager {
         int maxSessionEngineCountInConf = Integer.parseInt(maxSessionEngineCountInConfString);
         int finalMaxSessionEngineCount = Math.max(maxSessionEngineCountInConf, 1);
         finalMaxSessionEngineCount = Math.min(finalMaxSessionEngineCount, 512);
+
+        LOGGER.info("[EGG][SESSIONMANAGER] maxSessionEngineCountInConf: {}, finalMaxSessionEngineCount: {}", maxSessionEngineCountInConf, finalMaxSessionEngineCount);
 
         ComputingEngine typeParamComputingEngine = new ComputingEngine(ComputingEngine.ComputingEngineType.EGGROLL);
         for (int i = 0; i < finalMaxSessionEngineCount; ++i) {
