@@ -4,18 +4,28 @@ import com.google.common.collect.Lists;
 import com.webank.ai.eggroll.core.constant.StringConstants;
 import com.webank.ai.eggroll.core.utils.PropertyGetter;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.context.annotation.Scope;
-import org.springframework.stereotype.Component;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.springframework.stereotype.Service;
 
+import javax.annotation.PostConstruct;
 import java.util.*;
 
-@Component
-@Scope("prototype")
+@Service("propertyGetter")
 public class PriorityPropertyGetter implements PropertyGetter {
+
     private final List<Properties> propertiesPriorityList;
+    private static final Logger LOGGER = LogManager.getLogger();
 
     public PriorityPropertyGetter() {
         this.propertiesPriorityList = Collections.synchronizedList(Lists.newArrayList());
+    }
+
+    @PostConstruct
+    public void init() {
+/*        if (propertiesPriorityList.isEmpty() && serverConf.getProperties() != null) {
+            propertiesPriorityList.add(serverConf.getProperties());
+        }*/
     }
 
     @Override
@@ -45,9 +55,15 @@ public class PriorityPropertyGetter implements PropertyGetter {
 
     @Override
     public String getPropertyWithTemporarySource(String key, String defaultValue, Properties... props) {
+        if (props == null) {
+            props = new Properties[0];
+        }
+
         ArrayList<Properties> appended = Lists.newArrayListWithCapacity(props.length + propertiesPriorityList.size());
+
         appended.addAll(Arrays.asList(props));
         appended.addAll(propertiesPriorityList);
+
         return getPropertyInIterable(key, defaultValue, appended);
     }
 
@@ -100,7 +116,7 @@ public class PriorityPropertyGetter implements PropertyGetter {
         int curMatch = 0;
         String value;
         for (Properties prop : propsIter) {
-            if (prop == null) {
+            if (prop == null || prop.isEmpty()) {
                 continue;
             }
 
