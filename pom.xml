@@ -37,7 +37,6 @@
   </scm>
 
   <modules>
-    <module>core/jvm</module>
     <module>roll_objects/roll_site</module>
   </modules>
 
@@ -99,6 +98,12 @@
     </repository>
   </repositories>
   <pluginRepositories>
+    <pluginRepository>
+      <id>scala-tools.org</id>
+      <name>Scala-Tools Maven2 Repository</name>
+      <url>http://scala-tools.org/repo-releases</url>
+    </pluginRepository>
+    
     <pluginRepository>
       <id>central</id>
       <url>https://repo.maven.apache.org/maven2</url>
@@ -253,6 +258,30 @@
       <version>${spring.version}</version>
     </dependency>
 
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-webmvc</artifactId>
+      <version>${spring.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>com.google.flatbuffers</groupId>
+      <artifactId>flatbuffers-java</artifactId>
+      <version>1.10.0</version>
+    </dependency>
+
+    <dependency>
+      <groupId>com.google.flatbuffers</groupId>
+      <artifactId>flatbuffers-java-grpc</artifactId>
+      <version>1.10.0</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-text</artifactId>
+      <version>1.4</version>
+    </dependency>
+
   </dependencies>
 
 
@@ -368,7 +397,6 @@
             <arg>-feature</arg>
             <arg>-explaintypes</arg>
             <arg>-Yno-adapted-args</arg>
-            <arg>-target:jvm-1.8</arg>
           </args>
           <jvmArgs>
             <jvmArg>-Xms1024m</jvmArg>
