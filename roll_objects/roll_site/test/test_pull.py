@@ -13,19 +13,19 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
-from api import RuntimeInstance
-from api.cluster import rollsite as cluster_rollsite
 
+from api import rollsite
 
-def init(job_id, runtime_conf, server_conf_path="server_conf.json"):
-    RuntimeInstance.ROLLSITE = cluster_rollsite.init(job_id=job_id, runtime_conf_path=runtime_conf,
-                                                     server_conf_path=server_conf_path)
+if __name__ == '__main__':
+    #ggroll.init("atest")
+    rollsite.init("atest", "role_conf", "eggroll/conf/server_conf.json")
+    _tag = "Hello"
+    a = _tag
 
-
-def push(obj, name: str, tag: str, role=None, idx=-1):
-    return RuntimeInstance.ROLLSITE.push(obj=obj, name=name, tag=tag)
-
-def pull(name: str, tag: str, role=None, idx=-1):
-    return RuntimeInstance.ROLLSITE.pull(obj=obj, name=name)
-
+    f = open('write_demo.txt', 'w')
+    content = rollsite.pull("test_pull_name", tag="{}".format(_tag))
+    #每次读len长度的内容，内部可能读多个packet
+    while content != -1:
+        content = rollsite.pull("test_pull_name", tag="{}".format(_tag))
+        f.write(content)
 

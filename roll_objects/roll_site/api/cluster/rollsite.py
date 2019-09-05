@@ -26,7 +26,7 @@ CONF_KEY_SERVER = "servers"
 
 queue = queue.Queue()
 
-def init(job_id, runtime_conf, server_conf_path):
+def init(job_id, runtime_conf_path, server_conf_path):
     global LOGGER
     LOGGER = getLogger()
     server_conf = file_utils.load_json_conf(server_conf_path)
@@ -38,6 +38,7 @@ def init(job_id, runtime_conf, server_conf_path):
 
     _host = server_conf.get(CONF_KEY_SERVER).get(CONF_KEY_TARGET).get("host")
     _port = server_conf.get(CONF_KEY_SERVER).get(CONF_KEY_TARGET).get("port")
+    runtime_conf = file_utils.load_json_conf(runtime_conf_path)
     if CONF_KEY_LOCAL not in runtime_conf: #CONF_KEY_LOCAL = "local" 这里从role的角色角度，本地的角色？
         raise EnvironmentError("runtime_conf should be a dict containing key: {}".format(CONF_KEY_LOCAL))
 
@@ -48,6 +49,7 @@ def init(job_id, runtime_conf, server_conf_path):
 
 class RollSiteRuntime(object):
     def __init__(self, job_id, party_id, role, runtime_conf, host, port):
+        self.trans_conf = file_utils.load_json_conf('roll_site/test/transfer_conf.json')
         self.job_id = job_id
         self.party_id = party_id
         self.role = role
@@ -70,15 +72,16 @@ class RollSiteRuntime(object):
     def __check_authorization(self, name, is_send=True):
         #name传进来的是*号，暂时不做判断
         if is_send and self.trans_conf.get('src') != self.role:
-            raise ValueError("{} is not allow to send from {}".format(sub_name, self.role))
+            print(self.role)
+            raise ValueError("{} is not allow to send from {}".format(self.role))
         elif not is_send and self.role not in self.trans_conf.get('dst'):
-            raise ValueError("{} is not allow to receive from {}".format(sub_name, self.role))
+            raise ValueError("{} is not allow to receive from {}".format(self.role))
 
     def __get_parties(self, role):
         return self.runtime_conf.get('role').get(role)
 
     #https://www.codercto.com/a/49586.html
-    def push_sync(self, obj, name: str, tag: str, role=None, idx=-1):
+    def push(self, obj, name: str, tag: str, role=None, idx=-1):
         self.__check_authorization(name)
 
         if idx >= 0:
@@ -100,10 +103,10 @@ class RollSiteRuntime(object):
         for _role, _partyInfos in parties.items():
             print("_role:", _role, "_partyIds:", _partyInfos)
             for _partyId in _partyInfos:
-                task_info = proxy_pb2.Task(taskId="testTaskId", model=proxy_pb2.Model(name="taskName", dataKey="testKey"))
-                topic_src = proxy_pb2.Topic(name=name, partyId="{}".format(self.party_id,
-                                            role=self.role, callback=None))
-                topic_dst = proxy_pb2.Topic(name=name, partyId=_partyId,
+                task_info = proxy_pb2.Task(taskId="testTaskId", model=proxy_pb2.Model(name=name, dataKey="testKey"))
+                topic_src = proxy_pb2.Topic(name=name, partyId="{}".format(self.party_id),
+                                            role=self.role, callback=None)
+                topic_dst = proxy_pb2.Topic(name=name, partyId="{}".format(_partyId),
                                             role=_role, callback=None)
                 command_test = proxy_pb2.Command()
                 conf_test = proxy_pb2.Conf(overallTimeout=1000,
@@ -145,7 +148,7 @@ class RollSiteRuntime(object):
             print("_role:", _role, "_partyIds:", _partyInfos)
             for _partyId in _partyInfos:
                 task_info = proxy_pb2.Task(taskId="testTaskId", model=proxy_pb2.Model(name="taskName", dataKey="testKey"))
-                topic_src = proxy_pb2.Topic(name="test", partyId="10001",
+                topic_src = proxy_pb2.Topic(name="test", partyId="{}".format(self.party_id),
                                             role="host", callback=None)
                 topic_dst = proxy_pb2.Topic(name="test", partyId="10002",
                                             role="guest", callback=None)
@@ -167,11 +170,15 @@ class RollSiteRuntime(object):
 
 
     def pull(self, key: str):
+        #先从本地取，判断返回值，不是complete状态,如果dst是local，从本地取
+        if  self.party_id != _partyId:
+            self.unaryCall(key)
+
         #先发送unaryCall，等待对方push数据过来。
-        self.unaryCall(key, )
+
         #wait()等待完成条件，表示已经接收到结果，然后get结果。
         task_info = proxy_pb2.Task(taskId="testTaskId", model=proxy_pb2.Model(name="taskName", dataKey="testKey"))
-        topic_src = proxy_pb2.Topic(name="test", partyId="10001",
+        topic_src = proxy_pb2.Topic(name="test", partyId="{}".format(self.party_id),
                                     role="host", callback=None)
         topic_dst = proxy_pb2.Topic(name="test", partyId="10002",
                                     role="guest", callback=None)
@@ -187,4 +194,13 @@ class RollSiteRuntime(object):
                                       command=command_test,
                                       seq=0, ack=0,
                                       conf=conf_test)
-        return self.stub.pull(metadata)
+        ret_packets = self.stub.pull(metadata)
+        ret_data = bytes(0)
+        for packet in ret_packets:
+            #print(packet.body)
+            ret_data += packet.body
+        return ret_data
+
+
+
+

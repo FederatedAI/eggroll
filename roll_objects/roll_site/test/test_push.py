@@ -13,19 +13,22 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
-from api import RuntimeInstance
-from api.cluster import rollsite as cluster_rollsite
+
+from api import rollsite
+
+if __name__ == '__main__':
+    #ggroll.init("atest")
+    rollsite.init("atest", "roll_site/test/role_conf.json", "roll_site/test/server_conf.json")
+    _tag = "Hello"
+    a = _tag
+
+    f = open("testA.model", 'r')
+    content = f.read(10000)
+    while content != None:
+        rollsite.push(content, "model_A", tag="{}".format(_tag))
+        content = f.read(10000)
+    f.close()
 
 
-def init(job_id, runtime_conf, server_conf_path="server_conf.json"):
-    RuntimeInstance.ROLLSITE = cluster_rollsite.init(job_id=job_id, runtime_conf_path=runtime_conf,
-                                                     server_conf_path=server_conf_path)
-
-
-def push(obj, name: str, tag: str, role=None, idx=-1):
-    return RuntimeInstance.ROLLSITE.push(obj=obj, name=name, tag=tag)
-
-def pull(name: str, tag: str, role=None, idx=-1):
-    return RuntimeInstance.ROLLSITE.pull(obj=obj, name=name)
 
 
