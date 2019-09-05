@@ -217,9 +217,11 @@ class _DTable(object):
 
     def mapPartitions2(self, func, need_shuffle=True):
         if need_shuffle:
-            return _EggRoll.get_instance().map_partitions2(self, func)
+            _intermediate_result = _EggRoll.get_instance().map_partitions2(self, func)
+            return _intermediate_result.save_as(str(uuid.uuid1()), _intermediate_result._namespace,
+                                                partition=_intermediate_result._partitions, persistent=False)
         else:
-            return _EggRoll.get_instance().map_partitions(self, func)
+            return _EggRoll.get_instance().map_partitions2(self, func)
 
     def reduce(self, func):
         return _EggRoll.get_instance().reduce(self, func)
