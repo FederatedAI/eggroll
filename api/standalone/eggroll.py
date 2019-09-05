@@ -28,6 +28,7 @@ from cachetools import cached
 import numpy as np
 from functools import partial
 from operator import is_not
+from collections import Iterable
 import hashlib
 import fnmatch
 import shutil
@@ -273,8 +274,12 @@ def do_map_partitions2(p: _UnaryProcess):
             cursor = source_txn.cursor()
             v = _mapper(_generator_from_cursor(cursor))
             if cursor.last():
-                for k1, v1 in v:
-                    dst_txn.put(serialize(k1), serialize(v1))
+                if isinstance(v, Iterable):
+                    for k1, v1 in v:
+                        dst_txn.put(serialize(k1), serialize(v1))
+                else:
+                    k_bytes = cursor.key()
+                    dst_txn.put(k_bytes, serialize(v))
             cursor.close()
     return rtn
 
@@ -656,11 +661,15 @@ class _DTable(object):
             iterators.append(txn.cursor())
         return self._merge(iterators, use_serialize)
 
-    def save_as(self, name, namespace, partition=None, use_serialize=True):
+    def save_as(self, name, namespace, partition=None, use_serialize=True,
+                persistent=True, persistent_engine=StoreType.LMDB):
         if partition is None:
             partition = self._partitions
-        dup = Standalone.get_instance().table(name, namespace, partition, persistent=True)
+        dup = Standalone.get_instance().table(name, namespace, partition,
+                                              persistent=persistent, persistent_engine=persistent_engine)
+        self.set_gc_disable()
         dup.put_all(self.collect(use_serialize=use_serialize), use_serialize=use_serialize)
+        self.set_gc_enable()
         return dup
 
     def take(self, n, keysOnly=False, use_serialize=True):
@@ -750,13 +759,16 @@ class _DTable(object):
         return Standalone.get_instance().table(result._name, result._namespace, self._partitions, persistent=False)
 
     def mapPartitions2(self, func, need_shuffle=True):
-        if need_shuffle:
-            results = self._submit_to_pool(func, do_map_partitions2)
-        else:
-            results = self._submit_to_pool(func, do_map_partitions)
+        results = self._submit_to_pool(func, do_map_partitions2)
         for r in results:
             result = r.result()
-        return Standalone.get_instance().table(result._name, result._namespace, self._partitions, persistent=False)
+        if need_shuffle:
+            _intermediate_result = Standalone.get_instance().table(result._name, result._namespace,
+                                                                   self._partitions, persistent=False)
+            return _intermediate_result.save_as(str(uuid.uuid1()), _intermediate_result._namespace,
+                                                partition=_intermediate_result._partitions, persistent=False)
+        else:
+            return Standalone.get_instance().table(result._name, result._namespace, self._partitions, persistent=False)
 
     def reduce(self, func):
         rs = [r.result() for r in self._submit_to_pool(func, do_reduce)]

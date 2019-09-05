@@ -31,6 +31,7 @@ import hashlib
 import threading
 import traceback
 from multiprocessing import Process,Queue
+from collections import Iterable
 from eggroll.computing.storage_adapters import LmdbAdapter, RocksdbAdapter
 
 
@@ -250,8 +251,12 @@ class RollPairProcessor(processor_pb2_grpc.ProcessServiceServicer):
                 raise NotImplementedError()
             v = functor(generator(src_serde, src_it))
             if src_it.last():
-                for k1, v1 in v:
-                    dst_wb.put(dst_serde.serialize(k1), dst_serde.serialize(v1))
+                if isinstance(v, Iterable):
+                    for k1, v1 in v:
+                        dst_wb.put(dst_serde.serialize(k1), dst_serde.serialize(v1))
+                else:
+                    k_bytes = src_it.key()
+                    dst_wb.put(k_bytes, dst_serde.serialize(v))
         return self._run_unary("mapPartitions2", mapPartitions2_wrapper, request,context, False)
 
     @_exception_logger
