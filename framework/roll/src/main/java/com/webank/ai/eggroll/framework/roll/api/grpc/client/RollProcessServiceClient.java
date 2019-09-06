@@ -98,6 +98,12 @@ public class RollProcessServiceClient {
         return unaryProcessToStorageLocatorUnaryCall(request, ProcessServiceGrpc.ProcessServiceStub::mapPartitions);
     }
 
+    public DelayedResult<StorageBasic.StorageLocator> mapPartitions2(Processor.UnaryProcess request) {
+        LOGGER.info("roll mapPartitions2 request received");
+
+        return unaryProcessToStorageLocatorUnaryCall(request, ProcessServiceGrpc.ProcessServiceStub::mapPartitions2);
+    }
+
     public DelayedResult<StorageBasic.StorageLocator> glom(Processor.UnaryProcess request) {
         LOGGER.info("roll glom request received");
 

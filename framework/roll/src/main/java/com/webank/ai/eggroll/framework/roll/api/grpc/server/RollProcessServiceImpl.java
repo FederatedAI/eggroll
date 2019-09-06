@@ -155,6 +155,16 @@ public class RollProcessServiceImpl extends ProcessServiceGrpc.ProcessServiceImp
     }
 
     @Override
+    public void mapPartitions2(Processor.UnaryProcess request, StreamObserver<StorageBasic.StorageLocator> responseObserver) {
+        LOGGER.info("[ROLL][PROCESS][MapPartitions2] request received: {}", toStringUtils.toOneLineString(request));
+
+        grpcServerWrapper.wrapGrpcServerRunnable(responseObserver,
+                new ProcessServiceTemplate<>(request,
+                        responseObserver,
+                        MapPartitions2ServiceProcessor.class,
+                        rollModelFactory.createProcessServiceStorageLocatorResultHandler()));
+    }
+    @Override
     public void glom(Processor.UnaryProcess request, StreamObserver<StorageBasic.StorageLocator> responseObserver) {
         LOGGER.info("[ROLL][PROCESS][Glom] request received: {}", toStringUtils.toOneLineString(request));
 

@@ -85,6 +85,10 @@ public class EggProcessServiceClient {
         return unaryProcessToStorageLocatorUnaryCall(request, processorEndpoint, ProcessServiceGrpc.ProcessServiceStub::mapPartitions);
     }
 
+    public StorageBasic.StorageLocator mapPartitions2(Processor.UnaryProcess request, BasicMeta.Endpoint processorEndpoint) {
+        return unaryProcessToStorageLocatorUnaryCall(request, processorEndpoint, ProcessServiceGrpc.ProcessServiceStub::mapPartitions2);
+    }
+
     public StorageBasic.StorageLocator glom(Processor.UnaryProcess request, BasicMeta.Endpoint processorEndpoint) {
         return unaryProcessToStorageLocatorUnaryCall(request, processorEndpoint, ProcessServiceGrpc.ProcessServiceStub::glom);
     }
