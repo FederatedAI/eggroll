@@ -85,7 +85,7 @@ class Standalone:
     def parallelize(self, data: Iterable, include_key=False, name=None, partition=1, namespace=None,
                     create_if_missing=True,
                     error_if_exist=False,
-                    persistent=False, chunk_size=100000, in_place_computing=False):
+                    persistent=False, chunk_size=100000, in_place_computing=False, persisent_engine=StoreType.LMDB):
         _iter = data if include_key else enumerate(data)
         if name is None:
             name = str(uuid.uuid1())
@@ -530,7 +530,7 @@ class _DTable(object):
             return
         if self._name == 'fragments' or self._name == '__clustercomm__' or self._name == '__status__':
             return
-        if Standalone.__instance is not None and not Standalone.get_instance().is_stopped():
+        if Standalone.get_instance() is not None and not Standalone.get_instance().is_stopped():
             self.destroy()
 
     def __str__(self):
