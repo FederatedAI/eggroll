@@ -88,6 +88,15 @@ public class DummyProcessorServiceImpl extends ProcessServiceGrpc.ProcessService
     }
 
     @Override
+    public void mapPartitions2(Processor.UnaryProcess request, StreamObserver<StorageBasic.StorageLocator> responseObserver) {
+        LOGGER.info("egg mapPartitions2 request received");
+
+        StorageBasic.StorageLocator storageLocator = request.getOperand();
+        responseObserver.onNext(storageLocator);
+        responseObserver.onCompleted();
+    }
+
+    @Override
     public void glom(Processor.UnaryProcess request, StreamObserver<StorageBasic.StorageLocator> responseObserver) {
         LOGGER.info("egg glom request received");
 

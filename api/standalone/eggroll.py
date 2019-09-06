@@ -28,6 +28,7 @@ from cachetools import cached
 import numpy as np
 from functools import partial
 from operator import is_not
+from collections import Iterable
 import hashlib
 import fnmatch
 import shutil
@@ -84,7 +85,7 @@ class Standalone:
     def parallelize(self, data: Iterable, include_key=False, name=None, partition=1, namespace=None,
                     create_if_missing=True,
                     error_if_exist=False,
-                    persistent=False, chunk_size=100000, in_place_computing=False):
+                    persistent=False, chunk_size=100000, in_place_computing=False, persisent_engine=StoreType.LMDB):
         _iter = data if include_key else enumerate(data)
         if name is None:
             name = str(uuid.uuid1())
@@ -257,6 +258,28 @@ def do_map_partitions(p: _UnaryProcess):
             if cursor.last():
                 k_bytes = cursor.key()
                 dst_txn.put(k_bytes, serialize(v))
+            cursor.close()
+    return rtn
+
+
+def do_map_partitions2(p: _UnaryProcess):
+    _mapper = __get_function(p._info)
+    op = p._operand
+    rtn = __create_output_operand(op, p._info, p._process_conf, False)
+    source_env = op.as_env()
+    dst_env = rtn.as_env(write=True)
+    serialize = c_pickle.dumps
+    with source_env.begin() as source_txn:
+        with dst_env.begin(write=True) as dst_txn:
+            cursor = source_txn.cursor()
+            v = _mapper(_generator_from_cursor(cursor))
+            if cursor.last():
+                if isinstance(v, Iterable):
+                    for k1, v1 in v:
+                        dst_txn.put(serialize(k1), serialize(v1))
+                else:
+                    k_bytes = cursor.key()
+                    dst_txn.put(k_bytes, serialize(v))
             cursor.close()
     return rtn
 
@@ -507,7 +530,7 @@ class _DTable(object):
             return
         if self._name == 'fragments' or self._name == '__clustercomm__' or self._name == '__status__':
             return
-        if Standalone.__instance is not None and not Standalone.get_instance().is_stopped():
+        if Standalone.get_instance() is not None and not Standalone.get_instance().is_stopped():
             self.destroy()
 
     def __str__(self):
@@ -638,11 +661,15 @@ class _DTable(object):
             iterators.append(txn.cursor())
         return self._merge(iterators, use_serialize)
 
-    def save_as(self, name, namespace, partition=None, use_serialize=True):
+    def save_as(self, name, namespace, partition=None, use_serialize=True,
+                persistent=True, persistent_engine=StoreType.LMDB):
         if partition is None:
             partition = self._partitions
-        dup = Standalone.get_instance().table(name, namespace, partition, persistent=True)
+        dup = Standalone.get_instance().table(name, namespace, partition,
+                                              persistent=persistent, persistent_engine=persistent_engine)
+        self.set_gc_disable()
         dup.put_all(self.collect(use_serialize=use_serialize), use_serialize=use_serialize)
+        self.set_gc_enable()
         return dup
 
     def take(self, n, keysOnly=False, use_serialize=True):
@@ -730,6 +757,18 @@ class _DTable(object):
         for r in results:
             result = r.result()
         return Standalone.get_instance().table(result._name, result._namespace, self._partitions, persistent=False)
+
+    def mapPartitions2(self, func, need_shuffle=True):
+        results = self._submit_to_pool(func, do_map_partitions2)
+        for r in results:
+            result = r.result()
+        if need_shuffle:
+            _intermediate_result = Standalone.get_instance().table(result._name, result._namespace,
+                                                                   self._partitions, persistent=False)
+            return _intermediate_result.save_as(str(uuid.uuid1()), _intermediate_result._namespace,
+                                                partition=_intermediate_result._partitions, persistent=False)
+        else:
+            return Standalone.get_instance().table(result._name, result._namespace, self._partitions, persistent=False)
 
     def reduce(self, func):
         rs = [r.result() for r in self._submit_to_pool(func, do_reduce)]
