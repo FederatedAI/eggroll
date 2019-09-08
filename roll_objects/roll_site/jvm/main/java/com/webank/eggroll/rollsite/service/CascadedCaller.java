@@ -62,6 +62,7 @@ public class CascadedCaller implements Runnable {
         if (PipeHandleNotificationEvent.Type.PUSH == type) {
             //client.push(metadata, pipe);
             client.doPush();
+            pipe.onComplete();
         } else if (PipeHandleNotificationEvent.Type.PULL == type) {
             client.pull(metadata, pipe);
         } else {

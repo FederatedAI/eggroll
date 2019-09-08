@@ -17,7 +17,7 @@
 import logging
 from logging.handlers import TimedRotatingFileHandler
 import os
-from eggroll.api.utils import file_utils
+from api.utils import file_utils
 import inspect
 from threading import RLock
 

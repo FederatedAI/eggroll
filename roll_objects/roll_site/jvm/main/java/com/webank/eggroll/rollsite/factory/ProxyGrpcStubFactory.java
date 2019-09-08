@@ -114,6 +114,11 @@ public class ProxyGrpcStubFactory {
                 endpoint, true);
     }
 
+    public BasicMeta.Endpoint getAsyncEndpoint(Proxy.Topic topic) {
+        return fdnRouter.route(topic);
+    }
+
+
     // todo: use retry framework
     private AbstractStub getStubBase(BasicMeta.Endpoint endpoint, boolean isAsync) {
         ManagedChannel managedChannel = null;

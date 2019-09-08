@@ -23,10 +23,15 @@ if __name__ == '__main__':
     a = _tag
 
     f = open("testA.model", 'r')
-    content = f.read(10000)
-    while content != None:
-        rollsite.push(content, "model_A", tag="{}".format(_tag))
+    #content = f.read(10000)
+    #print(content)
+    while True:
+        print("push!!!")
         content = f.read(10000)
+        if not content:
+            break
+        #print(content)
+        rollsite.push(content, "model_A", tag="{}".format(_tag))
     f.close()
 
 

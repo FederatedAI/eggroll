@@ -18,14 +18,16 @@ from api import rollsite
 
 if __name__ == '__main__':
     #ggroll.init("atest")
-    rollsite.init("atest", "role_conf", "eggroll/conf/server_conf.json")
+    rollsite.init("atest", "roll_site/test/role_conf.json", "roll_site/test/server_conf.json")
     _tag = "Hello"
     a = _tag
 
-    f = open('write_demo.txt', 'w')
-    content = rollsite.pull("test_pull_name", tag="{}".format(_tag))
+    f = open('write_demo.modle', 'w')
     #每次读len长度的内容，内部可能读多个packet
-    while content != -1:
-        content = rollsite.pull("test_pull_name", tag="{}".format(_tag))
-        f.write(content)
+    while True:
+        content = rollsite.pull("model_A", tag="{}".format(_tag))
+        if not content:
+            break
+        print(content)
+        f.write(content.decode())
 

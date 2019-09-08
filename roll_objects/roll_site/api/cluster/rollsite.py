@@ -169,19 +169,19 @@ class RollSiteRuntime(object):
                 self.stub.unaryCall(packet)
 
 
-    def pull(self, key: str):
+    def pull(self, name: str):
         #先从本地取，判断返回值，不是complete状态,如果dst是local，从本地取
-        if  self.party_id != _partyId:
-            self.unaryCall(key)
+        #if  self.party_id != _partyId:
+        #    self.unaryCall(name)
 
         #先发送unaryCall，等待对方push数据过来。
 
         #wait()等待完成条件，表示已经接收到结果，然后get结果。
-        task_info = proxy_pb2.Task(taskId="testTaskId", model=proxy_pb2.Model(name="taskName", dataKey="testKey"))
+        task_info = proxy_pb2.Task(taskId="testTaskId", model=proxy_pb2.Model(name=name, dataKey="testKey"))
         topic_src = proxy_pb2.Topic(name="test", partyId="{}".format(self.party_id),
                                     role="host", callback=None)
-        topic_dst = proxy_pb2.Topic(name="test", partyId="10002",
-                                    role="guest", callback=None)
+        topic_dst = proxy_pb2.Topic(name="test", partyId="{}".format(self.party_id),
+                                    role="host", callback=None)
         command_test = proxy_pb2.Command()
         conf_test = proxy_pb2.Conf(overallTimeout=1000,
                                    completionWaitTimeout=1000,
@@ -197,8 +197,8 @@ class RollSiteRuntime(object):
         ret_packets = self.stub.pull(metadata)
         ret_data = bytes(0)
         for packet in ret_packets:
-            #print(packet.body)
-            ret_data += packet.body
+            print(packet.body.value)
+            ret_data += packet.body.value
         return ret_data
 
 
