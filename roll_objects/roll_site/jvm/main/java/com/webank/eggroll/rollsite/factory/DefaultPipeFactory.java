@@ -16,6 +16,7 @@
 
 package com.webank.eggroll.rollsite.factory;
 
+import com.google.common.collect.Maps;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
 import com.webank.eggroll.rollsite.infra.Pipe;
 import com.webank.eggroll.rollsite.infra.impl.InputStreamOutputStreamNoStoragePipe;
@@ -23,6 +24,9 @@ import com.webank.eggroll.rollsite.infra.impl.InputStreamToPacketUnidirectionalP
 import com.webank.eggroll.rollsite.infra.impl.PacketQueuePipe;
 import com.webank.eggroll.rollsite.infra.impl.PacketQueueSingleResultPipe;
 import com.webank.eggroll.rollsite.infra.impl.PacketToOutputStreamUnidirectionalPipe;
+import java.util.Map;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -31,8 +35,15 @@ import java.io.OutputStream;
 
 @Component("defaultPipeFactory")
 public class DefaultPipeFactory implements PipeFactory {
+    private static final Logger LOGGER = LogManager.getLogger(DefaultPipeFactory.class);
     @Autowired
     private LocalBeanFactory localBeanFactory;
+
+    private final Map<String, PacketQueueSingleResultPipe> pipeMap;
+
+    public DefaultPipeFactory() {
+        this.pipeMap = Maps.newConcurrentMap();
+    }
 
     public InputStreamOutputStreamNoStoragePipe createInputStreamOutputStreamNoStoragePipe(InputStream is,
                                                                                            OutputStream os,
@@ -64,7 +75,16 @@ public class DefaultPipeFactory implements PipeFactory {
     }
 
     @Override
-    public Pipe create() {
-        return (PacketQueueSingleResultPipe) localBeanFactory.getBean(PacketQueueSingleResultPipe.class);
+    public Pipe create(String name) {
+        PacketQueueSingleResultPipe pipe;
+        if(pipeMap.containsKey(name)) {
+            LOGGER.info("key {} exited", name);
+            return pipeMap.get(name);
+        }
+
+        pipe = (PacketQueueSingleResultPipe) localBeanFactory.getBean(PacketQueueSingleResultPipe.class);
+        pipeMap.put(name, pipe);
+        LOGGER.info("create key {}", name);
+        return pipe;
     }
 }

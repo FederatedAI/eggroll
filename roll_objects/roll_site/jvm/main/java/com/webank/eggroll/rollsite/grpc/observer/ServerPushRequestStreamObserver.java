@@ -16,6 +16,7 @@
 
 package com.webank.eggroll.rollsite.grpc.observer;
 
+import com.google.common.collect.Lists;
 import com.google.protobuf.ByteString;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
 import com.webank.eggroll.rollsite.event.model.PipeHandleNotificationEvent;
@@ -82,6 +83,8 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
     private boolean isAuditEnabled;
     private boolean isDebugEnabled;
     private AtomicLong ackCount;
+    private volatile boolean inited = false;
+    private Proxy.Metadata response;
 
     public ServerPushRequestStreamObserver(Pipe pipe, StreamObserver<Proxy.Metadata> responseObserver) {
         this.pipe = pipe;
@@ -93,8 +96,22 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
         this.ackCount = new AtomicLong(0L);
     }
 
+    public synchronized void init(Proxy.Metadata metadata) {
+        if (inited) {
+            return;
+        }
+
+        this.response = metadata;
+        this.inited = true;
+    }
+
     @Override
     public void onNext(Proxy.Packet packet) {
+        // LOGGER.info("[SEND][SERVER][OBSERVER][ONNEXT] header: {}", toStringUtils.toOneLineString(packet.getHeader()));
+        if (!inited) {
+            init(packet.getHeader());
+        }
+
         if (inputMetadata == null) {
             overallStartTimestamp = System.currentTimeMillis();
             inputMetadata = packet.getHeader();
@@ -132,11 +149,12 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
             // String operator = inputMetadata.getOperator();
 
             // LOGGER.info("onNext(): push task name: {}", operator);
-
+            /*
             PipeHandleNotificationEvent event =
                     eventFactory.createPipeHandleNotificationEvent(
                             this, PipeHandleNotificationEvent.Type.PUSH, inputMetadata, pipe);
             applicationEventPublisher.publishEvent(event);
+            */
         }
 
         if (noError) {
@@ -166,7 +184,7 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
                 }
                 DEBUGGING.info("-------------");
             }
-            //LOGGER.info("push server received size: {}, data size: {}", packet.getSerializedSize(), packet.getBody().getValue().size());
+            LOGGER.info("push server received size: {}, data size: {}", packet.getSerializedSize(), packet.getBody().getValue().size());
         }
     }
 
@@ -207,6 +225,7 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
         long waitCount = 0;
 
         pipe.setDrained();
+        pipe.onComplete();
 
         /*LOGGER.info("closed: {}, completion timeout: {}, overall timeout: {}",
                 pipe.isClosed(),
@@ -235,7 +254,7 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
             }
         }
 
-        pipe.onComplete();
+        //pipe.onComplete();
 
         try {
             if (timeouts.isTimeout(completionWaitTimeout, completionWaitStartTimestamp, loopEndTimestamp)) {
@@ -260,17 +279,20 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
                 responseObserver.onError(new TimeoutException(errmsg));
                 streamStat.onError();
             } else {
+                /*
                 Proxy.Metadata responseMetadata = pipeUtils.getResultFromPipe(pipe);
                 if (responseMetadata == null) {
                     LOGGER.warn("[PUSH][OBSERVER][ONCOMPLETE] response Proxy.Metadata is null. inputMetadata: {}",
                             toStringUtils.toOneLineString(responseMetadata));
                 }
+                */
 
-                responseObserver.onNext(responseMetadata);
+                //responseObserver.onNext(responseMetadata);
+                responseObserver.onNext(response);
                 responseObserver.onCompleted();
 
                 LOGGER.info("[PUSH][OBSERVER][ONCOMPLETE] push server complete. inputMetadata: {}",
-                        toStringUtils.toOneLineString(responseMetadata));
+                        toStringUtils.toOneLineString(response));
                 streamStat.onComplete();
             }
         } catch (NullPointerException e) {

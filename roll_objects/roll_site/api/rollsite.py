@@ -26,6 +26,6 @@ def push(obj, name: str, tag: str, role=None, idx=-1):
     return RuntimeInstance.ROLLSITE.push(obj=obj, name=name, tag=tag)
 
 def pull(name: str, tag: str, role=None, idx=-1):
-    return RuntimeInstance.ROLLSITE.pull(obj=obj, name=name)
+    return RuntimeInstance.ROLLSITE.pull(name=name)
 
 

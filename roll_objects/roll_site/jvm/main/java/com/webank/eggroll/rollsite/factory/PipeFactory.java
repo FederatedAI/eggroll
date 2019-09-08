@@ -23,5 +23,5 @@ import org.springframework.stereotype.Component;
 @Component
 @Scope("prototype")
 public interface PipeFactory {
-    Pipe create();
+    Pipe create(String name);
 }

@@ -60,7 +60,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
     public StreamObserver<Proxy.Packet> push(StreamObserver<Proxy.Metadata> responseObserver) {
         LOGGER.info("[PUSH][SERVER] request received");
 
-        Pipe pipe = getPipe();
+        Pipe pipe = getPipe("modelA");
         // LOGGER.info("push pipe: {}", pipe);
 /*
         PipeHandleNotificationEvent event =
@@ -84,14 +84,16 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
         long overallTimeout = timeouts.getOverallTimeout(inputMetadata);
         long packetIntervalTimeout = timeouts.getPacketIntervalTimeout(inputMetadata);
 
-        Pipe pipe = getPipe();
+        Pipe pipe = getPipe("modelA");
 
         LOGGER.info("[PULL][SERVER] pull pipe: {}", pipe);
 
+        /*
         PipeHandleNotificationEvent event =
                 eventFactory.createPipeHandleNotificationEvent(
                         this, PipeHandleNotificationEvent.Type.PULL, inputMetadata, pipe);
         applicationEventPublisher.publishEvent(event);
+        */
 
         long startTimestamp = System.currentTimeMillis();
         long lastPacketTimestamp = startTimestamp;
@@ -110,6 +112,11 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
             // LOGGER.info("packet is null: {}", Proxy.Packet == null);
             loopEndTimestamp = System.currentTimeMillis();
             if (packet != null) {
+                Proxy.Metadata outputMetadata = packet.getHeader();
+                Proxy.Data outData = packet.getBody();
+                LOGGER.info("PushStreamProcessor processing metadata: {}", toStringUtils.toOneLineString(outputMetadata));
+                LOGGER.info("PushStreamProcessor processing outData: {}", toStringUtils.toOneLineString(outData));
+
                 // LOGGER.info("server pull onNext()");
                 responseObserver.onNext(packet);
                 hasReturnedBefore = true;
@@ -122,6 +129,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                     LOGGER.info("[PULL][SERVER] pull waiting. current packetInterval: {}, packetIntervalTimeout: {}, metadata: {}",
                             currentPacketInterval, packetIntervalTimeout, oneLineStringInputMetadata);
                 }
+                break;
             }
         }
 
@@ -188,7 +196,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
         long overallTimeout = timeouts.getOverallTimeout(inputMetadata);
         long packetIntervalTimeout = timeouts.getPacketIntervalTimeout(inputMetadata);
 
-        Pipe pipe = getPipe();
+        Pipe pipe = getPipe("modelA");
 
         LOGGER.info("[UNARYCALL][SERVER] unary call pipe: {}", pipe);
 
@@ -270,12 +278,12 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
         }
     }
 
-    private Pipe getPipe() {
+    private Pipe getPipe(String name) {
         checkNotNull();
 
         Pipe result = defaultPipe;
         if (pipeFactory != null) {
-            result = pipeFactory.create();
+            result = pipeFactory.create(name);
         }
 
         return result;
