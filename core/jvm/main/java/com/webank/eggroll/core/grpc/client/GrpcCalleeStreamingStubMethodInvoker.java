@@ -16,13 +16,17 @@
 
 package com.webank.eggroll.core.grpc.client;
 
+import com.google.protobuf.Message;
+import io.grpc.stub.AbstractStub;
 import io.grpc.stub.StreamObserver;
 
 /**
  * SAM Interface for callee streaming
  * <p>
- * S: Stub type R: calleR type E: calleE type
+ * S: Stub type
+ * R: calleR type
+ * E: calleE type
  */
-public interface GrpcCalleeStreamingStubMethodInvoker<S, R, E> {
+public interface GrpcCalleeStreamingStubMethodInvoker<S extends AbstractStub, R extends Message, E extends Message> {
   public void invoke(S stub, R request, StreamObserver<E> responseObserver);
 }

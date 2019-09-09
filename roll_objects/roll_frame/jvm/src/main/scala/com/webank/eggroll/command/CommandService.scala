@@ -16,7 +16,6 @@
 
 package com.webank.eggroll.command
 
-import java.io.{PrintWriter, StringWriter}
 import java.lang.reflect.{InvocationTargetException, Method}
 import java.net.URI
 import java.util.concurrent.{CountDownLatch, TimeUnit}
@@ -29,7 +28,6 @@ import io.grpc.stub.StreamObserver
 
 import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
-import scala.reflect.ClassTag
 
 class CommandService {
 
@@ -81,6 +79,7 @@ class CommandURI(value: String) {
 trait CommandServer {
   def run():Unit
 }
+
 class GrpcCommandService extends CommandServiceGrpc.CommandServiceImplBase{
   override def call(request: RollFrameGrpc.CommandRequest,
                     responseObserver: StreamObserver[RollFrameGrpc.CommandResponse]): Unit = {

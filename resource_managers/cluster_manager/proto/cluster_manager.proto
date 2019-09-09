@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package com.webank.eggroll.cluster.manager;
+
+import "core/proto/networking_basic.proto";
+
+message NodeHeartbeatRequest {
+  com.webank.eggroll.core.basic.Endpoint src = 1;
+}
+
+message NodeHeartbeatResponse {
+
+}
+
+service NodeReportService {
+  rpc heartbeat (NodeHeartbeatRequest) returns (NodeHeartbeatResponse);
+}

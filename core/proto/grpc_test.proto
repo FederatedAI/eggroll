@@ -13,13 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+syntax = "proto3";
 
-package com.webank.eggroll.core.constant
+package com.webank.eggroll.grpc.test;
 
-object ModuleConstants {
-  private val bracketTemplate = "[e]"
-  private val e = "e"
-  val CORE = "CORE"
-  val CORE_WITH_BRACKETS = bracketTemplate.replace(e, CORE)
-  val COMMAND_WITH_BRACKETS = bracketTemplate.replace(e, "COMMAND")
+message HelloRequest {
+  string msg = 1;
+}
+
+message HelloResponse {
+  string msg = 1;
+}
+
+service HelloService {
+  rpc unaryCall (HelloRequest) returns (HelloResponse);
+  rpc push (stream HelloRequest) returns (HelloResponse);
+  rpc pull (HelloRequest) returns (HelloResponse);
 }
