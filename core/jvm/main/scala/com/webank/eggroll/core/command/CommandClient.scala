@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-package com.webank.eggroll.core.constant
+package com.webank.eggroll.core.command
 
-object ModuleConstants {
-  private val bracketTemplate = "[e]"
-  private val e = "e"
-  val CORE = "CORE"
-  val CORE_WITH_BRACKETS = bracketTemplate.replace(e, CORE)
-  val COMMAND_WITH_BRACKETS = bracketTemplate.replace(e, "COMMAND")
+import com.webank.eggroll.core.util.Logging
+
+class CommandClient(commandRequest: CommandRequest) extends Logging {
+  def request(uri: String, data: Array[Byte]): Unit = {
+
+  }
 }

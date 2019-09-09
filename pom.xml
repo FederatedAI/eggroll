@@ -38,6 +38,7 @@
 
   <modules>
     <module>core/jvm</module>
+    <module>resource_managers/cluster_manager/jvm</module>
   </modules>
 
   <packaging>pom</packaging>

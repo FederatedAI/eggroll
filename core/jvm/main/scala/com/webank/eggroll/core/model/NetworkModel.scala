@@ -16,11 +16,12 @@
 
 package com.webank.eggroll.core.model
 
-import java.beans.BeanProperty
 
 import javax.annotation.concurrent.Immutable
 
+import scala.beans.BeanProperty
+
 @Immutable
-class Endpoint(@BeanProperty val host: String, @BeanProperty val port: Int) {
+case class Endpoint(@BeanProperty val host: String, @BeanProperty val port: Int) {
   override def toString: String = s"$host:$port"
 }
