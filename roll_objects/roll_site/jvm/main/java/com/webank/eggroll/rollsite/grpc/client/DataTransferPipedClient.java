@@ -177,8 +177,9 @@ public class DataTransferPipedClient {
         GrpcAsyncClientContext<DataTransferServiceGrpc.DataTransferServiceStub, Proxy.Packet, Proxy.Metadata> asyncClientContext
             = transferServiceFactory.createPushClientGrpcAsyncClientContext();
 
-        BasicMeta.Endpoint.Builder builder = BasicMeta.Endpoint.newBuilder();
-        endpoint = builder.setIp("localhost").setPort(8888).build();
+        //BasicMeta.Endpoint.Builder builder = BasicMeta.Endpoint.newBuilder();
+        endpoint = proxyGrpcStubFactory.getAsyncEndpoint(metadata.getDst());
+        //endpoint = builder.setIp("192.168.1.101").setPort(9395).build();
 
         asyncClientContext.setLatchInitCount(1)
             .setEndpoint(endpoint)
@@ -213,6 +214,14 @@ public class DataTransferPipedClient {
         }
         LOGGER.info("[DEBUG][CLUSTERCOMM] doPush call processCallerStreamingRpc");
         pushTemplate.processCallerStreamingRpc();
+    }
+
+    public synchronized void completePush() {
+        // LOGGER.info("[PUSH][CLIENT] completing push");
+        if (pushTemplate == null) {
+            throw new IllegalStateException("pushTemplate has not been initialized yet");
+        }
+        pushTemplate.completeStreamingRpc();
     }
 
     public void pull(Proxy.Metadata metadata, Pipe pipe) {

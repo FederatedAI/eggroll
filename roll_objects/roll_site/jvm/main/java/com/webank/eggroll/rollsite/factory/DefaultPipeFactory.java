@@ -39,11 +39,13 @@ public class DefaultPipeFactory implements PipeFactory {
     @Autowired
     private LocalBeanFactory localBeanFactory;
 
-    private final Map<String, PacketQueueSingleResultPipe> pipeMap;
+    private static Map<String, PacketQueueSingleResultPipe> pipeMap = Maps.newConcurrentMap();
 
     public DefaultPipeFactory() {
-        this.pipeMap = Maps.newConcurrentMap();
+        LOGGER.info("DefaultPipeFactory construct");
+        //pipeMap = Maps.newConcurrentMap();
     }
+
 
     public InputStreamOutputStreamNoStoragePipe createInputStreamOutputStreamNoStoragePipe(InputStream is,
                                                                                            OutputStream os,
@@ -77,14 +79,20 @@ public class DefaultPipeFactory implements PipeFactory {
     @Override
     public Pipe create(String name) {
         PacketQueueSingleResultPipe pipe;
-        if(pipeMap.containsKey(name)) {
-            LOGGER.info("key {} exited", name);
-            return pipeMap.get(name);
+        LOGGER.info("pipeMap: {}", pipeMap);
+        synchronized(this) {
+            if (pipeMap.containsKey(name)) {
+                LOGGER.info("key {} exited", name);
+                pipe = pipeMap.get(name);
+            }
+            else {
+                pipe = (PacketQueueSingleResultPipe) localBeanFactory.getBean(PacketQueueSingleResultPipe.class);
+                pipeMap.put(name, pipe);
+
+                LOGGER.info("create key {}", name);
+            }
         }
 
-        pipe = (PacketQueueSingleResultPipe) localBeanFactory.getBean(PacketQueueSingleResultPipe.class);
-        pipeMap.put(name, pipe);
-        LOGGER.info("create key {}", name);
         return pipe;
     }
 }

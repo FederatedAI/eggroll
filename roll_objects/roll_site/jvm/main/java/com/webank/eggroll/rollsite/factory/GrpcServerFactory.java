@@ -202,6 +202,14 @@ public class GrpcServerFactory {
                 proxyServerConf.setPort(port);
             }
 
+            String partyIdString = properties.getProperty("partyId", null);
+            if (partyIdString == null) {
+                throw new IllegalArgumentException("partyId cannot be null");
+            } else {
+                int partyId = Integer.valueOf(partyIdString);
+                proxyServerConf.setPartyId(partyId);
+            }
+
             String routeTablePath = properties.getProperty("route.table", null);
             if (routeTablePath == null) {
                 throw new IllegalArgumentException("route table cannot be null");

@@ -16,6 +16,7 @@
 
 package com.webank.eggroll.rollsite.grpc.service;
 
+import com.google.common.collect.Maps;
 import com.webank.ai.eggroll.api.networking.proxy.DataTransferServiceGrpc;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
 import com.webank.eggroll.rollsite.event.model.PipeHandleNotificationEvent;
@@ -25,8 +26,10 @@ import com.webank.eggroll.rollsite.factory.ProxyGrpcStreamObserverFactory;
 import com.webank.eggroll.rollsite.grpc.core.utils.ErrorUtils;
 import com.webank.eggroll.rollsite.grpc.core.utils.ToStringUtils;
 import com.webank.eggroll.rollsite.infra.Pipe;
+import com.webank.eggroll.rollsite.infra.impl.PacketQueueSingleResultPipe;
 import com.webank.eggroll.rollsite.utils.Timeouts;
 import io.grpc.stub.StreamObserver;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -56,11 +59,13 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
     private Pipe defaultPipe;
     private PipeFactory pipeFactory;
 
+    static Map<String, PacketQueueSingleResultPipe> pipeMap = Maps.newConcurrentMap();
+
     @Override
     public StreamObserver<Proxy.Packet> push(StreamObserver<Proxy.Metadata> responseObserver) {
         LOGGER.info("[PUSH][SERVER] request received");
 
-        Pipe pipe = getPipe("modelA");
+        //Pipe pipe = getPipe("modelA");
         // LOGGER.info("push pipe: {}", pipe);
 /*
         PipeHandleNotificationEvent event =
@@ -69,8 +74,9 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
         applicationEventPublisher.publishEvent(event);
 */
 
-        StreamObserver<Proxy.Packet> requestObserver = proxyGrpcStreamObserverFactory
-                .createServerPushRequestStreamObserver(pipe, responseObserver);
+        StreamObserver<Proxy.Packet> requestObserver;
+        requestObserver = proxyGrpcStreamObserverFactory
+                .createServerPushRequestStreamObserver(pipeFactory, responseObserver);
 
         return requestObserver;
     }
@@ -84,7 +90,8 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
         long overallTimeout = timeouts.getOverallTimeout(inputMetadata);
         long packetIntervalTimeout = timeouts.getPacketIntervalTimeout(inputMetadata);
 
-        Pipe pipe = getPipe("modelA");
+        //Pipe pipe = getPipe("model_A");
+        Pipe pipe = getPipe(inputMetadata.getTask().getModel().getName());
 
         LOGGER.info("[PULL][SERVER] pull pipe: {}", pipe);
 
@@ -196,7 +203,8 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
         long overallTimeout = timeouts.getOverallTimeout(inputMetadata);
         long packetIntervalTimeout = timeouts.getPacketIntervalTimeout(inputMetadata);
 
-        Pipe pipe = getPipe("modelA");
+        //Pipe pipe = getPipe("model_A");
+        Pipe pipe = getPipe(inputMetadata.getTask().getModel().getName());
 
         LOGGER.info("[UNARYCALL][SERVER] unary call pipe: {}", pipe);
 

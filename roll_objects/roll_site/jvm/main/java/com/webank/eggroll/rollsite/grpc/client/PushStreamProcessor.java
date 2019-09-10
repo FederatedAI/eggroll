@@ -121,12 +121,12 @@ public class PushStreamProcessor extends BaseStreamProcessor<Proxy.Packet> {
             //packet = (Proxy.Packet) pipe.read(1, TimeUnit.SECONDS);
             packet = (Proxy.Packet) transferBroker.read();
 
-            Proxy.Metadata outputMetadata = packet.getHeader();
-            Proxy.Data outData = packet.getBody();
-            LOGGER.info("PushStreamProcessor processing metadata: {}", toStringUtils.toOneLineString(outputMetadata));
-            LOGGER.info("PushStreamProcessor processing outData: {}", toStringUtils.toOneLineString(outData));
-
             if (packet != null) {
+                Proxy.Metadata outputMetadata = packet.getHeader();
+                Proxy.Data outData = packet.getBody();
+                LOGGER.info("PushStreamProcessor processing metadata: {}", toStringUtils.toOneLineString(outputMetadata));
+                LOGGER.info("PushStreamProcessor processing outData: {}", toStringUtils.toOneLineString(outData));
+
                 streamObserver.onNext(packet);
                 emptyRetryCount = 0;
             } else {
