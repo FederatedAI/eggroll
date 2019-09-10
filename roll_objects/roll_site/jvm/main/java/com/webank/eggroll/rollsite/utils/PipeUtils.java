@@ -29,9 +29,12 @@ public class PipeUtils {
     public Proxy.Metadata getResultFromPipe(Pipe pipe) {
         if (pipe instanceof PacketQueueSingleResultPipe) {
             PacketQueueSingleResultPipe convertedPipe = (PacketQueueSingleResultPipe) pipe;
+            /*
             if (convertedPipe.hasResult()) {
                 return convertedPipe.getResult();
             }
+            */
+            return convertedPipe.getResult();
         }
 
         return null;

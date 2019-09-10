@@ -55,10 +55,10 @@ public class ProxyGrpcStreamObserverFactory {
     }
 
     public ServerPushRequestStreamObserver
-    createServerPushRequestStreamObserver(Pipe pipe,
+    createServerPushRequestStreamObserver(PipeFactory pipeFactory,
                                           StreamObserver<Proxy.Metadata> responseObserver) {
         return (ServerPushRequestStreamObserver) localBeanFactory
-                .getBean(ServerPushRequestStreamObserver.class, pipe, responseObserver);
+                .getBean(ServerPushRequestStreamObserver.class, pipeFactory, responseObserver);
     }
 
     public ClientUnaryCallResponseStreamObserver createClientUnaryCallResponseStreamObserver(Pipe pipe,

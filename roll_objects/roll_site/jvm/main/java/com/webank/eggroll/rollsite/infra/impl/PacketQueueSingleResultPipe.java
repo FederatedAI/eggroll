@@ -42,9 +42,9 @@ public class PacketQueueSingleResultPipe extends PacketQueuePipe {
     }
 
     public void setResult(Proxy.Metadata metadata) {
-        if (hasResult()) {
-            throw new IllegalStateException("result has been set");
-        }
+        //if (hasResult()) {
+        //    throw new IllegalStateException("result has been set");
+        //}
         this.result = metadata;
     }
 

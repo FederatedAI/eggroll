@@ -21,6 +21,7 @@ import com.webank.ai.eggroll.api.networking.proxy.Proxy.Metadata;
 import com.webank.eggroll.rollsite.grpc.core.api.grpc.observer.BaseCallerResponseStreamObserver;
 import com.webank.eggroll.rollsite.grpc.core.utils.ToStringUtils;
 import com.webank.eggroll.rollsite.infra.Pipe;
+import com.webank.eggroll.rollsite.infra.impl.PacketQueueSingleResultPipe;
 import java.util.concurrent.CountDownLatch;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -45,10 +46,18 @@ public class PushClientResponseStreamObserver extends BaseCallerResponseStreamOb
 
     @Override
     public void onNext(Proxy.Metadata metadata) {
-        LOGGER.info("[PUSH][CLIENTOBSERVER][ONNEXT]SendClientResponseStreamObserver.onNext. metadata: {}", toStringUtils.toOneLineString(metadata));
-        //LOGGER.info("[PUSH][CLIENTOBSERVER][ONNEXT]SendClientResponseStreamObserver.onNext");
+        //LOGGER.info("[PUSH][CLIENTOBSERVER][ONNEXT]SendClientResponseStreamObserver.onNext. metadata: {}", toStringUtils.toOneLineString(metadata));
+        LOGGER.info("[PUSH][CLIENTOBSERVER][ONNEXT]PushClientResponseStreamObserver.onNext");
         //this.metadata = metadata;
         // this.delayedResult.setResult(metadata);
+        this.metadata = metadata;
+        //resultCallback.setResult(metadata);
+        PacketQueueSingleResultPipe convertedPipe = (PacketQueueSingleResultPipe) transferBroker;
+        convertedPipe.setResult(metadata);
+
+        LOGGER.info("[PUSH][CLIENTOBSERVER][ONNEXT] PushClientResponseStreamObserver.onNext(), metadata: {}",
+            toStringUtils.toOneLineString(metadata));
+
     }
 
     @Override
@@ -60,7 +69,8 @@ public class PushClientResponseStreamObserver extends BaseCallerResponseStreamOb
 
     @Override
     public void onCompleted() {
-        //LOGGER.info("[PUSH][CLIENTOBSERVER][ONCOMPLETE]SendClientResponseStreamObserver.onComplete. metadata: {}", toStringUtils.toOneLineString(metadata));
+        LOGGER.info("[PUSH][CLIENTOBSERVER][ONCOMPLETE]SendClientResponseStreamObserver.onComplete. metadata: {}", toStringUtils.toOneLineString(metadata));
         super.onCompleted();
+        transferBroker.onComplete();
     }
 }

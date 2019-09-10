@@ -27,6 +27,7 @@ import java.util.Properties;
 public class ProxyServerConf {
     private String ip;
     private int port;
+    private int partyId;
 
     private String routeTablePath;
 
@@ -89,6 +90,14 @@ public class ProxyServerConf {
 
     public void setPort(int port) {
         this.port = port;
+    }
+
+    public void setPartyId(int partyId) {
+        this.partyId = partyId;
+    }
+
+    public int getPartyId() {
+        return partyId;
     }
 
     public String getRouteTablePath() {

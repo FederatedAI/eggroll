@@ -52,12 +52,13 @@ public class PacketQueuePipe extends BasePipe {
 
     @PostConstruct
     private void init() {
+        LOGGER.info("PacketQueuePipe queue init");
         this.queue = queueFactory.createLinkedBlockingQueue(3000);
     }
 
     @Override
     public Proxy.Packet read() {
-        // LOGGER.info("read for the {} time, queue size: {}", ++inCounter, queue.size());
+        LOGGER.info("read for the {} time, queue size: {}", ++inCounter, queue.size());
         return queue.poll();
     }
 
@@ -66,6 +67,7 @@ public class PacketQueuePipe extends BasePipe {
         Proxy.Packet result = null;
         if (isDrained()) return result;
         try {
+            LOGGER.info("read for the {} time, queue size: {}", ++inCounter, queue.size());
             result = queue.poll(timeout, unit);
         } catch (InterruptedException e) {
             LOGGER.debug("read wait timeout");
@@ -79,6 +81,7 @@ public class PacketQueuePipe extends BasePipe {
     public void write(Object o) {
         // LOGGER.info("write for the {} time, queue size: {}", ++outCounter, queue.size());
         if (o instanceof Proxy.Packet) {
+            LOGGER.info("write for the {} time, queue size: {}", ++inCounter, queue.size());
             queue.add((Proxy.Packet) o);
         } else {
             throw new IllegalArgumentException("object o is of type: " + o.getClass().getCanonicalName()

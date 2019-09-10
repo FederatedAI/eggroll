@@ -21,11 +21,13 @@ import com.google.protobuf.ByteString;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
 import com.webank.eggroll.rollsite.event.model.PipeHandleNotificationEvent;
 import com.webank.eggroll.rollsite.factory.EventFactory;
+import com.webank.eggroll.rollsite.factory.PipeFactory;
 import com.webank.eggroll.rollsite.grpc.core.utils.ErrorUtils;
 import com.webank.eggroll.rollsite.grpc.core.utils.ToStringUtils;
 import com.webank.eggroll.rollsite.helper.ModelValidationHelper;
 import com.webank.eggroll.rollsite.infra.Pipe;
 import com.webank.eggroll.rollsite.infra.impl.PacketQueuePipe;
+import com.webank.eggroll.rollsite.infra.impl.PacketQueueSingleResultPipe;
 import com.webank.eggroll.rollsite.manager.StatsManager;
 import com.webank.eggroll.rollsite.model.ProxyServerConf;
 import com.webank.eggroll.rollsite.model.StreamStat;
@@ -34,6 +36,7 @@ import com.webank.eggroll.rollsite.utils.Timeouts;
 import io.grpc.Grpc;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
@@ -72,6 +75,8 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
     @Autowired
     private PipeUtils pipeUtils;
     private Pipe pipe;
+    PipeFactory pipeFactory;
+    //Map<String, PacketQueueSingleResultPipe> pipeMap;
     private Proxy.Metadata inputMetadata;
     private StreamStat streamStat;
     private String myCoordinator;
@@ -86,8 +91,10 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
     private volatile boolean inited = false;
     private Proxy.Metadata response;
 
-    public ServerPushRequestStreamObserver(Pipe pipe, StreamObserver<Proxy.Metadata> responseObserver) {
-        this.pipe = pipe;
+    public ServerPushRequestStreamObserver(PipeFactory pipeFactory, StreamObserver<Proxy.Metadata> responseObserver) {
+        //this.pipe = pipe;
+        this.pipeFactory = pipeFactory;
+        //this.pipeMap = pipeMap;
         this.responseObserver = responseObserver;
         this.completionWaitTimeout = Timeouts.DEFAULT_COMPLETION_WAIT_TIMEOUT;
         this.overallTimeout = Timeouts.DEFAULT_OVERALL_TIMEOUT;
@@ -112,9 +119,13 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
             init(packet.getHeader());
         }
 
-        if (inputMetadata == null) {
-            overallStartTimestamp = System.currentTimeMillis();
+        //Pipe pipe = getPipe("modelA");
+
+        //if (inputMetadata == null) {
+        //overallStartTimestamp = System.currentTimeMillis();
             inputMetadata = packet.getHeader();
+            pipe = pipeFactory.create(inputMetadata.getTask().getModel().getName());
+
             streamStat = new StreamStat(inputMetadata, StreamStat.PUSH);
             oneLineStringInputMetadata = toStringUtils.toOneLineString(inputMetadata);
             statsManager.add(streamStat);
@@ -149,13 +160,22 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
             // String operator = inputMetadata.getOperator();
 
             // LOGGER.info("onNext(): push task name: {}", operator);
-            /*
-            PipeHandleNotificationEvent event =
+				
+            overallStartTimestamp = System.currentTimeMillis();
+
+            if(proxyServerConf.getPartyId() != Integer.valueOf(inputMetadata.getDst().getPartyId())) {
+                //if(Integer.valueOf(inputMetadata.getDst().getPartyId()))
+                PipeHandleNotificationEvent event =
                     eventFactory.createPipeHandleNotificationEvent(
-                            this, PipeHandleNotificationEvent.Type.PUSH, inputMetadata, pipe);
-            applicationEventPublisher.publishEvent(event);
-            */
-        }
+                        this, PipeHandleNotificationEvent.Type.PUSH, inputMetadata, pipe);
+                applicationEventPublisher.publishEvent(event);
+            }
+
+        //}
+
+
+        LOGGER.info("model name: {}", inputMetadata.getTask().getModel().getName());
+
 
         if (noError) {
             pipe.write(packet);
@@ -186,10 +206,16 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
             }
             LOGGER.info("push server received size: {}, data size: {}", packet.getSerializedSize(), packet.getBody().getValue().size());
         }
+
+        if(proxyServerConf.getPartyId() == Integer.valueOf(inputMetadata.getDst().getPartyId())) {
+            pipe.setDrained();
+            pipe.onComplete();
+        }
     }
 
     @Override
     public void onError(Throwable throwable) {
+        LOGGER.info("[PUSH][OBSERVER] onError");
         LOGGER.error("[PUSH][OBSERVER][ONERROR] error in push server: {}, metadata: {}, ackCount: {}",
                 Status.fromThrowable(throwable), oneLineStringInputMetadata, ackCount.get());
         LOGGER.error(ExceptionUtils.getStackTrace(throwable));
@@ -216,6 +242,7 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
 
     @Override
     public void onCompleted() {
+        LOGGER.info("[PUSH][OBSERVER] onCompleted");
         long lastestAckCount = ackCount.get();
         LOGGER.info("[PUSH][OBSERVER][ONCOMPLETE] trying to complete task. metadata: {}, ackCount: {}",
                 oneLineStringInputMetadata, lastestAckCount);
@@ -223,9 +250,6 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
         long completionWaitStartTimestamp = System.currentTimeMillis();
         long loopEndTimestamp = completionWaitStartTimestamp;
         long waitCount = 0;
-
-        pipe.setDrained();
-        pipe.onComplete();
 
         /*LOGGER.info("closed: {}, completion timeout: {}, overall timeout: {}",
                 pipe.isClosed(),
