@@ -25,7 +25,7 @@ def init(job_id, runtime_conf, server_conf_path="server_conf.json"):
 def push(obj, name: str, tag: str, role=None, idx=-1):
     return RuntimeInstance.ROLLSITE.push(obj=obj, name=name, tag=tag)
 
-def pull(name: str, tag: str, role=None, idx=-1):
-    return RuntimeInstance.ROLLSITE.pull(name=name)
+def pull(obj, name: str, tag: str, role=None, idx=-1):
+    return RuntimeInstance.ROLLSITE.pull(obj, name=name)
 
 
