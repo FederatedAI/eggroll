@@ -69,6 +69,18 @@ class RollSiteRuntime(object):
             self.tag = False
             yield proxy_pb2.Packet(header=packet_input.header, body=packet_input.body)
 
+    def generate_message2(self, fp, metadata):
+        print (type(fp))
+        content = fp.read(35)
+        while content:
+            print('-----2----')
+            data = proxy_pb2.Data(key="hello", value=content.encode())
+            metadata.seq += 1
+            packet = proxy_pb2.Packet(header=metadata, body=data)
+            yield packet
+            content = fp.read(35)
+            print('----3-----')
+
     def __check_authorization(self, name, is_send=True):
         #name传进来的是*号，暂时不做判断
         if is_send and self.trans_conf.get('src') != self.role:
@@ -109,9 +121,9 @@ class RollSiteRuntime(object):
                 topic_dst = proxy_pb2.Topic(name=name, partyId="{}".format(_partyId),
                                             role=_role, callback=None)
                 command_test = proxy_pb2.Command()
-                conf_test = proxy_pb2.Conf(overallTimeout=1000,
-                                           completionWaitTimeout=1000,
-                                           packetIntervalTimeout=1000,
+                conf_test = proxy_pb2.Conf(overallTimeout=2000,
+                                           completionWaitTimeout=2000,
+                                           packetIntervalTimeout=2000,
                                            maxRetries=10)
     
                 metadata = proxy_pb2.Metadata(task=task_info,
@@ -120,10 +132,14 @@ class RollSiteRuntime(object):
                                               command=command_test,
                                               seq=0, ack=0,
                                               conf=conf_test)
+                '''
                 data = proxy_pb2.Data(key="hello", value=obj.encode())
                 packet = proxy_pb2.Packet(header=metadata, body=data)
                 queue.put(packet)
+                print("cluster push!!!")
                 self.stub.push(self.generate_message())
+                '''
+                self.stub.push(self.generate_message2(obj, metadata))
 
     def unaryCall(self, obj):
         self.__check_authorization(name)
@@ -169,7 +185,7 @@ class RollSiteRuntime(object):
                 self.stub.unaryCall(packet)
 
 
-    def pull(self, name: str):
+    def pull(self, obj, name: str):
         #先从本地取，判断返回值，不是complete状态,如果dst是local，从本地取
         #if  self.party_id != _partyId:
         #    self.unaryCall(name)
@@ -183,9 +199,9 @@ class RollSiteRuntime(object):
         topic_dst = proxy_pb2.Topic(name="test", partyId="{}".format(self.party_id),
                                     role="host", callback=None)
         command_test = proxy_pb2.Command()
-        conf_test = proxy_pb2.Conf(overallTimeout=1000,
-                                   completionWaitTimeout=1000,
-                                   packetIntervalTimeout=1000,
+        conf_test = proxy_pb2.Conf(overallTimeout=2000,
+                                   completionWaitTimeout=2000,
+                                   packetIntervalTimeout=2000,
                                    maxRetries=10)
 
         metadata = proxy_pb2.Metadata(task=task_info,
@@ -198,8 +214,13 @@ class RollSiteRuntime(object):
         ret_data = bytes(0)
         for packet in ret_packets:
             print(packet.body.value)
-            ret_data += packet.body.value
-        return ret_data
+            print(packet.header.command.name)
+            if packet.header.command.name == 'finished':
+                return True
+            ret_data = packet.body.value
+            obj.write(ret_data.decode())
+        if ret_data is b'':
+            return None
 
 
 
