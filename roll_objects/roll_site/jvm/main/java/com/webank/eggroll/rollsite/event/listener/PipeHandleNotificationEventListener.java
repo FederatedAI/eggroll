@@ -16,12 +16,14 @@
 
 package com.webank.eggroll.rollsite.event.listener;
 
+import com.webank.ai.eggroll.api.networking.proxy.Proxy;
 import com.webank.eggroll.rollsite.event.model.PipeHandleNotificationEvent;
+import com.webank.eggroll.rollsite.event.model.PipeHandleNotificationEvent.Type;
+import com.webank.eggroll.rollsite.grpc.client.DataTransferPipedClient;
 import com.webank.eggroll.rollsite.grpc.core.utils.ToStringUtils;
 import com.webank.eggroll.rollsite.infra.Pipe;
 import com.webank.eggroll.rollsite.infra.impl.PacketQueuePipe;
 import com.webank.eggroll.rollsite.model.PipeHandlerInfo;
-import com.webank.eggroll.rollsite.service.CascadedCaller;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,6 +40,8 @@ public class PipeHandleNotificationEventListener implements ApplicationListener<
     private ApplicationContext applicationContext;
     @Autowired
     private ToStringUtils toStringUtils;
+    @Autowired
+    private DataTransferPipedClient client;
 
     @Override
     public void onApplicationEvent(PipeHandleNotificationEvent pipeHandleNotificationEvent) {
@@ -46,10 +50,24 @@ public class PipeHandleNotificationEventListener implements ApplicationListener<
 
         PipeHandlerInfo pipeHandlerInfo = pipeHandleNotificationEvent.getPipeHandlerInfo();
         Pipe pipe = pipeHandlerInfo.getPipe();
-
         if (pipe instanceof PacketQueuePipe) {
-            CascadedCaller cascadedCaller = applicationContext.getBean(CascadedCaller.class, pipeHandlerInfo);
-            cascadedCaller.run();
+            //CascadedCaller cascadedCaller = applicationContext.getBean(CascadedCaller.class, pipeHandlerInfo);
+            //cascadedCaller.run();
+            Proxy.Metadata metadata = pipeHandlerInfo.getMetadata();
+            client.initPush(metadata, pipe);
+
+            Type type = pipeHandlerInfo.getType();
+
+            if (PipeHandleNotificationEvent.Type.PUSH == type) {
+                client.doPush();
+                client.completePush();
+            } else if (PipeHandleNotificationEvent.Type.PULL == type) {
+                client.pull(metadata, pipe);
+            } else {
+                client.unaryCall(pipeHandlerInfo.getPacket(), pipe);
+            }
         }
+
     }
+
 }

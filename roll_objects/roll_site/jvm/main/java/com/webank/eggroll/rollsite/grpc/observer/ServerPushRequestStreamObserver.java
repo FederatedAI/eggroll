@@ -114,7 +114,7 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
 
     @Override
     public void onNext(Proxy.Packet packet) {
-        // LOGGER.info("[SEND][SERVER][OBSERVER][ONNEXT] header: {}", toStringUtils.toOneLineString(packet.getHeader()));
+        LOGGER.info("[SEND][SERVER][OBSERVER][ONNEXT] header: {}", toStringUtils.toOneLineString(packet.getHeader()));
         if (!inited) {
             init(packet.getHeader());
         }
@@ -133,9 +133,10 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
             LOGGER.info(Grpc.TRANSPORT_ATTR_REMOTE_ADDR.toString());
 
             LOGGER.info("[PUSH][OBSERVER][ONNEXT] metadata: {}", oneLineStringInputMetadata);
-            LOGGER.info("[PUSH][OBSERVER][ONNEXT] request src: {}, dst: {}",
+            LOGGER.info("[PUSH][OBSERVER][ONNEXT] request src: {}, dst: {}, data size: {}",
                     toStringUtils.toOneLineString(inputMetadata.getSrc()),
-                    toStringUtils.toOneLineString(inputMetadata.getDst()));
+                    toStringUtils.toOneLineString(inputMetadata.getDst()),
+                    packet.getBody().getValue().size());
 
             if (StringUtils.isBlank(myCoordinator)) {
                 myCoordinator = proxyServerConf.getCoordinator();
@@ -160,9 +161,8 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
             // String operator = inputMetadata.getOperator();
 
             // LOGGER.info("onNext(): push task name: {}", operator);
-				
+            /*
             overallStartTimestamp = System.currentTimeMillis();
-
             if(proxyServerConf.getPartyId() != Integer.valueOf(inputMetadata.getDst().getPartyId())) {
                 //if(Integer.valueOf(inputMetadata.getDst().getPartyId()))
                 PipeHandleNotificationEvent event =
@@ -170,6 +170,7 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
                         this, PipeHandleNotificationEvent.Type.PUSH, inputMetadata, pipe);
                 applicationEventPublisher.publishEvent(event);
             }
+            */
 
         //}
 
@@ -184,6 +185,16 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
             if (isAuditEnabled && packet.getHeader().getSrc().getPartyId().equals(myCoordinator)) {
                 AUDIT.info(toStringUtils.toOneLineString(packet));
             }
+
+            overallStartTimestamp = System.currentTimeMillis();
+            if(proxyServerConf.getPartyId() != Integer.valueOf(inputMetadata.getDst().getPartyId())) {
+                //if(Integer.valueOf(inputMetadata.getDst().getPartyId()))
+                PipeHandleNotificationEvent event =
+                    eventFactory.createPipeHandleNotificationEvent(
+                        this, PipeHandleNotificationEvent.Type.PUSH, inputMetadata, pipe);
+                applicationEventPublisher.publishEvent(event);
+            }
+
 
             if (timeouts.isTimeout(overallTimeout, overallStartTimestamp)) {
                 onError(new IllegalStateException("push overall wait timeout exceeds overall timeout: " + overallTimeout
