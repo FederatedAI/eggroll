@@ -72,12 +72,22 @@ class RollSiteRuntime(object):
     def generate_message2(self, fp, metadata):
         print (type(fp))
         content = fp.read(35)
-        while content:
+        while True:
             print('-----2----')
-            data = proxy_pb2.Data(key="hello", value=content.encode())
-            metadata.seq += 1
-            packet = proxy_pb2.Packet(header=metadata, body=data)
-            yield packet
+            if not content:
+                content = 'finished'
+                data = proxy_pb2.Data(key="hello", value=content.encode())
+                metadata.command.name = 'finished'
+                metadata.seq += 1
+                packet = proxy_pb2.Packet(header=metadata, body=data)
+                yield packet
+                break
+            else:
+                data = proxy_pb2.Data(key="hello", value=content.encode())
+                metadata.seq += 1
+                packet = proxy_pb2.Packet(header=metadata, body=data)
+                yield packet
+
             content = fp.read(35)
             print('----3-----')
 
