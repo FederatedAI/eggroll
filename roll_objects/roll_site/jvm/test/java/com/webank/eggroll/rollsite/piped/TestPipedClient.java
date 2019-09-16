@@ -100,7 +100,7 @@ public class TestPipedClient {
 
         // dataTransferPipedClient.setEndpoint(Endpoint.newBuilder().setHostname("localhost").setPort(8888).build());
         dataTransferPipedClient.setEndpoint(BasicMeta.Endpoint.newBuilder().setIp("127.0.0.1").setPort(9370).build());
-        dataTransferPipedClient.push(header, pipe);
+        //dataTransferPipedClient.push(header, pipe);
 
     }
 
