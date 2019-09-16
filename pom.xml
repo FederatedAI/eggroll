@@ -37,7 +37,8 @@
   </scm>
 
   <modules>
-    <module>roll_objects/roll_site</module>
+    <module>core/jvm</module>
+    <module>roll_objects/roll_site/jvm</module>
   </modules>
 
   <packaging>pom</packaging>
@@ -98,12 +99,6 @@
     </repository>
   </repositories>
   <pluginRepositories>
-    <pluginRepository>
-      <id>scala-tools.org</id>
-      <name>Scala-Tools Maven2 Repository</name>
-      <url>http://scala-tools.org/repo-releases</url>
-    </pluginRepository>
-    
     <pluginRepository>
       <id>central</id>
       <url>https://repo.maven.apache.org/maven2</url>
@@ -281,7 +276,6 @@
       <artifactId>commons-text</artifactId>
       <version>1.4</version>
     </dependency>
-
   </dependencies>
 
 

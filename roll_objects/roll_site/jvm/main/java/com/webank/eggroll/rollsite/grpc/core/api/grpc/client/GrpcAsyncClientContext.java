@@ -18,10 +18,11 @@ package com.webank.eggroll.rollsite.grpc.core.api.grpc.client;
 
 import com.google.protobuf.Message;
 import com.webank.ai.eggroll.api.core.BasicMeta;
+import com.webank.eggroll.core.factory.GrpcStubFactory;
+import com.webank.eggroll.core.model.Endpoint;
 import com.webank.eggroll.rollsite.grpc.client.PushStreamProcessor;
 import com.webank.eggroll.rollsite.grpc.core.api.grpc.observer.BaseCallerResponseStreamObserver;
 import com.webank.eggroll.rollsite.grpc.core.error.handler.ExceptionHandler;
-import com.webank.eggroll.rollsite.grpc.core.factory.GrpcStubFactory;
 import io.grpc.Metadata;
 import io.grpc.stub.AbstractStub;
 import io.grpc.stub.MetadataUtils;
@@ -62,14 +63,14 @@ public class GrpcAsyncClientContext<S extends AbstractStub, R extends Message, E
     private Class<? extends AbstractStub> stubClass;
     private Class<?> grpcClass;
     private Metadata grpcMetadata;
-    private BasicMeta.Endpoint endpoint;
+    private Endpoint endpoint;
     private int latchInitCount = 1;
     private boolean isSecureRequest;
 
     public GrpcAsyncClientContext() {
     }
 
-    public GrpcAsyncClientContext(BasicMeta.Endpoint endpoint) {
+    public GrpcAsyncClientContext(Endpoint endpoint) {
         setEndpoint(endpoint);
     }
 
@@ -104,11 +105,11 @@ public class GrpcAsyncClientContext<S extends AbstractStub, R extends Message, E
         return this;
     }
 
-    public BasicMeta.Endpoint getEndpoint() {
+    public Endpoint getEndpoint() {
         return endpoint;
     }
 
-    public GrpcAsyncClientContext<S, R, E> setEndpoint(BasicMeta.Endpoint endpoint) {
+    public GrpcAsyncClientContext<S, R, E> setEndpoint(Endpoint endpoint) {
         this.endpoint = endpoint;
 
         return this;
