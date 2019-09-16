@@ -14,23 +14,14 @@
  * limitations under the License.
  */
 
-package com.webank.eggroll.core.grpc.observer;
+package com.webank.eggroll.cluster.manager.clustermanager
 
-import com.google.protobuf.Message;
-import com.webank.eggroll.core.concurrent.AwaitSettableFuture;
-import java.util.concurrent.CountDownLatch;
+import com.webank.eggroll.core.meta.{ErPartition, ErStore}
 
-public class SameTypeFutureCallerResponseStreamObserver<R extends Message, E extends Message> extends
-    BaseFutureCallerResponseStreamObserver<R, E, E> {
+class ClusterManager {
+  def getPartitions(store: ErStore): ErStore = {
+    val result = store.copy(store.storeLocator, List[ErPartition]())
 
-  public SameTypeFutureCallerResponseStreamObserver(
-      CountDownLatch finishLatch,
-      AwaitSettableFuture<E> asFuture) {
-    super(finishLatch, asFuture);
-  }
-
-  @Override
-  public void onNext(E value) {
-    asFuture.setResult(value);
+    result
   }
 }

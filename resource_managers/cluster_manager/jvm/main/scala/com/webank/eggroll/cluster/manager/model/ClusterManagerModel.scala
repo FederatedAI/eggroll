@@ -14,16 +14,8 @@
  * limitations under the License.
  */
 
-package com.webank.eggroll.cluster.manager.api.grpc
+package com.webank.eggroll.cluster.manager.model
 
-import com.webank.eggroll.cluster.manager.{ClusterManager, NodeReportServiceGrpc}
-import io.grpc.stub.StreamObserver
+class ClusterManagerModel {
 
-class NodeReportServiceImpl extends NodeReportServiceGrpc.NodeReportServiceImplBase {
-  /**
-   */
-  override def heartbeat(request: ClusterManager.NodeHeartbeatRequest,
-                         responseObserver: StreamObserver[ClusterManager.NodeHeartbeatResponse]): Unit = {
-
-  }
 }

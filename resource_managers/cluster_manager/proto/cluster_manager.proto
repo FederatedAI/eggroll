@@ -2,10 +2,10 @@ syntax = "proto3";
 
 package com.webank.eggroll.cluster.manager;
 
-import "core/proto/networking_basic.proto";
+import "core/proto/meta.proto";
 
 message NodeHeartbeatRequest {
-  com.webank.eggroll.core.basic.Endpoint src = 1;
+  com.webank.eggroll.core.meta.Endpoint src = 1;
 }
 
 message NodeHeartbeatResponse {

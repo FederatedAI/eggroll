@@ -14,23 +14,17 @@
  * limitations under the License.
  */
 
-package com.webank.eggroll.core.grpc.observer;
+package com.webank.eggroll.core.io.adapter
 
-import com.google.protobuf.Message;
-import com.webank.eggroll.core.concurrent.AwaitSettableFuture;
-import java.util.concurrent.CountDownLatch;
+trait SortedKvAdapter extends AutoCloseable {
+  def get(key: Array[Byte]): Array[Byte]
 
-public class SameTypeFutureCallerResponseStreamObserver<R extends Message, E extends Message> extends
-    BaseFutureCallerResponseStreamObserver<R, E, E> {
+  def put(key: Array[Byte], value: Array[Byte])
 
-  public SameTypeFutureCallerResponseStreamObserver(
-      CountDownLatch finishLatch,
-      AwaitSettableFuture<E> asFuture) {
-    super(finishLatch, asFuture);
-  }
+  def iterate(): SortedKvIterator
 
-  @Override
-  public void onNext(E value) {
-    asFuture.setResult(value);
-  }
+  def writeBatch(iter: Iterator[(Array[Byte], Array[Byte])])
+}
+
+trait SortedKvIterator extends Iterator[(Array[Byte], Array[Byte])] with AutoCloseable {
 }

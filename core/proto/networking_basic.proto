@@ -1,8 +1,0 @@
-syntax = "proto3";
-
-package com.webank.eggroll.core.basic;
-
-message Endpoint {
-  string host = 1;
-  int32 port = 2;
-}

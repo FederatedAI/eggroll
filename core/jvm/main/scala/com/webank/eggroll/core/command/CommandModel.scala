@@ -29,20 +29,20 @@ import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.reflect.ClassTag
 
-case class CommandRequest(seq: Long = System.currentTimeMillis(), uri: String, args: Array[Array[Byte]] = null, kwargs: mutable.Map[String, Array[Byte]] = null) extends RpcMessage
+case class ErCommandRequest(seq: Long = System.currentTimeMillis(), uri: String, args: Array[Array[Byte]] = null, kwargs: mutable.Map[String, Array[Byte]] = null) extends RpcMessage
 
-case class CommandResponse(seq: Long, request: CommandRequest = null, data: Array[Byte]) extends RpcMessage
+case class ErCommandResponse(seq: Long, request: ErCommandRequest = null, data: Array[Byte] = null) extends RpcMessage
 
 class CommandURI(uriString: String) {
   val uri = new URI(uriString)
   val queryString = uri.getQuery
   private val queryPairs = mutable.Map[String, String]()
 
-  def this(src: CommandRequest) {
+  def this(src: ErCommandRequest) {
     this(src.uri)
   }
 
-  def this(src: CommandResponse) {
+  def this(src: ErCommandResponse) {
     this(src.request.uri)
   }
 
@@ -66,9 +66,9 @@ class CommandURI(uriString: String) {
   }
 }
 
-object CommandPbMessageSerializers {
+object CommandPbSerdes {
 
-  implicit class CommandRequestToPbMessage(src: CommandRequest) extends PbMessageSerializer {
+  implicit class ErCommandRequestToPbMessage(src: ErCommandRequest) extends PbMessageSerializer {
     override def toProto[T >: PbMessage](): Command.CommandRequest = {
       val builder = Command.CommandRequest.newBuilder()
         .setSeq(src.seq)
@@ -84,7 +84,7 @@ object CommandPbMessageSerializers {
     }
   }
 
-  implicit class CommandResponseToPbMessage(src: CommandResponse) extends PbMessageSerializer {
+  implicit class ErCommandResponseToPbMessage(src: ErCommandResponse) extends PbMessageSerializer {
     override def toProto[T >: PbMessage](): Command.CommandResponse = {
       val builder = Command.CommandResponse.newBuilder()
         .setSeq(src.seq)
@@ -95,12 +95,8 @@ object CommandPbMessageSerializers {
     }
   }
 
-}
-
-object CommandPbMessageDeserializers {
-
-  implicit class CommandRequestFromPbMessage(src: Command.CommandRequest) extends PbMessageDeserializer {
-    override def fromProto[T >: RpcMessage](): CommandRequest = {
+  implicit class ErCommandRequestFromPbMessage(src: Command.CommandRequest) extends PbMessageDeserializer {
+    override def fromProto[T >: RpcMessage](): ErCommandRequest = {
       var args = ObjectConstants.EMPTY_ARRAY_OF_BYTE_ARRAY
       val argsCount = src.getArgsCount
       if (argsCount > 0) {
@@ -118,7 +114,7 @@ object CommandPbMessageDeserializers {
         src.getKwargsMap.entrySet().forEach(entry => kwargs.put(entry.getKey, entry.getValue.toByteArray))
       }
 
-      CommandRequest(seq = src.getSeq,
+      ErCommandRequest(seq = src.getSeq,
         uri = src.getUri,
         args = args,
         kwargs = kwargs)
@@ -127,13 +123,12 @@ object CommandPbMessageDeserializers {
     override def fromBytes[T: ClassTag](bytes: Array[Byte]): T = ???
   }
 
-  implicit class CommandResponseFromPbMessage(src: Command.CommandResponse) extends PbMessageDeserializer {
-    override def fromProto[T >: RpcMessage](): CommandResponse = CommandResponse(
+  implicit class ErCommandResponseFromPbMessage(src: Command.CommandResponse) extends PbMessageDeserializer {
+    override def fromProto[T >: RpcMessage](): ErCommandResponse = ErCommandResponse(
       seq = src.getSeq,
       request = src.getRequest.fromProto(),
       data = if (src.getData != null) src.getData.toByteArray else Array.emptyByteArray)
 
     override def fromBytes[T: ClassTag](bytes: Array[Byte]): T = ???
   }
-
 }

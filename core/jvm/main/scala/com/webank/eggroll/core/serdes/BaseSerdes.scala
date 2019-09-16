@@ -49,3 +49,4 @@ trait PbCommandSerializer extends BaseSerializable {
 trait PbCommandDeserializer extends BaseDeserializable {
   override def fromBytes[T: ClassTag](bytes: Array[Byte]): T = ???
 }
+

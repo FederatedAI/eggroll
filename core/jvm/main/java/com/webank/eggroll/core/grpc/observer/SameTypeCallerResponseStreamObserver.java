@@ -16,9 +16,10 @@
 
 package com.webank.eggroll.core.grpc.observer;
 
+import com.google.protobuf.Message;
 import java.util.concurrent.CountDownLatch;
 
-public class SameTypeCallerResponseStreamObserver<R, E> extends
+public class SameTypeCallerResponseStreamObserver<R extends Message, E extends Message> extends
     BaseCallerResponseStreamObserver<R, E> {
 
   public SameTypeCallerResponseStreamObserver(CountDownLatch finishLatch) {
