@@ -30,6 +30,7 @@ import scala.collection.mutable
 
 
 // stream access and optional random access
+// TODO: zero copy to IO ?
 trait BlockStoreAdapter {
   def getInputStream():InputStream
 
