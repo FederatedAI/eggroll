@@ -19,9 +19,10 @@ package com.webank.eggroll.rollsite.grpc.core.api.grpc.client.crud;
 
 import com.webank.ai.eggroll.api.core.BasicMeta;
 import com.webank.ai.eggroll.api.core.BasicMeta.CallResponse;
+import com.webank.eggroll.core.factory.GrpcStubFactory;
+import com.webank.eggroll.core.model.Endpoint;
 import com.webank.eggroll.rollsite.grpc.core.factory.CallMetaModelFactory;
 import com.webank.eggroll.rollsite.grpc.core.factory.GrpcStreamObserverFactory;
-import com.webank.eggroll.rollsite.grpc.core.factory.GrpcStubFactory;
 import com.webank.eggroll.rollsite.grpc.core.model.DelayedResult;
 import com.webank.eggroll.rollsite.grpc.core.model.impl.SingleDelayedResult;
 import com.webank.eggroll.rollsite.grpc.core.utils.ErrorUtils;
@@ -57,11 +58,11 @@ public abstract class BaseCrudClient<S> {
     private ReflectionUtils reflectionUtils;
     @Autowired
     private ErrorUtils errorUtils;
-    private BasicMeta.Endpoint endpoint;
+    private Endpoint endpoint;
     private Class<S> stubClass;
     private Class grpcClass;
 
-    public void init(BasicMeta.Endpoint endpoint) {
+    public void init(Endpoint endpoint) {
         this.endpoint = endpoint;
         this.stubClass = (Class<S>) ((ParameterizedType) getClass().getGenericSuperclass()).getActualTypeArguments()[0];
 
@@ -74,8 +75,8 @@ public abstract class BaseCrudClient<S> {
     }
 
     public void init(String ip, int port) {
-        BasicMeta.Endpoint.Builder builder = BasicMeta.Endpoint.newBuilder();
-        BasicMeta.Endpoint endpoint = builder.setIp(ip).setPort(port).build();
+        //BasicMeta.Endpoint.Builder builder = BasicMeta.Endpoint.newBuilder();
+        Endpoint endpoint = new Endpoint(ip, port);
 
         init(endpoint);
     }

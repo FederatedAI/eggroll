@@ -24,7 +24,7 @@ import com.webank.ai.eggroll.api.networking.proxy.Proxy.Metadata;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy.Packet;
 import com.webank.eggroll.rollsite.factory.ProxyGrpcStreamObserverFactory;
 import com.webank.eggroll.rollsite.factory.ProxyGrpcStubFactory;
-import com.webank.eggroll.rollsite.factory.TransferServiceFactory;
+//import com.webank.eggroll.rollsite.factory.TransferServiceFactory;
 import com.webank.eggroll.rollsite.grpc.core.api.grpc.client.GrpcAsyncClientContext;
 import com.webank.eggroll.rollsite.grpc.core.api.grpc.client.GrpcStreamingClientTemplate;
 import com.webank.eggroll.rollsite.grpc.core.constant.RuntimeConstants;
@@ -57,8 +57,8 @@ import org.springframework.stereotype.Component;
 @Scope("prototype")
 public class DataTransferPipedClient {
     private static final Logger LOGGER = LogManager.getLogger(DataTransferPipedClient.class);
-    @Autowired
-    private TransferServiceFactory transferServiceFactory;
+    //@Autowired
+    //private TransferServiceFactory transferServiceFactory;
     @Autowired
     private ProxyGrpcStubFactory proxyGrpcStubFactory;
     @Autowired
@@ -173,7 +173,7 @@ public class DataTransferPipedClient {
     //public synchronized void initPush(TransferBroker request, BasicMeta.Endpoint endpoint) {
     public synchronized void initPush(Proxy.Metadata metadata, Pipe pipe) {
         //LOGGER.info("[DEBUG][CLUSTERCOMM] initPush. broker: {}, transferMetaId: {}", pipe, toStringUtils.toOneLineString(request.getTransferMeta()));
-
+        /*
         GrpcAsyncClientContext<DataTransferServiceGrpc.DataTransferServiceStub, Proxy.Packet, Proxy.Metadata> asyncClientContext
             = transferServiceFactory.createPushClientGrpcAsyncClientContext();
 
@@ -195,6 +195,7 @@ public class DataTransferPipedClient {
         pushTemplate.initCallerStreamingRpc();
 
         inited.compareAndSet(false, true);
+        */
     }
 
     public void doPush() {
@@ -283,6 +284,7 @@ public class DataTransferPipedClient {
     }
 
     public Proxy.Packet unaryCall(Proxy.Packet request, Pipe pipe) {
+        /*
         DelayedResult<Packet> delayedResult = new SingleDelayedResult<>();
         GrpcAsyncClientContext<DataTransferServiceGrpc.DataTransferServiceStub, Proxy.Packet, Proxy.Packet> context
             = transferServiceFactory.createUnaryCallClientGrpcAsyncClientContext();
@@ -300,15 +302,17 @@ public class DataTransferPipedClient {
         GrpcStreamingClientTemplate<DataTransferServiceGrpc.DataTransferServiceStub, Proxy.Packet, Proxy.Packet> template
             = transferServiceFactory.createUnaryCallClientTemplate();
         template.setGrpcAsyncClientContext(context);
-
+        */
         Proxy.Packet result = null;
+        /*
         try {
             result = template.calleeStreamingRpcWithImmediateDelayedResult(request, delayedResult);
         } catch (InvocationTargetException e) {
             throw new RuntimeException(e);
         }
-
+        */
         return result;
+
     }
 
     private DataTransferServiceGrpc.DataTransferServiceStub getStub(Proxy.Topic from, Proxy.Topic to) {
