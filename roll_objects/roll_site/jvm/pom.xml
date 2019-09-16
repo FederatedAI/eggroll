@@ -32,17 +32,10 @@
     <modelVersion>4.0.0</modelVersion>
 
     <properties>
-        <scala.version>2.11.0</scala.version>
-        <os-maven-plugin.version>1.6.1</os-maven-plugin.version>
-        <protobuf-maven-plugin.version>0.6.1</protobuf-maven-plugin.version>
-        <grpc.version>1.16.1</grpc.version>
-        <protobuf.version>3.6.1</protobuf.version>
         <junit.version>4.12</junit.version>
-        <log4j.version>2.11.1</log4j.version>
-        <java.version>8</java.version>
-        <guava.version>27.0.1-jre</guava.version>
-        <spring.version>5.1.8.RELEASE</spring.version>
         <jackson.version>2.10.0.pr1</jackson.version>
+        <grpc.version>1.22.2</grpc.version>
+        <spring.version>5.1.4.RELEASE</spring.version>
     </properties>
 
     <dependencies>
@@ -81,29 +74,72 @@
             <version>1.4</version>
             <scope>compile</scope>
         </dependency>
+
+        <dependency>
+            <groupId>com.webank.eggroll</groupId>
+            <artifactId>eggroll-core</artifactId>
+            <version>${eggroll.version}</version>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-core</artifactId>
+            <version>${spring.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-beans</artifactId>
+            <version>${spring.version}</version>
+        </dependency>
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-context</artifactId>
-            <version>5.1.8.RELEASE</version>
-            <scope>compile</scope>
+            <version>${spring.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-tx</artifactId>
+            <version>${spring.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-jdbc</artifactId>
+            <version>${spring.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-test</artifactId>
+            <version>${spring.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-webmvc</artifactId>
+            <version>${spring.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-text</artifactId>
+            <version>1.4</version>
         </dependency>
     </dependencies>
 
     <build>
         <plugins>
-
-            <!-- protobuf-maven-plugin -->
             <plugin>
                 <groupId>org.xolstice.maven.plugins</groupId>
                 <artifactId>protobuf-maven-plugin</artifactId>
                 <version>${protobuf-maven-plugin.version}</version>
                 <configuration>
-                    <protocArtifact>com.google.protobuf:protoc:${protobuf.version}:exe:${os.detected.classifier}
+                    <protocArtifact>
+                        com.google.protobuf:protoc:${protobuf.version}:exe:${os.detected.classifier}
                     </protocArtifact>
                     <pluginId>grpc-java</pluginId>
                     <pluginArtifact>io.grpc:protoc-gen-grpc-java:${grpc.version}:exe:${os.detected.classifier}
                     </pluginArtifact>
-                    <protoSourceRoot>${basedir}/proto</protoSourceRoot>
+                    <protoSourceRoot>${pom.basedir}/../proto</protoSourceRoot>
                 </configuration>
                 <executions>
                     <execution>
