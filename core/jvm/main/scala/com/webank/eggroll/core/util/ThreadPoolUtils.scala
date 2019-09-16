@@ -16,17 +16,20 @@
 
 package com.webank.eggroll.core.util
 
-import java.util.concurrent.{Executors, ThreadFactory, ThreadPoolExecutor}
+import java.util.concurrent.{ExecutorService, Executors, ThreadFactory, ThreadPoolExecutor}
 
 import com.google.common.util.concurrent.{MoreExecutors, ThreadFactoryBuilder}
 
+import scala.collection.concurrent.TrieMap
 import scala.concurrent.ExecutionContext
 
 object ThreadPoolUtils {
   private val directExecutionContext =
     ExecutionContext.fromExecutor(MoreExecutors.directExecutor())
-  private lazy val defaultCachedNamedThreadPool =
+  private lazy val defaultCachedNamedThreadPool: ExecutorService =
     Executors.newCachedThreadPool(namedThreadFactory("default-cached"))
+
+  private val threadPoolMap = TrieMap[String, ThreadPoolExecutor]()
 
   def namedThreadFactory(prefix: String, isDaemon: Boolean = false): ThreadFactory = {
     new ThreadFactoryBuilder().setDaemon(isDaemon).setNameFormat(prefix + "-%d").build()
@@ -38,4 +41,16 @@ object ThreadPoolUtils {
   }
 
   def defaultThreadPool: ThreadPoolExecutor = defaultCachedNamedThreadPool.asInstanceOf[ThreadPoolExecutor]
+
+  def add(name: String, pool: ThreadPoolExecutor): Unit = {
+    threadPoolMap.putIfAbsent(name, pool)
+  }
+
+  def get(name: String): ExecutorService = {
+    threadPoolMap.getOrElse(name, defaultCachedNamedThreadPool)
+  }
+
+  def contains(name: String): Boolean = {
+    threadPoolMap.contains(name)
+  }
 }

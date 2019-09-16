@@ -14,23 +14,6 @@
  * limitations under the License.
  */
 
-package com.webank.eggroll.core.grpc.observer;
+package com.webank.eggroll.rollframe
 
-import com.google.protobuf.Message;
-import com.webank.eggroll.core.concurrent.AwaitSettableFuture;
-import java.util.concurrent.CountDownLatch;
 
-public class SameTypeFutureCallerResponseStreamObserver<R extends Message, E extends Message> extends
-    BaseFutureCallerResponseStreamObserver<R, E, E> {
-
-  public SameTypeFutureCallerResponseStreamObserver(
-      CountDownLatch finishLatch,
-      AwaitSettableFuture<E> asFuture) {
-    super(finishLatch, asFuture);
-  }
-
-  @Override
-  public void onNext(E value) {
-    asFuture.setResult(value);
-  }
-}

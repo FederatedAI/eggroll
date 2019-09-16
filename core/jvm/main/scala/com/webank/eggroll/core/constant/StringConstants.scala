@@ -17,6 +17,8 @@
 package com.webank.eggroll.core.constant
 
 object StringConstants {
+  val SLASH = "/"
+
   val GRPC_PARSE_FROM = "parseFrom"
 
   val AND = "&"
@@ -61,4 +63,8 @@ object StringConstants {
 
   val NULL = "null"
   val NULL_WITH_BRACKETS = s"[${NULL}]"
+
+  val LF = "\n"
+  val LFLF = "\n\n"
+
 }

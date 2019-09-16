@@ -16,8 +16,7 @@
 
 package com.webank.eggroll.core.command
 
-import com.webank.eggroll.core.command.CommandPbMessageDeserializers._
-import com.webank.eggroll.core.command.CommandPbMessageSerializers._
+import com.webank.eggroll.core.command.CommandPbSerdes._
 import com.webank.eggroll.core.constant.ModuleConstants
 import com.webank.eggroll.core.grpc.server.GrpcServerWrapper
 import com.webank.eggroll.core.util.{Logging, ToStringUtils}
@@ -26,7 +25,7 @@ import io.grpc.stub.StreamObserver
 import scala.collection.JavaConverters._
 
 
-class GrpcCommandService extends CommandServiceGrpc.CommandServiceImplBase with Logging {
+class CommandService extends CommandServiceGrpc.CommandServiceImplBase with Logging {
   private val grpcServerWrapper = new GrpcServerWrapper();
 
   /**
@@ -39,14 +38,14 @@ class GrpcCommandService extends CommandServiceGrpc.CommandServiceImplBase with 
                     responseObserver: StreamObserver[Command.CommandResponse]): Unit = {
     grpcServerWrapper.wrapGrpcServerRunnable(responseObserver, () => {
       logDebug(s"${ModuleConstants.COMMAND_WITH_BRACKETS} received: ${ToStringUtils.toOneLineString(request)}")
-      val command: CommandRequest = request.fromProto()
+      val command: ErCommandRequest = request.fromProto()
       val commandUri = new CommandURI(command)
 
       val list = request.getArgsList
       val e = list.get(0)
       val result: Array[Byte] = CommandRouter.dispatch(commandUri.getRoute(), request.getArgsList.toArray(), request.getKwargsMap.asScala)
 
-      val response: CommandResponse = CommandResponse(seq = request.getSeq,
+      val response: ErCommandResponse = ErCommandResponse(seq = request.getSeq,
         data = result)
       responseObserver.onNext(response.toProto())
       responseObserver.onCompleted()

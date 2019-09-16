@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-package com.webank.eggroll.core.model
+package com.webank.eggroll.cluster.manager.grpc
 
+import com.webank.eggroll.cluster.manager.ClusterManager
 
-import javax.annotation.concurrent.Immutable
-
-import scala.beans.BeanProperty
-
-@Immutable
-case class Endpoint(@BeanProperty val host: String, @BeanProperty val port: Int) {
-  override def toString: String = s"$host:$port"
+class NodeReportServiceImpl {
+  /**
+   */
+  def heartbeat(request: ClusterManager.NodeHeartbeatRequest): ClusterManager.NodeHeartbeatResponse = {
+    null
+  }
 }

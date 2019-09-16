@@ -39,8 +39,8 @@ object CommandRouter {
   private val serviceRouteTable = TrieMap[String, (Any, Method)]()
   private val messageParserMethodCache = mutable.Map[Class[_], Method]()
 
-  // todo: consider different scope of instance like 'singleton', 'proto', 'session' etc,
-  //  which can be implemented as an annotation reader
+  // todo: consider different scope of target instance suck as 'singleton', 'proto', 'session' etc.
+  //  This can be implemented as an annotation reader
   def register(serviceName: String,
                serviceParamTypes: List[Class[_]],
                routeToClass: Class[_] = null,

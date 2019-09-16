@@ -16,6 +16,6 @@
 
 package com.webank.eggroll.core.rpc
 
+// add the to- / from- bytes mapping
 trait RpcMessage {
-
 }

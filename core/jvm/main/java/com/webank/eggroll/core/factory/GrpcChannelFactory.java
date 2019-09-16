@@ -22,7 +22,7 @@ import com.google.common.cache.LoadingCache;
 import com.webank.eggroll.core.constant.CoreConfKeys;
 import com.webank.eggroll.core.constant.ModuleConstants;
 import com.webank.eggroll.core.constant.StringConstants;
-import com.webank.eggroll.core.model.Endpoint;
+import com.webank.eggroll.core.meta.ErEndpoint;
 import com.webank.eggroll.core.retry.RetryException;
 import com.webank.eggroll.core.retry.Retryer;
 import com.webank.eggroll.core.retry.factory.AttemptOperations;
@@ -48,8 +48,8 @@ import org.apache.logging.log4j.Logger;
 
 public class GrpcChannelFactory {
 
-  private LoadingCache<Endpoint, ManagedChannel> insecureChannelCache;
-  private LoadingCache<Endpoint, ManagedChannel> secureChannelCache;
+  private LoadingCache<ErEndpoint, ManagedChannel> insecureChannelCache;
+  private LoadingCache<ErEndpoint, ManagedChannel> secureChannelCache;
 
   private static final String channelWithBuckets = "[CHANNEL]";
   private static final String removeWithBuckets = "[REMOVE]";
@@ -66,13 +66,13 @@ public class GrpcChannelFactory {
     long channelTerminationAwaitTimeout = DefaultEggrollConf
         .getLong(CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_TERMINATION_AWAIT_TIMEOUT_SEC(), 20);
 
-    CacheBuilder<Endpoint, ManagedChannel> cacheBuilder = CacheBuilder.newBuilder()
+    CacheBuilder<ErEndpoint, ManagedChannel> cacheBuilder = CacheBuilder.newBuilder()
         .maximumSize(maximumSize)
         .expireAfterAccess(expireTimeout, TimeUnit.SECONDS)
         .recordStats()
         .weakValues()
         .removalListener(removalNotification -> {
-          Endpoint endpoint = (Endpoint) removalNotification.getKey();
+          ErEndpoint endpoint = (ErEndpoint) removalNotification.getKey();
           ManagedChannel managedChannel = (ManagedChannel) removalNotification.getValue();
           StringBuilder removalPrefixBuilder = new StringBuilder()
               .append(prefix)
@@ -105,24 +105,24 @@ public class GrpcChannelFactory {
     StringBuilder createPrefixBuilder = new StringBuilder()
         .append(prefix)
         .append(createWithBuckets);
-    insecureChannelCache = cacheBuilder.build(new CacheLoader<Endpoint, ManagedChannel>() {
+    insecureChannelCache = cacheBuilder.build(new CacheLoader<ErEndpoint, ManagedChannel>() {
       @Override
-      public ManagedChannel load(Endpoint endpoint) throws Exception {
+      public ManagedChannel load(ErEndpoint endpoint) throws Exception {
         LOGGER.debug("{}[INSECURE] creating for endpoint: {}", createPrefixBuilder, endpoint);
         return createChannel(endpoint, false);
       }
     });
 
-    secureChannelCache = cacheBuilder.build(new CacheLoader<Endpoint, ManagedChannel>() {
+    secureChannelCache = cacheBuilder.build(new CacheLoader<ErEndpoint, ManagedChannel>() {
       @Override
-      public ManagedChannel load(Endpoint endpoint) throws Exception {
+      public ManagedChannel load(ErEndpoint endpoint) throws Exception {
         LOGGER.debug("{}[SECURE] creating for endpoint: {}", createPrefixBuilder, endpoint);
         return createChannel(endpoint, true);
       }
     });
   }
 
-  private ManagedChannel createChannel(Endpoint endpoint, Boolean isSecureChannel) {
+  private ManagedChannel createChannel(ErEndpoint endpoint, Boolean isSecureChannel) {
     long channelKeepAliveTimeSec = DefaultEggrollConf
         .getLong(CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_KEEPALIVE_TIME_SEC(), 300L);
     long channelKeepAliveTimeoutSec = DefaultEggrollConf
@@ -212,7 +212,7 @@ public class GrpcChannelFactory {
     return builder.build();
   }
 
-  private ManagedChannel getChannelInternal(Endpoint endpoint, boolean isSecureChannel) {
+  private ManagedChannel getChannelInternal(ErEndpoint endpoint, boolean isSecureChannel) {
     ManagedChannel result = null;
     try {
       if (isSecureChannel) {
@@ -234,7 +234,7 @@ public class GrpcChannelFactory {
     return result;
   }
 
-  public ManagedChannel getChannel(final Endpoint endpoint, boolean isSecureChannel) {
+  public ManagedChannel getChannel(final ErEndpoint endpoint, boolean isSecureChannel) {
     ManagedChannel result = null;
     long fixedWaitTime = DefaultEggrollConf
         .getLong(CoreConfKeys.CONFKEY_CORE_RETRY_DEFAULT_WAIT_TIME_MS(), 1000L);

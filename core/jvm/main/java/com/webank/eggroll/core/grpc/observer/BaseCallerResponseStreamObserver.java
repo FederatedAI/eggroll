@@ -16,6 +16,7 @@
 
 package com.webank.eggroll.core.grpc.observer;
 
+import com.google.protobuf.Message;
 import com.webank.eggroll.core.util.ErrorUtils;
 import io.grpc.stub.StreamObserver;
 import java.util.concurrent.CountDownLatch;
@@ -31,7 +32,8 @@ import org.apache.logging.log4j.Logger;
  * @param <E> calleE parameter type (in the source streaming context, an object from type R will be
  *            returned)
  */
-public abstract class BaseCallerResponseStreamObserver<R, E> implements StreamObserver<E> {
+public abstract class BaseCallerResponseStreamObserver<R extends Message, E extends Message>
+    implements StreamObserver<E> {
 
   private final CountDownLatch finishLatch;
   private final Logger LOGGER = LogManager.getLogger(this);
