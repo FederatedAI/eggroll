@@ -20,7 +20,7 @@ import java.util.Random
 
 import com.webank.eggroll.blockstore.BlockStoreAdapter
 import com.webank.eggroll.command.{CommandService, GrpcCommandService}
-import com.webank.eggroll.format.{FrameBatch, FrameReader, FrameSchema, FrameWriter}
+import com.webank.eggroll.format._
 import com.webank.eggroll.transfer.GrpcTransferService
 import io.grpc.ServerBuilder
 import org.junit.{Before, Test}
@@ -93,18 +93,18 @@ class RollFrameTests {
     )
     cw.close()
     val path2 = "./tmp/unittests/RollFrameTests/testColumnarWrite/1"
-    val eggFrame = new EggFrame
+
     val opts = Map("path" -> path2)
     val cr = new FrameReader(path)
 //    for( cb <- cr.getColumnarBatches){
 //      eggFrame.write(cb, opts)
 //    }
-    val adapter = BlockStoreAdapter.create(opts)
-    eggFrame.write(cr.getColumnarBatches, adapter)
+    val adapter = FrameStoreAdapter(opts)
+    adapter.writeAll(cr.getColumnarBatches)
     cr.close()
     adapter.close()
     val adapter2 = BlockStoreAdapter.create(opts)
-    for( cb <- eggFrame.read(adapter2)){
+    for( cb <- adapter.readAll()){
       for( i <- 0 until fieldCount){
         val cv = cb.columnarVectors(i)
         for(n <- 0 until cv.valueCount) {
@@ -199,26 +199,45 @@ class RollFrameTests {
     sb.append("]}")
     sb.toString()
   }
+
+  private def loadCaches():Unit = {
+    def loadCache(path: String): Unit = {
+      val inputStore = FrameStoreAdapter(Map("path" -> path))
+      val outputStore = FrameStoreAdapter(Map("path" -> path, "type"->"jvm"))
+      outputStore.writeAll(inputStore.readAll())
+      outputStore.close()
+      inputStore.close()
+    }
+    loadCache("./tmp/unittests/RollFrameTests/filedb/test1/a1/0")
+    loadCache("./tmp/unittests/RollFrameTests/filedb/test1/a1/1")
+
+  }
   @Test
   def testColumnarWrite1000():Unit = {
-    val fieldCount = 1000
-    val schema = getSchema(fieldCount)
-    val path = "./tmp/unittests/RollFrameTests/filedb/test1/a1/0"
-    val cw = new FrameWriter(schema, path)
-    val valueCount = 100*1000 / 2
-    val batchSize = 100*1000 / 2
-    cw.write(valueCount, batchSize,
-      (fid, cv) => (0 until batchSize).foreach(
-//        n => cv.writeDouble(n, fid * valueCount + n * 0.5)
-        n => cv.writeDouble(n, fid  * new Random().nextDouble())
+
+    def pass(path:String) = {
+      val fieldCount = 1000
+      val schema = getSchema(fieldCount)
+      val cw = new FrameWriter(schema, path)
+      val valueCount = 500*1000 / 2
+      val batchSize = 500*1000 / 20
+      cw.write(valueCount, batchSize,
+        (fid, cv) => (0 until batchSize).foreach(
+          //        n => cv.writeDouble(n, fid * valueCount + n * 0.5)
+          n => cv.writeDouble(n, fid  * new Random().nextDouble())
+        )
       )
-    )
-    cw.close()
+      cw.close()
+    }
+    pass("./tmp/unittests/RollFrameTests/filedb/test1/a1/0")
+    pass("./tmp/unittests/RollFrameTests/filedb/test1/a1/1")
+
 
   }
 
   @Test
   def testRollFrameAggregate(): Unit = {
+    var start = System.currentTimeMillis()
     val sb = ServerBuilder.forPort(20101)
     sb.addService(new GrpcCommandService())
     sb.addService(new GrpcTransferService).build.start
@@ -227,9 +246,13 @@ class RollFrameTests {
     sb2.addService(new GrpcTransferService()).build.start
     val clusterManager = new ClusterManager
     val rf = new RollFrameService(clusterManager.getRollFrameStore("a1","test1"))
+//    loadCaches()
+    println(System.currentTimeMillis() -start);start = System.currentTimeMillis()
     val fieldCount = 1000
     val schema = getSchema(fieldCount)
     val zeroValue = new FrameBatch(new FrameSchema(schema), 1)
+    (0 until 1000).foreach(i => zeroValue.writeDouble(i,0,0))
+
     rf.aggregate(zeroValue,{(x, y) =>
       try{
         for(f <- 0 until y.columnarVectors.size) {
@@ -238,8 +261,8 @@ class RollFrameTests {
           for(i <- 0 until fv.valueCount) {
             sum += fv.readDouble(i)
           }
-//          x.writeDouble(f,0, sum)
-          x.writeDouble(f,0, fv.valueCount)
+          x.writeDouble(f,0, sum)
+//          x.writeDouble(f,0, fv.valueCount)
         }
       } catch {
         case t:Throwable => t.printStackTrace()
@@ -253,12 +276,45 @@ class RollFrameTests {
       }
       a
     })
+    println(System.currentTimeMillis() - start)
+  }
+
+  @Test
+  def testFrameDataType():Unit = {
+    val schema =
+      """
+        {
+          "fields": [
+          {"name":"double1", "type": {"name" : "floatingpoint","precision" : "DOUBLE"}},
+          {"name":"long1", "type": {"name" : "int","bitWidth" : 64,"isSigned":true}},
+          {"name":"longarray1", "type": {"name" : "fixedsizelist","listSize" : 10}, "children":[{"name":"$data$", "type": {"name" : "int","bitWidth" : 64,"isSigned":true}}]}
+          ]
+        }
+      """.stripMargin
+
+    val zeroValue = new FrameBatch(new FrameSchema(schema), 1)
+    zeroValue.writeDouble(0, 0, 1.2)
+    zeroValue.writeLong(1, 0, 22)
+    val arr = zeroValue.getValueVector(2, 0)
+    (0 until 10).foreach( i=> arr.writeLong(i, i * 100))
+    val outputStore = FrameStoreAdapter(Map("path" -> "./tmp/unittests/RollFrameTests/filedb/test1/type_test", "type"->"file"))
+    outputStore.append(zeroValue)
+    outputStore.close()
+    assert(zeroValue.readDouble(0, 0) == 1.2)
+    assert(zeroValue.readLong(1, 0) == 22)
+    assert(arr.readLong(0) == 0)
+    val inputStore = FrameStoreAdapter(Map("path" -> "./tmp/unittests/RollFrameTests/filedb/test1/type_test", "type"->"file"))
+    for(b <- inputStore.readAll()) {
+      println(b.readDouble(0,0))
+      println(b.readLong(1,0))
+      println()
+      (0 until 10).foreach(i => print(b.getValueVector(2, 0).readLong(i) + " "))
+    }
+
   }
 
   @Test
   def testTmp():Unit = {
-//    val a = new Factory
-//    val b:Foo = a.create()
-//    println(b)
+
   }
 }

@@ -15,7 +15,6 @@ message TaskResult {
     string task_id = 1;
 }
 
-
 message Functor {
     string name = 1;
     bytes body = 2;
@@ -60,11 +59,13 @@ message CommandResponse {
     bytes data = 2;
     int32 size = 3;
 }
+
 message CommandRequest {
     string uri = 1;
     bytes data = 2;
     int32 size = 3;
 }
+
 service CommandService {
-    rpc call(CommandRequest) returns(CommandResponse);
+    rpc call (CommandRequest) returns (CommandResponse);
 }
