@@ -18,23 +18,21 @@ package com.webank.eggroll.rollsite.grpc.observer;
 
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy.Metadata;
-import com.webank.eggroll.rollsite.grpc.core.api.grpc.observer.BaseCallerResponseStreamObserver;
-import com.webank.eggroll.rollsite.grpc.core.utils.ToStringUtils;
+import com.webank.ai.eggroll.api.networking.proxy.Proxy.Packet;
+import com.webank.eggroll.core.grpc.observer.BaseCallerResponseStreamObserver;
+import com.webank.eggroll.core.util.ToStringUtils;
 import com.webank.eggroll.rollsite.infra.Pipe;
 import com.webank.eggroll.rollsite.infra.impl.PacketQueueSingleResultPipe;
 import java.util.concurrent.CountDownLatch;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
 @Component
 @Scope("prototype")
-public class PushClientResponseStreamObserver extends BaseCallerResponseStreamObserver<Proxy.Packet, Metadata> {
+public class PushClientResponseStreamObserver extends BaseCallerResponseStreamObserver<Packet, Metadata> {
     private static final Logger LOGGER = LogManager.getLogger();
-    @Autowired
-    private ToStringUtils toStringUtils;
     private Pipe transferBroker;
     // private DelayedResult<Metadata> delayedResult;
     private Proxy.Metadata metadata;
@@ -56,7 +54,7 @@ public class PushClientResponseStreamObserver extends BaseCallerResponseStreamOb
         convertedPipe.setResult(metadata);
 
         LOGGER.info("[PUSH][CLIENTOBSERVER][ONNEXT] PushClientResponseStreamObserver.onNext(), metadata: {}",
-            toStringUtils.toOneLineString(metadata));
+            ToStringUtils.toOneLineString(metadata));
 
     }
 
@@ -69,7 +67,7 @@ public class PushClientResponseStreamObserver extends BaseCallerResponseStreamOb
 
     @Override
     public void onCompleted() {
-        LOGGER.info("[PUSH][CLIENTOBSERVER][ONCOMPLETE]SendClientResponseStreamObserver.onComplete. metadata: {}", toStringUtils.toOneLineString(metadata));
+        LOGGER.info("[PUSH][CLIENTOBSERVER][ONCOMPLETE]SendClientResponseStreamObserver.onComplete. metadata: {}", ToStringUtils.toOneLineString(metadata));
         super.onCompleted();
         transferBroker.onComplete();
     }

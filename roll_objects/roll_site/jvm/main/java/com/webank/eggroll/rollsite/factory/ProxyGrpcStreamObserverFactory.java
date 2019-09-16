@@ -18,7 +18,7 @@ package com.webank.eggroll.rollsite.factory;
 
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy.Metadata;
-import com.webank.eggroll.rollsite.grpc.core.utils.ToStringUtils;
+import com.webank.eggroll.core.util.ToStringUtils;
 import com.webank.eggroll.rollsite.grpc.observer.ClientPullResponseStreamObserver;
 import com.webank.eggroll.rollsite.grpc.observer.ClientPushResponseStreamObserver;
 import com.webank.eggroll.rollsite.grpc.observer.ClientUnaryCallResponseStreamObserver;
@@ -37,8 +37,6 @@ public class ProxyGrpcStreamObserverFactory {
     private static final Logger LOGGER = LogManager.getLogger(ProxyGrpcStreamObserverFactory.class);
     @Autowired
     private LocalBeanFactory localBeanFactory;
-    @Autowired
-    private ToStringUtils toStringUtils;
 
     public ClientPullResponseStreamObserver createClientPullResponseStreamObserver(Pipe pipe,
                                                                                    CountDownLatch finishLatch,

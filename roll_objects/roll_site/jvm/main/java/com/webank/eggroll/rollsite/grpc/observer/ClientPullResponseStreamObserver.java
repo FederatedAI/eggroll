@@ -18,7 +18,7 @@ package com.webank.eggroll.rollsite.grpc.observer;
 
 import com.google.protobuf.ByteString;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
-import com.webank.eggroll.rollsite.grpc.core.utils.ToStringUtils;
+import com.webank.eggroll.core.util.ToStringUtils;
 import com.webank.eggroll.rollsite.infra.Pipe;
 import com.webank.eggroll.rollsite.manager.StatsManager;
 import com.webank.eggroll.rollsite.model.ProxyServerConf;
@@ -48,8 +48,6 @@ public class ClientPullResponseStreamObserver implements StreamObserver<Proxy.Pa
     private StatsManager statsManager;
     @Autowired
     private ProxyServerConf proxyServerConf;
-    @Autowired
-    private ToStringUtils toStringUtils;
     private StreamStat streamStat;
     private volatile boolean isStreamStatSet;
     private Proxy.Metadata metadata;
@@ -76,7 +74,7 @@ public class ClientPullResponseStreamObserver implements StreamObserver<Proxy.Pa
         if (isInited) {
             return;
         }
-        this.oneLineStringMetadata = toStringUtils.toOneLineString(metadata);
+        this.oneLineStringMetadata = ToStringUtils.toOneLineString(metadata);
 
         statsManager.add(streamStat);
 
@@ -104,7 +102,7 @@ public class ClientPullResponseStreamObserver implements StreamObserver<Proxy.Pa
         }
 
         if (isAuditEnabled && packet.getHeader().getSrc().getPartyId().equals(myCoordinator)) {
-            AUDIT.info(toStringUtils.toOneLineString(packet));
+            AUDIT.info(ToStringUtils.toOneLineString(packet));
         }
 
         if (isDebugEnabled) {

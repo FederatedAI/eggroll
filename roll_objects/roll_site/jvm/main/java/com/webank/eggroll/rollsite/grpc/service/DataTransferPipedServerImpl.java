@@ -19,12 +19,12 @@ package com.webank.eggroll.rollsite.grpc.service;
 import com.google.common.collect.Maps;
 import com.webank.ai.eggroll.api.networking.proxy.DataTransferServiceGrpc;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
+import com.webank.eggroll.core.util.ToStringUtils;
 import com.webank.eggroll.rollsite.event.model.PipeHandleNotificationEvent;
 import com.webank.eggroll.rollsite.factory.EventFactory;
 import com.webank.eggroll.rollsite.factory.PipeFactory;
 import com.webank.eggroll.rollsite.factory.ProxyGrpcStreamObserverFactory;
 import com.webank.eggroll.rollsite.grpc.core.utils.ErrorUtils;
-import com.webank.eggroll.rollsite.grpc.core.utils.ToStringUtils;
 import com.webank.eggroll.rollsite.infra.Pipe;
 import com.webank.eggroll.rollsite.infra.impl.PacketQueueSingleResultPipe;
 import com.webank.eggroll.rollsite.utils.Timeouts;
@@ -52,8 +52,6 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
     private Timeouts timeouts;
     @Autowired
     private EventFactory eventFactory;
-    @Autowired
-    private ToStringUtils toStringUtils;
     @Autowired
     private ErrorUtils errorUtils;
     private Pipe defaultPipe;
@@ -83,7 +81,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
 
     @Override
     public void pull(Proxy.Metadata inputMetadata, StreamObserver<Proxy.Packet> responseObserver) {
-        String oneLineStringInputMetadata = toStringUtils.toOneLineString(inputMetadata);
+        String oneLineStringInputMetadata = ToStringUtils.toOneLineString(inputMetadata);
         LOGGER.info("[PULL][SERVER] request received. metadata: {}",
                 oneLineStringInputMetadata);
 
@@ -121,8 +119,8 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
             if (packet != null) {
                 Proxy.Metadata outputMetadata = packet.getHeader();
                 Proxy.Data outData = packet.getBody();
-                LOGGER.info("PushStreamProcessor processing metadata: {}", toStringUtils.toOneLineString(outputMetadata));
-                LOGGER.info("PushStreamProcessor processing outData: {}", toStringUtils.toOneLineString(outData));
+                LOGGER.info("PushStreamProcessor processing metadata: {}", ToStringUtils.toOneLineString(outputMetadata));
+                LOGGER.info("PushStreamProcessor processing outData: {}", ToStringUtils.toOneLineString(outData));
 
                 // LOGGER.info("server pull onNext()");
                 responseObserver.onNext(packet);
@@ -195,10 +193,10 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
     @Override
     public void unaryCall(Proxy.Packet request, StreamObserver<Proxy.Packet> responseObserver) {
         Proxy.Metadata inputMetadata = request.getHeader();
-        String oneLineStringInputMetadata = toStringUtils.toOneLineString(inputMetadata);
+        String oneLineStringInputMetadata = ToStringUtils.toOneLineString(inputMetadata);
         LOGGER.info("[UNARYCALL][SERVER] server unary request received. src: {}, dst: {}",
-                toStringUtils.toOneLineString(inputMetadata.getSrc()),
-                toStringUtils.toOneLineString(inputMetadata.getDst()));
+                ToStringUtils.toOneLineString(inputMetadata.getSrc()),
+                ToStringUtils.toOneLineString(inputMetadata.getDst()));
 
         long overallTimeout = timeouts.getOverallTimeout(inputMetadata);
         long packetIntervalTimeout = timeouts.getPacketIntervalTimeout(inputMetadata);

@@ -24,7 +24,7 @@ import com.webank.eggroll.core.error.handler.InterruptAndRethrowRuntimeErrorHand
 import com.webank.eggroll.core.factory.GrpcStubFactory;
 import com.webank.eggroll.core.grpc.observer.BaseCallerResponseStreamObserver;
 import com.webank.eggroll.core.grpc.processor.StreamProcessor;
-import com.webank.eggroll.core.model.Endpoint;
+import com.webank.eggroll.core.meta.ErEndpoint;
 import io.grpc.Metadata;
 import io.grpc.stub.AbstractStub;
 import io.grpc.stub.MetadataUtils;
@@ -62,7 +62,7 @@ public class GrpcClientContext<S extends AbstractStub, R extends Message, E exte
   private Class<? extends AbstractStub> stubClass;
   private Class<?> grpcClass;
   private Metadata grpcMetadata;
-  private Endpoint serverEndpoint;
+  private ErEndpoint serverEndpoint;
   private int latchInitCount = 1;
   private boolean isSecureRequest;
   private CountDownLatch finishLatch;
@@ -209,17 +209,17 @@ public class GrpcClientContext<S extends AbstractStub, R extends Message, E exte
     return this;
   }
 
-  public Endpoint getServerEndpoint() {
+  public ErEndpoint getServerEndpoint() {
     return serverEndpoint;
   }
 
-  public GrpcClientContext<S, R, E> setServerEndpoint(Endpoint serverEndpoint) {
+  public GrpcClientContext<S, R, E> setServerEndpoint(ErEndpoint serverEndpoint) {
     this.serverEndpoint = serverEndpoint;
     return this;
   }
 
   public GrpcClientContext<S, R, E> setServerEndpoint(String host, int port) {
-    return setServerEndpoint(new Endpoint(host, port));
+    return setServerEndpoint(new ErEndpoint(host, port));
   }
 
   public int getLatchInitCount() {

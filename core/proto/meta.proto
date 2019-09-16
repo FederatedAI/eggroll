@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+package com.webank.eggroll.core.meta;
+
+message Endpoint {
+  string host = 1;
+  int32 port = 2;
+}
+
+message ServerNode {
+  string id = 1;
+  Endpoint endpoint = 2;
+  string tag = 3;
+}
+
+message ServerCluster {
+  string id = 1;
+  repeated ServerNode nodes = 2;
+}
+
+message Functor {
+  string name = 1;
+  bytes body = 2;
+}
+
+message StoreLocator {
+  string storeType = 1;
+  string namespace = 2;
+  string name = 3;
+  string path = 4;
+}
+
+message Store {
+  StoreLocator storeLocator = 1;
+  repeated Partition partition = 2;
+}
+
+message Partition {
+  string id = 1;
+  StoreLocator storeLocator = 2;
+  ServerNode node = 3;
+}
+
+message Job {
+  string id = 1;
+  repeated Store inputs = 2;
+  repeated Store outputs = 3;
+  repeated Functor functors = 4;
+}
+
+message Task {
+  string id = 1;
+  repeated Partition inputs = 2;
+  repeated Partition outputs = 3;
+  Job job = 4;
+}

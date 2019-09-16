@@ -18,7 +18,7 @@ package com.webank.eggroll.rollsite.grpc.observer;
 
 import com.google.protobuf.ByteString;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
-import com.webank.eggroll.rollsite.grpc.core.utils.ToStringUtils;
+import com.webank.eggroll.core.util.ToStringUtils;
 import com.webank.eggroll.rollsite.infra.Pipe;
 import com.webank.eggroll.rollsite.manager.StatsManager;
 import com.webank.eggroll.rollsite.model.ProxyServerConf;
@@ -45,8 +45,6 @@ public class ClientUnaryCallResponseStreamObserver implements StreamObserver<Pro
     private final CountDownLatch finishLatch;
     @Autowired
     private StatsManager statsManager;
-    @Autowired
-    private ToStringUtils toStringUtils;
     @Autowired
     private ProxyServerConf proxyServerConf;
     private StreamStat streamStat;
@@ -91,7 +89,7 @@ public class ClientUnaryCallResponseStreamObserver implements StreamObserver<Pro
 
         if (proxyServerConf.isAuditEnabled()
                 && packet.getHeader().getSrc().getPartyId().equals(proxyServerConf.getCoordinator())) {
-            AUDIT.info(toStringUtils.toOneLineString(packet));
+            AUDIT.info(ToStringUtils.toOneLineString(packet));
         }
 
 
@@ -106,7 +104,7 @@ public class ClientUnaryCallResponseStreamObserver implements StreamObserver<Pro
     @Override
     public void onError(Throwable throwable) {
         LOGGER.error("[UNARYCALL][OBSERVER][ONERROR] error in unary call response observer: {}, metadata: {}",
-                Status.fromThrowable(throwable), toStringUtils.toOneLineString(metadata));
+                Status.fromThrowable(throwable), ToStringUtils.toOneLineString(metadata));
         LOGGER.error(ExceptionUtils.getStackTrace(throwable));
 
         pipe.onError(throwable);
@@ -118,7 +116,7 @@ public class ClientUnaryCallResponseStreamObserver implements StreamObserver<Pro
     @Override
     public void onCompleted() {
         LOGGER.info("[UNARYCALL][OBSERVER][ONCOMPLETE] Client unary call completed. metadata: {}",
-                toStringUtils.toOneLineString(metadata));
+                ToStringUtils.toOneLineString(metadata));
 
         pipe.onComplete();
         finishLatch.countDown();

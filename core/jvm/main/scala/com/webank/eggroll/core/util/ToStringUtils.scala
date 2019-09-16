@@ -14,12 +14,18 @@
  * limitations under the License.
  */
 
-package com.webank.eggroll.core.constant
+package com.webank.eggroll.core.util
 
-object ModuleConstants {
-  private val bracketTemplate = "[e]"
-  private val e = "e"
-  val CORE = "CORE"
-  val CORE_WITH_BRACKETS = bracketTemplate.replace(e, CORE)
-  val COMMAND_WITH_BRACKETS = bracketTemplate.replace(e, "COMMAND")
+import com.google.protobuf.MessageOrBuilder
+import com.google.protobuf.util.JsonFormat
+import com.webank.eggroll.core.constant.StringConstants
+
+object ToStringUtils {
+  private val protoPrinter = JsonFormat.printer
+    .preservingProtoFieldNames
+    .includingDefaultValueFields
+    .omittingInsignificantWhitespace
+
+  def toOneLineString(target: MessageOrBuilder): String =
+    if (target != null) protoPrinter.print(target) else StringConstants.NULL_WITH_BRACKETS
 }

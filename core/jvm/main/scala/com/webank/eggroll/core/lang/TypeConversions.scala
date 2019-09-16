@@ -14,12 +14,19 @@
  * limitations under the License.
  */
 
-package com.webank.eggroll.core.constant
+package com.webank.eggroll.core.lang
 
-object ModuleConstants {
-  private val bracketTemplate = "[e]"
-  private val e = "e"
-  val CORE = "CORE"
-  val CORE_WITH_BRACKETS = bracketTemplate.replace(e, CORE)
-  val COMMAND_WITH_BRACKETS = bracketTemplate.replace(e, "COMMAND")
+import com.google.protobuf.{ByteString => PbByteString}
+import org.apache.commons.lang3.ArrayUtils
+
+trait TypeConverter {
+  def convert[T >: Any](): T = ???
+}
+
+object TypeConversions {
+
+  implicit class PbByteString2ByteArray(src: PbByteString) extends TypeConverter {
+    override def convert[T >: Any](): T = if (src != null) src.toByteArray else ArrayUtils.EMPTY_BYTE_ARRAY
+  }
+
 }

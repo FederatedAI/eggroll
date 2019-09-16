@@ -19,8 +19,8 @@ package com.webank.eggroll.rollsite.grpc.service;
 import com.webank.ai.eggroll.api.core.BasicMeta;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
 import com.webank.ai.eggroll.api.networking.proxy.RouteServiceGrpc;
+import com.webank.eggroll.core.util.ToStringUtils;
 import com.webank.eggroll.rollsite.grpc.core.utils.ErrorUtils;
-import com.webank.eggroll.rollsite.grpc.core.utils.ToStringUtils;
 import com.webank.eggroll.rollsite.service.FdnRouter;
 import io.grpc.stub.StreamObserver;
 import org.apache.logging.log4j.LogManager;
@@ -37,13 +37,11 @@ public class RouteServerImpl extends RouteServiceGrpc.RouteServiceImplBase {
     @Autowired
     private FdnRouter fdnRouter;
     @Autowired
-    private ToStringUtils toStringUtils;
-    @Autowired
     private ErrorUtils errorUtils;
 
     @Override
     public void query(Proxy.Topic request, StreamObserver<BasicMeta.Endpoint> responseObserver) {
-        String requestString = toStringUtils.toOneLineString(request);
+        String requestString = ToStringUtils.toOneLineString(request);
         LOGGER.info("[ROUTE] querying route for topic: {}", requestString);
         BasicMeta.Endpoint result = fdnRouter.route(request);
 
@@ -52,7 +50,7 @@ public class RouteServerImpl extends RouteServiceGrpc.RouteServiceImplBase {
             responseObserver.onError(errorUtils.toGrpcRuntimeException(e));
         }
 
-        LOGGER.info("[ROUTE] querying route result for topic: {}, result: {}", requestString, toStringUtils.toOneLineString(result));
+        LOGGER.info("[ROUTE] querying route result for topic: {}, result: {}", requestString, ToStringUtils.toOneLineString(result));
         responseObserver.onNext(result);
         responseObserver.onCompleted();
     }

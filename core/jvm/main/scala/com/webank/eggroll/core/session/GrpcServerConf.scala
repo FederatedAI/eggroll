@@ -18,7 +18,7 @@ package com.webank.eggroll.core.session
 
 import java.util
 
-import com.webank.eggroll.core.model.Endpoint
+import com.webank.eggroll.core.meta.ErEndpoint
 import io.grpc.{BindableService, ServerServiceDefinition}
 
 class GrpcServerConf(confFilePath: String) {
@@ -48,7 +48,7 @@ class GrpcServerConf(confFilePath: String) {
     this
   }
 
-  def endpoint(): Endpoint = {
-    new Endpoint(host, port)
+  def endpoint(): ErEndpoint = {
+    new ErEndpoint(host, port)
   }
 }

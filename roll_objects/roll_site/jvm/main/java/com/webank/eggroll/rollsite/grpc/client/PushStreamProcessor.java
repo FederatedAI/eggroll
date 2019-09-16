@@ -17,9 +17,13 @@
 package com.webank.eggroll.rollsite.grpc.client;
 
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
-import com.webank.eggroll.rollsite.grpc.core.api.grpc.client.crud.BaseStreamProcessor;
-import com.webank.eggroll.rollsite.grpc.core.utils.ToStringUtils;
+import com.webank.ai.eggroll.api.networking.proxy.Proxy.Packet;
+import com.webank.eggroll.core.grpc.processor.BaseClientCallStreamProcessor;
+//import com.webank.eggroll.rollsite.grpc.core.api.grpc.client.crud.BaseStreamProcessor;
+import com.webank.eggroll.core.util.ToStringUtils;
+//import com.webank.eggroll.rollsite.grpc.core.utils.ToStringUtils;
 import com.webank.eggroll.rollsite.infra.Pipe;
+import io.grpc.stub.ClientCallStreamObserver;
 import io.grpc.stub.StreamObserver;
 import javax.annotation.PostConstruct;
 import org.apache.logging.log4j.LogManager;
@@ -37,14 +41,13 @@ import org.springframework.stereotype.Component;
 
 @Component
 @Scope("prototype")
-public class PushStreamProcessor extends BaseStreamProcessor<Proxy.Packet> {
+//public class PushStreamProcessor extends BaseStreamProcessor<Proxy.Packet> {
+public class PushStreamProcessor extends BaseClientCallStreamProcessor<Proxy.Packet> {
     private static final Logger LOGGER = LogManager.getLogger();
     //@Autowired
     //private TransferPojoUtils transferPojoUtils;
     //@Autowired
     //private TransferProtoMessageUtils transferProtoMessageUtils;
-    @Autowired
-    private ToStringUtils toStringUtils;
     private Proxy.Packet.Builder packetBuilder;
     private Proxy.Data.Builder bodyBuilder;
     private Proxy.Metadata.Builder headerBuilder;
@@ -56,7 +59,7 @@ public class PushStreamProcessor extends BaseStreamProcessor<Proxy.Packet> {
 
     private volatile boolean inited;
 
-    public PushStreamProcessor(StreamObserver<Proxy.Packet> streamObserver, Pipe pipe) {
+    public PushStreamProcessor(ClientCallStreamObserver<Packet> streamObserver, Pipe pipe) {
         super(streamObserver);
         this.transferBroker = pipe;
         //this.transferMeta = transferBroker.getTransferMeta();
@@ -84,13 +87,13 @@ public class PushStreamProcessor extends BaseStreamProcessor<Proxy.Packet> {
     }
 
     @Override
-    public void process() {
+    public void onProcess() {
         if (!inited) {
             init();
         }
         LOGGER.info("PushStreamProcessor processing");
 
-        super.process();
+        //super.process();
 
         /*
         // LOGGER.info("processing send stream for task: {}", toStringUtils.toOneLineString(transferMeta));
@@ -124,10 +127,10 @@ public class PushStreamProcessor extends BaseStreamProcessor<Proxy.Packet> {
             if (packet != null) {
                 Proxy.Metadata outputMetadata = packet.getHeader();
                 Proxy.Data outData = packet.getBody();
-                LOGGER.info("PushStreamProcessor processing metadata: {}", toStringUtils.toOneLineString(outputMetadata));
-                LOGGER.info("PushStreamProcessor processing outData: {}", toStringUtils.toOneLineString(outData));
+                LOGGER.info("PushStreamProcessor processing metadata: {}", ToStringUtils.toOneLineString(outputMetadata));
+                LOGGER.info("PushStreamProcessor processing outData: {}", ToStringUtils.toOneLineString(outData));
 
-                streamObserver.onNext(packet);
+                clientCallStreamObserver.onNext(packet);
                 emptyRetryCount = 0;
             } else {
                 ++emptyRetryCount;
@@ -143,7 +146,7 @@ public class PushStreamProcessor extends BaseStreamProcessor<Proxy.Packet> {
     }
 
     @Override
-    public void complete() {
+    public void onComplete() {
 /*        LOGGER.info("[CLUSTERCOMM][PUSHPROCESSOR] trying to complete send stream for task: {}, packetCount: {}, transferBroker remaining: {}",
                 transferMetaString, packetCount, transferBroker.getQueueSize());*/
 /*        while (!transferBroker.isClosable()) {
@@ -155,6 +158,6 @@ public class PushStreamProcessor extends BaseStreamProcessor<Proxy.Packet> {
         LOGGER.info("[CLUSTERCOMM][PUSHPROCESSOR] actual completes send stream for task: {}, packetCount: {}",
                    transferMetaString, packetCount);
         // transferBroker.setFinished();
-        super.complete();
+        super.onComplete();
     }
 }

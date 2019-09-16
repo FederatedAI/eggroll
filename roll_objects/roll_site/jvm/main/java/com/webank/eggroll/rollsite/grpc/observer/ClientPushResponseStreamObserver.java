@@ -18,7 +18,7 @@ package com.webank.eggroll.rollsite.grpc.observer;
 
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy.Metadata;
-import com.webank.eggroll.rollsite.grpc.core.utils.ToStringUtils;
+import com.webank.eggroll.core.util.ToStringUtils;
 import com.webank.eggroll.rollsite.infra.ResultCallback;
 import io.grpc.stub.StreamObserver;
 import java.util.concurrent.CountDownLatch;
@@ -35,8 +35,6 @@ public class ClientPushResponseStreamObserver implements StreamObserver<Proxy.Me
     private static final Logger LOGGER = LogManager.getLogger(ClientPushResponseStreamObserver.class);
     private final CountDownLatch finishLatch;
     private final ResultCallback<Metadata> resultCallback;
-    @Autowired
-    private ToStringUtils toStringUtils;
     private Proxy.Metadata metadata;
 
     public ClientPushResponseStreamObserver(ResultCallback<Proxy.Metadata> resultCallback, CountDownLatch finishLatch) {
@@ -49,12 +47,12 @@ public class ClientPushResponseStreamObserver implements StreamObserver<Proxy.Me
         this.metadata = metadata;
         resultCallback.setResult(metadata);
         LOGGER.info("[PUSH][CLIENTOBSERVER][ONNEXT] ClientPushResponseStreamObserver.onNext(), metadata: {}",
-                toStringUtils.toOneLineString(metadata));
+                ToStringUtils.toOneLineString(metadata));
     }
 
     @Override
     public void onError(Throwable throwable) {
-        LOGGER.error("[PUSH][CLIENTOBSERVER][ONERROR] error in push client, metadata: {}", toStringUtils.toOneLineString(metadata));
+        LOGGER.error("[PUSH][CLIENTOBSERVER][ONERROR] error in push client, metadata: {}", ToStringUtils.toOneLineString(metadata));
         LOGGER.error(ExceptionUtils.getStackTrace(throwable));
         finishLatch.countDown();
     }
@@ -62,7 +60,7 @@ public class ClientPushResponseStreamObserver implements StreamObserver<Proxy.Me
     @Override
     public void onCompleted() {
         LOGGER.info("[PUSH][CLIENTOBSERVER][ONCOMPLETE] ClientPushResponseStreamObserver.onCompleted(), metadata: {}",
-                toStringUtils.toOneLineString(metadata));
+            ToStringUtils.toOneLineString(metadata));
         finishLatch.countDown();
     }
 }
