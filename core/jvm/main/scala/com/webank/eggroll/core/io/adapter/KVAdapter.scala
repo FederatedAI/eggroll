@@ -14,12 +14,17 @@
  * limitations under the License.
  */
 
-package com.webank.eggroll.core.constant
+package com.webank.eggroll.core.io.adapter
 
-object ModuleConstants {
-  private val bracketTemplate = "[e]"
-  private val e = "e"
-  val CORE = "CORE"
-  val CORE_WITH_BRACKETS = bracketTemplate.replace(e, CORE)
-  val COMMAND_WITH_BRACKETS = bracketTemplate.replace(e, "COMMAND")
+trait SortedKvAdapter extends AutoCloseable {
+  def get(key: Array[Byte]): Array[Byte]
+
+  def put(key: Array[Byte], value: Array[Byte])
+
+  def iterate(): SortedKvIterator
+
+  def writeBatch(iter: Iterator[(Array[Byte], Array[Byte])])
+}
+
+trait SortedKvIterator extends Iterator[(Array[Byte], Array[Byte])] with AutoCloseable {
 }

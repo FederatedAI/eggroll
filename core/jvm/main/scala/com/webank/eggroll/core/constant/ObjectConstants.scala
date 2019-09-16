@@ -16,10 +16,9 @@
 
 package com.webank.eggroll.core.constant
 
-object ModuleConstants {
-  private val bracketTemplate = "[e]"
-  private val e = "e"
-  val CORE = "CORE"
-  val CORE_WITH_BRACKETS = bracketTemplate.replace(e, CORE)
-  val COMMAND_WITH_BRACKETS = bracketTemplate.replace(e, "COMMAND")
+import scala.collection.mutable
+
+object ObjectConstants {
+  val EMPTY_ARRAY_OF_BYTE_ARRAY = Array.empty[Array[Byte]]
+  val EMPTY_MUTABLE_MAP_OF_STRING_TO_BYTE_ARRAY = mutable.Map.empty[String, Array[Byte]]
 }

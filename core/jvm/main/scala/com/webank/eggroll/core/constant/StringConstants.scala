@@ -17,6 +17,13 @@
 package com.webank.eggroll.core.constant
 
 object StringConstants {
+  val SLASH = "/"
+
+  val GRPC_PARSE_FROM = "parseFrom"
+
+  val AND = "&"
+  val EQUAL = "="
+
   val DOLLAR = "$"
 
   val DOT = "."
@@ -52,5 +59,12 @@ object StringConstants {
 
   val LOGGING_A_THROWABLE = "logging a Throwable"
 
+  val ROUTE = "route"
+
+  val NULL = "null"
+  val NULL_WITH_BRACKETS = s"[${NULL}]"
+
+  val LF = "\n"
+  val LFLF = "\n\n"
 
 }

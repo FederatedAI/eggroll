@@ -19,11 +19,11 @@ package com.webank.eggroll.rollsite.grpc.observer;
 import com.google.common.collect.Lists;
 import com.google.protobuf.ByteString;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
+import com.webank.eggroll.core.util.ToStringUtils;
 import com.webank.eggroll.rollsite.event.model.PipeHandleNotificationEvent;
 import com.webank.eggroll.rollsite.factory.EventFactory;
 import com.webank.eggroll.rollsite.factory.PipeFactory;
 import com.webank.eggroll.rollsite.grpc.core.utils.ErrorUtils;
-import com.webank.eggroll.rollsite.grpc.core.utils.ToStringUtils;
 import com.webank.eggroll.rollsite.helper.ModelValidationHelper;
 import com.webank.eggroll.rollsite.infra.Pipe;
 import com.webank.eggroll.rollsite.infra.impl.PacketQueuePipe;
@@ -66,8 +66,6 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
     private Timeouts timeouts;
     @Autowired
     private StatsManager statsManager;
-    @Autowired
-    private ToStringUtils toStringUtils;
     @Autowired
     private ProxyServerConf proxyServerConf;
     @Autowired
@@ -114,7 +112,7 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
 
     @Override
     public void onNext(Proxy.Packet packet) {
-        LOGGER.info("[SEND][SERVER][OBSERVER][ONNEXT] header: {}", toStringUtils.toOneLineString(packet.getHeader()));
+        LOGGER.info("[SEND][SERVER][OBSERVER][ONNEXT] header: {}", ToStringUtils.toOneLineString(packet.getHeader()));
         if (!inited) {
             init(packet.getHeader());
         }
@@ -127,15 +125,15 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
             pipe = pipeFactory.create(inputMetadata.getTask().getModel().getName());
 
             streamStat = new StreamStat(inputMetadata, StreamStat.PUSH);
-            oneLineStringInputMetadata = toStringUtils.toOneLineString(inputMetadata);
+            oneLineStringInputMetadata = ToStringUtils.toOneLineString(inputMetadata);
             statsManager.add(streamStat);
 
             LOGGER.info(Grpc.TRANSPORT_ATTR_REMOTE_ADDR.toString());
 
             LOGGER.info("[PUSH][OBSERVER][ONNEXT] metadata: {}", oneLineStringInputMetadata);
             LOGGER.info("[PUSH][OBSERVER][ONNEXT] request src: {}, dst: {}, data size: {}",
-                    toStringUtils.toOneLineString(inputMetadata.getSrc()),
-                    toStringUtils.toOneLineString(inputMetadata.getDst()),
+                    ToStringUtils.toOneLineString(inputMetadata.getSrc()),
+                    ToStringUtils.toOneLineString(inputMetadata.getDst()),
                     packet.getBody().getValue().size());
 
             if (StringUtils.isBlank(myCoordinator)) {
@@ -183,10 +181,11 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
             ackCount.incrementAndGet();
             //LOGGER.info("myCoordinator: {}, Proxy.Packet coordinator: {}", myCoordinator, packet.getHeader().getSrc().getCoordinator());
             if (isAuditEnabled && packet.getHeader().getSrc().getPartyId().equals(myCoordinator)) {
-                AUDIT.info(toStringUtils.toOneLineString(packet));
+                AUDIT.info(ToStringUtils.toOneLineString(packet));
             }
 
             overallStartTimestamp = System.currentTimeMillis();
+
             if(proxyServerConf.getPartyId() != Integer.valueOf(inputMetadata.getDst().getPartyId())) {
                 //if(Integer.valueOf(inputMetadata.getDst().getPartyId()))
                 PipeHandleNotificationEvent event =
@@ -284,8 +283,10 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
                     PacketQueuePipe pqp = (PacketQueuePipe) pipe;
                     extraInfo = "queueSize: " + pqp.getQueueSize();
                 }
-                LOGGER.info("[PUSH][OBSERVER][ONCOMPLETE] waiting push to complete. wait time: {}. metadata: {}, extrainfo: {}",
-                        (loopEndTimestamp - completionWaitStartTimestamp), oneLineStringInputMetadata, extraInfo);
+                //LOGGER.info("[PUSH][OBSERVER][ONCOMPLETE] waiting push to complete. wait time: {}. metadata: {}, extrainfo: {}",
+                //        (loopEndTimestamp - completionWaitStartTimestamp), oneLineStringInputMetadata, extraInfo);
+
+
             }
         }
 
@@ -327,7 +328,7 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
                 responseObserver.onCompleted();
 
                 LOGGER.info("[PUSH][OBSERVER][ONCOMPLETE] push server complete. inputMetadata: {}",
-                        toStringUtils.toOneLineString(response));
+                        ToStringUtils.toOneLineString(response));
                 streamStat.onComplete();
             }
         } catch (NullPointerException e) {

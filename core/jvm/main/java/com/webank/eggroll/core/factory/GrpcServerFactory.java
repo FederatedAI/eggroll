@@ -18,7 +18,7 @@ package com.webank.eggroll.core.factory;
 
 import com.webank.eggroll.core.constant.CoreConfKeys;
 import com.webank.eggroll.core.constant.StringConstants;
-import com.webank.eggroll.core.model.Endpoint;
+import com.webank.eggroll.core.meta.ErEndpoint;
 import com.webank.eggroll.core.session.DefaultEggrollConf;
 import com.webank.eggroll.core.session.GrpcServerConf;
 import com.webank.eggroll.core.util.FileSystemUtils;
@@ -46,7 +46,7 @@ public class GrpcServerFactory {
   public Server createServer(GrpcServerConf grpcServerConf) {
     NettyServerBuilder serverBuilder = null;
 
-    Endpoint endpoint = grpcServerConf.endpoint();
+    ErEndpoint endpoint = grpcServerConf.endpoint();
     String host = endpoint.host();
     int port = endpoint.port();
 

@@ -23,7 +23,16 @@ import io.grpc.stub.StreamObserver;
 
 
 public class GrpcServerWrapper {
-  private final ErrorHandler errorHandler = new DefaultLoggingErrorHandler();
+
+  private final ErrorHandler errorHandler;
+
+  public GrpcServerWrapper() {
+    this(new DefaultLoggingErrorHandler());
+  }
+
+  public GrpcServerWrapper(ErrorHandler errorHandler) {
+    this.errorHandler = errorHandler;
+  }
 
   public void wrapGrpcServerRunnable(StreamObserver responseObserver, GrpcServerRunnable target) {
     try {

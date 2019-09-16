@@ -24,8 +24,8 @@ import com.google.common.cache.LoadingCache;
 import com.webank.ai.eggroll.api.core.BasicMeta;
 import com.webank.ai.eggroll.api.networking.proxy.DataTransferServiceGrpc;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
+import com.webank.eggroll.core.util.ToStringUtils;
 import com.webank.eggroll.rollsite.channel.RedirectClientInterceptor;
-import com.webank.eggroll.rollsite.grpc.core.utils.ToStringUtils;
 import com.webank.eggroll.rollsite.model.ProxyServerConf;
 import com.webank.eggroll.rollsite.security.SimpleTrustAllCertsManagerFactory;
 import com.webank.eggroll.rollsite.service.FdnRouter;
@@ -58,8 +58,6 @@ public class ProxyGrpcStubFactory {
     private FdnRouter fdnRouter;
     @Autowired
     private ProxyServerConf proxyServerConf;
-    @Autowired
-    private ToStringUtils toStringUtils;
     private LoadingCache<BasicMeta.Endpoint, ManagedChannel> channelCache;
 
     public ProxyGrpcStubFactory() {
@@ -131,7 +129,7 @@ public class ProxyGrpcStubFactory {
                 }
             } catch (Exception e) {
                 LOGGER.warn("get channel failed. target: {}, \n {}",
-                        toStringUtils.toOneLineString(endpoint), ExceptionUtils.getStackTrace(e));
+                        ToStringUtils.toOneLineString(endpoint), ExceptionUtils.getStackTrace(e));
                 try {
                     Thread.sleep(1000);
                 } catch (InterruptedException ignore) {
@@ -142,7 +140,7 @@ public class ProxyGrpcStubFactory {
         }
 
         if (managedChannel == null) {
-            throw new IllegalStateException("Error getting channel to " + toStringUtils.toOneLineString(endpoint));
+            throw new IllegalStateException("Error getting channel to " + ToStringUtils.toOneLineString(endpoint));
         }
 
         AbstractStub result;
@@ -213,7 +211,7 @@ public class ProxyGrpcStubFactory {
 
             SslContext sslContext = null;
             try {
-                LOGGER.info("use secure channel to {}", toStringUtils.toOneLineString(endpoint));
+                LOGGER.info("use secure channel to {}", ToStringUtils.toOneLineString(endpoint));
                 // sslContext = GrpcSslContexts.forClient().trustManager(trustManagerFactory).build();
                 sslContext = GrpcSslContexts.forClient()
                         .trustManager(caCrt)
@@ -226,14 +224,14 @@ public class ProxyGrpcStubFactory {
             }
             builder.sslContext(sslContext).useTransportSecurity().negotiationType(NegotiationType.TLS);
         } else {
-            LOGGER.info("use insecure channel to {}", toStringUtils.toOneLineString(endpoint));
+            LOGGER.info("use insecure channel to {}", ToStringUtils.toOneLineString(endpoint));
             builder.negotiationType(NegotiationType.PLAINTEXT);
         }
 
         ManagedChannel managedChannel = builder
                 .build();
 
-        LOGGER.info("created channel to {}", toStringUtils.toOneLineString(endpoint));
+        LOGGER.info("created channel to {}", ToStringUtils.toOneLineString(endpoint));
         return managedChannel;
     }
 
