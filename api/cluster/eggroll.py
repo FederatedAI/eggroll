@@ -43,6 +43,8 @@ EGGROLL_ROLL_PORT = 'eggroll.roll.port'
 CHUNK_SIZE_MIN = 10000
 CHUNK_SIZE_DEFAULT = 100000
 
+gc_tag = True
+
 def init(session_id=None, server_conf_path="eggroll/conf/server_conf.json", eggroll_session=None, computing_engine_conf=None, naming_policy=NamingPolicy.DEFAULT, tag=None, job_id=None, chunk_size=CHUNK_SIZE_DEFAULT):
     if session_id is None:
         if job_id is not None:
@@ -107,6 +109,8 @@ class _DTable(object):
         self.gc_enable = True
 
     def __del__(self):
+        if not gc_tag:
+            return
         if not self.gc_enable or self._type != storage_basic_pb2.StorageType.Name(storage_basic_pb2.IN_MEMORY):
             return
         if self._name == 'fragments' or self._name == '__clustercomm__' or self._name == '__status__':
@@ -447,6 +451,8 @@ class _EggRoll(object):
         _EggRoll.get_instance().kv_stub.putAll(operand, metadata=_get_meta(_table))
 
     def put_all(self, _table, kvs: Iterable, use_serialize=True, chunk_size=100000, skip_chunk=0):
+        global gc_tag
+        gc_tag = False
         skipped_chunk = 0
 
         chunk_size = self.chunk_size 
@@ -476,6 +482,7 @@ class _EggRoll(object):
                 except StopIteration as e:
                     LOGGER.debug("StopIteration")
             executor.shutdown(wait=True)
+        gc_tag = True
        
     def delete(self, _table, k, use_serialize=True):
         k = self.kv_to_bytes(k=k, use_serialize=use_serialize)
