@@ -16,8 +16,7 @@
 
 package com.webank.eggroll.core.command
 
-import com.webank.eggroll.core.command.CommandPbMessageDeserializers._
-import com.webank.eggroll.core.command.CommandPbMessageSerializers._
+import com.webank.eggroll.core.command.CommandPbSerdes._
 import org.junit.Test
 
 import scala.collection.mutable
@@ -35,7 +34,7 @@ class TestCommandModel {
     val kwargs = mutable.Map[String, Array[Byte]]()
     kwargs += (hello -> hello.getBytes())
     kwargs += (world -> world.getBytes())
-    val commandRequest = CommandRequest(1L, "http://www.test.com", args, kwargs)
+    val commandRequest = ErCommandRequest(1L, "http://www.test.com", args, kwargs)
 
     val serialized = commandRequest.toProto
 

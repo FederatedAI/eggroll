@@ -16,10 +16,51 @@
 
 package com.webank.eggroll.core.command
 
+import java.util.concurrent.CountDownLatch
+
+import com.webank.eggroll.core.command.Command.CommandResponse
+import com.webank.eggroll.core.command.CommandPbSerdes._
+import com.webank.eggroll.core.concurrent.AwaitSettableFuture
+import com.webank.eggroll.core.grpc.client.{GrpcClientContext, GrpcClientTemplate}
+import com.webank.eggroll.core.grpc.observer.SameTypeFutureCallerResponseStreamObserver
+import com.webank.eggroll.core.meta.ErTask
+import com.webank.eggroll.core.meta.MetaModelPbSerdes._
 import com.webank.eggroll.core.util.Logging
+import io.grpc.stub.StreamObserver
 
-class CommandClient(commandRequest: CommandRequest) extends Logging {
-  def request(uri: String, data: Array[Byte]): Unit = {
+class CommandClient() extends Logging {
+  def send(task: ErTask, command: CommandURI): ErCommandResponse = {
+    val delayedResult = new AwaitSettableFuture[CommandResponse]
 
+    val context = new GrpcClientContext[
+      CommandServiceGrpc.CommandServiceStub,
+      Command.CommandRequest,
+      CommandResponse]()
+
+    context.setServerEndpoint(task.getEndpoint)
+      .setCalleeStreamingMethodInvoker(
+        (stub: CommandServiceGrpc.CommandServiceStub,
+         request: Command.CommandRequest,
+         responseObserver: StreamObserver[CommandResponse])
+        => stub.call(request, responseObserver))
+      .setCallerStreamObserverClass(classOf[CommandResponseObserver])
+      .setStubClass(classOf[CommandServiceGrpc.CommandServiceStub])
+
+    val template = new GrpcClientTemplate[
+      CommandServiceGrpc.CommandServiceStub,
+      Command.CommandRequest,
+      CommandResponse]()
+      .setGrpcClientContext(context)
+
+    val request = ErCommandRequest(seq = task.id.toLong, uri = command.uri.toString, args = Array(task.toProto().toByteArray))
+
+    val result = template.calleeStreamingRpcWithImmediateDelayedResult(request.toProto(), delayedResult)
+
+    result.fromProto()
   }
+}
+
+
+class CommandResponseObserver(finishLatch: CountDownLatch, asFuture: AwaitSettableFuture[CommandResponse])
+  extends SameTypeFutureCallerResponseStreamObserver[Command.CommandRequest, CommandResponse](finishLatch, asFuture) {
 }

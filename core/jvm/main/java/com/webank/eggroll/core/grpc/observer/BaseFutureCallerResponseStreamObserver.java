@@ -16,6 +16,7 @@
 
 package com.webank.eggroll.core.grpc.observer;
 
+import com.google.protobuf.Message;
 import com.webank.eggroll.core.concurrent.AwaitSettableFuture;
 import java.util.concurrent.CountDownLatch;
 
@@ -24,8 +25,8 @@ import java.util.concurrent.CountDownLatch;
  * @param <E> calleE parameter type
  * @param <F> AwaitSettableFuture parameter type
  */
-public abstract class BaseFutureCallerResponseStreamObserver<R, E, F> extends
-    BaseCallerResponseStreamObserver<R, E> {
+public abstract class BaseFutureCallerResponseStreamObserver<R extends Message, E extends Message, F extends Message>
+    extends BaseCallerResponseStreamObserver<R, E> {
 
   // need to be set in derived class
   protected AwaitSettableFuture<F> asFuture;

@@ -17,7 +17,6 @@ message TaskResult {
     string task_id = 1;
 }
 
-
 message Functor {
     string name = 1;
     bytes body = 2;

@@ -17,12 +17,12 @@
 package com.webank.eggroll.core.command
 
 import com.google.protobuf.ByteString
-import com.webank.eggroll.core.command.CommandPbMessageSerializers._
+import com.webank.eggroll.core.command.CommandPbSerdes._
 import com.webank.eggroll.core.command.CommandServiceGrpc.CommandServiceBlockingStub
 import com.webank.eggroll.core.constant.StringConstants
 import com.webank.eggroll.core.di.Singletons
 import com.webank.eggroll.core.factory.{GrpcChannelFactory, GrpcStubFactory}
-import com.webank.eggroll.core.model.Endpoint
+import com.webank.eggroll.core.meta.ErEndpoint
 import com.webank.eggroll.grpc.test.GrpcTest.HelloRequest
 import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
 import org.apache.commons.lang3.StringUtils
@@ -32,7 +32,7 @@ class TestCommandService {
 
   @Test
   def testCommandRouting(): Unit = {
-    val server = NettyServerBuilder.forPort(60000).addService(new GrpcCommandService()).build
+    val server = NettyServerBuilder.forPort(60000).addService(new CommandService()).build
 
     server.start()
 
@@ -53,13 +53,13 @@ class TestCommandService {
     val grpcChannelFactory = Singletons.get(classOf[GrpcChannelFactory])
     val grpcStubFactory = Singletons.get(classOf[GrpcStubFactory])
 
-    val endpoint = Endpoint("localhost", 60000)
+    val endpoint = ErEndpoint("localhost", 60000)
     val stub = grpcStubFactory.createGrpcStub(false, classOf[CommandServiceGrpc], endpoint, false).asInstanceOf[CommandServiceBlockingStub]
     /*    val sayHelloResponse = stub.call(CommandRequest(1L, sayHelloServiceName, Array("there".getBytes())).toProto())
         println(sayHelloResponse.getData.toStringUtf8)*/
 
     val sayHelloToGrpcResponse = stub.call(
-      CommandRequest(2L, sayHelloToPbServiceName, Array(HelloRequest.newBuilder().setMsg("grpc client").build().toByteArray)).toProto())
+      ErCommandRequest(2L, sayHelloToPbServiceName, Array(HelloRequest.newBuilder().setMsg("grpc client").build().toByteArray)).toProto())
     println(sayHelloToGrpcResponse.getData.toStringUtf8)
   }
 }

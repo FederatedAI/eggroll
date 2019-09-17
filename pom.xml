@@ -36,10 +36,163 @@
     <tag>HEAD</tag>
   </scm>
 
-  <modules>
-    <module>core/jvm</module>
-    <module>resource_managers/cluster_manager/jvm</module>
-  </modules>
+
+  <build>
+    <extensions>
+      <!-- os-maven-plugin -->
+      <extension>
+        <groupId>kr.motd.maven</groupId>
+        <artifactId>os-maven-plugin</artifactId>
+        <version>${os-maven-plugin.version}</version>
+      </extension>
+    </extensions>
+
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>${maven-compiler-plguin.version}</version>
+        <configuration>
+          <source>${java.version}</source>
+          <target>${java.version}</target>
+        </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-dependency-plugin</artifactId>
+        <version>${maven-dependency-plugin.version}</version>
+        <executions>
+          <execution>
+            <id>copy-dependencies</id>
+            <phase>package</phase>
+            <goals>
+              <goal>copy-dependencies</goal>
+            </goals>
+            <configuration>
+              <outputDirectory>${project.build.directory}/lib</outputDirectory>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>build-helper-maven-plugin</artifactId>
+        <version>${build-helper-maven-plugin.version}</version>
+        <executions>
+          <execution>
+            <id>add-source</id>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>add-source</goal>
+            </goals>
+            <configuration>
+              <sources>
+                <source>${pom.basedir}/main/java</source>
+                <source>${pom.basedir}/main/scala</source>
+              </sources>
+            </configuration>
+          </execution>
+          <execution>
+            <id>add-test-source</id>
+            <phase>generate-test-sources</phase>
+            <goals>
+              <goal>add-test-source</goal>
+            </goals>
+            <configuration>
+              <sources>
+                <source>${pom.basedir}/test/java</source>
+                <source>${pom.basedir}/test/scala</source>
+              </sources>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>net.alchim31.maven</groupId>
+        <artifactId>scala-maven-plugin</artifactId>
+        <version>${scala-maven-plugin.version}</version>
+        <configuration>
+          <scalaVersion>${scala.version}</scalaVersion>
+          <checkMultipleScalaVersions>true</checkMultipleScalaVersions>
+          <failOnMultipleScalaVersions>true</failOnMultipleScalaVersions>
+          <!--<recompileMode>incremental</recompileMode>-->
+          <useZincServer>true</useZincServer>
+          <args>
+            <!--            <arg>-unchecked</arg>
+                        <arg>-deprecation</arg>
+                        <arg>-feature</arg>
+                        <arg>-explaintypes</arg>
+                        <arg>-Yno-adapted-args</arg>
+                        <arg>-target:jvm-1.8</arg>-->
+          </args>
+          <jvmArgs>
+            <jvmArg>-Xms1024m</jvmArg>
+            <jvmArg>-Xmx1024m</jvmArg>
+            <jvmArg>-XX:ReservedCodeCacheSize=${code.cache.size}</jvmArg>
+          </jvmArgs>
+          <javacArgs>
+            <!--            <javacArg>-source</javacArg>
+                        <javacArg>${java.version}</javacArg>
+                        <javacArg>-target</javacArg>
+                        <javacArg>${java.version}</javacArg>
+                        <javacArg>-Xlint:all,-serial,-path,-try</javacArg>-->
+          </javacArgs>
+        </configuration>
+        <executions>
+          <execution>
+            <id>scala-compile-first</id>
+            <phase>process-sources</phase>
+            <goals>
+              <goal>compile</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>scala-test-compile-first</id>
+            <phase>process-test-sources</phase>
+            <goals>
+              <goal>testCompile</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>attach-scaladocs</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>doc-jar</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <version>${maven-jar-plguin.version}</version>
+        <configuration>
+          <excludes>
+            <exclude>**/applicationContext*.xml</exclude>
+            <exclude>**/mybatis*.xml</exclude>
+            <exclude>**/*.sql</exclude>
+            <exclude>**/*.properties</exclude>
+          </excludes>
+        </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>${maven-surefire-plugin.version}</version>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-failsafe-plugin</artifactId>
+        <version>${maven-failsafe-plugin.version}</version>
+      </plugin>
+    </plugins>
+  </build>
 
   <packaging>pom</packaging>
   <modelVersion>4.0.0</modelVersion>
@@ -223,161 +376,11 @@
 
   </dependencies>
 
-
-  <build>
-    <extensions>
-      <!-- os-maven-plugin -->
-      <extension>
-        <groupId>kr.motd.maven</groupId>
-        <artifactId>os-maven-plugin</artifactId>
-        <version>${os-maven-plugin.version}</version>
-      </extension>
-    </extensions>
-
-    <plugins>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-compiler-plugin</artifactId>
-        <version>${maven-compiler-plguin.version}</version>
-        <configuration>
-          <source>${java.version}</source>
-          <target>${java.version}</target>
-        </configuration>
-      </plugin>
-
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-dependency-plugin</artifactId>
-        <version>${maven-dependency-plugin.version}</version>
-        <executions>
-          <execution>
-            <id>copy-dependencies</id>
-            <phase>package</phase>
-            <goals>
-              <goal>copy-dependencies</goal>
-            </goals>
-            <configuration>
-              <outputDirectory>${project.build.directory}/lib</outputDirectory>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-
-      <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>build-helper-maven-plugin</artifactId>
-        <version>${build-helper-maven-plugin.version}</version>
-        <executions>
-          <execution>
-            <id>add-source</id>
-            <phase>generate-sources</phase>
-            <goals>
-              <goal>add-source</goal>
-            </goals>
-            <configuration>
-              <sources>
-                <source>${pom.basedir}/main/java</source>
-                <source>${pom.basedir}/main/scala</source>
-              </sources>
-            </configuration>
-          </execution>
-          <execution>
-            <id>add-test-source</id>
-            <phase>generate-sources</phase>
-            <goals>
-              <goal>add-test-source</goal>
-            </goals>
-            <configuration>
-              <sources>
-                <source>${pom.basedir}/test/java</source>
-                <source>${pom.basedir}/test/scala</source>
-              </sources>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-
-      <plugin>
-        <groupId>net.alchim31.maven</groupId>
-        <artifactId>scala-maven-plugin</artifactId>
-        <version>${scala-maven-plugin.version}</version>
-        <executions>
-          <execution>
-            <id>scala-compile-first</id>
-            <phase>process-sources</phase>
-            <goals>
-              <goal>compile</goal>
-            </goals>
-          </execution>
-          <execution>
-            <id>scala-test-compile-first</id>
-            <phase>process-sources</phase>
-            <goals>
-              <goal>testCompile</goal>
-            </goals>
-          </execution>
-          <execution>
-            <id>attach-scaladocs</id>
-            <phase>verify</phase>
-            <goals>
-              <goal>doc-jar</goal>
-            </goals>
-          </execution>
-        </executions>
-        <configuration>
-          <scalaVersion>${scala.version}</scalaVersion>
-          <checkMultipleScalaVersions>true</checkMultipleScalaVersions>
-          <failOnMultipleScalaVersions>true</failOnMultipleScalaVersions>
-          <recompileMode>incremental</recompileMode>
-          <useZincServer>true</useZincServer>
-          <args>
-            <arg>-unchecked</arg>
-            <arg>-deprecation</arg>
-            <arg>-feature</arg>
-            <arg>-explaintypes</arg>
-            <arg>-Yno-adapted-args</arg>
-            <arg>-target:jvm-1.8</arg>
-          </args>
-          <jvmArgs>
-            <jvmArg>-Xms1024m</jvmArg>
-            <jvmArg>-Xmx1024m</jvmArg>
-            <jvmArg>-XX:ReservedCodeCacheSize=${code.cache.size}</jvmArg>
-          </jvmArgs>
-          <javacArgs>
-            <javacArg>-source</javacArg>
-            <javacArg>${java.version}</javacArg>
-            <javacArg>-target</javacArg>
-            <javacArg>${java.version}</javacArg>
-            <javacArg>-Xlint:all,-serial,-path,-try</javacArg>
-          </javacArgs>
-        </configuration>
-      </plugin>
-
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-jar-plugin</artifactId>
-        <version>${maven-jar-plguin.version}</version>
-        <configuration>
-          <excludes>
-            <exclude>**/applicationContext*.xml</exclude>
-            <exclude>**/mybatis*.xml</exclude>
-            <exclude>**/*.sql</exclude>
-            <exclude>**/*.properties</exclude>
-          </excludes>
-        </configuration>
-      </plugin>
-
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-surefire-plugin</artifactId>
-        <version>${maven-surefire-plugin.version}</version>
-      </plugin>
-
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-failsafe-plugin</artifactId>
-        <version>${maven-failsafe-plugin.version}</version>
-      </plugin>
-    </plugins>
-  </build>
+  <modules>
+    <module>core/jvm</module>
+    <module>resource_managers/cluster_manager/jvm</module>
+    <module>roll_objects/roll_pair/jvm</module>
+    <module>roll_objects/roll_site/jvm</module>
+  </modules>
+  
 </project>
