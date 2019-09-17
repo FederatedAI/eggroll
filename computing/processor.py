@@ -32,7 +32,7 @@ import threading
 import traceback
 from multiprocessing import Process,Queue
 from collections import Iterable
-from eggroll.computing.storage_adapters import LmdbAdapter, RocksdbAdapter
+from eggroll.computing.storage_adapters import LmdbAdapter, RocksdbAdapter, SkvNetworkAdapter
 
 
 _ONE_DAY_IN_SECONDS = 60 * 60 * 24
@@ -172,23 +172,25 @@ class RollPairProcessor(processor_pb2_grpc.ProcessServiceServicer):
     def _run_unary_unwrapper(self, action, func, req, context, support_inplace):
         dst_loc = self._create_output_storage_locator(req.operand, req.info, req.conf, support_inplace)
         is_inplace = req.info.isInPlaceComputing
-        src_db, dst_db, src_serde, dst_serde, functor = self._create_adapter(req.operand, via_network=False), \
+        src_adapter, dst_adapter, src_serde, dst_serde, functor = self._create_adapter(req.operand, via_network=False), \
                                                         self._create_adapter(dst_loc, via_network=False), \
                                                         self._create_serde(),self._create_serde(), \
                                                         self._create_functor(req.info)
-        with src_db, dst_db,src_db.iteritems() as src_it, dst_db.new_batch() as dst_wb:
-            return func(src_it, dst_wb,src_serde, dst_serde, functor,is_inplace)
-
+        with src_adapter as src_db, dst_adapter as dst_db:
+            with src_db.iteritems() as src_it, dst_db.new_batch() as dst_wb:
+                return func(src_it, dst_wb,src_serde, dst_serde, functor,is_inplace)
 
     def _run_unary(self, action, func, req, context, support_inplace):
         def run_unary_wrapper(req, context):
-            is_inplace = req.info.isInPlaceComputing            
-            src_db, dst_db, src_serde, dst_serde, functor = self._create_adapter(req.operand, via_network=False), \
+            is_inplace = req.info.isInPlaceComputing
+            src_adapter, dst_adapter, src_serde, dst_serde, functor = self._create_adapter(req.operand, via_network=False), \
                                                             self._create_adapter(dst_loc, via_network=False), \
                                                             self._create_serde(),self._create_serde(), \
                                                             self._create_functor(req.info)
-            with src_db, dst_db,src_db.iteritems() as src_it, dst_db.new_batch() as dst_wb:
-                func(src_it, dst_wb,src_serde, dst_serde, functor,is_inplace)
+            with src_adapter as src_db, dst_adapter as dst_db:
+                with src_db.iteritems() as src_it, dst_db.new_batch() as dst_wb:
+                    LOGGER.info("src:{}, dst:{}".format(src_adapter, dst_adapter))
+                    func(src_it, dst_wb,src_serde, dst_serde, functor,is_inplace)
         dst_loc = self._create_output_storage_locator(req.operand, req.info, req.conf, support_inplace)
         dst_loc.type = req.operand.type
         self._method_wrapper(action, run_unary_wrapper, req, context, dst_loc)
@@ -197,15 +199,16 @@ class RollPairProcessor(processor_pb2_grpc.ProcessServiceServicer):
     def _run_binary(self, action, func, req,context, support_inplace):
         def run_binary_wrapper(req, context):
             is_inplace = req.info.isInPlaceComputing
-            left_db, right_db, dst_db, left_serde, right_serde, dst_serde = \
+            left_adapter, right_adapter, dst_adapter, left_serde, right_serde, dst_serde = \
                 self._create_adapter(req.left), \
                 self._create_adapter(req.right), \
                 self._create_adapter(dst_loc), \
                 self._create_serde(), self._create_serde(),self._create_serde()
             functor = self._create_functor(req.info)
-            with left_db, right_db, dst_db, left_db.iteritems() as left_it, right_db.iteritems() as right_it,\
-                    dst_db.new_batch() as dst_wb:
-                func(left_it, right_it, dst_wb, left_serde, right_serde, dst_serde, functor, is_inplace)
+            with left_adapter as left_db, right_adapter as right_db, dst_adapter as dst_db:
+                with left_db.iteritems() as left_it, right_db.iteritems() as right_it, \
+                        dst_db.new_batch() as dst_wb:
+                    func(left_it, right_it, dst_wb, left_serde, right_serde, dst_serde, functor, is_inplace)
         dst_loc = self._create_output_storage_locator(req.left, req.info, req.conf, support_inplace)
         dst_loc.type = req.right.type 
         self._method_wrapper(action, run_binary_wrapper, req, context, dst_loc)

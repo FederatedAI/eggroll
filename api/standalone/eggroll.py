@@ -85,7 +85,7 @@ class Standalone:
     def parallelize(self, data: Iterable, include_key=False, name=None, partition=1, namespace=None,
                     create_if_missing=True,
                     error_if_exist=False,
-                    persistent=False, chunk_size=100000, in_place_computing=False, persisent_engine=StoreType.LMDB):
+                    persistent=False, chunk_size=100000, in_place_computing=False, persistent_engine=StoreType.LMDB):
         _iter = data if include_key else enumerate(data)
         if name is None:
             name = str(uuid.uuid1())
