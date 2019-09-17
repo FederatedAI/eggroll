@@ -400,8 +400,7 @@ class ClusterManager {
       List(classOf[RollFrameGrpc.Task]),classOf[RollFrameGrpc.TaskResult])
     getServerCluster(id).nodes.foreach{ server =>
       val sb = ServerBuilder.forPort(server.port)
-      sb.addService(new GrpcCommandService())
-      sb.addService(new GrpcTransferService).build.start
+      sb.addService(new GrpcCommandService()).build.start
       new Thread("transfer-" + server.transferPort){
         override def run(): Unit = {
           try{

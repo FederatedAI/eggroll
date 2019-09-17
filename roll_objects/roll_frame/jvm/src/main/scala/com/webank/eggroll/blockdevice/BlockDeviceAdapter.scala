@@ -39,7 +39,7 @@ trait BlockDeviceAdapter {
 object BlockDeviceAdapter {
   def apply(opts: Map[String, String]): BlockDeviceAdapter = {
     opts.getOrElse("type", "file") match {
-      case "jvm" => new JvmBlockAdapter(opts("path"), opts("size").toInt)
+      case "cache" => new JvmBlockAdapter(opts("path"), opts("size").toInt)
       case _ => new FileBlockAdapter(opts("path"))
     }
   }

@@ -220,9 +220,9 @@ class RollFrameTests {
     println(System.currentTimeMillis() -start);start = System.currentTimeMillis()
     val fieldCount = 10
     val schema = getSchema(fieldCount)
-    val output1 = RfStore("r1","test1",1, storeType = FrameDB.TYPE_JVM)
-    val output2 = RfStore("r2","test1",1, storeType = FrameDB.TYPE_JVM)
-    val output3 = RfStore("r3","test1",1, storeType = FrameDB.TYPE_JVM)
+    val output1 = RfStore("r1","test1",1, storeType = FrameDB.TYPE_CACHE)
+    val output2 = RfStore("r2","test1",1, storeType = FrameDB.TYPE_CACHE)
+    val output3 = RfStore("r3","test1",1, storeType = FrameDB.TYPE_CACHE)
     val zeroValue = new FrameBatch(new FrameSchema(schema), 1)
     (0 until fieldCount).foreach(i => zeroValue.writeDouble(i,0,0))
 

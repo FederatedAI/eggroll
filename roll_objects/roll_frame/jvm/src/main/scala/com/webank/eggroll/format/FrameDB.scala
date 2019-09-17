@@ -66,7 +66,7 @@ trait FrameDB {
 
 object FrameDB {
   val TYPE_FILE = "file"
-  val TYPE_JVM = "jvm"
+  val TYPE_CACHE = "cache"
   val TYPE_QUEUE = "queue"
   private val rootPath = "./tmp/unittests/RollFrameTests/filedb/"
 
@@ -78,7 +78,7 @@ object FrameDB {
   }
 
   def apply(opts: Map[String, String]): FrameDB = opts.getOrElse("type", "file") match {
-    case TYPE_JVM => new JvmFrameDB(opts("path"))
+    case TYPE_CACHE => new JvmFrameDB(opts("path"))
     case TYPE_QUEUE => new QueueFrameDB(opts("path"), opts("total").toInt)
     case _ => new FileFrameDB(opts("path"))
   }
@@ -90,7 +90,7 @@ object FrameDB {
 
   def file(path: String): FrameDB = apply(Map("path" -> path, "type" -> TYPE_FILE))
 
-  def cache(path: String): FrameDB = apply(Map("path" -> path, "type" -> TYPE_JVM))
+  def cache(path: String): FrameDB = apply(Map("path" -> path, "type" -> TYPE_CACHE))
 }
 
 // NOT thread safe
