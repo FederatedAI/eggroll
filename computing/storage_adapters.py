@@ -14,9 +14,10 @@
 
 import os
 import grpc
+import threading
 from eggroll.api.proto import kv_pb2, kv_pb2_grpc
 from eggroll.api.utils import log_utils
-
+from eggroll.api.utils import eggroll_serdes
 log_utils.setDirectory()
 LOGGER = log_utils.getLogger()
 
@@ -38,11 +39,14 @@ DELIMETER_ENCODED = DELIMETER.encode()
 class AdapterManager:
     pass
 
-class SkvAdapter:
+class SkvAdapter(object):
     """
     Sorted key value store adapter
     """
     def __init__(self, options):
+        pass
+
+    def __del__(self):
         pass
 
     def close(self):
@@ -141,6 +145,11 @@ class LmdbWriteBatch(SkvWriteBatch):
 
 
 class LmdbAdapter(SkvAdapter):
+    env_lock = threading.Lock()
+    env_dict = dict()
+    count_dict = dict()
+    sub_env_dict = dict()
+    txn_dict = dict()
 
     def get(self, key):
         return self.cursor.get(key)
@@ -149,22 +158,66 @@ class LmdbAdapter(SkvAdapter):
         return self.txn.put(key, value)
 
     def __init__(self, options):
-        LOGGER.info("lmdb adapter init")
-        super().__init__(options)
-        self.path = options["path"]
-        create_if_missing = bool(options.get("create_if_missing", "True"))
-        if create_if_missing:
-            os.makedirs(self.path, exist_ok=True)
-        self.db = lmdb.open(self.path, create=create_if_missing, max_dbs=128, sync=False, map_size=LMDB_MAP_SIZE, writemap=True)
-        self.sub_db = self.db.open_db(DEFAULT_DB)
-        self.txn = self.db.begin(db=self.sub_db, write=True)
-        self.cursor = self.txn.cursor()
+        with LmdbAdapter.env_lock:
+            LOGGER.info("lmdb adapter init")
+            super().__init__(options)
+            self.path = options["path"]
+            create_if_missing = bool(options.get("create_if_missing", "True"))
+            if self.path not in LmdbAdapter.env_dict:
+                if create_if_missing:
+                    os.makedirs(self.path, exist_ok=True)
+                LOGGER.info("path not in dict db path:{}".format(self.path))
+                self.env = lmdb.open(self.path, create=create_if_missing, max_dbs=128, sync=False, map_size=LMDB_MAP_SIZE, writemap=True)
+                self.sub_db = self.env.open_db(DEFAULT_DB)
+                self.txn = self.env.begin(db=self.sub_db, write=True)
+                LmdbAdapter.count_dict[self.path] = 0
+                LmdbAdapter.env_dict[self.path] = self.env
+                LmdbAdapter.sub_env_dict[self.path] = self.sub_db
+                LmdbAdapter.txn_dict[self.path] = self.txn
+            else:
+                LOGGER.info("path in dict:{}".format(self.path))
+                self.env = LmdbAdapter.env_dict[self.path]
+                self.sub_db = LmdbAdapter.sub_env_dict[self.path]
+                self.txn = LmdbAdapter.txn_dict[self.path]
+            self.cursor = self.txn.cursor()
+            LmdbAdapter.count_dict[self.path] = LmdbAdapter.count_dict[self.path] + 1
+            
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+        with LmdbAdapter.env_lock:
+            if self.env:
+                count = LmdbAdapter.count_dict[self.path]
+                if not count or count - 1 <= 0:
+                    LmdbAdapter.txn_dict[self.path].commit()
+                    LmdbAdapter.env_dict[self.path].close()
+                    del LmdbAdapter.txn_dict[self.path]
+                    del LmdbAdapter.env_dict[self.path]
+                    del LmdbAdapter.sub_env_dict[self.path]
+                    del LmdbAdapter.count_dict[self.path]
+                else:
+                    LmdbAdapter.count_dict[self.path] = count - 1
+                self.env = None
+
+    def __del__(self): 
+        with LmdbAdapter.env_lock:
+            if self.env:
+                count = LmdbAdapter.count_dict[self.path]
+                if not count or count - 1 <= 0:
+                    del LmdbAdapter.env_dict[self.path]
+                    del LmdbAdapter.sub_env_dict[self.path]
+                    del LmdbAdapter.txn_dict[self.path]
+                    del LmdbAdapter.count_dict[self.path]
+                else:
+                    LmdbAdapter.count_dict[self.path] = count - 1
+
+    def get_sub_db(self):
+        return self.env.open_db(DEFAULT_DB)
 
     def close(self):
         self.cursor.close()
-        self.txn.commit()
-        self.db.close()
-        del self.sub_db
 
     def iteritems(self):
         return LmdbIterator(self, self.cursor)
@@ -235,6 +288,9 @@ class RocksdbIterator(SkvIterator):
         return self.it
 
 class RocksdbAdapter(SkvAdapter):
+    env_lock = threading.Lock()
+    env_dict = dict()
+    count_dict = dict()
 
     def __init__(self, options):
         """
@@ -242,14 +298,48 @@ class RocksdbAdapter(SkvAdapter):
             path: absolute local fs path
             create_if_missing: default true
         """
-        super().__init__(options)
-        self.path = options["path"]
-        opts = rocksdb.Options()
-        opts.create_if_missing = bool(options.get("create_if_missing", "True"))
-        opts.compression = rocksdb.CompressionType.no_compression
-        if opts.create_if_missing:
-            os.makedirs(self.path, exist_ok=True)
-        self.db = rocksdb.DB(self.path, opts)
+        with RocksdbAdapter.env_lock:
+            super().__init__(options)
+            self.path = options["path"]
+            opts = rocksdb.Options()
+            opts.create_if_missing = bool(options.get("create_if_missing", "True"))
+            opts.compression = rocksdb.CompressionType.no_compression
+            if self.path not in RocksdbAdapter.env_dict:
+                if opts.create_if_missing:
+                    os.makedirs(self.path, exist_ok=True)
+                self.db = rocksdb.DB(self.path, opts)
+                LOGGER.info("path not in dict db path:{}".format(self.path))
+                RocksdbAdapter.count_dict[self.path] = 0
+                RocksdbAdapter.env_dict[self.path] = self.db
+            else:
+                LOGGER.info("path in dict:{}".format(self.path))
+                self.db = RocksdbAdapter.env_dict[self.path]
+        RocksdbAdapter.count_dict[self.path] = RocksdbAdapter.count_dict[self.path] + 1
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        LOGGER.info("exit")
+        with RocksdbAdapter.env_lock:
+            if self.db:
+                count = RocksdbAdapter.count_dict[self.path]
+                if not count or count - 1 <= 0:
+                    del RocksdbAdapter.env_dict[self.path]
+                    del RocksdbAdapter.count_dict[self.path]
+                else:
+                    RocksdbAdapter.count_dict[self.path] = RocksdbAdapter.count_dict[self.path] - 1
+        self.close()
+
+    def __del__(self):
+        with RocksdbAdapter.env_lock:
+            if self.db:
+                count = RocksdbAdapter.count_dict[self.path]
+                if not count or count - 1 <= 0:
+                    del RocksdbAdapter.env_dict[self.path]
+                    del RocksdbAdapter.count_dict[self.path]
+                else:
+                    RocksdbAdapter.count_dict[self.path] = count - 1
 
     def get(self, key):
         return self.db.get(key)
