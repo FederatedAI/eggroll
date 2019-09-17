@@ -43,14 +43,16 @@ message Partition {
 
 message Job {
   string id = 1;
-  repeated Store inputs = 2;
-  repeated Store outputs = 3;
-  repeated Functor functors = 4;
+  string name = 2;
+  repeated Store inputs = 3;
+  repeated Store outputs = 4;
+  repeated Functor functors = 5;
 }
 
 message Task {
   string id = 1;
-  repeated Partition inputs = 2;
-  repeated Partition outputs = 3;
-  Job job = 4;
+  string name = 2;
+  repeated Partition inputs = 3;
+  repeated Partition outputs = 4;
+  Job job = 5;
 }

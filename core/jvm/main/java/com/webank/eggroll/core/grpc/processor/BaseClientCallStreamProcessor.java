@@ -53,6 +53,7 @@ public abstract class BaseClientCallStreamProcessor<R> implements StreamProcesso
         return;
       }
 
+      // todo: bind to configuration
       boolean awaitResult = streamReady.await(10, TimeUnit.MINUTES);
       if (!awaitResult && !clientCallStreamObserver.isReady()) {
         throw new TimeoutException("stream processor await timeout");

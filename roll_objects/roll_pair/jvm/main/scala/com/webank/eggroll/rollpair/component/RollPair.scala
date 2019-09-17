@@ -16,35 +16,77 @@
 
 package com.webank.eggroll.rollpair.component
 
-import com.webank.eggroll.core.command.{CollectiveCommand, CommandRouter, CommandURI}
+import com.webank.eggroll.core.command.{CollectiveCommand, CommandURI}
 import com.webank.eggroll.core.constant.StringConstants
-import com.webank.eggroll.core.meta.{ErFunctor, ErJob, ErStore}
+import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.serdes.DefaultScalaFunctorSerdes
 
-class RollPair(erStore: ErStore) {
-  val functorSerDes = DefaultScalaFunctorSerdes()
+class RollPair() {
+  def mapValues(inputJob: ErJob): ErStore = {
+    // f: Array[Byte] => Array[Byte]
+    // val functor = ErFunctor("map_user_defined", functorSerDes.serialize(f))
 
-  def mapValues(f: Array[Byte] => Array[Byte]): RollPair = {
-    val functor = ErFunctor("map_user_defined", functorSerDes.serialize(f))
+    val inputStore = inputJob.inputs.head
+    val inputLocator = inputStore.storeLocator
+    val outputLocator = inputLocator.copy(name = "testoutput")
 
-    val inputLocator = erStore.storeLocator
+    val inputPartition = ErPartition(id = "0", storeLocator = inputLocator, node = ErServerNode(endpoint = ErEndpoint("localhost", 20001)))
+    val outputPartition = ErPartition(id = "0", storeLocator = outputLocator, node = ErServerNode(endpoint = ErEndpoint("localhost", 20001)))
 
-    val outputStore = erStore.copy(storeLocator = inputLocator.copy(name = "testoutput"))
+    // todo: move to cluster manager
+    val inputStoreWithPartitions = inputStore.copy(storeLocator = inputLocator,
+      partitions = List(inputPartition.copy(id = "0"), inputPartition.copy(id = "1")))
 
-    val job = ErJob("mapValues", List(erStore), List(outputStore), List(functor))
+    val outputStoreWithPartitions = inputStore.copy(storeLocator = outputLocator,
+      partitions = List(outputPartition.copy(id = "0"), outputPartition.copy(id = "1")))
 
-    val collectiveCommand = CollectiveCommand(new CommandURI(RollPair.mapCommand), job)
+    val job = inputJob.copy(inputs = List(inputStoreWithPartitions), outputs = List(outputStoreWithPartitions))
+
+    val collectiveCommand = CollectiveCommand(new CommandURI(RollPair.eggMapCommand), job)
+
+    // todo: update database
+    // val xxx = updateOutputDb()
 
     val commandResults = collectiveCommand.call()
 
-    new RollPair(job.outputs.head)
+    outputStoreWithPartitions
+  }
+
+  def reduce(inputJob: ErJob): ErStore = {
+    val inputStore = inputJob.inputs.head
+    val inputLocator = inputStore.storeLocator
+    val outputLocator = inputLocator.copy(name = "testReduce")
+
+    val inputPartition = ErPartition(id = "0", storeLocator = inputLocator, node = ErServerNode(endpoint = ErEndpoint("localhost", 20001)))
+    val outputPartition = ErPartition(id = "0", storeLocator = outputLocator, node = ErServerNode(endpoint = ErEndpoint("localhost", 20001)))
+
+    val inputStoreWithPartitions = inputStore.copy(storeLocator = inputLocator,
+      partitions = List(inputPartition.copy(id = "0"), inputPartition.copy(id = "1")))
+
+    val outputStoreWithPartitions = inputStore.copy(storeLocator = outputLocator,
+      partitions = List(outputPartition))
+
+    val job = inputJob.copy(inputs = List(inputStoreWithPartitions), outputs = List(outputStoreWithPartitions))
+
+    val collectiveCommand = CollectiveCommand(new CommandURI(RollPair.eggReduceCommand), job)
+
+    val commandResults = collectiveCommand.call()
+
+    outputStoreWithPartitions
   }
 }
 
 object RollPair {
   val clazz = classOf[RollPair]
-  var mapCommand: String = _
-  mapCommand = clazz.getCanonicalName + StringConstants.DOT + "mapValues"
-  CommandRouter.register(mapCommand,
-    List(classOf[Array[Byte] => Array[Byte]]), clazz, "mapValues", null, null)
+  val functorSerDes = DefaultScalaFunctorSerdes()
+
+  val mapValues = "mapValues"
+  val reduce = "reduce"
+  val eggReduceCommand = classOf[EggPair].getCanonicalName + StringConstants.DOT + reduce
+  var rollMapCommand = clazz.getCanonicalName + StringConstants.DOT + mapValues
+  var eggMapCommand = classOf[EggPair].getCanonicalName + StringConstants.DOT + mapValues
+  var rollReduceCommand = classOf[RollPair].getCanonicalName + StringConstants.DOT + reduce
+
+  /*  CommandRouter.register(mapCommand,
+      List(classOf[Array[Byte] => Array[Byte]]), clazz, "mapValues", null, null)*/
 }

@@ -20,12 +20,14 @@ import java.util.concurrent.{CompletableFuture, CountDownLatch}
 import java.util.function.Supplier
 
 import com.webank.eggroll.core.error.DistributedRuntimeException
-import com.webank.eggroll.core.meta.{ErJob, ErTask}
+import com.webank.eggroll.core.meta.{ErJob, ErPartition, ErTask}
 import com.webank.eggroll.core.util.ThreadPoolUtils
 
 import scala.collection.mutable
 
 case class EndpointCommand(commandURI: CommandURI, job: ErJob)
+
+case class EndpointTaskCommand(commandURI: CommandURI, task: ErTask)
 
 case class CollectiveCommand(commandURI: CommandURI, job: ErJob) {
   def call(): List[ErCommandResponse] = {
@@ -34,10 +36,8 @@ case class CollectiveCommand(commandURI: CommandURI, job: ErJob) {
     val results = mutable.ListBuffer[ErCommandResponse]()
 
     val tasks = toTasks(job)
-    /*
-        val requests = tasks.map(t => ErCommandRequest(seq = t.id.toLong, uri = commandURI.uri.toString, args = null))*/
 
-    tasks.foreach(task => {
+    tasks.par.map(task => {
       val completableFuture: CompletableFuture[ErCommandResponse] = CompletableFuture.supplyAsync(new CommandServiceSupplier(task, commandURI), CollectiveCommand.threadPool)
         .exceptionally(e => {
           errors.append(e)
@@ -52,11 +52,39 @@ case class CollectiveCommand(commandURI: CommandURI, job: ErJob) {
       completableFuture.join()
     })
 
+    finishLatch.await()
+
+    if (!errors.check()) {
+      errors.raise()
+    }
     results.toList
   }
 
   def toTasks(job: ErJob): List[ErTask] = {
     val result = mutable.ListBuffer[ErTask]()
+
+    val inputs = job.inputs
+    val outputs = job.outputs
+    val inputPartitionSize = inputs.head.partitions.size
+
+    var aggregateOutputPartition: ErPartition = null
+    if (outputs.head.partitions.size == 1) {
+      aggregateOutputPartition = outputs.head.partitions.head
+    }
+    for (i <- 0 until inputPartitionSize) {
+      val inputPartitions = mutable.ListBuffer[ErPartition]()
+      val outputPartitions = mutable.ListBuffer[ErPartition]()
+
+      inputs.foreach(input => inputPartitions.append(input.partitions(i)))
+
+      if (aggregateOutputPartition != null) {
+        outputPartitions.append(aggregateOutputPartition)
+      } else {
+        outputs.foreach(output => outputPartitions.append(output.partitions(i)))
+      }
+
+      result.append(ErTask(id = job.id + "-" + i, name = job.name, inputs = inputPartitions.toList, outputs = outputPartitions.toList, job = job))
+    }
 
     result.toList
   }

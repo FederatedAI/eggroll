@@ -37,12 +37,10 @@ class CommandService extends CommandServiceGrpc.CommandServiceImplBase with Logg
   override def call(request: Command.CommandRequest,
                     responseObserver: StreamObserver[Command.CommandResponse]): Unit = {
     grpcServerWrapper.wrapGrpcServerRunnable(responseObserver, () => {
-      logDebug(s"${ModuleConstants.COMMAND_WITH_BRACKETS} received: ${ToStringUtils.toOneLineString(request)}")
+      logInfo(s"${ModuleConstants.COMMAND_WITH_BRACKETS} received: ${ToStringUtils.toOneLineString(request)}")
       val command: ErCommandRequest = request.fromProto()
       val commandUri = new CommandURI(command)
 
-      val list = request.getArgsList
-      val e = list.get(0)
       val result: Array[Byte] = CommandRouter.dispatch(commandUri.getRoute(), request.getArgsList.toArray(), request.getKwargsMap.asScala)
 
       val response: ErCommandResponse = ErCommandResponse(seq = request.getSeq,

@@ -2,19 +2,20 @@ syntax = "proto3";
 
 package com.webank.eggroll.core.transfer;
 
-message BatchId {
-  string id = 1;
+message TransferHeader {
+  int32 id = 1;
+  string tag = 2;
+  int64 totalSize = 3;
 }
 
 message Batch {
-  BatchId id = 1;
-  bytes data = 2;
-  int64 size = 3;
+  TransferHeader header = 1;
+  int64 batchSize = 2;
+  bytes data = 3;
 }
 
 // TODO: use transfer lib
 service TransferService {
-  rpc write (stream Batch) returns (BatchId);
-  rpc read (BatchId) returns (stream Batch);
+  rpc send (stream Batch) returns (TransferHeader);
 }
 

@@ -18,9 +18,10 @@ package com.webank.eggroll.core.command
 
 import java.lang.reflect.Method
 
-import com.google.protobuf.{ByteString, GeneratedMessageV3}
+import com.google.protobuf.ByteString
 import com.webank.eggroll.core.constant.StringConstants
-import com.webank.eggroll.core.serdes.BaseSerializable
+import com.webank.eggroll.core.meta.MetaModelPbSerdes._
+import com.webank.eggroll.core.meta.{ErJob, ErTask, Meta}
 import org.apache.commons.lang3.StringUtils
 import org.apache.commons.lang3.reflect.{ConstructorUtils, MethodUtils}
 
@@ -87,21 +88,19 @@ object CommandRouter {
 
     val method = target._2
     val paramTypes = method.getParameterTypes
+    var paramTypeName = "unknown"
 
     // todo: separate to SerDes
     // deserialization
     val realArgs = args.zip(paramTypes).map {
       case (arg, paramType) => {
-        if (classOf[GeneratedMessageV3].isAssignableFrom(paramType)) { // pb message
-          var method: Method = null
-          messageParserMethodCache.get(paramType) match {
-            case m: Some[Method] => method = m.get
-            case None =>
-              method = paramType.getMethod(StringConstants.GRPC_PARSE_FROM, classOf[ByteString])
-              messageParserMethodCache.put(paramType, method)
-          }
-          method.invoke(null, arg)
-        } else { // todo: change here when non-grpc message call is supported
+        if (paramType == classOf[ErTask]) {
+          paramTypeName = "ErTask"
+          Meta.Task.parseFrom(arg.asInstanceOf[ByteString]).fromProto()
+        } else if (paramTypes == classOf[ErJob]) {
+          paramTypeName = "ErJob"
+          Meta.Job.parseFrom(arg.asInstanceOf[ByteString]).fromProto()
+        } else {
           arg
         }
       }
@@ -112,11 +111,14 @@ object CommandRouter {
 
     // serialization to response
     callResult match {
-      case serializer: BaseSerializable =>
-        serializer.toBytes()
-      case _ => // todo: change here when non-grpc message call is supported
+      case e: ErTask =>
+        callResult.asInstanceOf[ErTask].toProto().toByteArray
+      case e: ErJob =>
+        callResult.asInstanceOf[ErJob].toProto().toByteArray
+      case _ =>
         callResult.toString.getBytes()
     }
+
   }
 
   def query(serviceName: String): (Any, Method) = {
