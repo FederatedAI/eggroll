@@ -9,6 +9,8 @@ message Task {
     repeated Functor functors = 2;
     repeated Partition operands = 3;
     Job job = 4;
+    string task_type = 5;
+    repeated Partition results = 6;
 }
 
 message TaskResult {
@@ -24,6 +26,7 @@ message Functor {
 message Partition {
     Store store = 1;
     string id = 2;
+    int32 batch_size = 3;
 }
 
 message Store {
@@ -31,10 +34,12 @@ message Store {
     string namespace = 2;
     string name = 3;
     string path = 4;
+    int32 partition_size = 5;
 }
 
 message Job {
     string job_id = 1;
+    int32 task_size = 2;
     repeated Store outputs = 3;
 }
 

@@ -46,12 +46,15 @@ object CommandService {
     val methodName =  if(method != null) method else route.substring(methodNameIndex + 1)
     val clz = if(clazz != null) clazz else Class.forName(route.substring(0, methodNameIndex))
     val methodInstance = clz.getMethod(methodName, args:_*)
-    val serviceInstance = if(service != null) service else clz.newInstance()
-    routes.put(route, (serviceInstance,methodInstance))
+    routes.put(route, (if(service != null) service else clz, methodInstance))
   }
 
   def dispatch(route:String, args:AnyRef*):AnyRef = {
-    val (obj, method) = routes(route)
+    val (service, method) = routes(route)
+    val obj = service match {
+      case clazz: Class[_] => clazz.newInstance()
+      case _ => service
+    }
     method.invoke(obj, args:_*)
   }
 
@@ -107,27 +110,24 @@ class GrpcCommandService extends CommandServiceGrpc.CommandServiceImplBase{
   }
 }
 
-case class EndpointCommand(uri: URI, req: Array[Byte], resp: Array[Byte])
-
-
+case class EndpointCommand(uri: URI, req: Array[Byte], resp: Array[Byte], serverNode: ServerNode = null)
 
 // TODO: short timeout
 class CollectiveCommand(nodes: List[ServerNode], timeout:Int = 600*1000) {
   private val clients = nodes.map{ node =>
-    CommandServiceGrpc.newStub(
-      ManagedChannelBuilder.forAddress(node.host, node.port).usePlaintext().build())
-  }
+    (node, CommandServiceGrpc.newStub(
+      ManagedChannelBuilder.forAddress(node.host, node.port).usePlaintext().build()))
+  }.toMap
   def syncSendAll(cmds: List[EndpointCommand]):List[EndpointCommand] = {
-    val countDownLatch = new CountDownLatch(nodes.size)
+    val countDownLatch = new CountDownLatch(cmds.size)
     val errors = new ThrowableCollection()
     val resps = mutable.ListBuffer[EndpointCommand]()
-    // TODO: zip -> join
-    clients.zip(cmds).foreach{ case (client,cmd) =>
+    cmds.foreach{ cmd =>
       val req = RollFrameGrpc.CommandRequest.newBuilder().
         setUri(cmd.uri.toString)
         .setData(ByteString.copyFrom(cmd.req))
         .build()
-      client.call(req, new StreamObserver[RollFrameGrpc.CommandResponse] {
+      clients(cmd.serverNode).call(req, new StreamObserver[RollFrameGrpc.CommandResponse] {
         override def onNext(value: RollFrameGrpc.CommandResponse): Unit = {
           resps.append(EndpointCommand(null, null, value.getData.toByteArray))
         }

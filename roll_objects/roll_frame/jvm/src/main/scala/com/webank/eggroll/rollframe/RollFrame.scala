@@ -24,335 +24,394 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import scala.collection.JavaConverters._
 import com.google.protobuf.{ByteString, Message => PbMessage}
-import com.webank.eggroll.blockstore._
-import com.webank.eggroll.command.{CollectiveCommand, EndpointCommand}
-import com.webank.eggroll.format._
-import com.webank.eggroll.transfer.{CollectiveTransfer, GrpcTransferService}
+import com.webank.eggroll.command.{CollectiveCommand, CommandService, EndpointCommand, GrpcCommandService}
+import com.webank.eggroll.format.{FrameBatch, FrameDB, _}
+import io.grpc.ServerBuilder
 
+import scala.collection.mutable.ListBuffer
 import scala.reflect.ClassTag
 
 
 // TODO: always close in finally
 
-trait RpcMessage
+import MessageSerializer._
 
-case class ServerNode(host: String, port: Int, tag: String, id: String = "") extends RpcMessage
+// TODO: Use a dag to express program with base plan like reading/writing/scatter/broadcast etc.
+// A program packages all jobs/tasks to optimize together
+class ExecuteProgram {
 
-case class ServerCluster(id: String, nodes: List[ServerNode]) extends RpcMessage
+  private val plans:ListBuffer[TaskPlan] = ListBuffer[TaskPlan]()
+  private val functorSerdes = ScalaFunctorSerdes
+  private def newTaskId(jobId: String) = jobId + "-task" + Math.abs(new Random().nextLong())
 
-case class RfPartition(id: Int, var store: RfStore = null) extends RpcMessage
+  private def newJobId() = "job" + Math.abs(new Random().nextLong())
 
-case class RfStore(name: String, namespace: String, partitions: List[RfPartition] = List[RfPartition](),
-                   path: String = null, adapter: String = "file") extends RpcMessage
+  def addPlan(plan: TaskPlan):ExecuteProgram = {
+    plans.append(plan)
+    this
+  }
 
-case class RfJob(jobId: String, outputs: List[RfStore] = List[RfStore]()) extends RpcMessage
+  def build(inputs: List[RfStore], clusterManager: ClusterManager,
+            outputs: List[RfStore]): List[EndpointCommand] = {
+    // only one input&output&plan supported now
+    val input = inputs.head
+    val plan = plans.head
+    val jobId = newJobId()
+    val output = outputs.head.copy(partitions = null)
+    val partitionRoutes = clusterManager.getPreferredServer(input)
+    val job = RfJob(jobId, partitionRoutes.size, List(output))
+    def getTask(taskType:String, part: RfPartition, functors: List[(String, Any)]): RfTask = {
+      val funcs = functors.map { case (name, f) =>
+        RfFunctor(name, f match {
+          case bytes:Array[Byte] => bytes
+          case _ => functorSerdes.serialize(f)
+        })
+      }
+      part.store = input.copy(partitions = null)
+      RfTask(newTaskId(jobId),taskType, funcs, List(part), job)
+    }
 
-case class RfFunctor(name: String, body: Array[Byte]) extends RpcMessage
-
-case class RfTask(taskId: String, functors: List[RfFunctor], oprands: List[RfPartition], job: RfJob) extends RpcMessage
-
-trait MessageSerializer {
-  def toBytes(): Array[Byte]
+    input.partitions.flatMap{ part =>
+      val rfTasks = plan match {
+        case task: AggregateBatchTask =>
+          val zero = if(task.broadcastZero || task.byColumn) Array[Byte]() else FrameUtil.toBytes(task.zeroValue)
+          var tasks = getTask("AggregateBatchTask", part,
+            List(("zeroValue", zero), ("seqOp", task.seqOp), ("combOp", task.combOp), ("byColumn", task.byColumn))
+          ) :: Nil
+          val zeroPath = "broadcast:" + jobId
+          // Write to current server node's store for self using and transfer
+          FrameDB.cache(zeroPath)
+            .writeAll(Iterator(task.zeroValue))
+          if(part.id == 0 && task.broadcastZero) {
+            // TODO: scatter zero value when aggregating byColumn
+            tasks ::= getTask("BroadcastTask", part, List(("broadcast", zeroPath)))
+          }
+          tasks
+        case task: MapBatchTask => getTask("MapBatchTask",part, List(("mapBatches", task.mapper))) :: Nil
+        case task: ReduceBatchTask => getTask("ReduceBatchTask",part, List(("mapBatches", task.reducer))) :: Nil
+        case _ => throw new UnsupportedOperationException("unsupported task")
+      }
+      // TODO: command service should merge the same endpoint's commands to one. And use local invoking instead of network
+      rfTasks.map(t => EndpointCommand(
+        new URI("/grpc/v1?route=com.webank.eggroll.rollframe.EggFrame.runTask"),
+        t.toBytes(), null, partitionRoutes(part.id)))
+    }
+  }
 }
 
-trait MessageDeserializer {
-  def fromBytes[T: ClassTag](bytes: Array[Byte]): T
-}
+trait TaskPlan
+case class AggregateBatchTask(zeroValue:FrameBatch, seqOp: (FrameBatch, FrameBatch) => FrameBatch,
+                    combOp: (FrameBatch, FrameBatch) => FrameBatch, byColumn:Boolean = false,
+                    broadcastZero:Boolean = true) extends TaskPlan
+case class MapBatchTask(mapper: FrameBatch => FrameBatch) extends TaskPlan
+case class ReduceBatchTask(reducer:(FrameBatch, FrameBatch) => FrameBatch) extends TaskPlan
+case class MapPartitionTask(mapper:Iterator[FrameBatch] => Iterator[FrameBatch]) extends TaskPlan
 
-trait PbMessageSerializer extends MessageSerializer {
-  def toProto[T >: PbMessage](): T
-
-  override def toBytes(): Array[Byte] = toProto().toByteArray // toByteString preferred
-  def toByteString(): ByteString = toProto().toByteString
-}
-
-trait PbMessageDeserializer extends MessageDeserializer {
-  def fromProto[T >: RpcMessage](): T
-
-  def fromBytes[T: ClassTag](bytes: Array[Byte]): T = ???
-}
-
-object MessageSerializer {
-
-  implicit class RfPartitionSerializer(rfPartition: RfPartition) extends PbMessageSerializer {
-    override def toProto[T >: PbMessage](): RollFrameGrpc.Partition = {
-      val b = RollFrameGrpc.Partition.newBuilder().setId(rfPartition.id.toString)
-      if (rfPartition.store != null) b.setStore(rfPartition.store.toProto())
-      b.build()
-    }
-  }
-
-  implicit class RfPartitionDeserializer(p: RollFrameGrpc.Partition) extends PbMessageDeserializer {
-    override def fromProto[T >: RpcMessage](): RfPartition = RfPartition(p.getId.toInt, p.getStore.fromProto())
-  }
-
-  implicit class RfFunctorSerializer(rfFunctor: RfFunctor) extends PbMessageSerializer {
-    override def toProto[T >: PbMessage](): RollFrameGrpc.Functor = {
-      RollFrameGrpc.Functor.newBuilder().setName(rfFunctor.name).setBody(ByteString.copyFrom(rfFunctor.body)).build()
-    }
-  }
-
-  implicit class RfFunctorDeserializer(p: RollFrameGrpc.Functor) extends PbMessageDeserializer {
-    override def fromProto[T >: RpcMessage](): RfFunctor = {
-      RfFunctor(p.getName, p.getBody.toByteArray)
-    }
-  }
-
-  implicit class RfTaskSerializer(rfTask: RfTask) extends PbMessageSerializer {
-    override def toProto[T >: PbMessage](): T = {
-      RollFrameGrpc.Task.newBuilder()
-        .setJob(rfTask.job.toProto())
-        .addAllFunctors(rfTask.functors.map(_.toProto()).asJava)
-        .addAllOperands(rfTask.oprands.map(_.toProto()).asJava)
-        .setTaskId(rfTask.taskId)
-        .build()
-    }
-  }
-
-  implicit class RfTaskDeserializer(p: RollFrameGrpc.Task) extends PbMessageDeserializer {
-    override def fromProto[T >: RpcMessage](): RfTask = {
-      RfTask(p.getTaskId,
-        p.getFunctorsList.asScala.map(_.fromProto()).toList,
-        p.getOperandsList.asScala.map(_.fromProto()).toList,
-        p.getJob.fromProto()
-      )
-    }
-  }
-
-  implicit class RfJobSerializer(rfJob: RfJob) extends PbMessageSerializer {
-
-    override def toProto[T >: PbMessage](): RollFrameGrpc.Job = {
-      RollFrameGrpc.Job.newBuilder().setJobId(rfJob.jobId).build()
-    }
-  }
-
-  implicit class PbRfJob2(p: RollFrameGrpc.Job) extends PbMessageDeserializer {
-    override def fromProto[T >: RpcMessage](): RfJob =
-      RfJob(p.getJobId, p.getOutputsList.asScala.map(_.fromProto()).toList)
-  }
-
-  implicit class RfStoreSerializer(rfStore: RfStore) extends PbMessageSerializer {
-    override def toProto[T >: PbMessage](): RollFrameGrpc.Store = {
-      val b = RollFrameGrpc.Store.newBuilder().setName(rfStore.name)
-        .setNamespace(rfStore.namespace)
-      if (rfStore.path != null) b.setPath(rfStore.path)
-      b.build()
-    }
-  }
-
-  implicit class RfStoreDeserializer(p: RollFrameGrpc.Store) extends PbMessageDeserializer {
-    override def fromProto[T >: RpcMessage](): RfStore = RfStore(p.getName, p.getNamespace, path = p.getPath)
-  }
-
-}
-
-
-trait RollFrame {
-
-}
+trait RollFrame
 
 // create a instance when start a new job
 // TODO: rename RollFrameService
-class RollFrameService(store: RfStore) extends RollFrame {
-
-  import MessageSerializer._
-
+class RollFrameService(input: RfStore) extends RollFrame {
   val clusterManager = new ClusterManager
   val collectiveCommand = new CollectiveCommand(clusterManager.getServerCluster("test1").nodes)
-  val functorSerdes = ScalaFunctorSerdes
 
-  private def newTaskId() = "task-" + Math.abs(new Random().nextLong())
-
-  private def newJobId() = "job-" + "1"
-
-  // TODO: MOCK
-  //  private def newJobId() = "job-" + Math.abs(new Random().nextLong())
-
-  private def getTask(jobId: String, part: RfPartition, functors: List[(String, Any)]): Array[Byte] = {
-    val funcs = functors.map { case (name, f) =>
-      RfFunctor(name, f match {
-        case batch: FrameBatch => FrameUtil.toBytes(batch)
-        case _ => functorSerdes.serialize(f)
-      })
+  private def getResultStore(output: RfStore, parts: List[RfPartition]):RfStore ={
+    val ret = if(output == null) {
+      RfStore("temp-store-" + Math.abs(new Random().nextLong()), input.namespace, parts.size)
+    } else {
+      output
     }
-    part.store = store.copy(partitions = null)
-    RfTask(newTaskId(), funcs, List(part), RfJob(newJobId(), List(RfStore(newJobId(), "test1")))).toBytes()
+    ret.partitions = parts
+    ret
   }
 
-  private def getCmds(jobId: String, functors: List[(String, Any)]): List[EndpointCommand] = {
-    store.partitions.map { part =>
-      val task = getTask(jobId, part, functors)
-      EndpointCommand(
-        new URI("/grpc/v1?route=com.webank.eggroll.rollframe.EggFrame.runTask"), task, null)
-    }
+
+  def mapBatches(f: FrameBatch => FrameBatch, output:RfStore = null): RollFrame = {
+    run(new ExecuteProgram()
+      .addPlan(MapBatchTask(f)), List(input), getResultStore(output, input.partitions))
   }
 
-  def mapBatches(f: FrameBatch => FrameBatch): RollFrame = {
-    val jobId = newJobId()
-    collectiveCommand.syncSendAll(getCmds(jobId, List(("mapBatches", f))))
-    new RollFrameService(RfStore(jobId, "test1", store.partitions))
-  }
-
-  // TODO: disable reduce?
-  def reduce(f: (FrameBatch, FrameBatch) => FrameBatch): RollFrame = {
-    val jobId = newJobId()
-    collectiveCommand.syncSendAll(getCmds(jobId, List(("reduce", f))))
-    new RollFrameService(RfStore(jobId, "test1", List(RfPartition(0))))
+  def reduce(f: (FrameBatch, FrameBatch) => FrameBatch, output:RfStore = null): RollFrame = {
+    run(new ExecuteProgram()
+      .addPlan(ReduceBatchTask(f)), List(input),
+        getResultStore(output, List(RfPartition(0, 1))))
   }
 
   def aggregate(zeroValue: FrameBatch,
                 seqOp: (FrameBatch, FrameBatch) => FrameBatch,
-                combOp: (FrameBatch, FrameBatch) => FrameBatch): RollFrame = {
-    val jobId = newJobId()
-    collectiveCommand.syncSendAll(
-      getCmds(jobId, List(("zeroValue", zeroValue), ("seqOp", seqOp), ("combOp", combOp))))
-    new RollFrameService(RfStore(jobId, "test1", List(RfPartition(0))))
+                combOp: (FrameBatch, FrameBatch) => FrameBatch,
+                byColumn:Boolean=false, broadcastZero:Boolean = false, output:RfStore = null): RollFrame = {
+    run(
+      new ExecuteProgram().addPlan(AggregateBatchTask(zeroValue, seqOp, combOp, byColumn, broadcastZero)),
+      List(input),
+      getResultStore(output, List(RfPartition(0, 1)))
+    )
   }
 
-  //  def collect()
+  def run(program: ExecuteProgram, inputs: List[RfStore], output: RfStore): RollFrameService = {
+    collectiveCommand.syncSendAll(program.build(inputs, clusterManager, List(output)))
+    new RollFrameService(output)
+  }
+
+  def companionEgg():EggFrame = new EggFrame
+
+}
+class ExecutorPool {
+  private val threadId = new AtomicInteger()
+  private val executorService = new ThreadPoolExecutor(0, Integer.MAX_VALUE, 60L, TimeUnit.SECONDS,
+    new LinkedBlockingDeque[Runnable](100),
+    new ThreadFactory {
+    override def newThread(r: Runnable): Thread = new Thread(r, threadId.getAndIncrement().toString)
+  })
+
+  def submit[T](r: Callable[T]): T = {
+    executorService.submit(r).get()
+  }
+  def submit(r: Runnable): Unit = {
+    executorService.submit(r)
+  }
+  val cores:Int = Runtime.getRuntime.availableProcessors()
 }
 
+object ExecutorPool {
+  private val instance = new ExecutorPool()
+  def apply(): ExecutorPool = instance
+}
 class EggFrame {
-  val rootPath = "./tmp/unittests/RollFrameTests/filedb/"
-  val clusterManager = new ClusterManager
-  val serverNodes = clusterManager.getServerCluster().nodes
+  private val rootPath = "./tmp/unittests/RollFrameTests/filedb/"
+  private val clusterManager = new ClusterManager
+  private val serverNodes = clusterManager.getServerCluster().nodes
+  private val transferService = new NioCollectiveTransfer(serverNodes)
+  private val executorPool = ExecutorPool()
+  private  val rootServer = serverNodes.head
+  private val deser = ScalaFunctorSerdes
 
-  import MessageSerializer._
+  private def sliceByColumn(frameBatch: FrameBatch):List[(ServerNode, (Int, Int))] = {
+    val columns = frameBatch.rootVectors.length
+    val servers = serverNodes.length
+    val partSize = (servers + columns - 1) / servers
+    (0 until servers).map{ sid =>
+      (serverNodes(sid),(sid * partSize, Math.min((sid + 1) * partSize, columns)))
+    }.toList
+  }
+  private def sliceByRow(parts:Int, frameBatch: FrameBatch):List[(Int, Int)] = {
+    val rows = frameBatch.rowCount
+    val partSize = (parts + rows - 1) / parts
+    (0 until parts).map{ sid =>
+      (sid * partSize, Math.min((sid + 1) * partSize, rows))
+    }.toList
+  }
 
-  def runTask(pbTask: RollFrameGrpc.Task): RollFrameGrpc.TaskResult = {
-    //    require(task.getFunctorsCount == 1 && task.getOperandsCount == 1, "todo")
-    val task = pbTask.fromProto()
+  def runBroadcast(path:String):Unit = {
+    val list = FrameDB.cache(path).readAll()
+    serverNodes.foreach{server =>
+      if(!server.equals(rootServer)) {
+        list.foreach( fb => transferService.send(server.id, path, fb))
+      }
+    }
+  }
+
+  def runMapBatch(task:RfTask, input:Iterator[FrameBatch], output:FrameDB,
+                  mapper: FrameBatch => FrameBatch): Unit = {
+    // for concurrent writing
+    val queuePath = task.taskId + "-doing"
+    val queue = FrameDB.queue(queuePath, task.oprands.head.batchSize)
+    input.foreach{ store =>
+      executorPool.submit(new Runnable {
+        override def run(): Unit = {
+          queue.append(mapper(store))
+        }
+      })
+    }
+    output.writeAll(queue.readAll())
+  }
+
+  def runReduceBatch(task:RfTask, input:Iterator[FrameBatch], output:FrameDB,
+                     reducer: (FrameBatch, FrameBatch) => FrameBatch, byColumn:Boolean): Unit = {
+    if(!input.hasNext) return
+    val zero = input.next()
+    runAggregateBatch(task, input, output, zero, reducer, (a, _)=> a, byColumn)
+  }
+  //TODO: allgather = List[(FB)=>FB]
+  def runAggregateBatch(task:RfTask, input:Iterator[FrameBatch], output:FrameDB,
+                        zeroValue:FrameBatch, seqOp:(FrameBatch, FrameBatch) => FrameBatch,
+                        combOp: (FrameBatch, FrameBatch) => FrameBatch, byColumn:Boolean): Unit = {
     val part = task.oprands.head
-    val store = part.store
-    val path = rootPath + Array(store.namespace, store.name, part.id).mkString("/")
+    val batchSize = part.batchSize
+    // TODO: more generally, like repartition?
 
-    println("inputPath", path)
+    // TODO: route
+    val localServer = clusterManager.getPreferredServer(part.store)(part.id)
+    println(s"runAggregateBatch $localServer ${part.id}")
+    var localQueue: FrameDB = null
 
-    val tmpOutName = pbTask.getJob.getJobId
-    val outputPath = rootPath + Array(store.namespace, store.name + "-tmp-" + tmpOutName, part.id).mkString("/")
-    println("outputPath", outputPath)
-    //  a stream => a thread
-    val executorService = new ThreadPoolExecutor(0, Integer.MAX_VALUE, 60L, TimeUnit.SECONDS, new LinkedBlockingDeque[Runnable](100))
-    val resultQueue = new LinkedBlockingQueue[FrameBatch]()
-    val inputOpts = Map("path" -> path, "type" -> "file")
-    val outputOpts = Map("path" -> outputPath)
-    val inputFrameStore = FrameStoreAdapter(inputOpts)
-    val outputFrameStore = FrameStoreAdapter(outputOpts)
-
-    pbTask.getFunctors(0) match {
-      case func if func.getName == "mapBatches" =>
-        val f: FrameBatch => FrameBatch = ScalaFunctorSerdes.deserialize(func.getBody.toByteArray)
-        // TODO: thread pool
-        outputFrameStore.writeAll(inputFrameStore.readAll().map(f))
-      case func if func.getName == "reduce" =>
-        val f: (FrameBatch, FrameBatch) => FrameBatch =
-          ScalaFunctorSerdes.deserialize(func.getBody.toByteArray)
-        var local: FrameBatch = null
-        for (tmp <- inputFrameStore.readAll()) {
-          if (local == null) {
-            local = tmp
-          } else {
-            local = f(local, tmp)
-          }
-        }
-        // TODO: MOCK totalBatchCount
-        val totalBatch = new AtomicInteger(1)
-        val batchID = RollFrameGrpc.BatchID.newBuilder().setId(part.toByteString()).build()
-        if (part.id == 0) {
-          // TODO: thread pool?
-          val queue = GrpcTransferService.getOrCreateQueue("job-1")
-          while (totalBatch.get() > 0) {
-            println("totalBatch", totalBatch.get())
-            val batch = queue.take()
-            val cr = new FrameReader(batch.getData.newInput())
-            for (tmp <- cr.getColumnarBatches) {
-              local = f(local, tmp)
+    val zeroPath = "broadcast:" + task.job.jobId
+    val zero: FrameBatch =
+      if(zeroValue == null) {
+        if(localServer.equals(rootServer))
+          FrameDB.cache(zeroPath).readOne()
+        else
+          FrameDB.queue(zeroPath, 1).readOne()
+      } else {
+        zeroValue
+      }
+    // TODO: more generally, like repartition?
+    if(batchSize == 1) {
+      if(input.hasNext) {
+        val fb = input.next()
+        val parallel = Math.min(executorPool.cores, fb.rowCount) // split by row to grow parallel
+        // for concurrent writing
+        localQueue = FrameDB.queue(task.taskId + "-doing", parallel)
+        sliceByRow(parallel, fb).foreach{case (from, to) =>
+          executorPool.submit(new Callable[Unit] {
+            override def call(): Unit = {
+              localQueue.append(seqOp(FrameUtil.copy(zero), fb.spliceByRow(from, to)))
             }
-            cr.close()
-            totalBatch.decrementAndGet()
-          }
-          outputFrameStore.append(local)
-        } else {
-          val transferService = new CollectiveTransfer(serverNodes)
-          // TODO: set init capacity
-          // TODO: zero copy
-          val output = ByteString.newOutput()
-          val cw = new FrameWriter(local, output)
-          cw.write()
-          cw.close()
-
-          transferService.push(part.id,
-            List(RollFrameGrpc.Batch.newBuilder().setId(batchID).setData(output.toByteString).build()))
-        }
-      case func if func.getName == "zeroValue" =>
-        val zeroValue: FrameBatch = FrameUtil.fromBytes(pbTask.getFunctors(0).getBody.toByteArray)
-        val seqOp: (FrameBatch, FrameBatch) => FrameBatch =
-          ScalaFunctorSerdes.deserialize(pbTask.getFunctors(1).getBody.toByteArray)
-        val combOp: (FrameBatch, FrameBatch) => FrameBatch =
-          ScalaFunctorSerdes.deserialize(pbTask.getFunctors(2).getBody.toByteArray)
-        var local: FrameBatch = FrameUtil.copy(zeroValue)
-
-        for (tmp <- inputFrameStore.readAll()) {
-          executorService.submit(new Runnable {
-            override def run(): Unit = resultQueue.put(seqOp(FrameUtil.copy(zeroValue), tmp))
           })
         }
-        var batchCount = 10
-        while (batchCount > 0) {
-          local = combOp(local, resultQueue.take())
-          batchCount = batchCount - 1
-        }
-        // TODO: MOCK totalBatchCount
-        val totalBatch = new AtomicInteger(1)
-        val batchID = RollFrameGrpc.BatchID.newBuilder().setId(part.toByteString()).build()
-        if (part.id == 0) {
-          val queue = GrpcTransferService.getOrCreateQueue("job-1")
-          while (totalBatch.get() > 0) {
-            println("totalBatch", totalBatch.get())
-            val batch = queue.take()
-            val cr = new FrameReader(batch.getData.newInput())
-            for (tmp <- cr.getColumnarBatches) {
-              local = combOp(local, tmp)
+      }
+    } else {
+      val parallel = Math.min(executorPool.cores, batchSize) // reduce zero value copy
+      // for concurrent writing
+      localQueue = FrameDB.queue(task.taskId + "-doing", parallel)
+      var batchIndex = 0
+      (0 until parallel).foreach{ i =>
+        if(input.hasNext) { // merge to avoid zero copy
+          executorPool.submit(new Callable[Unit] {
+            override def call(): Unit = {
+              val tmpZero = FrameUtil.copy(zero)
+              var tmp = seqOp(tmpZero, input.next())
+              batchIndex += 1
+              while (batchIndex < ((parallel + batchSize - 1) / batchSize) * i && input.hasNext) {
+                tmp = seqOp(tmp, input.next())
+                batchIndex += 1
+              }
+              localQueue.append(tmp)
             }
-            cr.close()
-            totalBatch.decrementAndGet()
-          }
-          outputFrameStore.append(local)
-        } else {
-          val transferService = new CollectiveTransfer(serverNodes)
-          // TODO: set init capacity
-          // TODO: zero copy
-          val output = ByteString.newOutput()
-          val cw = new FrameWriter(local, output)
-          cw.write()
-          cw.close()
-          transferService.push(part.id,
-            List(RollFrameGrpc.Batch.newBuilder().setId(batchID).setData(output.toByteString).build()))
+          })
         }
-
-      case _ => ???
+      }
     }
-    outputFrameStore.close()
-    inputFrameStore.close()
+
+    if(localQueue == null) {
+      return
+    }
+
+    val resultIterator = localQueue.readAll()
+    if(!resultIterator.hasNext) throw new IllegalStateException("empty result")
+    var localBatch: FrameBatch = resultIterator.next()
+    while (resultIterator.hasNext) {
+      localBatch = combOp(localBatch, resultIterator.next())
+    }
+    val transferQueueSize = task.job.taskSize - 1
+    // TODO: check asynchronous call
+    if(byColumn) {
+      val splicedBatches = sliceByColumn(localBatch)
+      // Don't block next receive step
+      splicedBatches.foreach{ case (server, (from, to)) =>
+        val queuePath ="all2all:" + task.job.jobId + ":" + server.id
+        if(!server.equals(localServer)) {
+          transferService.send(server.id, queuePath, localBatch.sliceByColumn(from, to))
+        }
+      }
+      splicedBatches.foreach{ case (server, (from, to)) =>
+        val queuePath ="all2all:" + task.job.jobId + ":" + server.id
+        if(server.equals(localServer)){
+          for(tmp <- FrameDB.queue(queuePath, transferQueueSize).readAll()) {
+            localBatch = combOp(localBatch, tmp.spareByColumn(batchSize, from, to))
+          }
+        }
+      }
+    } else {
+      val queuePath = "gather:" + task.job.jobId
+      if(localServer.equals(rootServer)) {
+        for(tmp <- FrameDB.queue(queuePath, transferQueueSize).readAll()) {
+          localBatch = combOp(localBatch, tmp)
+        }
+      } else {
+        transferService.send(rootServer.id, queuePath, localBatch)
+      }
+    }
+    output.append(localBatch)
+  }
+
+  private def getStorePath(rfStore: RfStore, partId: Int):String = {
+    val dir = if(rfStore.path == null || rfStore.path.isEmpty)
+      rootPath + "/" + rfStore.namespace + "/" + rfStore.name
+    else rfStore.path
+    dir + "/" + partId
+  }
+
+  def runTask(pbTask: RollFrameGrpc.Task): RollFrameGrpc.TaskResult = {
+    val task = pbTask.fromProto()
+    val part = task.oprands.head
+    val inputStore = part.store
+    val outputStore = task.job.outputs.head
+
+    val inputPath = getStorePath(inputStore, part.id)
+    val outputPath = getStorePath(outputStore, part.id)
+    println(s"runTask, input:$inputPath, output:$outputPath")
+
+    val inputDB = FrameDB(inputStore, part.id)
+    val outputDB = FrameDB(outputStore, part.id)
+
+    pbTask.getTaskType match {
+      case "BroadcastTask" =>
+        runBroadcast(deser.deserialize(task.functors.head.body))
+      case "MapBatchTask" =>
+        runMapBatch(task, inputDB.readAll(), outputDB, deser.deserialize(task.functors.head.body))
+      case "ReduceBatchTask" =>
+        val reducer: (FrameBatch, FrameBatch) => FrameBatch = deser.deserialize(task.functors.head.body)
+        runReduceBatch(task, inputDB.readAll(), outputDB,reducer,byColumn = false)
+      case "AggregateBatchTask" =>
+        val zeroBytes = task.functors.head.body
+        val zeroValue: FrameBatch = if(zeroBytes.isEmpty) null else FrameUtil.fromBytes(zeroBytes)
+        val seqOp: (FrameBatch, FrameBatch) => FrameBatch = deser.deserialize(task.functors(1).body)
+        val combOp: (FrameBatch, FrameBatch) => FrameBatch = deser.deserialize(task.functors(2).body)
+        val byColumn: Boolean = deser.deserialize(task.functors(3).body)
+        runAggregateBatch(task, inputDB.readAll(), outputDB,zeroValue,seqOp, combOp, byColumn)
+      case t => throw new UnsupportedOperationException(t)
+    }
+    outputDB.close()
+    inputDB.close()
     RollFrameGrpc.TaskResult.newBuilder().setTaskId(pbTask.getTaskId).build()
   }
-
-  def mapBatches(f: FrameBatch => FrameBatch): FrameBatch = ???
-
-  def reduce(): Unit = {
-
-  }
 }
-
 
 // TODO: MOCK
 class ClusterManager {
-  def getServerCluster(id: String = "defaultCluster"): ServerCluster = {
-    ServerCluster(id, List(ServerNode("127.0.0.1", 20100, "boss"), ServerNode("127.0.0.1", 20101, "worker")))
+  def getServerCluster(clusterId: String = null): ServerCluster = {
+    ServerCluster(clusterId, List(ServerNode("127.0.0.1", 20100, "boss", "0", 20102),
+      ServerNode("127.0.0.1", 20101, "worker","1", 20103)))
   }
 
   def getRollFrameStore(name: String, namespace: String): RfStore = {
-    RfStore(name, namespace, List(RfPartition(0), RfPartition(1), RfPartition(2)))
+    val ps = List(RfPartition(0,10), RfPartition(1,10))
+    RfStore(name, namespace, ps.size, ps)
+  }
+
+  def getPreferredServer(store: RfStore, clusterId:String = null): Map[Int, ServerNode] = {
+    val nodes = getServerCluster(clusterId).nodes
+    (0 until store.partitionSize).map(p => (p, nodes(p % nodes.length))).toMap
+  }
+
+  def startServerCluster(id:String = null):Unit = {
+    CommandService.register("com.webank.eggroll.rollframe.EggFrame.runTask",
+      List(classOf[RollFrameGrpc.Task]),classOf[RollFrameGrpc.TaskResult])
+    getServerCluster(id).nodes.foreach{ server =>
+      val sb = ServerBuilder.forPort(server.port)
+      sb.addService(new GrpcCommandService())
+      sb.addService(new GrpcTransferService).build.start
+      new Thread("transfer-" + server.transferPort){
+        override def run(): Unit = {
+          try{
+            new NioTransferEndpoint().runServer(server.host, server.transferPort)
+          } catch {
+            case e: Throwable => e.printStackTrace()
+          }
+        }
+      }.start()
+    }
   }
 }
 
@@ -372,12 +431,16 @@ object ScalaFunctorSerdes extends FunctorSerdes {
     try {
       new ObjectOutputStream(bo).writeObject(func)
       bo.toByteArray
-    } finally {
+    } catch {
+      case e:Throwable => e.printStackTrace()
+        throw e
+    }finally {
       bo.close()
     }
   }
 
   def deserialize[T](bytes: Array[Byte]): T = {
+    if(bytes.isEmpty) return null.asInstanceOf[T]
     val bo = new ObjectInputStream(new ByteArrayInputStream(bytes))
     try {
       bo.readObject().asInstanceOf[T]
@@ -385,4 +448,125 @@ object ScalaFunctorSerdes extends FunctorSerdes {
       bo.close()
     }
   }
+}
+
+
+trait RpcMessage
+
+case class ServerNode(host: String, port: Int, tag: String, id: String = "", transferPort: Int = -1)
+  extends RpcMessage {
+  override def equals(obj: scala.Any): Boolean = id.equals(obj.asInstanceOf[ServerNode].id)
+}
+
+case class ServerCluster(id: String, nodes: List[ServerNode]) extends RpcMessage
+
+case class RfPartition(id: Int, batchSize:Int, var store: RfStore = null) extends RpcMessage
+
+case class RfStore(name: String, namespace: String, partitionSize:Int,
+                   var partitions: List[RfPartition] = List[RfPartition](),
+                   path: String = null, storeType: String = "file") extends RpcMessage
+
+case class RfJob(jobId: String, taskSize:Int, outputs: List[RfStore] = List[RfStore]()) extends RpcMessage
+
+case class RfFunctor(name: String, body: Array[Byte]) extends RpcMessage
+
+case class RfTask(taskId: String, taskType:String, functors: List[RfFunctor], oprands: List[RfPartition], job: RfJob)
+  extends RpcMessage
+
+trait MessageSerializer {
+  def toBytes(): Array[Byte]
+}
+
+trait MessageDeserializer {
+  def fromBytes[T: ClassTag](bytes: Array[Byte]): T
+}
+
+trait PbMessageSerializer extends MessageSerializer {
+  def toProto[T >: PbMessage](): T
+
+  override def toBytes(): Array[Byte] = toProto().toByteArray // toByteString preferred
+  def toByteString(): ByteString = toProto().toByteString
+}
+
+trait PbMessageDeserializer extends MessageDeserializer {
+  def fromProto[T >: RpcMessage](): T
+
+  def fromBytes[T: ClassTag](bytes: Array[Byte]): T = throw new NotImplementedError()
+}
+
+object MessageSerializer {
+
+  implicit class RfPartitionSerializer(rfPartition: RfPartition) extends PbMessageSerializer {
+    override def toProto[T >: PbMessage](): RollFrameGrpc.Partition = {
+      val b = RollFrameGrpc.Partition.newBuilder().setId(rfPartition.id.toString).setBatchSize(rfPartition.batchSize)
+      if (rfPartition.store != null) b.setStore(rfPartition.store.toProto())
+      b.build()
+    }
+  }
+
+  implicit class RfPartitionDeserializer(p: RollFrameGrpc.Partition) extends PbMessageDeserializer {
+    override def fromProto[T >: RpcMessage](): RfPartition = RfPartition(p.getId.toInt, p.getBatchSize, p.getStore.fromProto())
+  }
+
+  implicit class RfFunctorSerializer(rfFunctor: RfFunctor) extends PbMessageSerializer {
+    override def toProto[T >: PbMessage](): RollFrameGrpc.Functor = {
+      RollFrameGrpc.Functor.newBuilder().setName(rfFunctor.name).setBody(ByteString.copyFrom(rfFunctor.body)).build()
+    }
+  }
+
+  implicit class RfFunctorDeserializer(p: RollFrameGrpc.Functor) extends PbMessageDeserializer {
+    override def fromProto[T >: RpcMessage](): RfFunctor = {
+      RfFunctor(p.getName, p.getBody.toByteArray)
+    }
+  }
+
+  implicit class RfTaskSerializer(rfTask: RfTask) extends PbMessageSerializer {
+    override def toProto[T >: PbMessage](): T = {
+      RollFrameGrpc.Task.newBuilder()
+        .setTaskType(rfTask.taskType)
+        .setJob(rfTask.job.toProto())
+        .addAllFunctors(rfTask.functors.map(_.toProto()).asJava)
+        .addAllOperands(rfTask.oprands.map(_.toProto()).asJava)
+        .setTaskId(rfTask.taskId)
+        .build()
+    }
+  }
+
+  implicit class RfTaskDeserializer(p: RollFrameGrpc.Task) extends PbMessageDeserializer {
+    override def fromProto[T >: RpcMessage](): RfTask = {
+      RfTask(p.getTaskId,p.getTaskType,
+        p.getFunctorsList.asScala.map(_.fromProto()).toList,
+        p.getOperandsList.asScala.map(_.fromProto()).toList,
+        p.getJob.fromProto()
+      )
+    }
+  }
+
+  implicit class RfJobSerializer(rfJob: RfJob) extends PbMessageSerializer {
+
+    override def toProto[T >: PbMessage](): RollFrameGrpc.Job = {
+      RollFrameGrpc.Job.newBuilder().setJobId(rfJob.jobId).setTaskSize(rfJob.taskSize)
+        .addAllOutputs(rfJob.outputs.map(_.toProto()).asJava).build()
+    }
+  }
+
+  implicit class RfJobDeserializer(p: RollFrameGrpc.Job) extends PbMessageDeserializer {
+    override def fromProto[T >: RpcMessage](): RfJob =
+      RfJob(p.getJobId, p.getTaskSize, p.getOutputsList.asScala.map(_.fromProto()).toList)
+  }
+
+  implicit class RfStoreSerializer(rfStore: RfStore) extends PbMessageSerializer {
+    override def toProto[T >: PbMessage](): RollFrameGrpc.Store = {
+      val b = RollFrameGrpc.Store.newBuilder().setName(rfStore.name)
+        .setNamespace(rfStore.namespace).setType(rfStore.storeType).setPartitionSize(rfStore.partitionSize)
+      if (rfStore.path != null) b.setPath(rfStore.path)
+      b.build()
+    }
+  }
+
+  implicit class RfStoreDeserializer(p: RollFrameGrpc.Store) extends PbMessageDeserializer {
+    override def fromProto[T >: RpcMessage](): RfStore = RfStore(p.getName, p.getNamespace,p.getPartitionSize,
+      path = p.getPath, storeType = p.getType)
+  }
+
 }
