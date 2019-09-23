@@ -21,6 +21,8 @@ import com.webank.eggroll.core.constant.StringConstants
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.serdes.DefaultScalaFunctorSerdes
 
+import scala.collection.mutable
+
 class RollPair() {
   def mapValues(inputJob: ErJob): ErStore = {
     // f: Array[Byte] => Array[Byte]
@@ -28,17 +30,26 @@ class RollPair() {
 
     val inputStore = inputJob.inputs.head
     val inputLocator = inputStore.storeLocator
-    val outputLocator = inputLocator.copy(name = "testoutput")
+    val outputLocator = inputLocator.copy(name = "testMapValues")
 
-    val inputPartition = ErPartition(id = "0", storeLocator = inputLocator, node = ErServerNode(endpoint = ErEndpoint("localhost", 20001)))
-    val outputPartition = ErPartition(id = "0", storeLocator = outputLocator, node = ErServerNode(endpoint = ErEndpoint("localhost", 20001)))
+    val inputPartitionTemplate = ErPartition(id = "0", storeLocator = inputLocator, node = ErServerNode(endpoint = ErEndpoint("localhost", 20001)))
+    val outputPartitionTemplate = ErPartition(id = "0", storeLocator = outputLocator, node = ErServerNode(endpoint = ErEndpoint("localhost", 20001)))
+
+    val numberOfPartitions = 4
+
+    val inputPartitions = mutable.ListBuffer[ErPartition]()
+    val outputPartitions = mutable.ListBuffer[ErPartition]()
+
+    for (i <- 0 until numberOfPartitions) {
+      inputPartitions += inputPartitionTemplate.copy(id = i.toString)
+      outputPartitions += outputPartitionTemplate.copy(id = i.toString)
+    }
 
     // todo: move to cluster manager
     val inputStoreWithPartitions = inputStore.copy(storeLocator = inputLocator,
-      partitions = List(inputPartition.copy(id = "0"), inputPartition.copy(id = "1")))
-
+      partitions = inputPartitions.toList)
     val outputStoreWithPartitions = inputStore.copy(storeLocator = outputLocator,
-      partitions = List(outputPartition.copy(id = "0"), outputPartition.copy(id = "1")))
+      partitions = outputPartitions.toList)
 
     val job = inputJob.copy(inputs = List(inputStoreWithPartitions), outputs = List(outputStoreWithPartitions))
 

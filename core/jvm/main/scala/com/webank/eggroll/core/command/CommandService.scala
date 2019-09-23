@@ -47,6 +47,6 @@ class CommandService extends CommandServiceGrpc.CommandServiceImplBase with Logg
         data = result)
       responseObserver.onNext(response.toProto())
       responseObserver.onCompleted()
-    });
+    })
   }
 }

@@ -20,12 +20,13 @@ import com.webank.eggroll.core.command.{CommandRouter, CommandService}
 import com.webank.eggroll.core.constant.StringConstants
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.transfer.GrpcTransferService
+import com.webank.eggroll.core.util.Logging
 import com.webank.eggroll.rollpair.component.{EggPair, RollPair}
 import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
 import org.apache.commons.lang3.StringUtils
 import org.junit.Test
 
-class TestRollPair {
+class TestRollPair extends Logging {
   @Test
   def testMapValues(): Unit = {
     def append(value: String): String = {
@@ -88,12 +89,12 @@ class TestRollPair {
     rollServer.start()
 
     // job
-    val mapValuesMethod = classOf[RollPair].getMethod("reduce", classOf[ErJob])
-    val mapValuesServiceName = String.join(
+    val reduceMethod = classOf[RollPair].getMethod("reduce", classOf[ErJob])
+    val reduceServiceName = String.join(
       StringConstants.DOT,
-      StringUtils.strip(mapValuesMethod.getDeclaringClass.getCanonicalName, StringConstants.DOLLAR),
-      mapValuesMethod.getName)
-    CommandRouter.register(mapValuesServiceName, List(classOf[ErJob]))
+      StringUtils.strip(reduceMethod.getDeclaringClass.getCanonicalName, StringConstants.DOLLAR),
+      reduceMethod.getName)
+    CommandRouter.register(reduceServiceName, List(classOf[ErJob]))
 
     val eggServer = NettyServerBuilder
       .forPort(20001)
@@ -103,12 +104,12 @@ class TestRollPair {
     eggServer.start()
 
     // task
-    val mapValuesEggMethod = classOf[EggPair].getMethod("reduce", classOf[ErTask])
-    val mapValuesEggServiceName = String.join(
+    val reduceEggMethod = classOf[EggPair].getMethod("reduce", classOf[ErTask])
+    val reduceEggServiceName = String.join(
       StringConstants.DOT,
-      StringUtils.strip(mapValuesEggMethod.getDeclaringClass.getCanonicalName, StringConstants.DOLLAR),
-      mapValuesEggMethod.getName)
-    CommandRouter.register(mapValuesEggServiceName, List(classOf[ErTask]))
+      StringUtils.strip(reduceEggMethod.getDeclaringClass.getCanonicalName, StringConstants.DOLLAR),
+      reduceEggMethod.getName)
+    CommandRouter.register(reduceEggServiceName, List(classOf[ErTask]))
 
 
     val storeLocator = ErStoreLocator("levelDb", "ns", "name")
@@ -125,5 +126,30 @@ class TestRollPair {
 
 
     val result = rollPair.reduce(job)
+  }
+
+  @Test
+  def startRollPairAsService(): Unit = {
+    val rollServer = NettyServerBuilder.forPort(20000).addService(new CommandService).build
+    rollServer.start()
+
+    // job
+    val mapValuesMethod = classOf[RollPair].getMethod("mapValues", classOf[ErJob])
+    val mapValuesServiceName = String.join(
+      StringConstants.DOT,
+      StringUtils.strip(mapValuesMethod.getDeclaringClass.getCanonicalName, StringConstants.DOLLAR),
+      mapValuesMethod.getName)
+    CommandRouter.register(mapValuesServiceName, List(classOf[ErJob]))
+
+    val reduceMethod = classOf[RollPair].getMethod("reduce", classOf[ErJob])
+    val reduceServiceName = String.join(
+      StringConstants.DOT,
+      StringUtils.strip(reduceMethod.getDeclaringClass.getCanonicalName, StringConstants.DOLLAR),
+      reduceMethod.getName)
+    CommandRouter.register(reduceServiceName, List(classOf[ErJob]))
+
+
+    logInfo("started")
+    Thread.sleep(1200000)
   }
 }

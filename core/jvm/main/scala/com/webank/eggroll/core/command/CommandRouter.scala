@@ -49,8 +49,7 @@ object CommandRouter {
                routeToCallBasedClassInstance: Any = null,
                callBasedClassInstanceInitArgs: List[AnyRef] = null): Unit = this.synchronized {
     if (serviceRouteTable.contains(serviceName)) {
-      throw new IllegalStateException("Service " + serviceName
-        + " has been registered at: " + serviceRouteTable(serviceName))
+      throw new IllegalStateException(s"Service ${serviceName} has been registered at: ${serviceRouteTable(serviceName)}")
     }
 
     val finalRouteToMethodName =
@@ -65,7 +64,7 @@ object CommandRouter {
       finalRouteToClass, finalRouteToMethodName, serviceParamTypes: _*)
 
     if (routeToMethod == null) {
-      throw new NoSuchMethodException("accessible method not found for " + serviceName)
+      throw new NoSuchMethodException(s"accessible method not found for ${serviceName}")
     }
 
     val finalCallBasedInstance =
@@ -83,7 +82,7 @@ object CommandRouter {
   def dispatch(serviceName: String, args: Array[_ <: AnyRef], kwargs: mutable.Map[String, _ <: AnyRef]): Array[Byte] = {
     val target = query(serviceName)
     if (target == null) {
-      throw new IllegalStateException("service " + serviceName + " has not been registered")
+      throw new IllegalStateException(s"service ${serviceName} has not been registered")
     }
 
     val method = target._2
@@ -97,7 +96,7 @@ object CommandRouter {
         if (paramType == classOf[ErTask]) {
           paramTypeName = "ErTask"
           Meta.Task.parseFrom(arg.asInstanceOf[ByteString]).fromProto()
-        } else if (paramTypes == classOf[ErJob]) {
+        } else if (paramType == classOf[ErJob]) {
           paramTypeName = "ErJob"
           Meta.Job.parseFrom(arg.asInstanceOf[ByteString]).fromProto()
         } else {

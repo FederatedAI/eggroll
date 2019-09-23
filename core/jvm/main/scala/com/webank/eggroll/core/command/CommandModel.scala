@@ -42,9 +42,9 @@ class CommandURI(uriString: String) {
     this(src.uri)
   }
 
-  def this(src: ErCommandResponse) {
-    this(src.request.uri)
-  }
+  /*  def this(src: ErCommandResponse) {
+      this(src.request.uri)
+    }*/
 
   if (StringUtils.isBlank(queryString)) {
     queryPairs.put(StringConstants.ROUTE, uriString)

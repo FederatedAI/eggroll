@@ -51,15 +51,15 @@ class GrpcTransferService extends TransferServiceGrpc.TransferServiceImplBase {
 }
 
 object GrpcTransferService {
-  private val map = TrieMap[String, BlockingQueue[Array[Byte]]]()
+  private val dataBuffer = TrieMap[String, BlockingQueue[Array[Byte]]]()
 
-  def getOrCreateQueue(key: String, size: Int = -1): BlockingQueue[Array[Byte]] = this.synchronized {
-    val finalSize = if (size > 0) size else 100
+  def getOrCreateQueue(key: String, maxSize: Int = -1): BlockingQueue[Array[Byte]] = this.synchronized {
+    val finalSize = if (maxSize > 0) maxSize else 100
 
-    if (!map.contains(key)) {
-      map.put(key, new ArrayBlockingQueue[Array[Byte]](finalSize))
+    if (!dataBuffer.contains(key)) {
+      dataBuffer.put(key, new ArrayBlockingQueue[Array[Byte]](finalSize))
     }
-    map(key)
+    dataBuffer(key)
   }
 
 }
@@ -71,12 +71,12 @@ class TransferSendCalleeRequestStreamObserver(callerNotifier: ServerCallStreamOb
 
   private var queue: ArrayBlockingQueue[Array[Byte]] = _
   private var inited = false
-  private var metadata: Transfer.TransferHeader = _
+  private var responseHeader: Transfer.TransferHeader = _
 
   override def onNext(value: Transfer.Batch): Unit = {
     if (!inited) {
       queue = GrpcTransferService.getOrCreateQueue(value.getHeader.getTag).asInstanceOf[ArrayBlockingQueue[Array[Byte]]]
-      metadata = value.getHeader
+      responseHeader = value.getHeader
       inited = true
     }
 
@@ -86,7 +86,7 @@ class TransferSendCalleeRequestStreamObserver(callerNotifier: ServerCallStreamOb
   }
 
   override def onCompleted(): Unit = {
-    callerNotifier.onNext(metadata)
+    callerNotifier.onNext(responseHeader)
     super.onCompleted()
   }
 }

@@ -32,7 +32,7 @@ case class ErEndpoint(@BeanProperty host: String, @BeanProperty port: Int) exten
 
 case class ErServerNode(id: String = StringConstants.EMPTY, endpoint: ErEndpoint = null, tag: String = StringConstants.EMPTY) extends RpcMessage
 
-case class ErServerCluster(id: String = StringConstants.EMPTY, nodes: List[ErServerNode] = List()) extends RpcMessage
+case class ErServerCluster(id: String = StringConstants.EMPTY, nodes: List[ErServerNode] = List(), tag: String = StringConstants.EMPTY) extends RpcMessage
 
 object NetworkingModelPbSerdes {
 
@@ -62,6 +62,7 @@ object NetworkingModelPbSerdes {
     override def toProto[T >: PbMessage](): Meta.ServerCluster = {
       val builder = Meta.ServerCluster.newBuilder()
         .setId(src.id)
+        .setTag(src.tag)
 
       val serializedNodes = src.nodes.map(_.toProto())
 
@@ -88,7 +89,7 @@ object NetworkingModelPbSerdes {
     override def fromProto[T >: RpcMessage](): ErServerCluster = {
       val deserializedNodes = src.getNodesList.asScala.map(_.fromProto()).toList
 
-      ErServerCluster(id = src.getId, nodes = deserializedNodes)
+      ErServerCluster(id = src.getId, nodes = deserializedNodes, tag = src.getTag)
     }
   }
 

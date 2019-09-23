@@ -22,7 +22,7 @@ import com.webank.eggroll.core.constant.StringConstants
 import com.webank.eggroll.core.meta.{ErPartition, ErTask}
 import com.webank.eggroll.core.serdes.DefaultScalaFunctorSerdes
 import com.webank.eggroll.core.transfer.{GrpcTransferService, TransferClient}
-import com.webank.eggroll.rollpair.io.RocksDBSortedKvAdapter
+import com.webank.eggroll.rollpair.io.RocksdbSortedKvAdapter
 
 import scala.collection.mutable
 
@@ -48,8 +48,8 @@ class EggPair {
       val inputPartition = task.inputs.head
       val outputPartition = task.outputs.head
 
-      val inputStore = new RocksDBSortedKvAdapter(getDbPath(inputPartition))
-      val outputStore = new RocksDBSortedKvAdapter(getDbPath(outputPartition))
+      val inputStore = new RocksdbSortedKvAdapter(getDbPath(inputPartition))
+      val outputStore = new RocksdbSortedKvAdapter(getDbPath(outputPartition))
 
       outputStore.writeBatch(inputStore.iterate().map(t => (t._1, f(t._2))))
 
@@ -59,7 +59,7 @@ class EggPair {
       val f: (Array[Byte], Array[Byte]) => Array[Byte] = EggPair.functorSerdes.deserialize(functors.head.body)
 
       val inputPartition = task.inputs.head
-      val inputStore = new RocksDBSortedKvAdapter(getDbPath(inputPartition))
+      val inputStore = new RocksdbSortedKvAdapter(getDbPath(inputPartition))
       var seqOpResult: Array[Byte] = null
 
       for (tmp <- inputStore.iterate()) {
@@ -87,7 +87,7 @@ class EggPair {
         }
 
         val outputPartition = task.outputs.head
-        val outputStore = new RocksDBSortedKvAdapter(getDbPath(outputPartition))
+        val outputStore = new RocksdbSortedKvAdapter(getDbPath(outputPartition))
 
         outputStore.put("result".getBytes(), combOpResult)
         outputStore.close()
@@ -96,8 +96,9 @@ class EggPair {
 
         transferClient.send(data = seqOpResult, tag = transferTag, serverNode = task.outputs.head.node)
       }
-    }
 
+      inputStore.close()
+    }
     result
   }
 

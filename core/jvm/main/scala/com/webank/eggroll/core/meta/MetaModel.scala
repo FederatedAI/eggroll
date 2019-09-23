@@ -28,9 +28,9 @@ case class ErFunctor(name: String = StringConstants.EMPTY, body: Array[Byte]) ex
 
 case class ErStoreLocator(storeType: String, namespace: String, name: String, path: String = StringConstants.EMPTY) extends RpcMessage
 
-case class ErStore(storeLocator: ErStoreLocator, partitions: List[ErPartition] = List.empty) extends RpcMessage
-
 case class ErPartition(id: String, storeLocator: ErStoreLocator, node: ErServerNode) extends RpcMessage
+
+case class ErStore(storeLocator: ErStoreLocator, partitions: List[ErPartition] = List.empty) extends RpcMessage
 
 case class ErJob(id: String, name: String = StringConstants.EMPTY, inputs: List[ErStore], outputs: List[ErStore] = List(), functors: List[ErFunctor]) extends RpcMessage
 
@@ -79,7 +79,7 @@ object MetaModelPbSerdes {
     override def toProto[T >: PbMessage](): Meta.Store = {
       val builder = Meta.Store.newBuilder()
         .setStoreLocator(src.storeLocator.toProto())
-        .addAllPartition(src.partitions.map(_.toProto()).asJava)
+        .addAllPartitions(src.partitions.map(_.toProto()).asJava)
 
       builder.build()
     }
@@ -137,7 +137,7 @@ object MetaModelPbSerdes {
 
   implicit class ErStoreFromPbMessage(src: Meta.Store) extends PbMessageDeserializer {
     override def fromProto[T >: RpcMessage](): ErStore = {
-      ErStore(storeLocator = src.getStoreLocator.fromProto(), src.getPartitionList.asScala.map(_.fromProto()).toList)
+      ErStore(storeLocator = src.getStoreLocator.fromProto(), src.getPartitionsList.asScala.map(_.fromProto()).toList)
     }
   }
 
