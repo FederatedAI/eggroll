@@ -19,12 +19,12 @@ package com.webank.eggroll.rollsite.grpc.service;
 import com.google.common.collect.Maps;
 import com.webank.ai.eggroll.api.networking.proxy.DataTransferServiceGrpc;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
+import com.webank.eggroll.core.util.ErrorUtils;
 import com.webank.eggroll.core.util.ToStringUtils;
 import com.webank.eggroll.rollsite.event.model.PipeHandleNotificationEvent;
 import com.webank.eggroll.rollsite.factory.EventFactory;
 import com.webank.eggroll.rollsite.factory.PipeFactory;
 import com.webank.eggroll.rollsite.factory.ProxyGrpcStreamObserverFactory;
-import com.webank.eggroll.rollsite.grpc.core.utils.ErrorUtils;
 import com.webank.eggroll.rollsite.infra.Pipe;
 import com.webank.eggroll.rollsite.infra.impl.PacketQueueSingleResultPipe;
 import com.webank.eggroll.rollsite.utils.Timeouts;
@@ -52,8 +52,6 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
     private Timeouts timeouts;
     @Autowired
     private EventFactory eventFactory;
-    @Autowired
-    private ErrorUtils errorUtils;
     private Pipe defaultPipe;
     private PipeFactory pipeFactory;
 
@@ -163,7 +161,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
             LOGGER.error(errorMsg);
 
             TimeoutException e = new TimeoutException(errorMsg);
-            responseObserver.onError(errorUtils.toGrpcRuntimeException(e));
+            responseObserver.onError(ErrorUtils.toGrpcRuntimeException(e));
             pipe.onError(e);
         } else if (timeouts.isTimeout(overallTimeout, startTimestamp, loopEndTimestamp)) {
             sb.append("[PULL][SERVER] pull server error: overall process time exceeds timeout: ")
@@ -178,7 +176,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
             LOGGER.error(errorMsg);
 
             TimeoutException e = new TimeoutException(errorMsg);
-            responseObserver.onError(errorUtils.toGrpcRuntimeException(e));
+            responseObserver.onError(ErrorUtils.toGrpcRuntimeException(e));
             pipe.onError(e);
         } else {
             responseObserver.onCompleted();
@@ -256,7 +254,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                 LOGGER.error(errorMsg);
 
                 TimeoutException e = new TimeoutException(errorMsg);
-                responseObserver.onError(errorUtils.toGrpcRuntimeException(e));
+                responseObserver.onError(ErrorUtils.toGrpcRuntimeException(e));
                 pipe.onError(e);
             } else {
                 String errorMsg = "[PULL][SERVER] pull server error: overall process time exceeds timeout: " + overallTimeout
@@ -265,7 +263,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                         + ", loopEndTimestamp: " + loopEndTimestamp;
 
                 TimeoutException e = new TimeoutException(errorMsg);
-                responseObserver.onError(errorUtils.toGrpcRuntimeException(e));
+                responseObserver.onError(ErrorUtils.toGrpcRuntimeException(e));
                 pipe.onError(e);
             }
         } else {

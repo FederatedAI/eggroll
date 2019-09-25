@@ -21,7 +21,6 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Queues;
 import com.google.protobuf.ByteString;
 import com.webank.ai.eggroll.api.driver.clustercomm.ClusterComm;
-import com.webank.eggroll.rollsite.grpc.core.constant.RuntimeConstants;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;

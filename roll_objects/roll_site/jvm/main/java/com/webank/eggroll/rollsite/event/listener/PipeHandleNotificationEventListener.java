@@ -36,8 +36,8 @@ import org.springframework.stereotype.Component;
 @Scope("prototype")
 public class PipeHandleNotificationEventListener implements ApplicationListener<PipeHandleNotificationEvent> {
     private static final Logger LOGGER = LogManager.getLogger(PipeHandleNotificationEventListener.class);
-    @Autowired
-    private ApplicationContext applicationContext;
+    //@Autowired
+    //private ApplicationContext applicationContext;
     @Autowired
     private DataTransferPipedClient client;
 

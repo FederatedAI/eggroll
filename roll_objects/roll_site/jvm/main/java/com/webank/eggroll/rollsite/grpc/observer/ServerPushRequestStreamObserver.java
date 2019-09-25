@@ -16,18 +16,16 @@
 
 package com.webank.eggroll.rollsite.grpc.observer;
 
-import com.google.common.collect.Lists;
 import com.google.protobuf.ByteString;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
+import com.webank.eggroll.core.util.ErrorUtils;
 import com.webank.eggroll.core.util.ToStringUtils;
 import com.webank.eggroll.rollsite.event.model.PipeHandleNotificationEvent;
 import com.webank.eggroll.rollsite.factory.EventFactory;
 import com.webank.eggroll.rollsite.factory.PipeFactory;
-import com.webank.eggroll.rollsite.grpc.core.utils.ErrorUtils;
 import com.webank.eggroll.rollsite.helper.ModelValidationHelper;
 import com.webank.eggroll.rollsite.infra.Pipe;
 import com.webank.eggroll.rollsite.infra.impl.PacketQueuePipe;
-import com.webank.eggroll.rollsite.infra.impl.PacketQueueSingleResultPipe;
 import com.webank.eggroll.rollsite.manager.StatsManager;
 import com.webank.eggroll.rollsite.model.ProxyServerConf;
 import com.webank.eggroll.rollsite.model.StreamStat;
@@ -36,7 +34,6 @@ import com.webank.eggroll.rollsite.utils.Timeouts;
 import io.grpc.Grpc;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
@@ -68,8 +65,6 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
     private StatsManager statsManager;
     @Autowired
     private ProxyServerConf proxyServerConf;
-    @Autowired
-    private ErrorUtils errorUtils;
     @Autowired
     private PipeUtils pipeUtils;
     private Pipe pipe;
@@ -246,7 +241,7 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
         }*/
 
         pipe.onError(throwable);
-        responseObserver.onError(errorUtils.toGrpcRuntimeException(throwable));
+        responseObserver.onError(ErrorUtils.toGrpcRuntimeException(throwable));
         streamStat.onError();
     }
 
