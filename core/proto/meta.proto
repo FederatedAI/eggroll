@@ -16,6 +16,7 @@ message ServerNode {
 message ServerCluster {
   string id = 1;
   repeated ServerNode nodes = 2;
+  string tag = 3;
 }
 
 message Functor {
@@ -32,7 +33,7 @@ message StoreLocator {
 
 message Store {
   StoreLocator storeLocator = 1;
-  repeated Partition partition = 2;
+  repeated Partition partitions = 2;
 }
 
 message Partition {

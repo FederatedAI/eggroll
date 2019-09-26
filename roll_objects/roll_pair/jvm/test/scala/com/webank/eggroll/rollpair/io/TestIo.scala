@@ -21,10 +21,11 @@ import org.junit.Test
 import scala.collection.mutable.ListBuffer
 
 class TestIo {
-  //val dbPath: String = "/tmp/eggroll/levelDb/ns/name/1"
-  //val dbPath: String = "/tmp/eggroll/levelDb/ns/testoutput/1"
-  val dbPath: String = "/tmp/eggroll/levelDb/ns/testReduce/0"
-  val rocksDBSortedKVAdapter: RocksDBSortedKvAdapter = new RocksDBSortedKvAdapter(dbPath)
+  val partitionId = 0
+  val dbPath: String = "/tmp/eggroll/levelDb/ns/name/" + partitionId
+  //val dbPath: String = "/tmp/eggroll/levelDb/ns/testMapValues/0"
+  //val dbPath: String = "/tmp/eggroll/levelDb/ns/testReduce/0"
+  val rocksDBSortedKVAdapter: RocksdbSortedKvAdapter = new RocksdbSortedKvAdapter(dbPath)
 
   val hello = "hello"
   val world = "world"
@@ -50,7 +51,7 @@ class TestIo {
   def testWriteBatch(): Unit = {
     val batch = ListBuffer[(Array[Byte], Array[Byte])]()
     for (i <- 0 to 10) {
-      batch.append((("k-" + i).getBytes(), ("v-" + i).getBytes()))
+      batch.append(((s"k-${partitionId}-${i}").getBytes(), (s"v-${partitionId}-${i}").getBytes()))
     }
 
     rocksDBSortedKVAdapter.writeBatch(batch.iterator)
