@@ -318,7 +318,7 @@ class EggFrame {
         val queuePath ="all2all:" + task.job.jobId + ":" + server.id
         if(server.equals(localServer)){
           for(tmp <- FrameDB.queue(queuePath, transferQueueSize).readAll()) {
-            localBatch = combOp(localBatch, tmp.spareByColumn(batchSize, from, to))
+            localBatch = combOp(localBatch, tmp.spareByColumn(localBatch.rootVectors.length, from, to))
           }
         }
       }

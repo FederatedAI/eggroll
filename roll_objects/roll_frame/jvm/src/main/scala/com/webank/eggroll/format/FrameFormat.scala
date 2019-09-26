@@ -98,27 +98,23 @@ class FrameVector(val fieldVector: FieldVector, virtualRowStart:Int = 0, virtual
   def getArray(index: Int):FrameVector = getList(index)
 //    new FrameArrayVector(fieldVector.asInstanceOf[FixedSizeListVector], index + virtualRowStart)
   // initialSize == -1 means should not allocate new memory
-  def getList(index: Int, initialSize:Int = -1):FrameVector =  fieldVector match {
-    case fv: FixedSizeListVector => new FrameListVector(fv, index + virtualRowStart, index + fv.getListSize)
-    case fv: ListVector =>
-      val typeWidth = fv.getDataVector match {
-        case _:BigIntVector => 8
-        case _:IntVector => 4
-        case _:Float8Vector => 8
-        case _ => throw new UnsupportedOperationException("to do")
-      }
-      if(initialSize > 0) {
-        if(index < fv.getLastSet) {
-          throw new IllegalStateException(s"can not reinit list:lastSet:${fv.getLastSet}, index:$index")
+  def getList(index: Int, initialSize:Int = -1):FrameVector =  {
+    val realIndex = index + virtualRowStart
+    fieldVector match {
+      case fv: FixedSizeListVector => new FrameListVector(fv, realIndex * fv.getListSize, realIndex * fv.getListSize + fv.getListSize)
+      case fv: ListVector =>
+        if(initialSize > 0) {
+          if(realIndex < fv.getLastSet) {
+            throw new IllegalStateException(s"can not reinit list:lastSet:${fv.getLastSet}, index:($index, $realIndex)")
+          }
+          fv.startNewValue(realIndex)
+          fv.endValue(realIndex, initialSize)
         }
-        fv.startNewValue(index)
-        fv.endValue(index, initialSize)
-      }
-      new FrameListVector(fv, fv.getOffsetBuffer.getInt(index * 4) / typeWidth + virtualRowStart,
-        fv.getOffsetBuffer.getInt((index + 1) * 4) / typeWidth)
-    case _ => throw new UnsupportedOperationException("to do")
+        new FrameListVector(fv, fv.getOffsetBuffer.getInt(realIndex * 4),
+          fv.getOffsetBuffer.getInt((realIndex + 1) * 4))
+      case _ => throw new UnsupportedOperationException("to do")
+    }
   }
-//  new FrameArrayVector(fieldVector.asInstanceOf[FixedSizeListVector], index + virtualRowStart)
 
 }
 
