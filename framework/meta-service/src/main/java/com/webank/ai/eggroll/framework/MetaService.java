@@ -58,9 +58,9 @@ public class MetaService extends BaseEggRollServer {
             AccessRedirector accessRedirector = new AccessRedirector();
             serverConf
                     .addService(accessRedirector.redirect(storageMetaService,
-                            "com.webank.ai.eggroll.api.framework.meta.service.StorageMetaService",
-                            "com.webank.ai.fate.api.eggroll.meta.service.StorageMetaService"));
-        }
+                "com.webank.ai.eggroll.api.framework.meta.service.StorageMetaService",
+                "com.webank.ai.fate.api.eggroll.meta.service.StorageMetaService"));
+    }
 
         Server server = serverFactory.createServer(serverConf);
 
