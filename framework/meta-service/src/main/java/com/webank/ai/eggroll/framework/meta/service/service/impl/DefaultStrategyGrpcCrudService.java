@@ -311,7 +311,6 @@ public class DefaultStrategyGrpcCrudService implements GrpcCrudService {
                     }
                 }
             }
-            LOGGER.info("MW: paramType: {}, result: {}", paramType, toStringUtils.toOneLineString(result));
 
             responseObserver.onNext(result);
             responseObserver.onCompleted();
