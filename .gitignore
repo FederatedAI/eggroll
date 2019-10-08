@@ -1,0 +1,11 @@
+# common file patterns
+.DS_STORE
+.idea
+.iml
+.pyc
+__pycache__
+.jar
+.class
+
+# excluded paths
+

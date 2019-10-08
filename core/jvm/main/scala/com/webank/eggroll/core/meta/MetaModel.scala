@@ -24,17 +24,17 @@ import com.webank.eggroll.core.serdes.{PbMessageDeserializer, PbMessageSerialize
 
 import scala.collection.JavaConverters._
 
-case class ErFunctor(name: String, body: Array[Byte]) extends RpcMessage
+case class ErFunctor(name: String = StringConstants.EMPTY, body: Array[Byte]) extends RpcMessage
 
 case class ErStoreLocator(storeType: String, namespace: String, name: String, path: String = StringConstants.EMPTY) extends RpcMessage
 
-case class ErStore(storeLocator: ErStoreLocator, partitions: List[ErPartition] = List.empty) extends RpcMessage
-
 case class ErPartition(id: String, storeLocator: ErStoreLocator, node: ErServerNode) extends RpcMessage
 
-case class ErJob(id: String, inputs: List[ErStore], outputs: List[ErStore], functors: List[ErFunctor]) extends RpcMessage
+case class ErStore(storeLocator: ErStoreLocator, partitions: List[ErPartition] = List.empty) extends RpcMessage
 
-case class ErTask(id: String, inputs: List[ErPartition], outputs: List[ErPartition], job: ErJob) extends RpcMessage {
+case class ErJob(id: String, name: String = StringConstants.EMPTY, inputs: List[ErStore], outputs: List[ErStore] = List(), functors: List[ErFunctor]) extends RpcMessage
+
+case class ErTask(id: String, name: String = StringConstants.EMPTY, inputs: List[ErPartition], outputs: List[ErPartition], job: ErJob) extends RpcMessage {
   def getEndpoint: ErEndpoint = {
     if (inputs == null || inputs.isEmpty) {
       throw new IllegalArgumentException("Partition input is empty")
@@ -79,7 +79,7 @@ object MetaModelPbSerdes {
     override def toProto[T >: PbMessage](): Meta.Store = {
       val builder = Meta.Store.newBuilder()
         .setStoreLocator(src.storeLocator.toProto())
-        .addAllPartition(src.partitions.map(_.toProto()).asJava)
+        .addAllPartitions(src.partitions.map(_.toProto()).asJava)
 
       builder.build()
     }
@@ -100,6 +100,7 @@ object MetaModelPbSerdes {
     override def toProto[T >: PbMessage](): Meta.Job = {
       val builder = Meta.Job.newBuilder()
         .setId(src.id)
+        .setName(src.name)
         .addAllInputs(src.inputs.map(_.toProto()).asJava)
         .addAllOutputs(src.outputs.map(_.toProto()).asJava)
         .addAllFunctors(src.functors.map(_.toProto()).asJava)
@@ -112,6 +113,7 @@ object MetaModelPbSerdes {
     override def toProto[T >: PbMessage](): Meta.Task = {
       val builder = Meta.Task.newBuilder()
         .setId(src.id)
+        .setName(src.name)
         .addAllInputs(src.inputs.map(_.toProto()).asJava)
         .addAllOutputs(src.outputs.map(_.toProto()).asJava)
         .setJob(src.job.toProto())
@@ -135,7 +137,7 @@ object MetaModelPbSerdes {
 
   implicit class ErStoreFromPbMessage(src: Meta.Store) extends PbMessageDeserializer {
     override def fromProto[T >: RpcMessage](): ErStore = {
-      ErStore(storeLocator = src.getStoreLocator.fromProto(), src.getPartitionList.asScala.map(_.fromProto()).toList)
+      ErStore(storeLocator = src.getStoreLocator.fromProto(), src.getPartitionsList.asScala.map(_.fromProto()).toList)
     }
   }
 
@@ -148,6 +150,7 @@ object MetaModelPbSerdes {
   implicit class ErJobFromPbMessage(src: Meta.Job) extends PbMessageDeserializer {
     override def fromProto[T >: RpcMessage](): ErJob = {
       ErJob(id = src.getId,
+        name = src.getName,
         inputs = src.getInputsList.asScala.map(_.fromProto()).toList,
         outputs = src.getOutputsList.asScala.map(_.fromProto()).toList,
         functors = src.getFunctorsList.asScala.map(_.fromProto()).toList)
@@ -157,6 +160,7 @@ object MetaModelPbSerdes {
   implicit class ErTaskFromPbMessage(src: Meta.Task) extends PbMessageDeserializer {
     override def fromProto[T >: RpcMessage](): ErTask = {
       ErTask(id = src.getId,
+        name = src.getName,
         inputs = src.getInputsList.asScala.map(_.fromProto()).toList,
         outputs = src.getOutputsList.asScala.map(_.fromProto()).toList,
         job = src.getJob.fromProto())

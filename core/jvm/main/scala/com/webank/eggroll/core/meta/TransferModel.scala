@@ -21,17 +21,19 @@ import com.webank.eggroll.core.rpc.RpcMessage
 import com.webank.eggroll.core.serdes.{PbMessageDeserializer, PbMessageSerializer}
 import com.webank.eggroll.core.transfer.Transfer
 
-case class ErBatchId(id: String) extends RpcMessage
+case class ErTransferHeader(id: Int, tag: String, totalSize: Long) extends RpcMessage
 
-case class ErBatch(id: ErBatchId, data: Array[Byte]) extends RpcMessage
+case class ErBatch(header: ErTransferHeader, data: Array[Byte]) extends RpcMessage
 
 object TransferModelPbSerdes {
 
   // serializers
-  implicit class ErBatchIdToPbMessage(src: ErBatchId) extends PbMessageSerializer {
-    override def toProto[T >: Message](): Transfer.BatchId = {
-      val builder = Transfer.BatchId.newBuilder()
+  implicit class ErTransferHeaderToPbMessage(src: ErTransferHeader) extends PbMessageSerializer {
+    override def toProto[T >: Message](): Transfer.TransferHeader = {
+      val builder = Transfer.TransferHeader.newBuilder()
         .setId(src.id)
+        .setTag(src.tag)
+        .setTotalSize(src.totalSize)
 
       builder.build()
     }
@@ -40,26 +42,25 @@ object TransferModelPbSerdes {
   implicit class ErBatchToPbMessage(src: ErBatch) extends PbMessageSerializer {
     override def toProto[T >: Message](): Transfer.Batch = {
       val builder = Transfer.Batch.newBuilder()
-        .setId(src.id.toProto())
+        .setHeader(src.header.toProto())
         .setData(ByteString.copyFrom(src.data))
-        .setSize(src.data.size)
+        .setBatchSize(src.data.size)
 
       builder.build()
     }
   }
 
   // deserializers
-  implicit class ErBatchIdFromPbMessage(src: Transfer.BatchId) extends PbMessageDeserializer {
-    override def fromProto[T >: RpcMessage](): ErBatchId = {
-      ErBatchId(id = src.getId)
+  implicit class ErBatchIdFromPbMessage(src: Transfer.TransferHeader) extends PbMessageDeserializer {
+    override def fromProto[T >: RpcMessage](): ErTransferHeader = {
+      ErTransferHeader(id = src.getId, tag = src.getTag, totalSize = src.getTotalSize)
     }
   }
 
   implicit class ErBatchFromPbMessage(src: Transfer.Batch) extends PbMessageDeserializer {
     override def fromProto[T >: RpcMessage](): ErBatch = {
-      ErBatch(id = src.getId.fromProto(), data = src.getData.toByteArray)
+      ErBatch(header = src.getHeader.fromProto(), data = src.getData.toByteArray)
     }
   }
-
 }
 

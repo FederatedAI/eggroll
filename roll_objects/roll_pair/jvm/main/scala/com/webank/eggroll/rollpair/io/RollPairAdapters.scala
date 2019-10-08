@@ -21,7 +21,7 @@ import java.io.File
 import com.webank.eggroll.core.io.adapter.{SortedKvAdapter, SortedKvIterator}
 import org.rocksdb.{Options, RocksDB, WriteBatch, WriteOptions};
 
-class RocksDBSortedKvAdapter(path: String) extends SortedKvAdapter {
+class RocksdbSortedKvAdapter(path: String) extends SortedKvAdapter {
 
   // val path = "/tmp/eggroll/testIo"
   val options = new Options().setCreateIfMissing(true)
@@ -42,8 +42,8 @@ class RocksDBSortedKvAdapter(path: String) extends SortedKvAdapter {
     db.put(key, value)
   }
 
-  override def iterate(): RocksDBIterator = {
-    new RocksDBIterator(this)
+  override def iterate(): RocksdbIterator = {
+    new RocksdbIterator(this)
   }
 
   override def writeBatch(iter: Iterator[(Array[Byte], Array[Byte])]): Unit = {
@@ -66,7 +66,7 @@ class RocksDBSortedKvAdapter(path: String) extends SortedKvAdapter {
   }
 }
 
-class RocksDBIterator(adapter: RocksDBSortedKvAdapter) extends SortedKvIterator {
+class RocksdbIterator(adapter: RocksdbSortedKvAdapter) extends SortedKvIterator {
   val iter = adapter.db.newIterator()
   iter.seekToFirst()
 

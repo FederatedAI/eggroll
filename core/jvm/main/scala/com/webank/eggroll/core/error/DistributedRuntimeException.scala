@@ -26,16 +26,21 @@ class DistributedRuntimeException extends RuntimeException {
 
   def append(t: Throwable): Unit = causes.append(t)
 
-  def check(): Unit = {
+  def raise(): Unit = {
     if (causes.nonEmpty) {
       throw this
     }
+  }
+
+  def check(): Boolean = {
+    causes.isEmpty
   }
 
   override def toString: String = {
     val sb = new StringBuilder
     sb.append("total number of exception(s) occured: ")
       .append(causes.length)
+      .append(StringConstants.LF)
 
     for ((cause, i) <- causes.view.zipWithIndex) {
       sb.append("idx: ")

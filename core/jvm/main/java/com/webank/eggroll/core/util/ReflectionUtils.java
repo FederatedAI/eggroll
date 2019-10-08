@@ -35,7 +35,7 @@ public class ReflectionUtils {
   // todo: use ConstructorUtils but perform proper caching to avoid multiple reflection operations
   public static <T> T newInstance(Class<T> clazz, Object... initArgs)
       throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
-    Constructor<T> constructor = findDeclaredConstructor(clazz, initArgs);
+    //Constructor<T> constructor = findDeclaredConstructor(clazz, initArgs);
 
     return ConstructorUtils.invokeConstructor(clazz, initArgs);
   }

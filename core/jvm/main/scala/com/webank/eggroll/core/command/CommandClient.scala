@@ -28,7 +28,7 @@ import com.webank.eggroll.core.meta.MetaModelPbSerdes._
 import com.webank.eggroll.core.util.Logging
 import io.grpc.stub.StreamObserver
 
-class CommandClient() extends Logging {
+class CommandClient extends Logging {
   def send(task: ErTask, command: CommandURI): ErCommandResponse = {
     val delayedResult = new AwaitSettableFuture[CommandResponse]
 
@@ -43,7 +43,7 @@ class CommandClient() extends Logging {
          request: Command.CommandRequest,
          responseObserver: StreamObserver[CommandResponse])
         => stub.call(request, responseObserver))
-      .setCallerStreamObserverClass(classOf[CommandResponseObserver])
+      .setCallerStreamObserverClassAndInitArgs(classOf[CommandResponseObserver], delayedResult)
       .setStubClass(classOf[CommandServiceGrpc.CommandServiceStub])
 
     val template = new GrpcClientTemplate[
@@ -52,7 +52,7 @@ class CommandClient() extends Logging {
       CommandResponse]()
       .setGrpcClientContext(context)
 
-    val request = ErCommandRequest(seq = task.id.toLong, uri = command.uri.toString, args = Array(task.toProto().toByteArray))
+    val request = ErCommandRequest(seq = 100, uri = command.uri.toString, args = Array(task.toProto().toByteArray))
 
     val result = template.calleeStreamingRpcWithImmediateDelayedResult(request.toProto(), delayedResult)
 

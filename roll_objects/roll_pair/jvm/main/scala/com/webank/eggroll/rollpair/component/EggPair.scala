@@ -16,38 +16,94 @@
 
 package com.webank.eggroll.rollpair.component
 
+import java.util.concurrent.{ArrayBlockingQueue, TimeUnit}
+
 import com.webank.eggroll.core.constant.StringConstants
 import com.webank.eggroll.core.meta.{ErPartition, ErTask}
 import com.webank.eggroll.core.serdes.DefaultScalaFunctorSerdes
-import com.webank.eggroll.rollpair.io.RocksDBSortedKvAdapter
+import com.webank.eggroll.core.transfer.{GrpcTransferService, TransferClient}
+import com.webank.eggroll.rollpair.io.RocksdbSortedKvAdapter
 
 import scala.collection.mutable
 
 class EggPair {
-  def runTask(task: ErTask): Unit = {
-    val functors = task.job.functors
-
-    val results = mutable.ListBuffer()
-
-    if (task.id == "mapValues") {
-      val f: Array[Byte] => Array[Byte] = EggPair.functorSerdes.deserialize(functors.head.body)
-      val inputPartition = task.inputs.head
-      val outputPartition = task.outputs.head
-
-      val inputStore = new RocksDBSortedKvAdapter(getDbPath(inputPartition))
-      val outputStore = new RocksDBSortedKvAdapter(getDbPath(outputPartition))
-
-      outputStore.writeBatch(inputStore.iterate().map(t => (t._1, f(t._2))))
-
-      inputStore.close()
-      outputStore.close()
-    }
+  def mapValues(task: ErTask): ErTask = {
+    runTask(task)
   }
 
   def getDbPath(partition: ErPartition): String = {
     val storeLocator = partition.storeLocator
     val dbPathPrefix = "/tmp/eggroll/"
     dbPathPrefix + String.join(StringConstants.SLASH, storeLocator.storeType, storeLocator.namespace, storeLocator.name, partition.id)
+  }
+
+  def runTask(task: ErTask): ErTask = {
+    val functors = task.job.functors
+
+    val results = mutable.ListBuffer()
+    var result = task
+
+    if (task.name == "mapValues") {
+      val f: Array[Byte] => Array[Byte] = EggPair.functorSerdes.deserialize(functors.head.body)
+      val inputPartition = task.inputs.head
+      val outputPartition = task.outputs.head
+
+      val inputStore = new RocksdbSortedKvAdapter(getDbPath(inputPartition))
+      val outputStore = new RocksdbSortedKvAdapter(getDbPath(outputPartition))
+
+      outputStore.writeBatch(inputStore.iterate().map(t => (t._1, f(t._2))))
+
+      inputStore.close()
+      outputStore.close()
+    } else if (task.name == "reduce") {
+      val f: (Array[Byte], Array[Byte]) => Array[Byte] = EggPair.functorSerdes.deserialize(functors.head.body)
+
+      val inputPartition = task.inputs.head
+      val inputStore = new RocksdbSortedKvAdapter(getDbPath(inputPartition))
+      var seqOpResult: Array[Byte] = null
+
+      for (tmp <- inputStore.iterate()) {
+        if (seqOpResult != null) {
+          seqOpResult = f(seqOpResult, tmp._2)
+        } else {
+          seqOpResult = tmp._2
+        }
+      }
+
+      // send seqOp result to "0"
+      val partitionId = task.inputs.head.id
+      val transferTag = task.job.name
+      if ("0" == partitionId) {
+        val partitionSize = task.job.inputs.head.partitions.size
+        val queue = GrpcTransferService.getOrCreateQueue(transferTag, partitionSize).asInstanceOf[ArrayBlockingQueue[Array[Byte]]]
+
+        var combOpResult = seqOpResult
+
+        for (i <- 1 until partitionSize) {
+          // todo: bind with configurations
+          val seqOpResult = queue.poll(10, TimeUnit.MINUTES)
+
+          combOpResult = f(combOpResult, seqOpResult)
+        }
+
+        val outputPartition = task.outputs.head
+        val outputStore = new RocksdbSortedKvAdapter(getDbPath(outputPartition))
+
+        outputStore.put("result".getBytes(), combOpResult)
+        outputStore.close()
+      } else {
+        val transferClient = new TransferClient()
+
+        transferClient.send(data = seqOpResult, tag = transferTag, serverNode = task.outputs.head.node)
+      }
+
+      inputStore.close()
+    }
+    result
+  }
+
+  def reduce(task: ErTask): ErTask = {
+    runTask(task)
   }
 }
 
