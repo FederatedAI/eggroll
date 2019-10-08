@@ -13,6 +13,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+import _io
 
 import grpc
 import queue
@@ -26,7 +27,7 @@ CONF_KEY_SERVER = "servers"
 
 queue = queue.Queue()
 
-def init(job_id, runtime_conf_path, server_conf_path):
+def init(job_id, runtime_conf_path, server_conf_path, transfer_conf_path):
     global LOGGER
     LOGGER = getLogger()
     server_conf = file_utils.load_json_conf(server_conf_path)
@@ -44,12 +45,12 @@ def init(job_id, runtime_conf_path, server_conf_path):
 
     _party_id = runtime_conf.get(CONF_KEY_LOCAL).get("party_id")
     _role = runtime_conf.get(CONF_KEY_LOCAL).get("role")  #获取local的角色
-    return RollSiteRuntime(job_id, _party_id, _role, runtime_conf, _host, _port)
+    return RollSiteRuntime(job_id, _party_id, _role, runtime_conf, transfer_conf_path,  _host, _port)
 
 
 class RollSiteRuntime(object):
-    def __init__(self, job_id, party_id, role, runtime_conf, host, port):
-        self.trans_conf = file_utils.load_json_conf('roll_site/test/transfer_conf.json')
+    def __init__(self, job_id, party_id, role, runtime_conf, transfer_conf_path, host, port):
+        self.trans_conf = file_utils.load_json_conf(transfer_conf_path)
         self.job_id = job_id
         self.party_id = party_id
         self.role = role
@@ -69,27 +70,53 @@ class RollSiteRuntime(object):
             self.tag = False
             yield proxy_pb2.Packet(header=packet_input.header, body=packet_input.body)
 
-    def generate_message2(self, fp, metadata):
-        print (type(fp))
-        content = fp.read(35)
-        while True:
-            print('-----2----')
-            if not content:
-                content = 'finished'
+    def generate_message2(self, obj, metadata):
+        print (type(obj))
+        if isinstance(obj, _io.TextIOWrapper):
+            print('-----1----')
+            fp = obj
+            content = fp.read(35)
+            while True:
+                print('-----2----')
+                if not content:
+                    content = 'finished'
+                    data = proxy_pb2.Data(key="hello", value=content.encode())
+                    metadata.command.name = 'finished'
+                    metadata.seq += 1
+                    packet = proxy_pb2.Packet(header=metadata, body=data)
+                    yield packet
+                    break
+                else:
+                    data = proxy_pb2.Data(key="hello", value=content.encode())
+                    metadata.seq += 1
+                    packet = proxy_pb2.Packet(header=metadata, body=data)
+                    yield packet
+                content = fp.read(35)
+                print('----3-----')
+        elif isinstance(obj, str):
+            print('-----1##----')
+            chunk_size = 10
+            #full_iter = iter(obj)
+            print(len(obj))
+            begin = 0
+            while True:
+                #content = islice(full_iter, chunk_size)
+                content = obj[begin:(begin + chunk_size)]
+                print(content)
                 data = proxy_pb2.Data(key="hello", value=content.encode())
-                metadata.command.name = 'finished'
                 metadata.seq += 1
                 packet = proxy_pb2.Packet(header=metadata, body=data)
-                yield packet
-                break
-            else:
-                data = proxy_pb2.Data(key="hello", value=content.encode())
-                metadata.seq += 1
-                packet = proxy_pb2.Packet(header=metadata, body=data)
+                begin += chunk_size
+                if begin > len(obj):
+                    content = 'finished'
+                    data = proxy_pb2.Data(key="hello", value=content.encode())
+                    metadata.command.name = 'finished'
+                    metadata.seq += 1
+                    packet = proxy_pb2.Packet(header=metadata, body=data)
+                    yield packet
+                    break
                 yield packet
 
-            content = fp.read(35)
-            print('----3-----')
 
     def __check_authorization(self, name, is_send=True):
         #name传进来的是*号，暂时不做判断

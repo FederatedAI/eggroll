@@ -17,9 +17,9 @@ from api import RuntimeInstance
 from api.cluster import rollsite as cluster_rollsite
 
 
-def init(job_id, runtime_conf, server_conf_path="server_conf.json"):
+def init(job_id, runtime_conf, server_conf_path, transfer_conf_path):
     RuntimeInstance.ROLLSITE = cluster_rollsite.init(job_id=job_id, runtime_conf_path=runtime_conf,
-                                                     server_conf_path=server_conf_path)
+                                                     server_conf_path=server_conf_path, transfer_conf_path=transfer_conf_path)
 
 
 def push(obj, name: str, tag: str, role=None, idx=-1):
