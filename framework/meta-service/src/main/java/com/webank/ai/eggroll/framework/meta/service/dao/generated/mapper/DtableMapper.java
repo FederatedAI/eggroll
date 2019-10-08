@@ -16,8 +16,8 @@
 
 package com.webank.ai.eggroll.framework.meta.service.dao.generated.mapper;
 
+import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable;
 import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.DtableExample;
-import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Dtable;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.session.RowBounds;
 

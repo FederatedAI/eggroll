@@ -16,11 +16,14 @@
 
 package com.webank.ai.eggroll.framework;
 
+import com.webank.ai.eggroll.core.api.grpc.access.AccessRedirector;
+import com.webank.ai.eggroll.core.constant.StringConstants;
 import com.webank.ai.eggroll.core.factory.DefaultGrpcServerFactory;
 import com.webank.ai.eggroll.core.server.BaseEggRollServer;
 import com.webank.ai.eggroll.core.server.DefaultServerConf;
 import com.webank.ai.eggroll.framework.roll.api.grpc.server.RollKvServiceImpl;
 import com.webank.ai.eggroll.framework.roll.api.grpc.server.RollProcessServiceImpl;
+import com.webank.ai.eggroll.framework.roll.api.grpc.server.RollSessionServiceImpl;
 import com.webank.ai.eggroll.framework.storage.service.server.ObjectStoreServicer;
 import io.grpc.Server;
 import io.grpc.ServerInterceptors;
@@ -46,12 +49,28 @@ public class Roll extends BaseEggRollServer {
         DefaultServerConf serverConf = (DefaultServerConf) serverFactory.parseConfFile(confFilePath);
 
         RollKvServiceImpl rollKvService = context.getBean(RollKvServiceImpl.class);
-        ServerServiceDefinition rollKvServiceDefinition = ServerInterceptors.intercept(rollKvService, new ObjectStoreServicer.KvStoreInterceptor());
+        ServerServiceDefinition rollKvServiceDefinition = ServerInterceptors
+                .intercept(rollKvService, new ObjectStoreServicer.KvStoreInterceptor());
         RollProcessServiceImpl processService = context.getBean(RollProcessServiceImpl.class);
+        RollSessionServiceImpl rollSessionService = context.getBean(RollSessionServiceImpl.class);
 
         serverConf
                 .addService(rollKvServiceDefinition)
-                .addService(processService);
+                .addService(processService)
+                .addService(rollSessionService);
+
+        boolean needCompatible = Boolean.valueOf(serverConf.getProperty(StringConstants.EGGROLL_COMPATIBLE_ENABLED, StringConstants.FALSE));
+
+        if (needCompatible) {
+            AccessRedirector accessRedirector = new AccessRedirector();
+
+            serverConf.addService(accessRedirector.redirect(rollKvServiceDefinition,
+                    "com.webank.ai.eggroll.api.storage.KVService",
+                    "com.webank.ai.fate.api.eggroll.storage.KVService"))
+                    .addService(accessRedirector.redirect(processService,
+                            "com.webank.ai.eggroll.api.computing.processor.ProcessService",
+                            "com.webank.ai.fate.api.eggroll.processor.ProcessService"));
+        }
 
         Server server = serverFactory.createServer(serverConf);
 

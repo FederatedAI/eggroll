@@ -24,7 +24,7 @@ import com.webank.ai.eggroll.core.api.grpc.client.crud.StorageMetaClient;
 import com.webank.ai.eggroll.core.constant.RuntimeConstants;
 import com.webank.ai.eggroll.core.error.exception.StorageNotExistsException;
 import com.webank.ai.eggroll.core.io.StoreInfo;
-import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Dtable;
+import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable;
 import com.webank.ai.eggroll.framework.roll.strategy.DispatchPolicy;
 import com.webank.ai.eggroll.framework.roll.util.RollServerUtils;
 import org.apache.commons.lang3.StringUtils;

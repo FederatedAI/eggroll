@@ -16,18 +16,18 @@
 
 package com.webank.ai.eggroll.networking.proxy.manager;
 
-import com.webank.ai.eggroll.networking.proxy.model.ServerConf;
+import com.webank.ai.eggroll.networking.proxy.model.ProxyServerConf;
 import org.springframework.stereotype.Component;
 
 @Component
 public class ServerConfManager {
-    private ServerConf serverConf;
+    private ProxyServerConf proxyServerConf;
 
-    public ServerConf getServerConf() {
-        return serverConf;
+    public ProxyServerConf getProxyServerConf() {
+        return proxyServerConf;
     }
 
-    public void setServerConf(ServerConf serverConf) {
-        this.serverConf = serverConf;
+    public void setProxyServerConf(ProxyServerConf proxyServerConf) {
+        this.proxyServerConf = proxyServerConf;
     }
 }

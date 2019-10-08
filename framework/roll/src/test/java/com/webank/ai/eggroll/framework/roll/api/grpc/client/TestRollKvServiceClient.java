@@ -67,7 +67,7 @@ public class TestRollKvServiceClient {
     public void init() throws Exception {
         serverConf = grpcServerFactory.parseConfFile("/Users/max-webank/git/floss/project/eggroll/roll/src/main/resources/roll.properties");
         storeInfo = StoreInfo.builder()
-                .type(Stores.LMDB.name())
+                .type(Stores.LEVEL_DB.name())
                 .nameSpace(namespace)
                 .tableName(name)
                 .build();
@@ -94,7 +94,7 @@ public class TestRollKvServiceClient {
         Kv.Operand operand = operandBuilder.setKey(ByteString.copyFromUtf8("lemon")).setValue(ByteString.copyFromUtf8("tea")).build();
 
         StoreInfo storeInfo = StoreInfo.builder()
-                .type(Stores.LMDB.name())
+                .type(Stores.LEVEL_DB.name())
                 .nameSpace(namespace)
                 .tableName(name)
                 .build();
@@ -200,9 +200,9 @@ public class TestRollKvServiceClient {
         thread.start();
 
         Kv.Operand operand = null;
-        int resetInterval = 100000;
+        int resetInterval = 10000;
         int curCount = 0;
-        for (int i = 0; i < 100; ++i) {
+        for (int i = 0; i < 100000; ++i) {
             if (curCount <= 0) {
                 curCount = resetInterval;
                 LOGGER.info("current: {}", i);
@@ -252,6 +252,24 @@ public class TestRollKvServiceClient {
 
         Kv.Operand result = rollKvServiceClient.get(operand, storeInfo);
 
+        LOGGER.info("get result: {}", result);
+    }
+
+    @Test
+    public void testMultipleGet() {
+        Kv.Operand.Builder operandBuilder = Kv.Operand.newBuilder();
+
+        Kv.Operand operand = operandBuilder.setKey(ByteString.copyFromUtf8("happy")).setValue(ByteString.copyFromUtf8(String.valueOf(System.currentTimeMillis()))).build();
+
+        StoreInfo storeInfo = StoreInfo.builder()
+                .type(Stores.LMDB.name())
+                .nameSpace(namespace)
+                .tableName(name)
+                .build();
+        Kv.Operand result = null;
+        for (int i = 0; i < 100000; ++i) {
+            result = rollKvServiceClient.get(operand, storeInfo);
+        }
         LOGGER.info("get result: {}", result);
     }
 

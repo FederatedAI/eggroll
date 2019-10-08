@@ -79,3 +79,10 @@ message ReturnStatus {
     int32 code = 1;
     string message = 2;
 }
+
+message SessionInfo {
+    string sessionId = 1;
+    map<string, string> computingEngineConf = 2;
+    string namingPolicy = 3;
+    string tag = 4;
+}

@@ -32,12 +32,13 @@ import com.webank.ai.eggroll.core.error.exception.StorageNotExistsException;
 import com.webank.ai.eggroll.core.io.StoreInfo;
 import com.webank.ai.eggroll.core.model.DtableStatus;
 import com.webank.ai.eggroll.core.model.FragmentStatus;
+import com.webank.ai.eggroll.core.server.ServerConf;
 import com.webank.ai.eggroll.core.utils.ErrorUtils;
 import com.webank.ai.eggroll.core.utils.ToStringUtils;
 import com.webank.ai.eggroll.core.utils.TypeConversionUtils;
-import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Dtable;
-import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Fragment;
-import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Node;
+import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable;
+import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Fragment;
+import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node;
 import com.webank.ai.eggroll.framework.roll.api.grpc.client.StorageServiceClient;
 import com.webank.ai.eggroll.framework.roll.api.grpc.observer.kv.roll.RollKvPutAllServerRequestStreamObserver;
 import com.webank.ai.eggroll.framework.roll.factory.DispatchPolicyFactory;
@@ -102,6 +103,8 @@ public class RollKvServiceImpl extends KVServiceGrpc.KVServiceImplBase {
     private RollServerUtils rollServerUtils;
     @Autowired
     private NodeHelper nodeHelper;
+    @Autowired
+    private ServerConf serverConf;
 
     @PostConstruct
     public void init() {
@@ -126,6 +129,17 @@ public class RollKvServiceImpl extends KVServiceGrpc.KVServiceImplBase {
 
                 if (createResult != null) {
                     fragments = storageMetaClient.createFragmentsForTable(createResult);
+
+                    if (StringConstants.FEDERATION.equals(createTemplate.getTableName())) {
+                        Dtable compatibleTable = typeConversionUtils.toDtable(request);
+                        compatibleTable.setTableName(StringConstants.CLUSTER_COMM);
+                        Dtable compatibleTableCreateResult = storageMetaClient.createTable(compatibleTable);
+                        if (compatibleTableCreateResult != null) {
+                            storageMetaClient.createFragmentsForTable(compatibleTableCreateResult);
+                        } else {
+                            throw new RuntimeException("fail to create compatible table");
+                        }
+                    }
                 }
             } else {
                 fragments = storageMetaClient.getFragmentsByTableId(createTemplate.getTableId());

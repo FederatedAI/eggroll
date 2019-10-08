@@ -19,7 +19,9 @@ package com.webank.ai.eggroll.driver.clustercomm.transfer.communication.producer
 import com.google.protobuf.ByteString;
 import com.webank.ai.eggroll.api.core.BasicMeta;
 import com.webank.ai.eggroll.api.storage.Kv;
+import com.webank.ai.eggroll.core.constant.StringConstants;
 import com.webank.ai.eggroll.core.io.StoreInfo;
+import com.webank.ai.eggroll.core.server.ServerConf;
 import com.webank.ai.eggroll.driver.clustercomm.constant.ClusterCommConstants;
 import com.webank.ai.eggroll.driver.clustercomm.transfer.model.TransferBroker;
 import com.webank.ai.eggroll.driver.clustercomm.transfer.utils.TransferPojoUtils;
@@ -41,6 +43,8 @@ public class ObjectLmdbSendProducer extends BaseProducer {
     private RollKvServiceClient rollKvServiceClient;
     @Autowired
     private TransferPojoUtils transferPojoUtils;
+    @Autowired
+    private ServerConf serverConf;
 
     public ObjectLmdbSendProducer(TransferBroker transferBroker) {
         super(transferBroker);
@@ -62,6 +66,20 @@ public class ObjectLmdbSendProducer extends BaseProducer {
                     .build();
 
             Kv.Operand response = rollKvServiceClient.get(request, storeInfo);
+
+            if (response.getValue().isEmpty()) {
+                Boolean needCompatible = Boolean.valueOf(serverConf.getProperty(StringConstants.EGGROLL_COMPATIBLE_ENABLED, "false"));
+                if (needCompatible) {
+                    LOGGER.info("[CLUSTERCOMM] getting compatible object");
+                    StoreInfo compatibleStoreInfo = StoreInfo.builder()
+                            .nameSpace(storeInfo.getNameSpace())
+                            .tableName(ClusterCommConstants.COMPATIBLE_OBJECT_STORAGE_NAMESPACE)
+                            .type(Stores.LMDB.name())
+                            .build();
+
+                    response = rollKvServiceClient.get(request, compatibleStoreInfo);
+                }
+            }
 
             byte[] value = response.getValue().toByteArray();
 

@@ -22,7 +22,7 @@ import com.webank.ai.eggroll.api.networking.proxy.Proxy;
 import com.webank.ai.eggroll.networking.proxy.factory.DefaultPipeFactory;
 import com.webank.ai.eggroll.networking.proxy.grpc.client.DataTransferPipedClient;
 import com.webank.ai.eggroll.networking.proxy.infra.Pipe;
-import com.webank.ai.eggroll.networking.proxy.model.ServerConf;
+import com.webank.ai.eggroll.networking.proxy.model.ProxyServerConf;
 import com.webank.ai.eggroll.networking.proxy.service.FdnRouter;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -50,7 +50,7 @@ public class TestPipedClient {
     @Autowired
     private FdnRouter fdnRouter;
     @Autowired
-    private ServerConf serverConf;
+    private ProxyServerConf proxyServerConf;
     private Proxy.Topic topic1;
     private Proxy.Topic topic2;
     private Proxy.Topic topic10000;
@@ -92,9 +92,9 @@ public class TestPipedClient {
 
         //fdnRouter.setRouteTable("src/main/resources/route_tables/route_table1.json");
 //office_wifi_office365.pkg, StarUML-3.0.1.dmg, IDiskForMac.dmg
-        serverConf.setSecureClient(true);
-        serverConf.setCaCrtPath("/Users/max-webank/Documents/zmodem/ca.crt");
-        serverConf.setCoordinator("10000");
+        proxyServerConf.setSecureClient(true);
+        proxyServerConf.setCaCrtPath("/Users/max-webank/Documents/zmodem/ca.crt");
+        proxyServerConf.setCoordinator("10000");
 
         InputStream inputStream = new FileInputStream("/Users/max-webank/Downloads/software/IDiskForMac.dmg");
         Pipe pipe = defaultPipeFactory.createInputStreamToPacketUnidirectionalPipe(inputStream, header);

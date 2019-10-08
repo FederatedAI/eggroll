@@ -91,8 +91,8 @@ class ClusterCommRuntime(object):
             raise EnvironmentError("clustercomm should be initialized before use")
         return ClusterCommRuntime.instance
 
-    def __init__(self, job_id, party_id, role, runtime_conf, host, port):
-        self.trans_conf = file_utils.load_json_conf('conf/transfer_conf.json')
+    def __init__(self, job_id, party_id, role, runtime_conf, host, port, trans_conf="eggroll/conf/transfer_conf.json"):
+        self.trans_conf = file_utils.load_json_conf(trans_conf)
         self.job_id = job_id
         self.party_id = party_id
         self.role = role
@@ -160,6 +160,7 @@ class ClusterCommRuntime(object):
                     '''
                     If it is a table, send the meta right away.
                     '''
+                    obj.set_gc_disable()
                     desc = cluster_comm_pb2.TransferDataDesc(transferDataType=cluster_comm_pb2.DTABLE,
                                                            storageLocator=self.__get_locator(obj),
                                                            taggedVariableName=_serdes.serialize(_tagged_key))

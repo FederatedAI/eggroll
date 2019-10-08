@@ -31,7 +31,15 @@
     <packaging>jar</packaging>
     <modelVersion>4.0.0</modelVersion>
 
-    <description>fate proxy on gRPC</description>
+    <description>eggroll application router on gRPC</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.webank.ai.eggroll</groupId>
+            <artifactId>eggroll-core</artifactId>
+            <version>${eggroll.version}</version>
+        </dependency>
+    </dependencies>
 
     <build>
         <plugins>

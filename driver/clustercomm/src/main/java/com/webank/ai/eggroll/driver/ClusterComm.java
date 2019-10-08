@@ -16,16 +16,19 @@
 
 package com.webank.ai.eggroll.driver;
 
+import com.webank.ai.eggroll.core.api.grpc.access.AccessRedirector;
+import com.webank.ai.eggroll.core.constant.StringConstants;
 import com.webank.ai.eggroll.core.factory.DefaultGrpcServerFactory;
 import com.webank.ai.eggroll.core.server.BaseEggRollServer;
 import com.webank.ai.eggroll.core.server.DefaultServerConf;
 import com.webank.ai.eggroll.core.utils.ErrorUtils;
-import com.webank.ai.eggroll.driver.clustercomm.transfer.communication.TransferJobScheduler;
 import com.webank.ai.eggroll.driver.clustercomm.transfer.api.grpc.server.ProxyServiceImpl;
 import com.webank.ai.eggroll.driver.clustercomm.transfer.api.grpc.server.TransferSubmitServiceImpl;
+import com.webank.ai.eggroll.driver.clustercomm.transfer.communication.TransferJobScheduler;
 import com.webank.ai.eggroll.framework.storage.service.server.ObjectStoreServicer;
 import io.grpc.Server;
 import io.grpc.ServerInterceptors;
+import io.grpc.ServerServiceDefinition;
 import org.apache.commons.cli.CommandLine;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -71,11 +74,28 @@ public class ClusterComm extends BaseEggRollServer {
         DefaultServerConf serverConf = (DefaultServerConf) serverFactory.parseConfFile(confFilePath);
 
         ProxyServiceImpl proxyService = context.getBean(ProxyServiceImpl.class);
+        ServerServiceDefinition proxyServiceDefinition = ServerInterceptors.intercept(proxyService, new ObjectStoreServicer.KvStoreInterceptor());
+
         TransferSubmitServiceImpl transferSubmitService = context.getBean(TransferSubmitServiceImpl.class);
+        ServerServiceDefinition transferSubmitServiceDefinition = ServerInterceptors.intercept(transferSubmitService, new ObjectStoreServicer.KvStoreInterceptor());
 
         serverConf
-                .addService(ServerInterceptors.intercept(proxyService, new ObjectStoreServicer.KvStoreInterceptor()))
-                .addService(ServerInterceptors.intercept(transferSubmitService, new ObjectStoreServicer.KvStoreInterceptor()));
+                .addService(proxyServiceDefinition)
+                .addService(transferSubmitServiceDefinition);
+
+        boolean needCompatible = Boolean.valueOf(serverConf.getProperty(StringConstants.EGGROLL_COMPATIBLE_ENABLED, StringConstants.FALSE));
+
+        if (needCompatible) {
+            AccessRedirector accessRedirector = new AccessRedirector();
+
+            serverConf
+                    .addService(accessRedirector.redirect(proxyServiceDefinition,
+                            "com.webank.ai.eggroll.api.networking.proxy.DataTransferService",
+                            "com.webank.ai.fate.api.networking.proxy.DataTransferService"))
+                    .addService(accessRedirector.redirect(transferSubmitServiceDefinition,
+                            "com.webank.ai.eggroll.api.driver.clustercomm.TransferSubmitService",
+                            "com.webank.ai.fate.api.driver.federation.TransferSubmitService"));
+        }
 
         Server server = serverFactory.createServer(serverConf);
 

@@ -22,16 +22,16 @@ CPPFLAGS += -lprotobuf -lgrpc -lgrpc++ $(INCLUDES) $(LDFLAGS)
 CXXFLAGS += -std=c++11
 
 ifeq ($(SYSTEM),Darwin)
-LDFLAGS += -L/usr/local/lib -lprotobuf -lgrpc++ -lgrpc\
+LDFLAGS += -L./third_party/lib -L/usr/local/lib -lprotobuf -lgrpc++ -lgrpc\
            -lgrpc++_reflection\
            -ldl
 else
-LDFLAGS += -L/usr/local/lib -lprotobuf -lgrpc++ -lgrpc\
+LDFLAGS += -L./third_party/lib -L/usr/local/lib -lprotobuf -lgrpc++ -lgrpc\
            -Wl,--no-as-needed -lgrpc++_reflection -Wl,--as-needed\
            -ldl
 endif
 
-LDFLAGS += -L./third_party/lib -llmdb -lboost_system -lboost_filesystem -lglog -lgpr
+LDFLAGS += -llmdb -lboost_system -lboost_filesystem -lglog -lgpr -lrocksdb
 
 PROTOC = `which protoc`
 GRPC_CPP_PLUGIN = `which grpc_cpp_plugin`
@@ -51,7 +51,7 @@ FILES=$(foreach dir,$(DIR),$(wildcard $(dir)/*.c))
 
 SRCS = $(wildcard *.cc)
 OBJS = $(patsubst %.c,%.o,$(FILES))
-VERSION = 0.3
+VERSION = 1.1
 
 vpath %.proto $(PROTOS_PATH)
 vpath %.cc ./src
@@ -61,7 +61,7 @@ vpath %.cc .
 
 all: system-check $(OBJS) $(TARGET)
 
-$(TARGET): lmdb-safe.o storage.pb.o storage.grpc.pb.o ExceptionHandler.o StoreInfo.o LMDBStore.o LMDBServicer.o $(TARGET).o
+$(TARGET): lmdb-safe.o storage.pb.o storage.grpc.pb.o ExceptionHandler.o StoreInfo.o StorageUtils.o SKVStoreManager.o LMDBStore.o RocksDBStore.o SKVServicer.o $(TARGET).o
 	-mv *.pb.cc src
 	$(CXX) -o $@-$(VERSION) $^ $(LDFLAGS) $(INCLUDES)
 	-ln -sf $@-$(VERSION) $@

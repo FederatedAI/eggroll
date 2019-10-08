@@ -29,7 +29,7 @@ import com.webank.ai.eggroll.core.model.impl.SingleDelayedResult;
 import com.webank.ai.eggroll.core.utils.ErrorUtils;
 import com.webank.ai.eggroll.core.utils.ToStringUtils;
 import com.webank.ai.eggroll.core.utils.TypeConversionUtils;
-import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Node;
+import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node;
 import com.webank.ai.eggroll.framework.roll.api.grpc.observer.kv.storage.*;
 import com.webank.ai.eggroll.framework.roll.api.grpc.processor.caller.StorageKvPutAllRequestStreamProcessor;
 import com.webank.ai.eggroll.framework.roll.factory.RollKvCallModelFactory;
@@ -110,7 +110,7 @@ public class StorageServiceClient {
     public void putAll(OperandBroker operandBroker, StoreInfo storeInfo, Node node) {
         boolean needReset = true;
         boolean hasError = false;
-        int resetInterval = 1000;
+        int resetInterval = 5000;
         int remaining = resetInterval;
         int resetCount = 0;
 

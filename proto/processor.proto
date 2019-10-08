@@ -17,6 +17,7 @@
 syntax = "proto3";
 import "kv.proto";
 import "storage-basic.proto";
+import "basic-meta.proto";
 
 
 package com.webank.ai.eggroll.api.computing.processor;
@@ -36,6 +37,7 @@ message UnaryProcess {
     TaskInfo info = 1;
     com.webank.ai.eggroll.api.storage.StorageLocator operand = 2;
     ProcessConf conf = 3;
+    com.webank.ai.eggroll.api.core.SessionInfo session = 20;
 }
 
 message BinaryProcess {
@@ -43,6 +45,7 @@ message BinaryProcess {
     com.webank.ai.eggroll.api.storage.StorageLocator left = 2;
     com.webank.ai.eggroll.api.storage.StorageLocator right = 3;
     ProcessConf conf = 4;
+    com.webank.ai.eggroll.api.core.SessionInfo session = 20;
 }
 
 service ProcessService {
@@ -51,6 +54,7 @@ service ProcessService {
     rpc join (BinaryProcess) returns (com.webank.ai.eggroll.api.storage.StorageLocator);
     rpc reduce (UnaryProcess) returns (stream com.webank.ai.eggroll.api.storage.Operand);
     rpc mapPartitions (UnaryProcess) returns (com.webank.ai.eggroll.api.storage.StorageLocator);
+    rpc mapPartitions2 (UnaryProcess) returns (com.webank.ai.eggroll.api.storage.StorageLocator);
     rpc glom (UnaryProcess) returns (com.webank.ai.eggroll.api.storage.StorageLocator);
     rpc sample (UnaryProcess) returns (com.webank.ai.eggroll.api.storage.StorageLocator);
 

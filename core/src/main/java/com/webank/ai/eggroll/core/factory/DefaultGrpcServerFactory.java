@@ -75,10 +75,6 @@ public class DefaultGrpcServerFactory implements GrpcServerFactory {
 
         }
 
-        for (BindableService service : defaultServerConf.getBindableServices()) {
-            serverBuilder.addService(service);
-        }
-
         for (ServerServiceDefinition service : defaultServerConf.getServerServiceDefinitions()) {
             serverBuilder.addService(service);
         }

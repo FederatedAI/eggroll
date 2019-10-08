@@ -271,7 +271,7 @@ public class Fragment implements Serializable {
         if (getClass() != that.getClass()) {
             return false;
         }
-        com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Fragment other = (com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Fragment) that;
+        com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Fragment other = (com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Fragment) that;
         return (this.getFragmentId() == null ? other.getFragmentId() == null : this.getFragmentId().equals(other.getFragmentId()))
                 && (this.getTableId() == null ? other.getTableId() == null : this.getTableId().equals(other.getTableId()))
                 && (this.getNodeId() == null ? other.getNodeId() == null : this.getNodeId().equals(other.getNodeId()))

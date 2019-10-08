@@ -18,7 +18,7 @@ package com.webank.ai.eggroll.networking.proxy;
 
 import com.webank.ai.eggroll.networking.proxy.factory.GrpcServerFactory;
 import com.webank.ai.eggroll.networking.proxy.factory.LocalBeanFactory;
-import com.webank.ai.eggroll.networking.proxy.model.ServerConf;
+import com.webank.ai.eggroll.networking.proxy.model.ProxyServerConf;
 import io.grpc.Server;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -36,23 +36,23 @@ public class Main2 {
 
         int port = 9000;
 
-        ServerConf serverConf = context.getBean(ServerConf.class);
+        ProxyServerConf proxyServerConf = context.getBean(ProxyServerConf.class);
 
-        serverConf.setSecureServer(true);
-        serverConf.setServerCrtPath("src/main/resources/certs/server.crt");
-        serverConf.setServerKeyPath("src/main/resources/certs/server-private.pem");
+        proxyServerConf.setSecureServer(true);
+        proxyServerConf.setServerCrtPath("src/main/resources/certs/server.crt");
+        proxyServerConf.setServerKeyPath("src/main/resources/certs/server-private.pem");
 
-        serverConf.setSecureClient(true);
+        proxyServerConf.setSecureClient(true);
 
-        serverConf.setRouteTablePath("src/main/resources/route_tables/route_table3.json");
-        serverConf.setPort(port);
-        serverConf.setCoordinator("webank");
+        proxyServerConf.setRouteTablePath("src/main/resources/route_tables/route_table3.json");
+        proxyServerConf.setPort(port);
+        proxyServerConf.setCoordinator("webank");
 
         LOGGER.info("Server started listening on port: {}", port);
 
-        Server server = serverFactory.createServer(serverConf);
+        Server server = serverFactory.createServer(proxyServerConf);
 
-        LOGGER.info("server conf: {}", serverConf);
+        LOGGER.info("server conf: {}", proxyServerConf);
 
         server.start();
         server.awaitTermination();

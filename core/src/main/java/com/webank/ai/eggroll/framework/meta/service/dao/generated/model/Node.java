@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model;
+package com.webank.ai.eggroll.framework.meta.service.dao.generated.model;
 
 import java.io.Serializable;
 import java.util.Date;

@@ -1,5 +1,4 @@
-#
-#  Copyright 2019 The Eggroll Authors. All Rights Reserved.
+#  Copyright (c) 2019 - now, Eggroll Authors. All Rights Reserved.
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
@@ -12,25 +11,32 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-#
 
 import argparse
 import sys
 import time
 from concurrent import futures
-from eggroll.api.utils import log_utils, cloudpickle, eggroll_serdes
+from eggroll.api.utils import log_utils, cloudpickle
 import grpc
 import lmdb
 from cachetools import cached
 from grpc._cython import cygrpc
+from eggroll.api.utils import eggroll_serdes
 from cachetools import LRUCache
-from eggroll.api.proto import kv_pb2, processor_pb2, processor_pb2_grpc, storage_basic_pb2
+from eggroll.api.proto import kv_pb2, kv_pb2_grpc, processor_pb2, processor_pb2_grpc, storage_basic_pb2, node_manager_pb2, node_manager_pb2_grpc
+from eggroll.api.proto import basic_meta_pb2
 import os
 import numpy as np
 import hashlib
 import threading
+import traceback
+from multiprocessing import Process,Queue
+from collections import Iterable
+from eggroll.computing.storage_adapters import LmdbAdapter, RocksdbAdapter, SkvNetworkAdapter
+
 
 _ONE_DAY_IN_SECONDS = 60 * 60 * 24
+_ONE_MIN_IN_SECONDS = 60
 
 log_utils.setDirectory()
 LOGGER = log_utils.getLogger()
@@ -38,367 +44,30 @@ LOGGER = log_utils.getLogger()
 PROCESS_RECV_FORMAT = "method {} receive task: {}"
 
 PROCESS_DONE_FORMAT = "method {} done response: {}"
-LMDB_MAP_SIZE = 16 * 4_096 * 244_140        # follows storage-service-cxx's config here
-DEFAULT_DB = b'main'
-DELIMETER = '-'
-DELIMETER_ENCODED = DELIMETER.encode()
 
 
-def generator(serdes: eggroll_serdes.ABCSerdes, cursor):
-    for k, v in cursor:
-        yield serdes.deserialize(k), serdes.deserialize(v)
+CHUNK_PARALLEL = 0
 
-
-class Processor(processor_pb2_grpc.ProcessServiceServicer):
-
-    def __init__(self, data_dir):
-        self._serdes = eggroll_serdes.get_serdes()
-        Processor.TEMP_DIR = os.sep.join([data_dir, 'lmdb_temporary'])
-        Processor.DATA_DIR = os.sep.join([data_dir, 'lmdb'])
-
-    @cached(cache=LRUCache(maxsize=100))
-    def get_function(self, function_bytes):
-        eggroll_serdes.bytes_security_check(function_bytes)
+def _exception_logger(func):
+    def wrapper(*args, **kw):
         try:
-            return cloudpickle.loads(function_bytes)
+            return func(*args, **kw)
         except:
-            import pickle
-            return pickle._loads(function_bytes)
+            msg ="\n====detail start====\n" +  traceback.format_exc() + "\n====detail end====\n"
+            LOGGER.error(msg)
+            raise RuntimeError(msg)
+    return wrapper
 
-    def map(self, request, context):
-        LOGGER.debug(PROCESS_RECV_FORMAT.format('map', request))
-        task_info = request.info
-        _mapper, _serdes = self.get_function_and_serdes(task_info)
-        op = request.operand
-        rtn = self.__create_output_storage_locator(op, task_info, request.conf, False)
+def generator(serds, cursor):
+    for k, v in cursor:
+        yield serds.deserialize(k), serds.deserialize(v)
 
-        src_db_path = Processor.get_path(op)
-        dst_db_path = Processor.get_path(rtn)
-        with MDBEnv(dst_db_path, create_if_missing=True) as dst_env, \
-                MDBEnv(src_db_path, create_if_missing=True) as src_env:
-            with src_env.begin(db=Processor.get_default_db(src_env)) as src_txn, \
-                    dst_env.begin(db=Processor.get_default_db(dst_env), write=True) as dst_txn:
-                cursor = src_txn.cursor()
-                for k_bytes, v_bytes in cursor:
-                    k, v = _serdes.deserialize(k_bytes), _serdes.deserialize(v_bytes)
-                    k1, v1 = _mapper(k, v)
-                    dst_txn.put(_serdes.serialize(k1), _serdes.serialize(v1))
-                cursor.close()
-        LOGGER.debug(PROCESS_DONE_FORMAT.format('map', rtn))
-        return rtn
-
-    def mapPartitions(self, request, context):
-        LOGGER.debug(PROCESS_RECV_FORMAT.format('mapPartitions', request))
-        task_info = request.info
-        _mapper, _serdes = self.get_function_and_serdes(task_info)
-        op = request.operand
-
-        rtn = self.__create_output_storage_locator(op, task_info, request.conf, True)
-
-        src_db_path = Processor.get_path(op)
-        dst_db_path = Processor.get_path(rtn)
-        with MDBEnv(dst_db_path, create_if_missing=True) as dst_env, \
-                MDBEnv(src_db_path, create_if_missing=True) as src_env:
-            with src_env.begin(db=Processor.get_default_db(src_env)) as src_txn, \
-                    dst_env.begin(db=Processor.get_default_db(dst_env), write=True) as dst_txn:
-                cursor = src_txn.cursor()
-                v = _mapper(generator(_serdes, cursor))
-                if cursor.last():
-                    k_bytes = cursor.key()
-                    dst_txn.put(k_bytes, _serdes.serialize(v))
-                cursor.close()
-        LOGGER.debug(PROCESS_DONE_FORMAT.format('mapPartitions', rtn))
-        return rtn
-
-    def mapValues(self, request, context):
-        LOGGER.debug(PROCESS_RECV_FORMAT.format('mapValues', request))
-        task_info = request.info
-        is_in_place_computing = self.__get_in_place_computing(request)
-
-        _mapper, _serdes = self.get_function_and_serdes(task_info)
-        op = request.operand
-
-        rtn = self.__create_output_storage_locator(op, task_info, request.conf, True)
-        src_db_path = Processor.get_path(op)
-        dst_db_path = Processor.get_path(rtn)
-        with MDBEnv(dst_db_path, create_if_missing=True) as dst_env, \
-                MDBEnv(src_db_path, create_if_missing=True) as src_env:
-            with src_env.begin(db=Processor.get_default_db(src_env)) as src_txn, \
-                    dst_env.begin(db=Processor.get_default_db(dst_env), write=True) as dst_txn:
-                cursor = src_txn.cursor()
-                for k_bytes, v_bytes in cursor:
-                    v = _serdes.deserialize(v_bytes)
-
-                    v1 = _mapper(v)
-                    serialized_value = _serdes.serialize(v1)
-                    dst_txn.put(k_bytes, serialized_value)
-                cursor.close()
-        LOGGER.debug(PROCESS_DONE_FORMAT.format('mapValues', rtn))
-        return rtn
-
-    def join(self, request, context):
-        LOGGER.debug(PROCESS_RECV_FORMAT.format('join', request))
-        task_info = request.info
-        is_in_place_computing = self.__get_in_place_computing(request)
-        _joiner, _serdes = self.get_function_and_serdes(task_info)
-        left_op = request.left
-        right_op = request.right
-
-        rtn = self.__create_output_storage_locator(left_op, task_info, request.conf, True)
-        with MDBEnv(Processor.get_path(left_op), create_if_missing=True) as left_env, \
-                MDBEnv(Processor.get_path(right_op), create_if_missing=True) as right_env, \
-                MDBEnv(Processor.get_path(rtn), create_if_missing=True) as dst_env:
-            small_env, big_env, is_swapped = self._rearrage_binary_envs(left_env, right_env)
-            with small_env.begin(db=Processor.get_default_db(small_env)) as left_txn, \
-                    big_env.begin(db=Processor.get_default_db(big_env)) as right_txn, \
-                    dst_env.begin(db=Processor.get_default_db(dst_env), write=True) as dst_txn:
-                cursor = left_txn.cursor()
-                for k_bytes, v1_bytes in cursor:
-                    v2_bytes = right_txn.get(k_bytes)
-                    if v2_bytes is None:
-                        if is_in_place_computing:
-                            dst_txn.delete(k_bytes)
-                        continue
-                    v1 = _serdes.deserialize(v1_bytes)
-                    v2 = _serdes.deserialize(v2_bytes)
-                    v3 = self._run_user_binary_logic(_joiner, v1, v2, is_swapped)
-                    dst_txn.put(k_bytes, _serdes.serialize(v3))
-                cursor.close()
-        LOGGER.debug(PROCESS_DONE_FORMAT.format('join', rtn))
-        return rtn
-
-    def reduce(self, request, context):
-        LOGGER.debug(PROCESS_RECV_FORMAT.format('reduce', request))
-        task_info = request.info
-
-        _reducer, _serdes = self.get_function_and_serdes(task_info)
-        op = request.operand
-        value = None
-        source_db_path = Processor.get_path(op)
-        with MDBEnv(source_db_path, create_if_missing=True) as src_env:
-            result_key_bytes = None
-            with src_env.begin(db=Processor.get_default_db(src_env)) as src_txn:
-                cursor = src_txn.cursor()
-                for k_bytes, v_bytes in cursor:
-                    v = _serdes.deserialize(v_bytes)
-                    if value is None:
-                        value = v
-                    else:
-                        value = _reducer(value, v)
-                    result_key_bytes = k_bytes
-            rtn = kv_pb2.Operand(key=result_key_bytes, value=_serdes.serialize(value))
-            yield rtn
-            LOGGER.debug(PROCESS_DONE_FORMAT.format('reduce', value))
-
-    def glom(self, request, context):
-        LOGGER.debug(PROCESS_RECV_FORMAT.format('glom', request))
-        task_info = request.info
-
-        op = request.operand
-        _serdes = self._serdes
-        src_db_path = Processor.get_path(op)
-        rtn = self.__create_output_storage_locator(op, task_info, request.conf, False)
-        with MDBEnv(src_db_path, create_if_missing=True) as src_env, \
-                MDBEnv(Processor.get_path(rtn), create_if_missing=True) as dst_env:
-            with src_env.begin(db=Processor.get_default_db(src_env)) as src_txn, \
-                    dst_env.begin(db=Processor.get_default_db(dst_env), write=True) as dst_txn:
-                cursor = src_txn.cursor()
-                v_list = []
-                k_bytes = None
-                for k, v in cursor:
-                    v_list.append((_serdes.deserialize(k), _serdes.deserialize(v)))
-                    k_bytes = k
-                if k_bytes is not None:
-                    dst_txn.put(k_bytes, _serdes.serialize(v_list))
-        LOGGER.debug(PROCESS_DONE_FORMAT.format('glom', rtn))
-        return rtn
-
-    def sample(self, request, context):
-        LOGGER.debug(PROCESS_RECV_FORMAT.format('send', request))
-        task_info = request.info
-
-        op = request.operand
-        _func, _serdes = self.get_function_and_serdes(task_info)
-        fraction, seed = _func()
-        source_db_path = Processor.get_path(op)
-        rtn = self.__create_output_storage_locator(op, task_info, request.conf, False)
-
-        with MDBEnv(Processor.get_path(rtn), create_if_missing=True) as dst_env, \
-                MDBEnv(source_db_path, create_if_missing=True) as src_env:
-            with src_env.begin(db=Processor.get_default_db(src_env)) as src_txn:
-                with dst_env.begin(db=Processor.get_default_db(dst_env), write=True) as dst_txn:
-                    cursor = src_txn.cursor()
-                    cursor.first()
-                    random_state = np.random.RandomState(seed)
-                    for k, v in cursor:
-                        if random_state.rand() < fraction:
-                            dst_txn.put(k, v)
-        LOGGER.debug(PROCESS_DONE_FORMAT.format('sample', rtn))
-        return rtn
-
-    def subtractByKey(self, request, context):
-        LOGGER.debug(PROCESS_RECV_FORMAT.format('subtractByKey', request))
-        task_info = request.info
-        is_in_place_computing = self.__get_in_place_computing(request)
-        left_op = request.left
-        right_op = request.right
-        rtn = self.__create_output_storage_locator(left_op, task_info, request.conf, True)
-        with MDBEnv(Processor.get_path(left_op), create_if_missing=True) as left_env, \
-                MDBEnv(Processor.get_path(right_op), create_if_missing=True) as right_env, \
-                MDBEnv(Processor.get_path(rtn), create_if_missing=True) as dst_env:
-            with left_env.begin(db=Processor.get_default_db(left_env)) as left_txn, \
-                    right_env.begin(db=Processor.get_default_db(right_env)) as right_txn, \
-                    dst_env.begin(db=Processor.get_default_db(dst_env), write=True) as dst_txn:
-                cursor = left_txn.cursor()
-                for k_bytes, left_v_bytes in cursor:
-                    right_v_bytes = right_txn.get(k_bytes)
-                    if right_v_bytes is None:
-                        if not is_in_place_computing:       # add to new table (not in-place)
-                            dst_txn.put(k_bytes, left_v_bytes)
-                    else:                                   # delete in existing table (in-place)
-                        if is_in_place_computing:
-                            dst_txn.delete(k_bytes)
-                cursor.close()
-        LOGGER.debug(PROCESS_DONE_FORMAT.format('subtractByKey', rtn))
-        return rtn
-
-    def filter(self, request, context):
-        LOGGER.debug(PROCESS_RECV_FORMAT.format('filter', request))
-        task_info = request.info
-        is_in_place_computing = self.__get_in_place_computing(request)
-
-        _filter, _serdes = self.get_function_and_serdes(task_info)
-        op = request.operand
-
-        rtn = self.__create_output_storage_locator(op, task_info, request.conf, True)
-
-        src_db_path = Processor.get_path(op)
-        dst_db_path = Processor.get_path(rtn)
-        with MDBEnv(dst_db_path, create_if_missing=True) as dst_env, \
-                MDBEnv(src_db_path, create_if_missing=True) as src_env:
-            with src_env.begin(db=Processor.get_default_db(src_env)) as src_txn, \
-                    dst_env.begin(db=Processor.get_default_db(dst_env), write=True) as dst_txn:
-                cursor = src_txn.cursor()
-                for k_bytes, v_bytes in cursor:
-                    k = _serdes.deserialize(k_bytes)
-                    v = _serdes.deserialize(v_bytes)
-                    if _filter(k, v):
-                        if not is_in_place_computing:
-                            dst_txn.put(k_bytes, v_bytes)
-                    else:
-                        if is_in_place_computing:
-                            dst_txn.delete(k_bytes)
-                cursor.close()
-        LOGGER.debug(PROCESS_DONE_FORMAT.format('filter', rtn))
-        return rtn
-
-    def union(self, request, context):
-        LOGGER.debug(PROCESS_RECV_FORMAT.format('union', request))
-        task_info = request.info
-        is_in_place_computing = self.__get_in_place_computing(request)
-        _func, _serdes = self.get_function_and_serdes(task_info)
-        left_op = request.left
-        right_op = request.right
-
-        rtn = self.__create_output_storage_locator(left_op, task_info, request.conf, True)
-        with MDBEnv(Processor.get_path(left_op), create_if_missing=True) as left_env, \
-                MDBEnv(Processor.get_path(right_op), create_if_missing=True) as right_env, \
-                MDBEnv(Processor.get_path(rtn), create_if_missing=True) as dst_env:
-            with left_env.begin(db=Processor.get_default_db(left_env)) as left_txn, \
-                    right_env.begin(db=Processor.get_default_db(right_env)) as right_txn, \
-                    dst_env.begin(db=Processor.get_default_db(dst_env), write=True) as dst_txn:
-                # process left op
-                left_cursor = left_txn.cursor()
-                for k_bytes, left_v_bytes in left_cursor:
-                    right_v_bytes = right_txn.get(k_bytes)
-                    if right_v_bytes is None:
-                        if not is_in_place_computing:                           # add left-only to new table
-                            dst_txn.put(k_bytes, left_v_bytes)
-                    else:                                                       # update existing k-v
-                        left_v = _serdes.deserialize(left_v_bytes)
-                        right_v = _serdes.deserialize(right_v_bytes)
-                        final_v = self._run_user_binary_logic(_func, left_v, right_v, False)
-                        dst_txn.put(k_bytes, _serdes.serialize(final_v))
-                left_cursor.close()
-
-                # process right op
-                right_cursor = right_txn.cursor()
-                for k_bytes, right_v_bytes in right_cursor:
-                    final_v_bytes = dst_txn.get(k_bytes)
-                    if final_v_bytes is None:
-                        dst_txn.put(k_bytes, right_v_bytes)
-                right_cursor.close()
-        LOGGER.debug(PROCESS_DONE_FORMAT.format('union', rtn))
-        return rtn
-
-    def flatMap(self, request, context):
-        LOGGER.debug(PROCESS_RECV_FORMAT.format('flatMap', request))
-        task_info = request.info
-
-        _func, _serdes = self.get_function_and_serdes(task_info)
-        op = request.operand
-        rtn = self.__create_output_storage_locator(op, task_info, request.conf, False)
-
-        src_db_path = Processor.get_path(op)
-        dst_db_path = Processor.get_path(rtn)
-        with MDBEnv(dst_db_path, create_if_missing=True) as dst_env, \
-                MDBEnv(src_db_path, create_if_missing=True) as src_env:
-            with src_env.begin(db=Processor.get_default_db(src_env)) as src_txn, \
-                    dst_env.begin(db=Processor.get_default_db(dst_env), write=True) as dst_txn:
-                cursor = src_txn.cursor()
-                for k_bytes, v_bytes in cursor:
-                    k = _serdes.deserialize(k_bytes)
-                    v = _serdes.deserialize(v_bytes)
-                    map_result = _func(k, v)
-                    for result_k, result_v in map_result:
-                        dst_txn.put(_serdes.serialize(result_k), _serdes.serialize(result_v))
-                cursor.close()
-        LOGGER.debug(PROCESS_DONE_FORMAT.format('flatMap', rtn))
-        return rtn
-
-    def get_function_and_serdes(self, task_info: processor_pb2.TaskInfo):
-        _function_bytes = task_info.function_bytes
-        return self.get_function(_function_bytes), self._serdes
-
-    """
-    @staticmethod
-    def get_environment(path, create_if_missing=True):
-        if create_if_missing:
-            os.makedirs(path, exist_ok=True)
-        return lmdb.open(path, create=create_if_missing, max_dbs=1, sync=False, map_size=LMDB_MAP_SIZE)
-    """
-
-    @staticmethod
-    def get_path(d_table: storage_basic_pb2.StorageLocator):
-        return Processor._do_get_path(d_table.type, d_table.namespace, d_table.name, d_table.fragment)
-
-    @staticmethod
-    def _do_get_path(db_type, namespace, table, fragment):
-        if db_type == storage_basic_pb2.IN_MEMORY:
-            path = os.sep.join([Processor.TEMP_DIR, namespace, table, str(fragment)])
-        else:
-            path = os.sep.join([Processor.DATA_DIR, namespace, table, str(fragment)])
-        return path
-
-    @staticmethod
-    def get_default_db(env):
-        return env.open_db(DEFAULT_DB)
-
-    def _rearrage_binary_envs(self, left_env, right_env):
-        """
-
-        :param left_env:
-        :param right_env:
-        :return: small_env, big_env, is_swapped
-        """
-        with left_env.begin(db=Processor.get_default_db(left_env)) as left_txn, right_env.begin(db=Processor.get_default_db(right_env)) as right_txn:
-            left_stat = left_txn.stat()
-            right_stat = right_txn.stat()
-
-            if left_stat['entries'] <= right_stat['entries']:
-                return left_env, right_env, False
-            else:
-                return right_env, left_env, True
+class RollPairProcessor(processor_pb2_grpc.ProcessServiceServicer):
+    # options:
+    #   eggroll.storage.data_dir
+    #   eggroll.storage.port
+    def __init__(self, options):
+        self.options = options
 
     def _run_user_binary_logic(self, func, left, right, is_swap):
         if is_swap:
@@ -406,107 +75,352 @@ class Processor(processor_pb2_grpc.ProcessServiceServicer):
         else:
             return func(left, right)
 
-    def __create_output_storage_locator(self, src_op, task_info, process_conf, is_in_place_computing_effective):
-        if is_in_place_computing_effective:
-            if self.__get_in_place_computing_from_task_info(task_info):
-                return src_op
+    def _get_in_place_computing(self, request):
+        return request.info.isInPlaceComputing
 
-        naming_policy = process_conf.namingPolicy
-        LOGGER.info('naming policy in processor: {}'.format(naming_policy))
-        if naming_policy == 'ITER_AWARE':
-            storage_name = DELIMETER.join([src_op.namespace, src_op.name, storage_basic_pb2.StorageType.Name(src_op.type)])
-            name_ba = bytearray(storage_name.encode())
-            name_ba.extend(DELIMETER_ENCODED)
-            name_ba.extend(task_info.function_bytes)
-
-            name = hashlib.md5(name_ba).hexdigest()
+    def _create_adapter(self, storage_loc: storage_basic_pb2.StorageLocator, create_if_missing=True, via_network=False):
+        adapter = None
+        adapter_opts = {"create_if_missing": create_if_missing}
+        if via_network:
+            # local only
+            adapter_opts["host"] = "127.0.0.1"
+            adapter_opts["port"] = self.options["eggroll.storage.port"]
+            adapter_opts["store_type"] = storage_basic_pb2.StorageType.Name(storage_loc.type)
+            adapter_opts["name"] = storage_loc.name
+            adapter_opts["namespace"] = storage_loc.namespace
+            adapter_opts["fragment"] = str(storage_loc.fragment)
+            adapter = SkvNetworkAdapter(adapter_opts)
+        elif storage_loc.type == storage_basic_pb2.LEVEL_DB:
+            LOGGER.info("rocksdb adapter")
+            sub_data_dir = 'in_memory' if storage_loc.type == storage_basic_pb2.IN_MEMORY else "level_db" 
+            adapter_opts["path"] = os.sep.join([self.options["eggroll.storage.data_dir"], sub_data_dir,
+                                                storage_loc.namespace, storage_loc.name, str(storage_loc.fragment)])
+            LOGGER.info("rocksdb path:{}".format(adapter_opts["path"]))
+            adapter = RocksdbAdapter(adapter_opts)
+        elif storage_loc.type in (storage_basic_pb2.IN_MEMORY, storage_basic_pb2.LMDB):
+            LOGGER.info("lmdb adapter")
+            sub_data_dir = 'in_memory' if storage_loc.type == storage_basic_pb2.IN_MEMORY else "lmdb"
+            adapter_opts["path"] = os.sep.join([self.options["eggroll.storage.data_dir"], sub_data_dir,
+                                                storage_loc.namespace, storage_loc.name, str(storage_loc.fragment)])
+            adapter = LmdbAdapter(adapter_opts)
         else:
-            name = task_info.function_id
+            raise NotImplementedError()
+        LOGGER.info("create adapter:" + str(adapter) + "  " + str(adapter_opts))
+        return adapter
 
+    def _create_serde(self):
+        return eggroll_serdes.get_serdes()
+
+    def _create_output_storage_locator(self, src_op, task_info, process_conf, support_inplace):
+        if support_inplace and task_info.isInPlaceComputing:
+            return src_op
+        name = task_info.function_id
         return storage_basic_pb2.StorageLocator(namespace=task_info.task_id, name=name,
                                                 fragment=src_op.fragment,
                                                 type=storage_basic_pb2.IN_MEMORY)
 
-    def __get_in_place_computing(self, request):
-        return request.info.isInPlaceComputing
+    def _create_functor(self, task_info: processor_pb2.TaskInfo):
+        if task_info.function_bytes == b'blank':
+            return None
+        try:
+            return cloudpickle.loads(task_info.function_bytes)
+        except:
+            import pickle
+            return pickle._loads(task_info.function_bytes)
 
-    def __get_in_place_computing_from_task_info(self, task_info):
-        return task_info.isInPlaceComputing
+    def _method_wrapper(self,action, func, req, ctx, ret_loc):
+        def process_wrapper(req_type, func, result, req):
+            try:
+                req_pb =  processor_pb2.UnaryProcess() if req_type == "UnaryProcess" else processor_pb2.BinaryProcess()
+                req_pb.ParseFromString(req)
+                #TODO context serialize?
+                func(req_pb, None)
+                result.put("ok")
+            except :
+                err_str = traceback.format_exc()
+                LOGGER.error(err_str)
+                result.put("error:" + err_str)
+        req_type = req.DESCRIPTOR.name
+        detail_info = [self, " ", action  , ",request:[task_id:" , req.info.task_id , ",function_id:",
+                       req.info.function_id, ",function_bytes:", req.info.function_bytes[:100],
+                       ",conf:" + str(req.conf).replace("\n"," ")]
+        if req_type == "UnaryProcess":
+            detail_info.append(str(req.operand).replace("\n", " "))
+        elif req_type == "BinaryProcess":
+            detail_info.append(str(req.left).replace("\n", " "))
+            detail_info.append(str(req.right).replace("\n", " "))
+        else:
+            raise ValueError("unsupported:" + str(type(req)))
+        detail_info = " ".join(str(n) for n in detail_info)
+        LOGGER.info("grpc start:" + detail_info)
+        if CHUNK_PARALLEL == 0:
+            LOGGER.info("method wrapper")
+            func(req, ctx)
+        elif CHUNK_PARALLEL == 1:
+            result = Queue()
+            #TODO: grpc ctx?
+            proc = Process(target=process_wrapper, args=(req_type, func, result, req.SerializeToString()))
+            proc.start()
+            proc.join()
+            status = result.get()
+            if status != "ok":
+                raise RuntimeError(status)
+        else:
+            raise NotImplementedError()
+        LOGGER.info("grpc end:" + detail_info + " ret_loc:" + str(ret_loc).replace("\n", " "))
 
-class MDBEnv(object):
-    env_lock = threading.Lock()
-    env_dict = dict()
-    count_dict = dict()
+    def _run_unary_unwrapper(self, action, func, req, context, support_inplace):
+        dst_loc = self._create_output_storage_locator(req.operand, req.info, req.conf, support_inplace)
+        is_inplace = req.info.isInPlaceComputing
+        src_adapter, dst_adapter, src_serde, dst_serde, functor = self._create_adapter(req.operand, via_network=False), \
+                                                        self._create_adapter(dst_loc, via_network=False), \
+                                                        self._create_serde(),self._create_serde(), \
+                                                        self._create_functor(req.info)
+        with src_adapter as src_db, dst_adapter as dst_db:
+            with src_db.iteritems() as src_it, dst_db.new_batch() as dst_wb:
+                return func(src_it, dst_wb,src_serde, dst_serde, functor,is_inplace)
 
-    def __init__(self, path, create_if_missing=True):
-        with MDBEnv.env_lock:
-            if path not in MDBEnv.env_dict:
-                if create_if_missing:
-                    os.makedirs(path, exist_ok=True)
-                self.env = lmdb.open(path, create=create_if_missing, max_dbs=128, sync=False, map_size=LMDB_MAP_SIZE)
+    def _run_unary(self, action, func, req, context, support_inplace):
+        def run_unary_wrapper(req, context):
+            is_inplace = req.info.isInPlaceComputing
+            src_adapter, dst_adapter, src_serde, dst_serde, functor = self._create_adapter(req.operand, via_network=False), \
+                                                            self._create_adapter(dst_loc, via_network=False), \
+                                                            self._create_serde(),self._create_serde(), \
+                                                            self._create_functor(req.info)
+            with src_adapter as src_db, dst_adapter as dst_db:
+                with src_db.iteritems() as src_it, dst_db.new_batch() as dst_wb:
+                    LOGGER.info("src:{}, dst:{}".format(src_adapter, dst_adapter))
+                    func(src_it, dst_wb,src_serde, dst_serde, functor,is_inplace)
+        dst_loc = self._create_output_storage_locator(req.operand, req.info, req.conf, support_inplace)
+        dst_loc.type = req.operand.type
+        self._method_wrapper(action, run_unary_wrapper, req, context, dst_loc)
+        return dst_loc
 
-                MDBEnv.count_dict[path] = 0
-                MDBEnv.env_dict[path] = self.env
-            else:
-                self.env = MDBEnv.env_dict[path]
-            self.path = path
-            MDBEnv.count_dict[path] = MDBEnv.count_dict[path] + 1
+    def _run_binary(self, action, func, req,context, support_inplace):
+        def run_binary_wrapper(req, context):
+            is_inplace = req.info.isInPlaceComputing
+            left_adapter, right_adapter, dst_adapter, left_serde, right_serde, dst_serde = \
+                self._create_adapter(req.left), \
+                self._create_adapter(req.right), \
+                self._create_adapter(dst_loc), \
+                self._create_serde(), self._create_serde(),self._create_serde()
+            functor = self._create_functor(req.info)
+            with left_adapter as left_db, right_adapter as right_db, dst_adapter as dst_db:
+                with left_db.iteritems() as left_it, right_db.iteritems() as right_it, \
+                        dst_db.new_batch() as dst_wb:
+                    func(left_it, right_it, dst_wb, left_serde, right_serde, dst_serde, functor, is_inplace)
+        dst_loc = self._create_output_storage_locator(req.left, req.info, req.conf, support_inplace)
+        dst_loc.type = req.right.type 
+        self._method_wrapper(action, run_binary_wrapper, req, context, dst_loc)
+        return dst_loc
 
-    def __enter__(self):
-        return self.env
+    @_exception_logger
+    def mapValues(self, request, context):
+        def mapValues_wrapper(src_it, dst_wb,src_serde, dst_serde, functor, is_in_place_computing):
+            if is_in_place_computing:
+                raise NotImplementedError()
+            for k_bytes, v_bytes in src_it:
+                v = functor(src_serde.deserialize(v_bytes))
+                dst_wb.put(k_bytes, dst_serde.serialize(v))
+        return self._run_unary("mapValues", mapValues_wrapper, request,context, True)
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        with MDBEnv.env_lock:
-            if self.env:
-                count = MDBEnv.count_dict[self.path]
-                if not count or count - 1 <= 0:
-                    del MDBEnv.env_dict[self.path]
-                    del MDBEnv.count_dict[self.path]
+    @_exception_logger
+    def map(self, request, context):
+        def map_wrapper(src_it, dst_wb,src_serde, dst_serde, functor, is_in_place_computing):
+            if is_in_place_computing:
+                raise NotImplementedError()
+            for k_bytes, v_bytes in src_it:
+                k = src_serde.deserialize(k_bytes)
+                v = src_serde.deserialize(v_bytes)
+                k1, v1 = functor(k, v)
+                dst_wb.put(dst_serde.serialize(k1), dst_serde.serialize(v1))
+        return self._run_unary("map", map_wrapper, request,context, False)
+
+    @_exception_logger
+    def mapPartitions(self, request, context):
+        def mapPartitions_wrapper(src_it, dst_wb,src_serde, dst_serde, functor, is_in_place_computing):
+            if is_in_place_computing:
+                raise NotImplementedError()
+            v = functor(generator(src_serde, src_it))
+            if src_it.last():
+                k_bytes = src_it.key()
+                dst_wb.put(k_bytes, dst_serde.serialize(v))
+        return self._run_unary("mapPartitions", mapPartitions_wrapper, request,context, False)
+
+    @_exception_logger
+    def mapPartitions2(self, request, context):
+        def mapPartitions2_wrapper(src_it, dst_wb,src_serde, dst_serde, functor, is_in_place_computing):
+            if is_in_place_computing:
+                raise NotImplementedError()
+            v = functor(generator(src_serde, src_it))
+            if src_it.last():
+                if isinstance(v, Iterable):
+                    for k1, v1 in v:
+                        dst_wb.put(dst_serde.serialize(k1), dst_serde.serialize(v1))
                 else:
-                    MDBEnv.count_dict[self.path] = count - 1
-                self.env = None
+                    k_bytes = src_it.key()
+                    dst_wb.put(k_bytes, dst_serde.serialize(v))
+        return self._run_unary("mapPartitions2", mapPartitions2_wrapper, request,context, False)
 
-    def __del__(self):
-        with MDBEnv.env_lock:
-            if self.env:
-                count = MDBEnv.count_dict[self.path]
-                if not count or count - 1 <= 0:
-                    del MDBEnv.env_dict[self.path]
-                    del MDBEnv.count_dict[self.path]
+    @_exception_logger
+    def flatMap(self, request, context):
+        def flatMap_wrapper(src_it, dst_wb, src_serde, dst_serde, functor, is_in_place_computing):
+            if is_in_place_computing:
+                raise NotImplementedError()
+            for k_bytes, v_bytes in src_it:
+                for k2, v2 in functor(src_serde.deserialize(k_bytes), src_serde.deserialize(v_bytes)):
+                    dst_wb.put(dst_serde.serialize(k2), dst_serde.serialize(v2))
+        return self._run_unary("flatMap", flatMap_wrapper, request, context, False)
+
+    @_exception_logger
+    def union(self, request, context):
+        def union_wrapper(left_it, right_it, dst_wb, left_serde, right_serde, dst_serde, functor, is_in_place_computing):
+            if is_in_place_computing:
+                raise NotImplementedError()
+            for k_bytes, left_v_bytes in left_it:
+                right_v_bytes = right_it.adapter.get(k_bytes)
+                if right_v_bytes is None:
+                    if not is_in_place_computing:                           # add left-only to new table
+                        dst_wb.put(k_bytes, left_v_bytes)
+                else:                                                       # update existing k-v
+                    left_v = left_serde.deserialize(left_v_bytes)
+                    right_v = right_serde.deserialize(right_v_bytes)
+                    final_v = functor(left_v, right_v)
+                    dst_wb.put(k_bytes, dst_serde.serialize(final_v))
+
+            for k_bytes, right_v_bytes in right_it:
+                final_v_bytes = dst_wb.adapter.get(k_bytes)
+                if final_v_bytes is None:
+                    dst_wb.put(k_bytes, right_v_bytes)
+        return self._run_binary("union", union_wrapper, request, context, True)
+
+    @_exception_logger
+    def join(self, request, context):
+        def join_wrapper(left_it, right_it, dst_wb, left_serde, right_serde, dst_serde, functor, is_in_place_computing):
+            for k_bytes, left_v_bytes in left_it:
+                right_v_bytes = right_it.adapter.get(k_bytes)
+                if right_v_bytes is None:
+                    if not is_in_place_computing:
+                        dst_wb.delete(k_bytes, left_v_bytes)
+                    continue
+                left_v = left_serde.deserialize(left_v_bytes)
+                right_v = right_serde.deserialize(right_v_bytes)
+                v = functor(left_v, right_v)
+                dst_wb.put(k_bytes, dst_serde.serialize(v))
+        return self._run_binary("join", join_wrapper, request, context, True)
+
+    @_exception_logger
+    def subtractByKey(self, request, context):
+        def subtractByKey_wrapper(left_it, right_it, dst_wb, left_serde, right_serde, dst_serde, functor, is_in_place_computing):
+            for k_bytes, left_v_bytes in left_it:
+                right_v_bytes = right_it.adapter.get(k_bytes)
+                if right_v_bytes is None:
+                    if not is_in_place_computing:
+                        dst_wb.put(k_bytes, left_v_bytes)
                 else:
-                    MDBEnv.count_dict[self.path] = count - 1
-                self.env = None
+                    if is_in_place_computing:
+                        dst_wb.delete(k_bytes)           
+        return self._run_binary("subtractByKey", subtractByKey_wrapper, request, context, True)
+
+    @_exception_logger
+    def reduce(self, request, context):
+        def reduce_wrapper(src_it, dst_wb,src_serde, dst_serde, functor, is_in_place_computing):
+            if is_in_place_computing:
+                raise NotImplementedError()
+            value = None
+            result_key_bytes = None
+            for k_bytes, v_bytes in src_it:
+                v = src_serde.deserialize(v_bytes)
+                if value is None:
+                    value = v
+                else:
+                    value = functor(value, v)
+                result_key_bytes = k_bytes
+            return kv_pb2.Operand(key=result_key_bytes, value=dst_serde.serialize(value))
+        rtn = self._run_unary_unwrapper("reduce", reduce_wrapper, request, context, False)
+
+        yield rtn
+
+    @_exception_logger
+    def glom(self, request, context):
+        
+        def glom_wrapper(src_it, dst_wb, src_serde, dst_serde, functor, is_in_place_computing):
+            k_tmp = None
+            v_list = []
+            for k_bytes, v_bytes in src_it:
+                v_list.append((src_serde.deserialize(k_bytes), src_serde.deserialize(v_bytes)))
+                k_tmp = k_bytes
+            if k_tmp is not None:
+                dst_wb.put(k_tmp, dst_serde.serialize(v_list))
+        return self._run_unary("glom", glom_wrapper, request, context, False)
+    
+    @_exception_logger 
+    def sample(self, request, context):
+        def sample_wrapper(src_it, dst_wb, src_serde, dst_serde, functor, is_in_place_computing):
+            fraction, seed = functor()
+            src_it.first()
+            random_state = np.random.RandomState(seed)
+            for k_bytes, v_bytes in src_it:
+                if random_state.rand() < fraction:
+                    dst_wb.put(k_bytes, v_bytes)
+        return self._run_unary("sample", sample_wrapper, request, context, False)
+    
+    @_exception_logger
+    def filter(self, request, context):
+        def filter_wrapper(src_it, dst_wb, src_serde, dst_serde, functor, is_in_place_computing):
+            for k_bytes, v_bytes in src_it:
+                k = src_serde.deserialize(k_bytes)
+                v = src_serde.deserialize(v_bytes)
+                if functor(k, v):
+                    if not is_in_place_computing:
+                        dst_wb.put(k_bytes, v_bytes)
+                else:
+                    if is_in_place_computing:
+                        dst_wb.delete(k_bytes)
+        return self._run_unary("filter", filter_wrapper, request, context, False)
 
 
-def serve(socket, config):
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=5),
+def serve(args):
+    port = args.port
+    data_dir = args.data_dir
+    node_manager = args.node_manager
+    engine_addr = args.engine_addr
+    socket = args.socket
+
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=1),
                          options=[(cygrpc.ChannelArgKey.max_send_message_length, -1),
                                   (cygrpc.ChannelArgKey.max_receive_message_length, -1)])
-    LOGGER.info("server starting at {}, data_dir: {}".format(socket, config))
-    processor = Processor(config)
+    opts = {"eggroll.storage.data_dir": data_dir, "eggroll.storage.port":"20106"}
+    processor = RollPairProcessor(opts)
     processor_pb2_grpc.add_ProcessServiceServicer_to_server(
         processor, server)
-    server.add_insecure_port(socket)
+    server.add_insecure_port("{}:{}".format(engine_addr, port))
     server.start()
+    
+    channel = grpc.insecure_channel(target=node_manager,
+                                    options=[('grpc.max_send_message_length', -1),
+                                    ('grpc.max_receive_message_length', -1)])
+    node_manager_stub = node_manager_pb2_grpc.NodeManagerServiceStub(channel)
 
     try:
+        port = int(port)
+        heartbeat_request = node_manager_pb2.HeartbeatRequest(endpoint=basic_meta_pb2.Endpoint(ip=engine_addr, port=port))
         while True:
-            time.sleep(_ONE_DAY_IN_SECONDS)
+            node_manager_stub.heartbeat(heartbeat_request)
+            time.sleep(_ONE_MIN_IN_SECONDS)
     except KeyboardInterrupt:
         server.stop(0)
         sys.exit(0)
-
 
 if __name__ == '__main__':
     from datetime import datetime
     parser = argparse.ArgumentParser()
     parser.add_argument('-s', '--socket')
     parser.add_argument('-p', '--port', default=7888)
-    parser.add_argument('-d', '--dir', default=os.path.dirname(os.path.realpath(__file__)))
+    parser.add_argument('-d', '--data-dir', default=os.path.dirname(os.path.realpath(__file__)))
+    parser.add_argument('-m', '--node-manager', default="localhost:7888")
+    parser.add_argument('-a', "--engine-addr", default="localhost")
     args = parser.parse_args()
-
     LOGGER.info("started at {}".format(str(datetime.now())))
-    if args.socket:
-        serve(args.socket, args.dir)
-    else:
-        serve("[::]:{}".format(args.port), args.dir)
+    serve(args) 
+

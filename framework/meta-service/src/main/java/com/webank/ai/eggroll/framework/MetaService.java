@@ -16,6 +16,8 @@
 
 package com.webank.ai.eggroll.framework;
 
+import com.webank.ai.eggroll.core.api.grpc.access.AccessRedirector;
+import com.webank.ai.eggroll.core.constant.StringConstants;
 import com.webank.ai.eggroll.core.factory.DefaultGrpcServerFactory;
 import com.webank.ai.eggroll.core.server.BaseEggRollServer;
 import com.webank.ai.eggroll.core.server.DefaultServerConf;
@@ -45,9 +47,20 @@ public class MetaService extends BaseEggRollServer {
         StorageMetaServiceImpl storageMetaService = context.getBean(StorageMetaServiceImpl.class);
         ClusterMetaServiceImpl clusterMetaService = context.getBean(ClusterMetaServiceImpl.class);
 
+
         serverConf
                 .addService(storageMetaService)
                 .addService(clusterMetaService);
+
+        boolean needCompatibility = Boolean.valueOf(serverConf.getProperty(StringConstants.EGGROLL_COMPATIBLE_ENABLED, StringConstants.FALSE));
+
+        if (needCompatibility) {
+            AccessRedirector accessRedirector = new AccessRedirector();
+            serverConf
+                    .addService(accessRedirector.redirect(storageMetaService,
+                            "com.webank.ai.eggroll.api.framework.meta.service.StorageMetaService",
+                            "com.webank.ai.fate.api.eggroll.meta.service.StorageMetaService"));
+        }
 
         Server server = serverFactory.createServer(serverConf);
 

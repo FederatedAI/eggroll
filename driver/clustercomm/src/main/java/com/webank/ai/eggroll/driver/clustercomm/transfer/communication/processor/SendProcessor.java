@@ -31,8 +31,8 @@ import com.webank.ai.eggroll.driver.clustercomm.transfer.communication.producer.
 import com.webank.ai.eggroll.driver.clustercomm.transfer.communication.producer.ObjectLmdbSendProducer;
 import com.webank.ai.eggroll.driver.clustercomm.transfer.model.TransferBroker;
 import com.webank.ai.eggroll.driver.clustercomm.transfer.service.ProxySelectionService;
-import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Dtable;
-import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Fragment;
+import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable;
+import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Fragment;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;

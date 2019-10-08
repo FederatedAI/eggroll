@@ -126,7 +126,8 @@ Status LMDBServicer::get(ServerContext *context, const Operand *request, Operand
 
         LMDBStore lmdbStore = getStore(context);
 
-        string_view value = lmdbStore.get(request);
+        string_view value;
+        string_view result = lmdbStore.get(request, value);
 
         response->set_key(request->key());
         response->set_value(value.data(), value.size());

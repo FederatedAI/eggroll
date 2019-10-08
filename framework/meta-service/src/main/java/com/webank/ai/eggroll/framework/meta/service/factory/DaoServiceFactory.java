@@ -20,7 +20,6 @@ package com.webank.ai.eggroll.framework.meta.service.factory;
 import com.webank.ai.eggroll.framework.meta.service.dao.generated.mapper.*;
 import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.*;
 import com.webank.ai.eggroll.framework.meta.service.service.impl.GenericDaoService;
-import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Node;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
@@ -30,37 +29,37 @@ public class DaoServiceFactory {
     @Autowired
     private ApplicationContext applicationContext;
 
-    public GenericDaoService<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Dtable, DtableExample, Long> createDtableDaoService() {
-        GenericDaoService<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Dtable, DtableExample, Long> result = applicationContext.getBean(GenericDaoService.class);
-        result.init(com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Dtable.class, DtableExample.class, Long.class, DtableMapper.class);
+    public GenericDaoService<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable, DtableExample, Long> createDtableDaoService() {
+        GenericDaoService<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable, DtableExample, Long> result = applicationContext.getBean(GenericDaoService.class);
+        result.init(com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable.class, DtableExample.class, Long.class, DtableMapper.class);
 
         return result;
     }
 
-    public GenericDaoService<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Fragment, FragmentExample, Long> createFragmentDaoService() {
-        GenericDaoService<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Fragment, FragmentExample, Long> result = applicationContext.getBean(GenericDaoService.class);
-        result.init(com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Fragment.class, FragmentExample.class, Long.class, FragmentMapper.class);
+    public GenericDaoService<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Fragment, FragmentExample, Long> createFragmentDaoService() {
+        GenericDaoService<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Fragment, FragmentExample, Long> result = applicationContext.getBean(GenericDaoService.class);
+        result.init(com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Fragment.class, FragmentExample.class, Long.class, FragmentMapper.class);
 
         return result;
     }
 
-    public GenericDaoService<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Node, NodeExample, Long> createNodeDaoService() {
-        GenericDaoService<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Node, NodeExample, Long> result = applicationContext.getBean(GenericDaoService.class);
+    public GenericDaoService<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node, NodeExample, Long> createNodeDaoService() {
+        GenericDaoService<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node, NodeExample, Long> result = applicationContext.getBean(GenericDaoService.class);
         result.init(Node.class, NodeExample.class, Long.class, NodeMapper.class);
 
         return result;
     }
 
-    public GenericDaoService<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Task, TaskExample, Long> createTaskDaoService() {
-        GenericDaoService<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Task, TaskExample, Long> result = applicationContext.getBean(GenericDaoService.class);
-        result.init(com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Task.class, TaskExample.class, Long.class, TaskMapper.class);
+    public GenericDaoService<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Task, TaskExample, Long> createTaskDaoService() {
+        GenericDaoService<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Task, TaskExample, Long> result = applicationContext.getBean(GenericDaoService.class);
+        result.init(com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Task.class, TaskExample.class, Long.class, TaskMapper.class);
 
         return result;
     }
 
-    public GenericDaoService<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Result, ResultExample, Long> createResultDaoService() {
-        GenericDaoService<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Result, ResultExample, Long> result = applicationContext.getBean(GenericDaoService.class);
-        result.init(com.webank.ai.eggroll.framework.meta.service.dao.generated.model.model.Result.class, ResultExample.class, Long.class, ResultMapper.class);
+    public GenericDaoService<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Result, ResultExample, Long> createResultDaoService() {
+        GenericDaoService<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Result, ResultExample, Long> result = applicationContext.getBean(GenericDaoService.class);
+        result.init(com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Result.class, ResultExample.class, Long.class, ResultMapper.class);
 
         return result;
     }

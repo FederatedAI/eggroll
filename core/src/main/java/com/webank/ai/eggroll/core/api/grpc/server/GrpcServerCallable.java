@@ -16,6 +16,8 @@
 
 package com.webank.ai.eggroll.core.api.grpc.server;
 
-public interface GrpcServerCallable<T> {
+import java.util.concurrent.Callable;
+
+public interface GrpcServerCallable<T> extends Callable<T> {
     public T run() throws Throwable;
 }

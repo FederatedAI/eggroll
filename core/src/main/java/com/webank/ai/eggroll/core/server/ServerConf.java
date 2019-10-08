@@ -31,4 +31,8 @@ public interface ServerConf {
     public String getIp();
 
     public int getPort();
+
+    public String getProperty(String key);
+
+    public String getProperty(String key, String defaultValue);
 }

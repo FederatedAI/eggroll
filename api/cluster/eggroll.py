@@ -17,38 +17,80 @@
 import uuid
 from functools import partial
 from operator import is_not
-from typing import Iterable
+from typing import Iterable, Sequence
 import time
 import socket
 import random
 
 import grpc
+import copy
 
+from eggroll.api import NamingPolicy, ComputingEngine, StoreType
 from eggroll.api.utils import eggroll_serdes, file_utils
 from eggroll.api.utils.log_utils import getLogger
-from eggroll.api.proto import kv_pb2, kv_pb2_grpc, processor_pb2, processor_pb2_grpc, storage_basic_pb2
+from eggroll.api.proto import kv_pb2, kv_pb2_grpc, processor_pb2, processor_pb2_grpc, storage_basic_pb2, node_manager_pb2, node_manager_pb2_grpc
 from eggroll.api.utils import cloudpickle
 from eggroll.api.utils.core import string_to_bytes, bytes_to_string
 from eggroll.api.utils.iter_utils import split_every
-from eggroll.api.core import EggRollContext
+from eggroll.api.utils.iter_utils import split_every_yield
+from eggroll.api.core import EggrollSession
+from concurrent.futures import ProcessPoolExecutor
+from multiprocessing import cpu_count
 
+EGGROLL_ROLL_HOST = 'eggroll.roll.host'
+EGGROLL_ROLL_PORT = 'eggroll.roll.port'
 
-def init(job_id=None, server_conf_path="eggroll/conf/server_conf.json", eggroll_context=None):
+CHUNK_SIZE_MIN = 10000
+CHUNK_SIZE_DEFAULT = 100000
+
+gc_tag = True
+
+def init(session_id=None, server_conf_path="eggroll/conf/server_conf.json", eggroll_session=None, computing_engine_conf=None, naming_policy=NamingPolicy.DEFAULT, tag=None, job_id=None, chunk_size=CHUNK_SIZE_DEFAULT):
+    if session_id is None:
+        if job_id is not None:
+            session_id = job_id
+        else:
+            session_id = str(uuid.uuid1())
+
     if job_id is None:
-        job_id = str(uuid.uuid1())
+        job_id = session_id
+
+    if chunk_size < CHUNK_SIZE_MIN:
+        chunk_size = CHUNK_SIZE_DEFAULT
+
     global LOGGER
     LOGGER = getLogger()
     server_conf = file_utils.load_json_conf(server_conf_path)
-    _roll_host = server_conf.get("servers").get("roll").get("host")
-    _roll_port = server_conf.get("servers").get("roll").get("port")
 
-    if not eggroll_context:
-        eggroll_context = EggRollContext()
-    _EggRoll(job_id, _roll_host, _roll_port, eggroll_context=eggroll_context)
+    if not eggroll_session:
+        eggroll_session = EggrollSession(session_id=session_id,
+                                         chunk_size=chunk_size,
+                                         computing_engine_conf=computing_engine_conf,
+                                         naming_policy=naming_policy,
+                                         tag=tag)
+
+    eggroll_session.add_conf('eggroll.server.conf.path', server_conf_path)
+    eggroll_session.add_conf(EGGROLL_ROLL_HOST, server_conf.get("servers").get("roll").get("host"))
+    eggroll_session.add_conf(EGGROLL_ROLL_PORT, server_conf.get("servers").get("roll").get("port"))
+
+    eggroll_runtime = _EggRoll(eggroll_session=eggroll_session)
+
+    eggroll_session.set_runtime(ComputingEngine.EGGROLL_DTABLE, eggroll_runtime)
 
 
 def _get_meta(_table):
     return ('store_type', _table._type), ('table_name', _table._name), ('name_space', _table._namespace)
+
+
+def to_pb_store_type(_type : StoreType, persistent=False):
+    result = None
+    if not persistent:
+        result = storage_basic_pb2.IN_MEMORY
+    elif _type == StoreType.LMDB:
+        result = storage_basic_pb2.LMDB
+    elif _type == StoreType.LEVEL_DB:
+        result = storage_basic_pb2.LEVEL_DB
+    return result
 
 
 empty = kv_pb2.Empty()
@@ -64,6 +106,17 @@ class _DTable(object):
         self._partitions = partitions
         self.schema = {}
         self._in_place_computing = in_place_computing
+        self.gc_enable = True
+
+    def __del__(self):
+        if not gc_tag:
+            return
+        if not self.gc_enable or self._type != storage_basic_pb2.StorageType.Name(storage_basic_pb2.IN_MEMORY):
+            return
+        if self._name == 'fragments' or self._name == '__clustercomm__' or self._name == '__status__':
+            return
+        if _EggRoll.instance is not None and not _EggRoll.get_instance().is_stopped():
+            _EggRoll.get_instance().destroy(self)
 
     def __str__(self):
         return "storage_type: {}, namespace: {}, name: {}, partitions: {}, in_place_computing: {}".format(self._type,
@@ -79,15 +132,25 @@ class _DTable(object):
         self._in_place_computing = is_in_place_computing
         return self
 
+    def set_gc_enable(self):
+        self.gc_enable = True
+
+    def set_gc_disable(self):
+        self.gc_enable = False
+
     '''
     Storage apis
     '''
+    def copy(self):
+        return self.mapValues(lambda v: v)
 
-    def save_as(self, name, namespace, partition=None, use_serialize=True, persistent=True):
+    def save_as(self, name, namespace, partition=None, use_serialize=True, persistent=True, persistent_engine=StoreType.LMDB):
         if partition is None:
             partition = self._partitions
-        dup = _EggRoll.get_instance().table(name, namespace, partition=partition, in_place_computing=self.get_in_place_computing(), persistent=persistent)
+        dup = _EggRoll.get_instance().table(name, namespace, partition=partition, in_place_computing=self.get_in_place_computing(), persistent=persistent, persistent_engine=persistent_engine)
+        self.set_gc_disable()
         dup.put_all(self.collect(use_serialize=use_serialize), use_serialize=use_serialize)
+        self.set_gc_enable()
         return dup
 
     def put(self, k, v, use_serialize=True):
@@ -151,13 +214,21 @@ class _DTable(object):
     def map(self, func):
         _intermediate_result = _EggRoll.get_instance().map(self, func)
         return _intermediate_result.save_as(str(uuid.uuid1()), _intermediate_result._namespace,
-                                            partition=_intermediate_result._partitions)
+                                            partition=_intermediate_result._partitions, persistent=False)
 
     def mapValues(self, func):
         return _EggRoll.get_instance().map_values(self, func)
 
     def mapPartitions(self, func):
         return _EggRoll.get_instance().map_partitions(self, func)
+
+    def mapPartitions2(self, func, need_shuffle=True):
+        if need_shuffle:
+            _intermediate_result = _EggRoll.get_instance().map_partitions2(self, func)
+            return _intermediate_result.save_as(str(uuid.uuid1()), _intermediate_result._namespace,
+                                                partition=_intermediate_result._partitions, persistent=False)
+        else:
+            return _EggRoll.get_instance().map_partitions2(self, func)
 
     def reduce(self, func):
         return _EggRoll.get_instance().reduce(self, func)
@@ -200,7 +271,7 @@ class _DTable(object):
 
     @staticmethod
     def _repartition(dtable, partition_num, persistent=False, repartition_policy=None):
-        return dtable.save_as(str(uuid.uuid1()), _EggRoll.get_instance().job_id, partition_num, persistent=persistent)
+        return dtable.save_as(str(uuid.uuid1()), _EggRoll.get_instance().session_id, partition_num, persistent=persistent)
 
 class _EggRoll(object):
     value_serdes = eggroll_serdes.get_serdes()
@@ -208,26 +279,40 @@ class _EggRoll(object):
     unique_id_template = '_EggRoll_%s_%s_%s_%.20f_%d'
     host_name = 'unknown'
     host_ip = 'unknown'
-
+    chunk_size = CHUNK_SIZE_DEFAULT
+    
     @staticmethod
     def get_instance():
         if _EggRoll.instance is None:
             raise EnvironmentError("eggroll should be initialized before use")
         return _EggRoll.instance
 
-    def __init__(self, job_id, host, port, eggroll_context):
+    def get_channel(self):
+        return self.channel
+
+    def __init__(self, eggroll_session):
         if _EggRoll.instance is not None:
             raise EnvironmentError("eggroll should be initialized only once")
+
+        host = eggroll_session.get_conf(EGGROLL_ROLL_HOST)
+        port = eggroll_session.get_conf(EGGROLL_ROLL_PORT)
+        self.chunk_size = eggroll_session.get_chunk_size()
+        self.host = host
+        self.port = port
+
         self.channel = grpc.insecure_channel(target="{}:{}".format(host, port),
                                              options=[('grpc.max_send_message_length', -1),
                                                       ('grpc.max_receive_message_length', -1)])
-        self.job_id = job_id
+        self.session_id = eggroll_session.get_session_id()
         self.kv_stub = kv_pb2_grpc.KVServiceStub(self.channel)
         self.proc_stub = processor_pb2_grpc.ProcessServiceStub(self.channel)
-        self.eggroll_context = eggroll_context
+        self.session_stub = node_manager_pb2_grpc.SessionServiceStub(self.channel)
+        self.eggroll_session = eggroll_session
         _EggRoll.instance = self
 
-        # todo: move to eggrollContext
+        self.session_stub.getOrCreateSession(self.eggroll_session.to_protobuf())
+
+        # todo: move to eggrollSession
         try:
             self.host_name = socket.gethostname()
             self.host_ip = socket.gethostbyname(self.host_name)
@@ -235,10 +320,22 @@ class _EggRoll(object):
             self.host_name = 'unknown'
             self.host_ip = 'unknown'
 
+    def get_eggroll_session(self):
+        return self.eggroll_session
+
+    def stop(self):
+        self.session_stub.stopSession(self.eggroll_session.to_protobuf())
+        self.eggroll_session.run_cleanup_tasks()
+        _EggRoll.instance = None
+        self.channel.close()
+
+    def is_stopped(self):
+        return (self.instance is None)
+
     def table(self, name, namespace, partition=1,
               create_if_missing=True, error_if_exist=False,
-              persistent=True, in_place_computing=False):
-        _type = storage_basic_pb2.LMDB if persistent else storage_basic_pb2.IN_MEMORY
+              persistent=True, in_place_computing=False, persistent_engine=StoreType.LMDB):
+        _type = to_pb_store_type(persistent_engine, persistent)
         storage_locator = storage_basic_pb2.StorageLocator(type=_type, namespace=namespace, name=name)
         create_table_info = kv_pb2.CreateTableInfo(storageLocator=storage_locator, fragmentCount=partition)
         _table = self._create_table(create_table_info)
@@ -248,14 +345,15 @@ class _EggRoll(object):
 
     def parallelize(self, data: Iterable, include_key=False, name=None, partition=1, namespace=None,
                     create_if_missing=True, error_if_exist=False,
-                    persistent=False, chunk_size=100000, in_place_computing=False):
+                    persistent=False, chunk_size=100000, in_place_computing=False, persistent_engine=StoreType.LMDB):
         if namespace is None:
-            namespace = _EggRoll.get_instance().job_id
+            namespace = _EggRoll.get_instance().session_id
         if name is None:
             name = str(uuid.uuid1())
-        storage_locator = storage_basic_pb2.StorageLocator(type=storage_basic_pb2.LMDB, namespace=namespace,
-                                                           name=name) if persistent else storage_basic_pb2.StorageLocator(
-            type=storage_basic_pb2.IN_MEMORY, namespace=namespace, name=name)
+
+        _type = to_pb_store_type(persistent_engine, persistent)
+
+        storage_locator = storage_basic_pb2.StorageLocator(type=_type, namespace=namespace, name=name)
         create_table_info = kv_pb2.CreateTableInfo(storageLocator=storage_locator, fragmentCount=partition)
         _table = self._create_table(create_table_info)
         _table.set_in_place_computing(in_place_computing)
@@ -264,11 +362,11 @@ class _EggRoll(object):
         LOGGER.debug("created table: %s", _table)
         return _table
 
-    def cleanup(self, name, namespace, persistent):
+    def cleanup(self, name, namespace, persistent, persistent_engine=StoreType.LMDB):
         if namespace is None or name is None:
             raise ValueError("neither name nor namespace can be None")
 
-        _type = storage_basic_pb2.LMDB if persistent else storage_basic_pb2.IN_MEMORY
+        _type = to_pb_store_type(persistent_engine, persistent)
 
         storage_locator = storage_basic_pb2.StorageLocator(type=_type, namespace=namespace, name=name)
         _table = _DTable(storage_locator=storage_locator)
@@ -278,7 +376,7 @@ class _EggRoll(object):
         LOGGER.debug("cleaned up: %s", _table)
 
     def generateUniqueId(self):
-        return self.unique_id_template % (self.job_id, self.host_name, self.host_ip, time.time(), random.randint(10000, 99999))
+        return self.unique_id_template % (self.session_id, self.host_name, self.host_ip, time.time(), random.randint(10000, 99999))
 
 
     @staticmethod
@@ -339,14 +437,53 @@ class _EggRoll(object):
         operand = self.kv_stub.putIfAbsent(kv_pb2.Operand(key=k, value=v), metadata=_get_meta(_table))
         return self._deserialize_operand(operand, use_serialize=use_serialize)
 
-    def put_all(self, _table, kvs: Iterable, use_serialize=True, chunk_size=100000, skip_chunk=0):
-        skipped_chunk = 0
-        for chunked_iter in split_every(kvs, chunk_size=chunk_size):
-            if skipped_chunk < skip_chunk:
-                skipped_chunk += 1
-            else:
-                self.kv_stub.putAll(self.__generate_operand(chunked_iter, use_serialize=use_serialize), metadata=_get_meta(_table))
+    def action(_table, host, port, chunked_iter, use_serialize):
+        _table.set_gc_disable()
+        _EggRoll.get_instance().get_channel().close()
+        _EggRoll.get_instance().channel = grpc.insecure_channel(target="{}:{}".format(host, port),
+                                             options=[('grpc.max_send_message_length', -1),
+                                                      ('grpc.max_receive_message_length', -1)])
 
+        _EggRoll.get_instance().kv_stub = kv_pb2_grpc.KVServiceStub(_EggRoll.get_instance().channel)
+        _EggRoll.get_instance().proc_stub = processor_pb2_grpc.ProcessServiceStub(_EggRoll.get_instance().channel)
+
+        operand = _EggRoll.get_instance().__generate_operand(chunked_iter, use_serialize)
+        _EggRoll.get_instance().kv_stub.putAll(operand, metadata=_get_meta(_table))
+
+    def put_all(self, _table, kvs: Iterable, use_serialize=True, chunk_size=100000, skip_chunk=0):
+        global gc_tag
+        gc_tag = False
+        skipped_chunk = 0
+
+        chunk_size = self.chunk_size 
+        if chunk_size < CHUNK_SIZE_MIN:
+            chunk_size = CHUNK_SIZE_DEFAULT
+
+        host = self.host
+        port = self.port
+        process_pool_size = cpu_count()
+
+        with ProcessPoolExecutor(process_pool_size) as executor:
+            if isinstance(kvs, Sequence):      # Sequence
+                for chunked_iter in split_every_yield(kvs, chunk_size):
+                    if skipped_chunk < skip_chunk:
+                        skipped_chunk += 1 
+                    else:
+                        future = executor.submit(_EggRoll.action, _table, host, port, chunked_iter, use_serialize) 
+            else:                              # other Iterable types
+                try:
+                    index = 0
+                    while True:                
+                        chunked_iter = split_every(kvs, index, chunk_size, skip_chunk)
+                        chunked_iter_ = copy.deepcopy(chunked_iter)
+                        next(chunked_iter_)
+                        future = executor.submit(_EggRoll.action, _table, host, port, chunked_iter, use_serialize) 
+                        index += 1
+                except StopIteration as e:
+                    LOGGER.debug("StopIteration")
+            executor.shutdown(wait=True)
+        gc_tag = True
+       
     def delete(self, _table, k, use_serialize=True):
         k = self.kv_to_bytes(k=k, use_serialize=use_serialize)
         operand = self.kv_stub.delOne(kv_pb2.Operand(key=k), metadata=_get_meta(_table))
@@ -381,6 +518,9 @@ class _EggRoll(object):
 
     def map_partitions(self, _table: _DTable, func):
         return self.__do_unary_process_and_create_table(table=_table, user_func=func, stub_func=self.proc_stub.mapPartitions)
+
+    def map_partitions2(self, _table: _DTable, func):
+        return self.__do_unary_process_and_create_table(table=_table, user_func=func, stub_func=self.proc_stub.mapPartitions2)
 
     def reduce(self, _table: _DTable, func):
         unary_p = self.__create_unary_process(table=_table, func=func)
@@ -422,8 +562,8 @@ class _EggRoll(object):
     def flatMap(self, _table: _DTable, func):
         return self.__do_unary_process_and_create_table(table=_table, user_func=func, stub_func=self.proc_stub.flatMap)
 
-    def __create_storage_locator(self, namespace, name, type):
-        return storage_basic_pb2.StorageLocator(namespace=namespace, name=name, type=type)
+    def __create_storage_locator(self, namespace, name, _type):
+        return storage_basic_pb2.StorageLocator(namespace=namespace, name=name, type=_type)
 
     def __create_storage_locator_from_dtable(self, _table: _DTable):
         return self.__create_storage_locator(_table._namespace, _table._name, _table._type)
@@ -435,7 +575,7 @@ class _EggRoll(object):
             func_id = str(uuid.uuid1())
             func_bytes = b'blank'
 
-        return processor_pb2.TaskInfo(task_id=self.job_id,
+        return processor_pb2.TaskInfo(task_id=self.session_id,
                                       function_id=func_id,
                                       function_bytes=func_bytes,
                                       isInPlaceComputing=is_in_place_computing)
@@ -446,7 +586,7 @@ class _EggRoll(object):
 
         return processor_pb2.UnaryProcess(info=task_info,
                                           operand=operand,
-                                          conf=processor_pb2.ProcessConf(namingPolicy=self.eggroll_context.get_naming_policy().name))
+                                          session=self.eggroll_session.to_protobuf())
 
     def __do_unary_process(self, table: _DTable, user_func, stub_func):
         process = self.__create_unary_process(table=table, func=user_func)
@@ -458,7 +598,7 @@ class _EggRoll(object):
         return self._create_table_from_locator(resp, table)
 
 
-    def __create_binary_process(self, left: _DTable, right: _DTable, func):
+    def __create_binary_process(self, left: _DTable, right: _DTable, func, session):
         left_op = self.__create_storage_locator_from_dtable(left)
         right_op = self.__create_storage_locator_from_dtable(right)
         task_info = self.__create_task_info(func=func, is_in_place_computing=left.get_in_place_computing())
@@ -466,10 +606,10 @@ class _EggRoll(object):
         return processor_pb2.BinaryProcess(info=task_info,
                                            left=left_op,
                                            right=right_op,
-                                           conf=processor_pb2.ProcessConf(namingPolicy=self.eggroll_context.get_naming_policy().name))
+                                           session=self.eggroll_session.to_protobuf())
 
     def __do_binary_process(self, left: _DTable, right: _DTable, user_func, stub_func):
-        process = self.__create_binary_process(left=left, right=right, func=user_func)
+        process = self.__create_binary_process(left=left, right=right, func=user_func, session=self.eggroll_session.to_protobuf())
 
         return stub_func(process)
 
