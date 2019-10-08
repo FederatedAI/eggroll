@@ -1,5 +1,6 @@
-# Eggroll
+[<img src="https://github.com/WeBankFinTech/eggroll/blob/release-1.1-build3/logo.png" alt="drawing" width="300">]()
 
+# Eggroll
 
 Eggroll is a multi-paradigm computing framework with integrated infrastructures.
 
