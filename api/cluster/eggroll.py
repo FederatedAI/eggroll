@@ -106,7 +106,8 @@ class _DTable(object):
         self._partitions = partitions
         self.schema = {}
         self._in_place_computing = in_place_computing
-        self.gc_enable = True
+        self.gc_enable = False
+        print("init table name:{}, namespace:{}".format(self._name, self._namespace))
 
     def __del__(self):
         if not gc_tag:
@@ -116,6 +117,7 @@ class _DTable(object):
         if self._name == 'fragments' or self._name == '__clustercomm__' or self._name == '__status__':
             return
         if _EggRoll.instance is not None and not _EggRoll.get_instance().is_stopped():
+            print("del table name:{}, namespace:{}".format(self._name, self._namespace))
             _EggRoll.get_instance().destroy(self)
 
     def __str__(self):

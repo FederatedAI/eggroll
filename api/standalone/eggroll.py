@@ -72,8 +72,8 @@ class Standalone:
     def is_stopped(self):
         return (self.__instance is None)
 
-    def table(self, name, namespace, partition=1, create_if_missing=True, error_if_exist=False, persistent=True, in_place_computing=False):
-        __type = StoreType.LMDB.value if persistent else StoreType.IN_MEMORY.value
+    def table(self, name, namespace, partition=1, create_if_missing=True, error_if_exist=False, persistent=True, in_place_computing=False, persistent_engine=StoreType.LMDB):
+        __type = persistent_engine.value if persistent else StoreType.IN_MEMORY.value
         _table_key = ".".join([__type, namespace, name])
         self.meta_table.put_if_absent(_table_key, partition)
         partition = self.meta_table.get(_table_key)
@@ -524,6 +524,7 @@ class _DTable(object):
         self.schema = {}
         self._in_place_computing = in_place_computing
         self.gc_enable = True
+        print("init table name:{}, namespace:{}".format(self._name, self._namespace))
 
     def __del__(self):
         if not self.gc_enable or self._type != 'IN_MEMORY':
@@ -531,6 +532,7 @@ class _DTable(object):
         if self._name == 'fragments' or self._name == '__clustercomm__' or self._name == '__status__':
             return
         if Standalone.get_instance() is not None and not Standalone.get_instance().is_stopped():
+            print("del table name:{}, namespace:{}".format(self._name, self._namespace))
             self.destroy()
 
     def __str__(self):
