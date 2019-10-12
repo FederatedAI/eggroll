@@ -93,7 +93,9 @@ def is_in_blacklist(_bytes):
     return None
 
 
-def bytes_security_check(_bytes):
+def bytes_security_check(_bytes, need_check=False):
+    if not need_check:
+        return
     blacklisted = is_in_blacklist(_bytes)
     if blacklisted:
         raise RuntimeError('Insecure operation found {}'.format(blacklisted))
