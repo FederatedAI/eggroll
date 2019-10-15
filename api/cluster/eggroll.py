@@ -17,7 +17,7 @@
 import uuid
 from functools import partial
 from operator import is_not
-from typing import Iterable, Sequence
+from typing import Iterable, Sequence, Generator
 import time
 import socket
 import random
@@ -31,8 +31,7 @@ from eggroll.api.utils.log_utils import getLogger
 from eggroll.api.proto import kv_pb2, kv_pb2_grpc, processor_pb2, processor_pb2_grpc, storage_basic_pb2, node_manager_pb2, node_manager_pb2_grpc
 from eggroll.api.utils import cloudpickle
 from eggroll.api.utils.core import string_to_bytes, bytes_to_string
-from eggroll.api.utils.iter_utils import split_every
-from eggroll.api.utils.iter_utils import split_every_yield
+from eggroll.api.utils.iter_utils import split_every, split_every_yield, split_every_generator
 from eggroll.api.core import EggrollSession
 from concurrent.futures import ProcessPoolExecutor
 from multiprocessing import cpu_count
@@ -158,8 +157,8 @@ class _DTable(object):
     def put(self, k, v, use_serialize=True):
         _EggRoll.get_instance().put(self, k, v, use_serialize=use_serialize)
 
-    def put_all(self, kv_list: Iterable, use_serialize=True, chunk_size=100000):
-        return _EggRoll.get_instance().put_all(self, kv_list, use_serialize=use_serialize, chunk_size=chunk_size)
+    def put_all(self, kv_list: Iterable, use_serialize=True, chunk_size=100000, include_key=True):
+        return _EggRoll.get_instance().put_all(self, kv_list, use_serialize=use_serialize, chunk_size=chunk_size, include_key=include_key)
 
     def get(self, k, use_serialize=True):
         return _EggRoll.get_instance().get(self, k, use_serialize=use_serialize)
@@ -359,8 +358,7 @@ class _EggRoll(object):
         create_table_info = kv_pb2.CreateTableInfo(storageLocator=storage_locator, fragmentCount=partition)
         _table = self._create_table(create_table_info)
         _table.set_in_place_computing(in_place_computing)
-        _iter = data if include_key else enumerate(data)
-        _table.put_all(_iter, chunk_size=chunk_size)
+        _table.put_all(data, chunk_size=chunk_size, include_key=include_key)
         LOGGER.debug("created table: %s", _table)
         return _table
 
@@ -452,11 +450,16 @@ class _EggRoll(object):
         operand = _EggRoll.get_instance().__generate_operand(chunked_iter, use_serialize)
         _EggRoll.get_instance().kv_stub.putAll(operand, metadata=_get_meta(_table))
 
-    def put_all(self, _table, kvs: Iterable, use_serialize=True, chunk_size=100000, skip_chunk=0):
+    def put_all(self, _table, data: Iterable, use_serialize=True, chunk_size=100000, skip_chunk=0, include_key=True):
         global gc_tag
         gc_tag = False
         skipped_chunk = 0
 
+        if include_key == True:
+            kvs = data
+        else:
+            kvs = enumerate(data)
+        
         chunk_size = self.chunk_size 
         if chunk_size < CHUNK_SIZE_MIN:
             chunk_size = CHUNK_SIZE_DEFAULT
@@ -472,6 +475,14 @@ class _EggRoll(object):
                         skipped_chunk += 1 
                     else:
                         future = executor.submit(_EggRoll.action, _table, host, port, chunked_iter, use_serialize) 
+            elif isinstance(kvs, Generator) or isinstance(data, Generator): 
+                index = 0
+                while True:                
+                    chunked_iter = split_every_generator(kvs, chunk_size, skip_chunk)
+                    if chunked_iter == []:
+                        break
+                    future = executor.submit(_EggRoll.action, _table, host, port, chunked_iter, use_serialize) 
+                    index += 1
             else:                              # other Iterable types
                 try:
                     index = 0
