@@ -21,7 +21,8 @@ message ServerCluster {
 
 message Functor {
   string name = 1;
-  bytes body = 2;
+  string serdes = 2;
+  bytes body = 3;
 }
 
 message StoreLocator {

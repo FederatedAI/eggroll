@@ -46,8 +46,9 @@ class ErBatch(RpcMessage):
     self._data = data
 
   def to_proto(self):
+    batch_size = 0 if not self._data else len(self._data)
     return transfer_pb2.Batch(header=self._header.to_proto(),
-                              batchSize=len(self._data), data=self._data)
+                              batchSize=batch_size, data=self._data)
 
   @staticmethod
   def from_proto(pb_message):

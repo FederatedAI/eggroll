@@ -86,22 +86,23 @@ class ErServerCluster(RpcMessage):
 
 
 class ErFunctor(RpcMessage):
-  def __init__(self, name='', body=b''):
+  def __init__(self, name='', serdes='', body=b''):
     self._name = name
+    self._serdes = serdes
     self._body = body
 
   def to_proto(self):
-    return meta_pb2.Functor(name=self._name, body=self._body)
+    return meta_pb2.Functor(name=self._name, serdes=self._serdes, body=self._body)
 
   @staticmethod
   def from_proto(pb_message):
-    return ErFunctor(name=pb_message.name, body=pb_message.body)
+    return ErFunctor(name=pb_message.name, serdes=pb_message.serdes, body=pb_message.body)
 
   def __str__(self):
     return self.__repr__()
 
   def __repr__(self):
-    return f'ErFunctor(name={self._name}, body=***)'
+    return f'ErFunctor(name={self._name}, serdes={self._serdes}, body={len(self._body)})'
 
 
 class ErStoreLocator(RpcMessage):
@@ -124,6 +125,11 @@ class ErStoreLocator(RpcMessage):
                           namespace=pb_message.namespace,
                           name=pb_message.name,
                           path=pb_message.path)
+
+  def to_path(self):
+    if not self._path:
+      self._path = f'{self._store_type}/{self._namespace}/{self.name}'
+    return self._path
 
   def __str__(self):
     return self.__repr__()
@@ -151,6 +157,9 @@ class ErPartition(RpcMessage):
                          pb_message.storeLocator),
                        node=ErServerNode.from_proto(pb_message.node))
 
+  def to_path(self):
+    return f'{self._store_locator.to_path()}/{self._id}'
+
   def __str__(self):
     return self.__repr__()
 
@@ -172,6 +181,13 @@ class ErStore(RpcMessage):
     return ErStore(
       store_locator=ErStoreLocator.from_proto(pb_message.storeLocator),
       partitions=_listify_map(ErPartition.from_proto, pb_message.partitions))
+
+  @staticmethod
+  def from_proto_string(pb_string):
+
+    store = meta_pb2.Store()
+    msg_len = store.ParseFromString(pb_string)
+    return ErStore.from_proto(store)
 
   def __str__(self):
     return self.__repr__()

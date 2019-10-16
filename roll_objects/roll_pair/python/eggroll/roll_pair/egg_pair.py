@@ -30,6 +30,8 @@ class EggPair(object):
     functors = task._job._functors
     result = task
 
+    print(task)
+
     if task._name == 'mapValues':
       f = cloudpickle.loads(functors[0]._body)
       input_partition = task._inputs[0]
@@ -96,7 +98,41 @@ class EggPair(object):
                              server_node=task._outputs[0]._node)
 
       input_adapter.close()
+    elif task._name == 'join':
+      f = cloudpickle.loads(functors[0]._body)
+      left_partition = task._inputs[0]
+      right_partition = task._inputs[1]
+      output_partition = task._outputs[0]
 
+      print("left partition: ", left_partition, "path: ",
+            get_db_path(left_partition))
+      print("right partition: ", right_partition, "path: ",
+            get_db_path(right_partition))
+      print("output partition: ", output_partition, "path: ",
+            get_db_path(output_partition))
+
+      left_adapter = RocksdbSortedKvAdapter(
+          options={'path': get_db_path(left_partition)})
+      right_adapter = RocksdbSortedKvAdapter(
+          options={'path': get_db_path(right_partition)})
+      output_adapter = RocksdbSortedKvAdapter(
+          options={'path': get_db_path(output_partition)})
+
+      left_iterator = left_adapter.iteritems()
+      right_iterator = right_adapter.iteritems()
+      output_writebatch = output_adapter.new_batch()
+
+      for k_bytes, l_v_bytes in left_iterator:
+        r_v_bytes = right_adapter.get(k_bytes)
+        if r_v_bytes:
+          output_writebatch.put(k_bytes, f(l_v_bytes, r_v_bytes))
+
+      output_writebatch.close()
+      left_adapter.close()
+      right_adapter.close()
+      output_adapter.close()
+
+    print('result: ', result)
     return result
 
 
@@ -113,11 +149,14 @@ def serve():
   port = 20001
 
   CommandRouter.get_instance().register(
-    "com.webank.eggroll.rollpair.component.EggPair.mapValues",
+    "EggPair.mapValues",
     "eggroll.roll_pair.egg_pair", "EggPair", "run_task")
   CommandRouter.get_instance().register(
-    "com.webank.eggroll.rollpair.component.EggPair.reduce",
-    "eggroll.roll_pair.egg_pair", "EggPair", "run_task")
+      "EggPair.reduce",
+      "eggroll.roll_pair.egg_pair", "EggPair", "run_task")
+  CommandRouter.get_instance().register(
+      "EggPair.join",
+      "eggroll.roll_pair.egg_pair", "EggPair", "run_task")
 
   server = grpc.server(futures.ThreadPoolExecutor(max_workers=5),
                        options=[
@@ -136,6 +175,8 @@ def serve():
   server.add_insecure_port(f'[::]:{port}')
 
   server.start()
+
+  print('server started')
   import time
   time.sleep(10000)
 

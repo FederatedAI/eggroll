@@ -24,7 +24,7 @@ import com.webank.eggroll.core.serdes.{PbMessageDeserializer, PbMessageSerialize
 
 import scala.collection.JavaConverters._
 
-case class ErFunctor(name: String = StringConstants.EMPTY, body: Array[Byte]) extends RpcMessage
+case class ErFunctor(name: String = StringConstants.EMPTY, serdes: String = StringConstants.EMPTY, body: Array[Byte]) extends RpcMessage
 
 case class ErStoreLocator(storeType: String, namespace: String, name: String, path: String = StringConstants.EMPTY) extends RpcMessage
 
@@ -57,6 +57,7 @@ object MetaModelPbSerdes {
     override def toProto[T >: PbMessage](): Meta.Functor = {
       val builder = Meta.Functor.newBuilder()
         .setName(src.name)
+        .setSerdes(src.serdes)
         .setBody(ByteString.copyFrom(src.body))
 
       builder.build()
@@ -125,7 +126,7 @@ object MetaModelPbSerdes {
   // deserializers
   implicit class ErFunctorFromPbMessage(src: Meta.Functor) extends PbMessageDeserializer {
     override def fromProto[T >: RpcMessage](): ErFunctor = {
-      ErFunctor(name = src.getName, body = src.getBody.toByteArray)
+      ErFunctor(name = src.getName, serdes = src.getSerdes, body = src.getBody.toByteArray)
     }
   }
 

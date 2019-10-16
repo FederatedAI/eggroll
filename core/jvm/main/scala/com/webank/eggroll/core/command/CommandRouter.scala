@@ -21,7 +21,7 @@ import java.lang.reflect.Method
 import com.google.protobuf.ByteString
 import com.webank.eggroll.core.constant.StringConstants
 import com.webank.eggroll.core.meta.MetaModelPbSerdes._
-import com.webank.eggroll.core.meta.{ErJob, ErTask, Meta}
+import com.webank.eggroll.core.meta.{ErJob, ErStore, ErTask, Meta}
 import org.apache.commons.lang3.StringUtils
 import org.apache.commons.lang3.reflect.{ConstructorUtils, MethodUtils}
 
@@ -109,11 +109,14 @@ object CommandRouter {
     val callResult = target._2.invoke(target._1, realArgs: _*) // method.invoke(instance, args)
 
     // serialization to response
+    // todo: use reflection to call toProto().toByteArray
     callResult match {
       case e: ErTask =>
         callResult.asInstanceOf[ErTask].toProto().toByteArray
       case e: ErJob =>
         callResult.asInstanceOf[ErJob].toProto().toByteArray
+      case e: ErStore =>
+        callResult.asInstanceOf[ErStore].toProto().toByteArray
       case _ =>
         callResult.toString.getBytes()
     }

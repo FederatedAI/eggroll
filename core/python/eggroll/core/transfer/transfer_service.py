@@ -55,14 +55,15 @@ class TransferClient():
                                       ('grpc.max_send_message_length', -1),
                                       ('grpc.max_receive_message_length', -1)])
 
-    header = ErTransferHeader(id=100, tag=tag, total_size=len(data))
+    total_size = 0 if not data else len(data)
+    header = ErTransferHeader(id=100, tag=tag, total_size=total_size)
     batch = ErBatch(header=header, data=data)
 
     stub = transfer_pb2_grpc.TransferServiceStub(channel)
 
     batches = [batch.to_proto()]
 
-    print(f"mw: ready to send to {endpoint}, {iter(batches)}")
+    #print(f"mw: ready to send to {endpoint}, {iter(batches)}")
     stub.send(iter(batches))
 
     print("finish send")

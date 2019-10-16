@@ -25,12 +25,9 @@ import com.webank.eggroll.core.transfer.{GrpcTransferService, TransferClient}
 import com.webank.eggroll.rollpair.io.RocksdbSortedKvAdapter
 
 import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
 
 class EggPair {
-  def mapValues(task: ErTask): ErTask = {
-    runTask(task)
-  }
-
   def getDbPath(partition: ErPartition): String = {
     val storeLocator = partition.storeLocator
     val dbPathPrefix = "/tmp/eggroll/"
@@ -98,11 +95,47 @@ class EggPair {
       }
 
       inputStore.close()
+    } else if (task.name == "join") {
+      val f: (Array[Byte], Array[Byte]) => Array[Byte] = EggPair.functorSerdes.deserialize(functors.head.body)
+
+      val leftPartition = task.inputs.head
+      val rightPartition = task.inputs(1)
+      val outputPartition = task.outputs.head
+
+      val leftStore = new RocksdbSortedKvAdapter(getDbPath(leftPartition))
+      val rightStore = new RocksdbSortedKvAdapter(getDbPath(rightPartition))
+      val outputStore = new RocksdbSortedKvAdapter(getDbPath(outputPartition))
+
+      def doJoin(left: RocksdbSortedKvAdapter, right: RocksdbSortedKvAdapter): Iterator[(Array[Byte], Array[Byte])] = {
+        val buffer = mutable.ListBuffer[(Array[Byte], Array[Byte])]()
+
+        left.iterate().foreach(t => {
+          val rightValueBytes = right.get(t._1)
+          if (rightValueBytes != null) {
+            buffer.append((t._1, f(t._2, rightValueBytes)))
+          }
+        })
+
+        buffer.iterator
+      }
+      outputStore.writeBatch(doJoin(leftStore, rightStore))
+
+      leftStore.close()
+      rightStore.close()
+      outputStore.close()
     }
     result
   }
 
+  def mapValues(task: ErTask): ErTask = {
+    runTask(task)
+  }
+
   def reduce(task: ErTask): ErTask = {
+    runTask(task)
+  }
+
+  def join(task: ErTask): ErTask = {
     runTask(task)
   }
 }
