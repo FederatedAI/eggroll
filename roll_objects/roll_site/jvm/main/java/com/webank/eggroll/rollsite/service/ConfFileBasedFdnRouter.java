@@ -275,7 +275,7 @@ public class ConfFileBasedFdnRouter implements FdnRouter {
                 data.append((char) ch);
             }
 
-            System.out.println("data:" + data);
+            //System.out.println("data:" + data);
             JSONObject seg0 = new JSONObject();
             JSONObject seg1 = new JSONObject();
             JSONObject seg2 = new JSONObject();
@@ -300,7 +300,7 @@ public class ConfFileBasedFdnRouter implements FdnRouter {
             dataJson.put("route_table", addJson);
 
             ws = dataJson.toString();
-            System.out.println(ws);
+            //System.out.println(ws);
 
             fileReader.close();
             reader.close();
