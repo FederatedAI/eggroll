@@ -17,6 +17,7 @@
 package com.webank.eggroll.rollsite.grpc.service;
 
 import com.google.common.collect.Maps;
+import com.google.protobuf.ByteString;
 import com.webank.ai.eggroll.api.networking.proxy.DataTransferServiceGrpc;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
 import com.webank.eggroll.core.util.ErrorUtils;
@@ -190,6 +191,10 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
 
     @Override
     public void unaryCall(Proxy.Packet request, StreamObserver<Proxy.Packet> responseObserver) {
+        Proxy.Packet packet = null;
+        boolean hasReturnedBefore = false;
+        int emptyRetryCount = 0;
+
         Proxy.Metadata inputMetadata = request.getHeader();
         String oneLineStringInputMetadata = ToStringUtils.toOneLineString(inputMetadata);
         LOGGER.info("[UNARYCALL][SERVER] server unary request received. src: {}, dst: {}",
@@ -204,6 +209,19 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
 
         LOGGER.info("[UNARYCALL][SERVER] unary call pipe: {}", pipe);
 
+        if(request.getHeader().getOperator().equals("registerBroker")) {
+            //String routeTable = ;
+            //updateRouteTable(routeTable);
+            Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
+            Proxy.Data data = Proxy.Data.newBuilder().setValue(ByteString.copyFromUtf8("hello")).build();
+            packet = packetBuilder.setHeader(request.getHeader())
+                                  .setBody(data)
+                                  .build();
+            responseObserver.onNext(packet);
+            responseObserver.onCompleted();
+            return;
+        }
+
         PipeHandleNotificationEvent event =
                 eventFactory.createPipeHandleNotificationEvent(
                         this, PipeHandleNotificationEvent.Type.UNARY_CALL, request, pipe);
@@ -211,9 +229,6 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
 
         long startTimestamp = System.currentTimeMillis();
         long lastPacketTimestamp = startTimestamp;
-        Proxy.Packet packet = null;
-        boolean hasReturnedBefore = false;
-        int emptyRetryCount = 0;
         long loopEndTimestamp = System.currentTimeMillis();
         while ((!hasReturnedBefore || !pipe.isDrained())
                 && !pipe.hasError()

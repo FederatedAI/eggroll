@@ -63,14 +63,8 @@ class RollSiteRuntime(object):
         #guest_list = pull("guest_list", host)  通过发布订阅机制获取的partyId,IP，port列表
         print("__init__")
 
-    def generate_message(self):
-        while self.tag:
-            packet_input = queue.get()
-            #print(packet_input)
-            self.tag = False
-            yield proxy_pb2.Packet(header=packet_input.header, body=packet_input.body)
 
-    def generate_message2(self, obj, metadata):
+    def generate_message(self, obj, metadata):
         print (type(obj))
         if isinstance(obj, _io.TextIOWrapper):
             print('-----1----')
@@ -176,7 +170,7 @@ class RollSiteRuntime(object):
                 print("cluster push!!!")
                 self.stub.push(self.generate_message())
                 '''
-                self.stub.push(self.generate_message2(obj, metadata))
+                self.stub.push(self.generate_message(obj, metadata))
 
     def unaryCall(self, obj):
         self.__check_authorization(name)

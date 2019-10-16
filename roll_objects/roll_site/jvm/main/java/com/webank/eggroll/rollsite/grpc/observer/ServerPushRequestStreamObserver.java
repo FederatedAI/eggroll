@@ -181,7 +181,7 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
 
             overallStartTimestamp = System.currentTimeMillis();
 
-            if(proxyServerConf.getPartyId() != Integer.valueOf(inputMetadata.getDst().getPartyId())) {
+            if(!proxyServerConf.getPartyId().equals(inputMetadata.getDst().getPartyId())){
                 //if(Integer.valueOf(inputMetadata.getDst().getPartyId()))
                 PipeHandleNotificationEvent event =
                     eventFactory.createPipeHandleNotificationEvent(
@@ -212,7 +212,7 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
             LOGGER.info("push server received size: {}, data size: {}", packet.getSerializedSize(), packet.getBody().getValue().size());
         }
 
-        if(proxyServerConf.getPartyId() == Integer.valueOf(inputMetadata.getDst().getPartyId())) {
+        if(proxyServerConf.getPartyId().equals(inputMetadata.getDst().getPartyId())) {
             pipe.setDrained();
             pipe.onComplete();
         }
