@@ -79,7 +79,6 @@
             <groupId>com.webank.eggroll</groupId>
             <artifactId>eggroll-core</artifactId>
             <version>${eggroll.version}</version>
-            <scope>compile</scope>
         </dependency>
 
         <dependency>
@@ -117,6 +116,7 @@
             <groupId>org.springframework</groupId>
             <artifactId>spring-webmvc</artifactId>
             <version>${spring.version}</version>
+            <scope>compile</scope>
         </dependency>
 
         <dependency>
@@ -124,6 +124,19 @@
             <artifactId>commons-text</artifactId>
             <version>1.4</version>
         </dependency>
+	
+        <dependency>
+            <groupId>org.rocksdb</groupId>
+            <artifactId>rocksdbjni</artifactId>
+            <version>6.2.2</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.json</groupId>
+            <artifactId>json</artifactId>
+            <version>20160810</version>
+        </dependency>
+
     </dependencies>
 
     <build>
