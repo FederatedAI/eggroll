@@ -158,14 +158,17 @@ class RollFrameService(input: RfStore) extends RollFrame {
 }
 class ExecutorPool {
   private val threadId = new AtomicInteger()
+//  private val executorService = Executors.newCachedThreadPool()
   private val executorService = new ThreadPoolExecutor(0, Integer.MAX_VALUE, 60L, TimeUnit.SECONDS,
-    new LinkedBlockingDeque[Runnable](100),
+    new SynchronousQueue[Runnable],
     new ThreadFactory {
-    override def newThread(r: Runnable): Thread = new Thread(r, threadId.getAndIncrement().toString)
+    override def newThread(r: Runnable): Thread = new Thread(r, "eggroll-executor-pool" + threadId.getAndIncrement().toString)
   })
 
-  def submit[T](r: Callable[T]): T = {
-    executorService.submit(r).get()
+
+
+  def submit[T](r: Callable[T]): Future[T] = {
+    executorService.submit(r)
   }
   def submit(r: Runnable): Unit = {
     executorService.submit(r)
