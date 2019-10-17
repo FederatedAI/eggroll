@@ -24,7 +24,7 @@ import random
 
 import grpc
 import copy
-
+import os, threading, sys
 from eggroll.api import NamingPolicy, ComputingEngine, StoreType
 from eggroll.api.utils import eggroll_serdes, file_utils
 from eggroll.api.utils.log_utils import getLogger
@@ -43,6 +43,45 @@ CHUNK_SIZE_MIN = 10000
 CHUNK_SIZE_DEFAULT = 100000
 
 gc_tag = True
+
+
+def session_init(session_id=None, server_conf_path="eggroll/conf/server_conf.json", eggroll_session=None,
+                 computing_engine_conf=None, naming_policy=NamingPolicy.DEFAULT, tag=None, job_id=None,
+                 chunk_size=CHUNK_SIZE_DEFAULT):
+    if session_id is None:
+        if job_id is not None:
+            session_id = job_id
+    else:
+        session_id = str(uuid.uuid1())
+
+    if job_id is None:
+        job_id = session_id
+
+    if chunk_size < CHUNK_SIZE_MIN:
+        chunk_size = CHUNK_SIZE_DEFAULT
+
+    global LOGGER
+    LOGGER = getLogger()
+    server_conf = file_utils.load_json_conf(server_conf_path)
+
+    if not eggroll_session:
+        eggroll_session = EggrollSession(session_id=session_id,
+                                            chunk_size=chunk_size,
+                                            computing_engine_conf=computing_engine_conf,
+                                            naming_policy=naming_policy,
+                                            tag=tag)
+    eggroll_session.add_conf('eggroll.server.conf.path', server_conf_path)
+    eggroll_session.add_conf(EGGROLL_ROLL_HOST, server_conf.get("servers").get("roll").get("host"))
+    eggroll_session.add_conf(EGGROLL_ROLL_PORT, server_conf.get("servers").get("roll").get("port"))
+    return eggroll_session
+
+def eggroll_init(eggroll_session):
+    eggroll_runtime = _EggRoll(eggroll_session=eggroll_session)
+    eggroll_session.set_runtime(ComputingEngine.EGGROLL_DTABLE, eggroll_runtime)
+    eggroll_session.set_gc_table(eggroll_runtime)
+    eggroll_session.add_cleanup_task(eggroll_session.clean_duplicated_table)
+    return eggroll_runtime
+
 
 def init(session_id=None, server_conf_path="eggroll/conf/server_conf.json", eggroll_session=None, computing_engine_conf=None, naming_policy=NamingPolicy.DEFAULT, tag=None, job_id=None, chunk_size=CHUNK_SIZE_DEFAULT):
     if session_id is None:
@@ -75,7 +114,8 @@ def init(session_id=None, server_conf_path="eggroll/conf/server_conf.json", eggr
     eggroll_runtime = _EggRoll(eggroll_session=eggroll_session)
 
     eggroll_session.set_runtime(ComputingEngine.EGGROLL_DTABLE, eggroll_runtime)
-
+    eggroll_session.set_gc_table(eggroll_runtime)
+    eggroll_session.add_cleanup_task(eggroll_session.clean_duplicated_table)
 
 def _get_meta(_table):
     return ('store_type', _table._type), ('table_name', _table._name), ('name_space', _table._namespace)
@@ -105,8 +145,8 @@ class _DTable(object):
         self._partitions = partitions
         self.schema = {}
         self._in_place_computing = in_place_computing
-        self.gc_enable = False
-        print("init table name:{}, namespace:{}".format(self._name, self._namespace))
+        self.gc_enable = True
+        print("process {} thread {} run {} init table name:{}, namespace:{}".format(os.getpid(), threading.currentThread().ident, sys._getframe().f_code.co_name, self._name, self._namespace))
 
     def __del__(self):
         if not gc_tag:
@@ -116,7 +156,17 @@ class _DTable(object):
         if self._name == 'fragments' or self._name == '__clustercomm__' or self._name == '__status__':
             return
         if _EggRoll.instance is not None and not _EggRoll.get_instance().is_stopped():
-            print("del table name:{}, namespace:{}".format(self._name, self._namespace))
+            gc_table = _EggRoll.get_instance().get_eggroll_session()._gc_table
+            table_count = gc_table.get(self._name)
+            if table_count is None:
+                print("table:{} ref count is {}".format(self._name, table_count))
+                return
+            if table_count > 1:
+                print("table:{} ref count is {}".format(self._name, table_count))
+                gc_table.put(self._name, (table_count-1))
+                return
+            print("process {} thread {} run {} del table name:{}, namespace:{}".format(os.getpid(), threading.currentThread().ident, sys._getframe().f_code.co_name, self._name, self._namespace))
+            gc_table.delete(self._name)
             _EggRoll.get_instance().destroy(self)
 
     def __str__(self):
@@ -326,7 +376,7 @@ class _EggRoll(object):
 
     def stop(self):
         self.session_stub.stopSession(self.eggroll_session.to_protobuf())
-        self.eggroll_session.run_cleanup_tasks()
+        self.eggroll_session.run_cleanup_tasks(self)
         _EggRoll.instance = None
         self.channel.close()
 
@@ -351,7 +401,8 @@ class _EggRoll(object):
             namespace = _EggRoll.get_instance().session_id
         if name is None:
             name = str(uuid.uuid1())
-
+        if not persistent:
+            self.eggroll_session._gc_table.put(name, 1)
         _type = to_pb_store_type(persistent_engine, persistent)
 
         storage_locator = storage_basic_pb2.StorageLocator(type=_type, namespace=namespace, name=name)
@@ -387,6 +438,13 @@ class _EggRoll(object):
 
     def _create_table(self, create_table_info):
         info = self.kv_stub.createIfAbsent(create_table_info)
+        if storage_basic_pb2.StorageType.Name(info.storageLocator.type) == storage_basic_pb2.StorageType.Name(storage_basic_pb2.IN_MEMORY):
+            LOGGER.info("create in_memory table:{}".format(info.storageLocator.name))
+            LOGGER.info("table func:{}".format(list(self.eggroll_session._gc_table.collect())))
+            count = self.eggroll_session._gc_table.get(info.storageLocator.name)
+            if count is None:
+                count = 0
+            self.eggroll_session._gc_table.put(info.storageLocator.name, count + 1)
         return _DTable(info.storageLocator, info.fragmentCount)
 
     def _create_table_from_locator(self, storage_locator, template: _DTable):
