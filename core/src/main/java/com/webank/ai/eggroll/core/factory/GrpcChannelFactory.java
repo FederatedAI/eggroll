@@ -193,6 +193,7 @@ public class GrpcChannelFactory {
                 .perRpcBufferLimit(64 << 20)
                 .flowControlWindow(16 << 20)
                 .maxInboundMessageSize(32 << 20)
+                .maxHeaderListSize(512 << 10)
                 .enableRetry()
                 .retryBufferSize(16 << 20)
                 .maxRetryAttempts(20);      // todo: configurable

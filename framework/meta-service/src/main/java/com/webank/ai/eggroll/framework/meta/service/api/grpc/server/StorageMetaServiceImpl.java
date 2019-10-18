@@ -30,13 +30,15 @@ import com.webank.ai.eggroll.core.model.NodeType;
 import com.webank.ai.eggroll.core.serdes.impl.ByteStringSerDesHelper;
 import com.webank.ai.eggroll.core.utils.CrudUtils;
 import com.webank.ai.eggroll.core.utils.ToStringUtils;
-import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.*;
+import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.DtableExample;
+import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.FragmentExample;
+import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node;
+import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.NodeExample;
 import com.webank.ai.eggroll.framework.meta.service.factory.DaoServiceFactory;
 import com.webank.ai.eggroll.framework.meta.service.factory.GrpcCrudServiceFactory;
 import com.webank.ai.eggroll.framework.meta.service.service.CrudServerProcessor;
 import com.webank.ai.eggroll.framework.meta.service.service.GrpcCrudService;
 import com.webank.ai.eggroll.framework.meta.service.service.impl.GenericDaoService;
-import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node;
 import io.grpc.stub.StreamObserver;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
@@ -89,66 +91,68 @@ public class StorageMetaServiceImpl extends StorageMetaServiceGrpc.StorageMetaSe
     @Override
     public void createTableIfAbsent(BasicMeta.CallRequest request, StreamObserver<BasicMeta.CallResponse> responseObserver) {
         LOGGER.info("create table if absent called: {}", toStringUtils.toOneLineString(request));
-        dtableGrpcCrudService.processCrudRequest(request, responseObserver, new CrudServerProcessor<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable>() {
-            @Override
-            public com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable process(Object record) throws CrudException {
-                GenericDaoService genericDaoService = dtableGrpcCrudService.getGenericDaoService();
-                com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable result = null;
+        grpcServerWrapper.wrapGrpcServerRunnable(responseObserver, () -> {
+            dtableGrpcCrudService.processCrudRequest(request, responseObserver, new CrudServerProcessor<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable>() {
+                @Override
+                public com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable process(Object record) throws CrudException {
+                    GenericDaoService genericDaoService = dtableGrpcCrudService.getGenericDaoService();
+                    com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable result = null;
 
-                if (record == null) {
-                    throw new CrudException(100, "input parameter cannot be null");
-                }
+                    if (record == null) {
+                        throw new CrudException(100, "input parameter cannot be null");
+                    }
 
-                com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable dtable = (com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable) record;
+                    com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable dtable = (com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable) record;
 
-                DtableExample example = new DtableExample();
-                DtableExample.Criteria criteria = example.createCriteria().andStatusEqualTo(DtableStatus.NORMAL.name());
+                    DtableExample example = new DtableExample();
+                    DtableExample.Criteria criteria = example.createCriteria().andStatusEqualTo(DtableStatus.NORMAL.name());
 
-                String namespace = dtable.getNamespace();
-                if (StringUtils.isNotBlank(namespace)) {
-                    criteria.andNamespaceEqualTo(namespace);
-                }
+                    String namespace = dtable.getNamespace();
+                    if (StringUtils.isNotBlank(namespace)) {
+                        criteria.andNamespaceEqualTo(namespace);
+                    }
 
-                String tableName = dtable.getTableName();
-                if (StringUtils.isNotBlank(tableName)) {
-                    criteria.andTableNameEqualTo(tableName);
-                }
+                    String tableName = dtable.getTableName();
+                    if (StringUtils.isNotBlank(tableName)) {
+                        criteria.andTableNameEqualTo(tableName);
+                    }
 
-                List callResult = genericDaoService.selectByExampleWithRowbounds(example, CrudUtils.ROWBOUNDS_ZERO_TO_ONE);
-                List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable> selectResult = (List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable>) callResult;
+                    List callResult = genericDaoService.selectByExampleWithRowbounds(example, CrudUtils.ROWBOUNDS_ZERO_TO_ONE);
+                    List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable> selectResult = (List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable>) callResult;
 
-                if (!selectResult.isEmpty()) {
-                    result = selectResult.get(0);
-                } else {
-                    try {
-                        int rowsAffected = genericDaoService.insertSelective(dtable);
-                        if (rowsAffected == 1) {
-                            result = dtable;
-                        }
-                    } catch (RuntimeException e) {
-                        callResult = genericDaoService.selectByExampleWithRowbounds(example, CrudUtils.ROWBOUNDS_ZERO_TO_ONE);
-                        selectResult = (List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable>) callResult;
+                    if (!selectResult.isEmpty()) {
+                        result = selectResult.get(0);
+                    } else {
+                        try {
+                            int rowsAffected = genericDaoService.insertSelective(dtable);
+                            if (rowsAffected == 1) {
+                                result = dtable;
+                            }
+                        } catch (RuntimeException e) {
+                            callResult = genericDaoService.selectByExampleWithRowbounds(example, CrudUtils.ROWBOUNDS_ZERO_TO_ONE);
+                            selectResult = (List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable>) callResult;
 
-                        if (!selectResult.isEmpty()) {
-                            result = selectResult.get(0);
-                        } else {
-                            throw e;
+                            if (!selectResult.isEmpty()) {
+                                result = selectResult.get(0);
+                            } else {
+                                throw e;
+                            }
                         }
                     }
+
+                    return result;
                 }
 
-                return result;
-            }
+                @Override
+                public boolean isValid(com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable result) {
+                    return true;
+                }
 
-            @Override
-            public boolean isValid(com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable result) {
-                return true;
-            }
-
-            @Override
-            public Object pickResult(Object originalRecord, Object callResult) {
-                return callResult;
-            }
+                @Override
+                public Object pickResult(Object originalRecord, Object callResult) {
+                    return callResult;
+                }
+            });
         });
     }
 
@@ -183,50 +187,52 @@ public class StorageMetaServiceImpl extends StorageMetaServiceGrpc.StorageMetaSe
     public void getTable(BasicMeta.CallRequest request, StreamObserver<BasicMeta.CallResponse> responseObserver) {
         LOGGER.info("getTable: {}", toStringUtils.toOneLineString(request));
 
-        dtableGrpcCrudService.processCrudRequest(request, responseObserver, new CrudServerProcessor<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable>() {
-            @Override
-            public com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable process(Object record) throws CrudException {
-                GenericDaoService genericDaoService = dtableGrpcCrudService.getGenericDaoService();
-                com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable result = null;
+        grpcServerWrapper.wrapGrpcServerRunnable(responseObserver, () -> {
+            dtableGrpcCrudService.processCrudRequest(request, responseObserver, new CrudServerProcessor<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable>() {
+                @Override
+                public com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable process(Object record) throws CrudException {
+                    GenericDaoService genericDaoService = dtableGrpcCrudService.getGenericDaoService();
+                    com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable result = null;
 
-                if (record == null) {
-                    throw new CrudException(100, "input parameter cannot be null");
+                    if (record == null) {
+                        throw new CrudException(100, "input parameter cannot be null");
+                    }
+
+                    com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable dtable = (com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable) record;
+
+                    DtableExample example = new DtableExample();
+                    DtableExample.Criteria criteria = example.createCriteria().andStatusEqualTo(DtableStatus.NORMAL.name());
+
+                    String namespace = dtable.getNamespace();
+                    if (StringUtils.isNotBlank(namespace)) {
+                        criteria.andNamespaceEqualTo(namespace);
+                    }
+
+                    String tableName = dtable.getTableName();
+                    if (StringUtils.isNotBlank(tableName)) {
+                        criteria.andTableNameEqualTo(tableName);
+                    }
+
+                    List callResult = genericDaoService.selectByExampleWithRowbounds(example, CrudUtils.ROWBOUNDS_ZERO_TO_ONE);
+                    List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable> selectResult = (List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable>) callResult;
+
+                    if (!selectResult.isEmpty()) {
+                        result = selectResult.get(0);
+                    }
+
+                    return result;
                 }
 
-                com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable dtable = (com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable) record;
-
-                DtableExample example = new DtableExample();
-                DtableExample.Criteria criteria = example.createCriteria().andStatusEqualTo(DtableStatus.NORMAL.name());
-
-                String namespace = dtable.getNamespace();
-                if (StringUtils.isNotBlank(namespace)) {
-                    criteria.andNamespaceEqualTo(namespace);
+                @Override
+                public boolean isValid(com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable result) {
+                    return true;
                 }
 
-                String tableName = dtable.getTableName();
-                if (StringUtils.isNotBlank(tableName)) {
-                    criteria.andTableNameEqualTo(tableName);
+                @Override
+                public Object pickResult(Object originalRecord, Object callResult) {
+                    return callResult;
                 }
-
-                List callResult = genericDaoService.selectByExampleWithRowbounds(example, CrudUtils.ROWBOUNDS_ZERO_TO_ONE);
-                List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable> selectResult = (List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable>) callResult;
-
-                if (!selectResult.isEmpty()) {
-                    result = selectResult.get(0);
-                }
-
-                return result;
-            }
-
-            @Override
-            public boolean isValid(com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable result) {
-                return true;
-            }
-
-            @Override
-            public Object pickResult(Object originalRecord, Object callResult) {
-                return callResult;
-            }
+            });
         });
     }
 
@@ -234,52 +240,54 @@ public class StorageMetaServiceImpl extends StorageMetaServiceGrpc.StorageMetaSe
     public void getTables(BasicMeta.CallRequest request, StreamObserver<BasicMeta.CallResponse> responseObserver) {
         LOGGER.info("getTable: {}", toStringUtils.toOneLineString(request));
 
-        dtableGrpcCrudService.processCrudRequest(request, responseObserver, new CrudServerProcessor<List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable>>() {
-            @Override
-            public List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable> process(Object record) throws CrudException {
-                GenericDaoService genericDaoService = dtableGrpcCrudService.getGenericDaoService();
-                com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable result = null;
+        grpcServerWrapper.wrapGrpcServerRunnable(responseObserver, () -> {
+            dtableGrpcCrudService.processCrudRequest(request, responseObserver, new CrudServerProcessor<List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable>>() {
+                @Override
+                public List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable> process(Object record) throws CrudException {
+                    GenericDaoService genericDaoService = dtableGrpcCrudService.getGenericDaoService();
+                    com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable result = null;
 
-                if (record == null) {
-                    throw new CrudException(100, "input parameter cannot be null");
+                    if (record == null) {
+                        throw new CrudException(100, "input parameter cannot be null");
+                    }
+
+                    com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable dtable = (com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable) record;
+
+                    DtableExample example = new DtableExample();
+                    DtableExample.Criteria criteria = example.createCriteria().andStatusEqualTo(DtableStatus.NORMAL.name());
+
+                    String namespace = dtable.getNamespace();
+                    if (StringUtils.isNotBlank(namespace)) {
+                        criteria.andNamespaceEqualTo(namespace);
+                    }
+
+                    String tableName = dtable.getTableName();
+                    if (StringUtils.isNotBlank(tableName)) {
+                        String tableNameMatch = StringUtils.replace(tableName, "*", "%");
+                        criteria.andTableNameLikeInsensitive(tableNameMatch);
+                    }
+
+                    String tableType = dtable.getTableType();
+                    if (StringUtils.isNotBlank(tableType)) {
+                        criteria.andTableTypeEqualTo(tableType);
+                    }
+
+                    List callResult = genericDaoService.selectByExample(example);
+                    List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable> selectResult = (List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable>) callResult;
+
+                    return selectResult;
                 }
 
-                com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable dtable = (com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable) record;
-
-                DtableExample example = new DtableExample();
-                DtableExample.Criteria criteria = example.createCriteria().andStatusEqualTo(DtableStatus.NORMAL.name());
-
-                String namespace = dtable.getNamespace();
-                if (StringUtils.isNotBlank(namespace)) {
-                    criteria.andNamespaceEqualTo(namespace);
+                @Override
+                public boolean isValid(List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable> result) {
+                    return result != null;
                 }
 
-                String tableName = dtable.getTableName();
-                if (StringUtils.isNotBlank(tableName)) {
-                    String tableNameMatch = StringUtils.replace(tableName, "*", "%");
-                    criteria.andTableNameLikeInsensitive(tableNameMatch);
+                @Override
+                public Object pickResult(Object originalRecord, Object callResult) {
+                    return callResult;
                 }
-
-                String tableType = dtable.getTableType();
-                if (StringUtils.isNotBlank(tableType)) {
-                    criteria.andTableTypeEqualTo(tableType);
-                }
-
-                List callResult = genericDaoService.selectByExample(example);
-                List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable> selectResult = (List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable>) callResult;
-
-                return selectResult;
-            }
-
-            @Override
-            public boolean isValid(List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable> result) {
-                return result != null;
-            }
-
-            @Override
-            public Object pickResult(Object originalRecord, Object callResult) {
-                return callResult;
-            }
+            });
         });
     }
 
@@ -287,37 +295,40 @@ public class StorageMetaServiceImpl extends StorageMetaServiceGrpc.StorageMetaSe
     public void getFragmentsByTableId(BasicMeta.CallRequest request, StreamObserver<BasicMeta.CallResponse> responseObserver) {
         LOGGER.info("getFragmentsByTableId: {}", toStringUtils.toOneLineString(request));
 
-        dtableGrpcCrudService.processCrudRequest(request, responseObserver, new CrudServerProcessor<List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Fragment>>() {
-            @Override
-            public List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Fragment> process(Object record) throws CrudException {
-                GenericDaoService genericDaoService = fragmentGrpcCrudService.getGenericDaoService();
-                List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Fragment> result = null;
+        grpcServerWrapper.wrapGrpcServerRunnable(responseObserver, () -> {
+            dtableGrpcCrudService.processCrudRequest(request, responseObserver, new CrudServerProcessor<List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Fragment>>() {
+                @Override
+                public List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Fragment> process(Object record) throws CrudException {
+                    GenericDaoService genericDaoService = fragmentGrpcCrudService.getGenericDaoService();
+                    List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Fragment> result = null;
 
-                Long tableId = (Long) record;
+                    Long tableId = (Long) record;
 
-                FragmentExample example = new FragmentExample();
-                example.createCriteria().andTableIdEqualTo(tableId);
+                    FragmentExample example = new FragmentExample();
+                    example.createCriteria().andTableIdEqualTo(tableId);
 
-                Object callResult = genericDaoService.selectByExample(example);
-                List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Fragment> selectResult = (List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Fragment>) callResult;
+                    Object callResult = genericDaoService.selectByExample(example);
+                    List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Fragment> selectResult = (List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Fragment>) callResult;
 
-                return selectResult;
-            }
+                    return selectResult;
+                }
 
-            @Override
-            public boolean isValid(List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Fragment> result) {
-                return result != null;
-            }
+                @Override
+                public boolean isValid(List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Fragment> result) {
+                    return result != null;
+                }
 
-            @Override
-            public Object pickResult(Object originalRecord, Object callResult) {
-                return callResult;
-            }
+                @Override
+                public Object pickResult(Object originalRecord, Object callResult) {
+                    return callResult;
+                }
+            });
         });
     }
 
     @Override
-    public void getNodeById(BasicMeta.CallRequest request, StreamObserver<BasicMeta.CallResponse> responseObserver) {
+    public void getNodeById(BasicMeta.CallRequest
+                                    request, StreamObserver<BasicMeta.CallResponse> responseObserver) {
         LOGGER.info("getNodeById called. request: {}", toStringUtils.toOneLineString(request));
 
         grpcServerWrapper.wrapGrpcServerRunnable(responseObserver, () -> {
@@ -326,7 +337,8 @@ public class StorageMetaServiceImpl extends StorageMetaServiceGrpc.StorageMetaSe
     }
 
     @Override
-    public void getFragmentById(BasicMeta.CallRequest request, StreamObserver<BasicMeta.CallResponse> responseObserver) {
+    public void getFragmentById(BasicMeta.CallRequest
+                                        request, StreamObserver<BasicMeta.CallResponse> responseObserver) {
         LOGGER.info("getFragmentById called. request: {}", toStringUtils.toOneLineString(request));
 
         grpcServerWrapper.wrapGrpcServerRunnable(responseObserver, () -> {
@@ -335,46 +347,49 @@ public class StorageMetaServiceImpl extends StorageMetaServiceGrpc.StorageMetaSe
     }
 
     @Override
-    public void getStorageNodesByTableId(BasicMeta.CallRequest request, StreamObserver<BasicMeta.CallResponse> responseObserver) {
+    public void getStorageNodesByTableId(BasicMeta.CallRequest
+                                                 request, StreamObserver<BasicMeta.CallResponse> responseObserver) {
         LOGGER.info("getStorageNodesByTableId. request: {}", toStringUtils.toOneLineString(request));
 
-        nodeGrpcCrudService.processCrudRequest(request, responseObserver, new CrudServerProcessor<List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node>>() {
-            @Override
-            public List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node> process(Object record) throws CrudException {
-                GenericDaoService nodeDaoService = nodeGrpcCrudService.getGenericDaoService();
-                GenericDaoService fragmentDaoService = fragmentGrpcCrudService.getGenericDaoService();
+        grpcServerWrapper.wrapGrpcServerRunnable(responseObserver, () -> {
+            nodeGrpcCrudService.processCrudRequest(request, responseObserver, new CrudServerProcessor<List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node>>() {
+                @Override
+                public List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node> process(Object record) throws CrudException {
+                    GenericDaoService nodeDaoService = nodeGrpcCrudService.getGenericDaoService();
+                    GenericDaoService fragmentDaoService = fragmentGrpcCrudService.getGenericDaoService();
 
-                Long tableId = (Long) record;
+                    Long tableId = (Long) record;
 
-                FragmentExample fragmentExample = new FragmentExample();
-                fragmentExample.createCriteria().andTableIdEqualTo(tableId);
+                    FragmentExample fragmentExample = new FragmentExample();
+                    fragmentExample.createCriteria().andTableIdEqualTo(tableId);
 
-                List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Fragment> fragments = fragmentDaoService.selectByExample(fragmentExample);
-                List<Long> nodeIds = Lists.newArrayList();
+                    List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Fragment> fragments = fragmentDaoService.selectByExample(fragmentExample);
+                    List<Long> nodeIds = Lists.newArrayList();
 
-                for (com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Fragment fragment : fragments) {
-                    nodeIds.add(fragment.getNodeId());
+                    for (com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Fragment fragment : fragments) {
+                        nodeIds.add(fragment.getNodeId());
+                    }
+
+                    NodeExample nodeExample = new NodeExample();
+                    nodeExample.createCriteria()
+                            .andNodeIdIn(nodeIds)
+                            .andStatusEqualTo(NodeStatus.HEALTHY.name());
+
+                    List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node> result = nodeDaoService.selectByExample(nodeExample);
+
+                    return result;
                 }
 
-                NodeExample nodeExample = new NodeExample();
-                nodeExample.createCriteria()
-                        .andNodeIdIn(nodeIds)
-                        .andStatusEqualTo(NodeStatus.HEALTHY.name());
+                @Override
+                public boolean isValid(List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node> result) {
+                    return result != null;
+                }
 
-                List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node> result = nodeDaoService.selectByExample(nodeExample);
-
-                return result;
-            }
-
-            @Override
-            public boolean isValid(List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node> result) {
-                return result != null;
-            }
-
-            @Override
-            public Object pickResult(Object originalRecord, Object callResult) {
-                return callResult;
-            }
+                @Override
+                public Object pickResult(Object originalRecord, Object callResult) {
+                    return callResult;
+                }
+            });
         });
     }
 
@@ -382,38 +397,40 @@ public class StorageMetaServiceImpl extends StorageMetaServiceGrpc.StorageMetaSe
     public void getEggNodeManagerByIp(BasicMeta.CallRequest request, StreamObserver<BasicMeta.CallResponse> responseObserver) {
         LOGGER.info("getComputingNodeManagerByIp. request: {}", toStringUtils.toOneLineString(request));
 
-        nodeGrpcCrudService.processCrudRequest(request, responseObserver, new CrudServerProcessor<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node>() {
-            @Override
-            public com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node process(Object record) throws CrudException {
-                GenericDaoService nodeDaoService = nodeGrpcCrudService.getGenericDaoService();
+        grpcServerWrapper.wrapGrpcServerRunnable(responseObserver, () -> {
+            nodeGrpcCrudService.processCrudRequest(request, responseObserver, new CrudServerProcessor<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node>() {
+                @Override
+                public com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node process(Object record) throws CrudException {
+                    GenericDaoService nodeDaoService = nodeGrpcCrudService.getGenericDaoService();
 
-                com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node result = null;
-                String ip = (String) record;
+                    com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node result = null;
+                    String ip = (String) record;
 
-                NodeExample nodeExample = new NodeExample();
-                nodeExample.createCriteria()
-                        .andTypeEqualTo(NodeType.EGG.name())
-                        .andStatusEqualTo(NodeStatus.HEALTHY.name())
-                        .andIpEqualTo(ip);
+                    NodeExample nodeExample = new NodeExample();
+                    nodeExample.createCriteria()
+                            .andTypeEqualTo(NodeType.EGG.name())
+                            .andStatusEqualTo(NodeStatus.HEALTHY.name())
+                            .andIpEqualTo(ip);
 
-                List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node> results = nodeDaoService.selectByExampleWithRowbounds(nodeExample, CrudUtils.ROWBOUNDS_ZERO_TO_ONE);
+                    List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node> results = nodeDaoService.selectByExampleWithRowbounds(nodeExample, CrudUtils.ROWBOUNDS_ZERO_TO_ONE);
 
-                if (!results.isEmpty()) {
-                    result = results.get(0);
+                    if (!results.isEmpty()) {
+                        result = results.get(0);
+                    }
+
+                    return result;
                 }
 
-                return result;
-            }
+                @Override
+                public boolean isValid(com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node result) {
+                    return true;
+                }
 
-            @Override
-            public boolean isValid(com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node result) {
-                return true;
-            }
-
-            @Override
-            public Object pickResult(Object originalRecord, Object callResult) {
-                return callResult;
-            }
+                @Override
+                public Object pickResult(Object originalRecord, Object callResult) {
+                    return callResult;
+                }
+            });
         });
     }
 
@@ -421,32 +438,34 @@ public class StorageMetaServiceImpl extends StorageMetaServiceGrpc.StorageMetaSe
     public void getNodesByIds(BasicMeta.CallRequest request, StreamObserver<BasicMeta.CallResponse> responseObserver) {
         LOGGER.info("getNodesByIds. request: {}", toStringUtils.toOneLineString(request));
 
-        nodeGrpcCrudService.processCrudRequest(request, responseObserver, new CrudServerProcessor<List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node>>() {
-            @Override
-            public List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node> process(Object record) throws CrudException {
-                GenericDaoService genericDaoService = nodeGrpcCrudService.getGenericDaoService();
-                List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node> result = null;
+        grpcServerWrapper.wrapGrpcServerRunnable(responseObserver, () -> {
+            nodeGrpcCrudService.processCrudRequest(request, responseObserver, new CrudServerProcessor<List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node>>() {
+                @Override
+                public List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node> process(Object record) throws CrudException {
+                    GenericDaoService genericDaoService = nodeGrpcCrudService.getGenericDaoService();
+                    List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node> result = null;
 
-                List<Long> nodeIds = (List<Long>) record;
+                    List<Long> nodeIds = (List<Long>) record;
 
-                NodeExample example = new NodeExample();
-                example.createCriteria().andNodeIdIn(nodeIds);
+                    NodeExample example = new NodeExample();
+                    example.createCriteria().andNodeIdIn(nodeIds);
 
-                Object callResult = genericDaoService.selectByExample(example);
-                result = (List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node>) callResult;
+                    Object callResult = genericDaoService.selectByExample(example);
+                    result = (List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node>) callResult;
 
-                return result;
-            }
+                    return result;
+                }
 
-            @Override
-            public boolean isValid(List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node> result) {
-                return result != null;
-            }
+                @Override
+                public boolean isValid(List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node> result) {
+                    return result != null;
+                }
 
-            @Override
-            public Object pickResult(Object originalRecord, Object callResult) {
-                return callResult;
-            }
+                @Override
+                public Object pickResult(Object originalRecord, Object callResult) {
+                    return callResult;
+                }
+            });
         });
     }
 
@@ -454,69 +473,85 @@ public class StorageMetaServiceImpl extends StorageMetaServiceGrpc.StorageMetaSe
     public void getNodesOfStatus(BasicMeta.CallRequest request, StreamObserver<BasicMeta.CallResponse> responseObserver) {
         LOGGER.info("getNodeOfStatus. request: {}", toStringUtils.toOneLineString(request));
 
-        nodeGrpcCrudService.processCrudRequest(request, responseObserver, new GetNodeOfStatusCrudProcessor());
+        grpcServerWrapper.wrapGrpcServerRunnable(responseObserver, () -> {
+            nodeGrpcCrudService.processCrudRequest(request, responseObserver, new GetNodeOfStatusCrudProcessor());
+        });
     }
 
     @Override
     public void createFragmentsForTable(BasicMeta.CallRequest request, StreamObserver<BasicMeta.CallResponse> responseObserver) {
         LOGGER.info("createFragmentsForTable. request: {}", toStringUtils.toOneLineString(request));
 
-        fragmentGrpcCrudService.processCrudRequest(request, responseObserver, new CrudServerProcessor<List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Fragment>>() {
-            @Override
-            public List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Fragment> process(Object record) throws CrudException {
-                GenericDaoService fragmentDaoService = fragmentGrpcCrudService.getGenericDaoService();
-                GenericDaoService nodeDaoService = nodeGrpcCrudService.getGenericDaoService();
-                List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Fragment> result = Lists.newArrayList();
+        synchronized (StorageMetaServiceImpl.class) {
+            grpcServerWrapper.wrapGrpcServerRunnable(responseObserver, () -> {
+                fragmentGrpcCrudService.processCrudRequest(request, responseObserver, new CrudServerProcessor<List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Fragment>>() {
+                    @Override
+                    public List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Fragment> process(Object record) throws CrudException {
+                        GenericDaoService fragmentDaoService = fragmentGrpcCrudService.getGenericDaoService();
+                        GenericDaoService nodeDaoService = nodeGrpcCrudService.getGenericDaoService();
+                        List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Fragment> result = Lists.newArrayList();
 
-                NodeExample nodeExample = new NodeExample();
-                nodeExample.createCriteria().andStatusEqualTo(NodeStatus.HEALTHY.name())
-                        .andTypeEqualTo(NodeType.STORAGE.name());
-                List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node> healthyStorageNodes = nodeDaoService.selectByExample(nodeExample);
+                        NodeExample nodeExample = new NodeExample();
+                        nodeExample.createCriteria().andStatusEqualTo(NodeStatus.HEALTHY.name())
+                                .andTypeEqualTo(NodeType.STORAGE.name());
+                        List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node> healthyStorageNodes = nodeDaoService.selectByExample(nodeExample);
 
-                if (healthyStorageNodes.size() == 0) {
-                    throw new CrudException(400, "No healthy node available");
-                }
+                        if (healthyStorageNodes.size() == 0) {
+                            throw new CrudException(400, "No healthy node available");
+                        }
 
-                com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable dtable = (com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable) record;
+                        com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable dtable = (com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable) record;
 
-                int totalFragments = dtable.getTotalFragments();
-                int healthyNodeSize = healthyStorageNodes.size();
-                Long tableId = dtable.getTableId();
-                if (tableId == null) {
-                    throw new CrudException(401, "createFragmentsForTable: tableId cannot be null. table: " + dtable);
-                }
-                int rowsAffected = 0;
-                String defaultStatus = FragmentStatus.BACKUP.name();
+                        int totalFragments = dtable.getTotalFragments();
+                        int healthyNodeSize = healthyStorageNodes.size();
+                        Long tableId = dtable.getTableId();
+                        if (tableId == null) {
+                            throw new CrudException(401, "createFragmentsForTable: tableId cannot be null. table: " + dtable);
+                        }
+                        int rowsAffected = 0;
+                        String defaultStatus = FragmentStatus.BACKUP.name();
 
-                for (int i = 0; i < totalFragments; ++i) {
-                    com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Fragment fragment = new com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Fragment();
-                    fragment.setFragmentOrder(i);
-                    fragment.setTableId(tableId);
-                    fragment.setStatus(defaultStatus);
+                        FragmentExample example = new FragmentExample();
+                        example.createCriteria().andTableIdEqualTo(tableId);
 
-                    com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node node = healthyStorageNodes.get(i % healthyNodeSize);
-                    fragment.setNodeId(node.getNodeId());
+                        Object callResult = fragmentDaoService.selectByExample(example);
+                        List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Fragment> alreadyExistFragment = (List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Fragment>) callResult;
 
-                    rowsAffected = fragmentDaoService.insertSelective(fragment);
+                        if (!alreadyExistFragment.isEmpty()) {
+                            return alreadyExistFragment;
+                        }
 
-                    if (rowsAffected == 1) {
-                        result.add(fragment);
+                        for (int i = 0; i < totalFragments; ++i) {
+                            com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Fragment fragment = new com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Fragment();
+                            fragment.setFragmentOrder(i);
+                            fragment.setTableId(tableId);
+                            fragment.setStatus(defaultStatus);
+
+                            com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node node = healthyStorageNodes.get(i % healthyNodeSize);
+                            fragment.setNodeId(node.getNodeId());
+
+                            rowsAffected = fragmentDaoService.insertSelective(fragment);
+
+                            if (rowsAffected == 1) {
+                                result.add(fragment);
+                            }
+                        }
+
+                        return result;
                     }
-                }
 
-                return result;
-            }
+                    @Override
+                    public boolean isValid(List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Fragment> result) {
+                        return result != null;
+                    }
 
-            @Override
-            public boolean isValid(List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Fragment> result) {
-                return result != null;
-            }
-
-            @Override
-            public Object pickResult(Object originalRecord, Object callResult) {
-                return callResult;
-            }
-        });
+                    @Override
+                    public Object pickResult(Object originalRecord, Object callResult) {
+                        return callResult;
+                    }
+                });
+            });
+        }
     }
 
 
@@ -524,61 +559,63 @@ public class StorageMetaServiceImpl extends StorageMetaServiceGrpc.StorageMetaSe
     public void getNodes(BasicMeta.CallRequest request, StreamObserver<BasicMeta.CallResponse> responseObserver) {
         LOGGER.info("getNode. request: {}", toStringUtils.toOneLineString(request));
 
-        nodeGrpcCrudService.processCrudRequest(request, responseObserver, new CrudServerProcessor<List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node>>() {
-            @Override
-            public List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node> process(Object record) throws CrudException {
-                GenericDaoService nodeDaoService = nodeGrpcCrudService.getGenericDaoService();
+        grpcServerWrapper.wrapGrpcServerRunnable(responseObserver, () -> {
+            nodeGrpcCrudService.processCrudRequest(request, responseObserver, new CrudServerProcessor<List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node>>() {
+                @Override
+                public List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node> process(Object record) throws CrudException {
+                    GenericDaoService nodeDaoService = nodeGrpcCrudService.getGenericDaoService();
 
-                List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node> result = null;
-                if (record == null) {
-                    throw new CrudException(100, "input parameter cannot be null");
+                    List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node> result = null;
+                    if (record == null) {
+                        throw new CrudException(100, "input parameter cannot be null");
+                    }
+
+                    com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node node = (com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node) record;
+
+                    NodeExample nodeExample = new NodeExample();
+                    NodeExample.Criteria criteria = nodeExample.createCriteria();
+
+                    String host = node.getHost();
+                    if (StringUtils.isNotBlank(host)) {
+                        criteria.andHostEqualTo(host);
+                    }
+
+                    String ip = node.getIp();
+                    if (StringUtils.isNotBlank(ip)) {
+                        criteria.andIpEqualTo(ip);
+                    }
+
+                    Integer port = node.getPort();
+                    if (port != null) {
+                        criteria.andPortEqualTo(port);
+                    }
+
+                    String type = node.getType();
+                    if (StringUtils.isNotBlank(type)) {
+                        criteria.andTypeEqualTo(type);
+                    }
+
+                    String status = node.getStatus();
+                    if (StringUtils.isNotBlank(status)) {
+                        criteria.andStatusEqualTo(status);
+                    }
+
+                    List callResult = nodeDaoService.selectByExample(nodeExample);
+                    result = (List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node>) callResult;
+
+                    return result;
                 }
 
-                com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node node = (com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node) record;
-
-                NodeExample nodeExample = new NodeExample();
-                NodeExample.Criteria criteria = nodeExample.createCriteria();
-
-                String host = node.getHost();
-                if (StringUtils.isNotBlank(host)) {
-                    criteria.andHostEqualTo(host);
+                @Override
+                public boolean isValid(List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node> result) {
+                    return result != null;
                 }
 
-                String ip = node.getIp();
-                if (StringUtils.isNotBlank(ip)) {
-                    criteria.andIpEqualTo(ip);
+                @Override
+                public Object pickResult(Object originalRecord, Object callResult) {
+                    return callResult;
                 }
-
-                Integer port = node.getPort();
-                if (port != null) {
-                    criteria.andPortEqualTo(port);
-                }
-
-                String type = node.getType();
-                if (StringUtils.isNotBlank(type)) {
-                    criteria.andTypeEqualTo(type);
-                }
-
-                String status = node.getStatus();
-                if (StringUtils.isNotBlank(status)) {
-                    criteria.andStatusEqualTo(status);
-                }
-
-                List callResult = nodeDaoService.selectByExample(nodeExample);
-                result = (List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node>) callResult;
-
-                return result;
-            }
-
-            @Override
-            public boolean isValid(List<com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node> result) {
-                return result != null;
-            }
-
-            @Override
-            public Object pickResult(Object originalRecord, Object callResult) {
-                return callResult;
-            }
+            });
         });
     }
 

@@ -26,7 +26,7 @@ import org.springframework.stereotype.Component;
 // todo: combine this with serdes
 public class CallMetaModelFactory {
     private static final String NO_ERROR = "NO_ERROR";
-    private static final String HOST_LANGUAGE = "JAVA8";
+    //private static final String HOST_LANGUAGE = "JAVA8";
     @Autowired
     private ByteStringSerDesHelper byteStringSerDesHelper;
     @Autowired
@@ -57,7 +57,7 @@ public class CallMetaModelFactory {
             builder.setIsNull(true);
         } else {
             builder.setIsNull(false)
-                    .setHostLanguage(HOST_LANGUAGE)
+                    .setHostLanguage(RuntimeConstants.HOST_LANGUAGE)
                     .setData(byteStringSerDesHelper.serialize(object))
                     .setType(object.getClass().getCanonicalName());
         }

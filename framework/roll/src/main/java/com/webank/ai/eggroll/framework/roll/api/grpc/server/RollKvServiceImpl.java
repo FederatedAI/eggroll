@@ -25,6 +25,7 @@ import com.webank.ai.eggroll.api.storage.StorageBasic;
 import com.webank.ai.eggroll.core.api.grpc.client.crud.StorageMetaClient;
 import com.webank.ai.eggroll.core.api.grpc.server.GrpcServerWrapper;
 import com.webank.ai.eggroll.core.constant.ModelConstants;
+import com.webank.ai.eggroll.core.constant.RuntimeConstants;
 import com.webank.ai.eggroll.core.constant.StringConstants;
 import com.webank.ai.eggroll.core.error.exception.CrudException;
 import com.webank.ai.eggroll.core.error.exception.MultipleRuntimeThrowables;
@@ -113,49 +114,55 @@ public class RollKvServiceImpl extends KVServiceGrpc.KVServiceImplBase {
 
     @Override
     public void createIfAbsent(Kv.CreateTableInfo request, StreamObserver<Kv.CreateTableInfo> responseObserver) {
-        LOGGER.info("Kv.createIfAbsent request received. request: {}", toStringUtils.toOneLineString(request));
-        grpcServerWrapper.wrapGrpcServerRunnable(responseObserver, () -> {
-            StorageBasic.StorageLocator storageLocator = request.getStorageLocator();
+        //LOGGER.info("process id: {}, thread id: {}, host: {}", Thread.currentThread().getId());
+        synchronized (RollKvServiceImpl.class) {
+            LOGGER.info("Kv.createIfAbsent request received. request: {}", toStringUtils.toOneLineString(request));
+            grpcServerWrapper.wrapGrpcServerRunnable(responseObserver, () -> {
+                StorageBasic.StorageLocator storageLocator = request.getStorageLocator();
 
-            List<Fragment> fragments = null;
-            Dtable createResult = null;
-            Dtable createTemplate = storageMetaClient.getTable(storageLocator.getNamespace(), storageLocator.getName());
+                List<Fragment> fragments = null;
+                Dtable createResult = null;
 
-            // todo: add transaction control
-            if (createTemplate == null) {
-                createTemplate = typeConversionUtils.toDtable(request);
 
-                createResult = storageMetaClient.createTable(createTemplate);
+                Dtable createTemplate = storageMetaClient.getTable(storageLocator.getNamespace(), storageLocator.getName());
 
-                if (createResult != null) {
-                    fragments = storageMetaClient.createFragmentsForTable(createResult);
+                // todo: add transaction control
+                if (createTemplate == null) {
+                    createTemplate = typeConversionUtils.toDtable(request);
 
-                    if (StringConstants.FEDERATION.equals(createTemplate.getTableName())) {
-                        Dtable compatibleTable = typeConversionUtils.toDtable(request);
-                        compatibleTable.setTableName(StringConstants.CLUSTER_COMM);
-                        Dtable compatibleTableCreateResult = storageMetaClient.createTable(compatibleTable);
-                        if (compatibleTableCreateResult != null) {
-                            storageMetaClient.createFragmentsForTable(compatibleTableCreateResult);
-                        } else {
-                            throw new RuntimeException("fail to create compatible table");
+                    createResult = storageMetaClient.createTableIfAbsent(createTemplate);
+
+                    if (createResult != null) {
+                        fragments = storageMetaClient.createFragmentsForTable(createResult);
+
+                        if (StringConstants.FEDERATION.equals(createTemplate.getTableName())) {
+                            Dtable compatibleTable = typeConversionUtils.toDtable(request);
+                            compatibleTable.setTableName(StringConstants.CLUSTER_COMM);
+                            Dtable compatibleTableCreateResult = storageMetaClient.createTableIfAbsent(compatibleTable);
+                            if (compatibleTableCreateResult != null) {
+                                storageMetaClient.createFragmentsForTable(compatibleTableCreateResult);
+                            } else {
+                                throw new RuntimeException("fail to create compatible table");
+                            }
                         }
                     }
+                } else {
+                    fragments = storageMetaClient.getFragmentsByTableId(createTemplate.getTableId());
+                    createResult = createTemplate;
                 }
-            } else {
-                fragments = storageMetaClient.getFragmentsByTableId(createTemplate.getTableId());
-                createResult = createTemplate;
-            }
 
-            Kv.CreateTableInfo result = null;
-            // todo: add more result check
-            if (!fragments.isEmpty()) {
-                // createResult = storageMetaClient.createTable(createTemplate);
-                result = typeConversionUtils.toCreateTableInfo(createResult);
-            }
+                Kv.CreateTableInfo result = null;
+                // todo: add more result check
+                if (!fragments.isEmpty()) {
+                    // createResult = storageMetaClient.createTable(createTemplate);
+                    result = typeConversionUtils.toCreateTableInfo(createResult);
+                }
 
-            responseObserver.onNext(result);
-            responseObserver.onCompleted();
+                responseObserver.onNext(result);
+                responseObserver.onCompleted();
+
         });
+        }
     }
 
     @Override
