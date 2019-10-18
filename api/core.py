@@ -90,7 +90,7 @@ class EggrollSession(object):
         self._runtime[computing_engine] = target
 
     def set_gc_table(self, eggroll):
-        self._gc_table = eggroll.table(name="_gc" + self._session_id, namespace=self._session_id)
+        self._gc_table = eggroll.table(name="gc_" + self._session_id, namespace=self._session_id)
 
     def __str__(self):
         return "<EggrollSession: session_id: {}, computing_engine_conf: {}, naming_policy: {}, tag: {}, runtime: {}>"\
