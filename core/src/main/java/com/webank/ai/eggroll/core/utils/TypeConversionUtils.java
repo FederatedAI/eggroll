@@ -17,7 +17,6 @@
 package com.webank.ai.eggroll.core.utils;
 
 import com.google.common.base.Preconditions;
-import com.google.common.collect.Maps;
 import com.webank.ai.eggroll.api.core.BasicMeta;
 import com.webank.ai.eggroll.api.core.DataStructure;
 import com.webank.ai.eggroll.api.storage.Kv;
@@ -163,7 +162,7 @@ public class TypeConversionUtils {
         return result;
     }
 
-    public Node toCurrentNode(com.webank.ai.fate.eggroll.meta.service.dao.generated.model.Node other) {
+    public Node toCurrentNode(com.webank.ai.eggroll.meta.service.dao.generated.model.Node other) {
         Node result = new Node();
 
         result.setCreatedAt(other.getCreatedAt());
@@ -179,7 +178,7 @@ public class TypeConversionUtils {
         return result;
     }
 
-    public Dtable toCurrentDtable(com.webank.ai.fate.eggroll.meta.service.dao.generated.model.Dtable other) {
+    public Dtable toCurrentDtable(com.webank.ai.eggroll.meta.service.dao.generated.model.Dtable other) {
         Dtable result = new Dtable();
         result.setCreatedAt(other.getCreatedAt());
         result.setDispatcher(other.getDispatcher());
@@ -196,7 +195,7 @@ public class TypeConversionUtils {
         return result;
     }
 
-    public Fragment toCurrentFragment(com.webank.ai.fate.eggroll.meta.service.dao.generated.model.Fragment other) {
+    public Fragment toCurrentFragment(com.webank.ai.eggroll.meta.service.dao.generated.model.Fragment other) {
         Fragment result = new Fragment();
         result.setFragmentId(other.getFragmentId());
         result.setNodeId(other.getNodeId());
@@ -209,8 +208,8 @@ public class TypeConversionUtils {
         return result;
     }
 
-    public com.webank.ai.fate.eggroll.meta.service.dao.generated.model.Node toCompatibleNode(Node other) {
-        com.webank.ai.fate.eggroll.meta.service.dao.generated.model.Node result = new com.webank.ai.fate.eggroll.meta.service.dao.generated.model.Node();
+    public com.webank.ai.eggroll.meta.service.dao.generated.model.Node toCompatibleNode(Node other) {
+        com.webank.ai.eggroll.meta.service.dao.generated.model.Node result = new com.webank.ai.eggroll.meta.service.dao.generated.model.Node();
 
         result.setCreatedAt(other.getCreatedAt());
         result.setHost(other.getHost());
@@ -225,8 +224,8 @@ public class TypeConversionUtils {
         return result;
     }
 
-    public com.webank.ai.fate.eggroll.meta.service.dao.generated.model.Dtable toCompatibleDtable(Dtable other) {
-        com.webank.ai.fate.eggroll.meta.service.dao.generated.model.Dtable result = new com.webank.ai.fate.eggroll.meta.service.dao.generated.model.Dtable();
+    public com.webank.ai.eggroll.meta.service.dao.generated.model.Dtable toCompatibleDtable(Dtable other) {
+        com.webank.ai.eggroll.meta.service.dao.generated.model.Dtable result = new com.webank.ai.eggroll.meta.service.dao.generated.model.Dtable();
         result.setCreatedAt(other.getCreatedAt());
         result.setDispatcher(other.getDispatcher());
         result.setNamespace(other.getNamespace());
@@ -242,8 +241,8 @@ public class TypeConversionUtils {
         return result;
     }
 
-    public com.webank.ai.fate.eggroll.meta.service.dao.generated.model.Fragment toCompatibleFragment(Fragment other) {
-        com.webank.ai.fate.eggroll.meta.service.dao.generated.model.Fragment result = new com.webank.ai.fate.eggroll.meta.service.dao.generated.model.Fragment();
+    public com.webank.ai.eggroll.meta.service.dao.generated.model.Fragment toCompatibleFragment(Fragment other) {
+        com.webank.ai.eggroll.meta.service.dao.generated.model.Fragment result = new com.webank.ai.eggroll.meta.service.dao.generated.model.Fragment();
         result.setFragmentId(other.getFragmentId());
         result.setNodeId(other.getNodeId());
         result.setFragmentOrder(other.getFragmentOrder());
