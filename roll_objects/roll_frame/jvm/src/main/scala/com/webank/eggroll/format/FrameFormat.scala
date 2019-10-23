@@ -54,7 +54,7 @@ class FrameBatch(val rootSchema: FrameSchema, allocateNewRows:Int = -1,
 
   def spliceByRow(from: Int, to: Int): FrameBatch = {
     require(to >= from, s"from:$from  should > to:$to")
-    new FrameBatch(rootSchema, virtualRowStart = from, virtualRowCount = to - from + 1)
+    new FrameBatch(rootSchema, virtualRowStart = from, virtualRowCount = to - from)
   }
 
   def readDouble(field:Int, row: Int):Double = rootVectors(field).readDouble(row)
