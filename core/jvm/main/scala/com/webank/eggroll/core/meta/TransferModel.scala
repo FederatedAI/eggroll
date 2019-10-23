@@ -17,11 +17,12 @@
 package com.webank.eggroll.core.meta
 
 import com.google.protobuf.{ByteString, Message}
+import com.webank.eggroll.core.constant.StringConstants
 import com.webank.eggroll.core.rpc.RpcMessage
 import com.webank.eggroll.core.serdes.{PbMessageDeserializer, PbMessageSerializer}
 import com.webank.eggroll.core.transfer.Transfer
 
-case class ErTransferHeader(id: Int, tag: String, totalSize: Long) extends RpcMessage
+case class ErTransferHeader(id: Int, tag: String, totalSize: Long, status: String = StringConstants.EMPTY) extends RpcMessage
 
 case class ErBatch(header: ErTransferHeader, data: Array[Byte]) extends RpcMessage
 
@@ -34,6 +35,7 @@ object TransferModelPbSerdes {
         .setId(src.id)
         .setTag(src.tag)
         .setTotalSize(src.totalSize)
+        .setStatus(src.status)
 
       builder.build()
     }
@@ -53,7 +55,7 @@ object TransferModelPbSerdes {
   // deserializers
   implicit class ErBatchIdFromPbMessage(src: Transfer.TransferHeader) extends PbMessageDeserializer {
     override def fromProto[T >: RpcMessage](): ErTransferHeader = {
-      ErTransferHeader(id = src.getId, tag = src.getTag, totalSize = src.getTotalSize)
+      ErTransferHeader(id = src.getId, tag = src.getTag, totalSize = src.getTotalSize, status = src.getStatus)
     }
   }
 

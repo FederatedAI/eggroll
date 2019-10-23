@@ -67,4 +67,5 @@ object StringConstants {
   val LF = "\n"
   val LFLF = "\n\n"
 
+  val TRANSFER_END = "__transfer__end"
 }

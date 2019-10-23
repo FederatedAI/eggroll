@@ -25,6 +25,15 @@ message Functor {
   bytes body = 3;
 }
 
+message Pair {
+  bytes key = 1;
+  bytes value = 2;
+}
+
+message PairBatch {
+  repeated Pair pairs = 1;
+}
+
 message StoreLocator {
   string storeType = 1;
   string namespace = 2;

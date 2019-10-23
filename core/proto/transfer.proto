@@ -6,6 +6,7 @@ message TransferHeader {
   int32 id = 1;
   string tag = 2;
   int64 totalSize = 3;
+  string status = 4;
 }
 
 message Batch {

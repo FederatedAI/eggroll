@@ -16,6 +16,7 @@ from eggroll.core.base_model import RpcMessage
 from eggroll.core.proto import meta_pb2
 from eggroll.core.utils import _listify_map, _repr_list, _elements_to_proto
 
+DEFAULT_DELIM = '/'
 
 class ErEndpoint(RpcMessage):
   def __init__(self, host, port):
@@ -126,9 +127,9 @@ class ErStoreLocator(RpcMessage):
                           name=pb_message.name,
                           path=pb_message.path)
 
-  def to_path(self):
+  def to_path(self, delim = DEFAULT_DELIM):
     if not self._path:
-      self._path = f'{self._store_type}/{self._namespace}/{self.name}'
+      delim.join([self._store_type, self._namespace, self._name])
     return self._path
 
   def __str__(self):
@@ -157,8 +158,8 @@ class ErPartition(RpcMessage):
                          pb_message.storeLocator),
                        node=ErServerNode.from_proto(pb_message.node))
 
-  def to_path(self):
-    return f'{self._store_locator.to_path()}/{self._id}'
+  def to_path(self, delim=DEFAULT_DELIM):
+    return DEFAULT_DELIM.join([self._store_locator.to_path(delim=delim), self._id])
 
   def __str__(self):
     return self.__repr__()
@@ -175,6 +176,9 @@ class ErStore(RpcMessage):
   def to_proto(self):
     return meta_pb2.Store(storeLocator=self._store_locator.to_proto(),
                           partitions=_elements_to_proto(self._partitions))
+
+  def to_path(self, delim = DEFAULT_DELIM):
+    return self._store_locator.to_path(DEFAULT_DELIM)
 
   @staticmethod
   def from_proto(pb_message):

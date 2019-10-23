@@ -137,6 +137,8 @@ public class GrpcChannelFactory {
         .getInt(CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_FLOW_CONTROL_WINDOW(), 16 << 20);
     int channelMaxInboundMessageSize = DefaultEggrollConf
         .getInt(CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_MAX_INBOUND_MESSAGE_SIZE(), 32 << 20);
+    int channelMaxInboundMetadataSize = DefaultEggrollConf
+        .getInt(CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_MAX_INBOUND_METADATA_SIZE(), 64 << 10);
     long channelRetryBufferSize = DefaultEggrollConf
         .getLong(CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_RETRY_BUFFER_SIZE(), 16 << 20);
     int channelMaxRetryAttempts = DefaultEggrollConf
@@ -167,7 +169,8 @@ public class GrpcChannelFactory {
         .idleTimeout(channelIdleTimeoutSec, TimeUnit.SECONDS)
         .perRpcBufferLimit(channelPerRpcBufferLimit)
         .flowControlWindow(channelFlowControlWindow)
-        .maxInboundMetadataSize(channelMaxInboundMessageSize)
+        .maxInboundMessageSize(channelMaxInboundMessageSize)
+        .maxInboundMetadataSize(channelMaxInboundMetadataSize)
         .enableRetry()
         .retryBufferSize(channelRetryBufferSize)
         .maxRetryAttempts(channelMaxRetryAttempts);

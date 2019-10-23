@@ -64,6 +64,7 @@ class RollPair() {
     outputStoreWithPartitions
   }
 
+  // todo: give default partition function: hash and mod
   def map(inputJob: ErJob): ErStore = {
     val inputStore = inputJob.inputs.head
     val inputLocator = inputStore.storeLocator
@@ -89,7 +90,7 @@ class RollPair() {
 
     val job = inputJob.copy(inputs = List(inputStoreWithPartitions), outputs = List(outputStoreWithPartitions))
 
-    val collectiveCommand = CollectiveCommand(new CommandURI(RollPair.eggMapValuesCommand), job)
+    val collectiveCommand = CollectiveCommand(new CommandURI(RollPair.eggMapCommand), job)
 
     val commandResults = collectiveCommand.call()
 

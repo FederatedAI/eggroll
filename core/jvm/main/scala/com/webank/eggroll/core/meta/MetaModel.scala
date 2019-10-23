@@ -26,11 +26,21 @@ import scala.collection.JavaConverters._
 
 case class ErFunctor(name: String = StringConstants.EMPTY, serdes: String = StringConstants.EMPTY, body: Array[Byte]) extends RpcMessage
 
-case class ErStoreLocator(storeType: String, namespace: String, name: String, path: String = StringConstants.EMPTY) extends RpcMessage
+case class ErPair(key: Array[Byte], value: Array[Byte]) extends RpcMessage
 
-case class ErPartition(id: String, storeLocator: ErStoreLocator, node: ErServerNode) extends RpcMessage
+case class ErPairBatch(pairs: List[ErPair]) extends RpcMessage
 
-case class ErStore(storeLocator: ErStoreLocator, partitions: List[ErPartition] = List.empty) extends RpcMessage
+case class ErStoreLocator(storeType: String, namespace: String, name: String, path: String = StringConstants.EMPTY) extends RpcMessage {
+  def toPath(delim: String = StringConstants.SLASH): String = String.join(delim, storeType, namespace, name)
+}
+
+case class ErPartition(id: String, storeLocator: ErStoreLocator, node: ErServerNode) extends RpcMessage {
+  def toPath(delim: String = StringConstants.SLASH): String = String.join(delim, storeLocator.toPath(delim = delim), id)
+}
+
+case class ErStore(storeLocator: ErStoreLocator, partitions: List[ErPartition] = List.empty) extends RpcMessage {
+  def toPath(delim: String = StringConstants.SLASH): String = storeLocator.toPath(delim = delim)
+}
 
 case class ErJob(id: String, name: String = StringConstants.EMPTY, inputs: List[ErStore], outputs: List[ErStore] = List(), functors: List[ErFunctor]) extends RpcMessage
 
@@ -59,6 +69,25 @@ object MetaModelPbSerdes {
         .setName(src.name)
         .setSerdes(src.serdes)
         .setBody(ByteString.copyFrom(src.body))
+
+      builder.build()
+    }
+  }
+
+  implicit class ErPairToPbMessage(src: ErPair) extends PbMessageSerializer {
+    override def toProto[T >: PbMessage](): Meta.Pair = {
+      val builder = Meta.Pair.newBuilder()
+        .setKey(ByteString.copyFrom(src.key))
+        .setValue(ByteString.copyFrom(src.value))
+
+      builder.build()
+    }
+  }
+
+  implicit class ErPairBatchToPbMessage(src: ErPairBatch) extends PbMessageSerializer {
+    override def toProto[T >: PbMessage](): Meta.PairBatch = {
+      val builder = Meta.PairBatch.newBuilder()
+        .addAllPairs(src.pairs.map(_.toProto()).asJava)
 
       builder.build()
     }
@@ -127,6 +156,18 @@ object MetaModelPbSerdes {
   implicit class ErFunctorFromPbMessage(src: Meta.Functor) extends PbMessageDeserializer {
     override def fromProto[T >: RpcMessage](): ErFunctor = {
       ErFunctor(name = src.getName, serdes = src.getSerdes, body = src.getBody.toByteArray)
+    }
+  }
+
+  implicit class ErPairFromPbMessage(src: Meta.Pair) extends PbMessageDeserializer {
+    override def fromProto[T >: RpcMessage](): ErPair = {
+      ErPair(key = src.getKey.toByteArray, value = src.getValue.toByteArray)
+    }
+  }
+
+  implicit class ErPairBatchFromPbMessage(src: Meta.PairBatch) extends PbMessageDeserializer {
+    override def fromProto[T >: RpcMessage](): ErPairBatch = {
+      ErPairBatch(pairs = src.getPairsList.asScala.map(_.fromProto()).toList)
     }
   }
 

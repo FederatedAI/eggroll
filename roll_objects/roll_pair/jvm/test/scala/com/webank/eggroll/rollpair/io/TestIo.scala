@@ -21,13 +21,14 @@ import org.junit.Test
 import scala.collection.mutable.ListBuffer
 
 class TestIo {
-  val partitionId = 0
+  val partitionId = 1
   //val dbPath: String = "/tmp/eggroll/levelDb/ns/name/" + partitionId
 
-  val dbPathPrefix = "/tmp/eggroll/levelDb/ns/test/"
+  val dbPathPrefix = "/tmp/eggroll/levelDb/ns/name/"
   val mapValuesPath: String = "/tmp/eggroll/levelDb/ns/testMapValues/"
   val reducePath: String = "/tmp/eggroll/levelDb/ns/testReduce/"
   val joinPath: String = "/tmp/eggroll/levelDb/ns/testJoin/"
+  val mapPath: String = "/tmp/eggroll/levelDb/ns/testMap/"
   val dbPath = mapValuesPath
   val rocksDBSortedKVAdapter: RocksdbSortedKvAdapter = new RocksdbSortedKvAdapter(dbPath)
 
@@ -72,11 +73,12 @@ class TestIo {
 
   @Test
   def testWriteMultipleKvBatch(): Unit = {
+    val path = dbPathPrefix
     for (p <- 0 until 4) {
-      val partitionAdapter = new RocksdbSortedKvAdapter(dbPathPrefix + p)
+      val partitionAdapter = new RocksdbSortedKvAdapter(path + p)
       val batch = ListBuffer[(Array[Byte], Array[Byte])]()
       for (i <- 0 to 10) {
-        batch.append(((s"k-${partitionId}-${i}").getBytes(), (s"v-${partitionId}-${i}").getBytes()))
+        batch.append(((s"k-${p}-${i}").getBytes(), (s"v-${p}-${i}").getBytes()))
       }
 
       partitionAdapter.writeBatch(batch.iterator)
@@ -86,18 +88,22 @@ class TestIo {
 
   @Test
   def testIterateMultipleKvBatch(): Unit = {
-    val path = joinPath
+    val path = mapPath
     println(s"path: ${path}")
+
     for (p <- 0 until 4) {
       val partitionAdapter = new RocksdbSortedKvAdapter(path + p)
+      var count = 0
       println(s"partition #${p}:")
 
       val iter = partitionAdapter.iterate()
       while (iter.hasNext) {
         val next = iter.next()
         println(s"key: ${new String(next._1)}, value: ${new String(next._2)}")
+        count += 1
       }
 
+      println(s"total count: ${count}")
       println()
       partitionAdapter.close()
     }

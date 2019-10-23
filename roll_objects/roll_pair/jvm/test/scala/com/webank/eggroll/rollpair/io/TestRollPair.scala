@@ -17,15 +17,12 @@
 package com.webank.eggroll.rollpair.io
 
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
-import com.webank.eggroll.core.constant.StringConstants
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.transfer.GrpcTransferService
 import com.webank.eggroll.core.util.Logging
 import com.webank.eggroll.rollpair.component.{EggPair, RollPair}
 import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
-import org.apache.commons.lang3.StringUtils
 import org.junit.Test
-import org.junit.runner.RunWith
 
 
 class TestRollPair extends Logging {
@@ -74,7 +71,56 @@ class TestRollPair extends Logging {
     val result = rollPair.mapValues(job)
   }
 
+  @Test
+  def testMap(): Unit = {
+    def prependToBoth(key: Array[Byte], value: Array[Byte]): (Array[Byte], Array[Byte]) = {
+      ("k_".getBytes() ++ key, "v_".getBytes() ++ value)
+    }
 
+    def partitioner(key: Array[Byte]): Int = {
+      key.last % 4
+    }
+
+    val rollServer = NettyServerBuilder.forPort(20000)
+      .addService(new CommandService)
+      .addService(new GrpcTransferService)
+      .build
+    rollServer.start()
+
+    // job
+    CommandRouter.register(serviceName = RollPair.rollMapCommand,
+      serviceParamTypes = List(classOf[ErJob]),
+      routeToClass = classOf[RollPair],
+      routeToMethodName = RollPair.map)
+
+    val eggServer = NettyServerBuilder.forPort(20001)
+      .addService(new CommandService)
+      .addService(new GrpcTransferService)
+      .build()
+    eggServer.start()
+
+    // task
+    CommandRouter.register(serviceName = RollPair.eggMapCommand,
+      serviceParamTypes = List(classOf[ErTask]),
+      routeToClass = classOf[EggPair],
+      routeToMethodName = RollPair.map)
+
+
+    val storeLocator = ErStoreLocator("levelDb", "ns", "name")
+
+    val rollPair = new RollPair()
+
+    val f: (Array[Byte], Array[Byte]) => (Array[Byte], Array[Byte]) = prependToBoth
+    val p: Array[Byte] => Int = partitioner
+
+    val job = ErJob(id = "1",
+      name = "map",
+      inputs = List(ErStore(storeLocator)),
+      functors = List(ErFunctor("map", "",
+        RollPair.functorSerDes.serialize(f)), ErFunctor("map", "", RollPair.functorSerDes.serialize(p))))
+
+    val result = rollPair.map(job)
+  }
 
   @Test
   def testReduce(): Unit = {

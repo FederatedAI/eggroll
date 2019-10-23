@@ -17,6 +17,7 @@
 package com.webank.eggroll.core.transfer
 
 import com.webank.eggroll.core.concurrent.AwaitSettableFuture
+import com.webank.eggroll.core.constant.StringConstants
 import com.webank.eggroll.core.grpc.client.{GrpcClientContext, GrpcClientTemplate}
 import com.webank.eggroll.core.grpc.observer.SameTypeCallerResponseStreamObserver
 import com.webank.eggroll.core.grpc.processor.BaseClientCallStreamProcessor
@@ -25,7 +26,7 @@ import com.webank.eggroll.core.meta.{ErBatch, ErServerNode, ErTransferHeader}
 import io.grpc.stub.{ClientCallStreamObserver, StreamObserver}
 
 class TransferClient {
-  def send(data: Array[Byte], tag: String, serverNode: ErServerNode): Unit = {
+  def send(data: Array[Byte], tag: String, serverNode: ErServerNode, status: String = StringConstants.EMPTY): Unit = {
     val context = new GrpcClientContext[TransferServiceGrpc.TransferServiceStub, Transfer.Batch, Transfer.TransferHeader]
 
     val delayedResult = new AwaitSettableFuture[Transfer.TransferHeader]
@@ -35,7 +36,7 @@ class TransferClient {
       .setCallerStreamingMethodInvoker((stub: TransferServiceGrpc.TransferServiceStub,
                                         responseObserver: StreamObserver[Transfer.TransferHeader]) => stub.send(responseObserver))
       .setCallerStreamObserverClassAndInitArgs(classOf[SameTypeCallerResponseStreamObserver[Transfer.Batch, Transfer.TransferHeader]])
-      .setRequestStreamProcessorClassAndArgs(classOf[TransferSendStreamProcessor], data, tag)
+      .setRequestStreamProcessorClassAndArgs(classOf[TransferSendStreamProcessor], data, tag, status)
 
     val template = new GrpcClientTemplate[TransferServiceGrpc.TransferServiceStub, Transfer.Batch, Transfer.TransferHeader]
 
@@ -47,10 +48,16 @@ class TransferClient {
   }
 }
 
-class TransferSendStreamProcessor(clientCallStreamObserver: ClientCallStreamObserver[Transfer.Batch], data: Array[Byte], tag: String)
+class TransferSendStreamProcessor(clientCallStreamObserver: ClientCallStreamObserver[Transfer.Batch],
+                                  data: Array[Byte],
+                                  tag: String,
+                                  status: String)
   extends BaseClientCallStreamProcessor[Transfer.Batch](clientCallStreamObserver) {
   override def onProcess(): Unit = {
-    val batch = ErBatch(header = ErTransferHeader(id = 100, tag = this.tag, totalSize = data.size), data = this.data)
+    val batch = ErBatch(
+      header = ErTransferHeader(
+        id = 100, tag = this.tag, totalSize = data.size, status = this.status),
+      data = this.data)
     clientCallStreamObserver.onNext(batch.toProto())
   }
 }
