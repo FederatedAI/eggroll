@@ -251,12 +251,12 @@ public class DefaultStrategyGrpcCrudService implements GrpcCrudService {
             Object record = byteStringSerDesHelper.deserialize(requestData.getData(), Class.forName(paramType));
 
             if (compatible) {
-                if (record instanceof com.webank.ai.fate.eggroll.meta.service.dao.generated.model.Node) {
-                    record = typeConversionUtils.toCurrentNode((com.webank.ai.fate.eggroll.meta.service.dao.generated.model.Node) record);
-                } else if (record instanceof com.webank.ai.fate.eggroll.meta.service.dao.generated.model.Dtable) {
-                    record = typeConversionUtils.toCurrentDtable((com.webank.ai.fate.eggroll.meta.service.dao.generated.model.Dtable) record);
-                } else if(record instanceof com.webank.ai.fate.eggroll.meta.service.dao.generated.model.Fragment) {
-                    record = typeConversionUtils.toCurrentFragment((com.webank.ai.fate.eggroll.meta.service.dao.generated.model.Fragment) record);
+                if (record instanceof com.webank.ai.eggroll.meta.service.dao.generated.model.Node) {
+                    record = typeConversionUtils.toCurrentNode((com.webank.ai.eggroll.meta.service.dao.generated.model.Node) record);
+                } else if (record instanceof com.webank.ai.eggroll.meta.service.dao.generated.model.Dtable) {
+                    record = typeConversionUtils.toCurrentDtable((com.webank.ai.eggroll.meta.service.dao.generated.model.Dtable) record);
+                } else if(record instanceof com.webank.ai.eggroll.meta.service.dao.generated.model.Fragment) {
+                    record = typeConversionUtils.toCurrentFragment((com.webank.ai.eggroll.meta.service.dao.generated.model.Fragment) record);
                 }
             }
             Object callResult = processCrudRequest(record, crudServerProcessor);
@@ -273,7 +273,7 @@ public class DefaultStrategyGrpcCrudService implements GrpcCrudService {
 
                         if (first instanceof Node) {
                             ArrayList<Node> arrayCurrentResult = (ArrayList<Node>) callResult;
-                            ArrayList<com.webank.ai.fate.eggroll.meta.service.dao.generated.model.Node> arrayCompatibleResult = new ArrayList<>();
+                            ArrayList<com.webank.ai.eggroll.meta.service.dao.generated.model.Node> arrayCompatibleResult = new ArrayList<>();
                             for (Node node : arrayCurrentResult) {
                                 arrayCompatibleResult.add(typeConversionUtils.toCompatibleNode(node));
                             }
@@ -282,7 +282,7 @@ public class DefaultStrategyGrpcCrudService implements GrpcCrudService {
                         } else if (first instanceof Dtable) {
                             if (callResult instanceof List) {
                                 ArrayList<Dtable> arrayCurrentResult = (ArrayList<Dtable>) callResult;
-                                ArrayList<com.webank.ai.fate.eggroll.meta.service.dao.generated.model.Dtable> arrayCompatibleResult = new ArrayList<>();
+                                ArrayList<com.webank.ai.eggroll.meta.service.dao.generated.model.Dtable> arrayCompatibleResult = new ArrayList<>();
                                 for (Dtable dtable : arrayCurrentResult) {
                                     arrayCompatibleResult.add(typeConversionUtils.toCompatibleDtable(dtable));
                                 }
@@ -292,7 +292,7 @@ public class DefaultStrategyGrpcCrudService implements GrpcCrudService {
                         } else if (first instanceof Fragment) {
                             if (callResult instanceof List) {
                                 ArrayList<Fragment> arrayCurrentResult = (ArrayList<Fragment>) callResult;
-                                ArrayList<com.webank.ai.fate.eggroll.meta.service.dao.generated.model.Fragment> arrayCompatibleResult = new ArrayList<>();
+                                ArrayList<com.webank.ai.eggroll.meta.service.dao.generated.model.Fragment> arrayCompatibleResult = new ArrayList<>();
                                 for (Fragment fragment : arrayCurrentResult) {
                                     arrayCompatibleResult.add(typeConversionUtils.toCompatibleFragment(fragment));
                                 }
