@@ -134,7 +134,7 @@ public class ProcessorEngineOperator implements EngineOperator {
                 if (lastPort.get() == maxPort) {
                     lastPort.compareAndSet(maxPort, startPort);
                 }
-                port = lastPort.getAndIncrement();
+                port = lastPort.incrementAndGet();
 
                 if (runtimeUtils.isPortAvailable(port)) {
                     valueBindingsMap.put(PORT, String.valueOf(port));
