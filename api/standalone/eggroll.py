@@ -54,6 +54,9 @@ class Standalone:
 
         self.unique_id_template = '_EggRoll_%s_%s_%s_%.20f_%d'
 
+        eggroll_session.set_gc_table(self)
+        eggroll_session.add_cleanup_task(eggroll_session.clean_duplicated_table)
+
         # todo: move to eggrollSession
         try:
             self.host_name = socket.gethostname()
@@ -66,7 +69,7 @@ class Standalone:
         return self.eggroll_session
 
     def stop(self):
-        self.eggroll_session.run_cleanup_tasks()
+        self.eggroll_session.run_cleanup_tasks(Standalone.get_instance())
         self.__instance = None
 
     def is_stopped(self):
@@ -78,7 +81,11 @@ class Standalone:
         self.meta_table.put_if_absent(_table_key, partition)
         partition = self.meta_table.get(_table_key)
         __table = _DTable(__type, namespace, name, partition, in_place_computing)
-
+        if persistent is False and persistent_engine == StoreType.IN_MEMORY:
+            count = self.eggroll_session._gc_table.get(name)
+            if count is None:
+                count = 0
+            self.eggroll_session._gc_table.put(name, count + 1)
         return __table
 
 
@@ -532,7 +539,12 @@ class _DTable(object):
         if self._name == 'fragments' or self._name == '__clustercomm__' or self._name == '__status__':
             return
         if Standalone.get_instance() is not None and not Standalone.get_instance().is_stopped():
-            print("del table name:{}, namespace:{}".format(self._name, self._namespace))
+            gc_table = Standalone.get_instance().get_eggroll_session()._gc_table
+            table_count = gc_table.get(self._name)
+            if table_count is None:
+                table_count = 0
+            gc_table.put(self._name, (table_count + 1))
+        elif Standalone.get_instance() is None:
             self.destroy()
 
     def __str__(self):
@@ -647,13 +659,7 @@ class _DTable(object):
         _table_key = ".".join([self._type, self._namespace, self._name])
         Standalone.get_instance().meta_table.delete(_table_key)
         _path = _get_db_path(self._type, self._namespace, self._name)
-        file_lock = str(file_utils.get_project_base_directory() + "/data/" + "_".join(
-            [self._type, self._namespace, self._name]) + ".lock")
-        if not os.path.exists(file_lock):
-            fd = os.open(file_lock, os.O_CREAT)
-            shutil.rmtree(_path, ignore_errors=True)
-            if os.path.exists(file_lock):
-                os.remove(file_lock)
+        shutil.rmtree(_path, ignore_errors=True)
 
     def collect(self, min_chunk_size=0, use_serialize=True):
         iterators = []
@@ -741,6 +747,12 @@ class _DTable(object):
             _p = _UnaryProcess(_task_info, _op, _p_conf)
             results.append(Standalone.get_instance().pool.submit(_do_func, _p))
         return results
+
+    def insert_gc_table(self, name):
+        count = Standalone.get_instance().get_eggroll_session()._gc_table.get(name)
+        if count is None:
+            count = 0
+        Standalone.get_instance().get_eggroll_session()._gc_table.put(name, (count + 1))
 
     def map(self, func):
         results = self._submit_to_pool(func, do_map)

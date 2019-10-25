@@ -19,7 +19,7 @@ from typing import MutableMapping
 from eggroll.api import NamingPolicy, ComputingEngine
 from eggroll.api.proto.basic_meta_pb2 import SessionInfo
 from eggroll.api.utils.log_utils import getLogger
-
+from eggroll.api.standalone.eggroll import Standalone
 LOGGER = getLogger()
 
 class EggrollSession(object):
@@ -62,9 +62,11 @@ class EggrollSession(object):
     def clean_duplicated_table(self, eggroll):
         for item in list(self._gc_table.collect()):
             name = item[0]
-            LOGGER.info("destroy table:{}".format(name))
-            table = eggroll.table(name=name, namespace=self._session_id)
-            eggroll.destroy(table)
+            if isinstance(eggroll, Standalone):
+                eggroll.cleanup(name, self._session_id, False)
+            else:
+                table = eggroll.table(name=name, namespace=self._session_id, persistent=False)
+                eggroll.destroy(table)
 
     def add_cleanup_task(self, func):
         self._cleanup_tasks.add(func)
