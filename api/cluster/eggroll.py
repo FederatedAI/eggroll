@@ -200,7 +200,7 @@ class _DTable(object):
             partition = self._partitions
         dup = _EggRoll.get_instance().table(name, namespace, partition=partition, in_place_computing=self.get_in_place_computing(), persistent=persistent, persistent_engine=persistent_engine)
         self.set_gc_disable()
-        dup.put_all(self.collect(use_serialize=use_serialize), use_serialize=use_serialize)
+        dup.put_all(self.collect(use_serialize=use_serialize), use_serialize=use_serialize, single_process=True)
         self.set_gc_enable()
         return dup
 
@@ -208,7 +208,7 @@ class _DTable(object):
         _EggRoll.get_instance().put(self, k, v, use_serialize=use_serialize)
 
     def put_all(self, kv_list: Iterable, use_serialize=True, chunk_size=100000, include_key=True):
-        return _EggRoll.get_instance().put_all(self, kv_list, use_serialize=use_serialize, chunk_size=chunk_size, include_key=include_key)
+        return _EggRoll.get_instance().put_all(self, kv_list, use_serialize=use_serialize, chunk_size=chunk_size, include_key=include_key, single_process=single_process)
 
     def get(self, k, use_serialize=True):
         return _EggRoll.get_instance().get(self, k, use_serialize=use_serialize)
@@ -508,7 +508,7 @@ class _EggRoll(object):
         operand = _EggRoll.get_instance().__generate_operand(chunked_iter, use_serialize)
         _EggRoll.get_instance().kv_stub.putAll(operand, metadata=_get_meta(_table))
 
-    def put_all(self, _table, data: Iterable, use_serialize=True, chunk_size=100000, skip_chunk=0, include_key=True):
+    def put_all(self, _table, data: Iterable, use_serialize=True, chunk_size=100000, skip_chunk=0, include_key=True, single_process=False):
         global gc_tag
         gc_tag = False
         skipped_chunk = 0
@@ -525,34 +525,41 @@ class _EggRoll(object):
         host = self.host
         port = self.port
         process_pool_size = cpu_count()
-
-        with ProcessPoolExecutor(process_pool_size) as executor:
-            if isinstance(kvs, Sequence):      # Sequence
-                for chunked_iter in split_every_yield(kvs, chunk_size):
-                    if skipped_chunk < skip_chunk:
-                        skipped_chunk += 1 
-                    else:
-                        future = executor.submit(_EggRoll.action, _table, host, port, chunked_iter, use_serialize) 
-            elif isinstance(kvs, Generator) or isinstance(data, Generator): 
-                index = 0
-                while True:                
-                    chunked_iter = split_every_generator(kvs, chunk_size, skip_chunk)
-                    if chunked_iter == []:
-                        break
-                    future = executor.submit(_EggRoll.action, _table, host, port, chunked_iter, use_serialize) 
-                    index += 1
-            else:                              # other Iterable types
-                try:
-                    index = 0
-                    while True:                
-                        chunked_iter = split_every(kvs, index, chunk_size, skip_chunk)
-                        chunked_iter_ = copy.deepcopy(chunked_iter)
-                        next(chunked_iter_)
-                        future = executor.submit(_EggRoll.action, _table, host, port, chunked_iter, use_serialize) 
-                        index += 1
-                except StopIteration as e:
-                    LOGGER.debug("StopIteration")
-            executor.shutdown(wait=True)
+        if single_process is True:
+            print("single_process")
+            for chunked_iter in split_every_yield(kvs, chunk_size=chunk_size):
+                if skipped_chunk < skip_chunk:
+                    skipped_chunk += 1
+                else:
+                    self.kv_stub.putAll(self.__generate_operand(chunked_iter, use_serialize=use_serialize), metadata=_get_meta(_table))
+        else:
+	        with ProcessPoolExecutor(process_pool_size) as executor:
+	            if isinstance(kvs, Sequence):      # Sequence
+	                for chunked_iter in split_every_yield(kvs, chunk_size):
+	                    if skipped_chunk < skip_chunk:
+	                        skipped_chunk += 1 
+	                    else:
+	                        future = executor.submit(_EggRoll.action, _table, host, port, chunked_iter, use_serialize) 
+	            elif isinstance(kvs, Generator) or isinstance(data, Generator): 
+	                index = 0
+	                while True:                
+	                    chunked_iter = split_every_generator(kvs, chunk_size, skip_chunk)
+	                    if chunked_iter == []:
+	                        break
+	                    future = executor.submit(_EggRoll.action, _table, host, port, chunked_iter, use_serialize) 
+	                    index += 1
+	            else:                              # other Iterable types
+	                try:
+	                    index = 0
+	                    while True:                
+	                        chunked_iter = split_every(kvs, index, chunk_size, skip_chunk)
+	                        chunked_iter_ = copy.deepcopy(chunked_iter)
+	                        next(chunked_iter_)
+	                        future = executor.submit(_EggRoll.action, _table, host, port, chunked_iter, use_serialize) 
+	                        index += 1
+	                except StopIteration as e:
+	                    LOGGER.debug("StopIteration")
+	            executor.shutdown(wait=True)
         gc_tag = True
        
     def delete(self, _table, k, use_serialize=True):
