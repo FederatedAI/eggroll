@@ -99,7 +99,7 @@ public class ProcessorEngineOperator implements EngineOperator {
     }
 
     @Override
-    public ComputingEngine start(ComputingEngine computingEngine, Properties prop) {
+    public synchronized ComputingEngine start(ComputingEngine computingEngine, Properties prop) {
         init();
         List<Properties> allSources = Lists.newArrayList();
         allSources.add(prop);
