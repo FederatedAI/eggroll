@@ -207,7 +207,7 @@ class _DTable(object):
     def put(self, k, v, use_serialize=True):
         _EggRoll.get_instance().put(self, k, v, use_serialize=use_serialize)
 
-    def put_all(self, kv_list: Iterable, use_serialize=True, chunk_size=100000, include_key=True):
+    def put_all(self, kv_list: Iterable, use_serialize=True, chunk_size=100000, include_key=True, single_process=False):
         return _EggRoll.get_instance().put_all(self, kv_list, use_serialize=use_serialize, chunk_size=chunk_size, include_key=include_key, single_process=single_process)
 
     def get(self, k, use_serialize=True):
