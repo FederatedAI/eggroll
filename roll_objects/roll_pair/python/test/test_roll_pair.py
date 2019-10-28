@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 #  Copyright (c) 2019 - now, Eggroll Authors. All Rights Reserved.
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,7 +17,7 @@ import grpc
 import time
 import unittest
 from eggroll.core.command.command_model import ErCommandRequest
-from eggroll.core.meta import ErStoreLocator, ErJob, ErStore, ErFunctor
+from eggroll.core.meta_model import ErStoreLocator, ErJob, ErStore, ErFunctor
 from eggroll.core.proto import command_pb2_grpc
 from eggroll.core.serdes import cloudpickle
 from eggroll.roll_pair.roll_pair import RollPair

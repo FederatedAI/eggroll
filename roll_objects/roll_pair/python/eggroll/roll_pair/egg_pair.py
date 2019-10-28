@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 #  Copyright (c) 2019 - now, Eggroll Authors. All Rights Reserved.
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,21 +17,20 @@ import grpc
 from concurrent import futures
 from eggroll.core.command.command_router import CommandRouter
 from eggroll.core.command.command_service import CommandServicer
+from eggroll.core.datastructure.broker import FifoBroker
 from eggroll.core.io.kv_adapter import RocksdbSortedKvAdapter
-from eggroll.core.meta import ErTask, ErPartition
+from eggroll.core.meta_model import ErTask, ErPartition
 from eggroll.core.proto import command_pb2_grpc, transfer_pb2_grpc
 from eggroll.core.serdes import cloudpickle
-from eggroll.core.transfer.transfer_service import TransferServicer, \
+from eggroll.core.transfer.transfer_service import GrpcTransferServicer, \
   TransferClient
+from eggroll.roll_pair.shuffler import DefaultShuffler
 from grpc._cython import cygrpc
-
 
 class EggPair(object):
   def run_task(self, task: ErTask):
     functors = task._job._functors
     result = task
-
-    print(task)
 
     if task._name == 'mapValues':
       f = cloudpickle.loads(functors[0]._body)
@@ -55,6 +55,32 @@ class EggPair(object):
       output_writebatch.close()
       input_adapter.close()
       output_adapter.close()
+    elif task._name == 'map':
+      f = cloudpickle.loads(functors[0]._body)
+      p = cloudpickle.loads(functors[1]._body)
+
+      input_partition = task._inputs[0]
+      output_partition = task._outputs[0]
+
+      print("input partition: ", input_partition, "path: ",
+            get_db_path(input_partition))
+      print("output partition: ", output_partition, "path: ",
+            get_db_path(output_partition))
+      input_adapter = RocksdbSortedKvAdapter(
+          options={'path': get_db_path(input_partition)})
+      output_store = task._job._outputs[0]
+
+      shuffle_broker = FifoBroker()
+      shuffler = DefaultShuffler(task._job._id, shuffle_broker, output_store, output_partition, p)
+
+      shuffler.start()
+
+      for k_bytes, v_bytes in input_adapter.iteritems():
+        shuffle_broker.put(f(k_bytes, v_bytes))
+      input_adapter.close()
+
+      shuffle_broker.signal_write_finish()
+      shuffle_finished = shuffler.wait_until_finished(600)
     elif task._name == 'reduce':
       f = cloudpickle.loads(functors[0]._body)
 
@@ -73,7 +99,7 @@ class EggPair(object):
       transfer_tag = task._job._name
 
       if "0" == partition_id:
-        queue = TransferServicer.get_or_create_queue(transfer_tag)
+        queue = GrpcTransferServicer.get_or_create_broker(transfer_tag)
         partition_size = len(task._job._inputs[0]._partitions)
 
         comb_op_result = seq_op_result
@@ -168,7 +194,7 @@ def serve():
   command_pb2_grpc.add_CommandServiceServicer_to_server(command_servicer,
                                                         server)
 
-  transfer_servicer = TransferServicer()
+  transfer_servicer = GrpcTransferServicer()
   transfer_pb2_grpc.add_TransferServiceServicer_to_server(transfer_servicer,
                                                           server)
 

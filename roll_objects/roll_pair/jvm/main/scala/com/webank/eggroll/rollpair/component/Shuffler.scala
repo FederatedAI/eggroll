@@ -33,43 +33,48 @@ object Shuffler  {
                  idIndex: Int = Shuffler.idIndex.incrementAndGet()) = s"${idPrefix}-${idIndex}"
 }
 
+
+// todo: move calculation to threads
 class DefaultShuffler(shuffleId: String,
-                      broker: Broker[(Array[Byte], Array[Byte])],
+                      map_results_broker: Broker[(Array[Byte], Array[Byte])],
                       outputStore: ErStore,
                       outputPartition: ErPartition,
                       partitionFunction: Array[Byte] => Int,
-                      threadPoolSize: Int = 5) extends Shuffler with Logging {
+                      parallelSize: Int = 5) extends Shuffler with Logging {
 
-  val partitionThreadPool = ThreadPoolUtils.newFixedThreadPool(threadPoolSize, s"${shuffleId}")
+  val partitionThreadPool = ThreadPoolUtils.newFixedThreadPool(parallelSize, s"${shuffleId}")
   val sendRecvThreadPool = ThreadPoolUtils.newFixedThreadPool(2, prefix = s"${shuffleId}-sendrecv")
 
   val outputPartitions = outputStore.partitions
-  val outputPartitionCount = outputPartitions.length
+  val outputPartitionsCount = outputPartitions.length
 
-  val partitionedBrokers = for (i <- 0 until outputPartitionCount) yield new LinkedBlockingBroker[(Array[Byte], Array[Byte])]()
-  val partitionFinishLatch = new CountDownLatch(threadPoolSize)
+  val partitionedBrokers = for (i <- 0 until outputPartitionsCount) yield new LinkedBlockingBroker[(Array[Byte], Array[Byte])]()
+  // val partitionFinishLatch = new CountDownLatch(parallelSize)
   val shuffleFinishLatch = new CountDownLatch(3)
 
-  val notFinishedPartitionThreadCount = new CountDownLatch(threadPoolSize)
+  val notFinishedPartitionThreadCount = new CountDownLatch(parallelSize)
   val isSendFinished = new AtomicBoolean(false)
-  val isReceiveFinished = new AtomicBoolean(false)
+  val isRecvFinished = new AtomicBoolean(false)
   val totalPartitionedElementsCount = new AtomicLong(0L)
   val errors = new DistributedRuntimeException
 
   def start(): Unit = {
-    GrpcTransferService.getOrCreateBroker(key = s"${shuffleId}-${outputPartition.id}", writeSignals = outputPartitionCount)
+    GrpcTransferService.getOrCreateBroker(key = s"${shuffleId}-${outputPartition.id}", writeSignals = outputPartitionsCount)
 
-    for (i <- 0 until threadPoolSize) {
+    for (i <- 0 until parallelSize) {
       val cf: CompletableFuture[Long] =
         CompletableFuture
           .supplyAsync(
-            new Partitioner(broker, partitionedBrokers.toList, partitionFunction), partitionThreadPool)
+            new Partitioner(map_results_broker,
+              partitionedBrokers.toList,
+              partitionFunction),
+            partitionThreadPool)
           .whenCompleteAsync((result, exception) => {
             if (exception == null) {
               notFinishedPartitionThreadCount.countDown()
 
               if (notFinishedPartitionThreadCount.getCount <= 0) {
-                partitionedBrokers.foreach(b => b.signalWriteFinished())
+                partitionedBrokers.foreach(b => b.signalWriteFinish())
                 shuffleFinishLatch.countDown()
                 logInfo(s"finished partition for partition")
               }
@@ -84,8 +89,8 @@ class DefaultShuffler(shuffleId: String,
 
     val sender: CompletableFuture[Long] =
       CompletableFuture.supplyAsync(new ShuffleSender(shuffleId = shuffleId,
-          shuffledBrokers = partitionedBrokers.toList,
-          outputPartitions = outputPartitions), sendRecvThreadPool)
+          brokers = partitionedBrokers.toList,
+          targetPartitions = outputPartitions), sendRecvThreadPool)
       .whenCompleteAsync((result, exception) => {
         if (exception == null) {
           logInfo(s"finished send. total sent: ${result}")
@@ -100,10 +105,10 @@ class DefaultShuffler(shuffleId: String,
     val receiver: CompletableFuture[Long] =
       CompletableFuture.supplyAsync(new ShuffleReceiver(shuffleId = shuffleId,
           outputPartition = outputPartition,
-          totalPartitionsCount = outputPartitionCount), sendRecvThreadPool)
+          totalPartitionsCount = outputPartitionsCount), sendRecvThreadPool)
           .whenCompleteAsync((result, exception) => {
             if (exception == null) {
-              isReceiveFinished.compareAndSet(false, true)
+              isRecvFinished.compareAndSet(false, true)
               shuffleFinishLatch.countDown()
             } else {
               logError(s"error in receive", exception)
@@ -116,7 +121,7 @@ class DefaultShuffler(shuffleId: String,
     // partitionThreadPool.shutdown()
   }
 
-  override def isFinished(): Boolean = notFinishedPartitionThreadCount.getCount() <= 0 && isSendFinished.get() && isReceiveFinished.get()
+  override def isFinished(): Boolean = notFinishedPartitionThreadCount.getCount() <= 0 && isSendFinished.get() && isRecvFinished.get()
 
   override def waitUntilFinished(timeout: Long, unit: TimeUnit): Boolean = shuffleFinishLatch.await(timeout, unit)
 
@@ -131,7 +136,7 @@ class DefaultShuffler(shuffleId: String,
                     partitionFunction: Array[Byte] => Int,
                    // todo: configurable
                     chunkSize: Int = 1000) extends Supplier[Long] {
-    val partitionedElementsCount = new AtomicLong(0L)
+    var partitionedElementsCount = 0L
 
     override def get(): Long = {
       val chunk = new util.ArrayList[(Array[Byte], Array[Byte])](chunkSize)
@@ -141,73 +146,73 @@ class DefaultShuffler(shuffleId: String,
 
         chunk.forEach(t => {
           output(partitionFunction(t._1)).put(t)
-          partitionedElementsCount.incrementAndGet()
+          partitionedElementsCount += 1L
         })
       }
 
-      partitionedElementsCount.get()
+      partitionedElementsCount
     }
   }
 
   // todo: consider change (Array[Byte], Array[Byte]) to ErPair
   class ShuffleSender(shuffleId: String,
-                      shuffledBrokers: List[Broker[(Array[Byte], Array[Byte])]],
-                      outputPartitions: List[ErPartition],
-                     // todo: make it configurable
+                      brokers: List[Broker[(Array[Byte], Array[Byte])]],
+                      targetPartitions: List[ErPartition],
+                      // todo: make it configurable
                       chunkSize: Int = 100)
     extends Supplier[Long] {
-    val notFinishedBrokerIndex = mutable.Set[Int]()
-    val totalSent = new AtomicLong(0L)
-
-    for (i <- 0 until shuffledBrokers.size) {
-      notFinishedBrokerIndex.add(i)
-    }
 
     override def get(): Long = {
       // todo: change to event-driven
-      val transferClient = new TransferClient()
+      val notFinishedBrokerIndex = mutable.Set[Int]()
+      for (i <- 0 until brokers.size) {
+        notFinishedBrokerIndex.add(i)
+      }
 
+      val transferClient = new TransferClient()
       val newlyFinishedIdx = mutable.ListBuffer[Int]()
+      var totalSent = 0L
 
       while (notFinishedBrokerIndex.nonEmpty) {
         notFinishedBrokerIndex.foreach(idx => {
           val sendBuffer = new util.ArrayList[(Array[Byte], Array[Byte])](chunkSize)
-          val broker = shuffledBrokers(idx)
-          var brokerIsClosable = false
+          val broker = brokers(idx)
+          var isBrokerClosable = false
 
           this.synchronized {
             if (broker.isWriteFinished() || broker.size() >= chunkSize) {
               broker.drainTo(sendBuffer, chunkSize)
-              brokerIsClosable = broker.isClosable()
+              isBrokerClosable = broker.isClosable()
             }
           }
 
           if (!sendBuffer.isEmpty) {
             val pairs = mutable.ListBuffer[ErPair]()
-            sendBuffer.forEach(pair => {
-              pairs += ErPair(key = pair._1, value = pair._2)
+            sendBuffer.forEach(t => {
+              pairs += ErPair(key = t._1, value = t._2)
             })
 
             val pairBatch = ErPairBatch(pairs = pairs.toList)
 
             var transferStatus = StringConstants.EMPTY
-            if (brokerIsClosable) {
+            if (isBrokerClosable) {
               transferStatus = StringConstants.TRANSFER_END
               newlyFinishedIdx += idx
             }
 
             transferClient.send(data = pairBatch.toProto.toByteArray,
               tag = s"${shuffleId}-${idx}",
-              serverNode = outputPartitions(idx).node,
-              status = if (brokerIsClosable) StringConstants.TRANSFER_END else StringConstants.EMPTY)
-            totalSent.addAndGet(pairs.length)
+              serverNode = targetPartitions(idx).node,
+              status = transferStatus)
+            totalSent += pairs.length
           }
         })
 
         newlyFinishedIdx.foreach(idx => notFinishedBrokerIndex -= idx)
+        newlyFinishedIdx.clear()
       }
 
-      totalSent.get()
+      totalSent
     }
   }
 
@@ -216,16 +221,18 @@ class DefaultShuffler(shuffleId: String,
                         totalPartitionsCount: Int)
     extends Supplier[Long] {
     override def get(): Long = {
-      val queue = GrpcTransferService.getOrCreateBroker(s"${shuffleId}-${outputPartition.id}")
+      var totalWrite = 0L
+      val broker = GrpcTransferService.getOrCreateBroker(s"${shuffleId}-${outputPartition.id}")
 
       val path = EggPair.getDbPath(outputPartition)
       logInfo(s"outputPath: ${path}")
       val outputAdapter = new RocksdbSortedKvAdapter(path)
 
-      while (!queue.isClosable()) {
-        val binData = queue.poll(1, TimeUnit.SECONDS)
+      while (!broker.isClosable()) {
+        val binData = broker.poll(1, TimeUnit.SECONDS)
 
         if (binData != null) {
+          // todo: add 'parseFromBytes' to ErPairBatch to decouple from pb
           val pbPairBatch = Meta.PairBatch.parseFrom(binData)
 
           val pairBatch = pbPairBatch.fromProto()
@@ -234,12 +241,14 @@ class DefaultShuffler(shuffleId: String,
           logInfo(s"result: ${result}, length: ${result.length}")
 
           outputAdapter.writeBatch(pairBatch.pairs.map(erPair => (erPair.key, erPair.value)).iterator)
+
+          totalWrite += pairBatch.pairs.length
         }
       }
 
       outputAdapter.close()
 
-      0L
+      totalWrite
     }
   }
 }

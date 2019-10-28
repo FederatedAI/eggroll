@@ -11,12 +11,12 @@ import javax.annotation.concurrent.GuardedBy
 trait Broker[E] extends AutoCloseable {
   def isWriteFinished(): Boolean
 
-  def signalWriteFinished(): Unit
-  def getSignalCountUntilWriteFinished(): Int
+  def signalWriteFinish(): Unit
+  def getRemainingWriteSignalCount(): Int
   def isReadReady(): Boolean
   def isClosable(): Boolean
   def total(): Long
-  def nullTotal(): Long
+  def totalNull(): Long
   def size(): Long
 
   def put(e: E): Unit
@@ -25,22 +25,22 @@ trait Broker[E] extends AutoCloseable {
   def offer(e: E, timeout: Long, unit: TimeUnit): Unit
   def poll(timeout: Long, unit: TimeUnit): E
 
-  def drainTo(target: util.Collection[E], maxElements: Int = 10000)
+  def drainTo(target: util.Collection[E], maxElements: Int = 10000): Unit
 }
 
 
 class LinkedBlockingBroker[E](maxCapacity: Int = 10000,
                               writeSignals: Int = 1,
-                              name: String = s"${LinkedBlockingBroker.namePrefix}${System.currentTimeMillis()}-${LinkedBlockingBroker.historyCount.getAndIncrement()}") extends Broker[E] with Logging {
+                              name: String = s"${LinkedBlockingBroker.namePrefix}${System.currentTimeMillis()}-${LinkedBlockingBroker.brokerSeq.getAndIncrement()}") extends Broker[E] with Logging {
+  val queue = new LinkedBlockingQueue[E](maxCapacity)
   var writeFinished = false
   val historyTotal = new AtomicLong(0L)
   val historyNullTotal = new AtomicLong(0L)
-  val queue = new LinkedBlockingQueue[E](maxCapacity)
   val remainingSignalCount = new AtomicInteger(writeSignals)
 
   override def isWriteFinished(): Boolean = this.synchronized(writeFinished)
 
-  override def signalWriteFinished(): Unit = this.synchronized {
+  override def signalWriteFinish(): Unit = this.synchronized {
     if (isWriteFinished()) {
       throw new IllegalStateException(s"finish signaling overflows. initial value: ${writeSignals}")
     }
@@ -80,11 +80,11 @@ class LinkedBlockingBroker[E](maxCapacity: Int = 10000,
     }
   }
 
-  override def nullTotal(): Long = historyNullTotal.incrementAndGet()
+  override def totalNull(): Long = historyNullTotal.incrementAndGet()
 
   override def drainTo(target: util.Collection[E], maxElements: Int = 10000): Unit = this.synchronized(queue.drainTo(target, maxElements))
 
-  override def getSignalCountUntilWriteFinished(): Int = remainingSignalCount.get()
+  override def getRemainingWriteSignalCount(): Int = remainingSignalCount.get()
 
   override def offer(e: E, timeout: Long, unit: TimeUnit): Unit = queue.offer(e, timeout, unit)
 
@@ -93,5 +93,5 @@ class LinkedBlockingBroker[E](maxCapacity: Int = 10000,
 
 object LinkedBlockingBroker {
   val namePrefix = "ArrayBlockingBroker-"
-  val historyCount = new AtomicLong(1L)
+  val brokerSeq = new AtomicLong(1L)
 }

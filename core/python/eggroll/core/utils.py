@@ -19,8 +19,8 @@ def _to_proto(rpc_message):
   return rpc_message.to_proto()
 
 
-def _listify_map(func, a_list):
-  return list(map(func, a_list))
+def _listify_map(map_func, a_list):
+  return list(map(map_func, a_list))
 
 
 def _repr_list(a_list):

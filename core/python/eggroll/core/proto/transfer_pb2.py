@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='com.webank.eggroll.core.transfer',
   syntax='proto3',
   serialized_options=None,
-  serialized_pb=_b('\n\x0etransfer.proto\x12 com.webank.eggroll.core.transfer\"<\n\x0eTransferHeader\x12\n\n\x02id\x18\x01 \x01(\x05\x12\x0b\n\x03tag\x18\x02 \x01(\t\x12\x11\n\ttotalSize\x18\x03 \x01(\x03\"j\n\x05\x42\x61tch\x12@\n\x06header\x18\x01 \x01(\x0b\x32\x30.com.webank.eggroll.core.transfer.TransferHeader\x12\x11\n\tbatchSize\x18\x02 \x01(\x03\x12\x0c\n\x04\x64\x61ta\x18\x03 \x01(\x0c\x32v\n\x0fTransferService\x12\x63\n\x04send\x12\'.com.webank.eggroll.core.transfer.Batch\x1a\x30.com.webank.eggroll.core.transfer.TransferHeader(\x01\x62\x06proto3')
+  serialized_pb=_b('\n\x0etransfer.proto\x12 com.webank.eggroll.core.transfer\"L\n\x0eTransferHeader\x12\n\n\x02id\x18\x01 \x01(\x05\x12\x0b\n\x03tag\x18\x02 \x01(\t\x12\x11\n\ttotalSize\x18\x03 \x01(\x03\x12\x0e\n\x06status\x18\x04 \x01(\t\"j\n\x05\x42\x61tch\x12@\n\x06header\x18\x01 \x01(\x0b\x32\x30.com.webank.eggroll.core.transfer.TransferHeader\x12\x11\n\tbatchSize\x18\x02 \x01(\x03\x12\x0c\n\x04\x64\x61ta\x18\x03 \x01(\x0c\x32v\n\x0fTransferService\x12\x63\n\x04send\x12\'.com.webank.eggroll.core.transfer.Batch\x1a\x30.com.webank.eggroll.core.transfer.TransferHeader(\x01\x62\x06proto3')
 )
 
 
@@ -54,6 +54,13 @@ _TRANSFERHEADER = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='status', full_name='com.webank.eggroll.core.transfer.TransferHeader.status', index=3,
+      number=4, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -67,7 +74,7 @@ _TRANSFERHEADER = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=52,
-  serialized_end=112,
+  serialized_end=128,
 )
 
 
@@ -111,8 +118,8 @@ _BATCH = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=114,
-  serialized_end=220,
+  serialized_start=130,
+  serialized_end=236,
 )
 
 _BATCH.fields_by_name['header'].message_type = _TRANSFERHEADER
@@ -142,8 +149,8 @@ _TRANSFERSERVICE = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=0,
   serialized_options=None,
-  serialized_start=222,
-  serialized_end=340,
+  serialized_start=238,
+  serialized_end=356,
   methods=[
   _descriptor.MethodDescriptor(
     name='send',

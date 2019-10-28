@@ -39,7 +39,7 @@ class AdapterManager:
   pass
 
 
-class SortedKvAdapter:
+class SortedKvAdapter(object):
   """
   Sorted key value store adapter
   """

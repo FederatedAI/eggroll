@@ -69,7 +69,7 @@ class EggPair extends Logging {
         // val result = f(t._1, t._2)
         // logInfo(s"partitionId: ${outputPartition.id}, result key: ${new String(result._1)}, last: ${result._1.last}")
       })
-      shuffleBroker.signalWriteFinished()
+      shuffleBroker.signalWriteFinish()
 
       shuffler.errors.asInstanceOf[DistributedRuntimeException].raise()
       val shuffleFinished = shuffler.waitUntilFinished(10, TimeUnit.MINUTES)

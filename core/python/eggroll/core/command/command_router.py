@@ -12,7 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from eggroll.core.meta import ErTask
+from eggroll.core.meta_model import ErTask
 from eggroll.core.proto import meta_pb2
 from importlib import import_module
 

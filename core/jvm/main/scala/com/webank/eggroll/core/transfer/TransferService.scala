@@ -90,7 +90,7 @@ class TransferSendCalleeRequestStreamObserver(callerNotifier: ServerCallStreamOb
 
     broker.put(value.getData.toByteArray)
     if (value.getHeader.getStatus.equals(StringConstants.TRANSFER_END)) {
-      broker.signalWriteFinished()
+      broker.signalWriteFinish()
     }
 
     super.onNext(value)

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 #  Copyright (c) 2019 - now, Eggroll Authors. All Rights Reserved.
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,6 +22,7 @@ import time
 
 class RollPair(object):
   __uri_prefix = 'RollPair.'
+  MAP = 'map'
   MAP_VALUES = 'mapValues'
   REDUCE = 'reduce'
   JOIN = 'join'
@@ -62,6 +64,23 @@ class RollPair(object):
                 inputs=[self._store],
                 functors=[functor])
     request = ErCommandRequest(seq=self.__get_seq(), uri=f'{RollPair.__uri_prefix}{RollPair.MAP_VALUES}', args=[job.to_proto().SerializeToString()])
+    response = self._roll_pair_stub.call(request.to_proto())
+
+    des_response = ErCommandResponse.from_proto(response)
+
+    des_store = ErStore.from_proto_string(des_response._data)
+
+    return RollPair(des_store)
+
+  def map(self, func, partition_func):
+    functor = ErFunctor(name=RollPair.MAP, serdes=RollPair.CLOUD_PICKLE, body=cloudpickle.dumps(func))
+    partitioner = ErFunctor(name=RollPair.MAP, serdes=RollPair.CLOUD_PICKLE, body=cloudpickle.dumps(partition_func))
+
+    job = ErJob(id=self._session_id, name=RollPair.MAP,
+                inputs=[self._store],
+                functors=[functor, partitioner])
+
+    request = ErCommandRequest(seq=self.__get_seq(), uri=f'{RollPair.__uri_prefix}{RollPair.MAP}', args=[job.to_proto().SerializeToString()])
     response = self._roll_pair_stub.call(request.to_proto())
 
     des_response = ErCommandResponse.from_proto(response)

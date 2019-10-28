@@ -18,26 +18,30 @@ from eggroll.core.proto import transfer_pb2
 
 
 class ErTransferHeader(RpcMessage):
-  def __init__(self, id: int, tag: str = '', total_size=-1):
+  def __init__(self, id: int, tag: str = '', total_size=-1, status=''):
     self._id = id
     self._tag = tag
     self._total_size = total_size
+    self._status = status
 
   def to_proto(self):
-    return transfer_pb2.TransferHeader(id=self._id, tag=self._tag,
-                                       totalSize=self._total_size)
+    return transfer_pb2.TransferHeader(id=self._id,
+                                       tag=self._tag,
+                                       totalSize=self._total_size,
+                                       status=self._status)
 
   @staticmethod
   def from_proto(pb_message):
     return ErTransferHeader(id=pb_message.id,
                             tag=pb_message.tag,
-                            total_size=pb_message.totalSize)
+                            total_size=pb_message.totalSize,
+                            status=pb_message.status)
 
   def __str__(self):
     return self.__repr__()
 
   def __repr__(self):
-    return f'ErTransferHeader(id={self._id}, tag={self._tag}, size={self._total_size})'
+    return f'ErTransferHeader(id={self._id}, tag={self._tag}, size={self._total_size}, status={self._status})'
 
 
 class ErBatch(RpcMessage):
