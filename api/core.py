@@ -66,7 +66,8 @@ class EggrollSession(object):
                 eggroll.cleanup(name, self._session_id, False)
             else:
                 table = eggroll.table(name=name, namespace=self._session_id, persistent=False)
-                eggroll.destroy(table)
+                if not table.gc_enable:
+                    eggroll.destroy(table)
 
     def add_cleanup_task(self, func):
         self._cleanup_tasks.add(func)
