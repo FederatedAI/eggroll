@@ -65,7 +65,7 @@ class FifoBroker(Broker):
   __broker_seq = 0
   #todo: make maxsize configurable
   def __init__(self, max_capacity = 10000, write_signals = 1, name = f"fifobroker-{time.time()}-{__broker_seq}"):
-    FifoBroker.__history_count += 1
+    FifoBroker.__broker_seq += 1
     self.__queue = Queue(maxsize=max_capacity)
     self.__write_finished = False
     self.__history_total = 0
@@ -81,8 +81,8 @@ class FifoBroker(Broker):
     if self.is_write_finished():
       raise ValueError(f"finish signaling overflows. initial value: {self.__total_write_signals}")
 
-    self.__remaining_signal_count -= 1
-    if self.__remaining_signal_count <= 0:
+    self.__remaining_write_signal_count -= 1
+    if self.__remaining_write_signal_count <= 0:
       self.__write_finished = True
 
   def get_remaining_write_signal_count(self):

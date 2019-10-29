@@ -15,12 +15,12 @@
 
 from eggroll.core.datastructure.broker import FifoBroker
 from eggroll.core.datastructure.concurrent import CountDownLatch
-from eggroll.core.meta_model import ErStoreLocator, ErJob, ErStore, ErTask
+from eggroll.core.meta_model import ErStoreLocator, ErJob, ErStore, ErTask, ErPartition
 from eggroll.core.meta_model import ErFunctor, ErPair, ErPairBatch
 from eggroll.core.io.kv_adapter import RocksdbSortedKvAdapter
+from eggroll.core.io.io_utils import get_db_path
 from eggroll.core.transfer.transfer_service import GrpcTransferServicer, \
   TransferClient
-from eggroll.roll_pair.egg_pair import get_db_path
 from concurrent.futures import ProcessPoolExecutor
 from multiprocessing import cpu_count
 
@@ -64,7 +64,8 @@ class DefaultShuffler(Shuffler):
     self.__output_partitions_count = len(self.__output_partitions)
 
     self.__partitioned_brokers = [FifoBroker() for i in range(self.__output_partitions_count)]
-    self.__partition_finish_latch = CountDownLatch(self.__parallel_size)
+    #self.__partition_finish_latch = CountDownLatch(self.__parallel_size)
+    self.__partition_finish_latch = CountDownLatch(1)
     self.__shuffle_finish_latch = CountDownLatch(count = 3)
 
     self.__not_finished_partition_thread_count = CountDownLatch(self.__parallel_size)
@@ -79,7 +80,25 @@ class DefaultShuffler(Shuffler):
       .get_or_create_broker(key = f'{self.__shuffle_id}-{self.__output_partition._id}',
                             write_signals = self.__output_partitions_count)
 
-    with ProcessPoolExecutor(max_workers = self.__parallel_size) as executor:
+    print('start shuffle')
+    partitioner(self.__map_results_broker, self.__partitioned_brokers, self.__partition_function)
+    for b in self.__partitioned_brokers:
+      b.signal_write_finish()
+    self.__partition_finish_latch.count_down()
+    self.__shuffle_finish_latch.count_down()
+
+    print('start send')
+    shuffle_sender(self.__shuffle_id, self.__partitioned_brokers, self.__output_partitions)
+    self.__shuffle_finish_latch.count_down()
+
+    print('start receive')
+    shuffle_receiver(self.__shuffle_id, self.__output_partition, self.__output_partitions_count)
+    self.__shuffle_finish_latch.count_down()
+
+    print('shuffle finished')
+
+    """
+    with ProcessPoolExecutor(max_workers = self.__parallel_size + 2) as executor:
       for i in range(self.__parallel_size):
         executor.submit(partitioner,
                         self.__map_results_broker,
@@ -93,35 +112,36 @@ class DefaultShuffler(Shuffler):
                                  self.__shuffle_finish_latch,
                                  self.__total_partitioned_elements_count))
 
-    with ProcessPoolExecutor(max_workers = 2) as executor:
-      executor.submit(shuffle_sender,
-                      self.__shuffle_id,
-                      self.__partitioned_brokers,
-                      self.__output_partitions)\
-        .add_done_callback(
-          lambda future:
-            shuffle_sender_callback(future,
-                                    self.__is_send_finished,
-                                    self.__shuffle_finish_latch))
+        executor.submit(shuffle_sender,
+                        self.__shuffle_id,
+                        self.__partitioned_brokers,
+                        self.__output_partitions)\
+          .add_done_callback(
+            lambda future:
+              shuffle_sender_callback(future,
+                                      self.__is_send_finished,
+                                      self.__shuffle_finish_latch))
 
-      executor.submit(shuffle_receiver,
-                      self.__shuffle_id,
-                      self.__output_partition,
-                      self.__output_partitions_count)\
-        .add_done_callback(
-          lambda future:
-          shuffle_receiver_callback(future,
-                                    self.__is_recv_finished,
-                                    self.__shuffle_finish_latch))
+        executor.submit(shuffle_receiver,
+                        self.__shuffle_id,
+                        self.__output_partition,
+                        self.__output_partitions_count)\
+          .add_done_callback(
+            lambda future:
+            shuffle_receiver_callback(future,
+                                      self.__is_recv_finished,
+                                      self.__shuffle_finish_latch))
+    """
 
   def is_finished(self):
     return self.__shuffle_finish_latch.get_count() == 0
 
   def wait_until_finished(self, timeout):
-    return self.__shuffle_finish_latch.await(timeout=timeout)
+    return self.__shuffle_finish_latch.await_timeout(timeout=timeout)
 
   def get_total_partitioned_count(self):
     return self.__total_partitioned_elements_count
+
 
 
 def partitioner(input: FifoBroker, output, partition_func):
@@ -140,12 +160,13 @@ def partitioner_callback(future,
     partitioned_brokers,
     shuffle_finish_latch,
     total_partitioned_elements_count):
+  print('partitioner_callback')
   not_finished_partition_thread_count.count_down()
-  if not_finished_partition_thread_count.get_count <= 0:
+  if not_finished_partition_thread_count.get_count() <= 0:
     for b in partitioned_brokers:
-      b.signam_write_finished()
-      shuffle_finish_latch.count_down()
-  total_partitioned_elements_count += future.get()
+      b.signal_write_finish()
+    shuffle_finish_latch.count_down()
+  #total_partitioned_elements_count += future.result()
 
 def shuffle_sender(shuffle_id: str, brokers, targetPartitions, chunk_size = 100):
   not_finished_broker_index = set(range(len(brokers)))
@@ -176,8 +197,10 @@ def shuffle_sender(shuffle_id: str, brokers, targetPartitions, chunk_size = 100)
           transfer_status = GrpcTransferServicer.TRANSFER_END
           newly_finished_idx.append(idx)
 
+        tag = f'{shuffle_id}-{idx}'
+        print(f'sending to {tag}')
         transfer_client.send(data=pair_batch.to_proto().SerializeToString(),
-                             tag = f'{shuffle_id}-{idx}',
+                             tag = tag,
                              server_node = targetPartitions[idx]._node,
                              status = transfer_status)
         total_sent += len(pairs)
@@ -186,18 +209,22 @@ def shuffle_sender(shuffle_id: str, brokers, targetPartitions, chunk_size = 100)
       not_finished_broker_index.remove(idx)
     newly_finished_idx = set()
 
+  print(f'total sent: {total_sent}')
   return total_sent
 
 def shuffle_sender_callback(future, is_send_finished, shuffle_finish_latch):
+  print('shuffle_sender_callback')
   is_send_finished = True
   shuffle_finish_latch.count_down()
 
-def shuffle_receiver(shuffle_id, output_partiiton, total_paritions_count):
+def shuffle_receiver(shuffle_id, output_partition, total_paritions_count):
   total_write = 0
-  broker = GrpcTransferServicer.get_or_create_broker(f'{shuffle_id}-${output_partiiton._id}')
+  broker_id = f'{shuffle_id}-{output_partition._id}'
+  print(f'broker_id: {broker_id}')
+  broker = GrpcTransferServicer.get_or_create_broker(broker_id)
 
-  path = get_db_path(output_partiiton)
-  output_adapter = RocksdbSortedKvAdapter(path)
+  path = get_db_path(output_partition)
+  output_adapter = RocksdbSortedKvAdapter({'path': path})
   output_writebatch = output_adapter.new_batch()
 
   while not broker.is_closable():
@@ -207,12 +234,13 @@ def shuffle_receiver(shuffle_id, output_partiiton, total_paritions_count):
       for er_pair in pair_batch._pairs:
         output_writebatch.put(er_pair._key, er_pair._value)
 
-    total_write += len(pair_batch._pairs)
+      total_write += len(pair_batch._pairs)
   output_writebatch.close()
   output_adapter.close()
 
   return total_write
 
 def shuffle_receiver_callback(future, is_recv_finished, shuffle_finish_latch):
+  print('shuffle_receiver_callback')
   is_recv_finished = True
   shuffle_finish_latch.count_down()

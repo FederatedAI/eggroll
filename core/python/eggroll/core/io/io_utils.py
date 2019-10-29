@@ -1,4 +1,3 @@
-# -*- coding: UTF-8 -*-
 #  Copyright (c) 2019 - now, Eggroll Authors. All Rights Reserved.
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,28 +12,12 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import threading
+from eggroll.core.meta_model import ErPartition
 
-class CountDownLatch(object):
-  def __init__(self, count=1):
-    self._count = count
-    self._lock = threading.Condition()
+def get_db_path(partition: ErPartition):
+  store_locator = partition._store_locator
+  db_path_prefix = '/tmp/eggroll/'
 
-  def count_down(self):
-    self._lock.acquire()
-    if self._count <= 0:
-      return
-
-    self._count -= 1
-    if self._count <= 0:
-      self._lock.notify_all()
-    self._lock.release()
-
-  def await_timeout(self, timeout=None):
-    self._lock.acquire()
-    while self._count > 0:
-      self._lock.wait(timeout)
-    self._lock.release()
-
-  def get_count(self):
-    return self._count
+  return db_path_prefix + "/".join(
+      [store_locator._store_type, store_locator._namespace, store_locator._name,
+       partition._id])

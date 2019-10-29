@@ -222,6 +222,11 @@ class TestRollPair extends Logging {
       routeToClass = classOf[RollPair],
       routeToMethodName = RollPair.mapValues)
 
+    CommandRouter.register(serviceName = RollPair.rollMapCommand,
+      serviceParamTypes = List(classOf[ErJob]),
+      routeToClass = classOf[RollPair],
+      routeToMethodName = RollPair.map)
+
     CommandRouter.register(serviceName = RollPair.rollReduceCommand,
       serviceParamTypes = List(classOf[ErJob]),
       routeToClass = classOf[RollPair],

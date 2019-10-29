@@ -19,6 +19,7 @@ from eggroll.core.command.command_router import CommandRouter
 from eggroll.core.command.command_service import CommandServicer
 from eggroll.core.datastructure.broker import FifoBroker
 from eggroll.core.io.kv_adapter import RocksdbSortedKvAdapter
+from eggroll.core.io.io_utils import get_db_path
 from eggroll.core.meta_model import ErTask, ErPartition
 from eggroll.core.proto import command_pb2_grpc, transfer_pb2_grpc
 from eggroll.core.serdes import cloudpickle
@@ -71,16 +72,18 @@ class EggPair(object):
       output_store = task._job._outputs[0]
 
       shuffle_broker = FifoBroker()
-      shuffler = DefaultShuffler(task._job._id, shuffle_broker, output_store, output_partition, p)
-
-      shuffler.start()
 
       for k_bytes, v_bytes in input_adapter.iteritems():
         shuffle_broker.put(f(k_bytes, v_bytes))
       input_adapter.close()
-
       shuffle_broker.signal_write_finish()
+
+      shuffler = DefaultShuffler(task._job._id, shuffle_broker, output_store, output_partition, p)
+      shuffler.start()
+
       shuffle_finished = shuffler.wait_until_finished(600)
+
+      print('map finished')
     elif task._name == 'reduce':
       f = cloudpickle.loads(functors[0]._body)
 
@@ -162,21 +165,15 @@ class EggPair(object):
     return result
 
 
-def get_db_path(partition: ErPartition):
-  store_locator = partition._store_locator
-  db_path_prefix = '/tmp/eggroll/'
-
-  return db_path_prefix + "/".join(
-      [store_locator._store_type, store_locator._namespace, store_locator._name,
-       partition._id])
-
-
 def serve():
   port = 20001
 
   CommandRouter.get_instance().register(
     "EggPair.mapValues",
     "eggroll.roll_pair.egg_pair", "EggPair", "run_task")
+  CommandRouter.get_instance().register(
+      "EggPair.map",
+      "eggroll.roll_pair.egg_pair", "EggPair", "run_task")
   CommandRouter.get_instance().register(
       "EggPair.reduce",
       "eggroll.roll_pair.egg_pair", "EggPair", "run_task")

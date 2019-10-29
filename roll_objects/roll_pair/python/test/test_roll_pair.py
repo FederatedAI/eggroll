@@ -53,6 +53,16 @@ class TestRollPair(unittest.TestCase):
     print('res: ', res)
 
 
+  def test_map(self):
+    store_locator = ErStoreLocator(store_type="levelDb", namespace="ns",
+                                  name='name')
+
+    rp = RollPair(store_locator)
+
+    res = rp.map(lambda k, v: (b'k_' + k, b'v_' + v), lambda k : k[-1] % 4)
+
+    print('res: ', res)
+
   def test_map_values_raw(self):
     def append_byte(v):
       return v + b'~1'

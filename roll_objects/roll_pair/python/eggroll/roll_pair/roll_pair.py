@@ -14,7 +14,7 @@
 #  limitations under the License.
 
 from eggroll.core.command.command_model import ErCommandRequest, ErCommandResponse
-from eggroll.core.meta import ErStoreLocator, ErJob, ErStore, ErFunctor, ErTask
+from eggroll.core.meta_model import ErStoreLocator, ErJob, ErStore, ErFunctor, ErTask
 from eggroll.core.proto import command_pb2_grpc
 from eggroll.core.serdes import cloudpickle
 import grpc

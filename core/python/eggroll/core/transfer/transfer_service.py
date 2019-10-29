@@ -13,7 +13,7 @@
 #  limitations under the License.
 
 import grpc
-from eggroll.core.broker import FifoBroker
+from eggroll.core.datastructure.broker import FifoBroker
 from eggroll.core.proto import transfer_pb2_grpc
 from eggroll.core.transfer_model import ErTransferHeader, ErBatch
 from eggroll.core.utils import _exception_logger
@@ -27,10 +27,11 @@ class GrpcTransferServicer(transfer_pb2_grpc.TransferServiceServicer):
   TRANSFER_END = '__transfer_end'
 
   @staticmethod
-  def get_or_create_broker(key: str, maxsize: int = _DEFAULT_QUEUE_SIZE):
+  def get_or_create_broker(key: str, maxsize: int = _DEFAULT_QUEUE_SIZE, write_signals = 1):
     if key not in GrpcTransferServicer.data_buffer:
       final_size = maxsize if maxsize > 0 else GrpcTransferServicer._DEFAULT_QUEUE_SIZE
-      GrpcTransferServicer.data_buffer[key] = FifoBroker(max_capacity=final_size)
+      GrpcTransferServicer.data_buffer[key] = \
+        FifoBroker(max_capacity = final_size, write_signals = write_signals)
 
     return GrpcTransferServicer.data_buffer[key]
 

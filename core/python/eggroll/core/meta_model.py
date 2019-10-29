@@ -104,7 +104,7 @@ class ErPair(RpcMessage):
     self._value = value
 
   def to_proto(self):
-    return meta_pb2.Pair(key=key, value=value)
+    return meta_pb2.Pair(key=self._key, value=self._value)
 
   @staticmethod
   def from_proto(pb_message):
@@ -129,7 +129,7 @@ class ErPairBatch(RpcMessage):
   def from_proto_string(pb_string):
     pb_message = meta_pb2.PairBatch()
     msg_len = pb_message.ParseFromString(pb_string)
-    return ErStore.from_proto(pb_message)
+    return ErPairBatch.from_proto(pb_message)
 
   def __repr__(self):
     return f'ErPairBatch(pairs={_repr_list(self._pairs)})'
@@ -205,6 +205,7 @@ class ErStore(RpcMessage):
 
   @staticmethod
   def from_proto(pb_message):
+    print(pb_message)
     return ErStore(
       store_locator=ErStoreLocator.from_proto(pb_message.storeLocator),
       partitions=_listify_map(ErPartition.from_proto, pb_message.partitions))
