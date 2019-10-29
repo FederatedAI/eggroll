@@ -382,37 +382,57 @@ class EggFrame {
 }
 
 // TODO: MOCK
-class ClusterManager {
+class ClusterManager(mode: String = "local") {
   def getServerCluster(clusterId: String = null): ServerCluster = {
-    ServerCluster(clusterId, List(ServerNode("127.0.0.1", 20100, "boss", "0", 20102),
-      ServerNode("127.0.0.1", 20101, "worker","1", 20103)))
+    val cluster = mode match {
+      case "cluster" => ServerCluster(clusterId, List(ServerNode("node1", 20100, "boss", "0", 20200),
+        ServerNode("node2", 20101, "worker", "1", 20201),
+        ServerNode("node3", 20102, "worker", "2", 20202)))
+      case _ => ServerCluster(clusterId, List(ServerNode("127.0.0.1", 20100, "boss", "0", 20200),
+        ServerNode("127.0.0.1", 20101, "worker", "1", 20201)))
+
+    }
+    cluster
   }
 
   def getRollFrameStore(name: String, namespace: String): RfStore = {
-    val ps = List(RfPartition(0,10), RfPartition(1,10))
+    // TODO:How to get partition num, frameBatch count?
+    val ps = mode match {
+      case "cluster" => List(RfPartition(0, 10), RfPartition(1, 10), RfPartition(2, 10))
+      case _ => List(RfPartition(0, 10), RfPartition(1, 10))
+    }
     RfStore(name, namespace, ps.size, ps)
   }
 
-  def getPreferredServer(store: RfStore, clusterId:String = null): Map[Int, ServerNode] = {
+  def getPreferredServer(store: RfStore, clusterId: String = null): Map[Int, ServerNode] = {
     val nodes = getServerCluster(clusterId).nodes
     (0 until store.partitionSize).map(p => (p, nodes(p % nodes.length))).toMap
   }
 
-  def startServerCluster(id:String = null):Unit = {
+  def startServerCluster(clusterId: String = null, nodeId: String): Unit = {
     CommandService.register("com.webank.eggroll.rollframe.EggFrame.runTask",
-      List(classOf[RollFrameGrpc.Task]),classOf[RollFrameGrpc.TaskResult])
-    getServerCluster(id).nodes.foreach{ server =>
-      val sb = ServerBuilder.forPort(server.port)
-      sb.addService(new GrpcCommandService()).build.start
-      new Thread("transfer-" + server.transferPort){
-        override def run(): Unit = {
-          try{
-            new NioTransferEndpoint().runServer(server.host, server.transferPort)
-          } catch {
-            case e: Throwable => e.printStackTrace()
+      List(classOf[RollFrameGrpc.Task]), classOf[RollFrameGrpc.TaskResult])
+
+    getServerCluster(clusterId).nodes.foreach { server =>
+      val idMatch = mode match {
+        case "cluster" => server.id == nodeId
+        case _ => true
+      }
+      if (idMatch) {
+        val sb = ServerBuilder.forPort(server.port)
+        sb.addService(new GrpcCommandService()).build.start // 启动grpcTask
+        println("Start GrpcCommandService...")
+        new Thread("transfer-" + server.transferPort) {
+          override def run(): Unit = {
+            try {
+              println(s"Start TransferServer:server.host:${server.host},transferPost:${server.transferPort}")
+              new NioTransferEndpoint().runServer(server.host, server.transferPort)
+            } catch {
+              case e: Throwable => e.printStackTrace()
+            }
           }
-        }
-      }.start()
+        }.start()
+      }
     }
   }
 }

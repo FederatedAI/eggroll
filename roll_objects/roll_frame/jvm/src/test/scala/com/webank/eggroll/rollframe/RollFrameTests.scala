@@ -28,7 +28,7 @@ class RollFrameTests {
   private val clusterManager = testAssets.clusterManager
   @Before
   def setup():Unit = {
-    testAssets.clusterManager.startServerCluster()
+    testAssets.clusterManager.startServerCluster(nodeId = "0")
   }
 
   @Test
@@ -108,6 +108,45 @@ class RollFrameTests {
     }
     loadCache("./tmp/unittests/RollFrameTests/filedb/test1/a1/0")
     loadCache("./tmp/unittests/RollFrameTests/filedb/test1/a1/1")
+  }
+
+  @Test
+  def testFastWriteData(): Unit = {
+    def write(path: String): Unit = {
+      val fieldCount = 100
+      val rowCount = 10000 // total value count = rowCount * fbCount * fieldCount
+      val fbCount = 10    // the num of batch
+      val randomObj = new Random()
+      val adapter = FrameDB.file(path)
+      (0 until fbCount).foreach { i =>
+        val fb = new FrameBatch(new FrameSchema(testAssets.getDoubleSchema(fieldCount)), rowCount)
+        for {x <- 0 until fieldCount
+             y <- 0 until rowCount} {
+          fb.writeDouble(x, y, randomObj.nextDouble())
+        }
+        println(s"FrameBatch order: $i,row count: ${fb.rowCount}")
+        adapter.append(fb)
+      }
+    }
+
+    def read(path: String): Unit = {
+      val adapter = FrameDB.file(path)
+      var num = 0
+      adapter.readAll().foreach(_ => num += 1)
+      println(s"Batch count: $num")
+      val oneFb = adapter.readOne()
+
+      println(oneFb.rootVectors(0).valueCount)
+      println(s"FrameBatch row count: ${oneFb.rowCount}")
+      println(oneFb.readDouble(0,0))
+      println(oneFb.readDouble(0,1))
+
+    }
+    write("./tmp/unittests/RollFrameTests/filedb/test1/b1/0")
+    write("./tmp/unittests/RollFrameTests/filedb/test1/b1/1")
+    write("./tmp/unittests/RollFrameTests/filedb/test1/b1/2")
+
+    read("./tmp/unittests/RollFrameTests/filedb/test1/b1/0")
   }
 
   @Test
