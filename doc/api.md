@@ -30,7 +30,7 @@ Initializes EggRoll runtime. This API should always be called before other API c
 **Example:**
 
 ``` python
->>> from arch import eggroll
+>>> from eggroll.api import eggroll
 >>> from eggroll.api import WorkMode
 >>> from eggroll.api import NamingPolicy
 >>> eggroll.init('a', WorkMode.CLUSTER, NamingPolicy.ITER_AWARE)
@@ -630,6 +630,40 @@ In-place computing does not apply.
 
 --
 
+>`mapPartitions2(func)`
+
+Return a new DTable by applying a function to each partition kv of this DTable. 
+
+Different from mapPartitions(), mapPartitions2 will not aggergate kvs of each partition but compute each kv.
+
+In-place computing does not apply.
+
+**Parameters:**
+
++ **func** ((k1, v1), (k2, v2) -> (k, v)): The function applying to each partition.
+
+**Returns:**
+
++ **dtable** (DTable): A new table containing results.
+
+**Example:**
+
+``` python
+>>> data = [(str(i), i) for i in range(5)]
+>>> a = eggroll.parallelize(data, include_key=True, partition=2)
+>>> def func(iter):
+        ret = []
+        for k, v in iter:
+            ret.append((f"{k}_{v}_0", v ** 2))
+            ret.append((f"{k}_{v}_1", v ** 3))
+        return ret
+>>> b = a.mapPartitions2(f)
+>>> list(b.collect())
+[('1_1_0': 1), ('1_1_1': 1), ('2_2_0': 4), ('2_2_1': 8), ('3_3_0': 9), ('3_3_1': 27), ('4_4_0': 16), ('4_4_1': 64), ('5_5_0': 25), ('5_5_1': 125)]
+```
+
+--
+
 >`mapValues(func)`
 
 Return a DTable by applying a function to each value of this DTable, while keys does not change.
@@ -1009,13 +1043,13 @@ Adds cleanup task to this session. Cleanup task will be run when session complet
 
 --
 
->`run_cleanup_task(func)`
+>`run_cleanup_task(eggroll)`
 
 Runs cleanup task added to this session. This method will be run when session stops.
 
 **Parameters:**
 
-+ None
++ **eggroll** (object): Standalone, _EggRoll or EggRoll instance, .
 
 **Returns:**
 
@@ -1024,6 +1058,7 @@ Runs cleanup task added to this session. This method will be run when session st
 **Example:**
 
 ``` python
+>>> from eggroll.api.cluster import _EggRoll
 >>> session = eggroll.get_eggroll_session()
->>> session.run_cleanup_task()
+>>> session.run_cleanup_task(_EggRoll)
 ```
