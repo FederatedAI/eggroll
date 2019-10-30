@@ -51,10 +51,10 @@ Go into the project directory and do dependency packaging:
 ```bash
 cd Eggroll
 mvn clean package -DskipTests
-cd cluster-deploy/scripts
-sh auto-packaging.sh
 wget https://webank-ai-1251170195.cos.ap-guangzhou.myqcloud.com/third_party_eggrollv1.tar.gz
 tar -xzvf third_party_eggrollv1.tar.gz -C storage/storage-service-cxx
+cd cluster-deploy/scripts
+sh auto-packaging.sh
 ```
 
 ### 2.3. Modify Configuration File
@@ -84,11 +84,11 @@ venvdir=$python_virtualenv_path		 (python_virtualenv install absolute path)
 
 partylist=($party_id)				 (the party.id of the cluster,eg 10000)
 iplist=($clustercomm_ip $metaservice_ip $proxy_ip $roll_ip $egg1_ip...)  (the list of all  server ip appear below, no duplication)
-exchange_$party_id=$exchange_ip		  (the ip of exchange module,eg 127.0.0.1)
-clustercomm_$party_id=$clustercomm_ip  (the ip of clustercomm module,eg 127.0.0.1)
-metaservice_$party_id=$metaservice_ip  (the ip of metaservice module,eg 127.0.0.1)
-proxy_$party_id=$proxy_ip			  (the ip of proxy module,eg 127.0.0.1)
-roll_$party_id=$roll_ip				  (the ip of roll module,eg 127.0.0.1)
+exchange_$party_id=$exchange_ip		  (the ip of exchange module,eg 192.xxx.xxx.xxx)
+clustercomm_$party_id=$clustercomm_ip  (the ip of clustercomm module,eg 192.xxx.xxx.xxx)
+metaservice_$party_id=$metaservice_ip  (the ip of metaservice module,eg 192.xxx.xxx.xxx)
+proxy_$party_id=$proxy_ip			  (the ip of proxy module,eg 192.xxx.xxx.xxx)
+roll_$party_id=$roll_ip				  (the ip of roll module,eg 192.xxx.xxx.xxx)
 egglist_$party_id=($egg1_ip $egg2_ip $egg3_ip) (the ip of egg module,can be a list)
 jdbc_$party_id=($mysql_ip $db_name $db_user $db_password)(the configuration of mysql)
 
@@ -101,7 +101,7 @@ roll_port=8011
 egg_port=7888
 storage_port=7778
 exchange_port=9370
-processor_port=50000
+processor_port=5000
 
 ============(the count of processors,no more than you cpu cores count)==========
 
@@ -121,19 +121,19 @@ venvdir=$python_virtualenv_path		 (python_virtualenv install absolute path)
 
 partylist=($partyA_id $partyB_id)		(the party.id of the cluster,eg 10000)
 iplist=($clustercommA_ip $clustercommB_ip $metaserviceA_ip $metaserviceB_ip $proxyA_ip $proxyB_ip $rollA_ip $rollB_ip $eggA1_ip $eggB1_ip...)  (the list of all  server ip appear below, no duplication)
-exchange_$partyA_id=$exchangeA_ip		(the ip of exchange module,eg 127.0.0.1)
-clustercomm_$partyA_id=$clustercommA_ip  (the ip of clustercomm module,eg 127.0.0.1)
-metaservice_$partyA_id=$metaserviceA_ip  (the ip of metaservice module,eg 127.0.0.1)
-proxy_$partyA_id=$proxyA_ip				(the ip of proxy module,eg 127.0.0.1)
-roll_$partyA_id=$rollA_ip				(the ip of roll module,eg 127.0.0.1)
+exchange_$partyA_id=$exchangeA_ip		(the ip of exchange module,eg 192.xxx.xxx.xxx)
+clustercomm_$partyA_id=$clustercommA_ip  (the ip of clustercomm module,eg 192.xxx.xxx.xxx)
+metaservice_$partyA_id=$metaserviceA_ip  (the ip of metaservice module,eg 192.xxx.xxx.xxx)
+proxy_$partyA_id=$proxyA_ip				(the ip of proxy module,eg 192.xxx.xxx.xxx)
+roll_$partyA_id=$rollA_ip				(the ip of roll module,eg 192.xxx.xxx.xxx)
 egglist_$partyA_id=($eggA1_ip $eggA2_ip $eggA3_ip) (the ip of egg module,can be a list)
 jdbc_$partyA_id=($mysqlA_ip $dbA_name $dbA_user $dbA_password)(the configuration of mysql)
 
-exchange_$partyB_id=$exchangeB_ip		  (the ip of exchange module,eg 127.0.0.1)
-clustercomm_$partyB_id=$clustercommB_ip   (the ip of clustercomm module,eg 127.0.0.1)
-metaservice_$partyB_id=$metaserviceB_ip   (the ip of metaservice module,eg 127.0.0.1)
-proxy_$partyB_id=$proxyB_ip			 	 (the ip of proxy module,eg 127.0.0.1)
-roll_$partyB_id=$rollB_ip				 (the ip of roll module,eg 127.0.0.1)
+exchange_$partyB_id=$exchangeB_ip		  (the ip of exchange module,eg 192.xxx.xxx.xxx)
+clustercomm_$partyB_id=$clustercommB_ip   (the ip of clustercomm module,eg 192.xxx.xxx.xxx)
+metaservice_$partyB_id=$metaserviceB_ip   (the ip of metaservice module,eg 192.xxx.xxx.xxx)
+proxy_$partyB_id=$proxyB_ip			 	 (the ip of proxy module,eg 192.xxx.xxx.xxx)
+roll_$partyB_id=$rollB_ip				 (the ip of roll module,eg 192.xxx.xxx.xxx)
 egglist_$partyB_id=($eggB1_ip $eggB2_ip $eggB3_ip) (the ip of egg module,can be a list)
 jdbc_$partyB_id=($mysqlB_ip $dbB_name $dbB_user $dbB_password)(the configuration of mysql)
 
@@ -146,7 +146,7 @@ roll_port=8011
 egg_port=7888
 storage_port=7778
 exchange_port=9370
-processor_port=50000
+processor_port=5000
 
 ============(the count of processors,no more than you cpu cores count)==========
 
@@ -181,9 +181,9 @@ mysqldir=$mysql_install_path		(mysql install absolute path)
 javadir=$jdk_install_path			(java_home absolute path)
 venvdir=$python_virtualenv_path		 (python_virtualenv install absolute path)
 
-partylist=($party_id)				(the party.id of the single-node,eg 10000)
-ip=$localhost_ip					(the ip of single-node,eg 127.0.0.1)
-exchange=$change_ip					(the ip of exchange module,eg 127.0.0.1)
+partyid=$partyid				(the party.id of the single-node,eg 10000)
+ip=$server_ip					(the ip of single-node,eg 192.xxx.xxx.xxx)
+exchange=$exchange_ip					(the ip of exchange module,eg 192.xxx.xxx.xxx)
 jdbc=($mysql_ip $db_name $db_user $db_password)	(the configuration of mysql)
 
 =========(default port of each module,if you need use other ports, configure them)========
@@ -195,7 +195,7 @@ roll_port=8011
 egg_port=7888
 storage_port=7778
 exchange_port=9370
-processor_port=50000
+processor_port=5000
 
 ============(the count of processors,no more than you cpu cores count)==========
 
