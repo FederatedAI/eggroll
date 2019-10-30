@@ -101,7 +101,7 @@ roll_port=8011
 egg_port=7888
 storage_port=7778
 exchange_port=9370
-processor_port=50000
+processor_port=5000
 
 ============(the count of processors,no more than you cpu cores count)==========
 
@@ -146,7 +146,7 @@ roll_port=8011
 egg_port=7888
 storage_port=7778
 exchange_port=9370
-processor_port=50000
+processor_port=5000
 
 ============(the count of processors,no more than you cpu cores count)==========
 
@@ -195,7 +195,7 @@ roll_port=8011
 egg_port=7888
 storage_port=7778
 exchange_port=9370
-processor_port=50000
+processor_port=5000
 
 ============(the count of processors,no more than you cpu cores count)==========
 
