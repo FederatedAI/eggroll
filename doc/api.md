@@ -30,7 +30,7 @@ Initializes EggRoll runtime. This API should always be called before other API c
 **Example:**
 
 ``` python
->>> from arch import eggroll
+>>> from eggroll.api import eggroll
 >>> from eggroll.api import WorkMode
 >>> from eggroll.api import NamingPolicy
 >>> eggroll.init('a', WorkMode.CLUSTER, NamingPolicy.ITER_AWARE)
@@ -1009,13 +1009,13 @@ Adds cleanup task to this session. Cleanup task will be run when session complet
 
 --
 
->`run_cleanup_task(func)`
+>`run_cleanup_task(eggroll)`
 
 Runs cleanup task added to this session. This method will be run when session stops.
 
 **Parameters:**
 
-+ None
++ **eggroll** (object): Standalone, _EggRoll or EggRoll instance, .
 
 **Returns:**
 
@@ -1024,6 +1024,7 @@ Runs cleanup task added to this session. This method will be run when session st
 **Example:**
 
 ``` python
+>>> from eggroll.api.cluster import _EggRoll
 >>> session = eggroll.get_eggroll_session()
->>> session.run_cleanup_task()
+>>> session.run_cleanup_task(_EggRoll)
 ```
