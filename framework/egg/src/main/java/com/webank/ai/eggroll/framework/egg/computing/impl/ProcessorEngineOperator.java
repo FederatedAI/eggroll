@@ -130,12 +130,12 @@ public class ProcessorEngineOperator implements EngineOperator {
 
         try {
             while (engineParentProcess == null) {
-
+                LOGGER.info("[EGG][ENGINE][PROCESSOR] before update port info, startPort: {}, maxPort: {}, lastPort:{}", startPort, maxPort, lastPort.get());
                 if (lastPort.get() == maxPort) {
                     lastPort.compareAndSet(maxPort, startPort);
                 }
                 port = lastPort.incrementAndGet();
-
+                LOGGER.info("[EGG][ENGINE][PROCESSOR] update port: {}", port);
                 if (runtimeUtils.isPortAvailable(port)) {
                     valueBindingsMap.put(PORT, String.valueOf(port));
 
