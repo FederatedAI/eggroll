@@ -12,7 +12,7 @@ roll_port=8011
 egg_port=7888
 storage_port=7778
 exchange_port=9370
-processor_port=50000
+processor_port=5000
 processor_count=16
 
 modules=(clustercomm metaservice egg proxy roll exchange mysql)
