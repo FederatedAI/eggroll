@@ -18,6 +18,9 @@ from typing import MutableMapping
 
 from eggroll.api import NamingPolicy, ComputingEngine
 from eggroll.api.proto.basic_meta_pb2 import SessionInfo
+from eggroll.api.utils.log_utils import getLogger
+from eggroll.api.standalone.eggroll import Standalone
+LOGGER = getLogger()
 
 class EggrollSession(object):
     def __init__(self, session_id, chunk_size = 100000, computing_engine_conf : MutableMapping = None, naming_policy : NamingPolicy = NamingPolicy.DEFAULT, tag = None):
@@ -30,6 +33,7 @@ class EggrollSession(object):
         self._tag = tag
         self._cleanup_tasks = set()
         self._runtime = dict()
+        self._gc_table = None
 
     def get_session_id(self):
         return self._session_id
@@ -55,12 +59,22 @@ class EggrollSession(object):
     def get_tag(self):
         return self._tag
 
+    def clean_duplicated_table(self, eggroll):
+        for item in list(self._gc_table.collect()):
+            name = item[0]
+            if isinstance(eggroll, Standalone):
+                eggroll.cleanup(name, self._session_id, False)
+            else:
+                table = eggroll.table(name=name, namespace=self._session_id, persistent=False)
+                if not table.gc_enable:
+                    eggroll.destroy(table)
+
     def add_cleanup_task(self, func):
         self._cleanup_tasks.add(func)
 
-    def run_cleanup_tasks(self):
+    def run_cleanup_tasks(self, eggroll):
         for func in self._cleanup_tasks:
-            func()
+            func(eggroll)
 
     def to_protobuf(self):
         return SessionInfo(sessionId=self._session_id,
@@ -77,6 +91,9 @@ class EggrollSession(object):
 
     def set_runtime(self, computing_engine : ComputingEngine, target):
         self._runtime[computing_engine] = target
+
+    def set_gc_table(self, eggroll):
+        self._gc_table = eggroll.table(name="__gc_" + self._session_id, namespace=self._session_id)
 
     def __str__(self):
         return "<EggrollSession: session_id: {}, computing_engine_conf: {}, naming_policy: {}, tag: {}, runtime: {}>"\

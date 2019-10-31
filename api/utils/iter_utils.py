@@ -26,6 +26,19 @@ def split_every(original: Iterable, index, chunk_size, skip_chunk):
     except StopIteration as e:
         return None 
 
+def split_every_generator(original: Iterable, chunk_size, skip_chunk):
+    if not chunk_size:
+        chunk_size = 100000
+    
+    chunked_iter = list()
+    index = 0
+    for item in original:
+        chunked_iter.append(item)
+        index += 1
+        if index == chunk_size:
+            return chunked_iter
+    return chunked_iter
+
 def split_every_yield(original: Iterable, chunk_size):
     if not chunk_size:
         chunk_size = 100000

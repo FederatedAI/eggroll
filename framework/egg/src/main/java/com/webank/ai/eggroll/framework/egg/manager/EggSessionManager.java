@@ -67,7 +67,7 @@ public class EggSessionManager {
         return result;
     }
 
-    public boolean getOrCreateSession(BasicMeta.SessionInfo sessionInfo) {
+    public synchronized boolean getOrCreateSession(BasicMeta.SessionInfo sessionInfo) {
         boolean result = false;
         String sessionId = sessionInfo.getSessionId();
 
@@ -96,6 +96,7 @@ public class EggSessionManager {
 
         ComputingEngine typeParamComputingEngine = new ComputingEngine(ComputingEngine.ComputingEngineType.EGGROLL);
         for (int i = 0; i < finalMaxSessionEngineCount; ++i) {
+            LOGGER.info("[EGG][SESSIONMANAGER] starting Computing Engine: {}", sessionProperties);
             ComputingEngine engine = engineOperator.start(typeParamComputingEngine, sessionProperties);
             eggrollSession.addComputingEngine(engine);
         }
@@ -156,7 +157,7 @@ public class EggSessionManager {
         return result;
     }
 
-    public ComputingEngine getComputeEngine(String sessionId) {
+    public synchronized ComputingEngine getComputeEngine(String sessionId) {
         EggrollSession eggrollSession = sessionIdToResource.get(sessionId);
         if (eggrollSession == null) {
             throw new IllegalStateException("sessionId " + sessionId + " does not exist");

@@ -74,6 +74,7 @@ public class ProcessorEngineOperator implements EngineOperator {
     private String startScriptPath;
     private AtomicInteger lastPort;
     private int maxPort;
+    private int startPort;
     private AtomicBoolean inited;
 
     public ProcessorEngineOperator() {
@@ -92,12 +93,13 @@ public class ProcessorEngineOperator implements EngineOperator {
 
         String startPortString = propertyGetter.getPropertyWithTemporarySource(confPrefix + START_PORT, "50000", serverConf.getProperties());
         lastPort = new AtomicInteger(Integer.valueOf(startPortString));
+        startPort = lastPort.get();
         maxPort = lastPort.get() + 5000;
         inited.compareAndSet(false,true);
     }
 
     @Override
-    public ComputingEngine start(ComputingEngine computingEngine, Properties prop) {
+    public synchronized ComputingEngine start(ComputingEngine computingEngine, Properties prop) {
         init();
         List<Properties> allSources = Lists.newArrayList();
         allSources.add(prop);
@@ -128,7 +130,12 @@ public class ProcessorEngineOperator implements EngineOperator {
 
         try {
             while (engineParentProcess == null) {
-                port = lastPort.getAndIncrement();
+                LOGGER.info("[EGG][ENGINE][PROCESSOR] before update port info, startPort: {}, maxPort: {}, lastPort:{}", startPort, maxPort, lastPort.get());
+                if (lastPort.get() == maxPort) {
+                    lastPort.compareAndSet(maxPort, startPort);
+                }
+                port = lastPort.incrementAndGet();
+                LOGGER.info("[EGG][ENGINE][PROCESSOR] update port: {}", port);
                 if (runtimeUtils.isPortAvailable(port)) {
                     valueBindingsMap.put(PORT, String.valueOf(port));
 

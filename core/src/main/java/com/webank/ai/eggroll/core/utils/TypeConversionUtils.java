@@ -17,7 +17,6 @@
 package com.webank.ai.eggroll.core.utils;
 
 import com.google.common.base.Preconditions;
-import com.google.common.collect.Maps;
 import com.webank.ai.eggroll.api.core.BasicMeta;
 import com.webank.ai.eggroll.api.core.DataStructure;
 import com.webank.ai.eggroll.api.storage.Kv;
@@ -25,6 +24,7 @@ import com.webank.ai.eggroll.api.storage.StorageBasic;
 import com.webank.ai.eggroll.core.model.ComputingEngine;
 import com.webank.ai.eggroll.core.model.DtableStatus;
 import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Dtable;
+import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Fragment;
 import com.webank.ai.eggroll.framework.meta.service.dao.generated.model.Node;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.context.annotation.Scope;
@@ -162,7 +162,7 @@ public class TypeConversionUtils {
         return result;
     }
 
-    public Node toCurrentNode(com.webank.ai.fate.eggroll.meta.service.dao.generated.model.Node other) {
+    public Node toCurrentNode(com.webank.ai.eggroll.meta.service.dao.generated.model.Node other) {
         Node result = new Node();
 
         result.setCreatedAt(other.getCreatedAt());
@@ -178,8 +178,38 @@ public class TypeConversionUtils {
         return result;
     }
 
-    public com.webank.ai.fate.eggroll.meta.service.dao.generated.model.Node toCompatibleNode(Node other) {
-        com.webank.ai.fate.eggroll.meta.service.dao.generated.model.Node result = new com.webank.ai.fate.eggroll.meta.service.dao.generated.model.Node();
+    public Dtable toCurrentDtable(com.webank.ai.eggroll.meta.service.dao.generated.model.Dtable other) {
+        Dtable result = new Dtable();
+        result.setCreatedAt(other.getCreatedAt());
+        result.setDispatcher(other.getDispatcher());
+        result.setNamespace(other.getNamespace());
+        result.setSerdes(other.getSerdes());
+        result.setStatus(other.getStatus());
+        result.setStorageVersion(other.getStorageVersion());
+        result.setTableId(other.getTableId());
+        result.setTableName(other.getTableName());
+        result.setTableType(other.getTableType());
+        result.setTotalFragments(other.getTotalFragments());
+        result.setUpdatedAt(other.getUpdatedAt());
+
+        return result;
+    }
+
+    public Fragment toCurrentFragment(com.webank.ai.eggroll.meta.service.dao.generated.model.Fragment other) {
+        Fragment result = new Fragment();
+        result.setFragmentId(other.getFragmentId());
+        result.setNodeId(other.getNodeId());
+        result.setFragmentOrder(other.getFragmentOrder());
+        result.setCreatedAt(other.getCreatedAt());
+        result.setStatus(other.getStatus());
+        result.setTableId(other.getTableId());
+        result.setUpdatedAt(other.getUpdatedAt());
+
+        return result;
+    }
+
+    public com.webank.ai.eggroll.meta.service.dao.generated.model.Node toCompatibleNode(Node other) {
+        com.webank.ai.eggroll.meta.service.dao.generated.model.Node result = new com.webank.ai.eggroll.meta.service.dao.generated.model.Node();
 
         result.setCreatedAt(other.getCreatedAt());
         result.setHost(other.getHost());
@@ -189,6 +219,36 @@ public class TypeConversionUtils {
         result.setPort(other.getPort());
         result.setStatus(other.getStatus());
         result.setType(other.getType());
+        result.setUpdatedAt(other.getUpdatedAt());
+
+        return result;
+    }
+
+    public com.webank.ai.eggroll.meta.service.dao.generated.model.Dtable toCompatibleDtable(Dtable other) {
+        com.webank.ai.eggroll.meta.service.dao.generated.model.Dtable result = new com.webank.ai.eggroll.meta.service.dao.generated.model.Dtable();
+        result.setCreatedAt(other.getCreatedAt());
+        result.setDispatcher(other.getDispatcher());
+        result.setNamespace(other.getNamespace());
+        result.setSerdes(other.getSerdes());
+        result.setStatus(other.getStatus());
+        result.setStorageVersion(other.getStorageVersion());
+        result.setTableId(other.getTableId());
+        result.setTableName(other.getTableName());
+        result.setTableType(other.getTableType());
+        result.setTotalFragments(other.getTotalFragments());
+        result.setUpdatedAt(other.getUpdatedAt());
+
+        return result;
+    }
+
+    public com.webank.ai.eggroll.meta.service.dao.generated.model.Fragment toCompatibleFragment(Fragment other) {
+        com.webank.ai.eggroll.meta.service.dao.generated.model.Fragment result = new com.webank.ai.eggroll.meta.service.dao.generated.model.Fragment();
+        result.setFragmentId(other.getFragmentId());
+        result.setNodeId(other.getNodeId());
+        result.setFragmentOrder(other.getFragmentOrder());
+        result.setCreatedAt(other.getCreatedAt());
+        result.setStatus(other.getStatus());
+        result.setTableId(other.getTableId());
         result.setUpdatedAt(other.getUpdatedAt());
 
         return result;
@@ -208,4 +268,6 @@ public class TypeConversionUtils {
                 .setPort(computingEngine.getPort());
         return builder.build();
     }
+
+
 }

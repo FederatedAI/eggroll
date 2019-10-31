@@ -21,7 +21,7 @@ import com.webank.ai.eggroll.api.core.BasicMeta;
 import java.util.concurrent.TimeUnit;
 
 public class RuntimeConstants {
-    public static final String HOST_LANGUAGE = "JAVA_8";
+    public static final String HOST_LANGUAGE = "JVM";
     public static final String LOCALHOST = "localhost";
     public static final int REDIS_PORT = 6379;
     public static final int STORAGE_SERVICE_PORT = 7778;
