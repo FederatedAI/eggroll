@@ -219,9 +219,19 @@ class RollPairProcessor(processor_pb2_grpc.ProcessServiceServicer):
         def mapValues_wrapper(src_it, dst_wb,src_serde, dst_serde, functor, is_in_place_computing):
             if is_in_place_computing:
                 raise NotImplementedError()
-            for k_bytes, v_bytes in src_it:
-                v = functor(src_serde.deserialize(v_bytes))
-                dst_wb.put(k_bytes, dst_serde.serialize(v))
+            from inspect import signature
+            sig = signature(functor)
+            n = len(sig.parameters)
+            if n == 1:
+                for k_bytes, v_bytes in src_it:
+                    v = functor(src_serde.deserialize(v_bytes))
+                    dst_wb.put(k_bytes, dst_serde.serialize(v))
+            elif n == 2:
+                for k_bytes, v_bytes in src_it:
+                    v = functor(src_serde.deserialize(k_bytes), src_serde.deserialize(v_bytes))
+                    dst_wb.put(k_bytes, dst_serde.serialize(v))
+            else:
+                raise ValueError
         return self._run_unary("mapValues", mapValues_wrapper, request,context, True)
 
     @_exception_logger
