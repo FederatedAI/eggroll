@@ -54,6 +54,10 @@ message Partition {
   ServerNode node = 3;
 }
 
+message CallInfo {
+  string callSeq = 1;
+}
+
 message Job {
   string id = 1;
   string name = 2;

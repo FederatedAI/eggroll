@@ -36,13 +36,13 @@ import scala.collection.mutable.ListBuffer
 
 
 object FrameUtil {
-  def fromBytes(bytes:Array[Byte]):FrameBatch = {
+  def fromBytes(bytes: Array[Byte]): FrameBatch = {
     val input = new ByteArrayInputStream(bytes)
     val cr = new FrameReader(input)
     cr.getColumnarBatches().next()
   }
 
-  def toBytes(cb: FrameBatch):Array[Byte] = {
+  def toBytes(cb: FrameBatch): Array[Byte] = {
     val output = new ByteArrayOutputStream()
     val cw = new FrameWriter(cb, output)
     cw.write()
@@ -55,13 +55,14 @@ object FrameUtil {
     fromBytes(toBytes(fb))
   }
 }
-// TODO: delete ?
+
+// TODO: where to delete a rollframe?
 trait FrameDB {
-  def close():Unit
-  def readAll():Iterator[FrameBatch]
-  def writeAll(batches: Iterator[FrameBatch]):Unit
-  def append(batch:FrameBatch): Unit = writeAll(Iterator(batch))
-  def readOne():FrameBatch = readAll().next()
+  def close(): Unit
+  def readAll(): Iterator[FrameBatch]
+  def writeAll(batches: Iterator[FrameBatch]): Unit
+  def append(batch: FrameBatch): Unit = writeAll(Iterator(batch))
+  def readOne(): FrameBatch = readAll().next()
 }
 
 object FrameDB {
