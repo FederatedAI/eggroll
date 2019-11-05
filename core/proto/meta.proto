@@ -17,12 +17,14 @@ message ServerCluster {
   string id = 1;
   repeated ServerNode nodes = 2;
   string tag = 3;
+  bytes partitioner = 4;
 }
 
 message Functor {
   string name = 1;
   string serdes = 2;
   bytes body = 3;
+  map<string, string> conf = 4;
 }
 
 message Pair {

@@ -52,7 +52,7 @@ class TestRollPair extends Logging {
     CommandRouter.register(serviceName = RollPair.eggMapValuesCommand,
       serviceParamTypes = List(classOf[ErTask]),
       routeToClass = classOf[EggPair],
-      routeToMethodName = RollPair.mapValues)
+      routeToMethodName = RollPair.runTask)
 
 
     val storeLocator = ErStoreLocator("levelDb", "ns", "name")
@@ -103,7 +103,7 @@ class TestRollPair extends Logging {
     CommandRouter.register(serviceName = RollPair.eggMapCommand,
       serviceParamTypes = List(classOf[ErTask]),
       routeToClass = classOf[EggPair],
-      routeToMethodName = RollPair.map)
+      routeToMethodName = RollPair.runTask)
 
 
     val storeLocator = ErStoreLocator("levelDb", "ns", "name")
@@ -151,8 +151,7 @@ class TestRollPair extends Logging {
     CommandRouter.register(serviceName = RollPair.eggReduceCommand,
       serviceParamTypes = List(classOf[ErTask]),
       routeToClass = classOf[EggPair],
-      routeToMethodName = RollPair.reduce)
-
+      routeToMethodName = RollPair.runTask)
 
     val storeLocator = ErStoreLocator("levelDb", "ns", "name")
 
@@ -192,7 +191,7 @@ class TestRollPair extends Logging {
     CommandRouter.register(serviceName = RollPair.eggJoinCommand,
       serviceParamTypes = List(classOf[ErTask]),
       routeToClass = classOf[EggPair],
-      routeToMethodName = RollPair.join)
+      routeToMethodName = RollPair.runTask)
 
 
     val leftLocator = ErStoreLocator("levelDb", "ns", "name")

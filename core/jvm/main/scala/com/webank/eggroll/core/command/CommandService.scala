@@ -41,10 +41,10 @@ class CommandService extends CommandServiceGrpc.CommandServiceImplBase with Logg
       val command: ErCommandRequest = request.fromProto()
       val commandUri = new CommandURI(command)
 
-      val result: Array[Byte] = CommandRouter.dispatch(commandUri.getRoute(), request.getArgsList.toArray(), request.getKwargsMap.asScala)
+      val result: Array[Array[Byte]] = CommandRouter.dispatch(commandUri.getRoute(), request.getArgsList.toArray(), request.getKwargsMap.asScala)
 
-      val response: ErCommandResponse = ErCommandResponse(seq = request.getSeq,
-        data = result)
+      val response: ErCommandResponse = ErCommandResponse(id = request.getId,
+        results = result)
       responseObserver.onNext(response.toProto())
       responseObserver.onCompleted()
     })

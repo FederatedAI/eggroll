@@ -81,7 +81,7 @@ class RollFrameTests {
       }
       x
     }
-    FrameDB.file("./tmp/unittests/RollFrameTests/filedb/test1/a1/0")
+    FrameDB.file("/tmp/unittests/RollFrameTests/filedb/test1/a1/0")
       .readAll().foreach(fb => assert(fb.rowCount > 0))
   }
   private def getSchema(fieldCount:Int):String = {
@@ -106,8 +106,8 @@ class RollFrameTests {
       outputDB.close()
       inputDB.close()
     }
-    loadCache("./tmp/unittests/RollFrameTests/filedb/test1/a1/0")
-    loadCache("./tmp/unittests/RollFrameTests/filedb/test1/a1/1")
+    loadCache("/tmp/unittests/RollFrameTests/filedb/test1/a1/0")
+    loadCache("/tmp/unittests/RollFrameTests/filedb/test1/a1/1")
   }
 
   @Test
@@ -142,11 +142,11 @@ class RollFrameTests {
       println(oneFb.readDouble(0,1))
 
     }
-    write("./tmp/unittests/RollFrameTests/filedb/test1/b1/0")
-    write("./tmp/unittests/RollFrameTests/filedb/test1/b1/1")
-    write("./tmp/unittests/RollFrameTests/filedb/test1/b1/2")
+    write("/tmp/unittests/RollFrameTests/filedb/test1/b1/0")
+    write("/tmp/unittests/RollFrameTests/filedb/test1/b1/1")
+    write("/tmp/unittests/RollFrameTests/filedb/test1/b1/2")
 
-    read("./tmp/unittests/RollFrameTests/filedb/test1/b1/0")
+    read("/tmp/unittests/RollFrameTests/filedb/test1/b1/0")
   }
 
   @Test
@@ -166,8 +166,8 @@ class RollFrameTests {
       )
       cw.close()
     }
-    pass("./tmp/unittests/RollFrameTests/filedb/test1/a1/0")
-    pass("./tmp/unittests/RollFrameTests/filedb/test1/a1/1")
+    pass("/tmp/unittests/RollFrameTests/filedb/test1/a1/0")
+    pass("/tmp/unittests/RollFrameTests/filedb/test1/a1/1")
 
   }
   @Test

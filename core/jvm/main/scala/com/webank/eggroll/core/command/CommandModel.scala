@@ -20,18 +20,18 @@ import java.net.{URI, URLDecoder}
 import java.nio.charset.StandardCharsets
 
 import com.google.protobuf.{ByteString, Message => PbMessage}
-import com.webank.eggroll.core.constant.{ObjectConstants, StringConstants}
-import com.webank.eggroll.core.rpc.RpcMessage
+import com.webank.eggroll.core.constant.StringConstants
+import com.webank.eggroll.core.datastructure.RpcMessage
 import com.webank.eggroll.core.serdes.{PbMessageDeserializer, PbMessageSerializer}
 import org.apache.commons.lang3.StringUtils
 
-import scala.collection.mutable
+import scala.collection.{immutable, mutable}
 import scala.collection.mutable.ArrayBuffer
 import scala.reflect.ClassTag
 
-case class ErCommandRequest(seq: Long = System.currentTimeMillis(), uri: String, args: Array[Array[Byte]] = null, kwargs: mutable.Map[String, Array[Byte]] = null) extends RpcMessage
+case class ErCommandRequest(id: Long = System.currentTimeMillis(), uri: String, args: Array[Array[Byte]] = null, kwargs: immutable.Map[String, Array[Byte]] = null) extends RpcMessage
 
-case class ErCommandResponse(seq: Long, request: ErCommandRequest = null, data: Array[Byte] = null) extends RpcMessage
+case class ErCommandResponse(id: Long, request: ErCommandRequest = null, results: Array[Array[Byte]] = null) extends RpcMessage
 
 class CommandURI(uriString: String) {
   val uri = new URI(uriString)
@@ -71,14 +71,14 @@ object CommandPbSerdes {
   implicit class ErCommandRequestToPbMessage(src: ErCommandRequest) extends PbMessageSerializer {
     override def toProto[T >: PbMessage](): Command.CommandRequest = {
       val builder = Command.CommandRequest.newBuilder()
-        .setSeq(src.seq)
+        .setId(src.id)
         .setUri(src.uri)
 
       if (src.args != null) {
-        src.args.map(arg => builder.addArgs(ByteString.copyFrom(arg)))
+        src.args.foreach(arg => builder.addArgs(ByteString.copyFrom(arg)))
       }
       if (src.kwargs != null) {
-        src.kwargs.map(kwarg => builder.putKwargs(kwarg._1, ByteString.copyFrom(kwarg._2)))
+        src.kwargs.foreach(kwarg => builder.putKwargs(kwarg._1, ByteString.copyFrom(kwarg._2)))
       }
       builder.build()
     }
@@ -87,9 +87,12 @@ object CommandPbSerdes {
   implicit class ErCommandResponseToPbMessage(src: ErCommandResponse) extends PbMessageSerializer {
     override def toProto[T >: PbMessage](): Command.CommandResponse = {
       val builder = Command.CommandResponse.newBuilder()
-        .setSeq(src.seq)
+        .setId(src.id)
         .setRequest(if (src.request == null) Command.CommandRequest.getDefaultInstance else src.request.toProto())
-        .setData(ByteString.copyFrom(src.data))
+
+      if (src.results != null) {
+        src.results.foreach(d => builder.addResults(ByteString.copyFrom(d)))
+      }
 
       builder.build()
     }
@@ -97,38 +100,38 @@ object CommandPbSerdes {
 
   implicit class ErCommandRequestFromPbMessage(src: Command.CommandRequest) extends PbMessageDeserializer {
     override def fromProto[T >: RpcMessage](): ErCommandRequest = {
-      var args = ObjectConstants.EMPTY_ARRAY_OF_BYTE_ARRAY
+      val args = ArrayBuffer[Array[Byte]]()
       val argsCount = src.getArgsCount
       if (argsCount > 0) {
-        val argsBuffer = new ArrayBuffer[Array[Byte]]()
-
-        src.getArgsList.forEach(bs => argsBuffer.append(bs.toByteArray))
-
-        args = argsBuffer.toArray
+        src.getArgsList.forEach(bs => args.append(bs.toByteArray))
       }
 
-      var kwargs = ObjectConstants.EMPTY_MUTABLE_MAP_OF_STRING_TO_BYTE_ARRAY
+      val kwargs = mutable.Map[String, Array[Byte]]()
       if (src.getKwargsCount > 0) {
-        kwargs = mutable.Map[String, Array[Byte]]()
 
         src.getKwargsMap.entrySet().forEach(entry => kwargs.put(entry.getKey, entry.getValue.toByteArray))
       }
 
-      ErCommandRequest(seq = src.getSeq,
+      ErCommandRequest(id = src.getId,
         uri = src.getUri,
-        args = args,
-        kwargs = kwargs)
+        args = args.toArray,
+        kwargs = kwargs.toMap)
     }
 
     override def fromBytes[T: ClassTag](bytes: Array[Byte]): T = ???
   }
 
   implicit class ErCommandResponseFromPbMessage(src: Command.CommandResponse) extends PbMessageDeserializer {
-    override def fromProto[T >: RpcMessage](): ErCommandResponse = ErCommandResponse(
-      seq = src.getSeq,
-      request = src.getRequest.fromProto(),
-      data = if (src.getData != null) src.getData.toByteArray else Array.emptyByteArray)
-
+    override def fromProto[T >: RpcMessage](): ErCommandResponse = {
+      val results = ArrayBuffer[Array[Byte]]()
+      if (src.getResultsCount > 0) {
+        src.getResultsList.forEach(r => results.append(r.toByteArray))
+      }
+      ErCommandResponse(
+        id = src.getId,
+        request = src.getRequest.fromProto(),
+        results = results.toArray)
+    }
     override def fromBytes[T: ClassTag](bytes: Array[Byte]): T = ???
   }
 }

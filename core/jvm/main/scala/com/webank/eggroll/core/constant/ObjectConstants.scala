@@ -17,8 +17,13 @@
 package com.webank.eggroll.core.constant
 
 import scala.collection.mutable
+import scala.collection.immutable
+
 
 object ObjectConstants {
   val EMPTY_ARRAY_OF_BYTE_ARRAY = Array.empty[Array[Byte]]
   val EMPTY_MUTABLE_MAP_OF_STRING_TO_BYTE_ARRAY = mutable.Map.empty[String, Array[Byte]]
+  val EMPTY_IMMUTABLE_MAP_OF_STRING_TO_BYTE_ARRAY = immutable.Map.empty[String, Array[Byte]]
+  val EMPTY_PREDEF_MAP_OF_STRING_TO_BYTE_ARRAY = Map.empty[String, Array[Byte]]
+  val EMPTY_LIST_OF_BYTE_ARRAY = List[Array[Byte]]()
 }

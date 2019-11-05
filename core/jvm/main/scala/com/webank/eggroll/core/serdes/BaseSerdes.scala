@@ -17,7 +17,7 @@
 package com.webank.eggroll.core.serdes
 
 import com.google.protobuf.{ByteString, Message => PbMessage}
-import com.webank.eggroll.core.rpc.RpcMessage
+import com.webank.eggroll.core.datastructure.RpcMessage
 
 import scala.reflect.ClassTag
 

@@ -18,37 +18,18 @@
 <project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xmlns="http://maven.apache.org/POM/4.0.0"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-
-    <artifactId>eggroll-rollframe</artifactId>
-    <groupId>com.webank.eggroll</groupId>
-    <version>2.0.0</version>
-    <packaging>jar</packaging>
     <modelVersion>4.0.0</modelVersion>
-    <properties>
-        <grpc.version>1.16.1</grpc.version>
-        <protobuf-maven-plugin.version>0.6.1</protobuf-maven-plugin.version>
-        <os-maven-plugin.version>1.6.1</os-maven-plugin.version>
-        <protobuf.version>3.6.1</protobuf.version>
-        <arrow.version>0.14.1</arrow.version>
-        <junit.version>4.12</junit.version>
-    </properties>
-    <dependencies>
-        <dependency>
-            <groupId>io.grpc</groupId>
-            <artifactId>grpc-stub</artifactId>
-            <version>${grpc.version}</version>
-        </dependency>
+    <parent>
+        <groupId>com.webank.eggroll</groupId>
+        <artifactId>eggroll-all</artifactId>
+        <version>${eggroll.version}</version>
+        <relativePath>../../../pom.xml</relativePath>
+    </parent>
 
-        <dependency>
-            <groupId>io.grpc</groupId>
-            <artifactId>grpc-protobuf</artifactId>
-            <version>${grpc.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.grpc</groupId>
-            <artifactId>grpc-netty-shaded</artifactId>
-            <version>${grpc.version}</version>
-        </dependency>
+    <artifactId>eggroll-roll-frame</artifactId>
+    <name>Eggroll RollFrame</name>
+
+    <dependencies>
         <dependency>
             <groupId>org.apache.arrow</groupId>
             <artifactId>arrow-memory</artifactId>
@@ -70,40 +51,25 @@
             <artifactId>arrow-vector</artifactId>
             <version>${arrow.version}</version>
         </dependency>
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>${junit.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.scala-lang</groupId>
-            <artifactId>scala-library</artifactId>
-            <version>2.11.8</version>
-        </dependency>
-        <!-- for debug -->
-        <!--<dependency>-->
-            <!--<groupId>org.apache.arrow</groupId>-->
-            <!--<artifactId>arrow-tools</artifactId>-->
-            <!--<version>${arrow.version}</version>-->
-        <!--</dependency>-->
+
         <dependency>
             <groupId>io.netty</groupId>
             <artifactId>netty-all</artifactId>
-            <version>4.1.27.Final</version>
+            <version>${netty.version}</version>
         </dependency>
     </dependencies>
 
     <build>
-        <extensions>
-            <!-- os-maven-plugin -->
+<!--        <extensions>
+            &lt;!&ndash; os-maven-plugin &ndash;&gt;
             <extension>
                 <groupId>kr.motd.maven</groupId>
                 <artifactId>os-maven-plugin</artifactId>
                 <version>${os-maven-plugin.version}</version>
             </extension>
-        </extensions>
+        </extensions>-->
         <plugins>
-            <plugin>
+<!--            <plugin>
                 <groupId>net.alchim31.maven</groupId>
                 <artifactId>scala-maven-plugin</artifactId>
                 <version>3.2.2</version>
@@ -114,7 +80,7 @@
                         </goals>
                     </execution>
                 </executions>
-            </plugin>
+            </plugin>-->
             <!-- protobuf-maven-plugin -->
             <plugin>
                 <groupId>org.xolstice.maven.plugins</groupId>
@@ -138,14 +104,14 @@
                     </execution>
                 </executions>
             </plugin>
-            <plugin>
+<!--            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <configuration>
-                    <source>7</source>
-                    <target>7</target>
+                    <source>8</source>
+                    <target>8</target>
                 </configuration>
-            </plugin>
+            </plugin>-->
         </plugins>
     </build>
 </project>

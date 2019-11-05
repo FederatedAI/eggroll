@@ -19,6 +19,7 @@ package com.webank.eggroll.core.command
 import java.util.concurrent.{CompletableFuture, CountDownLatch}
 import java.util.function.Supplier
 
+import com.webank.eggroll.core.datastructure.TaskPlan
 import com.webank.eggroll.core.error.DistributedRuntimeException
 import com.webank.eggroll.core.meta.{ErJob, ErPartition, ErTask}
 import com.webank.eggroll.core.util.ThreadPoolUtils
@@ -29,8 +30,11 @@ case class EndpointCommand(commandURI: CommandURI, job: ErJob)
 
 case class EndpointTaskCommand(commandURI: CommandURI, task: ErTask)
 
-case class CollectiveCommand(commandURI: CommandURI, job: ErJob) {
+case class CollectiveCommand(taskPlan: TaskPlan) {
   def call(): List[ErCommandResponse] = {
+    val job = taskPlan.job
+    val commandUri = taskPlan.uri
+
     val finishLatch = new CountDownLatch(job.inputs.size)
     val errors = new DistributedRuntimeException()
     val results = mutable.ListBuffer[ErCommandResponse]()
@@ -38,15 +42,19 @@ case class CollectiveCommand(commandURI: CommandURI, job: ErJob) {
     val tasks = toTasks(job)
 
     tasks.par.map(task => {
-      val completableFuture: CompletableFuture[ErCommandResponse] = CompletableFuture.supplyAsync(new CommandServiceSupplier(task, commandURI), CollectiveCommand.threadPool)
+      val completableFuture: CompletableFuture[ErCommandResponse] =
+        CompletableFuture.supplyAsync(new CommandServiceSupplier(task, commandUri), CollectiveCommand.threadPool)
         .exceptionally(e => {
           errors.append(e)
           null
         })
-        .thenApply(cr => {
-          results += cr
+        .whenCompleteAsync((result, exception) => {
+          if (exception != null) {
+            errors.append(exception)
+          } else {
+            results += result
+          }
           finishLatch.countDown()
-          cr
         })
 
       completableFuture.join()

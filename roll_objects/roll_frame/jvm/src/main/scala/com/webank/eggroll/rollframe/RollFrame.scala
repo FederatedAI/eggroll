@@ -181,7 +181,7 @@ object ExecutorPool {
   def apply(): ExecutorPool = instance
 }
 class EggFrame {
-  private val rootPath = "./tmp/unittests/RollFrameTests/filedb/"
+  private val rootPath = "/tmp/unittests/RollFrameTests/filedb/"
   private val clusterManager = new ClusterManager
   private val serverNodes = clusterManager.getServerCluster().nodes
   private val transferService = new NioCollectiveTransfer(serverNodes)

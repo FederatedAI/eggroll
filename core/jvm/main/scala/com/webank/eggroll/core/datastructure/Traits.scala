@@ -14,8 +14,16 @@
  * limitations under the License.
  */
 
-package com.webank.eggroll.core.rpc
+package com.webank.eggroll.core.datastructure
+
+import com.webank.eggroll.core.command.CommandURI
+import com.webank.eggroll.core.meta.ErJob
 
 // add the to- / from- bytes mapping
 trait RpcMessage {
+}
+
+trait TaskPlan {
+  def job: ErJob
+  def uri: CommandURI
 }

@@ -18,8 +18,8 @@ package com.webank.eggroll.core.meta
 
 import com.google.protobuf.{ByteString, Message => PbMessage}
 import com.webank.eggroll.core.constant.StringConstants
+import com.webank.eggroll.core.datastructure.RpcMessage
 import com.webank.eggroll.core.meta.NetworkingModelPbSerdes._
-import com.webank.eggroll.core.rpc.RpcMessage
 import com.webank.eggroll.core.serdes.{PbMessageDeserializer, PbMessageSerializer}
 
 import scala.collection.JavaConverters._

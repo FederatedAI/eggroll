@@ -27,6 +27,7 @@ import org.apache.commons.lang3.reflect.{ConstructorUtils, MethodUtils}
 
 import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 
 trait CommandRoutable {
 
@@ -79,7 +80,7 @@ object CommandRouter {
     serviceRouteTable.put(serviceName, (finalCallBasedInstance, routeToMethod))
   }
 
-  def dispatch(serviceName: String, args: Array[_ <: AnyRef], kwargs: mutable.Map[String, _ <: AnyRef]): Array[Byte] = {
+  def dispatch(serviceName: String, args: Array[_ <: AnyRef], kwargs: mutable.Map[String, _ <: AnyRef]): Array[Array[Byte]] = {
     val target = query(serviceName)
     if (target == null) {
       throw new IllegalStateException(s"service ${serviceName} has not been registered")
@@ -107,20 +108,22 @@ object CommandRouter {
 
     // actual call
     val callResult = target._2.invoke(target._1, realArgs: _*) // method.invoke(instance, args)
+    val finalResult = ArrayBuffer[Array[Byte]]()
 
     // serialization to response
-    // todo: use reflection to call toProto().toByteArray
+    // todo: use reflection to call toProto().toByteArray, or use rpcMessage
     callResult match {
       case e: ErTask =>
-        callResult.asInstanceOf[ErTask].toProto().toByteArray
+        finalResult.append(e.toProto().toByteArray)
       case e: ErJob =>
-        callResult.asInstanceOf[ErJob].toProto().toByteArray
+        finalResult.append(e.toProto().toByteArray)
       case e: ErStore =>
-        callResult.asInstanceOf[ErStore].toProto().toByteArray
+        finalResult.append(e.toProto().toByteArray)
       case _ =>
-        callResult.toString.getBytes()
+        finalResult.append(callResult.toString.getBytes())
     }
 
+    finalResult.toArray
   }
 
   def query(serviceName: String): (Any, Method) = {

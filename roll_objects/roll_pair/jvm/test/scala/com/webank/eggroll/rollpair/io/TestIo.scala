@@ -24,7 +24,8 @@ class TestIo {
   val partitionId = 1
   //val dbPath: String = "/tmp/eggroll/levelDb/ns/name/" + partitionId
 
-  val dbPathPrefix = "/tmp/eggroll/levelDb/ns/name/"
+  val namePath = "/tmp/eggroll/levelDb/ns/name/"
+  val testPath = "/tmp/eggroll/levelDb/ns/test/"
   val mapValuesPath: String = "/tmp/eggroll/levelDb/ns/testMapValues/"
   val reducePath: String = "/tmp/eggroll/levelDb/ns/testReduce/"
   val joinPath: String = "/tmp/eggroll/levelDb/ns/testJoin/"
@@ -73,7 +74,7 @@ class TestIo {
 
   @Test
   def testWriteMultipleKvBatch(): Unit = {
-    val path = dbPathPrefix
+    val path = testPath
     for (p <- 0 until 4) {
       val partitionAdapter = new RocksdbSortedKvAdapter(path + p)
       val batch = ListBuffer[(Array[Byte], Array[Byte])]()
@@ -88,7 +89,7 @@ class TestIo {
 
   @Test
   def testIterateMultipleKvBatch(): Unit = {
-    val path = mapPath
+    val path = joinPath
     println(s"path: ${path}")
 
     for (p <- 0 until 4) {

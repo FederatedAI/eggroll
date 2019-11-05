@@ -95,7 +95,7 @@ class EggPair extends Logging {
       val transferTag = task.job.name
       if ("0" == partitionId) {
         val partitionSize = task.job.inputs.head.partitions.size
-        val queue = GrpcTransferService.getOrCreateBroker(transferTag, partitionSize).asInstanceOf[ArrayBlockingQueue[Array[Byte]]]
+        val queue = GrpcTransferService.getOrCreateBroker(transferTag, partitionSize)
 
         var combOpResult = seqOpResult
 

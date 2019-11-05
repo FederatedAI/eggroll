@@ -68,7 +68,7 @@ object FrameDB {
   val TYPE_FILE = "file"
   val TYPE_CACHE = "cache"
   val TYPE_QUEUE = "queue"
-  private val rootPath = "./tmp/unittests/RollFrameTests/filedb/"
+  private val rootPath = "/tmp/unittests/RollFrameTests/filedb/"
 
   private def getStorePath(rfStore: RfStore, partId: Int): String = {
     val dir = if (rfStore.path == null || rfStore.path.isEmpty)

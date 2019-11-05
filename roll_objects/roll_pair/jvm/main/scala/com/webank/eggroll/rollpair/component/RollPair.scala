@@ -20,11 +20,14 @@ import com.webank.eggroll.core.command.{CollectiveCommand, CommandURI}
 import com.webank.eggroll.core.constant.StringConstants
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.meta.MetaModelPbSerdes._
+import com.webank.eggroll.core.schedule.{JobRunner, JoinTaskPlan, ListScheduler, MapTaskPlan, ReduceTaskPlan, ShuffleTaskPlan}
 import com.webank.eggroll.core.serdes.DefaultScalaFunctorSerdes
 
 import scala.collection.mutable
 
 class RollPair() {
+  val scheduler = ListScheduler()
+
   def mapValues(inputJob: ErJob): ErStore = {
     // f: Array[Byte] => Array[Byte]
     // val functor = ErFunctor("map_user_defined", functorSerDes.serialize(f))
@@ -54,12 +57,14 @@ class RollPair() {
 
     val job = inputJob.copy(inputs = List(inputStoreWithPartitions), outputs = List(outputStoreWithPartitions))
 
-    val collectiveCommand = CollectiveCommand(new CommandURI(RollPair.eggMapValuesCommand), job)
+    val taskPlan = new MapTaskPlan(new CommandURI(RollPair.eggMapValuesCommand), job)
+
+    scheduler.addPlan(taskPlan)
 
     // todo: update database
     // val xxx = updateOutputDb()
 
-    val commandResults = collectiveCommand.call()
+    JobRunner.run(scheduler.getPlan())
 
     outputStoreWithPartitions
   }
@@ -90,9 +95,10 @@ class RollPair() {
 
     val job = inputJob.copy(inputs = List(inputStoreWithPartitions), outputs = List(outputStoreWithPartitions))
 
-    val collectiveCommand = CollectiveCommand(new CommandURI(RollPair.eggMapCommand), job)
+    val taskPlan = new ShuffleTaskPlan(new CommandURI(RollPair.eggMapCommand), job)
+    scheduler.addPlan(taskPlan)
 
-    val commandResults = collectiveCommand.call()
+    JobRunner.run(scheduler.getPlan())
 
     outputStoreWithPartitions
   }
@@ -113,9 +119,10 @@ class RollPair() {
 
     val job = inputJob.copy(inputs = List(inputStoreWithPartitions), outputs = List(outputStoreWithPartitions))
 
-    val collectiveCommand = CollectiveCommand(new CommandURI(RollPair.eggReduceCommand), job)
+    val taskPlan = new ReduceTaskPlan(new CommandURI(RollPair.eggReduceCommand), job)
+    scheduler.addPlan(taskPlan)
 
-    val commandResults = collectiveCommand.call()
+    JobRunner.run(scheduler.getPlan())
 
     outputStoreWithPartitions
   }
@@ -150,9 +157,10 @@ class RollPair() {
     val outputStoreWithPartitions = ErStore(storeLocator = outputLocator, partitions = outputPartitions.toList)
 
     val job = inputJob.copy(inputs = List(leftStoreWithPartitions, rightStoreWithPartitions), outputs = List(outputStoreWithPartitions))
-    val collectiveCommand = CollectiveCommand(new CommandURI(RollPair.eggJoinCommand), job)
+    val taskPlan = new JoinTaskPlan(new CommandURI(RollPair.eggJoinCommand), job)
+    scheduler.addPlan(taskPlan)
 
-    val commandResults = collectiveCommand.call()
+    JobRunner.run(scheduler.getPlan())
 
     outputStoreWithPartitions
   }
@@ -169,15 +177,16 @@ object RollPair {
   val rollPair = "RollPair"
   val eggPair = "EggPair"
 
-  var eggMapCommand = s"${eggPair}.${map}"
-  var eggMapValuesCommand = s"${eggPair}.${mapValues}"
+  val runTask = "runTask"
+  val eggMapCommand = s"${eggPair}.${map}"
+  val eggMapValuesCommand = s"${eggPair}.${mapValues}"
   val eggReduceCommand = s"${eggPair}.${reduce}"
-  var eggJoinCommand = s"${eggPair}.${join}"
+  val eggJoinCommand = s"${eggPair}.${join}"
 
-  var rollMapCommand = s"${rollPair}.${map}"
-  var rollMapValuesCommand = s"${rollPair}.${mapValues}"
-  var rollReduceCommand = s"${rollPair}.${reduce}"
-  var rollJoinCommand = s"${rollPair}.${join}"
+  val rollMapCommand = s"${rollPair}.${map}"
+  val rollMapValuesCommand = s"${rollPair}.${mapValues}"
+  val rollReduceCommand = s"${rollPair}.${reduce}"
+  val rollJoinCommand = s"${rollPair}.${join}"
 
   /*  CommandRouter.register(mapCommand,
       List(classOf[Array[Byte] => Array[Byte]]), clazz, "mapValues", null, null)*/

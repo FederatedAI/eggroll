@@ -25,7 +25,7 @@ class FrameFormatTests {
   @Test
   def testNullableFields(): Unit = {
     val fb = new FrameBatch(new FrameSchema(testAssets.getDoubleSchema(4)), 3000)
-    val path = "./tmp/unittests/RollFrameTests/filedb/test1/nullable_test"
+    val path = "/tmp/unittests/RollFrameTests/filedb/test1/nullable_test"
     val adapter = FrameDB.file(path)
     adapter.writeAll(Iterator(fb.sliceByColumn(0,3)))
     adapter.close()
@@ -65,7 +65,7 @@ class FrameFormatTests {
     list0.writeLong(0, 44)
     list2.writeLong(3, 55)
     (0 until 10).foreach( i=> arr.writeLong(i, i * 100 + 1))
-    val outputStore = FrameDB.file("./tmp/unittests/RollFrameTests/filedb/test1/type_test")
+    val outputStore = FrameDB.file("/tmp/unittests/RollFrameTests/filedb/test1/type_test")
 
     outputStore.append(batch)
     outputStore.close()
@@ -76,7 +76,7 @@ class FrameFormatTests {
     assert(list0.readLong(0) == 44)
     assert(list0Copy.readLong(0) == 44)
 
-    val inputStore = FrameDB.file("./tmp/unittests/RollFrameTests/filedb/test1/type_test")
+    val inputStore = FrameDB.file("/tmp/unittests/RollFrameTests/filedb/test1/type_test")
     for(b <- inputStore.readAll()) {
       assert(b.readDouble(0, 0) == 1.2)
       assert(b.readLong(1, 0) == 22)
@@ -100,7 +100,7 @@ class FrameFormatTests {
           ]
         }
       """.stripMargin
-    val path = "./tmp/unittests/RollFrameTests/testColumnarWrite/0"
+    val path = "/tmp/unittests/RollFrameTests/testColumnarWrite/0"
     val cw = new FrameWriter(new FrameSchema(schema), BlockDeviceAdapter.file(path))
     val valueCount = 10
     val fieldCount = 3

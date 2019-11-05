@@ -18,7 +18,7 @@ package com.webank.eggroll.core.meta
 
 import com.google.protobuf.{Message => PbMessage}
 import com.webank.eggroll.core.constant.StringConstants
-import com.webank.eggroll.core.rpc.RpcMessage
+import com.webank.eggroll.core.datastructure.RpcMessage
 import com.webank.eggroll.core.serdes.{PbMessageDeserializer, PbMessageSerializer}
 import jdk.nashorn.internal.ir.annotations.Immutable
 
