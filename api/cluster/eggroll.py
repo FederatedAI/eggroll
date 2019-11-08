@@ -51,8 +51,8 @@ def session_init(session_id=None, server_conf_path="eggroll/conf/server_conf.jso
     if session_id is None:
         if job_id is not None:
             session_id = job_id
-    else:
-        session_id = str(uuid.uuid1())
+        else:
+            session_id = str(uuid.uuid1())
 
     if job_id is None:
         job_id = session_id
