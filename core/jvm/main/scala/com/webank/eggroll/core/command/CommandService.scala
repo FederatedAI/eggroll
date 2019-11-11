@@ -12,6 +12,8 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ *
  */
 
 package com.webank.eggroll.core.command
@@ -37,7 +39,8 @@ class CommandService extends CommandServiceGrpc.CommandServiceImplBase with Logg
   override def call(request: Command.CommandRequest,
                     responseObserver: StreamObserver[Command.CommandResponse]): Unit = {
     grpcServerWrapper.wrapGrpcServerRunnable(responseObserver, () => {
-      logInfo(s"${ModuleConstants.COMMAND_WITH_BRACKETS} received: ${ToStringUtils.toOneLineString(request)}")
+      logInfo(s"${ModuleConstants.COMMAND_WITH_BRACKETS} received")
+      //logInfo(s"${ModuleConstants.COMMAND_WITH_BRACKETS} received: ${ToStringUtils.toOneLineString(request)}")
       val command: ErCommandRequest = request.fromProto()
       val commandUri = new CommandURI(command)
 

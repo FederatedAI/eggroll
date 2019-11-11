@@ -12,6 +12,8 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ *
  */
 
 package com.webank.eggroll.core.serdes
@@ -20,13 +22,13 @@ import java.io.{ByteArrayInputStream, ByteArrayOutputStream, ObjectInputStream, 
 
 import scala.reflect.ClassTag
 
-trait FunctorSerDes extends BaseSerializable with BaseDeserializable {
+trait MonadSerDes extends BaseSerializable with BaseDeserializable {
   def serialize(func: Any): Array[Byte]
 
   def deserialize[T](bytes: Array[Byte]): T
 }
 
-case class DefaultScalaFunctorSerdes(func: Any = null) extends FunctorSerDes {
+case class DefaultScalaSerdes(func: Any = null) extends MonadSerDes {
   override def toBytes(): Array[Byte] = serialize(func)
 
   override def serialize(func: Any): Array[Byte] = {

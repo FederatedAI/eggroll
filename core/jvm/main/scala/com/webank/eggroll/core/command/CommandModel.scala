@@ -12,10 +12,13 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ *
  */
 
 package com.webank.eggroll.core.command
 
+import java.lang.reflect.Method
 import java.net.{URI, URLDecoder}
 import java.nio.charset.StandardCharsets
 
@@ -28,6 +31,13 @@ import org.apache.commons.lang3.StringUtils
 import scala.collection.{immutable, mutable}
 import scala.collection.mutable.ArrayBuffer
 import scala.reflect.ClassTag
+
+case class ErService(serviceName: String,
+                     serviceParamTypes: List[Class[_]],
+                     serviceReturnTypes: List[Class[_]],
+                     callBasedInstance: Any,
+                     routeToMethod: Method,
+                     scope: String = StringConstants.EMPTY)
 
 case class ErCommandRequest(id: Long = System.currentTimeMillis(), uri: String, args: Array[Array[Byte]] = null, kwargs: immutable.Map[String, Array[Byte]] = null) extends RpcMessage
 

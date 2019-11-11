@@ -12,6 +12,8 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ *
  */
 
 package com.webank.eggroll.rollpair.component
@@ -21,11 +23,11 @@ import com.webank.eggroll.core.constant.StringConstants
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.meta.MetaModelPbSerdes._
 import com.webank.eggroll.core.schedule.{JobRunner, JoinTaskPlan, ListScheduler, MapTaskPlan, ReduceTaskPlan, ShuffleTaskPlan}
-import com.webank.eggroll.core.serdes.DefaultScalaFunctorSerdes
+import com.webank.eggroll.core.serdes.DefaultScalaSerdes
 
 import scala.collection.mutable
 
-class RollPair() {
+class RollPairService() {
   val scheduler = ListScheduler()
 
   def mapValues(inputJob: ErJob): ErStore = {
@@ -36,8 +38,8 @@ class RollPair() {
     val inputLocator = inputStore.storeLocator
     val outputLocator = inputLocator.copy(name = "testMapValues")
 
-    val inputPartitionTemplate = ErPartition(id = "0", storeLocator = inputLocator, node = ErServerNode(endpoint = ErEndpoint("localhost", 20001)))
-    val outputPartitionTemplate = ErPartition(id = "0", storeLocator = outputLocator, node = ErServerNode(endpoint = ErEndpoint("localhost", 20001)))
+    val inputPartitionTemplate = ErPartition(id = "0", storeLocator = inputLocator, node = ErServerNode(commandEndpoint = ErEndpoint("localhost", 20001)))
+    val outputPartitionTemplate = ErPartition(id = "0", storeLocator = outputLocator, node = ErServerNode(commandEndpoint = ErEndpoint("localhost", 20001)))
 
     val numberOfPartitions = 4
 
@@ -57,7 +59,7 @@ class RollPair() {
 
     val job = inputJob.copy(inputs = List(inputStoreWithPartitions), outputs = List(outputStoreWithPartitions))
 
-    val taskPlan = new MapTaskPlan(new CommandURI(RollPair.eggMapValuesCommand), job)
+    val taskPlan = new MapTaskPlan(new CommandURI(RollPairService.eggMapValuesCommand), job)
 
     scheduler.addPlan(taskPlan)
 
@@ -75,8 +77,8 @@ class RollPair() {
     val inputLocator = inputStore.storeLocator
     val outputLocator = inputLocator.copy(name = "testMap")
 
-    val inputPartitionTemplate = ErPartition(id = "0", storeLocator = inputLocator, node = ErServerNode(endpoint = ErEndpoint("localhost", 20001)))
-    val outputPartitionTemplate = ErPartition(id = "0", storeLocator = outputLocator, node = ErServerNode(endpoint = ErEndpoint("localhost", 20001)))
+    val inputPartitionTemplate = ErPartition(id = "0", storeLocator = inputLocator, node = ErServerNode(commandEndpoint = ErEndpoint("localhost", 20001)))
+    val outputPartitionTemplate = ErPartition(id = "0", storeLocator = outputLocator, node = ErServerNode(commandEndpoint = ErEndpoint("localhost", 20001)))
 
     val numberOfPartitions = 4
 
@@ -95,7 +97,7 @@ class RollPair() {
 
     val job = inputJob.copy(inputs = List(inputStoreWithPartitions), outputs = List(outputStoreWithPartitions))
 
-    val taskPlan = new ShuffleTaskPlan(new CommandURI(RollPair.eggMapCommand), job)
+    val taskPlan = new ShuffleTaskPlan(new CommandURI(RollPairService.eggMapCommand), job)
     scheduler.addPlan(taskPlan)
 
     JobRunner.run(scheduler.getPlan())
@@ -108,8 +110,8 @@ class RollPair() {
     val inputLocator = inputStore.storeLocator
     val outputLocator = inputLocator.copy(name = "testReduce")
 
-    val inputPartition = ErPartition(id = "0", storeLocator = inputLocator, node = ErServerNode(endpoint = ErEndpoint("localhost", 20001)))
-    val outputPartition = ErPartition(id = "0", storeLocator = outputLocator, node = ErServerNode(endpoint = ErEndpoint("localhost", 20001)))
+    val inputPartition = ErPartition(id = "0", storeLocator = inputLocator, node = ErServerNode(commandEndpoint = ErEndpoint("localhost", 20001)))
+    val outputPartition = ErPartition(id = "0", storeLocator = outputLocator, node = ErServerNode(commandEndpoint = ErEndpoint("localhost", 20001)))
 
     val inputStoreWithPartitions = inputStore.copy(storeLocator = inputLocator,
       partitions = List(inputPartition.copy(id = "0"), inputPartition.copy(id = "1")))
@@ -119,7 +121,7 @@ class RollPair() {
 
     val job = inputJob.copy(inputs = List(inputStoreWithPartitions), outputs = List(outputStoreWithPartitions))
 
-    val taskPlan = new ReduceTaskPlan(new CommandURI(RollPair.eggReduceCommand), job)
+    val taskPlan = new ReduceTaskPlan(new CommandURI(RollPairService.eggReduceCommand), job)
     scheduler.addPlan(taskPlan)
 
     JobRunner.run(scheduler.getPlan())
@@ -136,9 +138,9 @@ class RollPair() {
 
     val outputLocator = leftLocator.copy(name = "testJoin")
 
-    val leftPartitionTemplate = ErPartition(id = "0", storeLocator = leftLocator, node = ErServerNode(endpoint = ErEndpoint("localhost", 20001)))
-    val rightPartitionTemplate = ErPartition(id = "0", storeLocator = rightLocator, node = ErServerNode(endpoint = ErEndpoint("localhost", 20001)))
-    val outputPartitionTemplate = ErPartition(id = "0", storeLocator = outputLocator, node = ErServerNode(endpoint = ErEndpoint("localhost", 20001)))
+    val leftPartitionTemplate = ErPartition(id = "0", storeLocator = leftLocator, node = ErServerNode(commandEndpoint = ErEndpoint("localhost", 20001)))
+    val rightPartitionTemplate = ErPartition(id = "0", storeLocator = rightLocator, node = ErServerNode(commandEndpoint = ErEndpoint("localhost", 20001)))
+    val outputPartitionTemplate = ErPartition(id = "0", storeLocator = outputLocator, node = ErServerNode(commandEndpoint = ErEndpoint("localhost", 20001)))
 
     val numberOfPartitions = 4
 
@@ -157,7 +159,7 @@ class RollPair() {
     val outputStoreWithPartitions = ErStore(storeLocator = outputLocator, partitions = outputPartitions.toList)
 
     val job = inputJob.copy(inputs = List(leftStoreWithPartitions, rightStoreWithPartitions), outputs = List(outputStoreWithPartitions))
-    val taskPlan = new JoinTaskPlan(new CommandURI(RollPair.eggJoinCommand), job)
+    val taskPlan = new JoinTaskPlan(new CommandURI(RollPairService.eggJoinCommand), job)
     scheduler.addPlan(taskPlan)
 
     JobRunner.run(scheduler.getPlan())
@@ -166,9 +168,9 @@ class RollPair() {
   }
 }
 
-object RollPair {
-  val clazz = classOf[RollPair]
-  val functorSerDes = DefaultScalaFunctorSerdes()
+object RollPairService {
+  val clazz = classOf[RollPairService]
+  val functorSerDes = DefaultScalaSerdes()
 
   val map = "map"
   val mapValues = "mapValues"

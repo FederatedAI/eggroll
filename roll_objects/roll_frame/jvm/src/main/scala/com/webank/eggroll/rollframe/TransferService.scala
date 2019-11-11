@@ -12,6 +12,8 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ *
  */
 
 package com.webank.eggroll.rollframe
@@ -20,6 +22,7 @@ import java.nio.ByteBuffer
 import java.nio.channels.SocketChannel
 import java.util.concurrent.Executors
 
+import com.webank.eggroll.core.meta.ErServerNode
 import com.webank.eggroll.format.{FrameBatch, FrameDB, FrameReader, FrameWriter}
 
 case class BatchData(headerSize:Int, header:Array[Byte], bodySize:Int, body:Array[Byte])
@@ -29,9 +32,9 @@ trait TransferService
 
 trait CollectiveTransfer
 
-class NioCollectiveTransfer(nodes: List[ServerNode], timeout:Int = 600*1000) extends CollectiveTransfer {
+class NioCollectiveTransfer(nodes: List[ErServerNode], timeout:Int = 600*1000) extends CollectiveTransfer {
   private lazy val clients = nodes.map{ node =>
-    (node.id, new NioTransferEndpoint().runClient(node.host, node.transferPort))
+    (node.id, new NioTransferEndpoint().runClient(node.dataEndpoint.host, node.dataEndpoint.port))
   }.toMap
   def send(id:String, path:String, frameBatch: FrameBatch):Unit = {
     clients(id).send(path, frameBatch)

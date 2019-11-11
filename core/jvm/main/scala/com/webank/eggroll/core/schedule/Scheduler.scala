@@ -12,13 +12,15 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ *
  */
 
 package com.webank.eggroll.core.schedule
 
 import com.webank.eggroll.core.command.{CollectiveCommand, ErCommandResponse}
 import com.webank.eggroll.core.datastructure.TaskPlan
-import com.webank.eggroll.core.serdes.DefaultScalaFunctorSerdes
+import com.webank.eggroll.core.serdes.DefaultScalaSerdes
 import com.webank.eggroll.core.util.Logging
 
 import scala.collection.mutable
@@ -33,7 +35,7 @@ trait Scheduler extends Logging {
 //  communication (e.g. broadcast), or io operation should be described in task plan as computing
 case class ListScheduler() extends Scheduler {
   private val stages = mutable.Queue[TaskPlan]()
-  private val functorSerdes = DefaultScalaFunctorSerdes()
+  private val functorSerdes = DefaultScalaSerdes()
 
   def addPlan(plan: TaskPlan): ListScheduler = {
     stages += plan

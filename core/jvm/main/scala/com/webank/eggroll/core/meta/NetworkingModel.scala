@@ -12,6 +12,8 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ *
  */
 
 package com.webank.eggroll.core.meta
@@ -30,9 +32,14 @@ case class ErEndpoint(@BeanProperty host: String, @BeanProperty port: Int) exten
   override def toString: String = s"$host:$port"
 }
 
-case class ErServerNode(id: String = StringConstants.EMPTY, endpoint: ErEndpoint = null, tag: String = StringConstants.EMPTY) extends RpcMessage
+case class ErServerNode(id: String = StringConstants.EMPTY,
+                        commandEndpoint: ErEndpoint = null,
+                        dataEndpoint: ErEndpoint = null,
+                        tag: String = StringConstants.EMPTY) extends RpcMessage
 
-case class ErServerCluster(id: String = StringConstants.EMPTY, nodes: List[ErServerNode] = List(), tag: String = StringConstants.EMPTY) extends RpcMessage
+case class ErServerCluster(id: String = StringConstants.EMPTY,
+                           nodes: List[ErServerNode] = List(),
+                           tag: String = StringConstants.EMPTY) extends RpcMessage
 
 object NetworkingModelPbSerdes {
 
@@ -51,7 +58,8 @@ object NetworkingModelPbSerdes {
     override def toProto[T >: PbMessage](): Meta.ServerNode = {
       val builder = Meta.ServerNode.newBuilder()
         .setId(src.id)
-        .setEndpoint(src.endpoint.toProto())
+        .setCommandEndpoint(src.commandEndpoint.toProto())
+        .setDataEndpoint(src.dataEndpoint.toProto())
         .setTag(src.tag)
 
       builder.build()
@@ -81,7 +89,11 @@ object NetworkingModelPbSerdes {
 
   implicit class ErServerNodeFromPbMessage(src: Meta.ServerNode) extends PbMessageDeserializer {
     override def fromProto[T >: RpcMessage](): ErServerNode = {
-      ErServerNode(id = src.getId, endpoint = src.getEndpoint.fromProto(), tag = src.getTag)
+      ErServerNode(
+        id = src.getId,
+        commandEndpoint = src.getCommandEndpoint.fromProto(),
+        dataEndpoint = src.getDataEndpoint.fromProto(),
+        tag = src.getTag)
     }
   }
 

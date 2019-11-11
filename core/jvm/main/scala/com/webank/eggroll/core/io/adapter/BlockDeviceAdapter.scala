@@ -12,15 +12,17 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ *
  */
 
-package com.webank.eggroll.blockdevice
+package com.webank.eggroll.core.io.adapter
 
 import java.io._
 import java.util.concurrent.{BlockingQueue, LinkedBlockingQueue}
 
 import com.google.protobuf.ByteString
-import com.webank.eggroll.rollframe.RollFrameGrpc
+import com.webank.eggroll.core.constant.StringConstants
 import io.grpc.stub.StreamObserver
 
 import scala.collection.concurrent.TrieMap
@@ -38,13 +40,17 @@ trait BlockDeviceAdapter {
 
 object BlockDeviceAdapter {
   def apply(opts: Map[String, String]): BlockDeviceAdapter = {
-    opts.getOrElse("type", "file") match {
-      case "cache" => new JvmBlockAdapter(opts("path"), opts("size").toInt)
-      case _ => new FileBlockAdapter(opts("path"))
+    opts.getOrElse(StringConstants.TYPE, StringConstants.FILE) match {
+      case StringConstants.CACHE =>
+        new JvmBlockAdapter(opts(StringConstants.PATH), opts(StringConstants.SIZE).toInt)
+
+      case _ =>
+        new FileBlockAdapter(opts(StringConstants.PATH))
     }
   }
 
-  def file(path: String): BlockDeviceAdapter = apply(Map("path" -> path, "type" -> "file"))
+  def file(path: String): BlockDeviceAdapter =
+    apply(Map(StringConstants.PATH -> path, StringConstants.TYPE -> StringConstants.FILE))
 }
 
 class FileBlockAdapter(path: String) extends BlockDeviceAdapter {
@@ -82,7 +88,6 @@ class JvmBlockAdapter(path: String, size: Int) extends BlockDeviceAdapter {
 }
 
 class ExternalBytesOutputStream(path: String, size: Int) extends ByteArrayOutputStream(size) {
-
   override def close(): Unit = JvmBlockAdapter.put(path, buf)
 }
 
@@ -94,9 +99,10 @@ object JvmBlockAdapter {
   def put(key: String, bytes: Array[Byte]): Option[Array[Byte]] = data.put(key, bytes)
 }
 
+/*
 class GrpcOutputStream(observer: StreamObserver[RollFrameGrpc.Batch],
                        batchSize: Int = 64 * 1024 * 1024) extends OutputStream {
-  var batchWrote = 0
+  var batchWritten = 0
   var current: ByteString.Output = _
   val queue = new mutable.Queue[RollFrameGrpc.Batch]()
 
@@ -104,23 +110,23 @@ class GrpcOutputStream(observer: StreamObserver[RollFrameGrpc.Batch],
     if (current == null) {
       current = ByteString.newOutput(batchSize)
     }
-    batchWrote += 4
+    batchWritten += 4
     current.write(b)
-    if (batchWrote >= batchSize) {
+    if (batchWritten >= batchSize) {
       writeBatch()
     }
   }
 
   private def writeBatch(): Unit = {
     observer.onNext(RollFrameGrpc.Batch.newBuilder().setData(current.toByteString).setId(
-      RollFrameGrpc.BatchID.newBuilder().setSize(batchWrote)).build())
+      RollFrameGrpc.BatchID.newBuilder().setSize(batchWritten)).build())
     current = null
-    batchWrote = 0
+    batchWritten = 0
   }
 
   override def close(): Unit = {
     // last one
-    if (batchWrote > 0) {
+    if (batchWritten > 0) {
       writeBatch()
     }
     observer.onCompleted()
@@ -161,3 +167,4 @@ class GrpcInputStream(observer: StreamObserver[RollFrameGrpc.BatchID])
     end = true
   }
 }
+*/

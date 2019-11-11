@@ -12,6 +12,8 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ *
  */
 
 package com.webank.eggroll.format
@@ -19,7 +21,7 @@ package com.webank.eggroll.format
 import java.io._
 import java.nio.channels.ReadableByteChannel
 
-import com.webank.eggroll.blockdevice._
+import com.webank.eggroll.core.io.adapter.BlockDeviceAdapter
 import org.apache.arrow.memory.RootAllocator
 import org.apache.arrow.vector._
 import org.apache.arrow.vector.complex.{FixedSizeListVector, ListVector}

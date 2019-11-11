@@ -9,8 +9,9 @@ message Endpoint {
 
 message ServerNode {
   string id = 1;
-  Endpoint endpoint = 2;
-  string tag = 3;
+  Endpoint commandEndpoint = 2;
+  Endpoint dataEndpoint = 3;
+  string tag = 4;
 }
 
 message ServerCluster {

@@ -12,6 +12,8 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ *
  */
 
 package com.webank.eggroll.rollframe
@@ -19,7 +21,8 @@ package com.webank.eggroll.rollframe
 import java.util.Random
 import java.util.concurrent.{Callable, Executors}
 
-import com.webank.eggroll.blockdevice.BlockDeviceAdapter
+import com.webank.eggroll.core.io.adapter.BlockDeviceAdapter
+import com.webank.eggroll.core.meta.{ErPartition, ErServerNode, ErStore, ErStoreLocator}
 import com.webank.eggroll.format._
 import org.junit.{Before, Test}
 
@@ -34,9 +37,12 @@ class RollFrameTests {
   @Test
   def testMapBatch(): Unit = {
     val input = clusterManager.getRollFrameStore("a1","test1")
-    val output = RfStore("a1map", "test1", input.partitions.size, input.partitions)
-    val rf = new RollFrameService(input)
-    rf.mapBatches({cb =>
+    val outputStoreLocator = input.storeLocator.copy(name = "b1map")
+    val output = input.copy(storeLocator = outputStoreLocator, partitions = input.partitions.map(p => p.copy(storeLocator = outputStoreLocator)))
+
+    println(s"output: ${output}")
+    val rf = new RollFrameClientMode(input)
+    rf.mapBatch({ cb =>
       val schema =
         """
         {
@@ -53,19 +59,25 @@ class RollFrameTests {
       batch.writeDouble(1, 1, 1.1)
       batch
     }, output)
-    new RollFrameService(output).mapBatches{ fb =>
-      assert(fb.readDouble(0,1) == 0.1)
-      assert(fb.readDouble(1,0) == 1.0)
-      assert(fb.readDouble(1,1) == 1.1)
-      fb
-    }
+
+    val result = new RollFrameClientMode(output)
+      .mapBatch{ fb =>
+        assert(fb.readDouble(0,1) == 0.1)
+        assert(fb.readDouble(1,0) == 1.0)
+        assert(fb.readDouble(1,1) == 1.1)
+        fb
+      }
+
+    result
   }
 
   @Test
   def testReduceBatch(): Unit = {
     val clusterManager = new ClusterManager
     val input = clusterManager.getRollFrameStore("a1","test1")
-    val rf = new RollFrameService(input)
+    val outputStoreLocator = input.storeLocator.copy(name = "b1reduce")
+    val output = input.copy(storeLocator = outputStoreLocator, partitions = input.partitions.map(p => p.copy(storeLocator = outputStoreLocator)))
+    val rf = new RollFrameClientMode(input)
     rf.reduce{(x, y) =>
       try{
         for(f <- y.rootVectors.indices) {
@@ -81,7 +93,7 @@ class RollFrameTests {
       }
       x
     }
-    FrameDB.file("/tmp/unittests/RollFrameTests/filedb/test1/a1/0")
+    FrameDB.file("/tmp/unittests/RollFrameTests/file/test1/a1/0")
       .readAll().foreach(fb => assert(fb.rowCount > 0))
   }
   private def getSchema(fieldCount:Int):String = {
@@ -106,8 +118,8 @@ class RollFrameTests {
       outputDB.close()
       inputDB.close()
     }
-    loadCache("/tmp/unittests/RollFrameTests/filedb/test1/a1/0")
-    loadCache("/tmp/unittests/RollFrameTests/filedb/test1/a1/1")
+    loadCache("/tmp/unittests/RollFrameTests/file/test1/a1/0")
+    loadCache("/tmp/unittests/RollFrameTests/file/test1/a1/1")
   }
 
   @Test
@@ -142,11 +154,11 @@ class RollFrameTests {
       println(oneFb.readDouble(0,1))
 
     }
-    write("/tmp/unittests/RollFrameTests/filedb/test1/b1/0")
-    write("/tmp/unittests/RollFrameTests/filedb/test1/b1/1")
-    write("/tmp/unittests/RollFrameTests/filedb/test1/b1/2")
+    write("/tmp/unittests/RollFrameTests/file/test1/b1/0")
+    write("/tmp/unittests/RollFrameTests/file/test1/b1/1")
+    write("/tmp/unittests/RollFrameTests/file/test1/b1/2")
 
-    read("/tmp/unittests/RollFrameTests/filedb/test1/b1/0")
+    read("/tmp/unittests/RollFrameTests/file/test1/b1/0")
   }
 
   @Test
@@ -166,8 +178,8 @@ class RollFrameTests {
       )
       cw.close()
     }
-    pass("/tmp/unittests/RollFrameTests/filedb/test1/a1/0")
-    pass("/tmp/unittests/RollFrameTests/filedb/test1/a1/1")
+    pass("/tmp/unittests/RollFrameTests/file/test1/a1/0")
+    pass("/tmp/unittests/RollFrameTests/file/test1/a1/1")
 
   }
   @Test
@@ -175,8 +187,12 @@ class RollFrameTests {
     var start = System.currentTimeMillis()
     val clusterManager = new ClusterManager
     val ps = List(RfPartition(0,1), RfPartition(1,1))
-    val inStore = RfStore("a1", "test1", ps.size, ps)
-    val rf = new RollFrameService(inStore)
+    //val inStore = RfStore("a1", "test1", ps.size, ps)
+
+    val storeLocator = ErStoreLocator(name = "a1", namespace = "test1", storeType = "file")
+    //val inStore = ErStore(storeLocator = storeLocator, partitions = List(ErPartition(id = "0", storeLocator = storeLocator, node = ErServerNode())))
+    val inStore = clusterManager.getRollFrameStore("a1", "test1")
+    val rf = new RollFrameClientMode(inStore)
     //    loadCaches()
     println(System.currentTimeMillis() -start);start = System.currentTimeMillis()
     val fieldCount = 10
@@ -213,7 +229,7 @@ class RollFrameTests {
   def testRollFrameAggregate(): Unit = {
     var start = System.currentTimeMillis()
     val clusterManager = new ClusterManager
-    val rf = new RollFrameService(clusterManager.getRollFrameStore("a1","test1"))
+    val rf = new RollFrameClientMode(clusterManager.getRollFrameStore("a1","test1"))
 //    loadCaches()
     println(System.currentTimeMillis() -start);start = System.currentTimeMillis()
     val fieldCount = 1000
@@ -251,7 +267,7 @@ class RollFrameTests {
   def testRollFrameAggregateBy(): Unit = {
     var start = System.currentTimeMillis()
     val clusterManager = new ClusterManager
-    val rf = new RollFrameService(clusterManager.getRollFrameStore("a1","test1"))
+    val rf = new RollFrameClientMode(clusterManager.getRollFrameStore("a1","test1"))
     //    loadCaches()
     println(System.currentTimeMillis() -start);start = System.currentTimeMillis()
     val fieldCount = 10
@@ -284,7 +300,7 @@ class RollFrameTests {
         if(b.rootVectors(i) != null) a.writeDouble(i, 0, a.readDouble(i,0) + b.readDouble(i,0))
       }
       a
-    },byColumn = true, broadcastZero = true, output = RfStore("r1","test1",1))
+    }, byColumn = true, broadcastZeroValue = true, output = ErStore(ErStoreLocator("file", "r1", "test1")))
     println(System.currentTimeMillis() - start)
   }
 
@@ -292,18 +308,20 @@ class RollFrameTests {
   def testRollFrameMulti(): Unit = {
     var start = System.currentTimeMillis()
     val clusterManager = new ClusterManager
-    val rf = new RollFrameService(clusterManager.getRollFrameStore("a1","test1"))
+    val rf = new RollFrameClientMode(clusterManager.getRollFrameStore("a1","test1"))
     //    loadCaches()
     println(System.currentTimeMillis() -start);start = System.currentTimeMillis()
     val fieldCount = 10
     val schema = getSchema(fieldCount)
-    val output1 = RfStore("r1","test1",1, storeType = FrameDB.TYPE_CACHE)
-    val output2 = RfStore("r2","test1",1, storeType = FrameDB.TYPE_CACHE)
-    val output3 = RfStore("r3","test1",1, storeType = FrameDB.TYPE_CACHE)
+/*    val output1 = RfStore("r1","test1",1, storeType = FrameDB.CACHE)
+    val output2 = RfStore("r2","test1",1, storeType = FrameDB.CACHE)
+    val output3 = RfStore("r3","test1",1, storeType = FrameDB.CACHE)*/
+
+
     val zeroValue = new FrameBatch(new FrameSchema(schema), 1)
     (0 until fieldCount).foreach(i => zeroValue.writeDouble(i,0,0))
 
-    rf.aggregate(zeroValue,{(x, y) =>
+    val output1 = rf.aggregate(zeroValue,{(x, y) =>
       try{
         for(f <- y.rootVectors.indices) {
           var sum = 0.0
@@ -328,12 +346,12 @@ class RollFrameTests {
         if(b.rootVectors(i) != null) a.writeDouble(i, 0, a.readDouble(i,0) + b.readDouble(i,0))
       }
       a
-    },byColumn = true, broadcastZero = true, output = output1)
+    },byColumn = true, broadcastZeroValue = true)
     val pool = Executors.newFixedThreadPool(2)
     val future1 = pool.submit(new Callable[Long] {
       override def call(): Long = {
         val start = System.currentTimeMillis()
-        new RollFrameService(output1).aggregate(zeroValue, (x, _) => x, (a, _) => a, output = output2)
+        new RollFrameClientMode(output1.store).aggregate(zeroValue, (x, _) => x, (a, _) => a)
         System.currentTimeMillis() - start
       }
     })
@@ -343,7 +361,7 @@ class RollFrameTests {
     val future2 = pool.submit(new Callable[Long] {
       override def call(): Long = {
         val start = System.currentTimeMillis()
-        new RollFrameService(output1).aggregate(zeroValue, (x, _)=>x, (a, _) => a, output = output3)
+        new RollFrameClientMode(output1.store).aggregate(zeroValue, (x, _)=>x, (a, _) => a)
         System.currentTimeMillis() - start
       }
     })

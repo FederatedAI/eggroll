@@ -12,6 +12,8 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ *
  */
 
 package com.webank.eggroll.core.command
@@ -21,7 +23,7 @@ import java.util.function.Supplier
 
 import com.webank.eggroll.core.datastructure.TaskPlan
 import com.webank.eggroll.core.error.DistributedRuntimeException
-import com.webank.eggroll.core.meta.{ErJob, ErPartition, ErTask}
+import com.webank.eggroll.core.meta.{ErJob, ErPartition, ErStore, ErTask}
 import com.webank.eggroll.core.util.ThreadPoolUtils
 
 import scala.collection.mutable
@@ -71,8 +73,8 @@ case class CollectiveCommand(taskPlan: TaskPlan) {
   def toTasks(job: ErJob): List[ErTask] = {
     val result = mutable.ListBuffer[ErTask]()
 
-    val inputs = job.inputs
-    val outputs = job.outputs
+    val inputs: List[ErStore] = job.inputs
+    val outputs: List[ErStore] = job.outputs
     val inputPartitionSize = inputs.head.partitions.size
 
     var aggregateOutputPartition: ErPartition = null
@@ -88,7 +90,12 @@ case class CollectiveCommand(taskPlan: TaskPlan) {
       if (aggregateOutputPartition != null) {
         outputPartitions.append(aggregateOutputPartition)
       } else {
-        outputs.foreach(output => outputPartitions.append(output.partitions(i)))
+        (outputs, inputs).zipped.foreach((output, input) => {
+          val hasPartition = !output.partitions.isEmpty
+          outputPartitions.append(
+            if (hasPartition) output.partitions(i)
+            else input.partitions(i).copy(storeLocator = output.storeLocator))
+        })
       }
 
       result.append(ErTask(id = job.id + "-" + i, name = job.name, inputs = inputPartitions.toList, outputs = outputPartitions.toList, job = job))

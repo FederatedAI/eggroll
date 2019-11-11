@@ -12,6 +12,8 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ *
  */
 
 package com.webank.eggroll.core.schedule
@@ -30,3 +32,4 @@ class MapTaskPlan(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job)
 class ReduceTaskPlan(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job)
 class ShuffleTaskPlan(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job)
 class JoinTaskPlan(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job)
+

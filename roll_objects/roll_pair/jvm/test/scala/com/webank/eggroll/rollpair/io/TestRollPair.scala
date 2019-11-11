@@ -12,6 +12,8 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ *
  */
 
 package com.webank.eggroll.rollpair.io
@@ -20,7 +22,7 @@ import com.webank.eggroll.core.command.{CommandRouter, CommandService}
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.transfer.GrpcTransferService
 import com.webank.eggroll.core.util.Logging
-import com.webank.eggroll.rollpair.component.{EggPair, RollPair}
+import com.webank.eggroll.rollpair.component.{EggPair, RollPairService}
 import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
 import org.junit.Test
 
@@ -40,24 +42,24 @@ class TestRollPair extends Logging {
     rollServer.start()
 
     // job
-    CommandRouter.register(serviceName = RollPair.rollMapValuesCommand,
+    CommandRouter.register(serviceName = RollPairService.rollMapValuesCommand,
       serviceParamTypes = List(classOf[ErJob]),
-      routeToClass = classOf[RollPair],
-      routeToMethodName = RollPair.mapValues)
+      routeToClass = classOf[RollPairService],
+      routeToMethodName = RollPairService.mapValues)
 
     val eggServer = NettyServerBuilder.forPort(20001).addService(new CommandService).build()
     eggServer.start()
 
     // task
-    CommandRouter.register(serviceName = RollPair.eggMapValuesCommand,
+    CommandRouter.register(serviceName = RollPairService.eggMapValuesCommand,
       serviceParamTypes = List(classOf[ErTask]),
       routeToClass = classOf[EggPair],
-      routeToMethodName = RollPair.runTask)
+      routeToMethodName = RollPairService.runTask)
 
 
     val storeLocator = ErStoreLocator("levelDb", "ns", "name")
 
-    val rollPair = new RollPair()
+    val rollPair = new RollPairService()
 
     val f: Array[Byte] => Array[Byte] = appendByte
 
@@ -65,7 +67,7 @@ class TestRollPair extends Logging {
       name = "mapValues",
       inputs = List(ErStore(storeLocator)),
       functors = List(ErFunctor("mapValues", "",
-        RollPair.functorSerDes.serialize(f))))
+        RollPairService.functorSerDes.serialize(f))))
 
 
     val result = rollPair.mapValues(job)
@@ -88,10 +90,10 @@ class TestRollPair extends Logging {
     rollServer.start()
 
     // job
-    CommandRouter.register(serviceName = RollPair.rollMapCommand,
+    CommandRouter.register(serviceName = RollPairService.rollMapCommand,
       serviceParamTypes = List(classOf[ErJob]),
-      routeToClass = classOf[RollPair],
-      routeToMethodName = RollPair.map)
+      routeToClass = classOf[RollPairService],
+      routeToMethodName = RollPairService.map)
 
     val eggServer = NettyServerBuilder.forPort(20001)
       .addService(new CommandService)
@@ -100,15 +102,15 @@ class TestRollPair extends Logging {
     eggServer.start()
 
     // task
-    CommandRouter.register(serviceName = RollPair.eggMapCommand,
+    CommandRouter.register(serviceName = RollPairService.eggMapCommand,
       serviceParamTypes = List(classOf[ErTask]),
       routeToClass = classOf[EggPair],
-      routeToMethodName = RollPair.runTask)
+      routeToMethodName = RollPairService.runTask)
 
 
     val storeLocator = ErStoreLocator("levelDb", "ns", "name")
 
-    val rollPair = new RollPair()
+    val rollPair = new RollPairService()
 
     val f: (Array[Byte], Array[Byte]) => (Array[Byte], Array[Byte]) = prependToBoth
     val p: Array[Byte] => Int = partitioner
@@ -117,7 +119,7 @@ class TestRollPair extends Logging {
       name = "map",
       inputs = List(ErStore(storeLocator)),
       functors = List(ErFunctor("map", "",
-        RollPair.functorSerDes.serialize(f)), ErFunctor("map", "", RollPair.functorSerDes.serialize(p))))
+        RollPairService.functorSerDes.serialize(f)), ErFunctor("map", "", RollPairService.functorSerDes.serialize(p))))
 
     val result = rollPair.map(job)
   }
@@ -135,10 +137,10 @@ class TestRollPair extends Logging {
     rollServer.start()
 
     // job
-    CommandRouter.register(serviceName = RollPair.rollReduceCommand,
+    CommandRouter.register(serviceName = RollPairService.rollReduceCommand,
       serviceParamTypes = List(classOf[ErJob]),
-      routeToClass = classOf[RollPair],
-      routeToMethodName = RollPair.reduce)
+      routeToClass = classOf[RollPairService],
+      routeToMethodName = RollPairService.reduce)
 
     val eggServer = NettyServerBuilder
       .forPort(20001)
@@ -148,14 +150,14 @@ class TestRollPair extends Logging {
     eggServer.start()
 
     // task
-    CommandRouter.register(serviceName = RollPair.eggReduceCommand,
+    CommandRouter.register(serviceName = RollPairService.eggReduceCommand,
       serviceParamTypes = List(classOf[ErTask]),
       routeToClass = classOf[EggPair],
-      routeToMethodName = RollPair.runTask)
+      routeToMethodName = RollPairService.runTask)
 
     val storeLocator = ErStoreLocator("levelDb", "ns", "name")
 
-    val rollPair = new RollPair()
+    val rollPair = new RollPairService()
 
     val f: (Array[Byte], Array[Byte]) => Array[Byte] = concat
 
@@ -163,7 +165,7 @@ class TestRollPair extends Logging {
       name = "reduce",
       inputs = List(ErStore(storeLocator)),
       functors = List(ErFunctor("reduce", "",
-        RollPair.functorSerDes.serialize(f))))
+        RollPairService.functorSerDes.serialize(f))))
 
 
     val result = rollPair.reduce(job)
@@ -181,23 +183,23 @@ class TestRollPair extends Logging {
       .build
     rollServer.start()
 
-    CommandRouter.register(serviceName = RollPair.rollJoinCommand,
+    CommandRouter.register(serviceName = RollPairService.rollJoinCommand,
       serviceParamTypes = List(classOf[ErJob]),
-      routeToClass = classOf[RollPair],
-      routeToMethodName = RollPair.join)
+      routeToClass = classOf[RollPairService],
+      routeToMethodName = RollPairService.join)
 
     val eggServer = NettyServerBuilder.forPort(20001).addService(new CommandService).build()
     eggServer.start()
-    CommandRouter.register(serviceName = RollPair.eggJoinCommand,
+    CommandRouter.register(serviceName = RollPairService.eggJoinCommand,
       serviceParamTypes = List(classOf[ErTask]),
       routeToClass = classOf[EggPair],
-      routeToMethodName = RollPair.runTask)
+      routeToMethodName = RollPairService.runTask)
 
 
     val leftLocator = ErStoreLocator("levelDb", "ns", "name")
     val rightLocator = ErStoreLocator("levelDb", "ns", "test")
 
-    val rollPair = new RollPair()
+    val rollPair = new RollPairService()
 
     val f: (Array[Byte], Array[Byte]) => Array[Byte] = concat
 
@@ -205,7 +207,7 @@ class TestRollPair extends Logging {
       name = "join",
       inputs = List(ErStore(leftLocator), ErStore(rightLocator)),
       functors = List(ErFunctor("join", "",
-        RollPair.functorSerDes.serialize(f))))
+        RollPairService.functorSerDes.serialize(f))))
 
     val result = rollPair.join(job)
   }
@@ -216,25 +218,25 @@ class TestRollPair extends Logging {
     rollServer.start()
 
     // job
-    CommandRouter.register(serviceName = RollPair.rollMapValuesCommand,
+    CommandRouter.register(serviceName = RollPairService.rollMapValuesCommand,
       serviceParamTypes = List(classOf[ErJob]),
-      routeToClass = classOf[RollPair],
-      routeToMethodName = RollPair.mapValues)
+      routeToClass = classOf[RollPairService],
+      routeToMethodName = RollPairService.mapValues)
 
-    CommandRouter.register(serviceName = RollPair.rollMapCommand,
+    CommandRouter.register(serviceName = RollPairService.rollMapCommand,
       serviceParamTypes = List(classOf[ErJob]),
-      routeToClass = classOf[RollPair],
-      routeToMethodName = RollPair.map)
+      routeToClass = classOf[RollPairService],
+      routeToMethodName = RollPairService.map)
 
-    CommandRouter.register(serviceName = RollPair.rollReduceCommand,
+    CommandRouter.register(serviceName = RollPairService.rollReduceCommand,
       serviceParamTypes = List(classOf[ErJob]),
-      routeToClass = classOf[RollPair],
-      routeToMethodName = RollPair.reduce)
+      routeToClass = classOf[RollPairService],
+      routeToMethodName = RollPairService.reduce)
 
-    CommandRouter.register(serviceName = RollPair.rollJoinCommand,
+    CommandRouter.register(serviceName = RollPairService.rollJoinCommand,
       serviceParamTypes = List(classOf[ErJob]),
-      routeToClass = classOf[RollPair],
-      routeToMethodName = RollPair.join)
+      routeToClass = classOf[RollPairService],
+      routeToMethodName = RollPairService.join)
 
 
     logInfo("started")

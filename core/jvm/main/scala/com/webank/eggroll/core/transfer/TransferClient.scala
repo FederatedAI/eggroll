@@ -12,6 +12,8 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ *
  */
 
 package com.webank.eggroll.core.transfer
@@ -32,7 +34,7 @@ class TransferClient {
     val delayedResult = new AwaitSettableFuture[Transfer.TransferHeader]
 
     context.setStubClass(classOf[TransferServiceGrpc.TransferServiceStub])
-      .setServerEndpoint(serverNode.endpoint)
+      .setServerEndpoint(serverNode.commandEndpoint)
       .setCallerStreamingMethodInvoker((stub: TransferServiceGrpc.TransferServiceStub,
                                         responseObserver: StreamObserver[Transfer.TransferHeader]) => stub.send(responseObserver))
       .setCallerStreamObserverClassAndInitArgs(classOf[SameTypeCallerResponseStreamObserver[Transfer.Batch, Transfer.TransferHeader]])

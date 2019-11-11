@@ -16,16 +16,19 @@
  *
  */
 
-package com.webank.eggroll.core.util
+package com.webank.eggroll.core.io.util
 
-import com.google.common.base.Preconditions
 import com.webank.eggroll.core.constant.StringConstants
+import com.webank.eggroll.core.meta.ErPartition
+import org.apache.commons.lang3.StringUtils
 
-object FileSystemUtils {
-  val parentDirRegex = "\\.\\."
+object IoUtils {
 
-  def stripParentDirReference(path: String): String = {
-    Preconditions.checkNotNull(path)
-    path.replaceAll(parentDirRegex, StringConstants.EMPTY)
+  def getPath(partition: ErPartition, basePath: String = StringConstants.EMPTY): String = {
+    if (StringUtils.isBlank(partition.storeLocator.path)) {
+      s"${basePath}/${partition.toPath()}"
+    } else {
+      partition.toPath()
+    }
   }
 }
