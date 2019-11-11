@@ -39,24 +39,27 @@ class ErEndpoint(RpcMessage):
 
 
 class ErServerNode(RpcMessage):
-  def __init__(self, id: str, endpoint: ErEndpoint, tag=''):
+  def __init__(self, id: str, command_endpoint: ErEndpoint, data_endpoint: ErEndpoint, tag=''):
     self._id = id
-    self._endpoint = endpoint
+    self._command_endpoint = command_endpoint
+    self._data_endpoint = data_endpoint if data_endpoint else command_endpoint
     self._tag = tag
 
   def to_proto(self):
     return meta_pb2.ServerNode(id=self._id,
-                               endpoint=self._endpoint.to_proto(),
+                               commandEndpoint=self._command_endpoint.to_proto(),
+                               dataEndpoint=self._data_endpoint.to_proto(),
                                tag=self._tag)
 
   @staticmethod
   def from_proto(pb_message):
     return ErServerNode(id=pb_message.id,
-                        endpoint=ErEndpoint.from_proto(pb_message.endpoint),
+                        command_endpoint=ErEndpoint.from_proto(pb_message.commandEndpoint),
+                        data_endpoint=ErEndpoint.from_proto(pb_message.dataEndpoint),
                         tag=pb_message.tag)
 
   def __repr__(self):
-    return f'ErServerNode(id={self._id}, endpoint={repr(self._endpoint)}, tag={self._tag})'
+    return f'ErServerNode(id={self._id}, command_endpoint={repr(self._command_endpoint)}, data_endpoint={repr(self._data_endpoint)}, tag={self._tag})'
 
 
 class ErServerCluster(RpcMessage):
@@ -82,20 +85,21 @@ class ErServerCluster(RpcMessage):
 
 
 class ErFunctor(RpcMessage):
-  def __init__(self, name='', serdes='', body=b''):
+  def __init__(self, name='', serdes='', body=b'', conf=dict()):
     self._name = name
     self._serdes = serdes
     self._body = body
+    self._conf = conf
 
   def to_proto(self):
-    return meta_pb2.Functor(name=self._name, serdes=self._serdes, body=self._body)
+    return meta_pb2.Functor(name=self._name, serdes=self._serdes, body=self._body, conf=self._conf)
 
   @staticmethod
   def from_proto(pb_message):
-    return ErFunctor(name=pb_message.name, serdes=pb_message.serdes, body=pb_message.body)
+    return ErFunctor(name=pb_message.name, serdes=pb_message.serdes, body=pb_message.body, conf=pb_message.conf)
 
   def __repr__(self):
-    return f'ErFunctor(name={self._name}, serdes={self._serdes}, body=***;{len(self._body)})'
+    return f'ErFunctor(name={self._name}, serdes={self._serdes}, body=***;{len(self._body)}, conf={self._conf})'
 
 
 class ErPair(RpcMessage):
@@ -246,7 +250,7 @@ class ErJob(RpcMessage):
                                        pb_message.functors))
 
   def __repr__(self):
-    return f'ErJob(id={self._id}, name={self._name}, inputs=[{_repr_list(self._inputs)}])'
+    return f'ErJob(id={self._id}, name={self._name}, inputs=[{_repr_list(self._inputs)}], outputs=[{_repr_list(self._outputs)}], functors=[{len(self._functors)}])'
 
 
 class ErTask(RpcMessage):

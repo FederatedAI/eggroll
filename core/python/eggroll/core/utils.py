@@ -38,7 +38,7 @@ def _exception_logger(func):
     except:
       msg = (f"==== detail start ====\n"
              f"{traceback.format_exc()}"
-             f"\n==== detail end ====")
+             f"\n==== detail end ====\n\n")
       # LOGGER.error(msg)
       print(msg)
       raise RuntimeError(msg)

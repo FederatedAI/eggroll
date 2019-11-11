@@ -18,19 +18,19 @@ from urllib.parse import urlparse, parse_qs
 
 
 class ErCommandRequest(RpcMessage):
-  def __init__(self, seq, uri: str, args=list(), kwargs=dict()):
-    self._seq = seq
+  def __init__(self, id, uri: str, args=list(), kwargs=dict()):
+    self._id = id
     self._uri = uri
     self._args = args
     self._kwargs = kwargs
 
   def to_proto(self):
-    return command_pb2.CommandRequest(seq=self._seq, uri=self._uri,
+    return command_pb2.CommandRequest(id=self._id, uri=self._uri,
                                       args=self._args, kwargs=self._kwargs)
 
   @staticmethod
   def from_proto(pb_message):
-    return ErCommandRequest(seq=pb_message.seq,
+    return ErCommandRequest(id=pb_message.id,
                             uri=pb_message.uri,
                             args=pb_message.args,
                             kwargs=pb_message.kwargs)
@@ -39,31 +39,32 @@ class ErCommandRequest(RpcMessage):
     return self.__repr__()
 
   def __repr__(self):
-    return f'ErCommandRequest(seq={self._seq}, uri={self._uri}, args=[***, len={len(self._args)}], kwargs=[***, len={len(self._kwargs)}])'
+    return f'ErCommandRequest(id={self._id}, uri={self._uri}, args=[***, len={len(self._args)}], kwargs=[***, len={len(self._kwargs)}])'
 
 
 class ErCommandResponse(RpcMessage):
-  def __init__(self, seq, request: ErCommandRequest = None, data=b''):
-    self._seq = seq
+  def __init__(self, id, request: ErCommandRequest = None, results=list()):
+    self._id = id
     self._request = request
-    self._data = data
+    self._results = results
 
   def to_proto(self):
-    return command_pb2.CommandResponse(seq=self._seq,
+    return command_pb2.CommandResponse(id=self._id,
                                        request=self._request.to_proto() if self._request else None,
-                                       data=self._data)
+                                       results=self._results)
 
   @staticmethod
   def from_proto(pb_message):
-    return ErCommandResponse(seq=pb_message.seq,
+    return ErCommandResponse(id=pb_message.id,
                              request=ErCommandRequest.from_proto(
-                               pb_message.request), data=pb_message.data)
+                                 pb_message.request),
+                             results=pb_message.results)
 
   def __str__(self):
     return self.__repr__()
 
   def __repr__(self):
-    return f'ErCommandResponse(seq={self._seq}, request={repr(self._request)}, data=***)'
+    return f'ErCommandResponse(id={self._id}, request={repr(self._request)}, results=(***))'
 
 
 class CommandURI(object):

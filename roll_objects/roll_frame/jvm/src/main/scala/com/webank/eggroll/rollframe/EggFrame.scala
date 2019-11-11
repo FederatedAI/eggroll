@@ -18,23 +18,15 @@
 
 package com.webank.eggroll.rollframe
 
-import java.io._
-import java.net.URI
-import java.util.Random
 import java.util.concurrent._
-import java.util.concurrent.atomic.AtomicInteger
 
-import scala.collection.JavaConverters._
-import com.google.protobuf.{ByteString, Message => PbMessage}
 import com.webank.eggroll.core.io.util.IoUtils
-import com.webank.eggroll.core.meta.{ErPartition, ErServerNode, ErStore, ErTask}
+import com.webank.eggroll.core.meta.{ErServerNode, ErTask}
 import com.webank.eggroll.core.serdes.DefaultScalaSerdes
 import com.webank.eggroll.core.util.ThreadPoolUtils
 import com.webank.eggroll.format.{FrameBatch, FrameDB, _}
-import io.grpc.ServerBuilder
 
-import scala.collection.mutable.ListBuffer
-import scala.reflect.ClassTag
+import scala.collection.immutable.Range.Inclusive
 
 class EggFrame {
   private val rootPath = "/tmp/unittests/RollFrameTests/file/"
@@ -45,20 +37,20 @@ class EggFrame {
   private val rootServer = serverNodes.head
   private val serdes = DefaultScalaSerdes()
 
-  private def sliceByColumn(frameBatch: FrameBatch): List[(ErServerNode, (Int, Int))] = {
+  private def sliceByColumn(frameBatch: FrameBatch): List[(ErServerNode, Inclusive)] = {
     val columns = frameBatch.rootVectors.length
     val servers = serverNodes.length
     val partSize = (servers + columns - 1) / servers
     (0 until servers).map{ sid =>
-      (serverNodes(sid),(sid * partSize, Math.min((sid + 1) * partSize, columns)))
+      (serverNodes(sid), new Inclusive(sid * partSize, Math.min((sid + 1) * partSize, columns), 1))
     }.toList
   }
 
-  private def sliceByRow(parts: Int, frameBatch: FrameBatch): List[(Int, Int)] = {
+  private def sliceByRow(parts: Int, frameBatch: FrameBatch): List[Inclusive] = {
     val rows = frameBatch.rowCount
     val partSize = (parts + rows - 1) / parts
     (0 until parts).map{ sid =>
-      (sid * partSize, Math.min((sid + 1) * partSize, rows))
+      new Inclusive(sid * partSize, Math.min((sid + 1) * partSize, rows), 1)
     }.toList
   }
 
@@ -132,10 +124,10 @@ class EggFrame {
         val parallel = Math.min(if (executorPool.getCorePoolSize > 0) executorPool.getCorePoolSize else 1, fb.rowCount) // split by row to grow parallel
         // for concurrent writing
         localQueue = FrameDB.queue(task.id + "-doing", parallel)
-        sliceByRow(parallel, fb).foreach{case (from, to) =>
+        sliceByRow(parallel, fb).foreach{case inclusive: Inclusive =>
           executorPool.submit(new Callable[Unit] {
             override def call(): Unit = {
-              localQueue.append(seqOp(FrameUtils.copy(zero), fb.spliceByRow(from, to)))
+              localQueue.append(seqOp(FrameUtils.copy(zero), fb.spliceByRow(inclusive.start, inclusive.end)))
             }
           })
         }
@@ -179,17 +171,17 @@ class EggFrame {
     if(byColumn) {
       val splicedBatches = sliceByColumn(localBatch)
       // Don't block next receive step
-      splicedBatches.foreach{ case (server, (from, to)) =>
+      splicedBatches.foreach{ case (server, inclusive: Inclusive) =>
         val queuePath ="all2all:" + task.job.id + ":" + server.id
         if(!server.equals(localServer)) {
-          transferService.send(server.id, queuePath, localBatch.sliceByColumn(from, to))
+          transferService.send(server.id, queuePath, localBatch.sliceByColumn(inclusive.start, inclusive.end))
         }
       }
-      splicedBatches.foreach{ case (server, (from, to)) =>
+      splicedBatches.foreach{ case (server, inclusive: Inclusive) =>
         val queuePath ="all2all:" + task.job.id + ":" + server.id
         if(server.equals(localServer)){
           for(tmp <- FrameDB.queue(queuePath, transferQueueSize).readAll()) {
-            localBatch = combOp(localBatch, tmp.spareByColumn(localBatch.rootVectors.length, from, to))
+            localBatch = combOp(localBatch, tmp.spareByColumn(localBatch.rootVectors.length, inclusive.start, inclusive.end))
           }
         }
       }

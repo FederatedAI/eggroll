@@ -63,12 +63,12 @@ class RollPair(object):
     job = ErJob(id=self._session_id, name=RollPair.MAP_VALUES,
                 inputs=[self._store],
                 functors=[functor])
-    request = ErCommandRequest(seq=self.__get_seq(), uri=f'{RollPair.__uri_prefix}{RollPair.MAP_VALUES}', args=[job.to_proto().SerializeToString()])
+    request = ErCommandRequest(id=self.__get_seq(), uri=f'{RollPair.__uri_prefix}{RollPair.MAP_VALUES}', args=[job.to_proto().SerializeToString()])
     response = self._roll_pair_stub.call(request.to_proto())
 
     des_response = ErCommandResponse.from_proto(response)
 
-    des_store = ErStore.from_proto_string(des_response._data)
+    des_store = ErStore.from_proto_string(des_response._results[0])
 
     return RollPair(des_store)
 
@@ -80,12 +80,12 @@ class RollPair(object):
                 inputs=[self._store],
                 functors=[functor, partitioner])
 
-    request = ErCommandRequest(seq=self.__get_seq(), uri=f'{RollPair.__uri_prefix}{RollPair.MAP}', args=[job.to_proto().SerializeToString()])
+    request = ErCommandRequest(id=self.__get_seq(), uri=f'{RollPair.__uri_prefix}{RollPair.MAP}', args=[job.to_proto().SerializeToString()])
     response = self._roll_pair_stub.call(request.to_proto())
 
     des_response = ErCommandResponse.from_proto(response)
 
-    des_store = ErStore.from_proto_string(des_response._data)
+    des_store = ErStore.from_proto_string(des_response._results[0])
 
     return RollPair(des_store)
 
@@ -96,7 +96,7 @@ class RollPair(object):
                 inputs=[self._store],
                 functors=[functor])
 
-    request = ErCommandRequest(seq=self.__get_seq(),
+    request = ErCommandRequest(id=self.__get_seq(),
                                uri=f'{RollPair.__uri_prefix}{RollPair.REDUCE}',
                                args=[job.to_proto().SerializeToString()])
 
@@ -104,7 +104,7 @@ class RollPair(object):
 
     des_response = ErCommandResponse.from_proto(response)
 
-    des_store = ErStore.from_proto_string(des_response._data)
+    des_store = ErStore.from_proto_string(des_response._results[0])
 
     return RollPair(des_store)
 
@@ -115,7 +115,7 @@ class RollPair(object):
                 inputs=[self._store, other._store],
                 functors=[functor])
 
-    request = ErCommandRequest(seq=self.__get_seq(),
+    request = ErCommandRequest(id=self.__get_seq(),
                               uri=f'{RollPair.__uri_prefix}{RollPair.JOIN}',
                               args=[job.to_proto().SerializeToString()])
 
@@ -123,6 +123,6 @@ class RollPair(object):
 
     des_response = ErCommandResponse.from_proto(response)
 
-    des_store = ErStore.from_proto_string(des_response._data)
+    des_store = ErStore.from_proto_string(des_response._results[0])
 
     return RollPair(des_store)

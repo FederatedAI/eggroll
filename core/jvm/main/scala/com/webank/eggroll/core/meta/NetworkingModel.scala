@@ -58,8 +58,8 @@ object NetworkingModelPbSerdes {
     override def toProto[T >: PbMessage](): Meta.ServerNode = {
       val builder = Meta.ServerNode.newBuilder()
         .setId(src.id)
-        .setCommandEndpoint(src.commandEndpoint.toProto())
-        .setDataEndpoint(src.dataEndpoint.toProto())
+        .setCommandEndpoint(if (src.commandEndpoint != null ) src.commandEndpoint.toProto() else Meta.Endpoint.getDefaultInstance)
+        .setDataEndpoint(if (src.dataEndpoint != null) src.dataEndpoint.toProto() else Meta.Endpoint.getDefaultInstance)
         .setTag(src.tag)
 
       builder.build()

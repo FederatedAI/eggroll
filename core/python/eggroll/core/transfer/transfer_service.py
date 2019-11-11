@@ -54,7 +54,7 @@ class GrpcTransferServicer(transfer_pb2_grpc.TransferServiceServicer):
 
 class TransferClient():
   def send(self, data, tag, server_node, status = ''):
-    endpoint = server_node._endpoint
+    endpoint = server_node._command_endpoint
     channel = grpc.insecure_channel(target=f'{endpoint._host}:{endpoint._port}',
                                     options=[
                                       ('grpc.max_send_message_length', -1),

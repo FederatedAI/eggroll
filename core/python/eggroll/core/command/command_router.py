@@ -70,7 +70,7 @@ class CommandRouter(object):
     call_result = _method(_instance, *deserialized_args)
 
     # todo: defaulting to pb message. need changes when other types of result is present
-    return call_result.to_proto().SerializeToString()
+    return [call_result.to_proto().SerializeToString()]
 
   def query(self, service_name: str):
     return self._service_route_table[service_name]
