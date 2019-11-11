@@ -19,8 +19,8 @@ def _to_proto(rpc_message):
   return rpc_message.to_proto()
 
 
-def _listify_map(func, a_list):
-  return list(map(func, a_list))
+def _listify_map(map_func, a_list):
+  return list(map(map_func, a_list))
 
 
 def _repr_list(a_list):
@@ -38,7 +38,7 @@ def _exception_logger(func):
     except:
       msg = (f"==== detail start ====\n"
              f"{traceback.format_exc()}"
-             f"\n==== detail end ====")
+             f"\n==== detail end ====\n\n")
       # LOGGER.error(msg)
       print(msg)
       raise RuntimeError(msg)

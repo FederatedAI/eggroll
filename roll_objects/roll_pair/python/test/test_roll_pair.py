@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 #  Copyright (c) 2019 - now, Eggroll Authors. All Rights Reserved.
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,14 +17,53 @@ import grpc
 import time
 import unittest
 from eggroll.core.command.command_model import ErCommandRequest
-from eggroll.core.meta import ErStoreLocator, ErJob, ErStore, ErFunctor
+from eggroll.core.meta_model import ErStoreLocator, ErJob, ErStore, ErFunctor
 from eggroll.core.proto import command_pb2_grpc
 from eggroll.core.serdes import cloudpickle
+from eggroll.roll_pair.roll_pair import RollPair
 
 
 class TestRollPair(unittest.TestCase):
-
   def test_map_values(self):
+    store_locator = ErStoreLocator(store_type="levelDb", namespace="ns",
+                                   name='name')
+    rp = RollPair(store_locator)
+
+    res = rp.map_values(lambda v : v + b'~2')
+
+    print('res: ', res)
+
+  def test_reduce(self):
+    store_locator = ErStoreLocator(store_type="levelDb", namespace="ns",
+                                   name='name')
+
+    rp = RollPair(store_locator)
+    res = rp.reduce(lambda x, y : x + y)
+    print('res: ', res)
+
+  def test_join(self):
+    left_locator = ErStoreLocator(store_type="levelDb", namespace="ns",
+                                   name='name')
+    right_locator = ErStoreLocator(store_type="levelDb", namespace="ns",
+                                   name='test')
+
+    left = RollPair(left_locator)
+    right = RollPair(right_locator)
+    res = left.join(right, lambda x, y : x + b' joins ' + y)
+    print('res: ', res)
+
+
+  def test_map(self):
+    store_locator = ErStoreLocator(store_type="levelDb", namespace="ns",
+                                  name='name')
+
+    rp = RollPair(store_locator)
+
+    res = rp.map(lambda k, v: (b'k_' + k, b'v_' + v), lambda k : k[-1] % 4)
+
+    print('res: ', res)
+
+  def test_map_values_raw(self):
     def append_byte(v):
       return v + b'~1'
 
@@ -55,7 +95,7 @@ class TestRollPair(unittest.TestCase):
 
     time.sleep(1200)
 
-  def test_reduce(self):
+  def test_reduce_raw(self):
     def concat(a, b):
       return a + b
 

@@ -12,6 +12,8 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ *
  */
 
 package com.webank.eggroll.core.grpc.server;
@@ -20,10 +22,12 @@ import com.webank.eggroll.core.error.handler.DefaultLoggingErrorHandler;
 import com.webank.eggroll.core.error.handler.ErrorHandler;
 import com.webank.eggroll.core.util.ErrorUtils;
 import io.grpc.stub.StreamObserver;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 
 public class GrpcServerWrapper {
-
+  private static final Logger LOGGER = LogManager.getLogger();
   private final ErrorHandler errorHandler;
 
   public GrpcServerWrapper() {
@@ -39,6 +43,7 @@ public class GrpcServerWrapper {
       target.run();
     } catch (Throwable t) {
       errorHandler.handleError(t);
+
       responseObserver.onError(ErrorUtils.toGrpcRuntimeException(t));
     }
   }

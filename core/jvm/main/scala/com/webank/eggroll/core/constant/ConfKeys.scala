@@ -26,6 +26,7 @@ object CoreConfKeys {
   val CONFKEY_CORE_GRPC_CHANNEL_KEEPALIVE_TIMEOUT_SEC = "eggroll.core.grpc.channel.keepalive.timout.sec"
   val CONFKEY_CORE_GRPC_CHANNEL_KEEPALIVE_WITHOUT_CALLS_ENABLED = "eggroll.core.grpc.channel.keepalive.without.calls.enabled"
   val CONFKEY_CORE_GRPC_CHANNEL_MAX_CONNECTION_AGE_GRACE_SEC = "eggroll.core.grpc.channel.max.connection.age.grace.sec"
+  val CONFKEY_CORE_GRPC_CHANNEL_MAX_INBOUND_METADATA_SIZE = "eggroll.core.grpc.channel.max.inbound.metadata.size"
   val CONFKEY_CORE_GRPC_CHANNEL_MAX_INBOUND_MESSAGE_SIZE = "eggroll.core.grpc.channel.max.inbound.message.size"
   val CONFKEY_CORE_GRPC_CHANNEL_MAX_RETRY_ATTEMPTS = "eggroll.grpc.channel.max.retry.attempts"
   val CONFKEY_CORE_GRPC_CHANNEL_PER_RPC_BUFFER_LIMIT = "eggroll.core.grpc.channel.per.rpc.buffer.limit"

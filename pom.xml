@@ -13,6 +13,8 @@
   ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   ~ See the License for the specific language governing permissions and
   ~ limitations under the License.
+  ~
+  ~
   -->
 
 <project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -211,6 +213,7 @@
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
     <!-- Dependencies -->
+    <arrow.version>0.14.1</arrow.version>
     <commons-beanutils.version>1.9.3</commons-beanutils.version>
     <commons-io.version>2.6</commons-io.version>
     <commons-lang3.version>3.8.1</commons-lang3.version>
@@ -221,7 +224,9 @@
     <junit.jupiter.version>5.5.1</junit.jupiter.version>
     <junit.platform.version>1.5.1</junit.platform.version>
     <log4j2.version>2.11.1</log4j2.version>
+    <netty.version>4.1.27.Final</netty.version>
     <protobuf.version>3.9.0</protobuf.version>
+    <rocksdb.version>6.2.2</rocksdb.version>
     <scalatest.version>3.0.8</scalatest.version>
 
     <!-- Plugins -->
@@ -380,7 +385,8 @@
     <module>core/jvm</module>
     <module>resource_managers/cluster_manager/jvm</module>
     <module>roll_objects/roll_pair/jvm</module>
-    <module>roll_objects/roll_site/jvm</module>
+    <module>roll_objects/roll_frame/jvm</module>
+    <!--<module>roll_objects/roll_site/jvm</module>-->
   </modules>
   
 </project>

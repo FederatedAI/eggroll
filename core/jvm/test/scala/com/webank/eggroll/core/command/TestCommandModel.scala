@@ -34,7 +34,7 @@ class TestCommandModel {
     val kwargs = mutable.Map[String, Array[Byte]]()
     kwargs += (hello -> hello.getBytes())
     kwargs += (world -> world.getBytes())
-    val commandRequest = ErCommandRequest(1L, "http://www.test.com", args, kwargs)
+    val commandRequest = ErCommandRequest(1L, "http://www.test.com", args, kwargs.toMap)
 
     val serialized = commandRequest.toProto
 

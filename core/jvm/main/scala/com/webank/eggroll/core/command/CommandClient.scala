@@ -12,6 +12,8 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ *
  */
 
 package com.webank.eggroll.core.command
@@ -37,7 +39,7 @@ class CommandClient extends Logging {
       Command.CommandRequest,
       CommandResponse]()
 
-    context.setServerEndpoint(task.getEndpoint)
+    context.setServerEndpoint(task.getCommandEndpoint)
       .setCalleeStreamingMethodInvoker(
         (stub: CommandServiceGrpc.CommandServiceStub,
          request: Command.CommandRequest,
@@ -52,7 +54,7 @@ class CommandClient extends Logging {
       CommandResponse]()
       .setGrpcClientContext(context)
 
-    val request = ErCommandRequest(seq = 100, uri = command.uri.toString, args = Array(task.toProto().toByteArray))
+    val request = ErCommandRequest(id = 100, uri = command.uri.toString, args = Array(task.toProto().toByteArray))
 
     val result = template.calleeStreamingRpcWithImmediateDelayedResult(request.toProto(), delayedResult)
 

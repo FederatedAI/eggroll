@@ -18,7 +18,7 @@ class CommandServiceStub(object):
         '/com.webank.eggroll.core.command.CommandService/call',
         request_serializer=command__pb2.CommandRequest.SerializeToString,
         response_deserializer=command__pb2.CommandResponse.FromString,
-    )
+        )
 
 
 class CommandServiceServicer(object):
@@ -35,11 +35,11 @@ class CommandServiceServicer(object):
 
 def add_CommandServiceServicer_to_server(servicer, server):
   rpc_method_handlers = {
-    'call': grpc.unary_unary_rpc_method_handler(
-        servicer.call,
-        request_deserializer=command__pb2.CommandRequest.FromString,
-        response_serializer=command__pb2.CommandResponse.SerializeToString,
-    ),
+      'call': grpc.unary_unary_rpc_method_handler(
+          servicer.call,
+          request_deserializer=command__pb2.CommandRequest.FromString,
+          response_serializer=command__pb2.CommandResponse.SerializeToString,
+      ),
   }
   generic_handler = grpc.method_handlers_generic_handler(
       'com.webank.eggroll.core.command.CommandService', rpc_method_handlers)

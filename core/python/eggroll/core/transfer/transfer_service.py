@@ -13,24 +13,27 @@
 #  limitations under the License.
 
 import grpc
+from eggroll.core.datastructure.broker import FifoBroker
 from eggroll.core.proto import transfer_pb2_grpc
-from eggroll.core.transfer_models import ErTransferHeader, ErBatch
+from eggroll.core.transfer_model import ErTransferHeader, ErBatch
 from eggroll.core.utils import _exception_logger
 from queue import Queue
 
 
-class TransferServicer(transfer_pb2_grpc.TransferServiceServicer):
+class GrpcTransferServicer(transfer_pb2_grpc.TransferServiceServicer):
   data_buffer = dict()
 
   _DEFAULT_QUEUE_SIZE = 100
+  TRANSFER_END = '__transfer_end'
 
   @staticmethod
-  def get_or_create_queue(key: str, max_size: int = _DEFAULT_QUEUE_SIZE):
-    if key not in TransferServicer.data_buffer:
-      final_size = max_size if max_size > 0 else TransferServicer._DEFAULT_QUEUE_SIZE
-      TransferServicer.data_buffer[key] = Queue(maxsize=final_size)
+  def get_or_create_broker(key: str, maxsize: int = _DEFAULT_QUEUE_SIZE, write_signals = 1):
+    if key not in GrpcTransferServicer.data_buffer:
+      final_size = maxsize if maxsize > 0 else GrpcTransferServicer._DEFAULT_QUEUE_SIZE
+      GrpcTransferServicer.data_buffer[key] = \
+        FifoBroker(max_capacity = final_size, write_signals = write_signals)
 
-    return TransferServicer.data_buffer[key]
+    return GrpcTransferServicer.data_buffer[key]
 
   @_exception_logger
   def send(self, request_iterator, context):
@@ -38,31 +41,37 @@ class TransferServicer(transfer_pb2_grpc.TransferServiceServicer):
     for request in request_iterator:
       print(f'received')
       if not inited:
-        queue = TransferServicer.get_or_create_queue(request.header.tag)
+        broker = GrpcTransferServicer.get_or_create_broker(request.header.tag)
         response_header = request.header
         inited = True
 
-      queue.put(request.data)
+      broker.put(request.data)
+      if request.header.status == GrpcTransferServicer.TRANSFER_END:
+        broker.signal_write_finish()
 
     return response_header
 
 
 class TransferClient():
-  def send(self, data, tag, server_node):
-    endpoint = server_node._endpoint
+  def send(self, data, tag, server_node, status = ''):
+    endpoint = server_node._command_endpoint
     channel = grpc.insecure_channel(target=f'{endpoint._host}:{endpoint._port}',
                                     options=[
                                       ('grpc.max_send_message_length', -1),
                                       ('grpc.max_receive_message_length', -1)])
 
-    header = ErTransferHeader(id=100, tag=tag, total_size=len(data))
+    total_size = 0 if not data else len(data)
+    header = ErTransferHeader(id=100,
+                              tag=tag,
+                              total_size=total_size,
+                              status = status)
     batch = ErBatch(header=header, data=data)
 
     stub = transfer_pb2_grpc.TransferServiceStub(channel)
 
     batches = [batch.to_proto()]
 
-    print(f"mw: ready to send to {endpoint}, {iter(batches)}")
+    #print(f"mw: ready to send to {endpoint}, {iter(batches)}")
     stub.send(iter(batches))
 
     print("finish send")

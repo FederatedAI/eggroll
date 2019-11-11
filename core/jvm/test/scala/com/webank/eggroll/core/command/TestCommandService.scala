@@ -60,7 +60,7 @@ class TestCommandService {
 
     val sayHelloToGrpcResponse = stub.call(
       ErCommandRequest(2L, sayHelloToPbServiceName, Array(HelloRequest.newBuilder().setMsg("grpc client").build().toByteArray)).toProto())
-    println(sayHelloToGrpcResponse.getData.toStringUtf8)
+    println(sayHelloToGrpcResponse.getResults(0).toStringUtf8)
   }
 }
 

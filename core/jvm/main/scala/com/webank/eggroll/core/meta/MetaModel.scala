@@ -12,30 +12,68 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ *
  */
 
 package com.webank.eggroll.core.meta
 
+import java.lang.reflect.Method
+
 import com.google.protobuf.{ByteString, Message => PbMessage}
 import com.webank.eggroll.core.constant.StringConstants
+import com.webank.eggroll.core.datastructure.RpcMessage
 import com.webank.eggroll.core.meta.NetworkingModelPbSerdes._
-import com.webank.eggroll.core.rpc.RpcMessage
 import com.webank.eggroll.core.serdes.{PbMessageDeserializer, PbMessageSerializer}
+import org.apache.commons.lang3.StringUtils
 
 import scala.collection.JavaConverters._
 
-case class ErFunctor(name: String = StringConstants.EMPTY, body: Array[Byte]) extends RpcMessage
+case class ErFunctor(name: String = StringConstants.EMPTY, serdes: String = StringConstants.EMPTY, body: Array[Byte]) extends RpcMessage
 
-case class ErStoreLocator(storeType: String, namespace: String, name: String, path: String = StringConstants.EMPTY) extends RpcMessage
+case class ErPair(key: Array[Byte], value: Array[Byte]) extends RpcMessage
 
-case class ErPartition(id: String, storeLocator: ErStoreLocator, node: ErServerNode) extends RpcMessage
+case class ErPairBatch(pairs: List[ErPair]) extends RpcMessage
 
-case class ErStore(storeLocator: ErStoreLocator, partitions: List[ErPartition] = List.empty) extends RpcMessage
+case class ErStoreLocator(storeType: String, namespace: String, name: String, path: String = StringConstants.EMPTY) extends RpcMessage {
+  def toPath(delim: String = StringConstants.SLASH): String = {
+    if (!StringUtils.isBlank(path)) {
+      path
+    } else {
+      String.join(delim, storeType, namespace, name)
+    }
+  }
+
+  def fork(postfix: String = StringConstants.EMPTY, delimiter: String = StringConstants.UNDERLINE): ErStoreLocator = {
+    ErStoreLocator(storeType = storeType,
+      namespace = namespace,
+      name = if (StringUtils.isBlank(postfix)) System.nanoTime().toString else postfix,
+      path = path)
+  }
+}
+
+case class ErPartition(id: String, storeLocator: ErStoreLocator, node: ErServerNode) extends RpcMessage {
+  def toPath(delim: String = StringConstants.SLASH): String = String.join(delim, storeLocator.toPath(delim = delim), id)
+}
+
+case class ErStore(storeLocator: ErStoreLocator, partitions: List[ErPartition] = List.empty) extends RpcMessage {
+  def toPath(delim: String = StringConstants.SLASH): String = storeLocator.toPath(delim = delim)
+
+  def fork(storeLocator: ErStoreLocator): ErStore = {
+    val finalStoreLocator = if (storeLocator == null) storeLocator.fork() else storeLocator
+
+    ErStore(storeLocator = finalStoreLocator, partitions = partitions.map(p => p.copy(storeLocator = finalStoreLocator)))
+  }
+
+  def fork(postfix: String = StringConstants.EMPTY, delimiter: String = StringConstants.UNDERLINE): ErStore = {
+    fork(storeLocator = storeLocator.fork(postfix = postfix, delimiter = delimiter))
+  }
+}
 
 case class ErJob(id: String, name: String = StringConstants.EMPTY, inputs: List[ErStore], outputs: List[ErStore] = List(), functors: List[ErFunctor]) extends RpcMessage
 
 case class ErTask(id: String, name: String = StringConstants.EMPTY, inputs: List[ErPartition], outputs: List[ErPartition], job: ErJob) extends RpcMessage {
-  def getEndpoint: ErEndpoint = {
+  def getCommandEndpoint: ErEndpoint = {
     if (inputs == null || inputs.isEmpty) {
       throw new IllegalArgumentException("Partition input is empty")
     }
@@ -46,9 +84,17 @@ case class ErTask(id: String, name: String = StringConstants.EMPTY, inputs: List
       throw new IllegalArgumentException("Head node's input partition is null")
     }
 
-    node.endpoint
+    node.commandEndpoint
   }
 }
+
+/*object MetaModelUtils {
+  def forkInputs(inputs: List[ErStore],
+                 postfix: String = StringConstants.EMPTY,
+                 delimiter: String = StringConstants.UNDERLINE): List[ErStore] = {
+    inputs.map(p => p.fork(postfix = postfix, delimiter = delimiter))
+  }
+}*/
 
 object MetaModelPbSerdes {
 
@@ -57,7 +103,27 @@ object MetaModelPbSerdes {
     override def toProto[T >: PbMessage](): Meta.Functor = {
       val builder = Meta.Functor.newBuilder()
         .setName(src.name)
+        .setSerdes(src.serdes)
         .setBody(ByteString.copyFrom(src.body))
+
+      builder.build()
+    }
+  }
+
+  implicit class ErPairToPbMessage(src: ErPair) extends PbMessageSerializer {
+    override def toProto[T >: PbMessage](): Meta.Pair = {
+      val builder = Meta.Pair.newBuilder()
+        .setKey(ByteString.copyFrom(src.key))
+        .setValue(ByteString.copyFrom(src.value))
+
+      builder.build()
+    }
+  }
+
+  implicit class ErPairBatchToPbMessage(src: ErPairBatch) extends PbMessageSerializer {
+    override def toProto[T >: PbMessage](): Meta.PairBatch = {
+      val builder = Meta.PairBatch.newBuilder()
+        .addAllPairs(src.pairs.map(_.toProto()).asJava)
 
       builder.build()
     }
@@ -125,7 +191,19 @@ object MetaModelPbSerdes {
   // deserializers
   implicit class ErFunctorFromPbMessage(src: Meta.Functor) extends PbMessageDeserializer {
     override def fromProto[T >: RpcMessage](): ErFunctor = {
-      ErFunctor(name = src.getName, body = src.getBody.toByteArray)
+      ErFunctor(name = src.getName, serdes = src.getSerdes, body = src.getBody.toByteArray)
+    }
+  }
+
+  implicit class ErPairFromPbMessage(src: Meta.Pair) extends PbMessageDeserializer {
+    override def fromProto[T >: RpcMessage](): ErPair = {
+      ErPair(key = src.getKey.toByteArray, value = src.getValue.toByteArray)
+    }
+  }
+
+  implicit class ErPairBatchFromPbMessage(src: Meta.PairBatch) extends PbMessageDeserializer {
+    override def fromProto[T >: RpcMessage](): ErPairBatch = {
+      ErPairBatch(pairs = src.getPairsList.asScala.map(_.fromProto()).toList)
     }
   }
 

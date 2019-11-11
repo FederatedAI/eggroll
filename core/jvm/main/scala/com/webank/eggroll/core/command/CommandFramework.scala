@@ -12,6 +12,8 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ *
  */
 
 package com.webank.eggroll.core.command
@@ -19,8 +21,9 @@ package com.webank.eggroll.core.command
 import java.util.concurrent.{CompletableFuture, CountDownLatch}
 import java.util.function.Supplier
 
+import com.webank.eggroll.core.datastructure.TaskPlan
 import com.webank.eggroll.core.error.DistributedRuntimeException
-import com.webank.eggroll.core.meta.{ErJob, ErPartition, ErTask}
+import com.webank.eggroll.core.meta.{ErJob, ErPartition, ErStore, ErTask}
 import com.webank.eggroll.core.util.ThreadPoolUtils
 
 import scala.collection.mutable
@@ -29,8 +32,11 @@ case class EndpointCommand(commandURI: CommandURI, job: ErJob)
 
 case class EndpointTaskCommand(commandURI: CommandURI, task: ErTask)
 
-case class CollectiveCommand(commandURI: CommandURI, job: ErJob) {
+case class CollectiveCommand(taskPlan: TaskPlan) {
   def call(): List[ErCommandResponse] = {
+    val job = taskPlan.job
+    val commandUri = taskPlan.uri
+
     val finishLatch = new CountDownLatch(job.inputs.size)
     val errors = new DistributedRuntimeException()
     val results = mutable.ListBuffer[ErCommandResponse]()
@@ -38,15 +44,19 @@ case class CollectiveCommand(commandURI: CommandURI, job: ErJob) {
     val tasks = toTasks(job)
 
     tasks.par.map(task => {
-      val completableFuture: CompletableFuture[ErCommandResponse] = CompletableFuture.supplyAsync(new CommandServiceSupplier(task, commandURI), CollectiveCommand.threadPool)
+      val completableFuture: CompletableFuture[ErCommandResponse] =
+        CompletableFuture.supplyAsync(new CommandServiceSupplier(task, commandUri), CollectiveCommand.threadPool)
         .exceptionally(e => {
           errors.append(e)
           null
         })
-        .thenApply(cr => {
-          results += cr
+        .whenCompleteAsync((result, exception) => {
+          if (exception != null) {
+            errors.append(exception)
+          } else {
+            results += result
+          }
           finishLatch.countDown()
-          cr
         })
 
       completableFuture.join()
@@ -63,8 +73,8 @@ case class CollectiveCommand(commandURI: CommandURI, job: ErJob) {
   def toTasks(job: ErJob): List[ErTask] = {
     val result = mutable.ListBuffer[ErTask]()
 
-    val inputs = job.inputs
-    val outputs = job.outputs
+    val inputs: List[ErStore] = job.inputs
+    val outputs: List[ErStore] = job.outputs
     val inputPartitionSize = inputs.head.partitions.size
 
     var aggregateOutputPartition: ErPartition = null
@@ -80,7 +90,12 @@ case class CollectiveCommand(commandURI: CommandURI, job: ErJob) {
       if (aggregateOutputPartition != null) {
         outputPartitions.append(aggregateOutputPartition)
       } else {
-        outputs.foreach(output => outputPartitions.append(output.partitions(i)))
+        (outputs, inputs).zipped.foreach((output, input) => {
+          val hasPartition = !output.partitions.isEmpty
+          outputPartitions.append(
+            if (hasPartition) output.partitions(i)
+            else input.partitions(i).copy(storeLocator = output.storeLocator))
+        })
       }
 
       result.append(ErTask(id = job.id + "-" + i, name = job.name, inputs = inputPartitions.toList, outputs = outputPartitions.toList, job = job))

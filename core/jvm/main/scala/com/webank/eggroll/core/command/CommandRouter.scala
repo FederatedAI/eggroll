@@ -12,6 +12,8 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ *
  */
 
 package com.webank.eggroll.core.command
@@ -21,12 +23,13 @@ import java.lang.reflect.Method
 import com.google.protobuf.ByteString
 import com.webank.eggroll.core.constant.StringConstants
 import com.webank.eggroll.core.meta.MetaModelPbSerdes._
-import com.webank.eggroll.core.meta.{ErJob, ErTask, Meta}
+import com.webank.eggroll.core.meta.{ErJob, ErStore, ErTask, Meta}
 import org.apache.commons.lang3.StringUtils
 import org.apache.commons.lang3.reflect.{ConstructorUtils, MethodUtils}
 
 import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 
 trait CommandRoutable {
 
@@ -37,13 +40,14 @@ object Scope {
 }
 
 object CommandRouter {
-  private val serviceRouteTable = TrieMap[String, (Any, Method)]()
+  private val serviceRouteTable = TrieMap[String, ErService]()
   private val messageParserMethodCache = mutable.Map[Class[_], Method]()
 
   // todo: consider different scope of target instance suck as 'singleton', 'proto', 'session' etc.
   //  This can be implemented as an annotation reader
   def register(serviceName: String,
                serviceParamTypes: List[Class[_]],
+               serviceReturnTypes: List[Class[_]] = null,
                routeToClass: Class[_] = null,
                routeToMethodName: String = null,
                routeToCallBasedClassInstance: Any = null,
@@ -76,16 +80,23 @@ object CommandRouter {
         ConstructorUtils.invokeConstructor(finalRouteToClass, finalCallBasedClassInstanceInitArgsArray: _*)
       }
 
-    serviceRouteTable.put(serviceName, (finalCallBasedInstance, routeToMethod))
+    val command = ErService(
+      serviceName = serviceName,
+      serviceParamTypes = serviceParamTypes,
+      serviceReturnTypes = serviceReturnTypes,
+      callBasedInstance = finalCallBasedInstance,
+      routeToMethod = routeToMethod)
+
+    serviceRouteTable.put(serviceName, command)
   }
 
-  def dispatch(serviceName: String, args: Array[_ <: AnyRef], kwargs: mutable.Map[String, _ <: AnyRef]): Array[Byte] = {
-    val target = query(serviceName)
-    if (target == null) {
+  def dispatch(serviceName: String, args: Array[_ <: AnyRef], kwargs: mutable.Map[String, _ <: AnyRef]): Array[Array[Byte]] = {
+    val servicer = query(serviceName)
+    if (servicer == null) {
       throw new IllegalStateException(s"service ${serviceName} has not been registered")
     }
 
-    val method = target._2
+    val method = servicer.routeToMethod
     val paramTypes = method.getParameterTypes
     var paramTypeName = "unknown"
 
@@ -106,21 +117,26 @@ object CommandRouter {
     }
 
     // actual call
-    val callResult = target._2.invoke(target._1, realArgs: _*) // method.invoke(instance, args)
+    val callResult = method.invoke(servicer.callBasedInstance, realArgs: _*) // method.invoke(instance, args)
+    val finalResult = ArrayBuffer[Array[Byte]]()
 
     // serialization to response
+    // todo: use reflection to call toProto().toByteArray, or use rpcMessage
     callResult match {
       case e: ErTask =>
-        callResult.asInstanceOf[ErTask].toProto().toByteArray
+        finalResult.append(e.toProto().toByteArray)
       case e: ErJob =>
-        callResult.asInstanceOf[ErJob].toProto().toByteArray
+        finalResult.append(e.toProto().toByteArray)
+      case e: ErStore =>
+        finalResult.append(e.toProto().toByteArray)
       case _ =>
-        callResult.toString.getBytes()
+        finalResult.append(callResult.toString.getBytes())
     }
 
+    finalResult.toArray
   }
 
-  def query(serviceName: String): (Any, Method) = {
+  def query(serviceName: String): ErService = {
     serviceRouteTable(serviceName)
   }
 }
