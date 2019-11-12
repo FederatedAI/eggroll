@@ -12,16 +12,18 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ *
  */
 
-package com.webank.eggroll.cluster.manager.grpc
+package com.webank.eggroll.cluster.manager.clustermanager
 
-import com.webank.eggroll.cluster.manager.ClusterManager
+import com.webank.eggroll.core.meta.{ErPartition, ErStore}
 
-class NodeReportServiceImpl {
-  /**
-   */
-  def heartbeat(request: ClusterManager.NodeHeartbeatRequest): ClusterManager.NodeHeartbeatResponse = {
-    null
+class ClusterManager {
+  def getPartitions(store: ErStore): ErStore = {
+    val result = store.copy(store.storeLocator, List[ErPartition]())
+
+    result
   }
 }
