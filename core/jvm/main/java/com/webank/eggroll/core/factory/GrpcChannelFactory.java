@@ -12,6 +12,8 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ *
  */
 
 package com.webank.eggroll.core.factory;
@@ -29,7 +31,7 @@ import com.webank.eggroll.core.retry.factory.AttemptOperations;
 import com.webank.eggroll.core.retry.factory.RetryerBuilder;
 import com.webank.eggroll.core.retry.factory.StopStrategies;
 import com.webank.eggroll.core.retry.factory.WaitTimeStrategies;
-import com.webank.eggroll.core.session.DefaultEggrollConf;
+import com.webank.eggroll.core.session.DefaultErConf;
 import com.webank.eggroll.core.util.ThreadPoolUtils;
 import io.grpc.ManagedChannel;
 import io.grpc.netty.shaded.io.grpc.netty.GrpcSslContexts;
@@ -59,11 +61,11 @@ public class GrpcChannelFactory {
   private static final Logger LOGGER = LogManager.getLogger();
 
   public GrpcChannelFactory() {
-    long maximumSize = DefaultEggrollConf
+    long maximumSize = DefaultErConf
         .getLong(CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_CACHE_SIZE(), 100);
-    long expireTimeout = DefaultEggrollConf
+    long expireTimeout = DefaultErConf
         .getLong(CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_CACHE_EXPIRE_SEC(), 1200);
-    long channelTerminationAwaitTimeout = DefaultEggrollConf
+    long channelTerminationAwaitTimeout = DefaultErConf
         .getLong(CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_TERMINATION_AWAIT_TIMEOUT_SEC(), 20);
 
     CacheBuilder<ErEndpoint, ManagedChannel> cacheBuilder = CacheBuilder.newBuilder()
@@ -123,29 +125,29 @@ public class GrpcChannelFactory {
   }
 
   private ManagedChannel createChannel(ErEndpoint endpoint, Boolean isSecureChannel) {
-    long channelKeepAliveTimeSec = DefaultEggrollConf
+    long channelKeepAliveTimeSec = DefaultErConf
         .getLong(CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_KEEPALIVE_TIME_SEC(), 300L);
-    long channelKeepAliveTimeoutSec = DefaultEggrollConf
+    long channelKeepAliveTimeoutSec = DefaultErConf
         .getLong(CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_KEEPALIVE_TIMEOUT_SEC(), 3600L);
-    boolean channelKeepAliveWithoutCallsEnabled = DefaultEggrollConf
+    boolean channelKeepAliveWithoutCallsEnabled = DefaultErConf
         .getBoolean(CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_KEEPALIVE_WITHOUT_CALLS_ENABLED(), true);
-    long channelIdleTimeoutSec = DefaultEggrollConf
+    long channelIdleTimeoutSec = DefaultErConf
         .getLong(CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_IDLE_TIMEOUT_SEC(), 3600);
-    long channelPerRpcBufferLimit = DefaultEggrollConf
+    long channelPerRpcBufferLimit = DefaultErConf
         .getLong(CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_PER_RPC_BUFFER_LIMIT(), 64 << 20);
-    int channelFlowControlWindow = DefaultEggrollConf
+    int channelFlowControlWindow = DefaultErConf
         .getInt(CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_FLOW_CONTROL_WINDOW(), 16 << 20);
-    int channelMaxInboundMessageSize = DefaultEggrollConf
+    int channelMaxInboundMessageSize = DefaultErConf
         .getInt(CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_MAX_INBOUND_MESSAGE_SIZE(), 32 << 20);
-    int channelMaxInboundMetadataSize = DefaultEggrollConf
+    int channelMaxInboundMetadataSize = DefaultErConf
         .getInt(CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_MAX_INBOUND_METADATA_SIZE(), 64 << 10);
-    long channelRetryBufferSize = DefaultEggrollConf
+    long channelRetryBufferSize = DefaultErConf
         .getLong(CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_RETRY_BUFFER_SIZE(), 16 << 20);
-    int channelMaxRetryAttempts = DefaultEggrollConf
+    int channelMaxRetryAttempts = DefaultErConf
         .getInt(CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_MAX_RETRY_ATTEMPTS(), 20);
-    int channelExecutorPoolSize = DefaultEggrollConf
+    int channelExecutorPoolSize = DefaultErConf
         .getInt(CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_EXECUTOR_POOL_SIZE(), 100);
-    String caCrtPath = DefaultEggrollConf
+    String caCrtPath = DefaultErConf
         .getString(CoreConfKeys.CONFKEY_CORE_SECURITY_CA_CRT_PATH(), StringConstants.EMPTY());
 
     File caCrt = null;
@@ -177,13 +179,13 @@ public class GrpcChannelFactory {
 
     if (isSecureChannel) {
       SslContext sslContext = null;
-      long sslSessionTimeout = DefaultEggrollConf
+      long sslSessionTimeout = DefaultErConf
           .getLong(CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_SSL_SESSION_TIMEOUT_SEC(), 3600 << 4);
-      long sslSessionCacheSize = DefaultEggrollConf
+      long sslSessionCacheSize = DefaultErConf
           .getLong(CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_SSL_SESSION_CACHE_SIZE(), 65536L);
-      String keyCrtPath = DefaultEggrollConf
+      String keyCrtPath = DefaultErConf
           .getString(CoreConfKeys.CONFKEY_CORE_SECURITY_KEY_CRT_PATH(), null);
-      String keyPath = DefaultEggrollConf
+      String keyPath = DefaultErConf
           .getString(CoreConfKeys.CONFKEY_CORE_SECURITY_KEY_PATH(), null);
 
       try {
@@ -239,11 +241,11 @@ public class GrpcChannelFactory {
 
   public ManagedChannel getChannel(final ErEndpoint endpoint, boolean isSecureChannel) {
     ManagedChannel result = null;
-    long fixedWaitTime = DefaultEggrollConf
+    long fixedWaitTime = DefaultErConf
         .getLong(CoreConfKeys.CONFKEY_CORE_RETRY_DEFAULT_WAIT_TIME_MS(), 1000L);
-    int maxAttempts = DefaultEggrollConf
+    int maxAttempts = DefaultErConf
         .getInt(CoreConfKeys.CONFKEY_CORE_RETRY_DEFAULT_MAX_ATTEMPTS(), 10);
-    long attemptTimeout = DefaultEggrollConf
+    long attemptTimeout = DefaultErConf
         .getLong(CoreConfKeys.CONFKEY_CORE_RETRY_DEFAULT_ATTEMPT_TIMEOUT_MS(), 3000L);
 
     Retryer<ManagedChannel> retryer = RetryerBuilder.<ManagedChannel>newBuilder()

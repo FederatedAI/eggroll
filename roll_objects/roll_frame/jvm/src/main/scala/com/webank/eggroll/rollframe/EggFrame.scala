@@ -198,7 +198,7 @@ class EggFrame {
     output.append(localBatch)
   }
 
-  def runTask(task: ErTask): RollFrameGrpc.TaskResult = {
+  def runTask(task: ErTask): ErTask = {
     val inputPartition = task.inputs.head
     val outputPartition = task.outputs.head
 
@@ -207,6 +207,7 @@ class EggFrame {
     val inputDB = FrameDB(inputPartition)
     val outputDB = FrameDB(outputPartition)
 
+    val result = task
     val functors = task.job.functors
 
     task.name match {
@@ -228,7 +229,7 @@ class EggFrame {
     }
     outputDB.close()
     inputDB.close()
-    RollFrameGrpc.TaskResult.newBuilder().setTaskId(task.id).build()
+    result
   }
 }
 

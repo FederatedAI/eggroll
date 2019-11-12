@@ -18,12 +18,7 @@
 
 package com.webank.eggroll.cluster.manager.grpc
 
-import com.webank.eggroll.cluster.manager.ClusterManager
 
 class NodeReportServiceImpl {
-  /**
-   */
-  def heartbeat(request: ClusterManager.NodeHeartbeatRequest): ClusterManager.NodeHeartbeatResponse = {
-    null
-  }
+
 }

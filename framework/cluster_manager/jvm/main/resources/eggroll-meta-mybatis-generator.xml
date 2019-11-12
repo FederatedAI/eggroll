@@ -21,7 +21,7 @@
         PUBLIC "-//mybatis.org//DTD MyBatis Generator Configuration 1.0//EN"
         "http://mybatis.org/dtd/mybatis-generator-config_1_0.dtd">
 <generatorConfiguration>
-    <properties resource="cluster-manager.properties"/>
+    <properties url="file:///${mybatis.generator.config.basedir}/resources/cluster-manager.properties"/>
     <!-- database driver-->
     <context id="DB2Tables" targetRuntime="MyBatis3">
         <property name="autoDelimitKeywords" value="true"/>
@@ -43,7 +43,7 @@
         </commentGenerator>
 
         <!-- database connection info -->
-        <jdbcConnection driverClass="${eggroll.cluster.manager.jdbc.driverClassName}"
+        <jdbcConnection driverClass="${eggroll.cluster.manager.jdbc.driver.class.name}"
                         connectionURL="${eggroll.cluster.manager.jdbc.url}"
                         userId="${eggroll.cluster.manager.jdbc.username}"
                         password="${eggroll.cluster.manager.jdbc.password}">
@@ -55,7 +55,7 @@
         </javaTypeResolver>
         <!-- generated model package and location -->
         <javaModelGenerator targetPackage="com.webank.eggroll.framework.clustermanager.dao.generated.model"
-                            targetProject="cluster_manager/jvm/src/main/java">
+                            targetProject="${mybatis.generator.config.basedir}/java">
             <property name="enableSubPackages" value="true"/>
             <property name="trimStrings" value="true"/>
             <property name="javaFileEncoding" value="UTF-8"/>
@@ -65,15 +65,15 @@
             <property name="immutable" value="false"/>
         </javaModelGenerator>
         <!-- generated mapping package and location -->
-        <sqlMapGenerator targetPackage="com.webank.eggroll.framework.clustermanager.dao.generated.model"
-                         targetProject="cluster_manager/jvm/src/main/java">
+        <sqlMapGenerator targetPackage="com.webank.eggroll.framework.clustermanager.dao.generated.mapper"
+                         targetProject="${mybatis.generator.config.basedir}/java">
             <property name="enableSubPackages" value="true"/>
             <property name="trimStrings" value="true"/>
         </sqlMapGenerator>
         <!-- generated DAO package and locations -->
         <javaClientGenerator type="XMLMAPPER"
-                             targetPackage="com.webank.eggroll.framework.clustermanager.dao.generated.model"
-                             targetProject="${target.project}/src/main/java">
+                             targetPackage="com.webank.eggroll.framework.clustermanager.dao.generated.mapper"
+                             targetProject="${mybatis.generator.config.basedir}/java">
             <property name="enableSubPackages" value="true"/>
             <property name="trimStrings" value="true"/>
         </javaClientGenerator>

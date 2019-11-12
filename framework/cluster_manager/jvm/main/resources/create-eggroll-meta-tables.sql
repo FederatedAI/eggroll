@@ -27,19 +27,19 @@ CREATE INDEX `idx_store_st` ON `eggroll_meta`.`store` (`status`(255));
 CREATE INDEX `idx_store_v` ON `eggroll_meta`.`store` (`version`);
 
 
--- fragment
+-- partition
 CREATE TABLE IF NOT EXISTS `eggroll_meta`.`partition` (
   `partition_id` SERIAL PRIMARY KEY,                        -- self-increment sequence
   `store_id` BIGINT UNSIGNED NOT NULL,
   `node_id` BIGINT UNSIGNED NOT NULL,
-  `store_partition_id` VARCHAR(255) UNSIGNED NOT NULL,      -- partition id of a store
+  `store_partition_id` VARCHAR(255) NOT NULL,      -- partition id of a store
   `status` VARCHAR(255) NOT NULL,
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
   `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) DEFAULT CHARACTER SET latin1 COLLATE latin1_swedish_ci;
 
 CREATE UNIQUE INDEX `idx_u_partition_s_sp_n` ON `eggroll_meta`.`partition` (`store_id`, `store_partition_id`, `node_id`);
-CREATE INDEX `idx_partition_ti` ON `eggroll_meta`.`partition` (`table_id`);
+CREATE INDEX `idx_partition_si` ON `eggroll_meta`.`partition` (`store_id`);
 CREATE INDEX `idx_partition_ni` ON `eggroll_meta`.`partition` (`node_id`);
 CREATE INDEX `idx_partition_s` ON `eggroll_meta`.`partition` (`status`(255));
 

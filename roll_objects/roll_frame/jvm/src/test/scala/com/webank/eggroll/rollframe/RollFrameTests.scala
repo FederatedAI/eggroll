@@ -186,7 +186,7 @@ class RollFrameTests {
   def testRollFrameAggregateBatch1(): Unit = {
     var start = System.currentTimeMillis()
     val clusterManager = new ClusterManager
-    val ps = List(RfPartition(0,1), RfPartition(1,1))
+    //val ps = List(RfPartition(0,1), RfPartition(1,1))
     //val inStore = RfStore("a1", "test1", ps.size, ps)
 
     val storeLocator = ErStoreLocator(name = "a1", namespace = "test1", storeType = "file")

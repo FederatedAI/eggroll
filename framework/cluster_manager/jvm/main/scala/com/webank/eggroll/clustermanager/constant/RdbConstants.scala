@@ -16,8 +16,10 @@
  *
  */
 
-package com.webank.eggroll.cluster.manager.model
+package com.webank.eggroll.clustermanager.constant
 
-class ClusterManagerModel {
+import org.apache.ibatis.session.RowBounds
 
+object RdbConstants {
+  val SINGLE_ROWBOUND = new RowBounds(0, 1)
 }

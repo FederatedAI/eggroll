@@ -12,6 +12,8 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ *
  */
 
 package com.webank.eggroll.core.factory;
@@ -19,7 +21,7 @@ package com.webank.eggroll.core.factory;
 import com.webank.eggroll.core.constant.CoreConfKeys;
 import com.webank.eggroll.core.constant.StringConstants;
 import com.webank.eggroll.core.meta.ErEndpoint;
-import com.webank.eggroll.core.session.DefaultEggrollConf;
+import com.webank.eggroll.core.session.DefaultErConf;
 import com.webank.eggroll.core.session.GrpcServerConf;
 import com.webank.eggroll.core.util.FileSystemUtils;
 import com.webank.eggroll.core.util.ThreadPoolUtils;
@@ -79,27 +81,27 @@ public class GrpcServerFactory {
       }
     });
 
-    int maxConcurrentCallPerConnection = DefaultEggrollConf
+    int maxConcurrentCallPerConnection = DefaultErConf
         .getInt(CoreConfKeys.CONFKEY_CORE_GRPC_SERVER_CHANNEL_MAX_CONCURRENT_CALL_PER_CONNECTION(),
             10000);
-    int maxInboundMessageSize = DefaultEggrollConf
+    int maxInboundMessageSize = DefaultErConf
         .getInt(CoreConfKeys.CONFKEY_CORE_GRPC_SERVER_CHANNEL_MAX_INBOUND_MESSAGE_SIZE(), 32 << 20);
-    int flowControlWindow = DefaultEggrollConf
+    int flowControlWindow = DefaultErConf
         .getInt(CoreConfKeys.CONFKEY_CORE_GRPC_SERVER_CHANNEL_FLOW_CONTROL_WINDOW(), 16 << 20);
-    long channelKeepAliveTimeSec = DefaultEggrollConf
+    long channelKeepAliveTimeSec = DefaultErConf
         .getLong(CoreConfKeys.CONFKEY_CORE_GRPC_SERVER_CHANNEL_KEEPALIVE_TIME_SEC(), 300L);
-    long channelKeepAliveTimeoutSec = DefaultEggrollConf
+    long channelKeepAliveTimeoutSec = DefaultErConf
         .getLong(CoreConfKeys.CONFKEY_CORE_GRPC_SERVER_CHANNEL_KEEPALIVE_TIMEOUT_SEC(), 3600L);
-    long channelPermitKeepAliveTime = DefaultEggrollConf
+    long channelPermitKeepAliveTime = DefaultErConf
         .getLong(CoreConfKeys.CONFKEY_CORE_GRPC_SERVER_CHANNEL_PERMIT_KEEPALIVE_TIME_SEC(), 1L);
-    boolean channelKeepAliveWithoutCallsEnabled = DefaultEggrollConf
+    boolean channelKeepAliveWithoutCallsEnabled = DefaultErConf
         .getBoolean(CoreConfKeys.CONFKEY_CORE_GRPC_SERVER_CHANNEL_KEEPALIVE_WITHOUT_CALLS_ENABLED(),
             true);
-    long maxConnectionIdle = DefaultEggrollConf
+    long maxConnectionIdle = DefaultErConf
         .getLong(CoreConfKeys.CONFKEY_CORE_GRPC_SERVER_CHANNEL_MAX_CONNECTION_IDLE_SEC(), 300L);
-    long maxConnectionAge = DefaultEggrollConf
+    long maxConnectionAge = DefaultErConf
         .getLong(CoreConfKeys.CONFKEY_CORE_GRPC_SERVER_CHANNEL_MAX_CONNECTION_AGE_SEC(), 86400L);
-    long maxConnectionAgeGrace = DefaultEggrollConf
+    long maxConnectionAgeGrace = DefaultErConf
         .getLong(CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_MAX_CONNECTION_AGE_GRACE_SEC(), 86400L);
 
     serverBuilder
@@ -116,18 +118,18 @@ public class GrpcServerFactory {
         .maxConnectionAgeGrace(maxConnectionAgeGrace, TimeUnit.SECONDS);
 
     if (grpcServerConf.isSecureServer()) {
-      String caCrtPath = FileSystemUtils.stripParentDirReference(DefaultEggrollConf
+      String caCrtPath = FileSystemUtils.stripParentDirReference(DefaultErConf
           .getString(CoreConfKeys.CONFKEY_CORE_SECURITY_CA_CRT_PATH(), StringConstants.EMPTY()));
-      String keyCrtPath = FileSystemUtils.stripParentDirReference(DefaultEggrollConf
+      String keyCrtPath = FileSystemUtils.stripParentDirReference(DefaultErConf
           .getString(CoreConfKeys.CONFKEY_CORE_SECURITY_KEY_CRT_PATH(), StringConstants.EMPTY()));
-      String keyPath = FileSystemUtils.stripParentDirReference(DefaultEggrollConf
+      String keyPath = FileSystemUtils.stripParentDirReference(DefaultErConf
           .getString(CoreConfKeys.CONFKEY_CORE_SECURITY_KEY_PATH(), StringConstants.EMPTY()));
-      boolean secureClusterEnabled = DefaultEggrollConf
+      boolean secureClusterEnabled = DefaultErConf
           .getBoolean(CoreConfKeys.CONFKEY_CORE_SECURITY_SECURE_CLUSTER_ENABLED(), false);
-      long sslSessionTimeout = DefaultEggrollConf
+      long sslSessionTimeout = DefaultErConf
           .getLong(CoreConfKeys.CONFKEY_CORE_GRPC_SERVER_CHANNEL_SSL_SESSION_TIMEOUT_SEC(),
               3600 << 4);
-      long sslSessionCacheSize = DefaultEggrollConf
+      long sslSessionCacheSize = DefaultErConf
           .getLong(CoreConfKeys.CONFKEY_CORE_GRPC_SERVER_CHANNEL_SSL_SESSION_CACHE_SIZE(), 65536L);
 
       File caCrt = new File(caCrtPath);

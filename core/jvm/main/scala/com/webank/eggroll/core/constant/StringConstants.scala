@@ -42,6 +42,8 @@ object StringConstants {
   val SEND_START = "send_start"
   val SEND_END = "send_end"
 
+  val DEFAULT = "default"
+
   val ROLE_EGG = "egg"
   val ROLE_ROLL = "roll"
   val ROLE_EGGROLL = "eggroll"

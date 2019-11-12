@@ -12,17 +12,22 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ *
  */
 
 package com.webank.eggroll.core.session
 
+import java.io.{BufferedInputStream, FileInputStream}
+import java.nio.file.Path
 import java.util.Properties
 
+import com.webank.eggroll.core.constant.StringConstants
 import org.apache.commons.beanutils.BeanUtils
 
 import scala.collection.mutable
 
-abstract class EggrollConf {
+abstract class ErConf {
   private val conf: Properties = new Properties()
   private val confRepository: mutable.HashMap[String, String] = new mutable.HashMap[String, String]()
 
@@ -64,20 +69,35 @@ abstract class EggrollConf {
     getProperty(key, defaultValue).toBoolean
   }
 
-  def getString(key: String, defaultValue: String): String = {
+  def getString(key: String, defaultValue: String = StringConstants.EMPTY): String = {
     getProperty(key, defaultValue)
   }
 
   def getPort(): Int
 
   def getModuleName(): String
+
+  def addProperties(prop: Properties): ErConf = {
+    conf.putAll(prop)
+    this
+  }
+
+  def addProperties(path: String): ErConf = {
+    val prop = new Properties
+
+    val fis = new BufferedInputStream(new FileInputStream(path))
+    prop.load(fis)
+
+    addProperties(prop)
+
+  }
 }
 
-object DefaultEggrollConf extends EggrollConf {
+object DefaultErConf extends ErConf {
   var port: Int = -1
   var moduleName: String = _
 
-  def setPort(port: Int): DefaultEggrollConf.type = {
+  def setPort(port: Int): DefaultErConf.type = {
     this.port match {
       case -1 => this.port = port
       case _ => throw new IllegalStateException("port has already been set")

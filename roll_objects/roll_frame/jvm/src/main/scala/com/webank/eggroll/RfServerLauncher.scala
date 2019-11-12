@@ -18,9 +18,8 @@
 
 package com.webank.eggroll
 
-import com.webank.eggroll.core.meta.{ErStore, ErStoreLocator}
-import com.webank.eggroll.format.{FrameBatch, FrameDB, FrameSchema}
-import com.webank.eggroll.rollframe.{ClusterManager, RfPartition, RfStore, RollFrame, RollFrameClientMode, RollFrameService}
+import com.webank.eggroll.format.{FrameBatch, FrameSchema}
+import com.webank.eggroll.rollframe.{ClusterManager, RollFrameClientMode}
 
 class RfServerLauncher{
 

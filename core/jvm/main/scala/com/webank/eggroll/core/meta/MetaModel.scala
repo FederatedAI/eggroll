@@ -35,7 +35,12 @@ case class ErPair(key: Array[Byte], value: Array[Byte]) extends RpcMessage
 
 case class ErPairBatch(pairs: List[ErPair]) extends RpcMessage
 
-case class ErStoreLocator(storeType: String, namespace: String, name: String, path: String = StringConstants.EMPTY) extends RpcMessage {
+case class ErStoreLocator(storeType: String,
+                          namespace: String,
+                          name: String,
+                          path: String = StringConstants.EMPTY,
+                          partitioner: String = StringConstants.EMPTY,
+                          serdes: String = StringConstants.EMPTY) extends RpcMessage {
   def toPath(delim: String = StringConstants.SLASH): String = {
     if (!StringUtils.isBlank(path)) {
       path
@@ -45,10 +50,7 @@ case class ErStoreLocator(storeType: String, namespace: String, name: String, pa
   }
 
   def fork(postfix: String = StringConstants.EMPTY, delimiter: String = StringConstants.UNDERLINE): ErStoreLocator = {
-    ErStoreLocator(storeType = storeType,
-      namespace = namespace,
-      name = if (StringUtils.isBlank(postfix)) System.nanoTime().toString else postfix,
-      path = path)
+    this.copy(name = if (StringUtils.isBlank(postfix)) System.nanoTime().toString else postfix)
   }
 }
 
@@ -136,6 +138,8 @@ object MetaModelPbSerdes {
         .setNamespace(src.namespace)
         .setName(src.name)
         .setPath(src.path)
+        .setPartitioner(src.partitioner)
+        .setSerdes(src.serdes)
 
       builder.build()
     }
@@ -209,7 +213,13 @@ object MetaModelPbSerdes {
 
   implicit class ErStoreLocatorFromPbMessage(src: Meta.StoreLocator) extends PbMessageDeserializer {
     override def fromProto[T >: RpcMessage](): ErStoreLocator = {
-      ErStoreLocator(storeType = src.getStoreType, namespace = src.getNamespace, name = src.getName, path = src.getPath)
+      ErStoreLocator(
+        storeType = src.getStoreType,
+        namespace = src.getNamespace,
+        name = src.getName,
+        path = src.getPath,
+        partitioner = src.getPartitioner,
+        serdes = src.getSerdes)
     }
   }
 

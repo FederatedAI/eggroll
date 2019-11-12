@@ -25,34 +25,6 @@ import com.webank.eggroll.core.schedule.{BaseTaskPlan, JobRunner, ListScheduler}
 class RollFrameService() extends RollFrame {
   val scheduler = new ListScheduler
   val clusterManager = new ClusterManager
-  //val collectiveCommand = new CollectiveCommand(clusterManager.getServerCluster("test1").nodes)
-
-  /*
-    private def getResultStore(output: RfStore, parts: List[RfPartition]):RfStore ={
-      val ret = if(output == null) {
-        RfStore("temp-store-" + Math.abs(new Random().nextLong()), input.namespace, parts.size)
-      } else {
-        output
-      }
-      ret.partitions = parts
-      ret
-    }
-  */
-
-  private def getResultStore(input: ErStore, output: ErStore = null): ErStore = {
-    val finalOutput = if (output == null) {
-      val outputStoreLocator = input.storeLocator.copy(name = s"temp-store-${System.nanoTime()}")
-
-      ErStore(storeLocator = outputStoreLocator,
-        partitions = input.partitions.map(p => p.copy(storeLocator = outputStoreLocator)))
-    } else {
-      output
-    }
-
-    finalOutput
-  }
-
-  // implicit def string2CommandURI(s: String): CommandURI = new CommandURI(s)
 
   def mapBatches(job: ErJob): ErStore = {
     // todo: deal with output
@@ -73,7 +45,7 @@ class RollFrameService() extends RollFrame {
     taskPlan.job.outputs.head
   }
 
-  def companionEgg():EggFrame = new EggFrame
+  def companionEgg(): EggFrame = new EggFrame
 
 }
 

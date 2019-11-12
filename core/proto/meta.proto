@@ -18,7 +18,6 @@ message ServerCluster {
   string id = 1;
   repeated ServerNode nodes = 2;
   string tag = 3;
-  bytes partitioner = 4;
 }
 
 message Functor {
@@ -42,6 +41,8 @@ message StoreLocator {
   string namespace = 2;
   string name = 3;
   string path = 4;
+  string partitioner = 5;
+  string serdes = 6;
 }
 
 message Store {

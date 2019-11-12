@@ -12,6 +12,8 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ *
  */
 
 package com.webank.eggroll.core.constant
@@ -55,4 +57,17 @@ object CoreConfKeys {
   val CONFKEY_CORE_SECURITY_KEY_CRT_PATH = "eggroll.core.security.crt.path"
   val CONFKEY_CORE_SECURITY_KEY_PATH = "eggroll.core.security.key.path"
   val CONFKEY_CORE_SECURITY_SECURE_CLUSTER_ENABLED = "eggroll.core.security.secure.cluster.enabled"
+}
+
+object ClusterManagerConfKeys {
+  val CONFKEY_CLUSTER_MANAGER_JDBC_DRIVER_CLASS_NAME = "eggroll.cluster.manager.jdbc.driver.class.name"
+  val CONFKEY_CLUSTER_MANAGER_JDBC_URL = "eggroll.cluster.manager.jdbc.url"
+  val CONFKEY_CLUSTER_MANAGER_JDBC_USERNAME = "eggroll.cluster.manager.jdbc.username"
+  val CONFKEY_CLUSTER_MANAGER_JDBC_PASSWORD = "eggroll.cluster.manager.jdbc.password"
+  val CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_MAX_IDLE = "eggroll.cluster.manager.datasource.db.max.idle"
+  val CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_MAX_TOTAL = "eggroll.cluster.manager.datasource.db.max.total"
+  val CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_MAX_WAIT_MS = "eggroll.cluster.manager.datasource.db.max.wait.ms"
+  val CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_TIME_BETWEEN_EVICTION_RUNS_MS = "eggroll.cluster.manager.datasource.db.time.between.eviction.runs.ms"
+  val CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_MIN_EVICTABLE_IDLE_TIME_MS = "eggroll.cluster.manager.datasource.db.min.evictable.idle.time.ms"
+  val CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_DEFAULT_AUTO_COMMIT = "eggroll.cluster.manager.datasource.db.default.auto.commit"
 }
