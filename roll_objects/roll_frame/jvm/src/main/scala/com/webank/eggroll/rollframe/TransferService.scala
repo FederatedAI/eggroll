@@ -18,8 +18,9 @@
 
 package com.webank.eggroll.rollframe
 
+import java.net.InetSocketAddress
 import java.nio.ByteBuffer
-import java.nio.channels.SocketChannel
+import java.nio.channels.{ServerSocketChannel, SocketChannel}
 import java.util.concurrent.Executors
 
 import com.webank.eggroll.core.meta.ErServerNode
@@ -32,7 +33,7 @@ trait TransferService
 
 trait CollectiveTransfer
 
-class NioCollectiveTransfer(nodes: List[ErServerNode], timeout:Int = 600*1000) extends CollectiveTransfer {
+class NioCollectiveTransfer(nodes: List[ErServerNode], timeout:Int = 600 * 1000) extends CollectiveTransfer {
   private lazy val clients = nodes.map{ node =>
     (node.id, new NioTransferEndpoint().runClient(node.dataEndpoint.host, node.dataEndpoint.port))
   }.toMap
@@ -43,11 +44,10 @@ class NioCollectiveTransfer(nodes: List[ErServerNode], timeout:Int = 600*1000) e
 
 class NioTransferEndpoint {
 
-  def runServer(host:String, port: Int): Unit = {
-    import java.nio.ByteBuffer
-    import java.nio.channels.ServerSocketChannel
+  def runServer(host: String, port: Int): Unit = {
+
     val serverSocketChannel = ServerSocketChannel.open
-    import java.net.InetSocketAddress
+
     serverSocketChannel.socket.bind(new InetSocketAddress(host,port))
     val executors = Executors.newCachedThreadPool()
 
@@ -57,7 +57,7 @@ class NioTransferEndpoint {
       executors.submit(new Runnable {
         override def run(): Unit = {
           val ch = socketChannel
-          while (true){
+          while (true) {
             val headLenBuf = ByteBuffer.allocateDirect(8)
             ch.read(headLenBuf)
             println("reading new batch")
@@ -83,15 +83,13 @@ class NioTransferEndpoint {
     }
   }
   var clientChannel: SocketChannel = _
-  def runClient(host:String, port: Int): NioTransferEndpoint = {
-    import java.net.InetSocketAddress
-    import java.nio.channels.SocketChannel
+  def runClient(host: String, port: Int): NioTransferEndpoint = {
     clientChannel = SocketChannel.open(new InetSocketAddress(host, port))
     println("NioCollectiveTransfer Connecting to Server on port ..." + port)
     this
   }
 
-  def send(path:String, frameBatch: FrameBatch):Unit = {
+  def send(path: String, frameBatch: FrameBatch):Unit = {
     println("send start:" + path)
     val ch = clientChannel
 
