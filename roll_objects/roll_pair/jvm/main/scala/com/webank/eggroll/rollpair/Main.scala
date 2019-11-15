@@ -34,17 +34,17 @@ object Main extends Logging {
 
     // job
     CommandRouter.register(serviceName = RollPairService.rollMapValuesCommand,
-        serviceParamTypes = List(classOf[ErJob]),
+        serviceParamTypes = Array(classOf[ErJob]),
         routeToClass = classOf[RollPairService],
         routeToMethodName = RollPairService.mapValues)
 
     CommandRouter.register(serviceName = RollPairService.rollReduceCommand,
-        serviceParamTypes = List(classOf[ErJob]),
+        serviceParamTypes = Array(classOf[ErJob]),
         routeToClass = classOf[RollPairService],
         routeToMethodName = RollPairService.reduce)
 
     CommandRouter.register(serviceName = RollPairService.rollJoinCommand,
-        serviceParamTypes = List(classOf[ErJob]),
+        serviceParamTypes = Array(classOf[ErJob]),
         routeToClass = classOf[RollPairService],
         routeToMethodName = RollPairService.join)
 

@@ -16,8 +16,7 @@
  *
  */
 
-package com.webank.eggroll.cluster.manager.model
+package com.webank.eggroll.core.error
 
-class ClusterManagerModel {
-
+class CrudException(message: String) extends RuntimeException(message) {
 }

@@ -16,9 +16,13 @@
  *
  */
 
-package com.webank.eggroll.cluster.manager.grpc
+package com.webank.eggroll.core.constant
 
+object NodeTypes {
+  val CLUSTER_MANAGER = "CLUSTER_MANAGER"
+  val NODE_MANAGER = "NODE_MANAGER"
+}
 
-class NodeReportServiceImpl {
-
+object NodeStatus {
+  val HEALTHY = "HEALTHY"
 }

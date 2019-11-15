@@ -24,11 +24,11 @@ import com.webank.eggroll.core.grpc.client.{GrpcClientContext, GrpcClientTemplat
 import com.webank.eggroll.core.grpc.observer.SameTypeCallerResponseStreamObserver
 import com.webank.eggroll.core.grpc.processor.BaseClientCallStreamProcessor
 import com.webank.eggroll.core.meta.TransferModelPbSerdes._
-import com.webank.eggroll.core.meta.{ErBatch, ErServerNode, ErTransferHeader}
+import com.webank.eggroll.core.meta.{ErBatch, ErProcessor, ErTransferHeader}
 import io.grpc.stub.{ClientCallStreamObserver, StreamObserver}
 
 class TransferClient {
-  def send(data: Array[Byte], tag: String, serverNode: ErServerNode, status: String = StringConstants.EMPTY): Unit = {
+  def send(data: Array[Byte], tag: String, serverNode: ErProcessor, status: String = StringConstants.EMPTY): Unit = {
     val context = new GrpcClientContext[TransferServiceGrpc.TransferServiceStub, Transfer.Batch, Transfer.TransferHeader]
 
     val delayedResult = new AwaitSettableFuture[Transfer.TransferHeader]

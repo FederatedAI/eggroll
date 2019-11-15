@@ -73,8 +73,8 @@ case class CollectiveCommand(taskPlan: TaskPlan) {
   def toTasks(job: ErJob): List[ErTask] = {
     val result = mutable.ListBuffer[ErTask]()
 
-    val inputs: List[ErStore] = job.inputs
-    val outputs: List[ErStore] = job.outputs
+    val inputs: Array[ErStore] = job.inputs
+    val outputs: Array[ErStore] = job.outputs
     val inputPartitionSize = inputs.head.partitions.size
 
     var aggregateOutputPartition: ErPartition = null
@@ -98,7 +98,7 @@ case class CollectiveCommand(taskPlan: TaskPlan) {
         })
       }
 
-      result.append(ErTask(id = job.id + "-" + i, name = job.name, inputs = inputPartitions.toList, outputs = outputPartitions.toList, job = job))
+      result.append(ErTask(id = job.id + "-" + i, name = job.name, inputs = inputPartitions.toArray, outputs = outputPartitions.toArray, job = job))
     }
 
     result.toList
@@ -109,7 +109,7 @@ class CommandServiceSupplier(task: ErTask, command: CommandURI)
   extends Supplier[ErCommandResponse] {
   override def get(): ErCommandResponse = {
     val client = new CommandClient()
-    client.send(task, command)
+    client.sendTask(task, command)
   }
 }
 

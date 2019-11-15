@@ -35,9 +35,9 @@ object RfServerLauncher {
   def main(args: Array[String]): Unit = {
     printServerMes()
     val mode = args(0).toLowerCase() // server/client
-    val nodeId = args(1) // 0,1,2
+    val nodeId = args(1).toLong // 0,1,2
     val taskType = args(2).toLowerCase() // map,reduce,aggregate
-    val clusterId = null
+    val clusterId = -1
 
     // whether is't client mode
     mode match {

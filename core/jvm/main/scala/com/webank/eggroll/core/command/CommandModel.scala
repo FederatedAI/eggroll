@@ -33,15 +33,15 @@ import scala.collection.mutable.ArrayBuffer
 import scala.reflect.ClassTag
 
 case class ErService(serviceName: String,
-                     serviceParamTypes: List[Class[_]],
-                     serviceReturnTypes: List[Class[_]],
+                     serviceParamTypes: Array[Class[_]],
+                     serviceReturnTypes: Array[Class[_]],
                      callBasedInstance: Any,
                      routeToMethod: Method,
                      scope: String = StringConstants.EMPTY)
 
-case class ErCommandRequest(id: Long = System.currentTimeMillis(), uri: String, args: Array[Array[Byte]] = null, kwargs: immutable.Map[String, Array[Byte]] = null) extends RpcMessage
+case class ErCommandRequest(id: String = System.currentTimeMillis().toString, uri: String, args: Array[Array[Byte]] = null, kwargs: immutable.Map[String, Array[Byte]] = null) extends RpcMessage
 
-case class ErCommandResponse(id: Long, request: ErCommandRequest = null, results: Array[Array[Byte]] = null) extends RpcMessage
+case class ErCommandResponse(id: String, request: ErCommandRequest = null, results: Array[Array[Byte]] = null) extends RpcMessage
 
 class CommandURI(uriString: String) {
   val uri = new URI(uriString)

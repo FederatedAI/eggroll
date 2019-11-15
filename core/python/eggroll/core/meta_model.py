@@ -141,11 +141,12 @@ class ErPairBatch(RpcMessage):
 
 class ErStoreLocator(RpcMessage):
   def __init__(self, store_type: str, namespace: str, name: str,
-      path: str = '', partitioner: str = '', serdes: str = ''):
+      path: str = '', total_partitions = -1, partitioner: str = '', serdes: str = ''):
     self._store_type = store_type
     self._namespace = namespace
     self._name = name
     self._path = path
+    self._total_partitions = -1
     self._partitioner = partitioner
     self._serdes = serdes
 
@@ -154,6 +155,7 @@ class ErStoreLocator(RpcMessage):
                                  namespace=self._namespace,
                                  name=self._name,
                                  path=self._path,
+                                 totalPartitions=self._total_partitions,
                                  partitioner=self._partitioner,
                                  serdes=self._serdes)
 
@@ -163,6 +165,7 @@ class ErStoreLocator(RpcMessage):
                           namespace=pb_message.namespace,
                           name=pb_message.name,
                           path=pb_message.path,
+                          total_partitions=pb_message.totalPartitions,
                           partitioner=pb_message.partitioner,
                           serdes=pb_message.serdes)
 
@@ -172,7 +175,7 @@ class ErStoreLocator(RpcMessage):
     return self._path
 
   def __repr__(self):
-    return f'ErStoreLocator(store_type={self._store_type}, namespace={self._namespace}, name={self._name}, path={self._path}, partitioner={self._partitioner}, serdes={self._serdes})'
+    return f'ErStoreLocator(store_type={self._store_type}, namespace={self._namespace}, name={self._name}, path={self._path}, total_partitions={self._total_partitions}, partitioner={self._partitioner}, serdes={self._serdes})'
 
 
 class ErPartition(RpcMessage):

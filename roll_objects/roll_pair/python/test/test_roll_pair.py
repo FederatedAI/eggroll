@@ -28,7 +28,8 @@ class TestRollPair(unittest.TestCase):
     store_locator = ErStoreLocator(store_type="levelDb", namespace="ns",
                                    name='name')
     rp = RollPair(store_locator)
-
+    for i in range(10):
+      rp.put(xxxx)
     res = rp.map_values(lambda v : v + b'~2')
 
     print('res: ', res)

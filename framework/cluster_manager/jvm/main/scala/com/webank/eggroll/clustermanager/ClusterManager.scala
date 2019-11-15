@@ -21,9 +21,5 @@ package com.webank.eggroll.cluster.manager.clustermanager
 import com.webank.eggroll.core.meta.{ErPartition, ErStore}
 
 class ClusterManager {
-  def getPartitions(store: ErStore): ErStore = {
-    val result = store.copy(store.storeLocator, List[ErPartition]())
 
-    result
-  }
 }

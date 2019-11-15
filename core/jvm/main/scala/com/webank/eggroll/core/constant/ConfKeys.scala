@@ -70,4 +70,7 @@ object ClusterManagerConfKeys {
   val CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_TIME_BETWEEN_EVICTION_RUNS_MS = "eggroll.cluster.manager.datasource.db.time.between.eviction.runs.ms"
   val CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_MIN_EVICTABLE_IDLE_TIME_MS = "eggroll.cluster.manager.datasource.db.min.evictable.idle.time.ms"
   val CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_DEFAULT_AUTO_COMMIT = "eggroll.cluster.manager.datasource.db.default.auto.commit"
+  val CONFKEY_CLUSTER_MANAGER_HOST = "eggroll.cluster.manager.host"
+  val CONFKEY_CLUSTER_MANAGER_PORT = "eggroll.cluster.manager.port"
+
 }

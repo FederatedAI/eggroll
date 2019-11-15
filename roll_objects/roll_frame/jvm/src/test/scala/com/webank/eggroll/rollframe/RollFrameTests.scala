@@ -22,7 +22,7 @@ import java.util.Random
 import java.util.concurrent.{Callable, Executors}
 
 import com.webank.eggroll.core.io.adapter.BlockDeviceAdapter
-import com.webank.eggroll.core.meta.{ErPartition, ErServerNode, ErStore, ErStoreLocator}
+import com.webank.eggroll.core.meta.{ErPartition, ErProcessor, ErStore, ErStoreLocator}
 import com.webank.eggroll.format._
 import org.junit.{Before, Test}
 
@@ -31,7 +31,7 @@ class RollFrameTests {
   private val clusterManager = testAssets.clusterManager
   @Before
   def setup():Unit = {
-    testAssets.clusterManager.startServerCluster(nodeId = "0")
+    testAssets.clusterManager.startServerCluster(nodeId = 0)
   }
 
   @Test

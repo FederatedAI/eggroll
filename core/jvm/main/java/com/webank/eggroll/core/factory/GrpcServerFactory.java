@@ -76,7 +76,7 @@ public class GrpcServerFactory {
       public void run() {
         // Use stderr here since the logger may have been reset by its JVM shutdown hook.
         LOGGER.info("*** shutting down gRPC server in shutdown hook. addr: {} ***", endpoint);
-        this.stop();
+        this.interrupt();
         LOGGER.info("*** server shut down. addr: {} ***", endpoint);
       }
     });

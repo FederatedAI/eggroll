@@ -18,8 +18,6 @@
 
 package com.webank.eggroll.core.meta
 
-import java.lang.reflect.Method
-
 import com.google.protobuf.{ByteString, Message => PbMessage}
 import com.webank.eggroll.core.constant.StringConstants
 import com.webank.eggroll.core.datastructure.RpcMessage
@@ -29,16 +27,19 @@ import org.apache.commons.lang3.StringUtils
 
 import scala.collection.JavaConverters._
 
-case class ErFunctor(name: String = StringConstants.EMPTY, serdes: String = StringConstants.EMPTY, body: Array[Byte]) extends RpcMessage
+case class ErFunctor(name: String = StringConstants.EMPTY,
+                     serdes: String = StringConstants.EMPTY,
+                     body: Array[Byte]) extends RpcMessage
 
 case class ErPair(key: Array[Byte], value: Array[Byte]) extends RpcMessage
 
-case class ErPairBatch(pairs: List[ErPair]) extends RpcMessage
+case class ErPairBatch(pairs: Array[ErPair]) extends RpcMessage
 
 case class ErStoreLocator(storeType: String,
                           namespace: String,
                           name: String,
                           path: String = StringConstants.EMPTY,
+                          totalPartitions: Int = 0,
                           partitioner: String = StringConstants.EMPTY,
                           serdes: String = StringConstants.EMPTY) extends RpcMessage {
   def toPath(delim: String = StringConstants.SLASH): String = {
@@ -54,11 +55,11 @@ case class ErStoreLocator(storeType: String,
   }
 }
 
-case class ErPartition(id: String, storeLocator: ErStoreLocator, node: ErServerNode) extends RpcMessage {
-  def toPath(delim: String = StringConstants.SLASH): String = String.join(delim, storeLocator.toPath(delim = delim), id)
+case class ErPartition(id: Int, storeLocator: ErStoreLocator, processor: ErProcessor) extends RpcMessage {
+  def toPath(delim: String = StringConstants.SLASH): String = String.join(delim, storeLocator.toPath(delim = delim), id.toString)
 }
 
-case class ErStore(storeLocator: ErStoreLocator, partitions: List[ErPartition] = List.empty) extends RpcMessage {
+case class ErStore(storeLocator: ErStoreLocator, partitions: Array[ErPartition] = Array.empty) extends RpcMessage {
   def toPath(delim: String = StringConstants.SLASH): String = storeLocator.toPath(delim = delim)
 
   def fork(storeLocator: ErStoreLocator): ErStore = {
@@ -72,21 +73,21 @@ case class ErStore(storeLocator: ErStoreLocator, partitions: List[ErPartition] =
   }
 }
 
-case class ErJob(id: String, name: String = StringConstants.EMPTY, inputs: List[ErStore], outputs: List[ErStore] = List(), functors: List[ErFunctor]) extends RpcMessage
+case class ErJob(id: String, name: String = StringConstants.EMPTY, inputs: Array[ErStore], outputs: Array[ErStore] = Array(), functors: Array[ErFunctor]) extends RpcMessage
 
-case class ErTask(id: String, name: String = StringConstants.EMPTY, inputs: List[ErPartition], outputs: List[ErPartition], job: ErJob) extends RpcMessage {
+case class ErTask(id: String, name: String = StringConstants.EMPTY, inputs: Array[ErPartition], outputs: Array[ErPartition], job: ErJob) extends RpcMessage {
   def getCommandEndpoint: ErEndpoint = {
     if (inputs == null || inputs.isEmpty) {
       throw new IllegalArgumentException("Partition input is empty")
     }
 
-    val node = inputs.head.node
+    val processor = inputs.head.processor
 
-    if (node == null) {
+    if (processor == null) {
       throw new IllegalArgumentException("Head node's input partition is null")
     }
 
-    node.commandEndpoint
+    processor.commandEndpoint
   }
 }
 
@@ -125,7 +126,7 @@ object MetaModelPbSerdes {
   implicit class ErPairBatchToPbMessage(src: ErPairBatch) extends PbMessageSerializer {
     override def toProto[T >: PbMessage](): Meta.PairBatch = {
       val builder = Meta.PairBatch.newBuilder()
-        .addAllPairs(src.pairs.map(_.toProto()).asJava)
+        .addAllPairs(src.pairs.toList.map(_.toProto()).asJava)
 
       builder.build()
     }
@@ -138,6 +139,7 @@ object MetaModelPbSerdes {
         .setNamespace(src.namespace)
         .setName(src.name)
         .setPath(src.path)
+        .setTotalPartitions(src.totalPartitions)
         .setPartitioner(src.partitioner)
         .setSerdes(src.serdes)
 
@@ -149,7 +151,7 @@ object MetaModelPbSerdes {
     override def toProto[T >: PbMessage](): Meta.Store = {
       val builder = Meta.Store.newBuilder()
         .setStoreLocator(src.storeLocator.toProto())
-        .addAllPartitions(src.partitions.map(_.toProto()).asJava)
+        .addAllPartitions(src.partitions.toList.map(_.toProto()).asJava)
 
       builder.build()
     }
@@ -160,7 +162,7 @@ object MetaModelPbSerdes {
       val builder = Meta.Partition.newBuilder()
         .setId(src.id)
         .setStoreLocator(src.storeLocator.toProto())
-        .setNode(src.node.toProto())
+        .setProcessor(src.processor.toProto())
 
       builder.build()
     }
@@ -171,9 +173,9 @@ object MetaModelPbSerdes {
       val builder = Meta.Job.newBuilder()
         .setId(src.id)
         .setName(src.name)
-        .addAllInputs(src.inputs.map(_.toProto()).asJava)
-        .addAllOutputs(src.outputs.map(_.toProto()).asJava)
-        .addAllFunctors(src.functors.map(_.toProto()).asJava)
+        .addAllInputs(src.inputs.toList.map(_.toProto()).asJava)
+        .addAllOutputs(src.outputs.toList.map(_.toProto()).asJava)
+        .addAllFunctors(src.functors.toList.map(_.toProto()).asJava)
 
       builder.build()
     }
@@ -184,8 +186,8 @@ object MetaModelPbSerdes {
       val builder = Meta.Task.newBuilder()
         .setId(src.id)
         .setName(src.name)
-        .addAllInputs(src.inputs.map(_.toProto()).asJava)
-        .addAllOutputs(src.outputs.map(_.toProto()).asJava)
+        .addAllInputs(src.inputs.toList.map(_.toProto()).asJava)
+        .addAllOutputs(src.outputs.toList.map(_.toProto()).asJava)
         .setJob(src.job.toProto())
 
       builder.build()
@@ -207,7 +209,7 @@ object MetaModelPbSerdes {
 
   implicit class ErPairBatchFromPbMessage(src: Meta.PairBatch) extends PbMessageDeserializer {
     override def fromProto[T >: RpcMessage](): ErPairBatch = {
-      ErPairBatch(pairs = src.getPairsList.asScala.map(_.fromProto()).toList)
+      ErPairBatch(pairs = src.getPairsList.asScala.map(_.fromProto()).toArray)
     }
   }
 
@@ -218,6 +220,7 @@ object MetaModelPbSerdes {
         namespace = src.getNamespace,
         name = src.getName,
         path = src.getPath,
+        totalPartitions = src.getTotalPartitions,
         partitioner = src.getPartitioner,
         serdes = src.getSerdes)
     }
@@ -225,13 +228,13 @@ object MetaModelPbSerdes {
 
   implicit class ErStoreFromPbMessage(src: Meta.Store) extends PbMessageDeserializer {
     override def fromProto[T >: RpcMessage](): ErStore = {
-      ErStore(storeLocator = src.getStoreLocator.fromProto(), src.getPartitionsList.asScala.map(_.fromProto()).toList)
+      ErStore(storeLocator = src.getStoreLocator.fromProto(), src.getPartitionsList.asScala.map(_.fromProto()).toArray)
     }
   }
 
   implicit class ErPartitionFromPbMessage(src: Meta.Partition) extends PbMessageDeserializer {
     override def fromProto[T >: RpcMessage](): ErPartition = {
-      ErPartition(id = src.getId, storeLocator = src.getStoreLocator.fromProto(), node = src.getNode.fromProto())
+      ErPartition(id = src.getId, storeLocator = src.getStoreLocator.fromProto(), processor = src.getProcessor.fromProto())
     }
   }
 
@@ -239,9 +242,9 @@ object MetaModelPbSerdes {
     override def fromProto[T >: RpcMessage](): ErJob = {
       ErJob(id = src.getId,
         name = src.getName,
-        inputs = src.getInputsList.asScala.map(_.fromProto()).toList,
-        outputs = src.getOutputsList.asScala.map(_.fromProto()).toList,
-        functors = src.getFunctorsList.asScala.map(_.fromProto()).toList)
+        inputs = src.getInputsList.asScala.map(_.fromProto()).toArray,
+        outputs = src.getOutputsList.asScala.map(_.fromProto()).toArray,
+        functors = src.getFunctorsList.asScala.map(_.fromProto()).toArray)
     }
   }
 
@@ -249,8 +252,8 @@ object MetaModelPbSerdes {
     override def fromProto[T >: RpcMessage](): ErTask = {
       ErTask(id = src.getId,
         name = src.getName,
-        inputs = src.getInputsList.asScala.map(_.fromProto()).toList,
-        outputs = src.getOutputsList.asScala.map(_.fromProto()).toList,
+        inputs = src.getInputsList.asScala.map(_.fromProto()).toArray,
+        outputs = src.getOutputsList.asScala.map(_.fromProto()).toArray,
         job = src.getJob.fromProto())
     }
   }

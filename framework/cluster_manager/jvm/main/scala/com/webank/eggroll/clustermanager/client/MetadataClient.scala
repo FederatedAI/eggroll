@@ -16,33 +16,21 @@
  *
  */
 
-package com.webank.eggroll.clustermanager.metaservice
-
-import java.io.File
-import java.util.Properties
+package com.webank.eggroll.clustermanager.client
 
 import com.webank.eggroll.core.constant.ClusterManagerConfKeys
+import com.webank.eggroll.core.factory.GrpcChannelFactory
+import com.webank.eggroll.core.meta.ErServerNode
 import com.webank.eggroll.core.session.DefaultErConf
-import org.junit.{BeforeClass, Test}
 
-class TestStoreCrudOperator {
+class MetadataClient {
+  private def init(): Unit = {
+    val clusterManagerHost = DefaultErConf.getString(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST)
+    val clusterMangerPort = DefaultErConf.getString(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT)
 
-  println(new File(".").getAbsolutePath)
-  DefaultErConf.addProperties("main/resources/cluster-manager.properties")
-
-  @Test
-  def testGetStoreById(): Unit = {
-    val storeCrudOperator = new StoreCrudOperator
-    val result = storeCrudOperator.getStoreById(1L)
-
-    println(result)
   }
 
-  @Test
-  def testInsertStore(): Unit = {
-    val storeCrudOperator = new StoreCrudOperator
-    val result = storeCrudOperator.insertStore()
+/*  def getServerNode(input: ErServerNode): ErServerNode = {
 
-    print(result)
-  }
+  }*/
 }

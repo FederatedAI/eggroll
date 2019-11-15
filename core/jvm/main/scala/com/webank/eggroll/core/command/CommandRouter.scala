@@ -46,12 +46,14 @@ object CommandRouter {
   // todo: consider different scope of target instance suck as 'singleton', 'proto', 'session' etc.
   //  This can be implemented as an annotation reader
   def register(serviceName: String,
-               serviceParamTypes: List[Class[_]],
-               serviceReturnTypes: List[Class[_]] = null,
+               serviceParamTypes: Array[Class[_]],
+               serviceReturnTypes: Array[Class[_]] = null,
+               serviceSerializer: String = StringConstants.EMPTY,
+               serviceDeserializer: String = StringConstants.EMPTY,
                routeToClass: Class[_] = null,
                routeToMethodName: String = null,
                routeToCallBasedClassInstance: Any = null,
-               callBasedClassInstanceInitArgs: List[AnyRef] = null): Unit = this.synchronized {
+               callBasedClassInstanceInitArgs: Array[AnyRef] = null): Unit = this.synchronized {
     if (serviceRouteTable.contains(serviceName)) {
       throw new IllegalStateException(s"Service ${serviceName} has been registered at: ${serviceRouteTable(serviceName)}")
     }

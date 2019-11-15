@@ -19,6 +19,8 @@
 package com.webank.eggroll.core.constant
 
 object StringConstants {
+  val PROTOBUF = "PROTOBUF"
+
   val SLASH = "/"
 
   val GRPC_PARSE_FROM = "parseFrom"
@@ -77,6 +79,10 @@ object StringConstants {
   val TYPE = "type"
   val SIZE = "size"
 
+  val ROLL_PAIR = "rollpair"
+  val ROLL_FRAME = "rollframe"
+  val LMDB = "lmdb"
+  val LEVELDB = "leveldb"
   val FILE = "file"
   val CACHE = "cache"
   val QUEUE = "queue"
