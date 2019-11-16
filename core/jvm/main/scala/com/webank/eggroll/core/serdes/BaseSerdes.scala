@@ -12,6 +12,8 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ *
  */
 
 package com.webank.eggroll.core.serdes
@@ -19,34 +21,31 @@ package com.webank.eggroll.core.serdes
 import com.google.protobuf.{ByteString, Message => PbMessage}
 import com.webank.eggroll.core.datastructure.RpcMessage
 
-import scala.reflect.ClassTag
-
 trait BaseSerializable extends Serializable {
-  def toBytes(): Array[Byte]
+  //def toBytes(): Array[Byte]
 }
 
 trait BaseDeserializable extends Serializable {
-  def fromBytes[T: ClassTag](bytes: Array[Byte]): T
+  //def fromBytes(bytes: Array[Byte]): Any
 }
 
-trait PbMessageSerializer extends BaseSerializable {
+trait ErSerializer {
+  def toBytes(baseSerializable: BaseSerializable): Array[Byte]
+}
+
+trait ErDeserializer {
+  def fromBytes(bytes: Array[Byte]): Any
+}
+
+trait PbMessageSerializer extends ErSerializer {
   def toProto[T >: PbMessage](): T
-
-  override def toBytes(): Array[Byte] = toProto().toByteArray // toByteString preferred
+  override def toBytes(baseSerializable: BaseSerializable): Array[Byte] = ???
   def toByteString(): ByteString = toProto().toByteString
+  def toBytes(): Array[Byte] = toProto().toByteArray
 }
 
-trait PbMessageDeserializer extends BaseDeserializable {
+trait PbMessageDeserializer extends ErDeserializer {
   def fromProto[T >: RpcMessage](): T
 
-  override def fromBytes[T: ClassTag](bytes: Array[Byte]): T = ???
+  override def fromBytes(bytes: Array[Byte]): Any = ???
 }
-
-trait PbCommandSerializer extends BaseSerializable {
-  override def toBytes(): Array[Byte] = ???
-}
-
-trait PbCommandDeserializer extends BaseDeserializable {
-  override def fromBytes[T: ClassTag](bytes: Array[Byte]): T = ???
-}
-

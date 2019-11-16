@@ -20,16 +20,14 @@ package com.webank.eggroll.core.serdes
 
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream, ObjectInputStream, ObjectOutputStream}
 
-import scala.reflect.ClassTag
-
-trait MonadSerDes extends BaseSerializable with BaseDeserializable {
+trait MonadSerDes extends ErSerializer with ErDeserializer {
   def serialize(func: Any): Array[Byte]
 
   def deserialize[T](bytes: Array[Byte]): T
 }
 
 case class DefaultScalaSerdes(func: Any = null) extends MonadSerDes {
-  override def toBytes(): Array[Byte] = serialize(func)
+  //override def toBytes(): Array[Byte] = serialize(func)
 
   override def serialize(func: Any): Array[Byte] = {
     val bo = new ByteArrayOutputStream()
@@ -41,7 +39,7 @@ case class DefaultScalaSerdes(func: Any = null) extends MonadSerDes {
     }
   }
 
-  override def fromBytes[T: ClassTag](bytes: Array[Byte]): T = deserialize(bytes)
+  // override def fromBytes(bytes: Array[Byte]): Any = deserialize(bytes)
 
   override def deserialize[T](bytes: Array[Byte]): T = {
     val bo = new ObjectInputStream(new ByteArrayInputStream(bytes))
@@ -51,4 +49,8 @@ case class DefaultScalaSerdes(func: Any = null) extends MonadSerDes {
       bo.close()
     }
   }
+
+  override def fromBytes(bytes: Array[Byte]): Any = deserialize(bytes)
+
+  override def toBytes(baseSerializable: BaseSerializable): Array[Byte] = serialize(baseSerializable)
 }

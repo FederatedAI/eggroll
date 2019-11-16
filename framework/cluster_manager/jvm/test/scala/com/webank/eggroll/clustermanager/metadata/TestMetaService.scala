@@ -29,7 +29,7 @@ class TestMetaService {
   def testGetNode(): Unit = {
     CommandRouter.register(serviceName = "cluster-manager/meta-service/v1/getNode",
       serviceParamTypes = Array(classOf[ErServerNode]),
-      serviceReturnTypes = Array(classOf[ErServerNode]),
+      serviceResultTypes = Array(classOf[ErServerNode]),
       routeToClass = classOf[NodeCrudOperator])
 
     val metaService = NettyServerBuilder

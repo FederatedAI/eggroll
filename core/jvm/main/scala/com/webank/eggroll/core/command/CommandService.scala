@@ -18,10 +18,10 @@
 
 package com.webank.eggroll.core.command
 
-import com.webank.eggroll.core.command.CommandPbSerdes._
+import com.webank.eggroll.core.command.CommandModelPbMessageSerdes._
 import com.webank.eggroll.core.constant.ModuleConstants
 import com.webank.eggroll.core.grpc.server.GrpcServerWrapper
-import com.webank.eggroll.core.util.{Logging, ToStringUtils}
+import com.webank.eggroll.core.util.Logging
 import io.grpc.stub.StreamObserver
 
 import scala.collection.JavaConverters._

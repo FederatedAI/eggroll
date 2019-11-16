@@ -18,11 +18,9 @@
 
 package com.webank.eggroll.rollpair.component
 
-import com.webank.eggroll.core.command.{CollectiveCommand, CommandURI}
-import com.webank.eggroll.core.constant.StringConstants
+import com.webank.eggroll.core.command.CommandURI
 import com.webank.eggroll.core.meta._
-import com.webank.eggroll.core.meta.MetaModelPbSerdes._
-import com.webank.eggroll.core.schedule.{JobRunner, JoinTaskPlan, ListScheduler, MapTaskPlan, ReduceTaskPlan, ShuffleTaskPlan}
+import com.webank.eggroll.core.schedule._
 import com.webank.eggroll.core.serdes.DefaultScalaSerdes
 
 import scala.collection.mutable

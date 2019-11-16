@@ -19,7 +19,7 @@
 package com.webank.eggroll.core.command
 
 import com.google.protobuf.ByteString
-import com.webank.eggroll.core.command.CommandPbSerdes._
+import com.webank.eggroll.core.command.CommandModelPbMessageSerdes._
 import com.webank.eggroll.core.command.CommandServiceGrpc.CommandServiceBlockingStub
 import com.webank.eggroll.core.constant.StringConstants
 import com.webank.eggroll.core.di.Singletons

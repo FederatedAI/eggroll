@@ -18,7 +18,7 @@
 
 package com.webank.eggroll.core.command
 
-import com.webank.eggroll.core.command.CommandPbSerdes._
+import com.webank.eggroll.core.command.CommandModelPbMessageSerdes._
 import org.junit.Test
 
 import scala.collection.mutable

@@ -21,14 +21,18 @@ package com.webank.eggroll.core.meta
 import com.google.protobuf.{Message => PbMessage}
 import com.webank.eggroll.core.constant.StringConstants
 import com.webank.eggroll.core.datastructure.RpcMessage
-import com.webank.eggroll.core.serdes.{PbMessageDeserializer, PbMessageSerializer}
+import com.webank.eggroll.core.serdes.{BaseSerializable, PbMessageDeserializer, PbMessageSerializer}
 import jdk.nashorn.internal.ir.annotations.Immutable
 
 import scala.beans.BeanProperty
 import scala.collection.JavaConverters._
 
+trait NetworkingRpcMessage extends RpcMessage {
+  override def rpcMessageType(): String = "Networking"
+}
+
 @Immutable
-case class ErEndpoint(@BeanProperty host: String, @BeanProperty port: Int = -1) extends RpcMessage {
+case class ErEndpoint(@BeanProperty host: String, @BeanProperty port: Int = -1) extends NetworkingRpcMessage {
   override def toString: String = s"$host:$port"
 }
 
@@ -36,26 +40,26 @@ case class ErProcessor(id: Long = -1,
                        name: String = StringConstants.EMPTY,
                        commandEndpoint: ErEndpoint = null,
                        dataEndpoint: ErEndpoint = null,
-                       tag: String = StringConstants.EMPTY) extends RpcMessage
+                       tag: String = StringConstants.EMPTY) extends NetworkingRpcMessage
 
 case class ErProcessorBatch(id: Long = -1,
                             name: String = StringConstants.EMPTY,
                             processors: Array[ErProcessor] = Array(),
-                            tag: String = StringConstants.EMPTY) extends RpcMessage
+                            tag: String = StringConstants.EMPTY) extends NetworkingRpcMessage
 
 case class ErServerNode(id: Long = -1,
                         name: String = StringConstants.EMPTY,
                         clusterId: Long = 0,
                         endpoint: ErEndpoint = ErEndpoint(host = StringConstants.EMPTY, port = -1),
                         nodeType: String = StringConstants.EMPTY,
-                        status: String = StringConstants.EMPTY) extends RpcMessage
+                        status: String = StringConstants.EMPTY) extends NetworkingRpcMessage
 
 case class ErServerCluster(id: Long = -1,
                            name: String = StringConstants.EMPTY,
                            serverNodes: Array[ErServerNode] = Array(),
-                           tag: String = StringConstants.EMPTY) extends RpcMessage
+                           tag: String = StringConstants.EMPTY) extends NetworkingRpcMessage
 
-object NetworkingModelPbSerdes {
+object NetworkingModelPbMessageSerdes {
 
   // serializers
   implicit class ErEndpointToPbMessage(src: ErEndpoint) extends PbMessageSerializer {
@@ -66,6 +70,9 @@ object NetworkingModelPbSerdes {
 
       builder.build()
     }
+
+    override def toBytes(baseSerializable: BaseSerializable): Array[Byte] =
+      baseSerializable.asInstanceOf[ErEndpoint].toBytes()
   }
 
   implicit class ErProcessorToPbMessage(src: ErProcessor) extends PbMessageSerializer {
@@ -79,6 +86,9 @@ object NetworkingModelPbSerdes {
 
       builder.build()
     }
+
+    override def toBytes(baseSerializable: BaseSerializable): Array[Byte] =
+      baseSerializable.asInstanceOf[ErProcessor].toBytes()
   }
 
   implicit class ErProcessorBatchToPbMessage(src: ErProcessorBatch) extends PbMessageSerializer {
@@ -91,6 +101,9 @@ object NetworkingModelPbSerdes {
 
       builder.build()
     }
+
+    override def toBytes(baseSerializable: BaseSerializable): Array[Byte] =
+      baseSerializable.asInstanceOf[ErProcessorBatch].toBytes()
   }
 
   implicit class ErServerNodeToPbMessage(src: ErServerNode) extends PbMessageSerializer {
@@ -105,6 +118,9 @@ object NetworkingModelPbSerdes {
 
       builder.build()
     }
+
+    override def toBytes(baseSerializable: BaseSerializable): Array[Byte] =
+      baseSerializable.asInstanceOf[ErServerNode].toBytes()
   }
 
   implicit class ErServerClusterToPbMessage(src: ErServerCluster) extends PbMessageSerializer {
@@ -116,13 +132,19 @@ object NetworkingModelPbSerdes {
 
       builder.build()
     }
+
+    override def toBytes(baseSerializable: BaseSerializable): Array[Byte] =
+      baseSerializable.asInstanceOf[ErServerCluster].toBytes()
   }
 
   // deserializers
-  implicit class ErEndpointFromPbMessage(src: Meta.Endpoint) extends PbMessageDeserializer {
+  implicit class ErEndpointFromPbMessage(src: Meta.Endpoint = null) extends PbMessageDeserializer {
     override def fromProto[T >: RpcMessage](): ErEndpoint = {
       ErEndpoint(host = src.getHost, port = src.getPort)
     }
+
+    override def fromBytes(bytes: Array[Byte]): ErEndpoint =
+      Meta.Endpoint.parseFrom(bytes).fromProto()
   }
 
   implicit class ErProcessorFromPbMessage(src: Meta.Processor) extends PbMessageDeserializer {
@@ -134,6 +156,9 @@ object NetworkingModelPbSerdes {
         dataEndpoint = src.getDataEndpoint.fromProto(),
         tag = src.getTag)
     }
+
+    override def fromBytes(bytes: Array[Byte]): ErProcessor =
+      Meta.Processor.parseFrom(bytes).fromProto()
   }
 
   implicit class ErProcessorBatchFromPbMessage(src: Meta.ProcessorBatch) extends PbMessageDeserializer {
@@ -144,6 +169,9 @@ object NetworkingModelPbSerdes {
         processors = src.getProcessorsList.asScala.map(_.fromProto()).toArray,
         tag = src.getTag)
     }
+
+    override def fromBytes(bytes: Array[Byte]): ErProcessorBatch =
+      Meta.ProcessorBatch.parseFrom(bytes).fromProto()
   }
 
   implicit class ErServerNodeFromPbMessage(src: Meta.ServerNode) extends PbMessageDeserializer {
@@ -156,6 +184,9 @@ object NetworkingModelPbSerdes {
         nodeType = src.getNodeType,
         status = src.getStatus)
     }
+
+    override def fromBytes(bytes: Array[Byte]): ErServerNode =
+      Meta.ServerNode.parseFrom(bytes).fromProto()
   }
 
   implicit class ErServerClusterFromPbMessage(src: Meta.ServerCluster) extends PbMessageDeserializer {
@@ -164,6 +195,8 @@ object NetworkingModelPbSerdes {
         id = src.getId,
         serverNodes = src.getServerNodesList.asScala.map(_.fromProto()).toArray,
         tag = src.getTag)
-  }
 
+    override def fromBytes(bytes: Array[Byte]): ErServerCluster =
+      Meta.ServerCluster.parseFrom(bytes).fromProto()
+  }
 }

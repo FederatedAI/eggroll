@@ -147,7 +147,7 @@ class ClusterManager(mode: String = "local") {
     CommandRouter.register(
       serviceName = "EggFrame.runTask",
       serviceParamTypes = Array(classOf[ErTask]),
-      serviceReturnTypes = Array(classOf[ErStore]),
+      serviceResultTypes = Array(classOf[ErStore]),
       routeToClass = classOf[EggFrame],
       routeToMethodName = "runTask")
 

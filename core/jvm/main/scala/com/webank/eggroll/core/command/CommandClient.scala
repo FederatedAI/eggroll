@@ -21,13 +21,13 @@ package com.webank.eggroll.core.command
 import java.util.concurrent.CountDownLatch
 
 import com.webank.eggroll.core.command.Command.CommandResponse
-import com.webank.eggroll.core.command.CommandPbSerdes._
+import com.webank.eggroll.core.command.CommandModelPbMessageSerdes._
 import com.webank.eggroll.core.concurrent.AwaitSettableFuture
 import com.webank.eggroll.core.datastructure.RpcMessage
 import com.webank.eggroll.core.grpc.client.{GrpcClientContext, GrpcClientTemplate}
 import com.webank.eggroll.core.grpc.observer.SameTypeFutureCallerResponseStreamObserver
+import com.webank.eggroll.core.meta.MetaModelPbMessageSerdes._
 import com.webank.eggroll.core.meta.{ErEndpoint, ErTask}
-import com.webank.eggroll.core.meta.MetaModelPbSerdes._
 import com.webank.eggroll.core.util.Logging
 import io.grpc.stub.StreamObserver
 
@@ -85,7 +85,7 @@ class CommandClient extends Logging {
       CommandResponse]()
       .setGrpcClientContext(context)
 
-    val request = ErCommandRequest(uri = commandUri.uri.toString, args = Array(rpcMessage.serialize()))
+    val request = ErCommandRequest(uri = commandUri.uri.toString, args = Array())
 
     null
   }

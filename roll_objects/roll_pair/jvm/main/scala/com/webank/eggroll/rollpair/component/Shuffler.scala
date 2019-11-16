@@ -19,20 +19,19 @@
 package com.webank.eggroll.rollpair.component
 
 import java.util
-import java.util.concurrent.{Callable, CompletableFuture, CountDownLatch, ThreadPoolExecutor, TimeUnit}
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger, AtomicLong}
+import java.util.concurrent.{CompletableFuture, CountDownLatch, TimeUnit}
 import java.util.function.Supplier
 
 import com.webank.eggroll.core.constant.StringConstants
 import com.webank.eggroll.core.datastructure.{Broker, LinkedBlockingBroker}
 import com.webank.eggroll.core.error.DistributedRuntimeException
-import com.webank.eggroll.core.meta.{ErPair, ErPairBatch, ErPartition, ErStore, Meta}
-import com.webank.eggroll.core.meta.MetaModelPbSerdes._
+import com.webank.eggroll.core.meta.MetaModelPbMessageSerdes._
+import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.transfer.{GrpcTransferService, TransferClient}
 import com.webank.eggroll.core.util.{Logging, ThreadPoolUtils}
 import com.webank.eggroll.rollpair.io.RocksdbSortedKvAdapter
 
-import scala.collection.immutable.Queue
 import scala.collection.mutable
 
 trait Shuffler {

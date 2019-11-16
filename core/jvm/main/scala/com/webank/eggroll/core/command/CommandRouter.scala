@@ -22,7 +22,7 @@ import java.lang.reflect.Method
 
 import com.google.protobuf.ByteString
 import com.webank.eggroll.core.constant.StringConstants
-import com.webank.eggroll.core.meta.MetaModelPbSerdes._
+import com.webank.eggroll.core.meta.MetaModelPbMessageSerdes._
 import com.webank.eggroll.core.meta.{ErJob, ErStore, ErTask, Meta}
 import org.apache.commons.lang3.StringUtils
 import org.apache.commons.lang3.reflect.{ConstructorUtils, MethodUtils}
@@ -47,9 +47,9 @@ object CommandRouter {
   //  This can be implemented as an annotation reader
   def register(serviceName: String,
                serviceParamTypes: Array[Class[_]],
-               serviceReturnTypes: Array[Class[_]] = null,
-               serviceSerializer: String = StringConstants.EMPTY,
-               serviceDeserializer: String = StringConstants.EMPTY,
+               serviceResultTypes: Array[Class[_]] = null,
+               serviceParamDeserializers: Array[String] = Array(),
+               serviceResultSerializers: Array[String] = Array(),
                routeToClass: Class[_] = null,
                routeToMethodName: String = null,
                routeToCallBasedClassInstance: Any = null,
@@ -82,10 +82,14 @@ object CommandRouter {
         ConstructorUtils.invokeConstructor(finalRouteToClass, finalCallBasedClassInstanceInitArgsArray: _*)
       }
 
+
+
     val command = ErService(
       serviceName = serviceName,
       serviceParamTypes = serviceParamTypes,
-      serviceReturnTypes = serviceReturnTypes,
+      serviceResultTypes = serviceResultTypes,
+      serviceParamDeserializers = Array(),
+      serviceResultSerializers = Array(),
       callBasedInstance = finalCallBasedInstance,
       routeToMethod = routeToMethod)
 

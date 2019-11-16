@@ -16,22 +16,8 @@
  *
  */
 
-package com.webank.eggroll.core.datastructure
+package com.webank.eggroll.core.constant
 
-import com.webank.eggroll.core.command.CommandURI
-import com.webank.eggroll.core.meta.ErJob
-import com.webank.eggroll.core.serdes.{BaseDeserializable, BaseSerializable}
-
-// add the to- / from- bytes mapping
-trait RpcMessage extends BaseSerializable with BaseDeserializable {
-  def rpcMessageType(): String = ???
-}
-
-trait SerdesFactory {
-
-}
-
-trait TaskPlan {
-  def job: ErJob
-  def uri: CommandURI
+object SerdesConstants {
+  val PROTOBUF = "PROTOBUF"
 }

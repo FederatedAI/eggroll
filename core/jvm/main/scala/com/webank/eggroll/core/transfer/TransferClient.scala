@@ -23,7 +23,7 @@ import com.webank.eggroll.core.constant.StringConstants
 import com.webank.eggroll.core.grpc.client.{GrpcClientContext, GrpcClientTemplate}
 import com.webank.eggroll.core.grpc.observer.SameTypeCallerResponseStreamObserver
 import com.webank.eggroll.core.grpc.processor.BaseClientCallStreamProcessor
-import com.webank.eggroll.core.meta.TransferModelPbSerdes._
+import com.webank.eggroll.core.meta.TransferModelPbMessageSerdes._
 import com.webank.eggroll.core.meta.{ErBatch, ErProcessor, ErTransferHeader}
 import io.grpc.stub.{ClientCallStreamObserver, StreamObserver}
 
