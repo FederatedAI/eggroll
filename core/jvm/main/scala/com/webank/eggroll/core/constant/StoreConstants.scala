@@ -31,6 +31,7 @@ object PartitionerTypes {
 
 object SerdesTypes {
   val PICKLE = "PICKLE"
+  val PROTOBUF = "PROTOBUF"
 }
 
 object StoreStatus {

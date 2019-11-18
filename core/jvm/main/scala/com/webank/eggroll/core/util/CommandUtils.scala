@@ -16,8 +16,17 @@
  *
  */
 
-package com.webank.eggroll.core.constant
+package com.webank.eggroll.core.util
 
-object SerdesConstants {
-  val PROTOBUF = "PROTOBUF"
+import com.webank.eggroll.core.command.CommandURI
+import com.webank.eggroll.core.constant.StringConstants
+
+object CommandUtils {
+  def toServiceName(prefix: String, methodName: String, delim: String = StringConstants.SLASH): String = {
+    s"${prefix}${delim}${methodName}"
+  }
+
+  def toCommandURI(prefix: String, methodName: String, delim: String = StringConstants.SLASH): CommandURI = {
+    new CommandURI(toServiceName(prefix, methodName, delim))
+  }
 }

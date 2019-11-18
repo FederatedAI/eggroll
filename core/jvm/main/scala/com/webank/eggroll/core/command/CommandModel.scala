@@ -25,7 +25,7 @@ import java.nio.charset.StandardCharsets
 import com.google.protobuf.{ByteString, Message => PbMessage}
 import com.webank.eggroll.core.constant.StringConstants
 import com.webank.eggroll.core.datastructure.RpcMessage
-import com.webank.eggroll.core.serdes.{BaseDeserializable, BaseSerializable, PbMessageDeserializer, PbMessageSerializer}
+import com.webank.eggroll.core.serdes._
 import org.apache.commons.lang3.StringUtils
 
 import scala.collection.mutable.ArrayBuffer
@@ -38,8 +38,8 @@ trait CommandRpcMessage extends RpcMessage {
 case class ErService(serviceName: String,
                      serviceParamTypes: Array[Class[_]],
                      serviceResultTypes: Array[Class[_]],
-                     serviceParamDeserializers: Array[BaseDeserializable],
-                     serviceResultSerializers: Array[BaseSerializable],
+                     serviceParamDeserializers: Array[ErDeserializer],
+                     serviceResultSerializers: Array[ErSerializer],
                      callBasedInstance: Any,
                      routeToMethod: Method,
                      scope: String = StringConstants.EMPTY)

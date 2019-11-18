@@ -87,4 +87,6 @@ object StringConstants {
   val CACHE = "cache"
   val QUEUE = "queue"
   val TOTAL = "total"
+
+  val LOCALHOST = "localhost"
 }

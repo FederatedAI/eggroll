@@ -46,7 +46,7 @@ class CrudOperatorTemplate {
     }
   }
 
-  def doCrudOperationMultipleResult[T](functor: (T, SqlSession) => Array[T], input: T, sqlSession: SqlSession = null, openTransaction: Boolean = false): Array[T] = {
+  def doCrudOperationMultipleResults[T](functor: (T, SqlSession) => Array[T], input: T, sqlSession: SqlSession = null, openTransaction: Boolean = false): Array[T] = {
     val isOpenSession = sqlSession == null
     val finalSqlSession = if (isOpenSession) RdbConnectionPool.openSession() else sqlSession
 

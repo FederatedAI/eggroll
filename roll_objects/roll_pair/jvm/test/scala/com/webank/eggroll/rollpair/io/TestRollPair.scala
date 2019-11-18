@@ -30,6 +30,7 @@ import org.junit.Test
 class TestRollPair extends Logging {
   @Test
   def testMapValues(): Unit = {
+    //Command.CommandRequest.newBuilder().build()
     def append(value: String): String = {
       value + "1"
     }

@@ -57,6 +57,8 @@ object CoreConfKeys {
   val CONFKEY_CORE_SECURITY_KEY_CRT_PATH = "eggroll.core.security.crt.path"
   val CONFKEY_CORE_SECURITY_KEY_PATH = "eggroll.core.security.key.path"
   val CONFKEY_CORE_SECURITY_SECURE_CLUSTER_ENABLED = "eggroll.core.security.secure.cluster.enabled"
+
+  val CONFKEY_CORE_COMMAND_DEFAULT_SERDES_TYPE = "eggroll.core.command.default.serdes.type"
 }
 
 object ClusterManagerConfKeys {

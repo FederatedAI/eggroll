@@ -31,28 +31,31 @@ import org.apache.ibatis.session.SqlSession
 
 import scala.collection.mutable.ArrayBuffer
 
-class StoreCrudOperatorTemplate extends CrudOperator with Logging {
+class StoreCrudOperator extends CrudOperator with Logging {
   private val crudOperatorTemplate = new CrudOperatorTemplate()
   def getOrCreateStore(input: ErStore): ErStore = {
     def doGetOrCreateStore(input: ErStore, sqlSession: SqlSession): ErStore = {
-      val existing = StoreCrudOperatorTemplate.doGetStore(input, sqlSession)
+      val existing = StoreCrudOperator.doGetStore(input, sqlSession)
       if (existing != null) {
         existing
       } else {
-        StoreCrudOperatorTemplate.doCreateStore(input, sqlSession)
+        StoreCrudOperator.doCreateStore(input, sqlSession)
       }
     }
 
     crudOperatorTemplate.doCrudOperationSingleResult(doGetOrCreateStore, input, openTransaction = true)
   }
 
-  def getStore(input: ErStore, sqlSession: SqlSession = null): ErStore = {
-    crudOperatorTemplate.doCrudOperationSingleResult(StoreCrudOperatorTemplate.doGetStore, input, sqlSession)
+  def getStore(input: ErStore): ErStore = {
+    crudOperatorTemplate.doCrudOperationSingleResult(StoreCrudOperator.doGetStore, input)
   }
 
+  def deleteStore(input: ErStore): ErStore = {
+    crudOperatorTemplate.doCrudOperationSingleResult(StoreCrudOperator.doDeleteStore, input, openTransaction = true)
+  }
 }
 
-object StoreCrudOperatorTemplate {
+object StoreCrudOperator {
   private[metadata] def doGetStore(input: ErStore, sqlSession: SqlSession): ErStore = {
     val inputStoreLocator = input.storeLocator
     val storeLocatorExample = new StoreLocatorExample
@@ -151,7 +154,7 @@ object StoreCrudOperatorTemplate {
     }
 
     // todo: integrate with session mechanism
-    val serverCluster = NodeCrudOperator.doGetServerCluster(input = ErServerCluster(0), sqlSession = sqlSession)
+    val serverCluster = ServerNodeCrudOperator.doGetServerCluster(input = ErServerCluster(0), sqlSession = sqlSession)
     val serverNodes = serverCluster.serverNodes
 
     val partitions: ArrayBuffer[ErPartition] = ArrayBuffer[ErPartition]()
@@ -182,5 +185,38 @@ object StoreCrudOperatorTemplate {
     }
 
     ErStore(storeLocator = inputStoreLocator, partitions = partitions.toArray)
+  }
+
+  private[metadata] def doDeleteStore(input: ErStore, sqlSession: SqlSession): ErStore = {
+    val inputStoreLocator = input.storeLocator
+
+    val storeLocatorExample = new StoreLocatorExample
+    storeLocatorExample.createCriteria()
+      .andStoreTypeEqualTo(inputStoreLocator.storeType)
+      .andNamespaceEqualTo(inputStoreLocator.namespace)
+      .andNameEqualTo(inputStoreLocator.name)
+      .andStatusEqualTo(StoreStatus.NORMAL)
+    val storeMapper = sqlSession.getMapper(classOf[StoreLocatorMapper])
+
+    val storeResult = storeMapper.selectByExampleWithRowbounds(storeLocatorExample, RdbConstants.SINGLE_ROWBOUND)
+
+    if (storeResult.isEmpty) {
+      return null
+    }
+
+    val now = System.nanoTime()
+    val store = storeResult.get(0)
+    store.setName(s"${store.getName}.${now}")
+    store.setStatus(StoreStatus.DELETED)
+
+    val rowsAffected = storeMapper.updateByPrimaryKeySelective(store)
+
+    if (rowsAffected != 1) {
+      throw new CrudException(s"Illegal rows affected returned when deleting store: ${rowsAffected}")
+    }
+
+    val outputStoreLocator = inputStoreLocator.copy(name = store.getName)
+
+    ErStore(storeLocator = outputStoreLocator)
   }
 }

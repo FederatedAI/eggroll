@@ -20,14 +20,14 @@ package com.webank.eggroll.clustermanager.metadata
 
 import java.io.File
 
-import com.webank.eggroll.core.meta.{ErEndpoint, ErServerNode, ErServerCluster}
+import com.webank.eggroll.core.meta.{ErEndpoint, ErServerCluster, ErServerNode}
 import com.webank.eggroll.core.session.DefaultErConf
 import org.junit.Test
 
-class TestNodeCrudOperator {
+class TestServerNodeCrudOperator {
   println(new File(".").getAbsolutePath)
-  DefaultErConf.addProperties("main/resources/cluster-manager.properties")
-  val nodeCrudOperator = new NodeCrudOperator
+  DefaultErConf.addProperties("main/resources/cluster-manager.properties.local")
+  val nodeCrudOperator = new ServerNodeCrudOperator
 
   @Test
   def testGetServerCluster(): Unit = {
@@ -39,15 +39,23 @@ class TestNodeCrudOperator {
   }
 
   @Test
-  def testCreateNode(): Unit = {
-    val input = ErServerNode(endpoint = ErEndpoint(host = "localhost", port = 8310))
-    val result = nodeCrudOperator.createServerNode(input)
+  def testGetServerNode(): Unit = {
+    val input = ErServerNode(id = 1)
+    val result = nodeCrudOperator.getServerNode(input)
 
     println(result)
   }
 
   @Test
-  def testGetNode(): Unit = {
+  def testGetServerNodes(): Unit = {
+    val input = ErServerNode(endpoint = ErEndpoint("localhost"))
+    val result = nodeCrudOperator.getServerNodes(input)
+    println(result)
+    println(result.serverNodes.foreach(println))
+  }
+
+  @Test
+  def testGetOrCreateExistingServerNode(): Unit = {
     val input = ErServerNode(id = 1)
     val result = nodeCrudOperator.getServerNode(input)
 
@@ -55,9 +63,10 @@ class TestNodeCrudOperator {
   }
 
   @Test
-  def testGetNodes(): Unit = {
-    val input = ErServerNode(endpoint = ErEndpoint("localhost"))
-    val result = nodeCrudOperator.getServerNodes(input)
-    result.foreach(n => println(n))
+  def testGetOrCreateNewServerNode(): Unit = {
+    val input = ErServerNode(endpoint = ErEndpoint(host = "localhost", port = 9999))
+    val result = nodeCrudOperator.getOrCreateServerNode(input)
+
+    println(result)
   }
 }

@@ -28,8 +28,8 @@ import org.junit.Test
 class TestStoreCrudOperator {
 
   println(new File(".").getAbsolutePath)
-  DefaultErConf.addProperties("main/resources/cluster-manager.properties")
-  val storeCrudOperator = new StoreCrudOperatorTemplate
+  DefaultErConf.addProperties("main/resources/cluster-manager.properties.local")
+  val storeCrudOperator = new StoreCrudOperator
   @Test
   def testGetStore(): Unit = {
     val input = ErStore(ErStoreLocator(storeType = StoreTypes.ROLLPAIR_LEVELDB, namespace = "namespace", name = "name"))

@@ -30,12 +30,14 @@ class TestSerdes {
     val serializer = RpcMessageSerdesFactory.newSerializer(classOf[ErEndpoint])
     val deserializer = RpcMessageSerdesFactory.newDeserializer(classOf[ErEndpoint])
 
+    val serializer2 = RpcMessageSerdesFactory.newSerializer(ErEndpoint.getClass)
+    val serializer3 = RpcMessageSerdesFactory.newSerializer(classOf[ErEndpoint])
     val erEndpoint = ErEndpoint("localhost", 123)
 
     println(erEndpoint.toProto())
-    val endpointBytes = serializer.toBytes(erEndpoint)
+    val endpointBytes = serializer3.toBytes(erEndpoint)
 
-    print(endpointBytes)
+    println(endpointBytes)
 
     val result = deserializer.fromBytes(endpointBytes)
 

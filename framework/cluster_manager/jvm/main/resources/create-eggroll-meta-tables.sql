@@ -20,12 +20,12 @@ CREATE TABLE IF NOT EXISTS `eggroll_meta`.`store_locator` (
   `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) DEFAULT CHARACTER SET latin1 COLLATE latin1_swedish_ci;
 
-CREATE UNIQUE INDEX `idx_u_store_n_tn` ON `eggroll_meta`.`store_locator` (`store_type`(68), `namespace`(100), `name`(600));
-CREATE INDEX `idx_store_tt` ON `eggroll_meta`.`store_locator` (`store_type`(255));
-CREATE INDEX `idx_store_ns` ON `eggroll_meta`.`store_locator` (`namespace`(768));
-CREATE INDEX `idx_store_n` ON `eggroll_meta`.`store_locator` (`name`(768));
-CREATE INDEX `idx_store_st` ON `eggroll_meta`.`store_locator` (`status`(255));
-CREATE INDEX `idx_store_v` ON `eggroll_meta`.`store_locator` (`version`);
+CREATE UNIQUE INDEX `idx_u_store_locator_n_tn` ON `eggroll_meta`.`store_locator` (`store_type`(68), `namespace`(100), `name`(600));
+CREATE INDEX `idx_store_locator_tt` ON `eggroll_meta`.`store_locator` (`store_type`(255));
+CREATE INDEX `idx_store_locator_ns` ON `eggroll_meta`.`store_locator` (`namespace`(768));
+CREATE INDEX `idx_store_locator_n` ON `eggroll_meta`.`store_locator` (`name`(768));
+CREATE INDEX `idx_store_locator_st` ON `eggroll_meta`.`store_locator` (`status`(255));
+CREATE INDEX `idx_store_locator_v` ON `eggroll_meta`.`store_locator` (`version`);
 
 
 -- store_partition
@@ -39,10 +39,10 @@ CREATE TABLE IF NOT EXISTS `eggroll_meta`.`store_partition` (
   `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) DEFAULT CHARACTER SET latin1 COLLATE latin1_swedish_ci;
 
-CREATE UNIQUE INDEX `idx_u_partition_s_sp_n` ON `eggroll_meta`.`store_partition` (`store_locator_id`, `store_partition_id`, `node_id`);
-CREATE INDEX `idx_partition_si` ON `eggroll_meta`.`store_partition` (`store_locator_id`);
-CREATE INDEX `idx_partition_ni` ON `eggroll_meta`.`store_partition` (`node_id`);
-CREATE INDEX `idx_partition_s` ON `eggroll_meta`.`store_partition` (`status`(255));
+CREATE UNIQUE INDEX `idx_u_store_partition_s_sp_n` ON `eggroll_meta`.`store_partition` (`store_locator_id`, `store_partition_id`, `node_id`);
+CREATE INDEX `idx_store_partition_si` ON `eggroll_meta`.`store_partition` (`store_locator_id`);
+CREATE INDEX `idx_store_partition_ni` ON `eggroll_meta`.`store_partition` (`node_id`);
+CREATE INDEX `idx_store_partition_s` ON `eggroll_meta`.`store_partition` (`status`(255));
 
 
 -- node
@@ -59,7 +59,8 @@ CREATE TABLE IF NOT EXISTS `eggroll_meta`.`server_node` (
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) DEFAULT CHARACTER SET latin1 COLLATE latin1_swedish_ci;
 
-CREATE INDEX `idx_node_h` ON `eggroll_meta`.`server_node` (`host`(768));
-CREATE INDEX `idx_node_c` ON `eggroll_meta`.`server_node` (`server_cluster_id`);
-CREATE INDEX `idx_node_t` ON `eggroll_meta`.`server_node` (`node_type`(255));
-CREATE INDEX `idx_node_s` ON `eggroll_meta`.`server_node` (`status`(255));
+CREATE INDEX `idx_server_node_h_p_t` ON `eggroll_meta`.`server_node` (`host`, `port`, `node_type`)
+CREATE INDEX `idx_server_node_h` ON `eggroll_meta`.`server_node` (`host`(768));
+CREATE INDEX `idx_server_node_c` ON `eggroll_meta`.`server_node` (`server_cluster_id`);
+CREATE INDEX `idx_server_node_t` ON `eggroll_meta`.`server_node` (`node_type`(255));
+CREATE INDEX `idx_server_node_s` ON `eggroll_meta`.`server_node` (`status`(255));

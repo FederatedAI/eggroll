@@ -19,9 +19,10 @@
 package com.webank.eggroll.clustermanager.metadata
 
 import java.util
+import java.util.Date
 
 import com.webank.eggroll.core.error.CrudException
-import com.webank.eggroll.core.meta.{ErEndpoint, ErServerNode, ErServerCluster, ErProcessor}
+import com.webank.eggroll.core.meta.{ErEndpoint, ErServerCluster, ErServerNode}
 import com.webank.eggroll.core.util.Logging
 import com.webank.eggroll.framework.clustermanager.dao.generated.mapper.ServerNodeMapper
 import com.webank.eggroll.framework.clustermanager.dao.generated.model.{ServerNode, ServerNodeExample}
@@ -30,18 +31,14 @@ import org.apache.ibatis.session.SqlSession
 
 import scala.collection.mutable.ArrayBuffer
 
-class NodeCrudOperator extends CrudOperator with Logging {
-  private val baseCrudOperator = new CrudOperatorTemplate()
-  def getServerCluster(input: ErServerCluster, sqlSession: SqlSession = null): ErServerCluster = {
-    baseCrudOperator.doCrudOperationSingleResult(NodeCrudOperator.doGetServerCluster, input, sqlSession)
-  }
-
-  def createServerNode(input: ErServerNode): ErServerNode = {
-    baseCrudOperator.doCrudOperationSingleResult(NodeCrudOperator.doCreateServerNode, input, openTransaction = true)
+class ServerNodeCrudOperator extends CrudOperator with Logging {
+  private val crudOperatorTemplate = new CrudOperatorTemplate()
+  def getServerCluster(input: ErServerCluster): ErServerCluster = {
+    crudOperatorTemplate.doCrudOperationSingleResult(ServerNodeCrudOperator.doGetServerCluster, input)
   }
 
   def getServerNode(input: ErServerNode): ErServerNode = {
-    val nodeResult = baseCrudOperator.doCrudOperationMultipleResult(NodeCrudOperator.doGetServerNodes, input)
+    val nodeResult = crudOperatorTemplate.doCrudOperationMultipleResults(ServerNodeCrudOperator.doGetServerNodes, input)
 
     if (nodeResult.nonEmpty) {
       nodeResult(0)
@@ -50,12 +47,30 @@ class NodeCrudOperator extends CrudOperator with Logging {
     }
   }
 
-  def getServerNodes(input: ErServerNode): Array[ErServerNode] = {
-    baseCrudOperator.doCrudOperationMultipleResult(NodeCrudOperator.doGetServerNodes, input)
+  def getOrCreateServerNode(input: ErServerNode): ErServerNode = {
+    crudOperatorTemplate.doCrudOperationSingleResult(functor = ServerNodeCrudOperator.doGetOrCreateServerNode, input = input, openTransaction = true)
+  }
+
+  def createOrUpdateServerNode(input: ErServerNode, isHeartbeat: Boolean = false): ErServerNode = {
+    def samFunctor(input: ErServerNode, sqlSession: SqlSession): ErServerNode = {
+      ServerNodeCrudOperator.doCreateOrUpdateServerNode(input = input, sqlSession = sqlSession, isHeartbeat = isHeartbeat)
+    }
+
+    crudOperatorTemplate.doCrudOperationSingleResult(functor = samFunctor, input = input, openTransaction = true)
+  }
+
+  def getServerNodes(input: ErServerNode): ErServerCluster = {
+    val serverNodes = crudOperatorTemplate.doCrudOperationMultipleResults(ServerNodeCrudOperator.doGetServerNodes, input)
+
+    if (serverNodes.nonEmpty) {
+      ErServerCluster(id = 0, serverNodes = serverNodes)
+    } else {
+      null
+    }
   }
 }
 
-object NodeCrudOperator {
+object ServerNodeCrudOperator {
   private[metadata] def doGetServerCluster(input: ErServerCluster, sqlSession: SqlSession): ErServerCluster = {
     val nodeExample = new ServerNodeExample
     nodeExample.createCriteria()
@@ -102,6 +117,33 @@ object NodeCrudOperator {
       status = nodeRecord.getStatus)
   }
 
+  private[metadata] def doUpdateServerNode(input: ErServerNode, sqlSession: SqlSession, isHeartbeat: Boolean = false): ErServerNode = {
+    val nodeRecord = new ServerNode
+    nodeRecord.setServerNodeId(input.id)
+    nodeRecord.setName(input.name)
+    nodeRecord.setServerClusterId(input.clusterId)
+    nodeRecord.setHost(input.endpoint.host)
+    nodeRecord.setPort(input.endpoint.port)
+    nodeRecord.setNodeType(input.nodeType)
+    nodeRecord.setStatus(input.status)
+    if (isHeartbeat) nodeRecord.setLastHeartbeatAt(new Date())
+
+    val nodeMapper = sqlSession.getMapper(classOf[ServerNodeMapper])
+    val rowsAffected = nodeMapper.updateByPrimaryKeySelective(nodeRecord)
+
+    if (rowsAffected != 1) {
+      throw new CrudException(s"Illegal rows affected when updating node: ${rowsAffected}")
+    }
+
+    ErServerNode(
+      id = nodeRecord.getServerNodeId,
+      name = nodeRecord.getName,
+      clusterId = nodeRecord.getServerClusterId,
+      endpoint = ErEndpoint(host = nodeRecord.getHost, port = nodeRecord.getPort),
+      nodeType = nodeRecord.getNodeType,
+      status = nodeRecord.getStatus)
+  }
+
   private[metadata] def doGetServerNodes(input: ErServerNode, sqlSession: SqlSession): Array[ErServerNode] = {
     val nodeExample = new ServerNodeExample
     val criteria = nodeExample.createCriteria()
@@ -134,5 +176,24 @@ object NodeCrudOperator {
     })
 
     resultBuffer.toArray
+  }
+
+  def doGetOrCreateServerNode(input: ErServerNode, sqlSession: SqlSession): ErServerNode = {
+    val existing = ServerNodeCrudOperator.doGetServerNodes(input, sqlSession)
+
+    if (existing.nonEmpty) {
+      existing(0)
+    } else {
+      doCreateServerNode(input, sqlSession)
+    }
+  }
+
+  def doCreateOrUpdateServerNode(input: ErServerNode, sqlSession: SqlSession, isHeartbeat: Boolean = false): ErServerNode = {
+    val existing = ServerNodeCrudOperator.doGetServerNodes(ErServerNode(id = input.id), sqlSession)
+    if (existing.nonEmpty) {
+      doUpdateServerNode(input, sqlSession, isHeartbeat)
+    } else {
+      doCreateServerNode(input, sqlSession)
+    }
   }
 }

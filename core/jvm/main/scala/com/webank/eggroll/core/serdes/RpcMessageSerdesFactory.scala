@@ -21,7 +21,7 @@ package com.webank.eggroll.core.serdes
 import java.util.concurrent.ConcurrentHashMap
 
 import com.webank.eggroll.core.command.CommandRpcMessage
-import com.webank.eggroll.core.constant.{SerdesConstants, StringConstants}
+import com.webank.eggroll.core.constant.{SerdesTypes, StringConstants}
 import com.webank.eggroll.core.datastructure.SerdesFactory
 import com.webank.eggroll.core.meta.{MetaRpcMessage, NetworkingRpcMessage, TransferRpcMessage}
 import org.apache.commons.lang3.StringUtils
@@ -29,18 +29,23 @@ import org.apache.commons.lang3.StringUtils
 import scala.reflect.runtime.universe
 
 object RpcMessageSerdesFactory extends SerdesFactory {
-  private val serdesTypeToNames = Map((SerdesConstants.PROTOBUF -> "PbMessage"))
+  private val serdesTypeToNames = Map((SerdesTypes.PROTOBUF -> "PbMessage"))
   private val serdesToConstructors = new ConcurrentHashMap[String, universe.MethodMirror]()
   private val DIRECTION_SERIALIZE = "To"
   private val DIRECTION_DESERIALIZE = "From"
 
-  def newSerializer(javaClass: Class[_], serdesType: String = SerdesConstants.PROTOBUF): ErSerializer = {
+  def newSerializer(javaClass: Class[_], serdesType: String = SerdesTypes.PROTOBUF): ErSerializer = {
     newSerdesInternal(
       javaClass = javaClass, serdesType = serdesType, direction = DIRECTION_SERIALIZE)
       .asInstanceOf[ErSerializer]
   }
 
-  def newDeserializer(javaClass: Class[_], serdesType: String = SerdesConstants.PROTOBUF): ErDeserializer = {
+  def newSerializer(any: Any, serdesTypes: String): ErSerializer = {
+    assert(any != null)
+    newSerializer(any.getClass, serdesTypes)
+  }
+
+  def newDeserializer(javaClass: Class[_], serdesType: String = SerdesTypes.PROTOBUF): ErDeserializer = {
     newSerdesInternal(
       javaClass = javaClass, serdesType = serdesType, direction = DIRECTION_DESERIALIZE)
       .asInstanceOf[ErDeserializer]
@@ -87,6 +92,7 @@ object RpcMessageSerdesFactory extends SerdesFactory {
     val serdesClass = runtimeMirror.staticClass(scalaClassName)
     val reflectedSerdesClass = runtimeMirror.reflectClass(serdesClass)
 
+    //val a = NetworkingModelPbMessageSerdes.ErServerNodeFromPbMessage(null)
     val constructorSymbol = serdesClass.primaryConstructor
     constructorMirror = reflectedSerdesClass.reflectConstructor(constructorSymbol.asMethod)
 
