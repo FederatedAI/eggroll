@@ -12,12 +12,10 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from eggroll.core.meta_model import ErPartition
+class ErSerializer(object):
+  def to_bytes(self, obj):
+    raise NotImplementedError()
 
-def get_db_path(partition: ErPartition):
-  store_locator = partition._store_locator
-  db_path_prefix = '/tmp/eggroll/'
-
-  return db_path_prefix + "/".join(
-      [store_locator._store_type, store_locator._namespace, store_locator._name,
-       str(partition._id)])
+class ErDeserializer(object):
+  def from_bytes(self):
+    raise NotImplementedError()

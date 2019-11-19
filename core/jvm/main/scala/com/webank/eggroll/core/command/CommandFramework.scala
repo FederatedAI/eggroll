@@ -118,7 +118,7 @@ class CommandServiceSupplier(task: ErTask, command: CommandURI)
       outputType = classOf[ErTask],
       endpoint = task.getCommandEndpoint,
       commandURI = command,
-      serdesTypes = SerdesTypes.PROTOBUF).asInstanceOf[ErTask]
+      serdesType = SerdesTypes.PROTOBUF).asInstanceOf[ErTask]
   }
 }
 

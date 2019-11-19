@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 #  Copyright (c) 2019 - now, Eggroll Authors. All Rights Reserved.
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,12 +13,14 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from eggroll.core.meta_model import ErPartition
+from eggroll.core.meta_model import ErEndpoint, ErServerNode, ErServerCluster
+from eggroll.core.meta_model import ErStore, ErStoreLocator
+from eggroll.cluster_manager.cluster_manager_client import ClusterManagerClient
 
-def get_db_path(partition: ErPartition):
-  store_locator = partition._store_locator
-  db_path_prefix = '/tmp/eggroll/'
+import unittest
 
-  return db_path_prefix + "/".join(
-      [store_locator._store_type, store_locator._namespace, store_locator._name,
-       str(partition._id)])
+class TestClusterManagerClient(unittest.TestCase):
+  cluster_manager_client = ClusterManagerClient(opt = {'cluster_manager_host': 'localhost', 'cluster_manager_port': 4670})
+  def test_get_server_node(self):
+    result = TestClusterManagerClient.cluster_manager_client.get_server_node(ErServerNode(id=1))
+    print(result)

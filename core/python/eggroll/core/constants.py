@@ -12,12 +12,24 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from eggroll.core.meta_model import ErPartition
 
-def get_db_path(partition: ErPartition):
-  store_locator = partition._store_locator
-  db_path_prefix = '/tmp/eggroll/'
 
-  return db_path_prefix + "/".join(
-      [store_locator._store_type, store_locator._namespace, store_locator._name,
-       str(partition._id)])
+class SerdesTypes(object):
+  PROTOBUF = 'PROTOBUF'
+  PICKLE = 'PICKLE'
+  CLOUD_PICKLE = 'CLOUD_PICKLE'
+
+class NodeStatus(object):
+  HEALTHY = 'HEALTHY'
+
+class NodeTypes(object):
+  CLUSTER_MANAGER = 'CLUSTER_MANAGER'
+  NODE_MANAGER = 'NODE_MANAGER'
+
+class StoreTypes(object):
+  ROLLPAIR_LMDB = 'rollpair.lmdb'
+  ROLLPAIR_LEVELDB = 'rollpair.leveldb'
+  ROLLFRAME_FILE = 'rollframe.file'
+
+class PartitionerTypes(object):
+  BYTESTRING_HASH = 'BYTESTRING_HASH'

@@ -20,16 +20,17 @@ package com.webank.eggroll.core.util
 
 import java.text.SimpleDateFormat
 import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 import org.apache.commons.lang3.StringUtils
 
 object TimeUtils {
-  val noSeparatorDateFormat = new SimpleDateFormat("yyyyMMddTHHmmss.S")
+  val noSeparatorFormatter = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss.SSS")
 
   def getNowMs(dateFormat: String = null): String = {
-    val now = new LocalDateTime()
+    val now = LocalDateTime.now()
     if (StringUtils.isBlank(dateFormat)) {
-      noSeparatorDateFormat.format(now)
+      noSeparatorFormatter.format(now)
     } else {
       new SimpleDateFormat(dateFormat).format(now)
     }

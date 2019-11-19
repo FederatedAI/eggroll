@@ -35,6 +35,12 @@ class ErCommandRequest(RpcMessage):
                             args=pb_message.args,
                             kwargs=pb_message.kwargs)
 
+  @staticmethod
+  def from_proto_string(pb_string):
+    pb_message = command_pb2.CommandRequest()
+    msg_len = pb_message.ParseFromString(pb_string)
+    return ErCommandRequest.from_proto(pb_message)
+
   def __str__(self):
     return self.__repr__()
 
@@ -60,12 +66,27 @@ class ErCommandResponse(RpcMessage):
                                  pb_message.request),
                              results=pb_message.results)
 
+  @staticmethod
+  def from_proto_string(pb_string):
+    pb_message = command_pb2.CommandResponse()
+    msg_len = pb_message.ParseFromString(pb_string)
+    return ErCommandResponse.from_proto(pb_message)
+
   def __str__(self):
     return self.__repr__()
 
   def __repr__(self):
     return f'ErCommandResponse(id={self._id}, request={repr(self._request)}, results=(***))'
 
+class ErService(object):
+  def __init__(self, service_name, service_param_deserializers, service_result_serializers, route_to_class, route_to_method, call_based_instance, scope):
+    self._service_name = service_name
+    self._service_param_deserializers = service_param_deserializers
+    self._service_result_serializers = service_result_serializers
+    self._route_to_class = route_to_class
+    self._route_to_method = route_to_method
+    self._call_based_instance = call_based_instance
+    self._scope = scope
 
 class CommandURI(object):
   def __init__(self, uri_string='', command_request=None):

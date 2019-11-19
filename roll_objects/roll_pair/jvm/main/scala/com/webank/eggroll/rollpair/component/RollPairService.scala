@@ -30,7 +30,7 @@ class RollPairService() {
   val scheduler = ListScheduler()
   val clusterManagerClient = new ClusterManagerClient()
 
-  def mapValues(inputJob: ErJob): ErStore = {
+  def mapValues(inputJob: ErJob): ErJob = {
     // f: Array[Byte] => Array[Byte]
     // val functor = ErFunctor("map_user_defined", functorSerDes.serialize(f))
 
@@ -63,11 +63,11 @@ class RollPairService() {
 
     JobRunner.run(scheduler.getPlan())
 
-    outputStoreWithPartitions
+    taskPlanJob
   }
 
   // todo: give default partition function: hash and mod
-  def map(inputJob: ErJob): ErStore = {
+  def map(inputJob: ErJob): ErJob = {
     val inputStore = inputJob.inputs.head
     val inputLocator = inputStore.storeLocator
     val outputLocator = inputLocator.copy(name = "testMap")
@@ -97,10 +97,10 @@ class RollPairService() {
 
     JobRunner.run(scheduler.getPlan())
 
-    outputStoreWithPartitions
+    job
   }
 
-  def reduce(inputJob: ErJob): ErStore = {
+  def reduce(inputJob: ErJob): ErJob = {
     val inputStore = inputJob.inputs.head
     val inputLocator = inputStore.storeLocator
     val outputLocator = inputLocator.copy(name = "testReduce")
@@ -121,10 +121,10 @@ class RollPairService() {
 
     JobRunner.run(scheduler.getPlan())
 
-    outputStoreWithPartitions
+    job
   }
 
-  def join(inputJob: ErJob): ErStore = {
+  def join(inputJob: ErJob): ErJob = {
     val leftStore = inputJob.inputs.head
     val leftLocator = leftStore.storeLocator
 
@@ -159,7 +159,7 @@ class RollPairService() {
 
     JobRunner.run(scheduler.getPlan())
 
-    outputStoreWithPartitions
+    job
   }
 }
 
@@ -171,19 +171,19 @@ object RollPairService {
   val mapValues = "mapValues"
   val reduce = "reduce"
   val join = "join"
-  val rollPair = "RollPair"
-  val eggPair = "EggPair"
+  val rollPair = "v1/roll-pair"
+  val eggPair = "v1/egg-pair"
 
   val runTask = "runTask"
-  val eggMapCommand = s"${eggPair}.${map}"
-  val eggMapValuesCommand = s"${eggPair}.${mapValues}"
-  val eggReduceCommand = s"${eggPair}.${reduce}"
-  val eggJoinCommand = s"${eggPair}.${join}"
+  val eggMapCommand = s"${eggPair}/${map}"
+  val eggMapValuesCommand = s"${eggPair}/${mapValues}"
+  val eggReduceCommand = s"${eggPair}/${reduce}"
+  val eggJoinCommand = s"${eggPair}/${join}"
 
-  val rollMapCommand = s"${rollPair}.${map}"
-  val rollMapValuesCommand = s"${rollPair}.${mapValues}"
-  val rollReduceCommand = s"${rollPair}.${reduce}"
-  val rollJoinCommand = s"${rollPair}.${join}"
+  val rollMapCommand = s"${rollPair}/${map}"
+  val rollMapValuesCommand = s"${rollPair}/${mapValues}"
+  val rollReduceCommand = s"${rollPair}/${reduce}"
+  val rollJoinCommand = s"${rollPair}/${join}"
 
   /*  CommandRouter.register(mapCommand,
       List(classOf[Array[Byte] => Array[Byte]]), clazz, "mapValues", null, null)*/

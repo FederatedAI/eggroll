@@ -19,10 +19,9 @@
 package com.webank.eggroll.core.constant
 
 object StoreTypes {
-  private val delim = StringConstants.DOT
-  val ROLLPAIR_LMDB = String.join(delim, StringConstants.ROLL_PAIR, StringConstants.LMDB)
-  val ROLLPAIR_LEVELDB = String.join(delim, StringConstants.ROLL_PAIR, StringConstants.LEVELDB)
-  val ROLLFRAME_FILE = String.join(delim, StringConstants.ROLL_FRAME, StringConstants.FILE)
+  val ROLLPAIR_LMDB = "rollpair.lmdb"
+  val ROLLPAIR_LEVELDB = "rollpair.leveldb"
+  val ROLLFRAME_FILE = "rollframe.file"
 }
 
 object PartitionerTypes {
@@ -32,6 +31,7 @@ object PartitionerTypes {
 object SerdesTypes {
   val PICKLE = "PICKLE"
   val PROTOBUF = "PROTOBUF"
+  val CLOUD_PICKLE = "CLOUD_PICKLE"
 }
 
 object StoreStatus {

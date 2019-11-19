@@ -36,7 +36,7 @@ class CommandClient() extends Logging {
                                       outputType: Class[_],
                                       endpoint: ErEndpoint,
                                       commandURI: CommandURI,
-                                      serdesTypes: String = SerdesTypes.PROTOBUF): T = {
+                                      serdesType: String = SerdesTypes.PROTOBUF): T = {
     val delayedResult = new AwaitSettableFuture[CommandResponse]
 
     val context = new GrpcClientContext[
@@ -69,7 +69,7 @@ class CommandClient() extends Logging {
     val byteResult = erResponse.results(0)
 
     if (byteResult.length != 0)
-      SerdesUtils.rpcMessageFromBytes(bytes = byteResult, targetType = outputType, serdesTypes = serdesTypes)
+      SerdesUtils.rpcMessageFromBytes(bytes = byteResult, targetType = outputType, serdesTypes = serdesType)
     else
       null
   }

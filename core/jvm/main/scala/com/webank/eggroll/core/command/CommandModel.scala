@@ -40,8 +40,8 @@ case class ErService(serviceName: String,
                      serviceResultTypes: Array[Class[_]],
                      serviceParamDeserializers: Array[ErDeserializer],
                      serviceResultSerializers: Array[ErSerializer],
-                     callBasedInstance: Any,
                      routeToMethod: Method,
+                     callBasedInstance: Any,
                      scope: String = StringConstants.EMPTY)
 
 case class ErCommandRequest(id: String = System.currentTimeMillis().toString, uri: String, args: Array[Array[Byte]] = null, kwargs: immutable.Map[String, Array[Byte]] = null) extends CommandRpcMessage

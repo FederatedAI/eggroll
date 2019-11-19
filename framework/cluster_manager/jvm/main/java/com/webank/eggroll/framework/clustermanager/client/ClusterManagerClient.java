@@ -38,8 +38,7 @@ public class ClusterManagerClient {
   private static final ErPartition[] EMPTY_PARTITION_ARRAY = new ErPartition[0];
 
   public ClusterManagerClient(String serverHost, int serverPort) {
-    this.clusterManagerEndpoint = new ErEndpoint(serverHost, serverPort);
-    this.commandClient = new CommandClient();
+    this(new ErEndpoint(serverHost, serverPort));
   }
 
   public ClusterManagerClient() {
@@ -47,6 +46,11 @@ public class ClusterManagerClient {
             ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST(), null),
         DefaultErConf.getInt(
             ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT(), -1));
+  }
+
+  public ClusterManagerClient(ErEndpoint serverEndpoint) {
+    this.clusterManagerEndpoint = serverEndpoint;
+    this.commandClient = new CommandClient();
   }
 
   public ErServerNode getServerNode(ErServerNode input) {
@@ -89,7 +93,7 @@ public class ClusterManagerClient {
     return deleteStore(new ErStore(input, EMPTY_PARTITION_ARRAY));
   }
 
-  private <T> T doSyncRequestInternal(RpcMessage input, Class<T> outputClass, CommandURI commandURI) {
-    return commandClient.simpleSyncSend(input, outputClass, clusterManagerEndpoint, commandURI, SerdesTypes.PROTOBUF());
+  private <T> T doSyncRequestInternal(RpcMessage input, Class<T> outputType, CommandURI commandURI) {
+    return commandClient.simpleSyncSend(input, outputType, clusterManagerEndpoint, commandURI, SerdesTypes.PROTOBUF());
   }
 }

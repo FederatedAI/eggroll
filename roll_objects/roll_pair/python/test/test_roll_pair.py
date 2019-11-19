@@ -21,16 +21,20 @@ from eggroll.core.meta_model import ErStoreLocator, ErJob, ErStore, ErFunctor
 from eggroll.core.proto import command_pb2_grpc
 from eggroll.core.serdes import cloudpickle
 from eggroll.roll_pair.roll_pair import RollPair
+from eggroll.core.constants import StoreTypes
 
 
 class TestRollPair(unittest.TestCase):
+  opts = {'cluster_manager_host': 'localhost',
+          'cluster_manager_port': 4670,
+          'roll_pair_service_host': 'localhost',
+          'roll_pair_service_port': 20000}
   def test_map_values(self):
-    store_locator = ErStoreLocator(store_type="levelDb", namespace="ns",
-                                   name='name')
-    rp = RollPair(store_locator)
-    for i in range(10):
-      rp.put(xxxx)
-    res = rp.map_values(lambda v : v + b'~2')
+    store = ErStore(ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LEVELDB, namespace='namespace',
+                                   name='name'))
+    rp = RollPair(store, opts=TestRollPair.opts)
+
+    res = rp.map_values(lambda v : v + b'~2', output=ErStore(store_locator = ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LEVELDB, namespace='namespace', name='testMapValues')))
 
     print('res: ', res)
 

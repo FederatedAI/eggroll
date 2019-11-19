@@ -36,9 +36,11 @@ class CommandRouter(object):
 
   def register(self,
       service_name: str,
-      route_to_module_name: str,
-      route_to_class_name: str,
-      route_to_method_name: str,
+      service_param_deserializers=list(),
+      service_result_serializers=list(),
+      route_to_module_name: str = '',
+      route_to_class_name: str = '',
+      route_to_method_name: str = '',
       route_to_call_based_class_instance=None,
       call_based_class_instance_init_arg=None):
     if service_name in self._service_route_table:

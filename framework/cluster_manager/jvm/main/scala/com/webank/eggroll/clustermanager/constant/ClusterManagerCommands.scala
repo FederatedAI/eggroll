@@ -34,7 +34,7 @@ object MetadataCommands {
   val GET_SERVER_NODES = new CommandURI(getServerNodesServiceName)
 
   val getOrCreateServerNode = "getOrCreateServerNode"
-  val getOrCreateServerNodeServiceName = CommandUtils.toServiceName(prefix, getStore)
+  val getOrCreateServerNodeServiceName = CommandUtils.toServiceName(prefix, getOrCreateServerNode)
   val GET_OR_CREATE_SERVER_NODE = new CommandURI(getOrCreateServerNodeServiceName)
 
   val createOrUpdateServerNode = "createOrUpdateServerNode"

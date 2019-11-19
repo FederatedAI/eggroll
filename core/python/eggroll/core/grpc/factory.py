@@ -12,12 +12,13 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from eggroll.core.meta_model import ErPartition
+from eggroll.core.meta_model import ErEndpoint
 
-def get_db_path(partition: ErPartition):
-  store_locator = partition._store_locator
-  db_path_prefix = '/tmp/eggroll/'
+import grpc
 
-  return db_path_prefix + "/".join(
-      [store_locator._store_type, store_locator._namespace, store_locator._name,
-       str(partition._id)])
+class GrpcChannelFactory(object):
+  def create_channel(self, endpoint: ErEndpoint, is_secure_channel=False):
+    result = grpc.insecure_channel(target=f'{endpoint._host}:{repr(endpoint._port)}',
+                                   options=[('grpc.max_send_message_length', -1),
+                                            ('grpc.max_receive_message_length', -1)])
+    return result

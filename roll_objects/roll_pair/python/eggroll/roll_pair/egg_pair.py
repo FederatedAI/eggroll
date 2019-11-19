@@ -167,19 +167,28 @@ class EggPair(object):
 
 def serve():
   port = 20001
+  prefix = 'v1/egg-pair'
 
   CommandRouter.get_instance().register(
-    "EggPair.mapValues",
-    "eggroll.roll_pair.egg_pair", "EggPair", "run_task")
+    service_name=f"{prefix}/mapValues",
+    route_to_module_name="eggroll.roll_pair.egg_pair",
+    route_to_class_name="EggPair",
+    route_to_method_name="run_task")
   CommandRouter.get_instance().register(
-      "EggPair.map",
-      "eggroll.roll_pair.egg_pair", "EggPair", "run_task")
+      service_name=f"{prefix}/map",
+      route_to_module_name="eggroll.roll_pair.egg_pair",
+      route_to_class_name="EggPair",
+      route_to_method_name="run_task")
   CommandRouter.get_instance().register(
-      "EggPair.reduce",
-      "eggroll.roll_pair.egg_pair", "EggPair", "run_task")
+      service_name=f"{prefix}/reduce",
+      route_to_module_name="eggroll.roll_pair.egg_pair",
+      route_to_class_name="EggPair",
+      route_to_method_name="run_task")
   CommandRouter.get_instance().register(
-      "EggPair.join",
-      "eggroll.roll_pair.egg_pair", "EggPair", "run_task")
+      service_name=f"{prefix}/join",
+      route_to_module_name="eggroll.roll_pair.egg_pair",
+      route_to_class_name="EggPair",
+      route_to_method_name="run_task")
 
   server = grpc.server(futures.ThreadPoolExecutor(max_workers=5),
                        options=[

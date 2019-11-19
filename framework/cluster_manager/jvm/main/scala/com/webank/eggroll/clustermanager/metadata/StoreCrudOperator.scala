@@ -139,6 +139,9 @@ object StoreCrudOperator {
     val inputStoreLocator = input.storeLocator
 
     val newStoreLocator = new StoreLocator
+
+
+
     newStoreLocator.setStoreType(inputStoreLocator.storeType)
     newStoreLocator.setNamespace(inputStoreLocator.namespace)
     newStoreLocator.setName(inputStoreLocator.name)
