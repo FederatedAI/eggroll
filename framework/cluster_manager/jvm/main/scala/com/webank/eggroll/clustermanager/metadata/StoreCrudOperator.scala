@@ -19,6 +19,7 @@
 package com.webank.eggroll.clustermanager.metadata
 
 import java.util
+import java.util.concurrent.ConcurrentHashMap
 
 import com.webank.eggroll.clustermanager.constant.RdbConstants
 import com.webank.eggroll.core.constant.{NodeStatus, NodeTypes, PartitionStatus, StoreStatus}
@@ -64,15 +65,15 @@ object StoreCrudOperator {
       .andNamespaceEqualTo(inputStoreLocator.namespace)
       .andNameEqualTo(inputStoreLocator.name)
       .andStatusEqualTo(StoreStatus.NORMAL)
-    val storeMapper = sqlSession.getMapper(classOf[StoreLocatorMapper])
+    val storeLocatorMapper = sqlSession.getMapper(classOf[StoreLocatorMapper])
 
-    val storeResult = storeMapper.selectByExampleWithRowbounds(storeLocatorExample, RdbConstants.SINGLE_ROWBOUND)
+    val storeLocatorResult = storeLocatorMapper.selectByExampleWithRowbounds(storeLocatorExample, RdbConstants.SINGLE_ROWBOUND)
 
-    if (storeResult.isEmpty) {
+    if (storeLocatorResult.isEmpty) {
       return null
     }
 
-    val store = storeResult.get(0)
+    val store = storeLocatorResult.get(0)
     val storeLocatorId = store.getStoreLocatorId
 
     val storePartitionExample = new StorePartitionExample
@@ -82,7 +83,7 @@ object StoreCrudOperator {
     val storePartitionMapper = sqlSession.getMapper(classOf[StorePartitionMapper])
     val storePartitionResult = storePartitionMapper.selectByExample(storePartitionExample)
 
-    if (storeResult.isEmpty) {
+    if (storeLocatorResult.isEmpty) {
       return null
     }
 
@@ -123,11 +124,11 @@ object StoreCrudOperator {
     storePartitionResult.forEach(p => {
       val nodeId = p.getNodeId
       val node: ServerNode = nodeIdToNode.get(nodeId)
-      val commandEndpoint = ErEndpoint(host = node.getHost, port = 123)
+      val commandEndpoint = ErEndpoint(host = node.getHost, port = 20001)
       val outputPartition = ErPartition(
         id = p.getPartitionId,
         storeLocator = outputStoreLocator,
-        processor = ErProcessor(id = nodeId, commandEndpoint = commandEndpoint, dataEndpoint = commandEndpoint.copy(port = 890)))
+        processor = ErProcessor(id = nodeId, commandEndpoint = commandEndpoint, dataEndpoint = commandEndpoint.copy(port = 20001)))
       outputPartitions += outputPartition
     })
 
@@ -137,36 +138,50 @@ object StoreCrudOperator {
   private[metadata] def doCreateStore(input: ErStore, sqlSession: SqlSession): ErStore = {
     val inputStoreLocator = input.storeLocator
 
-    val storeLocatorRecord = new StoreLocator
-    storeLocatorRecord.setStoreType(inputStoreLocator.storeType)
-    storeLocatorRecord.setNamespace(inputStoreLocator.namespace)
-    storeLocatorRecord.setName(inputStoreLocator.name)
-    storeLocatorRecord.setPath(inputStoreLocator.path)
-    storeLocatorRecord.setTotalPartitions(inputStoreLocator.totalPartitions)
-    storeLocatorRecord.setPartitioner(inputStoreLocator.partitioner)
-    storeLocatorRecord.setSerdes(inputStoreLocator.serdes)
-    storeLocatorRecord.setStatus(StoreStatus.NORMAL)
+    val newStoreLocator = new StoreLocator
+    newStoreLocator.setStoreType(inputStoreLocator.storeType)
+    newStoreLocator.setNamespace(inputStoreLocator.namespace)
+    newStoreLocator.setName(inputStoreLocator.name)
+    newStoreLocator.setPath(inputStoreLocator.path)
+    newStoreLocator.setTotalPartitions(inputStoreLocator.totalPartitions)
+    newStoreLocator.setPartitioner(inputStoreLocator.partitioner)
+    newStoreLocator.setSerdes(inputStoreLocator.serdes)
+    newStoreLocator.setStatus(StoreStatus.NORMAL)
 
     val storeLocatorMapper = sqlSession.getMapper(classOf[StoreLocatorMapper])
-    var rowsAffected = storeLocatorMapper.insertSelective(storeLocatorRecord)
+    var rowsAffected = storeLocatorMapper.insertSelective(newStoreLocator)
     if (rowsAffected != 1) {
       throw new CrudException(s"Illegal rows affected returned when creating store locator: ${rowsAffected}")
     }
 
     // todo: integrate with session mechanism
-    val serverCluster = ServerNodeCrudOperator.doGetServerCluster(input = ErServerCluster(0), sqlSession = sqlSession)
-    val serverNodes = serverCluster.serverNodes
+    val serverNodes = ServerNodeCrudOperator.doGetServerNodes(
+        input = ErServerNode(nodeType = NodeTypes.NODE_MANAGER, status = NodeStatus.HEALTHY),
+      sqlSession = sqlSession)
 
-    val partitions: ArrayBuffer[ErPartition] = ArrayBuffer[ErPartition]()
-    partitions.sizeHint(inputStoreLocator.totalPartitions)
+    val healthyNodes = new ConcurrentHashMap[Long, ErServerNode]()
+    serverNodes.foreach(n => healthyNodes.putIfAbsent(n.id, n))
+
+    val newPartitions: ArrayBuffer[ErPartition] = ArrayBuffer[ErPartition]()
+    newPartitions.sizeHint(inputStoreLocator.totalPartitions)
 
     val nodesCount = serverNodes.length
+    val specifiedPartitions = input.partitions
+    val isPartitionsSpecified = specifiedPartitions.length > 0
+    if (isPartitionsSpecified && specifiedPartitions.length != inputStoreLocator.totalPartitions) {
+      throw new IllegalArgumentException("total partitions != specifiedPartitions.length")
+    }
+
     val storePartitionMapper = sqlSession.getMapper(classOf[StorePartitionMapper])
     for (i <- 0 until inputStoreLocator.totalPartitions) {
       val storePartitionRecord = new StorePartition
-      val node = serverNodes(i % nodesCount)
+      val node: ErServerNode = if (isPartitionsSpecified && healthyNodes.contains(specifiedPartitions(i).id)) {
+        healthyNodes.get(specifiedPartitions(i).id)
+      } else {
+        serverNodes(i % nodesCount)
+      }
 
-      storePartitionRecord.setStoreLocatorId(storeLocatorRecord.getStoreLocatorId)
+      storePartitionRecord.setStoreLocatorId(newStoreLocator.getStoreLocatorId)
       storePartitionRecord.setNodeId(node.id)
       storePartitionRecord.setPartitionId(i)
       storePartitionRecord.setStatus(PartitionStatus.PRIMARY)
@@ -177,14 +192,14 @@ object StoreCrudOperator {
       }
 
       // todo: bind with active session
-      partitions += ErPartition(id = i,
+      newPartitions += ErPartition(id = i,
         storeLocator = inputStoreLocator,
         processor = ErProcessor(id = storePartitionRecord.getNodeId,
-          commandEndpoint = node.endpoint.copy(port = 20000 + i),
-          dataEndpoint = node.endpoint.copy(port = 30000 + i)))
+          commandEndpoint = node.endpoint.copy(port = 20001),
+          dataEndpoint = node.endpoint.copy(port = 20001)))
     }
 
-    ErStore(storeLocator = inputStoreLocator, partitions = partitions.toArray)
+    ErStore(storeLocator = inputStoreLocator, partitions = newPartitions.toArray)
   }
 
   private[metadata] def doDeleteStore(input: ErStore, sqlSession: SqlSession): ErStore = {
@@ -204,7 +219,7 @@ object StoreCrudOperator {
       return null
     }
 
-    val now = System.nanoTime()
+    val now = System.currentTimeMillis()
     val store = storeResult.get(0)
     store.setName(s"${store.getName}.${now}")
     store.setStatus(StoreStatus.DELETED)

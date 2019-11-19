@@ -44,7 +44,7 @@ object SerdesUtils {
     serializer.toBytes(rpcMessage)
   }
 
-  def rpcMessageFromBytes[T >: RpcMessage](bytes: Array[Byte], targetType: Class[T], serdesTypes: String = SerdesTypes.PROTOBUF): T = {
+  def rpcMessageFromBytes[T >: RpcMessage](bytes: Array[Byte], targetType: Class[_], serdesTypes: String = SerdesTypes.PROTOBUF): T = {
     assert(bytes != null)
 
     val javaClassName = targetType.getCanonicalName

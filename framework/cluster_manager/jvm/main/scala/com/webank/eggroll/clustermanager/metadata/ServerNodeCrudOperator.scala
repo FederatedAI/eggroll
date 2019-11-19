@@ -51,9 +51,9 @@ class ServerNodeCrudOperator extends CrudOperator with Logging {
     crudOperatorTemplate.doCrudOperationSingleResult(functor = ServerNodeCrudOperator.doGetOrCreateServerNode, input = input, openTransaction = true)
   }
 
-  def createOrUpdateServerNode(input: ErServerNode, isHeartbeat: Boolean = false): ErServerNode = {
+  def createOrUpdateServerNode(input: ErServerNode): ErServerNode = {
     def samFunctor(input: ErServerNode, sqlSession: SqlSession): ErServerNode = {
-      ServerNodeCrudOperator.doCreateOrUpdateServerNode(input = input, sqlSession = sqlSession, isHeartbeat = isHeartbeat)
+      ServerNodeCrudOperator.doCreateOrUpdateServerNode(input = input, sqlSession = sqlSession, isHeartbeat = false)
     }
 
     crudOperatorTemplate.doCrudOperationSingleResult(functor = samFunctor, input = input, openTransaction = true)

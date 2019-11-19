@@ -55,7 +55,7 @@ class RollFrameClientMode(val store: ErStore) extends RollFrame {
       outputs = Array(if (output == null) store.fork(postfix = jobType) else output),
       functors = Array(ErFunctor(name = RollFrame.mapBatch, body = serdes.serialize(f))))
 
-    new RollFrameClientMode(rollFrameService.mapBatches(job))
+    processJobResult(rollFrameService.mapBatches(job))
   }
 
   def reduce(f: (FrameBatch, FrameBatch) => FrameBatch, output: ErStore = null): RollFrameClientMode = {
@@ -66,7 +66,7 @@ class RollFrameClientMode(val store: ErStore) extends RollFrame {
       outputs = Array(if (output == null) store.fork(postfix = jobType) else output),
       functors = Array(ErFunctor(name = RollFrame.reduce, body = serdes.serialize(f))))
 
-    new RollFrameClientMode(rollFrameService.reduce(job))
+    processJobResult(rollFrameService.reduce(job))
   }
 
   def aggregate(zeroValue: FrameBatch,
@@ -87,9 +87,14 @@ class RollFrameClientMode(val store: ErStore) extends RollFrame {
         ErFunctor(name = "byColumn", body = serdes.serialize(byColumn)),
         ErFunctor(name = "broadcastZeroValue", body = serdes.serialize(broadcastZeroValue))))
 
-    new RollFrameClientMode(rollFrameService.aggregate(job))
+    processJobResult(rollFrameService.aggregate(job))
   }
 
+  // todo: pull up
+
+  def processJobResult(job: ErJob): RollFrameClientMode = {
+    new RollFrameClientMode(job.outputs.head)
+  }
 }
 
 object RollFrame {
@@ -147,7 +152,7 @@ class ClusterManager(mode: String = "local") {
     CommandRouter.register(
       serviceName = "EggFrame.runTask",
       serviceParamTypes = Array(classOf[ErTask]),
-      serviceResultTypes = Array(classOf[ErStore]),
+      serviceResultTypes = Array(classOf[ErTask]),
       routeToClass = classOf[EggFrame],
       routeToMethodName = "runTask")
 

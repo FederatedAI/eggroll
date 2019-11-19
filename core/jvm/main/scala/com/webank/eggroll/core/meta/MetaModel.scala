@@ -23,6 +23,7 @@ import com.webank.eggroll.core.constant.StringConstants
 import com.webank.eggroll.core.datastructure.RpcMessage
 import com.webank.eggroll.core.meta.NetworkingModelPbMessageSerdes._
 import com.webank.eggroll.core.serdes.{BaseSerializable, PbMessageDeserializer, PbMessageSerializer}
+import com.webank.eggroll.core.util.TimeUtils
 import org.apache.commons.lang3.StringUtils
 
 import scala.collection.JavaConverters._
@@ -55,7 +56,14 @@ case class ErStoreLocator(storeType: String,
   }
 
   def fork(postfix: String = StringConstants.EMPTY, delimiter: String = StringConstants.UNDERLINE): ErStoreLocator = {
-    this.copy(name = if (StringUtils.isBlank(postfix)) System.nanoTime().toString else postfix)
+    val delimiterPos = StringUtils.lastIndexOf(this.name, delimiter)
+
+    val newPostfix = if (StringUtils.isBlank(postfix)) TimeUtils.getNowMs() else postfix
+    val newName =
+      if (delimiterPos > 0) s"${StringUtils.substring(this.name, 0, delimiterPos)}${delimiter}${newPostfix}"
+      else s"${name}${delimiter}${newPostfix}"
+
+    this.copy(name = newName)
   }
 }
 

@@ -90,6 +90,6 @@ public class ClusterManagerClient {
   }
 
   private <T> T doSyncRequestInternal(RpcMessage input, Class<T> outputClass, CommandURI commandURI) {
-    return commandClient.syncSend(input, outputClass, clusterManagerEndpoint, commandURI, SerdesTypes.PROTOBUF());
+    return commandClient.simpleSyncSend(input, outputClass, clusterManagerEndpoint, commandURI, SerdesTypes.PROTOBUF());
   }
 }

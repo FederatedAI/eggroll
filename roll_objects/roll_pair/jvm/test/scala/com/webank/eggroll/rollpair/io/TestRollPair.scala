@@ -19,7 +19,9 @@
 package com.webank.eggroll.rollpair.io
 
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
+import com.webank.eggroll.core.constant.{ClusterManagerConfKeys, StoreTypes}
 import com.webank.eggroll.core.meta._
+import com.webank.eggroll.core.session.DefaultErConf
 import com.webank.eggroll.core.transfer.GrpcTransferService
 import com.webank.eggroll.core.util.Logging
 import com.webank.eggroll.rollpair.component.{EggPair, RollPairService}
@@ -28,9 +30,11 @@ import org.junit.Test
 
 
 class TestRollPair extends Logging {
+  DefaultErConf.addProperty(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST, "localhost")
+  DefaultErConf.addProperty(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, "4670")
   @Test
   def testMapValues(): Unit = {
-    //Command.CommandRequest.newBuilder().build()
+
     def append(value: String): String = {
       value + "1"
     }
@@ -58,7 +62,7 @@ class TestRollPair extends Logging {
       routeToMethodName = RollPairService.runTask)
 
 
-    val storeLocator = ErStoreLocator("levelDb", "ns", "name")
+    val storeLocator = ErStoreLocator(StoreTypes.ROLLPAIR_LEVELDB, "namespace", "name")
 
     val rollPair = new RollPairService()
 
@@ -67,11 +71,12 @@ class TestRollPair extends Logging {
     val job = ErJob(id = "1",
       name = "mapValues",
       inputs = Array(ErStore(storeLocator)),
+      outputs = Array(ErStore(ErStoreLocator(storeType = StoreTypes.ROLLPAIR_LEVELDB, namespace = "namespace", name = "testMapValues"))),
       functors = Array(ErFunctor("mapValues", "",
         RollPairService.functorSerDes.serialize(f))))
 
-
     val result = rollPair.mapValues(job)
+    println(result)
   }
 
   @Test

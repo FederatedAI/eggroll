@@ -18,8 +18,9 @@
 
 package com.webank.eggroll.core.schedule
 
-import com.webank.eggroll.core.command.{CollectiveCommand, ErCommandResponse}
+import com.webank.eggroll.core.command.CollectiveCommand
 import com.webank.eggroll.core.datastructure.TaskPlan
+import com.webank.eggroll.core.meta.ErTask
 import com.webank.eggroll.core.serdes.DefaultScalaSerdes
 import com.webank.eggroll.core.util.Logging
 
@@ -49,7 +50,7 @@ case class ListScheduler() extends Scheduler {
 }
 
 object JobRunner {
-  def run(plan: TaskPlan): List[ErCommandResponse] = {
+  def run(plan: TaskPlan): Array[ErTask] = {
     val collectiveCommand = CollectiveCommand(plan)
     collectiveCommand.call()
   }

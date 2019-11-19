@@ -207,6 +207,7 @@ class EggFrame {
     val inputDB = FrameDB(inputPartition)
     val outputDB = FrameDB(outputPartition)
 
+    // todo: task status track
     val result = task
     val functors = task.job.functors
 

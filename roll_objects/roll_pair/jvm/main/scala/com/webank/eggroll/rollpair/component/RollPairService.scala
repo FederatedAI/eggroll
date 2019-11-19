@@ -22,42 +22,39 @@ import com.webank.eggroll.core.command.CommandURI
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.schedule._
 import com.webank.eggroll.core.serdes.DefaultScalaSerdes
+import com.webank.eggroll.framework.clustermanager.client.ClusterManagerClient
 
 import scala.collection.mutable
 
 class RollPairService() {
   val scheduler = ListScheduler()
+  val clusterManagerClient = new ClusterManagerClient()
 
   def mapValues(inputJob: ErJob): ErStore = {
     // f: Array[Byte] => Array[Byte]
     // val functor = ErFunctor("map_user_defined", functorSerDes.serialize(f))
 
     val inputStore = inputJob.inputs.head
-    val inputLocator = inputStore.storeLocator
-    val outputLocator = inputLocator.copy(name = "testMapValues")
+    val isOutputSpecified = inputJob.outputs.nonEmpty
 
-    val inputPartitionTemplate = ErPartition(id = 0, storeLocator = inputLocator, processor = ErProcessor(commandEndpoint = ErEndpoint("localhost", 20001)))
-    val outputPartitionTemplate = ErPartition(id = 0, storeLocator = outputLocator, processor = ErProcessor(commandEndpoint = ErEndpoint("localhost", 20001)))
+    val inputStoreWithPartitions = clusterManagerClient.getStore(inputStore)
 
-    val numberOfPartitions = 4
-
-    val inputPartitions = mutable.ArrayBuffer[ErPartition]()
-    val outputPartitions = mutable.ArrayBuffer[ErPartition]()
-
-    for (i <- 0 until numberOfPartitions) {
-      inputPartitions += inputPartitionTemplate.copy(id = i)
-      outputPartitions += outputPartitionTemplate.copy(id = i)
+    val outputStoreWithPartitionProposal = if (isOutputSpecified) {
+      val specifiedOutput = inputJob.outputs.head
+      if (specifiedOutput.partitions.isEmpty) {
+        val outputStoreLocator = specifiedOutput.storeLocator.copy(totalPartitions = inputStoreWithPartitions.storeLocator.totalPartitions)
+        inputStoreWithPartitions.fork(storeLocator = outputStoreLocator)
+      } else {
+        specifiedOutput
+      }
+    } else {
+      inputStoreWithPartitions.fork()
     }
 
-    // todo: move to cluster manager
-    val inputStoreWithPartitions = inputStore.copy(storeLocator = inputLocator,
-      partitions = inputPartitions.toArray)
-    val outputStoreWithPartitions = inputStore.copy(storeLocator = outputLocator,
-      partitions = outputPartitions.toArray)
+    val outputStoreWithPartitions = clusterManagerClient.getOrCreateStore(outputStoreWithPartitionProposal)
 
-    val job = inputJob.copy(inputs = Array(inputStoreWithPartitions), outputs = Array(outputStoreWithPartitions))
-
-    val taskPlan = new MapTaskPlan(new CommandURI(RollPairService.eggMapValuesCommand), job)
+    val taskPlanJob = inputJob.copy(inputs = Array(inputStoreWithPartitions), outputs = Array(outputStoreWithPartitions))
+    val taskPlan = new MapTaskPlan(new CommandURI(RollPairService.eggMapValuesCommand), taskPlanJob)
 
     scheduler.addPlan(taskPlan)
 

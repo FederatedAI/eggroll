@@ -26,7 +26,7 @@ object StoreTypes {
 }
 
 object PartitionerTypes {
-  val JAVA_HASH = "JAVA_HASH"
+  val BYTESTRING_HASH = "BYTESTRING_HASH"
 }
 
 object SerdesTypes {

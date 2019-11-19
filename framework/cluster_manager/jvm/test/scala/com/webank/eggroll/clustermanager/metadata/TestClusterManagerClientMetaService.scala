@@ -89,6 +89,12 @@ class TestClusterManagerClientMetaService {
   }
 
   @Test
+  def startAsService(): Unit = {
+    println("meta service started ...")
+    Thread.sleep(10000000)
+  }
+
+  @Test
   def testGetNonExistServerNode(): Unit = {
     val node = clusterManagerClient.getServerNode(ErServerNode(id = 9999999))
 
@@ -145,9 +151,9 @@ class TestClusterManagerClientMetaService {
     val input = ErStoreLocator(
       storeType = StoreTypes.ROLLPAIR_LEVELDB,
       namespace = "namespace",
-      name = "name",
+      name = "test",
       totalPartitions = 4,
-      partitioner = PartitionerTypes.JAVA_HASH,
+      partitioner = PartitionerTypes.BYTESTRING_HASH,
       serdes = SerdesTypes.PICKLE)
 
     val result = clusterManagerClient.getOrCreateStore(input)
