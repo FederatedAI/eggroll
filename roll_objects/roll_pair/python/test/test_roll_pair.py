@@ -39,11 +39,19 @@ class TestRollPair(unittest.TestCase):
     print('res: ', res)
 
   def test_reduce(self):
-    store_locator = ErStoreLocator(store_type="levelDb", namespace="ns",
-                                   name='name')
+    store = ErStore(ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LEVELDB, namespace='namespace',
+                                   name='name'))
 
-    rp = RollPair(store_locator)
+    rp = RollPair(store, opts=TestRollPair.opts)
     res = rp.reduce(lambda x, y : x + y)
+    print('res: ', res)
+
+  def test_aggregate(self):
+    store = ErStore(ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LEVELDB, namespace='namespace',
+                                   name='name'))
+
+    rp = RollPair(store, opts=TestRollPair.opts)
+    res = rp.aggregate(zero_value=None, seq_op=lambda x, y : x + y, comb_op=lambda x, y : y + x)
     print('res: ', res)
 
   def test_join(self):
@@ -96,7 +104,6 @@ class TestRollPair(unittest.TestCase):
     print(f"ready to call")
     result = roll_pair_stub.call(request.to_proto())
 
-    print(f"result: {result}")
 
     time.sleep(1200)
 

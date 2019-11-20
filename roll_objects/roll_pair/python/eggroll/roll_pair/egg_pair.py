@@ -38,10 +38,6 @@ class EggPair(object):
       input_partition = task._inputs[0]
       output_partition = task._outputs[0]
 
-      print("input partition: ", input_partition, "path: ",
-            get_db_path(input_partition))
-      print("output partition: ", output_partition, "path: ",
-            get_db_path(output_partition))
       input_adapter = RocksdbSortedKvAdapter(
         options={'path': get_db_path(input_partition)})
       output_adapter = RocksdbSortedKvAdapter(
@@ -63,10 +59,6 @@ class EggPair(object):
       input_partition = task._inputs[0]
       output_partition = task._outputs[0]
 
-      print("input partition: ", input_partition, "path: ",
-            get_db_path(input_partition))
-      print("output partition: ", output_partition, "path: ",
-            get_db_path(output_partition))
       input_adapter = RocksdbSortedKvAdapter(
           options={'path': get_db_path(input_partition)})
       output_store = task._job._outputs[0]
@@ -84,6 +76,7 @@ class EggPair(object):
       shuffle_finished = shuffler.wait_until_finished(600)
 
       print('map finished')
+    # todo: use aggregate to reduce (also reducing duplicate codes)
     elif task._name == 'reduce':
       f = cloudpickle.loads(functors[0]._body)
 
@@ -101,7 +94,7 @@ class EggPair(object):
       partition_id = input_partition._id
       transfer_tag = task._job._name
 
-      if "0" == partition_id:
+      if 0 == partition_id:
         queue = GrpcTransferServicer.get_or_create_broker(transfer_tag)
         partition_size = len(task._job._inputs[0]._partitions)
 
@@ -110,8 +103,9 @@ class EggPair(object):
         for i in range(1, partition_size):
           other_seq_op_result = queue.get(block=True, timeout=10)
 
-          comb_op_result = f(comb_op_result, other_seq_op_result)
+          comb_op_result = f(comb_op_result, other_seq_op_result.data)
 
+        print('reduce finished. result: ', comb_op_result)
         output_partition = task._outputs[0]
         output_adapter = RocksdbSortedKvAdapter(
           options={'path': get_db_path(output_partition)})
@@ -124,21 +118,18 @@ class EggPair(object):
       else:
         transfer_client = TransferClient()
         transfer_client.send(data=seq_op_result, tag=transfer_tag,
-                             server_node=task._outputs[0]._node)
+                             processor=task._outputs[0]._processor)
 
       input_adapter.close()
+      print('reduce finished')
+    elif task._name == 'aggregate':
+      self.aggregate(task)
+      print('aggregate finished')
     elif task._name == 'join':
       f = cloudpickle.loads(functors[0]._body)
       left_partition = task._inputs[0]
       right_partition = task._inputs[1]
       output_partition = task._outputs[0]
-
-      print("left partition: ", left_partition, "path: ",
-            get_db_path(left_partition))
-      print("right partition: ", right_partition, "path: ",
-            get_db_path(right_partition))
-      print("output partition: ", output_partition, "path: ",
-            get_db_path(output_partition))
 
       left_adapter = RocksdbSortedKvAdapter(
           options={'path': get_db_path(left_partition)})
@@ -161,8 +152,57 @@ class EggPair(object):
       right_adapter.close()
       output_adapter.close()
 
-    print('result: ', result)
     return result
+
+  def aggregate(self, task: ErTask):
+    functors = task._job._functors
+    zero_value = cloudpickle.loads(functors[0]._body)
+    seq_op = cloudpickle.loads(functors[1]._body)
+    comb_op = cloudpickle.loads(functors[2]._body)
+
+    input_partition = task._inputs[0]
+    input_adapter = RocksdbSortedKvAdapter(
+        options={'path': get_db_path(input_partition)})
+
+    seq_op_result = zero_value if zero_value is not None else None
+
+    for k_bytes, v_bytes in input_adapter.iteritems():
+      if seq_op_result:
+        seq_op_result = seq_op(seq_op_result, v_bytes)
+      else:
+        seq_op_result = v_bytes
+
+    partition_id = input_partition._id
+    transfer_tag = task._job._name
+
+    if 0 == partition_id:
+      queue = GrpcTransferServicer.get_or_create_broker(transfer_tag)
+      partition_size = len(task._job._inputs[0]._partitions)
+
+      comb_op_result = seq_op_result
+
+      for i in range(1, partition_size):
+        other_seq_op_result = queue.get(block=True, timeout=10)
+
+        comb_op_result = comb_op(comb_op_result, other_seq_op_result.data)
+
+      print('aggregate finished. result: ', comb_op_result)
+      output_partition = task._outputs[0]
+      output_adapter = RocksdbSortedKvAdapter(
+          options={'path': get_db_path(output_partition)})
+
+      output_writebatch = output_adapter.new_batch()
+      output_writebatch.put('result'.encode(), comb_op_result)
+
+      output_writebatch.close()
+      output_adapter.close()
+    else:
+      transfer_client = TransferClient()
+      transfer_client.send(data=seq_op_result, tag=transfer_tag,
+                           processor=task._outputs[0]._processor)
+
+    input_adapter.close()
+    print('reduce finished')
 
 
 def serve():
@@ -186,6 +226,11 @@ def serve():
       route_to_method_name="run_task")
   CommandRouter.get_instance().register(
       service_name=f"{prefix}/join",
+      route_to_module_name="eggroll.roll_pair.egg_pair",
+      route_to_class_name="EggPair",
+      route_to_method_name="run_task")
+  CommandRouter.get_instance().register(
+      service_name=f"{prefix}/runTask",
       route_to_module_name="eggroll.roll_pair.egg_pair",
       route_to_class_name="EggPair",
       route_to_method_name="run_task")

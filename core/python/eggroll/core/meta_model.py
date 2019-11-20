@@ -320,7 +320,6 @@ class ErStore(RpcMessage):
 
   @staticmethod
   def from_proto(pb_message):
-    print(pb_message)
     return ErStore(
       store_locator=ErStoreLocator.from_proto(pb_message.storeLocator),
       partitions=_map_and_listify(ErPartition.from_proto, pb_message.partitions))

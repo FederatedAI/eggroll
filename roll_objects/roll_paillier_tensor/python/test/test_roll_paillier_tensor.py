@@ -71,7 +71,6 @@ class TestRollPaillierTensor(unittest.TestCase):
     print(f"ready to call")
     result = roll_pair_stub.call(request.to_proto())
 
-    print(f"result: {result}")
 
     time.sleep(1200)
 

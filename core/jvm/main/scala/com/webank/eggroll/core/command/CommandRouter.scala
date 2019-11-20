@@ -24,6 +24,7 @@ import com.google.protobuf.ByteString
 import com.webank.eggroll.core.constant.{CoreConfKeys, SerdesTypes, StringConstants}
 import com.webank.eggroll.core.serdes.{BaseSerializable, ErDeserializer, ErSerializer, RpcMessageSerdesFactory}
 import com.webank.eggroll.core.session.DefaultErConf
+import com.webank.eggroll.core.util.Logging
 import org.apache.commons.lang3.StringUtils
 import org.apache.commons.lang3.reflect.{ConstructorUtils, MethodUtils}
 
@@ -39,7 +40,7 @@ object Scope {
 
 }
 
-object CommandRouter {
+object CommandRouter extends Logging {
   private val serviceRouteTable = TrieMap[String, ErService]()
   private val messageParserMethodCache = mutable.Map[Class[_], Method]()
   private val defaultSerdesType = DefaultErConf.getString(CoreConfKeys.CONFKEY_CORE_COMMAND_DEFAULT_SERDES_TYPE, SerdesTypes.PROTOBUF)
@@ -150,6 +151,12 @@ object CommandRouter {
   }
 
   def query(serviceName: String): ErService = {
-    serviceRouteTable(serviceName)
+    try {
+      serviceRouteTable(serviceName)
+    } catch {
+      case e: Exception =>
+        logError(s"service name not registered: ${serviceName})
+        throw e
+    }
   }
 }

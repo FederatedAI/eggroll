@@ -29,6 +29,8 @@ class RollPair(object):
   MAP_VALUES = 'mapValues'
   REDUCE = 'reduce'
   JOIN = 'join'
+  AGGREGATE = 'aggregate'
+  RUNJOB = 'runJob'
 
   def __init__(self, er_store: ErStore, opts = {'cluster_manager_host': 'localhost', 'cluster_manager_port': 4670}):
     _grpc_channel_factory = GrpcChannelFactory()
@@ -38,7 +40,7 @@ class RollPair(object):
     self.__roll_pair_service_channel = _grpc_channel_factory.create_channel(self.__roll_pair_service_endpoint)
 
     self.__command_serdes = opts.get('serdes', SerdesTypes.PROTOBUF)
-    self.__command_client = CommandClient()
+    self.__roll_pair_command_client = CommandClient()
 
     self.__roll_pair_service_stub = command_pb2_grpc.CommandServiceStub(self.__roll_pair_service_channel)
     self.__cluster_manager_client = ClusterManagerClient(opts)
@@ -80,7 +82,7 @@ class RollPair(object):
     return self.__seq
 
   # computing api
-  def map_values(self, func, output = None, opt = {}):
+  def map_values(self, func, output = None, opts = {}):
     functor = ErFunctor(name=RollPair.MAP_VALUES, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
     outputs = []
     if output:
@@ -90,7 +92,7 @@ class RollPair(object):
                 outputs=outputs,
                 functors=[functor])
 
-    job_result = self.__command_client.simple_sync_send(
+    job_result = self.__roll_pair_command_client.simple_sync_send(
         input = job,
         output_type = ErJob,
         endpoint = self.__roll_pair_service_endpoint,
@@ -119,24 +121,51 @@ class RollPair(object):
 
     return RollPair(des_store)
 
-  def reduce(self, func):
+  def reduce(self, func, output = None, opts = {}):
     functor = ErFunctor(name=RollPair.REDUCE, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
 
+    outputs = []
+    if output:
+      outpus.append(output)
     job = ErJob(id=self.__session_id, name=RollPair.REDUCE,
                 inputs=[self.__store],
+                outputs=outputs,
                 functors=[functor])
 
-    request = ErCommandRequest(id=self.__get_seq(),
-                               uri=f'{RollPair.__uri_prefix}{RollPair.REDUCE}',
-                               args=[job.to_proto().SerializeToString()])
+    job_result = self.__roll_pair_command_client.simple_sync_send(
+        input = job,
+        output_type = ErJob,
+        endpoint = self.__roll_pair_service_endpoint,
+        command_uri = CommandURI(f'{RollPair.__uri_prefix}/{RollPair.REDUCE}'),
+        serdes_type=self.__command_serdes)
 
-    response = self.__roll_pair_service_stub.call(request.to_proto())
+    er_store = job_result._outputs[0]
 
-    des_response = ErCommandResponse.from_proto(response)
+    return RollPair(er_store, opts=self._parent_opts)
 
-    des_store = ErStore.from_proto_string(des_response._results[0])
+  def aggregate(self, zero_value, seq_op, comb_op, output = None, opts = {}):
+    zero_value_functor = ErFunctor(name=RollPair.AGGREGATE, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(zero_value))
+    seq_op_functor = ErFunctor(name=RollPair.AGGREGATE, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(seq_op))
+    comb_op_functor = ErFunctor(name=RollPair.AGGREGATE, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(comb_op))
 
-    return RollPair(des_store)
+    outputs = []
+    if output:
+      outpus.append(output)
+    job = ErJob(id=self.__session_id, name=RollPair.AGGREGATE,
+                inputs=[self.__store],
+                outputs=outputs,
+                functors=[zero_value_functor, seq_op_functor, comb_op_functor])
+
+    job_result = self.__roll_pair_command_client.simple_sync_send(
+        input = job,
+        output_type = ErJob,
+        endpoint = self.__roll_pair_service_endpoint,
+        command_uri = CommandURI(f'{RollPair.__uri_prefix}/{RollPair.RUNJOB}'),
+        serdes_type=self.__command_serdes)
+
+    er_store = job_result._outputs[0]
+
+    return RollPair(er_store, opts=self._parent_opts)
 
   def join(self, other, func):
     functor = ErFunctor(name=RollPair.JOIN, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))

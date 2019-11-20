@@ -32,4 +32,5 @@ class MapTaskPlan(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job)
 class ReduceTaskPlan(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job)
 class ShuffleTaskPlan(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job)
 class JoinTaskPlan(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job)
+class AggregateTaskPlan(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job)
 
