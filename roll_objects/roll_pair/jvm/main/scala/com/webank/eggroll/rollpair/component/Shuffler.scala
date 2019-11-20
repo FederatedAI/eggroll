@@ -1,20 +1,37 @@
+/*
+ * Copyright (c) 2019 - now, Eggroll Authors. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ *
+ */
+
 package com.webank.eggroll.rollpair.component
 
 import java.util
-import java.util.concurrent.{Callable, CompletableFuture, CountDownLatch, ThreadPoolExecutor, TimeUnit}
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger, AtomicLong}
+import java.util.concurrent.{CompletableFuture, CountDownLatch, TimeUnit}
 import java.util.function.Supplier
 
 import com.webank.eggroll.core.constant.StringConstants
 import com.webank.eggroll.core.datastructure.{Broker, LinkedBlockingBroker}
 import com.webank.eggroll.core.error.DistributedRuntimeException
-import com.webank.eggroll.core.meta.{ErPair, ErPairBatch, ErPartition, ErStore, Meta}
-import com.webank.eggroll.core.meta.MetaModelPbSerdes._
+import com.webank.eggroll.core.meta.MetaModelPbMessageSerdes._
+import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.transfer.{GrpcTransferService, TransferClient}
 import com.webank.eggroll.core.util.{Logging, ThreadPoolUtils}
 import com.webank.eggroll.rollpair.io.RocksdbSortedKvAdapter
 
-import scala.collection.immutable.Queue
 import scala.collection.mutable
 
 trait Shuffler {
@@ -89,7 +106,7 @@ class DefaultShuffler(shuffleId: String,
 
     val sender: CompletableFuture[Long] =
       CompletableFuture.supplyAsync(new ShuffleSender(shuffleId = shuffleId,
-          brokers = partitionedBrokers.toList,
+          brokers = partitionedBrokers.toArray,
           targetPartitions = outputPartitions), sendRecvThreadPool)
       .whenCompleteAsync((result, exception) => {
         if (exception == null) {
@@ -156,8 +173,8 @@ class DefaultShuffler(shuffleId: String,
 
   // todo: consider change (Array[Byte], Array[Byte]) to ErPair
   class ShuffleSender(shuffleId: String,
-                      brokers: List[Broker[(Array[Byte], Array[Byte])]],
-                      targetPartitions: List[ErPartition],
+                      brokers: Array[Broker[(Array[Byte], Array[Byte])]],
+                      targetPartitions: Array[ErPartition],
                       // todo: make it configurable
                       chunkSize: Int = 100)
     extends Supplier[Long] {
@@ -192,7 +209,7 @@ class DefaultShuffler(shuffleId: String,
               pairs += ErPair(key = t._1, value = t._2)
             })
 
-            val pairBatch = ErPairBatch(pairs = pairs.toList)
+            val pairBatch = ErPairBatch(pairs = pairs.toArray)
 
             var transferStatus = StringConstants.EMPTY
             if (isBrokerClosable) {
@@ -202,7 +219,7 @@ class DefaultShuffler(shuffleId: String,
 
             transferClient.send(data = pairBatch.toProto.toByteArray,
               tag = s"${shuffleId}-${idx}",
-              serverNode = targetPartitions(idx).node,
+              serverNode = targetPartitions(idx).processor,
               status = transferStatus)
             totalSent += pairs.length
           }

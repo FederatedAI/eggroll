@@ -21,7 +21,7 @@ package com.webank.eggroll.rollframe
 import java.util.concurrent._
 
 import com.webank.eggroll.core.io.util.IoUtils
-import com.webank.eggroll.core.meta.{ErServerNode, ErTask}
+import com.webank.eggroll.core.meta.{ErProcessor, ErTask}
 import com.webank.eggroll.core.serdes.DefaultScalaSerdes
 import com.webank.eggroll.core.util.ThreadPoolUtils
 import com.webank.eggroll.format.{FrameBatch, FrameDB, _}
@@ -31,13 +31,13 @@ import scala.collection.immutable.Range.Inclusive
 class EggFrame {
   private val rootPath = "/tmp/unittests/RollFrameTests/file/"
   private val clusterManager = new ClusterManager
-  private val serverNodes = clusterManager.getServerCluster().nodes
+  private val serverNodes = clusterManager.getLiveProcessorBatch().processors
   private val transferService = new NioCollectiveTransfer(serverNodes)
   private val executorPool = ThreadPoolUtils.defaultThreadPool
   private val rootServer = serverNodes.head
   private val serdes = DefaultScalaSerdes()
 
-  private def sliceByColumn(frameBatch: FrameBatch): List[(ErServerNode, Inclusive)] = {
+  private def sliceByColumn(frameBatch: FrameBatch): List[(ErProcessor, Inclusive)] = {
     val columns = frameBatch.rootVectors.length
     val servers = serverNodes.length
     val partSize = (servers + columns - 1) / servers
@@ -207,6 +207,7 @@ class EggFrame {
     val inputDB = FrameDB(inputPartition)
     val outputDB = FrameDB(outputPartition)
 
+    // todo: task status track
     val result = task
     val functors = task.job.functors
 

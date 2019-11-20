@@ -57,6 +57,8 @@ object CoreConfKeys {
   val CONFKEY_CORE_SECURITY_KEY_CRT_PATH = "eggroll.core.security.crt.path"
   val CONFKEY_CORE_SECURITY_KEY_PATH = "eggroll.core.security.key.path"
   val CONFKEY_CORE_SECURITY_SECURE_CLUSTER_ENABLED = "eggroll.core.security.secure.cluster.enabled"
+
+  val CONFKEY_CORE_COMMAND_DEFAULT_SERDES_TYPE = "eggroll.core.command.default.serdes.type"
 }
 
 object ClusterManagerConfKeys {
@@ -70,4 +72,7 @@ object ClusterManagerConfKeys {
   val CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_TIME_BETWEEN_EVICTION_RUNS_MS = "eggroll.cluster.manager.datasource.db.time.between.eviction.runs.ms"
   val CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_MIN_EVICTABLE_IDLE_TIME_MS = "eggroll.cluster.manager.datasource.db.min.evictable.idle.time.ms"
   val CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_DEFAULT_AUTO_COMMIT = "eggroll.cluster.manager.datasource.db.default.auto.commit"
+  val CONFKEY_CLUSTER_MANAGER_HOST = "eggroll.cluster.manager.host"
+  val CONFKEY_CLUSTER_MANAGER_PORT = "eggroll.cluster.manager.port"
+
 }

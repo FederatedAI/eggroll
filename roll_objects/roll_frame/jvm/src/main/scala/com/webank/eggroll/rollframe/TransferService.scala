@@ -23,7 +23,7 @@ import java.nio.ByteBuffer
 import java.nio.channels.{ServerSocketChannel, SocketChannel}
 import java.util.concurrent.Executors
 
-import com.webank.eggroll.core.meta.ErServerNode
+import com.webank.eggroll.core.meta.ErProcessor
 import com.webank.eggroll.format.{FrameBatch, FrameDB, FrameReader, FrameWriter}
 
 case class BatchData(headerSize:Int, header:Array[Byte], bodySize:Int, body:Array[Byte])
@@ -33,11 +33,11 @@ trait TransferService
 
 trait CollectiveTransfer
 
-class NioCollectiveTransfer(nodes: List[ErServerNode], timeout:Int = 600 * 1000) extends CollectiveTransfer {
-  private lazy val clients = nodes.map{ node =>
+class NioCollectiveTransfer(nodes: Array[ErProcessor], timeout: Int = 600 * 1000) extends CollectiveTransfer {
+  private lazy val clients = nodes.map { node =>
     (node.id, new NioTransferEndpoint().runClient(node.dataEndpoint.host, node.dataEndpoint.port))
   }.toMap
-  def send(id:String, path:String, frameBatch: FrameBatch):Unit = {
+  def send(id: Long, path: String, frameBatch: FrameBatch):Unit = {
     clients(id).send(path, frameBatch)
   }
 }

@@ -21,24 +21,37 @@ from eggroll.core.meta_model import ErStoreLocator, ErJob, ErStore, ErFunctor
 from eggroll.core.proto import command_pb2_grpc
 from eggroll.core.serdes import cloudpickle
 from eggroll.roll_pair.roll_pair import RollPair
+from eggroll.core.constants import StoreTypes
 
 
 class TestRollPair(unittest.TestCase):
+  opts = {'cluster_manager_host': 'localhost',
+          'cluster_manager_port': 4670,
+          'roll_pair_service_host': 'localhost',
+          'roll_pair_service_port': 20000}
   def test_map_values(self):
-    store_locator = ErStoreLocator(store_type="levelDb", namespace="ns",
-                                   name='name')
-    rp = RollPair(store_locator)
+    store = ErStore(ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LEVELDB, namespace='namespace',
+                                   name='name'))
+    rp = RollPair(store, opts=TestRollPair.opts)
 
-    res = rp.map_values(lambda v : v + b'~2')
+    res = rp.map_values(lambda v : v + b'~2', output=ErStore(store_locator = ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LEVELDB, namespace='namespace', name='testMapValues')))
 
     print('res: ', res)
 
   def test_reduce(self):
-    store_locator = ErStoreLocator(store_type="levelDb", namespace="ns",
-                                   name='name')
+    store = ErStore(ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LEVELDB, namespace='namespace',
+                                   name='name'))
 
-    rp = RollPair(store_locator)
+    rp = RollPair(store, opts=TestRollPair.opts)
     res = rp.reduce(lambda x, y : x + y)
+    print('res: ', res)
+
+  def test_aggregate(self):
+    store = ErStore(ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LEVELDB, namespace='namespace',
+                                   name='name'))
+
+    rp = RollPair(store, opts=TestRollPair.opts)
+    res = rp.aggregate(zero_value=None, seq_op=lambda x, y : x + y, comb_op=lambda x, y : y + x)
     print('res: ', res)
 
   def test_join(self):
@@ -91,7 +104,6 @@ class TestRollPair(unittest.TestCase):
     print(f"ready to call")
     result = roll_pair_stub.call(request.to_proto())
 
-    print(f"result: {result}")
 
     time.sleep(1200)
 

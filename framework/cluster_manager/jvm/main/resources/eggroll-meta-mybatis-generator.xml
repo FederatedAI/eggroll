@@ -79,28 +79,28 @@
         </javaClientGenerator>
 
         <!-- tables to generate -->
-        <table schema="eggroll_meta" tableName="store" enableCountByExample="true"
+        <table schema="eggroll_meta" tableName="store_locator" enableCountByExample="true"
                enableDeleteByExample="true"
                enableSelectByExample="true"
                enableUpdateByExample="true"
                selectByExampleQueryId="true">
-            <generatedKey column="store_id" sqlStatement="JDBC" identity="true"/>
+            <generatedKey column="store_locator_id" sqlStatement="JDBC" identity="true"/>
         </table>
 
-        <table schema="eggroll_meta" tableName="partition" enableCountByExample="true"
+        <table schema="eggroll_meta" tableName="store_partition" enableCountByExample="true"
                enableDeleteByExample="true"
                enableSelectByExample="true"
                enableUpdateByExample="true"
                selectByExampleQueryId="true">
-            <generatedKey column="partition_id" sqlStatement="JDBC" identity="true"/>
+            <generatedKey column="store_partition_id" sqlStatement="JDBC" identity="true"/>
         </table>
 
-        <table schema="eggroll_meta" tableName="node" enableCountByExample="true"
+        <table schema="eggroll_meta" tableName="server_node" enableCountByExample="true"
                enableDeleteByExample="true"
                enableSelectByExample="true"
                enableUpdateByExample="true"
                selectByExampleQueryId="true">
-            <generatedKey column="node_id" sqlStatement="JDBC" identity="true"/>
+            <generatedKey column="server_node_id" sqlStatement="JDBC" identity="true"/>
         </table>
 
     </context>

@@ -12,11 +12,13 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ *
  */
 
 package com.webank.eggroll.core.command
 
-import com.webank.eggroll.core.command.CommandPbSerdes._
+import com.webank.eggroll.core.command.CommandModelPbMessageSerdes._
 import org.junit.Test
 
 import scala.collection.mutable
@@ -34,7 +36,7 @@ class TestCommandModel {
     val kwargs = mutable.Map[String, Array[Byte]]()
     kwargs += (hello -> hello.getBytes())
     kwargs += (world -> world.getBytes())
-    val commandRequest = ErCommandRequest(1L, "http://www.test.com", args, kwargs.toMap)
+    val commandRequest = ErCommandRequest("1", "http://www.test.com", args, kwargs.toMap)
 
     val serialized = commandRequest.toProto
 

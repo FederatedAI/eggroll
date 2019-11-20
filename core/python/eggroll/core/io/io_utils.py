@@ -20,4 +20,4 @@ def get_db_path(partition: ErPartition):
 
   return db_path_prefix + "/".join(
       [store_locator._store_type, store_locator._namespace, store_locator._name,
-       partition._id])
+       str(partition._id)])

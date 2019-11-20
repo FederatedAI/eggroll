@@ -19,14 +19,14 @@ syntax = "proto3";
 package com.webank.eggroll.core.command;
 
 message CommandRequest {
-  int64 id = 1;
+  string id = 1;
   string uri = 2;
   repeated bytes args = 3;
   map<string, bytes> kwargs = 4; // reserved for scala / python etc.
 }
 
 message CommandResponse {
-  int64 id = 1;
+  string id = 1;
   CommandRequest request = 2;
   repeated bytes results = 3;
 }

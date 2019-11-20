@@ -116,7 +116,7 @@ class EggPair extends Logging {
       } else {
         val transferClient = new TransferClient()
 
-        transferClient.send(data = seqOpResult, tag = transferTag, serverNode = task.outputs.head.node)
+        transferClient.send(data = seqOpResult, tag = transferTag, serverNode = task.outputs.head.processor)
       }
 
       inputStore.close()
@@ -175,6 +175,6 @@ object EggPair {
   def getDbPath(partition: ErPartition): String = {
     val storeLocator = partition.storeLocator
     val dbPathPrefix = "/tmp/eggroll/"
-    dbPathPrefix + String.join(StringConstants.SLASH, storeLocator.storeType, storeLocator.namespace, storeLocator.name, partition.id)
+    dbPathPrefix + String.join(StringConstants.SLASH, storeLocator.storeType, storeLocator.namespace, storeLocator.name, partition.id.toString)
   }
 }

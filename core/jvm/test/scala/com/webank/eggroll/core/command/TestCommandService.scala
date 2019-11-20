@@ -12,12 +12,14 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ *
  */
 
 package com.webank.eggroll.core.command
 
 import com.google.protobuf.ByteString
-import com.webank.eggroll.core.command.CommandPbSerdes._
+import com.webank.eggroll.core.command.CommandModelPbMessageSerdes._
 import com.webank.eggroll.core.command.CommandServiceGrpc.CommandServiceBlockingStub
 import com.webank.eggroll.core.constant.StringConstants
 import com.webank.eggroll.core.di.Singletons
@@ -41,14 +43,14 @@ class TestCommandService {
       StringConstants.DOT,
       StringUtils.strip(sayHelloMethod.getDeclaringClass.getCanonicalName, StringConstants.DOLLAR),
       sayHelloMethod.getName)
-    CommandRouter.register(sayHelloServiceName, sayHelloMethod.getParameterTypes.toList)
+    CommandRouter.register(sayHelloServiceName, sayHelloMethod.getParameterTypes)
 
     val sayHelloToPbMethod = classOf[TestService].getMethod("sayHelloToPbMessage", classOf[HelloRequest])
     val sayHelloToPbServiceName = String.join(
       StringConstants.DOT,
       StringUtils.strip(sayHelloToPbMethod.getDeclaringClass.getCanonicalName, StringConstants.DOLLAR),
       sayHelloToPbMethod.getName)
-    CommandRouter.register(sayHelloToPbServiceName, sayHelloToPbMethod.getParameterTypes.toList)
+    CommandRouter.register(sayHelloToPbServiceName, sayHelloToPbMethod.getParameterTypes)
 
     val grpcChannelFactory = Singletons.get(classOf[GrpcChannelFactory])
     val grpcStubFactory = Singletons.get(classOf[GrpcStubFactory])
@@ -59,7 +61,7 @@ class TestCommandService {
         println(sayHelloResponse.getData.toStringUtf8)*/
 
     val sayHelloToGrpcResponse = stub.call(
-      ErCommandRequest(2L, sayHelloToPbServiceName, Array(HelloRequest.newBuilder().setMsg("grpc client").build().toByteArray)).toProto())
+      ErCommandRequest("2", sayHelloToPbServiceName, Array(HelloRequest.newBuilder().setMsg("grpc client").build().toByteArray)).toProto())
     println(sayHelloToGrpcResponse.getResults(0).toStringUtf8)
   }
 }

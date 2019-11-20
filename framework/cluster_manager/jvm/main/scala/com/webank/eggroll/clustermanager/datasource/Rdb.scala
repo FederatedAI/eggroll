@@ -22,13 +22,13 @@ import com.webank.eggroll.core.constant.ClusterManagerConfKeys
 import com.webank.eggroll.core.session.DefaultErConf
 import org.apache.commons.dbcp2.BasicDataSource
 import org.apache.ibatis.mapping.Environment
-import org.apache.ibatis.session.Configuration
+import org.apache.ibatis.session.{Configuration, SqlSession, TransactionIsolationLevel}
 import org.apache.ibatis.session.defaults.DefaultSqlSessionFactory
 import org.apache.ibatis.transaction.jdbc.JdbcTransactionFactory
 import org.apache.ibatis.transaction.managed.ManagedTransactionFactory
 
 object RdbConnectionPool {
-  val dataSource: BasicDataSource = new BasicDataSource
+  private val dataSource: BasicDataSource = new BasicDataSource
   dataSource.setDriverClassName(DefaultErConf.getString(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_JDBC_DRIVER_CLASS_NAME, "com.mysql.cj.jdbc.Driver"))
   dataSource.setUrl(DefaultErConf.getString(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_JDBC_URL))
   dataSource.setUsername(DefaultErConf.getString(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_JDBC_USERNAME))
@@ -39,16 +39,16 @@ object RdbConnectionPool {
   dataSource.setMinEvictableIdleTimeMillis(DefaultErConf.getLong(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_MIN_EVICTABLE_IDLE_TIME_MS, 120000L))
   dataSource.setDefaultAutoCommit(DefaultErConf.getBoolean(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_DEFAULT_AUTO_COMMIT, false))
 
-  val transactionFactory = new JdbcTransactionFactory
-  val environment = new Environment("meta-service", transactionFactory, dataSource)
+  private val transactionFactory = new JdbcTransactionFactory
+  private val environment = new Environment("meta-service", transactionFactory, dataSource)
 
-  val configuration = new Configuration(environment)
+  private val configuration = new Configuration(environment)
   configuration.addMappers("com.webank.eggroll.framework.clustermanager.dao.generated.mapper")
 
-  val sqlSessionFactory = new DefaultSqlSessionFactory(configuration)
+  private val sqlSessionFactory = new DefaultSqlSessionFactory(configuration)
 
-  def getConnection(): Unit = {
-
+  def openSession(level: TransactionIsolationLevel = TransactionIsolationLevel.READ_COMMITTED): SqlSession = {
+    sqlSessionFactory.openSession(level)
   }
 }
 

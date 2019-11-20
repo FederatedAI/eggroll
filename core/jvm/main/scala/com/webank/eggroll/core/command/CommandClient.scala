@@ -21,17 +21,22 @@ package com.webank.eggroll.core.command
 import java.util.concurrent.CountDownLatch
 
 import com.webank.eggroll.core.command.Command.CommandResponse
-import com.webank.eggroll.core.command.CommandPbSerdes._
+import com.webank.eggroll.core.command.CommandModelPbMessageSerdes._
 import com.webank.eggroll.core.concurrent.AwaitSettableFuture
+import com.webank.eggroll.core.constant.SerdesTypes
+import com.webank.eggroll.core.datastructure.RpcMessage
 import com.webank.eggroll.core.grpc.client.{GrpcClientContext, GrpcClientTemplate}
 import com.webank.eggroll.core.grpc.observer.SameTypeFutureCallerResponseStreamObserver
-import com.webank.eggroll.core.meta.ErTask
-import com.webank.eggroll.core.meta.MetaModelPbSerdes._
-import com.webank.eggroll.core.util.Logging
+import com.webank.eggroll.core.meta.ErEndpoint
+import com.webank.eggroll.core.util.{Logging, SerdesUtils}
 import io.grpc.stub.StreamObserver
 
-class CommandClient extends Logging {
-  def send(task: ErTask, command: CommandURI): ErCommandResponse = {
+class CommandClient() extends Logging {
+  def simpleSyncSend[T >: RpcMessage](input: RpcMessage,
+                                      outputType: Class[_],
+                                      endpoint: ErEndpoint,
+                                      commandURI: CommandURI,
+                                      serdesType: String = SerdesTypes.PROTOBUF): T = {
     val delayedResult = new AwaitSettableFuture[CommandResponse]
 
     val context = new GrpcClientContext[
@@ -39,7 +44,7 @@ class CommandClient extends Logging {
       Command.CommandRequest,
       CommandResponse]()
 
-    context.setServerEndpoint(task.getCommandEndpoint)
+    context.setServerEndpoint(endpoint)
       .setCalleeStreamingMethodInvoker(
         (stub: CommandServiceGrpc.CommandServiceStub,
          request: Command.CommandRequest,
@@ -54,14 +59,21 @@ class CommandClient extends Logging {
       CommandResponse]()
       .setGrpcClientContext(context)
 
-    val request = ErCommandRequest(id = 100, uri = command.uri.toString, args = Array(task.toProto().toByteArray))
+    val request = ErCommandRequest(
+      uri = commandURI.uri.toString, args = Array(SerdesUtils.rpcMessageToBytes(input)))
 
-    val result = template.calleeStreamingRpcWithImmediateDelayedResult(request.toProto(), delayedResult)
+    val response = template.calleeStreamingRpcWithImmediateDelayedResult(
+      request.toProto(), delayedResult)
 
-    result.fromProto()
+    val erResponse = response.fromProto()
+    val byteResult = erResponse.results(0)
+
+    if (byteResult.length != 0)
+      SerdesUtils.rpcMessageFromBytes(bytes = byteResult, targetType = outputType, serdesTypes = serdesType)
+    else
+      null
   }
 }
-
 
 class CommandResponseObserver(finishLatch: CountDownLatch, asFuture: AwaitSettableFuture[CommandResponse])
   extends SameTypeFutureCallerResponseStreamObserver[Command.CommandRequest, CommandResponse](finishLatch, asFuture) {

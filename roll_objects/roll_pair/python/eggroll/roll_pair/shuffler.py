@@ -201,7 +201,7 @@ def shuffle_sender(shuffle_id: str, brokers, targetPartitions, chunk_size = 100)
         print(f'sending to {tag}')
         transfer_client.send(data=pair_batch.to_proto().SerializeToString(),
                              tag = tag,
-                             server_node = targetPartitions[idx]._node,
+                             processor= targetPartitions[idx]._node,
                              status = transfer_status)
         total_sent += len(pairs)
 

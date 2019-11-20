@@ -19,7 +19,6 @@
 package com.webank.eggroll.core.session
 
 import java.io.{BufferedInputStream, FileInputStream}
-import java.nio.file.Path
 import java.util.Properties
 
 import com.webank.eggroll.core.constant.StringConstants
@@ -89,7 +88,11 @@ abstract class ErConf {
     prop.load(fis)
 
     addProperties(prop)
+  }
 
+  def addProperty(key: String, value: String): ErConf = {
+    this.conf.setProperty(key, value)
+    this
   }
 }
 

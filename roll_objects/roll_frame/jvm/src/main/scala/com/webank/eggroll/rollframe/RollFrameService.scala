@@ -19,30 +19,31 @@
 package com.webank.eggroll.rollframe
 
 import com.webank.eggroll.core.command.CommandURI
-import com.webank.eggroll.core.meta.{ErJob, ErStore}
+import com.webank.eggroll.core.meta.ErJob
 import com.webank.eggroll.core.schedule.{BaseTaskPlan, JobRunner, ListScheduler}
 
 class RollFrameService() extends RollFrame {
   val scheduler = new ListScheduler
   val clusterManager = new ClusterManager
 
-  def mapBatches(job: ErJob): ErStore = {
+  def mapBatches(job: ErJob): ErJob = {
     // todo: deal with output
     run(new MapBatchTask(uri = new CommandURI("EggFrame.runTask"), job = job))
   }
 
-  def reduce(job: ErJob): ErStore = {
+  def reduce(job: ErJob): ErJob = {
     run(new ReduceBatchTask(uri = new CommandURI("EggFrame.runTask"), job = job))
   }
 
-  def aggregate(job: ErJob): ErStore = {
+  def aggregate(job: ErJob): ErJob = {
     run(new AggregateBatchTask(uri = new CommandURI("EggFrame.runTask"), job = job))
   }
 
-  def run(taskPlan: BaseTaskPlan): ErStore = {
+  def run(taskPlan: BaseTaskPlan): ErJob = {
     scheduler.addPlan(taskPlan)
     JobRunner.run(scheduler.getPlan())
-    taskPlan.job.outputs.head
+
+    taskPlan.job
   }
 
   def companionEgg(): EggFrame = new EggFrame

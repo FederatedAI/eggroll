@@ -18,10 +18,10 @@
 
 package com.webank.eggroll.core.command
 
-import com.webank.eggroll.core.command.CommandPbSerdes._
+import com.webank.eggroll.core.command.CommandModelPbMessageSerdes._
 import com.webank.eggroll.core.constant.ModuleConstants
 import com.webank.eggroll.core.grpc.server.GrpcServerWrapper
-import com.webank.eggroll.core.util.{Logging, ToStringUtils}
+import com.webank.eggroll.core.util.Logging
 import io.grpc.stub.StreamObserver
 
 import scala.collection.JavaConverters._
@@ -44,7 +44,10 @@ class CommandService extends CommandServiceGrpc.CommandServiceImplBase with Logg
       val command: ErCommandRequest = request.fromProto()
       val commandUri = new CommandURI(command)
 
-      val result: Array[Array[Byte]] = CommandRouter.dispatch(commandUri.getRoute(), request.getArgsList.toArray(), request.getKwargsMap.asScala)
+      val result: Array[Array[Byte]] = CommandRouter.dispatch(
+        serviceName = commandUri.getRoute(),
+        args = request.getArgsList.toArray(),
+        kwargs = request.getKwargsMap.asScala)
 
       val response: ErCommandResponse = ErCommandResponse(id = request.getId,
         results = result)

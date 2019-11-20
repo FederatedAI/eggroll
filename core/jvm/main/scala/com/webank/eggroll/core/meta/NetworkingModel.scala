@@ -21,27 +21,45 @@ package com.webank.eggroll.core.meta
 import com.google.protobuf.{Message => PbMessage}
 import com.webank.eggroll.core.constant.StringConstants
 import com.webank.eggroll.core.datastructure.RpcMessage
-import com.webank.eggroll.core.serdes.{PbMessageDeserializer, PbMessageSerializer}
+import com.webank.eggroll.core.serdes.{BaseSerializable, PbMessageDeserializer, PbMessageSerializer}
 import jdk.nashorn.internal.ir.annotations.Immutable
 
 import scala.beans.BeanProperty
 import scala.collection.JavaConverters._
 
+trait NetworkingRpcMessage extends RpcMessage {
+  override def rpcMessageType(): String = "Networking"
+}
+
 @Immutable
-case class ErEndpoint(@BeanProperty host: String, @BeanProperty port: Int) extends RpcMessage {
+case class ErEndpoint(@BeanProperty host: String, @BeanProperty port: Int = -1) extends NetworkingRpcMessage {
   override def toString: String = s"$host:$port"
 }
 
-case class ErServerNode(id: String = StringConstants.EMPTY,
-                        commandEndpoint: ErEndpoint = null,
-                        dataEndpoint: ErEndpoint = null,
-                        tag: String = StringConstants.EMPTY) extends RpcMessage
+case class ErProcessor(id: Long = -1,
+                       name: String = StringConstants.EMPTY,
+                       commandEndpoint: ErEndpoint = null,
+                       dataEndpoint: ErEndpoint = null,
+                       tag: String = StringConstants.EMPTY) extends NetworkingRpcMessage
 
-case class ErServerCluster(id: String = StringConstants.EMPTY,
-                           nodes: List[ErServerNode] = List(),
-                           tag: String = StringConstants.EMPTY) extends RpcMessage
+case class ErProcessorBatch(id: Long = -1,
+                            name: String = StringConstants.EMPTY,
+                            processors: Array[ErProcessor] = Array(),
+                            tag: String = StringConstants.EMPTY) extends NetworkingRpcMessage
 
-object NetworkingModelPbSerdes {
+case class ErServerNode(id: Long = -1,
+                        name: String = StringConstants.EMPTY,
+                        clusterId: Long = 0,
+                        endpoint: ErEndpoint = ErEndpoint(host = StringConstants.EMPTY, port = -1),
+                        nodeType: String = StringConstants.EMPTY,
+                        status: String = StringConstants.EMPTY) extends NetworkingRpcMessage
+
+case class ErServerCluster(id: Long = -1,
+                           name: String = StringConstants.EMPTY,
+                           serverNodes: Array[ErServerNode] = Array(),
+                           tag: String = StringConstants.EMPTY) extends NetworkingRpcMessage
+
+object NetworkingModelPbMessageSerdes {
 
   // serializers
   implicit class ErEndpointToPbMessage(src: ErEndpoint) extends PbMessageSerializer {
@@ -52,57 +70,133 @@ object NetworkingModelPbSerdes {
 
       builder.build()
     }
+
+    override def toBytes(baseSerializable: BaseSerializable): Array[Byte] =
+      baseSerializable.asInstanceOf[ErEndpoint].toBytes()
   }
 
-  implicit class ErServerNodeToPbMessage(src: ErServerNode) extends PbMessageSerializer {
-    override def toProto[T >: PbMessage](): Meta.ServerNode = {
-      val builder = Meta.ServerNode.newBuilder()
+  implicit class ErProcessorToPbMessage(src: ErProcessor) extends PbMessageSerializer {
+    override def toProto[T >: PbMessage](): Meta.Processor = {
+      val builder = Meta.Processor.newBuilder()
         .setId(src.id)
+        .setName(src.name)
         .setCommandEndpoint(if (src.commandEndpoint != null ) src.commandEndpoint.toProto() else Meta.Endpoint.getDefaultInstance)
         .setDataEndpoint(if (src.dataEndpoint != null) src.dataEndpoint.toProto() else Meta.Endpoint.getDefaultInstance)
         .setTag(src.tag)
 
       builder.build()
     }
+
+    override def toBytes(baseSerializable: BaseSerializable): Array[Byte] =
+      baseSerializable.asInstanceOf[ErProcessor].toBytes()
+  }
+
+  implicit class ErProcessorBatchToPbMessage(src: ErProcessorBatch) extends PbMessageSerializer {
+    override def toProto[T >: PbMessage](): Meta.ProcessorBatch = {
+      val builder = Meta.ProcessorBatch.newBuilder()
+        .setId(src.id)
+        .setName(src.name)
+        .addAllProcessors(src.processors.toList.map(_.toProto()).asJava)
+        .setTag(src.tag)
+
+      builder.build()
+    }
+
+    override def toBytes(baseSerializable: BaseSerializable): Array[Byte] =
+      baseSerializable.asInstanceOf[ErProcessorBatch].toBytes()
+  }
+
+  implicit class ErServerNodeToPbMessage(src: ErServerNode) extends PbMessageSerializer {
+    override def toProto[T >: PbMessage](): Meta.ServerNode = {
+      val builder = Meta.ServerNode.newBuilder()
+        .setId(src.id)
+        .setName(src.name)
+        .setClusterId(src.clusterId)
+        .setEndpoint(src.endpoint.toProto())
+        .setNodeType(src.nodeType)
+        .setStatus(src.status)
+
+      builder.build()
+    }
+
+    override def toBytes(baseSerializable: BaseSerializable): Array[Byte] =
+      baseSerializable.asInstanceOf[ErServerNode].toBytes()
   }
 
   implicit class ErServerClusterToPbMessage(src: ErServerCluster) extends PbMessageSerializer {
     override def toProto[T >: PbMessage](): Meta.ServerCluster = {
       val builder = Meta.ServerCluster.newBuilder()
         .setId(src.id)
+        .addAllServerNodes(src.serverNodes.toList.map(_.toProto()).asJava)
         .setTag(src.tag)
-
-      val serializedNodes = src.nodes.map(_.toProto())
-
-      builder.addAllNodes(serializedNodes.asJava)
 
       builder.build()
     }
+
+    override def toBytes(baseSerializable: BaseSerializable): Array[Byte] =
+      baseSerializable.asInstanceOf[ErServerCluster].toBytes()
   }
 
   // deserializers
-  implicit class ErEndpointFromPbMessage(src: Meta.Endpoint) extends PbMessageDeserializer {
+  implicit class ErEndpointFromPbMessage(src: Meta.Endpoint = null) extends PbMessageDeserializer {
     override def fromProto[T >: RpcMessage](): ErEndpoint = {
       ErEndpoint(host = src.getHost, port = src.getPort)
     }
+
+    override def fromBytes(bytes: Array[Byte]): ErEndpoint =
+      Meta.Endpoint.parseFrom(bytes).fromProto()
+  }
+
+  implicit class ErProcessorFromPbMessage(src: Meta.Processor) extends PbMessageDeserializer {
+    override def fromProto[T >: RpcMessage](): ErProcessor = {
+      ErProcessor(
+        id = src.getId,
+        name = src.getName,
+        commandEndpoint = src.getCommandEndpoint.fromProto(),
+        dataEndpoint = src.getDataEndpoint.fromProto(),
+        tag = src.getTag)
+    }
+
+    override def fromBytes(bytes: Array[Byte]): ErProcessor =
+      Meta.Processor.parseFrom(bytes).fromProto()
+  }
+
+  implicit class ErProcessorBatchFromPbMessage(src: Meta.ProcessorBatch) extends PbMessageDeserializer {
+    override def fromProto[T >: RpcMessage](): ErProcessorBatch = {
+      ErProcessorBatch(
+        id = src.getId,
+        name = src.getName,
+        processors = src.getProcessorsList.asScala.map(_.fromProto()).toArray,
+        tag = src.getTag)
+    }
+
+    override def fromBytes(bytes: Array[Byte]): ErProcessorBatch =
+      Meta.ProcessorBatch.parseFrom(bytes).fromProto()
   }
 
   implicit class ErServerNodeFromPbMessage(src: Meta.ServerNode) extends PbMessageDeserializer {
     override def fromProto[T >: RpcMessage](): ErServerNode = {
       ErServerNode(
         id = src.getId,
-        commandEndpoint = src.getCommandEndpoint.fromProto(),
-        dataEndpoint = src.getDataEndpoint.fromProto(),
-        tag = src.getTag)
+        name = src.getName,
+        clusterId = src.getClusterId,
+        endpoint = src.getEndpoint.fromProto(),
+        nodeType = src.getNodeType,
+        status = src.getStatus)
     }
+
+    override def fromBytes(bytes: Array[Byte]): ErServerNode =
+      Meta.ServerNode.parseFrom(bytes).fromProto()
   }
 
   implicit class ErServerClusterFromPbMessage(src: Meta.ServerCluster) extends PbMessageDeserializer {
-    override def fromProto[T >: RpcMessage](): ErServerCluster = {
-      val deserializedNodes = src.getNodesList.asScala.map(_.fromProto()).toList
+    override def fromProto[T >: RpcMessage](): ErServerCluster =
+      ErServerCluster(
+        id = src.getId,
+        serverNodes = src.getServerNodesList.asScala.map(_.fromProto()).toArray,
+        tag = src.getTag)
 
-      ErServerCluster(id = src.getId, nodes = deserializedNodes, tag = src.getTag)
-    }
+    override def fromBytes(bytes: Array[Byte]): ErServerCluster =
+      Meta.ServerCluster.parseFrom(bytes).fromProto()
   }
-
 }

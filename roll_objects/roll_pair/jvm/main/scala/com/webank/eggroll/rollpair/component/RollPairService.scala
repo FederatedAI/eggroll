@@ -18,48 +18,43 @@
 
 package com.webank.eggroll.rollpair.component
 
-import com.webank.eggroll.core.command.{CollectiveCommand, CommandURI}
-import com.webank.eggroll.core.constant.StringConstants
+import com.webank.eggroll.core.command.CommandURI
 import com.webank.eggroll.core.meta._
-import com.webank.eggroll.core.meta.MetaModelPbSerdes._
-import com.webank.eggroll.core.schedule.{JobRunner, JoinTaskPlan, ListScheduler, MapTaskPlan, ReduceTaskPlan, ShuffleTaskPlan}
+import com.webank.eggroll.core.schedule._
 import com.webank.eggroll.core.serdes.DefaultScalaSerdes
+import com.webank.eggroll.framework.clustermanager.client.ClusterManagerClient
 
 import scala.collection.mutable
 
 class RollPairService() {
   val scheduler = ListScheduler()
+  val clusterManagerClient = new ClusterManagerClient()
 
-  def mapValues(inputJob: ErJob): ErStore = {
+  def mapValues(inputJob: ErJob): ErJob = {
     // f: Array[Byte] => Array[Byte]
     // val functor = ErFunctor("map_user_defined", functorSerDes.serialize(f))
 
     val inputStore = inputJob.inputs.head
-    val inputLocator = inputStore.storeLocator
-    val outputLocator = inputLocator.copy(name = "testMapValues")
+    val isOutputSpecified = inputJob.outputs.nonEmpty
 
-    val inputPartitionTemplate = ErPartition(id = "0", storeLocator = inputLocator, node = ErServerNode(commandEndpoint = ErEndpoint("localhost", 20001)))
-    val outputPartitionTemplate = ErPartition(id = "0", storeLocator = outputLocator, node = ErServerNode(commandEndpoint = ErEndpoint("localhost", 20001)))
+    val inputStoreWithPartitions = clusterManagerClient.getStore(inputStore)
 
-    val numberOfPartitions = 4
-
-    val inputPartitions = mutable.ListBuffer[ErPartition]()
-    val outputPartitions = mutable.ListBuffer[ErPartition]()
-
-    for (i <- 0 until numberOfPartitions) {
-      inputPartitions += inputPartitionTemplate.copy(id = i.toString)
-      outputPartitions += outputPartitionTemplate.copy(id = i.toString)
+    val outputStoreProposal = if (isOutputSpecified) {
+      val specifiedOutput = inputJob.outputs.head
+      if (specifiedOutput.partitions.isEmpty) {
+        val outputStoreLocator = specifiedOutput.storeLocator.copy(totalPartitions = inputStoreWithPartitions.storeLocator.totalPartitions)
+        inputStoreWithPartitions.fork(storeLocator = outputStoreLocator)
+      } else {
+        specifiedOutput
+      }
+    } else {
+      inputStoreWithPartitions.fork()
     }
 
-    // todo: move to cluster manager
-    val inputStoreWithPartitions = inputStore.copy(storeLocator = inputLocator,
-      partitions = inputPartitions.toList)
-    val outputStoreWithPartitions = inputStore.copy(storeLocator = outputLocator,
-      partitions = outputPartitions.toList)
+    val outputStoreWithPartitions = clusterManagerClient.getOrCreateStore(outputStoreProposal)
 
-    val job = inputJob.copy(inputs = List(inputStoreWithPartitions), outputs = List(outputStoreWithPartitions))
-
-    val taskPlan = new MapTaskPlan(new CommandURI(RollPairService.eggMapValuesCommand), job)
+    val taskPlanJob = inputJob.copy(inputs = Array(inputStoreWithPartitions), outputs = Array(outputStoreWithPartitions))
+    val taskPlan = new MapTaskPlan(new CommandURI(RollPairService.eggMapValuesCommand), taskPlanJob)
 
     scheduler.addPlan(taskPlan)
 
@@ -68,68 +63,110 @@ class RollPairService() {
 
     JobRunner.run(scheduler.getPlan())
 
-    outputStoreWithPartitions
+    taskPlanJob
   }
 
   // todo: give default partition function: hash and mod
-  def map(inputJob: ErJob): ErStore = {
+  def map(inputJob: ErJob): ErJob = {
     val inputStore = inputJob.inputs.head
     val inputLocator = inputStore.storeLocator
     val outputLocator = inputLocator.copy(name = "testMap")
 
-    val inputPartitionTemplate = ErPartition(id = "0", storeLocator = inputLocator, node = ErServerNode(commandEndpoint = ErEndpoint("localhost", 20001)))
-    val outputPartitionTemplate = ErPartition(id = "0", storeLocator = outputLocator, node = ErServerNode(commandEndpoint = ErEndpoint("localhost", 20001)))
+    val inputPartitionTemplate = ErPartition(id = 0, storeLocator = inputLocator, processor = ErProcessor(commandEndpoint = ErEndpoint("localhost", 20001)))
+    val outputPartitionTemplate = ErPartition(id = 0, storeLocator = outputLocator, processor = ErProcessor(commandEndpoint = ErEndpoint("localhost", 20001)))
 
     val numberOfPartitions = 4
 
-    val inputPartitions = mutable.ListBuffer[ErPartition]()
-    val outputPartitions = mutable.ListBuffer[ErPartition]()
+    val inputPartitions = mutable.ArrayBuffer[ErPartition]()
+    val outputPartitions = mutable.ArrayBuffer[ErPartition]()
 
     for (i <- 0 until numberOfPartitions) {
-      inputPartitions += inputPartitionTemplate.copy(id = i.toString)
-      outputPartitions += outputPartitionTemplate.copy(id = i.toString)
+      inputPartitions += inputPartitionTemplate.copy(id = i)
+      outputPartitions += outputPartitionTemplate.copy(id = i)
     }
 
     val inputStoreWithPartitions = inputStore.copy(storeLocator = inputLocator,
-      partitions = inputPartitions.toList)
+      partitions = inputPartitions.toArray)
     val outputStoreWithPartitions = inputStore.copy(storeLocator = outputLocator,
-      partitions = outputPartitions.toList)
+      partitions = outputPartitions.toArray)
 
-    val job = inputJob.copy(inputs = List(inputStoreWithPartitions), outputs = List(outputStoreWithPartitions))
+    val job = inputJob.copy(inputs = Array(inputStoreWithPartitions), outputs = Array(outputStoreWithPartitions))
 
     val taskPlan = new ShuffleTaskPlan(new CommandURI(RollPairService.eggMapCommand), job)
     scheduler.addPlan(taskPlan)
 
     JobRunner.run(scheduler.getPlan())
 
-    outputStoreWithPartitions
+    job
   }
 
-  def reduce(inputJob: ErJob): ErStore = {
+  def reduce(inputJob: ErJob): ErJob = {
     val inputStore = inputJob.inputs.head
-    val inputLocator = inputStore.storeLocator
-    val outputLocator = inputLocator.copy(name = "testReduce")
+    val isOutputSpecified = inputJob.outputs.nonEmpty
+    val inputStoreWithPartitions = clusterManagerClient.getStore(inputStore)
 
-    val inputPartition = ErPartition(id = "0", storeLocator = inputLocator, node = ErServerNode(commandEndpoint = ErEndpoint("localhost", 20001)))
-    val outputPartition = ErPartition(id = "0", storeLocator = outputLocator, node = ErServerNode(commandEndpoint = ErEndpoint("localhost", 20001)))
+    val outputStoreProposal = if (isOutputSpecified) {
+      val specifiedOutput = inputJob.outputs.head
+      if (specifiedOutput.partitions.isEmpty) {
+        val outputStoreLocator = specifiedOutput.storeLocator.copy(totalPartitions = 1)
+        ErStore(storeLocator = outputStoreLocator)
+      } else {
+        specifiedOutput
+      }
+    } else {
+      val outputStoreLocator = inputStore.storeLocator.fork()
+      ErStore(storeLocator = outputStoreLocator.copy(totalPartitions = 1))
+    }
 
-    val inputStoreWithPartitions = inputStore.copy(storeLocator = inputLocator,
-      partitions = List(inputPartition.copy(id = "0"), inputPartition.copy(id = "1")))
+    val outputStoreWithPartitions = clusterManagerClient.getOrCreateStore(outputStoreProposal)
 
-    val outputStoreWithPartitions = inputStore.copy(storeLocator = outputLocator,
-      partitions = List(outputPartition))
+    val taskPlanJob = inputJob.copy(inputs = Array(inputStoreWithPartitions), outputs = Array(outputStoreWithPartitions))
 
-    val job = inputJob.copy(inputs = List(inputStoreWithPartitions), outputs = List(outputStoreWithPartitions))
-
-    val taskPlan = new ReduceTaskPlan(new CommandURI(RollPairService.eggReduceCommand), job)
+    val taskPlan = new ReduceTaskPlan(new CommandURI(RollPairService.eggReduceCommand), taskPlanJob)
     scheduler.addPlan(taskPlan)
 
     JobRunner.run(scheduler.getPlan())
 
-    outputStoreWithPartitions
+    taskPlanJob
   }
 
-  def join(inputJob: ErJob): ErStore = {
+  // todo: compact all jobs to this call
+  def runJob(inputJob: ErJob): ErJob = {
+    val inputStore = inputJob.inputs.head
+
+    val isOutputSpecified = inputJob.outputs.nonEmpty
+    val inputStoreWithPartitions = clusterManagerClient.getStore(inputStore)
+
+    // todo: totalPartitions for aggregate / non-aggregate jobs
+    val outputStoreProposal = if (isOutputSpecified) {
+      val specifiedOutput = inputJob.outputs.head
+      if (specifiedOutput.partitions.isEmpty) {
+        val outputStoreLocator = specifiedOutput.storeLocator.copy(totalPartitions = 1)
+        ErStore(storeLocator = outputStoreLocator)
+      } else {
+        specifiedOutput
+      }
+    } else {
+      val outputStoreLocator = inputStore.storeLocator.fork()
+      ErStore(storeLocator = outputStoreLocator.copy(totalPartitions = 1))
+    }
+    val outputStoreWithPartitions = clusterManagerClient.getOrCreateStore(outputStoreProposal)
+
+    val taskPlanJob = inputJob.copy(inputs = Array(inputStoreWithPartitions), outputs = Array(outputStoreWithPartitions))
+
+    var taskPlan: BaseTaskPlan = null
+    inputJob.name match {
+      case "aggregate" => {
+        taskPlan = new AggregateTaskPlan(new CommandURI(RollPairService.eggRunTaskCommand), taskPlanJob)
+      }
+    }
+
+    JobRunner.run(taskPlan)
+
+    taskPlanJob
+  }
+
+  def join(inputJob: ErJob): ErJob = {
     val leftStore = inputJob.inputs.head
     val leftLocator = leftStore.storeLocator
 
@@ -138,9 +175,9 @@ class RollPairService() {
 
     val outputLocator = leftLocator.copy(name = "testJoin")
 
-    val leftPartitionTemplate = ErPartition(id = "0", storeLocator = leftLocator, node = ErServerNode(commandEndpoint = ErEndpoint("localhost", 20001)))
-    val rightPartitionTemplate = ErPartition(id = "0", storeLocator = rightLocator, node = ErServerNode(commandEndpoint = ErEndpoint("localhost", 20001)))
-    val outputPartitionTemplate = ErPartition(id = "0", storeLocator = outputLocator, node = ErServerNode(commandEndpoint = ErEndpoint("localhost", 20001)))
+    val leftPartitionTemplate = ErPartition(id = 0, storeLocator = leftLocator, processor = ErProcessor(commandEndpoint = ErEndpoint("localhost", 20001)))
+    val rightPartitionTemplate = ErPartition(id = 0, storeLocator = rightLocator, processor = ErProcessor(commandEndpoint = ErEndpoint("localhost", 20001)))
+    val outputPartitionTemplate = ErPartition(id = 0, storeLocator = outputLocator, processor = ErProcessor(commandEndpoint = ErEndpoint("localhost", 20001)))
 
     val numberOfPartitions = 4
 
@@ -149,22 +186,22 @@ class RollPairService() {
     val outputPartitions = mutable.ListBuffer[ErPartition]()
 
     for (i <- 0 until numberOfPartitions) {
-      leftPartitions += leftPartitionTemplate.copy(id = i.toString)
-      rightPartitions += rightPartitionTemplate.copy(id = i.toString)
-      outputPartitions += outputPartitionTemplate.copy(id = i.toString)
+      leftPartitions += leftPartitionTemplate.copy(id = i)
+      rightPartitions += rightPartitionTemplate.copy(id = i)
+      outputPartitions += outputPartitionTemplate.copy(id = i)
     }
 
-    val leftStoreWithPartitions = leftStore.copy(partitions = leftPartitions.toList)
-    val rightStoreWithPartitions = rightStore.copy(partitions = rightPartitions.toList)
-    val outputStoreWithPartitions = ErStore(storeLocator = outputLocator, partitions = outputPartitions.toList)
+    val leftStoreWithPartitions = leftStore.copy(partitions = leftPartitions.toArray)
+    val rightStoreWithPartitions = rightStore.copy(partitions = rightPartitions.toArray)
+    val outputStoreWithPartitions = ErStore(storeLocator = outputLocator, partitions = outputPartitions.toArray)
 
-    val job = inputJob.copy(inputs = List(leftStoreWithPartitions, rightStoreWithPartitions), outputs = List(outputStoreWithPartitions))
+    val job = inputJob.copy(inputs = Array(leftStoreWithPartitions, rightStoreWithPartitions), outputs = Array(outputStoreWithPartitions))
     val taskPlan = new JoinTaskPlan(new CommandURI(RollPairService.eggJoinCommand), job)
     scheduler.addPlan(taskPlan)
 
     JobRunner.run(scheduler.getPlan())
 
-    outputStoreWithPartitions
+    job
   }
 }
 
@@ -176,19 +213,26 @@ object RollPairService {
   val mapValues = "mapValues"
   val reduce = "reduce"
   val join = "join"
-  val rollPair = "RollPair"
-  val eggPair = "EggPair"
+  val rollPair = "v1/roll-pair"
+  val eggPair = "v1/egg-pair"
+  val aggregate = "aggregate"
 
   val runTask = "runTask"
-  val eggMapCommand = s"${eggPair}.${map}"
-  val eggMapValuesCommand = s"${eggPair}.${mapValues}"
-  val eggReduceCommand = s"${eggPair}.${reduce}"
-  val eggJoinCommand = s"${eggPair}.${join}"
+  val runJob = "runJob"
+  val eggMapCommand = s"${eggPair}/${map}"
+  val eggMapValuesCommand = s"${eggPair}/${mapValues}"
+  val eggReduceCommand = s"${eggPair}/${reduce}"
+  val eggJoinCommand = s"${eggPair}/${join}"
+  val eggAggregateCommand = s"${eggPair}/${aggregate}"
 
-  val rollMapCommand = s"${rollPair}.${map}"
-  val rollMapValuesCommand = s"${rollPair}.${mapValues}"
-  val rollReduceCommand = s"${rollPair}.${reduce}"
-  val rollJoinCommand = s"${rollPair}.${join}"
+  val rollRunJobCommand = s"${rollPair}/${runJob}"
+  val eggRunTaskCommand = s"${eggPair}/${runTask}"
+
+  val rollMapCommand = s"${rollPair}/${map}"
+  val rollMapValuesCommand = s"${rollPair}/${mapValues}"
+  val rollReduceCommand = s"${rollPair}/${reduce}"
+  val rollJoinCommand = s"${rollPair}/${join}"
+  val rollAggregateCommand = s"${rollPair}/${aggregate}"
 
   /*  CommandRouter.register(mapCommand,
       List(classOf[Array[Byte] => Array[Byte]]), clazz, "mapValues", null, null)*/

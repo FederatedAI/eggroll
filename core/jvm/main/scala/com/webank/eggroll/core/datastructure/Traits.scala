@@ -12,15 +12,23 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ *
  */
 
 package com.webank.eggroll.core.datastructure
 
 import com.webank.eggroll.core.command.CommandURI
 import com.webank.eggroll.core.meta.ErJob
+import com.webank.eggroll.core.serdes.{BaseDeserializable, BaseSerializable}
 
 // add the to- / from- bytes mapping
-trait RpcMessage {
+trait RpcMessage extends BaseSerializable with BaseDeserializable {
+  def rpcMessageType(): String = ???
+}
+
+trait SerdesFactory {
+
 }
 
 trait TaskPlan {

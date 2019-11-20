@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='com.webank.eggroll.core.command',
   syntax='proto3',
   serialized_options=None,
-  serialized_pb=_b('\n\rcommand.proto\x12\x1f\x63om.webank.eggroll.core.command\"\xb3\x01\n\x0e\x43ommandRequest\x12\n\n\x02id\x18\x01 \x01(\x03\x12\x0b\n\x03uri\x18\x02 \x01(\t\x12\x0c\n\x04\x61rgs\x18\x03 \x03(\x0c\x12K\n\x06kwargs\x18\x04 \x03(\x0b\x32;.com.webank.eggroll.core.command.CommandRequest.KwargsEntry\x1a-\n\x0bKwargsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x0c:\x02\x38\x01\"p\n\x0f\x43ommandResponse\x12\n\n\x02id\x18\x01 \x01(\x03\x12@\n\x07request\x18\x02 \x01(\x0b\x32/.com.webank.eggroll.core.command.CommandRequest\x12\x0f\n\x07results\x18\x03 \x03(\x0c\x32{\n\x0e\x43ommandService\x12i\n\x04\x63\x61ll\x12/.com.webank.eggroll.core.command.CommandRequest\x1a\x30.com.webank.eggroll.core.command.CommandResponseb\x06proto3')
+  serialized_pb=_b('\n\rcommand.proto\x12\x1f\x63om.webank.eggroll.core.command\"\xb3\x01\n\x0e\x43ommandRequest\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0b\n\x03uri\x18\x02 \x01(\t\x12\x0c\n\x04\x61rgs\x18\x03 \x03(\x0c\x12K\n\x06kwargs\x18\x04 \x03(\x0b\x32;.com.webank.eggroll.core.command.CommandRequest.KwargsEntry\x1a-\n\x0bKwargsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x0c:\x02\x38\x01\"p\n\x0f\x43ommandResponse\x12\n\n\x02id\x18\x01 \x01(\t\x12@\n\x07request\x18\x02 \x01(\x0b\x32/.com.webank.eggroll.core.command.CommandRequest\x12\x0f\n\x07results\x18\x03 \x03(\x0c\x32{\n\x0e\x43ommandService\x12i\n\x04\x63\x61ll\x12/.com.webank.eggroll.core.command.CommandRequest\x1a\x30.com.webank.eggroll.core.command.CommandResponseb\x06proto3')
 )
 
 
@@ -72,8 +72,8 @@ _COMMANDREQUEST = _descriptor.Descriptor(
   fields=[
     _descriptor.FieldDescriptor(
       name='id', full_name='com.webank.eggroll.core.command.CommandRequest.id', index=0,
-      number=1, type=3, cpp_type=2, label=1,
-      has_default_value=False, default_value=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
@@ -124,8 +124,8 @@ _COMMANDRESPONSE = _descriptor.Descriptor(
   fields=[
     _descriptor.FieldDescriptor(
       name='id', full_name='com.webank.eggroll.core.command.CommandResponse.id', index=0,
-      number=1, type=3, cpp_type=2, label=1,
-      has_default_value=False, default_value=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
