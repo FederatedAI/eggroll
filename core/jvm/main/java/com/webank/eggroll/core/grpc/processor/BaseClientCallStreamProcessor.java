@@ -12,6 +12,8 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ *
  */
 
 package com.webank.eggroll.core.grpc.processor;
@@ -21,6 +23,8 @@ import com.webank.eggroll.core.error.handler.InterruptAndRethrowRuntimeErrorHand
 import io.grpc.stub.ClientCallStreamObserver;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -33,6 +37,7 @@ public abstract class BaseClientCallStreamProcessor<R> implements StreamProcesso
   private Lock conditionLock;
   protected Condition streamReady;
   protected ErrorHandler errorHandler = new InterruptAndRethrowRuntimeErrorHandler();
+  protected AtomicInteger stage = new AtomicInteger(0);
 
   private final Logger LOGGER = LogManager.getLogger(this.getClass());
 
@@ -44,10 +49,18 @@ public abstract class BaseClientCallStreamProcessor<R> implements StreamProcesso
 
   @Override
   public void onInit() {
+    if (stage.get() > 0) {
+      return;
+    }
+
   }
 
   @Override
   public void onProcess() {
+    if (stage.get() == 0) {
+      onInit();
+    }
+
     try {
       if (clientCallStreamObserver.isReady()) {
         return;

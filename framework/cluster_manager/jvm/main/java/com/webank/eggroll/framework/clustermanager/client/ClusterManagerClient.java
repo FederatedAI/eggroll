@@ -30,7 +30,7 @@ import com.webank.eggroll.core.meta.ErServerCluster;
 import com.webank.eggroll.core.meta.ErServerNode;
 import com.webank.eggroll.core.meta.ErStore;
 import com.webank.eggroll.core.meta.ErStoreLocator;
-import com.webank.eggroll.core.session.DefaultErConf;
+import com.webank.eggroll.core.session.StaticErConf;
 
 public class ClusterManagerClient {
   private ErEndpoint clusterManagerEndpoint;
@@ -42,9 +42,9 @@ public class ClusterManagerClient {
   }
 
   public ClusterManagerClient() {
-    this(DefaultErConf.getString(
+    this(StaticErConf.getString(
             ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST(), null),
-        DefaultErConf.getInt(
+        StaticErConf.getInt(
             ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT(), -1));
   }
 

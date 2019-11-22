@@ -120,8 +120,8 @@
           <scalaVersion>${scala.version}</scalaVersion>
           <checkMultipleScalaVersions>true</checkMultipleScalaVersions>
           <failOnMultipleScalaVersions>true</failOnMultipleScalaVersions>
-          <!--<recompileMode>incremental</recompileMode>-->
-          <useZincServer>true</useZincServer>
+          <recompileMode>incremental</recompileMode>
+         <!-- <useZincServer>true</useZincServer>-->
           <args>
             <!--            <arg>-unchecked</arg>
                         <arg>-deprecation</arg>
@@ -129,6 +129,7 @@
                         <arg>-explaintypes</arg>
                         <arg>-Yno-adapted-args</arg>
                         <arg>-target:jvm-1.8</arg>-->
+            <arg>-Xexperimental</arg>
           </args>
           <jvmArgs>
             <jvmArg>-Xms1024m</jvmArg>

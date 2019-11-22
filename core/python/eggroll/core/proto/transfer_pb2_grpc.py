@@ -36,7 +36,7 @@ class TransferServiceServicer(object):
 def add_TransferServiceServicer_to_server(servicer, server):
   rpc_method_handlers = {
       'send': grpc.stream_unary_rpc_method_handler(
-          servicer.send,
+          servicer.send_single,
           request_deserializer=transfer__pb2.Batch.FromString,
           response_serializer=transfer__pb2.TransferHeader.SerializeToString,
       ),

@@ -23,6 +23,7 @@ import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.schedule._
 import com.webank.eggroll.core.serdes.DefaultScalaSerdes
 import com.webank.eggroll.framework.clustermanager.client.ClusterManagerClient
+import org.apache.commons.lang3.StringUtils
 
 import scala.collection.mutable
 
@@ -141,7 +142,11 @@ class RollPairService() {
     val outputStoreProposal = if (isOutputSpecified) {
       val specifiedOutput = inputJob.outputs.head
       if (specifiedOutput.partitions.isEmpty) {
-        val outputStoreLocator = specifiedOutput.storeLocator.copy(totalPartitions = 1)
+        val outputTotalPartitions =
+          if (StringUtils.equalsAny(RollPairService.map, RollPairService.aggregate)) 1
+          else inputStoreWithPartitions.storeLocator.totalPartitions
+
+        val outputStoreLocator = specifiedOutput.storeLocator.copy(totalPartitions = outputTotalPartitions)
         ErStore(storeLocator = outputStoreLocator)
       } else {
         specifiedOutput
@@ -156,8 +161,11 @@ class RollPairService() {
 
     var taskPlan: BaseTaskPlan = null
     inputJob.name match {
-      case "aggregate" => {
+      case RollPairService.aggregate => {
         taskPlan = new AggregateTaskPlan(new CommandURI(RollPairService.eggRunTaskCommand), taskPlanJob)
+      }
+      case RollPairService.map => {
+        taskPlan = new MapTaskPlan(new CommandURI(RollPairService.eggRunTaskCommand), taskPlanJob)
       }
     }
 

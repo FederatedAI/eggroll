@@ -27,12 +27,12 @@ import org.apache.commons.beanutils.BeanUtils
 import scala.collection.mutable
 
 abstract class ErConf {
-  private val conf: Properties = new Properties()
+  protected val conf: Properties = new Properties()
   private val confRepository: mutable.HashMap[String, String] = new mutable.HashMap[String, String]()
 
   def getProperties(): Properties = {
     val duplicateConf: Properties = new Properties()
-    BeanUtils.copyProperties(conf, duplicateConf)
+    BeanUtils.copyProperties(getConf(), duplicateConf)
     duplicateConf
   }
 
@@ -41,7 +41,7 @@ abstract class ErConf {
     val value = confRepository get key
 
     if (forceReload || value.isEmpty) {
-      val resultRef = conf.get(key)
+      val resultRef = getConf().get(key)
 
       if (resultRef != null) {
         result = resultRef.toString
@@ -77,7 +77,7 @@ abstract class ErConf {
   def getModuleName(): String
 
   def addProperties(prop: Properties): ErConf = {
-    conf.putAll(prop)
+    getConf().putAll(prop)
     this
   }
 
@@ -91,16 +91,41 @@ abstract class ErConf {
   }
 
   def addProperty(key: String, value: String): ErConf = {
-    this.conf.setProperty(key, value)
+    getConf().setProperty(key, value)
     this
+  }
+
+  def get[T](key: String, defaultValue: T): T = {
+    val result = getConf().get(key)
+
+    if (result != null) {
+      result.asInstanceOf[T]
+    } else {
+      defaultValue
+    }
+  }
+
+  protected def getConf(): Properties = {
+    this.conf
   }
 }
 
-object DefaultErConf extends ErConf {
+case class RuntimeErConf(prop: Properties = new Properties()) extends ErConf {
+  override protected val conf = new Properties(super.getConf())
+  conf.putAll(prop)
+
+  override def getPort(): Int = StaticErConf.getPort()
+
+  override def getModuleName(): String = StaticErConf.getModuleName()
+
+  override protected def getConf(): Properties = conf
+}
+
+object StaticErConf extends ErConf {
   var port: Int = -1
   var moduleName: String = _
 
-  def setPort(port: Int): DefaultErConf.type = {
+  def setPort(port: Int): StaticErConf.type = {
     this.port match {
       case -1 => this.port = port
       case _ => throw new IllegalStateException("port has already been set")

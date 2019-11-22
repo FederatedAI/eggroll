@@ -25,7 +25,7 @@ import com.webank.eggroll.core.datastructure.LinkedBlockingBroker
 import com.webank.eggroll.core.error.DistributedRuntimeException
 import com.webank.eggroll.core.meta.{ErPartition, ErTask}
 import com.webank.eggroll.core.serdes.DefaultScalaSerdes
-import com.webank.eggroll.core.transfer.{GrpcTransferService, TransferClient}
+import com.webank.eggroll.core.transfer.{GrpcTransferService, GrpcTransferClient}
 import com.webank.eggroll.core.util.Logging
 import com.webank.eggroll.rollpair.io.RocksdbSortedKvAdapter
 
@@ -95,7 +95,7 @@ class EggPair extends Logging {
       // send seqOp result to "0"
       val partitionId = task.inputs.head.id
       val transferTag = task.job.name
-      if ("0" == partitionId) {
+      if (0 == partitionId) {
         val partitionSize = task.job.inputs.head.partitions.size
         val queue = GrpcTransferService.getOrCreateBroker(transferTag, partitionSize)
 
@@ -103,7 +103,8 @@ class EggPair extends Logging {
 
         for (i <- 1 until partitionSize) {
           // todo: bind with configurations
-          val seqOpResult = queue.poll(10, TimeUnit.MINUTES)
+          val transferBatch = queue.poll(10, TimeUnit.MINUTES)
+          val seqOpResult = transferBatch.getData.toByteArray
 
           combOpResult = f(combOpResult, seqOpResult)
         }
@@ -114,9 +115,9 @@ class EggPair extends Logging {
         outputAdapter.put("result".getBytes(), combOpResult)
         outputAdapter.close()
       } else {
-        val transferClient = new TransferClient()
+        val transferClient = new GrpcTransferClient()
 
-        transferClient.send(data = seqOpResult, tag = transferTag, serverNode = task.outputs.head.processor)
+        transferClient.sendSingle(data = seqOpResult, tag = transferTag, processor = task.outputs.head.processor)
       }
 
       inputStore.close()

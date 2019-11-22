@@ -26,7 +26,9 @@ import scala.collection.mutable.ListBuffer
 class TestIo {
   val partitionId = 1
   //val dbPath: String = "/tmp/eggroll/levelDb/ns/name/" + partitionId
+  //val rootPath = s"/tmp/eggroll/levelDb/ns"
   val rootPath = s"/tmp/eggroll/${StoreTypes.ROLLPAIR_LEVELDB}/namespace"
+
   val namePath = s"${rootPath}/name/"
   val testPath = s"${rootPath}/test/"
   val mapValuesPath: String = s"${rootPath}/testMapValues/"
@@ -92,7 +94,7 @@ class TestIo {
 
   @Test
   def testIterateMultipleKvBatch(): Unit = {
-    val path = mapValuesPath
+    val path = mapPath
     println(s"path: ${path}")
 
     for (p <- 0 until 4) {

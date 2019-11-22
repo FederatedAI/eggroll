@@ -21,7 +21,7 @@ package com.webank.eggroll.core.util
 import java.net.{Inet4Address, ServerSocket}
 
 import com.google.common.net.InetAddresses
-import com.webank.eggroll.core.session.DefaultErConf
+import com.webank.eggroll.core.session.StaticErConf
 import org.scalatest.FlatSpec
 
 class TestRuntimeUtils extends FlatSpec {
@@ -50,7 +50,7 @@ class TestRuntimeUtils extends FlatSpec {
   }
 
   "RuntimeUtils" should "return ip and port for a conf" in {
-    DefaultErConf.setPort(port)
+    StaticErConf.setPort(port)
     val ipAndPort = RuntimeUtils.getMySiteLocalAddressAndPort(true)
     println(ipAndPort)
   }
