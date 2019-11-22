@@ -15,9 +15,9 @@
 import grpc
 import time
 import unittest
-import Fate as fa
+import roll_paillier_tensor as rpt_engine
 from eggroll.core.command.command_model import ErCommandRequest
-from eggroll.core.meta import ErStoreLocator, ErJob, ErStore, ErFunctor
+from eggroll.core.meta_model import ErStoreLocator, ErJob, ErStore, ErFunctor
 from eggroll.core.proto import command_pb2_grpc
 from eggroll.core.serdes import cloudpickle
 from eggroll.roll_paillier_tensor.roll_paillier_tensor_on_roll_pair import RollPaillierTensorOnRollPair as rpt
@@ -26,7 +26,6 @@ class TestRollPaillierTensor(unittest.TestCase):
   def test_scalar_mul(self):
     store_locator = ErStoreLocator(store_type="levelDb", namespace="ns",
                                    name='mat_a')
-
     original = rpt(store_locator)
     result = original.scalar_mul(2)
 
@@ -40,12 +39,48 @@ class TestRollPaillierTensor(unittest.TestCase):
     right_mat = rpt(right_locator)
     result = left_mat.add(right_mat)
 
+  def test_gpu_add(self):
+      left_locator = ErStoreLocator(store_type="levelDb", namespace="ns",
+                                    name='mat_a')
+      right_locator = ErStoreLocator(store_type="levelDb", namespace="ns",
+                                     name='mat_b')
+
+      left_mat = rpt(left_locator)
+      right_mat = rpt(right_locator)
+
+      print("[test_gpu_add]: +++___")
+      left_mat.gpu_add(right_mat)
+
+  def test_matmul(self):
+      left_locator = ErStoreLocator(store_type="levelDb", namespace="ns",
+                                    name='mat_a')
+      right_locator = ErStoreLocator(store_type="levelDb", namespace="ns",
+                                     name='mat_b')
+
+      left_mat = rpt(left_locator)
+      right_mat = rpt(right_locator)
+
+      print("[test cpu matmul ]: +++___")
+      left_mat.mat_mul(right_mat)
+
+  def test_gpu_load(self):
+      left_locator = ErStoreLocator(store_type="levelDb", namespace="ns",
+                                    name='mat_a')
+      right_locator = ErStoreLocator(store_type="levelDb", namespace="ns",
+                                     name='mat_b')
+
+      left_mat = rpt(left_locator)
+      right_mat = rpt(right_locator)
+
+      print("[test_gpu_add]: +++___")
+      left_mat.gpu_load(right_mat)
+
   def test_scalar_mul_raw(self):
 
     def scalar_mul(v):
-      pub_key, private_key = fa.keygen()
+      pub_key, private_key = rpt_engine.keygen()
 
-      return fa.slcmul(fa.load(v, 1, 1, 1), 2.0, pub_key, private_key)
+      return rpt_engine.slcmul(rpt_engine.load(v, 1, 1, 1), 2.0, pub_key, private_key)
 
     pickled_function = cloudpickle.dumps(scalar_mul)
 
