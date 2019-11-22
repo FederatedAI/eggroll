@@ -12,6 +12,8 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ *
  */
 
 package com.webank.eggroll.rollpair.component
@@ -22,8 +24,8 @@ import com.webank.eggroll.core.constant.StringConstants
 import com.webank.eggroll.core.datastructure.LinkedBlockingBroker
 import com.webank.eggroll.core.error.DistributedRuntimeException
 import com.webank.eggroll.core.meta.{ErPartition, ErTask}
-import com.webank.eggroll.core.serdes.DefaultScalaFunctorSerdes
-import com.webank.eggroll.core.transfer.{GrpcTransferService, TransferClient}
+import com.webank.eggroll.core.serdes.DefaultScalaSerdes
+import com.webank.eggroll.core.transfer.{GrpcTransferService, GrpcTransferClient}
 import com.webank.eggroll.core.util.Logging
 import com.webank.eggroll.rollpair.io.RocksdbSortedKvAdapter
 
@@ -93,15 +95,16 @@ class EggPair extends Logging {
       // send seqOp result to "0"
       val partitionId = task.inputs.head.id
       val transferTag = task.job.name
-      if ("0" == partitionId) {
+      if (0 == partitionId) {
         val partitionSize = task.job.inputs.head.partitions.size
-        val queue = GrpcTransferService.getOrCreateBroker(transferTag, partitionSize).asInstanceOf[ArrayBlockingQueue[Array[Byte]]]
+        val queue = GrpcTransferService.getOrCreateBroker(transferTag, partitionSize)
 
         var combOpResult = seqOpResult
 
         for (i <- 1 until partitionSize) {
           // todo: bind with configurations
-          val seqOpResult = queue.poll(10, TimeUnit.MINUTES)
+          val transferBatch = queue.poll(10, TimeUnit.MINUTES)
+          val seqOpResult = transferBatch.getData.toByteArray
 
           combOpResult = f(combOpResult, seqOpResult)
         }
@@ -112,9 +115,9 @@ class EggPair extends Logging {
         outputAdapter.put("result".getBytes(), combOpResult)
         outputAdapter.close()
       } else {
-        val transferClient = new TransferClient()
+        val transferClient = new GrpcTransferClient()
 
-        transferClient.send(data = seqOpResult, tag = transferTag, serverNode = task.outputs.head.node)
+        transferClient.sendSingle(data = seqOpResult, tag = transferTag, processor = task.outputs.head.processor)
       }
 
       inputStore.close()
@@ -168,11 +171,11 @@ class EggPair extends Logging {
 }
 
 object EggPair {
-  val functorSerdes = DefaultScalaFunctorSerdes()
+  val functorSerdes = DefaultScalaSerdes()
 
   def getDbPath(partition: ErPartition): String = {
     val storeLocator = partition.storeLocator
     val dbPathPrefix = "/tmp/eggroll/"
-    dbPathPrefix + String.join(StringConstants.SLASH, storeLocator.storeType, storeLocator.namespace, storeLocator.name, partition.id)
+    dbPathPrefix + String.join(StringConstants.SLASH, storeLocator.storeType, storeLocator.namespace, storeLocator.name, partition.id.toString)
   }
 }

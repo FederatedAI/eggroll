@@ -1,7 +1,25 @@
+/*
+ * Copyright (c) 2019 - now, Eggroll Authors. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ *
+ */
+
 package com.webank.eggroll
 
-import com.webank.eggroll.format.{FrameBatch, FrameDB, FrameSchema}
-import com.webank.eggroll.rollframe.{ClusterManager, RfPartition, RfStore, RollFrameService}
+import com.webank.eggroll.format.{FrameBatch, FrameSchema}
+import com.webank.eggroll.rollframe.{ClusterManager, RollFrameClientMode}
 
 class RfServerLauncher{
 
@@ -17,9 +35,9 @@ object RfServerLauncher {
   def main(args: Array[String]): Unit = {
     printServerMes()
     val mode = args(0).toLowerCase() // server/client
-    val nodeId = args(1) // 0,1,2
+    val nodeId = args(1).toLong // 0,1,2
     val taskType = args(2).toLowerCase() // map,reduce,aggregate
-    val clusterId = null
+    val clusterId = -1
 
     // whether is't client mode
     mode match {
@@ -54,10 +72,15 @@ object RfServerLauncher {
   }
 
   def mapExample(): Unit = {
-    val input = clusterManager.getRollFrameStore("b1", "test1") // 指定输入数据
-    val output = RfStore("b1map", "test1", input.partitions.size, input.partitions) // 指定输出数据
-    val rf = new RollFrameService(input)
-    rf.mapBatches({ cb =>
+    val input = clusterManager.getRollFrameStore("b1", "test1") // specify input data
+    //val output = RfStore("b1map", "test1", input.partitions.size, input.partitions) // specify output data
+
+    // todo: abstraction and pull up
+    val outputStoreLocator = input.storeLocator.copy(name = "b1map")
+    val output = input.copy(storeLocator = outputStoreLocator, partitions = input.partitions.map(p => p.copy(storeLocator = outputStoreLocator)))
+
+    val rf = new RollFrameClientMode(input)
+    rf.mapBatch({ cb =>
       val schema =
         """
         {
@@ -75,7 +98,7 @@ object RfServerLauncher {
       batch
     }, output)
 
-    new RollFrameService(output).mapBatches { fb =>
+    new RollFrameClientMode(output).mapBatch { fb =>
       assert(fb.readDouble(0, 1) == 0.1)
       assert(fb.readDouble(1, 0) == 1.0)
       assert(fb.readDouble(1, 1) == 1.1)
@@ -86,8 +109,12 @@ object RfServerLauncher {
   def reduceExample(): Unit = {
     val start = System.currentTimeMillis()
     val input = clusterManager.getRollFrameStore("b1", "test1")
-    val output = RfStore("b1reduce", "test1", 1, List(RfPartition(0, 1)))
-    val rf = new RollFrameService(input)
+
+    // val output = RfStore("b1reduce", "test1", 1, List(RfPartition(0, 1)))
+
+    val outputStoreLocator = input.storeLocator.copy(name = "b1reduce")
+    val output = input.copy(storeLocator = outputStoreLocator, partitions = input.partitions.map(p => p.copy(storeLocator = outputStoreLocator)))
+    val rf = new RollFrameClientMode(input)
     rf.reduce ({(x, y) =>
       try {
         for (f <- y.rootVectors.indices) {
@@ -101,7 +128,7 @@ object RfServerLauncher {
       } catch {
         case t: Throwable => t.printStackTrace()
       }
-      x},output)
+      x}, output)
 
     println(s"reduce time: ${System.currentTimeMillis() - start}")
 
@@ -109,7 +136,7 @@ object RfServerLauncher {
 
   def aggregateExample(): Unit = {
     val start = System.currentTimeMillis()
-    val rf = new RollFrameService(clusterManager.getRollFrameStore("b1", "test1"))
+    val rf = new RollFrameClientMode(clusterManager.getRollFrameStore("b1", "test1"))
     println(System.currentTimeMillis() - start)
 
     val fieldCount = 100

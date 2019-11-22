@@ -12,8 +12,41 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ *
  */
 
 package com.webank.eggroll.rollframe
 
+import com.webank.eggroll.core.command.CommandURI
+import com.webank.eggroll.core.meta.ErJob
+import com.webank.eggroll.core.schedule.{BaseTaskPlan, JobRunner, ListScheduler}
+
+class RollFrameService() extends RollFrame {
+  val scheduler = new ListScheduler
+  val clusterManager = new ClusterManager
+
+  def mapBatches(job: ErJob): ErJob = {
+    // todo: deal with output
+    run(new MapBatchTask(uri = new CommandURI("EggFrame.runTask"), job = job))
+  }
+
+  def reduce(job: ErJob): ErJob = {
+    run(new ReduceBatchTask(uri = new CommandURI("EggFrame.runTask"), job = job))
+  }
+
+  def aggregate(job: ErJob): ErJob = {
+    run(new AggregateBatchTask(uri = new CommandURI("EggFrame.runTask"), job = job))
+  }
+
+  def run(taskPlan: BaseTaskPlan): ErJob = {
+    scheduler.addPlan(taskPlan)
+    JobRunner.run(scheduler.getPlan())
+
+    taskPlan.job
+  }
+
+  def companionEgg(): EggFrame = new EggFrame
+
+}
 

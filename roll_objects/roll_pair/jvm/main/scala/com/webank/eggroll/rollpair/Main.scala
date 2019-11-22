@@ -12,6 +12,8 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ *
  */
 
 package com.webank.eggroll.rollpair.component
@@ -31,20 +33,20 @@ object Main extends Logging {
     rollServer.start()
 
     // job
-    CommandRouter.register(serviceName = RollPair.rollMapValuesCommand,
-        serviceParamTypes = List(classOf[ErJob]),
-        routeToClass = classOf[RollPair],
-        routeToMethodName = RollPair.mapValues)
+    CommandRouter.register(serviceName = RollPairService.rollMapValuesCommand,
+        serviceParamTypes = Array(classOf[ErJob]),
+        routeToClass = classOf[RollPairService],
+        routeToMethodName = RollPairService.mapValues)
 
-    CommandRouter.register(serviceName = RollPair.rollReduceCommand,
-        serviceParamTypes = List(classOf[ErJob]),
-        routeToClass = classOf[RollPair],
-        routeToMethodName = RollPair.reduce)
+    CommandRouter.register(serviceName = RollPairService.rollReduceCommand,
+        serviceParamTypes = Array(classOf[ErJob]),
+        routeToClass = classOf[RollPairService],
+        routeToMethodName = RollPairService.reduce)
 
-    CommandRouter.register(serviceName = RollPair.rollJoinCommand,
-        serviceParamTypes = List(classOf[ErJob]),
-        routeToClass = classOf[RollPair],
-        routeToMethodName = RollPair.join)
+    CommandRouter.register(serviceName = RollPairService.rollJoinCommand,
+        serviceParamTypes = Array(classOf[ErJob]),
+        routeToClass = classOf[RollPairService],
+        routeToMethodName = RollPairService.join)
 
     logInfo("server started at port 20000")
 

@@ -12,22 +12,22 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ *
  */
 
 package com.webank.eggroll.core.serdes
 
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream, ObjectInputStream, ObjectOutputStream}
 
-import scala.reflect.ClassTag
-
-trait FunctorSerDes extends BaseSerializable with BaseDeserializable {
+trait MonadSerDes extends ErSerializer with ErDeserializer {
   def serialize(func: Any): Array[Byte]
 
   def deserialize[T](bytes: Array[Byte]): T
 }
 
-case class DefaultScalaFunctorSerdes(func: Any = null) extends FunctorSerDes {
-  override def toBytes(): Array[Byte] = serialize(func)
+case class DefaultScalaSerdes(func: Any = null) extends MonadSerDes {
+  //override def toBytes(): Array[Byte] = serialize(func)
 
   override def serialize(func: Any): Array[Byte] = {
     val bo = new ByteArrayOutputStream()
@@ -39,7 +39,7 @@ case class DefaultScalaFunctorSerdes(func: Any = null) extends FunctorSerDes {
     }
   }
 
-  override def fromBytes[T: ClassTag](bytes: Array[Byte]): T = deserialize(bytes)
+  // override def fromBytes(bytes: Array[Byte]): Any = deserialize(bytes)
 
   override def deserialize[T](bytes: Array[Byte]): T = {
     val bo = new ObjectInputStream(new ByteArrayInputStream(bytes))
@@ -49,4 +49,8 @@ case class DefaultScalaFunctorSerdes(func: Any = null) extends FunctorSerDes {
       bo.close()
     }
   }
+
+  override def fromBytes(bytes: Array[Byte]): Any = deserialize(bytes)
+
+  override def toBytes(baseSerializable: BaseSerializable): Array[Byte] = serialize(baseSerializable)
 }

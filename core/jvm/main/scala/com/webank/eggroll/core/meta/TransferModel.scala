@@ -12,21 +12,27 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ *
  */
 
 package com.webank.eggroll.core.meta
 
 import com.google.protobuf.{ByteString, Message}
 import com.webank.eggroll.core.constant.StringConstants
-import com.webank.eggroll.core.rpc.RpcMessage
-import com.webank.eggroll.core.serdes.{PbMessageDeserializer, PbMessageSerializer}
+import com.webank.eggroll.core.datastructure.RpcMessage
+import com.webank.eggroll.core.serdes.{BaseSerializable, PbMessageDeserializer, PbMessageSerializer}
 import com.webank.eggroll.core.transfer.Transfer
 
-case class ErTransferHeader(id: Int, tag: String, totalSize: Long, status: String = StringConstants.EMPTY) extends RpcMessage
+trait TransferRpcMessage extends RpcMessage {
+  override def rpcMessageType(): String = "Transfer"
+}
 
-case class ErBatch(header: ErTransferHeader, data: Array[Byte]) extends RpcMessage
+case class ErTransferHeader(id: Int, tag: String, totalSize: Long, status: String = StringConstants.EMPTY) extends TransferRpcMessage
 
-object TransferModelPbSerdes {
+case class ErTransferBatch(header: ErTransferHeader, data: Array[Byte]) extends TransferRpcMessage
+
+object TransferModelPbMessageSerdes {
 
   // serializers
   implicit class ErTransferHeaderToPbMessage(src: ErTransferHeader) extends PbMessageSerializer {
@@ -39,17 +45,23 @@ object TransferModelPbSerdes {
 
       builder.build()
     }
+
+    override def toBytes(baseSerializable: BaseSerializable): Array[Byte] =
+      baseSerializable.asInstanceOf[ErTransferHeader].toBytes()
   }
 
-  implicit class ErBatchToPbMessage(src: ErBatch) extends PbMessageSerializer {
-    override def toProto[T >: Message](): Transfer.Batch = {
-      val builder = Transfer.Batch.newBuilder()
+  implicit class ErBatchToPbMessage(src: ErTransferBatch) extends PbMessageSerializer {
+    override def toProto[T >: Message](): Transfer.TransferBatch = {
+      val builder = Transfer.TransferBatch.newBuilder()
         .setHeader(src.header.toProto())
         .setData(ByteString.copyFrom(src.data))
         .setBatchSize(src.data.size)
 
       builder.build()
     }
+
+    override def toBytes(baseSerializable: BaseSerializable): Array[Byte] =
+      baseSerializable.asInstanceOf[ErTransferBatch].toBytes()
   }
 
   // deserializers
@@ -57,12 +69,18 @@ object TransferModelPbSerdes {
     override def fromProto[T >: RpcMessage](): ErTransferHeader = {
       ErTransferHeader(id = src.getId, tag = src.getTag, totalSize = src.getTotalSize, status = src.getStatus)
     }
+
+    override def fromBytes(bytes: Array[Byte]): ErTransferHeader =
+      Transfer.TransferHeader.parseFrom(bytes).fromProto()
   }
 
-  implicit class ErBatchFromPbMessage(src: Transfer.Batch) extends PbMessageDeserializer {
-    override def fromProto[T >: RpcMessage](): ErBatch = {
-      ErBatch(header = src.getHeader.fromProto(), data = src.getData.toByteArray)
+  implicit class ErBatchFromPbMessage(src: Transfer.TransferBatch) extends PbMessageDeserializer {
+    override def fromProto[T >: RpcMessage](): ErTransferBatch = {
+      ErTransferBatch(header = src.getHeader.fromProto(), data = src.getData.toByteArray)
     }
+
+    override def fromBytes(bytes: Array[Byte]): ErTransferHeader =
+      Transfer.TransferHeader.parseFrom(bytes).fromProto()
   }
 }
 

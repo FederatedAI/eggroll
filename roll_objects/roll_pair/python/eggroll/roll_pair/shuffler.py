@@ -168,7 +168,12 @@ def partitioner_callback(future,
     shuffle_finish_latch.count_down()
   #total_partitioned_elements_count += future.result()
 
-def shuffle_sender(shuffle_id: str, brokers, targetPartitions, chunk_size = 100):
+
+def grpc_shuffle_sender(shuffle_id: str, brokers, target_partitions, chunk_size = 100):
+  pass
+
+
+def shuffle_sender(shuffle_id: str, brokers, target_partitions, chunk_size = 100):
   not_finished_broker_index = set(range(len(brokers)))
   transfer_client = TransferClient()
   newly_finished_idx = list()
@@ -199,10 +204,10 @@ def shuffle_sender(shuffle_id: str, brokers, targetPartitions, chunk_size = 100)
 
         tag = f'{shuffle_id}-{idx}'
         print(f'sending to {tag}')
-        transfer_client.send(data=pair_batch.to_proto().SerializeToString(),
-                             tag = tag,
-                             server_node = targetPartitions[idx]._node,
-                             status = transfer_status)
+        transfer_client.send_single(data=pair_batch.to_proto().SerializeToString(),
+                                    tag = tag,
+                                    processor= target_partitions[idx]._node,
+                                    status = transfer_status)
         total_sent += len(pairs)
 
     for idx in newly_finished_idx:

@@ -1,3 +1,21 @@
+/*
+ * Copyright (c) 2019 - now, Eggroll Authors. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ *
+ */
+
 syntax = "proto3";
 
 package com.webank.eggroll.core.meta;
@@ -8,21 +26,41 @@ message Endpoint {
 }
 
 message ServerNode {
-  string id = 1;
-  Endpoint endpoint = 2;
-  string tag = 3;
+  int64 id = 1;
+  string name = 2;
+  int64 clusterId = 3;
+  Endpoint endpoint = 4;
+  string nodeType = 5;
+  string status = 6;
 }
 
 message ServerCluster {
-  string id = 1;
-  repeated ServerNode nodes = 2;
-  string tag = 3;
+  int64 id = 1;
+  string name = 2;
+  repeated ServerNode serverNodes = 3;
+  string tag = 4;
+}
+
+message Processor {
+  int64 id = 1;
+  string name = 2;
+  Endpoint commandEndpoint = 3;
+  Endpoint dataEndpoint = 4;
+  string tag = 5;
+}
+
+message ProcessorBatch {
+  int64 id = 1;
+  string name = 2;
+  repeated Processor processors = 3;
+  string tag = 4;
 }
 
 message Functor {
   string name = 1;
   string serdes = 2;
   bytes body = 3;
+  map<string, string> conf = 4;
 }
 
 message Pair {
@@ -39,6 +77,9 @@ message StoreLocator {
   string namespace = 2;
   string name = 3;
   string path = 4;
+  int32 totalPartitions = 5;
+  string partitioner = 6;
+  string serdes = 7;
 }
 
 message Store {
@@ -47,11 +88,16 @@ message Store {
 }
 
 message Partition {
-  string id = 1;
+  int32 id = 1;
   StoreLocator storeLocator = 2;
-  ServerNode node = 3;
+  Processor processor = 3;
 }
 
+message CallInfo {
+  string callSeq = 1;
+}
+
+// todo: add job / task status
 message Job {
   string id = 1;
   string name = 2;

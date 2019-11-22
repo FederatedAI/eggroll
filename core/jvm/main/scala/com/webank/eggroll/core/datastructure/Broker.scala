@@ -1,14 +1,31 @@
+/*
+ * Copyright (c) 2019 - now, Eggroll Authors. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ *
+ */
+
 package com.webank.eggroll.core.datastructure
 
 import java.util
-import java.util.concurrent.{ArrayBlockingQueue, LinkedBlockingQueue, TimeUnit}
 import java.util.concurrent.atomic.{AtomicInteger, AtomicLong}
+import java.util.concurrent.{LinkedBlockingQueue, TimeUnit}
 
 import com.webank.eggroll.core.util.Logging
-import javax.annotation.concurrent.GuardedBy
 
 
-trait Broker[E] extends AutoCloseable {
+trait Broker[E] extends AutoCloseable with Iterator[E] {
   def isWriteFinished(): Boolean
 
   def signalWriteFinish(): Unit
@@ -17,13 +34,20 @@ trait Broker[E] extends AutoCloseable {
   def isClosable(): Boolean
   def total(): Long
   def totalNull(): Long
-  def size(): Long
+  def size(): Int
 
+  // blocking forever until successful
   def put(e: E): Unit
   def take(): E
 
-  def offer(e: E, timeout: Long, unit: TimeUnit): Unit
+  // blocking, wait until timeout, returns special value
+  def offer(e: E, timeout: Long, unit: TimeUnit): Boolean
   def poll(timeout: Long, unit: TimeUnit): E
+
+  // non-blocking, returns special value
+  def offer(e: E): Boolean
+  def poll(): E
+  def peek(): E
 
   def drainTo(target: util.Collection[E], maxElements: Int = 10000): Unit
 }
@@ -70,7 +94,7 @@ class LinkedBlockingBroker[E](maxCapacity: Int = 10000,
 
   override def total(): Long = historyTotal.get()
 
-  override def size(): Long = queue.size()
+  override def size(): Int = queue.size()
 
   override def close(): Unit = {
     if (!isClosable()) {
@@ -86,9 +110,19 @@ class LinkedBlockingBroker[E](maxCapacity: Int = 10000,
 
   override def getRemainingWriteSignalCount(): Int = remainingSignalCount.get()
 
-  override def offer(e: E, timeout: Long, unit: TimeUnit): Unit = queue.offer(e, timeout, unit)
+  override def offer(e: E, timeout: Long, unit: TimeUnit): Boolean = queue.offer(e, timeout, unit)
 
   override def poll(timeout: Long, unit: TimeUnit): E = queue.poll(timeout, unit)
+
+  override def offer(e: E): Boolean = queue.offer(e)
+
+  override def poll(): E = queue.poll()
+
+  override def peek(): E = queue.peek()
+
+  override def hasNext: Boolean = !isClosable()
+
+  override def next(): E = take()
 }
 
 object LinkedBlockingBroker {

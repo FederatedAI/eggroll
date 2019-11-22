@@ -19,7 +19,9 @@
   xmlns="http://maven.apache.org/POM/4.0.0"
   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
+    <modelVersion>4.0.0</modelVersion>
     <artifactId>eggroll-rollsite</artifactId>
+    <name>Eggroll RollSite</name>
 
     <parent>
         <groupId>com.webank.eggroll</groupId>
@@ -27,9 +29,6 @@
         <relativePath>../../../pom.xml</relativePath>
         <version>${eggroll.version}</version>
     </parent>
-
-    <packaging>jar</packaging>
-    <modelVersion>4.0.0</modelVersion>
 
     <properties>
         <junit.version>4.12</junit.version>

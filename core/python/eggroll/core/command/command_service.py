@@ -32,7 +32,7 @@ class CommandServicer(command_pb2_grpc.CommandServiceServicer):
                 args=getattr(command_request, '_args'),
                 kwargs=getattr(command_request, '_kwargs'))
 
-    response = ErCommandResponse(seq=getattr(command_request, '_seq'),
-                                 data=call_result)
+    response = ErCommandResponse(id=getattr(command_request, '_id'),
+                                 results=call_result)
 
     return response.to_proto()

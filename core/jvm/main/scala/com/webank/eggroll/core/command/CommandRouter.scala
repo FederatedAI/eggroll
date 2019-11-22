@@ -12,6 +12,8 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ *
  */
 
 package com.webank.eggroll.core.command
@@ -19,14 +21,16 @@ package com.webank.eggroll.core.command
 import java.lang.reflect.Method
 
 import com.google.protobuf.ByteString
-import com.webank.eggroll.core.constant.StringConstants
-import com.webank.eggroll.core.meta.MetaModelPbSerdes._
-import com.webank.eggroll.core.meta.{ErJob, ErStore, ErTask, Meta}
+import com.webank.eggroll.core.constant.{CoreConfKeys, SerdesTypes, StringConstants}
+import com.webank.eggroll.core.serdes.{BaseSerializable, ErDeserializer, ErSerializer, RpcMessageSerdesFactory}
+import com.webank.eggroll.core.session.StaticErConf
+import com.webank.eggroll.core.util.Logging
 import org.apache.commons.lang3.StringUtils
 import org.apache.commons.lang3.reflect.{ConstructorUtils, MethodUtils}
 
 import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 
 trait CommandRoutable {
 
@@ -36,18 +40,22 @@ object Scope {
 
 }
 
-object CommandRouter {
-  private val serviceRouteTable = TrieMap[String, (Any, Method)]()
+object CommandRouter extends Logging {
+  private val serviceRouteTable = TrieMap[String, ErService]()
   private val messageParserMethodCache = mutable.Map[Class[_], Method]()
+  private val defaultSerdesType = StaticErConf.getString(CoreConfKeys.CONFKEY_CORE_COMMAND_DEFAULT_SERDES_TYPE, SerdesTypes.PROTOBUF)
 
   // todo: consider different scope of target instance suck as 'singleton', 'proto', 'session' etc.
   //  This can be implemented as an annotation reader
   def register(serviceName: String,
-               serviceParamTypes: List[Class[_]],
+               serviceParamTypes: Array[Class[_]],
+               serviceResultTypes: Array[Class[_]] = Array(),
+               serviceParamDeserializers: Array[String] = Array(),
+               serviceResultSerializers: Array[String] = Array(),
                routeToClass: Class[_] = null,
                routeToMethodName: String = null,
                routeToCallBasedClassInstance: Any = null,
-               callBasedClassInstanceInitArgs: List[AnyRef] = null): Unit = this.synchronized {
+               callBasedClassInstanceInitArgs: Array[AnyRef] = null): Unit = this.synchronized {
     if (serviceRouteTable.contains(serviceName)) {
       throw new IllegalStateException(s"Service ${serviceName} has been registered at: ${serviceRouteTable(serviceName)}")
     }
@@ -67,6 +75,9 @@ object CommandRouter {
       throw new NoSuchMethodException(s"accessible method not found for ${serviceName}")
     }
 
+    val finalServiceResultTypes: Array[Class[_]] =
+      if (serviceResultTypes.isEmpty) Array(routeToMethod.getReturnType) else serviceResultTypes
+
     val finalCallBasedInstance =
       if (routeToCallBasedClassInstance != null) {
         routeToCallBasedClassInstance
@@ -76,54 +87,76 @@ object CommandRouter {
         ConstructorUtils.invokeConstructor(finalRouteToClass, finalCallBasedClassInstanceInitArgsArray: _*)
       }
 
-    serviceRouteTable.put(serviceName, (finalCallBasedInstance, routeToMethod))
+    val paramDeserializers = ArrayBuffer[ErDeserializer]()
+    paramDeserializers.sizeHint(serviceParamTypes.length)
+    serviceParamTypes.indices.foreach(i => {
+      val serdesType =
+        if (serviceParamDeserializers.length - 1 < i) defaultSerdesType else serviceParamDeserializers(i)
+      val deserializer = RpcMessageSerdesFactory.newDeserializer(
+        javaClass = serviceParamTypes(i), serdesType = serdesType)
+      paramDeserializers += deserializer
+    })
+
+    val resultSerializers = ArrayBuffer[ErSerializer]()
+    resultSerializers.sizeHint(finalServiceResultTypes.length)
+    finalServiceResultTypes.indices.foreach(i => {
+      val serdesType =
+        if (serviceResultSerializers.length - 1 < i) defaultSerdesType else serviceResultSerializers(i)
+      val serializer = RpcMessageSerdesFactory.newSerializer(
+        javaClass = finalServiceResultTypes(i), serdesType = serdesType)
+      resultSerializers += serializer
+    })
+
+    val command = ErService(
+      serviceName = serviceName,
+      serviceParamTypes = serviceParamTypes,
+      serviceResultTypes = finalServiceResultTypes,
+      serviceParamDeserializers = paramDeserializers.toArray,
+      serviceResultSerializers = resultSerializers.toArray,
+      callBasedInstance = finalCallBasedInstance,
+      routeToMethod = routeToMethod)
+
+    serviceRouteTable.put(serviceName, command)
   }
 
-  def dispatch(serviceName: String, args: Array[_ <: AnyRef], kwargs: mutable.Map[String, _ <: AnyRef]): Array[Byte] = {
-    val target = query(serviceName)
-    if (target == null) {
+  def dispatch(serviceName: String, args: Array[_ <: AnyRef], kwargs: mutable.Map[String, _ <: AnyRef]): Array[Array[Byte]] = {
+    val servicer = query(serviceName)
+    if (servicer == null) {
       throw new IllegalStateException(s"service ${serviceName} has not been registered")
     }
 
-    val method = target._2
+    val method = servicer.routeToMethod
     val paramTypes = method.getParameterTypes
     var paramTypeName = "unknown"
 
     // todo: separate to SerDes
     // deserialization
-    val realArgs = args.zip(paramTypes).map {
-      case (arg, paramType) => {
-        if (paramType == classOf[ErTask]) {
-          paramTypeName = "ErTask"
-          Meta.Task.parseFrom(arg.asInstanceOf[ByteString]).fromProto()
-        } else if (paramType == classOf[ErJob]) {
-          paramTypeName = "ErJob"
-          Meta.Job.parseFrom(arg.asInstanceOf[ByteString]).fromProto()
-        } else {
-          arg
-        }
+
+    val realArgs = args.zip(servicer.serviceParamDeserializers).map {
+      case (arg, deserializer) => {
+        deserializer.fromBytes(arg.asInstanceOf[ByteString].toByteArray).asInstanceOf[Object]
       }
     }
 
     // actual call
-    val callResult = target._2.invoke(target._1, realArgs: _*) // method.invoke(instance, args)
+    val callResult = method.invoke(servicer.callBasedInstance, realArgs: _*) // method.invoke(instance, args)
+
+    val bytesCallResult = if (callResult != null) servicer.serviceResultSerializers(0).toBytes(callResult.asInstanceOf[BaseSerializable]) else Array.emptyByteArray
+
+    val finalResult = Array[Array[Byte]](bytesCallResult)
 
     // serialization to response
-    // todo: use reflection to call toProto().toByteArray
-    callResult match {
-      case e: ErTask =>
-        callResult.asInstanceOf[ErTask].toProto().toByteArray
-      case e: ErJob =>
-        callResult.asInstanceOf[ErJob].toProto().toByteArray
-      case e: ErStore =>
-        callResult.asInstanceOf[ErStore].toProto().toByteArray
-      case _ =>
-        callResult.toString.getBytes()
-    }
 
+    finalResult
   }
 
-  def query(serviceName: String): (Any, Method) = {
-    serviceRouteTable(serviceName)
+  def query(serviceName: String): ErService = {
+    try {
+      serviceRouteTable(serviceName)
+    } catch {
+      case e: Exception =>
+        logError(s"service name not registered: ${serviceName}")
+        throw e
+    }
   }
 }

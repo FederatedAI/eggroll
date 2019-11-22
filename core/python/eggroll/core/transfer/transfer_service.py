@@ -17,7 +17,9 @@ from eggroll.core.datastructure.broker import FifoBroker
 from eggroll.core.proto import transfer_pb2_grpc
 from eggroll.core.transfer_model import ErTransferHeader, ErBatch
 from eggroll.core.utils import _exception_logger
+from eggroll.core.grpc.factory import GrpcChannelFactory
 from queue import Queue
+from typing import Iterator, Generator
 
 
 class GrpcTransferServicer(transfer_pb2_grpc.TransferServiceServicer):
@@ -45,7 +47,7 @@ class GrpcTransferServicer(transfer_pb2_grpc.TransferServiceServicer):
         response_header = request.header
         inited = True
 
-      broker.put(request.data)
+      broker.put(request)
       if request.header.status == GrpcTransferServicer.TRANSFER_END:
         broker.signal_write_finish()
 
@@ -53,8 +55,13 @@ class GrpcTransferServicer(transfer_pb2_grpc.TransferServiceServicer):
 
 
 class TransferClient():
-  def send(self, data, tag, server_node, status = ''):
-    endpoint = server_node._endpoint
+  def __init__(self):
+    self.__grpc_channel_factory = GrpcChannelFactory()
+    self.__bin_packet_len = 1 << 20
+    self.__chunk_size = 100
+
+  def send_single(self, data, tag, processor, status = ''):
+    endpoint = processor._command_endpoint
     channel = grpc.insecure_channel(target=f'{endpoint._host}:{endpoint._port}',
                                     options=[
                                       ('grpc.max_send_message_length', -1),
@@ -75,3 +82,23 @@ class TransferClient():
     stub.send(iter(batches))
 
     print("finish send")
+
+  def send(self, iter: Iterator, tag, processor, status = ''):
+    command_endpoint = processor._command_endpoint
+    channel = self.__grpc_channel_factory.create_channel(command_endpoint)
+
+    stub = transfer_pb2_grpc.TransferServiceStub(channel)
+
+
+
+def to_binary_packet(kv_iter: Iterator):
+  magic_num = b'46709394'
+  protocol_version = b'0001'
+
+  packet = b''
+  try:
+    packet = magic_num + protocol_version
+    while True:
+      data = next(kv_iter)
+  except StopIteration e:
+

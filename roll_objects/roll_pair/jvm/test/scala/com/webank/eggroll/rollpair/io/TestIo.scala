@@ -12,10 +12,13 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ *
  */
 
 package com.webank.eggroll.rollpair.io
 
+import com.webank.eggroll.core.constant.StoreTypes
 import org.junit.Test
 
 import scala.collection.mutable.ListBuffer
@@ -23,12 +26,15 @@ import scala.collection.mutable.ListBuffer
 class TestIo {
   val partitionId = 1
   //val dbPath: String = "/tmp/eggroll/levelDb/ns/name/" + partitionId
+  //val rootPath = s"/tmp/eggroll/levelDb/ns"
+  val rootPath = s"/tmp/eggroll/${StoreTypes.ROLLPAIR_LEVELDB}/namespace"
 
-  val dbPathPrefix = "/tmp/eggroll/levelDb/ns/name/"
-  val mapValuesPath: String = "/tmp/eggroll/levelDb/ns/testMapValues/"
-  val reducePath: String = "/tmp/eggroll/levelDb/ns/testReduce/"
-  val joinPath: String = "/tmp/eggroll/levelDb/ns/testJoin/"
-  val mapPath: String = "/tmp/eggroll/levelDb/ns/testMap/"
+  val namePath = s"${rootPath}/name/"
+  val testPath = s"${rootPath}/test/"
+  val mapValuesPath: String = s"${rootPath}/testMapValues/"
+  val reducePath: String = s"${rootPath}/testReduce/"
+  val joinPath: String = s"${rootPath}/testJoin/"
+  val mapPath: String = s"${rootPath}/testMap/"
   val dbPath = mapValuesPath
   val rocksDBSortedKVAdapter: RocksdbSortedKvAdapter = new RocksdbSortedKvAdapter(dbPath)
 
@@ -73,7 +79,7 @@ class TestIo {
 
   @Test
   def testWriteMultipleKvBatch(): Unit = {
-    val path = dbPathPrefix
+    val path = namePath
     for (p <- 0 until 4) {
       val partitionAdapter = new RocksdbSortedKvAdapter(path + p)
       val batch = ListBuffer[(Array[Byte], Array[Byte])]()
