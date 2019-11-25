@@ -22,7 +22,7 @@ import com.webank.eggroll.clustermanager.constant.MetadataCommands
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
 import com.webank.eggroll.core.constant._
 import com.webank.eggroll.core.meta._
-import com.webank.eggroll.core.session.DefaultErConf
+import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.transfer.GrpcTransferService
 import com.webank.eggroll.framework.clustermanager.client.ClusterManagerClient
 import io.grpc.Server
@@ -33,7 +33,7 @@ class TestClusterManagerClientMetaService {
   val clusterManagerHost = "localhost"
   val clusterManagerPort = 4670
   val clusterManagerClient = new ClusterManagerClient(clusterManagerHost, clusterManagerPort)
-  DefaultErConf.addProperties("main/resources/cluster-manager.properties.local")
+  StaticErConf.addProperties("main/resources/cluster-manager.properties.local")
 
   @Before
   def setup(): Unit = {
@@ -151,7 +151,7 @@ class TestClusterManagerClientMetaService {
     val input = ErStoreLocator(
       storeType = StoreTypes.ROLLPAIR_LEVELDB,
       namespace = "namespace",
-      name = "test",
+      name = "name",
       totalPartitions = 4,
       partitioner = PartitionerTypes.BYTESTRING_HASH,
       serdes = SerdesTypes.PICKLE)

@@ -27,14 +27,14 @@ message TransferHeader {
   string status = 4;
 }
 
-message Batch {
+message TransferBatch {
   TransferHeader header = 1;
-  int64 batchSize = 2;
+  int32 batchSize = 2;
   bytes data = 3;
 }
 
 // TODO: use transfer lib
 service TransferService {
-  rpc send (stream Batch) returns (TransferHeader);
+  rpc send (stream TransferBatch) returns (TransferHeader);
 }
 

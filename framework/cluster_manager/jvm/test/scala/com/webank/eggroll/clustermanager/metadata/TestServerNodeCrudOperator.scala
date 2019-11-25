@@ -21,12 +21,12 @@ package com.webank.eggroll.clustermanager.metadata
 import java.io.File
 
 import com.webank.eggroll.core.meta.{ErEndpoint, ErServerCluster, ErServerNode}
-import com.webank.eggroll.core.session.DefaultErConf
+import com.webank.eggroll.core.session.StaticErConf
 import org.junit.Test
 
 class TestServerNodeCrudOperator {
   println(new File(".").getAbsolutePath)
-  DefaultErConf.addProperties("main/resources/cluster-manager.properties.local")
+  StaticErConf.addProperties("main/resources/cluster-manager.properties.local")
   val nodeCrudOperator = new ServerNodeCrudOperator
 
   @Test

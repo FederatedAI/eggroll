@@ -21,7 +21,7 @@ package com.webank.eggroll.rollpair.io
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
 import com.webank.eggroll.core.constant.{ClusterManagerConfKeys, StoreTypes}
 import com.webank.eggroll.core.meta._
-import com.webank.eggroll.core.session.DefaultErConf
+import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.transfer.GrpcTransferService
 import com.webank.eggroll.core.util.Logging
 import com.webank.eggroll.rollpair.component.{EggPair, RollPairService}
@@ -30,8 +30,8 @@ import org.junit.Test
 
 
 class TestRollPair extends Logging {
-  DefaultErConf.addProperty(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST, "localhost")
-  DefaultErConf.addProperty(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, "4670")
+  StaticErConf.addProperty(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST, "localhost")
+  StaticErConf.addProperty(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, "4670")
   @Test
   def testMapValues(): Unit = {
 

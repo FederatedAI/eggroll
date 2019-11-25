@@ -22,13 +22,13 @@ import java.io.File
 
 import com.webank.eggroll.core.constant.StoreTypes
 import com.webank.eggroll.core.meta.{ErStore, ErStoreLocator}
-import com.webank.eggroll.core.session.DefaultErConf
+import com.webank.eggroll.core.session.StaticErConf
 import org.junit.Test
 
 class TestStoreCrudOperator {
 
   println(new File(".").getAbsolutePath)
-  DefaultErConf.addProperties("main/resources/cluster-manager.properties.local")
+  StaticErConf.addProperties("main/resources/cluster-manager.properties.local")
   val storeCrudOperator = new StoreCrudOperator
   @Test
   def testGetStore(): Unit = {

@@ -73,7 +73,7 @@ object StringConstants {
   val LF = "\n"
   val LFLF = "\n\n"
 
-  val TRANSFER_END = "__transfer_end"
+
 
   val PATH = "path"
   val TYPE = "type"
@@ -89,4 +89,12 @@ object StringConstants {
   val TOTAL = "total"
 
   val LOCALHOST = "localhost"
+
+  val STORE_TYPE = "storeType"
+  val NAMESPACE = "namespace"
+  val NAME = "name"
+  val TOTAL_PARTITIONS = "totalPartitions"
+  val PARTITIONER = "partitioner"
+  val SERDES = "serdes"
+
 }

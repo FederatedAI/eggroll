@@ -44,3 +44,7 @@ object PartitionStatus {
   val BACKUP = "BACKUP"
   val MISSING = "MISSING"
 }
+
+object TransferStatus {
+  val TRANSFER_END = "__transfer_end"
+}

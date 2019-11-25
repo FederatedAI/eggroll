@@ -12,10 +12,17 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ *
  */
 
 package com.webank.eggroll.core.constant
 
+import java.nio.charset.StandardCharsets
+
 object NetworkConstants {
   val DEFAULT_LOCALHOST_IP = "127.0.0.1"
+
+  val TRANSFER_PROTOCOL_MAGIC_NUMBER : Array[Byte] = "46709394".getBytes(StandardCharsets.UTF_8)
+  val TRANSFER_PROTOCOL_VERSION : Array[Byte] = "0001".getBytes(StandardCharsets.UTF_8)
 }

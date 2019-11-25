@@ -23,7 +23,7 @@ import java.lang.reflect.Method
 import com.google.protobuf.ByteString
 import com.webank.eggroll.core.constant.{CoreConfKeys, SerdesTypes, StringConstants}
 import com.webank.eggroll.core.serdes.{BaseSerializable, ErDeserializer, ErSerializer, RpcMessageSerdesFactory}
-import com.webank.eggroll.core.session.DefaultErConf
+import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.util.Logging
 import org.apache.commons.lang3.StringUtils
 import org.apache.commons.lang3.reflect.{ConstructorUtils, MethodUtils}
@@ -43,7 +43,7 @@ object Scope {
 object CommandRouter extends Logging {
   private val serviceRouteTable = TrieMap[String, ErService]()
   private val messageParserMethodCache = mutable.Map[Class[_], Method]()
-  private val defaultSerdesType = DefaultErConf.getString(CoreConfKeys.CONFKEY_CORE_COMMAND_DEFAULT_SERDES_TYPE, SerdesTypes.PROTOBUF)
+  private val defaultSerdesType = StaticErConf.getString(CoreConfKeys.CONFKEY_CORE_COMMAND_DEFAULT_SERDES_TYPE, SerdesTypes.PROTOBUF)
 
   // todo: consider different scope of target instance suck as 'singleton', 'proto', 'session' etc.
   //  This can be implemented as an annotation reader
@@ -155,7 +155,7 @@ object CommandRouter extends Logging {
       serviceRouteTable(serviceName)
     } catch {
       case e: Exception =>
-        logError(s"service name not registered: ${serviceName})
+        logError(s"service name not registered: ${serviceName}")
         throw e
     }
   }

@@ -117,8 +117,8 @@ class EggPair(object):
         output_adapter.close()
       else:
         transfer_client = TransferClient()
-        transfer_client.send(data=seq_op_result, tag=transfer_tag,
-                             processor=task._outputs[0]._processor)
+        transfer_client.send_single(data=seq_op_result, tag=transfer_tag,
+                                    processor=task._outputs[0]._processor)
 
       input_adapter.close()
       print('reduce finished')
@@ -198,8 +198,8 @@ class EggPair(object):
       output_adapter.close()
     else:
       transfer_client = TransferClient()
-      transfer_client.send(data=seq_op_result, tag=transfer_tag,
-                           processor=task._outputs[0]._processor)
+      transfer_client.send_single(data=seq_op_result, tag=transfer_tag,
+                                  processor=task._outputs[0]._processor)
 
     input_adapter.close()
     print('reduce finished')

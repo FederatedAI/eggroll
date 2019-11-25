@@ -125,3 +125,18 @@ class FifoBroker(Broker):
     while self.is_read_ready() and cur_count < max_elements:
       func(self.get())
       cur_count += 1
+
+  def __iter__(self):
+    return self
+
+  def __next__(self):
+    if not self.is_closable():
+      return self.get(block=True)
+    else:
+      raise StopIteration
+
+  def __enter__(self):
+    return self
+
+  def __exit__(self, exc_type, exc_val, exc_tb):
+    pass

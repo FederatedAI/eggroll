@@ -76,6 +76,7 @@ class RollPair(object):
               serdes = serdes))
 
     self.__store = self.__cluster_manager_client.get_or_create_store(final_store)
+    return self
 
   def __get_seq(self):
     self.__seq = self.__seq + 1
