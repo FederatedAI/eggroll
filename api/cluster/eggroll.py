@@ -159,13 +159,13 @@ class _DTable(object):
             gc_table = _EggRoll.get_instance().get_eggroll_session()._gc_table
             table_count = gc_table.get(self._name)
             if table_count is None:
-                print("table:{} ref count is {}".format(self._name, table_count))
+                LOGGER.debug("table:{} ref count is {}".format(self._name, table_count))
                 return
             if table_count > 1:
-                print("table:{} ref count is {}".format(self._name, table_count))
+              LOGGER.debug("table:{} ref count is {}".format(self._name, table_count))
                 gc_table.put(self._name, (table_count-1))
                 return
-            print("process {} thread {} run {} del table name:{}, namespace:{}".format(os.getpid(), threading.currentThread().ident, sys._getframe().f_code.co_name, self._name, self._namespace))
+            LOGGER.debug("process {} thread {} run {} del table name:{}, namespace:{}".format(os.getpid(), threading.currentThread().ident, sys._getframe().f_code.co_name, self._name, self._namespace))
             gc_table.delete(self._name)
             _EggRoll.get_instance().destroy(self)
 
@@ -439,8 +439,8 @@ class _EggRoll(object):
     def _create_table(self, create_table_info):
         info = self.kv_stub.createIfAbsent(create_table_info)
         if storage_basic_pb2.StorageType.Name(info.storageLocator.type) == storage_basic_pb2.StorageType.Name(storage_basic_pb2.IN_MEMORY):
-            LOGGER.info("create in_memory table:{}".format(info.storageLocator.name))
-            LOGGER.info("table func:{}".format(list(self.eggroll_session._gc_table.collect())))
+            LOGGER.debug("create in_memory table:{}".format(info.storageLocator.name))
+            LOGGER.debug("table func:{}".format(list(self.eggroll_session._gc_table.collect())))
             count = self.eggroll_session._gc_table.get(info.storageLocator.name)
             if count is None:
                 count = 0
