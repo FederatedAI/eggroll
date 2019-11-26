@@ -74,6 +74,9 @@ class FifoBroker(Broker):
     self.__total_write_signals = write_signals
     self.__max_capacity = max_capacity
 
+  def get_total_write_signals(self):
+    return self.__total_write_signals
+
   def is_write_finished(self):
     return self.__write_finished
 
@@ -92,7 +95,8 @@ class FifoBroker(Broker):
     return not self.__queue.empty()
 
   def is_closable(self):
-    return self.is_write_finished() and not self.is_read_ready()
+    result = self.is_write_finished() and not self.is_read_ready()
+    return result
 
   def total(self):
     return self.__history_total
@@ -107,7 +111,7 @@ class FifoBroker(Broker):
     return self.put(item=item, block=False)
 
   def get_nowait(self):
-    return self.get(block=True)
+    return self.get(block=False)
 
   def put(self, item, block=True, timeout=None):
     return self.__queue.put(item=item, block=block, timeout=timeout)

@@ -25,14 +25,14 @@ from eggroll.core.constants import StoreTypes
 
 
 class TestRollPair(unittest.TestCase):
-  opts = {'cluster_manager_host': 'localhost',
+  options = {'cluster_manager_host': 'localhost',
           'cluster_manager_port': 4670,
           'roll_pair_service_host': 'localhost',
           'roll_pair_service_port': 20000}
   def test_map_values(self):
     store = ErStore(ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LEVELDB, namespace='namespace',
                                    name='name'))
-    rp = RollPair(store, opts=TestRollPair.opts)
+    rp = RollPair(store, options=TestRollPair.options)
 
     res = rp.map_values(lambda v : v + b'~2', output=ErStore(store_locator = ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LEVELDB, namespace='namespace', name='testMapValues')))
 
@@ -42,7 +42,7 @@ class TestRollPair(unittest.TestCase):
     store = ErStore(ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LEVELDB, namespace='namespace',
                                    name='name'))
 
-    rp = RollPair(store, opts=TestRollPair.opts)
+    rp = RollPair(store, options=TestRollPair.options)
     res = rp.reduce(lambda x, y : x + y)
     print('res: ', res)
 
@@ -50,14 +50,14 @@ class TestRollPair(unittest.TestCase):
     store = ErStore(ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LEVELDB, namespace='namespace',
                                    name='name'))
 
-    rp = RollPair(store, opts=TestRollPair.opts)
+    rp = RollPair(store, options=TestRollPair.options)
     res = rp.aggregate(zero_value=None, seq_op=lambda x, y : x + y, comb_op=lambda x, y : y + x)
     print('res: ', res)
 
   def test_join(self):
-    left_locator = ErStoreLocator(store_type="levelDb", namespace="ns",
+    left_locator = ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LEVELDB, namespace="namespace",
                                    name='name')
-    right_locator = ErStoreLocator(store_type="levelDb", namespace="ns",
+    right_locator = ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LEVELDB, namespace="namespace",
                                    name='test')
 
     left = RollPair(left_locator)
@@ -67,70 +67,13 @@ class TestRollPair(unittest.TestCase):
 
 
   def test_map(self):
-    store_locator = ErStoreLocator(store_type="levelDb", namespace="ns",
-                                  name='name')
+    store = ErStore(ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LEVELDB, namespace='namespace',
+                                   name='name'))
+    rp = RollPair(store, options=TestRollPair.options)
 
-    rp = RollPair(store_locator)
-
-    res = rp.map(lambda k, v: (b'k_' + k, b'v_' + v), lambda k : k[-1] % 4)
+    res = rp.map(lambda k, v: (b'k_' + k, b'v_' + v), output=ErStore(store_locator=ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LEVELDB, namespace='namespace', name='testMap')))
 
     print('res: ', res)
-
-  def test_map_values_raw(self):
-    def append_byte(v):
-      return v + b'~1'
-
-    pickled_function = cloudpickle.dumps(append_byte)
-
-    store_locator = ErStoreLocator(store_type="levelDb", namespace="ns",
-                                   name='name')
-    functor = ErFunctor(name="mapValues", body=pickled_function)
-
-    job = ErJob(id="1", name="mapValues",
-                inputs=[ErStore(store_locator=store_locator)],
-                functors=[functor])
-
-    channel = grpc.insecure_channel(target='localhost:20000',
-                                    options=[
-                                      ('grpc.max_send_message_length', -1),
-                                      ('grpc.max_receive_message_length', -1)])
-
-    roll_pair_stub = command_pb2_grpc.CommandServiceStub(channel)
-
-    request = ErCommandRequest(seq=1,
-                               uri='com.webank.eggroll.rollpair.component.RollPair.mapValues',
-                               args=[job.to_proto().SerializeToString()])
-
-    print(f"ready to call")
-    result = roll_pair_stub.call(request.to_proto())
-
-
-    time.sleep(1200)
-
-  def test_reduce_raw(self):
-    def concat(a, b):
-      return a + b
-
-    pickled_function = cloudpickle.dumps(concat)
-
-    store_locator = ErStoreLocator(store_type="levelDb", namespace="ns",
-                                   name='name')
-    job = ErJob(id="1", name="reduce",
-                inputs=[ErStore(store_locator=store_locator)],
-                functors=[ErFunctor(name="reduce", body=pickled_function)])
-
-    channel = grpc.insecure_channel(target='localhost:20000',
-                                    options=[
-                                      ('grpc.max_send_message_length', -1),
-                                      ('grpc.max_receive_message_length', -1)])
-
-    roll_pair_stub = command_pb2_grpc.CommandServiceStub(channel)
-    request = ErCommandRequest(seq=1,
-                               uri='com.webank.eggroll.rollpair.component.RollPair.reduce',
-                               args=[job.to_proto().SerializeToString()])
-
-    result = roll_pair_stub.call(request.to_proto())
-    time.sleep(1200)
 
 
 if __name__ == '__main__':

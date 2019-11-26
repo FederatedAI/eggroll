@@ -244,13 +244,12 @@ class TestRollPair extends Logging {
       routeToClass = classOf[RollPairService],
       routeToMethodName = RollPairService.join)
 
-
     CommandRouter.register(serviceName = RollPairService.rollRunJobCommand,
       serviceParamTypes = Array(classOf[ErJob]),
       routeToClass = classOf[RollPairService],
       routeToMethodName = RollPairService.runJob)
 
     logInfo("started")
-    Thread.sleep(1200000)
+    Thread.sleep(12000000)
   }
 }

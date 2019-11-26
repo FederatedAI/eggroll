@@ -137,7 +137,7 @@ class ErProcessor(RpcMessage):
     return ErProcessor.from_proto(pb_message)
 
   def __repr__(self):
-    return f'ErProcessor(id={repr(self._id)}, name={self._name} command_endpoint={repr(self._command_endpoint)}, data_endpoint={repr(self._data_endpoint)}, tag={self._tag})'
+    return f'ErProcessor(id={repr(self._id)}, name={self._name}, command_endpoint={repr(self._command_endpoint)}, data_endpoint={repr(self._data_endpoint)}, tag={self._tag})'
 
 
 class ErProcessorBatch(RpcMessage):

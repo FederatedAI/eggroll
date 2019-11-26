@@ -32,39 +32,39 @@ class RollPair(object):
   AGGREGATE = 'aggregate'
   RUNJOB = 'runJob'
 
-  def __init__(self, er_store: ErStore, opts = {'cluster_manager_host': 'localhost', 'cluster_manager_port': 4670}):
+  def __init__(self, er_store: ErStore, options = {'cluster_manager_host': 'localhost', 'cluster_manager_port': 4670}):
     _grpc_channel_factory = GrpcChannelFactory()
 
-    self.__roll_pair_service_endpoint = ErEndpoint(host = opts['roll_pair_service_host'], port = opts['roll_pair_service_port'])
-    self.__cluster_manager_channel = _grpc_channel_factory.create_channel(ErEndpoint(opts['cluster_manager_host'], opts['cluster_manager_port']))
+    self.__roll_pair_service_endpoint = ErEndpoint(host = options['roll_pair_service_host'], port = options['roll_pair_service_port'])
+    self.__cluster_manager_channel = _grpc_channel_factory.create_channel(ErEndpoint(options['cluster_manager_host'], options['cluster_manager_port']))
     self.__roll_pair_service_channel = _grpc_channel_factory.create_channel(self.__roll_pair_service_endpoint)
 
-    self.__command_serdes = opts.get('serdes', SerdesTypes.PROTOBUF)
+    self.__command_serdes = options.get('serdes', SerdesTypes.PROTOBUF)
     self.__roll_pair_command_client = CommandClient()
 
     self.__roll_pair_service_stub = command_pb2_grpc.CommandServiceStub(self.__roll_pair_service_channel)
-    self.__cluster_manager_client = ClusterManagerClient(opts)
-    self._parent_opts = opts
+    self.__cluster_manager_client = ClusterManagerClient(options)
+    self._parent_opts = options
 
     # todo: integrate with session mechanism
     self.__seq = 1
     self.__session_id = '1'
 
-    self.land(er_store, opts)
+    self.land(er_store, options)
 
   def __repr__(self):
     return f'python RollPair(_store={self.__store})'
 
-  def land(self, er_store: ErStore, opts = {}):
+  def land(self, er_store: ErStore, options = {}):
     if er_store:
       final_store = er_store
     else:
-      store_type = opts.get('store_type', StoreTypes.ROLLPAIR_LEVELDB)
-      namespace = opts.get('namespace', '')
-      name = opts.get('name', '')
-      total_partiitons = opts.get('total_partitions', 0)
-      partitioner = opts.get('partitioner', PartitionerTypes.BYTESTRING_HASH)
-      serdes = opts.get('serdes', SerdesTypes.PICKLE)
+      store_type = options.get('store_type', StoreTypes.ROLLPAIR_LEVELDB)
+      namespace = options.get('namespace', '')
+      name = options.get('name', '')
+      total_partiitons = options.get('total_partitions', 0)
+      partitioner = options.get('partitioner', PartitionerTypes.BYTESTRING_HASH)
+      serdes = options.get('serdes', SerdesTypes.PICKLE)
 
       final_store = ErStore(
           store_locator = ErStoreLocator(
@@ -83,7 +83,7 @@ class RollPair(object):
     return self.__seq
 
   # computing api
-  def map_values(self, func, output = None, opts = {}):
+  def map_values(self, func, output = None, options = {}):
     functor = ErFunctor(name=RollPair.MAP_VALUES, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
     outputs = []
     if output:
@@ -103,26 +103,31 @@ class RollPair(object):
     er_store = job_result._outputs[0]
     print(er_store)
 
-    return RollPair(er_store, opts=self._parent_opts)
+    return RollPair(er_store, options=self._parent_opts)
 
-  def map(self, func, partition_func):
+  def map(self, func, output = None, options = {}):
     functor = ErFunctor(name=RollPair.MAP, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
-    partitioner = ErFunctor(name=RollPair.MAP, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(partition_func))
-
+    outputs = []
+    if output:
+      outputs.append(output)
     job = ErJob(id=self.__session_id, name=RollPair.MAP,
                 inputs=[self.__store],
-                functors=[functor, partitioner])
+                outputs=outputs,
+                functors=[functor])
 
-    request = ErCommandRequest(id=self.__get_seq(), uri=f'{RollPair.__uri_prefix}{RollPair.MAP}', args=[job.to_proto().SerializeToString()])
-    response = self.__roll_pair_service_stub.call(request.to_proto())
+    job_result = self.__roll_pair_command_client.simple_sync_send(
+        input = job,
+        output_type = ErJob,
+        endpoint = self.__roll_pair_service_endpoint,
+        command_uri = CommandURI(f'{RollPair.__uri_prefix}/{RollPair.MAP}'),
+        serdes_type=self.__command_serdes)
 
-    des_response = ErCommandResponse.from_proto(response)
+    er_store = job_result._outputs[0]
+    print(er_store)
 
-    des_store = ErStore.from_proto_string(des_response._results[0])
+    return RollPair(er_store, options=self._parent_opts)
 
-    return RollPair(des_store)
-
-  def reduce(self, func, output = None, opts = {}):
+  def reduce(self, func, output = None, options = {}):
     functor = ErFunctor(name=RollPair.REDUCE, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
 
     outputs = []
@@ -142,9 +147,9 @@ class RollPair(object):
 
     er_store = job_result._outputs[0]
 
-    return RollPair(er_store, opts=self._parent_opts)
+    return RollPair(er_store, options=self._parent_opts)
 
-  def aggregate(self, zero_value, seq_op, comb_op, output = None, opts = {}):
+  def aggregate(self, zero_value, seq_op, comb_op, output = None, options = {}):
     zero_value_functor = ErFunctor(name=RollPair.AGGREGATE, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(zero_value))
     seq_op_functor = ErFunctor(name=RollPair.AGGREGATE, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(seq_op))
     comb_op_functor = ErFunctor(name=RollPair.AGGREGATE, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(comb_op))
@@ -166,7 +171,7 @@ class RollPair(object):
 
     er_store = job_result._outputs[0]
 
-    return RollPair(er_store, opts=self._parent_opts)
+    return RollPair(er_store, options=self._parent_opts)
 
   def join(self, other, func):
     functor = ErFunctor(name=RollPair.JOIN, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))

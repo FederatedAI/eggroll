@@ -43,9 +43,9 @@ public class ClusterManagerClient {
 
   public ClusterManagerClient() {
     this(StaticErConf.getString(
-            ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST(), null),
+            ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST(), "localhost"),
         StaticErConf.getInt(
-            ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT(), -1));
+            ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT(), 4670));
   }
 
   public ClusterManagerClient(ErEndpoint serverEndpoint) {

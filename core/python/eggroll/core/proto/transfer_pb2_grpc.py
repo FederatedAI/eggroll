@@ -16,8 +16,8 @@ class TransferServiceStub(object):
     """
     self.send = channel.stream_unary(
         '/com.webank.eggroll.core.transfer.TransferService/send',
-        request_serializer=transfer__pb2.Batch.SerializeToString,
-        response_deserializer=transfer__pb2.TransferHeader.FromString,
+        request_serializer=transfer__pb2.TransferBatch.SerializeToString,
+        response_deserializer=transfer__pb2.TransferBatch.FromString,
         )
 
 
@@ -36,9 +36,9 @@ class TransferServiceServicer(object):
 def add_TransferServiceServicer_to_server(servicer, server):
   rpc_method_handlers = {
       'send': grpc.stream_unary_rpc_method_handler(
-          servicer.send_single,
-          request_deserializer=transfer__pb2.Batch.FromString,
-          response_serializer=transfer__pb2.TransferHeader.SerializeToString,
+          servicer.send,
+          request_deserializer=transfer__pb2.TransferBatch.FromString,
+          response_serializer=transfer__pb2.TransferBatch.SerializeToString,
       ),
   }
   generic_handler = grpc.method_handlers_generic_handler(

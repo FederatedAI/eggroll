@@ -44,23 +44,31 @@ class ErTransferHeader(RpcMessage):
     return f'ErTransferHeader(id={self._id}, tag={self._tag}, size={self._total_size}, status={self._status})'
 
 
-class ErBatch(RpcMessage):
-  def __init__(self, header: ErTransferHeader, data):
+class ErTransferBatch(RpcMessage):
+  def __init__(self, header: ErTransferHeader, batch_size = -1, data = None):
     self._header = header
+    self._batch_size = batch_size
     self._data = data
 
   def to_proto(self):
-    batch_size = 0 if not self._data else len(self._data)
-    return transfer_pb2.Batch(header=self._header.to_proto(),
-                              batchSize=batch_size, data=self._data)
+    return transfer_pb2.TransferBatch(header=self._header.to_proto(),
+                                      batchSize=self._batch_size, data=self._data)
 
   @staticmethod
   def from_proto(pb_message):
-    return ErBatch(header=ErTransferHeader.from_proto(pb_message.header),
-                   data=pb_message.data)
+    return ErTransferBatch(header=ErTransferHeader.from_proto(pb_message.header),
+                           batch_size=pb_message.batchSize,
+                           data=pb_message.data)
+
+  @staticmethod
+  def from_proto_string(pb_string):
+    pb_message = transfer_pb2.TransferBatch()
+    msg_len = pb_message.ParseFromString(pb_string)
+    return ErTransferBatch.from_proto(pb_message)
+
 
   def __str__(self):
     return self.__repr__()
 
   def __repr__(self):
-    return f'ErBatch(header={repr(self._header)}, batch_size={len(self._data)}, data=***)'
+    return f'ErTransferBatch(header={repr(self._header)}, batch_size={self._batch_size}, data=***)'

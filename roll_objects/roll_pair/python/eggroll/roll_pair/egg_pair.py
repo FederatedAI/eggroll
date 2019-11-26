@@ -54,23 +54,28 @@ class EggPair(object):
       output_adapter.close()
     elif task._name == 'map':
       f = cloudpickle.loads(functors[0]._body)
-      p = cloudpickle.loads(functors[1]._body)
 
       input_partition = task._inputs[0]
       output_partition = task._outputs[0]
+      print(output_partition)
 
+      p = output_partition._store_locator._partitioner
+
+      # todo: decide partitioner
+      p = lambda k : k[-1] % output_partition._store_locator._total_partitions
       input_adapter = RocksdbSortedKvAdapter(
           options={'path': get_db_path(input_partition)})
       output_store = task._job._outputs[0]
 
       shuffle_broker = FifoBroker()
+      shuffler = DefaultShuffler(task._job._id, shuffle_broker, output_store, output_partition, p)
 
       for k_bytes, v_bytes in input_adapter.iteritems():
         shuffle_broker.put(f(k_bytes, v_bytes))
+      print('finish calculating')
       input_adapter.close()
       shuffle_broker.signal_write_finish()
 
-      shuffler = DefaultShuffler(task._job._id, shuffle_broker, output_store, output_partition, p)
       shuffler.start()
 
       shuffle_finished = shuffler.wait_until_finished(600)

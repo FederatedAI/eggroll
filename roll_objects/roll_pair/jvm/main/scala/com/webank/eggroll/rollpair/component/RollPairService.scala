@@ -143,7 +143,7 @@ class RollPairService() {
       val specifiedOutput = inputJob.outputs.head
       if (specifiedOutput.partitions.isEmpty) {
         val outputTotalPartitions =
-          if (StringUtils.equalsAny(RollPairService.map, RollPairService.aggregate)) 1
+          if (StringUtils.equalsAny(RollPairService.reduce, RollPairService.aggregate)) 1
           else inputStoreWithPartitions.storeLocator.totalPartitions
 
         val outputStoreLocator = specifiedOutput.storeLocator.copy(totalPartitions = outputTotalPartitions)
