@@ -162,7 +162,7 @@ class _DTable(object):
                 LOGGER.debug("table:{} ref count is {}".format(self._name, table_count))
                 return
             if table_count > 1:
-              LOGGER.debug("table:{} ref count is {}".format(self._name, table_count))
+                LOGGER.debug("table:{} ref count is {}".format(self._name, table_count))
                 gc_table.put(self._name, (table_count-1))
                 return
             LOGGER.debug("process {} thread {} run {} del table name:{}, namespace:{}".format(os.getpid(), threading.currentThread().ident, sys._getframe().f_code.co_name, self._name, self._namespace))
