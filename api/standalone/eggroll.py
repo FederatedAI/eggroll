@@ -531,7 +531,6 @@ class _DTable(object):
         self.schema = {}
         self._in_place_computing = in_place_computing
         self.gc_enable = True
-        print("init table name:{}, namespace:{}".format(self._name, self._namespace))
 
     def __del__(self):
         if not self.gc_enable or self._type != 'IN_MEMORY':
