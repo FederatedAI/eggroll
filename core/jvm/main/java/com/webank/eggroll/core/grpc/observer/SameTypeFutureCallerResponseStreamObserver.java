@@ -16,10 +16,11 @@
 
 package com.webank.eggroll.core.grpc.observer;
 
+import com.google.protobuf.Message;
 import com.webank.eggroll.core.concurrent.AwaitSettableFuture;
 import java.util.concurrent.CountDownLatch;
 
-public class SameTypeFutureCallerResponseStreamObserver<R, E> extends
+public class SameTypeFutureCallerResponseStreamObserver<R extends Message, E extends Message> extends
     BaseFutureCallerResponseStreamObserver<R, E, E> {
 
   public SameTypeFutureCallerResponseStreamObserver(

@@ -21,4 +21,5 @@ object ModuleConstants {
   private val e = "e"
   val CORE = "CORE"
   val CORE_WITH_BRACKETS = bracketTemplate.replace(e, CORE)
+  val COMMAND_WITH_BRACKETS = bracketTemplate.replace(e, "COMMAND")
 }

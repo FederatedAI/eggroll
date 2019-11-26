@@ -1,0 +1,17 @@
+{
+  "local": {
+    "role": "guest",
+    "party_id": 10001
+  },
+  "role": {
+    "host": [
+      10001
+    ],
+    "arbiter": [
+      99999
+    ],
+    "guest": [
+      10003
+    ]
+  }
+}

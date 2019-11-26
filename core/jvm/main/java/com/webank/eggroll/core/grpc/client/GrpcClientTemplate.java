@@ -12,6 +12,8 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ *
  */
 
 package com.webank.eggroll.core.grpc.client;
@@ -138,14 +140,14 @@ public class GrpcClientTemplate<S extends AbstractStub, R extends Message, E ext
 
   public <T> T calleeStreamingRpcWithImmediateDelayedResult(R request,
       AwaitSettableFuture<T> delayedResult)
-      throws ExecutionException {
+      throws ExecutionException, InterruptedException {
     calleeStreamingRpc(request);
 
     if (delayedResult.hasError()) {
       throw new ExecutionException(delayedResult.getError());
     }
 
-    T result = delayedResult.getNow();
+    T result = delayedResult.get();
 
     return result;
   }

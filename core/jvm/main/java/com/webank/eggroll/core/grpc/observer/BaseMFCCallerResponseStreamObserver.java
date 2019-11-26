@@ -16,6 +16,7 @@
 
 package com.webank.eggroll.core.grpc.observer;
 
+import com.google.protobuf.Message;
 import com.webank.eggroll.core.grpc.processor.StreamProcessor;
 import io.grpc.stub.ClientCallStreamObserver;
 import io.grpc.stub.ClientResponseObserver;
@@ -27,7 +28,7 @@ import java.util.concurrent.CountDownLatch;
  * @param <R> calleR type
  * @param <E> calleE type
  */
-public class BaseMFCCallerResponseStreamObserver<R, E> extends
+public class BaseMFCCallerResponseStreamObserver<R extends Message, E extends Message> extends
     BaseCallerResponseStreamObserver<R, E> implements
     ClientResponseObserver<R, E> {
 

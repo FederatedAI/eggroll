@@ -12,6 +12,8 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ *
  */
 
 package com.webank.eggroll.core.util
@@ -21,7 +23,7 @@ import java.net._
 import java.util
 
 import com.webank.eggroll.core.constant.NetworkConstants
-import com.webank.eggroll.core.session.DefaultEggrollConf
+import com.webank.eggroll.core.session.StaticErConf
 import org.apache.commons.lang3.StringUtils
 
 object RuntimeUtils extends Logging {
@@ -93,7 +95,7 @@ object RuntimeUtils extends Logging {
 
   def getMySiteLocalAddressAndPort(forceIpV4: Boolean = false): String = {
     if (siteLocalAddressAndPort == null) {
-      siteLocalAddressAndPort = getMySiteLocalAddress(forceIpV4) + ":" + DefaultEggrollConf.getPort()
+      siteLocalAddressAndPort = getMySiteLocalAddress(forceIpV4) + ":" + StaticErConf.getPort()
     }
 
     siteLocalAddressAndPort

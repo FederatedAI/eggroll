@@ -12,6 +12,8 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ *
  */
 
 package com.webank.eggroll.core.testgrpc;
@@ -65,8 +67,13 @@ public class HelloClient {
 
     HelloRequest request = HelloRequest.newBuilder().setMsg("test hello | ").build();
 
-    HelloResponse result = template
-        .calleeStreamingRpcWithImmediateDelayedResult(request, delayedResult);
+    HelloResponse result = null;
+    try {
+      result = template
+          .calleeStreamingRpcWithImmediateDelayedResult(request, delayedResult);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
 
     return result.getMsg();
   }
