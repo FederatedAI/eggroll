@@ -16,13 +16,16 @@
 
 package com.webank.eggroll.rollframe
 
+import com.webank.eggroll.core.constant.StringConstants
+import com.webank.eggroll.format.FrameDB
+
 object TestAssets {
   val clusterManager = new ClusterManager
   def getDoubleSchema(fieldCount:Int):String = {
     val sb = new StringBuilder
     sb.append("""{
                  "fields": [""")
-    (0 until 1000).foreach{i =>
+    (0 until fieldCount).foreach{i =>
       if(i > 0) {
         sb.append(",")
       }
@@ -30,5 +33,17 @@ object TestAssets {
     }
     sb.append("]}")
     sb.toString()
+  }
+
+  def loadCache(path: String,storeType:String): Unit = {
+    val inputDB = storeType match {
+      case StringConstants.HDFS => FrameDB.hdfs(path)
+      case _ => FrameDB.file(path)
+    }
+
+    val outputDB = FrameDB.cache(path)
+    outputDB.writeAll(inputDB.readAll())
+    outputDB.close()
+    inputDB.close()
   }
 }

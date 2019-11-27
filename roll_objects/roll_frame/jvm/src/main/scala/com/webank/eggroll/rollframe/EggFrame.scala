@@ -69,6 +69,7 @@ class EggFrame {
                   mapper: FrameBatch => FrameBatch): Unit = {
     // for concurrent writing
     val queuePath = task.id + "-doing"
+    // total mean batch size, if given more than one, it just get one.
     val queue = FrameDB.queue(queuePath, 1)
     input.foreach { store =>
       ThreadPoolUtils.defaultThreadPool.submit(new Runnable {
@@ -103,8 +104,8 @@ class EggFrame {
     // TODO: more generally, like repartition?
 
     // TODO: route
-    val localServer = clusterManager.getPreferredServer(store = task.job.inputs.head)
-    println(s"runAggregateBatch ${localServer} ${partition.id}")
+    val localServer = clusterManager.getPreferredServer(store = task.job.inputs.head)(partition.id)
+    println(s"runAggregateBatch: partion.id = ${partition.id}")
     var localQueue: FrameDB = null
 
     val zeroPath = "broadcast:" + task.job.id
@@ -121,6 +122,7 @@ class EggFrame {
     if(batchSize == 1) {
       if(input.hasNext) {
         val fb = input.next()
+        // use muti-thread by rows ,for example,parallel = 2, 100 rows can split to [0,50] and [50,100]
         val parallel = Math.min(if (executorPool.getCorePoolSize > 0) executorPool.getCorePoolSize else 1, fb.rowCount) // split by row to grow parallel
         // for concurrent writing
         localQueue = FrameDB.queue(task.id + "-doing", parallel)
@@ -202,7 +204,7 @@ class EggFrame {
     val inputPartition = task.inputs.head
     val outputPartition = task.outputs.head
 
-    println(s"runTask, input: ${IoUtils.getPath(inputPartition)}, output: ${IoUtils.getPath(outputPartition)}")
+    println(s"run ${task.job.name}, input: ${IoUtils.getPath(inputPartition)}, output: ${IoUtils.getPath(outputPartition)}")
 
     val inputDB = FrameDB(inputPartition)
     val outputDB = FrameDB(outputPartition)

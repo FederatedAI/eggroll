@@ -31,7 +31,8 @@ object RfServerLauncher {
     * run client job:scala -cp eggroll-rollframe.jar com.webank.eggroll.RfServerLauncher client 0 map
     */
 
-  private val clusterManager = new ClusterManager("cluster")
+  private val clusterManager = new ClusterManager
+  ClusterManager.setMode("cluster")
   def main(args: Array[String]): Unit = {
     printServerMes()
     val mode = args(0).toLowerCase() // server/client

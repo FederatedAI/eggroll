@@ -48,6 +48,8 @@ class FrameBatch(val rootSchema: FrameSchema,
     rootSchema.arrowSchema.setRowCount(allocateNewRows)
   }
 
+  val fieldCount: Int = rootSchema.columnarVectors.length
+
   def rowCount:Int =
     if (virtualRowCount > 0) virtualRowCount else rootSchema.arrowSchema.getRowCount
 

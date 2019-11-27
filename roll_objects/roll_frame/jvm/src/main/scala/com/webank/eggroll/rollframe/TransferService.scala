@@ -34,14 +34,19 @@ trait TransferService
 trait CollectiveTransfer
 
 class NioCollectiveTransfer(nodes: Array[ErProcessor], timeout: Int = 600 * 1000) extends CollectiveTransfer {
+  // will open all channel,but some don't be used
   private lazy val clients = nodes.map { node =>
     (node.id, new NioTransferEndpoint().runClient(node.dataEndpoint.host, node.dataEndpoint.port))
   }.toMap
   def send(id: Long, path: String, frameBatch: FrameBatch):Unit = {
+    // for aggregate, only sent FrameDb to rootServer
     clients(id).send(path, frameBatch)
   }
 }
 
+object NioTransferEndpoint{
+  val num = 0
+}
 class NioTransferEndpoint {
 
   def runServer(host: String, port: Int): Unit = {
@@ -52,15 +57,16 @@ class NioTransferEndpoint {
     val executors = Executors.newCachedThreadPool()
 
     while (true) {
-      val socketChannel = serverSocketChannel.accept
-      println(" new channel")
+      val socketChannel = serverSocketChannel.accept // had client connected
+      println("start a new channel....")
       executors.submit(new Runnable {
         override def run(): Unit = {
+          println("currentThread = " + Thread.currentThread.getName)
           val ch = socketChannel
           while (true) {
             val headLenBuf = ByteBuffer.allocateDirect(8)
             ch.read(headLenBuf)
-            println("reading new batch")
+            println("save start: receive new batch")
             val headLen = headLenBuf.getLong(0)
             if(headLen > 1000 || headLen <=0 ) {
               println("head too long:"  + headLen + " port:" + port)

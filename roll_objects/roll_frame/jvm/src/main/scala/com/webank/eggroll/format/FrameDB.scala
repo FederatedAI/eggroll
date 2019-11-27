@@ -24,7 +24,7 @@ import java.nio.file.Path
 import java.util.concurrent.{BlockingQueue, LinkedBlockingQueue}
 
 import com.webank.eggroll.core.constant.StringConstants
-import com.webank.eggroll.core.io.adapter.{BlockDeviceAdapter, FileBlockAdapter}
+import com.webank.eggroll.core.io.adapter.{BlockDeviceAdapter, FileBlockAdapter, HdfsBlockAdapter}
 import com.webank.eggroll.core.io.util.IoUtils
 import com.webank.eggroll.core.meta.{ErPartition, ErStore}
 import org.apache.arrow.flatbuf.MessageHeader
@@ -35,19 +35,31 @@ import org.apache.arrow.vector.ipc.{ArrowReader, ArrowStreamReader, ArrowStreamW
 import org.apache.arrow.vector.types.pojo.Schema
 import org.apache.arrow.vector.{VectorSchemaRoot, VectorUnloader}
 import org.apache.commons.lang3.StringUtils
-
+import org.apache.hadoop.fs.Path
 import scala.collection.JavaConverters._
 import scala.collection.concurrent.TrieMap
 import scala.collection.mutable.ListBuffer
 
 
 object FrameUtils {
+  /**
+    * convert bytes data to FrameBatch
+    *
+    * @param bytes bytes data
+    * @return
+    */
   def fromBytes(bytes: Array[Byte]): FrameBatch = {
     val input = new ByteArrayInputStream(bytes)
     val cr = new FrameReader(input)
     cr.getColumnarBatches().next()
   }
 
+  /**
+    * convert FrameBatch to bytes data
+    *
+    * @param cb FrameBatch
+    * @return
+    */
   def toBytes(cb: FrameBatch): Array[Byte] = {
     val output = new ByteArrayOutputStream()
     val cw = new FrameWriter(cb, output)
@@ -57,6 +69,12 @@ object FrameUtils {
     ret
   }
 
+  /**
+    * copy a new FrameBatch
+    *
+    * @param fb FrameBatch
+    * @return
+    */
   def copy(fb: FrameBatch): FrameBatch = {
     fromBytes(toBytes(fb))
   }
@@ -74,6 +92,7 @@ trait FrameDB {
 object FrameDB {
   val FILE = StringConstants.FILE
   val CACHE = StringConstants.CACHE
+  val HDFS = StringConstants.HDFS
   val QUEUE = StringConstants.QUEUE
   val TOTAL = StringConstants.TOTAL
 
@@ -87,11 +106,11 @@ object FrameDB {
     val path = storeLocator.path
     val dir =
       if (StringUtils.isBlank(path))
-        s"${rootPath}/${storeLocator.namespace}/${storeLocator.name}"
+        s"$rootPath/${storeLocator.toPath()}"
       else
         path
 
-    s"${dir}/${partitionId}"
+    s"$dir/$partitionId"
   }
 
   private def getStorePath(partition: ErPartition): String = {
@@ -101,14 +120,15 @@ object FrameDB {
   def apply(opts: Map[String, String]): FrameDB = opts.getOrElse(TYPE, FILE) match {
     case CACHE => new JvmFrameDB(opts(PATH))
     case QUEUE => new QueueFrameDB(opts(PATH), opts(TOTAL).toInt)
+    case HDFS => new HdfsFrameDB(opts(PATH))
     case _ => new FileFrameDB(opts(PATH))
   }
 
   def apply(store: ErStore, partitionId: Int): FrameDB =
     apply(Map(PATH -> getStorePath(store, partitionId), TYPE -> store.storeLocator.storeType))
 
-  def apply(partition: ErPartition, basePath: String = rootPath): FrameDB = {
-    apply(Map(PATH -> IoUtils.getPath(partition, basePath)))
+  def apply(partition: ErPartition): FrameDB = {
+    apply(Map(PATH -> getStorePath(partition), TYPE -> partition.storeLocator.storeType))
   }
 
   def queue(path: String, total: Int): FrameDB = apply(Map(PATH -> path, TOTAL -> total.toString, TYPE -> QUEUE))
@@ -116,6 +136,8 @@ object FrameDB {
   def file(path: String): FrameDB = apply(Map(PATH -> path, TYPE -> FILE))
 
   def cache(path: String): FrameDB = apply(Map(PATH -> path, TYPE -> CACHE))
+
+  def hdfs(path: String): FrameDB = apply(Map(PATH -> path, TYPE -> HDFS))
 }
 
 // NOT thread safe
@@ -153,9 +175,42 @@ class FileFrameDB(path: String) extends FrameDB {
   }
 }
 
+class HdfsFrameDB(path: String) extends FrameDB {
+  var frameReader: FrameReader = _
+  var frameWriter: FrameWriter = _
+
+  def close(): Unit = {
+    if (frameReader != null) frameReader.close()
+    if (frameWriter != null) frameWriter.close()
+  }
+
+  def readAll(): Iterator[FrameBatch] = {
+    frameReader = new FrameReader(new HdfsBlockAdapter(path))
+    frameReader.getColumnarBatches()
+  }
+
+  def readAll(nullableFields: Set[Int] = Set[Int]()): Iterator[FrameBatch] = {
+    frameReader = new FrameReader(new HdfsBlockAdapter(path))
+    frameReader.nullableFields = nullableFields
+    frameReader.getColumnarBatches()
+  }
+
+  def writeAll(batches: Iterator[FrameBatch]): Unit = {
+    batches.foreach { batch =>
+      if (frameWriter == null) {
+        frameWriter = new FrameWriter(batch, new HdfsBlockAdapter(path))
+        frameWriter.write()
+      } else {
+        frameWriter.writeSibling(batch)
+      }
+    }
+  }
+}
+
 object QueueFrameDB {
   private val map = TrieMap[String, BlockingQueue[FrameBatch]]()
 
+  // key: a task name,e.g. mapBatch-0-doing , BlockingQueue[]: several batch FrameBatch
   def getOrCreateQueue(key: String): BlockingQueue[FrameBatch] = this.synchronized {
     if(!map.contains(key)) {
       map.put(key, new LinkedBlockingQueue[FrameBatch]())

@@ -20,6 +20,8 @@ package com.webank.eggroll.rollframe
 
 import com.webank.eggroll.core.io.adapter.BlockDeviceAdapter
 import com.webank.eggroll.format._
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.fs._
 import org.junit.Test
 
 class FrameFormatTests {
@@ -35,6 +37,78 @@ class FrameFormatTests {
     val fb2 = adapter2.readOne()
     assert(fb2.rowCount == 3000)
   }
+
+  @Test
+  def TestFileFrameDB(): Unit ={
+    // create FrameBatch data
+    val fb = new FrameBatch(new FrameSchema(testAssets.getDoubleSchema(2)),100)
+    for (i <- 0 until fb.fieldCount){
+      for (j <- 0 until fb.rowCount){
+        fb.writeDouble(i,j,j)
+      }
+    }
+    // write FrameBatch data to File
+    val filePath = "/tmp/unittests/RollFrameTests/file/test1/framedb_test"
+    val fileWriteAdapter = FrameDB.file(filePath)
+    fileWriteAdapter.writeAll(Iterator(fb))
+    fileWriteAdapter.close()
+
+    // read FrameBatch data from File
+    val fileReadAdapter = FrameDB.file(filePath)
+    val fbFromFile = fileReadAdapter.readOne()
+    
+    assert(fbFromFile.readDouble(0,3) == 3.0)
+  }
+
+  @Test
+  def testJvmFrameDB(): Unit ={
+    // create FrameBatch data
+    val fb = new FrameBatch(new FrameSchema(testAssets.getDoubleSchema(2)),100)
+    for (i <- 0 until fb.fieldCount){
+      for (j <- 0 until fb.rowCount){
+        fb.writeDouble(i,j,j)
+      }
+    }
+    // write FrameBatch data to Jvm
+    val jvmPath = "/tmp/unittests/RollFrameTests/jvm/test1/framedb_test"
+    val jvmAdapter = FrameDB.cache(jvmPath)
+    jvmAdapter.writeAll(Iterator(fb))
+    // read FrameBatch data from Jvm
+    val fbFromJvm = jvmAdapter.readOne()
+    
+    assert(fbFromJvm.readDouble(0,10) == 10.0)
+  }
+
+  @Test
+  def testHdfsFrameDB(): Unit ={
+    // create FrameBatch data
+    val fb = new FrameBatch(new FrameSchema(testAssets.getDoubleSchema(2)),100)
+    for (i <- 0 until fb.fieldCount){
+      for (j <- 0 until fb.rowCount){
+        fb.writeDouble(i,j,j)
+      }
+    }
+    // write FrameBatch data to HDFS
+    val hdfsPath = "/tmp/unittests/RollFrameTests/hdfs/test1/framedb_test/part0"
+    val hdfsWriteAdapter = FrameDB.hdfs(hdfsPath)
+    hdfsWriteAdapter.writeAll(Iterator(fb))
+    hdfsWriteAdapter.close()
+    // read FrameBatch data from HDFS
+    val hdfsReadAdapter = FrameDB.hdfs(hdfsPath)
+    val fbFromHdfs = hdfsReadAdapter.readOne()
+    
+    assert(fbFromHdfs.readDouble(0,20) == 20.0)
+  }
+
+  @Test
+  def testVerifyHDFS(): Unit ={
+    val hdfsRootPath = "hdfs://localhost:9000"
+    val conf = new Configuration()
+    conf.set("fs.defaultFS", hdfsRootPath)
+    val hadoop = FileSystem.get(conf)
+    assert(hadoop.exists(new Path("/")))
+  }
+
 
   @Test
   def testFrameDataType():Unit = {

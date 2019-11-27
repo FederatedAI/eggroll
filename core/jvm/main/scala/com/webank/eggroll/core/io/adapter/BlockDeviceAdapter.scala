@@ -24,7 +24,8 @@ import java.util.concurrent.{BlockingQueue, LinkedBlockingQueue}
 import com.google.protobuf.ByteString
 import com.webank.eggroll.core.constant.StringConstants
 import io.grpc.stub.StreamObserver
-
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.fs._
 import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
 
@@ -43,7 +44,8 @@ object BlockDeviceAdapter {
     opts.getOrElse(StringConstants.TYPE, StringConstants.FILE) match {
       case StringConstants.CACHE =>
         new JvmBlockAdapter(opts(StringConstants.PATH), opts(StringConstants.SIZE).toInt)
-
+      case StringConstants.HDFS =>
+        new HdfsBlockAdapter(opts(StringConstants.PATH))
       case _ =>
         new FileBlockAdapter(opts(StringConstants.PATH))
     }
@@ -51,6 +53,9 @@ object BlockDeviceAdapter {
 
   def file(path: String): BlockDeviceAdapter =
     apply(Map(StringConstants.PATH -> path, StringConstants.TYPE -> StringConstants.FILE))
+
+  def hdfs(path: String): BlockDeviceAdapter =
+    apply(Map(StringConstants.PATH -> path, StringConstants.TYPE -> StringConstants.HDFS))
 }
 
 class FileBlockAdapter(path: String) extends BlockDeviceAdapter {
@@ -74,6 +79,51 @@ class FileBlockAdapter(path: String) extends BlockDeviceAdapter {
     }
     if (outputStream != null) {
       outputStream.close()
+    }
+  }
+}
+
+object HdfsBlockAdapter {
+  private val hdfsRootPath = "hdfs://localhost:9000"
+  private var conf : Configuration = {
+    val defaultConf = new Configuration()
+    defaultConf.set("fs.defaultFS", HdfsBlockAdapter.hdfsRootPath)
+    defaultConf
+  }
+
+  def setConfiguration(userConf:Configuration): Unit ={
+    conf = userConf
+  }
+
+
+}
+
+class HdfsBlockAdapter(path: String) extends BlockDeviceAdapter {
+  var inputStream: InputStream = _
+  var outputStream: OutputStream = _
+  val hadoop: FileSystem = {
+    FileSystem.get(HdfsBlockAdapter.conf)
+  }
+
+  override def getInputStream(): InputStream = {
+    inputStream = hadoop.open(new Path(path))
+    inputStream
+  }
+
+  override def getOutputStream(): OutputStream = {
+    outputStream = hadoop.create(new Path(path))
+    outputStream
+  }
+
+  override def close(): Unit = {
+    if (inputStream != null) {
+      inputStream.close()
+    }
+    if (outputStream != null) {
+      outputStream.close()
+    }
+    if (hadoop != null) {
+      hadoop.close()
     }
   }
 }

@@ -84,6 +84,7 @@ object StringConstants {
   val LMDB = "lmdb"
   val LEVELDB = "leveldb"
   val FILE = "file"
+  val HDFS = "hdfs"
   val CACHE = "cache"
   val QUEUE = "queue"
   val TOTAL = "total"

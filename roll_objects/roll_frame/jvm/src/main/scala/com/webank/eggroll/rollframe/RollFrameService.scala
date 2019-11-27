@@ -41,8 +41,9 @@ class RollFrameService() extends RollFrame {
 
   def run(taskPlan: BaseTaskPlan): ErJob = {
     scheduler.addPlan(taskPlan)
+    println("\nbegin run rollframe job\n")
     JobRunner.run(scheduler.getPlan())
-
+    println("\nend run rollframe job\n")
     taskPlan.job
   }
 

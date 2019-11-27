@@ -106,7 +106,7 @@ object RollFrame {
 }
 
 // TODO: MOCK
-class ClusterManager(mode: String = "local") {
+class ClusterManager {
   val clusterNode0 = ErProcessor(id = 0, commandEndpoint = ErEndpoint("node1", 20100), dataEndpoint = ErEndpoint("node1", 20200), tag = "boss")
   val clusterNode1 = ErProcessor(id = 1, commandEndpoint = ErEndpoint("node2", 20101), dataEndpoint = ErEndpoint("node2", 20201), tag = "worker")
   val clusterNode2 = ErProcessor(id = 2, commandEndpoint = ErEndpoint("node3", 20102), dataEndpoint = ErEndpoint("node3", 20202), tag = "worker")
@@ -114,7 +114,7 @@ class ClusterManager(mode: String = "local") {
   val localNode0 = ErProcessor(id = 0, commandEndpoint = ErEndpoint("127.0.0.1", 20100), dataEndpoint = ErEndpoint("127.0.0.1", 20200), tag = "boss")
   val localNode1 = ErProcessor(id = 1, commandEndpoint = ErEndpoint("127.0.0.1", 20101), dataEndpoint = ErEndpoint("127.0.0.1", 20201), tag = "worker")
   def getLiveProcessorBatch(clusterId: Long = -1): ErProcessorBatch = {
-    val cluster = mode match {
+    val cluster = ClusterManager.mode match {
       case "cluster" =>
         ErProcessorBatch(id = clusterId, processors = Array(clusterNode0, clusterNode1, clusterNode2))
       case _ => ErProcessorBatch(id = clusterId, processors = Array(localNode0, localNode1))
@@ -128,7 +128,7 @@ class ClusterManager(mode: String = "local") {
       storeType = StringConstants.FILE,
       namespace = namespace,
       name = name)
-    val partitions = mode match {
+    val partitions = ClusterManager.mode match {
       case "cluster" => Array(
         ErPartition(id = 0, storeLocator = storeLocator, processor = clusterNode0),
         ErPartition(id = 1, storeLocator = storeLocator, processor = clusterNode1),
@@ -157,7 +157,7 @@ class ClusterManager(mode: String = "local") {
       routeToMethodName = "runTask")
 
     getLiveProcessorBatch(clusterId).processors.foreach { server =>
-      val idMatch = mode match {
+      val idMatch = ClusterManager.mode match {
         case "cluster" => server.id == nodeId
         case _ => true
       }
@@ -183,5 +183,9 @@ class ClusterManager(mode: String = "local") {
 }
 
 object ClusterManager {
+  var mode: String = "local"
   def getOrCreate(): ClusterManager = new ClusterManager
+  def setMode(mode:String):Unit ={
+    this.mode = mode
+  }
 }

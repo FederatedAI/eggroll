@@ -37,7 +37,7 @@ class CollectiveTransferTests {
   @Test
   def testSendNio():Unit = {
     val path = "aa"
-    val fb = new FrameBatch(new FrameSchema(getSchema(1000)), 1000*20)
+    val fb = new FrameBatch(new FrameSchema(getSchema(100)), 100*20)
     val service = new NioTransferEndpoint
     val port = 8818
     val host = "127.0.0.1"

@@ -206,8 +206,8 @@
     <!-- Languages -->
     <code.cache.size>512m</code.cache.size>
     <java.version>8</java.version>
-    <scala.version>2.12.8</scala.version>
-    <scala.binary.version>2.12</scala.binary.version>
+    <scala.version>2.11.8</scala.version>
+    <scala.binary.version>2.11</scala.binary.version>
 
     <!-- Project properties -->
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -229,6 +229,7 @@
     <protobuf.version>3.6.1</protobuf.version>
     <rocksdb.version>6.2.2</rocksdb.version>
     <scalatest.version>3.0.8</scalatest.version>
+    <hadoop.version>2.7.2</hadoop.version>
 
     <!-- Plugins -->
     <build-helper-maven-plugin.version>3.0.0</build-helper-maven-plugin.version>
@@ -378,6 +379,25 @@
       <groupId>io.grpc</groupId>
       <artifactId>grpc-netty-shaded</artifactId>
       <version>${grpc.version}</version>
+    </dependency>
+
+  <!-- hadoop -->
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-common</artifactId>
+      <version>${hadoop.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-hdfs</artifactId>
+      <version>${hadoop.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-client</artifactId>
+      <version>${hadoop.version}</version>
     </dependency>
 
   </dependencies>
