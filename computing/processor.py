@@ -172,13 +172,12 @@ class RollPairProcessor(processor_pb2_grpc.ProcessServiceServicer):
     def _run_unary_unwrapper(self, action, func, req, context, support_inplace):
         dst_loc = self._create_output_storage_locator(req.operand, req.info, req.conf, support_inplace)
         is_inplace = req.info.isInPlaceComputing
-        src_adapter, dst_adapter, src_serde, dst_serde, functor = self._create_adapter(req.operand, via_network=False), \
-                                                        self._create_adapter(dst_loc, via_network=False), \
+        src_adapter, src_serde, dst_serde, functor = self._create_adapter(req.operand, via_network=False), \
                                                         self._create_serde(),self._create_serde(), \
                                                         self._create_functor(req.info)
-        with src_adapter as src_db, dst_adapter as dst_db:
-            with src_db.iteritems() as src_it, dst_db.new_batch() as dst_wb:
-                return func(src_it, dst_wb,src_serde, dst_serde, functor,is_inplace)
+        with src_adapter as src_db:
+            with src_db.iteritems() as src_it:
+                return func(src_it, src_serde, dst_serde, functor,is_inplace)
 
     def _run_unary(self, action, func, req, context, support_inplace):
         def run_unary_wrapper(req, context):
@@ -324,7 +323,7 @@ class RollPairProcessor(processor_pb2_grpc.ProcessServiceServicer):
 
     @_exception_logger
     def reduce(self, request, context):
-        def reduce_wrapper(src_it, dst_wb,src_serde, dst_serde, functor, is_in_place_computing):
+        def reduce_wrapper(src_it, src_serde, dst_serde, functor, is_in_place_computing):
             if is_in_place_computing:
                 raise NotImplementedError()
             value = None
