@@ -13,7 +13,8 @@
 #  limitations under the License.
 
 from datetime import datetime
-
+import json
+import time
 import traceback
 
 
@@ -37,13 +38,37 @@ def _repr_list(a_list):
 def _elements_to_proto(rpc_message_list):
   return _map_and_listify(_to_proto, rpc_message_list)
 
+def string_to_bytes(string):
+  return string if isinstance(string, bytes) else string.encode(encoding="utf-8")
+
+
+def bytes_to_string(byte):
+  return byte.decode(encoding="utf-8")
+
+
+def json_dumps(src, byte=False):
+  if byte:
+    return string_to_bytes(json.dumps(src))
+  else:
+    return json.dumps(src)
+
+
+def json_loads(src):
+  if isinstance(src, bytes):
+    return json.loads(bytes_to_string(src))
+  else:
+    return json.loads(src)
+
+
+def current_timestamp():
+  return int(time.time()*1000)
 
 def _exception_logger(func):
   def wrapper(*args, **kw):
     try:
       return func(*args, **kw)
     except:
-      msg = (f"==== detail start ====\n"
+      msg = (f"\n==== detail start ====\n"
              f"{traceback.format_exc()}"
              f"\n==== detail end ====\n\n")
       # LOGGER.error(msg)

@@ -27,19 +27,40 @@ from eggroll.core.constants import StoreTypes
 class TestRollPair(unittest.TestCase):
   options = {'cluster_manager_host': 'localhost',
           'cluster_manager_port': 4670,
+          'pair_type': 'v1/roll-pair',
           'roll_pair_service_host': 'localhost',
           'roll_pair_service_port': 20000}
+
+  storage_options = {'cluster_manager_host': 'localhost',
+          'cluster_manager_port': 4670,
+          'pair_type': 'v1/egg-pair',
+          'egg_pair_service_host': 'localhost',
+          'egg_pair_service_port': 20001}
+  def test_get(self):
+    store = ErStore(ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LMDB, namespace="namespace",
+                                   name="name"))
+    rp = RollPair(store, options=TestRollPair.storage_options)
+    res = rp.get(bytes('1', encoding='utf-8'))
+    print("res: {}".format(res))
+
+  def test_put(self):
+    store = ErStore(store_locator=ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LMDB, namespace="namespace",
+                                                 name="name"))
+    rp = RollPair(er_store=store, opts=TestRollPair.storage_options)
+    res = rp.put(b'key', b'value')
+    print("res: {}".format(res))
+
   def test_map_values(self):
-    store = ErStore(ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LEVELDB, namespace='namespace',
+    store = ErStore(ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LMDB, namespace='namespace',
                                    name='name'))
     rp = RollPair(store, options=TestRollPair.options)
 
-    res = rp.map_values(lambda v : v + b'~2', output=ErStore(store_locator = ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LEVELDB, namespace='namespace', name='testMapValues')))
+    res = rp.map_values(lambda v : v + b'~2', output=ErStore(store_locator = ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LMDB, namespace='namespace', name='testMapValues')))
 
     print('res: ', res)
 
   def test_reduce(self):
-    store = ErStore(ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LEVELDB, namespace='namespace',
+    store = ErStore(ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LMDB, namespace='namespace',
                                    name='name'))
 
     rp = RollPair(store, options=TestRollPair.options)
@@ -47,7 +68,7 @@ class TestRollPair(unittest.TestCase):
     print('res: ', res)
 
   def test_aggregate(self):
-    store = ErStore(ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LEVELDB, namespace='namespace',
+    store = ErStore(ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LMDB, namespace='namespace',
                                    name='name'))
 
     rp = RollPair(store, options=TestRollPair.options)
@@ -55,26 +76,117 @@ class TestRollPair(unittest.TestCase):
     print('res: ', res)
 
   def test_join(self):
-    left_locator = ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LEVELDB, namespace="namespace",
-                                   name='name')
-    right_locator = ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LEVELDB, namespace="namespace",
-                                   name='test')
+    left_locator = ErStore(store_locator=ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LMDB, namespace="namespace",
+                                   name='name'))
+    right_locator = ErStore(store_locator=ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LMDB, namespace="namespace",
+                                   name='test'))
 
-    left = RollPair(left_locator)
-    right = RollPair(right_locator)
+    left = RollPair(left_locator, options=TestRollPair.options)
+    right = RollPair(right_locator, options=TestRollPair.options)
     res = left.join(right, lambda x, y : x + b' joins ' + y)
     print('res: ', res)
 
 
   def test_map(self):
-    store = ErStore(ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LEVELDB, namespace='namespace',
+    store = ErStore(ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LMDB, namespace='namespace',
                                    name='name'))
     rp = RollPair(store, options=TestRollPair.options)
 
-    res = rp.map(lambda k, v: (b'k_' + k, b'v_' + v), output=ErStore(store_locator=ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LEVELDB, namespace='namespace', name='testMap')))
+    res = rp.map(lambda k, v: (b'k_' + k, b'v_' + v), output=ErStore(store_locator=ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LMDB, namespace='namespace', name='testMap')))
 
     print('res: ', res)
 
+  def test_map_partitions(self):
+    store = ErStore(ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LMDB, namespace='namespace',
+                                   name='name'))
+    rp = RollPair(store, options=TestRollPair.options)
+
+    def func(iter):
+      ret = []
+      for k, v in iter:
+        k = int(k)
+        v = int(v)
+        ret.append((bytes(f"{k}_{v}_0", encoding='utf8'), bytes(str(v ** 2), encoding='utf8')))
+        ret.append((bytes(f"{k}_{v}_1", encoding='utf8'), bytes(str(v ** 3), encoding='utf8')))
+      return ret
+    res = rp.map_partitions(func)
+    print("res: {}".format(res))
+
+  def test_collapse_partitions(self):
+    store = ErStore(ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LMDB, namespace='namespace',
+                                   name='name'))
+    rp = RollPair(store, options=TestRollPair.options)
+
+    def f(iterator):
+      sum = ""
+      for k, v in iterator:
+        sum += v
+      return sum
+    res = rp.collapse_partitions(f)
+    print("res: {}".format(res))
+
+  def test_filter(self):
+    store = ErStore(ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LMDB, namespace='namespace',
+                                   name='name'))
+    rp = RollPair(store, options=TestRollPair.options)
+    res = rp.filter(lambda k, v: int(k) % 2 != 0)
+    print("res: {}".format(res))
+
+  def test_glom(self):
+    store = ErStore(ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LMDB, namespace='namespace',
+                                   name='name'))
+    rp = RollPair(store, options=TestRollPair.options)
+
+    res = rp.glom()
+    print("res: {}".format(res))
+
+  def test_flatMap(self):
+    store = ErStore(ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LMDB, namespace='namespace',
+                                   name='name'))
+    rp = RollPair(store, options=TestRollPair.options)
+    import random
+    def foo(k, v):
+      k = int(k)
+      v = int(v)
+      result = []
+      r = random.randint(10000, 99999)
+      for i in range(0, k):
+        result.append((k + r + i, v + r + i))
+      return result
+    res = rp.flat_map(foo)
+    print("res: {}".format(res))
+
+  def test_sample(self):
+    store = ErStore(ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LMDB, namespace='namespace',
+                                   name='name'))
+    rp = RollPair(store, options=TestRollPair.options)
+
+    res = rp.sample(0.1, 81)
+    print("res: {}".format(res))
+
+  def test_subtractByKey(self):
+    left_locator = ErStore(store_locator=ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LMDB, namespace="namespace",
+                                                        name='name'))
+    right_locator = ErStore(store_locator=ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LMDB, namespace="namespace",
+                                                         name='test'))
+
+    left = RollPair(left_locator, options=TestRollPair.options)
+    right = RollPair(right_locator, options=TestRollPair.options)
+
+    res = left.subtract_by_key(right)
+    print("res: {}".format(res))
+
+  def test_union(self):
+    left_locator = ErStore(store_locator=ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LMDB, namespace="namespace",
+                                                        name='name'))
+    right_locator = ErStore(store_locator=ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LMDB, namespace="namespace",
+                                                         name='test'))
+
+    left = RollPair(left_locator, options=TestRollPair.options)
+    right = RollPair(right_locator, options=TestRollPair.options)
+
+    res = left.union(right, lambda v1, v2: v1 + v2)
+    print("res: {}".format(res))
 
 if __name__ == '__main__':
   unittest.main()
