@@ -46,7 +46,7 @@ class TestRollPair(unittest.TestCase):
   def test_put(self):
     store = ErStore(store_locator=ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LMDB, namespace="namespace",
                                                  name="name"))
-    rp = RollPair(er_store=store, opts=TestRollPair.storage_options)
+    rp = RollPair(er_store=store, options=TestRollPair.storage_options)
     res = rp.put(b'key', b'value')
     print("res: {}".format(res))
 

@@ -125,8 +125,8 @@ class EggPair(object):
       print("egg_pair put call")
       f = cloudpickle.loads(functors[0]._body)
       input_adapter = self.get_unary_input_adapter(task_info=task)
-      value = input_adapter.put(f.key, f.value)
-      result = ErPair(key=f.key, value=value)
+      value = input_adapter.put(f._key, f._value)
+      #result = ErPair(key=f._key, value=bytes(value))
       input_adapter.close()
 
     if task._name == 'mapValues':

@@ -61,7 +61,7 @@ class RollPair(object):
 
     self.__cluster_manager_channel = _grpc_channel_factory.create_channel(ErEndpoint(options['cluster_manager_host'], options['cluster_manager_port']))
 
-    self.__command_serdes = options.get('serdes', SerdesTypes.CLOUD_PICKLE)
+    self.__command_serdes = options.get('serdes', SerdesTypes.PROTOBUF)
     self.__roll_pair_command_client = CommandClient()
 
     self.__cluster_manager_client = ClusterManagerClient(options)
@@ -170,17 +170,17 @@ class RollPair(object):
   def put(self, k, v, opt = {}):
     k, v = self.get_serdes().serialize(k), self.get_serdes().serialize(v)
     er_pair = ErPair(key=k, value=v)
-
+    outputs = []
     inputs = [ErPartition(id=1, store_locator=self.__store._store_locator,
-                          processor=ErProcessor(id=1,command_endpoint=self.__egg_pair_service_endpoint,
+                          processor=ErProcessor(id=1, command_endpoint=self.__egg_pair_service_endpoint,
                                                 data_endpoint=self.__egg_pair_service_endpoint))]
     output = [ErPartition(id=1, store_locator=self.__store._store_locator,
-                          processor=ErProcessor(id=1,command_endpoint=self.__egg_pair_service_endpoint,
+                          processor=ErProcessor(id=1, command_endpoint=self.__egg_pair_service_endpoint,
                                                 data_endpoint=self.__egg_pair_service_endpoint))]
 
     job = ErJob(id=self.__session_id, name=RollPair.PUT,
                 inputs=[self.__store],
-                outputs=output,
+                outputs=outputs,
                 functors=[ErFunctor(body=cloudpickle.dumps(er_pair))])
     task = ErTask(id=self.__session_id, name=RollPair.PUT, inputs=inputs, outputs=output, job=job)
     print("start send req")
