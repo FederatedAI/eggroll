@@ -22,6 +22,7 @@ from eggroll.core.command.command_client import CommandClient
 from eggroll.cluster_manager.cluster_manager_client import ClusterManagerClient
 from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.constants import StoreTypes, SerdesTypes, PartitionerTypes
+from eggroll.core.serdes.eggroll_serdes import PickleSerdes, CloudPickleSerdes
 from eggroll.core.utils import string_to_bytes
 from eggroll.roll_pair.egg_pair import EggPair
 
@@ -60,7 +61,7 @@ class RollPair(object):
 
     self.__cluster_manager_channel = _grpc_channel_factory.create_channel(ErEndpoint(options['cluster_manager_host'], options['cluster_manager_port']))
 
-    self.__command_serdes = options.get('serdes', SerdesTypes.PROTOBUF)
+    self.__command_serdes = options.get('serdes', SerdesTypes.CLOUD_PICKLE)
     self.__roll_pair_command_client = CommandClient()
 
     self.__cluster_manager_client = ClusterManagerClient(options)
@@ -76,6 +77,14 @@ class RollPair(object):
   def __repr__(self):
     return f'python RollPair(_store={self.__store})'
 
+  def get_serdes(self):
+    if self.__store._store_locator._serdes == SerdesTypes.PROTOBUF:
+      return CloudPickleSerdes
+    elif self.__store._store_locator._serdes == SerdesTypes.PICKLE:
+      return PickleSerdes
+    else:
+      return CloudPickleSerdes
+
   def land(self, er_store: ErStore, options = {}):
     if er_store:
       final_store = er_store
@@ -83,18 +92,18 @@ class RollPair(object):
       store_type = options.get('store_type', StoreTypes.ROLLPAIR_LEVELDB)
       namespace = options.get('namespace', '')
       name = options.get('name', '')
-      total_partiitons = options.get('total_partitions', 0)
+      total_partitions = options.get('total_partitions', 0)
       partitioner = options.get('partitioner', PartitionerTypes.BYTESTRING_HASH)
-      serdes = options.get('serdes', SerdesTypes.PICKLE)
+      serdes = options.get('serdes', SerdesTypes.CLOUD_PICKLE)
 
       final_store = ErStore(
-          store_locator = ErStoreLocator(
-              store_type = store_type,
-              namespace = namespace,
-              name = name,
-              total_partiitons = total_partiitons,
-              partitioner = partitioner,
-              serdes = serdes))
+          store_locator=ErStoreLocator(
+              store_type=store_type,
+              namespace=namespace,
+              name=name,
+              total_partitions=total_partitions,
+              partitioner=partitioner,
+              serdes=serdes))
 
     self.__store = self.__cluster_manager_client.get_or_create_store(final_store)
     return self
@@ -123,7 +132,7 @@ class RollPair(object):
   
   """
   def get(self, k, opt = {}):
-    k = self.kv_to_bytes(k=k, use_serialize=True)
+    k = self.get_serdes().serialize(k)
     er_pair = ErPair(key=k, value=None)
     outputs = []
     value = None
@@ -159,7 +168,7 @@ class RollPair(object):
     return value
 
   def put(self, k, v, opt = {}):
-    k, v = self.kv_to_bytes(k=k, v=v, use_serialize=True)
+    k, v = self.get_serdes().serialize(k), self.get_serdes().serialize(v)
     er_pair = ErPair(key=k, value=v)
 
     inputs = [ErPartition(id=1, store_locator=self.__store._store_locator,
