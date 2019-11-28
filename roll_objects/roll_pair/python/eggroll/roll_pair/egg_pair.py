@@ -182,7 +182,7 @@ class EggPair(object):
       for k_bytes, v_bytes in input_adapter.iteritems():
         if seq_op_result:
           #seq_op_result = f(seq_op_result, self.serde.deserialize(v_bytes))
-          seq_op_result = f(seq_op_result, (v_bytes))
+          seq_op_result = f(seq_op_result, self.serde.deserialize(v_bytes))
         else:
           seq_op_result = self.serde.deserialize(v_bytes)
 
@@ -204,8 +204,8 @@ class EggPair(object):
         output_adapter = self.get_unary_output_adapter(task_info=task)
 
         output_writebatch = output_adapter.new_batch()
-        #output_writebatch.put(self.serde.serialize('result'.encode()), self.serde.serialize(comb_op_result))
-        output_writebatch.put(('result'.encode()), (comb_op_result))
+
+        output_writebatch.put(self.serde.deserialize('result'.encode()), self.serde.deserialize(comb_op_result))
 
         output_writebatch.close()
         output_adapter.close()
