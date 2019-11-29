@@ -16,18 +16,21 @@
  *
  */
 
-package com.webank.eggroll.framework.clustermanager.client;
+package com.webank.eggroll.core.client;
 
-import com.webank.eggroll.clustermanager.constant.MetadataCommands;
 import com.webank.eggroll.core.command.CommandClient;
 import com.webank.eggroll.core.command.CommandURI;
 import com.webank.eggroll.core.constant.ClusterManagerConfKeys;
+import com.webank.eggroll.core.constant.MetadataCommands;
 import com.webank.eggroll.core.constant.SerdesTypes;
+import com.webank.eggroll.core.constant.SessionCommands;
 import com.webank.eggroll.core.datastructure.RpcMessage;
 import com.webank.eggroll.core.meta.ErEndpoint;
 import com.webank.eggroll.core.meta.ErPartition;
+import com.webank.eggroll.core.meta.ErProcessorBatch;
 import com.webank.eggroll.core.meta.ErServerCluster;
 import com.webank.eggroll.core.meta.ErServerNode;
+import com.webank.eggroll.core.meta.ErSessionMeta;
 import com.webank.eggroll.core.meta.ErStore;
 import com.webank.eggroll.core.meta.ErStoreLocator;
 import com.webank.eggroll.core.session.StaticErConf;
@@ -91,6 +94,14 @@ public class ClusterManagerClient {
 
   public ErStore deleteStore(ErStoreLocator input) {
     return deleteStore(new ErStore(input, EMPTY_PARTITION_ARRAY));
+  }
+
+  public ErSessionMeta getOrCreateSession(ErSessionMeta sessionMeta) {
+    return doSyncRequestInternal(sessionMeta, ErSessionMeta.class, SessionCommands.GET_OR_CREATE_SESSION());
+  }
+
+  public ErProcessorBatch getOrCreateProcessorBatch(ErSessionMeta sessionMeta) {
+    return doSyncRequestInternal(sessionMeta, ErProcessorBatch.class, SessionCommands.GET_OR_CREATE_PROCESSOR_BATCH());
   }
 
   private <T> T doSyncRequestInternal(RpcMessage input, Class<T> outputType, CommandURI commandURI) {

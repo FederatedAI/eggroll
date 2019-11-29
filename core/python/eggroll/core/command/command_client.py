@@ -21,6 +21,7 @@ from eggroll.core.proto import command_pb2_grpc
 from eggroll.core.utils import time_now
 from eggroll.core.grpc.factory import GrpcChannelFactory
 
+# todo: move to core/client
 class CommandClient(object):
 
   def __init__(self):

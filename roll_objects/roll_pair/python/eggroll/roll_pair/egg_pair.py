@@ -15,18 +15,22 @@
 
 import grpc
 from concurrent import futures
+from eggroll.core.client import NodeManagerClient
 from eggroll.core.command.command_router import CommandRouter
 from eggroll.core.command.command_service import CommandServicer
 from eggroll.core.datastructure.broker import FifoBroker
 from eggroll.core.io.kv_adapter import RocksdbSortedKvAdapter
 from eggroll.core.io.io_utils import get_db_path
-from eggroll.core.meta_model import ErTask, ErPartition
+from eggroll.core.meta_model import ErTask, ErPartition, ErProcessor, ErEndpoint
 from eggroll.core.proto import command_pb2_grpc, transfer_pb2_grpc
 from eggroll.core.serdes import cloudpickle
 from eggroll.core.transfer.transfer_service import GrpcTransferServicer, \
   TransferClient
+from eggroll.core.constants import ProcessorTypes, ProcessorStatus
 from eggroll.roll_pair.shuffler import DefaultShuffler
 from grpc._cython import cygrpc
+import argparse
+import os
 
 class EggPair(object):
   def run_task(self, task: ErTask):
@@ -210,8 +214,7 @@ class EggPair(object):
     print('reduce finished')
 
 
-def serve():
-  port = 20001
+def serve(args):
   prefix = 'v1/egg-pair'
 
   CommandRouter.get_instance().register(
@@ -254,14 +257,33 @@ def serve():
   transfer_pb2_grpc.add_TransferServiceServicer_to_server(transfer_servicer,
                                                           server)
 
-  server.add_insecure_port(f'[::]:{port}')
+  port = server.add_insecure_port(f'[::]:{0}')
 
   server.start()
 
-  print('server started')
+  options = {
+    'eggroll.session.id': args.session_id
+  }
+  myself = ErProcessor(processor_type=ProcessorTypes.EGG_PAIR,
+                       command_endpoint=ErEndpoint(host='localhost', port=port),
+                       data_endpoint=ErEndpoint(host='localhost', port=port),
+                       options=options,
+                       status=ProcessorStatus.RUNNING)
+
+  node_manager_client = NodeManagerClient()
+  node_manager_client.heartbeat(myself)
+
+  print(f'egg_pair started at port {port}')
+
   import time
   time.sleep(10000)
 
 
 if __name__ == '__main__':
-  serve()
+  parser = argparse.ArgumentParser()
+  parser.add_argument('-d', '--data-dir', default=os.path.dirname(os.path.realpath(__file__)))
+  parser.add_argument('-n', '--node-manager', default='localhost:9394')
+  parser.add_argument('-s', '--session-id')
+
+  args = parser.parse_args()
+  serve(args)

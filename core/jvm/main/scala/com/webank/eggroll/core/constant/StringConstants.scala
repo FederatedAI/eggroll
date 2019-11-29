@@ -32,6 +32,7 @@ object StringConstants {
 
   val DOT = "."
   val COLON = ":"
+  val SEMICOLON = ";"
   val DASH = "-"
   val UNDERLINE = "_"
   val DOUBLE_UNDERLINES = "__"

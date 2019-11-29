@@ -108,36 +108,60 @@ class ErServerCluster(RpcMessage):
 
 
 class ErProcessor(RpcMessage):
-  def __init__(self, id: int, name: str = '', command_endpoint: ErEndpoint = None, data_endpoint: ErEndpoint = None, tag=''):
+  def __init__(self,
+      id: int = -1,
+      name: str = '',
+      processor_type = '',
+      status = '',
+      command_endpoint: ErEndpoint = None,
+      data_endpoint: ErEndpoint = None,
+      options = {},
+      tag=''):
     self._id = id
     self._name = name
+    self._processor_type = processor_type
+    self._status = status
     self._command_endpoint = command_endpoint
     self._data_endpoint = data_endpoint if data_endpoint else command_endpoint
+    self._options = options
     self._tag = tag
 
   def to_proto(self):
     return meta_pb2.Processor(id=self._id,
                               name=self._name,
+                              processorType=self._processor_type,
+                              status=self._status,
                               commandEndpoint=self._command_endpoint.to_proto(),
                               dataEndpoint=self._data_endpoint.to_proto(),
+                              options=self._options,
                               tag=self._tag)
+
+  def to_proto_string(self):
+    return self.to_proto().SerializeToString()
 
   @staticmethod
   def from_proto(pb_message):
     return ErProcessor(id=pb_message.id,
                        name=pb_message.name,
+                       processor_type=pb_message.processorType,
+                       status=pb_message.status,
                        command_endpoint=ErEndpoint.from_proto(pb_message.commandEndpoint),
                        data_endpoint=ErEndpoint.from_proto(pb_message.dataEndpoint),
+                       options=pb_message.options,
                        tag=pb_message.tag)
 
   @staticmethod
   def from_proto_string(pb_string):
-    pb_message = meta_pb2.ErProcessor()
+    pb_message = meta_pb2.Processor()
     msg_len = pb_message.ParseFromString(pb_string)
     return ErProcessor.from_proto(pb_message)
 
   def __repr__(self):
-    return f'ErProcessor(id={repr(self._id)}, name={self._name}, command_endpoint={repr(self._command_endpoint)}, data_endpoint={repr(self._data_endpoint)}, tag={self._tag})'
+    return f'ErProcessor(id={repr(self._id)}, name={self._name}, ' \
+           f'processor_type={self._processor_type}, status={self._status}, ' \
+           f'command_endpoint={repr(self._command_endpoint)},' \
+           f' data_endpoint={repr(self._data_endpoint)}, ' \
+           f'options=[{self._options}], tag={self._tag})'
 
 
 class ErProcessorBatch(RpcMessage):
@@ -172,21 +196,21 @@ class ErProcessorBatch(RpcMessage):
 
 
 class ErFunctor(RpcMessage):
-  def __init__(self, name='', serdes='', body=b'', conf=dict()):
+  def __init__(self, name='', serdes='', body=b'', options=dict()):
     self._name = name
     self._serdes = serdes
     self._body = body
-    self._conf = conf
+    self._options = options
 
   def to_proto(self):
-    return meta_pb2.Functor(name=self._name, serdes=self._serdes, body=self._body, conf=self._conf)
+    return meta_pb2.Functor(name=self._name, serdes=self._serdes, body=self._body, conf=self._options)
 
   @staticmethod
   def from_proto(pb_message):
-    return ErFunctor(name=pb_message.name, serdes=pb_message.serdes, body=pb_message.body, conf=pb_message.conf)
+    return ErFunctor(name=pb_message.name, serdes=pb_message.serdes, body=pb_message.body, options=pb_message.options)
 
   def __repr__(self):
-    return f'ErFunctor(name={self._name}, serdes={self._serdes}, body=***;{len(self._body)}, conf={self._conf})'
+    return f'ErFunctor(name={self._name}, serdes={self._serdes}, body=***;{len(self._body)}, options=[{self._options}])'
 
 
 class ErPair(RpcMessage):
@@ -417,3 +441,35 @@ class ErTask(RpcMessage):
       raise ValueError("Head node's input partition is null")
 
     return node._endpoint
+
+class ErSessionMeta(RpcMessage):
+  def __init__(self, id = '', name: str = '', status: str = '', options = {}, tag: str = ''):
+    self._id = id
+    self._name = name
+    self._status = status
+    self._options = options
+    self._tag = tag
+
+  def to_proto(self):
+    return meta_pb2.SessionMeta(id=self._id,
+                                name=self._name,
+                                status=self._status,
+                                options=self._options,
+                                tag=self._tag)
+
+  @staticmethod
+  def from_proto(pb_message):
+    return ErSessionMeta(id=pb_message.id,
+                         name=pb_message.name,
+                         status=pb_message.status,
+                         options=pb_message.options,
+                         tag=pb_message.tag)
+
+  @staticmethod
+  def from_proto_string(pb_string):
+    pb_message = meta_pb2.Task()
+    msg_len = pb_message.ParseFromString(pb_string)
+    return ErSessionMeta.from_proto(pb_message)
+
+  def __repr__(self):
+    return f'ErSessionMeta(id={self._id}, name={self._name}, status={self._status}, options=[{self._options}], tag={self._tag})'

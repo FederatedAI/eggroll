@@ -16,16 +16,12 @@
  *
  */
 
-package com.webank.eggroll.clustermanager.client
+package com.webank.eggroll.nodemanager
 
-import com.webank.eggroll.core.constant.ClusterManagerConfKeys
-import com.webank.eggroll.core.session.StaticErConf
+import com.webank.eggroll.core.util.Logging
 
-class MetadataClient {
-  private def init(): Unit = {
-    val clusterManagerHost = StaticErConf.getString(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST)
-    val clusterMangerPort = StaticErConf.getString(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT)
+object Main extends Logging {
+  def main(args: Array[String]): Unit = {
+
   }
-
-
 }

@@ -51,6 +51,22 @@ class MetadataCommands(object):
   DELETE_STORE = CommandURI(delete_store_service_name)
 
 
+class NodeManagerCommands(object):
+  prefix = 'v1/node-manager/processor'
+
+  get_or_create_processor_batch = 'getOrCreateProcessorBatch'
+  get_or_create_processor_batch_service_name = _to_service_name(prefix, get_or_create_processor_batch)
+  GET_OR_CREATE_PROCESSOR_BATCH = CommandURI(get_or_create_processor_batch_service_name)
+
+  get_or_create_servicer = 'getOrCreateServicer'
+  get_or_create_servicer_service_name = _to_service_name(prefix, get_or_create_servicer)
+  GET_OR_CREATE_SERVICER = CommandURI(get_or_create_servicer_service_name)
+
+  heartbeat = 'heartbeat'
+  heartbeat_service_name = _to_service_name(prefix, heartbeat)
+  HEARTBEAT = CommandURI(heartbeat_service_name)
+
+
 class RollPairCommands(object):
   roll_prefix = 'v1/roll-pair'
   egg_prefix = 'v1/egg-pair'

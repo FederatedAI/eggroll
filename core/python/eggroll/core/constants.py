@@ -33,3 +33,9 @@ class StoreTypes(object):
 
 class PartitionerTypes(object):
   BYTESTRING_HASH = 'BYTESTRING_HASH'
+
+class ProcessorTypes(object):
+  EGG_PAIR = 'egg_pair'
+
+class ProcessorStatus(object):
+  RUNNING = 'RUNNING'

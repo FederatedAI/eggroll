@@ -44,9 +44,12 @@ message ServerCluster {
 message Processor {
   int64 id = 1;
   string name = 2;
-  Endpoint commandEndpoint = 3;
-  Endpoint dataEndpoint = 4;
-  string tag = 5;
+  string processorType = 3;
+  string status = 4;
+  Endpoint commandEndpoint = 5;
+  Endpoint dataEndpoint = 6;
+  map<string, string> options = 7;
+  string tag = 10;
 }
 
 message ProcessorBatch {
@@ -60,7 +63,7 @@ message Functor {
   string name = 1;
   string serdes = 2;
   bytes body = 3;
-  map<string, string> conf = 4;
+  map<string, string> options = 4;
 }
 
 message Pair {
@@ -112,4 +115,12 @@ message Task {
   repeated Partition inputs = 3;
   repeated Partition outputs = 4;
   Job job = 5;
+}
+
+message SessionMeta {
+  string id = 1;
+  string name = 2;
+  string status = 3;
+  map<string, string> options = 4;
+  string tag = 5;
 }

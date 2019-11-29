@@ -18,16 +18,18 @@
 
 package com.webank.eggroll.rollpair.component
 
+import com.webank.eggroll.core.client.{ClusterManagerClient, NodeManagerClient}
 import com.webank.eggroll.core.command.CommandURI
+import com.webank.eggroll.core.datastructure.RollServicer
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.schedule._
 import com.webank.eggroll.core.serdes.DefaultScalaSerdes
-import com.webank.eggroll.framework.clustermanager.client.ClusterManagerClient
 import org.apache.commons.lang3.StringUtils
 
 import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 
-class RollPairService() {
+class RollPairServicer extends RollServicer {
   val scheduler = ListScheduler()
   val clusterManagerClient = new ClusterManagerClient()
 
@@ -55,7 +57,7 @@ class RollPairService() {
     val outputStoreWithPartitions = clusterManagerClient.getOrCreateStore(outputStoreProposal)
 
     val taskPlanJob = inputJob.copy(inputs = Array(inputStoreWithPartitions), outputs = Array(outputStoreWithPartitions))
-    val taskPlan = new MapTaskPlan(new CommandURI(RollPairService.eggMapValuesCommand), taskPlanJob)
+    val taskPlan = new MapTaskPlan(new CommandURI(RollPairServicer.eggMapValuesCommand), taskPlanJob)
 
     scheduler.addPlan(taskPlan)
 
@@ -93,7 +95,7 @@ class RollPairService() {
 
     val job = inputJob.copy(inputs = Array(inputStoreWithPartitions), outputs = Array(outputStoreWithPartitions))
 
-    val taskPlan = new ShuffleTaskPlan(new CommandURI(RollPairService.eggMapCommand), job)
+    val taskPlan = new ShuffleTaskPlan(new CommandURI(RollPairServicer.eggMapCommand), job)
     scheduler.addPlan(taskPlan)
 
     JobRunner.run(scheduler.getPlan())
@@ -123,7 +125,7 @@ class RollPairService() {
 
     val taskPlanJob = inputJob.copy(inputs = Array(inputStoreWithPartitions), outputs = Array(outputStoreWithPartitions))
 
-    val taskPlan = new ReduceTaskPlan(new CommandURI(RollPairService.eggReduceCommand), taskPlanJob)
+    val taskPlan = new ReduceTaskPlan(new CommandURI(RollPairServicer.eggReduceCommand), taskPlanJob)
     scheduler.addPlan(taskPlan)
 
     JobRunner.run(scheduler.getPlan())
@@ -136,36 +138,49 @@ class RollPairService() {
     val inputStore = inputJob.inputs.head
 
     val isOutputSpecified = inputJob.outputs.nonEmpty
-    val inputStoreWithPartitions = clusterManagerClient.getStore(inputStore)
+    val finalInputs = ArrayBuffer[ErStore]()
+    finalInputs.sizeHint(inputJob.inputs.length)
+    inputJob.inputs.foreach(input => {
+      val inputStoreWithPartitions = clusterManagerClient.getStore(input)
+      if (inputStoreWithPartitions == null) {
+        val sl = input.storeLocator
+        throw new IllegalArgumentException(s"input store ${sl.storeType}-${sl.namespace}-${sl.name} does not exist")
+      }
+      finalInputs += inputStoreWithPartitions
+    })
 
-    // todo: totalPartitions for aggregate / non-aggregate jobs
+    val finalInputTemplate = finalInputs.head
+    val outputTotalPartitions =
+      if (StringUtils.equalsAny(RollPairServicer.reduce, RollPairServicer.aggregate)) 1
+      else finalInputTemplate.storeLocator.totalPartitions
+
     val outputStoreProposal = if (isOutputSpecified) {
       val specifiedOutput = inputJob.outputs.head
       if (specifiedOutput.partitions.isEmpty) {
-        val outputTotalPartitions =
-          if (StringUtils.equalsAny(RollPairService.reduce, RollPairService.aggregate)) 1
-          else inputStoreWithPartitions.storeLocator.totalPartitions
-
         val outputStoreLocator = specifiedOutput.storeLocator.copy(totalPartitions = outputTotalPartitions)
         ErStore(storeLocator = outputStoreLocator)
       } else {
         specifiedOutput
       }
     } else {
-      val outputStoreLocator = inputStore.storeLocator.fork()
-      ErStore(storeLocator = outputStoreLocator.copy(totalPartitions = 1))
+      val outputStoreLocator = finalInputTemplate.storeLocator.fork()
+
+      ErStore(storeLocator = outputStoreLocator.copy(totalPartitions = outputTotalPartitions))
     }
     val outputStoreWithPartitions = clusterManagerClient.getOrCreateStore(outputStoreProposal)
 
-    val taskPlanJob = inputJob.copy(inputs = Array(inputStoreWithPartitions), outputs = Array(outputStoreWithPartitions))
+    val taskPlanJob = inputJob.copy(inputs = finalInputs.toArray, outputs = Array(outputStoreWithPartitions))
 
     var taskPlan: BaseTaskPlan = null
     inputJob.name match {
-      case RollPairService.aggregate => {
-        taskPlan = new AggregateTaskPlan(new CommandURI(RollPairService.eggRunTaskCommand), taskPlanJob)
+      case RollPairServicer.aggregate => {
+        taskPlan = new AggregateTaskPlan(new CommandURI(RollPairServicer.eggRunTaskCommand), taskPlanJob)
       }
-      case RollPairService.map => {
-        taskPlan = new MapTaskPlan(new CommandURI(RollPairService.eggRunTaskCommand), taskPlanJob)
+      case RollPairServicer.map => {
+        taskPlan = new MapTaskPlan(new CommandURI(RollPairServicer.eggRunTaskCommand), taskPlanJob)
+      }
+      case RollPairServicer.join => {
+        taskPlan = new JoinTaskPlan(new CommandURI(RollPairServicer.eggJoinCommand), taskPlanJob)
       }
     }
 
@@ -174,7 +189,7 @@ class RollPairService() {
     taskPlanJob
   }
 
-  def join(inputJob: ErJob): ErJob = {
+/*  def join(inputJob: ErJob): ErJob = {
     val leftStore = inputJob.inputs.head
     val leftLocator = leftStore.storeLocator
 
@@ -210,11 +225,11 @@ class RollPairService() {
     JobRunner.run(scheduler.getPlan())
 
     job
-  }
+  }*/
 }
 
-object RollPairService {
-  val clazz = classOf[RollPairService]
+object RollPairServicer {
+  val clazz = classOf[RollPairServicer]
   val functorSerDes = DefaultScalaSerdes()
 
   val map = "map"

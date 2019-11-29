@@ -40,8 +40,13 @@
 
   <dependencies>
     <dependency>
-      <artifactId>eggroll-core</artifactId>
       <groupId>com.webank.eggroll</groupId>
+      <artifactId>eggroll-core</artifactId>
+      <version>${eggroll.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.webank.eggroll</groupId>
+      <artifactId>eggroll-roll-pair</artifactId>
       <version>${eggroll.version}</version>
     </dependency>
     <dependency>

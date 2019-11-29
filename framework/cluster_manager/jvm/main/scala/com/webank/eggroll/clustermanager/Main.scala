@@ -20,10 +20,9 @@ package com.webank.eggroll.clustermanager
 
 import java.net.InetSocketAddress
 
-import com.webank.eggroll.clustermanager.constant.MetadataCommands
 import com.webank.eggroll.clustermanager.metadata.{ServerNodeCrudOperator, StoreCrudOperator}
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
-import com.webank.eggroll.core.constant.ClusterManagerConfKeys
+import com.webank.eggroll.core.constant.{ClusterManagerConfKeys, MetadataCommands}
 import com.webank.eggroll.core.meta.{ErServerCluster, ErServerNode, ErStore}
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.transfer.GrpcTransferService
@@ -31,7 +30,7 @@ import com.webank.eggroll.core.util.{Logging, MiscellaneousUtils}
 import io.grpc.Server
 import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
 
-object ClusterManager extends Logging {
+object Main extends Logging {
   def main(args: Array[String]): Unit = {
     CommandRouter.register(serviceName = MetadataCommands.getServerNodeServiceName,
       serviceParamTypes = Array(classOf[ErServerNode]),

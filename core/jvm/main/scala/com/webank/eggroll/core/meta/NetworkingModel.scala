@@ -18,6 +18,8 @@
 
 package com.webank.eggroll.core.meta
 
+import java.util.concurrent.ConcurrentHashMap
+
 import com.google.protobuf.{Message => PbMessage}
 import com.webank.eggroll.core.constant.StringConstants
 import com.webank.eggroll.core.datastructure.RpcMessage
@@ -38,8 +40,11 @@ case class ErEndpoint(@BeanProperty host: String, @BeanProperty port: Int = -1) 
 
 case class ErProcessor(id: Long = -1,
                        name: String = StringConstants.EMPTY,
+                       processorType: String = StringConstants.EMPTY,
+                       status: String = StringConstants.EMPTY,
                        commandEndpoint: ErEndpoint = null,
                        dataEndpoint: ErEndpoint = null,
+                       options: java.util.Map[String, String] = new ConcurrentHashMap[String, String](),
                        tag: String = StringConstants.EMPTY) extends NetworkingRpcMessage
 
 case class ErProcessorBatch(id: Long = -1,
@@ -80,8 +85,11 @@ object NetworkingModelPbMessageSerdes {
       val builder = Meta.Processor.newBuilder()
         .setId(src.id)
         .setName(src.name)
+        .setProcessorType(src.processorType)
+        .setStatus(src.status)
         .setCommandEndpoint(if (src.commandEndpoint != null ) src.commandEndpoint.toProto() else Meta.Endpoint.getDefaultInstance)
         .setDataEndpoint(if (src.dataEndpoint != null) src.dataEndpoint.toProto() else Meta.Endpoint.getDefaultInstance)
+        .putAllOptions(src.options)
         .setTag(src.tag)
 
       builder.build()
@@ -152,8 +160,11 @@ object NetworkingModelPbMessageSerdes {
       ErProcessor(
         id = src.getId,
         name = src.getName,
+        processorType = src.getProcessorType,
+        status = src.getStatus,
         commandEndpoint = src.getCommandEndpoint.fromProto(),
         dataEndpoint = src.getDataEndpoint.fromProto(),
+        options = src.getOptionsMap,
         tag = src.getTag)
     }
 

@@ -18,9 +18,11 @@
 
 package com.webank.eggroll.core.meta
 
+import java.util.concurrent.ConcurrentHashMap
+
 import com.google.protobuf.{ByteString, Message => PbMessage}
 import com.webank.eggroll.core.constant.StringConstants
-import com.webank.eggroll.core.datastructure.RpcMessage
+import com.webank.eggroll.core.datastructure.{RollContext, RpcMessage}
 import com.webank.eggroll.core.meta.NetworkingModelPbMessageSerdes._
 import com.webank.eggroll.core.serdes.{BaseSerializable, PbMessageDeserializer, PbMessageSerializer}
 import com.webank.eggroll.core.util.TimeUtils
@@ -101,6 +103,36 @@ case class ErTask(id: String, name: String = StringConstants.EMPTY, inputs: Arra
 
     processor.commandEndpoint
   }
+}
+
+case class ErSessionMeta(id: String,
+                         name: String = StringConstants.EMPTY,
+                         status: String = StringConstants.EMPTY,
+                         options: java.util.Map[String, String] = new ConcurrentHashMap[String, String](),
+                         tag: String = StringConstants.EMPTY) extends MetaRpcMessage {
+  def toErSession(): ErSession = {
+    ErSession(id = id, name = name, status = status, sessionConf = options, tag = tag)
+  }
+}
+
+case class ErSession(id: String,
+                     name: String = StringConstants.EMPTY,
+                     status: String = StringConstants.EMPTY,
+                     sessionConf: java.util.Map[String, String] = new ConcurrentHashMap[String, String](),
+                     tag: String = StringConstants.EMPTY,
+                     contexts: java.util.Map[String, RollContext] = new ConcurrentHashMap[String, RollContext](),
+                     serverCluster: ErServerCluster = null) {
+  def this(sessionMeta: ErSessionMeta, contexts: java.util.Map[String, RollContext], serverCluster: ErServerCluster) {
+    this(id = sessionMeta.id,
+      name = sessionMeta.name,
+      status = sessionMeta.status,
+      tag = sessionMeta.tag,
+      contexts = contexts,
+      serverCluster = serverCluster)
+  }
+
+  def toErSessionMeta(): ErSessionMeta =
+    ErSessionMeta(id = id, name = name, status = status, options = sessionConf, tag = tag)
 }
 
 object MetaModelPbMessageSerdes {
@@ -221,6 +253,22 @@ object MetaModelPbMessageSerdes {
       baseSerializable.asInstanceOf[ErTask].toBytes()
   }
 
+  implicit class ErSessionMetaToPbMessage(src: ErSessionMeta) extends PbMessageSerializer {
+    override def toProto[T >: PbMessage](): Meta.SessionMeta = {
+      val builder = Meta.SessionMeta.newBuilder()
+        .setId(src.id)
+        .setName(src.name)
+        .setStatus(src.status)
+        .putAllOptions(src.options)
+        .setTag(src.tag)
+
+      builder.build()
+    }
+
+    override def toBytes(baseSerializable: BaseSerializable): Array[Byte] =
+      baseSerializable.asInstanceOf[ErSessionMeta].toBytes()
+  }
+
   // deserializers
   implicit class ErFunctorFromPbMessage(src: Meta.Functor) extends PbMessageDeserializer {
     override def fromProto[T >: RpcMessage](): ErFunctor =
@@ -307,4 +355,17 @@ object MetaModelPbMessageSerdes {
       Meta.Task.parseFrom(bytes).fromProto()
   }
 
+  implicit class ErSessionMetaFromPbMessage(src: Meta.SessionMeta) extends PbMessageDeserializer {
+    override def fromProto[T >: RpcMessage](): ErSessionMeta = {
+      ErSessionMeta(id = src.getId,
+        name = src.getName,
+        status = src.getStatus,
+        options = src.getOptionsMap,
+        tag = src.getTag)
+    }
+
+    override def fromBytes(bytes: Array[Byte]): ErSessionMeta = {
+      Meta.SessionMeta.parseFrom(bytes).fromProto()
+    }
+  }
 }

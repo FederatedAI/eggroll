@@ -19,37 +19,63 @@
 package com.webank.eggroll.rollpair.component
 
 import java.net.InetSocketAddress
+import java.util.concurrent.ConcurrentHashMap
 
+import com.webank.eggroll.core.client.NodeManagerClient
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
-import com.webank.eggroll.core.constant.StringConstants
-import com.webank.eggroll.core.meta.ErJob
+import com.webank.eggroll.core.constant.{ProcessorStatus, ProcessorTypes, SessionConfKeys}
+import com.webank.eggroll.core.meta.{ErEndpoint, ErJob, ErProcessor}
 import com.webank.eggroll.core.util.Logging
 import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
-import org.apache.commons.lang3.StringUtils
 
 object Main extends Logging {
   def main(args: Array[String]): Unit = {
-    val rollServer = NettyServerBuilder.forAddress(new InetSocketAddress("127.0.0.1", 20000)).addService(new CommandService).build
+    logInfo("going into main")
+    val rollServer = NettyServerBuilder.forAddress(new InetSocketAddress("127.0.0.1", 0)).addService(new CommandService).build
     rollServer.start()
+    val port = rollServer.getPort
 
+    logInfo(s"server started at ${port}")
     // job
-    CommandRouter.register(serviceName = RollPairService.rollMapValuesCommand,
+    CommandRouter.register(serviceName = RollPairServicer.rollMapValuesCommand,
         serviceParamTypes = Array(classOf[ErJob]),
-        routeToClass = classOf[RollPairService],
-        routeToMethodName = RollPairService.mapValues)
+        routeToClass = classOf[RollPairServicer],
+        routeToMethodName = RollPairServicer.mapValues)
 
-    CommandRouter.register(serviceName = RollPairService.rollReduceCommand,
+    CommandRouter.register(serviceName = RollPairServicer.rollReduceCommand,
         serviceParamTypes = Array(classOf[ErJob]),
-        routeToClass = classOf[RollPairService],
-        routeToMethodName = RollPairService.reduce)
+        routeToClass = classOf[RollPairServicer],
+        routeToMethodName = RollPairServicer.reduce)
 
-    CommandRouter.register(serviceName = RollPairService.rollJoinCommand,
+    CommandRouter.register(serviceName = RollPairServicer.rollJoinCommand,
         serviceParamTypes = Array(classOf[ErJob]),
-        routeToClass = classOf[RollPairService],
-        routeToMethodName = RollPairService.join)
+        routeToClass = classOf[RollPairServicer],
+        routeToMethodName = RollPairServicer.runJob)
+
+    CommandRouter.register(serviceName = RollPairServicer.rollRunJobCommand,
+      serviceParamTypes = Array(classOf[ErJob]),
+      routeToClass = classOf[RollPairServicer],
+      routeToMethodName = RollPairServicer.runJob)
 
     logInfo("server started at port 20000")
 
+
+    // todo: get port from command line
+    // todo: heartbeat service
+    val nodeManagerClient = new NodeManagerClient()
+    val options = new ConcurrentHashMap[String, String]()
+    options.put(SessionConfKeys.CONFKEY_SESSION_ID, "testing")
+    val myself = ErProcessor(
+      processorType = ProcessorTypes.ROLL_PAIR_SERVICER,
+      commandEndpoint = ErEndpoint("localhost", port),
+      dataEndpoint = ErEndpoint("localhost", port),
+      options = options,
+      status = ProcessorStatus.RUNNING)
+
+    logInfo("ready to heartbeat")
+    nodeManagerClient.heartbeat(myself)
+
+    logInfo("heartbeated")
     rollServer.awaitTermination()
 
   }

@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='com.webank.eggroll.core.meta',
   syntax='proto3',
   serialized_options=None,
-  serialized_pb=_b('\n\nmeta.proto\x12\x1c\x63om.webank.eggroll.core.meta\"&\n\x08\x45ndpoint\x12\x0c\n\x04host\x18\x01 \x01(\t\x12\x0c\n\x04port\x18\x02 \x01(\x05\"\x95\x01\n\nServerNode\x12\n\n\x02id\x18\x01 \x01(\x03\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x11\n\tclusterId\x18\x03 \x01(\x03\x12\x38\n\x08\x65ndpoint\x18\x04 \x01(\x0b\x32&.com.webank.eggroll.core.meta.Endpoint\x12\x10\n\x08nodeType\x18\x05 \x01(\t\x12\x0e\n\x06status\x18\x06 \x01(\t\"u\n\rServerCluster\x12\n\n\x02id\x18\x01 \x01(\x03\x12\x0c\n\x04name\x18\x02 \x01(\t\x12=\n\x0bserverNodes\x18\x03 \x03(\x0b\x32(.com.webank.eggroll.core.meta.ServerNode\x12\x0b\n\x03tag\x18\x04 \x01(\t\"\xb1\x01\n\tProcessor\x12\n\n\x02id\x18\x01 \x01(\x03\x12\x0c\n\x04name\x18\x02 \x01(\t\x12?\n\x0f\x63ommandEndpoint\x18\x03 \x01(\x0b\x32&.com.webank.eggroll.core.meta.Endpoint\x12<\n\x0c\x64\x61taEndpoint\x18\x04 \x01(\x0b\x32&.com.webank.eggroll.core.meta.Endpoint\x12\x0b\n\x03tag\x18\x05 \x01(\t\"t\n\x0eProcessorBatch\x12\n\n\x02id\x18\x01 \x01(\x03\x12\x0c\n\x04name\x18\x02 \x01(\t\x12;\n\nprocessors\x18\x03 \x03(\x0b\x32\'.com.webank.eggroll.core.meta.Processor\x12\x0b\n\x03tag\x18\x04 \x01(\t\"\xa1\x01\n\x07\x46unctor\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0e\n\x06serdes\x18\x02 \x01(\t\x12\x0c\n\x04\x62ody\x18\x03 \x01(\x0c\x12=\n\x04\x63onf\x18\x04 \x03(\x0b\x32/.com.webank.eggroll.core.meta.Functor.ConfEntry\x1a+\n\tConfEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\"\n\x04Pair\x12\x0b\n\x03key\x18\x01 \x01(\x0c\x12\r\n\x05value\x18\x02 \x01(\x0c\">\n\tPairBatch\x12\x31\n\x05pairs\x18\x01 \x03(\x0b\x32\".com.webank.eggroll.core.meta.Pair\"\x8e\x01\n\x0cStoreLocator\x12\x11\n\tstoreType\x18\x01 \x01(\t\x12\x11\n\tnamespace\x18\x02 \x01(\t\x12\x0c\n\x04name\x18\x03 \x01(\t\x12\x0c\n\x04path\x18\x04 \x01(\t\x12\x17\n\x0ftotalPartitions\x18\x05 \x01(\x05\x12\x13\n\x0bpartitioner\x18\x06 \x01(\t\x12\x0e\n\x06serdes\x18\x07 \x01(\t\"\x86\x01\n\x05Store\x12@\n\x0cstoreLocator\x18\x01 \x01(\x0b\x32*.com.webank.eggroll.core.meta.StoreLocator\x12;\n\npartitions\x18\x02 \x03(\x0b\x32\'.com.webank.eggroll.core.meta.Partition\"\x95\x01\n\tPartition\x12\n\n\x02id\x18\x01 \x01(\x05\x12@\n\x0cstoreLocator\x18\x02 \x01(\x0b\x32*.com.webank.eggroll.core.meta.StoreLocator\x12:\n\tprocessor\x18\x03 \x01(\x0b\x32\'.com.webank.eggroll.core.meta.Processor\"\x1b\n\x08\x43\x61llInfo\x12\x0f\n\x07\x63\x61llSeq\x18\x01 \x01(\t\"\xc3\x01\n\x03Job\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x33\n\x06inputs\x18\x03 \x03(\x0b\x32#.com.webank.eggroll.core.meta.Store\x12\x34\n\x07outputs\x18\x04 \x03(\x0b\x32#.com.webank.eggroll.core.meta.Store\x12\x37\n\x08\x66unctors\x18\x05 \x03(\x0b\x32%.com.webank.eggroll.core.meta.Functor\"\xc3\x01\n\x04Task\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x37\n\x06inputs\x18\x03 \x03(\x0b\x32\'.com.webank.eggroll.core.meta.Partition\x12\x38\n\x07outputs\x18\x04 \x03(\x0b\x32\'.com.webank.eggroll.core.meta.Partition\x12.\n\x03job\x18\x05 \x01(\x0b\x32!.com.webank.eggroll.core.meta.Jobb\x06proto3')
+  serialized_pb=_b('\n\nmeta.proto\x12\x1c\x63om.webank.eggroll.core.meta\"&\n\x08\x45ndpoint\x12\x0c\n\x04host\x18\x01 \x01(\t\x12\x0c\n\x04port\x18\x02 \x01(\x05\"\x95\x01\n\nServerNode\x12\n\n\x02id\x18\x01 \x01(\x03\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x11\n\tclusterId\x18\x03 \x01(\x03\x12\x38\n\x08\x65ndpoint\x18\x04 \x01(\x0b\x32&.com.webank.eggroll.core.meta.Endpoint\x12\x10\n\x08nodeType\x18\x05 \x01(\t\x12\x0e\n\x06status\x18\x06 \x01(\t\"u\n\rServerCluster\x12\n\n\x02id\x18\x01 \x01(\x03\x12\x0c\n\x04name\x18\x02 \x01(\t\x12=\n\x0bserverNodes\x18\x03 \x03(\x0b\x32(.com.webank.eggroll.core.meta.ServerNode\x12\x0b\n\x03tag\x18\x04 \x01(\t\"\xcf\x02\n\tProcessor\x12\n\n\x02id\x18\x01 \x01(\x03\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x15\n\rprocessorType\x18\x03 \x01(\t\x12\x0e\n\x06status\x18\x04 \x01(\t\x12?\n\x0f\x63ommandEndpoint\x18\x05 \x01(\x0b\x32&.com.webank.eggroll.core.meta.Endpoint\x12<\n\x0c\x64\x61taEndpoint\x18\x06 \x01(\x0b\x32&.com.webank.eggroll.core.meta.Endpoint\x12\x45\n\x07options\x18\x07 \x03(\x0b\x32\x34.com.webank.eggroll.core.meta.Processor.OptionsEntry\x12\x0b\n\x03tag\x18\n \x01(\t\x1a.\n\x0cOptionsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"t\n\x0eProcessorBatch\x12\n\n\x02id\x18\x01 \x01(\x03\x12\x0c\n\x04name\x18\x02 \x01(\t\x12;\n\nprocessors\x18\x03 \x03(\x0b\x32\'.com.webank.eggroll.core.meta.Processor\x12\x0b\n\x03tag\x18\x04 \x01(\t\"\xaa\x01\n\x07\x46unctor\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0e\n\x06serdes\x18\x02 \x01(\t\x12\x0c\n\x04\x62ody\x18\x03 \x01(\x0c\x12\x43\n\x07options\x18\x04 \x03(\x0b\x32\x32.com.webank.eggroll.core.meta.Functor.OptionsEntry\x1a.\n\x0cOptionsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\"\n\x04Pair\x12\x0b\n\x03key\x18\x01 \x01(\x0c\x12\r\n\x05value\x18\x02 \x01(\x0c\">\n\tPairBatch\x12\x31\n\x05pairs\x18\x01 \x03(\x0b\x32\".com.webank.eggroll.core.meta.Pair\"\x8e\x01\n\x0cStoreLocator\x12\x11\n\tstoreType\x18\x01 \x01(\t\x12\x11\n\tnamespace\x18\x02 \x01(\t\x12\x0c\n\x04name\x18\x03 \x01(\t\x12\x0c\n\x04path\x18\x04 \x01(\t\x12\x17\n\x0ftotalPartitions\x18\x05 \x01(\x05\x12\x13\n\x0bpartitioner\x18\x06 \x01(\t\x12\x0e\n\x06serdes\x18\x07 \x01(\t\"\x86\x01\n\x05Store\x12@\n\x0cstoreLocator\x18\x01 \x01(\x0b\x32*.com.webank.eggroll.core.meta.StoreLocator\x12;\n\npartitions\x18\x02 \x03(\x0b\x32\'.com.webank.eggroll.core.meta.Partition\"\x95\x01\n\tPartition\x12\n\n\x02id\x18\x01 \x01(\x05\x12@\n\x0cstoreLocator\x18\x02 \x01(\x0b\x32*.com.webank.eggroll.core.meta.StoreLocator\x12:\n\tprocessor\x18\x03 \x01(\x0b\x32\'.com.webank.eggroll.core.meta.Processor\"\x1b\n\x08\x43\x61llInfo\x12\x0f\n\x07\x63\x61llSeq\x18\x01 \x01(\t\"\xc3\x01\n\x03Job\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x33\n\x06inputs\x18\x03 \x03(\x0b\x32#.com.webank.eggroll.core.meta.Store\x12\x34\n\x07outputs\x18\x04 \x03(\x0b\x32#.com.webank.eggroll.core.meta.Store\x12\x37\n\x08\x66unctors\x18\x05 \x03(\x0b\x32%.com.webank.eggroll.core.meta.Functor\"\xc3\x01\n\x04Task\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x37\n\x06inputs\x18\x03 \x03(\x0b\x32\'.com.webank.eggroll.core.meta.Partition\x12\x38\n\x07outputs\x18\x04 \x03(\x0b\x32\'.com.webank.eggroll.core.meta.Partition\x12.\n\x03job\x18\x05 \x01(\x0b\x32!.com.webank.eggroll.core.meta.Job\"\xbd\x01\n\x0bSessionMeta\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x0e\n\x06status\x18\x03 \x01(\t\x12G\n\x07options\x18\x04 \x03(\x0b\x32\x36.com.webank.eggroll.core.meta.SessionMeta.OptionsEntry\x12\x0b\n\x03tag\x18\x05 \x01(\t\x1a.\n\x0cOptionsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\x62\x06proto3')
 )
 
 
@@ -182,6 +182,43 @@ _SERVERCLUSTER = _descriptor.Descriptor(
 )
 
 
+_PROCESSOR_OPTIONSENTRY = _descriptor.Descriptor(
+  name='OptionsEntry',
+  full_name='com.webank.eggroll.core.meta.Processor.OptionsEntry',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='key', full_name='com.webank.eggroll.core.meta.Processor.OptionsEntry.key', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='value', full_name='com.webank.eggroll.core.meta.Processor.OptionsEntry.value', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=_b('8\001'),
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=645,
+  serialized_end=691,
+)
+
 _PROCESSOR = _descriptor.Descriptor(
   name='Processor',
   full_name='com.webank.eggroll.core.meta.Processor',
@@ -204,22 +241,43 @@ _PROCESSOR = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='commandEndpoint', full_name='com.webank.eggroll.core.meta.Processor.commandEndpoint', index=2,
-      number=3, type=11, cpp_type=10, label=1,
+      name='processorType', full_name='com.webank.eggroll.core.meta.Processor.processorType', index=2,
+      number=3, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='status', full_name='com.webank.eggroll.core.meta.Processor.status', index=3,
+      number=4, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='commandEndpoint', full_name='com.webank.eggroll.core.meta.Processor.commandEndpoint', index=4,
+      number=5, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='dataEndpoint', full_name='com.webank.eggroll.core.meta.Processor.dataEndpoint', index=3,
-      number=4, type=11, cpp_type=10, label=1,
+      name='dataEndpoint', full_name='com.webank.eggroll.core.meta.Processor.dataEndpoint', index=5,
+      number=6, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='tag', full_name='com.webank.eggroll.core.meta.Processor.tag', index=4,
-      number=5, type=9, cpp_type=9, label=1,
+      name='options', full_name='com.webank.eggroll.core.meta.Processor.options', index=6,
+      number=7, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='tag', full_name='com.webank.eggroll.core.meta.Processor.tag', index=7,
+      number=10, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -227,7 +285,7 @@ _PROCESSOR = _descriptor.Descriptor(
   ],
   extensions=[
   ],
-  nested_types=[],
+  nested_types=[_PROCESSOR_OPTIONSENTRY, ],
   enum_types=[
   ],
   serialized_options=None,
@@ -237,7 +295,7 @@ _PROCESSOR = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=356,
-  serialized_end=533,
+  serialized_end=691,
 )
 
 
@@ -288,27 +346,27 @@ _PROCESSORBATCH = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=535,
-  serialized_end=651,
+  serialized_start=693,
+  serialized_end=809,
 )
 
 
-_FUNCTOR_CONFENTRY = _descriptor.Descriptor(
-  name='ConfEntry',
-  full_name='com.webank.eggroll.core.meta.Functor.ConfEntry',
+_FUNCTOR_OPTIONSENTRY = _descriptor.Descriptor(
+  name='OptionsEntry',
+  full_name='com.webank.eggroll.core.meta.Functor.OptionsEntry',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='key', full_name='com.webank.eggroll.core.meta.Functor.ConfEntry.key', index=0,
+      name='key', full_name='com.webank.eggroll.core.meta.Functor.OptionsEntry.key', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='value', full_name='com.webank.eggroll.core.meta.Functor.ConfEntry.value', index=1,
+      name='value', full_name='com.webank.eggroll.core.meta.Functor.OptionsEntry.value', index=1,
       number=2, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
@@ -326,8 +384,8 @@ _FUNCTOR_CONFENTRY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=772,
-  serialized_end=815,
+  serialized_start=645,
+  serialized_end=691,
 )
 
 _FUNCTOR = _descriptor.Descriptor(
@@ -359,7 +417,7 @@ _FUNCTOR = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='conf', full_name='com.webank.eggroll.core.meta.Functor.conf', index=3,
+      name='options', full_name='com.webank.eggroll.core.meta.Functor.options', index=3,
       number=4, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
@@ -368,7 +426,7 @@ _FUNCTOR = _descriptor.Descriptor(
   ],
   extensions=[
   ],
-  nested_types=[_FUNCTOR_CONFENTRY, ],
+  nested_types=[_FUNCTOR_OPTIONSENTRY, ],
   enum_types=[
   ],
   serialized_options=None,
@@ -377,8 +435,8 @@ _FUNCTOR = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=654,
-  serialized_end=815,
+  serialized_start=812,
+  serialized_end=982,
 )
 
 
@@ -415,8 +473,8 @@ _PAIR = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=817,
-  serialized_end=851,
+  serialized_start=984,
+  serialized_end=1018,
 )
 
 
@@ -446,8 +504,8 @@ _PAIRBATCH = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=853,
-  serialized_end=915,
+  serialized_start=1020,
+  serialized_end=1082,
 )
 
 
@@ -519,8 +577,8 @@ _STORELOCATOR = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=918,
-  serialized_end=1060,
+  serialized_start=1085,
+  serialized_end=1227,
 )
 
 
@@ -557,8 +615,8 @@ _STORE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1063,
-  serialized_end=1197,
+  serialized_start=1230,
+  serialized_end=1364,
 )
 
 
@@ -602,8 +660,8 @@ _PARTITION = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1200,
-  serialized_end=1349,
+  serialized_start=1367,
+  serialized_end=1516,
 )
 
 
@@ -633,8 +691,8 @@ _CALLINFO = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1351,
-  serialized_end=1378,
+  serialized_start=1518,
+  serialized_end=1545,
 )
 
 
@@ -692,8 +750,8 @@ _JOB = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1381,
-  serialized_end=1576,
+  serialized_start=1548,
+  serialized_end=1743,
 )
 
 
@@ -751,17 +809,115 @@ _TASK = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1579,
-  serialized_end=1774,
+  serialized_start=1746,
+  serialized_end=1941,
+)
+
+
+_SESSIONMETA_OPTIONSENTRY = _descriptor.Descriptor(
+  name='OptionsEntry',
+  full_name='com.webank.eggroll.core.meta.SessionMeta.OptionsEntry',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='key', full_name='com.webank.eggroll.core.meta.SessionMeta.OptionsEntry.key', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='value', full_name='com.webank.eggroll.core.meta.SessionMeta.OptionsEntry.value', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=_b('8\001'),
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=645,
+  serialized_end=691,
+)
+
+_SESSIONMETA = _descriptor.Descriptor(
+  name='SessionMeta',
+  full_name='com.webank.eggroll.core.meta.SessionMeta',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='id', full_name='com.webank.eggroll.core.meta.SessionMeta.id', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='name', full_name='com.webank.eggroll.core.meta.SessionMeta.name', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='status', full_name='com.webank.eggroll.core.meta.SessionMeta.status', index=2,
+      number=3, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='options', full_name='com.webank.eggroll.core.meta.SessionMeta.options', index=3,
+      number=4, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='tag', full_name='com.webank.eggroll.core.meta.SessionMeta.tag', index=4,
+      number=5, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[_SESSIONMETA_OPTIONSENTRY, ],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1944,
+  serialized_end=2133,
 )
 
 _SERVERNODE.fields_by_name['endpoint'].message_type = _ENDPOINT
 _SERVERCLUSTER.fields_by_name['serverNodes'].message_type = _SERVERNODE
+_PROCESSOR_OPTIONSENTRY.containing_type = _PROCESSOR
 _PROCESSOR.fields_by_name['commandEndpoint'].message_type = _ENDPOINT
 _PROCESSOR.fields_by_name['dataEndpoint'].message_type = _ENDPOINT
+_PROCESSOR.fields_by_name['options'].message_type = _PROCESSOR_OPTIONSENTRY
 _PROCESSORBATCH.fields_by_name['processors'].message_type = _PROCESSOR
-_FUNCTOR_CONFENTRY.containing_type = _FUNCTOR
-_FUNCTOR.fields_by_name['conf'].message_type = _FUNCTOR_CONFENTRY
+_FUNCTOR_OPTIONSENTRY.containing_type = _FUNCTOR
+_FUNCTOR.fields_by_name['options'].message_type = _FUNCTOR_OPTIONSENTRY
 _PAIRBATCH.fields_by_name['pairs'].message_type = _PAIR
 _STORE.fields_by_name['storeLocator'].message_type = _STORELOCATOR
 _STORE.fields_by_name['partitions'].message_type = _PARTITION
@@ -773,6 +929,8 @@ _JOB.fields_by_name['functors'].message_type = _FUNCTOR
 _TASK.fields_by_name['inputs'].message_type = _PARTITION
 _TASK.fields_by_name['outputs'].message_type = _PARTITION
 _TASK.fields_by_name['job'].message_type = _JOB
+_SESSIONMETA_OPTIONSENTRY.containing_type = _SESSIONMETA
+_SESSIONMETA.fields_by_name['options'].message_type = _SESSIONMETA_OPTIONSENTRY
 DESCRIPTOR.message_types_by_name['Endpoint'] = _ENDPOINT
 DESCRIPTOR.message_types_by_name['ServerNode'] = _SERVERNODE
 DESCRIPTOR.message_types_by_name['ServerCluster'] = _SERVERCLUSTER
@@ -787,6 +945,7 @@ DESCRIPTOR.message_types_by_name['Partition'] = _PARTITION
 DESCRIPTOR.message_types_by_name['CallInfo'] = _CALLINFO
 DESCRIPTOR.message_types_by_name['Job'] = _JOB
 DESCRIPTOR.message_types_by_name['Task'] = _TASK
+DESCRIPTOR.message_types_by_name['SessionMeta'] = _SESSIONMETA
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 Endpoint = _reflection.GeneratedProtocolMessageType('Endpoint', (_message.Message,), {
@@ -811,11 +970,19 @@ ServerCluster = _reflection.GeneratedProtocolMessageType('ServerCluster', (_mess
 _sym_db.RegisterMessage(ServerCluster)
 
 Processor = _reflection.GeneratedProtocolMessageType('Processor', (_message.Message,), {
+
+  'OptionsEntry' : _reflection.GeneratedProtocolMessageType('OptionsEntry', (_message.Message,), {
+    'DESCRIPTOR' : _PROCESSOR_OPTIONSENTRY,
+    '__module__' : 'meta_pb2'
+    # @@protoc_insertion_point(class_scope:com.webank.eggroll.core.meta.Processor.OptionsEntry)
+    })
+  ,
   'DESCRIPTOR' : _PROCESSOR,
   '__module__' : 'meta_pb2'
   # @@protoc_insertion_point(class_scope:com.webank.eggroll.core.meta.Processor)
   })
 _sym_db.RegisterMessage(Processor)
+_sym_db.RegisterMessage(Processor.OptionsEntry)
 
 ProcessorBatch = _reflection.GeneratedProtocolMessageType('ProcessorBatch', (_message.Message,), {
   'DESCRIPTOR' : _PROCESSORBATCH,
@@ -826,10 +993,10 @@ _sym_db.RegisterMessage(ProcessorBatch)
 
 Functor = _reflection.GeneratedProtocolMessageType('Functor', (_message.Message,), {
 
-  'ConfEntry' : _reflection.GeneratedProtocolMessageType('ConfEntry', (_message.Message,), {
-    'DESCRIPTOR' : _FUNCTOR_CONFENTRY,
+  'OptionsEntry' : _reflection.GeneratedProtocolMessageType('OptionsEntry', (_message.Message,), {
+    'DESCRIPTOR' : _FUNCTOR_OPTIONSENTRY,
     '__module__' : 'meta_pb2'
-    # @@protoc_insertion_point(class_scope:com.webank.eggroll.core.meta.Functor.ConfEntry)
+    # @@protoc_insertion_point(class_scope:com.webank.eggroll.core.meta.Functor.OptionsEntry)
     })
   ,
   'DESCRIPTOR' : _FUNCTOR,
@@ -837,7 +1004,7 @@ Functor = _reflection.GeneratedProtocolMessageType('Functor', (_message.Message,
   # @@protoc_insertion_point(class_scope:com.webank.eggroll.core.meta.Functor)
   })
 _sym_db.RegisterMessage(Functor)
-_sym_db.RegisterMessage(Functor.ConfEntry)
+_sym_db.RegisterMessage(Functor.OptionsEntry)
 
 Pair = _reflection.GeneratedProtocolMessageType('Pair', (_message.Message,), {
   'DESCRIPTOR' : _PAIR,
@@ -895,6 +1062,23 @@ Task = _reflection.GeneratedProtocolMessageType('Task', (_message.Message,), {
   })
 _sym_db.RegisterMessage(Task)
 
+SessionMeta = _reflection.GeneratedProtocolMessageType('SessionMeta', (_message.Message,), {
 
-_FUNCTOR_CONFENTRY._options = None
+  'OptionsEntry' : _reflection.GeneratedProtocolMessageType('OptionsEntry', (_message.Message,), {
+    'DESCRIPTOR' : _SESSIONMETA_OPTIONSENTRY,
+    '__module__' : 'meta_pb2'
+    # @@protoc_insertion_point(class_scope:com.webank.eggroll.core.meta.SessionMeta.OptionsEntry)
+    })
+  ,
+  'DESCRIPTOR' : _SESSIONMETA,
+  '__module__' : 'meta_pb2'
+  # @@protoc_insertion_point(class_scope:com.webank.eggroll.core.meta.SessionMeta)
+  })
+_sym_db.RegisterMessage(SessionMeta)
+_sym_db.RegisterMessage(SessionMeta.OptionsEntry)
+
+
+_PROCESSOR_OPTIONSENTRY._options = None
+_FUNCTOR_OPTIONSENTRY._options = None
+_SESSIONMETA_OPTIONSENTRY._options = None
 # @@protoc_insertion_point(module_scope)
