@@ -25,13 +25,17 @@ import com.webank.eggroll.core.client.NodeManagerClient
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
 import com.webank.eggroll.core.constant.{ProcessorStatus, ProcessorTypes, SessionConfKeys}
 import com.webank.eggroll.core.meta.{ErEndpoint, ErJob, ErProcessor}
-import com.webank.eggroll.core.util.Logging
+import com.webank.eggroll.core.util.{Logging, MiscellaneousUtils}
 import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
 
 object Main extends Logging {
   def main(args: Array[String]): Unit = {
     logInfo("going into main")
-    val rollServer = NettyServerBuilder.forAddress(new InetSocketAddress("127.0.0.1", 0)).addService(new CommandService).build
+    val cmd = MiscellaneousUtils.parseArgs(args = args)
+    val portString = cmd.getOptionValue('p', "0")
+    val sessionId = cmd.getOptionValue('s')
+
+    val rollServer = NettyServerBuilder.forAddress(new InetSocketAddress("127.0.0.1", portString.toInt)).addService(new CommandService).build
     rollServer.start()
     val port = rollServer.getPort
 
@@ -64,7 +68,7 @@ object Main extends Logging {
     // todo: heartbeat service
     val nodeManagerClient = new NodeManagerClient()
     val options = new ConcurrentHashMap[String, String]()
-    options.put(SessionConfKeys.CONFKEY_SESSION_ID, "testing")
+    options.put(SessionConfKeys.CONFKEY_SESSION_ID, sessionId)
     val myself = ErProcessor(
       processorType = ProcessorTypes.ROLL_PAIR_SERVICER,
       commandEndpoint = ErEndpoint("localhost", port),

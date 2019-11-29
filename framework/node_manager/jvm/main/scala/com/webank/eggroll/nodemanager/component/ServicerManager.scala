@@ -42,14 +42,16 @@ object ServicerManager {
       throw new IllegalStateException("Error creating servicer")
     }
 
-    initializingServicer.get(sessionId).await(10, TimeUnit.MINUTES)
+    println(s"ready to wait. sessionId: ${sessionId}")
+    initializingServicer.get(sessionId).await(10, TimeUnit.SECONDS)
 
+    println(s"got servicer. result: ${initializedServicer.get(sessionId)}")
     initializedServicer.get(sessionId)
   }
 
   def registerServicer(processor: ErProcessor): Unit = {
     val sessionId = processor.options.get(SessionConfKeys.CONFKEY_SESSION_ID)
-
+    println(s"registering for sessionId: ${sessionId}")
     // todo: error check
     val latch = initializingServicer.remove(sessionId)
 

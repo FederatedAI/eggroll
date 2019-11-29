@@ -36,6 +36,10 @@ class PartitionerTypes(object):
 
 class ProcessorTypes(object):
   EGG_PAIR = 'egg_pair'
+  ROLL_PAIR_SERVICER = 'roll_pair_servicer'
+
+class RollTypes(object):
+  ROLL_PAIR = 'roll_pair'
 
 class ProcessorStatus(object):
   RUNNING = 'RUNNING'

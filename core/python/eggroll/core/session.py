@@ -15,18 +15,17 @@
 from eggroll.core.meta_model import ErServerNode, ErServerCluster, ErProcessor, ErProcessorBatch, ErSessionMeta
 from eggroll.core.client import ClusterManagerClient, NodeManagerClient
 from eggroll.core.utils import get_self_ip, time_now
-from eggroll.core.constants import SessionStatus, ServerNodeStatus, ServerNodeTypes
+from eggroll.core.constants import SessionStatus, ServerNodeStatus, ServerNodeTypes, RollTypes
+from eggroll.core.conf_keys import NodeManagerConfKeys
 
-class ErClientContext(object):
+class ErContext(object):
   def __init__(self, session_meta: ErSessionMeta, servicers: ErProcessorBatch, eggs: ErProcessorBatch):
     self.__session_meta = session_meta
     self.__servicers = servicers
     self.__eggs = eggs
 
-  def create_roll_client(self):
-    # todo: return roll object client
 
-class ErClientSession(object):
+class ErSession(object):
   def __init__(self, session_id = None, name = '', tag = '', options = {}):
     if session_id:
       self.__session_id = session_id
@@ -41,20 +40,23 @@ class ErClientSession(object):
     self.__options = options.copy()
     self.__status = SessionStatus.NEW
     self.__tag = tag
-    self.__contexts = {}
     self.__server_cluster = self.get_server_cluster()
 
+    self.__context_processors = {}
     self.__cleanup_tasks = []
+
+    self.__context_processors[RollTypes.ROLL_PAIR] = self.start(RollTypes.ROLL_PAIR)
+
 
   def get_server_cluster(self):
     healthy_node_example = ErServerNode(status = ServerNodeStatus.HEALTHY, node_type = ServerNodeTypes.NODE_MANAGER)
-
+    print(healthy_node_example)
     return self.__cluster_manager_client.get_server_nodes(healthy_node_example)
 
   # todo: options or all options in session meta?
-  def deploy(self, processor_type):
+  def start(self, roll_type):
     # todo: create deployer with reflection
-    if processor_type == ProcessorTypes.ROLL_PAIR:
+    if roll_type == RollTypes.ROLL_PAIR:
       deployer = RollPairDeployer(session_meta = self.get_session_meta(),
                                   roll_servicer_cluster = self.__server_cluster,
                                   egg_cluster = self.__server_cluster,
@@ -62,10 +64,9 @@ class ErClientSession(object):
     else:
       raise NotImplementedError(f'processor type {processor_type} is not implemented yet')
 
-    context = deployer.deploy()
-    self.__contexts[processor_type] = context
+    component = deployer.deploy()
 
-    return context
+    return component
 
   def get_session_meta(self):
     return ErSessionMeta(id = self.__session_id,
@@ -91,6 +92,27 @@ class ErClientSession(object):
     return self.get_conf(key) is not None
 
 
+class RollPairContext(object):
+  def __init__(self, session: ErSession):
+    self.__session = session
+
+  # todo
+  def parallelize(self):
+    pass
+
+  # todo
+  def land(self):
+    pass
+
+
+class ErContextProcessors:
+  def __init__(self, servicers, eggs, companion_egg = None):
+    self._servicer = servicers
+    self._eggs = eggs
+    self._companion_egg = companion_egg
+
+
+
 class RollPairDeployer(object):
   def __init__(self, session_meta: ErSessionMeta, roll_servicer_cluster: ErServerCluster, egg_cluster: ErServerCluster, options = {}):
     self.__session_meta = session_meta
@@ -99,12 +121,16 @@ class RollPairDeployer(object):
 
   def deploy(self):
     servicers = self.create_servicer()
+    print(f'servicers: {servicers}')
     eggs = self.create_eggs()
-    return self.create_context(session_meta=self.__session_meta, servicers=servicers, eggs=eggs)
+    print(f'eggs: {eggs}')
+
+    return ErContextProcessors(servicers=servicers, eggs=eggs)
 
   def create_servicer(self):
     target_node = self.__roll_servicer_cluster._server_nodes[0]
-    nm_client = NodeManagerClient({'node_manager_host': target_node._endpoint._host, 'node_manager_port': target_node._endpoint._port})
+    nm_client = NodeManagerClient(options = {NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HOST: target_node._endpoint._host,
+                                             NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT: target_node._endpoint._port})
 
     return nm_client.get_or_create_servicer(self.__session_meta)
 
@@ -113,11 +139,11 @@ class RollPairDeployer(object):
 
     node_id_to_processor_batch = {}
     for node in target_nodes:
-      nm_client = NodeManagerClient({'nm_manager_host': node._endpoint._host, 'node_manager_port': node._endpoint._port})
+      nm_client = NodeManagerClient({NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HOST: node._endpoint._host,
+                                     NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT: node._endpoint._port})
       node_id_to_processor_batch[node._id] = nm_client.get_or_create_processor_batch(self.__session_meta)
 
-  def create_context(self, session_meta, servicers, eggs):
-    return ErClientContext(session_meta=session_meta, servicers=servicers, eggs=eggs)
+    return node_id_to_processor_batch
 
 
 
