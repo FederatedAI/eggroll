@@ -29,7 +29,7 @@ class CommandClient(object):
 
   def simple_sync_send(self, input: RpcMessage, output_type, endpoint: ErEndpoint, command_uri: CommandURI, serdes_type = SerdesTypes.PROTOBUF):
     # todo: add serializer logic here
-    request = ErCommandRequest(id = time_now(), uri = command_uri._uri, args = [input.to_proto_string()])
+    request = ErCommandRequest(id=time_now(), uri=command_uri._uri, args=[input.to_proto_string()])
 
     _channel = self._channel_factory.create_channel(endpoint)
     _command_stub = command_pb2_grpc.CommandServiceStub(_channel)
