@@ -59,3 +59,16 @@ def time_now(format: str = _DEFAULT_DATETIME_FORMAT):
     return formatted[:-3]
   else:
     return formatted
+
+def get_self_ip():
+  import socket
+  s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+  try:
+    # doesn't even have to be reachable
+    s.connect(('10.255.255.255', 1))
+    self_ip = s.getsockname()[0]
+  except:
+    self_ip = '127.0.0.1'
+  finally:
+    s.close()
+  return self_ip

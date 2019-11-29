@@ -14,6 +14,8 @@
 
 from eggroll.core.meta_model import ErServerNode, ErServerCluster, ErProcessor, ErProcessorBatch, ErSessionMeta
 from eggroll.core.client import ClusterManagerClient, NodeManagerClient
+from eggroll.core.utils import get_self_ip, time_now
+from eggroll.core.constants import SessionStatus, ServerNodeStatus, ServerNodeTypes
 
 class ErClientContext(object):
   def __init__(self, session_meta: ErSessionMeta, servicers: ErProcessorBatch, eggs: ErProcessorBatch):
@@ -25,21 +27,68 @@ class ErClientContext(object):
     # todo: return roll object client
 
 class ErClientSession(object):
-  def __init__(self, options = {}):
+  def __init__(self, session_id = None, name = '', tag = '', options = {}):
+    if session_id:
+      self.__session_id = session_id
+    else:
+      self.__session_id = f'er_client_session_{time_now()}_{get_self_ip()}'
     self.__cluster_manager_client = ClusterManagerClient({
       'cluster_manager_host': 'localhost',
       'cluster_manager_port': 4670,
     })
 
+    self.__name = ''
+    self.__options = options.copy()
+    self.__status = SessionStatus.NEW
+    self.__tag = tag
+    self.__contexts = {}
+    self.__server_cluster = self.get_server_cluster()
 
-  def deploy(self, processor_type, options = {}):
+    self.__cleanup_tasks = []
+
+  def get_server_cluster(self):
+    healthy_node_example = ErServerNode(status = ServerNodeStatus.HEALTHY, node_type = ServerNodeTypes.NODE_MANAGER)
+
+    return self.__cluster_manager_client.get_server_nodes(healthy_node_example)
+
+  # todo: options or all options in session meta?
+  def deploy(self, processor_type):
+    # todo: create deployer with reflection
     if processor_type == ProcessorTypes.ROLL_PAIR:
-      deployer = RollPairDeployer(self.get_session_meta())
-    # todo: deploy, getting an context and put into dict
+      deployer = RollPairDeployer(session_meta = self.get_session_meta(),
+                                  roll_servicer_cluster = self.__server_cluster,
+                                  egg_cluster = self.__server_cluster,
+                                  options = self.__options)
+    else:
+      raise NotImplementedError(f'processor type {processor_type} is not implemented yet')
 
-  # todo: generate session_meta
+    context = deployer.deploy()
+    self.__contexts[processor_type] = context
+
+    return context
+
   def get_session_meta(self):
-    return ErSessionMeta()
+    return ErSessionMeta(id = self.__session_id,
+                         name = self.__name,
+                         status = self.__status,
+                         options = self.__options,
+                         tag = self.__tag)
+
+  def get_session_id(self):
+    return self.__session_id
+
+  def add_cleanup_task(self, func):
+      self.__cleanup_tasks.add(func)
+
+  def run_cleanup_tasks(self):
+    for func in self.__cleanup_tasks:
+      func()
+
+  def get_option(self, key):
+    return self.__options.get(key)
+
+  def has_option(self, key):
+    return self.get_conf(key) is not None
 
 
 class RollPairDeployer(object):
@@ -52,7 +101,6 @@ class RollPairDeployer(object):
     servicers = self.create_servicer()
     eggs = self.create_eggs()
     return self.create_context(session_meta=self.__session_meta, servicers=servicers, eggs=eggs)
-
 
   def create_servicer(self):
     target_node = self.__roll_servicer_cluster._server_nodes[0]

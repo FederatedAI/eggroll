@@ -19,10 +19,10 @@ class SerdesTypes(object):
   PICKLE = 'PICKLE'
   CLOUD_PICKLE = 'CLOUD_PICKLE'
 
-class NodeStatus(object):
+class ServerNodeStatus(object):
   HEALTHY = 'HEALTHY'
 
-class NodeTypes(object):
+class ServerNodeTypes(object):
   CLUSTER_MANAGER = 'CLUSTER_MANAGER'
   NODE_MANAGER = 'NODE_MANAGER'
 
@@ -39,3 +39,8 @@ class ProcessorTypes(object):
 
 class ProcessorStatus(object):
   RUNNING = 'RUNNING'
+
+class SessionStatus(object):
+  NEW = 'NEW'
+  RUNNING = 'RUNNING'
+  TERMINATED = 'TERMINATED'
