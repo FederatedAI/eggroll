@@ -206,12 +206,12 @@ class ErPair(RpcMessage):
 
   @staticmethod
   def from_proto_string(pb_string):
-    pb_message = meta_pb2.ErPair()
+    pb_message = meta_pb2.Pair()
     msg_len = pb_message.ParseFromString(pb_string)
     return ErPair.from_proto(pb_message)
 
   def __repr__(self):
-    return f'ErPair(key={self._key}, value=***;{len(self._body)}'
+    return f'ErPair(key={self._key}, value={self._value})'
 
 
 class ErPairBatch(RpcMessage):
@@ -388,6 +388,9 @@ class ErTask(RpcMessage):
                          outputs=_elements_to_proto(self._outputs),
                          job=self._job.to_proto())
 
+  def to_proto_string(self):
+    return self.to_proto().SerializeToString()
+
   @staticmethod
   def from_proto(pb_message):
     return ErTask(id=pb_message.id,
@@ -408,10 +411,10 @@ class ErTask(RpcMessage):
     return f'ErTask(id={self._id}, name={self._name}, inputs=[{_repr_list(self._inputs)}], outputs=[{_repr_list(self._outputs)}], job={self._job})'
 
   def get_endpoint(self):
-    if not inputs or len(inputs) == 0:
+    if not self._inputs or len(self._inputs) == 0:
       raise ValueError("Partition input is empty")
 
-    node = inputs[0]._node
+    node = self._inputs[0]._node
 
     if not node:
       raise ValueError("Head node's input partition is null")

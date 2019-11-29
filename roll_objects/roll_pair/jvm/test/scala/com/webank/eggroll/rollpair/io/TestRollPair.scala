@@ -239,6 +239,46 @@ class TestRollPair extends Logging {
       routeToClass = classOf[RollPairService],
       routeToMethodName = RollPairService.reduce)
 
+    CommandRouter.register(serviceName = RollPairService.rollMapPartitionsCommand,
+      serviceParamTypes = Array(classOf[ErJob]),
+      routeToClass = classOf[RollPairService],
+      routeToMethodName = RollPairService.mapPartitions)
+
+    CommandRouter.register(serviceName = RollPairService.rollCollapsePartitionsCommand,
+      serviceParamTypes = Array(classOf[ErJob]),
+      routeToClass = classOf[RollPairService],
+      routeToMethodName = RollPairService.collapsePartitions)
+
+    CommandRouter.register(serviceName = RollPairService.rollFlatMapCommand,
+      serviceParamTypes = Array(classOf[ErJob]),
+      routeToClass = classOf[RollPairService],
+      routeToMethodName = RollPairService.flatMap)
+
+    CommandRouter.register(serviceName = RollPairService.rollGlomCommand,
+      serviceParamTypes = Array(classOf[ErJob]),
+      routeToClass = classOf[RollPairService],
+      routeToMethodName = RollPairService.glom)
+
+    CommandRouter.register(serviceName = RollPairService.rollSampleCommand,
+      serviceParamTypes = Array(classOf[ErJob]),
+      routeToClass = classOf[RollPairService],
+      routeToMethodName = RollPairService.sample)
+
+    CommandRouter.register(serviceName = RollPairService.rollFilterCommand,
+      serviceParamTypes = Array(classOf[ErJob]),
+      routeToClass = classOf[RollPairService],
+      routeToMethodName = RollPairService.filter)
+
+    CommandRouter.register(serviceName = RollPairService.rollSubtractByKeyCommand,
+      serviceParamTypes = Array(classOf[ErJob]),
+      routeToClass = classOf[RollPairService],
+      routeToMethodName = RollPairService.subtractByKey)
+
+    CommandRouter.register(serviceName = RollPairService.rollUnionCommand,
+      serviceParamTypes = Array(classOf[ErJob]),
+      routeToClass = classOf[RollPairService],
+      routeToMethodName = RollPairService.union)
+
     CommandRouter.register(serviceName = RollPairService.rollJoinCommand,
       serviceParamTypes = Array(classOf[ErJob]),
       routeToClass = classOf[RollPairService],
