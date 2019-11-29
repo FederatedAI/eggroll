@@ -74,7 +74,7 @@ class GrpcTransferServicer(transfer_pb2_grpc.TransferServiceServicer):
 
     return transfer_pb2.TransferBatch(header=response_header)
 
-
+# todo: move to core/client
 class TransferClient(object):
   def __init__(self):
     self.__grpc_channel_factory = GrpcChannelFactory()

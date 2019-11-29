@@ -22,12 +22,12 @@ import java.nio.ByteBuffer
 import java.util.concurrent.TimeUnit
 
 import com.google.protobuf.ByteString
+import com.webank.eggroll.core.client.ClusterManagerClient
 import com.webank.eggroll.core.constant._
 import com.webank.eggroll.core.datastructure.{Broker, LinkedBlockingBroker}
 import com.webank.eggroll.core.meta.{ErStore, ErStoreLocator}
 import com.webank.eggroll.core.session.{ErConf, RuntimeErConf}
 import com.webank.eggroll.core.transfer.GrpcTransferClient
-import com.webank.eggroll.framework.clustermanager.client.ClusterManagerClient
 
 class RollPair(val store: ErStore, val opts: ErConf = RuntimeErConf()) {
   private var __store: ErStore = null

@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS `eggroll_meta`.`store_locator` (
   `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) DEFAULT CHARACTER SET latin1 COLLATE latin1_swedish_ci;
 
-CREATE UNIQUE INDEX `idx_u_store_n_tn` ON `eggroll_meta`.`store_locator` (`namespace`(120), `name`(640));
+CREATE UNIQUE INDEX `idx_u_store_locator_n_tn` ON `eggroll_meta`.`store_locator` (`namespace`(120), `name`(640));
 CREATE INDEX `idx_store_locator_tt` ON `eggroll_meta`.`store_locator` (`store_type`(255));
 CREATE INDEX `idx_store_locator_ns` ON `eggroll_meta`.`store_locator` (`namespace`(768));
 CREATE INDEX `idx_store_locator_n` ON `eggroll_meta`.`store_locator` (`name`(768));

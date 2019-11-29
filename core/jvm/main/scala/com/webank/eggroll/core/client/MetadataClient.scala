@@ -12,11 +12,20 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ *
  */
 
-package com.webank.eggroll.core.constant
+package com.webank.eggroll.core.client
 
-object NumberStringConstants {
-  val NUM_16M = (16 << 20).toString
-  val NUM_32M = (32 << 20).toString
+import com.webank.eggroll.core.constant.ClusterManagerConfKeys
+import com.webank.eggroll.core.session.StaticErConf
+
+class MetadataClient {
+  private def init(): Unit = {
+    val clusterManagerHost = StaticErConf.getString(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST)
+    val clusterMangerPort = StaticErConf.getString(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT)
+  }
+
+
 }

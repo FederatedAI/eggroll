@@ -129,7 +129,7 @@ object CommandRouter extends Logging {
     val paramTypes = method.getParameterTypes
     var paramTypeName = "unknown"
 
-    // todo: separate to SerDes
+    // todo: separate to SerDesx
     // deserialization
 
     val realArgs = args.zip(servicer.serviceParamDeserializers).map {

@@ -12,12 +12,9 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ *
  */
 
-package com.webank.eggroll.core.session
+package com.webank.eggroll.clustermanager.constant
 
-import com.webank.eggroll.core.util.Logging
-
-class EggrollSession(sessionId: String, grpcServerConf: GrpcServerConf) extends Logging {
-
-}

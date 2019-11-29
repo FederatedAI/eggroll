@@ -13,15 +13,24 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from eggroll.core.command.command_client import CommandClient
+from eggroll.core.client import CommandClient
 from eggroll.core.meta_model import ErEndpoint, ErServerNode, ErServerCluster
 from eggroll.core.meta_model import ErStore, ErStoreLocator
 from eggroll.core.constants import SerdesTypes
 from eggroll.core.command.commands import MetadataCommands
+from eggroll.core.base_model import RpcMessage
+from eggroll.core.command.command_model import CommandURI
+from eggroll.core.command.command_model import ErCommandRequest, ErCommandResponse
+from eggroll.core.proto import command_pb2_grpc
+from eggroll.core.utils import time_now
+from eggroll.core.grpc.factory import GrpcChannelFactory
 
+
+
+# todo: move to core/clients
 class ClusterManagerClient(object):
 
-  def __init__(self, opts: {'cluster_manager_host': 'localhost', 'cluster_manager_port': 4670}):
+  def __init__(self, opts = {'cluster_manager_host': 'localhost', 'cluster_manager_port': 4670}):
     self.__endpoint = ErEndpoint(opts['cluster_manager_host'], opts['cluster_manager_port'])
     if 'serdes_type' in opts:
       self.__serdes_type = opts['serdes_type']

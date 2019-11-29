@@ -22,7 +22,7 @@ import java.util
 import java.util.concurrent.ConcurrentHashMap
 
 import com.webank.eggroll.clustermanager.constant.RdbConstants
-import com.webank.eggroll.core.constant.{NodeStatus, NodeTypes, PartitionStatus, StoreStatus}
+import com.webank.eggroll.core.constant.{ServerNodeStatus, NodeTypes, PartitionStatus, StoreStatus}
 import com.webank.eggroll.core.error.CrudException
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.util.Logging
@@ -97,7 +97,7 @@ object StoreCrudOperator {
     nodeExample.createCriteria()
       .andServerNodeIdIn(nodeIdList)
       .andNodeTypeEqualTo(NodeTypes.NODE_MANAGER)
-      .andStatusEqualTo(NodeStatus.HEALTHY)
+      .andStatusEqualTo(ServerNodeStatus.HEALTHY)
 
     val nodeMapper = sqlSession.getMapper(classOf[ServerNodeMapper])
     val nodeResult = nodeMapper.selectByExample(nodeExample)
@@ -159,7 +159,7 @@ object StoreCrudOperator {
 
     // todo: integrate with session mechanism
     val serverNodes = ServerNodeCrudOperator.doGetServerNodes(
-        input = ErServerNode(nodeType = NodeTypes.NODE_MANAGER, status = NodeStatus.HEALTHY),
+        input = ErServerNode(nodeType = NodeTypes.NODE_MANAGER, status = ServerNodeStatus.HEALTHY),
       sqlSession = sqlSession)
 
     val healthyNodes = new ConcurrentHashMap[Long, ErServerNode]()

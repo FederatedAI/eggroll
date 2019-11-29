@@ -18,13 +18,12 @@
 
 package com.webank.eggroll.clustermanager.metadata
 
-import com.webank.eggroll.clustermanager.constant.MetadataCommands
+import com.webank.eggroll.core.client.ClusterManagerClient
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
 import com.webank.eggroll.core.constant._
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.transfer.GrpcTransferService
-import com.webank.eggroll.framework.clustermanager.client.ClusterManagerClient
 import io.grpc.Server
 import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
 import org.junit.{Assert, Before, Test}
@@ -122,7 +121,7 @@ class TestClusterManagerClientMetaService {
 
   @Test
   def testGetOrCreateServerNode(): Unit = {
-    val input = ErServerNode(endpoint = ErEndpoint(host = "localhost", port = 9394), nodeType = NodeTypes.NODE_MANAGER, status = NodeStatus.HEALTHY)
+    val input = ErServerNode(endpoint = ErEndpoint(host = "localhost", port = 9394), nodeType = NodeTypes.NODE_MANAGER, status = ServerNodeStatus.HEALTHY)
     val node = clusterManagerClient.getOrCreateServerNode(input)
 
     println(node)
@@ -130,7 +129,7 @@ class TestClusterManagerClientMetaService {
 
   @Test
   def testCreateOrUpdateServerNode(): Unit = {
-    val input = ErServerNode(id = 2, endpoint = ErEndpoint(host = "localhost", port = 9394), nodeType = NodeTypes.NODE_MANAGER, status = NodeStatus.HEALTHY)
+    val input = ErServerNode(id = 2, endpoint = ErEndpoint(host = "localhost", port = 9394), nodeType = NodeTypes.NODE_MANAGER, status = ServerNodeStatus.HEALTHY)
     val node = clusterManagerClient.createOrUpdateServerNode(input)
 
     println(node)
@@ -151,7 +150,7 @@ class TestClusterManagerClientMetaService {
     val input = ErStoreLocator(
       storeType = StoreTypes.ROLLPAIR_LEVELDB,
       namespace = "namespace",
-      name = "name",
+      name = "test",
       totalPartitions = 4,
       partitioner = PartitionerTypes.BYTESTRING_HASH,
       serdes = SerdesTypes.PICKLE)

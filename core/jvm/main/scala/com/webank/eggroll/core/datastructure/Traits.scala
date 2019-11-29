@@ -27,6 +27,13 @@ trait RpcMessage extends BaseSerializable with BaseDeserializable {
   def rpcMessageType(): String = ???
 }
 
+trait RollContext {
+}
+
+trait RollServicer {
+
+}
+
 trait SerdesFactory {
 
 }

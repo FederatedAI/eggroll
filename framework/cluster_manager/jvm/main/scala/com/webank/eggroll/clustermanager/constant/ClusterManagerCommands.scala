@@ -22,34 +22,4 @@ import com.webank.eggroll.core.command.CommandURI
 import com.webank.eggroll.core.util.CommandUtils
 
 
-object MetadataCommands {
-  val prefix = "v1/cluster-manager/metadata"
 
-  val getServerNode = "getServerNode"
-  val getServerNodeServiceName = CommandUtils.toServiceName(prefix, getServerNode)
-  val GET_SERVER_NODE = new CommandURI(getServerNodeServiceName)
-
-  val getServerNodes = "getServerNodes"
-  val getServerNodesServiceName = CommandUtils.toServiceName(prefix, getServerNodes)
-  val GET_SERVER_NODES = new CommandURI(getServerNodesServiceName)
-
-  val getOrCreateServerNode = "getOrCreateServerNode"
-  val getOrCreateServerNodeServiceName = CommandUtils.toServiceName(prefix, getOrCreateServerNode)
-  val GET_OR_CREATE_SERVER_NODE = new CommandURI(getOrCreateServerNodeServiceName)
-
-  val createOrUpdateServerNode = "createOrUpdateServerNode"
-  val createOrUpdateServerNodeServiceName = CommandUtils.toServiceName(prefix, createOrUpdateServerNode)
-  val CREATE_OR_UPDATE_SERVER_NODE = new CommandURI(createOrUpdateServerNodeServiceName)
-
-  val getStore = "getStore"
-  val getStoreServiceName = CommandUtils.toServiceName(prefix, getStore)
-  val GET_STORE = new CommandURI(getStoreServiceName)
-
-  val getOrCreateStore = "getOrCreateStore"
-  val getOrCreateStoreServiceName = CommandUtils.toServiceName(prefix, getOrCreateStore)
-  val GET_OR_CREATE_STORE = new CommandURI(getOrCreateStoreServiceName)
-
-  val deleteStore = "deleteStore"
-  val deleteStoreServiceName = CommandUtils.toServiceName(prefix, deleteStore)
-  val DELETE_STORE = new CommandURI(deleteStoreServiceName)
-}

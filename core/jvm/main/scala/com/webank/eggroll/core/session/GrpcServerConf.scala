@@ -21,6 +21,7 @@ import java.util
 import com.webank.eggroll.core.meta.ErEndpoint
 import io.grpc.{BindableService, ServerServiceDefinition}
 
+@deprecated
 class GrpcServerConf(confFilePath: String) {
   var host: String = _
   var port: Int = -1

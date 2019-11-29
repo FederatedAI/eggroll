@@ -20,8 +20,10 @@ package com.webank.eggroll.core.session
 
 import java.io.{BufferedInputStream, FileInputStream}
 import java.util.Properties
+import java.util.concurrent.ConcurrentHashMap
 
-import com.webank.eggroll.core.constant.StringConstants
+import com.webank.eggroll.core.constant.{SessionConfKeys, StringConstants}
+import com.webank.eggroll.core.meta.ErSessionMeta
 import org.apache.commons.beanutils.BeanUtils
 
 import scala.collection.mutable
@@ -105,12 +107,36 @@ abstract class ErConf {
     }
   }
 
+  def getAllAsMap: java.util.Map[String, String] = {
+    val result = new ConcurrentHashMap[String, String]()
+    val props = getConf()
+
+    props.forEach((k, v) => {
+      result.put(k.toString, v.toString)
+    })
+
+    result
+  }
+
   protected def getConf(): Properties = {
     this.conf
   }
 }
 
 case class RuntimeErConf(prop: Properties = new Properties()) extends ErConf {
+
+  def this(sessionMeta: ErSessionMeta) {
+    this(new Properties())
+    conf.putAll(sessionMeta.options)
+    conf.put(SessionConfKeys.CONFKEY_SESSION_ID, sessionMeta.id)
+    conf.put(SessionConfKeys.CONFKEY_SESSION_NAME, sessionMeta.name)
+  }
+
+  def this(conf: java.util.Map[String, String]) {
+    this(new Properties())
+    conf.putAll(conf)
+  }
+
   override protected val conf = new Properties(super.getConf())
   conf.putAll(prop)
 

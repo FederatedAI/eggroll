@@ -59,6 +59,7 @@ object CoreConfKeys {
   val CONFKEY_CORE_SECURITY_SECURE_CLUSTER_ENABLED = "eggroll.core.security.secure.cluster.enabled"
 
   val CONFKEY_CORE_COMMAND_DEFAULT_SERDES_TYPE = "eggroll.core.command.default.serdes.type"
+  val CONFKEY_CORE_LOG_DIR = "eggroll.core.log.dir"
 }
 
 object ClusterManagerConfKeys {
@@ -74,5 +75,33 @@ object ClusterManagerConfKeys {
   val CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_DEFAULT_AUTO_COMMIT = "eggroll.cluster.manager.datasource.db.default.auto.commit"
   val CONFKEY_CLUSTER_MANAGER_HOST = "eggroll.cluster.manager.host"
   val CONFKEY_CLUSTER_MANAGER_PORT = "eggroll.cluster.manager.port"
+}
 
+object NodeManagerConfKeys {
+  val CONFKEY_NODE_MANAGER_HOST = "eggroll.node.manager.host"
+  val CONFKEY_NODE_MANAGER_PORT = "eggroll.node.manager.port"
+}
+
+object SessionConfKeys {
+  val CONFKEY_SESSION_CONTEXT_ROLLPAIR_COUNT = "eggroll.session.context.rollpair.count"
+  val CONFKEY_SESSION_ID = "eggroll.session.id"
+  val CONFKEY_SESSION_NAME = "eggroll.session.name"
+  val CONFKEY_SESSION_MAX_PROCESSORS_PER_NODE = "eggroll.session.max.processors.per.node"
+}
+
+object DeployConfKeys {
+  val CONFKEY_DEPLOY_ROLLPAIR_START_SCRIPT_PATH = "eggroll.deploy.rollpair.start.script.path"
+  val CONFKEY_DEPLOY_ROLLPAIR_VENV_PATH = "eggroll.deploy.rollpair.venv.path"
+  val CONFKEY_DEPLOY_ROLLPAIR_DATA_DIR_PATH = "eggroll.deploy.rollpair.data.dir.path"
+  val CONFKEY_DEPLOY_ROLLPAIR_EGGPAIR_PATH = "eggroll.deploy.rollpair.eggpair.path"
+  val CONFKEY_DEPLOY_ROLLPAIR_PYTHON_PATH = "eggroll.deploy.rollpair.python.path"
+  val CONFKEY_DEPLOY_NODE_MANAGER_PORT = "eggroll.deploy.node.manager.port"
+
+  val CONFKEY_DEPLOY_JVM_JAVA_BIN_PATH = "eggroll.deploy.jvm.java.bin.path"
+  val CONFKEY_DEPLOY_JVM_CLASSPATH = "eggroll.deploy.jvm.classpath"
+  val CONFKEY_DEPLOY_JVM_MAINCLASS = "eggroll.deploy.jvm.mainclass"
+  val CONFKEY_DEPLOY_JVM_MAINCLASS_ARGS = "eggroll.deploy.jvm.mainclass.args"
+  val CONFKEY_DEPLOY_JVM_OPTIONS = "eggroll.deploy.jvm.options"
+
+  val CONFKEY_DEPLOY_PROCESSOR_TYPE = "eggroll.deploy.processor.type"
 }
