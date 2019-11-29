@@ -203,7 +203,7 @@ class ErFunctor(RpcMessage):
     self._options = options
 
   def to_proto(self):
-    return meta_pb2.Functor(name=self._name, serdes=self._serdes, body=self._body, conf=self._options)
+    return meta_pb2.Functor(name=self._name, serdes=self._serdes, body=self._body, options=self._options)
 
   @staticmethod
   def from_proto(pb_message):

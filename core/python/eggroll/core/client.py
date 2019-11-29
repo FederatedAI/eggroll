@@ -14,7 +14,7 @@
 
 
 from eggroll.core.meta_model import ErEndpoint, ErServerNode, ErServerCluster, ErProcessor
-from eggroll.core.meta_model import ErStore, ErStoreLocator
+from eggroll.core.meta_model import ErStore, ErStoreLocator, ErSessionMeta
 from eggroll.core.constants import SerdesTypes
 from eggroll.core.command.commands import MetadataCommands, NodeManagerCommands
 from eggroll.core.base_model import RpcMessage

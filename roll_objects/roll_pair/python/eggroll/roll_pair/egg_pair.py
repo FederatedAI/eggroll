@@ -26,7 +26,7 @@ from eggroll.core.datastructure.broker import FifoBroker
 from eggroll.core.io.kv_adapter import RocksdbSortedKvAdapter, LmdbSortedKvAdapter
 from eggroll.core.io.io_utils import get_db_path
 from eggroll.core.meta_model import ErTask, ErPartition, ErProcessor, ErEndpoint
-from eggroll.core.meta_model import ErTask, ErPartition, ErPair
+from eggroll.core.meta_model import ErSessionMeta, ErPair
 from eggroll.core.proto import command_pb2_grpc, transfer_pb2_grpc
 from eggroll.core.serdes import cloudpickle
 from eggroll.core.serdes import eggroll_serdes
@@ -540,9 +540,11 @@ def serve(args):
   transfer_servicer = GrpcTransferServicer()
   transfer_pb2_grpc.add_TransferServiceServicer_to_server(transfer_servicer,
                                                           server)
+  port = args.port
+  print(f'proposed port {port}')
+  port = server.add_insecure_port(f'[::]:{port}')
 
-  port = server.add_insecure_port(f'[::]:{0}')
-
+  print(f'final port {port}')
   server.start()
 
   options = {
@@ -568,6 +570,7 @@ if __name__ == '__main__':
   parser.add_argument('-d', '--data-dir', default=os.path.dirname(os.path.realpath(__file__)))
   parser.add_argument('-n', '--node-manager', default='localhost:9394')
   parser.add_argument('-s', '--session-id')
+  parser.add_argument('-p', '--port', default='0')
 
   args = parser.parse_args()
   serve(args)
