@@ -37,7 +37,7 @@ class TestRollPair(unittest.TestCase):
           'egg_pair_service_host': 'localhost',
           'egg_pair_service_port': 20001}
 
-  store_type = StoreTypes.ROLLPAIR_LEVELDB
+  store_type = StoreTypes.ROLLPAIR_LMDB
   def test_get(self):
     store = ErStore(ErStoreLocator(store_type=TestRollPair.store_type, namespace="namespace",
                                    name="name"))
