@@ -385,6 +385,7 @@
   <modules>
     <module>core/jvm</module>
     <module>framework/cluster_manager/jvm</module>
+    <module>framework/node_manager/jvm</module>
     <module>roll_objects/roll_pair/jvm</module>
     <module>roll_objects/roll_frame/jvm</module>
     <!--<module>roll_objects/roll_site/jvm</module>-->

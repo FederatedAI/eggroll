@@ -37,8 +37,8 @@ class GrpcTransferService extends TransferServiceGrpc.TransferServiceImplBase {
 
   /**
    */
-  override def send(responseObserver: StreamObserver[Transfer.TransferHeader]): StreamObserver[Transfer.TransferBatch] = {
-    val serverCallStreamObserver = responseObserver.asInstanceOf[ServerCallStreamObserver[Transfer.TransferHeader]]
+  override def send(responseObserver: StreamObserver[Transfer.TransferBatch]): StreamObserver[Transfer.TransferBatch] = {
+    val serverCallStreamObserver = responseObserver.asInstanceOf[ServerCallStreamObserver[Transfer.TransferBatch]]
 
     serverCallStreamObserver.disableAutoInboundFlowControl()
 
@@ -74,9 +74,9 @@ object GrpcTransferService {
   def containsBroker(key: String): Boolean = dataBuffer.contains(key)
 }
 
-class TransferSendCalleeRequestStreamObserver(callerNotifier: ServerCallStreamObserver[Transfer.TransferHeader],
+class TransferSendCalleeRequestStreamObserver(callerNotifier: ServerCallStreamObserver[Transfer.TransferBatch],
                                               wasReady: AtomicBoolean)
-  extends BaseMFCCalleeRequestStreamObserver[Transfer.TransferBatch, Transfer.TransferHeader](callerNotifier, wasReady) {
+  extends BaseMFCCalleeRequestStreamObserver[Transfer.TransferBatch, Transfer.TransferBatch](callerNotifier, wasReady) {
   private var i = 0
 
   private var broker: Broker[Transfer.TransferBatch] = _
@@ -99,7 +99,7 @@ class TransferSendCalleeRequestStreamObserver(callerNotifier: ServerCallStreamOb
   }
 
   override def onCompleted(): Unit = {
-    callerNotifier.onNext(responseHeader)
+    callerNotifier.onNext(Transfer.TransferBatch.newBuilder().setHeader(responseHeader).build())
     super.onCompleted()
   }
 }

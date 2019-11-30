@@ -48,3 +48,33 @@ object PartitionStatus {
 object TransferStatus {
   val TRANSFER_END = "__transfer_end"
 }
+
+object ProcessorTypes {
+  val ROLL_PAIR = "roll_pair"
+  val ROLL_PAILLIER_TENSOR = "roll_paillier_tensor"
+  val ROLL_FRAME = "roll_frame"
+
+  val ROLL_PAIR_SERVICER = "roll_pair_servicer"
+  val EGG_PAIR = "egg_pair"
+}
+
+object NodeTypes {
+  val CLUSTER_MANAGER = "CLUSTER_MANAGER"
+  val NODE_MANAGER = "NODE_MANAGER"
+}
+
+object ServerNodeStatus {
+  val HEALTHY = "HEALTHY"
+}
+
+object ProcessorStatus {
+  val RUNNING = "RUNNING"
+  val TERMINATED = "TERMINATED"
+  val ERROR = "ERROR"
+}
+
+object SessionStatus {
+  val NEW = "NEW"
+  val ACTIVE = "ACTIVE"
+  val CLOSED = "CLOSED"
+}

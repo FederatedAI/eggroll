@@ -71,11 +71,6 @@
       <groupId>com.webank.eggroll</groupId>
       <version>${eggroll.version}</version>
     </dependency>
-    <dependency>
-      <artifactId>eggroll-cluster-manager</artifactId>
-      <groupId>com.webank.eggroll</groupId>
-      <version>${eggroll.version}</version>
-    </dependency>
   </dependencies>
 
 </project>

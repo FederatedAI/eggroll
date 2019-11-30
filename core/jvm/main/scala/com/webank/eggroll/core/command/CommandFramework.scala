@@ -33,6 +33,8 @@ case class EndpointCommand(commandURI: CommandURI, job: ErJob)
 
 case class EndpointTaskCommand(commandURI: CommandURI, task: ErTask)
 
+
+// todo: merge with command client
 case class CollectiveCommand(taskPlan: TaskPlan) {
   def call(): Array[ErTask] = {
     val job = taskPlan.job

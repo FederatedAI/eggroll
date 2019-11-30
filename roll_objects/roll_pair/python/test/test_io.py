@@ -22,7 +22,7 @@ from eggroll.core.io.kv_adapter import RocksdbSortedKvAdapter
 mat = pd.read_csv("/data/home/qijunhuang/czn/code/Python_C_Paillier/pData/testMat_mpi.csv").values
 
 class TestIo(unittest.TestCase):
-  _path_prefix = '/tmp/eggroll/levelDb/ns'
+  _path_prefix = '/tmp/eggroll/rollpair.leveldb/namespace'
   _path = '/tmp/eggroll/levelDb/ns/testMapValues/0'
 
   _name_prefix = f'{_path_prefix}/name'

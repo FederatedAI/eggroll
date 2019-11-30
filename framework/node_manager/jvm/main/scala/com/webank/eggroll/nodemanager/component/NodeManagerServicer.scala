@@ -16,10 +16,23 @@
  *
  */
 
-package com.webank.eggroll.cluster.manager.clustermanager
+package com.webank.eggroll.nodemanager.component
 
-import com.webank.eggroll.core.meta.{ErPartition, ErStore}
+import com.webank.eggroll.core.meta.{ErProcessor, ErProcessorBatch, ErSessionMeta}
 
-class ClusterManager {
+class NodeManagerServicer {
+  private val heartBeatService = new HeartBeatService
 
+  def getOrCreateProcessorBatch(sessionMeta: ErSessionMeta): ErProcessorBatch = {
+    ProcessorManager.getOrCreateProcessorBatch(sessionMeta)
+  }
+
+  def getOrCreateServicer(sessionMeta: ErSessionMeta): ErProcessorBatch = {
+    ServicerManager.getOrCreateServicer(sessionMeta)
+  }
+
+  def heartbeat(processor: ErProcessor): ErProcessor = {
+    heartBeatService.onProcessorHeartbeat(processor)
+    processor
+  }
 }

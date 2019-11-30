@@ -18,7 +18,7 @@
 
 package com.webank.eggroll.rollpair.component
 
-import java.nio.ByteBuffer
+import java.nio.{ByteBuffer, ByteOrder}
 import java.util
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger, AtomicLong}
 import java.util.concurrent.{CompletableFuture, CountDownLatch, TimeUnit}
@@ -232,68 +232,6 @@ class GrpcShuffleSender(shuffleId: String,
   }
 }
 
-/*// todo: consider change (Array[Byte], Array[Byte]) to ErPair
-class ShuffleSender(shuffleId: String,
-                    brokers: Array[Broker[(Array[Byte], Array[Byte])]],
-                    targetPartitions: Array[ErPartition],
-                    // todo: make it configurable
-                    chunkSize: Int = 100)
-  extends Supplier[Long] {
-
-  override def get(): Long = {
-    // todo: change to event-driven
-    val notFinishedBrokerIndex = mutable.Set[Int]()
-    for (i <- brokers.indices) {
-      notFinishedBrokerIndex.add(i)
-    }
-
-    val transferClient = new GrpcTransferClient()
-    val newlyFinishedIdx = mutable.ListBuffer[Int]()
-    var totalSent = 0L
-
-    while (notFinishedBrokerIndex.nonEmpty) {
-      notFinishedBrokerIndex.foreach(idx => {
-        val sendBuffer = new util.ArrayList[(Array[Byte], Array[Byte])](chunkSize)
-        val broker = brokers(idx)
-        var isBrokerClosable = false
-
-        this.synchronized {
-          if (broker.isWriteFinished() || broker.size() >= chunkSize) {
-            broker.drainTo(sendBuffer, chunkSize)
-            isBrokerClosable = broker.isClosable()
-          }
-        }
-
-        if (!sendBuffer.isEmpty) {
-          val pairs = mutable.ListBuffer[ErPair]()
-          sendBuffer.forEach(t => {
-            pairs += ErPair(key = t._1, value = t._2)
-          })
-
-          val pairBatch = ErPairBatch(pairs = pairs.toArray)
-
-          var transferStatus = StringConstants.EMPTY
-          if (isBrokerClosable) {
-            transferStatus = StringConstants.TRANSFER_END
-            newlyFinishedIdx += idx
-          }
-
-          transferClient.send(data = pairBatch.toProto.toByteArray,
-            tag = s"${shuffleId}-${idx}",
-            serverNode = targetPartitions(idx).processor,
-            status = transferStatus)
-          totalSent += pairs.length
-        }
-      })
-
-      newlyFinishedIdx.foreach(idx => notFinishedBrokerIndex -= idx)
-      newlyFinishedIdx.clear()
-    }
-
-    totalSent
-  }
-}*/
-
 class GrpcShuffleReceiver(shuffleId: String,
                           outputPartition: ErPartition,
                           totalPartitionsCount: Int)
@@ -318,6 +256,7 @@ class GrpcShuffleReceiver(shuffleId: String,
         }
 
         val byteBuffer: ByteBuffer = binData.asReadOnlyByteBuffer()
+        byteBuffer.order(ByteOrder.LITTLE_ENDIAN)
         val batchBuffer = ArrayBuffer[(Array[Byte], Array[Byte])]()
         batchBuffer.sizeHint(transferBatch.getBatchSize)
 
@@ -363,40 +302,3 @@ class GrpcShuffleReceiver(shuffleId: String,
     totalRecv
   }
 }
-
-/*class ShuffleReceiver(shuffleId: String,
-                      outputPartition: ErPartition,
-                      totalPartitionsCount: Int)
-  extends Supplier[Long] with Logging {
-  override def get(): Long = {
-    var totalWrite = 0L
-    val broker = GrpcTransferService.getOrCreateBroker(s"${shuffleId}-${outputPartition.id}")
-
-    val path = EggPair.getDbPath(outputPartition)
-    logInfo(s"outputPath: ${path}")
-    val outputAdapter = new RocksdbSortedKvAdapter(path)
-
-    while (!broker.isClosable()) {
-      val transferBatch = broker.poll(1, TimeUnit.SECONDS)
-
-      if (transferBatch != null) {
-        // todo: add 'parseFromBytes' to ErPairBatch to decouple from pb
-        val binData = transferBatch.getData
-        val pbPairBatch = Meta.PairBatch.parseFrom(binData)
-
-        val pairBatch = pbPairBatch.fromProto()
-
-        val result = pairBatch.pairs.map(erPair => (erPair.key, erPair.value))
-        logInfo(s"result: ${result}, length: ${result.length}")
-
-        outputAdapter.writeBatch(pairBatch.pairs.map(erPair => (erPair.key, erPair.value)).iterator)
-
-        totalWrite += pairBatch.pairs.length
-      }
-    }
-
-    outputAdapter.close()
-
-    totalWrite
-  }
-}*/

@@ -25,113 +25,170 @@ from eggroll.core.constants import StoreTypes
 
 
 class TestRollPair(unittest.TestCase):
-  opts = {'cluster_manager_host': 'localhost',
+  options = {'cluster_manager_host': 'localhost',
           'cluster_manager_port': 4670,
+          'pair_type': 'v1/roll-pair',
           'roll_pair_service_host': 'localhost',
           'roll_pair_service_port': 20000}
-  def test_map_values(self):
-    store = ErStore(ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LEVELDB, namespace='namespace',
-                                   name='name'))
-    rp = RollPair(store, opts=TestRollPair.opts)
 
-    res = rp.map_values(lambda v : v + b'~2', output=ErStore(store_locator = ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LEVELDB, namespace='namespace', name='testMapValues')))
+  storage_options = {'cluster_manager_host': 'localhost',
+          'cluster_manager_port': 4670,
+          'pair_type': 'v1/egg-pair',
+          'egg_pair_service_host': 'localhost',
+          'egg_pair_service_port': 20001}
+
+  store_type = StoreTypes.ROLLPAIR_LEVELDB
+  def test_get(self):
+    store = ErStore(ErStoreLocator(store_type=TestRollPair.store_type, namespace="namespace",
+                                   name="name"))
+    rp = RollPair(store, options=TestRollPair.storage_options)
+    res = rp.get(bytes('1', encoding='utf-8'))
+    print("res: {}".format(res))
+
+  def test_put(self):
+    store = ErStore(store_locator=ErStoreLocator(store_type=TestRollPair.store_type, namespace="namespace",
+                                                 name="name"))
+    rp = RollPair(er_store=store, options=TestRollPair.storage_options)
+    res = rp.put(b'key', b'value')
+    print("res: {}".format(res))
+
+  def test_map_values(self):
+    store = ErStore(ErStoreLocator(store_type=TestRollPair.store_type, namespace='namespace',
+                                   name='name'))
+    rp = RollPair(store, options=TestRollPair.options)
+
+    res = rp.map_values(lambda v : v + b'~2', output=ErStore(store_locator = ErStoreLocator(store_type=TestRollPair.store_type, namespace='namespace', name='testMapValues')))
 
     print('res: ', res)
 
   def test_reduce(self):
-    store = ErStore(ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LEVELDB, namespace='namespace',
+    store = ErStore(ErStoreLocator(store_type=TestRollPair.store_type, namespace='namespace',
                                    name='name'))
 
-    rp = RollPair(store, opts=TestRollPair.opts)
+    rp = RollPair(store, options=TestRollPair.options)
     res = rp.reduce(lambda x, y : x + y)
     print('res: ', res)
 
   def test_aggregate(self):
-    store = ErStore(ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LEVELDB, namespace='namespace',
+    store = ErStore(ErStoreLocator(store_type=TestRollPair.store_type, namespace='namespace',
                                    name='name'))
 
-    rp = RollPair(store, opts=TestRollPair.opts)
+    rp = RollPair(store, options=TestRollPair.options)
     res = rp.aggregate(zero_value=None, seq_op=lambda x, y : x + y, comb_op=lambda x, y : y + x)
     print('res: ', res)
 
   def test_join(self):
-    left_locator = ErStoreLocator(store_type="levelDb", namespace="ns",
-                                   name='name')
-    right_locator = ErStoreLocator(store_type="levelDb", namespace="ns",
-                                   name='test')
+    left_locator = ErStore(store_locator=ErStoreLocator(store_type=TestRollPair.store_type, namespace="namespace",
+                                   name='name'))
+    right_locator = ErStore(store_locator=ErStoreLocator(store_type=TestRollPair.store_type, namespace="namespace",
+                                   name='test'))
 
-    left = RollPair(left_locator)
-    right = RollPair(right_locator)
+    left = RollPair(left_locator, options=TestRollPair.options)
+    right = RollPair(right_locator, options=TestRollPair.options)
     res = left.join(right, lambda x, y : x + b' joins ' + y)
     print('res: ', res)
 
 
   def test_map(self):
-    store_locator = ErStoreLocator(store_type="levelDb", namespace="ns",
-                                  name='name')
+    store = ErStore(ErStoreLocator(store_type=TestRollPair.store_type, namespace='namespace',
+                                   name='name'))
+    rp = RollPair(store, options=TestRollPair.options)
 
-    rp = RollPair(store_locator)
-
-    res = rp.map(lambda k, v: (b'k_' + k, b'v_' + v), lambda k : k[-1] % 4)
+    res = rp.map(lambda k, v: (b'k_' + k, b'v_' + v), output=ErStore(store_locator=ErStoreLocator(store_type=TestRollPair.store_type, namespace='namespace', name='testMap')))
 
     print('res: ', res)
 
-  def test_map_values_raw(self):
-    def append_byte(v):
-      return v + b'~1'
+  def test_map_partitions(self):
+    store = ErStore(ErStoreLocator(store_type=TestRollPair.store_type, namespace='namespace',
+                                   name='name'))
+    rp = RollPair(store, options=TestRollPair.options)
 
-    pickled_function = cloudpickle.dumps(append_byte)
+    def func(iter):
+      ret = []
+      for k, v in iter:
+        k = int(k)
+        v = int(v)
+        ret.append((bytes(f"{k}_{v}_0", encoding='utf8'), bytes(str(v ** 2), encoding='utf8')))
+        ret.append((bytes(f"{k}_{v}_1", encoding='utf8'), bytes(str(v ** 3), encoding='utf8')))
+      return ret
+    res = rp.map_partitions(func)
+    print("res: {}".format(res))
 
-    store_locator = ErStoreLocator(store_type="levelDb", namespace="ns",
-                                   name='name')
-    functor = ErFunctor(name="mapValues", body=pickled_function)
+  def test_collapse_partitions(self):
+    store = ErStore(ErStoreLocator(store_type=TestRollPair.store_type, namespace='namespace',
+                                   name='name'))
+    rp = RollPair(store, options=TestRollPair.options)
 
-    job = ErJob(id="1", name="mapValues",
-                inputs=[ErStore(store_locator=store_locator)],
-                functors=[functor])
+    def f(iterator):
+      sum = ""
+      for k, v in iterator:
+        sum += v
+      return sum
+    res = rp.collapse_partitions(f)
+    print("res: {}".format(res))
 
-    channel = grpc.insecure_channel(target='localhost:20000',
-                                    options=[
-                                      ('grpc.max_send_message_length', -1),
-                                      ('grpc.max_receive_message_length', -1)])
+  def test_filter(self):
+    store = ErStore(ErStoreLocator(store_type=TestRollPair.store_type, namespace='namespace',
+                                   name='name'))
+    rp = RollPair(store, options=TestRollPair.options)
+    res = rp.filter(lambda k, v: int(k) % 2 != 0)
+    print("res: {}".format(res))
 
-    roll_pair_stub = command_pb2_grpc.CommandServiceStub(channel)
+  def test_glom(self):
+    store = ErStore(ErStoreLocator(store_type=TestRollPair.store_type, namespace='namespace',
+                                   name='name'))
+    rp = RollPair(store, options=TestRollPair.options)
 
-    request = ErCommandRequest(seq=1,
-                               uri='com.webank.eggroll.rollpair.component.RollPair.mapValues',
-                               args=[job.to_proto().SerializeToString()])
+    res = rp.glom()
+    print("res: {}".format(res))
 
-    print(f"ready to call")
-    result = roll_pair_stub.call(request.to_proto())
+  def test_flatMap(self):
+    store = ErStore(ErStoreLocator(store_type=TestRollPair.store_type, namespace='namespace',
+                                   name='name'))
+    rp = RollPair(store, options=TestRollPair.options)
+    import random
+    def foo(k, v):
+      k = int(k)
+      v = int(v)
+      result = []
+      r = random.randint(10000, 99999)
+      for i in range(0, k):
+        result.append((k + r + i, v + r + i))
+      return result
+    res = rp.flat_map(foo)
+    print("res: {}".format(res))
 
+  def test_sample(self):
+    store = ErStore(ErStoreLocator(store_type=TestRollPair.store_type, namespace='namespace',
+                                   name='name'))
+    rp = RollPair(store, options=TestRollPair.options)
 
-    time.sleep(1200)
+    res = rp.sample(0.1, 81)
+    print("res: {}".format(res))
 
-  def test_reduce_raw(self):
-    def concat(a, b):
-      return a + b
+  def test_subtractByKey(self):
+    left_locator = ErStore(store_locator=ErStoreLocator(store_type=TestRollPair.store_type, namespace="namespace",
+                                                        name='name'))
+    right_locator = ErStore(store_locator=ErStoreLocator(store_type=TestRollPair.store_type, namespace="namespace",
+                                                         name='test'))
 
-    pickled_function = cloudpickle.dumps(concat)
+    left = RollPair(left_locator, options=TestRollPair.options)
+    right = RollPair(right_locator, options=TestRollPair.options)
 
-    store_locator = ErStoreLocator(store_type="levelDb", namespace="ns",
-                                   name='name')
-    job = ErJob(id="1", name="reduce",
-                inputs=[ErStore(store_locator=store_locator)],
-                functors=[ErFunctor(name="reduce", body=pickled_function)])
+    res = left.subtract_by_key(right)
+    print("res: {}".format(res))
 
-    channel = grpc.insecure_channel(target='localhost:20000',
-                                    options=[
-                                      ('grpc.max_send_message_length', -1),
-                                      ('grpc.max_receive_message_length', -1)])
+  def test_union(self):
+    left_locator = ErStore(store_locator=ErStoreLocator(store_type=TestRollPair.store_type, namespace="namespace",
+                                                        name='name'))
+    right_locator = ErStore(store_locator=ErStoreLocator(store_type=TestRollPair.store_type, namespace="namespace",
+                                                         name='test'))
 
-    roll_pair_stub = command_pb2_grpc.CommandServiceStub(channel)
-    request = ErCommandRequest(seq=1,
-                               uri='com.webank.eggroll.rollpair.component.RollPair.reduce',
-                               args=[job.to_proto().SerializeToString()])
+    left = RollPair(left_locator, options=TestRollPair.options)
+    right = RollPair(right_locator, options=TestRollPair.options)
 
-    result = roll_pair_stub.call(request.to_proto())
-    time.sleep(1200)
-
+    res = left.union(right, lambda v1, v2: v1 + v2)
+    print("res: {}".format(res))
 
 if __name__ == '__main__':
   unittest.main()

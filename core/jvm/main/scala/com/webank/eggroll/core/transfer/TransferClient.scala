@@ -18,7 +18,7 @@
 
 package com.webank.eggroll.core.transfer
 
-import java.nio.ByteBuffer
+import java.nio.{ByteBuffer, ByteOrder}
 import java.util
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
@@ -36,22 +36,22 @@ import com.webank.eggroll.core.meta.TransferModelPbMessageSerdes._
 
 class GrpcTransferClient {
   private val stage = new AtomicInteger(0)
-  private val context = new GrpcClientContext[TransferServiceGrpc.TransferServiceStub, Transfer.TransferBatch, Transfer.TransferHeader]
-  private val template = new GrpcClientTemplate[TransferServiceGrpc.TransferServiceStub, Transfer.TransferBatch, Transfer.TransferHeader]
+  private val context = new GrpcClientContext[TransferServiceGrpc.TransferServiceStub, Transfer.TransferBatch, Transfer.TransferBatch]
+  private val template = new GrpcClientTemplate[TransferServiceGrpc.TransferServiceStub, Transfer.TransferBatch, Transfer.TransferBatch]
 
   def sendSingle(data: Array[Byte], tag: String, processor: ErProcessor, status: String = StringConstants.EMPTY): Unit = {
-    val context = new GrpcClientContext[TransferServiceGrpc.TransferServiceStub, Transfer.TransferBatch, Transfer.TransferHeader]
+    val context = new GrpcClientContext[TransferServiceGrpc.TransferServiceStub, Transfer.TransferBatch, Transfer.TransferBatch]
 
-    val delayedResult = new AwaitSettableFuture[Transfer.TransferHeader]
+    val delayedResult = new AwaitSettableFuture[Transfer.TransferBatch]
 
     context.setStubClass(classOf[TransferServiceGrpc.TransferServiceStub])
       .setServerEndpoint(processor.commandEndpoint)
       .setCallerStreamingMethodInvoker((stub: TransferServiceGrpc.TransferServiceStub,
-                                        responseObserver: StreamObserver[Transfer.TransferHeader]) => stub.send(responseObserver))
-      .setCallerStreamObserverClassAndInitArgs(classOf[SameTypeCallerResponseStreamObserver[Transfer.TransferBatch, Transfer.TransferHeader]])
+                                        responseObserver: StreamObserver[Transfer.TransferBatch]) => stub.send(responseObserver))
+      .setCallerStreamObserverClassAndInitArgs(classOf[SameTypeCallerResponseStreamObserver[Transfer.TransferBatch, Transfer.TransferBatch]])
       .setRequestStreamProcessorClassAndArgs(classOf[TransferSendStreamProcessor], data, tag, status)
 
-    val template = new GrpcClientTemplate[TransferServiceGrpc.TransferServiceStub, Transfer.TransferBatch, Transfer.TransferHeader]
+    val template = new GrpcClientTemplate[TransferServiceGrpc.TransferServiceStub, Transfer.TransferBatch, Transfer.TransferBatch]
 
     template.setGrpcClientContext(context)
 
@@ -68,8 +68,8 @@ class GrpcTransferClient {
     context.setStubClass(classOf[TransferServiceGrpc.TransferServiceStub])
       .setServerEndpoint(processor.commandEndpoint)
       .setCallerStreamingMethodInvoker((stub: TransferServiceGrpc.TransferServiceStub,
-                                        responseObserver: StreamObserver[Transfer.TransferHeader]) => stub.send(responseObserver))
-      .setCallerStreamObserverClassAndInitArgs(classOf[SameTypeCallerResponseStreamObserver[Transfer.TransferBatch, Transfer.TransferHeader]])
+                                        responseObserver: StreamObserver[Transfer.TransferBatch]) => stub.send(responseObserver))
+      .setCallerStreamObserverClassAndInitArgs(classOf[SameTypeCallerResponseStreamObserver[Transfer.TransferBatch, Transfer.TransferBatch]])
       .setRequestStreamProcessorClassAndArgs(classOf[GrpcKvPackingTransferSendStreamProcessor], dataBroker, tag, status)
 
     template.setGrpcClientContext(context)
@@ -86,8 +86,8 @@ class GrpcTransferClient {
     context.setStubClass(classOf[TransferServiceGrpc.TransferServiceStub])
       .setServerEndpoint(processor.commandEndpoint)
       .setCallerStreamingMethodInvoker((stub: TransferServiceGrpc.TransferServiceStub,
-                                        responseObserver: StreamObserver[Transfer.TransferHeader]) => stub.send(responseObserver))
-      .setCallerStreamObserverClassAndInitArgs(classOf[SameTypeCallerResponseStreamObserver[Transfer.TransferBatch, Transfer.TransferHeader]])
+                                        responseObserver: StreamObserver[Transfer.TransferBatch]) => stub.send(responseObserver))
+      .setCallerStreamObserverClassAndInitArgs(classOf[SameTypeCallerResponseStreamObserver[Transfer.TransferBatch, Transfer.TransferBatch]])
       .setRequestStreamProcessorClassAndArgs(classOf[GrpcForwardingTransferSendStreamProcessor], dataBroker, tag, status)
 
     template.setGrpcClientContext(context)
@@ -184,6 +184,7 @@ class GrpcKvPackingTransferSendStreamProcessor(clientCallStreamObserver: ClientC
       return
     }
     directBinPacketBuffer = ByteBuffer.allocateDirect(binPacketLength)
+    directBinPacketBuffer.order(ByteOrder.LITTLE_ENDIAN)
     directBinPacketBuffer.put(NetworkConstants.TRANSFER_PROTOCOL_MAGIC_NUMBER)   // magic num
     directBinPacketBuffer.put(NetworkConstants.TRANSFER_PROTOCOL_VERSION)     // protocol version
     directBinPacketBuffer.putInt(0)   // header length
