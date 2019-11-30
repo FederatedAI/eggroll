@@ -25,9 +25,25 @@ import com.google.gson.stream.JsonReader;
 import com.webank.ai.eggroll.api.core.BasicMeta;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
 import com.webank.eggroll.rollsite.model.ProxyServerConf;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.io.Reader;
+import java.io.UnsupportedEncodingException;
+import java.io.Writer;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -90,6 +106,225 @@ public class ConfFileBasedFdnRouter implements FdnRouter {
         } else {
             LOGGER.warn("trying to reset routeTable path. current path: {}, tried path: {}",
                     routeTableFilename, filename);
+        }
+    }
+
+    public static String format(String jsonStr){
+        try {
+            ByteArrayInputStream in = new ByteArrayInputStream(jsonStr.getBytes());
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            char ch;
+            int read;
+            int space=0;
+            while((read = in.read()) > 0){
+                ch = (char)read;
+                switch (ch){
+                    case '{': {
+                        space = outputAndRightMove(space, ch, out);
+                        break;
+                    }
+                    case '[': {
+                        out.write(ch);
+                        space += 2;
+                        break;
+                    }
+                    case '}': {
+                        space = outputAndLeftMove(space, ch, out);
+                        break;
+                    }
+                    case ']': {
+                        space = outputAndLeftMove(space, ch, out);
+                        break;
+                    }
+                    case ',': {
+                        out.write(ch);
+                        outputNewline(out);
+                        out.write(getBlankingStringBytes(space));
+                        break;
+                    }
+                    default: {
+                        out.write(ch);
+                        break;
+                    }
+                }
+            }
+            return out.toString();
+        } catch (IOException e){
+            e.printStackTrace();
+        }
+
+        return null;
+    }
+
+    public static int outputAndRightMove(int space, char ch, ByteArrayOutputStream out) throws IOException {
+        outputNewline(out);
+        out.write(getBlankingStringBytes(space));
+        out.write(ch);
+        outputNewline(out);
+        space += 2;
+        out.write(getBlankingStringBytes(space));
+        return space;
+    }
+
+    public static int outputAndLeftMove(int space, char ch, ByteArrayOutputStream out) throws IOException{
+        outputNewline(out);
+        space -= 2;
+        out.write(getBlankingStringBytes(space));
+        out.write(ch);
+        return space;
+    }
+
+    public static byte[] getBlankingStringBytes(int space){
+        StringBuilder sb = new StringBuilder("");
+        for (int i = 0; i < space; i++) {
+            sb.append(" ");
+        }
+        return sb.toString().getBytes();
+    }
+
+    public static void outputNewline(ByteArrayOutputStream out){
+        out.write('\n');
+    }
+
+
+    @Override
+    public void initRouteTableFile(String routeTablePath) {
+        JSONObject result = new JSONObject();
+        JSONObject seg0 = new JSONObject();
+        JSONObject seg1 = new JSONObject();
+        JSONObject seg2 = new JSONObject();
+        JSONObject default_allow = new JSONObject();
+        seg0.put("ip", "127.0.0.1");
+        seg0.put("port", "9999");
+
+        JSONArray jsonArray = new JSONArray();
+        jsonArray.put(0, seg0);
+
+        seg1.put("default", jsonArray);
+        seg2.put("default", seg1);
+
+        default_allow.put("default_allow", true);
+
+        result.put("route_table", seg2);
+        result.put("permission", default_allow);
+
+        String jsonString = format(result.toString());
+        try {
+            System.out.println("routeTablePath:" + routeTablePath);
+            File file = new File(routeTablePath);
+            if (!file.getParentFile().exists()) {
+                file.getParentFile().mkdirs();
+            }
+            if (file.exists()) {
+                file.delete();
+            }
+            file.createNewFile();
+
+            Writer write = new OutputStreamWriter(new FileOutputStream(file), "UTF-8");
+            write.write(jsonString);
+            write.flush();
+            write.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        /*
+        File file = new File(routeTablePath);
+        if(file.exists()) {
+            file.delete();
+        }
+        try {
+            file.createNewFile();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        FileWriter fw = null;
+        try {
+            fw = new FileWriter(file.getAbsoluteFile());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        BufferedWriter bw = new BufferedWriter(fw);
+        result.write(bw);
+        try {
+            bw.flush();
+            bw.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        */
+        System.out.println("end initRouteTable");
+    }
+
+
+    @Override
+    public void updateRouteTable(String fileName, String partyId, String ip, int port) {
+        String ws;
+        String jsonString;
+
+        System.out.println("filename:" + fileName);
+
+        try {
+            File jsonFile = new File(fileName);
+            FileReader fileReader = new FileReader(jsonFile);
+
+            Reader reader = new InputStreamReader(new FileInputStream(jsonFile), "utf-8");
+            int ch = 0;
+            StringBuffer data = new StringBuffer();
+            while ((ch = reader.read()) != -1) {
+                data.append((char) ch);
+            }
+
+            //System.out.println("data:" + data);
+            JSONObject seg0 = new JSONObject();
+            JSONObject seg1 = new JSONObject();
+            JSONObject seg2 = new JSONObject();
+
+            jsonString = data.toString();
+            JSONObject dataJson = new JSONObject(jsonString);
+            //JSONObject dataJson = new JSONObject(data);
+            //JSONArray item = dataJson.getJSONArray("route_table");
+
+            seg0.put("ip", ip);
+            seg0.put("port", port);
+
+            JSONArray jsonArray = new JSONArray();
+            jsonArray.put(0, seg0);
+
+            seg1.put("default", jsonArray);
+            //seg2.put(partId, seg1);
+
+            JSONObject addJson = dataJson.getJSONObject("route_table");
+            addJson.put(partyId, seg1);
+
+            dataJson.put("route_table", addJson);
+
+            ws = dataJson.toString();
+            //System.out.println(ws);
+
+            fileReader.close();
+            reader.close();
+
+            jsonString = format(ws);
+            File file = new File(fileName);
+            if (!file.getParentFile().exists()) {
+                file.getParentFile().mkdirs();
+            }
+            if (file.exists()) {
+                file.delete();
+            }
+            file.createNewFile();
+
+            Writer write = new OutputStreamWriter(new FileOutputStream(file), "UTF-8");
+            write.write(jsonString);
+            write.flush();
+            write.close();
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 

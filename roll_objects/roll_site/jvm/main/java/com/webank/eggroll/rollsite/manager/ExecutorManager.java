@@ -16,8 +16,6 @@
 
 package com.webank.eggroll.rollsite.manager;
 
-
-//import com.webank.ai.eggroll.core.utils.ToStringUtils;
 import org.apache.commons.text.StringSubstitutor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -51,8 +49,7 @@ public class ExecutorManager {
     private ThreadPoolTaskExecutor grpcClientExecutor;
     @Autowired
     private ThreadPoolTaskScheduler routineScheduler;
-    //@Autowired
-    //private ToStringUtils toStringUtils;
+
     private List<ThreadPoolTaskExecutor> threadPoolExecutors;
 
     public ExecutorManager() {

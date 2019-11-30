@@ -18,7 +18,13 @@
 
 package com.webank.eggroll.rollpair.io
 
-import com.webank.eggroll.core.constant.StoreTypes
+import java.nio.ByteBuffer
+
+import com.google.protobuf.ByteString
+import com.webank.eggroll.core.constant.{NetworkConstants, StoreTypes}
+import com.webank.eggroll.core.datastructure.LinkedBlockingBroker
+import com.webank.eggroll.core.meta.{ErStore, ErStoreLocator}
+import com.webank.eggroll.rollpair.client.RollPair
 import org.junit.Test
 
 import scala.collection.mutable.ListBuffer
@@ -75,6 +81,28 @@ class TestIo {
       val next = iter.next()
       println("key: " + new String(next._1) + ", value: " + new String(next._2))
     }
+  }
+
+  @Test
+  def testPutBatch(): Unit = {
+    val input = ErStore(ErStoreLocator(storeType = StoreTypes.ROLLPAIR_LEVELDB, namespace = "namespace", name = "name"))
+    val rp = new RollPair(input)
+
+    var directBinPacketBuffer: ByteBuffer = ByteBuffer.allocateDirect(1<<10)
+    directBinPacketBuffer.put(NetworkConstants.TRANSFER_PROTOCOL_MAGIC_NUMBER)   // magic num
+    directBinPacketBuffer.put(NetworkConstants.TRANSFER_PROTOCOL_VERSION)     // protocol version
+    directBinPacketBuffer.putInt(4)   // header length
+    directBinPacketBuffer.putInt(16)  // body size
+    directBinPacketBuffer.putInt(4)   // key length (bytes)
+    directBinPacketBuffer.putInt(3)   // key
+    directBinPacketBuffer.putInt(4)   // value length (bytes)
+    directBinPacketBuffer.putInt(5)   // value
+
+    directBinPacketBuffer.flip()
+
+    val broker = new LinkedBlockingBroker[ByteString]()
+    broker.put(ByteString.copyFrom(directBinPacketBuffer))
+    rp.putBatch(broker)
   }
 
   @Test

@@ -25,6 +25,10 @@ public interface FdnRouter {
 
     void setRouteTable(String filename);
 
+    void initRouteTableFile(String filename);
+
+    void updateRouteTable(String filename, String partId, String ip, int port);
+
     boolean isAllowed(Proxy.Topic from, Proxy.Topic to);
 
     boolean isIntranet(BasicMeta.Endpoint endpoint);

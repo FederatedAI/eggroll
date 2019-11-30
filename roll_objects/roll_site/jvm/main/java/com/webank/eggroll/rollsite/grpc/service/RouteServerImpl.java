@@ -19,8 +19,8 @@ package com.webank.eggroll.rollsite.grpc.service;
 import com.webank.ai.eggroll.api.core.BasicMeta;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
 import com.webank.ai.eggroll.api.networking.proxy.RouteServiceGrpc;
+import com.webank.eggroll.core.util.ErrorUtils;
 import com.webank.eggroll.core.util.ToStringUtils;
-import com.webank.eggroll.rollsite.grpc.core.utils.ErrorUtils;
 import com.webank.eggroll.rollsite.service.FdnRouter;
 import io.grpc.stub.StreamObserver;
 import org.apache.logging.log4j.LogManager;
@@ -36,8 +36,6 @@ public class RouteServerImpl extends RouteServiceGrpc.RouteServiceImplBase {
     private static final Logger LOGGER = LogManager.getLogger(RouteServerImpl.class);
     @Autowired
     private FdnRouter fdnRouter;
-    @Autowired
-    private ErrorUtils errorUtils;
 
     @Override
     public void query(Proxy.Topic request, StreamObserver<BasicMeta.Endpoint> responseObserver) {
@@ -47,7 +45,7 @@ public class RouteServerImpl extends RouteServiceGrpc.RouteServiceImplBase {
 
         if (result == null) {
             NullPointerException e = new NullPointerException("no valid route for topic: " + requestString);
-            responseObserver.onError(errorUtils.toGrpcRuntimeException(e));
+            responseObserver.onError(ErrorUtils.toGrpcRuntimeException(e));
         }
 
         LOGGER.info("[ROUTE] querying route result for topic: {}, result: {}", requestString, ToStringUtils.toOneLineString(result));
