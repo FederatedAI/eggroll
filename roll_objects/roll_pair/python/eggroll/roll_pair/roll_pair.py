@@ -23,14 +23,17 @@ from eggroll.cluster_manager.cluster_manager_client import ClusterManagerClient
 from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.constants import StoreTypes, SerdesTypes, PartitionerTypes
 from eggroll.core.serdes.eggroll_serdes import PickleSerdes, CloudPickleSerdes, EmptySerdes
-from eggroll.core.utils import string_to_bytes
+from eggroll.core.utils import string_to_bytes, hash_code
 from eggroll.roll_pair.egg_pair import EggPair
-
+from eggroll.utils import log_utils
+log_utils.setDirectory()
+LOGGER = log_utils.getLogger()
 
 class RollPair(object):
   __uri_prefix = 'v1/roll-pair'
   GET = "get"
   PUT = "put"
+  DESTROY = "destroy"
   MAP = 'map'
   MAP_VALUES = 'mapValues'
   REDUCE = 'reduce'
@@ -55,7 +58,7 @@ class RollPair(object):
       self.__roll_pair_service_stub = command_pb2_grpc.CommandServiceStub(self.__roll_pair_service_channel)
     elif options['pair_type'] == EggPair.uri_prefix:
       self.__egg_pair_service_endpoint = ErEndpoint(host=options['egg_pair_service_host'], port=options['egg_pair_service_port'])
-      print("init endpoint:{}".format(self.__egg_pair_service_endpoint))
+      LOGGER.info("init endpoint:{}".format(self.__egg_pair_service_endpoint))
       self.__egg_pair_service_channel = _grpc_channel_factory.create_channel(self.__egg_pair_service_endpoint)
       self.__egg_pair_service_stub = command_pb2_grpc.CommandServiceStub(self.__egg_pair_service_channel)
 
@@ -133,26 +136,45 @@ class RollPair(object):
     storage api
   
   """
+
+  def pair_store(self, name: str, namespace: str, partition=1,
+                 create_if_missing=True,
+                 error_if_exist=False,
+                 persistent=True,
+                 in_place_computing=False,
+                 persistent_engine=StoreTypes.ROLLPAIR_LMDB):
+    er_store_locator = ErStoreLocator(name=name, namespace=namespace, total_partitions=partition, store_type=persistent_engine)
+    er_store = ErStore(store_locator=er_store_locator)
+    return self.land(er_store=er_store)
+
+
   def get(self, k, opt = {}):
+    def partitioner(hash_func, total_partitions):
+      def partitioner_wrapper(k):
+        return hash_func(k) % total_partitions
+      return partitioner_wrapper
+    partition_id_wrapper = partitioner(hash_code, self.__store._store_locator._total_partitions)
+    partition_id = partition_id_wrapper(k)
+
     k = self.get_serdes().serialize(k)
     er_pair = ErPair(key=k, value=None)
     outputs = []
     value = None
-    print("count:", self.__store._store_locator._total_partitions)
+    LOGGER.info("count:".format(self.__store._store_locator._total_partitions))
     for i in range(self.__store._store_locator._total_partitions):
       inputs = [ErPartition(id=i, store_locator=self.__store._store_locator,
                             processor=ErProcessor(id=1,command_endpoint=self.__egg_pair_service_endpoint,
                                                   data_endpoint=self.__egg_pair_service_endpoint))]
-      output = [ErPartition(id=i, store_locator=self.__store._store_locator,
-                            processor=ErProcessor(id=1,command_endpoint=self.__egg_pair_service_endpoint,
-                                                  data_endpoint=self.__egg_pair_service_endpoint))]
+      # output = [ErPartition(id=i, store_locator=self.__store._store_locator,
+      #                       processor=ErProcessor(id=1,command_endpoint=self.__egg_pair_service_endpoint,
+      #                                             data_endpoint=self.__egg_pair_service_endpoint))]
 
       job = ErJob(id=self.__session_id, name=RollPair.GET,
                   inputs=[self.__store],
-                  outputs=outputs,
+                  outputs=[],
                   functors=[ErFunctor(body=cloudpickle.dumps(er_pair))])
-      task = ErTask(id=self.__session_id, name=RollPair.GET, inputs=inputs, outputs=output, job=job)
-      print("start send req")
+      task = ErTask(id=self.__session_id, name=RollPair.GET, inputs=inputs, outputs=[], job=job)
+      LOGGER.info("start send req")
       job_resp = self.__roll_pair_command_client.simple_sync_send(
         input=task,
         output_type=ErPair,
@@ -160,32 +182,39 @@ class RollPair(object):
         command_uri=CommandURI(f'{EggPair.uri_prefix}/{EggPair.GET}'),
         serdes_type=self.__command_serdes
       )
-      print("get resp:{}".format(ErPair.from_proto_string(job_resp._value)))
+      LOGGER.info("get resp:{}".format(ErPair.from_proto_string(job_resp._value)))
 
       if value is not None and value != b'':
         value = self.value_serdes.deserialize(job_resp._value)
-        print(value)
+        LOGGER.info(value)
         break
 
     return value
 
   def put(self, k, v, opt = {}):
+    def partitioner(hash_func, total_partitions):
+      def partitioner_wrapper(k):
+        return hash_func(k) % total_partitions
+      return partitioner_wrapper
+    partition_id_wrapper = partitioner(hash_code, self.__store._store_locator._total_partitions)
+    partition_id = partition_id_wrapper(k)
+
     k, v = self.get_serdes().serialize(k), self.get_serdes().serialize(v)
     er_pair = ErPair(key=k, value=v)
     outputs = []
-    inputs = [ErPartition(id=1, store_locator=self.__store._store_locator,
+    inputs = [ErPartition(id=partition_id, store_locator=self.__store._store_locator,
                           processor=ErProcessor(id=1, command_endpoint=self.__egg_pair_service_endpoint,
                                                 data_endpoint=self.__egg_pair_service_endpoint))]
-    output = [ErPartition(id=1, store_locator=self.__store._store_locator,
-                          processor=ErProcessor(id=1, command_endpoint=self.__egg_pair_service_endpoint,
-                                                data_endpoint=self.__egg_pair_service_endpoint))]
+    # output = [ErPartition(id=1, store_locator=self.__store._store_locator,
+    #                       processor=ErProcessor(id=1, command_endpoint=self.__egg_pair_service_endpoint,
+    #                                             data_endpoint=self.__egg_pair_service_endpoint))]
 
     job = ErJob(id=self.__session_id, name=RollPair.PUT,
                 inputs=[self.__store],
-                outputs=outputs,
+                outputs=[],
                 functors=[ErFunctor(body=cloudpickle.dumps(er_pair))])
-    task = ErTask(id=self.__session_id, name=RollPair.PUT, inputs=inputs, outputs=output, job=job)
-    print("start send req")
+    task = ErTask(id=self.__session_id, name=RollPair.PUT, inputs=inputs, outputs=[], job=job)
+    LOGGER.info("start send req")
     job_resp = self.__roll_pair_command_client.simple_sync_send(
       input=task,
       output_type=ErPair,
@@ -193,7 +222,27 @@ class RollPair(object):
       command_uri=CommandURI(f'{EggPair.uri_prefix}/{EggPair.PUT}'),
       serdes_type=self.__command_serdes
     )
-    print("get resp:{}".format(ErPair.from_proto_string(job_resp._value)))
+    LOGGER.info("get resp:{}".format(ErPair.from_proto_string(job_resp._value)))
+    value = job_resp._value
+    return value
+
+  def destroy(self):
+    LOGGER.info("destroy store:{}".format(self.__store))
+    inputs = [ErPartition(id=1, store_locator=self.__store._store_locator,
+                          processor=ErProcessor(id=1, command_endpoint=self.__egg_pair_service_endpoint,
+                                                data_endpoint=self.__egg_pair_service_endpoint))]
+    job = ErJob(id=self.__session_id, name=RollPair.DESTROY,
+                inputs=[self.__store],
+                outputs=[],
+                functors=[])
+    task = ErTask(id=self.__session_id, name=RollPair.PUT, inputs=inputs, outputs=[], job=job)
+    job_resp = self.__roll_pair_command_client.simple_sync_send(
+      input=task,
+      output_type=ErPair,
+      endpoint=self.__egg_pair_service_endpoint,
+      command_uri=CommandURI(f'{EggPair.uri_prefix}/{EggPair.PUT}'),
+      serdes_type=self.__command_serdes
+    )
     value = job_resp._value
     return value
 
@@ -216,7 +265,7 @@ class RollPair(object):
         serdes_type=self.__command_serdes)
 
     er_store = job_result._outputs[0]
-    print(er_store)
+    LOGGER.info(er_store)
 
     return RollPair(er_store, options=self._parent_opts)
 
@@ -238,7 +287,7 @@ class RollPair(object):
         serdes_type=self.__command_serdes)
 
     er_store = job_result._outputs[0]
-    print(er_store)
+    LOGGER.info(er_store)
 
     return RollPair(er_store, options=self._parent_opts)
 
@@ -260,7 +309,7 @@ class RollPair(object):
       serdes_type=self.__command_serdes
     )
     er_store = job_result._outputs[0]
-    print(er_store)
+    LOGGER.info(er_store)
 
     return RollPair(er_store, options=self._parent_opts)
 
@@ -283,7 +332,7 @@ class RollPair(object):
       serdes_type=self.__command_serdes
     )
     er_store = job_result._outputs[0]
-    print(er_store)
+    LOGGER.info(er_store)
 
     return RollPair(er_store, options=self._parent_opts)
 
@@ -306,7 +355,7 @@ class RollPair(object):
       serdes_type=self.__command_serdes
     )
     er_store = job_result._outputs[0]
-    print(er_store)
+    LOGGER.info(er_store)
 
     return RollPair(er_store, options=self._parent_opts)
 
@@ -375,7 +424,7 @@ class RollPair(object):
       serdes_type=self.__command_serdes
     )
     er_store = job_result._outputs[0]
-    print(er_store)
+    LOGGER.info(er_store)
 
     return RollPair(er_store, options=self._parent_opts)
 
@@ -399,7 +448,7 @@ class RollPair(object):
       serdes_type=self.__command_serdes)
 
     er_store = job_result._outputs[0]
-    print(er_store)
+    LOGGER.info(er_store)
 
     return RollPair(er_store, options=self._parent_opts)
 
@@ -422,7 +471,7 @@ class RollPair(object):
       serdes_type=self.__command_serdes)
 
     er_store = job_result._outputs[0]
-    print(er_store)
+    LOGGER.info(er_store)
 
     return RollPair(er_store, options=self._parent_opts)
 
@@ -443,7 +492,7 @@ class RollPair(object):
       command_uri=CommandURI(f'{RollPair.__uri_prefix}/{RollPair.SUBTRACTBYKEY}'),
       serdes_type=self.__command_serdes)
     er_store = job_result._outputs[0]
-    print(er_store)
+    LOGGER.info(er_store)
 
     return RollPair(er_store, options=self._parent_opts)
 
@@ -464,7 +513,7 @@ class RollPair(object):
       command_uri=CommandURI(f'{RollPair.__uri_prefix}/{RollPair.SUBTRACTBYKEY}'),
       serdes_type=self.__command_serdes)
     er_store = job_result._outputs[0]
-    print(er_store)
+    LOGGER.info(er_store)
 
     return RollPair(er_store, options=self._parent_opts)
 
@@ -485,6 +534,6 @@ class RollPair(object):
       command_uri=CommandURI(f'{RollPair.__uri_prefix}/{RollPair.JOIN}'),
       serdes_type=self.__command_serdes)
     er_store = job_result._outputs[0]
-    print(er_store)
+    LOGGER.info(er_store)
 
     return RollPair(er_store, options=self._parent_opts)

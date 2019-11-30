@@ -11,11 +11,14 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+import hashlib
+import sys
 from datetime import datetime
 import json
 import time
 import traceback
+
+import math
 
 
 def _to_proto(rpc_message):
@@ -97,3 +100,52 @@ def get_self_ip():
   finally:
     s.close()
   return self_ip
+
+#backup
+def _hashcode(s, partitions):
+  if isinstance(s, bytes):
+    s = bytes_to_string(s)
+  try:
+    s = str(s)
+  except:
+    try:
+      s = str(s.decode('utf8'))
+    except:
+      raise Exception("Please enter a unicode type string or utf8 bytestring.")
+  h = 0
+  print("input:{}".format(s))
+  for c in s:
+    h = int((((31 * h + ord(c)) ^ 0x80000000) & 0xFFFFFFFF) - 0x80000000)
+  if h == sys.maxsize or h == -sys.maxsize - 1:
+    h = 0
+  h = abs(h) % partitions
+  return h
+
+#AI copy from java ByteString.hashCode()
+def hash_code(s):
+  if isinstance(s, bytes):
+    s = bytes_to_string(s)
+  seed = 31
+  h = 0
+  for c in s:
+    h = int(seed * h) + ord(c)
+
+  if h == sys.maxsize or h == -sys.maxsize - 1:
+    print("hash code:{} out of int bound".format(str(h)))
+    h = 0
+  #h = abs(h) % partitions
+  return h
+
+def hash_key_to_partition(key, partitions):
+  print("key:{}, partitions count:{}".format(key, partitions))
+  _key = hashlib.sha1(key).digest()
+  if isinstance(_key, bytes):
+    _key = int.from_bytes(_key, byteorder='little', signed=False)
+  if partitions < 1:
+    raise ValueError('partitions must be a positive number')
+  b, j = -1, 0
+  while j < partitions:
+    b = int(j)
+    _key = ((_key * 2862933555777941757) + 1) & 0xffffffffffffffff
+    j = float(b + 1) * (float(1 << 31) / float((_key >> 33) + 1))
+  return int(b)
