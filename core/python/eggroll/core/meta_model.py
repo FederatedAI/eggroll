@@ -20,7 +20,7 @@ from eggroll.core.utils import _map_and_listify, _repr_list, _elements_to_proto,
 DEFAULT_DELIM = '/'
 
 class ErEndpoint(RpcMessage):
-  def __init__(self, host, port):
+  def __init__(self, host, port: int):
     self._host = host
     self._port = port
 

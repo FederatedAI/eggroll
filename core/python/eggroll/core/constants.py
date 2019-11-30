@@ -18,6 +18,7 @@ class SerdesTypes(object):
   PROTOBUF = 'PROTOBUF'
   PICKLE = 'PICKLE'
   CLOUD_PICKLE = 'CLOUD_PICKLE'
+  EMPTY = 'EMPTY'
 
 class ServerNodeStatus(object):
   HEALTHY = 'HEALTHY'

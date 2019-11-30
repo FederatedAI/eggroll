@@ -22,7 +22,7 @@ from eggroll.core.command.command_client import CommandClient
 from eggroll.cluster_manager.cluster_manager_client import ClusterManagerClient
 from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.constants import StoreTypes, SerdesTypes, PartitionerTypes
-from eggroll.core.serdes.eggroll_serdes import PickleSerdes, CloudPickleSerdes
+from eggroll.core.serdes.eggroll_serdes import PickleSerdes, CloudPickleSerdes, EmptySerdes
 from eggroll.core.utils import string_to_bytes
 from eggroll.roll_pair.egg_pair import EggPair
 
@@ -78,12 +78,14 @@ class RollPair(object):
     return f'python RollPair(_store={self.__store})'
 
   def get_serdes(self):
-    if self.__store._store_locator._serdes == SerdesTypes.PROTOBUF:
+    serdes_type = self.__store._store_locator._serdes
+    print(f'serdes type: {serdes_type}')
+    if serdes_type == SerdesTypes.CLOUD_PICKLE or serdes_type == SerdesTypes.PROTOBUF:
       return CloudPickleSerdes
-    elif self.__store._store_locator._serdes == SerdesTypes.PICKLE:
+    elif serdes_type == SerdesTypes.PICKLE:
       return PickleSerdes
     else:
-      return CloudPickleSerdes
+      return EmptySerdes
 
   def land(self, er_store: ErStore, options = {}):
     if er_store:

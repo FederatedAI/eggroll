@@ -30,7 +30,7 @@ class ErSession(object):
     if session_id:
       self.__session_id = session_id
     else:
-      self.__session_id = f'er_client_session_{time_now()}_{get_self_ip()}'
+      self.__session_id = f'er_session_{time_now()}_{get_self_ip()}'
     self.__cluster_manager_client = ClusterManagerClient({
       'cluster_manager_host': 'localhost',
       'cluster_manager_port': 4670,

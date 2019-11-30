@@ -120,7 +120,7 @@ class ClusterManagerClient(object):
 
 class NodeManagerClient(object):
   def __init__(self, options = {NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HOST: 'localhost', NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT: 9394}):
-    self.__endpoint = ErEndpoint(options[NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HOST], options[NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT])
+    self.__endpoint = ErEndpoint(options[NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HOST], int(options[NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT]))
     if 'serdes_type' in options:
       self.__serdes_type = options['serdes_type']
     else:
@@ -133,7 +133,6 @@ class NodeManagerClient(object):
         output_type=ErProcessorBatch,
         command_uri=NodeManagerCommands.GET_OR_CREATE_SERVICER,
         serdes_type=self.__serdes_type)
-    print(f'result: {result}')
     return result
 
   def get_or_create_processor_batch(self, session_meta: ErSessionMeta):

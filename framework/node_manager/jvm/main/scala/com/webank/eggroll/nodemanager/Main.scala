@@ -18,10 +18,46 @@
 
 package com.webank.eggroll.nodemanager
 
-import com.webank.eggroll.core.util.Logging
+import java.net.InetSocketAddress
+
+import com.webank.eggroll.core.command.{CommandRouter, CommandService}
+import com.webank.eggroll.core.constant.NodeManagerCommands
+import com.webank.eggroll.core.meta.{ErProcessor, ErProcessorBatch, ErSessionMeta}
+import com.webank.eggroll.core.util.{Logging, MiscellaneousUtils}
+import com.webank.eggroll.nodemanager.component.NodeManagerServicer
+import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
 
 object Main extends Logging {
   def main(args: Array[String]): Unit = {
+    val cmd = MiscellaneousUtils.parseArgs(args = args)
+    val portString = cmd.getOptionValue('p', "9394")
 
+    val rollServer = NettyServerBuilder
+      .forAddress(new InetSocketAddress("127.0.0.1", portString.toInt))
+      .addService(new CommandService).build
+
+    CommandRouter.register(serviceName = NodeManagerCommands.getOrCreateProcessorBatchServiceName,
+      serviceParamTypes = Array(classOf[ErSessionMeta]),
+      serviceResultTypes = Array(classOf[ErProcessorBatch]),
+      routeToClass = classOf[NodeManagerServicer],
+      routeToMethodName = NodeManagerCommands.getOrCreateProcessorBatch)
+
+    CommandRouter.register(serviceName = NodeManagerCommands.getOrCreateServicerServiceName,
+      serviceParamTypes = Array(classOf[ErSessionMeta]),
+      serviceResultTypes = Array(classOf[ErProcessorBatch]),
+      routeToClass = classOf[NodeManagerServicer],
+      routeToMethodName = NodeManagerCommands.getOrCreateServicer)
+
+    CommandRouter.register(serviceName = NodeManagerCommands.heartbeatServiceName,
+      serviceParamTypes = Array(classOf[ErProcessor]),
+      serviceResultTypes = Array(classOf[ErProcessor]),
+      routeToClass = classOf[NodeManagerServicer],
+      routeToMethodName = NodeManagerCommands.heartbeat)
+    rollServer.start()
+    val port = rollServer.getPort
+
+    val msg = s"server started at ${port}"
+    println(msg)
+    logInfo(msg)
   }
 }

@@ -1,4 +1,5 @@
 from eggroll.core.serdes import cloudpickle
+from eggroll.core.constants import SerdesTypes
 from abc import ABCMeta
 from abc import abstractmethod
 from pickle import loads as p_loads
@@ -42,6 +43,16 @@ class PickleSerdes(ABCSerdes):
     bytes_security_check(_bytes)
     return p_loads(_bytes)
 
+class EmptySerdes(ABCSerdes):
+  @staticmethod
+  def serialize(_obj):
+    return _obj
+
+  @staticmethod
+  def deserialize(_bytes):
+    bytes_security_check(_bytes)
+    return _bytes
+
 
 deserialize_blacklist = [b'eval', b'execfile', b'compile', b'system', b'popen', b'popen2', b'popen3',
                          b'popen4', b'fdopen', b'tmpfile', b'fchmod', b'fchown', b'openpty',
@@ -63,7 +74,10 @@ serdes_cache = {}
 for cls in ABCSerdes.__subclasses__():
   cls_name = ".".join([cls.__module__, cls.__qualname__])
   serdes_cache[cls_name] = cls
-
+serdes_cache[SerdesTypes.CLOUD_PICKLE] = CloudPickleSerdes
+serdes_cache[SerdesTypes.PICKLE] = PickleSerdes
+serdes_cache[SerdesTypes.PROTOBUF] = None
+serdes_cache[SerdesTypes.EMPTY] = EmptySerdes
 
 def is_in_blacklist(_bytes):
   for item in deserialize_blacklist:
@@ -80,8 +94,8 @@ def bytes_security_check(_bytes, need_check=False):
   if blacklisted:
     raise RuntimeError('Insecure operation found {}'.format(blacklisted))
 
-def get_serdes(serdes_id=None):
+def get_serdes(serdes_name=None):
   try:
-    return serdes_cache[serdes_id]
+    return serdes_cache[serdes_name]
   except:
     return PickleSerdes
