@@ -21,12 +21,54 @@ from eggroll.core.serdes import cloudpickle, eggroll_serdes
 from eggroll.core.command.command_client import CommandClient
 from eggroll.core.client import ClusterManagerClient
 from eggroll.core.grpc.factory import GrpcChannelFactory
-from eggroll.core.constants import StoreTypes, SerdesTypes, PartitionerTypes
+from eggroll.core.constants import StoreTypes, SerdesTypes, PartitionerTypes, ProcessorTypes
 from eggroll.core.serdes.eggroll_serdes import PickleSerdes, CloudPickleSerdes, EmptySerdes
+from eggroll.core.session import ErSession
 from eggroll.core.utils import string_to_bytes
 from eggroll.roll_pair.egg_pair import EggPair
 
 
+class RollPairContext(object):
+
+    def __init__(self, session: ErSession):
+        self.__session = session
+        self.__session_id = session.get_session_id()
+        self.default_store_type = StoreTypes.ROLLPAIR_LMDB
+
+    def get_roll_endpoint(self):
+        for proc in self.__session.processors:
+            if proc._processor_type == ProcessorTypes.ROLL_PAIR_SERVICER:
+                return proc._commandEndpoint
+    # TODO: return transfer endpoint
+    def get_egg_endpoint(self, egg_id):
+        for proc in self.__session.processors:
+            if proc._id == egg_id: # TODO check?
+                if proc._processor_type != ProcessorTypes.EGG_PAIR:
+                    raise ValueError("egg_id:%s, id:%s is not egg" % (egg_id, proc._id))
+                return proc._commandEndpoint
+        raise ValueError("egg_id:%   egg not found" % egg_id)
+
+    def load(self, namespace=None, name=None, create_if_missing=True, options={}):
+        store_type = options.get('store_type', self.default_store_type)
+        total_partitions = options.get('total_partitions', 0)
+        partitioner = options.get('partitioner', PartitionerTypes.BYTESTRING_HASH)
+        serdes = options.get('serdes', SerdesTypes.CLOUD_PICKLE)
+        store = ErStore(
+            store_locator=ErStoreLocator(
+                store_type=store_type,
+                namespace=namespace,
+                name=name,
+                total_partitions=total_partitions,
+                partitioner=partitioner,
+                serdes=serdes))
+
+        result = self.__session.cm_client.get_or_create_store(store)
+        return RollPair(result, self)
+
+def default_partitioner(k):
+    return 0
+def default_egg_router(k):
+    return 0
 class RollPair(object):
   __uri_prefix = 'v1/roll-pair'
   GET = "get"
@@ -46,33 +88,16 @@ class RollPair(object):
   UNION = 'union'
   RUNJOB = 'runJob'
 
-  def __init__(self, er_store: ErStore, options = {'cluster_manager_host': 'localhost', 'cluster_manager_port': 4670}):
-    _grpc_channel_factory = GrpcChannelFactory()
-
-    if options['pair_type'] == RollPair.__uri_prefix:
-      self.__roll_pair_service_endpoint = ErEndpoint(host = options['roll_pair_service_host'], port = options['roll_pair_service_port'])
-      self.__roll_pair_service_channel = _grpc_channel_factory.create_channel(self.__roll_pair_service_endpoint)
-      self.__roll_pair_service_stub = command_pb2_grpc.CommandServiceStub(self.__roll_pair_service_channel)
-    elif options['pair_type'] == EggPair.uri_prefix:
-      self.__egg_pair_service_endpoint = ErEndpoint(host=options['egg_pair_service_host'], port=options['egg_pair_service_port'])
-      print("init endpoint:{}".format(self.__egg_pair_service_endpoint))
-      self.__egg_pair_service_channel = _grpc_channel_factory.create_channel(self.__egg_pair_service_endpoint)
-      self.__egg_pair_service_stub = command_pb2_grpc.CommandServiceStub(self.__egg_pair_service_channel)
-
-    self.__cluster_manager_channel = _grpc_channel_factory.create_channel(ErEndpoint(options['cluster_manager_host'], options['cluster_manager_port']))
-
-    self.__command_serdes = options.get('serdes', SerdesTypes.PROTOBUF)
+  def __init__(self, er_store: ErStore, rp_ctx: RollPairContext):
+    self.__command_serdes =  SerdesTypes.PROTOBUF
     self.__roll_pair_command_client = CommandClient()
+    self.__store = er_store
+    self.value_serdes = self.get_serdes()
+    self.key_sedes = self.get_serdes()
+    self.partitioner = default_partitioner
+    self.egg_router = default_egg_router
+    self.ctx = rp_ctx
 
-    self.__cluster_manager_client = ClusterManagerClient(options)
-    self._parent_opts = options
-
-    # todo: integrate with session mechanism
-    self.__seq = 1
-    self.__session_id = '1'
-    self.value_serdes = eggroll_serdes.get_serdes()
-
-    self.land(er_store, options)
 
   def __repr__(self):
     return f'python RollPair(_store={self.__store})'
@@ -86,33 +111,6 @@ class RollPair(object):
       return PickleSerdes
     else:
       return EmptySerdes
-
-  def land(self, er_store: ErStore, options = {}):
-    if er_store:
-      final_store = er_store
-    else:
-      store_type = options.get('store_type', StoreTypes.ROLLPAIR_LEVELDB)
-      namespace = options.get('namespace', '')
-      name = options.get('name', '')
-      total_partitions = options.get('total_partitions', 0)
-      partitioner = options.get('partitioner', PartitionerTypes.BYTESTRING_HASH)
-      serdes = options.get('serdes', SerdesTypes.CLOUD_PICKLE)
-
-      final_store = ErStore(
-          store_locator=ErStoreLocator(
-              store_type=store_type,
-              namespace=namespace,
-              name=name,
-              total_partitions=total_partitions,
-              partitioner=partitioner,
-              serdes=serdes))
-
-    self.__store = self.__cluster_manager_client.get_or_create_store(final_store)
-    return self
-
-  def __get_seq(self):
-    self.__seq = self.__seq + 1
-    return self.__seq
 
   def kv_to_bytes(self, **kwargs):
     use_serialize = kwargs.get("use_serialize", True)
@@ -173,12 +171,11 @@ class RollPair(object):
     k, v = self.get_serdes().serialize(k), self.get_serdes().serialize(v)
     er_pair = ErPair(key=k, value=v)
     outputs = []
-    inputs = [ErPartition(id=1, store_locator=self.__store._store_locator,
-                          processor=ErProcessor(id=1, command_endpoint=self.__egg_pair_service_endpoint,
-                                                data_endpoint=self.__egg_pair_service_endpoint))]
-    output = [ErPartition(id=1, store_locator=self.__store._store_locator,
-                          processor=ErProcessor(id=1, command_endpoint=self.__egg_pair_service_endpoint,
-                                                data_endpoint=self.__egg_pair_service_endpoint))]
+    part_id = self.partitioner(k)
+    egg_id = self.egg_router(part_id)
+    egg_endpoint = self.ctx.get_egg_endpoint(egg_id)
+    inputs = [ErPartition(id=part_id, store_locator=self.__store._store_locator)]
+    output = [ErPartition(id=0, store_locator=self.__store._store_locator)]
 
     job = ErJob(id=self.__session_id, name=RollPair.PUT,
                 inputs=[self.__store],
@@ -189,7 +186,7 @@ class RollPair(object):
     job_resp = self.__roll_pair_command_client.simple_sync_send(
       input=task,
       output_type=ErPair,
-      endpoint=self.__egg_pair_service_endpoint,
+      endpoint=egg_endpoint,
       command_uri=CommandURI(f'{EggPair.uri_prefix}/{EggPair.PUT}'),
       serdes_type=self.__command_serdes
     )

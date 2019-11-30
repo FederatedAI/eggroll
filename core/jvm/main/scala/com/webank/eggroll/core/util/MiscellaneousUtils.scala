@@ -29,7 +29,7 @@ object MiscellaneousUtils {
       .argName("configuration file")
       .longOpt("config")
       .hasArg.numberOfArgs(1)
-      .required
+//      .required
       .desc("configuration file")
       .build
 
@@ -43,7 +43,7 @@ object MiscellaneousUtils {
       .argName("session id")
       .longOpt("session-id")
       .hasArg.numberOfArgs(1)
-      .required
+//      .required
       .desc("session id")
       .build
 
