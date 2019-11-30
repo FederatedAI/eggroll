@@ -115,12 +115,12 @@ class RollPair(val store: ErStore, val opts: ErConf = RuntimeErConf()) {
 
         /* send putBatch command*/
         val storeLocator = ErStoreLocator(StoreTypes.ROLLPAIR_LEVELDB, "ns", "name")
-        val rollPair = new RollPair()
+        val rollPair = new RollPair(ErStore(storeLocator = storeLocator))
         val job = ErJob(id = "1",
           name = "putBatch",
           inputs = Array(ErStore(storeLocator)),
           functors = Array())
-        val result = rollPair.putBatch(job)
+        //val result = rollPair.putBatch(job)
       }
     }
 

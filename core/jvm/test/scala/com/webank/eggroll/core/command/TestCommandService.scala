@@ -19,13 +19,13 @@
 package com.webank.eggroll.core.command
 
 import com.google.protobuf.ByteString
+import com.webank.eggroll.core.command.Command.CommandRequest
 import com.webank.eggroll.core.command.CommandModelPbMessageSerdes._
 import com.webank.eggroll.core.command.CommandServiceGrpc.CommandServiceBlockingStub
 import com.webank.eggroll.core.constant.StringConstants
 import com.webank.eggroll.core.di.Singletons
 import com.webank.eggroll.core.factory.{GrpcChannelFactory, GrpcStubFactory}
 import com.webank.eggroll.core.meta.ErEndpoint
-import com.webank.eggroll.grpc.test.GrpcTest.HelloRequest
 import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
 import org.apache.commons.lang3.StringUtils
 import org.junit.Test
@@ -45,7 +45,7 @@ class TestCommandService {
       sayHelloMethod.getName)
     CommandRouter.register(sayHelloServiceName, sayHelloMethod.getParameterTypes)
 
-    val sayHelloToPbMethod = classOf[TestService].getMethod("sayHelloToPbMessage", classOf[HelloRequest])
+    val sayHelloToPbMethod = classOf[TestService].getMethod("commandRequest", classOf[CommandRequest])
     val sayHelloToPbServiceName = String.join(
       StringConstants.DOT,
       StringUtils.strip(sayHelloToPbMethod.getDeclaringClass.getCanonicalName, StringConstants.DOLLAR),
@@ -61,7 +61,7 @@ class TestCommandService {
         println(sayHelloResponse.getData.toStringUtf8)*/
 
     val sayHelloToGrpcResponse = stub.call(
-      ErCommandRequest("2", sayHelloToPbServiceName, Array(HelloRequest.newBuilder().setMsg("grpc client").build().toByteArray)).toProto())
+      ErCommandRequest("2", sayHelloToPbServiceName, Array(CommandRequest.newBuilder().setArgs(0, ByteString.copyFromUtf8("hello")).build().toByteArray)).toProto())
     println(sayHelloToGrpcResponse.getResults(0).toStringUtf8)
   }
 }
@@ -71,8 +71,8 @@ class TestService {
     s"hello ${name.toStringUtf8} from server"
   }
 
-  def sayHelloToPbMessage(name: HelloRequest): String = {
-    s"hello pb message ${name.getMsg} from server"
+  def sayHelloToPbMessage(name: CommandRequest): String = {
+    s"hello pb message ${name.getArgs(0)} from server"
   }
 }
 

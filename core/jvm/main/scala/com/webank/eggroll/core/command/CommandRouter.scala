@@ -151,6 +151,7 @@ object CommandRouter extends Logging {
   }
 
   def query(serviceName: String): ErService = {
+
     try {
       serviceRouteTable(serviceName)
     } catch {

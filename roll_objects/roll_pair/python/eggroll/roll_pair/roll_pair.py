@@ -19,7 +19,7 @@ from eggroll.core.meta_model import ErStoreLocator, ErJob, ErStore, ErFunctor, E
 from eggroll.core.proto import command_pb2_grpc
 from eggroll.core.serdes import cloudpickle, eggroll_serdes
 from eggroll.core.command.command_client import CommandClient
-from eggroll.cluster_manager.cluster_manager_client import ClusterManagerClient
+from eggroll.core.client import ClusterManagerClient
 from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.constants import StoreTypes, SerdesTypes, PartitionerTypes
 from eggroll.core.serdes.eggroll_serdes import PickleSerdes, CloudPickleSerdes, EmptySerdes

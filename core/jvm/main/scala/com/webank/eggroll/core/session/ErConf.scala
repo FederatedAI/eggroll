@@ -18,7 +18,7 @@
 
 package com.webank.eggroll.core.session
 
-import java.io.{BufferedInputStream, FileInputStream}
+import java.io.{BufferedInputStream, File, FileInputStream}
 import java.util.Properties
 import java.util.concurrent.ConcurrentHashMap
 
@@ -85,6 +85,9 @@ abstract class ErConf {
 
   def addProperties(path: String): ErConf = {
     val prop = new Properties
+
+    val current = new File(".")
+    println(s"current dir: ${current.getAbsolutePath}")
 
     val fis = new BufferedInputStream(new FileInputStream(path))
     prop.load(fis)
