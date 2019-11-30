@@ -32,20 +32,19 @@ class RollPairContext(object):
 
     def __init__(self, session: ErSession):
         self.__session = session
-        self.__session_id = session.get_session_id()
-        self.default_store_type = StoreTypes.ROLLPAIR_LMDB
+        self.session_id = session.get_session_id()
+        # self.default_store_type = StoreTypes.ROLLPAIR_LMDB
+        self.default_store_type = StoreTypes.ROLLPAIR_LEVELDB
 
     def get_roll_endpoint(self):
         for proc in self.__session.processors:
             if proc._processor_type == ProcessorTypes.ROLL_PAIR_SERVICER:
-                return proc._commandEndpoint
+                return proc._command_endpoint
     # TODO: return transfer endpoint
     def get_egg_endpoint(self, egg_id):
         for proc in self.__session.processors:
-            if proc._id == egg_id: # TODO check?
-                if proc._processor_type != ProcessorTypes.EGG_PAIR:
-                    raise ValueError("egg_id:%s, id:%s is not egg" % (egg_id, proc._id))
-                return proc._commandEndpoint
+            if proc._id == egg_id and proc._processor_type != ProcessorTypes.EGG_PAIR:
+                return proc._command_endpoint
         raise ValueError("egg_id:%   egg not found" % egg_id)
 
     def load(self, namespace=None, name=None, create_if_missing=True, options={}):
@@ -97,6 +96,7 @@ class RollPair(object):
     self.partitioner = default_partitioner
     self.egg_router = default_egg_router
     self.ctx = rp_ctx
+    self.__session_id = self.ctx.session_id
 
 
   def __repr__(self):
@@ -136,34 +136,29 @@ class RollPair(object):
     er_pair = ErPair(key=k, value=None)
     outputs = []
     value = None
+    part_id = self.partitioner(k)
+    egg_id = self.egg_router(part_id)
+    egg_endpoint = self.ctx.get_egg_endpoint(egg_id)
     print("count:", self.__store._store_locator._total_partitions)
-    for i in range(self.__store._store_locator._total_partitions):
-      inputs = [ErPartition(id=i, store_locator=self.__store._store_locator,
-                            processor=ErProcessor(id=1,command_endpoint=self.__egg_pair_service_endpoint,
-                                                  data_endpoint=self.__egg_pair_service_endpoint))]
-      output = [ErPartition(id=i, store_locator=self.__store._store_locator,
-                            processor=ErProcessor(id=1,command_endpoint=self.__egg_pair_service_endpoint,
-                                                  data_endpoint=self.__egg_pair_service_endpoint))]
+    inputs = [ErPartition(id=part_id, store_locator=self.__store._store_locator)]
+    output = [ErPartition(id=part_id, store_locator=self.__store._store_locator)]
 
-      job = ErJob(id=self.__session_id, name=RollPair.GET,
-                  inputs=[self.__store],
-                  outputs=outputs,
-                  functors=[ErFunctor(body=cloudpickle.dumps(er_pair))])
-      task = ErTask(id=self.__session_id, name=RollPair.GET, inputs=inputs, outputs=output, job=job)
-      print("start send req")
-      job_resp = self.__roll_pair_command_client.simple_sync_send(
-        input=task,
-        output_type=ErPair,
-        endpoint=self.__egg_pair_service_endpoint,
-        command_uri=CommandURI(f'{EggPair.uri_prefix}/{EggPair.GET}'),
-        serdes_type=self.__command_serdes
-      )
-      print("get resp:{}".format(ErPair.from_proto_string(job_resp._value)))
+    job = ErJob(id=self.__session_id, name=RollPair.GET,
+              inputs=[self.__store],
+              outputs=outputs,
+              functors=[ErFunctor(body=cloudpickle.dumps(er_pair))])
+    task = ErTask(id=self.__session_id, name=RollPair.GET, inputs=inputs, outputs=output, job=job)
+    print("start send req")
+    job_resp = self.__roll_pair_command_client.simple_sync_send(
+    input=task,
+    output_type=ErPair,
+    endpoint=egg_endpoint,
+    command_uri=CommandURI(f'{EggPair.uri_prefix}/{EggPair.GET}'),
+    serdes_type=self.__command_serdes
+    )
+    print("get resp:{}".format(ErPair.from_proto_string(job_resp._value)))
 
-      if value is not None and value != b'':
-        value = self.value_serdes.deserialize(job_resp._value)
-        print(value)
-        break
+    value = self.value_serdes.deserialize(job_resp._value)
 
     return value
 

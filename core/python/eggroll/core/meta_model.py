@@ -302,7 +302,7 @@ class ErStoreLocator(RpcMessage):
 
 class ErPartition(RpcMessage):
   def __init__(self, id: int, store_locator: ErStoreLocator,
-      processor: ErProcessor):
+      processor: ErProcessor=None):
     self._id = id
     self._store_locator = store_locator
     self._processor = processor

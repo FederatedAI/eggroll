@@ -338,6 +338,9 @@ class RocksdbSortedKvAdapter(SortedKvAdapter):
     def get(self, key):
         return self.db.get(key)
 
+    def put(self, key, value):
+        self.db.put(key, value)
+
     def close(self):
         if self.db:
             del self.db

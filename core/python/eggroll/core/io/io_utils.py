@@ -16,7 +16,7 @@ from eggroll.core.meta_model import ErPartition
 
 def get_db_path(partition: ErPartition):
   store_locator = partition._store_locator
-  db_path_prefix = '/tmp/eggroll/'
+  db_path_prefix = './tmp/eggroll/'
 
   return db_path_prefix + "/".join(
       [store_locator._store_type, store_locator._namespace, store_locator._name,
