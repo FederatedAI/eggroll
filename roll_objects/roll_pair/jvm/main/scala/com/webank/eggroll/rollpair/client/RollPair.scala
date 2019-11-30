@@ -22,17 +22,18 @@ import java.nio.ByteBuffer
 import java.util.concurrent.TimeUnit
 
 import com.google.protobuf.ByteString
-import com.webank.eggroll.core.client.ClusterManagerClient
 import com.webank.eggroll.core.constant._
 import com.webank.eggroll.core.datastructure.{Broker, LinkedBlockingBroker}
-import com.webank.eggroll.core.meta.{ErStore, ErStoreLocator}
+import com.webank.eggroll.core.meta.{ErJob, ErStore, ErStoreLocator}
 import com.webank.eggroll.core.session.{ErConf, RuntimeErConf}
 import com.webank.eggroll.core.transfer.GrpcTransferClient
+import com.webank.eggroll.framework.clustermanager.client.ClusterManagerClient
+import com.webank.eggroll.rollpair.component.RollPairService
 
 class RollPair(val store: ErStore, val opts: ErConf = RuntimeErConf()) {
   private var __store: ErStore = null
   private val clusterManagerHost = opts.getString(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST, "localhost")
-  private val clusterManagerPort = opts.getInt(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, 9394)
+  private val clusterManagerPort = opts.getInt(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, 4670)
 
   private val clusterManagerClient = new ClusterManagerClient(clusterManagerHost, clusterManagerPort)
 
@@ -104,6 +105,7 @@ class RollPair(val store: ErStore, val opts: ErConf = RuntimeErConf()) {
           brokers.update(partitionId, newBroker)
           val newTransferClient = new GrpcTransferClient()
 
+          newBroker.put(rowPairDB)
           newTransferClient.initForward(dataBroker = newBroker, tag = s"forward-${partitionId}", processor = __store.partitions(partitionId).processor)
           transferClients.update(partitionId, newTransferClient)
         }
@@ -111,6 +113,15 @@ class RollPair(val store: ErStore, val opts: ErConf = RuntimeErConf()) {
         val transferClient = transferClients(partitionId)
 
         transferClient.doSend()
+
+        /* send putBatch command*/
+        val storeLocator = ErStoreLocator(StoreTypes.ROLLPAIR_LEVELDB, "ns", "name")
+        val rollPair = new RollPairService()
+        val job = ErJob(id = "1",
+          name = "putBatch",
+          inputs = Array(ErStore(storeLocator)),
+          functors = Array())
+        val result = rollPair.putBatch(job)
       }
     }
 

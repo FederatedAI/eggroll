@@ -27,7 +27,13 @@ import java.util.Properties;
 public class ProxyServerConf {
     private String ip;
     private int port;
-    private int partyId;
+    private String partyId;
+    private String role;
+
+    private String gatewayIp;
+    private int gatewayPort;
+    private String gatewayPartyId;
+    private String gatewayRole;
 
     private String routeTablePath;
 
@@ -92,12 +98,52 @@ public class ProxyServerConf {
         this.port = port;
     }
 
-    public void setPartyId(int partyId) {
+    public void setPartyId(String partyId) {
         this.partyId = partyId;
     }
 
-    public int getPartyId() {
+    public String getPartyId() {
         return partyId;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
+    }
+
+    public String getRole() {
+        return role;
+    }
+
+    public String getGatewayIp() {
+        return gatewayIp;
+    }
+
+    public void setGatewayIp(String ip) {
+        this.gatewayIp = ip;
+    }
+
+    public int getGatewayPort() {
+        return gatewayPort;
+    }
+
+    public void setGatewayPort(int port) {
+        this.gatewayPort = port;
+    }
+
+    public void setGatewayPartyId(String partyId) {
+        this.gatewayPartyId = partyId;
+    }
+
+    public String getGatewayPartyId() {
+        return gatewayPartyId;
+    }
+
+    public void setGatewayRole(String role) {
+        this.gatewayRole = role;
+    }
+
+    public String getGatewayRole() {
+        return gatewayRole;
     }
 
     public String getRouteTablePath() {

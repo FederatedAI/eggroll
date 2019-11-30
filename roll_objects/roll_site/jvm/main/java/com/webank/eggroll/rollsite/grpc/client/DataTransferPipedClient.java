@@ -16,45 +16,23 @@
 
 package com.webank.eggroll.rollsite.grpc.client;
 
-import com.google.common.base.Preconditions;
 import com.webank.ai.eggroll.api.core.BasicMeta;
 import com.webank.ai.eggroll.api.networking.proxy.DataTransferServiceGrpc;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
-import com.webank.ai.eggroll.api.networking.proxy.Proxy.Metadata;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy.Packet;
 import com.webank.eggroll.core.concurrent.AwaitSettableFuture;
 import com.webank.eggroll.core.grpc.client.GrpcClientContext;
 import com.webank.eggroll.core.grpc.client.GrpcClientTemplate;
-import com.webank.eggroll.core.grpc.observer.SameTypeCallerResponseStreamObserver;
 import com.webank.eggroll.core.grpc.observer.SameTypeFutureCallerResponseStreamObserver;
 import com.webank.eggroll.core.testgrpc.HelloCallerResponseStreamObserver;
-import com.webank.eggroll.core.testgrpc.HelloPushStreamProcessor;
 import com.webank.eggroll.core.util.ToStringUtils;
-import com.webank.eggroll.grpc.test.GrpcTest.HelloRequest;
 import com.webank.eggroll.grpc.test.GrpcTest.HelloResponse;
-import com.webank.eggroll.grpc.test.HelloServiceGrpc.HelloServiceStub;
 import com.webank.eggroll.rollsite.factory.ProxyGrpcStreamObserverFactory;
 import com.webank.eggroll.rollsite.factory.ProxyGrpcStubFactory;
-//import com.webank.eggroll.rollsite.factory.TransferServiceFactory;
-//import com.webank.eggroll.rollsite.grpc.core.api.grpc.client.GrpcAsyncClientContext;
-//import com.webank.eggroll.rollsite.grpc.core.api.grpc.client.GrpcStreamingClientTemplate;
-import com.webank.eggroll.rollsite.grpc.core.constant.RuntimeConstants;
-import com.webank.eggroll.rollsite.grpc.core.model.DelayedResult;
-import com.webank.eggroll.rollsite.grpc.core.model.impl.SingleDelayedResult;
-import com.webank.eggroll.rollsite.grpc.core.server.DefaultServerConf;
-import com.webank.eggroll.rollsite.grpc.core.utils.ErrorUtils;
-//import com.webank.eggroll.rollsite.grpc.observer.PushClientResponseStreamObserver;
-//import com.webank.eggroll.rollsite.grpc.observer.UnaryCallServerRequestStreamObserver;
 import com.webank.eggroll.rollsite.grpc.observer.PushClientResponseStreamObserver;
 import com.webank.eggroll.rollsite.infra.Pipe;
-import com.webank.eggroll.rollsite.infra.ResultCallback;
-import com.webank.eggroll.rollsite.infra.impl.PacketQueueSingleResultPipe;
-import com.webank.eggroll.rollsite.infra.impl.SingleResultCallback;
-import com.webank.eggroll.rollsite.model.ProxyServerConf;
 import com.webank.eggroll.rollsite.service.FdnRouter;
 import io.grpc.stub.StreamObserver;
-import java.lang.reflect.InvocationTargetException;
-import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -65,25 +43,18 @@ import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
+import com.webank.eggroll.core.util.ErrorUtils;
 
 @Component
 @Scope("prototype")
 public class DataTransferPipedClient {
     private static final Logger LOGGER = LogManager.getLogger(DataTransferPipedClient.class);
-    //@Autowired
-    //private TransferServiceFactory transferServiceFactory;
     @Autowired
     private ProxyGrpcStubFactory proxyGrpcStubFactory;
     @Autowired
     private ProxyGrpcStreamObserverFactory proxyGrpcStreamObserverFactory;
     @Autowired
-    private ProxyServerConf proxyServerConf;
-    @Autowired
     private FdnRouter fdnRouter;
-    @Autowired
-    private ErrorUtils errorUtils;
-    @Autowired
-    private DefaultServerConf defaultServerConf;
     private BasicMeta.Endpoint endpoint;
     private boolean needSecureChannel;
     private long MAX_AWAIT_HOURS = 24;
@@ -286,7 +257,7 @@ public class DataTransferPipedClient {
             finishLatch.await(MAX_AWAIT_HOURS, TimeUnit.HOURS);
         } catch (InterruptedException e) {
             LOGGER.error("[PULL][CLIENT] client pull: finishLatch.await() interrupted");
-            responseObserver.onError(errorUtils.toGrpcRuntimeException(e));
+            responseObserver.onError(ErrorUtils.toGrpcRuntimeException(e));
             pipe.onError(e);
             Thread.currentThread().interrupt();
             return;
@@ -329,50 +300,24 @@ public class DataTransferPipedClient {
     */
 
     public Proxy.Packet unaryCall(Proxy.Packet request, Pipe pipe) {
-        /*
-        DelayedResult<Packet> delayedResult = new SingleDelayedResult<>();
-        GrpcAsyncClientContext<DataTransferServiceGrpc.DataTransferServiceStub, Proxy.Packet, Proxy.Packet> context
-            = transferServiceFactory.createUnaryCallClientGrpcAsyncClientContext();
-
-        BasicMeta.Endpoint.Builder builder = BasicMeta.Endpoint.newBuilder();
-        endpoint = builder.setIp("localhost").setPort(8888).build();
-
-        context.setLatchInitCount(1)
-            .setEndpoint(endpoint)
-            .setSecureRequest(defaultServerConf.isSecureClient())
-            .setFinishTimeout(RuntimeConstants.DEFAULT_WAIT_TIME, RuntimeConstants.DEFAULT_TIMEUNIT)
-            .setCalleeStreamingMethodInvoker(DataTransferServiceGrpc.DataTransferServiceStub::unaryCall)
-            .setCallerStreamObserverClassAndArguments(UnaryCallServerRequestStreamObserver.class, delayedResult);
-
-        GrpcStreamingClientTemplate<DataTransferServiceGrpc.DataTransferServiceStub, Proxy.Packet, Proxy.Packet> template
-            = transferServiceFactory.createUnaryCallClientTemplate();
-        template.setGrpcAsyncClientContext(context);
-
-        Proxy.Packet result = null;
-        try {
-            result = template.calleeStreamingRpcWithImmediateDelayedResult(request, delayedResult);
-        } catch (InvocationTargetException e) {
-            throw new RuntimeException(e);
-        }
-
-        return result;
-        */
-
         GrpcClientContext<DataTransferServiceGrpc.DataTransferServiceStub, Proxy.Packet, Proxy.Packet> context
             = new GrpcClientContext<>();
 
+        Proxy.Metadata metadata = request.getHeader();
         //endpoint = proxyGrpcStubFactory.getAsyncEndpoint(metadata.getDst());
+        System.out.println("ip:" + endpoint.getIp() + "port:" + endpoint.getPort());
 
+        AwaitSettableFuture<Packet> delayedResult = new AwaitSettableFuture<>();
         context.setStubClass(DataTransferServiceGrpc.DataTransferServiceStub.class)
-            .setServerEndpoint("localhost", 50000)
+            .setServerEndpoint(endpoint.getIp(), endpoint.getPort())
             .setCalleeStreamingMethodInvoker(DataTransferServiceGrpc.DataTransferServiceStub::unaryCall)
-            .setCallerStreamObserverClassAndInitArgs(HelloCallerResponseStreamObserver.class);
+            .setCallerStreamObserverClassAndInitArgs(SameTypeFutureCallerResponseStreamObserver.class,
+                delayedResult);
 
         GrpcClientTemplate<DataTransferServiceGrpc.DataTransferServiceStub, Proxy.Packet, Proxy.Packet> template
             = new GrpcClientTemplate<>();
         template.setGrpcClientContext(context);
 
-        AwaitSettableFuture<Packet> delayedResult = new AwaitSettableFuture<>();
         //Proxy.Packet result = HelloRequest.newBuilder().setMsg("test hello | ").build();
 
         Proxy.Packet result = null;

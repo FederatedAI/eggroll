@@ -17,6 +17,11 @@
 package com.webank.eggroll.rollsite.factory;
 
 import com.google.common.net.InetAddresses;
+import com.google.protobuf.ByteString;
+import com.webank.ai.eggroll.api.core.BasicMeta;
+import com.webank.ai.eggroll.api.networking.proxy.Proxy;
+import com.webank.eggroll.rollsite.grpc.client.DataTransferPipedClient;
+import com.webank.eggroll.rollsite.infra.Pipe;
 import com.webank.eggroll.rollsite.manager.ServerConfManager;
 import com.webank.eggroll.rollsite.service.FdnRouter;
 import com.webank.eggroll.rollsite.channel.AccessRedirector;
@@ -29,15 +34,24 @@ import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder;
 import io.grpc.netty.shaded.io.netty.handler.ssl.ClientAuth;
 import io.grpc.netty.shaded.io.netty.handler.ssl.SslContext;
 import io.grpc.netty.shaded.io.netty.handler.ssl.SslContextBuilder;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.util.concurrent.CountDownLatch;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.config.ConfigurationSource;
 import org.apache.logging.log4j.core.config.Configurator;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.stereotype.Component;
+import com.google.gson.JsonObject;
 
 import javax.net.ssl.SSLException;
 import java.io.File;
@@ -67,12 +81,14 @@ public class GrpcServerFactory {
     private DataTransferPipedServerImpl dataTransferPipedServer;
     @Autowired
     private RouteServerImpl routeServer;
+    @Autowired
+    private DefaultPipeFactory defaultPipeFactory;
 
     public Server createServer(ProxyServerConf proxyServerConf) {
         this.serverConfManager.setProxyServerConf(proxyServerConf);
 
         String routeTablePath = proxyServerConf.getRouteTablePath();
-        fdnRouter.setRouteTable(routeTablePath);
+        //fdnRouter.setRouteTable(routeTablePath);
 
         if (proxyServerConf.getPipe() != null) {
             dataTransferPipedServer.setDefaultPipe(proxyServerConf.getPipe());
@@ -171,7 +187,57 @@ public class GrpcServerFactory {
             }
         });
 
+
+        //if(proxyServerConf.getRole().equals("host")) {
+        //    initRouteTable(routeTablePath);
+        //}
+        fdnRouter.initRouteTableFile(routeTablePath);
+        if(proxyServerConf.getRole().equals("guest")) {
+            String srcIp = proxyServerConf.getIp();
+            int srcPort = proxyServerConf.getPort();
+            String srcPartyId = proxyServerConf.getPartyId();
+
+            String dstIp = proxyServerConf.getGatewayIp();
+            int dstPort = proxyServerConf.getGatewayPort();
+            String dstPartyId = proxyServerConf.getGatewayPartyId();
+            String dstRole = proxyServerConf.getGatewayRole();
+            connecteToGateway(srcIp, srcPort, srcPartyId, "guest", dstIp, dstPort, dstPartyId, dstRole);
+
+            fdnRouter.updateRouteTable(routeTablePath, dstPartyId, dstIp, dstPort);
+        }
+
+        fdnRouter.setRouteTable(routeTablePath);
         return serverBuilder.build();
+    }
+
+    public void connecteToGateway(String srcIp, int srcPort, String srcPartyId, String srcRole,
+                                    String gatewayIp, int gatewayPort, String gatewayPartyId, String gatewayRole) {
+        //DefaultPipeFactory defaultPipeFactory = new DefaultPipeFactory();
+        String operator = "registerBroker";
+        DataTransferPipedClient client = new DataTransferPipedClient();
+        Proxy.Task.Builder taskBuilder = Proxy.Task.newBuilder();
+        Proxy.Task task = taskBuilder.setTaskId("testTask").build();
+
+        BasicMeta.Endpoint.Builder endPointBuilder = BasicMeta.Endpoint.newBuilder();
+
+        System.out.println("gatewayPartyId:" + gatewayPartyId);
+        Proxy.Topic.Builder topicBuilder = Proxy.Topic.newBuilder();
+        Proxy.Topic topic1 = topicBuilder.setName("topic").setPartyId(gatewayPartyId).setRole(gatewayRole).build();
+        Proxy.Topic topic2 = topicBuilder.setName("topic").setPartyId(srcPartyId).setRole(srcRole).build();
+
+        Proxy.Metadata header = Proxy.Metadata.newBuilder()
+            .setTask(task)
+            .setDst(topic1)
+            .setSrc(topic2)
+            .setOperator(operator)
+            .build();
+
+        Proxy.Data data = Proxy.Data.newBuilder().setValue(ByteString.copyFromUtf8("hello")).build();
+
+        Proxy.Packet packet = Proxy.Packet.newBuilder().setHeader(header).setBody(data).build();
+        client.setEndpoint(BasicMeta.Endpoint.newBuilder().setIp(gatewayIp).setPort(gatewayPort).build());
+        Proxy.Packet ret = client.unaryCall(packet, defaultPipeFactory.create("brokerInfo"));
+        System.out.println("ret:" + ret.getBody().getValue());
     }
 
     public Server createServer(String confPath) throws IOException {
@@ -206,8 +272,44 @@ public class GrpcServerFactory {
             if (partyIdString == null) {
                 throw new IllegalArgumentException("partyId cannot be null");
             } else {
-                int partyId = Integer.valueOf(partyIdString);
-                proxyServerConf.setPartyId(partyId);
+                //int partyId = Integer.valueOf(partyIdString);
+                proxyServerConf.setPartyId(partyIdString);
+            }
+
+            String role = properties.getProperty("role", null);
+            if (role == null) {
+                throw new IllegalArgumentException("role cannot be null");
+            } else {
+                proxyServerConf.setRole(role);
+            }
+
+            System.out.println("role:" + role);
+            if(role.equals("guest")) {
+                String gatewayIpString = properties.getProperty("gatewayIp", null);
+                proxyServerConf.setGatewayIp(gatewayIpString);
+
+                String gatewayPortString = properties.getProperty("gatewayPort", null);
+                if (gatewayPortString == null) {
+                    throw new IllegalArgumentException("port cannot be null");
+                } else {
+                    int port = Integer.valueOf(gatewayPortString);
+                    proxyServerConf.setGatewayPort(port);
+                }
+
+                System.out.println("set gatewayPartyId");
+                String gatewayPartyIdString = properties.getProperty("gatewayPartyId", null);
+                if (gatewayPartyIdString == null) {
+                    throw new IllegalArgumentException("partyId cannot be null");
+                } else {
+                    proxyServerConf.setGatewayPartyId(gatewayPartyIdString);
+                }
+
+                String gatewayRoleString = properties.getProperty("gatewayRole", null);
+                if (gatewayRoleString == null) {
+                    throw new IllegalArgumentException("partyId cannot be null");
+                } else {
+                    proxyServerConf.setGatewayRole(gatewayRoleString);
+                }
             }
 
             String routeTablePath = properties.getProperty("route.table", null);
