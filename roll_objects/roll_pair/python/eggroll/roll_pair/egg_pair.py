@@ -494,6 +494,11 @@ def serve(args):
     route_to_class_name="EggPair",
     route_to_method_name="run_task")
   CommandRouter.get_instance().register(
+      service_name=f"{prefix}/putBatch",
+      route_to_module_name="eggroll.roll_pair.egg_pair",
+      route_to_class_name="EggPair",
+      route_to_method_name="run_task")
+  CommandRouter.get_instance().register(
       service_name=f"{prefix}/runTask",
       route_to_module_name="eggroll.roll_pair.egg_pair",
       route_to_class_name="EggPair",
