@@ -33,17 +33,17 @@ class TestNodeManager {
   private var sessionMeta: ErSessionMeta = _
   @Before
   def setup(): Unit = {
-    CommandRouter.register(serviceName = NodeManagerCommands.getOrCreateProcessorBatchServiceName,
+    CommandRouter.register(serviceName = NodeManagerCommands.getOrCreateEggsServiceName,
       serviceParamTypes = Array(classOf[ErSessionMeta]),
       serviceResultTypes = Array(classOf[ErProcessorBatch]),
       routeToClass = classOf[NodeManagerServicer],
-      routeToMethodName = NodeManagerCommands.getOrCreateProcessorBatch)
+      routeToMethodName = NodeManagerCommands.getOrCreateEggs)
 
-    CommandRouter.register(serviceName = NodeManagerCommands.getOrCreateServicerServiceName,
+    CommandRouter.register(serviceName = NodeManagerCommands.getOrCreateRollsServiceName,
       serviceParamTypes = Array(classOf[ErSessionMeta]),
       serviceResultTypes = Array(classOf[ErProcessorBatch]),
       routeToClass = classOf[NodeManagerServicer],
-      routeToMethodName = NodeManagerCommands.getOrCreateServicer)
+      routeToMethodName = NodeManagerCommands.getOrCreateRolls)
 
     CommandRouter.register(serviceName = NodeManagerCommands.heartbeatServiceName,
       serviceParamTypes = Array(classOf[ErProcessor]),
@@ -83,26 +83,26 @@ class TestNodeManager {
   def testGetOrCreateServicer(): Unit = {
     println("hello")
 
-    val result = ServicerManager.getOrCreateServicer(sessionMeta)
+    val result = RollManager.getOrCreate(sessionMeta)
     println(result)
   }
 
   @Test
   def testGetOrCreateServicerWithClient(): Unit = {
-    val result = nodeManagerClient.getOrCreateServicer(sessionMeta)
+    val result = nodeManagerClient.getOrCreateRolls(sessionMeta)
 
     print(result)
   }
 
   @Test
   def testGetOrCreateProcessorBatch(): Unit = {
-    val result = ProcessorManager.getOrCreateProcessorBatch(sessionMeta)
+    val result = EggManager.getOrCreate(sessionMeta)
     print(result)
   }
 
   @Test
   def testGetOrCreateProcessorBatchWithClient(): Unit = {
-    val result = nodeManagerClient.getOrCreateProcessorBatch(sessionMeta)
+    val result = nodeManagerClient.getOrCreateEggs(sessionMeta)
     print(result)
   }
 }

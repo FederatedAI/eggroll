@@ -57,10 +57,7 @@ class ErSession(object):
   def start(self, roll_type):
     # todo: create deployer with reflection
     if roll_type == RollTypes.ROLL_PAIR:
-      deployer = RollPairDeployer(session_meta = self.get_session_meta(),
-                                  roll_servicer_cluster = self.__server_cluster,
-                                  egg_cluster = self.__server_cluster,
-                                  options = self.__options)
+      self.__cluster_manager_client.
     else:
       raise NotImplementedError(f'processor type {processor_type} is not implemented yet')
 
@@ -101,7 +98,7 @@ class RollPairContext(object):
     pass
 
   # todo
-  def land(self):
+  def load(self):
     pass
 
 
@@ -112,7 +109,7 @@ class ErContextProcessors:
     self._companion_egg = companion_egg
 
 
-
+'''
 class RollPairDeployer(object):
   def __init__(self, session_meta: ErSessionMeta, roll_servicer_cluster: ErServerCluster, egg_cluster: ErServerCluster, options = {}):
     self.__session_meta = session_meta
@@ -144,7 +141,7 @@ class RollPairDeployer(object):
       node_id_to_processor_batch[node._id] = nm_client.get_or_create_processor_batch(self.__session_meta)
 
     return node_id_to_processor_batch
-
+'''
 
 
 

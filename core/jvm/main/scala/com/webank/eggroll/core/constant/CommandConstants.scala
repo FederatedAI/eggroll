@@ -72,13 +72,13 @@ object SessionCommands {
 object NodeManagerCommands {
   val prefix = "v1/node-manager/processor"
 
-  val getOrCreateProcessorBatch = "getOrCreateProcessorBatch"
-  val getOrCreateProcessorBatchServiceName = CommandUtils.toServiceName(prefix, getOrCreateProcessorBatch)
-  val GET_OR_CREATE_PROCESSOR_BATCH = new CommandURI(getOrCreateProcessorBatchServiceName)
+  val getOrCreateEggs = "getOrCreateEggs"
+  val getOrCreateEggsServiceName = CommandUtils.toServiceName(prefix, getOrCreateEggs)
+  val GET_OR_CREATE_EGGS = new CommandURI(getOrCreateEggsServiceName)
 
-  val getOrCreateServicer = "getOrCreateServicer"
-  val getOrCreateServicerServiceName = CommandUtils.toServiceName(prefix, getOrCreateServicer)
-  val GET_OR_CREATE_SERVICER = new CommandURI(getOrCreateServicerServiceName)
+  val getOrCreateRolls = "getOrCreateRolls"
+  val getOrCreateRollsServiceName = CommandUtils.toServiceName(prefix, getOrCreateRolls)
+  val GET_OR_CREATE_ROLLS = new CommandURI(getOrCreateRollsServiceName)
 
   val heartbeat = "heartbeat"
   val heartbeatServiceName = CommandUtils.toServiceName(prefix, heartbeat)

@@ -58,7 +58,7 @@ object ProcessorTypes {
   val EGG_PAIR = "egg_pair"
 }
 
-object NodeTypes {
+object ServerNodeTypes {
   val CLUSTER_MANAGER = "CLUSTER_MANAGER"
   val NODE_MANAGER = "NODE_MANAGER"
 }

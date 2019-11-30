@@ -20,16 +20,16 @@ package com.webank.eggroll.core.nodemanager
 
 import java.util.concurrent.{ConcurrentHashMap, CountDownLatch, TimeUnit}
 
-import com.webank.eggroll.core.constant.SessionConfKeys
+import com.webank.eggroll.core.constant.{ProcessorTypes, SessionConfKeys}
 import com.webank.eggroll.core.meta.{ErProcessor, ErProcessorBatch, ErSessionMeta}
 import com.webank.eggroll.core.schedule.deploy.JvmProcessorOperator
 import com.webank.eggroll.core.session.RuntimeErConf
 
-object ServicerManager {
+object RollManager {
   private val initializedServicer = new ConcurrentHashMap[String, ErProcessorBatch]()
   private val initializingServicer = new ConcurrentHashMap[String, CountDownLatch]()
 
-  def getOrCreateServicer(sessionMeta: ErSessionMeta): ErProcessorBatch = {
+  def getOrCreate(sessionMeta: ErSessionMeta): ErProcessorBatch = {
     val sessionId = sessionMeta.id
     val jvmProcessorOperator = new JvmProcessorOperator
     val runtimeConf = new RuntimeErConf(sessionMeta)
@@ -49,14 +49,14 @@ object ServicerManager {
     initializedServicer.get(sessionId)
   }
 
-  def registerServicer(processor: ErProcessor): Unit = {
+  def register(processor: ErProcessor): Unit = {
     val sessionId = processor.options.get(SessionConfKeys.CONFKEY_SESSION_ID)
     println(s"registering for sessionId: ${sessionId}")
     // todo: error check
     val latch = initializingServicer.remove(sessionId)
 
     if (latch.getCount == 1) {
-      initializedServicer.put(sessionId, ErProcessorBatch(tag = sessionId, processors = Array(processor)))
+      initializedServicer.put(sessionId, ErProcessorBatch(name=ProcessorTypes.ROLL_PAIR_SERVICER, tag = sessionId, processors = Array(processor)))
       latch.countDown()
     }
   }

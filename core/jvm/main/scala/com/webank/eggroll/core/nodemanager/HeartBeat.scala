@@ -27,10 +27,10 @@ class HeartBeatService {
     val processorType = processor.processorType
 
     // todo: check whether it is really running
-    if (ProcessorTypes.EGG_PAIR.equals(processorType) && ProcessorManager.isSessionInitializing(sessionId)) {
-      ProcessorManager.registerProcessor(processor.copy(status = ProcessorStatus.RUNNING))
-    } else if (ProcessorTypes.ROLL_PAIR_SERVICER.equals(processorType) && ServicerManager.isServicerInitializing(sessionId)) {
-      ServicerManager.registerServicer(processor.copy(status = ProcessorStatus.RUNNING))
+    if (ProcessorTypes.EGG_PAIR.equals(processorType) && EggManager.isSessionInitializing(sessionId)) {
+      EggManager.register(processor.copy(status = ProcessorStatus.RUNNING))
+    } else if (ProcessorTypes.ROLL_PAIR_SERVICER.equals(processorType) && RollManager.isServicerInitializing(sessionId)) {
+      RollManager.register(processor.copy(status = ProcessorStatus.RUNNING))
     }
   }
 }

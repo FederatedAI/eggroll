@@ -23,12 +23,12 @@ import com.webank.eggroll.core.meta.{ErProcessor, ErProcessorBatch, ErSessionMet
 class NodeManagerServicer {
   private val heartBeatService = new HeartBeatService
 
-  def getOrCreateProcessorBatch(sessionMeta: ErSessionMeta): ErProcessorBatch = {
-    ProcessorManager.getOrCreateProcessorBatch(sessionMeta)
+  def getOrCreateEggs(sessionMeta: ErSessionMeta): ErProcessorBatch = {
+    EggManager.getOrCreate(sessionMeta)
   }
 
-  def getOrCreateServicer(sessionMeta: ErSessionMeta): ErProcessorBatch = {
-    ServicerManager.getOrCreateServicer(sessionMeta)
+  def getOrCreateRolls(sessionMeta: ErSessionMeta): ErProcessorBatch = {
+    RollManager.getOrCreate(sessionMeta)
   }
 
   def heartbeat(processor: ErProcessor): ErProcessor = {

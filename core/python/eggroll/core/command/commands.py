@@ -67,6 +67,12 @@ class NodeManagerCommands(object):
   HEARTBEAT = CommandURI(heartbeat_service_name)
 
 
+class SessionCommands(object):
+  prefix = 'v1/cluster-manager/session'
+  get_or_create_session = 'getOrCreateSession'
+  get_or_create_session_service_name = _to_service_name(prefix, get_or_create_session)
+  GET_OR_CREATE_SESSION = CommandURI(get_or_create_session_service_name)
+
 class RollPairCommands(object):
   roll_prefix = 'v1/roll-pair'
   egg_prefix = 'v1/egg-pair'

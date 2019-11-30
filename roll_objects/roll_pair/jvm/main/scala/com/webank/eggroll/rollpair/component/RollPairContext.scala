@@ -41,7 +41,7 @@ class RollPairContext(sessionMeta: ErSessionMeta) extends RollContext {
 
   def getOrCreateServicer(nodeManagerEndpoint: ErEndpoint): ErProcessor = {
     val nodeManagerClient = new NodeManagerClient(nodeManagerEndpoint)
-    val servicerBatch = nodeManagerClient.getOrCreateServicer(sessionMeta)
+    val servicerBatch = nodeManagerClient.getOrCreateRolls(sessionMeta)
 
     servicer = servicerBatch.processors.head
 
@@ -54,7 +54,7 @@ class RollPairContext(sessionMeta: ErSessionMeta) extends RollContext {
     val processorCount = new AtomicInteger(0)
     serverNodes.foreach(node => {
       val nodeManagerClient = new NodeManagerClient(node.endpoint)
-      val processorBatch = nodeManagerClient.getOrCreateProcessorBatch(sessionMeta)
+      val processorBatch = nodeManagerClient.getOrCreateEggs(sessionMeta)
       nodeIdToProcessors.put(node.id, processorBatch)
       processorCount.addAndGet(processorBatch.processors.length)
     })

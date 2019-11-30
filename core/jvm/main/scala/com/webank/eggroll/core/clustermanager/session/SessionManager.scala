@@ -20,30 +20,85 @@ package com.webank.eggroll.core.clustermanager.session
 
 import java.util.concurrent.ConcurrentHashMap
 
-import com.webank.eggroll.core.meta.{ErSessionMeta, ErSession}
+import com.webank.eggroll.core.client.NodeManagerClient
+import com.webank.eggroll.core.clustermanager.metadata.ServerNodeCrudOperator
+import com.webank.eggroll.core.constant.{ServerNodeStatus, ServerNodeTypes}
+import com.webank.eggroll.core.meta.{ErProcessor, ErProcessorBatch, ErServerCluster, ErServerNode, ErSession, ErSessionMeta}
+
+import scala.collection.mutable.{ArrayBuffer, ListBuffer}
+
+
 
 object SessionManager {
-  private val activeSessions = new ConcurrentHashMap[String, ErSession]()
+  private val activeSessions = new ConcurrentHashMap[String, ErProcessorBatch]()
 
+  def getOrCreateSession(sessionMeta: ErSessionMeta): ErProcessorBatch = {
+    val sessionId = sessionMeta.id
+    if (!activeSessions.containsKey(sessionId)) this.synchronized {
+      if (!activeSessions.containsKey(sessionId)) {
+        val healthyNodeExample = ErServerNode(status = ServerNodeStatus.HEALTHY, nodeType = ServerNodeTypes.NODE_MANAGER)
+        val serverNodeCrudOperator = new ServerNodeCrudOperator()
 
-  def getOrCreateSession(session: ErSession): ErSession = this.synchronized {
-    if (activeSessions.containsKey(session.id)) {
-      activeSessions.get(session.id)
-    } else {
-      activeSessions.put(session.id, session)
+        val healthyCluster = serverNodeCrudOperator.getServerNodes(healthyNodeExample)
+
+        val deployer = new DefaultClusterDeployer(
+          sessionMeta = sessionMeta,
+          rollCluster = healthyCluster.copy(serverNodes = Array(healthyCluster.serverNodes.head)),
+          eggCluster = healthyCluster)
+
+        val rolls = deployer.createRolls()
+        val eggs = deployer.createEggs()
+
+        val processorBatch = ErProcessorBatch(processors = rolls.processors ++ eggs.processors, tag = sessionId)
+
+        activeSessions.put(sessionId, processorBatch)
+      }
     }
+
+    activeSessions.get(sessionId)
   }
 
-  def getSession(sessionId: String): ErSession = this.synchronized {
+  def getSession(sessionId: String): ErProcessorBatch = this.synchronized {
     activeSessions.getOrDefault(sessionId, null)
   }
 
-  def stopSession(session: ErSessionMeta): ErSession = this.synchronized {
+  def stopSession(session: ErSessionMeta): ErProcessorBatch = this.synchronized {
     val sessionId = session.id
     if (activeSessions.containsKey(sessionId)) {
       activeSessions.remove(sessionId)
     }
 
     null
+  }
+}
+
+class DefaultClusterDeployer(sessionMeta: ErSessionMeta,
+                             rollCluster: ErServerCluster,
+                             eggCluster: ErServerCluster) {
+
+  def createRolls(): ErProcessorBatch = {
+    val rolls = ArrayBuffer[ErProcessor]()
+    rolls.sizeHint(rollCluster.serverNodes.length)
+
+    rollCluster.serverNodes.foreach(n => {
+      val nodeManagerClient = new NodeManagerClient(n.endpoint)
+      val processorBatch = nodeManagerClient.getOrCreateRolls(sessionMeta)
+      rolls ++= processorBatch.processors
+    })
+
+    ErProcessorBatch(processors = rolls.toArray)
+  }
+
+  def createEggs(): ErProcessorBatch = {
+    val eggs = ListBuffer[ErProcessor]()
+
+    eggCluster.serverNodes.foreach(n => {
+      val nodeManagerClient = new NodeManagerClient(n.endpoint)
+      val processorBatch = nodeManagerClient.getOrCreateEggs(sessionMeta)
+
+      eggs ++= processorBatch.processors
+    })
+
+    ErProcessorBatch(processors = eggs.toArray)
   }
 }

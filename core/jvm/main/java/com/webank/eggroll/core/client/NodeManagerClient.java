@@ -50,12 +50,12 @@ public class NodeManagerClient {
     this.commandClient = new CommandClient();
   }
 
-  public ErProcessorBatch getOrCreateProcessorBatch(ErSessionMeta sessionMeta) {
-    return doSyncRequestInternal(sessionMeta, ErProcessorBatch.class, NodeManagerCommands.GET_OR_CREATE_PROCESSOR_BATCH());
+  public ErProcessorBatch getOrCreateEggs(ErSessionMeta sessionMeta) {
+    return doSyncRequestInternal(sessionMeta, ErProcessorBatch.class, NodeManagerCommands.GET_OR_CREATE_EGGS());
   }
 
-  public ErProcessorBatch getOrCreateServicer(ErSessionMeta sessionMeta) {
-    return doSyncRequestInternal(sessionMeta, ErProcessorBatch.class, NodeManagerCommands.GET_OR_CREATE_SERVICER());
+  public ErProcessorBatch getOrCreateRolls(ErSessionMeta sessionMeta) {
+    return doSyncRequestInternal(sessionMeta, ErProcessorBatch.class, NodeManagerCommands.GET_OR_CREATE_ROLLS());
   }
 
   public ErProcessor heartbeat(ErProcessor processor) {

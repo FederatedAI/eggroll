@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS `eggroll_meta`.`server_node` (
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) DEFAULT CHARACTER SET latin1 COLLATE latin1_swedish_ci;
 
-CREATE INDEX `idx_server_node_h_p_t` ON `eggroll_meta`.`server_node` (`host`, `port`, `node_type`)
+CREATE INDEX `idx_server_node_h_p_t` ON `eggroll_meta`.`server_node` (`host`, `port`, `node_type`);
 CREATE INDEX `idx_server_node_h` ON `eggroll_meta`.`server_node` (`host`(768));
 CREATE INDEX `idx_server_node_c` ON `eggroll_meta`.`server_node` (`server_cluster_id`);
 CREATE INDEX `idx_server_node_t` ON `eggroll_meta`.`server_node` (`node_type`(255));

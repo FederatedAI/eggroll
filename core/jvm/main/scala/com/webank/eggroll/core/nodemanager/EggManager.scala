@@ -32,12 +32,12 @@ import com.webank.eggroll.core.session.RuntimeErConf
 import scala.collection.mutable.ArrayBuffer
 
 // todo: consider multiple roll object types. maybe add another layer of map
-object ProcessorManager {
+object EggManager {
   private val initializedSession = new ConcurrentHashMap[String, ErProcessorBatch]()
   private val initializingSession = new ConcurrentHashMap[String, (util.Set[ErProcessor], CountDownLatch)]()
   private val initializingLock = new Object()
 
-  def getOrCreateProcessorBatch(sessionMeta: ErSessionMeta): ErProcessorBatch = {
+  def getOrCreate(sessionMeta: ErSessionMeta): ErProcessorBatch = {
     val sessionId = sessionMeta.id
 
     if (initializedSession.containsKey(sessionId)) {
@@ -86,7 +86,7 @@ object ProcessorManager {
     initializedSession.get(sessionId)
   }
 
-  def registerProcessor(processor: ErProcessor): Unit = {
+  def register(processor: ErProcessor): Unit = {
     val sessionId = processor.options.get(SessionConfKeys.CONFKEY_SESSION_ID)
     if (!initializingSession.containsKey(sessionId)) {
       throw new IllegalStateException(s"sessionId ${sessionId} is not initializing")

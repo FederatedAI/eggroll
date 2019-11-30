@@ -28,17 +28,17 @@ import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
 
 object NodeManager extends Logging {
   def registerRouter():Unit = {
-    CommandRouter.register(serviceName = NodeManagerCommands.getOrCreateProcessorBatchServiceName,
+    CommandRouter.register(serviceName = NodeManagerCommands.getOrCreateEggsServiceName,
       serviceParamTypes = Array(classOf[ErSessionMeta]),
       serviceResultTypes = Array(classOf[ErProcessorBatch]),
       routeToClass = classOf[NodeManagerServicer],
-      routeToMethodName = NodeManagerCommands.getOrCreateProcessorBatch)
+      routeToMethodName = NodeManagerCommands.getOrCreateEggs)
 
-    CommandRouter.register(serviceName = NodeManagerCommands.getOrCreateServicerServiceName,
+    CommandRouter.register(serviceName = NodeManagerCommands.getOrCreateRollsServiceName,
       serviceParamTypes = Array(classOf[ErSessionMeta]),
       serviceResultTypes = Array(classOf[ErProcessorBatch]),
       routeToClass = classOf[NodeManagerServicer],
-      routeToMethodName = NodeManagerCommands.getOrCreateServicer)
+      routeToMethodName = NodeManagerCommands.getOrCreateRolls)
 
     CommandRouter.register(serviceName = NodeManagerCommands.heartbeatServiceName,
       serviceParamTypes = Array(classOf[ErProcessor]),

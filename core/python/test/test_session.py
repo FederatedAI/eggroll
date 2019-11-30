@@ -31,7 +31,7 @@ class TestSession(unittest.TestCase):
     options[DeployConfKeys.CONFKEY_DEPLOY_ROLLPAIR_PYTHON_PATH] = '/Users/max-webank/git'
     options[DeployConfKeys.CONFKEY_DEPLOY_JVM_MAINCLASS] = 'com.webank.eggroll.rollpair.Main'
     options[DeployConfKeys.CONFKEY_DEPLOY_JVM_CLASSPATH] = f'{base_dir}/lib/*:{base_dir}/eggroll-roll-pair-2.0.jar:/Users/max-webank/git/eggroll-2.x/framework/node_manager/jvm/test/resources'
-    options[SessionConfKeys.CONFKEY_SESSION_ID] = 'test'
+    options[SessionConfKeys.CONFKEY_SESSION_ID] = 'testing'
     options[SessionConfKeys.CONFKEY_SESSION_MAX_PROCESSORS_PER_NODE] = '1'
 
     print(options)

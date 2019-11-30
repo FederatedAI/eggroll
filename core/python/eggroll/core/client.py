@@ -16,7 +16,7 @@
 from eggroll.core.meta_model import ErEndpoint, ErServerNode, ErServerCluster, ErProcessor, ErProcessorBatch
 from eggroll.core.meta_model import ErStore, ErStoreLocator, ErSessionMeta
 from eggroll.core.constants import SerdesTypes
-from eggroll.core.command.commands import MetadataCommands, NodeManagerCommands
+from eggroll.core.command.commands import MetadataCommands, NodeManagerCommands, SessionCommands
 from eggroll.core.base_model import RpcMessage
 from eggroll.core.command.command_model import CommandURI
 from eggroll.core.command.command_model import ErCommandRequest, ErCommandResponse
@@ -108,6 +108,13 @@ class ClusterManagerClient(object):
         input=input,
         output_type=ErStore,
         command_uri=MetadataCommands.DELETE_STORE,
+        serdes_type=self.__serdes_type)
+
+  def get_or_create_session(self, input: ErSessionMeta):
+    return self.__do_sync_request_internal(
+        input=input,
+        output_type=ErProcessorBatch,
+        command_uri=SessionCommands.GET_OR_CREATE_SESSION,
         serdes_type=self.__serdes_type)
 
   def __do_sync_request_internal(self, input, output_type, command_uri, serdes_type):
