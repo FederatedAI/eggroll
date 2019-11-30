@@ -27,14 +27,7 @@ import com.webank.eggroll.core.util.{Logging, MiscellaneousUtils}
 import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
 
 object NodeManager extends Logging {
-  def main(args: Array[String]): Unit = {
-    val cmd = MiscellaneousUtils.parseArgs(args = args)
-    val portString = cmd.getOptionValue('p', "9394")
-
-    val rollServer = NettyServerBuilder
-      .forAddress(new InetSocketAddress("127.0.0.1", portString.toInt))
-      .addService(new CommandService).build
-
+  def registerRouter():Unit = {
     CommandRouter.register(serviceName = NodeManagerCommands.getOrCreateProcessorBatchServiceName,
       serviceParamTypes = Array(classOf[ErSessionMeta]),
       serviceResultTypes = Array(classOf[ErProcessorBatch]),
@@ -52,6 +45,14 @@ object NodeManager extends Logging {
       serviceResultTypes = Array(classOf[ErProcessor]),
       routeToClass = classOf[NodeManagerServicer],
       routeToMethodName = NodeManagerCommands.heartbeat)
+  }
+  def main(args: Array[String]): Unit = {
+    val cmd = MiscellaneousUtils.parseArgs(args = args)
+    val portString = cmd.getOptionValue('p', "9394")
+    registerRouter()
+    val rollServer = NettyServerBuilder
+      .forAddress(new InetSocketAddress("127.0.0.1", portString.toInt))
+      .addService(new CommandService).build
     rollServer.start()
     val port = rollServer.getPort
 
