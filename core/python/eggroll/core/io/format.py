@@ -66,7 +66,7 @@ class BinBatchReader(object):
     value_size = 4
 
     self.__check_readable(op_offset, value_size)
-    result = unpack_from('>i', self.__buffer, op_offset)
+    result = unpack_from('<i', self.__buffer, op_offset)
     self.__adjust_offset(offset, value_size)
 
     return result[0]
@@ -78,7 +78,7 @@ class BinBatchReader(object):
     format = f'{size}s'
     if include_size:
       final_size = size + 4
-      format = f'>i{format}'
+      format = f'<i{format}'
     self.__check_readable(op_offset, final_size)
     result = unpack_from(format, self.__buffer, op_offset)
     self.__adjust_offset(offset, final_size)
