@@ -49,18 +49,18 @@ class RollPair(object):
   UNION = 'union'
   RUNJOB = 'runJob'
 
-  def __init__(self, er_store: ErStore, options = {'cluster_manager_host': 'localhost', 'cluster_manager_port': 4670}):
+  def __init__(self, er_store: ErStore=None, options = {'cluster_manager_host': 'localhost', 'cluster_manager_port': 4670}):
     _grpc_channel_factory = GrpcChannelFactory()
 
-    if options['pair_type'] == RollPair.__uri_prefix:
-      self.__roll_pair_service_endpoint = ErEndpoint(host = options['roll_pair_service_host'], port = options['roll_pair_service_port'])
-      self.__roll_pair_service_channel = _grpc_channel_factory.create_channel(self.__roll_pair_service_endpoint)
-      self.__roll_pair_service_stub = command_pb2_grpc.CommandServiceStub(self.__roll_pair_service_channel)
-    elif options['pair_type'] == EggPair.uri_prefix:
-      self.__egg_pair_service_endpoint = ErEndpoint(host=options['egg_pair_service_host'], port=options['egg_pair_service_port'])
-      LOGGER.info("init endpoint:{}".format(self.__egg_pair_service_endpoint))
-      self.__egg_pair_service_channel = _grpc_channel_factory.create_channel(self.__egg_pair_service_endpoint)
-      self.__egg_pair_service_stub = command_pb2_grpc.CommandServiceStub(self.__egg_pair_service_channel)
+    #if options['pair_type'] == RollPair.__uri_prefix:
+    self.__roll_pair_service_endpoint = ErEndpoint(host = options['roll_pair_service_host'], port = options['roll_pair_service_port'])
+    self.__roll_pair_service_channel = _grpc_channel_factory.create_channel(self.__roll_pair_service_endpoint)
+    self.__roll_pair_service_stub = command_pb2_grpc.CommandServiceStub(self.__roll_pair_service_channel)
+    #elif options['pair_type'] == EggPair.uri_prefix:
+    self.__egg_pair_service_endpoint = ErEndpoint(host=options['egg_pair_service_host'], port=options['egg_pair_service_port'])
+    LOGGER.info("init endpoint:{}".format(self.__egg_pair_service_endpoint))
+    self.__egg_pair_service_channel = _grpc_channel_factory.create_channel(self.__egg_pair_service_endpoint)
+    self.__egg_pair_service_stub = command_pb2_grpc.CommandServiceStub(self.__egg_pair_service_channel)
 
     self.__cluster_manager_channel = _grpc_channel_factory.create_channel(ErEndpoint(options['cluster_manager_host'], options['cluster_manager_port']))
 
@@ -74,15 +74,15 @@ class RollPair(object):
     self.__seq = 1
     self.__session_id = '1'
     self.value_serdes = eggroll_serdes.get_serdes()
-
-    self.land(er_store, options)
+    if er_store is not None:
+      self.load(er_store, options)
 
   def __repr__(self):
     return f'python RollPair(_store={self.__store})'
 
   def get_serdes(self):
     serdes_type = self.__store._store_locator._serdes
-    print(f'serdes type: {serdes_type}')
+    LOGGER.info(f'serdes type: {serdes_type}')
     if serdes_type == SerdesTypes.CLOUD_PICKLE or serdes_type == SerdesTypes.PROTOBUF:
       return CloudPickleSerdes
     elif serdes_type == SerdesTypes.PICKLE:
@@ -90,7 +90,7 @@ class RollPair(object):
     else:
       return EmptySerdes
 
-  def land(self, er_store: ErStore, options = {}):
+  def load(self, er_store: ErStore, options = {}):
     if er_store:
       final_store = er_store
     else:
@@ -145,7 +145,8 @@ class RollPair(object):
                  persistent_engine=StoreTypes.ROLLPAIR_LMDB):
     er_store_locator = ErStoreLocator(name=name, namespace=namespace, total_partitions=partition, store_type=persistent_engine)
     er_store = ErStore(store_locator=er_store_locator)
-    return self.land(er_store=er_store)
+    #return self.land(er_store=er_store)
+    return self.__cluster_manager_client.get_or_create_store(er_store)
 
 
   def get(self, k, opt = {}):
