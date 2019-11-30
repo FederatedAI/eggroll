@@ -20,8 +20,6 @@ package com.webank.eggroll.rollframe
 
 import com.webank.eggroll.core.io.adapter.{BlockDeviceAdapter, HdfsBlockAdapter}
 import com.webank.eggroll.format._
-import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.fs._
 import org.junit.{Before, Test}
 
 class FrameFormatTests {

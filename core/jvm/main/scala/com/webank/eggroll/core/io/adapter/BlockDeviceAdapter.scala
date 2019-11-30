@@ -84,7 +84,9 @@ class FileBlockAdapter(path: String) extends BlockDeviceAdapter {
 }
 
 object HdfsBlockAdapter {
-  private val HDFS_CLUSTER_ROOT_PATH = "hdfs://node1:9000"
+  // TODO:add and test add xml config
+  private val NAME_NODE = "node1"
+  private val HDFS_CLUSTER_ROOT_PATH = s"hdfs://$NAME_NODE:9000"
   private val HDFS_LOCAL_ROOT_PATH = "hdfs://localhost:9000"
   private var conf : Configuration = {
     val defaultConf = new Configuration()
