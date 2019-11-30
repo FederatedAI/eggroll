@@ -32,6 +32,9 @@ import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
 
 object Main extends Logging {
   def main(args: Array[String]): Unit = {
+    val cmd = MiscellaneousUtils.parseArgs(args = args)
+    val portString = cmd.getOptionValue('p', "4670")
+
     CommandRouter.register(serviceName = MetadataCommands.getServerNodeServiceName,
       serviceParamTypes = Array(classOf[ErServerNode]),
       serviceResultTypes = Array(classOf[ErServerNode]),
@@ -75,20 +78,20 @@ object Main extends Logging {
       routeToMethodName = MetadataCommands.deleteStore)
 
     val clusterManager = NettyServerBuilder
-      .forAddress(new InetSocketAddress("127.0.0.1", 4670))
+      .forAddress(new InetSocketAddress("127.0.0.1", portString.toInt))
       .addService(new CommandService)
       .addService(new GrpcTransferService)
       .build()
 
     val server: Server = clusterManager.start()
 
-    val cmd = MiscellaneousUtils.parseArgs(args = args)
+    val port = clusterManager.getPort
+
 
     val confPath = cmd.getOptionValue('c', "./cluster-manager.properties")
     StaticErConf.addProperties(confPath)
-    println(StaticErConf.getProperty(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_JDBC_URL, ""))
-    logInfo("server started at port 4670")
-    println("server started at port 4670")
+    logInfo(s"server started at port ${port}")
+    println(s"server started at port ${port}")
 
     server.awaitTermination()
   }

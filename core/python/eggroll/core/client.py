@@ -13,7 +13,7 @@
 #  limitations under the License.
 
 
-from eggroll.core.meta_model import ErEndpoint, ErServerNode, ErServerCluster, ErProcessor
+from eggroll.core.meta_model import ErEndpoint, ErServerNode, ErServerCluster, ErProcessor, ErProcessorBatch
 from eggroll.core.meta_model import ErStore, ErStoreLocator, ErSessionMeta
 from eggroll.core.constants import SerdesTypes
 from eggroll.core.command.commands import MetadataCommands, NodeManagerCommands
@@ -23,7 +23,7 @@ from eggroll.core.command.command_model import ErCommandRequest, ErCommandRespon
 from eggroll.core.proto import command_pb2_grpc
 from eggroll.core.utils import time_now
 from eggroll.core.grpc.factory import GrpcChannelFactory
-
+from eggroll.core.conf_keys import NodeManagerConfKeys
 
 
 class CommandClient(object):
@@ -119,8 +119,8 @@ class ClusterManagerClient(object):
 
 
 class NodeManagerClient(object):
-  def __init__(self, options = {'node_manager_host': 'localhost', 'node_manager_port': 9394}):
-    self.__endpoint = ErEndpoint(options['node_manager_host'], options['node_manager_port'])
+  def __init__(self, options = {NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HOST: 'localhost', NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT: 9394}):
+    self.__endpoint = ErEndpoint(options[NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HOST], int(options[NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT]))
     if 'serdes_type' in options:
       self.__serdes_type = options['serdes_type']
     else:
@@ -128,16 +128,17 @@ class NodeManagerClient(object):
     self.__command_client = CommandClient()
 
   def get_or_create_servicer(self, session_meta: ErSessionMeta):
-    return self.__do_sync_request_internal(
+    result = self.__do_sync_request_internal(
         input=session_meta,
-        output_type=ErServerCluster,
+        output_type=ErProcessorBatch,
         command_uri=NodeManagerCommands.GET_OR_CREATE_SERVICER,
         serdes_type=self.__serdes_type)
+    return result
 
   def get_or_create_processor_batch(self, session_meta: ErSessionMeta):
     return self.__do_sync_request_internal(
         input=session_meta,
-        output_type=ErServerCluster,
+        output_type=ErProcessorBatch,
         command_uri=NodeManagerCommands.GET_OR_CREATE_PROCESSOR_BATCH,
         serdes_type=self.__serdes_type)
 

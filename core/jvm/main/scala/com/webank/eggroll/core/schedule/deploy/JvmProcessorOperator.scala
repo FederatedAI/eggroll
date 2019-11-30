@@ -45,9 +45,10 @@ class JvmProcessorOperator() extends Logging {
       throw new IllegalArgumentException("session Id is blank when creating processor")
     }
 
-    println(s"${javaBinPath} -cp ${classpath} ${jvmOptions} ${mainclass} ${mainclassArgs} -s ${sessionId} &")
+    val startCmd = s"${javaBinPath} -cp ${classpath} ${jvmOptions} ${mainclass} ${mainclassArgs} -c . -s ${sessionId} &"
+    println(s"${startCmd}")
     commands.add("which java")
-    commands.add(s"${javaBinPath} -cp ${classpath} ${jvmOptions} ${mainclass} ${mainclassArgs} -s ${sessionId} &")
+    commands.add(startCmd)
     val thread = new Thread(() => {
       val processorBuilder: ProcessBuilder = new ProcessBuilder("/bin/bash", "-c", String.join(StringConstants.SEMICOLON, commands))
 
@@ -65,6 +66,7 @@ class JvmProcessorOperator() extends Logging {
 
     thread.start()
     thread.join(1)
+    println("ready to return")
     thread.isAlive
   }
 

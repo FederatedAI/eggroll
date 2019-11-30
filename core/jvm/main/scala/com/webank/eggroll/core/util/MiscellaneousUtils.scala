@@ -39,7 +39,27 @@ object MiscellaneousUtils {
       .desc("print this message")
       .build
 
-    options.addOption(config).addOption(help)
+    val sessionId = Option.builder("s")
+      .argName("session id")
+      .longOpt("session-id")
+      .hasArg.numberOfArgs(1)
+      .required
+      .desc("session id")
+      .build
+
+    val port = Option.builder("p")
+      .argName("port to bind")
+      .longOpt("port")
+      .optionalArg(true)
+      .hasArg.numberOfArgs(1)
+      .desc("port to bind")
+      .build
+
+    options
+      .addOption(config)
+      .addOption(help)
+      .addOption(sessionId)
+      .addOption(port)
 
     val parser = new DefaultParser
     var cmd: CommandLine = null

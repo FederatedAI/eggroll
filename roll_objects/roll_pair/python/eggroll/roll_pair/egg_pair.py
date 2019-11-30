@@ -12,7 +12,8 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-from collections import Iterable
+
+from collections.abc import Iterable
 
 import grpc
 from concurrent import futures
@@ -32,8 +33,9 @@ from eggroll.core.serdes import cloudpickle
 from eggroll.core.serdes import eggroll_serdes
 from eggroll.core.transfer.transfer_service import GrpcTransferServicer, \
   TransferClient
-from eggroll.core.constants import ProcessorTypes, ProcessorStatus
+from eggroll.core.constants import ProcessorTypes, ProcessorStatus, SerdesTypes
 from eggroll.roll_pair.shuffler import DefaultShuffler
+from eggroll.core.conf_keys import NodeManagerConfKeys, SessionConfKeys
 from grpc._cython import cygrpc
 import argparse
 import os
@@ -49,7 +51,7 @@ class EggPair(object):
   PUT = 'put'
 
   def __init__(self):
-    self.serde = self._create_serde()
+    self.serde = self._create_serdes(SerdesTypes.PICKLE)
 
   def get_unary_input_adapter(self, task_info: ErTask, create_if_missing=True):
     input_partition = task_info._inputs[0]
@@ -110,8 +112,8 @@ class EggPair(object):
       output_adapter = RocksdbSortedKvAdapter(options=options)
     return output_adapter
 
-  def _create_serde(self):
-    return eggroll_serdes.get_serdes()
+  def _create_serdes(self, serdes_name):
+    return eggroll_serdes.get_serdes(serdes_name)
 
   def run_task(self, task: ErTask):
     functors = task._job._functors
@@ -183,14 +185,17 @@ class EggPair(object):
 
       input_adapter = self.get_unary_input_adapter(task_info=task)
       seq_op_result = None
+      input_serdes = self._create_serdes(task._inputs[0]._store_locator._serdes)
 
+      print('mw: ready to do reduce')
       for k_bytes, v_bytes in input_adapter.iteritems():
         if seq_op_result:
           #seq_op_result = f(seq_op_result, self.serde.deserialize(v_bytes))
-          seq_op_result = f(seq_op_result, self.serde.deserialize(v_bytes))
+          seq_op_result = f(seq_op_result, input_serdes.deserialize(v_bytes))
         else:
-          seq_op_result = self.serde.deserialize(v_bytes)
+          seq_op_result = input_serdes.deserialize(v_bytes)
 
+      print(f'mw: seq_op_result: {seq_op_result}')
       partition_id = task._inputs[0]._id
       transfer_tag = task._job._name
 
@@ -404,14 +409,16 @@ class EggPair(object):
 
     input_partition = task._inputs[0]
     input_adapter = self.get_unary_input_adapter(task_info=task)
+    input_serdes = self._create_serdes(task._inputs[0]._store_locator._serdes)
+    output_serdes = self._create_serdes(task._outputs[0]._store_locator._serdes)
 
     seq_op_result = zero_value if zero_value is not None else None
 
     for k_bytes, v_bytes in input_adapter.iteritems():
       if seq_op_result:
-        seq_op_result = seq_op(seq_op_result, self.serde.deserialize(v_bytes))
+        seq_op_result = seq_op(seq_op_result, input_serdes.deserialize(v_bytes))
       else:
-        seq_op_result = self.serde.deserialize(v_bytes)
+        seq_op_result = input_serdes.deserialize(v_bytes)
 
     partition_id = input_partition._id
     transfer_tag = task._job._name
@@ -425,20 +432,21 @@ class EggPair(object):
       for i in range(1, partition_size):
         other_seq_op_result = queue.get(block=True, timeout=10)
 
-        comb_op_result = comb_op(comb_op_result, other_seq_op_result.data)
+        comb_op_result = comb_op(comb_op_result, output_serdes.deserialize(other_seq_op_result.data))
 
       print('aggregate finished. result: ', comb_op_result)
       output_partition = task._outputs[0]
       output_adapter = self.get_unary_output_adapter(task_info=task)
 
       output_writebatch = output_adapter.new_batch()
-      output_writebatch.put(self.serde.serialize('result'.encode()), self.serde.serialize(comb_op_result))
+      output_writebatch.put(output_serdes.serialize('result'.encode()), output_serdes.serialize(comb_op_result))
 
       output_writebatch.close()
       output_adapter.close()
     else:
+      ser_seq_op_result = output_serdes.serialize(seq_op_result)
       transfer_client = TransferClient()
-      transfer_client.send_single(data=seq_op_result, tag=transfer_tag,
+      transfer_client.send_single(data=ser_seq_op_result, tag=transfer_tag,
                                   processor=task._outputs[0]._processor)
 
     input_adapter.close()
@@ -541,34 +549,49 @@ def serve(args):
   transfer_pb2_grpc.add_TransferServiceServicer_to_server(transfer_servicer,
                                                           server)
   port = args.port
-  print(f'proposed port {port}')
   port = server.add_insecure_port(f'[::]:{port}')
 
-  print(f'final port {port}')
   server.start()
 
-  options = {
-    'eggroll.session.id': args.session_id
-  }
-  myself = ErProcessor(processor_type=ProcessorTypes.EGG_PAIR,
-                       command_endpoint=ErEndpoint(host='localhost', port=port),
-                       data_endpoint=ErEndpoint(host='localhost', port=port),
-                       options=options,
-                       status=ProcessorStatus.RUNNING)
 
-  node_manager_client = NodeManagerClient()
-  node_manager_client.heartbeat(myself)
+  node_manager = args.node_manager
+  if node_manager:
+    session_id = args.session_id
+
+    if not session_id:
+      raise ValueError('session id is missing')
+    options = {
+      SessionConfKeys.CONFKEY_SESSION_ID: args.session_id
+    }
+    myself = ErProcessor(processor_type=ProcessorTypes.EGG_PAIR,
+                         command_endpoint=ErEndpoint(host='localhost', port=port),
+                         data_endpoint=ErEndpoint(host='localhost', port=port),
+                         options=options,
+                         status=ProcessorStatus.RUNNING)
+
+    if node_manager.find(':') == -1:
+      node_manager_host = 'localhost'
+      node_manager_port = node_manager.strip()
+    else:
+      node_manager_host, node_manager_port = node_manager.strip().split(':', 1)
+
+    print(f'node_manager: {node_manager_host}:{node_manager_port}')
+    node_manager_client = NodeManagerClient(options = {
+      NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HOST: node_manager_host,
+      NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT: node_manager_port
+    })
+    node_manager_client.heartbeat(myself)
 
   print(f'egg_pair started at port {port}')
 
   import time
-  time.sleep(10000)
+  time.sleep(100000)
 
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
   parser.add_argument('-d', '--data-dir', default=os.path.dirname(os.path.realpath(__file__)))
-  parser.add_argument('-n', '--node-manager', default='localhost:9394')
+  parser.add_argument('-n', '--node-manager')
   parser.add_argument('-s', '--session-id')
   parser.add_argument('-p', '--port', default='0')
 

@@ -20,7 +20,7 @@ from eggroll.core.utils import _map_and_listify, _repr_list, _elements_to_proto,
 DEFAULT_DELIM = '/'
 
 class ErEndpoint(RpcMessage):
-  def __init__(self, host, port):
+  def __init__(self, host, port: int):
     self._host = host
     self._port = port
 
@@ -39,7 +39,7 @@ class ErEndpoint(RpcMessage):
 
 
 class ErServerNode(RpcMessage):
-  def __init__(self, id: int, name: str = '', cluster_id: int = 0, endpoint: ErEndpoint = None, node_type: str = '', status: str = ''):
+  def __init__(self, id: int = -1, name: str = '', cluster_id: int = 0, endpoint: ErEndpoint = None, node_type: str = '', status: str = ''):
     self._id = id
     self._name = name
     self._cluster_id = cluster_id
@@ -174,15 +174,14 @@ class ErProcessorBatch(RpcMessage):
   def to_proto(self):
     return meta_pb2.ProcessorBatch(id=self._id,
                                    name=self._name,
-                                   nodes=_elements_to_proto(self._processors),
+                                   processors=_elements_to_proto(self._processors),
                                    tag=self._tag)
 
   @staticmethod
   def from_proto(pb_message):
     return ErProcessorBatch(id=pb_message.id,
                             name=pb_message.name,
-                            processors=_map_and_listify(ErProcessor.from_proto,
-                                                    pb_message.nodes),
+                            processors=_map_and_listify(ErProcessor.from_proto, pb_message.processors),
                             tag=pb_message.tag)
 
   @staticmethod
@@ -192,7 +191,7 @@ class ErProcessorBatch(RpcMessage):
     return ErProcessorBatch.from_proto(pb_message)
 
   def __repr__(self):
-    return f'ErProcessorBatch(id={repr(self._id)}, name={self._name}, nodes=[{_repr_list(self._processors)}], tag={self._tag})'
+    return f'ErProcessorBatch(id={repr(self._id)}, name={self._name}, processors=[{_repr_list(self._processors)}], tag={self._tag})'
 
 
 class ErFunctor(RpcMessage):
@@ -459,6 +458,9 @@ class ErSessionMeta(RpcMessage):
                                 status=self._status,
                                 options=self._options,
                                 tag=self._tag)
+
+  def to_proto_string(self):
+    return self.to_proto().SerializeToString()
 
   @staticmethod
   def from_proto(pb_message):
