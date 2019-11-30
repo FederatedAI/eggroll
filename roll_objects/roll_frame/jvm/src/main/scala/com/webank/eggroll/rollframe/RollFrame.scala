@@ -103,10 +103,11 @@ object RollFrame {
   val mapBatch = "mapBatch"
   val reduce = "reduce"
   val aggregate = "aggregate"
+  val loadJvm = "loadJvm"
 }
 
 // TODO: MOCK
-class ClusterManager {
+class ClusterManager extends Serializable{
   val clusterNode0 = ErProcessor(id = 0, commandEndpoint = ErEndpoint("node1", 20100), dataEndpoint = ErEndpoint("node1", 20200), tag = "boss")
   val clusterNode1 = ErProcessor(id = 1, commandEndpoint = ErEndpoint("node2", 20101), dataEndpoint = ErEndpoint("node2", 20201), tag = "worker")
   val clusterNode2 = ErProcessor(id = 2, commandEndpoint = ErEndpoint("node3", 20102), dataEndpoint = ErEndpoint("node3", 20202), tag = "worker")
@@ -165,6 +166,7 @@ class ClusterManager {
       val dataEndpoint = server.dataEndpoint
       if (idMatch) {
         val sb = NettyServerBuilder.forPort(commandEndpoint.port)
+        sb.maxInboundMessageSize(32 << 22)
         sb.addService(new CommandService).build.start
         println("Start GrpcCommandService...")
         new Thread("transfer-" + dataEndpoint.port) {

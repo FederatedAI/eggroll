@@ -250,7 +250,7 @@ class FrameSchema(val arrowSchema: VectorSchemaRoot,
   }
 
   def slice(from: Int, to: Int): FrameSchema = {
-    require(to >= from, s"illegal arg. require to >= from. from: ${from}, to: ${to}")
+    require(to >= from, s"illegal arg. require to >= from. from: $from, to: $to")
     val fieldVectors = columnarVectors.zipWithIndex.filter {
       case (_, i) => i >= from && i < to
     }.map(_._1)
@@ -259,7 +259,7 @@ class FrameSchema(val arrowSchema: VectorSchemaRoot,
   }
 
   def sparse(fieldCount: Int, from: Int, to: Int): FrameSchema = {
-    require(to >= from, s"illegal arg. require to >= from. from: ${from}, to: ${to}")
+    require(to >= from, s"illegal arg. require to >= from. from: $from, to: $to")
     val placeholders = (from until to).toArray
     new FrameSchema(columnarVectors, arrowSchema.getRowCount, fieldCount, placeholders)
   }

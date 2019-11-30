@@ -18,20 +18,26 @@
 
 package com.webank.eggroll.rollframe
 
-import com.webank.eggroll.core.io.adapter.BlockDeviceAdapter
+import com.webank.eggroll.core.io.adapter.{BlockDeviceAdapter, HdfsBlockAdapter}
 import com.webank.eggroll.format._
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs._
-import org.junit.Test
+import org.junit.{Before, Test}
 
 class FrameFormatTests {
   private val testAssets = TestAssets
+
+  @Before
+  def setup(): Unit = {
+    HdfsBlockAdapter.fastSetLocal()
+  }
+
   @Test
   def testNullableFields(): Unit = {
     val fb = new FrameBatch(new FrameSchema(testAssets.getDoubleSchema(4)), 3000)
     val path = "/tmp/unittests/RollFrameTests/file/test1/nullable_test"
     val adapter = FrameDB.file(path)
-    adapter.writeAll(Iterator(fb.sliceByColumn(0,3)))
+    adapter.writeAll(Iterator(fb.sliceByColumn(0, 3)))
     adapter.close()
     val adapter2 = FrameDB.file(path)
     val fb2 = adapter2.readOne()
@@ -39,12 +45,12 @@ class FrameFormatTests {
   }
 
   @Test
-  def TestFileFrameDB(): Unit ={
+  def TestFileFrameDB(): Unit = {
     // create FrameBatch data
-    val fb = new FrameBatch(new FrameSchema(testAssets.getDoubleSchema(2)),100)
-    for (i <- 0 until fb.fieldCount){
-      for (j <- 0 until fb.rowCount){
-        fb.writeDouble(i,j,j)
+    val fb = new FrameBatch(new FrameSchema(testAssets.getDoubleSchema(2)), 100)
+    for (i <- 0 until fb.fieldCount) {
+      for (j <- 0 until fb.rowCount) {
+        fb.writeDouble(i, j, j)
       }
     }
     // write FrameBatch data to File
@@ -56,17 +62,17 @@ class FrameFormatTests {
     // read FrameBatch data from File
     val fileReadAdapter = FrameDB.file(filePath)
     val fbFromFile = fileReadAdapter.readOne()
-    
-    assert(fbFromFile.readDouble(0,3) == 3.0)
+
+    assert(fbFromFile.readDouble(0, 3) == 3.0)
   }
 
   @Test
-  def testJvmFrameDB(): Unit ={
+  def testJvmFrameDB(): Unit = {
     // create FrameBatch data
-    val fb = new FrameBatch(new FrameSchema(testAssets.getDoubleSchema(2)),100)
-    for (i <- 0 until fb.fieldCount){
-      for (j <- 0 until fb.rowCount){
-        fb.writeDouble(i,j,j)
+    val fb = new FrameBatch(new FrameSchema(testAssets.getDoubleSchema(2)), 100)
+    for (i <- 0 until fb.fieldCount) {
+      for (j <- 0 until fb.rowCount) {
+        fb.writeDouble(i, j, j)
       }
     }
     // write FrameBatch data to Jvm
@@ -75,43 +81,35 @@ class FrameFormatTests {
     jvmAdapter.writeAll(Iterator(fb))
     // read FrameBatch data from Jvm
     val fbFromJvm = jvmAdapter.readOne()
-    
-    assert(fbFromJvm.readDouble(0,10) == 10.0)
+
+    assert(fbFromJvm.readDouble(0, 10) == 10.0)
   }
 
+
   @Test
-  def testHdfsFrameDB(): Unit ={
+  def testHdfsFrameDB(): Unit = {
     // create FrameBatch data
-    val fb = new FrameBatch(new FrameSchema(testAssets.getDoubleSchema(2)),100)
-    for (i <- 0 until fb.fieldCount){
-      for (j <- 0 until fb.rowCount){
-        fb.writeDouble(i,j,j)
+    val fb = new FrameBatch(new FrameSchema(testAssets.getDoubleSchema(2)), 100)
+    for (i <- 0 until fb.fieldCount) {
+      for (j <- 0 until fb.rowCount) {
+        fb.writeDouble(i, j, j)
       }
     }
     // write FrameBatch data to HDFS
     val hdfsPath = "/tmp/unittests/RollFrameTests/hdfs/test1/framedb_test/part0"
     val hdfsWriteAdapter = FrameDB.hdfs(hdfsPath)
     hdfsWriteAdapter.writeAll(Iterator(fb))
-    hdfsWriteAdapter.close()
+    hdfsWriteAdapter.close() // must be closed
+
     // read FrameBatch data from HDFS
     val hdfsReadAdapter = FrameDB.hdfs(hdfsPath)
     val fbFromHdfs = hdfsReadAdapter.readOne()
-    
-    assert(fbFromHdfs.readDouble(0,20) == 20.0)
+
+    assert(fbFromHdfs.readDouble(0, 20) == 20.0)
   }
 
   @Test
-  def testVerifyHDFS(): Unit ={
-    val hdfsRootPath = "hdfs://localhost:9000"
-    val conf = new Configuration()
-    conf.set("fs.defaultFS", hdfsRootPath)
-    val hadoop = FileSystem.get(conf)
-    assert(hadoop.exists(new Path("/")))
-  }
-
-
-  @Test
-  def testFrameDataType():Unit = {
+  def testFrameDataType(): Unit = {
     val schema =
       """
       {
@@ -140,7 +138,7 @@ class FrameFormatTests {
     list0.writeLong(2, 33)
     list0.writeLong(0, 44)
     list2.writeLong(3, 55)
-    (0 until 10).foreach( i=> arr.writeLong(i, i * 100 + 1))
+    (0 until 10).foreach(i => arr.writeLong(i, i * 100 + 1))
     val outputStore = FrameDB.file("/tmp/unittests/RollFrameTests/file/test1/type_test")
 
     outputStore.append(batch)
@@ -153,19 +151,18 @@ class FrameFormatTests {
     assert(list0Copy.readLong(0) == 44)
 
     val inputStore = FrameDB.file("/tmp/unittests/RollFrameTests/file/test1/type_test")
-    for(b <- inputStore.readAll()) {
+    for (b <- inputStore.readAll()) {
       assert(b.readDouble(0, 0) == 1.2)
       assert(b.readLong(1, 0) == 22)
-      assert(b.getArray(2,0).readLong(0) == 1)
-      assert(b.getList(3,0).readLong(0) == 44)
-      assert(b.getList(3,0).readLong(2) == 33)
-      assert(b.getList(3,1).readLong(3) == 55)
-
+      assert(b.getArray(2, 0).readLong(0) == 1)
+      assert(b.getList(3, 0).readLong(0) == 44)
+      assert(b.getList(3, 0).readLong(2) == 33)
+      assert(b.getList(3, 1).readLong(3) == 55)
     }
   }
 
   @Test
-  def testReadWrite():Unit = {
+  def testReadWrite(): Unit = {
     val schema =
       """
         {
@@ -188,10 +185,10 @@ class FrameFormatTests {
     )
     cw.close()
     val cr = new FrameReader(path)
-    for( cb <- cr.getColumnarBatches()){
-      for( fid <- 0 until fieldCount){
+    for (cb <- cr.getColumnarBatches()) {
+      for (fid <- 0 until fieldCount) {
         val cv = cb.rootVectors(fid)
-        for(n <- 0 until cv.valueCount) {
+        for (n <- 0 until cv.valueCount) {
           assert(cv.readDouble(n) == fid * valueCount + n * 0.5)
         }
       }

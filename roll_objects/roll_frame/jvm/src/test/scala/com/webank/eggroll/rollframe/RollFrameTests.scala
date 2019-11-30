@@ -22,7 +22,7 @@ import java.util.Random
 import java.util.concurrent.{Callable, Executors}
 
 import com.webank.eggroll.core.constant.StringConstants
-import com.webank.eggroll.core.io.adapter.BlockDeviceAdapter
+import com.webank.eggroll.core.io.adapter.{BlockDeviceAdapter, HdfsBlockAdapter}
 import com.webank.eggroll.core.meta.{ErPartition, ErProcessor, ErStore, ErStoreLocator}
 import com.webank.eggroll.format._
 import org.junit.{Before, Test}
@@ -32,7 +32,8 @@ class RollFrameTests {
   private val clusterManager = testAssets.clusterManager
   @Before
   def setup():Unit = {
-    testAssets.clusterManager.startServerCluster(nodeId = 0)
+    HdfsBlockAdapter.fastSetLocal()
+    testAssets.clusterManager.startServerCluster()
   }
 
   @Test
@@ -79,6 +80,30 @@ class RollFrameTests {
   }
 
   @Test
+  def testHdfsToJvm(): Unit ={
+    val storeLocator = ErStoreLocator(name = "a1", namespace = "test1", storeType = StringConstants.HDFS)
+    val input = ErStore(storeLocator = storeLocator,
+      partitions = Array(
+        ErPartition(id = 0, storeLocator = storeLocator, processor = clusterManager.localNode0),
+        ErPartition(id = 1, storeLocator = storeLocator, processor = clusterManager.localNode1)))
+
+    val outputStoreLocator = ErStoreLocator(name = "a1map", namespace = "test1", storeType = StringConstants.CACHE)
+    val output = ErStore(storeLocator = outputStoreLocator,
+      partitions = Array(
+        ErPartition(id = 0, storeLocator = outputStoreLocator, processor = clusterManager.localNode0),
+        ErPartition(id = 1, storeLocator = outputStoreLocator, processor = clusterManager.localNode1)))
+
+    val rf = new RollFrameClientMode(input)
+    rf.mapBatch({ cb =>
+      cb
+    },output = output)
+
+    val fd1 = FrameDB(input,0).readOne()
+    val fd2 = FrameDB(output, 0).readOne() // take first partition to assert
+    assert(fd1.readDouble(0,0) == fd2.readDouble(0,0))
+  }
+
+  @Test
   def testMapBatchWithHdfs(): Unit = {
     val storeLocator = ErStoreLocator(name = "a1", namespace = "test1", storeType = StringConstants.HDFS)
     val input = ErStore(storeLocator = storeLocator,
@@ -87,7 +112,10 @@ class RollFrameTests {
         ErPartition(id = 1, storeLocator = storeLocator, processor = clusterManager.localNode1)))
 
     val outputStoreLocator = input.storeLocator.copy(name = "a1map")
-    val output = input.copy(storeLocator = outputStoreLocator)
+    val output = input.copy(storeLocator = outputStoreLocator,
+      partitions = Array(
+        ErPartition(id = 0, storeLocator = outputStoreLocator, processor = clusterManager.localNode0),
+        ErPartition(id = 1, storeLocator = outputStoreLocator, processor = clusterManager.localNode1)))
 
     val rf = new RollFrameClientMode(input)
     rf.mapBatch({ cb =>
@@ -98,7 +126,7 @@ class RollFrameTests {
         }
       }
       mapRf
-    })
+    },output=output)
 
     val mapFb0 = FrameDB(output, 0).readOne() // take first partition to assert
     assert(mapFb0.readDouble(0, 0) == 0.0)
@@ -358,7 +386,6 @@ class RollFrameTests {
             x.writeDouble(f,0, sum)
             //          x.writeDouble(f,0, fv.valueCount)
           }
-
         }
       } catch {
         case t:Throwable => t.printStackTrace()
