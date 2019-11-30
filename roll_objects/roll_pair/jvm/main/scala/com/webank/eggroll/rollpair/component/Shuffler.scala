@@ -262,7 +262,6 @@ class GrpcShuffleReceiver(shuffleId: String,
 
         val magicNumber = Array.fill[Byte](8)(0)
         val protocolVersion = Array.fill[Byte](4)(0)
-
         byteBuffer.get(magicNumber)
         byteBuffer.get(protocolVersion)
 

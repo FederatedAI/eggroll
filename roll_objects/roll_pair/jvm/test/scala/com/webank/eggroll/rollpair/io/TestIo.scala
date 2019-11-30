@@ -122,7 +122,7 @@ class TestIo {
 
   @Test
   def testIterateMultipleKvBatch(): Unit = {
-    val path = mapPath
+    val path = namePath
     println(s"path: ${path}")
 
     for (p <- 0 until 4) {
