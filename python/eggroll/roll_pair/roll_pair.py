@@ -184,21 +184,22 @@ class RollPair(object):
           serdes_type=self.__command_serdes)
       broker = GrpcTransferServicer.get_broker(job._id)
       while not broker.is_closable():
-          proto_transfer_batch = broker.get(block=True, timeout=1)
-          if proto_transfer_batch:
+        proto_transfer_batch = broker.get(block=True, timeout=1)
+        if proto_transfer_batch:
             bin_data = proto_transfer_batch.data
-            reader = BinBatchReader(pair_batch=bin_data)
-            try:
-                while reader.has_remaining():
-                  key_size = reader.read_int()
-                  key = reader.read_bytes(size=key_size)
-                  value_size = reader.read_int()
-                  value = reader.read_bytes(size=value_size)
-                  yield key, value
-            except IndexError as e:
-                print('finish processing an output')
+        reader = BinBatchReader(pair_batch=bin_data)
+        try:
+            while reader.has_remaining():
+              key_size = reader.read_int()
+              key = reader.read_bytes(size=key_size)
+              value_size = reader.read_int()
+              value = reader.read_bytes(size=value_size)
+              yield key, value
+        except IndexError as e:
+            print('finish processing an output')
       GrpcTransferServicer.remove_broker(job._id)
-    def put_all(self, items, output=None,opt = {}):
+
+  def put_all(self, items, output=None,opt = {}):
         outputs = []
         if output:
           outputs.append(output)
