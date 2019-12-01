@@ -23,13 +23,14 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import com.webank.eggroll.core.client.NodeManagerClient
 import com.webank.eggroll.core.clustermanager.metadata.ServerNodeCrudOperator
-import com.webank.eggroll.core.constant.{ServerNodeStatus, ServerNodeTypes}
-import com.webank.eggroll.core.meta.{ErProcessor, ErProcessorBatch, ErServerCluster, ErServerNode, ErSession, ErSessionMeta}
+import com.webank.eggroll.core.constant.{ProcessorTypes, ServerNodeStatus, ServerNodeTypes}
+import com.webank.eggroll.core.meta._
 
-import scala.collection.mutable.{ArrayBuffer, ListBuffer}
+import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 
 object SessionManager {
-  private val activeSessions = new ConcurrentHashMap[String, ErProcessorBatch]()
+  private val activeSessions = new ConcurrentHashMap[String, ErServerSessionDeployment]()
 
   def getOrCreateSession(sessionMeta: ErSessionMeta): ErProcessorBatch = {
     val sessionId = sessionMeta.id
@@ -48,13 +49,14 @@ object SessionManager {
         val rolls = deployer.createRolls()
         val eggs = deployer.createEggs()
 
-        val processorBatch = ErProcessorBatch(processors = rolls.processors ++ eggs.processors, tag = sessionId)
+        val newDeployment = ErServerSessionDeployment(id = sessionId, rolls = rolls.processors, eggs = eggs)
+        activeSessions.put(sessionId, newDeployment)
 
-        activeSessions.put(sessionId, processorBatch)
       }
     }
+    val deployment = activeSessions.get(sessionId)
 
-    activeSessions.get(sessionId)
+    deployment.toErProcessorBatch()
   }
 
   def register(sessionMeta: ErSessionMeta, processorBatch: ErProcessorBatch): ErProcessorBatch = {
@@ -62,13 +64,32 @@ object SessionManager {
     if (activeSessions.containsKey(sessionId)) {
       throw new IllegalStateException("session already exists")
     }
-    activeSessions.put(sessionId, processorBatch)
 
-    activeSessions.get(sessionId)
+    val rolls = ArrayBuffer[ErProcessor]()
+    val eggs = mutable.Map[Long, ArrayBuffer[ErProcessor]]()
+
+    processorBatch.processors.foreach(p => {
+      if (ProcessorTypes.EGG_PAIR.equals(p.processorType)) {
+        eggs.get(p.serverNodeId) match {
+          case Some(b) => b += p
+          case None =>
+            val arrayBuffer = ArrayBuffer[ErProcessor]()
+            arrayBuffer += p
+            eggs += (p.serverNodeId -> arrayBuffer)
+        }
+      } else if (ProcessorTypes.ROLL_PAIR_SERVICER.equals(p.processorType)) {
+        rolls += p
+      }
+    })
+    val newDeployment = ErServerSessionDeployment(sessionId, rolls.toArray, eggs.mapValues(_.toArray).toMap)
+
+    activeSessions.put(sessionId, newDeployment)
+
+    activeSessions.get(sessionId).toErProcessorBatch()
   }
 
-  def getSession(sessionId: String): ErProcessorBatch = this.synchronized {
-    activeSessions.getOrDefault(sessionId, null)
+  def getSession(sessionId: String): ErProcessorBatch = {
+    activeSessions.getOrDefault(sessionId, null).toErProcessorBatch()
   }
 
   def stopSession(session: ErSessionMeta): ErProcessorBatch = this.synchronized {
@@ -79,6 +100,7 @@ object SessionManager {
 
     null
   }
+
 }
 
 class DefaultClusterDeployer(sessionMeta: ErSessionMeta,
@@ -97,7 +119,11 @@ class DefaultClusterDeployer(sessionMeta: ErSessionMeta,
       val i = new AtomicInteger(0)
       processorBatch.processors.foreach(p => {
         val curI = i.getAndIncrement()
-        val populated = p.copy(id = curI, commandEndpoint = p.commandEndpoint.copy(host = host), dataEndpoint = p.dataEndpoint.copy(host = host), tag = s"${p.processorType}-${n.id}-${curI}")
+        val populated = p.copy(
+          id = curI,
+          commandEndpoint = p.commandEndpoint.copy(host = host),
+          dataEndpoint = p.dataEndpoint.copy(host = host),
+          tag = s"${p.processorType}-${n.id}-${curI}")
         rolls += populated
       })
     })
@@ -105,8 +131,8 @@ class DefaultClusterDeployer(sessionMeta: ErSessionMeta,
     ErProcessorBatch(processors = rolls.toArray)
   }
 
-  def createEggs(): ErProcessorBatch = {
-    val eggs = ListBuffer[ErProcessor]()
+  def createEggs(): Map[Long, Array[ErProcessor]] = {
+    val eggs = mutable.Map[Long, Array[ErProcessor]]()
 
     eggCluster.serverNodes.foreach(n => {
       val nodeManagerClient = new NodeManagerClient(n.endpoint)
@@ -114,13 +140,18 @@ class DefaultClusterDeployer(sessionMeta: ErSessionMeta,
 
       val i = new AtomicInteger(0)
       val host = n.endpoint.host
+
+      val populatedEggs = new Array[ErProcessor](processorBatch.processors.length)
       processorBatch.processors.foreach(p => {
         val curI = i.getAndIncrement()
         val populated = p.copy(id = curI, commandEndpoint = p.commandEndpoint.copy(host = host), dataEndpoint = p.dataEndpoint.copy(host = host), tag = s"${p.processorType}-${n.id}-${curI}")
-        eggs += populated
+
+        populatedEggs.update(curI, populated)
       })
+
+      eggs += (n.id -> populatedEggs)
     })
 
-    ErProcessorBatch(processors = eggs.toArray)
+    eggs.toMap
   }
 }

@@ -27,10 +27,13 @@ class ErDeploy:
 class ErStandaloneDeploy(ErDeploy):
   def __init__(self, session_meta: ErSessionMeta, options={}):
     self._rolls = [ErProcessor(id=0,
+                               server_node_id=0,
                                processor_type=ProcessorTypes.ROLL_PAIR_SERVICER,
                                status=ProcessorStatus.RUNNING,
                                command_endpoint=ErEndpoint(get_self_ip(), 4671))]
+
     self._eggs = {0: [ErProcessor(id=0,
+                                  server_node_id=0,
                                   processor_type=ProcessorTypes.EGG_PAIR,
                                   status=ProcessorStatus.RUNNING,
                                   command_endpoint=ErEndpoint(get_self_ip(), 4671))]}
@@ -92,7 +95,7 @@ class ErSession(object):
       self.deploy_client = ErClusterDeploy(self.session_meta, options=options)
     self._rolls = self.deploy_client._rolls
     self._eggs = self.deploy_client._eggs
-    print(f'eggs: {self._eggs}, rolls: {self._rolls}')
+    #print(f'eggs: {self._eggs}, rolls: {self._rolls}')
 
     self.cm_client = self.deploy_client.cm_client
     self.__cleanup_tasks = []

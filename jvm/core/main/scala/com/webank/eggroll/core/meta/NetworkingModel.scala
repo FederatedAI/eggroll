@@ -39,6 +39,7 @@ case class ErEndpoint(@BeanProperty host: String, @BeanProperty port: Int = -1) 
 }
 
 case class ErProcessor(id: Long = -1,
+                       serverNodeId: Long = -1,
                        name: String = StringConstants.EMPTY,
                        processorType: String = StringConstants.EMPTY,
                        status: String = StringConstants.EMPTY,
@@ -84,6 +85,7 @@ object NetworkingModelPbMessageSerdes {
     override def toProto[T >: PbMessage](): Meta.Processor = {
       val builder = Meta.Processor.newBuilder()
         .setId(src.id)
+        .setServerNodeId(src.serverNodeId)
         .setName(src.name)
         .setProcessorType(src.processorType)
         .setStatus(src.status)
@@ -159,6 +161,7 @@ object NetworkingModelPbMessageSerdes {
     override def fromProto[T >: RpcMessage](): ErProcessor = {
       ErProcessor(
         id = src.getId,
+        serverNodeId = src.getServerNodeId,
         name = src.getName,
         processorType = src.getProcessorType,
         status = src.getStatus,

@@ -41,19 +41,15 @@ class RollPairContext(object):
         self.default_store_type = StoreTypes.ROLLPAIR_LEVELDB
 
     def get_roll_endpoint(self):
-        for proc in self.__session.__processors:
-            if proc._processor_type == ProcessorTypes.ROLL_PAIR_SERVICER:
-                return proc._command_endpoint
+        return self.__session._rolls[0]
+
     # TODO: return transfer endpoint
     def get_egg_endpoint(self, egg_id):
-        for proc in self.__session.__processors:
-            if proc._id == egg_id and proc._processor_type != ProcessorTypes.EGG_PAIR:
-                return proc._command_endpoint
-        raise ValueError("egg_id:%   egg not found" % egg_id)
+        return self.__session._eggs[0][0]._command_endpoint
 
     def load(self, namespace=None, name=None, create_if_missing=True, options={}):
         store_type = options.get('store_type', self.default_store_type)
-        total_partitions = options.get('total_partitions', 0)
+        total_partitions = options.get('total_partitions', 1)
         partitioner = options.get('partitioner', PartitionerTypes.BYTESTRING_HASH)
         serdes = options.get('serdes', SerdesTypes.CLOUD_PICKLE)
         store = ErStore(
@@ -137,7 +133,7 @@ class RollPair(object):
     storage api
   
   """
-  def get(self, k, opt = {}):
+  def get(self, k, opt={}):
     k = self.get_serdes().serialize(k)
     er_pair = ErPair(key=k, value=None)
     outputs = []
@@ -145,6 +141,7 @@ class RollPair(object):
     part_id = self.partitioner(k)
     egg_id = self.egg_router(part_id)
     egg_endpoint = self.ctx.get_egg_endpoint(egg_id)
+    print(egg_endpoint)
     print("count:", self.__store._store_locator._total_partitions)
     inputs = [ErPartition(id=part_id, store_locator=self.__store._store_locator)]
     output = [ErPartition(id=part_id, store_locator=self.__store._store_locator)]
@@ -156,11 +153,11 @@ class RollPair(object):
     task = ErTask(id=self.__session_id, name=RollPair.GET, inputs=inputs, outputs=output, job=job)
     print("start send req")
     job_resp = self.__roll_pair_command_client.simple_sync_send(
-    input=task,
-    output_type=ErPair,
-    endpoint=egg_endpoint,
-    command_uri=CommandURI(f'{EggPair.uri_prefix}/{EggPair.GET}'),
-    serdes_type=self.__command_serdes
+              input=task,
+              output_type=ErPair,
+              endpoint=egg_endpoint,
+              command_uri=CommandURI(f'{EggPair.uri_prefix}/{EggPair.GET}'),
+              serdes_type=self.__command_serdes
     )
     print("get resp:{}".format(ErPair.from_proto_string(job_resp._value)))
 
