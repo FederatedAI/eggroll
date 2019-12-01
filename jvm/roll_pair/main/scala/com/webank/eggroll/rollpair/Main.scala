@@ -24,19 +24,38 @@ import java.util.concurrent.ConcurrentHashMap
 import _root_.io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
 import com.webank.eggroll.core.client.NodeManagerClient
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
-import com.webank.eggroll.core.constant.{ProcessorStatus, ProcessorTypes, SessionConfKeys}
+import com.webank.eggroll.core.constant.{ProcessorStatus, ProcessorTypes, SessionConfKeys, StringConstants}
 import com.webank.eggroll.core.meta.{ErEndpoint, ErJob, ErProcessor}
 import com.webank.eggroll.core.util.{Logging, MiscellaneousUtils}
 import com.webank.eggroll.rollpair.component.RollPairServicer
+import org.apache.commons.lang3.StringUtils
 
 
 object Main extends Logging {
   def main(args: Array[String]): Unit = {
     val cmd = MiscellaneousUtils.parseArgs(args = args)
     val portString = cmd.getOptionValue('p', "0")
-    val sessionId = cmd.getOptionValue('s')
+    val sessionId = cmd.getOptionValue('s', "UNKNOWN")
+    val nodeManager = cmd.getOptionValue("nm")
 
-    val rollServer = NettyServerBuilder.forAddress(new InetSocketAddress("127.0.0.1", portString.toInt)).addService(new CommandService).build
+    println(nodeManager)
+    val managerEndpoint = if (StringUtils.isBlank(nodeManager)) {
+      ErEndpoint(host = "localhost", port = 9394)
+    } else {
+      val splittedManager = nodeManager.trim.split(StringConstants.COLON, 2)
+      println(splittedManager)
+      println(splittedManager.length)
+
+      val managerHost = if (splittedManager.length == 1) "localhost" else splittedManager(0)
+      val managerPort = if (splittedManager.length == 1) splittedManager(0) else splittedManager(1)
+
+      ErEndpoint(host = managerHost, port = managerPort.toInt)
+    }
+
+    val rollServer = NettyServerBuilder
+      .forAddress(new InetSocketAddress("127.0.0.1", portString.toInt))
+      .addService(new CommandService)
+      .build
     rollServer.start()
     val port = rollServer.getPort
 
@@ -67,7 +86,7 @@ object Main extends Logging {
 
     // todo: get port from command line
     // todo: heartbeat service
-    val nodeManagerClient = new NodeManagerClient()
+    val nodeManagerClient = new NodeManagerClient(managerEndpoint)
     val options = new ConcurrentHashMap[String, String]()
     options.put(SessionConfKeys.CONFKEY_SESSION_ID, sessionId)
     val myself = ErProcessor(

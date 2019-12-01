@@ -20,6 +20,7 @@ package com.webank.eggroll.core.nodemanager
 
 import java.util
 import java.util.Collections
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.{ConcurrentHashMap, CountDownLatch, TimeUnit}
 
 import com.google.common.base.Predicates
@@ -55,11 +56,11 @@ object EggManager {
           val maxProcessorsPerNode = runtimeConf.getInt(SessionConfKeys.CONFKEY_SESSION_MAX_PROCESSORS_PER_NODE, 1)
           val finalProcessorCount = Math.min(Runtime.getRuntime.availableProcessors(), maxProcessorsPerNode)
           initializingSession.putIfAbsent(sessionId, (Collections.synchronizedSet(new util.HashSet[ErProcessor](finalProcessorCount)), new CountDownLatch(finalProcessorCount)))
-          var totalStarted = 0
+          val totalStarted = new AtomicInteger(0)
           (0 until finalProcessorCount).foreach(i => {
             val operator = new PythonProcessorOperator()
             if (operator.start(runtimeConf)) {
-              totalStarted += 1
+              totalStarted.incrementAndGet()
             }
           })
 

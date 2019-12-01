@@ -55,11 +55,20 @@ object MiscellaneousUtils {
       .desc("port to bind")
       .build
 
+    val nodeManager = Option.builder("nm")
+        .argName("node manager of this service")
+        .longOpt("node-manager")
+        .optionalArg(true)
+        .hasArg.numberOfArgs(1)
+        .desc("node manager of this service")
+        .build()
+
     options
       .addOption(config)
       .addOption(help)
       .addOption(sessionId)
       .addOption(port)
+      .addOption(nodeManager)
 
     val parser = new DefaultParser
     var cmd: CommandLine = null
