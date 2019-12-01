@@ -82,6 +82,8 @@ object ClusterManager extends Logging {
       .forAddress(new InetSocketAddress("127.0.0.1", portString.toInt))
       .addService(new CommandService)
       .addService(new GrpcTransferService)
+      .maxInboundMessageSize(1024 * 1024 *1024)
+      .maxInboundMetadataSize(1024 * 1024)
       .build()
 
     val server: Server = clusterManager.start()

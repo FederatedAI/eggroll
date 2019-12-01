@@ -29,7 +29,7 @@ import org.junit.Test
 class TestStoreCrudOperator {
 
   println(new File(".").getAbsolutePath)
-  StaticErConf.addProperties("main/resources/cluster-manager.properties.local")
+  StaticErConf.addProperties("main/resources/cluster-manager.properties")
   val storeCrudOperator = new StoreCrudOperator
   @Test
   def testGetStore(): Unit = {

@@ -27,7 +27,7 @@ import org.junit.Test
 
 class TestServerNodeCrudOperator {
   println(new File(".").getAbsolutePath)
-  StaticErConf.addProperties("main/resources/cluster-manager.properties.local")
+  StaticErConf.addProperties("main/resources/cluster-manager.properties")
   val nodeCrudOperator = new ServerNodeCrudOperator
 
   @Test
