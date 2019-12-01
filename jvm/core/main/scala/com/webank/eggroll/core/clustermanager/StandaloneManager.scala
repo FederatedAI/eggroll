@@ -44,6 +44,6 @@ object StandaloneManager {
 
     println("eggroll-standalone-command-port:" + server.getPort)
     println("eggroll-standalone-transfer-port:" + server.getPort)
-    server.awaitTermination() // 返回 port, 传入单机python进程Id
+    server.awaitTermination() // returns port, pass standalone python process id
   }
 }

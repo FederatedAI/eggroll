@@ -43,12 +43,13 @@ message ServerCluster {
 
 message Processor {
   int64 id = 1;
-  string name = 2;
-  string processorType = 3;
-  string status = 4;
-  Endpoint commandEndpoint = 5;
-  Endpoint dataEndpoint = 6;
-  map<string, string> options = 7;
+  int64 serverNodeId = 2;
+  string name = 3;
+  string processorType = 4;
+  string status = 5;
+  Endpoint commandEndpoint = 6;
+  Endpoint dataEndpoint = 7;
+  map<string, string> options = 8;
   string tag = 10;
 }
 
@@ -88,6 +89,7 @@ message StoreLocator {
 message Store {
   StoreLocator storeLocator = 1;
   repeated Partition partitions = 2;
+  map<string, string> options = 3;
 }
 
 message Partition {

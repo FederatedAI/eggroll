@@ -29,6 +29,7 @@ import com.webank.eggroll.core.util.TimeUtils
 import org.apache.commons.lang3.StringUtils
 
 import scala.collection.JavaConverters._
+import scala.collection.mutable.ArrayBuffer
 
 trait MetaRpcMessage extends RpcMessage {
   override def rpcMessageType(): String = "Meta"
@@ -73,7 +74,10 @@ case class ErPartition(id: Int, storeLocator: ErStoreLocator, processor: ErProce
   def toPath(delim: String = StringConstants.SLASH): String = String.join(delim, storeLocator.toPath(delim = delim), id.toString)
 }
 
-case class ErStore(storeLocator: ErStoreLocator, partitions: Array[ErPartition] = Array.empty) extends MetaRpcMessage {
+case class ErStore(storeLocator: ErStoreLocator,
+                   partitions: Array[ErPartition] = Array.empty,
+                   options: java.util.Map[String, String] = new ConcurrentHashMap[String, String]())
+  extends MetaRpcMessage {
   def toPath(delim: String = StringConstants.SLASH): String = storeLocator.toPath(delim = delim)
 
   def fork(storeLocator: ErStoreLocator): ErStore = {
@@ -110,29 +114,26 @@ case class ErSessionMeta(id: String,
                          status: String = StringConstants.EMPTY,
                          options: java.util.Map[String, String] = new ConcurrentHashMap[String, String](),
                          tag: String = StringConstants.EMPTY) extends MetaRpcMessage {
-  def toErSession(): ErSession = {
-    ErSession(id = id, name = name, status = status, sessionConf = options, tag = tag)
+}
+
+case class ErServerSessionDeployment(id: String, rolls: Array[ErProcessor], eggs: Map[Long, Array[ErProcessor]]) {
+  def toErProcessorBatch: ErProcessorBatch = {
+    val processors = new ArrayBuffer[ErProcessor]()
+    processors ++= rolls
+    eggs.foreach(k => processors ++= k._2)
+
+    ErProcessorBatch(processors = processors.toArray, tag = id)
   }
 }
 
-case class ErSession(id: String,
-                     name: String = StringConstants.EMPTY,
-                     status: String = StringConstants.EMPTY,
-                     sessionConf: java.util.Map[String, String] = new ConcurrentHashMap[String, String](),
-                     tag: String = StringConstants.EMPTY,
-                     contexts: java.util.Map[String, RollContext] = new ConcurrentHashMap[String, RollContext](),
-                     serverCluster: ErServerCluster = null) {
-  def this(sessionMeta: ErSessionMeta, contexts: java.util.Map[String, RollContext], serverCluster: ErServerCluster) {
-    this(id = sessionMeta.id,
-      name = sessionMeta.name,
-      status = sessionMeta.status,
-      tag = sessionMeta.tag,
-      contexts = contexts,
-      serverCluster = serverCluster)
-  }
+class ErSession(id: String, sessionMeta: ErSessionMeta, deploys: Map[String, ErServerSessionDeployment]) {
+  def name: String = sessionMeta.name
 
-  def toErSessionMeta(): ErSessionMeta =
-    ErSessionMeta(id = id, name = name, status = status, options = sessionConf, tag = tag)
+  def status: String = sessionMeta.status
+
+  def options: java.util.Map[String, String] = sessionMeta.options
+
+  def tag: String = sessionMeta.tag
 }
 
 object MetaModelPbMessageSerdes {
@@ -199,6 +200,7 @@ object MetaModelPbMessageSerdes {
       val builder = Meta.Store.newBuilder()
         .setStoreLocator(src.storeLocator.toProto())
         .addAllPartitions(src.partitions.toList.map(_.toProto()).asJava)
+        .putAllOptions(src.options)
 
       builder.build()
     }
@@ -313,7 +315,10 @@ object MetaModelPbMessageSerdes {
 
   implicit class ErStoreFromPbMessage(src: Meta.Store) extends PbMessageDeserializer {
     override def fromProto[T >: RpcMessage](): ErStore = {
-      ErStore(storeLocator = src.getStoreLocator.fromProto(), src.getPartitionsList.asScala.map(_.fromProto()).toArray)
+      ErStore(
+        storeLocator = src.getStoreLocator.fromProto(),
+        partitions = src.getPartitionsList.asScala.map(_.fromProto()).toArray,
+        options = src.getOptionsMap)
     }
 
     override def fromBytes(bytes: Array[Byte]): ErStore =

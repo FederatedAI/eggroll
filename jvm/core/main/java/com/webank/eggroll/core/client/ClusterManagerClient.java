@@ -34,6 +34,7 @@ import com.webank.eggroll.core.meta.ErSessionMeta;
 import com.webank.eggroll.core.meta.ErStore;
 import com.webank.eggroll.core.meta.ErStoreLocator;
 import com.webank.eggroll.core.session.StaticErConf;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class ClusterManagerClient {
   private ErEndpoint clusterManagerEndpoint;
@@ -73,7 +74,7 @@ public class ClusterManagerClient {
   }
 
   public ErStore getStore(ErStoreLocator input) {
-    return getStore(new ErStore(input, EMPTY_PARTITION_ARRAY));
+    return getStore(new ErStore(input, EMPTY_PARTITION_ARRAY, new ConcurrentHashMap<String, String>()));
   }
 
   public ErStore getStore(ErStore input) {
@@ -81,7 +82,7 @@ public class ClusterManagerClient {
   }
 
   public ErStore getOrCreateStore(ErStoreLocator input) {
-    return getOrCreateStore(new ErStore(input, EMPTY_PARTITION_ARRAY));
+    return getOrCreateStore(new ErStore(input, EMPTY_PARTITION_ARRAY, new ConcurrentHashMap<String, String>()));
   }
 
   public ErStore getOrCreateStore(ErStore input) {
@@ -93,7 +94,7 @@ public class ClusterManagerClient {
   }
 
   public ErStore deleteStore(ErStoreLocator input) {
-    return deleteStore(new ErStore(input, EMPTY_PARTITION_ARRAY));
+    return deleteStore(new ErStore(input, EMPTY_PARTITION_ARRAY, new ConcurrentHashMap<String, String>()));
   }
 
   public ErSessionMeta getOrCreateSession(ErSessionMeta sessionMeta) {

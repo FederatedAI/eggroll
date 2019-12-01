@@ -110,6 +110,7 @@ class ErServerCluster(RpcMessage):
 class ErProcessor(RpcMessage):
   def __init__(self,
       id=-1,
+      server_node_id: int = -1,
       name: str = '',
       processor_type='',
       status='',
@@ -118,6 +119,7 @@ class ErProcessor(RpcMessage):
       options = {},
       tag=''):
     self._id = id
+    self._server_node_id = server_node_id
     self._name = name
     self._processor_type = processor_type
     self._status = status
@@ -128,6 +130,7 @@ class ErProcessor(RpcMessage):
 
   def to_proto(self):
     return meta_pb2.Processor(id=self._id,
+                              serverNodeId=self._server_node_id,
                               name=self._name,
                               processorType=self._processor_type,
                               status=self._status,
@@ -142,6 +145,7 @@ class ErProcessor(RpcMessage):
   @staticmethod
   def from_proto(pb_message):
     return ErProcessor(id=pb_message.id,
+                       server_node_id=pb_message.serverNodeId,
                        name=pb_message.name,
                        processor_type=pb_message.processorType,
                        status=pb_message.status,
@@ -157,7 +161,9 @@ class ErProcessor(RpcMessage):
     return ErProcessor.from_proto(pb_message)
 
   def __repr__(self):
-    return f'ErProcessor(id={repr(self._id)}, name={self._name}, ' \
+    return f'ErProcessor(id={repr(self._id)}, ' \
+           f'server_node_id={self._server_node_id}, ' \
+           f'name={self._name}, ' \
            f'processor_type={self._processor_type}, status={self._status}, ' \
            f'command_endpoint={repr(self._command_endpoint)},' \
            f' data_endpoint={repr(self._data_endpoint)}, ' \
@@ -330,13 +336,15 @@ class ErPartition(RpcMessage):
 
 
 class ErStore(RpcMessage):
-  def __init__(self, store_locator: ErStoreLocator, partitions=list()):
+  def __init__(self, store_locator: ErStoreLocator, partitions=list(), options=dict()):
     self._store_locator = store_locator
     self._partitions = partitions
+    self._options = options
 
   def to_proto(self):
     return meta_pb2.Store(storeLocator=self._store_locator.to_proto(),
-                          partitions=_elements_to_proto(self._partitions))
+                          partitions=_elements_to_proto(self._partitions),
+                          options=self._options)
 
   def to_proto_string(self):
     return self.to_proto().SerializeToString()
@@ -348,7 +356,8 @@ class ErStore(RpcMessage):
   def from_proto(pb_message):
     return ErStore(
       store_locator=ErStoreLocator.from_proto(pb_message.storeLocator),
-      partitions=_map_and_listify(ErPartition.from_proto, pb_message.partitions))
+      partitions=_map_and_listify(ErPartition.from_proto, pb_message.partitions),
+      options=pb_message.options)
 
   @staticmethod
   def from_proto_string(pb_string):
@@ -357,7 +366,7 @@ class ErStore(RpcMessage):
     return ErStore.from_proto(pb_message)
 
   def __repr__(self):
-    return f'ErStore(store_locator={repr(self._store_locator)}, partitions=[{_repr_list(self._partitions)}])'
+    return f'ErStore(store_locator={repr(self._store_locator)}, partitions=[{_repr_list(self._partitions)}], options=[{repr(self._options)}])'
 
 
 class ErJob(RpcMessage):
