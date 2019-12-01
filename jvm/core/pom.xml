@@ -25,7 +25,6 @@
     <groupId>com.webank.eggroll</groupId>
     <artifactId>eggroll-all</artifactId>
     <version>${eggroll.version}</version>
-    <relativePath>../../pom.xml</relativePath>
   </parent>
 
   <artifactId>eggroll-core</artifactId>
@@ -92,7 +91,7 @@
           <pluginId>grpc-java</pluginId>
           <pluginArtifact>io.grpc:protoc-gen-grpc-java:${grpc.version}:exe:${os.detected.classifier}
           </pluginArtifact>
-          <protoSourceRoot>${pom.basedir}/../proto</protoSourceRoot>
+          <protoSourceRoot>${pom.basedir}/../../proto/core</protoSourceRoot>
         </configuration>
         <executions>
           <execution>

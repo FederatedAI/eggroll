@@ -25,7 +25,7 @@
         <groupId>com.webank.eggroll</groupId>
         <artifactId>eggroll-all</artifactId>
         <version>${eggroll.version}</version>
-        <relativePath>../../../pom.xml</relativePath>
+        <relativePath>../pom.xml</relativePath>
     </parent>
 
     <artifactId>eggroll-roll-frame</artifactId>

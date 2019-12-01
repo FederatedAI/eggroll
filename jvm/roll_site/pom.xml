@@ -26,7 +26,6 @@
     <parent>
         <groupId>com.webank.eggroll</groupId>
         <artifactId>eggroll-all</artifactId>
-        <relativePath>../../../pom.xml</relativePath>
         <version>${eggroll.version}</version>
     </parent>
 
@@ -79,7 +78,7 @@
             <artifactId>eggroll-core</artifactId>
             <version>${eggroll.version}</version>
             <scope>system</scope>
-            <systemPath>${project.basedir}/../../../core/jvm/target/eggroll-core-2.0.jar</systemPath>
+            <systemPath>${project.basedir}/../core/target/eggroll-core-2.0.jar</systemPath>
         </dependency>
 
         <dependency>
