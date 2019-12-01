@@ -27,7 +27,7 @@ class TestRollPairContext(unittest.TestCase):
   def test_init(self):
     session = ErSession(options={"eggroll.deploy.mode": "standalone"})
     # session = ErSession()
-    context = RollPairContext(sess)
+    context = RollPairContext(session)
     #context.load("ns1", "n21").put("k1", "v1")
     print(context.load("ns1", "n21").get("k1"))
 

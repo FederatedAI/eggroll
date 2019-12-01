@@ -14,6 +14,8 @@
 #  limitations under the License.
 
 from eggroll.core.command.command_model import ErCommandRequest, ErCommandResponse, CommandURI
+from eggroll.core.datastructure.broker import FifoBroker
+from eggroll.core.io.format import BinBatchReader
 from eggroll.core.meta_model import ErStoreLocator, ErJob, ErStore, ErFunctor, ErTask, ErEndpoint, ErPair, ErPartition, \
   ErProcessor
 from eggroll.core.proto import command_pb2_grpc
@@ -24,8 +26,10 @@ from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.constants import StoreTypes, SerdesTypes, PartitionerTypes, ProcessorTypes
 from eggroll.core.serdes.eggroll_serdes import PickleSerdes, CloudPickleSerdes, EmptySerdes
 from eggroll.core.session import ErSession
+from eggroll.core.transfer.transfer_service import GrpcTransferServicer, TransferClient
 from eggroll.core.utils import string_to_bytes
 from eggroll.roll_pair.egg_pair import EggPair
+from eggroll.roll_pair.shuffler import DefaultShuffler
 
 
 class RollPairContext(object):
@@ -93,6 +97,8 @@ class RollPair(object):
     self.egg_router = default_egg_router
     self.ctx = rp_ctx
     self.__session_id = self.ctx.session_id
+    #TODO: config or auto
+    self._transfer_server_endpoint = "localhost:19001"
 
 
   def __repr__(self):
@@ -159,7 +165,68 @@ class RollPair(object):
 
     return value
 
-  def put(self, k, v, opt={}):
+  def get_all(self, k, opt = {}):
+      functor = ErFunctor(name=RollPair.MAP_VALUES, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(self._transfer_server_endpoint))
+      outputs = []
+      job = ErJob(id=self.__session_id, name=RollPair.MAP_VALUES,
+                  inputs=[self.__store],
+                  outputs=outputs,
+                  functors=[functor])
+        #TODO: send to all eggs
+      job_result = self.__roll_pair_command_client.simple_sync_send(
+          input = job,
+          output_type = ErJob,
+          endpoint = self.__roll_pair_service_endpoint,
+          command_uri = CommandURI(f'{RollPair.__uri_prefix}/{RollPair.MAP_VALUES}'),
+          serdes_type=self.__command_serdes)
+      broker = GrpcTransferServicer.get_broker(job._id)
+      while not broker.is_closable():
+        proto_transfer_batch = broker.get(block=True, timeout=1)
+        if proto_transfer_batch:
+            bin_data = proto_transfer_batch.data
+        reader = BinBatchReader(pair_batch=bin_data)
+        try:
+            while reader.has_remaining():
+              key_size = reader.read_int()
+              key = reader.read_bytes(size=key_size)
+              value_size = reader.read_int()
+              value = reader.read_bytes(size=value_size)
+              yield key, value
+        except IndexError as e:
+            print('finish processing an output')
+      GrpcTransferServicer.remove_broker(job._id)
+
+  def put_all(self, items, output=None,opt = {}):
+        outputs = []
+        if output:
+          outputs.append(output)
+
+        job = ErJob(id=self.__session_id, name="putAll",
+                    inputs=[self.__store],
+                    outputs=outputs,
+                    functors=[])
+        task = ErTask(id=self.__session_id, name=RollPair.PUT, inputs=inputs, outputs=output, job=job)
+        print("start send req")
+        job_result = self.__roll_pair_command_client.simple_sync_send(
+            input = job,
+            output_type = ErJob,
+            endpoint = self.__roll_pair_service_endpoint,
+            command_uri = CommandURI(f'{RollPair.__uri_prefix}/{RollPair.MAP_VALUES}'),
+            serdes_type=self.__command_serdes)
+        # TODO: all aggs ?
+        shuffle_broker = FifoBroker()
+        shuffler = DefaultShuffler(task._job._id, shuffle_broker, output_store, output_partition, p)
+
+        for k1, v1 in items:
+          shuffle_broker.put(self.serde.serialize(k1), self.serde.serialize(v1))
+        print('finish calculating')
+        shuffle_broker.signal_write_finish()
+        # TODO: async ?
+        shuffler.start()
+
+        shuffle_finished = shuffler.wait_until_finished(600)
+        return None
+  def put(self, k, v, opt = {}):
     k, v = self.get_serdes().serialize(k), self.get_serdes().serialize(v)
     er_pair = ErPair(key=k, value=v)
     outputs = []

@@ -18,15 +18,18 @@
 
 package com.webank.eggroll.core.clustermanager
 
-import com.webank.eggroll.core.constant.SessionConfKeys
+import com.webank.eggroll.core.constant.{NodeManagerConfKeys, SessionConfKeys}
 import com.webank.eggroll.core.meta.{ErEndpoint, ErProcessor}
 import com.webank.eggroll.core.nodemanager.{EggManager, NodeManager}
+import com.webank.eggroll.core.session.StaticErConf
 import org.apache.commons.cli.{DefaultParser, Options}
 
 import scala.collection.JavaConverters._
 object StandaloneManager {
   // usage: -ccp 4677 -ctp 4677
   def main(args: Array[String]): Unit = {
+    StaticErConf.addProperty(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT, "4670")
+
     ClusterManager.registerRouter()
     NodeManager.registerRouter()
 //    val parser = new DefaultParser
@@ -41,7 +44,6 @@ object StandaloneManager {
 //      dataEndpoint = ErEndpoint(host = "localhost", port = clientTransferPort)))
 
     val server = ClusterManager.buildServer(args) // TODO: move to command & transfer
-
     println("eggroll-standalone-command-port:" + server.getPort)
     println("eggroll-standalone-transfer-port:" + server.getPort)
     server.awaitTermination() // returns port, pass standalone python process id

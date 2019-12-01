@@ -129,6 +129,41 @@ class EggPair(object):
       print("value:{}".format(value))
       result = ErPair(key=f._key, value=value)
       input_adapter.close()
+    elif task._name == 'getAll':
+      print("egg_pair getAll call")
+      input_partition = task._inputs[0]
+      roll_client_transfer_endpoint = cloudpickle.loads(functors[0]._body).split(":")
+      rct_host = roll_client_transfer_endpoint[0]
+      rct_port = roll_client_transfer_endpoint[1]
+      # todo: decide partitioner
+      p = lambda k : k[-1] % output_partition._store_locator._total_partitions
+      input_adapter = self.get_unary_input_adapter(task_info=task)
+
+      broker = FifoBroker()
+      transfer = TransferClient()
+      future = transfer.send_pair(broker, task._job._id,
+                                  ErProcessor(command_endpoint=ErEndpoint(host=rct_host, port=rct_port)))
+
+      for k_bytes, v_bytes in input_adapter.iteritems():
+        broker.put(k_bytes, v_bytes)
+      print('finish calculating')
+      input_adapter.close()
+      broker.signal_write_finish()
+      result=future.result()
+      print('getAll finished')
+    elif task._name == 'putAll':
+      print("egg_pair putAll call")
+      output_partition = task._outputs[0]
+      print(output_partition)
+
+      # todo: decide partitioner
+      p = lambda k : k[-1] % output_partition._store_locator._total_partitions
+      output_store = task._job._outputs[0]
+
+      shuffle_broker = FifoBroker()
+      shuffler = DefaultShuffler(task._job._id, shuffle_broker, output_store, output_partition, p)
+      shuffler.start()
+      shuffle_finished = shuffler.wait_until_finished(600)
 
     if task._name == 'put':
       print("egg_pair put call")
