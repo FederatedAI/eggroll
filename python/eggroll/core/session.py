@@ -17,35 +17,52 @@ from eggroll.core.meta_model import ErServerNode, ErServerCluster, ErProcessor, 
 from eggroll.core.client import ClusterManagerClient, NodeManagerClient
 from eggroll.core.utils import get_self_ip, time_now
 from eggroll.core.constants import SessionStatus, ServerNodeStatus, ServerNodeTypes, RollTypes, ProcessorTypes
-from eggroll.core.conf_keys import NodeManagerConfKeys
+from eggroll.core.conf_keys import ClusterManagerConfKeys, DeployConfKeys
+
 
 class ErDeploy:
   pass
 
+
 class ErStandaloneDeploy(ErDeploy):
   def __init__(self, session_meta: ErSessionMeta):
-    self.processors = [
-      ErProcessor(id=0, processor_type=ProcessorTypes.ROLL_PAIR_SERVICER, command_endpoint=ErEndpoint("localhost", 4671)),
-      ErProcessor(id=0, processor_type=ProcessorTypes.EGG_PAIR, command_endpoint=ErEndpoint("localhost", 4671))
-    ]
+    self._rolls = [ErProcessor(id=0, processor_type=ProcessorTypes.ROLL_PAIR_SERVICER, command_endpoint=ErEndpoint("localhost", 4671))]
+    self._eggs = {0 : [ErProcessor(id=0, processor_type=ProcessorTypes.EGG_PAIR, command_endpoint=ErEndpoint("localhost", 4671))]}
     self.cm_client = ClusterManagerClient({
-      'cluster_manager_host': 'localhost',
-      'cluster_manager_port': 4670,
+      ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST: 'localhost',
+      ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT: 4670,
     })
 
 
 class ErClusterDeploy(ErDeploy):
   def __init__(self, session_meta: ErSessionMeta):
     self.cm_client = ClusterManagerClient({
-      'cluster_manager_host': 'localhost',
-      'cluster_manager_port': 4670,
+      ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST: 'localhost',
+      ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT: 4670,
     })
     self.session_meta = session_meta
-    self.processors = self.cm_client.get_or_create_session(self.session_meta)
+    processor_batch = self.cm_client.get_or_create_session(self.session_meta)
+    print(f'mw: processor_batch: {processor_batch}')
+
+    self._rolls = list()
+    self._eggs = dict()
+    for processor in processor_batch._processors:
+      processor_type = processor._processor_type
+      if processor_type == ProcessorTypes.EGG_PAIR:
+        node_id = processor._id
+        if node_id not in self._eggs.keys():
+          self._eggs[node_id] = list()
+
+        node_eggs = self._eggs.get(node_id)
+        node_eggs.append(processor)
+      elif processor_type == ProcessorTypes.ROLL_PAIR_SERVICER:
+        self._rolls.append(processor)
+      else:
+        raise ValueError(f'processor type {processor_type} is unknown')
 
 
 class ErSession(object):
-  def __init__(self, session_id = None, name = '', tag = '', options = {}):
+  def __init__(self, session_id=None, name='', tag='', options={}):
     if session_id:
       self.__session_id = session_id
     else:
@@ -54,16 +71,19 @@ class ErSession(object):
     self.__options = options.copy()
     self.__status = SessionStatus.NEW
     self.__tag = tag
-    self.session_meta = ErSessionMeta(id = self.__session_id,
-                                      name = self.__name,
-                                      status = self.__status,
-                                      options = self.__options,
-                                      tag = self.__tag)
-    if self.has_option("eggroll.deploy.mode") and self.get_option("eggroll.deploy.mode") == "standalone":
+    self.session_meta = ErSessionMeta(id=self.__session_id,
+                                      name=self.__name,
+                                      status=self.__status,
+                                      options=self.__options,
+                                      tag=self.__tag)
+    if self.get_option(DeployConfKeys.CONFKEY_DEPLOY_MODE) == "standalone":
       self.deploy_client = ErStandaloneDeploy(self.session_meta)
     else:
       self.deploy_client = ErClusterDeploy(self.session_meta)
-    self.processors = self.deploy_client.processors
+    self._rolls = self.deploy_client._rolls
+    self._eggs = self.deploy_client._eggs
+    print(f'eggs: {self._eggs}, rolls: {self._rolls}')
+
     self.cm_client = self.deploy_client.cm_client
     self.__cleanup_tasks = []
 
@@ -77,8 +97,8 @@ class ErSession(object):
     for func in self.__cleanup_tasks:
       func()
 
-  def get_option(self, key):
-    return self.__options.get(key)
+  def get_option(self, key, default=None):
+    return self.__options.get(key, default)
 
   def has_option(self, key):
     return self.__options.get(key) is not None

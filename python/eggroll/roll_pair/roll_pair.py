@@ -37,12 +37,12 @@ class RollPairContext(object):
         self.default_store_type = StoreTypes.ROLLPAIR_LEVELDB
 
     def get_roll_endpoint(self):
-        for proc in self.__session.processors:
+        for proc in self.__session.__processors:
             if proc._processor_type == ProcessorTypes.ROLL_PAIR_SERVICER:
                 return proc._command_endpoint
     # TODO: return transfer endpoint
     def get_egg_endpoint(self, egg_id):
-        for proc in self.__session.processors:
+        for proc in self.__session.__processors:
             if proc._id == egg_id and proc._processor_type != ProcessorTypes.EGG_PAIR:
                 return proc._command_endpoint
         raise ValueError("egg_id:%   egg not found" % egg_id)

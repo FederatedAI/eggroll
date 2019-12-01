@@ -109,10 +109,10 @@ class ErServerCluster(RpcMessage):
 
 class ErProcessor(RpcMessage):
   def __init__(self,
-      id: int = -1,
+      id=-1,
       name: str = '',
-      processor_type = '',
-      status = '',
+      processor_type='',
+      status='',
       command_endpoint: ErEndpoint = None,
       data_endpoint: ErEndpoint = None,
       options = {},
@@ -165,7 +165,7 @@ class ErProcessor(RpcMessage):
 
 
 class ErProcessorBatch(RpcMessage):
-  def __init__(self, id: int, name: str = '', processors=list(), tag: str = ''):
+  def __init__(self, id = -1, name: str = '', processors=list(), tag: str = ''):
     self._id = id
     self._name = name
     self._processors = processors

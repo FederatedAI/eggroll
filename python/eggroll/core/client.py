@@ -23,7 +23,7 @@ from eggroll.core.command.command_model import ErCommandRequest, ErCommandRespon
 from eggroll.core.proto import command_pb2_grpc
 from eggroll.core.utils import time_now
 from eggroll.core.grpc.factory import GrpcChannelFactory
-from eggroll.core.conf_keys import NodeManagerConfKeys
+from eggroll.core.conf_keys import ClusterManagerConfKeys, NodeManagerConfKeys
 
 
 class CommandClient(object):
@@ -33,7 +33,7 @@ class CommandClient(object):
 
   def simple_sync_send(self, input: RpcMessage, output_type, endpoint: ErEndpoint, command_uri: CommandURI, serdes_type = SerdesTypes.PROTOBUF):
     # todo: add serializer logic here
-    request = ErCommandRequest(id = time_now(), uri = command_uri._uri, args = [input.to_proto_string()])
+    request = ErCommandRequest(id=time_now(), uri=command_uri._uri, args=[input.to_proto_string()])
 
     _channel = self._channel_factory.create_channel(endpoint)
     _command_stub = command_pb2_grpc.CommandServiceStub(_channel)
@@ -53,10 +53,10 @@ class CommandClient(object):
 
 class ClusterManagerClient(object):
 
-  def __init__(self, opts = {'cluster_manager_host': 'localhost', 'cluster_manager_port': 4670}):
-    self.__endpoint = ErEndpoint(opts['cluster_manager_host'], opts['cluster_manager_port'])
-    if 'serdes_type' in opts:
-      self.__serdes_type = opts['serdes_type']
+  def __init__(self, options={ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST: 'localhost', ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT: 4670}):
+    self.__endpoint = ErEndpoint(options[ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST], options[ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT])
+    if 'serdes_type' in options:
+      self.__serdes_type = options['serdes_type']
     else:
       self.__serdes_type = SerdesTypes.PROTOBUF
     self.__command_client = CommandClient()
@@ -126,7 +126,7 @@ class ClusterManagerClient(object):
 
 
 class NodeManagerClient(object):
-  def __init__(self, options = {NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HOST: 'localhost', NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT: 9394}):
+  def __init__(self, options={NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HOST: 'localhost', NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT: 9394}):
     self.__endpoint = ErEndpoint(options[NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HOST], int(options[NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT]))
     if 'serdes_type' in options:
       self.__serdes_type = options['serdes_type']

@@ -86,6 +86,7 @@ class SessionConfKeys(object):
 
 
 class DeployConfKeys(object):
+  CONFKEY_DEPLOY_MODE = "eggroll.deploy.mode"
   CONFKEY_DEPLOY_ROLLPAIR_START_SCRIPT_PATH = "eggroll.deploy.rollpair.start.script.path"
   CONFKEY_DEPLOY_ROLLPAIR_VENV_PATH = "eggroll.deploy.rollpair.venv.path"
   CONFKEY_DEPLOY_ROLLPAIR_DATA_DIR_PATH = "eggroll.deploy.rollpair.data.dir.path"
