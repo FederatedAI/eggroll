@@ -79,7 +79,8 @@ abstract class ErConf {
   def getModuleName(): String
 
   def addProperties(prop: Properties): ErConf = {
-    getConf().putAll(prop)
+    val cur = getConf()
+    prop.forEach((k, v) => cur.put(k, v))
     this
   }
 
@@ -130,7 +131,7 @@ case class RuntimeErConf(prop: Properties = new Properties()) extends ErConf {
 
   def this(sessionMeta: ErSessionMeta) {
     this(new Properties())
-    conf.putAll(sessionMeta.options)
+    sessionMeta.options.forEach((k, v) => conf.put(k, v))
     conf.put(SessionConfKeys.CONFKEY_SESSION_ID, sessionMeta.id)
     conf.put(SessionConfKeys.CONFKEY_SESSION_NAME, sessionMeta.name)
   }
@@ -141,7 +142,7 @@ case class RuntimeErConf(prop: Properties = new Properties()) extends ErConf {
   }
 
   override protected val conf = new Properties(super.getConf())
-  conf.putAll(prop)
+  prop.forEach((k, v) => conf.put(k, v))
 
   override def getPort(): Int = StaticErConf.getPort()
 

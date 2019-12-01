@@ -28,8 +28,6 @@ import com.webank.eggroll.core.meta.{ErProcessor, ErProcessorBatch, ErServerClus
 
 import scala.collection.mutable.{ArrayBuffer, ListBuffer}
 
-
-
 object SessionManager {
   private val activeSessions = new ConcurrentHashMap[String, ErProcessorBatch]()
 
