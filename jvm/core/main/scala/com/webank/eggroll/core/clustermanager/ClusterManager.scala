@@ -113,4 +113,8 @@ class ClusterManager {
   def getOrCreateSession(sessionMeta: ErSessionMeta): ErProcessorBatch = {
     SessionManager.getOrCreateSession(sessionMeta)
   }
+
+  def registerSession(sessionMeta: ErSessionMeta, processorBatch: ErProcessorBatch): ErProcessorBatch = {
+    SessionManager.register(sessionMeta = sessionMeta, processorBatch = processorBatch)
+  }
 }

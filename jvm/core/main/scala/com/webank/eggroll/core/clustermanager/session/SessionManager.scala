@@ -57,6 +57,16 @@ object SessionManager {
     activeSessions.get(sessionId)
   }
 
+  def register(sessionMeta: ErSessionMeta, processorBatch: ErProcessorBatch): ErProcessorBatch = {
+    val sessionId = sessionMeta.id
+    if (activeSessions.containsKey(sessionId)) {
+      throw new IllegalStateException("session already exists")
+    }
+    activeSessions.put(sessionId, processorBatch)
+
+    activeSessions.get(sessionId)
+  }
+
   def getSession(sessionId: String): ErProcessorBatch = this.synchronized {
     activeSessions.getOrDefault(sessionId, null)
   }

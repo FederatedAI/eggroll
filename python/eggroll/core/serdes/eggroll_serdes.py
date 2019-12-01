@@ -1,9 +1,25 @@
+# -*- coding: utf-8 -*-
+#  Copyright (c) 2019 - now, Eggroll Authors. All Rights Reserved.
+#
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
 from eggroll.core.serdes import cloudpickle
 from eggroll.core.constants import SerdesTypes
 from abc import ABCMeta
 from abc import abstractmethod
 from pickle import loads as p_loads
 from pickle import dumps as p_dumps
+
 
 class ABCSerdes:
   __metaclass__ = ABCMeta
@@ -71,6 +87,7 @@ deserialize_blacklist = [b'eval', b'execfile', b'compile', b'system', b'popen', 
 future_blacklist = [b'read', b'dup', b'fork', b'walk', b'file', b'move', b'link', b'kill', b'open', b'pipe']
 
 serdes_cache = {}
+
 for cls in ABCSerdes.__subclasses__():
   cls_name = ".".join([cls.__module__, cls.__qualname__])
   serdes_cache[cls_name] = cls
@@ -78,6 +95,7 @@ serdes_cache[SerdesTypes.CLOUD_PICKLE] = CloudPickleSerdes
 serdes_cache[SerdesTypes.PICKLE] = PickleSerdes
 serdes_cache[SerdesTypes.PROTOBUF] = None
 serdes_cache[SerdesTypes.EMPTY] = EmptySerdes
+
 
 def is_in_blacklist(_bytes):
   for item in deserialize_blacklist:
@@ -93,6 +111,7 @@ def bytes_security_check(_bytes, need_check=False):
   blacklisted = is_in_blacklist(_bytes)
   if blacklisted:
     raise RuntimeError('Insecure operation found {}'.format(blacklisted))
+
 
 def get_serdes(serdes_name=None):
   try:

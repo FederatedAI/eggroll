@@ -31,19 +31,19 @@ object NodeManager extends Logging {
     CommandRouter.register(serviceName = NodeManagerCommands.getOrCreateEggsServiceName,
       serviceParamTypes = Array(classOf[ErSessionMeta]),
       serviceResultTypes = Array(classOf[ErProcessorBatch]),
-      routeToClass = classOf[NodeManagerServicer],
+      routeToClass = classOf[NodeManager],
       routeToMethodName = NodeManagerCommands.getOrCreateEggs)
 
     CommandRouter.register(serviceName = NodeManagerCommands.getOrCreateRollsServiceName,
       serviceParamTypes = Array(classOf[ErSessionMeta]),
       serviceResultTypes = Array(classOf[ErProcessorBatch]),
-      routeToClass = classOf[NodeManagerServicer],
+      routeToClass = classOf[NodeManager],
       routeToMethodName = NodeManagerCommands.getOrCreateRolls)
 
     CommandRouter.register(serviceName = NodeManagerCommands.heartbeatServiceName,
       serviceParamTypes = Array(classOf[ErProcessor]),
       serviceResultTypes = Array(classOf[ErProcessor]),
-      routeToClass = classOf[NodeManagerServicer],
+      routeToClass = classOf[NodeManager],
       routeToMethodName = NodeManagerCommands.heartbeat)
   }
   def main(args: Array[String]): Unit = {
@@ -59,5 +59,22 @@ object NodeManager extends Logging {
     val msg = s"server started at ${port}"
     println(msg)
     logInfo(msg)
+  }
+}
+
+class NodeManager {
+  private val heartBeatService = new HeartBeatService
+
+  def getOrCreateEggs(sessionMeta: ErSessionMeta): ErProcessorBatch = {
+    EggManager.getOrCreate(sessionMeta)
+  }
+
+  def getOrCreateRolls(sessionMeta: ErSessionMeta): ErProcessorBatch = {
+    RollManager.getOrCreate(sessionMeta)
+  }
+
+  def heartbeat(processor: ErProcessor): ErProcessor = {
+    heartBeatService.onProcessorHeartbeat(processor)
+    processor
   }
 }

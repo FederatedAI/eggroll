@@ -58,6 +58,8 @@ object SessionCommands {
 
   val getOrCreateSession = new CommandURI(prefix, "getOrCreateSession")
 
+  val registerSession = new CommandURI(prefix, name = "registerSession")
+
   val stopSession = "stopSession"
   val stopSessionServiceName = CommandUtils.toServiceName(prefix, stopSession)
   val STOP_SESSION = new CommandURI(stopSessionServiceName)

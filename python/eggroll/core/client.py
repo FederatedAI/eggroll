@@ -24,6 +24,7 @@ from eggroll.core.proto import command_pb2_grpc
 from eggroll.core.utils import time_now
 from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.conf_keys import ClusterManagerConfKeys, NodeManagerConfKeys
+from eggroll.core.utils import _to_proto_string, _map_and_listify
 
 
 class CommandClient(object):
@@ -39,7 +40,6 @@ class CommandClient(object):
     _command_stub = command_pb2_grpc.CommandServiceStub(_channel)
 
     response = _command_stub.call(request.to_proto())
-
     er_response = ErCommandResponse.from_proto(response)
 
     byte_result = er_response._results[0]
@@ -49,6 +49,26 @@ class CommandClient(object):
       return output_type.from_proto_string(byte_result)
     else:
       return None
+
+  def sync_send(self, inputs: list, output_types: list, endpoint: ErEndpoint, command_uri: CommandURI, serdes_type = SerdesTypes.PROTOBUF):
+
+    request = ErCommandRequest(id=time_now(),
+                               uri=command_uri._uri,
+                               args=_map_and_listify(_to_proto_string, inputs))
+
+    _channel = self._channel_factory.create_channel(endpoint)
+    _command_stub = command_pb2_grpc.CommandServiceStub(_channel)
+
+    response = _command_stub.call(request.to_proto())
+    er_response = ErCommandResponse.from_proto(response)
+
+    byte_results = er_response._results
+
+    if len(byte_results):
+      zipped = zip(output_types, byte_results)
+      return list(map(lambda t: t[0].from_proto_string(t[1]) if t[1] is not None else None, zipped))
+    else:
+      return []
 
 
 class ClusterManagerClient(object):
@@ -116,6 +136,13 @@ class ClusterManagerClient(object):
         output_type=ErProcessorBatch,
         command_uri=SessionCommands.GET_OR_CREATE_SESSION,
         serdes_type=self.__serdes_type)
+
+  def register_session(self, session_meta: ErSessionMeta, processor_batch: ErProcessorBatch):
+    return self.__command_client.sync_send(inputs=[session_meta, processor_batch],
+                                           output_types=[ErProcessorBatch],
+                                           endpoint=self.__endpoint,
+                                           command_uri=SessionCommands.REGISTER_SESSION,
+                                           serdes_type=self.__serdes_type)
 
   def __do_sync_request_internal(self, input, output_type, command_uri, serdes_type):
     return self.__command_client.simple_sync_send(input=input,

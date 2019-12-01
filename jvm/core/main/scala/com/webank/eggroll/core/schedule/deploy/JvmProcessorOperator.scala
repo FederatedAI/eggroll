@@ -22,7 +22,7 @@ import java.io.{BufferedReader, File, FileOutputStream, InputStream, InputStream
 import java.util
 import java.util.concurrent.TimeUnit
 
-import com.webank.eggroll.core.constant.{DeployConfKeys, SessionConfKeys, StringConstants}
+import com.webank.eggroll.core.constant.{DeployConfKeys, NodeManagerConfKeys, SessionConfKeys, StringConstants}
 import com.webank.eggroll.core.meta.ErProcessor
 import com.webank.eggroll.core.session.RuntimeErConf
 import com.webank.eggroll.core.util.Logging
@@ -40,12 +40,14 @@ class JvmProcessorOperator() extends Logging {
     val mainclassArgs = conf.getString(DeployConfKeys.CONFKEY_DEPLOY_JVM_MAINCLASS_ARGS, StringConstants.EMPTY)
     val jvmOptions = conf.getString(DeployConfKeys.CONFKEY_DEPLOY_JVM_OPTIONS, StringConstants.EMPTY)
     val sessionId = conf.getString(SessionConfKeys.CONFKEY_SESSION_ID)
+    val nodeManagerHost = conf.getString(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HOST, "localhost")
+    val nodeManagerPort = conf.getString(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT, "9394")
 
     if (StringUtils.isBlank(sessionId)) {
       throw new IllegalArgumentException("session Id is blank when creating processor")
     }
 
-    val startCmd = s"${javaBinPath} -cp ${classpath} ${jvmOptions} ${mainclass} ${mainclassArgs} -c . -s ${sessionId} &"
+    val startCmd = s"${javaBinPath} -cp ${classpath} ${jvmOptions} ${mainclass} ${mainclassArgs} -c . -nm ${nodeManagerHost}:${nodeManagerPort} -s ${sessionId} &"
     println(s"${startCmd}")
     commands.add("which java")
     commands.add(startCmd)

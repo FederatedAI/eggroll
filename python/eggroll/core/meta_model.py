@@ -177,6 +177,9 @@ class ErProcessorBatch(RpcMessage):
                                    processors=_elements_to_proto(self._processors),
                                    tag=self._tag)
 
+  def to_proto_string(self):
+    return self.to_proto().SerializeToString()
+
   @staticmethod
   def from_proto(pb_message):
     return ErProcessorBatch(id=pb_message.id,

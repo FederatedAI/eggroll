@@ -16,7 +16,7 @@ from eggroll.core.meta_model import ErServerNode, ErServerCluster, ErProcessor, 
   ErEndpoint
 from eggroll.core.client import ClusterManagerClient, NodeManagerClient
 from eggroll.core.utils import get_self_ip, time_now
-from eggroll.core.constants import SessionStatus, ServerNodeStatus, ServerNodeTypes, RollTypes, ProcessorTypes
+from eggroll.core.constants import SessionStatus, ProcessorStatus, ServerNodeTypes, RollTypes, ProcessorTypes
 from eggroll.core.conf_keys import ClusterManagerConfKeys, DeployConfKeys
 
 
@@ -25,17 +25,27 @@ class ErDeploy:
 
 
 class ErStandaloneDeploy(ErDeploy):
-  def __init__(self, session_meta: ErSessionMeta):
-    self._rolls = [ErProcessor(id=0, processor_type=ProcessorTypes.ROLL_PAIR_SERVICER, command_endpoint=ErEndpoint("localhost", 4671))]
-    self._eggs = {0 : [ErProcessor(id=0, processor_type=ProcessorTypes.EGG_PAIR, command_endpoint=ErEndpoint("localhost", 4671))]}
+  def __init__(self, session_meta: ErSessionMeta, options={}):
+    self._rolls = [ErProcessor(id=0,
+                               processor_type=ProcessorTypes.ROLL_PAIR_SERVICER,
+                               status=ProcessorStatus.RUNNING,
+                               command_endpoint=ErEndpoint(get_self_ip(), 4671))]
+    self._eggs = {0: [ErProcessor(id=0,
+                                  processor_type=ProcessorTypes.EGG_PAIR,
+                                  status=ProcessorStatus.RUNNING,
+                                  command_endpoint=ErEndpoint(get_self_ip(), 4671))]}
+
+    processorBatch = ErProcessorBatch(id=0, name='standalone', processors=[self._rolls[0], self._eggs[0][0]])
     self.cm_client = ClusterManagerClient({
       ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST: 'localhost',
       ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT: 4670,
     })
 
+    self.cm_client.register_session(session_meta, processorBatch)
+
 
 class ErClusterDeploy(ErDeploy):
-  def __init__(self, session_meta: ErSessionMeta):
+  def __init__(self, session_meta: ErSessionMeta, options={}):
     self.cm_client = ClusterManagerClient({
       ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST: 'localhost',
       ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT: 4670,
@@ -77,9 +87,9 @@ class ErSession(object):
                                       options=self.__options,
                                       tag=self.__tag)
     if self.get_option(DeployConfKeys.CONFKEY_DEPLOY_MODE) == "standalone":
-      self.deploy_client = ErStandaloneDeploy(self.session_meta)
+      self.deploy_client = ErStandaloneDeploy(self.session_meta, options=options)
     else:
-      self.deploy_client = ErClusterDeploy(self.session_meta)
+      self.deploy_client = ErClusterDeploy(self.session_meta, options=options)
     self._rolls = self.deploy_client._rolls
     self._eggs = self.deploy_client._eggs
     print(f'eggs: {self._eggs}, rolls: {self._rolls}')
