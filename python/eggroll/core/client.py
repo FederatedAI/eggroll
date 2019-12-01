@@ -38,7 +38,6 @@ class CommandClient(object):
 
     _channel = self._channel_factory.create_channel(endpoint)
     _command_stub = command_pb2_grpc.CommandServiceStub(_channel)
-
     response = _command_stub.call(request.to_proto())
     er_response = ErCommandResponse.from_proto(response)
 
@@ -73,8 +72,9 @@ class CommandClient(object):
 
 class ClusterManagerClient(object):
 
-  def __init__(self, options={ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST: 'localhost', ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT: 4670}):
-    self.__endpoint = ErEndpoint(options[ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST], options[ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT])
+  def __init__(self, options={}):
+    self.__endpoint = ErEndpoint(options.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST, 'localhost'),
+                                 int(options.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, '4670')))
     if 'serdes_type' in options:
       self.__serdes_type = options['serdes_type']
     else:

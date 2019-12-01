@@ -102,6 +102,7 @@ class TestClusterManager {
       .addService(new GrpcTransferService)
       .build()
 
+    StaticErConf.setPort(clusterManagerPort)
     val server: Server = clusterManager.start()
   }
 

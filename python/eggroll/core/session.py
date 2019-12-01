@@ -39,20 +39,14 @@ class ErStandaloneDeploy(ErDeploy):
                                   command_endpoint=ErEndpoint(get_self_ip(), 4671))]}
 
     processorBatch = ErProcessorBatch(id=0, name='standalone', processors=[self._rolls[0], self._eggs[0][0]])
-    self.cm_client = ClusterManagerClient({
-      ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST: 'localhost',
-      ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT: 4670,
-    })
+    self.cm_client = ClusterManagerClient(options=options)
 
     self.cm_client.register_session(session_meta, processorBatch)
 
 
 class ErClusterDeploy(ErDeploy):
   def __init__(self, session_meta: ErSessionMeta, options={}):
-    self.cm_client = ClusterManagerClient({
-      ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST: 'localhost',
-      ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT: 4670,
-    })
+    self.cm_client = ClusterManagerClient(options=options)
     self.session_meta = session_meta
     processor_batch = self.cm_client.get_or_create_session(self.session_meta)
     print(f'mw: processor_batch: {processor_batch}')
@@ -99,6 +93,8 @@ class ErSession(object):
 
     self.cm_client = self.deploy_client.cm_client
     self.__cleanup_tasks = []
+
+    print('session init finished')
 
   def get_session_id(self):
     return self.__session_id

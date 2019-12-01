@@ -22,7 +22,7 @@ import com.webank.eggroll.core.client.NodeManagerClient
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
 import com.webank.eggroll.core.constant.{DeployConfKeys, NodeManagerCommands, SessionConfKeys}
 import com.webank.eggroll.core.meta.{ErProcessor, ErProcessorBatch, ErSessionMeta}
-import com.webank.eggroll.core.session.RuntimeErConf
+import com.webank.eggroll.core.session.{RuntimeErConf, StaticErConf}
 import com.webank.eggroll.core.transfer.GrpcTransferService
 import io.grpc.Server
 import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
@@ -36,23 +36,24 @@ class TestNodeManager {
     CommandRouter.register(serviceName = NodeManagerCommands.getOrCreateEggsServiceName,
       serviceParamTypes = Array(classOf[ErSessionMeta]),
       serviceResultTypes = Array(classOf[ErProcessorBatch]),
-      routeToClass = classOf[NodeManagerServicer],
+      routeToClass = classOf[NodeManager],
       routeToMethodName = NodeManagerCommands.getOrCreateEggs)
 
     CommandRouter.register(serviceName = NodeManagerCommands.getOrCreateRollsServiceName,
       serviceParamTypes = Array(classOf[ErSessionMeta]),
       serviceResultTypes = Array(classOf[ErProcessorBatch]),
-      routeToClass = classOf[NodeManagerServicer],
+      routeToClass = classOf[NodeManager],
       routeToMethodName = NodeManagerCommands.getOrCreateRolls)
 
     CommandRouter.register(serviceName = NodeManagerCommands.heartbeatServiceName,
       serviceParamTypes = Array(classOf[ErProcessor]),
       serviceResultTypes = Array(classOf[ErProcessor]),
-      routeToClass = classOf[NodeManagerServicer],
+      routeToClass = classOf[NodeManager],
       routeToMethodName = NodeManagerCommands.heartbeat)
 
+    val port = 9394
     val clusterManager = NettyServerBuilder
-      .forPort(9394)
+      .forPort(port)
       .addService(new CommandService)
       .addService(new GrpcTransferService)
       .build()
@@ -60,6 +61,7 @@ class TestNodeManager {
     val server: Server = clusterManager.start()
     nodeManagerClient = new NodeManagerClient()
 
+    StaticErConf.setPort(port)
     val conf = new RuntimeErConf()
     conf.addProperty(DeployConfKeys.CONFKEY_DEPLOY_ROLLPAIR_VENV_PATH, "/Users/max-webank/env/venv")
     conf.addProperty(DeployConfKeys.CONFKEY_DEPLOY_ROLLPAIR_DATA_DIR_PATH, "/tmp/eggroll")
