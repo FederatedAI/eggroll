@@ -117,7 +117,7 @@ case class ErSessionMeta(id: String,
 }
 
 case class ErServerSessionDeployment(id: String, rolls: Array[ErProcessor], eggs: Map[Long, Array[ErProcessor]]) {
-  def toErProcessorBatch: ErProcessorBatch = {
+  def toErProcessorBatch(): ErProcessorBatch = {
     val processors = new ArrayBuffer[ErProcessor]()
     processors ++= rolls
     eggs.foreach(k => processors ++= k._2)

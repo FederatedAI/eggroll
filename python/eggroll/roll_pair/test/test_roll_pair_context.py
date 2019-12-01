@@ -19,13 +19,35 @@ import unittest
 # from roll_pair_test_assets import *
 from eggroll.core.session import ErSession
 from eggroll.roll_pair.roll_pair import RollPairContext
+from eggroll.core.conf_keys import DeployConfKeys, SessionConfKeys
 
 
 class TestRollPairContext(unittest.TestCase):
-    def test_init(self):
-        sess = ErSession(options={"eggroll.deploy.mode": "standalone"})
-        # sess = ErSession()
-        ctx = RollPairContext(sess)
-        # ctx.load("ns1", "n21").put("k1", "v1")
-        print(ctx.load("ns1", "n21").get("k1"))
+  def test_init(self):
+    session = ErSession(options={"eggroll.deploy.mode": "standalone"})
+    # session = ErSession()
+    context = RollPairContext(sess)
+    #context.load("ns1", "n21").put("k1", "v1")
+    print(context.load("ns1", "n21").get("k1"))
 
+
+  def test_init_cluster(self):
+    options = {}
+    base_dir = '/Users/max-webank/git/eggroll-2.x/jvm/roll_pair/'
+
+    options[DeployConfKeys.CONFKEY_DEPLOY_ROLLPAIR_VENV_PATH] = '/Users/max-webank/env/venv'
+    options[DeployConfKeys.CONFKEY_DEPLOY_ROLLPAIR_DATA_DIR_PATH] = '/tmp/eggroll'
+    options[
+      DeployConfKeys.CONFKEY_DEPLOY_ROLLPAIR_EGGPAIR_PATH] = '/Users/max-webank/git/eggroll/roll_pair/egg_pair.py'
+    options[DeployConfKeys.CONFKEY_DEPLOY_ROLLPAIR_PYTHON_PATH] = '/Users/max-webank/git'
+    options[DeployConfKeys.CONFKEY_DEPLOY_JVM_MAINCLASS] = 'com.webank.eggroll.rollpair.Main'
+    options[
+      DeployConfKeys.CONFKEY_DEPLOY_JVM_CLASSPATH] = f'{base_dir}/target/lib/*:{base_dir}/target/eggroll-roll-pair-2.0.jar:{base_dir}/resources'
+    options[SessionConfKeys.CONFKEY_SESSION_ID] = 'testing'
+    options[SessionConfKeys.CONFKEY_SESSION_MAX_PROCESSORS_PER_NODE] = '1'
+
+    session = ErSession(session_id='test_init', options=options)
+    context = RollPairContext(session)
+
+    context.load("ns1", "n21").put("k1", "v1")
+    print(context.load("ns1", "n21").get("k1"))

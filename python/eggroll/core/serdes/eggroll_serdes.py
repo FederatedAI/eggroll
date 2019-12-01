@@ -36,16 +36,15 @@ class ABCSerdes:
 
 
 class CloudPickleSerdes(ABCSerdes):
-
   @staticmethod
   def serialize(_obj):
     return cloudpickle.dumps(_obj)
 
-
   @staticmethod
   def deserialize(_bytes):
-    bytes_security_check(_bytes)
-    return p_loads(_bytes)
+    if _bytes:
+      bytes_security_check(_bytes)
+      return p_loads(_bytes)
 
 
 class PickleSerdes(ABCSerdes):

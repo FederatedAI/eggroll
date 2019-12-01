@@ -83,8 +83,8 @@ object StoreCrudOperator {
     val storePartitionMapper = sqlSession.getMapper(classOf[StorePartitionMapper])
     val storePartitionResult = storePartitionMapper.selectByExample(storePartitionExample)
 
-    if (storeLocatorResult.isEmpty) {
-      return null
+    if (storePartitionResult.isEmpty) {
+      throw new IllegalStateException("store locator found but no partition found")
     }
 
     val nodeIdSet = new util.HashSet[java.lang.Long]()

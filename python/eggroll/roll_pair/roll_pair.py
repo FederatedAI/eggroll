@@ -45,7 +45,7 @@ class RollPairContext(object):
 
     def load(self, namespace=None, name=None, create_if_missing=True, options={}):
         store_type = options.get('store_type', self.default_store_type)
-        total_partitions = options.get('total_partitions', 0)
+        total_partitions = options.get('total_partitions', 1)
         partitioner = options.get('partitioner', PartitionerTypes.BYTESTRING_HASH)
         serdes = options.get('serdes', SerdesTypes.CLOUD_PICKLE)
         store = ErStore(
