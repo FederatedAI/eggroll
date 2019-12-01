@@ -206,7 +206,7 @@
     <!-- Languages -->
     <code.cache.size>512m</code.cache.size>
     <java.version>8</java.version>
-    <scala.version>2.11.8</scala.version>
+    <scala.version>2.12.8</scala.version>
     <scala.binary.version>2.11</scala.binary.version>
 
     <!-- Project properties -->

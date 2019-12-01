@@ -65,7 +65,7 @@ class TestServerNodeCrudOperator {
 
   @Test
   def testGetOrCreateNewServerNode(): Unit = {
-    val input = ErServerNode(endpoint = ErEndpoint(host = "localhost", port = 9999))
+    val input = ErServerNode(endpoint = ErEndpoint(host = "localhost", port = 4670))
     val result = nodeCrudOperator.getOrCreateServerNode(input)
 
     println(result)
