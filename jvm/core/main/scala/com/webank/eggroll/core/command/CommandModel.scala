@@ -48,13 +48,21 @@ case class ErCommandRequest(id: String = System.currentTimeMillis().toString, ur
 
 case class ErCommandResponse(id: String, request: ErCommandRequest = null, results: Array[Array[Byte]] = null) extends CommandRpcMessage
 
-class CommandURI(uriString: String) {
+class CommandURI(val uriString: String) {
   val uri = new URI(uriString)
   val queryString = uri.getQuery
   private val queryPairs = mutable.Map[String, String]()
 
   def this(src: ErCommandRequest) {
     this(src.uri)
+  }
+
+  def this(prefix: String, name: String) {
+    this(s"${prefix}/${name}")
+  }
+
+  def getName(): String = {
+    StringUtils.substringAfterLast(uri.getPath, StringConstants.SLASH)
   }
 
   /*  def this(src: ErCommandResponse) {

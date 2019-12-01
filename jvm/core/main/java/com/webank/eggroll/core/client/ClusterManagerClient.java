@@ -97,7 +97,7 @@ public class ClusterManagerClient {
   }
 
   public ErSessionMeta getOrCreateSession(ErSessionMeta sessionMeta) {
-    return doSyncRequestInternal(sessionMeta, ErSessionMeta.class, SessionCommands.GET_OR_CREATE_SESSION());
+    return doSyncRequestInternal(sessionMeta, ErSessionMeta.class, SessionCommands.getOrCreateSession());
   }
 
   public ErProcessorBatch getOrCreateProcessorBatch(ErSessionMeta sessionMeta) {

@@ -18,7 +18,10 @@
 
 package com.webank.eggroll.clustermanager.metadata
 
+import java.io.File
+
 import com.webank.eggroll.core.client.ClusterManagerClient
+import com.webank.eggroll.core.clustermanager.ClusterManager
 import com.webank.eggroll.core.clustermanager.metadata.{ServerNodeCrudOperator, StoreCrudOperator}
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
 import com.webank.eggroll.core.constant._
@@ -29,14 +32,16 @@ import io.grpc.Server
 import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
 import org.junit.{Assert, Before, Test}
 
-class TestClusterManagerClientMetaService {
+
+class TestClusterManager {
   val clusterManagerHost = "localhost"
   val clusterManagerPort = 4670
   val clusterManagerClient = new ClusterManagerClient(clusterManagerHost, clusterManagerPort)
-  StaticErConf.addProperties("main/resources/cluster-manager.properties.local")
 
   @Before
   def setup(): Unit = {
+    println(new File(".").getAbsolutePath)
+    StaticErConf.addProperties("main/resources/cluster-manager.properties.local")
     CommandRouter.register(serviceName = MetadataCommands.getServerNodeServiceName,
       serviceParamTypes = Array(classOf[ErServerNode]),
       serviceResultTypes = Array(classOf[ErServerNode]),
@@ -78,6 +83,12 @@ class TestClusterManagerClientMetaService {
       serviceResultTypes = Array(classOf[ErStore]),
       routeToClass = classOf[StoreCrudOperator],
       routeToMethodName = MetadataCommands.deleteStore)
+
+    CommandRouter.register(serviceName = SessionCommands.getOrCreateSession.uriString,
+      serviceParamTypes = Array(classOf[ErSessionMeta]),
+      serviceResultTypes = Array(classOf[ErProcessorBatch]),
+      routeToClass = classOf[ClusterManager],
+      routeToMethodName = SessionCommands.getOrCreateSession.getName())
 
     val clusterManager = NettyServerBuilder
       .forPort(clusterManagerPort)

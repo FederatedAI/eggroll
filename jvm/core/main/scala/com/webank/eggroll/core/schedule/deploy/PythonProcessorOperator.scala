@@ -51,7 +51,9 @@ class PythonProcessorOperator() extends Logging {
     commands.add(s"echo '${venv}/bin/python ${eggPair} -d ${dataDir}'")
     commands.add(s"${venv}/bin/python ${eggPair} -d ${dataDir} -n ${nodeManagerPort} -s ${sessionId} &")
 
-    val processorBuilder: ProcessBuilder = new ProcessBuilder("/bin/bash", "-c", String.join(StringConstants.SEMICOLON, commands))
+    val cmd = String.join(StringConstants.SEMICOLON, commands)
+    println(s"cmd: ${cmd}")
+    val processorBuilder: ProcessBuilder = new ProcessBuilder("/bin/bash", "-c", cmd)
 
     // todo: 1. redirect output / error stream; 2. add session info; 3. add node manager
     val builderEnv = processorBuilder.environment()

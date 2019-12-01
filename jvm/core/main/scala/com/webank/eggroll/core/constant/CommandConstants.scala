@@ -56,9 +56,7 @@ object MetadataCommands {
 object SessionCommands {
   val prefix = "v1/cluster-manager/session"
 
-  val getOrCreateSession = "getOrCreateSession"
-  val getOrCreateSessionServiceName = CommandUtils.toServiceName(prefix, getOrCreateSession)
-  val GET_OR_CREATE_SESSION = new CommandURI(getOrCreateSessionServiceName)
+  val getOrCreateSession = new CommandURI(prefix, "getOrCreateSession")
 
   val stopSession = "stopSession"
   val stopSessionServiceName = CommandUtils.toServiceName(prefix, stopSession)

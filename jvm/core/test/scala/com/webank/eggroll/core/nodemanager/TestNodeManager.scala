@@ -76,7 +76,7 @@ class TestNodeManager {
   @Test
   def startAsService(): Unit = {
     println("node manager started")
-    Thread.sleep(1000000)
+    Thread.sleep(10000000)
   }
 
   @Test

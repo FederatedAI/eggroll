@@ -21,9 +21,10 @@ package com.webank.eggroll.core.clustermanager
 import java.net.InetSocketAddress
 
 import com.webank.eggroll.core.clustermanager.metadata.{ServerNodeCrudOperator, StoreCrudOperator}
+import com.webank.eggroll.core.clustermanager.session.SessionManager
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
-import com.webank.eggroll.core.constant.MetadataCommands
-import com.webank.eggroll.core.meta.{ErServerCluster, ErServerNode, ErStore}
+import com.webank.eggroll.core.constant.{MetadataCommands, SessionCommands}
+import com.webank.eggroll.core.meta.{ErProcessorBatch, ErServerCluster, ErServerNode, ErSessionMeta, ErStore}
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.transfer.GrpcTransferService
 import com.webank.eggroll.core.util.{Logging, MiscellaneousUtils}
@@ -73,6 +74,12 @@ object ClusterManager extends Logging {
       serviceResultTypes = Array(classOf[ErStore]),
       routeToClass = classOf[StoreCrudOperator],
       routeToMethodName = MetadataCommands.deleteStore)
+
+    CommandRouter.register(serviceName = SessionCommands.getOrCreateSession.uriString,
+      serviceParamTypes = Array(classOf[ErSessionMeta]),
+      serviceResultTypes = Array(classOf[ErProcessorBatch]),
+      routeToClass = classOf[ClusterManager],
+      routeToMethodName = SessionCommands.getOrCreateSession.getName())
   }
   // TODO: wrap server
   def buildServer(args: Array[String]): Server = {
@@ -99,5 +106,11 @@ object ClusterManager extends Logging {
   }
   def main(args: Array[String]): Unit = {
     buildServer(args).awaitTermination()
+  }
+}
+
+class ClusterManager {
+  def getOrCreateSession(sessionMeta: ErSessionMeta): ErProcessorBatch = {
+    SessionManager.getOrCreateSession(sessionMeta)
   }
 }

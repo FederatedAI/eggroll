@@ -19,6 +19,7 @@
 package com.webank.eggroll.core.clustermanager.session
 
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicInteger
 
 import com.webank.eggroll.core.client.NodeManagerClient
 import com.webank.eggroll.core.clustermanager.metadata.ServerNodeCrudOperator
@@ -83,7 +84,14 @@ class DefaultClusterDeployer(sessionMeta: ErSessionMeta,
     rollCluster.serverNodes.foreach(n => {
       val nodeManagerClient = new NodeManagerClient(n.endpoint)
       val processorBatch = nodeManagerClient.getOrCreateRolls(sessionMeta)
-      rolls ++= processorBatch.processors
+      val host = n.endpoint.host
+
+      val i = new AtomicInteger(0)
+      processorBatch.processors.foreach(p => {
+        val curI = i.getAndIncrement()
+        val populated = p.copy(id = curI, commandEndpoint = p.commandEndpoint.copy(host = host), dataEndpoint = p.dataEndpoint.copy(host = host), tag = s"${p.processorType}-${n.id}-${curI}")
+        rolls += populated
+      })
     })
 
     ErProcessorBatch(processors = rolls.toArray)
@@ -96,7 +104,13 @@ class DefaultClusterDeployer(sessionMeta: ErSessionMeta,
       val nodeManagerClient = new NodeManagerClient(n.endpoint)
       val processorBatch = nodeManagerClient.getOrCreateEggs(sessionMeta)
 
-      eggs ++= processorBatch.processors
+      val i = new AtomicInteger(0)
+      val host = n.endpoint.host
+      processorBatch.processors.foreach(p => {
+        val curI = i.getAndIncrement()
+        val populated = p.copy(id = curI, commandEndpoint = p.commandEndpoint.copy(host = host), dataEndpoint = p.dataEndpoint.copy(host = host), tag = s"${p.processorType}-${n.id}-${curI}")
+        eggs += populated
+      })
     })
 
     ErProcessorBatch(processors = eggs.toArray)
