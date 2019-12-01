@@ -18,6 +18,12 @@
 
 package com.webank.eggroll.core.nodemanager
 
+import java.util.Properties
+
+import com.webank.eggroll.core.schedule.deploy.ExecutableProcessorOperator
+import com.webank.eggroll.core.session.RuntimeErConf
+import org.junit.Test
+
 /*
  * Copyright (c) 2019 - now, Eggroll Authors. All Rights Reserved.
  *
@@ -37,5 +43,24 @@ package com.webank.eggroll.core.nodemanager
  */
 
 class TestOperator {
+  private val testProps = new Properties()
+  testProps.setProperty("eggroll.node.exe","ping 127.0.0.1")
+  testProps.setProperty("eggroll.node.id","101")
+  testProps.setProperty("eggroll.node.log.dir","./logs")
+  testProps.setProperty("eggroll.session.id","s1")
+  testProps.setProperty("eggroll.boot.script", "../../bin/eggroll_boot.sh")
+  testProps.setProperty("exe","ls")
+  @Test
+  def testStartNode():Unit = {
+    val op = new ExecutableProcessorOperator(RuntimeErConf(testProps))
+    op.start()
+//    op.stop()
+  }
 
+  @Test
+  def testStopNode():Unit = {
+    val op = new ExecutableProcessorOperator(RuntimeErConf(testProps))
+    //    op.start()
+    op.stop()
+  }
 }

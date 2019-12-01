@@ -23,8 +23,8 @@ from eggroll.roll_pair.roll_pair import RollPairContext
 
 class TestRollPairContext(unittest.TestCase):
     def test_init(self):
-        # sess = ErSession(options={"eggroll.deploy.mode": "standalone"})
-        sess = ErSession()
+        sess = ErSession(options={"eggroll.deploy.mode": "standalone"})
+        # sess = ErSession()
         ctx = RollPairContext(sess)
         # ctx.load("ns1", "n21").put("k1", "v1")
         print(ctx.load("ns1", "n21").get("k1"))
