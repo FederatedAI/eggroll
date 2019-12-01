@@ -22,6 +22,12 @@ def _to_proto(rpc_message):
   if rpc_message is not None:
     return rpc_message.to_proto()
 
+
+def _to_proto_string(rpc_message):
+  if rpc_message is not None:
+    return rpc_message.to_proto_string()
+
+
 def _from_proto(parser, rpc_message):
   if rpc_message is not None:
     return parser(rpc_message)

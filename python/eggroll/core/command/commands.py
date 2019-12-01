@@ -73,6 +73,10 @@ class SessionCommands(object):
   get_or_create_session_service_name = _to_service_name(prefix, get_or_create_session)
   GET_OR_CREATE_SESSION = CommandURI(get_or_create_session_service_name)
 
+  register_session = 'registerSession'
+  register_session_service_name = _to_service_name(prefix, register_session)
+  REGISTER_SESSION = CommandURI(register_session_service_name)
+
 class RollPairCommands(object):
   roll_prefix = 'v1/roll-pair'
   egg_prefix = 'v1/egg-pair'

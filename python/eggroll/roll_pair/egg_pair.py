@@ -40,10 +40,12 @@ from grpc._cython import cygrpc
 import argparse
 import os
 
+
 def generator(serde, iterator):
   for k, v in iterator:
     print("yield ({}, {})".format(serde.deserialize(k), serde.deserialize(v)))
     yield serde.deserialize(k), serde.deserialize(v)
+
 
 class EggPair(object):
   uri_prefix = 'v1/egg-pair'
