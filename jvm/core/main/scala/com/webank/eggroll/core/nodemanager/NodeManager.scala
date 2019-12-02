@@ -23,6 +23,7 @@ import java.net.InetSocketAddress
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
 import com.webank.eggroll.core.constant.NodeManagerCommands
 import com.webank.eggroll.core.meta.{ErProcessor, ErProcessorBatch, ErSessionMeta}
+import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.util.{Logging, MiscellaneousUtils}
 import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
 
@@ -50,15 +51,21 @@ object NodeManager extends Logging {
     val cmd = MiscellaneousUtils.parseArgs(args = args)
     val portString = cmd.getOptionValue('p', "9394")
     registerRouter()
-    val rollServer = NettyServerBuilder
+
+    // todo: move to GrpcServerFactory
+    val server = NettyServerBuilder
       .forAddress(new InetSocketAddress("127.0.0.1", portString.toInt))
       .addService(new CommandService).build
-    rollServer.start()
-    val port = rollServer.getPort
+    server.start()
+    val port = server.getPort
+
+    StaticErConf.setPort(port)
 
     val msg = s"server started at ${port}"
     println(msg)
     logInfo(msg)
+
+    server.awaitTermination()
   }
 }
 

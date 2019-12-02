@@ -62,17 +62,7 @@ class TestNodeManager {
     nodeManagerClient = new NodeManagerClient()
 
     StaticErConf.setPort(port)
-    val conf = new RuntimeErConf()
-    conf.addProperty(DeployConfKeys.CONFKEY_DEPLOY_ROLLPAIR_VENV_PATH, "/Users/max-webank/env/venv")
-    conf.addProperty(DeployConfKeys.CONFKEY_DEPLOY_ROLLPAIR_DATA_DIR_PATH, "/tmp/eggroll")
-    conf.addProperty(DeployConfKeys.CONFKEY_DEPLOY_ROLLPAIR_EGGPAIR_PATH, "/Users/max-webank/git/eggroll/roll_pair/egg_pair.py")
-    conf.addProperty(DeployConfKeys.CONFKEY_DEPLOY_ROLLPAIR_PYTHON_PATH, "/Users/max-webank/git")
-    conf.addProperty(DeployConfKeys.CONFKEY_DEPLOY_JVM_MAINCLASS, "com.webank.eggroll.rollpair.component.Main")
-    conf.addProperty(DeployConfKeys.CONFKEY_DEPLOY_JVM_CLASSPATH, "/Users/max-webank/git/eggroll-2.x/roll_objects/roll_pair/jvm/target/lib/*:/Users/max-webank/git/eggroll-2.x/roll_objects/roll_pair/jvm/target/eggroll-roll-pair-2.0.jar:/Users/max-webank/git/eggroll-2.x/framework/node_manager/jvm/test/resources")
-    conf.addProperty(SessionConfKeys.CONFKEY_SESSION_ID, "test")
-    conf.addProperty(SessionConfKeys.CONFKEY_SESSION_MAX_PROCESSORS_PER_NODE, "100")
 
-    sessionMeta = ErSessionMeta(id = "testing", options = conf.getAllAsMap)
   }
 
   @Test

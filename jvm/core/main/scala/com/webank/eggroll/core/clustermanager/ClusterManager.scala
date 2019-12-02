@@ -80,11 +80,18 @@ object ClusterManager extends Logging {
       serviceResultTypes = Array(classOf[ErProcessorBatch]),
       routeToClass = classOf[ClusterManager],
       routeToMethodName = SessionCommands.getOrCreateSession.getName())
+
+    CommandRouter.register(serviceName = SessionCommands.registerSession.uriString,
+      serviceParamTypes = Array(classOf[ErSessionMeta], classOf[ErProcessorBatch]),
+      serviceResultTypes = Array(classOf[ErProcessorBatch]),
+      routeToClass = classOf[ClusterManager],
+      routeToMethodName = SessionCommands.registerSession.getName())
   }
   // TODO: wrap server
   def buildServer(args: Array[String]): Server = {
     val cmd = MiscellaneousUtils.parseArgs(args = args)
     val portString = cmd.getOptionValue('p', "4670")
+    registerRouter()
     val clusterManager = NettyServerBuilder
       .forAddress(new InetSocketAddress("127.0.0.1", portString.toInt))
       .addService(new CommandService)
@@ -96,7 +103,7 @@ object ClusterManager extends Logging {
     val server: Server = clusterManager.start()
 
     val port = clusterManager.getPort
-
+    StaticErConf.setPort(port)
 
     val confPath = cmd.getOptionValue('c', "./main/resources/cluster-manager.properties")
     StaticErConf.addProperties(confPath)
