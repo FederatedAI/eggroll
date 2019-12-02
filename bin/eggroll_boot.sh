@@ -9,7 +9,11 @@ pid_file=$SHELL_FOLDER/pid/$session_id-$node_id.pid
 if [ $sub_cmd == "start_node" ]
 then
   exec $exe &
-  echo $! > $SHELL_FOLDER/pid/$session_id-$node_id.pid
+  pid=$!
+  echo "start_node:$exe,pid $pid"
+  echo $pid > $SHELL_FOLDER/pid/$session_id-$node_id.pid
 else
-  kill `cat $pid_file`
+  pid=`cat $pid_file`
+  echo "stop_node:$exe,pid $pid"
+  pkill -P $pid
 fi
