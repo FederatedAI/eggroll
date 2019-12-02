@@ -17,7 +17,7 @@
 package com.webank.eggroll.rollsite.grpc.observer;
 
 import com.google.protobuf.ByteString;
-import com.webank.eggroll.rollsite.networking.proxy.Proxy;
+import com.webank.ai.eggroll.api.networking.proxy.Proxy;
 import com.webank.eggroll.core.util.ErrorUtils;
 import com.webank.eggroll.core.util.ToStringUtils;
 import com.webank.eggroll.rollsite.event.model.PipeHandleNotificationEvent;
@@ -47,7 +47,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
-import com.webank.ai.eggroll.rollsite.ScalaObjectPutBatch;
+import com.webank.eggroll.rollsite.ScalaObjectPutBatch;
 
 @Component
 @Scope("prototype")
