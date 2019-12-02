@@ -23,7 +23,7 @@ import java.util.concurrent.{ConcurrentHashMap, CountDownLatch, TimeUnit}
 import com.webank.eggroll.core.constant.{ProcessorTypes, SessionConfKeys}
 import com.webank.eggroll.core.meta.{ErProcessor, ErProcessorBatch, ErSessionMeta}
 import com.webank.eggroll.core.schedule.deploy.JvmProcessorOperator
-import com.webank.eggroll.core.session.RuntimeErConf
+import com.webank.eggroll.core.session.{RuntimeErConf, StaticErConf}
 
 object RollManager {
   private val initializedServicer = new ConcurrentHashMap[String, ErProcessorBatch]()
@@ -36,6 +36,7 @@ object RollManager {
 
     initializingServicer.put(sessionId, new CountDownLatch(1))
 
+    print(StaticErConf.getPort())
     val result = jvmProcessorOperator.start(runtimeConf)
 
     if (!result) {

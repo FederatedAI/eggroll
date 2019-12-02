@@ -38,14 +38,13 @@ class PythonProcessorOperator() extends Logging {
     val dataDir = conf.getString(DeployConfKeys.CONFKEY_DEPLOY_ROLLPAIR_DATA_DIR_PATH)
     val eggPair = conf.getString(DeployConfKeys.CONFKEY_DEPLOY_ROLLPAIR_EGGPAIR_PATH)
     val pythonPath = conf.getString(DeployConfKeys.CONFKEY_DEPLOY_ROLLPAIR_PYTHON_PATH)
-    val nodeManagerPort = conf.getInt(DeployConfKeys.CONFKEY_DEPLOY_NODE_MANAGER_PORT, 9394)
+    val nodeManagerPort = conf.getInt(DeployConfKeys.CONFKEY_DEPLOY_NODE_MANAGER_PORT, StaticErConf.getPort())
     val sessionId = conf.getString(SessionConfKeys.CONFKEY_SESSION_ID)
 
     if (StringUtils.isBlank(sessionId)) {
       throw new IllegalArgumentException("session Id is blank when creating processor")
     }
 
-    commands.add("echo $PYTHONPATH")
     commands.add(s"source ${venv}/bin/activate")
 
     commands.add(s"echo '${venv}/bin/python ${eggPair} -d ${dataDir}'")

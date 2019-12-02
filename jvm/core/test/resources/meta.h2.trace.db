@@ -82,3 +82,288 @@ Caused by: java.lang.IllegalStateException: The file is locked: nio:/Users/huang
 2019-11-30 19:53:06 jdbc[3]: exception
 org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "eggroll_meta[*].store_locator"; expected "EXPLAIN, EXECUTE"; SQL statement:
 eggroll_meta.store_locator [42001-200]
+2019-12-01 10:38:09 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "select
+     
+    'true' as queryid,
+     
+    
+    server_node_id, `name`, server_cluster_id, `host`, port, node_type, `status`, last_heartbeat_at, 
+    created_at, updated_at
+   
+    from server_node
+     
+       
+    
+     where (  server_node_id in
+                  
+                
+            
+              
+                  and[*] node_type = ?
+                
+            
+              
+                  and `status` = ? )"; expected "("; SQL statement:
+select
+     
+    'true' as QUERYID,
+     
+    
+    server_node_id, `name`, server_cluster_id, `host`, port, node_type, `status`, last_heartbeat_at, 
+    created_at, updated_at
+   
+    from server_node
+     
+       
+    
+     WHERE (  server_node_id in
+                  
+                
+            
+              
+                  and node_type = ?
+                
+            
+              
+                  and `status` = ? ) [42001-200]
+2019-12-01 14:31:33 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLDataException: Cannot parse "TIMESTAMP" constant ; SQL statement:
+INSERT INTO "eggroll_meta"."server_node"("server_node_id","name","server_cluster_id","host","port","node_type","status","last_heartbeat_at","created_at","updated_at")VALUES(?,?,?,?,?,?,?,?,?,?) [22007-200]
+	at org.h2.message.DbException.getJdbcSQLException(DbException.java:457)
+	at org.h2.message.DbException.getJdbcSQLException(DbException.java:429)
+	at org.h2.message.DbException.get(DbException.java:194)
+	at org.h2.value.ValueTimestamp.parse(ValueTimestamp.java:136)
+	at org.h2.value.Value.convertToTimestamp(Value.java:1169)
+	at org.h2.value.Value.convertTo(Value.java:822)
+	at org.h2.value.Value.convertTo(Value.java:772)
+	at org.h2.value.TypeInfo.cast(TypeInfo.java:515)
+	at org.h2.table.Column.validateConvertUpdateSequence(Column.java:378)
+	at org.h2.table.Table.validateConvertUpdateSequence(Table.java:845)
+	at org.h2.command.dml.Insert.insertRows(Insert.java:187)
+	at org.h2.command.dml.Insert.update(Insert.java:151)
+	at org.h2.command.CommandContainer.update(CommandContainer.java:198)
+	at org.h2.command.Command.executeUpdate(Command.java:251)
+	at org.h2.jdbc.JdbcPreparedStatement.executeUpdateInternal(JdbcPreparedStatement.java:191)
+	at org.h2.jdbc.JdbcPreparedStatement.executeUpdate(JdbcPreparedStatement.java:152)
+	at org.h2.result.UpdatableRow.insertRow(UpdatableRow.java:324)
+	at org.h2.jdbc.JdbcResultSet.insertRow(JdbcResultSet.java:3015)
+	at org.h2.server.web.WebApp.editResult(WebApp.java:1138)
+	at org.h2.server.web.WebApp.process(WebApp.java:247)
+	at org.h2.server.web.WebApp.processRequest(WebApp.java:173)
+	at org.h2.server.web.WebThread.process(WebThread.java:139)
+	at org.h2.server.web.WebThread.run(WebThread.java:94)
+	at java.lang.Thread.run(Thread.java:748)
+Caused by: java.lang.StringIndexOutOfBoundsException: String index out of range: 0
+	at java.lang.String.charAt(String.java:658)
+	at org.h2.util.DateTimeUtils.parseDateValue(DateTimeUtils.java:145)
+	at org.h2.util.DateTimeUtils.parseTimestamp(DateTimeUtils.java:316)
+	at org.h2.value.ValueTimestamp.parse(ValueTimestamp.java:134)
+	... 20 more
+2019-12-01 14:31:33 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLDataException: Cannot parse "TIMESTAMP" constant ; SQL statement:
+INSERT INTO "eggroll_meta"."server_node"("server_node_id","name","server_cluster_id","host","port","node_type","status","last_heartbeat_at","created_at","updated_at")VALUES(?,?,?,?,?,?,?,?,?,?) [22007-200]
+	at org.h2.message.DbException.getJdbcSQLException(DbException.java:457)
+	at org.h2.message.DbException.getJdbcSQLException(DbException.java:429)
+	at org.h2.message.DbException.get(DbException.java:194)
+	at org.h2.value.ValueTimestamp.parse(ValueTimestamp.java:136)
+	at org.h2.value.Value.convertToTimestamp(Value.java:1169)
+	at org.h2.value.Value.convertTo(Value.java:822)
+	at org.h2.value.Value.convertTo(Value.java:772)
+	at org.h2.value.TypeInfo.cast(TypeInfo.java:515)
+	at org.h2.table.Column.validateConvertUpdateSequence(Column.java:378)
+	at org.h2.table.Table.validateConvertUpdateSequence(Table.java:845)
+	at org.h2.command.dml.Insert.insertRows(Insert.java:187)
+	at org.h2.command.dml.Insert.update(Insert.java:151)
+	at org.h2.command.CommandContainer.update(CommandContainer.java:198)
+	at org.h2.command.Command.executeUpdate(Command.java:251)
+	at org.h2.jdbc.JdbcPreparedStatement.executeUpdateInternal(JdbcPreparedStatement.java:191)
+	at org.h2.jdbc.JdbcPreparedStatement.executeUpdate(JdbcPreparedStatement.java:152)
+	at org.h2.result.UpdatableRow.insertRow(UpdatableRow.java:324)
+	at org.h2.jdbc.JdbcResultSet.insertRow(JdbcResultSet.java:3015)
+	at org.h2.server.web.WebApp.editResult(WebApp.java:1138)
+	at org.h2.server.web.WebApp.process(WebApp.java:247)
+	at org.h2.server.web.WebApp.processRequest(WebApp.java:173)
+	at org.h2.server.web.WebThread.process(WebThread.java:139)
+	at org.h2.server.web.WebThread.run(WebThread.java:94)
+	at java.lang.Thread.run(Thread.java:748)
+Caused by: java.lang.StringIndexOutOfBoundsException: String index out of range: 0
+	at java.lang.String.charAt(String.java:658)
+	at org.h2.util.DateTimeUtils.parseDateValue(DateTimeUtils.java:145)
+	at org.h2.util.DateTimeUtils.parseTimestamp(DateTimeUtils.java:316)
+	at org.h2.value.ValueTimestamp.parse(ValueTimestamp.java:134)
+	... 20 more
+2019-12-01 14:32:08 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLDataException: Cannot parse "TIMESTAMP" constant ; SQL statement:
+INSERT INTO "eggroll_meta"."server_node"("server_node_id","name","server_cluster_id","host","port","node_type","status","last_heartbeat_at","created_at","updated_at")VALUES(?,?,?,?,?,?,?,?,?,?) [22007-200]
+	at org.h2.message.DbException.getJdbcSQLException(DbException.java:457)
+	at org.h2.message.DbException.getJdbcSQLException(DbException.java:429)
+	at org.h2.message.DbException.get(DbException.java:194)
+	at org.h2.value.ValueTimestamp.parse(ValueTimestamp.java:136)
+	at org.h2.value.Value.convertToTimestamp(Value.java:1169)
+	at org.h2.value.Value.convertTo(Value.java:822)
+	at org.h2.value.Value.convertTo(Value.java:772)
+	at org.h2.value.TypeInfo.cast(TypeInfo.java:515)
+	at org.h2.table.Column.validateConvertUpdateSequence(Column.java:378)
+	at org.h2.table.Table.validateConvertUpdateSequence(Table.java:845)
+	at org.h2.command.dml.Insert.insertRows(Insert.java:187)
+	at org.h2.command.dml.Insert.update(Insert.java:151)
+	at org.h2.command.CommandContainer.update(CommandContainer.java:198)
+	at org.h2.command.Command.executeUpdate(Command.java:251)
+	at org.h2.jdbc.JdbcPreparedStatement.executeUpdateInternal(JdbcPreparedStatement.java:191)
+	at org.h2.jdbc.JdbcPreparedStatement.executeUpdate(JdbcPreparedStatement.java:152)
+	at org.h2.result.UpdatableRow.insertRow(UpdatableRow.java:324)
+	at org.h2.jdbc.JdbcResultSet.insertRow(JdbcResultSet.java:3015)
+	at org.h2.server.web.WebApp.editResult(WebApp.java:1138)
+	at org.h2.server.web.WebApp.process(WebApp.java:247)
+	at org.h2.server.web.WebApp.processRequest(WebApp.java:173)
+	at org.h2.server.web.WebThread.process(WebThread.java:139)
+	at org.h2.server.web.WebThread.run(WebThread.java:94)
+	at java.lang.Thread.run(Thread.java:748)
+Caused by: java.lang.StringIndexOutOfBoundsException: String index out of range: 0
+	at java.lang.String.charAt(String.java:658)
+	at org.h2.util.DateTimeUtils.parseDateValue(DateTimeUtils.java:145)
+	at org.h2.util.DateTimeUtils.parseTimestamp(DateTimeUtils.java:316)
+	at org.h2.value.ValueTimestamp.parse(ValueTimestamp.java:134)
+	... 20 more
+2019-12-01 14:32:08 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLDataException: Cannot parse "TIMESTAMP" constant ; SQL statement:
+INSERT INTO "eggroll_meta"."server_node"("server_node_id","name","server_cluster_id","host","port","node_type","status","last_heartbeat_at","created_at","updated_at")VALUES(?,?,?,?,?,?,?,?,?,?) [22007-200]
+	at org.h2.message.DbException.getJdbcSQLException(DbException.java:457)
+	at org.h2.message.DbException.getJdbcSQLException(DbException.java:429)
+	at org.h2.message.DbException.get(DbException.java:194)
+	at org.h2.value.ValueTimestamp.parse(ValueTimestamp.java:136)
+	at org.h2.value.Value.convertToTimestamp(Value.java:1169)
+	at org.h2.value.Value.convertTo(Value.java:822)
+	at org.h2.value.Value.convertTo(Value.java:772)
+	at org.h2.value.TypeInfo.cast(TypeInfo.java:515)
+	at org.h2.table.Column.validateConvertUpdateSequence(Column.java:378)
+	at org.h2.table.Table.validateConvertUpdateSequence(Table.java:845)
+	at org.h2.command.dml.Insert.insertRows(Insert.java:187)
+	at org.h2.command.dml.Insert.update(Insert.java:151)
+	at org.h2.command.CommandContainer.update(CommandContainer.java:198)
+	at org.h2.command.Command.executeUpdate(Command.java:251)
+	at org.h2.jdbc.JdbcPreparedStatement.executeUpdateInternal(JdbcPreparedStatement.java:191)
+	at org.h2.jdbc.JdbcPreparedStatement.executeUpdate(JdbcPreparedStatement.java:152)
+	at org.h2.result.UpdatableRow.insertRow(UpdatableRow.java:324)
+	at org.h2.jdbc.JdbcResultSet.insertRow(JdbcResultSet.java:3015)
+	at org.h2.server.web.WebApp.editResult(WebApp.java:1138)
+	at org.h2.server.web.WebApp.process(WebApp.java:247)
+	at org.h2.server.web.WebApp.processRequest(WebApp.java:173)
+	at org.h2.server.web.WebThread.process(WebThread.java:139)
+	at org.h2.server.web.WebThread.run(WebThread.java:94)
+	at java.lang.Thread.run(Thread.java:748)
+Caused by: java.lang.StringIndexOutOfBoundsException: String index out of range: 0
+	at java.lang.String.charAt(String.java:658)
+	at org.h2.util.DateTimeUtils.parseDateValue(DateTimeUtils.java:145)
+	at org.h2.util.DateTimeUtils.parseTimestamp(DateTimeUtils.java:316)
+	at org.h2.value.ValueTimestamp.parse(ValueTimestamp.java:134)
+	... 20 more
+2019-12-01 14:32:35 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLDataException: Cannot parse "TIMESTAMP" constant ; SQL statement:
+INSERT INTO "eggroll_meta"."server_node"("server_node_id","name","server_cluster_id","host","port","node_type","status","last_heartbeat_at","created_at","updated_at")VALUES(?,?,?,?,?,?,?,?,?,?) [22007-200]
+	at org.h2.message.DbException.getJdbcSQLException(DbException.java:457)
+	at org.h2.message.DbException.getJdbcSQLException(DbException.java:429)
+	at org.h2.message.DbException.get(DbException.java:194)
+	at org.h2.value.ValueTimestamp.parse(ValueTimestamp.java:136)
+	at org.h2.value.Value.convertToTimestamp(Value.java:1169)
+	at org.h2.value.Value.convertTo(Value.java:822)
+	at org.h2.value.Value.convertTo(Value.java:772)
+	at org.h2.value.TypeInfo.cast(TypeInfo.java:515)
+	at org.h2.table.Column.validateConvertUpdateSequence(Column.java:378)
+	at org.h2.table.Table.validateConvertUpdateSequence(Table.java:845)
+	at org.h2.command.dml.Insert.insertRows(Insert.java:187)
+	at org.h2.command.dml.Insert.update(Insert.java:151)
+	at org.h2.command.CommandContainer.update(CommandContainer.java:198)
+	at org.h2.command.Command.executeUpdate(Command.java:251)
+	at org.h2.jdbc.JdbcPreparedStatement.executeUpdateInternal(JdbcPreparedStatement.java:191)
+	at org.h2.jdbc.JdbcPreparedStatement.executeUpdate(JdbcPreparedStatement.java:152)
+	at org.h2.result.UpdatableRow.insertRow(UpdatableRow.java:324)
+	at org.h2.jdbc.JdbcResultSet.insertRow(JdbcResultSet.java:3015)
+	at org.h2.server.web.WebApp.editResult(WebApp.java:1138)
+	at org.h2.server.web.WebApp.process(WebApp.java:247)
+	at org.h2.server.web.WebApp.processRequest(WebApp.java:173)
+	at org.h2.server.web.WebThread.process(WebThread.java:139)
+	at org.h2.server.web.WebThread.run(WebThread.java:94)
+	at java.lang.Thread.run(Thread.java:748)
+Caused by: java.lang.StringIndexOutOfBoundsException: String index out of range: 0
+	at java.lang.String.charAt(String.java:658)
+	at org.h2.util.DateTimeUtils.parseDateValue(DateTimeUtils.java:145)
+	at org.h2.util.DateTimeUtils.parseTimestamp(DateTimeUtils.java:316)
+	at org.h2.value.ValueTimestamp.parse(ValueTimestamp.java:134)
+	... 20 more
+2019-12-01 14:32:35 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLDataException: Cannot parse "TIMESTAMP" constant ; SQL statement:
+INSERT INTO "eggroll_meta"."server_node"("server_node_id","name","server_cluster_id","host","port","node_type","status","last_heartbeat_at","created_at","updated_at")VALUES(?,?,?,?,?,?,?,?,?,?) [22007-200]
+	at org.h2.message.DbException.getJdbcSQLException(DbException.java:457)
+	at org.h2.message.DbException.getJdbcSQLException(DbException.java:429)
+	at org.h2.message.DbException.get(DbException.java:194)
+	at org.h2.value.ValueTimestamp.parse(ValueTimestamp.java:136)
+	at org.h2.value.Value.convertToTimestamp(Value.java:1169)
+	at org.h2.value.Value.convertTo(Value.java:822)
+	at org.h2.value.Value.convertTo(Value.java:772)
+	at org.h2.value.TypeInfo.cast(TypeInfo.java:515)
+	at org.h2.table.Column.validateConvertUpdateSequence(Column.java:378)
+	at org.h2.table.Table.validateConvertUpdateSequence(Table.java:845)
+	at org.h2.command.dml.Insert.insertRows(Insert.java:187)
+	at org.h2.command.dml.Insert.update(Insert.java:151)
+	at org.h2.command.CommandContainer.update(CommandContainer.java:198)
+	at org.h2.command.Command.executeUpdate(Command.java:251)
+	at org.h2.jdbc.JdbcPreparedStatement.executeUpdateInternal(JdbcPreparedStatement.java:191)
+	at org.h2.jdbc.JdbcPreparedStatement.executeUpdate(JdbcPreparedStatement.java:152)
+	at org.h2.result.UpdatableRow.insertRow(UpdatableRow.java:324)
+	at org.h2.jdbc.JdbcResultSet.insertRow(JdbcResultSet.java:3015)
+	at org.h2.server.web.WebApp.editResult(WebApp.java:1138)
+	at org.h2.server.web.WebApp.process(WebApp.java:247)
+	at org.h2.server.web.WebApp.processRequest(WebApp.java:173)
+	at org.h2.server.web.WebThread.process(WebThread.java:139)
+	at org.h2.server.web.WebThread.run(WebThread.java:94)
+	at java.lang.Thread.run(Thread.java:748)
+Caused by: java.lang.StringIndexOutOfBoundsException: String index out of range: 0
+	at java.lang.String.charAt(String.java:658)
+	at org.h2.util.DateTimeUtils.parseDateValue(DateTimeUtils.java:145)
+	at org.h2.util.DateTimeUtils.parseTimestamp(DateTimeUtils.java:316)
+	at org.h2.value.ValueTimestamp.parse(ValueTimestamp.java:134)
+	... 20 more
+2019-12-01 14:35:50 database: flush
+org.h2.message.DbException: General error: "java.lang.IllegalStateException: The file is locked: nio:/Users/huangqijun/codespace/eggroll_v2/jvm/core/test/resources/meta.h2.mv.db [1.4.200/7]" [50000-200]
+	at org.h2.message.DbException.get(DbException.java:194)
+	at org.h2.message.DbException.convert(DbException.java:347)
+	at org.h2.mvstore.db.MVTableEngine$1.uncaughtException(MVTableEngine.java:93)
+	at org.h2.mvstore.MVStore.handleException(MVStore.java:2877)
+	at org.h2.mvstore.MVStore.panic(MVStore.java:481)
+	at org.h2.mvstore.MVStore.<init>(MVStore.java:402)
+	at org.h2.mvstore.MVStore$Builder.open(MVStore.java:3579)
+	at org.h2.mvstore.db.MVTableEngine$Store.open(MVTableEngine.java:170)
+	at org.h2.mvstore.db.MVTableEngine.init(MVTableEngine.java:103)
+	at org.h2.engine.Database.getPageStore(Database.java:2659)
+	at org.h2.engine.Database.open(Database.java:675)
+	at org.h2.engine.Database.openDatabase(Database.java:307)
+	at org.h2.engine.Database.<init>(Database.java:301)
+	at org.h2.engine.Engine.openSession(Engine.java:74)
+	at org.h2.engine.Engine.openSession(Engine.java:192)
+	at org.h2.engine.Engine.createSessionAndValidate(Engine.java:171)
+	at org.h2.engine.Engine.createSession(Engine.java:166)
+	at org.h2.engine.Engine.createSession(Engine.java:29)
+	at org.h2.engine.SessionRemote.connectEmbeddedOrServer(SessionRemote.java:340)
+	at org.h2.jdbc.JdbcConnection.<init>(JdbcConnection.java:173)
+	at org.h2.jdbc.JdbcConnection.<init>(JdbcConnection.java:152)
+	at org.h2.Driver.connect(Driver.java:69)
+	at org.h2.util.JdbcUtils.getConnection(JdbcUtils.java:309)
+	at org.h2.util.JdbcUtils.getConnection(JdbcUtils.java:289)
+	at org.h2.server.web.WebServer.getConnection(WebServer.java:785)
+	at org.h2.server.web.WebApp.login(WebApp.java:1008)
+	at org.h2.server.web.WebApp.process(WebApp.java:223)
+	at org.h2.server.web.WebApp.processRequest(WebApp.java:173)
+	at org.h2.server.web.WebThread.process(WebThread.java:139)
+	at org.h2.server.web.WebThread.run(WebThread.java:94)
+	at java.lang.Thread.run(Thread.java:748)
+Caused by: org.h2.jdbc.JdbcSQLNonTransientException: General error: "java.lang.IllegalStateException: The file is locked: nio:/Users/huangqijun/codespace/eggroll_v2/jvm/core/test/resources/meta.h2.mv.db [1.4.200/7]" [50000-200]
+	at org.h2.message.DbException.getJdbcSQLException(DbException.java:505)
+	at org.h2.message.DbException.getJdbcSQLException(DbException.java:429)
+	... 31 more
+Caused by: java.lang.IllegalStateException: The file is locked: nio:/Users/huangqijun/codespace/eggroll_v2/jvm/core/test/resources/meta.h2.mv.db [1.4.200/7]
+	at org.h2.mvstore.DataUtils.newIllegalStateException(DataUtils.java:950)
+	at org.h2.mvstore.FileStore.open(FileStore.java:172)
+	at org.h2.mvstore.MVStore.<init>(MVStore.java:381)
+	... 25 more
