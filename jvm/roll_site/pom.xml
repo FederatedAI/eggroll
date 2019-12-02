@@ -72,15 +72,16 @@
             <version>1.4</version>
             <scope>compile</scope>
         </dependency>
-
         <dependency>
             <groupId>com.webank.eggroll</groupId>
             <artifactId>eggroll-core</artifactId>
             <version>${eggroll.version}</version>
-            <scope>system</scope>
-            <systemPath>${project.basedir}/../core/target/eggroll-core-2.0.jar</systemPath>
         </dependency>
-
+        <dependency>
+            <groupId>com.webank.eggroll</groupId>
+            <artifactId>eggroll-roll-pair</artifactId>
+            <version>${eggroll.version}</version>
+        </dependency>
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-core</artifactId>
