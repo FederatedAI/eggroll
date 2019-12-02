@@ -17,7 +17,7 @@
 package com.webank.eggroll.rollsite.manager;
 
 
-import com.webank.eggroll.rollsite.networking.proxy.Proxy;
+import com.webank.ai.eggroll.api.networking.proxy.Proxy;
 //import com.webank.ai.eggroll.core.utils.ToStringUtils;
 import com.webank.eggroll.rollsite.model.StreamStat;
 import io.grpc.netty.shaded.io.netty.util.internal.ConcurrentSet;

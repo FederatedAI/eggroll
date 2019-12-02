@@ -16,9 +16,9 @@
 
 package com.webank.eggroll.rollsite.grpc.observer;
 
-import com.webank.eggroll.rollsite.networking.proxy.Proxy;
-import com.webank.eggroll.rollsite.networking.proxy.Proxy.Metadata;
-import com.webank.eggroll.rollsite.networking.proxy.Proxy.Packet;
+import com.webank.ai.eggroll.api.networking.proxy.Proxy;
+import com.webank.ai.eggroll.api.networking.proxy.Proxy.Metadata;
+import com.webank.ai.eggroll.api.networking.proxy.Proxy.Packet;
 import com.webank.eggroll.core.grpc.observer.BaseCallerResponseStreamObserver;
 import com.webank.eggroll.core.util.ToStringUtils;
 import com.webank.eggroll.rollsite.infra.Pipe;

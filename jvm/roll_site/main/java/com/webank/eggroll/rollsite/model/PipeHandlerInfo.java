@@ -16,7 +16,7 @@
 
 package com.webank.eggroll.rollsite.model;
 
-import com.webank.eggroll.rollsite.networking.proxy.Proxy;
+import com.webank.ai.eggroll.api.networking.proxy.Proxy;
 import com.webank.eggroll.rollsite.infra.Pipe;
 import com.webank.eggroll.rollsite.event.model.PipeHandleNotificationEvent.Type;
 import org.springframework.context.annotation.Scope;

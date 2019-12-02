@@ -14,10 +14,10 @@ _sym_db = _symbol_database.Default()
 
 DESCRIPTOR = _descriptor.FileDescriptor(
   name='basic-meta.proto',
-  package='com.webank.eggroll.rollsite.core',
+  package='com.webank.ai.eggroll.api.core',
   syntax='proto3',
   serialized_options=None,
-  serialized_pb=_b('\n\x10\x62\x61sic-meta.proto\x12\x1e\x63om.webank.eggroll.rollsite.core\"6\n\x08\x45ndpoint\x12\n\n\x02ip\x18\x01 \x01(\t\x12\x0c\n\x04port\x18\x02 \x01(\x05\x12\x10\n\x08hostname\x18\x03 \x01(\t\"H\n\tEndpoints\x12;\n\tendpoints\x18\x01 \x03(\x0b\x32(.com.webank.eggroll.rollsite.core.Endpoint\"H\n\x04\x44\x61ta\x12\x0e\n\x06isNull\x18\x01 \x01(\x08\x12\x14\n\x0chostLanguage\x18\x02 \x01(\t\x12\x0c\n\x04type\x18\x03 \x01(\t\x12\x0c\n\x04\x64\x61ta\x18\x04 \x01(\x0c\"F\n\x0cRepeatedData\x12\x36\n\x08\x64\x61talist\x18\x01 \x03(\x0b\x32$.com.webank.eggroll.rollsite.core.Data\"u\n\x0b\x43\x61llRequest\x12\x0f\n\x07isAsync\x18\x01 \x01(\x08\x12\x0f\n\x07timeout\x18\x02 \x01(\x03\x12\x0f\n\x07\x63ommand\x18\x03 \x01(\t\x12\x33\n\x05param\x18\x04 \x01(\x0b\x32$.com.webank.eggroll.rollsite.core.Data\"\x88\x01\n\x0c\x43\x61llResponse\x12\x42\n\x0creturnStatus\x18\x01 \x01(\x0b\x32,.com.webank.eggroll.rollsite.core.ReturnStatus\x12\x34\n\x06result\x18\x02 \x01(\x0b\x32$.com.webank.eggroll.rollsite.core.Data\"\"\n\x03Job\x12\r\n\x05jobId\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\"Y\n\x04Task\x12\x30\n\x03job\x18\x01 \x01(\x0b\x32#.com.webank.eggroll.rollsite.core.Job\x12\x0e\n\x06taskId\x18\x02 \x01(\x03\x12\x0f\n\x07tableId\x18\x03 \x01(\x03\"N\n\x06Result\x12\x32\n\x04task\x18\x01 \x01(\x0b\x32$.com.webank.eggroll.rollsite.core.Task\x12\x10\n\x08resultId\x18\x02 \x01(\x03\"-\n\x0cReturnStatus\x12\x0c\n\x04\x63ode\x18\x01 \x01(\x05\x12\x0f\n\x07message\x18\x02 \x01(\t\"\xe2\x01\n\x0bSessionInfo\x12\x11\n\tsessionId\x18\x01 \x01(\t\x12\x61\n\x13\x63omputingEngineConf\x18\x02 \x03(\x0b\x32\x44.com.webank.eggroll.rollsite.core.SessionInfo.ComputingEngineConfEntry\x12\x14\n\x0cnamingPolicy\x18\x03 \x01(\t\x12\x0b\n\x03tag\x18\x04 \x01(\t\x1a:\n\x18\x43omputingEngineConfEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\x62\x06proto3')
+  serialized_pb=_b('\n\x10\x62\x61sic-meta.proto\x12\x1e\x63om.webank.ai.eggroll.api.core\"6\n\x08\x45ndpoint\x12\n\n\x02ip\x18\x01 \x01(\t\x12\x0c\n\x04port\x18\x02 \x01(\x05\x12\x10\n\x08hostname\x18\x03 \x01(\t\"H\n\tEndpoints\x12;\n\tendpoints\x18\x01 \x03(\x0b\x32(.com.webank.ai.eggroll.api.core.Endpoint\"H\n\x04\x44\x61ta\x12\x0e\n\x06isNull\x18\x01 \x01(\x08\x12\x14\n\x0chostLanguage\x18\x02 \x01(\t\x12\x0c\n\x04type\x18\x03 \x01(\t\x12\x0c\n\x04\x64\x61ta\x18\x04 \x01(\x0c\"F\n\x0cRepeatedData\x12\x36\n\x08\x64\x61talist\x18\x01 \x03(\x0b\x32$.com.webank.ai.eggroll.api.core.Data\"u\n\x0b\x43\x61llRequest\x12\x0f\n\x07isAsync\x18\x01 \x01(\x08\x12\x0f\n\x07timeout\x18\x02 \x01(\x03\x12\x0f\n\x07\x63ommand\x18\x03 \x01(\t\x12\x33\n\x05param\x18\x04 \x01(\x0b\x32$.com.webank.ai.eggroll.api.core.Data\"\x88\x01\n\x0c\x43\x61llResponse\x12\x42\n\x0creturnStatus\x18\x01 \x01(\x0b\x32,.com.webank.ai.eggroll.api.core.ReturnStatus\x12\x34\n\x06result\x18\x02 \x01(\x0b\x32$.com.webank.ai.eggroll.api.core.Data\"\"\n\x03Job\x12\r\n\x05jobId\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\"Y\n\x04Task\x12\x30\n\x03job\x18\x01 \x01(\x0b\x32#.com.webank.ai.eggroll.api.core.Job\x12\x0e\n\x06taskId\x18\x02 \x01(\x03\x12\x0f\n\x07tableId\x18\x03 \x01(\x03\"N\n\x06Result\x12\x32\n\x04task\x18\x01 \x01(\x0b\x32$.com.webank.ai.eggroll.api.core.Task\x12\x10\n\x08resultId\x18\x02 \x01(\x03\"-\n\x0cReturnStatus\x12\x0c\n\x04\x63ode\x18\x01 \x01(\x05\x12\x0f\n\x07message\x18\x02 \x01(\t\"\xe2\x01\n\x0bSessionInfo\x12\x11\n\tsessionId\x18\x01 \x01(\t\x12\x61\n\x13\x63omputingEngineConf\x18\x02 \x03(\x0b\x32\x44.com.webank.ai.eggroll.api.core.SessionInfo.ComputingEngineConfEntry\x12\x14\n\x0cnamingPolicy\x18\x03 \x01(\t\x12\x0b\n\x03tag\x18\x04 \x01(\t\x1a:\n\x18\x43omputingEngineConfEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\x62\x06proto3')
 )
 
 
@@ -25,27 +25,27 @@ DESCRIPTOR = _descriptor.FileDescriptor(
 
 _ENDPOINT = _descriptor.Descriptor(
   name='Endpoint',
-  full_name='com.webank.eggroll.rollsite.core.Endpoint',
+  full_name='com.webank.ai.eggroll.api.core.Endpoint',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='ip', full_name='com.webank.eggroll.rollsite.core.Endpoint.ip', index=0,
+      name='ip', full_name='com.webank.ai.eggroll.api.core.Endpoint.ip', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='port', full_name='com.webank.eggroll.rollsite.core.Endpoint.port', index=1,
+      name='port', full_name='com.webank.ai.eggroll.api.core.Endpoint.port', index=1,
       number=2, type=5, cpp_type=1, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='hostname', full_name='com.webank.eggroll.rollsite.core.Endpoint.hostname', index=2,
+      name='hostname', full_name='com.webank.ai.eggroll.api.core.Endpoint.hostname', index=2,
       number=3, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
@@ -70,13 +70,13 @@ _ENDPOINT = _descriptor.Descriptor(
 
 _ENDPOINTS = _descriptor.Descriptor(
   name='Endpoints',
-  full_name='com.webank.eggroll.rollsite.core.Endpoints',
+  full_name='com.webank.ai.eggroll.api.core.Endpoints',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='endpoints', full_name='com.webank.eggroll.rollsite.core.Endpoints.endpoints', index=0,
+      name='endpoints', full_name='com.webank.ai.eggroll.api.core.Endpoints.endpoints', index=0,
       number=1, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
@@ -101,34 +101,34 @@ _ENDPOINTS = _descriptor.Descriptor(
 
 _DATA = _descriptor.Descriptor(
   name='Data',
-  full_name='com.webank.eggroll.rollsite.core.Data',
+  full_name='com.webank.ai.eggroll.api.core.Data',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='isNull', full_name='com.webank.eggroll.rollsite.core.Data.isNull', index=0,
+      name='isNull', full_name='com.webank.ai.eggroll.api.core.Data.isNull', index=0,
       number=1, type=8, cpp_type=7, label=1,
       has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='hostLanguage', full_name='com.webank.eggroll.rollsite.core.Data.hostLanguage', index=1,
+      name='hostLanguage', full_name='com.webank.ai.eggroll.api.core.Data.hostLanguage', index=1,
       number=2, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='type', full_name='com.webank.eggroll.rollsite.core.Data.type', index=2,
+      name='type', full_name='com.webank.ai.eggroll.api.core.Data.type', index=2,
       number=3, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='data', full_name='com.webank.eggroll.rollsite.core.Data.data', index=3,
+      name='data', full_name='com.webank.ai.eggroll.api.core.Data.data', index=3,
       number=4, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
@@ -153,13 +153,13 @@ _DATA = _descriptor.Descriptor(
 
 _REPEATEDDATA = _descriptor.Descriptor(
   name='RepeatedData',
-  full_name='com.webank.eggroll.rollsite.core.RepeatedData',
+  full_name='com.webank.ai.eggroll.api.core.RepeatedData',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='datalist', full_name='com.webank.eggroll.rollsite.core.RepeatedData.datalist', index=0,
+      name='datalist', full_name='com.webank.ai.eggroll.api.core.RepeatedData.datalist', index=0,
       number=1, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
@@ -184,34 +184,34 @@ _REPEATEDDATA = _descriptor.Descriptor(
 
 _CALLREQUEST = _descriptor.Descriptor(
   name='CallRequest',
-  full_name='com.webank.eggroll.rollsite.core.CallRequest',
+  full_name='com.webank.ai.eggroll.api.core.CallRequest',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='isAsync', full_name='com.webank.eggroll.rollsite.core.CallRequest.isAsync', index=0,
+      name='isAsync', full_name='com.webank.ai.eggroll.api.core.CallRequest.isAsync', index=0,
       number=1, type=8, cpp_type=7, label=1,
       has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='timeout', full_name='com.webank.eggroll.rollsite.core.CallRequest.timeout', index=1,
+      name='timeout', full_name='com.webank.ai.eggroll.api.core.CallRequest.timeout', index=1,
       number=2, type=3, cpp_type=2, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='command', full_name='com.webank.eggroll.rollsite.core.CallRequest.command', index=2,
+      name='command', full_name='com.webank.ai.eggroll.api.core.CallRequest.command', index=2,
       number=3, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='param', full_name='com.webank.eggroll.rollsite.core.CallRequest.param', index=3,
+      name='param', full_name='com.webank.ai.eggroll.api.core.CallRequest.param', index=3,
       number=4, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -236,20 +236,20 @@ _CALLREQUEST = _descriptor.Descriptor(
 
 _CALLRESPONSE = _descriptor.Descriptor(
   name='CallResponse',
-  full_name='com.webank.eggroll.rollsite.core.CallResponse',
+  full_name='com.webank.ai.eggroll.api.core.CallResponse',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='returnStatus', full_name='com.webank.eggroll.rollsite.core.CallResponse.returnStatus', index=0,
+      name='returnStatus', full_name='com.webank.ai.eggroll.api.core.CallResponse.returnStatus', index=0,
       number=1, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='result', full_name='com.webank.eggroll.rollsite.core.CallResponse.result', index=1,
+      name='result', full_name='com.webank.ai.eggroll.api.core.CallResponse.result', index=1,
       number=2, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -274,20 +274,20 @@ _CALLRESPONSE = _descriptor.Descriptor(
 
 _JOB = _descriptor.Descriptor(
   name='Job',
-  full_name='com.webank.eggroll.rollsite.core.Job',
+  full_name='com.webank.ai.eggroll.api.core.Job',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='jobId', full_name='com.webank.eggroll.rollsite.core.Job.jobId', index=0,
+      name='jobId', full_name='com.webank.ai.eggroll.api.core.Job.jobId', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='name', full_name='com.webank.eggroll.rollsite.core.Job.name', index=1,
+      name='name', full_name='com.webank.ai.eggroll.api.core.Job.name', index=1,
       number=2, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
@@ -312,27 +312,27 @@ _JOB = _descriptor.Descriptor(
 
 _TASK = _descriptor.Descriptor(
   name='Task',
-  full_name='com.webank.eggroll.rollsite.core.Task',
+  full_name='com.webank.ai.eggroll.api.core.Task',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='job', full_name='com.webank.eggroll.rollsite.core.Task.job', index=0,
+      name='job', full_name='com.webank.ai.eggroll.api.core.Task.job', index=0,
       number=1, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='taskId', full_name='com.webank.eggroll.rollsite.core.Task.taskId', index=1,
+      name='taskId', full_name='com.webank.ai.eggroll.api.core.Task.taskId', index=1,
       number=2, type=3, cpp_type=2, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='tableId', full_name='com.webank.eggroll.rollsite.core.Task.tableId', index=2,
+      name='tableId', full_name='com.webank.ai.eggroll.api.core.Task.tableId', index=2,
       number=3, type=3, cpp_type=2, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -357,20 +357,20 @@ _TASK = _descriptor.Descriptor(
 
 _RESULT = _descriptor.Descriptor(
   name='Result',
-  full_name='com.webank.eggroll.rollsite.core.Result',
+  full_name='com.webank.ai.eggroll.api.core.Result',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='task', full_name='com.webank.eggroll.rollsite.core.Result.task', index=0,
+      name='task', full_name='com.webank.ai.eggroll.api.core.Result.task', index=0,
       number=1, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='resultId', full_name='com.webank.eggroll.rollsite.core.Result.resultId', index=1,
+      name='resultId', full_name='com.webank.ai.eggroll.api.core.Result.resultId', index=1,
       number=2, type=3, cpp_type=2, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -395,20 +395,20 @@ _RESULT = _descriptor.Descriptor(
 
 _RETURNSTATUS = _descriptor.Descriptor(
   name='ReturnStatus',
-  full_name='com.webank.eggroll.rollsite.core.ReturnStatus',
+  full_name='com.webank.ai.eggroll.api.core.ReturnStatus',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='code', full_name='com.webank.eggroll.rollsite.core.ReturnStatus.code', index=0,
+      name='code', full_name='com.webank.ai.eggroll.api.core.ReturnStatus.code', index=0,
       number=1, type=5, cpp_type=1, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='message', full_name='com.webank.eggroll.rollsite.core.ReturnStatus.message', index=1,
+      name='message', full_name='com.webank.ai.eggroll.api.core.ReturnStatus.message', index=1,
       number=2, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
@@ -433,20 +433,20 @@ _RETURNSTATUS = _descriptor.Descriptor(
 
 _SESSIONINFO_COMPUTINGENGINECONFENTRY = _descriptor.Descriptor(
   name='ComputingEngineConfEntry',
-  full_name='com.webank.eggroll.rollsite.core.SessionInfo.ComputingEngineConfEntry',
+  full_name='com.webank.ai.eggroll.api.core.SessionInfo.ComputingEngineConfEntry',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='key', full_name='com.webank.eggroll.rollsite.core.SessionInfo.ComputingEngineConfEntry.key', index=0,
+      name='key', full_name='com.webank.ai.eggroll.api.core.SessionInfo.ComputingEngineConfEntry.key', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='value', full_name='com.webank.eggroll.rollsite.core.SessionInfo.ComputingEngineConfEntry.value', index=1,
+      name='value', full_name='com.webank.ai.eggroll.api.core.SessionInfo.ComputingEngineConfEntry.value', index=1,
       number=2, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
@@ -470,34 +470,34 @@ _SESSIONINFO_COMPUTINGENGINECONFENTRY = _descriptor.Descriptor(
 
 _SESSIONINFO = _descriptor.Descriptor(
   name='SessionInfo',
-  full_name='com.webank.eggroll.rollsite.core.SessionInfo',
+  full_name='com.webank.ai.eggroll.api.core.SessionInfo',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='sessionId', full_name='com.webank.eggroll.rollsite.core.SessionInfo.sessionId', index=0,
+      name='sessionId', full_name='com.webank.ai.eggroll.api.core.SessionInfo.sessionId', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='computingEngineConf', full_name='com.webank.eggroll.rollsite.core.SessionInfo.computingEngineConf', index=1,
+      name='computingEngineConf', full_name='com.webank.ai.eggroll.api.core.SessionInfo.computingEngineConf', index=1,
       number=2, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='namingPolicy', full_name='com.webank.eggroll.rollsite.core.SessionInfo.namingPolicy', index=2,
+      name='namingPolicy', full_name='com.webank.ai.eggroll.api.core.SessionInfo.namingPolicy', index=2,
       number=3, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='tag', full_name='com.webank.eggroll.rollsite.core.SessionInfo.tag', index=3,
+      name='tag', full_name='com.webank.ai.eggroll.api.core.SessionInfo.tag', index=3,
       number=4, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
@@ -544,70 +544,70 @@ _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 Endpoint = _reflection.GeneratedProtocolMessageType('Endpoint', (_message.Message,), dict(
   DESCRIPTOR = _ENDPOINT,
   __module__ = 'basic_meta_pb2'
-  # @@protoc_insertion_point(class_scope:com.webank.eggroll.rollsite.core.Endpoint)
+  # @@protoc_insertion_point(class_scope:com.webank.ai.eggroll.api.core.Endpoint)
   ))
 _sym_db.RegisterMessage(Endpoint)
 
 Endpoints = _reflection.GeneratedProtocolMessageType('Endpoints', (_message.Message,), dict(
   DESCRIPTOR = _ENDPOINTS,
   __module__ = 'basic_meta_pb2'
-  # @@protoc_insertion_point(class_scope:com.webank.eggroll.rollsite.core.Endpoints)
+  # @@protoc_insertion_point(class_scope:com.webank.ai.eggroll.api.core.Endpoints)
   ))
 _sym_db.RegisterMessage(Endpoints)
 
 Data = _reflection.GeneratedProtocolMessageType('Data', (_message.Message,), dict(
   DESCRIPTOR = _DATA,
   __module__ = 'basic_meta_pb2'
-  # @@protoc_insertion_point(class_scope:com.webank.eggroll.rollsite.core.Data)
+  # @@protoc_insertion_point(class_scope:com.webank.ai.eggroll.api.core.Data)
   ))
 _sym_db.RegisterMessage(Data)
 
 RepeatedData = _reflection.GeneratedProtocolMessageType('RepeatedData', (_message.Message,), dict(
   DESCRIPTOR = _REPEATEDDATA,
   __module__ = 'basic_meta_pb2'
-  # @@protoc_insertion_point(class_scope:com.webank.eggroll.rollsite.core.RepeatedData)
+  # @@protoc_insertion_point(class_scope:com.webank.ai.eggroll.api.core.RepeatedData)
   ))
 _sym_db.RegisterMessage(RepeatedData)
 
 CallRequest = _reflection.GeneratedProtocolMessageType('CallRequest', (_message.Message,), dict(
   DESCRIPTOR = _CALLREQUEST,
   __module__ = 'basic_meta_pb2'
-  # @@protoc_insertion_point(class_scope:com.webank.eggroll.rollsite.core.CallRequest)
+  # @@protoc_insertion_point(class_scope:com.webank.ai.eggroll.api.core.CallRequest)
   ))
 _sym_db.RegisterMessage(CallRequest)
 
 CallResponse = _reflection.GeneratedProtocolMessageType('CallResponse', (_message.Message,), dict(
   DESCRIPTOR = _CALLRESPONSE,
   __module__ = 'basic_meta_pb2'
-  # @@protoc_insertion_point(class_scope:com.webank.eggroll.rollsite.core.CallResponse)
+  # @@protoc_insertion_point(class_scope:com.webank.ai.eggroll.api.core.CallResponse)
   ))
 _sym_db.RegisterMessage(CallResponse)
 
 Job = _reflection.GeneratedProtocolMessageType('Job', (_message.Message,), dict(
   DESCRIPTOR = _JOB,
   __module__ = 'basic_meta_pb2'
-  # @@protoc_insertion_point(class_scope:com.webank.eggroll.rollsite.core.Job)
+  # @@protoc_insertion_point(class_scope:com.webank.ai.eggroll.api.core.Job)
   ))
 _sym_db.RegisterMessage(Job)
 
 Task = _reflection.GeneratedProtocolMessageType('Task', (_message.Message,), dict(
   DESCRIPTOR = _TASK,
   __module__ = 'basic_meta_pb2'
-  # @@protoc_insertion_point(class_scope:com.webank.eggroll.rollsite.core.Task)
+  # @@protoc_insertion_point(class_scope:com.webank.ai.eggroll.api.core.Task)
   ))
 _sym_db.RegisterMessage(Task)
 
 Result = _reflection.GeneratedProtocolMessageType('Result', (_message.Message,), dict(
   DESCRIPTOR = _RESULT,
   __module__ = 'basic_meta_pb2'
-  # @@protoc_insertion_point(class_scope:com.webank.eggroll.rollsite.core.Result)
+  # @@protoc_insertion_point(class_scope:com.webank.ai.eggroll.api.core.Result)
   ))
 _sym_db.RegisterMessage(Result)
 
 ReturnStatus = _reflection.GeneratedProtocolMessageType('ReturnStatus', (_message.Message,), dict(
   DESCRIPTOR = _RETURNSTATUS,
   __module__ = 'basic_meta_pb2'
-  # @@protoc_insertion_point(class_scope:com.webank.eggroll.rollsite.core.ReturnStatus)
+  # @@protoc_insertion_point(class_scope:com.webank.ai.eggroll.api.core.ReturnStatus)
   ))
 _sym_db.RegisterMessage(ReturnStatus)
 
@@ -616,12 +616,12 @@ SessionInfo = _reflection.GeneratedProtocolMessageType('SessionInfo', (_message.
   ComputingEngineConfEntry = _reflection.GeneratedProtocolMessageType('ComputingEngineConfEntry', (_message.Message,), dict(
     DESCRIPTOR = _SESSIONINFO_COMPUTINGENGINECONFENTRY,
     __module__ = 'basic_meta_pb2'
-    # @@protoc_insertion_point(class_scope:com.webank.eggroll.rollsite.core.SessionInfo.ComputingEngineConfEntry)
+    # @@protoc_insertion_point(class_scope:com.webank.ai.eggroll.api.core.SessionInfo.ComputingEngineConfEntry)
     ))
   ,
   DESCRIPTOR = _SESSIONINFO,
   __module__ = 'basic_meta_pb2'
-  # @@protoc_insertion_point(class_scope:com.webank.eggroll.rollsite.core.SessionInfo)
+  # @@protoc_insertion_point(class_scope:com.webank.ai.eggroll.api.core.SessionInfo)
   ))
 _sym_db.RegisterMessage(SessionInfo)
 _sym_db.RegisterMessage(SessionInfo.ComputingEngineConfEntry)

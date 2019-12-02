@@ -16,8 +16,8 @@
 
 package com.webank.eggroll.rollsite.infra;
 
-import com.webank.eggroll.rollsite.core.BasicMeta;
-import com.webank.eggroll.rollsite.networking.proxy.Proxy;
+import com.webank.ai.eggroll.api.core.BasicMeta;
+import com.webank.ai.eggroll.api.networking.proxy.Proxy;
 
 import java.io.InputStream;
 

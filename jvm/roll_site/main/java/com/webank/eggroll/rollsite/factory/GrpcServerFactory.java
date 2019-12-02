@@ -18,8 +18,8 @@ package com.webank.eggroll.rollsite.factory;
 
 import com.google.common.net.InetAddresses;
 import com.google.protobuf.ByteString;
-import com.webank.eggroll.rollsite.core.BasicMeta;
-import com.webank.eggroll.rollsite.networking.proxy.Proxy;
+import com.webank.ai.eggroll.api.core.BasicMeta;
+import com.webank.ai.eggroll.api.networking.proxy.Proxy;
 import com.webank.eggroll.rollsite.grpc.client.DataTransferPipedClient;
 import com.webank.eggroll.rollsite.infra.Pipe;
 import com.webank.eggroll.rollsite.manager.ServerConfManager;
@@ -135,10 +135,10 @@ public class GrpcServerFactory {
             AccessRedirector accessRedirector = new AccessRedirector();
 
             serverBuilder.addService(accessRedirector.redirect(dataTransferPipedServer,
-                    "com.webank.ai.eggroll.rollsite.networking.proxy.DataTransferService",
-                    "com.webank.ai.fate.rollsite.networking.proxy.DataTransferService"))
-                    .addService(accessRedirector.redirect(routeServer, "com.webank.ai.eggroll.rollsite.networking.proxy.RouteService",
-                            "com.webank.ai.fate.rollsite.networking.proxy.RouteService"));
+                    "com.webank.ai.eggroll.api.networking.proxy.DataTransferService",
+                    "com.webank.ai.fate.api.networking.proxy.DataTransferService"))
+                    .addService(accessRedirector.redirect(routeServer, "com.webank.ai.eggroll.api.networking.proxy.RouteService",
+                            "com.webank.ai.fate.api.networking.proxy.RouteService"));
         }
 
         if (proxyServerConf.isSecureServer()) {

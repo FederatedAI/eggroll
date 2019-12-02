@@ -16,17 +16,15 @@
 
 package com.webank.eggroll.rollsite.grpc.client;
 
-import com.webank.eggroll.rollsite.core.BasicMeta;
-import com.webank.eggroll.rollsite.networking.proxy.DataTransferServiceGrpc;
-import com.webank.eggroll.rollsite.networking.proxy.Proxy;
-import com.webank.eggroll.rollsite.networking.proxy.Proxy.Packet;
+import com.webank.ai.eggroll.api.core.BasicMeta;
+import com.webank.ai.eggroll.api.networking.proxy.DataTransferServiceGrpc;
+import com.webank.ai.eggroll.api.networking.proxy.Proxy;
+import com.webank.ai.eggroll.api.networking.proxy.Proxy.Packet;
 import com.webank.eggroll.core.concurrent.AwaitSettableFuture;
 import com.webank.eggroll.core.grpc.client.GrpcClientContext;
 import com.webank.eggroll.core.grpc.client.GrpcClientTemplate;
 import com.webank.eggroll.core.grpc.observer.SameTypeFutureCallerResponseStreamObserver;
-import com.webank.eggroll.core.testgrpc.HelloCallerResponseStreamObserver;
 import com.webank.eggroll.core.util.ToStringUtils;
-import com.webank.eggroll.grpc.test.GrpcTest.HelloResponse;
 import com.webank.eggroll.rollsite.factory.ProxyGrpcStreamObserverFactory;
 import com.webank.eggroll.rollsite.factory.ProxyGrpcStubFactory;
 import com.webank.eggroll.rollsite.grpc.observer.PushClientResponseStreamObserver;
@@ -184,7 +182,6 @@ public class DataTransferPipedClient {
 
         endpoint = proxyGrpcStubFactory.getAsyncEndpoint(metadata.getDst());
 
-        AwaitSettableFuture<HelloResponse> delayedResult = new AwaitSettableFuture<>();
         context.setStubClass(DataTransferServiceGrpc.DataTransferServiceStub.class);
 
         //.setCallerStreamObserverClassAndInitArgs(SameTypeCallerResponseStreamObserver.class)
