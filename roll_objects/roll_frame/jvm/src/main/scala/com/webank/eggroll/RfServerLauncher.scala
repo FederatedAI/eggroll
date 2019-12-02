@@ -24,8 +24,7 @@ import com.webank.eggroll.core.constant.StringConstants
 import com.webank.eggroll.core.io.adapter.HdfsBlockAdapter
 import com.webank.eggroll.core.meta.{ErPartition, ErStore, ErStoreLocator}
 import com.webank.eggroll.format.{FrameBatch, FrameDB, FrameSchema}
-import com.webank.eggroll.rollframe.{ClusterManager, RollFrameClientMode}
-import org.apache.hadoop.conf.Configuration
+import com.webank.eggroll.rollframe.{ClusterManager, RollFrame, RollFrameClientMode}
 import java.net.InetAddress
 
 class RfServerLauncher {
@@ -33,7 +32,6 @@ class RfServerLauncher {
 }
 
 object RfServerLauncher {
-
   private val clusterManager = {
     ClusterManager.setMode("cluster")
     val localhost: InetAddress = InetAddress.getLocalHost
@@ -44,10 +42,18 @@ object RfServerLauncher {
     new ClusterManager
   }
 
+  val storeLocator = ErStoreLocator(name = "a1", namespace = "test1", storeType = StringConstants.HDFS)
+  val input = ErStore(storeLocator = storeLocator,
+    partitions = Array(
+      ErPartition(id = 0, storeLocator = storeLocator, processor = clusterManager.clusterNode0),
+      ErPartition(id = 1, storeLocator = storeLocator, processor = clusterManager.clusterNode1),
+      ErPartition(id = 2, storeLocator = storeLocator, processor = clusterManager.clusterNode2)))
+
   /**
-    * Test rollframe in the cluster
-    * @param args:start server  : java -cp eggroll-rollframe.jar com.webank.eggroll.RfServerLauncher server 0 _
-    *             run client job: java -cp eggroll-rollframe.jar com.webank.eggroll.RfServerLauncher client 0 c/v
+    * Test rollframe some function in the cluster with three processor.
+    *
+    * @param args :start server  : java -cp eggroll-rollframe.jar com.webank.eggroll.RfServerLauncher server 0 _
+    *             run client job: java -cp eggroll-rollframe.jar com.webank.eggroll.RfServerLauncher client 0 c/v1/v2
     */
   def main(args: Array[String]): Unit = {
     val mode = args(0).toLowerCase() // server/client
@@ -70,49 +76,54 @@ object RfServerLauncher {
   def clientTask(name: String): Unit = {
     name match {
       case "c" => createHdfsData()
-      case "v" => verify()
+      case "v1" => verifyHdfsToJvm()
+      case "v2" => verifyNetworkToJvm()
       case _ => throw new UnsupportedOperationException("not such task...")
     }
   }
 
-  def verify(): Unit = {
-    val storeLocator = ErStoreLocator(name = "a1", namespace = "test1", storeType = StringConstants.HDFS)
-    val input = ErStore(storeLocator = storeLocator,
-      partitions = Array(
-        ErPartition(id = 0, storeLocator = storeLocator, processor = clusterManager.clusterNode0),
-        ErPartition(id = 1, storeLocator = storeLocator, processor = clusterManager.clusterNode1),
-        ErPartition(id = 2, storeLocator = storeLocator, processor = clusterManager.clusterNode2)))
-
-    val midStoreLocator = ErStoreLocator(name = "a1", namespace = "test1", storeType = StringConstants.CACHE)
-    val middle = ErStore(storeLocator = midStoreLocator,
-      partitions = Array(
-        ErPartition(id = 0, storeLocator = midStoreLocator, processor = clusterManager.clusterNode0),
-        ErPartition(id = 1, storeLocator = midStoreLocator, processor = clusterManager.clusterNode1),
-        ErPartition(id = 2, storeLocator = midStoreLocator, processor = clusterManager.clusterNode2)
-      ))
-
-    println("begin run hdfs to jvm\n")
+  def verifyHdfsToJvm(): Unit = {
     var start = System.currentTimeMillis()
-    val rf = new RollFrameClientMode(input)
-    rf.mapBatch({ cb =>
-      cb
-    }, output = middle)
-    println("finish hdfs to jvm, time: " + (System.currentTimeMillis() - start))
+    val cacheStore = RollFrame.loadCache(input)
+    println("finish jvm to hdfs, time: " + (System.currentTimeMillis() - start))
 
-    val outStoreLocator = ErStoreLocator(name = "a1map", namespace = "test1", storeType = StringConstants.HDFS)
-    val output = ErStore(storeLocator = outStoreLocator,
-      partitions = Array(
-        ErPartition(id = 0, storeLocator = outStoreLocator, processor = clusterManager.clusterNode0),
-        ErPartition(id = 1, storeLocator = outStoreLocator, processor = clusterManager.clusterNode1),
-        ErPartition(id = 2, storeLocator = outStoreLocator, processor = clusterManager.clusterNode2)
-      ))
+
+    val outStoreLocator = ErStoreLocator(name = "v1", namespace = "test1", storeType = StringConstants.HDFS)
+    val output = input.copy(storeLocator = outStoreLocator, partitions = input.partitions.map(p =>
+      p.copy(storeLocator = outStoreLocator)))
+
     println("begin run jvm to hdfs")
     start = System.currentTimeMillis()
-    val rf1 = new RollFrameClientMode(middle)
-    rf1.mapBatch({ cb =>
-      cb
-    }, output = output)
+    val rf1 = new RollFrameClientMode(cacheStore)
+    rf1.mapBatch(cb => cb, output = output)
     println("finish jvm to hdfs, time: " + (System.currentTimeMillis() - start))
+    // check hdfs whether has "v1" store
+  }
+
+  def verifyNetworkToJvm(): Unit = {
+    val fbs = (0 until 3).map(i => FrameDB(input, i).readAll())
+
+    val networkLocator = ErStoreLocator(name = "a1", namespace = "test1", storeType = StringConstants.NETWORK)
+    val networkStore = input.copy(storeLocator = networkLocator, partitions = input.partitions.map(p =>
+      p.copy(storeLocator = networkLocator)))
+
+    var start = System.currentTimeMillis()
+    fbs.indices.foreach(i => FrameDB(networkStore, i).writeAll(fbs(i)))
+    println("finish fbs to network, time: " + (System.currentTimeMillis() - start))
+
+    start = System.currentTimeMillis()
+    val cacheStore = RollFrame.loadCache(networkStore)
+    println("finish network to jvm, time: " + (System.currentTimeMillis() - start))
+
+    val outStoreLocator = ErStoreLocator(name = "v2", namespace = "test1", storeType = StringConstants.HDFS)
+    val output = input.copy(storeLocator = outStoreLocator, partitions = input.partitions.map(p =>
+      p.copy(storeLocator = outStoreLocator)))
+
+    start = System.currentTimeMillis()
+    val rf1 = new RollFrameClientMode(cacheStore)
+    rf1.mapBatch(cb => cb, output = output)
+    println("finish jvm to hdfs, time: " + (System.currentTimeMillis() - start))
+    // check hdfs whether has "v1" store
   }
 
   def createHdfsData(): Unit = {

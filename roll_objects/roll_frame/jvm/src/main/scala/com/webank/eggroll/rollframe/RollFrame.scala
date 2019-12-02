@@ -31,8 +31,11 @@ import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
 // TODO: Use a dag to express program with base plan like reading/writing/scatter/broadcast etc.
 
 class AggregateBatchTask(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job)
+
 class MapBatchTask(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job)
+
 class ReduceBatchTask(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job)
+
 class MapPartitionTask(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job)
 
 
@@ -103,17 +106,33 @@ object RollFrame {
   val mapBatch = "mapBatch"
   val reduce = "reduce"
   val aggregate = "aggregate"
-  val loadJvm = "loadJvm"
+
+  /**
+    * load cache on cluster/local mode
+    *
+    * @param inStore :ErStore
+    * @return
+    */
+  def loadCache(inStore: ErStore): ErStore = {
+    val cacheStoreLocator = inStore.storeLocator.copy(storeType = StringConstants.CACHE)
+    val cacheStore = inStore.copy(storeLocator = cacheStoreLocator, partitions = inStore.partitions.map(p =>
+      p.copy(storeLocator = cacheStoreLocator)))
+    val rf = new RollFrameClientMode(inStore)
+    rf.mapBatch(p => p, output = cacheStore)
+    println(s"Loading cache from ${inStore.storeLocator.storeType} is completed")
+    cacheStore
+  }
 }
 
 // TODO: MOCK
-class ClusterManager extends Serializable{
+class ClusterManager extends Serializable {
   val clusterNode0 = ErProcessor(id = 0, commandEndpoint = ErEndpoint("node1", 20100), dataEndpoint = ErEndpoint("node1", 20200), tag = "boss")
   val clusterNode1 = ErProcessor(id = 1, commandEndpoint = ErEndpoint("node2", 20101), dataEndpoint = ErEndpoint("node2", 20201), tag = "worker")
   val clusterNode2 = ErProcessor(id = 2, commandEndpoint = ErEndpoint("node3", 20102), dataEndpoint = ErEndpoint("node3", 20202), tag = "worker")
 
   val localNode0 = ErProcessor(id = 0, commandEndpoint = ErEndpoint("127.0.0.1", 20100), dataEndpoint = ErEndpoint("127.0.0.1", 20200), tag = "boss")
   val localNode1 = ErProcessor(id = 1, commandEndpoint = ErEndpoint("127.0.0.1", 20101), dataEndpoint = ErEndpoint("127.0.0.1", 20201), tag = "worker")
+
   def getLiveProcessorBatch(clusterId: Long = -1): ErProcessorBatch = {
     val cluster = ClusterManager.mode match {
       case "cluster" =>
@@ -186,8 +205,10 @@ class ClusterManager extends Serializable{
 
 object ClusterManager {
   var mode: String = "local"
+
   def getOrCreate(): ClusterManager = new ClusterManager
-  def setMode(mode:String):Unit ={
+
+  def setMode(mode: String): Unit = {
     this.mode = mode
   }
 }

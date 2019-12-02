@@ -27,6 +27,7 @@ import com.webank.eggroll.core.constant.StringConstants
 import com.webank.eggroll.core.io.adapter.{BlockDeviceAdapter, FileBlockAdapter, HdfsBlockAdapter}
 import com.webank.eggroll.core.io.util.IoUtils
 import com.webank.eggroll.core.meta.{ErPartition, ErStore}
+import com.webank.eggroll.rollframe.NioTransferEndpoint
 import org.apache.arrow.flatbuf.MessageHeader
 import org.apache.arrow.memory.BufferAllocator
 import org.apache.arrow.vector.dictionary.DictionaryProvider
@@ -35,7 +36,7 @@ import org.apache.arrow.vector.ipc.{ArrowReader, ArrowStreamReader, ArrowStreamW
 import org.apache.arrow.vector.types.pojo.Schema
 import org.apache.arrow.vector.{VectorSchemaRoot, VectorUnloader}
 import org.apache.commons.lang3.StringUtils
-import org.apache.hadoop.fs.Path
+
 import scala.collection.JavaConverters._
 import scala.collection.concurrent.TrieMap
 import scala.collection.mutable.ListBuffer
@@ -83,21 +84,28 @@ object FrameUtils {
 // TODO: where to delete a RollFrame?
 trait FrameDB {
   def close(): Unit
+
   def readAll(): Iterator[FrameBatch]
+
   def writeAll(batches: Iterator[FrameBatch]): Unit
+
   def append(batch: FrameBatch): Unit = writeAll(Iterator(batch))
-  def readOne(): FrameBatch = readAll().next()
+
+  def readOne(): FrameBatch = readAll().next()  // need to check iterator whether hasNext element
 }
 
 object FrameDB {
-  val FILE = StringConstants.FILE
-  val CACHE = StringConstants.CACHE
-  val HDFS = StringConstants.HDFS
-  val QUEUE = StringConstants.QUEUE
-  val TOTAL = StringConstants.TOTAL
+  val FILE: String = StringConstants.FILE
+  val CACHE: String = StringConstants.CACHE
+  val HDFS: String = StringConstants.HDFS
+  val NETWORK: String = StringConstants.NETWORK
+  val QUEUE: String = StringConstants.QUEUE
+  val TOTAL: String = StringConstants.TOTAL
 
-  val PATH = StringConstants.PATH
-  val TYPE = StringConstants.TYPE
+  val PATH: String = StringConstants.PATH
+  val TYPE: String = StringConstants.TYPE
+  val HOST: String = StringConstants.HOST
+  val PORT: String = StringConstants.PORT
 
   private val rootPath = "/tmp/unittests/RollFrameTests/"
 
@@ -121,14 +129,25 @@ object FrameDB {
     case CACHE => new JvmFrameDB(opts(PATH))
     case QUEUE => new QueueFrameDB(opts(PATH), opts(TOTAL).toInt)
     case HDFS => new HdfsFrameDB(opts(PATH))
+    case NETWORK => new NetworkFrameDB(opts(PATH), opts(HOST), opts(PORT).toInt)
     case _ => new FileFrameDB(opts(PATH))
   }
 
+  /**
+    * if want to support network FrameDB, it must has process address,so ErStore must contain full partition message.
+    *
+    * @param store       : FrameBatch store
+    * @param partitionId : 0,1,2 ...
+    * @return
+    */
   def apply(store: ErStore, partitionId: Int): FrameDB =
-    apply(Map(PATH -> getStorePath(store, partitionId), TYPE -> store.storeLocator.storeType))
+    apply(Map(PATH -> getStorePath(store, partitionId), TYPE -> store.storeLocator.storeType,
+      HOST -> store.partitions(partitionId).processor.dataEndpoint.host,
+      PORT -> store.partitions(partitionId).processor.dataEndpoint.port.toString))
 
   def apply(partition: ErPartition): FrameDB = {
-    apply(Map(PATH -> getStorePath(partition), TYPE -> partition.storeLocator.storeType))
+    apply(Map(PATH -> getStorePath(partition), TYPE -> partition.storeLocator.storeType,
+      HOST -> partition.processor.dataEndpoint.host, PORT -> partition.processor.dataEndpoint.port.toString))
   }
 
   def queue(path: String, total: Int): FrameDB = apply(Map(PATH -> path, TOTAL -> total.toString, TYPE -> QUEUE))
@@ -138,6 +157,9 @@ object FrameDB {
   def cache(path: String): FrameDB = apply(Map(PATH -> path, TYPE -> CACHE))
 
   def hdfs(path: String): FrameDB = apply(Map(PATH -> path, TYPE -> HDFS))
+
+  def network(path: String, host: String, port: String): FrameDB = apply(Map(PATH -> path, TYPE -> NETWORK,
+    HOST -> host, PORT -> port))
 }
 
 // NOT thread safe
@@ -145,27 +167,27 @@ class FileFrameDB(path: String) extends FrameDB {
   var frameReader: FrameReader = _
   var frameWriter: FrameWriter = _
 
-  def close(): Unit = {
-    if(frameReader != null) frameReader.close()
-    if(frameWriter != null) frameWriter.close()
+  override def close(): Unit = {
+    if (frameReader != null) frameReader.close()
+    if (frameWriter != null) frameWriter.close()
   }
 
-  def readAll(): Iterator[FrameBatch] = {
+  override def readAll(): Iterator[FrameBatch] = {
     frameReader = new FrameReader(new FileBlockAdapter(path))
     frameReader.getColumnarBatches()
   }
 
   def readAll(nullableFields: Set[Int] = Set[Int]()): Iterator[FrameBatch] = {
     val dir = new File(path).getParentFile
-    if(!dir.exists()) dir.mkdirs()
+    if (!dir.exists()) dir.mkdirs()
     frameReader = new FrameReader(new FileBlockAdapter(path))
     frameReader.nullableFields = nullableFields
     frameReader.getColumnarBatches()
   }
 
-  def writeAll(batches: Iterator[FrameBatch]): Unit = {
+  override def writeAll(batches: Iterator[FrameBatch]): Unit = {
     batches.foreach { batch =>
-      if(frameWriter == null) {
+      if (frameWriter == null) {
         frameWriter = new FrameWriter(batch, new FileBlockAdapter(path))
         frameWriter.write()
       } else {
@@ -212,7 +234,7 @@ object QueueFrameDB {
 
   // key: a task name,e.g. mapBatch-0-doing , BlockingQueue[]: several batch FrameBatch
   def getOrCreateQueue(key: String): BlockingQueue[FrameBatch] = this.synchronized {
-    if(!map.contains(key)) {
+    if (!map.contains(key)) {
       map.put(key, new LinkedBlockingQueue[FrameBatch]())
     }
     map(key)
@@ -227,6 +249,7 @@ class QueueFrameDB(path: String, total: Int) extends FrameDB {
     require(total >= 0, "blocking queue need a total size before read")
     new Iterator[FrameBatch] {
       private var remaining = total
+
       override def hasNext: Boolean = remaining > 0
 
       override def next(): FrameBatch = {
@@ -244,19 +267,55 @@ class QueueFrameDB(path: String, total: Int) extends FrameDB {
   }
 }
 
+class NetworkFrameDB(path: String, host: String, port: Int) extends FrameDB {
+  // TODO: client need multi-thread ?
+  var client: NioTransferEndpoint = _
+
+  override def writeAll(batches: Iterator[FrameBatch]): Unit = {
+    // write FrameBatch to remote server
+    if (client == null){
+      client = new NioTransferEndpoint()
+      client.runClient(host, port)
+    }
+    batches.foreach(batch => client.send(path, batch))
+  }
+
+  override def readAll(): Iterator[FrameBatch] = {
+    // read FrameBatch from local queue
+    new Iterator[FrameBatch] {
+      override def hasNext: Boolean = {
+        !QueueFrameDB.getOrCreateQueue(path).isEmpty
+      }
+
+      override def next(): FrameBatch = {
+        println("taking from queue:" + path)
+        val ret = QueueFrameDB.getOrCreateQueue(path).take
+        println("token from queue:" + path)
+        ret
+      }
+    }
+  }
+
+  override def close(): Unit = {
+    // need to close ?
+    //    client.clientChannel.close()
+  }
+}
+
 object JvmFrameDB {
   private val caches: TrieMap[String, ListBuffer[FrameBatch]] = new TrieMap[String, ListBuffer[FrameBatch]]()
 }
 
-class JvmFrameDB(path: String) extends FrameDB  {
+class JvmFrameDB(path: String) extends FrameDB {
   override def readAll(): Iterator[FrameBatch] = JvmFrameDB.caches(path).toIterator
 
   override def writeAll(batches: Iterator[FrameBatch]): Unit = this.synchronized {
-    if(!JvmFrameDB.caches.contains(path)) {
+    if (!JvmFrameDB.caches.contains(path)) {
       JvmFrameDB.caches.put(path, ListBuffer())
     }
     JvmFrameDB.caches(path).appendAll(batches)
   }
+
   // TODO : clear ?
   override def close(): Unit = {}
 }
@@ -388,10 +447,10 @@ class FrameWriter(val rootSchema: VectorSchemaRoot, val arrowWriter: ArrowStream
     this(rootSchema.arrowSchema, adapter.getOutputStream())
   }
 
-  def close(closeStream:Boolean = true): Unit = {
+  def close(closeStream: Boolean = true): Unit = {
     // Output Stream can be closed in arrowWriter ?
     arrowWriter.end()
-    if(closeStream) {
+    if (closeStream) {
       arrowWriter.close()
       if (outputStream != null) outputStream.close()
     }
@@ -399,12 +458,12 @@ class FrameWriter(val rootSchema: VectorSchemaRoot, val arrowWriter: ArrowStream
 
   def write(valueCount: Int, batchSize: Int, f: (Int, FrameVector) => Unit): Unit = {
     arrowWriter.start()
-    for(b <- 0 until (valueCount + batchSize - 1) / batchSize) {
+    for (b <- 0 until (valueCount + batchSize - 1) / batchSize) {
       val rowCount = if (valueCount < batchSize) valueCount else batchSize
       rootSchema.setRowCount(rowCount)
-      for(fieldIndex <- 0 until rootSchema.getSchema.getFields.size()) {
+      for (fieldIndex <- 0 until rootSchema.getSchema.getFields.size()) {
         val vector = rootSchema.getFieldVectors.get(fieldIndex)
-        try{
+        try {
           vector.setInitialCapacity(rowCount)
           vector.allocateNew()
           f(fieldIndex, new FrameVector(vector))
@@ -415,7 +474,7 @@ class FrameWriter(val rootSchema: VectorSchemaRoot, val arrowWriter: ArrowStream
         }
       }
       arrowWriter.writeBatch()
-      println("batch index",b)
+      println("batch index", b)
     }
   }
 

@@ -26,7 +26,8 @@ import java.util.concurrent.Executors
 import com.webank.eggroll.core.meta.ErProcessor
 import com.webank.eggroll.format.{FrameBatch, FrameDB, FrameReader, FrameWriter}
 
-case class BatchData(headerSize:Int, header:Array[Byte], bodySize:Int, body:Array[Byte])
+case class BatchData(headerSize: Int, header: Array[Byte], bodySize: Int, body: Array[Byte])
+
 case class BatchID(id: Array[Byte])
 
 trait TransferService
@@ -38,27 +39,29 @@ class NioCollectiveTransfer(nodes: Array[ErProcessor], timeout: Int = 600 * 1000
   private lazy val clients = nodes.map { node =>
     (node.id, new NioTransferEndpoint().runClient(node.dataEndpoint.host, node.dataEndpoint.port))
   }.toMap
-  def send(id: Long, path: String, frameBatch: FrameBatch):Unit = {
+
+  def send(id: Long, path: String, frameBatch: FrameBatch): Unit = {
     // for aggregate, only sent FrameDb to rootServer
     clients(id).send(path, frameBatch)
   }
 }
 
-object NioTransferEndpoint{
+object NioTransferEndpoint {
   val num = 0
 }
+
 class NioTransferEndpoint {
 
   def runServer(host: String, port: Int): Unit = {
-
+    println("start Transfer server endpoint")
     val serverSocketChannel = ServerSocketChannel.open
 
-    serverSocketChannel.socket.bind(new InetSocketAddress(host,port))
+    serverSocketChannel.socket.bind(new InetSocketAddress(host, port))
     val executors = Executors.newCachedThreadPool()
 
     while (true) {
       val socketChannel = serverSocketChannel.accept // had client connected
-      println("start a new channel....")
+      println(s"receive a connected request,server ip: ${socketChannel.getLocalAddress}, remote ip: ${socketChannel.getRemoteAddress}")
       executors.submit(new Runnable {
         override def run(): Unit = {
           println("currentThread = " + Thread.currentThread.getName)
@@ -68,9 +71,9 @@ class NioTransferEndpoint {
             ch.read(headLenBuf)
             println("save start: receive new batch")
             val headLen = headLenBuf.getLong(0)
-            if(headLen > 1000 || headLen <=0 ) {
-              println("head too long:"  + headLen + " port:" + port)
-              throw new IllegalArgumentException("head too long:"  + headLen)
+            if (headLen > 1000 || headLen <= 0) {
+              println("head too long:" + headLen + " port:" + port)
+              throw new IllegalArgumentException("head too long:" + headLen)
             }
             val headPathBuf = ByteBuffer.allocateDirect(headLen.toInt)
             ch.read(headPathBuf)
@@ -81,21 +84,23 @@ class NioTransferEndpoint {
             headLenBuf.clear()
             headPathBuf.clear()
             val fr = new FrameReader(ch)
-            FrameDB.queue(path, -1).writeAll(fr.getColumnarBatches())
+            FrameDB.queue(path, -1).writeAll(fr.getColumnarBatches()) // why would block until readall
             println("save finished:" + path)
           }
         }
       })
     }
   }
+
   var clientChannel: SocketChannel = _
+
   def runClient(host: String, port: Int): NioTransferEndpoint = {
     clientChannel = SocketChannel.open(new InetSocketAddress(host, port))
     println("NioCollectiveTransfer Connecting to Server on port ..." + port)
     this
   }
 
-  def send(path: String, frameBatch: FrameBatch):Unit = {
+  def send(path: String, frameBatch: FrameBatch): Unit = {
     println("send start:" + path)
     val ch = clientChannel
 
@@ -107,7 +112,7 @@ class NioTransferEndpoint {
     headBuf.flip()
     ch.write(headBuf)
     headBuf.clear()
-    val fw = new FrameWriter(frameBatch,ch)
+    val fw = new FrameWriter(frameBatch, ch)
     fw.write()
     fw.close(false)
 

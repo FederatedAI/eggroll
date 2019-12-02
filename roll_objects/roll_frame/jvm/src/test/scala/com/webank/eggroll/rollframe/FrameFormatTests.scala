@@ -94,7 +94,7 @@ class FrameFormatTests {
       }
     }
     // write FrameBatch data to HDFS
-    val hdfsPath = "/tmp/unittests/RollFrameTests/hdfs/test1/framedb_test/part0"
+    val hdfsPath = "/tmp/unittests/RollFrameTests/hdfs/test1/framedb_test/0"
     val hdfsWriteAdapter = FrameDB.hdfs(hdfsPath)
     hdfsWriteAdapter.writeAll(Iterator(fb))
     hdfsWriteAdapter.close() // must be closed
@@ -104,6 +104,44 @@ class FrameFormatTests {
     val fbFromHdfs = hdfsReadAdapter.readOne()
 
     assert(fbFromHdfs.readDouble(0, 20) == 20.0)
+  }
+
+  @Test
+  def testNetworkFrameDB(): Unit = {
+    // start transfer server
+    val service = new NioTransferEndpoint
+    val port = 8818
+    val host = "127.0.0.1"
+    new Thread() {
+      override def run(): Unit = {
+        try {
+          service.runServer(host, port)
+        } catch {
+          case e: Throwable => e.printStackTrace()
+        }
+      }
+    }.start()
+
+    // create FrameBatch data
+    val fb = new FrameBatch(new FrameSchema(testAssets.getDoubleSchema(2)), 100)
+    for (i <- 0 until fb.fieldCount) {
+      for (j <- 0 until fb.rowCount) {
+        fb.writeDouble(i, j, j)
+      }
+    }
+    // write FrameBatch data to Network
+    val networkPath = "/tmp/unittests/RollFrameTests/network/test1/framedb_test/0"
+    val networkWriteAdapter = FrameDB.network(networkPath, host, port.toString)
+    networkWriteAdapter.append(fb)
+    networkWriteAdapter.append(fb)
+    //    networkWriteAdapter.writeAll(Iterator(fb))
+    Thread.sleep(1000)  // wait for QueueFrameDB insert the frame
+
+    // read FrameBatch data from network
+    val networkReadAdapter = FrameDB.network(networkPath, host, port.toString)
+    networkReadAdapter.readAll().foreach(fb =>
+      assert(fb.readDouble(0,30) == 30.0)
+    )
   }
 
   @Test
