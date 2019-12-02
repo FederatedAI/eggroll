@@ -20,7 +20,7 @@ import "storage-basic.proto";
 import "basic-meta.proto";
 
 
-package com.webank.ai.eggroll.api.computing.processor;
+package com.webank.eggroll.rollsite.computing.processor;
 
 message ProcessConf {
     string namingPolicy = 1;
@@ -35,30 +35,30 @@ message TaskInfo {
 
 message UnaryProcess {
     TaskInfo info = 1;
-    com.webank.ai.eggroll.api.storage.StorageLocator operand = 2;
+    com.webank.eggroll.rollsite.storage.StorageLocator operand = 2;
     ProcessConf conf = 3;
-    com.webank.ai.eggroll.api.core.SessionInfo session = 20;
+    com.webank.eggroll.rollsite.core.SessionInfo session = 20;
 }
 
 message BinaryProcess {
     TaskInfo info = 1;
-    com.webank.ai.eggroll.api.storage.StorageLocator left = 2;
-    com.webank.ai.eggroll.api.storage.StorageLocator right = 3;
+    com.webank.eggroll.rollsite.storage.StorageLocator left = 2;
+    com.webank.eggroll.rollsite.storage.StorageLocator right = 3;
     ProcessConf conf = 4;
-    com.webank.ai.eggroll.api.core.SessionInfo session = 20;
+    com.webank.eggroll.rollsite.core.SessionInfo session = 20;
 }
 
 service ProcessService {
-    rpc map (UnaryProcess) returns (com.webank.ai.eggroll.api.storage.StorageLocator);
-    rpc mapValues (UnaryProcess) returns (com.webank.ai.eggroll.api.storage.StorageLocator);
-    rpc join (BinaryProcess) returns (com.webank.ai.eggroll.api.storage.StorageLocator);
-    rpc reduce (UnaryProcess) returns (stream com.webank.ai.eggroll.api.storage.Operand);
-    rpc mapPartitions (UnaryProcess) returns (com.webank.ai.eggroll.api.storage.StorageLocator);
-    rpc glom (UnaryProcess) returns (com.webank.ai.eggroll.api.storage.StorageLocator);
-    rpc sample (UnaryProcess) returns (com.webank.ai.eggroll.api.storage.StorageLocator);
+    rpc map (UnaryProcess) returns (com.webank.eggroll.rollsite.storage.StorageLocator);
+    rpc mapValues (UnaryProcess) returns (com.webank.eggroll.rollsite.storage.StorageLocator);
+    rpc join (BinaryProcess) returns (com.webank.eggroll.rollsite.storage.StorageLocator);
+    rpc reduce (UnaryProcess) returns (stream com.webank.eggroll.rollsite.storage.Operand);
+    rpc mapPartitions (UnaryProcess) returns (com.webank.eggroll.rollsite.storage.StorageLocator);
+    rpc glom (UnaryProcess) returns (com.webank.eggroll.rollsite.storage.StorageLocator);
+    rpc sample (UnaryProcess) returns (com.webank.eggroll.rollsite.storage.StorageLocator);
 
-    rpc subtractByKey(BinaryProcess) returns (com.webank.ai.eggroll.api.storage.StorageLocator);
-    rpc filter (UnaryProcess) returns (com.webank.ai.eggroll.api.storage.StorageLocator);
-    rpc union(BinaryProcess) returns (com.webank.ai.eggroll.api.storage.StorageLocator);
-    rpc flatMap(UnaryProcess) returns (com.webank.ai.eggroll.api.storage.StorageLocator);
+    rpc subtractByKey(BinaryProcess) returns (com.webank.eggroll.rollsite.storage.StorageLocator);
+    rpc filter (UnaryProcess) returns (com.webank.eggroll.rollsite.storage.StorageLocator);
+    rpc union(BinaryProcess) returns (com.webank.eggroll.rollsite.storage.StorageLocator);
+    rpc flatMap(UnaryProcess) returns (com.webank.eggroll.rollsite.storage.StorageLocator);
 }
