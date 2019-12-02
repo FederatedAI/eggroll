@@ -38,7 +38,7 @@ class TestRollPairContext(unittest.TestCase):
     options[DeployConfKeys.CONFKEY_DEPLOY_ROLLPAIR_VENV_PATH] = '/Users/max-webank/env/venv'
     options[DeployConfKeys.CONFKEY_DEPLOY_ROLLPAIR_DATA_DIR_PATH] = '/tmp/eggroll'
     options[ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST] = 'localhost'
-    options[ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT] = '4666'
+    options[ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT] = '4670'
 
 
     options[DeployConfKeys.CONFKEY_DEPLOY_ROLLPAIR_PYTHON_PATH] = f'{base_dir}/python'
