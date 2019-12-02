@@ -32,7 +32,45 @@ import org.apache.commons.lang3.StringUtils
 
 
 object Main extends Logging {
+  def registerRouter():Unit = {
+    CommandRouter.register(serviceName = RollPairServicer.rollMapValuesCommand,
+      serviceParamTypes = Array(classOf[ErJob]),
+      routeToClass = classOf[RollPairServicer],
+      routeToMethodName = RollPairServicer.mapValues)
+
+    CommandRouter.register(serviceName = RollPairServicer.rollReduceCommand,
+      serviceParamTypes = Array(classOf[ErJob]),
+      routeToClass = classOf[RollPairServicer],
+      routeToMethodName = RollPairServicer.reduce)
+
+    CommandRouter.register(serviceName = RollPairServicer.rollJoinCommand,
+      serviceParamTypes = Array(classOf[ErJob]),
+      routeToClass = classOf[RollPairServicer],
+      routeToMethodName = RollPairServicer.runJob)
+
+    CommandRouter.register(serviceName = RollPairServicer.rollRunJobCommand,
+      serviceParamTypes = Array(classOf[ErJob]),
+      routeToClass = classOf[RollPairServicer],
+      routeToMethodName = RollPairServicer.runJob)
+  }
+  def reportCM(sessionId:String, nm:ErEndpoint, selfPort:Int):Unit = {
+    // todo: get port from command line
+    // todo: heartbeat service
+    val nodeManagerClient = new NodeManagerClient(nm)
+    val options = new ConcurrentHashMap[String, String]()
+    options.put(SessionConfKeys.CONFKEY_SESSION_ID, sessionId)
+    val myself = ErProcessor(
+      processorType = ProcessorTypes.ROLL_PAIR_SERVICER,
+      commandEndpoint = ErEndpoint("localhost", selfPort),
+      dataEndpoint = ErEndpoint("localhost", selfPort),
+      options = options,
+      status = ProcessorStatus.RUNNING)
+
+    logInfo("ready to heartbeat")
+    nodeManagerClient.heartbeat(myself)
+  }
   def main(args: Array[String]): Unit = {
+    registerRouter()
     val cmd = MiscellaneousUtils.parseArgs(args = args)
     val portString = cmd.getOptionValue('p', "0")
     val sessionId = cmd.getOptionValue('s', "UNKNOWN")
@@ -61,43 +99,11 @@ object Main extends Logging {
 
     logInfo(s"server started at ${port}")
     // job
-    CommandRouter.register(serviceName = RollPairServicer.rollMapValuesCommand,
-      serviceParamTypes = Array(classOf[ErJob]),
-      routeToClass = classOf[RollPairServicer],
-      routeToMethodName = RollPairServicer.mapValues)
-
-    CommandRouter.register(serviceName = RollPairServicer.rollReduceCommand,
-      serviceParamTypes = Array(classOf[ErJob]),
-      routeToClass = classOf[RollPairServicer],
-      routeToMethodName = RollPairServicer.reduce)
-
-    CommandRouter.register(serviceName = RollPairServicer.rollJoinCommand,
-      serviceParamTypes = Array(classOf[ErJob]),
-      routeToClass = classOf[RollPairServicer],
-      routeToMethodName = RollPairServicer.runJob)
-
-    CommandRouter.register(serviceName = RollPairServicer.rollRunJobCommand,
-      serviceParamTypes = Array(classOf[ErJob]),
-      routeToClass = classOf[RollPairServicer],
-      routeToMethodName = RollPairServicer.runJob)
 
     logInfo("server started at port 20000")
 
+    reportCM(sessionId, managerEndpoint, port)
 
-    // todo: get port from command line
-    // todo: heartbeat service
-    val nodeManagerClient = new NodeManagerClient(managerEndpoint)
-    val options = new ConcurrentHashMap[String, String]()
-    options.put(SessionConfKeys.CONFKEY_SESSION_ID, sessionId)
-    val myself = ErProcessor(
-      processorType = ProcessorTypes.ROLL_PAIR_SERVICER,
-      commandEndpoint = ErEndpoint("localhost", port),
-      dataEndpoint = ErEndpoint("localhost", port),
-      options = options,
-      status = ProcessorStatus.RUNNING)
-
-    logInfo("ready to heartbeat")
-    nodeManagerClient.heartbeat(myself)
 
     logInfo("heartbeated")
     rollServer.awaitTermination()
