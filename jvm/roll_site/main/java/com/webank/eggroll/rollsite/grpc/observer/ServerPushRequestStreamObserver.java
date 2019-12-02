@@ -17,7 +17,7 @@
 package com.webank.eggroll.rollsite.grpc.observer;
 
 import com.google.protobuf.ByteString;
-import com.webank.ai.eggroll.api.networking.proxy.Proxy;
+import com.webank.eggroll.rollsite.networking.proxy.Proxy;
 import com.webank.eggroll.core.util.ErrorUtils;
 import com.webank.eggroll.core.util.ToStringUtils;
 import com.webank.eggroll.rollsite.event.model.PipeHandleNotificationEvent;
@@ -34,6 +34,7 @@ import com.webank.eggroll.rollsite.utils.Timeouts;
 import io.grpc.Grpc;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
+import java.nio.ByteBuffer;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
@@ -45,6 +46,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
+
+import com.webank.ai.eggroll.rollsite.ScalaObjectPutBatch;
 
 @Component
 @Scope("prototype")
@@ -187,8 +190,11 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
                     eventFactory.createPipeHandleNotificationEvent(
                         this, PipeHandleNotificationEvent.Type.PUSH, inputMetadata, pipe);
                 applicationEventPublisher.publishEvent(event);
+            } else {
+                String key = packet.getBody().getKey();
+                ByteString value = packet.getBody().getValue();
+                ScalaObjectPutBatch.scalaPutBatch(ByteBuffer.wrap(key.getBytes()), value.asReadOnlyByteBuffer());
             }
-
 
             if (timeouts.isTimeout(overallTimeout, overallStartTimestamp)) {
                 onError(new IllegalStateException("push overall wait timeout exceeds overall timeout: " + overallTimeout

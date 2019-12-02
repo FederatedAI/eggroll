@@ -17,7 +17,7 @@
 package com.webank.eggroll.rollsite.factory;
 
 import com.google.common.collect.Maps;
-import com.webank.ai.eggroll.api.networking.proxy.Proxy;
+import com.webank.eggroll.rollsite.networking.proxy.Proxy;
 import com.webank.eggroll.rollsite.infra.Pipe;
 import com.webank.eggroll.rollsite.infra.impl.InputStreamOutputStreamNoStoragePipe;
 import com.webank.eggroll.rollsite.infra.impl.InputStreamToPacketUnidirectionalPipe;

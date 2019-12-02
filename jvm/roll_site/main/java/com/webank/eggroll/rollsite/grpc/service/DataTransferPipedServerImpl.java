@@ -18,8 +18,8 @@ package com.webank.eggroll.rollsite.grpc.service;
 
 import com.google.common.collect.Maps;
 import com.google.protobuf.ByteString;
-import com.webank.ai.eggroll.api.networking.proxy.DataTransferServiceGrpc;
-import com.webank.ai.eggroll.api.networking.proxy.Proxy;
+import com.webank.eggroll.rollsite.networking.proxy.DataTransferServiceGrpc;
+import com.webank.eggroll.rollsite.networking.proxy.Proxy;
 import com.webank.eggroll.core.util.ErrorUtils;
 import com.webank.eggroll.core.util.ToStringUtils;
 import com.webank.eggroll.rollsite.event.model.PipeHandleNotificationEvent;

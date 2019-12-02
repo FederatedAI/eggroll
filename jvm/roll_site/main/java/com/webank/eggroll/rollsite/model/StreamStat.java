@@ -17,7 +17,7 @@
 package com.webank.eggroll.rollsite.model;
 
 
-import com.webank.ai.eggroll.api.networking.proxy.Proxy;
+import com.webank.eggroll.rollsite.networking.proxy.Proxy;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 

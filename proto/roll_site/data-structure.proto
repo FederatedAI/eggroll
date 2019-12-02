@@ -16,7 +16,7 @@
 
 syntax = "proto3";
 
-package com.webank.ai.eggroll.api.core;
+package com.webank.eggroll.rollsite.core;
 
 // raw entry for map
 message RawEntry {
