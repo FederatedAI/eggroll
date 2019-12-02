@@ -17,7 +17,7 @@
 package com.webank.eggroll.rollsite.grpc.observer;
 
 import com.google.protobuf.ByteString;
-import com.webank.ai.eggroll.api.networking.proxy.Proxy;
+import com.webank.eggroll.rollsite.networking.proxy.Proxy;
 import com.webank.eggroll.core.util.ToStringUtils;
 import com.webank.eggroll.rollsite.infra.Pipe;
 import com.webank.eggroll.rollsite.manager.StatsManager;

@@ -16,9 +16,9 @@
 
 package com.webank.eggroll.rollsite.grpc.service;
 
-import com.webank.ai.eggroll.api.core.BasicMeta;
-import com.webank.ai.eggroll.api.networking.proxy.Proxy;
-import com.webank.ai.eggroll.api.networking.proxy.RouteServiceGrpc;
+import com.webank.eggroll.rollsite.core.BasicMeta;
+import com.webank.eggroll.rollsite.networking.proxy.Proxy;
+import com.webank.eggroll.rollsite.networking.proxy.RouteServiceGrpc;
 import com.webank.eggroll.core.util.ErrorUtils;
 import com.webank.eggroll.core.util.ToStringUtils;
 import com.webank.eggroll.rollsite.service.FdnRouter;

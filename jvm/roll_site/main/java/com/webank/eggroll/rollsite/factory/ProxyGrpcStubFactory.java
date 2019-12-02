@@ -21,9 +21,9 @@ import com.google.common.base.Strings;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
-import com.webank.ai.eggroll.api.core.BasicMeta;
-import com.webank.ai.eggroll.api.networking.proxy.DataTransferServiceGrpc;
-import com.webank.ai.eggroll.api.networking.proxy.Proxy;
+import com.webank.eggroll.rollsite.core.BasicMeta;
+import com.webank.eggroll.rollsite.networking.proxy.DataTransferServiceGrpc;
+import com.webank.eggroll.rollsite.networking.proxy.Proxy;
 import com.webank.eggroll.core.util.ToStringUtils;
 import com.webank.eggroll.rollsite.channel.RedirectClientInterceptor;
 import com.webank.eggroll.rollsite.model.ProxyServerConf;
@@ -195,10 +195,10 @@ public class ProxyGrpcStubFactory {
 
         if (proxyServerConf.isCompatibleEnabled()) {
             LOGGER.info("[PROXY] compatibility enabled");
-            builder.intercept(new RedirectClientInterceptor("com.webank.ai.eggroll.api.rollstation.DataTransferService",
-                    "com.webank.ai.fate.api.rollstation.DataTransferService"),
-                    new RedirectClientInterceptor("com.webank.ai.eggroll.api.rollstation.RouteService",
-                            "com.webank.ai.fate.api.rollstation.RouteService"));
+            builder.intercept(new RedirectClientInterceptor("com.webank.eggroll.rollsite.rollstation.DataTransferService",
+                    "com.webank.fate.rollsite.rollstation.DataTransferService"),
+                    new RedirectClientInterceptor("com.webank.eggroll.rollsite.rollstation.RouteService",
+                            "com.webank.fate.rollsite.rollstation.RouteService"));
         }
 
         // if secure client defined and endpoint is not in intranet

@@ -17,7 +17,7 @@
 package com.webank.eggroll.rollsite.utils;
 
 import com.google.protobuf.Descriptors;
-import com.webank.ai.eggroll.api.networking.proxy.Proxy;
+import com.webank.eggroll.rollsite.networking.proxy.Proxy;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.stereotype.Component;

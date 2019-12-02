@@ -16,10 +16,10 @@
 
 package com.webank.eggroll.rollsite.grpc.client;
 
-import com.webank.ai.eggroll.api.core.BasicMeta;
-import com.webank.ai.eggroll.api.networking.proxy.DataTransferServiceGrpc;
-import com.webank.ai.eggroll.api.networking.proxy.Proxy;
-import com.webank.ai.eggroll.api.networking.proxy.Proxy.Packet;
+import com.webank.eggroll.rollsite.core.BasicMeta;
+import com.webank.eggroll.rollsite.networking.proxy.DataTransferServiceGrpc;
+import com.webank.eggroll.rollsite.networking.proxy.Proxy;
+import com.webank.eggroll.rollsite.networking.proxy.Proxy.Packet;
 import com.webank.eggroll.core.concurrent.AwaitSettableFuture;
 import com.webank.eggroll.core.grpc.client.GrpcClientContext;
 import com.webank.eggroll.core.grpc.client.GrpcClientTemplate;
@@ -324,8 +324,9 @@ public class DataTransferPipedClient {
 
         try {
             result = template.calleeStreamingRpcWithImmediateDelayedResult(request, delayedResult);
-        } catch (ExecutionException e) {
-            e.printStackTrace();
+        } catch (ExecutionException | InterruptedException e) {
+            LOGGER.error("error getting result", e);
+            throw new RuntimeException(e);
         }
 
         return result;
