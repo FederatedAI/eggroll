@@ -29,7 +29,9 @@ class TestRollPair(unittest.TestCase):
           'cluster_manager_port': 4670,
           'pair_type': 'v1/roll-pair',
           'roll_pair_service_host': 'localhost',
-          'roll_pair_service_port': 20000}
+          'roll_pair_service_port': 20000,
+          'egg_pair_service_host': 'localhost',
+          'egg_pair_service_port': 20001}
 
   storage_options = {'cluster_manager_host': 'localhost',
           'cluster_manager_port': 4670,
@@ -38,17 +40,39 @@ class TestRollPair(unittest.TestCase):
           'egg_pair_service_port': 20001}
 
   store_type = StoreTypes.ROLLPAIR_LMDB
+
+  #same as v1.x function table
+  def test_pair_store(self):
+    rp = RollPair(options=TestRollPair.options)
+    # pair_store = rp.pair_store(name='pair_store', namespace='pair_store_namespace',
+    #                            partition=10, persistent=True,
+    #                            persistent_engine=TestRollPair.store_type)
+
+    store = ErStore(ErStoreLocator(store_type=TestRollPair.store_type, namespace="load_namespace",
+                                   name="name", total_partitions=10))
+
+    res = rp.load(store)
+    res.put(b'a', b'1')
+    print(res)
+
+  def test_destroy(self):
+    store = ErStore(ErStoreLocator(store_type=TestRollPair.store_type, namespace="namespace",
+                                   name="name"))
+    rp = RollPair(store, options=TestRollPair.options)
+    rp.destroy()
+    print("destroy store:{}".format(store))
+
   def test_get(self):
     store = ErStore(ErStoreLocator(store_type=TestRollPair.store_type, namespace="namespace",
                                    name="name"))
-    rp = RollPair(store, options=TestRollPair.storage_options)
+    rp = RollPair(store, options=TestRollPair.options)
     res = rp.get(bytes('1', encoding='utf-8'))
     print("res: {}".format(res))
 
   def test_put(self):
     store = ErStore(store_locator=ErStoreLocator(store_type=TestRollPair.store_type, namespace="namespace",
                                                  name="name"))
-    rp = RollPair(er_store=store, options=TestRollPair.storage_options)
+    rp = RollPair(er_store=store, options=TestRollPair.options)
     res = rp.put(b'key', b'value')
     print("res: {}".format(res))
 
