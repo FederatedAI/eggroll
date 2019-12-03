@@ -114,7 +114,7 @@ class TransferClient(object):
       # todo: pull up as format
       buffer = bytearray(packet_len)
       writer = BinBatchWriter({'buffer': buffer})
-      cur_offset = writer.get_offset
+      cur_offset = writer.get_offset()
       total_written = 0
       LOGGER.info(broker.is_closable())
       while not broker.is_closable():

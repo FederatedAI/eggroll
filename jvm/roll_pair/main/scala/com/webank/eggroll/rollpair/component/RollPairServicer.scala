@@ -487,6 +487,40 @@ class RollPairServicer() {
 
     taskPlanJob
   }
+
+  // todo: give default partition function: hash and mod
+  def putBatch(inputJob: ErJob): ErJob = {
+    val inputStore = inputJob.inputs.head
+    val inputLocator = inputStore.storeLocator
+    val outputLocator = inputLocator.copy(name = "testMap")
+
+    val inputPartitionTemplate = ErPartition(id = 0, storeLocator = inputLocator, processor = ErProcessor(commandEndpoint = ErEndpoint("localhost", 20001)))
+    val outputPartitionTemplate = ErPartition(id = 0, storeLocator = outputLocator, processor = ErProcessor(commandEndpoint = ErEndpoint("localhost", 20001)))
+
+    val numberOfPartitions = 4
+
+    val inputPartitions = mutable.ArrayBuffer[ErPartition]()
+    val outputPartitions = mutable.ArrayBuffer[ErPartition]()
+
+    for (i <- 0 until numberOfPartitions) {
+      inputPartitions += inputPartitionTemplate.copy(id = i)
+      outputPartitions += outputPartitionTemplate.copy(id = i)
+    }
+
+    val inputStoreWithPartitions = inputStore.copy(storeLocator = inputLocator,
+      partitions = inputPartitions.toArray)
+    val outputStoreWithPartitions = inputStore.copy(storeLocator = outputLocator,
+      partitions = outputPartitions.toArray)
+
+    val job = inputJob.copy(inputs = Array(inputStoreWithPartitions), outputs = Array(outputStoreWithPartitions))
+
+    val taskPlan = new ShuffleTaskPlan(new CommandURI(RollPairServicer.eggMapCommand), job)
+    scheduler.addPlan(taskPlan)
+
+    JobRunner.run(scheduler.getPlan())
+
+    job
+  }
 }
 
 object RollPairServicer {
@@ -510,6 +544,7 @@ object RollPairServicer {
   val union = "union"
   val rollPair = "v1/roll-pair"
   val eggPair = "v1/egg-pair"
+  val putBatch = "putBatch"
 
   val runTask = "runTask"
   val runJob = "runJob"
@@ -528,6 +563,7 @@ object RollPairServicer {
   val eggFilterMapCommand = s"${eggPair}/${filter}"
   val eggSubtractByKeyCommand = s"${eggPair}/${subtractByKey}"
   val eggUnionCommand = s"${eggPair}/${union}"
+  val eggPutBatchCommand = s"${eggPair}/${putBatch}"
 
   val rollRunJobCommand = s"${rollPair}/${runJob}"
   val eggRunTaskCommand = s"${eggPair}/${runTask}"
@@ -547,6 +583,7 @@ object RollPairServicer {
   val rollFilterCommand = s"${rollPair}/${filter}"
   val rollSubtractByKeyCommand = s"${rollPair}/${subtractByKey}"
   val rollUnionCommand = s"${rollPair}/${union}"
+  val rollPutBatchCommand = s"${rollPair}/${putBatch}"
 
   /*  CommandRouter.register(mapCommand,
       List(classOf[Array[Byte] => Array[Byte]]), clazz, "mapValues", null, null)*/

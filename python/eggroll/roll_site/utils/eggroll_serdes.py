@@ -14,13 +14,13 @@
 #  limitations under the License.
 #
 
-from eggroll.api.utils import cloudpickle
+from eggroll.core.serdes import cloudpickle
 from abc import ABCMeta
 from abc import abstractmethod
 from pickle import loads as p_loads
 from pickle import dumps as p_dumps
 
-from eggroll.api.utils import log_utils
+from eggroll.utils import log_utils
 
 LOGGER = log_utils.getLogger()
 

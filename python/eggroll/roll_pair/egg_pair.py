@@ -25,6 +25,7 @@ from eggroll.core.command.command_router import CommandRouter
 from eggroll.core.command.command_service import CommandServicer
 from eggroll.core.datastructure.broker import FifoBroker
 from eggroll.core.io.kv_adapter import RocksdbSortedKvAdapter, LmdbSortedKvAdapter
+from eggroll.core.io.rollsite_adapter import RollsiteAdapter
 from eggroll.core.io.io_utils import get_db_path
 from eggroll.core.meta_model import ErTask, ErPartition, ErProcessor, ErEndpoint
 from eggroll.core.meta_model import ErSessionMeta, ErPair
@@ -36,7 +37,7 @@ from eggroll.utils import log_utils
 from eggroll.core.transfer.transfer_service import GrpcTransferServicer, \
   TransferClient
 from eggroll.core.constants import ProcessorTypes, ProcessorStatus, SerdesTypes
-from eggroll.roll_pair.shuffler import DefaultShuffler
+from eggroll.roll_pair.shuffler import DefaultShuffler, grpc_shuffle_receiver
 from eggroll.core.conf_keys import NodeManagerConfKeys, SessionConfKeys
 from grpc._cython import cygrpc
 import argparse
@@ -118,6 +119,9 @@ class EggPair(object):
       output_adapter = LmdbSortedKvAdapter(options=options)
     elif task_info._inputs[0]._store_locator._store_type == "rollpair.leveldb":
       output_adapter = RocksdbSortedKvAdapter(options=options)
+    elif task_info._inputs[0]._store_locator._store_type == "rollpair.rollsite":
+      output_adapter = RollsiteAdapter(options={'name': output_partition._store_locator._name})
+
     return output_adapter
 
   def _create_serdes(self, serdes_name):
@@ -461,6 +465,15 @@ class EggPair(object):
       left_adapter.close()
       right_adapter.close()
 
+    elif task._name == 'putBatch':
+      output_partition = task._outputs[0]
+      print(output_partition)
+
+      #p = lambda k : k[-1] % output_partition._store_locator._total_partitions
+      output_store = task._job._outputs[0]
+
+      grpc_shuffle_receiver(task._job._id, output_partition, len(output_store._partitions))
+
     return result
 
   def aggregate(self, task: ErTask):
@@ -601,6 +614,11 @@ def serve(args):
     route_to_module_name="eggroll.roll_pair.egg_pair",
     route_to_class_name="EggPair",
     route_to_method_name="run_task")
+  CommandRouter.get_instance().register(
+      service_name=f"{prefix}/putBatch",
+      route_to_module_name="eggroll.roll_pair.egg_pair",
+      route_to_class_name="EggPair",
+      route_to_method_name="run_task")
   CommandRouter.get_instance().register(
       service_name=f"{prefix}/runTask",
       route_to_module_name="eggroll.roll_pair.egg_pair",

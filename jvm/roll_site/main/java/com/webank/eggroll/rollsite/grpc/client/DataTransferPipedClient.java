@@ -24,9 +24,7 @@ import com.webank.eggroll.core.concurrent.AwaitSettableFuture;
 import com.webank.eggroll.core.grpc.client.GrpcClientContext;
 import com.webank.eggroll.core.grpc.client.GrpcClientTemplate;
 import com.webank.eggroll.core.grpc.observer.SameTypeFutureCallerResponseStreamObserver;
-import com.webank.eggroll.core.testgrpc.HelloCallerResponseStreamObserver;
 import com.webank.eggroll.core.util.ToStringUtils;
-import com.webank.eggroll.grpc.test.GrpcTest.HelloResponse;
 import com.webank.eggroll.rollsite.factory.ProxyGrpcStreamObserverFactory;
 import com.webank.eggroll.rollsite.factory.ProxyGrpcStubFactory;
 import com.webank.eggroll.rollsite.grpc.observer.PushClientResponseStreamObserver;
@@ -184,7 +182,6 @@ public class DataTransferPipedClient {
 
         endpoint = proxyGrpcStubFactory.getAsyncEndpoint(metadata.getDst());
 
-        AwaitSettableFuture<HelloResponse> delayedResult = new AwaitSettableFuture<>();
         context.setStubClass(DataTransferServiceGrpc.DataTransferServiceStub.class);
 
         //.setCallerStreamObserverClassAndInitArgs(SameTypeCallerResponseStreamObserver.class)
@@ -324,8 +321,9 @@ public class DataTransferPipedClient {
 
         try {
             result = template.calleeStreamingRpcWithImmediateDelayedResult(request, delayedResult);
-        } catch (ExecutionException e) {
-            e.printStackTrace();
+        } catch (ExecutionException | InterruptedException e) {
+            LOGGER.error("error getting result", e);
+            throw new RuntimeException(e);
         }
 
         return result;

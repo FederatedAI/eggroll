@@ -19,7 +19,6 @@ package com.webank.eggroll.rollsite.grpc.client;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy.Packet;
 import com.webank.eggroll.core.grpc.processor.BaseClientCallStreamProcessor;
-//import com.webank.eggroll.rollsite.grpc.core.api.grpc.client.crud.BaseStreamProcessor;
 import com.webank.eggroll.core.util.ToStringUtils;
 //import com.webank.eggroll.rollsite.grpc.core.utils.ToStringUtils;
 import com.webank.eggroll.rollsite.infra.Pipe;
@@ -32,12 +31,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
-//import com.webank.ai.eggroll.api.driver.clustercomm.ClusterComm;
-//import com.webank.ai.eggroll.api.networking.proxy.Proxy.Packet;
-//import com.webank.ai.eggroll.driver.clustercomm.transfer.utils.TransferPojoUtils;
-//import com.webank.ai.eggroll.driver.clustercomm.transfer.model.TransferBroker;
 //import TransferBroker;
-//import com.webank.ai.eggroll.rollsite.grpc.TransferProtoMessageUtils;
 
 @Component
 @Scope("prototype")
