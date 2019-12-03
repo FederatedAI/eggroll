@@ -97,6 +97,12 @@ class TestClusterManager {
       routeToClass = classOf[ClusterManager],
       routeToMethodName = SessionCommands.registerSession.getName())
 
+    CommandRouter.register(serviceName = SessionCommands.getPartitionBinding.uriString,
+      serviceParamTypes = Array(classOf[ErStore]),
+      serviceResultTypes = Array(classOf[ErStore]),
+      routeToClass = classOf[ClusterManager],
+      routeToMethodName = SessionCommands.getPartitionBinding.getName())
+
     val clusterManager = NettyServerBuilder
       .forPort(clusterManagerPort)
       .addService(new CommandService)

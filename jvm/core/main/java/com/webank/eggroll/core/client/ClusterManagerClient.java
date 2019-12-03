@@ -105,6 +105,10 @@ public class ClusterManagerClient {
     return doSyncRequestInternal(sessionMeta, ErProcessorBatch.class, SessionCommands.GET_OR_CREATE_PROCESSOR_BATCH());
   }
 
+  public ErStore getPartitionBinding(ErStore input) {
+    return doSyncRequestInternal(input, ErStore.class, SessionCommands.getPartitionBinding());
+  }
+
   private <T> T doSyncRequestInternal(RpcMessage input, Class<T> outputType, CommandURI commandURI) {
     return commandClient.simpleSyncSend(input, outputType, clusterManagerEndpoint, commandURI, SerdesTypes.PROTOBUF());
   }

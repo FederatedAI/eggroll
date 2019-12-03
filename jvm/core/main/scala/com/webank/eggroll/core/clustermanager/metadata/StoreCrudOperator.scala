@@ -145,16 +145,18 @@ object StoreCrudOperator {
 
     // process output partitions
     val outputPartitions = ArrayBuffer[ErPartition]()
-    if (existingBinding != null && existingBinding.id.equals(inputOptions.get(SessionConfKeys.CONFKEY_SESSION_PARTITION_SERVERNODE_BINDING_ID))) {
-      outputOptions.put(SessionConfKeys.CONFKEY_SESSION_PARTITION_SERVERNODE_BINDING_ID, existingBinding.id)
+    if (existingBinding != null
+      && existingBinding.id.equals(inputOptions.get(SessionConfKeys.CONFKEY_SESSION_EGG_BINDING_ID))
+      && !inputOptions.getOrDefault(SessionConfKeys.CONFKEY_SESSION_EGG_BINDING_INCLUDE_DETAILS, "false").toBoolean) {
+      outputOptions.put(SessionConfKeys.CONFKEY_SESSION_EGG_BINDING_ID, existingBinding.id)
     } else {
       val bindingId = ErPartitionBinding.genId(
         sessionId = sessionId,
         totalPartitions = outputStoreLocator.totalPartitions,
         serverNodeIds = partitionAtNodeIds.toArray,
-        strategy = inputOptions.getOrDefault(SessionConfKeys.CONFKEY_SESSION_PARTITION_SERVERNODE_BINDING_STRATEGY, BindingStrategies.ROUND_ROBIN))
-      outputOptions.put(SessionConfKeys.CONFKEY_SESSION_PARTITION_SERVERNODE_BINDING_ID, bindingId)
-      outputOptions.put(SessionConfKeys.CONFKEY_SESSION_PARTITION_SERVERNODE_BINDING_STRATEGY, BindingStrategies.ROUND_ROBIN)
+        strategy = inputOptions.getOrDefault(SessionConfKeys.CONFKEY_SESSION_EGG_BINDING_STRATEGY, BindingStrategies.ROUND_ROBIN))
+      outputOptions.put(SessionConfKeys.CONFKEY_SESSION_EGG_BINDING_ID, bindingId)
+      outputOptions.put(SessionConfKeys.CONFKEY_SESSION_EGG_BINDING_STRATEGY, BindingStrategies.ROUND_ROBIN)
 
       val newBinding = SessionManager.createBinding(
         sessionId = sessionId,
@@ -188,7 +190,7 @@ object StoreCrudOperator {
       throw new CrudException(s"Illegal rows affected returned when creating store locator: ${rowsAffected}")
     }
 
-    val partitionServerNodeBindingId = inputOptions.getOrDefault(SessionConfKeys.CONFKEY_SESSION_PARTITION_SERVERNODE_BINDING_ID, null)
+    val partitionServerNodeBindingId = inputOptions.getOrDefault(SessionConfKeys.CONFKEY_SESSION_EGG_BINDING_ID, null)
     var outputTotalPartitions = inputStoreLocator.totalPartitions
 
     val finalPartitions: ArrayBuffer[ErPartition] = ArrayBuffer[ErPartition]()
@@ -259,7 +261,8 @@ object StoreCrudOperator {
 
     val finalOptions = new ConcurrentHashMap[String, String]()
     if (inputOptions != null) finalOptions.putAll(inputOptions)
-    val result = if (partitionServerNodeBindingId == null) {
+    val result = if (partitionServerNodeBindingId == null
+      || inputOptions.getOrDefault(SessionConfKeys.CONFKEY_SESSION_EGG_BINDING_INCLUDE_DETAILS, "false").toBoolean) {
       val partitionToNodeIds = finalPartitions.map(p => p.processor.serverNodeId).toArray
 
       val binding = SessionManager.createBinding(
@@ -269,8 +272,8 @@ object StoreCrudOperator {
         strategy = BindingStrategies.ROUND_ROBIN)
 
 
-      finalOptions.put(SessionConfKeys.CONFKEY_SESSION_PARTITION_SERVERNODE_BINDING_ID, binding.id)
-      finalOptions.put(SessionConfKeys.CONFKEY_SESSION_PARTITION_SERVERNODE_BINDING_STRATEGY, BindingStrategies.ROUND_ROBIN)
+      finalOptions.put(SessionConfKeys.CONFKEY_SESSION_EGG_BINDING_ID, binding.id)
+      finalOptions.put(SessionConfKeys.CONFKEY_SESSION_EGG_BINDING_STRATEGY, BindingStrategies.ROUND_ROBIN)
       ErStore(
         storeLocator = inputStoreLocator,
         partitions = finalPartitions.toArray,

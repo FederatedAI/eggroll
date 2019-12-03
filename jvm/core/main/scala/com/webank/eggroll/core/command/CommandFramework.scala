@@ -40,7 +40,7 @@ case class CollectiveCommand(taskPlan: TaskPlan) {
     val job = taskPlan.job
     val commandUri = taskPlan.uri
 
-    val finishLatch = new CountDownLatch(job.inputs.size)
+    val finishLatch = new CountDownLatch(job.inputs.length)
     val errors = new DistributedRuntimeException()
     val results = mutable.ArrayBuffer[ErTask]()
 
