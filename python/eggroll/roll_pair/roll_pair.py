@@ -17,7 +17,7 @@ from eggroll.core.command.command_model import ErCommandRequest, ErCommandRespon
 from eggroll.core.datastructure.broker import FifoBroker
 from eggroll.core.io.format import BinBatchReader
 from eggroll.core.meta_model import ErStoreLocator, ErJob, ErStore, ErFunctor, ErTask, ErEndpoint, ErPair, ErPartition, \
-  ErProcessor
+  ErProcessor, ErSessionMeta
 from eggroll.core.proto import command_pb2_grpc
 from eggroll.core.serdes import cloudpickle, eggroll_serdes
 from eggroll.core.client import ClusterManagerClient, CommandClient
@@ -38,7 +38,7 @@ class RollPairContext(object):
     self.session_id = session.get_session_id()
     # self.default_store_type = StoreTypes.ROLLPAIR_LMDB
     self.default_store_type = StoreTypes.ROLLPAIR_LEVELDB
-    self._bindings = {}    # dict[binding_id, dict[partition_id, ErProcessor]]
+    self._bindings = {}    # dict[binding_id, list[ErProcessor]]
 
   def get_roll_endpoint(self):
     return self.__session._rolls[0]
@@ -55,37 +55,16 @@ class RollPairContext(object):
     if not binding_id:
       raise ValueError(f'binding id missing for binding_id {binding_id}')
 
-    if binding_id in self._bindings.keys():
-      return
+    if binding_id not in self._bindings.keys():
+      meta = ErSessionMeta(id=self.session_id, options=store._options)
+      bound_eggs = self.__session.cm_client.get_bound_process_batch(meta)
 
-    if len(store._partitions):
-      partition_deployment = store._partitions
-    else:
-      store_with_partition = self.__session.cm_client.get_partition_binding(store)
-      partition_deployment = store_with_partition._partitions
-
-    new_binding = {}
-    if not len(partition_deployment):
-      raise ValueError(f'no existing binding and no partition_deployment at {store}')
-
-    processor_offsets = {}
-    for p in partition_deployment:
-      cur_partition_id = p._id
-      cur_server_node_id = p._processor._server_node_id
-      if cur_server_node_id not in processor_offsets:
-        processor_offsets[cur_server_node_id] = 0
-      cur_processor_offset = processor_offsets[cur_server_node_id]
-      print(f'eggs {self.__session._eggs}')
-      new_binding[cur_partition_id] = self.__session._eggs[cur_server_node_id][cur_processor_offset]
-      processor_offsets[cur_server_node_id] = (cur_processor_offset + 1) % len(self.__session._eggs[cur_server_node_id])
-    self._bindings[binding_id] = new_binding
-    print(f'new_binding {new_binding}')
+      self._bindings[binding_id] = bound_eggs._processors
 
   def has_binding(self, binding_id):
     return binding_id in self._bindings
 
   def get_binding_egg(self, store: ErStore, partition_id: int):
-    print('binding_egg', store)
     binding_id = store._options.get(SessionConfKeys.CONFKEY_SESSION_EGG_BINDING_ID, None)
     if not binding_id:
       raise ValueError(f'binding id missing at {store}')
@@ -284,6 +263,7 @@ class RollPair(object):
     partition_id = self.partitioner(k)
     egg_id = self.egg_router(partition_id)
     egg = self.ctx.get_binding_egg(self.__store, partition_id)
+    print(f'egg: {egg}')
     inputs = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
     output = [ErPartition(id=0, store_locator=self.__store._store_locator)]
 

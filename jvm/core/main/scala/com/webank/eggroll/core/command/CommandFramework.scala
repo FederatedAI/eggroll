@@ -21,11 +21,14 @@ package com.webank.eggroll.core.command
 import java.util.concurrent.{CompletableFuture, CountDownLatch}
 import java.util.function.Supplier
 
-import com.webank.eggroll.core.constant.SerdesTypes
+import com.webank.eggroll.core.client.ClusterManagerClient
+import com.webank.eggroll.core.clustermanager.session.SessionManager
+import com.webank.eggroll.core.constant.{ClusterManagerConfKeys, SerdesTypes, SessionConfKeys}
 import com.webank.eggroll.core.datastructure.TaskPlan
 import com.webank.eggroll.core.error.DistributedRuntimeException
-import com.webank.eggroll.core.meta.{ErJob, ErPartition, ErStore, ErTask}
+import com.webank.eggroll.core.meta.{ErJob, ErPartition, ErProcessor, ErSessionMeta, ErStore, ErStoreLocator, ErTask}
 import com.webank.eggroll.core.util.ThreadPoolUtils
+import org.apache.commons.lang3.StringUtils
 
 import scala.collection.mutable
 
@@ -38,29 +41,31 @@ case class EndpointTaskCommand(commandURI: CommandURI, task: ErTask)
 case class CollectiveCommand(taskPlan: TaskPlan) {
   def call(): Array[ErTask] = {
     val job = taskPlan.job
+
     val commandUri = taskPlan.uri
 
     val finishLatch = new CountDownLatch(job.inputs.length)
     val errors = new DistributedRuntimeException()
     val results = mutable.ArrayBuffer[ErTask]()
 
-    val tasks = toTasks(job)
+    val tasks = toTasks(taskPlan)
 
     tasks.par.map(task => {
       val completableFuture: CompletableFuture[ErTask] =
-        CompletableFuture.supplyAsync(new CommandServiceSupplier(task, commandUri), CollectiveCommand.threadPool)
-        .exceptionally(e => {
-          errors.append(e)
-          null
-        })
-        .whenCompleteAsync((result, exception) => {
-          if (exception != null) {
-            errors.append(exception)
-          } else {
-            results += result
-          }
-          finishLatch.countDown()
-        })
+        CompletableFuture
+          .supplyAsync(new CommandServiceSupplier(task, commandUri), CollectiveCommand.threadPool)
+          .exceptionally(e => {
+            errors.append(e)
+            null
+          })
+          .whenCompleteAsync((result, exception) => {
+            if (exception != null) {
+              errors.append(exception)
+            } else {
+              results += result
+            }
+            finishLatch.countDown()
+          })
 
       completableFuture.join()
     })
@@ -73,33 +78,42 @@ case class CollectiveCommand(taskPlan: TaskPlan) {
     results.toArray
   }
 
-  def toTasks(job: ErJob): Array[ErTask] = {
-    val inputs: Array[ErStore] = job.inputs
-    val inputPartitionSize = inputs.head.partitions.size
+  def toTasks(taskPlan: TaskPlan): Array[ErTask] = {
+    val job = taskPlan.job
+    val inputStores: Array[ErStore] = job.inputs
+    val inputPartitionSize = inputStores.head.partitions.length
+    val inputOptions = job.options
+    val sessionId = inputOptions.get(SessionConfKeys.CONFKEY_SESSION_ID)
+    if (StringUtils.isBlank(sessionId)) {
+      throw new IllegalArgumentException("session id not exist")
+    }
 
-    val outputs: Array[ErStore] = job.outputs
+    val boundEggs = CollectiveCommand.getEggBound(inputStores.head)
+
+    val outputStores: Array[ErStore] = job.outputs
     val result = mutable.ArrayBuffer[ErTask]()
-    result.sizeHint(outputs(0).partitions.length)
-
+    result.sizeHint(outputStores(0).partitions.length)
 
     var aggregateOutputPartition: ErPartition = null
-    if (outputs.head.partitions.size == 1) {
-      aggregateOutputPartition = outputs.head.partitions.head
+    if (taskPlan.isAggregate) {
+      aggregateOutputPartition = ErPartition(id = 0, storeLocator = outputStores.head.storeLocator, processor = boundEggs(0))
     }
+
     for (i <- 0 until inputPartitionSize) {
       val inputPartitions = mutable.ArrayBuffer[ErPartition]()
       val outputPartitions = mutable.ArrayBuffer[ErPartition]()
 
-      inputs.foreach(input => inputPartitions.append(input.partitions(i)))
+      inputStores.foreach(inputStore => {
+        inputPartitions.append(
+          ErPartition(id = i, storeLocator = inputStore.storeLocator, processor = boundEggs(i)))
+      })
 
-      if (aggregateOutputPartition != null) {
+      if (taskPlan.isAggregate) {
         outputPartitions.append(aggregateOutputPartition)
       } else {
-        (inputs, outputs).zipped.foreach((input, output) => {
-          val hasPartition = !output.partitions.isEmpty
+        outputStores.foreach(outputStore => {
           outputPartitions.append(
-            if (hasPartition) output.partitions(i)
-            else input.partitions(i).copy(storeLocator = output.storeLocator))
+            ErPartition(id = i, storeLocator = outputStore.storeLocator, processor = boundEggs(i)))
         })
       }
 
@@ -126,5 +140,31 @@ class CommandServiceSupplier(task: ErTask, command: CommandURI)
 
 object CollectiveCommand {
   val threadPool = ThreadPoolUtils.newFixedThreadPool(20, "command-")
+  private val boundCache = mutable.Map[String, mutable.Map[String, Array[ErProcessor]]]()
 
+  def getEggBound(store: ErStore): Array[ErProcessor] = {
+    val options = store.options
+    val sessionId = options.get(SessionConfKeys.CONFKEY_SESSION_ID)
+    val bindingPlanId = options.get(SessionConfKeys.CONFKEY_SESSION_EGG_BINDING_ID)
+    if (StringUtils.isAnyBlank(sessionId, bindingPlanId)) {
+      throw new IllegalArgumentException(s"session id or bindingPlan id is blank for store ${store}. session id: ${sessionId}, binding plan id: ${bindingPlanId}")
+    }
+
+    if (!boundCache.contains(sessionId) || !boundCache(sessionId).contains(bindingPlanId)) {
+      val clusterManagerClient = new ClusterManagerClient(
+        options.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST, "localhost"),
+        options.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, 4670).toInt)
+
+      val boundEggProcessorBatch = clusterManagerClient.getBoundProcessorBatch(ErSessionMeta(id = sessionId, options = options))
+
+      if (!boundCache.contains(sessionId)) {
+        boundCache += (sessionId -> mutable.Map[String, Array[ErProcessor]]())
+      }
+
+      val sessionBound: mutable.Map[String,Array[ErProcessor]] = boundCache(sessionId)
+      sessionBound += (bindingPlanId -> boundEggProcessorBatch.processors)
+    }
+
+    boundCache(sessionId)(bindingPlanId)
+  }
 }

@@ -138,7 +138,7 @@ object StoreCrudOperator {
       outputOptions.putAll(inputOptions)
     }
 
-    val existingBinding = SessionManager.getBinding(
+    val existingBinding = SessionManager.getBindingPlan(
       sessionId = sessionId,
       totalPartitions = outputStoreLocator.totalPartitions,
       serverNodeIds = partitionAtNodeIds.toArray)
@@ -150,7 +150,7 @@ object StoreCrudOperator {
       && !inputOptions.getOrDefault(SessionConfKeys.CONFKEY_SESSION_EGG_BINDING_INCLUDE_DETAILS, "false").toBoolean) {
       outputOptions.put(SessionConfKeys.CONFKEY_SESSION_EGG_BINDING_ID, existingBinding.id)
     } else {
-      val bindingId = ErPartitionBinding.genId(
+      val bindingId = ErPartitionBindingPlan.genId(
         sessionId = sessionId,
         totalPartitions = outputStoreLocator.totalPartitions,
         serverNodeIds = partitionAtNodeIds.toArray,
@@ -158,7 +158,7 @@ object StoreCrudOperator {
       outputOptions.put(SessionConfKeys.CONFKEY_SESSION_EGG_BINDING_ID, bindingId)
       outputOptions.put(SessionConfKeys.CONFKEY_SESSION_EGG_BINDING_STRATEGY, BindingStrategies.ROUND_ROBIN)
 
-      val newBinding = SessionManager.createBinding(
+      val newBinding = SessionManager.createBindingPlan(
         sessionId = sessionId,
         totalPartitions = outputStoreLocator.totalPartitions,
         serverNodeIds = partitionAtNodeIds.toArray)
@@ -199,7 +199,7 @@ object StoreCrudOperator {
 
     // todo: find existing binding with same partition numbers
     val serverNodes: Array[ErServerNode] = if (partitionServerNodeBindingId != null) {
-      val binding = SessionManager.getBinding(sessionId = sessionId, bindingId = partitionServerNodeBindingId)
+      val binding = SessionManager.getBindingPlan(sessionId = sessionId, bindingId = partitionServerNodeBindingId)
       val existingBinding = ArrayBuffer[ErServerNode]()
       existingBinding.sizeHint(binding.totalPartitions)
       binding.partitionToServerNodes.foreach(nid => {
@@ -265,7 +265,7 @@ object StoreCrudOperator {
       || inputOptions.getOrDefault(SessionConfKeys.CONFKEY_SESSION_EGG_BINDING_INCLUDE_DETAILS, "false").toBoolean) {
       val partitionToNodeIds = finalPartitions.map(p => p.processor.serverNodeId).toArray
 
-      val binding = SessionManager.createBinding(
+      val binding = SessionManager.createBindingPlan(
         sessionId = sessionId,
         totalPartitions = outputTotalPartitions,
         serverNodeIds = partitionToNodeIds,

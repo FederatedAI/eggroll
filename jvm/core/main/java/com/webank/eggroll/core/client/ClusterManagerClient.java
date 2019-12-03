@@ -97,8 +97,12 @@ public class ClusterManagerClient {
     return deleteStore(new ErStore(input, EMPTY_PARTITION_ARRAY, new ConcurrentHashMap<String, String>()));
   }
 
-  public ErSessionMeta getOrCreateSession(ErSessionMeta sessionMeta) {
-    return doSyncRequestInternal(sessionMeta, ErSessionMeta.class, SessionCommands.getOrCreateSession());
+  public ErProcessorBatch getOrCreateSession(ErSessionMeta sessionMeta) {
+    return doSyncRequestInternal(sessionMeta, ErProcessorBatch.class, SessionCommands.getOrCreateSession());
+  }
+
+  public ErProcessorBatch getSession(ErSessionMeta sessionMeta) {
+    return doSyncRequestInternal(sessionMeta, ErProcessorBatch.class, SessionCommands.getOrCreateSession());
   }
 
   public ErProcessorBatch getOrCreateProcessorBatch(ErSessionMeta sessionMeta) {
@@ -106,7 +110,11 @@ public class ClusterManagerClient {
   }
 
   public ErStore getPartitionBinding(ErStore input) {
-    return doSyncRequestInternal(input, ErStore.class, SessionCommands.getPartitionBinding());
+    return doSyncRequestInternal(input, ErStore.class, SessionCommands.getPartitionBindingPlan());
+  }
+
+  public ErProcessorBatch getBoundProcessorBatch(ErSessionMeta input) {
+    return doSyncRequestInternal(input, ErProcessorBatch.class, SessionCommands.getBoundProcessorBatch());
   }
 
   private <T> T doSyncRequestInternal(RpcMessage input, Class<T> outputType, CommandURI commandURI) {

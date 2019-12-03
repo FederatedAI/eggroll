@@ -91,17 +91,29 @@ class TestClusterManager {
       routeToClass = classOf[ClusterManager],
       routeToMethodName = SessionCommands.getOrCreateSession.getName())
 
+    CommandRouter.register(serviceName = SessionCommands.getSession.uriString,
+      serviceParamTypes = Array(classOf[ErSessionMeta]),
+      serviceResultTypes = Array(classOf[ErProcessorBatch]),
+      routeToClass = classOf[ClusterManager],
+      routeToMethodName = SessionCommands.getSession.getName())
+
     CommandRouter.register(serviceName = SessionCommands.registerSession.uriString,
       serviceParamTypes = Array(classOf[ErSessionMeta], classOf[ErProcessorBatch]),
       serviceResultTypes = Array(classOf[ErProcessorBatch]),
       routeToClass = classOf[ClusterManager],
       routeToMethodName = SessionCommands.registerSession.getName())
 
-    CommandRouter.register(serviceName = SessionCommands.getPartitionBinding.uriString,
+    CommandRouter.register(serviceName = SessionCommands.getPartitionBindingPlan.uriString,
       serviceParamTypes = Array(classOf[ErStore]),
       serviceResultTypes = Array(classOf[ErStore]),
       routeToClass = classOf[ClusterManager],
-      routeToMethodName = SessionCommands.getPartitionBinding.getName())
+      routeToMethodName = SessionCommands.getPartitionBindingPlan.getName())
+
+    CommandRouter.register(serviceName = SessionCommands.getBoundProcessorBatch.uriString,
+      serviceParamTypes = Array(classOf[ErSessionMeta]),
+      serviceResultTypes = Array(classOf[ErProcessorBatch]),
+      routeToClass = classOf[ClusterManager],
+      routeToMethodName = SessionCommands.getBoundProcessorBatch.getName())
 
     val clusterManager = NettyServerBuilder
       .forPort(clusterManagerPort)

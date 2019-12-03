@@ -93,9 +93,18 @@ case class ErStore(storeLocator: ErStoreLocator,
   }
 }
 
-case class ErJob(id: String, name: String = StringConstants.EMPTY, inputs: Array[ErStore], outputs: Array[ErStore] = Array(), functors: Array[ErFunctor]) extends MetaRpcMessage
+case class ErJob(id: String,
+                 name: String = StringConstants.EMPTY,
+                 inputs: Array[ErStore],
+                 outputs: Array[ErStore] = Array(),
+                 functors: Array[ErFunctor],
+                 options: java.util.Map[String, String] = new ConcurrentHashMap[String, String]()) extends MetaRpcMessage
 
-case class ErTask(id: String, name: String = StringConstants.EMPTY, inputs: Array[ErPartition], outputs: Array[ErPartition], job: ErJob) extends MetaRpcMessage {
+case class ErTask(id: String,
+                  name: String = StringConstants.EMPTY,
+                  inputs: Array[ErPartition],
+                  outputs: Array[ErPartition],
+                  job: ErJob) extends MetaRpcMessage {
   def getCommandEndpoint: ErEndpoint = {
     if (inputs == null || inputs.isEmpty) {
       throw new IllegalArgumentException("Partition input is empty")
@@ -118,11 +127,11 @@ case class ErSessionMeta(id: String,
                          tag: String = StringConstants.EMPTY) extends MetaRpcMessage {
 }
 
-class ErPartitionBinding(val id: String,
-                         val totalPartitions: Int,
-                         val partitionToServerNodes: Array[Long],
-                         val bindingStrategy: String = BindingStrategies.ROUND_ROBIN,
-                         val detailBindings: Array[ErProcessor] = Array.empty) {
+class ErPartitionBindingPlan(val id: String,
+                             val totalPartitions: Int,
+                             val partitionToServerNodes: Array[Long],
+                             val bindingStrategy: String = BindingStrategies.ROUND_ROBIN,
+                             val detailBindings: Array[ErProcessor] = Array.empty) {
   def toPartitions(): Array[ErPartition] = {
     val i = new AtomicInteger(0)
     val result = ArrayBuffer[ErPartition]()
@@ -136,7 +145,7 @@ class ErPartitionBinding(val id: String,
   }
 }
 
-object ErPartitionBinding {
+object ErPartitionBindingPlan {
   def genId(sessionId: String,
             totalPartitions: Int,
             serverNodeIds: Array[Long],
@@ -150,7 +159,7 @@ case class ErServerSessionDeployment(id: String,
                                      serverCluster: ErServerCluster,
                                      rolls: Array[ErProcessor],
                                      eggs: Map[Long, Array[ErProcessor]],
-                                     partitionBindings: mutable.Map[String, ErPartitionBinding] = mutable.Map[String, ErPartitionBinding]()) {
+                                     partitionBindingPlans: mutable.Map[String, ErPartitionBindingPlan] = mutable.Map[String, ErPartitionBindingPlan]()) {    // binding id -> binding
   def toErProcessorBatch(): ErProcessorBatch = {
     val processors = new ArrayBuffer[ErProcessor]()
     processors ++= rolls
@@ -158,7 +167,43 @@ case class ErServerSessionDeployment(id: String,
 
     ErProcessorBatch(processors = processors.toArray, tag = id)
   }
+
+  def getBoundErProcessorBatch(bindingPlanId: String): ErProcessorBatch = {
+    val binding = partitionBindingPlans.getOrElse(bindingPlanId, null)
+    if (binding == null) {
+      throw new IllegalArgumentException(s"binding ${binding} not exists in session ${id}")
+    }
+
+    val result = ArrayBuffer[ErProcessor]()
+    result.sizeHint(binding.totalPartitions)
+
+    val partitionIdToServerNodes = binding.partitionToServerNodes
+    val curOffsets = mutable.Map[Long, Int]()
+    (0 until binding.totalPartitions).foreach(partitionId => {
+      val curServerNodeId = partitionIdToServerNodes(partitionId)
+      if (!curOffsets.contains(curServerNodeId)) {
+        curOffsets.put(curServerNodeId, 0)
+      }
+      val curPartitionOffset = curOffsets(curServerNodeId)
+
+      val boundEgg = eggs(curServerNodeId)(curPartitionOffset)
+
+      result += ErProcessor(
+        id = partitionId,
+        serverNodeId = curServerNodeId,
+        name = boundEgg.name,
+        processorType = boundEgg.processorType,
+        status = boundEgg.status,
+        commandEndpoint = boundEgg.commandEndpoint,
+        dataEndpoint = boundEgg.dataEndpoint)
+
+      curOffsets(curServerNodeId) = (curPartitionOffset + 1) % eggs(curServerNodeId).length
+    })
+
+    ErProcessorBatch(id = 0, name = bindingPlanId, processors = result.toArray, tag = id)
+  }
 }
+
 
 class ErSession(id: String, sessionMeta: ErSessionMeta, deploys: Map[String, ErServerSessionDeployment]) {
   def name: String = sessionMeta.name
@@ -265,6 +310,7 @@ object MetaModelPbMessageSerdes {
         .addAllInputs(src.inputs.toList.map(_.toProto()).asJava)
         .addAllOutputs(src.outputs.toList.map(_.toProto()).asJava)
         .addAllFunctors(src.functors.toList.map(_.toProto()).asJava)
+        .putAllOptions(src.options)
 
       builder.build()
     }
@@ -374,7 +420,8 @@ object MetaModelPbMessageSerdes {
         name = src.getName,
         inputs = src.getInputsList.asScala.map(_.fromProto()).toArray,
         outputs = src.getOutputsList.asScala.map(_.fromProto()).toArray,
-        functors = src.getFunctorsList.asScala.map(_.fromProto()).toArray)
+        functors = src.getFunctorsList.asScala.map(_.fromProto()).toArray,
+        options = src.getOptionsMap)
     }
 
     override def fromBytes(bytes: Array[Byte]): ErJob =
