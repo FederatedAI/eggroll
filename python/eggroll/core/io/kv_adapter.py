@@ -28,7 +28,8 @@ try:
 except:
     LOGGER.info("WRAN: failed to import lmdb")
 
-LMDB_MAP_SIZE = 16 * 4_096 * 244_140        # follows storage-service-cxx's config here
+# LMDB_MAP_SIZE = 16 * 4_096 * 244_140        # follows storage-service-cxx's config here
+LMDB_MAP_SIZE = 64 * 1024 * 1024        # follows storage-service-cxx's config here
 DEFAULT_DB = b'main'
 DELIMETER = '-'
 DELIMETER_ENCODED = DELIMETER.encode()
