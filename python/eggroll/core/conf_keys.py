@@ -83,6 +83,9 @@ class SessionConfKeys(object):
   CONFKEY_SESSION_ID = "eggroll.session.id"
   CONFKEY_SESSION_NAME = "eggroll.session.name"
   CONFKEY_SESSION_MAX_PROCESSORS_PER_NODE = "eggroll.session.max.processors.per.node"
+  CONFKEY_SESSION_EGG_BINDING_STRATEGY = "eggroll.session.egg.binding.strategy"
+  CONFKEY_SESSION_EGG_BINDING_ID = "eggroll.session.egg.binding.id"
+  CONFKEY_SESSION_EGG_BINDING_INCLUDE_DETAILS = "eggroll.session.egg.binding.include.details"
 
 
 class DeployConfKeys(object):

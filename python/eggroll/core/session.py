@@ -17,7 +17,8 @@ from eggroll.core.meta_model import ErServerNode, ErServerCluster, ErProcessor, 
 from eggroll.core.client import ClusterManagerClient, NodeManagerClient
 from eggroll.core.utils import get_self_ip, time_now
 from eggroll.core.constants import SessionStatus, ProcessorStatus, ServerNodeTypes, RollTypes, ProcessorTypes
-from eggroll.core.conf_keys import ClusterManagerConfKeys, DeployConfKeys
+from eggroll.core.conf_keys import ClusterManagerConfKeys, DeployConfKeys, SessionConfKeys
+
 
 
 class ErDeploy:
@@ -49,14 +50,13 @@ class ErClusterDeploy(ErDeploy):
     self.cm_client = ClusterManagerClient(options=options)
     self.session_meta = session_meta
     processor_batch = self.cm_client.get_or_create_session(self.session_meta)
-    print(f'mw: processor_batch: {processor_batch}')
 
     self._rolls = list()
     self._eggs = dict()
     for processor in processor_batch._processors:
       processor_type = processor._processor_type
       if processor_type == ProcessorTypes.EGG_PAIR:
-        node_id = processor._id
+        node_id = processor._server_node_id
         if node_id not in self._eggs.keys():
           self._eggs[node_id] = list()
 
@@ -67,7 +67,6 @@ class ErClusterDeploy(ErDeploy):
       else:
         raise ValueError(f'processor type {processor_type} is unknown')
 
-
 class ErSession(object):
   def __init__(self, session_id=None, name='', tag='', options={}):
     if session_id:
@@ -76,6 +75,7 @@ class ErSession(object):
       self.__session_id = f'er_session_{time_now()}_{get_self_ip()}'
     self.__name = ''
     self.__options = options.copy()
+    self.__options[SessionConfKeys.CONFKEY_SESSION_ID] = session_id
     self.__status = SessionStatus.NEW
     self.__tag = tag
     self.session_meta = ErSessionMeta(id=self.__session_id,
@@ -111,6 +111,9 @@ class ErSession(object):
 
   def has_option(self, key):
     return self.__options.get(key) is not None
+
+  def get_all_options(self):
+    return self.__options.copy()
 
 
 

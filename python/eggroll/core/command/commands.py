@@ -77,6 +77,10 @@ class SessionCommands(object):
   register_session_service_name = _to_service_name(prefix, register_session)
   REGISTER_SESSION = CommandURI(register_session_service_name)
 
+  get_partition_binding = 'getPartitionBinding'
+  get_partition_binding_service_name = _to_service_name(prefix, get_partition_binding)
+  GET_PARTITION_BINDING = CommandURI(get_partition_binding_service_name)
+
 class RollPairCommands(object):
   roll_prefix = 'v1/roll-pair'
   egg_prefix = 'v1/egg-pair'
