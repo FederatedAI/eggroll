@@ -19,15 +19,14 @@ import concurrent
 
 import grpc
 
-#from arch.api.proto import federation_pb2
-#from eggroll.roll_site.api.proto import basic_meta_pb2, storage_basic_pb2
 from eggroll.utils import file_utils
 from eggroll.roll_site.utils import eggroll_serdes
 from eggroll.utils.log_utils import getLogger
 from eggroll.core.meta_model import ErStoreLocator, ErStore, ErFunctor
 from eggroll.core.constants import StoreTypes
-#from eggroll.roll_pair.roll_pair import RollPair
-
+from eggroll.roll_pair.roll_pair import RollPair
+from eggroll.core.session import ErSession
+from eggroll.roll_pair.roll_pair import RollPairContext
 
 _serdes = eggroll_serdes.PickleSerdes
 
@@ -84,6 +83,9 @@ def init(job_id, runtime_conf_path, server_conf_path, transfer_conf_path):
 
     _party_id = runtime_conf.get(CONF_KEY_LOCAL).get("party_id")
     _role = runtime_conf.get(CONF_KEY_LOCAL).get("role")  #获取local的角色
+
+    print("type of host:", type(_host))
+    print("type of port:", type(_port))
     return RollSiteRuntime(job_id, _party_id, _role, runtime_conf, transfer_conf_path,  _host, _port)
 
 
@@ -135,13 +137,14 @@ class RollSiteRuntime(object):
         return self.runtime_conf.get('role').get(role)
 
     def remote(self, obj, name: str, tag: str, role=None, idx=-1):
-        options = {'cluster_manager_host': 'localhost',
-                   'cluster_manager_port': 4670,
-                   'pair_type': 'v1/roll-pair',
-                   'roll_pair_service_host': 'localhost',
-                   'roll_pair_service_port': 20000}
+        storage_options = {'cluster_manager_host': 'localhost',
+                           'cluster_manager_port': 4670,
+                           'pair_type': 'v1/egg-pair',
+                           'egg_pair_service_host': 'localhost',
+                           'egg_pair_service_port': 20001}
 
         self.__check_authorization(name)
+        print("type of obj:", type(obj))
 
         if idx >= 0:
             if role is None:
@@ -159,6 +162,8 @@ class RollSiteRuntime(object):
                 parties[_role] = self.__get_parties(_role)
                 print ("type of parties:", type(parties))
 
+        session = ErSession(options={"eggroll.deploy.mode": "standalone"})
+        context = RollPairContext(session)
         for _role, _partyInfos in parties.items():
             print("_role:", _role, "_partyIds:", _partyInfos)
             for _partyId in _partyInfos:
@@ -169,11 +174,6 @@ class RollSiteRuntime(object):
                     '''
                     If it is a table, send the meta right away.
                     '''
-                    # added by bryce
-                    #obj.set_gc_disable()
-                    #desc = federation_pb2.TransferDataDesc(transferDataType=federation_pb2.DTABLE,
-                    #                                       storageLocator=self.__get_locator(obj),
-                    #                                       taggedVariableName=_serdes.serialize(_tagged_key))
                     name = obj._name
                     namespace = obj._namespace
                 else:
@@ -181,37 +181,20 @@ class RollSiteRuntime(object):
                     If it is a object, put the object in the table and send the table meta.
                     '''
                     object_storage_table_name = '{}.{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.role, str(self.party_id), _role, str(_partyId)]))
-                    #_table = _EggRoll.get_instance().table(object_storage_table_name, self.job_id)
                     name = object_storage_table_name
                     namespace = self.job_id
 
-                    store = ErStore(ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LEVELDB, namespace=namespace,
-                                                   name=name, total_partitions=4))
-                    rp = RollPair(er_store=store, options=options)
-                    rp.put(b'a', b'1')
-
-                    #storage_locator = self.__get_locator(_table)
-                    #desc = federation_pb2.TransferDataDesc(transferDataType=federation_pb2.OBJECT,
-                    #                                       storageLocator=storage_locator,
-                    #                                       taggedVariableName=_serdes.serialize(_tagged_key))
+                    rp = context.load(namespace, name)
+                    rp.put(_tagged_key, obj)
 
                 LOGGER.debug("[REMOTE] Sending {}".format(_tagged_key))
 
-                #dst = federation_pb2.Party(partyId="{}".format(_partyId), name=_role)
-                #job = basic_meta_pb2.Job(jobId=self.job_id, name=name)
-                #self.stub.send(federation_pb2.TransferMeta(job=job, tag=tag, src=src, dst=dst, dataDesc=desc,
-                #                                           type=federation_pb2.SEND))
-
-                src_store = ErStore(ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LEVELDB, namespace=namespace,
-                                               name=name))
-                rp = RollPair(src_store, opts=options)
-
-                res = rp.map_values(lambda v: v, output=ErStore(store_locator =
+                rp = context.load(namespace, name)
+                ret = rp.map_values(lambda v: v, output=ErStore(store_locator =
                                                                 ErStoreLocator(store_type=StoreTypes.ROLLPAIR_ROLLSITE,
                                                                                namespace='namespace',
                                                                                name=_tagged_key)))
-
-                print('res: ', res)
+                print(ret)
 
                 LOGGER.debug("[REMOTE] Sent {}".format(_tagged_key))
 

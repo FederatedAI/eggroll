@@ -13,39 +13,29 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
-import sys
-import os
+import unittest
+from eggroll.roll_site import rollsite
 
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
-from api import rollsite
+class TestRemote(unittest.TestCase):
+    def test_remote(self):
+        rollsite.init("atest",
+                      "python/eggroll/roll_site/conf/role_conf.json",
+                      "python/eggroll/roll_site/conf/server_conf.json",
+                      "python/eggroll/roll_site/conf/transfer_conf.json")
+        _tag = "Hello"
+        fp = open("testA.model", 'r')
+        while True:
+            content = fp.read(35)
+            if not content:
+                break
+            print(content)
+            rollsite.remote(content, "model_A", tag="{}".format(_tag))
 
-if __name__ == '__main__':
-    #ggroll.init("atest")
-    rollsite.init("atest",
-                  "roll_site/test/role_conf.json",
-                  "roll_site/test/server_conf.json",
-                  "roll_site/test/transfer_conf.json",)
-    _tag = "Hello"
-    #a = _tag
-
-
-    #content = f.read(10000)
-    #print(content)
-
-    fp = open("testA.model", 'r')
-    while True:
-        print("push!!!")
-        content = fp.read(35)
-        if not content:
-            break
-        print(content)
-        rollsite.push(content, "model_A", tag="{}".format(_tag))
-
-    '''
-    fp = open("testA.model", 'r')
-    rollsite.push(fp, "model_ID", tag="{}".format(_tag))
-    '''
-    fp.close()
+        '''
+        fp = open("testA.model", 'r')
+        rollsite.push(fp, "model_ID", tag="{}".format(_tag))
+        '''
+        fp.close()
 
 
 
