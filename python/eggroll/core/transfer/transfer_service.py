@@ -17,12 +17,15 @@ from eggroll.core.datastructure.broker import FifoBroker
 from eggroll.core.proto import transfer_pb2_grpc, transfer_pb2
 from eggroll.core.transfer_model import ErTransferHeader, ErTransferBatch
 from eggroll.core.utils import _exception_logger
+from eggroll.utils import log_utils
 from eggroll.core.grpc.factory import GrpcChannelFactory
 from queue import Queue
 from eggroll.core.io.format import BinBatchWriter
 import sys
 from time import sleep
 
+log_utils.setDirectory()
+LOGGER = log_utils.getLogger()
 
 class GrpcTransferServicer(transfer_pb2_grpc.TransferServiceServicer):
   data_buffer = dict()
@@ -81,6 +84,7 @@ class TransferClient(object):
     self.__bin_packet_len = 1 << 20
     self.__chunk_size = 100
 
+  @_exception_logger
   def send_single(self, data, tag, processor, status = ''):
     endpoint = processor._command_endpoint
     channel = grpc.insecure_channel(target=f'{endpoint._host}:{endpoint._port}',
@@ -99,11 +103,12 @@ class TransferClient(object):
 
     batches = [batch.to_proto()]
 
-    #print(f"mw: ready to send to {endpoint}, {iter(batches)}")
+    #LOGGER.info(f"mw: ready to send to {endpoint}, {iter(batches)}")
     stub.send(iter(batches))
 
-    print("finish send")
+    LOGGER.info("finish send")
 
+  @_exception_logger
   def send_pair(self, broker: FifoBroker, tag, processor, status = ''):
     def transfer_batch_generator(packet_len):
       # todo: pull up as format
@@ -111,17 +116,19 @@ class TransferClient(object):
       writer = BinBatchWriter({'buffer': buffer})
       cur_offset = writer.get_offset
       total_written = 0
+      LOGGER.info(broker.is_closable())
       while not broker.is_closable():
         k_bytes, v_bytes = broker.get(block=True, timeout=1)
+        LOGGER.info("k:{}, v:{}".format(k_bytes, v_bytes))
         if k_bytes is not None:
           try:
             writer.write_bytes(k_bytes, include_size=True)
             writer.write_bytes(v_bytes, include_size=True)
             total_written += 1
             if tag == '1-0':
-              print(f'{tag} written {k_bytes}, total_written {total_written}, is closable {broker.is_closable()}')
+              LOGGER.info(f'{tag} written {k_bytes}, total_written {total_written}, is closable {broker.is_closable()}')
           except IndexError as e:
-            print('caught index error')
+            LOGGER.info('caught index error')
             bin_data = writer.get_batch(end=cur_offset)
             header = ErTransferHeader(id=100,
                                       tag=tag,
@@ -134,22 +141,22 @@ class TransferClient(object):
             writer.write_bytes(k_bytes, include_size=True)
             writer.write_bytes(v_bytes, include_size=True)
 
-            print(transfer_batch)
+            LOGGER.info(transfer_batch)
             yield transfer_batch.to_proto()
           except:
-            print("Unexpected error:", sys.exc_info()[0])
+            LOGGER.info("Unexpected error:{}".format(sys.exc_info()[0]))
             raise
         else:
-          print('k_bytes is None')
+          LOGGER.info('k_bytes is None')
 
-      print(f'{tag} is closable, offset: {writer.get_offset()}')
+      LOGGER.info(f'{tag} is closable, offset: {writer.get_offset()}')
       bin_data = writer.get_batch()
       header = ErTransferHeader(id=100,
                                 tag=tag,
                                 total_size=writer.get_offset() - 20,
                                 status = GrpcTransferServicer.TRANSFER_END)
       transfer_batch = ErTransferBatch(header = header, batch_size = 1, data = bin_data)
-      print(transfer_batch)
+      LOGGER.info(transfer_batch)
       yield transfer_batch.to_proto()
 
     command_endpoint = processor._command_endpoint
@@ -157,9 +164,9 @@ class TransferClient(object):
 
     stub = transfer_pb2_grpc.TransferServiceStub(channel)
 
-    print (f'{tag} ready to send')
+    LOGGER.info (f'{tag} ready to send')
 
     future = stub.send.future(iter(transfer_batch_generator(self.__bin_packet_len)))
-    print(f'{tag} got future')
+    LOGGER.info(f'{tag} got future')
     return future
 
