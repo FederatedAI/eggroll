@@ -32,6 +32,8 @@ from eggroll.core.meta_model import ErSessionMeta, ErPair
 from eggroll.core.proto import command_pb2_grpc, transfer_pb2_grpc
 from eggroll.core.serdes import cloudpickle
 from eggroll.core.serdes import eggroll_serdes
+from eggroll.core.utils import hash_code
+from eggroll.utils import log_utils
 from eggroll.core.transfer.transfer_service import GrpcTransferServicer, \
   TransferClient
 from eggroll.core.constants import ProcessorTypes, ProcessorStatus, SerdesTypes
@@ -41,6 +43,8 @@ from grpc._cython import cygrpc
 import argparse
 import os
 
+log_utils.setDirectory()
+LOGGER = log_utils.getLogger()
 
 def generator(serde, iterator):
   for k, v in iterator:
@@ -52,6 +56,8 @@ class EggPair(object):
   uri_prefix = 'v1/egg-pair'
   GET = 'get'
   PUT = 'put'
+  GET_ALL = 'getAll'
+  PUT_ALL = 'putAll'
 
   def __init__(self):
     self.serde = self._create_serdes(SerdesTypes.PICKLE)
@@ -121,12 +127,18 @@ class EggPair(object):
   def _create_serdes(self, serdes_name):
     return eggroll_serdes.get_serdes(serdes_name)
 
+  def __partitioner(self, hash_func, total_partitions):
+    def partitioner_wrapper(k):
+      return hash_func(k) % total_partitions
+    return partitioner_wrapper
+
   def run_task(self, task: ErTask):
+    LOGGER.info("start run task")
     functors = task._job._functors
     result = task
 
     if task._name == 'get':
-      print("egg_pair get call")
+      LOGGER.info("egg_pair get call")
       f = cloudpickle.loads(functors[0]._body)
       input_adapter = self.get_unary_input_adapter(task_info=task)
       value = input_adapter.get(f._key)
@@ -134,27 +146,40 @@ class EggPair(object):
       result = ErPair(key=f._key, value=value)
       input_adapter.close()
     elif task._name == 'getAll':
-      print("egg_pair getAll call")
+      LOGGER.info("egg_pair getAll call")
+      f = cloudpickle.loads(functors[0]._body)
+      LOGGER.info("get roll revc port:{}".format(f._port))
       input_partition = task._inputs[0]
-      roll_client_transfer_endpoint = cloudpickle.loads(functors[0]._body).split(":")
-      rct_host = roll_client_transfer_endpoint[0]
-      rct_port = roll_client_transfer_endpoint[1]
+      #roll_client_transfer_endpoint = cloudpickle.loads(functors[0]._body).split(":")
+      rct_host = f._host
+      rct_port = f._port
+      LOGGER.info("host:{}, port:{}".format(rct_host, rct_port))
+
       # todo: decide partitioner
-      p = lambda k : k[-1] % output_partition._store_locator._total_partitions
+      #p = lambda k : k[-1] % output_partition._store_locator._total_partitions
+      total_partitions = input_partition._store_locator._total_partitions
+      partitioner = self.__partitioner(hash_func=hash_code, total_partitions=total_partitions)
+      partition_id = partitioner(get_db_path(input_partition)[:-1])
+
       input_adapter = self.get_unary_input_adapter(task_info=task)
 
       broker = FifoBroker()
       transfer = TransferClient()
+      LOGGER.info("job id:{}".format(task._job._id))
       future = transfer.send_pair(broker, task._job._id,
                                   ErProcessor(command_endpoint=ErEndpoint(host=rct_host, port=rct_port)))
-
+      i = 0
       for k_bytes, v_bytes in input_adapter.iteritems():
-        broker.put(k_bytes, v_bytes)
-      print('finish calculating')
+        broker.put(bytes(i), bytes(i))
+        i = i + 1
+      LOGGER.info('finish calculating')
       input_adapter.close()
+      #while broker.is_read_ready():
+        #LOGGER.info("read broker:{}".format(broker.get()))
       broker.signal_write_finish()
-      result=future.result()
-      print('getAll finished')
+
+      future.result()
+      LOGGER.info('getAll finished')
     elif task._name == 'putAll':
       print("egg_pair putAll call")
       output_partition = task._outputs[0]
@@ -186,6 +211,7 @@ class EggPair(object):
 
       for k_bytes, v_bytes in input_iterator:
         v = self.serde.deserialize(v_bytes)
+        LOGGER.info("k:{} v:{}".format(self.serde.deserialize(k_bytes), v))
         output_writebatch.put(k_bytes, self.serde.serialize(f(v)))
 
       output_writebatch.close()
@@ -517,6 +543,16 @@ def serve(args):
     route_to_module_name="eggroll.roll_pair.egg_pair",
     route_to_class_name="EggPair",
     route_to_method_name="run_task")
+  CommandRouter.get_instance().register(
+    service_name=f"{prefix}/getAll",
+    route_to_module_name="eggroll.roll_pair.egg_pair",
+    route_to_class_name="EggPair",
+    route_to_method_name="run_task")
+  CommandRouter.get_instance().register(
+    service_name=f"{prefix}/putAll",
+    route_to_module_name="eggroll.roll_pair.egg_pair",
+    route_to_class_name="EggPair",
+    route_to_method_name="run_task")
 
   #computing api
   CommandRouter.get_instance().register(
@@ -605,7 +641,7 @@ def serve(args):
                                                           server)
   port = args.port
   port = server.add_insecure_port(f'[::]:{port}')
-
+  LOGGER.info("starting egg_pair service, port:{}".format(port))
   server.start()
 
 

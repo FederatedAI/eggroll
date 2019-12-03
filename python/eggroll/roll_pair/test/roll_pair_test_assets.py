@@ -14,9 +14,14 @@
 #  limitations under the License.
 from eggroll.core.constants import StoreTypes
 from eggroll.core.meta_model import ErStore, ErStoreLocator
-
+from eggroll.core.session import ErSession
+from eggroll.roll_pair.roll_pair import RollPairContext
 
 ER_STORE1 = ErStore(store_locator=ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LEVELDB,
                                                  namespace="namespace1",
                                                  name="name1"))
 
+def get_test_context():
+  session = ErSession(options={"eggroll.deploy.mode": "standalone"})
+  context = RollPairContext(session)
+  return context

@@ -15,7 +15,9 @@
 from eggroll.core.meta_model import ErTask
 from eggroll.core.proto import meta_pb2
 from importlib import import_module
-
+from eggroll.utils import log_utils
+log_utils.setDirectory()
+LOGGER = log_utils.getLogger()
 
 class CommandRouter(object):
   __instance = None
@@ -53,6 +55,7 @@ class CommandRouter(object):
     _method = getattr(_class, route_to_method_name)
 
     self._service_route_table[service_name] = (None, _class, _method)
+    LOGGER.info("service:{} has registered".format(service_name))
 
   def dispatch(self, service_name: str, args, kwargs):
     if service_name not in self._service_route_table:
