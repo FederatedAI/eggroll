@@ -49,9 +49,68 @@ class TestStandalone(unittest.TestCase):
       print(rp.map_values(lambda v: v + 'mapValues').get_all())
 
     def test_map_partitions(self):
-      rp = self.ctx.load("ns1", "n24")
-      print(rp.map_partitions(lambda v: v + 'mapValues').get_all())
+      data = [(str(i), i) for i in range(10)]
+      rp = self.ctx.load("ns1", "testMapPartitions").put_all(data, options={"include_key": True})
+      def func(iter):
+        ret = []
+        for k, v in iter:
+          ret.append((f"{k}_{v}_0", v ** 2))
+          ret.append((f"{k}_{v}_1", v ** 3))
+        return ret
+      print(rp.map_partitions(func).get_all())
 
     def test_map(self):
       rp = self.ctx.load("ns1", "n24")
       print(rp.map_values(lambda v: v + 'mapValues').get_all())
+
+    def test_collapse_partitions(self):
+      rp = self.ctx.load("ns1", "testCollapsePartitions").put_all(range(5))
+      def f(iterator):
+        sum = []
+        for k, v in iterator:
+          sum.append((k, v))
+        return sum
+      print(rp.collapse_partitions(f).get_all())
+
+    def test_filter(self):
+      rp = self.ctx.load("ns1", "testFilter").put_all(range(5))
+      print(rp.filter(lambda k, v: v % 2 != 0).get_all())
+
+    def test_flatMap(self):
+      rp = self.ctx.load("ns1", "testFlatMap").put_all(range(5))
+      import random
+      def foo(k, v):
+        result = []
+        r = random.randint(10000, 99999)
+        for i in range(0, k):
+          result.append((k + r + i, v + r + i))
+        return result
+      print(rp.flat_map(foo).get_all())
+
+    def test_glom(self):
+      rp = self.ctx.load("ns1", "testGlom").put_all(range(5))
+      print(rp.glom().get_all())
+
+    def test_join(self):
+      left_rp = self.ctx.load("ns1", "testJoinLeft").put_all([('a', 1), ('b', 4)], options={"include_key": True})
+      right_rp = self.ctx.load("ns1", "testJoinRight").put_all([('a', 2), ('c', 4)], options={"include_key": True})
+      print(left_rp.join(right_rp, lambda v1, v2: v1 + v2).get_all())
+
+    def test_reduce(self):
+      from operator import add
+      rp = self.ctx.load("ns1", "testReduce").put_all(range(5))
+      print(rp.reduce(add))
+
+    def test_sample(self):
+      rp = self.ctx.load("ns1", "testSample").put_all(range(100))
+      #print(6 <= rp.sample(0.1, 81) <= 14)
+
+    def test_subtract_by_key(self):
+      left_rp = self.ctx.load("ns1", "testSubtractByKeyLeft").put_all(range(10))
+      right_rp = self.ctx.load("ns1", "testSubtractByKeyRight").put_all(range(5))
+      print(left_rp.subtract_by_key(right_rp).get_all())
+
+    def test_union(self):
+      left_rp = self.ctx.load("ns1", "testUnionLeft").put_all([1, 2, 3])
+      right_rp = self.ctx.load("ns1", "testUnionRight").put_all([(1, 1), (2, 2), (3, 3)], options={"include_key": True})
+      print(left_rp.union(right_rp).get_all())
