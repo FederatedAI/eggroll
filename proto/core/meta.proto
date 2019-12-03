@@ -109,6 +109,7 @@ message Job {
   repeated Store inputs = 3;
   repeated Store outputs = 4;
   repeated Functor functors = 5;
+  map<string, string> options = 6;
 }
 
 message Task {
