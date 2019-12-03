@@ -60,17 +60,12 @@ class EggPairThread (threading.Thread):
 
 class TestStandalone(unittest.TestCase):
     def test_get(self):
-        th = StandaloneManagerThread()
-        th.start()
-        th2 = EggPairThread()
-        th2.start()
-
-        time.sleep(10)
+        time.sleep(5)
         session = ErSession(options={"eggroll.deploy.mode": "standalone"})
         context = RollPairContext(session)
         context.load("ns1", "n22").put("k1", "v1")
         print(context.load("ns1", "n22").get("k1"))
-        th.stop()
+        # th.stop()
 
     def test_tmp(self):
         th = StandaloneManagerThread()

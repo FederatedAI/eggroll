@@ -27,8 +27,6 @@ import org.apache.commons.cli.{DefaultParser, Options}
 object StandaloneManager {
   // usage: -ccp 4677 -ctp 4677
   def main(args: Array[String]): Unit = {
-    StaticErConf.addProperty(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT, "4670")
-
     NodeManager.registerRouter()
     Main.registerRouter()
     val server = ClusterManager.buildServer(args)
