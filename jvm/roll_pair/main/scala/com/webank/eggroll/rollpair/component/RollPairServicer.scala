@@ -444,6 +444,9 @@ class RollPairServicer() {
       case RollPairServicer.map => {
         taskPlan = new MapTaskPlan(new CommandURI(RollPairServicer.eggRunTaskCommand), taskPlanJob)
       }
+      case RollPairServicer.join => {
+        taskPlan = new JoinTaskPlan(new CommandURI(RollPairServicer.eggRunTaskCommand), taskPlanJob)
+      }
     }
 
     JobRunner.run(taskPlan)

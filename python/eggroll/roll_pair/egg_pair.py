@@ -64,8 +64,7 @@ class EggPair(object):
 
   def get_unary_input_adapter(self, task_info: ErTask, create_if_missing=True):
     input_partition = task_info._inputs[0]
-    print("input_adapter: ", input_partition, "path: ",
-          get_db_path(input_partition))
+    LOGGER.info("input_adapter:{} path:{} ".format(input_partition, get_db_path(input_partition)))
     input_adapter = None
 
     options = dict()
@@ -82,10 +81,8 @@ class EggPair(object):
   def get_binary_input_adapter(self, task_info: ErTask, create_if_missing=True):
     left_partition = task_info._inputs[0]
     right_partition = task_info._inputs[1]
-    print("left partition: ", left_partition, "path: ",
-          get_db_path(left_partition))
-    print("right partition: ", right_partition, "path: ",
-          get_db_path(right_partition))
+    LOGGER.info("left partition:{} path:{} ".format(left_partition, get_db_path(left_partition)))
+    LOGGER.info("right partition:{} path:{} ".format(right_partition, get_db_path(right_partition)))
     left_adapter = None
     right_adapter = None
 
@@ -108,9 +105,8 @@ class EggPair(object):
     return left_adapter, right_adapter
 
   def get_unary_output_adapter(self, task_info: ErTask, create_if_missing=True):
-    output_partition = task_info._inputs[0]
-    print("output_partition: ", output_partition, "path: ",
-          get_db_path(output_partition))
+    output_partition = task_info._outputs[0]
+    LOGGER.info("output_partition: {} path:{} ".format(output_partition, get_db_path(output_partition)))
     output_adapter = None
     options = dict()
     options ["create_if_missing"] = create_if_missing
@@ -131,6 +127,36 @@ class EggPair(object):
     def partitioner_wrapper(k):
       return hash_func(k) % total_partitions
     return partitioner_wrapper
+
+  def _run_unary(self, func, task):
+    input_adapter = self.get_unary_input_adapter(task_info=task)
+    input_iterator = input_adapter.iteritems()
+    output_adapter = self.get_unary_output_adapter(task_info=task)
+    output_writebatch = output_adapter.new_batch()
+    try:
+      func(input_iterator, output_writebatch)
+    except:
+      raise EnvironmentError("exec task:{} error".format(task))
+    finally:
+      output_writebatch.close()
+      input_adapter.close()
+      output_adapter.close()
+
+  def _run_binary(self, func, task):
+    left_adapter, right_adapter = self.get_binary_input_adapter(task_info=task)
+    output_adapter = self.get_unary_output_adapter(task_info=task)
+    left_iterator = left_adapter.iteritems()
+    right_iterator = right_adapter.iteritems()
+    output_writebatch = output_adapter.new_batch()
+    try:
+      func(left_iterator, right_iterator, output_writebatch)
+    except:
+      raise EnvironmentError("exec task:{} error".format(task))
+    finally:
+      output_writebatch.close()
+      left_adapter.close()
+      right_adapter.close()
+      output_adapter.close()
 
   def run_task(self, task: ErTask):
     LOGGER.info("start run task")
@@ -204,19 +230,11 @@ class EggPair(object):
 
     if task._name == 'mapValues':
       f = cloudpickle.loads(functors[0]._body)
-      input_adapter = self.get_unary_input_adapter(task_info=task)
-      output_adapter = self.get_unary_output_adapter(task_info=task)
-      input_iterator = input_adapter.iteritems()
-      output_writebatch = output_adapter.new_batch()
-
-      for k_bytes, v_bytes in input_iterator:
-        v = self.serde.deserialize(v_bytes)
-        LOGGER.info("k:{} v:{}".format(self.serde.deserialize(k_bytes), v))
-        output_writebatch.put(k_bytes, self.serde.serialize(f(v)))
-
-      output_writebatch.close()
-      input_adapter.close()
-      output_adapter.close()
+      def map_values_wrapper(input_iterator, output_writebatch):
+        for k_bytes, v_bytes in input_iterator:
+          v = self.serde.deserialize(v_bytes)
+          output_writebatch.put(k_bytes, self.serde.serialize(f(v)))
+      self._run_unary(map_values_wrapper, task)
     elif task._name == 'map':
       f = cloudpickle.loads(functors[0]._body)
 
@@ -295,176 +313,110 @@ class EggPair(object):
       print('reduce finished')
 
     elif task._name == 'mapPartitions':
-      f = cloudpickle.loads(functors[0]._body)
-      input_adapter = self.get_unary_input_adapter(task_info=task)
-      output_adapter = self.get_unary_output_adapter(task_info=task)
-      input_iterator = input_adapter.iteritems()
-      output_writebatch = output_adapter.new_batch()
-
-      value = f(generator(self.serde, input_iterator))
-      if input_iterator.last():
-        print("value of mapPartitions2:{}".format(value))
-        if isinstance(value, Iterable):
-          for k1, v1 in value:
-            output_writebatch.put(self.serde.serialize(k1), self.serde.serialize(v1))
-        else:
-          key = input_iterator.key()
-          output_writebatch.put(key, self.serde.serialize(value))
-
-      output_writebatch.close()
-      output_adapter.close()
-      input_adapter.close()
+      def map_partitions_wrapper(input_iterator, output_writebatch):
+        f = cloudpickle.loads(functors[0]._body)
+        value = f(generator(self.serde, input_iterator))
+        if input_iterator.last():
+          LOGGER.info("value of mapPartitions2:{}".format(value))
+          if isinstance(value, Iterable):
+            for k1, v1 in value:
+              output_writebatch.put(self.serde.serialize(k1), self.serde.serialize(v1))
+          else:
+            key = input_iterator.key()
+            output_writebatch.put(key, self.serde.serialize(value))
+      self._run_unary(map_partitions_wrapper, task)
 
     elif task._name == 'collapsePartitions':
-      f = cloudpickle.loads(functors[0]._body)
-      input_adapter = self.get_unary_input_adapter(task_info=task)
-      output_adapter = self.get_unary_output_adapter(task_info=task)
-      input_iterator = input_adapter.iteritems()
-      output_writebatch = output_adapter.new_batch()
-
-      value = f(generator(self.serde, input_iterator))
-      if input_iterator.last():
-        key = input_iterator.key()
-        output_writebatch.put(key, self.serde.serialize(value))
-
-      output_writebatch.close()
-      output_adapter.close()
-      input_adapter.close()
+      def collapse_partitions_wrapper(input_iterator, output_writebatch):
+        f = cloudpickle.loads(functors[0]._body)
+        value = f(generator(self.serde, input_iterator))
+        if input_iterator.last():
+          key = input_iterator.key()
+          output_writebatch.put(key, self.serde.serialize(value))
+      self._run_unary(collapse_partitions_wrapper, task)
 
     elif task._name == 'flatMap':
-      f = cloudpickle.loads(functors[0]._body)
-      input_adapter = self.get_unary_input_adapter(task_info=task)
-      output_adapter = self.get_unary_output_adapter(task_info=task)
-      input_iterator = input_adapter.iteritems()
-      output_writebatch = output_adapter.new_batch()
-
-      for k1, v1 in input_iterator:
-        for k2, v2 in f(self.serde.deserialize(k1), self.serde.deserialize(v1)):
-          output_writebatch.put(self.serde.serialize(k2), self.serde.serialize(v2))
-
-      output_writebatch.close()
-      output_adapter.close()
-      input_adapter.close()
+      def flat_map_wraaper(input_iterator, output_writebatch):
+        f = cloudpickle.loads(functors[0]._body)
+        for k1, v1 in input_iterator:
+          for k2, v2 in f(self.serde.deserialize(k1), self.serde.deserialize(v1)):
+            output_writebatch.put(self.serde.serialize(k2), self.serde.serialize(v2))
+      self._run_unary(flat_map_wraaper, task)
 
     elif task._name == 'glom':
-      input_adapter = self.get_unary_input_adapter(task_info=task)
-      output_adapter = self.get_unary_output_adapter(task_info=task)
-      input_iterator = input_adapter.iteritems()
-      output_writebatch = output_adapter.new_batch()
-
-      k_tmp = None
-      v_list = []
-      for k, v in input_iterator:
-        v_list.append((self.serde.deserialize(k), self.serde.deserialize(v)))
-        k_tmp = k
-      if k_tmp is not None:
-        output_writebatch.put(k_tmp, self.serde.serialize(v_list))
-
-      output_writebatch.close()
-      output_adapter.close()
-      input_adapter.close()
+      def glom_wrapper(input_iterator, output_writebatch):
+        k_tmp = None
+        v_list = []
+        for k, v in input_iterator:
+          v_list.append((self.serde.deserialize(k), self.serde.deserialize(v)))
+          k_tmp = k
+        if k_tmp is not None:
+          output_writebatch.put(k_tmp, self.serde.serialize(v_list))
+      self._run_unary(glom_wrapper, task)
 
     elif task._name == 'sample':
-      fraction = cloudpickle.loads(functors[0]._body)
-      seed = cloudpickle.loads(functors[1]._body)
-      input_adapter = self.get_unary_input_adapter(task_info=task)
-      output_adapter = self.get_unary_output_adapter(task_info=task)
-      input_iterator = input_adapter.iteritems()
-      output_writebatch = output_adapter.new_batch()
-
-      input_iterator.first()
-      random_state = np.random.RandomState(seed)
-      for k, v in input_iterator:
-        if random_state.rand() < fraction:
-          output_writebatch.put(k, v)
-
-      output_writebatch.close()
-      output_adapter.close()
-      input_adapter.close()
+      def sample_wrapper(input_iterator, output_writebatch):
+        fraction = cloudpickle.loads(functors[0]._body)
+        seed = cloudpickle.loads(functors[1]._body)
+        input_iterator.first()
+        random_state = np.random.RandomState(seed)
+        for k, v in input_iterator:
+          if random_state.rand() < fraction:
+            output_writebatch.put(k, v)
+      self._run_unary(sample_wrapper, task)
 
     elif task._name == 'filter':
-      f = cloudpickle.loads(functors[0]._body)
-      input_adapter = self.get_unary_input_adapter(task_info=task)
-      output_adapter = self.get_unary_output_adapter(task_info=task)
-      input_iterator = input_adapter.iteritems()
-      output_writebatch = output_adapter.new_batch()
-
-      for k ,v in input_iterator:
-        if f(self.serde.deserialize(k), self.serde.deserialize(v)):
-          output_writebatch.put(k, v)
-
-      output_writebatch.close()
-      output_adapter.close()
-      input_adapter.close()
+      def filter_wrapper(input_iterator, output_writebatch):
+        f = cloudpickle.loads(functors[0]._body)
+        for k ,v in input_iterator:
+          if f(self.serde.deserialize(k), self.serde.deserialize(v)):
+            output_writebatch.put(k, v)
+      self._run_unary(filter_wrapper, task)
 
     elif task._name == 'aggregate':
       self.aggregate(task)
       print('aggregate finished')
 
     elif task._name == 'join':
-      f = cloudpickle.loads(functors[0]._body)
-      left_adapter, right_adapter = self.get_binary_input_adapter(task_info=task)
-      output_adapter = self.get_unary_output_adapter(task_info=task)
-      left_iterator = left_adapter.iteritems()
-      right_iterator = right_adapter.iteritems()
-      output_writebatch = output_adapter.new_batch()
-
-      for k_bytes, l_v_bytes in left_iterator:
-        r_v_bytes = right_adapter.get(k_bytes)
-        if r_v_bytes:
-          output_writebatch.put(k_bytes,
-                                self.serde.serialize(f(self.serde.deserialize(l_v_bytes),
-                                                       self.serde.deserialize(r_v_bytes))))
-
-      output_writebatch.close()
-      left_adapter.close()
-      right_adapter.close()
-      output_adapter.close()
+      def join_wrapper(left_iterator, right_iterator, output_writebatch):
+        f = cloudpickle.loads(functors[0]._body)
+        for k_bytes, l_v_bytes in left_iterator:
+          r_v_bytes = right_iterator.adapter.get(k_bytes)
+          if r_v_bytes:
+            LOGGER.info("egg join:{}".format(self.serde.deserialize(r_v_bytes)))
+            output_writebatch.put(k_bytes,
+                                  self.serde.serialize(f(self.serde.deserialize(l_v_bytes),
+                                                         self.serde.deserialize(r_v_bytes))))
+      self._run_binary(join_wrapper, task)
 
     elif task._name == 'subtractByKey':
-      left_adapter, right_adapter = self.get_binary_input_adapter(task_info=task)
-      output_adapter = self.get_unary_output_adapter(task_info=task)
-      left_iterator = left_adapter.iteritems()
-      output_writebatch = output_adapter.new_batch()
-
-      for k_left, v_left in left_iterator:
-        v_right = right_adapter.get(k_left)
-        if v_right is None:
-          output_writebatch.put(k_left, v_left)
-
-      output_writebatch.close()
-      output_adapter.close()
-      left_adapter.close()
-      right_adapter.close()
+      def subtract_by_key_wrapper(left_iterator, right_iterator, output_writebatch):
+        LOGGER.info("sub wrapper")
+        for k_left, v_left in left_iterator:
+          v_right = right_iterator.adapter.get(k_left)
+          if v_right is None:
+            output_writebatch.put(k_left, v_left)
+      self._run_binary(subtract_by_key_wrapper, task)
 
     elif task._name == 'union':
-      f = cloudpickle.loads(functors[0]._body)
-      left_adapter, right_adapter = self.get_binary_input_adapter(task_info=task)
-      output_adapter = self.get_unary_output_adapter(task_info=task)
-      left_iterator = left_adapter.iteritems()
-      right_iterator = right_adapter.iteritems()
-      output_writebatch = output_adapter.new_batch()
+      def union_wrapper(left_iterator, right_iterator, output_writebatch):
+        f = cloudpickle.loads(functors[0]._body)
+        #store the iterator that has been iterated before
+        k_list_iterated = []
 
-      #store the iterator that has been iterated before
-      k_list_iterated = []
+        for k_left, v_left in left_iterator:
+          v_right = right_iterator.adapter.get(k_left)
+          if v_right is None:
+            output_writebatch.put(k_left, v_left)
+          else:
+            k_list_iterated.append(self.serde.deserialize(v_left))
+            v_final = f(v_left, v_right)
+            output_writebatch.put(k_left, v_final)
 
-      for k_left, v_left in left_iterator:
-        v_right = right_adapter.get(k_left)
-        if v_right is None:
-          output_writebatch.put(k_left, v_left)
-        else:
-          k_list_iterated.append(self.serde.deserialize(v_left))
-          v_final = f(v_left, v_right)
-          output_writebatch.put(k_left, v_final)
-
-      for k_right, v_right in right_iterator:
-        if self.serde.deserialize(k_right) not in k_list_iterated:
-          output_writebatch.put(k_right, v_right)
-
-      output_writebatch.close()
-      output_adapter.close()
-      left_adapter.close()
-      right_adapter.close()
+        for k_right, v_right in right_iterator:
+          if self.serde.deserialize(k_right) not in k_list_iterated:
+            output_writebatch.put(k_right, v_right)
+      self._run_binary(union_wrapper, task)
 
     elif task._name == 'putBatch':
       output_partition = task._outputs[0]
@@ -474,6 +426,9 @@ class EggPair(object):
       output_store = task._job._outputs[0]
 
       grpc_shuffle_receiver(task._job._id, output_partition, len(output_store._partitions))
+    return result
+
+
 
     return result
 
