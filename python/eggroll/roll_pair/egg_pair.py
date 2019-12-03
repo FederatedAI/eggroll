@@ -211,6 +211,7 @@ class EggPair(object):
 
       for k_bytes, v_bytes in input_iterator:
         v = self.serde.deserialize(v_bytes)
+        LOGGER.info("k:{} v:{}".format(self.serde.deserialize(k_bytes), v))
         output_writebatch.put(k_bytes, self.serde.serialize(f(v)))
 
       output_writebatch.close()

@@ -21,9 +21,14 @@ from eggroll.core.session import ErSession
 from eggroll.roll_pair.roll_pair import RollPairContext
 from eggroll.core.conf_keys import DeployConfKeys, SessionConfKeys, \
   ClusterManagerConfKeys, NodeManagerConfKeys
+from eggroll.roll_pair.test.roll_pair_test_assets import get_test_context
 
 
 class TestRollPairContext(unittest.TestCase):
+
+  def setUp(self):
+    self.ctx = get_test_context()
+
   def test_init(self):
     session = ErSession(options={"eggroll.deploy.mode": "standalone"})
     # session = ErSession()
@@ -104,3 +109,9 @@ class TestRollPairContext(unittest.TestCase):
 
     for val in context.load("ns1", "n21").get_all():
       print("get all value:{}".format(val))
+
+  def test_get_all_standalone(self):
+    table =self.ctx.load("ns1", "n23")
+    print(str(table))
+    res = table.__get_all_standalone()
+    print(res)

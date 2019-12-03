@@ -214,7 +214,11 @@ class LmdbSortedKvAdapter(SortedKvAdapter):
         return self.env.open_db(DEFAULT_DB)
 
     def close(self):
+      try:
+        self.txn.commit()
         self.cursor.close()
+      except:
+        LOGGER.warning("txn has closed")
 
     def iteritems(self):
         return LmdbIterator(self, self.cursor)
