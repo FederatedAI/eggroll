@@ -11,7 +11,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+import sys
 from datetime import datetime
 import json
 import time
@@ -103,3 +103,18 @@ def get_self_ip():
   finally:
     s.close()
   return self_ip
+
+#AI copy from java ByteString.hashCode()
+def hash_code(s):
+  if isinstance(s, bytes):
+    s = bytes_to_string(s)
+  seed = 31
+  h = 0
+  for c in s:
+    h = int(seed * h) + ord(c)
+
+  if h == sys.maxsize or h == -sys.maxsize - 1:
+    print("hash code:{} out of int bound".format(str(h)))
+    h = 0
+
+  return h

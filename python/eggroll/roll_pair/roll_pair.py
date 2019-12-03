@@ -12,6 +12,10 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+from typing import Iterable
+
+import grpc
+from grpc._cython import cygrpc
 
 from eggroll.core.command.command_model import ErCommandRequest, ErCommandResponse, CommandURI
 from eggroll.core.datastructure.broker import FifoBroker
@@ -26,9 +30,12 @@ from eggroll.core.constants import StoreTypes, SerdesTypes, PartitionerTypes, Pr
 from eggroll.core.serdes.eggroll_serdes import PickleSerdes, CloudPickleSerdes, EmptySerdes
 from eggroll.core.session import ErSession
 from eggroll.core.transfer.transfer_service import GrpcTransferServicer, TransferClient
-from eggroll.core.utils import string_to_bytes
+from eggroll.core.utils import string_to_bytes, hash_code
 from eggroll.roll_pair.egg_pair import EggPair
 from eggroll.roll_pair.shuffler import DefaultShuffler
+from concurrent import futures
+from eggroll.core.io.kv_adapter import LmdbSortedKvAdapter, RocksdbSortedKvAdapter
+from eggroll.core.io.io_utils import get_db_path
 from eggroll.core.conf_keys import SessionConfKeys
 
 
@@ -103,6 +110,8 @@ class RollPair(object):
   __uri_prefix = 'v1/roll-pair'
   GET = "get"
   PUT = "put"
+  GET_ALL = "getAll"
+  PUT_ALL = "put_all"
   MAP = 'map'
   MAP_VALUES = 'mapValues'
   REDUCE = 'reduce'
@@ -118,18 +127,25 @@ class RollPair(object):
   UNION = 'union'
   RUNJOB = 'runJob'
 
+  def __partitioner(self):
+    def partitioner_wrapper(hash_func, total_partitions):
+      def hash_mod(k):
+        return hash_func(k) % total_partitions
+      return hash_mod
+    return partitioner_wrapper
+
   def __init__(self, er_store: ErStore, rp_ctx: RollPairContext):
     self.__command_serdes =  SerdesTypes.PROTOBUF
     self.__roll_pair_command_client = CommandClient()
     self.__store = er_store
     self.value_serdes = self.get_serdes()
     self.key_sedes = self.get_serdes()
-    self.partitioner = default_partitioner
+    self.partitioner = self.__partitioner()(hash_code, self.__store._store_locator._total_partitions)
     self.egg_router = default_egg_router
     self.ctx = rp_ctx
     self.__session_id = self.ctx.session_id
     #TODO: config or auto
-    self._transfer_server_endpoint = "localhost:19001"
+    self._transfer_server_endpoint = "localhost:60668"
 
   def __repr__(self):
     return f'python RollPair(_store={self.__store})'
@@ -195,67 +211,122 @@ class RollPair(object):
 
     return value
 
-  def get_all(self, k, opt = {}):
-      functor = ErFunctor(name=RollPair.MAP_VALUES, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(self._transfer_server_endpoint))
-      outputs = []
-      job = ErJob(id=self.__session_id, name=RollPair.MAP_VALUES,
-                  inputs=[self.__store],
-                  outputs=outputs,
-                  functors=[functor])
-        #TODO: send to all eggs
-      job_result = self.__roll_pair_command_client.simple_sync_send(
-          input = job,
-          output_type = ErJob,
-          endpoint = self.__roll_pair_service_endpoint,
-          command_uri = CommandURI(f'{RollPair.__uri_prefix}/{RollPair.MAP_VALUES}'),
-          serdes_type=self.__command_serdes)
-      broker = GrpcTransferServicer.get_broker(job._id)
-      while not broker.is_closable():
-        proto_transfer_batch = broker.get(block=True, timeout=1)
-        if proto_transfer_batch:
-            bin_data = proto_transfer_batch.data
-        reader = BinBatchReader(pair_batch=bin_data)
-        try:
-            while reader.has_remaining():
-              key_size = reader.read_int()
-              key = reader.read_bytes(size=key_size)
-              value_size = reader.read_int()
-              value = reader.read_bytes(size=value_size)
-              yield key, value
-        except IndexError as e:
-            print('finish processing an output')
-      GrpcTransferServicer.remove_broker(job._id)
+  def __get_all_standalone(self, opt={}):
+    #path = get_db_path(self.__store._partitions[0])[:-2]
+    path = get_db_path(self.__store._partitions[0])
+    options = {"path": path}
+    print("db path:{}".format(path))
+    if self.ctx.default_store_type == StoreTypes.ROLLPAIR_LMDB:
+      input_adapter = LmdbSortedKvAdapter(options)
+    elif self.ctx.default_store_type == StoreTypes.ROLLPAIR_LEVELDB:
+      input_adapter = RocksdbSortedKvAdapter(options)
+    input_iterator = input_adapter.iteritems()
+    result = []
+    for k, v in input_iterator:
+      print("yield kv")
+      #yield (self.get_serdes().deserialize(k), self.get_serdes().deserialize(v))
+      result.append((self.get_serdes().deserialize(k), self.get_serdes().deserialize(v)))
+    return result
+
+  def __put_all_standalone(self, items, output=None,opt={}):
+    is_include_key = opt.get("is_include_key")
+    #path = get_db_path(self.__store._partitions[0])[:-2]
+    path = get_db_path(self.__store._partitions[0])
+    options = {"path": path}
+    input_adapter = LmdbSortedKvAdapter(options)
+    input_iterator = input_adapter.iteritems()
+    if isinstance(items, Iterable):
+      for k, v in items:
+        print("put k:{}, v:{}".format(k, v))
+        input_adapter.put(self.value_serdes.serialize(k), self.value_serdes.serialize(v))
+    else:
+      raise EnvironmentError("iterable obj is required")
+
+    input_adapter.close()
+
+  def get_all(self, opt = {}):
+    print("start get all")
+    return self.__get_all_standalone()
+    # server = grpc.server(futures.ThreadPoolExecutor(max_workers=1),
+    #                      options=[
+    #                        (cygrpc.ChannelArgKey.max_send_message_length, -1),
+    #                        (cygrpc.ChannelArgKey.max_receive_message_length, -1)])
+    # transfer_servicer = GrpcTransferServicer()
+    # transfer_pb2_grpc.add_TransferServiceServicer_to_server(transfer_servicer,
+    #                                                         server)
+    #
+    # port = server.add_insecure_port(f'[::]:{0}')
+    # print("starting roll pair recv service, port:{}".format(port))
+    # server.start()
+    #
+    # functor = ErFunctor(name=EggPair.GET_ALL, serdes=SerdesTypes.CLOUD_PICKLE,
+    #                     body=cloudpickle.dumps(ErEndpoint(host="localhost", port=port)))
+    # outputs = []
+    # print("session id:{}".format(self.__session_id))
+    # job = ErJob(id=self.__session_id, name=EggPair.GET_ALL,
+    #             inputs=[self.__store],
+    #             outputs=outputs,
+    #             functors=[functor])
+    # task = ErTask(id=self.__session_id, name=RollPair.GET_ALL, inputs=self.__store._partitions, outputs=[], job=job)
+    #   #TODO: send to all eggs
+    # print("get egg port:{}".format(self.ctx.get_egg_endpoint()._port))
+    # print("job id:{}".format(job._id))
+    # job_result = self.__roll_pair_command_client.simple_sync_send(
+    #     input=task,
+    #     output_type=ErTask,
+    #     endpoint=self.ctx.get_egg_endpoint(),
+    #     command_uri=CommandURI(f'{EggPair.uri_prefix}/{EggPair.GET_ALL}'),
+    #     serdes_type=self.__command_serdes)
+    #
+    # broker = GrpcTransferServicer.get_broker(str(job._id))
+    # while not broker.is_closable():
+    #   proto_transfer_batch = broker.get(block=True, timeout=1)
+    #   if proto_transfer_batch:
+    #       bin_data = proto_transfer_batch.data
+    #   reader = BinBatchReader(pair_batch=bin_data)
+    #   try:
+    #       while reader.has_remaining():
+    #         key_size = reader.read_int()
+    #         key = reader.read_bytes(size=key_size)
+    #         value_size = reader.read_int()
+    #         value = reader.read_bytes(size=value_size)
+    #         yield key, value
+    #   except IndexError as e:
+    #       print('finish processing an output')
+    # GrpcTransferServicer.remove_broker(job._id)
 
   def put_all(self, items, output=None,opt = {}):
-        outputs = []
-        if output:
-          outputs.append(output)
+      return self.__put_all_standalone(items, opt=opt)
+      outputs = []
+      if output:
+        outputs.append(output)
 
-        job = ErJob(id=self.__session_id, name="putAll",
-                    inputs=[self.__store],
-                    outputs=outputs,
-                    functors=[])
-        task = ErTask(id=self.__session_id, name=RollPair.PUT, inputs=inputs, outputs=output, job=job)
-        print("start send req")
-        job_result = self.__roll_pair_command_client.simple_sync_send(
-            input = job,
-            output_type = ErJob,
-            endpoint = self.__roll_pair_service_endpoint,
-            command_uri = CommandURI(f'{RollPair.__uri_prefix}/{RollPair.MAP_VALUES}'),
-            serdes_type=self.__command_serdes)
-        # TODO: all aggs ?
-        shuffle_broker = FifoBroker()
-        shuffler = DefaultShuffler(task._job._id, shuffle_broker, output_store, output_partition, p)
+      job = ErJob(id=self.__session_id, name="putAll",
+                  inputs=[self.__store],
+                  outputs=outputs,
+                  functors=[])
+      task = ErTask(id=self.__session_id, name=RollPair.PUT, inputs=inputs, outputs=output, job=job)
+      print("start send req")
+      job_result = self.__roll_pair_command_client.simple_sync_send(
+          input=job,
+          output_type=ErJob,
+          endpoint=self.__roll_pair_service_endpoint,
+          command_uri=CommandURI(f'{RollPair.__uri_prefix}/{RollPair.MAP_VALUES}'),
+          serdes_type=self.__command_serdes)
+      # TODO: all aggs ?
+      shuffle_broker = FifoBroker()
+      shuffler = DefaultShuffler(task._job._id, shuffle_broker, output_store, output_partition, p)
 
-        for k1, v1 in items:
-          shuffle_broker.put(self.serde.serialize(k1), self.serde.serialize(v1))
-        print('finish calculating')
-        shuffle_broker.signal_write_finish()
-        # TODO: async ?
-        shuffler.start()
+      for k1, v1 in items:
+        shuffle_broker.put(self.serde.serialize(k1), self.serde.serialize(v1))
+      print('finish calculating')
+      shuffle_broker.signal_write_finish()
+      # TODO: async ?
+      shuffler.start()
 
-        shuffle_finished = shuffler.wait_until_finished(600)
-        return None
+      shuffle_finished = shuffler.wait_until_finished(600)
+      return None
+
   def put(self, k, v, opt = {}):
     k, v = self.get_serdes().serialize(k), self.get_serdes().serialize(v)
     er_pair = ErPair(key=k, value=v)
@@ -296,16 +367,16 @@ class RollPair(object):
                 functors=[functor])
 
     job_result = self.__roll_pair_command_client.simple_sync_send(
-        input = job,
-        output_type = ErJob,
-        endpoint = self.__roll_pair_service_endpoint,
-        command_uri = CommandURI(f'{RollPair.__uri_prefix}/{RollPair.MAP_VALUES}'),
+        input=job,
+        output_type=ErJob,
+        endpoint=self.ctx.get_roll_endpoint(),
+        command_uri=CommandURI(f'{RollPair.__uri_prefix}/{RollPair.MAP_VALUES}'),
         serdes_type=self.__command_serdes)
 
     er_store = job_result._outputs[0]
     print(er_store)
 
-    return RollPair(er_store, options=self._parent_opts)
+    return RollPair(er_store, self.ctx)
 
   def map(self, func, output = None, options = {}):
     functor = ErFunctor(name=RollPair.MAP, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))

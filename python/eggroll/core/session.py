@@ -39,17 +39,19 @@ class StandaloneManagerThread (threading.Thread):
     os.system("./bin/eggroll_boot.sh stop_node './bin/eggroll_boot_standalone_manager.sh  -p 4670' s1 node1 ")
 
 class EggPairThread (threading.Thread):
-  def __init__(self, port):
+  def __init__(self, port, nm_port, session_id):
     threading.Thread.__init__(self)
     self.setDaemon(True)
     self.port = port
+    self.nm_port = nm_port
+    self.session_id = session_id
 
   def run(self):
     print ("EggPairThread start：" + self.name)
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', '--data-dir', default=os.path.dirname(os.path.realpath(__file__)))
-    parser.add_argument('-n', '--node-manager')
-    parser.add_argument('-s', '--session-id')
+    parser.add_argument('-n', '--node-manager', default="localhost:" + str(self.nm_port))
+    parser.add_argument('-s', '--session-id', default=self.session_id)
     parser.add_argument('-p', '--port', default=self.port)
 
     args = parser.parse_args()
@@ -64,27 +66,27 @@ class ErDeploy:
 class ErStandaloneDeploy(ErDeploy):
   def __init__(self, session_meta: ErSessionMeta, options={}):
     self.manager_port = options.get("eggroll.standalone.manager.port", -4670)
-    self.egg_ports = [int(v) for v in options.get("eggroll.standalone.egg.ports", "4672").split(",")]
+    self.egg_ports = [int(v) for v in options.get("eggroll.standalone.egg.ports", "20001").split(",")]
     if self.manager_port > 0:
       raise NotImplementedError("TODO: start standalone manager and wait ready")
     else:
       self.manager_port = abs(self.manager_port)
     self._eggs = {0:[]}
     for id, egg_port in enumerate(self.egg_ports):
-      egg_th = EggPairThread(egg_port)
+      egg_th = EggPairThread(egg_port, self.manager_port, session_meta._id)
       egg_th.setDaemon(True)
       egg_th.start()
       self._eggs[0].append(ErProcessor(id=id,
                                     server_node_id=0,
                                     processor_type=ProcessorTypes.EGG_PAIR,
                                     status=ProcessorStatus.RUNNING,
-                                    command_endpoint=ErEndpoint(get_self_ip(), egg_port)))
+                                    command_endpoint=ErEndpoint("localhost", egg_port)))
 
     self._rolls = [ErProcessor(id=0,
                                server_node_id=0,
                                processor_type=ProcessorTypes.ROLL_PAIR_SERVICER,
                                status=ProcessorStatus.RUNNING,
-                               command_endpoint=ErEndpoint(get_self_ip(), self.manager_port))]
+                               command_endpoint=ErEndpoint("localhost", self.manager_port))]
 
     processorBatch = ErProcessorBatch(id=0, name='standalone', processors=[self._rolls[0]] + list(self._eggs[0]))
     self.cm_client = ClusterManagerClient(options=options)
