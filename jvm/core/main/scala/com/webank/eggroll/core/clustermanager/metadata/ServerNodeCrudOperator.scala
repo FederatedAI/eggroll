@@ -30,6 +30,7 @@ import org.apache.commons.lang3.StringUtils
 import org.apache.ibatis.session.SqlSession
 
 import scala.collection.mutable.ArrayBuffer
+import collection.JavaConverters._
 
 class ServerNodeCrudOperator extends CrudOperator with Logging {
   private val crudOperatorTemplate = new CrudOperatorTemplate()
@@ -144,6 +145,26 @@ object ServerNodeCrudOperator {
       status = nodeRecord.getStatus)
   }
 
+  private[metadata] def doGetServerNodesUnwrapped(input: ErServerNode, sqlSession: SqlSession): Array[ServerNode] = {
+    val nodeExample = new ServerNodeExample
+    val criteria = nodeExample.createCriteria()
+    if (input.id > 0) criteria.andServerNodeIdEqualTo(input.id)
+    if (!StringUtils.isBlank(input.name)) criteria.andNameEqualTo(input.name)
+    if (input.clusterId >= 0) criteria.andServerClusterIdEqualTo(input.clusterId)
+    if (!StringUtils.isBlank(input.endpoint.host)) criteria.andHostEqualTo(input.endpoint.host)
+    if (input.endpoint.port > 0) criteria.andPortEqualTo(input.endpoint.port)
+    if (!StringUtils.isBlank(input.nodeType)) criteria.andNodeTypeEqualTo(input.nodeType)
+    if (!StringUtils.isBlank(input.status)) criteria.andStatusEqualTo(input.status)
+
+    var nodeResult: util.List[ServerNode] = new util.ArrayList[ServerNode]()
+    if (criteria.isValid && !criteria.getAllCriteria.isEmpty) {
+      val nodeMapper = sqlSession.getMapper(classOf[ServerNodeMapper])
+      nodeResult = nodeMapper.selectByExample(nodeExample)
+    }
+
+    nodeResult.asScala.toArray
+  }
+
   private[metadata] def doGetServerNodes(input: ErServerNode, sqlSession: SqlSession): Array[ErServerNode] = {
     val nodeExample = new ServerNodeExample
     val criteria = nodeExample.createCriteria()
@@ -155,6 +176,7 @@ object ServerNodeCrudOperator {
     if (!StringUtils.isBlank(input.nodeType)) criteria.andNodeTypeEqualTo(input.nodeType)
     if (!StringUtils.isBlank(input.status)) criteria.andStatusEqualTo(input.status)
 
+    nodeExample.setOrderByClause("server_node_id asc")
     var nodeResult: util.List[ServerNode] = new util.ArrayList[ServerNode]()
     if (criteria.isValid && !criteria.getAllCriteria.isEmpty) {
       val nodeMapper = sqlSession.getMapper(classOf[ServerNodeMapper])

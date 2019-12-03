@@ -87,6 +87,8 @@ object SessionConfKeys {
   val CONFKEY_SESSION_ID = "eggroll.session.id"
   val CONFKEY_SESSION_NAME = "eggroll.session.name"
   val CONFKEY_SESSION_MAX_PROCESSORS_PER_NODE = "eggroll.session.max.processors.per.node"
+  val CONFKEY_SESSION_PARTITION_SERVERNODE_BINDING_STRATEGY = "eggroll.session.partition.servernode.binding.strategy"
+  val CONFKEY_SESSION_PARTITION_SERVERNODE_BINDING_ID = "eggroll.session.partition.servernode.bindind.id"
 }
 
 object DeployConfKeys {

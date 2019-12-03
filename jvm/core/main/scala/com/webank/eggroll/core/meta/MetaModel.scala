@@ -19,9 +19,10 @@
 package com.webank.eggroll.core.meta
 
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicInteger
 
 import com.google.protobuf.{ByteString, Message => PbMessage}
-import com.webank.eggroll.core.constant.StringConstants
+import com.webank.eggroll.core.constant.{BindingStrategies, StringConstants}
 import com.webank.eggroll.core.datastructure.{RollContext, RpcMessage}
 import com.webank.eggroll.core.meta.NetworkingModelPbMessageSerdes._
 import com.webank.eggroll.core.serdes.{BaseSerializable, PbMessageDeserializer, PbMessageSerializer}
@@ -29,6 +30,7 @@ import com.webank.eggroll.core.util.TimeUtils
 import org.apache.commons.lang3.StringUtils
 
 import scala.collection.JavaConverters._
+import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
 trait MetaRpcMessage extends RpcMessage {
@@ -70,7 +72,7 @@ case class ErStoreLocator(storeType: String,
   }
 }
 
-case class ErPartition(id: Int, storeLocator: ErStoreLocator, processor: ErProcessor) extends MetaRpcMessage {
+case class ErPartition(id: Int, storeLocator: ErStoreLocator = null, processor: ErProcessor = null) extends MetaRpcMessage {
   def toPath(delim: String = StringConstants.SLASH): String = String.join(delim, storeLocator.toPath(delim = delim), id.toString)
 }
 
@@ -116,7 +118,39 @@ case class ErSessionMeta(id: String,
                          tag: String = StringConstants.EMPTY) extends MetaRpcMessage {
 }
 
-case class ErServerSessionDeployment(id: String, rolls: Array[ErProcessor], eggs: Map[Long, Array[ErProcessor]]) {
+class ErPartitionBinding(val id: String,
+                         val totalPartitions: Int,
+                         val partitionToServerNodes: Array[Long],
+                         val bindingStrategy: String = BindingStrategies.ROUND_ROBIN,
+                         val detailBindings: Array[ErProcessor] = Array.empty) {
+  def toPartitions(): Array[ErPartition] = {
+    val i = new AtomicInteger(0)
+    val result = ArrayBuffer[ErPartition]()
+
+    partitionToServerNodes.foreach(snid => {
+      val curI = i.getAndIncrement()
+      result += ErPartition(id = curI, processor = ErProcessor(serverNodeId = snid, tag = "binding"))
+    })
+
+    result.toArray
+  }
+}
+
+object ErPartitionBinding {
+  def genId(sessionId: String,
+            totalPartitions: Int,
+            serverNodeIds: Array[Long],
+            strategy: String = BindingStrategies.ROUND_ROBIN): String = {
+    val concatted = serverNodeIds.mkString(StringConstants.COMMA)
+    String.join("-", sessionId, totalPartitions.toString, strategy, concatted)
+  }
+}
+
+case class ErServerSessionDeployment(id: String,
+                                     serverCluster: ErServerCluster,
+                                     rolls: Array[ErProcessor],
+                                     eggs: Map[Long, Array[ErProcessor]],
+                                     partitionBindings: mutable.Map[String, ErPartitionBinding] = mutable.Map[String, ErPartitionBinding]()) {
   def toErProcessorBatch(): ErProcessorBatch = {
     val processors = new ArrayBuffer[ErProcessor]()
     processors ++= rolls
@@ -213,8 +247,8 @@ object MetaModelPbMessageSerdes {
     override def toProto[T >: PbMessage](): Meta.Partition = {
       val builder = Meta.Partition.newBuilder()
         .setId(src.id)
-        .setStoreLocator(src.storeLocator.toProto())
         .setProcessor(src.processor.toProto())
+      if (src.storeLocator != null) builder.setStoreLocator(src.storeLocator.toProto())
 
       builder.build()
     }

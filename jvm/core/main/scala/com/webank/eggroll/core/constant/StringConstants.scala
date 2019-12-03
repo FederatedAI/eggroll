@@ -19,6 +19,8 @@
 package com.webank.eggroll.core.constant
 
 object StringConstants {
+  val UNKNOWN = "UNKNOWN"
+
   val PROTOBUF = "PROTOBUF"
 
   val SLASH = "/"

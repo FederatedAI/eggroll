@@ -23,7 +23,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import com.webank.eggroll.core.client.NodeManagerClient
 import com.webank.eggroll.core.clustermanager.metadata.ServerNodeCrudOperator
-import com.webank.eggroll.core.constant.{ProcessorTypes, ServerNodeStatus, ServerNodeTypes}
+import com.webank.eggroll.core.constant.{BindingStrategies, _}
 import com.webank.eggroll.core.meta._
 
 import scala.collection.mutable
@@ -31,6 +31,14 @@ import scala.collection.mutable.ArrayBuffer
 
 object SessionManager {
   private val activeSessions = new ConcurrentHashMap[String, ErServerSessionDeployment]()
+
+  activeSessions.put(StringConstants.UNKNOWN,
+    new ErServerSessionDeployment(
+      id = StringConstants.UNKNOWN,
+      serverCluster = ErServerCluster(),
+      rolls = Array.empty,
+      eggs = Map.empty,
+      partitionBindings = mutable.Map[String, ErPartitionBinding]()))
 
   def getOrCreateSession(sessionMeta: ErSessionMeta): ErProcessorBatch = {
     val sessionId = sessionMeta.id
@@ -49,9 +57,12 @@ object SessionManager {
         val rolls = deployer.createRolls()
         val eggs = deployer.createEggs()
 
-        val newDeployment = ErServerSessionDeployment(id = sessionId, rolls = rolls.processors, eggs = eggs)
+        val newDeployment = ErServerSessionDeployment(
+          id = sessionId,
+          serverCluster = healthyCluster,
+          rolls = rolls.processors,
+          eggs = eggs)
         activeSessions.put(sessionId, newDeployment)
-
       }
     }
     val deployment = activeSessions.get(sessionId)
@@ -81,12 +92,19 @@ object SessionManager {
         rolls += p
       }
     })
-    val newDeployment = ErServerSessionDeployment(sessionId, rolls.toArray, eggs.mapValues(_.toArray).toMap)
+
+    // todo: find and populate serverCluster
+    val newDeployment = ErServerSessionDeployment(
+      id = sessionId,
+      serverCluster = ErServerCluster(),
+      rolls = rolls.toArray,
+      eggs = eggs.mapValues(_.toArray).toMap)
 
     activeSessions.put(sessionId, newDeployment)
 
     activeSessions.get(sessionId).toErProcessorBatch()
   }
+
 
   def getSession(sessionId: String): ErProcessorBatch = {
     activeSessions.getOrDefault(sessionId, null).toErProcessorBatch()
@@ -101,6 +119,86 @@ object SessionManager {
     null
   }
 
+  def hasBinding(sessionId: String, bindingId: String): Boolean = {
+    val deployment = activeSessions.getOrDefault(sessionId, null)
+    deployment != null && deployment.partitionBindings.contains(bindingId)
+  }
+
+  def addBinding(sessionId: String, binding: ErPartitionBinding): Unit = {
+    val deployment = activeSessions.getOrDefault(sessionId, null)
+    if (deployment == null) {
+      throw new IllegalStateException(s"session ${sessionId} has not been deployed yet")
+    }
+
+    val bindings = deployment.partitionBindings
+    if (bindings.contains(binding.id)) {
+      throw new IllegalArgumentException(s"binding ${binding.id} in session ${sessionId} already exists")
+    }
+
+    bindings += (binding.id -> binding)
+  }
+
+  def getBinding(sessionId: String,
+                 totalPartitions: Int,
+                 serverNodeIds: Array[Long],
+                 strategy: String = BindingStrategies.ROUND_ROBIN): ErPartitionBinding = {
+    val bindingId = ErPartitionBinding.genId(
+      sessionId = sessionId,
+      totalPartitions = totalPartitions,
+      serverNodeIds = serverNodeIds,
+      strategy = strategy)
+
+    getBinding(sessionId, bindingId)
+  }
+
+  def getBinding(sessionId: String, bindingId: String): ErPartitionBinding = {
+    val deployment = activeSessions.getOrDefault(sessionId, null)
+    if (deployment == null) {
+      throw new IllegalStateException(s"session ${sessionId} has not been deployed yet")
+    }
+
+    deployment.partitionBindings.getOrElse(bindingId, null)
+  }
+
+  def createBinding(sessionId: String,
+                    totalPartitions: Int,
+                    serverNodeIds: Array[Long],
+                    strategy: String = BindingStrategies.ROUND_ROBIN,
+                    detailBindings: Array[ErProcessor] = Array.empty): ErPartitionBinding = {
+    val deployment = activeSessions.getOrDefault(sessionId, null)
+    if (deployment == null) {
+      throw new IllegalStateException(s"session ${sessionId} has not been deployed yet")
+    }
+
+    val partitionToServerNodes = ArrayBuffer[Long]()
+    partitionToServerNodes.sizeHint(totalPartitions)
+
+    val nodesLength = serverNodeIds.length
+
+    (0 until totalPartitions).foreach(partitionId => {
+      partitionToServerNodes += serverNodeIds(partitionId % nodesLength)
+    })
+
+    val concatted = serverNodeIds.mkString(StringConstants.COMMA)
+    val id = ErPartitionBinding.genId(sessionId, totalPartitions, serverNodeIds, strategy)
+    var result = new ErPartitionBinding(id = id,
+      partitionToServerNodes = partitionToServerNodes.toArray,
+      totalPartitions = totalPartitions,
+      bindingStrategy = strategy,
+      detailBindings = detailBindings)
+
+    if (deployment.partitionBindings.contains(id)) {
+      result = deployment.partitionBindings.getOrElse(id, result)
+    } else {
+      deployment.partitionBindings += (id -> result)
+    }
+
+    result
+  }
+
+  def getSessionDeployment(sessionId: String): ErServerSessionDeployment = {
+    activeSessions.get(sessionId)
+  }
 }
 
 class DefaultClusterDeployer(sessionMeta: ErSessionMeta,
@@ -144,7 +242,7 @@ class DefaultClusterDeployer(sessionMeta: ErSessionMeta,
       val populatedEggs = new Array[ErProcessor](processorBatch.processors.length)
       processorBatch.processors.foreach(p => {
         val curI = i.getAndIncrement()
-        val populated = p.copy(id = curI, commandEndpoint = p.commandEndpoint.copy(host = host), dataEndpoint = p.dataEndpoint.copy(host = host), tag = s"${p.processorType}-${n.id}-${curI}")
+        val populated = p.copy(id = curI, serverNodeId = n.id, commandEndpoint = p.commandEndpoint.copy(host = host), dataEndpoint = p.dataEndpoint.copy(host = host), tag = s"${p.processorType}-${n.id}-${curI}")
 
         populatedEggs.update(curI, populated)
       })
