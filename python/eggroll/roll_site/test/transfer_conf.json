@@ -1,7 +1,0 @@
-{
-  "src": "guest",
-  "dst": [
-        "host"
-  ],
-  "allowed_data": ["*"]
-}

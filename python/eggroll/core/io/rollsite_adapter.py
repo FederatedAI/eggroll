@@ -13,11 +13,12 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+import _io
 import sys
 import os
 import pickle
+import grpc
 
-from eggroll.roll_site import rollsite
 from eggroll.core.io.kv_adapter import SortedKvWriteBatch
 from eggroll.core.io.kv_adapter import SortedKvIterator
 from eggroll.core.io.kv_adapter import SortedKvAdapter
@@ -26,11 +27,11 @@ from eggroll.core.proto import meta_pb2
 from eggroll.core.utils import _elements_to_proto
 
 from eggroll.core.io.format import BinBatchWriter
+from eggroll.core.proto import proxy_pb2, proxy_pb2_grpc
 
 class RollsiteWriteBatch(SortedKvWriteBatch):
   def __init__(self, adapter):
     self.adapter = adapter
-    #self.kv_stub = self.adapter.kv_stub
     self.cache = []
     self.name = adapter._name
     self.tag = adapter._tag
@@ -42,25 +43,52 @@ class RollsiteWriteBatch(SortedKvWriteBatch):
     self.dst_host = adapter._dst_host
     self.dst_port = adapter._dst_port
 
-  def transfer_batch_generator(self, packet_len, k_bytes, v_bytes):
-    # todo: pull up as format
-    buffer = bytearray(packet_len)
-    writer = BinBatchWriter({'buffer': buffer})
-    self.cur_offset = writer.get_offset()
-    total_written = 0
-    try:
-      writer.write_bytes(k_bytes, include_size=True)
-      writer.write_bytes(v_bytes, include_size=True)
-      total_written += 1
-      if tag == '1-0':
-        print(f'{tag} written {k_bytes}, total_written {total_written}, is closable {broker.is_closable()}')
-    except IndexError as e:
-      print('caught index error')
+  def generate_message(self, obj, metadata):
+    data = proxy_pb2.Data(key="hello", value=obj)
+    metadata.seq += 1
+    packet = proxy_pb2.Packet(header=metadata, body=data)
+    yield packet
+
+  def push(self, obj, name: str):
+    args = name.split("-", 9)
+    print(args)
+    tag = args[2]
+    src_role = args[3]
+    src_party_id = args[4]
+    dst_role = args[5]
+    dst_party_id = args[6]
+    host = args[7]
+    port = int(args[8])
+
+    channel = grpc.insecure_channel(
+        target="{}:{}".format(host, port),
+        options=[('grpc.max_send_message_length', -1), ('grpc.max_receive_message_length', -1)])
+    stub = proxy_pb2_grpc.DataTransferServiceStub(channel)
+
+    task_info = proxy_pb2.Task(taskId="testTaskId", model=proxy_pb2.Model(name=name, dataKey="testKey"))
+    topic_src = proxy_pb2.Topic(name=name, partyId="{}".format(src_party_id),
+                                role=src_role, callback=None)
+    topic_dst = proxy_pb2.Topic(name=name, partyId="{}".format(dst_party_id),
+                                role=dst_role, callback=None)
+    command_test = proxy_pb2.Command()
+    conf_test = proxy_pb2.Conf(overallTimeout=2000,
+                               completionWaitTimeout=2000,
+                               packetIntervalTimeout=2000,
+                               maxRetries=10)
+
+    metadata = proxy_pb2.Metadata(task=task_info,
+                                  src=topic_src,
+                                  dst=topic_dst,
+                                  command=command_test,
+                                  seq=0, ack=0,
+                                  conf=conf_test)
+
+    stub.push(self.generate_message(obj, metadata))
 
   def write(self, bin_data):
     print(bin_data)
-    rollsite.push(bin_data, self.name, self.tag)
-    self.cache.clear()
+    print(self.name)
+    self.push(bin_data, self.name)
 
   def close(self):
     # write last
@@ -137,6 +165,7 @@ class RollsiteAdapter(SortedKvAdapter):
 
     self._namespace = ''
     self._name = options["name"]
+    print(self._name)
     self._tag = 'tag'
     self._store_type = 'roll_site'
     self._path = ''
@@ -173,6 +202,7 @@ class RollsiteAdapter(SortedKvAdapter):
     return RollsiteIterator(self)
 
   def new_batch(self):
+    print("RollsiteWriteBatch")
     return RollsiteWriteBatch(self)
 
   def get(self, key):
