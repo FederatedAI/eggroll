@@ -14,7 +14,7 @@
 #  limitations under the License.
 #
 
-#from eggroll.roll_site import RuntimeInstance
+from eggroll.roll_site import RuntimeInstance
 from eggroll.roll_site import cluster as cluster_rollsite
 
 def init(job_id, runtime_conf, server_conf_path, transfer_conf_path):

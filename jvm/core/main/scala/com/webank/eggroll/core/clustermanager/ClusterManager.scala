@@ -106,7 +106,7 @@ object ClusterManager extends Logging {
     val port = clusterManager.getPort
     StaticErConf.setPort(port)
 
-    val confPath = cmd.getOptionValue('c', "./main/resources/cluster-manager.properties")
+    val confPath = cmd.getOptionValue('c', "./jvm/core/main/resources/cluster-manager.properties")
     StaticErConf.addProperties(confPath)
     logInfo(s"server started at port ${port}")
     println(s"server started at port ${port}")

@@ -13,6 +13,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+import _io
 import sys
 import os
 import pickle
@@ -43,63 +44,21 @@ class RollsiteWriteBatch(SortedKvWriteBatch):
     self.dst_port = adapter._dst_port
 
   def generate_message(self, obj, metadata):
-    print (type(obj))
-    if isinstance(obj, _io.TextIOWrapper):
-      print('-----1----')
-      fp = obj
-      content = fp.read(35)
-      while True:
-        print('-----2----')
-        if not content:
-          content = 'finished'
-          data = proxy_pb2.Data(key="hello", value=content.encode())
-          metadata.command.name = 'finished'
-          metadata.seq += 1
-          packet = proxy_pb2.Packet(header=metadata, body=data)
-          yield packet
-          break
-        else:
-          data = proxy_pb2.Data(key="hello", value=content.encode())
-          metadata.seq += 1
-          packet = proxy_pb2.Packet(header=metadata, body=data)
-          yield packet
-        content = fp.read(35)
-        print('----3-----')
-    elif isinstance(obj, str):
-      print('-----1##----')
-      chunk_size = 10
-      #full_iter = iter(obj)
-      print(len(obj))
-      begin = 0
-      while True:
-        #content = islice(full_iter, chunk_size)
-        content = obj[begin:(begin + chunk_size)]
-        print(content)
-        data = proxy_pb2.Data(key="hello", value=content.encode())
-        metadata.seq += 1
-        packet = proxy_pb2.Packet(header=metadata, body=data)
-        begin += chunk_size
-        if begin > len(obj):
-          content = 'finished'
-          data = proxy_pb2.Data(key="hello", value=content.encode())
-          metadata.command.name = 'finished'
-          metadata.seq += 1
-          packet = proxy_pb2.Packet(header=metadata, body=data)
-          yield packet
-          break
-        yield packet
+    data = proxy_pb2.Data(key="hello", value=obj)
+    metadata.seq += 1
+    packet = proxy_pb2.Packet(header=metadata, body=data)
+    yield packet
 
-  #https://www.codercto.com/a/49586.html
   def push(self, obj, name: str):
     args = name.split("-", 9)
     print(args)
-    src_role = args[0]
-    dst_role = args[1]
-    src_party_id = args[2]
-    dst_party_id = args[3]
-    host = args[4]
-    port = args[5]
-    tag = args[6]
+    tag = args[2]
+    src_role = args[3]
+    src_party_id = args[4]
+    dst_role = args[5]
+    dst_party_id = args[6]
+    host = args[7]
+    port = int(args[8])
 
     channel = grpc.insecure_channel(
         target="{}:{}".format(host, port),
@@ -139,7 +98,6 @@ class RollsiteWriteBatch(SortedKvWriteBatch):
     self.write(bin_data)
 
   def put(self, k, v):
-    print("put")
     writer = self.writer
     try:
       writer.write_bytes(k, include_size=True)

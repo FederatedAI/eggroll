@@ -11,6 +11,8 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+import argparse
+import threading, os
 
 from eggroll.core.meta_model import ErServerNode, ErServerCluster, ErProcessor, ErProcessorBatch, ErSessionMeta, \
   ErEndpoint
@@ -19,6 +21,40 @@ from eggroll.core.utils import get_self_ip, time_now
 from eggroll.core.constants import SessionStatus, ProcessorStatus, ServerNodeTypes, RollTypes, ProcessorTypes
 from eggroll.core.conf_keys import ClusterManagerConfKeys, DeployConfKeys, SessionConfKeys
 
+from eggroll.core.conf_keys import ClusterManagerConfKeys, DeployConfKeys
+from eggroll.roll_pair.egg_pair import serve
+
+
+class StandaloneManagerThread (threading.Thread):
+  def __init__(self):
+    threading.Thread.__init__(self)
+    # self.setDaemon(True)
+
+  def run(self):
+    print ("StandaloneManagerThread start：" + self.name)
+    os.system("./bin/eggroll_boot.sh start_node './bin/eggroll_boot_standalone_manager.sh -p 4670' s1 node1 ")
+    print ("StandaloneManagerThread stop：" + self.name)
+
+  def stop(self):
+    os.system("./bin/eggroll_boot.sh stop_node './bin/eggroll_boot_standalone_manager.sh  -p 4670' s1 node1 ")
+
+class EggPairThread (threading.Thread):
+  def __init__(self, port):
+    threading.Thread.__init__(self)
+    self.setDaemon(True)
+    self.port = port
+
+  def run(self):
+    print ("EggPairThread start：" + self.name)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-d', '--data-dir', default=os.path.dirname(os.path.realpath(__file__)))
+    parser.add_argument('-n', '--node-manager')
+    parser.add_argument('-s', '--session-id')
+    parser.add_argument('-p', '--port', default=self.port)
+
+    args = parser.parse_args()
+    serve(args)
+    print ("EggPairThread stop：" + self.name)
 
 
 class ErDeploy:
@@ -27,19 +63,30 @@ class ErDeploy:
 
 class ErStandaloneDeploy(ErDeploy):
   def __init__(self, session_meta: ErSessionMeta, options={}):
+    self.manager_port = options.get("eggroll.standalone.manager.port", -4670)
+    self.egg_ports = [int(v) for v in options.get("eggroll.standalone.egg.ports", "4672").split(",")]
+    if self.manager_port > 0:
+      raise NotImplementedError("TODO: start standalone manager and wait ready")
+    else:
+      self.manager_port = abs(self.manager_port)
+    self._eggs = {0:[]}
+    for id, egg_port in enumerate(self.egg_ports):
+      egg_th = EggPairThread(egg_port)
+      egg_th.setDaemon(True)
+      egg_th.start()
+      self._eggs[0].append(ErProcessor(id=id,
+                                    server_node_id=0,
+                                    processor_type=ProcessorTypes.EGG_PAIR,
+                                    status=ProcessorStatus.RUNNING,
+                                    command_endpoint=ErEndpoint(get_self_ip(), egg_port)))
+
     self._rolls = [ErProcessor(id=0,
                                server_node_id=0,
                                processor_type=ProcessorTypes.ROLL_PAIR_SERVICER,
                                status=ProcessorStatus.RUNNING,
-                               command_endpoint=ErEndpoint(get_self_ip(), 4671))]
+                               command_endpoint=ErEndpoint(get_self_ip(), self.manager_port))]
 
-    self._eggs = {0: [ErProcessor(id=0,
-                                  server_node_id=0,
-                                  processor_type=ProcessorTypes.EGG_PAIR,
-                                  status=ProcessorStatus.RUNNING,
-                                  command_endpoint=ErEndpoint(get_self_ip(), 4671))]}
-
-    processorBatch = ErProcessorBatch(id=0, name='standalone', processors=[self._rolls[0], self._eggs[0][0]])
+    processorBatch = ErProcessorBatch(id=0, name='standalone', processors=[self._rolls[0]] + list(self._eggs[0]))
     self.cm_client = ClusterManagerClient(options=options)
 
     self.cm_client.register_session(session_meta, processorBatch)
