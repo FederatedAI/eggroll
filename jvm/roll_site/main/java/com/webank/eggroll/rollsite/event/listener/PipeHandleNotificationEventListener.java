@@ -16,7 +16,7 @@
 
 package com.webank.eggroll.rollsite.event.listener;
 
-import com.webank.eggroll.rollsite.networking.proxy.Proxy;
+import com.webank.ai.eggroll.api.networking.proxy.Proxy;
 import com.webank.eggroll.core.constant.CoreConfKeys;
 import com.webank.eggroll.core.meta.ErEndpoint;
 import com.webank.eggroll.core.retry.RetryException;

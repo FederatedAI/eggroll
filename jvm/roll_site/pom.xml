@@ -153,7 +153,7 @@
                     <pluginId>grpc-java</pluginId>
                     <pluginArtifact>io.grpc:protoc-gen-grpc-java:${grpc.version}:exe:${os.detected.classifier}
                     </pluginArtifact>
-                    <protoSourceRoot>${pom.basedir}/../proto</protoSourceRoot>
+                    <protoSourceRoot>${pom.basedir}/../../proto/roll_site</protoSourceRoot>
                 </configuration>
                 <executions>
                     <execution>

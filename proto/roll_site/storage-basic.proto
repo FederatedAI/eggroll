@@ -16,7 +16,7 @@
 
 syntax = "proto3";
 
-package com.webank.eggroll.rollsite.storage;
+package com.webank.ai.eggroll.api.storage;
 
 // todo: merge with Stores class
 enum StorageType {

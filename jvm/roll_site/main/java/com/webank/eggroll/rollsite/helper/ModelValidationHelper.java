@@ -16,7 +16,7 @@
 
 package com.webank.eggroll.rollsite.helper;
 
-import com.webank.eggroll.rollsite.networking.proxy.Proxy;
+import com.webank.ai.eggroll.api.networking.proxy.Proxy;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
 

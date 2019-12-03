@@ -220,7 +220,7 @@ class TestRollPair extends Logging {
 
   @Test
   def startRollPairAsService(): Unit = {
-    val rollServer = NettyServerBuilder.forPort(20000).addService(new CommandService).build
+    val rollServer = NettyServerBuilder.forPort(4670).addService(new CommandService).build
     rollServer.start()
 
     // job

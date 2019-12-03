@@ -17,8 +17,8 @@
 package com.webank.eggroll.rollsite.service;
 
 
-import com.webank.eggroll.rollsite.core.BasicMeta;
-import com.webank.eggroll.rollsite.networking.proxy.Proxy;
+import com.webank.ai.eggroll.api.core.BasicMeta;
+import com.webank.ai.eggroll.api.networking.proxy.Proxy;
 
 public interface FdnRouter {
     BasicMeta.Endpoint route(Proxy.Topic topic);
