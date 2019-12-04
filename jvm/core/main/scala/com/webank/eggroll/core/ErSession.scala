@@ -18,11 +18,11 @@ class ErStandaloneDeploy(sessionMeta: ErSessionMeta, options: Map[String, String
   val eggs: Map[Int, List[ErProcessor]] = Map(0 ->
     eggPorts.map(eggPort => ErProcessor(
       id=0, serverNodeId = 0, processorType = ProcessorTypes.EGG_PAIR,
-      status = ProcessorStatus.RUNNING, commandEndpoint = ErEndpoint("localhost", eggPort))
+      status = ProcessorStatus.RUNNING, commandEndpoint = ErEndpoint("localhost", eggPort), dataEndpoint = ErEndpoint("localhost", eggPort))
     ).toList
   )
   val cmClient: ClusterManagerClient = new ClusterManagerClient("localhost", managerPort)
-  cmClient.registerSession(sessionMeta, ErProcessorBatch())
+  cmClient.registerSession(sessionMeta, ErProcessorBatch(processors = (rolls ++ eggs(0)).toArray))
 }
 class ErSession(val sessionId: String = s"er_session_${System.currentTimeMillis()}_${new Random().nextInt(9999)}",
                 name:String="", tag:String="", options:Map[String, String] = Map()) {

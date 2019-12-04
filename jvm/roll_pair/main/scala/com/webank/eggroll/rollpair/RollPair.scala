@@ -26,11 +26,11 @@ import com.webank.eggroll.core.ErSession
 import com.webank.eggroll.core.client.ClusterManagerClient
 import com.webank.eggroll.core.constant._
 import com.webank.eggroll.core.datastructure.{Broker, LinkedBlockingBroker}
-import com.webank.eggroll.core.meta.{ErEndpoint, ErJob, ErStore, ErStoreLocator}
+import com.webank.eggroll.core.meta.{ErEndpoint, ErJob, ErProcessor, ErStore, ErStoreLocator}
 import com.webank.eggroll.core.session.{ErConf, RuntimeErConf}
 import com.webank.eggroll.core.transfer.GrpcTransferClient
 import com.webank.eggroll.rollpair.component.RollPairServicer
-
+import scala.collection.JavaConverters._
 class RollPairContext(erSession: ErSession, defaultStoreType:String = StoreTypes.ROLLPAIR_LMDB) {
 //  StandaloneManager.main(Array("-s",erSession.sessionId, "-p", erSession.cmClient.endpoint.port.toString))
 
@@ -42,26 +42,27 @@ class RollPairContext(erSession: ErSession, defaultStoreType:String = StoreTypes
       namespace = namespace,
       name = name,
       storeType = opts.getOrElse(StringConstants.STORE_TYPE, StoreTypes.ROLLPAIR_LEVELDB),
-      totalPartitions = opts.getOrElse(StringConstants.TOTAL_PARTITIONS, "0").toInt,
+      totalPartitions = opts.getOrElse(StringConstants.TOTAL_PARTITIONS, "1").toInt,
       partitioner = opts.getOrElse(StringConstants.PARTITIONER, PartitionerTypes.BYTESTRING_HASH),
       serdes = opts.getOrElse(StringConstants.SERDES, SerdesTypes.CLOUD_PICKLE)
     ))
     erSession.cmClient.getOrCreateStore(store)
     new RollPair(store, this)
   }
-}
-
-class RollPair(val store: ErStore,val ctx:RollPairContext, val opts: Map[String,String] = Map()) {
+  // todo: partitioner factory depending on string, and mod partition number
+  def partitioner(k: Array[Byte], n: Int): Int = {
+    ByteString.copyFrom(k).hashCode() % n
+  }
+  def getPartitionProcessor(id:Int):ErProcessor = {
+    ErProcessor(commandEndpoint = ErEndpoint("localhost",20001))
+  }
 
   // todo: 1. consider recv-side shuffle; 2. pull up rowPairDb logic; 3. add partition calculation based on session logic;
-  def putBatch(broker: Broker[ByteString], output: ErStore = null, opts: ErConf = RuntimeErConf()): RollPair = {
-    val totalPartitions = store.storeLocator.totalPartitions
+  def putBatch(broker: Broker[ByteString], output: ErStore = null, opts: ErConf = RuntimeErConf()): Unit = {
+    val totalPartitions = 1
     val transferClients = new Array[GrpcTransferClient](totalPartitions)
     val brokers = new Array[Broker[ByteString]](totalPartitions)
-    // todo: partitioner factory depending on string, and mod partition number
-    def partitioner(k: Array[Byte], n: Int): Int = {
-      ByteString.copyFrom(k).hashCode() % n
-    }
+
 
     // todo: create RowPairDB
     while (!broker.isClosable()) {
@@ -100,9 +101,9 @@ class RollPair(val store: ErStore,val ctx:RollPairContext, val opts: Map[String,
           val newBroker = new LinkedBlockingBroker[ByteString]()
           brokers.update(partitionId, newBroker)
           val newTransferClient = new GrpcTransferClient()
-
+          val proc = ErProcessor(commandEndpoint = ErEndpoint("localhost",20001))
           newBroker.put(rowPairDB)
-          newTransferClient.initForward(dataBroker = newBroker, tag = s"forward-${partitionId}", processor = store.partitions(partitionId).processor)
+          newTransferClient.initForward(dataBroker = newBroker, tag = s"forward-${partitionId}", processor = getPartitionProcessor(partitionId))
           transferClients.update(partitionId, newTransferClient)
         }
 
@@ -116,13 +117,17 @@ class RollPair(val store: ErStore,val ctx:RollPairContext, val opts: Map[String,
         val job = ErJob(id = "1",
           name = "putBatch",
           inputs = Array(ErStore(storeLocator)),
-          functors = Array())
+          functors = Array(),
+          options = Map(SessionConfKeys.CONFKEY_SESSION_ID -> "sid11").asJava)
         rollPair.putBatch(job)
       }
     }
 
     transferClients.foreach(c => c.complete())
 
-    this
   }
+}
+
+class RollPair(val store: ErStore,val ctx:RollPairContext, val opts: Map[String,String] = Map()) {
+
 }
