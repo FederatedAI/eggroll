@@ -50,3 +50,7 @@ class SessionStatus(object):
   NEW = 'NEW'
   RUNNING = 'RUNNING'
   TERMINATED = 'TERMINATED'
+
+class DeployType(object):
+  STANDALONE = 'standalone'
+  CLUSTER = 'cluster'
