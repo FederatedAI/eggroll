@@ -25,6 +25,9 @@ class TestStandalone(unittest.TestCase):
   def setUp(self):
     self.ctx = get_test_context()
 
+  def test_parallelize(self):
+    print(self.ctx.parallelize(range(10)).get_all())
+
   def test_get(self):
     for i in range(10):
       self.ctx.load("ns1", "n25").put(f"k{i}", f"v{i}")
@@ -51,12 +54,12 @@ class TestStandalone(unittest.TestCase):
     print("count:{}".format(self.ctx.load('ns1', 'n30', options=options).count()))
 
   def test_map_values(self):
-    rp = self.ctx.load("ns1", "n24")
+    rp = self.ctx.load("ns1", "n30")
     print(rp.map_values(lambda v: v + 'mapValues').get_all())
 
   def test_map_partitions(self):
     data = [(str(i), i) for i in range(10)]
-    rp = self.ctx.load("ns1", "testMapPartitions").put_all(data, options={"include_key": True})
+    rp = self.ctx.load("ns1", "n30").put_all(data, options={"include_key": True})
     def func(iter):
       ret = []
       for k, v in iter:
@@ -66,11 +69,11 @@ class TestStandalone(unittest.TestCase):
     print(rp.map_partitions(func).get_all())
 
   def test_map(self):
-    rp = self.ctx.load("ns1", "n24")
+    rp = self.ctx.load("ns1", "n30")
     print(rp.map_values(lambda v: v + 'mapValues').get_all())
 
   def test_collapse_partitions(self):
-    rp = self.ctx.load("ns1", "testCollapsePartitions").put_all(range(5))
+    rp = self.ctx.load("ns1", "n30").put_all(range(5))
     def f(iterator):
       sum = []
       for k, v in iterator:
@@ -79,11 +82,11 @@ class TestStandalone(unittest.TestCase):
     print(rp.collapse_partitions(f).get_all())
 
   def test_filter(self):
-    rp = self.ctx.load("ns1", "testFilter").put_all(range(5))
+    rp = self.ctx.load("ns1", "n30").put_all(range(5))
     print(rp.filter(lambda k, v: v % 2 != 0).get_all())
 
   def test_flatMap(self):
-    rp = self.ctx.load("ns1", "testFlatMap").put_all(range(5))
+    rp = self.ctx.load("ns1", "n30").put_all(range(5))
     import random
     def foo(k, v):
       result = []
@@ -94,11 +97,11 @@ class TestStandalone(unittest.TestCase):
     print(rp.flat_map(foo).get_all())
 
   def test_glom(self):
-    rp = self.ctx.load("ns1", "testGlom").put_all(range(5))
+    rp = self.ctx.load("ns1", "n30").put_all(range(5))
     print(rp.glom().get_all())
 
   def test_join(self):
-    left_rp = self.ctx.load("ns1", "testJoinLeft").put_all([('a', 1), ('b', 4)], options={"include_key": True})
+    left_rp = self.ctx.load("ns1", "n30").put_all([('a', 1), ('b', 4)], options={"include_key": True})
     right_rp = self.ctx.load("ns1", "testJoinRight").put_all([('a', 2), ('c', 4)], options={"include_key": True})
     print(left_rp.join(right_rp, lambda v1, v2: v1 + v2).get_all())
 

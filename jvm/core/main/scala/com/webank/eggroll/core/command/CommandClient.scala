@@ -18,20 +18,47 @@
 
 package com.webank.eggroll.core.command
 
+import java.util
+import java.util.{ArrayList, List}
 import java.util.concurrent.CountDownLatch
 
+import com.google.protobuf.ByteString
 import com.webank.eggroll.core.command.Command.CommandResponse
 import com.webank.eggroll.core.command.CommandModelPbMessageSerdes._
 import com.webank.eggroll.core.concurrent.AwaitSettableFuture
-import com.webank.eggroll.core.constant.SerdesTypes
+import com.webank.eggroll.core.constant.{SerdesTypes, SessionCommands}
 import com.webank.eggroll.core.datastructure.RpcMessage
+import com.webank.eggroll.core.di.Singletons
+import com.webank.eggroll.core.factory.GrpcChannelFactory
 import com.webank.eggroll.core.grpc.client.{GrpcClientContext, GrpcClientTemplate}
 import com.webank.eggroll.core.grpc.observer.SameTypeFutureCallerResponseStreamObserver
-import com.webank.eggroll.core.meta.ErEndpoint
+import com.webank.eggroll.core.meta.{ErEndpoint, ErProcessorBatch}
 import com.webank.eggroll.core.util.{Logging, SerdesUtils}
+import io.grpc.ManagedChannel
 import io.grpc.stub.StreamObserver
 
-class CommandClient() extends Logging {
+import scala.collection.JavaConverters._
+import scala.reflect.ClassTag
+import scala.reflect.classTag
+
+class CommandClient(defaultEndpoint:ErEndpoint = null, serdesType: String = SerdesTypes.PROTOBUF, isSecure:Boolean=false)
+  extends Logging {
+  // TODO:1: for java
+  def this(){
+    this(null, SerdesTypes.PROTOBUF, false)
+  }
+  def call[T <: RpcMessage : ClassTag](commandURI: CommandURI,args: RpcMessage* ): T = {
+    val ch: ManagedChannel = Singletons.getNoCheck(classOf[GrpcChannelFactory]).getChannel(defaultEndpoint, isSecure)
+    val stub: CommandServiceGrpc.CommandServiceBlockingStub = CommandServiceGrpc.newBlockingStub(ch)
+    val argBytes = args.map(x => ByteString.copyFrom(SerdesUtils.rpcMessageToBytes(x, SerdesTypes.PROTOBUF)))
+
+    val resp: Command.CommandResponse = stub.call(
+      Command.CommandRequest.newBuilder.setId(System.currentTimeMillis + "")
+        .setUri(commandURI.uri.toString).addAllArgs(argBytes.asJava).build)
+    SerdesUtils.rpcMessageFromBytes(resp.getResults(0).toByteArray,
+      classTag[T].runtimeClass, SerdesTypes.PROTOBUF).asInstanceOf[T]
+  }
+
   def simpleSyncSend[T >: RpcMessage](input: RpcMessage,
                                       outputType: Class[_],
                                       endpoint: ErEndpoint,
