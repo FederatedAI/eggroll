@@ -12,6 +12,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+import uuid
 from typing import Iterable
 
 import grpc
@@ -76,6 +77,18 @@ class RollPairContext(object):
 
     result = self.__session.cm_client.get_or_create_store(store)
     return RollPair(result, self)
+
+  def parallelize(self, data, options={}):
+    namespace = options.get("namespace", None)
+    name = options.get("name", None)
+    create_if_missing = options.get("create_if_missing", True)
+
+    if namespace is None:
+      namespace = self.session_id
+    if name is None:
+      name = str(uuid.uuid1())
+    store = self.load(namespace=namespace, name=name, create_if_missing=create_if_missing, options=options)
+    return store.put_all(data, options=options)
 
 def default_partitioner(k):
     return 0
@@ -171,7 +184,7 @@ class RollPair(object):
     egg_id = self.egg_router(part_id)
     egg_endpoint = self.ctx.get_egg_endpoint(egg_id)
     LOGGER.info(egg_endpoint)
-    LOGGER.info("count:", self.__store._store_locator._total_partitions)
+    LOGGER.info("count:{}".format(self.__store._store_locator._total_partitions))
     inputs = [ErPartition(id=part_id, store_locator=self.__store._store_locator)]
     output = [ErPartition(id=part_id, store_locator=self.__store._store_locator)]
 
@@ -296,38 +309,39 @@ class RollPair(object):
       raise EnvironmentError("input items is None")
     include_key = options.get("include_key", False)
     total_partitions = self.__store._store_locator._total_partitions
+    adapter_dict = {}
 
     def put_all_wrapper(k_bytes, total_partitions):
       adapter_options = {}
-      partitions_id = self.partitioner(k_bytes)
-      if partitions_id >= total_partitions:
-        raise EnvironmentError("partitions id:{} out of range:{}".format(partitions_id, total_partitions))
-      adapter_options["path"] = get_db_path(self.__store._partitions[partitions_id])
+      _partition_id = self.partitioner(k_bytes)
+      if _partition_id >= total_partitions:
+        raise EnvironmentError("partitions id:{} out of range:{}".format(_partition_id, total_partitions))
+      adapter_options["path"] = get_db_path(self.__store._partitions[_partition_id])
       LOGGER.info("path:{}".format(adapter_options["path"]))
-      return adapter_options
+      _input_adapter = self.__get_unary_input_adapter(
+        options=adapter_options)
+      _input_adapter.put(k_bytes, v_bytes)
+      return _input_adapter, _partition_id
 
     if isinstance(items, Iterable):
-      if include_key:
-        LOGGER.info("items:{} include key".format(items))
-        for tup in items:
-          LOGGER.info("put k:{}, v:{}".format(tup[0], tup[1]))
-          k_bytes, v_bytes = self.value_serdes.serialize(tup[0]), self.value_serdes.serialize(tup[1])
-          input_adapter = self.__get_unary_input_adapter(
-            options=put_all_wrapper(k_bytes=k_bytes, total_partitions=total_partitions))
-          input_adapter.put(k_bytes, v_bytes)
-          input_adapter.close()
-      else:
-        k = 0
-        for v in items:
+      k = 0
+      for v in items:
+        if include_key:
+          LOGGER.info("put k:{}, v:{}".format(v[0], v[1]))
+          k_bytes, v_bytes = self.value_serdes.serialize(v[0]), self.value_serdes.serialize(v[1])
+          input_adapter, partition_id = put_all_wrapper(k_bytes, total_partitions)
+          adapter_dict[partition_id] = input_adapter
+        else:
           LOGGER.info("put k:{}, v:{}".format(k, v))
           k_bytes, v_bytes = self.value_serdes.serialize(k), self.value_serdes.serialize(v)
-          input_adapter = self.__get_unary_input_adapter(
-            options=put_all_wrapper(k_bytes=k_bytes, total_partitions=total_partitions))
-          input_adapter.put(k_bytes, v_bytes)
-          input_adapter.close()
+          input_adapter, partition_id = put_all_wrapper(k_bytes, total_partitions)
+          adapter_dict[partition_id] = input_adapter
           k = k + 1
     else:
       raise EnvironmentError("iterable obj is required")
+    for key in adapter_dict:
+      adapter_dict[key].close()
+
     return self
 
   def __put_all_cluster(self, items, output=None, options={"include_key": False}):
