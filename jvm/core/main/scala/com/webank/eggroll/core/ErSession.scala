@@ -24,7 +24,7 @@ class ErStandaloneDeploy(sessionMeta: ErSessionMeta, options: Map[String, String
   val cmClient: ClusterManagerClient = new ClusterManagerClient("localhost", managerPort)
   cmClient.registerSession(sessionMeta, ErProcessorBatch())
 }
-class ErSession(sessionId: String = s"er_session_${System.currentTimeMillis()}_${new Random().nextInt(9999)}",
+class ErSession(val sessionId: String = s"er_session_${System.currentTimeMillis()}_${new Random().nextInt(9999)}",
                 name:String="", tag:String="", options:Map[String, String] = Map()) {
 
   private val sessionMeta = ErSessionMeta(id = sessionId, name=name, status = SessionStatus.NEW,

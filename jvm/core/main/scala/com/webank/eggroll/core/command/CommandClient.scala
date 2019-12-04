@@ -40,14 +40,14 @@ import io.grpc.stub.StreamObserver
 import scala.collection.JavaConverters._
 import scala.reflect.ClassTag
 import scala.reflect.classTag
-
+import scala.reflect.runtime.universe._
 class CommandClient(defaultEndpoint:ErEndpoint = null, serdesType: String = SerdesTypes.PROTOBUF, isSecure:Boolean=false)
   extends Logging {
   // TODO:1: for java
   def this(){
     this(null, SerdesTypes.PROTOBUF, false)
   }
-  def call[T <: RpcMessage : ClassTag](commandURI: CommandURI,args: RpcMessage* ): T = {
+  def call[T](commandURI: CommandURI,args: RpcMessage* )(implicit tag:ClassTag[T]): T = {
     val ch: ManagedChannel = Singletons.getNoCheck(classOf[GrpcChannelFactory]).getChannel(defaultEndpoint, isSecure)
     val stub: CommandServiceGrpc.CommandServiceBlockingStub = CommandServiceGrpc.newBlockingStub(ch)
     val argBytes = args.map(x => ByteString.copyFrom(SerdesUtils.rpcMessageToBytes(x, SerdesTypes.PROTOBUF)))
@@ -56,7 +56,7 @@ class CommandClient(defaultEndpoint:ErEndpoint = null, serdesType: String = Serd
       Command.CommandRequest.newBuilder.setId(System.currentTimeMillis + "")
         .setUri(commandURI.uri.toString).addAllArgs(argBytes.asJava).build)
     SerdesUtils.rpcMessageFromBytes(resp.getResults(0).toByteArray,
-      classTag[T].runtimeClass, SerdesTypes.PROTOBUF).asInstanceOf[T]
+      tag.runtimeClass, SerdesTypes.PROTOBUF).asInstanceOf[T]
   }
 
   def simpleSyncSend[T >: RpcMessage](input: RpcMessage,
