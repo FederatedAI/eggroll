@@ -97,6 +97,11 @@ object Main extends Logging {
       serviceParamTypes = Array(classOf[ErJob]),
       routeToClass = classOf[RollPairServicer],
       routeToMethodName = RollPairServicer.runJob)
+
+    CommandRouter.register(serviceName = RollPairServicer.rollPutBatchCommand,
+      serviceParamTypes = Array(classOf[ErJob]),
+      routeToClass = classOf[RollPairServicer],
+      routeToMethodName = RollPairServicer.putBatch)
   }
   def reportCM(sessionId:String, nm:ErEndpoint, selfPort:Int):Unit = {
     // todo: get port from command line

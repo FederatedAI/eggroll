@@ -20,7 +20,6 @@ package com.webank.eggroll.core.transfer
 
 import java.nio.{ByteBuffer, ByteOrder}
 import java.util
-import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
 import com.google.protobuf.{ByteString, UnsafeByteOperations}
@@ -30,9 +29,9 @@ import com.webank.eggroll.core.datastructure.Broker
 import com.webank.eggroll.core.grpc.client.{GrpcClientContext, GrpcClientTemplate}
 import com.webank.eggroll.core.grpc.observer.SameTypeCallerResponseStreamObserver
 import com.webank.eggroll.core.grpc.processor.BaseClientCallStreamProcessor
+import com.webank.eggroll.core.meta.TransferModelPbMessageSerdes._
 import com.webank.eggroll.core.meta.{ErProcessor, ErTransferBatch, ErTransferHeader}
 import io.grpc.stub.{ClientCallStreamObserver, StreamObserver}
-import com.webank.eggroll.core.meta.TransferModelPbMessageSerdes._
 
 class GrpcTransferClient {
   private val stage = new AtomicInteger(0)
@@ -127,7 +126,7 @@ class GrpcForwardingTransferSendStreamProcessor(clientCallStreamObserver: Client
       dataBroker.drainTo(dataBuffer)
 
       dataBuffer.forEach(data => {
-        val transferBatch = transferBatchBuilder.clear().setHeader(transferHeaderBuilder.setTotalSize(data.size())).setData(data)
+        val transferBatch = transferBatchBuilder.clear().setHeader(transferHeaderBuilder.setTotalSize(data.size()).setTag(tag)).setData(data)
         clientCallStreamObserver.onNext(transferBatch.build())
       })
 
