@@ -1,8 +1,8 @@
 package com.webank.eggroll.core
 
-import com.webank.eggroll.core.client.{ClusterManagerClient, NodeManagerClient}
-import com.webank.eggroll.core.constant.{DeployConfKeys, SessionStatus}
-import com.webank.eggroll.core.meta.{ErProcessorBatch, ErSessionMeta}
+import com.webank.eggroll.core.client.ClusterManagerClient
+import com.webank.eggroll.core.constant.{DeployConfKeys, ProcessorStatus, ProcessorTypes, SessionStatus}
+import com.webank.eggroll.core.meta.{ErEndpoint, ErProcessor, ErProcessorBatch, ErSessionMeta}
 
 import scala.collection.JavaConverters._
 import scala.util.Random
@@ -11,6 +11,16 @@ trait ErDeploy
 
 class ErStandaloneDeploy(sessionMeta: ErSessionMeta, options: Map[String, String] = Map()) extends ErDeploy {
   private val managerPort = options.getOrElse("eggroll.standalone.manager.port", "4670").toInt
+  val rolls: List[ErProcessor] = List(ErProcessor(
+    id=0, serverNodeId = 0, processorType = ProcessorTypes.ROLL_PAIR_SERVICER,
+    status = ProcessorStatus.RUNNING, commandEndpoint = ErEndpoint("localhost", managerPort)))
+  private val eggPorts = options.getOrElse("eggroll.standalone.egg.ports", "20001").split(",").map(_.toInt)
+  val eggs: Map[Int, List[ErProcessor]] = Map(0 ->
+    eggPorts.map(eggPort => ErProcessor(
+      id=0, serverNodeId = 0, processorType = ProcessorTypes.EGG_PAIR,
+      status = ProcessorStatus.RUNNING, commandEndpoint = ErEndpoint("localhost", eggPort))
+    ).toList
+  )
   val cmClient: ClusterManagerClient = new ClusterManagerClient("localhost", managerPort)
   cmClient.registerSession(sessionMeta, ErProcessorBatch())
 }
@@ -24,4 +34,8 @@ class ErSession(sessionId: String = s"er_session_${System.currentTimeMillis()}_$
   } else {
     throw new NotImplementedError("doing")
   }
+  val cmClient: ClusterManagerClient = deployClient.cmClient
+  val rolls: List[ErProcessor] = deployClient.rolls
+  val eggs: Map[Int, List[ErProcessor]] = deployClient.eggs
+
 }
