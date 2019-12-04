@@ -228,7 +228,7 @@ class LmdbSortedKvAdapter(SortedKvAdapter):
     return LmdbWriteBatch(self, self.txn)
 
   def count(self):
-    return sum(1 for _ in self.txn.cursor())
+    return self.txn.stat()["entries"]
     #return self.cursor.count()
 
 class RocksdbWriteBatch(SortedKvWriteBatch):
