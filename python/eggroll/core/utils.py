@@ -49,7 +49,7 @@ def string_to_bytes(string):
 
 
 def bytes_to_string(byte):
-  return byte.decode(encoding="utf-8")
+  return byte.decode(encoding="ISO-8859-1")
 
 
 def json_dumps(src, byte=False):
