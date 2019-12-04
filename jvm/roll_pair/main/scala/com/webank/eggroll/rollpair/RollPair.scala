@@ -32,6 +32,8 @@ import com.webank.eggroll.core.transfer.GrpcTransferClient
 import com.webank.eggroll.rollpair.component.RollPairServicer
 
 class RollPairContext(erSession: ErSession, defaultStoreType:String = StoreTypes.ROLLPAIR_LMDB) {
+//  StandaloneManager.main(Array("-s",erSession.sessionId, "-p", erSession.cmClient.endpoint.port.toString))
+
   def getRollEndpoint(): ErEndpoint = erSession.rolls.head.commandEndpoint
   def getEggEndpoint(partitionId: Int): ErEndpoint = erSession.eggs(0).head.commandEndpoint
 

@@ -27,7 +27,7 @@ import com.webank.eggroll.core.session.StaticErConf
 
 import scala.collection.JavaConverters._
 
-class ClusterManagerClient(endpoint: ErEndpoint) {
+class ClusterManagerClient(val endpoint: ErEndpoint) {
   private val cc = new CommandClient(endpoint)
   private val EMPTY_PARTITION_ARRAY = Array[ErPartition]();
 
@@ -42,38 +42,38 @@ class ClusterManagerClient(endpoint: ErEndpoint) {
         ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, 4670))
   }
 
-  def getServerNode(input:ErServerNode):ErServerNode = cc.call(MetadataCommands.GET_SERVER_NODE, input)
+  def getServerNode(input:ErServerNode):ErServerNode = cc.call[ErServerNode](MetadataCommands.GET_SERVER_NODE, input)
 
-  def getServerNodes(input:ErServerNode):ErServerCluster = cc.call(MetadataCommands.GET_SERVER_NODES, input)
+  def getServerNodes(input:ErServerNode):ErServerCluster = cc.call[ErServerCluster](MetadataCommands.GET_SERVER_NODES, input)
 
   def getOrCreateServerNode(input:ErServerNode):ErServerNode =
-    cc.call(MetadataCommands.GET_OR_CREATE_SERVER_NODE, input)
+    cc.call[ErServerNode](MetadataCommands.GET_OR_CREATE_SERVER_NODE, input)
 
   def createOrUpdateServerNode(input: ErServerNode):ErServerNode =
-    cc.call(MetadataCommands.CREATE_OR_UPDATE_SERVER_NODE, input)
+    cc.call[ErServerNode](MetadataCommands.CREATE_OR_UPDATE_SERVER_NODE, input)
 
   def getStore(input:ErStoreLocator):ErStore =
     getStore(ErStore(input, EMPTY_PARTITION_ARRAY, Map[String, String]().asJava))
 
-  def getStore(input: ErStore): ErStore = cc.call(MetadataCommands.GET_STORE, input)
+  def getStore(input: ErStore): ErStore = cc.call[ErStore](MetadataCommands.GET_STORE, input)
 
   def getOrCreateStore(input: ErStoreLocator): ErStore =
     getOrCreateStore(new ErStore(input, EMPTY_PARTITION_ARRAY, new ConcurrentHashMap[String, String]))
 
-  def getOrCreateStore(input: ErStore): ErStore = cc.call(MetadataCommands.GET_OR_CREATE_STORE, input)
+  def getOrCreateStore(input: ErStore): ErStore = cc.call[ErStore](MetadataCommands.GET_OR_CREATE_STORE, input)
 
-  def deleteStore(input: ErStore): ErStore = cc.call(MetadataCommands.DELETE_STORE, input)
+  def deleteStore(input: ErStore): ErStore = cc.call[ErStore](MetadataCommands.DELETE_STORE, input)
 
   def deleteStore(input: ErStoreLocator): ErStore =
     deleteStore(new ErStore(input, EMPTY_PARTITION_ARRAY, new ConcurrentHashMap[String, String]))
 
   def getOrCreateSession(sessionMeta: ErSessionMeta): ErSessionMeta =
-    cc.call(SessionCommands.getOrCreateSession, sessionMeta)
+    cc.call[ErSessionMeta](SessionCommands.getOrCreateSession, sessionMeta)
 
   def getOrCreateProcessorBatch(sessionMeta: ErSessionMeta): ErProcessorBatch =
-    cc.call(SessionCommands.GET_OR_CREATE_PROCESSOR_BATCH, sessionMeta)
+    cc.call[ErProcessorBatch](SessionCommands.GET_OR_CREATE_PROCESSOR_BATCH, sessionMeta)
 
   def registerSession(sessionMeta: ErSessionMeta, processorBatch: ErProcessorBatch): ErProcessorBatch =
-    cc.call(SessionCommands.registerSession, sessionMeta, processorBatch)
+    cc.call[ErProcessorBatch](SessionCommands.registerSession, sessionMeta, processorBatch)
 
 }
