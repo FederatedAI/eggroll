@@ -196,7 +196,6 @@ object StoreCrudOperator {
     val finalPartitions: ArrayBuffer[ErPartition] = ArrayBuffer[ErPartition]()
     finalPartitions.sizeHint(inputStoreLocator.totalPartitions)
 
-
     // todo: find existing binding with same partition numbers
     val serverNodes: Array[ErServerNode] = if (partitionServerNodeBindingId != null) {
       val binding = SessionManager.getBindingPlan(sessionId = sessionId, bindingId = partitionServerNodeBindingId)

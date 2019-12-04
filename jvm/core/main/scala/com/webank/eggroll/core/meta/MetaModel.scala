@@ -185,7 +185,6 @@ case class ErServerSessionDeployment(id: String,
         curOffsets.put(curServerNodeId, 0)
       }
       val curPartitionOffset = curOffsets(curServerNodeId)
-
       val boundEgg = eggs(curServerNodeId)(curPartitionOffset)
 
       result += ErProcessor(

@@ -95,7 +95,7 @@ object ClusterManager extends Logging {
       routeToMethodName = SessionCommands.registerSession.getName())
 
     CommandRouter.register(serviceName = SessionCommands.getBoundProcessorBatch.uriString,
-      serviceParamTypes = Array(classOf[ErSessionMeta], classOf[ErProcessorBatch]),
+      serviceParamTypes = Array(classOf[ErSessionMeta]),
       serviceResultTypes = Array(classOf[ErProcessorBatch]),
       routeToClass = classOf[ClusterManager],
       routeToMethodName = SessionCommands.getBoundProcessorBatch.getName())
@@ -118,7 +118,7 @@ object ClusterManager extends Logging {
     val port = clusterManager.getPort
     StaticErConf.setPort(port)
 
-    val confPath = cmd.getOptionValue('c', "./jvm/core/main/resources/cluster-manager.properties")
+    val confPath = cmd.getOptionValue('c', "./jvm/core/main/resources/cluster-manager.properties.local")
     StaticErConf.addProperties(confPath)
     logInfo(s"server started at port ${port}")
     println(s"server started at port ${port}")

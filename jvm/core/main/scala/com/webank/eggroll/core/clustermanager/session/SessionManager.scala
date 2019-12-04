@@ -18,10 +18,12 @@
 
 package com.webank.eggroll.core.clustermanager.session
 
+import java.util
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
 import com.webank.eggroll.core.client.NodeManagerClient
+import com.webank.eggroll.core.clustermanager.dao.generated.model.ServerNodeExample
 import com.webank.eggroll.core.clustermanager.metadata.ServerNodeCrudOperator
 import com.webank.eggroll.core.constant.{BindingStrategies, _}
 import com.webank.eggroll.core.meta._
@@ -82,24 +84,36 @@ object SessionManager {
     val rolls = ArrayBuffer[ErProcessor]()
     val eggs = mutable.Map[Long, ArrayBuffer[ErProcessor]]()
 
+    val hosts = new util.ArrayList[String](processorBatch.processors.length)
+    processorBatch.processors.foreach(p => hosts.add(p.dataEndpoint.host))
+
+    val serverNodeCrudOperator = new ServerNodeCrudOperator
+    val serverCluster = serverNodeCrudOperator.getServerClusterByHosts(hosts)
+    val hostToNodeId = mutable.Map[String, Long]()
+
+    serverCluster.serverNodes.foreach(n => {
+      hostToNodeId(n.endpoint.host) = n.id
+    })
+
     processorBatch.processors.foreach(p => {
+      val pWithServerNodeInfo = p.copy(serverNodeId = hostToNodeId(p.commandEndpoint.host))
       if (ProcessorTypes.EGG_PAIR.equals(p.processorType)) {
-        eggs.get(p.serverNodeId) match {
-          case Some(b) => b += p
+        eggs.get(pWithServerNodeInfo.serverNodeId) match {
+          case Some(b) => b += pWithServerNodeInfo
           case None =>
             val arrayBuffer = ArrayBuffer[ErProcessor]()
-            arrayBuffer += p
-            eggs += (p.serverNodeId -> arrayBuffer)
+            arrayBuffer += pWithServerNodeInfo
+            eggs += (pWithServerNodeInfo.serverNodeId -> arrayBuffer)
         }
       } else if (ProcessorTypes.ROLL_PAIR_SERVICER.equals(p.processorType)) {
-        rolls += p
+        rolls += p.copy(serverNodeId = hostToNodeId(p.commandEndpoint.host))
       }
     })
 
     // todo: find and populate serverCluster
     val newDeployment = ErServerSessionDeployment(
       id = sessionId,
-      serverCluster = ErServerCluster(),
+      serverCluster = serverCluster,
       rolls = rolls.toArray,
       eggs = eggs.mapValues(_.toArray).toMap)
 

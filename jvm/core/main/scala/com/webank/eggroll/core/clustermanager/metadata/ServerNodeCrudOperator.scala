@@ -26,6 +26,7 @@ import com.webank.eggroll.core.error.CrudException
 import com.webank.eggroll.core.meta.{ErEndpoint, ErServerCluster, ErServerNode}
 import com.webank.eggroll.core.util.Logging
 import com.webank.eggroll.core.clustermanager.dao.generated.model.{ServerNode, ServerNodeExample}
+import com.webank.eggroll.core.constant.{ServerNodeStatus, ServerNodeTypes}
 import org.apache.commons.lang3.StringUtils
 import org.apache.ibatis.session.SqlSession
 
@@ -68,6 +69,10 @@ class ServerNodeCrudOperator extends CrudOperator with Logging {
     } else {
       null
     }
+  }
+
+  def getServerClusterByHosts(input: util.List[String]): ErServerCluster = {
+    crudOperatorTemplate.doCrudOperationListInput(ServerNodeCrudOperator.doGetServerClusterByHosts, input)
   }
 }
 
@@ -217,5 +222,23 @@ object ServerNodeCrudOperator {
     } else {
       doCreateServerNode(input, sqlSession)
     }
+  }
+
+  def doGetServerClusterByHosts(input: util.List[String], sqlSession: SqlSession): ErServerCluster = {
+    val example = new ServerNodeExample
+    example.createCriteria().andHostIn(input).andStatusEqualTo(ServerNodeStatus.HEALTHY)
+        .andNodeTypeEqualTo(ServerNodeTypes.NODE_MANAGER)
+    example.setOrderByClause("server_node_id asc")
+
+    val mapper = sqlSession.getMapper(classOf[ServerNodeMapper])
+    val nodeResult = mapper.selectByExample(example)
+
+    val nodes = ArrayBuffer[ErServerNode]()
+
+    nodeResult.forEach(n => {
+      nodes += ErServerNode(id = n.getServerNodeId, name = n.getName, endpoint = ErEndpoint(host = n.getHost, port = n.getPort))
+    })
+
+    ErServerCluster(serverNodes = nodes.toArray)
   }
 }

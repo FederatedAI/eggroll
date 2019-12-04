@@ -81,7 +81,7 @@ case class CollectiveCommand(taskPlan: TaskPlan) {
   def toTasks(taskPlan: TaskPlan): Array[ErTask] = {
     val job = taskPlan.job
     val inputStores: Array[ErStore] = job.inputs
-    val inputPartitionSize = inputStores.head.partitions.length
+    val inputPartitionSize = inputStores.head.storeLocator.totalPartitions
     val inputOptions = job.options
     val sessionId = inputOptions.get(SessionConfKeys.CONFKEY_SESSION_ID)
     if (StringUtils.isBlank(sessionId)) {
@@ -151,10 +151,11 @@ object CollectiveCommand {
     }
 
     if (!boundCache.contains(sessionId) || !boundCache(sessionId).contains(bindingPlanId)) {
-      val clusterManagerClient = new ClusterManagerClient(
+      /*val clusterManagerClient = new ClusterManagerClient(
         options.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST, "localhost"),
-        options.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, 4670).toInt)
+        options.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, "4670").toInt)*/
 
+      val clusterManagerClient = new ClusterManagerClient()
       val boundEggProcessorBatch = clusterManagerClient.getBoundProcessorBatch(ErSessionMeta(id = sessionId, options = options))
 
       if (!boundCache.contains(sessionId)) {
