@@ -77,6 +77,14 @@ class SessionCommands(object):
   register_session_service_name = _to_service_name(prefix, register_session)
   REGISTER_SESSION = CommandURI(register_session_service_name)
 
+  get_partition_binding_plan = 'getPartitionBindingPlan'
+  get_partition_binding_plan_service_name = _to_service_name(prefix, get_partition_binding_plan)
+  GET_PARTITION_BINDING_PLAN = CommandURI(get_partition_binding_plan_service_name)
+
+  get_bound_processor_batch = 'getBoundProcessorBatch'
+  get_bound_processor_batch_service_name = _to_service_name(prefix, get_bound_processor_batch)
+  GET_BOUND_PROCESSOR_BATCH = CommandURI(get_bound_processor_batch_service_name)
+
 class RollPairCommands(object):
   roll_prefix = 'v1/roll-pair'
   egg_prefix = 'v1/egg-pair'

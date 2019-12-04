@@ -12,6 +12,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+import uuid
 from typing import Iterable
 
 import grpc
@@ -22,11 +23,10 @@ from eggroll.core.conf_keys import DeployConfKeys
 from eggroll.core.datastructure.broker import FifoBroker
 from eggroll.core.io.format import BinBatchReader
 from eggroll.core.meta_model import ErStoreLocator, ErJob, ErStore, ErFunctor, ErTask, ErEndpoint, ErPair, ErPartition, \
-  ErProcessor
-from eggroll.core.proto import command_pb2_grpc, transfer_pb2_grpc
+  ErProcessor, ErSessionMeta
+from eggroll.core.proto import command_pb2_grpc
 from eggroll.core.serdes import cloudpickle, eggroll_serdes
-from eggroll.core.command.command_client import CommandClient
-from eggroll.core.client import ClusterManagerClient
+from eggroll.core.client import ClusterManagerClient, CommandClient
 from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.constants import StoreTypes, SerdesTypes, PartitionerTypes, ProcessorTypes, DeployType
 from eggroll.core.serdes.eggroll_serdes import PickleSerdes, CloudPickleSerdes, EmptySerdes
@@ -38,6 +38,9 @@ from eggroll.roll_pair.shuffler import DefaultShuffler
 from concurrent import futures
 from eggroll.core.io.kv_adapter import LmdbSortedKvAdapter, RocksdbSortedKvAdapter
 from eggroll.core.io.io_utils import get_db_path
+from eggroll.core.conf_keys import SessionConfKeys
+from eggroll.core.proto import transfer_pb2_grpc
+
 from eggroll.utils import log_utils
 
 log_utils.setDirectory()
@@ -51,36 +54,80 @@ class RollPairContext(object):
     # self.default_store_type = StoreTypes.ROLLPAIR_LMDB
     self.default_store_type = StoreTypes.ROLLPAIR_LMDB
     self.deploy_mode = session.get_option(DeployConfKeys.CONFKEY_DEPLOY_MODE)
+    self._bindings = {}    # dict[binding_id, list[ErProcessor]]
 
   def get_roll_endpoint(self):
     return self.__session._rolls[0]._command_endpoint
 
   # TODO: return transfer endpoint
-  def get_egg_endpoint(self, egg_id=0):
+  def get_egg_endpoint(self, egg_id):
     return self.__session._eggs[0][0]._command_endpoint
+
+  def get_roll(self):
+    return self.__session._rolls[0]
+
+  def add_binding_if_not_exist(self, store: ErStore):
+    binding_id = store._options.get(SessionConfKeys.CONFKEY_SESSION_EGG_BINDING_ID, None)
+    if not binding_id:
+      raise ValueError(f'binding id missing for binding_id {binding_id}')
+
+    if binding_id not in self._bindings.keys():
+      meta = ErSessionMeta(id=self.session_id, options=store._options)
+      bound_eggs = self.__session.cm_client.get_bound_process_batch(meta)
+
+      self._bindings[binding_id] = bound_eggs._processors
+
+  def has_binding(self, binding_id):
+    return binding_id in self._bindings
+
+  def get_binding_egg(self, store: ErStore, partition_id: int):
+    binding_id = store._options.get(SessionConfKeys.CONFKEY_SESSION_EGG_BINDING_ID, None)
+    if not binding_id:
+      raise ValueError(f'binding id missing at {store}')
+
+    if not self.has_binding(binding_id):
+      self.add_binding_if_not_exist(store)
+
+    print(self._bindings)
+    return self._bindings[binding_id][partition_id]
 
   def load(self, namespace=None, name=None, create_if_missing=True, options={}):
     store_type = options.get('store_type', self.default_store_type)
     total_partitions = options.get('total_partitions', 1)
-    LOGGER.info("load partitions:{}".format(total_partitions))
     partitioner = options.get('partitioner', PartitionerTypes.BYTESTRING_HASH)
     serdes = options.get('serdes', SerdesTypes.CLOUD_PICKLE)
+    # todo:0: add combine options to pass it through
+    store_options = self.__session.get_all_options()
+    store_options.update(options)
     store = ErStore(
-      store_locator=ErStoreLocator(
-        store_type=store_type,
-        namespace=namespace,
-        name=name,
-        total_partitions=total_partitions,
-        partitioner=partitioner,
-        serdes=serdes))
+        store_locator=ErStoreLocator(
+            store_type=store_type,
+            namespace=namespace,
+            name=name,
+            total_partitions=total_partitions,
+            partitioner=partitioner,
+            serdes=serdes),
+        options=store_options)
 
     result = self.__session.cm_client.get_or_create_store(store)
     return RollPair(result, self)
 
+  def parallelize(self, data, options={}):
+    namespace = options.get("namespace", None)
+    name = options.get("name", None)
+    create_if_missing = options.get("create_if_missing", True)
+
+    if namespace is None:
+      namespace = self.session_id
+    if name is None:
+      name = str(uuid.uuid1())
+    store = self.load(namespace=namespace, name=name, create_if_missing=create_if_missing, options=options)
+    return store.put_all(data, options=options)
+
 def default_partitioner(k):
-    return 0
+  return 0
 def default_egg_router(k):
-    return 0
+  return 0
 
 class RollPair(object):
   __uri_prefix = 'v1/roll-pair'
@@ -120,7 +167,6 @@ class RollPair(object):
     self.__session_id = self.ctx.session_id
     #TODO: config or auto
     self._transfer_server_endpoint = "localhost:60668"
-
 
   def __repr__(self):
     return f'python RollPair(_store={self.__store})'
@@ -167,26 +213,26 @@ class RollPair(object):
     er_pair = ErPair(key=k, value=None)
     outputs = []
     value = None
-    part_id = self.partitioner(k)
-    egg_id = self.egg_router(part_id)
-    egg_endpoint = self.ctx.get_egg_endpoint(egg_id)
-    LOGGER.info(egg_endpoint)
-    LOGGER.info("count:", self.__store._store_locator._total_partitions)
-    inputs = [ErPartition(id=part_id, store_locator=self.__store._store_locator)]
-    output = [ErPartition(id=part_id, store_locator=self.__store._store_locator)]
+    partition_id = self.partitioner(k)
+    egg_id = self.egg_router(partition_id)
+    egg = self.ctx.get_binding_egg(self.__store, partition_id)
+    print(egg._command_endpoint)
+    print("count:", self.__store._store_locator._total_partitions)
+    inputs = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
+    output = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
 
     job = ErJob(id=self.__session_id, name=RollPair.GET,
-              inputs=[self.__store],
-              outputs=outputs,
-              functors=[ErFunctor(body=cloudpickle.dumps(er_pair))])
+                inputs=[self.__store],
+                outputs=outputs,
+                functors=[ErFunctor(body=cloudpickle.dumps(er_pair))])
     task = ErTask(id=self.__session_id, name=RollPair.GET, inputs=inputs, outputs=output, job=job)
     LOGGER.info("start send req")
     job_resp = self.__roll_pair_command_client.simple_sync_send(
-              input=task,
-              output_type=ErPair,
-              endpoint=egg_endpoint,
-              command_uri=CommandURI(f'{EggPair.uri_prefix}/{EggPair.GET}'),
-              serdes_type=self.__command_serdes
+        input=task,
+        output_type=ErPair,
+        endpoint=egg._command_endpoint,
+        command_uri=CommandURI(f'{EggPair.uri_prefix}/{EggPair.GET}'),
+        serdes_type=self.__command_serdes
     )
     LOGGER.info("get resp:{}".format(ErPair.from_proto_string(job_resp._value)))
 
@@ -200,7 +246,7 @@ class RollPair(object):
     outputs = []
     part_id = self.partitioner(k)
     egg_id = self.egg_router(part_id)
-    egg_endpoint = self.ctx.get_egg_endpoint(egg_id)
+    egg_endpoint = self.ctx.get_binding_egg(self.__store, part_id)
     inputs = [ErPartition(id=part_id, store_locator=self.__store._store_locator)]
     output = [ErPartition(id=0, store_locator=self.__store._store_locator)]
 
@@ -211,11 +257,11 @@ class RollPair(object):
     task = ErTask(id=self.__session_id, name=RollPair.PUT, inputs=inputs, outputs=output, job=job)
     LOGGER.info("start send req")
     job_resp = self.__roll_pair_command_client.simple_sync_send(
-      input=task,
-      output_type=ErPair,
-      endpoint=egg_endpoint,
-      command_uri=CommandURI(f'{EggPair.uri_prefix}/{EggPair.PUT}'),
-      serdes_type=self.__command_serdes
+        input=task,
+        output_type=ErPair,
+        endpoint=egg_endpoint._command_endpoint,
+        command_uri=CommandURI(f'{EggPair.uri_prefix}/{EggPair.PUT}'),
+        serdes_type=self.__command_serdes
     )
     LOGGER.info("get resp:{}".format(ErPair.from_proto_string(job_resp._value)))
     value = job_resp._value
@@ -268,11 +314,11 @@ class RollPair(object):
     LOGGER.info("get egg port:{}".format(self.ctx.get_egg_endpoint()._port))
     LOGGER.info("job id:{}".format(job._id))
     job_result = self.__roll_pair_command_client.simple_sync_send(
-      input=task,
-      output_type=ErTask,
-      endpoint=self.ctx.get_egg_endpoint(),
-      command_uri=CommandURI(f'{EggPair.uri_prefix}/{EggPair.GET_ALL}'),
-      serdes_type=self.__command_serdes)
+        input=task,
+        output_type=ErTask,
+        endpoint=self.ctx.get_egg_endpoint(),
+        command_uri=CommandURI(f'{EggPair.uri_prefix}/{EggPair.GET_ALL}'),
+        serdes_type=self.__command_serdes)
 
     broker = GrpcTransferServicer.get_broker(str(job._id))
     while not broker.is_closable():
@@ -296,38 +342,39 @@ class RollPair(object):
       raise EnvironmentError("input items is None")
     include_key = options.get("include_key", False)
     total_partitions = self.__store._store_locator._total_partitions
+    adapter_dict = {}
 
     def put_all_wrapper(k_bytes, total_partitions):
       adapter_options = {}
-      partitions_id = self.partitioner(k_bytes)
-      if partitions_id >= total_partitions:
-        raise EnvironmentError("partitions id:{} out of range:{}".format(partitions_id, total_partitions))
-      adapter_options["path"] = get_db_path(self.__store._partitions[partitions_id])
+      _partition_id = self.partitioner(k_bytes)
+      if _partition_id >= total_partitions:
+        raise EnvironmentError("partitions id:{} out of range:{}".format(_partition_id, total_partitions))
+      adapter_options["path"] = get_db_path(self.__store._partitions[_partition_id])
       LOGGER.info("path:{}".format(adapter_options["path"]))
-      return adapter_options
+      _input_adapter = self.__get_unary_input_adapter(
+        options=adapter_options)
+      _input_adapter.put(k_bytes, v_bytes)
+      return _input_adapter, _partition_id
 
     if isinstance(items, Iterable):
-      if include_key:
-        LOGGER.info("items:{} include key".format(items))
-        for tup in items:
-          LOGGER.info("put k:{}, v:{}".format(tup[0], tup[1]))
-          k_bytes, v_bytes = self.value_serdes.serialize(tup[0]), self.value_serdes.serialize(tup[1])
-          input_adapter = self.__get_unary_input_adapter(
-            options=put_all_wrapper(k_bytes=k_bytes, total_partitions=total_partitions))
-          input_adapter.put(k_bytes, v_bytes)
-          input_adapter.close()
-      else:
-        k = 0
-        for v in items:
+      k = 0
+      for v in items:
+        if include_key:
+          LOGGER.info("put k:{}, v:{}".format(v[0], v[1]))
+          k_bytes, v_bytes = self.value_serdes.serialize(v[0]), self.value_serdes.serialize(v[1])
+          input_adapter, partition_id = put_all_wrapper(k_bytes, total_partitions)
+          adapter_dict[partition_id] = input_adapter
+        else:
           LOGGER.info("put k:{}, v:{}".format(k, v))
           k_bytes, v_bytes = self.value_serdes.serialize(k), self.value_serdes.serialize(v)
-          input_adapter = self.__get_unary_input_adapter(
-            options=put_all_wrapper(k_bytes=k_bytes, total_partitions=total_partitions))
-          input_adapter.put(k_bytes, v_bytes)
-          input_adapter.close()
+          input_adapter, partition_id = put_all_wrapper(k_bytes, total_partitions)
+          adapter_dict[partition_id] = input_adapter
           k = k + 1
     else:
       raise EnvironmentError("iterable obj is required")
+    for key in adapter_dict:
+      adapter_dict[key].close()
+
     return self
 
   def __put_all_cluster(self, items, output=None, options={"include_key": False}):
@@ -401,10 +448,15 @@ class RollPair(object):
     outputs = []
     if output:
       outputs.append(output)
+    # todo:0: options issues
+    final_options = {}
+    final_options.update(self.__store._options)
+    final_options.update(options)
     job = ErJob(id=self.__session_id, name=RollPair.MAP_VALUES,
                 inputs=[self.__store],
                 outputs=outputs,
-                functors=[functor])
+                functors=[functor],
+                options=final_options)
 
     job_result = self.__roll_pair_command_client.simple_sync_send(
         input=job,

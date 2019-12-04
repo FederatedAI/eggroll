@@ -19,6 +19,7 @@
 package com.webank.eggroll.clustermanager.metadata
 
 import java.io.File
+import java.util.concurrent.ConcurrentHashMap
 
 import com.webank.eggroll.core.client.ClusterManagerClient
 import com.webank.eggroll.core.clustermanager.ClusterManager
@@ -90,11 +91,29 @@ class TestClusterManager {
       routeToClass = classOf[ClusterManager],
       routeToMethodName = SessionCommands.getOrCreateSession.getName())
 
+    CommandRouter.register(serviceName = SessionCommands.getSession.uriString,
+      serviceParamTypes = Array(classOf[ErSessionMeta]),
+      serviceResultTypes = Array(classOf[ErProcessorBatch]),
+      routeToClass = classOf[ClusterManager],
+      routeToMethodName = SessionCommands.getSession.getName())
+
     CommandRouter.register(serviceName = SessionCommands.registerSession.uriString,
       serviceParamTypes = Array(classOf[ErSessionMeta], classOf[ErProcessorBatch]),
       serviceResultTypes = Array(classOf[ErProcessorBatch]),
       routeToClass = classOf[ClusterManager],
       routeToMethodName = SessionCommands.registerSession.getName())
+
+    CommandRouter.register(serviceName = SessionCommands.getPartitionBindingPlan.uriString,
+      serviceParamTypes = Array(classOf[ErStore]),
+      serviceResultTypes = Array(classOf[ErStore]),
+      routeToClass = classOf[ClusterManager],
+      routeToMethodName = SessionCommands.getPartitionBindingPlan.getName())
+
+    CommandRouter.register(serviceName = SessionCommands.getBoundProcessorBatch.uriString,
+      serviceParamTypes = Array(classOf[ErSessionMeta]),
+      serviceResultTypes = Array(classOf[ErProcessorBatch]),
+      routeToClass = classOf[ClusterManager],
+      routeToMethodName = SessionCommands.getBoundProcessorBatch.getName())
 
     val clusterManager = NettyServerBuilder
       .forPort(clusterManagerPort)
@@ -156,20 +175,27 @@ class TestClusterManager {
 
   @Test
   def testGetStore(): Unit = {
-    val input = ErStoreLocator(storeType = StoreTypes.ROLLPAIR_LEVELDB, namespace = "namespace", name = "name")
+    val options = new ConcurrentHashMap[String, String]()
+    val input = ErStore(storeLocator = ErStoreLocator(storeType = StoreTypes.ROLLPAIR_LEVELDB, namespace = "namespace", name = "name"))
 
     val result = clusterManagerClient.getStore(input)
 
-    print(result)
+    println(result)
     result.partitions.foreach(println)
+
+    val inputAgain = input.copy(options = result.options)
+    val resultAgain = clusterManagerClient.getStore(inputAgain)
+    println(resultAgain)
+    resultAgain.partitions.foreach(println)
   }
 
   @Test
   def testGetOrCreateStore(): Unit = {
+    println(System.getProperty("os.name"))
     val input = ErStoreLocator(
       storeType = StoreTypes.ROLLPAIR_LEVELDB,
       namespace = "namespace",
-      name = "test",
+      name = System.currentTimeMillis().toString,
       totalPartitions = 4,
       partitioner = PartitionerTypes.BYTESTRING_HASH,
       serdes = SerdesTypes.PICKLE)
@@ -178,6 +204,25 @@ class TestClusterManager {
 
     println(result)
     result.partitions.foreach(println)
+  }
+
+  @Test
+  def testGetAndCreateWithSameBinding(): Unit = {
+    val options = new ConcurrentHashMap[String, String]()
+    val input = ErStore(storeLocator = ErStoreLocator(storeType = StoreTypes.ROLLPAIR_LEVELDB, namespace = "namespace", name = "name"))
+
+    val result = clusterManagerClient.getStore(input)
+
+    println(result)
+    result.partitions.foreach(println)
+
+    val inputAgain = input.copy(storeLocator = input.storeLocator.copy(name = System.currentTimeMillis().toString),
+      options = result.options)
+
+    val resultAgain = clusterManagerClient.getOrCreateStore(inputAgain)
+
+    println(resultAgain)
+    resultAgain.partitions.foreach(println)
   }
 
   @Test

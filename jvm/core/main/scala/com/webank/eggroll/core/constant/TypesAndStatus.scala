@@ -78,3 +78,7 @@ object SessionStatus {
   val ACTIVE = "ACTIVE"
   val CLOSED = "CLOSED"
 }
+
+object BindingStrategies {
+  val ROUND_ROBIN = "ROUND_ROBIN"
+}

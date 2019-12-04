@@ -56,9 +56,11 @@ object MetadataCommands {
 object SessionCommands {
   val prefix = "v1/cluster-manager/session"
 
-  val getOrCreateSession = new CommandURI(prefix, "getOrCreateSession")
-
-  val registerSession = new CommandURI(prefix, name = "registerSession")
+  val getOrCreateSession = new CommandURI(prefix = prefix, name = "getOrCreateSession")
+  val getSession = new CommandURI(prefix = prefix, name = "getSession")
+  val registerSession = new CommandURI(prefix = prefix, name = "registerSession")
+  val getPartitionBindingPlan = new CommandURI(prefix = prefix, name = "getPartitionBindingPlan")
+  val getBoundProcessorBatch = new CommandURI(prefix = prefix, name = "getBoundProcessorBatch")
 
   val stopSession = "stopSession"
   val stopSessionServiceName = CommandUtils.toServiceName(prefix, stopSession)

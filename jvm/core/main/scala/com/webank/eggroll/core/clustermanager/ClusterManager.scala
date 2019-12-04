@@ -23,13 +23,14 @@ import java.net.InetSocketAddress
 import com.webank.eggroll.core.clustermanager.metadata.{ServerNodeCrudOperator, StoreCrudOperator}
 import com.webank.eggroll.core.clustermanager.session.SessionManager
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
-import com.webank.eggroll.core.constant.{MetadataCommands, SessionCommands}
-import com.webank.eggroll.core.meta.{ErProcessorBatch, ErServerCluster, ErServerNode, ErSessionMeta, ErStore}
+import com.webank.eggroll.core.constant.{MetadataCommands, SessionCommands, SessionConfKeys}
+import com.webank.eggroll.core.meta.{ErPartitionBindingPlan, ErProcessorBatch, ErServerCluster, ErServerNode, ErSessionMeta, ErStore}
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.transfer.GrpcTransferService
 import com.webank.eggroll.core.util.{Logging, MiscellaneousUtils}
 import io.grpc.Server
 import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
+import org.apache.commons.lang3.StringUtils
 
 object ClusterManager extends Logging {
   def registerRouter():Unit = {
@@ -81,11 +82,23 @@ object ClusterManager extends Logging {
       routeToClass = classOf[ClusterManager],
       routeToMethodName = SessionCommands.getOrCreateSession.getName())
 
+    CommandRouter.register(serviceName = SessionCommands.getSession.uriString,
+      serviceParamTypes = Array(classOf[ErSessionMeta]),
+      serviceResultTypes = Array(classOf[ErProcessorBatch]),
+      routeToClass = classOf[ClusterManager],
+      routeToMethodName = SessionCommands.getSession.getName())
+
     CommandRouter.register(serviceName = SessionCommands.registerSession.uriString,
       serviceParamTypes = Array(classOf[ErSessionMeta], classOf[ErProcessorBatch]),
       serviceResultTypes = Array(classOf[ErProcessorBatch]),
       routeToClass = classOf[ClusterManager],
       routeToMethodName = SessionCommands.registerSession.getName())
+
+    CommandRouter.register(serviceName = SessionCommands.getBoundProcessorBatch.uriString,
+      serviceParamTypes = Array(classOf[ErSessionMeta]),
+      serviceResultTypes = Array(classOf[ErProcessorBatch]),
+      routeToClass = classOf[ClusterManager],
+      routeToMethodName = SessionCommands.getBoundProcessorBatch.getName())
   }
   // TODO: wrap server
   def buildServer(args: Array[String]): Server = {
@@ -105,7 +118,7 @@ object ClusterManager extends Logging {
     val port = clusterManager.getPort
     StaticErConf.setPort(port)
 
-    val confPath = cmd.getOptionValue('c', "./jvm/core/main/resources/cluster-manager.properties")
+    val confPath = cmd.getOptionValue('c', "./jvm/core/main/resources/cluster-manager.properties.local")
     StaticErConf.addProperties(confPath)
     logInfo(s"server started at port ${port}")
     println(s"server started at port ${port}")
@@ -121,7 +134,36 @@ class ClusterManager {
     SessionManager.getOrCreateSession(sessionMeta)
   }
 
+  def getSession(sessionMeta: ErSessionMeta): ErProcessorBatch = {
+    SessionManager.getSession(sessionMeta.id)
+  }
+
   def registerSession(sessionMeta: ErSessionMeta, processorBatch: ErProcessorBatch): ErProcessorBatch = {
     SessionManager.register(sessionMeta = sessionMeta, processorBatch = processorBatch)
+  }
+
+  def getPartitionBindingPlan(store: ErStore): ErStore = {
+    val sessionId = store.options.get(SessionConfKeys.CONFKEY_SESSION_ID)
+    val bindingId = store.options.get(SessionConfKeys.CONFKEY_SESSION_EGG_BINDING_ID)
+
+    if (StringUtils.isAnyBlank(sessionId, bindingId)) {
+      throw new IllegalArgumentException("either sessionId or bindingId is blank")
+    }
+
+    if (SessionManager.getSession(sessionId) == null) {
+      throw new IllegalArgumentException(s"session ${sessionId} is not active")
+    }
+
+    val binding: ErPartitionBindingPlan = SessionManager.getBindingPlan(sessionId, bindingId)
+    if (binding == null) {
+      val storeCrudOperator = new StoreCrudOperator
+      storeCrudOperator.getStore(input = store)
+    } else {
+      store.copy(partitions = binding.toPartitions())
+    }
+  }
+
+  def getBoundProcessorBatch(sessionMeta: ErSessionMeta): ErProcessorBatch = {
+    SessionManager.getBoundProcessorBatch(sessionMeta.id, sessionMeta.options.get(SessionConfKeys.CONFKEY_SESSION_EGG_BINDING_ID))
   }
 }

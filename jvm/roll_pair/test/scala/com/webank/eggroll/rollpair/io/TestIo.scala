@@ -21,9 +21,11 @@ package com.webank.eggroll.rollpair.io
 import java.nio.ByteBuffer
 
 import com.google.protobuf.ByteString
+import com.webank.eggroll.core.ErSession
 import com.webank.eggroll.core.constant.{NetworkConstants, StoreTypes}
 import com.webank.eggroll.core.datastructure.LinkedBlockingBroker
 import com.webank.eggroll.core.meta.{ErStore, ErStoreLocator}
+import com.webank.eggroll.rollpair.RollPairContext
 import com.webank.eggroll.rollpair.client.RollPair
 import org.junit.Test
 
@@ -42,7 +44,7 @@ class TestIo {
   val joinPath: String = s"${rootPath}/testJoin/"
   val mapPath: String = s"${rootPath}/testMap/"
   val dbPath = mapValuesPath
-  val rocksDBSortedKVAdapter: RocksdbSortedKvAdapter = new RocksdbSortedKvAdapter(dbPath)
+  val rocksDBSortedKVAdapter: RocksdbSortedKvAdapter = null
 
   val hello = "hello"
   val world = "world"
@@ -85,8 +87,9 @@ class TestIo {
 
   @Test
   def testPutBatch(): Unit = {
-    val input = ErStore(ErStoreLocator(storeType = StoreTypes.ROLLPAIR_LEVELDB, namespace = "namespace", name = "name"))
-    val rp = new RollPair(input)
+    import com.webank.eggroll.rollpair.RollPair
+    val sid = "aa1sid"
+    val ctx = new RollPairContext(new ErSession(sid))
 
     var directBinPacketBuffer: ByteBuffer = ByteBuffer.allocateDirect(1<<10)
     directBinPacketBuffer.put(NetworkConstants.TRANSFER_PROTOCOL_MAGIC_NUMBER)   // magic num
@@ -102,7 +105,7 @@ class TestIo {
 
     val broker = new LinkedBlockingBroker[ByteString]()
     broker.put(ByteString.copyFrom(directBinPacketBuffer))
-    rp.putBatch(broker)
+    ctx.putBatch(broker)
   }
 
   @Test

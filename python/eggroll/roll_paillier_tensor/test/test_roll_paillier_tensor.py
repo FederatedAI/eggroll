@@ -20,9 +20,17 @@ from eggroll.core.command.command_model import ErCommandRequest
 from eggroll.core.meta_model import ErStoreLocator, ErJob, ErStore, ErFunctor
 from eggroll.core.proto import command_pb2_grpc
 from eggroll.core.serdes import cloudpickle
-from eggroll.roll_paillier_tensor.roll_paillier_tensor_on_roll_pair import RollPaillierTensorOnRollPair as rpt
+from eggroll.roll_paillier_tensor.roll_paillier_tensor import RollPaillierTensor as rpt
+
+from eggroll.core.session import ErSession
+from eggroll.roll_paillier_tensor.roll_paillier_tensor import RptContext
+from eggroll.roll_pair.roll_pair import RollPairContext
+
+session = ErSession(options={"eggroll.deploy.mode": "standalone"})
+rptc = RptContext(RollPairContext(session))
 
 class TestRollPaillierTensor(unittest.TestCase):
+
   def test_scalar_mul(self):
     store_locator = ErStoreLocator(store_type="levelDb", namespace="ns",
                                    name='mat_a')
@@ -133,6 +141,13 @@ class TestRollPaillierTensor(unittest.TestCase):
 
     result = roll_pair_stub.call(request.to_proto())
     time.sleep(1200)
+
+  def test_tmp(self):
+
+      left = rptc.load("ns", "mat_a")
+      right = rptc.load("ns", "mat_b")
+      c=left + right
+
 
 
 if __name__ == '__main__':

@@ -67,4 +67,26 @@ class CrudOperatorTemplate {
       }
     }
   }
+
+  def doCrudOperationListInput[T, U](functor: (java.util.List[T], SqlSession) => U, input: java.util.List[T], sqlSession: SqlSession = null, openTransaction: Boolean = false): U = {
+    val isOpenSession = sqlSession == null
+    val finalSqlSession = if (isOpenSession) RdbConnectionPool.openSession() else sqlSession
+
+    try {
+      functor(input, finalSqlSession)
+    } catch {
+      case e: Exception =>
+        if (openTransaction) {
+          finalSqlSession.rollback()
+        }
+        throw e
+    } finally {
+      if (isOpenSession) {
+        if (openTransaction) {
+          finalSqlSession.commit()
+        }
+        finalSqlSession.close()
+      }
+    }
+  }
 }
