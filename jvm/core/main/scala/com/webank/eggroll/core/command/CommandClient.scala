@@ -54,7 +54,7 @@ class CommandClient(defaultEndpoint:ErEndpoint = null, serdesType: String = Serd
 
     val resp: Command.CommandResponse = stub.call(
       Command.CommandRequest.newBuilder.setId(System.currentTimeMillis + "")
-        .setUri(SessionCommands.registerSession.uri.toString).addAllArgs(argBytes.asJava).build)
+        .setUri(commandURI.uri.toString).addAllArgs(argBytes.asJava).build)
     SerdesUtils.rpcMessageFromBytes(resp.getResults(0).toByteArray,
       classTag[T].runtimeClass, SerdesTypes.PROTOBUF).asInstanceOf[T]
   }
