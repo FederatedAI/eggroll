@@ -76,4 +76,6 @@ class ClusterManagerClient(val endpoint: ErEndpoint) {
   def registerSession(sessionMeta: ErSessionMeta, processorBatch: ErProcessorBatch): ErProcessorBatch =
     cc.call[ErProcessorBatch](SessionCommands.registerSession, sessionMeta, processorBatch)
 
+  def getBoundProcessorBatch(sessionMeta: ErSessionMeta): ErProcessorBatch =
+    cc.call[ErProcessorBatch](SessionCommands.getBoundProcessorBatch, sessionMeta)
 }
