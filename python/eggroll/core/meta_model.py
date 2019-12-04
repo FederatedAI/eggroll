@@ -370,20 +370,27 @@ class ErStore(RpcMessage):
 
 
 class ErJob(RpcMessage):
-  def __init__(self, id: str, name: str = '', inputs=list(), outputs=list(),
-      functors=list()):
+  def __init__(self,
+      id: str,
+      name: str = '',
+      inputs=list(),
+      outputs=list(),
+      functors=list(),
+      options=dict()):
     self._id = id
     self._name = name
     self._inputs = inputs
     self._outputs = outputs
     self._functors = functors
+    self._options = options
 
   def to_proto(self):
     return meta_pb2.Job(id=self._id,
                         name=self._name,
                         inputs=_elements_to_proto(self._inputs),
                         outputs=_elements_to_proto(self._outputs),
-                        functors=_elements_to_proto(self._functors))
+                        functors=_elements_to_proto(self._functors),
+                        options=self._options)
 
   def to_proto_string(self):
     return self.to_proto().SerializeToString()
@@ -395,7 +402,8 @@ class ErJob(RpcMessage):
                  inputs=_map_and_listify(ErStore.from_proto, pb_message.inputs),
                  outputs=_map_and_listify(ErStore.from_proto, pb_message.outputs),
                  functors=_map_and_listify(ErFunctor.from_proto,
-                                       pb_message.functors))
+                                       pb_message.functors),
+                 options=pb_message.options)
 
   @staticmethod
   def from_proto_string(pb_string):
@@ -404,7 +412,7 @@ class ErJob(RpcMessage):
     return ErJob.from_proto(pb_message)
 
   def __repr__(self):
-    return f'ErJob(id={self._id}, name={self._name}, inputs=[{_repr_list(self._inputs)}], outputs=[{_repr_list(self._outputs)}], functors=[{len(self._functors)}])'
+    return f'ErJob(id={self._id}, name={self._name}, inputs=[{_repr_list(self._inputs)}], outputs=[{_repr_list(self._outputs)}], functors=[{len(self._functors)}], options={self._options})'
 
 
 class ErTask(RpcMessage):
