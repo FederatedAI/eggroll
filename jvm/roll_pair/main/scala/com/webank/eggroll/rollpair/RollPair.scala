@@ -22,44 +22,38 @@ import java.nio.ByteBuffer
 import java.util.concurrent.TimeUnit
 
 import com.google.protobuf.ByteString
+import com.webank.eggroll.core.ErSession
 import com.webank.eggroll.core.client.ClusterManagerClient
 import com.webank.eggroll.core.constant._
 import com.webank.eggroll.core.datastructure.{Broker, LinkedBlockingBroker}
-import com.webank.eggroll.core.meta.{ErJob, ErStore, ErStoreLocator}
+import com.webank.eggroll.core.meta.{ErEndpoint, ErJob, ErStore, ErStoreLocator}
 import com.webank.eggroll.core.session.{ErConf, RuntimeErConf}
 import com.webank.eggroll.core.transfer.GrpcTransferClient
 import com.webank.eggroll.rollpair.component.RollPairServicer
 
-class RollPair(val store: ErStore, val opts: ErConf = RuntimeErConf()) {
-  private var __store: ErStore = null
-  private val clusterManagerHost = opts.getString(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST, "localhost")
-  private val clusterManagerPort = opts.getInt(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, 4670)
+class RollPairContext(erSession: ErSession, defaultStoreType:String = StoreTypes.ROLLPAIR_LMDB) {
+  def getRollEndpoint(): ErEndpoint = erSession.rolls.head.commandEndpoint
+  def getEggEndpoint(partitionId: Int): ErEndpoint = erSession.eggs(0).head.commandEndpoint
 
-  private val clusterManagerClient = new ClusterManagerClient(clusterManagerHost, clusterManagerPort)
-
-  land(store, opts)
-
-  def land(store: ErStore, opts: ErConf = RuntimeErConf()): RollPair = {
-    var finalStore = store
-    if (finalStore == null) {
-      finalStore = ErStore(storeLocator = ErStoreLocator(
-        storeType = opts.getString(StringConstants.STORE_TYPE, StoreTypes.ROLLPAIR_LEVELDB),
-        namespace = opts.getString(StringConstants.NAMESPACE),
-        name = opts.getString(StringConstants.NAME),
-        totalPartitions = opts.getInt(StringConstants.TOTAL_PARTITIONS, 0),
-        partitioner = opts.getString(StringConstants.PARTITIONER, PartitionerTypes.BYTESTRING_HASH),
-        serdes = opts.getString(StringConstants.SERDES, SerdesTypes.CLOUD_PICKLE)
-      ))
-    }
-
-    __store = clusterManagerClient.getOrCreateStore(finalStore)
-
-    this
+  def load(namespace:String, name:String, opts: Map[String,String] = Map()): RollPair = {
+    val store = ErStore(storeLocator = ErStoreLocator(
+      namespace = namespace,
+      name = name,
+      storeType = opts.getOrElse(StringConstants.STORE_TYPE, StoreTypes.ROLLPAIR_LEVELDB),
+      totalPartitions = opts.getOrElse(StringConstants.TOTAL_PARTITIONS, "0").toInt,
+      partitioner = opts.getOrElse(StringConstants.PARTITIONER, PartitionerTypes.BYTESTRING_HASH),
+      serdes = opts.getOrElse(StringConstants.SERDES, SerdesTypes.CLOUD_PICKLE)
+    ))
+    erSession.cmClient.getOrCreateStore(store)
+    new RollPair(store, this)
   }
+}
+
+class RollPair(val store: ErStore,val ctx:RollPairContext, val opts: Map[String,String] = Map()) {
 
   // todo: 1. consider recv-side shuffle; 2. pull up rowPairDb logic; 3. add partition calculation based on session logic;
   def putBatch(broker: Broker[ByteString], output: ErStore = null, opts: ErConf = RuntimeErConf()): RollPair = {
-    val totalPartitions = __store.storeLocator.totalPartitions
+    val totalPartitions = store.storeLocator.totalPartitions
     val transferClients = new Array[GrpcTransferClient](totalPartitions)
     val brokers = new Array[Broker[ByteString]](totalPartitions)
     // todo: partitioner factory depending on string, and mod partition number
@@ -106,7 +100,7 @@ class RollPair(val store: ErStore, val opts: ErConf = RuntimeErConf()) {
           val newTransferClient = new GrpcTransferClient()
 
           newBroker.put(rowPairDB)
-          newTransferClient.initForward(dataBroker = newBroker, tag = s"forward-${partitionId}", processor = __store.partitions(partitionId).processor)
+          newTransferClient.initForward(dataBroker = newBroker, tag = s"forward-${partitionId}", processor = store.partitions(partitionId).processor)
           transferClients.update(partitionId, newTransferClient)
         }
 
