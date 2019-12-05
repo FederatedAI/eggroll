@@ -54,7 +54,9 @@ class EggPairThread (threading.Thread):
         parser.add_argument('-s', '--session-id', default=self.session_id)
         parser.add_argument('-p', '--port', default=self.port)
 
+        print('ready to parse')
         args = parser.parse_args()
+        print('ready to serve')
         serve(args)
         print ("EggPairThread stop：" + self.name)
 

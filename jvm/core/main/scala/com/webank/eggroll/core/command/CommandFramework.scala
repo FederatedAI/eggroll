@@ -26,7 +26,7 @@ import com.webank.eggroll.core.constant.{SerdesTypes, SessionConfKeys}
 import com.webank.eggroll.core.datastructure.TaskPlan
 import com.webank.eggroll.core.error.DistributedRuntimeException
 import com.webank.eggroll.core.meta._
-import com.webank.eggroll.core.util.ThreadPoolUtils
+import com.webank.eggroll.core.util.{Logging, ThreadPoolUtils}
 import org.apache.commons.lang3.StringUtils
 
 import scala.collection.mutable
@@ -38,18 +38,19 @@ case class EndpointTaskCommand(commandURI: CommandURI, task: ErTask)
 
 
 // todo: merge with command client
-case class CollectiveCommand(taskPlan: TaskPlan) {
+case class CollectiveCommand(taskPlan: TaskPlan) extends Logging {
   def call(): Array[ErTask] = {
     val job = taskPlan.job
 
     val commandUri = taskPlan.uri
 
-    val finishLatch = new CountDownLatch(job.inputs.length)
+    val finishLatch = new CountDownLatch(job.inputs.head.partitions.length)
     val errors = new DistributedRuntimeException()
     val results = mutable.ArrayBuffer[ErTask]()
 
     val tasks = toTasks(taskPlan)
 
+    logWarning(s"tasks.length: ${tasks.length}")
     tasks.par.map(task => {
       val completableFuture: CompletableFuture[ErTask] =
         CompletableFuture
