@@ -98,7 +98,7 @@ case class ErJob(id: String,
                  inputs: Array[ErStore],
                  outputs: Array[ErStore] = Array(),
                  functors: Array[ErFunctor],
-                 options: java.util.Map[String, String] = new ConcurrentHashMap[String, String]()) extends MetaRpcMessage
+                 options: Map[String, String] = Map[String, String]()) extends MetaRpcMessage
 
 case class ErTask(id: String,
                   name: String = StringConstants.EMPTY,
@@ -127,39 +127,10 @@ case class ErSessionMeta(id: String,
                          tag: String = StringConstants.EMPTY) extends MetaRpcMessage {
 }
 
-class ErPartitionBindingPlan(val id: String,
-                             val totalPartitions: Int,
-                             val partitionToServerNodes: Array[Long],
-                             val bindingStrategy: String = BindingStrategies.ROUND_ROBIN,
-                             val detailBindings: Array[ErProcessor] = Array.empty) {
-  def toPartitions(): Array[ErPartition] = {
-    val i = new AtomicInteger(0)
-    val result = ArrayBuffer[ErPartition]()
-
-    partitionToServerNodes.foreach(snid => {
-      val curI = i.getAndIncrement()
-      result += ErPartition(id = curI, processor = ErProcessor(serverNodeId = snid, tag = "binding"))
-    })
-
-    result.toArray
-  }
-}
-
-object ErPartitionBindingPlan {
-  def genId(sessionId: String,
-            totalPartitions: Int,
-            serverNodeIds: Array[Long],
-            strategy: String = BindingStrategies.ROUND_ROBIN): String = {
-    val concatted = serverNodeIds.mkString(StringConstants.COMMA)
-    String.join("-", sessionId, totalPartitions.toString, strategy, concatted)
-  }
-}
-
 case class ErServerSessionDeployment(id: String,
                                      serverCluster: ErServerCluster,
                                      rolls: Array[ErProcessor],
-                                     eggs: Map[Long, Array[ErProcessor]],
-                                     partitionBindingPlans: mutable.Map[String, ErPartitionBindingPlan] = mutable.Map[String, ErPartitionBindingPlan]()) {    // binding id -> binding
+                                     eggs: Map[Long, Array[ErProcessor]]) {
   def toErProcessorBatch(): ErProcessorBatch = {
     val processors = new ArrayBuffer[ErProcessor]()
     processors ++= rolls
@@ -167,51 +138,6 @@ case class ErServerSessionDeployment(id: String,
 
     ErProcessorBatch(processors = processors.toArray, tag = id)
   }
-
-  def getBoundErProcessorBatch(bindingPlanId: String): ErProcessorBatch = {
-    val binding = partitionBindingPlans.getOrElse(bindingPlanId, null)
-    if (binding == null) {
-      throw new IllegalArgumentException(s"binding ${binding} not exists in session ${id}")
-    }
-
-    val result = ArrayBuffer[ErProcessor]()
-    result.sizeHint(binding.totalPartitions)
-
-    val partitionIdToServerNodes = binding.partitionToServerNodes
-    val curOffsets = mutable.Map[Long, Int]()
-    (0 until binding.totalPartitions).foreach(partitionId => {
-      val curServerNodeId = partitionIdToServerNodes(partitionId)
-      if (!curOffsets.contains(curServerNodeId)) {
-        curOffsets.put(curServerNodeId, 0)
-      }
-      val curPartitionOffset = curOffsets(curServerNodeId)
-      val boundEgg = eggs(curServerNodeId)(curPartitionOffset)
-
-      result += ErProcessor(
-        id = partitionId,
-        serverNodeId = curServerNodeId,
-        name = boundEgg.name,
-        processorType = boundEgg.processorType,
-        status = boundEgg.status,
-        commandEndpoint = boundEgg.commandEndpoint,
-        dataEndpoint = boundEgg.dataEndpoint)
-
-      curOffsets(curServerNodeId) = (curPartitionOffset + 1) % eggs(curServerNodeId).length
-    })
-
-    ErProcessorBatch(id = 0, name = bindingPlanId, processors = result.toArray, tag = id)
-  }
-}
-
-
-class ErSession(id: String, sessionMeta: ErSessionMeta, deploys: Map[String, ErServerSessionDeployment]) {
-  def name: String = sessionMeta.name
-
-  def status: String = sessionMeta.status
-
-  def options: java.util.Map[String, String] = sessionMeta.options
-
-  def tag: String = sessionMeta.tag
 }
 
 object MetaModelPbMessageSerdes {
@@ -309,7 +235,7 @@ object MetaModelPbMessageSerdes {
         .addAllInputs(src.inputs.toList.map(_.toProto()).asJava)
         .addAllOutputs(src.outputs.toList.map(_.toProto()).asJava)
         .addAllFunctors(src.functors.toList.map(_.toProto()).asJava)
-        .putAllOptions(src.options)
+        .putAllOptions(src.options.asJava)
 
       builder.build()
     }
@@ -420,7 +346,7 @@ object MetaModelPbMessageSerdes {
         inputs = src.getInputsList.asScala.map(_.fromProto()).toArray,
         outputs = src.getOutputsList.asScala.map(_.fromProto()).toArray,
         functors = src.getFunctorsList.asScala.map(_.fromProto()).toArray,
-        options = src.getOptionsMap)
+        options = src.getOptionsMap.asScala.toMap)
     }
 
     override def fromBytes(bytes: Array[Byte]): ErJob =

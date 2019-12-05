@@ -42,8 +42,7 @@ object SessionManager {
       id = StringConstants.UNKNOWN,
       serverCluster = ErServerCluster(),
       rolls = Array.empty,
-      eggs = Map.empty,
-      partitionBindingPlans = mutable.Map[String, ErPartitionBindingPlan]()))
+      eggs = Map.empty))
 
   def getOrCreateSession(sessionMeta: ErSessionMeta): ErProcessorBatch = {
     val sessionId = sessionMeta.id
@@ -77,9 +76,12 @@ object SessionManager {
 
   def register(sessionMeta: ErSessionMeta, processorBatch: ErProcessorBatch): ErProcessorBatch = {
     val sessionId = sessionMeta.id
+    // todo: register or get
+/*
     if (activeSessions.containsKey(sessionId)) {
       throw new IllegalStateException("session already exists")
     }
+*/
 
     val rolls = ArrayBuffer[ErProcessor]()
     val eggs = mutable.Map[Long, ArrayBuffer[ErProcessor]]()
@@ -144,105 +146,6 @@ object SessionManager {
     }
 
     null
-  }
-
-  def hasBinding(sessionId: String, bindingId: String): Boolean = {
-    val deployment = activeSessions.getOrDefault(sessionId, null)
-    deployment != null && deployment.partitionBindingPlans.contains(bindingId)
-  }
-
-  def addBinding(sessionId: String, binding: ErPartitionBindingPlan): Unit = {
-    val deployment = activeSessions.getOrDefault(sessionId, null)
-    if (deployment == null) {
-      throw new IllegalStateException(s"session ${sessionId} has not been deployed yet")
-    }
-
-    val bindings = deployment.partitionBindingPlans
-    if (bindings.contains(binding.id)) {
-      throw new IllegalArgumentException(s"binding ${binding.id} in session ${sessionId} already exists")
-    }
-
-    bindings += (binding.id -> binding)
-  }
-
-  def getBindingPlan(sessionId: String,
-                     totalPartitions: Int,
-                     serverNodeIds: Array[Long],
-                     strategy: String = BindingStrategies.ROUND_ROBIN): ErPartitionBindingPlan = {
-    val bindingId = ErPartitionBindingPlan.genId(
-      sessionId = sessionId,
-      totalPartitions = totalPartitions,
-      serverNodeIds = serverNodeIds,
-      strategy = strategy)
-
-    getBindingPlan(sessionId, bindingId)
-  }
-
-  def getBindingPlan(sessionId: String, bindingId: String): ErPartitionBindingPlan = {
-    val deployment = activeSessions.getOrDefault(sessionId, null)
-    if (deployment == null) {
-      throw new IllegalStateException(s"session ${sessionId} has not been deployed yet")
-    }
-
-    deployment.partitionBindingPlans.getOrElse(bindingId, null)
-  }
-
-  def createBindingPlan(sessionId: String,
-                        totalPartitions: Int,
-                        serverNodeIds: Array[Long],
-                        strategy: String = BindingStrategies.ROUND_ROBIN,
-                        detailBindings: Array[ErProcessor] = Array.empty): ErPartitionBindingPlan = {
-    val deployment = activeSessions.getOrDefault(sessionId, null)
-    if (deployment == null) {
-      throw new IllegalStateException(s"session ${sessionId} has not been deployed yet")
-    }
-
-    val partitionToServerNodes = ArrayBuffer[Long]()
-    partitionToServerNodes.sizeHint(totalPartitions)
-
-    val nodesLength = serverNodeIds.length
-
-    (0 until totalPartitions).foreach(partitionId => {
-      partitionToServerNodes += serverNodeIds(partitionId % nodesLength)
-    })
-
-    val concatted = serverNodeIds.mkString(StringConstants.COMMA)
-    val id = ErPartitionBindingPlan.genId(sessionId, totalPartitions, serverNodeIds, strategy)
-    var result = new ErPartitionBindingPlan(id = id,
-      partitionToServerNodes = partitionToServerNodes.toArray,
-      totalPartitions = totalPartitions,
-      bindingStrategy = strategy,
-      detailBindings = detailBindings)
-
-    if (deployment.partitionBindingPlans.contains(id)) {
-      result = deployment.partitionBindingPlans.getOrElse(id, result)
-    } else {
-      deployment.partitionBindingPlans += (id -> result)
-    }
-
-    result
-  }
-
-  def getBoundProcessorBatch(sessionId: String, bindingPlanId: String): ErProcessorBatch = {
-    if (!activeSessionBound.containsKey(sessionId)) {
-      activeSessionBound.put(sessionId, new ConcurrentHashMap[String, ErProcessorBatch]())
-    }
-    val bounds = activeSessionBound.get(sessionId)
-
-    var result = bounds.get(bindingPlanId)
-    if (result != null) {
-      return result
-    }
-
-    val deployment = getSessionDeployment(sessionId)
-    if (deployment == null) {
-      throw new IllegalStateException(s"session ${sessionId} has not been deployed yet")
-    }
-
-    result = deployment.getBoundErProcessorBatch(bindingPlanId = bindingPlanId)
-    bounds.put(bindingPlanId, result)
-
-    result
   }
 
   def getSessionDeployment(sessionId: String): ErServerSessionDeployment = {

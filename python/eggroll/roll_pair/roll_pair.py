@@ -23,7 +23,7 @@ from eggroll.core.conf_keys import DeployConfKeys
 from eggroll.core.datastructure.broker import FifoBroker
 from eggroll.core.io.format import BinBatchReader
 from eggroll.core.meta_model import ErStoreLocator, ErJob, ErStore, ErFunctor, ErTask, ErEndpoint, ErPair, ErPartition, \
-  ErProcessor, ErSessionMeta
+  ErProcessor, ErSessionMeta, ErServerCluster, ErProcessorBatch
 from eggroll.core.proto import command_pb2_grpc
 from eggroll.core.serdes import cloudpickle, eggroll_serdes
 from eggroll.core.client import ClusterManagerClient, CommandClient
@@ -46,6 +46,32 @@ from eggroll.utils import log_utils
 log_utils.setDirectory()
 LOGGER = log_utils.getLogger()
 
+class ErServerSessionDeployment(object):
+  def __init__(self, session_id: str, server_cluster: ErServerCluster, rolls: list, eggs: dict):
+    self.session_id = session_id,
+    self.server_cluster = server_cluster
+    self.rolls = rolls
+    self.eggs = eggs    # [server_node_id : list[ErProcessor]]
+
+  @staticmethod
+  def from_cm_response(session_id: str, server_cluster: ErServerCluster, roll_processor_batch: ErProcessorBatch, egg_processor_batch: ErProcessorBatch):
+    eggs = dict()
+    for er_processor in egg_processor_batch._processors:
+      server_node_id = er_processor._server_node_id
+      if server_node_id not in eggs:
+        eggs[server_node_id] = list()
+      eggs[server_node_id].append(er_processor)
+
+    return ErServerSessionDeployment(
+        session_id=session_id,
+        server_cluster=server_cluster,
+        rolls=roll_processor_batch._processors,
+        eggs=eggs)
+
+  def __repr__(self):
+    return f'ErServerSessionDeployment(session_id: {self.session_id}, server_cluster: {repr(self.server_cluster)}, rolls: {self.rolls}, eggs: {self.eggs})'
+
+
 class RollPairContext(object):
 
   def __init__(self, session: ErSession):
@@ -55,6 +81,19 @@ class RollPairContext(object):
     self.default_store_type = StoreTypes.ROLLPAIR_LMDB
     self.deploy_mode = session.get_option(DeployConfKeys.CONFKEY_DEPLOY_MODE)
     self._bindings = {}    # dict[binding_id, list[ErProcessor]]
+
+    _server_cluster = self.__session.cm_client.get_session_server_nodes(self.__session.session_meta)
+    _rolls = self.__session.cm_client.get_session_rolls(self.__session.session_meta)
+    _eggs = self.__session.cm_client.get_session_eggs(self.__session.session_meta)
+    self.__server_session_deployment = ErServerSessionDeployment.from_cm_response(
+        self.__session.get_session_id(),
+        _server_cluster,
+        _rolls,
+        _eggs)
+
+    print(f'server_session_deployment: {self.__server_session_deployment}')
+
+
 
   def get_roll_endpoint(self):
     return self.__session._rolls[0]._command_endpoint
@@ -66,30 +105,14 @@ class RollPairContext(object):
   def get_roll(self):
     return self.__session._rolls[0]
 
-  def add_binding_if_not_exist(self, store: ErStore):
-    binding_id = store._options.get(SessionConfKeys.CONFKEY_SESSION_EGG_BINDING_ID, None)
-    if not binding_id:
-      raise ValueError(f'binding id missing for binding_id {binding_id}')
+  def route_to_egg(self, partition: ErPartition):
+    deployment = self.__server_session_deployment
+    target_server_node = partition._processor._server_node_id
+    target_egg_processors = len(deployment.eggs[target_server_node])
+    target_processor = (partition._id // target_egg_processors) % target_egg_processors
 
-    if binding_id not in self._bindings.keys():
-      meta = ErSessionMeta(id=self.session_id, options=store._options)
-      bound_eggs = self.__session.cm_client.get_bound_process_batch(meta)
+    return deployment.eggs[target_server_node][target_processor]
 
-      self._bindings[binding_id] = bound_eggs._processors
-
-  def has_binding(self, binding_id):
-    return binding_id in self._bindings
-
-  def get_binding_egg(self, store: ErStore, partition_id: int):
-    binding_id = store._options.get(SessionConfKeys.CONFKEY_SESSION_EGG_BINDING_ID, None)
-    if not binding_id:
-      raise ValueError(f'binding id missing at {store}')
-
-    if not self.has_binding(binding_id):
-      self.add_binding_if_not_exist(store)
-
-    print(self._bindings)
-    return self._bindings[binding_id][partition_id]
 
   def load(self, namespace=None, name=None, create_if_missing=True, options={}):
     store_type = options.get('store_type', self.default_store_type)
@@ -214,8 +237,7 @@ class RollPair(object):
     outputs = []
     value = None
     partition_id = self.partitioner(k)
-    egg_id = self.egg_router(partition_id)
-    egg = self.ctx.get_binding_egg(self.__store, partition_id)
+    egg = self.ctx.route_to_egg(self.__store._partitions[partition_id])
     print(egg._command_endpoint)
     print("count:", self.__store._store_locator._total_partitions)
     inputs = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
@@ -245,8 +267,7 @@ class RollPair(object):
     er_pair = ErPair(key=k, value=v)
     outputs = []
     part_id = self.partitioner(k)
-    egg_id = self.egg_router(part_id)
-    egg_endpoint = self.ctx.get_binding_egg(self.__store, part_id)
+    egg = self.ctx.route_to_egg(self.__store._partitions[part_id])
     inputs = [ErPartition(id=part_id, store_locator=self.__store._store_locator)]
     output = [ErPartition(id=0, store_locator=self.__store._store_locator)]
 
@@ -259,7 +280,7 @@ class RollPair(object):
     job_resp = self.__roll_pair_command_client.simple_sync_send(
         input=task,
         output_type=ErPair,
-        endpoint=egg_endpoint._command_endpoint,
+        endpoint=egg._command_endpoint,
         command_uri=CommandURI(f'{EggPair.uri_prefix}/{EggPair.PUT}'),
         serdes_type=self.__command_serdes
     )
@@ -723,10 +744,14 @@ class RollPair(object):
     outputs = []
     if output:
       outputs.append(output)
+    final_options = {}
+    final_options.update(self.__store._options)
+    final_options.update(options)
     job = ErJob(id=self.__session_id, name=RollPair.JOIN,
                 inputs=[self.__store, other.__store],
                 outputs=outputs,
-                functors=[functor])
+                functors=[functor],
+                options=final_options)
 
     job_result = self.__roll_pair_command_client.simple_sync_send(
       input=job,

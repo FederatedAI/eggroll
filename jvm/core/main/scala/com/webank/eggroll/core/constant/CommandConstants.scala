@@ -59,16 +59,13 @@ object SessionCommands {
   val getOrCreateSession = new CommandURI(prefix = prefix, name = "getOrCreateSession")
   val getSession = new CommandURI(prefix = prefix, name = "getSession")
   val registerSession = new CommandURI(prefix = prefix, name = "registerSession")
-  val getPartitionBindingPlan = new CommandURI(prefix = prefix, name = "getPartitionBindingPlan")
-  val getBoundProcessorBatch = new CommandURI(prefix = prefix, name = "getBoundProcessorBatch")
+  val getSessionServerNodes = new CommandURI(prefix = prefix, name = "getSessionServerNodes")
+  val getSessionRolls = new CommandURI(prefix = prefix, name = "getSessionRolls")
+  val getSessionEggs = new CommandURI(prefix = prefix, name = "getSessionEggs")
 
   val stopSession = "stopSession"
   val stopSessionServiceName = CommandUtils.toServiceName(prefix, stopSession)
   val STOP_SESSION = new CommandURI(stopSessionServiceName)
-
-  val getOrCreateProcessorBatch = "getOrCreateProcessorBatch"
-  val getOrCreateProcessorBatchServiceName = CommandUtils.toServiceName(prefix, getOrCreateProcessorBatch)
-  val GET_OR_CREATE_PROCESSOR_BATCH = new CommandURI(getOrCreateProcessorBatchServiceName)
 }
 
 object NodeManagerCommands {

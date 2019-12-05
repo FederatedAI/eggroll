@@ -103,18 +103,6 @@ class TestClusterManager {
       routeToClass = classOf[ClusterManager],
       routeToMethodName = SessionCommands.registerSession.getName())
 
-    CommandRouter.register(serviceName = SessionCommands.getPartitionBindingPlan.uriString,
-      serviceParamTypes = Array(classOf[ErStore]),
-      serviceResultTypes = Array(classOf[ErStore]),
-      routeToClass = classOf[ClusterManager],
-      routeToMethodName = SessionCommands.getPartitionBindingPlan.getName())
-
-    CommandRouter.register(serviceName = SessionCommands.getBoundProcessorBatch.uriString,
-      serviceParamTypes = Array(classOf[ErSessionMeta]),
-      serviceResultTypes = Array(classOf[ErProcessorBatch]),
-      routeToClass = classOf[ClusterManager],
-      routeToMethodName = SessionCommands.getBoundProcessorBatch.getName())
-
     val clusterManager = NettyServerBuilder
       .forPort(clusterManagerPort)
       .addService(new CommandService)
@@ -176,7 +164,7 @@ class TestClusterManager {
   @Test
   def testGetStore(): Unit = {
     val options = new ConcurrentHashMap[String, String]()
-    val input = ErStore(storeLocator = ErStoreLocator(storeType = StoreTypes.ROLLPAIR_LEVELDB, namespace = "namespace", name = "name"))
+    val input = ErStore(storeLocator = ErStoreLocator(storeType = StoreTypes.ROLLPAIR_LMDB, namespace = "namespace", name = "name"))
 
     val result = clusterManagerClient.getStore(input)
 
@@ -193,7 +181,7 @@ class TestClusterManager {
   def testGetOrCreateStore(): Unit = {
     println(System.getProperty("os.name"))
     val input = ErStoreLocator(
-      storeType = StoreTypes.ROLLPAIR_LEVELDB,
+      storeType = StoreTypes.ROLLPAIR_LMDB,
       namespace = "namespace",
       name = System.currentTimeMillis().toString,
       totalPartitions = 4,

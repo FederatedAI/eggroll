@@ -118,7 +118,7 @@ class RollPairContext(erSession: ErSession, defaultStoreType:String = StoreTypes
           name = "putBatch",
           inputs = Array(ErStore(storeLocator)),
           functors = Array(),
-          options = Map(SessionConfKeys.CONFKEY_SESSION_ID -> "sid11").asJava)
+          options = Map(SessionConfKeys.CONFKEY_SESSION_ID -> "sid11"))
         rollPair.putBatch(job)
       }
     }

@@ -144,18 +144,25 @@ class ClusterManagerClient(object):
                                            command_uri=SessionCommands.REGISTER_SESSION,
                                            serdes_type=self.__serdes_type)
 
-  def get_partition_binding_plan(self, input: ErStore):
+  def get_session_server_nodes(self, input: ErSessionMeta):
     return self.__do_sync_request_internal(
         input=input,
-        output_type=ErStore,
-        command_uri=SessionCommands.GET_PARTITION_BINDING_PLAN,
+        output_type=ErServerCluster,
+        command_uri=SessionCommands.GET_SESSION_SERVER_NODES,
         serdes_type=self.__serdes_type)
 
-  def get_bound_process_batch(self, input: ErSessionMeta):
+  def get_session_rolls(self, input: ErSessionMeta):
     return self.__do_sync_request_internal(
         input=input,
         output_type=ErProcessorBatch,
-        command_uri=SessionCommands.GET_BOUND_PROCESSOR_BATCH,
+        command_uri=SessionCommands.GET_SESSION_ROLLS,
+        serdes_type=self.__serdes_type)
+
+  def get_session_eggs(self, input: ErSessionMeta):
+    return self.__do_sync_request_internal(
+        input=input,
+        output_type=ErProcessorBatch,
+        command_uri=SessionCommands.GET_SESSION_EGGS,
         serdes_type=self.__serdes_type)
 
   def __do_sync_request_internal(self, input, output_type, command_uri, serdes_type):
