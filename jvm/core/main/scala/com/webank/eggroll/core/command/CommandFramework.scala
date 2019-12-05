@@ -44,15 +44,13 @@ case class CollectiveCommand(taskPlan: TaskPlan) extends Logging {
 
     val commandUri = taskPlan.uri
 
-    val finishLatch = new CountDownLatch(job.inputs.head.partitions.length)
     val errors = new DistributedRuntimeException()
     val results = mutable.ArrayBuffer[ErTask]()
 
     val tasks = toTasks(taskPlan)
 
-    logWarning(s"tasks.length: ${tasks.length}")
-    tasks.par.map(task => {
-      val completableFuture: CompletableFuture[ErTask] =
+    val future = CompletableFuture.allOf(
+      tasks.map(task => {
         CompletableFuture
           .supplyAsync(new CommandServiceSupplier(task, commandUri), CollectiveCommand.threadPool)
           .exceptionally(e => {
@@ -63,15 +61,18 @@ case class CollectiveCommand(taskPlan: TaskPlan) extends Logging {
             if (exception != null) {
               errors.append(exception)
             } else {
-              results += result
+              // nothing
             }
-            finishLatch.countDown()
           })
+      }): _*).whenComplete((result, exception) => {
+        if (exception != null) {
+          errors.append(exception)
+        } else {
+          // nothing
+        }
+      })
 
-      completableFuture.join()
-    })
-
-    finishLatch.await()
+    future.join()
 
     if (!errors.check()) {
       errors.raise()
