@@ -97,7 +97,7 @@ class RollPair(val store: ErStore, val ctx:RollPairContext, val opts: Map[String
         val k = new Array[Byte](kLen)
         byteBuffer.get(k)
 
-        val partitionId = partitioner(k, totalPartitions)
+        val partitionId = ctx.partitioner(k, totalPartitions)
 
         if (transferClients(partitionId) == null) {
           val newBroker = new LinkedBlockingBroker[ByteString]()
@@ -105,7 +105,7 @@ class RollPair(val store: ErStore, val ctx:RollPairContext, val opts: Map[String
           val newTransferClient = new GrpcTransferClient()
           val proc = ErProcessor(commandEndpoint = ErEndpoint("localhost",20001))
           newBroker.put(rowPairDB)
-          newTransferClient.initForward(dataBroker = newBroker, tag = s"forward-${partitionId}", processor = getPartitionProcessor(partitionId))
+          newTransferClient.initForward(dataBroker = newBroker, tag = s"forward-${partitionId}", processor = ctx.getPartitionProcessor(partitionId))
           transferClients.update(partitionId, newTransferClient)
         }
 
