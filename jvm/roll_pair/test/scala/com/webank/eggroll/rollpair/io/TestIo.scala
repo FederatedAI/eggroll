@@ -90,6 +90,7 @@ class TestIo {
     import com.webank.eggroll.rollpair.RollPair
     val sid = "aa1sid"
     val ctx = new RollPairContext(new ErSession(sid))
+    val rp = ctx.load("ns1","n2")
 
     var directBinPacketBuffer: ByteBuffer = ByteBuffer.allocateDirect(1<<10)
     directBinPacketBuffer.put(NetworkConstants.TRANSFER_PROTOCOL_MAGIC_NUMBER)   // magic num
@@ -105,7 +106,7 @@ class TestIo {
 
     val broker = new LinkedBlockingBroker[ByteString]()
     broker.put(ByteString.copyFrom(directBinPacketBuffer))
-    ctx.putBatch(broker)
+    rp.putBatch(broker)
   }
 
   @Test
