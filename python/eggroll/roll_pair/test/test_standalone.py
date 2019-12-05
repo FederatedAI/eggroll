@@ -112,7 +112,7 @@ class TestStandalone(unittest.TestCase):
 
   def test_sample(self):
     rp = self.ctx.load("ns1", "testSample").put_all(range(100))
-    #print(6 <= rp.sample(0.1, 81) <= 14)
+    print(6 <= rp.sample(0.1, 81).count() <= 14)
 
   def test_subtract_by_key(self):
     left_rp = self.ctx.load("ns1", "testSubtractByKeyLeft").put_all(range(10))
