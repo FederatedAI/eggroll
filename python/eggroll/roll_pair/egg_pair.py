@@ -409,9 +409,9 @@ class EggPair(object):
           if v_right is None:
             output_writebatch.put(k_left, v_left)
           else:
-            k_list_iterated.append(self.serde.deserialize(v_left))
-            v_final = f(v_left, v_right)
-            output_writebatch.put(k_left, v_final)
+            k_list_iterated.append(self.serde.deserialize(k_left))
+            v_final = f(self.serde.deserialize(v_left), self.serde.deserialize(v_right))
+            output_writebatch.put(k_left, self.serde.serialize(v_final))
 
         for k_right, v_right in right_iterator:
           if self.serde.deserialize(k_right) not in k_list_iterated:
