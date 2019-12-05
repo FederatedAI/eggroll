@@ -23,7 +23,7 @@ import roll_paillier_tensor as rpt_engine
 from eggroll.roll_pair.roll_pair import RollPairContext
 
 class RptBaseEngine:
-    def load(self,x):
+    def load(self, x):
         raise NotImplementedError("todo")
     def add(self, x, y):
         raise NotImplementedError("todo")
@@ -36,35 +36,45 @@ class RptGpuEngine(RptBaseEngine):
 
 class RptCpuEngine(RptBaseEngine):
     def __init__(self, pub_key=None, priv_key=None):
-        self._under = rpt_engine
-        if pub_key is not None:
-            self.pub_key = pub_key
-            self.priv_key = priv_key
-        else:
-            self.pub_key,self.priv_key = rpt_engine.keygen()
+        print("+++++++++++++++++++++3")
+        self.pub_key = rpt_engine.load_pub_key(pub_key)
+        self.priv_key = rpt_engine.load_prv_key(priv_key)
+
+    # def __setstate__(self, state):
+    #     bin_pub,bin_prv = state
+    #     self.priv_key=rpt_engine.load_prv_key(bin_pub)
+    #     self.pub_key=rpt_engine.load_pub_key(bin_prv)
+    #
+    # def __getstate__(self):
+    #     rpt_engine.dump_pub_key(self.pub_key)
+    #     rpt_engine.dump_prv_key(self.priv_key)
+
+    def __transient__(self):
+        return []
 
     def load(self,x):
-        return self._under.load(x)
+        return rpt_engine.load(x)
+
+    def dump(self, x):
+        return rpt_engine.dump(x)
 
     def scalar_mul(self, x, scale):
-        return self._under.add(x, scale, self.pub_key, self.priv_key)
+        return rpt_engine.add(x, scale, self.pub_key, self.priv_key)
 
     def obf(self, x):
-        return self._under.obf(x, self.pub_key, self.priv_key)
+        return rpt_engine.obf(x, self.pub_key, self.priv_key)
 
     def add(self, x, y):
-        return self._under.add(x, y, self.pub_key, self.priv_key)
+        return rpt_engine.add(x, y, self.pub_key, self.priv_key)
 
     def vdot(self, x, y):
-        return self._under.vdot(x, y, self.pub_key, self.priv_key)
+        return rpt_engine.vdot(x, y, self.pub_key, self.priv_key)
 
     def encrypt(self, x):
-        return self._under.encrypt(x, self.pub_key, self.priv_key)
+        return rpt_engine.encrypt(x, self.pub_key, self.priv_key)
 
     def decrypt(self, x):
-        return self._under.decrypt(x, self.pub_key, self.priv_key)
-
-
+        return rpt_engine.decrypt(x, self.pub_key, self.priv_key)
 
 class RptMixedEngine(RptBaseEngine):
     pass
@@ -80,7 +90,13 @@ class RollPaillierTensor(object):
   def __init__(self, roll_pair, engine_type="cpu"):
     self._store = roll_pair
     if engine_type == "cpu":
-        self._engine = RptCpuEngine()
+        self.pub_key, self.prv_key = rpt_engine.keygen()
+        # pub_key, prv_key = rpt_engine.keygen()
+        self.pub_key = rpt_engine.dump_pub_key(self.pub_key)
+        self.prv_key = rpt_engine.dump_prv_key(self.prv_key)
+        # self._engine = RptCpuEngine(rpt_engine.dump_pub_key(self.pub_key),
+        #                             rpt_engine.dump_prv_key(self.prv_key))
+        print("+++++++++++++++++++++1")
     else:
         raise NotImplementedError("todo")
 
@@ -111,15 +127,24 @@ class RollPaillierTensor(object):
       return RollPaillierTensor(self._store.map_values(lambda mat: functor(mat)))
 
   def add(self, other):
+    pub_key = self.pub_key
+    prv_key = self.prv_key
+
+    print(prv_key)
     def functor(mat1, mat2):
+      _engine = RptCpuEngine(pub_key, prv_key)
+
       print("[cpu_add]")
-      mat1_enc = self._engine.load(mat1)
-      mat2_enc = self._engine.load(mat2)
 
-      mat_res_enc = self._engine.add(mat1_enc, mat2_enc)
-      return self._engine.dump(mat_res_enc)
+      print("+++++++++++++++++++++")
 
-    return RollPaillierTensor(self._store.join(other._store, lambda left, right : functor(left, right)))
+      mat1_enc = _engine.load(mat1)
+      mat2_enc = _engine.load(mat2)
+
+      mat_res_enc = _engine.add(mat1_enc, mat2_enc)
+      return _engine.dump(mat_res_enc)
+
+    return RollPaillierTensor(self._store.join(other._store, lambda mat1, mat2: functor(mat1, mat2)))
 
   def vdot(self, other):
       def functor(mat1, mat2):

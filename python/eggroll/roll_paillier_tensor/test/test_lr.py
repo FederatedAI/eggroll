@@ -13,19 +13,16 @@ from eggroll.roll_paillier_tensor.roll_paillier_tensor import RptContext
 from eggroll.roll_pair.roll_pair import RollPairContext
 from eggroll.roll_paillier_tensor.test.test_roll_paillier_tensor import TestRollPaillierTensor
 
-class Testlr(unittest.TestCase):
-    def test_lr(self):
-        session = ErSession(options={"eggroll.deploy.mode": "standalone"})
-        context = RptContext(RollPairContext(session))
+class TestLR(unittest.TestCase):
+  def test_lr(self):
+    session = ErSession(options={"eggroll.deploy.mode": "standalone"})
+    context = RptContext(RollPairContext(session))
 
-        mat1 = context.load("ns", "mat_a", "cpu")
-        mat2 = context.load("ns", "mat_b", "cpu")
+    mat1 = context.load("ns", "mat_a", "cpu")
+    mat2 = context.load("ns", "mat_b", "cpu")
 
-        res = mat1.add(mat2)
-
-
-
+    res = mat1.add(mat2)
 
 
 if __name__ == '__main__':
-    Testlr()
+  unittest.main()
