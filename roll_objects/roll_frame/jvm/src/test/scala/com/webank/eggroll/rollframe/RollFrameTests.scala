@@ -53,9 +53,26 @@ class RollFrameTests {
         for {x <- 0 until fieldCount
              y <- 0 until rowCount} {
           fb.writeDouble(x, y, randomObj.nextDouble())
+          //          fb.writeDouble(x, y, 1)
         }
         println(s"FrameBatch order: $i,row count: ${fb.rowCount}")
         adapter.append(fb)
+      }
+      adapter.close()
+    }
+
+    def writeSplice(adapter: FrameDB): Unit = {
+      val sliceFieldCount = fieldCount / 2
+      val randomObj = new Random()
+      (0 until fbCount).foreach { i =>
+        val fb = new FrameBatch(new FrameSchema(testAssets.getDoubleSchema(fieldCount)), rowCount)
+        for {x <- 0 until fieldCount
+             y <- 0 until rowCount} {
+          fb.writeDouble(x, y, randomObj.nextDouble())
+        }
+        val sliceFb = fb.sliceByColumn(i * sliceFieldCount, (i + 1) * sliceFieldCount)
+        println(s"FrameBatch order: $i,row count: ${sliceFb.fieldCount}")
+        adapter.append(sliceFb)
       }
       adapter.close()
     }
@@ -69,10 +86,11 @@ class RollFrameTests {
       assert(fieldCount == oneFb.fieldCount)
       assert(rowCount == oneFb.rowCount)
     }
+
     val outStoreLocator = ErStoreLocator(name = "a1", namespace = "test1", storeType = StringConstants.FILE)
     val output = ErStore(storeLocator = outStoreLocator, partitions = Array(
-        ErPartition(id = 0, storeLocator = outStoreLocator, processor = clusterManager.localNode0),
-        ErPartition(id = 1, storeLocator = outStoreLocator, processor = clusterManager.localNode1)))
+      ErPartition(id = 0, storeLocator = outStoreLocator, processor = clusterManager.localNode0),
+      ErPartition(id = 1, storeLocator = outStoreLocator, processor = clusterManager.localNode1)))
 
     write(FrameDB(output, 0))
     write(FrameDB(output, 1))
@@ -102,12 +120,76 @@ class RollFrameTests {
     Thread.sleep(100) // waiting
 
     // 3.write to cache
-    val cacheStore = RollFrame.loadCache(networkStore)
+    val cacheStore = RollFrame.Util.loadCache(networkStore)
 
     // 4.assert
     val fb = FrameDB(cacheStore, 0).readOne()
     assert(fb.fieldCount == 10)
     assert(fb.rowCount == 100)
+  }
+
+  /**
+    * a demo of slice a FrameBatch by rows and broadcast to the cluster to run aggregation
+    */
+  @Test
+  def testSliceByRowAndAggregate(): Unit = {
+    // FrameBatch on root server
+    val storeLocator = ErStoreLocator(name = "a1", namespace = "test1", storeType = StringConstants.FILE)
+    val input = ErStore(storeLocator = storeLocator,
+      partitions = Array(
+        ErPartition(id = 0, storeLocator = storeLocator, processor = clusterManager.localNode0)))
+
+    val networkLocator = ErStoreLocator(name = "a1", namespace = "test1", storeType = StringConstants.NETWORK)
+    val networkStore = ErStore(storeLocator = networkLocator,
+      partitions = clusterManager.getRollFrameStore("a1", "test1").partitions.map(p =>
+        p.copy(storeLocator = networkLocator)))
+
+    // broadcast and load to caches
+    val fb = FrameDB(input, 0).readOne()
+    val sliceRowCount = fb.rowCount / 2
+    (0 until 2).foreach(i => FrameDB(networkStore, i).append(fb.sliceRealByRow(i * sliceRowCount, sliceRowCount)))
+    val cacheStore = RollFrame.Util.loadCache(networkStore)
+
+    println(FrameDB(cacheStore, 0).readOne().rowCount)
+
+    val rf = new RollFrameClientMode(cacheStore)
+    val start = System.currentTimeMillis()
+    val fieldCount = 10
+    val schema = TestAssets.getDoubleSchema(fieldCount)
+    val zeroValue = new FrameBatch(new FrameSchema(schema), 1)
+    (0 until fieldCount).foreach(i => zeroValue.writeDouble(i, 0, 0))
+
+    val outStoreLocator = ErStoreLocator(name = "a1Sr", namespace = "test1", storeType = StringConstants.FILE)
+    // TODO: aggregate output Store is inconsistent here
+    val outStore = ErStore(storeLocator = outStoreLocator)
+    val outStore1 = ErStore(storeLocator = outStoreLocator, partitions = Array(
+      ErPartition(id = 0, storeLocator = outStoreLocator, processor = clusterManager.localNode0)))
+    rf.aggregate(zeroValue, { (x, y) =>
+      try {
+        for (f <- y.rootVectors.indices) {
+          val fv = y.rootVectors(f)
+          var sum = 0.0
+          for (n <- 0 until fv.valueCount) {
+            sum += 1
+          }
+          //          val fv = y.rootVectors(f)
+          //          val sum = fv.valueCount
+          x.writeDouble(f, 0, sum)
+        }
+      } catch {
+        case t: Throwable => t.printStackTrace()
+      }
+      x
+    }, { (a, b) =>
+      for (i <- 0 until fieldCount) {
+        a.writeDouble(i, 0, a.readDouble(i, 0) + b.readDouble(i, 0))
+      }
+      a
+    }, output = outStore)
+    println(System.currentTimeMillis() - start)
+    assert(FrameDB(outStore1, 0).readOne().readDouble(0, 0) == 100)
+
+    //    assert(FrameDB(outStore1, 0).readOne().readDouble(0,0) == 100)
   }
 
   @Test
@@ -118,7 +200,7 @@ class RollFrameTests {
         ErPartition(id = 0, storeLocator = storeLocator, processor = clusterManager.localNode0),
         ErPartition(id = 1, storeLocator = storeLocator, processor = clusterManager.localNode1)))
 
-    val output = RollFrame.loadCache(input)
+    val output = RollFrame.Util.loadCache(input)
     assert(FrameDB(input, 0).readOne().readDouble(0, 0) == FrameDB(output, 0).readOne().readDouble(0, 0))
   }
 
@@ -166,7 +248,7 @@ class RollFrameTests {
     // TODO: aggregate output Store is inconsistent here
     val outStore = ErStore(storeLocator = outStoreLocator)
     val outStore1 = ErStore(storeLocator = outStoreLocator, partitions = Array(
-      ErPartition(id = 0, storeLocator = inStoreLocator, processor = clusterManager.localNode0)))
+      ErPartition(id = 0, storeLocator = outStoreLocator, processor = clusterManager.localNode0)))
 
     val rf = new RollFrameClientMode(inStore)
     println(System.currentTimeMillis() - start)
@@ -204,7 +286,7 @@ class RollFrameTests {
       partitions = Array(
         ErPartition(id = 0, storeLocator = storeLocator, processor = clusterManager.localNode0),
         ErPartition(id = 1, storeLocator = storeLocator, processor = clusterManager.localNode1)))
-    RollFrame.loadCache(input)
+    RollFrame.Util.loadCache(input)
   }
 
   @Test
@@ -284,9 +366,8 @@ class RollFrameTests {
       cw.close()
     }
 
-    pass("/tmp/unittests/RollFrameTests/file/test1/a1/0")
-    pass("/tmp/unittests/RollFrameTests/file/test1/a1/1")
-
+    pass("/tmp/unittests/RollFrameTests/file/test1/b1/0")
+    pass("/tmp/unittests/RollFrameTests/file/test1/b1/1")
   }
 
   @Test
@@ -326,8 +407,8 @@ class RollFrameTests {
       a
     })
     println(System.currentTimeMillis() - start)
-    val aggregateFb = FrameDB.file("/tmp/unittests/RollFrameTests/file/test1/aggregate/0").readOne()
-    val aggregateFb1 = FrameDB.file("/tmp/unittests/RollFrameTests/file/test1/aggregate/1").readOne()
+    val aggregateFb = FrameDB.file("/tmp/unittests/RollFrameTests/file/test1/a1_aggregate/0").readOne()
+    val aggregateFb1 = FrameDB.file("/tmp/unittests/RollFrameTests/file/test1/a1_aggregate/1").readOne()
 
     println(aggregateFb.readDouble(0, 0))
     println(aggregateFb1.readDouble(0, 0))
@@ -337,12 +418,13 @@ class RollFrameTests {
   def testRollFrameAggregateBy(): Unit = {
     var start = System.currentTimeMillis()
     val clusterManager = new ClusterManager
-    val rf = new RollFrameClientMode(clusterManager.getRollFrameStore("a1", "test1"))
+    val inStore = clusterManager.getRollFrameStore("a1", "test1")
+    val rf = new RollFrameClientMode(inStore)
     println(System.currentTimeMillis() - start)
     start = System.currentTimeMillis()
     val fieldCount = 10
     val schema = TestAssets.getDoubleSchema(fieldCount)
-    val zeroValue = new FrameBatch(new FrameSchema(schema), 1)
+    val zeroValue = new FrameBatch(new FrameSchema(schema), 3)
     (0 until fieldCount).foreach(i => zeroValue.writeDouble(i, 0, 0))
 
     rf.aggregate(zeroValue, { (x, y) =>
@@ -355,6 +437,8 @@ class RollFrameTests {
               sum += 1
             }
             x.writeDouble(f, 0, sum)
+            x.writeDouble(f, 1, sum)
+            x.writeDouble(f, 2, sum)
             //          x.writeDouble(f,0, fv.valueCount)
           }
 
@@ -367,16 +451,17 @@ class RollFrameTests {
       x
     }, { (a, b) =>
       for (i <- 0 until fieldCount) {
-        if (b.rootVectors(i) != null) a.writeDouble(i, 0, a.readDouble(i, 0) + b.readDouble(i, 0))
+        for (j <- 0 until 3) {
+          if (b.rootVectors(i) != null) a.writeDouble(i, j, a.readDouble(i, j) + b.readDouble(i, j))
+        }
       }
       a
     }, byColumn = true, broadcastZeroValue = true, output = ErStore(ErStoreLocator("file", "test1", "r1byC")))
     println(System.currentTimeMillis() - start)
     val aggregateFb = FrameDB.file("/tmp/unittests/RollFrameTests/file/test1/r1byC/0").readOne()
     val aggregateFb1 = FrameDB.file("/tmp/unittests/RollFrameTests/file/test1/r1byC/1").readOne()
-    //
     println(aggregateFb.readDouble(0, 0))
-    println(aggregateFb1.readDouble(0, 0))
+    println(aggregateFb1.readDouble(5, 0))
   }
 
   @Test

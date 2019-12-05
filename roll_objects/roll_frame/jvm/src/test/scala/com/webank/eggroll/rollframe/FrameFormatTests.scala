@@ -135,12 +135,12 @@ class FrameFormatTests {
     networkWriteAdapter.append(fb)
     networkWriteAdapter.append(fb)
     //    networkWriteAdapter.writeAll(Iterator(fb))
-    Thread.sleep(1000)  // wait for QueueFrameDB insert the frame
+    Thread.sleep(1000) // wait for QueueFrameDB insert the frame
 
     // read FrameBatch data from network
     val networkReadAdapter = FrameDB.network(networkPath, host, port.toString)
     networkReadAdapter.readAll().foreach(fb =>
-      assert(fb.readDouble(0,30) == 30.0)
+      assert(fb.readDouble(0, 30) == 30.0)
     )
   }
 
@@ -230,5 +230,44 @@ class FrameFormatTests {
       }
     }
     cr.close()
+  }
+
+  @Test
+  def testFrameFork(): Unit = {
+    val fieldCount = 5000
+    val rowCount =  10// total value count = rowCount * fbCount * fieldCount
+    var start = System.currentTimeMillis()
+    val fb = new FrameBatch(new FrameSchema(testAssets.getDoubleSchema(fieldCount)), rowCount)
+    for {x <- 0 until fieldCount
+         y <- 0 until rowCount} {
+      fb.writeDouble(x, y, 1)
+    }
+
+    println(s"new FrameBatch time = ${System.currentTimeMillis() - start} ms")
+    start = System.currentTimeMillis()
+    val fb1 = FrameUtils.copy(fb)
+    println(s"copy fb1 time= ${System.currentTimeMillis() - start} ms")
+    start = System.currentTimeMillis()
+    val fb2 = FrameUtils.fork(fb)
+    println(s"fork fb2 time = ${System.currentTimeMillis() - start} ms")
+    start = System.currentTimeMillis()
+    val fb3 = FrameUtils.fork(fb)
+    println(s"fork fb3 time = ${System.currentTimeMillis() - start} ms")
+
+    fb.writeDouble(0,0,0)
+    fb1.writeDouble(0,0,111)
+    fb2.writeDouble(0,0,222)
+    fb3.writeDouble(0,0,333)
+
+    val ads = fb.rootSchema.arrowSchema.getVector(0).getDataBufferAddress
+    val ads1 = fb1.rootSchema.arrowSchema.getVector(0).getDataBufferAddress
+    val ads2 = fb2.rootSchema.arrowSchema.getVector(0).getDataBufferAddress
+    val ads3 = fb3.rootSchema.arrowSchema.getVector(0).getDataBufferAddress
+
+    assert((ads != ads1) && (ads != ads2) && (ads != ads3))
+    assert(fb.readDouble(0,0)==0)
+    assert(fb1.readDouble(0,0)==111)
+    assert(fb2.readDouble(0,0)==222)
+    assert(fb3.readDouble(0,0)==333)
   }
 }

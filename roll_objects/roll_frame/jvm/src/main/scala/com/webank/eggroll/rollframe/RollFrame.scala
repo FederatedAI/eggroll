@@ -107,21 +107,24 @@ object RollFrame {
   val reduce = "reduce"
   val aggregate = "aggregate"
 
-  /**
-    * load cache on cluster/local mode
-    *
-    * @param inStore :ErStore
-    * @return
-    */
-  def loadCache(inStore: ErStore): ErStore = {
-    val cacheStoreLocator = inStore.storeLocator.copy(storeType = StringConstants.CACHE)
-    val cacheStore = inStore.copy(storeLocator = cacheStoreLocator, partitions = inStore.partitions.map(p =>
-      p.copy(storeLocator = cacheStoreLocator)))
-    val rf = new RollFrameClientMode(inStore)
-    rf.mapBatch(p => p, output = cacheStore)
-    println(s"Loading cache from ${inStore.storeLocator.storeType} is completed")
-    cacheStore
+  object Util {
+    /**
+      * load cache on cluster/local mode
+      *
+      * @param inStore :ErStore
+      * @return
+      */
+    def loadCache(inStore: ErStore): ErStore = {
+      val cacheStoreLocator = inStore.storeLocator.copy(storeType = StringConstants.CACHE)
+      val cacheStore = inStore.copy(storeLocator = cacheStoreLocator, partitions = inStore.partitions.map(p =>
+        p.copy(storeLocator = cacheStoreLocator)))
+      val rf = new RollFrameClientMode(inStore)
+      rf.mapBatch(p => p, output = cacheStore)
+      println(s"Loading cache from ${inStore.storeLocator.storeType} is completed")
+      cacheStore
+    }
   }
+
 }
 
 // TODO: MOCK

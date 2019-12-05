@@ -20,7 +20,6 @@ package com.webank.eggroll.format
 
 import java.io._
 import java.nio.channels.{Channels, ReadableByteChannel, WritableByteChannel}
-import java.nio.file.Path
 import java.util.concurrent.{BlockingQueue, LinkedBlockingQueue}
 
 import com.webank.eggroll.core.constant.StringConstants
@@ -34,7 +33,7 @@ import org.apache.arrow.vector.dictionary.DictionaryProvider
 import org.apache.arrow.vector.ipc.message._
 import org.apache.arrow.vector.ipc.{ArrowReader, ArrowStreamReader, ArrowStreamWriter, ReadChannel}
 import org.apache.arrow.vector.types.pojo.Schema
-import org.apache.arrow.vector.{VectorSchemaRoot, VectorUnloader}
+import org.apache.arrow.vector.{FieldVector, VectorSchemaRoot, VectorUnloader}
 import org.apache.commons.lang3.StringUtils
 
 import scala.collection.JavaConverters._
@@ -71,14 +70,36 @@ object FrameUtils {
   }
 
   /**
-    * copy a new FrameBatch
+    * copy a new FrameBatch with serialization
     *
     * @param fb FrameBatch
     * @return
     */
+  @deprecated("Use `FrameUtils.fork() instead`")
   def copy(fb: FrameBatch): FrameBatch = {
     fromBytes(toBytes(fb))
   }
+
+  /**
+    * copy a new FrameBatch with arrow transferPair
+    * @param fb FrameBatch
+    * @return new FrameBatch
+    */
+  def fork(fb: FrameBatch): FrameBatch = {
+    val transfer: VectorSchemaRoot = {
+      val sliceVectors = fb.rootSchema.arrowSchema.getFieldVectors.asScala.map((v: FieldVector) => {
+        def foo(v: FieldVector) = {
+          val transferPair = v.getTransferPair(v.getAllocator)
+          transferPair.transfer()
+          transferPair.getTo.asInstanceOf[FieldVector]
+        }
+        foo(v)
+      }).asJava
+      new VectorSchemaRoot(sliceVectors)
+    }
+    new FrameBatch(new FrameSchema(transfer))
+  }
+
 }
 
 // TODO: where to delete a RollFrame?
@@ -91,7 +112,7 @@ trait FrameDB {
 
   def append(batch: FrameBatch): Unit = writeAll(Iterator(batch))
 
-  def readOne(): FrameBatch = readAll().next()  // need to check iterator whether hasNext element
+  def readOne(): FrameBatch = readAll().next() // need to check iterator whether hasNext element
 }
 
 object FrameDB {
@@ -273,7 +294,7 @@ class NetworkFrameDB(path: String, host: String, port: Int) extends FrameDB {
 
   override def writeAll(batches: Iterator[FrameBatch]): Unit = {
     // write FrameBatch to remote server
-    if (client == null){
+    if (client == null) {
       client = new NioTransferEndpoint()
       client.runClient(host, port)
     }
@@ -281,7 +302,7 @@ class NetworkFrameDB(path: String, host: String, port: Int) extends FrameDB {
   }
 
   override def readAll(): Iterator[FrameBatch] = {
-    // read FrameBatch from local queue
+    // read FrameBatch from local queue, if FrameBatch was used many time, must be loaded to cache
     new Iterator[FrameBatch] {
       override def hasNext: Boolean = {
         !QueueFrameDB.getOrCreateQueue(path).isEmpty
@@ -402,8 +423,8 @@ class ArrowDiscreteReader(schema: Schema, batch: ArrowRecordBatch, allocator: Bu
 
   override def readSchema(): Schema = schema
 
-  override def readDictionary(): ArrowDictionaryBatch =
-    throw new UnsupportedOperationException("use loadNextBatch")
+  //  override def readDictionary(): ArrowDictionaryBatch =
+  //    throw new UnsupportedOperationException("use loadNextBatch")
 }
 
 class FrameWriter(val rootSchema: VectorSchemaRoot, val arrowWriter: ArrowStreamSiblingWriter) {

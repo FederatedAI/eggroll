@@ -41,7 +41,7 @@ class EggFrame {
     val columns = frameBatch.rootVectors.length
     val servers = serverNodes.length
     val partSize = (servers + columns - 1) / servers
-    (0 until servers).map{ sid =>
+    (0 until servers).map { sid =>
       (serverNodes(sid), new Inclusive(sid * partSize, Math.min((sid + 1) * partSize, columns), 1))
     }.toList
   }
@@ -49,16 +49,16 @@ class EggFrame {
   private def sliceByRow(parts: Int, frameBatch: FrameBatch): List[Inclusive] = {
     val rows = frameBatch.rowCount
     val partSize = (parts + rows - 1) / parts
-    (0 until parts).map{ sid =>
+    (0 until parts).map { sid =>
       new Inclusive(sid * partSize, Math.min((sid + 1) * partSize, rows), 1)
     }.toList
   }
 
   def runBroadcast(path: String): Unit = {
     val list = FrameDB.cache(path).readAll()
-    serverNodes.foreach{server =>
-      if(!server.equals(rootServer)) {
-        list.foreach( fb => transferService.send(server.id, path, fb))
+    serverNodes.foreach { server =>
+      if (!server.equals(rootServer)) {
+        list.foreach(fb => transferService.send(server.id, path, fb))
       }
     }
   }
@@ -83,12 +83,12 @@ class EggFrame {
 
   def runReduceBatch(task: ErTask,
                      input: Iterator[FrameBatch],
-                     output:FrameDB,
+                     output: FrameDB,
                      reducer: (FrameBatch, FrameBatch) => FrameBatch,
                      byColumn: Boolean): Unit = {
-    if(!input.hasNext) return
+    if (!input.hasNext) return
     val zero = input.next()
-    runAggregateBatch(task, input, output, zero, reducer, (a, _)=> a, byColumn)
+    runAggregateBatch(task, input, output, zero, reducer, (a, _) => a, byColumn)
   }
 
   //TODO: allgather = List[(FB)=>FB]
@@ -108,10 +108,11 @@ class EggFrame {
     println(s"runAggregateBatch: partion.id = ${partition.id}")
     var localQueue: FrameDB = null
 
+    // TODO: didn't finish broadcast
     val zeroPath = "broadcast:" + task.job.id
     val zero: FrameBatch =
-      if(zeroValue == null) {
-        if(localServer.equals(rootServer))
+      if (zeroValue == null) {
+        if (localServer.equals(rootServer))
           FrameDB.cache(zeroPath).readOne()
         else
           FrameDB.queue(zeroPath, 1).readOne()
@@ -119,31 +120,31 @@ class EggFrame {
         zeroValue
       }
     // TODO: more generally, like repartition?
-    if(batchSize == 1) {
-      if(input.hasNext) {
+    if (batchSize == 1) {
+      if (input.hasNext) {
         val fb = input.next()
-        // use muti-thread by rows ,for example,parallel = 2, 100 rows can split to [0,50] and [50,100]
-        val parallel = Math.min(if (executorPool.getCorePoolSize > 0) executorPool.getCorePoolSize else 1, fb.rowCount) // split by row to grow parallel
-        // for concurrent writing
-        localQueue = FrameDB.queue(task.id + "-doing", parallel)
-        sliceByRow(parallel, fb).foreach{case inclusive: Inclusive =>
-          executorPool.submit(new Callable[Unit] {
-            override def call(): Unit = {
-              localQueue.append(seqOp(FrameUtils.copy(zero), fb.spliceByRow(inclusive.start, inclusive.end)))
-            }
-          })
-        }
+          // use muti-thread by rows ,for example,parallel = 2, 100 rows can split to [0,50] and [50,100]
+          val parallel = Math.min(if (executorPool.getCorePoolSize > 0) executorPool.getCorePoolSize else 1, fb.rowCount) // split by row to grow parallel
+          // for concurrent writing
+          localQueue = FrameDB.queue(task.id + "-doing", parallel)
+          sliceByRow(parallel, fb).foreach { case inclusive: Inclusive =>
+            executorPool.submit(new Callable[Unit] {
+              override def call(): Unit = {
+                localQueue.append(seqOp(FrameUtils.fork(zero), fb.sliceByRow(inclusive.start, inclusive.end)))
+              }
+            })
+          }
       }
     } else {
       val parallel = Math.min(executorPool.getCorePoolSize, batchSize) // reduce zero value copy
       // for concurrent writing
       localQueue = FrameDB.queue(task.id + "-doing", parallel)
       var batchIndex = 0
-      (0 until parallel).foreach{ i =>
-        if(input.hasNext) { // merge to avoid zero copy
+      (0 until parallel).foreach { i =>
+        if (input.hasNext) { // merge to avoid zero copy
           executorPool.submit(new Callable[Unit] {
             override def call(): Unit = {
-              val tmpZero = FrameUtils.copy(zero)
+              val tmpZero = FrameUtils.fork(zero)
               var tmp = seqOp(tmpZero, input.next())
               batchIndex += 1
               while (batchIndex < ((parallel + batchSize - 1) / batchSize) * i && input.hasNext) {
@@ -157,40 +158,41 @@ class EggFrame {
       }
     }
 
-    if(localQueue == null) {
+    if (localQueue == null) {
       return
     }
 
     // todo: local queue and result synchronization, maybe a countdown latch
     val resultIterator = localQueue.readAll()
-    if(!resultIterator.hasNext) throw new IllegalStateException("empty result")
-    var localBatch: FrameBatch = resultIterator.next()
+    if (!resultIterator.hasNext) throw new IllegalStateException("empty result")
+    var localBatch: FrameBatch = resultIterator.next()    // localBatch is zero values which contains all fields
     while (resultIterator.hasNext) {
       localBatch = combOp(localBatch, resultIterator.next())
     }
     val transferQueueSize = task.job.inputs.head.partitions.length - 1
     // TODO: check asynchronous call
-    if(byColumn) {
+    if (byColumn) {
       val splicedBatches = sliceByColumn(localBatch)
       // Don't block next receive step
-      splicedBatches.foreach{ case (server, inclusive: Inclusive) =>
-        val queuePath ="all2all:" + task.job.id + ":" + server.id
-        if(!server.equals(localServer)) {
+      splicedBatches.foreach { case (server, inclusive: Inclusive) =>
+        val queuePath = "all2all:" + task.job.id + ":" + server.id
+        if (!server.equals(localServer)) {
           transferService.send(server.id, queuePath, localBatch.sliceByColumn(inclusive.start, inclusive.end))
         }
       }
-      splicedBatches.foreach{ case (server, inclusive: Inclusive) =>
-        val queuePath ="all2all:" + task.job.id + ":" + server.id
-        if(server.equals(localServer)){
-          for(tmp <- FrameDB.queue(queuePath, transferQueueSize).readAll()) {
+
+      splicedBatches.foreach { case (server, inclusive: Inclusive) =>
+        val queuePath = "all2all:" + task.job.id + ":" + server.id
+        if (server.equals(localServer)) {
+          for (tmp <- FrameDB.queue(queuePath, transferQueueSize).readAll()) {
             localBatch = combOp(localBatch, tmp.spareByColumn(localBatch.rootVectors.length, inclusive.start, inclusive.end))
           }
         }
       }
     } else {
       val queuePath = "gather:" + task.job.id
-      if(localServer.equals(rootServer)) {
-        for(tmp <- FrameDB.queue(queuePath, transferQueueSize).readAll()) {
+      if (localServer.equals(rootServer)) {
+        for (tmp <- FrameDB.queue(queuePath, transferQueueSize).readAll()) {
           localBatch = combOp(localBatch, tmp)
         }
       } else {
@@ -217,13 +219,13 @@ class EggFrame {
       case EggFrame.broadcastTask =>
         runBroadcast(serdes.deserialize(functors.head.body))
       case EggFrame.mapBatchTask =>
-        runMapBatch(task= task, input = inputDB.readAll(), output = outputDB, mapper = serdes.deserialize(task.job.functors.head.body))
+        runMapBatch(task = task, input = inputDB.readAll(), output = outputDB, mapper = serdes.deserialize(task.job.functors.head.body))
       case EggFrame.reduceTask =>
         val reducer: (FrameBatch, FrameBatch) => FrameBatch = serdes.deserialize(functors.head.body)
         runReduceBatch(task, inputDB.readAll(), outputDB, reducer, byColumn = false)
       case EggFrame.aggregateBatchTask =>
         val zeroBytes = functors.head.body
-        val zeroValue: FrameBatch = if(zeroBytes.isEmpty) null else FrameUtils.fromBytes(zeroBytes)
+        val zeroValue: FrameBatch = if (zeroBytes.isEmpty) null else FrameUtils.fromBytes(zeroBytes)
         val seqOp: (FrameBatch, FrameBatch) => FrameBatch = serdes.deserialize(functors(1).body)
         val combOp: (FrameBatch, FrameBatch) => FrameBatch = serdes.deserialize(functors(2).body)
         val byColumn: Boolean = serdes.deserialize(functors(3).body)

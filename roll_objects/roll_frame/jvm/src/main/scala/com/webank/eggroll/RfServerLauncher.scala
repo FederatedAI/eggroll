@@ -84,7 +84,7 @@ object RfServerLauncher {
 
   def verifyHdfsToJvm(): Unit = {
     var start = System.currentTimeMillis()
-    val cacheStore = RollFrame.loadCache(input)
+    val cacheStore = RollFrame.Util.loadCache(input)
     println("finish jvm to hdfs, time: " + (System.currentTimeMillis() - start))
 
 
@@ -112,7 +112,7 @@ object RfServerLauncher {
     println("finish fbs to network, time: " + (System.currentTimeMillis() - start))
 
     start = System.currentTimeMillis()
-    val cacheStore = RollFrame.loadCache(networkStore)
+    val cacheStore = RollFrame.Util.loadCache(networkStore)
     println("finish network to jvm, time: " + (System.currentTimeMillis() - start))
 
     val outStoreLocator = ErStoreLocator(name = "v2", namespace = "test1", storeType = StringConstants.HDFS)

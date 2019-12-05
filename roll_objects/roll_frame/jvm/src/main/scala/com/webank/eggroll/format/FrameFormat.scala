@@ -37,7 +37,7 @@ class FrameBatch(val rootSchema: FrameSchema,
                  allocateNewRows: Int = -1,
                  virtualRowStart: Int = 0,
                  virtualRowCount: Int = -1) {
-  val rootVectors : Array[FrameVector] = if(virtualRowCount > 0) {
+  val rootVectors: Array[FrameVector] = if (virtualRowCount > 0) {
     rootSchema.columnarVectors.map(
       v => new FrameVector(v.fieldVector, virtualRowStart, virtualRowCount))
   } else {
@@ -50,7 +50,7 @@ class FrameBatch(val rootSchema: FrameSchema,
 
   val fieldCount: Int = rootSchema.columnarVectors.length
 
-  def rowCount:Int =
+  def rowCount: Int =
     if (virtualRowCount > 0) virtualRowCount else rootSchema.arrowSchema.getRowCount
 
   def sliceByColumn(from: Int, to: Int): FrameBatch =
@@ -59,23 +59,36 @@ class FrameBatch(val rootSchema: FrameSchema,
   def spareByColumn(fieldCount: Int, from: Int, to: Int): FrameBatch =
     new FrameBatch(rootSchema.sparse(fieldCount, from, to))
 
-  def spliceByRow(from: Int, to: Int): FrameBatch = {
-    require(to >= from, s"from: ${from} should > to: ${to}")
+  def sliceByRow(from: Int, to: Int): FrameBatch = {
+    require(to >= from, s"from: $from should > to: $to")
     new FrameBatch(rootSchema, virtualRowStart = from, virtualRowCount = to - from)
+  }
+
+  /**
+    * Slice this root at desired index and length.
+    * But FieldVector dataBufferAddress is the same.
+    * @param index  start position of the slice
+    * @param length length of the slice
+    * @return the sliced root
+    */
+  def sliceRealByRow(index: Int, length: Int): FrameBatch = {
+    require(index >= 0, s"index: $index should >= 0")
+    require(length >= 0, s"length: $length should >= 0")
+    new FrameBatch(new FrameSchema(rootSchema.arrowSchema.slice(index, length)))
   }
 
   def readDouble(field: Int, row: Int): Double = rootVectors(field).readDouble(row)
 
-  def writeDouble(field:Int, row: Int, item: Double): Unit =
+  def writeDouble(field: Int, row: Int, item: Double): Unit =
     rootVectors(field).writeDouble(row, item)
 
-  def readLong(field:Int, row: Int): Long = rootVectors(field).readLong(row)
+  def readLong(field: Int, row: Int): Long = rootVectors(field).readLong(row)
 
-  def writeLong(field:Int, row: Int, item: Long): Unit = rootVectors(field).writeLong(row, item)
+  def writeLong(field: Int, row: Int, item: Long): Unit = rootVectors(field).writeLong(row, item)
 
-  def readInt(field:Int, row: Int):Int = rootVectors(field).readInt(row)
+  def readInt(field: Int, row: Int): Int = rootVectors(field).readInt(row)
 
-  def writeInt(field:Int, row: Int, item: Int): Unit = rootVectors(field).writeInt(row, item)
+  def writeInt(field: Int, row: Int, item: Int): Unit = rootVectors(field).writeInt(row, item)
 
   def getArray(field: Int, row: Int): FrameVector = rootVectors(field).getArray(row)
 
@@ -92,7 +105,7 @@ class FrameVector(val fieldVector: FieldVector,
 
   def setNullable(value: Boolean): Unit = nullable = value
 
-  def valueCount:Int = if (virtualRowCount > 0) virtualRowCount else fieldVector.getValueCount
+  def valueCount: Int = if (virtualRowCount > 0) virtualRowCount else fieldVector.getValueCount
 
   def valueCount(count: Int): Unit = {
     fieldVector.setInitialCapacity(count)
@@ -104,7 +117,7 @@ class FrameVector(val fieldVector: FieldVector,
   def readDouble(index: Int): Double =
     fieldVector.asInstanceOf[Float8Vector].get(index + virtualRowStart)
 
-  def writeDouble(index: Int, item: Double):Unit =
+  def writeDouble(index: Int, item: Double): Unit =
     fieldVector.asInstanceOf[Float8Vector].setSafe(index + virtualRowStart, item)
 
   def readLong(index: Int): Long =
@@ -115,7 +128,7 @@ class FrameVector(val fieldVector: FieldVector,
 
   def readInt(index: Int): Int = fieldVector.asInstanceOf[IntVector].get(index + virtualRowStart)
 
-  def writeInt(index:Int, item: Int): Unit =
+  def writeInt(index: Int, item: Int): Unit =
     fieldVector.asInstanceOf[IntVector].setSafe(index + virtualRowStart, item)
 
   def getArray(index: Int): FrameVector = getList(index)
@@ -130,8 +143,8 @@ class FrameVector(val fieldVector: FieldVector,
           realIndex * fv.getListSize + fv.getListSize)
 
       case fv: ListVector =>
-        if(initialSize > 0) {
-          if(realIndex < fv.getLastSet) {
+        if (initialSize > 0) {
+          if (realIndex < fv.getLastSet) {
             throw new IllegalStateException(
               s"can not reinit list: lastSet:${fv.getLastSet}, index:(${index}, ${realIndex})")
           }
@@ -154,7 +167,7 @@ class FrameListVector(fieldVector: FieldVector, val startOffset: Int, val endOff
 
   override def valueCount: Int = endOffset - startOffset
 
-  override def readDouble(index: Int): Double = super.readDouble(startOffset  + index)
+  override def readDouble(index: Int): Double = super.readDouble(startOffset + index)
 
   override def writeDouble(index: Int, item: Double): Unit =
     super.writeDouble(startOffset + index, item)
@@ -198,9 +211,11 @@ class FrameReader(val arrowReader: ArrowStreamReusableReader,
     arrowReader.nullableFields = nullableFields
     new Iterator[FrameBatch] {
       var nextItem: VectorSchemaRoot = arrowReader.loadNewBatch()
+
       override def hasNext: Boolean = {
         nextItem != null
       }
+
       override def next(): FrameBatch = {
         if (nextItem == null) throw new NoSuchElementException("end")
         val ret = new FrameBatch(new FrameSchema(nextItem))
@@ -213,9 +228,10 @@ class FrameReader(val arrowReader: ArrowStreamReusableReader,
 
 /**
   * root schema of a FrameBatch
-  * @param arrowSchema: arrow root schema
-  * @param fieldCount: virtual root fields count
-  * @param placeholders: index => actual index, value => virtual index
+  *
+  * @param arrowSchema  : arrow root schema
+  * @param fieldCount   : virtual root fields count
+  * @param placeholders : index => actual index, value => virtual index
   */
 class FrameSchema(val arrowSchema: VectorSchemaRoot,
                   fieldCount: Int = -1,
@@ -230,9 +246,9 @@ class FrameSchema(val arrowSchema: VectorSchemaRoot,
            placeholders: Array[Int]) {
     this(
       new VectorSchemaRoot(
-          fieldVectors.map(_.fieldVector.getField).toList.asJava,
-          fieldVectors.map(_.fieldVector).toList.asJava,
-          rowCount),
+        fieldVectors.map(_.fieldVector.getField).toList.asJava,
+        fieldVectors.map(_.fieldVector).toList.asJava,
+        rowCount),
       fieldCount,
       placeholders)
   }
@@ -255,7 +271,7 @@ class FrameSchema(val arrowSchema: VectorSchemaRoot,
       case (_, i) => i >= from && i < to
     }.map(_._1)
     val placeholders = (from until to).toArray
-    new FrameSchema(fieldVectors,  arrowSchema.getRowCount,columnarVectors.length, placeholders)
+    new FrameSchema(fieldVectors, arrowSchema.getRowCount, columnarVectors.length, placeholders)
   }
 
   def sparse(fieldCount: Int, from: Int, to: Int): FrameSchema = {
