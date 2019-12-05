@@ -130,7 +130,7 @@ class EggFrame {
           sliceByRow(parallel, fb).foreach { case inclusive: Inclusive =>
             executorPool.submit(new Callable[Unit] {
               override def call(): Unit = {
-                localQueue.append(seqOp(FrameUtils.fork(zero), fb.sliceByRow(inclusive.start, inclusive.end)))
+                localQueue.append(seqOp(FrameUtils.copy(zero), fb.sliceByRow(inclusive.start, inclusive.end)))
               }
             })
           }
