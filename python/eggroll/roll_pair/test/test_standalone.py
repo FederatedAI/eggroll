@@ -55,7 +55,7 @@ class TestStandalone(unittest.TestCase):
 
   def test_map_values(self):
     rp = self.ctx.load("ns1", "n30")
-    print(rp.map_values(lambda v: v + 'mapValues').get_all())
+    print(rp.map_values(lambda v: str(v) + 'mapValues').get_all())
 
   def test_map_partitions(self):
     data = [(str(i), i) for i in range(10)]

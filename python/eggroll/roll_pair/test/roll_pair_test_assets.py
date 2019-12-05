@@ -16,12 +16,37 @@ from eggroll.core.constants import StoreTypes
 from eggroll.core.meta_model import ErStore, ErStoreLocator
 from eggroll.core.session import ErSession
 from eggroll.roll_pair.roll_pair import RollPairContext
+from eggroll.core.conf_keys import DeployConfKeys, SessionConfKeys, ClusterManagerConfKeys
 
 ER_STORE1 = ErStore(store_locator=ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LEVELDB,
-                                                 namespace="namespace1",
-                                                 name="name1"))
+                                                 namespace="namespace",
+                                                 name="name"))
 
 def get_test_context():
   session = ErSession(options={"eggroll.deploy.mode": "standalone"})
+  #session = ErSession(options={})
   context = RollPairContext(session)
+  return context
+
+def get_cluster_context():
+  options = {}
+  base_dir = '/Users/max-webank/git/eggroll-2.x'
+  options[DeployConfKeys.CONFKEY_DEPLOY_ROLLPAIR_VENV_PATH] = '/Users/max-webank/env/venv'
+  options[DeployConfKeys.CONFKEY_DEPLOY_ROLLPAIR_DATA_DIR_PATH] = '/tmp/eggroll'
+  options[ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST] = 'localhost'
+  options[ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT] = '4670'
+
+
+  options[DeployConfKeys.CONFKEY_DEPLOY_ROLLPAIR_PYTHON_PATH] = f'{base_dir}/python'
+  options[
+    DeployConfKeys.CONFKEY_DEPLOY_ROLLPAIR_EGGPAIR_PATH] = f'{base_dir}/python/eggroll/roll_pair/egg_pair.py'
+  options[DeployConfKeys.CONFKEY_DEPLOY_JVM_MAINCLASS] = 'com.webank.eggroll.rollpair.Main'
+  options[
+    DeployConfKeys.CONFKEY_DEPLOY_JVM_CLASSPATH] = f'{base_dir}/jvm/roll_pair/target/lib/*:{base_dir}/jvm/roll_pair/target/eggroll-roll-pair-2.0.jar:{base_dir}/jvm/roll_pair/main/resources'
+  options[SessionConfKeys.CONFKEY_SESSION_ID] = 'testing'
+  options[SessionConfKeys.CONFKEY_SESSION_MAX_PROCESSORS_PER_NODE] = '1'
+
+  session = ErSession(session_id='test_init', options=options)
+  context = RollPairContext(session)
+
   return context
