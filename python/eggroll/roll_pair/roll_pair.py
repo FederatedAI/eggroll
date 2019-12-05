@@ -481,7 +481,7 @@ class RollPair(object):
       return self.__count_cluster()
 
   # computing api
-  def mapValues(self, func, output = None, options = {}):
+  def map_values(self, func, output = None, options = {}):
     functor = ErFunctor(name=RollPair.MAP_VALUES, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
     outputs = []
     if output:
@@ -519,10 +519,10 @@ class RollPair(object):
                 functors=[functor])
 
     job_result = self.__roll_pair_command_client.simple_sync_send(
-        input = job,
-        output_type = ErJob,
-        endpoint = self.ctx.get_roll_endpoint(),
-        command_uri = CommandURI(f'{RollPair.__uri_prefix}/{RollPair.MAP}'),
+        input=job,
+        output_type=ErJob,
+        endpoint=self.ctx.get_roll_endpoint(),
+        command_uri=CommandURI(f'{RollPair.__uri_prefix}/{RollPair.MAP}'),
         serdes_type=self.__command_serdes)
 
     er_store = job_result._outputs[0]
@@ -530,7 +530,7 @@ class RollPair(object):
 
     return RollPair(er_store, self.ctx)
 
-  def mapPartitions(self, func, output = None, options = {}):
+  def map_partitions(self, func, output = None, options = {}):
     functor = ErFunctor(name=RollPair.MAPPARTITIONS, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
     outputs = []
     if output:
@@ -552,7 +552,7 @@ class RollPair(object):
 
     return RollPair(er_store, self.ctx)
 
-  def collapsePartitions(self, func, output = None, options = {}):
+  def collapse_partitions(self, func, output = None, options = {}):
     functor = ErFunctor(name=RollPair.COLLAPSEPARTITIONS, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
     outputs = []
     if output:
@@ -575,7 +575,7 @@ class RollPair(object):
 
     return RollPair(er_store, self.ctx)
 
-  def flatMap(self, func, output=None, options={}):
+  def flat_map(self, func, output=None, options={}):
     functor = ErFunctor(name=RollPair.FLATMAP, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
     outputs = []
     if output:
@@ -714,7 +714,7 @@ class RollPair(object):
 
     return RollPair(er_store, self.ctx)
 
-  def subtractByKey(self, other, output=None, options={}):
+  def subtract_by_key(self, other, output=None, options={}):
     functor = ErFunctor(name=RollPair.SUBTRACTBYKEY, serdes=SerdesTypes.CLOUD_PICKLE)
     outputs = []
     if output:
