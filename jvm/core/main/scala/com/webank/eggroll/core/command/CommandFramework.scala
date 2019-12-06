@@ -26,6 +26,7 @@ import com.webank.eggroll.core.constant.{SerdesTypes, SessionConfKeys}
 import com.webank.eggroll.core.datastructure.TaskPlan
 import com.webank.eggroll.core.error.DistributedRuntimeException
 import com.webank.eggroll.core.meta._
+import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.util.{Logging, ThreadPoolUtils}
 import org.apache.commons.lang3.StringUtils
 
@@ -85,7 +86,8 @@ case class CollectiveCommand(taskPlan: TaskPlan) extends Logging {
     val inputStores: Array[ErStore] = job.inputs
     val inputPartitionSize = inputStores.head.storeLocator.totalPartitions
     val inputOptions = job.options
-    val sessionId = inputOptions(SessionConfKeys.CONFKEY_SESSION_ID)
+    val sessionId = inputOptions.getOrElse(
+      SessionConfKeys.CONFKEY_SESSION_ID, StaticErConf.getString(SessionConfKeys.CONFKEY_SESSION_ID, null))
     if (StringUtils.isBlank(sessionId)) {
       throw new IllegalArgumentException("session id not exist")
     }
