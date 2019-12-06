@@ -24,13 +24,12 @@ import com.webank.eggroll.core.clustermanager.metadata.{ServerNodeCrudOperator, 
 import com.webank.eggroll.core.clustermanager.session.SessionManager
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
 import com.webank.eggroll.core.constant.{MetadataCommands, SessionCommands, SessionConfKeys}
-import com.webank.eggroll.core.meta.{ErProcessor, ErProcessorBatch, ErServerCluster, ErServerNode, ErSessionMeta, ErStore}
+import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.transfer.GrpcTransferService
 import com.webank.eggroll.core.util.{Logging, MiscellaneousUtils}
 import io.grpc.Server
 import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
-import org.apache.commons.lang3.StringUtils
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -119,6 +118,8 @@ object ClusterManager extends Logging {
   def buildServer(args: Array[String]): Server = {
     val cmd = MiscellaneousUtils.parseArgs(args = args)
     val portString = cmd.getOptionValue('p', "4670")
+    val sessionId = cmd.getOptionValue('s')
+
     registerRouter()
     val clusterManager = NettyServerBuilder
       .forAddress(new InetSocketAddress("127.0.0.1", portString.toInt))
@@ -130,8 +131,9 @@ object ClusterManager extends Logging {
 
     val server: Server = clusterManager.start()
 
-    val port = clusterManager.getPort
+    val port = server.getPort
     StaticErConf.setPort(port)
+    StaticErConf.addProperty(SessionConfKeys.CONFKEY_SESSION_ID, sessionId)
 
     val confPath = cmd.getOptionValue('c', "./jvm/core/main/resources/cluster-manager.properties.local")
     StaticErConf.addProperties(confPath)

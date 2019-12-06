@@ -32,7 +32,7 @@ import com.webank.eggroll.core.transfer.GrpcTransferClient
 import com.webank.eggroll.rollpair.component.RollPairServicer
 import scala.collection.JavaConverters._
 import java.util
-class RollPairContext(erSession: ErSession, defaultStoreType:String = StoreTypes.ROLLPAIR_LMDB) {
+class RollPairContext(val erSession: ErSession, defaultStoreType:String = StoreTypes.ROLLPAIR_LMDB) {
 //  StandaloneManager.main(Array("-s",erSession.sessionId, "-p", erSession.cmClient.endpoint.port.toString))
 
   def getRollEndpoint(): ErEndpoint = erSession.rolls.head.commandEndpoint
@@ -62,7 +62,7 @@ class RollPairContext(erSession: ErSession, defaultStoreType:String = StoreTypes
 class RollPair(val store: ErStore, val ctx:RollPairContext, val opts: Map[String,String] = Map()) {
   // todo: 1. consider recv-side shuffle; 2. pull up rowPairDb logic; 3. add partition calculation based on session logic;
   def putBatch(broker: Broker[ByteString], opts: util.Map[String, String] = Map[String, String]().asJava): Unit = {
-    val totalPartitions = 1
+    val totalPartitions = store.storeLocator.totalPartitions
     val transferClients = new Array[GrpcTransferClient](totalPartitions)
     val brokers = new Array[Broker[ByteString]](totalPartitions)
 
@@ -120,7 +120,7 @@ class RollPair(val store: ErStore, val ctx:RollPairContext, val opts: Map[String
           name = "putBatch",
           inputs = Array(ErStore(storeLocator)),
           functors = Array(),
-          options = Map(SessionConfKeys.CONFKEY_SESSION_ID -> "sid11"))
+          options = Map(SessionConfKeys.CONFKEY_SESSION_ID -> ctx.erSession.sessionId))
         rollPair.putBatch(job)
       }
     }
