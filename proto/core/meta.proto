@@ -96,6 +96,7 @@ message Partition {
   int32 id = 1;
   StoreLocator storeLocator = 2;
   Processor processor = 3;
+  int64 serverNodeId = 4;
 }
 
 message CallInfo {

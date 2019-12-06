@@ -21,6 +21,7 @@ package com.webank.eggroll.core.command
 import java.util.concurrent.{CompletableFuture, CountDownLatch}
 import java.util.function.Supplier
 
+import com.webank.eggroll.core.ErSession
 import com.webank.eggroll.core.client.ClusterManagerClient
 import com.webank.eggroll.core.constant.{SerdesTypes, SessionConfKeys}
 import com.webank.eggroll.core.datastructure.TaskPlan
@@ -86,13 +87,13 @@ case class CollectiveCommand(taskPlan: TaskPlan) extends Logging {
     val inputStores: Array[ErStore] = job.inputs
     val inputPartitionSize = inputStores.head.storeLocator.totalPartitions
     val inputOptions = job.options
+/*
     val sessionId = inputOptions.getOrElse(
       SessionConfKeys.CONFKEY_SESSION_ID, StaticErConf.getString(SessionConfKeys.CONFKEY_SESSION_ID, null))
     if (StringUtils.isBlank(sessionId)) {
       throw new IllegalArgumentException("session id not exist")
     }
-
-    CollectiveCommand.init(sessionId)
+*/
 
     val partitions = inputStores.head.partitions
 
@@ -102,7 +103,7 @@ case class CollectiveCommand(taskPlan: TaskPlan) extends Logging {
 
     var aggregateOutputPartition: ErPartition = null
     if (taskPlan.isAggregate) {
-      aggregateOutputPartition = ErPartition(id = 0, storeLocator = outputStores.head.storeLocator, processor = CollectiveCommand.routeToEgg(partitions(0)))
+      aggregateOutputPartition = ErPartition(id = 0, storeLocator = outputStores.head.storeLocator, processor = CollectiveCommand.session.routeToEgg(partitions(0)))
     }
 
     for (i <- 0 until inputPartitionSize) {
@@ -111,7 +112,7 @@ case class CollectiveCommand(taskPlan: TaskPlan) extends Logging {
 
       inputStores.foreach(inputStore => {
         inputPartitions.append(
-          ErPartition(id = i, storeLocator = inputStore.storeLocator, processor = CollectiveCommand.routeToEgg(partitions(i))))
+          ErPartition(id = i, storeLocator = inputStore.storeLocator, processor = CollectiveCommand.session.routeToEgg(partitions(i))))
       })
 
       if (taskPlan.isAggregate) {
@@ -119,7 +120,7 @@ case class CollectiveCommand(taskPlan: TaskPlan) extends Logging {
       } else {
         outputStores.foreach(outputStore => {
           outputPartitions.append(
-            ErPartition(id = i, storeLocator = outputStore.storeLocator, processor = CollectiveCommand.routeToEgg(partitions(i))))
+            ErPartition(id = i, storeLocator = outputStore.storeLocator, processor = CollectiveCommand.session.routeToEgg(partitions(i))))
         })
       }
 
@@ -146,7 +147,8 @@ class CommandServiceSupplier(task: ErTask, command: CommandURI)
 
 object CollectiveCommand {
   val threadPool = ThreadPoolUtils.newFixedThreadPool(20, "command-")
-  private var sessionDeployment: ErServerSessionDeployment = _
+  val session = new ErSession(StaticErConf.getString(SessionConfKeys.CONFKEY_SESSION_ID))
+  /*private var sessionDeployment: ErServerSessionDeployment = _
   private var inited = false
 
   def init(sessionId: String): Unit = {
@@ -186,5 +188,5 @@ object CollectiveCommand {
 
     sessionDeployment.eggs(targetServerNode)(targetProcessor)
   }
-
+*/
 }

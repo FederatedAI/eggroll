@@ -26,6 +26,8 @@ class BinBatchReader(object):
     self.__buffer = pair_batch
     self.__offset = 0
     self.__batch_size = len(pair_batch)
+    if not self.__batch_size:
+      return
 
     _magic_num = self.read_bytes(len(MAGIC_NUM), include_size=False)
     if _magic_num != MAGIC_NUM:
@@ -66,7 +68,7 @@ class BinBatchReader(object):
     value_size = 4
 
     self.__check_readable(op_offset, value_size)
-    result = unpack_from('<i', self.__buffer, op_offset)
+    result = unpack_from('>i', self.__buffer, op_offset)
     self.__adjust_offset(offset, value_size)
 
     return result[0]
@@ -78,7 +80,7 @@ class BinBatchReader(object):
     format = f'{size}s'
     if include_size:
       final_size = size + 4
-      format = f'<i{format}'
+      format = f'>i{format}'
     self.__check_readable(op_offset, final_size)
     result = unpack_from(format, self.__buffer, op_offset)
     self.__adjust_offset(offset, final_size)
@@ -150,14 +152,14 @@ class BinBatchWriter(object):
     op_offset = self.__get_op_offset(offset)
 
     self.__check_writable(op_offset, size)
-    pack_into('<i', self.__buffer, op_offset, value)
+    pack_into('>i', self.__buffer, op_offset, value)
     self.__adjust_offset(offset, size)
 
   def write_bytes(self, value, offset=None, include_size=False):
     value_size = len(value)
     format = f'{value_size}s'
     if include_size:
-      format = f'<i{format}'
+      format = f'>i{format}'
     size = calcsize(format)
 
     op_offset = self.__get_op_offset(offset)

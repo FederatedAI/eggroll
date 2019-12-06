@@ -424,6 +424,7 @@ class EggPair(object):
 
       #p = lambda k : k[-1] % output_partition._store_locator._total_partitions
       output_store = task._job._outputs[0]
+      GrpcTransferServicer.get_or_create_broker(f'{task._job._id}-{output_partition._id}')
 
       grpc_shuffle_receiver(task._job._id, output_partition, len(output_store._partitions))
     return result
@@ -581,7 +582,7 @@ def serve(args):
       route_to_class_name="EggPair",
       route_to_method_name="run_task")
 
-  server = grpc.server(futures.ThreadPoolExecutor(max_workers=1),
+  server = grpc.server(futures.ThreadPoolExecutor(max_workers=5),
                        options=[
                          (cygrpc.ChannelArgKey.max_send_message_length, -1),
                          (cygrpc.ChannelArgKey.max_receive_message_length, -1)])

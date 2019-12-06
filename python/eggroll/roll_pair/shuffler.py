@@ -24,6 +24,8 @@ from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, wait, AL
 from multiprocessing import cpu_count
 from eggroll.core.io.format import BinBatchReader
 import asyncio
+from time import sleep
+import queue
 
 
 class Shuffler(object):
@@ -173,21 +175,25 @@ def grpc_shuffle_receiver(shuffle_id, output_partition, total_parititions_count)
   broker = GrpcTransferServicer.get_or_create_broker(broker_id, write_signals=total_parititions_count)
 
   while not broker.is_closable():
-    proto_transfer_batch = broker.get(block=True, timeout=1)
-    if proto_transfer_batch:
-      bin_data = proto_transfer_batch.data
-      reader = BinBatchReader(pair_batch=bin_data)
-      try:
-        while reader.has_remaining():
-          key_size = reader.read_int()
-          key = reader.read_bytes(size=key_size)
-          value_size = reader.read_int()
-          value = reader.read_bytes(size=value_size)
-          output_write_batch.put(key, value)
-          total_written += 1
-      except IndexError as e:
-        print('finish processing an output')
-        output_write_batch.write()
+    try:
+      proto_transfer_batch = broker.get(block=True, timeout=1)
+      if proto_transfer_batch:
+        bin_data = proto_transfer_batch.data
+        reader = BinBatchReader(pair_batch=bin_data)
+        try:
+          while reader.has_remaining():
+            key_size = reader.read_int()
+            key = reader.read_bytes(size=key_size)
+            value_size = reader.read_int()
+            value = reader.read_bytes(size=value_size)
+            output_write_batch.put(key, value)
+            total_written += 1
+        except IndexError as e:
+          print('finish processing an output')
+          output_write_batch.write()
+    except queue.Empty as e:
+      print(e.__str__())
+      print('empty')
 
   output_write_batch.close()
   output_adapter.close()

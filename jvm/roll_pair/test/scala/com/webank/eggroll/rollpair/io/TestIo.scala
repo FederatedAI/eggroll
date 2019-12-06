@@ -18,7 +18,7 @@
 
 package com.webank.eggroll.rollpair.io
 
-import java.nio.ByteBuffer
+import java.nio.{ByteBuffer, ByteOrder}
 
 import com.google.protobuf.ByteString
 import com.webank.eggroll.core.ErSession
@@ -87,15 +87,16 @@ class TestIo {
 
   @Test
   def testPutBatch(): Unit = {
-    import com.webank.eggroll.rollpair.RollPair
-    val sid = "aa1sid"
+    val sid = "testing"
     val ctx = new RollPairContext(new ErSession(sid))
-    val rp = ctx.load("ns1","n2")
+    val rp = ctx.load("ns1","testPutBatch")
 
     var directBinPacketBuffer: ByteBuffer = ByteBuffer.allocateDirect(1<<10)
+    directBinPacketBuffer.order(ByteOrder.BIG_ENDIAN)
+
     directBinPacketBuffer.put(NetworkConstants.TRANSFER_PROTOCOL_MAGIC_NUMBER)   // magic num
     directBinPacketBuffer.put(NetworkConstants.TRANSFER_PROTOCOL_VERSION)     // protocol version
-    directBinPacketBuffer.putInt(4)   // header length
+    directBinPacketBuffer.putInt(0)   // header length
     directBinPacketBuffer.putInt(16)  // body size
     directBinPacketBuffer.putInt(4)   // key length (bytes)
     directBinPacketBuffer.putInt(3)   // key
@@ -106,6 +107,7 @@ class TestIo {
 
     val broker = new LinkedBlockingBroker[ByteString]()
     broker.put(ByteString.copyFrom(directBinPacketBuffer))
+    broker.signalWriteFinish()
     rp.putBatch(broker)
   }
 

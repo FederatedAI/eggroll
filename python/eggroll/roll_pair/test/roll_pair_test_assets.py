@@ -23,7 +23,7 @@ ER_STORE1 = ErStore(store_locator=ErStoreLocator(store_type=StoreTypes.ROLLPAIR_
                                                  name="name"))
 
 def get_test_context():
-  session = ErSession(options={"eggroll.deploy.mode": "standalone"})
+  session = ErSession(session_id='testing', options={"eggroll.deploy.mode": "standalone"})
   #session = ErSession(options={})
   context = RollPairContext(session)
   return context

@@ -67,26 +67,20 @@ class FifoBroker(Broker):
   def __init__(self, max_capacity = 10000, write_signals = 1, name = f"fifobroker-{time.time()}-{__broker_seq}"):
     FifoBroker.__broker_seq += 1
     self.__queue = Queue(maxsize=max_capacity)
-    self.__write_finished = False
-    self.__history_total = 0
-    self.__history_none_total = 0
     self.__remaining_write_signal_count = write_signals
     self.__total_write_signals = write_signals
-    self.__max_capacity = max_capacity
 
   def get_total_write_signals(self):
     return self.__total_write_signals
 
   def is_write_finished(self):
-    return self.__write_finished
+    return self.__remaining_write_signal_count <= 0
 
   def signal_write_finish(self):
     if self.is_write_finished():
       raise ValueError(f"finish signaling overflows. initial value: {self.__total_write_signals}")
 
     self.__remaining_write_signal_count -= 1
-    if self.__remaining_write_signal_count <= 0:
-      self.__write_finished = True
 
   def get_remaining_write_signal_count(self):
     return self.__remaining_write_signal_count
@@ -95,14 +89,8 @@ class FifoBroker(Broker):
     return not self.__queue.empty()
 
   def is_closable(self):
-    result = self.is_write_finished() and not self.is_read_ready()
+    result = self.is_write_finished() and self.__queue.empty()
     return result
-
-  def total(self):
-    return self.__history_total
-
-  def total_none(self):
-    return self.__history_none_total
 
   def size(self):
     return self.__queue.qsize()
