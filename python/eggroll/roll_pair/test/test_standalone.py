@@ -23,6 +23,8 @@ from eggroll.roll_pair.test.roll_pair_test_assets import get_test_context
 
 os.environ['EGGROLL_STANDALONE_DEBUG'] = "1"
 
+os.environ['EGGROLL_HOME'] = "/Users/max-webank/git/eggroll-2.x"
+
 class TestStandalone(unittest.TestCase):
   def setUp(self):
     self.ctx = get_test_context()
@@ -125,3 +127,8 @@ class TestStandalone(unittest.TestCase):
     left_rp = self.ctx.load("ns1", "testUnionLeft").put_all([1, 2, 3])
     right_rp = self.ctx.load("ns1", "testUnionRight").put_all([(1, 1), (2, 2), (3, 3)], options={"include_key": True})
     print(left_rp.union(right_rp).get_all())
+
+  def test_aggregate(self):
+    from operator import add
+    rp = self.ctx.load("ns1", "testAggregate").put_all(range(5))
+    print(rp.aggregate(zero_value=0, seq_op=add, comb_op=add))

@@ -47,9 +47,10 @@ class RollPairContext(val erSession: ErSession, defaultStoreType:String = StoreT
       partitioner = opts.getOrElse(StringConstants.PARTITIONER, PartitionerTypes.BYTESTRING_HASH),
       serdes = opts.getOrElse(StringConstants.SERDES, SerdesTypes.CLOUD_PICKLE)
     ))
-    erSession.cmClient.getOrCreateStore(store)
-    new RollPair(store, this)
+    val loaded = erSession.cmClient.getOrCreateStore(store)
+    new RollPair(loaded, this)
   }
+
   // todo: partitioner factory depending on string, and mod partition number
   def partitioner(k: Array[Byte], n: Int): Int = {
     ByteString.copyFrom(k).hashCode() % n
