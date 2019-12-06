@@ -1,19 +1,20 @@
 sub_cmd=$1
 exe=$2
-session_id=$3
-node_id=$4
+pname=$3
 SHELL_FOLDER=$(dirname "$0")
 mkdir -p $SHELL_FOLDER/pid
-pid_file=$SHELL_FOLDER/pid/$session_id-$node_id.pid
-
-if [ $sub_cmd == "start_node" ]
+pid_file=$SHELL_FOLDER/pid/$pname.pid
+# TODO:2: check pid file and delete?
+if [ $sub_cmd == "start" ]
 then
   exec $exe &
   pid=$!
-  echo "start_node:$exe,pid $pid"
-  echo $pid > $SHELL_FOLDER/pid/$session_id-$node_id.pid
-else
+  echo "start:$exe,pid $pid"
+  echo $pid > $SHELL_FOLDER/pid/$pname.pid
+elif [ $sub_cmd == "stop" ]
+then
   pid=`cat $pid_file`
-  echo "stop_node:$exe,pid $pid"
+  echo "stop:$exe,pid $pid"
   pkill -P $pid
+  kill $pid
 fi
