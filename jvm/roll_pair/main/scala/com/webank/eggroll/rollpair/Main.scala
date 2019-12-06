@@ -26,6 +26,7 @@ import com.webank.eggroll.core.client.NodeManagerClient
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
 import com.webank.eggroll.core.constant.{ProcessorStatus, ProcessorTypes, SessionConfKeys, StringConstants}
 import com.webank.eggroll.core.meta.{ErEndpoint, ErJob, ErProcessor}
+import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.util.{Logging, MiscellaneousUtils}
 import com.webank.eggroll.rollpair.component.RollPairServicer
 import org.apache.commons.lang3.StringUtils
@@ -146,7 +147,8 @@ object Main extends Logging {
       .build
     rollServer.start()
     val port = rollServer.getPort
-
+    StaticErConf.setPort(port)
+    StaticErConf.addProperty(SessionConfKeys.CONFKEY_SESSION_ID, sessionId)
     logInfo(s"server started at ${port}")
     // job
 
