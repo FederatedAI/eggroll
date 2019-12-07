@@ -77,6 +77,14 @@ class TestStandalone(unittest.TestCase):
 
     print(rp.map(lambda k, v: (k + 1, v)).get_all())
 
+  def test_multi_partition_map(self):
+    options = {}
+    options['total_partitions'] = 3
+    options['include_key'] = True
+    rp = self.ctx.load("ns1", "testMultiPartitionsMap", options=options).put_all(range(10))
+
+    print(rp.map(lambda k, v: (k + 1, v)).get_all())
+
   def test_collapse_partitions(self):
     rp = self.ctx.load("ns1", "test_collapse_partitions").put_all(range(5))
     def f(iterator):
