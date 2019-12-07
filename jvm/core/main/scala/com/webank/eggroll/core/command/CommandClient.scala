@@ -47,7 +47,7 @@ class CommandClient(defaultEndpoint:ErEndpoint = null, serdesType: String = Serd
   def this(){
     this(null, SerdesTypes.PROTOBUF, false)
   }
-  def call[T](commandURI: CommandURI,args: RpcMessage* )(implicit tag:ClassTag[T]): T = {
+  def call[T](commandURI: CommandURI, args: RpcMessage* )(implicit tag:ClassTag[T]): T = {
     val ch: ManagedChannel = Singletons.getNoCheck(classOf[GrpcChannelFactory]).getChannel(defaultEndpoint, isSecure)
     val stub: CommandServiceGrpc.CommandServiceBlockingStub = CommandServiceGrpc.newBlockingStub(ch)
     val argBytes = args.map(x => ByteString.copyFrom(SerdesUtils.rpcMessageToBytes(x, SerdesTypes.PROTOBUF)))

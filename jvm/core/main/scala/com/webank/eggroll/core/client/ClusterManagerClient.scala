@@ -70,12 +70,15 @@ class ClusterManagerClient(val endpoint: ErEndpoint) {
   def getOrCreateSession(sessionMeta: ErSessionMeta): ErSessionMeta =
     cc.call[ErSessionMeta](SessionCommands.getOrCreateSession, sessionMeta)
 
-  def getOrCreateProcessorBatch(sessionMeta: ErSessionMeta): ErProcessorBatch =
-    cc.call[ErProcessorBatch](SessionCommands.GET_OR_CREATE_PROCESSOR_BATCH, sessionMeta)
-
   def registerSession(sessionMeta: ErSessionMeta, processorBatch: ErProcessorBatch): ErProcessorBatch =
     cc.call[ErProcessorBatch](SessionCommands.registerSession, sessionMeta, processorBatch)
 
-  def getBoundProcessorBatch(sessionMeta: ErSessionMeta): ErProcessorBatch =
-    cc.call[ErProcessorBatch](SessionCommands.getBoundProcessorBatch, sessionMeta)
+  def getSessionServerNodes(sessionMeta: ErSessionMeta): ErServerCluster =
+    cc.call[ErServerCluster](SessionCommands.getSessionServerNodes, sessionMeta)
+
+  def getSessionRolls(sessionMeta: ErSessionMeta): ErProcessorBatch =
+    cc.call[ErProcessorBatch](SessionCommands.getSessionRolls, sessionMeta)
+
+  def getSessionEggs(sessionMeta: ErSessionMeta): ErProcessorBatch =
+    cc.call[ErProcessorBatch](SessionCommands.getSessionEggs, sessionMeta)
 }

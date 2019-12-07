@@ -409,9 +409,9 @@ class EggPair(object):
           if v_right is None:
             output_writebatch.put(k_left, v_left)
           else:
-            k_list_iterated.append(self.serde.deserialize(v_left))
-            v_final = f(v_left, v_right)
-            output_writebatch.put(k_left, v_final)
+            k_list_iterated.append(self.serde.deserialize(k_left))
+            v_final = f(self.serde.deserialize(v_left), self.serde.deserialize(v_right))
+            output_writebatch.put(k_left, self.serde.serialize(v_final))
 
         for k_right, v_right in right_iterator:
           if self.serde.deserialize(k_right) not in k_list_iterated:
@@ -424,6 +424,7 @@ class EggPair(object):
 
       #p = lambda k : k[-1] % output_partition._store_locator._total_partitions
       output_store = task._job._outputs[0]
+      GrpcTransferServicer.get_or_create_broker(f'{task._job._id}-{output_partition._id}')
 
       grpc_shuffle_receiver(task._job._id, output_partition, len(output_store._partitions))
     return result
@@ -581,7 +582,7 @@ def serve(args):
       route_to_class_name="EggPair",
       route_to_method_name="run_task")
 
-  server = grpc.server(futures.ThreadPoolExecutor(max_workers=1),
+  server = grpc.server(futures.ThreadPoolExecutor(max_workers=5),
                        options=[
                          (cygrpc.ChannelArgKey.max_send_message_length, -1),
                          (cygrpc.ChannelArgKey.max_receive_message_length, -1)])

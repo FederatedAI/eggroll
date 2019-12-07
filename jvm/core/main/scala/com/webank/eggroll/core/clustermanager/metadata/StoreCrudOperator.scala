@@ -33,6 +33,7 @@ import org.apache.ibatis.session.SqlSession
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
+import scala.collection.JavaConverters._
 
 class StoreCrudOperator extends CrudOperator with Logging {
   private val crudOperatorTemplate = new CrudOperatorTemplate()
@@ -138,32 +139,12 @@ object StoreCrudOperator {
       outputOptions.putAll(inputOptions)
     }
 
-    val existingBinding = SessionManager.getBindingPlan(
-      sessionId = sessionId,
-      totalPartitions = outputStoreLocator.totalPartitions,
-      serverNodeIds = partitionAtNodeIds.toArray)
-
     // process output partitions
-    val outputPartitions = ArrayBuffer[ErPartition]()
-    if (existingBinding != null
-      && existingBinding.id.equals(inputOptions.get(SessionConfKeys.CONFKEY_SESSION_EGG_BINDING_ID))
-      && !inputOptions.getOrDefault(SessionConfKeys.CONFKEY_SESSION_EGG_BINDING_INCLUDE_DETAILS, "false").toBoolean) {
-      outputOptions.put(SessionConfKeys.CONFKEY_SESSION_EGG_BINDING_ID, existingBinding.id)
-    } else {
-      val bindingId = ErPartitionBindingPlan.genId(
-        sessionId = sessionId,
-        totalPartitions = outputStoreLocator.totalPartitions,
-        serverNodeIds = partitionAtNodeIds.toArray,
-        strategy = inputOptions.getOrDefault(SessionConfKeys.CONFKEY_SESSION_EGG_BINDING_STRATEGY, BindingStrategies.ROUND_ROBIN))
-      outputOptions.put(SessionConfKeys.CONFKEY_SESSION_EGG_BINDING_ID, bindingId)
-      outputOptions.put(SessionConfKeys.CONFKEY_SESSION_EGG_BINDING_STRATEGY, BindingStrategies.ROUND_ROBIN)
-
-      val newBinding = SessionManager.createBindingPlan(
-        sessionId = sessionId,
-        totalPartitions = outputStoreLocator.totalPartitions,
-        serverNodeIds = partitionAtNodeIds.toArray)
-      outputPartitions ++= newBinding.toPartitions()
-    }
+    val outputPartitions = storePartitionResult.asScala
+      .map(p => ErPartition(
+        id = p.getPartitionId,
+        storeLocator = outputStoreLocator,
+        processor = ErProcessor(id = p.getPartitionId.toLong, serverNodeId = p.getNodeId)))
 
     ErStore(storeLocator = outputStoreLocator, partitions = outputPartitions.toArray, options = outputOptions)
   }
@@ -172,6 +153,7 @@ object StoreCrudOperator {
     val inputOptions = input.options
     val sessionId = inputOptions.getOrDefault(SessionConfKeys.CONFKEY_SESSION_ID, StringConstants.UNKNOWN)
 
+    // create store locator
     val inputStoreLocator = input.storeLocator
     val newStoreLocator = new StoreLocator
 
@@ -190,67 +172,46 @@ object StoreCrudOperator {
       throw new CrudException(s"Illegal rows affected returned when creating store locator: ${rowsAffected}")
     }
 
-    val partitionServerNodeBindingId = inputOptions.getOrDefault(SessionConfKeys.CONFKEY_SESSION_EGG_BINDING_ID, null)
-    var outputTotalPartitions = inputStoreLocator.totalPartitions
+    // create partitions
+    var newTotalPartitions = inputStoreLocator.totalPartitions
 
-    val finalPartitions: ArrayBuffer[ErPartition] = ArrayBuffer[ErPartition]()
-    finalPartitions.sizeHint(inputStoreLocator.totalPartitions)
+    val newPartitions: ArrayBuffer[ErPartition] = ArrayBuffer[ErPartition]()
+    newPartitions.sizeHint(inputStoreLocator.totalPartitions)
 
     // todo: find existing binding with same partition numbers
-    val serverNodes: Array[ErServerNode] = if (partitionServerNodeBindingId != null) {
-      val binding = SessionManager.getBindingPlan(sessionId = sessionId, bindingId = partitionServerNodeBindingId)
-      val existingBinding = ArrayBuffer[ErServerNode]()
-      existingBinding.sizeHint(binding.totalPartitions)
-      binding.partitionToServerNodes.foreach(nid => {
-        val node = nodeIdToNode.get(nid)
-
-        // todo: conversion move to util or ErServerNode
-        existingBinding += ErServerNode(
-          id = node.getServerNodeId,
-          name = node.getName,
-          clusterId = node.getServerClusterId,
-          endpoint = ErEndpoint(host = node.getHost, port = node.getPort),
-          nodeType = node.getNodeType,
-          status = node.getStatus)
-
-      })
-      outputTotalPartitions = binding.totalPartitions
-      existingBinding.toArray
-    } else if (SessionManager.getSessionDeployment(sessionId) != null && !sessionId.equals(StringConstants.UNKNOWN)) {
-      SessionManager.getSessionDeployment(sessionId).serverCluster.serverNodes
-    } else {
-      ServerNodeCrudOperator.doGetServerNodes(input = ErServerNode(nodeType = ServerNodeTypes.NODE_MANAGER, status = ServerNodeStatus.HEALTHY),
-        sqlSession = sqlSession)
-    }
+    val serverNodes: Array[ErServerNode] =
+      ServerNodeCrudOperator.doGetServerNodes(
+        input = ErServerNode(
+          nodeType = ServerNodeTypes.NODE_MANAGER,
+          status = ServerNodeStatus.HEALTHY), sqlSession = sqlSession)
 
     val nodesCount = serverNodes.length
     val specifiedPartitions = input.partitions
     val isPartitionsSpecified = specifiedPartitions.length > 0
-    if (isPartitionsSpecified) {
-      throw new UnsupportedOperationException("specify partition not supported yet")
-    }
 
-    if (outputTotalPartitions <= 0) outputTotalPartitions = nodesCount << 2
+    if (newTotalPartitions <= 0) newTotalPartitions = nodesCount << 2
     val storePartitionMapper = sqlSession.getMapper(classOf[StorePartitionMapper])
 
     val serverNodeIds = ArrayBuffer[Long]()
-    for (i <- 0 until outputTotalPartitions) {
+    for (i <- 0 until newTotalPartitions) {
+
       val storePartitionRecord = new StorePartition
       val node: ErServerNode = serverNodes(i % nodesCount)
 
       storePartitionRecord.setStoreLocatorId(newStoreLocator.getStoreLocatorId)
-      storePartitionRecord.setNodeId(node.id)
+      storePartitionRecord.setNodeId(if (isPartitionsSpecified) input.partitions(i).processor.serverNodeId else node.id)
       storePartitionRecord.setPartitionId(i)
       storePartitionRecord.setStatus(PartitionStatus.PRIMARY)
 
       rowsAffected = storePartitionMapper.insertSelective(storePartitionRecord)
+
       if (rowsAffected != 1) {
         throw new CrudException(s"Illegal rows affected returned when creating store partition: ${rowsAffected}")
       }
 
       serverNodeIds += node.id
       // todo: bind with active session
-      finalPartitions += ErPartition(
+      newPartitions += ErPartition(
         id = i,
         storeLocator = inputStoreLocator,
         processor = ErProcessor(id = i,
@@ -258,30 +219,12 @@ object StoreCrudOperator {
           tag = "binding"))
     }
 
-    val finalOptions = new ConcurrentHashMap[String, String]()
-    if (inputOptions != null) finalOptions.putAll(inputOptions)
-    val result = if (partitionServerNodeBindingId == null
-      || inputOptions.getOrDefault(SessionConfKeys.CONFKEY_SESSION_EGG_BINDING_INCLUDE_DETAILS, "false").toBoolean) {
-      val partitionToNodeIds = finalPartitions.map(p => p.processor.serverNodeId).toArray
-
-      val binding = SessionManager.createBindingPlan(
-        sessionId = sessionId,
-        totalPartitions = outputTotalPartitions,
-        serverNodeIds = partitionToNodeIds,
-        strategy = BindingStrategies.ROUND_ROBIN)
-
-
-      finalOptions.put(SessionConfKeys.CONFKEY_SESSION_EGG_BINDING_ID, binding.id)
-      finalOptions.put(SessionConfKeys.CONFKEY_SESSION_EGG_BINDING_STRATEGY, BindingStrategies.ROUND_ROBIN)
-      ErStore(
+    val newOptions = new ConcurrentHashMap[String, String]()
+    if (inputOptions != null) newOptions.putAll(inputOptions)
+    val result = ErStore(
         storeLocator = inputStoreLocator,
-        partitions = finalPartitions.toArray,
-        options = finalOptions)
-    } else {
-      ErStore(
-        storeLocator = inputStoreLocator,
-        options = finalOptions)
-    }
+        partitions = newPartitions.toArray,
+        options = newOptions)
 
     result
   }

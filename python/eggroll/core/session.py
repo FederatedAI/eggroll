@@ -12,7 +12,10 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import argparse
+import signal
 import threading, os
+import time
+from sys import platform
 
 from eggroll.core.meta_model import ErServerNode, ErServerCluster, ErProcessor, ErProcessorBatch, ErSessionMeta, \
     ErEndpoint
@@ -24,39 +27,33 @@ from eggroll.core.conf_keys import ClusterManagerConfKeys, DeployConfKeys, Sessi
 from eggroll.core.conf_keys import ClusterManagerConfKeys, DeployConfKeys
 from eggroll.roll_pair.egg_pair import serve
 
+# TODO:1: support windows
+# TODO:0: remove
+if "EGGROLL_STANDALONE_DEBUG" not in os.environ:
+    os.environ['EGGROLL_STANDALONE_DEBUG'] = "1"
 
-class StandaloneManagerThread (threading.Thread):
-    def __init__(self):
-        threading.Thread.__init__(self)
-        # self.setDaemon(True)
-
-    def run(self):
-        print ("StandaloneManagerThread start：" + self.name)
-        os.system("./bin/eggroll_boot.sh start_node './bin/eggroll_boot_standalone_manager.sh -p 4670' s1 node1 ")
-        print ("StandaloneManagerThread stop：" + self.name)
-
-    def stop(self):
-        os.system("./bin/eggroll_boot.sh stop_node './bin/eggroll_boot_standalone_manager.sh  -p 4670' s1 node1 ")
-
-class EggPairThread (threading.Thread):
-    def __init__(self, port, nm_port, session_id):
+class StandaloneThread(threading.Thread):
+    def __init__(self, session_id="sid1", manager_port=4670, eggs=20001):
         threading.Thread.__init__(self)
         self.setDaemon(True)
-        self.port = port
-        self.nm_port = nm_port
-        self.session_id = session_id
+        self.eggroll_home = "."
+        if "EGGROLL_HOME" in os.environ:
+            self.eggroll_home = os.environ["EGGROLL_HOME"]
+        else:
+            self.eggroll_home = "./"
+        self.boot = self.eggroll_home + "/bin/eggroll_boot.sh"
+        print("aa", self.boot)
+        self.standalone = self.eggroll_home + "/bin/eggroll_boot_standalone.sh -p " + \
+                          str(manager_port) + " -e " + str(eggs) + " -s " + str(session_id)
+        self.pname = str(session_id) + "-standalone"
 
     def run(self):
-        print ("EggPairThread start：" + self.name)
-        parser = argparse.ArgumentParser()
-        parser.add_argument('-d', '--data-dir', default=os.path.dirname(os.path.realpath(__file__)))
-        parser.add_argument('-n', '--node-manager', default="localhost:" + str(self.nm_port))
-        parser.add_argument('-s', '--session-id', default=self.session_id)
-        parser.add_argument('-p', '--port', default=self.port)
+        print ("StandaloneThread start：" + self.name)
+        os.system(self.boot + " start '" + self.standalone + "' " + self.pname)
+        print ("StandaloneThread stop：" + self.name)
 
-        args = parser.parse_args()
-        serve(args)
-        print ("EggPairThread stop：" + self.name)
+    def stop(self):
+        os.system(self.boot + " stop '" + self.standalone + "' " + self.pname)
 
 
 class ErDeploy:
@@ -65,29 +62,32 @@ class ErDeploy:
 
 class ErStandaloneDeploy(ErDeploy):
     def __init__(self, session_meta: ErSessionMeta, options={}):
-        self.manager_port = options.get("eggroll.standalone.manager.port", -4670)
+        self.manager_port = options.get("eggroll.standalone.manager.port", 4670)
         self.egg_ports = [int(v) for v in options.get("eggroll.standalone.egg.ports", "20001").split(",")]
-        if self.manager_port > 0:
-            raise NotImplementedError("TODO: start standalone manager and wait ready")
-        else:
-            self.manager_port = abs(self.manager_port)
         self._eggs = {0:[]}
-        for id, egg_port in enumerate(self.egg_ports):
-            egg_th = EggPairThread(egg_port, self.manager_port, session_meta._id)
-            egg_th.setDaemon(True)
-            egg_th.start()
-            print(egg_th)
+        if len(self.egg_ports) > 1:
+            raise NotImplementedError()
+        if not ("EGGROLL_STANDALONE_DEBUG" in os.environ and os.environ['EGGROLL_STANDALONE_DEBUG'] == "1"):
+            self.standalone_thread = StandaloneThread(session_meta._id, self.manager_port, self.egg_ports[0])
+            self.standalone_thread.start()
+            print("standalone_thread start", self.standalone_thread)
+            signal.signal(signal.SIGTERM, self.stop)
+            signal.signal(signal.SIGINT, self.stop)
+            # TODO:0: more general
+            time.sleep(5)
 
-            self._eggs[0].append(ErProcessor(id=id,
-                                             server_node_id=0,
-                                             processor_type=ProcessorTypes.EGG_PAIR,
-                                             status=ProcessorStatus.RUNNING,
-                                             command_endpoint=ErEndpoint("localhost", egg_port)))
+        self._eggs[0].append(ErProcessor(id=0,
+                                         server_node_id=0,
+                                         processor_type=ProcessorTypes.EGG_PAIR,
+                                         status=ProcessorStatus.RUNNING,
+                                         data_endpoint=ErEndpoint("localhost", self.egg_ports[0]),
+                                         command_endpoint=ErEndpoint("localhost", self.egg_ports[0])))
 
         self._rolls = [ErProcessor(id=0,
                                    server_node_id=0,
                                    processor_type=ProcessorTypes.ROLL_PAIR_SERVICER,
                                    status=ProcessorStatus.RUNNING,
+                                   data_endpoint=ErEndpoint("localhost", self.egg_ports[0]),
                                    command_endpoint=ErEndpoint("localhost", self.manager_port))]
 
         processorBatch = ErProcessorBatch(id=0, name='standalone', processors=[self._rolls[0]] + list(self._eggs[0]))
@@ -95,6 +95,9 @@ class ErStandaloneDeploy(ErDeploy):
 
         self.cm_client.register_session(session_meta, processorBatch)
 
+    def stop(self):
+        if self.standalone_thread:
+            self.standalone_thread.stop()
 
 class ErClusterDeploy(ErDeploy):
     def __init__(self, session_meta: ErSessionMeta, options={}):

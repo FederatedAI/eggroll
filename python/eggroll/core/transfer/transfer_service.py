@@ -65,6 +65,8 @@ class GrpcTransferServicer(transfer_pb2_grpc.TransferServiceServicer):
   def send(self, request_iterator, context):
     inited = False
     response_header = None
+
+    broker = None
     for request in request_iterator:
       if not inited:
         broker = GrpcTransferServicer.get_broker(request.header.tag)
@@ -72,8 +74,10 @@ class GrpcTransferServicer(transfer_pb2_grpc.TransferServiceServicer):
         inited = True
 
       broker.put(request)
-      if request.header.status == GrpcTransferServicer.TRANSFER_END:
-        broker.signal_write_finish()
+      #if request.header.status == GrpcTransferServicer.TRANSFER_END:
+      #  broker.signal_write_finish()
+
+    broker.signal_write_finish()
 
     return transfer_pb2.TransferBatch(header=response_header)
 
