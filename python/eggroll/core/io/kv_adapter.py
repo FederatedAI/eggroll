@@ -335,7 +335,7 @@ class RocksdbSortedKvAdapter(SortedKvAdapter):
 
   def __del__(self):
     with RocksdbSortedKvAdapter.env_lock:
-      if self.db:
+      if hasattr(self, 'db'):
         count = RocksdbSortedKvAdapter.count_dict[self.path]
         if not count or count - 1 <= 0:
           del RocksdbSortedKvAdapter.env_dict[self.path]

@@ -44,9 +44,9 @@ class TestStandalone(unittest.TestCase):
     print("get res:{}".format(table))
 
   def test_get_all(self):
-    table =self.ctx.load("ns1", "n23")
+    table =self.ctx.load("ns1", "testMap_20191207T150307.097")
     print(str(table))
-    res = table.__get_all_standalone()
+    res = table.get_all()
     print(res)
 
   def test_count(self):
@@ -73,8 +73,9 @@ class TestStandalone(unittest.TestCase):
     print(rp.map_partitions(func).get_all())
 
   def test_map(self):
-    rp = self.ctx.load("ns1", "n30")
-    print(rp.map(lambda k, v: (k+ 'map', v + 'map')).get_all())
+    rp = self.ctx.load("ns1", "testMap").put_all(range(10))
+
+    print(rp.map(lambda k, v: (k + 1, v)).get_all())
 
   def test_collapse_partitions(self):
     rp = self.ctx.load("ns1", "test_collapse_partitions").put_all(range(5))

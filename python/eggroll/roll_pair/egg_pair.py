@@ -242,20 +242,21 @@ class EggPair(object):
       input_partition = task._inputs[0]
       output_partition = task._outputs[0]
       print(output_partition)
+      total_partitions = input_partition._store_locator._total_partitions
 
       p = output_partition._store_locator._partitioner
 
       # todo: decide partitioner
-      p = lambda k : k[-1] % output_partition._store_locator._total_partitions
+      partitioner = self.__partitioner(hash_func=hash_code, total_partitions=total_partitions)
       input_adapter = self.get_unary_input_adapter(task_info=task)
       output_store = task._job._outputs[0]
 
       shuffle_broker = FifoBroker()
-      shuffler = DefaultShuffler(task._job._id, shuffle_broker, output_store, output_partition, p)
+      shuffler = DefaultShuffler(task._job._id, shuffle_broker, output_store, output_partition, partitioner)
 
       for k_bytes, v_bytes in input_adapter.iteritems():
         k1, v1 = f(self.serde.deserialize(k_bytes), self.serde.deserialize(v_bytes))
-        shuffle_broker.put(self.serde.serialize(k1), self.serde.serialize(v1))
+        shuffle_broker.put((self.serde.serialize(k1), self.serde.serialize(v1)))
       print('finish calculating')
       input_adapter.close()
       shuffle_broker.signal_write_finish()
@@ -275,53 +276,7 @@ class EggPair(object):
 
       self.aggregate(reduce_task)
       print('reduce finished')
-      '''
-      f = cloudpickle.loads(functors[0]._body)
 
-      input_adapter = self.get_unary_input_adapter(task_info=task)
-      seq_op_result = None
-      input_serdes = self._create_serdes(task._inputs[0]._store_locator._serdes)
-
-      print('mw: ready to do reduce')
-      for k_bytes, v_bytes in input_adapter.iteritems():
-        if seq_op_result:
-          #seq_op_result = f(seq_op_result, self.serde.deserialize(v_bytes))
-          seq_op_result = f(seq_op_result, input_serdes.deserialize(v_bytes))
-        else:
-          seq_op_result = input_serdes.deserialize(v_bytes)
-
-      print(f'mw: seq_op_result: {seq_op_result}')
-      partition_id = task._inputs[0]._id
-      transfer_tag = task._job._name
-
-      if 0 == partition_id:
-        queue = GrpcTransferServicer.get_or_create_broker(transfer_tag)
-        partition_size = len(task._job._inputs[0]._partitions)
-
-        comb_op_result = seq_op_result
-
-        for i in range(1, partition_size):
-          other_seq_op_result = queue.get(block=True, timeout=10)
-
-          comb_op_result = f(comb_op_result, other_seq_op_result.data)
-
-        print('reduce finished. result: ', comb_op_result)
-        output_adapter = self.get_unary_output_adapter(task_info=task)
-
-        output_writebatch = output_adapter.new_batch()
-
-        output_writebatch.put(self.serde.deserialize('result'.encode()), self.serde.deserialize(comb_op_result))
-
-        output_writebatch.close()
-        output_adapter.close()
-      else:
-        transfer_client = TransferClient()
-        transfer_client.send_single(data=seq_op_result, tag=transfer_tag,
-                                    processor=task._outputs[0]._processor)
-
-      input_adapter.close()
-      print('reduce finished')
-      '''
     elif task._name == 'mapPartitions':
       def map_partitions_wrapper(input_iterator, output_writebatch):
         f = cloudpickle.loads(functors[0]._body)

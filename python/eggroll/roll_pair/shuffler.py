@@ -16,7 +16,7 @@
 from eggroll.core.datastructure.broker import FifoBroker
 from eggroll.core.datastructure.concurrent import CountDownLatch
 from eggroll.core.meta_model import ErStoreLocator, ErJob, ErStore, ErTask, ErPartition
-from eggroll.core.io.kv_adapter import RocksdbSortedKvAdapter
+from eggroll.core.io.kv_adapter import RocksdbSortedKvAdapter, LmdbSortedKvAdapter
 from eggroll.core.io.io_utils import get_db_path
 from eggroll.core.transfer.transfer_service import GrpcTransferServicer, \
   TransferClient
@@ -78,12 +78,12 @@ class DefaultShuffler(Shuffler):
   # todo: move map calculation to subprocesses
   def start(self):
     GrpcTransferServicer\
-      .get_or_create_broker(key = f'{self.__shuffle_id}-{self.__output_partition._id}',
-                            write_signals = self.__output_partitions_count)
+      .get_or_create_broker(key=f'{self.__shuffle_id}-{self.__output_partition._id}',
+                            write_signals=self.__output_partitions_count)
 
     partition_id = self.__output_partition._id
     # todo: move partitioning to processes when needed
-    with ThreadPoolExecutor(max_workers = (self.__parallel_size << 1) + 2) as executor:
+    with ThreadPoolExecutor(max_workers=(self.__parallel_size << 1) + 2) as executor:
       partitioner_futures = list()
       for i in range(self.__parallel_size):
         future = executor.submit(partitioner,
@@ -145,11 +145,14 @@ def partitioner(input: FifoBroker, partitioned_brokers, partition_func):
   partitioned_elements_count = 0
 
   while not input.is_closable():
-    e = input.get(block=True, timeout = 1)
+    try:
+      e = input.get(block=True, timeout=1)
 
-    if e:
-      partitioned_brokers[partition_func(e[0])].put(e)
-      partitioned_elements_count += 1
+      if e:
+        partitioned_brokers[partition_func(e[0])].put(e)
+        partitioned_elements_count += 1
+    except queue.Empty as e:
+      print('partition broker is empty')
 
   return partitioned_elements_count
 
@@ -170,7 +173,7 @@ def grpc_shuffle_receiver(shuffle_id, output_partition, total_parititions_count)
   broker_id = f'{shuffle_id}-{output_partition._id}'
 
   path = get_db_path(output_partition)
-  output_adapter = RocksdbSortedKvAdapter({'path': path})
+  output_adapter = LmdbSortedKvAdapter({'path': path})
   output_write_batch = output_adapter.new_batch()
   broker = GrpcTransferServicer.get_or_create_broker(broker_id, write_signals=total_parititions_count)
 
@@ -195,6 +198,7 @@ def grpc_shuffle_receiver(shuffle_id, output_partition, total_parititions_count)
       print(e.__str__())
       print('empty')
 
+  output_write_batch.write()
   output_write_batch.close()
   output_adapter.close()
 

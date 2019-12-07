@@ -18,21 +18,18 @@
 
 package com.webank.eggroll.core.command
 
-import java.util.concurrent.{CompletableFuture, CountDownLatch}
+import java.util.concurrent.CompletableFuture
 import java.util.function.Supplier
 
 import com.webank.eggroll.core.ErSession
-import com.webank.eggroll.core.client.ClusterManagerClient
 import com.webank.eggroll.core.constant.{SerdesTypes, SessionConfKeys}
 import com.webank.eggroll.core.datastructure.TaskPlan
 import com.webank.eggroll.core.error.DistributedRuntimeException
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.util.{Logging, ThreadPoolUtils}
-import org.apache.commons.lang3.StringUtils
 
 import scala.collection.mutable
-import scala.collection.mutable.ArrayBuffer
 
 case class EndpointCommand(commandURI: CommandURI, job: ErJob)
 
@@ -82,18 +79,14 @@ case class CollectiveCommand(taskPlan: TaskPlan) extends Logging {
     results.toArray
   }
 
+  def populateProcessor(stores: Array[ErStore]): Array[ErStore] =
+    stores.map(store => store.copy(partitions = store.partitions.map(partition => partition.copy(processor = CollectiveCommand.session.routeToEgg(partition)))))
+
   def toTasks(taskPlan: TaskPlan): Array[ErTask] = {
     val job = taskPlan.job
     val inputStores: Array[ErStore] = job.inputs
     val inputPartitionSize = inputStores.head.storeLocator.totalPartitions
     val inputOptions = job.options
-/*
-    val sessionId = inputOptions.getOrElse(
-      SessionConfKeys.CONFKEY_SESSION_ID, StaticErConf.getString(SessionConfKeys.CONFKEY_SESSION_ID, null))
-    if (StringUtils.isBlank(sessionId)) {
-      throw new IllegalArgumentException("session id not exist")
-    }
-*/
 
     val partitions = inputStores.head.partitions
 
@@ -104,6 +97,14 @@ case class CollectiveCommand(taskPlan: TaskPlan) extends Logging {
     var aggregateOutputPartition: ErPartition = null
     if (taskPlan.isAggregate) {
       aggregateOutputPartition = ErPartition(id = 0, storeLocator = outputStores.head.storeLocator, processor = CollectiveCommand.session.routeToEgg(partitions(0)))
+    }
+
+    val populatedJob = if (taskPlan.shouldShuffle) {
+      job.copy(
+        inputs = populateProcessor(job.inputs),
+        outputs = populateProcessor(job.outputs))
+    } else {
+      ErJob(id = job.id, name = job.name, inputs = Array.empty, outputs = Array.empty, functors = job.functors)
     }
 
     for (i <- 0 until inputPartitionSize) {
@@ -124,7 +125,13 @@ case class CollectiveCommand(taskPlan: TaskPlan) extends Logging {
         })
       }
 
-      result.append(ErTask(id = s"${job.id}-${i}", name = job.name, inputs = inputPartitions.toArray, outputs = outputPartitions.toArray, job = job))
+      result.append(
+        ErTask(
+          id = s"${job.id}-${i}",
+          name = job.name,
+          inputs = inputPartitions.toArray,
+          outputs = outputPartitions.toArray,
+          job = populatedJob))
     }
 
     result.toArray
@@ -148,45 +155,4 @@ class CommandServiceSupplier(task: ErTask, command: CommandURI)
 object CollectiveCommand {
   val threadPool = ThreadPoolUtils.newFixedThreadPool(20, "command-")
   val session = new ErSession(StaticErConf.getString(SessionConfKeys.CONFKEY_SESSION_ID))
-  /*private var sessionDeployment: ErServerSessionDeployment = _
-  private var inited = false
-
-  def init(sessionId: String): Unit = {
-    if (inited) return
-    // todo: add cm conf
-    val sessionMeta = ErSessionMeta(id = sessionId)
-    val clusterManagerClient = new ClusterManagerClient()
-    val serverCluster = clusterManagerClient.getSessionServerNodes(sessionMeta)
-    val rolls = clusterManagerClient.getSessionRolls(sessionMeta)
-    val responseEggs: ErProcessorBatch = clusterManagerClient.getSessionEggs(sessionMeta)
-
-    // todo:0: eliminate duplicate code in session manager register
-    val eggs = mutable.Map[Long, ArrayBuffer[ErProcessor]]()
-
-    responseEggs.processors.foreach(p => {
-      eggs.get(p.serverNodeId) match {
-        case Some(array) => array += p
-        case None =>
-          val arrayBuffer = ArrayBuffer[ErProcessor]()
-          arrayBuffer += p
-          eggs.put(p.serverNodeId, arrayBuffer)
-      }
-    })
-
-    sessionDeployment = ErServerSessionDeployment(
-      id = sessionId,
-      serverCluster = serverCluster, rolls = rolls.processors,
-      eggs = eggs.mapValues(v => v.toArray).toMap)
-
-    inited = true
-  }
-
-  def routeToEgg(partition: ErPartition): ErProcessor = {
-    val targetServerNode = partition.processor.serverNodeId
-    val targetEggProcessors = sessionDeployment.eggs(targetServerNode).length
-    val targetProcessor = (partition.id / targetEggProcessors) % targetEggProcessors
-
-    sessionDeployment.eggs(targetServerNode)(targetProcessor)
-  }
-*/
 }
