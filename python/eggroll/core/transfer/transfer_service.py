@@ -168,7 +168,7 @@ class TransferClient(object):
 
     stub = transfer_pb2_grpc.TransferServiceStub(channel)
 
-    LOGGER.info (f'{tag} ready to send')
+    LOGGER.info(f'{tag} ready to send')
 
     future = stub.send.future(iter(transfer_batch_generator(self.__bin_packet_len)))
     LOGGER.info(f'{tag} got future')

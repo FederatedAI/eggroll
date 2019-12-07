@@ -68,7 +68,7 @@ class RollPairServicer() {
     taskPlanJob
   }
 
-  // todo: give default partition function: hash and mod
+/*  // todo: give default partition function: hash and mod
   def map(inputJob: ErJob): ErJob = {
     val inputStore = inputJob.inputs.head
     val inputLocator = inputStore.storeLocator
@@ -100,7 +100,7 @@ class RollPairServicer() {
     JobRunner.run(scheduler.getPlan())
 
     job
-  }
+  }*/
 
   def reduce(inputJob: ErJob): ErJob = {
     val inputStore = inputJob.inputs.head

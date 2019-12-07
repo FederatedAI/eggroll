@@ -42,7 +42,7 @@ object Main extends Logging {
     CommandRouter.register(serviceName = RollPairServicer.rollMapCommand,
       serviceParamTypes = Array(classOf[ErJob]),
       routeToClass = classOf[RollPairServicer],
-      routeToMethodName = RollPairServicer.map)
+      routeToMethodName = RollPairServicer.runJob)
 
     CommandRouter.register(serviceName = RollPairServicer.rollMapPartitionsCommand,
       serviceParamTypes = Array(classOf[ErJob]),

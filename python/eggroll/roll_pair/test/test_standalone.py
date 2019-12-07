@@ -44,9 +44,9 @@ class TestStandalone(unittest.TestCase):
     print("get res:{}".format(table))
 
   def test_get_all(self):
-    table =self.ctx.load("ns1", "n23")
+    table =self.ctx.load("ns1", "testMap_20191207T150307.097")
     print(str(table))
-    res = table.__get_all_standalone()
+    res = table.get_all()
     print(res)
 
   def test_count(self):
@@ -73,8 +73,17 @@ class TestStandalone(unittest.TestCase):
     print(rp.map_partitions(func).get_all())
 
   def test_map(self):
-    rp = self.ctx.load("ns1", "n30")
-    print(rp.map(lambda k, v: (k+ 'map', v + 'map')).get_all())
+    rp = self.ctx.load("ns1", "testMap").put_all(range(10))
+
+    print(rp.map(lambda k, v: (k + 1, v)).get_all())
+
+  def test_multi_partition_map(self):
+    options = {}
+    options['total_partitions'] = 3
+    options['include_key'] = True
+    rp = self.ctx.load("ns1", "testMultiPartitionsMap", options=options).put_all(range(10))
+
+    print(rp.map(lambda k, v: (k + 1, v)).get_all())
 
   def test_collapse_partitions(self):
     rp = self.ctx.load("ns1", "test_collapse_partitions").put_all(range(5))
@@ -111,8 +120,16 @@ class TestStandalone(unittest.TestCase):
 
   def test_reduce(self):
     from operator import add
-    rp = self.ctx.load("ns1", "testReduce").put_all(range(5))
-    print(rp.reduce(add))
+    rp = self.ctx.load("ns1", "testReduce").put_all(range(20))
+    print(rp.reduce(add).get_all())
+
+  def test_multi_partition_reduce(self):
+    from operator import add
+    options = {}
+    options['total_partitions'] = 3
+    options['include_key'] = True
+    rp = self.ctx.load("ns1", "testMultiPartitionReduce", options=options).put_all(range(20))
+    print(rp.reduce(add).get_all())
 
   def test_sample(self):
     rp = self.ctx.load("ns1", "testSample").put_all(range(100))
@@ -128,13 +145,18 @@ class TestStandalone(unittest.TestCase):
     right_rp = self.ctx.load("ns1", "testUnionRight").put_all([(1, 1), (2, 2), (3, 3)], options={"include_key": True})
     print(left_rp.union(right_rp, lambda v1, v2: v1 + v2).get_all())
 
-  def test_aggregate(self):
-    from operator import add
-    rp = self.ctx.load("ns1", "testAggregate").put_all(range(5))
-    print(rp.aggregate(zero_value=0, seq_op=add, comb_op=add))
-
     left_rp = self.ctx.load("namespace1206", "testUnionLeft1206").put_all([1, 2, 3])
     right_rp = self.ctx.load("namespace1206", "testUnionRight1206").put_all([(1, 1), (2, 2), (3, 3)], options={"include_key": True})
     print("left:{}".format(left_rp.get_all()))
     print("right:{}".format(right_rp.get_all()))
     print(left_rp.union(right_rp, lambda v1, v2: v1 + v2).get_all())
+
+  def test_aggregate(self):
+    from operator import add, mul
+    options = {}
+    options['total_partitions'] = 3
+    options['include_key'] = True
+
+    rp = self.ctx.load("ns1", "testMultiPartitionAggregate", options=options).put_all(range(10))
+    print('count:', rp.count())
+    print(rp.aggregate(zero_value=0, seq_op=add, comb_op=mul).get_all())

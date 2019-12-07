@@ -127,7 +127,7 @@ class TestRollPair extends Logging {
       functors = Array(ErFunctor("map", "",
         RollPairServicer.functorSerDes.serialize(f)), ErFunctor("map", "", RollPairServicer.functorSerDes.serialize(p))))
 
-    val result = rollPair.map(job)
+    val result = rollPair.runJob(job)
   }
 
   @Test

@@ -539,6 +539,7 @@ class RollPair(object):
 
     er_store = job_result._outputs[0]
     LOGGER.info(er_store)
+    print(er_store)
 
     return RollPair(er_store, self.ctx)
 
