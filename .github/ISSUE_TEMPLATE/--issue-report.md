@@ -25,8 +25,8 @@ L3 - Affects my experience.
 **How to reproduce this issue?**
 Steps to reproduce the behavior:
 1. Go to '...'
-2. Click on '....'
-3. Scroll down to '....'
+2. Run '...'
+3. Run '...'
 4. See error
 
 **What did you expect to see?**
@@ -42,8 +42,8 @@ If applicable, add logs or screenshots to help explain your problem.
 
 
 **What is your environment information (please complete the following information)?**
- - OS: [e.g. iOS]
- - Version [e.g. 22]
+ - OS: [e.g. MacOS]
+ - Version [e.g. 10.15]
 
 
 **Anything else we should know about your project / environment?**
