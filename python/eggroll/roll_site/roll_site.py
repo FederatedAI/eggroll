@@ -14,21 +14,21 @@
 #  limitations under the License.
 #
 
-from eggroll.roll_site import RuntimeInstance
 from eggroll.roll_site import cluster as cluster_rollsite
 
+
 class RollSite:
-  def __init__(self, ctx=None, opts={}):
-    self.runtime_conf_path =
-    self.server_conf_path =
-    self.transfer_conf_path =
-    self.rollsite = cluster_rollsite.init(job_id=job_id, runtime_conf_path=runtime_conf,
-                                          server_conf_path=server_conf_path, transfer_conf_path=transfer_conf_path)
+  def __init__(self, job_id, ctx=None, options={}):
+    runtime_conf_path = options["runtime_conf_path"]
+    server_conf_path = options["server_conf_path"]
+    transfer_conf_path = options["transfer_conf_path"]
+    self.rollsite = cluster_rollsite.init(job_id, runtime_conf_path,
+                                          server_conf_path, transfer_conf_path)
 
-  def push(self,obj, name: str, tag: str, role=None, idx=-1):
-      return rollsite.remote(obj=obj, name=name, tag=tag)
+  def push(self, obj, name: str, tag: str, role=None, idx=-1):
+      return self.rollsite.remote(obj=obj, name=name, tag=tag, role=role, idx=idx)
 
-  def pull(self,obj, name: str, tag: str, role=None, idx=-1):
-      return rollsite.get(obj, name=name)
+  def pull(self, name: str, tag: str, idx=-1):
+      return self.rollsite.get(name=name, tag=tag, idx=idx)
 
 
