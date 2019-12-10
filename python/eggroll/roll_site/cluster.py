@@ -40,7 +40,6 @@ CONF_KEY_SERVER = "servers"
 ERROR_STATES = [proxy_pb2.STOP, proxy_pb2.KILL]
 
 def _thread_receive(check_func, packet):
-    #LOGGER.debug("start receiving {}".format(transfer_meta))
     ret_packet = check_func(packet)
     while ret_packet.transferStatus != proxy_pb2.STOP:
         if ret_packet.transferStatus in ERROR_STATES:
@@ -62,11 +61,11 @@ def init(job_id, runtime_conf_path, server_conf_path, transfer_conf_path):
     _host = server_conf.get(CONF_KEY_SERVER).get(CONF_KEY_TARGET).get("host")
     _port = server_conf.get(CONF_KEY_SERVER).get(CONF_KEY_TARGET).get("port")
     runtime_conf = file_utils.load_json_conf(runtime_conf_path)
-    if CONF_KEY_LOCAL not in runtime_conf: #CONF_KEY_LOCAL = "local" 这里从role的角色角度，本地的角色？
+    if CONF_KEY_LOCAL not in runtime_conf:
         raise EnvironmentError("runtime_conf should be a dict containing key: {}".format(CONF_KEY_LOCAL))
 
     _party_id = runtime_conf.get(CONF_KEY_LOCAL).get("party_id")
-    _role = runtime_conf.get(CONF_KEY_LOCAL).get("role")  #获取local的角色
+    _role = runtime_conf.get(CONF_KEY_LOCAL).get("role")
 
     print("type of host:", type(_host))
     print("type of port:", type(_port))
@@ -86,7 +85,6 @@ class RollSiteRuntime(object):
             raise EnvironmentError("federation should be initialized before use")
         return RollSiteRuntime.instance
 
-    #def __init__(self, job_id, party_id, role, runtime_conf, host, port):
     def __init__(self, job_id, party_id, role, runtime_conf, transfer_conf_path, host, port):
         self.trans_conf = file_utils.load_json_conf(transfer_conf_path)
         self.job_id = job_id
@@ -96,8 +94,6 @@ class RollSiteRuntime(object):
         self.tag = True
         self.dst_host = host
         self.dst_port = port
-        #guest_list = pull("guest_list", host)  通过发布订阅机制获取的partyId,IP，port列表
-        print("__init__")
 
     '''
     def __get_locator(self, obj, name=None):
@@ -140,9 +136,8 @@ class RollSiteRuntime(object):
             parties = {role: self.__get_parties(role)}
         else:
             parties = {}
-            for _role in self.trans_conf.get('dst'):   #这里获取到"guest"
+            for _role in self.trans_conf.get('dst'):
                 print(_role)
-                #从runtime_conf的“role”里获取guest列表，这里要改成从注册列表里获取guest的party列表
                 parties[_role] = self.__get_parties(_role)
                 print ("type of parties:", type(parties))
 
@@ -172,7 +167,6 @@ class RollSiteRuntime(object):
                     rp.put(_tagged_key, obj)
 
                 LOGGER.debug("[REMOTE] Sending {}".format(_tagged_key))
-
                 rp = context.load(namespace, name)
                 ret = rp.map_values(lambda v: v, output=ErStore(store_locator =
                                                                 ErStoreLocator(store_type=StoreTypes.ROLLPAIR_ROLLSITE,
