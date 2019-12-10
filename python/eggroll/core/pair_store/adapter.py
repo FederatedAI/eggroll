@@ -11,12 +11,11 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+import mmap
 import os
-import threading
 from collections import OrderedDict
 
-from eggroll.core.pair_store.format import create_byte_buffer, PairBinReader, PairBinWriter
+from eggroll.core.pair_store.format import PairBinReader, PairBinWriter, FileByteBuffer, ArrayByteBuffer
 from eggroll.utils import log_utils
 log_utils.setDirectory()
 LOGGER = log_utils.getLogger()
@@ -93,9 +92,14 @@ class PairIterator:
         self.close()
 
 class FileAdapter(PairAdapter):
+    def destroy(self):
+        self.close()
+        os.remove(self._file.name)
+
     def __init__(self, options):
         super().__init__(options)
-        self._file = open(options["path"], "r+b")
+        path = options["path"]
+        self._file = open(path, "w+b")
 
     def is_sorted(self):
         return False
@@ -117,17 +121,18 @@ class FileAdapter(PairAdapter):
 
 class FileIterator(PairIterator):
     def __init__(self, file):
-        self.reader = PairBinReader(create_byte_buffer(file, {"buffer_type": "file"}))
+        file.seek(0)
+        self.reader = PairBinReader(FileByteBuffer(file))
 
     def close(self):
         pass
 
     def __iter__(self):
-        self.reader.iteritems()
+        return self.reader.read_all()
 
 class FileWriteBatch(PairWriteBatch):
     def __init__(self, file):
-        self.writer = PairBinWriter(create_byte_buffer(file, {"buffer_type": "file"}))
+        self.writer = PairBinWriter(FileByteBuffer(file))
 
     def put(self, k, v):
         self.writer.write(k, v)
@@ -143,7 +148,9 @@ class CacheAdapter(PairAdapter):
     def __init__(self, options=None):
         super().__init__(options)
         self.path = options["path"]
-        self.data = self.caches.get(self.path, OrderedDict())
+        if self.path not in self.caches:
+            self.caches[self.path] = OrderedDict()
+        self.data = self.caches[self.path]
 
     def is_sorted(self):
         return True
@@ -159,7 +166,7 @@ class CacheAdapter(PairAdapter):
         return CacheIterator(self.data)
 
     def new_batch(self):
-        pass
+        return CacheWriteBatch(self.data)
 
     def get(self, key):
         pass
@@ -175,7 +182,7 @@ class CacheIterator(PairIterator):
         pass
 
     def __iter__(self):
-        self.data.items()
+        return iter(self.data.items())
 
 class CacheWriteBatch(PairWriteBatch):
     def __init__(self, data):
@@ -190,3 +197,83 @@ class CacheWriteBatch(PairWriteBatch):
     def close(self):
         pass
 
+
+class MmapAdapter(PairAdapter):
+    block_size = 64
+    # block_size = 64 * 1024 * 1024
+    def destroy(self):
+        self.close()
+        os.remove(self._file.name)
+
+    def __init__(self, options):
+        super().__init__(options)
+        path = options["path"]
+        self._file = open(path, "w+b")
+        self.__grow_file(self._file, self.block_size)
+        self._mm = mmap.mmap(self._file.fileno(), 0)
+
+    def __grow_file(self, fd, size):
+        old_offset = fd.tell()
+        fd.seek(size - 1)
+        fd.write(b"\0")
+        fd.seek(old_offset)
+
+    def _resize(self):
+        file_size = os.fstat(self._file.fileno()).st_size
+        self.__grow_file(self._file, file_size * 2)
+        if self._mm:
+            self._mm.close()
+        self._mm = mmap.mmap(self._file.fileno(), 0)
+
+    def is_sorted(self):
+        return False
+
+    def close(self):
+        self._file.close()
+        self._mm.close()
+
+    def iteritems(self):
+        return MmapIterator(self._mm)
+
+    def new_batch(self):
+        return MmapWriteBatch(self)
+
+    def get(self, key):
+        raise NameError("unsupported")
+
+    def put(self, key, value):
+        raise NameError("unsupported")
+
+class MmapIterator(PairIterator):
+    def __init__(self, mm):
+        mm.seek(0)
+        self.reader = PairBinReader(ArrayByteBuffer(mm))
+
+    def close(self):
+        pass
+
+    def __iter__(self):
+        return self.reader.read_all()
+# TODO:1: bathes in file?
+class MmapWriteBatch(PairWriteBatch):
+    def __init__(self, db: MmapAdapter):
+        self._db = db
+        self._buffer = ArrayByteBuffer(db._mm)
+        PairBinWriter.write_head(self._buffer)
+
+    def put(self, k, v):
+        try:
+            PairBinWriter.write_pair(self._buffer, k, v)
+        except IndexError as e:
+            # increase file
+            self._db._resize()
+            buf = ArrayByteBuffer(self._db._mm)
+            buf.set_offset(self._buffer.get_offset())
+            self._buffer = buf
+            PairBinWriter.write_pair(self._buffer, k, v)
+
+    def write(self):
+        pass
+
+    def close(self):
+        pass

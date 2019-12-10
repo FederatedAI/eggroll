@@ -11,13 +11,29 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-from eggroll.core.io.kv_adapter import LmdbSortedKvAdapter, RocksdbSortedKvAdapter
+from eggroll.core.pair_store.lmdb import LmdbAdapter
+from eggroll.core.pair_store.rocksdb import RocksdbAdapter
+from eggroll.core.pair_store.adapter import FileAdapter, MmapAdapter, CacheAdapter
 
-def create_pair_store(options: dict):
+STORE_TYPE_LMDB = "rollpair.lmdb"
+STORE_TYPE_ROCKSDB = "rollpair.leveldb"
+STORE_TYPE_FILE = "rollpair.file"
+STORE_TYPE_MMAP = "rollpair.mmap"
+STORE_TYPE_CACHE = "rollpair.cache"
+
+def create_pair_adapter(options: dict):
     ret = None
     # TODO:0: rename type name?
-    if options["store_type"] == "rollpair.lmdb":
-        ret = LmdbSortedKvAdapter(options=options)
-    elif options["store_type"] == "rollpair.leveldb":
-        ret = RocksdbSortedKvAdapter(options=options)
+    if options["store_type"] == STORE_TYPE_LMDB:
+        ret = LmdbAdapter(options=options)
+    elif options["store_type"] == STORE_TYPE_ROCKSDB:
+        ret = RocksdbAdapter(options=options)
+    elif options["store_type"] == STORE_TYPE_FILE:
+        ret = FileAdapter(options=options)
+    elif options["store_type"] == STORE_TYPE_MMAP:
+        ret = MmapAdapter(options=options)
+    elif options["store_type"] == STORE_TYPE_CACHE:
+        ret = CacheAdapter(options=options)
+    else:
+        raise NotImplementedError(options)
     return ret

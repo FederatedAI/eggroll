@@ -112,7 +112,7 @@ class LmdbAdapter(PairAdapter):
 
     def __enter__(self):
         return self
-    # TODO:0: duplicated code
+    # TODO:0: duplicated code， lmdb.Error: Attempt to operate on closed/deleted/dropped object.
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
         with LmdbAdapter.env_lock:
