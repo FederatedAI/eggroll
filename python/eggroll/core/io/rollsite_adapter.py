@@ -32,7 +32,6 @@ from eggroll.core.proto import proxy_pb2, proxy_pb2_grpc
 class RollsiteWriteBatch(SortedKvWriteBatch):
   def __init__(self, adapter):
     self.adapter = adapter
-    self.cache = []
     self.name = adapter._name
     self.tag = adapter._tag
     self.__bin_packet_len = 1 << 20
@@ -191,7 +190,6 @@ class RollsiteAdapter(SortedKvAdapter):
   def __init__(self, options):
     super().__init__(options)
     self.options = options
-
     self._namespace = ''
     self._name = options["name"]
     print(self._name)
