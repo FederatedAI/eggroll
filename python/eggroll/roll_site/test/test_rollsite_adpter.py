@@ -20,8 +20,7 @@ if __name__ == '__main__':
     a = range(10)
     input_iterator = enumerate(a)
                                                          
-    #_tagged_key = self.__remote__object_key(job_id, name, tag, src_role, src_party_id, dst_role,
-    #                                                    dst_party_id, dst_host, dst_port)
+    #job_id, name, tag, src_role, src_party_id, dst_role, dst_party_id, dst_host, dst_port)
     _tagged_key = 'atest-model_A-Hello-guest-10001-host-10002-localhost-9394'
            
     output_adapter = RollsiteAdapter(options={'name': _tagged_key})

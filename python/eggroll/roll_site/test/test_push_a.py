@@ -14,11 +14,11 @@
 #  limitations under the License.
 #
 import unittest
-from eggroll.roll_site import rollsite
+from eggroll.roll_site import roll_site
 
 class TestRemote(unittest.TestCase):
     def test_remote(self):
-        rollsite.init("atest",
+        roll_site.init("atest",
                       "python/eggroll/roll_site/conf/role_conf.json",
                       "python/eggroll/roll_site/conf/server_conf.json",
                       "python/eggroll/roll_site/conf/transfer_conf.json")
@@ -29,7 +29,7 @@ class TestRemote(unittest.TestCase):
             if not content:
                 break
             print(content)
-            rollsite.remote(content, "model_A", tag="{}".format(_tag))
+            roll_site.remote(content, "model_A", tag="{}".format(_tag))
 
         '''
         fp = open("testA.model", 'r')

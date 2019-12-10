@@ -90,12 +90,41 @@ class RollsiteWriteBatch(SortedKvWriteBatch):
     print(self.name)
     self.push(bin_data, self.name)
 
+  def send_end(self):
+    channel = grpc.insecure_channel(
+        target="{}:{}".format(host, port),
+        options=[('grpc.max_send_message_length', -1), ('grpc.max_receive_message_length', -1)])
+    stub = proxy_pb2_grpc.DataTransferServiceStub(channel)
+
+    task_info = proxy_pb2.Task(taskId="testTaskId", model=proxy_pb2.Model(name="taskName", dataKey="testKey"))
+    topic_src = proxy_pb2.Topic(name="test", partyId="{}".format(party_id),
+                                role=src_role, callback=None)
+    topic_dst = proxy_pb2.Topic(name="test", partyId=self.party_id,
+                                role=self.role, callback=None)
+    command_test = proxy_pb2.Command(name="set_status")
+    conf_test = proxy_pb2.Conf(overallTimeout=1000,
+                               completionWaitTimeout=1000,
+                               packetIntervalTimeout=1000,
+                               maxRetries=10)
+
+    metadata = proxy_pb2.Metadata(task=task_info,
+                                  src=topic_src,
+                                  dst=topic_dst,
+                                  command=command_test,
+                                  seq=0, ack=0,
+                                  conf=conf_test)
+    data = proxy_pb2.Data(key="hello", value=obj.encode())
+    packet = proxy_pb2.Packet(header=metadata, body=data)
+
+    stub.unaryCall(packet);
+
   def close(self):
     # write last
     writer = self.writer
     self.cur_offset = writer.get_offset()
     bin_data = writer.get_batch(end=self.cur_offset)
     self.write(bin_data)
+    self.send_end()
 
   def put(self, k, v):
     writer = self.writer

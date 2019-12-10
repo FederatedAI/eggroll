@@ -27,6 +27,7 @@ from eggroll.core.constants import StoreTypes
 from eggroll.roll_pair.roll_pair import RollPair
 from eggroll.core.session import ErSession
 from eggroll.roll_pair.roll_pair import RollPairContext
+from eggroll.core.proto import proxy_pb2, proxy_pb2_grpc
 
 _serdes = eggroll_serdes.PickleSerdes
 
@@ -36,34 +37,17 @@ CONF_KEY_TARGET = "rollsite"
 CONF_KEY_LOCAL = "local"
 CONF_KEY_SERVER = "servers"
 
-'''
-ERROR_STATES = [federation_pb2.CANCELLED, federation_pb2.ERROR]
+ERROR_STATES = [proxy_pb2.STOP, proxy_pb2.KILL]
 
-
-async def _async_receive(stub, transfer_meta):
+def _thread_receive(check_func, packet):
     #LOGGER.debug("start receiving {}".format(transfer_meta))
-    resp_meta = stub.recv(transfer_meta)
-    while resp_meta.transferStatus != federation_pb2.COMPLETE:
-        if resp_meta.transferStatus in ERROR_STATES:
+    ret_packet = check_func(packet)
+    while ret_packet.transferStatus != proxy_pb2.STOP:
+        if ret_packet.transferStatus in ERROR_STATES:
             raise IOError(
                 "receive terminated, state: {}".format(federation_pb2.TransferStatus.Name(resp_meta.transferStatus)))
-        resp_meta = stub.checkStatusNow(resp_meta)
-        await asyncio.sleep(1)
-    #LOGGER.info("finish receiving {}".format(resp_meta))
-    return resp_meta
+    return ret_packet
 
-
-def _thread_receive(receive_func, check_func, transfer_meta):
-    #LOGGER.debug("start receiving {}".format(transfer_meta))
-    resp_meta = receive_func(transfer_meta)
-    while resp_meta.transferStatus != federation_pb2.COMPLETE:
-        if resp_meta.transferStatus in ERROR_STATES:
-            raise IOError(
-                "receive terminated, state: {}".format(federation_pb2.TransferStatus.Name(resp_meta.transferStatus)))
-        resp_meta = check_func(resp_meta)
-    #LOGGER.info("finish receiving {}".format(resp_meta))
-    return resp_meta
-'''
 
 def init(job_id, runtime_conf_path, server_conf_path, transfer_conf_path):
     global LOGGER
@@ -192,15 +176,20 @@ class RollSiteRuntime(object):
                 rp = context.load(namespace, name)
                 ret = rp.map_values(lambda v: v, output=ErStore(store_locator =
                                                                 ErStoreLocator(store_type=StoreTypes.ROLLPAIR_ROLLSITE,
-                                                                               namespace='namespace',
+                                                                               namespace=namespace,
                                                                                name=_tagged_key)))
                 print(ret)
 
                 LOGGER.debug("[REMOTE] Sent {}".format(_tagged_key))
 
 
-    '''
+
     def get(self, name, tag, idx=-1):
+        storage_options = {'cluster_manager_host': 'localhost',
+                           'cluster_manager_port': 4670,
+                           'pair_type': 'v1/egg-pair',
+                           'egg_pair_service_host': 'localhost',
+                           'egg_pair_service_port': 20001}
         algorithm, sub_name = self.__check_authorization(name, is_send=False)
 
         auth_dict = self.trans_conf.get(algorithm)
@@ -216,44 +205,58 @@ class RollSiteRuntime(object):
             # idx is not valid, return remote object list
             party_ids = src_party_ids
 
-        job = basic_meta_pb2.Job(jobId=self.job_id, name=name)
-
         LOGGER.debug(
             "[GET] {} {} getting remote object {} from {} {}".format(self.role, self.party_id, tag, src_role,
                                                                      party_ids))
 
-        # loop = asyncio.get_event_loop()
-        # tasks = []
         results = []
         for party_id in party_ids:
-            src = federation_pb2.Party(partyId="{}".format(party_id), name=src_role)
-            dst = federation_pb2.Party(partyId="{}".format(self.party_id), name=self.role)
-            trans_meta = federation_pb2.TransferMeta(job=job, tag=tag, src=src, dst=dst,
-                                                     type=federation_pb2.RECV)
+            task_info = proxy_pb2.Task(taskId="testTaskId", model=proxy_pb2.Model(name="taskName", dataKey="testKey"))
+            topic_src = proxy_pb2.Topic(name="test", partyId="{}".format(party_id),
+                                        role=src_role, callback=None)
+            topic_dst = proxy_pb2.Topic(name="test", partyId=self.party_id,
+                                        role=self.role, callback=None)
+            command_test = proxy_pb2.Command(name="get_status")
+            conf_test = proxy_pb2.Conf(overallTimeout=1000,
+                                       completionWaitTimeout=1000,
+                                       packetIntervalTimeout=1000,
+                                       maxRetries=10)
+
+            metadata = proxy_pb2.Metadata(task=task_info,
+                                          src=topic_src,
+                                          dst=topic_dst,
+                                          command=command_test,
+                                          seq=0, ack=0,
+                                          conf=conf_test)
+            data = proxy_pb2.Data(key="hello", value=obj.encode())
+            packet = proxy_pb2.Packet(header=metadata, body=data)
+
             # tasks.append(_receive(self.stub, trans_meta))
-            results.append(self.__pool.submit(_thread_receive, self.stub.recv, self.stub.checkStatus, trans_meta))
+            results.append(self.__pool.submit(_thread_receive, packet))
         # results = loop.run_until_complete(asyncio.gather(*tasks))
         # loop.close()
         results = [r.result() for r in results]
         rtn = []
-        for recv_meta in results:
-            desc = recv_meta.dataDesc
-            _persistent = desc.storageLocator.type != storage_basic_pb2.IN_MEMORY
-            dest_table = _EggRoll.get_instance().table(name=desc.storageLocator.name,
-                                                       namespace=desc.storageLocator.namespace,
-                                                       persistent=_persistent)
+        for packet in results:
+            namespace = self.__remote__object_key(self.job_id, name, tag, self.role, self.party_id)
+            store = ErStore(ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LMDB, namespace=namespace,
+                                           name=name))
+            rp = RollPair(store, options=storage_options)
+            rtn.append(rp)
+
+            '''
             if recv_meta.dataDesc.transferDataType == federation_pb2.OBJECT:
                 __tagged_key = _serdes.deserialize(desc.taggedVariableName)
-                rtn.append(dest_table.get(__tagged_key))
+                rtn.append(rp.get(bytes(__tagged_key, encoding='utf-8')))
                 LOGGER.debug("[GET] Got remote object {}".format(__tagged_key))
             else:
-                rtn.append(dest_table)
+                rtn.append(rp)
                 src = recv_meta.src
                 dst = recv_meta.dst
                 LOGGER.debug(
                     "[GET] Got remote table {} from {} {} to {} {}".format(dest_table, src.name, src.partyId, dst.name,
                                                                            dst.partyId))
+            '''
         if 0 <= idx < len(src_party_ids):
             return rtn[0]
         return rtn
-    '''
