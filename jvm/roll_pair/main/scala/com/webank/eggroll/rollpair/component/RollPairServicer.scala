@@ -68,7 +68,7 @@ class RollPairServicer() {
     taskPlanJob
   }
 
-  // todo: give default partition function: hash and mod
+/*  // todo: give default partition function: hash and mod
   def map(inputJob: ErJob): ErJob = {
     val inputStore = inputJob.inputs.head
     val inputLocator = inputStore.storeLocator
@@ -100,7 +100,7 @@ class RollPairServicer() {
     JobRunner.run(scheduler.getPlan())
 
     job
-  }
+  }*/
 
   def reduce(inputJob: ErJob): ErJob = {
     val inputStore = inputJob.inputs.head
@@ -447,6 +447,9 @@ class RollPairServicer() {
       case RollPairServicer.join => {
         taskPlan = new JoinTaskPlan(new CommandURI(RollPairServicer.eggRunTaskCommand), taskPlanJob)
       }
+      case RollPairServicer.putBatch => {
+        taskPlan = new PutBatchTaskPlan(new CommandURI(RollPairServicer.eggPutBatchCommand), taskPlanJob)
+      }
     }
 
     JobRunner.run(taskPlan)
@@ -491,39 +494,6 @@ class RollPairServicer() {
     taskPlanJob
   }
 
-  // todo: give default partition function: hash and mod
-  def putBatch(inputJob: ErJob): ErJob = {
-    val inputStore = inputJob.inputs.head
-    val inputLocator = inputStore.storeLocator
-    val outputLocator = inputLocator.copy(name = "testMap")
-
-    val inputPartitionTemplate = ErPartition(id = 0, storeLocator = inputLocator, processor = ErProcessor(commandEndpoint = ErEndpoint("localhost", 20001)))
-    val outputPartitionTemplate = ErPartition(id = 0, storeLocator = outputLocator, processor = ErProcessor(commandEndpoint = ErEndpoint("localhost", 20001)))
-
-    val numberOfPartitions = 4
-
-    val inputPartitions = mutable.ArrayBuffer[ErPartition]()
-    val outputPartitions = mutable.ArrayBuffer[ErPartition]()
-
-    for (i <- 0 until numberOfPartitions) {
-      inputPartitions += inputPartitionTemplate.copy(id = i)
-      outputPartitions += outputPartitionTemplate.copy(id = i)
-    }
-
-    val inputStoreWithPartitions = inputStore.copy(storeLocator = inputLocator,
-      partitions = inputPartitions.toArray)
-    val outputStoreWithPartitions = inputStore.copy(storeLocator = outputLocator,
-      partitions = outputPartitions.toArray)
-
-    val job = inputJob.copy(inputs = Array(inputStoreWithPartitions), outputs = Array(outputStoreWithPartitions))
-
-    val taskPlan = new ShuffleTaskPlan(new CommandURI(RollPairServicer.eggMapCommand), job)
-    scheduler.addPlan(taskPlan)
-
-    JobRunner.run(scheduler.getPlan())
-
-    job
-  }
 }
 
 object RollPairServicer {

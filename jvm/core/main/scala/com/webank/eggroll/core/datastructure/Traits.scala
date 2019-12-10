@@ -42,4 +42,5 @@ trait TaskPlan {
   def job: ErJob
   def uri: CommandURI
   def isAggregate: Boolean = false
+  def shouldShuffle: Boolean = false
 }

@@ -123,6 +123,18 @@ class RollPairContext(object):
     # todo:0: add combine options to pass it through
     store_options = self.__session.get_all_options()
     store_options.update(options)
+    final_options = store_options.copy()
+    if 'create_if_missing' in final_options:
+      del final_options['create_if_missing']
+    if 'include_key' in final_options:
+      del final_options['include_key']
+    if 'total_partitions' in final_options:
+      del final_options['total_partitions']
+    if 'name' in final_options:
+      del final_options['name']
+    if 'namespace' in final_options:
+      del final_options['namespace']
+    print("final_options:{}".format(final_options))
     store = ErStore(
         store_locator=ErStoreLocator(
             store_type=store_type,
@@ -131,7 +143,7 @@ class RollPairContext(object):
             total_partitions=total_partitions,
             partitioner=partitioner,
             serdes=serdes),
-        options=store_options)
+        options=final_options)
 
     if create_if_missing:
       result = self.__session.cm_client.get_or_create_store(store)
@@ -527,6 +539,7 @@ class RollPair(object):
 
     er_store = job_result._outputs[0]
     LOGGER.info(er_store)
+    print(er_store)
 
     return RollPair(er_store, self.ctx)
 

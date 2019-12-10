@@ -31,7 +31,7 @@ import org.apache.commons.lang3.StringUtils
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
-import scala.collection.mutable.ArrayBuffer
+import scala.collection.mutable.{ArrayBuffer, ListBuffer}
 
 trait MetaRpcMessage extends RpcMessage {
   override def rpcMessageType(): String = "Meta"
@@ -137,6 +137,23 @@ case class ErServerSessionDeployment(id: String,
     eggs.foreach(k => processors ++= k._2)
 
     ErProcessorBatch(processors = processors.toArray, tag = id)
+  }
+}
+
+object ErServerSessionDeployment {
+  def apply(id: String,
+            serverCluster: ErServerCluster,
+            rollProcessorBatch: ErProcessorBatch,
+            eggProcessorBatch: ErProcessorBatch): ErServerSessionDeployment = {
+    val eggs = mutable.Map[Long, ArrayBuffer[ErProcessor]]()
+
+    eggProcessorBatch.processors.foreach(p => eggs.getOrElseUpdate(p.serverNodeId, ArrayBuffer[ErProcessor]()) += p)
+
+    ErServerSessionDeployment(
+      id = id,
+      serverCluster = serverCluster,
+      rolls = rollProcessorBatch.processors,
+      eggs = eggs.mapValues(_.toArray).toMap)
   }
 }
 

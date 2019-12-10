@@ -17,6 +17,7 @@ from collections.abc import Iterable
 
 import grpc
 from concurrent import futures
+from copy import copy
 
 import numpy as np
 
@@ -28,7 +29,7 @@ from eggroll.core.io.kv_adapter import RocksdbSortedKvAdapter, LmdbSortedKvAdapt
 from eggroll.core.io.rollsite_adapter import RollsiteAdapter
 from eggroll.core.io.io_utils import get_db_path
 from eggroll.core.meta_model import ErTask, ErPartition, ErProcessor, ErEndpoint
-from eggroll.core.meta_model import ErSessionMeta, ErPair
+from eggroll.core.meta_model import ErSessionMeta, ErPair, ErFunctor
 from eggroll.core.proto import command_pb2_grpc, transfer_pb2_grpc
 from eggroll.core.serdes import cloudpickle
 from eggroll.core.serdes import eggroll_serdes
@@ -241,20 +242,21 @@ class EggPair(object):
       input_partition = task._inputs[0]
       output_partition = task._outputs[0]
       print(output_partition)
+      total_partitions = input_partition._store_locator._total_partitions
 
       p = output_partition._store_locator._partitioner
 
       # todo: decide partitioner
-      p = lambda k : k[-1] % output_partition._store_locator._total_partitions
+      partitioner = self.__partitioner(hash_func=hash_code, total_partitions=total_partitions)
       input_adapter = self.get_unary_input_adapter(task_info=task)
       output_store = task._job._outputs[0]
 
       shuffle_broker = FifoBroker()
-      shuffler = DefaultShuffler(task._job._id, shuffle_broker, output_store, output_partition, p)
+      shuffler = DefaultShuffler(task._job._id, shuffle_broker, output_store, output_partition, partitioner)
 
       for k_bytes, v_bytes in input_adapter.iteritems():
         k1, v1 = f(self.serde.deserialize(k_bytes), self.serde.deserialize(v_bytes))
-        shuffle_broker.put(self.serde.serialize(k1), self.serde.serialize(v1))
+        shuffle_broker.put((self.serde.serialize(k1), self.serde.serialize(v1)))
       print('finish calculating')
       input_adapter.close()
       shuffle_broker.signal_write_finish()
@@ -266,50 +268,13 @@ class EggPair(object):
       print('map finished')
     # todo: use aggregate to reduce (also reducing duplicate codes)
     elif task._name == 'reduce':
-      f = cloudpickle.loads(functors[0]._body)
+      job = copy(task._job)
+      reduce_functor = job._functors[0]
+      job._functors = [None, reduce_functor, reduce_functor]
+      reduce_task = copy(task)
+      reduce_task._job = job
 
-      input_adapter = self.get_unary_input_adapter(task_info=task)
-      seq_op_result = None
-      input_serdes = self._create_serdes(task._inputs[0]._store_locator._serdes)
-
-      print('mw: ready to do reduce')
-      for k_bytes, v_bytes in input_adapter.iteritems():
-        if seq_op_result:
-          #seq_op_result = f(seq_op_result, self.serde.deserialize(v_bytes))
-          seq_op_result = f(seq_op_result, input_serdes.deserialize(v_bytes))
-        else:
-          seq_op_result = input_serdes.deserialize(v_bytes)
-
-      print(f'mw: seq_op_result: {seq_op_result}')
-      partition_id = task._inputs[0]._id
-      transfer_tag = task._job._name
-
-      if 0 == partition_id:
-        queue = GrpcTransferServicer.get_or_create_broker(transfer_tag)
-        partition_size = len(task._job._inputs[0]._partitions)
-
-        comb_op_result = seq_op_result
-
-        for i in range(1, partition_size):
-          other_seq_op_result = queue.get(block=True, timeout=10)
-
-          comb_op_result = f(comb_op_result, other_seq_op_result.data)
-
-        print('reduce finished. result: ', comb_op_result)
-        output_adapter = self.get_unary_output_adapter(task_info=task)
-
-        output_writebatch = output_adapter.new_batch()
-
-        output_writebatch.put(self.serde.deserialize('result'.encode()), self.serde.deserialize(comb_op_result))
-
-        output_writebatch.close()
-        output_adapter.close()
-      else:
-        transfer_client = TransferClient()
-        transfer_client.send_single(data=seq_op_result, tag=transfer_tag,
-                                    processor=task._outputs[0]._processor)
-
-      input_adapter.close()
+      self.aggregate(reduce_task)
       print('reduce finished')
 
     elif task._name == 'mapPartitions':
@@ -424,17 +389,14 @@ class EggPair(object):
 
       #p = lambda k : k[-1] % output_partition._store_locator._total_partitions
       output_store = task._job._outputs[0]
+      GrpcTransferServicer.get_or_create_broker(f'{task._job._id}-{output_partition._id}')
 
       grpc_shuffle_receiver(task._job._id, output_partition, len(output_store._partitions))
     return result
 
-
-
-    return result
-
   def aggregate(self, task: ErTask):
     functors = task._job._functors
-    zero_value = cloudpickle.loads(functors[0]._body)
+    zero_value = None if not functors[0] else cloudpickle.loads(functors[0]._body)
     seq_op = cloudpickle.loads(functors[1]._body)
     comb_op = cloudpickle.loads(functors[2]._body)
 
@@ -455,14 +417,13 @@ class EggPair(object):
     transfer_tag = task._job._name
 
     if 0 == partition_id:
-      queue = GrpcTransferServicer.get_or_create_broker(transfer_tag)
-      partition_size = len(task._job._inputs[0]._partitions)
+      partition_size = input_partition._store_locator._total_partitions
+      queue = GrpcTransferServicer.get_or_create_broker(transfer_tag, write_signals=partition_size)
 
       comb_op_result = seq_op_result
 
       for i in range(1, partition_size):
         other_seq_op_result = queue.get(block=True, timeout=10)
-
         comb_op_result = comb_op(comb_op_result, output_serdes.deserialize(other_seq_op_result.data))
 
       print('aggregate finished. result: ', comb_op_result)
@@ -474,6 +435,7 @@ class EggPair(object):
 
       output_writebatch.close()
       output_adapter.close()
+      GrpcTransferServicer.remove_broker(transfer_tag)
     else:
       ser_seq_op_result = output_serdes.serialize(seq_op_result)
       transfer_client = TransferClient()
@@ -481,7 +443,7 @@ class EggPair(object):
                                   processor=task._outputs[0]._processor)
 
     input_adapter.close()
-    print('reduce finished')
+    print('aggregate finished')
 
 
 def serve(args):
@@ -581,7 +543,7 @@ def serve(args):
       route_to_class_name="EggPair",
       route_to_method_name="run_task")
 
-  server = grpc.server(futures.ThreadPoolExecutor(max_workers=1),
+  server = grpc.server(futures.ThreadPoolExecutor(max_workers=5),
                        options=[
                          (cygrpc.ChannelArgKey.max_send_message_length, -1),
                          (cygrpc.ChannelArgKey.max_receive_message_length, -1)])

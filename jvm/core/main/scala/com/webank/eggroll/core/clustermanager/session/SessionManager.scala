@@ -97,6 +97,7 @@ object SessionManager {
       hostToNodeId(n.endpoint.host) = n.id
     })
 
+    // todo:1: eliminate with MetaModel class definition
     processorBatch.processors.foreach(p => {
       val pWithServerNodeInfo = p.copy(serverNodeId = hostToNodeId(p.commandEndpoint.host))
       if (ProcessorTypes.EGG_PAIR.equals(p.processorType)) {

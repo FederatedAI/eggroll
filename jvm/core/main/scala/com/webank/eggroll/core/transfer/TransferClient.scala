@@ -83,7 +83,7 @@ class GrpcTransferClient {
     }
 
     context.setStubClass(classOf[TransferServiceGrpc.TransferServiceStub])
-      .setServerEndpoint(processor.commandEndpoint)
+      .setServerEndpoint(processor.dataEndpoint)
       .setCallerStreamingMethodInvoker((stub: TransferServiceGrpc.TransferServiceStub,
                                         responseObserver: StreamObserver[Transfer.TransferBatch]) => stub.send(responseObserver))
       .setCallerStreamObserverClassAndInitArgs(classOf[SameTypeCallerResponseStreamObserver[Transfer.TransferBatch, Transfer.TransferBatch]])
@@ -138,6 +138,7 @@ class GrpcForwardingTransferSendStreamProcessor(clientCallStreamObserver: Client
 
     transferBatchBuilder.clear().setHeader(transferHeaderBuilder.setTotalSize(0).setTag(TransferStatus.TRANSFER_END))
     clientCallStreamObserver.onNext(transferBatchBuilder.build())
+    super.onComplete()
   }
 }
 

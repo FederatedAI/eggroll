@@ -121,7 +121,7 @@ class RollPair(val store: ErStore, val opts: ErConf = RuntimeErConf()) {
           name = "putBatch",
           inputs = Array(ErStore(storeLocator)),
           functors = Array())
-        rollPair.putBatch(job)
+        //rollPair.putBatch(job)
       }
     }
 

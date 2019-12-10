@@ -28,11 +28,15 @@ abstract class BaseTaskPlan(_uri: CommandURI, _job: ErJob) extends TaskPlan {
   override def uri: CommandURI = _uri
 }
 
-class MapTaskPlan(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job)
+class MapTaskPlan(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job) {
+  override def shouldShuffle = true
+}
 class ReduceTaskPlan(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job) {
   override def isAggregate: Boolean = true
 }
-class ShuffleTaskPlan(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job)
+class ShuffleTaskPlan(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job) {
+  override def shouldShuffle: Boolean = true
+}
 class JoinTaskPlan(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job)
 class AggregateTaskPlan(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job) {
   override def isAggregate: Boolean = true
@@ -43,3 +47,4 @@ class SampleTaskPlan(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job)
 class FilterTaskPlan(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job)
 class SubtractByKeyTaskPlan(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job)
 class UnionTaskPlan(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job)
+class PutBatchTaskPlan(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job)
