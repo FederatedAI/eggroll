@@ -31,7 +31,7 @@ import com.webank.eggroll.core.datastructure.{Broker, LinkedBlockingBroker}
 import com.webank.eggroll.core.error.DistributedRuntimeException
 import com.webank.eggroll.core.meta.MetaModelPbMessageSerdes._
 import com.webank.eggroll.core.meta._
-import com.webank.eggroll.core.transfer.{GrpcTransferClient, GrpcTransferService}
+import com.webank.eggroll.core.transfer.{GrpcTransferClient, TransferService}
 import com.webank.eggroll.core.util.{Logging, ThreadPoolUtils}
 import com.webank.eggroll.rollpair.io.RocksdbSortedKvAdapter
 import io.grpc.netty.shaded.io.netty.buffer.UnpooledUnsafeDirectByteBuf
@@ -80,7 +80,7 @@ class DefaultShuffler(shuffleId: String,
   val errors = new DistributedRuntimeException
 
   def start(): Unit = {
-    GrpcTransferService.getOrCreateBroker(key = s"${shuffleId}-${outputPartition.id}", writeSignals = outputPartitionsCount)
+    TransferService.getOrCreateBroker(key = s"${shuffleId}-${outputPartition.id}", writeSignals = outputPartitionsCount)
 
     val partitionSubFutures = ArrayBuffer[CompletableFuture[Long]]()
 
@@ -239,7 +239,7 @@ class GrpcShuffleReceiver(shuffleId: String,
 
   override def get(): Long = {
     var totalRecv = 0L
-    val broker = GrpcTransferService.getOrCreateBroker(s"${shuffleId}-${outputPartition.id}")
+    val broker = TransferService.getOrCreateBroker(s"${shuffleId}-${outputPartition.id}")
 
     val path = EggPair.getDbPath(outputPartition)
     logInfo(s"outputPath: ${path}")

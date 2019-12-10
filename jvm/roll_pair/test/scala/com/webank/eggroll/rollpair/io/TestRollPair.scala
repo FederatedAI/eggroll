@@ -22,7 +22,7 @@ import com.webank.eggroll.core.command.{CommandRouter, CommandService}
 import com.webank.eggroll.core.constant.{ClusterManagerConfKeys, StoreTypes}
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.session.StaticErConf
-import com.webank.eggroll.core.transfer.GrpcTransferService
+import com.webank.eggroll.core.transfer.{TransferService, TransferServiceGrpcImpl}
 import com.webank.eggroll.core.util.Logging
 import com.webank.eggroll.rollpair.component.{EggPair, RollPairServicer}
 import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
@@ -91,7 +91,7 @@ class TestRollPair extends Logging {
 
     val rollServer = NettyServerBuilder.forPort(20000)
       .addService(new CommandService)
-      .addService(new GrpcTransferService)
+      .addService(new TransferServiceGrpcImpl)
       .build
     rollServer.start()
 
@@ -103,7 +103,7 @@ class TestRollPair extends Logging {
 
     val eggServer = NettyServerBuilder.forPort(20001)
       .addService(new CommandService)
-      .addService(new GrpcTransferService)
+      .addService(new TransferServiceGrpcImpl)
       .build()
     eggServer.start()
 
@@ -138,7 +138,7 @@ class TestRollPair extends Logging {
 
     val rollServer = NettyServerBuilder.forPort(20000)
       .addService(new CommandService)
-      .addService(new GrpcTransferService)
+      .addService(new TransferServiceGrpcImpl)
       .build
     rollServer.start()
 
@@ -151,7 +151,7 @@ class TestRollPair extends Logging {
     val eggServer = NettyServerBuilder
       .forPort(20001)
       .addService(new CommandService)
-      .addService(new GrpcTransferService)
+      .addService(new TransferServiceGrpcImpl)
       .build()
     eggServer.start()
 
@@ -185,7 +185,7 @@ class TestRollPair extends Logging {
 
     val rollServer = NettyServerBuilder.forPort(20000)
       .addService(new CommandService)
-      .addService(new GrpcTransferService)
+      .addService(new TransferServiceGrpcImpl)
       .build
     rollServer.start()
 
