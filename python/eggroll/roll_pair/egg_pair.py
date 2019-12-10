@@ -116,7 +116,8 @@ class EggPair(object):
       output_adapter = LmdbSortedKvAdapter(options=options)
     elif task_info._inputs[0]._store_locator._store_type == "rollpair.leveldb":
       output_adapter = RocksdbSortedKvAdapter(options=options)
-    elif task_info._inputs[0]._store_locator._store_type == "rollpair.rollsite":
+
+    if task_info._outputs[0]._store_locator._store_type == "rollpair.rollsite":
       output_adapter = RollsiteAdapter(options={'name': output_partition._store_locator._name})
 
     return output_adapter
