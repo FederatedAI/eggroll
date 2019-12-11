@@ -63,7 +63,7 @@ class RollPairContext(val session: ErSession, defaultStoreType:String = StoreTyp
     ByteString.copyFrom(k).hashCode() % n
   }
   def getPartitionProcessor(id:Int): ErProcessor = {
-    ErProcessor(commandEndpoint = ErEndpoint("localhost", 20001), dataEndpoint = ErEndpoint("localhost", 20001))
+    ErProcessor(commandEndpoint = ErEndpoint("localhost", 20001), transferEndpoint = ErEndpoint("localhost", 20001))
   }
 }
 
@@ -95,7 +95,7 @@ class RollPair(val store: ErStore, val ctx:RollPairContext, val opts: Map[String
       val rowPairDB = broker.poll(10, TimeUnit.SECONDS)
 
       if (rowPairDB != null) {
-        val magicNumber = new Array[Byte](8)
+        val magicNumber = new Array[Byte](4)
         val protocolVersion = new Array[Byte](4)
 
         val byteBuffer: ByteBuffer = rowPairDB.asReadOnlyByteBuffer()

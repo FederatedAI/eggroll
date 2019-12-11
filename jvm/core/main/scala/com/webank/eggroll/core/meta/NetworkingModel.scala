@@ -44,7 +44,7 @@ case class ErProcessor(id: Long = -1,
                        processorType: String = StringConstants.EMPTY,
                        status: String = StringConstants.EMPTY,
                        commandEndpoint: ErEndpoint = null,
-                       dataEndpoint: ErEndpoint = null,
+                       transferEndpoint: ErEndpoint = null,
                        options: java.util.Map[String, String] = new ConcurrentHashMap[String, String](),
                        tag: String = StringConstants.EMPTY) extends NetworkingRpcMessage
 
@@ -90,7 +90,7 @@ object NetworkingModelPbMessageSerdes {
         .setProcessorType(src.processorType)
         .setStatus(src.status)
         .setCommandEndpoint(if (src.commandEndpoint != null ) src.commandEndpoint.toProto() else Meta.Endpoint.getDefaultInstance)
-        .setDataEndpoint(if (src.dataEndpoint != null) src.dataEndpoint.toProto() else Meta.Endpoint.getDefaultInstance)
+        .setTransferEndpoint(if (src.transferEndpoint != null) src.transferEndpoint.toProto() else Meta.Endpoint.getDefaultInstance)
         .putAllOptions(src.options)
         .setTag(src.tag)
 
@@ -166,7 +166,7 @@ object NetworkingModelPbMessageSerdes {
         processorType = src.getProcessorType,
         status = src.getStatus,
         commandEndpoint = src.getCommandEndpoint.fromProto(),
-        dataEndpoint = src.getDataEndpoint.fromProto(),
+        transferEndpoint = src.getTransferEndpoint.fromProto(),
         options = src.getOptionsMap,
         tag = src.getTag)
     }

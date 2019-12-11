@@ -80,14 +80,14 @@ class ErStandaloneDeploy(ErDeploy):
                                          server_node_id=0,
                                          processor_type=ProcessorTypes.EGG_PAIR,
                                          status=ProcessorStatus.RUNNING,
-                                         data_endpoint=ErEndpoint("localhost", self.egg_ports[0]),
+                                         transfer_endpoint=ErEndpoint("localhost", self.egg_ports[0]),
                                          command_endpoint=ErEndpoint("localhost", self.egg_ports[0])))
 
         self._rolls = [ErProcessor(id=0,
                                    server_node_id=0,
                                    processor_type=ProcessorTypes.ROLL_PAIR_SERVICER,
                                    status=ProcessorStatus.RUNNING,
-                                   data_endpoint=ErEndpoint("localhost", self.egg_ports[0]),
+                                   transfer_endpoint=ErEndpoint("localhost", self.egg_ports[0]),
                                    command_endpoint=ErEndpoint("localhost", self.manager_port))]
 
         processorBatch = ErProcessorBatch(id=0, name='standalone', processors=[self._rolls[0]] + list(self._eggs[0]))

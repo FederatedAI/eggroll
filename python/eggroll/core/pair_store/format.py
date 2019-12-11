@@ -19,7 +19,6 @@ from typing import Iterator, Generator
 from struct import pack_into, unpack_from, unpack, pack
 import os
 
-# TODO:0: 4 bytes magic num
 MAGIC_NUM = bytes.fromhex('46709394')
 PROTOCOL_VERSION = bytes.fromhex('00000001')
 

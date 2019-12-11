@@ -390,12 +390,13 @@ class EggPair(object):
 
     elif task._name == 'putBatch':
       output_partition = task._outputs[0]
-      #p = lambda k : k[-1] % output_partition._store_locator._total_partitions
-      #output_store = task._job._outputs[0]
-      GrpcTransferServicer.get_or_create_broker(f'{task._job._id}-{output_partition._id}')
+      print(output_partition)
 
-      #grpc_shuffle_receiver(task._job._id, output_partition, len(output_store._partitions))
-      grpc_shuffle_receiver(output_partition._store_locator._name, output_partition, 1)
+      #p = lambda k : k[-1] % output_partition._store_locator._total_partitions
+      tag = f'{task._job._id}-{output_partition._id}'
+      TransferService.get_or_create_broker(tag)
+
+      grpc_shuffle_receiver(tag, output_partition, output_partition._store_locator._total_partitions)
     return result
 
   def aggregate(self, task: ErTask):
@@ -448,7 +449,7 @@ class EggPair(object):
       broker.put(ser_seq_op_result)
       broker.signal_write_finish()
       future = transfer_client.send(broker=broker,
-                                    endpoint=task._outputs[0]._processor._data_endpoint,
+                                    endpoint=task._outputs[0]._processor._transfer_endpoint,
                                     tag=transfer_tag)
       future.result()
 
@@ -592,7 +593,7 @@ def serve(args):
     }
     myself = ErProcessor(processor_type=ProcessorTypes.EGG_PAIR,
                          command_endpoint=ErEndpoint(host='localhost', port=port),
-                         data_endpoint=ErEndpoint(host='localhost', port=transfer_port),
+                         transfer_endpoint=ErEndpoint(host='localhost', port=transfer_port),
                          options=options,
                          status=ProcessorStatus.RUNNING)
 

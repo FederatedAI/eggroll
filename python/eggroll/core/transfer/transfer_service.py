@@ -148,30 +148,6 @@ class TransferClient(object):
     return future
 
   @_exception_logger
-  def send_single(self, data, tag, processor, status = ''):
-    endpoint = processor._command_endpoint
-    channel = grpc.insecure_channel(target=f'{endpoint._host}:{endpoint._port}',
-                                    options=[
-                                      ('grpc.max_send_message_length', -1),
-                                      ('grpc.max_receive_message_length', -1)])
-
-    total_size = 0 if not data else len(data)
-    header = ErTransferHeader(id=100,
-                              tag=tag,
-                              total_size=total_size,
-                              status = status)
-    batch = ErTransferBatch(header=header, data=data)
-
-    stub = transfer_pb2_grpc.TransferServiceStub(channel)
-
-    batches = [batch.to_proto()]
-
-    #LOGGER.info(f"mw: ready to send to {endpoint}, {iter(batches)}")
-    stub.send(iter(batches))
-
-    LOGGER.info("finish send")
-
-  @_exception_logger
   def send_pair(self, broker: FifoBroker, tag, processor, status = ''):
     def transfer_batch_generator(packet_len):
       # todo: pull up as format

@@ -107,12 +107,12 @@ object RollFrame {
 
 // TODO: MOCK
 class ClusterManager(mode: String = "local") {
-  val clusterNode0 = ErProcessor(id = 0, commandEndpoint = ErEndpoint("node1", 20100), dataEndpoint = ErEndpoint("node1", 20200), tag = "boss")
-  val clusterNode1 = ErProcessor(id = 1, commandEndpoint = ErEndpoint("node2", 20101), dataEndpoint = ErEndpoint("node2", 20201), tag = "worker")
-  val clusterNode2 = ErProcessor(id = 2, commandEndpoint = ErEndpoint("node3", 20102), dataEndpoint = ErEndpoint("node3", 20202), tag = "worker")
+  val clusterNode0 = ErProcessor(id = 0, commandEndpoint = ErEndpoint("node1", 20100), transferEndpoint = ErEndpoint("node1", 20200), tag = "boss")
+  val clusterNode1 = ErProcessor(id = 1, commandEndpoint = ErEndpoint("node2", 20101), transferEndpoint = ErEndpoint("node2", 20201), tag = "worker")
+  val clusterNode2 = ErProcessor(id = 2, commandEndpoint = ErEndpoint("node3", 20102), transferEndpoint = ErEndpoint("node3", 20202), tag = "worker")
 
-  val localNode0 = ErProcessor(id = 0, commandEndpoint = ErEndpoint("127.0.0.1", 20100), dataEndpoint = ErEndpoint("127.0.0.1", 20200), tag = "boss")
-  val localNode1 = ErProcessor(id = 1, commandEndpoint = ErEndpoint("127.0.0.1", 20101), dataEndpoint = ErEndpoint("127.0.0.1", 20201), tag = "worker")
+  val localNode0 = ErProcessor(id = 0, commandEndpoint = ErEndpoint("127.0.0.1", 20100), transferEndpoint = ErEndpoint("127.0.0.1", 20200), tag = "boss")
+  val localNode1 = ErProcessor(id = 1, commandEndpoint = ErEndpoint("127.0.0.1", 20101), transferEndpoint = ErEndpoint("127.0.0.1", 20201), tag = "worker")
   def getLiveProcessorBatch(clusterId: Long = -1): ErProcessorBatch = {
     val cluster = mode match {
       case "cluster" =>
@@ -162,7 +162,7 @@ class ClusterManager(mode: String = "local") {
         case _ => true
       }
       val commandEndpoint = server.commandEndpoint
-      val dataEndpoint = server.dataEndpoint
+      val dataEndpoint = server.transferEndpoint
       if (idMatch) {
         val sb = NettyServerBuilder.forPort(commandEndpoint.port)
         sb.addService(new CommandService).build.start
@@ -170,8 +170,8 @@ class ClusterManager(mode: String = "local") {
         new Thread("transfer-" + dataEndpoint.port) {
           override def run(): Unit = {
             try {
-              println(s"Start TransferServer:server.host: ${server.dataEndpoint.host}, transferPost: ${server.dataEndpoint.port}")
-              new NioTransferEndpoint().runServer(server.dataEndpoint.host, server.dataEndpoint.port)
+              println(s"Start TransferServer:server.host: ${server.transferEndpoint.host}, transferPost: ${server.transferEndpoint.port}")
+              new NioTransferEndpoint().runServer(server.transferEndpoint.host, server.transferEndpoint.port)
             } catch {
               case e: Throwable => e.printStackTrace()
             }
