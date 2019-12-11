@@ -215,8 +215,39 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
             Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
             Proxy.Data data = Proxy.Data.newBuilder().setValue(ByteString.copyFromUtf8("hello")).build();
             packet = packetBuilder.setHeader(request.getHeader())
-                                  .setBody(data)
-                                  .build();
+                .setBody(data)
+                .build();
+            responseObserver.onNext(packet);
+            responseObserver.onCompleted();
+            return;
+        }
+        if(request.getHeader().getOperator().equals("markEnd")) {
+            //String routeTable = ;
+            //updateRouteTable(routeTable);
+            Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
+            Proxy.Data data = Proxy.Data.newBuilder().setValue(ByteString.copyFromUtf8("hello")).build();
+            packet = packetBuilder.setHeader(request.getHeader())
+                .setBody(data)
+                .build();
+            pipe.setStatus(true);
+            responseObserver.onNext(packet);
+            responseObserver.onCompleted();
+            return;
+        }
+        if(request.getHeader().getOperator().equals("getStatus")) {
+            //String routeTable = ;
+            //updateRouteTable(routeTable);
+            Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
+            Proxy.Data data = Proxy.Data.newBuilder().setValue(ByteString.copyFromUtf8("hello")).build();
+            boolean status = pipe.getStatus();
+            Proxy.Metadata header;
+            if(status == true)
+                header = Proxy.Metadata.newBuilder().setAck(123).build();
+            else
+                header = Proxy.Metadata.newBuilder().setAck(321).build();
+            packet = packetBuilder.setHeader(header)
+                .setBody(data)
+                .build();
             responseObserver.onNext(packet);
             responseObserver.onCompleted();
             return;

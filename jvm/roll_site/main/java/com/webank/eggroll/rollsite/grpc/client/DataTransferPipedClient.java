@@ -296,12 +296,15 @@ public class DataTransferPipedClient {
     }
     */
 
-    public Proxy.Packet unaryCall(Proxy.Packet request, Pipe pipe) {
+    public Proxy.Packet unaryCall(Proxy.Packet request, Pipe pipe, boolean initialize) {
         GrpcClientContext<DataTransferServiceGrpc.DataTransferServiceStub, Proxy.Packet, Proxy.Packet> context
             = new GrpcClientContext<>();
 
         Proxy.Metadata metadata = request.getHeader();
-        //endpoint = proxyGrpcStubFactory.getAsyncEndpoint(metadata.getDst());
+        //System.out.println(metadata);
+        if(initialize == false)
+            endpoint = proxyGrpcStubFactory.getAsyncEndpoint(metadata.getDst());
+        System.out.println(endpoint);
         System.out.println("ip:" + endpoint.getIp() + "port:" + endpoint.getPort());
 
         AwaitSettableFuture<Packet> delayedResult = new AwaitSettableFuture<>();
@@ -315,10 +318,7 @@ public class DataTransferPipedClient {
             = new GrpcClientTemplate<>();
         template.setGrpcClientContext(context);
 
-        //Proxy.Packet result = HelloRequest.newBuilder().setMsg("test hello | ").build();
-
         Proxy.Packet result = null;
-
         try {
             result = template.calleeStreamingRpcWithImmediateDelayedResult(request, delayedResult);
         } catch (ExecutionException | InterruptedException e) {
@@ -348,6 +348,7 @@ public class DataTransferPipedClient {
         return result.getMsg();
         */
     }
+
 
     private DataTransferServiceGrpc.DataTransferServiceStub getStub(Proxy.Topic from, Proxy.Topic to) {
         if (endpoint == null && !fdnRouter.isAllowed(from, to)) {

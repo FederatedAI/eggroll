@@ -13,64 +13,20 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
-import time
-from threading import Thread
-from threading import Event
-from api import rollsite
+import unittest
+from eggroll.roll_site.roll_site import RollSiteContext
 
 
-class WriteThread(Thread):
-    def __init__(self, w_event):
-        Thread.__init__(self)
-        self.w_event = w_event
+class TestGet(unittest.TestCase):
+    def test_get(self):
+        options = {'runtime_conf_path': 'python/eggroll/roll_site/conf/role_conf.json',
+                   'server_conf_path': 'python/eggroll/roll_site/conf/server_conf.json',
+                   'transfer_conf_path': 'python/eggroll/roll_site/conf/transfer_conf.json'}
+        context = RollSiteContext("atest", options=options)
 
-    def run(self):
-        self.w_event.wait()
-        print("recv Event, received all model files")
-        self.w_event.clear()
+        _tag = "Hello"
 
-
-class ReadThread(Thread):
-    ret_a = None
-    ret_b = None
-
-    def __init__(self, w_event):
-        Thread.__init__(self)
-        self.w_event = w_event
-
-    def run(self):
-        while True:
-            if self.ret_a is None:
-                print("pull a")
-                fp = open('a.modle', 'w')
-                self.ret_a = rollsite.pull(fp, "model_A", tag="{}".format(_tag))
-                fp.close()
-
-            if self.ret_b is None:
-                print("pull b")
-                fp = open('b.modle', 'w')
-                self.ret_b = rollsite.pull(fp, "model_B", tag="{}".format(_tag))
-                fp.close()
-
-            if self.ret_a and self.ret_b:
-                print("Send Event")
-                self.w_event.set()
-                break
-            else:
-                print("sleep")
-                time.sleep(1)
-
-
-if __name__ == '__main__':
-    rollsite.init("atest", "roll_site/test/role_conf.json", "roll_site/test/server_conf.json")
-    _tag = "Hello"
-    a = _tag
-
-    test_event = Event()
-    WThread = WriteThread(test_event)
-    RThread = ReadThread(test_event)
-
-    WThread.start()
-    RThread.start()
+        rs = context.load(name="RsaIntersectTransferVariable.rsa_pubkey", tag="{}".format(_tag))
+        rs.pull()
 
 
