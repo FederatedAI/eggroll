@@ -236,7 +236,7 @@ public class GrpcServerFactory {
 
         Proxy.Packet packet = Proxy.Packet.newBuilder().setHeader(header).setBody(data).build();
         client.setEndpoint(BasicMeta.Endpoint.newBuilder().setIp(gatewayIp).setPort(gatewayPort).build());
-        Proxy.Packet ret = client.unaryCall(packet, defaultPipeFactory.create("brokerInfo"));
+        Proxy.Packet ret = client.unaryCall(packet, defaultPipeFactory.create("brokerInfo"), true);
         System.out.println("ret:" + ret.getBody().getValue());
     }
 

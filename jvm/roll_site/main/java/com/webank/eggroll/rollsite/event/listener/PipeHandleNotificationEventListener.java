@@ -78,7 +78,7 @@ public class PipeHandleNotificationEventListener implements ApplicationListener<
             } else if (PipeHandleNotificationEvent.Type.PULL == type) {
                 client.pull(metadata, pipe);
             } else {
-                client.unaryCall(pipeHandlerInfo.getPacket(), pipe);
+                client.unaryCall(pipeHandlerInfo.getPacket(), pipe, false);
             }
         }
 

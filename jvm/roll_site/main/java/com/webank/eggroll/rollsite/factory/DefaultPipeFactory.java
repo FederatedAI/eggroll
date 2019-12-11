@@ -36,6 +36,8 @@ import java.io.OutputStream;
 @Component("defaultPipeFactory")
 public class DefaultPipeFactory implements PipeFactory {
     private static final Logger LOGGER = LogManager.getLogger(DefaultPipeFactory.class);
+    String pipeStatus = "null";
+
     @Autowired
     private LocalBeanFactory localBeanFactory;
 
@@ -94,5 +96,13 @@ public class DefaultPipeFactory implements PipeFactory {
         }
 
         return pipe;
+    }
+
+    public void setStatus(String status) {
+        pipeStatus = status;
+    }
+
+    public String getStatus() {
+        return pipeStatus;
     }
 }

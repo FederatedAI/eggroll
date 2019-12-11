@@ -25,6 +25,7 @@ public abstract class BasePipe implements Pipe {
     private final CountDownLatch closeLatch;
     private volatile boolean closed = false;
     private volatile boolean drained = false;
+    private volatile boolean status = false;
     private volatile Throwable throwable = null;
 
     public BasePipe() {
@@ -94,6 +95,13 @@ public abstract class BasePipe implements Pipe {
     @Override
     public Throwable getError() {
         return throwable;
+    }
+
+    public boolean getStatus() {
+        return this.status;
+    }
+    public void setStatus(boolean status) {
+        this.status = status;
     }
 
     public void checkNotClosed() {
