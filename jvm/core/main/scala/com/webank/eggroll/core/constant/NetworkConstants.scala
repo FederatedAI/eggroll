@@ -20,9 +20,11 @@ package com.webank.eggroll.core.constant
 
 import java.nio.charset.StandardCharsets
 
+import javax.xml.bind.DatatypeConverter
+
 object NetworkConstants {
   val DEFAULT_LOCALHOST_IP = "127.0.0.1"
 
-  val TRANSFER_PROTOCOL_MAGIC_NUMBER : Array[Byte] = "46709394".getBytes(StandardCharsets.UTF_8)
-  val TRANSFER_PROTOCOL_VERSION : Array[Byte] = "0001".getBytes(StandardCharsets.UTF_8)
+  val TRANSFER_PROTOCOL_MAGIC_NUMBER : Array[Byte] = DatatypeConverter.parseHexBinary("46709394")
+  val TRANSFER_PROTOCOL_VERSION : Array[Byte] = DatatypeConverter.parseHexBinary("00000001")
 }

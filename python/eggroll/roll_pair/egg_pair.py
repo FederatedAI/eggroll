@@ -392,10 +392,10 @@ class EggPair(object):
       print(output_partition)
 
       #p = lambda k : k[-1] % output_partition._store_locator._total_partitions
-      output_store = task._job._outputs[0]
-      GrpcTransferServicer.get_or_create_broker(f'{task._job._id}-{output_partition._id}')
+      tag = f'{task._job._id}-{output_partition._id}'
+      TransferService.get_or_create_broker(tag)
 
-      grpc_shuffle_receiver(task._job._id, output_partition, len(output_store._partitions))
+      grpc_shuffle_receiver(tag, output_partition, output_partition._store_locator._total_partitions)
     return result
 
   def aggregate(self, task: ErTask):
