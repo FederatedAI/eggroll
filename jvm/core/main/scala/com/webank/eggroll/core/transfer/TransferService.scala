@@ -63,7 +63,7 @@ object TransferService {
 
 
 trait TransferClient {
-  def send()
+  def send(any: Any)
 }
 
 

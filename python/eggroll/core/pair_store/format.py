@@ -12,6 +12,20 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+#
+#
+#
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
 
 
 from typing import Iterator, Generator
@@ -19,8 +33,8 @@ from struct import pack_into, unpack_from, unpack, pack
 import os
 
 # TODO:0: 4 bytes magic num
-MAGIC_NUM = '46709394'.encode('utf-8')
-PROTOCOL_VERSION = '0001'.encode('utf-8')
+MAGIC_NUM = bytes.fromhex('46709394')
+PROTOCOL_VERSION = bytes.fromhex('00000001')
 
 # def create_byte_buffer(data, options=None):
 #     if options and "buffer_type" in options :
@@ -60,6 +74,7 @@ class ByteBuffer:
 
     def write_bytes(self, value, offset=None):
         raise NotImplementedError()
+
 
 class FileByteBuffer:
     def __init__(self, file):
@@ -109,6 +124,7 @@ class FileByteBuffer:
         self.__seek_offset(offset)
         self.file.write(value)
 
+
 class ArrayByteBuffer(ByteBuffer):
     def __init__(self, data):
         self.__buffer = data
@@ -141,7 +157,7 @@ class ArrayByteBuffer(ByteBuffer):
         self.__adjust_offset(op_offset, value_size)
         return result[0]
 
-    def read_bytes(self, size, offset = None):
+    def read_bytes(self, size, offset=None):
         op_offset = self.__get_op_offset(offset)
         self._check_remaining(op_offset, size)
         ret = self.__buffer[op_offset: op_offset + size]
@@ -161,6 +177,7 @@ class ArrayByteBuffer(ByteBuffer):
         self._check_remaining(op_offset, size)
         self.__buffer[op_offset: op_offset + size] = value
         self.__adjust_offset(op_offset, size)
+
 
 class PairBinReader(object):
     def __init__(self, pair_buffer):
