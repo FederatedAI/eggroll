@@ -12,6 +12,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+
 import argparse
 import os
 import threading
@@ -34,7 +35,7 @@ class TestStandalone(unittest.TestCase):
 
   def test_get(self):
     for i in range(10):
-      self.ctx.load("ns1", "n25").put(f"k{i}", f"v{i}")
+      self.ctx.load("ns1", "n26").put(f"k{i}", f"v{i}")
       print(self.ctx.load("ns1", "n25").get(f"k{i}"))
 
   def test_put_all(self):

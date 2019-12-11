@@ -70,56 +70,56 @@ object JobRunner {
     stores.map(store => store.copy(partitions = store.partitions.map(partition => partition.copy(processor = session.routeToEgg(partition)))))
 
   def decomposeJob(taskPlan: TaskPlan): Array[ErTask] = {
-        val job = taskPlan.job
-        val inputStores: Array[ErStore] = job.inputs
-        val inputPartitionSize = inputStores.head.storeLocator.totalPartitions
-        val inputOptions = job.options
+    val job = taskPlan.job
+    val inputStores: Array[ErStore] = job.inputs
+    val inputPartitionSize = inputStores.head.storeLocator.totalPartitions
+    val inputOptions = job.options
 
-        val partitions = inputStores.head.partitions
+    val partitions = inputStores.head.partitions
 
-        val outputStores: Array[ErStore] = job.outputs
-        val result = mutable.ArrayBuffer[ErTask]()
-        result.sizeHint(outputStores(0).partitions.length)
+    val outputStores: Array[ErStore] = job.outputs
+    val result = mutable.ArrayBuffer[ErTask]()
+    result.sizeHint(outputStores(0).partitions.length)
 
-        var aggregateOutputPartition: ErPartition = null
-        if (taskPlan.isAggregate) {
-          aggregateOutputPartition = ErPartition(id = 0, storeLocator = outputStores.head.storeLocator, processor = session.routeToEgg(partitions(0)))
-        }
+    var aggregateOutputPartition: ErPartition = null
+    if (taskPlan.isAggregate) {
+      aggregateOutputPartition = ErPartition(id = 0, storeLocator = outputStores.head.storeLocator, processor = session.routeToEgg(partitions(0)))
+    }
 
-        val populatedJob = if (taskPlan.shouldShuffle) {
-          job.copy(
-            inputs = populateProcessor(job.inputs),
-            outputs = populateProcessor(job.outputs))
-        } else {
-          ErJob(id = job.id, name = job.name, inputs = Array.empty, outputs = Array.empty, functors = job.functors)
-        }
+    val populatedJob = if (taskPlan.shouldShuffle) {
+      job.copy(
+        inputs = populateProcessor(job.inputs),
+        outputs = populateProcessor(job.outputs))
+    } else {
+      ErJob(id = job.id, name = job.name, inputs = Array.empty, outputs = Array.empty, functors = job.functors)
+    }
 
-        for (i <- 0 until inputPartitionSize) {
-          val inputPartitions = mutable.ArrayBuffer[ErPartition]()
-          val outputPartitions = mutable.ArrayBuffer[ErPartition]()
+    for (i <- 0 until inputPartitionSize) {
+      val inputPartitions = mutable.ArrayBuffer[ErPartition]()
+      val outputPartitions = mutable.ArrayBuffer[ErPartition]()
 
-          inputStores.foreach(inputStore => {
-            inputPartitions.append(
-              ErPartition(id = i, storeLocator = inputStore.storeLocator, processor = session.routeToEgg(partitions(i))))
-          })
+      inputStores.foreach(inputStore => {
+        inputPartitions.append(
+          ErPartition(id = i, storeLocator = inputStore.storeLocator, processor = session.routeToEgg(partitions(i))))
+      })
 
-          if (taskPlan.isAggregate) {
-            outputPartitions.append(aggregateOutputPartition)
-          } else {
-            outputStores.foreach(outputStore => {
-              outputPartitions.append(
-                ErPartition(id = i, storeLocator = outputStore.storeLocator, processor = session.routeToEgg(partitions(i))))
-            })
-          }
+      if (taskPlan.isAggregate) {
+        outputPartitions.append(aggregateOutputPartition)
+      } else {
+        outputStores.foreach(outputStore => {
+          outputPartitions.append(
+            ErPartition(id = i, storeLocator = outputStore.storeLocator, processor = session.routeToEgg(partitions(i))))
+        })
+      }
 
-          result.append(
-            ErTask(
-              id = s"${job.id}-${i}",
-              name = job.name,
-              inputs = inputPartitions.toArray,
-              outputs = outputPartitions.toArray,
-              job = populatedJob))
-        }
+      result.append(
+        ErTask(
+          id = s"${job.id}-${i}",
+          name = job.name,
+          inputs = inputPartitions.toArray,
+          outputs = outputPartitions.toArray,
+          job = populatedJob))
+    }
 
     result.toArray
   }

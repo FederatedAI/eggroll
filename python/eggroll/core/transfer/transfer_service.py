@@ -12,55 +12,67 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+
 import grpc
+from grpc._cython import cygrpc
 from eggroll.core.datastructure.broker import FifoBroker
 from eggroll.core.proto import transfer_pb2_grpc, transfer_pb2
 from eggroll.core.transfer_model import ErTransferHeader, ErTransferBatch
+from eggroll.core.meta_model import ErEndpoint
 from eggroll.core.utils import _exception_logger
 from eggroll.utils import log_utils
 from eggroll.core.grpc.factory import GrpcChannelFactory
-from queue import Queue
 from eggroll.core.io.format import BinBatchWriter
+from eggroll.core.conf_keys import TransferConfKeys
 import sys
 from time import sleep
+from concurrent import futures
+import queue
 
 log_utils.setDirectory()
 LOGGER = log_utils.getLogger()
 
-class GrpcTransferServicer(transfer_pb2_grpc.TransferServiceServicer):
+
+class TransferService(object):
   data_buffer = dict()
+  _DEFAULT_QUEUE_SIZE = 10000
 
-  _DEFAULT_QUEUE_SIZE = 100
-  TRANSFER_END = '__transfer_end'
+  def start(self, options: {}):
+    raise NotImplementedError()
 
-  # todo: move out
   @staticmethod
-  def get_or_create_broker(key: str, maxsize: int = _DEFAULT_QUEUE_SIZE, write_signals = 1):
-    if key not in GrpcTransferServicer.data_buffer:
-      final_size = maxsize if maxsize > 0 else GrpcTransferServicer._DEFAULT_QUEUE_SIZE
-      GrpcTransferServicer.data_buffer[key] = \
-        FifoBroker(max_capacity = final_size, write_signals = write_signals)
+  def get_or_create_broker(key: str, maxsize: int = _DEFAULT_QUEUE_SIZE, write_signals=1):
+    if not TransferService.has_broker(key):
+      final_size = maxsize if maxsize > 0 else TransferService._DEFAULT_QUEUE_SIZE
+      TransferService.data_buffer[key] = \
+        FifoBroker(max_capacity=final_size, write_signals=write_signals)
 
-    return GrpcTransferServicer.data_buffer[key]
+    return TransferService.data_buffer[key]
 
   @staticmethod
   def get_broker(key: str):
-    result = GrpcTransferServicer.data_buffer.get(key, None)
-    while not result or key not in GrpcTransferServicer.data_buffer:
+    result = TransferService.data_buffer.get(key, None)
+    while not result or key not in TransferService.data_buffer:
       sleep(0.1)
-      result = GrpcTransferServicer.data_buffer.get(key, None)
+      result = TransferService.data_buffer.get(key, None)
 
     return result
 
   @staticmethod
   def remove_broker(key: str):
     result = False
-    if key in GrpcTransferServicer.data_buffer:
-      del GrpcTransferServicer.data_buffer[key]
+    if key in TransferService.data_buffer:
+      del TransferService.data_buffer[key]
       result = True
 
     return result
 
+  @staticmethod
+  def has_broker(key: str):
+    return key in TransferService.data_buffer
+
+
+class GrpcTransferServicer(transfer_pb2_grpc.TransferServiceServicer):
   @_exception_logger
   def send(self, request_iterator, context):
     inited = False
@@ -69,24 +81,71 @@ class GrpcTransferServicer(transfer_pb2_grpc.TransferServiceServicer):
     broker = None
     for request in request_iterator:
       if not inited:
-        broker = GrpcTransferServicer.get_broker(request.header.tag)
+        broker = TransferService.get_broker(request.header.tag)
         response_header = request.header
         inited = True
 
       broker.put(request)
-      #if request.header.status == GrpcTransferServicer.TRANSFER_END:
-      #  broker.signal_write_finish()
 
     broker.signal_write_finish()
 
     return transfer_pb2.TransferBatch(header=response_header)
 
-# todo: move to core/client
+
+class GrpcTransferService(TransferService):
+  def start(self, options: dict = {}):
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=1),
+                         options=[(cygrpc.ChannelArgKey.max_send_message_length, -1),
+                                  (cygrpc.ChannelArgKey.max_receive_message_length, -1)])
+
+    transfer_servicer = GrpcTransferServicer()
+    transfer_pb2_grpc.add_TransferServiceServicer_to_server(transfer_servicer, server)
+    port = options.get(TransferConfKeys.CONFKEY_TRANSFER_SERVICE_PORT, 0)
+    port = server.add_insecure_port(f'[::]:{port}')
+    LOGGER.info(f'transfer service started at port {port}')
+    print(f'transfer service started at port {port}')
+
+    server.start()
+
+    import time
+    time.sleep(1000000)
+
+
 class TransferClient(object):
   def __init__(self):
     self.__grpc_channel_factory = GrpcChannelFactory()
     self.__bin_packet_len = 1 << 20
     self.__chunk_size = 100
+
+  @_exception_logger
+  def send(self, broker: FifoBroker, endpoint: ErEndpoint, tag):
+    channel = grpc.insecure_channel(
+        target=f'{endpoint._host}:{endpoint._port}',
+        options=[
+          ('grpc.max_send_message_length', -1),
+          ('grpc.max_receive_message_length', -1)])
+
+    def transfer_batch_generator():
+      i = 0
+      while not broker.is_closable():
+        try:
+          data = broker.get(block=True, timeout=5)
+          if data:
+            header = transfer_pb2.TransferHeader(id=i, tag=tag)
+            batch = transfer_pb2.TransferBatch(header=header, data=data)
+            i += 1
+
+            yield batch
+        except queue.Empty as e:
+          pass
+        except Exception as e:
+          print(e)
+
+
+    stub = transfer_pb2_grpc.TransferServiceStub(channel)
+    future = stub.send.future(transfer_batch_generator())
+
+    return future
 
   @_exception_logger
   def send_single(self, data, tag, processor, status = ''):
