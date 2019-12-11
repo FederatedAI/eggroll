@@ -449,7 +449,7 @@ class EggPair(object):
       broker.put(ser_seq_op_result)
       broker.signal_write_finish()
       future = transfer_client.send(broker=broker,
-                                    endpoint=task._outputs[0]._processor._data_endpoint,
+                                    endpoint=task._outputs[0]._processor._transfer_endpoint,
                                     tag=transfer_tag)
       future.result()
 
@@ -593,7 +593,7 @@ def serve(args):
     }
     myself = ErProcessor(processor_type=ProcessorTypes.EGG_PAIR,
                          command_endpoint=ErEndpoint(host='localhost', port=port),
-                         data_endpoint=ErEndpoint(host='localhost', port=transfer_port),
+                         transfer_endpoint=ErEndpoint(host='localhost', port=transfer_port),
                          options=options,
                          status=ProcessorStatus.RUNNING)
 

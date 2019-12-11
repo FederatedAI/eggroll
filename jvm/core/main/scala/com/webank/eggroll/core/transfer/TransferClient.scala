@@ -83,7 +83,7 @@ class GrpcTransferClient {
     }
 
     context.setStubClass(classOf[TransferServiceGrpc.TransferServiceStub])
-      .setServerEndpoint(processor.dataEndpoint)
+      .setServerEndpoint(processor.transferEndpoint)
       .setCallerStreamingMethodInvoker((stub: TransferServiceGrpc.TransferServiceStub,
                                         responseObserver: StreamObserver[Transfer.TransferBatch]) => stub.send(responseObserver))
       .setCallerStreamObserverClassAndInitArgs(classOf[SameTypeCallerResponseStreamObserver[Transfer.TransferBatch, Transfer.TransferBatch]])

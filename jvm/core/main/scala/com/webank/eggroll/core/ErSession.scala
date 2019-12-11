@@ -38,7 +38,7 @@ class ErStandaloneDeploy(sessionMeta: ErSessionMeta, options: Map[String, String
   val eggs: Map[Int, List[ErProcessor]] = Map(0 ->
     eggPorts.zip(eggTransferPorts).map(ports => ErProcessor(
       id=0, serverNodeId = 0, processorType = ProcessorTypes.EGG_PAIR,
-      status = ProcessorStatus.RUNNING, commandEndpoint = ErEndpoint("localhost", ports._1), dataEndpoint = ErEndpoint("localhost", ports._2))
+      status = ProcessorStatus.RUNNING, commandEndpoint = ErEndpoint("localhost", ports._1), transferEndpoint = ErEndpoint("localhost", ports._2))
     ).toList
   )
   val cmClient: ClusterManagerClient = new ClusterManagerClient("localhost", managerPort)

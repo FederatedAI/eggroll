@@ -187,7 +187,7 @@ def grpc_shuffle_sender(tag: str, input_broker, target_partition, buffer_size=32
     print('sender started')
     client = TransferClient()
     send_broker = FifoBroker()
-    future = client.send(broker=send_broker, endpoint=target_partition._processor._data_endpoint, tag=tag)
+    future = client.send(broker=send_broker, endpoint=target_partition._processor._transfer_endpoint, tag=tag)
 
     ba = None
     buffer = None

@@ -87,7 +87,7 @@ object SessionManager {
     val eggs = mutable.Map[Long, ArrayBuffer[ErProcessor]]()
 
     val hosts = new util.ArrayList[String](processorBatch.processors.length)
-    processorBatch.processors.foreach(p => hosts.add(p.dataEndpoint.host))
+    processorBatch.processors.foreach(p => hosts.add(p.transferEndpoint.host))
 
     val serverNodeCrudOperator = new ServerNodeCrudOperator
     val serverCluster = serverNodeCrudOperator.getServerClusterByHosts(hosts)
@@ -173,7 +173,7 @@ class DefaultClusterDeployer(sessionMeta: ErSessionMeta,
         val populated = p.copy(
           id = curI,
           commandEndpoint = p.commandEndpoint.copy(host = host),
-          dataEndpoint = p.dataEndpoint.copy(host = host),
+          transferEndpoint = p.transferEndpoint.copy(host = host),
           tag = s"${p.processorType}-${n.id}-${curI}")
         rolls += populated
       })
@@ -195,7 +195,7 @@ class DefaultClusterDeployer(sessionMeta: ErSessionMeta,
       val populatedEggs = new Array[ErProcessor](processorBatch.processors.length)
       processorBatch.processors.foreach(p => {
         val curI = i.getAndIncrement()
-        val populated = p.copy(id = curI, serverNodeId = n.id, commandEndpoint = p.commandEndpoint.copy(host = host), dataEndpoint = p.dataEndpoint.copy(host = host), tag = s"${p.processorType}-${n.id}-${curI}")
+        val populated = p.copy(id = curI, serverNodeId = n.id, commandEndpoint = p.commandEndpoint.copy(host = host), transferEndpoint = p.transferEndpoint.copy(host = host), tag = s"${p.processorType}-${n.id}-${curI}")
 
         populatedEggs.update(curI, populated)
       })

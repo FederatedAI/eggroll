@@ -63,7 +63,7 @@ class RollPairContext(val session: ErSession, defaultStoreType:String = StoreTyp
     ByteString.copyFrom(k).hashCode() % n
   }
   def getPartitionProcessor(id:Int): ErProcessor = {
-    ErProcessor(commandEndpoint = ErEndpoint("localhost", 20001), dataEndpoint = ErEndpoint("localhost", 20001))
+    ErProcessor(commandEndpoint = ErEndpoint("localhost", 20001), transferEndpoint = ErEndpoint("localhost", 20001))
   }
 }
 

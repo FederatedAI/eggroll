@@ -108,7 +108,7 @@ object Main extends Logging {
     val myself = ErProcessor(
       processorType = ProcessorTypes.ROLL_PAIR_SERVICER,
       commandEndpoint = ErEndpoint("localhost", selfPort),
-      dataEndpoint = ErEndpoint("localhost", selfPort),
+      transferEndpoint = ErEndpoint("localhost", selfPort),
       options = options,
       status = ProcessorStatus.RUNNING)
 
