@@ -14,22 +14,25 @@
 #  limitations under the License.
 #
 import unittest
-from eggroll.roll_site import roll_site
+from eggroll.roll_site.roll_site import RollSiteContext
+
 
 class TestRemote(unittest.TestCase):
     def test_remote(self):
-        roll_site.init("atest",
-                      "python/eggroll/roll_site/conf/role_conf.json",
-                      "python/eggroll/roll_site/conf/server_conf.json",
-                      "python/eggroll/roll_site/conf/transfer_conf.json")
+        options = {'runtime_conf_path': 'python/eggroll/roll_site/conf/role_conf.json',
+                   'server_conf_path': 'python/eggroll/roll_site/conf/server_conf.json',
+                   'transfer_conf_path': 'python/eggroll/roll_site/conf/transfer_conf.json'}
+        context = RollSiteContext("atest", options=options)
+
         _tag = "Hello"
+        rs = context.load(name="model_A", tag="{}".format(_tag))
         fp = open("testA.model", 'r')
         while True:
             content = fp.read(35)
             if not content:
                 break
             print(content)
-            roll_site.remote(content, "model_A", tag="{}".format(_tag))
+            rs.push(content)
 
         '''
         fp = open("testA.model", 'r')
