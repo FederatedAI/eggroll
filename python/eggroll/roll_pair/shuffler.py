@@ -251,4 +251,4 @@ def grpc_shuffle_receiver(tag, output_partition, total_parititions_count):
 
     TransferService.remove_broker(tag)
 
-    return total_written 
+    return total_written
