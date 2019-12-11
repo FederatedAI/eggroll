@@ -21,12 +21,13 @@ from eggroll.core.pair_store.format import ArrayByteBuffer, PairBinReader, PairB
 class TestPairStore(unittest.TestCase):
     dir = "./"
     # total = 1000 * 1000
-    total = 10
+    total = 100000
     def _run_case(self, db: PairAdapter):
         start = time.time()
+        value = 's' * 1000
         with db.new_batch() as wb:
             for i in range(self.total):
-                wb.put(str(i).encode(), str(i).encode())
+                wb.put(str(i).encode(), value.encode())
         with db.iteritems() as rb:
             cnt = 0
             for k, v in rb:
