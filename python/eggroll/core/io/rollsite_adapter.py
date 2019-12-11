@@ -54,7 +54,6 @@ class RollsiteWriteBatch(SortedKvWriteBatch):
 
   def generate_message(self, obj, metadata):
     while True:
-      print("loop####")
       data = proxy_pb2.Data(key="hello", value=obj)
       metadata.seq += 1
       packet = proxy_pb2.Packet(header=metadata, body=data)
