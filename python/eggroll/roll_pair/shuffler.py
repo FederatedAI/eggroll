@@ -170,7 +170,8 @@ def grpc_shuffle_sender(shuffle_id: str, brokers, target_partitions, chunk_size 
 
 def grpc_shuffle_receiver(shuffle_id, output_partition, total_parititions_count):
   total_written = 0
-  broker_id = f'{shuffle_id}-{output_partition._id}'
+  #broker_id = f'{shuffle_id}-{output_partition._id}'
+  broker_id = shuffle_id
 
   path = get_db_path(output_partition)
   output_adapter = LmdbSortedKvAdapter({'path': path})

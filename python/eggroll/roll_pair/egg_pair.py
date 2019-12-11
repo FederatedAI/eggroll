@@ -386,13 +386,12 @@ class EggPair(object):
 
     elif task._name == 'putBatch':
       output_partition = task._outputs[0]
-      print(output_partition)
-
       #p = lambda k : k[-1] % output_partition._store_locator._total_partitions
-      output_store = task._job._outputs[0]
+      #output_store = task._job._outputs[0]
       GrpcTransferServicer.get_or_create_broker(f'{task._job._id}-{output_partition._id}')
 
-      grpc_shuffle_receiver(task._job._id, output_partition, len(output_store._partitions))
+      #grpc_shuffle_receiver(task._job._id, output_partition, len(output_store._partitions))
+      grpc_shuffle_receiver(output_partition._store_locator._name, output_partition, 1)
     return result
 
   def aggregate(self, task: ErTask):
