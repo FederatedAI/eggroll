@@ -14,6 +14,7 @@
 
 
 
+
 class CoreConfKeys(object):
   CONFKEY_CORE_GRPC_CHANNEL_CACHE_EXPIRE_SEC = "eggroll.core.grpc.channel.cache.expire.sec"
   CONFKEY_CORE_GRPC_CHANNEL_CACHE_SIZE = "eggroll.core.grpc.channel.cache.size"
@@ -104,3 +105,8 @@ class DeployConfKeys(object):
   CONFKEY_DEPLOY_JVM_OPTIONS = "eggroll.deploy.jvm.options"
 
   CONFKEY_DEPLOY_PROCESSOR_TYPE = "eggroll.deploy.processor.type"
+
+
+class TransferConfKeys(object):
+  CONFKEY_TRANSFER_SERVICE_HOST = "eggroll.transfer.service.host"
+  CONFKEY_TRANSFER_SERVICE_PORT = "eggroll.transfer.service.port"

@@ -25,7 +25,7 @@ import com.webank.eggroll.core.datastructure.LinkedBlockingBroker
 import com.webank.eggroll.core.error.DistributedRuntimeException
 import com.webank.eggroll.core.meta.{ErPartition, ErTask}
 import com.webank.eggroll.core.serdes.DefaultScalaSerdes
-import com.webank.eggroll.core.transfer.{GrpcTransferService, GrpcTransferClient}
+import com.webank.eggroll.core.transfer.{TransferService, GrpcTransferClient}
 import com.webank.eggroll.core.util.Logging
 import com.webank.eggroll.rollpair.io.RocksdbSortedKvAdapter
 
@@ -97,7 +97,7 @@ class EggPair extends Logging {
       val transferTag = task.job.name
       if (0 == partitionId) {
         val partitionSize = task.job.inputs.head.partitions.size
-        val queue = GrpcTransferService.getOrCreateBroker(transferTag, partitionSize)
+        val queue = TransferService.getOrCreateBroker(transferTag, partitionSize)
 
         var combOpResult = seqOpResult
 

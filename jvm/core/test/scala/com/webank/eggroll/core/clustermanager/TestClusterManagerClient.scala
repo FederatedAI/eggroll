@@ -28,7 +28,7 @@ import com.webank.eggroll.core.command.{CommandRouter, CommandService}
 import com.webank.eggroll.core.constant._
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.session.StaticErConf
-import com.webank.eggroll.core.transfer.GrpcTransferService
+import com.webank.eggroll.core.transfer.TransferService
 import io.grpc.Server
 import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
 import org.junit.{Assert, Before, Test}
@@ -106,7 +106,6 @@ class TestClusterManager {
     val clusterManager = NettyServerBuilder
       .forPort(clusterManagerPort)
       .addService(new CommandService)
-      .addService(new GrpcTransferService)
       .build()
 
     StaticErConf.setPort(clusterManagerPort)
