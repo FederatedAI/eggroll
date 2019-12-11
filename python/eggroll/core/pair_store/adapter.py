@@ -199,8 +199,8 @@ class CacheWriteBatch(PairWriteBatch):
 
 
 class MmapAdapter(PairAdapter):
-    block_size = 64
-    # block_size = 64 * 1024 * 1024
+    # block_size = 64
+    block_size = 64 * 1024 * 1024
     def destroy(self):
         self.close()
         os.remove(self._file.name)
