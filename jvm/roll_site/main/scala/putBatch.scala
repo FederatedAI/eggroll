@@ -17,20 +17,22 @@
  */
 package com.webank.eggroll.rollsite
 
-import java.nio.ByteBuffer
+import java.nio.{ByteBuffer, ByteOrder}
 
 import com.google.protobuf.ByteString
-import com.webank.eggroll.core.constant.{NetworkConstants, StoreTypes}
+import com.webank.eggroll.core.ErSession
+import com.webank.eggroll.core.constant.NetworkConstants
 import com.webank.eggroll.core.datastructure.LinkedBlockingBroker
-import com.webank.eggroll.core.meta.{ErStore, ErStoreLocator}
-import com.webank.eggroll.rollpair.client.RollPair
+import com.webank.eggroll.rollpair.RollPairContext
 
 object ScalaObjectPutBatch extends  App {
-  def scalaPutBatch(key:ByteBuffer, value:ByteBuffer)= {
-    val input = ErStore(ErStoreLocator(storeType = StoreTypes.ROLLPAIR_LEVELDB, namespace = "namespace", name = "name"))
-    val rp = new RollPair(input)
+  def scalaPutBatch(name:String, key:ByteBuffer, value:ByteBuffer)= {
+    val sid = "testing"
+    val ctx = new RollPairContext(new ErSession(sid))
+    val rp = ctx.load("test_namespace", name)
 
     var directBinPacketBuffer: ByteBuffer = ByteBuffer.allocateDirect(1<<10)
+    directBinPacketBuffer.order(ByteOrder.BIG_ENDIAN)
     directBinPacketBuffer.put(NetworkConstants.TRANSFER_PROTOCOL_MAGIC_NUMBER) // magic num
     directBinPacketBuffer.put(NetworkConstants.TRANSFER_PROTOCOL_VERSION) // protocol version
 
