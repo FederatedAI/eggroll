@@ -28,6 +28,7 @@ import com.webank.eggroll.rollsite.factory.PipeFactory;
 import com.webank.eggroll.rollsite.factory.ProxyGrpcStreamObserverFactory;
 import com.webank.eggroll.rollsite.infra.Pipe;
 import com.webank.eggroll.rollsite.infra.impl.PacketQueueSingleResultPipe;
+import com.webank.eggroll.rollsite.model.ProxyServerConf;
 import com.webank.eggroll.rollsite.utils.Timeouts;
 import io.grpc.stub.StreamObserver;
 import java.util.Map;
@@ -53,6 +54,8 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
     private Timeouts timeouts;
     @Autowired
     private EventFactory eventFactory;
+    @Autowired
+    private ProxyServerConf proxyServerConf;
     private Pipe defaultPipe;
     private PipeFactory pipeFactory;
 
@@ -222,8 +225,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
             return;
         }
         if(request.getHeader().getOperator().equals("markEnd")) {
-            //String routeTable = ;
-            //updateRouteTable(routeTable);
+            LOGGER.info("markEnd");
             Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
             Proxy.Data data = Proxy.Data.newBuilder().setValue(ByteString.copyFromUtf8("hello")).build();
             packet = packetBuilder.setHeader(request.getHeader())
@@ -235,8 +237,6 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
             return;
         }
         if(request.getHeader().getOperator().equals("getStatus")) {
-            //String routeTable = ;
-            //updateRouteTable(routeTable);
             Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
             Proxy.Data data = Proxy.Data.newBuilder().setValue(ByteString.copyFromUtf8("hello")).build();
             boolean status = pipe.getStatus();
@@ -253,10 +253,12 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
             return;
         }
 
-        PipeHandleNotificationEvent event =
+        if(!proxyServerConf.getPartyId().equals(inputMetadata.getDst().getPartyId())) {
+            PipeHandleNotificationEvent event =
                 eventFactory.createPipeHandleNotificationEvent(
-                        this, PipeHandleNotificationEvent.Type.UNARY_CALL, request, pipe);
-        applicationEventPublisher.publishEvent(event);
+                    this, PipeHandleNotificationEvent.Type.UNARY_CALL, request, pipe);
+            applicationEventPublisher.publishEvent(event);
+        }
 
         long startTimestamp = System.currentTimeMillis();
         long lastPacketTimestamp = startTimestamp;
@@ -264,7 +266,8 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
         while ((!hasReturnedBefore || !pipe.isDrained())
                 && !pipe.hasError()
                 && !timeouts.isTimeout(overallTimeout, startTimestamp, loopEndTimestamp)) {
-            packet = (Proxy.Packet) pipe.read(1, TimeUnit.SECONDS);
+            //packet = (Proxy.Packet) pipe.read(1, TimeUnit.SECONDS);
+            packet = request;
             loopEndTimestamp = System.currentTimeMillis();
             if (packet != null) {
                 // LOGGER.info("server pull onNext()");

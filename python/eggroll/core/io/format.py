@@ -18,7 +18,7 @@ from typing import Iterator, Generator
 from struct import pack_into, unpack_from, calcsize
 
 MAGIC_NUM = '46709394'.encode('utf-8')
-PROTOCOL_VERSION = '0001'.encode('utf-8')
+PROTOCOL_VERSION = '00000001'.encode('utf-8')
 
 
 class BinBatchReader(object):

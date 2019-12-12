@@ -17,11 +17,10 @@
  */
 package com.webank.eggroll.rollsite
 
-import java.nio.{ByteBuffer, ByteOrder}
+import java.nio.ByteBuffer
 
 import com.google.protobuf.ByteString
 import com.webank.eggroll.core.ErSession
-import com.webank.eggroll.core.constant.NetworkConstants
 import com.webank.eggroll.core.datastructure.LinkedBlockingBroker
 import com.webank.eggroll.rollpair.RollPairContext
 
@@ -29,26 +28,24 @@ object ScalaObjectPutBatch extends  App {
   def scalaPutBatch(name:String, key:ByteBuffer, value:ByteBuffer)= {
     val sid = "testing"
     val ctx = new RollPairContext(new ErSession(sid))
-    val rp = ctx.load("test_namespace", name)
+    val rp = ctx.load("ns1","testPutBatch")
 
     var directBinPacketBuffer: ByteBuffer = ByteBuffer.allocateDirect(1<<10)
-    directBinPacketBuffer.order(ByteOrder.BIG_ENDIAN)
-    directBinPacketBuffer.put(NetworkConstants.TRANSFER_PROTOCOL_MAGIC_NUMBER) // magic num
-    directBinPacketBuffer.put(NetworkConstants.TRANSFER_PROTOCOL_VERSION) // protocol version
-
-    directBinPacketBuffer.putInt(4) // header length
-    directBinPacketBuffer.putInt(16) // body size
-    directBinPacketBuffer.putInt(4) // key length (bytes)
-    directBinPacketBuffer.put(key)         // key
-    directBinPacketBuffer.putInt(4) // value length (bytes)
+    //directBinPacketBuffer.order(ByteOrder.BIG_ENDIAN)
+    //directBinPacketBuffer.put(NetworkConstants.TRANSFER_PROTOCOL_MAGIC_NUMBER) // magic num
+    //directBinPacketBuffer.put(NetworkConstants.TRANSFER_PROTOCOL_VERSION) // protocol version
+    //directBinPacketBuffer.putInt(4) // header length
+    //directBinPacketBuffer.putInt(value.limit() + 4) // body size, (value len + header length)
+    //directBinPacketBuffer.putInt(4) // key length (bytes)
+    //directBinPacketBuffer.putInt(3)         // key
+    //directBinPacketBuffer.putInt(value.limit()) // value length (bytes)
     directBinPacketBuffer.put(value)
 
     directBinPacketBuffer.flip()
 
     val broker = new LinkedBlockingBroker[ByteString]()
     broker.put(ByteString.copyFrom(directBinPacketBuffer))
-    rp.putBatch(broker)
-
+    broker.signalWriteFinish()
     rp.putBatch(broker)
   }
 }

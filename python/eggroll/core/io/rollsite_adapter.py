@@ -28,6 +28,8 @@ from eggroll.core.utils import _elements_to_proto
 
 from eggroll.core.io.format import BinBatchWriter
 from eggroll.core.proto import proxy_pb2, proxy_pb2_grpc
+from eggroll.core.pair_store.format import PairBinReader, PairBinWriter, \
+  ArrayByteBuffer
 
 class RollsiteWriteBatch(SortedKvWriteBatch):
   def __init__(self, adapter):
@@ -46,9 +48,11 @@ class RollsiteWriteBatch(SortedKvWriteBatch):
     self.stub = proxy_pb2_grpc.DataTransferServiceStub(channel)
 
     self.__bin_packet_len = 1 << 20
-    self.buffer = bytearray(self.__bin_packet_len)
-    self.writer = BinBatchWriter({'buffer': self.buffer})
-    self.cur_offset = self.writer.get_offset
+    self.ba = None
+    self.buffer = None
+    self.writer = None
+    #self.writer = BinBatchWriter({'buffer': self.buffer})
+    #self.cur_offset = self.writer.get_offset
     self.total_written = 0
 
 
@@ -78,12 +82,9 @@ class RollsiteWriteBatch(SortedKvWriteBatch):
                                   command=command_test,
                                   seq=0, ack=0,
                                   conf=conf_test)
-    print("type of obj:", type(obj))
-    print("metadata:", metadata)
     self.stub.push(self.generate_message(obj, metadata))
 
   def write(self, bin_data):
-    print(bin_data)
     self.push(bin_data)
 
   def send_end(self):
@@ -112,34 +113,29 @@ class RollsiteWriteBatch(SortedKvWriteBatch):
 
   def close(self):
     # write last
-    writer = self.writer
-    self.cur_offset = writer.get_offset()
-    bin_data = writer.get_batch(end=self.cur_offset)
-    self.write(bin_data)
+    #writer = self.writer
+    #self.cur_offset = writer.get_offset()
+    self.commit()
     self.send_end()
 
+  def commit(self):
+    if self.ba:
+      bin_batch = bytes(self.ba[0:self.buffer.get_offset()])
+      self.write(bin_batch)
+    self.ba = bytearray(self.__bin_packet_len)
+    self.buffer = ArrayByteBuffer(self.ba)
+    self.writer = PairBinWriter(pair_buffer=self.buffer)
+
   def put(self, k, v):
-    writer = self.writer
+    self.commit()
     try:
-      writer.write_bytes(k, include_size=True)
-      writer.write_bytes(v, include_size=True)
-      self.total_written += 1
-      if self.tag == '1-0':
-        print(f'{self.tag} written {k_bytes}, total_written {self.total_written}, is closable {broker.is_closable()}')
+      self.writer.write(k, v)
     except IndexError as e:
-      print('caught index error')
-      bin_data = writer.get_batch(end=self.cur_offset)
-
-      self.write(bin_data)
-
-      self.writer = BinBatchWriter({'buffer': self.buffer})
-      writer = self.writer
-      writer.write_bytes(k, include_size=True)
-      writer.write_bytes(v, include_size=True)
+      self.commit()
+      self.writer.write(k, v)
     except:
       print("Unexpected error:", sys.exc_info()[0])
       raise
-
 
 class RollsiteIterator(SortedKvIterator):
   def __init__(self, adapter):
@@ -183,7 +179,6 @@ class RollsiteAdapter(SortedKvAdapter):
   def __init__(self, options):
     super().__init__(options)
     self._name = options["name"]
-    print(self._name)
     args = self._name.split("-", 9)
     print(args)
 
