@@ -124,13 +124,14 @@ case class ErSessionMeta(id: String,
                          name: String = StringConstants.EMPTY,
                          status: String = StringConstants.EMPTY,
                          options: java.util.Map[String, String] = new ConcurrentHashMap[String, String](),
-                         tag: String = StringConstants.EMPTY) extends MetaRpcMessage {
+                         tag: String = StringConstants.EMPTY,
+                         deployment: ErSessionDeployment = null) extends MetaRpcMessage {
 }
 
-case class ErServerSessionDeployment(id: String,
-                                     serverCluster: ErServerCluster,
-                                     rolls: Array[ErProcessor],
-                                     eggs: Map[Long, Array[ErProcessor]]) {
+case class ErSessionDeployment(id: String,
+                               serverCluster: ErServerCluster,
+                               rolls: Array[ErProcessor],
+                               eggs: Map[Long, Array[ErProcessor]]) {
   def toErProcessorBatch(): ErProcessorBatch = {
     val processors = new ArrayBuffer[ErProcessor]()
     processors ++= rolls
@@ -140,16 +141,16 @@ case class ErServerSessionDeployment(id: String,
   }
 }
 
-object ErServerSessionDeployment {
+object ErSessionDeployment {
   def apply(id: String,
             serverCluster: ErServerCluster,
             rollProcessorBatch: ErProcessorBatch,
-            eggProcessorBatch: ErProcessorBatch): ErServerSessionDeployment = {
+            eggProcessorBatch: ErProcessorBatch): ErSessionDeployment = {
     val eggs = mutable.Map[Long, ArrayBuffer[ErProcessor]]()
 
     eggProcessorBatch.processors.foreach(p => eggs.getOrElseUpdate(p.serverNodeId, ArrayBuffer[ErProcessor]()) += p)
 
-    ErServerSessionDeployment(
+    ErSessionDeployment(
       id = id,
       serverCluster = serverCluster,
       rolls = rollProcessorBatch.processors,

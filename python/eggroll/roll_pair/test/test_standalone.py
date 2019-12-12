@@ -45,7 +45,7 @@ class TestStandalone(unittest.TestCase):
     print("get res:{}".format(table))
 
   def test_get_all(self):
-    table =self.ctx.load("ns1", "testMap_20191207T150307.097")
+    table =self.ctx.load("ns1", "testPutBatch")
     print(str(table))
     res = table.get_all()
     print(res)

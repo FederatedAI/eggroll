@@ -66,7 +66,8 @@ trait TransferClient {
   def send(any: Any)
 }
 
-
+// TODO:1: grpc channel pool per object
+// TODO:1: grpc error info with self / peer ip / port
 object TransferClient {
   def apply(options: Map[String, String]): TransferClient = ???
 }
