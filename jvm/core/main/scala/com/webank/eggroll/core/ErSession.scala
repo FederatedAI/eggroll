@@ -20,7 +20,7 @@ package com.webank.eggroll.core
 
 import com.webank.eggroll.core.client.ClusterManagerClient
 import com.webank.eggroll.core.constant.{DeployConfKeys, ProcessorStatus, ProcessorTypes, SessionStatus}
-import com.webank.eggroll.core.meta.{ErEndpoint, ErPartition, ErProcessor, ErProcessorBatch, ErServerSessionDeployment, ErSessionMeta}
+import com.webank.eggroll.core.meta.{ErEndpoint, ErPartition, ErProcessor, ErProcessorBatch, ErSessionDeployment, ErSessionMeta}
 import com.webank.eggroll.core.util.TimeUtils
 
 import scala.collection.JavaConverters._
@@ -61,7 +61,7 @@ class ErSession(val sessionId: String = s"er_session_${TimeUtils.getNowMs()}_${n
   private val rolls = cmClient.getSessionRolls(sessionMeta = sessionMeta)
   private val eggs = cmClient.getSessionEggs(sessionMeta = sessionMeta)
 
-  val serverSessionDeployment = ErServerSessionDeployment(
+  val serverSessionDeployment = ErSessionDeployment(
     id = sessionId,
     serverCluster = serverNodes,
     rollProcessorBatch = rolls,

@@ -34,7 +34,7 @@ from eggroll.core.session import ErSession
 from eggroll.core.transfer.transfer_service import GrpcTransferServicer, TransferClient
 from eggroll.core.utils import string_to_bytes, hash_code
 from eggroll.roll_pair.egg_pair import EggPair
-from eggroll.roll_pair.shuffler import DefaultShuffler
+from eggroll.roll_pair.transfer_pair import TransferPair
 from concurrent import futures
 from eggroll.core.io.kv_adapter import LmdbSortedKvAdapter, RocksdbSortedKvAdapter
 from eggroll.core.io.io_utils import get_db_path
@@ -447,7 +447,8 @@ class RollPair(object):
       serdes_type=self.__command_serdes)
     # TODO: all aggs ?
     shuffle_broker = FifoBroker()
-    shuffler = DefaultShuffler(task._job._id, shuffle_broker, output_store, output_partition, p)
+    shuffler = TransferPair(transfer_id=task._job._id,
+                            input_broker=shuffle_broker, output_store=output_store, output_adapter=output_partition, output_partition_id=1, partition_function=p)
 
     for k1, v1 in items:
       shuffle_broker.put(self.serde.serialize(k1), self.serde.serialize(v1))

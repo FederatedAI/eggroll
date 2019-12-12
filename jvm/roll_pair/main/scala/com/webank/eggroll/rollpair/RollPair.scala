@@ -75,7 +75,7 @@ class RollPair(val store: ErStore, val ctx:RollPairContext, val opts: Map[String
     val brokers = new Array[Broker[ByteString]](totalPartitions)
 
     val job = ErJob(id = "1",
-      name = RollPairServicer.putBatch,
+      name = RollPairServicer.putAll,
       inputs = Array(store),
       outputs = Array(store),
       functors = Array.empty,
