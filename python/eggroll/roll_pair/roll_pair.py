@@ -176,7 +176,9 @@ class RollPair(object):
   GET = "get"
   PUT = "put"
   GET_ALL = "getAll"
-  PUT_ALL = "put_all"
+  PUT_ALL = "putAll"
+  DESTROY = "destroy"
+  DELETE = "delete"
   MAP = 'map'
   MAP_VALUES = 'mapValues'
   REDUCE = 'reduce'
@@ -428,10 +430,41 @@ class RollPair(object):
     return self
 
   def __put_all_cluster(self, items, output=None, options={"include_key": False}):
-    inputs = [ErPartition(id=part_id, store_locator=self.__store._store_locator)]
-    outputs = []
-    if output:
-      outputs.append(output)
+    if items is None:
+      raise EnvironmentError("input items is None")
+    include_key = options.get("include_key", False)
+    total_partitions = self.__store._store_locator._total_partitions
+    kvs_dict = {}
+
+    def put_all_wrapper(k_bytes, v_bytes, total_partitions):
+      kvs = []
+      _partition_id = self.partitioner(k_bytes)
+      if _partition_id >= total_partitions:
+        raise EnvironmentError("partitions id:{} out of range:{}".format(_partition_id, total_partitions))
+      kvs.append(k_bytes, v_bytes)
+      if kvs_dict[_partition_id] is None:
+        kvs_dict[_partition_id] = []
+      kvs_dict[_partition_id].append(kvs)
+
+    if isinstance(items, Iterable):
+      k = 0
+      for v in items:
+        if include_key:
+          LOGGER.info("put k:{}, v:{}".format(v[0], v[1]))
+          k_bytes, v_bytes = self.value_serdes.serialize(v[0]), self.value_serdes.serialize(v[1])
+          put_all_wrapper(k_bytes, v_bytes,total_partitions)
+        else:
+          LOGGER.info("put k:{}, v:{}".format(k, v))
+          k_bytes, v_bytes = self.value_serdes.serialize(k), self.value_serdes.serialize(v)
+          put_all_wrapper(k_bytes, v_bytes, total_partitions)
+          k = k + 1
+    else:
+      raise EnvironmentError("iterable obj is required")
+    for part_id in kvs_dict.keys():
+      inputs = [ErPartition(id=part_id, store_locator=self.__store._store_locator)]
+      outputs = []
+      if output:
+        outputs.append(output)
 
     job = ErJob(id=self.__session_id, name="putAll",
                 inputs=[self.__store],
@@ -492,6 +525,61 @@ class RollPair(object):
       return self.__count_local()
     else:
       return self.__count_cluster()
+
+  def destroy(self):
+    total_partitions = self.__store._store_locator._total_partitions
+    for i in range(total_partitions):
+      job_outputs = []
+      #part_id = self.partitioner(i)
+      egg = self.ctx.route_to_egg(self.__store._partitions[i])
+      task_inputs = [ErPartition(id=i, store_locator=self.__store._store_locator)]
+      task_outputs = []
+
+      job = ErJob(id=self.__session_id, name=RollPair.DESTROY,
+                  inputs=[self.__store],
+                  outputs=job_outputs,
+                  functors=[ErFunctor(body=None)])
+      task = ErTask(id=self.__session_id, name=RollPair.DESTROY, inputs=task_inputs, outputs=task_outputs, job=job)
+      LOGGER.info("start send req")
+      job_resp = self.__roll_pair_command_client.simple_sync_send(
+        input=task,
+        output_type=ErPair,
+        endpoint=egg._command_endpoint,
+        command_uri=CommandURI(f'{EggPair.uri_prefix}/{EggPair.DESTROY}'),
+        serdes_type=self.__command_serdes
+      )
+
+  def delete(self, k, options={}):
+    k = self.value_serdes.serialize(k)
+    er_pair = ErPair(key=k, value=None)
+    outputs = []
+    value = None
+    partition_id = self.partitioner(k)
+    egg = self.ctx.route_to_egg(self.__store._partitions[partition_id])
+    print(egg._command_endpoint)
+    print("count:", self.__store._store_locator._total_partitions)
+    inputs = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
+    output = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
+
+    job = ErJob(id=self.__session_id, name=RollPair.DELETE,
+                inputs=[self.__store],
+                outputs=outputs,
+                functors=[ErFunctor(body=cloudpickle.dumps(er_pair))])
+    task = ErTask(id=self.__session_id, name=RollPair.DELETE, inputs=inputs, outputs=output, job=job)
+    LOGGER.info("start send req")
+    job_resp = self.__roll_pair_command_client.simple_sync_send(
+      input=task,
+      output_type=ErPair,
+      endpoint=egg._command_endpoint,
+      command_uri=CommandURI(f'{EggPair.uri_prefix}/{EggPair.DELETE}'),
+      serdes_type=self.__command_serdes
+    )
+    LOGGER.info("get resp:{}".format(ErPair.from_proto_string(job_resp._value)))
+
+  def save_as(self, name, namespace, partition):
+    store = ErStore(store_locator=ErStoreLocator(store_type=self.ctx.default_store_type, namespace=namespace,
+                                                 name=name, total_partitions=partition))
+    return self.map_values(lambda v: v, output=store)
 
   # computing api
   def map_values(self, func, output = None, options = {}):

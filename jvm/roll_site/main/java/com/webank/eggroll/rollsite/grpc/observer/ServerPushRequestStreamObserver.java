@@ -49,6 +49,24 @@ import org.springframework.stereotype.Component;
 
 import com.webank.eggroll.rollsite.ScalaObjectPutBatch;
 
+class putBatchThread extends Thread{
+    private Proxy.Packet inputPacket;
+
+    public putBatchThread(Proxy.Packet packet)
+    {
+        this.inputPacket = packet;
+    }
+
+    @Override
+    public void run() {
+        String key = inputPacket.getBody().getKey();
+        ByteString value = inputPacket.getBody().getValue();
+        String name = inputPacket.getHeader().getTask().getModel().getName();
+        ScalaObjectPutBatch.scalaPutBatch(name, ByteBuffer.wrap(key.getBytes()), value.asReadOnlyByteBuffer());
+    }
+
+}
+
 @Component
 @Scope("prototype")
 public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Packet> {
@@ -185,16 +203,29 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
             overallStartTimestamp = System.currentTimeMillis();
 
             if(!proxyServerConf.getPartyId().equals(inputMetadata.getDst().getPartyId())){
-                //if(Integer.valueOf(inputMetadata.getDst().getPartyId()))
                 PipeHandleNotificationEvent event =
                     eventFactory.createPipeHandleNotificationEvent(
                         this, PipeHandleNotificationEvent.Type.PUSH, inputMetadata, pipe);
                 applicationEventPublisher.publishEvent(event);
             } else {
+                /*
+                LOGGER.info("call putBatch");
                 String key = packet.getBody().getKey();
                 ByteString value = packet.getBody().getValue();
                 String name = inputMetadata.getTask().getModel().getName();
+                LOGGER.info("name:{}", name);
+                LOGGER.info("key:{}", key);
+                LOGGER.info("value:{}", value);
                 ScalaObjectPutBatch.scalaPutBatch(name, ByteBuffer.wrap(key.getBytes()), value.asReadOnlyByteBuffer());
+                */
+                /*
+                PipeHandleNotificationEvent event =
+                    eventFactory.createPipeHandleNotificationEvent(
+                        this, PipeHandleNotificationEvent.Type.REMOTE, packet, pipe);
+                applicationEventPublisher.publishEvent(event);
+                */
+                Thread thread = new putBatchThread(packet);
+                thread.start();
             }
 
             if (timeouts.isTimeout(overallTimeout, overallStartTimestamp)) {
