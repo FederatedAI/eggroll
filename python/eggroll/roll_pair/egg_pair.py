@@ -215,9 +215,11 @@ class EggPair(object):
       LOGGER.info('getAll finished')
     elif task._name == 'putAll':
       print("egg_pair putAll call")
+
       output_partition = task._outputs[0]
 
-      tag = f'{task._job._id}-{output_partition._id}'
+      #tag = f'{task._job._id}-{output_partition._id}'
+      tag = output_partition._store_locator._name
 
       output_adapter = LmdbAdapter(options={"path":get_db_path(output_partition)})
       TransferPair.receive(tag=tag,

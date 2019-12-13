@@ -19,23 +19,20 @@
 package com.webank.eggroll.rollpair
 
 import java.nio.{ByteBuffer, ByteOrder}
+import java.util
 import java.util.concurrent.TimeUnit
 
 import com.google.protobuf.ByteString
 import com.webank.eggroll.core.ErSession
-import com.webank.eggroll.core.client.ClusterManagerClient
+import com.webank.eggroll.core.command.{CommandClient, CommandURI}
 import com.webank.eggroll.core.constant._
 import com.webank.eggroll.core.datastructure.{Broker, LinkedBlockingBroker}
-import com.webank.eggroll.core.meta.{ErEndpoint, ErJob, ErPartition, ErProcessor, ErStore, ErStoreLocator, ErTask}
-import com.webank.eggroll.core.session.{ErConf, RuntimeErConf}
+import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.transfer.GrpcTransferClient
+import com.webank.eggroll.core.util.Logging
 import com.webank.eggroll.rollpair.component.RollPairServicer
 
 import scala.collection.JavaConverters._
-import java.util
-
-import com.webank.eggroll.core.command.{CommandClient, CommandURI}
-import com.webank.eggroll.core.util.Logging
 class RollPairContext(val session: ErSession, defaultStoreType:String = StoreTypes.ROLLPAIR_LMDB) extends Logging {
 //  StandaloneManager.main(Array("-s",erSession.sessionId, "-p", erSession.cmClient.endpoint.port.toString))
 
@@ -130,9 +127,10 @@ class RollPair(val store: ErStore, val ctx:RollPairContext, val opts: Map[String
 
           val newTransferClient = new GrpcTransferClient()
           // val proc = ErProcessor(commandEndpoint = ErEndpoint("localhost",20001))
+          // tag = s"${job.id}-${partitionId}" to store.storeLocator.name
           newTransferClient.initForward(
             dataBroker = newBroker,
-            tag = s"${job.id}-${partitionId}",
+            tag = store.storeLocator.name,
             processor = ctx.routeToEgg(store.partitions(partitionId)))
           transferClients.update(partitionId, newTransferClient)
         }
