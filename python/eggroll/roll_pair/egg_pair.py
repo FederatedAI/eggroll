@@ -62,9 +62,11 @@ class EggPair(object):
   PUT = 'put'
   GET_ALL = 'getAll'
   PUT_ALL = 'putAll'
+  DESTROY = 'destroy'
+  DELETE = "delete"
 
   def __init__(self):
-    self.serde = self._create_serdes(SerdesTypes.PICKLE)
+    self.serde = self._create_serdes(SerdesTypes.CLOUD_PICKLE)
 
   def get_unary_input_adapter(self, task_info: ErTask, create_if_missing=True):
     input_partition = task_info._inputs[0]
@@ -129,9 +131,7 @@ class EggPair(object):
     return eggroll_serdes.get_serdes(serdes_name)
 
   def __partitioner(self, hash_func, total_partitions):
-    def partitioner_wrapper(k):
-      return hash_func(k) % total_partitions
-    return partitioner_wrapper
+    return lambda k: hash_func(k) % total_partitions
 
   def _run_unary(self, func, task):
     input_adapter = self.get_unary_input_adapter(task_info=task)
@@ -232,6 +232,20 @@ class EggPair(object):
       value = input_adapter.put(f._key, f._value)
       #result = ErPair(key=f._key, value=bytes(value))
       input_adapter.close()
+
+    if task._name == 'destroy':
+      er_store = ErStore(store_locator=task._inputs[0]._store_locator)
+      clusterManager = ClusterManagerClient()
+      clusterManager.delete_store(er_store)
+      import shutil
+      shutil.rmtree(get_db_path(task._inputs[0]))
+      LOGGER.info("finish destroy")
+
+    if task._name == 'delete':
+      f = cloudpickle.loads(functors[0]._body)
+      input_adapter = self.get_unary_input_adapter(task_info=task)
+      if input_adapter.delete(f._key):
+        LOGGER.info("delete k success")
 
     if task._name == 'mapValues':
       f = cloudpickle.loads(functors[0]._body)
