@@ -16,10 +16,10 @@ A clear and concise description of Eggroll version and language type and version
 
 
 **What is the severance of this issue and why? **
-L0 - System totally unavailable; 
-L1 - Some features unavailable and I need them / I don't hava a workaround; 
-L2 - Some features unavailable but I can do without it / I have a workaround for now; 
-L3 - Affects my experience.
+L1 - System totally unavailable; 
+L2 - Some features unavailable and I need them / I don't hava a workaround; 
+L3 - Some features unavailable but I can do without it / I have a workaround for now; 
+L4 - Affects my experience.
 
 
 **How to reproduce this issue?**
