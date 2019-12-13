@@ -115,7 +115,7 @@ class ErProcessor(RpcMessage):
       processor_type='',
       status='',
       command_endpoint: ErEndpoint = None,
-      data_endpoint: ErEndpoint = None,
+      transfer_endpoint: ErEndpoint = None,
       options = {},
       tag=''):
     self._id = id
@@ -124,7 +124,7 @@ class ErProcessor(RpcMessage):
     self._processor_type = processor_type
     self._status = status
     self._command_endpoint = command_endpoint
-    self._data_endpoint = data_endpoint if data_endpoint else command_endpoint
+    self._transfer_endpoint = transfer_endpoint if transfer_endpoint else command_endpoint
     self._options = options
     self._tag = tag
 
@@ -135,7 +135,7 @@ class ErProcessor(RpcMessage):
                               processorType=self._processor_type,
                               status=self._status,
                               commandEndpoint=self._command_endpoint.to_proto(),
-                              dataEndpoint=self._data_endpoint.to_proto(),
+                              transferEndpoint=self._transfer_endpoint.to_proto(),
                               options=self._options,
                               tag=self._tag)
 
@@ -150,7 +150,7 @@ class ErProcessor(RpcMessage):
                        processor_type=pb_message.processorType,
                        status=pb_message.status,
                        command_endpoint=ErEndpoint.from_proto(pb_message.commandEndpoint),
-                       data_endpoint=ErEndpoint.from_proto(pb_message.dataEndpoint),
+                       transfer_endpoint=ErEndpoint.from_proto(pb_message.transferEndpoint),
                        options=pb_message.options,
                        tag=pb_message.tag)
 
@@ -166,7 +166,7 @@ class ErProcessor(RpcMessage):
            f'name={self._name}, ' \
            f'processor_type={self._processor_type}, status={self._status}, ' \
            f'command_endpoint={repr(self._command_endpoint)},' \
-           f' data_endpoint={repr(self._data_endpoint)}, ' \
+           f'transfer_endpoint={repr(self._transfer_endpoint)}, ' \
            f'options=[{self._options}], tag={self._tag})'
 
 

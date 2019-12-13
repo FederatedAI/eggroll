@@ -26,7 +26,7 @@ import com.webank.eggroll.core.command.{CommandRouter, CommandService}
 import com.webank.eggroll.core.constant.{MetadataCommands, SessionCommands, SessionConfKeys}
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.session.StaticErConf
-import com.webank.eggroll.core.transfer.GrpcTransferService
+import com.webank.eggroll.core.transfer.TransferService
 import com.webank.eggroll.core.util.{Logging, MiscellaneousUtils}
 import io.grpc.Server
 import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
@@ -124,7 +124,6 @@ object ClusterManager extends Logging {
     val clusterManager = NettyServerBuilder
       .forAddress(new InetSocketAddress("127.0.0.1", portString.toInt))
       .addService(new CommandService)
-      .addService(new GrpcTransferService)
       .maxInboundMessageSize(1024 * 1024 *1024)
       .maxInboundMetadataSize(1024 * 1024)
       .build()

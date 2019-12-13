@@ -16,15 +16,22 @@
  *
  */
 
-package com.webank.eggroll.core.constant
+package com.webank.eggroll.core.util
 
-import java.nio.charset.StandardCharsets
+import io.grpc.stub.StreamObserver
 
-import javax.xml.bind.DatatypeConverter
+abstract class GrpcCalleeStreamObserver[R, E](val caller: StreamObserver[E])
+  extends StreamObserver[R] with Logging {
 
-object NetworkConstants {
-  val DEFAULT_LOCALHOST_IP = "127.0.0.1"
+  override def onError(throwable: Throwable): Unit = {
+    val grpcThrowable = ErrorUtils.toGrpcRuntimeException(throwable)
+    caller.onError(grpcThrowable)
 
-  val TRANSFER_PROTOCOL_MAGIC_NUMBER : Array[Byte] = DatatypeConverter.parseHexBinary("46709394")
-  val TRANSFER_PROTOCOL_VERSION : Array[Byte] = DatatypeConverter.parseHexBinary("00000001")
+    logError("callee streaming error", throwable)
+  }
+
+  override def onCompleted(): Unit = {
+    caller.onCompleted()
+  }
+
 }

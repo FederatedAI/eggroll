@@ -32,13 +32,13 @@ import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
 object SessionManager {
-  private val activeSessions = new ConcurrentHashMap[String, ErServerSessionDeployment]()
+  private val activeSessions = new ConcurrentHashMap[String, ErSessionDeployment]()
 
   // (sessionId, (bindingId, ErProcessorBatch))
   private val activeSessionBound = new ConcurrentHashMap[String, ConcurrentHashMap[String, ErProcessorBatch]]()
 
   activeSessions.put(StringConstants.UNKNOWN,
-    ErServerSessionDeployment(
+    ErSessionDeployment(
       id = StringConstants.UNKNOWN,
       serverCluster = ErServerCluster(),
       rolls = Array.empty,
@@ -61,7 +61,7 @@ object SessionManager {
         val rolls = deployer.createRolls()
         val eggs = deployer.createEggs()
 
-        val newDeployment = ErServerSessionDeployment(
+        val newDeployment = ErSessionDeployment(
           id = sessionId,
           serverCluster = healthyCluster,
           rolls = rolls.processors,
@@ -87,7 +87,7 @@ object SessionManager {
     val eggs = mutable.Map[Long, ArrayBuffer[ErProcessor]]()
 
     val hosts = new util.ArrayList[String](processorBatch.processors.length)
-    processorBatch.processors.foreach(p => hosts.add(p.dataEndpoint.host))
+    processorBatch.processors.foreach(p => hosts.add(p.transferEndpoint.host))
 
     val serverNodeCrudOperator = new ServerNodeCrudOperator
     val serverCluster = serverNodeCrudOperator.getServerClusterByHosts(hosts)
@@ -114,7 +114,7 @@ object SessionManager {
     })
 
     // todo: find and populate serverCluster
-    val newDeployment = ErServerSessionDeployment(
+    val newDeployment = ErSessionDeployment(
       id = sessionId,
       serverCluster = serverCluster,
       rolls = rolls.toArray,
@@ -132,7 +132,7 @@ object SessionManager {
     else null
   }
 
-  def addSession(sessionId: String, deployment: ErServerSessionDeployment): Unit = {
+  def addSession(sessionId: String, deployment: ErSessionDeployment): Unit = {
     if (activeSessions.contains(sessionId)) {
       throw new IllegalArgumentException(s"sessionId ${sessionId} already exists")
     }
@@ -149,7 +149,7 @@ object SessionManager {
     null
   }
 
-  def getSessionDeployment(sessionId: String): ErServerSessionDeployment = {
+  def getSessionDeployment(sessionId: String): ErSessionDeployment = {
     activeSessions.get(sessionId)
   }
 }
@@ -173,7 +173,7 @@ class DefaultClusterDeployer(sessionMeta: ErSessionMeta,
         val populated = p.copy(
           id = curI,
           commandEndpoint = p.commandEndpoint.copy(host = host),
-          dataEndpoint = p.dataEndpoint.copy(host = host),
+          transferEndpoint = p.transferEndpoint.copy(host = host),
           tag = s"${p.processorType}-${n.id}-${curI}")
         rolls += populated
       })
@@ -195,7 +195,7 @@ class DefaultClusterDeployer(sessionMeta: ErSessionMeta,
       val populatedEggs = new Array[ErProcessor](processorBatch.processors.length)
       processorBatch.processors.foreach(p => {
         val curI = i.getAndIncrement()
-        val populated = p.copy(id = curI, serverNodeId = n.id, commandEndpoint = p.commandEndpoint.copy(host = host), dataEndpoint = p.dataEndpoint.copy(host = host), tag = s"${p.processorType}-${n.id}-${curI}")
+        val populated = p.copy(id = curI, serverNodeId = n.id, commandEndpoint = p.commandEndpoint.copy(host = host), transferEndpoint = p.transferEndpoint.copy(host = host), tag = s"${p.processorType}-${n.id}-${curI}")
 
         populatedEggs.update(curI, populated)
       })

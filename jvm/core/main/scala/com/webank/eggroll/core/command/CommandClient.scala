@@ -18,36 +18,37 @@
 
 package com.webank.eggroll.core.command
 
-import java.util
-import java.util.{ArrayList, List}
-import java.util.concurrent.CountDownLatch
+import java.util.concurrent.{CompletableFuture, CountDownLatch}
+import java.util.function.Supplier
 
-import com.google.protobuf.ByteString
+import com.google.protobuf.{ByteString, UnsafeByteOperations}
 import com.webank.eggroll.core.command.Command.CommandResponse
 import com.webank.eggroll.core.command.CommandModelPbMessageSerdes._
 import com.webank.eggroll.core.concurrent.AwaitSettableFuture
-import com.webank.eggroll.core.constant.{SerdesTypes, SessionCommands}
+import com.webank.eggroll.core.constant.{SerdesTypes, SessionConfKeys}
 import com.webank.eggroll.core.datastructure.RpcMessage
 import com.webank.eggroll.core.di.Singletons
+import com.webank.eggroll.core.error.DistributedRuntimeException
 import com.webank.eggroll.core.factory.GrpcChannelFactory
 import com.webank.eggroll.core.grpc.client.{GrpcClientContext, GrpcClientTemplate}
 import com.webank.eggroll.core.grpc.observer.SameTypeFutureCallerResponseStreamObserver
-import com.webank.eggroll.core.meta.{ErEndpoint, ErProcessorBatch}
-import com.webank.eggroll.core.util.{Logging, SerdesUtils}
+import com.webank.eggroll.core.meta.ErEndpoint
+import com.webank.eggroll.core.session.StaticErConf
+import com.webank.eggroll.core.util.{Logging, SerdesUtils, TimeUtils}
 import io.grpc.ManagedChannel
 import io.grpc.stub.StreamObserver
 
 import scala.collection.JavaConverters._
-import scala.reflect.ClassTag
-import scala.reflect.classTag
-import scala.reflect.runtime.universe._
+import scala.reflect.{ClassTag, classTag}
 class CommandClient(defaultEndpoint:ErEndpoint = null, serdesType: String = SerdesTypes.PROTOBUF, isSecure:Boolean=false)
   extends Logging {
   // TODO:1: for java
   def this(){
     this(null, SerdesTypes.PROTOBUF, false)
   }
-  def call[T](commandURI: CommandURI, args: RpcMessage* )(implicit tag:ClassTag[T]): T = {
+
+  val sessionId = StaticErConf.getString(SessionConfKeys.CONFKEY_SESSION_ID)
+  def call[T](commandURI: CommandURI, args: RpcMessage*)(implicit tag:ClassTag[T]): T = {
     val ch: ManagedChannel = Singletons.getNoCheck(classOf[GrpcChannelFactory]).getChannel(defaultEndpoint, isSecure)
     val stub: CommandServiceGrpc.CommandServiceBlockingStub = CommandServiceGrpc.newBlockingStub(ch)
     val argBytes = args.map(x => ByteString.copyFrom(SerdesUtils.rpcMessageToBytes(x, SerdesTypes.PROTOBUF)))
@@ -57,6 +58,26 @@ class CommandClient(defaultEndpoint:ErEndpoint = null, serdesType: String = Serd
         .setUri(commandURI.uri.toString).addAllArgs(argBytes.asJava).build)
     SerdesUtils.rpcMessageFromBytes(resp.getResults(0).toByteArray,
       tag.runtimeClass, SerdesTypes.PROTOBUF).asInstanceOf[T]
+  }
+
+  def call[T](commandURI: CommandURI, args: Array[(Array[RpcMessage], ErEndpoint)])(implicit tag:ClassTag[T]): Array[T] = {
+    val errors = new DistributedRuntimeException
+
+    val futures: Array[CompletableFuture[T]] = args.map {
+      case (rpcMessages, endpoint) =>
+        CompletableFuture.supplyAsync(new CommandCallSupplier[T](endpoint = endpoint, isSecure = isSecure, commandURI = commandURI, rpcMessages: _*))
+          .whenComplete((result, exception) => {
+            if (exception != null) errors.append(exception) else result
+          })
+    }
+
+    CompletableFuture.allOf(futures: _*).join()
+
+    if (!errors.check()) {
+      errors.raise()
+    }
+
+    futures.map(f => f.get())
   }
 
   def simpleSyncSend[T >: RpcMessage](input: RpcMessage,
@@ -100,7 +121,25 @@ class CommandClient(defaultEndpoint:ErEndpoint = null, serdesType: String = Serd
     else
       null
   }
+
+  class CommandCallSupplier[T](endpoint: ErEndpoint, isSecure: Boolean, commandURI: CommandURI, args: RpcMessage*)(implicit tag:ClassTag[T]) extends Supplier[T] {
+    override def get(): T = {
+      val ch: ManagedChannel = Singletons.getNoCheck(classOf[GrpcChannelFactory]).getChannel(endpoint, isSecure)
+      val stub: CommandServiceGrpc.CommandServiceBlockingStub = CommandServiceGrpc.newBlockingStub(ch)
+      val argBytes = args.map(x => UnsafeByteOperations.unsafeWrap(SerdesUtils.rpcMessageToBytes(x, SerdesTypes.PROTOBUF)))
+
+      val resp: Command.CommandResponse = stub.call(
+        Command.CommandRequest.newBuilder
+          .setId(s"${sessionId}-command-${TimeUtils.getNowMs()}")
+          .setUri(commandURI.uri.toString)
+          .addAllArgs(argBytes.asJava).build)
+      SerdesUtils.rpcMessageFromBytes(resp.getResults(0).toByteArray,
+        tag.runtimeClass, SerdesTypes.PROTOBUF).asInstanceOf[T]
+    }
+  }
 }
+
+
 
 class CommandResponseObserver(finishLatch: CountDownLatch, asFuture: AwaitSettableFuture[CommandResponse])
   extends SameTypeFutureCallerResponseStreamObserver[Command.CommandRequest, CommandResponse](finishLatch, asFuture) {

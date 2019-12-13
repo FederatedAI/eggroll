@@ -32,44 +32,40 @@ from eggroll.core.proto import proxy_pb2, proxy_pb2_grpc
 class RollsiteWriteBatch(SortedKvWriteBatch):
   def __init__(self, adapter):
     self.adapter = adapter
-    self.cache = []
     self.name = adapter._name
     self.tag = adapter._tag
+    self.src_role = adapter.src_role
+    self.src_party_id = adapter.src_party_id
+    self.dst_role = adapter.dst_role
+    self.dst_party_id = adapter.dst_party_id
+    host = adapter._dst_host
+    port = adapter._dst_port
+    channel = grpc.insecure_channel(
+        target="{}:{}".format(host, port),
+        options=[('grpc.max_send_message_length', -1), ('grpc.max_receive_message_length', -1)])
+    self.stub = proxy_pb2_grpc.DataTransferServiceStub(channel)
+
     self.__bin_packet_len = 1 << 20
     self.buffer = bytearray(self.__bin_packet_len)
     self.writer = BinBatchWriter({'buffer': self.buffer})
     self.cur_offset = self.writer.get_offset
     self.total_written = 0
-    self.dst_host = adapter._dst_host
-    self.dst_port = adapter._dst_port
+
 
   def generate_message(self, obj, metadata):
-    data = proxy_pb2.Data(key="hello", value=obj)
-    metadata.seq += 1
-    packet = proxy_pb2.Packet(header=metadata, body=data)
-    yield packet
+    while True:
+      data = proxy_pb2.Data(key="hello", value=obj)
+      metadata.seq += 1
+      packet = proxy_pb2.Packet(header=metadata, body=data)
+      yield packet
+      break
 
-  def push(self, obj, name: str):
-    args = name.split("-", 9)
-    print(args)
-    tag = args[2]
-    src_role = args[3]
-    src_party_id = args[4]
-    dst_role = args[5]
-    dst_party_id = args[6]
-    host = args[7]
-    port = int(args[8])
-
-    channel = grpc.insecure_channel(
-        target="{}:{}".format(host, port),
-        options=[('grpc.max_send_message_length', -1), ('grpc.max_receive_message_length', -1)])
-    stub = proxy_pb2_grpc.DataTransferServiceStub(channel)
-
-    task_info = proxy_pb2.Task(taskId="testTaskId", model=proxy_pb2.Model(name=name, dataKey="testKey"))
-    topic_src = proxy_pb2.Topic(name=name, partyId="{}".format(src_party_id),
-                                role=src_role, callback=None)
-    topic_dst = proxy_pb2.Topic(name=name, partyId="{}".format(dst_party_id),
-                                role=dst_role, callback=None)
+  def push(self, obj):
+    task_info = proxy_pb2.Task(taskId="testTaskId", model=proxy_pb2.Model(name=self.name, dataKey="testKey"))
+    topic_src = proxy_pb2.Topic(name=self.name, partyId="{}".format(self.src_party_id),
+                                role=self.src_role, callback=None)
+    topic_dst = proxy_pb2.Topic(name=self.name, partyId="{}".format(self.dst_party_id),
+                                role=self.dst_role, callback=None)
     command_test = proxy_pb2.Command()
     conf_test = proxy_pb2.Conf(overallTimeout=2000,
                                completionWaitTimeout=2000,
@@ -82,13 +78,37 @@ class RollsiteWriteBatch(SortedKvWriteBatch):
                                   command=command_test,
                                   seq=0, ack=0,
                                   conf=conf_test)
-
-    stub.push(self.generate_message(obj, metadata))
+    print("type of obj:", type(obj))
+    print("metadata:", metadata)
+    self.stub.push(self.generate_message(obj, metadata))
 
   def write(self, bin_data):
     print(bin_data)
-    print(self.name)
-    self.push(bin_data, self.name)
+    self.push(bin_data)
+
+  def send_end(self):
+    task_info = proxy_pb2.Task(taskId="testTaskId", model=proxy_pb2.Model(name="set_status", dataKey="testKey"))
+    topic_src = proxy_pb2.Topic(name="set_status", partyId="{}".format(self.src_party_id),
+                                role=self.src_role, callback=None)
+    topic_dst = proxy_pb2.Topic(name="set_status", partyId=self.dst_party_id,
+                                role=self.dst_role, callback=None)
+    command_test = proxy_pb2.Command(name="set_status")
+    conf_test = proxy_pb2.Conf(overallTimeout=2000,
+                               completionWaitTimeout=2000,
+                               packetIntervalTimeout=2000,
+                               maxRetries=10)
+
+    metadata = proxy_pb2.Metadata(task=task_info,
+                                  src=topic_src,
+                                  dst=topic_dst,
+                                  command=command_test,
+                                  operator="markEnd",
+                                  seq=0, ack=0,
+                                  conf=conf_test)
+    data = proxy_pb2.Data(key="hello", value="markEnd".encode())
+    packet = proxy_pb2.Packet(header=metadata, body=data)
+
+    self.stub.unaryCall(packet)
 
   def close(self):
     # write last
@@ -96,6 +116,7 @@ class RollsiteWriteBatch(SortedKvWriteBatch):
     self.cur_offset = writer.get_offset()
     bin_data = writer.get_batch(end=self.cur_offset)
     self.write(bin_data)
+    self.send_end()
 
   def put(self, k, v):
     writer = self.writer
@@ -161,19 +182,25 @@ class RollsiteAdapter(SortedKvAdapter):
 
   def __init__(self, options):
     super().__init__(options)
-    self.options = options
-
-    self._namespace = ''
     self._name = options["name"]
     print(self._name)
-    self._tag = 'tag'
+    args = self._name.split("-", 9)
+    print(args)
+
+    self._tag = args[2]
+    self.src_role = args[3]
+    self.src_party_id = args[4]
+    self.dst_role = args[5]
+    self.dst_party_id = args[6]
+    self._dst_host = args[7]
+    self._dst_port = int(args[8])
+
+    self._namespace = ''
     self._store_type = 'roll_site'
     self._path = ''
     self._partitioner = ''
     self._serdes = ''
     self._partitions = []
-    self._dst_host = 'localhost'
-    self._dst_port = '9394'
     self._store_locator = meta_pb2.StoreLocator(storeType=self._store_type,
                                                 namespace=self._namespace,
                                                 name=self._name,

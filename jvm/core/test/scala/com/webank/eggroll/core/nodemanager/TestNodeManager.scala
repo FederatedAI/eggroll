@@ -23,7 +23,7 @@ import com.webank.eggroll.core.command.{CommandRouter, CommandService}
 import com.webank.eggroll.core.constant.{DeployConfKeys, NodeManagerCommands, SessionConfKeys}
 import com.webank.eggroll.core.meta.{ErProcessor, ErProcessorBatch, ErSessionMeta}
 import com.webank.eggroll.core.session.{RuntimeErConf, StaticErConf}
-import com.webank.eggroll.core.transfer.GrpcTransferService
+import com.webank.eggroll.core.transfer.TransferService
 import io.grpc.Server
 import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
 import org.junit.{Before, Test}
@@ -55,7 +55,6 @@ class TestNodeManager {
     val clusterManager = NettyServerBuilder
       .forPort(port)
       .addService(new CommandService)
-      .addService(new GrpcTransferService)
       .build()
 
     val server: Server = clusterManager.start()

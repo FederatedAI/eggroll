@@ -18,10 +18,13 @@
 
 package com.webank.eggroll.core.schedule
 
-import com.webank.eggroll.core.command.CollectiveCommand
-import com.webank.eggroll.core.datastructure.TaskPlan
-import com.webank.eggroll.core.meta.ErTask
+import com.webank.eggroll.core.ErSession
+import com.webank.eggroll.core.command.CommandClient
+import com.webank.eggroll.core.constant.SessionConfKeys
+import com.webank.eggroll.core.datastructure.{RpcMessage, TaskPlan}
+import com.webank.eggroll.core.meta.{ErJob, ErPartition, ErStore, ErTask}
 import com.webank.eggroll.core.serdes.DefaultScalaSerdes
+import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.util.Logging
 
 import scala.collection.mutable
@@ -50,8 +53,74 @@ case class ListScheduler() extends Scheduler {
 }
 
 object JobRunner {
+  val session = new ErSession(StaticErConf.getString(SessionConfKeys.CONFKEY_SESSION_ID))
+
   def run(plan: TaskPlan): Array[ErTask] = {
-    val collectiveCommand = CollectiveCommand(plan)
-    collectiveCommand.call()
+    val tasks = decomposeJob(taskPlan = plan)
+
+
+    val commandClient = new CommandClient()
+
+    val results = commandClient.call[ErTask](commandURI = plan.uri, args = tasks.map(t => (Array[RpcMessage](t), t.inputs.head.processor.commandEndpoint)))
+    results.foreach(println)
+    tasks
+  }
+
+  def populateProcessor(stores: Array[ErStore]): Array[ErStore] =
+    stores.map(store => store.copy(partitions = store.partitions.map(partition => partition.copy(processor = session.routeToEgg(partition)))))
+
+  def decomposeJob(taskPlan: TaskPlan): Array[ErTask] = {
+    val job = taskPlan.job
+    val inputStores: Array[ErStore] = job.inputs
+    val inputPartitionSize = inputStores.head.storeLocator.totalPartitions
+    val inputOptions = job.options
+
+    val partitions = inputStores.head.partitions
+
+    val outputStores: Array[ErStore] = job.outputs
+    val result = mutable.ArrayBuffer[ErTask]()
+    result.sizeHint(outputStores(0).partitions.length)
+
+    var aggregateOutputPartition: ErPartition = null
+    if (taskPlan.isAggregate) {
+      aggregateOutputPartition = ErPartition(id = 0, storeLocator = outputStores.head.storeLocator, processor = session.routeToEgg(partitions(0)))
+    }
+
+    val populatedJob = if (taskPlan.shouldShuffle) {
+      job.copy(
+        inputs = populateProcessor(job.inputs),
+        outputs = populateProcessor(job.outputs))
+    } else {
+      ErJob(id = job.id, name = job.name, inputs = Array.empty, outputs = Array.empty, functors = job.functors)
+    }
+
+    for (i <- 0 until inputPartitionSize) {
+      val inputPartitions = mutable.ArrayBuffer[ErPartition]()
+      val outputPartitions = mutable.ArrayBuffer[ErPartition]()
+
+      inputStores.foreach(inputStore => {
+        inputPartitions.append(
+          ErPartition(id = i, storeLocator = inputStore.storeLocator, processor = session.routeToEgg(partitions(i))))
+      })
+
+      if (taskPlan.isAggregate) {
+        outputPartitions.append(aggregateOutputPartition)
+      } else {
+        outputStores.foreach(outputStore => {
+          outputPartitions.append(
+            ErPartition(id = i, storeLocator = outputStore.storeLocator, processor = session.routeToEgg(partitions(i))))
+        })
+      }
+
+      result.append(
+        ErTask(
+          id = s"${job.id}-${i}",
+          name = job.name,
+          inputs = inputPartitions.toArray,
+          outputs = outputPartitions.toArray,
+          job = populatedJob))
+    }
+
+    result.toArray
   }
 }

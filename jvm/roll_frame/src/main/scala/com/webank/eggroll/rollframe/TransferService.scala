@@ -35,7 +35,7 @@ trait CollectiveTransfer
 
 class NioCollectiveTransfer(nodes: Array[ErProcessor], timeout: Int = 600 * 1000) extends CollectiveTransfer {
   private lazy val clients = nodes.map { node =>
-    (node.id, new NioTransferEndpoint().runClient(node.dataEndpoint.host, node.dataEndpoint.port))
+    (node.id, new NioTransferEndpoint().runClient(node.transferEndpoint.host, node.transferEndpoint.port))
   }.toMap
   def send(id: Long, path: String, frameBatch: FrameBatch):Unit = {
     clients(id).send(path, frameBatch)

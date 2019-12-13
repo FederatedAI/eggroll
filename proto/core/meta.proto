@@ -48,7 +48,7 @@ message Processor {
   string processorType = 4;
   string status = 5;
   Endpoint commandEndpoint = 6;
-  Endpoint dataEndpoint = 7;
+  Endpoint transferEndpoint = 7;
   map<string, string> options = 8;
   string tag = 10;
 }

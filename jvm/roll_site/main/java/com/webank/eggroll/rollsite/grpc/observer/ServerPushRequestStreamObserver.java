@@ -193,7 +193,8 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
             } else {
                 String key = packet.getBody().getKey();
                 ByteString value = packet.getBody().getValue();
-                ScalaObjectPutBatch.scalaPutBatch(ByteBuffer.wrap(key.getBytes()), value.asReadOnlyByteBuffer());
+                String name = inputMetadata.getTask().getModel().getName();
+                ScalaObjectPutBatch.scalaPutBatch(name, ByteBuffer.wrap(key.getBytes()), value.asReadOnlyByteBuffer());
             }
 
             if (timeouts.isTimeout(overallTimeout, overallStartTimestamp)) {

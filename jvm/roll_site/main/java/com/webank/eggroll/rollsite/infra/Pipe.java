@@ -44,4 +44,8 @@ public interface Pipe {
     boolean hasError();
 
     Throwable getError();
+
+    void setStatus(boolean status);
+
+    boolean getStatus();
 }

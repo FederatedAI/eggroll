@@ -13,36 +13,39 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import argparse
+import os
 from collections.abc import Iterable
-
-import grpc
 from concurrent import futures
 from copy import copy
 
+import grpc
 import numpy as np
+from grpc._cython import cygrpc
 
 from eggroll.core.client import NodeManagerClient
 from eggroll.core.command.command_router import CommandRouter
 from eggroll.core.command.command_service import CommandServicer
+from eggroll.core.conf_keys import NodeManagerConfKeys, SessionConfKeys
+from eggroll.core.constants import ProcessorTypes, ProcessorStatus, SerdesTypes
 from eggroll.core.datastructure.broker import FifoBroker
-from eggroll.core.io.kv_adapter import RocksdbSortedKvAdapter, LmdbSortedKvAdapter
-from eggroll.core.io.rollsite_adapter import RollsiteAdapter
 from eggroll.core.io.io_utils import get_db_path
-from eggroll.core.meta_model import ErTask, ErPartition, ErProcessor, ErEndpoint
-from eggroll.core.meta_model import ErSessionMeta, ErPair, ErFunctor
+from eggroll.core.io.kv_adapter import RocksdbSortedKvAdapter, \
+  LmdbSortedKvAdapter
+from eggroll.core.io.rollsite_adapter import RollsiteAdapter
+from eggroll.core.meta_model import ErPair
+from eggroll.core.meta_model import ErTask, ErProcessor, ErEndpoint
+from eggroll.core.pair_store.lmdb import LmdbAdapter
 from eggroll.core.proto import command_pb2_grpc, transfer_pb2_grpc
 from eggroll.core.serdes import cloudpickle
 from eggroll.core.serdes import eggroll_serdes
-from eggroll.core.utils import hash_code
-from eggroll.utils import log_utils
 from eggroll.core.transfer.transfer_service import GrpcTransferServicer, \
-  TransferClient
-from eggroll.core.constants import ProcessorTypes, ProcessorStatus, SerdesTypes
-from eggroll.roll_pair.shuffler import DefaultShuffler, grpc_shuffle_receiver
-from eggroll.core.conf_keys import NodeManagerConfKeys, SessionConfKeys
-from grpc._cython import cygrpc
-import argparse
-import os
+  TransferClient, TransferService
+from eggroll.core.utils import _exception_logger
+from eggroll.core.utils import hash_code
+from eggroll.roll_pair.transfer_pair import TransferPair
+from eggroll.utils import log_utils
+from eggroll.core.io.io_utils import get_db_path
 
 log_utils.setDirectory()
 LOGGER = log_utils.getLogger()
@@ -116,7 +119,8 @@ class EggPair(object):
       output_adapter = LmdbSortedKvAdapter(options=options)
     elif task_info._inputs[0]._store_locator._store_type == "rollpair.leveldb":
       output_adapter = RocksdbSortedKvAdapter(options=options)
-    elif task_info._inputs[0]._store_locator._store_type == "rollpair.rollsite":
+
+    if task_info._outputs[0]._store_locator._store_type == "rollpair.rollsite":
       output_adapter = RollsiteAdapter(options={'name': output_partition._store_locator._name})
 
     return output_adapter
@@ -159,8 +163,10 @@ class EggPair(object):
       right_adapter.close()
       output_adapter.close()
 
+  @_exception_logger
   def run_task(self, task: ErTask):
     LOGGER.info("start run task")
+    print("start run task")
     functors = task._job._functors
     result = task
 
@@ -210,16 +216,14 @@ class EggPair(object):
     elif task._name == 'putAll':
       print("egg_pair putAll call")
       output_partition = task._outputs[0]
-      print(output_partition)
 
-      # todo: decide partitioner
-      p = lambda k : k[-1] % output_partition._store_locator._total_partitions
-      output_store = task._job._outputs[0]
+      tag = f'{task._job._id}-{output_partition._id}'
 
-      shuffle_broker = FifoBroker()
-      shuffler = DefaultShuffler(task._job._id, shuffle_broker, output_store, output_partition, p)
-      shuffler.start()
-      shuffle_finished = shuffler.wait_until_finished(600)
+      output_adapter = LmdbAdapter(options={"path":get_db_path(output_partition)})
+      TransferPair.receive(tag=tag,
+                           output_adapter=output_adapter,
+                           total_parititions_count=output_partition._store_locator._total_partitions)
+      output_adapter.close()
 
     if task._name == 'put':
       print("egg_pair put call")
@@ -244,15 +248,22 @@ class EggPair(object):
       print(output_partition)
       total_partitions = input_partition._store_locator._total_partitions
 
-      p = output_partition._store_locator._partitioner
+      output_adapter = LmdbAdapter(options={"path": get_db_path(output_partition)})
 
-      # todo: decide partitioner
+      # todo:0: decide partitioner
       partitioner = self.__partitioner(hash_func=hash_code, total_partitions=total_partitions)
       input_adapter = self.get_unary_input_adapter(task_info=task)
       output_store = task._job._outputs[0]
 
       shuffle_broker = FifoBroker()
-      shuffler = DefaultShuffler(task._job._id, shuffle_broker, output_store, output_partition, partitioner)
+      shuffler = TransferPair(
+              transfer_id=task._job._id,
+              input_broker=shuffle_broker,
+              output_store=output_store,
+              output_adapter=output_adapter,
+              output_partition_id=output_partition._id,
+              partition_function=partitioner)
+      shuffler.start()
 
       for k_bytes, v_bytes in input_adapter.iteritems():
         k1, v1 = f(self.serde.deserialize(k_bytes), self.serde.deserialize(v_bytes))
@@ -261,9 +272,11 @@ class EggPair(object):
       input_adapter.close()
       shuffle_broker.signal_write_finish()
 
-      shuffler.start()
+      shuffler.join()
 
       shuffle_finished = shuffler.wait_until_finished(600)
+
+      output_adapter.close()
 
       print('map finished')
     # todo: use aggregate to reduce (also reducing duplicate codes)
@@ -383,15 +396,6 @@ class EggPair(object):
             output_writebatch.put(k_right, v_right)
       self._run_binary(union_wrapper, task)
 
-    elif task._name == 'putBatch':
-      output_partition = task._outputs[0]
-      print(output_partition)
-
-      #p = lambda k : k[-1] % output_partition._store_locator._total_partitions
-      output_store = task._job._outputs[0]
-      GrpcTransferServicer.get_or_create_broker(f'{task._job._id}-{output_partition._id}')
-
-      grpc_shuffle_receiver(task._job._id, output_partition, len(output_store._partitions))
     return result
 
   def aggregate(self, task: ErTask):
@@ -418,7 +422,7 @@ class EggPair(object):
 
     if 0 == partition_id:
       partition_size = input_partition._store_locator._total_partitions
-      queue = GrpcTransferServicer.get_or_create_broker(transfer_tag, write_signals=partition_size)
+      queue = TransferService.get_or_create_broker(transfer_tag, write_signals=partition_size)
 
       comb_op_result = seq_op_result
 
@@ -435,12 +439,18 @@ class EggPair(object):
 
       output_writebatch.close()
       output_adapter.close()
-      GrpcTransferServicer.remove_broker(transfer_tag)
+      TransferService.remove_broker(transfer_tag)
     else:
       ser_seq_op_result = output_serdes.serialize(seq_op_result)
       transfer_client = TransferClient()
-      transfer_client.send_single(data=ser_seq_op_result, tag=transfer_tag,
-                                  processor=task._outputs[0]._processor)
+
+      broker = FifoBroker()
+      broker.put(ser_seq_op_result)
+      broker.signal_write_finish()
+      future = transfer_client.send(broker=broker,
+                                    endpoint=task._outputs[0]._processor._transfer_endpoint,
+                                    tag=transfer_tag)
+      future.result()
 
     input_adapter.close()
     print('aggregate finished')
@@ -533,34 +543,44 @@ def serve(args):
     route_to_class_name="EggPair",
     route_to_method_name="run_task")
   CommandRouter.get_instance().register(
-      service_name=f"{prefix}/putBatch",
-      route_to_module_name="eggroll.roll_pair.egg_pair",
-      route_to_class_name="EggPair",
-      route_to_method_name="run_task")
-  CommandRouter.get_instance().register(
       service_name=f"{prefix}/runTask",
       route_to_module_name="eggroll.roll_pair.egg_pair",
       route_to_class_name="EggPair",
       route_to_method_name="run_task")
 
-  server = grpc.server(futures.ThreadPoolExecutor(max_workers=5),
-                       options=[
-                         (cygrpc.ChannelArgKey.max_send_message_length, -1),
-                         (cygrpc.ChannelArgKey.max_receive_message_length, -1)])
+  command_server = grpc.server(futures.ThreadPoolExecutor(max_workers=5),
+                               options=[
+                                 (cygrpc.ChannelArgKey.max_send_message_length, -1),
+                                 (cygrpc.ChannelArgKey.max_receive_message_length, -1)])
 
   command_servicer = CommandServicer()
-  # todo: register egg_pair methods
   command_pb2_grpc.add_CommandServiceServicer_to_server(command_servicer,
-                                                        server)
+                                                        command_server)
 
   transfer_servicer = GrpcTransferServicer()
-  transfer_pb2_grpc.add_TransferServiceServicer_to_server(transfer_servicer,
-                                                          server)
-  port = args.port
-  port = server.add_insecure_port(f'[::]:{port}')
-  LOGGER.info("starting egg_pair service, port:{}".format(port))
-  server.start()
 
+  port = args.port
+  transfer_port = args.transfer_port
+
+  port = command_server.add_insecure_port(f'[::]:{port}')
+
+  if transfer_port == "-1":
+    transfer_server = command_server
+    transfer_port = port
+    transfer_pb2_grpc.add_TransferServiceServicer_to_server(transfer_servicer,
+                                                            transfer_server)
+  else:
+    transfer_server = grpc.server(futures.ThreadPoolExecutor(max_workers=5),
+                                  options=[
+                                    (cygrpc.ChannelArgKey.max_send_message_length, -1),
+                                    (cygrpc.ChannelArgKey.max_receive_message_length, -1)])
+    transfer_port = transfer_server.add_insecure_port(f'[::]:{transfer_port}')
+    transfer_pb2_grpc.add_TransferServiceServicer_to_server(transfer_servicer,
+                                                            transfer_server)
+    transfer_server.start()
+
+  LOGGER.info(f"starting egg_pair service, port:{port}, transfer port: {transfer_port}")
+  command_server.start()
 
   node_manager = args.node_manager
   if node_manager:
@@ -573,7 +593,7 @@ def serve(args):
     }
     myself = ErProcessor(processor_type=ProcessorTypes.EGG_PAIR,
                          command_endpoint=ErEndpoint(host='localhost', port=port),
-                         data_endpoint=ErEndpoint(host='localhost', port=port),
+                         transfer_endpoint=ErEndpoint(host='localhost', port=transfer_port),
                          options=options,
                          status=ProcessorStatus.RUNNING)
 
@@ -590,7 +610,7 @@ def serve(args):
     })
     node_manager_client.heartbeat(myself)
 
-  print(f'egg_pair started at port {port}')
+  print(f'egg_pair started at port {port}, transfer_port {transfer_port}')
 
   import time
   time.sleep(100000)
@@ -602,6 +622,8 @@ if __name__ == '__main__':
   parser.add_argument('-n', '--node-manager')
   parser.add_argument('-s', '--session-id')
   parser.add_argument('-p', '--port', default='0')
+  parser.add_argument('-t', '--transfer-port', default='-1')
 
   args = parser.parse_args()
+  print(args)
   serve(args)
