@@ -23,7 +23,7 @@ import grpc
 import numpy as np
 from grpc._cython import cygrpc
 
-from eggroll.core.client import NodeManagerClient
+from eggroll.core.client import NodeManagerClient, ClusterManagerClient
 from eggroll.core.command.command_router import CommandRouter
 from eggroll.core.command.command_service import CommandServicer
 from eggroll.core.conf_keys import NodeManagerConfKeys, SessionConfKeys
@@ -33,7 +33,7 @@ from eggroll.core.io.io_utils import get_db_path
 from eggroll.core.io.kv_adapter import RocksdbSortedKvAdapter, \
   LmdbSortedKvAdapter
 from eggroll.core.io.rollsite_adapter import RollsiteAdapter
-from eggroll.core.meta_model import ErPair
+from eggroll.core.meta_model import ErPair, ErStore
 from eggroll.core.meta_model import ErTask, ErProcessor, ErEndpoint
 from eggroll.core.pair_store.lmdb import LmdbAdapter
 from eggroll.core.proto import command_pb2_grpc, transfer_pb2_grpc
