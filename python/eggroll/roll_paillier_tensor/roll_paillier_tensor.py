@@ -303,7 +303,9 @@ class RollPaillierTensor(object):
         def seq_op(mat, vec):
             # print("matmul_local_numpy : mat", mat)
             # print("matmul_local_numpy : vec", vec)
-            res = mat.dot(vec)
+            res = vec.dot(mat)
+            #print("mat row = ", mat.shape[0], "mat col = ", mat.shape[1] )
+            #print("vec row = ", vec.shape[0], "vec col = ", vec.shape[1] )
             print("[matmul_local]", res)
-            return res
+            return b'1243'
         return RollPaillierTensor(self._store.map_values(lambda v: seq_op(v, vec)))

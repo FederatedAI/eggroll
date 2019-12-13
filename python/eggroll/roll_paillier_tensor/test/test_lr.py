@@ -41,8 +41,8 @@ class TestLR(unittest.TestCase):
     X_H = X_H_dco.decode()
     X_Y = X_Y_dco.decode()
 
-    w_G_dco = RptLocalTensor(1, 20, 2, X_G_enc.pub_key, X_G_enc.prv_key)
-    w_H_dco = RptLocalTensor(1, 10, 1, X_H_enc.pub_key, X_H_enc.prv_key)
+    w_G_dco = RptLocalTensor(20, 1, 2, X_G_enc.pub_key, X_G_enc.prv_key)
+    w_H_dco = RptLocalTensor(10, 1, 1, X_H_enc.pub_key, X_H_enc.prv_key)
 
     #local
     w_G = w_G_dco.decode()
@@ -51,7 +51,8 @@ class TestLR(unittest.TestCase):
     print("w_G", w_G)
     print("w_H", w_H)
 
-    fw_G = X_G.matmul_local_numpy(w_G)
+    #fw_G = X_G.matmul_local_numpy(w_G)
+    fw_H = X_H.matmul_local_numpy(w_H)
 
   # iter = 0
     # while iter < max_iter:
