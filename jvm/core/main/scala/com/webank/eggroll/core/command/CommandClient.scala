@@ -18,6 +18,7 @@
 
 package com.webank.eggroll.core.command
 
+import java.lang.reflect.{InvocationHandler, Method, Proxy}
 import java.util.concurrent.{CompletableFuture, CountDownLatch}
 import java.util.function.Supplier
 
@@ -33,6 +34,7 @@ import com.webank.eggroll.core.factory.GrpcChannelFactory
 import com.webank.eggroll.core.grpc.client.{GrpcClientContext, GrpcClientTemplate}
 import com.webank.eggroll.core.grpc.observer.SameTypeFutureCallerResponseStreamObserver
 import com.webank.eggroll.core.meta.ErEndpoint
+import com.webank.eggroll.core.resourcemanager.ClusterManagerService
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.util.{Logging, SerdesUtils, TimeUtils}
 import io.grpc.ManagedChannel
@@ -40,11 +42,22 @@ import io.grpc.stub.StreamObserver
 
 import scala.collection.JavaConverters._
 import scala.reflect.{ClassTag, classTag}
+
 class CommandClient(defaultEndpoint:ErEndpoint = null, serdesType: String = SerdesTypes.PROTOBUF, isSecure:Boolean=false)
   extends Logging {
   // TODO:1: for java
   def this(){
     this(null, SerdesTypes.PROTOBUF, false)
+  }
+  def proxy[T]()(implicit tag:ClassTag[T]): T = {
+    Proxy.newProxyInstance(this.getClass.getClassLoader,  Array[Class[_]](tag.runtimeClass), new InvocationHandler {
+      override def invoke(proxy: Any, method: Method, args: Array[AnyRef]): AnyRef = {
+        println(method, args)
+        // TODO:0: command uri ?
+        call(new CommandURI(tag.runtimeClass.getName.replaceFirst("com.webank","/v1").replace(".","/") + "/" + method.getName),
+          args.asInstanceOf[Array[RpcMessage]]:_*) (ClassTag(method.getReturnType))
+      }
+    }).asInstanceOf[T]
   }
 
   val sessionId = StaticErConf.getString(SessionConfKeys.CONFKEY_SESSION_ID)

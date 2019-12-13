@@ -10,6 +10,13 @@ import org.apache.commons.dbcp2.BasicDataSource
 
 import scala.collection.JavaConverters._
 
+class ServerMetaDao {
+
+}
+
+class StoreMetaDao {
+
+}
 
 class SessionMetaDao {
   private val dbc = new JdbcTemplate(ResourceDao.dataSource.getConnection)
