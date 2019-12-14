@@ -59,20 +59,31 @@ object CommandRouter extends Logging {
     if (serviceRouteTable.contains(serviceName)) {
       throw new IllegalStateException(s"Service ${serviceName} has been registered at: ${serviceRouteTable(serviceName)}")
     }
+    val finalServiceName = if(serviceName.startsWith("/v2/")){
+      val toks = serviceName.replaceFirst("/v2/","com/webank/").split("/")
+      toks(toks.length - 2) += "Service"
+      toks.mkString(".")
+    } else {
+      serviceName
+    }
+
+
 
     val finalRouteToMethodName =
       if (routeToMethodName != null) routeToMethodName
-      else StringUtils.substringAfterLast(serviceName, StringConstants.DOT)
+      else StringUtils.substringAfterLast(finalServiceName, StringConstants.DOT)
 
     val finalRouteToClass =
       if (routeToClass != null) routeToClass
-      else Class.forName(StringUtils.substringBeforeLast(serviceName, StringConstants.DOT))
+      else Class.forName(StringUtils.substringBeforeLast(finalServiceName, StringConstants.DOT))
 
-    val routeToMethod = MethodUtils.getAccessibleMethod(
+    val routeToMethod = if(serviceParamTypes == null)
+      finalRouteToClass.getMethods.find(_.getName == finalRouteToMethodName).get
+     else MethodUtils.getAccessibleMethod(
       finalRouteToClass, finalRouteToMethodName, serviceParamTypes: _*)
-
+    val finaleServiceParamTypes = routeToMethod.getParameterTypes
     if (routeToMethod == null) {
-      throw new NoSuchMethodException(s"accessible method not found for ${serviceName}")
+      throw new NoSuchMethodException(s"accessible method not found for ${finalServiceName}")
     }
 
     val finalServiceResultTypes: Array[Class[_]] =
@@ -88,12 +99,12 @@ object CommandRouter extends Logging {
       }
 
     val paramDeserializers = ArrayBuffer[ErDeserializer]()
-    paramDeserializers.sizeHint(serviceParamTypes.length)
-    serviceParamTypes.indices.foreach(i => {
+    paramDeserializers.sizeHint(finaleServiceParamTypes.length)
+    finaleServiceParamTypes.indices.foreach(i => {
       val serdesType =
         if (serviceParamDeserializers.length - 1 < i) defaultSerdesType else serviceParamDeserializers(i)
       val deserializer = RpcMessageSerdesFactory.newDeserializer(
-        javaClass = serviceParamTypes(i), serdesType = serdesType)
+        javaClass = finaleServiceParamTypes(i), serdesType = serdesType)
       paramDeserializers += deserializer
     })
 
@@ -108,8 +119,8 @@ object CommandRouter extends Logging {
     })
 
     val command = ErService(
-      serviceName = serviceName,
-      serviceParamTypes = serviceParamTypes,
+      serviceName = finalServiceName,
+      serviceParamTypes = finaleServiceParamTypes,
       serviceResultTypes = finalServiceResultTypes,
       serviceParamDeserializers = paramDeserializers.toArray,
       serviceResultSerializers = resultSerializers.toArray,
@@ -153,6 +164,10 @@ object CommandRouter extends Logging {
   def query(serviceName: String): ErService = {
 
     try {
+      // v2: auto register
+      if(!serviceRouteTable.contains(serviceName) && serviceName.startsWith("/v2/")) {
+        register(serviceName, null)
+      }
       serviceRouteTable(serviceName)
     } catch {
       case e: Exception =>
