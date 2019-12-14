@@ -71,6 +71,7 @@ CREATE TABLE IF NOT EXISTS `session_main` (
   `name` VARCHAR(2000) NOT NULL DEFAULT '',
   `status` VARCHAR(255) NOT NULL,
   `tag` VARCHAR(255),
+  `active_proc_count` int,
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ;
@@ -88,6 +89,7 @@ CREATE TABLE IF NOT EXISTS `session_option` (
 CREATE INDEX `idx_session_option_session_id` ON `eggroll_meta`.`session_option` (`session_id`);
 
 CREATE TABLE IF NOT EXISTS `session_processor` (
+  `processor_id` SERIAL PRIMARY KEY,
   `session_id` VARCHAR(2000),
   `server_node_id` INT NOT NULL,
   `processor_type` VARCHAR(255) NOT NULL,

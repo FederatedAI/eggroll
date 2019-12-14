@@ -49,7 +49,7 @@ class ErSession(val sessionId: String = s"er_session_${TimeUtils.getNowMs()}_${n
 
   var status = SessionStatus.NEW
   private val sessionMeta = ErSessionMeta(id = sessionId, name=name, status = status,
-    options=options.asJava, tag=tag)
+    options=options, tag=tag)
   private val deployClient = if(options.getOrElse(DeployConfKeys.CONFKEY_DEPLOY_MODE, "standalone") == "standalone") {
     new ErStandaloneDeploy(sessionMeta)
   } else {

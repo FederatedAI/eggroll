@@ -8,17 +8,17 @@ import com.webank.eggroll.core.meta.{ErEndpoint, ErStore, ErStoreLocator}
 
 import scala.reflect.ClassTag
 
-trait ClusterManager {
+trait StoreManager {
   def hello(v: ErEndpoint): ErEndpoint
 }
-object ClusterManager {
+object StoreManager {
   def main(args: Array[String]): Unit = {
     val cc = new CommandClient(ErEndpoint("localhost:4670"))
-    val cm = cc.proxy[ClusterManager]
+    val cm = cc.proxy[StoreManager]
     println(cm.hello(ErEndpoint("hi:80")))
   }
 }
-class ClusterManagerService extends ClusterManager {
+class ClusterManagerService extends StoreManager {
   def hello(v: ErEndpoint): ErEndpoint = v.copy(host = "hello")
 }
 
