@@ -34,11 +34,9 @@ import com.webank.eggroll.core.factory.GrpcChannelFactory
 import com.webank.eggroll.core.grpc.client.{GrpcClientContext, GrpcClientTemplate}
 import com.webank.eggroll.core.grpc.observer.SameTypeFutureCallerResponseStreamObserver
 import com.webank.eggroll.core.meta.ErEndpoint
-import com.webank.eggroll.core.resourcemanager.ClusterManagerService
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.util.{Logging, SerdesUtils, TimeUtils}
 import io.grpc.{ManagedChannel, ManagedChannelBuilder}
-import io.grpc.netty.shaded.io.grpc.netty.NettyChannelBuilder
 import io.grpc.stub.StreamObserver
 
 import scala.collection.JavaConverters._

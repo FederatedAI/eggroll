@@ -28,7 +28,7 @@ import org.apache.ibatis.transaction.jdbc.JdbcTransactionFactory
 import org.apache.ibatis.transaction.managed.ManagedTransactionFactory
 
 object RdbConnectionPool {
-  private val dataSource: BasicDataSource = new BasicDataSource
+  val dataSource: BasicDataSource = new BasicDataSource
   dataSource.setDriverClassName(StaticErConf.getString(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_JDBC_DRIVER_CLASS_NAME, "com.mysql.cj.jdbc.Driver"))
   dataSource.setUrl(StaticErConf.getString(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_JDBC_URL))
   dataSource.setUsername(StaticErConf.getString(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_JDBC_USERNAME))

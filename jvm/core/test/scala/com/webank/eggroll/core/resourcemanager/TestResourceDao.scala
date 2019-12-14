@@ -1,6 +1,7 @@
 package com.webank.eggroll.core.resourcemanager
 
 import com.webank.eggroll.core.meta.{ErProcessor, ErSessionMeta}
+import com.webank.eggroll.core.resourcemanager.ResourceDao.NotExistError
 import com.webank.eggroll.core.session.StaticErConf
 import org.junit.Test
 import org.junit.Assert._
@@ -21,7 +22,7 @@ class TestResourceDao {
     try {
       smDao.addSession(session)
     } catch {
-      case e: IllegalArgumentException =>
+      case e: NotExistError =>
         expect = e
         println("got it:" + e.getMessage)
     }
