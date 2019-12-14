@@ -18,7 +18,7 @@ object StoreManager {
     println(cm.hello(ErEndpoint("hi:80")))
   }
 }
-class ClusterManagerService extends StoreManager {
+class StoreManagerService extends StoreManager {
   def hello(v: ErEndpoint): ErEndpoint = v.copy(host = "hello")
 }
 

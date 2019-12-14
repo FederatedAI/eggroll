@@ -1,13 +1,11 @@
 package com.webank.eggroll.core.resourcemanager
 
-class NodeManager {
+import com.webank.eggroll.core.meta.ErSessionMeta
 
+trait NodeManager {
+  def bootSessionProcessors(sessionMeta: ErSessionMeta):Unit
 }
 
-class NodeManagerService {
-
-}
-
-class NodeManagerClient {
-
+class NodeManagerService extends NodeManager {
+  override def bootSessionProcessors(sessionMeta: ErSessionMeta):Unit = ???
 }

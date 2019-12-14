@@ -1,19 +1,14 @@
 package com.webank.eggroll.core.resourcemanager
 
-import com.webank.eggroll.core.constant.{ClusterManagerConfKeys, ProcessorTypes}
-import com.webank.eggroll.core.meta.{ErEndpoint, ErProcessor, ErServerCluster, ErServerNode, ErSessionDeployment, ErSessionMeta}
-import com.webank.eggroll.core.meta.Meta.SessionMeta
+import com.webank.eggroll.core.clustermanager.datasource.RdbConnectionPool
+import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.resourcemanager.ResourceDao.NotExistError
-import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.util.JdbcTemplate
 import com.webank.eggroll.core.util.JdbcTemplate.ResultSetIterator
-import org.apache.commons.dbcp2.BasicDataSource
 import org.apache.commons.lang3.StringUtils
 
-import scala.collection.JavaConverters._
-
 class ServerMetaDao {
-  private val dbc = new JdbcTemplate(ResourceDao.dataSource.getConnection)
+  private lazy val dbc = ResourceDao.dbc
   def getServerCluster(clusterId:Long = 0): ErServerCluster = {
     val nodes = dbc.query(rs =>
       rs.map(_ => ErServerNode(
@@ -30,7 +25,7 @@ class StoreMetaDao {
 }
 
 class SessionMetaDao {
-  private val dbc = new JdbcTemplate(ResourceDao.dataSource.getConnection)
+  private lazy val dbc = ResourceDao.dbc
   def register(sessionMeta: ErSessionMeta, replace:Boolean = true):Unit = {
     require(sessionMeta.activeProcCount == sessionMeta.processors.count(_.status == RmConst.PROC_READY),
       "conflict active proc count:" + sessionMeta)
@@ -140,14 +135,5 @@ class SessionMetaDao {
 }
 object ResourceDao {
   class NotExistError(msg: String) extends Exception(msg)
-  val dataSource: BasicDataSource = new BasicDataSource
-  dataSource.setDriverClassName(StaticErConf.getString(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_JDBC_DRIVER_CLASS_NAME, "com.mysql.cj.jdbc.Driver"))
-  dataSource.setUrl(StaticErConf.getString(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_JDBC_URL))
-  dataSource.setUsername(StaticErConf.getString(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_JDBC_USERNAME))
-  dataSource.setPassword(StaticErConf.getString(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_JDBC_PASSWORD))
-  dataSource.setMaxIdle(StaticErConf.getInt(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_MAX_IDLE, 10))
-  dataSource.setMaxTotal(StaticErConf.getInt(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_MAX_TOTAL, 100))
-  dataSource.setTimeBetweenEvictionRunsMillis(StaticErConf.getLong(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_TIME_BETWEEN_EVICTION_RUNS_MS, 10000L))
-  dataSource.setMinEvictableIdleTimeMillis(StaticErConf.getLong(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_MIN_EVICTABLE_IDLE_TIME_MS, 120000L))
-  dataSource.setDefaultAutoCommit(StaticErConf.getBoolean(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_DEFAULT_AUTO_COMMIT, false))
+  val dbc: JdbcTemplate = new JdbcTemplate(RdbConnectionPool.dataSource.getConnection)
 }

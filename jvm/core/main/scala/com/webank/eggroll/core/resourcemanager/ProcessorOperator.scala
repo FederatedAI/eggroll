@@ -27,6 +27,7 @@ import com.webank.eggroll.core.util.Logging
 import org.apache.commons.lang3.StringUtils
 
 // todo: abstract to general python starter
+// todo: args design
 class ProcessorOperator(conf: RuntimeErConf) extends Logging {
 
   private val exePath = conf.getString("eggroll.node.exe")
@@ -73,6 +74,10 @@ class ProcessorOperator(conf: RuntimeErConf) extends Logging {
     val process = processBuilder.start()
 
     process.waitFor(1, TimeUnit.SECONDS)
+  }
+  // TODO:0: kill -9
+  def terminate(): Boolean = {
+    false
   }
 
   @throws[Exception]
