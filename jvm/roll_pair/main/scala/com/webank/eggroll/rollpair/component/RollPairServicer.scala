@@ -556,7 +556,7 @@ object RollPairServicer {
   val rollFilterCommand = s"${rollPair}/${filter}"
   val rollSubtractByKeyCommand = s"${rollPair}/${subtractByKey}"
   val rollUnionCommand = s"${rollPair}/${union}"
-  val rollPutBatchCommand = s"${rollPair}/${putAll}"
+  val rollPutAllCommand = s"${rollPair}/${putAll}"
 
   /*  CommandRouter.register(mapCommand,
       List(classOf[Array[Byte] => Array[Byte]]), clazz, "mapValues", null, null)*/

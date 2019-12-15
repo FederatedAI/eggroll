@@ -39,7 +39,8 @@ class TestStandalone(unittest.TestCase):
       print(self.ctx.load("ns1", "n25").get(f"k{i}"))
 
   def test_put_all(self):
-    data = [("k1", "v1"), ("k2", "v2"), ("k3", "v3"), ("k4", "v4"), ("k5", "v5"), ("k6", "v6")]
+    #data = [("k1", "v1"), ("k2", "v2"), ("k3", "v3"), ("k4", "v4"), ("k5", "v5"), ("k6", "v6")]
+    data = [("k1", "v1"), ("k2", "v2")]
     self.ctx.load("ns1", "n36").put_all(data, options={"include_key": True})
     table =self.ctx.load("ns1", "n36").get_all()
     print("get res:{}".format(table))
@@ -74,7 +75,7 @@ class TestStandalone(unittest.TestCase):
     print(rp.map_partitions(func).get_all())
 
   def test_map(self):
-    rp = self.ctx.load("ns1", "testMap").put_all(range(10))
+    rp = self.ctx.load("ns1", "testMap")#.put_all(range(10))
 
     print(rp.map(lambda k, v: (k + 1, v)).get_all())
 

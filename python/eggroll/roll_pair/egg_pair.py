@@ -219,10 +219,10 @@ class EggPair(object):
 
       tag = f'{task._job._id}-{output_partition._id}'
 
-      output_adapter = LmdbAdapter(options={"path":get_db_path(output_partition)})
-      TransferPair.receive(tag=tag,
-                           output_adapter=output_adapter,
-                           total_parititions_count=output_partition._store_locator._total_partitions)
+      output_adapter = LmdbAdapter(options={"path": get_db_path(output_partition)})
+      TransferPair.recv(tag=tag,
+                        output_adapter=output_adapter,
+                        write_signals=output_partition._store_locator._total_partitions)
       output_adapter.close()
 
     if task._name == 'put':
@@ -248,8 +248,6 @@ class EggPair(object):
       print(output_partition)
       total_partitions = input_partition._store_locator._total_partitions
 
-      output_adapter = LmdbAdapter(options={"path": get_db_path(output_partition)})
-
       # todo:0: decide partitioner
       partitioner = self.__partitioner(hash_func=hash_code, total_partitions=total_partitions)
       input_adapter = self.get_unary_input_adapter(task_info=task)
@@ -258,12 +256,10 @@ class EggPair(object):
       shuffle_broker = FifoBroker()
       shuffler = TransferPair(
               transfer_id=task._job._id,
-              input_broker=shuffle_broker,
-              output_store=output_store,
-              output_adapter=output_adapter,
-              output_partition_id=output_partition._id,
-              partition_function=partitioner)
-      shuffler.start()
+              output_store=output_store)
+
+      shuffler.start_send(shuffle_broker, partitioner)
+      shuffler.start_receive(output_partition._id)
 
       for k_bytes, v_bytes in input_adapter.iteritems():
         k1, v1 = f(self.serde.deserialize(k_bytes), self.serde.deserialize(v_bytes))
@@ -273,13 +269,7 @@ class EggPair(object):
       shuffle_broker.signal_write_finish()
 
       shuffler.join()
-
-      shuffle_finished = shuffler.wait_until_finished(600)
-
-      output_adapter.close()
-
       print('map finished')
-    # todo: use aggregate to reduce (also reducing duplicate codes)
     elif task._name == 'reduce':
       job = copy(task._job)
       reduce_functor = job._functors[0]
@@ -548,7 +538,7 @@ def serve(args):
       route_to_class_name="EggPair",
       route_to_method_name="run_task")
 
-  command_server = grpc.server(futures.ThreadPoolExecutor(max_workers=5),
+  command_server = grpc.server(futures.ThreadPoolExecutor(max_workers=10),
                                options=[
                                  (cygrpc.ChannelArgKey.max_send_message_length, -1),
                                  (cygrpc.ChannelArgKey.max_receive_message_length, -1)])
@@ -570,7 +560,7 @@ def serve(args):
     transfer_pb2_grpc.add_TransferServiceServicer_to_server(transfer_servicer,
                                                             transfer_server)
   else:
-    transfer_server = grpc.server(futures.ThreadPoolExecutor(max_workers=5),
+    transfer_server = grpc.server(futures.ThreadPoolExecutor(max_workers=10),
                                   options=[
                                     (cygrpc.ChannelArgKey.max_send_message_length, -1),
                                     (cygrpc.ChannelArgKey.max_receive_message_length, -1)])

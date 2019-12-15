@@ -13,35 +13,36 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import uuid
+from concurrent import futures
 from typing import Iterable
 
 import grpc
 from grpc._cython import cygrpc
 
-from eggroll.core.command.command_model import ErCommandRequest, ErCommandResponse, CommandURI
+from eggroll.core.client import CommandClient
+from eggroll.core.command.command_model import CommandURI
 from eggroll.core.conf_keys import DeployConfKeys
+from eggroll.core.constants import StoreTypes, SerdesTypes, PartitionerTypes, \
+  DeployType
 from eggroll.core.datastructure.broker import FifoBroker
 from eggroll.core.io.format import BinBatchReader
-from eggroll.core.meta_model import ErStoreLocator, ErJob, ErStore, ErFunctor, ErTask, ErEndpoint, ErPair, ErPartition, \
-  ErProcessor, ErSessionMeta, ErServerCluster, ErProcessorBatch
-from eggroll.core.proto import command_pb2_grpc
-from eggroll.core.serdes import cloudpickle, eggroll_serdes
-from eggroll.core.client import ClusterManagerClient, CommandClient
-from eggroll.core.grpc.factory import GrpcChannelFactory
-from eggroll.core.constants import StoreTypes, SerdesTypes, PartitionerTypes, ProcessorTypes, DeployType
-from eggroll.core.serdes.eggroll_serdes import PickleSerdes, CloudPickleSerdes, EmptySerdes
+from eggroll.core.io.io_utils import get_db_path
+from eggroll.core.io.kv_adapter import LmdbSortedKvAdapter, \
+  RocksdbSortedKvAdapter
+from eggroll.core.meta_model import ErStoreLocator, ErJob, ErStore, ErFunctor, \
+  ErTask, ErEndpoint, ErPair, ErPartition, \
+  ErServerCluster, ErProcessorBatch
+from eggroll.core.proto import transfer_pb2_grpc
+from eggroll.core.serdes import cloudpickle
+from eggroll.core.serdes.eggroll_serdes import PickleSerdes, CloudPickleSerdes, \
+  EmptySerdes
 from eggroll.core.session import ErSession
-from eggroll.core.transfer.transfer_service import GrpcTransferServicer, TransferClient
+from eggroll.core.transfer.transfer_service import GrpcTransferServicer
 from eggroll.core.utils import string_to_bytes, hash_code
 from eggroll.roll_pair.egg_pair import EggPair
 from eggroll.roll_pair.transfer_pair import TransferPair
-from concurrent import futures
-from eggroll.core.io.kv_adapter import LmdbSortedKvAdapter, RocksdbSortedKvAdapter
-from eggroll.core.io.io_utils import get_db_path
-from eggroll.core.conf_keys import SessionConfKeys
-from eggroll.core.proto import transfer_pb2_grpc
-
 from eggroll.utils import log_utils
+from threading import Thread
 
 log_utils.setDirectory()
 LOGGER = log_utils.getLogger()
@@ -113,6 +114,12 @@ class RollPairContext(object):
 
     return deployment.eggs[target_server_node][target_processor]
 
+  def populate_processor(self, store: ErStore):
+    populated_partitions = list()
+    for p in store._partitions:
+      pp = ErPartition(id=p._id, store_locator=p._store_locator, processor=self.route_to_egg(p))
+      populated_partitions.append(pp)
+    return ErStore(store_locator=store._store_locator, partitions=populated_partitions, options=store._options)
 
   def load(self, namespace=None, name=None, options={}):
     store_type = options.get('store_type', self.default_store_type)
@@ -176,7 +183,7 @@ class RollPair(object):
   GET = "get"
   PUT = "put"
   GET_ALL = "getAll"
-  PUT_ALL = "put_all"
+  PUT_ALL = "putAll"
   MAP = 'map'
   MAP_VALUES = 'mapValues'
   REDUCE = 'reduce'
@@ -202,7 +209,7 @@ class RollPair(object):
     self.__roll_pair_command_client = CommandClient()
     self.__store = er_store
     self.value_serdes = self.get_serdes()
-    self.key_sedes = self.get_serdes()
+    self.key_serdes = self.get_serdes()
     self.partitioner = self.__partitioner(hash_code, self.__store._store_locator._total_partitions)
     self.egg_router = default_egg_router
     self.ctx = rp_ctx
@@ -427,38 +434,55 @@ class RollPair(object):
 
     return self
 
-  def __put_all_cluster(self, items, output=None, options={"include_key": False}):
-    inputs = [ErPartition(id=part_id, store_locator=self.__store._store_locator)]
-    outputs = []
-    if output:
-      outputs.append(output)
+  def __put_all_cluster(self, items: Iterable, output=None, options={"include_key": False}):
+    include_key = options.get("include_key", False)
+    job_id = self.__session_id
+    def send_command():
+      job = ErJob(id=job_id,
+                  name="putAll",
+                  inputs=[self.__store],
+                  outputs=[self.__store],
+                  functors=[])
 
-    job = ErJob(id=self.__session_id, name="putAll",
-                inputs=[self.__store],
-                outputs=outputs,
-                functors=[])
-    task = ErTask(id=self.__session_id, name=RollPair.PUT, inputs=inputs, outputs=output, job=job)
-    LOGGER.info("start send req")
-    job_result = self.__roll_pair_command_client.simple_sync_send(
-      input=job,
-      output_type=ErJob,
-      endpoint=self.__roll_pair_service_endpoint,
-      command_uri=CommandURI(f'{RollPair.__uri_prefix}/{RollPair.MAP_VALUES}'),
-      serdes_type=self.__command_serdes)
-    # TODO: all aggs ?
-    shuffle_broker = FifoBroker()
-    shuffler = TransferPair(transfer_id=task._job._id,
-                            input_broker=shuffle_broker, output_store=output_store, output_adapter=output_partition, output_partition_id=1, partition_function=p)
+      result = self.__roll_pair_command_client.simple_sync_send(
+              input=job,
+              output_type=ErJob,
+              endpoint=self.ctx.get_roll_endpoint(),
+              command_uri=CommandURI(f'{RollPair.__uri_prefix}/{RollPair.PUT_ALL}'),
+              serdes_type=SerdesTypes.PROTOBUF)
 
-    for k1, v1 in items:
-      shuffle_broker.put(self.serde.serialize(k1), self.serde.serialize(v1))
-    LOGGER.info('finish calculating')
-    shuffle_broker.signal_write_finish()
-    # TODO: async ?
-    shuffler.start()
+      return result
 
-    shuffle_finished = shuffler.wait_until_finished(600)
-    return self.__store
+    command_thread = Thread(target=send_command)
+    command_thread.start()
+
+    populated_store = self.ctx.populate_processor(self.__store)
+
+    shuffler = TransferPair(job_id, populated_store)
+
+    broker = FifoBroker()
+    shuffler.start_send(input_broker=broker, partition_function=self.partitioner)
+
+    key_serdes = self.key_serdes
+    value_serdes = self.value_serdes
+
+    try:
+      if include_key:
+        for k, v in items:
+          broker.put(item=(key_serdes.serialize(k), value_serdes.serialize(v)))
+      else:
+        k = 0
+        for v in items:
+          broker.put(item=(key_serdes.serialize(k), value_serdes.serialize(v)))
+    except StopIteration as e:
+      pass
+    finally:
+      broker.signal_write_finish()
+
+    shuffler.join()
+    command_thread.join()
+
+    return RollPair(populated_store, self.ctx)
 
   def get_all(self, options={}):
     if self.ctx.deploy_mode == DeployType.STANDALONE:
@@ -467,7 +491,8 @@ class RollPair(object):
       return self.__get_all_cluster(options=options)
 
   def put_all(self, items, output=None, options={}):
-    if self.ctx.deploy_mode == DeployType.STANDALONE:
+    if self.ctx.deploy_mode != DeployType.STANDALONE:
+    #if self.ctx.deploy_mode == DeployType.STANDALONE:
       return self.__put_all_local(items, options=options)
     else:
       return self.__put_all_cluster(items, options=options)
@@ -521,7 +546,7 @@ class RollPair(object):
 
     return RollPair(er_store, self.ctx)
 
-  def map(self, func, output = None, options = {}):
+  def map(self, func, output=None, options={}):
     functor = ErFunctor(name=RollPair.MAP, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
     outputs = []
     if output:

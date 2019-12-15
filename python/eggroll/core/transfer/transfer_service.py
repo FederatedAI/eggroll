@@ -137,10 +137,9 @@ class TransferClient(object):
 
             yield batch
         except queue.Empty as e:
-          pass
+          print("transfer client queue empty")
         except Exception as e:
           print(e)
-
 
     stub = transfer_pb2_grpc.TransferServiceStub(channel)
     future = stub.send.future(transfer_batch_generator())
