@@ -14,7 +14,7 @@ import com.webank.eggroll.rollpair.component.RollPairServicer
 import org.apache.commons.lang3.StringUtils
 import _root_.io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
 
-class RollPairServiceBootstrap extends Bootstrap with Logging {
+class RollPairDriverBootstrap extends Bootstrap with Logging {
   private var port = 0
   private var sessionId = "er_session_null"
   private var nodeManager = ""
