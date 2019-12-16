@@ -108,7 +108,11 @@ class RollSite:
     return self.runtime_conf.get('role').get(role)
 
   def _thread_receive(self, packet):
-    print("_thread_receive")
+    storage_options = {'cluster_manager_host': 'localhost',
+                       'cluster_manager_port': 4670,
+                       'pair_type': 'v1/egg-pair',
+                       'egg_pair_service_host': 'localhost',
+                       'egg_pair_service_port': 20001}
     ret_packet = self.stub.unaryCall(packet)
     while ret_packet.header.ack != proxy_pb2.STOP:  #COMPLETE
       if ret_packet.header.ack in ERROR_STATES:
