@@ -13,32 +13,29 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
-
-from api import rollsite
-
-if __name__ == '__main__':
-    #ggroll.init("atest")
-    rollsite.init("atest", "roll_site/test/role_conf.json", "roll_site/test/server_conf.json")
-    _tag = "Hello"
-    a = _tag
+import unittest
+from eggroll.roll_site.roll_site import RollSiteContext
+from eggroll.core.session import ErSession
+from eggroll.roll_pair.roll_pair import RollPairContext
 
 
-    #content = f.read(10000)
-    #print(content)
-    '''
-    while True:
-        print("push!!!")
-        content = f.read(10000)
-        if not content:
-            break
-        #print(content)
-        rollsite.push(content, "model_A", tag="{}".format(_tag))
-    '''
+class TestRemote(unittest.TestCase):
+    def test_remote(self):
+        rp_session = ErSession(session_id='testing', options={"eggroll.deploy.mode": "standalone"})
+        rp_context = RollPairContext(rp_session)
 
-    fp = open("testA.model", 'r')
-    rollsite.push(fp, "model_A", tag="{}".format(_tag))
-    fp.close()
+        options = {'runtime_conf_path': 'python/eggroll/roll_site/conf/role_conf.json',
+                   'server_conf_path': 'python/eggroll/roll_site/conf/server_conf.json',
+                   'transfer_conf_path': 'python/eggroll/roll_site/conf/transfer_conf.json'}
+        context = RollSiteContext("atest2", options=options, rp_ctx=rp_context)
 
+        _tag = "Hello"
+        rs = context.load(name="RsaIntersectTransferVariable.rsa_pubkey", tag="{}".format(_tag))
+        fp = open("testA.model", 'r')
+        content = fp.read(35)
+        future = rs.push(content)
+        fp.close()
+        print("result:", future.result())
 
 
 
