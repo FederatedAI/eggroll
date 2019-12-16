@@ -50,7 +50,7 @@ class SessionManagerService extends SessionManager {
     }
     // TODO:0: dispatch processor
     // 0. generate a simple processors -> server plan, and fill sessionMeta.processors
-    // 1. class NodeManager.bootSessionProcessors
+    // 1. class NodeManager.startContainers
     // 2. query session_main's active_proc_count , wait all processor heart beats.
     register(sessionMeta)
   }

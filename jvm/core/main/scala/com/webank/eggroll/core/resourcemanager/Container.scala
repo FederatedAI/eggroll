@@ -28,7 +28,7 @@ import org.apache.commons.lang3.StringUtils
 
 // todo: abstract to general python starter
 // todo: args design
-class ProcessorOperator(conf: RuntimeErConf) extends Logging {
+class Container(conf: RuntimeErConf) extends Logging {
 
   private val exePath = conf.getString("eggroll.node.exe")
   private val sessionId = conf.getString(SessionConfKeys.CONFKEY_SESSION_ID)
