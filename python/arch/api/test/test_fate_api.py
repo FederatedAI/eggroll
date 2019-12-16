@@ -5,7 +5,7 @@ import uuid
 
 class TestFateApi(unittest.TestCase):
   def setUp(self):
-    session.init("testFateApi_" + str(uuid.uuid1()))
+    session.init("testing")
 
   def test_parallelize(self):
     print("session id:{}".format(session.get_session_id()))

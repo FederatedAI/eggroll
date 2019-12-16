@@ -62,8 +62,8 @@ class LmdbWriteBatch(PairWriteBatch):
     def put(self, k, v):
         self.txn.put(k, v)
 
-    def delete(self, k, v):
-        self.txn.delete(k, v)
+    def delete(self, k):
+        self.txn.delete(k)
 
     def write(self):
         pass
@@ -159,4 +159,6 @@ class LmdbAdapter(PairAdapter):
 
     def count(self):
         return self.txn.stat()["entries"]
-        #return self.cursor.count()
+
+    def delete(self, k):
+        self.txn.delete(k)
