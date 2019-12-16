@@ -71,7 +71,7 @@ class TestStandalone(unittest.TestCase):
 
   def test_map_values(self):
     rp = self.ctx.load("ns1", "test_map_values").put_all(range(10))
-    print(rp.map_values(lambda v: str(v) + 'map_values').get_all())
+    print(list(rp.map_values(lambda v: str(v) + 'map_values').get_all()))
 
   def test_map_partitions(self):
     data = [(str(i), i) for i in range(10)]
@@ -108,7 +108,7 @@ class TestStandalone(unittest.TestCase):
 
   def test_filter(self):
     rp = self.ctx.load("ns1", "test_filter").put_all(range(5))
-    print(rp.filter(lambda k, v: v % 2 != 0).get_all())
+    print(list(rp.filter(lambda k, v: v % 2 != 0).get_all()))
 
   def test_flatMap(self):
     rp = self.ctx.load("ns1", "test_flat_map").put_all(range(5))

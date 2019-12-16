@@ -13,7 +13,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import uuid
-from typing import Iterable
 from threading import Thread
 
 from eggroll.core.client import CommandClient
@@ -32,26 +31,12 @@ from eggroll.core.pair_store.adapter import BrokerAdapter
 from eggroll.core.serdes import cloudpickle
 from eggroll.core.serdes.eggroll_serdes import PickleSerdes, CloudPickleSerdes, \
   EmptySerdes
-from eggroll.core.io.format import BinBatchReader
-from eggroll.core.meta_model import ErStoreLocator, ErJob, ErStore, ErFunctor, ErTask, ErEndpoint, ErPair, ErPartition, \
-  ErServerCluster, ErProcessorBatch
-
-from eggroll.core.serdes import cloudpickle, eggroll_serdes
-from eggroll.core.client import ClusterManagerClient, CommandClient
-
-from eggroll.core.constants import StoreTypes, SerdesTypes, PartitionerTypes, DeployType
-from eggroll.core.serdes.eggroll_serdes import PickleSerdes, CloudPickleSerdes, EmptySerdes
 from eggroll.core.session import ErSession
 from eggroll.core.utils import string_to_bytes, hash_code
 from eggroll.roll_pair import create_serdes
 from eggroll.roll_pair.egg_pair import EggPair
 from eggroll.roll_pair.transfer_pair import TransferPair
-from concurrent import futures
-from eggroll.core.io.kv_adapter import LmdbSortedKvAdapter, RocksdbSortedKvAdapter
-
-from eggroll.core.proto import transfer_pb2_grpc
 from eggroll.roll_pair.utils.pair_utils import partitioner, get_db_path
-
 from eggroll.utils import log_utils
 
 log_utils.setDirectory()
@@ -375,6 +360,7 @@ class RollPair(object):
     adapter = BrokerAdapter(FifoBroker(write_signals=self.__store._store_locator._total_partitions))
     transfer_pair.start_pull(adapter)
 
+    # TODO:0: move to generator
     return pair_generator(adapter, self.key_serdes, self.value_serdes, cleanup)
 
   def put_all(self, items, output=None, options={}):

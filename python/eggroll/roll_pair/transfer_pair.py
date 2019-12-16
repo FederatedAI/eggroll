@@ -23,6 +23,7 @@ from eggroll.core.pair_store.format import PairBinReader, PairBinWriter, \
 from eggroll.core.transfer.transfer_service import TransferClient, \
     TransferService
 from eggroll.core.utils import _exception_logger
+from eggroll.roll_pair import create_adapter
 
 
 class TransferPair(object):
@@ -110,7 +111,7 @@ class TransferPair(object):
         from eggroll.core.pair_store.lmdb import LmdbAdapter
         from eggroll.core.io.io_utils import get_db_path
 
-        self.__output_adapter = LmdbAdapter(options={"path": get_db_path(self.__output_store._partitions[output_partition_id])})
+        self.__output_adapter = create_adapter(self.__output_store._partitions[output_partition_id])
         self.__recv_future = self.__push_executor_pool \
             .submit(TransferPair.recv,
                     output_adapter=self.__output_adapter,
