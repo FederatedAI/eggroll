@@ -11,8 +11,6 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-from eggroll.core.pair_store.lmdb import LmdbAdapter
-from eggroll.core.pair_store.rocksdb import RocksdbAdapter
 from eggroll.core.pair_store.adapter import FileAdapter, MmapAdapter, CacheAdapter
 
 STORE_TYPE_LMDB = "rollpair.lmdb"
@@ -25,9 +23,11 @@ def create_pair_adapter(options: dict):
     ret = None
     # TODO:0: rename type name?
     if options["store_type"] == STORE_TYPE_LMDB:
-        ret = LmdbAdapter(options=options)
+      from eggroll.core.pair_store.lmdb import LmdbAdapter
+      ret = LmdbAdapter(options=options)
     elif options["store_type"] == STORE_TYPE_ROCKSDB:
-        ret = RocksdbAdapter(options=options)
+      from eggroll.core.pair_store.rocksdb import RocksdbAdapter
+      ret = RocksdbAdapter(options=options)
     elif options["store_type"] == STORE_TYPE_FILE:
         ret = FileAdapter(options=options)
     elif options["store_type"] == STORE_TYPE_MMAP:

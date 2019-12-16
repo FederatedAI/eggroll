@@ -15,6 +15,7 @@
 #
 import grpc
 import concurrent
+from concurrent import futures
 from eggroll.utils import file_utils
 from eggroll.utils.log_utils import getLogger
 from eggroll.core.meta_model import ErStoreLocator, ErStore
@@ -63,14 +64,6 @@ CONF_KEY_LOCAL = "local"
 CONF_KEY_SERVER = "servers"
 
 
-def _thread_receive(stub, packet):
-  ret_packet = stub.unaryCall(packet)
-  while ret_packet.header.ack != proxy_pb2.STOP:
-    if ret_packet.header.ack in ERROR_STATES:
-      raise IOError("receive terminated")
-  return ret_packet
-
-
 class RollSite:
   def __init__(self, name: str, tag: str, role, rs_ctx: RollSiteContext):
     self.ctx = rs_ctx
@@ -97,9 +90,6 @@ class RollSite:
   def __check_authorization(self, name, is_send=True):
     algorithm, sub_name = name.split(".")
     auth_dict = self.trans_conf.get(algorithm)
-    print(algorithm)
-    print(sub_name)
-    print(auth_dict)
 
     if auth_dict is None:
       raise ValueError("{} did not set in transfer_conf.json".format(algorithm))
@@ -107,7 +97,6 @@ class RollSite:
     if auth_dict.get(sub_name) is None:
       raise ValueError("{} did not set under algorithm {} in transfer_conf.json".format(sub_name, algorithm))
 
-    print(self.trans_conf.get('dst'))
     if is_send and self.trans_conf.get('src') != self.src_role:
       raise ValueError("{} is not allow to send from {}".format(self.src_role))
     elif not is_send and self.src_role not in auth_dict.get(sub_name).get('dst'):
@@ -118,6 +107,25 @@ class RollSite:
   def __get_parties(self, role):
     return self.runtime_conf.get('role').get(role)
 
+  def _thread_receive(self, stub, packet):
+    ret_packet = stub.unaryCall(packet)
+    while ret_packet.header.ack != proxy_pb2.STOP:  #COMPLETE
+      if ret_packet.header.ack in ERROR_STATES:
+        raise IOError("receive terminated")
+      ret_packet = stub.unaryCall(packet)
+
+    _tagged_key = self.__remote__object_key(self.job_id, self.name, self.tag,
+                                            self.src_role, self.party_id,
+                                            packet.header.dst.role,
+                                            packet.header.dst.partyId,
+                                            self.dst_host,
+                                            self.dst_port)
+    store = ErStore(ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LMDB,
+                                   namespace="test",
+                                   name=_tagged_key))
+    rp = RollPair(store, options=storage_options)
+    return rp
+
   def push(self, obj, idx=-1):
     storage_options = {'cluster_manager_host': 'localhost',
                        'cluster_manager_port': 4670,
@@ -125,8 +133,7 @@ class RollSite:
                        'egg_pair_service_host': 'localhost',
                        'egg_pair_service_port': 20001}
 
-    self.__check_authorization(self.name)
-    print("type of obj:", type(obj))
+    #self.__check_authorization(self.name)
 
     if idx >= 0:
       if self.dst_role is None:
@@ -139,10 +146,9 @@ class RollSite:
     else:
       parties = {}
       for _role in self.trans_conf.get('dst'):
-        print(_role)
         parties[_role] = self.__get_parties(_role)
-        print ("type of parties:", type(parties))
 
+    rp_list = []
     for _role, _partyInfos in parties.items():
       for _partyId in _partyInfos:
         _tagged_key = self.__remote__object_key(self.job_id, self.name, self.tag, self.src_role, self.party_id, _role,
@@ -166,14 +172,15 @@ class RollSite:
 
         LOGGER.debug("[REMOTE] Sending {}".format(_tagged_key))
         rp = self.ctx.rp_ctx.load(namespace, name)
-        ret = rp.map_values(lambda v: v, output=ErStore(store_locator =
-                                                        ErStoreLocator(store_type=StoreTypes.ROLLPAIR_ROLLSITE,
-                                                                       namespace=namespace,
-                                                                       name=_tagged_key)))
-        print(ret)
+        future = self.__pool.submit(rp.map_values,
+                                    lambda v: v,
+                                    output=ErStore(store_locator = ErStoreLocator(store_type=StoreTypes.ROLLPAIR_ROLLSITE,
+                                                                                  namespace=namespace,
+                                                                                  name=_tagged_key)))
+        rp_list.append(future)
 
         LOGGER.debug("[REMOTE] Sent {}".format(_tagged_key))
-        break
+    return rp_list
 
 
   def pull(self, idx=-1):
@@ -225,26 +232,12 @@ class RollSite:
       data = proxy_pb2.Data(key="hello")
       packet = proxy_pb2.Packet(header=metadata, body=data)
 
-      results.append(self.__pool.submit(_thread_receive, self.stub, packet))
-
-    results = [r.result() for r in results]
-    rtn = []
-    for packet in results:
-      _tagged_key = self.__remote__object_key(self.job_id, self.name, self.tag,
-                                              self.src_role, self.party_id,
-                                              packet.header.dst.role,
-                                              packet.header.dst.partyId,
-                                              self.dst_host,
-                                              self.dst_port)
-      store = ErStore(ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LMDB,
-                                     namespace="test",
-                                     name=_tagged_key))
-      rp = RollPair(store, options=storage_options)
-      rtn.append(rp)
+      results.append(self.__pool.submit(RollSite._thread_receive, self.stub, packet))
 
     if 0 <= idx < len(src_party_ids):
-      return rtn[0]
-    return rtn
+      return results[0]
+
+    return results
 
 
 

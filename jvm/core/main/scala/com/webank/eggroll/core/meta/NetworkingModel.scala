@@ -37,6 +37,12 @@ trait NetworkingRpcMessage extends RpcMessage {
 case class ErEndpoint(@BeanProperty host: String, @BeanProperty port: Int = -1) extends NetworkingRpcMessage {
   override def toString: String = s"$host:$port"
 }
+object ErEndpoint {
+  def apply(url:String): ErEndpoint = {
+    val toks = url.split(":")
+    new ErEndpoint(toks(0), toks(1).toInt)
+  }
+}
 
 case class ErProcessor(id: Long = -1,
                        serverNodeId: Long = -1,

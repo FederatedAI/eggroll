@@ -231,6 +231,9 @@ class LmdbSortedKvAdapter(SortedKvAdapter):
     return self.txn.stat()["entries"]
     #return self.cursor.count()
 
+  def delete(self, k):
+    self.txn.delete(k)
+
 class RocksdbWriteBatch(SortedKvWriteBatch):
   def __init__(self, adapter, chunk_size=100000):
     self.chunk_size = chunk_size
@@ -245,8 +248,8 @@ class RocksdbWriteBatch(SortedKvWriteBatch):
     self.batch.put(k, v)
     self.write()
 
-  def delete(self, k, v):
-    self.adapter.db.delete(k, v)
+  def delete(self, k):
+    self.adapter.db.delete(k)
 
   def write(self):
     self.adapter.db.write(self.batch)
@@ -363,3 +366,5 @@ class RocksdbSortedKvAdapter(SortedKvAdapter):
     it = self.iteritems()
     return sum(1 for _ in it.it)
 
+  def delete(self, k):
+    self.adapter.db.delete(k)
