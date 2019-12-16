@@ -79,8 +79,8 @@ class FifoBroker(Broker):
   def signal_write_finish(self):
     if self.is_write_finished():
       raise ValueError(f"finish signaling overflows. initial value: {self.__total_write_signals}")
-
-    self.__remaining_write_signal_count -= 1
+    else:
+      self.__remaining_write_signal_count -= 1
 
   def get_remaining_write_signal_count(self):
     return self.__remaining_write_signal_count

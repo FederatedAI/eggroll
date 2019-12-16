@@ -31,7 +31,6 @@ from eggroll.core.constants import ProcessorTypes, ProcessorStatus, SerdesTypes
 from eggroll.core.datastructure.broker import FifoBroker
 from eggroll.core.meta_model import ErPair, ErStore
 from eggroll.core.meta_model import ErTask, ErProcessor, ErEndpoint
-from eggroll.core.pair_store.lmdb import LmdbAdapter
 from eggroll.core.proto import command_pb2_grpc, transfer_pb2_grpc
 from eggroll.core.serdes import cloudpickle
 from eggroll.core.transfer.transfer_service import GrpcTransferServicer, \
@@ -41,6 +40,8 @@ from eggroll.core.utils import hash_code
 from eggroll.roll_pair import create_adapter, create_serdes
 from eggroll.roll_pair.transfer_pair import TransferPair
 from eggroll.utils import log_utils
+from eggroll.core.io.io_utils import get_db_path
+from threading import Thread
 from eggroll.roll_pair.utils.pair_utils import generator
 from eggroll.roll_pair.utils.pair_utils import get_db_path
 
@@ -106,6 +107,7 @@ class EggPair(object):
   @_exception_logger
   def run_task(self, task: ErTask):
     LOGGER.info("start run task")
+    print("start run task")
     functors = task._job._functors
     result = task
 
@@ -120,52 +122,45 @@ class EggPair(object):
       input_adapter.close()
     elif task._name == 'getAll':
       LOGGER.info("egg_pair getAll call")
-      f = cloudpickle.loads(functors[0]._body)
-      LOGGER.info("get roll revc port:{}".format(f._port))
+      print('egg_pair getAll call')
       input_partition = task._inputs[0]
-      #roll_client_transfer_endpoint = cloudpickle.loads(functors[0]._body).split(":")
-      rct_host = f._host
-      rct_port = f._port
-      LOGGER.info("host:{}, port:{}".format(rct_host, rct_port))
 
-      # todo: decide partitioner
-      #p = lambda k : k[-1] % output_partition._store_locator._total_partitions
-      total_partitions = input_partition._store_locator._total_partitions
-      partitioner = self.__partitioner(hash_func=hash_code, total_partitions=total_partitions)
-      partition_id = partitioner(get_db_path(input_partition)[:-1])
+      tag = f'{task._id}'
 
-      input_adapter = self.get_unary_input_adapter(task_info=task)
+      bin_output_broker = TransferService.get_or_create_broker(tag)
+      input_adapter = create_adapter(task._inputs[0])
+      pair_broker = FifoBroker()
 
-      broker = FifoBroker()
-      transfer = TransferClient()
-      LOGGER.info("job id:{}".format(task._job._id))
-      future = transfer.send_pair(broker, task._job._id,
-                                  ErProcessor(command_endpoint=ErEndpoint(host=rct_host, port=rct_port)))
-      i = 0
-      for k_bytes, v_bytes in input_adapter.iteritems():
-        broker.put(bytes(i), bytes(i))
-        i = i + 1
-      LOGGER.info('finish calculating')
+      t = Thread(target=TransferPair.send, args=[pair_broker, bin_output_broker])
+      t.start()
+      for pair in input_adapter.iteritems():
+        pair_broker.put(pair)
+
+      pair_broker.signal_write_finish()
+      t.join()
       input_adapter.close()
-      #while broker.is_read_ready():
-        #LOGGER.info("read broker:{}".format(broker.get()))
-      broker.signal_write_finish()
 
-      future.result()
-      LOGGER.info('getAll finished')
+      # TODO:0: self-destroy broker, like gc
+      from time import sleep
+      while not bin_output_broker.is_closable():
+        sleep(1)
+      TransferService.remove_broker(tag)
+
+    # TODO:0: multiprocessor scenario
     elif task._name == 'putAll':
       print("egg_pair putAll call")
 
       output_partition = task._outputs[0]
 
-      #tag = f'{task._job._id}-{output_partition._id}'
-      tag = output_partition._store_locator._name
+      tag = f'{task._id}'
 
-      output_adapter = LmdbAdapter(options={"path":get_db_path(output_partition)})
-      TransferPair.receive(tag=tag,
-                           output_adapter=output_adapter,
-                           total_parititions_count=output_partition._store_locator._total_partitions)
+      print('egg_pair transfer service tag:', tag)
+      output_adapter = create_adapter(task._outputs[0])
+      output_broker = TransferService.get_or_create_broker(tag, write_signals=1)
+      TransferPair.recv(output_adapter=output_adapter,
+                        output_broker=output_broker)
       output_adapter.close()
+      TransferService.remove_broker(tag)
 
     if task._name == 'put':
       print("egg_pair put call")
@@ -185,7 +180,7 @@ class EggPair(object):
 
     if task._name == 'delete':
       f = cloudpickle.loads(functors[0]._body)
-      input_adapter = self.get_unary_input_adapter(task_info=task)
+      input_adapter = create_adapter(task._inputs[0])
       if input_adapter.delete(f._key):
         LOGGER.info("delete k success")
 
@@ -204,22 +199,18 @@ class EggPair(object):
       print(output_partition)
       total_partitions = input_partition._store_locator._total_partitions
 
-      output_adapter = LmdbAdapter(options={"path": get_db_path(output_partition)})
-
       # todo:0: decide partitioner
       partitioner = self.__partitioner(hash_func=hash_code, total_partitions=total_partitions)
-      input_adapter = self.get_unary_input_adapter(task_info=task)
+      input_adapter = create_adapter(task._inputs[0])
       output_store = task._job._outputs[0]
 
       shuffle_broker = FifoBroker()
       shuffler = TransferPair(
               transfer_id=task._job._id,
-              input_broker=shuffle_broker,
-              output_store=output_store,
-              output_adapter=output_adapter,
-              output_partition_id=output_partition._id,
-              partition_function=partitioner)
-      shuffler.start()
+              output_store=output_store)
+
+      shuffler.start_push(shuffle_broker, partitioner)
+      shuffler.start_recv(output_partition._id)
 
       for k_bytes, v_bytes in input_adapter.iteritems():
         k1, v1 = f(self.serde.deserialize(k_bytes), self.serde.deserialize(v_bytes))
@@ -229,13 +220,7 @@ class EggPair(object):
       shuffle_broker.signal_write_finish()
 
       shuffler.join()
-
-      shuffle_finished = shuffler.wait_until_finished(600)
-
-      output_adapter.close()
-
       print('map finished')
-    # todo: use aggregate to reduce (also reducing duplicate codes)
     elif task._name == 'reduce':
       job = copy(task._job)
       reduce_functor = job._functors[0]
@@ -308,6 +293,7 @@ class EggPair(object):
       self._run_unary(filter_wrapper, task)
 
     elif task._name == 'aggregate':
+      print('ready to aggregate')
       self.aggregate(task)
       print('aggregate finished')
 
@@ -379,25 +365,27 @@ class EggPair(object):
 
   def aggregate(self, task: ErTask):
     functors = task._job._functors
-    zero_value = None if not functors[0] else cloudpickle.loads(functors[0]._body)
+    zero_value = None if functors[0] is None else cloudpickle.loads(functors[0]._body)
     seq_op = cloudpickle.loads(functors[1]._body)
     comb_op = cloudpickle.loads(functors[2]._body)
 
     input_partition = task._inputs[0]
-    input_adapter = self.get_unary_input_adapter(task_info=task)
-    input_serdes = self._create_serdes(task._inputs[0]._store_locator._serdes)
-    output_serdes = self._create_serdes(task._outputs[0]._store_locator._serdes)
+    input_adapter = create_adapter(task._inputs[0])
+    input_key_serdes = create_serdes(task._inputs[0]._store_locator._serdes)
+    input_value_serdes = input_key_serdes
+    output_key_serdes = create_serdes(task._outputs[0]._store_locator._serdes)
+    output_value_serdes = output_key_serdes
 
     seq_op_result = zero_value if zero_value is not None else None
 
     for k_bytes, v_bytes in input_adapter.iteritems():
       if seq_op_result:
-        seq_op_result = seq_op(seq_op_result, input_serdes.deserialize(v_bytes))
+        seq_op_result = seq_op(seq_op_result, input_value_serdes.deserialize(v_bytes))
       else:
-        seq_op_result = input_serdes.deserialize(v_bytes)
+        seq_op_result = input_value_serdes.deserialize(v_bytes)
 
     partition_id = input_partition._id
-    transfer_tag = task._job._name
+    transfer_tag = task._job._id
 
     if 0 == partition_id:
       partition_size = input_partition._store_locator._total_partitions
@@ -407,28 +395,27 @@ class EggPair(object):
 
       for i in range(1, partition_size):
         other_seq_op_result = queue.get(block=True, timeout=10)
-        comb_op_result = comb_op(comb_op_result, output_serdes.deserialize(other_seq_op_result.data))
+        comb_op_result = comb_op(comb_op_result, output_value_serdes.deserialize(other_seq_op_result.data))
 
       print('aggregate finished. result: ', comb_op_result)
-      output_partition = task._outputs[0]
-      output_adapter = self.get_unary_output_adapter(task_info=task)
+      output_adapter = create_adapter(task._outputs[0])
 
       output_writebatch = output_adapter.new_batch()
-      output_writebatch.put(output_serdes.serialize('result'.encode()), output_serdes.serialize(comb_op_result))
+      output_writebatch.put(output_key_serdes.serialize('result'.encode()), output_value_serdes.serialize(comb_op_result))
 
       output_writebatch.close()
       output_adapter.close()
       TransferService.remove_broker(transfer_tag)
     else:
-      ser_seq_op_result = output_serdes.serialize(seq_op_result)
+      ser_seq_op_result = output_value_serdes.serialize(seq_op_result)
       transfer_client = TransferClient()
 
       broker = FifoBroker()
-      broker.put(ser_seq_op_result)
-      broker.signal_write_finish()
       future = transfer_client.send(broker=broker,
                                     endpoint=task._outputs[0]._processor._transfer_endpoint,
                                     tag=transfer_tag)
+      broker.put(ser_seq_op_result)
+      broker.signal_write_finish()
       future.result()
 
     input_adapter.close()
