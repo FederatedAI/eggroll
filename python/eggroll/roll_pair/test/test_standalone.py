@@ -41,15 +41,15 @@ class TestStandalone(unittest.TestCase):
   def test_put_all(self):
     #data = [("k1", "v1"), ("k2", "v2"), ("k3", "v3"), ("k4", "v4"), ("k5", "v5"), ("k6", "v6")]
     data = [("k1", "v1"), ("k2", "v2")]
-    self.ctx.load("ns1", "n36").put_all(data, options={"include_key": True})
+    self.ctx.load("ns1", "testPutAll").put_all(data, options={"include_key": True})
     table =self.ctx.load("ns1", "n36").get_all()
     print("get res:{}".format(table))
 
   def test_get_all(self):
-    table =self.ctx.load("ns1", "testPutBatch")
+    table =self.ctx.load("ns1", "testMultiPartitionsMap")
     print(str(table))
     res = table.get_all()
-    print(res)
+    print(list(res))
 
   def test_count(self):
     options = {}

@@ -34,58 +34,91 @@ class TransferPair(object):
         self.__output_store = output_store
 
         self.__output_adapter = None
+        self.__output_tag = None
         self.__total_partitions = self.__output_store._store_locator._total_partitions
 
         self.__partitioned_brokers = list()
         self.__total_partitioned_elements_count = 0
 
-        self.__send_executor_pool = None
+        self.__push_executor_pool = None
+        self.__pull_executor_pool = None
         self.__recv_executor_pool = None
 
         self.__partition_futures = list()
-        self.__send_futures = list()
+        self.__rpc_call_futures = list()
+        self.__push_futures = list()
+        self.__pull_future = None
         self.__recv_future = None
 
     def __generate_tag(self, partition_id):
         return f'{self.__transfer_id}-{partition_id}'
 
     @_exception_logger
-    def start_send(self, input_broker, partition_function):
-        self.__send_executor_pool = ThreadPoolExecutor(max_workers=self.__total_partitions + 1)
+    def start_push(self, input_broker, partition_function):
+        self.__push_executor_pool = ThreadPoolExecutor(max_workers=self.__total_partitions + 1)
         self.__partitioned_brokers = [FifoBroker() for i in range(self.__total_partitions)]
         output_partitions = self.__output_store._partitions
 
-        future = self.__send_executor_pool\
+        partition_future = self.__push_executor_pool\
             .submit(TransferPair.partitioner,
                     input_broker,
                     self.__partitioned_brokers,
                     partition_function)
-        self.__partition_futures.append(future)
+        self.__partition_futures.append(partition_future)
 
         for i in range(self.__total_partitions):
-            future = self.__send_executor_pool.submit(
-                    TransferPair.send,
-                    tag=self.__generate_tag(i),
-                    input_broker=self.__partitioned_brokers[i],
-                    target_partition=output_partitions[i])
-            self.__send_futures.append(future)
+            tag = self.__generate_tag(i)
+            transfer_broker = FifoBroker()
+            rpc_call_future = TransferPair.transfer_rpc_call(
+                    tag=tag,
+                    command_name='send',
+                    target_partition=output_partitions[i],
+                    output_broker=transfer_broker)
+            self.__rpc_call_futures.append(rpc_call_future)
 
-    def start_receive(self, output_partition_id):
+            push_future = self.__push_executor_pool.submit(
+                    TransferPair.send,
+                    input_broker=input_broker,
+                    output_broker=transfer_broker)
+            self.__push_futures.append(push_future)
+
+    @_exception_logger
+    def start_pull(self, input_adapter):
+        def start_pull_partition(partition_id):
+            tag = self.__generate_tag(partition_id)
+
+            input_broker = TransferPair.transfer_rpc_call(
+                    tag=tag,
+                    command_name='recv',
+                    target_partition=self.__output_store._partitions[partition_id])
+
+            TransferPair.recv(input_adapter, input_broker)
+
+        def start_sequential_pull():
+            for i in range(self.__total_partitions):
+                start_pull_partition(i)
+        self.__pull_executor_pool = ThreadPoolExecutor(max_workers=1)
+        self.__pull_future = self.__pull_executor_pool.submit(start_sequential_pull)
+
+    @_exception_logger
+    def start_recv(self, output_partition_id):
         self.__recv_executor_pool = ThreadPoolExecutor(max_workers=1)
 
         from eggroll.core.pair_store.lmdb import LmdbAdapter
         from eggroll.core.io.io_utils import get_db_path
 
         self.__output_adapter = LmdbAdapter(options={"path": get_db_path(self.__output_store._partitions[output_partition_id])})
-        self.__recv_future = self.__send_executor_pool \
+        self.__output_tag = self.__generate_tag(output_partition_id)
+        output_broker = TransferService.get_or_create_broker(self.__output_tag, write_signals=self.__total_partitions)
+        self.__recv_future = self.__push_executor_pool \
             .submit(TransferPair.recv,
-                    self.__generate_tag(output_partition_id),
-                    self.__output_adapter,
-                    self.__total_partitions)
+                    output_adapter=self.__output_adapter,
+                    output_broker=output_broker)
 
-    def _join_send(self):
+    def _join_push(self):
         print('joining')
         partition_finished, partition_not_finished = wait(self.__partition_futures, return_when=FIRST_EXCEPTION)
+        push_finished, push_not_finished = wait(self.__push_futures, return_when=FIRST_EXCEPTION)
         for broker in self.__partitioned_brokers:
             broker.signal_write_finish()
         try:
@@ -97,16 +130,25 @@ class TransferPair(object):
                 for e in partition_finished:
                     raise e.exception(timeout=5)
 
-            for future in self.__send_futures:
+            if len(push_finished) == len(self.__push_futures):
+                print('finishing send broker normally')
+                self.__is_partition_finished = True
+            else:
+                print('finishing send broker abnormally')
+                for e in partition_finished:
+                    raise e.exception(timeout=5)
+
+            for future in self.__rpc_call_futures:
                 try:
-                    print('finishing send normally')
+                    print('finishing send rpc call normally')
                     result = future.result()
-                    print('send actually finished')
+                    print('send rpc call actually finished')
                 except Exception as e:
                     print('finishing send with exception: ', e)
                     raise e
         finally:
-            self.__send_executor_pool.shutdown(wait=False)
+            if self.__push_executor_pool:
+                self.__push_executor_pool.shutdown(wait=False)
 
     def _join_recv(self):
         try:
@@ -119,11 +161,25 @@ class TransferPair(object):
         finally:
             if self.__output_adapter:
                 self.__output_adapter.close()
+            if self.__output_tag:
+                TransferService.remove_broker(self.__output_tag)
             if self.__recv_executor_pool:
                 self.__recv_executor_pool.shutdown(wait=False)
 
+    def _join_pull(self):
+        try:
+            if self.__pull_future:
+                print('finishing pull normally')
+                self.__pull_future.result()
+                print('pull finished normally')
+        except Exception as e:
+            print('finishing pull with exception', e)
+        finally:
+            if self.__pull_executor_pool:
+                self.__pull_executor_pool.shutdown(wait=False)
+
     def join(self):
-        self._join_send()
+        self._join_push()
         self._join_recv()
 
     def get_total_partitioned_count(self):
@@ -149,58 +205,73 @@ class TransferPair(object):
 
     @staticmethod
     @_exception_logger
-    def send(tag: str, input_broker, target_partition, buffer_size=32 << 20):
-        print('sender started')
+    def transfer_rpc_call(tag: str, command_name: str, target_partition, output_broker=None):
+        print('starting send command')
         client = TransferClient()
-        send_broker = FifoBroker()
-        future = client.send(broker=send_broker,
-                             endpoint=target_partition._processor._transfer_endpoint,
-                             tag=tag)
+        target_endpoint = target_partition._processor._transfer_endpoint
+        result = None
+        if command_name == 'send':
+            result = client.send(broker=output_broker,
+                                 endpoint=target_endpoint,
+                                 tag=tag)
+        elif command_name == 'recv':
+            result = client.recv(endpoint=target_endpoint, tag=tag)
+        else:
+            raise ValueError('operation not implemented')
 
+        return result
+
+
+    @staticmethod
+    @_exception_logger
+    def send(input_broker, output_broker, buffer_size=32 << 20):
+        print('sender started')
+
+        total_sent = 0
         ba = None
         buffer = None
         writer = None
 
-        def commit():
+        def commit(bs=buffer_size):
             nonlocal ba
             nonlocal buffer
             nonlocal writer
             if ba:
                 bin_batch = bytes(ba[0:buffer.get_offset()])
-                send_broker.put(bin_batch)
-            ba = bytearray(buffer_size)
+                output_broker.put(bin_batch)
+            ba = bytearray(bs)
             buffer = ArrayByteBuffer(ba)
             writer = PairBinWriter(pair_buffer=buffer)
 
         commit()
         pair = None
         while not input_broker.is_closable():
+            total_sent += 1
             try:
                 pair = input_broker.get(block=True, timeout=1)
                 writer.write(pair[0], pair[1])
             except IndexError as e:
-                commit()
+                commit(max(buffer_size, len(pair[0] + pair[1])))
                 writer.write(pair[0], pair[1])
             except queue.Empty:
                 print("transfer send queue empty")
 
         commit()
         print("finish static send")
-        send_broker.signal_write_finish()
+        output_broker.signal_write_finish()
 
-        return future.result()
+        return total_sent
 
     @staticmethod
     @_exception_logger
-    def recv(tag, output_adapter, write_signals):
+    def recv(output_adapter, output_broker):
         print('receiver started')
         total_written = 0
-        broker = TransferService.get_or_create_broker(tag, write_signals=write_signals)
 
         output_write_batch = output_adapter.new_batch()
-        while not broker.is_closable():
+        while not output_broker.is_closable():
             try:
-                transfer_batch = broker.get(block=True, timeout=1)
+                transfer_batch = output_broker.get(block=True, timeout=1)
                 if transfer_batch:
                     bin_data = ArrayByteBuffer(transfer_batch.data)
                     reader = PairBinReader(pair_buffer=bin_data)
@@ -214,7 +285,5 @@ class TransferPair(object):
 
         output_write_batch.write()
         output_write_batch.close()
-
-        TransferService.remove_broker(tag)
 
         return total_written

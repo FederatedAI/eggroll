@@ -46,6 +46,7 @@ from eggroll.core.utils import hash_code
 from eggroll.roll_pair.transfer_pair import TransferPair
 from eggroll.utils import log_utils
 from eggroll.core.io.io_utils import get_db_path
+from threading import Thread
 
 log_utils.setDirectory()
 LOGGER = log_utils.getLogger()
@@ -180,39 +181,24 @@ class EggPair(object):
       input_adapter.close()
     elif task._name == 'getAll':
       LOGGER.info("egg_pair getAll call")
-      f = cloudpickle.loads(functors[0]._body)
-      LOGGER.info("get roll revc port:{}".format(f._port))
+      print('egg_pair getAll call')
       input_partition = task._inputs[0]
-      #roll_client_transfer_endpoint = cloudpickle.loads(functors[0]._body).split(":")
-      rct_host = f._host
-      rct_port = f._port
-      LOGGER.info("host:{}, port:{}".format(rct_host, rct_port))
 
-      # todo: decide partitioner
-      #p = lambda k : k[-1] % output_partition._store_locator._total_partitions
-      total_partitions = input_partition._store_locator._total_partitions
-      partitioner = self.__partitioner(hash_func=hash_code, total_partitions=total_partitions)
-      partition_id = partitioner(get_db_path(input_partition)[:-1])
+      tag = f'{task._id}'
 
-      input_adapter = self.get_unary_input_adapter(task_info=task)
+      bin_output_broker = TransferService.get_or_create_broker(tag)
+      input_adapter = LmdbAdapter(options={"path": get_db_path(input_partition)})
+      pair_broker = FifoBroker()
 
-      broker = FifoBroker()
-      transfer = TransferClient()
-      LOGGER.info("job id:{}".format(task._job._id))
-      future = transfer.send_pair(broker, task._job._id,
-                                  ErProcessor(command_endpoint=ErEndpoint(host=rct_host, port=rct_port)))
-      i = 0
-      for k_bytes, v_bytes in input_adapter.iteritems():
-        broker.put(bytes(i), bytes(i))
-        i = i + 1
-      LOGGER.info('finish calculating')
+      t = Thread(target=TransferPair.send, args=[pair_broker, bin_output_broker])
+      t.start()
+      for pair in input_adapter.iteritems():
+        pair_broker.put(pair)
+
+      pair_broker.signal_write_finish()
+      t.join()
       input_adapter.close()
-      #while broker.is_read_ready():
-        #LOGGER.info("read broker:{}".format(broker.get()))
-      broker.signal_write_finish()
 
-      future.result()
-      LOGGER.info('getAll finished')
     elif task._name == 'putAll':
       print("egg_pair putAll call")
       output_partition = task._outputs[0]
@@ -220,10 +206,13 @@ class EggPair(object):
       tag = f'{task._job._id}-{output_partition._id}'
 
       output_adapter = LmdbAdapter(options={"path": get_db_path(output_partition)})
+      output_broker = TransferService.get_or_create_broker(tag, write_signals=write_signals)
       TransferPair.recv(tag=tag,
                         output_adapter=output_adapter,
+                        output_broker=output_broker,
                         write_signals=output_partition._store_locator._total_partitions)
       output_adapter.close()
+      TransferService.remove_broker(tag)
 
     if task._name == 'put':
       print("egg_pair put call")
@@ -258,8 +247,8 @@ class EggPair(object):
               transfer_id=task._job._id,
               output_store=output_store)
 
-      shuffler.start_send(shuffle_broker, partitioner)
-      shuffler.start_receive(output_partition._id)
+      shuffler.start_push(shuffle_broker, partitioner)
+      shuffler.start_recv(output_partition._id)
 
       for k_bytes, v_bytes in input_adapter.iteritems():
         k1, v1 = f(self.serde.deserialize(k_bytes), self.serde.deserialize(v_bytes))

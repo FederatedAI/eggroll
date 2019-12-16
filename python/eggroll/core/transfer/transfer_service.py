@@ -13,21 +13,22 @@
 #  limitations under the License.
 
 
+import queue
+from concurrent import futures
+from time import sleep
+
 import grpc
 from grpc._cython import cygrpc
+from typing import Iterable
+from threading import Thread
+
+from eggroll.core.conf_keys import TransferConfKeys
 from eggroll.core.datastructure.broker import FifoBroker
-from eggroll.core.proto import transfer_pb2_grpc, transfer_pb2
-from eggroll.core.transfer_model import ErTransferHeader, ErTransferBatch
+from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.meta_model import ErEndpoint
+from eggroll.core.proto import transfer_pb2_grpc, transfer_pb2
 from eggroll.core.utils import _exception_logger
 from eggroll.utils import log_utils
-from eggroll.core.grpc.factory import GrpcChannelFactory
-from eggroll.core.io.format import BinBatchWriter
-from eggroll.core.conf_keys import TransferConfKeys
-import sys
-from time import sleep
-from concurrent import futures
-import queue
 
 log_utils.setDirectory()
 LOGGER = log_utils.getLogger()
@@ -71,6 +72,25 @@ class TransferService(object):
   def has_broker(key: str):
     return key in TransferService.data_buffer
 
+  @staticmethod
+  def transfer_batch_generator_from_broker(broker: FifoBroker, tag):
+    i = 0
+    while not broker.is_closable():
+      try:
+        data = broker.get(block=True, timeout=5)
+        if data:
+          header = transfer_pb2.TransferHeader(id=i, tag=tag)
+          batch = transfer_pb2.TransferBatch(header=header, data=data)
+          i += 1
+
+          yield batch
+      except queue.Empty as e:
+        print("transfer client queue empty")
+      except Exception as e:
+        print(e)
+
+    TransferService.remove_broker(tag)
+
 
 class GrpcTransferServicer(transfer_pb2_grpc.TransferServiceServicer):
   @_exception_logger
@@ -90,6 +110,13 @@ class GrpcTransferServicer(transfer_pb2_grpc.TransferServiceServicer):
     broker.signal_write_finish()
 
     return transfer_pb2.TransferBatch(header=response_header)
+
+  @_exception_logger
+  def recv(self, request, context):
+    base_tag = request.header.tag
+    callee_messages_broker: FifoBroker = TransferService.get_broker(base_tag)
+
+    return TransferService.transfer_batch_generator_from_broker(callee_messages_broker, base_tag)
 
 
 class GrpcTransferService(TransferService):
@@ -125,86 +152,34 @@ class TransferClient(object):
           ('grpc.max_send_message_length', -1),
           ('grpc.max_receive_message_length', -1)])
 
-    def transfer_batch_generator():
-      i = 0
-      while not broker.is_closable():
-        try:
-          data = broker.get(block=True, timeout=5)
-          if data:
-            header = transfer_pb2.TransferHeader(id=i, tag=tag)
-            batch = transfer_pb2.TransferBatch(header=header, data=data)
-            i += 1
-
-            yield batch
-        except queue.Empty as e:
-          print("transfer client queue empty")
-        except Exception as e:
-          print(e)
-
     stub = transfer_pb2_grpc.TransferServiceStub(channel)
-    future = stub.send.future(transfer_batch_generator())
+    future = stub.send.future(TransferService.transfer_batch_generator_from_broker(broker, tag))
 
     return future
 
   @_exception_logger
-  def send_pair(self, broker: FifoBroker, tag, processor, status = ''):
-    def transfer_batch_generator(packet_len):
-      # todo: pull up as format
-      buffer = bytearray(packet_len)
-      writer = BinBatchWriter({'buffer': buffer})
-      cur_offset = writer.get_offset()
-      total_written = 0
-      LOGGER.info(broker.is_closable())
-      while not broker.is_closable():
-        k_bytes, v_bytes = broker.get(block=True, timeout=1)
-        LOGGER.info("k:{}, v:{}".format(k_bytes, v_bytes))
-        if k_bytes is not None:
-          try:
-            writer.write_bytes(k_bytes, include_size=True)
-            writer.write_bytes(v_bytes, include_size=True)
-            total_written += 1
-            if tag == '1-0':
-              LOGGER.info(f'{tag} written {k_bytes}, total_written {total_written}, is closable {broker.is_closable()}')
-          except IndexError as e:
-            LOGGER.info('caught index error')
-            bin_data = writer.get_batch(end=cur_offset)
-            header = ErTransferHeader(id=100,
-                                      tag=tag,
-                                      total_size=writer.get_offset - 20,
-                                      status = '')
-            transfer_batch = ErTransferBatch(header = header, batch_size = 1, data = bin_data)
+  def recv(self, endpoint: ErEndpoint, tag):
+    def fill_broker(iterable: Iterable, broker):
+      iterator = iter(iterable)
+      for e in iterator:
+        broker.put(e)
+      broker.signal_write_finish()
 
-            buffer = bytearray(self.__bin_packet_len)
-            writer = BinBatchWriter({'buffer': buffer})
-            writer.write_bytes(k_bytes, include_size=True)
-            writer.write_bytes(v_bytes, include_size=True)
-
-            LOGGER.info(transfer_batch)
-            yield transfer_batch.to_proto()
-          except:
-            LOGGER.info("Unexpected error:{}".format(sys.exc_info()[0]))
-            raise
-        else:
-          LOGGER.info('k_bytes is None')
-
-      LOGGER.info(f'{tag} is closable, offset: {writer.get_offset()}')
-      bin_data = writer.get_batch()
-      header = ErTransferHeader(id=100,
-                                tag=tag,
-                                total_size=writer.get_offset() - 20,
-                                status = GrpcTransferServicer.TRANSFER_END)
-      transfer_batch = ErTransferBatch(header = header, batch_size = 1, data = bin_data)
-      LOGGER.info(transfer_batch)
-      yield transfer_batch.to_proto()
-
-    command_endpoint = processor._command_endpoint
-    channel = self.__grpc_channel_factory.create_channel(command_endpoint)
+    channel = grpc.insecure_channel(
+            target=f'{endpoint._host}:{endpoint._port}',
+            options=[
+              ('grpc.max_send_message_length', -1),
+              ('grpc.max_receive_message_length', -1)])
 
     stub = transfer_pb2_grpc.TransferServiceStub(channel)
+    request = transfer_pb2.TransferBatch(
+            header=transfer_pb2.TransferHeader(id=1,
+                                               tag=tag))
 
-    LOGGER.info(f'{tag} ready to send')
+    response_iter = stub.recv(request)
+    broker = FifoBroker()
+    t = Thread(target=fill_broker, args=[response_iter, broker])
+    t.start()
 
-    future = stub.send.future(iter(transfer_batch_generator(self.__bin_packet_len)))
-    LOGGER.info(f'{tag} got future')
-    return future
-
+    # todo:1: join t?
+    return broker

@@ -17,6 +17,7 @@ from collections import OrderedDict
 
 from eggroll.core.pair_store.format import PairBinReader, PairBinWriter, FileByteBuffer, ArrayByteBuffer
 from eggroll.utils import log_utils
+from eggroll.core.datastructure.broker import Broker
 log_utils.setDirectory()
 LOGGER = log_utils.getLogger()
 
@@ -277,3 +278,55 @@ class MmapWriteBatch(PairWriteBatch):
 
     def close(self):
         pass
+
+
+class BrokerAdapter(PairAdapter):
+    def __init__(self, broker: Broker, options={}):
+        super().__init__(options=options)
+        self.__broker = broker
+
+    def close(self):
+        self.__broker.signal_write_finish()
+
+    def iteritems(self):
+        return BrokerIterator(self.__broker)
+
+    def new_batch(self):
+        return BrokerWriteBatch(self.__broker)
+
+    def is_sorted(self):
+        return False
+
+
+class BrokerIterator(PairIterator):
+    def __init__(self, broker):
+        self.__broker = broker
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        from queue import Empty
+        while True:
+            try:
+                if not self.__broker.is_closable():
+                    return self.__broker.get(block=True, timeout=5)
+                else:
+                    raise StopIteration()
+            except Empty:
+                print('waiting for broker to fill')
+
+
+class BrokerWriteBatch(PairWriteBatch):
+    def __init__(self, broker):
+        self.__broker = broker
+
+    def put(self, k, v):
+        if self.__broker.get_remaining_write_signal_count():
+            self.__broker.put((k, v))
+
+    def write(self):
+        pass
+
+    def close(self):
+        self.__broker.signal_write_finish()

@@ -450,6 +450,8 @@ class RollPairServicer() {
       case RollPairServicer.putAll => {
         taskPlan = new PutAllTaskPlan(new CommandURI(RollPairServicer.eggPutAllCommand), taskPlanJob)
       }
+      case RollPairServicer.getAll =>
+        taskPlan = new GetAllTaskPlan(new CommandURI(RollPairServicer.eggGetAllCommand), taskPlanJob)
     }
 
     JobRunner.run(taskPlan)
@@ -516,6 +518,7 @@ object RollPairServicer {
   val subtractByKey = "subtractByKey"
   val union = "union"
   val putAll = "putAll"
+  val getAll = "getAll"
   val rollPair = "v1/roll-pair"
   val eggPair = "v1/egg-pair"
 
@@ -537,6 +540,7 @@ object RollPairServicer {
   val eggSubtractByKeyCommand = s"${eggPair}/${subtractByKey}"
   val eggUnionCommand = s"${eggPair}/${union}"
   val eggPutAllCommand = s"${eggPair}/${putAll}"
+  val eggGetAllCommand = s"${eggPair}/${getAll}"
 
   val rollRunJobCommand = s"${rollPair}/${runJob}"
   val eggRunTaskCommand = s"${eggPair}/${runTask}"
@@ -557,6 +561,7 @@ object RollPairServicer {
   val rollSubtractByKeyCommand = s"${rollPair}/${subtractByKey}"
   val rollUnionCommand = s"${rollPair}/${union}"
   val rollPutAllCommand = s"${rollPair}/${putAll}"
+  val rollGetAllCommand = s"${rollPair}/${getAll}"
 
   /*  CommandRouter.register(mapCommand,
       List(classOf[Array[Byte] => Array[Byte]]), clazz, "mapValues", null, null)*/
