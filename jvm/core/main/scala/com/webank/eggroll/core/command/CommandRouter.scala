@@ -81,11 +81,11 @@ object CommandRouter extends Logging {
       finalRouteToClass.getMethods.find(_.getName == finalRouteToMethodName).get
      else MethodUtils.getAccessibleMethod(
       finalRouteToClass, finalRouteToMethodName, serviceParamTypes: _*)
-    val finaleServiceParamTypes = routeToMethod.getParameterTypes
+
     if (routeToMethod == null) {
       throw new NoSuchMethodException(s"accessible method not found for ${finalServiceName}")
     }
-
+    val finaleServiceParamTypes = routeToMethod.getParameterTypes
     val finalServiceResultTypes: Array[Class[_]] =
       if (serviceResultTypes.isEmpty) Array(routeToMethod.getReturnType) else serviceResultTypes
 

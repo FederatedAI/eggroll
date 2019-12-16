@@ -99,7 +99,7 @@ class ClusterManagerBootstrap extends Bootstrap with Logging {
     val cmd = MiscellaneousUtils.parseArgs(args = args)
     this.port = cmd.getOptionValue('p', "4670").toInt
     this.sessionId = cmd.getOptionValue('s')
-    val confPath = cmd.getOptionValue('c', "./jvm/core/main/resources/cluster-manager.properties.local")
+    val confPath = cmd.getOptionValue('c', "./conf/eggroll.properties.local")
     StaticErConf.addProperties(confPath)
     StaticErConf.addProperty(SessionConfKeys.CONFKEY_SESSION_ID, sessionId)
   }
@@ -118,6 +118,5 @@ class ClusterManagerBootstrap extends Bootstrap with Logging {
     StaticErConf.setPort(port)
     logInfo(s"server started at port ${port}")
     println(s"server started at port ${port}")
-    server.awaitTermination()
   }
 }
