@@ -23,37 +23,29 @@ import grpc
 import numpy as np
 from grpc._cython import cygrpc
 
-from eggroll.core.client import NodeManagerClient
+from eggroll.core.client import NodeManagerClient, ClusterManagerClient
 from eggroll.core.command.command_router import CommandRouter
 from eggroll.core.command.command_service import CommandServicer
 from eggroll.core.conf_keys import NodeManagerConfKeys, SessionConfKeys
 from eggroll.core.constants import ProcessorTypes, ProcessorStatus, SerdesTypes
 from eggroll.core.datastructure.broker import FifoBroker
-from eggroll.core.io.io_utils import get_db_path
-from eggroll.core.io.kv_adapter import RocksdbSortedKvAdapter, \
-  LmdbSortedKvAdapter
-from eggroll.core.io.rollsite_adapter import RollsiteAdapter
-from eggroll.core.meta_model import ErPair
+from eggroll.core.meta_model import ErPair, ErStore
 from eggroll.core.meta_model import ErTask, ErProcessor, ErEndpoint
 from eggroll.core.pair_store.lmdb import LmdbAdapter
 from eggroll.core.proto import command_pb2_grpc, transfer_pb2_grpc
 from eggroll.core.serdes import cloudpickle
-from eggroll.core.serdes import eggroll_serdes
 from eggroll.core.transfer.transfer_service import GrpcTransferServicer, \
   TransferClient, TransferService
 from eggroll.core.utils import _exception_logger
 from eggroll.core.utils import hash_code
+from eggroll.roll_pair import create_adapter, create_serdes
 from eggroll.roll_pair.transfer_pair import TransferPair
 from eggroll.utils import log_utils
-from eggroll.core.io.io_utils import get_db_path
+from eggroll.roll_pair.utils.pair_utils import generator
+from eggroll.roll_pair.utils.pair_utils import get_db_path
 
 log_utils.setDirectory()
 LOGGER = log_utils.getLogger()
-
-def generator(serde, iterator):
-  for k, v in iterator:
-    print("yield ({}, {})".format(serde.deserialize(k), serde.deserialize(v)))
-    yield serde.deserialize(k), serde.deserialize(v)
 
 
 class EggPair(object):
@@ -66,80 +58,20 @@ class EggPair(object):
   DELETE = "delete"
 
   def __init__(self):
-    self.serde = self._create_serdes(SerdesTypes.CLOUD_PICKLE)
-
-  def get_unary_input_adapter(self, task_info: ErTask, create_if_missing=True):
-    input_partition = task_info._inputs[0]
-    LOGGER.info("input_adapter:{} path:{} ".format(input_partition, get_db_path(input_partition)))
-    input_adapter = None
-
-    options = dict()
-    options ["create_if_missing"] = create_if_missing
-
-    if task_info._inputs[0]._store_locator._store_type == "rollpair.lmdb":
-      options["path"] = get_db_path(partition=input_partition)
-      input_adapter = LmdbSortedKvAdapter(options=options)
-    elif task_info._inputs[0]._store_locator._store_type == "rollpair.leveldb":
-      options["path"] = get_db_path(partition=input_partition)
-      input_adapter = RocksdbSortedKvAdapter(options=options)
-    return input_adapter
-
-  def get_binary_input_adapter(self, task_info: ErTask, create_if_missing=True):
-    left_partition = task_info._inputs[0]
-    right_partition = task_info._inputs[1]
-    LOGGER.info("left partition:{} path:{} ".format(left_partition, get_db_path(left_partition)))
-    LOGGER.info("right partition:{} path:{} ".format(right_partition, get_db_path(right_partition)))
-    left_adapter = None
-    right_adapter = None
-
-    options = dict()
-    options ["create_if_missing"] = create_if_missing
-
-    if task_info._inputs[0]._store_locator._store_type == "rollpair.lmdb":
-      options["path"] = get_db_path(partition=left_partition)
-      left_adapter = LmdbSortedKvAdapter(options=options)
-
-      options["path"] = get_db_path(partition=right_partition)
-      right_adapter = LmdbSortedKvAdapter(options=options)
-    elif task_info._inputs[0]._store_locator._store_type == "rollpair.leveldb":
-      options["path"] = get_db_path(partition=left_partition)
-      left_adapter = RocksdbSortedKvAdapter(options=options)
-
-      options["path"] = get_db_path(partition=right_partition)
-      right_adapter = RocksdbSortedKvAdapter(options=options)
-
-    return left_adapter, right_adapter
-
-  def get_unary_output_adapter(self, task_info: ErTask, create_if_missing=True):
-    output_partition = task_info._outputs[0]
-    LOGGER.info("output_partition: {} path:{} ".format(output_partition, get_db_path(output_partition)))
-    output_adapter = None
-    options = dict()
-    options ["create_if_missing"] = create_if_missing
-    options["path"] = get_db_path(partition=output_partition)
-    if task_info._inputs[0]._store_locator._store_type == "rollpair.lmdb":
-      output_adapter = LmdbSortedKvAdapter(options=options)
-    elif task_info._inputs[0]._store_locator._store_type == "rollpair.leveldb":
-      output_adapter = RocksdbSortedKvAdapter(options=options)
-
-    if task_info._outputs[0]._store_locator._store_type == "rollpair.rollsite":
-      output_adapter = RollsiteAdapter(options={'name': output_partition._store_locator._name})
-
-    return output_adapter
-
-  def _create_serdes(self, serdes_name):
-    return eggroll_serdes.get_serdes(serdes_name)
+    self.serde = create_serdes(SerdesTypes.CLOUD_PICKLE)
 
   def __partitioner(self, hash_func, total_partitions):
     return lambda k: hash_func(k) % total_partitions
 
   def _run_unary(self, func, task):
-    input_adapter = self.get_unary_input_adapter(task_info=task)
+    key_serdes = create_serdes(task._inputs[0]._store_locator._serdes)
+    value_serdes = create_serdes(task._inputs[0]._store_locator._serdes)
+    input_adapter = create_adapter(task._inputs[0])
     input_iterator = input_adapter.iteritems()
-    output_adapter = self.get_unary_output_adapter(task_info=task)
+    output_adapter = input_adapter = create_adapter(task._outputs[0])
     output_writebatch = output_adapter.new_batch()
     try:
-      func(input_iterator, output_writebatch)
+      func(input_iterator, key_serdes, value_serdes, output_writebatch)
     except:
       raise EnvironmentError("exec task:{} error".format(task))
     finally:
@@ -148,13 +80,21 @@ class EggPair(object):
       output_adapter.close()
 
   def _run_binary(self, func, task):
-    left_adapter, right_adapter = self.get_binary_input_adapter(task_info=task)
-    output_adapter = self.get_unary_output_adapter(task_info=task)
+    left_key_serdes = create_serdes(task._inputs[0]._store_locator._serdes)
+    left_value_serdes = create_serdes(task._inputs[0]._store_locator._serdes)
+    left_adapter = create_adapter(task._inputs[0])
+
+    right_key_serdes = create_serdes(task._inputs[1]._store_locator._serdes)
+    right_value_serdes = create_serdes(task._inputs[1]._store_locator._serdes)
+    right_adapter = create_adapter(task._inputs[1])
+    output_adapter = create_adapter(task._outputs[0])
     left_iterator = left_adapter.iteritems()
     right_iterator = right_adapter.iteritems()
     output_writebatch = output_adapter.new_batch()
     try:
-      func(left_iterator, right_iterator, output_writebatch)
+      func(left_iterator, left_key_serdes, left_value_serdes,
+           right_iterator, right_key_serdes, right_value_serdes,
+           output_writebatch)
     except:
       raise EnvironmentError("exec task:{} error".format(task))
     finally:
@@ -166,14 +106,14 @@ class EggPair(object):
   @_exception_logger
   def run_task(self, task: ErTask):
     LOGGER.info("start run task")
-    print("start run task")
     functors = task._job._functors
     result = task
 
     if task._name == 'get':
       LOGGER.info("egg_pair get call")
       f = cloudpickle.loads(functors[0]._body)
-      input_adapter = self.get_unary_input_adapter(task_info=task)
+      #input_adapter = self.get_unary_input_adapter(task_info=task)
+      input_adapter = create_adapter(task._inputs[0])
       value = input_adapter.get(f._key)
       print("value:{}".format(value))
       result = ErPair(key=f._key, value=value)
@@ -230,7 +170,7 @@ class EggPair(object):
     if task._name == 'put':
       print("egg_pair put call")
       f = cloudpickle.loads(functors[0]._body)
-      input_adapter = self.get_unary_input_adapter(task_info=task)
+      input_adapter = create_adapter(task._inputs[0])
       value = input_adapter.put(f._key, f._value)
       #result = ErPair(key=f._key, value=bytes(value))
       input_adapter.close()
@@ -251,10 +191,10 @@ class EggPair(object):
 
     if task._name == 'mapValues':
       f = cloudpickle.loads(functors[0]._body)
-      def map_values_wrapper(input_iterator, output_writebatch):
+      def map_values_wrapper(input_iterator, key_serdes, value_serdes, output_writebatch):
         for k_bytes, v_bytes in input_iterator:
-          v = self.serde.deserialize(v_bytes)
-          output_writebatch.put(k_bytes, self.serde.serialize(f(v)))
+          v = value_serdes.deserialize(v_bytes)
+          output_writebatch.put(k_bytes, value_serdes.serialize(f(v)))
       self._run_unary(map_values_wrapper, task)
     elif task._name == 'map':
       f = cloudpickle.loads(functors[0]._body)
@@ -307,49 +247,49 @@ class EggPair(object):
       print('reduce finished')
 
     elif task._name == 'mapPartitions':
-      def map_partitions_wrapper(input_iterator, output_writebatch):
+      def map_partitions_wrapper(input_iterator, key_serdes, value_serdes, output_writebatch):
         f = cloudpickle.loads(functors[0]._body)
-        value = f(generator(self.serde, input_iterator))
+        value = f(generator(key_serdes, value_serdes, input_iterator))
         if input_iterator.last():
           LOGGER.info("value of mapPartitions2:{}".format(value))
           if isinstance(value, Iterable):
             for k1, v1 in value:
-              output_writebatch.put(self.serde.serialize(k1), self.serde.serialize(v1))
+              output_writebatch.put(key_serdes.serialize(k1), value_serdes.serialize(v1))
           else:
             key = input_iterator.key()
-            output_writebatch.put(key, self.serde.serialize(value))
+            output_writebatch.put(key, value_serdes.serialize(value))
       self._run_unary(map_partitions_wrapper, task)
 
     elif task._name == 'collapsePartitions':
-      def collapse_partitions_wrapper(input_iterator, output_writebatch):
+      def collapse_partitions_wrapper(input_iterator, key_serdes, value_serdes, output_writebatch):
         f = cloudpickle.loads(functors[0]._body)
-        value = f(generator(self.serde, input_iterator))
+        value = f(generator(key_serdes, value_serdes, input_iterator))
         if input_iterator.last():
           key = input_iterator.key()
-          output_writebatch.put(key, self.serde.serialize(value))
+          output_writebatch.put(key, value_serdes.serialize(value))
       self._run_unary(collapse_partitions_wrapper, task)
 
     elif task._name == 'flatMap':
-      def flat_map_wraaper(input_iterator, output_writebatch):
+      def flat_map_wraaper(input_iterator, key_serdes, value_serdes, output_writebatch):
         f = cloudpickle.loads(functors[0]._body)
         for k1, v1 in input_iterator:
-          for k2, v2 in f(self.serde.deserialize(k1), self.serde.deserialize(v1)):
-            output_writebatch.put(self.serde.serialize(k2), self.serde.serialize(v2))
+          for k2, v2 in f(key_serdes.deserialize(k1), value_serdes.deserialize(v1)):
+            output_writebatch.put(key_serdes.serialize(k2), value_serdes.serialize(v2))
       self._run_unary(flat_map_wraaper, task)
 
     elif task._name == 'glom':
-      def glom_wrapper(input_iterator, output_writebatch):
+      def glom_wrapper(input_iterator, key_serdes, value_serdes, output_writebatch):
         k_tmp = None
         v_list = []
         for k, v in input_iterator:
-          v_list.append((self.serde.deserialize(k), self.serde.deserialize(v)))
+          v_list.append((key_serdes.deserialize(k), value_serdes.deserialize(v)))
           k_tmp = k
         if k_tmp is not None:
-          output_writebatch.put(k_tmp, self.serde.serialize(v_list))
+          output_writebatch.put(k_tmp, value_serdes.serialize(v_list))
       self._run_unary(glom_wrapper, task)
 
     elif task._name == 'sample':
-      def sample_wrapper(input_iterator, output_writebatch):
+      def sample_wrapper(input_iterator, key_serdes, value_serdes, output_writebatch):
         fraction = cloudpickle.loads(functors[0]._body)
         seed = cloudpickle.loads(functors[1]._body)
         input_iterator.first()
@@ -360,10 +300,10 @@ class EggPair(object):
       self._run_unary(sample_wrapper, task)
 
     elif task._name == 'filter':
-      def filter_wrapper(input_iterator, output_writebatch):
+      def filter_wrapper(input_iterator, key_serdes, value_serdes, output_writebatch):
         f = cloudpickle.loads(functors[0]._body)
         for k ,v in input_iterator:
-          if f(self.serde.deserialize(k), self.serde.deserialize(v)):
+          if f(key_serdes.deserialize(k), value_serdes.deserialize(v)):
             output_writebatch.put(k, v)
       self._run_unary(filter_wrapper, task)
 
@@ -372,43 +312,66 @@ class EggPair(object):
       print('aggregate finished')
 
     elif task._name == 'join':
-      def join_wrapper(left_iterator, right_iterator, output_writebatch):
+      def join_wrapper(left_iterator, left_key_serdes, left_value_serdess,
+                       right_iterator, right_key_serdes, right_value_serdess,
+                       output_writebatch):
         f = cloudpickle.loads(functors[0]._body)
-        for k_bytes, l_v_bytes in left_iterator:
-          r_v_bytes = right_iterator.adapter.get(k_bytes)
+        is_diff_serdes = type(left_key_serdes) != type(right_key_serdes)
+        for k_left, l_v_bytes in left_iterator:
+          if is_diff_serdes:
+            k_left = right_key_serdes.serialize(left_key_serdes.deserialize(k_left))
+          r_v_bytes = right_iterator.adapter.get(k_left)
           if r_v_bytes:
-            LOGGER.info("egg join:{}".format(self.serde.deserialize(r_v_bytes)))
-            output_writebatch.put(k_bytes,
-                                  self.serde.serialize(f(self.serde.deserialize(l_v_bytes),
-                                                         self.serde.deserialize(r_v_bytes))))
+            LOGGER.info("egg join:{}".format(right_value_serdess.deserialize(r_v_bytes)))
+            output_writebatch.put(k_left,
+                                  left_value_serdess.serialize(
+                                      f(left_value_serdess.deserialize(l_v_bytes),
+                                        right_value_serdess.deserialize(r_v_bytes))
+                                  ))
       self._run_binary(join_wrapper, task)
 
     elif task._name == 'subtractByKey':
-      def subtract_by_key_wrapper(left_iterator, right_iterator, output_writebatch):
+      def subtract_by_key_wrapper(left_iterator, left_key_serdes, left_value_serdess,
+                                  right_iterator, right_key_serdes, right_value_serdess,
+                                  output_writebatch):
         LOGGER.info("sub wrapper")
+        is_diff_serdes = type(left_key_serdes) != type(right_key_serdes)
         for k_left, v_left in left_iterator:
+          if is_diff_serdes:
+            k_left = right_key_serdes.serialize(left_key_serdes.deserialize(k_left))
           v_right = right_iterator.adapter.get(k_left)
           if v_right is None:
             output_writebatch.put(k_left, v_left)
       self._run_binary(subtract_by_key_wrapper, task)
 
     elif task._name == 'union':
-      def union_wrapper(left_iterator, right_iterator, output_writebatch):
+      def union_wrapper(left_iterator, left_key_serdes, left_value_serdess,
+                        right_iterator, right_key_serdes, right_value_serdess,
+                        output_writebatch):
         f = cloudpickle.loads(functors[0]._body)
         #store the iterator that has been iterated before
         k_list_iterated = []
 
+        is_diff_serdes = type(left_key_serdes) != type(right_key_serdes)
         for k_left, v_left in left_iterator:
+          if is_diff_serdes:
+            k_left = right_key_serdes.serialize(left_key_serdes.deserialize(k_left))
           v_right = right_iterator.adapter.get(k_left)
           if v_right is None:
             output_writebatch.put(k_left, v_left)
           else:
-            k_list_iterated.append(self.serde.deserialize(k_left))
-            v_final = f(self.serde.deserialize(v_left), self.serde.deserialize(v_right))
-            output_writebatch.put(k_left, self.serde.serialize(v_final))
+            k_list_iterated.append(left_key_serdes.deserialize(k_left))
+            v_final = f(left_value_serdess.deserialize(v_left),
+                        right_value_serdess.deserialize(v_right))
+            output_writebatch.put(k_left, left_value_serdess.serialize(v_final))
 
         for k_right, v_right in right_iterator:
-          if self.serde.deserialize(k_right) not in k_list_iterated:
+          if right_key_serdes.deserialize(k_right) not in k_list_iterated:
+            #because left value and right value may have different serdes
+            if is_diff_serdes:
+              k_right = left_key_serdes.serialize(left_key_serdes.deserialize(k_right))
+            if is_diff_serdes:
+              v_right = left_value_serdess.serialize(right_value_serdess.deserialize(v_right))
             output_writebatch.put(k_right, v_right)
       self._run_binary(union_wrapper, task)
 

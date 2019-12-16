@@ -367,4 +367,4 @@ class RocksdbSortedKvAdapter(SortedKvAdapter):
     return sum(1 for _ in it.it)
 
   def delete(self, k):
-    self.adapter.db.delete(k)
+    self.db.delete(k)
