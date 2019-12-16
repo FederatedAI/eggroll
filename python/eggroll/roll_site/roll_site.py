@@ -14,8 +14,7 @@
 #  limitations under the License.
 #
 import grpc
-import concurrent
-from concurrent import futures
+from concurrent.futures import ThreadPoolExecutor, wait, ALL_COMPLETED
 from eggroll.utils import file_utils
 from eggroll.utils.log_utils import getLogger
 from eggroll.core.meta_model import ErStoreLocator, ErStore
@@ -81,7 +80,8 @@ class RollSite:
         target="{}:{}".format(self.dst_host, self.dst_port),
         options=[('grpc.max_send_message_length', -1), ('grpc.max_receive_message_length', -1)])
     self.stub = proxy_pb2_grpc.DataTransferServiceStub(channel)
-    self.__pool = concurrent.futures.ThreadPoolExecutor()
+    self.process_pool = ThreadPoolExecutor(10)
+    self.complete_pool = ThreadPoolExecutor(10)
 
   @staticmethod
   def __remote__object_key(*args):
@@ -97,7 +97,7 @@ class RollSite:
     if auth_dict.get(sub_name) is None:
       raise ValueError("{} did not set under algorithm {} in transfer_conf.json".format(sub_name, algorithm))
 
-    if is_send and self.trans_conf.get('src') != self.src_role:
+    if is_send and auth_dict.get(sub_name).get('src') != self.src_role:
       raise ValueError("{} is not allow to send from {}".format(self.src_role))
     elif not is_send and self.src_role not in auth_dict.get(sub_name).get('dst'):
       raise ValueError("{} is not allow to receive from {}".format(self.src_role))
@@ -107,12 +107,13 @@ class RollSite:
   def __get_parties(self, role):
     return self.runtime_conf.get('role').get(role)
 
-  def _thread_receive(self, stub, packet):
-    ret_packet = stub.unaryCall(packet)
+  def _thread_receive(self, packet):
+    print("_thread_receive")
+    ret_packet = self.stub.unaryCall(packet)
     while ret_packet.header.ack != proxy_pb2.STOP:  #COMPLETE
       if ret_packet.header.ack in ERROR_STATES:
         raise IOError("receive terminated")
-      ret_packet = stub.unaryCall(packet)
+      ret_packet = self.stub.unaryCall(packet)
 
     _tagged_key = self.__remote__object_key(self.job_id, self.name, self.tag,
                                             self.src_role, self.party_id,
@@ -126,31 +127,31 @@ class RollSite:
     rp = RollPair(store, options=storage_options)
     return rp
 
-  def push(self, obj, idx=-1):
-    storage_options = {'cluster_manager_host': 'localhost',
-                       'cluster_manager_port': 4670,
-                       'pair_type': 'v1/egg-pair',
-                       'egg_pair_service_host': 'localhost',
-                       'egg_pair_service_port': 20001}
+  def wait_for_complete(self, futures):
+    wait(futures, timeout=10, return_when=ALL_COMPLETED)
+    return True
 
-    #self.__check_authorization(self.name)
+  def push(self, obj, idx=-1):
+    algorithm, sub_name = self.__check_authorization(self.name)
+
+    auth_dict = self.trans_conf.get(algorithm)
 
     if idx >= 0:
       if self.dst_role is None:
-        raise ValueError("{} cannot be None if idx specified".format(self.dst_role))
+        raise ValueError("{} cannot be None if idx specified".format(role))
       parties = {self.dst_role: [self.__get_parties(self.dst_role)[idx]]}
     elif self.dst_role is not None:
-      if self.dst_role not in self.trans_conf.get('dst'):
-        raise ValueError("{} is not allowed to receive {}".format(self.dst_role, self.name))
+      if self.dst_role not in auth_dict.get(sub_name).get('dst'):
+        raise ValueError("{} is not allowed to receive {}".format(role, name))
       parties = {self.dst_role: self.__get_parties(self.dst_role)}
     else:
       parties = {}
-      for _role in self.trans_conf.get('dst'):
+      for _role in auth_dict.get(sub_name).get('dst'):
         parties[_role] = self.__get_parties(_role)
 
-    rp_list = []
-    for _role, _partyInfos in parties.items():
-      for _partyId in _partyInfos:
+    futures = []
+    for _role, _partyIds in parties.items():
+      for _partyId in _partyIds:
         _tagged_key = self.__remote__object_key(self.job_id, self.name, self.tag, self.src_role, self.party_id, _role,
                                                 _partyId, self.dst_host, self.dst_port)
         if isinstance(obj, RollPair):
@@ -172,15 +173,20 @@ class RollSite:
 
         LOGGER.debug("[REMOTE] Sending {}".format(_tagged_key))
         rp = self.ctx.rp_ctx.load(namespace, name)
-        future = self.__pool.submit(rp.map_values,
-                                    lambda v: v,
-                                    output=ErStore(store_locator = ErStoreLocator(store_type=StoreTypes.ROLLPAIR_ROLLSITE,
-                                                                                  namespace=namespace,
-                                                                                  name=_tagged_key)))
-        rp_list.append(future)
-
+        future = self.process_pool.submit(rp.map_values,
+                                          lambda v: v,
+                                          output=ErStore(store_locator = ErStoreLocator(store_type=StoreTypes.ROLLPAIR_ROLLSITE,
+                                                                                        namespace=namespace,
+                                                                                        name=_tagged_key)))
+        futures.append(future)
         LOGGER.debug("[REMOTE] Sent {}".format(_tagged_key))
-    return rp_list
+
+    self.process_pool.shutdown(wait=False)
+
+    ret_future = self.complete_pool.submit(self.wait_for_complete, futures)
+    self.complete_pool.shutdown(wait=False)
+
+    return ret_future
 
 
   def pull(self, idx=-1):
@@ -208,7 +214,7 @@ class RollSite:
         "[GET] {} {} getting remote object {} from {} {}".format(self.src_role, self.party_id, self.tag, src_role,
                                                                  party_ids))
 
-    results = []
+    futures = []
     for party_id in party_ids:
       task_info = proxy_pb2.Task(taskId="testTaskId", model=proxy_pb2.Model(name="taskName", dataKey="testKey"))
       topic_src = proxy_pb2.Topic(name="test", partyId="{}".format(party_id),
@@ -232,12 +238,16 @@ class RollSite:
       data = proxy_pb2.Data(key="hello")
       packet = proxy_pb2.Packet(header=metadata, body=data)
 
-      results.append(self.__pool.submit(RollSite._thread_receive, self.stub, packet))
+      futures.append(self.process_pool.submit(RollSite._thread_receive, self, packet))
+
+    self.process_pool.shutdown(wait=False)
 
     if 0 <= idx < len(src_party_ids):
-      return results[0]
+      return futures[0]
 
-    return results
+    ret_futures = self.complete_pool.submit(self.wait_for_complete, args=(futures,))
+    self.complete_pool.shutdown(wait=False)
+    return ret_futures
 
 
 
