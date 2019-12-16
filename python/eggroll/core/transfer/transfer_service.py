@@ -89,9 +89,6 @@ class TransferService(object):
       except Exception as e:
         print(e)
 
-    TransferService.remove_broker(tag)
-
-
 class GrpcTransferServicer(transfer_pb2_grpc.TransferServiceServicer):
   @_exception_logger
   def send(self, request_iterator, context):
@@ -99,21 +96,25 @@ class GrpcTransferServicer(transfer_pb2_grpc.TransferServiceServicer):
     response_header = None
 
     broker = None
+    base_tag = None
     for request in request_iterator:
       if not inited:
-        broker = TransferService.get_broker(request.header.tag)
+        base_tag = request.header.tag
+        print('GrpcTransferServicer send broker tag: ', base_tag)
+        broker = TransferService.get_broker(base_tag)
         response_header = request.header
         inited = True
 
       broker.put(request)
 
     broker.signal_write_finish()
-
+    print('GrpcTransferServicer stream finished. tag: ', base_tag, ', remaining write count: ', broker.get_remaining_write_signal_count())
     return transfer_pb2.TransferBatch(header=response_header)
 
   @_exception_logger
   def recv(self, request, context):
     base_tag = request.header.tag
+    print('GrpcTransferServicer send broker tag: ', base_tag)
     callee_messages_broker: FifoBroker = TransferService.get_broker(base_tag)
 
     return TransferService.transfer_batch_generator_from_broker(callee_messages_broker, base_tag)

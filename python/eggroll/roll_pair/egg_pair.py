@@ -199,20 +199,25 @@ class EggPair(object):
       t.join()
       input_adapter.close()
 
+      # TODO:0: self-destroy broker, like gc
+      from time import sleep
+      while not bin_output_broker.is_closable():
+        sleep(1)
+      TransferService.remove_broker(tag)
+
+    # TODO:0: multiprocessor scenario
     elif task._name == 'putAll':
       print("egg_pair putAll call")
 
       output_partition = task._outputs[0]
 
-      #tag = f'{task._job._id}-{output_partition._id}'
-      tag = output_partition._store_locator._name
+      tag = f'{task._id}'
 
+      print('egg_pair transfer service tag:', tag)
       output_adapter = LmdbAdapter(options={"path": get_db_path(output_partition)})
-      output_broker = TransferService.get_or_create_broker(tag, write_signals=write_signals)
-      TransferPair.recv(tag=tag,
-                        output_adapter=output_adapter,
-                        output_broker=output_broker,
-                        write_signals=output_partition._store_locator._total_partitions)
+      output_broker = TransferService.get_or_create_broker(tag, write_signals=1)
+      TransferPair.recv(output_adapter=output_adapter,
+                        output_broker=output_broker)
       output_adapter.close()
       TransferService.remove_broker(tag)
 
@@ -347,6 +352,7 @@ class EggPair(object):
       self._run_unary(filter_wrapper, task)
 
     elif task._name == 'aggregate':
+      print('ready to aggregate')
       self.aggregate(task)
       print('aggregate finished')
 
@@ -395,7 +401,7 @@ class EggPair(object):
 
   def aggregate(self, task: ErTask):
     functors = task._job._functors
-    zero_value = None if not functors[0] else cloudpickle.loads(functors[0]._body)
+    zero_value = None if functors[0] is None else cloudpickle.loads(functors[0]._body)
     seq_op = cloudpickle.loads(functors[1]._body)
     comb_op = cloudpickle.loads(functors[2]._body)
 
@@ -413,7 +419,7 @@ class EggPair(object):
         seq_op_result = input_serdes.deserialize(v_bytes)
 
     partition_id = input_partition._id
-    transfer_tag = task._job._name
+    transfer_tag = task._job._id
 
     if 0 == partition_id:
       partition_size = input_partition._store_locator._total_partitions
@@ -440,11 +446,11 @@ class EggPair(object):
       transfer_client = TransferClient()
 
       broker = FifoBroker()
-      broker.put(ser_seq_op_result)
-      broker.signal_write_finish()
       future = transfer_client.send(broker=broker,
                                     endpoint=task._outputs[0]._processor._transfer_endpoint,
                                     tag=transfer_tag)
+      broker.put(ser_seq_op_result)
+      broker.signal_write_finish()
       future.result()
 
     input_adapter.close()
@@ -543,7 +549,7 @@ def serve(args):
       route_to_class_name="EggPair",
       route_to_method_name="run_task")
 
-  command_server = grpc.server(futures.ThreadPoolExecutor(max_workers=10),
+  command_server = grpc.server(futures.ThreadPoolExecutor(max_workers=20),
                                options=[
                                  (cygrpc.ChannelArgKey.max_send_message_length, -1),
                                  (cygrpc.ChannelArgKey.max_receive_message_length, -1)])
@@ -565,7 +571,7 @@ def serve(args):
     transfer_pb2_grpc.add_TransferServiceServicer_to_server(transfer_servicer,
                                                             transfer_server)
   else:
-    transfer_server = grpc.server(futures.ThreadPoolExecutor(max_workers=10),
+    transfer_server = grpc.server(futures.ThreadPoolExecutor(max_workers=20),
                                   options=[
                                     (cygrpc.ChannelArgKey.max_send_message_length, -1),
                                     (cygrpc.ChannelArgKey.max_receive_message_length, -1)])

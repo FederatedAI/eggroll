@@ -310,7 +310,7 @@ class BrokerIterator(PairIterator):
         while True:
             try:
                 if not self.__broker.is_closable():
-                    return self.__broker.get(block=True, timeout=5)
+                    return self.__broker.get(block=True, timeout=1)
                 else:
                     raise StopIteration()
             except Empty:

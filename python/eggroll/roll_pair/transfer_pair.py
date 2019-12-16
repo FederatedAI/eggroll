@@ -78,7 +78,7 @@ class TransferPair(object):
 
             push_future = self.__push_executor_pool.submit(
                     TransferPair.send,
-                    input_broker=input_broker,
+                    input_broker=self.__partitioned_brokers[i],
                     output_broker=transfer_broker)
             self.__push_futures.append(push_future)
 
@@ -97,19 +97,20 @@ class TransferPair(object):
         def start_sequential_pull():
             for i in range(self.__total_partitions):
                 start_pull_partition(i)
+
         self.__pull_executor_pool = ThreadPoolExecutor(max_workers=1)
         self.__pull_future = self.__pull_executor_pool.submit(start_sequential_pull)
 
     @_exception_logger
     def start_recv(self, output_partition_id):
+        self.__output_tag = self.__generate_tag(output_partition_id)
+        output_broker = TransferService.get_or_create_broker(self.__output_tag, write_signals=self.__total_partitions)
         self.__recv_executor_pool = ThreadPoolExecutor(max_workers=1)
 
         from eggroll.core.pair_store.lmdb import LmdbAdapter
         from eggroll.core.io.io_utils import get_db_path
 
         self.__output_adapter = LmdbAdapter(options={"path": get_db_path(self.__output_store._partitions[output_partition_id])})
-        self.__output_tag = self.__generate_tag(output_partition_id)
-        output_broker = TransferService.get_or_create_broker(self.__output_tag, write_signals=self.__total_partitions)
         self.__recv_future = self.__push_executor_pool \
             .submit(TransferPair.recv,
                     output_adapter=self.__output_adapter,
@@ -117,26 +118,26 @@ class TransferPair(object):
 
     def _join_push(self):
         print('joining')
-        partition_finished, partition_not_finished = wait(self.__partition_futures, return_when=FIRST_EXCEPTION)
-        push_finished, push_not_finished = wait(self.__push_futures, return_when=FIRST_EXCEPTION)
         for broker in self.__partitioned_brokers:
             broker.signal_write_finish()
         try:
+            partition_finished, partition_not_finished = wait(self.__partition_futures, return_when=FIRST_EXCEPTION)
             if len(partition_finished) == len(self.__partition_futures):
                 print('finishing partition normally')
                 self.__is_partition_finished = True
             else:
                 print('finishing partition abnormally')
                 for e in partition_finished:
-                    raise e.exception(timeout=5)
+                    raise e.exception(timeout=1)
 
+            push_finished, push_not_finished = wait(self.__push_futures, return_when=FIRST_EXCEPTION)
             if len(push_finished) == len(self.__push_futures):
                 print('finishing send broker normally')
                 self.__is_partition_finished = True
             else:
                 print('finishing send broker abnormally')
                 for e in partition_finished:
-                    raise e.exception(timeout=5)
+                    raise e.exception(timeout=1)
 
             for future in self.__rpc_call_futures:
                 try:
@@ -206,7 +207,7 @@ class TransferPair(object):
     @staticmethod
     @_exception_logger
     def transfer_rpc_call(tag: str, command_name: str, target_partition, output_broker=None):
-        print('starting send command')
+        print(f'starting send command from partition {tag} to partition {target_partition._id}')
         client = TransferClient()
         target_endpoint = target_partition._processor._transfer_endpoint
         result = None
