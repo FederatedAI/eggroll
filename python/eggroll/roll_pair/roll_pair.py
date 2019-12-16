@@ -18,28 +18,29 @@ from typing import Iterable
 import grpc
 from grpc._cython import cygrpc
 
-from eggroll.core.command.command_model import ErCommandRequest, ErCommandResponse, CommandURI
+from eggroll.core.command.command_model import CommandURI
 from eggroll.core.conf_keys import DeployConfKeys
 from eggroll.core.datastructure.broker import FifoBroker
 from eggroll.core.io.format import BinBatchReader
 from eggroll.core.meta_model import ErStoreLocator, ErJob, ErStore, ErFunctor, ErTask, ErEndpoint, ErPair, ErPartition, \
-  ErProcessor, ErSessionMeta, ErServerCluster, ErProcessorBatch
-from eggroll.core.proto import command_pb2_grpc
+  ErServerCluster, ErProcessorBatch
+
 from eggroll.core.serdes import cloudpickle, eggroll_serdes
 from eggroll.core.client import ClusterManagerClient, CommandClient
-from eggroll.core.grpc.factory import GrpcChannelFactory
-from eggroll.core.constants import StoreTypes, SerdesTypes, PartitionerTypes, ProcessorTypes, DeployType
+
+from eggroll.core.constants import StoreTypes, SerdesTypes, PartitionerTypes, DeployType
 from eggroll.core.serdes.eggroll_serdes import PickleSerdes, CloudPickleSerdes, EmptySerdes
 from eggroll.core.session import ErSession
 from eggroll.core.transfer.transfer_service import GrpcTransferServicer, TransferClient
 from eggroll.core.utils import string_to_bytes, hash_code
+from eggroll.roll_pair import create_serdes
 from eggroll.roll_pair.egg_pair import EggPair
 from eggroll.roll_pair.transfer_pair import TransferPair
 from concurrent import futures
 from eggroll.core.io.kv_adapter import LmdbSortedKvAdapter, RocksdbSortedKvAdapter
-from eggroll.core.io.io_utils import get_db_path
-from eggroll.core.conf_keys import SessionConfKeys
+
 from eggroll.core.proto import transfer_pb2_grpc
+from eggroll.roll_pair.utils.pair_utils import partitioner, get_db_path
 
 from eggroll.utils import log_utils
 
@@ -194,18 +195,13 @@ class RollPair(object):
   UNION = 'union'
   RUNJOB = 'runJob'
 
-  def __partitioner(self, hash_func, total_partitions):
-    def hash_mod(k):
-      return hash_func(k) % total_partitions
-    return hash_mod
-
   def __init__(self, er_store: ErStore, rp_ctx: RollPairContext):
     self.__command_serdes =  SerdesTypes.PROTOBUF
     self.__roll_pair_command_client = CommandClient()
     self.__store = er_store
     self.value_serdes = self.get_serdes()
     self.key_sedes = self.get_serdes()
-    self.partitioner = self.__partitioner(hash_code, self.__store._store_locator._total_partitions)
+    self.partitioner = partitioner(hash_code, self.__store._store_locator._total_partitions)
     self.egg_router = default_egg_router
     self.ctx = rp_ctx
     self.__session_id = self.ctx.session_id
@@ -242,7 +238,6 @@ class RollPair(object):
   def get_namespace(self):
     return self.__store._store_locator._namespace
 
-
   def kv_to_bytes(self, **kwargs):
     use_serialize = kwargs.get("use_serialize", True)
     # can not use is None
@@ -263,7 +258,7 @@ class RollPair(object):
   
   """
   def get(self, k, options={}):
-    k = self.get_serdes().serialize(k)
+    k = create_serdes(self.__store._store_locator._serdes).serialize(k)
     er_pair = ErPair(key=k, value=None)
     outputs = []
     value = None
@@ -294,7 +289,8 @@ class RollPair(object):
     return value
 
   def put(self, k, v, options = {}):
-    k, v = self.get_serdes().serialize(k), self.get_serdes().serialize(v)
+    k, v = create_serdes(self.__store._store_locator._serdes).serialize(k),\
+           create_serdes(self.__store._store_locator._serdes).serialize(v)
     er_pair = ErPair(key=k, value=v)
     outputs = []
     part_id = self.partitioner(k)
@@ -336,7 +332,8 @@ class RollPair(object):
 
       for k, v in input_iterator:
         #yield (self.get_serdes().deserialize(k), self.get_serdes().deserialize(v))
-        result.append((self.get_serdes().deserialize(k), self.get_serdes().deserialize(v)))
+        result.append((create_serdes(self.__store._store_locator._serdes).deserialize(k),
+                       create_serdes(self.__store._store_locator._serdes).deserialize(v)))
       input_adapter.close()
     return result
 
@@ -413,12 +410,14 @@ class RollPair(object):
       for v in items:
         if include_key:
           LOGGER.info("put k:{}, v:{}".format(v[0], v[1]))
-          k_bytes, v_bytes = self.value_serdes.serialize(v[0]), self.value_serdes.serialize(v[1])
+          k_bytes, v_bytes = create_serdes(self.__store._store_locator._serdes).serialize(v[0]), \
+                             create_serdes(self.__store._store_locator._serdes).serialize(v[1])
           input_adapter, partition_id = put_all_wrapper(k_bytes, total_partitions)
           adapter_dict[partition_id] = input_adapter
         else:
           LOGGER.info("put k:{}, v:{}".format(k, v))
-          k_bytes, v_bytes = self.value_serdes.serialize(k), self.value_serdes.serialize(v)
+          k_bytes, v_bytes = create_serdes(self.__store._store_locator._serdes).serialize(k), \
+                             create_serdes(self.__store._store_locator._serdes).serialize(v)
           input_adapter, partition_id = put_all_wrapper(k_bytes, total_partitions)
           adapter_dict[partition_id] = input_adapter
           k = k + 1
@@ -550,7 +549,7 @@ class RollPair(object):
       )
 
   def delete(self, k, options={}):
-    k = self.value_serdes.serialize(k)
+    k = create_serdes(self.__store).serialize(k)
     er_pair = ErPair(key=k, value=None)
     outputs = []
     value = None
