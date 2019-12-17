@@ -123,8 +123,10 @@ case class ErTask(id: String,
 case class ErSessionMeta(id: String,
                          name: String = StringConstants.EMPTY,
                          status: String = StringConstants.EMPTY,
-                         options: java.util.Map[String, String] = new ConcurrentHashMap[String, String](),
+                         activeProcCount: Int = 0,
+                         options: Map[String, String] = Map(),
                          tag: String = StringConstants.EMPTY,
+                         processors: List[ErProcessor] = List(),
                          deployment: ErSessionDeployment = null) extends MetaRpcMessage {
 }
 
@@ -284,7 +286,8 @@ object MetaModelPbMessageSerdes {
         .setId(src.id)
         .setName(src.name)
         .setStatus(src.status)
-        .putAllOptions(src.options)
+        .putAllOptions(src.options.asJava)
+        .addAllProcessors(src.processors.map(_.toProto()).asJava)
         .setTag(src.tag)
 
       builder.build()
@@ -295,6 +298,7 @@ object MetaModelPbMessageSerdes {
   }
 
   // deserializers
+
   implicit class ErFunctorFromPbMessage(src: Meta.Functor) extends PbMessageDeserializer {
     override def fromProto[T >: RpcMessage](): ErFunctor =
       ErFunctor(name = src.getName, serdes = src.getSerdes, body = src.getBody.toByteArray)
@@ -389,7 +393,8 @@ object MetaModelPbMessageSerdes {
       ErSessionMeta(id = src.getId,
         name = src.getName,
         status = src.getStatus,
-        options = src.getOptionsMap,
+        options = src.getOptionsMap.asScala.toMap,
+        processors = src.getProcessorsList.asScala.map(_.fromProto()).toList,
         tag = src.getTag)
     }
 

@@ -1,6 +1,6 @@
 SHELL_FOLDER=$(dirname "$0")
 # EGGROLL_HOME
-#cd $SHELL_FOLDER/../
+cd $SHELL_FOLDER/../
 base_dir=$SHELL_FOLDER/../jvm
 #set -x
 session_id="null_sid"

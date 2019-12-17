@@ -1,27 +1,9 @@
-/*
- * Copyright (c) 2019 - now, Eggroll Authors. All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
- *
- */
-
 package com.webank.eggroll.rollpair
 
 import java.net.InetSocketAddress
 import java.util.concurrent.ConcurrentHashMap
 
-import _root_.io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
+import com.webank.eggroll.core.Bootstrap
 import com.webank.eggroll.core.client.NodeManagerClient
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
 import com.webank.eggroll.core.constant.{ProcessorStatus, ProcessorTypes, SessionConfKeys, StringConstants}
@@ -30,10 +12,13 @@ import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.util.{Logging, MiscellaneousUtils}
 import com.webank.eggroll.rollpair.component.RollPairServicer
 import org.apache.commons.lang3.StringUtils
+import _root_.io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
 
-
-object Main extends Logging {
-  def registerRouter():Unit = {
+class RollPairDriverBootstrap extends Bootstrap with Logging {
+  private var port = 0
+  private var sessionId = "er_session_null"
+  private var nodeManager = ""
+  override def init(args: Array[String]): Unit = {
     CommandRouter.register(serviceName = RollPairServicer.rollMapValuesCommand,
       serviceParamTypes = Array(classOf[ErJob]),
       routeToClass = classOf[RollPairServicer],
@@ -98,16 +83,10 @@ object Main extends Logging {
       serviceParamTypes = Array(classOf[ErJob]),
       routeToClass = classOf[RollPairServicer],
       routeToMethodName = RollPairServicer.runJob)
-
-    CommandRouter.register(serviceName = RollPairServicer.rollPutAllCommand,
-      serviceParamTypes = Array(classOf[ErJob]),
-      routeToClass = classOf[RollPairServicer],
-      routeToMethodName = RollPairServicer.runJob)
-
-    CommandRouter.register(serviceName = RollPairServicer.rollGetAllCommand,
-      serviceParamTypes = Array(classOf[ErJob]),
-      routeToClass = classOf[RollPairServicer],
-      routeToMethodName = RollPairServicer.runJob)
+    val cmd = MiscellaneousUtils.parseArgs(args = args)
+    this.port = cmd.getOptionValue('p', "0").toInt
+    this.sessionId = cmd.getOptionValue('s', "UNKNOWN")
+    this.nodeManager = cmd.getOptionValue("nm")
   }
   def reportCM(sessionId:String, nm:ErEndpoint, selfPort:Int):Unit = {
     // todo: get port from command line
@@ -124,14 +103,9 @@ object Main extends Logging {
 
     logInfo("ready to heartbeat")
     nodeManagerClient.heartbeat(myself)
-  }
-  def main(args: Array[String]): Unit = {
-    registerRouter()
-    val cmd = MiscellaneousUtils.parseArgs(args = args)
-    val portString = cmd.getOptionValue('p', "0")
-    val sessionId = cmd.getOptionValue('s', "UNKNOWN")
-    val nodeManager = cmd.getOptionValue("nm")
 
+  }
+  override def start(): Unit = {
     println(nodeManager)
     val managerEndpoint = if (StringUtils.isBlank(nodeManager)) {
       ErEndpoint(host = "localhost", port = 9394)
@@ -146,8 +120,7 @@ object Main extends Logging {
       ErEndpoint(host = managerHost, port = managerPort.toInt)
     }
 
-    val rollServer = NettyServerBuilder
-      .forAddress(new InetSocketAddress("127.0.0.1", portString.toInt))
+    val rollServer = NettyServerBuilder.forAddress(new InetSocketAddress(this.port))
       .addService(new CommandService)
       .build
     rollServer.start()
@@ -163,7 +136,5 @@ object Main extends Logging {
 
 
     logInfo("heartbeated")
-    rollServer.awaitTermination()
-
   }
 }

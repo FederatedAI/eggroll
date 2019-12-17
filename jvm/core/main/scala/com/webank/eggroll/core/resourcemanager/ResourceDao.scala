@@ -1,0 +1,139 @@
+package com.webank.eggroll.core.resourcemanager
+
+import com.webank.eggroll.core.clustermanager.datasource.RdbConnectionPool
+import com.webank.eggroll.core.meta._
+import com.webank.eggroll.core.resourcemanager.ResourceDao.NotExistError
+import com.webank.eggroll.core.util.JdbcTemplate
+import com.webank.eggroll.core.util.JdbcTemplate.ResultSetIterator
+import org.apache.commons.lang3.StringUtils
+
+class ServerMetaDao {
+  private lazy val dbc = ResourceDao.dbc
+  def getServerCluster(clusterId:Long = 0): ErServerCluster = {
+    val nodes = dbc.query(rs =>
+      rs.map(_ => ErServerNode(
+        id = rs.getLong("server_id"), clusterId=clusterId, name = rs.getString("name"),
+        endpoint = ErEndpoint(host=rs.getString("host"), port = rs.getInt("port")),
+        nodeType = rs.getString("node_type"), status = rs.getString("status")))
+    ,"select * from server_node where server_cluster_id=?", clusterId)
+    ErServerCluster(id = clusterId, serverNodes = nodes.toArray)
+  }
+}
+
+class StoreMetaDao {
+
+}
+
+class SessionMetaDao {
+  private lazy val dbc = ResourceDao.dbc
+  def register(sessionMeta: ErSessionMeta, replace:Boolean = true):Unit = {
+    require(sessionMeta.activeProcCount == sessionMeta.processors.count(_.status == RmConst.PROC_READY),
+      "conflict active proc count:" + sessionMeta)
+    val sid = sessionMeta.id
+    dbc.withTransaction{ conn =>
+      if (replace) {
+        dbc.update(conn, "delete from session_main where session_id=?", sid)
+        dbc.update(conn, "delete from session_option where session_id=?", sid)
+        dbc.update(conn, "delete from session_processor where session_id=?", sid)
+      }
+      dbc.update(conn,
+        "insert into session_main(session_id, name, status, tag, active_proc_count) values(?, ?, ?, ?, 0)",
+        sid, sessionMeta.name, sessionMeta.status, sessionMeta.tag)
+      val opts = sessionMeta.options
+      if(opts.nonEmpty) {
+        val valueSql = ("(?, ?, ?) ," * opts.size).stripSuffix(",")
+        val params = opts.flatMap{case (k,v) => Seq(sid, k, v)}.toSeq
+        dbc.update(conn, "insert into session_option(session_id, name, data) values " + valueSql, params:_*)
+      }
+      val procs = sessionMeta.processors
+      if(procs.nonEmpty) {
+        val valueSql = ("(?, ?, ?, ?, ?, ?, ?)," * procs.length).stripSuffix(",")
+        val params = procs.flatMap(proc => Seq(
+          sid, proc.serverNodeId, proc.processorType, proc.status, proc.tag,
+          if(proc.commandEndpoint != null) proc.commandEndpoint.toString else "",
+          if(proc.transferEndpoint != null) proc.transferEndpoint.toString else ""))
+        dbc.update(conn,
+                   "insert into session_processor(session_id, server_node_id, processor_type, status, " +
+                   "tag, command_endpoint, transfer_endpoint) values " + valueSql,
+                   params:_*)
+      }
+    }
+  }
+
+  def getSession(sessionId: String): ErSessionMeta = {
+    val opts = dbc.query(
+          rs => rs.map(
+            _ => (rs.getString("name"), rs.getString("data"))
+          ).toMap,
+      "select * from session_option where session_id = ?", sessionId)
+    val procs = dbc.query( rs => rs.map(_ =>
+      ErProcessor(id = rs.getLong("processor_id"),
+          serverNodeId = rs.getInt("server_node_id"),
+          processorType = rs.getString("processor_type"), status = rs.getString("status"),
+          commandEndpoint = if(StringUtils.isBlank(rs.getString("command_endpoint"))) null
+                            else ErEndpoint(rs.getString("command_endpoint")),
+          transferEndpoint = if(StringUtils.isBlank(rs.getString("transfer_endpoint"))) null
+                              else ErEndpoint(rs.getString("transfer_endpoint")))
+        ),
+      "select * from session_processor where session_id = ?", sessionId)
+    getSessionMain(sessionId).copy(options = opts, processors = procs.toList)
+  }
+  def addSession(sessionMeta: ErSessionMeta): Unit = {
+    if(dbc.queryOne("select * from session_main where session_id = ?", sessionMeta.id).nonEmpty) {
+      throw new NotExistError("session exists:" + sessionMeta.id)
+    }
+    register(sessionMeta)
+  }
+
+  def updateProcessor(proc: ErProcessor):Unit = {
+    val (session_id:String, old:String) = dbc.query( rs => {
+      if (!rs.next()) {
+        throw new NotExistError("processor not exits:" + proc)
+      }
+      (rs.getString("session_id"), rs.getString("status"))
+    }, "select session_id, status from session_processor where processor_id=?", proc.id)
+    dbc.withTransaction{conn =>
+      if(old == RmConst.PROC_READY && proc.status != RmConst.PROC_READY)  {
+        dbc.update(conn, "update session_main set active_proc_count = active_proc_count - 1 where session_id = ?", session_id)
+      } else if(old != RmConst.PROC_READY && proc.status == RmConst.PROC_READY) {
+        dbc.update(conn, "update session_main set active_proc_count = active_proc_count + 1 where session_id = ?", session_id)
+      }
+      var sql = "update session_processor set status = ? where processor_id=?"
+      var params = List(proc.status, proc.id)
+      if(proc.transferEndpoint != null) {
+        sql += " and transfer_endpoint=?"
+        params ++= proc.transferEndpoint.toString
+      }
+      if(proc.commandEndpoint != null) {
+        sql += " and command_endpoint = ?"
+        params ++= proc.commandEndpoint.toString
+      }
+      dbc.update(conn, sql, params:_*)
+    }
+  }
+
+  def getSessionMain(sessionId: String): ErSessionMeta = {
+    dbc.query( rs => {
+      if (!rs.next()) {
+        throw new NotExistError("session id not found:" + sessionId)
+      }
+      ErSessionMeta(
+        id = sessionId, name = rs.getString("name"),
+        activeProcCount = rs.getInt("active_proc_count"),
+        status = rs.getString("status"), tag = rs.getString("tag"))
+    },"select * from session_main where session_id = ?", sessionId)
+  }
+
+  def exitsSession(sessionId: String): Boolean = {
+    dbc.queryOne("select 1 from session_main where session_id = ?", sessionId).isEmpty
+  }
+
+  def updateSessionMain(sessionMeta: ErSessionMeta):Unit = {
+    dbc.update("update session_main set name = ? , status = ? , tag = ? , active_processors = ?",
+      sessionMeta.name, sessionMeta.status, sessionMeta.tag, sessionMeta.activeProcCount)
+  }
+}
+object ResourceDao {
+  class NotExistError(msg: String) extends Exception(msg)
+  val dbc: JdbcTemplate = new JdbcTemplate(RdbConnectionPool.dataSource.getConnection)
+}

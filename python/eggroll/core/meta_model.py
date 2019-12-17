@@ -429,7 +429,7 @@ class ErTask(RpcMessage):
                          name=self._name,
                          inputs=_elements_to_proto(self._inputs),
                          outputs=_elements_to_proto(self._outputs),
-                         job=self._job.to_proto())
+                         job=_to_proto(self._job))
 
   def to_proto_string(self):
     return self.to_proto().SerializeToString()

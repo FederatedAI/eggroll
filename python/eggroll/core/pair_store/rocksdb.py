@@ -35,8 +35,8 @@ class RocksdbWriteBatch(PairWriteBatch):
         self.batch.put(k, v)
         self.write()
 
-    def delete(self, k, v):
-        self.adapter.db.delete(k, v)
+    def delete(self, k):
+        self.adapter.db.delete(k)
 
     def write(self):
         self.adapter.db.write(self.batch)
@@ -154,3 +154,5 @@ class RocksdbAdapter(PairAdapter):
         it = self.iteritems()
         return sum(1 for _ in it.it)
 
+    def delete(self, k):
+        self.db.delete(k)

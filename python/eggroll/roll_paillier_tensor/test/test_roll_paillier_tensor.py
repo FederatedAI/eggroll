@@ -111,7 +111,7 @@ class TestRollPaillierTensor(unittest.TestCase):
                                uri='com.webank.eggroll.rollpair.component.RollPair.mapValues',
                                args=[job.to_proto().SerializeToString()])
 
-    print(f"ready to call")
+    #print(f"ready to call")
     result = roll_pair_stub.call(request.to_proto())
 
 

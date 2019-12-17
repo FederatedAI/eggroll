@@ -131,7 +131,8 @@ case class RuntimeErConf(prop: Properties = new Properties()) extends ErConf {
 
   def this(sessionMeta: ErSessionMeta) {
     this(new Properties())
-    sessionMeta.options.forEach((k, v) => conf.put(k, v))
+    // TODO:0: cannot modify session directly
+//    sessionMeta.options.foreach((k, v) => conf.put(k, v))
     conf.put(SessionConfKeys.CONFKEY_SESSION_ID, sessionMeta.id)
     conf.put(SessionConfKeys.CONFKEY_SESSION_NAME, sessionMeta.name)
   }

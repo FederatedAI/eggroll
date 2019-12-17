@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='com.webank.eggroll.core.transfer',
   syntax='proto3',
   serialized_options=None,
-  serialized_pb=_b('\n\x0etransfer.proto\x12 com.webank.eggroll.core.transfer\"L\n\x0eTransferHeader\x12\n\n\x02id\x18\x01 \x01(\x05\x12\x0b\n\x03tag\x18\x02 \x01(\t\x12\x11\n\ttotalSize\x18\x03 \x01(\x03\x12\x0e\n\x06status\x18\x04 \x01(\t\"r\n\rTransferBatch\x12@\n\x06header\x18\x01 \x01(\x0b\x32\x30.com.webank.eggroll.core.transfer.TransferHeader\x12\x11\n\tbatchSize\x18\x02 \x01(\x05\x12\x0c\n\x04\x64\x61ta\x18\x03 \x01(\x0c\x32}\n\x0fTransferService\x12j\n\x04send\x12/.com.webank.eggroll.core.transfer.TransferBatch\x1a/.com.webank.eggroll.core.transfer.TransferBatch(\x01\x62\x06proto3')
+  serialized_pb=_b('\n\x0etransfer.proto\x12 com.webank.eggroll.core.transfer\"L\n\x0eTransferHeader\x12\n\n\x02id\x18\x01 \x01(\x05\x12\x0b\n\x03tag\x18\x02 \x01(\t\x12\x11\n\ttotalSize\x18\x03 \x01(\x03\x12\x0e\n\x06status\x18\x04 \x01(\t\"r\n\rTransferBatch\x12@\n\x06header\x18\x01 \x01(\x0b\x32\x30.com.webank.eggroll.core.transfer.TransferHeader\x12\x11\n\tbatchSize\x18\x02 \x01(\x05\x12\x0c\n\x04\x64\x61ta\x18\x03 \x01(\x0c\x32\xdb\x02\n\x0fTransferService\x12j\n\x04send\x12/.com.webank.eggroll.core.transfer.TransferBatch\x1a/.com.webank.eggroll.core.transfer.TransferBatch(\x01\x12j\n\x04recv\x12/.com.webank.eggroll.core.transfer.TransferBatch\x1a/.com.webank.eggroll.core.transfer.TransferBatch0\x01\x12p\n\x08sendRecv\x12/.com.webank.eggroll.core.transfer.TransferBatch\x1a/.com.webank.eggroll.core.transfer.TransferBatch(\x01\x30\x01\x62\x06proto3')
 )
 
 
@@ -149,13 +149,31 @@ _TRANSFERSERVICE = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=0,
   serialized_options=None,
-  serialized_start=246,
-  serialized_end=371,
+  serialized_start=247,
+  serialized_end=594,
   methods=[
   _descriptor.MethodDescriptor(
     name='send',
     full_name='com.webank.eggroll.core.transfer.TransferService.send',
     index=0,
+    containing_service=None,
+    input_type=_TRANSFERBATCH,
+    output_type=_TRANSFERBATCH,
+    serialized_options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='recv',
+    full_name='com.webank.eggroll.core.transfer.TransferService.recv',
+    index=1,
+    containing_service=None,
+    input_type=_TRANSFERBATCH,
+    output_type=_TRANSFERBATCH,
+    serialized_options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='sendRecv',
+    full_name='com.webank.eggroll.core.transfer.TransferService.sendRecv',
+    index=2,
     containing_service=None,
     input_type=_TRANSFERBATCH,
     output_type=_TRANSFERBATCH,

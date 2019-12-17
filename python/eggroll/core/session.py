@@ -33,7 +33,7 @@ if "EGGROLL_STANDALONE_DEBUG" not in os.environ:
     os.environ['EGGROLL_STANDALONE_DEBUG'] = "1"
 
 class StandaloneThread(threading.Thread):
-    def __init__(self, session_id="sid1", manager_port=4670, eggs=20001):
+    def __init__(self, session_id="sid1", manager_port=4670, egg_port=20001, egg_transfer_port=20002):
         threading.Thread.__init__(self)
         self.setDaemon(True)
         self.eggroll_home = "."
@@ -43,8 +43,8 @@ class StandaloneThread(threading.Thread):
             self.eggroll_home = "./"
         self.boot = self.eggroll_home + "/bin/eggroll_boot.sh"
         print("aa", self.boot)
-        self.standalone = self.eggroll_home + "/bin/eggroll_boot_standalone.sh -p " + \
-                          str(manager_port) + " -e " + str(eggs) + " -s " + str(session_id)
+        self.standalone = f"{self.eggroll_home}/bin/eggroll_boot_standalone.sh -p \
+                          {manager_port} -e {egg_port} -t {egg_transfer_port} -s {session_id}"
         self.pname = str(session_id) + "-standalone"
 
     def run(self):
@@ -64,6 +64,7 @@ class ErStandaloneDeploy(ErDeploy):
     def __init__(self, session_meta: ErSessionMeta, options={}):
         self.manager_port = options.get("eggroll.standalone.manager.port", 4670)
         self.egg_ports = [int(v) for v in options.get("eggroll.standalone.egg.ports", "20001").split(",")]
+        self.egg_transfer_ports = [int(v) for v in options.get("eggroll.standalone.egg.transfer.ports", "20002").split(",")]
         self._eggs = {0:[]}
         if len(self.egg_ports) > 1:
             raise NotImplementedError()
@@ -80,14 +81,13 @@ class ErStandaloneDeploy(ErDeploy):
                                          server_node_id=0,
                                          processor_type=ProcessorTypes.EGG_PAIR,
                                          status=ProcessorStatus.RUNNING,
-                                         transfer_endpoint=ErEndpoint("localhost", self.egg_ports[0]),
-                                         command_endpoint=ErEndpoint("localhost", self.egg_ports[0])))
+                                         command_endpoint=ErEndpoint("localhost", self.egg_ports[0]),
+                                         transfer_endpoint=ErEndpoint("localhost", self.egg_transfer_ports[0])))
 
         self._rolls = [ErProcessor(id=0,
                                    server_node_id=0,
                                    processor_type=ProcessorTypes.ROLL_PAIR_SERVICER,
                                    status=ProcessorStatus.RUNNING,
-                                   transfer_endpoint=ErEndpoint("localhost", self.egg_ports[0]),
                                    command_endpoint=ErEndpoint("localhost", self.manager_port))]
 
         processorBatch = ErProcessorBatch(id=0, name='standalone', processors=[self._rolls[0]] + list(self._eggs[0]))
