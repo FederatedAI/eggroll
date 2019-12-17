@@ -31,7 +31,7 @@ class TestStandalone(unittest.TestCase):
     self.ctx = get_test_context()
 
   def test_parallelize(self):
-    print(self.ctx.parallelize(range(15)).get_all())
+    print(list(self.ctx.parallelize(range(15)).get_all()))
 
   def test_get(self):
     for i in range(10):
@@ -44,7 +44,7 @@ class TestStandalone(unittest.TestCase):
     options = {}
     options['include_key'] = True
     self.ctx.load("ns1", "testPutAll").put_all(data, options=options)
-    table =list(self.ctx.load("ns1", "n36").get_all())
+    table = list(self.ctx.load("ns1", "n36").get_all())
     print("get res:{}".format(table))
 
   def test_multi_partition_put_all(self):
@@ -82,7 +82,7 @@ class TestStandalone(unittest.TestCase):
         ret.append((f"{k}_{v}_0", v ** 2))
         ret.append((f"{k}_{v}_1", v ** 3))
       return ret
-    print(rp.map_partitions(func).get_all())
+    print(list(rp.map_partitions(func).get_all()))
 
   def test_map(self):
     rp = self.ctx.load("ns1", "testMap").put_all(range(10))
@@ -104,7 +104,7 @@ class TestStandalone(unittest.TestCase):
       for k, v in iterator:
         sum.append((k, v))
       return sum
-    print(rp.collapse_partitions(f).get_all())
+    print(list(rp.collapse_partitions(f).get_all()))
 
   def test_filter(self):
     rp = self.ctx.load("ns1", "test_filter").put_all(range(5))
@@ -119,11 +119,11 @@ class TestStandalone(unittest.TestCase):
       for i in range(0, k):
         result.append((k + r + i, v + r + i))
       return result
-    print(rp.flat_map(foo).get_all())
+    print(list(rp.flat_map(foo).get_all()))
 
   def test_glom(self):
     rp = self.ctx.load("ns1", "test_glom").put_all(range(5))
-    print(rp.glom().get_all())
+    print(list(rp.glom().get_all()))
 
   def test_join(self):
     left_rp = self.ctx.load("ns1", "testJoinLeft").put_all([('a', 1), ('b', 4)], options={"include_key": True})
@@ -133,7 +133,7 @@ class TestStandalone(unittest.TestCase):
   def test_reduce(self):
     from operator import add
     rp = self.ctx.load("ns1", "testReduce").put_all(range(20))
-    print(rp.reduce(add).get_all())
+    print(list(rp.reduce(add).get_all()))
 
   def test_multi_partition_reduce(self):
     from operator import add
@@ -141,7 +141,7 @@ class TestStandalone(unittest.TestCase):
     options['total_partitions'] = 3
     options['include_key'] = True
     rp = self.ctx.load("ns1", "testMultiPartitionReduce", options=options).put_all(range(20))
-    print(rp.reduce(add).get_all())
+    print(list(rp.reduce(add).get_all()))
 
   def test_sample(self):
     rp = self.ctx.load("ns1", "testSample").put_all(range(100))
@@ -150,18 +150,18 @@ class TestStandalone(unittest.TestCase):
   def test_subtract_by_key(self):
     left_rp = self.ctx.load("namespace1206", "testSubtractByKeyLeft1206").put_all(range(10))
     right_rp = self.ctx.load("namespace1206", "testSubtractByKeyRight1206").put_all(range(5))
-    print(left_rp.subtract_by_key(right_rp).get_all())
+    print(list(left_rp.subtract_by_key(right_rp).get_all()))
 
   def test_union(self):
     left_rp = self.ctx.load("ns1", "testUnionLeft").put_all([1, 2, 3])
     right_rp = self.ctx.load("ns1", "testUnionRight").put_all([(1, 1), (2, 2), (3, 3)], options={"include_key": True})
-    print(left_rp.union(right_rp, lambda v1, v2: v1 + v2).get_all())
+    print(list(left_rp.union(right_rp, lambda v1, v2: v1 + v2).get_all()))
 
     left_rp = self.ctx.load("namespace1206", "testUnionLeft1206").put_all([1, 2, 3])
     right_rp = self.ctx.load("namespace1206", "testUnionRight1206").put_all([(1, 1), (2, 2), (3, 3)], options={"include_key": True})
-    print("left:{}".format(left_rp.get_all()))
-    print("right:{}".format(right_rp.get_all()))
-    print(left_rp.union(right_rp, lambda v1, v2: v1 + v2).get_all())
+    print("left:", list(left_rp.get_all()))
+    print("right:", list(right_rp.get_all()))
+    print(list(left_rp.union(right_rp, lambda v1, v2: v1 + v2).get_all()))
 
   def test_aggregate(self):
     from operator import add, mul
