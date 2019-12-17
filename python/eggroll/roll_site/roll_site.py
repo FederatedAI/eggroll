@@ -108,13 +108,8 @@ class RollSite:
     return self.runtime_conf.get('role').get(role)
 
   def _thread_receive(self, packet):
-    storage_options = {'cluster_manager_host': 'localhost',
-                       'cluster_manager_port': 4670,
-                       'pair_type': 'v1/egg-pair',
-                       'egg_pair_service_host': 'localhost',
-                       'egg_pair_service_port': 20001}
     ret_packet = self.stub.unaryCall(packet)
-    while ret_packet.header.ack != proxy_pb2.STOP:  #COMPLETE
+    while ret_packet.header.ack != 123:  #COMPLETE
       if ret_packet.header.ack in ERROR_STATES:
         raise IOError("receive terminated")
       ret_packet = self.stub.unaryCall(packet)
@@ -125,15 +120,16 @@ class RollSite:
                                             packet.header.dst.partyId,
                                             self.dst_host,
                                             self.dst_port)
-    store = ErStore(ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LMDB,
-                                   namespace="test",
-                                   name=_tagged_key))
-    rp = RollPair(store, options=storage_options)
+    rp = self.ctx.rp_ctx.load(namespace=self.job_id, name=_tagged_key)
     return rp
 
   def wait_for_complete(self, futures):
     wait(futures, timeout=10, return_when=ALL_COMPLETED)
     return True
+
+  def wait_for_pull_complete(self, futures):
+    wait(futures, timeout=10, return_when=ALL_COMPLETED)
+    return futures
 
   def push(self, obj, idx=-1):
     algorithm, sub_name = self.__check_authorization(self.name)
@@ -194,11 +190,6 @@ class RollSite:
 
 
   def pull(self, idx=-1):
-    storage_options = {'cluster_manager_host': 'localhost',
-                       'cluster_manager_port': 4670,
-                       'pair_type': 'v1/egg-pair',
-                       'egg_pair_service_host': 'localhost',
-                       'egg_pair_service_port': 20001}
     algorithm, sub_name = self.__check_authorization(self.name, is_send=False)
 
     auth_dict = self.trans_conf.get(algorithm)
@@ -220,11 +211,15 @@ class RollSite:
 
     futures = []
     for party_id in party_ids:
-      task_info = proxy_pb2.Task(taskId="testTaskId", model=proxy_pb2.Model(name="taskName", dataKey="testKey"))
-      topic_src = proxy_pb2.Topic(name="test", partyId="{}".format(party_id),
+      _tagged_key = self.__remote__object_key(self.job_id, self.name, self.tag,
+                                              src_role, self.party_id, src_role,
+                                              party_id, self.dst_host,
+                                              self.dst_port)
+      task_info = proxy_pb2.Task(taskId=_tagged_key)
+      topic_src = proxy_pb2.Topic(name="test", partyId="{}".format(self.party_id),
                                   role=src_role, callback=None)
-      topic_dst = proxy_pb2.Topic(name="test", partyId="{}".format(self.party_id),
-                                  role=self.dst_role, callback=None)
+      topic_dst = proxy_pb2.Topic(name="test", partyId="{}".format(party_id),
+                                  role=src_role, callback=None)
       command_test = proxy_pb2.Command(name="get_status")
       conf_test = proxy_pb2.Conf(overallTimeout=1000,
                                  completionWaitTimeout=1000,
@@ -241,7 +236,6 @@ class RollSite:
 
       data = proxy_pb2.Data(key="hello")
       packet = proxy_pb2.Packet(header=metadata, body=data)
-
       futures.append(self.process_pool.submit(RollSite._thread_receive, self, packet))
 
     self.process_pool.shutdown(wait=False)
@@ -249,9 +243,9 @@ class RollSite:
     if 0 <= idx < len(src_party_ids):
       return futures[0]
 
-    ret_futures = self.complete_pool.submit(self.wait_for_complete, args=(futures,))
+    ret_future = self.complete_pool.submit(self.wait_for_pull_complete, futures)
     self.complete_pool.shutdown(wait=False)
-    return ret_futures
+    return ret_future
 
 
 
