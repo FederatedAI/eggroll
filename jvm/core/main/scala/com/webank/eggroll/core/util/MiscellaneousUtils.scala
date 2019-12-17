@@ -80,6 +80,7 @@ object MiscellaneousUtils {
       }
     } catch {
       case e: ParseException =>
+        println(e)
         formatter.printHelp("", options, true)
     }
 
