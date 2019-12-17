@@ -127,4 +127,5 @@ message SessionMeta {
   string status = 3;
   map<string, string> options = 4;
   string tag = 5;
+  repeated Processor processors = 6;
 }

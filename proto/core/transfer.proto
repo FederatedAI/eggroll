@@ -36,5 +36,7 @@ message TransferBatch {
 // TODO: use transfer lib
 service TransferService {
   rpc send (stream TransferBatch) returns (TransferBatch);
+  rpc recv (TransferBatch) returns (stream TransferBatch);
+  rpc sendRecv (stream TransferBatch) returns (stream TransferBatch);
 }
 
