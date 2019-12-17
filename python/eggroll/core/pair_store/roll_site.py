@@ -44,11 +44,11 @@ class RollsiteWriteBatch(PairWriteBatch):
         self.stub = proxy_pb2_grpc.DataTransferServiceStub(channel)
 
         self.__bin_packet_len = 1 << 20
-        self.ba = None
-        self.buffer = None
-        self.writer = None
         self.total_written = 0
 
+        self.ba = bytearray(self.__bin_packet_len)
+        self.buffer = ArrayByteBuffer(self.ba)
+        self.writer = PairBinWriter(pair_buffer=self.buffer)
 
     def generate_message(self, obj, metadata):
         while True:
@@ -107,23 +107,21 @@ class RollsiteWriteBatch(PairWriteBatch):
         self.stub.unaryCall(packet)
 
     def close(self):
-        self.commit()
+        bin_batch = bytes(self.ba[0:self.buffer.get_offset()])
+        print("bin_batch:", bin_batch)
+        self.write(bin_batch)
         self.send_end()
 
-    def commit(self):
-        if self.ba:
-            bin_batch = bytes(self.ba[0:self.buffer.get_offset()])
-            self.write(bin_batch)
-        self.ba = bytearray(self.__bin_packet_len)
-        self.buffer = ArrayByteBuffer(self.ba)
-        self.writer = PairBinWriter(pair_buffer=self.buffer)
 
     def put(self, k, v):
-        self.commit()
         try:
             self.writer.write(k, v)
         except IndexError as e:
-            self.commit()
+            bin_batch = bytes(self.ba[0:self.buffer.get_offset()])
+            self.write(bin_batch)
+            self.ba = bytearray(self.__bin_packet_len)
+            self.buffer = ArrayByteBuffer(self.ba)
+            self.writer = PairBinWriter(pair_buffer=self.buffer)
             self.writer.write(k, v)
         except:
             print("Unexpected error:", sys.exc_info()[0])
@@ -171,9 +169,10 @@ class RollsiteAdapter(PairAdapter):
 
     def __init__(self, options):
         super().__init__(options)
-        self._name = options["path"]
-        args = self._name.split("-", 9)
-        print(args)
+        self._name = options["path"].split("/")[-2]
+        #print("self._name:", self._name)
+        args = self._name.split("-", 9)  #args[8]='9394/0'
+        #print(args)
 
         self._tag = args[2]
         self.src_role = args[3]
@@ -181,7 +180,7 @@ class RollsiteAdapter(PairAdapter):
         self.dst_role = args[5]
         self.dst_party_id = args[6]
         self._dst_host = args[7]
-        self._dst_port = int(args[8].split("/")[0])  #args[8]='9394/0'
+        self._dst_port = int(args[8])
 
         self._namespace = ''
         self._store_type = 'roll_site'
