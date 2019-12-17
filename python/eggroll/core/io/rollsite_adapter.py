@@ -58,14 +58,15 @@ class RollsiteWriteBatch(SortedKvWriteBatch):
 
   def generate_message(self, obj, metadata):
     while True:
-      data = proxy_pb2.Data(key="hello", value=obj)
+      data = proxy_pb2.Data(value=obj)
       metadata.seq += 1
       packet = proxy_pb2.Packet(header=metadata, body=data)
       yield packet
       break
 
+
   def push(self, obj):
-    task_info = proxy_pb2.Task(taskId="testTaskId", model=proxy_pb2.Model(name=self.name, dataKey="testKey"))
+    task_info = proxy_pb2.Task(taskId=self.name)
     topic_src = proxy_pb2.Topic(name=self.name, partyId="{}".format(self.src_party_id),
                                 role=self.src_role, callback=None)
     topic_dst = proxy_pb2.Topic(name=self.name, partyId="{}".format(self.dst_party_id),
@@ -88,7 +89,7 @@ class RollsiteWriteBatch(SortedKvWriteBatch):
     self.push(bin_data)
 
   def send_end(self):
-    task_info = proxy_pb2.Task(taskId="testTaskId", model=proxy_pb2.Model(name="set_status", dataKey="testKey"))
+    task_info = proxy_pb2.Task(taskId=self.name)
     topic_src = proxy_pb2.Topic(name="set_status", partyId="{}".format(self.src_party_id),
                                 role=self.src_role, callback=None)
     topic_dst = proxy_pb2.Topic(name="set_status", partyId=self.dst_party_id,
@@ -169,6 +170,7 @@ class RollsiteIterator(SortedKvIterator):
   def __iter__(self):
     return self.it
 
+
 class RollsiteAdapter(SortedKvAdapter):
   def get_stream_meta(self):
     return ('store_type', self.options["store_type"]), \
@@ -224,7 +226,6 @@ class RollsiteAdapter(SortedKvAdapter):
     return RollsiteIterator(self)
 
   def new_batch(self):
-    print("RollsiteWriteBatch")
     return RollsiteWriteBatch(self)
 
   def get(self, key):
