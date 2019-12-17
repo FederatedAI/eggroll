@@ -69,7 +69,7 @@ class EggPair(object):
     value_serdes = create_serdes(task._inputs[0]._store_locator._serdes)
     input_adapter = create_adapter(task._inputs[0])
     input_iterator = input_adapter.iteritems()
-    output_adapter = input_adapter = create_adapter(task._outputs[0])
+    output_adapter = create_adapter(task._outputs[0])
     output_writebatch = output_adapter.new_batch()
     try:
       func(input_iterator, key_serdes, value_serdes, output_writebatch)
