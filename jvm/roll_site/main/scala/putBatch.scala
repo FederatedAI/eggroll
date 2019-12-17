@@ -28,7 +28,7 @@ object ScalaObjectPutBatch extends  App {
   def scalaPutBatch(name:String, key:ByteBuffer, value:ByteBuffer)= {
     val sid = "testing"
     val ctx = new RollPairContext(new ErSession(sid))
-    val rp = ctx.load("ns1","testPutBatch")
+    val rp = ctx.load("ns1","1-0")
 
     var directBinPacketBuffer: ByteBuffer = ByteBuffer.allocateDirect(1<<10)
     //directBinPacketBuffer.order(ByteOrder.BIG_ENDIAN)

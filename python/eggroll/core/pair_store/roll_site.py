@@ -171,7 +171,7 @@ class RollsiteAdapter(PairAdapter):
 
     def __init__(self, options):
         super().__init__(options)
-        self._name = options["name"]
+        self._name = options["path"]
         args = self._name.split("-", 9)
         print(args)
 
@@ -181,7 +181,7 @@ class RollsiteAdapter(PairAdapter):
         self.dst_role = args[5]
         self.dst_party_id = args[6]
         self._dst_host = args[7]
-        self._dst_port = int(args[8])
+        self._dst_port = int(args[8].split("/")[0])  #args[8]='9394/0'
 
         self._namespace = ''
         self._store_type = 'roll_site'
