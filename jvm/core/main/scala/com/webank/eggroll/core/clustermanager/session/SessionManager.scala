@@ -23,9 +23,8 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
 import com.webank.eggroll.core.client.NodeManagerClient
-import com.webank.eggroll.core.clustermanager.dao.generated.model.ServerNodeExample
 import com.webank.eggroll.core.clustermanager.metadata.ServerNodeCrudOperator
-import com.webank.eggroll.core.constant.{BindingStrategies, _}
+import com.webank.eggroll.core.constant._
 import com.webank.eggroll.core.meta._
 
 import scala.collection.mutable
@@ -108,7 +107,7 @@ object SessionManager {
             arrayBuffer += pWithServerNodeInfo
             eggs += (pWithServerNodeInfo.serverNodeId -> arrayBuffer)
         }
-      } else if (ProcessorTypes.ROLL_PAIR_SERVICER.equals(p.processorType)) {
+      } else if (ProcessorTypes.ROLL_PAIR_MASTER.equals(p.processorType)) {
         rolls += p.copy(serverNodeId = hostToNodeId(p.commandEndpoint.host))
       }
     })

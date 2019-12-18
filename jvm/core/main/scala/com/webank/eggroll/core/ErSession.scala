@@ -20,10 +20,9 @@ package com.webank.eggroll.core
 
 import com.webank.eggroll.core.client.ClusterManagerClient
 import com.webank.eggroll.core.constant.{DeployConfKeys, ProcessorStatus, ProcessorTypes, SessionStatus}
-import com.webank.eggroll.core.meta.{ErEndpoint, ErPartition, ErProcessor, ErProcessorBatch, ErSessionDeployment, ErSessionMeta}
+import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.util.TimeUtils
 
-import scala.collection.JavaConverters._
 import scala.util.Random
 
 trait ErDeploy
@@ -31,7 +30,7 @@ trait ErDeploy
 class ErStandaloneDeploy(sessionMeta: ErSessionMeta, options: Map[String, String] = Map()) extends ErDeploy {
   private val managerPort = options.getOrElse("eggroll.standalone.manager.port", "4670").toInt
   val rolls: List[ErProcessor] = List(ErProcessor(
-    id=0, serverNodeId = 0, processorType = ProcessorTypes.ROLL_PAIR_SERVICER,
+    id=0, serverNodeId = 0, processorType = ProcessorTypes.ROLL_PAIR_MASTER,
     status = ProcessorStatus.RUNNING, commandEndpoint = ErEndpoint("localhost", managerPort)))
   private val eggPorts = options.getOrElse("eggroll.standalone.egg.ports", "20001").split(",").map(_.toInt)
   private val eggTransferPorts = options.getOrElse("eggroll.standalone.egg.transfer.ports", "20002").split(",").map(_.toInt)

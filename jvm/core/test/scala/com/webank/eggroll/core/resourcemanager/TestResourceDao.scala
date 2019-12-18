@@ -1,19 +1,22 @@
 package com.webank.eggroll.core.resourcemanager
 
+import java.io.File
+
+import com.webank.eggroll.core.constant.ProcessorStatus
 import com.webank.eggroll.core.meta.{ErProcessor, ErSessionMeta}
 import com.webank.eggroll.core.resourcemanager.ResourceDao.NotExistError
 import com.webank.eggroll.core.session.StaticErConf
-import org.junit.Test
 import org.junit.Assert._
-
-import scala.collection.JavaConverters._
+import org.junit.Test
 class TestResourceDao {
-  StaticErConf.addProperties("./jvm/core/main/resources/cluster-manager.properties")
+  private val confFile = new File("../../conf/eggroll.properties.local")
+  println(confFile.getAbsolutePath)
+  StaticErConf.addProperties(confFile.getAbsolutePath)
   private val smDao = new SessionMetaDao
-  private val proc1 = ErProcessor(serverNodeId = 1, status = RmConst.PROC_NEW)
+  private val proc1 = ErProcessor(serverNodeId = 1, status = ProcessorStatus.NEW)
   private val session = ErSessionMeta(
     id="sid_reg1", tag = "tag1",
-    options = Map("a"->"b","c"->"d"), processors = List(proc1))
+    options = Map("a"->"b","c"->"d"), processors = Array(proc1))
   @Test
   def testRegisterSession():Unit = {
     smDao.register(session)
@@ -40,13 +43,18 @@ class TestResourceDao {
     val sessRet = smDao.getSession(session.id)
     val procRet = sessRet.processors.head
     assertEquals(0, smDao.getSessionMain(session.id).activeProcCount)
-    smDao.updateProcessor(procRet.copy(status = RmConst.PROC_READY))
-    smDao.updateProcessor(procRet.copy(status = RmConst.PROC_READY))
+    smDao.updateProcessor(procRet.copy(status = ProcessorStatus.RUNNING))
+    smDao.updateProcessor(procRet.copy(status = ProcessorStatus.RUNNING))
     assertEquals(1, smDao.getSessionMain(session.id).activeProcCount)
-    smDao.updateProcessor(procRet.copy(status = RmConst.PROC_NEW))
+    smDao.updateProcessor(procRet.copy(status = ProcessorStatus.NEW))
     assertEquals(0, smDao.getSessionMain(session.id).activeProcCount)
-    smDao.updateProcessor(procRet.copy(status = RmConst.PROC_NEW))
+    smDao.updateProcessor(procRet.copy(status = ProcessorStatus.NEW))
     assertEquals(0, smDao.getSessionMain(session.id).activeProcCount)
 
+  }
+
+  @Test
+  def testCreateProcessor(): Unit = {
+    smDao.createProcessor(proc1)
   }
 }

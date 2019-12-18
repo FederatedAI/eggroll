@@ -1,14 +1,14 @@
 package com.webank.eggroll.core.resourcemanager
 
-import com.webank.eggroll.core.command.{CommandClient, CommandURI}
-import com.webank.eggroll.core.constant.{MetadataCommands, StoreTypes}
-import com.webank.eggroll.core.meta.{ErEndpoint, ErStore, ErStoreLocator}
+import com.webank.eggroll.core.client.ClusterManagerClient
 import org.junit.Test
 
 class TestSessionManager {
 
   @Test
   def testGetOrCreate():Unit = {
-    println(TestAssets.sm1.getOrCreateSession(TestAssets.sessionMeta1))
+    val clusterManagerClient = new ClusterManagerClient()
+    val result = clusterManagerClient.getOrCreateSession(sessionMeta = TestAssets.getOrCreateSessionMeta)
+    println(result)
   }
 }

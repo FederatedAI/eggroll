@@ -20,10 +20,9 @@ package com.webank.eggroll.core.nodemanager
 
 import com.webank.eggroll.core.client.NodeManagerClient
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
-import com.webank.eggroll.core.constant.{DeployConfKeys, NodeManagerCommands, SessionConfKeys}
+import com.webank.eggroll.core.constant.NodeManagerCommands
 import com.webank.eggroll.core.meta.{ErProcessor, ErProcessorBatch, ErSessionMeta}
-import com.webank.eggroll.core.session.{RuntimeErConf, StaticErConf}
-import com.webank.eggroll.core.transfer.TransferService
+import com.webank.eggroll.core.session.StaticErConf
 import io.grpc.Server
 import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
 import org.junit.{Before, Test}
@@ -45,11 +44,11 @@ class TestNodeManager {
       routeToClass = classOf[NodeManager],
       routeToMethodName = NodeManagerCommands.getOrCreateRolls)
 
-    CommandRouter.register(serviceName = NodeManagerCommands.heartbeatServiceName,
+    CommandRouter.register(serviceName = NodeManagerCommands.heartbeat.uriString,
       serviceParamTypes = Array(classOf[ErProcessor]),
       serviceResultTypes = Array(classOf[ErProcessor]),
       routeToClass = classOf[NodeManager],
-      routeToMethodName = NodeManagerCommands.heartbeat)
+      routeToMethodName = NodeManagerCommands.heartbeat.getName())
 
     val port = 9394
     val clusterManager = NettyServerBuilder

@@ -20,38 +20,41 @@ package com.webank.eggroll.core.resourcemanager
 
 import java.io.{BufferedReader, File, InputStream, InputStreamReader}
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicLong
 
-import com.webank.eggroll.core.constant.SessionConfKeys
+import com.webank.eggroll.core.constant.{CoreConfKeys, ResourceManagerConfKeys, SessionConfKeys}
 import com.webank.eggroll.core.session.RuntimeErConf
 import com.webank.eggroll.core.util.Logging
 import org.apache.commons.lang3.StringUtils
 
 // todo: abstract to general python starter
 // todo: args design
-class Container(conf: RuntimeErConf) extends Logging {
+class Container(conf: RuntimeErConf, moduleName: String, processorId: Long = -1) extends Logging {
+  private val confPrefix = s"eggroll.bootstrap.${moduleName}"
 
-  private val exePath = conf.getString("eggroll.node.exe")
+  private val isWindows = System.getProperty("os.name").toLowerCase().indexOf("windows") > 0
+
+  private val bootStrapShell = conf.getString(CoreConfKeys.BOOTSTRAP_SHELL, if (isWindows) "c:\\windows\\cmd.exe" else "/bin/bash")
+  private val bootStrapShellArgs = conf.getString(CoreConfKeys.BOOTSTRAP_SHELL_ARGS, if (isWindows) "\\c" else "-c")
+  private val exePath = conf.getString(s"${confPrefix}.exepath")
   private val sessionId = conf.getString(SessionConfKeys.CONFKEY_SESSION_ID)
-  private val nodeId = conf.getString("eggroll.node.id")
-  private val logDir = conf.getString("eggroll.node.log.dir")
-  private val boot = conf.getString("eggroll.boot.script","eggroll_processor." +
-    (if(System.getProperty("os.name").toLowerCase().indexOf("windows") > 0) "bat" else "sh"))
-
+  private val myServerNodeId = conf.getString(ResourceManagerConfKeys.SERVER_NODE_ID, "2") // todo:0: get from database instead of conf
+  private val boot = conf.getString(CoreConfKeys.BOOTSTRAP_ROOT_SCRIPT, s"eggroll_boot.${if(isWindows) "bat" else "sh"}")
+  private val logsDir = conf.getString(CoreConfKeys.LOGS_DIR)
 
   def start(): Boolean = {
-
     if (StringUtils.isBlank(sessionId)) {
       throw new IllegalArgumentException("session Id is blank when creating processor")
     }
 
-    val startCmd = s"$boot start_node ${exePath} ${sessionId} $nodeId &"
-    println(s"${startCmd}")
+    val startCmd = s"""${boot} start "${exePath} --config ${conf.getString(CoreConfKeys.STATIC_CONF_PATH)} --session-id ${sessionId} --server-node-id ${myServerNodeId} --processor-id ${processorId}" ${moduleName}-${processorId} &"""
+    logInfo(s"${startCmd}")
 
     val thread = new Thread(() => {
-      val processorBuilder = new ProcessBuilder(boot, "start_node", exePath, sessionId, nodeId)
+      val processorBuilder = new ProcessBuilder(bootStrapShell, bootStrapShellArgs, startCmd)
       // todo: 1. redirect output / error stream; 2. add session info; 3. add node manager
       val builderEnv = processorBuilder.environment()
-      val logPath = new File(logDir + File.separator + sessionId + File.separator + nodeId)
+      val logPath = new File(logsDir + File.separator + sessionId + File.separator + myServerNodeId)
       if(!logPath.exists()){
         logPath.mkdirs()
       }
@@ -69,7 +72,7 @@ class Container(conf: RuntimeErConf) extends Logging {
   }
 
   def stop(): Boolean = {
-    val processBuilder = new ProcessBuilder(boot, "stop_node", exePath, sessionId, nodeId)
+    val processBuilder = new ProcessBuilder(boot, "stop_node", exePath, sessionId, myServerNodeId)
 
     val process = processBuilder.start()
 
@@ -92,4 +95,8 @@ class Container(conf: RuntimeErConf) extends Logging {
     }
     sb.toString
   }
+}
+
+object Container {
+  val generatedProcessorId = new AtomicLong(0)
 }

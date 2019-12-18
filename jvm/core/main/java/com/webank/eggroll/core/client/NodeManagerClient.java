@@ -59,7 +59,11 @@ public class NodeManagerClient {
   }
 
   public ErProcessor heartbeat(ErProcessor processor) {
-    return doSyncRequestInternal(processor, ErProcessor.class, NodeManagerCommands.HEARTBEAT());
+    return doSyncRequestInternal(processor, ErProcessor.class, NodeManagerCommands.heartbeat());
+  }
+
+  public ErSessionMeta startContainers(ErSessionMeta sessionMeta) {
+    return doSyncRequestInternal(sessionMeta, ErSessionMeta.class, NodeManagerCommands.startContainers());
   }
 
   private <T> T doSyncRequestInternal(RpcMessage input, Class<T> outputType, CommandURI commandURI) {

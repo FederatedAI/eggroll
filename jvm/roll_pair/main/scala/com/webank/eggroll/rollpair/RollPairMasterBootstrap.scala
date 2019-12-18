@@ -3,6 +3,7 @@ package com.webank.eggroll.rollpair
 import java.net.InetSocketAddress
 import java.util.concurrent.ConcurrentHashMap
 
+import _root_.io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
 import com.webank.eggroll.core.Bootstrap
 import com.webank.eggroll.core.client.NodeManagerClient
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
@@ -12,9 +13,8 @@ import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.util.{Logging, MiscellaneousUtils}
 import com.webank.eggroll.rollpair.component.RollPairServicer
 import org.apache.commons.lang3.StringUtils
-import _root_.io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
 
-class RollPairDriverBootstrap extends Bootstrap with Logging {
+class RollPairMasterBootstrap extends Bootstrap with Logging {
   private var port = 0
   private var sessionId = "er_session_null"
   private var nodeManager = ""
@@ -83,6 +83,17 @@ class RollPairDriverBootstrap extends Bootstrap with Logging {
       serviceParamTypes = Array(classOf[ErJob]),
       routeToClass = classOf[RollPairServicer],
       routeToMethodName = RollPairServicer.runJob)
+
+    CommandRouter.register(serviceName = RollPairServicer.rollPutAllCommand,
+      serviceParamTypes = Array(classOf[ErJob]),
+      routeToClass = classOf[RollPairServicer],
+      routeToMethodName = RollPairServicer.runJob)
+
+    CommandRouter.register(serviceName = RollPairServicer.rollGetAllCommand,
+      serviceParamTypes = Array(classOf[ErJob]),
+      routeToClass = classOf[RollPairServicer],
+      routeToMethodName = RollPairServicer.runJob)
+
     val cmd = MiscellaneousUtils.parseArgs(args = args)
     this.port = cmd.getOptionValue('p', "0").toInt
     this.sessionId = cmd.getOptionValue('s', "UNKNOWN")
@@ -95,7 +106,7 @@ class RollPairDriverBootstrap extends Bootstrap with Logging {
     val options = new ConcurrentHashMap[String, String]()
     options.put(SessionConfKeys.CONFKEY_SESSION_ID, sessionId)
     val myself = ErProcessor(
-      processorType = ProcessorTypes.ROLL_PAIR_SERVICER,
+      processorType = ProcessorTypes.ROLL_PAIR_MASTER,
       commandEndpoint = ErEndpoint("localhost", selfPort),
       transferEndpoint = ErEndpoint("localhost", selfPort),
       options = options,

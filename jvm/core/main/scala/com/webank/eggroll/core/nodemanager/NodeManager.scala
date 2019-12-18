@@ -41,11 +41,11 @@ object NodeManager extends Logging {
       routeToClass = classOf[NodeManager],
       routeToMethodName = NodeManagerCommands.getOrCreateRolls)
 
-    CommandRouter.register(serviceName = NodeManagerCommands.heartbeatServiceName,
+    CommandRouter.register(serviceName = NodeManagerCommands.heartbeat.uriString,
       serviceParamTypes = Array(classOf[ErProcessor]),
       serviceResultTypes = Array(classOf[ErProcessor]),
       routeToClass = classOf[NodeManager],
-      routeToMethodName = NodeManagerCommands.heartbeat)
+      routeToMethodName = NodeManagerCommands.heartbeat.getName())
   }
   def main(args: Array[String]): Unit = {
     val cmd = MiscellaneousUtils.parseArgs(args = args)

@@ -62,6 +62,7 @@ object SessionCommands {
   val getSessionServerNodes = new CommandURI(prefix = prefix, name = "getSessionServerNodes")
   val getSessionRolls = new CommandURI(prefix = prefix, name = "getSessionRolls")
   val getSessionEggs = new CommandURI(prefix = prefix, name = "getSessionEggs")
+  val heartbeat = new CommandURI(prefix = prefix, name = "heartbeat")
 
   val stopSession = "stopSession"
   val stopSessionServiceName = CommandUtils.toServiceName(prefix, stopSession)
@@ -79,7 +80,7 @@ object NodeManagerCommands {
   val getOrCreateRollsServiceName = CommandUtils.toServiceName(prefix, getOrCreateRolls)
   val GET_OR_CREATE_ROLLS = new CommandURI(getOrCreateRollsServiceName)
 
-  val heartbeat = "heartbeat"
-  val heartbeatServiceName = CommandUtils.toServiceName(prefix, heartbeat)
-  val HEARTBEAT = new CommandURI(heartbeatServiceName)
+  val heartbeat = new CommandURI(prefix = prefix, name = "heartbeat")
+
+  val startContainers = new CommandURI(prefix = prefix, name = "startContainers")
 }

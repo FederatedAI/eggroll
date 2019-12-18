@@ -29,7 +29,7 @@ class HeartBeatService {
     // todo: check whether it is really running
     if (ProcessorTypes.EGG_PAIR.equals(processorType) && EggManager.isSessionInitializing(sessionId)) {
       EggManager.register(processor.copy(status = ProcessorStatus.RUNNING))
-    } else if (ProcessorTypes.ROLL_PAIR_SERVICER.equals(processorType) && RollManager.isServicerInitializing(sessionId)) {
+    } else if (ProcessorTypes.ROLL_PAIR_MASTER.equals(processorType) && RollManager.isServicerInitializing(sessionId)) {
       RollManager.register(processor.copy(status = ProcessorStatus.RUNNING))
     }
   }

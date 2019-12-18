@@ -54,7 +54,7 @@ object ProcessorTypes {
   val ROLL_PAILLIER_TENSOR = "roll_paillier_tensor"
   val ROLL_FRAME = "roll_frame"
 
-  val ROLL_PAIR_SERVICER = "roll_pair_servicer"
+  val ROLL_PAIR_MASTER = "roll_pair_master"
   val EGG_PAIR = "egg_pair"
 }
 
@@ -68,6 +68,7 @@ object ServerNodeStatus {
 }
 
 object ProcessorStatus {
+  val NEW = "NEW"
   val RUNNING = "RUNNING"
   val TERMINATED = "TERMINATED"
   val ERROR = "ERROR"

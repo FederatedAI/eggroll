@@ -19,11 +19,10 @@
 package com.webank.eggroll.core.meta
 
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicInteger
 
 import com.google.protobuf.{ByteString, Message => PbMessage}
-import com.webank.eggroll.core.constant.{BindingStrategies, StringConstants}
-import com.webank.eggroll.core.datastructure.{RollContext, RpcMessage}
+import com.webank.eggroll.core.constant.StringConstants
+import com.webank.eggroll.core.datastructure.RpcMessage
 import com.webank.eggroll.core.meta.NetworkingModelPbMessageSerdes._
 import com.webank.eggroll.core.serdes.{BaseSerializable, PbMessageDeserializer, PbMessageSerializer}
 import com.webank.eggroll.core.util.TimeUtils
@@ -31,7 +30,7 @@ import org.apache.commons.lang3.StringUtils
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
-import scala.collection.mutable.{ArrayBuffer, ListBuffer}
+import scala.collection.mutable.ArrayBuffer
 
 trait MetaRpcMessage extends RpcMessage {
   override def rpcMessageType(): String = "Meta"
@@ -126,7 +125,7 @@ case class ErSessionMeta(id: String,
                          activeProcCount: Int = 0,
                          options: Map[String, String] = Map(),
                          tag: String = StringConstants.EMPTY,
-                         processors: List[ErProcessor] = List(),
+                         processors: Array[ErProcessor] = Array(),
                          deployment: ErSessionDeployment = null) extends MetaRpcMessage {
 }
 
@@ -287,7 +286,7 @@ object MetaModelPbMessageSerdes {
         .setName(src.name)
         .setStatus(src.status)
         .putAllOptions(src.options.asJava)
-        .addAllProcessors(src.processors.map(_.toProto()).asJava)
+        .addAllProcessors(src.processors.toList.map(_.toProto()).asJava)
         .setTag(src.tag)
 
       builder.build()
@@ -394,7 +393,7 @@ object MetaModelPbMessageSerdes {
         name = src.getName,
         status = src.getStatus,
         options = src.getOptionsMap.asScala.toMap,
-        processors = src.getProcessorsList.asScala.map(_.fromProto()).toList,
+        processors = src.getProcessorsList.asScala.map(_.fromProto()).toArray,
         tag = src.getTag)
     }
 

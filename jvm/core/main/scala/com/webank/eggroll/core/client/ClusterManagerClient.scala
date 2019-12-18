@@ -22,7 +22,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 import com.webank.eggroll.core.command.CommandClient
 import com.webank.eggroll.core.constant.{ClusterManagerConfKeys, MetadataCommands, SessionCommands}
-import com.webank.eggroll.core.meta.{ErEndpoint, ErPartition, ErProcessorBatch, ErServerCluster, ErServerNode, ErSessionMeta, ErStore, ErStoreLocator}
+import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.session.StaticErConf
 
 import scala.collection.JavaConverters._
@@ -81,4 +81,7 @@ class ClusterManagerClient(val endpoint: ErEndpoint) {
 
   def getSessionEggs(sessionMeta: ErSessionMeta): ErProcessorBatch =
     cc.call[ErProcessorBatch](SessionCommands.getSessionEggs, sessionMeta)
+
+  def heartbeat(processor: ErProcessor): ErProcessor =
+    cc.call[ErProcessor](SessionCommands.heartbeat, processor)
 }

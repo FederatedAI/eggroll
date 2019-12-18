@@ -3,12 +3,9 @@ package com.webank.eggroll.core.resourcemanager
 import java.net.InetSocketAddress
 
 import com.webank.eggroll.core.Bootstrap
-import com.webank.eggroll.core.clustermanager.ClusterManager
-import com.webank.eggroll.core.clustermanager.ClusterManager.{logInfo, registerRouter}
-import com.webank.eggroll.core.clustermanager.metadata.{ServerNodeCrudOperator, StoreCrudOperator}
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
-import com.webank.eggroll.core.constant.{MetadataCommands, SessionCommands, SessionConfKeys}
-import com.webank.eggroll.core.meta.{ErProcessorBatch, ErServerCluster, ErServerNode, ErSessionMeta, ErStore}
+import com.webank.eggroll.core.constant.{SessionCommands, SessionConfKeys}
+import com.webank.eggroll.core.meta.{ErProcessor, ErSessionMeta}
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.util.{Logging, MiscellaneousUtils}
 import io.grpc.Server
@@ -18,6 +15,7 @@ class ClusterManagerBootstrap extends Bootstrap with Logging {
   private var port = 0
   private var sessionId = "er_session_null"
   override def init(args: Array[String]): Unit = {
+    /*
     CommandRouter.register(serviceName = MetadataCommands.getServerNodeServiceName,
       serviceParamTypes = Array(classOf[ErServerNode]),
       serviceResultTypes = Array(classOf[ErServerNode]),
@@ -96,6 +94,20 @@ class ClusterManagerBootstrap extends Bootstrap with Logging {
       routeToClass = classOf[ClusterManager],
       routeToMethodName = SessionCommands.getSessionEggs.getName())
 
+     */
+
+    CommandRouter.register(serviceName = SessionCommands.getOrCreateSession.uriString,
+      serviceParamTypes = Array(classOf[ErSessionMeta]),
+      serviceResultTypes = Array(classOf[ErSessionMeta]),
+      routeToClass = classOf[SessionManagerService],
+      routeToMethodName = SessionCommands.getOrCreateSession.getName())
+
+    CommandRouter.register(serviceName = SessionCommands.heartbeat.uriString,
+      serviceParamTypes = Array(classOf[ErProcessor]),
+      serviceResultTypes = Array(classOf[ErProcessor]),
+      routeToClass = classOf[SessionManagerService],
+      routeToMethodName = SessionCommands.heartbeat.getName())
+
     val cmd = MiscellaneousUtils.parseArgs(args = args)
     this.port = cmd.getOptionValue('p', "4670").toInt
     this.sessionId = cmd.getOptionValue('s')
@@ -105,6 +117,7 @@ class ClusterManagerBootstrap extends Bootstrap with Logging {
   }
 
   override def start(): Unit = {
+    // TODO:0: use user's config
     val clusterManager = NettyServerBuilder
       .forAddress(new InetSocketAddress(this.port))
       .addService(new CommandService)

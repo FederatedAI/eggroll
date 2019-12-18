@@ -18,15 +18,12 @@
 
 package com.webank.eggroll.core.util
 
-import java.io.{File, PrintWriter}
+import java.io.File
 import java.sql.{Connection, DriverManager, PreparedStatement, ResultSet, SQLException, Statement, Types}
-import java.util.logging.Logger
-
-import javax.sql.DataSource
 
 import scala.io.BufferedSource
 
-class JdbcTemplate(dataSource: () => Connection, autoClose:Boolean = false) {
+class JdbcTemplate(dataSource: () => Connection, autoClose:Boolean = false) extends Logging {
   def this(connection: Connection, autoClose:Boolean) = {
     this(() => connection, autoClose)
   }
@@ -53,16 +50,23 @@ class JdbcTemplate(dataSource: () => Connection, autoClose:Boolean = false) {
   }
 
   def withStatement[T](conn: Connection, func: PreparedStatement => T, sql: String, params: Any*): T = {
-    val statement = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)
-    params.indices.foreach(i =>
-      statement.setObject(i + 1, params(i) match {
-        case option: Option[Any] => option.orNull
-        case _ => params(i)
-      })
-    )
-    val ret = func(statement)
-    statement.close()
-    ret
+    var statement: PreparedStatement = null
+    try {
+      statement = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)
+      params.indices.foreach(i =>
+        statement.setObject(i + 1, params(i) match {
+          case option: Option[Any] => option.orNull
+          case _ => params(i)
+        })
+      )
+      val ret = func(statement)
+      statement.close()
+      ret
+    } catch {
+      case e: Exception =>
+        logError(s"error sql: ${statement}, params: ${String.join(",", params.toString())}")
+        throw e
+    }
   }
 
   // Prepare statement with sql and params binding
