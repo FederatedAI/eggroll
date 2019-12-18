@@ -158,13 +158,15 @@ class RollSite:
           '''
           If it is a table, send the meta right away.
           '''
-          name = obj._name
-          namespace = obj._namespace
+          name = obj.get_name()
+          namespace = obj.get_namespace()
         else:
           '''
           If it is a object, put the object in the table and send the table meta.
           '''
-          object_storage_table_name = '{}.{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.src_role, str(self.party_id), _role, str(_partyId)]))
+          object_storage_table_name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.src_role, str(self.party_id),
+                                                                                    _role, str(_partyId), self.dst_host,
+                                                                                    str(self.dst_port)]))
           name = object_storage_table_name
           namespace = self.job_id
 

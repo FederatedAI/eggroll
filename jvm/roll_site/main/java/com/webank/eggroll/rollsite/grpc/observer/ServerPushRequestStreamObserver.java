@@ -62,7 +62,8 @@ class putBatchThread extends Thread{
         String key = inputPacket.getBody().getKey();
         ByteString value = inputPacket.getBody().getValue();
         String name = inputPacket.getHeader().getTask().getModel().getName();
-        ScalaObjectPutBatch.scalaPutBatch(name, ByteBuffer.wrap(key.getBytes()), value.asReadOnlyByteBuffer());
+        String namespace = inputPacket.getHeader().getTask().getModel().getDataKey();
+        ScalaObjectPutBatch.scalaPutBatch(name, namespace, ByteBuffer.wrap(key.getBytes()), value.asReadOnlyByteBuffer());
     }
 
 }
