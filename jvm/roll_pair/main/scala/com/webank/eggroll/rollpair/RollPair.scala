@@ -71,7 +71,7 @@ class RollPair(val store: ErStore, val ctx:RollPairContext, val opts: Map[String
     val transferClients = new Array[GrpcTransferClient](totalPartitions)
     val brokers = new Array[Broker[ByteString]](totalPartitions)
 
-    val job = ErJob(id = "1",
+    val job = ErJob(id = store.storeLocator.name,
       name = RollPairServicer.putAll,
       inputs = Array(store),
       outputs = Array(store),
@@ -130,7 +130,7 @@ class RollPair(val store: ErStore, val ctx:RollPairContext, val opts: Map[String
           // tag = s"${job.id}-${partitionId}" to store.storeLocator.name
           newTransferClient.initForward(
             dataBroker = newBroker,
-            tag = store.storeLocator.name,
+            tag = s"${store.storeLocator.name}-${partitionId}",
             processor = ctx.routeToEgg(store.partitions(partitionId)))
           transferClients.update(partitionId, newTransferClient)
         }

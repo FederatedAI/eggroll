@@ -31,7 +31,7 @@ class RollsiteWriteBatch(PairWriteBatch):
     def __init__(self, adapter):
         self.adapter = adapter
         self.name = adapter._name
-        self.tag = adapter._tag
+        self.namespace = adapter._namespace
         self.src_role = adapter.src_role
         self.src_party_id = adapter.src_party_id
         self.dst_role = adapter.dst_role
@@ -58,9 +58,8 @@ class RollsiteWriteBatch(PairWriteBatch):
             yield packet
             break
 
-
     def push(self, obj):
-        task_info = proxy_pb2.Task(taskId=self.name)
+        task_info = proxy_pb2.Task(taskId=self.name, model=proxy_pb2.Model(name=self.name, dataKey=self.namespace))
         topic_src = proxy_pb2.Topic(name=self.name, partyId="{}".format(self.src_party_id),
                                     role=self.src_role, callback=None)
         topic_dst = proxy_pb2.Topic(name=self.name, partyId="{}".format(self.dst_party_id),
@@ -101,8 +100,7 @@ class RollsiteWriteBatch(PairWriteBatch):
                                       operator="markEnd",
                                       seq=0, ack=0,
                                       conf=conf_test)
-        data = proxy_pb2.Data(key="hello", value="markEnd".encode())
-        packet = proxy_pb2.Packet(header=metadata, body=data)
+        packet = proxy_pb2.Packet(header=metadata)
 
         self.stub.unaryCall(packet)
 
@@ -170,19 +168,17 @@ class RollsiteAdapter(PairAdapter):
     def __init__(self, options):
         super().__init__(options)
         self._name = options["path"].split("/")[-2]
-        #print("self._name:", self._name)
+        self._namespace = options["path"].split("/")[-3]
         args = self._name.split("-", 9)  #args[8]='9394/0'
         #print(args)
 
-        self._tag = args[2]
-        self.src_role = args[3]
-        self.src_party_id = args[4]
-        self.dst_role = args[5]
-        self.dst_party_id = args[6]
-        self._dst_host = args[7]
-        self._dst_port = int(args[8])
+        self.src_role = args[1]
+        self.src_party_id = args[2]
+        self.dst_role = args[3]
+        self.dst_party_id = args[4]
+        self._dst_host = args[5]
+        self._dst_port = int(args[6])
 
-        self._namespace = ''
         self._store_type = 'roll_site'
         self._path = ''
         self._partitioner = ''
