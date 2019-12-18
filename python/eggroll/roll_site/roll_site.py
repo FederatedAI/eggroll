@@ -154,22 +154,17 @@ class RollSite:
       for _partyId in _partyIds:
         _tagged_key = self.__remote__object_key(self.job_id, self.name, self.tag, self.src_role, self.party_id, _role,
                                                 _partyId, self.dst_host, self.dst_port)
-        if isinstance(obj, RollPair):
-          '''
-          If it is a table, send the meta right away.
-          '''
-          name = obj.get_name()
-          namespace = obj.get_namespace()
-        else:
+
+        object_storage_table_name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.src_role, str(self.party_id),
+                                                                                  _role, str(_partyId), self.dst_host,
+                                                                                  str(self.dst_port)]))
+        name = object_storage_table_name
+        namespace = self.job_id
+
+        if isinstance(obj, str):
           '''
           If it is a object, put the object in the table and send the table meta.
           '''
-          object_storage_table_name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.src_role, str(self.party_id),
-                                                                                    _role, str(_partyId), self.dst_host,
-                                                                                    str(self.dst_port)]))
-          name = object_storage_table_name
-          namespace = self.job_id
-
           rp = self.ctx.rp_ctx.load(namespace, name)
           rp.put(_tagged_key, obj)
 
@@ -179,7 +174,7 @@ class RollSite:
                                           lambda v: v,
                                           output=ErStore(store_locator = ErStoreLocator(store_type=StoreTypes.ROLLPAIR_ROLLSITE,
                                                                                         namespace=namespace,
-                                                                                        name=_tagged_key)))
+                                                                                        name=name)))
         futures.append(future)
         LOGGER.debug("[REMOTE] Sent {}".format(_tagged_key))
 
