@@ -15,18 +15,26 @@
 #
 import unittest
 from eggroll.roll_site.roll_site import RollSiteContext
-
+from eggroll.core.session import ErSession
+from eggroll.roll_pair.roll_pair import RollPairContext
 
 class TestGet(unittest.TestCase):
     def test_get(self):
+        rp_session = ErSession(session_id='testing', options={"eggroll.deploy.mode": "standalone"})
+        rp_context = RollPairContext(rp_session)
+
         options = {'runtime_conf_path': 'python/eggroll/roll_site/conf/role_conf.json',
                    'server_conf_path': 'python/eggroll/roll_site/conf/server_conf.json',
                    'transfer_conf_path': 'python/eggroll/roll_site/conf/transfer_conf.json'}
-        context = RollSiteContext("atest", options=options)
+        context = RollSiteContext("atest", options=options, rp_ctx=rp_context)
 
         _tag = "Hello"
 
         rs = context.load(name="RsaIntersectTransferVariable.rsa_pubkey", tag="{}".format(_tag))
-        rs.pull()
+        futures = rs.pull()
+        print("result:", type(futures.result()))
+        for future in futures.result():
+          print("result:", type(future.result()))
+          future.get()
 
 
