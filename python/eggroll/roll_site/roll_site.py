@@ -179,7 +179,7 @@ class RollSite:
                                           lambda v: v,
                                           output=ErStore(store_locator = ErStoreLocator(store_type=StoreTypes.ROLLPAIR_ROLLSITE,
                                                                                         namespace=namespace,
-                                                                                        name=_tagged_key)))
+                                                                                        name=name)))
         futures.append(future)
         LOGGER.debug("[REMOTE] Sent {}".format(_tagged_key))
 
