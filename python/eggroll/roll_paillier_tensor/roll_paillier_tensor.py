@@ -47,7 +47,7 @@ class RptCpuEngine(RptBaseEngine):
 
     def __setstate__(self, state):
         bin_pub, bin_prv = state
-        print("[__setstate__]++++++++++++++++++++++")
+        #print("[__setstate__]++++++++++++++++++++++")
         self.pub_key = rpt_engine.load_pub_key(bin_pub)
         self.priv_key = rpt_engine.load_prv_key(bin_prv)
 
@@ -61,7 +61,7 @@ class RptCpuEngine(RptBaseEngine):
         return rpt_engine.vdot(x, y, self.pub_key, self.priv_key)
 
     def scalar_mul(self, x, scale):
-        return rpt_engine.add(x, scale, self.pub_key, self.priv_key)
+        return rpt_engine.scalar_mul(x, scale, self.pub_key, self.priv_key)
 
     def matmul(self, x, y):
         return rpt_engine.matmul(x, y, self.pub_key, self.priv_key)
@@ -82,8 +82,14 @@ class RptCpuEngine(RptBaseEngine):
     def obf(self, x):
         return rpt_engine.obf(x, self.pub_key, self.priv_key)
 
+    def mean(self, x):
+        return rpt_engine.mean(x, self.pub_key, self.priv_key)
+
+    def hstack(self, x, y):
+        return rpt_engine.hstack(x, y, self.pub_key, self.priv_key)
+
     def encrypt(self, x):
-        return rpt_engine.encrypt(x, self.pub_key, self.priv_key)
+        return rpt_engine.encrypt_and_obfuscate(x, self.pub_key)
 
     def decrypt(self, x):
         return rpt_engine.decrypt(x, self.pub_key, self.priv_key)
@@ -91,9 +97,15 @@ class RptCpuEngine(RptBaseEngine):
     def decode(self, x):
         return rpt_engine.decode(x, self.pub_key, self.priv_key)
 
+    def out(self, x):
+        return rpt_engine.print(x, self.pub_key, self.priv_key)
+
     #interface
     def manager(self, x, y, val):
         return rpt_engine.make_manager(x, y, val, self.pub_key)
+
+    def num2Mng(self, x):
+        return rpt_engine.num2Mng(x, self.pub_key)
 
 class RptLocalTensor(object):
     def __init__(self, row, col, value, pub_key=None, priv_key=None):
@@ -112,7 +124,6 @@ class RptLocalTensor(object):
 
     def decode(self):
         return rpt_engine.decode(self.data, self.pub_key,self.priv_key)
-
 
 class RptMixedEngine(RptBaseEngine):
     pass
@@ -145,13 +156,17 @@ class RollPaillierTensor(object):
         return b'100'
 
     def scalar_mul(self, scalar):
+        _engine = self._engine
         def functor(mat, scalar):
-            mat_enc = self._engine.load(mat)
-            mat_res_enc = self._engine.scalar_mul(mat_enc, scalar)
-
-            return rpt_engine.dump(mat_res_enc)
-
-        return self._store.map_values(lambda v: functor(v, float(scalar)))
+            if isinstance(mat, np.ndarray):
+                print("scalar:", scalar)
+                return mat * scalar
+            else:
+                print("scalar:+++", scalar)
+                mat_enc = _engine.load(mat)
+                mat_res = _engine.scalar_mul(mat_enc, scalar)
+                return _engine.dump(mat_res)
+        return RollPaillierTensor(self._store.map_values(lambda v: functor(v, float(scalar))))
 
     def obf(self):
         def functor(mat):
@@ -163,85 +178,186 @@ class RollPaillierTensor(object):
         return RollPaillierTensor(self._store.map_values(lambda mat: functor(mat)))
 
     def add(self, other):
-        # pub_key = self.pub_key
-        # prv_key = self.prv_key
         _engine = self._engine
         def functor(mat1, mat2):
-            mat1_enc = _engine.load(mat1)
-            mat2_enc = _engine.load(mat2)
+            if isinstance(mat1, np.ndarray) and isinstance(mat2, np.ndarray):
+                return mat1 + mat2
 
-            mat_res_enc = _engine.add(mat1_enc, mat2_enc)
+            if isinstance(mat1, np.ndarray):
+                m1 = _engine.num2Mng(mat1)
+            else:
+                m1 = _engine.load(mat1)
+
+            if isinstance(mat2, np.ndarray):
+                m2 = _engine.num2Mng(mat2)
+            else:
+                m2 = _engine.load(mat2)
+
+            mat_res_enc = _engine.add(m1, m2)
+            return _engine.dump(mat_res_enc)
+
+        return RollPaillierTensor(self._store.join(other._store, lambda mat1, mat2: functor(mat1, mat2)))
+
+    def add_test(self, other):
+        _engine = self._engine
+        def functor(mat1, mat2):
+            if isinstance(mat1, np.ndarray) and isinstance(mat2, np.ndarray):
+                return mat1 + mat2
+
+            if isinstance(mat1, np.ndarray):
+                m1 = _engine.num2Mng(mat1)
+            else:
+                m1 = _engine.load(mat1)
+
+            if isinstance(mat2, np.ndarray):
+                m2 = _engine.num2Mng(mat2)
+                print("11111111111111111>>>>")
+            else:
+                m2 = _engine.load(mat2)
+
+            mat_res_enc = _engine.add(m1, m2)
             return _engine.dump(mat_res_enc)
 
         return RollPaillierTensor(self._store.join(other._store, lambda mat1, mat2: functor(mat1, mat2)))
 
     def vdot(self, other):
-
         _engine = self._engine
         def functor(mat1, mat2):
-            mat1_enc = _engine.load(mat1)
-            mat2_enc = _engine.load(mat2)
-            mat2_pln = _engine.decrypt(mat1_enc)
-
-            mat_res_enc = _engine.vdot(mat1_enc, mat2_pln)
-            return rpt_engine.dump(mat_res_enc)
+            if isinstance(mat1, np.ndarray) and isinstance(mat2, np.ndarray):
+                 return mat1.dot(mat2.T)
+            else:
+                mat1_enc = _engine.load(mat1)
+                mat2_enc = _engine.load(mat2)
+                mat2_pln = _engine.decrypt(mat1_enc)
+                mat_res_enc = _engine.vdot(mat1_enc, mat2_pln)
+                return rpt_engine.dump(mat_res_enc)
 
         return RollPaillierTensor(self._store.join(other._store, lambda left, right : functor(left, right)))
+
+    def mean(self):
+        _engine = self._engine
+        def functor(mat):
+            if isinstance(mat, np.ndarray):
+                print("here~!!!!!!!1111111111")
+                return np.array([[mat.mean()]])
+            else:
+                print("here~!!!!!!!2222222222")
+                mat_pln = _engine.load(mat)
+                mat_mean = _engine.mean(mat_pln)
+                return _engine.dump(mat_mean)
+
+        return RollPaillierTensor(self._store.map_values(lambda mat: functor(mat)))
 
     def matmul(self, other):
         _engine = self._engine
         def seq_op(mat1, mat2):
-            print("python mat_mul here")
-            mat1_enc = _engine.load(mat1)
-            mat2_enc = _engine.load(mat2)
-            mat2_pln = _engine.decrypt(mat2_enc)
+            if isinstance(mat1, np.ndarray) and isinstance(mat2, np.ndarray):
+                return mat1.dot(mat2)
 
-            sub_res = _engine.matmul(mat1_enc, mat2_pln)
-            dumping = _engine.dump(sub_res)
-            return dumping
+            if isinstance(mat1, np.ndarray):
+                m1 = _engine.num2Mng(mat1)
+            else:
+                print("bbbbbbbbbbbbbbbb")
+                m1 = _engine.load(mat1)
+
+            if isinstance(mat2, np.ndarray):
+                print("aaaaaaaaaaaaaaaaa")
+                m2 = _engine.num2Mng(mat2)
+            else:
+                m2 = _engine.load(mat2)
+
+            mat_res_enc = _engine.matmul(m1, m2)
+            return(_engine.dump(mat_res_enc))
 
         return RollPaillierTensor(self._store.join(other._store, lambda mat1, mat2 : seq_op(mat1, mat2)))
 
     def matmul_r_eql(self, other):
         _engine = self._engine
         def seq_op(mat1, mat2):
+            if isinstance(mat1, np.ndarray) and isinstance(mat2, np.ndarray):
+                return mat1.dot(mat2)
+            if isinstance(mat1, np.ndarray):
+                m1 = _engine.num2Mng(mat1)
+            else:
+                m1 = _engine.load(mat1)
 
-            LOGGER.info("python mat_mul_r_eql here")
-            mat1_enc = _engine.load(mat1)
-            mat2_pln = _engine.load(mat2)
-            # #mat2_pln = _engine.decrypt(mat2_enc)
-            #
-            sub_res = _engine.matmul_r_eql(mat1_enc, mat2_pln)
-            # dumping = _engine.dump(sub_res)
-            return b'asdfafs'
+            if isinstance(mat2, np.ndarray):
+                m2 = _engine.num2Mng(mat2)
+            else:
+                m2 = _engine.load(mat2)
 
-        tmp = self._store.join(other._store, lambda mat1, mat2: seq_op(mat1, mat2))
+            mat_res_enc = _engine.matmul_r_eql(m1, m2)
+            return b'100'
+            #return (_engine.dump(mat_res_enc))
 
-        return RollPaillierTensor(tmp)
+        return RollPaillierTensor(self._store.join(other._store, lambda mat1, mat2 : seq_op(mat1, mat2)))
 
     def matmul_c_eql(self, other):
         _engine = self._engine
         def seq_op(mat1, mat2):
-            print("python mat_mul_r_eql here")
-            mat1_enc = _engine.load(mat1)
-            mat2_enc = _engine.load(mat2)
-            mat2_pln = _engine.decrypt(mat2_enc)
+            if isinstance(mat1, np.ndarray) and isinstance(mat2, np.ndarray):
+                return mat1.dot(mat2)
+            if isinstance(mat1, np.ndarray):
+                m1 = _engine.num2Mng(mat1)
+            else:
+                m1 = _engine.load(mat1)
 
-            sub_res = _engine.matmul_c_eql(mat1_enc, mat2_pln)
-            dumping = _engine.dump(sub_res)
-            return dumping
-        print("step 1")
-        tmp = self._store.join(other._store, lambda mat1, mat2: seq_op(mat1, mat2))
-        print("step 2")
-        return RollPaillierTensor(tmp)
+            if isinstance(mat2, np.ndarray):
+                m2 = _engine.num2Mng(mat2)
+            else:
+                m2 = _engine.load(mat2)
+
+            mat_res_enc = _engine.matmul_c_eql(m1, m2)
+            return _engine.dump(mat_res_enc)
+        return RollPaillierTensor(self._store.join(other._store, lambda mat1, mat2 : seq_op(mat1, mat2)))
+
+    def hstack(self, other):
+        _engine = self._engine
+        def seq_op(mat1, mat2):
+            if isinstance(mat1, np.ndarray) and isinstance(mat2, np.ndarray):
+                return mat1.hstack(mat2)
+            if isinstance(mat1, np.ndarray):
+                m1 = _engine.num2Mng(mat1)
+            else:
+                m1 = _engine.load(mat1)
+
+            if isinstance(mat2, np.ndarray):
+                m2 = _engine.num2Mng(mat2)
+            else:
+                m2 = _engine.load(mat2)
+
+            mat_res_enc = _engine.hstack(m1, m2)
+            return _engine.dump(mat_res_enc)
+
+        return RollPaillierTensor(self._store.join(other._store, lambda mat1, mat2 : seq_op(mat1, mat2)))
+
+    def split(self, num, ax, id):
+        _engine = self._engine
+        def seq_op(mat, num, ax, id):
+            if isinstance(mat, np.ndarray):
+                if id == 0:
+                    a, b = np.split(mat, (num, ), axis=ax)
+                    return a
+                else:
+                    a, b = np.split(mat, (num, ), axis=ax)
+                    return b
+            else:
+                print("coming soon")
+                return b'100'
+        # , num, axis, id
+        return RollPaillierTensor(self._store.map_values(lambda mat: seq_op(mat, num, ax, id)))
 
     def encrypt(self):
         _engine = self._engine
         def functor(mat):
-            print("[cpu_encrypt]")
-            mat_pln = _engine.load(mat)
-            mat_enc = _engine.encrypt_and_obfuscate(mat)
-            return _engine.dump(mat_enc)
+            if isinstance(mat, np.ndarray):
+                mat_pln = _engine.num2Mng(mat)
+                mat_enc = _engine.encrypt(mat_pln)
+                return _engine.dump(mat_enc)
+            else:
+                mat_pln = _engine.load(mat)
+                mat_enc = _engine.encrypt(mat_pln)
+                return _engine.dump(mat_enc)
 
         return RollPaillierTensor(self._store.map_values(lambda mat: functor(mat)))
 
@@ -259,24 +375,12 @@ class RollPaillierTensor(object):
         def functor(mat):
             #_engine = RptCpuEngine(pub_key, prv_key)
             mat_code = _engine.load(mat)
-            print('[RptCpuEngine] ', _engine)
-            print('dir in rpt cpu engine', dir(_engine))
             mat_org = _engine.decode(mat_code)
             return mat_org
         return RollPaillierTensor(self._store.map_values(lambda mat: functor(mat)))
 
 
     #local function
-    def matmul_local(self, vec):
-        _engine = self._engine
-        def seq_op(mat, vec):
-            print("python mat_mul here")
-            mat_enc = _engine.load(mat)
-            vec_mng = _engine.num2Mng(vec)
-            res = _engine.matmul(mat_enc, vec_mng)
-            return _engine.dump(res)
-
-        return RollPaillierTensor(self._store.map_values(lambda v: seq_op(v, vec)))
 
     def matmul_r_eql_local(self, vec):
         _engine = self._engine
@@ -297,15 +401,86 @@ class RollPaillierTensor(object):
 
         return RollPaillierTensor(self._store.map_values(lambda v: seq_op(v, vec)))
 
-
-
-    def matmul_local_numpy(self, vec):
+    def matmul_local(self, vec):
+        _engine = self._engine
         def seq_op(mat, vec):
-            # print("matmul_local_numpy : mat", mat)
-            # print("matmul_local_numpy : vec", vec)
-            res = vec.dot(mat)
-            #print("mat row = ", mat.shape[0], "mat col = ", mat.shape[1] )
-            #print("vec row = ", vec.shape[0], "vec col = ", vec.shape[1] )
-            print("[matmul_local]", res)
-            return b'1243'
+            #two numpy mul (l: from disk 2:from memory)
+            if isinstance(mat, np.ndarray) and isinstance(vec, np.ndarray):
+                res = vec.dot(mat)
+                return res
+            else:
+                #mng mul numpy(l: from disk 2:from memory)
+                mat_enc = _engine.load(mat)
+                vec_mng = _engine.num2Mng(vec)
+                res = _engine.matmul(mat_enc, vec_mng)
+                return _engine.dump(res)
+
         return RollPaillierTensor(self._store.map_values(lambda v: seq_op(v, vec)))
+
+    def matmul_local_print(self, vec):
+        _engine = self._engine
+        def seq_op(mat, vec):
+            #two numpy mul (l: from disk 2:from memory)
+            if isinstance(mat, np.ndarray) and isinstance(vec, np.ndarray):
+                # print("mat", mat)
+                # print("vec", vec)
+                # res = vec.dot(mat)
+                return b'10000'
+            else:
+                #mng mul numpy(l: from disk 2:from memory)
+                print("vvvvvvvvvvvvvvv")
+
+                # mat_enc = _engine.load(mat)
+                # vec_mng = _engine.num2Mng(vec)
+                # res = _engine.matmul(mat_enc, vec_mng)
+                return b'1000'
+
+        return RollPaillierTensor(self._store.map_values(lambda v: seq_op(v, vec)))
+
+    def sub_local(self, vec):
+        _engine = self._engine
+        def functor(vec1, vec2):
+            if isinstance(vec1, np.ndarray) and isinstance(vec2, np.ndarray):
+                return vec2 - vec1
+            else:
+                print("coming soon2222222222222")
+                return b'100'
+
+        return RollPaillierTensor(self._store.map_values(lambda v: functor(v, vec)))
+
+    def add_local(self, vec):
+        _engine = self._engine
+        def functor(vec1, vec2):
+            if isinstance(vec1, np.ndarray) and isinstance(vec2, np.ndarray):
+                return vec1 + vec2
+
+            if isinstance(vec1, np.ndarray):
+                m1 = _engine.num2Mng(vec1)
+            else:
+                m1 = _engine.load(vec1)
+
+            if isinstance(vec2, np.ndarray):
+                m2 = _engine.num2Mng(vec2)
+            else:
+                m2 = _engine.load(vec2)
+
+            return _engine.dump(_engine.add(m1, m2))
+
+        return RollPaillierTensor(self._store.map_values(lambda v: functor(v, vec)))
+
+    #out
+    def out(self):
+        _engine = self._engine
+        def seq_op(mat, val):
+            #two numpy mul (l: from disk 2:from memory)
+            if isinstance(mat, np.ndarray):
+                print("[out] [numpy] : ", mat)
+                return b'100'
+            else:
+                m = _engine.load(mat)
+                mac = _engine.out(m)
+                return b'100'
+        return RollPaillierTensor(self._store.map_values(lambda v: seq_op(v, float(1))))
+
+
+
