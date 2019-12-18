@@ -161,15 +161,18 @@ class RollSite:
         name = object_storage_table_name
         namespace = self.job_id
 
-        if isinstance(obj, str):
+        if isinstance(obj, RollPair):
+          rp = obj
+        else:
           '''
           If it is a object, put the object in the table and send the table meta.
           '''
           rp = self.ctx.rp_ctx.load(namespace, name)
           rp.put(_tagged_key, obj)
 
-        LOGGER.debug("[REMOTE] Sending {}".format(_tagged_key))
-        rp = self.ctx.rp_ctx.load(namespace, name)
+          LOGGER.debug("[REMOTE] Sending {}".format(_tagged_key))
+          rp = self.ctx.rp_ctx.load(namespace, name)
+
         future = self.process_pool.submit(rp.map_values,
                                           lambda v: v,
                                           output=ErStore(store_locator = ErStoreLocator(store_type=StoreTypes.ROLLPAIR_ROLLSITE,
