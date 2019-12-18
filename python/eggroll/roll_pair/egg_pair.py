@@ -43,7 +43,7 @@ from eggroll.utils import log_utils
 from eggroll.core.io.io_utils import get_db_path
 from threading import Thread
 from eggroll.roll_pair.utils.pair_utils import generator
-from eggroll.roll_pair.utils.pair_utils import get_db_path, partitioner
+from eggroll.roll_pair.utils.pair_utils import get_db_path
 
 log_utils.setDirectory()
 LOGGER = log_utils.getLogger()
@@ -58,34 +58,24 @@ class EggPair(object):
   DESTROY = 'destroy'
   DELETE = "delete"
 
-  def _run_unary(self, func, task, shuffle=False):
+  def __init__(self):
+    self.serde = create_serdes(SerdesTypes.CLOUD_PICKLE)
+
+  def __partitioner(self, hash_func, total_partitions):
+    return lambda k: hash_func(k) % total_partitions
+
+  def _run_unary(self, func, task):
     key_serdes = create_serdes(task._inputs[0]._store_locator._serdes)
     value_serdes = create_serdes(task._inputs[0]._store_locator._serdes)
     input_adapter = create_adapter(task._inputs[0])
     input_iterator = input_adapter.iteritems()
     output_adapter = create_adapter(task._outputs[0])
     output_writebatch = output_adapter.new_batch()
-    if shuffle:
-      total_partitions = task._inputs[0]._store_locator._total_partitions
-      output_store = task._job._outputs[0]
-      shuffle_broker = FifoBroker()
-      shuffler = TransferPair(
-          transfer_id=task._job._id,
-          output_store=output_store)
-
-      shuffler.start_push(shuffle_broker, partitioner(hash_func=hash_code, total_partitions=total_partitions))
-      shuffler.start_recv(task._outputs[0]._id)
     try:
-      if shuffle:
-        func(input_iterator, key_serdes, value_serdes, output_writebatch, shuffle_broker)
-      else:
-        func(input_iterator, key_serdes, value_serdes, output_writebatch)
+      func(input_iterator, key_serdes, value_serdes, output_writebatch)
     except:
       raise EnvironmentError("exec task:{} error".format(task))
     finally:
-      if shuffle:
-        shuffle_broker.signal_write_finish()
-        shuffler.join()
       output_writebatch.close()
       input_adapter.close()
       output_adapter.close()
@@ -203,12 +193,33 @@ class EggPair(object):
       self._run_unary(map_values_wrapper, task)
     elif task._name == 'map':
       f = cloudpickle.loads(functors[0]._body)
-      def map_wrapper(input_iterator, key_serdes, value_serdes, output_writebatch, shuffle_broker):
-          for k_bytes, v_bytes in input_iterator:
-            k1, v1 = f(key_serdes.deserialize(k_bytes), value_serdes.deserialize(v_bytes))
-            shuffle_broker.put((key_serdes.serialize(k1), value_serdes.serialize(v1)))
-          print('finish calculating')
-      self._run_unary(map_wrapper, task, shuffle=True)
+
+      input_partition = task._inputs[0]
+      output_partition = task._outputs[0]
+      print(output_partition)
+      total_partitions = input_partition._store_locator._total_partitions
+
+      # todo:0: decide partitioner
+      partitioner = self.__partitioner(hash_func=hash_code, total_partitions=total_partitions)
+      input_adapter = create_adapter(task._inputs[0])
+      output_store = task._job._outputs[0]
+
+      shuffle_broker = FifoBroker()
+      shuffler = TransferPair(
+              transfer_id=task._job._id,
+              output_store=output_store)
+
+      shuffler.start_push(shuffle_broker, partitioner)
+      shuffler.start_recv(output_partition._id)
+
+      for k_bytes, v_bytes in input_adapter.iteritems():
+        k1, v1 = f(self.serde.deserialize(k_bytes), self.serde.deserialize(v_bytes))
+        shuffle_broker.put((self.serde.serialize(k1), self.serde.serialize(v1)))
+      print('finish calculating')
+      input_adapter.close()
+      shuffle_broker.signal_write_finish()
+
+      shuffler.join()
       print('map finished')
     elif task._name == 'reduce':
       job = copy(task._job)
