@@ -6,19 +6,33 @@ import com.webank.eggroll.core.session.RuntimeErConf
 
 trait NodeManager {
   def startContainers(sessionMeta: ErSessionMeta): ErSessionMeta
+  def stopContainers(sessionMeta: ErSessionMeta): ErSessionMeta
   def heartbeat(processor: ErProcessor): ErProcessor
 }
 
 class NodeManagerService extends NodeManager {
   override def startContainers(sessionMeta: ErSessionMeta): ErSessionMeta = {
+    operateContainers(sessionMeta, "start")
+  }
+
+  override def stopContainers(sessionMeta: ErSessionMeta): ErSessionMeta = {
+    operateContainers(sessionMeta, "stop")
+  }
+
+  private def operateContainers(sessionMeta: ErSessionMeta, opType: String): ErSessionMeta = {
     val processorPlan = sessionMeta.processors
 
     val runtimeConf = new RuntimeErConf(sessionMeta)
     val myServerNodeId = runtimeConf.getLong(ResourceManagerConfKeys.SERVER_NODE_ID, -1)
+
     val result = processorPlan.par.map(p => {
       if (p.serverNodeId == myServerNodeId) {
         val container = new Container(runtimeConf, p.processorType, p.id)
-        container.start()
+        opType match {
+          case "start" => container.start()
+          case "stop" => container.stop()
+          case _ => throw new IllegalArgumentException(s"op not supported: '${opType}'")
+        }
       }
     })
 

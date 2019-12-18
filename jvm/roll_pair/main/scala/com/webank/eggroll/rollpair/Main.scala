@@ -133,6 +133,15 @@ object Main extends Logging {
 
     logInfo("ready to heartbeat")
     clusterManagerClient.heartbeat(myself)
+
+    Runtime.getRuntime.addShutdownHook(new Thread() {
+      override def run(): Unit = { // Use stderr here since the logger may have been reset by its JVM shutdown hook.
+        logInfo(s"*** roll pair master exit gracefully. sessionId: ${sessionId}, serverNodeId: ${serverNodeId}, processorId: ${processorId}, port: ${portString} ***")
+        val terminatedSelf = myself.copy(status = ProcessorStatus.STOPPED)
+        clusterManagerClient.heartbeat(terminatedSelf)
+        this.interrupt()
+      }
+    })
   }
   def main(args: Array[String]): Unit = {
     registerRouter()

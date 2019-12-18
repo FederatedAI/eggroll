@@ -66,6 +66,10 @@ public class NodeManagerClient {
     return doSyncRequestInternal(sessionMeta, ErSessionMeta.class, NodeManagerCommands.startContainers());
   }
 
+  public ErSessionMeta stopContainers(ErSessionMeta sessionMeta) {
+    return doSyncRequestInternal(sessionMeta, ErSessionMeta.class, NodeManagerCommands.stopContainers());
+  }
+
   private <T> T doSyncRequestInternal(RpcMessage input, Class<T> outputType, CommandURI commandURI) {
     return commandClient.simpleSyncSend(input, outputType, nodeManagerEndpoint, commandURI, SerdesTypes.PROTOBUF());
   }

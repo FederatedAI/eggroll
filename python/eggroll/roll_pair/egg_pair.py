@@ -15,6 +15,7 @@
 
 import argparse
 import os
+import signal
 from collections.abc import Iterable
 from concurrent import futures
 from copy import copy
@@ -549,6 +550,8 @@ def serve(args):
   command_server.start()
 
   cluster_manager = args.cluster_manager
+  myself = None
+  cluster_manager_client = None
   if cluster_manager:
     session_id = args.session_id
 
@@ -576,9 +579,24 @@ def serve(args):
 
   print(f'egg_pair started at port {port}, transfer_port {transfer_port}')
 
-  import time
-  time.sleep(100000)
+  run = True
 
+  def exit_gracefully(signum, frame):
+    nonlocal run
+    run = False
+
+  signal.signal(signal.SIGTERM, exit_gracefully)
+
+  import time
+
+  while run:
+    time.sleep(1)
+
+  if cluster_manager:
+    myself._status = ProcessorStatus.STOPPED
+    cluster_manager_client.heartbeat(myself)
+
+  print(f'egg_pair at port {port}, transfer_port {transfer_port} stopped gracefully')
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()

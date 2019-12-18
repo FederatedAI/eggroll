@@ -82,7 +82,7 @@ class SessionMetaDao {
     getSessionMain(sessionId).copy(options = opts, processors = procs.toArray)
   }
   def addSession(sessionMeta: ErSessionMeta): Unit = {
-    if(dbc.queryOne("select * from session_main where session_id = ?", sessionMeta.id).nonEmpty) {
+    if (dbc.queryOne("select * from session_main where session_id = ?", sessionMeta.id).nonEmpty) {
       throw new NotExistError("session exists:" + sessionMeta.id)
     }
     register(sessionMeta)
@@ -99,7 +99,7 @@ class SessionMetaDao {
     proc
   }
 
-  def updateProcessor(proc: ErProcessor):Unit = {
+  def updateProcessor(proc: ErProcessor): Unit = {
     val (session_id: String, oldStatus: String) = dbc.query( rs => {
       if (!rs.next()) {
         throw new NotExistError("processor not exits:" + proc)
@@ -154,9 +154,9 @@ class SessionMetaDao {
     dbc.queryOne("select 1 from session_main where session_id = ?", sessionId).nonEmpty
   }
 
-  def updateSessionMain(sessionMeta: ErSessionMeta):Unit = {
-    dbc.update("update session_main set name = ? , status = ? , tag = ? , active_processors = ?",
-      sessionMeta.name, sessionMeta.status, sessionMeta.tag, sessionMeta.activeProcCount)
+  def updateSessionMain(sessionMeta: ErSessionMeta):Unit = dbc.withTransaction { conn =>
+      dbc.update(conn, "update session_main set name = ? , status = ? , tag = ? , active_proc_count = ?",
+        sessionMeta.name, sessionMeta.status, sessionMeta.tag, sessionMeta.activeProcCount)
   }
 }
 object ResourceDao {

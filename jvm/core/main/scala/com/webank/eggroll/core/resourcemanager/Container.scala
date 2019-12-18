@@ -19,8 +19,6 @@
 package com.webank.eggroll.core.resourcemanager
 
 import java.io.{BufferedReader, File, InputStream, InputStreamReader}
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicLong
 
 import com.webank.eggroll.core.constant.{CoreConfKeys, ResourceManagerConfKeys, SessionConfKeys}
 import com.webank.eggroll.core.session.RuntimeErConf
@@ -29,7 +27,7 @@ import org.apache.commons.lang3.StringUtils
 
 // todo: abstract to general python starter
 // todo: args design
-class Container(conf: RuntimeErConf, moduleName: String, processorId: Long = -1) extends Logging {
+class Container(conf: RuntimeErConf, moduleName: String, processorId: Long = 0) extends Logging {
   private val confPrefix = s"eggroll.bootstrap.${moduleName}"
 
   private val isWindows = System.getProperty("os.name").toLowerCase().indexOf("windows") > 0
@@ -42,17 +40,42 @@ class Container(conf: RuntimeErConf, moduleName: String, processorId: Long = -1)
   private val boot = conf.getString(CoreConfKeys.BOOTSTRAP_ROOT_SCRIPT, s"eggroll_boot.${if(isWindows) "bat" else "sh"}")
   private val logsDir = conf.getString(CoreConfKeys.LOGS_DIR)
 
-  def start(): Boolean = {
-    if (StringUtils.isBlank(sessionId)) {
-      throw new IllegalArgumentException("session Id is blank when creating processor")
-    }
+  if (StringUtils.isBlank(sessionId)) {
+    throw new IllegalArgumentException("session Id is blank when creating processor")
+  }
 
+  def start(): Boolean = {
     val startCmd = s"""${boot} start "${exePath} --config ${conf.getString(CoreConfKeys.STATIC_CONF_PATH)} --session-id ${sessionId} --server-node-id ${myServerNodeId} --processor-id ${processorId}" ${moduleName}-${processorId} &"""
     logInfo(s"${startCmd}")
 
-    val thread = new Thread(() => {
-      val processorBuilder = new ProcessBuilder(bootStrapShell, bootStrapShellArgs, startCmd)
-      // todo: 1. redirect output / error stream; 2. add session info; 3. add node manager
+    val thread = runCommand(startCmd)
+
+    thread.start()
+    thread.join()
+    println("ready to return")
+    thread.isAlive
+  }
+
+  def stop(): Boolean = {
+    val stopCmd = s"""${boot} stop "ps aux | grep 'session-id ${sessionId}' | grep 'server-node-id ${myServerNodeId}' | grep 'processor-id ${processorId}'" ${moduleName}-${processorId}"""
+    logInfo(stopCmd)
+
+    val thread = runCommand(stopCmd)
+
+    thread.start()
+    thread.join()
+    println("stopped")
+    thread.isAlive
+  }
+  // TODO:0: kill -9
+  def kill(): Boolean = {
+    false
+  }
+
+  def runCommand(cmd: String): Thread = {
+    new Thread(() => {
+      val processorBuilder = new ProcessBuilder(bootStrapShell, bootStrapShellArgs, cmd)
+      // TODO:0: 1. redirect output / error stream; 2. add session info; 3. add node manager
       val builderEnv = processorBuilder.environment()
       val logPath = new File(logsDir + File.separator + sessionId + File.separator + myServerNodeId)
       if(!logPath.exists()){
@@ -62,25 +85,7 @@ class Container(conf: RuntimeErConf, moduleName: String, processorId: Long = -1)
       processorBuilder.redirectError(new File(logPath, "stderr.txt"))
       val process = processorBuilder.start()
       process.waitFor()
-//      process.waitFor(1, TimeUnit.SECONDS)
     })
-
-    thread.start()
-    thread.join()
-    println("ready to return")
-    thread.isAlive
-  }
-
-  def stop(): Boolean = {
-    val processBuilder = new ProcessBuilder(boot, "stop_node", exePath, sessionId, myServerNodeId)
-
-    val process = processBuilder.start()
-
-    process.waitFor(1, TimeUnit.SECONDS)
-  }
-  // TODO:0: kill -9
-  def terminate(): Boolean = {
-    false
   }
 
   @throws[Exception]
@@ -97,6 +102,3 @@ class Container(conf: RuntimeErConf, moduleName: String, processorId: Long = -1)
   }
 }
 
-object Container {
-  val generatedProcessorId = new AtomicLong(0)
-}

@@ -40,6 +40,12 @@ class NodeManagerBootstrap extends Bootstrap with Logging {
       routeToClass = classOf[NodeManagerService],
       routeToMethodName = NodeManagerCommands.startContainers.getName())
 
+    CommandRouter.register(serviceName = NodeManagerCommands.stopContainers.uriString,
+      serviceParamTypes = Array(classOf[ErSessionMeta]),
+      serviceResultTypes = Array(classOf[ErSessionMeta]),
+      routeToClass = classOf[NodeManagerService],
+      routeToMethodName = NodeManagerCommands.stopContainers.getName())
+
     CommandRouter.register(serviceName = NodeManagerCommands.heartbeat.uriString,
       serviceParamTypes = Array(classOf[ErProcessor]),
       serviceResultTypes = Array(classOf[ErProcessor]),

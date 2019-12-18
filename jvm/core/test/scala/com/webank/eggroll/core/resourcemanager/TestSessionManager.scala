@@ -11,4 +11,10 @@ class TestSessionManager {
     val result = clusterManagerClient.getOrCreateSession(sessionMeta = TestAssets.getOrCreateSessionMeta)
     println(result)
   }
+
+  @Test
+  def testStop(): Unit = {
+    val clusterManagerClient = new ClusterManagerClient()
+    val result = clusterManagerClient.stopSession(sessionMeta = TestAssets.getOrCreateSessionMeta)
+  }
 }

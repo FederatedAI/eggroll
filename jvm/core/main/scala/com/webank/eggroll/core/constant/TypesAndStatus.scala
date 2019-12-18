@@ -70,7 +70,8 @@ object ServerNodeStatus {
 object ProcessorStatus {
   val NEW = "NEW"
   val RUNNING = "RUNNING"
-  val TERMINATED = "TERMINATED"
+  val STOPPED = "STOPPED"
+  val KILLED = "KILLED"
   val ERROR = "ERROR"
 }
 

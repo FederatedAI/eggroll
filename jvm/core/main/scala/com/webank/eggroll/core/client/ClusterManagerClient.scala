@@ -70,6 +70,9 @@ class ClusterManagerClient(val endpoint: ErEndpoint) {
   def getOrCreateSession(sessionMeta: ErSessionMeta): ErSessionMeta =
     cc.call[ErSessionMeta](SessionCommands.getOrCreateSession, sessionMeta)
 
+  def stopSession(sessionMeta: ErSessionMeta): ErSessionMeta =
+    cc.call[ErSessionMeta](SessionCommands.stopSession, sessionMeta)
+
   def registerSession(sessionMeta: ErSessionMeta, processorBatch: ErProcessorBatch): ErProcessorBatch =
     cc.call[ErProcessorBatch](SessionCommands.registerSession, sessionMeta, processorBatch)
 

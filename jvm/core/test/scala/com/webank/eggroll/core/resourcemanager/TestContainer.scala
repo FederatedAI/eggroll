@@ -46,4 +46,13 @@ class TestContainer {
 
     print(result)
   }
+
+  @Test
+  def testStop(): Unit = {
+    val runtimeErConf = RuntimeErConf()
+    val container = new Container(runtimeErConf, "egg_pair", 2)
+
+    val result = container.stop()
+    print(result)
+  }
 }
