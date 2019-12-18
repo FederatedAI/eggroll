@@ -487,9 +487,8 @@ class RollPair(object):
     )
     LOGGER.info("get resp:{}".format(ErPair.from_proto_string(job_resp._value)))
 
-  def save_as(self, name, namespace, partition, options={}):
-    store_type = options.get('store_type', self.ctx.default_store_type)
-    store = ErStore(store_locator=ErStoreLocator(store_type=store_type, namespace=namespace,
+  def save_as(self, name, namespace, partition):
+    store = ErStore(store_locator=ErStoreLocator(store_type=self.ctx.default_store_type, namespace=namespace,
                                                  name=name, total_partitions=partition))
     return self.map_values(lambda v: v, output=store)
 
