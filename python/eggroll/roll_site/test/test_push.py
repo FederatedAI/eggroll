@@ -14,6 +14,8 @@
 #  limitations under the License.
 #
 import unittest
+
+from eggroll.roll_pair.test.roll_pair_test_assets import get_test_context
 from eggroll.roll_site.roll_site import RollSiteContext
 from eggroll.core.session import ErSession
 from eggroll.roll_pair.roll_pair import RollPairContext
@@ -37,5 +39,17 @@ class TestRemote(unittest.TestCase):
         fp.close()
         print("result:", future.result())
 
+    def test_remote_rollpair(self):
+        rp_session = ErSession(session_id='testing', options={"eggroll.deploy.mode": "standalone"})
+        rp_context = RollPairContext(rp_session)
+        data = [("k1", "v1"), ("k2", "v2"), ("k3", "v3"), ("k4", "v4"), ("k5", "v5"), ("k6", "v6")]
 
-
+        options = {'runtime_conf_path': 'python/eggroll/roll_site/conf/role_conf.json',
+                   'server_conf_path': 'python/eggroll/roll_site/conf/server_conf.json',
+                   'transfer_conf_path': 'python/eggroll/roll_site/conf/transfer_conf.json'}
+        context = RollSiteContext("atest2", options=options, rp_ctx=rp_context)
+        table = rp_context.load("ns1", "testPutAll").put_all(data, options=options)
+        _tag = "Hello"
+        rs = context.load(name="roll_pair_name.table", tag="roll_pair_tag")
+        future = rs.push(table)
+        print("remote result:", future.result())

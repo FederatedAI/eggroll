@@ -3,7 +3,15 @@
     "rsa_pubkey": {
       "src": "guest",
       "dst": [
-        "guest"
+        "host"
+      ]
+    }
+  },
+  "roll_pair_name": {
+    "table": {
+      "src": "guest",
+      "dst": [
+        "host"
       ]
     }
   }
