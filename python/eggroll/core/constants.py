@@ -44,7 +44,10 @@ class RollTypes(object):
   ROLL_PAIR = 'roll_pair'
 
 class ProcessorStatus(object):
+  NEW = 'NEW'
   RUNNING = 'RUNNING'
+  STOPPED = 'STOPPED'
+  KILLED = 'KILLED'
 
 class SessionStatus(object):
   NEW = 'NEW'

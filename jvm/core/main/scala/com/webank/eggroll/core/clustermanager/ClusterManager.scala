@@ -23,10 +23,9 @@ import java.net.InetSocketAddress
 import com.webank.eggroll.core.clustermanager.metadata.{ServerNodeCrudOperator, StoreCrudOperator}
 import com.webank.eggroll.core.clustermanager.session.SessionManager
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
-import com.webank.eggroll.core.constant.{MetadataCommands, SessionCommands, SessionConfKeys}
+import com.webank.eggroll.core.constant.{CoreConfKeys, MetadataCommands, SessionCommands, SessionConfKeys}
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.session.StaticErConf
-import com.webank.eggroll.core.transfer.TransferService
 import com.webank.eggroll.core.util.{Logging, MiscellaneousUtils}
 import io.grpc.Server
 import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
@@ -135,6 +134,7 @@ object ClusterManager extends Logging {
     StaticErConf.addProperty(SessionConfKeys.CONFKEY_SESSION_ID, sessionId)
 
     val confPath = cmd.getOptionValue('c', "./jvm/core/main/resources/cluster-manager.properties.local")
+    StaticErConf.addProperty(CoreConfKeys.STATIC_CONF_PATH, new java.io.File(confPath).getAbsolutePath)
     StaticErConf.addProperties(confPath)
     logInfo(s"server started at port ${port}")
     println(s"server started at port ${port}")

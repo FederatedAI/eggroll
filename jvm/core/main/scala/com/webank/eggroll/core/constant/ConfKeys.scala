@@ -19,8 +19,11 @@
 package com.webank.eggroll.core.constant
 
 object CoreConfKeys {
-
-
+  val LOGS_DIR = "eggroll.logs.dir"
+  val STATIC_CONF_PATH = "eggroll.static.conf.path"
+  val BOOTSTRAP_ROOT_SCRIPT = "eggroll.bootstrap.root.script"
+  val BOOTSTRAP_SHELL = "eggroll.bootstrap.shell"
+  val BOOTSTRAP_SHELL_ARGS = "eggroll.bootstrap.shell.args"
   val CONFKEY_CORE_GRPC_CHANNEL_CACHE_EXPIRE_SEC = "eggroll.core.grpc.channel.cache.expire.sec"
   val CONFKEY_CORE_GRPC_CHANNEL_CACHE_SIZE = "eggroll.core.grpc.channel.cache.size"
   val CONFKEY_CORE_GRPC_CHANNEL_EXECUTOR_POOL_SIZE = "eggroll.core.grpc.channel.executor.pool.size"
@@ -87,6 +90,10 @@ object ClusterManagerConfKeys {
 object NodeManagerConfKeys {
   val CONFKEY_NODE_MANAGER_HOST = "eggroll.node.manager.host"
   val CONFKEY_NODE_MANAGER_PORT = "eggroll.node.manager.port"
+}
+
+object ResourceManagerConfKeys {
+  val SERVER_NODE_ID = "eggroll.resource.manager.server.node.id"
 }
 
 object SessionConfKeys {
