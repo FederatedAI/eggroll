@@ -18,6 +18,7 @@ STORE_TYPE_ROCKSDB = "rollpair.leveldb"
 STORE_TYPE_FILE = "rollpair.file"
 STORE_TYPE_MMAP = "rollpair.mmap"
 STORE_TYPE_CACHE = "rollpair.cache"
+STORE_TYPE_ROLLSITE = 'rollpair.rollsite'
 
 def create_pair_adapter(options: dict):
     ret = None
@@ -34,6 +35,9 @@ def create_pair_adapter(options: dict):
         ret = MmapAdapter(options=options)
     elif options["store_type"] == STORE_TYPE_CACHE:
         ret = CacheAdapter(options=options)
+    elif options["store_type"] == STORE_TYPE_ROLLSITE:
+        from eggroll.core.pair_store.roll_site import RollsiteAdapter
+        ret = RollsiteAdapter(options=options)
     else:
         raise NotImplementedError(options)
     return ret

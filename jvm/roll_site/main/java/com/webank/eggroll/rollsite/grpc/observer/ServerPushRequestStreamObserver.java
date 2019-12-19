@@ -62,7 +62,8 @@ class putBatchThread extends Thread{
         String key = inputPacket.getBody().getKey();
         ByteString value = inputPacket.getBody().getValue();
         String name = inputPacket.getHeader().getTask().getModel().getName();
-        ScalaObjectPutBatch.scalaPutBatch(name, ByteBuffer.wrap(key.getBytes()), value.asReadOnlyByteBuffer());
+        String namespace = inputPacket.getHeader().getTask().getModel().getDataKey();
+        ScalaObjectPutBatch.scalaPutBatch(name, namespace, ByteBuffer.wrap(key.getBytes()), value.asReadOnlyByteBuffer());
     }
 
 }
@@ -133,64 +134,43 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
             init(packet.getHeader());
         }
 
-        //Pipe pipe = getPipe("modelA");
+        inputMetadata = packet.getHeader();
+        LOGGER.info("inputMetadata.getTask().getTaskId():{}", inputMetadata.getTask().getTaskId());
+        pipe = pipeFactory.create(inputMetadata.getTask().getTaskId());
 
-        //if (inputMetadata == null) {
-        //overallStartTimestamp = System.currentTimeMillis();
-            inputMetadata = packet.getHeader();
-            pipe = pipeFactory.create(inputMetadata.getTask().getModel().getName());
+        streamStat = new StreamStat(inputMetadata, StreamStat.PUSH);
+        oneLineStringInputMetadata = ToStringUtils.toOneLineString(inputMetadata);
+        statsManager.add(streamStat);
 
-            streamStat = new StreamStat(inputMetadata, StreamStat.PUSH);
-            oneLineStringInputMetadata = ToStringUtils.toOneLineString(inputMetadata);
-            statsManager.add(streamStat);
+        LOGGER.info(Grpc.TRANSPORT_ATTR_REMOTE_ADDR.toString());
 
-            LOGGER.info(Grpc.TRANSPORT_ATTR_REMOTE_ADDR.toString());
+        LOGGER.info("[PUSH][OBSERVER][ONNEXT] metadata: {}", oneLineStringInputMetadata);
+        LOGGER.info("[PUSH][OBSERVER][ONNEXT] request src: {}, dst: {}, data size: {}",
+                ToStringUtils.toOneLineString(inputMetadata.getSrc()),
+                ToStringUtils.toOneLineString(inputMetadata.getDst()),
+                packet.getBody().getValue().size());
 
-            LOGGER.info("[PUSH][OBSERVER][ONNEXT] metadata: {}", oneLineStringInputMetadata);
-            LOGGER.info("[PUSH][OBSERVER][ONNEXT] request src: {}, dst: {}, data size: {}",
-                    ToStringUtils.toOneLineString(inputMetadata.getSrc()),
-                    ToStringUtils.toOneLineString(inputMetadata.getDst()),
-                    packet.getBody().getValue().size());
+        if (StringUtils.isBlank(myCoordinator)) {
+            myCoordinator = proxyServerConf.getCoordinator();
+        }
 
-            if (StringUtils.isBlank(myCoordinator)) {
-                myCoordinator = proxyServerConf.getCoordinator();
-            }
+        if (inputMetadata.hasConf()) {
+            overallTimeout = timeouts.getOverallTimeout(inputMetadata);
+            completionWaitTimeout = timeouts.getCompletionWaitTimeout(inputMetadata);
+        }
 
-            if (inputMetadata.hasConf()) {
-                overallTimeout = timeouts.getOverallTimeout(inputMetadata);
-                completionWaitTimeout = timeouts.getCompletionWaitTimeout(inputMetadata);
-            }
+        isAuditEnabled = proxyServerConf.isAuditEnabled();
+        isDebugEnabled = proxyServerConf.isDebugEnabled();
 
-            isAuditEnabled = proxyServerConf.isAuditEnabled();
-            isDebugEnabled = proxyServerConf.isDebugEnabled();
-
-            // check if topics are valid
-            if (!modelValidationHelper.checkTopic(inputMetadata.getDst())
-                    || !modelValidationHelper.checkTopic(inputMetadata.getSrc())) {
-                onError(new IllegalArgumentException("At least one of topic name, coordinator, role is blank."));
-                noError = false;
-                return;
-            }
-
-            // String operator = inputMetadata.getOperator();
-
-            // LOGGER.info("onNext(): push task name: {}", operator);
-            /*
-            overallStartTimestamp = System.currentTimeMillis();
-            if(proxyServerConf.getPartyId() != Integer.valueOf(inputMetadata.getDst().getPartyId())) {
-                //if(Integer.valueOf(inputMetadata.getDst().getPartyId()))
-                PipeHandleNotificationEvent event =
-                    eventFactory.createPipeHandleNotificationEvent(
-                        this, PipeHandleNotificationEvent.Type.PUSH, inputMetadata, pipe);
-                applicationEventPublisher.publishEvent(event);
-            }
-            */
-
-        //}
-
+        // check if topics are valid
+        if (!modelValidationHelper.checkTopic(inputMetadata.getDst())
+                || !modelValidationHelper.checkTopic(inputMetadata.getSrc())) {
+            onError(new IllegalArgumentException("At least one of topic name, coordinator, role is blank."));
+            noError = false;
+            return;
+        }
 
         LOGGER.info("model name: {}", inputMetadata.getTask().getModel().getName());
-
 
         if (noError) {
             pipe.write(packet);

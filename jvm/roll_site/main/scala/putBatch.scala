@@ -25,12 +25,13 @@ import com.webank.eggroll.core.datastructure.LinkedBlockingBroker
 import com.webank.eggroll.rollpair.RollPairContext
 
 object ScalaObjectPutBatch extends  App {
-  def scalaPutBatch(name:String, key:ByteBuffer, value:ByteBuffer)= {
+  def scalaPutBatch(name:String, namespace:String, key:ByteBuffer, value:ByteBuffer)= {
     val sid = "testing"
     val ctx = new RollPairContext(new ErSession(sid))
-    val rp = ctx.load("ns1","testPutBatch")
+    val rp = ctx.load(namespace, name)
 
     var directBinPacketBuffer: ByteBuffer = ByteBuffer.allocateDirect(1<<10)
+
     //directBinPacketBuffer.order(ByteOrder.BIG_ENDIAN)
     //directBinPacketBuffer.put(NetworkConstants.TRANSFER_PROTOCOL_MAGIC_NUMBER) // magic num
     //directBinPacketBuffer.put(NetworkConstants.TRANSFER_PROTOCOL_VERSION) // protocol version
