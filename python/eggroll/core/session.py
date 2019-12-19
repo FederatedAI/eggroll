@@ -11,21 +11,20 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-import argparse
+import os
 import signal
-import threading, os
+import threading
 import time
-from sys import platform
+from copy import copy
 
-from eggroll.core.meta_model import ErServerNode, ErServerCluster, ErProcessor, ErProcessorBatch, ErSessionMeta, \
+from eggroll.core.client import ClusterManagerClient
+from eggroll.core.conf_keys import DeployConfKeys
+from eggroll.core.conf_keys import SessionConfKeys
+from eggroll.core.constants import SessionStatus, ProcessorStatus, \
+    ProcessorTypes
+from eggroll.core.meta_model import ErProcessor, ErSessionMeta, \
     ErEndpoint
-from eggroll.core.client import ClusterManagerClient, NodeManagerClient
 from eggroll.core.utils import get_self_ip, time_now
-from eggroll.core.constants import SessionStatus, ProcessorStatus, ServerNodeTypes, RollTypes, ProcessorTypes
-from eggroll.core.conf_keys import ClusterManagerConfKeys, DeployConfKeys, SessionConfKeys
-
-from eggroll.core.conf_keys import ClusterManagerConfKeys, DeployConfKeys
-from eggroll.roll_pair.egg_pair import serve
 
 # TODO:1: support windows
 # TODO:0: remove
@@ -48,9 +47,9 @@ class StandaloneThread(threading.Thread):
         self.pname = str(session_id) + "-standalone"
 
     def run(self):
-        print ("StandaloneThread start：" + self.name)
+        print("StandaloneThread start：" + self.name)
         os.system(self.boot + " start '" + self.standalone + "' " + self.pname)
-        print ("StandaloneThread stop：" + self.name)
+        print("StandaloneThread stop：" + self.name)
 
     def stop(self):
         os.system(self.boot + " stop '" + self.standalone + "' " + self.pname)
@@ -65,7 +64,8 @@ class ErStandaloneDeploy(ErDeploy):
         self.manager_port = options.get("eggroll.standalone.manager.port", 4670)
         self.egg_ports = [int(v) for v in options.get("eggroll.standalone.egg.ports", "20001").split(",")]
         self.egg_transfer_ports = [int(v) for v in options.get("eggroll.standalone.egg.transfer.ports", "20002").split(",")]
-        self._eggs = {0:[]}
+        self.self_server_node_id = int(options.get("eggroll.standalone.server.node.id", "2"))
+        self._eggs = {self.self_server_node_id:[]}
         if len(self.egg_ports) > 1:
             raise NotImplementedError()
         if not ("EGGROLL_STANDALONE_DEBUG" in os.environ and os.environ['EGGROLL_STANDALONE_DEBUG'] == "1"):
@@ -77,27 +77,31 @@ class ErStandaloneDeploy(ErDeploy):
             # TODO:0: more general
             time.sleep(5)
 
-        self._eggs[0].append(ErProcessor(id=0,
-                                         server_node_id=0,
+        self._eggs[self.self_server_node_id].append(ErProcessor(id=1,
+                                         server_node_id=self.self_server_node_id,
                                          processor_type=ProcessorTypes.EGG_PAIR,
                                          status=ProcessorStatus.RUNNING,
                                          command_endpoint=ErEndpoint("localhost", self.egg_ports[0]),
                                          transfer_endpoint=ErEndpoint("localhost", self.egg_transfer_ports[0])))
 
-        self._rolls = [ErProcessor(id=0,
-                                   server_node_id=0,
+        self._rolls = [ErProcessor(id=1,
+                                   server_node_id=self.self_server_node_id,
                                    processor_type=ProcessorTypes.ROLL_PAIR_SERVICER,
                                    status=ProcessorStatus.RUNNING,
                                    command_endpoint=ErEndpoint("localhost", self.manager_port))]
 
-        processorBatch = ErProcessorBatch(id=0, name='standalone', processors=[self._rolls[0]] + list(self._eggs[0]))
+        self._processors = [self._rolls[0]] + list(self._eggs[self.self_server_node_id])
+
+        session_meta_with_processor = copy(session_meta)
+        session_meta_with_processor._processors = self._processors
         self.cm_client = ClusterManagerClient(options=options)
 
-        self.cm_client.register_session(session_meta, processorBatch)
+        self.cm_client.register_session(session_meta_with_processor)
 
     def stop(self):
         if self.standalone_thread:
             self.standalone_thread.stop()
+
 
 class ErClusterDeploy(ErDeploy):
     def __init__(self, session_meta: ErSessionMeta, options={}):
@@ -142,9 +146,10 @@ class ErSession(object):
             self.deploy_client = ErStandaloneDeploy(self.session_meta, options=options)
         else:
             self.deploy_client = ErClusterDeploy(self.session_meta, options=options)
+
         self._rolls = self.deploy_client._rolls
         self._eggs = self.deploy_client._eggs
-        #print(f'eggs: {self._eggs}, rolls: {self._rolls}')
+        self._processors = self.deploy_client._processors
 
         self.cm_client = self.deploy_client.cm_client
         self.__cleanup_tasks = []

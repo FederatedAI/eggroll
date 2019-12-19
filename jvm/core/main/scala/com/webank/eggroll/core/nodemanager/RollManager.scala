@@ -57,7 +57,7 @@ object RollManager {
     val latch = initializingServicer.remove(sessionId)
 
     if (latch.getCount == 1) {
-      initializedServicer.put(sessionId, ErProcessorBatch(name=ProcessorTypes.ROLL_PAIR_SERVICER, tag = sessionId, processors = Array(processor)))
+      initializedServicer.put(sessionId, ErProcessorBatch(name=ProcessorTypes.ROLL_PAIR_MASTER, tag = sessionId, processors = Array(processor)))
       latch.countDown()
     }
   }

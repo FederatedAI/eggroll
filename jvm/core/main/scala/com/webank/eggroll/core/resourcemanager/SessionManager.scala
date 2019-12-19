@@ -1,6 +1,12 @@
 package com.webank.eggroll.core.resourcemanager
 
-import com.webank.eggroll.core.meta.{ErProcessor, ErSessionMeta}
+import com.webank.eggroll.core.client.NodeManagerClient
+import com.webank.eggroll.core.clustermanager.metadata.ServerNodeCrudOperator
+import com.webank.eggroll.core.constant._
+import com.webank.eggroll.core.meta.{ErProcessor, ErServerNode, ErSessionMeta}
+
+import scala.collection.JavaConverters._
+import scala.util.control.Breaks._
 
 // RollObjects talk to SessionManager only.
 trait SessionManager {
@@ -26,7 +32,9 @@ trait SessionManager {
    * @param sessionMeta contains session main and options and processors
    * @return
    */
-  def register(sessionMeta: ErSessionMeta): ErSessionMeta
+  def registerSession(sessionMeta: ErSessionMeta): ErSessionMeta
+
+  def stopSession(sessionMeta: ErSessionMeta): ErSessionMeta
 }
 
 class SessionManagerService extends SessionManager {
@@ -45,14 +53,55 @@ class SessionManagerService extends SessionManager {
    * @return session main and options and processors
    */
   def getOrCreateSession(sessionMeta: ErSessionMeta): ErSessionMeta = {
-    if (smDao.exitsSession(sessionMeta.id)) {
+    if (smDao.existSession(sessionMeta.id)) {
       return smDao.getSession(sessionMeta.id)
     }
     // TODO:0: dispatch processor
     // 0. generate a simple processors -> server plan, and fill sessionMeta.processors
     // 1. class NodeManager.startContainers
     // 2. query session_main's active_proc_count , wait all processor heart beats.
-    register(sessionMeta)
+
+    val healthyNodeExample = ErServerNode(status = ServerNodeStatus.HEALTHY, nodeType = ServerNodeTypes.NODE_MANAGER)
+    val serverNodeCrudOperator = new ServerNodeCrudOperator()
+
+    val healthyCluster = serverNodeCrudOperator.getServerNodes(healthyNodeExample)
+
+    val serverNodes = healthyCluster.serverNodes
+    val eggsPerNode = sessionMeta.options.getOrElse(SessionConfKeys.CONFKEY_SESSION_MAX_PROCESSORS_PER_NODE, "1").toInt
+    val processorPlan = Array(ErProcessor(
+      serverNodeId = serverNodes.head.id,
+      processorType = ProcessorTypes.ROLL_PAIR_MASTER,
+      status = ProcessorStatus.NEW)) ++
+      serverNodes.flatMap(n => (0 until eggsPerNode).map(_ => ErProcessor(
+        serverNodeId = n.id,
+        processorType = ProcessorTypes.EGG_PAIR,
+        status = ProcessorStatus.NEW)))
+    val expectedProcessorsCount = 1 + healthyCluster.serverNodes.length * eggsPerNode
+    val sessionMetaWithProcessors = sessionMeta.copy(processors = processorPlan, activeProcCount = expectedProcessorsCount, status = SessionStatus.NEW)
+
+    smDao.register(sessionMetaWithProcessors)
+
+    val registeredSessionMeta = smDao.getSession(sessionMeta.id)
+
+    serverNodes.par.foreach(n => {
+      val nodeManagerClient = new NodeManagerClient(n.endpoint)
+      nodeManagerClient.startContainers(registeredSessionMeta)
+    })
+
+    val sessionId = sessionMeta.id
+    val maxRetries = 200
+
+    breakable {
+      (0 until maxRetries).foreach(i => {
+        val cur = getSessionMain(sessionId)
+        if (cur.activeProcCount < expectedProcessorsCount) Thread.sleep(100) else break
+        if (i == maxRetries - 1) throw new IllegalStateException("unable to start all processors")
+      })
+    }
+
+    // todo:1: update selective
+    smDao.updateSessionMain(registeredSessionMeta.copy(status = SessionStatus.ACTIVE, activeProcCount = expectedProcessorsCount))
+    getSession(sessionMeta)
   }
 
   /**
@@ -69,9 +118,46 @@ class SessionManagerService extends SessionManager {
    * @param sessionMeta contains session main and options and processors
    * @return
    */
-  def register(sessionMeta: ErSessionMeta): ErSessionMeta = {
+  def registerSession(sessionMeta: ErSessionMeta): ErSessionMeta = {
     smDao.register(sessionMeta)
     // generated id
     smDao.getSession(sessionMeta.id)
+  }
+
+  override def stopSession(sessionMeta: ErSessionMeta): ErSessionMeta = {
+    val sessionId = sessionMeta.id
+    if (!smDao.existSession(sessionId)) {
+      return null
+    }
+
+    val dbSessionMeta = smDao.getSession(sessionId)
+
+    if (dbSessionMeta.status.equals(SessionStatus.CLOSED)) {
+      return dbSessionMeta
+    }
+
+    val sessionHosts = dbSessionMeta.processors.map(p => p.commandEndpoint.host).toSet
+
+    val serverNodeCrudOperator = new ServerNodeCrudOperator()
+    val sessionServerNodes = serverNodeCrudOperator.getServerClusterByHosts(sessionHosts.toList.asJava).serverNodes
+
+    sessionServerNodes.foreach(n => {
+      val nodeManagerClient = new NodeManagerClient(n.endpoint)
+      nodeManagerClient.stopContainers(dbSessionMeta)
+    })
+
+    val maxRetries = 200
+
+    breakable {
+      (0 until maxRetries).foreach(i => {
+        val cur = getSessionMain(sessionId)
+        if (cur.activeProcCount > 0) Thread.sleep(100) else break
+        if (i == maxRetries - 1) throw new IllegalStateException("unable to start all processors")
+      })
+    }
+
+    // todo:1: update selective
+    smDao.updateSessionMain(dbSessionMeta.copy(activeProcCount = 0, status = SessionStatus.CLOSED))
+    getSession(dbSessionMeta)
   }
 }

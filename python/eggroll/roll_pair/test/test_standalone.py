@@ -13,13 +13,9 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import argparse
 import os
-import threading
-import time
 import unittest
-from eggroll.core.session import ErSession, StandaloneThread
-from eggroll.roll_pair.roll_pair import RollPairContext
+
 from eggroll.roll_pair.test.roll_pair_test_assets import get_test_context
 
 os.environ['EGGROLL_STANDALONE_DEBUG'] = "1"
@@ -52,7 +48,8 @@ class TestStandalone(unittest.TestCase):
     options = {}
     options['total_partitions'] = 3
     options['include_key'] = True
-    table = self.ctx.load("ns1", "testMultiPartitionPutAll", options=options).put_all(data, options=options)
+    table = self.ctx.load("ns1", "testMultiPartitionPutAll", options=options)
+    table.put_all(data, options=options)
     print(list(table.get_all()))
 
   def test_get_all(self):

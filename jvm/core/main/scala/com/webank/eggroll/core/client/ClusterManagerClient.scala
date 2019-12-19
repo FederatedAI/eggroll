@@ -22,7 +22,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 import com.webank.eggroll.core.command.CommandClient
 import com.webank.eggroll.core.constant.{ClusterManagerConfKeys, MetadataCommands, SessionCommands}
-import com.webank.eggroll.core.meta.{ErEndpoint, ErPartition, ErProcessorBatch, ErServerCluster, ErServerNode, ErSessionMeta, ErStore, ErStoreLocator}
+import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.session.StaticErConf
 
 import scala.collection.JavaConverters._
@@ -70,15 +70,15 @@ class ClusterManagerClient(val endpoint: ErEndpoint) {
   def getOrCreateSession(sessionMeta: ErSessionMeta): ErSessionMeta =
     cc.call[ErSessionMeta](SessionCommands.getOrCreateSession, sessionMeta)
 
-  def registerSession(sessionMeta: ErSessionMeta, processorBatch: ErProcessorBatch): ErProcessorBatch =
-    cc.call[ErProcessorBatch](SessionCommands.registerSession, sessionMeta, processorBatch)
+  def getSession(sessionMeta: ErSessionMeta): ErSessionMeta =
+    cc.call[ErSessionMeta](SessionCommands.getSession, sessionMeta)
 
-  def getSessionServerNodes(sessionMeta: ErSessionMeta): ErServerCluster =
-    cc.call[ErServerCluster](SessionCommands.getSessionServerNodes, sessionMeta)
+  def stopSession(sessionMeta: ErSessionMeta): ErSessionMeta =
+    cc.call[ErSessionMeta](SessionCommands.stopSession, sessionMeta)
 
-  def getSessionRolls(sessionMeta: ErSessionMeta): ErProcessorBatch =
-    cc.call[ErProcessorBatch](SessionCommands.getSessionRolls, sessionMeta)
+  def registerSession(sessionMeta: ErSessionMeta): ErSessionMeta =
+    cc.call[ErSessionMeta](SessionCommands.registerSession, sessionMeta)
 
-  def getSessionEggs(sessionMeta: ErSessionMeta): ErProcessorBatch =
-    cc.call[ErProcessorBatch](SessionCommands.getSessionEggs, sessionMeta)
+  def heartbeat(processor: ErProcessor): ErProcessor =
+    cc.call[ErProcessor](SessionCommands.heartbeat, processor)
 }

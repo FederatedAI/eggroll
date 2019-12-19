@@ -121,7 +121,7 @@ object EggManager {
 
     processorBatch.processors.foreach(p => {
       val stopResult = operator.stop(p)
-      if (stopResult) terminatedProcessors += p.copy(status = ProcessorStatus.TERMINATED)
+      if (stopResult) terminatedProcessors += p.copy(status = ProcessorStatus.STOPPED)
       else terminatedProcessors += p.copy(status = ProcessorStatus.ERROR)
     })
 

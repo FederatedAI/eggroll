@@ -18,7 +18,7 @@
 
 package com.webank.eggroll.core.util
 
-import org.apache.commons.cli.{CommandLine, CommandLineParser, DefaultParser, HelpFormatter, Option, Options, ParseException}
+import org.apache.commons.cli.{CommandLine, DefaultParser, HelpFormatter, Option, Options, ParseException}
 
 object MiscellaneousUtils {
   def parseArgs(args: Array[String]): CommandLine = {
@@ -55,6 +55,14 @@ object MiscellaneousUtils {
       .desc("port to bind")
       .build
 
+    val clusterManager = Option.builder("cm")
+      .argName("cluster manager of this service")
+      .longOpt("cluster-manager")
+      .optionalArg(true)
+      .hasArg.numberOfArgs(1)
+      .desc("cluster manager of this service")
+      .build()
+
     val nodeManager = Option.builder("nm")
         .argName("node manager of this service")
         .longOpt("node-manager")
@@ -63,12 +71,31 @@ object MiscellaneousUtils {
         .desc("node manager of this service")
         .build()
 
+    val serverNodeId = Option.builder("sn")
+      .argName("server node id")
+      .longOpt("server-node-id")
+      .optionalArg(true)
+      .hasArg.numberOfArgs(1)
+      .desc("server node of this service")
+      .build()
+
+    val processorId = Option.builder("prid")
+      .argName("processor id")
+      .longOpt("processor-id")
+      .optionalArg(true)
+      .hasArg.numberOfArgs(1)
+      .desc("processor id of this service")
+      .build()
+
     options
       .addOption(config)
       .addOption(help)
       .addOption(sessionId)
       .addOption(port)
+      .addOption(clusterManager)
       .addOption(nodeManager)
+      .addOption(serverNodeId)
+      .addOption(processorId)
 
     val parser = new DefaultParser
     var cmd: CommandLine = null

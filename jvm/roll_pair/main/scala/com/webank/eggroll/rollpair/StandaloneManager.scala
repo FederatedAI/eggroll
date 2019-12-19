@@ -19,10 +19,7 @@
 package com.webank.eggroll.rollpair
 
 import com.webank.eggroll.core.clustermanager.ClusterManager
-import com.webank.eggroll.core.constant.NodeManagerConfKeys
-import com.webank.eggroll.core.meta.ErEndpoint
 import com.webank.eggroll.core.nodemanager.NodeManager
-import com.webank.eggroll.core.session.StaticErConf
 import org.apache.commons.cli.{DefaultParser, Options}
 object StandaloneManager {
   // usage: -ccp 4677 -ctp 4677
@@ -34,7 +31,7 @@ object StandaloneManager {
       .addOption("c","ignore").addOption("p","ignore")
     val sid = new DefaultParser().parse(options, args).getOptionValue("s")
     println("eggroll-standalone-manager-port:" + server.getPort)
-    Main.reportCM(sid, ErEndpoint("localhost", server.getPort), server.getPort)
+    Main.reportCM(sid, args, server.getPort)
     server.awaitTermination() // returns port, pass standalone python process id
   }
 }

@@ -25,8 +25,7 @@ from eggroll.core.io.io_utils import get_db_path
 from eggroll.core.io.kv_adapter import LmdbSortedKvAdapter, \
   RocksdbSortedKvAdapter
 from eggroll.core.meta_model import ErStoreLocator, ErJob, ErStore, ErFunctor, \
-  ErTask, ErPair, ErPartition, \
-  ErServerCluster, ErProcessorBatch
+  ErTask, ErPair, ErPartition
 from eggroll.core.pair_store.adapter import BrokerAdapter
 from eggroll.core.serdes import cloudpickle
 from eggroll.core.serdes.eggroll_serdes import PickleSerdes, CloudPickleSerdes, \
@@ -42,72 +41,27 @@ from eggroll.utils import log_utils
 log_utils.setDirectory()
 LOGGER = log_utils.getLogger()
 
-class ErServerSessionDeployment(object):
-  def __init__(self, session_id: str, server_cluster: ErServerCluster, rolls: list, eggs: dict):
-    self.session_id = session_id,
-    self.server_cluster = server_cluster
-    self.rolls = rolls
-    self.eggs = eggs    # [server_node_id : list[ErProcessor]]
-
-  @staticmethod
-  def from_cm_response(session_id: str, server_cluster: ErServerCluster, roll_processor_batch: ErProcessorBatch, egg_processor_batch: ErProcessorBatch):
-    eggs = dict()
-    for er_processor in egg_processor_batch._processors:
-      server_node_id = er_processor._server_node_id
-      if server_node_id not in eggs:
-        eggs[server_node_id] = list()
-      eggs[server_node_id].append(er_processor)
-
-    return ErServerSessionDeployment(
-        session_id=session_id,
-        server_cluster=server_cluster,
-        rolls=roll_processor_batch._processors,
-        eggs=eggs)
-
-  def __repr__(self):
-    return f'ErServerSessionDeployment(session_id: {self.session_id}, server_cluster: {repr(self.server_cluster)}, rolls: {self.rolls}, eggs: {self.eggs})'
-
 
 class RollPairContext(object):
 
   def __init__(self, session: ErSession):
     self.__session = session
     self.session_id = session.get_session_id()
-    # self.default_store_type = StoreTypes.ROLLPAIR_LMDB
     self.default_store_type = StoreTypes.ROLLPAIR_LMDB
     self.deploy_mode = session.get_option(DeployConfKeys.CONFKEY_DEPLOY_MODE)
-    self._bindings = {}    # dict[binding_id, list[ErProcessor]]
 
-    _server_cluster = self.__session.cm_client.get_session_server_nodes(self.__session.session_meta)
-    _rolls = self.__session.cm_client.get_session_rolls(self.__session.session_meta)
-    _eggs = self.__session.cm_client.get_session_eggs(self.__session.session_meta)
-    self.__server_session_deployment = ErServerSessionDeployment.from_cm_response(
-        self.__session.get_session_id(),
-        _server_cluster,
-        _rolls,
-        _eggs)
-
-    print(f'server_session_deployment: {self.__server_session_deployment}')
-
-
-
-  def get_roll_endpoint(self):
-    return self.__session._rolls[0]._command_endpoint
-
-  # TODO: return transfer endpoint
-  def get_egg_endpoint(self, egg_id):
-    return self.__session._eggs[0][0]._command_endpoint
+    self._rolls = self.__session._rolls
+    self._eggs = self.__session._eggs
 
   def get_roll(self):
     return self.__session._rolls[0]
 
   def route_to_egg(self, partition: ErPartition):
-    deployment = self.__server_session_deployment
     target_server_node = partition._processor._server_node_id
-    target_egg_processors = len(deployment.eggs[target_server_node])
+    target_egg_processors = len(self._eggs[target_server_node])
     target_processor = (partition._id // target_egg_processors) % target_egg_processors
 
-    return deployment.eggs[target_server_node][target_processor]
+    return self._eggs[target_server_node][target_processor]
 
   def populate_processor(self, store: ErStore):
     populated_partitions = list()
@@ -331,7 +285,7 @@ class RollPair(object):
       result = self.__command_client.simple_sync_send(
               input=job,
               output_type=ErJob,
-              endpoint=self.ctx.get_roll_endpoint(),
+              endpoint=self.ctx.get_roll()._command_endpoint,
               command_uri=CommandURI(f'{RollPair._uri_prefix}/{RollPair.GET_ALL}'),
               serdes_type=SerdesTypes.PROTOBUF)
 
@@ -378,7 +332,7 @@ class RollPair(object):
       result = self.__command_client.simple_sync_send(
               input=job,
               output_type=ErJob,
-              endpoint=self.ctx.get_roll_endpoint(),
+              endpoint=self.ctx.get_roll()._command_endpoint,
               command_uri=CommandURI(f'{RollPair._uri_prefix}/{RollPair.PUT_ALL}'),
               serdes_type=SerdesTypes.PROTOBUF)
 
@@ -441,7 +395,6 @@ class RollPair(object):
     total_partitions = self.__store._store_locator._total_partitions
     for i in range(total_partitions):
       job_outputs = []
-      #part_id = self.partitioner(i)
       egg = self.ctx.route_to_egg(self.__store._partitions[i])
       task_inputs = [ErPartition(id=i, store_locator=self.__store._store_locator)]
       task_outputs = []
@@ -512,7 +465,7 @@ class RollPair(object):
     job_result = self.__command_client.simple_sync_send(
         input=job,
         output_type=ErJob,
-        endpoint=self.ctx.get_roll_endpoint(),
+        endpoint=self.ctx.get_roll()._command_endpoint,
         command_uri=CommandURI(f'{RollPair._uri_prefix}/{RollPair.MAP_VALUES}'),
         serdes_type=self.__command_serdes)
 
@@ -534,7 +487,7 @@ class RollPair(object):
     job_result = self.__command_client.simple_sync_send(
         input=job,
         output_type=ErJob,
-        endpoint=self.ctx.get_roll_endpoint(),
+        endpoint=self.ctx.get_roll()._command_endpoint,
         command_uri=CommandURI(f'{RollPair._uri_prefix}/{RollPair.MAP}'),
         serdes_type=self.__command_serdes)
 
@@ -557,7 +510,7 @@ class RollPair(object):
     job_result = self.__command_client.simple_sync_send(
       input=job,
       output_type=ErJob,
-      endpoint=self.ctx.get_roll_endpoint(),
+      endpoint=self.ctx.get_roll()._command_endpoint,
       command_uri=CommandURI(f'{RollPair._uri_prefix}/{RollPair.MAPPARTITIONS}'),
       serdes_type=self.__command_serdes
     )
@@ -580,7 +533,7 @@ class RollPair(object):
     job_result = self.__command_client.simple_sync_send(
       input=job,
       output_type=ErJob,
-      endpoint=self.ctx.get_roll_endpoint(),
+      endpoint=self.ctx.get_roll()._command_endpoint,
       command_uri=CommandURI(f'{RollPair._uri_prefix}/{RollPair.COLLAPSEPARTITIONS}'),
       serdes_type=self.__command_serdes
     )
@@ -603,7 +556,7 @@ class RollPair(object):
     job_result = self.__command_client.simple_sync_send(
       input=job,
       output_type=ErJob,
-      endpoint=self.ctx.get_roll_endpoint(),
+      endpoint=self.ctx.get_roll()._command_endpoint,
       command_uri=CommandURI(f'{RollPair._uri_prefix}/{RollPair.FLATMAP}'),
       serdes_type=self.__command_serdes
     )
@@ -626,7 +579,7 @@ class RollPair(object):
     job_result = self.__command_client.simple_sync_send(
         input = job,
         output_type = ErJob,
-        endpoint = self.ctx.get_roll_endpoint(),
+        endpoint = self.ctx.get_roll()._command_endpoint,
         command_uri = CommandURI(f'{RollPair._uri_prefix}/{RollPair.REDUCE}'),
         serdes_type=self.__command_serdes)
 
@@ -650,7 +603,7 @@ class RollPair(object):
     job_result = self.__command_client.simple_sync_send(
         input=job,
         output_type=ErJob,
-        endpoint=self.ctx.get_roll_endpoint(),
+        endpoint=self.ctx.get_roll()._command_endpoint,
         command_uri=CommandURI(f'{RollPair._uri_prefix}/{RollPair.RUNJOB}'),
         serdes_type=self.__command_serdes)
 
@@ -672,7 +625,7 @@ class RollPair(object):
     job_result = self.__command_client.simple_sync_send(
       input=job,
       output_type=ErJob,
-      endpoint=self.ctx.get_roll_endpoint(),
+      endpoint=self.ctx.get_roll()._command_endpoint,
       command_uri=CommandURI(f'{RollPair._uri_prefix}/{RollPair.GLOM}'),
       serdes_type=self.__command_serdes
     )
@@ -696,7 +649,7 @@ class RollPair(object):
     job_result = self.__command_client.simple_sync_send(
       input=job,
       output_type=ErJob,
-      endpoint=self.ctx.get_roll_endpoint(),
+      endpoint=self.ctx.get_roll()._command_endpoint,
       command_uri=CommandURI(f'{RollPair._uri_prefix}/{RollPair.SAMPLE}'),
       serdes_type=self.__command_serdes)
 
@@ -719,7 +672,7 @@ class RollPair(object):
     job_result = self.__command_client.simple_sync_send(
       input=job,
       output_type=ErJob,
-      endpoint=self.ctx.get_roll_endpoint(),
+      endpoint=self.ctx.get_roll()._command_endpoint,
       command_uri=CommandURI(f'{RollPair._uri_prefix}/{RollPair.FILTER}'),
       serdes_type=self.__command_serdes)
 
@@ -741,7 +694,7 @@ class RollPair(object):
     job_result = self.__command_client.simple_sync_send(
       input=job,
       output_type=ErJob,
-      endpoint=self.ctx.get_roll_endpoint(),
+      endpoint=self.ctx.get_roll()._command_endpoint,
       command_uri=CommandURI(f'{RollPair._uri_prefix}/{RollPair.SUBTRACTBYKEY}'),
       serdes_type=self.__command_serdes)
     er_store = job_result._outputs[0]
@@ -762,7 +715,7 @@ class RollPair(object):
     job_result = self.__command_client.simple_sync_send(
       input=job,
       output_type=ErJob,
-      endpoint=self.ctx.get_roll_endpoint(),
+      endpoint=self.ctx.get_roll()._command_endpoint,
       command_uri=CommandURI(f'{RollPair._uri_prefix}/{RollPair.UNION}'),
       serdes_type=self.__command_serdes)
     er_store = job_result._outputs[0]
@@ -787,7 +740,7 @@ class RollPair(object):
     job_result = self.__command_client.simple_sync_send(
       input=job,
       output_type=ErJob,
-      endpoint=self.ctx.get_roll_endpoint(),
+      endpoint=self.ctx.get_roll()._command_endpoint,
       command_uri=CommandURI(f'{RollPair._uri_prefix}/{RollPair.JOIN}'),
       serdes_type=self.__command_serdes)
     er_store = job_result._outputs[0]
