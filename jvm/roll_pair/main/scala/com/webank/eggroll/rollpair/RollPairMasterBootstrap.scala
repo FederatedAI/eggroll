@@ -11,7 +11,7 @@ import com.webank.eggroll.core.constant.{ProcessorStatus, ProcessorTypes, Sessio
 import com.webank.eggroll.core.meta.{ErEndpoint, ErJob, ErProcessor}
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.util.{Logging, MiscellaneousUtils}
-import com.webank.eggroll.rollpair.component.RollPairServicer
+import com.webank.eggroll.rollpair.component.RollPairMaster
 import org.apache.commons.lang3.StringUtils
 
 class RollPairMasterBootstrap extends Bootstrap with Logging {
@@ -19,80 +19,80 @@ class RollPairMasterBootstrap extends Bootstrap with Logging {
   private var sessionId = "er_session_null"
   private var nodeManager = ""
   override def init(args: Array[String]): Unit = {
-    CommandRouter.register(serviceName = RollPairServicer.rollMapValuesCommand,
+    CommandRouter.register(serviceName = RollPairMaster.rollMapValuesCommand,
       serviceParamTypes = Array(classOf[ErJob]),
-      routeToClass = classOf[RollPairServicer],
-      routeToMethodName = RollPairServicer.mapValues)
+      routeToClass = classOf[RollPairMaster],
+      routeToMethodName = RollPairMaster.mapValues)
 
-    CommandRouter.register(serviceName = RollPairServicer.rollMapCommand,
+    CommandRouter.register(serviceName = RollPairMaster.rollMapCommand,
       serviceParamTypes = Array(classOf[ErJob]),
-      routeToClass = classOf[RollPairServicer],
-      routeToMethodName = RollPairServicer.runJob)
+      routeToClass = classOf[RollPairMaster],
+      routeToMethodName = RollPairMaster.runJob)
 
-    CommandRouter.register(serviceName = RollPairServicer.rollMapPartitionsCommand,
+    CommandRouter.register(serviceName = RollPairMaster.rollMapPartitionsCommand,
       serviceParamTypes = Array(classOf[ErJob]),
-      routeToClass = classOf[RollPairServicer],
-      routeToMethodName = RollPairServicer.mapPartitions)
+      routeToClass = classOf[RollPairMaster],
+      routeToMethodName = RollPairMaster.mapPartitions)
 
-    CommandRouter.register(serviceName = RollPairServicer.rollCollapsePartitionsCommand,
+    CommandRouter.register(serviceName = RollPairMaster.rollCollapsePartitionsCommand,
       serviceParamTypes = Array(classOf[ErJob]),
-      routeToClass = classOf[RollPairServicer],
-      routeToMethodName = RollPairServicer.collapsePartitions)
+      routeToClass = classOf[RollPairMaster],
+      routeToMethodName = RollPairMaster.collapsePartitions)
 
-    CommandRouter.register(serviceName = RollPairServicer.rollFlatMapCommand,
+    CommandRouter.register(serviceName = RollPairMaster.rollFlatMapCommand,
       serviceParamTypes = Array(classOf[ErJob]),
-      routeToClass = classOf[RollPairServicer],
-      routeToMethodName = RollPairServicer.flatMap)
+      routeToClass = classOf[RollPairMaster],
+      routeToMethodName = RollPairMaster.flatMap)
 
-    CommandRouter.register(serviceName = RollPairServicer.rollGlomCommand,
+    CommandRouter.register(serviceName = RollPairMaster.rollGlomCommand,
       serviceParamTypes = Array(classOf[ErJob]),
-      routeToClass = classOf[RollPairServicer],
-      routeToMethodName = RollPairServicer.glom)
+      routeToClass = classOf[RollPairMaster],
+      routeToMethodName = RollPairMaster.glom)
 
-    CommandRouter.register(serviceName = RollPairServicer.rollSampleCommand,
+    CommandRouter.register(serviceName = RollPairMaster.rollSampleCommand,
       serviceParamTypes = Array(classOf[ErJob]),
-      routeToClass = classOf[RollPairServicer],
-      routeToMethodName = RollPairServicer.sample)
+      routeToClass = classOf[RollPairMaster],
+      routeToMethodName = RollPairMaster.sample)
 
-    CommandRouter.register(serviceName = RollPairServicer.rollFilterCommand,
+    CommandRouter.register(serviceName = RollPairMaster.rollFilterCommand,
       serviceParamTypes = Array(classOf[ErJob]),
-      routeToClass = classOf[RollPairServicer],
-      routeToMethodName = RollPairServicer.filter)
+      routeToClass = classOf[RollPairMaster],
+      routeToMethodName = RollPairMaster.filter)
 
-    CommandRouter.register(serviceName = RollPairServicer.rollSubtractByKeyCommand,
+    CommandRouter.register(serviceName = RollPairMaster.rollSubtractByKeyCommand,
       serviceParamTypes = Array(classOf[ErJob]),
-      routeToClass = classOf[RollPairServicer],
-      routeToMethodName = RollPairServicer.subtractByKey)
+      routeToClass = classOf[RollPairMaster],
+      routeToMethodName = RollPairMaster.subtractByKey)
 
-    CommandRouter.register(serviceName = RollPairServicer.rollUnionCommand,
+    CommandRouter.register(serviceName = RollPairMaster.rollUnionCommand,
       serviceParamTypes = Array(classOf[ErJob]),
-      routeToClass = classOf[RollPairServicer],
-      routeToMethodName = RollPairServicer.union)
+      routeToClass = classOf[RollPairMaster],
+      routeToMethodName = RollPairMaster.union)
 
-    CommandRouter.register(serviceName = RollPairServicer.rollReduceCommand,
+    CommandRouter.register(serviceName = RollPairMaster.rollReduceCommand,
       serviceParamTypes = Array(classOf[ErJob]),
-      routeToClass = classOf[RollPairServicer],
-      routeToMethodName = RollPairServicer.reduce)
+      routeToClass = classOf[RollPairMaster],
+      routeToMethodName = RollPairMaster.reduce)
 
-    CommandRouter.register(serviceName = RollPairServicer.rollJoinCommand,
+    CommandRouter.register(serviceName = RollPairMaster.rollJoinCommand,
       serviceParamTypes = Array(classOf[ErJob]),
-      routeToClass = classOf[RollPairServicer],
-      routeToMethodName = RollPairServicer.runJob)
+      routeToClass = classOf[RollPairMaster],
+      routeToMethodName = RollPairMaster.runJob)
 
-    CommandRouter.register(serviceName = RollPairServicer.rollRunJobCommand,
+    CommandRouter.register(serviceName = RollPairMaster.rollRunJobCommand,
       serviceParamTypes = Array(classOf[ErJob]),
-      routeToClass = classOf[RollPairServicer],
-      routeToMethodName = RollPairServicer.runJob)
+      routeToClass = classOf[RollPairMaster],
+      routeToMethodName = RollPairMaster.runJob)
 
-    CommandRouter.register(serviceName = RollPairServicer.rollPutAllCommand,
+    CommandRouter.register(serviceName = RollPairMaster.rollPutAllCommand,
       serviceParamTypes = Array(classOf[ErJob]),
-      routeToClass = classOf[RollPairServicer],
-      routeToMethodName = RollPairServicer.runJob)
+      routeToClass = classOf[RollPairMaster],
+      routeToMethodName = RollPairMaster.runJob)
 
-    CommandRouter.register(serviceName = RollPairServicer.rollGetAllCommand,
+    CommandRouter.register(serviceName = RollPairMaster.rollGetAllCommand,
       serviceParamTypes = Array(classOf[ErJob]),
-      routeToClass = classOf[RollPairServicer],
-      routeToMethodName = RollPairServicer.runJob)
+      routeToClass = classOf[RollPairMaster],
+      routeToMethodName = RollPairMaster.runJob)
 
     val cmd = MiscellaneousUtils.parseArgs(args = args)
     this.port = cmd.getOptionValue('p', "0").toInt

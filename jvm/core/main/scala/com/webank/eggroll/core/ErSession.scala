@@ -29,26 +29,43 @@ trait ErDeploy
 
 class ErStandaloneDeploy(sessionMeta: ErSessionMeta, options: Map[String, String] = Map()) extends ErDeploy {
   private val managerPort = options.getOrElse("eggroll.standalone.manager.port", "4670").toInt
-  val rolls: List[ErProcessor] = List(ErProcessor(
-    id=0, serverNodeId = 0, processorType = ProcessorTypes.ROLL_PAIR_MASTER,
-    status = ProcessorStatus.RUNNING, commandEndpoint = ErEndpoint("localhost", managerPort)))
   private val eggPorts = options.getOrElse("eggroll.standalone.egg.ports", "20001").split(",").map(_.toInt)
   private val eggTransferPorts = options.getOrElse("eggroll.standalone.egg.transfer.ports", "20002").split(",").map(_.toInt)
-  val eggs: Map[Int, List[ErProcessor]] = Map(0 ->
+  private val selfServerNodeId = options.getOrElse("eggroll.standalone.server.node.id", "2").toLong
+
+  val rolls: Array[ErProcessor] = Array(ErProcessor(
+    id = 1,
+    serverNodeId = selfServerNodeId,
+    processorType = ProcessorTypes.ROLL_PAIR_MASTER,
+    status = ProcessorStatus.RUNNING,
+    commandEndpoint = ErEndpoint("localhost", managerPort)))
+
+  val eggs: Map[Long, Array[ErProcessor]] = Map(selfServerNodeId ->
     eggPorts.zip(eggTransferPorts).map(ports => ErProcessor(
-      id=0, serverNodeId = 0, processorType = ProcessorTypes.EGG_PAIR,
-      status = ProcessorStatus.RUNNING, commandEndpoint = ErEndpoint("localhost", ports._1), transferEndpoint = ErEndpoint("localhost", ports._2))
-    ).toList
-  )
+      id = 1,
+      serverNodeId = selfServerNodeId,
+      processorType = ProcessorTypes.EGG_PAIR,
+      status = ProcessorStatus.RUNNING,
+      commandEndpoint = ErEndpoint("localhost", ports._1),
+      transferEndpoint = ErEndpoint("localhost", ports._2))))
+
+  val processors = rolls ++ eggs(selfServerNodeId)
+
   val cmClient: ClusterManagerClient = new ClusterManagerClient("localhost", managerPort)
-  cmClient.registerSession(sessionMeta, ErProcessorBatch(processors = (rolls ++ eggs(0)).toArray))
+  val existingSession = cmClient.getSession(sessionMeta)
+  if (existingSession.processors.length == 0) cmClient.registerSession(sessionMeta.copy(processors = processors))
 }
+
 class ErSession(val sessionId: String = s"er_session_${TimeUtils.getNowMs()}_${new Random().nextInt(9999)}",
                 name: String = "", tag: String = "", options: Map[String, String] = Map()) {
 
   var status = SessionStatus.NEW
-  private val sessionMeta = ErSessionMeta(id = sessionId, name=name, status = status,
-    options=options, tag=tag)
+  private val sessionMeta = ErSessionMeta(
+    id = sessionId,
+    name=name,
+    status = status,
+    options=options,
+    tag=tag)
   private val deployClient = if(options.getOrElse(DeployConfKeys.CONFKEY_DEPLOY_MODE, "standalone") == "standalone") {
     new ErStandaloneDeploy(sessionMeta)
   } else {
@@ -56,21 +73,15 @@ class ErSession(val sessionId: String = s"er_session_${TimeUtils.getNowMs()}_${n
   }
 
   val cmClient: ClusterManagerClient = deployClient.cmClient
-  private val serverNodes = cmClient.getSessionServerNodes(sessionMeta = sessionMeta)
-  private val rolls = cmClient.getSessionRolls(sessionMeta = sessionMeta)
-  private val eggs = cmClient.getSessionEggs(sessionMeta = sessionMeta)
-
-  val serverSessionDeployment = ErSessionDeployment(
-    id = sessionId,
-    serverCluster = serverNodes,
-    rollProcessorBatch = rolls,
-    eggProcessorBatch = eggs)
+  private val rolls = deployClient.rolls
+  private val eggs = deployClient.eggs
+  private val processors = deployClient.processors
 
   def routeToEgg(partition: ErPartition): ErProcessor = {
     val serverNodeId = partition.processor.serverNodeId
-    val eggCountOnServerNode = serverSessionDeployment.eggs(serverNodeId).length
+    val eggCountOnServerNode = eggs(serverNodeId).length
     val eggIdx = partition.id / eggCountOnServerNode % eggCountOnServerNode
 
-    serverSessionDeployment.eggs(serverNodeId)(eggIdx)
+    eggs(serverNodeId)(eggIdx)
   }
 }

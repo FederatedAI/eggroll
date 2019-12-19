@@ -32,7 +32,7 @@ trait SessionManager {
    * @param sessionMeta contains session main and options and processors
    * @return
    */
-  def register(sessionMeta: ErSessionMeta): ErSessionMeta
+  def registerSession(sessionMeta: ErSessionMeta): ErSessionMeta
 
   def stopSession(sessionMeta: ErSessionMeta): ErSessionMeta
 }
@@ -118,7 +118,7 @@ class SessionManagerService extends SessionManager {
    * @param sessionMeta contains session main and options and processors
    * @return
    */
-  def register(sessionMeta: ErSessionMeta): ErSessionMeta = {
+  def registerSession(sessionMeta: ErSessionMeta): ErSessionMeta = {
     smDao.register(sessionMeta)
     // generated id
     smDao.getSession(sessionMeta.id)

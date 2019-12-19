@@ -137,9 +137,9 @@ class ClusterManagerClient(object):
         command_uri=SessionCommands.GET_OR_CREATE_SESSION,
         serdes_type=self.__serdes_type)
 
-  def register_session(self, session_meta: ErSessionMeta, processor_batch: ErProcessorBatch):
-    return self.__command_client.sync_send(inputs=[session_meta, processor_batch],
-                                           output_types=[ErProcessorBatch],
+  def register_session(self, session_meta: ErSessionMeta):
+    return self.__command_client.sync_send(inputs=[session_meta],
+                                           output_types=[ErSessionMeta],
                                            endpoint=self.__endpoint,
                                            command_uri=SessionCommands.REGISTER_SESSION,
                                            serdes_type=self.__serdes_type)

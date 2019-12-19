@@ -62,7 +62,6 @@ object JobRunner {
     val commandClient = new CommandClient()
 
     val results = commandClient.call[ErTask](commandURI = plan.uri, args = tasks.map(t => (Array[RpcMessage](t), t.inputs.head.processor.commandEndpoint)))
-    results.foreach(println)
     tasks
   }
 

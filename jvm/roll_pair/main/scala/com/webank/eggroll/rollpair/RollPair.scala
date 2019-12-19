@@ -30,7 +30,7 @@ import com.webank.eggroll.core.datastructure.{Broker, LinkedBlockingBroker}
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.transfer.GrpcTransferClient
 import com.webank.eggroll.core.util.Logging
-import com.webank.eggroll.rollpair.component.RollPairServicer
+import com.webank.eggroll.rollpair.component.RollPairMaster
 
 import scala.collection.JavaConverters._
 class RollPairContext(val session: ErSession, defaultStoreType:String = StoreTypes.ROLLPAIR_LMDB) extends Logging {
@@ -39,8 +39,7 @@ class RollPairContext(val session: ErSession, defaultStoreType:String = StoreTyp
   def getRollEndpoint(): ErEndpoint = null
   def getEggEndpoint(partitionId: Int): ErEndpoint = null
 
-  def routeToEgg(partiton: ErPartition): ErProcessor = session.routeToEgg(partiton)
-
+  def routeToEgg(partition: ErPartition): ErProcessor = session.routeToEgg(partition)
 
   def load(namespace:String, name:String, opts: Map[String,String] = Map()): RollPair = {
     val store = ErStore(storeLocator = ErStoreLocator(
@@ -71,8 +70,8 @@ class RollPair(val store: ErStore, val ctx:RollPairContext, val opts: Map[String
     val transferClients = new Array[GrpcTransferClient](totalPartitions)
     val brokers = new Array[Broker[ByteString]](totalPartitions)
 
-    val job = ErJob(id = "1",
-      name = RollPairServicer.putAll,
+    val job = ErJob(id = store.storeLocator.name,
+      name = RollPairMaster.putAll,
       inputs = Array(store),
       outputs = Array(store),
       functors = Array.empty,
@@ -81,7 +80,7 @@ class RollPair(val store: ErStore, val ctx:RollPairContext, val opts: Map[String
     new Thread {
       override def run(): Unit = {
         val commandClient = new CommandClient(defaultEndpoint = ErEndpoint("localhost", 4670))
-        commandClient.call(new CommandURI(RollPairServicer.rollRunJobCommand), job)
+        commandClient.call(new CommandURI(RollPairMaster.rollRunJobCommand), job)
 
         logInfo("thread started")
       }
@@ -130,7 +129,7 @@ class RollPair(val store: ErStore, val ctx:RollPairContext, val opts: Map[String
           // tag = s"${job.id}-${partitionId}" to store.storeLocator.name
           newTransferClient.initForward(
             dataBroker = newBroker,
-            tag = store.storeLocator.name,
+            tag = s"${store.storeLocator.name}-${partitionId}",
             processor = ctx.routeToEgg(store.partitions(partitionId)))
           transferClients.update(partitionId, newTransferClient)
         }

@@ -70,20 +70,14 @@ class ClusterManagerClient(val endpoint: ErEndpoint) {
   def getOrCreateSession(sessionMeta: ErSessionMeta): ErSessionMeta =
     cc.call[ErSessionMeta](SessionCommands.getOrCreateSession, sessionMeta)
 
+  def getSession(sessionMeta: ErSessionMeta): ErSessionMeta =
+    cc.call[ErSessionMeta](SessionCommands.getSession, sessionMeta)
+
   def stopSession(sessionMeta: ErSessionMeta): ErSessionMeta =
     cc.call[ErSessionMeta](SessionCommands.stopSession, sessionMeta)
 
-  def registerSession(sessionMeta: ErSessionMeta, processorBatch: ErProcessorBatch): ErProcessorBatch =
-    cc.call[ErProcessorBatch](SessionCommands.registerSession, sessionMeta, processorBatch)
-
-  def getSessionServerNodes(sessionMeta: ErSessionMeta): ErServerCluster =
-    cc.call[ErServerCluster](SessionCommands.getSessionServerNodes, sessionMeta)
-
-  def getSessionRolls(sessionMeta: ErSessionMeta): ErProcessorBatch =
-    cc.call[ErProcessorBatch](SessionCommands.getSessionRolls, sessionMeta)
-
-  def getSessionEggs(sessionMeta: ErSessionMeta): ErProcessorBatch =
-    cc.call[ErProcessorBatch](SessionCommands.getSessionEggs, sessionMeta)
+  def registerSession(sessionMeta: ErSessionMeta): ErSessionMeta =
+    cc.call[ErSessionMeta](SessionCommands.registerSession, sessionMeta)
 
   def heartbeat(processor: ErProcessor): ErProcessor =
     cc.call[ErProcessor](SessionCommands.heartbeat, processor)

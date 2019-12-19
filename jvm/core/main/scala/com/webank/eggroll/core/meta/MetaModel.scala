@@ -123,10 +123,9 @@ case class ErSessionMeta(id: String,
                          name: String = StringConstants.EMPTY,
                          status: String = StringConstants.EMPTY,
                          activeProcCount: Int = 0,
-                         options: Map[String, String] = Map(),
                          tag: String = StringConstants.EMPTY,
                          processors: Array[ErProcessor] = Array(),
-                         deployment: ErSessionDeployment = null) extends MetaRpcMessage {
+                         options: Map[String, String] = Map()) extends MetaRpcMessage {
 }
 
 case class ErSessionDeployment(id: String,
@@ -285,9 +284,9 @@ object MetaModelPbMessageSerdes {
         .setId(src.id)
         .setName(src.name)
         .setStatus(src.status)
-        .putAllOptions(src.options.asJava)
-        .addAllProcessors(src.processors.toList.map(_.toProto()).asJava)
         .setTag(src.tag)
+        .addAllProcessors(src.processors.toList.map(_.toProto()).asJava)
+        .putAllOptions(src.options.asJava)
 
       builder.build()
     }
@@ -392,9 +391,9 @@ object MetaModelPbMessageSerdes {
       ErSessionMeta(id = src.getId,
         name = src.getName,
         status = src.getStatus,
-        options = src.getOptionsMap.asScala.toMap,
+        tag = src.getTag,
         processors = src.getProcessorsList.asScala.map(_.fromProto()).toArray,
-        tag = src.getTag)
+        options = src.getOptionsMap.asScala.toMap)
     }
 
     override def fromBytes(bytes: Array[Byte]): ErSessionMeta = {
