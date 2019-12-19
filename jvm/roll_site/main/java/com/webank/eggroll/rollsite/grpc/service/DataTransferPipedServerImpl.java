@@ -207,8 +207,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
         long overallTimeout = timeouts.getOverallTimeout(inputMetadata);
         long packetIntervalTimeout = timeouts.getPacketIntervalTimeout(inputMetadata);
 
-        //Pipe pipe = getPipe("model_A");
-        Pipe pipe = getPipe(inputMetadata.getTask().getModel().getName());
+        Pipe pipe = getPipe(inputMetadata.getTask().getTaskId());
 
         LOGGER.info("[UNARYCALL][SERVER] unary call pipe: {}", pipe);
 
@@ -237,17 +236,15 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
             return;
         }
         if(request.getHeader().getOperator().equals("getStatus")) {
+            LOGGER.info("getStatus");
             Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
-            Proxy.Data data = Proxy.Data.newBuilder().setValue(ByteString.copyFromUtf8("hello")).build();
             boolean status = pipe.getStatus();
             Proxy.Metadata header;
             if(status == true)
                 header = Proxy.Metadata.newBuilder().setAck(123).build();
             else
                 header = Proxy.Metadata.newBuilder().setAck(321).build();
-            packet = packetBuilder.setHeader(header)
-                .setBody(data)
-                .build();
+            packet = packetBuilder.setHeader(header).build();
             responseObserver.onNext(packet);
             responseObserver.onCompleted();
             return;
