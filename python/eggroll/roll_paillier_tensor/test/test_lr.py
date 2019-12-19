@@ -11,11 +11,12 @@ from eggroll.core.constants import StoreTypes
 
 from eggroll.core.session import ErSession
 from eggroll.roll_paillier_tensor.roll_paillier_tensor import RptContext
-from eggroll.roll_paillier_tensor.roll_paillier_tensor import RptLocalTensor
+from eggroll.roll_paillier_tensor.roll_paillier_tensor import NumpyTensor
 from eggroll.roll_pair.roll_pair import RollPairContext, RollPair
 from eggroll.roll_paillier_tensor.test.test_roll_paillier_tensor import TestRollPaillierTensor
 
 import numpy as np
+import pandas as pd
 
 store_type = StoreTypes.ROLLPAIR_LEVELDB
 max_iter = 1
@@ -25,93 +26,89 @@ class TestLR(unittest.TestCase):
   def test_lr(self):
     #base obj
     session = ErSession(session_id="zhanan", options={"eggroll.deploy.mode": "standalone"})
-    context = RptContext(RollPairContext(session))
+    rp_context = RollPairContext(session)
+    context = RptContext(rp_context)
     store = ErStore(store_locator=ErStoreLocator(store_type=store_type, namespace="ns", name="mat_a"))
 
-    #base elem
-    X_H_enc = context.load("ns", "mat_a", "cpu")
-    X_G_enc = context.load("ns", "mat_b", "cpu")
-    X_Y_enc = context.load("ns", "mat_y", "cpu")
-
-    X_H_dco = X_H_enc.decrypt()
-    X_G_dco = X_G_enc.decrypt()
-    X_Y_dco = X_Y_enc.decrypt()
+    # #base elem
+    # X_H_enc = context.load("ns", "mat_a", "cpu")
+    # X_G_enc = context.load("ns", "mat_b", "cpu")
+    # X_Y_enc = context.load("ns", "mat_y", "cpu")
     #
-    # # remote
-    X_H = X_H_dco.decode()
-    X_G = X_G_dco.decode()
-    X_Y = X_Y_dco.decode()
+    # X_H = X_H_enc.decrypt()
+    # X_G = X_G_enc.decrypt()
+    # X_Y = X_Y_enc.decrypt()
 
-    w_H_dco = RptLocalTensor(20, 1, 1, X_G_enc.pub_key, X_G_enc.prv_key)
-    w_G_dco = RptLocalTensor(10, 1, 1, X_H_enc.pub_key, X_H_enc.prv_key)
 
-    #local
-    w_H = w_H_dco.decode()
-    w_G = w_G_dco.decode()
+    data_G = pd.read_csv("/data/czn/data/breast_b23_25X12_mini.csv").values
+    data_H = pd.read_csv("/data/czn/data/breast_a23_25X21_mini.csv").values
 
-    print("w_H", w_H)
-    print("w_G", w_G)
+    rp_x_G = rp_context.load('ns', 'rp_x_G')
+    rp_x_H = rp_context.load('ns', 'rp_x_H')
+    rp_x_Y = rp_context.load('ns', 'rp_x_Y')
+
+    #X_G X_H
+    rp_x_G.put('1', np.array([data_G[0][2:]]))
+    rp_x_H.put('1', np.array([data_H[0][1:]]))
+    rp_x_Y.put('1', np.array([[data_G[0][1]]]))
+    X_G = RollPaillierTensor(rp_x_G)
+    X_H = RollPaillierTensor(rp_x_H)
+    X_Y = RollPaillierTensor(rp_x_Y)
+
+    #squre
+    fw_G2 = (np.array([data_G[0][2:]])).dot(np.ones((10, 1))) ** 2
+    fw_H2 = (np.array([data_H[0][1:]])).dot(np.ones((20, 1))) ** 2
+    rp_x_H2 = rp_context.load('ns', 'rp_x_H2')
+    rp_x_G2 = rp_context.load('ns', 'rp_x_G2')
+    rp_x_H2.put('1', fw_H2)
+    rp_x_G2.put('1', fw_G2)
+    fw_H2 = RollPaillierTensor(rp_x_H2)
+    fw_G2 = RollPaillierTensor(rp_x_G2)
+
+    w_H = NumpyTensor(np.ones((20, 1)))
+    w_G = NumpyTensor(np.ones((10, 1)))
 
     learning_rate=0.15
+    itr = 0
+    pre_loss_A = None
+    while itr < max_iter:
+      fw_H = X_H @ w_H
+      enc_fw_H = fw_H.encrypt()
+      enc_fw_square_H = fw_H2.encrypt()
 
-    fw_H = X_H.matmul_local(w_H)
-    fw_G = X_G.matmul_local(w_G)
+      fw_G = X_G @ w_G
+      enc_fw_G = fw_G.encrypt()
+      enc_fw_square_G = fw_G2.encrypt()
 
-    enc_fw_H = fw_H.encrypt()
-    enc_fw_H2 = (fw_H.vdot(fw_H)).encrypt()
-    enc_fw_G = fw_G.encrypt()
-    enc_fw_G2 = (fw_G.vdot(fw_G)).encrypt()
+      enc_agg_wx_G = enc_fw_G + enc_fw_H
+      enc_agg_wx_square_G = enc_fw_square_G + enc_fw_square_H + fw_G * enc_fw_H * 2
 
-    #154
-    enc_agg_wx_G = enc_fw_G.add(enc_fw_H)
+      enc_fore_grad_G = enc_agg_wx_G * 0.25 - X_Y * 0.5
 
-    enc_tmp = enc_fw_H.matmul(fw_G)
-    enc_last = enc_tmp.scalar_mul(2)
-    squre2 = enc_fw_H2.add(enc_fw_G2)
-    enc_agg_wx_square_G = squre2.add(enc_last)
+      enc_grad_G = (X_G * enc_fore_grad_G).mean()
+      enc_grad_H = (X_H * enc_fore_grad_G).mean()
 
-    # #163
-    tmp_l = enc_agg_wx_G.scalar_mul(0.25)
-    tmp_r = X_Y.scalar_mul(-0.5)
-    enc_fore_grad_G = tmp_l.add_test(tmp_r)
-    #
-    #tmp_1 = enc_fore_grad_G.matmul_local_print(X_G)
-    # tmp_r = X_H.matmul(enc_fore_grad_G)
-    #
-    # mean1 = tmp_l.mean()
-    # mean2 = tmp_r.mean()
-    print(X_G)
-    print(enc_fore_grad_G)
-    tmp1 = (X_G.matmul_c_eql(enc_fore_grad_G)).mean()
-    tmp2 = (X_H.matmul_c_eql(enc_fore_grad_G)).mean()
+      grad_A = enc_grad_G.hstack(enc_grad_H)
 
-    grad_A =  tmp1.hstack(tmp2)
-    learning_rate *= 0.999
+      learning_rate *= 0.999
+      optim_grad_A = grad_A * learning_rate
 
-  # enc_fore_grad_G.out()
-    optim_grad_A = grad_A.scalar_mul(learning_rate)
+      optim_grad_G, optim_grad_H = optim_grad_A.decrypt().split(10, 1)
 
-    pln1 = optim_grad_A.decrypt()
-    dco = pln1.decode()
-    optim_grad_G = dco.split(10, 1, 0)
-    optim_grad_H = dco.split(10, 1, 1)
+      w_G = w_G.T() - optim_grad_G
+      w_H = w_H.T() - optim_grad_H
 
-    w_G = optim_grad_G.sub_local(w_G)
-    w_H = optim_grad_H.sub_local(w_H)
-
-    tmp1 = enc_agg_wx_G.matmul(X_Y)
-    enc_half_ywx_G = tmp1.scalar_mul(0.5)
-
-    fst = enc_half_ywx_G.scalar_mul(-1)
-    sec = enc_agg_wx_square_G.scalar_mul(1/8)
-    thd = np.array([[np.log(2)]])
-
-    tmp1 = fst.add(sec)
-    tmp2 = tmp1.add_local(thd)
-
-    tmp2.out()
-
-
+      enc_half_ywx_G = enc_agg_wx_G * 0.5 * X_Y
+      #todo diversion
+      enc_loss_G = ((enc_half_ywx_G * -1) + enc_agg_wx_square_G / 8 + NumpyTensor(np.log(2))).mean()
+      loss_A = enc_loss_G.decrypt().store
+	  #########################
+      tmp = 99999 if pre_loss_A is None else loss_A - pre_loss_A
+      if pre_loss_A is not None and abs(loss_A - pre_loss_A) < 1e-4:
+        break
+      pre_loss_A = loss_A
+      itr += 1
+	  #########################
 
 if __name__ == '__main__':
   unittest.main()
