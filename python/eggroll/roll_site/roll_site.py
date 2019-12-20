@@ -173,14 +173,14 @@ class RollSite:
     futures = []
     for _role, _partyIds in parties.items():
       for _partyId in _partyIds:
-        _tagged_key = self.__remote__object_key(self.job_id, self.name, self.tag, self.src_role, self.party_id, _role,
+        _tagged_key = self.__remote__object_key(self.job_id, self.name, self.tag, self.local_role, self.party_id, _role,
                                                 _partyId)
 
         namespace = self.job_id
 
         if isinstance(obj, RollPair):
           name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.job_id, self.name, self.tag,
-                                                               self.src_role, str(self.party_id),
+                                                               self.local_role, str(self.party_id),
                                                                _role, str(_partyId), self.dst_host,
                                                                str(self.dst_port), 'rollpair']))
           rp = obj
@@ -189,7 +189,7 @@ class RollSite:
           If it is a object, put the object in the table and send the table meta.
           '''
           name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.job_id, self.name, self.tag,
-                                                               self.src_role, str(self.party_id),
+                                                               self.local_role, str(self.party_id),
                                                                _role, str(_partyId), self.dst_host,
                                                                str(self.dst_port), 'object']))
           rp = self.ctx.rp_ctx.load(namespace, name)
