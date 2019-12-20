@@ -21,7 +21,9 @@ from eggroll.core.meta_model import ErStoreLocator, ErStore
 from eggroll.core.constants import StoreTypes
 from eggroll.roll_pair.roll_pair import RollPair
 from eggroll.core.proto import proxy_pb2, proxy_pb2_grpc
+from eggroll.core.serdes import eggroll_serdes
 
+_serdes = eggroll_serdes.PickleSerdes
 
 class RollSiteContext:
   def __init__(self, job_id, options, rp_ctx):
@@ -99,7 +101,7 @@ class RollSite:
 
     if is_send and auth_dict.get(sub_name).get('src') != self.src_role:
       raise ValueError("{} is not allow to send from {}".format(self.src_role))
-    elif not is_send and self.src_role not in auth_dict.get(sub_name).get('dst'):
+    elif not is_send and self.src_role not in auth_dict.get(sub_name).get('src'):
       raise ValueError("{} is not allow to receive from {}".format(self.src_role))
 
     return algorithm, sub_name
@@ -114,14 +116,7 @@ class RollSite:
         raise IOError("receive terminated")
       ret_packet = self.stub.unaryCall(packet)
 
-    _tagged_key = self.__remote__object_key(self.job_id, self.name, self.tag,
-                                            self.src_role, self.party_id,
-                                            packet.header.dst.role,
-                                            packet.header.dst.partyId,
-                                            self.dst_host,
-                                            self.dst_port)
-    rp = self.ctx.rp_ctx.load(namespace=self.job_id, name=_tagged_key)
-    return rp
+    return ret_packet
 
   def wait_for_complete(self, futures):
     wait(futures, timeout=10, return_when=ALL_COMPLETED)
@@ -129,7 +124,31 @@ class RollSite:
 
   def wait_for_pull_complete(self, futures):
     wait(futures, timeout=10, return_when=ALL_COMPLETED)
-    return futures
+    results = [r.result() for r in futures]
+    rtn = []
+    for result in results:
+      table_name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([result.header.src.role,
+                                                                 result.header.src.partyId,
+                                                                 result.header.dst.role,
+                                                                 result.header.dst.partyId]))
+      rp = self.ctx.rp_ctx.load(namespace=self.job_id, name=table_name)
+
+      print("result.body.value:", result.body.value)
+      #print("deserialize result.body.value:", _serdes.deserialize(result.body.value))
+      if(result.body.value == str.encode('object')):
+        #__tagged_key = _serdes.deserialize(result.body.value)
+        print("__tagged_key", result.body.key)
+        __tagged_key = result.body.key
+        ret_obj = rp.get(__tagged_key)
+        print("ret_obj:", ret_obj)
+        #rtn.append(rp.get(__tagged_key))
+        rtn.append(ret_obj)
+        LOGGER.debug("[GET] Got remote object {}".format(__tagged_key))
+      else:
+        rtn.append(rp)
+
+    return rtn
+
 
   def push(self, obj, idx=-1):
     algorithm, sub_name = self.__check_authorization(self.name)
@@ -153,20 +172,22 @@ class RollSite:
     for _role, _partyIds in parties.items():
       for _partyId in _partyIds:
         _tagged_key = self.__remote__object_key(self.job_id, self.name, self.tag, self.src_role, self.party_id, _role,
-                                                _partyId, self.dst_host, self.dst_port)
+                                                _partyId)
 
-        object_storage_table_name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.src_role, str(self.party_id),
-                                                                                  _role, str(_partyId), self.dst_host,
-                                                                                  str(self.dst_port)]))
-        name = object_storage_table_name
         namespace = self.job_id
 
         if isinstance(obj, RollPair):
+          name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.src_role, str(self.party_id),
+                                                               _role, str(_partyId), self.dst_host,
+                                                               str(self.dst_port), 'rollpair']))
           rp = obj
         else:
           '''
           If it is a object, put the object in the table and send the table meta.
           '''
+          name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.src_role, str(self.party_id),
+                                                               _role, str(_partyId), self.dst_host,
+                                                              str(self.dst_port), 'object']))
           rp = self.ctx.rp_ctx.load(namespace, name)
           rp.put(_tagged_key, obj)
 
@@ -175,9 +196,10 @@ class RollSite:
 
         future = self.process_pool.submit(rp.map_values,
                                           lambda v: v,
-                                          output=ErStore(store_locator = ErStoreLocator(store_type=StoreTypes.ROLLPAIR_ROLLSITE,
-                                                                                        namespace=namespace,
-                                                                                        name=name)))
+                                          output=ErStore(store_locator=
+                                                         ErStoreLocator(store_type=StoreTypes.ROLLPAIR_ROLLSITE,
+                                                                        namespace=namespace,
+                                                                        name=name)))
         futures.append(future)
         LOGGER.debug("[REMOTE] Sent {}".format(_tagged_key))
 
@@ -211,15 +233,20 @@ class RollSite:
 
     futures = []
     for party_id in party_ids:
+      '''
       _tagged_key = self.__remote__object_key(self.job_id, self.name, self.tag,
                                               src_role, self.party_id, src_role,
                                               party_id, self.dst_host,
                                               self.dst_port)
+      '''
+      _tagged_key = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([src_role, str(party_id),
+                                                                  self.src_role, str(self.party_id)]))
+      print("pull _tagged_key:", _tagged_key)
       task_info = proxy_pb2.Task(taskId=_tagged_key)
-      topic_src = proxy_pb2.Topic(name="test", partyId="{}".format(self.party_id),
+      topic_src = proxy_pb2.Topic(name="test", partyId="{}".format(party_id),
                                   role=src_role, callback=None)
-      topic_dst = proxy_pb2.Topic(name="test", partyId="{}".format(party_id),
-                                  role=src_role, callback=None)
+      topic_dst = proxy_pb2.Topic(name="test", partyId="{}".format(self.party_id),
+                                  role=self.src_role, callback=None)
       command_test = proxy_pb2.Command(name="get_status")
       conf_test = proxy_pb2.Conf(overallTimeout=1000,
                                  completionWaitTimeout=1000,
@@ -234,8 +261,7 @@ class RollSite:
                                     seq=0, ack=0,
                                     conf=conf_test)
 
-      data = proxy_pb2.Data(key="hello")
-      packet = proxy_pb2.Packet(header=metadata, body=data)
+      packet = proxy_pb2.Packet(header=metadata)
       futures.append(self.process_pool.submit(RollSite._thread_receive, self, packet))
 
     self.process_pool.shutdown(wait=False)
