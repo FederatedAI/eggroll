@@ -19,10 +19,12 @@
 package com.webank.eggroll.core
 
 import com.webank.eggroll.core.client.ClusterManagerClient
-import com.webank.eggroll.core.constant.{DeployConfKeys, ProcessorStatus, ProcessorTypes, SessionStatus}
+import com.webank.eggroll.core.constant.{ProcessorStatus, ProcessorTypes, SessionStatus}
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.util.TimeUtils
 
+import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 import scala.util.Random
 
 trait ErDeploy
@@ -56,26 +58,40 @@ class ErStandaloneDeploy(sessionMeta: ErSessionMeta, options: Map[String, String
   if (existingSession.processors.length == 0) cmClient.registerSession(sessionMeta.copy(processors = processors))
 }
 
-class ErSession(val sessionId: String = s"er_session_${TimeUtils.getNowMs()}_${new Random().nextInt(9999)}",
-                name: String = "", tag: String = "", options: Map[String, String] = Map()) {
+class ErSession(val sessionId: String = s"er_session_jvm_${TimeUtils.getNowMs()}_${new Random().nextInt(9999)}",
+                name: String = "",
+                tag: String = "",
+                var processors: Array[ErProcessor] = Array(),
+                options: Map[String, String] = Map()) {
 
-  var status = SessionStatus.NEW
-  private val sessionMeta = ErSessionMeta(
+  private var status = SessionStatus.NEW
+  val clusterManagerClient = new ClusterManagerClient(options)
+  private var sessionMetaArg = ErSessionMeta(
     id = sessionId,
     name=name,
     status = status,
-    options=options,
-    tag=tag)
-  private val deployClient = if(options.getOrElse(DeployConfKeys.CONFKEY_DEPLOY_MODE, "standalone") == "standalone") {
-    new ErStandaloneDeploy(sessionMeta)
-  } else {
-    throw new NotImplementedError("doing")
-  }
+    tag=tag,
+    processors=processors,
+    options=options)
+  val sessionMeta: ErSessionMeta =
+    if (processors.length == 0) clusterManagerClient.getOrCreateSession(sessionMetaArg)
+    else clusterManagerClient.registerSession(sessionMetaArg)
+  processors = sessionMeta.processors
+  status = sessionMeta.status
 
-  val cmClient: ClusterManagerClient = deployClient.cmClient
-  private val rolls = deployClient.rolls
-  private val eggs = deployClient.eggs
-  private val processors = deployClient.processors
+  private val rolls: ArrayBuffer[ErProcessor] = ArrayBuffer()
+  private val eggs: mutable.Map[Long, ArrayBuffer[ErProcessor]] = mutable.Map()
+
+  processors.foreach(p => {
+    val processorType = p.processorType
+    if (ProcessorTypes.EGG_PAIR.equals(processorType)) {
+      eggs.getOrElseUpdate(p.serverNodeId, ArrayBuffer[ErProcessor]()) += p
+    } else if (ProcessorTypes.ROLL_PAIR_MASTER.equals(processorType)) {
+      rolls += p
+    } else {
+      throw new IllegalArgumentException(s"processor type ${processorType} not supported in roll pair")
+    }
+  })
 
   def routeToEgg(partition: ErPartition): ErProcessor = {
     val serverNodeId = partition.processor.serverNodeId

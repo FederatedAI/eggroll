@@ -14,14 +14,13 @@
 #  limitations under the License.
 
 
-import time
 import unittest
+
+from eggroll.core.conf_keys import DeployConfKeys, SessionConfKeys, \
+    ClusterManagerConfKeys
 # from roll_pair_test_assets import *
 from eggroll.core.session import ErSession
 from eggroll.roll_pair.roll_pair import RollPairContext
-from eggroll.core.conf_keys import DeployConfKeys, SessionConfKeys, \
-  ClusterManagerConfKeys, NodeManagerConfKeys
-from eggroll.roll_pair.test.roll_pair_test_assets import get_test_context
 
 
 class TestRollPairContext(unittest.TestCase):

@@ -35,6 +35,13 @@ class ClusterManagerClient(val endpoint: ErEndpoint) {
     this(ErEndpoint(serverHost, serverPort));
   }
 
+  def this(options: Map[String, String]) {
+    this(options.getOrElse(
+      ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST, "localhost"),
+      options.getOrElse(
+        ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, "4670").toInt)
+  }
+
   def this() {
     this(StaticErConf.getString(
       ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST, "localhost"),

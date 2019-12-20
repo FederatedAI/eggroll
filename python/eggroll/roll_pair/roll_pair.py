@@ -19,7 +19,7 @@ from eggroll.core.client import CommandClient
 from eggroll.core.command.command_model import CommandURI
 from eggroll.core.conf_keys import DeployConfKeys
 from eggroll.core.constants import StoreTypes, SerdesTypes, PartitionerTypes, \
-  DeployType
+  DeployTypes
 from eggroll.core.datastructure.broker import FifoBroker
 from eggroll.core.io.io_utils import get_db_path
 from eggroll.core.io.kv_adapter import LmdbSortedKvAdapter, \
@@ -49,19 +49,16 @@ class RollPairContext(object):
     self.session_id = session.get_session_id()
     self.default_store_type = StoreTypes.ROLLPAIR_LMDB
     self.deploy_mode = session.get_option(DeployConfKeys.CONFKEY_DEPLOY_MODE)
+    self.__session_meta = session.get_session_meta()
 
-    self._rolls = self.__session._rolls
-    self._eggs = self.__session._eggs
+  def get_session(self):
+    return self.__session
 
   def get_roll(self):
     return self.__session._rolls[0]
 
   def route_to_egg(self, partition: ErPartition):
-    target_server_node = partition._processor._server_node_id
-    target_egg_processors = len(self._eggs[target_server_node])
-    target_processor = (partition._id // target_egg_processors) % target_egg_processors
-
-    return self._eggs[target_server_node][target_processor]
+    return self.__session.route_to_egg(partition)
 
   def populate_processor(self, store: ErStore):
     populated_partitions = list()
@@ -102,9 +99,9 @@ class RollPairContext(object):
         options=final_options)
 
     if create_if_missing:
-      result = self.__session.cm_client.get_or_create_store(store)
+      result = self.__session._cluster_manager_client.get_or_create_store(store)
     else:
-      result = self.__session.cm_client.get_store(store)
+      result = self.__session._cluster_manager_client.get_store(store)
       if result is None:
         raise EnvironmentError(
           "result is None, please check whether the store:{} has been created before".format(store))
@@ -122,10 +119,14 @@ class RollPairContext(object):
     store = self.load(namespace=namespace, name=name, options=options)
     return store.put_all(data, options=options)
 
+
 def default_partitioner(k):
   return 0
+
+
 def default_egg_router(k):
   return 0
+
 
 class RollPair(object):
   _uri_prefix = 'v1/roll-pair'
@@ -162,8 +163,6 @@ class RollPair(object):
     self.egg_router = default_egg_router
     self.ctx = rp_ctx
     self.__session_id = self.ctx.session_id
-    #TODO: config or auto
-    self._transfer_server_endpoint = "localhost:60668"
 
   def __repr__(self):
     return f'python RollPair(_store={self.__store})'
@@ -386,7 +385,7 @@ class RollPair(object):
     return 0
 
   def count(self):
-    if self.ctx.deploy_mode == DeployType.STANDALONE:
+    if self.ctx.deploy_mode == DeployTypes.STANDALONE:
       return self.__count_local()
     else:
       return self.__count_cluster()
