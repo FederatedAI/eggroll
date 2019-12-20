@@ -19,7 +19,7 @@
 package com.webank.eggroll.core
 
 import com.webank.eggroll.core.client.ClusterManagerClient
-import com.webank.eggroll.core.constant.{ProcessorStatus, ProcessorTypes, SessionStatus}
+import com.webank.eggroll.core.constant.{ProcessorTypes, SessionStatus}
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.util.TimeUtils
 
@@ -28,35 +28,6 @@ import scala.collection.mutable.ArrayBuffer
 import scala.util.Random
 
 trait ErDeploy
-
-class ErStandaloneDeploy(sessionMeta: ErSessionMeta, options: Map[String, String] = Map()) extends ErDeploy {
-  private val managerPort = options.getOrElse("eggroll.standalone.manager.port", "4670").toInt
-  private val eggPorts = options.getOrElse("eggroll.standalone.egg.ports", "20001").split(",").map(_.toInt)
-  private val eggTransferPorts = options.getOrElse("eggroll.standalone.egg.transfer.ports", "20002").split(",").map(_.toInt)
-  private val selfServerNodeId = options.getOrElse("eggroll.standalone.server.node.id", "2").toLong
-
-  val rolls: Array[ErProcessor] = Array(ErProcessor(
-    id = 1,
-    serverNodeId = selfServerNodeId,
-    processorType = ProcessorTypes.ROLL_PAIR_MASTER,
-    status = ProcessorStatus.RUNNING,
-    commandEndpoint = ErEndpoint("localhost", managerPort)))
-
-  val eggs: Map[Long, Array[ErProcessor]] = Map(selfServerNodeId ->
-    eggPorts.zip(eggTransferPorts).map(ports => ErProcessor(
-      id = 1,
-      serverNodeId = selfServerNodeId,
-      processorType = ProcessorTypes.EGG_PAIR,
-      status = ProcessorStatus.RUNNING,
-      commandEndpoint = ErEndpoint("localhost", ports._1),
-      transferEndpoint = ErEndpoint("localhost", ports._2))))
-
-  val processors = rolls ++ eggs(selfServerNodeId)
-
-  val cmClient: ClusterManagerClient = new ClusterManagerClient("localhost", managerPort)
-  val existingSession = cmClient.getSession(sessionMeta)
-  if (existingSession.processors.length == 0) cmClient.registerSession(sessionMeta.copy(processors = processors))
-}
 
 class ErSession(val sessionId: String = s"er_session_jvm_${TimeUtils.getNowMs()}_${new Random().nextInt(9999)}",
                 name: String = "",

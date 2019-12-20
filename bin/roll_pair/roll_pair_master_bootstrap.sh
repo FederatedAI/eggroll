@@ -1,70 +1,70 @@
 #!/usr/bin/env bash
 
 ONE_ARG_LIST=(
-    "config"
-    "session-id"
-    "server-node-id"
-    "processor-id"
-    "port"
-    "transfer-port"
+  "config"
+  "session-id"
+  "server-node-id"
+  "processor-id"
+  "port"
+  "transfer-port"
 )
 
 get_property() {
-    property_value=`grep $2 $1 | awk -F= '{print $2}'`
+  property_value=`grep $2 $1 | awk -F= '{print $2}'`
 }
 
 opts=$(getopt \
-    --longoptions "$(printf "%s:," "${ONE_ARG_LIST[@]}")" \
-    --name "$(basename "$0")" \
-    --options "" \
-    -- "$@"
+  --longoptions "$(printf "%s:," "${ONE_ARG_LIST[@]}")" \
+  --name "$(basename "$0")" \
+  --options "" \
+  -- "$@"
 )
 
 while [[ $# -gt 0 ]]; do
-   case "$1" in
-        --config)
-            config=$2
-            shift 2
-            ;;
-        --session-id)
-            session_id=$2
-            shift 2
-            ;;
-        --processor-id)
-            processor_id=$2
-            shift 2
-            ;;
-        --port)
-            port=$2
-            shift 2
-            ;;
-        --transfer_port)
-            transfer_port=$2
-            shift 2
-            ;;
-        --server-node-id)
-            server_node_id=$2
-            shift 2
-            ;;
-        *)
-            break
-            ;;
-    esac
+  case "$1" in
+    --config)
+      config=$2
+      shift 2
+      ;;
+    --session-id)
+      session_id=$2
+      shift 2
+      ;;
+    --processor-id)
+      processor_id=$2
+      shift 2
+      ;;
+    --port)
+      port=$2
+      shift 2
+      ;;
+    --transfer_port)
+      transfer_port=$2
+      shift 2
+      ;;
+    --server-node-id)
+      server_node_id=$2
+      shift 2
+      ;;
+    *)
+      break
+      ;;
+  esac
 done
 
 
 if [[ -z ${session_id+x} ]]; then
-    echo "session-id is blank"
-    return 1
+  echo "session-id is blank"
+  return 1
 fi
 
 if [[ -z ${processor_id+x} ]]; then
-    echo "processor-id is blank"
-    return 2
+  echo "processor-id is blank"
+  return 2
 fi
 
 if [[ ${transfer_port} -eq 0 ]] && [[ ${port} -ne 0 ]]; then
-    transfer_port=${port}
+  transfer_port=${port}
 fi
 
 get_property ${config} "eggroll.bootstrap.roll_pair_master.javahome"
@@ -91,23 +91,23 @@ cluster_manager_host=${property_value}
 get_property ${config} "eggroll.cluster.manager.port"
 cluster_manager_port=${property_value}
 
-if [[ -z ${javahome+x} ]]; then
-    JAVA=`which java`
+if [[ -z ${javahome} ]]; then
+  JAVA=`which java`
 else
-    JAVA=${javahome}/bin/java
+  JAVA=${javahome}/bin/java
 fi
 
-if [[ -z ${mainclass+x} ]]; then
-    mainclass="com.webank.eggroll.rollpair.Main"
+if [[ -z ${mainclass} ]]; then
+  mainclass="com.webank.eggroll.rollpair.Main"
 fi
 
 cmd="${JAVA} ${jvm_options} -cp ${classpath} ${mainclass} --session-id ${session_id} --server-node-id ${server_node_id} --cluster-manager ${cluster_manager_host}:${cluster_manager_port} --node-manager ${node_manager_port} --processor-id ${processor_id}"
 
 if [[ -n ${port} ]]; then
-    cmd="${cmd} --port ${port}"
-    if [[ -n ${transfer_port} ]]; then
-        cmd="${cmd} --transfer-port ${transfer_port}"
-    fi
+  cmd="${cmd} --port ${port}"
+  if [[ -n ${transfer_port} ]]; then
+    cmd="${cmd} --transfer-port ${transfer_port}"
+  fi
 fi
 
 final_logs_dir=${logs_dir}/${session_id}/roll_pair

@@ -21,7 +21,7 @@ from eggroll.roll_pair.test.roll_pair_test_assets import get_debug_test_context,
 
 os.environ['EGGROLL_STANDALONE_DEBUG'] = "0"
 
-os.environ['EGGROLL_HOME'] = "/Users/max-webank/git/eggroll-2.x"
+os.environ['EGGROLL_HOME'] = ''
 
 class TestStandalone(unittest.TestCase):
   is_debug = False
