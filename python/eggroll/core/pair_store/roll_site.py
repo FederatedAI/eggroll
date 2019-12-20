@@ -34,7 +34,8 @@ OBJECT_STORAGE_NAME = "__federation__"
 class RollsiteWriteBatch(PairWriteBatch):
     def __init__(self, adapter):
         self.adapter = adapter
-        self.name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([adapter.src_role, adapter.src_party_id,
+        self.name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([adapter.job_id, adapter.name, adapter.tag,
+                                                                  adapter.src_role, adapter.src_party_id,
                                                                   adapter.dst_role, adapter.dst_party_id]))
         self.namespace = adapter.namespace
         self.src_role = adapter.src_role
@@ -184,19 +185,22 @@ class RollsiteAdapter(PairAdapter):
 
     def __init__(self, options):
         super().__init__(options)
-        self.name = options["path"].split("/")[-2]
-        print("self._name:", self.name)
+        name = options["path"].split("/")[-2]
+        print("self._name:", name)
         self.namespace = options["path"].split("/")[-3]
-        args = self.name.split("-", 9)  #args[8]='9394/0'
+        args = name.split("-", 11)  #args[8]='9394/0'
         print(args)
 
-        self.src_role = args[1]
-        self.src_party_id = args[2]
-        self.dst_role = args[3]
-        self.dst_party_id = args[4]
-        self._dst_host = args[5]
-        self._dst_port = int(args[6])
-        self.obj_type = args[7]          #obj or rollpair
+        self.job_id = args[1]
+        self.name = args[2]
+        self.tag = args[3]
+        self.src_role = args[4]
+        self.src_party_id = args[5]
+        self.dst_role = args[6]
+        self.dst_party_id = args[7]
+        self._dst_host = args[8]
+        self._dst_port = int(args[9])
+        self.obj_type = args[10]          #obj or rollpair
 
         self._store_type = 'roll_site'
         self._path = ''
@@ -205,7 +209,7 @@ class RollsiteAdapter(PairAdapter):
         self._partitions = []
         self._store_locator = meta_pb2.StoreLocator(storeType=self._store_type,
                                                     namespace=self.namespace,
-                                                    name=self.name,
+                                                    name=name,
                                                     path=self._path,
                                                     partitioner=self._partitioner,
                                                     serdes=self._serdes)
