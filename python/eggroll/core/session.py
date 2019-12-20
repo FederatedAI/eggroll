@@ -18,12 +18,11 @@ import time
 from copy import copy
 
 from eggroll.core.client import ClusterManagerClient
-from eggroll.core.conf_keys import DeployConfKeys
 from eggroll.core.conf_keys import SessionConfKeys
 from eggroll.core.constants import SessionStatus, ProcessorStatus, \
     ProcessorTypes
 from eggroll.core.meta_model import ErProcessor, ErSessionMeta, \
-    ErEndpoint
+    ErEndpoint, ErPartition
 from eggroll.core.utils import get_self_ip, time_now
 
 # TODO:1: support windows
@@ -58,7 +57,6 @@ class StandaloneThread(threading.Thread):
 class ErDeploy:
     pass
 
-
 class ErStandaloneDeploy(ErDeploy):
     def __init__(self, session_meta: ErSessionMeta, options={}):
         self.manager_port = options.get("eggroll.standalone.manager.port", 4670)
@@ -86,7 +84,7 @@ class ErStandaloneDeploy(ErDeploy):
 
         self._rolls = [ErProcessor(id=1,
                                    server_node_id=self.self_server_node_id,
-                                   processor_type=ProcessorTypes.ROLL_PAIR_SERVICER,
+                                   processor_type=ProcessorTypes.ROLL_PAIR_MASTER,
                                    status=ProcessorStatus.RUNNING,
                                    command_endpoint=ErEndpoint("localhost", self.manager_port))]
 
@@ -121,46 +119,73 @@ class ErClusterDeploy(ErDeploy):
 
                 node_eggs = self._eggs.get(node_id)
                 node_eggs.append(processor)
-            elif processor_type == ProcessorTypes.ROLL_PAIR_SERVICER:
+            elif processor_type == ProcessorTypes.ROLL_PAIR_MASTER:
                 self._rolls.append(processor)
             else:
                 raise ValueError(f'processor type {processor_type} is unknown')
 
+
 class ErSession(object):
-    def __init__(self, session_id=None, name='', tag='', options={}):
-        if session_id:
-            self.__session_id = session_id
-        else:
-            self.__session_id = f'er_session_{time_now()}_{get_self_ip()}'
-        self.__name = ''
+    def __init__(self,
+            session_id=f'er_session_py_{time_now()}_{get_self_ip()}',
+            name='',
+            tag='',
+            processors=list(),
+            options={}):
+        self.__session_id = session_id
         self.__options = options.copy()
         self.__options[SessionConfKeys.CONFKEY_SESSION_ID] = self.__session_id
-        self.__status = SessionStatus.NEW
-        self.__tag = tag
-        self.session_meta = ErSessionMeta(id=self.__session_id,
-                                          name=self.__name,
-                                          status=self.__status,
-                                          options=self.__options,
-                                          tag=self.__tag)
-        if self.get_option(DeployConfKeys.CONFKEY_DEPLOY_MODE) == "standalone":
-            self.deploy_client = ErStandaloneDeploy(self.session_meta, options=options)
+        self._cluster_manager_client = ClusterManagerClient(options=options)
+
+        session_meta = ErSessionMeta(id=self.__session_id,
+                                     name=name,
+                                     status=SessionStatus.NEW,
+                                     tag=tag,
+                                     processors=processors,
+                                     options=options)
+        if not processors:
+            self.__session_meta = self._cluster_manager_client.get_or_create_session(session_meta)
         else:
-            self.deploy_client = ErClusterDeploy(self.session_meta, options=options)
+            self.__session_meta = self._cluster_manager_client.register_session(session_meta)
 
-        self._rolls = self.deploy_client._rolls
-        self._eggs = self.deploy_client._eggs
-        self._processors = self.deploy_client._processors
-
-        self.cm_client = self.deploy_client.cm_client
-        self.__cleanup_tasks = []
+        self.__cleanup_tasks = list()
+        self.__processors = self.__session_meta._processors
 
         print('session init finished')
+
+        self._rolls = list()
+        self._eggs = dict()
+
+        for processor in self.__session_meta._processors:
+            processor_type = processor._processor_type
+            if processor_type == ProcessorTypes.EGG_PAIR:
+                server_node_id = processor._server_node_id
+                if server_node_id not in self._eggs:
+                    self._eggs[server_node_id] = list()
+                self._eggs[server_node_id].append(processor)
+            elif processor_type == ProcessorTypes.ROLL_PAIR_MASTER:
+                self._rolls.append(processor)
+            else:
+                raise ValueError(f"processor type {processor_type} not supported in roll pair")
+
+    def route_to_egg(self, partition: ErPartition):
+        target_server_node = partition._processor._server_node_id
+        target_egg_processors = len(self._eggs[target_server_node])
+        target_processor = (partition._id // target_egg_processors) % target_egg_processors
+
+        return self._eggs[target_server_node][target_processor]
+
+    def stop(self):
+        return self._cluster_manager_client.stop_session(self.__session_meta)
 
     def get_session_id(self):
         return self.__session_id
 
+    def get_session_meta(self):
+        return self.__session_meta
+
     def add_cleanup_task(self, func):
-        self.__cleanup_tasks.add(func)
+        self.__cleanup_tasks.append(func)
 
     def run_cleanup_tasks(self):
         for func in self.__cleanup_tasks:

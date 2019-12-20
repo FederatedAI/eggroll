@@ -106,6 +106,7 @@ class DeployConfKeys(object):
   CONFKEY_DEPLOY_JVM_OPTIONS = "eggroll.deploy.jvm.options"
 
   CONFKEY_DEPLOY_PROCESSOR_TYPE = "eggroll.deploy.processor.type"
+  CONFKEY_DEPLOY_PROCESSORS = "eggroll.deploy.processors"
 
 
 class TransferConfKeys(object):

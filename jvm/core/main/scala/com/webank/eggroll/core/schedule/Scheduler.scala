@@ -53,6 +53,7 @@ case class ListScheduler() extends Scheduler {
 }
 
 object JobRunner {
+  // TODO:1: global session info?
   val session = new ErSession(StaticErConf.getString(SessionConfKeys.CONFKEY_SESSION_ID))
 
   def run(plan: TaskPlan): Array[ErTask] = {

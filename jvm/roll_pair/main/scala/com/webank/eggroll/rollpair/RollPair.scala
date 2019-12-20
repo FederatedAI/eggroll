@@ -33,24 +33,24 @@ import com.webank.eggroll.core.util.Logging
 import com.webank.eggroll.rollpair.component.RollPairMaster
 
 import scala.collection.JavaConverters._
-class RollPairContext(val session: ErSession, defaultStoreType:String = StoreTypes.ROLLPAIR_LMDB) extends Logging {
+class RollPairContext(val session: ErSession,
+                      defaultStoreType: String = StoreTypes.ROLLPAIR_LMDB) extends Logging {
 //  StandaloneManager.main(Array("-s",erSession.sessionId, "-p", erSession.cmClient.endpoint.port.toString))
-
-  def getRollEndpoint(): ErEndpoint = null
-  def getEggEndpoint(partitionId: Int): ErEndpoint = null
+  private val sessionId = session.sessionId
+  private val sessionMeta = session.sessionMeta
 
   def routeToEgg(partition: ErPartition): ErProcessor = session.routeToEgg(partition)
 
-  def load(namespace:String, name:String, opts: Map[String,String] = Map()): RollPair = {
+  def load(namespace: String, name: String, options: Map[String,String] = Map()): RollPair = {
     val store = ErStore(storeLocator = ErStoreLocator(
       namespace = namespace,
       name = name,
-      storeType = opts.getOrElse(StringConstants.STORE_TYPE, StoreTypes.ROLLPAIR_LMDB),
-      totalPartitions = opts.getOrElse(StringConstants.TOTAL_PARTITIONS, "1").toInt,
-      partitioner = opts.getOrElse(StringConstants.PARTITIONER, PartitionerTypes.BYTESTRING_HASH),
-      serdes = opts.getOrElse(StringConstants.SERDES, SerdesTypes.CLOUD_PICKLE)
+      storeType = options.getOrElse(StringConstants.STORE_TYPE, StoreTypes.ROLLPAIR_LMDB),
+      totalPartitions = options.getOrElse(StringConstants.TOTAL_PARTITIONS, "1").toInt,
+      partitioner = options.getOrElse(StringConstants.PARTITIONER, PartitionerTypes.BYTESTRING_HASH),
+      serdes = options.getOrElse(StringConstants.SERDES, SerdesTypes.CLOUD_PICKLE)
     ))
-    val loaded = session.cmClient.getOrCreateStore(store)
+    val loaded = session.clusterManagerClient.getOrCreateStore(store)
     new RollPair(loaded, this)
   }
 
@@ -58,12 +58,9 @@ class RollPairContext(val session: ErSession, defaultStoreType:String = StoreTyp
   def partitioner(k: Array[Byte], n: Int): Int = {
     ByteString.copyFrom(k).hashCode() % n
   }
-  def getPartitionProcessor(id:Int): ErProcessor = {
-    ErProcessor(commandEndpoint = ErEndpoint("localhost", 20001), transferEndpoint = ErEndpoint("localhost", 20001))
-  }
 }
 
-class RollPair(val store: ErStore, val ctx:RollPairContext, val opts: Map[String,String] = Map()) extends Logging {
+class RollPair(val store: ErStore, val ctx:RollPairContext, val options: Map[String,String] = Map()) extends Logging {
   // todo: 1. consider recv-side shuffle; 2. pull up rowPairDb logic; 3. add partition calculation based on session logic;
   def putBatch(broker: Broker[ByteString], opts: util.Map[String, String] = Map[String, String]().asJava): Unit = {
     val totalPartitions = store.storeLocator.totalPartitions

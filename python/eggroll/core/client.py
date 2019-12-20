@@ -133,7 +133,7 @@ class ClusterManagerClient(object):
   def get_or_create_session(self, input: ErSessionMeta):
     return self.__do_sync_request_internal(
         input=input,
-        output_type=ErProcessorBatch,
+        output_type=ErSessionMeta,
         command_uri=SessionCommands.GET_OR_CREATE_SESSION,
         serdes_type=self.__serdes_type)
 
@@ -142,7 +142,7 @@ class ClusterManagerClient(object):
                                            output_types=[ErSessionMeta],
                                            endpoint=self.__endpoint,
                                            command_uri=SessionCommands.REGISTER_SESSION,
-                                           serdes_type=self.__serdes_type)
+                                           serdes_type=self.__serdes_type)[0]
 
   def get_session_server_nodes(self, input: ErSessionMeta):
     return self.__do_sync_request_internal(
@@ -171,6 +171,13 @@ class ClusterManagerClient(object):
           output_type=ErProcessor,
           command_uri=SessionCommands.HEARTBEAT,
           serdes_type=self.__serdes_type)
+
+  def stop_session(self, input: ErSessionMeta):
+    return self.__do_sync_request_internal(
+            input=input,
+            output_type=ErSessionMeta,
+            command_uri=SessionCommands.STOP_SESSION,
+            serdes_type=self.__serdes_type)
 
   def __do_sync_request_internal(self, input, output_type, command_uri, serdes_type):
     return self.__command_client.simple_sync_send(input=input,

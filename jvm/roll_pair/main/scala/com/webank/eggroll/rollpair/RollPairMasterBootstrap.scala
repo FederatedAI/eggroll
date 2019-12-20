@@ -114,7 +114,6 @@ class RollPairMasterBootstrap extends Bootstrap with Logging {
 
     logInfo("ready to heartbeat")
     nodeManagerClient.heartbeat(myself)
-
   }
   override def start(): Unit = {
     println(nodeManager)
@@ -130,6 +129,7 @@ class RollPairMasterBootstrap extends Bootstrap with Logging {
 
       ErEndpoint(host = managerHost, port = managerPort.toInt)
     }
+    StaticErConf.addProperty(SessionConfKeys.CONFKEY_SESSION_ID, sessionId)
 
     val rollServer = NettyServerBuilder.forAddress(new InetSocketAddress(this.port))
       .addService(new CommandService)
@@ -137,7 +137,7 @@ class RollPairMasterBootstrap extends Bootstrap with Logging {
     rollServer.start()
     val port = rollServer.getPort
     StaticErConf.setPort(port)
-    StaticErConf.addProperty(SessionConfKeys.CONFKEY_SESSION_ID, sessionId)
+
     logInfo(s"server started at ${port}")
     // job
 
