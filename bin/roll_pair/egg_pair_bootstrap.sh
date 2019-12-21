@@ -88,9 +88,14 @@ cluster_manager_host=${property_value}
 get_property ${config} "eggroll.cluster.manager.port"
 cluster_manager_port=${property_value}
 
-source ${venv}/bin/activate
+if [[ -z ${venv} ]]; then
+  PYTHON=`which python`
+else
+  source ${venv}/bin/activate
+  PYTHON=${venv}/bin/python
+fi
+
 export PYTHONPATH=$PYTHONPATH:${pythonpath}
-PYTHON=${venv}/bin/python
 cmd="${PYTHON} ${filepath} --session-id ${session_id} --server-node-id ${server_node_id} --cluster-manager ${cluster_manager_host}:${cluster_manager_port} --node-manager ${node_manager_port} --processor-id ${processor_id}"
 
 if [[ -n ${port} ]]; then
