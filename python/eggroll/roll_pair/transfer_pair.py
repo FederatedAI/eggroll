@@ -108,9 +108,6 @@ class TransferPair(object):
         output_broker = TransferService.get_or_create_broker(self.__output_tag, write_signals=self.__total_partitions)
         self.__recv_executor_pool = ThreadPoolExecutor(max_workers=1)
 
-        from eggroll.core.pair_store.lmdb import LmdbAdapter
-        from eggroll.core.io.io_utils import get_db_path
-
         self.__output_adapter = create_adapter(self.__output_store._partitions[output_partition_id])
         self.__recv_future = self.__push_executor_pool \
             .submit(TransferPair.recv,

@@ -45,7 +45,7 @@ class ErSession(val sessionId: String = s"er_session_jvm_${TimeUtils.getNowMs()}
     processors=processors,
     options=options)
   val sessionMeta: ErSessionMeta =
-    if (processors.length == 0) clusterManagerClient.getOrCreateSession(sessionMetaArg)
+    if (processors.isEmpty) clusterManagerClient.getOrCreateSession(sessionMetaArg)
     else clusterManagerClient.registerSession(sessionMetaArg)
   processors = sessionMeta.processors
   status = sessionMeta.status
