@@ -31,11 +31,11 @@ class TestRemote(unittest.TestCase):
                    'transfer_conf_path': 'python/eggroll/roll_site/conf/transfer_conf.json'}
         context = RollSiteContext("atest2", options=options, rp_ctx=rp_context)
 
-        _tag = "Hello"
+        _tag = "Hello2"
         rs = context.load(name="RsaIntersectTransferVariable.rsa_pubkey", tag="{}".format(_tag))
         fp = open("testA.model", 'r')
-        content = fp.read(35)
-        future = rs.push(content)
+        obj = fp.read(35)
+        future = rs.push(obj, idx=-1)
         fp.close()
         print("result:", future.result())
 
