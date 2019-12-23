@@ -37,7 +37,7 @@ class Container(conf: RuntimeErConf, moduleName: String, processorId: Long = 0) 
   private val exePath = conf.getString(s"${confPrefix}.exepath")
   private val sessionId = conf.getString(SessionConfKeys.CONFKEY_SESSION_ID)
   private val myServerNodeId = conf.getString(ResourceManagerConfKeys.SERVER_NODE_ID, "2") // todo:0: get from database instead of conf
-  private val boot = conf.getString(CoreConfKeys.BOOTSTRAP_ROOT_SCRIPT, s"eggroll_boot.${if(isWindows) "bat" else "sh"}")
+  private val boot = conf.getString(CoreConfKeys.BOOTSTRAP_ROOT_SCRIPT, s"bin/eggroll_boot.${if(isWindows) "bat" else "sh"}")
   private val logsDir = conf.getString(CoreConfKeys.LOGS_DIR)
 
   if (StringUtils.isBlank(sessionId)) {
@@ -77,12 +77,12 @@ class Container(conf: RuntimeErConf, moduleName: String, processorId: Long = 0) 
       val processorBuilder = new ProcessBuilder(bootStrapShell, bootStrapShellArgs, cmd)
       // TODO:0: 1. redirect output / error stream; 2. add session info; 3. add node manager
       val builderEnv = processorBuilder.environment()
-      val logPath = new File(logsDir + File.separator + sessionId + File.separator + myServerNodeId)
+      val logPath = new File(s"${logsDir}${File.separator}${sessionId}${File.separator}bootstrap")
       if(!logPath.exists()){
         logPath.mkdirs()
       }
-      processorBuilder.redirectOutput(new File(logPath, "stdout.txt"))
-      processorBuilder.redirectError(new File(logPath, "stderr.txt"))
+      processorBuilder.redirectOutput(new File(logPath, s"${moduleName}-${processorId}.OUT"))
+      processorBuilder.redirectError(new File(logPath, s"${moduleName}-${processorId}.ERR"))
       val process = processorBuilder.start()
       process.waitFor()
     })

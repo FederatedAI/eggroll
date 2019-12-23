@@ -93,6 +93,10 @@ class SessionCommands(object):
     heartbeat_service_name = _to_service_name(prefix, heartbeat)
     HEARTBEAT = CommandURI(heartbeat_service_name)
 
+    stop_session = 'stopSession'
+    stop_session_service_name = _to_service_name(prefix, stop_session)
+    STOP_SESSION = CommandURI(stop_session_service_name)
+
 
 class RollPairCommands(object):
     roll_prefix = 'v1/roll-pair'

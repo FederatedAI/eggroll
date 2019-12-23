@@ -1,11 +1,12 @@
 package com.webank.eggroll.core.resourcemanager
 
+import java.io.File
 import java.net.InetSocketAddress
 
 import com.webank.eggroll.core.Bootstrap
 import com.webank.eggroll.core.clustermanager.metadata.{ServerNodeCrudOperator, StoreCrudOperator}
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
-import com.webank.eggroll.core.constant.{MetadataCommands, SessionCommands, SessionConfKeys}
+import com.webank.eggroll.core.constant.{CoreConfKeys, MetadataCommands, SessionCommands}
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.util.{Logging, MiscellaneousUtils}
@@ -14,7 +15,7 @@ import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
 
 class ClusterManagerBootstrap extends Bootstrap with Logging {
   private var port = 0
-  private var sessionId = "er_session_null"
+  //private var sessionId = "er_session_null"
   override def init(args: Array[String]): Unit = {
 
     CommandRouter.register(serviceName = MetadataCommands.getServerNodeServiceName,
@@ -71,7 +72,6 @@ class ClusterManagerBootstrap extends Bootstrap with Logging {
         routeToClass = classOf[SessionManagerService],
         routeToMethodName = SessionCommands.getOrCreateSession.getName())
 
-
     CommandRouter.register(serviceName = SessionCommands.stopSession.uriString,
       serviceParamTypes = Array(classOf[ErSessionMeta]),
       serviceResultTypes = Array(classOf[ErSessionMeta]),
@@ -92,10 +92,13 @@ class ClusterManagerBootstrap extends Bootstrap with Logging {
 
     val cmd = MiscellaneousUtils.parseArgs(args = args)
     this.port = cmd.getOptionValue('p', "4670").toInt
-    this.sessionId = cmd.getOptionValue('s')
+    //this.sessionId = cmd.getOptionValue('s')
     val confPath = cmd.getOptionValue('c', "./conf/eggroll.properties.local")
     StaticErConf.addProperties(confPath)
-    StaticErConf.addProperty(SessionConfKeys.CONFKEY_SESSION_ID, sessionId)
+    val confFile = new File(confPath)
+    StaticErConf.addProperty(CoreConfKeys.STATIC_CONF_PATH, confFile.getAbsolutePath)
+    logInfo(s"conf file: ${confFile.getAbsolutePath}")
+    //StaticErConf.addProperty(SessionConfKeys.CONFKEY_SESSION_ID, sessionId)
   }
 
   override def start(): Unit = {

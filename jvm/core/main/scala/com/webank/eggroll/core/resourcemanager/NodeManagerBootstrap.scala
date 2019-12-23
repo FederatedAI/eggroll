@@ -1,10 +1,11 @@
 package com.webank.eggroll.core.resourcemanager
 
+import java.io.File
 import java.net.InetSocketAddress
 
 import com.webank.eggroll.core.Bootstrap
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
-import com.webank.eggroll.core.constant.{CoreConfKeys, NodeManagerCommands, ResourceManagerConfKeys, SessionConfKeys}
+import com.webank.eggroll.core.constant.{CoreConfKeys, NodeManagerCommands, ResourceManagerConfKeys}
 import com.webank.eggroll.core.meta.{ErProcessor, ErSessionMeta}
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.util.{Logging, MiscellaneousUtils}
@@ -12,7 +13,7 @@ import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
 
 class NodeManagerBootstrap extends Bootstrap with Logging {
   private var port = 0
-  private var config = ""
+  private var confPath = ""
   override def init(args: Array[String]): Unit = {
 /*
         CommandRouter.register(serviceName = NodeManagerCommands.getOrCreateEggsServiceName,
@@ -54,11 +55,13 @@ class NodeManagerBootstrap extends Bootstrap with Logging {
 
     val cmd = MiscellaneousUtils.parseArgs(args = args)
     this.port = cmd.getOptionValue('p', "9394").toInt
-    this.config = cmd.getOptionValue('c', "./jvm/core/main/resources/cluster-manager.properties.local")
-    val sessionId = cmd.getOptionValue('s')
-
-    StaticErConf.addProperty(CoreConfKeys.STATIC_CONF_PATH, new java.io.File(this.config).getAbsolutePath)
-    StaticErConf.addProperty(SessionConfKeys.CONFKEY_SESSION_ID, sessionId)
+    this.confPath = cmd.getOptionValue('c', "./jvm/core/main/resources/cluster-manager.properties.local")
+    // val sessionId = cmd.getOptionValue('s')
+    StaticErConf.addProperties(confPath)
+    val confFile = new File(confPath)
+    StaticErConf.addProperty(CoreConfKeys.STATIC_CONF_PATH, confFile.getAbsolutePath)
+    logInfo(s"conf file: ${confFile.getAbsolutePath}")
+    // StaticErConf.addProperty(SessionConfKeys.CONFKEY_SESSION_ID, sessionId)
 
     // TODO:0: get from cluster manager or database
     StaticErConf.addProperty(ResourceManagerConfKeys.SERVER_NODE_ID, "2")
