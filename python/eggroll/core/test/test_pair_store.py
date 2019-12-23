@@ -17,7 +17,6 @@ from eggroll.core.pair_store import *
 from eggroll.core.pair_store.adapter import PairAdapter
 from eggroll.core.pair_store.format import ArrayByteBuffer, PairBinReader, PairBinWriter
 
-
 class TestPairStore(unittest.TestCase):
     dir = "./"
     # total = 1000 * 1000
@@ -28,12 +27,36 @@ class TestPairStore(unittest.TestCase):
         with db.new_batch() as wb:
             for i in range(self.total):
                 wb.put(str(i).encode(), value.encode())
-        with db.iteritems() as rb:
+        print("put:", time.time() - start)
+        for i in range(3):
+            start = time.time()
+            with db.iteritems() as rb:
+                cnt = 0
+                for k, v in rb:
+                    if cnt % 100000 == 0:
+                        print("item:",cnt, k, v)
+                    cnt += 1
+                print(cnt)
+                assert cnt == self.total
+            print("time:", time.time() - start)
+
+    def _run_join(self, db1: PairAdapter,  db2: PairAdapter):
+        start = time.time()
+        value = 's' * 1000
+        with db1.new_batch() as wb:
+            for i in range(self.total):
+                wb.put(str(i).encode(), value.encode())
+        with db2.new_batch() as wb:
+            for i in range(self.total):
+                wb.put(str(i).encode(), value.encode())
+        print("put:", time.time() - start)
+        with db1.iteritems() as rb1:
             cnt = 0
-            for k, v in rb:
+            for k, v in rb1:
                 if cnt % 100000 == 0:
                     print("item:",cnt, k, v)
                 cnt += 1
+                db2.get(k)
             print(cnt)
             assert cnt == self.total
         print("time:", time.time() - start)
@@ -88,3 +111,10 @@ class TestPairStore(unittest.TestCase):
         reader = PairBinReader(buf)
         print("last")
         print(list(reader.read_all()))
+
+    def test_join(self):
+        with create_pair_adapter({"store_type": STORE_TYPE_LMDB, "path": self.dir + "lmdb"}) as db1, \
+                create_pair_adapter({"store_type": STORE_TYPE_LMDB, "path": self.dir + "lmdb2"}) as db2:
+            self._run_join(db1, db2)
+            db1.destroy()
+            db2.destroy()
