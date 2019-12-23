@@ -54,7 +54,7 @@ class RollSiteContext:
     self.party_id = self.runtime_conf.get(CONF_KEY_LOCAL).get("party_id")
     self.role = self.runtime_conf.get(CONF_KEY_LOCAL).get("role")
 
-  def load(self, name: str, tag: str, role=None):
+  def load(self, name: str, tag: str):
     return RollSite(name, tag, role, self)
 
 
@@ -66,7 +66,7 @@ CONF_KEY_SERVER = "servers"
 
 
 class RollSite:
-  def __init__(self, name: str, tag: str, role, rs_ctx: RollSiteContext):
+  def __init__(self, name: str, tag: str, rs_ctx: RollSiteContext):
     self.ctx = rs_ctx
     self.trans_conf = self.ctx.trans_conf
     self.runtime_conf = self.ctx.runtime_conf
@@ -76,7 +76,6 @@ class RollSite:
     self.job_id = self.ctx.job_id
     self.local_role = self.ctx.role
     self.name = name
-    self.dst_role = role
     self.tag = tag
     channel = grpc.insecure_channel(
         target="{}:{}".format(self.dst_host, self.dst_port),
@@ -152,19 +151,19 @@ class RollSite:
     return rtn
 
 
-  def push(self, obj, idx=-1):
+  def push(self, obj, role=None, idx=-1):
     algorithm, sub_name = self.__check_authorization(self.name)
 
     auth_dict = self.trans_conf.get(algorithm)
 
     if idx >= 0:
-      if self.dst_role is None:
+      if role is None:
         raise ValueError("{} cannot be None if idx specified".format(role))
-      parties = {self.dst_role: [self.__get_parties(self.dst_role)[idx]]}
-    elif self.dst_role is not None:
-      if self.dst_role not in auth_dict.get(sub_name).get('dst'):
-        raise ValueError("{} is not allowed to receive {}".format(role, name))
-      parties = {self.dst_role: self.__get_parties(self.dst_role)}
+      parties = {role: [self.__get_parties(role)[idx]]}
+    elif self.role is not None:
+      if self.role not in auth_dict.get(sub_name).get('dst'):
+        raise ValueError("{} is not allowed to receive {}".format(role, self.name))
+      parties = {role: self.__get_parties(role)}
     else:
       parties = {}
       for _role in auth_dict.get(sub_name).get('dst'):
