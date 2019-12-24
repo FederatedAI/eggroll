@@ -55,7 +55,7 @@ class TestStandalone(unittest.TestCase):
     options = {}
     options['include_key'] = True
     self.ctx.load("ns1", "testPutAll").put_all(data, options=options)
-    table = list(self.ctx.load("ns1", "n36").get_all())
+    table = list(self.ctx.load("ns1", "testPutAll").get_all())
     print("get res:{}".format(table))
 
   def test_multi_partition_put_all(self):
