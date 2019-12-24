@@ -8,7 +8,7 @@ import com.webank.eggroll.core.command.{CommandRouter, CommandService}
 import com.webank.eggroll.core.constant.{CoreConfKeys, NodeManagerCommands, ResourceManagerConfKeys}
 import com.webank.eggroll.core.meta.{ErProcessor, ErSessionMeta}
 import com.webank.eggroll.core.session.StaticErConf
-import com.webank.eggroll.core.util.{Logging, MiscellaneousUtils}
+import com.webank.eggroll.core.util.{CommandArgsUtils, Logging}
 import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
 
 class NodeManagerBootstrap extends Bootstrap with Logging {
@@ -53,7 +53,7 @@ class NodeManagerBootstrap extends Bootstrap with Logging {
       routeToClass = classOf[NodeManagerService],
       routeToMethodName = NodeManagerCommands.heartbeat.getName())
 
-    val cmd = MiscellaneousUtils.parseArgs(args = args)
+    val cmd = CommandArgsUtils.parseArgs(args = args)
     this.port = cmd.getOptionValue('p', "9394").toInt
     this.confPath = cmd.getOptionValue('c', "./jvm/core/main/resources/cluster-manager.properties.local")
     // val sessionId = cmd.getOptionValue('s')
