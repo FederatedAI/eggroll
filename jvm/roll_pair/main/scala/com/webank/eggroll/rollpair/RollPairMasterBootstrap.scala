@@ -10,7 +10,7 @@ import com.webank.eggroll.core.command.{CommandRouter, CommandService}
 import com.webank.eggroll.core.constant.{ProcessorStatus, ProcessorTypes, SessionConfKeys, StringConstants}
 import com.webank.eggroll.core.meta.{ErEndpoint, ErJob, ErProcessor}
 import com.webank.eggroll.core.session.StaticErConf
-import com.webank.eggroll.core.util.{Logging, MiscellaneousUtils}
+import com.webank.eggroll.core.util.{CommandArgsUtils, Logging}
 import com.webank.eggroll.rollpair.component.RollPairMaster
 import org.apache.commons.lang3.StringUtils
 
@@ -94,7 +94,7 @@ class RollPairMasterBootstrap extends Bootstrap with Logging {
       routeToClass = classOf[RollPairMaster],
       routeToMethodName = RollPairMaster.runJob)
 
-    val cmd = MiscellaneousUtils.parseArgs(args = args)
+    val cmd = CommandArgsUtils.parseArgs(args = args)
     this.port = cmd.getOptionValue('p', "0").toInt
     this.sessionId = cmd.getOptionValue('s', "UNKNOWN")
     this.nodeManager = cmd.getOptionValue("nm")

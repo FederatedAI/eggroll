@@ -25,7 +25,7 @@ import com.webank.eggroll.core.datastructure.{RpcMessage, TaskPlan}
 import com.webank.eggroll.core.meta.{ErJob, ErPartition, ErStore, ErTask}
 import com.webank.eggroll.core.serdes.DefaultScalaSerdes
 import com.webank.eggroll.core.session.StaticErConf
-import com.webank.eggroll.core.util.Logging
+import com.webank.eggroll.core.util.{IdUtils, Logging}
 
 import scala.collection.mutable
 
@@ -114,7 +114,7 @@ object JobRunner {
 
       result.append(
         ErTask(
-          id = s"${job.id}-${i}",
+          id = IdUtils.generateTaskId(job.id, i),
           name = job.name,
           inputs = inputPartitions.toArray,
           outputs = outputPartitions.toArray,

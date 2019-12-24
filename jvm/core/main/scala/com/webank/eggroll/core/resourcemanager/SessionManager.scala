@@ -1,9 +1,9 @@
 package com.webank.eggroll.core.resourcemanager
 
 import com.webank.eggroll.core.client.NodeManagerClient
-import com.webank.eggroll.core.clustermanager.metadata.ServerNodeCrudOperator
 import com.webank.eggroll.core.constant._
 import com.webank.eggroll.core.meta.{ErProcessor, ErServerNode, ErSessionMeta}
+import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator
 
 import scala.collection.JavaConverters._
 import scala.util.control.Breaks._

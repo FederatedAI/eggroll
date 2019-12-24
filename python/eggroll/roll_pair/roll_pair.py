@@ -17,9 +17,9 @@ from threading import Thread
 
 from eggroll.core.client import CommandClient
 from eggroll.core.command.command_model import CommandURI
-from eggroll.core.conf_keys import DeployConfKeys
+from eggroll.core.conf_keys import SessionConfKeys
 from eggroll.core.constants import StoreTypes, SerdesTypes, PartitionerTypes, \
-  DeployTypes
+  DeployModes
 from eggroll.core.datastructure.broker import FifoBroker
 from eggroll.core.io.io_utils import get_db_path
 from eggroll.core.io.kv_adapter import LmdbSortedKvAdapter, \
@@ -31,6 +31,7 @@ from eggroll.core.serdes import cloudpickle
 from eggroll.core.serdes.eggroll_serdes import PickleSerdes, CloudPickleSerdes, \
   EmptySerdes
 from eggroll.core.session import ErSession
+from eggroll.core.utils import generate_job_id, generate_task_id
 from eggroll.core.utils import string_to_bytes, hash_code
 from eggroll.roll_pair import create_serdes
 from eggroll.roll_pair.egg_pair import EggPair
@@ -48,7 +49,7 @@ class RollPairContext(object):
     self.__session = session
     self.session_id = session.get_session_id()
     self.default_store_type = StoreTypes.ROLLPAIR_LMDB
-    self.deploy_mode = session.get_option(DeployConfKeys.CONFKEY_DEPLOY_MODE)
+    self.deploy_mode = session.get_option(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE)
     self.__session_meta = session.get_session_meta()
 
   def get_session(self):
@@ -225,11 +226,18 @@ class RollPair(object):
     inputs = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
     output = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
 
-    job = ErJob(id=self.__session_id, name=RollPair.GET,
+    job_id = generate_job_id(self.__session_id)
+    job = ErJob(id=generate_job_id(self.__session_id),
+                name=RollPair.GET,
                 inputs=[self.__store],
                 outputs=outputs,
                 functors=[ErFunctor(body=cloudpickle.dumps(er_pair))])
-    task = ErTask(id=self.__session_id, name=RollPair.GET, inputs=inputs, outputs=output, job=job)
+
+    task = ErTask(id=generate_task_id(job_id, partition_id),
+                  name=RollPair.GET,
+                  inputs=inputs,
+                  outputs=output,
+                  job=job)
     LOGGER.info("start send req")
     job_resp = self.__command_client.simple_sync_send(
         input=task,
@@ -249,16 +257,23 @@ class RollPair(object):
            create_serdes(self.__store._store_locator._serdes).serialize(v)
     er_pair = ErPair(key=k, value=v)
     outputs = []
-    part_id = self.partitioner(k)
-    egg = self.ctx.route_to_egg(self.__store._partitions[part_id])
-    inputs = [ErPartition(id=part_id, store_locator=self.__store._store_locator)]
+    partition_id = self.partitioner(k)
+    egg = self.ctx.route_to_egg(self.__store._partitions[partition_id])
+    inputs = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
     output = [ErPartition(id=0, store_locator=self.__store._store_locator)]
 
-    job = ErJob(id=self.__session_id, name=RollPair.PUT,
+    job_id = generate_job_id(self.__session_id)
+    job = ErJob(id=job_id,
+                name=RollPair.PUT,
                 inputs=[self.__store],
                 outputs=outputs,
                 functors=[ErFunctor(body=cloudpickle.dumps(er_pair))])
-    task = ErTask(id=self.__session_id, name=RollPair.PUT, inputs=inputs, outputs=output, job=job)
+
+    task = ErTask(id=generate_task_id(job_id, partition_id),
+                  name=RollPair.PUT,
+                  inputs=inputs,
+                  outputs=output,
+                  job=job)
     LOGGER.info("start send req")
     job_resp = self.__command_client.simple_sync_send(
         input=task,
@@ -274,8 +289,9 @@ class RollPair(object):
   def get_all(self, options={}):
     print('get all functor')
 
+    job_id = generate_job_id(self.__session_id)
     def send_command():
-      job = ErJob(id=self.__session_id,
+      job = ErJob(id=job_id,
                   name=RollPair.GET_ALL,
                   inputs=[self.__store],
                   outputs=[self.__store],
@@ -308,7 +324,7 @@ class RollPair(object):
     command_thread.start()
 
     populated_store = self.ctx.populate_processor(self.__store)
-    transfer_pair = TransferPair(transfer_id=self.__session_id, output_store=populated_store)
+    transfer_pair = TransferPair(transfer_id=job_id, output_store=populated_store)
 
     adapter = BrokerAdapter(FifoBroker(write_signals=self.__store._store_locator._total_partitions))
     transfer_pair.start_pull(adapter)
@@ -318,7 +334,7 @@ class RollPair(object):
 
   def put_all(self, items, output=None, options={}):
     include_key = options.get("include_key", False)
-    job_id = self.__session_id
+    job_id = generate_job_id(self.__session_id)
 
     # TODO:0: consider multiprocessing scenario. parallel size should be sent to egg_pair to set write signal count
     def send_command():
@@ -385,11 +401,12 @@ class RollPair(object):
     return 0
 
   def count(self):
-    if self.ctx.deploy_mode == DeployTypes.STANDALONE:
+    if self.ctx.deploy_mode == DeployModes.STANDALONE:
       return self.__count_local()
     else:
       return self.__count_cluster()
 
+  # todo:1: move to command channel to utilize batch command
   def destroy(self):
     total_partitions = self.__store._store_locator._total_partitions
     for i in range(total_partitions):
@@ -398,19 +415,19 @@ class RollPair(object):
       task_inputs = [ErPartition(id=i, store_locator=self.__store._store_locator)]
       task_outputs = []
 
-      job = ErJob(id=self.__session_id, name=RollPair.DESTROY,
+      job_id = generate_job_id(self.__session_id)
+      job = ErJob(id=job_id, name=RollPair.DESTROY,
                   inputs=[self.__store],
                   outputs=job_outputs,
                   functors=[ErFunctor(body=None)])
-      task = ErTask(id=self.__session_id, name=RollPair.DESTROY, inputs=task_inputs, outputs=task_outputs, job=job)
+      task = ErTask(id=generate_task_id(job_id, i), name=RollPair.DESTROY, inputs=task_inputs, outputs=task_outputs, job=job)
       LOGGER.info("start send req")
       job_resp = self.__command_client.simple_sync_send(
         input=task,
         output_type=ErPair,
         endpoint=egg._command_endpoint,
         command_uri=CommandURI(f'{EggPair.uri_prefix}/{EggPair.DESTROY}'),
-        serdes_type=self.__command_serdes
-      )
+        serdes_type=self.__command_serdes)
 
   def delete(self, k, options={}):
     k = create_serdes(self.__store).serialize(k)
@@ -424,11 +441,13 @@ class RollPair(object):
     inputs = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
     output = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
 
-    job = ErJob(id=self.__session_id, name=RollPair.DELETE,
+    job_id = generate_job_id(self.__session_id)
+    job = ErJob(id=job_id,
+                name=RollPair.DELETE,
                 inputs=[self.__store],
                 outputs=outputs,
                 functors=[ErFunctor(body=cloudpickle.dumps(er_pair))])
-    task = ErTask(id=self.__session_id, name=RollPair.DELETE, inputs=inputs, outputs=output, job=job)
+    task = ErTask(id=generate_task_id(job_id, partition_id), name=RollPair.DELETE, inputs=inputs, outputs=output, job=job)
     LOGGER.info("start send req")
     job_resp = self.__command_client.simple_sync_send(
       input=task,
@@ -455,7 +474,8 @@ class RollPair(object):
     final_options = {}
     final_options.update(self.__store._options)
     final_options.update(options)
-    job = ErJob(id=self.__session_id, name=RollPair.MAP_VALUES,
+    job = ErJob(id=generate_job_id(self.__session_id),
+                name=RollPair.MAP_VALUES,
                 inputs=[self.__store],
                 outputs=outputs,
                 functors=[functor],
@@ -478,7 +498,8 @@ class RollPair(object):
     outputs = []
     if output:
       outputs.append(output)
-    job = ErJob(id=self.__session_id, name=RollPair.MAP,
+    job = ErJob(id=generate_job_id(self.__session_id),
+                name=RollPair.MAP,
                 inputs=[self.__store],
                 outputs=outputs,
                 functors=[functor])
@@ -501,10 +522,11 @@ class RollPair(object):
     outputs = []
     if output:
       outputs.append(output)
-    job = ErJob(id=self.__session_id, name=RollPair.MAPPARTITIONS,
-                 inputs=[self.__store],
-                 outputs=outputs,
-                 functors=[functor])
+    job = ErJob(id=generate_job_id(self.__session_id),
+                name=RollPair.MAPPARTITIONS,
+                inputs=[self.__store],
+                outputs=outputs,
+                functors=[functor])
 
     job_result = self.__command_client.simple_sync_send(
       input=job,
@@ -524,7 +546,8 @@ class RollPair(object):
     if output:
       outputs.append(output)
 
-    job = ErJob(id=self.__session_id, name=RollPair.COLLAPSEPARTITIONS,
+    job = ErJob(id=generate_job_id(self.__session_id),
+                name=RollPair.COLLAPSEPARTITIONS,
                 inputs=[self.__store],
                 outputs=outputs,
                 functors=[functor])
@@ -547,7 +570,8 @@ class RollPair(object):
     if output:
       outputs.append(output)
 
-    job = ErJob(id=self.__session_id, name=RollPair.FLATMAP,
+    job = ErJob(id=generate_job_id(self.__session_id),
+                name=RollPair.FLATMAP,
                 inputs=[self.__store],
                 outputs=outputs,
                 functors=[functor])
@@ -570,7 +594,8 @@ class RollPair(object):
     outputs = []
     if output:
       outputs.append(output)
-    job = ErJob(id=self.__session_id, name=RollPair.REDUCE,
+    job = ErJob(id=generate_job_id(self.__session_id),
+                name=RollPair.REDUCE,
                 inputs=[self.__store],
                 outputs=outputs,
                 functors=[functor])
@@ -594,7 +619,8 @@ class RollPair(object):
     outputs = []
     if output:
       outputs.append(output)
-    job = ErJob(id=self.__session_id, name=RollPair.AGGREGATE,
+    job = ErJob(id=generate_job_id(self.__session_id),
+                name=RollPair.AGGREGATE,
                 inputs=[self.__store],
                 outputs=outputs,
                 functors=[zero_value_functor, seq_op_functor, comb_op_functor])
@@ -616,7 +642,8 @@ class RollPair(object):
     if output:
       outputs.append(output)
 
-    job = ErJob(id=self.__session_id, name=RollPair.GLOM,
+    job = ErJob(id=generate_job_id(self.__session_id),
+                name=RollPair.GLOM,
                 inputs=[self.__store],
                 outputs=outputs,
                 functors=[functor])
@@ -640,7 +667,8 @@ class RollPair(object):
     outputs = []
     if output:
       outputs.append(output)
-    job = ErJob(id=self.__session_id, name=RollPair.SAMPLE,
+    job = ErJob(id=generate_job_id(self.__session_id),
+                name=RollPair.SAMPLE,
                 inputs=[self.__store],
                 outputs=outputs,
                 functors=[er_fraction, er_seed])
@@ -663,7 +691,8 @@ class RollPair(object):
     outputs = []
     if output:
       outputs.append(output)
-    job = ErJob(id=self.__session_id, name=RollPair.FILTER,
+    job = ErJob(id=generate_job_id(self.__session_id),
+                name=RollPair.FILTER,
                 inputs=[self.__store],
                 outputs=outputs,
                 functors=[functor])
@@ -685,7 +714,8 @@ class RollPair(object):
     outputs = []
     if output:
       outputs.append(output)
-    job = ErJob(id=self.__session_id, name=RollPair.SUBTRACTBYKEY,
+    job = ErJob(id=generate_job_id(self.__session_id),
+                name=RollPair.SUBTRACTBYKEY,
                 inputs=[self.__store, other.__store],
                 outputs=outputs,
                 functors=[functor])
@@ -706,7 +736,8 @@ class RollPair(object):
     outputs = []
     if output:
       outputs.append(output)
-    job = ErJob(id=self.__session_id, name=RollPair.UNION,
+    job = ErJob(id=generate_job_id(self.__session_id),
+                name=RollPair.UNION,
                 inputs=[self.__store, other.__store],
                 outputs=outputs,
                 functors=[functor])
@@ -730,7 +761,8 @@ class RollPair(object):
     final_options = {}
     final_options.update(self.__store._options)
     final_options.update(options)
-    job = ErJob(id=self.__session_id, name=RollPair.JOIN,
+    job = ErJob(id=generate_job_id(self.__session_id),
+                name=RollPair.JOIN,
                 inputs=[self.__store, other.__store],
                 outputs=outputs,
                 functors=[functor],

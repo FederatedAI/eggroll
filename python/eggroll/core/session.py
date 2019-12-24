@@ -20,10 +20,10 @@ from eggroll.core.meta_model import ErSessionMeta, \
     ErPartition
 from eggroll.core.utils import get_self_ip, time_now
 
+
 # TODO:1: support windows
 # TODO:0: remove
-if "EGGROLL_STANDALONE_DEBUG" not in os.environ:
-    os.environ['EGGROLL_STANDALONE_DEBUG'] = "1"
+
 
 class ErDeploy:
     pass
@@ -40,16 +40,58 @@ class ErSession(object):
         self.__options[SessionConfKeys.CONFKEY_SESSION_ID] = self.__session_id
         self._cluster_manager_client = ClusterManagerClient(options=options)
 
+        if "EGGROLL_DEBUG" not in os.environ:
+            os.environ['EGGROLL_DEBUG'] = "0"
+
+        self.__eggroll_home = os.getenv('EGGROLL_HOME', None)
+        if not self.__eggroll_home:
+            raise EnvironmentError('EGGROLL_HOME is not set')
+
+        self.__is_standalone = options.get(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE, "") == "standalone"
+        if self.__is_standalone:
+            port = int(options.get('eggroll.resourcemanager.standalone.port', "4670"))
+            startup_command = f'bash {self.__eggroll_home}/bin/eggroll_boot_standalone.sh -p {port} -s {self.__session_id}'
+            import subprocess
+            import atexit
+
+            with open(f'{self.__eggroll_home}/logs/standalone_manager.OUT', 'a+') as outfile, open(f'{self.__eggroll_home}/logs/standalone_manager.ERR', 'a+') as errfile:
+                print(f'start up command: {startup_command}')
+                manager_process = subprocess.run(startup_command.split(), stdout=outfile, stderr=errfile)
+                returncode = manager_process.returncode
+                print(f'start up returncode: {returncode}')
+
+            def shutdown_standalone_manager(port, session_id, eggroll_home):
+                shutdown_command = f"ps aux | grep eggroll | grep Bootstrap | grep '{port}' | grep '{session_id}' | grep -v grep | awk '{{print $2}}' | xargs kill"
+                print('shutdown command:', shutdown_command)
+                with open(f'{eggroll_home}/logs/standalone_manager.OUT', 'a+') as outfile, open(f'{eggroll_home}/logs/standalone_manager.ERR', 'a+') as errfile:
+                    manager_process = subprocess.check_output(shutdown_command, shell=True)
+                    print(manager_process)
+
+            atexit.register(shutdown_standalone_manager, port, self.__session_id, self.__eggroll_home)
+
         session_meta = ErSessionMeta(id=self.__session_id,
                                      name=name,
                                      status=SessionStatus.NEW,
                                      tag=tag,
                                      processors=processors,
                                      options=options)
-        if not processors:
-            self.__session_meta = self._cluster_manager_client.get_or_create_session(session_meta)
-        else:
-            self.__session_meta = self._cluster_manager_client.register_session(session_meta)
+
+        from time import monotonic, sleep
+        timeout = int(options.get("eggroll.session.create.timeout.ms", "5000")) / 1000
+        endtime = monotonic() + timeout
+
+        while True:
+            try:
+                if not processors:
+                    self.__session_meta = self._cluster_manager_client.get_or_create_session(session_meta)
+                else:
+                    self.__session_meta = self._cluster_manager_client.register_session(session_meta)
+                break
+            except:
+                if monotonic() < endtime:
+                    sleep(0.1)
+                else:
+                    raise
 
         self.__cleanup_tasks = list()
         self.__processors = self.__session_meta._processors

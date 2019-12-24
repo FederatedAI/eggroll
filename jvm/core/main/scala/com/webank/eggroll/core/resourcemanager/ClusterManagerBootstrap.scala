@@ -4,12 +4,12 @@ import java.io.File
 import java.net.InetSocketAddress
 
 import com.webank.eggroll.core.Bootstrap
-import com.webank.eggroll.core.clustermanager.metadata.{ServerNodeCrudOperator, StoreCrudOperator}
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
 import com.webank.eggroll.core.constant.{CoreConfKeys, MetadataCommands, SessionCommands}
 import com.webank.eggroll.core.meta._
+import com.webank.eggroll.core.resourcemanager.metadata.{ServerNodeCrudOperator, StoreCrudOperator}
 import com.webank.eggroll.core.session.StaticErConf
-import com.webank.eggroll.core.util.{Logging, MiscellaneousUtils}
+import com.webank.eggroll.core.util.{CommandArgsUtils, Logging}
 import io.grpc.Server
 import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
 
@@ -90,7 +90,7 @@ class ClusterManagerBootstrap extends Bootstrap with Logging {
       routeToClass = classOf[SessionManagerService],
       routeToMethodName = SessionCommands.heartbeat.getName())
 
-    val cmd = MiscellaneousUtils.parseArgs(args = args)
+    val cmd = CommandArgsUtils.parseArgs(args = args)
     this.port = cmd.getOptionValue('p', "4670").toInt
     //this.sessionId = cmd.getOptionValue('s')
     val confPath = cmd.getOptionValue('c', "./conf/eggroll.properties.local")

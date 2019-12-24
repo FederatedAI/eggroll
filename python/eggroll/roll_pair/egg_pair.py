@@ -28,9 +28,11 @@ from grpc._cython import cygrpc
 from eggroll.core.client import ClusterManagerClient
 from eggroll.core.command.command_router import CommandRouter
 from eggroll.core.command.command_service import CommandServicer
-from eggroll.core.conf_keys import NodeManagerConfKeys, SessionConfKeys, ClusterManagerConfKeys
+from eggroll.core.conf_keys import NodeManagerConfKeys, SessionConfKeys, \
+  ClusterManagerConfKeys
 from eggroll.core.constants import ProcessorTypes, ProcessorStatus, SerdesTypes
 from eggroll.core.datastructure.broker import FifoBroker
+from eggroll.core.io.io_utils import get_db_path
 from eggroll.core.meta_model import ErPair, ErStore
 from eggroll.core.meta_model import ErTask, ErProcessor, ErEndpoint
 from eggroll.core.proto import command_pb2_grpc, transfer_pb2_grpc
@@ -41,11 +43,9 @@ from eggroll.core.utils import _exception_logger
 from eggroll.core.utils import hash_code
 from eggroll.roll_pair import create_adapter, create_serdes
 from eggroll.roll_pair.transfer_pair import TransferPair
-from eggroll.utils import log_utils
-from eggroll.core.io.io_utils import get_db_path
-from threading import Thread
 from eggroll.roll_pair.utils.pair_utils import generator
 from eggroll.roll_pair.utils.pair_utils import get_db_path, partitioner
+from eggroll.utils import log_utils
 
 log_utils.setDirectory()
 LOGGER = log_utils.getLogger()
@@ -171,7 +171,6 @@ class EggPair(object):
       output_partition = task._outputs[0]
 
       tag = f'{task._id}'
-
       print('egg_pair transfer service tag:', tag)
       output_adapter = create_adapter(task._outputs[0])
       output_broker = TransferService.get_or_create_broker(tag, write_signals=1)

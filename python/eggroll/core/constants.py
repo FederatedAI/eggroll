@@ -54,6 +54,6 @@ class SessionStatus(object):
   RUNNING = 'RUNNING'
   TERMINATED = 'TERMINATED'
 
-class DeployTypes(object):
+class DeployModes(object):
   STANDALONE = 'standalone'
   CLUSTER = 'cluster'

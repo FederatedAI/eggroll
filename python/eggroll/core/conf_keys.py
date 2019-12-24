@@ -61,52 +61,30 @@ class CoreConfKeys(object):
 
 
 class ClusterManagerConfKeys(object):
-  CONFKEY_CLUSTER_MANAGER_JDBC_DRIVER_CLASS_NAME = "eggroll.cluster.manager.jdbc.driver.class.name"
-  CONFKEY_CLUSTER_MANAGER_JDBC_URL = "eggroll.cluster.manager.jdbc.url"
-  CONFKEY_CLUSTER_MANAGER_JDBC_USERNAME = "eggroll.cluster.manager.jdbc.username"
-  CONFKEY_CLUSTER_MANAGER_JDBC_PASSWORD = "eggroll.cluster.manager.jdbc.password"
-  CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_MAX_IDLE = "eggroll.cluster.manager.datasource.db.max.idle"
-  CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_MAX_TOTAL = "eggroll.cluster.manager.datasource.db.max.total"
-  CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_MAX_WAIT_MS = "eggroll.cluster.manager.datasource.db.max.wait.ms"
-  CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_TIME_BETWEEN_EVICTION_RUNS_MS = "eggroll.cluster.manager.datasource.db.time.between.eviction.runs.ms"
-  CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_MIN_EVICTABLE_IDLE_TIME_MS = "eggroll.cluster.manager.datasource.db.min.evictable.idle.time.ms"
-  CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_DEFAULT_AUTO_COMMIT = "eggroll.cluster.manager.datasource.db.default.auto.commit"
-  CONFKEY_CLUSTER_MANAGER_HOST = "eggroll.cluster.manager.host"
-  CONFKEY_CLUSTER_MANAGER_PORT = "eggroll.cluster.manager.port"
+  CONFKEY_CLUSTER_MANAGER_JDBC_DRIVER_CLASS_NAME = "eggroll.resourcemanager.clustermanager.jdbc.driver.class.name"
+  CONFKEY_CLUSTER_MANAGER_JDBC_URL = "eggroll.resourcemanager.clustermanager.jdbc.url"
+  CONFKEY_CLUSTER_MANAGER_JDBC_USERNAME = "eggroll.resourcemanager.clustermanager.jdbc.username"
+  CONFKEY_CLUSTER_MANAGER_JDBC_PASSWORD = "eggroll.resourcemanager.clustermanager.jdbc.password"
+  CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_MAX_IDLE = "eggroll.resourcemanager.clustermanager.datasource.db.max.idle"
+  CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_MAX_TOTAL = "eggroll.resourcemanager.clustermanager.datasource.db.max.total"
+  CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_MAX_WAIT_MS = "eggroll.resourcemanager.clustermanager.datasource.db.max.wait.ms"
+  CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_TIME_BETWEEN_EVICTION_RUNS_MS = "eggroll.resourcemanager.clustermanager.datasource.db.time.between.eviction.runs.ms"
+  CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_MIN_EVICTABLE_IDLE_TIME_MS = "eggroll.resourcemanager.clustermanager.datasource.db.min.evictable.idle.time.ms"
+  CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_DEFAULT_AUTO_COMMIT = "eggroll.resourcemanager.clustermanager.datasource.db.default.auto.commit"
+  CONFKEY_CLUSTER_MANAGER_HOST = "eggroll.resourcemanager.clustermanager.host"
+  CONFKEY_CLUSTER_MANAGER_PORT = "eggroll.resourcemanager.clustermanager.port"
 
 
 class NodeManagerConfKeys(object):
-  CONFKEY_NODE_MANAGER_HOST = "eggroll.node.manager.host"
-  CONFKEY_NODE_MANAGER_PORT = "eggroll.node.manager.port"
+  CONFKEY_NODE_MANAGER_HOST = "eggroll.resourcemanager.nodemanager.host"
+  CONFKEY_NODE_MANAGER_PORT = "eggroll.resourcemanager.nodemanager.port"
 
 
 class SessionConfKeys(object):
-  CONFKEY_SESSION_CONTEXT_ROLLPAIR_COUNT = "eggroll.session.context.rollpair.count"
   CONFKEY_SESSION_ID = "eggroll.session.id"
   CONFKEY_SESSION_NAME = "eggroll.session.name"
   CONFKEY_SESSION_MAX_PROCESSORS_PER_NODE = "eggroll.session.max.processors.per.node"
-  CONFKEY_SESSION_EGG_BINDING_STRATEGY = "eggroll.session.egg.binding.strategy"
-  CONFKEY_SESSION_EGG_BINDING_ID = "eggroll.session.egg.binding.id"
-  CONFKEY_SESSION_EGG_BINDING_INCLUDE_DETAILS = "eggroll.session.egg.binding.include.details"
-
-
-class DeployConfKeys(object):
-  CONFKEY_DEPLOY_MODE = "eggroll.deploy.mode"
-  CONFKEY_DEPLOY_ROLLPAIR_START_SCRIPT_PATH = "eggroll.deploy.rollpair.start.script.path"
-  CONFKEY_DEPLOY_ROLLPAIR_VENV_PATH = "eggroll.deploy.rollpair.venv.path"
-  CONFKEY_DEPLOY_ROLLPAIR_DATA_DIR_PATH = "eggroll.deploy.rollpair.data.dir.path"
-  CONFKEY_DEPLOY_ROLLPAIR_EGGPAIR_PATH = "eggroll.deploy.rollpair.eggpair.path"
-  CONFKEY_DEPLOY_ROLLPAIR_PYTHON_PATH = "eggroll.deploy.rollpair.python.path"
-  CONFKEY_DEPLOY_NODE_MANAGER_PORT = "eggroll.deploy.node.manager.port"
-
-  CONFKEY_DEPLOY_JVM_JAVA_BIN_PATH = "eggroll.deploy.jvm.java.bin.path"
-  CONFKEY_DEPLOY_JVM_CLASSPATH = "eggroll.deploy.jvm.classpath"
-  CONFKEY_DEPLOY_JVM_MAINCLASS = "eggroll.deploy.jvm.mainclass"
-  CONFKEY_DEPLOY_JVM_MAINCLASS_ARGS = "eggroll.deploy.jvm.mainclass.args"
-  CONFKEY_DEPLOY_JVM_OPTIONS = "eggroll.deploy.jvm.options"
-
-  CONFKEY_DEPLOY_PROCESSOR_TYPE = "eggroll.deploy.processor.type"
-  CONFKEY_DEPLOY_PROCESSORS = "eggroll.deploy.processors"
+  CONFKEY_SESSION_DEPLOY_MODE = "eggroll.session.deploy.mode"
 
 
 class TransferConfKeys(object):

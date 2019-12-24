@@ -20,8 +20,8 @@ package com.webank.eggroll.clustermanager.metadata
 
 import java.io.File
 
-import com.webank.eggroll.core.clustermanager.metadata.ServerNodeCrudOperator
 import com.webank.eggroll.core.meta.{ErEndpoint, ErServerCluster, ErServerNode}
+import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator
 import com.webank.eggroll.core.session.StaticErConf
 import org.junit.Test
 

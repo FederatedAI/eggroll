@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 SHELL_FOLDER=$(dirname "$0")
 # EGGROLL_HOME
 cd $SHELL_FOLDER/../
@@ -20,12 +22,14 @@ while getopts ":s:p:e:" opt; do
    ?)
       echo "Invalid option: -$OPTARG index:$OPTIND"
       ;;
-
   esac
 done
 
 echo "base_dir: ${base_dir}"
-java -cp ${base_dir}/conf/log4j2.properties:${base_dir}/jvm/core/target/eggroll-core-${version}.jar${base_dir}/jvm/core/target/lib/*:${base_dir}/jvm/roll_pair/target/lib/*:${base_dir}/jvm/roll_pair/target/eggroll-roll-pair-${version}.jar com.webank.eggroll.core.Bootstrap --bootstraps com.webank.eggroll.core.resourcemanager.ClusterManagerBootstrap,com.webank.eggroll.core.resourcemanager.NodeManagerBootstrap -c ${base_dir}/conf/eggroll.properties -s $session_id -p $manager_port &
-while [ 1 ]; do
-  sleep 1
-done
+cmd="java -Dlog4j.configurationFile=${base_dir}/conf/standalone-manager-log4j2.properties -cp ${base_dir}/jvm/core/target/eggroll-core-${version}.jar${base_dir}/jvm/core/target/lib/*:${base_dir}/jvm/roll_pair/target/lib/*:${base_dir}/jvm/roll_pair/target/eggroll-roll-pair-${version}.jar com.webank.eggroll.core.Bootstrap --ignore-rebind --bootstraps com.webank.eggroll.core.resourcemanager.ClusterManagerBootstrap,com.webank.eggroll.core.resourcemanager.NodeManagerBootstrap -c ${base_dir}/conf/eggroll.properties -s $session_id -p $manager_port &"
+echo "cmd: ${cmd}"
+eval ${cmd}
+
+#while [ 1 ]; do
+#  sleep 1
+#done

@@ -23,8 +23,8 @@ import java.sql.{Connection, DriverManager, PreparedStatement, ResultSet, SQLExc
 
 import scala.io.BufferedSource
 
-class JdbcTemplate(dataSource: () => Connection, autoClose:Boolean = false) extends Logging {
-  def this(connection: Connection, autoClose:Boolean) = {
+class JdbcTemplate(dataSource: () => Connection, autoClose: Boolean = true) extends Logging {
+  def this(connection: Connection, autoClose: Boolean) = {
     this(() => connection, autoClose)
   }
   def withConnection[T](func: Connection => T): T = {
