@@ -21,15 +21,14 @@ package com.webank.eggroll.core
 import com.webank.eggroll.core.client.ClusterManagerClient
 import com.webank.eggroll.core.constant.{ProcessorTypes, SessionStatus}
 import com.webank.eggroll.core.meta._
-import com.webank.eggroll.core.util.TimeUtils
+import com.webank.eggroll.core.util.{RuntimeUtils, TimeUtils}
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
-import scala.util.Random
 
 trait ErDeploy
 
-class ErSession(val sessionId: String = s"er_session_jvm_${TimeUtils.getNowMs()}_${new Random().nextInt(9999)}",
+class ErSession(val sessionId: String = s"er_session_jvm_${TimeUtils.getNowMs()}_${RuntimeUtils.siteLocalAddress}",
                 name: String = "",
                 tag: String = "",
                 var processors: Array[ErProcessor] = Array(),

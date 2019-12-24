@@ -23,6 +23,7 @@ from eggroll.core.pair_store.format import PairBinReader, PairBinWriter, \
 from eggroll.core.transfer.transfer_service import TransferClient, \
     TransferService
 from eggroll.core.utils import _exception_logger
+from eggroll.core.utils import generate_task_id
 from eggroll.roll_pair import create_adapter
 
 
@@ -52,7 +53,7 @@ class TransferPair(object):
         self.__recv_future = None
 
     def __generate_tag(self, partition_id):
-        return f'{self.__transfer_id}-{partition_id}'
+        return generate_task_id(job_id=self.__transfer_id, partition_id=partition_id)
 
     @_exception_logger
     def start_push(self, input_broker, partition_function):

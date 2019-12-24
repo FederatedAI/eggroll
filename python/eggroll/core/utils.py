@@ -114,7 +114,7 @@ def generate_job_id(session_id, tag='', delim='-'):
 
 
 def generate_task_id(job_id, partition_id, delim='-'):
-    return f'{job_id}{delim}{partition_id}'
+    return delim.join([job_id, "task", str(partition_id)])
 
 
 #AI copy from java ByteString.hashCode()

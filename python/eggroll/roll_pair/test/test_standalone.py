@@ -19,8 +19,8 @@ import unittest
 from eggroll.roll_pair.test.roll_pair_test_assets import get_debug_test_context, \
   get_cluster_context
 
-os.environ['EGGROLL_DEBUG'] = "0"
-os.environ['EGGROLL_STANDALONE'] = "1"
+os.environ['EGGROLL_DEBUG'] = "1"
+os.environ['EGGROLL_STANDALONE'] = "0"
 
 class TestStandalone(unittest.TestCase):
   is_debug = False

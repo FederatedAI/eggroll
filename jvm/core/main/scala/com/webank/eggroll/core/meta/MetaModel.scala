@@ -29,8 +29,6 @@ import com.webank.eggroll.core.util.TimeUtils
 import org.apache.commons.lang3.StringUtils
 
 import scala.collection.JavaConverters._
-import scala.collection.mutable
-import scala.collection.mutable.ArrayBuffer
 
 trait MetaRpcMessage extends RpcMessage {
   override def rpcMessageType(): String = "Meta"
@@ -126,36 +124,6 @@ case class ErSessionMeta(id: String,
                          tag: String = StringConstants.EMPTY,
                          processors: Array[ErProcessor] = Array(),
                          options: Map[String, String] = Map()) extends MetaRpcMessage {
-}
-
-case class ErSessionDeployment(id: String,
-                               serverCluster: ErServerCluster,
-                               rolls: Array[ErProcessor],
-                               eggs: Map[Long, Array[ErProcessor]]) {
-  def toErProcessorBatch(): ErProcessorBatch = {
-    val processors = new ArrayBuffer[ErProcessor]()
-    processors ++= rolls
-    eggs.foreach(k => processors ++= k._2)
-
-    ErProcessorBatch(processors = processors.toArray, tag = id)
-  }
-}
-
-object ErSessionDeployment {
-  def apply(id: String,
-            serverCluster: ErServerCluster,
-            rollProcessorBatch: ErProcessorBatch,
-            eggProcessorBatch: ErProcessorBatch): ErSessionDeployment = {
-    val eggs = mutable.Map[Long, ArrayBuffer[ErProcessor]]()
-
-    eggProcessorBatch.processors.foreach(p => eggs.getOrElseUpdate(p.serverNodeId, ArrayBuffer[ErProcessor]()) += p)
-
-    ErSessionDeployment(
-      id = id,
-      serverCluster = serverCluster,
-      rolls = rollProcessorBatch.processors,
-      eggs = eggs.mapValues(_.toArray).toMap)
-  }
 }
 
 object MetaModelPbMessageSerdes {
