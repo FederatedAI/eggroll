@@ -29,7 +29,7 @@ import com.webank.eggroll.core.constant._
 import com.webank.eggroll.core.datastructure.{Broker, LinkedBlockingBroker}
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.transfer.GrpcTransferClient
-import com.webank.eggroll.core.util.Logging
+import com.webank.eggroll.core.util.{IdUtils, Logging}
 import com.webank.eggroll.rollpair.component.RollPairMaster
 
 import scala.collection.JavaConverters._
@@ -60,14 +60,15 @@ class RollPairContext(val session: ErSession,
   }
 }
 
-class RollPair(val store: ErStore, val ctx:RollPairContext, val options: Map[String,String] = Map()) extends Logging {
+class RollPair(val store: ErStore, val ctx: RollPairContext, val options: Map[String,String] = Map()) extends Logging {
   // todo: 1. consider recv-side shuffle; 2. pull up rowPairDb logic; 3. add partition calculation based on session logic;
   def putBatch(broker: Broker[ByteString], opts: util.Map[String, String] = Map[String, String]().asJava): Unit = {
     val totalPartitions = store.storeLocator.totalPartitions
     val transferClients = new Array[GrpcTransferClient](totalPartitions)
     val brokers = new Array[Broker[ByteString]](totalPartitions)
 
-    val job = ErJob(id = store.storeLocator.name,
+    val jobId = IdUtils.generateJobId(ctx.session.sessionId)
+    val job = ErJob(id = jobId,
       name = RollPairMaster.putAll,
       inputs = Array(store),
       outputs = Array(store),
@@ -126,7 +127,7 @@ class RollPair(val store: ErStore, val ctx:RollPairContext, val options: Map[Str
           // tag = s"${job.id}-${partitionId}" to store.storeLocator.name
           newTransferClient.initForward(
             dataBroker = newBroker,
-            tag = s"${store.storeLocator.name}-${partitionId}",
+            tag = IdUtils.generateTaskId(jobId, partitionId),
             processor = ctx.routeToEgg(store.partitions(partitionId)))
           transferClients.update(partitionId, newTransferClient)
         }

@@ -1,6 +1,5 @@
 package com.webank.eggroll.core.resourcemanager
 
-import com.webank.eggroll.core.clustermanager.datasource.RdbConnectionPool
 import com.webank.eggroll.core.constant.{ProcessorStatus, SessionConfKeys}
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.resourcemanager.ResourceDao.NotExistError

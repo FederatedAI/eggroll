@@ -13,33 +13,33 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import os
 import unittest
 
 from eggroll.roll_pair.test.roll_pair_test_assets import get_debug_test_context, \
-  get_cluster_context
+  get_cluster_context, get_standalone_context
 
-os.environ['EGGROLL_STANDALONE_DEBUG'] = "0"
-
-os.environ['EGGROLL_HOME'] = ''
+is_debug = False
+is_standalone = True
 
 class TestStandalone(unittest.TestCase):
-  is_debug = False
   ctx = None
+
   @classmethod
   def setUpClass(cls) -> None:
-    is_debug = os.getenv('EGGROLL_STANDALONE_DEBUG', "0") == "1"
     if is_debug:
       cls.ctx = get_debug_test_context()
     else:
-      cls.ctx = get_cluster_context()
+      if is_standalone:
+        cls.ctx = get_standalone_context()
+      else:
+        cls.ctx = get_cluster_context()
 
   def setUp(self):
     self.ctx = TestStandalone.ctx
 
   @classmethod
   def tearDownClass(cls) -> None:
-    if not cls.is_debug:
+    if not is_debug:
       cls.ctx.get_session().stop()
 
   def test_parallelize(self):
@@ -56,7 +56,7 @@ class TestStandalone(unittest.TestCase):
     options = {}
     options['include_key'] = True
     self.ctx.load("ns1", "testPutAll").put_all(data, options=options)
-    table = list(self.ctx.load("ns1", "n36").get_all())
+    table = list(self.ctx.load("ns1", "testPutAll").get_all())
     print("get res:{}".format(table))
 
   def test_multi_partition_put_all(self):

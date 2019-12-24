@@ -27,7 +27,7 @@ import com.webank.eggroll.core.command.{CommandRouter, CommandService}
 import com.webank.eggroll.core.constant.{ProcessorStatus, ProcessorTypes, SessionConfKeys}
 import com.webank.eggroll.core.meta.{ErEndpoint, ErJob, ErProcessor}
 import com.webank.eggroll.core.session.StaticErConf
-import com.webank.eggroll.core.util.{Logging, MiscellaneousUtils}
+import com.webank.eggroll.core.util.{CommandArgsUtils, Logging}
 import com.webank.eggroll.rollpair.component.RollPairMaster
 
 
@@ -109,7 +109,7 @@ object Main extends Logging {
       routeToMethodName = RollPairMaster.runJob)
   }
   def reportCM(sessionId:String, args: Array[String], myCommandPort: Int):Unit = {
-    val cmd = MiscellaneousUtils.parseArgs(args)
+    val cmd = CommandArgsUtils.parseArgs(args)
     // todo:2: heartbeat service
     val portString = cmd.getOptionValue('p', "0")
     val sessionId = cmd.getOptionValue('s', "UNKNOWN")
@@ -145,7 +145,7 @@ object Main extends Logging {
   }
   def main(args: Array[String]): Unit = {
     registerRouter()
-    val cmd = MiscellaneousUtils.parseArgs(args = args)
+    val cmd = CommandArgsUtils.parseArgs(args = args)
     val portString = cmd.getOptionValue('p', "0")
     val sessionId = cmd.getOptionValue('s', "UNKNOWN")
 

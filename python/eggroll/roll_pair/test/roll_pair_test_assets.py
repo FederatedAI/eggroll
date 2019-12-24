@@ -13,7 +13,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from eggroll.core.conf_keys import DeployConfKeys, TransferConfKeys
+from eggroll.core.conf_keys import SessionConfKeys, TransferConfKeys
+from eggroll.core.constants import DeployModes
 from eggroll.core.constants import ProcessorTypes, ProcessorStatus
 from eggroll.core.constants import StoreTypes
 from eggroll.core.meta_model import ErStore, ErStoreLocator, ErEndpoint, \
@@ -29,7 +30,7 @@ ER_STORE1 = ErStore(
 
 def get_debug_test_context():
     options = {}
-    options[DeployConfKeys.CONFKEY_DEPLOY_MODE] = "standalone"
+    options[SessionConfKeys.CONFKEY_DEPLOY_MODE] = "standalone"
     options[TransferConfKeys.CONFKEY_TRANSFER_SERVICE_HOST] = "localhost"
     options[TransferConfKeys.CONFKEY_TRANSFER_SERVICE_PORT] = 20002
 
@@ -54,16 +55,26 @@ def get_debug_test_context():
 
     session = ErSession(session_id='testing',
                         processors=[egg, roll],
-                        options={"eggroll.deploy.mode": "standalone"})
+                        options={"eggroll.session.deploy.mode": "standalone"})
     # session = ErSession(options={})
     context = RollPairContext(session)
     return context
 
 
+def get_standalone_context():
+    options = {}
+    options[SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE] = DeployModes.STANDALONE
+
+    session = ErSession(options=options)
+    print(session.get_session_id())
+    context = RollPairContext(session)
+
+    return context
+
 def get_cluster_context():
     options = {}
 
-    session = ErSession()
+    session = ErSession(options=options)
     print(session.get_session_id())
     context = RollPairContext(session)
 
