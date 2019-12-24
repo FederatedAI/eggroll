@@ -67,28 +67,28 @@ if [[ ${transfer_port} -eq 0 ]] && [[ ${port} -ne 0 ]]; then
   transfer_port=${port}
 fi
 
-get_property ${config} "eggroll.bootstrap.roll_pair_master.javahome"
+get_property ${config} "eggroll.rollpair.bootstrap.roll_pair_master.javahome"
 javahome=${property_value}
 
-get_property ${config} "eggroll.bootstrap.roll_pair_master.classpath"
+get_property ${config} "eggroll.rollpair.bootstrap.roll_pair_master.classpath"
 classpath=${property_value}
 
-get_property ${config} "eggroll.bootstrap.roll_pair_master.mainclass"
+get_property ${config} "eggroll.rollpair.bootstrap.roll_pair_master.mainclass"
 mainclass=${property_value}
 
-get_property ${config} "eggroll.bootstrap.roll_pair_master.jvm.options"
+get_property ${config} "eggroll.rollpair.bootstrap.roll_pair_master.jvm.options"
 jvm_options=${property_value}
 
 get_property ${config} "eggroll.logs.dir"
 logs_dir=${property_value}
 
-get_property ${config} "eggroll.node.manager.port"
+get_property ${config} "eggroll.resourcemanager.nodemanager.port"
 node_manager_port=${property_value}
 
-get_property ${config} "eggroll.cluster.manager.host"
+get_property ${config} "eggroll.resourcemanager.clustermanager.host"
 cluster_manager_host=${property_value}
 
-get_property ${config} "eggroll.cluster.manager.port"
+get_property ${config} "eggroll.resourcemanager.clustermanager.port"
 cluster_manager_port=${property_value}
 
 if [[ -z ${javahome} ]]; then

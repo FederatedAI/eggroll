@@ -4,10 +4,10 @@ import java.io.File
 import java.net.InetSocketAddress
 
 import com.webank.eggroll.core.Bootstrap
-import com.webank.eggroll.core.clustermanager.metadata.{ServerNodeCrudOperator, StoreCrudOperator}
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
 import com.webank.eggroll.core.constant.{CoreConfKeys, MetadataCommands, SessionCommands}
 import com.webank.eggroll.core.meta._
+import com.webank.eggroll.core.resourcemanager.metadata.{ServerNodeCrudOperator, StoreCrudOperator}
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.util.{Logging, MiscellaneousUtils}
 import io.grpc.Server
