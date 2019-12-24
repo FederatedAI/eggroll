@@ -28,7 +28,8 @@ import org.apache.commons.lang3.StringUtils
 // todo: abstract to general python starter
 // todo: args design
 class Container(conf: RuntimeErConf, moduleName: String, processorId: Long = 0) extends Logging {
-  private val confPrefix = s"eggroll.bootstrap.${moduleName}"
+  // todo:1: constantize it
+  private val confPrefix = s"eggroll.rollpair.bootstrap.${moduleName}"
 
   private val isWindows = System.getProperty("os.name").toLowerCase().indexOf("windows") > 0
 

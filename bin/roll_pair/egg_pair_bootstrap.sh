@@ -67,25 +67,25 @@ if [[ ${transfer_port} -eq 0 ]] && [[ ${port} -ne 0 ]]; then
   transfer_port=${port}
 fi
 
-get_property ${config} "eggroll.bootstrap.egg_pair.venv"
+get_property ${config} "eggroll.rollpair.bootstrap.egg_pair.venv"
 venv=${property_value}
 
-get_property ${config} "eggroll.bootstrap.egg_pair.pythonpath"
+get_property ${config} "eggroll.rollpair.bootstrap.egg_pair.pythonpath"
 pythonpath=${property_value}
 
-get_property ${config} "eggroll.bootstrap.egg_pair.filepath"
+get_property ${config} "eggroll.rollpair.bootstrap.egg_pair.filepath"
 filepath=${property_value}
 
 get_property ${config} "eggroll.logs.dir"
 logs_dir=${property_value}
 
-get_property ${config} "eggroll.node.manager.port"
+get_property ${config} "eggroll.resourcemanager.nodemanager.port"
 node_manager_port=${property_value}
 
-get_property ${config} "eggroll.cluster.manager.host"
+get_property ${config} "eggroll.resourcemanager.clustermanager.host"
 cluster_manager_host=${property_value}
 
-get_property ${config} "eggroll.cluster.manager.port"
+get_property ${config} "eggroll.resourcemanager.clustermanager.port"
 cluster_manager_port=${property_value}
 
 if [[ -z ${venv} ]]; then
