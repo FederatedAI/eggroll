@@ -17,9 +17,9 @@ from threading import Thread
 
 from eggroll.core.client import CommandClient
 from eggroll.core.command.command_model import CommandURI
-from eggroll.core.conf_keys import DeployConfKeys
+from eggroll.core.conf_keys import SessionConfKeys
 from eggroll.core.constants import StoreTypes, SerdesTypes, PartitionerTypes, \
-  DeployTypes
+  DeployModes
 from eggroll.core.datastructure.broker import FifoBroker
 from eggroll.core.io.io_utils import get_db_path
 from eggroll.core.io.kv_adapter import LmdbSortedKvAdapter, \
@@ -49,7 +49,7 @@ class RollPairContext(object):
     self.__session = session
     self.session_id = session.get_session_id()
     self.default_store_type = StoreTypes.ROLLPAIR_LMDB
-    self.deploy_mode = session.get_option(DeployConfKeys.CONFKEY_DEPLOY_MODE)
+    self.deploy_mode = session.get_option(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE)
     self.__session_meta = session.get_session_meta()
 
   def get_session(self):
@@ -401,7 +401,7 @@ class RollPair(object):
     return 0
 
   def count(self):
-    if self.ctx.deploy_mode == DeployTypes.STANDALONE:
+    if self.ctx.deploy_mode == DeployModes.STANDALONE:
       return self.__count_local()
     else:
       return self.__count_cluster()
