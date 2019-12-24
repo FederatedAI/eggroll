@@ -24,6 +24,7 @@ from eggroll.core.utils import get_self_ip, time_now
 # TODO:1: support windows
 # TODO:0: remove
 
+
 class ErDeploy:
     pass
 
@@ -48,13 +49,25 @@ class ErSession(object):
 
         self.__is_standalone = os.getenv('EGGROLL_STANDALONE', "0") == "1"
         if self.__is_standalone:
-            command = f'bash {self.__eggroll_home}/bin/eggroll_boot_standalone.sh'
+            port = int(options.get('eggroll.standalone.port', "4670"))
+            startup_command = f'bash {self.__eggroll_home}/bin/eggroll_boot_standalone.sh -p {port} -s {self.__session_id}'
             import subprocess
+            import atexit
 
             with open(f'{self.__eggroll_home}/logs/standalone_manager.OUT', 'a+') as outfile, open(f'{self.__eggroll_home}/logs/standalone_manager.ERR', 'a+') as errfile:
-                manager_process = subprocess.run(command.split(), stdout=outfile, stderr=errfile)
+                print(f'start up command: {startup_command}')
+                manager_process = subprocess.run(startup_command.split(), stdout=outfile, stderr=errfile)
                 returncode = manager_process.returncode
-                print(f'returncode: {returncode}')
+                print(f'start up returncode: {returncode}')
+
+            def shutdown_standalone_manager(port, session_id, eggroll_home):
+                shutdown_command = f"ps aux | grep eggroll | grep Bootstrap | grep '{port}' | grep '{session_id}' | grep -v grep | awk '{{print $2}}' | xargs kill"
+                print('shutdown command:', shutdown_command)
+                with open(f'{eggroll_home}/logs/standalone_manager.OUT', 'a+') as outfile, open(f'{eggroll_home}/logs/standalone_manager.ERR', 'a+') as errfile:
+                    manager_process = subprocess.check_output(shutdown_command, shell=True)
+                    print(manager_process)
+
+            atexit.register(shutdown_standalone_manager, port, self.__session_id, self.__eggroll_home)
 
         session_meta = ErSessionMeta(id=self.__session_id,
                                      name=name,
