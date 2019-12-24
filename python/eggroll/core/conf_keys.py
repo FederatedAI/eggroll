@@ -84,10 +84,7 @@ class SessionConfKeys(object):
   CONFKEY_SESSION_ID = "eggroll.session.id"
   CONFKEY_SESSION_NAME = "eggroll.session.name"
   CONFKEY_SESSION_MAX_PROCESSORS_PER_NODE = "eggroll.session.max.processors.per.node"
-
-
-class DeployConfKeys(object):
-  CONFKEY_DEPLOY_MODE = "eggroll.deploy.mode"
+  CONFKEY_SESSION_DEPLOY_MODE = "eggroll.session.deploy.mode"
 
 
 class TransferConfKeys(object):

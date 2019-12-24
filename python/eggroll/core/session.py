@@ -47,9 +47,9 @@ class ErSession(object):
         if not self.__eggroll_home:
             raise EnvironmentError('EGGROLL_HOME is not set')
 
-        self.__is_standalone = os.getenv('EGGROLL_STANDALONE', "0") == "1"
+        self.__is_standalone = options.get(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE, "") == "standalone"
         if self.__is_standalone:
-            port = int(options.get('eggroll.standalone.port', "4670"))
+            port = int(options.get('eggroll.resourcemanager.standalone.port', "4670"))
             startup_command = f'bash {self.__eggroll_home}/bin/eggroll_boot_standalone.sh -p {port} -s {self.__session_id}'
             import subprocess
             import atexit
