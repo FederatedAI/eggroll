@@ -195,6 +195,9 @@ class RollPair(object):
   def get_namespace(self):
     return self.__store._store_locator._namespace
 
+  def get_type(self):
+    return self.__store._store_locator._store_type
+
   def kv_to_bytes(self, **kwargs):
     use_serialize = kwargs.get("use_serialize", True)
     # can not use is None
@@ -430,11 +433,11 @@ class RollPair(object):
         serdes_type=self.__command_serdes)
 
   def delete(self, k, options={}):
-    k = create_serdes(self.__store).serialize(k)
-    er_pair = ErPair(key=k, value=None)
+    key = create_serdes(self.__store._store_locator._serdes).serialize(k)
+    er_pair = ErPair(key=key, value=None)
     outputs = []
     value = None
-    partition_id = self.partitioner(k)
+    partition_id = self.partitioner(key)
     egg = self.ctx.route_to_egg(self.__store._partitions[partition_id])
     print(egg._command_endpoint)
     print("count:", self.__store._store_locator._total_partitions)

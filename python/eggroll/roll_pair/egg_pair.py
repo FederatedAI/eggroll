@@ -71,8 +71,7 @@ class EggPair(object):
     value_serdes = create_serdes(task._inputs[0]._store_locator._serdes)
     input_adapter = create_adapter(task._inputs[0])
     input_iterator = input_adapter.iteritems()
-    output_adapter = create_adapter(task._outputs[0])
-    output_writebatch = output_adapter.new_batch()
+
     if shuffle:
       total_partitions = task._inputs[0]._store_locator._total_partitions
       output_store = task._job._outputs[0]
@@ -83,9 +82,12 @@ class EggPair(object):
 
       shuffler.start_push(shuffle_broker, partitioner(hash_func=hash_code, total_partitions=total_partitions))
       shuffler.start_recv(task._outputs[0]._id)
+    else:
+      output_adapter = create_adapter(task._outputs[0])
+      output_writebatch = output_adapter.new_batch()
     try:
       if shuffle:
-        func(input_iterator, key_serdes, value_serdes, output_writebatch, shuffle_broker)
+        func(input_iterator, key_serdes, value_serdes, shuffle_broker)
       else:
         func(input_iterator, key_serdes, value_serdes, output_writebatch)
     except:
@@ -94,9 +96,10 @@ class EggPair(object):
       if shuffle:
         shuffle_broker.signal_write_finish()
         shuffler.join()
-      output_writebatch.close()
+      else:
+        output_writebatch.close()
+        output_adapter.close()
       input_adapter.close()
-      output_adapter.close()
 
   def _run_binary(self, func, task):
     left_key_serdes = create_serdes(task._inputs[0]._store_locator._serdes)
@@ -198,8 +201,10 @@ class EggPair(object):
     if task._name == 'delete':
       f = cloudpickle.loads(functors[0]._body)
       input_adapter = create_adapter(task._inputs[0])
+      LOGGER.info("delete k:{}, its value:{}".format(f._key, input_adapter.get(f._key)))
       if input_adapter.delete(f._key):
         LOGGER.info("delete k success")
+      input_adapter.close()
 
     if task._name == 'mapValues':
       f = cloudpickle.loads(functors[0]._body)
@@ -211,7 +216,7 @@ class EggPair(object):
     elif task._name == 'map':
       f = cloudpickle.loads(functors[0]._body)
 
-      def map_wrapper(input_iterator, key_serdes, value_serdes, output_writebatch, shuffle_broker):
+      def map_wrapper(input_iterator, key_serdes, value_serdes, shuffle_broker):
         for k_bytes, v_bytes in input_iterator:
           k1, v1 = f(key_serdes.deserialize(k_bytes), value_serdes.deserialize(v_bytes))
           shuffle_broker.put((key_serdes.serialize(k1), value_serdes.serialize(v1)))
@@ -443,6 +448,16 @@ def serve(args):
     route_to_module_name="eggroll.roll_pair.egg_pair",
     route_to_class_name="EggPair",
     route_to_method_name="run_task")
+  CommandRouter.get_instance().register(
+      service_name=f"{prefix}/destroy",
+      route_to_module_name="eggroll.roll_pair.egg_pair",
+      route_to_class_name="EggPair",
+      route_to_method_name="run_task")
+  CommandRouter.get_instance().register(
+      service_name=f"{prefix}/delete",
+      route_to_module_name="eggroll.roll_pair.egg_pair",
+      route_to_class_name="EggPair",
+      route_to_method_name="run_task")
 
   #computing api
   CommandRouter.get_instance().register(

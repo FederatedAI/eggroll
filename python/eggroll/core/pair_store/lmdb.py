@@ -97,16 +97,17 @@ class LmdbAdapter(PairAdapter):
                 LOGGER.info("path not in dict db path:{}".format(self.path))
                 self.env = lmdb.open(self.path, create=create_if_missing, max_dbs=128, sync=False, map_size=LMDB_MAP_SIZE, writemap=True)
                 self.sub_db = self.env.open_db(DEFAULT_DB)
-                self.txn = self.env.begin(db=self.sub_db, write=True)
+
                 LmdbAdapter.count_dict[self.path] = 0
                 LmdbAdapter.env_dict[self.path] = self.env
                 LmdbAdapter.sub_env_dict[self.path] = self.sub_db
-                LmdbAdapter.txn_dict[self.path] = self.txn
+                #LmdbAdapter.txn_dict[self.path] = self.txn
             else:
                 LOGGER.info("path in dict:{}".format(self.path))
                 self.env = LmdbAdapter.env_dict[self.path]
                 self.sub_db = LmdbAdapter.sub_env_dict[self.path]
-                self.txn = LmdbAdapter.txn_dict[self.path]
+                #self.txn = LmdbAdapter.txn_dict[self.path]
+            self.txn = self.env.begin(db=self.sub_db, write=True)
             self.cursor = self.txn.cursor()
             LmdbAdapter.count_dict[self.path] = LmdbAdapter.count_dict[self.path] + 1
 
@@ -121,7 +122,7 @@ class LmdbAdapter(PairAdapter):
                 if not count or count - 1 <= 0:
                     LmdbAdapter.txn_dict[self.path].commit()
                     LmdbAdapter.env_dict[self.path].close()
-                    del LmdbAdapter.txn_dict[self.path]
+                    #del LmdbAdapter.txn_dict[self.path]
                     del LmdbAdapter.env_dict[self.path]
                     del LmdbAdapter.sub_env_dict[self.path]
                     del LmdbAdapter.count_dict[self.path]
@@ -136,7 +137,7 @@ class LmdbAdapter(PairAdapter):
                 if not count or count - 1 <= 0:
                     del LmdbAdapter.env_dict[self.path]
                     del LmdbAdapter.sub_env_dict[self.path]
-                    del LmdbAdapter.txn_dict[self.path]
+                    #del LmdbAdapter.txn_dict[self.path]
                     del LmdbAdapter.count_dict[self.path]
                 else:
                     LmdbAdapter.count_dict[self.path] = count - 1
@@ -161,4 +162,4 @@ class LmdbAdapter(PairAdapter):
         return self.txn.stat()["entries"]
 
     def delete(self, k):
-        self.txn.delete(k)
+        return self.txn.delete(k)
