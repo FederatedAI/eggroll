@@ -17,6 +17,7 @@ import unittest
 from eggroll.roll_site.roll_site import RollSiteContext
 from eggroll.core.session import ErSession
 from eggroll.roll_pair.roll_pair import RollPairContext
+from eggroll.roll_pair.roll_pair import RollPair
 
 class TestGet(unittest.TestCase):
     def test_get(self):
@@ -35,6 +36,13 @@ class TestGet(unittest.TestCase):
         print("result:", type(futures.result()))
         for future in futures.result():
           print("result:", type(future.result()))
-          future.get()
+          obj = future.result()
+          if isinstance(future, RollPair):
+            key = 'hello'
+            obj.get(key)
+          else:
+            print(obj)
+
+
 
 
