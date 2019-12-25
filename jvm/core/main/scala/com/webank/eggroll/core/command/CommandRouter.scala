@@ -45,7 +45,7 @@ object CommandRouter extends Logging {
   private val messageParserMethodCache = mutable.Map[Class[_], Method]()
   private val defaultSerdesType = StaticErConf.getString(CoreConfKeys.CONFKEY_CORE_COMMAND_DEFAULT_SERDES_TYPE, SerdesTypes.PROTOBUF)
 
-  // todo: consider different scope of target instance suck as 'singleton', 'proto', 'session' etc.
+  // todo: consider different scope of target instance such as 'singleton', 'proto', 'session' etc.
   //  This can be implemented as an annotation reader
   def register(serviceName: String,
                serviceParamTypes: Array[Class[_]],

@@ -64,3 +64,43 @@ CREATE INDEX `idx_server_node_h` ON `eggroll_meta`.`server_node` (`host`(768));
 CREATE INDEX `idx_server_node_c` ON `eggroll_meta`.`server_node` (`server_cluster_id`);
 CREATE INDEX `idx_server_node_t` ON `eggroll_meta`.`server_node` (`node_type`(255));
 CREATE INDEX `idx_server_node_s` ON `eggroll_meta`.`server_node` (`status`(255));
+
+-- session (main)
+CREATE TABLE IF NOT EXISTS `session_main` (
+  `session_id` VARCHAR(2000) PRIMARY KEY,
+  `name` VARCHAR(2000) NOT NULL DEFAULT '',
+  `status` VARCHAR(255) NOT NULL,
+  `tag` VARCHAR(255),
+  `active_proc_count` int,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) DEFAULT CHARACTER SET latin1 COLLATE latin1_swedish_ci;
+
+CREATE INDEX `idx_session_main_status` ON `eggroll_meta`.`session_main` (`status`);
+
+-- session (option)
+CREATE TABLE IF NOT EXISTS `session_option` (
+  `session_id` VARCHAR(2000),
+  `name` VARCHAR(255) NOT NULL,
+  `data` VARCHAR(2000) NOT NULL DEFAULT '',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) DEFAULT CHARACTER SET latin1 COLLATE latin1_swedish_ci;
+
+CREATE INDEX `idx_session_option_session_id` ON `eggroll_meta`.`session_option` (`session_id`);
+
+-- session (binding with processor)
+CREATE TABLE IF NOT EXISTS `session_processor` (
+  `processor_id` SERIAL PRIMARY KEY,
+  `session_id` VARCHAR(2000),
+  `server_node_id` INT NOT NULL,
+  `processor_type` VARCHAR(255) NOT NULL,
+  `status` VARCHAR(255),
+  `tag` VARCHAR(255),
+  `command_endpoint` VARCHAR(255),
+  `transfer_endpoint` VARCHAR(255),
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) DEFAULT CHARACTER SET latin1 COLLATE latin1_swedish_ci;
+
+CREATE INDEX `idx_session_processor_session_id` ON `eggroll_meta`.`session_processor` (`session_id`);
