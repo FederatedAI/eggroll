@@ -12,6 +12,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+
 import uuid
 from threading import Thread
 
@@ -89,7 +90,8 @@ class RollPairContext(object):
 
     print(f'server_session_deployment: {self.__server_session_deployment}')
 
-
+  def get_session(self):
+      return self.__session
 
   def get_roll_endpoint(self):
     return self.__session._rolls[0]._command_endpoint
@@ -240,6 +242,9 @@ class RollPair(object):
 
   def get_namespace(self):
     return self.__store._store_locator._namespace
+
+  def get_type(self):
+    return self.__store._store_locator._store_type
 
   def kv_to_bytes(self, **kwargs):
     use_serialize = kwargs.get("use_serialize", True)
@@ -461,11 +466,11 @@ class RollPair(object):
       )
 
   def delete(self, k, options={}):
-    k = create_serdes(self.__store).serialize(k)
-    er_pair = ErPair(key=k, value=None)
+    key = create_serdes(self.__store._store_locator._serdes).serialize(k)
+    er_pair = ErPair(key=key, value=None)
     outputs = []
     value = None
-    partition_id = self.partitioner(k)
+    partition_id = self.partitioner(key)
     egg = self.ctx.route_to_egg(self.__store._partitions[partition_id])
     print(egg._command_endpoint)
     print("count:", self.__store._store_locator._total_partitions)
