@@ -35,7 +35,7 @@ trait Scheduler extends Logging {
 
 
 
-// todo: add another layer of abstraction if coupling with ErJob is proved a bad practice or
+// todo:3: add another layer of abstraction if coupling with ErJob is proved a bad practice or
 //  communication (e.g. broadcast), or io operation should be described in task plan as computing
 case class ListScheduler() extends Scheduler {
   private val stages = mutable.Queue[TaskPlan]()
@@ -53,15 +53,12 @@ case class ListScheduler() extends Scheduler {
 }
 
 object JobRunner {
-  // TODO:1: global session info?
+  // TODO:2: new session -> ErSession.get() ?
   val session = new ErSession(StaticErConf.getString(SessionConfKeys.CONFKEY_SESSION_ID))
 
   def run(plan: TaskPlan): Array[ErTask] = {
     val tasks = decomposeJob(taskPlan = plan)
-
-
     val commandClient = new CommandClient()
-
     val results = commandClient.call[ErTask](commandURI = plan.uri, args = tasks.map(t => (Array[RpcMessage](t), t.inputs.head.processor.commandEndpoint)))
     tasks
   }

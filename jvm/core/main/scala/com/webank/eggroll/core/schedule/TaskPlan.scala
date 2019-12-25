@@ -49,3 +49,6 @@ class SubtractByKeyTaskPlan(uri: CommandURI, job: ErJob) extends BaseTaskPlan(ur
 class UnionTaskPlan(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job)
 class PutAllTaskPlan(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job)
 class GetAllTaskPlan(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job)
+class CollapsePartitionsTaskPlan(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job)
+class MapValuesTaskPlan(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job)
+class MapPartitionsTaskPlan(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job)

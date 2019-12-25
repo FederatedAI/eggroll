@@ -23,7 +23,6 @@ import com.webank.eggroll.core.error.handler.InterruptAndRethrowRuntimeErrorHand
 import io.grpc.stub.ClientCallStreamObserver;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -66,7 +65,7 @@ public abstract class BaseClientCallStreamProcessor<R> implements StreamProcesso
         return;
       }
 
-      // todo: bind to configuration
+      // todo:2: bind to configuration
       boolean awaitResult = streamReady.await(10, TimeUnit.MINUTES);
       if (!awaitResult && !clientCallStreamObserver.isReady()) {
         throw new TimeoutException("stream processor await timeout");
