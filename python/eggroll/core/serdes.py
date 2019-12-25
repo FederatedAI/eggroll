@@ -13,9 +13,9 @@
 #  limitations under the License.
 
 class ErSerializer(object):
-  def to_bytes(self, obj):
-    raise NotImplementedError()
+    def to_bytes(self, obj):
+        raise NotImplementedError()
 
 class ErDeserializer(object):
-  def from_bytes(self):
-    raise NotImplementedError()
+    def from_bytes(self):
+        raise NotImplementedError()
