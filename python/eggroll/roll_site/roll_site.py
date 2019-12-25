@@ -55,7 +55,7 @@ class RollSiteContext:
     self.role = self.runtime_conf.get(CONF_KEY_LOCAL).get("role")
 
   def load(self, name: str, tag: str):
-    return RollSite(name, tag, role, self)
+    return RollSite(name, tag, self)
 
 
 ERROR_STATES = [proxy_pb2.STOP, proxy_pb2.KILL]
@@ -133,16 +133,12 @@ class RollSite:
                                                                  result.header.dst.partyId]))
       print("namespace:", self.job_id, ", name:", table_name)
       rp = self.ctx.rp_ctx.load(namespace=self.job_id, name=table_name)
-      print("count:{}".format(rp.count()))
       print("result.body.value:", result.body.value)
-      #print("deserialize result.body.value:", _serdes.deserialize(result.body.value))
       if(result.body.value == str.encode('object')):
-        #__tagged_key = _serdes.deserialize(result.body.value)
         print("__tagged_key", result.body.key)
         __tagged_key = result.body.key
         ret_obj = rp.get(__tagged_key)
         print("ret_obj:", ret_obj)
-        #rtn.append(rp.get(__tagged_key))
         rtn.append(ret_obj)
         LOGGER.debug("[GET] Got remote object {}".format(__tagged_key))
       else:
@@ -150,28 +146,15 @@ class RollSite:
 
     return rtn
 
-
-  def push(self, obj, role=None, idx=-1):
-    algorithm, sub_name = self.__check_authorization(self.name)
-
-    auth_dict = self.trans_conf.get(algorithm)
-
-    if idx >= 0:
-      if role is None:
-        raise ValueError("{} cannot be None if idx specified".format(role))
-      parties = {role: [self.__get_parties(role)[idx]]}
-    elif self.role is not None:
-      if self.role not in auth_dict.get(sub_name).get('dst'):
-        raise ValueError("{} is not allowed to receive {}".format(role, self.name))
-      parties = {role: self.__get_parties(role)}
-    else:
-      parties = {}
-      for _role in auth_dict.get(sub_name).get('dst'):
-        parties[_role] = self.__get_parties(_role)
-
+  def push(self, obj, parties: list = None):
     futures = []
-    for _role, _partyIds in parties.items():
-      for _partyId in _partyIds:
+    print("parties:", parties)
+    for role_partyId in parties:
+        #for _partyId in _partyIds:
+        _role = role_partyId[0]
+        _partyId = role_partyId[1]
+        print("_role:", _role)
+        print("_partyIds:", _partyId)
         _tagged_key = self.__remote__object_key(self.job_id, self.name, self.tag, self.local_role, self.party_id, _role,
                                                 _partyId)
 
@@ -214,34 +197,9 @@ class RollSite:
     return ret_future
 
 
-  def pull(self, idx=-1):
-    algorithm, sub_name = self.__check_authorization(self.name, is_send=False)
-
-    auth_dict = self.trans_conf.get(algorithm)
-
-    src_role = auth_dict.get(sub_name).get('src')
-
-    src_party_ids = self.__get_parties(src_role)
-
-    if 0 <= idx < len(src_party_ids):
-      # idx is specified, return the remote object
-      party_ids = [src_party_ids[idx]]
-    else:
-      # idx is not valid, return remote object list
-      party_ids = src_party_ids
-
-    LOGGER.debug(
-        "[GET] {} {} getting remote object {} from {} {}".format(self.local_role, self.party_id, self.tag, src_role,
-                                                                 party_ids))
-
+  def pull(self, parties: list = None):
     futures = []
-    for party_id in party_ids:
-      '''
-      _tagged_key = self.__remote__object_key(self.job_id, self.name, self.tag,
-                                              src_role, self.party_id, src_role,
-                                              party_id, self.dst_host,
-                                              self.dst_port)
-      '''
+    for src_role, party_id in parties:
       _tagged_key = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.job_id, self.name, self.tag,
                                                                   src_role, str(party_id),
                                                                   self.local_role, str(self.party_id)]))
@@ -270,7 +228,7 @@ class RollSite:
 
     self.process_pool.shutdown(wait=False)
 
-    if 0 <= idx < len(src_party_ids):
+    if len(parties) == 1:
       return futures[0]
 
     ret_future = self.complete_pool.submit(self.wait_for_pull_complete, futures)
