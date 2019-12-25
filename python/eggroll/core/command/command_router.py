@@ -12,10 +12,12 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+from importlib import import_module
+
 from eggroll.core.meta_model import ErTask
 from eggroll.core.proto import meta_pb2
-from importlib import import_module
 from eggroll.utils import log_utils
+
 log_utils.setDirectory()
 LOGGER = log_utils.getLogger()
 
@@ -49,7 +51,7 @@ class CommandRouter(object):
       raise ValueError(
         f'service {service_name} has already been registered at ${self._service_route_table[service_name]}')
 
-    # todo: consider scope. now default to a 'prototype' style and no init args
+    # todo:2: consider scope. now default to a 'prototype' style and no init args
     _module = import_module(route_to_module_name)
     _class = getattr(_module, route_to_class_name)
     _method = getattr(_class, route_to_method_name)
@@ -74,7 +76,7 @@ class CommandRouter(object):
 
     call_result = _method(_instance, *deserialized_args)
 
-    # todo: defaulting to pb message. need changes when other types of result is present
+    # todo:2: defaulting to pb message. need changes when other types of result is present
     return [call_result.to_proto().SerializeToString()]
 
   def query(self, service_name: str):
