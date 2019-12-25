@@ -83,6 +83,30 @@ class RollSite:
     self.stub = proxy_pb2_grpc.DataTransferServiceStub(channel)
     self.process_pool = ThreadPoolExecutor(10)
     self.complete_pool = ThreadPoolExecutor(10)
+    self.init_job_session_pair(self.job_id, self.ctx.rp_ctx.__session)
+
+  def init_job_session_pair(self, job_id, session_id):
+      task_info = proxy_pb2.Task(taskId=self.name, model=proxy_pb2.Model(name=job_id, dataKey=bytes(session_id, encoding='utf8')))
+      topic_src = proxy_pb2.Topic(name="init_job_session_pair", partyId="{}".format(self.party_id),
+                                  role=self.src_role, callback=None)
+      topic_dst = proxy_pb2.Topic(name="init_job_session_pair", partyId="{}".format(self.party_id),
+                                  role=self.local_role, callback=None)
+      command_test = proxy_pb2.Command(name="init_job_session_pair")
+      conf_test = proxy_pb2.Conf(overallTimeout=1000,
+                                 completionWaitTimeout=1000,
+                                 packetIntervalTimeout=1000,
+                                 maxRetries=10)
+
+      metadata = proxy_pb2.Metadata(task=task_info,
+                                    src=topic_src,
+                                    dst=topic_dst,
+                                    command=command_test,
+                                    operator="init_job_session_pair",
+                                    seq=0, ack=0,
+                                    conf=conf_test)
+      packet = proxy_pb2.Packet(header=metadata)
+
+      self.stub.unaryCall(packet)
 
   @staticmethod
   def __remote__object_key(*args):
@@ -205,9 +229,9 @@ class RollSite:
                                                                   self.local_role, str(self.party_id)]))
       print("pull _tagged_key:", _tagged_key)
       task_info = proxy_pb2.Task(taskId=_tagged_key)
-      topic_src = proxy_pb2.Topic(name="test", partyId="{}".format(party_id),
+      topic_src = proxy_pb2.Topic(name="get_status", partyId="{}".format(party_id),
                                   role=src_role, callback=None)
-      topic_dst = proxy_pb2.Topic(name="test", partyId="{}".format(self.party_id),
+      topic_dst = proxy_pb2.Topic(name="get_status", partyId="{}".format(self.party_id),
                                   role=self.local_role, callback=None)
       command_test = proxy_pb2.Command(name="get_status")
       conf_test = proxy_pb2.Conf(overallTimeout=1000,

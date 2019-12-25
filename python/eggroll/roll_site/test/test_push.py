@@ -35,7 +35,8 @@ class TestRemote(unittest.TestCase):
         rs = context.load(name="RsaIntersectTransferVariable.rsa_pubkey", tag="{}".format(_tag))
         fp = open("testA.model", 'r')
         obj = fp.read(35)
-        future = rs.push(obj, idx=-1)
+        parties = [('host', '10002')]
+        future = rs.push(obj, parties)
         fp.close()
         print("result:", future.result())
 
