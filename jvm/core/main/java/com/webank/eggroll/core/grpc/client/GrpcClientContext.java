@@ -45,7 +45,6 @@ public class GrpcClientContext<S extends AbstractStub, R extends Message, E exte
 
   private static final Logger LOGGER = LogManager.getLogger();
 
-  // todo: replace with Injection
   private GrpcStubFactory grpcStubFactory = Singletons.getNoCheck(GrpcStubFactory.class);
   private ErrorHandler errorHandler = Singletons
       .getNoCheck(InterruptAndRethrowRuntimeErrorHandler.class);

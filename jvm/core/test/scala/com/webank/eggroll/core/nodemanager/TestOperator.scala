@@ -20,7 +20,6 @@ package com.webank.eggroll.core.nodemanager
 
 import java.util.Properties
 
-import com.webank.eggroll.core.schedule.deploy.ExecutableProcessorOperator
 import com.webank.eggroll.core.session.RuntimeErConf
 import org.junit.Test
 
