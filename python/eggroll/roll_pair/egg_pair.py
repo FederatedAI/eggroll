@@ -200,8 +200,10 @@ class EggPair(object):
     if task._name == 'delete':
       f = cloudpickle.loads(functors[0]._body)
       input_adapter = create_adapter(task._inputs[0])
+      LOGGER.info("delete k:{}, its value:{}".format(f._key, input_adapter.get(f._key)))
       if input_adapter.delete(f._key):
         LOGGER.info("delete k success")
+      input_adapter.close()
 
     if task._name == 'mapValues':
       f = cloudpickle.loads(functors[0]._body)
@@ -445,6 +447,16 @@ def serve(args):
     route_to_module_name="eggroll.roll_pair.egg_pair",
     route_to_class_name="EggPair",
     route_to_method_name="run_task")
+  CommandRouter.get_instance().register(
+      service_name=f"{prefix}/destroy",
+      route_to_module_name="eggroll.roll_pair.egg_pair",
+      route_to_class_name="EggPair",
+      route_to_method_name="run_task")
+  CommandRouter.get_instance().register(
+      service_name=f"{prefix}/delete",
+      route_to_module_name="eggroll.roll_pair.egg_pair",
+      route_to_class_name="EggPair",
+      route_to_method_name="run_task")
 
   #computing api
   CommandRouter.get_instance().register(

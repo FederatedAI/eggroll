@@ -69,6 +69,16 @@ class TestStandalone(unittest.TestCase):
     self.ctx.load('ns1', 'test_count', options=options).put_all(data, options=options)
     print("count:{}".format(self.ctx.load('ns1', 'test_count', options=options).count()))
 
+  def test_delete(self):
+      options = {}
+      options['total_partitions'] = 1
+      options['include_key'] = True
+      data = [("k1", "v1"), ("k2", "v2"), ("k3", "v3"), ("k4", "v4")]
+      table = self.ctx.load('ns1', 'test_delete_one', options=options).put_all(data, options=options)
+      print("before delete:{}".format(list(table.get_all())))
+      table.delete("k1")
+      print("after delete:{}".format(list(table.get_all())))
+
   def test_map_values(self):
     rp = self.ctx.load("ns1", "test_map_values").put_all(range(10))
     print(list(rp.map_values(lambda v: str(v) + 'map_values').get_all()))

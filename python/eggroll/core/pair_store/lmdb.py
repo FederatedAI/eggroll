@@ -162,4 +162,4 @@ class LmdbAdapter(PairAdapter):
         return self.txn.stat()["entries"]
 
     def delete(self, k):
-        self.txn.delete(k)
+        return self.txn.delete(k)
