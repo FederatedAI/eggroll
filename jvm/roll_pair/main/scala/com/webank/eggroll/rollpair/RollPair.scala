@@ -30,7 +30,6 @@ import com.webank.eggroll.core.datastructure.{Broker, LinkedBlockingBroker}
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.transfer.GrpcTransferClient
 import com.webank.eggroll.core.util.{IdUtils, Logging}
-import com.webank.eggroll.rollpair.component.RollPairMaster
 
 import scala.collection.JavaConverters._
 class RollPairContext(val session: ErSession,
@@ -54,7 +53,7 @@ class RollPairContext(val session: ErSession,
     new RollPair(loaded, this)
   }
 
-  // todo: partitioner factory depending on string, and mod partition number
+  // todo:1: partitioner factory depending on string, and mod partition number
   def partitioner(k: Array[Byte], n: Int): Int = {
     ByteString.copyFrom(k).hashCode() % n
   }
@@ -69,7 +68,7 @@ class RollPair(val store: ErStore, val ctx: RollPairContext, val options: Map[St
 
     val jobId = IdUtils.generateJobId(ctx.session.sessionId)
     val job = ErJob(id = jobId,
-      name = RollPairMaster.putAll,
+      name = RollPair.PUT_ALL,
       inputs = Array(store),
       outputs = Array(store),
       functors = Array.empty,
@@ -78,7 +77,7 @@ class RollPair(val store: ErStore, val ctx: RollPairContext, val options: Map[St
     new Thread {
       override def run(): Unit = {
         val commandClient = new CommandClient(defaultEndpoint = ErEndpoint("localhost", 4670))
-        commandClient.call(new CommandURI(RollPairMaster.rollRunJobCommand), job)
+        commandClient.call(RollPair.ROLL_RUN_JOB_COMMAND, job)
 
         logInfo("thread started")
       }
@@ -150,3 +149,33 @@ class RollPair(val store: ErStore, val ctx: RollPairContext, val options: Map[St
   }
 }
 
+object RollPair {
+  val ROLL_PAIR_URI_PREFIX = "v1/roll-pair"
+  val EGG_PAIR_URI_PREFIX = "v1/egg-pair"
+
+  val RUN_JOB = "runJob"
+  val RUN_TASK = "runTask"
+
+  val AGGREGATE = "aggregate"
+  val COLLAPSE_PARTITIONS = "collapsePartitions"
+  val DELETE = "delete"
+  val DESTROY = "destroy"
+  val FILTER = "filter"
+  val FLAT_MAP = "flatMap"
+  val GET = "get"
+  val GET_ALL = "getAll"
+  val GLOM = "glom"
+  val JOIN = "join"
+  val MAP = "map"
+  val MAP_PARTITIONS = "mapPartitions"
+  val MAP_VALUES = "mapValues"
+  val PUT = "put"
+  val PUT_ALL = "putAll"
+  val REDUCE = "reduce"
+  val SAMPLE = "sample"
+  val SUBTRACT_BY_KEY = "subtractByKey"
+  val UNION = "union"
+
+  val EGG_RUN_TASK_COMMAND = new CommandURI(s"${EGG_PAIR_URI_PREFIX}/${RUN_TASK}")
+  val ROLL_RUN_JOB_COMMAND = new CommandURI(s"${ROLL_PAIR_URI_PREFIX}/${RUN_JOB}")
+}

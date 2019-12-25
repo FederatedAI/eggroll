@@ -16,7 +16,7 @@
  *
  */
 
-package com.webank.eggroll.rollpair.component
+package com.webank.eggroll.rollpair
 
 import java.nio.{ByteBuffer, ByteOrder}
 import java.util
@@ -24,17 +24,14 @@ import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger, AtomicLong}
 import java.util.concurrent.{CompletableFuture, CountDownLatch, TimeUnit}
 import java.util.function.Supplier
 
-import com.google.common.collect.Lists
-import com.google.protobuf.{ByteString, UnsafeByteOperations}
-import com.webank.eggroll.core.constant.{NetworkConstants, StringConstants}
+import com.google.protobuf.ByteString
+import com.webank.eggroll.core.constant.NetworkConstants
 import com.webank.eggroll.core.datastructure.{Broker, LinkedBlockingBroker}
 import com.webank.eggroll.core.error.DistributedRuntimeException
-import com.webank.eggroll.core.meta.MetaModelPbMessageSerdes._
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.transfer.{GrpcTransferClient, TransferService}
 import com.webank.eggroll.core.util.{Logging, ThreadPoolUtils}
 import com.webank.eggroll.rollpair.io.RocksdbSortedKvAdapter
-import io.grpc.netty.shaded.io.netty.buffer.UnpooledUnsafeDirectByteBuf
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
