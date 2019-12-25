@@ -58,10 +58,7 @@ object JobRunner {
 
   def run(plan: TaskPlan): Array[ErTask] = {
     val tasks = decomposeJob(taskPlan = plan)
-
-
     val commandClient = new CommandClient()
-
     val results = commandClient.call[ErTask](commandURI = plan.uri, args = tasks.map(t => (Array[RpcMessage](t), t.inputs.head.processor.commandEndpoint)))
     tasks
   }

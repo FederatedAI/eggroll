@@ -25,85 +25,17 @@ class RollPairMasterBootstrap extends Bootstrap with Logging {
   override def init(args: Array[String]): Unit = {
     this.args = args
     cmd = CommandArgsUtils.parseArgs(args)
-    CommandRouter.register(serviceName = RollPairMaster.rollMapValuesCommand,
-      serviceParamTypes = Array(classOf[ErJob]),
-      routeToClass = classOf[RollPairMaster],
-      routeToMethodName = RollPairMaster.mapValues)
+    sessionId = cmd.getOptionValue('s')
 
-    CommandRouter.register(serviceName = RollPairMaster.rollMapCommand,
+    CommandRouter.register(serviceName = RollPair.ROLL_RUN_JOB_COMMAND.uriString,
       serviceParamTypes = Array(classOf[ErJob]),
       routeToClass = classOf[RollPairMaster],
-      routeToMethodName = RollPairMaster.runJob)
-
-    CommandRouter.register(serviceName = RollPairMaster.rollMapPartitionsCommand,
-      serviceParamTypes = Array(classOf[ErJob]),
-      routeToClass = classOf[RollPairMaster],
-      routeToMethodName = RollPairMaster.mapPartitions)
-
-    CommandRouter.register(serviceName = RollPairMaster.rollCollapsePartitionsCommand,
-      serviceParamTypes = Array(classOf[ErJob]),
-      routeToClass = classOf[RollPairMaster],
-      routeToMethodName = RollPairMaster.collapsePartitions)
-
-    CommandRouter.register(serviceName = RollPairMaster.rollFlatMapCommand,
-      serviceParamTypes = Array(classOf[ErJob]),
-      routeToClass = classOf[RollPairMaster],
-      routeToMethodName = RollPairMaster.flatMap)
-
-    CommandRouter.register(serviceName = RollPairMaster.rollGlomCommand,
-      serviceParamTypes = Array(classOf[ErJob]),
-      routeToClass = classOf[RollPairMaster],
-      routeToMethodName = RollPairMaster.glom)
-
-    CommandRouter.register(serviceName = RollPairMaster.rollSampleCommand,
-      serviceParamTypes = Array(classOf[ErJob]),
-      routeToClass = classOf[RollPairMaster],
-      routeToMethodName = RollPairMaster.sample)
-
-    CommandRouter.register(serviceName = RollPairMaster.rollFilterCommand,
-      serviceParamTypes = Array(classOf[ErJob]),
-      routeToClass = classOf[RollPairMaster],
-      routeToMethodName = RollPairMaster.filter)
-
-    CommandRouter.register(serviceName = RollPairMaster.rollSubtractByKeyCommand,
-      serviceParamTypes = Array(classOf[ErJob]),
-      routeToClass = classOf[RollPairMaster],
-      routeToMethodName = RollPairMaster.subtractByKey)
-
-    CommandRouter.register(serviceName = RollPairMaster.rollUnionCommand,
-      serviceParamTypes = Array(classOf[ErJob]),
-      routeToClass = classOf[RollPairMaster],
-      routeToMethodName = RollPairMaster.union)
-
-    CommandRouter.register(serviceName = RollPairMaster.rollReduceCommand,
-      serviceParamTypes = Array(classOf[ErJob]),
-      routeToClass = classOf[RollPairMaster],
-      routeToMethodName = RollPairMaster.reduce)
-
-    CommandRouter.register(serviceName = RollPairMaster.rollJoinCommand,
-      serviceParamTypes = Array(classOf[ErJob]),
-      routeToClass = classOf[RollPairMaster],
-      routeToMethodName = RollPairMaster.runJob)
-
-    CommandRouter.register(serviceName = RollPairMaster.rollRunJobCommand,
-      serviceParamTypes = Array(classOf[ErJob]),
-      routeToClass = classOf[RollPairMaster],
-      routeToMethodName = RollPairMaster.runJob)
-
-    CommandRouter.register(serviceName = RollPairMaster.rollPutAllCommand,
-      serviceParamTypes = Array(classOf[ErJob]),
-      routeToClass = classOf[RollPairMaster],
-      routeToMethodName = RollPairMaster.runJob)
-
-    CommandRouter.register(serviceName = RollPairMaster.rollGetAllCommand,
-      serviceParamTypes = Array(classOf[ErJob]),
-      routeToClass = classOf[RollPairMaster],
-      routeToMethodName = RollPairMaster.runJob)
+      routeToMethodName = RollPair.RUN_JOB)
   }
+
   def reportCM(sessionId: String, args: Array[String], myCommandPort: Int):Unit = {
     // todo:2: heartbeat service
     val portString = cmd.getOptionValue('p', "0")
-    val sessionId = cmd.getOptionValue('s', "UNKNOWN")
     val clusterManager = cmd.getOptionValue("cluster-manager", "localhost:4670")
     val nodeManager = cmd.getOptionValue("node-manager", "localhost:9394")
     val serverNodeId = cmd.getOptionValue("server-node-id", "0").toLong
@@ -113,7 +45,6 @@ class RollPairMasterBootstrap extends Bootstrap with Logging {
     val clusterManagerClient = new ClusterManagerClient(ErEndpoint(clusterManager))
 
     val options = new ConcurrentHashMap[String, String]()
-    this.sessionId = sessionId
     options.put(SessionConfKeys.CONFKEY_SESSION_ID, sessionId)
 
     val myself = ErProcessor(
