@@ -13,18 +13,18 @@
 #  limitations under the License.
 
 
-from eggroll.core.meta_model import ErEndpoint, ErServerNode, ErServerCluster, ErProcessor, ErProcessorBatch
-from eggroll.core.meta_model import ErStore, ErStoreLocator, ErSessionMeta
-from eggroll.core.constants import SerdesTypes
-from eggroll.core.command.commands import MetadataCommands, NodeManagerCommands, SessionCommands
 from eggroll.core.base_model import RpcMessage
 from eggroll.core.command.command_model import CommandURI
 from eggroll.core.command.command_model import ErCommandRequest, ErCommandResponse
-from eggroll.core.proto import command_pb2_grpc
-from eggroll.core.utils import time_now
-from eggroll.core.grpc.factory import GrpcChannelFactory
+from eggroll.core.command.commands import MetadataCommands, NodeManagerCommands, SessionCommands
 from eggroll.core.conf_keys import ClusterManagerConfKeys, NodeManagerConfKeys
+from eggroll.core.constants import SerdesTypes
+from eggroll.core.grpc.factory import GrpcChannelFactory
+from eggroll.core.meta_model import ErEndpoint, ErServerNode, ErServerCluster, ErProcessor, ErProcessorBatch
+from eggroll.core.meta_model import ErStore, ErSessionMeta
+from eggroll.core.proto import command_pb2_grpc
 from eggroll.core.utils import _to_proto_string, _map_and_listify
+from eggroll.core.utils import time_now
 
 
 class CommandClient(object):
@@ -133,16 +133,16 @@ class ClusterManagerClient(object):
   def get_or_create_session(self, input: ErSessionMeta):
     return self.__do_sync_request_internal(
         input=input,
-        output_type=ErProcessorBatch,
+        output_type=ErSessionMeta,
         command_uri=SessionCommands.GET_OR_CREATE_SESSION,
         serdes_type=self.__serdes_type)
 
-  def register_session(self, session_meta: ErSessionMeta, processor_batch: ErProcessorBatch):
-    return self.__command_client.sync_send(inputs=[session_meta, processor_batch],
-                                           output_types=[ErProcessorBatch],
+  def register_session(self, session_meta: ErSessionMeta):
+    return self.__command_client.sync_send(inputs=[session_meta],
+                                           output_types=[ErSessionMeta],
                                            endpoint=self.__endpoint,
                                            command_uri=SessionCommands.REGISTER_SESSION,
-                                           serdes_type=self.__serdes_type)
+                                           serdes_type=self.__serdes_type)[0]
 
   def get_session_server_nodes(self, input: ErSessionMeta):
     return self.__do_sync_request_internal(
@@ -164,6 +164,20 @@ class ClusterManagerClient(object):
         output_type=ErProcessorBatch,
         command_uri=SessionCommands.GET_SESSION_EGGS,
         serdes_type=self.__serdes_type)
+
+  def heartbeat(self, input: ErProcessor):
+      return self.__do_sync_request_internal(
+          input=input,
+          output_type=ErProcessor,
+          command_uri=SessionCommands.HEARTBEAT,
+          serdes_type=self.__serdes_type)
+
+  def stop_session(self, input: ErSessionMeta):
+    return self.__do_sync_request_internal(
+            input=input,
+            output_type=ErSessionMeta,
+            command_uri=SessionCommands.STOP_SESSION,
+            serdes_type=self.__serdes_type)
 
   def __do_sync_request_internal(self, input, output_type, command_uri, serdes_type):
     return self.__command_client.simple_sync_send(input=input,

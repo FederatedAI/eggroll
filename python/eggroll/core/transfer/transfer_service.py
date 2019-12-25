@@ -15,12 +15,12 @@
 
 import queue
 from concurrent import futures
+from threading import Thread
 from time import sleep
+from typing import Iterable
 
 import grpc
 from grpc._cython import cygrpc
-from typing import Iterable
-from threading import Thread
 
 from eggroll.core.conf_keys import TransferConfKeys
 from eggroll.core.datastructure.broker import FifoBroker
@@ -44,6 +44,7 @@ class TransferService(object):
   @staticmethod
   def get_or_create_broker(key: str, maxsize: int = _DEFAULT_QUEUE_SIZE, write_signals=1):
     if not TransferService.has_broker(key):
+      print('creating broker: ', key)
       final_size = maxsize if maxsize > 0 else TransferService._DEFAULT_QUEUE_SIZE
       TransferService.data_buffer[key] = \
         FifoBroker(max_capacity=final_size, write_signals=write_signals)
