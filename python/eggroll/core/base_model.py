@@ -13,18 +13,18 @@
 #  limitations under the License.
 
 class RpcMessage(object):
-  def __str__(self):
-    return self.__repr__()
+    def __str__(self):
+        return self.__repr__()
 
 
 class NetworkingRpcMessage(RpcMessage):
-  pass
+    pass
 
 class MetaRpcMessage(RpcMessage):
-  pass
+    pass
 
 class TransferRpcMessage(RpcMessage):
-  pass
+    pass
 
 class CommandRpcMessage(RpcMessage):
-  pass
+    pass
