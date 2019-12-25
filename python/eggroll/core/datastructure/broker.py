@@ -13,9 +13,10 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from queue import Queue
-from eggroll.utils import log_utils
 import time
+from queue import Queue
+
+from eggroll.utils import log_utils
 
 log_utils.setDirectory()
 LOGGER = log_utils.getLogger()
@@ -63,7 +64,7 @@ class Broker(object):
 
 class FifoBroker(Broker):
   __broker_seq = 0
-  #todo: make maxsize configurable
+  # todo:1: make maxsize configurable
   def __init__(self, max_capacity = 10000, write_signals = 1, name = f"fifobroker-{time.time()}-{__broker_seq}"):
     FifoBroker.__broker_seq += 1
     self.__queue = Queue(maxsize=max_capacity)
