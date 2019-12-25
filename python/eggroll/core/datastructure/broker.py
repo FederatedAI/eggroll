@@ -21,115 +21,119 @@ from eggroll.utils import log_utils
 log_utils.setDirectory()
 LOGGER = log_utils.getLogger()
 
+
 class Broker(object):
-  def is_write_finished(self):
-    raise NotImplementedError()
+    def is_write_finished(self):
+        raise NotImplementedError()
 
-  def signal_write_finish(self):
-    raise NotImplementedError()
+    def signal_write_finish(self):
+        raise NotImplementedError()
 
-  def get_remaining_write_signal_count(self):
-    raise NotImplementedError()
+    def get_remaining_write_signal_count(self):
+        raise NotImplementedError()
 
-  def is_read_ready(self):
-    raise NotImplementedError()
+    def is_read_ready(self):
+        raise NotImplementedError()
 
-  def is_closable(self):
-    raise NotImplementedError()
+    def is_closable(self):
+        raise NotImplementedError()
 
-  def total(self):
-    raise NotImplementedError()
+    def total(self):
+        raise NotImplementedError()
 
-  def total_none(self):
-    raise NotImplementedError()
+    def total_none(self):
+        raise NotImplementedError()
 
-  def size(self):
-    raise NotImplementedError()
+    def size(self):
+        raise NotImplementedError()
 
-  def put_nowait(self, item):
-    raise NotImplementedError()
+    def put_nowait(self, item):
+        raise NotImplementedError()
 
-  def get_nowait(self):
-    raise NotImplementedError()
+    def get_nowait(self):
+        raise NotImplementedError()
 
-  def put(self, item, block=True, timeout=None):
-    raise NotImplementedError()
+    def put(self, item, block=True, timeout=None):
+        raise NotImplementedError()
 
-  def get(self, block=True, timeout=None):
-    raise NotImplementedError()
+    def get(self, block=True, timeout=None):
+        raise NotImplementedError()
 
-  def drain_to(self, target, max_elements = 10000):
-    raise NotImplementedError()
+    def drain_to(self, target, max_elements=10000):
+        raise NotImplementedError()
 
 
 class FifoBroker(Broker):
-  __broker_seq = 0
-  # todo:1: make maxsize configurable
-  def __init__(self, max_capacity = 10000, write_signals = 1, name = f"fifobroker-{time.time()}-{__broker_seq}"):
-    FifoBroker.__broker_seq += 1
-    self.__queue = Queue(maxsize=max_capacity)
-    self.__remaining_write_signal_count = write_signals
-    self.__total_write_signals = write_signals
+    __broker_seq = 0
 
-  def get_total_write_signals(self):
-    return self.__total_write_signals
+    # todo:1: make maxsize configurable
+    def __init__(self, max_capacity=10000, write_signals=1,
+            name=f"fifobroker-{time.time()}-{__broker_seq}"):
+        FifoBroker.__broker_seq += 1
+        self.__queue = Queue(maxsize=max_capacity)
+        self.__remaining_write_signal_count = write_signals
+        self.__total_write_signals = write_signals
 
-  def is_write_finished(self):
-    return self.__remaining_write_signal_count <= 0
+    def get_total_write_signals(self):
+        return self.__total_write_signals
 
-  def signal_write_finish(self):
-    if self.is_write_finished():
-      raise ValueError(f"finish signaling overflows. initial value: {self.__total_write_signals}")
-    else:
-      self.__remaining_write_signal_count -= 1
+    def is_write_finished(self):
+        return self.__remaining_write_signal_count <= 0
 
-  def get_remaining_write_signal_count(self):
-    return self.__remaining_write_signal_count
+    def signal_write_finish(self):
+        if self.is_write_finished():
+            raise ValueError(
+                f"finish signaling overflows. initial value: {self.__total_write_signals}")
+        else:
+            self.__remaining_write_signal_count -= 1
 
-  def is_read_ready(self):
-    return not self.__queue.empty()
+    def get_remaining_write_signal_count(self):
+        return self.__remaining_write_signal_count
 
-  def is_closable(self):
-    result = self.is_write_finished() and self.__queue.empty()
-    return result
+    def is_read_ready(self):
+        return not self.__queue.empty()
 
-  def size(self):
-    return self.__queue.qsize()
+    def is_closable(self):
+        result = self.is_write_finished() and self.__queue.empty()
+        return result
 
-  def put_nowait(self, item):
-    return self.put(item=item, block=False)
+    def size(self):
+        return self.__queue.qsize()
 
-  def get_nowait(self):
-    return self.get(block=False)
+    def put_nowait(self, item):
+        return self.put(item=item, block=False)
 
-  def put(self, item, block=True, timeout=None):
-    return self.__queue.put(item=item, block=block, timeout=timeout)
+    def get_nowait(self):
+        return self.get(block=False)
 
-  def get(self, block=True, timeout=None):
-    return self.__queue.get(block=True, timeout=timeout)
+    def put(self, item, block=True, timeout=None):
+        return self.__queue.put(item=item, block=block, timeout=timeout)
 
-  def drain_to(self, target, max_elements = 10000):
-    if hasattr(target, 'append'):
-      func = getattr(target, 'append')
-    elif hasattr(target, 'put'):
-      func = getattr(target, 'put')
+    def get(self, block=True, timeout=None):
+        return self.__queue.get(block=True, timeout=timeout)
 
-    cur_count = 0
-    while self.is_read_ready() and cur_count < max_elements:
-      func(self.get())
-      cur_count += 1
+    def drain_to(self, target, max_elements=10000):
+        if hasattr(target, 'append'):
+            func = getattr(target, 'append')
+        elif hasattr(target, 'put'):
+            func = getattr(target, 'put')
 
-  def __iter__(self):
-    return self
+        cur_count = 0
+        while self.is_read_ready() and cur_count < max_elements:
+            func(self.get())
+            cur_count += 1
 
-  def __next__(self):
-    if not self.is_closable():
-      return self.get(block=True)
-    else:
-      raise StopIteration
+    def __iter__(self):
+        return self
 
-  def __enter__(self):
-    return self
+    def __next__(self):
+        if not self.is_closable():
+            return self.get(block=True)
+        else:
+            raise StopIteration
 
-  def __exit__(self, exc_type, exc_val, exc_tb):
-    pass
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        pass

@@ -12,13 +12,15 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from eggroll.core.meta_model import ErEndpoint
-
 import grpc
 
+from eggroll.core.meta_model import ErEndpoint
+
+
 class GrpcChannelFactory(object):
-  def create_channel(self, endpoint: ErEndpoint, is_secure_channel=False):
-    result = grpc.insecure_channel(target=f'{endpoint._host}:{repr(endpoint._port)}',
-                                   options=[('grpc.max_send_message_length', -1),
-                                            ('grpc.max_receive_message_length', -1)])
-    return result
+    def create_channel(self, endpoint: ErEndpoint, is_secure_channel=False):
+        result = grpc.insecure_channel(
+            target=f'{endpoint._host}:{repr(endpoint._port)}',
+            options=[('grpc.max_send_message_length', -1),
+                     ('grpc.max_receive_message_length', -1)])
+        return result
