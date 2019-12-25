@@ -30,7 +30,6 @@ import com.webank.eggroll.core.datastructure.{Broker, LinkedBlockingBroker}
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.transfer.GrpcTransferClient
 import com.webank.eggroll.core.util.{IdUtils, Logging}
-import com.webank.eggroll.rollpair.component.RollPairMaster
 
 import scala.collection.JavaConverters._
 class RollPairContext(val session: ErSession,

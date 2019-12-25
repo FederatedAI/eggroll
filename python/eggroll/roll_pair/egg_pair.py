@@ -605,6 +605,7 @@ if __name__ == '__main__':
   parser.add_argument('-t', '--transfer-port', default='-1')
   parser.add_argument('-sn', '--server-node-id')
   parser.add_argument('-prid', '--processor-id')
+  parser.add_argument('-c', '--config')
 
   args = parser.parse_args()
   print(args)

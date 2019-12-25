@@ -16,7 +16,7 @@
  *
  */
 
-package com.webank.eggroll.rollpair.component
+package com.webank.eggroll.rollpair
 
 import com.webank.eggroll.core.client.ClusterManagerClient
 import com.webank.eggroll.core.command.CommandURI

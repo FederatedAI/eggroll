@@ -24,7 +24,7 @@ import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.transfer.TransferServiceGrpcImpl
 import com.webank.eggroll.core.util.Logging
-import com.webank.eggroll.rollpair.component.{EggPair, RollPairMaster}
+import com.webank.eggroll.rollpair.{EggPair, RollPairMaster}
 import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
 import org.junit.Test
 
