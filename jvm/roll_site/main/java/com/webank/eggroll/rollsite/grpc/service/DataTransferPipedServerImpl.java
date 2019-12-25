@@ -207,6 +207,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
         long overallTimeout = timeouts.getOverallTimeout(inputMetadata);
         long packetIntervalTimeout = timeouts.getPacketIntervalTimeout(inputMetadata);
 
+        LOGGER.info("taskId:{}", inputMetadata.getTask().getTaskId());
         Pipe pipe = getPipe(inputMetadata.getTask().getTaskId());
 
         LOGGER.info("[UNARYCALL][SERVER] unary call pipe: {}", pipe);
@@ -223,14 +224,16 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
             responseObserver.onCompleted();
             return;
         }
-        if(request.getHeader().getOperator().equals("markEnd")) {
+        if(request.getHeader().getOperator().equals("markEnd") && proxyServerConf.getPartyId().equals(inputMetadata.getDst().getPartyId())) {
             LOGGER.info("markEnd");
             Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
-            Proxy.Data data = Proxy.Data.newBuilder().setValue(ByteString.copyFromUtf8("hello")).build();
-            packet = packetBuilder.setHeader(request.getHeader())
-                .setBody(data)
-                .build();
+            Proxy.Data data = Proxy.Data.newBuilder().build();
+            packet = packetBuilder.setHeader(request.getHeader()).build();
             pipe.setStatus(true);
+            LOGGER.info("type: {}", request.getHeader().getTask().getModel().getName());
+            LOGGER.info("tagkey: {}", request.getHeader().getTask().getModel().getDataKey());
+            pipe.setType(request.getHeader().getTask().getModel().getName());
+            pipe.setTagKey(request.getHeader().getTask().getModel().getDataKey());
             responseObserver.onNext(packet);
             responseObserver.onCompleted();
             return;
@@ -239,12 +242,23 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
             LOGGER.info("getStatus");
             Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
             boolean status = pipe.getStatus();
-            Proxy.Metadata header;
-            if(status == true)
-                header = Proxy.Metadata.newBuilder().setAck(123).build();
-            else
+            Proxy.Metadata header = request.getHeader();
+            if(status == true) {
+                LOGGER.info("status == true");
+                header = Proxy.Metadata.newBuilder().setAck(123)
+                                                    .setSrc(request.getHeader().getSrc())
+                                                    .setDst(request.getHeader().getDst())
+                                                    .build();
+            }
+            else {
+                LOGGER.info("status != true");
                 header = Proxy.Metadata.newBuilder().setAck(321).build();
-            packet = packetBuilder.setHeader(header).build();
+            }
+            LOGGER.info("get tagkey: {}", pipe.getTagKey());
+            LOGGER.info("get type: {}", ByteString.copyFromUtf8(pipe.getType()));
+            Proxy.Data body = Proxy.Data.newBuilder().setKey(pipe.getTagKey())
+                                                     .setValue(ByteString.copyFromUtf8(pipe.getType())).build();
+            packet = packetBuilder.setHeader(header).setBody(body).build();
             responseObserver.onNext(packet);
             responseObserver.onCompleted();
             return;
