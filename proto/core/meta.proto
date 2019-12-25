@@ -125,7 +125,7 @@ message SessionMeta {
   string id = 1;
   string name = 2;
   string status = 3;
-  map<string, string> options = 4;
-  string tag = 5;
-  repeated Processor processors = 6;
+  string tag = 4;
+  repeated Processor processors = 5;
+  map<string, string> options = 6;
 }

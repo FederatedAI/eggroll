@@ -13,36 +13,38 @@
 #  limitations under the License.
 
 
-from eggroll.core.session import ErSession
-from eggroll.core.conf_keys import DeployConfKeys, SessionConfKeys
-
+import os
 import unittest
+
+from eggroll.core.conf_keys import DeployConfKeys, SessionConfKeys
+from eggroll.core.session import ErSession
+
 
 class TestSession(unittest.TestCase):
   def test_create_session(self):
     options = {}
-    base_dir = '/Users/max-webank/git/eggroll-2.x/jvm/roll_pair/'
+    base_dir = os.environ['EGGROLL_HOME']
 
-    options[DeployConfKeys.CONFKEY_DEPLOY_ROLLPAIR_VENV_PATH] = '/Users/max-webank/env/venv'
+    options[DeployConfKeys.CONFKEY_DEPLOY_ROLLPAIR_VENV_PATH] = f"{base_dir}/venv"
     options[DeployConfKeys.CONFKEY_DEPLOY_ROLLPAIR_DATA_DIR_PATH] = '/tmp/eggroll'
-    options[DeployConfKeys.CONFKEY_DEPLOY_ROLLPAIR_EGGPAIR_PATH] = '/Users/max-webank/git/eggroll/roll_pair/egg_pair.py'
-    options[DeployConfKeys.CONFKEY_DEPLOY_ROLLPAIR_PYTHON_PATH] = '/Users/max-webank/git'
+    options[DeployConfKeys.CONFKEY_DEPLOY_ROLLPAIR_EGGPAIR_PATH] = f'{base_dir}/python/roll/egg_pair.py'
+    options[DeployConfKeys.CONFKEY_DEPLOY_ROLLPAIR_PYTHON_PATH] = f'{base_dir}/python'
     options[DeployConfKeys.CONFKEY_DEPLOY_JVM_MAINCLASS] = 'com.webank.eggroll.rollpair.Main'
     options[DeployConfKeys.CONFKEY_DEPLOY_JVM_CLASSPATH] = f'{base_dir}/target/lib/*:{base_dir}/target/eggroll-roll-pair-2.0.jar:{base_dir}/resources'
     options[SessionConfKeys.CONFKEY_SESSION_ID] = 'testing'
     options[SessionConfKeys.CONFKEY_SESSION_MAX_PROCESSORS_PER_NODE] = '1'
 
     print(options)
-    session = ErSession(options = options)
+    session = ErSession(options=options)
 
   def test_register_session(self):
     options = {}
-    base_dir = '/Users/max-webank/git/eggroll-2.x/jvm/roll_pair/'
+    base_dir = os.environ['EGGROLL_HOME']
 
-    options[DeployConfKeys.CONFKEY_DEPLOY_ROLLPAIR_VENV_PATH] = '/Users/max-webank/env/venv'
+    options[DeployConfKeys.CONFKEY_DEPLOY_ROLLPAIR_VENV_PATH] = f'{base_dir}/venv'
     options[DeployConfKeys.CONFKEY_DEPLOY_ROLLPAIR_DATA_DIR_PATH] = '/tmp/eggroll'
-    options[DeployConfKeys.CONFKEY_DEPLOY_ROLLPAIR_EGGPAIR_PATH] = '/Users/max-webank/git/eggroll/roll_pair/egg_pair.py'
-    options[DeployConfKeys.CONFKEY_DEPLOY_ROLLPAIR_PYTHON_PATH] = '/Users/max-webank/git'
+    options[DeployConfKeys.CONFKEY_DEPLOY_ROLLPAIR_EGGPAIR_PATH] = f'{base_dir}/python/roll_pair/egg_pair.py'
+    options[DeployConfKeys.CONFKEY_DEPLOY_ROLLPAIR_PYTHON_PATH] = f'{base_dir}/python'
     options[DeployConfKeys.CONFKEY_DEPLOY_JVM_MAINCLASS] = 'com.webank.eggroll.rollpair.Main'
     options[
       DeployConfKeys.CONFKEY_DEPLOY_JVM_CLASSPATH] = f'{base_dir}/target/lib/*:{base_dir}/target/eggroll-roll-pair-2.0.jar:{base_dir}/resources'

@@ -13,22 +13,34 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import argparse
-import os
-import threading
-import time
 import unittest
-from eggroll.core.session import ErSession, StandaloneThread
-from eggroll.roll_pair.roll_pair import RollPairContext
-from eggroll.roll_pair.test.roll_pair_test_assets import get_test_context
 
-os.environ['EGGROLL_STANDALONE_DEBUG'] = "1"
+from eggroll.roll_pair.test.roll_pair_test_assets import get_debug_test_context, \
+  get_cluster_context, get_standalone_context
 
-os.environ['EGGROLL_HOME'] = "/Users/max-webank/git/eggroll-2.x"
+is_debug = False
+is_standalone = True
 
 class TestStandalone(unittest.TestCase):
+  ctx = None
+
+  @classmethod
+  def setUpClass(cls) -> None:
+    if is_debug:
+      cls.ctx = get_debug_test_context()
+    else:
+      if is_standalone:
+        cls.ctx = get_standalone_context()
+      else:
+        cls.ctx = get_cluster_context()
+
   def setUp(self):
-    self.ctx = get_test_context()
+    self.ctx = TestStandalone.ctx
+
+  @classmethod
+  def tearDownClass(cls) -> None:
+    if not is_debug:
+      cls.ctx.get_session().stop()
 
   def test_parallelize(self):
     print(list(self.ctx.parallelize(range(15)).get_all()))
@@ -44,7 +56,7 @@ class TestStandalone(unittest.TestCase):
     options = {}
     options['include_key'] = True
     self.ctx.load("ns1", "testPutAll").put_all(data, options=options)
-    table = list(self.ctx.load("ns1", "n36").get_all())
+    table = list(self.ctx.load("ns1", "testPutAll").get_all())
     print("get res:{}".format(table))
 
   def test_multi_partition_put_all(self):
@@ -52,7 +64,8 @@ class TestStandalone(unittest.TestCase):
     options = {}
     options['total_partitions'] = 3
     options['include_key'] = True
-    table = self.ctx.load("ns1", "testMultiPartitionPutAll", options=options).put_all(data, options=options)
+    table = self.ctx.load("ns1", "testMultiPartitionPutAll", options=options)
+    table.put_all(data, options=options)
     print(list(table.get_all()))
 
   def test_get_all(self):
