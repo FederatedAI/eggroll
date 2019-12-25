@@ -22,13 +22,12 @@ import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
 import com.webank.eggroll.core.client.ClusterManagerClient
-import com.webank.eggroll.core.clustermanager.ClusterManager
-import com.webank.eggroll.core.clustermanager.metadata.{ServerNodeCrudOperator, StoreCrudOperator}
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
 import com.webank.eggroll.core.constant._
 import com.webank.eggroll.core.meta._
+import com.webank.eggroll.core.resourcemanager.ClusterManagerBootstrap
+import com.webank.eggroll.core.resourcemanager.metadata.{ServerNodeCrudOperator, StoreCrudOperator}
 import com.webank.eggroll.core.session.StaticErConf
-import com.webank.eggroll.core.transfer.TransferService
 import io.grpc.Server
 import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
 import org.junit.{Assert, Before, Test}
@@ -88,19 +87,19 @@ class TestClusterManager {
     CommandRouter.register(serviceName = SessionCommands.getOrCreateSession.uriString,
       serviceParamTypes = Array(classOf[ErSessionMeta]),
       serviceResultTypes = Array(classOf[ErProcessorBatch]),
-      routeToClass = classOf[ClusterManager],
+      routeToClass = classOf[ClusterManagerBootstrap],
       routeToMethodName = SessionCommands.getOrCreateSession.getName())
 
     CommandRouter.register(serviceName = SessionCommands.getSession.uriString,
       serviceParamTypes = Array(classOf[ErSessionMeta]),
       serviceResultTypes = Array(classOf[ErProcessorBatch]),
-      routeToClass = classOf[ClusterManager],
+      routeToClass = classOf[ClusterManagerBootstrap],
       routeToMethodName = SessionCommands.getSession.getName())
 
     CommandRouter.register(serviceName = SessionCommands.registerSession.uriString,
       serviceParamTypes = Array(classOf[ErSessionMeta], classOf[ErProcessorBatch]),
       serviceResultTypes = Array(classOf[ErProcessorBatch]),
-      routeToClass = classOf[ClusterManager],
+      routeToClass = classOf[ClusterManagerBootstrap],
       routeToMethodName = SessionCommands.registerSession.getName())
 
     val clusterManager = NettyServerBuilder
