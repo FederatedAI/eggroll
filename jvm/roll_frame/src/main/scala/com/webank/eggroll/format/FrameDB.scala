@@ -20,7 +20,6 @@ package com.webank.eggroll.format
 
 import java.io._
 import java.nio.channels.{Channels, ReadableByteChannel, WritableByteChannel}
-import java.nio.file.Path
 import java.util.concurrent.{BlockingQueue, LinkedBlockingQueue}
 
 import com.webank.eggroll.core.constant.StringConstants
@@ -80,6 +79,7 @@ object FrameDB {
   val PATH = StringConstants.PATH
   val TYPE = StringConstants.TYPE
 
+  // TODO:0: read in config
   private val rootPath = "/tmp/unittests/RollFrameTests/"
 
   private def getStorePath(store: ErStore, partitionId: Int): String = {

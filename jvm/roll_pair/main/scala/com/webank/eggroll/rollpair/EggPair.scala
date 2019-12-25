@@ -16,21 +16,20 @@
  *
  */
 
-package com.webank.eggroll.rollpair.component
+package com.webank.eggroll.rollpair
 
-import java.util.concurrent.{ArrayBlockingQueue, ConcurrentLinkedQueue, TimeUnit}
+import java.util.concurrent.TimeUnit
 
 import com.webank.eggroll.core.constant.StringConstants
 import com.webank.eggroll.core.datastructure.LinkedBlockingBroker
 import com.webank.eggroll.core.error.DistributedRuntimeException
 import com.webank.eggroll.core.meta.{ErPartition, ErTask}
 import com.webank.eggroll.core.serdes.DefaultScalaSerdes
-import com.webank.eggroll.core.transfer.{TransferService, GrpcTransferClient}
+import com.webank.eggroll.core.transfer.{GrpcTransferClient, TransferService}
 import com.webank.eggroll.core.util.Logging
 import com.webank.eggroll.rollpair.io.RocksdbSortedKvAdapter
 
 import scala.collection.mutable
-import scala.collection.mutable.ListBuffer
 
 class EggPair extends Logging {
 
@@ -61,7 +60,7 @@ class EggPair extends Logging {
       val inputAdapter = new RocksdbSortedKvAdapter(EggPair.getDbPath(inputPartition))
       val outputStore = task.job.outputs.head
 
-      // todo: encapsulates to shuffle command
+      // todo:2: encapsulates to shuffle command
       val shuffleBroker = new LinkedBlockingBroker[(Array[Byte], Array[Byte])]()
       val shuffler = new DefaultShuffler(task.job.id, shuffleBroker, outputStore, outputPartition, p)
 
@@ -102,7 +101,7 @@ class EggPair extends Logging {
         var combOpResult = seqOpResult
 
         for (i <- 1 until partitionSize) {
-          // todo: bind with configurations
+          // todo:2: bind with configurations
           val transferBatch = queue.poll(10, TimeUnit.MINUTES)
           val seqOpResult = transferBatch.getData.toByteArray
 

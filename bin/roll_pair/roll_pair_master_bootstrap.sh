@@ -98,10 +98,10 @@ else
 fi
 
 if [[ -z ${mainclass} ]]; then
-  mainclass="com.webank.eggroll.rollpair.Main"
+  mainclass="com.webank.eggroll.rollpair.RollPairMasterBootstrap"
 fi
 
-cmd="${JAVA} ${jvm_options} -cp ${classpath} ${mainclass} --session-id ${session_id} --server-node-id ${server_node_id} --cluster-manager ${cluster_manager_host}:${cluster_manager_port} --node-manager ${node_manager_port} --processor-id ${processor_id}"
+cmd="${JAVA} ${jvm_options} -cp ${classpath} com.webank.eggroll.core.Bootstrap --bootstraps ${mainclass} --config ${config} --session-id ${session_id} --server-node-id ${server_node_id} --cluster-manager ${cluster_manager_host}:${cluster_manager_port} --node-manager ${node_manager_port} --processor-id ${processor_id}"
 
 if [[ -n ${port} ]]; then
   cmd="${cmd} --port ${port}"
