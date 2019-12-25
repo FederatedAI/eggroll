@@ -24,9 +24,7 @@ import com.google.protobuf.ByteString
 import com.webank.eggroll.core.ErSession
 import com.webank.eggroll.core.constant.{NetworkConstants, StoreTypes}
 import com.webank.eggroll.core.datastructure.LinkedBlockingBroker
-import com.webank.eggroll.core.meta.{ErStore, ErStoreLocator}
 import com.webank.eggroll.rollpair.RollPairContext
-import com.webank.eggroll.rollpair.client.RollPair
 import org.junit.Test
 
 import scala.collection.mutable.ListBuffer

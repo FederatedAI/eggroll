@@ -329,14 +329,13 @@ class RollPair(object):
     adapter = BrokerAdapter(FifoBroker(write_signals=self.__store._store_locator._total_partitions))
     transfer_pair.start_pull(adapter)
 
-    # TODO:0: move to generator
     return pair_generator(adapter, self.key_serdes, self.value_serdes, cleanup)
 
   def put_all(self, items, output=None, options={}):
     include_key = options.get("include_key", False)
     job_id = generate_job_id(self.__session_id)
 
-    # TODO:0: consider multiprocessing scenario. parallel size should be sent to egg_pair to set write signal count
+    # TODO:1: consider multiprocessing scenario. parallel size should be sent to egg_pair to set write signal count
     def send_command():
       job = ErJob(id=job_id,
                   name=RollPair.PUT_ALL,
@@ -470,7 +469,7 @@ class RollPair(object):
     outputs = []
     if output:
       outputs.append(output)
-    # todo:0: options issues
+    # todo:0: options issues. refer to line 77
     final_options = {}
     final_options.update(self.__store._options)
     final_options.update(options)

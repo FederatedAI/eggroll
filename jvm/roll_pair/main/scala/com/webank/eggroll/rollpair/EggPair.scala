@@ -60,7 +60,7 @@ class EggPair extends Logging {
       val inputAdapter = new RocksdbSortedKvAdapter(EggPair.getDbPath(inputPartition))
       val outputStore = task.job.outputs.head
 
-      // todo: encapsulates to shuffle command
+      // todo:2: encapsulates to shuffle command
       val shuffleBroker = new LinkedBlockingBroker[(Array[Byte], Array[Byte])]()
       val shuffler = new DefaultShuffler(task.job.id, shuffleBroker, outputStore, outputPartition, p)
 
@@ -101,7 +101,7 @@ class EggPair extends Logging {
         var combOpResult = seqOpResult
 
         for (i <- 1 until partitionSize) {
-          // todo: bind with configurations
+          // todo:2: bind with configurations
           val transferBatch = queue.poll(10, TimeUnit.MINUTES)
           val seqOpResult = transferBatch.getData.toByteArray
 

@@ -29,7 +29,7 @@ from eggroll.core.client import ClusterManagerClient
 from eggroll.core.command.command_router import CommandRouter
 from eggroll.core.command.command_service import CommandServicer
 from eggroll.core.conf_keys import NodeManagerConfKeys, SessionConfKeys, \
-  ClusterManagerConfKeys
+    ClusterManagerConfKeys
 from eggroll.core.constants import ProcessorTypes, ProcessorStatus, SerdesTypes
 from eggroll.core.datastructure.broker import FifoBroker
 from eggroll.core.io.io_utils import get_db_path
@@ -38,7 +38,7 @@ from eggroll.core.meta_model import ErTask, ErProcessor, ErEndpoint
 from eggroll.core.proto import command_pb2_grpc, transfer_pb2_grpc
 from eggroll.core.serdes import cloudpickle
 from eggroll.core.transfer.transfer_service import GrpcTransferServicer, \
-  TransferClient, TransferService
+    TransferClient, TransferService
 from eggroll.core.utils import _exception_logger
 from eggroll.core.utils import hash_code
 from eggroll.roll_pair import create_adapter, create_serdes
@@ -158,13 +158,13 @@ class EggPair(object):
       t.join()
       input_adapter.close()
 
-      # TODO:0: self-destroy broker, like gc
+      # TODO:2: self-destroy broker, like gc
       from time import sleep
       while not bin_output_broker.is_closable():
         sleep(1)
       TransferService.remove_broker(tag)
 
-    # TODO:0: multiprocessor scenario
+    # TODO:1: multiprocessor scenario
     elif task._name == 'putAll':
       print("egg_pair putAll call")
 

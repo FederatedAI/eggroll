@@ -42,7 +42,6 @@ import org.apache.logging.log4j.Logger;
  * R: calleR type
  * E: calleE type
  */
-// todo: add state track
 public class GrpcClientTemplate<S extends AbstractStub, R extends Message, E extends Message> {
 
   private static final Logger LOGGER = LogManager.getLogger();

@@ -19,14 +19,10 @@
 package com.webank.eggroll.core.io.adapter
 
 import java.io._
-import java.util.concurrent.{BlockingQueue, LinkedBlockingQueue}
 
-import com.google.protobuf.ByteString
 import com.webank.eggroll.core.constant.StringConstants
-import io.grpc.stub.StreamObserver
 
 import scala.collection.concurrent.TrieMap
-import scala.collection.mutable
 
 
 // need random access?
@@ -80,7 +76,7 @@ class FileBlockAdapter(path: String) extends BlockDeviceAdapter {
 
 class JvmBlockAdapter(path: String, size: Int) extends BlockDeviceAdapter {
   override def getInputStream(): InputStream = {
-    // TODO: check null and size
+    // TODO:2: check null and size
     new ByteArrayInputStream(JvmBlockAdapter.get(path).get)
   }
 
