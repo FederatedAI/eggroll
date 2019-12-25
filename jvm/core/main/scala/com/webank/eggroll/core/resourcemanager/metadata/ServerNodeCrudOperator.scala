@@ -16,22 +16,22 @@
  *
  */
 
-package com.webank.eggroll.core.clustermanager.metadata
+package com.webank.eggroll.core.resourcemanager.metadata
 
 import java.util
 import java.util.Date
 
 import com.webank.eggroll.core.clustermanager.dao.generated.mapper.ServerNodeMapper
+import com.webank.eggroll.core.clustermanager.dao.generated.model.{ServerNode, ServerNodeExample}
+import com.webank.eggroll.core.constant.{ServerNodeStatus, ServerNodeTypes}
 import com.webank.eggroll.core.error.CrudException
 import com.webank.eggroll.core.meta.{ErEndpoint, ErServerCluster, ErServerNode}
 import com.webank.eggroll.core.util.Logging
-import com.webank.eggroll.core.clustermanager.dao.generated.model.{ServerNode, ServerNodeExample}
-import com.webank.eggroll.core.constant.{ServerNodeStatus, ServerNodeTypes}
 import org.apache.commons.lang3.StringUtils
 import org.apache.ibatis.session.SqlSession
 
+import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
-import collection.JavaConverters._
 
 class ServerNodeCrudOperator extends CrudOperator with Logging {
   private val crudOperatorTemplate = new CrudOperatorTemplate()

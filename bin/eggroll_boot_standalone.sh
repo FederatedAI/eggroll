@@ -1,11 +1,13 @@
+#!/usr/bin/env bash
+
 SHELL_FOLDER=$(dirname "$0")
 # EGGROLL_HOME
 cd $SHELL_FOLDER/../
-base_dir=$SHELL_FOLDER/../jvm
+base_dir=$SHELL_FOLDER/..
 #set -x
 session_id="null_sid"
-manager_port=0
-eggs=0
+manager_port=4670
+version=2.0
 while getopts ":s:p:e:" opt; do
   case $opt in
     s)
@@ -20,14 +22,14 @@ while getopts ":s:p:e:" opt; do
    ?)
       echo "Invalid option: -$OPTARG index:$OPTIND"
       ;;
-
   esac
 done
-#java -cp ${base_dir}/core/main/resources:${base_dir}/roll_pair/target/classes:${base_dir}/core/target/classes:${base_dir}/core/target/lib/*:${base_dir}/roll_pair/target/lib/* com.webank.eggroll.rollpair.StandaloneManager -c ${base_dir}/core/main/resources/cluster-manager.properties -s $session_id -p $manager_port
-java -cp ${base_dir}/core/main/resources:${base_dir}/roll_pair/target/eggroll-roll-pair-2.0.jar:${base_dir}/core/target/lib/*:${base_dir}/roll_pair/target/lib/* com.webank.eggroll.rollpair.StandaloneManager -c ${base_dir}/core/main/resources/cluster-manager.properties -s $session_id -p $manager_port &
-# TODO:1: multi process
-export PYTHONPATH=PYTHONPATH:$SHELL_FOLDER/../python
-python $SHELL_FOLDER/../python/eggroll/roll_pair/egg_pair.py -p $eggs -s $session_id &
-while [ 1 ]; do
-  sleep 1
-done
+
+echo "base_dir: ${base_dir}"
+cmd="java -Dlog4j.configurationFile=${base_dir}/conf/standalone-manager-log4j2.properties -cp ${base_dir}/jvm/core/target/eggroll-core-${version}.jar${base_dir}/jvm/core/target/lib/*:${base_dir}/jvm/roll_pair/target/lib/*:${base_dir}/jvm/roll_pair/target/eggroll-roll-pair-${version}.jar com.webank.eggroll.core.Bootstrap --ignore-rebind --bootstraps com.webank.eggroll.core.resourcemanager.ClusterManagerBootstrap,com.webank.eggroll.core.resourcemanager.NodeManagerBootstrap -c ${base_dir}/conf/eggroll.properties -s $session_id -p $manager_port &"
+echo "cmd: ${cmd}"
+eval ${cmd}
+
+#while [ 1 ]; do
+#  sleep 1
+#done

@@ -20,9 +20,9 @@ package com.webank.eggroll.clustermanager.metadata
 
 import java.io.File
 
-import com.webank.eggroll.core.clustermanager.metadata.StoreCrudOperator
 import com.webank.eggroll.core.constant.StoreTypes
 import com.webank.eggroll.core.meta.{ErStore, ErStoreLocator}
+import com.webank.eggroll.core.resourcemanager.metadata.StoreCrudOperator
 import com.webank.eggroll.core.session.StaticErConf
 import org.junit.Test
 

@@ -25,10 +25,9 @@ import com.webank.eggroll.core.schedule.{FilterTaskPlan, FlatMapTaskPlan, GlomTa
 import com.webank.eggroll.core.serdes.DefaultScalaSerdes
 import org.apache.commons.lang3.StringUtils
 
-import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
-class RollPairServicer() {
+class RollPairMaster() {
   val scheduler = ListScheduler()
   val clusterManagerClient = new ClusterManagerClient()
 
@@ -56,7 +55,7 @@ class RollPairServicer() {
     val outputStoreWithPartitions = clusterManagerClient.getOrCreateStore(outputStoreProposal)
 
     val taskPlanJob = inputJob.copy(inputs = Array(inputStoreWithPartitions), outputs = Array(outputStoreWithPartitions))
-    val taskPlan = new MapTaskPlan(new CommandURI(RollPairServicer.eggMapValuesCommand), taskPlanJob)
+    val taskPlan = new MapTaskPlan(new CommandURI(RollPairMaster.eggMapValuesCommand), taskPlanJob)
 
     scheduler.addPlan(taskPlan)
 
@@ -124,7 +123,7 @@ class RollPairServicer() {
 
     val taskPlanJob = inputJob.copy(inputs = Array(inputStoreWithPartitions), outputs = Array(outputStoreWithPartitions))
 
-    val taskPlan = new ReduceTaskPlan(new CommandURI(RollPairServicer.eggReduceCommand), taskPlanJob)
+    val taskPlan = new ReduceTaskPlan(new CommandURI(RollPairMaster.eggReduceCommand), taskPlanJob)
     scheduler.addPlan(taskPlan)
 
     JobRunner.run(scheduler.getPlan())
@@ -153,7 +152,7 @@ class RollPairServicer() {
     val outputStoreWithPartitions = clusterManagerClient.getOrCreateStore(outputStoreWithPartitionProposal)
 
     val taskPlanJob = inputJob.copy(inputs = Array(inputStoreWithPartitions), outputs = Array(outputStoreWithPartitions))
-    val taskPlan = new MapTaskPlan(new CommandURI(RollPairServicer.eggMapPartitionsCommand), taskPlanJob)
+    val taskPlan = new MapTaskPlan(new CommandURI(RollPairMaster.eggMapPartitionsCommand), taskPlanJob)
 
     scheduler.addPlan(taskPlan)
 
@@ -186,7 +185,7 @@ class RollPairServicer() {
     val outputStoreWithPartitions = clusterManagerClient.getOrCreateStore(outputStoreWithPartitionProposal)
 
     val taskPlanJob = inputJob.copy(inputs = Array(inputStoreWithPartitions), outputs = Array(outputStoreWithPartitions))
-    val taskPlan = new MapTaskPlan(new CommandURI(RollPairServicer.eggCollapsePartitionsCommand), taskPlanJob)
+    val taskPlan = new MapTaskPlan(new CommandURI(RollPairMaster.eggCollapsePartitionsCommand), taskPlanJob)
 
     scheduler.addPlan(taskPlan)
 
@@ -219,7 +218,7 @@ class RollPairServicer() {
     val outputStoreWithPartitions = clusterManagerClient.getOrCreateStore(outputStoreWithPartitionProposal)
 
     val taskPlanJob = inputJob.copy(inputs = Array(inputStoreWithPartitions), outputs = Array(outputStoreWithPartitions))
-    val taskPlan = new FlatMapTaskPlan(new CommandURI(RollPairServicer.eggFlatMapCommand), taskPlanJob)
+    val taskPlan = new FlatMapTaskPlan(new CommandURI(RollPairMaster.eggFlatMapCommand), taskPlanJob)
 
     scheduler.addPlan(taskPlan)
 
@@ -252,7 +251,7 @@ class RollPairServicer() {
     val outputStoreWithPartitions = clusterManagerClient.getOrCreateStore(outputStoreWithPartitionProposal)
 
     val taskPlanJob = inputJob.copy(inputs = Array(inputStoreWithPartitions), outputs = Array(outputStoreWithPartitions))
-    val taskPlan = new GlomTaskPlan(new CommandURI(RollPairServicer.eggGlomMapCommand), taskPlanJob)
+    val taskPlan = new GlomTaskPlan(new CommandURI(RollPairMaster.eggGlomMapCommand), taskPlanJob)
 
     scheduler.addPlan(taskPlan)
 
@@ -285,7 +284,7 @@ class RollPairServicer() {
     val outputStoreWithPartitions = clusterManagerClient.getOrCreateStore(outputStoreWithPartitionProposal)
 
     val taskPlanJob = inputJob.copy(inputs = Array(inputStoreWithPartitions), outputs = Array(outputStoreWithPartitions))
-    val taskPlan = new SampleTaskPlan(new CommandURI(RollPairServicer.eggSampleMapCommand), taskPlanJob)
+    val taskPlan = new SampleTaskPlan(new CommandURI(RollPairMaster.eggSampleMapCommand), taskPlanJob)
 
     scheduler.addPlan(taskPlan)
 
@@ -318,7 +317,7 @@ class RollPairServicer() {
     val outputStoreWithPartitions = clusterManagerClient.getOrCreateStore(outputStoreWithPartitionProposal)
 
     val taskPlanJob = inputJob.copy(inputs = Array(inputStoreWithPartitions), outputs = Array(outputStoreWithPartitions))
-    val taskPlan = new FilterTaskPlan(new CommandURI(RollPairServicer.eggFilterMapCommand), taskPlanJob)
+    val taskPlan = new FilterTaskPlan(new CommandURI(RollPairMaster.eggFilterMapCommand), taskPlanJob)
 
     scheduler.addPlan(taskPlan)
 
@@ -342,7 +341,7 @@ class RollPairServicer() {
       val specifiedOutput = inputJob.outputs.head
       if (specifiedOutput.partitions.isEmpty) {
         val outputTotalPartitions =
-          if (StringUtils.equalsAny(RollPairServicer.reduce, RollPairServicer.aggregate)) 1
+          if (StringUtils.equalsAny(RollPairMaster.reduce, RollPairMaster.aggregate)) 1
           else leftStoreWithPartitions.storeLocator.totalPartitions
 
         val outputStoreLocator = specifiedOutput.storeLocator.copy(totalPartitions = outputTotalPartitions)
@@ -358,7 +357,7 @@ class RollPairServicer() {
     val outputStoreWithPartitions = clusterManagerClient.getOrCreateStore(outputStoreProposal)
 
     val taskPlanJob = inputJob.copy(inputs = Array(leftStoreWithPartitions, rightStoreWithPartitions), outputs = Array(outputStoreWithPartitions))
-    val taskPlan = new SubtractByKeyTaskPlan(new CommandURI(RollPairServicer.eggSubtractByKeyCommand), taskPlanJob)
+    val taskPlan = new SubtractByKeyTaskPlan(new CommandURI(RollPairMaster.eggSubtractByKeyCommand), taskPlanJob)
     scheduler.addPlan(taskPlan)
 
     JobRunner.run(scheduler.getPlan())
@@ -378,7 +377,7 @@ class RollPairServicer() {
       val specifiedOutput = inputJob.outputs.head
       if (specifiedOutput.partitions.isEmpty) {
         val outputTotalPartitions =
-          if (StringUtils.equalsAny(RollPairServicer.reduce, RollPairServicer.aggregate)) 1
+          if (StringUtils.equalsAny(RollPairMaster.reduce, RollPairMaster.aggregate)) 1
           else leftStoreWithPartitions.storeLocator.totalPartitions
 
         val outputStoreLocator = specifiedOutput.storeLocator.copy(totalPartitions = outputTotalPartitions)
@@ -394,7 +393,7 @@ class RollPairServicer() {
     val outputStoreWithPartitions = clusterManagerClient.getOrCreateStore(outputStoreProposal)
 
     val taskPlanJob = inputJob.copy(inputs = Array(leftStoreWithPartitions, rightStoreWithPartitions), outputs = Array(outputStoreWithPartitions))
-    val taskPlan = new UnionTaskPlan(new CommandURI(RollPairServicer.eggUnionCommand), taskPlanJob)
+    val taskPlan = new UnionTaskPlan(new CommandURI(RollPairMaster.eggUnionCommand), taskPlanJob)
     scheduler.addPlan(taskPlan)
 
     JobRunner.run(scheduler.getPlan())
@@ -419,7 +418,7 @@ class RollPairServicer() {
     })
     val finalInputTemplate = finalInputs.head
     val outputTotalPartitions =
-      if (StringUtils.equalsAny(RollPairServicer.reduce, RollPairServicer.aggregate)) 1
+      if (StringUtils.equalsAny(RollPairMaster.reduce, RollPairMaster.aggregate)) 1
       else finalInputTemplate.storeLocator.totalPartitions
     val outputStoreProposal = if (isOutputSpecified) {
       val specifiedOutput = inputJob.outputs.head
@@ -438,20 +437,20 @@ class RollPairServicer() {
 
     var taskPlan: BaseTaskPlan = null
     inputJob.name match {
-      case RollPairServicer.aggregate => {
-        taskPlan = new AggregateTaskPlan(new CommandURI(RollPairServicer.eggRunTaskCommand), taskPlanJob)
+      case RollPairMaster.aggregate => {
+        taskPlan = new AggregateTaskPlan(new CommandURI(RollPairMaster.eggRunTaskCommand), taskPlanJob)
       }
-      case RollPairServicer.map => {
-        taskPlan = new MapTaskPlan(new CommandURI(RollPairServicer.eggRunTaskCommand), taskPlanJob)
+      case RollPairMaster.map => {
+        taskPlan = new MapTaskPlan(new CommandURI(RollPairMaster.eggRunTaskCommand), taskPlanJob)
       }
-      case RollPairServicer.join => {
-        taskPlan = new JoinTaskPlan(new CommandURI(RollPairServicer.eggRunTaskCommand), taskPlanJob)
+      case RollPairMaster.join => {
+        taskPlan = new JoinTaskPlan(new CommandURI(RollPairMaster.eggRunTaskCommand), taskPlanJob)
       }
-      case RollPairServicer.putAll => {
-        taskPlan = new PutAllTaskPlan(new CommandURI(RollPairServicer.eggPutAllCommand), taskPlanJob)
+      case RollPairMaster.putAll => {
+        taskPlan = new PutAllTaskPlan(new CommandURI(RollPairMaster.eggPutAllCommand), taskPlanJob)
       }
-      case RollPairServicer.getAll =>
-        taskPlan = new GetAllTaskPlan(new CommandURI(RollPairServicer.eggGetAllCommand), taskPlanJob)
+      case RollPairMaster.getAll =>
+        taskPlan = new GetAllTaskPlan(new CommandURI(RollPairMaster.eggGetAllCommand), taskPlanJob)
     }
 
     JobRunner.run(taskPlan)
@@ -472,7 +471,7 @@ class RollPairServicer() {
       val specifiedOutput = inputJob.outputs.head
       if (specifiedOutput.partitions.isEmpty) {
         val outputTotalPartitions =
-          if (StringUtils.equalsAny(RollPairServicer.reduce, RollPairServicer.aggregate)) 1
+          if (StringUtils.equalsAny(RollPairMaster.reduce, RollPairMaster.aggregate)) 1
           else leftStoreWithPartitions.storeLocator.totalPartitions
 
         val outputStoreLocator = specifiedOutput.storeLocator.copy(totalPartitions = outputTotalPartitions)
@@ -488,7 +487,7 @@ class RollPairServicer() {
     val outputStoreWithPartitions = clusterManagerClient.getOrCreateStore(outputStoreProposal)
 
     val taskPlanJob = inputJob.copy(inputs = Array(leftStoreWithPartitions, rightStoreWithPartitions), outputs = Array(outputStoreWithPartitions))
-    val taskPlan = new JoinTaskPlan(new CommandURI(RollPairServicer.eggJoinCommand), taskPlanJob)
+    val taskPlan = new JoinTaskPlan(new CommandURI(RollPairMaster.eggJoinCommand), taskPlanJob)
     scheduler.addPlan(taskPlan)
 
     JobRunner.run(scheduler.getPlan())
@@ -498,8 +497,8 @@ class RollPairServicer() {
 
 }
 
-object RollPairServicer {
-  val clazz = classOf[RollPairServicer]
+object RollPairMaster {
+  val clazz = classOf[RollPairMaster]
   val functorSerDes = DefaultScalaSerdes()
 
   val get = "get"
