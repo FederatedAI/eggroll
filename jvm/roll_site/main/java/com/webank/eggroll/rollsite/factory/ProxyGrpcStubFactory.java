@@ -117,7 +117,7 @@ public class ProxyGrpcStubFactory {
     }
 
 
-    // todo: use retry framework
+    // todo:1: use retry framework
     private AbstractStub getStubBase(BasicMeta.Endpoint endpoint, boolean isAsync) {
         ManagedChannel managedChannel = null;
 
@@ -191,7 +191,7 @@ public class ProxyGrpcStubFactory {
                 .maxInboundMessageSize(32 << 20)
                 .enableRetry()
                 .retryBufferSize(16 << 20)
-                .maxRetryAttempts(20);      // todo: configurable
+                .maxRetryAttempts(20);      // todo:1: configurable
 
         if (proxyServerConf.isCompatibleEnabled()) {
             LOGGER.info("[PROXY] compatibility enabled");
@@ -204,7 +204,7 @@ public class ProxyGrpcStubFactory {
         // if secure client defined and endpoint is not in intranet
         if (proxyServerConf.isSecureClient() &&
                 (!proxyServerConf.isNeighbourInsecureChannelEnabled() || !fdnRouter.isIntranet(endpoint))) {
-            // todo: add configuration reading mechanism
+            // todo:1: add configuration reading mechanism
             File caCrt = new File(proxyServerConf.getCaCrtPath());
             File serverCrt = new File(proxyServerConf.getServerCrtPath());
             File serverKey = new File(proxyServerConf.getServerKeyPath());

@@ -175,7 +175,6 @@ object StoreCrudOperator {
     val newPartitions: ArrayBuffer[ErPartition] = ArrayBuffer[ErPartition]()
     newPartitions.sizeHint(inputStoreLocator.totalPartitions)
 
-    // todo: find existing binding with same partition numbers
     val serverNodes: Array[ErServerNode] =
       ServerNodeCrudOperator.doGetServerNodes(
         input = ErServerNode(
@@ -207,7 +206,6 @@ object StoreCrudOperator {
       }
 
       serverNodeIds += node.id
-      // todo: bind with active session
       newPartitions += ErPartition(
         id = i,
         storeLocator = inputStoreLocator,

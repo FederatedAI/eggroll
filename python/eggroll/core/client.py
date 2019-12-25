@@ -33,7 +33,7 @@ class CommandClient(object):
     self._channel_factory = GrpcChannelFactory()
 
   def simple_sync_send(self, input: RpcMessage, output_type, endpoint: ErEndpoint, command_uri: CommandURI, serdes_type = SerdesTypes.PROTOBUF):
-    # todo: add serializer logic here
+    # todo:2: add serializer logic here
     request = ErCommandRequest(id=time_now(), uri=command_uri._uri, args=[input.to_proto_string()])
 
     _channel = self._channel_factory.create_channel(endpoint)
@@ -43,7 +43,7 @@ class CommandClient(object):
 
     byte_result = er_response._results[0]
 
-    # todo: add deserializer logic here
+    # todo:2: add deserializer logic here
     if len(byte_result):
       return output_type.from_proto_string(byte_result)
     else:
