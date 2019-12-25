@@ -30,7 +30,7 @@ ER_STORE1 = ErStore(
 
 def get_debug_test_context():
     options = {}
-    options[SessionConfKeys.CONFKEY_DEPLOY_MODE] = "standalone"
+    options[SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE] = "standalone"
     options[TransferConfKeys.CONFKEY_TRANSFER_SERVICE_HOST] = "localhost"
     options[TransferConfKeys.CONFKEY_TRANSFER_SERVICE_PORT] = 20002
 
