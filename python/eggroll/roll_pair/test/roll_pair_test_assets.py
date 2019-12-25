@@ -30,9 +30,9 @@ ER_STORE1 = ErStore(
 
 def get_debug_test_context():
     options = {}
-    options[SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE] = "standalone"
+    #options[SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE] = "standalone"
     options[TransferConfKeys.CONFKEY_TRANSFER_SERVICE_HOST] = "localhost"
-    options[TransferConfKeys.CONFKEY_TRANSFER_SERVICE_PORT] = 20002
+    options[TransferConfKeys.CONFKEY_TRANSFER_SERVICE_PORT] = "20002"
 
     manager_port = 4670
     egg_ports = [20001]
@@ -55,7 +55,7 @@ def get_debug_test_context():
 
     session = ErSession(session_id='testing',
                         processors=[egg, roll],
-                        options={"eggroll.session.deploy.mode": "standalone"})
+                        options=options)
     # session = ErSession(options={})
     context = RollPairContext(session)
     return context

@@ -29,7 +29,7 @@ from eggroll.core.client import ClusterManagerClient
 from eggroll.core.command.command_router import CommandRouter
 from eggroll.core.command.command_service import CommandServicer
 from eggroll.core.conf_keys import NodeManagerConfKeys, SessionConfKeys, \
-    ClusterManagerConfKeys
+  ClusterManagerConfKeys
 from eggroll.core.constants import ProcessorTypes, ProcessorStatus, SerdesTypes
 from eggroll.core.datastructure.broker import FifoBroker
 from eggroll.core.io.io_utils import get_db_path
@@ -38,7 +38,7 @@ from eggroll.core.meta_model import ErTask, ErProcessor, ErEndpoint
 from eggroll.core.proto import command_pb2_grpc, transfer_pb2_grpc
 from eggroll.core.serdes import cloudpickle
 from eggroll.core.transfer.transfer_service import GrpcTransferServicer, \
-    TransferClient, TransferService
+  TransferClient, TransferService
 from eggroll.core.utils import _exception_logger
 from eggroll.core.utils import hash_code
 from eggroll.roll_pair import create_adapter, create_serdes
@@ -52,14 +52,6 @@ LOGGER = log_utils.getLogger()
 
 
 class EggPair(object):
-  uri_prefix = 'v1/egg-pair'
-  GET = 'get'
-  PUT = 'put'
-  GET_ALL = 'getAll'
-  PUT_ALL = 'putAll'
-  DESTROY = 'destroy'
-  DELETE = "delete"
-
   def __init__(self):
     self.serde = create_serdes(SerdesTypes.CLOUD_PICKLE)
 
@@ -422,89 +414,6 @@ class EggPair(object):
 def serve(args):
   prefix = 'v1/egg-pair'
 
-  #storage api
-  CommandRouter.get_instance().register(
-    service_name=f"{prefix}/get",
-    route_to_module_name="eggroll.roll_pair.egg_pair",
-    route_to_class_name="EggPair",
-    route_to_method_name="run_task")
-  CommandRouter.get_instance().register(
-    service_name=f"{prefix}/put",
-    route_to_module_name="eggroll.roll_pair.egg_pair",
-    route_to_class_name="EggPair",
-    route_to_method_name="run_task")
-  CommandRouter.get_instance().register(
-    service_name=f"{prefix}/getAll",
-    route_to_module_name="eggroll.roll_pair.egg_pair",
-    route_to_class_name="EggPair",
-    route_to_method_name="run_task")
-  CommandRouter.get_instance().register(
-    service_name=f"{prefix}/putAll",
-    route_to_module_name="eggroll.roll_pair.egg_pair",
-    route_to_class_name="EggPair",
-    route_to_method_name="run_task")
-
-  #computing api
-  CommandRouter.get_instance().register(
-    service_name=f"{prefix}/mapValues",
-    route_to_module_name="eggroll.roll_pair.egg_pair",
-    route_to_class_name="EggPair",
-    route_to_method_name="run_task")
-  CommandRouter.get_instance().register(
-      service_name=f"{prefix}/map",
-      route_to_module_name="eggroll.roll_pair.egg_pair",
-      route_to_class_name="EggPair",
-      route_to_method_name="run_task")
-  CommandRouter.get_instance().register(
-      service_name=f"{prefix}/reduce",
-      route_to_module_name="eggroll.roll_pair.egg_pair",
-      route_to_class_name="EggPair",
-      route_to_method_name="run_task")
-  CommandRouter.get_instance().register(
-      service_name=f"{prefix}/join",
-      route_to_module_name="eggroll.roll_pair.egg_pair",
-      route_to_class_name="EggPair",
-      route_to_method_name="run_task")
-  CommandRouter.get_instance().register(
-    service_name=f"{prefix}/mapPartitions",
-    route_to_module_name="eggroll.roll_pair.egg_pair",
-    route_to_class_name="EggPair",
-    route_to_method_name="run_task")
-  CommandRouter.get_instance().register(
-    service_name=f"{prefix}/collapsePartitions",
-    route_to_module_name="eggroll.roll_pair.egg_pair",
-    route_to_class_name="EggPair",
-    route_to_method_name="run_task")
-  CommandRouter.get_instance().register(
-    service_name=f"{prefix}/flatMap",
-    route_to_module_name="eggroll.roll_pair.egg_pair",
-    route_to_class_name="EggPair",
-    route_to_method_name="run_task")
-  CommandRouter.get_instance().register(
-    service_name=f"{prefix}/glom",
-    route_to_module_name="eggroll.roll_pair.egg_pair",
-    route_to_class_name="EggPair",
-    route_to_method_name="run_task")
-  CommandRouter.get_instance().register(
-    service_name=f"{prefix}/sample",
-    route_to_module_name="eggroll.roll_pair.egg_pair",
-    route_to_class_name="EggPair",
-    route_to_method_name="run_task")
-  CommandRouter.get_instance().register(
-    service_name=f"{prefix}/filter",
-    route_to_module_name="eggroll.roll_pair.egg_pair",
-    route_to_class_name="EggPair",
-    route_to_method_name="run_task")
-  CommandRouter.get_instance().register(
-    service_name=f"{prefix}/subtractByKey",
-    route_to_module_name="eggroll.roll_pair.egg_pair",
-    route_to_class_name="EggPair",
-    route_to_method_name="run_task")
-  CommandRouter.get_instance().register(
-    service_name=f"{prefix}/union",
-    route_to_module_name="eggroll.roll_pair.egg_pair",
-    route_to_class_name="EggPair",
-    route_to_method_name="run_task")
   CommandRouter.get_instance().register(
       service_name=f"{prefix}/runTask",
       route_to_module_name="eggroll.roll_pair.egg_pair",
