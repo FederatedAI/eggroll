@@ -1,24 +1,27 @@
 package com.webank.eggroll.rollpair
 
+import java.io.File
 import java.net.InetSocketAddress
 import java.util.concurrent.ConcurrentHashMap
 
 import _root_.io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
 import com.webank.eggroll.core.Bootstrap
-import com.webank.eggroll.core.client.NodeManagerClient
+import com.webank.eggroll.core.client.ClusterManagerClient
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
-import com.webank.eggroll.core.constant.{ProcessorStatus, ProcessorTypes, SessionConfKeys, StringConstants}
+import com.webank.eggroll.core.constant._
 import com.webank.eggroll.core.meta.{ErEndpoint, ErJob, ErProcessor}
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.util.{CommandArgsUtils, Logging}
-import com.webank.eggroll.rollpair.component.RollPairMaster
 import org.apache.commons.lang3.StringUtils
 
 class RollPairMasterBootstrap extends Bootstrap with Logging {
   private var port = 0
   private var sessionId = "er_session_null"
   private var nodeManager = ""
+  private var args: Array[String] = _
+
   override def init(args: Array[String]): Unit = {
+    this.args = args
     CommandRouter.register(serviceName = RollPairMaster.rollMapValuesCommand,
       serviceParamTypes = Array(classOf[ErJob]),
       routeToClass = classOf[RollPairMaster],
@@ -93,30 +96,52 @@ class RollPairMasterBootstrap extends Bootstrap with Logging {
       serviceParamTypes = Array(classOf[ErJob]),
       routeToClass = classOf[RollPairMaster],
       routeToMethodName = RollPairMaster.runJob)
-
-    val cmd = CommandArgsUtils.parseArgs(args = args)
-    this.port = cmd.getOptionValue('p', "0").toInt
-    this.sessionId = cmd.getOptionValue('s', "UNKNOWN")
-    this.nodeManager = cmd.getOptionValue("nm")
   }
-  def reportCM(sessionId:String, nm:ErEndpoint, selfPort:Int):Unit = {
-    // todo: get port from command line
-    // todo: heartbeat service
-    val nodeManagerClient = new NodeManagerClient(nm)
+  def reportCM(sessionId: String, args: Array[String], myCommandPort: Int):Unit = {
+    val cmd = CommandArgsUtils.parseArgs(args)
+    // todo:2: heartbeat service
+    val portString = cmd.getOptionValue('p', "0")
+    val sessionId = cmd.getOptionValue('s', "UNKNOWN")
+    val clusterManager = cmd.getOptionValue("cluster-manager", "localhost:4670")
+    val nodeManager = cmd.getOptionValue("node-manager", "localhost:9394")
+    val serverNodeId = cmd.getOptionValue("server-node-id", "0").toLong
+    val confPath = cmd.getOptionValue('c', "./conf/eggroll.properties")
+    val processorId = cmd.getOptionValue("processor-id", "0").toLong
+
+    val clusterManagerClient = new ClusterManagerClient(ErEndpoint(clusterManager))
+
     val options = new ConcurrentHashMap[String, String]()
+    this.sessionId = sessionId
     options.put(SessionConfKeys.CONFKEY_SESSION_ID, sessionId)
+
+
     val myself = ErProcessor(
+      id = processorId,
+      serverNodeId = serverNodeId,
       processorType = ProcessorTypes.ROLL_PAIR_MASTER,
-      commandEndpoint = ErEndpoint("localhost", selfPort),
-      transferEndpoint = ErEndpoint("localhost", selfPort),
+      commandEndpoint = ErEndpoint("localhost", myCommandPort),
+      transferEndpoint = ErEndpoint("localhost", myCommandPort),
       options = options,
       status = ProcessorStatus.RUNNING)
-
     logInfo("ready to heartbeat")
-    nodeManagerClient.heartbeat(myself)
+    clusterManagerClient.heartbeat(myself)
+
+    StaticErConf.addProperty(SessionConfKeys.CONFKEY_SESSION_ID, sessionId)
+
+    StaticErConf.addProperties(confPath)
+    val confFile = new File(confPath)
+    StaticErConf.addProperty(CoreConfKeys.STATIC_CONF_PATH, confFile.getAbsolutePath)
+
+    Runtime.getRuntime.addShutdownHook(new Thread() {
+      override def run(): Unit = { // Use stderr here since the logger may have been reset by its JVM shutdown hook.
+        logInfo(s"*** roll pair master exit gracefully. sessionId: ${sessionId}, serverNodeId: ${serverNodeId}, processorId: ${processorId}, port: ${portString} ***")
+        val terminatedSelf = myself.copy(status = ProcessorStatus.STOPPED)
+        clusterManagerClient.heartbeat(terminatedSelf)
+        this.interrupt()
+      }
+    })
   }
   override def start(): Unit = {
-    println(nodeManager)
     val managerEndpoint = if (StringUtils.isBlank(nodeManager)) {
       ErEndpoint(host = "localhost", port = 9394)
     } else {
@@ -138,12 +163,10 @@ class RollPairMasterBootstrap extends Bootstrap with Logging {
     val port = rollServer.getPort
     StaticErConf.setPort(port)
 
+
     logInfo(s"server started at ${port}")
     // job
-
-    logInfo("server started at port 20000")
-
-    reportCM(sessionId, managerEndpoint, port)
+    reportCM(sessionId, args, port)
 
 
     logInfo("heartbeated")

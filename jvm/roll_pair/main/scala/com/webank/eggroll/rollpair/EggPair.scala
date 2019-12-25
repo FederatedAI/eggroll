@@ -16,21 +16,20 @@
  *
  */
 
-package com.webank.eggroll.rollpair.component
+package com.webank.eggroll.rollpair
 
-import java.util.concurrent.{ArrayBlockingQueue, ConcurrentLinkedQueue, TimeUnit}
+import java.util.concurrent.TimeUnit
 
 import com.webank.eggroll.core.constant.StringConstants
 import com.webank.eggroll.core.datastructure.LinkedBlockingBroker
 import com.webank.eggroll.core.error.DistributedRuntimeException
 import com.webank.eggroll.core.meta.{ErPartition, ErTask}
 import com.webank.eggroll.core.serdes.DefaultScalaSerdes
-import com.webank.eggroll.core.transfer.{TransferService, GrpcTransferClient}
+import com.webank.eggroll.core.transfer.{GrpcTransferClient, TransferService}
 import com.webank.eggroll.core.util.Logging
 import com.webank.eggroll.rollpair.io.RocksdbSortedKvAdapter
 
 import scala.collection.mutable
-import scala.collection.mutable.ListBuffer
 
 class EggPair extends Logging {
 
