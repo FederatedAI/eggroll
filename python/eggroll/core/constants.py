@@ -38,19 +38,22 @@ class PartitionerTypes(object):
 
 class ProcessorTypes(object):
   EGG_PAIR = 'egg_pair'
-  ROLL_PAIR_SERVICER = 'roll_pair_servicer'
+  ROLL_PAIR_MASTER = 'roll_pair_master'
 
 class RollTypes(object):
   ROLL_PAIR = 'roll_pair'
 
 class ProcessorStatus(object):
+  NEW = 'NEW'
   RUNNING = 'RUNNING'
+  STOPPED = 'STOPPED'
+  KILLED = 'KILLED'
 
 class SessionStatus(object):
   NEW = 'NEW'
   RUNNING = 'RUNNING'
   TERMINATED = 'TERMINATED'
 
-class DeployType(object):
+class DeployModes(object):
   STANDALONE = 'standalone'
   CLUSTER = 'cluster'
