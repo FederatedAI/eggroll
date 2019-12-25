@@ -28,7 +28,7 @@ import com.webank.eggroll.core.datastructure.{Broker, LinkedBlockingBroker}
 import com.webank.eggroll.core.meta.{ErJob, ErStore, ErStoreLocator}
 import com.webank.eggroll.core.session.{ErConf, RuntimeErConf}
 import com.webank.eggroll.core.transfer.GrpcTransferClient
-import com.webank.eggroll.rollpair.component.RollPairServicer
+import com.webank.eggroll.rollpair.component.RollPairMaster
 
 class RollPair(val store: ErStore, val opts: ErConf = RuntimeErConf()) {
   private var __store: ErStore = null
@@ -116,7 +116,7 @@ class RollPair(val store: ErStore, val opts: ErConf = RuntimeErConf()) {
 
         /* send putBatch command*/
         val storeLocator = ErStoreLocator(StoreTypes.ROLLPAIR_LEVELDB, "ns", "name")
-        val rollPair = new RollPairServicer()
+        val rollPair = new RollPairMaster()
         val job = ErJob(id = "1",
           name = "putBatch",
           inputs = Array(ErStore(storeLocator)),

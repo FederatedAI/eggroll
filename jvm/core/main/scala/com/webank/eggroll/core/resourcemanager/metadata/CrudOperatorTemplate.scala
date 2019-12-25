@@ -16,9 +16,9 @@
  *
  */
 
-package com.webank.eggroll.core.clustermanager.metadata
+package com.webank.eggroll.core.resourcemanager.metadata
 
-import com.webank.eggroll.core.clustermanager.datasource.RdbConnectionPool
+import com.webank.eggroll.core.resourcemanager.RdbConnectionPool
 import org.apache.ibatis.session.SqlSession
 
 trait CrudOperator

@@ -19,8 +19,11 @@
 package com.webank.eggroll.core.constant
 
 object CoreConfKeys {
-
-
+  val LOGS_DIR = "eggroll.logs.dir"
+  val STATIC_CONF_PATH = "eggroll.static.conf.path"
+  val BOOTSTRAP_ROOT_SCRIPT = "eggroll.bootstrap.root.script"
+  val BOOTSTRAP_SHELL = "eggroll.bootstrap.shell"
+  val BOOTSTRAP_SHELL_ARGS = "eggroll.bootstrap.shell.args"
   val CONFKEY_CORE_GRPC_CHANNEL_CACHE_EXPIRE_SEC = "eggroll.core.grpc.channel.cache.expire.sec"
   val CONFKEY_CORE_GRPC_CHANNEL_CACHE_SIZE = "eggroll.core.grpc.channel.cache.size"
   val CONFKEY_CORE_GRPC_CHANNEL_EXECUTOR_POOL_SIZE = "eggroll.core.grpc.channel.executor.pool.size"
@@ -70,23 +73,27 @@ object CoreConfKeys {
 }
 
 object ClusterManagerConfKeys {
-  val CONFKEY_CLUSTER_MANAGER_JDBC_DRIVER_CLASS_NAME = "eggroll.cluster.manager.jdbc.driver.class.name"
-  val CONFKEY_CLUSTER_MANAGER_JDBC_URL = "eggroll.cluster.manager.jdbc.url"
-  val CONFKEY_CLUSTER_MANAGER_JDBC_USERNAME = "eggroll.cluster.manager.jdbc.username"
-  val CONFKEY_CLUSTER_MANAGER_JDBC_PASSWORD = "eggroll.cluster.manager.jdbc.password"
-  val CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_MAX_IDLE = "eggroll.cluster.manager.datasource.db.max.idle"
-  val CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_MAX_TOTAL = "eggroll.cluster.manager.datasource.db.max.total"
-  val CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_MAX_WAIT_MS = "eggroll.cluster.manager.datasource.db.max.wait.ms"
-  val CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_TIME_BETWEEN_EVICTION_RUNS_MS = "eggroll.cluster.manager.datasource.db.time.between.eviction.runs.ms"
-  val CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_MIN_EVICTABLE_IDLE_TIME_MS = "eggroll.cluster.manager.datasource.db.min.evictable.idle.time.ms"
-  val CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_DEFAULT_AUTO_COMMIT = "eggroll.cluster.manager.datasource.db.default.auto.commit"
-  val CONFKEY_CLUSTER_MANAGER_HOST = "eggroll.cluster.manager.host"
-  val CONFKEY_CLUSTER_MANAGER_PORT = "eggroll.cluster.manager.port"
+  val CONFKEY_CLUSTER_MANAGER_JDBC_DRIVER_CLASS_NAME = "eggroll.resourcemanager.clustermanager.jdbc.driver.class.name"
+  val CONFKEY_CLUSTER_MANAGER_JDBC_URL = "eggroll.resourcemanager.clustermanager.jdbc.url"
+  val CONFKEY_CLUSTER_MANAGER_JDBC_USERNAME = "eggroll.resourcemanager.clustermanager.jdbc.username"
+  val CONFKEY_CLUSTER_MANAGER_JDBC_PASSWORD = "eggroll.resourcemanager.clustermanager.jdbc.password"
+  val CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_MAX_IDLE = "eggroll.resourcemanager.clustermanager.datasource.db.max.idle"
+  val CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_MAX_TOTAL = "eggroll.resourcemanager.clustermanager.datasource.db.max.total"
+  val CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_MAX_WAIT_MS = "eggroll.resourcemanager.clustermanager.datasource.db.max.wait.ms"
+  val CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_TIME_BETWEEN_EVICTION_RUNS_MS = "eggroll.resourcemanager.clustermanager.datasource.db.time.between.eviction.runs.ms"
+  val CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_MIN_EVICTABLE_IDLE_TIME_MS = "eggroll.resourcemanager.clustermanager.datasource.db.min.evictable.idle.time.ms"
+  val CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_DEFAULT_AUTO_COMMIT = "eggroll.resourcemanager.clustermanager.datasource.db.default.auto.commit"
+  val CONFKEY_CLUSTER_MANAGER_HOST = "eggroll.resourcemanager.clustermanager.host"
+  val CONFKEY_CLUSTER_MANAGER_PORT = "eggroll.resourcemanager.clustermanager.port"
 }
 
 object NodeManagerConfKeys {
-  val CONFKEY_NODE_MANAGER_HOST = "eggroll.node.manager.host"
-  val CONFKEY_NODE_MANAGER_PORT = "eggroll.node.manager.port"
+  val CONFKEY_NODE_MANAGER_HOST = "eggroll.resourcemanager.nodemanager.host"
+  val CONFKEY_NODE_MANAGER_PORT = "eggroll.resourcemanager.nodemanager.port"
+}
+
+object ResourceManagerConfKeys {
+  val SERVER_NODE_ID = "eggroll.resourcemanager.server.node.id"
 }
 
 object SessionConfKeys {
@@ -94,25 +101,8 @@ object SessionConfKeys {
   val CONFKEY_SESSION_ID = "eggroll.session.id"
   val CONFKEY_SESSION_NAME = "eggroll.session.name"
   val CONFKEY_SESSION_MAX_PROCESSORS_PER_NODE = "eggroll.session.max.processors.per.node"
-  val CONFKEY_SESSION_EGG_BINDING_STRATEGY = "eggroll.session.egg.binding.strategy"
-  val CONFKEY_SESSION_EGG_BINDING_ID = "eggroll.session.egg.binding.id"
-  val CONFKEY_SESSION_EGG_BINDING_INCLUDE_DETAILS = "eggroll.session.egg.binding.include.details"
 }
 
 object DeployConfKeys {
   val CONFKEY_DEPLOY_MODE = "eggroll.deploy.mode"
-  val CONFKEY_DEPLOY_ROLLPAIR_START_SCRIPT_PATH = "eggroll.deploy.rollpair.start.script.path"
-  val CONFKEY_DEPLOY_ROLLPAIR_VENV_PATH = "eggroll.deploy.rollpair.venv.path"
-  val CONFKEY_DEPLOY_ROLLPAIR_DATA_DIR_PATH = "eggroll.deploy.rollpair.data.dir.path"
-  val CONFKEY_DEPLOY_ROLLPAIR_EGGPAIR_PATH = "eggroll.deploy.rollpair.eggpair.path"
-  val CONFKEY_DEPLOY_ROLLPAIR_PYTHON_PATH = "eggroll.deploy.rollpair.python.path"
-  val CONFKEY_DEPLOY_NODE_MANAGER_PORT = "eggroll.deploy.node.manager.port"
-
-  val CONFKEY_DEPLOY_JVM_JAVA_BIN_PATH = "eggroll.deploy.jvm.java.bin.path"
-  val CONFKEY_DEPLOY_JVM_CLASSPATH = "eggroll.deploy.jvm.classpath"
-  val CONFKEY_DEPLOY_JVM_MAINCLASS = "eggroll.deploy.jvm.mainclass"
-  val CONFKEY_DEPLOY_JVM_MAINCLASS_ARGS = "eggroll.deploy.jvm.mainclass.args"
-  val CONFKEY_DEPLOY_JVM_OPTIONS = "eggroll.deploy.jvm.options"
-
-  val CONFKEY_DEPLOY_PROCESSOR_TYPE = "eggroll.deploy.processor.type"
 }

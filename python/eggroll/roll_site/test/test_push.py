@@ -15,10 +15,9 @@
 #
 import unittest
 
-from eggroll.roll_pair.test.roll_pair_test_assets import get_test_context
-from eggroll.roll_site.roll_site import RollSiteContext
 from eggroll.core.session import ErSession
 from eggroll.roll_pair.roll_pair import RollPairContext
+from eggroll.roll_site.roll_site import RollSiteContext
 
 
 class TestRemote(unittest.TestCase):
