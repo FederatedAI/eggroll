@@ -12,6 +12,7 @@ import com.webank.eggroll.core.constant._
 import com.webank.eggroll.core.meta.{ErEndpoint, ErJob, ErProcessor}
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.util.{CommandArgsUtils, Logging}
+import org.apache.commons.cli.CommandLine
 import org.apache.commons.lang3.StringUtils
 
 class RollPairMasterBootstrap extends Bootstrap with Logging {
@@ -19,9 +20,11 @@ class RollPairMasterBootstrap extends Bootstrap with Logging {
   private var sessionId = "er_session_null"
   private var nodeManager = ""
   private var args: Array[String] = _
+  private var cmd: CommandLine = null
 
   override def init(args: Array[String]): Unit = {
     this.args = args
+    cmd = CommandArgsUtils.parseArgs(args)
     CommandRouter.register(serviceName = RollPairMaster.rollMapValuesCommand,
       serviceParamTypes = Array(classOf[ErJob]),
       routeToClass = classOf[RollPairMaster],
@@ -98,7 +101,6 @@ class RollPairMasterBootstrap extends Bootstrap with Logging {
       routeToMethodName = RollPairMaster.runJob)
   }
   def reportCM(sessionId: String, args: Array[String], myCommandPort: Int):Unit = {
-    val cmd = CommandArgsUtils.parseArgs(args)
     // todo:2: heartbeat service
     val portString = cmd.getOptionValue('p', "0")
     val sessionId = cmd.getOptionValue('s', "UNKNOWN")
@@ -113,7 +115,6 @@ class RollPairMasterBootstrap extends Bootstrap with Logging {
     val options = new ConcurrentHashMap[String, String]()
     this.sessionId = sessionId
     options.put(SessionConfKeys.CONFKEY_SESSION_ID, sessionId)
-
 
     val myself = ErProcessor(
       id = processorId,
@@ -155,15 +156,14 @@ class RollPairMasterBootstrap extends Bootstrap with Logging {
       ErEndpoint(host = managerHost, port = managerPort.toInt)
     }
     StaticErConf.addProperty(SessionConfKeys.CONFKEY_SESSION_ID, sessionId)
+    this.port = cmd.getOptionValue('p', "0").toInt
 
     val rollServer = NettyServerBuilder.forAddress(new InetSocketAddress(this.port))
       .addService(new CommandService)
       .build
     rollServer.start()
-    val port = rollServer.getPort
+    this.port = rollServer.getPort
     StaticErConf.setPort(port)
-
-
     logInfo(s"server started at ${port}")
     // job
     reportCM(sessionId, args, port)
