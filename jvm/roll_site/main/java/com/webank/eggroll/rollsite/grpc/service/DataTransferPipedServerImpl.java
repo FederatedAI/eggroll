@@ -32,6 +32,7 @@ import com.webank.eggroll.rollsite.model.ProxyServerConf;
 import com.webank.eggroll.rollsite.utils.Timeouts;
 import io.grpc.stub.StreamObserver;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -56,6 +57,8 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
     private EventFactory eventFactory;
     @Autowired
     private ProxyServerConf proxyServerConf;
+    @Autowired
+    private ConcurrentHashMap<String, String> jobSessionIdMap;
     private Pipe defaultPipe;
     private PipeFactory pipeFactory;
 
@@ -224,14 +227,31 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
             responseObserver.onCompleted();
             return;
         }
+        if(request.getHeader().getOperator().equals("init_job_session_pair")) {
+            String job_id = request.getHeader().getTask().getModel().getName();
+            String session_string = request.getHeader().getTask().getModel().getDataKey();
+            /*
+            ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(session_string.getBytes("ISO-8859-1"));
+            ObjectInputStream objectInputStream = new ObjectInputStream(byteArrayInputStream);
+            ErSession object = objectInputStream.readObject();
+            objectInputStream.close();
+            byteArrayInputStream.close();
+            */
+            Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
+            packet = packetBuilder.setHeader(request.getHeader()).build();
+            jobSessionIdMap.put(job_id, session_string);
+            responseObserver.onNext(packet);
+            responseObserver.onCompleted();
+        }
+
         if(request.getHeader().getOperator().equals("markEnd") && proxyServerConf.getPartyId().equals(inputMetadata.getDst().getPartyId())) {
             LOGGER.info("markEnd");
             Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
             Proxy.Data data = Proxy.Data.newBuilder().build();
             packet = packetBuilder.setHeader(request.getHeader()).build();
             pipe.setStatus(true);
-            LOGGER.info("type: {}", request.getHeader().getTask().getModel().getName());
-            LOGGER.info("tagkey: {}", request.getHeader().getTask().getModel().getDataKey());
+            LOGGER.info("type: {}", request.getHeader().getTask().getModel().getName());  //obj or RollPair
+            LOGGER.info("tagkey: {}", request.getHeader().getTask().getModel().getDataKey());  //the key of the obj
             pipe.setType(request.getHeader().getTask().getModel().getName());
             pipe.setTagKey(request.getHeader().getTask().getModel().getDataKey());
             responseObserver.onNext(packet);

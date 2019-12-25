@@ -18,8 +18,10 @@ package com.webank.eggroll.rollsite.grpc.observer;
 
 import com.google.protobuf.ByteString;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
+import com.webank.eggroll.core.datastructure.LinkedBlockingBroker;
 import com.webank.eggroll.core.util.ErrorUtils;
 import com.webank.eggroll.core.util.ToStringUtils;
+import com.webank.eggroll.rollsite.RollSiteUtil;
 import com.webank.eggroll.rollsite.event.model.PipeHandleNotificationEvent;
 import com.webank.eggroll.rollsite.factory.EventFactory;
 import com.webank.eggroll.rollsite.factory.PipeFactory;
@@ -35,6 +37,7 @@ import io.grpc.Grpc;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import java.nio.ByteBuffer;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
@@ -47,8 +50,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
-import com.webank.eggroll.rollsite.ScalaObjectPutBatch;
-
+/*
 class putBatchThread extends Thread{
     private Proxy.Packet inputPacket;
 
@@ -59,14 +61,14 @@ class putBatchThread extends Thread{
 
     @Override
     public void run() {
-        String key = inputPacket.getBody().getKey();
         ByteString value = inputPacket.getBody().getValue();
         String name = inputPacket.getHeader().getTask().getModel().getName();
         String namespace = inputPacket.getHeader().getTask().getModel().getDataKey();
-        ScalaObjectPutBatch.scalaPutBatch(name, namespace, ByteBuffer.wrap(key.getBytes()), value.asReadOnlyByteBuffer());
+        RollSiteUtil.putBatch(name, namespace, value.asReadOnlyByteBuffer());
     }
 
 }
+*/
 
 @Component
 @Scope("prototype")
@@ -89,6 +91,8 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
     private ProxyServerConf proxyServerConf;
     @Autowired
     private PipeUtils pipeUtils;
+    @Autowired
+    private ConcurrentHashMap<String, String> jobSessionIdMap;
     private Pipe pipe;
     PipeFactory pipeFactory;
     //Map<String, PacketQueueSingleResultPipe> pipeMap;
@@ -105,6 +109,7 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
     private AtomicLong ackCount;
     private volatile boolean inited = false;
     private Proxy.Metadata response;
+    private RollSiteUtil rollSiteUtil;
 
     public ServerPushRequestStreamObserver(PipeFactory pipeFactory, StreamObserver<Proxy.Metadata> responseObserver) {
         //this.pipe = pipe;
@@ -188,24 +193,25 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
                         this, PipeHandleNotificationEvent.Type.PUSH, inputMetadata, pipe);
                 applicationEventPublisher.publishEvent(event);
             } else {
-                /*
-                LOGGER.info("call putBatch");
-                String key = packet.getBody().getKey();
+                //Thread thread = new putBatchThread(packet);
+                //thread.start();
+                //notify(pipe);
                 ByteString value = packet.getBody().getValue();
-                String name = inputMetadata.getTask().getModel().getName();
-                LOGGER.info("name:{}", name);
-                LOGGER.info("key:{}", key);
-                LOGGER.info("value:{}", value);
-                ScalaObjectPutBatch.scalaPutBatch(name, ByteBuffer.wrap(key.getBytes()), value.asReadOnlyByteBuffer());
-                */
-                /*
-                PipeHandleNotificationEvent event =
-                    eventFactory.createPipeHandleNotificationEvent(
-                        this, PipeHandleNotificationEvent.Type.REMOTE, packet, pipe);
-                applicationEventPublisher.publishEvent(event);
-                */
-                Thread thread = new putBatchThread(packet);
-                thread.start();
+                String name = packet.getHeader().getTask().getModel().getName();
+                String namespace = packet.getHeader().getTask().getModel().getDataKey();
+
+                if (rollSiteUtil == null) {
+                    String[] args = name.split("-");
+                    String job_id = args[0];
+
+                    String session_id = jobSessionIdMap.get(job_id);
+                    rollSiteUtil = new RollSiteUtil(session_id, name, namespace);
+                }
+
+                rollSiteUtil.putBatch(value.asReadOnlyByteBuffer());
+
+                //broker.put(data);
+                //RollSiteUtil.putBatch(name, namespace, value.asReadOnlyByteBuffer());
             }
 
             if (timeouts.isTimeout(overallTimeout, overallStartTimestamp)) {
