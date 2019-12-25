@@ -23,6 +23,7 @@ from eggroll.core.pair_store.format import PairBinReader, PairBinWriter, \
 from eggroll.core.transfer.transfer_service import TransferClient, \
     TransferService
 from eggroll.core.utils import _exception_logger
+from eggroll.core.utils import generate_task_id
 from eggroll.roll_pair import create_adapter
 
 
@@ -52,7 +53,7 @@ class TransferPair(object):
         self.__recv_future = None
 
     def __generate_tag(self, partition_id):
-        return f'{self.__transfer_id}-{partition_id}'
+        return generate_task_id(job_id=self.__transfer_id, partition_id=partition_id)
 
     @_exception_logger
     def start_push(self, input_broker, partition_function):
@@ -107,9 +108,6 @@ class TransferPair(object):
         self.__output_tag = self.__generate_tag(output_partition_id)
         output_broker = TransferService.get_or_create_broker(self.__output_tag, write_signals=self.__total_partitions)
         self.__recv_executor_pool = ThreadPoolExecutor(max_workers=1)
-
-        from eggroll.core.pair_store.lmdb import LmdbAdapter
-        from eggroll.core.io.io_utils import get_db_path
 
         self.__output_adapter = create_adapter(self.__output_store._partitions[output_partition_id])
         self.__recv_future = self.__push_executor_pool \

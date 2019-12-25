@@ -16,24 +16,21 @@
  *
  */
 
-package com.webank.eggroll.core.clustermanager.metadata
+package com.webank.eggroll.core.resourcemanager.metadata
 
-import java.{lang, util}
 import java.util.concurrent.ConcurrentHashMap
+import java.{lang, util}
 
-import com.webank.eggroll.core.clustermanager.constant.RdbConstants
-import com.webank.eggroll.core.constant.{BindingStrategies, PartitionStatus, ServerNodeStatus, ServerNodeTypes, SessionConfKeys, StoreStatus, StringConstants}
+import com.webank.eggroll.core.clustermanager.dao.generated.mapper.{ServerNodeMapper, StoreLocatorMapper, StorePartitionMapper}
+import com.webank.eggroll.core.clustermanager.dao.generated.model._
+import com.webank.eggroll.core.constant._
 import com.webank.eggroll.core.error.CrudException
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.util.Logging
-import com.webank.eggroll.core.clustermanager.dao.generated.mapper.{ServerNodeMapper, StoreLocatorMapper, StorePartitionMapper}
-import com.webank.eggroll.core.clustermanager.dao.generated.model._
-import com.webank.eggroll.core.clustermanager.session.SessionManager
-import org.apache.ibatis.session.SqlSession
+import org.apache.ibatis.session.{RowBounds, SqlSession}
 
-import scala.collection.mutable
-import scala.collection.mutable.ArrayBuffer
 import scala.collection.JavaConverters._
+import scala.collection.mutable.ArrayBuffer
 
 class StoreCrudOperator extends CrudOperator with Logging {
   private val crudOperatorTemplate = new CrudOperatorTemplate()
@@ -75,7 +72,7 @@ object StoreCrudOperator {
       .andStatusEqualTo(StoreStatus.NORMAL)
     val storeLocatorMapper = sqlSession.getMapper(classOf[StoreLocatorMapper])
 
-    val storeLocatorResult = storeLocatorMapper.selectByExampleWithRowbounds(storeLocatorExample, RdbConstants.SINGLE_ROWBOUND)
+    val storeLocatorResult = storeLocatorMapper.selectByExampleWithRowbounds(storeLocatorExample, new RowBounds(0, 1))
 
     if (storeLocatorResult.isEmpty) {
       return null
@@ -240,7 +237,7 @@ object StoreCrudOperator {
       .andStatusEqualTo(StoreStatus.NORMAL)
     val storeMapper = sqlSession.getMapper(classOf[StoreLocatorMapper])
 
-    val storeResult = storeMapper.selectByExampleWithRowbounds(storeLocatorExample, RdbConstants.SINGLE_ROWBOUND)
+    val storeResult = storeMapper.selectByExampleWithRowbounds(storeLocatorExample, new RowBounds(0, 1))
 
     if (storeResult.isEmpty) {
       return null

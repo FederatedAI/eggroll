@@ -15,20 +15,24 @@
 
 import argparse
 import os
+import signal
 from collections.abc import Iterable
 from concurrent import futures
 from copy import copy
+from threading import Thread
 
 import grpc
 import numpy as np
 from grpc._cython import cygrpc
 
-from eggroll.core.client import NodeManagerClient, ClusterManagerClient
+from eggroll.core.client import ClusterManagerClient
 from eggroll.core.command.command_router import CommandRouter
 from eggroll.core.command.command_service import CommandServicer
-from eggroll.core.conf_keys import NodeManagerConfKeys, SessionConfKeys
+from eggroll.core.conf_keys import NodeManagerConfKeys, SessionConfKeys, \
+  ClusterManagerConfKeys
 from eggroll.core.constants import ProcessorTypes, ProcessorStatus, SerdesTypes
 from eggroll.core.datastructure.broker import FifoBroker
+from eggroll.core.io.io_utils import get_db_path
 from eggroll.core.meta_model import ErPair, ErStore
 from eggroll.core.meta_model import ErTask, ErProcessor, ErEndpoint
 from eggroll.core.proto import command_pb2_grpc, transfer_pb2_grpc
@@ -39,11 +43,9 @@ from eggroll.core.utils import _exception_logger
 from eggroll.core.utils import hash_code
 from eggroll.roll_pair import create_adapter, create_serdes
 from eggroll.roll_pair.transfer_pair import TransferPair
-from eggroll.utils import log_utils
-from eggroll.core.io.io_utils import get_db_path
-from threading import Thread
 from eggroll.roll_pair.utils.pair_utils import generator
-from eggroll.roll_pair.utils.pair_utils import get_db_path
+from eggroll.roll_pair.utils.pair_utils import get_db_path, partitioner
+from eggroll.utils import log_utils
 
 log_utils.setDirectory()
 LOGGER = log_utils.getLogger()
@@ -64,21 +66,40 @@ class EggPair(object):
   def __partitioner(self, hash_func, total_partitions):
     return lambda k: hash_func(k) % total_partitions
 
-  def _run_unary(self, func, task):
+  def _run_unary(self, func, task, shuffle=False):
     key_serdes = create_serdes(task._inputs[0]._store_locator._serdes)
     value_serdes = create_serdes(task._inputs[0]._store_locator._serdes)
     input_adapter = create_adapter(task._inputs[0])
     input_iterator = input_adapter.iteritems()
-    output_adapter = input_adapter = create_adapter(task._outputs[0])
-    output_writebatch = output_adapter.new_batch()
+
+    if shuffle:
+      total_partitions = task._inputs[0]._store_locator._total_partitions
+      output_store = task._job._outputs[0]
+      shuffle_broker = FifoBroker()
+      shuffler = TransferPair(
+        transfer_id=task._job._id,
+        output_store=output_store)
+
+      shuffler.start_push(shuffle_broker, partitioner(hash_func=hash_code, total_partitions=total_partitions))
+      shuffler.start_recv(task._outputs[0]._id)
+    else:
+      output_adapter = create_adapter(task._outputs[0])
+      output_writebatch = output_adapter.new_batch()
     try:
-      func(input_iterator, key_serdes, value_serdes, output_writebatch)
+      if shuffle:
+        func(input_iterator, key_serdes, value_serdes, shuffle_broker)
+      else:
+        func(input_iterator, key_serdes, value_serdes, output_writebatch)
     except:
       raise EnvironmentError("exec task:{} error".format(task))
     finally:
-      output_writebatch.close()
+      if shuffle:
+        shuffle_broker.signal_write_finish()
+        shuffler.join()
+      else:
+        output_writebatch.close()
+        output_adapter.close()
       input_adapter.close()
-      output_adapter.close()
 
   def _run_binary(self, func, task):
     left_key_serdes = create_serdes(task._inputs[0]._store_locator._serdes)
@@ -153,7 +174,6 @@ class EggPair(object):
       output_partition = task._outputs[0]
 
       tag = f'{task._id}'
-
       print('egg_pair transfer service tag:', tag)
       output_adapter = create_adapter(task._outputs[0])
       output_broker = TransferService.get_or_create_broker(tag, write_signals=1)
@@ -194,32 +214,12 @@ class EggPair(object):
     elif task._name == 'map':
       f = cloudpickle.loads(functors[0]._body)
 
-      input_partition = task._inputs[0]
-      output_partition = task._outputs[0]
-      print(output_partition)
-      total_partitions = input_partition._store_locator._total_partitions
-
-      # todo:0: decide partitioner
-      partitioner = self.__partitioner(hash_func=hash_code, total_partitions=total_partitions)
-      input_adapter = create_adapter(task._inputs[0])
-      output_store = task._job._outputs[0]
-
-      shuffle_broker = FifoBroker()
-      shuffler = TransferPair(
-              transfer_id=task._job._id,
-              output_store=output_store)
-
-      shuffler.start_push(shuffle_broker, partitioner)
-      shuffler.start_recv(output_partition._id)
-
-      for k_bytes, v_bytes in input_adapter.iteritems():
-        k1, v1 = f(self.serde.deserialize(k_bytes), self.serde.deserialize(v_bytes))
-        shuffle_broker.put((self.serde.serialize(k1), self.serde.serialize(v1)))
-      print('finish calculating')
-      input_adapter.close()
-      shuffle_broker.signal_write_finish()
-
-      shuffler.join()
+      def map_wrapper(input_iterator, key_serdes, value_serdes, shuffle_broker):
+        for k_bytes, v_bytes in input_iterator:
+          k1, v1 = f(key_serdes.deserialize(k_bytes), value_serdes.deserialize(v_bytes))
+          shuffle_broker.put((key_serdes.serialize(k1), value_serdes.serialize(v1)))
+        print('finish calculating')
+      self._run_unary(map_wrapper, task, shuffle=True)
       print('map finished')
     elif task._name == 'reduce':
       job = copy(task._job)
@@ -548,8 +548,10 @@ def serve(args):
   LOGGER.info(f"starting egg_pair service, port:{port}, transfer port: {transfer_port}")
   command_server.start()
 
-  node_manager = args.node_manager
-  if node_manager:
+  cluster_manager = args.cluster_manager
+  myself = None
+  cluster_manager_client = None
+  if cluster_manager:
     session_id = args.session_id
 
     if not session_id:
@@ -557,38 +559,55 @@ def serve(args):
     options = {
       SessionConfKeys.CONFKEY_SESSION_ID: args.session_id
     }
-    myself = ErProcessor(processor_type=ProcessorTypes.EGG_PAIR,
+    myself = ErProcessor(id=int(args.processor_id),
+                         server_node_id=int(args.server_node_id),
+                         processor_type=ProcessorTypes.EGG_PAIR,
                          command_endpoint=ErEndpoint(host='localhost', port=port),
                          transfer_endpoint=ErEndpoint(host='localhost', port=transfer_port),
                          options=options,
                          status=ProcessorStatus.RUNNING)
 
-    if node_manager.find(':') == -1:
-      node_manager_host = 'localhost'
-      node_manager_port = node_manager.strip()
-    else:
-      node_manager_host, node_manager_port = node_manager.strip().split(':', 1)
+    cluster_manager_host, cluster_manager_port = cluster_manager.strip().split(':')
 
-    print(f'node_manager: {node_manager_host}:{node_manager_port}')
-    node_manager_client = NodeManagerClient(options = {
-      NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HOST: node_manager_host,
-      NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT: node_manager_port
+    print(f'cluster_manager: {cluster_manager}')
+    cluster_manager_client = ClusterManagerClient(options={
+      ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST: cluster_manager_host,
+      NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT: cluster_manager_port
     })
-    node_manager_client.heartbeat(myself)
+    cluster_manager_client.heartbeat(myself)
 
   print(f'egg_pair started at port {port}, transfer_port {transfer_port}')
 
-  import time
-  time.sleep(100000)
+  run = True
 
+  def exit_gracefully(signum, frame):
+    nonlocal run
+    run = False
+
+  signal.signal(signal.SIGTERM, exit_gracefully)
+  signal.signal(signal.SIGINT, exit_gracefully)
+
+  import time
+
+  while run:
+    time.sleep(1)
+
+  if cluster_manager:
+    myself._status = ProcessorStatus.STOPPED
+    cluster_manager_client.heartbeat(myself)
+
+  print(f'egg_pair at port {port}, transfer_port {transfer_port} stopped gracefully')
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
   parser.add_argument('-d', '--data-dir', default=os.path.dirname(os.path.realpath(__file__)))
-  parser.add_argument('-n', '--node-manager')
+  parser.add_argument('-cm', '--cluster-manager')
+  parser.add_argument('-nm', '--node-manager')
   parser.add_argument('-s', '--session-id')
   parser.add_argument('-p', '--port', default='0')
   parser.add_argument('-t', '--transfer-port', default='-1')
+  parser.add_argument('-sn', '--server-node-id')
+  parser.add_argument('-prid', '--processor-id')
 
   args = parser.parse_args()
   print(args)
