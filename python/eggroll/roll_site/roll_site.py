@@ -22,6 +22,7 @@ from eggroll.core.constants import StoreTypes
 from eggroll.roll_pair.roll_pair import RollPair
 from eggroll.core.proto import proxy_pb2, proxy_pb2_grpc
 from eggroll.core.serdes import eggroll_serdes
+from eggroll.core.conf_keys import SessionConfKeys
 
 _serdes = eggroll_serdes.PickleSerdes
 
@@ -158,36 +159,6 @@ class RollSite:
         else:
             return rp
 
-
-    # def wait_for_complete(self, futures):
-    #   return wait(futures, timeout=10, return_when=ALL_COMPLETED)
-    # return True
-
-    def wait_for_pull_complete(self, future):
-        wait(future, timeout=10, return_when=ALL_COMPLETED)
-        results = [r.result() for r in futures]
-        rtn = []
-        for result in results:
-            table_name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.job_id, self.name, self.tag,
-                                                                       result.header.src.role,
-                                                                       result.header.src.partyId,
-                                                                       result.header.dst.role,
-                                                                       result.header.dst.partyId]))
-            print("namespace:", self.job_id, ", name:", table_name)
-            rp = self.ctx.rp_ctx.load(namespace=self.job_id, name=table_name)
-            print("result.body.value:", result.body.value)
-            if (result.body.value == str.encode('object')):
-                print("__tagged_key", result.body.key)
-                __tagged_key = result.body.key
-                ret_obj = rp.get(__tagged_key)
-                print("ret_obj:", ret_obj)
-                rtn.append(ret_obj)
-                LOGGER.debug("[GET] Got remote object {}".format(__tagged_key))
-            else:
-                rtn.append(rp)
-
-        return rtn
-
     def push(self, obj, parties: list = None):
         futures = []
         print("parties:", parties)
@@ -202,35 +173,71 @@ class RollSite:
                                                     _partyId)
 
             namespace = self.job_id
+            obj_type = 'rollpair' if isinstance(obj, RollPair) else 'object'
 
             if isinstance(obj, RollPair):
-                name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.job_id, self.name, self.tag,
-                                                                     self.local_role, str(self.party_id),
-                                                                     _role, str(_partyId), self.dst_host,
-                                                                     str(self.dst_port), 'rollpair']))
                 rp = obj
             else:
-                '''
-          If it is a object, put the object in the table and send the table meta.
-          '''
+                # If it is a object, put the object in the table and send the table meta.
                 name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.job_id, self.name, self.tag,
                                                                      self.local_role, str(self.party_id),
-                                                                     _role, str(_partyId), self.dst_host,
-                                                                     str(self.dst_port), 'object']))
+                                                                     _role, str(_partyId)]))
                 rp = self.ctx.rp_ctx.load(namespace, name)
                 rp.put(_tagged_key, obj)
-
                 LOGGER.debug("[REMOTE] Sending {}".format(_tagged_key))
                 rp = self.ctx.rp_ctx.load(namespace, name)
 
             def map_values():
+                is_standalone = self.ctx.rp_ctx.get_session().get_option(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE) == "standalone"
+                #is_standalone = True
+                if is_standalone:
+                    if obj_type == 'object':
+                        return role_partyId
+                    dst_name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.job_id, self.name, self.tag,
+                                                                             self.local_role, str(self.party_id),
+                                                                             _role, str(_partyId)]))
+                    store_type = rp.get_type()
+                else:
+                    dst_name = "roll_site__" + '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.job_id, self.name,
+                                                                                             self.tag, self.local_role,
+                                                                                             str(self.party_id),
+                                                                                             _role, str(_partyId),
+                                                                                             self.dst_host,
+                                                                                             str(self.dst_port),
+                                                                                             obj_type]))
+                    store_type = StoreTypes.ROLLPAIR_ROLLSITE
+
+                print("namespace:", namespace, ", name:", dst_name)
                 rp.map_values(
                     lambda v: v,
                     output=ErStore(store_locator=
-                                   ErStoreLocator(store_type=StoreTypes.ROLLPAIR_ROLLSITE,
-                                                  namespace="roll_site__" + namespace,
-                                                  name=name)))
-                return role_partyId, _partyId
+                                   ErStoreLocator(store_type=store_type,
+                                                  namespace=namespace,
+                                                  name=dst_name)))
+
+                if is_standalone:
+                    task_info = proxy_pb2.Task(taskId=dst_name, model=proxy_pb2.Model(name=obj_type, dataKey=_tagged_key))
+                    topic_src = proxy_pb2.Topic(name="set_status", partyId="{}".format(self.party_id),
+                                                role=self.local_role, callback=None)
+                    topic_dst = proxy_pb2.Topic(name="set_status", partyId="{}".format(self.party_id),
+                                                role=self.local_role, callback=None)
+                    command_test = proxy_pb2.Command(name="set_status")
+                    conf_test = proxy_pb2.Conf(overallTimeout=2000,
+                                               completionWaitTimeout=2000,
+                                               packetIntervalTimeout=2000,
+                                               maxRetries=10)
+                    metadata = proxy_pb2.Metadata(task=task_info,
+                                                  src=topic_src,
+                                                  dst=topic_dst,
+                                                  command=command_test,
+                                                  operator="markEnd",
+                                                  seq=0, ack=0,
+                                                  conf=conf_test)
+
+                    packet = proxy_pb2.Packet(header=metadata)
+                    self.stub.unaryCall(packet)
+
+                return role_partyId
 
             future = self.process_pool.submit(map_values)
             futures.append(future)
