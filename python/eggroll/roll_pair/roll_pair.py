@@ -72,10 +72,11 @@ class RollPairContext(object):
         partitioner = options.get('partitioner', PartitionerTypes.BYTESTRING_HASH)
         serdes = options.get('serdes', SerdesTypes.CLOUD_PICKLE)
         create_if_missing = options.get('create_if_missing', True)
-        # todo:0: add combine options to pass it through
+        # todo:1: add combine options to pass it through
         store_options = self.__session.get_all_options()
         store_options.update(options)
         final_options = store_options.copy()
+        # TODO:1: tostring in er model
         if 'create_if_missing' in final_options:
             del final_options['create_if_missing']
         if 'include_key' in final_options:
@@ -334,7 +335,8 @@ class RollPair(object):
         populated_store = self.ctx.populate_processor(self.__store)
         transfer_pair = TransferPair(transfer_id=job_id, output_store=populated_store)
 
-        adapter = BrokerAdapter(FifoBroker(write_signals=self.__store._store_locator._total_partitions))
+        adapter = BrokerAdapter(FifoBroker(
+            writers=self.__store._store_locator._total_partitions))
         transfer_pair.start_pull(adapter)
 
         return pair_generator(adapter, self.key_serdes, self.value_serdes, cleanup)
@@ -397,7 +399,7 @@ class RollPair(object):
         job_id = generate_job_id(self.__session_id, tag=RollPair.COUNT)
         job = ErJob(id=job_id,
                     name=RollPair.COUNT,
-                    inputs=[self.__store])
+                    inputs=[self.ctx.populate_processor(self.__store)])
         args = list()
         for i in range(total_partitions):
             partition_input = job._inputs[0]._partitions[i]
@@ -432,7 +434,7 @@ class RollPair(object):
             task_inputs = [ErPartition(id=i, store_locator=self.__store._store_locator)]
             task_outputs = []
 
-            job_id = generate_job_id(self.__session_id)
+            job_id = generate_job_id(self.__session_id, RollPair.DESTROY)
             job = ErJob(id=job_id, name=RollPair.DESTROY,
                         inputs=[self.__store],
                         outputs=job_outputs,
@@ -487,7 +489,7 @@ class RollPair(object):
         outputs = []
         if output:
             outputs.append(output)
-        # todo:0: options issues. refer to line 77
+        # todo:1: options issues. refer to line 77
         final_options = {}
         final_options.update(self.__store._options)
         final_options.update(options)

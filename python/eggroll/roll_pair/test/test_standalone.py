@@ -20,7 +20,7 @@ from eggroll.roll_pair.test.roll_pair_test_assets import get_debug_test_context,
     get_cluster_context, get_standalone_context
 
 is_debug = True
-is_standalone = True
+is_standalone = False
 
 class TestStandalone(unittest.TestCase):
     ctx = None
