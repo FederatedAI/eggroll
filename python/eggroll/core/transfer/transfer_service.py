@@ -23,7 +23,7 @@ import grpc
 from grpc._cython import cygrpc
 
 from eggroll.core.conf_keys import TransferConfKeys
-from eggroll.core.datastructure.broker import FifoBroker
+from eggroll.core.datastructure.broker import FifoBroker, BrokerClosed
 from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.meta_model import ErEndpoint
 from eggroll.core.proto import transfer_pb2_grpc, transfer_pb2
@@ -78,7 +78,7 @@ class TransferService(object):
     i = 0
     while not broker.is_closable():
       try:
-        data = broker.get(block=True, timeout=5)
+        data = broker.get(block=True, timeout=0.1)
         if data:
           header = transfer_pb2.TransferHeader(id=i, tag=tag)
           batch = transfer_pb2.TransferBatch(header=header, data=data)
@@ -87,8 +87,11 @@ class TransferService(object):
           yield batch
       except queue.Empty as e:
         print("transfer client queue empty")
+      except BrokerClosed as e:
+        break
       except Exception as e:
         print(e)
+
 
 class GrpcTransferServicer(transfer_pb2_grpc.TransferServiceServicer):
   @_exception_logger

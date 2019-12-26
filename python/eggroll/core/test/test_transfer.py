@@ -13,15 +13,16 @@
 #  limitations under the License.
 
 
-from eggroll.core.datastructure.broker import FifoBroker
-from eggroll.core.transfer.transfer_service import TransferService, GrpcTransferService, TransferClient
-from eggroll.core.conf_keys import TransferConfKeys
-from eggroll.core.meta_model import ErEndpoint
-from concurrent.futures import ThreadPoolExecutor
-import threading
 import queue
+import threading
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 
+from eggroll.core.conf_keys import TransferConfKeys
+from eggroll.core.datastructure.broker import FifoBroker, BrokerClosed
+from eggroll.core.meta_model import ErEndpoint
+from eggroll.core.transfer.transfer_service import TransferService, \
+    GrpcTransferService, TransferClient
 
 transfer_port = 20002
 transfer_endpont = ErEndpoint('localhost', transfer_port)
@@ -43,12 +44,14 @@ class TestTransfer(unittest.TestCase):
         i = 0
         while not broker.is_closable():
             try:
-                data = broker.get(block=True, timeout=1)
+                data = broker.get(block=True, timeout=0.1)
                 if data:
                     print(f'recv: {i}: {data}')
                     i += 1
             except queue.Empty as e:
                 print(f'empty')
+            except BrokerClosed:
+                break
 
         thread.join(1)
 
