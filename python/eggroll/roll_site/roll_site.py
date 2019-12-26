@@ -136,19 +136,35 @@ class RollSite:
 
     def _thread_receive(self, packet):
         ret_packet = self.stub.unaryCall(packet)
-        while ret_packet.header.ack != 123:  
+        while ret_packet.header.ack != 123:
             if ret_packet.header.ack in ERROR_STATES:
                 raise IOError("receive terminated")
             ret_packet = self.stub.unaryCall(packet)
 
-        return ret_packet
+        table_name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.job_id, self.name, self.tag,
+                                                                   ret_packet.header.src.role,
+                                                                   ret_packet.header.src.partyId,
+                                                                   ret_packet.header.dst.role,
+                                                                   ret_packet.header.dst.partyId]))
+        print("namespace:", self.job_id, ", name:", table_name)
+        rp = self.ctx.rp_ctx.load(namespace=self.job_id, name=table_name)
+        print("result.body.value:", ret_packet.body.value)
+        if ret_packet.body.value == str.encode('object'):
+            print("__tagged_key", ret_packet.body.key)
+            __tagged_key = ret_packet.body.key
+            ret_obj = rp.get(__tagged_key)
+            print("ret_obj:", ret_obj)
+            return ret_obj
+        else:
+            return rp
+
 
     # def wait_for_complete(self, futures):
     #   return wait(futures, timeout=10, return_when=ALL_COMPLETED)
     # return True
 
-    def wait_for_pull_complete(self, futures):
-        wait(futures, timeout=10, return_when=ALL_COMPLETED)
+    def wait_for_pull_complete(self, future):
+        wait(future, timeout=10, return_when=ALL_COMPLETED)
         results = [r.result() for r in futures]
         rtn = []
         for result in results:
@@ -262,10 +278,4 @@ class RollSite:
             futures.append(self.process_pool.submit(RollSite._thread_receive, self, packet))
 
         self.process_pool.shutdown(wait=False)
-
-        if len(parties) == 1:
-            return futures[0]
-
-        ret_future = self.complete_pool.submit(self.wait_for_pull_complete, futures)
-        self.complete_pool.shutdown(wait=False)
-        return ret_future
+        return futures
