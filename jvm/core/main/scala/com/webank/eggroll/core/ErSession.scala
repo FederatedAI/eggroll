@@ -31,6 +31,7 @@ trait ErDeploy
 class ErSession(val sessionId: String = s"er_session_jvm_${TimeUtils.getNowMs()}_${RuntimeUtils.siteLocalAddress}",
                 name: String = "",
                 tag: String = "",
+                createIfNotExists: Boolean = true,
                 var processors: Array[ErProcessor] = Array(),
                 options: Map[String, String] = Map()) {
 
@@ -44,8 +45,12 @@ class ErSession(val sessionId: String = s"er_session_jvm_${TimeUtils.getNowMs()}
     processors=processors,
     options=options)
   val sessionMeta: ErSessionMeta =
-    if (processors.isEmpty) clusterManagerClient.getOrCreateSession(sessionMetaArg)
-    else clusterManagerClient.registerSession(sessionMetaArg)
+    if (createIfNotExists) {
+      if (processors.isEmpty) clusterManagerClient.getOrCreateSession(sessionMetaArg)
+      else clusterManagerClient.registerSession(sessionMetaArg)
+    } else {
+      clusterManagerClient.getSession(sessionMetaArg)
+    }
   processors = sessionMeta.processors
   status = sessionMeta.status
 
