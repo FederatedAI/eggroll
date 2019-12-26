@@ -56,7 +56,6 @@ class SessionManagerService extends SessionManager {
     if (smDao.existSession(sessionMeta.id)) {
       return smDao.getSession(sessionMeta.id)
     }
-    // TODO:0: dispatch processor
     // 0. generate a simple processors -> server plan, and fill sessionMeta.processors
     // 1. class NodeManager.startContainers
     // 2. query session_main's active_proc_count , wait all processor heart beats.

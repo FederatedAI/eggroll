@@ -22,11 +22,7 @@ from eggroll.core.utils import get_self_ip, time_now
 
 
 # TODO:1: support windows
-# TODO:0: remove
 
-
-class ErDeploy:
-    pass
 
 class ErSession(object):
     def __init__(self,
