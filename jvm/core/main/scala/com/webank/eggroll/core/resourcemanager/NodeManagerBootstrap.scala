@@ -63,7 +63,7 @@ class NodeManagerBootstrap extends Bootstrap with Logging {
     logInfo(s"conf file: ${confFile.getAbsolutePath}")
     // StaticErConf.addProperty(SessionConfKeys.CONFKEY_SESSION_ID, sessionId)
 
-    // TODO:0: get from cluster manager or database
+    // TODO:0: get from cluster manager
     StaticErConf.addProperty(ResourceManagerConfKeys.SERVER_NODE_ID, "2")
   }
 

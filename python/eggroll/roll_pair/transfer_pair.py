@@ -16,7 +16,7 @@
 import queue
 from concurrent.futures import ThreadPoolExecutor, wait, FIRST_EXCEPTION
 
-from eggroll.core.datastructure.broker import FifoBroker
+from eggroll.core.datastructure.broker import FifoBroker, BrokerClosed
 from eggroll.core.meta_model import ErStore
 from eggroll.core.pair_store.format import PairBinReader, PairBinWriter, \
     ArrayByteBuffer
@@ -193,13 +193,15 @@ class TransferPair(object):
 
         while not input.is_closable():
             try:
-                pair = input.get(block=True, timeout=1)
+                pair = input.get(block=True, timeout=0.1)
 
                 if pair:
                     partitioned_brokers[partition_func(pair[0])].put(pair)
                     partitioned_elements_count += 1
             except queue.Empty as e:
                 print("partitioner queue empty")
+            except BrokerClosed as e:
+                break
 
         return partitioned_elements_count
 
@@ -248,13 +250,15 @@ class TransferPair(object):
         while not input_broker.is_closable():
             total_sent += 1
             try:
-                pair = input_broker.get(block=True, timeout=1)
+                pair = input_broker.get(block=True, timeout=0.1)
                 writer.write(pair[0], pair[1])
             except IndexError as e:
                 commit(max(buffer_size, len(pair[0] + pair[1])))
                 writer.write(pair[0], pair[1])
             except queue.Empty:
                 print("transfer send queue empty")
+            except BrokerClosed:
+                break
 
         commit()
         print("finish static send")
@@ -271,7 +275,7 @@ class TransferPair(object):
         output_write_batch = output_adapter.new_batch()
         while not output_broker.is_closable():
             try:
-                transfer_batch = output_broker.get(block=True, timeout=1)
+                transfer_batch = output_broker.get(block=True, timeout=0.1)
                 if transfer_batch:
                     bin_data = ArrayByteBuffer(transfer_batch.data)
                     reader = PairBinReader(pair_buffer=bin_data)
@@ -282,6 +286,8 @@ class TransferPair(object):
                 output_write_batch.write()
             except queue.Empty as e:
                 pass
+            except BrokerClosed as e:
+                break
 
         output_write_batch.write()
         output_write_batch.close()

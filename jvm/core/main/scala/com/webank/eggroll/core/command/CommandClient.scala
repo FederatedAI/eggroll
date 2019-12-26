@@ -36,11 +36,11 @@ import com.webank.eggroll.core.grpc.observer.SameTypeFutureCallerResponseStreamO
 import com.webank.eggroll.core.meta.ErEndpoint
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.util.{Logging, SerdesUtils, TimeUtils}
-import io.grpc.{ManagedChannel, ManagedChannelBuilder}
 import io.grpc.stub.StreamObserver
+import io.grpc.{ManagedChannel, ManagedChannelBuilder}
 
 import scala.collection.JavaConverters._
-import scala.reflect.{ClassTag, classTag}
+import scala.reflect.ClassTag
 
 class CommandClient(defaultEndpoint:ErEndpoint = null, serdesType: String = SerdesTypes.PROTOBUF, isSecure:Boolean=false)
   extends Logging {
@@ -59,7 +59,8 @@ class CommandClient(defaultEndpoint:ErEndpoint = null, serdesType: String = Serd
   }
 
   val sessionId = StaticErConf.getString(SessionConfKeys.CONFKEY_SESSION_ID)
-  // TODO:0: confirm client won't exit bug of Singletons.getNoCheck(classOf[GrpcChannelFactory]).getChannel(endpoint, isSecure)
+  // TODO:1: confirm client won't exit bug of Singletons.getNoCheck(classOf[GrpcChannelFactory]).getChannel(endpoint, isSecure)
+  // TODO:0: add channel args
   private def buildChannel(endpoint: ErEndpoint): ManagedChannel = {
     val builder = ManagedChannelBuilder.forAddress(endpoint.host, endpoint.port)
     builder.usePlaintext()
@@ -139,7 +140,6 @@ class CommandClient(defaultEndpoint:ErEndpoint = null, serdesType: String = Serd
     else
       null
   }
-  // TODO:0: confirm client won't exit bug of Singletons.getNoCheck(classOf[GrpcChannelFactory]).getChannel(endpoint, isSecure)
   class CommandCallSupplier[T](endpoint: ErEndpoint, isSecure: Boolean, commandURI: CommandURI, args: RpcMessage*)(implicit tag:ClassTag[T]) extends Supplier[T] {
     override def get(): T = {
       val ch: ManagedChannel = Singletons.getNoCheck(classOf[GrpcChannelFactory]).getChannel(endpoint, isSecure)
