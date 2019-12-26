@@ -13,35 +13,44 @@
 #  limitations under the License.
 
 
-
 class SerdesTypes(object):
     PROTOBUF = 'PROTOBUF'
     PICKLE = 'PICKLE'
     CLOUD_PICKLE = 'CLOUD_PICKLE'
     EMPTY = 'EMPTY'
 
+
 class ServerNodeStatus(object):
     HEALTHY = 'HEALTHY'
+
 
 class ServerNodeTypes(object):
     CLUSTER_MANAGER = 'CLUSTER_MANAGER'
     NODE_MANAGER = 'NODE_MANAGER'
+
 
 class StoreTypes(object):
     ROLLPAIR_LMDB = 'rollpair.lmdb'
     ROLLPAIR_LEVELDB = 'rollpair.leveldb'
     ROLLFRAME_FILE = 'rollframe.file'
     ROLLPAIR_ROLLSITE = 'rollpair.rollsite'
+    ROLLPAIR_FILE = 'rollpair.file'
+    ROLLPAIR_MMAP = 'rollpair.mmap'
+    ROLLPAIR_CACHE = 'rollpair.cache'
+
 
 class PartitionerTypes(object):
     BYTESTRING_HASH = 'BYTESTRING_HASH'
+
 
 class ProcessorTypes(object):
     EGG_PAIR = 'egg_pair'
     ROLL_PAIR_MASTER = 'roll_pair_master'
 
+
 class RollTypes(object):
     ROLL_PAIR = 'roll_pair'
+
 
 class ProcessorStatus(object):
     NEW = 'NEW'
@@ -49,10 +58,12 @@ class ProcessorStatus(object):
     STOPPED = 'STOPPED'
     KILLED = 'KILLED'
 
+
 class SessionStatus(object):
     NEW = 'NEW'
     RUNNING = 'RUNNING'
     TERMINATED = 'TERMINATED'
+
 
 class DeployModes(object):
     STANDALONE = 'standalone'

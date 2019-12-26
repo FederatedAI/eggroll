@@ -22,6 +22,8 @@ LOGGER = log_utils.getLogger()
 from eggroll.core.pair_store.adapter import PairWriteBatch, PairIterator, PairAdapter
 
 class RocksdbWriteBatch(PairWriteBatch):
+    write_count = 0
+
     def __init__(self, adapter, chunk_size=100000):
         self.chunk_size = chunk_size
         self.batch = rocksdb.WriteBatch()
@@ -33,7 +35,9 @@ class RocksdbWriteBatch(PairWriteBatch):
         self.key = k
         self.value = v
         self.batch.put(k, v)
-        self.write()
+        RocksdbWriteBatch.write_count += 1
+        if RocksdbWriteBatch.write_count >= 100000:
+            self.write()
 
     def delete(self, k):
         self.adapter.db.delete(k)
@@ -53,21 +57,22 @@ class RocksdbIterator(PairIterator):
         self.adapter = adapter
         self.it = adapter.db.iteritems()
         self.it.seek_to_first()
-    # TODO:0: need iterate?
+
     def first(self):
         count = 0
         self.it.seek_to_first()
         for k, v in self.it:
             count += 1
+            break
         self.it.seek_to_first()
         return (count != 0)
 
-    # TODO:0: need iterate?
     def last(self):
         count = 0
         self.it.seek_to_last()
         for k, v in self.it:
             count += 1
+            break
         self.it.seek_to_last()
         return (count != 0)
 
@@ -113,26 +118,10 @@ class RocksdbAdapter(PairAdapter):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        LOGGER.info("exit")
-        with RocksdbAdapter.env_lock:
-            if self.db:
-                count = RocksdbAdapter.count_dict[self.path]
-                if not count or count - 1 <= 0:
-                    del RocksdbAdapter.env_dict[self.path]
-                    del RocksdbAdapter.count_dict[self.path]
-                else:
-                    RocksdbAdapter.count_dict[self.path] = RocksdbAdapter.count_dict[self.path] - 1
         self.close()
 
     def __del__(self):
-        with RocksdbAdapter.env_lock:
-            if hasattr(self, 'db'):
-                count = RocksdbAdapter.count_dict[self.path]
-                if not count or count - 1 <= 0:
-                    del RocksdbAdapter.env_dict[self.path]
-                    del RocksdbAdapter.count_dict[self.path]
-                else:
-                    RocksdbAdapter.count_dict[self.path] = count - 1
+        self.close()
 
     def get(self, key):
         return self.db.get(key)
@@ -141,8 +130,15 @@ class RocksdbAdapter(PairAdapter):
         self.db.put(key, value)
 
     def close(self):
-        if self.db:
-            del self.db
+        with RocksdbAdapter.env_lock:
+            if hasattr(self, 'db'):
+                count = RocksdbAdapter.count_dict[self.path]
+                if not count or count - 1 <= 0:
+                    del RocksdbAdapter.env_dict[self.path]
+                    del RocksdbAdapter.count_dict[self.path]
+                else:
+                    RocksdbAdapter.count_dict[self.path] = count - 1
+        del self.db
 
     def iteritems(self):
         return RocksdbIterator(self)
@@ -156,3 +152,9 @@ class RocksdbAdapter(PairAdapter):
 
     def delete(self, k):
         self.db.delete(k)
+
+    def destroy(self):
+        self.close()
+        import shutil
+        shutil.rmtree(self.path)
+        LOGGER.info("finish destroy")
