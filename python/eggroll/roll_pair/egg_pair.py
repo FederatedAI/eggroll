@@ -120,7 +120,7 @@ class EggPair(object):
     @_exception_logger
     def run_task(self, task: ErTask):
         LOGGER.info("start run task")
-        print("start run task")
+        LOGGER.debug("start run task")
         functors = task._job._functors
         result = task
 
@@ -131,12 +131,12 @@ class EggPair(object):
             #input_adapter = self.get_unary_input_adapter(task_info=task)
             input_adapter = create_adapter(task._inputs[0])
             value = input_adapter.get(f._key)
-            print("value:{}".format(value))
+            LOGGER.info("value:{}".format(value))
             result = ErPair(key=f._key, value=value)
             input_adapter.close()
         elif task._name == 'getAll':
             LOGGER.info("egg_pair getAll call")
-            print('egg_pair getAll call')
+            LOGGER.info('egg_pair getAll call')
             input_partition = task._inputs[0]
 
             tag = f'{task._id}'
@@ -170,12 +170,12 @@ class EggPair(object):
 
         # TODO:1: multiprocessor scenario
         elif task._name == 'putAll':
-            print("egg_pair putAll call")
+            LOGGER.info("egg_pair putAll call")
 
             output_partition = task._outputs[0]
 
             tag = f'{task._id}'
-            print('egg_pair transfer service tag:', tag)
+            LOGGER.info(f'egg_pair transfer service tag:{tag}')
             output_adapter = create_adapter(task._outputs[0])
             output_broker = TransferService.get_or_create_broker(tag, write_signals=1)
             TransferPair.recv(output_adapter=output_adapter,
@@ -184,7 +184,7 @@ class EggPair(object):
             TransferService.remove_broker(tag)
 
         if task._name == 'put':
-            print("egg_pair put call")
+            LOGGER.info("egg_pair put call")
             f = cloudpickle.loads(functors[0]._body)
             input_adapter = create_adapter(task._inputs[0])
             value = input_adapter.put(f._key, f._value)
@@ -218,9 +218,9 @@ class EggPair(object):
                 for k_bytes, v_bytes in input_iterator:
                     k1, v1 = f(key_serdes.deserialize(k_bytes), value_serdes.deserialize(v_bytes))
                     shuffle_broker.put((key_serdes.serialize(k1), value_serdes.serialize(v1)))
-                print('finish calculating')
+                LOGGER.info('finish calculating')
             self._run_unary(map_wrapper, task, shuffle=True)
-            print('map finished')
+            LOGGER.info('map finished')
         elif task._name == 'reduce':
             job = copy(task._job)
             reduce_functor = job._functors[0]
@@ -229,7 +229,7 @@ class EggPair(object):
             reduce_task._job = job
 
             self.aggregate(reduce_task)
-            print('reduce finished')
+            LOGGER.info('reduce finished')
 
         elif task._name == 'mapPartitions':
             def map_partitions_wrapper(input_iterator, key_serdes, value_serdes, output_writebatch):
@@ -293,9 +293,9 @@ class EggPair(object):
             self._run_unary(filter_wrapper, task)
 
         elif task._name == 'aggregate':
-            print('ready to aggregate')
+            LOGGER.info('ready to aggregate')
             self.aggregate(task)
-            print('aggregate finished')
+            LOGGER.info('aggregate finished')
 
         elif task._name == 'join':
             def join_wrapper(left_iterator, left_key_serdes, left_value_serdess,
@@ -398,7 +398,7 @@ class EggPair(object):
                 other_seq_op_result = queue.get(block=True, timeout=10)
                 comb_op_result = comb_op(comb_op_result, output_value_serdes.deserialize(other_seq_op_result.data))
 
-            print('aggregate finished. result: ', comb_op_result)
+            LOGGER.info(f'aggregate finished. result: {comb_op_result} ')
             output_adapter = create_adapter(task._outputs[0])
 
             output_writebatch = output_adapter.new_batch()
@@ -420,7 +420,7 @@ class EggPair(object):
             future.result()
 
         input_adapter.close()
-        print('aggregate finished')
+        LOGGER.info('aggregate finished')
 
 
 def serve(args):
@@ -441,8 +441,6 @@ def serve(args):
     command_pb2_grpc.add_CommandServiceServicer_to_server(command_servicer,
                                                           command_server)
 
-    from eggroll.roll_pair.utils.pair_utils import set_data_dir
-    set_data_dir(args.data_dir)
     transfer_servicer = GrpcTransferServicer()
 
     port = args.port
@@ -479,8 +477,6 @@ def serve(args):
         options = {
             SessionConfKeys.CONFKEY_SESSION_ID: args.session_id
         }
-
-        # todo:0: remove server_node_id
         myself = ErProcessor(id=int(args.processor_id),
                              server_node_id=int(args.server_node_id),
                              processor_type=ProcessorTypes.EGG_PAIR,
@@ -491,14 +487,14 @@ def serve(args):
 
         cluster_manager_host, cluster_manager_port = cluster_manager.strip().split(':')
 
-        print(f'cluster_manager: {cluster_manager}')
+        LOGGER.info(f'cluster_manager: {cluster_manager}')
         cluster_manager_client = ClusterManagerClient(options={
             ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST: cluster_manager_host,
             NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT: cluster_manager_port
         })
         cluster_manager_client.heartbeat(myself)
 
-    print(f'egg_pair started at port {port}, transfer_port {transfer_port}')
+    LOGGER.info(f'egg_pair started at port {port}, transfer_port {transfer_port}')
 
     run = True
 
@@ -518,7 +514,7 @@ def serve(args):
         myself._status = ProcessorStatus.STOPPED
         cluster_manager_client.heartbeat(myself)
 
-    print(f'egg_pair at port {port}, transfer_port {transfer_port} stopped gracefully')
+    LOGGER.info(f'egg_pair at port {port}, transfer_port {transfer_port} stopped gracefully')
 
 if __name__ == '__main__':
     args_parser = argparse.ArgumentParser()
@@ -542,5 +538,5 @@ if __name__ == '__main__':
         if not args.data_dir:
             args.data_dir = configs['eggroll']['eggroll.data.dir']
 
-    print(args)
+    LOGGER.info(args)
     serve(args)
