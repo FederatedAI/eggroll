@@ -191,12 +191,8 @@ class EggPair(object):
       input_adapter.close()
 
     if task._name == 'destroy':
-      er_store = ErStore(store_locator=task._inputs[0]._store_locator)
-      clusterManager = ClusterManagerClient()
-      clusterManager.delete_store(er_store)
-      import shutil
-      shutil.rmtree(get_db_path(task._inputs[0]))
-      LOGGER.info("finish destroy")
+      input_adapter = create_adapter(task._inputs[0])
+      input_adapter.destroy()
 
     if task._name == 'delete':
       f = cloudpickle.loads(functors[0]._body)
@@ -353,6 +349,7 @@ class EggPair(object):
                         right_value_serdess.deserialize(v_right))
             output_writebatch.put(k_left, left_value_serdess.serialize(v_final))
 
+        right_iterator.first()
         for k_right, v_right in right_iterator:
           if right_key_serdes.deserialize(k_right) not in k_list_iterated:
             #because left value and right value may have different serdes

@@ -32,6 +32,9 @@ class StoreTypes(object):
   ROLLPAIR_LEVELDB = 'rollpair.leveldb'
   ROLLFRAME_FILE = 'rollframe.file'
   ROLLPAIR_ROLLSITE = 'rollpair.rollsite'
+  ROLLPAIR_FILE = 'rollpair.file'
+  ROLLPAIR_MMAP = 'rollpair.mmap'
+  ROLLPAIR_CACHE = 'rollpair.cache'
 
 class PartitionerTypes(object):
   BYTESTRING_HASH = 'BYTESTRING_HASH'
