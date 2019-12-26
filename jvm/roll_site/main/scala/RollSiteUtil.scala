@@ -32,9 +32,9 @@ class RollSiteUtil(val session_id: String, name:String, namespace:String) {
   //private val session =  clusterManagerClient.getSession(session_meta)
   private val session =  new ErSession(sessionId = session_id, createIfNotExists = false)
   private val ctx = new RollPairContext(session)
-  private val namespace_striped = namespace.substring(11)
-  println("scalaPutBatch  name:" + name + ",namespace_striped:" + namespace_striped)
-  val rp:RollPair = ctx.load(namespace_striped, name)
+  private val nameStripped = name.substring("roll_site__".length)
+  println("scalaPutBatch  name:" + nameStripped + ",namespace:" + namespace)
+  val rp:RollPair = ctx.load(namespace, nameStripped)
 
   Runtime.getRuntime.addShutdownHook(new Thread(){
     override def run(): Unit = {
