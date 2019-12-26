@@ -19,9 +19,9 @@
 package com.webank.eggroll.core.constant
 
 object StoreTypes {
-  val ROLLPAIR_LMDB = "rollpair.lmdb"
-  val ROLLPAIR_LEVELDB = "rollpair.leveldb"
-  val ROLLFRAME_FILE = "rollframe.file"
+  val ROLLPAIR_LMDB = "LMDB"
+  val ROLLPAIR_LEVELDB = "LEVELDB"
+  val ROLLFRAME_FILE = "ROLL_FRAME_FILE"
 }
 
 object PartitionerTypes {

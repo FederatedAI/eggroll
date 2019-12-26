@@ -175,7 +175,7 @@ class EggPair(object):
             output_partition = task._outputs[0]
 
             tag = f'{task._id}'
-            LOGGER.info('egg_pair transfer service tag:', tag)
+            LOGGER.info(f'egg_pair transfer service tag:{tag}')
             output_adapter = create_adapter(task._outputs[0])
             output_broker = TransferService.get_or_create_broker(tag, write_signals=1)
             TransferPair.recv(output_adapter=output_adapter,
@@ -398,7 +398,7 @@ class EggPair(object):
                 other_seq_op_result = queue.get(block=True, timeout=10)
                 comb_op_result = comb_op(comb_op_result, output_value_serdes.deserialize(other_seq_op_result.data))
 
-            LOGGER.info('aggregate finished. result: ', comb_op_result)
+            LOGGER.info(f'aggregate finished. result: {comb_op_result} ')
             output_adapter = create_adapter(task._outputs[0])
 
             output_writebatch = output_adapter.new_batch()
