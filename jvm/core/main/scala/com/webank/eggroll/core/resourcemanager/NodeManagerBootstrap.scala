@@ -73,7 +73,6 @@ class NodeManagerBootstrap extends Bootstrap with Logging {
       .addService(new CommandService).build
     server.start()
 
-    // TODO:0: make it alive
     val port = server.getPort
     // TODO:0: why ?
 //    StaticErConf.setPort(this.port)
