@@ -232,8 +232,8 @@ class RollPair(object):
         inputs = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
         output = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
 
-        job_id = generate_job_id(self.__session_id)
-        job = ErJob(id=generate_job_id(self.__session_id),
+        job_id = generate_job_id(self.__session_id, RollPair.GET)
+        job = ErJob(id=job_id,
                     name=RollPair.GET,
                     inputs=[self.__store],
                     outputs=outputs,
@@ -268,7 +268,7 @@ class RollPair(object):
         inputs = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
         output = [ErPartition(id=0, store_locator=self.__store._store_locator)]
 
-        job_id = generate_job_id(self.__session_id)
+        job_id = generate_job_id(self.__session_id, RollPair.PUT)
         job = ErJob(id=job_id,
                     name=RollPair.PUT,
                     inputs=[self.__store],
@@ -295,7 +295,7 @@ class RollPair(object):
     def get_all(self, options={}):
         print('get all functor')
 
-        job_id = generate_job_id(self.__session_id)
+        job_id = generate_job_id(self.__session_id, RollPair.GET_ALL)
         def send_command():
             job = ErJob(id=job_id,
                         name=RollPair.GET_ALL,
@@ -322,9 +322,11 @@ class RollPair(object):
         def cleanup():
             nonlocal transfer_pair
             nonlocal command_thread
+            nonlocal adapter
 
             command_thread.join()
             transfer_pair.join()
+            adapter.close()
 
         command_thread = Thread(target=send_command)
         command_thread.start()
@@ -340,7 +342,7 @@ class RollPair(object):
 
     def put_all(self, items, output=None, options={}):
         include_key = options.get("include_key", False)
-        job_id = generate_job_id(self.__session_id)
+        job_id = generate_job_id(self.__session_id, RollPair.PUT_ALL)
 
         # TODO:1: consider multiprocessing scenario. parallel size should be sent to egg_pair to set write signal count
         def send_command():
@@ -457,7 +459,7 @@ class RollPair(object):
         inputs = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
         output = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
 
-        job_id = generate_job_id(self.__session_id)
+        job_id = generate_job_id(self.__session_id, RollPair.DELETE)
         job = ErJob(id=job_id,
                     name=RollPair.DELETE,
                     inputs=[self.__store],
@@ -490,7 +492,7 @@ class RollPair(object):
         final_options = {}
         final_options.update(self.__store._options)
         final_options.update(options)
-        job = ErJob(id=generate_job_id(self.__session_id),
+        job = ErJob(id=generate_job_id(self.__session_id, RollPair.MAP_VALUES),
                     name=RollPair.MAP_VALUES,
                     inputs=[self.__store],
                     outputs=outputs,
@@ -514,7 +516,7 @@ class RollPair(object):
         outputs = []
         if output:
             outputs.append(output)
-        job = ErJob(id=generate_job_id(self.__session_id),
+        job = ErJob(id=generate_job_id(self.__session_id, RollPair.MAP),
                     name=RollPair.MAP,
                     inputs=[self.__store],
                     outputs=outputs,
@@ -538,7 +540,7 @@ class RollPair(object):
         outputs = []
         if output:
             outputs.append(output)
-        job = ErJob(id=generate_job_id(self.__session_id),
+        job = ErJob(id=generate_job_id(self.__session_id, RollPair.MAP_PARTITIONS),
                     name=RollPair.MAP_PARTITIONS,
                     inputs=[self.__store],
                     outputs=outputs,
@@ -562,7 +564,7 @@ class RollPair(object):
         if output:
             outputs.append(output)
 
-        job = ErJob(id=generate_job_id(self.__session_id),
+        job = ErJob(id=generate_job_id(self.__session_id, RollPair.COLLAPSE_PARTITIONS),
                     name=RollPair.COLLAPSE_PARTITIONS,
                     inputs=[self.__store],
                     outputs=outputs,
@@ -586,7 +588,7 @@ class RollPair(object):
         if output:
             outputs.append(output)
 
-        job = ErJob(id=generate_job_id(self.__session_id),
+        job = ErJob(id=generate_job_id(self.__session_id, RollPair.FLAT_MAP),
                     name=RollPair.FLAT_MAP,
                     inputs=[self.__store],
                     outputs=outputs,
@@ -610,7 +612,7 @@ class RollPair(object):
         outputs = []
         if output:
             outputs.append(output)
-        job = ErJob(id=generate_job_id(self.__session_id),
+        job = ErJob(id=generate_job_id(self.__session_id, RollPair.REDUCE),
                     name=RollPair.REDUCE,
                     inputs=[self.__store],
                     outputs=outputs,
@@ -635,7 +637,7 @@ class RollPair(object):
         outputs = []
         if output:
             outputs.append(output)
-        job = ErJob(id=generate_job_id(self.__session_id),
+        job = ErJob(id=generate_job_id(self.__session_id, RollPair.AGGREGATE),
                     name=RollPair.AGGREGATE,
                     inputs=[self.__store],
                     outputs=outputs,
@@ -658,7 +660,7 @@ class RollPair(object):
         if output:
             outputs.append(output)
 
-        job = ErJob(id=generate_job_id(self.__session_id),
+        job = ErJob(id=generate_job_id(self.__session_id, RollPair.GLOM),
                     name=RollPair.GLOM,
                     inputs=[self.__store],
                     outputs=outputs,
@@ -683,7 +685,7 @@ class RollPair(object):
         outputs = []
         if output:
             outputs.append(output)
-        job = ErJob(id=generate_job_id(self.__session_id),
+        job = ErJob(id=generate_job_id(self.__session_id, RollPair.SAMPLE),
                     name=RollPair.SAMPLE,
                     inputs=[self.__store],
                     outputs=outputs,
@@ -707,7 +709,7 @@ class RollPair(object):
         outputs = []
         if output:
             outputs.append(output)
-        job = ErJob(id=generate_job_id(self.__session_id),
+        job = ErJob(id=generate_job_id(self.__session_id, RollPair.FILTER),
                     name=RollPair.FILTER,
                     inputs=[self.__store],
                     outputs=outputs,
@@ -730,7 +732,7 @@ class RollPair(object):
         outputs = []
         if output:
             outputs.append(output)
-        job = ErJob(id=generate_job_id(self.__session_id),
+        job = ErJob(id=generate_job_id(self.__session_id, RollPair.SUBTRACT_BY_KEY),
                     name=RollPair.SUBTRACT_BY_KEY,
                     inputs=[self.__store, other.__store],
                     outputs=outputs,
@@ -752,7 +754,7 @@ class RollPair(object):
         outputs = []
         if output:
             outputs.append(output)
-        job = ErJob(id=generate_job_id(self.__session_id),
+        job = ErJob(id=generate_job_id(self.__session_id, RollPair.UNION),
                     name=RollPair.UNION,
                     inputs=[self.__store, other.__store],
                     outputs=outputs,
@@ -777,7 +779,7 @@ class RollPair(object):
         final_options = {}
         final_options.update(self.__store._options)
         final_options.update(options)
-        job = ErJob(id=generate_job_id(self.__session_id),
+        job = ErJob(id=generate_job_id(self.__session_id, RollPair.JOIN),
                     name=RollPair.JOIN,
                     inputs=[self.__store, other.__store],
                     outputs=outputs,

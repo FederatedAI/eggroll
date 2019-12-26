@@ -117,8 +117,7 @@ class TransferPair(object):
 
     def _join_push(self):
         print('joining')
-        for broker in self.__partitioned_brokers:
-            broker.signal_write_finish()
+
         try:
             partition_finished, partition_not_finished = wait(self.__partition_futures, return_when=FIRST_EXCEPTION)
             if len(partition_finished) == len(self.__partition_futures):
@@ -199,9 +198,13 @@ class TransferPair(object):
                     partitioned_brokers[partition_func(pair[0])].put(pair)
                     partitioned_elements_count += 1
             except queue.Empty as e:
-                print("partitioner queue empty")
+                #print("partitioner queue empty")
+                pass
             except BrokerClosed as e:
                 break
+
+        for broker in partitioned_brokers:
+            broker.signal_write_finish()
 
         return partitioned_elements_count
 
@@ -256,7 +259,8 @@ class TransferPair(object):
                 commit(max(buffer_size, len(pair[0] + pair[1])))
                 writer.write(pair[0], pair[1])
             except queue.Empty:
-                print("transfer send queue empty")
+                #print("transfer send queue empty")
+                pass
             except BrokerClosed:
                 break
 
