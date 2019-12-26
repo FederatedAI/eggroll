@@ -47,7 +47,7 @@ class TransferService(object):
       print('creating broker: ', key)
       final_size = maxsize if maxsize > 0 else TransferService._DEFAULT_QUEUE_SIZE
       TransferService.data_buffer[key] = \
-        FifoBroker(max_capacity=final_size, write_signals=write_signals)
+        FifoBroker(max_capacity=final_size, writers=write_signals)
 
     return TransferService.data_buffer[key]
 
@@ -109,7 +109,7 @@ class GrpcTransferServicer(transfer_pb2_grpc.TransferServiceServicer):
       broker.put(request)
 
     broker.signal_write_finish()
-    print('GrpcTransferServicer stream finished. tag: ', base_tag, ', remaining write count: ', broker.get_remaining_write_signal_count())
+    print('GrpcTransferServicer stream finished. tag: ', base_tag, ', remaining write count: ', broker.get_active_writers_count())
     return transfer_pb2.TransferBatch(header=response_header)
 
   @_exception_logger
@@ -161,6 +161,8 @@ class TransferClient(object):
 
   @_exception_logger
   def recv(self, endpoint: ErEndpoint, tag):
+
+    @_exception_logger
     def fill_broker(iterable: Iterable, broker):
       iterator = iter(iterable)
       for e in iterator:
@@ -183,5 +185,4 @@ class TransferClient(object):
     t = Thread(target=fill_broker, args=[response_iter, broker])
     t.start()
 
-    # todo:0: exception log?
     return broker
