@@ -332,7 +332,8 @@ class RollPair(object):
         populated_store = self.ctx.populate_processor(self.__store)
         transfer_pair = TransferPair(transfer_id=job_id, output_store=populated_store)
 
-        adapter = BrokerAdapter(FifoBroker(write_signals=self.__store._store_locator._total_partitions))
+        adapter = BrokerAdapter(FifoBroker(
+            writers=self.__store._store_locator._total_partitions))
         transfer_pair.start_pull(adapter)
 
         return pair_generator(adapter, self.key_serdes, self.value_serdes, cleanup)
@@ -395,7 +396,7 @@ class RollPair(object):
         job_id = generate_job_id(self.__session_id, tag=RollPair.COUNT)
         job = ErJob(id=job_id,
                     name=RollPair.COUNT,
-                    inputs=[self.__store])
+                    inputs=[self.ctx.populate_processor(self.__store)])
         args = list()
         for i in range(total_partitions):
             partition_input = job._inputs[0]._partitions[i]
