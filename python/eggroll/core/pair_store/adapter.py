@@ -31,6 +31,7 @@ class PairAdapter(object):
     """
     Pair(key->value) store adapter
     """
+
     def __init__(self, options):
         pass
 
@@ -285,7 +286,7 @@ class BrokerIterator(PairIterator):
         while True:
             try:
                 if not self.__broker.is_closable():
-                    return self.__broker.get(block=True, timeout=1)
+                    return self.__broker.get(block=True, timeout=0.1)
                 else:
                     raise StopIteration()
             except Empty:
