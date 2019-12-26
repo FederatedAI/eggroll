@@ -183,5 +183,5 @@ class TransferClient(object):
     t = Thread(target=fill_broker, args=[response_iter, broker])
     t.start()
 
-    # todo:1: join t?
+    # todo:0: exception log?
     return broker

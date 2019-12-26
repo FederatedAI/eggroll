@@ -128,9 +128,9 @@ abstract class ErConf {
 
 case class RuntimeErConf(prop: Properties = new Properties()) extends ErConf {
 
+  // TODO:0: decouple with session meta. use conf / map instead
   def this(sessionMeta: ErSessionMeta) {
     this(new Properties())
-    // TODO:0: cannot modify session directly - reply: actually copying session meta to conf, not the other way around
     sessionMeta.options.foreach(t => conf.put(t._1, t._2))
     conf.put(SessionConfKeys.CONFKEY_SESSION_ID, sessionMeta.id)
     conf.put(SessionConfKeys.CONFKEY_SESSION_NAME, sessionMeta.name)
