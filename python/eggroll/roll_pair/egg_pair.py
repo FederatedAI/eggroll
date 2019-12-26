@@ -479,6 +479,8 @@ def serve(args):
         options = {
             SessionConfKeys.CONFKEY_SESSION_ID: args.session_id
         }
+
+        # todo:0: remove server_node_id
         myself = ErProcessor(id=int(args.processor_id),
                              server_node_id=int(args.server_node_id),
                              processor_type=ProcessorTypes.EGG_PAIR,

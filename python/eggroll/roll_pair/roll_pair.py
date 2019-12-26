@@ -72,10 +72,11 @@ class RollPairContext(object):
         partitioner = options.get('partitioner', PartitionerTypes.BYTESTRING_HASH)
         serdes = options.get('serdes', SerdesTypes.CLOUD_PICKLE)
         create_if_missing = options.get('create_if_missing', True)
-        # todo:0: add combine options to pass it through
+        # todo:1: add combine options to pass it through
         store_options = self.__session.get_all_options()
         store_options.update(options)
         final_options = store_options.copy()
+        # TODO:1: tostring in er model
         if 'create_if_missing' in final_options:
             del final_options['create_if_missing']
         if 'include_key' in final_options:
@@ -482,7 +483,7 @@ class RollPair(object):
         outputs = []
         if output:
             outputs.append(output)
-        # todo:0: options issues. refer to line 77
+        # todo:1: options issues. refer to line 77
         final_options = {}
         final_options.update(self.__store._options)
         final_options.update(options)
