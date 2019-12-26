@@ -1,12 +1,22 @@
 from eggroll.core.meta_model import ErPartition
 
+__data_dir = '/tmp/eggroll'
+
+
+def set_data_dir(data_dir):
+    global __data_dir
+    if data_dir:
+        from pathlib import Path
+        abs_path = Path(data_dir).resolve()
+        print(abs_path)
+        __data_dir = str(abs_path)
+
 
 def get_db_path(partition: ErPartition):
     store_locator = partition._store_locator
-    db_path_prefix = '/tmp/eggroll/'
 
-    return db_path_prefix + "/".join(
-        [store_locator._store_type, store_locator._namespace, store_locator._name,
+    return "/".join(
+        [__data_dir, store_locator._store_type, store_locator._namespace, store_locator._name,
          str(partition._id)])
 
 

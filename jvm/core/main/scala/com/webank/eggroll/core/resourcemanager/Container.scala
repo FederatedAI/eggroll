@@ -36,7 +36,7 @@ class Container(conf: RuntimeErConf, moduleName: String, processorId: Long = 0) 
   private val bootStrapShellArgs = conf.getString(CoreConfKeys.BOOTSTRAP_SHELL_ARGS, if (isWindows) "\\c" else "-c")
   private val exePath = conf.getString(s"${confPrefix}.exepath")
   private val sessionId = conf.getString(SessionConfKeys.CONFKEY_SESSION_ID)
-  // todo:0: get from database instead of conf
+  // todo:0: get from args instead of conf
   private val myServerNodeId = conf.getString(ResourceManagerConfKeys.SERVER_NODE_ID, "2")
   private val boot = conf.getString(CoreConfKeys.BOOTSTRAP_ROOT_SCRIPT, s"bin/eggroll_boot.${if(isWindows) "bat" else "sh"}")
   private val logsDir = conf.getString(CoreConfKeys.LOGS_DIR)
@@ -76,7 +76,6 @@ class Container(conf: RuntimeErConf, moduleName: String, processorId: Long = 0) 
   def runCommand(cmd: String): Thread = {
     new Thread(() => {
       val processorBuilder = new ProcessBuilder(bootStrapShell, bootStrapShellArgs, cmd)
-      // TODO:0: 1. redirect output / error stream; 2. add session info; 3. add node manager
       val builderEnv = processorBuilder.environment()
       val logPath = new File(s"${logsDir}${File.separator}${sessionId}${File.separator}bootstrap")
       if(!logPath.exists()){
