@@ -26,13 +26,13 @@ import com.webank.eggroll.rollsite.event.model.PipeHandleNotificationEvent;
 import com.webank.eggroll.rollsite.factory.EventFactory;
 import com.webank.eggroll.rollsite.factory.PipeFactory;
 import com.webank.eggroll.rollsite.factory.ProxyGrpcStreamObserverFactory;
+import com.webank.eggroll.rollsite.infra.JobidSessionIdMap;
 import com.webank.eggroll.rollsite.infra.Pipe;
 import com.webank.eggroll.rollsite.infra.impl.PacketQueueSingleResultPipe;
 import com.webank.eggroll.rollsite.model.ProxyServerConf;
 import com.webank.eggroll.rollsite.utils.Timeouts;
 import io.grpc.stub.StreamObserver;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -57,8 +57,6 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
     private EventFactory eventFactory;
     @Autowired
     private ProxyServerConf proxyServerConf;
-    @Autowired
-    private ConcurrentHashMap<String, String> jobSessionIdMap;
     private Pipe defaultPipe;
     private PipeFactory pipeFactory;
 
@@ -109,7 +107,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
         long lastPacketTimestamp = startTimestamp;
         long loopEndTimestamp = lastPacketTimestamp;
 
-        Proxy.Packet packet = null;
+        Proxy.Packet packet;
         boolean hasReturnedBefore = false;
         int emptyRetryCount = 0;
         Proxy.Packet lastReturnedPacket = null;
@@ -229,17 +227,11 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
         }
         if(request.getHeader().getOperator().equals("init_job_session_pair")) {
             String job_id = request.getHeader().getTask().getModel().getName();
-            String session_string = request.getHeader().getTask().getModel().getDataKey();
-            /*
-            ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(session_string.getBytes("ISO-8859-1"));
-            ObjectInputStream objectInputStream = new ObjectInputStream(byteArrayInputStream);
-            ErSession object = objectInputStream.readObject();
-            objectInputStream.close();
-            byteArrayInputStream.close();
-            */
+            String session_id = request.getHeader().getTask().getModel().getDataKey();
             Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
             packet = packetBuilder.setHeader(request.getHeader()).build();
-            jobSessionIdMap.put(job_id, session_string);
+            LOGGER.info("init_job_session_pair, job_id:{}, session_id:{}", job_id, session_id);
+            JobidSessionIdMap.jobidSessionIdMap.put(job_id, session_id);
             responseObserver.onNext(packet);
             responseObserver.onCompleted();
         }

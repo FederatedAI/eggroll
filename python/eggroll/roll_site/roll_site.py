@@ -14,7 +14,7 @@
 #  limitations under the License.
 #
 import grpc
-from concurrent.futures import ThreadPoolExecutor, wait, ALL_COMPLETED
+from concurrent.futures import ThreadPoolExecutor, wait, ALL_COMPLETED, FIRST_EXCEPTION
 from eggroll.utils import file_utils
 from eggroll.utils.log_utils import getLogger
 from eggroll.core.meta_model import ErStoreLocator, ErStore
@@ -83,12 +83,12 @@ class RollSite:
     self.stub = proxy_pb2_grpc.DataTransferServiceStub(channel)
     self.process_pool = ThreadPoolExecutor(10)
     self.complete_pool = ThreadPoolExecutor(10)
-    self.init_job_session_pair(self.job_id, self.ctx.rp_ctx.__session)
+    self.init_job_session_pair(self.job_id, self.ctx.rp_ctx.session_id)
 
   def init_job_session_pair(self, job_id, session_id):
       task_info = proxy_pb2.Task(taskId=self.name, model=proxy_pb2.Model(name=job_id, dataKey=bytes(session_id, encoding='utf8')))
       topic_src = proxy_pb2.Topic(name="init_job_session_pair", partyId="{}".format(self.party_id),
-                                  role=self.src_role, callback=None)
+                                  role=self.local_role, callback=None)
       topic_dst = proxy_pb2.Topic(name="init_job_session_pair", partyId="{}".format(self.party_id),
                                   role=self.local_role, callback=None)
       command_test = proxy_pb2.Command(name="init_job_session_pair")
@@ -123,9 +123,9 @@ class RollSite:
       raise ValueError("{} did not set under algorithm {} in transfer_conf.json".format(sub_name, algorithm))
 
     if is_send and auth_dict.get(sub_name).get('src') != self.local_role:
-      raise ValueError("{} is not allow to send from {}".format(self.local_role))
+      raise ValueError("not allow to send from {}".format(self.local_role))
     elif not is_send and self.local_role not in auth_dict.get(sub_name).get('dst'):
-      raise ValueError("{} is not allow to receive from {}".format(self.local_role))
+      raise ValueError("not allow to receive from {}".format(self.local_role))
 
     return algorithm, sub_name
 
@@ -141,9 +141,9 @@ class RollSite:
 
     return ret_packet
 
-  def wait_for_complete(self, futures):
-    wait(futures, timeout=10, return_when=ALL_COMPLETED)
-    return True
+  # def wait_for_complete(self, futures):
+  #   return wait(futures, timeout=10, return_when=ALL_COMPLETED)
+    #return True
 
   def wait_for_pull_complete(self, futures):
     wait(futures, timeout=10, return_when=ALL_COMPLETED)
@@ -204,22 +204,31 @@ class RollSite:
           LOGGER.debug("[REMOTE] Sending {}".format(_tagged_key))
           rp = self.ctx.rp_ctx.load(namespace, name)
 
-        future = self.process_pool.submit(rp.map_values,
-                                          lambda v: v,
-                                          output=ErStore(store_locator=
-                                                         ErStoreLocator(store_type=StoreTypes.ROLLPAIR_ROLLSITE,
-                                                                        namespace=namespace,
-                                                                        name=name)))
+
+        def map_values():
+            rp.map_values(
+            lambda v: v,
+            output=ErStore(store_locator=
+                           ErStoreLocator(store_type=StoreTypes.ROLLPAIR_ROLLSITE,
+                                          namespace="roll_site__" + namespace,
+                                          name=name)))
+            return role_partyId, _partyId
+
+        future = self.process_pool.submit(map_values)
         futures.append(future)
-        LOGGER.debug("[REMOTE] Sent {}".format(_tagged_key))
+        # LOGGER.debug("[REMOTE] Sent {}".format(_tagged_key))
 
     self.process_pool.shutdown(wait=False)
 
-    ret_future = self.complete_pool.submit(self.wait_for_complete, futures)
-    self.complete_pool.shutdown(wait=False)
+    # ret_future = self.complete_pool.submit(wait, futures, timeout=10, return_when=FIRST_EXCEPTION)
+    # self.complete_pool.shutdown(wait=False)
 
-    return ret_future
+    return futures
 
+  def wait_futures(self, futures):
+      ret_future = self.complete_pool.submit(wait, futures, timeout=10, return_when=FIRST_EXCEPTION)
+      self.complete_pool.shutdown(wait=False)
+      return ret_future
 
   def pull(self, parties: list = None):
     futures = []

@@ -18,7 +18,6 @@ package com.webank.eggroll.rollsite.grpc.observer;
 
 import com.google.protobuf.ByteString;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
-import com.webank.eggroll.core.datastructure.LinkedBlockingBroker;
 import com.webank.eggroll.core.util.ErrorUtils;
 import com.webank.eggroll.core.util.ToStringUtils;
 import com.webank.eggroll.rollsite.RollSiteUtil;
@@ -26,6 +25,7 @@ import com.webank.eggroll.rollsite.event.model.PipeHandleNotificationEvent;
 import com.webank.eggroll.rollsite.factory.EventFactory;
 import com.webank.eggroll.rollsite.factory.PipeFactory;
 import com.webank.eggroll.rollsite.helper.ModelValidationHelper;
+import com.webank.eggroll.rollsite.infra.JobidSessionIdMap;
 import com.webank.eggroll.rollsite.infra.Pipe;
 import com.webank.eggroll.rollsite.infra.impl.PacketQueuePipe;
 import com.webank.eggroll.rollsite.manager.StatsManager;
@@ -36,8 +36,7 @@ import com.webank.eggroll.rollsite.utils.Timeouts;
 import io.grpc.Grpc;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
-import java.nio.ByteBuffer;
-import java.util.concurrent.ConcurrentHashMap;
+
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
@@ -91,11 +90,8 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
     private ProxyServerConf proxyServerConf;
     @Autowired
     private PipeUtils pipeUtils;
-    @Autowired
-    private ConcurrentHashMap<String, String> jobSessionIdMap;
     private Pipe pipe;
-    PipeFactory pipeFactory;
-    //Map<String, PacketQueueSingleResultPipe> pipeMap;
+    private PipeFactory pipeFactory;
     private Proxy.Metadata inputMetadata;
     private StreamStat streamStat;
     private String myCoordinator;
@@ -199,19 +195,22 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
                 ByteString value = packet.getBody().getValue();
                 String name = packet.getHeader().getTask().getModel().getName();
                 String namespace = packet.getHeader().getTask().getModel().getDataKey();
+                LOGGER.info("name:{}, namespace:{}", name, namespace);
 
                 if (rollSiteUtil == null) {
                     String[] args = name.split("-");
-                    String job_id = args[0];
+                    String job_id = args[1];
 
-                    String session_id = jobSessionIdMap.get(job_id);
-                    rollSiteUtil = new RollSiteUtil(session_id, name, namespace);
+                    String session_id = JobidSessionIdMap.jobidSessionIdMap.get(job_id);
+                    if(session_id != null) {
+                        rollSiteUtil = new RollSiteUtil(session_id, name, namespace);
+                    }
                 }
 
-                rollSiteUtil.putBatch(value.asReadOnlyByteBuffer());
-
-                //broker.put(data);
-                //RollSiteUtil.putBatch(name, namespace, value.asReadOnlyByteBuffer());
+                if(rollSiteUtil != null) {
+                    rollSiteUtil.putBatch(value.asReadOnlyByteBuffer());
+                    LOGGER.info("end putBatch");
+                }
             }
 
             if (timeouts.isTimeout(overallTimeout, overallStartTimestamp)) {
