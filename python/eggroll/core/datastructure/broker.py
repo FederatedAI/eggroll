@@ -13,8 +13,10 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import threading
 import time
-from queue import Queue
+from queue import Queue, Empty
+from time import monotonic
 
 from eggroll.utils import log_utils
 
@@ -29,7 +31,7 @@ class Broker(object):
     def signal_write_finish(self):
         raise NotImplementedError()
 
-    def get_remaining_write_signal_count(self):
+    def get_active_writers_count(self):
         raise NotImplementedError()
 
     def is_read_ready(self):
@@ -62,40 +64,50 @@ class Broker(object):
     def drain_to(self, target, max_elements=10000):
         raise NotImplementedError()
 
+class BrokerClosed(Exception):
+    'Exception raised by eggroll Broker'
+    pass
+
 
 class FifoBroker(Broker):
     __broker_seq = 0
 
     # todo:1: make maxsize configurable
-    def __init__(self, max_capacity=10000, write_signals=1,
+    def __init__(self, max_capacity=10000, writers=1,
             name=f"fifobroker-{time.time()}-{__broker_seq}"):
         FifoBroker.__broker_seq += 1
+        self.__max_capacity = max_capacity
         self.__queue = Queue(maxsize=max_capacity)
-        self.__remaining_write_signal_count = write_signals
-        self.__total_write_signals = write_signals
+        self.__active_writers = writers
+        self.__total_writers = writers
+        self.__mutex = threading.RLock()
+        self.__write_change = threading.Condition(self.__mutex)
 
-    def get_total_write_signals(self):
-        return self.__total_write_signals
+    def get_total_writers(self):
+        return self.__total_writers
 
     def is_write_finished(self):
-        return self.__remaining_write_signal_count <= 0
+        return self.__active_writers <= 0
 
     def signal_write_finish(self):
-        if self.is_write_finished():
-            raise ValueError(
-                f"finish signaling overflows. initial value: {self.__total_write_signals}")
-        else:
-            self.__remaining_write_signal_count -= 1
+        with self.__write_change:
+            if self.is_write_finished():
+                raise ValueError(
+                    f"finish signaling overflows. initial value: {self.__total_writers}")
+            else:
+                self.__active_writers -= 1
+                self.__write_change.notify_all()
 
-    def get_remaining_write_signal_count(self):
-        return self.__remaining_write_signal_count
+    def get_active_writers_count(self):
+        return self.__active_writers
 
     def is_read_ready(self):
-        return not self.__queue.empty()
+        with self.__mutex:
+            return not self.__queue.empty()
 
     def is_closable(self):
-        result = self.is_write_finished() and self.__queue.empty()
-        return result
+        with self.__mutex:
+            return self.is_write_finished() and self.__queue.empty()
 
     def size(self):
         return self.__queue.qsize()
@@ -107,10 +119,34 @@ class FifoBroker(Broker):
         return self.get(block=False)
 
     def put(self, item, block=True, timeout=None):
-        return self.__queue.put(item=item, block=block, timeout=timeout)
+        with self.__write_change:
+            self.__queue.put(item=item, block=block, timeout=timeout)
+            self.__write_change.notify()
 
     def get(self, block=True, timeout=None):
-        return self.__queue.get(block=True, timeout=timeout)
+        with self.__write_change:
+            if self.is_closable():
+                raise BrokerClosed
+
+            if not block:
+                return self.__queue.get(block=block, timeout=timeout)
+            elif timeout is None:
+                while not self.size():
+                    self.__write_change.wait()
+            elif timeout < 0:
+                raise ValueError("'timeout' must be a non-negative number")
+            else:
+                endtime = monotonic() + timeout
+                while not self.size():
+                    remaining = endtime - monotonic()
+                    if remaining <= 0.0:
+                        raise Empty
+                    self.__write_change.wait(remaining)
+
+                if self.is_closable():
+                    raise BrokerClosed
+                else:
+                    return self.__queue.get(block=False, timeout=timeout)
 
     def drain_to(self, target, max_elements=10000):
         if hasattr(target, 'append'):

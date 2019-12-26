@@ -14,10 +14,8 @@
 #  limitations under the License.
 
 
-
-from typing import Iterator, Generator
-from struct import pack_into, unpack_from, unpack, pack
 import os
+from struct import pack_into, unpack_from, unpack, pack
 
 MAGIC_NUM = bytes.fromhex('46709394')
 PROTOCOL_VERSION = bytes.fromhex('00000001')
@@ -67,7 +65,7 @@ class FileByteBuffer:
         if not "b" in file.mode:
             raise ValueError("file is not binary mode:" + file.name)
         self.file = file
-        # TODO:0: cached?
+        # TODO:1: cached?
         self.__size = self.size()
 
     def remaining_size(self):

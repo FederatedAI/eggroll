@@ -44,26 +44,29 @@ class ErSession(object):
             raise EnvironmentError('EGGROLL_HOME is not set')
 
         self.__is_standalone = options.get(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE, "") == "standalone"
-        if self.__is_standalone:
+        if self.__is_standalone and os.name != 'nt':
             port = int(options.get('eggroll.resourcemanager.standalone.port', "4670"))
             startup_command = f'bash {self.__eggroll_home}/bin/eggroll_boot_standalone.sh -p {port} -s {self.__session_id}'
             import subprocess
             import atexit
 
-            with open(f'{self.__eggroll_home}/logs/standalone_manager.OUT', 'a+') as outfile, open(f'{self.__eggroll_home}/logs/standalone_manager.ERR', 'a+') as errfile:
+            bootstrap_log_dir = f'{self.__eggroll_home}/logs/standalone-manager/bootstrap/'
+            os.makedirs(bootstrap_log_dir, mode=0o755, exist_ok=True)
+            with open(f'{bootstrap_log_dir}/standalone-manager.OUT', 'a+') as outfile, \
+                    open(f'{bootstrap_log_dir}/standalone-manager.ERR', 'a+') as errfile:
                 print(f'start up command: {startup_command}')
                 manager_process = subprocess.run(startup_command.split(), stdout=outfile, stderr=errfile)
                 returncode = manager_process.returncode
                 print(f'start up returncode: {returncode}')
 
-            def shutdown_standalone_manager(port, session_id, eggroll_home):
+            def shutdown_standalone_manager(port, session_id, log_dir):
                 shutdown_command = f"ps aux | grep eggroll | grep Bootstrap | grep '{port}' | grep '{session_id}' | grep -v grep | awk '{{print $2}}' | xargs kill"
                 print('shutdown command:', shutdown_command)
-                with open(f'{eggroll_home}/logs/standalone_manager.OUT', 'a+') as outfile, open(f'{eggroll_home}/logs/standalone_manager.ERR', 'a+') as errfile:
+                with open(f'{log_dir}/standalone_manager.OUT', 'a+') as outfile, open(f'{log_dir}/standalone_manager.ERR', 'a+') as errfile:
                     manager_process = subprocess.check_output(shutdown_command, shell=True)
                     print(manager_process)
 
-            atexit.register(shutdown_standalone_manager, port, self.__session_id, self.__eggroll_home)
+            atexit.register(shutdown_standalone_manager, port, self.__session_id, bootstrap_log_dir)
 
         session_meta = ErSessionMeta(id=self.__session_id,
                                      name=name,

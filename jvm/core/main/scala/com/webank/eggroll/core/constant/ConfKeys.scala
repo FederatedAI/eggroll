@@ -20,6 +20,7 @@ package com.webank.eggroll.core.constant
 
 object CoreConfKeys {
   val LOGS_DIR = "eggroll.logs.dir"
+  val DATA_DIR = "eggroll.data.dir"
   val STATIC_CONF_PATH = "eggroll.static.conf.path"
   val BOOTSTRAP_ROOT_SCRIPT = "eggroll.bootstrap.root.script"
   val BOOTSTRAP_SHELL = "eggroll.bootstrap.shell"
