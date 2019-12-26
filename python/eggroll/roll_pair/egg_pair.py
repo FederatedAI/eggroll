@@ -14,7 +14,7 @@
 #  limitations under the License.
 
 import argparse
-import os
+import configparser
 import signal
 from collections.abc import Iterable
 from concurrent import futures
@@ -192,11 +192,8 @@ class EggPair(object):
             input_adapter.close()
 
         if task._name == 'destroy':
-            er_store = ErStore(store_locator=task._inputs[0]._store_locator)
-            clusterManager = ClusterManagerClient()
-            clusterManager.delete_store(er_store)
-            import shutil
-            shutil.rmtree(get_db_path(task._inputs[0]))
+            input_adapter = create_adapter(task._inputs[0])
+            input_adapter.destroy()
             LOGGER.info("finish destroy")
 
         if task._name == 'delete':
@@ -354,6 +351,7 @@ class EggPair(object):
                                     right_value_serdess.deserialize(v_right))
                         output_writebatch.put(k_left, left_value_serdess.serialize(v_final))
 
+                right_iterator.first()
                 for k_right, v_right in right_iterator:
                     if right_key_serdes.deserialize(k_right) not in k_list_iterated:
                         #because left value and right value may have different serdes
@@ -443,6 +441,8 @@ def serve(args):
     command_pb2_grpc.add_CommandServiceServicer_to_server(command_servicer,
                                                           command_server)
 
+    from eggroll.roll_pair.utils.pair_utils import set_data_dir
+    set_data_dir(args.data_dir)
     transfer_servicer = GrpcTransferServicer()
 
     port = args.port
@@ -479,6 +479,8 @@ def serve(args):
         options = {
             SessionConfKeys.CONFKEY_SESSION_ID: args.session_id
         }
+
+        # todo:0: remove server_node_id
         myself = ErProcessor(id=int(args.processor_id),
                              server_node_id=int(args.server_node_id),
                              processor_type=ProcessorTypes.EGG_PAIR,
@@ -519,17 +521,26 @@ def serve(args):
     print(f'egg_pair at port {port}, transfer_port {transfer_port} stopped gracefully')
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-d', '--data-dir', default=os.path.dirname(os.path.realpath(__file__)))
-    parser.add_argument('-cm', '--cluster-manager')
-    parser.add_argument('-nm', '--node-manager')
-    parser.add_argument('-s', '--session-id')
-    parser.add_argument('-p', '--port', default='0')
-    parser.add_argument('-t', '--transfer-port', default='-1')
-    parser.add_argument('-sn', '--server-node-id')
-    parser.add_argument('-prid', '--processor-id')
-    parser.add_argument('-c', '--config')
+    args_parser = argparse.ArgumentParser()
+    args_parser.add_argument('-d', '--data-dir')
+    args_parser.add_argument('-cm', '--cluster-manager')
+    args_parser.add_argument('-nm', '--node-manager')
+    args_parser.add_argument('-s', '--session-id')
+    args_parser.add_argument('-p', '--port', default='0')
+    args_parser.add_argument('-t', '--transfer-port', default='-1')
+    args_parser.add_argument('-sn', '--server-node-id')
+    args_parser.add_argument('-prid', '--processor-id')
+    args_parser.add_argument('-c', '--config')
 
-    args = parser.parse_args()
+    args = args_parser.parse_args()
+
+    configs = configparser.ConfigParser()
+    if args.config:
+        configs.read(args.config)
+
+    if configs:
+        if not args.data_dir:
+            args.data_dir = configs['eggroll']['eggroll.data.dir']
+
     print(args)
     serve(args)

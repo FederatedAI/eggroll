@@ -15,9 +15,11 @@ import mmap
 import os
 from collections import OrderedDict
 
-from eggroll.core.pair_store.format import PairBinReader, PairBinWriter, FileByteBuffer, ArrayByteBuffer
-from eggroll.utils import log_utils
 from eggroll.core.datastructure.broker import Broker
+from eggroll.core.pair_store.format import PairBinReader, PairBinWriter, \
+    FileByteBuffer, ArrayByteBuffer
+from eggroll.utils import log_utils
+
 log_utils.setDirectory()
 LOGGER = log_utils.getLogger()
 
@@ -29,6 +31,7 @@ class PairAdapter(object):
     """
     Pair(key->value) store adapter
     """
+
     def __init__(self, options):
         pass
 
@@ -283,7 +286,7 @@ class BrokerIterator(PairIterator):
         while True:
             try:
                 if not self.__broker.is_closable():
-                    return self.__broker.get(block=True, timeout=1)
+                    return self.__broker.get(block=True, timeout=0.1)
                 else:
                     raise StopIteration()
             except Empty:
@@ -295,7 +298,7 @@ class BrokerWriteBatch(PairWriteBatch):
         self.__broker = broker
 
     def put(self, k, v):
-        if self.__broker.get_remaining_write_signal_count():
+        if self.__broker.get_active_writers_count():
             self.__broker.put((k, v))
 
     def write(self):
