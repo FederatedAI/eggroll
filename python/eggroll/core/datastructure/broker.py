@@ -13,10 +13,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import threading
 import time
-from queue import Queue, Empty
-from time import monotonic
+from queue import Queue
 
 from eggroll.utils import log_utils
 
@@ -80,8 +78,6 @@ class FifoBroker(Broker):
         self.__queue = Queue(maxsize=max_capacity)
         self.__active_writers = writers
         self.__total_writers = writers
-        self.__mutex = threading.RLock()
-        self.__write_change = threading.Condition(self.__mutex)
 
     def get_total_writers(self):
         return self.__total_writers
@@ -90,24 +86,20 @@ class FifoBroker(Broker):
         return self.__active_writers <= 0
 
     def signal_write_finish(self):
-        with self.__write_change:
-            if self.is_write_finished():
-                raise ValueError(
-                    f"finish signaling overflows. initial value: {self.__total_writers}")
-            else:
-                self.__active_writers -= 1
-                self.__write_change.notify_all()
+        if self.is_write_finished():
+            raise ValueError(
+                f"finish signaling overflows. initial value: {self.__total_writers}")
+        else:
+            self.__active_writers -= 1
 
     def get_active_writers_count(self):
         return self.__active_writers
 
     def is_read_ready(self):
-        with self.__mutex:
-            return not self.__queue.empty()
+        return not self.__queue.empty()
 
     def is_closable(self):
-        with self.__mutex:
-            return self.is_write_finished() and self.__queue.empty()
+        return self.is_write_finished() and self.__queue.empty()
 
     def size(self):
         return self.__queue.qsize()
@@ -119,34 +111,16 @@ class FifoBroker(Broker):
         return self.get(block=False)
 
     def put(self, item, block=True, timeout=None):
-        with self.__write_change:
-            self.__queue.put(item=item, block=block, timeout=timeout)
-            self.__write_change.notify()
+        if self.is_write_finished():
+            raise ValueError('Broker write finished')
+
+        self.__queue.put(item=item, block=block, timeout=timeout)
 
     def get(self, block=True, timeout=None):
-        with self.__write_change:
-            if self.is_closable():
-                raise BrokerClosed
+        if self.is_closable():
+            raise BrokerClosed
 
-            if not block:
-                return self.__queue.get(block=block, timeout=timeout)
-            elif timeout is None:
-                while not self.size():
-                    self.__write_change.wait()
-            elif timeout < 0:
-                raise ValueError("'timeout' must be a non-negative number")
-            else:
-                endtime = monotonic() + timeout
-                while not self.size():
-                    remaining = endtime - monotonic()
-                    if remaining <= 0.0:
-                        raise Empty
-                    self.__write_change.wait(remaining)
-
-                if self.is_closable():
-                    raise BrokerClosed
-                else:
-                    return self.__queue.get(block=False, timeout=timeout)
+        return self.__queue.get(block=block, timeout=timeout)
 
     def drain_to(self, target, max_elements=10000):
         if hasattr(target, 'append'):
