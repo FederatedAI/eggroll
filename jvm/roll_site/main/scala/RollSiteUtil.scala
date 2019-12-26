@@ -21,25 +21,31 @@ import java.nio.ByteBuffer
 
 import com.google.protobuf.ByteString
 import com.webank.eggroll.core.ErSession
+import com.webank.eggroll.core.client.ClusterManagerClient
 import com.webank.eggroll.core.datastructure.LinkedBlockingBroker
-import com.webank.eggroll.rollpair.RollPairContext
+import com.webank.eggroll.core.meta.ErSessionMeta
+import com.webank.eggroll.rollpair.{RollPair, RollPairContext}
 
-object ScalaObjectPutBatch extends  App {
-  def scalaPutBatch(name:String, namespace:String, key:ByteBuffer, value:ByteBuffer)= {
-    val sid = "testing"
-    val ctx = new RollPairContext(new ErSession(sid))
-    val rp = ctx.load(namespace, name)
 
-    var directBinPacketBuffer: ByteBuffer = ByteBuffer.allocateDirect(1<<10)
+class RollSiteUtil(val session_id: String, name:String, namespace:String) {
+  //private val clusterManagerClient = new ClusterManagerClient()
+  //private val session =  clusterManagerClient.getSession(session_meta)
+  private val session =  new ErSession(sessionId = session_id, createIfNotExists = false)
+  private val ctx = new RollPairContext(session)
+  private val namespace_striped = namespace.substring(11)
+  println("scalaPutBatch  name:" + name + ",namespace_striped:" + namespace_striped)
+  val rp:RollPair = ctx.load(namespace_striped, name)
 
-    //directBinPacketBuffer.order(ByteOrder.BIG_ENDIAN)
-    //directBinPacketBuffer.put(NetworkConstants.TRANSFER_PROTOCOL_MAGIC_NUMBER) // magic num
-    //directBinPacketBuffer.put(NetworkConstants.TRANSFER_PROTOCOL_VERSION) // protocol version
-    //directBinPacketBuffer.putInt(4) // header length
-    //directBinPacketBuffer.putInt(value.limit() + 4) // body size, (value len + header length)
-    //directBinPacketBuffer.putInt(4) // key length (bytes)
-    //directBinPacketBuffer.putInt(3)         // key
-    //directBinPacketBuffer.putInt(value.limit()) // value length (bytes)
+  Runtime.getRuntime.addShutdownHook(new Thread(){
+    override def run(): Unit = {
+      // TODO:0: un comment
+      //      session.stop
+      //      ctx.stop
+    }
+  })
+
+  def putBatch(value:ByteBuffer): Unit = {
+    val directBinPacketBuffer: ByteBuffer = ByteBuffer.allocateDirect(1<<10)
     directBinPacketBuffer.put(value)
 
     directBinPacketBuffer.flip()
@@ -50,6 +56,3 @@ object ScalaObjectPutBatch extends  App {
     rp.putBatch(broker)
   }
 }
-
-
-
