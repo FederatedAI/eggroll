@@ -15,7 +15,6 @@
 
 import unittest
 
-from eggroll.core.constants import StoreTypes
 from eggroll.roll_pair.test.roll_pair_test_assets import get_debug_test_context, \
     get_cluster_context, get_standalone_context
 
@@ -120,7 +119,7 @@ class TestStandalone(unittest.TestCase):
         print(list(rp.map_partitions(func).get_all()))
 
     def test_map(self):
-        rp = self.ctx.load("ns1", "testMap").put_all(range(10))
+        rp = self.ctx.load("ns1", "testMap").put_all(range(100))
 
         print(list(rp.map(lambda k, v: (k + 1, v)).get_all()))
 
@@ -128,9 +127,10 @@ class TestStandalone(unittest.TestCase):
         options = {}
         options['total_partitions'] = 3
         options['include_key'] = True
-        rp = self.ctx.load("ns1", "testMultiPartitionsMap", options=options).put_all(range(10))
+        rp = self.ctx.load("ns1", "testMultiPartitionsMap", options=options).put_all(range(100))
 
-        print(list(rp.map(lambda k, v: (k + 1, v)).get_all()))
+        result = rp.map(lambda k, v: (k + 1, v))
+        print(result.count())
 
     def test_collapse_partitions(self):
         rp = self.ctx.load("ns1", "test_collapse_partitions").put_all(range(5))

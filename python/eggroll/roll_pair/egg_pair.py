@@ -32,8 +32,7 @@ from eggroll.core.conf_keys import NodeManagerConfKeys, SessionConfKeys, \
     ClusterManagerConfKeys
 from eggroll.core.constants import ProcessorTypes, ProcessorStatus, SerdesTypes
 from eggroll.core.datastructure.broker import FifoBroker
-from eggroll.core.io.io_utils import get_db_path
-from eggroll.core.meta_model import ErPair, ErStore
+from eggroll.core.meta_model import ErPair
 from eggroll.core.meta_model import ErTask, ErProcessor, ErEndpoint
 from eggroll.core.proto import command_pb2_grpc, transfer_pb2_grpc
 from eggroll.core.serdes import cloudpickle
@@ -44,7 +43,7 @@ from eggroll.core.utils import hash_code
 from eggroll.roll_pair import create_adapter, create_serdes
 from eggroll.roll_pair.transfer_pair import TransferPair
 from eggroll.roll_pair.utils.pair_utils import generator
-from eggroll.roll_pair.utils.pair_utils import get_db_path, partitioner
+from eggroll.roll_pair.utils.pair_utils import partitioner
 from eggroll.utils import log_utils
 
 log_utils.setDirectory()
@@ -157,7 +156,7 @@ class EggPair(object):
             # TODO:2: self-destroy broker, like gc
             from time import sleep
             while not bin_output_broker.is_closable():
-                sleep(1)
+                sleep(0.1)
             TransferService.remove_broker(tag)
 
         elif task._name == 'count':
