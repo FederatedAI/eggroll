@@ -16,7 +16,7 @@ import uuid
 from concurrent.futures import wait, FIRST_EXCEPTION
 from threading import Thread
 
-from eggroll.core.client import CommandClient
+from eggroll.core.client import CommandClient, ClusterManagerClient
 from eggroll.core.command.command_model import CommandURI
 from eggroll.core.conf_keys import SessionConfKeys
 from eggroll.core.constants import StoreTypes, SerdesTypes, PartitionerTypes
@@ -421,6 +421,8 @@ class RollPair(object):
     # todo:1: move to command channel to utilize batch command
     def destroy(self):
         total_partitions = self.__store._store_locator._total_partitions
+        clusterManager = ClusterManagerClient()
+        clusterManager.delete_store(self.__store)
         for i in range(total_partitions):
             job_outputs = []
             egg = self.ctx.route_to_egg(self.__store._partitions[i])
