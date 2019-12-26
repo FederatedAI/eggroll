@@ -15,8 +15,6 @@
 #
 import unittest
 
-from eggroll.core.session import ErSession
-from eggroll.roll_pair.roll_pair import RollPairContext
 from eggroll.roll_pair.test.roll_pair_test_assets import get_debug_test_context
 from eggroll.roll_site.roll_site import RollSiteContext
 
@@ -43,8 +41,8 @@ class TestRemote(unittest.TestCase):
             print("result:", role, party)
 
     def test_remote_rollpair(self):
-        rp_session = ErSession(session_id='testing', options={"eggroll.deploy.mode": "standalone"})
-        rp_context = RollPairContext(rp_session)
+        #session_id='testing'
+        rp_context = get_debug_test_context()
         data = [("k1", "v1"), ("k2", "v2"), ("k3", "v3"), ("k4", "v4"), ("k5", "v5"), ("k6", "v6")]
 
         options = {'runtime_conf_path': 'python/eggroll/roll_site/conf/role_conf.json',
@@ -54,5 +52,8 @@ class TestRemote(unittest.TestCase):
         table = rp_context.load("ns1", "testPutAll").put_all(data, options=options)
         _tag = "Hello"
         rs = context.load(name="roll_pair_name.table", tag="roll_pair_tag")
-        future = rs.push(table)
-        print("remote result:", future.result())
+        parties = [('host', '10002')]
+        futures = rs.push(table, parties)
+        for future in futures:
+            role, party = future.result()
+            print("result:", role, party)
