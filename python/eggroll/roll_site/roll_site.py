@@ -79,6 +79,7 @@ class RollSite:
         self.local_role = self.ctx.role
         self.name = name
         self.tag = tag
+        print("proxy_endpoint{}:{}".format(self.dst_host, self.dst_port))
         channel = grpc.insecure_channel(
             target="{}:{}".format(self.dst_host, self.dst_port),
             options=[('grpc.max_send_message_length', -1), ('grpc.max_receive_message_length', -1)])
@@ -191,29 +192,28 @@ class RollSite:
                 is_standalone = self.ctx.rp_ctx.get_session().get_option(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE) == "standalone"
                 #is_standalone = True
                 if is_standalone:
-                    if obj_type == 'object':
-                        return role_partyId
                     dst_name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.job_id, self.name, self.tag,
                                                                              self.local_role, str(self.party_id),
                                                                              _role, str(_partyId)]))
                     store_type = rp.get_type()
                 else:
-                    dst_name = "roll_site__" + '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.job_id, self.name,
-                                                                                             self.tag, self.local_role,
-                                                                                             str(self.party_id),
-                                                                                             _role, str(_partyId),
-                                                                                             self.dst_host,
-                                                                                             str(self.dst_port),
-                                                                                             obj_type]))
+                    dst_name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.job_id, self.name,
+                                                                             self.tag, self.local_role,
+                                                                             str(self.party_id),
+                                                                             _role, str(_partyId),
+                                                                             self.dst_host,
+                                                                             str(self.dst_port),
+                                                                             obj_type]))
                     store_type = StoreTypes.ROLLPAIR_ROLLSITE
 
                 print("namespace:", namespace, ", name:", dst_name)
-                rp.map_values(
-                    lambda v: v,
-                    output=ErStore(store_locator=
-                                   ErStoreLocator(store_type=store_type,
-                                                  namespace=namespace,
-                                                  name=dst_name)))
+                if obj_type != 'object':
+                    rp.map_values(
+                        lambda v: v,
+                        output=ErStore(store_locator=
+                                       ErStoreLocator(store_type=store_type,
+                                                      namespace=namespace,
+                                                      name=dst_name)))
 
                 if is_standalone:
                     task_info = proxy_pb2.Task(taskId=dst_name, model=proxy_pb2.Model(name=obj_type, dataKey=_tagged_key))
@@ -235,6 +235,7 @@ class RollSite:
                                                   conf=conf_test)
 
                     packet = proxy_pb2.Packet(header=metadata)
+                    print("send_finished_status:", packet)
                     self.stub.unaryCall(packet)
 
                 return role_partyId

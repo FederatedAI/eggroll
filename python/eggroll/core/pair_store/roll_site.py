@@ -126,7 +126,7 @@ class RollsiteWriteBatch(PairWriteBatch):
         print("self.type:", self.obj_type)
         print("type:", type(self.obj_type))
         print("k:", k)
-        if(self.obj_type == 'object'):
+        if self.obj_type == 'object':
             print("set tagged_key:", k)
             self.tagged_key = _serdes.deserialize(k)
 
