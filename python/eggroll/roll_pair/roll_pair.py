@@ -86,7 +86,7 @@ class RollPairContext(object):
             del final_options['name']
         if 'namespace' in final_options:
             del final_options['namespace']
-        print("final_options:{}".format(final_options))
+        LOGGER.info("final_options:{}".format(final_options))
         store = ErStore(
                 store_locator=ErStoreLocator(
                         store_type=store_type,
@@ -167,6 +167,9 @@ class RollPair(object):
         self.ctx = rp_ctx
         self.__session_id = self.ctx.session_id
 
+    def __del__(self):
+        pass
+
     def __repr__(self):
         return f'python RollPair(_store={self.__store})'
 
@@ -226,8 +229,8 @@ class RollPair(object):
         value = None
         partition_id = self.partitioner(k)
         egg = self.ctx.route_to_egg(self.__store._partitions[partition_id])
-        print(egg._command_endpoint)
-        print("count:", self.__store._store_locator._total_partitions)
+        LOGGER.info(egg._command_endpoint)
+        LOGGER.info("count:", self.__store._store_locator._total_partitions)
         inputs = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
         output = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
 
@@ -292,7 +295,7 @@ class RollPair(object):
         return value
 
     def get_all(self, options={}):
-        print('get all functor')
+        LOGGER.info('get all functor')
 
         job_id = generate_job_id(self.__session_id)
         def send_command():
@@ -450,8 +453,8 @@ class RollPair(object):
         value = None
         partition_id = self.partitioner(key)
         egg = self.ctx.route_to_egg(self.__store._partitions[partition_id])
-        print(egg._command_endpoint)
-        print("count:", self.__store._store_locator._total_partitions)
+        LOGGER.info(egg._command_endpoint)
+        LOGGER.info("count:", self.__store._store_locator._total_partitions)
         inputs = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
         output = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
 
@@ -527,7 +530,7 @@ class RollPair(object):
 
         er_store = job_result._outputs[0]
         LOGGER.info(er_store)
-        print(er_store)
+        LOGGER.info(er_store)
 
         return RollPair(er_store, self.ctx)
 
