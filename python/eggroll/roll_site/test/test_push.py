@@ -17,7 +17,7 @@ import unittest
 
 from eggroll.roll_pair.test.roll_pair_test_assets import get_debug_test_context
 from eggroll.roll_site.roll_site import RollSiteContext
-
+from eggroll.core.meta_model import ErStoreLocator, ErStore
 
 class TestRemote(unittest.TestCase):
     def test_remote(self):
@@ -49,11 +49,14 @@ class TestRemote(unittest.TestCase):
                    'server_conf_path': 'python/eggroll/roll_site/conf/server_conf.json',
                    'transfer_conf_path': 'python/eggroll/roll_site/conf/transfer_conf.json'}
         context = RollSiteContext("atest2", options=options, rp_ctx=rp_context)
-        table = rp_context.load("ns1", "testPutAll").put_all(data, options=options)
+        rp_options = {}
+        rp_options['include_key'] = True
+        rp = rp_context.load("namespace", "name").put_all(data, options=rp_options)
         _tag = "Hello"
         rs = context.load(name="roll_pair_name.table", tag="roll_pair_tag")
         parties = [('host', '10002')]
-        futures = rs.push(table, parties)
+        futures = rs.push(rp, parties)
         for future in futures:
             role, party = future.result()
             print("result:", role, party)
+

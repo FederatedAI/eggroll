@@ -37,11 +37,33 @@ class TestGet(unittest.TestCase):
         futures = rs.pull(parties)
         for future in futures:
           obj = future.result()
-          if isinstance(future, RollPair):
+          if isinstance(obj, RollPair):
             key = 'hello'
-            obj.get(key)
+            print("obj:", obj.get(key))
           else:
             print("obj:", obj)
+
+    def test_get_rollpair(self):
+        #session_id='testing'
+        rp_context = get_debug_test_context()
+
+        options = {'runtime_conf_path': 'python/eggroll/roll_site/conf/role_conf.json',
+                   'server_conf_path': 'python/eggroll/roll_site/conf/server_conf.json',
+                   'transfer_conf_path': 'python/eggroll/roll_site/conf/transfer_conf.json'}
+        context = RollSiteContext("atest2", options=options, rp_ctx=rp_context)
+
+        _tag = "roll_pair_tag"
+
+        rs = context.load(name="roll_pair_name.table", tag="{}".format(_tag))
+        parties = [('host', '10002')]
+        futures = rs.pull(parties)
+        for future in futures:
+            obj = future.result()
+            if isinstance(obj, RollPair):
+                key = "k1"
+                print("obj:", obj.get(key))
+            else:
+                print("obj:", obj)
 
 
 
