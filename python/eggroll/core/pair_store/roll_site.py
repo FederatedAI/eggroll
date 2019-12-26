@@ -74,9 +74,9 @@ class RollsiteWriteBatch(PairWriteBatch):
         topic_dst = proxy_pb2.Topic(name=self.name, partyId="{}".format(self.dst_party_id),
                                     role=self.dst_role, callback=None)
         command_test = proxy_pb2.Command()
-        conf_test = proxy_pb2.Conf(overallTimeout=2000,
-                                   completionWaitTimeout=2000,
-                                   packetIntervalTimeout=2000,
+        conf_test = proxy_pb2.Conf(overallTimeout=20000,
+                                   completionWaitTimeout=20000,
+                                   packetIntervalTimeout=20000,
                                    maxRetries=10)
 
         metadata = proxy_pb2.Metadata(task=task_info,
@@ -177,12 +177,6 @@ class RollsiteIterator(PairIterator):
 
 
 class RollsiteAdapter(PairAdapter):
-    def get_stream_meta(self):
-        return ('store_type', self.options["store_type"]), \
-               ('table_name', self.options["name"]), \
-               ('name_space', self.options["namespace"]), \
-               ('fragment', self.options["fragment"])
-
     def __init__(self, options):
         super().__init__(options)
         name = options["path"].split("/")[-2]
