@@ -14,14 +14,71 @@
 #  limitations under the License.
 #
 
-from api import rollsite
+import unittest
 
-if __name__ == '__main__':
-    #ggroll.init("atest")
-    rollsite.init("atest", "role_conf", "eggroll/conf/server_conf.json")
-    _tag = "Hello"
-    a = _tag
-    rollsite.push_sync(a, "test_push_name", tag="{}".format(_tag))
-    rollsite.pull_sync(a, "test_pull_name", tag="{}".format(_tag))
+from eggroll.roll_pair.roll_pair import RollPair
+from eggroll.roll_pair.test.roll_pair_test_assets import get_debug_test_context
+from eggroll.roll_site.roll_site import RollSiteContext
+
+rp_context = get_debug_test_context(False)
+options = {'runtime_conf_path': 'python/eggroll/roll_site/conf/role_conf.json',
+           'server_conf_path': 'python/eggroll/roll_site/conf/server_conf.json',
+           'transfer_conf_path': 'python/eggroll/roll_site/conf/transfer_conf.json'}
 
 
+class TestRollSite(unittest.TestCase):
+    def test_remote(self):
+        context = RollSiteContext("atest", options=options, rp_ctx=rp_context)
+        _tag = "Hello2"
+        rs = context.load(name="RsaIntersectTransferVariable.rsa_pubkey", tag="{}".format(_tag))
+        fp = open("testA.model", 'r')
+        obj = fp.read(35)
+        parties = [('host', '10002')]
+        futures = rs.push(obj, parties)
+        fp.close()
+        for future in futures:
+            role, party = future.result()
+            print("result:", role, party)
+
+    def test_get(self):
+        context = RollSiteContext("atest", options=options, rp_ctx=rp_context)
+        _tag = "Hello2"
+        rs = context.load(name="RsaIntersectTransferVariable.rsa_pubkey", tag="{}".format(_tag))
+        parties = [('host', '10002')]
+        futures = rs.pull(parties)
+        for future in futures:
+            obj = future.result()
+            if isinstance(obj, RollPair):
+                key = 'hello'
+                print("obj:", obj.get(key))
+            else:
+                print("obj:", obj)
+
+    def test_remote_rollpair(self):
+        data = [("k1", "v1"), ("k2", "v2"), ("k3", "v3"), ("k4", "v4"), ("k5", "v5"), ("k6", "v6")]
+        context = RollSiteContext("atest2", options=options, rp_ctx=rp_context)
+        rp_options = {'include_key': True}
+        rp = rp_context.load("namespace", "name").put_all(data, options=rp_options)
+        _tag = "Hello"
+        rs = context.load(name="roll_pair_name.table", tag="roll_pair_tag")
+        parties = [('host', '10002')]
+        futures = rs.push(rp, parties)
+        for future in futures:
+            role, party = future.result()
+            print("result:", role, party)
+
+    def test_get_rollpair(self):
+        context = RollSiteContext("atest2", options=options, rp_ctx=rp_context)
+
+        _tag = "roll_pair_tag"
+
+        rs = context.load(name="roll_pair_name.table", tag="{}".format(_tag))
+        parties = [('host', '10002')]
+        futures = rs.pull(parties)
+        for future in futures:
+            obj = future.result()
+            if isinstance(obj, RollPair):
+                key = "k1"
+                print("obj:", obj.get(key))
+            else:
+                print("obj:", obj)
