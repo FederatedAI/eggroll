@@ -15,11 +15,12 @@
 
 import unittest
 
+from eggroll.core.constants import StoreTypes
 from eggroll.roll_pair.test.roll_pair_test_assets import get_debug_test_context, \
     get_cluster_context, get_standalone_context
 
 is_debug = True
-is_standalone = True
+is_standalone = False
 
 class TestStandalone(unittest.TestCase):
     ctx = None
@@ -91,6 +92,17 @@ class TestStandalone(unittest.TestCase):
         print("before delete:{}".format(list(table.get_all())))
         table.delete("k1")
         print("after delete:{}".format(list(table.get_all())))
+
+    def test_destroy(self):
+        options = {}
+        options['total_partitions'] = 1
+        options['include_key'] = True
+        data = [("k1", "v1"), ("k2", "v2"), ("k3", "v3"), ("k4", "v4")]
+        table = self.ctx.load('ns1', 'test_destroy', options=options).put_all(data, options=options)
+        print("before destroy:{}".format(list(table.get_all())))
+        table.destroy()
+        # TODO:1: table which has been destroyed cannot get_all, should raise exception
+        print("after destroy:{}".format((table.count())))
 
     def test_map_values(self):
         rp = self.ctx.load("ns1", "test_map_values").put_all(range(10))

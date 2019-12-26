@@ -23,7 +23,7 @@ import grpc
 from grpc._cython import cygrpc
 
 from eggroll.core.conf_keys import TransferConfKeys
-from eggroll.core.datastructure.broker import FifoBroker
+from eggroll.core.datastructure.broker import FifoBroker, BrokerClosed
 from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.meta_model import ErEndpoint
 from eggroll.core.proto import transfer_pb2_grpc, transfer_pb2
@@ -47,7 +47,7 @@ class TransferService(object):
       print('creating broker: ', key)
       final_size = maxsize if maxsize > 0 else TransferService._DEFAULT_QUEUE_SIZE
       TransferService.data_buffer[key] = \
-        FifoBroker(max_capacity=final_size, write_signals=write_signals)
+        FifoBroker(max_capacity=final_size, writers=write_signals)
 
     return TransferService.data_buffer[key]
 
@@ -78,7 +78,7 @@ class TransferService(object):
     i = 0
     while not broker.is_closable():
       try:
-        data = broker.get(block=True, timeout=5)
+        data = broker.get(block=True, timeout=0.1)
         if data:
           header = transfer_pb2.TransferHeader(id=i, tag=tag)
           batch = transfer_pb2.TransferBatch(header=header, data=data)
@@ -87,8 +87,11 @@ class TransferService(object):
           yield batch
       except queue.Empty as e:
         print("transfer client queue empty")
+      except BrokerClosed as e:
+        break
       except Exception as e:
         print(e)
+
 
 class GrpcTransferServicer(transfer_pb2_grpc.TransferServiceServicer):
   @_exception_logger
@@ -109,7 +112,7 @@ class GrpcTransferServicer(transfer_pb2_grpc.TransferServiceServicer):
       broker.put(request)
 
     broker.signal_write_finish()
-    print('GrpcTransferServicer stream finished. tag: ', base_tag, ', remaining write count: ', broker.get_remaining_write_signal_count())
+    print('GrpcTransferServicer stream finished. tag: ', base_tag, ', remaining write count: ', broker.get_active_writers_count())
     return transfer_pb2.TransferBatch(header=response_header)
 
   @_exception_logger
@@ -161,6 +164,8 @@ class TransferClient(object):
 
   @_exception_logger
   def recv(self, endpoint: ErEndpoint, tag):
+
+    @_exception_logger
     def fill_broker(iterable: Iterable, broker):
       iterator = iter(iterable)
       for e in iterator:
@@ -183,5 +188,4 @@ class TransferClient(object):
     t = Thread(target=fill_broker, args=[response_iter, broker])
     t.start()
 
-    # todo:1: join t?
     return broker
