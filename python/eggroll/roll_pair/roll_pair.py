@@ -431,7 +431,7 @@ class RollPair(object):
             task_inputs = [ErPartition(id=i, store_locator=self.__store._store_locator)]
             task_outputs = []
 
-            job_id = generate_job_id(self.__session_id)
+            job_id = generate_job_id(self.__session_id, RollPair.DESTROY)
             job = ErJob(id=job_id, name=RollPair.DESTROY,
                         inputs=[self.__store],
                         outputs=job_outputs,
