@@ -17,31 +17,31 @@ import unittest
 from eggroll.roll_site.roll_site import RollSiteContext
 from eggroll.core.session import ErSession
 from eggroll.roll_pair.roll_pair import RollPairContext
+from eggroll.roll_pair.test.roll_pair_test_assets import get_debug_test_context
 from eggroll.roll_pair.roll_pair import RollPair
 
 class TestGet(unittest.TestCase):
     def test_get(self):
-        rp_session = ErSession(session_id='testing', options={"eggroll.deploy.mode": "standalone"})
-        rp_context = RollPairContext(rp_session)
+        #session_id='testing'
+        rp_context = get_debug_test_context()
 
         options = {'runtime_conf_path': 'python/eggroll/roll_site/conf/role_conf.json',
                    'server_conf_path': 'python/eggroll/roll_site/conf/server_conf.json',
                    'transfer_conf_path': 'python/eggroll/roll_site/conf/transfer_conf.json'}
         context = RollSiteContext("atest", options=options, rp_ctx=rp_context)
 
-        _tag = "Hello"
+        _tag = "Hello2"
 
         rs = context.load(name="RsaIntersectTransferVariable.rsa_pubkey", tag="{}".format(_tag))
-        futures = rs.pull()
-        print("result:", type(futures.result()))
-        for future in futures.result():
-          print("result:", type(future.result()))
+        parties = [('host', '10002')]
+        futures = rs.pull(parties)
+        for future in futures:
           obj = future.result()
           if isinstance(future, RollPair):
             key = 'hello'
             obj.get(key)
           else:
-            print(obj)
+            print("obj:", obj)
 
 
 
