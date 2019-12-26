@@ -57,21 +57,22 @@ class RocksdbIterator(PairIterator):
         self.adapter = adapter
         self.it = adapter.db.iteritems()
         self.it.seek_to_first()
-    # TODO:0: need iterate?
+
     def first(self):
         count = 0
         self.it.seek_to_first()
         for k, v in self.it:
             count += 1
+            break
         self.it.seek_to_first()
         return (count != 0)
 
-    # TODO:0: need iterate?
     def last(self):
         count = 0
         self.it.seek_to_last()
         for k, v in self.it:
             count += 1
+            break
         self.it.seek_to_last()
         return (count != 0)
 

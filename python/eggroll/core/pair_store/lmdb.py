@@ -21,8 +21,8 @@ from eggroll.core.pair_store.adapter import PairIterator, PairWriteBatch, PairAd
 from eggroll.utils import log_utils
 log_utils.setDirectory()
 LOGGER = log_utils.getLogger()
-
-# LMDB_MAP_SIZE = 16 * 4_096 * 244_140        # follows storage-service-cxx's config here
+#64 * 1024 * 1024
+LMDB_MAP_SIZE = 64 * 1024 * 1024#16 * 4_096 * 244_140        # follows storage-service-cxx's config here
 DEFAULT_DB = b'main'
 # DELIMETER = '-'
 # DELIMETER_ENCODED = DELIMETER.encode()
@@ -47,16 +47,16 @@ class LmdbIterator(PairIterator):
         return self.cursor.key()
 
     def close(self):
-        pass
+        self.cursor.close()
 
     def __iter__(self):
         return self.cursor.__iter__()
 
 class LmdbWriteBatch(PairWriteBatch):
 
-    def __init__(self, adapter, sub_db):
+    def __init__(self, adapter, txn):
         self.adapter = adapter
-        self.txn = adapter.env.begin(db=sub_db, write=True)
+        self.txn = txn
 
     def put(self, k, v):
         self.txn.put(k, v)
@@ -88,7 +88,7 @@ class LmdbAdapter(PairAdapter):
             LOGGER.info("lmdb adapter init")
             super().__init__(options)
             self.path = options["path"]
-            lmdb_map_size = options.get("lmdb_map_size", 64 * 1024 * 1024)
+            lmdb_map_size = options.get("lmdb_map_size", LMDB_MAP_SIZE)
             create_if_missing = bool(options.get("create_if_missing", "True"))
             if self.path not in LmdbAdapter.env_dict:
                 if create_if_missing:
@@ -96,7 +96,6 @@ class LmdbAdapter(PairAdapter):
                 LOGGER.info("path not in dict db path:{}".format(self.path))
                 self.env = lmdb.open(self.path, create=create_if_missing, max_dbs=128, sync=False, map_size=lmdb_map_size, writemap=True)
                 self.sub_db = self.env.open_db(DEFAULT_DB)
-
                 LmdbAdapter.count_dict[self.path] = 0
                 LmdbAdapter.env_dict[self.path] = self.env
                 LmdbAdapter.sub_env_dict[self.path] = self.sub_db
@@ -139,7 +138,7 @@ class LmdbAdapter(PairAdapter):
                 self.env = None
 
     def iteritems(self):
-        return LmdbIterator(self, self.cursor)
+        return LmdbIterator(self)
 
     def new_batch(self):
         return LmdbWriteBatch(self, self.txn)
