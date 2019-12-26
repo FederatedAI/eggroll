@@ -31,6 +31,7 @@ class PairAdapter(object):
     """
     Pair(key->value) store adapter
     """
+
     def __init__(self, options):
         pass
 
