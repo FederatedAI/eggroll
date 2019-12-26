@@ -25,37 +25,38 @@ from eggroll.core.serdes import eggroll_serdes
 
 _serdes = eggroll_serdes.PickleSerdes
 
+
 class RollSiteContext:
-  def __init__(self, job_id, options, rp_ctx):
-    global LOGGER
-    LOGGER = getLogger()
-    self.job_id = job_id
-    self.rp_ctx = rp_ctx
+    def __init__(self, job_id, options, rp_ctx):
+        global LOGGER
+        LOGGER = getLogger()
+        self.job_id = job_id
+        self.rp_ctx = rp_ctx
 
-    runtime_conf_path = options["runtime_conf_path"]
-    server_conf_path = options["server_conf_path"]
-    transfer_conf_path = options["transfer_conf_path"]
+        runtime_conf_path = options["runtime_conf_path"]
+        server_conf_path = options["server_conf_path"]
+        transfer_conf_path = options["transfer_conf_path"]
 
-    server_conf = file_utils.load_json_conf(server_conf_path)
-    if CONF_KEY_SERVER not in server_conf:  #CONF_KEY_SERVER = "servers"
-      raise EnvironmentError("server_conf should contain key {}".format(CONF_KEY_SERVER))
-    if CONF_KEY_TARGET not in server_conf.get(CONF_KEY_SERVER):  #CONF_KEY_TARGET = "clustercomm"
-      raise EnvironmentError(
-          "The {} should be a json file containing key: {}".format(server_conf_path, CONF_KEY_TARGET))
+        server_conf = file_utils.load_json_conf(server_conf_path)
+        if CONF_KEY_SERVER not in server_conf:  # CONF_KEY_SERVER = "servers"
+            raise EnvironmentError("server_conf should contain key {}".format(CONF_KEY_SERVER))
+        if CONF_KEY_TARGET not in server_conf.get(CONF_KEY_SERVER):  # CONF_KEY_TARGET = "clustercomm"
+            raise EnvironmentError(
+                "The {} should be a json file containing key: {}".format(server_conf_path, CONF_KEY_TARGET))
 
-    self.trans_conf = file_utils.load_json_conf(transfer_conf_path)
+        self.trans_conf = file_utils.load_json_conf(transfer_conf_path)
 
-    self.dst_host = server_conf.get(CONF_KEY_SERVER).get(CONF_KEY_TARGET).get("host")
-    self.dst_port = server_conf.get(CONF_KEY_SERVER).get(CONF_KEY_TARGET).get("port")
-    self.runtime_conf = file_utils.load_json_conf(runtime_conf_path)
-    if CONF_KEY_LOCAL not in self.runtime_conf:
-      raise EnvironmentError("runtime_conf should be a dict containing key: {}".format(CONF_KEY_LOCAL))
+        self.dst_host = server_conf.get(CONF_KEY_SERVER).get(CONF_KEY_TARGET).get("host")
+        self.dst_port = server_conf.get(CONF_KEY_SERVER).get(CONF_KEY_TARGET).get("port")
+        self.runtime_conf = file_utils.load_json_conf(runtime_conf_path)
+        if CONF_KEY_LOCAL not in self.runtime_conf:
+            raise EnvironmentError("runtime_conf should be a dict containing key: {}".format(CONF_KEY_LOCAL))
 
-    self.party_id = self.runtime_conf.get(CONF_KEY_LOCAL).get("party_id")
-    self.role = self.runtime_conf.get(CONF_KEY_LOCAL).get("role")
+        self.party_id = self.runtime_conf.get(CONF_KEY_LOCAL).get("party_id")
+        self.role = self.runtime_conf.get(CONF_KEY_LOCAL).get("role")
 
-  def load(self, name: str, tag: str):
-    return RollSite(name, tag, self)
+    def load(self, name: str, tag: str):
+        return RollSite(name, tag, self)
 
 
 ERROR_STATES = [proxy_pb2.STOP, proxy_pb2.KILL]
@@ -66,208 +67,205 @@ CONF_KEY_SERVER = "servers"
 
 
 class RollSite:
-  def __init__(self, name: str, tag: str, rs_ctx: RollSiteContext):
-    self.ctx = rs_ctx
-    self.trans_conf = self.ctx.trans_conf
-    self.runtime_conf = self.ctx.runtime_conf
-    self.party_id = self.ctx.party_id
-    self.dst_host = self.ctx.dst_host
-    self.dst_port = self.ctx.dst_port
-    self.job_id = self.ctx.job_id
-    self.local_role = self.ctx.role
-    self.name = name
-    self.tag = tag
-    channel = grpc.insecure_channel(
-        target="{}:{}".format(self.dst_host, self.dst_port),
-        options=[('grpc.max_send_message_length', -1), ('grpc.max_receive_message_length', -1)])
-    self.stub = proxy_pb2_grpc.DataTransferServiceStub(channel)
-    self.process_pool = ThreadPoolExecutor(10)
-    self.complete_pool = ThreadPoolExecutor(10)
-    self.init_job_session_pair(self.job_id, self.ctx.rp_ctx.session_id)
+    def __init__(self, name: str, tag: str, rs_ctx: RollSiteContext):
+        self.ctx = rs_ctx
+        self.trans_conf = self.ctx.trans_conf
+        self.runtime_conf = self.ctx.runtime_conf
+        self.party_id = self.ctx.party_id
+        self.dst_host = self.ctx.dst_host
+        self.dst_port = self.ctx.dst_port
+        self.job_id = self.ctx.job_id
+        self.local_role = self.ctx.role
+        self.name = name
+        self.tag = tag
+        channel = grpc.insecure_channel(
+            target="{}:{}".format(self.dst_host, self.dst_port),
+            options=[('grpc.max_send_message_length', -1), ('grpc.max_receive_message_length', -1)])
+        self.stub = proxy_pb2_grpc.DataTransferServiceStub(channel)
+        self.process_pool = ThreadPoolExecutor(10)
+        self.complete_pool = ThreadPoolExecutor(10)
+        self.init_job_session_pair(self.job_id, self.ctx.rp_ctx.session_id)
 
-  def init_job_session_pair(self, job_id, session_id):
-      task_info = proxy_pb2.Task(taskId=self.name, model=proxy_pb2.Model(name=job_id, dataKey=bytes(session_id, encoding='utf8')))
-      topic_src = proxy_pb2.Topic(name="init_job_session_pair", partyId="{}".format(self.party_id),
-                                  role=self.local_role, callback=None)
-      topic_dst = proxy_pb2.Topic(name="init_job_session_pair", partyId="{}".format(self.party_id),
-                                  role=self.local_role, callback=None)
-      command_test = proxy_pb2.Command(name="init_job_session_pair")
-      conf_test = proxy_pb2.Conf(overallTimeout=1000,
-                                 completionWaitTimeout=1000,
-                                 packetIntervalTimeout=1000,
-                                 maxRetries=10)
+    def init_job_session_pair(self, job_id, session_id):
+        task_info = proxy_pb2.Task(taskId=self.name,
+                                   model=proxy_pb2.Model(name=job_id, dataKey=bytes(session_id, encoding='utf8')))
+        topic_src = proxy_pb2.Topic(name="init_job_session_pair", partyId="{}".format(self.party_id),
+                                    role=self.local_role, callback=None)
+        topic_dst = proxy_pb2.Topic(name="init_job_session_pair", partyId="{}".format(self.party_id),
+                                    role=self.local_role, callback=None)
+        command_test = proxy_pb2.Command(name="init_job_session_pair")
+        conf_test = proxy_pb2.Conf(overallTimeout=1000,
+                                   completionWaitTimeout=1000,
+                                   packetIntervalTimeout=1000,
+                                   maxRetries=10)
 
-      metadata = proxy_pb2.Metadata(task=task_info,
-                                    src=topic_src,
-                                    dst=topic_dst,
-                                    command=command_test,
-                                    operator="init_job_session_pair",
-                                    seq=0, ack=0,
-                                    conf=conf_test)
-      packet = proxy_pb2.Packet(header=metadata)
+        metadata = proxy_pb2.Metadata(task=task_info,
+                                      src=topic_src,
+                                      dst=topic_dst,
+                                      command=command_test,
+                                      operator="init_job_session_pair",
+                                      seq=0, ack=0,
+                                      conf=conf_test)
+        packet = proxy_pb2.Packet(header=metadata)
 
-      self.stub.unaryCall(packet)
+        self.stub.unaryCall(packet)
 
-  @staticmethod
-  def __remote__object_key(*args):
-    return "-".join(["{}".format(arg) for arg in args])
+    @staticmethod
+    def __remote__object_key(*args):
+        return "-".join(["{}".format(arg) for arg in args])
 
-  def __check_authorization(self, name, is_send=True):
-    algorithm, sub_name = name.split(".")
-    auth_dict = self.trans_conf.get(algorithm)
+    def __check_authorization(self, name, is_send=True):
+        algorithm, sub_name = name.split(".")
+        auth_dict = self.trans_conf.get(algorithm)
 
-    if auth_dict is None:
-      raise ValueError("{} did not set in transfer_conf.json".format(algorithm))
+        if auth_dict is None:
+            raise ValueError("{} did not set in transfer_conf.json".format(algorithm))
 
-    if auth_dict.get(sub_name) is None:
-      raise ValueError("{} did not set under algorithm {} in transfer_conf.json".format(sub_name, algorithm))
+        if auth_dict.get(sub_name) is None:
+            raise ValueError("{} did not set under algorithm {} in transfer_conf.json".format(sub_name, algorithm))
 
-    if is_send and auth_dict.get(sub_name).get('src') != self.local_role:
-      raise ValueError("not allow to send from {}".format(self.local_role))
-    elif not is_send and self.local_role not in auth_dict.get(sub_name).get('dst'):
-      raise ValueError("not allow to receive from {}".format(self.local_role))
+        if is_send and auth_dict.get(sub_name).get('src') != self.local_role:
+            raise ValueError("not allow to send from {}".format(self.local_role))
+        elif not is_send and self.local_role not in auth_dict.get(sub_name).get('dst'):
+            raise ValueError("not allow to receive from {}".format(self.local_role))
 
-    return algorithm, sub_name
+        return algorithm, sub_name
 
-  def __get_parties(self, role):
-    return self.runtime_conf.get('role').get(role)
+    def __get_parties(self, role):
+        return self.runtime_conf.get('role').get(role)
 
-  def _thread_receive(self, packet):
-    ret_packet = self.stub.unaryCall(packet)
-    while ret_packet.header.ack != 123:  #COMPLETE
-      if ret_packet.header.ack in ERROR_STATES:
-        raise IOError("receive terminated")
-      ret_packet = self.stub.unaryCall(packet)
+    def _thread_receive(self, packet):
+        ret_packet = self.stub.unaryCall(packet)
+        while ret_packet.header.ack != 123:  
+            if ret_packet.header.ack in ERROR_STATES:
+                raise IOError("receive terminated")
+            ret_packet = self.stub.unaryCall(packet)
 
-    return ret_packet
+        return ret_packet
 
-  # def wait_for_complete(self, futures):
-  #   return wait(futures, timeout=10, return_when=ALL_COMPLETED)
-    #return True
+    # def wait_for_complete(self, futures):
+    #   return wait(futures, timeout=10, return_when=ALL_COMPLETED)
+    # return True
 
-  def wait_for_pull_complete(self, futures):
-    wait(futures, timeout=10, return_when=ALL_COMPLETED)
-    results = [r.result() for r in futures]
-    rtn = []
-    for result in results:
-      table_name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.job_id, self.name, self.tag,
-                                                                 result.header.src.role,
-                                                                 result.header.src.partyId,
-                                                                 result.header.dst.role,
-                                                                 result.header.dst.partyId]))
-      print("namespace:", self.job_id, ", name:", table_name)
-      rp = self.ctx.rp_ctx.load(namespace=self.job_id, name=table_name)
-      print("result.body.value:", result.body.value)
-      if(result.body.value == str.encode('object')):
-        print("__tagged_key", result.body.key)
-        __tagged_key = result.body.key
-        ret_obj = rp.get(__tagged_key)
-        print("ret_obj:", ret_obj)
-        rtn.append(ret_obj)
-        LOGGER.debug("[GET] Got remote object {}".format(__tagged_key))
-      else:
-        rtn.append(rp)
+    def wait_for_pull_complete(self, futures):
+        wait(futures, timeout=10, return_when=ALL_COMPLETED)
+        results = [r.result() for r in futures]
+        rtn = []
+        for result in results:
+            table_name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.job_id, self.name, self.tag,
+                                                                       result.header.src.role,
+                                                                       result.header.src.partyId,
+                                                                       result.header.dst.role,
+                                                                       result.header.dst.partyId]))
+            print("namespace:", self.job_id, ", name:", table_name)
+            rp = self.ctx.rp_ctx.load(namespace=self.job_id, name=table_name)
+            print("result.body.value:", result.body.value)
+            if (result.body.value == str.encode('object')):
+                print("__tagged_key", result.body.key)
+                __tagged_key = result.body.key
+                ret_obj = rp.get(__tagged_key)
+                print("ret_obj:", ret_obj)
+                rtn.append(ret_obj)
+                LOGGER.debug("[GET] Got remote object {}".format(__tagged_key))
+            else:
+                rtn.append(rp)
 
-    return rtn
+        return rtn
 
-  def push(self, obj, parties: list = None):
-    futures = []
-    print("parties:", parties)
-    for role_partyId in parties:
-        #for _partyId in _partyIds:
-        _role = role_partyId[0]
-        _partyId = role_partyId[1]
-        print("_role:", _role)
-        print("_partyIds:", _partyId)
-        _tagged_key = self.__remote__object_key(self.job_id, self.name, self.tag, self.local_role, self.party_id, _role,
-                                                _partyId)
+    def push(self, obj, parties: list = None):
+        futures = []
+        print("parties:", parties)
+        for role_partyId in parties:
+            # for _partyId in _partyIds:
+            _role = role_partyId[0]
+            _partyId = role_partyId[1]
+            print("_role:", _role)
+            print("_partyIds:", _partyId)
+            _tagged_key = self.__remote__object_key(self.job_id, self.name, self.tag, self.local_role, self.party_id,
+                                                    _role,
+                                                    _partyId)
 
-        namespace = self.job_id
+            namespace = self.job_id
 
-        if isinstance(obj, RollPair):
-          name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.job_id, self.name, self.tag,
-                                                               self.local_role, str(self.party_id),
-                                                               _role, str(_partyId), self.dst_host,
-                                                               str(self.dst_port), 'rollpair']))
-          rp = obj
-        else:
-          '''
+            if isinstance(obj, RollPair):
+                name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.job_id, self.name, self.tag,
+                                                                     self.local_role, str(self.party_id),
+                                                                     _role, str(_partyId), self.dst_host,
+                                                                     str(self.dst_port), 'rollpair']))
+                rp = obj
+            else:
+                '''
           If it is a object, put the object in the table and send the table meta.
           '''
-          name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.job_id, self.name, self.tag,
-                                                               self.local_role, str(self.party_id),
-                                                               _role, str(_partyId), self.dst_host,
-                                                               str(self.dst_port), 'object']))
-          rp = self.ctx.rp_ctx.load(namespace, name)
-          rp.put(_tagged_key, obj)
+                name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.job_id, self.name, self.tag,
+                                                                     self.local_role, str(self.party_id),
+                                                                     _role, str(_partyId), self.dst_host,
+                                                                     str(self.dst_port), 'object']))
+                rp = self.ctx.rp_ctx.load(namespace, name)
+                rp.put(_tagged_key, obj)
 
-          LOGGER.debug("[REMOTE] Sending {}".format(_tagged_key))
-          rp = self.ctx.rp_ctx.load(namespace, name)
+                LOGGER.debug("[REMOTE] Sending {}".format(_tagged_key))
+                rp = self.ctx.rp_ctx.load(namespace, name)
 
+            def map_values():
+                rp.map_values(
+                    lambda v: v,
+                    output=ErStore(store_locator=
+                                   ErStoreLocator(store_type=StoreTypes.ROLLPAIR_ROLLSITE,
+                                                  namespace="roll_site__" + namespace,
+                                                  name=name)))
+                return role_partyId, _partyId
 
-        def map_values():
-            rp.map_values(
-            lambda v: v,
-            output=ErStore(store_locator=
-                           ErStoreLocator(store_type=StoreTypes.ROLLPAIR_ROLLSITE,
-                                          namespace="roll_site__" + namespace,
-                                          name=name)))
-            return role_partyId, _partyId
+            future = self.process_pool.submit(map_values)
+            futures.append(future)
+            # LOGGER.debug("[REMOTE] Sent {}".format(_tagged_key))
 
-        future = self.process_pool.submit(map_values)
-        futures.append(future)
-        # LOGGER.debug("[REMOTE] Sent {}".format(_tagged_key))
+        self.process_pool.shutdown(wait=False)
 
-    self.process_pool.shutdown(wait=False)
+        # ret_future = self.complete_pool.submit(wait, futures, timeout=10, return_when=FIRST_EXCEPTION)
+        # self.complete_pool.shutdown(wait=False)
 
-    # ret_future = self.complete_pool.submit(wait, futures, timeout=10, return_when=FIRST_EXCEPTION)
-    # self.complete_pool.shutdown(wait=False)
+        return futures
 
-    return futures
+    def wait_futures(self, futures):
+        ret_future = self.complete_pool.submit(wait, futures, timeout=10, return_when=FIRST_EXCEPTION)
+        self.complete_pool.shutdown(wait=False)
+        return ret_future
 
-  def wait_futures(self, futures):
-      ret_future = self.complete_pool.submit(wait, futures, timeout=10, return_when=FIRST_EXCEPTION)
-      self.complete_pool.shutdown(wait=False)
-      return ret_future
+    def pull(self, parties: list = None):
+        futures = []
+        for src_role, party_id in parties:
+            _tagged_key = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.job_id, self.name, self.tag,
+                                                                        src_role, str(party_id),
+                                                                        self.local_role, str(self.party_id)]))
+            print("pull _tagged_key:", _tagged_key)
+            task_info = proxy_pb2.Task(taskId=_tagged_key)
+            topic_src = proxy_pb2.Topic(name="get_status", partyId="{}".format(party_id),
+                                        role=src_role, callback=None)
+            topic_dst = proxy_pb2.Topic(name="get_status", partyId="{}".format(self.party_id),
+                                        role=self.local_role, callback=None)
+            command_test = proxy_pb2.Command(name="get_status")
+            conf_test = proxy_pb2.Conf(overallTimeout=1000,
+                                       completionWaitTimeout=1000,
+                                       packetIntervalTimeout=1000,
+                                       maxRetries=10)
 
-  def pull(self, parties: list = None):
-    futures = []
-    for src_role, party_id in parties:
-      _tagged_key = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.job_id, self.name, self.tag,
-                                                                  src_role, str(party_id),
-                                                                  self.local_role, str(self.party_id)]))
-      print("pull _tagged_key:", _tagged_key)
-      task_info = proxy_pb2.Task(taskId=_tagged_key)
-      topic_src = proxy_pb2.Topic(name="get_status", partyId="{}".format(party_id),
-                                  role=src_role, callback=None)
-      topic_dst = proxy_pb2.Topic(name="get_status", partyId="{}".format(self.party_id),
-                                  role=self.local_role, callback=None)
-      command_test = proxy_pb2.Command(name="get_status")
-      conf_test = proxy_pb2.Conf(overallTimeout=1000,
-                                 completionWaitTimeout=1000,
-                                 packetIntervalTimeout=1000,
-                                 maxRetries=10)
+            metadata = proxy_pb2.Metadata(task=task_info,
+                                          src=topic_src,
+                                          dst=topic_dst,
+                                          command=command_test,
+                                          operator="getStatus",
+                                          seq=0, ack=0,
+                                          conf=conf_test)
 
-      metadata = proxy_pb2.Metadata(task=task_info,
-                                    src=topic_src,
-                                    dst=topic_dst,
-                                    command=command_test,
-                                    operator="getStatus",
-                                    seq=0, ack=0,
-                                    conf=conf_test)
+            packet = proxy_pb2.Packet(header=metadata)
+            futures.append(self.process_pool.submit(RollSite._thread_receive, self, packet))
 
-      packet = proxy_pb2.Packet(header=metadata)
-      futures.append(self.process_pool.submit(RollSite._thread_receive, self, packet))
+        self.process_pool.shutdown(wait=False)
 
-    self.process_pool.shutdown(wait=False)
+        if len(parties) == 1:
+            return futures[0]
 
-    if len(parties) == 1:
-      return futures[0]
-
-    ret_future = self.complete_pool.submit(self.wait_for_pull_complete, futures)
-    self.complete_pool.shutdown(wait=False)
-    return ret_future
-
-
-
-
+        ret_future = self.complete_pool.submit(self.wait_for_pull_complete, futures)
+        self.complete_pool.shutdown(wait=False)
+        return ret_future
