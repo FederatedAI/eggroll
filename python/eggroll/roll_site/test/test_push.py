@@ -38,10 +38,9 @@ class TestRemote(unittest.TestCase):
         parties = [('host', '10002')]
         futures = rs.push(obj, parties)
         fp.close()
-        for i in range(len(parties)):
-            done, not_done = futures[i].result()
-            print("done:", done, ", not_done:", not_done)
-            print("result:", futures[i].result())
+        for future in futures:
+            role, party = future.result()
+            print("result:", role, party)
 
     def test_remote_rollpair(self):
         rp_session = ErSession(session_id='testing', options={"eggroll.deploy.mode": "standalone"})
