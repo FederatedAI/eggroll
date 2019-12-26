@@ -15,26 +15,27 @@
 
 import threading
 
+
 class CountDownLatch(object):
-  def __init__(self, count=1):
-    self._count = count
-    self._lock = threading.Condition()
+    def __init__(self, count=1):
+        self._count = count
+        self._lock = threading.Condition()
 
-  def count_down(self):
-    self._lock.acquire()
-    if self._count <= 0:
-      return
+    def count_down(self):
+        self._lock.acquire()
+        if self._count <= 0:
+            return
 
-    self._count -= 1
-    if self._count <= 0:
-      self._lock.notify_all()
-    self._lock.release()
+        self._count -= 1
+        if self._count <= 0:
+            self._lock.notify_all()
+        self._lock.release()
 
-  def await_timeout(self, timeout=None):
-    self._lock.acquire()
-    while self._count > 0:
-      self._lock.wait(timeout)
-    self._lock.release()
+    def await_timeout(self, timeout=None):
+        self._lock.acquire()
+        while self._count > 0:
+            self._lock.wait(timeout)
+        self._lock.release()
 
-  def get_count(self):
-    return self._count
+    def get_count(self):
+        return self._count
