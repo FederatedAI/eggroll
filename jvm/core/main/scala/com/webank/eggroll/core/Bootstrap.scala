@@ -31,7 +31,7 @@ object Bootstrap extends Logging {
       i += 1
     }
     if (bs.isEmpty || bs.head.isEmpty) {
-      throw new IllegalArgumentException("error args, example: -b com.webank.eggroll.Clz1,com.webank.eggroll.Clz2")
+      throw new IllegalArgumentException("error args, example: --bootstraps com.webank.eggroll.Clz1,com.webank.eggroll.Clz2")
     }
 
     for(b <- bs) {
