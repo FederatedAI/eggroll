@@ -41,10 +41,7 @@ class TestRemote(unittest.TestCase):
         fp.close()
         for i in range(len(parties)):
             done, not_done = futures[i].result()
-            for f in not_done:
-                print('xx11')
-                #print(f.exception())
-            print("xx12", done, not_done)
+            print("done:", done, ", not_done:", not_done)
             print("result:", futures[i].result())
 
     def test_remote_rollpair(self):
