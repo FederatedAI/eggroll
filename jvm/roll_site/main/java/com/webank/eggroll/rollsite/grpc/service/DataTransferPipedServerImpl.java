@@ -255,7 +255,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
             Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
             boolean status = pipe.getStatus();
             Proxy.Metadata header = request.getHeader();
-            if(status == true) {
+            if(status) {
                 LOGGER.info("status == true");
                 header = Proxy.Metadata.newBuilder().setAck(123)
                                                     .setSrc(request.getHeader().getSrc())
