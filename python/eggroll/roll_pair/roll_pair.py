@@ -87,6 +87,8 @@ class RollPairContext(object):
             del final_options['name']
         if 'namespace' in final_options:
             del final_options['namespace']
+        if 'keys_only' in final_options:
+            del final_options['keys_only']
         LOGGER.info("final_options:{}".format(final_options))
         store = ErStore(
                 store_locator=ErStoreLocator(
@@ -231,7 +233,7 @@ class RollPair(object):
         partition_id = self.partitioner(k)
         egg = self.ctx.route_to_egg(self.__store._partitions[partition_id])
         LOGGER.info(egg._command_endpoint)
-        LOGGER.info("count:", self.__store._store_locator._total_partitions)
+        LOGGER.info(f"count:{self.__store._store_locator._total_partitions}")
         inputs = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
         output = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
 
@@ -458,7 +460,7 @@ class RollPair(object):
         partition_id = self.partitioner(key)
         egg = self.ctx.route_to_egg(self.__store._partitions[partition_id])
         LOGGER.info(egg._command_endpoint)
-        LOGGER.info("count:", self.__store._store_locator._total_partitions)
+        LOGGER.info(f"count: {self.__store._store_locator._total_partitions}")
         inputs = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
         output = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
 
@@ -478,6 +480,23 @@ class RollPair(object):
                 serdes_type=self.__command_serdes
         )
         LOGGER.info("get resp:{}".format(ErPair.from_proto_string(job_resp._value)))
+
+    def take(self, n: int, options={}):
+        keys_only = options.get("keys_only", False)
+        ret = []
+        count = 0
+        for k, v in self.get_all():
+            if keys_only:
+                ret.append(k)
+            else:
+                ret.append((k, v))
+            count += 1
+            if count == n:
+                break
+        return ret
+
+    def first(self, options={}):
+        return self.take(1, options=options)
 
     def save_as(self, name, namespace, partition, options={}):
         store_type = options.get('store_type', self.ctx.default_store_type)

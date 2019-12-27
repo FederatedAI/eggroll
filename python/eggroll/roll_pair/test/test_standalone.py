@@ -108,6 +108,32 @@ class TestStandalone(unittest.TestCase):
         # TODO:1: table which has been destroyed cannot get_all, should raise exception
         print("after destroy:{}".format((table.count())))
 
+    def test_take(self):
+        options = {}
+        options['total_partitions'] = 1
+        options['keys_only'] = True
+        table = self.ctx.load('ns1', 'test_take', options=options).put_all(range(10), options=options)
+        print(table.take(n=3, options=options))
+
+        options_kv = {}
+        options_kv['total_partitions'] = 1
+        options_kv['keys_only'] = False
+        table = self.ctx.load('ns1', 'test_take_kv', options=options_kv).put_all(range(10), options=options_kv)
+        print(table.take(n=3, options=options_kv))
+
+    def test_first(self):
+        options = {}
+        options['total_partitions'] = 1
+        options['keys_only'] = True
+        table = self.ctx.load('ns1', 'test_take', options=options).put_all(range(10), options=options)
+        print(table.first(options=options))
+
+        options_kv = {}
+        options_kv['total_partitions'] = 1
+        options_kv['keys_only'] = False
+        table = self.ctx.load('ns1', 'test_take_kv', options=options_kv).put_all(range(10), options=options_kv)
+        print(table.first(options=options_kv))
+
     def test_map_values(self):
         rp = self.ctx.load("ns1", "test_map_values").put_all(range(10))
         print(list(rp.map_values(lambda v: str(v) + 'map_values').get_all()))
