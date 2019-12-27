@@ -41,6 +41,7 @@ class JoinTaskPlan(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job)
 class AggregateTaskPlan(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job) {
   override def isAggregate: Boolean = true
 }
+class DestroyTaskPlan(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job)
 class FlatMapTaskPlan(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job)
 class GlomTaskPlan(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job)
 class SampleTaskPlan(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job)
