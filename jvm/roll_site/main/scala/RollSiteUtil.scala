@@ -28,13 +28,11 @@ import com.webank.eggroll.rollpair.{RollPair, RollPairContext}
 
 
 class RollSiteUtil(val session_id: String, name:String, namespace:String) {
-  //private val clusterManagerClient = new ClusterManagerClient()
-  //private val session =  clusterManagerClient.getSession(session_meta)
   private val session =  new ErSession(sessionId = session_id, createIfNotExists = false)
   private val ctx = new RollPairContext(session)
-  private val nameStripped = name //.substring("roll_site__".length)
-  println("scalaPutBatch  name:" + name + " nameStripped:" + nameStripped + ",namespace:" + namespace)
-  val rp:RollPair = ctx.load(namespace, nameStripped)
+  //private val nameStripped = name
+  println("scalaPutBatch  name:" + name + ",namespace:" + namespace)
+  val rp:RollPair = ctx.load(namespace, name)
 
   Runtime.getRuntime.addShutdownHook(new Thread(){
     override def run(): Unit = {

@@ -118,7 +118,7 @@ class GrpcTransferServicer(transfer_pb2_grpc.TransferServiceServicer):
   @_exception_logger
   def recv(self, request, context):
     base_tag = request.header.tag
-    print('GrpcTransferServicer send broker tag: ', base_tag)
+    print('GrpcTransferServicer recv broker tag: ', base_tag)
     callee_messages_broker: FifoBroker = TransferService.get_broker(base_tag)
 
     return TransferService.transfer_batch_generator_from_broker(callee_messages_broker, base_tag)
