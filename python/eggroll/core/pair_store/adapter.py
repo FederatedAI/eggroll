@@ -262,7 +262,7 @@ class BrokerAdapter(PairAdapter):
         self.__broker = broker
 
     def close(self):
-        self.__broker.signal_write_finish()
+        pass
 
     def iteritems(self):
         return BrokerIterator(self.__broker)
@@ -290,7 +290,8 @@ class BrokerIterator(PairIterator):
                 else:
                     raise StopIteration()
             except Empty:
-                print('waiting for broker to fill')
+                #print('waiting for broker to fill')
+                pass
 
 
 class BrokerWriteBatch(PairWriteBatch):

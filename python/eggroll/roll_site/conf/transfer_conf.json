@@ -1,7 +1,7 @@
 {
   "RsaIntersectTransferVariable": {
     "rsa_pubkey": {
-      "src": "guest",
+      "src": "host",
       "dst": [
         "host"
       ]
