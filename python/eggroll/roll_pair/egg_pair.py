@@ -42,8 +42,8 @@ from eggroll.core.utils import _exception_logger
 from eggroll.core.utils import hash_code
 from eggroll.roll_pair import create_adapter, create_serdes
 from eggroll.roll_pair.transfer_pair import TransferPair
-from eggroll.roll_pair.utils.pair_utils import generator
-from eggroll.roll_pair.utils.pair_utils import partitioner
+from eggroll.roll_pair.utils.pair_utils import generator, partitioner, \
+    set_data_dir
 from eggroll.utils import log_utils
 
 log_utils.setDirectory()
@@ -424,6 +424,8 @@ class EggPair(object):
 
 def serve(args):
     prefix = 'v1/egg-pair'
+
+    set_data_dir(args.data_dir)
 
     CommandRouter.get_instance().register(
             service_name=f"{prefix}/runTask",
