@@ -186,7 +186,6 @@ class RollSite:
                 rp = self.ctx.rp_ctx.load(namespace, name)
                 rp.put(_tagged_key, obj)
                 LOGGER.debug("[REMOTE] Sending {}".format(_tagged_key))
-                rp = self.ctx.rp_ctx.load(namespace, name)
 
             def map_values():
                 is_standalone = self.ctx.rp_ctx.get_session().get_option(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE) == "standalone"
@@ -207,7 +206,7 @@ class RollSite:
                     store_type = StoreTypes.ROLLPAIR_ROLLSITE
 
                 print("namespace:", namespace, ", name:", dst_name)
-                if obj_type != 'object':
+                if is_standalone is False or (is_standalone is True and obj_type != 'object'):
                     rp.map_values(
                         lambda v: v,
                         output=ErStore(store_locator=
