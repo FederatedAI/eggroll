@@ -346,7 +346,7 @@ class RollPair(object):
         return pair_generator(adapter, self.key_serdes, self.value_serdes, cleanup)
 
     def put_all(self, items, output=None, options={}):
-        include_key = options.get("include_key", False)
+        include_key = options.get("include_key", True)
         job_id = generate_job_id(self.__session_id, RollPair.PUT_ALL)
 
         # TODO:1: consider multiprocessing scenario. parallel size should be sent to egg_pair to set write signal count
@@ -482,21 +482,31 @@ class RollPair(object):
         LOGGER.info("get resp:{}".format(ErPair.from_proto_string(job_resp._value)))
 
     def take(self, n: int, options={}):
+        if n <= 0:
+            n = 1
+
         keys_only = options.get("keys_only", False)
         ret = []
         count = 0
-        for k, v in self.get_all():
+        for item in self.get_all():
             if keys_only:
-                ret.append(k)
+                if item :
+                    ret.append(item[0])
+                else:
+                    ret.append(None)
             else:
-                ret.append((k, v))
+                ret.append(item)
             count += 1
             if count == n:
                 break
         return ret
 
     def first(self, options={}):
-        return self.take(1, options=options)
+        resp = self.take(1, options=options)
+        if resp:
+            return resp[0]
+        else:
+            return None
 
     def save_as(self, name, namespace, partition, options={}):
         store_type = options.get('store_type', self.ctx.default_store_type)
