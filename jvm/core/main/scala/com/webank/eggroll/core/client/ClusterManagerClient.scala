@@ -35,11 +35,14 @@ class ClusterManagerClient(val endpoint: ErEndpoint) {
     this(ErEndpoint(serverHost, serverPort));
   }
 
+  // TODO:2: priority property getter
   def this(options: Map[String, String]) {
-    this(options.getOrElse(
-      ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST, "localhost"),
-      options.getOrElse(
-        ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, "4670").toInt)
+    this(options.getOrElse(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST,
+      StaticErConf.getString(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST,
+        "localhost")),
+      options.getOrElse(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT,
+        StaticErConf.getString(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT,
+          "4670")).toInt)
   }
 
   def this() {

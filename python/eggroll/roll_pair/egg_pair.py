@@ -28,7 +28,7 @@ from grpc._cython import cygrpc
 from eggroll.core.client import ClusterManagerClient
 from eggroll.core.command.command_router import CommandRouter
 from eggroll.core.command.command_service import CommandServicer
-from eggroll.core.conf_keys import NodeManagerConfKeys, SessionConfKeys, \
+from eggroll.core.conf_keys import SessionConfKeys, \
     ClusterManagerConfKeys
 from eggroll.core.constants import ProcessorTypes, ProcessorStatus, SerdesTypes
 from eggroll.core.datastructure.broker import FifoBroker
@@ -491,7 +491,7 @@ def serve(args):
         LOGGER.info(f'cluster_manager: {cluster_manager}')
         cluster_manager_client = ClusterManagerClient(options={
             ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST: cluster_manager_host,
-            NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT: cluster_manager_port
+            ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT: cluster_manager_port
         })
         cluster_manager_client.heartbeat(myself)
 

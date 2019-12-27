@@ -62,7 +62,7 @@ class ErSession(object):
             def shutdown_standalone_manager(port, session_id, log_dir):
                 shutdown_command = f"ps aux | grep eggroll | grep Bootstrap | grep '{port}' | grep '{session_id}' | grep -v grep | awk '{{print $2}}' | xargs kill"
                 print('shutdown command:', shutdown_command)
-                with open(f'{log_dir}/standalone_manager.OUT', 'a+') as outfile, open(f'{log_dir}/standalone_manager.ERR', 'a+') as errfile:
+                with open(f'{log_dir}/standalone-manager.OUT', 'a+') as outfile, open(f'{log_dir}/standalone-manager.ERR', 'a+') as errfile:
                     manager_process = subprocess.check_output(shutdown_command, shell=True)
                     print(manager_process)
 

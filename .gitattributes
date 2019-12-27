@@ -1,0 +1,2 @@
+# default behaviour, all files ends with LF (Unix style). Sorry to Mac and Windows users :) (sorry to myself)
+* text=auto eol=lf
