@@ -18,8 +18,8 @@ import unittest
 from eggroll.roll_pair.test.roll_pair_test_assets import get_debug_test_context, \
     get_cluster_context, get_standalone_context
 
-is_debug = True
-is_standalone = False
+is_debug = False
+is_standalone = True
 
 class TestStandalone(unittest.TestCase):
     ctx = None
@@ -70,7 +70,7 @@ class TestStandalone(unittest.TestCase):
         options['total_partitions'] = 3
         options['include_key'] = True
         table = self.ctx.load("ns1", "testMultiPartitionPutAll", options=options)
-        table.put_all(kv_generator(100000), options=options)
+        table.put_all(kv_generator(100), options=options)
         print(table.count())
 
     def test_get_all(self):
@@ -158,7 +158,7 @@ class TestStandalone(unittest.TestCase):
         options = {}
         options['total_partitions'] = 3
         options['include_key'] = True
-        rp = self.ctx.load("ns1", "testMultiPartitionsMap", options=options).put_all(range(10000))
+        rp = self.ctx.load("ns1", "testMultiPartitionsMap", options=options).put_all(range(100))
 
         result = rp.map(lambda k, v: (k + 1, v))
         print(result.count())
