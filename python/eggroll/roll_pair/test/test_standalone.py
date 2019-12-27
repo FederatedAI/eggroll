@@ -15,7 +15,6 @@
 
 import unittest
 
-from eggroll.core.constants import StoreTypes
 from eggroll.roll_pair.test.roll_pair_test_assets import get_debug_test_context, \
     get_cluster_context, get_standalone_context
 
@@ -61,13 +60,18 @@ class TestStandalone(unittest.TestCase):
         print("get res:{}".format(table))
 
     def test_multi_partition_put_all(self):
-        data = [("k1", "v1"), ("k2", "v2"), ("k3", "v3"), ("k4", "v4"), ("k5", "v5"), ("k6", "v6")]
+        #data = [("k1", "v1"), ("k2", "v2"), ("k3", "v3"), ("k4", "v4"), ("k5", "v5"), ("k6", "v6")]
+
+        def kv_generator(limit):
+            for i in range(limit):
+                yield f"k{i}", f"v{i}"
+
         options = {}
         options['total_partitions'] = 3
         options['include_key'] = True
         table = self.ctx.load("ns1", "testMultiPartitionPutAll", options=options)
-        table.put_all(data, options=options)
-        print(list(table.get_all()))
+        table.put_all(kv_generator(100000), options=options)
+        print(table.count())
 
     def test_get_all(self):
         table =self.ctx.load("ns1", "testMultiPartitionPutAll")
@@ -120,7 +124,7 @@ class TestStandalone(unittest.TestCase):
         print(list(rp.map_partitions(func).get_all()))
 
     def test_map(self):
-        rp = self.ctx.load("ns1", "testMap").put_all(range(10))
+        rp = self.ctx.load("ns1", "testMap").put_all(range(100))
 
         print(list(rp.map(lambda k, v: (k + 1, v)).get_all()))
 
@@ -128,9 +132,10 @@ class TestStandalone(unittest.TestCase):
         options = {}
         options['total_partitions'] = 3
         options['include_key'] = True
-        rp = self.ctx.load("ns1", "testMultiPartitionsMap", options=options).put_all(range(10))
+        rp = self.ctx.load("ns1", "testMultiPartitionsMap", options=options).put_all(range(10000))
 
-        print(list(rp.map(lambda k, v: (k + 1, v)).get_all()))
+        result = rp.map(lambda k, v: (k + 1, v))
+        print(result.count())
 
     def test_collapse_partitions(self):
         rp = self.ctx.load("ns1", "test_collapse_partitions").put_all(range(5))
