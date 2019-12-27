@@ -28,7 +28,7 @@ ER_STORE1 = ErStore(
                                  name="name"))
 
 
-def get_debug_test_context(is_standalone=False, manager_port=4670, egg_port=20001, transfer_port=20002):
+def get_debug_test_context(is_standalone=False, manager_port=4670, egg_port=20001, transfer_port=20002, session_id='testing'):
     options = {}
     if is_standalone:
         options[SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE] = "standalone"
@@ -56,7 +56,7 @@ def get_debug_test_context(is_standalone=False, manager_port=4670, egg_port=2000
                        status=ProcessorStatus.RUNNING,
                        command_endpoint=ErEndpoint("localhost", manager_port))
 
-    session = ErSession(session_id='testing',
+    session = ErSession(session_id,
                         processors=[egg, roll],
                         options=options)
     # session = ErSession(options={})
