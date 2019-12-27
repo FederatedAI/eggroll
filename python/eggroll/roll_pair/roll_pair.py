@@ -16,7 +16,7 @@ import uuid
 from concurrent.futures import wait, FIRST_EXCEPTION
 from threading import Thread
 
-from eggroll.core.client import CommandClient, ClusterManagerClient
+from eggroll.core.client import CommandClient
 from eggroll.core.command.command_model import CommandURI
 from eggroll.core.conf_keys import SessionConfKeys
 from eggroll.core.constants import StoreTypes, SerdesTypes, PartitionerTypes
@@ -87,6 +87,8 @@ class RollPairContext(object):
             del final_options['name']
         if 'namespace' in final_options:
             del final_options['namespace']
+        if 'keys_only' in final_options:
+            del final_options['keys_only']
         LOGGER.info("final_options:{}".format(final_options))
         store = ErStore(
                 store_locator=ErStoreLocator(
@@ -158,14 +160,15 @@ class RollPair(object):
     UNION = 'union'
 
     def __init__(self, er_store: ErStore, rp_ctx: RollPairContext):
-        self.__command_serdes = SerdesTypes.PROTOBUF
-        self.__command_client = CommandClient()
         self.__store = er_store
+        self.ctx = rp_ctx
+        self.__command_serdes = SerdesTypes.PROTOBUF
+        self.__roll_pair_master = self.ctx.get_roll()
+        self.__command_client = CommandClient()
         self.value_serdes = self.get_serdes()
         self.key_serdes = self.get_serdes()
         self.partitioner = partitioner(hash_code, self.__store._store_locator._total_partitions)
         self.egg_router = default_egg_router
-        self.ctx = rp_ctx
         self.__session_id = self.ctx.session_id
 
     def __del__(self):
@@ -231,7 +234,7 @@ class RollPair(object):
         partition_id = self.partitioner(k)
         egg = self.ctx.route_to_egg(self.__store._partitions[partition_id])
         LOGGER.info(egg._command_endpoint)
-        LOGGER.info("count:", self.__store._store_locator._total_partitions)
+        LOGGER.info(f"count:{self.__store._store_locator._total_partitions}")
         inputs = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
         output = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
 
@@ -320,7 +323,6 @@ class RollPair(object):
                 yield key_serdes.deserialize(k), value_serdes.deserialize(v)
             #broker_adapter.close()
             cleanup_func()
-
 
         def cleanup():
             nonlocal transfer_pair
@@ -428,27 +430,21 @@ class RollPair(object):
     # todo:1: move to command channel to utilize batch command
     def destroy(self):
         total_partitions = self.__store._store_locator._total_partitions
-        clusterManager = ClusterManagerClient()
-        clusterManager.delete_store(self.__store)
-        for i in range(total_partitions):
-            job_outputs = []
-            egg = self.ctx.route_to_egg(self.__store._partitions[i])
-            task_inputs = [ErPartition(id=i, store_locator=self.__store._store_locator)]
-            task_outputs = []
 
-            job_id = generate_job_id(self.__session_id, RollPair.DESTROY)
-            job = ErJob(id=job_id, name=RollPair.DESTROY,
-                        inputs=[self.__store],
-                        outputs=job_outputs,
-                        functors=[ErFunctor(body=None)])
-            task = ErTask(id=generate_task_id(job_id, i), name=RollPair.DESTROY, inputs=task_inputs, outputs=task_outputs, job=job)
-            LOGGER.info("start send req")
-            job_resp = self.__command_client.simple_sync_send(
-                    input=task,
-                    output_type=ErPair,
-                    endpoint=egg._command_endpoint,
-                    command_uri=CommandURI(f'{RollPair.EGG_PAIR_URI_PREFIX}/{RollPair.RUN_TASK}'),
-                    serdes_type=self.__command_serdes)
+        job = ErJob(id=generate_job_id(self.__session_id, RollPair.DESTROY),
+                    name=RollPair.DESTROY,
+                    inputs=[self.__store],
+                    outputs=[],
+                    functors=[])
+
+        job_resp = self.__command_client.simple_sync_send(
+                input=job,
+                output_type=ErJob,
+                endpoint=self.ctx.get_roll()._command_endpoint,
+                command_uri=CommandURI(f'{RollPair.ROLL_PAIR_URI_PREFIX}/{RollPair.RUN_JOB}'),
+                serdes_type=self.__command_serdes)
+
+        LOGGER.info(f'{RollPair.DESTROY}: {self.__store}')
 
     def delete(self, k, options={}):
         key = create_serdes(self.__store._store_locator._serdes).serialize(k)
@@ -458,7 +454,7 @@ class RollPair(object):
         partition_id = self.partitioner(key)
         egg = self.ctx.route_to_egg(self.__store._partitions[partition_id])
         LOGGER.info(egg._command_endpoint)
-        LOGGER.info("count:", self.__store._store_locator._total_partitions)
+        LOGGER.info(f"count: {self.__store._store_locator._total_partitions}")
         inputs = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
         output = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
 
@@ -478,6 +474,23 @@ class RollPair(object):
                 serdes_type=self.__command_serdes
         )
         LOGGER.info("get resp:{}".format(ErPair.from_proto_string(job_resp._value)))
+
+    def take(self, n: int, options={}):
+        keys_only = options.get("keys_only", False)
+        ret = []
+        count = 0
+        for k, v in self.get_all():
+            if keys_only:
+                ret.append(k)
+            else:
+                ret.append((k, v))
+            count += 1
+            if count == n:
+                break
+        return ret
+
+    def first(self, options={}):
+        return self.take(1, options=options)
 
     def save_as(self, name, namespace, partition, options={}):
         store_type = options.get('store_type', self.ctx.default_store_type)
