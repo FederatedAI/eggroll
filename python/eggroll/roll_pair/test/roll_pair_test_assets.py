@@ -13,7 +13,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from eggroll.core.conf_keys import SessionConfKeys, TransferConfKeys, ClusterManagerConfKeys
+from eggroll.core.conf_keys import SessionConfKeys, TransferConfKeys, \
+    ClusterManagerConfKeys, NodeManagerConfKeys
 from eggroll.core.constants import DeployModes
 from eggroll.core.constants import ProcessorTypes, ProcessorStatus
 from eggroll.core.constants import StoreTypes
@@ -28,19 +29,19 @@ ER_STORE1 = ErStore(
                                  name="name"))
 
 
-def get_debug_test_context(is_standalone=False, manager_port=4670, egg_port=20001, transfer_port=20002):
+def get_debug_test_context(is_standalone=False):
+    manager_port = 4671
+    egg_ports = [20001]
+    egg_transfer_ports = [20002]
+    self_server_node_id = 2
+
     options = {}
     if is_standalone:
         options[SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE] = "standalone"
     options[TransferConfKeys.CONFKEY_TRANSFER_SERVICE_HOST] = "localhost"
-    options[TransferConfKeys.CONFKEY_TRANSFER_SERVICE_PORT] = str(transfer_port)
-    # TODO:1: read from config
-    options[ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST] = 'localhost'
+    options[TransferConfKeys.CONFKEY_TRANSFER_SERVICE_PORT] = "20002"
     options[ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT] = str(manager_port)
-
-    egg_ports = [egg_port]
-    egg_transfer_ports = [transfer_port]
-    self_server_node_id = 2
+    options[NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT] = str(manager_port)
 
     egg = ErProcessor(id=1,
                       server_node_id=self_server_node_id,
@@ -76,6 +77,8 @@ def get_standalone_context():
 
 def get_cluster_context():
     options = {}
+    options[ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST] = "localhost"
+    options[ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT] = "4671"
 
     session = ErSession(options=options)
     print(session.get_session_id())
