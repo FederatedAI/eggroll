@@ -36,7 +36,7 @@ class ErSession(val sessionId: String = s"er_session_jvm_${TimeUtils.getNowMs()}
                 options: Map[String, String] = Map()) {
 
   private var status = SessionStatus.NEW
-  val clusterManagerClient = new ClusterManagerClient()
+  val clusterManagerClient = new ClusterManagerClient(options)
   private var sessionMetaArg = ErSessionMeta(
     id = sessionId,
     name=name,
