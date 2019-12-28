@@ -76,8 +76,7 @@ class RollPair(val store: ErStore, val ctx: RollPairContext, val options: Map[St
 
     new Thread {
       override def run(): Unit = {
-        //TODO:0 get port from session
-        val commandClient = new CommandClient(defaultEndpoint = ErEndpoint("localhost", 4670))
+        val commandClient = new CommandClient(ctx.session.rolls(0).commandEndpoint)
         commandClient.call(RollPair.ROLL_RUN_JOB_COMMAND, job)
 
         logInfo("thread started")
