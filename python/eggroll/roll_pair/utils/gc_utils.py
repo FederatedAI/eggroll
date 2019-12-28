@@ -5,6 +5,7 @@ from eggroll.utils import log_utils
 log_utils.setDirectory()
 LOGGER = log_utils.getLogger()
 
+
 class Recorder(object):
 
     def __init__(self, er_store: ErStore, rpc):
