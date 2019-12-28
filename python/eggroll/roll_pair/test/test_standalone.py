@@ -158,16 +158,13 @@ class TestStandalone(unittest.TestCase):
         # rp = self.ctx.load("ns1", "testMap2")
         # rp.destroy()
         # rp = self.ctx.load("ns1", "testMap2").put_all("s"*4000 for i in range(100*1000))
-        import time
-        start = time.time()
         rp = self.ctx.load("ns1", "testMap2")
-        print(time.time() - start)
         # rp = self.ctx.load("ns1", "testMap3", {"store_type":StoreTypes.ROLLPAIR_CACHE})
         # rp.put_all(range(100*1000))
         # print(rp.count())
         # print(rp.map_values(lambda v: v))
-        # print(rp.map(lambda k, v: (k + 1, v)))
-        print(rp.first())
+        print(rp.map(lambda k, v: (k + 1, v)))
+        # print(rp.first())
         # print(rp.map(lambda k, v: (k + 1, v)).count())
 
         # print(list(rp.map(lambda k, v: (k + 1, v)).get_all()))
