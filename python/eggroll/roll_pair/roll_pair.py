@@ -16,7 +16,7 @@ import uuid
 from concurrent.futures import wait, FIRST_EXCEPTION
 from threading import Thread
 
-from eggroll.core.client import CommandClient, ClusterManagerClient
+from eggroll.core.client import CommandClient
 from eggroll.core.command.command_model import CommandURI
 from eggroll.core.conf_keys import SessionConfKeys
 from eggroll.core.constants import StoreTypes, SerdesTypes, PartitionerTypes
@@ -87,7 +87,9 @@ class RollPairContext(object):
             del final_options['name']
         if 'namespace' in final_options:
             del final_options['namespace']
-        print("final_options:{}".format(final_options))
+        if 'keys_only' in final_options:
+            del final_options['keys_only']
+        LOGGER.info("final_options:{}".format(final_options))
         store = ErStore(
                 store_locator=ErStoreLocator(
                         store_type=store_type,
@@ -158,15 +160,19 @@ class RollPair(object):
     UNION = 'union'
 
     def __init__(self, er_store: ErStore, rp_ctx: RollPairContext):
-        self.__command_serdes = SerdesTypes.PROTOBUF
-        self.__command_client = CommandClient()
         self.__store = er_store
+        self.ctx = rp_ctx
+        self.__command_serdes = SerdesTypes.PROTOBUF
+        self.__roll_pair_master = self.ctx.get_roll()
+        self.__command_client = CommandClient()
         self.value_serdes = self.get_serdes()
         self.key_serdes = self.get_serdes()
         self.partitioner = partitioner(hash_code, self.__store._store_locator._total_partitions)
         self.egg_router = default_egg_router
-        self.ctx = rp_ctx
         self.__session_id = self.ctx.session_id
+
+    def __del__(self):
+        pass
 
     def __repr__(self):
         return f'python RollPair(_store={self.__store})'
@@ -227,13 +233,13 @@ class RollPair(object):
         value = None
         partition_id = self.partitioner(k)
         egg = self.ctx.route_to_egg(self.__store._partitions[partition_id])
-        print(egg._command_endpoint)
-        print("count:", self.__store._store_locator._total_partitions)
+        LOGGER.info(egg._command_endpoint)
+        LOGGER.info(f"count:{self.__store._store_locator._total_partitions}")
         inputs = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
         output = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
 
-        job_id = generate_job_id(self.__session_id)
-        job = ErJob(id=generate_job_id(self.__session_id),
+        job_id = generate_job_id(self.__session_id, RollPair.GET)
+        job = ErJob(id=job_id,
                     name=RollPair.GET,
                     inputs=[self.__store],
                     outputs=outputs,
@@ -268,7 +274,7 @@ class RollPair(object):
         inputs = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
         output = [ErPartition(id=0, store_locator=self.__store._store_locator)]
 
-        job_id = generate_job_id(self.__session_id)
+        job_id = generate_job_id(self.__session_id, RollPair.PUT)
         job = ErJob(id=job_id,
                     name=RollPair.PUT,
                     inputs=[self.__store],
@@ -293,9 +299,9 @@ class RollPair(object):
         return value
 
     def get_all(self, options={}):
-        print('get all functor')
+        LOGGER.info('get all functor')
 
-        job_id = generate_job_id(self.__session_id)
+        job_id = generate_job_id(self.__session_id, RollPair.GET_ALL)
         def send_command():
             job = ErJob(id=job_id,
                         name=RollPair.GET_ALL,
@@ -318,13 +324,14 @@ class RollPair(object):
             #broker_adapter.close()
             cleanup_func()
 
-
         def cleanup():
             nonlocal transfer_pair
             nonlocal command_thread
+            nonlocal adapter
 
             command_thread.join()
             transfer_pair.join()
+            adapter.close()
 
         command_thread = Thread(target=send_command)
         command_thread.start()
@@ -340,7 +347,7 @@ class RollPair(object):
 
     def put_all(self, items, output=None, options={}):
         include_key = options.get("include_key", False)
-        job_id = generate_job_id(self.__session_id)
+        job_id = generate_job_id(self.__session_id, RollPair.PUT_ALL)
 
         # TODO:1: consider multiprocessing scenario. parallel size should be sent to egg_pair to set write signal count
         def send_command():
@@ -423,27 +430,21 @@ class RollPair(object):
     # todo:1: move to command channel to utilize batch command
     def destroy(self):
         total_partitions = self.__store._store_locator._total_partitions
-        clusterManager = ClusterManagerClient()
-        clusterManager.delete_store(self.__store)
-        for i in range(total_partitions):
-            job_outputs = []
-            egg = self.ctx.route_to_egg(self.__store._partitions[i])
-            task_inputs = [ErPartition(id=i, store_locator=self.__store._store_locator)]
-            task_outputs = []
 
-            job_id = generate_job_id(self.__session_id, RollPair.DESTROY)
-            job = ErJob(id=job_id, name=RollPair.DESTROY,
-                        inputs=[self.__store],
-                        outputs=job_outputs,
-                        functors=[ErFunctor(body=None)])
-            task = ErTask(id=generate_task_id(job_id, i), name=RollPair.DESTROY, inputs=task_inputs, outputs=task_outputs, job=job)
-            LOGGER.info("start send req")
-            job_resp = self.__command_client.simple_sync_send(
-                    input=task,
-                    output_type=ErPair,
-                    endpoint=egg._command_endpoint,
-                    command_uri=CommandURI(f'{RollPair.EGG_PAIR_URI_PREFIX}/{RollPair.RUN_TASK}'),
-                    serdes_type=self.__command_serdes)
+        job = ErJob(id=generate_job_id(self.__session_id, RollPair.DESTROY),
+                    name=RollPair.DESTROY,
+                    inputs=[self.__store],
+                    outputs=[],
+                    functors=[])
+
+        job_resp = self.__command_client.simple_sync_send(
+                input=job,
+                output_type=ErJob,
+                endpoint=self.ctx.get_roll()._command_endpoint,
+                command_uri=CommandURI(f'{RollPair.ROLL_PAIR_URI_PREFIX}/{RollPair.RUN_JOB}'),
+                serdes_type=self.__command_serdes)
+
+        LOGGER.info(f'{RollPair.DESTROY}: {self.__store}')
 
     def delete(self, k, options={}):
         key = create_serdes(self.__store._store_locator._serdes).serialize(k)
@@ -452,12 +453,12 @@ class RollPair(object):
         value = None
         partition_id = self.partitioner(key)
         egg = self.ctx.route_to_egg(self.__store._partitions[partition_id])
-        print(egg._command_endpoint)
-        print("count:", self.__store._store_locator._total_partitions)
+        LOGGER.info(egg._command_endpoint)
+        LOGGER.info(f"count: {self.__store._store_locator._total_partitions}")
         inputs = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
         output = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
 
-        job_id = generate_job_id(self.__session_id)
+        job_id = generate_job_id(self.__session_id, RollPair.DELETE)
         job = ErJob(id=job_id,
                     name=RollPair.DELETE,
                     inputs=[self.__store],
@@ -473,6 +474,23 @@ class RollPair(object):
                 serdes_type=self.__command_serdes
         )
         LOGGER.info("get resp:{}".format(ErPair.from_proto_string(job_resp._value)))
+
+    def take(self, n: int, options={}):
+        keys_only = options.get("keys_only", False)
+        ret = []
+        count = 0
+        for k, v in self.get_all():
+            if keys_only:
+                ret.append(k)
+            else:
+                ret.append((k, v))
+            count += 1
+            if count == n:
+                break
+        return ret
+
+    def first(self, options={}):
+        return self.take(1, options=options)
 
     def save_as(self, name, namespace, partition, options={}):
         store_type = options.get('store_type', self.ctx.default_store_type)
@@ -490,7 +508,7 @@ class RollPair(object):
         final_options = {}
         final_options.update(self.__store._options)
         final_options.update(options)
-        job = ErJob(id=generate_job_id(self.__session_id),
+        job = ErJob(id=generate_job_id(self.__session_id, RollPair.MAP_VALUES),
                     name=RollPair.MAP_VALUES,
                     inputs=[self.__store],
                     outputs=outputs,
@@ -514,7 +532,7 @@ class RollPair(object):
         outputs = []
         if output:
             outputs.append(output)
-        job = ErJob(id=generate_job_id(self.__session_id),
+        job = ErJob(id=generate_job_id(self.__session_id, RollPair.MAP),
                     name=RollPair.MAP,
                     inputs=[self.__store],
                     outputs=outputs,
@@ -529,7 +547,7 @@ class RollPair(object):
 
         er_store = job_result._outputs[0]
         LOGGER.info(er_store)
-        print(er_store)
+        LOGGER.info(er_store)
 
         return RollPair(er_store, self.ctx)
 
@@ -538,7 +556,7 @@ class RollPair(object):
         outputs = []
         if output:
             outputs.append(output)
-        job = ErJob(id=generate_job_id(self.__session_id),
+        job = ErJob(id=generate_job_id(self.__session_id, RollPair.MAP_PARTITIONS),
                     name=RollPair.MAP_PARTITIONS,
                     inputs=[self.__store],
                     outputs=outputs,
@@ -562,7 +580,7 @@ class RollPair(object):
         if output:
             outputs.append(output)
 
-        job = ErJob(id=generate_job_id(self.__session_id),
+        job = ErJob(id=generate_job_id(self.__session_id, RollPair.COLLAPSE_PARTITIONS),
                     name=RollPair.COLLAPSE_PARTITIONS,
                     inputs=[self.__store],
                     outputs=outputs,
@@ -586,7 +604,7 @@ class RollPair(object):
         if output:
             outputs.append(output)
 
-        job = ErJob(id=generate_job_id(self.__session_id),
+        job = ErJob(id=generate_job_id(self.__session_id, RollPair.FLAT_MAP),
                     name=RollPair.FLAT_MAP,
                     inputs=[self.__store],
                     outputs=outputs,
@@ -610,7 +628,7 @@ class RollPair(object):
         outputs = []
         if output:
             outputs.append(output)
-        job = ErJob(id=generate_job_id(self.__session_id),
+        job = ErJob(id=generate_job_id(self.__session_id, RollPair.REDUCE),
                     name=RollPair.REDUCE,
                     inputs=[self.__store],
                     outputs=outputs,
@@ -635,7 +653,7 @@ class RollPair(object):
         outputs = []
         if output:
             outputs.append(output)
-        job = ErJob(id=generate_job_id(self.__session_id),
+        job = ErJob(id=generate_job_id(self.__session_id, RollPair.AGGREGATE),
                     name=RollPair.AGGREGATE,
                     inputs=[self.__store],
                     outputs=outputs,
@@ -658,7 +676,7 @@ class RollPair(object):
         if output:
             outputs.append(output)
 
-        job = ErJob(id=generate_job_id(self.__session_id),
+        job = ErJob(id=generate_job_id(self.__session_id, RollPair.GLOM),
                     name=RollPair.GLOM,
                     inputs=[self.__store],
                     outputs=outputs,
@@ -683,7 +701,7 @@ class RollPair(object):
         outputs = []
         if output:
             outputs.append(output)
-        job = ErJob(id=generate_job_id(self.__session_id),
+        job = ErJob(id=generate_job_id(self.__session_id, RollPair.SAMPLE),
                     name=RollPair.SAMPLE,
                     inputs=[self.__store],
                     outputs=outputs,
@@ -707,7 +725,7 @@ class RollPair(object):
         outputs = []
         if output:
             outputs.append(output)
-        job = ErJob(id=generate_job_id(self.__session_id),
+        job = ErJob(id=generate_job_id(self.__session_id, RollPair.FILTER),
                     name=RollPair.FILTER,
                     inputs=[self.__store],
                     outputs=outputs,
@@ -730,7 +748,7 @@ class RollPair(object):
         outputs = []
         if output:
             outputs.append(output)
-        job = ErJob(id=generate_job_id(self.__session_id),
+        job = ErJob(id=generate_job_id(self.__session_id, RollPair.SUBTRACT_BY_KEY),
                     name=RollPair.SUBTRACT_BY_KEY,
                     inputs=[self.__store, other.__store],
                     outputs=outputs,
@@ -752,7 +770,7 @@ class RollPair(object):
         outputs = []
         if output:
             outputs.append(output)
-        job = ErJob(id=generate_job_id(self.__session_id),
+        job = ErJob(id=generate_job_id(self.__session_id, RollPair.UNION),
                     name=RollPair.UNION,
                     inputs=[self.__store, other.__store],
                     outputs=outputs,
@@ -777,7 +795,7 @@ class RollPair(object):
         final_options = {}
         final_options.update(self.__store._options)
         final_options.update(options)
-        job = ErJob(id=generate_job_id(self.__session_id),
+        job = ErJob(id=generate_job_id(self.__session_id, RollPair.JOIN),
                     name=RollPair.JOIN,
                     inputs=[self.__store, other.__store],
                     outputs=outputs,
