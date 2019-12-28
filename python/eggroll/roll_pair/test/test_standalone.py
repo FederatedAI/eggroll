@@ -15,11 +15,16 @@
 
 import unittest
 
+from eggroll.core.constants import StoreTypes
+from eggroll.core.datastructure.broker import FifoBroker
+from eggroll.core.pair_store.format import ArrayByteBuffer, PairBinWriter, PairBinReader
+from eggroll.core.utils import hash_code
 from eggroll.roll_pair.test.roll_pair_test_assets import get_debug_test_context, \
     get_cluster_context, get_standalone_context
+from eggroll.roll_pair.transfer_pair import BatchBroker
 
-is_debug = False
-is_standalone = True
+is_debug = True
+is_standalone = False
 
 class TestStandalone(unittest.TestCase):
     ctx = None
@@ -150,9 +155,22 @@ class TestStandalone(unittest.TestCase):
         print(list(rp.map_partitions(func).get_all()))
 
     def test_map(self):
-        rp = self.ctx.load("ns1", "testMap").put_all(range(100))
+        # rp = self.ctx.load("ns1", "testMap2")
+        # rp.destroy()
+        # rp = self.ctx.load("ns1", "testMap2").put_all("s"*4000 for i in range(100*1000))
+        import time
+        start = time.time()
+        rp = self.ctx.load("ns1", "testMap2")
+        print(time.time() - start)
+        # rp = self.ctx.load("ns1", "testMap3", {"store_type":StoreTypes.ROLLPAIR_CACHE})
+        # rp.put_all(range(100*1000))
+        # print(rp.count())
+        # print(rp.map_values(lambda v: v))
+        # print(rp.map(lambda k, v: (k + 1, v)))
+        print(rp.first())
+        # print(rp.map(lambda k, v: (k + 1, v)).count())
 
-        print(list(rp.map(lambda k, v: (k + 1, v)).get_all()))
+        # print(list(rp.map(lambda k, v: (k + 1, v)).get_all()))
 
     def test_multi_partition_map(self):
         options = {}
