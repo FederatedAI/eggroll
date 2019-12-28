@@ -178,6 +178,9 @@ class CacheAdapter(PairAdapter):
     def put(self, key, value):
         self.data[key] = value
 
+    def count(self):
+        return len(self.data)
+
 class CacheIterator(PairIterator):
     def __init__(self, data):
         self.data = data
