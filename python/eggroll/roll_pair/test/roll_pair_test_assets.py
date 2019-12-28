@@ -77,6 +77,8 @@ def get_standalone_context():
 
 def get_cluster_context():
     options = {}
+    options[ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST] = "localhost"
+    options[ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT] = "4671"
 
     session = ErSession(options=options)
     print(session.get_session_id())

@@ -54,19 +54,21 @@ class ErSession(val sessionId: String = s"er_session_jvm_${TimeUtils.getNowMs()}
   processors = sessionMeta.processors
   status = sessionMeta.status
 
-  private val rolls: ArrayBuffer[ErProcessor] = ArrayBuffer()
-  private val eggs: mutable.Map[Long, ArrayBuffer[ErProcessor]] = mutable.Map()
-
+  private val rolls_buffer = ArrayBuffer[ErProcessor]()
+  private val eggs_buffer = mutable.Map[Long, ArrayBuffer[ErProcessor]]()
   processors.foreach(p => {
     val processorType = p.processorType
     if (ProcessorTypes.EGG_PAIR.equals(processorType)) {
-      eggs.getOrElseUpdate(p.serverNodeId, ArrayBuffer[ErProcessor]()) += p
+      eggs_buffer.getOrElseUpdate(p.serverNodeId, ArrayBuffer[ErProcessor]()) += p
     } else if (ProcessorTypes.ROLL_PAIR_MASTER.equals(processorType)) {
-      rolls += p
+      rolls_buffer += p
     } else {
       throw new IllegalArgumentException(s"processor type ${processorType} not supported in roll pair")
     }
   })
+
+  val rolls = rolls_buffer.toArray
+  val eggs : Map[Long, Array[ErProcessor]] = eggs_buffer.map(n => (n._1, n._2.toArray)).toMap
 
   def routeToEgg(partition: ErPartition): ErProcessor = {
     val serverNodeId = partition.processor.serverNodeId

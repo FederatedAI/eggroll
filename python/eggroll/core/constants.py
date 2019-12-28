@@ -30,13 +30,14 @@ class ServerNodeTypes(object):
 
 
 class StoreTypes(object):
-    ROLLPAIR_LMDB = 'rollpair.lmdb'
-    ROLLPAIR_LEVELDB = 'rollpair.leveldb'
-    ROLLFRAME_FILE = 'rollframe.file'
-    ROLLPAIR_ROLLSITE = 'rollpair.rollsite'
-    ROLLPAIR_FILE = 'rollpair.file'
-    ROLLPAIR_MMAP = 'rollpair.mmap'
-    ROLLPAIR_CACHE = 'rollpair.cache'
+    ROLLPAIR_IN_MEMORY = 'IN_MEMORY'
+    ROLLPAIR_LMDB = 'LMDB'
+    ROLLPAIR_LEVELDB = 'LEVEL_DB'
+    ROLLFRAME_FILE = 'ROLL_FRAME_FILE'
+    ROLLPAIR_ROLLSITE = 'ROLL_SITE'
+    ROLLPAIR_FILE = 'ROLL_PAIR_FILE'
+    ROLLPAIR_MMAP = 'ROLL_PAIR_MMAP'
+    ROLLPAIR_CACHE = 'ROLL_PAIR_CACHE'
 
 
 class PartitionerTypes(object):
