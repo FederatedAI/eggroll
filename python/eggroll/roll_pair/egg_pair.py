@@ -41,7 +41,7 @@ from eggroll.core.transfer.transfer_service import GrpcTransferServicer, \
 from eggroll.core.utils import _exception_logger
 from eggroll.core.utils import hash_code
 from eggroll.roll_pair import create_adapter, create_serdes
-from eggroll.roll_pair.transfer_pair import TransferPair
+from eggroll.roll_pair.transfer_pair import TransferPair, BatchBroker
 from eggroll.roll_pair.utils.pair_utils import generator, partitioner, \
     set_data_dir
 from eggroll.utils import log_utils
@@ -66,7 +66,7 @@ class EggPair(object):
         if shuffle:
             total_partitions = task._inputs[0]._store_locator._total_partitions
             output_store = task._job._outputs[0]
-            shuffle_broker = FifoBroker()
+            shuffle_broker = BatchBroker(FifoBroker())
             shuffler = TransferPair(
                     transfer_id=task._job._id,
                     output_store=output_store)

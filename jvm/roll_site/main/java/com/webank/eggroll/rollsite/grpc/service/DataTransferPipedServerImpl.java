@@ -66,15 +66,6 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
     public StreamObserver<Proxy.Packet> push(StreamObserver<Proxy.Metadata> responseObserver) {
         LOGGER.info("[PUSH][SERVER] request received");
 
-        //Pipe pipe = getPipe("modelA");
-        // LOGGER.info("push pipe: {}", pipe);
-/*
-        PipeHandleNotificationEvent event =
-                eventFactory.createPipeHandleNotificationEvent(
-                        this, PipeHandleNotificationEvent.Type.PUSH, null, pipe);
-        applicationEventPublisher.publishEvent(event);
-*/
-
         StreamObserver<Proxy.Packet> requestObserver;
         requestObserver = proxyGrpcStreamObserverFactory
                 .createServerPushRequestStreamObserver(pipeFactory, responseObserver);
@@ -91,7 +82,6 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
         long overallTimeout = timeouts.getOverallTimeout(inputMetadata);
         long packetIntervalTimeout = timeouts.getPacketIntervalTimeout(inputMetadata);
 
-        //Pipe pipe = getPipe("model_A");
         Pipe pipe = getPipe(inputMetadata.getTask().getModel().getName());
 
         LOGGER.info("[PULL][SERVER] pull pipe: {}", pipe);
@@ -225,7 +215,8 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
             responseObserver.onCompleted();
             return;
         }
-        if(request.getHeader().getOperator().equals("init_job_session_pair")) {
+        if(request.getHeader().getOperator().equals("init_job_session_pair") &&
+                proxyServerConf.getPartyId().equals(inputMetadata.getDst().getPartyId())) {
             String job_id = request.getHeader().getTask().getModel().getName();
             String session_id = request.getHeader().getTask().getModel().getDataKey();
             Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
@@ -234,6 +225,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
             JobidSessionIdMap.jobidSessionIdMap.put(job_id, session_id);
             responseObserver.onNext(packet);
             responseObserver.onCompleted();
+            return;
         }
 
         if(request.getHeader().getOperator().equals("markEnd") && proxyServerConf.getPartyId().equals(inputMetadata.getDst().getPartyId())) {

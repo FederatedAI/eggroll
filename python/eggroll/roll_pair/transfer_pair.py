@@ -26,6 +26,36 @@ from eggroll.core.utils import _exception_logger
 from eggroll.core.utils import generate_task_id
 from eggroll.roll_pair import create_adapter
 
+class BatchBroker(object):
+    def __init__(self, broker, batch_size=100):
+        self.broker = broker
+        self.batch = []
+        self.batch_size = batch_size
+
+    def _commit(self, block=True, timeout=None):
+        if len(self.batch) == 0:
+            return
+        self.broker.put(self.batch, block, timeout)
+        self.batch = []
+
+    def put(self, item, block=True, timeout=None):
+        if len(self.batch) >= self.batch_size:
+            self._commit(block, timeout)
+        self.batch.append(item)
+
+    def signal_write_finish(self):
+        self._commit()
+        self.broker.signal_write_finish()
+
+    def is_closable(self):
+        return len(self.batch) == 0 and self.broker.is_closable()
+
+    def get(self, block=True, timeout=None):
+        if len(self.batch) == 0:
+            self.batch = self.broker.get(block, timeout)
+        if len(self.batch) == 0:
+            raise queue.Empty("empty")
+        return self.batch.pop(0)
 
 class TransferPair(object):
     def __init__(self,
@@ -58,7 +88,7 @@ class TransferPair(object):
     @_exception_logger
     def start_push(self, input_broker, partition_function):
         self.__push_executor_pool = ThreadPoolExecutor(max_workers=self.__total_partitions + 1)
-        self.__partitioned_brokers = [FifoBroker() for i in range(self.__total_partitions)]
+        self.__partitioned_brokers = [BatchBroker(FifoBroker()) for i in range(self.__total_partitions)]
         output_partitions = self.__output_store._partitions
 
         partition_future = self.__push_executor_pool\
@@ -70,7 +100,7 @@ class TransferPair(object):
 
         for i in range(self.__total_partitions):
             tag = self.__generate_tag(i)
-            transfer_broker = FifoBroker()
+            transfer_broker = BatchBroker(FifoBroker())
             rpc_call_future = TransferPair.transfer_rpc_call(
                     tag=tag,
                     command_name='send',

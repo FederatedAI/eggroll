@@ -35,8 +35,7 @@ class ByteBuffer:
         return self.size() - self.get_offset()
 
     def _check_remaining(self, offset, size):
-        if self.size() - offset - size < 0:
-            raise IndexError(f'buffer overflow. remaining: {self.size() - offset}, required: {size}')
+        raise NotImplementedError()
 
     def size(self):
         raise NotImplementedError()
@@ -140,6 +139,10 @@ class ArrayByteBuffer(ByteBuffer):
         result = unpack_from('>i', self.__buffer, op_offset)
         self.__adjust_offset(op_offset, value_size)
         return result[0]
+
+    def _check_remaining(self, offset, size):
+        if self.__size - offset - size < 0:
+            raise IndexError(f'buffer overflow. remaining: {self.size() - offset}, required: {size}')
 
     def read_bytes(self, size, offset=None):
         op_offset = self.__get_op_offset(offset)
