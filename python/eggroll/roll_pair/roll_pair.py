@@ -110,7 +110,6 @@ class RollPairContext(object):
         if 'keys_only' in final_options:
             del final_options['keys_only']
         LOGGER.info("final_options:{}".format(final_options))
-
         store = ErStore(
                 store_locator=ErStoreLocator(
                         store_type=store_type,
