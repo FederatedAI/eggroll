@@ -88,11 +88,11 @@ public class PipeHandleNotificationEventListener implements ApplicationListener<
     public int pushStream(final Proxy.Metadata metadata, Pipe pipe) {
         int result = 0;
         long fixedWaitTime = StaticErConf
-            .getLong(CoreConfKeys.CONFKEY_CORE_RETRY_DEFAULT_WAIT_TIME_MS(), 1000L);
+            .getLong(CoreConfKeys.CONFKEY_CORE_RETRY_DEFAULT_WAIT_TIME_MS(), 10000L);
         int maxAttempts = StaticErConf
             .getInt(CoreConfKeys.CONFKEY_CORE_RETRY_DEFAULT_MAX_ATTEMPTS(), 10);
         long attemptTimeout = StaticErConf
-            .getLong(CoreConfKeys.CONFKEY_CORE_RETRY_DEFAULT_ATTEMPT_TIMEOUT_MS(), 3000L);
+            .getLong(CoreConfKeys.CONFKEY_CORE_RETRY_DEFAULT_ATTEMPT_TIMEOUT_MS(), 30000L);
 
         Retryer<Integer> retryer = RetryerBuilder.<Integer>newBuilder()
             .withWaitTimeStrategy(WaitTimeStrategies.fixedWaitTime(fixedWaitTime))
