@@ -23,6 +23,10 @@ from eggroll.core.utils import get_self_ip, time_now
 
 # TODO:1: support windows
 
+def session_init(session_id, options={"eggroll.session.deploy.mode": "standalone"}):
+    er_session = ErSession(session_id=session_id, options=options)
+    return er_session
+
 
 class ErSession(object):
     def __init__(self,
@@ -35,6 +39,7 @@ class ErSession(object):
         self.__options = options.copy()
         self.__options[SessionConfKeys.CONFKEY_SESSION_ID] = self.__session_id
         self._cluster_manager_client = ClusterManagerClient(options=options)
+        self._table_recorder = None
 
         if "EGGROLL_DEBUG" not in os.environ:
             os.environ['EGGROLL_DEBUG'] = "0"
@@ -121,6 +126,12 @@ class ErSession(object):
 
     def stop(self):
         return self._cluster_manager_client.stop_session(self.__session_meta)
+
+    def set_table_recorder(self, roll_pair_contex):
+        self._table_recorder = roll_pair_contex.load(name='__gc__' + self.__session_id, namespace=self.__session_id)
+
+    def get_table_recorder(self):
+        return self._table_recorder
 
     def get_session_id(self):
         return self.__session_id
