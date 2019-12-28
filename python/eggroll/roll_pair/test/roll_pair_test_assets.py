@@ -30,7 +30,7 @@ ER_STORE1 = ErStore(
 
 
 def get_debug_test_context(is_standalone=False):
-    manager_port = 4671
+    manager_port = 4670
     egg_ports = [20001]
     egg_transfer_ports = [20002]
     self_server_node_id = 2

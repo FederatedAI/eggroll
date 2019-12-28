@@ -70,7 +70,7 @@ class RollPairContext(object):
         store_type = options.get('store_type', self.default_store_type)
         total_partitions = options.get('total_partitions', 1)
         partitioner = options.get('partitioner', PartitionerTypes.BYTESTRING_HASH)
-        serdes = options.get('serdes', SerdesTypes.CLOUD_PICKLE)
+        serdes = options.get('serdes', SerdesTypes.PICKLE)
         create_if_missing = options.get('create_if_missing', True)
         # todo:1: add combine options to pass it through
         store_options = self.__session.get_all_options()
