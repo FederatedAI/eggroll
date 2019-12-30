@@ -19,7 +19,6 @@ import rocksdb
 
 from eggroll.utils import log_utils
 
-log_utils.set_directory()
 LOGGER = log_utils.get_logger()
 
 from eggroll.core.pair_store.adapter import PairWriteBatch, PairIterator, PairAdapter

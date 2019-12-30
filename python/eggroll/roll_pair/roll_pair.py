@@ -41,7 +41,6 @@ from eggroll.roll_pair.utils.gc_utils import Recorder
 from eggroll.roll_pair.utils.pair_utils import partitioner
 from eggroll.utils import log_utils
 
-log_utils.set_directory()
 LOGGER = log_utils.get_logger()
 
 

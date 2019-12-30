@@ -85,3 +85,11 @@ def get_cluster_context():
     context = RollPairContext(session)
 
     return context
+
+default_option = {}
+
+def set_default_option(k, v):
+    default_option[k] = v
+
+def get_default_options():
+    return default_option.copy()
