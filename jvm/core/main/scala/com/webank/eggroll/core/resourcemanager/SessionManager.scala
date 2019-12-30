@@ -83,8 +83,11 @@ class SessionManagerService extends SessionManager {
     val registeredSessionMeta = smDao.getSession(sessionMeta.id)
 
     serverNodes.par.foreach(n => {
+      // TODO:1: add new params?
+      val newSessionMeta = registeredSessionMeta.copy(
+        options = registeredSessionMeta.options ++ Map(ResourceManagerConfKeys.SERVER_NODE_ID -> n.id.toString))
       val nodeManagerClient = new NodeManagerClient(n.endpoint)
-      nodeManagerClient.startContainers(registeredSessionMeta)
+      nodeManagerClient.startContainers(newSessionMeta)
     })
 
     val sessionId = sessionMeta.id
@@ -141,8 +144,11 @@ class SessionManagerService extends SessionManager {
     val sessionServerNodes = serverNodeCrudOperator.getServerClusterByHosts(sessionHosts.toList.asJava).serverNodes
 
     sessionServerNodes.foreach(n => {
+      // TODO:1: add new params?
+      val newSessionMeta = dbSessionMeta.copy(
+        options = dbSessionMeta.options ++ Map(ResourceManagerConfKeys.SERVER_NODE_ID -> n.id.toString))
       val nodeManagerClient = new NodeManagerClient(n.endpoint)
-      nodeManagerClient.stopContainers(dbSessionMeta)
+      nodeManagerClient.stopContainers(newSessionMeta)
     })
 
     val maxRetries = 200
