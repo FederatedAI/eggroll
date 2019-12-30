@@ -40,9 +40,7 @@ options_guest = {'runtime_conf_path': 'python/eggroll/roll_site/conf_guest/role_
 class TestRollSite(unittest.TestCase):
     def test_host_init(self):
         rp_context = get_debug_test_context(is_standalone, manager_port_host, egg_port_host, transfer_port_host, 'testing')
-        context = RollSiteContext("atest", options=options_host, rp_ctx=rp_context)
-        _tag = "Hello2"
-        context.load(name="RsaIntersectTransferVariable.rsa_pubkey", tag="{}".format(_tag))
+        RollSiteContext("atest", options=options_host, rp_ctx=rp_context)
 
     def test_remote(self):
         rp_context = get_debug_test_context(is_standalone, manager_port_guest, egg_port_guest, transfer_port_guest, 'testing_guest')
@@ -73,9 +71,7 @@ class TestRollSite(unittest.TestCase):
 
     def test_host_init_rollpair(self):
         rp_context = get_debug_test_context(is_standalone, manager_port_host, egg_port_host, transfer_port_host, 'testing')
-        context = RollSiteContext("atest2", options=options_host, rp_ctx=rp_context)
-        _tag = "roll_pair_tag"
-        context.load(name="roll_pair_name.table", tag="{}".format(_tag))
+        RollSiteContext("atest2", options=options_host, rp_ctx=rp_context)
 
     def test_remote_rollpair(self):
         rp_context = get_debug_test_context(is_standalone, manager_port_guest, egg_port_guest, transfer_port_guest, 'testing_guest')
