@@ -17,7 +17,6 @@ import roll_paillier_tensor as rpt_engine
 from eggroll.roll_pair.roll_pair import RollPairContext
 from eggroll.utils import log_utils
 
-log_utils.set_directory()
 LOGGER = log_utils.get_logger()
 class RptBaseEngine:
     def load(self, x):

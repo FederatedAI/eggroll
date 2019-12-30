@@ -18,7 +18,6 @@ from queue import Queue
 
 from eggroll.utils import log_utils
 
-log_utils.set_directory()
 LOGGER = log_utils.get_logger()
 
 

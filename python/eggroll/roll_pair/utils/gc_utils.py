@@ -2,8 +2,7 @@ from eggroll.core.constants import StoreTypes
 from eggroll.core.meta_model import ErStore
 from eggroll.utils import log_utils
 
-log_utils.setDirectory()
-LOGGER = log_utils.getLogger()
+LOGGER = log_utils.get_logger()
 
 
 class Recorder(object):

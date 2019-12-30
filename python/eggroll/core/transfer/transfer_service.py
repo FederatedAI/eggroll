@@ -30,7 +30,6 @@ from eggroll.core.proto import transfer_pb2_grpc, transfer_pb2
 from eggroll.core.utils import _exception_logger
 from eggroll.utils import log_utils
 
-log_utils.set_directory()
 LOGGER = log_utils.get_logger()
 
 

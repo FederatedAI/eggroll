@@ -20,7 +20,6 @@ from eggroll.core.pair_store.format import PairBinReader, PairBinWriter, \
     FileByteBuffer, ArrayByteBuffer
 from eggroll.utils import log_utils
 
-log_utils.set_directory()
 LOGGER = log_utils.get_logger()
 
 # TODO:0: usage?
