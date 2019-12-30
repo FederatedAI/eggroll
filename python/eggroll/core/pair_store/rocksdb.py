@@ -14,10 +14,12 @@
 #  limitations under the License.
 import os
 import threading
+
 import rocksdb
+
 from eggroll.utils import log_utils
-log_utils.setDirectory()
-LOGGER = log_utils.getLogger()
+
+LOGGER = log_utils.get_logger()
 
 from eggroll.core.pair_store.adapter import PairWriteBatch, PairIterator, PairAdapter
 
