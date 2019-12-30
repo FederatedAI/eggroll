@@ -15,12 +15,15 @@
 
 import os
 import threading
+
 import lmdb
 
-from eggroll.core.pair_store.adapter import PairIterator, PairWriteBatch, PairAdapter
+from eggroll.core.pair_store.adapter import PairIterator, PairWriteBatch, \
+    PairAdapter
 from eggroll.utils import log_utils
-log_utils.setDirectory()
-LOGGER = log_utils.getLogger()
+
+log_utils.set_directory()
+LOGGER = log_utils.get_logger()
 #64 * 1024 * 1024
 LMDB_MAP_SIZE = 16 * 4_096 * 244_140    # follows storage-service-cxx's config here
 DEFAULT_DB = b'main'

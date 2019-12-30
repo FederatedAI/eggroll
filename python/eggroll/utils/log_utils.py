@@ -20,81 +20,99 @@ import os
 from logging.handlers import TimedRotatingFileHandler
 from threading import RLock
 
+from eggroll.core.utils import time_now
 from eggroll.utils import file_utils
 
 
 class LoggerFactory(object):
     TYPE = "FILE"
     LEVEL = logging.DEBUG
-    loggerDict = {}
+    name_to_loggers = {}
     LOG_DIR = None
     lock = RLock()
+    default_logger_name = os.environ['EGGROLL_DEFAULT_LOGGER_NAME']
+    if not default_logger_name:
+        default_logger_name = f'EGGROLL_LOG_{time_now()}'
 
     @staticmethod
-    def setDirectory(directory=None):
+    def set_directory(directory=None):
         with LoggerFactory.lock:
             if not directory:
                 directory = os.path.join(file_utils.get_project_base_directory(),
                                          'logs')
             LoggerFactory.LOG_DIR = directory
             os.makedirs(LoggerFactory.LOG_DIR, exist_ok=True)
-            for className, (logger, handler) in LoggerFactory.loggerDict.items():
+            for name, (logger, handler) in LoggerFactory.name_to_loggers.items():
                 logger.removeHandler(handler)
                 handler.close()
-                _hanlder = LoggerFactory.get_hanlder(className)
-                logger.addHandler(_hanlder)
-                LoggerFactory.loggerDict[className] = logger, _hanlder
+                _handler = LoggerFactory.get_handler(name)
+                logger.addHandler(_handler)
+                LoggerFactory.name_to_loggers[name] = logger, _handler
 
     @staticmethod
-    def getLogger(className):
+    def get_logger(name):
         with LoggerFactory.lock:
-            if className in LoggerFactory.loggerDict.keys():
-                logger, hanlder = LoggerFactory.loggerDict[className]
+            if not LoggerFactory.LOG_DIR:
+                LoggerFactory.LOG_DIR = os.environ['EGGROLL_LOGS_DIR']
+            if name in LoggerFactory.name_to_loggers.keys():
+                logger, handler = LoggerFactory.name_to_loggers[name]
                 if not logger:
-                    logger, handler = LoggerFactory.__initLogger(className)
+                    logger, handler = LoggerFactory.__init_logger(name)
             else:
-                logger, handler = LoggerFactory.__initLogger(className)
+                logger, handler = LoggerFactory.__init_logger(name)
             return logger
 
     @staticmethod
-    def get_hanlder(className):
+    def get_handler(name):
         if not LoggerFactory.LOG_DIR:
             return logging.StreamHandler()
         formatter = logging.Formatter(
-                '"%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s"')
-        log_file = os.path.join(LoggerFactory.LOG_DIR, "{}.log".format(className))
+                '[%(levelname)-5s][%(asctime)s,%(msecs)03d][%(threadName)s,pid:%(process)d,tid:%(thread)d][%(filename)s:%(lineno)s.%(funcName)s] - %(message)s', datefmt='%Y%m%dT%H%M%S')
+        log_file = os.path.join(LoggerFactory.LOG_DIR, "{}.log".format(name))
         handler = TimedRotatingFileHandler(log_file,
                                            when='H',
-                                           interval=4,
-                                           backupCount=7,
+                                           interval=1,
+                                           backupCount=0,
                                            delay=True)
 
         handler.setFormatter(formatter)
         return handler
 
     @staticmethod
-    def __initLogger(className):
+    def __init_logger(name):
         with LoggerFactory.lock:
-            logger = logging.getLogger(className)
+            logger = logging.getLogger(name)
             logger.setLevel(LoggerFactory.LEVEL)
-            handler = LoggerFactory.get_hanlder(className)
+            handler = LoggerFactory.get_handler(name)
             logger.addHandler(handler)
 
-            LoggerFactory.loggerDict[className] = logger, handler
+            LoggerFactory.name_to_loggers[name] = logger, handler
             return logger, handler
 
 
-def setDirectory(directory=None):
-    LoggerFactory.setDirectory(directory)
+def set_directory(directory=None):
+    LoggerFactory.set_directory(directory)
 
 
-def setLevel(level):
+def set_level(level):
     LoggerFactory.LEVEL = level
 
 
-def getLogger(className=None):
-    if className is None:
-        frame = inspect.stack()[1]
-        module = inspect.getmodule(frame[0])
-        className = os.path.splitext(os.path.basename(module.__file__))[0]
-    return LoggerFactory.getLogger(className)
+def get_logger(name=None, use_class_name=False):
+    if not name:
+        if not use_class_name:
+            logger_name = LoggerFactory.default_logger_name
+        else:
+            frame = inspect.stack()[1]
+            module = inspect.getmodule(frame[0])
+            logger_name = os.path.splitext(os.path.basename(module.__file__))[0]
+    else:
+        logger_name = name
+
+    return LoggerFactory.get_logger(logger_name)
+
+
+def set_default_logger_name(name):
+    if not name:
+        raise ValueError(f'setting Illegal logger name: {name}')
+    LoggerFactory.default_logger_name = name
