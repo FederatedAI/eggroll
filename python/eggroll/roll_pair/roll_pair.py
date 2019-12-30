@@ -12,6 +12,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+import os
+import sys
+import threading
 import uuid
 from concurrent.futures import wait, FIRST_EXCEPTION
 from threading import Thread
@@ -34,11 +37,18 @@ from eggroll.core.utils import generate_job_id, generate_task_id
 from eggroll.core.utils import string_to_bytes, hash_code
 from eggroll.roll_pair import create_serdes
 from eggroll.roll_pair.transfer_pair import TransferPair
+from eggroll.roll_pair.utils.gc_utils import Recorder
 from eggroll.roll_pair.utils.pair_utils import partitioner
 from eggroll.utils import log_utils
 
 log_utils.set_directory()
 LOGGER = log_utils.get_logger()
+
+
+def runtime_init(session: ErSession):
+    rps = RollPairContext(session=session)
+    rps.set_session_table_recorder()
+    return rps
 
 
 class RollPairContext(object):
@@ -47,8 +57,18 @@ class RollPairContext(object):
         self.__session = session
         self.session_id = session.get_session_id()
         self.default_store_type = StoreTypes.ROLLPAIR_LMDB
+        self.default_store_serdes = SerdesTypes.PICKLE
         self.deploy_mode = session.get_option(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE)
         self.__session_meta = session.get_session_meta()
+
+    def set_store_type(self, store_type: str):
+        self.default_store_type = store_type
+
+    def set_store_serdes(self, serdes_type: str):
+        self.default_store_serdes = serdes_type
+
+    def set_session_table_recorder(self):
+        self.__session.set_table_recorder(self)
 
     def get_session(self):
         return self.__session
@@ -70,7 +90,7 @@ class RollPairContext(object):
         store_type = options.get('store_type', self.default_store_type)
         total_partitions = options.get('total_partitions', 1)
         partitioner = options.get('partitioner', PartitionerTypes.BYTESTRING_HASH)
-        serdes = options.get('serdes', SerdesTypes.PICKLE)
+        store_serdes = options.get('serdes', self.default_store_serdes)
         create_if_missing = options.get('create_if_missing', True)
         # todo:1: add combine options to pass it through
         store_options = self.__session.get_all_options()
@@ -97,7 +117,7 @@ class RollPairContext(object):
                         name=name,
                         total_partitions=total_partitions,
                         partitioner=partitioner,
-                        serdes=serdes),
+                        serdes=store_serdes),
                 options=final_options)
 
         if create_if_missing:
@@ -121,6 +141,9 @@ class RollPairContext(object):
             name = str(uuid.uuid1())
         store = self.load(namespace=namespace, name=name, options=options)
         return store.put_all(data, options=options)
+
+    def cleanup(self, namespace, name, options={}):
+        pass
 
 
 def default_partitioner(k):
@@ -165,17 +188,35 @@ class RollPair(object):
         self.__command_serdes = SerdesTypes.PROTOBUF
         self.__roll_pair_master = self.ctx.get_roll()
         self.__command_client = CommandClient()
-        self.value_serdes = self.get_serdes()
-        self.key_serdes = self.get_serdes()
+        self.value_serdes = self.get_store_serdes()
+        self.key_serdes = self.get_store_serdes()
         self.partitioner = partitioner(hash_code, self.__store._store_locator._total_partitions)
         self.egg_router = default_egg_router
         self.__session_id = self.ctx.session_id
+        self.gc_enable = True
+        self.recorder = Recorder(er_store=er_store, rpc=rp_ctx)
+        self.recorder.record()
 
     def __del__(self):
-        pass
+        if not self.gc_enable:
+            return
+        if self.recorder.check_table_deletable():
+            self.recorder.delete_record()
+            self.destroy()
+            LOGGER.debug("process {} thread {} run {} del table name:{}, namespace:{}".
+                         format(os.getpid(), threading.currentThread().ident,
+                                sys._getframe().f_code.co_name,
+                                self.__store._store_locator._name,
+                                self.__store._store_locator._namespace))
 
     def __repr__(self):
         return f'python RollPair(_store={self.__store})'
+
+    def set_gc_enable(self):
+        self.gc_enable = True
+
+    def set_gc_disable(self):
+        self.gc_enable = False
 
     def __get_unary_input_adapter(self, options={}):
         input_adapter = None
@@ -185,7 +226,7 @@ class RollPair(object):
             input_adapter = RocksdbSortedKvAdapter(options)
         return input_adapter
 
-    def get_serdes(self):
+    def get_store_serdes(self):
         serdes_type = self.__store._store_locator._serdes
         LOGGER.info(f'serdes type: {serdes_type}')
         if serdes_type == SerdesTypes.CLOUD_PICKLE or serdes_type == SerdesTypes.PROTOBUF:
@@ -204,7 +245,7 @@ class RollPair(object):
     def get_namespace(self):
         return self.__store._store_locator._namespace
 
-    def get_type(self):
+    def get_store_type(self):
         return self.__store._store_locator._store_type
 
     def kv_to_bytes(self, **kwargs):
@@ -258,7 +299,7 @@ class RollPair(object):
                 command_uri=CommandURI(f'{RollPair.EGG_PAIR_URI_PREFIX}/{RollPair.RUN_TASK}'),
                 serdes_type=self.__command_serdes
         )
-        LOGGER.info("get resp:{}".format(ErPair.from_proto_string(job_resp._value)))
+        LOGGER.info("get resp:{}".format((job_resp._value)))
 
         value = self.value_serdes.deserialize(job_resp._value)
 
@@ -294,7 +335,7 @@ class RollPair(object):
                 command_uri=CommandURI(f'{RollPair.EGG_PAIR_URI_PREFIX}/{RollPair.RUN_TASK}'),
                 serdes_type=self.__command_serdes
         )
-        LOGGER.info("get resp:{}".format(ErPair.from_proto_string(job_resp._value)))
+        LOGGER.info("get resp:{}".format((job_resp._value)))
         value = job_resp._value
         return value
 
@@ -346,7 +387,7 @@ class RollPair(object):
         return pair_generator(adapter, self.key_serdes, self.value_serdes, cleanup)
 
     def put_all(self, items, output=None, options={}):
-        include_key = options.get("include_key", False)
+        include_key = options.get("include_key", True)
         job_id = generate_job_id(self.__session_id, RollPair.PUT_ALL)
 
         # TODO:1: consider multiprocessing scenario. parallel size should be sent to egg_pair to set write signal count
@@ -476,21 +517,31 @@ class RollPair(object):
         LOGGER.info("get resp:{}".format(ErPair.from_proto_string(job_resp._value)))
 
     def take(self, n: int, options={}):
+        if n <= 0:
+            n = 1
+
         keys_only = options.get("keys_only", False)
         ret = []
         count = 0
-        for k, v in self.get_all():
+        for item in self.get_all():
             if keys_only:
-                ret.append(k)
+                if item :
+                    ret.append(item[0])
+                else:
+                    ret.append(None)
             else:
-                ret.append((k, v))
+                ret.append(item)
             count += 1
             if count == n:
                 break
         return ret
 
     def first(self, options={}):
-        return self.take(1, options=options)
+        resp = self.take(1, options=options)
+        if resp:
+            return resp[0]
+        else:
+            return None
 
     def save_as(self, name, namespace, partition, options={}):
         store_type = options.get('store_type', self.ctx.default_store_type)
