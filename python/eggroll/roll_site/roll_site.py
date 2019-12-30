@@ -58,8 +58,37 @@ class RollSiteContext:
         self.party_id = self.runtime_conf.get(CONF_KEY_LOCAL).get("party_id")
         self.role = self.runtime_conf.get(CONF_KEY_LOCAL).get("role")
 
+        channel = grpc.insecure_channel(
+            target="{}:{}".format(self.dst_host, self.dst_port),
+            options=[('grpc.max_send_message_length', -1), ('grpc.max_receive_message_length', -1)])
+        self.stub = proxy_pb2_grpc.DataTransferServiceStub(channel)
+        self.init_job_session_pair(self.job_id, self.rp_ctx.session_id)
+
     def load(self, name: str, tag: str):
         return RollSite(name, tag, self)
+
+    def init_job_session_pair(self, job_id, session_id):
+        task_info = proxy_pb2.Task(model=proxy_pb2.Model(name=job_id, dataKey=bytes(session_id, encoding='utf8')))
+        topic_src = proxy_pb2.Topic(name="init_job_session_pair", partyId="{}".format(self.party_id),
+                                    role=self.role, callback=None)
+        topic_dst = proxy_pb2.Topic(name="init_job_session_pair", partyId="{}".format(self.party_id),
+                                    role=self.role, callback=None)
+        command_test = proxy_pb2.Command(name="init_job_session_pair")
+        conf_test = proxy_pb2.Conf(overallTimeout=1000,
+                                   completionWaitTimeout=1000,
+                                   packetIntervalTimeout=1000,
+                                   maxRetries=10)
+
+        metadata = proxy_pb2.Metadata(task=task_info,
+                                      src=topic_src,
+                                      dst=topic_dst,
+                                      command=command_test,
+                                      operator="init_job_session_pair",
+                                      seq=0, ack=0,
+                                      conf=conf_test)
+        packet = proxy_pb2.Packet(header=metadata)
+
+        self.stub.unaryCall(packet)
 
 
 ERROR_STATES = [proxy_pb2.STOP, proxy_pb2.KILL]
@@ -82,37 +111,17 @@ class RollSite:
         self.name = name
         self.tag = tag
         print("proxy_endpoint{}:{}".format(self.dst_host, self.dst_port))
+        '''
         channel = grpc.insecure_channel(
             target="{}:{}".format(self.dst_host, self.dst_port),
             options=[('grpc.max_send_message_length', -1), ('grpc.max_receive_message_length', -1)])
         self.stub = proxy_pb2_grpc.DataTransferServiceStub(channel)
+        '''
+        self.stub = self.ctx.stub
         self.process_pool = ThreadPoolExecutor(10)
         self.complete_pool = ThreadPoolExecutor(10)
-        self.init_job_session_pair(self.job_id, self.ctx.rp_ctx.session_id)
+        #self.init_job_session_pair(self.job_id, self.ctx.rp_ctx.session_id)
 
-    def init_job_session_pair(self, job_id, session_id):
-        task_info = proxy_pb2.Task(taskId=self.name,
-                                   model=proxy_pb2.Model(name=job_id, dataKey=bytes(session_id, encoding='utf8')))
-        topic_src = proxy_pb2.Topic(name="init_job_session_pair", partyId="{}".format(self.party_id),
-                                    role=self.local_role, callback=None)
-        topic_dst = proxy_pb2.Topic(name="init_job_session_pair", partyId="{}".format(self.party_id),
-                                    role=self.local_role, callback=None)
-        command_test = proxy_pb2.Command(name="init_job_session_pair")
-        conf_test = proxy_pb2.Conf(overallTimeout=1000,
-                                   completionWaitTimeout=1000,
-                                   packetIntervalTimeout=1000,
-                                   maxRetries=10)
-
-        metadata = proxy_pb2.Metadata(task=task_info,
-                                      src=topic_src,
-                                      dst=topic_dst,
-                                      command=command_test,
-                                      operator="init_job_session_pair",
-                                      seq=0, ack=0,
-                                      conf=conf_test)
-        packet = proxy_pb2.Packet(header=metadata)
-
-        self.stub.unaryCall(packet)
 
     @staticmethod
     def __remote__object_key(*args):
@@ -185,6 +194,7 @@ class RollSite:
                 name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.job_id, self.name, self.tag,
                                                                      self.local_role, str(self.party_id),
                                                                      _role, str(_partyId)]))
+                print("RollPair type name:", name)
                 rp = self.ctx.rp_ctx.load(namespace, name)
                 rp.put(_tagged_key, obj)
                 LOGGER.debug("[REMOTE] Sending {}".format(_tagged_key))
