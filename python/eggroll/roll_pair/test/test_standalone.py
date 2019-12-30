@@ -64,6 +64,12 @@ class TestStandalone(unittest.TestCase):
         table = list(self.ctx.load("ns1", "testPutAll").get_all())
         print("get res:{}".format(table))
 
+    def test_put_all_value(self):
+        self.ctx.load("ns1", "testPutAll2").destroy()
+        cnt = 100*1000
+        rp = self.ctx.load("ns1", "testPutAll2").put_all(("s" for i in range(100*1000)), options={"include_key": False})
+        self.assertEqual(rp.count(), cnt)
+
     def test_multi_partition_put_all(self):
         #data = [("k1", "v1"), ("k2", "v2"), ("k3", "v3"), ("k4", "v4"), ("k5", "v5"), ("k6", "v6")]
 
