@@ -131,16 +131,16 @@ status() {
 start() {
     getpid
     if [[ $? -eq 1 ]]; then
-        mklogsdir
+		mklogsdir
 		
 		java -Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.properties -cp ${EGGROLL_HOME}/lib/*: com.webank.eggroll.core.Bootstrap --bootstraps ${main_class} -c ${EGGROLL_HOME}/conf/eggroll.properties -p $port -s EGGROLL_DAEMON >> ${EGGROLL_HOME}/logs/${module}_console.log 2>>${EGGROLL_HOME}/logs/${module}_error.log &
 		
 		echo $!>${module}_pid
 		getpid
 		if [[ $? -eq 0 ]]; then
-            echo "service start sucessfully. pid: ${pid}"
+			echo "service start sucessfully. pid: ${pid}"
         else
-            echo "service start failed"
+			echo "service start failed"
         fi
     else
         echo "service already started. pid: ${pid}"
