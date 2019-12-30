@@ -28,7 +28,7 @@ The following is the server configuration information:
 | ------------------------------ | ---------------- | ----------------------------------------- | ------------------------------------------------------------ |
 | **Jdk**                        | 1.8              | Necessary for each node                   | After installation, you need to export the JAVA_HOME variable to the **app** user variable |
 | **Python  +python virtualenv** | 3.6              | Necessary for each node                   | Need to install this dependency list [requirements.txt](https://github.com/WeBankFinTech/Eggroll/requirements.txt) ,python environments in different clusters need to be separated by virtual environments. |
-| Mysql(not necessarily)         | 5.7+(8.0)        | Only one database is needed in a cluster. | Every IP in the cluster must have privilege access to the database.**If you use the h2 database, you do not need to install Mysql, the projects has prepared it.** |
+| **Mysql**                      | 5.7+(8.0)        | Only one database is needed in a cluster. | Every IP in the cluster must have privilege access to the database.**If you use the h2 database, the projects has prepared it.** |
 
 
 
@@ -112,7 +112,7 @@ sh deploy.sh
 1   Scp conf/create-eggroll-meta-tables.sql to the server of Mysql;
 2   Log in Mysql and run source create-eggroll-meta-tables.sql;
 3   INSERT INTO server_node (host, port, node_type, status) values ('$cluster_ip', '$cluster_port', 'CLUSTER_MANAGER', 'HEALTHY');
-	INSERT INTO server_node (host, port, node_type, status) values ('$node_ip', '$node_port', 'NODE_MANAGER', 'HEALTHY');
+    INSERT INTO server_node (host, port, node_type, status) values ('$node_ip', '$node_port', 'NODE_MANAGER', 'HEALTHY');
 ```
 
 ## 4.     Start And Stop Service
@@ -130,11 +130,15 @@ And you can replace 'start' with 'status' to see the status of the process, repl
 sh eggroll.sh all|$module_name start|stop|restart|status
 ```
 
+***Notes: value of $module_name: clustermanager|nodemanager***
+
 ## 5.     Test 
 
 Log in the server of ClusterManager or NodeManager,running the commands:
 
 ```bash
+source $venv_home/bin/activate
+export PYTHONPATH=${EGGROLL_HOME}/python
 cd ${EGGROLL_HOME}/python/eggroll/roll_pair/test
 python -m unittest test_standalone.TestStandalone
 ```
