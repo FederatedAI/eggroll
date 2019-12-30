@@ -113,4 +113,4 @@ fi
 final_logs_dir=${logs_dir}/${session_id}/roll_pair
 mkdir -p ${final_logs_dir}
 echo "${cmd}"
-${cmd} >> ${final_logs_dir}/egg_pair-${processor_id}.OUT 2>${final_logs_dir}/roll_pair_master-${processor_id}.ERROR &
+${cmd} >> ${final_logs_dir}/roll_pair_master-${processor_id}.OUT 2>${final_logs_dir}/roll_pair_master-${processor_id}.ERROR &
