@@ -109,7 +109,7 @@ getpid() {
 }
 
 mklogsdir() {
-    if [[ ! -d "${EGGROLL_HOME}/$module/logs" ]]; then
+    if [[ ! -d "${EGGROLL_HOME}/logs" ]]; then
         mkdir -p ${EGGROLL_HOME}/logs
     fi
 }
