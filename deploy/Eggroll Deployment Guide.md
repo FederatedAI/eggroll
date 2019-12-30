@@ -110,7 +110,7 @@ sh deploy.sh
 
 ```bash
 1   Scp conf/create-eggroll-meta-tables.sql to the server of Mysql;
-2   Log in Mysql and run source create-eggroll-meta-tables.sql;
+2   Log in Mysql and run source ${EGGROLL_HOME}/conf/create-eggroll-meta-tables.sql;
 3   INSERT INTO server_node (host, port, node_type, status) values ('$cluster_ip', '$cluster_port', 'CLUSTER_MANAGER', 'HEALTHY');
     INSERT INTO server_node (host, port, node_type, status) values ('$node_ip', '$node_port', 'NODE_MANAGER', 'HEALTHY');
 ```
