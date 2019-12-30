@@ -83,10 +83,10 @@ def _exception_logger(func):
 
     return wrapper
 
-_DEFAULT_DATETIME_FORMAT = '%Y%m%dT%H%M%S.%f'
-def time_now(format: str = _DEFAULT_DATETIME_FORMAT):
+DEFAULT_DATETIME_FORMAT = '%Y%m%dT%H%M%S,%f'
+def time_now(format: str = DEFAULT_DATETIME_FORMAT):
     formatted = datetime.now().strftime(format)
-    if format == _DEFAULT_DATETIME_FORMAT or ('%f' in format):
+    if format == DEFAULT_DATETIME_FORMAT or ('%f' in format):
         return formatted[:-3]
     else:
         return formatted

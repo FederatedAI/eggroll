@@ -18,8 +18,8 @@ from queue import Queue
 
 from eggroll.utils import log_utils
 
-log_utils.setDirectory()
-LOGGER = log_utils.getLogger()
+log_utils.set_directory()
+LOGGER = log_utils.get_logger()
 
 
 class Broker(object):

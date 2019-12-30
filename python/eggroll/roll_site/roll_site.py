@@ -13,16 +13,18 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+from concurrent.futures import ThreadPoolExecutor, wait, FIRST_EXCEPTION
+
 import grpc
-from concurrent.futures import ThreadPoolExecutor, wait, ALL_COMPLETED, FIRST_EXCEPTION
-from eggroll.utils import file_utils
-from eggroll.utils.log_utils import getLogger
-from eggroll.core.meta_model import ErStoreLocator, ErStore
+
+from eggroll.core.conf_keys import SessionConfKeys
 from eggroll.core.constants import StoreTypes
-from eggroll.roll_pair.roll_pair import RollPair
+from eggroll.core.meta_model import ErStoreLocator, ErStore
 from eggroll.core.proto import proxy_pb2, proxy_pb2_grpc
 from eggroll.core.serdes import eggroll_serdes
-from eggroll.core.conf_keys import SessionConfKeys
+from eggroll.roll_pair.roll_pair import RollPair
+from eggroll.utils import file_utils
+from eggroll.utils.log_utils import get_logger
 
 _serdes = eggroll_serdes.PickleSerdes
 
@@ -30,7 +32,7 @@ _serdes = eggroll_serdes.PickleSerdes
 class RollSiteContext:
     def __init__(self, job_id, options, rp_ctx):
         global LOGGER
-        LOGGER = getLogger()
+        LOGGER = get_logger()
         self.job_id = job_id
         self.rp_ctx = rp_ctx
 
