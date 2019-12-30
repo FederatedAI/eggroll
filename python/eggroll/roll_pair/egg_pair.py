@@ -15,6 +15,7 @@
 
 import argparse
 import configparser
+import os
 import signal
 from collections.abc import Iterable
 from concurrent import futures
@@ -46,9 +47,7 @@ from eggroll.roll_pair.utils.pair_utils import generator, partitioner, \
     set_data_dir
 from eggroll.utils import log_utils
 
-log_utils.setDirectory()
-LOGGER = log_utils.getLogger()
-
+LOGGER = log_utils.get_logger()
 
 class EggPair(object):
     def __init__(self):
@@ -517,6 +516,7 @@ def serve(args):
 
     LOGGER.info(f'egg_pair at port {port}, transfer_port {transfer_port} stopped gracefully')
 
+
 if __name__ == '__main__':
     args_parser = argparse.ArgumentParser()
     args_parser.add_argument('-d', '--data-dir')
@@ -526,15 +526,20 @@ if __name__ == '__main__':
     args_parser.add_argument('-p', '--port', default='0')
     args_parser.add_argument('-t', '--transfer-port', default='-1')
     args_parser.add_argument('-sn', '--server-node-id')
-    args_parser.add_argument('-prid', '--processor-id')
+    args_parser.add_argument('-prid', '--processor-id', default='0')
     args_parser.add_argument('-c', '--config')
 
     args = args_parser.parse_args()
 
+    EGGROLL_HOME = os.environ['EGGROLL_HOME']
     configs = configparser.ConfigParser()
     if args.config:
-        configs.read(args.config)
+        conf_file = args.config
+    else:
+        conf_file = f'{EGGROLL_HOME}/conf/eggroll.properties'
+        print(f'reading default config: {conf_file}')
 
+    configs.read(conf_file)
     if configs:
         if not args.data_dir:
             args.data_dir = configs['eggroll']['eggroll.data.dir']

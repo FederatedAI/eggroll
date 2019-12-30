@@ -15,14 +15,16 @@
 
 import os
 import threading
+
 import lmdb
 
-from eggroll.core.pair_store.adapter import PairIterator, PairWriteBatch, PairAdapter
+from eggroll.core.pair_store.adapter import PairIterator, PairWriteBatch, \
+    PairAdapter
 from eggroll.utils import log_utils
-log_utils.setDirectory()
-LOGGER = log_utils.getLogger()
+
+LOGGER = log_utils.get_logger()
 #64 * 1024 * 1024
-LMDB_MAP_SIZE = 64 * 1024 * 1024#16 * 4_096 * 244_140        # follows storage-service-cxx's config here
+LMDB_MAP_SIZE = 16 * 4_096 * 244_140    # follows storage-service-cxx's config here
 DEFAULT_DB = b'main'
 # DELIMETER = '-'
 # DELIMETER_ENCODED = DELIMETER.encode()
@@ -94,7 +96,9 @@ class LmdbAdapter(PairAdapter):
                 if create_if_missing:
                     os.makedirs(self.path, exist_ok=True)
                 LOGGER.info("path not in dict db path:{}".format(self.path))
-                self.env = lmdb.open(self.path, create=create_if_missing, max_dbs=128, sync=False, map_size=lmdb_map_size, writemap=True)
+                import platform
+                writemap = False if platform.system() == 'Darwin' else True
+                self.env = lmdb.open(self.path, create=create_if_missing, max_dbs=128, sync=False, map_size=lmdb_map_size, writemap=writemap)
                 self.sub_db = self.env.open_db(DEFAULT_DB)
                 LmdbAdapter.count_dict[self.path] = 0
                 LmdbAdapter.env_dict[self.path] = self.env

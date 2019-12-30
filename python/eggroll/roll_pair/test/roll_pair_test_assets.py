@@ -78,10 +78,18 @@ def get_standalone_context():
 def get_cluster_context():
     options = {}
     options[ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST] = "localhost"
-    options[ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT] = "4671"
+    options[ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT] = "4670"
 
     session = ErSession(options=options)
     print(session.get_session_id())
     context = RollPairContext(session)
 
     return context
+
+default_option = {}
+
+def set_default_option(k, v):
+    default_option[k] = v
+
+def get_default_options():
+    return default_option.copy()

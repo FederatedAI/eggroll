@@ -18,8 +18,7 @@ from eggroll.core.meta_model import ErTask
 from eggroll.core.proto import meta_pb2
 from eggroll.utils import log_utils
 
-log_utils.setDirectory()
-LOGGER = log_utils.getLogger()
+LOGGER = log_utils.get_logger()
 
 
 class CommandRouter(object):

@@ -88,6 +88,25 @@ cluster_manager_host=${property_value}
 get_property ${config} "eggroll.resourcemanager.clustermanager.port"
 cluster_manager_port=${property_value}
 
+if [[ -z ${EGGROLL_LOGS_DIR} ]]; then
+  get_property ${config} "eggroll.logs.dir"
+  EGGROLL_LOGS_DIR=${property_value}
+
+  if [[ -z ${EGGROLL_LOGS_DIR} ]]; then
+    EGGROLL_LOGS_DIR=${EGGROLL_HOME}/logs
+  fi
+fi
+
+
+EGGROLL_SESSION_ID=${session_id}
+
+if [[ -z ${EGGROLL_LOG_LEVEL} ]]; then
+  EGGROLL_LOG_LEVEL="INFO"
+fi
+
+EGGROLL_DEFAULT_LOGGER_NAME="${server}-${processor_id}"
+
+
 if [[ -z ${venv} ]]; then
   PYTHON=`which python`
 else

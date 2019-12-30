@@ -12,21 +12,12 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from eggroll.core.command.command_model import ErCommandRequest
-from eggroll.core.io.kv_adapter import RocksdbSortedKvAdapter
-from eggroll.core.meta_model import ErStoreLocator, ErJob, ErStore, ErFunctor
-from eggroll.core.proto import command_pb2_grpc
-from eggroll.core.serdes import cloudpickle
-from eggroll.roll_pair.roll_pair import RollPair
-from eggroll.roll_pair.roll_pair import RollPairContext
-from eggroll.utils import log_utils
-import numpy as np
-
 import roll_paillier_tensor as rpt_engine
 
+from eggroll.roll_pair.roll_pair import RollPairContext
+from eggroll.utils import log_utils
 
-log_utils.setDirectory()
-LOGGER = log_utils.getLogger()
+LOGGER = log_utils.get_logger()
 class RptBaseEngine:
     def load(self, x):
         raise NotImplementedError("todo")

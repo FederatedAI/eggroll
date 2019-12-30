@@ -88,30 +88,30 @@ class TransferPair(object):
     @_exception_logger
     def start_push(self, input_broker, partition_function):
         self.__push_executor_pool = ThreadPoolExecutor(max_workers=self.__total_partitions + 1)
-        self.__partitioned_brokers = [BatchBroker(FifoBroker()) for i in range(self.__total_partitions)]
+        self.__partitioned_brokers = [FifoBroker() for i in range(self.__total_partitions)]
         output_partitions = self.__output_store._partitions
 
         partition_future = self.__push_executor_pool\
             .submit(TransferPair.partitioner,
                     input_broker,
-                    self.__partitioned_brokers,
+                    [BatchBroker(v) for v in self.__partitioned_brokers],
                     partition_function)
         self.__partition_futures.append(partition_future)
 
         for i in range(self.__total_partitions):
             tag = self.__generate_tag(i)
-            transfer_broker = BatchBroker(FifoBroker())
+            transfer_broker = FifoBroker()
             rpc_call_future = TransferPair.transfer_rpc_call(
                     tag=tag,
                     command_name='send',
                     target_partition=output_partitions[i],
-                    output_broker=transfer_broker)
+                    output_broker=BatchBroker(transfer_broker))
             self.__rpc_call_futures.append(rpc_call_future)
 
             push_future = self.__push_executor_pool.submit(
                     TransferPair.send,
-                    input_broker=self.__partitioned_brokers[i],
-                    output_broker=transfer_broker)
+                    input_broker=BatchBroker(self.__partitioned_brokers[i]),
+                    output_broker=BatchBroker(transfer_broker))
             self.__push_futures.append(push_future)
 
     @_exception_logger
@@ -295,7 +295,7 @@ class TransferPair(object):
                 break
 
         commit()
-        print("finish static send")
+        print("finish static send:", total_sent)
         output_broker.signal_write_finish()
 
         return total_sent
