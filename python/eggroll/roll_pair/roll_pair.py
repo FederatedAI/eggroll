@@ -188,8 +188,8 @@ class RollPair(object):
         self.__command_serdes = SerdesTypes.PROTOBUF
         self.__roll_pair_master = self.ctx.get_roll()
         self.__command_client = CommandClient()
-        self.value_serdes = self.get_serdes()
-        self.key_serdes = self.get_serdes()
+        self.value_serdes = self.get_store_serdes()
+        self.key_serdes = self.get_store_serdes()
         self.partitioner = partitioner(hash_code, self.__store._store_locator._total_partitions)
         self.egg_router = default_egg_router
         self.__session_id = self.ctx.session_id
