@@ -20,21 +20,21 @@ version=2.0
 cd ${EGGROLL_HOME}
 
 eval action=\$$#
-modules=(cluster node)
+modules=(clustermanager nodemanager)
 
 
 main() {
 	case "$module" in
-		cluster)
+		clustermanager)
 			main_class=com.webank.eggroll.core.resourcemanager.ClusterManagerBootstrap
 			port=`cat ./conf/eggroll.properties |grep "eggroll.resourcemanager.clustermanager.port" | tail -n 1 | cut -d "=" -f2- | awk '{print $1}'`
 			;;
-		node)
+		nodemanager)
 			main_class=com.webank.eggroll.core.resourcemanager.NodeManagerBootstrap
 			port=`cat ./conf/eggroll.properties |grep "eggroll.resourcemanager.nodemanager.port" | tail -n 1 | cut -d "=" -f2- | awk '{print $1}'`
 			;;
 		*)
-			echo "usage: $module {cluster|node|site}"
+			echo "usage: $module {clustermanager|nodemanager}"
 			exit -1
 	esac
 }
@@ -76,7 +76,7 @@ all() {
 }
 
 usage() {
-    echo "usage: $0 {all|[module1, ...]} {start|stop|status|restart}"
+    echo "usage: $0 {all|[clustermanager|nodemanager...]} {start|stop|status|restart}"
 }
 
 multiple() {
@@ -95,10 +95,10 @@ multiple() {
 }
 
 getpid() {
-	if [ ! -f "./bin/${module}_pid" ];then
-		echo "" > ./bin/${module}_pid
+	if [ ! -f "${module}_pid" ];then
+		echo "" > ${module}_pid
 	fi
-	module_pid=`cat ./bin/${module}_pid`
+	module_pid=`cat ${module}_pid`
 	pid=`ps aux | grep ${module_pid} | grep -v grep | grep -v $0 | awk '{print $2}'`
 	
     if [[ -n ${pid} ]]; then
@@ -133,7 +133,7 @@ start() {
 		
 		java -Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.properties -cp ${EGGROLL_HOME}/lib/*: com.webank.eggroll.core.Bootstrap --bootstraps ${main_class} -c ${EGGROLL_HOME}/conf/eggroll.properties -p $port -s EGGROLL_DAEMON >> ${EGGROLL_HOME}/logs/${module}_console.log 2>>${EGGROLL_HOME}/logs/${module}_error.log &
 		
-		echo $!>./bin/${module}_pid
+		echo $!>${module}_pid
 		getpid
 		if [[ $? -eq 0 ]]; then
             echo "service start sucessfully. pid: ${pid}"
@@ -151,19 +151,17 @@ stop() {
         echo "killing:
         `ps aux | grep ${pid} | grep -v grep`"
         kill -9 ${pid}
-		ps aux | grep egg_pair | grep -v grep | awk '{print $2}' | xargs kill -9
-		ps aux | grep rollpair | grep -v grep | awk '{print $2}' | xargs kill -9
 		sleep 1
 		getpid
         if [[ $pid -eq $module_pid ]]; then
             echo "kill error"
         else
 			echo "killed"
-			echo "999999" >./bin/${module}_pid
+			echo "999999" >${module}_pid
         fi
     else
         echo "service not running"
-		echo "999999" >./bin/${module}_pid
+		echo "999999" >${module}_pid
     fi
 }
 
