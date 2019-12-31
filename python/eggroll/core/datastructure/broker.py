@@ -12,7 +12,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+import queue
 import time
 from queue import Queue
 
@@ -136,10 +136,15 @@ class FifoBroker(Broker):
         return self
 
     def __next__(self):
-        if not self.is_closable():
-            return self.get(block=True)
-        else:
-            raise StopIteration
+        while not self.is_closable():
+            try:
+                return self.get(block=True, timeout=0.1)
+            except queue.Empty as e:
+                # retry
+                pass
+            except BrokerClosed as e:
+                raise StopIteration
+        raise StopIteration
 
     def __enter__(self):
         return self

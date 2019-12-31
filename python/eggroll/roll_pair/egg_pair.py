@@ -59,40 +59,30 @@ class EggPair(object):
     def _run_unary(self, func, task, shuffle=False):
         key_serdes = create_serdes(task._inputs[0]._store_locator._serdes)
         value_serdes = create_serdes(task._inputs[0]._store_locator._serdes)
-        input_adapter = create_adapter(task._inputs[0])
-        input_iterator = input_adapter.iteritems()
-        from eggroll.roll_pair.transfer_pair2 import TransferPair, BatchBroker
-        if shuffle:
-            total_partitions = task._inputs[0]._store_locator._total_partitions
-            output_store = task._job._outputs[0]
-            shuffle_broker = FifoBroker()
-            write_bb = BatchBroker(shuffle_broker)
-            shuffler = TransferPair(
-                    transfer_id=task._job._id)
-
-            shuffler.start_recv(task._outputs[0]._id, output_store)
-            scatter_future = shuffler.start_scatter(shuffle_broker, partitioner(hash_func=hash_code, total_partitions=total_partitions), output_store)
-        else:
-            output_adapter = create_adapter(task._outputs[0])
-            output_writebatch = output_adapter.new_batch()
-        try:
+        with create_adapter(task._inputs[0]) as input_db, input_db.iteritems() as rb:
+            from eggroll.roll_pair.transfer_pair import TransferPair, BatchBroker
             if shuffle:
-                func(input_iterator, key_serdes, value_serdes, write_bb)
+                total_partitions = task._inputs[0]._store_locator._total_partitions
+                output_store = task._job._outputs[0]
+                shuffle_broker = FifoBroker()
+                write_bb = BatchBroker(shuffle_broker)
+                try:
+                    shuffler = TransferPair(transfer_id=task._job._id)
+                    store_future = shuffler.store_broker(task._outputs[0], True, total_partitions)
+                    scatter_future = shuffler.scatter(
+                        shuffle_broker,
+                        partitioner(hash_func=hash_code, total_partitions=total_partitions),
+                        output_store)
+                    func(rb, key_serdes, value_serdes, write_bb)
+                finally:
+                    write_bb.signal_write_finish()
+                scatter_results = scatter_future.result()
+                store_result = store_future.result()
+                LOGGER.debug(f"scatter_result:{scatter_results}")
+                LOGGER.debug(f"gather_result:{store_result}")
             else:
-                func(input_iterator, key_serdes, value_serdes, output_writebatch)
-        except:
-            raise EnvironmentError("exec task:{} error".format(task))
-        finally:
-            if shuffle:
-                write_bb.signal_write_finish()
-                # print(scatter_future.result())
-                # a=scatter_future.result()
-                # print("aaa33", a)
-                shuffler._join_recv()
-            else:
-                output_writebatch.close()
-                output_adapter.close()
-            input_adapter.close()
+                with create_adapter(task._outputs[0]) as db, db.new_batch() as wb:
+                    func(rb, key_serdes, value_serdes, wb)
 
     def _run_binary(self, func, task):
         left_key_serdes = create_serdes(task._inputs[0]._store_locator._serdes)
@@ -137,30 +127,14 @@ class EggPair(object):
             input_adapter.close()
         elif task._name == 'getAll':
             LOGGER.info("egg_pair getAll call")
-            LOGGER.info('egg_pair getAll call')
-            input_partition = task._inputs[0]
-
             tag = f'{task._id}'
-
-            bin_output_broker = TransferService.get_or_create_broker(tag)
-            input_adapter = create_adapter(task._inputs[0])
-            pair_broker = FifoBroker()
-
-            t = Thread(target=TransferPair.send, args=[pair_broker, bin_output_broker])
-            t.start()
-            for pair in input_adapter.iteritems():
-                pair_broker.put(pair)
-
-            pair_broker.signal_write_finish()
-            t.join()
-            input_adapter.close()
-
-            # TODO:2: self-destroy broker, like gc
-            from time import sleep
-            while not bin_output_broker.is_closable():
-                sleep(0.1)
-            TransferService.remove_broker(tag)
-
+            def generate_broker():
+                with create_adapter(task._inputs[0]) as db, db.iteritems() as rb:
+                    print("create_adapter")
+                    yield from TransferPair.pair_to_bin_batch(rb)
+                    # TODO:0 how to remove?
+                    # TransferService.remove_broker(tag)
+            TransferService.set_broker(tag, generate_broker())
         elif task._name == 'count':
             LOGGER.info('egg_pair count call')
             key_serdes = create_serdes(task._inputs[0]._store_locator._serdes)
@@ -172,17 +146,13 @@ class EggPair(object):
         # TODO:1: multiprocessor scenario
         elif task._name == 'putAll':
             LOGGER.info("egg_pair putAll call")
-
             output_partition = task._outputs[0]
-
             tag = f'{task._id}'
             LOGGER.info(f'egg_pair transfer service tag:{tag}')
-            output_adapter = create_adapter(task._outputs[0])
-            output_broker = TransferService.get_or_create_broker(tag, write_signals=1)
-            TransferPair.recv(output_adapter=output_adapter,
-                              output_broker=output_broker)
-            output_adapter.close()
-            TransferService.remove_broker(tag)
+            tf = TransferPair(tag)
+            store_broker_result = tf.store_broker(output_partition, False).result()
+            # TODO:2: should wait complete?, command timeout?
+            LOGGER.debug(f"putAll result:{store_broker_result}")
 
         if task._name == 'put':
             LOGGER.info("egg_pair put call")
