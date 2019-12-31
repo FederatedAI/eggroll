@@ -564,7 +564,7 @@ class _EggRoll(object):
                                                                              ('grpc.max_receive_message_length', -1)])
             _EggRoll.get_instance().kv_stub = kv_pb2_grpc.KVServiceStub(_EggRoll.get_instance().get_channel())
             _EggRoll.get_instance().proc_stub = processor_pb2_grpc.ProcessServiceStub(_EggRoll.get_instance().get_channel())
-
+            _EggRoll.get_instance().session_stub = node_manager_pb2_grpc.SessionServiceStub(_EggRoll.get_instance().get_channel())
         gc_tag = True
        
     def delete(self, _table, k, use_serialize=True):
