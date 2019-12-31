@@ -30,7 +30,8 @@ class LoggerFactory(object):
     name_to_loggers = {}
     LOG_DIR = None
     lock = RLock()
-    default_logger_name = os.environ.get('EGGROLL_DEFAULT_LOGGER_NAME', default=f'EGGROLL_LOG_{time_now()}')
+    # default_logger_name = os.environ.get('EGGROLL_DEFAULT_LOGGER_NAME', default=f'EGGROLL_LOG_{time_now()}')
+    default_logger_name = os.environ.get('EGGROLL_DEFAULT_LOGGER_NAME', default=f'eggroll')
 
     @staticmethod
     def set_directory(directory=None):

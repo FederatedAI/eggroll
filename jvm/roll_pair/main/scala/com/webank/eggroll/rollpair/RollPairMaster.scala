@@ -32,7 +32,7 @@ import scala.collection.mutable.ArrayBuffer
 
 class RollPairMaster() {
   val scheduler = ListScheduler()
-  val clusterManagerClient = new ClusterManagerClient()
+  lazy val clusterManagerClient = new ClusterManagerClient()
 
   def runJob(inputJob: ErJob): ErJob = {
     val inputStore = inputJob.inputs.head
