@@ -19,7 +19,7 @@ from eggroll.roll_pair.test.roll_pair_test_assets import get_debug_test_context,
     get_cluster_context, get_standalone_context, set_default_option, \
     get_default_options
 
-is_debug = False
+is_debug = True
 is_standalone = False
 total_partitions = 1
 
@@ -165,9 +165,9 @@ class TestStandalone(unittest.TestCase):
         print(list(rp.map_partitions(func).get_all()))
 
     def test_map(self):
-        # rp = self.ctx.load("ns1", "testMap2")
-        # rp.destroy()
-        # rp = self.ctx.load("ns1", "testMap2").put_all("s"*4000 for i in range(100*1000))
+        rp = self.ctx.load("ns1", "testMap2")
+        rp.destroy()
+        self.ctx.load("ns1", "testMap2").put_all(("s"*4 for i in range(1000)), options={"include_key": False})
         options = get_default_options()
         rp = self.ctx.load("ns1", "testMap2", options=options)
         # rp = self.ctx.load("ns1", "testMap3", {"store_type":StoreTypes.ROLLPAIR_CACHE})

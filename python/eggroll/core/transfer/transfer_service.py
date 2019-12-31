@@ -106,7 +106,9 @@ class GrpcTransferServicer(transfer_pb2_grpc.TransferServiceServicer):
                 base_tag = request.header.tag
                 print('GrpcTransferServicer send broker tag: ', base_tag)
                 broker = TransferService.get_broker(base_tag)
-                response_header = request.header
+                # response_header = request.header
+                # linux error:TypeError: Parameter to MergeFrom() must be instance of same class: expected TransferHeader got TransferHeader. for field TransferBatch.header
+                response_header = transfer_pb2.TransferHeader(tag=base_tag, id=request.header.id)
                 inited = True
 
             broker.put(request)
@@ -150,7 +152,7 @@ class TransferClient(object):
         self.__chunk_size = 100
 
     @_exception_logger
-    def send(self, broker: FifoBroker, endpoint: ErEndpoint, tag):
+    def send(self, broker, endpoint: ErEndpoint, tag):
         channel = grpc.insecure_channel(
                 target=f'{endpoint._host}:{endpoint._port}',
                 options=[
@@ -158,8 +160,13 @@ class TransferClient(object):
                     ('grpc.max_receive_message_length', -1)])
 
         stub = transfer_pb2_grpc.TransferServiceStub(channel)
-        future = stub.send.future(TransferService.transfer_batch_generator_from_broker(broker, tag))
-
+        import types
+        if isinstance(broker, types.GeneratorType):
+            requests = (transfer_pb2.TransferBatch(header=transfer_pb2.TransferHeader(id=i, tag=tag), data=d)
+                        for i, d in enumerate(broker))
+        else:
+            requests = TransferService.transfer_batch_generator_from_broker(broker, tag)
+        future = stub.send.future(requests)
         return future
 
     @_exception_logger
