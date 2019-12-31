@@ -440,7 +440,6 @@ class _EggRoll(object):
         info = self.kv_stub.createIfAbsent(create_table_info)
         if storage_basic_pb2.StorageType.Name(info.storageLocator.type) == storage_basic_pb2.StorageType.Name(storage_basic_pb2.IN_MEMORY):
             LOGGER.debug("create in_memory table:{}".format(info.storageLocator.name))
-            LOGGER.debug("table func:{}".format(list(self.eggroll_session._gc_table.collect())))
             count = self.eggroll_session._gc_table.get(info.storageLocator.name)
             if count is None:
                 count = 0
@@ -497,16 +496,15 @@ class _EggRoll(object):
 
     def action(_table, host, port, chunked_iter, use_serialize):
         _table.set_gc_disable()
-        _EggRoll.get_instance().get_channel().close()
         _EggRoll.get_instance().channel = grpc.insecure_channel(target="{}:{}".format(host, port),
                                              options=[('grpc.max_send_message_length', -1),
                                                       ('grpc.max_receive_message_length', -1)])
+        with _EggRoll.get_instance().get_channel() as child_channle:
+            _EggRoll.get_instance().kv_stub = kv_pb2_grpc.KVServiceStub(child_channle)
+            _EggRoll.get_instance().proc_stub = processor_pb2_grpc.ProcessServiceStub(child_channle)
 
-        _EggRoll.get_instance().kv_stub = kv_pb2_grpc.KVServiceStub(_EggRoll.get_instance().channel)
-        _EggRoll.get_instance().proc_stub = processor_pb2_grpc.ProcessServiceStub(_EggRoll.get_instance().channel)
-
-        operand = _EggRoll.get_instance().__generate_operand(chunked_iter, use_serialize)
-        _EggRoll.get_instance().kv_stub.putAll(operand, metadata=_get_meta(_table))
+            operand = _EggRoll.get_instance().__generate_operand(chunked_iter, use_serialize)
+            _EggRoll.get_instance().kv_stub.putAll(operand, metadata=_get_meta(_table))
 
     def put_all(self, _table, data: Iterable, use_serialize=True, chunk_size=100000, skip_chunk=0, include_key=True, single_process=False):
         global gc_tag
@@ -532,6 +530,7 @@ class _EggRoll(object):
                 else:
                     self.kv_stub.putAll(self.__generate_operand(chunked_iter, use_serialize=use_serialize), metadata=_get_meta(_table))
         else:
+            _EggRoll.get_instance().get_channel().close()
             with ProcessPoolExecutor(process_pool_size) as executor:
                 if isinstance(kvs, Sequence):      # Sequence
                     for chunked_iter in split_every_yield(kvs, chunk_size):
@@ -559,6 +558,13 @@ class _EggRoll(object):
                     except StopIteration as e:
                         LOGGER.debug("StopIteration")
                 executor.shutdown(wait=True)
+
+            _EggRoll.get_instance().channel = grpc.insecure_channel(target="{}:{}".format(host, port),
+                                                                    options=[('grpc.max_send_message_length', -1),
+                                                                             ('grpc.max_receive_message_length', -1)])
+            _EggRoll.get_instance().kv_stub = kv_pb2_grpc.KVServiceStub(_EggRoll.get_instance().get_channel())
+            _EggRoll.get_instance().proc_stub = processor_pb2_grpc.ProcessServiceStub(_EggRoll.get_instance().get_channel())
+            _EggRoll.get_instance().session_stub = node_manager_pb2_grpc.SessionServiceStub(_EggRoll.get_instance().get_channel())
         gc_tag = True
        
     def delete(self, _table, k, use_serialize=True):

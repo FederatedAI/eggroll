@@ -286,7 +286,7 @@ class RollPairProcessor(processor_pb2_grpc.ProcessServiceServicer):
                     right_v = right_serde.deserialize(right_v_bytes)
                     final_v = functor(left_v, right_v)
                     dst_wb.put(k_bytes, dst_serde.serialize(final_v))
-
+            right_it.first()
             for k_bytes, right_v_bytes in right_it:
                 final_v_bytes = dst_wb.adapter.get(k_bytes)
                 if final_v_bytes is None:
