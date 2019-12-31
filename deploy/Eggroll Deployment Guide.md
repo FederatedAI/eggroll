@@ -140,7 +140,7 @@ Log in the server of ClusterManager or NodeManager,running the commands:
 source $venv_home/bin/activate
 export PYTHONPATH=${EGGROLL_HOME}/python
 cd ${EGGROLL_HOME}/python/eggroll/roll_pair/test
-python -m unittest test_standalone.TestStandalone
+python -m unittest test_interface.TestStandalone
 ```
 
 Wait a few minutes, see the result show "OK" field to indicate that the operation is successful. In other cases, if FAILED or stuck, it means failure.
