@@ -61,31 +61,34 @@ class EggPair(object):
         value_serdes = create_serdes(task._inputs[0]._store_locator._serdes)
         input_adapter = create_adapter(task._inputs[0])
         input_iterator = input_adapter.iteritems()
-
+        from eggroll.roll_pair.transfer_pair2 import TransferPair, BatchBroker
         if shuffle:
             total_partitions = task._inputs[0]._store_locator._total_partitions
             output_store = task._job._outputs[0]
-            shuffle_broker = BatchBroker(FifoBroker())
+            shuffle_broker = FifoBroker()
+            write_bb = BatchBroker(shuffle_broker)
             shuffler = TransferPair(
-                    transfer_id=task._job._id,
-                    output_store=output_store)
+                    transfer_id=task._job._id)
 
-            shuffler.start_push(shuffle_broker, partitioner(hash_func=hash_code, total_partitions=total_partitions))
-            shuffler.start_recv(task._outputs[0]._id)
+            shuffler.start_recv(task._outputs[0]._id, output_store)
+            scatter_future = shuffler.start_scatter(shuffle_broker, partitioner(hash_func=hash_code, total_partitions=total_partitions), output_store)
         else:
             output_adapter = create_adapter(task._outputs[0])
             output_writebatch = output_adapter.new_batch()
         try:
             if shuffle:
-                func(input_iterator, key_serdes, value_serdes, shuffle_broker)
+                func(input_iterator, key_serdes, value_serdes, write_bb)
             else:
                 func(input_iterator, key_serdes, value_serdes, output_writebatch)
         except:
             raise EnvironmentError("exec task:{} error".format(task))
         finally:
             if shuffle:
-                shuffle_broker.signal_write_finish()
-                shuffler.join()
+                write_bb.signal_write_finish()
+                # print(scatter_future.result())
+                # a=scatter_future.result()
+                # print("aaa33", a)
+                shuffler._join_recv()
             else:
                 output_writebatch.close()
                 output_adapter.close()
