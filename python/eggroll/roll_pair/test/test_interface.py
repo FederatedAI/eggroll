@@ -19,7 +19,7 @@ from eggroll.roll_pair.test.roll_pair_test_assets import get_debug_test_context,
     get_cluster_context, get_standalone_context, set_default_option, \
     get_default_options
 
-is_debug = False
+is_debug = True
 is_standalone = False
 total_partitions = 1
 
@@ -27,6 +27,17 @@ total_partitions = 1
 def kv_generator(limit):
     for i in range(limit):
         yield f"k{i}", f"v{i}"
+
+
+def kv_list(limit):
+    ret = []
+    for i in range(limit):
+         ret.append((f"k{i}", f"v{i}"))
+    return ret
+
+
+def get_value(roll_pair):
+    return list(roll_pair.get_all())
 
 
 class TestStandalone(unittest.TestCase):
@@ -53,8 +64,10 @@ class TestStandalone(unittest.TestCase):
             cls.ctx.get_session().stop()
 
     def test_parallelize(self):
-        print(list(self.ctx.parallelize(range(15), options=get_default_options()).get_all()))
-
+        roll_pair = self.ctx.parallelize(range(15), options=get_default_options())
+        print(list(roll_pair.get_all()))
+        assert (get_value(roll_pair) == [(0, 0), (1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6), (7, 7), (8, 8),
+                                        (9, 9), (10, 10), (11, 11), (12, 12), (13, 13), (14, 14)])
 
     def test_get(self):
         options = get_default_options()
@@ -62,6 +75,7 @@ class TestStandalone(unittest.TestCase):
         for i in range(10):
             self.ctx.load("ns1", "testGet", options=options).put(f"k{i}", f"v{i}")
             print(self.ctx.load("ns1", "testGet").get(f"k{i}"))
+            assert (self.ctx.load("ns1", "testGet").get(f"k{i}") == f"v{i}")
 
     def test_put_all(self):
         #data = [("k1", "v1"), ("k2", "v2"), ("k3", "v3"), ("k4", "v4"), ("k5", "v5"), ("k6", "v6")]
@@ -71,8 +85,8 @@ class TestStandalone(unittest.TestCase):
         options['include_key'] = True
         t.put_all(kv_generator(100), options=options)
 
-        print(t.count())
-        print(list(t.get_all()))
+        assert (t.count() == 100)
+        assert (get_value(t) == kv_list(100))
 
     def test_put_all_value(self):
         options = get_default_options()
@@ -89,7 +103,8 @@ class TestStandalone(unittest.TestCase):
         options['include_key'] = True
         table = self.ctx.load("ns1", "testMultiPartitionPutAll", options=options)
         table.put_all(kv_generator(100), options=options)
-        print(table.count())
+        assert (table.count() == 100)
+        assert (get_value(table) == kv_list(100))
 
     def test_get_all(self):
         options = get_default_options()
@@ -97,6 +112,8 @@ class TestStandalone(unittest.TestCase):
         print(str(table))
         res = table.get_all()
         print(list(res))
+        assert (table.count() == 100)
+        assert (get_value(table) == kv_list(100))
 
     def test_count(self):
         options = {}
@@ -105,6 +122,7 @@ class TestStandalone(unittest.TestCase):
         data = [("k1", "v1"), ("k2", "v2"), ("k3", "v3"), ("k4", "v4")]
         table = self.ctx.load('ns1', 'test_count', options=options).put_all(data, options=options)
         print(f"count: {table.count()}")
+        assert (table.count() == 4)
 
     def test_delete(self):
         options = get_default_options()
@@ -114,6 +132,7 @@ class TestStandalone(unittest.TestCase):
         print("before delete:{}".format(list(table.get_all())))
         table.delete("k1")
         print("after delete:{}".format(list(table.get_all())))
+        assert (get_value(table) == ([("k2", "v2"), ("k3", "v3"), ("k4", "v4")]))
 
     def test_destroy(self):
         options = get_default_options()
@@ -124,33 +143,42 @@ class TestStandalone(unittest.TestCase):
         table.destroy()
         # TODO:1: table which has been destroyed cannot get_all, should raise exception
         print("after destroy:{}".format((table.count())))
+        assert (table.count() == 0)
 
     def test_take(self):
         options = get_default_options()
         options['keys_only'] = True
         table = self.ctx.load('ns1', 'test_take', options=options).put_all(range(10), options=options)
         print(table.take(n=3, options=options))
+        assert (table.take(n=3, options=options) == [0, 1, 2])
 
         options_kv = get_default_options()
         options_kv['keys_only'] = False
         table = self.ctx.load('ns1', 'test_take_kv', options=options_kv).put_all(range(10), options=options_kv)
         print(table.take(n=3, options=options_kv))
+        assert (table.take(n=3, options=options_kv) == [(0, 0), (1, 1), (2, 2)])
 
     def test_first(self):
         options = get_default_options()
         options['keys_only'] = True
         table = self.ctx.load('ns1', 'test_take', options=options).put_all(range(10), options=options)
         print(table.first(options=options))
+        assert (table.first(options=options) == 0)
 
         options_kv = get_default_options()
         options_kv['keys_only'] = False
         table = self.ctx.load('ns1', 'test_take_kv', options=options_kv).put_all(range(10), options=options_kv)
         print(table.first(options=options_kv))
+        assert (table.first(options=options) == (0, 0))
 
     def test_map_values(self):
         options = get_default_options()
         rp = self.ctx.load("ns1", "test_map_values", options=options).put_all(range(10), options=options)
-        print(list(rp.map_values(lambda v: str(v) + 'map_values').get_all()))
+        res = rp.map_values(lambda v: str(v) + 'map_values')
+        print(list(res.get_all()))
+        assert (get_value(res) == [(0, '0map_values'), (1, '1map_values'), (2, '2map_values'), (3, '3map_values'),
+                                   (4, '4map_values'), (5, '5map_values'), (6, '6map_values'), (7, '7map_values'),
+                                   (8, '8map_values'), (9, '9map_values')])
 
     def test_map_partitions(self):
         options = get_default_options()
@@ -174,6 +202,7 @@ class TestStandalone(unittest.TestCase):
         # rp.put_all(range(100*1000))
         # print(rp.count())
         # print(rp.map_values(lambda v: v))
+
         print(rp.map(lambda k, v: (k + 1, v)).count())
         # print(rp.first())
         # print(rp.map(lambda k, v: (k + 1, v)).count())
@@ -188,16 +217,19 @@ class TestStandalone(unittest.TestCase):
 
         result = rp.map(lambda k, v: (k + 1, v))
         print(result.count())
+        assert (result.count() == 100)
 
     def test_collapse_partitions(self):
         options = get_default_options()
         rp = self.ctx.load("ns1", "test_collapse_partitions", options=options).put_all(range(5), options=options)
+
         def f(iterator):
             sum = []
             for k, v in iterator:
                 sum.append((k, v))
             return sum
         print(list(rp.collapse_partitions(f).get_all()))
+
 
     def test_filter(self):
         options = get_default_options()
@@ -208,6 +240,7 @@ class TestStandalone(unittest.TestCase):
         options = get_default_options()
         rp = self.ctx.load("ns1", "test_flat_map", options=options).put_all(range(5), options=options)
         import random
+
         def foo(k, v):
             result = []
             r = random.randint(10000, 99999)
