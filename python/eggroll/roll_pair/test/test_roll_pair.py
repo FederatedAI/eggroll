@@ -78,6 +78,14 @@ class TestRollPairMultiPartition(TestRollPairBase):
     def str_generator(include_key=True, row_limit=100, key_suffix_size=0, value_suffix_size=0):
         return TestRollPairBase.str_generator(include_key, row_limit, key_suffix_size, value_suffix_size)
 
+    def test_put_all(self):
+        st_opts = self.store_opts(include_key=True)
+        rp = self.ctx.load("test_roll_pair","TestRollPairMultiPartition", options=self.store_opts())
+        rp.put_all(self.str_generator())
+        self.assertUnOrderListEqual(self.str_generator(include_key=True), rp.get_all())
+        self.assertEqual(st_opts["total_partitions"], rp.get_partitions())
+        rp.destroy()
+
     def test_parallelize_include_key(self):
         st_opts = self.store_opts(include_key=True)
         rp = self.ctx.parallelize(self.str_generator(True),st_opts)
