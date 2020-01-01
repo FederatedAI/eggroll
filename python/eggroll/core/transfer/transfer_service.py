@@ -60,7 +60,7 @@ class TransferService(object):
         retry=0
         while not result or key not in TransferService.data_buffer:
             sleep(0.1)
-            LOGGER.debug(f"waiting broker tag:{key}, retry:{retry}", key)
+            LOGGER.debug(f"waiting broker tag:{key}, retry:{retry}")
             result = TransferService.data_buffer.get(key, None)
             retry += 1
             if retry > 50:
