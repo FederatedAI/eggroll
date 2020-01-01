@@ -1,5 +1,6 @@
 package com.webank.eggroll.core
 
+import java.net.BindException
 import java.util.concurrent.atomic.AtomicBoolean
 
 import com.webank.eggroll.core.util.Logging
@@ -40,13 +41,10 @@ object Bootstrap extends Logging {
       try {
         obj.start()
       } catch {
-        case be: java.io.IOException =>
-          if(be.getCause.isInstanceOf[java.net.BindException] && args.length > 1) {
+        case be: Exception
+          if (be.getCause.isInstanceOf[BindException] || be.isInstanceOf[BindException]) && bs.length > 1 =>
             val msg = s"${b} rebind failed: ${be.getMessage}"
             if (ignoreRebind) logInfo(s"${msg} but '--ignore-rebind' is on") else logWarning(msg)
-          } else {
-            throw be
-          }
       }
     }
 
