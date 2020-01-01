@@ -57,11 +57,14 @@ class TransferService(object):
     @staticmethod
     def get_broker(key: str):
         result = TransferService.data_buffer.get(key, None)
+        retry=0
         while not result or key not in TransferService.data_buffer:
             sleep(0.1)
-            print("wait broker tag", key)
+            LOGGER.debug(f"waiting broker tag:{key}, retry:{retry}", key)
             result = TransferService.data_buffer.get(key, None)
-
+            retry += 1
+            if retry > 50:
+                raise RuntimeError("cannot get broker:" + key)
         return result
 
     @staticmethod
