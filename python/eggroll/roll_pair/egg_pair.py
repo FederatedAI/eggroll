@@ -405,7 +405,7 @@ def serve(args):
             route_to_class_name="EggPair",
             route_to_method_name="run_task")
 
-    command_server = grpc.server(futures.ThreadPoolExecutor(max_workers=5),
+    command_server = grpc.server(futures.ThreadPoolExecutor(max_workers=5000),
                                  options=[
                                      (cygrpc.ChannelArgKey.max_send_message_length, -1),
                                      (cygrpc.ChannelArgKey.max_receive_message_length, -1)])
