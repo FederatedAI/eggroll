@@ -19,18 +19,10 @@ from eggroll.roll_pair.test.roll_pair_test_assets import get_debug_test_context,
     get_cluster_context, get_standalone_context, set_default_option, \
     get_default_options
 
-is_debug = True
-is_standalone = False
-total_partitions = 1
-
-
 class TestRollPairBase(unittest.TestCase):
 
     def setUp(self):
         self.ctx = get_debug_test_context()
-        self.row_limit = 10
-        self.key_suffix_size = 0
-        self.value_suffix_size = 0
 
     @staticmethod
     def store_opts(**kwargs):
@@ -40,13 +32,13 @@ class TestRollPairBase(unittest.TestCase):
 
     def assertUnOrderListEqual(self, list1, list2):
         self.assertEqual(sorted(list1), sorted(list2))
-
-    def str_generator(self, include_key=True):
-        for i in range(self.row_limit):
+    @staticmethod
+    def str_generator(include_key=True, row_limit=10, key_suffix_size=0, value_suffix_size=0):
+        for i in range(row_limit):
             if include_key:
-                yield str(i) + "s"*self.key_suffix_size, str(i) + "s"*self.value_suffix_size
+                yield str(i) + "s"*key_suffix_size, str(i) + "s"*value_suffix_size
             else:
-                yield str(i) + "s"*self.value_suffix_size
+                yield str(i) + "s"*value_suffix_size
 
     def test_parallelize_include_key(self):
         rp = self.ctx.parallelize(self.str_generator(True),
@@ -72,27 +64,19 @@ class TestRollPairBase(unittest.TestCase):
         rp.destroy()
         rp2.destroy()
 
-    def test_multi_partition_map(self):
-        options = get_default_options()
-        options['total_partitions'] = 3
-        options['include_key'] = False
-        rp = self.ctx.load("ns1", "testMultiPartitionsMap", options=options).put_all(range(100), options=options)
-
-        result = rp.map(lambda k, v: (k + 1, v))
-        print(result.count())
-
 class TestRollPairMultiPartition(TestRollPairBase):
     def setUp(self):
         self.ctx = get_debug_test_context()
-        self.row_limit = 10
-        self.key_suffix_size = 0
-        self.value_suffix_size = 0
 
     @staticmethod
     def store_opts(**kwargs):
         opts= {'total_partitions':3}
         opts.update(kwargs)
         return opts
+
+    @staticmethod
+    def str_generator(include_key=True, row_limit=100, key_suffix_size=0, value_suffix_size=0):
+        return TestRollPairBase.str_generator(include_key, row_limit, key_suffix_size, value_suffix_size)
 
     def test_parallelize_include_key(self):
         st_opts = self.store_opts(include_key=True)
@@ -104,7 +88,4 @@ class TestRollPairMultiPartition(TestRollPairBase):
 class TestRollPairCluster(TestRollPairBase):
     def setUp(self):
         self.ctx = get_cluster_context()
-        self.row_limit = 10
-        self.key_suffix_size = 0
-        self.value_suffix_size = 0
 
