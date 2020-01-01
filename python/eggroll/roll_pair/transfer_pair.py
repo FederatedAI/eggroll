@@ -190,13 +190,13 @@ class TransferPair(object):
         """
         @_exception_logger
         def do_store():
-            LG.debug("do_store_start")
             tag = self.__generate_tag(store_partition._id) if is_shuffle else self.__transfer_id
             broker = TransferService.get_or_create_broker(tag, write_signals=total_partitions)
+            LG.debug(f"do_store_start:{tag}")
             done_cnt = 0
             batches = TransferPair.bin_batch_to_pair(b.data for b in broker)
             with create_adapter(store_partition) as db:
-                LG.debug("do_store_create_db")
+                LG.debug(f"do_store_create_db:{tag}")
                 with db.new_batch() as wb:
                     for k, v in batches:
                         wb.put(k, v)
