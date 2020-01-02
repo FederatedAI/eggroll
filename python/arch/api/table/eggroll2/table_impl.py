@@ -81,7 +81,7 @@ class DTable(Table):
 
     @log_elapsed
     def collect(self, min_chunk_size=0, use_serialize=True, **kwargs) -> list:
-        return self._dtable.collect(min_chunk_size=min_chunk_size, use_serialize=use_serialize)
+        return self._dtable.get_all()
 
     @log_elapsed
     def get_all(self):
