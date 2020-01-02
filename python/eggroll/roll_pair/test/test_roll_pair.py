@@ -57,6 +57,13 @@ class TestRollPairBase(unittest.TestCase):
             self.assertEqual(str(i), rp.get(str(i)))
         rp.destroy()
 
+    def test_count(self):
+        rp = self.ctx.load("x1","x2")
+        # rp = self.ctx.parallelize(self.str_generator(row_limit=11))
+        self.assertEqual(0, rp.count())
+        rp.destroy()
+
+
     def test_map(self):
         rp = self.ctx.parallelize(self.str_generator())
         rp2 = rp.map(lambda k,v: (k + "_1", v))
