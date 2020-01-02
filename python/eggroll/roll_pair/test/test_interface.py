@@ -90,6 +90,8 @@ class TestStandalone(unittest.TestCase):
         self.ctx.load("ns1", "testGet", options=options).destroy()
 
     def test_put_all(self):
+        import os
+        # os.environ["EGGROLL_ROLLPAIR_BIN_BATCH_SIZE"] = str(1024*1024)
         #data = [("k1", "v1"), ("k2", "v2"), ("k3", "v3"), ("k4", "v4"), ("k5", "v5"), ("k6", "v6")]
         #data = [("k1", "v1"), ("k2", "v2")]
         options = get_default_options()

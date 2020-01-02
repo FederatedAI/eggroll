@@ -91,6 +91,25 @@ cluster_manager_host=${property_value}
 get_property ${config} "eggroll.resourcemanager.clustermanager.port"
 cluster_manager_port=${property_value}
 
+if [[ -z ${EGGROLL_LOGS_DIR} ]]; then
+  get_property ${config} "eggroll.logs.dir"
+  export EGGROLL_LOGS_DIR=${property_value}
+
+  if [[ -z ${EGGROLL_LOGS_DIR} ]]; then
+    export EGGROLL_LOGS_DIR=${EGGROLL_HOME}/logs
+  fi
+fi
+
+export EGGROLL_SESSION_ID=${session_id}
+
+if [[ -z ${EGGROLL_LOG_LEVEL} ]]; then
+  export EGGROLL_LOG_LEVEL="INFO"
+fi
+
+if [[ -z ${EGGROLL_LOG_CONF} ]]; then
+  export EGGROLL_LOG_CONF=${EGGROLL_HOME}/conf/log4j2.properties
+fi
+
 if [[ -z ${javahome} ]]; then
   JAVA=`which java`
 else
@@ -101,7 +120,9 @@ if [[ -z ${mainclass} ]]; then
   mainclass="com.webank.eggroll.rollpair.RollPairMasterBootstrap"
 fi
 
-cmd="${JAVA} ${jvm_options} -cp ${classpath} com.webank.eggroll.core.Bootstrap --bootstraps ${mainclass} --config ${config} --session-id ${session_id} --server-node-id ${server_node_id} --cluster-manager ${cluster_manager_host}:${cluster_manager_port} --node-manager ${node_manager_port} --processor-id ${processor_id}"
+export EGGROLL_LOG_FILE="roll_pair_master-${processor_id}"
+
+cmd="${JAVA} ${jvm_options} -Dlog4j.configurationFile=${EGGROLL_LOG_CONF} -cp ${classpath} com.webank.eggroll.core.Bootstrap --bootstraps ${mainclass} --config ${config} --session-id ${session_id} --server-node-id ${server_node_id} --cluster-manager ${cluster_manager_host}:${cluster_manager_port} --node-manager ${node_manager_port} --processor-id ${processor_id}"
 
 if [[ -n ${port} ]]; then
   cmd="${cmd} --port ${port}"
@@ -110,7 +131,7 @@ if [[ -n ${port} ]]; then
   fi
 fi
 
-final_logs_dir=${logs_dir}/${session_id}/roll_pair
+final_logs_dir=${logs_dir}/${session_id}
 mkdir -p ${final_logs_dir}
 echo "${cmd}"
-${cmd} >> ${final_logs_dir}/roll_pair_master-${processor_id}.OUT 2>${final_logs_dir}/roll_pair_master-${processor_id}.ERROR &
+${cmd} >> ${final_logs_dir}/${EGGROLL_LOG_FILE}.out 2>${final_logs_dir}/${EGGROLL_LOG_FILE}.err &
