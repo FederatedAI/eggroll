@@ -206,7 +206,7 @@ class RollSite:
                     dst_name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.job_id, self.name, self.tag,
                                                                              self.local_role, str(self.party_id),
                                                                              _role, str(_partyId)]))
-                    store_type = rp.get_type()
+                    store_type = rp.get_store_type()
                 else:
                     dst_name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.job_id, self.name,
                                                                              self.tag, self.local_role,
