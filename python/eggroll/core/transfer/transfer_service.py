@@ -32,7 +32,7 @@ from eggroll.utils import log_utils
 
 LOGGER = log_utils.get_logger()
 
-
+# TODO:0: thread safe?
 class TransferService(object):
     data_buffer = dict()
     _DEFAULT_QUEUE_SIZE = 10000
@@ -51,12 +51,20 @@ class TransferService(object):
         return TransferService.data_buffer[key]
 
     @staticmethod
+    def set_broker(key: str, broker):
+        TransferService.data_buffer[key] = broker
+
+    @staticmethod
     def get_broker(key: str):
         result = TransferService.data_buffer.get(key, None)
+        retry=0
         while not result or key not in TransferService.data_buffer:
             sleep(0.1)
+            LOGGER.debug(f"waiting broker tag:{key}, retry:{retry}")
             result = TransferService.data_buffer.get(key, None)
-
+            retry += 1
+            if retry > 50:
+                raise RuntimeError("cannot get broker:" + key)
         return result
 
     @staticmethod
@@ -114,16 +122,24 @@ class GrpcTransferServicer(transfer_pb2_grpc.TransferServiceServicer):
             broker.put(request)
 
         broker.signal_write_finish()
-        print('GrpcTransferServicer stream finished. tag: ', base_tag, ', remaining write count: ', broker.get_active_writers_count())
+        print('GrpcTransferServicer stream finished. tag: ', base_tag, ', remaining write count: ', broker,broker.__dict__)
         return transfer_pb2.TransferBatch(header=response_header)
 
     @_exception_logger
     def recv(self, request, context):
         base_tag = request.header.tag
         print('GrpcTransferServicer send broker tag: ', base_tag)
-        callee_messages_broker: FifoBroker = TransferService.get_broker(base_tag)
-
-        return TransferService.transfer_batch_generator_from_broker(callee_messages_broker, base_tag)
+        callee_messages_broker = TransferService.get_broker(base_tag)
+        import types
+        if isinstance(callee_messages_broker, types.GeneratorType):
+            i = 0
+            for data in callee_messages_broker:
+                header = transfer_pb2.TransferHeader(id=i, tag=base_tag)
+                batch = transfer_pb2.TransferBatch(header=header, data=data)
+                i+=1
+                yield batch
+        else:
+            return TransferService.transfer_batch_generator_from_broker(callee_messages_broker, base_tag)
 
 
 class GrpcTransferService(TransferService):
@@ -170,7 +186,7 @@ class TransferClient(object):
         return future
 
     @_exception_logger
-    def recv(self, endpoint: ErEndpoint, tag):
+    def recv(self, endpoint: ErEndpoint, tag, broker = FifoBroker()):
 
         @_exception_logger
         def fill_broker(iterable: Iterable, broker):
@@ -191,8 +207,9 @@ class TransferClient(object):
                                                    tag=tag))
 
         response_iter = stub.recv(request)
-        broker = FifoBroker()
-        t = Thread(target=fill_broker, args=[response_iter, broker])
-        t.start()
-
+        if broker is None:
+            return response_iter
+        else:
+            t = Thread(target=fill_broker, args=[response_iter, broker])
+            t.start()
         return broker
