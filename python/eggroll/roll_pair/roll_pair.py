@@ -291,10 +291,7 @@ class RollPair(object):
                 serdes_type=self.__command_serdes
         )
         LOGGER.info("get resp:{}".format((job_resp._value)))
-
-        value = self.value_serdes.deserialize(job_resp._value)
-
-        return value
+        return self.value_serdes.deserialize(job_resp._value) if job_resp._value != b'' else None
 
     def put(self, k, v, options={}):
         k, v = create_serdes(self.__store._store_locator._serdes).serialize(k), \
