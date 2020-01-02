@@ -104,7 +104,7 @@ if [[ -z ${EGGROLL_LOG_LEVEL} ]]; then
   EGGROLL_LOG_LEVEL="INFO"
 fi
 
-EGGROLL_DEFAULT_LOGGER_NAME="${server}-${processor_id}"
+export EGGROLL_LOG_FILE="egg_pair-${processor_id}"
 
 
 if [[ -z ${venv} ]]; then
@@ -124,7 +124,7 @@ if [[ -n ${port} ]]; then
   fi
 fi
 
-final_logs_dir=${logs_dir}/${session_id}/roll_pair
-mkdir -p ${final_logs_dir}
+export EGGROLL_LOGS_DIR=${EGGROLL_LOGS_DIR}/${EGGROLL_SESSION_ID}
+mkdir -p ${EGGROLL_LOGS_DIR}
 echo "${cmd}"
-${cmd} >> ${final_logs_dir}/egg_pair-${processor_id}.OUT 2>${final_logs_dir}/egg_pair-${processor_id}.ERROR &
+${cmd} >> ${EGGROLL_LOGS_DIR}/${EGGROLL_LOG_FILE}.out 2>${EGGROLL_LOGS_DIR}/${EGGROLL_LOG_FILE}.err &

@@ -19,7 +19,7 @@ from eggroll.roll_pair.test.roll_pair_test_assets import get_debug_test_context,
     get_cluster_context, get_standalone_context, set_default_option, \
     get_default_options
 
-is_debug = True
+is_debug = False
 is_standalone = False
 total_partitions = 1
 
@@ -64,7 +64,6 @@ class TestStandalone(unittest.TestCase):
             print(self.ctx.load("ns1", "testGet").get(f"k{i}"))
 
     def test_put_all(self):
-        import os
         # os.environ["EGGROLL_ROLLPAIR_BIN_BATCH_SIZE"] = str(1024*1024)
         #data = [("k1", "v1"), ("k2", "v2"), ("k3", "v3"), ("k4", "v4"), ("k5", "v5"), ("k6", "v6")]
         #data = [("k1", "v1"), ("k2", "v2")]
