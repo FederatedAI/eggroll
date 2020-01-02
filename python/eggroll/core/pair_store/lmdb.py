@@ -20,9 +20,10 @@ import lmdb
 
 from eggroll.core.pair_store.adapter import PairIterator, PairWriteBatch, \
     PairAdapter
-from eggroll.utils import log_utils
+from eggroll.utils.log_utils import get_logger
 
-LOGGER = log_utils.get_logger()
+L = get_logger()
+
 #64 * 1024 * 1024
 LMDB_MAP_SIZE = 16 * 4_096 * 244_140    # follows storage-service-cxx's config here
 DEFAULT_DB = b'main'
@@ -31,7 +32,7 @@ DEFAULT_DB = b'main'
 
 class LmdbIterator(PairIterator):
     def __init__(self, adapter):
-        LOGGER.info("create lmdb iterator")
+        L.info("create lmdb iterator")
         self.adapter = adapter
         self.cursor = adapter.txn.cursor()
 
@@ -87,7 +88,7 @@ class LmdbAdapter(PairAdapter):
 
     def __init__(self, options):
         with LmdbAdapter.env_lock:
-            LOGGER.info("lmdb adapter init")
+            L.info("lmdb adapter init")
             super().__init__(options)
             self.path = options["path"]
             lmdb_map_size = options.get("lmdb_map_size", LMDB_MAP_SIZE)
@@ -95,7 +96,7 @@ class LmdbAdapter(PairAdapter):
             if self.path not in LmdbAdapter.env_dict:
                 if create_if_missing:
                     os.makedirs(self.path, exist_ok=True)
-                LOGGER.info("path not in dict db path:{}".format(self.path))
+                L.info("path not in dict db path:{}".format(self.path))
                 import platform
                 writemap = False if platform.system() == 'Darwin' else True
                 self.env = lmdb.open(self.path, create=create_if_missing, max_dbs=128, sync=False, map_size=lmdb_map_size, writemap=writemap)
@@ -104,7 +105,7 @@ class LmdbAdapter(PairAdapter):
                 LmdbAdapter.env_dict[self.path] = self.env
                 LmdbAdapter.sub_env_dict[self.path] = self.sub_db
             else:
-                LOGGER.info("path in dict:{}".format(self.path))
+                L.info("path in dict:{}".format(self.path))
                 self.env = LmdbAdapter.env_dict[self.path]
                 self.sub_db = LmdbAdapter.sub_env_dict[self.path]
             self.txn = self.env.begin(db=self.sub_db, write=True)
@@ -128,7 +129,7 @@ class LmdbAdapter(PairAdapter):
             self.txn.commit()
             self.cursor.close()
         except:
-            LOGGER.warning("txn commit or cursor close failed")
+            L.warning("txn commit or cursor close failed")
         with LmdbAdapter.env_lock:
             if self.env:
                 count = LmdbAdapter.count_dict[self.path]
@@ -157,4 +158,4 @@ class LmdbAdapter(PairAdapter):
         self.close()
         import shutil
         shutil.rmtree(self.path)
-        LOGGER.info("finish destroy")
+        L.info("finish destroy")

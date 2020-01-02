@@ -28,9 +28,10 @@ from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.meta_model import ErEndpoint
 from eggroll.core.proto import transfer_pb2_grpc, transfer_pb2
 from eggroll.core.utils import _exception_logger
-from eggroll.utils import log_utils
+from eggroll.utils.log_utils import get_logger
 
-LOGGER = log_utils.get_logger()
+L = get_logger()
+
 
 # TODO:0: thread safe?
 class TransferService(object):
@@ -60,7 +61,7 @@ class TransferService(object):
         retry=0
         while not result or key not in TransferService.data_buffer:
             sleep(0.1)
-            LOGGER.debug(f"waiting broker tag:{key}, retry:{retry}")
+            L.debug(f"waiting broker tag:{key}, retry:{retry}")
             result = TransferService.data_buffer.get(key, None)
             retry += 1
             if retry > 50:
@@ -152,7 +153,7 @@ class GrpcTransferService(TransferService):
         transfer_pb2_grpc.add_TransferServiceServicer_to_server(transfer_servicer, server)
         port = options.get(TransferConfKeys.CONFKEY_TRANSFER_SERVICE_PORT, 0)
         port = server.add_insecure_port(f'[::]:{port}')
-        LOGGER.info(f'transfer service started at port {port}')
+        L.info(f'transfer service started at port {port}')
         print(f'transfer service started at port {port}')
 
         server.start()
@@ -169,47 +170,55 @@ class TransferClient(object):
 
     @_exception_logger
     def send(self, broker, endpoint: ErEndpoint, tag):
-        channel = grpc.insecure_channel(
-                target=f'{endpoint._host}:{endpoint._port}',
-                options=[
-                    ('grpc.max_send_message_length', -1),
-                    ('grpc.max_receive_message_length', -1)])
+        try:
+            channel = grpc.insecure_channel(
+                    target=f'{endpoint._host}:{endpoint._port}',
+                    options=[
+                        ('grpc.max_send_message_length', -1),
+                        ('grpc.max_receive_message_length', -1)])
 
-        stub = transfer_pb2_grpc.TransferServiceStub(channel)
-        import types
-        if isinstance(broker, types.GeneratorType):
-            requests = (transfer_pb2.TransferBatch(header=transfer_pb2.TransferHeader(id=i, tag=tag), data=d)
-                        for i, d in enumerate(broker))
-        else:
-            requests = TransferService.transfer_batch_generator_from_broker(broker, tag)
-        future = stub.send.future(requests)
-        return future
+            stub = transfer_pb2_grpc.TransferServiceStub(channel)
+            import types
+            if isinstance(broker, types.GeneratorType):
+                requests = (transfer_pb2.TransferBatch(header=transfer_pb2.TransferHeader(id=i, tag=tag), data=d)
+                            for i, d in enumerate(broker))
+            else:
+                requests = TransferService.transfer_batch_generator_from_broker(broker, tag)
+            future = stub.send.future(requests)
+
+            return future
+        except Exception as e:
+            L.error(f'Error calling to {endpoint} in TransferClient.send')
+            raise e
 
     @_exception_logger
-    def recv(self, endpoint: ErEndpoint, tag, broker = FifoBroker()):
+    def recv(self, endpoint: ErEndpoint, tag, broker=FifoBroker()):
+        try:
+            @_exception_logger
+            def fill_broker(iterable: Iterable, broker):
+                iterator = iter(iterable)
+                for e in iterator:
+                    broker.put(e)
+                broker.signal_write_finish()
 
-        @_exception_logger
-        def fill_broker(iterable: Iterable, broker):
-            iterator = iter(iterable)
-            for e in iterator:
-                broker.put(e)
-            broker.signal_write_finish()
+            channel = grpc.insecure_channel(
+                    target=f'{endpoint._host}:{endpoint._port}',
+                    options=[
+                        ('grpc.max_send_message_length', -1),
+                        ('grpc.max_receive_message_length', -1)])
 
-        channel = grpc.insecure_channel(
-                target=f'{endpoint._host}:{endpoint._port}',
-                options=[
-                    ('grpc.max_send_message_length', -1),
-                    ('grpc.max_receive_message_length', -1)])
+            stub = transfer_pb2_grpc.TransferServiceStub(channel)
+            request = transfer_pb2.TransferBatch(
+                    header=transfer_pb2.TransferHeader(id=1,
+                                                       tag=tag))
 
-        stub = transfer_pb2_grpc.TransferServiceStub(channel)
-        request = transfer_pb2.TransferBatch(
-                header=transfer_pb2.TransferHeader(id=1,
-                                                   tag=tag))
-
-        response_iter = stub.recv(request)
-        if broker is None:
-            return response_iter
-        else:
-            t = Thread(target=fill_broker, args=[response_iter, broker])
-            t.start()
-        return broker
+            response_iter = stub.recv(request)
+            if broker is None:
+                return response_iter
+            else:
+                t = Thread(target=fill_broker, args=[response_iter, broker])
+                t.start()
+            return broker
+        except Exception as e:
+            L.error(f'Error calling to {endpoint} in TransferClient.send')
+            raise e
