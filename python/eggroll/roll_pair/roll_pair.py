@@ -225,14 +225,7 @@ class RollPair(object):
         return input_adapter
 
     def get_store_serdes(self):
-        serdes_type = self.__store._store_locator._serdes
-        L.info(f'serdes type: {serdes_type}')
-        if serdes_type == SerdesTypes.CLOUD_PICKLE or serdes_type == SerdesTypes.PROTOBUF:
-            return CloudPickleSerdes
-        elif serdes_type == SerdesTypes.PICKLE:
-            return PickleSerdes
-        else:
-            return EmptySerdes
+        return create_serdes(self.__store._store_locator._serdes)
 
     def get_partitions(self):
         return self.__store._store_locator._total_partitions
