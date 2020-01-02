@@ -64,15 +64,17 @@ class TestStandalone(unittest.TestCase):
             print(self.ctx.load("ns1", "testGet").get(f"k{i}"))
 
     def test_put_all(self):
+        import os
+        # os.environ["EGGROLL_ROLLPAIR_BIN_BATCH_SIZE"] = str(1024*1024)
         #data = [("k1", "v1"), ("k2", "v2"), ("k3", "v3"), ("k4", "v4"), ("k5", "v5"), ("k6", "v6")]
         #data = [("k1", "v1"), ("k2", "v2")]
         options = get_default_options()
         t = self.ctx.load("ns1", "testPutAll", options=options)
         options['include_key'] = True
-        t.put_all(kv_generator(100), options=options)
+        t.put_all(((k, "a"*100) for k in range(1000)), options=options)
 
-        print(t.count())
-        print(list(t.get_all()))
+        # print(t.count())
+        # print(list(t.get_all()))
 
     def test_put_all_value(self):
         options = get_default_options()
@@ -139,12 +141,13 @@ class TestStandalone(unittest.TestCase):
     def test_first(self):
         options = get_default_options()
         options['keys_only'] = True
-        table = self.ctx.load('ns1', 'test_take', options=options).put_all(range(10), options=options)
+        table = self.ctx.load('ns1', 'test_take', options=options).put_all(range(1000), options=options)
         print(table.first(options=options))
 
         options_kv = get_default_options()
         options_kv['keys_only'] = False
         table = self.ctx.load('ns1', 'test_take_kv', options=options_kv).put_all(range(10), options=options_kv)
+        print("table_count",table.count())
         print(table.first(options=options_kv))
 
     def test_map_values(self):
