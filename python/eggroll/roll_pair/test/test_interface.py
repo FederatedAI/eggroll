@@ -83,7 +83,7 @@ class TestStandalone(unittest.TestCase):
         options = get_default_options()
         t = self.ctx.load("ns1", "testPutAll", options=options)
         options['include_key'] = True
-        t.put_all(kv_generator(100), options=options)
+        t.put_all(((k, "a"*100) for k in range(1000)), options=options)
 
         assert (t.count() == 100)
         assert (get_value(t) == kv_list(100))
@@ -202,7 +202,6 @@ class TestStandalone(unittest.TestCase):
         # rp.put_all(range(100*1000))
         # print(rp.count())
         # print(rp.map_values(lambda v: v))
-
         print(rp.map(lambda k, v: (k + 1, v)).count())
         # print(rp.first())
         # print(rp.map(lambda k, v: (k + 1, v)).count())
