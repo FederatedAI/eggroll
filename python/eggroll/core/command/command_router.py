@@ -16,9 +16,9 @@ from importlib import import_module
 
 from eggroll.core.meta_model import ErTask
 from eggroll.core.proto import meta_pb2
-from eggroll.utils import log_utils
+from eggroll.utils.log_utils import get_logger
 
-LOGGER = log_utils.get_logger()
+L = get_logger()
 
 
 class CommandRouter(object):
@@ -57,7 +57,7 @@ class CommandRouter(object):
         _method = getattr(_class, route_to_method_name)
 
         self._service_route_table[service_name] = (None, _class, _method)
-        LOGGER.info("service:{} has registered".format(service_name))
+        L.info("service:{} has registered".format(service_name))
 
     def dispatch(self, service_name: str, args, kwargs):
         if service_name not in self._service_route_table:
@@ -73,12 +73,12 @@ class CommandRouter(object):
             task = meta_pb2.Task()
             msg_len = task.ParseFromString(arg)
             deserialized_args.append(ErTask.from_proto(task))
-        LOGGER.debug(f"calling [{service_name}]")
+        L.debug(f"calling [{service_name}]")
         import time
         start = time.time()
         call_result = _method(_instance, *deserialized_args)
         cost = time.time() - start
-        LOGGER.debug(f"called [{service_name}], cost: {cost}, result:{call_result}")
+        L.debug(f"called [{service_name}], cost: {cost}, result:{call_result}")
 
         # todo:2: defaulting to pb message. need changes when other types of result is present
         return [call_result.to_proto().SerializeToString()]

@@ -1,8 +1,8 @@
 from eggroll.core.constants import StoreTypes
 from eggroll.core.meta_model import ErStore
-from eggroll.utils import log_utils
+from eggroll.utils.log_utils import get_logger
 
-LOGGER = log_utils.get_logger()
+L = get_logger()
 
 
 class Recorder(object):
@@ -19,13 +19,13 @@ class Recorder(object):
         if store_type != StoreTypes.ROLLPAIR_IN_MEMORY:
             return
         else:
-            LOGGER.info("record in memory table namespace:{}, name:{}, type:{}"
-                        .format(namespace, name, store_type))
+            L.info("record in memory table namespace:{}, name:{}, type:{}"
+                   .format(namespace, name, store_type))
             count = self.table_recorder.get(name)
             if count is None:
                 count = 0
             self.table_recorder.put(name, (count+1))
-            LOGGER.debug("table recorded:{}".format(list(self.table_recorder.get_all())))
+            L.debug("table recorded:{}".format(list(self.table_recorder.get_all())))
 
     def check_table_deletable(self):
         store_type = self.record_store._store_locator._store_type
@@ -33,7 +33,7 @@ class Recorder(object):
             return False
         record_count = self.table_recorder.get(self.record_store._store_locator._name)
         if record_count > 1:
-            LOGGER.debug("table:{} ref count is {}".format(self._name, record_count))
+            L.debug("table:{} ref count is {}".format(self._name, record_count))
             self.table_recorder.put(self.record_store._store_locator._name, (record_count-1))
             return False
         elif 1 >= record_count >= 0:
