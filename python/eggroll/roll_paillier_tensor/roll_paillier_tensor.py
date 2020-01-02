@@ -31,8 +31,39 @@ class RptBaseEngine:
         raise NotImplementedError("todo")
 
 class RptGpuEngine(RptBaseEngine):
-    def __init__(self):
-        self._under = rpt_engine
+    def __init__(self, pub_key=None, priv_key=None):
+        self.pub_key = pub_key
+        self.priv_key = priv_key
+
+    def __setstate__(self, state):
+        bin_pub, bin_prv = state
+        self.pub_key = rpt_engine.gpu_load_pub_key(bin_pub)
+        self.priv_key = rpt_engine.gpu_load_priv_key(bin_prv)
+
+    def __getstate__(self):
+        return rpt_engine.gpu_dump_pub_key(self.pub_key), rpt_engine.gpu_dump_prv_key(self.priv_key)
+
+    def add(self, x, y):
+        return rpt_engine.gpu_dotadd(x, y, self.pub_key)
+
+    def vdot(self, x, y):
+        return rpt_engine.gpu_dotmul(x, y, self.pub_key)
+
+    def matmul(self, x, y):
+        return rpt_engine.gpu_matmul(x, y, self.pub_key)
+
+    def encrypt(self, x, y):
+        return rpt_engine.gpu_encrypt(x, y, self.pub_key)
+
+    def decrypt(self, x, y):
+        return rpt_engine.gpu_decrypt(x, y, self.pub_key)
+
+    def load(self, x):
+        return rpt_engine.gpu_load(x)
+
+    def dump(self, x):
+        return rpt_engine.gpu_dump(x)
+
 
 class RptCpuEngine(RptBaseEngine):
     def __init__(self, pub_key=None, priv_key=None):
@@ -78,6 +109,9 @@ class RptCpuEngine(RptBaseEngine):
     def mean(self, x):
         return rpt_engine.mean(x, self.pub_key, self.priv_key)
 
+    def transe(self, x):
+        return rpt_engine.transe(x)
+
     def hstack(self, x, y):
         return rpt_engine.hstack(x, y, self.pub_key, self.priv_key)
 
@@ -100,13 +134,16 @@ class RptCpuEngine(RptBaseEngine):
     def num2Mng(self, x):
         return rpt_engine.num2Mng(x, self.pub_key)
 
+    def num2Mng_test(self, x):
+        return rpt_engine.num2Mng_test(x, self.pub_key)
+
+
 class RptContext:
     def __init__(self, rp_ctx:RollPairContext):
         self.rp_ctx = rp_ctx
 
     def load(self, namespace, name, engine_type="cpu"):
         return RollPaillierTensor(self.rp_ctx.load(namespace, name), engine_type)
-
 
 class Tensor(object):
     def __init__(self):
@@ -135,11 +172,15 @@ class NumpyTensor(Tensor):
         if isinstance(other, NumpyTensor):
             return self._ndarray - other._ndarray
         if isinstance(other, RollPaillierTensor):
-            return other.add_local(self._ndarray * (-1))
+            return other.scalar_mul(-1).add_local(self._ndarray)
 
     def encrypt(self):
         rpt = RollPaillierTensor(self._ndarray)
         return rpt.encrypt()
+
+    def out(self, str = "[CHAN ZHEN NAN]"):
+        print(str)
+        print(self._ndarray)
 
     def T(self):
        return NumpyTensor(self._ndarray.T)
@@ -147,6 +188,12 @@ class NumpyTensor(Tensor):
     def __rmul__(self, other):
         print("__rmul__")
         return
+
+    def __mul__(self, other):
+        if isinstance(other, NumpyTensor):
+            return self._ndarray * other._ndarray
+        if isinstance(other, RollPaillierTensor):
+            return other.mul(self._ndarray)
 
 
     def __matmul__(self, other):
@@ -165,6 +212,59 @@ class NumpyTensor(Tensor):
     def __getstate__(self):
         pass
 
+class PaillierTensor(Tensor):
+    def __init__(self, store, engine_type='cpu'):
+        self._store = store
+        if engine_type == 'cpu':
+            self.pub_key, self.prv_key = rpt_engine.keygen()
+            self._engine = RptCpuEngine(self.pub_key, self.prv_key)
+        else:
+            print("todo")
+
+
+    def __add__(self, other):
+        if isinstance(other, NumpyTensor):
+            return self.add(other._ndarray)
+        if isinstance(other, PaillierTensor):
+            return self.add(other._store)
+
+    def __mul__(self, other):
+        if isinstance(other, int) or isinstance(other, float):
+            return self.scalar_mul(other)
+        if isinstance(other, PaillierTensor):
+            return self.mul(other)
+        if isinstance(other, NumpyTensor):
+            return self.mul(other)
+
+
+    #function
+    def add(self, other):
+        if isinstance(vec1, np.ndarray) and isinstance(vec2, np.ndarray):
+            return vec1 + vec2
+        if isinstance(vec1, np.ndarray):
+            m1 = self._engine.num2Mng(vec1)
+        else:
+            m1 = self._engine.load(vec1)
+        if isinstance(vec2, np.ndarray):
+            m2 = self._engine.num2Mng(vec2)
+        else:
+            m2 = self._engine.load(vec2)
+        return PaillierTensor(self._engine.add(m1, m2))
+
+    def mul(self, other):
+        if isinstance(self._store, np.ndarray) and isinstance(other, np.ndarray):
+            return self._store * other
+        if isinstance(self._store, np.ndarray):
+            m1 = self._engine.num2Mng(self._store)
+        else:
+            m1 = self._engine.load(self._store)
+        if isinstance(other, np.ndarray):
+            m2 = self._engine.num2Mng(other)
+        else:
+            m2 = self._engine.load(other)
+        return PaillierTensor(self._engine.vdot(m1, m2))
+
+
 class RollPaillierTensor(Tensor):
     def __init__(self, store, engine_type='cpu'):
         self._store = store
@@ -178,7 +278,6 @@ class RollPaillierTensor(Tensor):
         if isinstance(other, NumpyTensor):
             return self.add_local(other._ndarray)
         if isinstance(other, RollPaillierTensor):
-            print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
             return self.add(other)
 
     def __sub__(self, other):
@@ -193,6 +292,8 @@ class RollPaillierTensor(Tensor):
             return self.scalar_mul(other)
         if isinstance(other, RollPaillierTensor):
             return self.mul(other)
+        if isinstance(other, NumpyTensor):
+            return self.mul_local(other._ndarray)
 
     def __truediv__(self, other):
         if isinstance(other, int) or isinstance(other, float):
@@ -203,6 +304,7 @@ class RollPaillierTensor(Tensor):
 
     def __matmul__(self, other):
         if isinstance(other, NumpyTensor):
+            print("LLLLLLLLLLLLLLLLLLLLLLLL")
             return self.matmul_local(other._ndarray)
 
         if isinstance(other, RollPaillierTensor):
@@ -223,6 +325,22 @@ class RollPaillierTensor(Tensor):
             else:
                 m2 = _engine.load(vec2)
             return _engine.dump(_engine.add(m1, m2))
+        return RollPaillierTensor(self._store.map_values(lambda v: functor(v, other)))
+
+    def mul_local(self, other):
+        _engine = self._engine
+        def functor(vec1, vec2):
+            if isinstance(vec1, np.ndarray) and isinstance(vec2, np.ndarray):
+                return vec1 * vec2
+            if isinstance(vec1, np.ndarray):
+                m1 = _engine.num2Mng(vec1)
+            else:
+                m1 = _engine.load(vec1)
+            if isinstance(vec2, np.ndarray):
+                m2 = _engine.num2Mng(vec2)
+            else:
+                m2 = _engine.load(vec2)
+            return _engine.dump(_engine.vdot(m1, m2))
         return RollPaillierTensor(self._store.map_values(lambda v: functor(v, other)))
 
     def matmul_local(self, vec):
@@ -257,6 +375,21 @@ class RollPaillierTensor(Tensor):
                 return _engine.dump(mean)
 
         return RollPaillierTensor(self._store.map_values(lambda mat: functor(mat)))
+
+    def T(self):
+        _engine = self._engine
+        def functor(mat):
+            if isinstance(mat, np.ndarray):
+                return mat.T
+            else:
+                pln = _engine.load(mat)
+                trans = _engine.transe(pln)
+                return _engine.dump(trans)
+        return RollPaillierTensor(self._store.map_values(lambda mat: functor(mat)))
+
+    def get(self):
+        _engine = self._engine
+        return list(self._store.get_all())
 
     def split(self, num, ax):
         _engine = self._engine
@@ -298,26 +431,36 @@ class RollPaillierTensor(Tensor):
             if isinstance(vec1, np.ndarray) and isinstance(vec2, np.ndarray):
                 return vec1 * vec2
             if isinstance(vec1, np.ndarray):
-                print("AAAAAAAAAAAAA")
                 m1 = _engine.num2Mng(vec1)
             else:
-                print("CCCCCCCCCCCCC")
                 m1 = _engine.load(vec1)
             if isinstance(vec2, np.ndarray):
-                print("BBBBBBBBBBBBBBBBBB")
                 m2 = _engine.num2Mng(vec2)
             else:
-                print("DDDDDDDDDDDDDDDDDDD")
                 m2 = _engine.load(vec2)
-            print("KKKKKKKKKKKKKKKK")
             return _engine.dump(_engine.vdot(m1, m2))
         return RollPaillierTensor(self._store.join(other._store, lambda mat1, mat2: functor(mat1, mat2)))
 
     def matmul(self, other):
         _engine = self._engine
         def seq_op(mat1, mat2):
-            m1 = _engine.load(mat1)
-            m2 = _engine.load(mat2)
+            if isinstance(mat1, np.ndarray) and isinstance(mat2, np.ndarray):
+                print("HHHHHHHHHHHHHHHHHHHHHHHHH")
+                print("1111", mat1)
+                print("2222", mat2)
+                return mat1.dot(mat2)
+            if isinstance(mat1, np.ndarray):
+                print("CCCCCCCCCC1111111111")
+                m1 = _engine.num2Mng_test(mat1)
+            else:
+                print("CCCCCCCCCC1222222222222")
+                m1 = _engine.load(mat1)
+            if isinstance(mat2, np.ndarray):
+                print("DDDDDDDDDDDD11111111111")
+                m2 = _engine.num2Mng_test(mat2)
+            else:
+                print("DDDDDDDDDDDD2222222222")
+                m2 = _engine.load(mat2)
             return _engine.dump(_engine.matmul(m1, m2))
         return RollPaillierTensor(self._store.join(other._store, lambda mat1, mat2 : seq_op(mat1, mat2)))
 
@@ -369,6 +512,8 @@ class RollPaillierTensor(Tensor):
             if isinstance(mat, np.ndarray):
                 print(str)
                 print("[out] [numpy] : ", mat)
+                #a = _engine.num2Mng_test(mat)
+
                 return b'100'
             else:
                 m = _engine.load(mat)
@@ -376,3 +521,7 @@ class RollPaillierTensor(Tensor):
                 mac = _engine.out(m)
                 return b'100'
         return RollPaillierTensor(self._store.map_values(lambda v: seq_op(v, str)))
+
+
+    def out2(self, str = "[CHAN ZHEN NAN]"):
+       return self._store.reduce(lambda x, y : x[0][0] + y[0][0])
