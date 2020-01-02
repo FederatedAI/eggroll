@@ -17,7 +17,7 @@ import roll_paillier_tensor as rpt_engine
 from eggroll.roll_pair.roll_pair import RollPairContext
 from eggroll.utils import log_utils
 
-LOGGER = log_utils.get_logger()
+L = log_utils.get_logger()
 class RptBaseEngine:
     def load(self, x):
         raise NotImplementedError("todo")
@@ -197,7 +197,7 @@ class RollPaillierTensor(object):
         _engine = self._engine
         def seq_op(mat1, mat2):
 
-            LOGGER.info("python mat_mul_r_eql here")
+            L.info("python mat_mul_r_eql here")
             mat1_enc = _engine.load(mat1)
             mat2_pln = _engine.load(mat2)
             # #mat2_pln = _engine.decrypt(mat2_enc)

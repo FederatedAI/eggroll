@@ -26,13 +26,13 @@ from eggroll.roll_pair.roll_pair import RollPair
 from eggroll.utils import file_utils
 from eggroll.utils.log_utils import get_logger
 
+L = get_logger()
+
 _serdes = eggroll_serdes.PickleSerdes
 
 
 class RollSiteContext:
     def __init__(self, job_id, options, rp_ctx):
-        global LOGGER
-        LOGGER = get_logger()
         self.job_id = job_id
         self.rp_ctx = rp_ctx
 
@@ -197,7 +197,7 @@ class RollSite:
                 print("RollPair type name:", name)
                 rp = self.ctx.rp_ctx.load(namespace, name)
                 rp.put(_tagged_key, obj)
-                LOGGER.debug("[REMOTE] Sending {}".format(_tagged_key))
+                L.debug("[REMOTE] Sending {}".format(_tagged_key))
 
             def map_values():
                 is_standalone = self.ctx.rp_ctx.get_session().get_option(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE) == "standalone"

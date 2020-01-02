@@ -20,9 +20,10 @@ from pickle import loads as p_loads
 
 from eggroll.core.constants import SerdesTypes
 from eggroll.core.serdes import cloudpickle
-from eggroll.utils import log_utils
+from eggroll.utils.log_utils import get_logger
 
-LOGGER = log_utils.get_logger()
+L = get_logger()
+
 
 class ABCSerdes:
     __metaclass__ = ABCMeta
@@ -115,7 +116,7 @@ serdes_cache[SerdesTypes.EMPTY] = EmptySerdes
 def is_in_blacklist(_bytes):
     for item in deserialize_blacklist:
         if _bytes.find(item) != -1:
-            LOGGER.warn(f'blacklist found: {item}')
+            L.warn(f'blacklist found: {item}')
             return item
     return None
 

@@ -65,7 +65,7 @@ class LoggerFactory(object):
         if not LoggerFactory.LOG_DIR:
             return logging.StreamHandler()
         formatter = logging.Formatter(
-                '[%(levelname)-5s][%(asctime)s.%(msecs)03d][%(threadName)s,pid:%(process)d,tid:%(thread)d][%(filename)s:%(lineno)s.%(funcName)s] - %(message)s', datefmt='%Y%m%d %H%M%S')
+                '[%(levelname)-5s][%(asctime)s.%(msecs)03d][%(threadName)s,pid:%(process)d,tid:%(thread)d][%(filename)s:%(lineno)s.%(funcName)s] - %(message)s')
         log_file = os.path.join(LoggerFactory.LOG_DIR, "{}.log".format(name))
         handler = TimedRotatingFileHandler(log_file,
                                            when='H',
