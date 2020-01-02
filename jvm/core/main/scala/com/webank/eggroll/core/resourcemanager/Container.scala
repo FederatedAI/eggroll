@@ -77,12 +77,12 @@ class Container(conf: RuntimeErConf, moduleName: String, processorId: Long = 0) 
     new Thread(() => {
       val processorBuilder = new ProcessBuilder(bootStrapShell, bootStrapShellArgs, cmd)
       val builderEnv = processorBuilder.environment()
-      val logPath = new File(s"${logsDir}${File.separator}${sessionId}${File.separator}bootstrap")
+      val logPath = new File(s"${logsDir}${File.separator}${sessionId}${File.separator}")
       if(!logPath.exists()){
         logPath.mkdirs()
       }
-      processorBuilder.redirectOutput(new File(logPath, s"${moduleName}-${processorId}.OUT"))
-      processorBuilder.redirectError(new File(logPath, s"${moduleName}-${processorId}.ERR"))
+      processorBuilder.redirectOutput(new File(logPath, s"bootstrap-${moduleName}-${processorId}.OUT"))
+      processorBuilder.redirectError(new File(logPath, s"bootstrap-${moduleName}-${processorId}.ERR"))
       val process = processorBuilder.start()
       process.waitFor()
     })
