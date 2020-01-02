@@ -217,14 +217,6 @@ class RollPair(object):
     def set_gc_disable(self):
         self.gc_enable = False
 
-    def __get_unary_input_adapter(self, options={}):
-        input_adapter = None
-        if self.ctx.default_store_type == StoreTypes.ROLLPAIR_LMDB:
-            input_adapter = LmdbSortedKvAdapter(options)
-        elif self.ctx.default_store_type == StoreTypes.ROLLPAIR_LEVELDB:
-            input_adapter = RocksdbSortedKvAdapter(options)
-        return input_adapter
-
     def get_store_serdes(self):
         serdes_type = self.__store._store_locator._serdes
         LOGGER.info(f'serdes type: {serdes_type}')
