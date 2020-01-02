@@ -304,25 +304,37 @@ class TestStandalone(unittest.TestCase):
 
     def test_subtract_by_key(self):
         options = get_default_options()
-        left_rp = self.ctx.load("namespace1206", "testSubtractByKeyLeft1206", options=options).put_all(range(10), options=options)
-        right_rp = self.ctx.load("namespace1206", "testSubtractByKeyRight1206", options=options).put_all(range(5), options=options)
+        options['total_partitions'] = 3
+        left_rp = self.ctx.load("namespace2020", "testSubtractByKeyLeft2020", options=options).put_all(range(10), options=options)
+        right_rp = self.ctx.load("namespace2020", "testSubtractByKeyRight2020", options=options).put_all(range(5), options=options)
         print(list(left_rp.subtract_by_key(right_rp).get_all()))
+        left_rp.destroy()
+        right_rp.destroy()
 
     def test_union(self):
         options = get_default_options()
         left_rp = self.ctx.load("ns1", "testUnionLeft", options=options).put_all([1, 2, 3], options=options)
 
         options['include_key'] = True
+        options['total_partitions'] = 3
         right_rp = self.ctx.load("ns1", "testUnionRight", options=options).put_all([(1, 1), (2, 2), (3, 3)])
         print(list(left_rp.union(right_rp, lambda v1, v2: v1 + v2).get_all()))
+        left_rp.destroy()
+        right_rp.destroy()
 
         options = get_default_options()
-        left_rp = self.ctx.load("namespace1206", "testUnionLeft1206", options=options).put_all([1, 2, 3], options=options)
+
+        options['total_partitions'] = 3
+        left_rp = self.ctx.load("namespace20200102", "testUnionLeft2020", options=options).put_all([1, 2, 3], options=options)
+        print("left:", left_rp)
         options['include_key'] = True
-        right_rp = self.ctx.load("namespace1206", "testUnionRight1206", options=options).put_all([(1, 1), (2, 2), (3, 3)], options=options)
+        right_rp = self.ctx.load("namespace20200102", "testUnionRight2020", options=options).put_all([(1, 1), (2, 2), (3, 3)], options=options)
+        print("right:", right_rp)
         print("left:", list(left_rp.get_all()))
         print("right:", list(right_rp.get_all()))
         print(list(left_rp.union(right_rp, lambda v1, v2: v1 + v2).get_all()))
+        left_rp.destroy()
+        right_rp.destroy()
 
     def test_aggregate(self):
         from operator import add, mul
