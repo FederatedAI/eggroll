@@ -19,58 +19,85 @@ import os
 import pickle
 import grpc
 
-from eggroll.core.io.kv_adapter import SortedKvWriteBatch
-from eggroll.core.io.kv_adapter import SortedKvIterator
-from eggroll.core.io.kv_adapter import SortedKvAdapter
+from eggroll.core.pair_store.adapter import PairWriteBatch, PairIterator, PairAdapter
 
 from eggroll.core.proto import meta_pb2
 from eggroll.core.utils import _elements_to_proto
 
-from eggroll.core.io.format import BinBatchWriter
 from eggroll.core.proto import proxy_pb2, proxy_pb2_grpc
+from eggroll.core.pair_store.format import PairBinWriter, ArrayByteBuffer
+from eggroll.core.serdes import eggroll_serdes
 
-class RollSiteWriteBatch(SortedKvWriteBatch):
+_serdes = eggroll_serdes.PickleSerdes
+OBJECT_STORAGE_NAME = "__federation__"
+
+class RollsiteWriteBatch(PairWriteBatch):
     def __init__(self, adapter):
         self.adapter = adapter
-        self.cache = []
-        self.name = adapter._name
-        self.tag = adapter._tag
-        self.__bin_packet_len = 1 << 20
-        self.buffer = bytearray(self.__bin_packet_len)
-        self.writer = BinBatchWriter({'buffer': self.buffer})
-        self.cur_offset = self.writer.get_offset
-        self.total_written = 0
-        self.dst_host = adapter._dst_host
-        self.dst_port = adapter._dst_port
+        self.name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([adapter.job_id, adapter.name, adapter.tag,
+                                                                  adapter.src_role, adapter.src_party_id,
+                                                                  adapter.dst_role, adapter.dst_party_id]))
+        self.namespace = adapter.namespace
+        self.src_role = adapter.src_role
+        self.src_party_id = adapter.src_party_id
+        self.dst_role = adapter.dst_role
+        self.dst_party_id = adapter.dst_party_id
+        self.obj_type = adapter.obj_type
+        self.tagged_key = ''
 
-    def generate_message(self, obj, metadata):
-        data = proxy_pb2.Data(key="hello", value=obj)
-        metadata.seq += 1
-        packet = proxy_pb2.Packet(header=metadata, body=data)
-        yield packet
-
-    def push(self, obj, name: str):
-        args = name.split("-", 9)
-        print(args)
-        tag = args[2]
-        src_role = args[3]
-        src_party_id = args[4]
-        dst_role = args[5]
-        dst_party_id = args[6]
-        host = args[7]
-        port = int(args[8])
-
+        host = adapter._dst_host
+        port = adapter._dst_port
         channel = grpc.insecure_channel(
             target="{}:{}".format(host, port),
             options=[('grpc.max_send_message_length', -1), ('grpc.max_receive_message_length', -1)])
-        stub = proxy_pb2_grpc.DataTransferServiceStub(channel)
+        self.stub = proxy_pb2_grpc.DataTransferServiceStub(channel)
 
-        task_info = proxy_pb2.Task(taskId="testTaskId", model=proxy_pb2.Model(name=name, dataKey="testKey"))
-        topic_src = proxy_pb2.Topic(name=name, partyId="{}".format(src_party_id),
-                                    role=src_role, callback=None)
-        topic_dst = proxy_pb2.Topic(name=name, partyId="{}".format(dst_party_id),
-                                    role=dst_role, callback=None)
+        self.__bin_packet_len = 1 << 20
+        self.total_written = 0
+
+        self.ba = bytearray(self.__bin_packet_len)
+        self.buffer = ArrayByteBuffer(self.ba)
+        self.writer = PairBinWriter(pair_buffer=self.buffer)
+
+    def generate_message(self, obj, metadata):
+        while True:
+            data = proxy_pb2.Data(value=obj)
+            metadata.seq += 1
+            packet = proxy_pb2.Packet(header=metadata, body=data)
+            yield packet
+            break
+
+    def push(self, obj):
+        task_info = proxy_pb2.Task(taskId=self.name, model=proxy_pb2.Model(name=self.name, dataKey=self.namespace))
+        topic_src = proxy_pb2.Topic(name=self.name, partyId="{}".format(self.src_party_id),
+                                    role=self.src_role, callback=None)
+        topic_dst = proxy_pb2.Topic(name=self.name, partyId="{}".format(self.dst_party_id),
+                                    role=self.dst_role, callback=None)
         command_test = proxy_pb2.Command()
+        conf_test = proxy_pb2.Conf(overallTimeout=20000,
+                                   completionWaitTimeout=20000,
+                                   packetIntervalTimeout=20000,
+                                   maxRetries=10)
+
+        metadata = proxy_pb2.Metadata(task=task_info,
+                                      src=topic_src,
+                                      dst=topic_dst,
+                                      command=command_test,
+                                      seq=0, ack=0,
+                                      conf=conf_test)
+        self.stub.push(self.generate_message(obj, metadata))
+
+    def write(self, bin_data):
+        self.push(bin_data)
+
+    def send_end(self):
+        print("send_end tagged_key:", self.tagged_key)
+        task_info = proxy_pb2.Task(taskId=self.name, model=proxy_pb2.Model(name=self.obj_type, dataKey=self.tagged_key))
+        topic_src = proxy_pb2.Topic(name="set_status", partyId="{}".format(self.src_party_id),
+                                    role=self.src_role, callback=None)
+        topic_dst = proxy_pb2.Topic(name="set_status", partyId=self.dst_party_id,
+                                    role=self.dst_role, callback=None)
+        command_test = proxy_pb2.Command(name="set_status")
         conf_test = proxy_pb2.Conf(overallTimeout=2000,
                                    completionWaitTimeout=2000,
                                    packetIntervalTimeout=2000,
@@ -80,47 +107,43 @@ class RollSiteWriteBatch(SortedKvWriteBatch):
                                       src=topic_src,
                                       dst=topic_dst,
                                       command=command_test,
+                                      operator="markEnd",
                                       seq=0, ack=0,
                                       conf=conf_test)
 
-        stub.push(self.generate_message(obj, metadata))
-    # TODO:0: ???
-    def write(self, bin_data):
-        print(bin_data)
-        print(self.name)
-        self.push(bin_data, self.name)
+        packet = proxy_pb2.Packet(header=metadata)
+
+        self.stub.unaryCall(packet)
 
     def close(self):
-        # write last
-        writer = self.writer
-        self.cur_offset = writer.get_offset()
-        bin_data = writer.get_batch(end=self.cur_offset)
-        self.write(bin_data)
+        bin_batch = bytes(self.ba[0:self.buffer.get_offset()])
+        print("bin_batch:", bin_batch)
+        self.write(bin_batch)
+        self.send_end()
+
 
     def put(self, k, v):
-        writer = self.writer
+        print("self.type:", self.obj_type)
+        print("type:", type(self.obj_type))
+        print("k:", k)
+        if self.obj_type == 'object':
+            print("set tagged_key:", k)
+            self.tagged_key = _serdes.deserialize(k)
+
         try:
-            writer.write_bytes(k, include_size=True)
-            writer.write_bytes(v, include_size=True)
-            self.total_written += 1
-            if self.tag == '1-0':
-                print(f'{self.tag} written {k_bytes}, total_written {self.total_written}, is closable {broker.is_closable()}')
+            self.writer.write(k, v)
         except IndexError as e:
-            print('caught index error')
-            bin_data = writer.get_batch(end=self.cur_offset)
-
-            self.write(bin_data)
-
-            self.writer = BinBatchWriter({'buffer': self.buffer})
-            writer = self.writer
-            writer.write_bytes(k, include_size=True)
-            writer.write_bytes(v, include_size=True)
+            bin_batch = bytes(self.ba[0:self.buffer.get_offset()])
+            self.write(bin_batch)
+            self.ba = bytearray(self.__bin_packet_len)
+            self.buffer = ArrayByteBuffer(self.ba)
+            self.writer = PairBinWriter(pair_buffer=self.buffer)
+            self.writer.write(k, v)
         except:
             print("Unexpected error:", sys.exc_info()[0])
             raise
 
-
-class RollsiteIterator(SortedKvIterator):
+class RollsiteIterator(PairIterator):
     def __init__(self, adapter):
         self.adapter = adapter
         self.it = adapter.db.iteritems()
@@ -152,31 +175,35 @@ class RollsiteIterator(SortedKvIterator):
     def __iter__(self):
         return self.it
 
-class RollsiteAdapter(SortedKvAdapter):
-    def get_stream_meta(self):
-        return ('store_type', self.options["store_type"]), \
-               ('table_name', self.options["name"]), \
-               ('name_space', self.options["namespace"]), \
-               ('fragment', self.options["fragment"])
 
+class RollsiteAdapter(PairAdapter):
     def __init__(self, options):
         super().__init__(options)
-        self.options = options
+        name = options["path"].split("/")[-2]
+        print("self._name:", name)
+        self.namespace = options["path"].split("/")[-3]
+        args = name.split("-", 11)  #args[8]='9394/0'
+        print(args)
 
-        self._namespace = ''
-        self._name = options["name"]
-        print(self._name)
-        self._tag = 'tag'
+        self.job_id = args[1]
+        self.name = args[2]
+        self.tag = args[3]
+        self.src_role = args[4]
+        self.src_party_id = args[5]
+        self.dst_role = args[6]
+        self.dst_party_id = args[7]
+        self._dst_host = args[8]
+        self._dst_port = int(args[9])
+        self.obj_type = args[10]          #obj or rollpair
+
         self._store_type = 'roll_site'
         self._path = ''
         self._partitioner = ''
         self._serdes = ''
         self._partitions = []
-        self._dst_host = 'localhost'
-        self._dst_port = '9394'
         self._store_locator = meta_pb2.StoreLocator(storeType=self._store_type,
-                                                    namespace=self._namespace,
-                                                    name=self._name,
+                                                    namespace=self.namespace,
+                                                    name=name,
                                                     path=self._path,
                                                     partitioner=self._partitioner,
                                                     serdes=self._serdes)
@@ -195,22 +222,16 @@ class RollsiteAdapter(SortedKvAdapter):
                               partitions=_elements_to_proto(self._partitions))
 
     def close(self):
-        #self.channel.close()
         pass
 
     def iteritems(self):
         return RollsiteIterator(self)
 
     def new_batch(self):
-        print("RollsiteWriteBatch")
-        return RollSiteWriteBatch(self)
+        return RollsiteWriteBatch(self)
 
     def get(self, key):
-        #item = self.kv_stub.get(kv_pb2.Operand(key=key))
-        #return item.value
         pass
 
     def put(self, key, value):
-        #item = kv_pb2.Operand(key=key, value=value)
-        #self.kv_stub.put(item)
         pass

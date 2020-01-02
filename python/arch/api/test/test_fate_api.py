@@ -119,3 +119,10 @@ class TestFateApi(unittest.TestCase):
     print("right:{}, partitions:{}".format(right_rp.get_all(), right_rp.get_partitions()))
     print(left_rp.union(right_rp, lambda v1, v2 : v1 + v2).get_all())
 
+  def test_remote(self):
+    table = session.table(name='remote_name', namespace='remote_namespace', partition=1)
+    table.put_all(range(12))
+    from arch.api import federation
+    federation.init(session.get_session_id(), runtime_conf=None)
+    federation.remote(table, name="roll_pair_name.table", tag="roll_pair_tag")
+

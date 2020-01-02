@@ -19,9 +19,9 @@
 package com.webank.eggroll.core.constant
 
 object StoreTypes {
-  val ROLLPAIR_LMDB = "rollpair.lmdb"
-  val ROLLPAIR_LEVELDB = "rollpair.leveldb"
-  val ROLLFRAME_FILE = "rollframe.file"
+  val ROLLPAIR_LMDB = "LMDB"
+  val ROLLPAIR_LEVELDB = "LEVELDB"
+  val ROLLFRAME_FILE = "ROLL_FRAME_FILE"
 }
 
 object PartitionerTypes {
@@ -54,7 +54,7 @@ object ProcessorTypes {
   val ROLL_PAILLIER_TENSOR = "roll_paillier_tensor"
   val ROLL_FRAME = "roll_frame"
 
-  val ROLL_PAIR_SERVICER = "roll_pair_servicer"
+  val ROLL_PAIR_MASTER = "roll_pair_master"
   val EGG_PAIR = "egg_pair"
 }
 
@@ -68,8 +68,10 @@ object ServerNodeStatus {
 }
 
 object ProcessorStatus {
+  val NEW = "NEW"
   val RUNNING = "RUNNING"
-  val TERMINATED = "TERMINATED"
+  val STOPPED = "STOPPED"
+  val KILLED = "KILLED"
   val ERROR = "ERROR"
 }
 

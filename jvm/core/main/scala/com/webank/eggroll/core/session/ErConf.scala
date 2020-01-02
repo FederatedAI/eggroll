@@ -20,7 +20,6 @@ package com.webank.eggroll.core.session
 
 import java.io.{BufferedInputStream, File, FileInputStream}
 import java.util.Properties
-import java.util.concurrent.ConcurrentHashMap
 
 import com.webank.eggroll.core.constant.{SessionConfKeys, StringConstants}
 import com.webank.eggroll.core.meta.ErSessionMeta
@@ -79,7 +78,7 @@ abstract class ErConf {
   def getModuleName(): String
 
   def addProperties(prop: Properties): ErConf = {
-    val cur = getConf()
+    val cur = this.conf
     prop.forEach((k, v) => cur.put(k, v))
     this
   }
@@ -97,7 +96,7 @@ abstract class ErConf {
   }
 
   def addProperty(key: String, value: String): ErConf = {
-    getConf().setProperty(key, value)
+    this.conf.setProperty(key, value)
     this
   }
 
@@ -111,15 +110,15 @@ abstract class ErConf {
     }
   }
 
-  def getAllAsMap: java.util.Map[String, String] = {
-    val result = new ConcurrentHashMap[String, String]()
+  def getAll: Map[String, String] = {
+    val result = mutable.Map[String, String]()
     val props = getConf()
 
     props.forEach((k, v) => {
       result.put(k.toString, v.toString)
     })
 
-    result
+    result.toMap
   }
 
   protected def getConf(): Properties = {
@@ -129,10 +128,10 @@ abstract class ErConf {
 
 case class RuntimeErConf(prop: Properties = new Properties()) extends ErConf {
 
+  // TODO:0: decouple with session meta. use conf / map instead
   def this(sessionMeta: ErSessionMeta) {
     this(new Properties())
-    // TODO:0: cannot modify session directly
-//    sessionMeta.options.foreach((k, v) => conf.put(k, v))
+    sessionMeta.options.foreach(t => conf.put(t._1, t._2))
     conf.put(SessionConfKeys.CONFKEY_SESSION_ID, sessionMeta.id)
     conf.put(SessionConfKeys.CONFKEY_SESSION_NAME, sessionMeta.name)
   }
@@ -143,6 +142,7 @@ case class RuntimeErConf(prop: Properties = new Properties()) extends ErConf {
   }
 
   override protected val conf = new Properties(super.getConf())
+  StaticErConf.getAll.foreach(t => conf.put(t._1, t._2))
   prop.forEach((k, v) => conf.put(k, v))
 
   override def getPort(): Int = StaticErConf.getPort()

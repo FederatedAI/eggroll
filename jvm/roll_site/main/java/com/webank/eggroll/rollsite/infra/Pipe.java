@@ -48,4 +48,12 @@ public interface Pipe {
     void setStatus(boolean status);
 
     boolean getStatus();
+
+    void setType(String type);
+
+    String getType();
+
+    void setTagKey(String type);
+
+    String getTagKey();
 }

@@ -11,151 +11,136 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-import argparse
-import signal
-import threading, os
-import time
-from sys import platform
+import os
 
-from eggroll.core.meta_model import ErServerNode, ErServerCluster, ErProcessor, ErProcessorBatch, ErSessionMeta, \
-    ErEndpoint
-from eggroll.core.client import ClusterManagerClient, NodeManagerClient
+from eggroll.core.client import ClusterManagerClient
+from eggroll.core.conf_keys import SessionConfKeys
+from eggroll.core.constants import SessionStatus, ProcessorTypes
+from eggroll.core.meta_model import ErSessionMeta, \
+    ErPartition
 from eggroll.core.utils import get_self_ip, time_now
-from eggroll.core.constants import SessionStatus, ProcessorStatus, ServerNodeTypes, RollTypes, ProcessorTypes
-from eggroll.core.conf_keys import ClusterManagerConfKeys, DeployConfKeys, SessionConfKeys
 
-from eggroll.core.conf_keys import ClusterManagerConfKeys, DeployConfKeys
-from eggroll.roll_pair.egg_pair import serve
 
 # TODO:1: support windows
-# TODO:0: remove
-if "EGGROLL_STANDALONE_DEBUG" not in os.environ:
-    os.environ['EGGROLL_STANDALONE_DEBUG'] = "1"
 
-class StandaloneThread(threading.Thread):
-    def __init__(self, session_id="sid1", manager_port=4670, egg_port=20001, egg_transfer_port=20002):
-        threading.Thread.__init__(self)
-        self.setDaemon(True)
-        self.eggroll_home = "."
-        if "EGGROLL_HOME" in os.environ:
-            self.eggroll_home = os.environ["EGGROLL_HOME"]
-        else:
-            self.eggroll_home = "./"
-        self.boot = self.eggroll_home + "/bin/eggroll_boot.sh"
-        print("aa", self.boot)
-        self.standalone = f"{self.eggroll_home}/bin/eggroll_boot_standalone.sh -p \
-                          {manager_port} -e {egg_port} -t {egg_transfer_port} -s {session_id}"
-        self.pname = str(session_id) + "-standalone"
-
-    def run(self):
-        print ("StandaloneThread start：" + self.name)
-        os.system(self.boot + " start '" + self.standalone + "' " + self.pname)
-        print ("StandaloneThread stop：" + self.name)
-
-    def stop(self):
-        os.system(self.boot + " stop '" + self.standalone + "' " + self.pname)
+def session_init(session_id, options={"eggroll.session.deploy.mode": "standalone"}):
+    er_session = ErSession(session_id=session_id, options=options)
+    return er_session
 
 
-class ErDeploy:
-    pass
+class ErSession(object):
+    def __init__(self,
+            session_id=f'er_session_py_{time_now()}_{get_self_ip()}',
+            name='',
+            tag='',
+            processors=list(),
+            options={}):
+        self.__session_id = session_id
+        self.__options = options.copy()
+        self.__options[SessionConfKeys.CONFKEY_SESSION_ID] = self.__session_id
+        self._cluster_manager_client = ClusterManagerClient(options=options)
+        self._table_recorder = None
 
+        if "EGGROLL_DEBUG" not in os.environ:
+            os.environ['EGGROLL_DEBUG'] = "0"
 
-class ErStandaloneDeploy(ErDeploy):
-    def __init__(self, session_meta: ErSessionMeta, options={}):
-        self.manager_port = options.get("eggroll.standalone.manager.port", 4670)
-        self.egg_ports = [int(v) for v in options.get("eggroll.standalone.egg.ports", "20001").split(",")]
-        self.egg_transfer_ports = [int(v) for v in options.get("eggroll.standalone.egg.transfer.ports", "20002").split(",")]
-        self._eggs = {0:[]}
-        if len(self.egg_ports) > 1:
-            raise NotImplementedError()
-        if not ("EGGROLL_STANDALONE_DEBUG" in os.environ and os.environ['EGGROLL_STANDALONE_DEBUG'] == "1"):
-            self.standalone_thread = StandaloneThread(session_meta._id, self.manager_port, self.egg_ports[0])
-            self.standalone_thread.start()
-            print("standalone_thread start", self.standalone_thread)
-            signal.signal(signal.SIGTERM, self.stop)
-            signal.signal(signal.SIGINT, self.stop)
-            # TODO:0: more general
-            time.sleep(5)
+        self.__eggroll_home = os.getenv('EGGROLL_HOME', None)
+        if not self.__eggroll_home:
+            raise EnvironmentError('EGGROLL_HOME is not set')
 
-        self._eggs[0].append(ErProcessor(id=0,
-                                         server_node_id=0,
-                                         processor_type=ProcessorTypes.EGG_PAIR,
-                                         status=ProcessorStatus.RUNNING,
-                                         command_endpoint=ErEndpoint("localhost", self.egg_ports[0]),
-                                         transfer_endpoint=ErEndpoint("localhost", self.egg_transfer_ports[0])))
+        self.__is_standalone = options.get(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE, "") == "standalone"
+        if self.__is_standalone and os.name != 'nt':
+            port = int(options.get('eggroll.resourcemanager.standalone.port', "4670"))
+            startup_command = f'bash {self.__eggroll_home}/bin/eggroll_boot_standalone.sh -p {port} -s {self.__session_id}'
+            import subprocess
+            import atexit
 
-        self._rolls = [ErProcessor(id=0,
-                                   server_node_id=0,
-                                   processor_type=ProcessorTypes.ROLL_PAIR_SERVICER,
-                                   status=ProcessorStatus.RUNNING,
-                                   command_endpoint=ErEndpoint("localhost", self.manager_port))]
+            bootstrap_log_dir = f'{self.__eggroll_home}/logs/standalone-manager/bootstrap/'
+            os.makedirs(bootstrap_log_dir, mode=0o755, exist_ok=True)
+            with open(f'{bootstrap_log_dir}/standalone-manager.OUT', 'a+') as outfile, \
+                    open(f'{bootstrap_log_dir}/standalone-manager.ERR', 'a+') as errfile:
+                print(f'start up command: {startup_command}')
+                manager_process = subprocess.run(startup_command.split(), stdout=outfile, stderr=errfile)
+                returncode = manager_process.returncode
+                print(f'start up returncode: {returncode}')
 
-        processorBatch = ErProcessorBatch(id=0, name='standalone', processors=[self._rolls[0]] + list(self._eggs[0]))
-        self.cm_client = ClusterManagerClient(options=options)
+            def shutdown_standalone_manager(port, session_id, log_dir):
+                shutdown_command = f"ps aux | grep eggroll | grep Bootstrap | grep '{port}' | grep '{session_id}' | grep -v grep | awk '{{print $2}}' | xargs kill"
+                print('shutdown command:', shutdown_command)
+                with open(f'{log_dir}/standalone-manager.OUT', 'a+') as outfile, open(f'{log_dir}/standalone-manager.ERR', 'a+') as errfile:
+                    manager_process = subprocess.check_output(shutdown_command, shell=True)
+                    print(manager_process)
 
-        self.cm_client.register_session(session_meta, processorBatch)
+            atexit.register(shutdown_standalone_manager, port, self.__session_id, bootstrap_log_dir)
 
-    def stop(self):
-        if self.standalone_thread:
-            self.standalone_thread.stop()
+        session_meta = ErSessionMeta(id=self.__session_id,
+                                     name=name,
+                                     status=SessionStatus.NEW,
+                                     tag=tag,
+                                     processors=processors,
+                                     options=options)
 
-class ErClusterDeploy(ErDeploy):
-    def __init__(self, session_meta: ErSessionMeta, options={}):
-        self.cm_client = ClusterManagerClient(options=options)
-        self.session_meta = session_meta
-        print(f'session_meta: {session_meta}')
-        processor_batch = self.cm_client.get_or_create_session(self.session_meta)
+        from time import monotonic, sleep
+        timeout = int(options.get("eggroll.session.create.timeout.ms", "5000")) / 1000
+        endtime = monotonic() + timeout
+
+        while True:
+            try:
+                if not processors:
+                    self.__session_meta = self._cluster_manager_client.get_or_create_session(session_meta)
+                else:
+                    self.__session_meta = self._cluster_manager_client.register_session(session_meta)
+                break
+            except:
+                if monotonic() < endtime:
+                    sleep(0.1)
+                else:
+                    raise
+
+        self.__cleanup_tasks = list()
+        self.__processors = self.__session_meta._processors
+
+        print('session init finished')
 
         self._rolls = list()
         self._eggs = dict()
-        for processor in processor_batch._processors:
+
+        for processor in self.__session_meta._processors:
             processor_type = processor._processor_type
             if processor_type == ProcessorTypes.EGG_PAIR:
-                node_id = processor._server_node_id
-                if node_id not in self._eggs.keys():
-                    self._eggs[node_id] = list()
-
-                node_eggs = self._eggs.get(node_id)
-                node_eggs.append(processor)
-            elif processor_type == ProcessorTypes.ROLL_PAIR_SERVICER:
+                server_node_id = processor._server_node_id
+                if server_node_id not in self._eggs:
+                    self._eggs[server_node_id] = list()
+                self._eggs[server_node_id].append(processor)
+            elif processor_type == ProcessorTypes.ROLL_PAIR_MASTER:
                 self._rolls.append(processor)
             else:
-                raise ValueError(f'processor type {processor_type} is unknown')
+                raise ValueError(f"processor type {processor_type} not supported in roll pair")
 
-class ErSession(object):
-    def __init__(self, session_id=None, name='', tag='', options={}):
-        if session_id:
-            self.__session_id = session_id
-        else:
-            self.__session_id = f'er_session_{time_now()}_{get_self_ip()}'
-        self.__name = ''
-        self.__options = options.copy()
-        self.__options[SessionConfKeys.CONFKEY_SESSION_ID] = self.__session_id
-        self.__status = SessionStatus.NEW
-        self.__tag = tag
-        self.session_meta = ErSessionMeta(id=self.__session_id,
-                                          name=self.__name,
-                                          status=self.__status,
-                                          options=self.__options,
-                                          tag=self.__tag)
-        if self.get_option(DeployConfKeys.CONFKEY_DEPLOY_MODE) == "standalone":
-            self.deploy_client = ErStandaloneDeploy(self.session_meta, options=options)
-        else:
-            self.deploy_client = ErClusterDeploy(self.session_meta, options=options)
-        self._rolls = self.deploy_client._rolls
-        self._eggs = self.deploy_client._eggs
-        #print(f'eggs: {self._eggs}, rolls: {self._rolls}')
+    def route_to_egg(self, partition: ErPartition):
+        target_server_node = partition._processor._server_node_id
+        target_egg_processors = len(self._eggs[target_server_node])
+        target_processor = (partition._id // target_egg_processors) % target_egg_processors
 
-        self.cm_client = self.deploy_client.cm_client
-        self.__cleanup_tasks = []
+        return self._eggs[target_server_node][target_processor]
 
-        print('session init finished')
+    def stop(self):
+        return self._cluster_manager_client.stop_session(self.__session_meta)
+
+    def set_table_recorder(self, roll_pair_contex):
+        self._table_recorder = roll_pair_contex.load(name='__gc__' + self.__session_id, namespace=self.__session_id)
+
+    def get_table_recorder(self):
+        return self._table_recorder
 
     def get_session_id(self):
         return self.__session_id
 
+    def get_session_meta(self):
+        return self.__session_meta
+
     def add_cleanup_task(self, func):
-        self.__cleanup_tasks.add(func)
+        self.__cleanup_tasks.append(func)
 
     def run_cleanup_tasks(self):
         for func in self.__cleanup_tasks:
@@ -169,11 +154,3 @@ class ErSession(object):
 
     def get_all_options(self):
         return self.__options.copy()
-
-
-
-
-
-
-
-

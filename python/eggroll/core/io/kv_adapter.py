@@ -14,9 +14,10 @@
 
 import os
 import threading
+
 from eggroll.utils import log_utils
-log_utils.setDirectory()
-LOGGER = log_utils.getLogger()
+
+LOGGER = log_utils.get_logger()
 
 try:
   import rocksdb

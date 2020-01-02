@@ -20,10 +20,10 @@ package com.webank.eggroll.core.nodemanager
 
 import com.webank.eggroll.core.client.NodeManagerClient
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
-import com.webank.eggroll.core.constant.{DeployConfKeys, NodeManagerCommands, SessionConfKeys}
+import com.webank.eggroll.core.constant.NodeManagerCommands
 import com.webank.eggroll.core.meta.{ErProcessor, ErProcessorBatch, ErSessionMeta}
-import com.webank.eggroll.core.session.{RuntimeErConf, StaticErConf}
-import com.webank.eggroll.core.transfer.TransferService
+import com.webank.eggroll.core.resourcemanager.NodeManagerService
+import com.webank.eggroll.core.session.StaticErConf
 import io.grpc.Server
 import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
 import org.junit.{Before, Test}
@@ -36,20 +36,20 @@ class TestNodeManager {
     CommandRouter.register(serviceName = NodeManagerCommands.getOrCreateEggsServiceName,
       serviceParamTypes = Array(classOf[ErSessionMeta]),
       serviceResultTypes = Array(classOf[ErProcessorBatch]),
-      routeToClass = classOf[NodeManager],
+      routeToClass = classOf[NodeManagerService],
       routeToMethodName = NodeManagerCommands.getOrCreateEggs)
 
     CommandRouter.register(serviceName = NodeManagerCommands.getOrCreateRollsServiceName,
       serviceParamTypes = Array(classOf[ErSessionMeta]),
       serviceResultTypes = Array(classOf[ErProcessorBatch]),
-      routeToClass = classOf[NodeManager],
+      routeToClass = classOf[NodeManagerService],
       routeToMethodName = NodeManagerCommands.getOrCreateRolls)
 
-    CommandRouter.register(serviceName = NodeManagerCommands.heartbeatServiceName,
+    CommandRouter.register(serviceName = NodeManagerCommands.heartbeat.uriString,
       serviceParamTypes = Array(classOf[ErProcessor]),
       serviceResultTypes = Array(classOf[ErProcessor]),
-      routeToClass = classOf[NodeManager],
-      routeToMethodName = NodeManagerCommands.heartbeat)
+      routeToClass = classOf[NodeManagerService],
+      routeToMethodName = NodeManagerCommands.heartbeat.getName())
 
     val port = 9394
     val clusterManager = NettyServerBuilder
@@ -68,33 +68,6 @@ class TestNodeManager {
   def startAsService(): Unit = {
     println("node manager started")
     Thread.sleep(10000000)
-  }
-
-  @Test
-  def testGetOrCreateServicer(): Unit = {
-    println("hello")
-
-    val result = RollManager.getOrCreate(sessionMeta)
-    println(result)
-  }
-
-  @Test
-  def testGetOrCreateServicerWithClient(): Unit = {
-    val result = nodeManagerClient.getOrCreateRolls(sessionMeta)
-
-    print(result)
-  }
-
-  @Test
-  def testGetOrCreateProcessorBatch(): Unit = {
-    val result = EggManager.getOrCreate(sessionMeta)
-    print(result)
-  }
-
-  @Test
-  def testGetOrCreateProcessorBatchWithClient(): Unit = {
-    val result = nodeManagerClient.getOrCreateEggs(sessionMeta)
-    print(result)
   }
 }
 

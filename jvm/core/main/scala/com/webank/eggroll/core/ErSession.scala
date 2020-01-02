@@ -19,59 +19,62 @@
 package com.webank.eggroll.core
 
 import com.webank.eggroll.core.client.ClusterManagerClient
-import com.webank.eggroll.core.constant.{DeployConfKeys, ProcessorStatus, ProcessorTypes, SessionStatus}
-import com.webank.eggroll.core.meta.{ErEndpoint, ErPartition, ErProcessor, ErProcessorBatch, ErSessionDeployment, ErSessionMeta}
-import com.webank.eggroll.core.util.TimeUtils
+import com.webank.eggroll.core.constant.{ProcessorTypes, SessionStatus}
+import com.webank.eggroll.core.meta._
+import com.webank.eggroll.core.util.{RuntimeUtils, TimeUtils}
 
-import scala.collection.JavaConverters._
-import scala.util.Random
+import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 
 trait ErDeploy
 
-class ErStandaloneDeploy(sessionMeta: ErSessionMeta, options: Map[String, String] = Map()) extends ErDeploy {
-  private val managerPort = options.getOrElse("eggroll.standalone.manager.port", "4670").toInt
-  val rolls: List[ErProcessor] = List(ErProcessor(
-    id=0, serverNodeId = 0, processorType = ProcessorTypes.ROLL_PAIR_SERVICER,
-    status = ProcessorStatus.RUNNING, commandEndpoint = ErEndpoint("localhost", managerPort)))
-  private val eggPorts = options.getOrElse("eggroll.standalone.egg.ports", "20001").split(",").map(_.toInt)
-  private val eggTransferPorts = options.getOrElse("eggroll.standalone.egg.transfer.ports", "20002").split(",").map(_.toInt)
-  val eggs: Map[Int, List[ErProcessor]] = Map(0 ->
-    eggPorts.zip(eggTransferPorts).map(ports => ErProcessor(
-      id=0, serverNodeId = 0, processorType = ProcessorTypes.EGG_PAIR,
-      status = ProcessorStatus.RUNNING, commandEndpoint = ErEndpoint("localhost", ports._1), transferEndpoint = ErEndpoint("localhost", ports._2))
-    ).toList
-  )
-  val cmClient: ClusterManagerClient = new ClusterManagerClient("localhost", managerPort)
-  cmClient.registerSession(sessionMeta, ErProcessorBatch(processors = (rolls ++ eggs(0)).toArray))
-}
-class ErSession(val sessionId: String = s"er_session_${TimeUtils.getNowMs()}_${new Random().nextInt(9999)}",
-                name: String = "", tag: String = "", options: Map[String, String] = Map()) {
+class ErSession(val sessionId: String = s"er_session_jvm_${TimeUtils.getNowMs()}_${RuntimeUtils.siteLocalAddress}",
+                name: String = "",
+                tag: String = "",
+                createIfNotExists: Boolean = true,
+                var processors: Array[ErProcessor] = Array(),
+                options: Map[String, String] = Map()) {
 
-  var status = SessionStatus.NEW
-  private val sessionMeta = ErSessionMeta(id = sessionId, name=name, status = status,
-    options=options, tag=tag)
-  private val deployClient = if(options.getOrElse(DeployConfKeys.CONFKEY_DEPLOY_MODE, "standalone") == "standalone") {
-    new ErStandaloneDeploy(sessionMeta)
-  } else {
-    throw new NotImplementedError("doing")
-  }
-
-  val cmClient: ClusterManagerClient = deployClient.cmClient
-  private val serverNodes = cmClient.getSessionServerNodes(sessionMeta = sessionMeta)
-  private val rolls = cmClient.getSessionRolls(sessionMeta = sessionMeta)
-  private val eggs = cmClient.getSessionEggs(sessionMeta = sessionMeta)
-
-  val serverSessionDeployment = ErSessionDeployment(
+  private var status = SessionStatus.NEW
+  val clusterManagerClient = new ClusterManagerClient(options)
+  private var sessionMetaArg = ErSessionMeta(
     id = sessionId,
-    serverCluster = serverNodes,
-    rollProcessorBatch = rolls,
-    eggProcessorBatch = eggs)
+    name=name,
+    status = status,
+    tag=tag,
+    processors=processors,
+    options=options)
+  val sessionMeta: ErSessionMeta =
+    if (createIfNotExists) {
+      if (processors.isEmpty) clusterManagerClient.getOrCreateSession(sessionMetaArg)
+      else clusterManagerClient.registerSession(sessionMetaArg)
+    } else {
+      clusterManagerClient.getSession(sessionMetaArg)
+    }
+  processors = sessionMeta.processors
+  status = sessionMeta.status
+
+  private val rolls_buffer = ArrayBuffer[ErProcessor]()
+  private val eggs_buffer = mutable.Map[Long, ArrayBuffer[ErProcessor]]()
+  processors.foreach(p => {
+    val processorType = p.processorType
+    if (ProcessorTypes.EGG_PAIR.equals(processorType)) {
+      eggs_buffer.getOrElseUpdate(p.serverNodeId, ArrayBuffer[ErProcessor]()) += p
+    } else if (ProcessorTypes.ROLL_PAIR_MASTER.equals(processorType)) {
+      rolls_buffer += p
+    } else {
+      throw new IllegalArgumentException(s"processor type ${processorType} not supported in roll pair")
+    }
+  })
+
+  val rolls = rolls_buffer.toArray
+  val eggs : Map[Long, Array[ErProcessor]] = eggs_buffer.map(n => (n._1, n._2.toArray)).toMap
 
   def routeToEgg(partition: ErPartition): ErProcessor = {
     val serverNodeId = partition.processor.serverNodeId
-    val eggCountOnServerNode = serverSessionDeployment.eggs(serverNodeId).length
+    val eggCountOnServerNode = eggs(serverNodeId).length
     val eggIdx = partition.id / eggCountOnServerNode % eggCountOnServerNode
 
-    serverSessionDeployment.eggs(serverNodeId)(eggIdx)
+    eggs(serverNodeId)(eggIdx)
   }
 }
