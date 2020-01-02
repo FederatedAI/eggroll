@@ -220,5 +220,5 @@ class TransferClient(object):
                 t.start()
             return broker
         except Exception as e:
-            L.error(f'Error calling to {endpoint} in TransferClient.send')
+            L.error(f'Error calling to {endpoint} in TransferClient.recv')
             raise e
