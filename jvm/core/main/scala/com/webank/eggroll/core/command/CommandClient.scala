@@ -80,23 +80,22 @@ class CommandClient(defaultEndpoint:ErEndpoint = null, serdesType: String = Serd
   }
 
   def call[T](commandURI: CommandURI, args: Array[(Array[RpcMessage], ErEndpoint)])(implicit tag:ClassTag[T]): Array[T] = {
-    val errors = new DistributedRuntimeException
-
-    val futures: Array[CompletableFuture[T]] = args.map {
+    val futures = args.map {
       case (rpcMessages, endpoint) =>
-        CompletableFuture.supplyAsync(new CommandCallSupplier[T](endpoint = endpoint, isSecure = isSecure, commandURI = commandURI, rpcMessages: _*))
-          .whenComplete((result, exception) => {
-            if (exception != null) errors.append(exception) else result
-          })
+        val ch: ManagedChannel = Singletons.getNoCheck(classOf[GrpcChannelFactory]).getChannel(endpoint, isSecure)
+        val stub = CommandServiceGrpc.newFutureStub(ch)
+        val argBytes = rpcMessages.map(x => UnsafeByteOperations.unsafeWrap(SerdesUtils.rpcMessageToBytes(x, SerdesTypes.PROTOBUF)))
+
+        stub.call(
+          Command.CommandRequest.newBuilder
+            .setId(s"${sessionId}-command-${TimeUtils.getNowMs()}")
+            .setUri(commandURI.uri.toString)
+            .addAllArgs(argBytes.toList.asJava).build)
+
     }
 
-    CompletableFuture.allOf(futures: _*).join()
-
-    if (!errors.check()) {
-      errors.raise()
-    }
-
-    futures.map(f => f.get())
+    futures.map(f => SerdesUtils.rpcMessageFromBytes(f.get().getResults(0).toByteArray,
+      tag.runtimeClass, SerdesTypes.PROTOBUF).asInstanceOf[T])
   }
   @Deprecated
   def simpleSyncSend[T >: RpcMessage](input: RpcMessage,
