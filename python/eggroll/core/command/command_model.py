@@ -114,3 +114,6 @@ class CommandURI(object):
 
     def get_route(self):
         return self.get_query_value('route')
+
+    def __repr__(self):
+        return f'CommandURI(_uri={self._uri})'

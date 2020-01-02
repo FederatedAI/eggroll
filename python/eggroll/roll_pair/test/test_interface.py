@@ -55,7 +55,6 @@ class TestStandalone(unittest.TestCase):
     def test_parallelize(self):
         print(list(self.ctx.parallelize(range(15), options=get_default_options()).get_all()))
 
-
     def test_get(self):
         options = get_default_options()
         options['include_key'] = True
