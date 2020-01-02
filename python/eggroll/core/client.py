@@ -86,7 +86,7 @@ class CommandClient(object):
 class ClusterManagerClient(object):
 
     def __init__(self, options={}):
-        self.__endpoint = ErEndpoint(options.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST, 'localhost'),
+        self.__endpoint = ErEndpoint(options.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST, '127.0.0.1'),
                                      int(options.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, '4670')))
         if 'serdes_type' in options:
             self.__serdes_type = options['serdes_type']
