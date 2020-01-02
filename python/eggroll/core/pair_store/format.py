@@ -14,10 +14,8 @@
 #  limitations under the License.
 
 
-
-from typing import Iterator, Generator
-from struct import pack_into, unpack_from, unpack, pack
 import os
+from struct import pack_into, unpack_from, unpack, pack
 
 MAGIC_NUM = bytes.fromhex('46709394')
 PROTOCOL_VERSION = bytes.fromhex('00000001')
@@ -37,8 +35,7 @@ class ByteBuffer:
         return self.size() - self.get_offset()
 
     def _check_remaining(self, offset, size):
-        if self.size() - offset - size < 0:
-            raise IndexError(f'buffer overflow. remaining: {self.size() - offset}, required: {size}')
+        raise NotImplementedError()
 
     def size(self):
         raise NotImplementedError()
@@ -67,7 +64,7 @@ class FileByteBuffer:
         if not "b" in file.mode:
             raise ValueError("file is not binary mode:" + file.name)
         self.file = file
-        # TODO:0: cached?
+        # TODO:1: cached?
         self.__size = self.size()
 
     def remaining_size(self):
@@ -142,6 +139,10 @@ class ArrayByteBuffer(ByteBuffer):
         result = unpack_from('>i', self.__buffer, op_offset)
         self.__adjust_offset(op_offset, value_size)
         return result[0]
+
+    def _check_remaining(self, offset, size):
+        if self.__size - offset - size < 0:
+            raise IndexError(f'buffer overflow. remaining: {self.size() - offset}, required: {size}')
 
     def read_bytes(self, size, offset=None):
         op_offset = self.__get_op_offset(offset)

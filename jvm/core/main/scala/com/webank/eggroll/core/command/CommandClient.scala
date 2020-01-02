@@ -36,11 +36,11 @@ import com.webank.eggroll.core.grpc.observer.SameTypeFutureCallerResponseStreamO
 import com.webank.eggroll.core.meta.ErEndpoint
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.util.{Logging, SerdesUtils, TimeUtils}
-import io.grpc.{ManagedChannel, ManagedChannelBuilder}
 import io.grpc.stub.StreamObserver
+import io.grpc.{ManagedChannel, ManagedChannelBuilder}
 
 import scala.collection.JavaConverters._
-import scala.reflect.{ClassTag, classTag}
+import scala.reflect.ClassTag
 
 class CommandClient(defaultEndpoint:ErEndpoint = null, serdesType: String = SerdesTypes.PROTOBUF, isSecure:Boolean=false)
   extends Logging {
@@ -59,7 +59,8 @@ class CommandClient(defaultEndpoint:ErEndpoint = null, serdesType: String = Serd
   }
 
   val sessionId = StaticErConf.getString(SessionConfKeys.CONFKEY_SESSION_ID)
-  // TODO:0: confirm client won't exit bug of Singletons.getNoCheck(classOf[GrpcChannelFactory]).getChannel(endpoint, isSecure)
+  // TODO:1: confirm client won't exit bug of Singletons.getNoCheck(classOf[GrpcChannelFactory]).getChannel(endpoint, isSecure)
+  // TODO:0: add channel args
   private def buildChannel(endpoint: ErEndpoint): ManagedChannel = {
     val builder = ManagedChannelBuilder.forAddress(endpoint.host, endpoint.port)
     builder.usePlaintext()
@@ -79,23 +80,22 @@ class CommandClient(defaultEndpoint:ErEndpoint = null, serdesType: String = Serd
   }
 
   def call[T](commandURI: CommandURI, args: Array[(Array[RpcMessage], ErEndpoint)])(implicit tag:ClassTag[T]): Array[T] = {
-    val errors = new DistributedRuntimeException
-
-    val futures: Array[CompletableFuture[T]] = args.map {
+    val futures = args.map {
       case (rpcMessages, endpoint) =>
-        CompletableFuture.supplyAsync(new CommandCallSupplier[T](endpoint = endpoint, isSecure = isSecure, commandURI = commandURI, rpcMessages: _*))
-          .whenComplete((result, exception) => {
-            if (exception != null) errors.append(exception) else result
-          })
+        val ch: ManagedChannel = Singletons.getNoCheck(classOf[GrpcChannelFactory]).getChannel(endpoint, isSecure)
+        val stub = CommandServiceGrpc.newFutureStub(ch)
+        val argBytes = rpcMessages.map(x => UnsafeByteOperations.unsafeWrap(SerdesUtils.rpcMessageToBytes(x, SerdesTypes.PROTOBUF)))
+
+        stub.call(
+          Command.CommandRequest.newBuilder
+            .setId(s"${sessionId}-command-${TimeUtils.getNowMs()}")
+            .setUri(commandURI.uri.toString)
+            .addAllArgs(argBytes.toList.asJava).build)
+
     }
 
-    CompletableFuture.allOf(futures: _*).join()
-
-    if (!errors.check()) {
-      errors.raise()
-    }
-
-    futures.map(f => f.get())
+    futures.map(f => SerdesUtils.rpcMessageFromBytes(f.get().getResults(0).toByteArray,
+      tag.runtimeClass, SerdesTypes.PROTOBUF).asInstanceOf[T])
   }
   @Deprecated
   def simpleSyncSend[T >: RpcMessage](input: RpcMessage,
@@ -139,7 +139,6 @@ class CommandClient(defaultEndpoint:ErEndpoint = null, serdesType: String = Serd
     else
       null
   }
-  // TODO:0: confirm client won't exit bug of Singletons.getNoCheck(classOf[GrpcChannelFactory]).getChannel(endpoint, isSecure)
   class CommandCallSupplier[T](endpoint: ErEndpoint, isSecure: Boolean, commandURI: CommandURI, args: RpcMessage*)(implicit tag:ClassTag[T]) extends Supplier[T] {
     override def get(): T = {
       val ch: ManagedChannel = Singletons.getNoCheck(classOf[GrpcChannelFactory]).getChannel(endpoint, isSecure)

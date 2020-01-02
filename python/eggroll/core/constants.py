@@ -13,44 +13,59 @@
 #  limitations under the License.
 
 
-
 class SerdesTypes(object):
-  PROTOBUF = 'PROTOBUF'
-  PICKLE = 'PICKLE'
-  CLOUD_PICKLE = 'CLOUD_PICKLE'
-  EMPTY = 'EMPTY'
+    PROTOBUF = 'PROTOBUF'
+    PICKLE = 'PICKLE'
+    CLOUD_PICKLE = 'CLOUD_PICKLE'
+    EMPTY = 'EMPTY'
+
 
 class ServerNodeStatus(object):
-  HEALTHY = 'HEALTHY'
+    HEALTHY = 'HEALTHY'
+
 
 class ServerNodeTypes(object):
-  CLUSTER_MANAGER = 'CLUSTER_MANAGER'
-  NODE_MANAGER = 'NODE_MANAGER'
+    CLUSTER_MANAGER = 'CLUSTER_MANAGER'
+    NODE_MANAGER = 'NODE_MANAGER'
+
 
 class StoreTypes(object):
-  ROLLPAIR_LMDB = 'rollpair.lmdb'
-  ROLLPAIR_LEVELDB = 'rollpair.leveldb'
-  ROLLFRAME_FILE = 'rollframe.file'
-  ROLLPAIR_ROLLSITE = 'rollpair.rollsite'
+    ROLLPAIR_IN_MEMORY = 'IN_MEMORY'
+    ROLLPAIR_LMDB = 'LMDB'
+    ROLLPAIR_LEVELDB = 'LEVEL_DB'
+    ROLLFRAME_FILE = 'ROLL_FRAME_FILE'
+    ROLLPAIR_ROLLSITE = 'ROLL_SITE'
+    ROLLPAIR_FILE = 'ROLL_PAIR_FILE'
+    ROLLPAIR_MMAP = 'ROLL_PAIR_MMAP'
+    ROLLPAIR_CACHE = 'ROLL_PAIR_CACHE'
+
 
 class PartitionerTypes(object):
-  BYTESTRING_HASH = 'BYTESTRING_HASH'
+    BYTESTRING_HASH = 'BYTESTRING_HASH'
+
 
 class ProcessorTypes(object):
-  EGG_PAIR = 'egg_pair'
-  ROLL_PAIR_SERVICER = 'roll_pair_servicer'
+    EGG_PAIR = 'egg_pair'
+    ROLL_PAIR_MASTER = 'roll_pair_master'
+
 
 class RollTypes(object):
-  ROLL_PAIR = 'roll_pair'
+    ROLL_PAIR = 'roll_pair'
+
 
 class ProcessorStatus(object):
-  RUNNING = 'RUNNING'
+    NEW = 'NEW'
+    RUNNING = 'RUNNING'
+    STOPPED = 'STOPPED'
+    KILLED = 'KILLED'
+
 
 class SessionStatus(object):
-  NEW = 'NEW'
-  RUNNING = 'RUNNING'
-  TERMINATED = 'TERMINATED'
+    NEW = 'NEW'
+    RUNNING = 'RUNNING'
+    TERMINATED = 'TERMINATED'
 
-class DeployType(object):
-  STANDALONE = 'standalone'
-  CLUSTER = 'cluster'
+
+class DeployModes(object):
+    STANDALONE = 'standalone'
+    CLUSTER = 'cluster'

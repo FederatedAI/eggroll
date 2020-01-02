@@ -19,19 +19,16 @@
 package com.webank.eggroll.core.meta
 
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicInteger
 
 import com.google.protobuf.{ByteString, Message => PbMessage}
-import com.webank.eggroll.core.constant.{BindingStrategies, StringConstants}
-import com.webank.eggroll.core.datastructure.{RollContext, RpcMessage}
+import com.webank.eggroll.core.constant.StringConstants
+import com.webank.eggroll.core.datastructure.RpcMessage
 import com.webank.eggroll.core.meta.NetworkingModelPbMessageSerdes._
 import com.webank.eggroll.core.serdes.{BaseSerializable, PbMessageDeserializer, PbMessageSerializer}
 import com.webank.eggroll.core.util.TimeUtils
 import org.apache.commons.lang3.StringUtils
 
 import scala.collection.JavaConverters._
-import scala.collection.mutable
-import scala.collection.mutable.{ArrayBuffer, ListBuffer}
 
 trait MetaRpcMessage extends RpcMessage {
   override def rpcMessageType(): String = "Meta"
@@ -124,40 +121,9 @@ case class ErSessionMeta(id: String,
                          name: String = StringConstants.EMPTY,
                          status: String = StringConstants.EMPTY,
                          activeProcCount: Int = 0,
-                         options: Map[String, String] = Map(),
                          tag: String = StringConstants.EMPTY,
-                         processors: List[ErProcessor] = List(),
-                         deployment: ErSessionDeployment = null) extends MetaRpcMessage {
-}
-
-case class ErSessionDeployment(id: String,
-                               serverCluster: ErServerCluster,
-                               rolls: Array[ErProcessor],
-                               eggs: Map[Long, Array[ErProcessor]]) {
-  def toErProcessorBatch(): ErProcessorBatch = {
-    val processors = new ArrayBuffer[ErProcessor]()
-    processors ++= rolls
-    eggs.foreach(k => processors ++= k._2)
-
-    ErProcessorBatch(processors = processors.toArray, tag = id)
-  }
-}
-
-object ErSessionDeployment {
-  def apply(id: String,
-            serverCluster: ErServerCluster,
-            rollProcessorBatch: ErProcessorBatch,
-            eggProcessorBatch: ErProcessorBatch): ErSessionDeployment = {
-    val eggs = mutable.Map[Long, ArrayBuffer[ErProcessor]]()
-
-    eggProcessorBatch.processors.foreach(p => eggs.getOrElseUpdate(p.serverNodeId, ArrayBuffer[ErProcessor]()) += p)
-
-    ErSessionDeployment(
-      id = id,
-      serverCluster = serverCluster,
-      rolls = rollProcessorBatch.processors,
-      eggs = eggs.mapValues(_.toArray).toMap)
-  }
+                         processors: Array[ErProcessor] = Array(),
+                         options: Map[String, String] = Map()) extends MetaRpcMessage {
 }
 
 object MetaModelPbMessageSerdes {
@@ -286,9 +252,9 @@ object MetaModelPbMessageSerdes {
         .setId(src.id)
         .setName(src.name)
         .setStatus(src.status)
-        .putAllOptions(src.options.asJava)
-        .addAllProcessors(src.processors.map(_.toProto()).asJava)
         .setTag(src.tag)
+        .addAllProcessors(src.processors.toList.map(_.toProto()).asJava)
+        .putAllOptions(src.options.asJava)
 
       builder.build()
     }
@@ -393,9 +359,9 @@ object MetaModelPbMessageSerdes {
       ErSessionMeta(id = src.getId,
         name = src.getName,
         status = src.getStatus,
-        options = src.getOptionsMap.asScala.toMap,
-        processors = src.getProcessorsList.asScala.map(_.fromProto()).toList,
-        tag = src.getTag)
+        tag = src.getTag,
+        processors = src.getProcessorsList.asScala.map(_.fromProto()).toArray,
+        options = src.getOptionsMap.asScala.toMap)
     }
 
     override def fromBytes(bytes: Array[Byte]): ErSessionMeta = {

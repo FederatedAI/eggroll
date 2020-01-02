@@ -14,22 +14,22 @@
 #  limitations under the License.
 #
 
-from eggroll.core.io.rollsite_adapter import RollsiteAdapter
+from eggroll.core.pair_store.roll_site import RollsiteAdapter
 
 if __name__ == '__main__':
     a = range(10)
     input_iterator = enumerate(a)
                                                          
     #job_id, name, tag, src_role, src_party_id, dst_role, dst_party_id, dst_host, dst_port)
-    _tagged_key = 'atest-model_A-Hello-guest-10001-host-10002-localhost-9394'
+    _tagged_key = 'atest-model_A-Hello-guest-10001-host-10002-localhost-9394/0'
            
-    output_adapter = RollsiteAdapter(options={'name': _tagged_key})
+    output_adapter = RollsiteAdapter(options={'path': _tagged_key})
      
     output_writebatch = output_adapter.new_batch()
 
     for k, v in input_iterator:
         print("k:", k, "v:", v)
         output_writebatch.put(k.to_bytes(length=4, byteorder='big', signed=False), v.to_bytes(length=4, byteorder='big', signed=False))
-      
+
     output_writebatch.close()
     output_adapter.close()

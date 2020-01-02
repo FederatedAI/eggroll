@@ -29,50 +29,46 @@ import com.webank.eggroll.core.constant._
 import com.webank.eggroll.core.datastructure.{Broker, LinkedBlockingBroker}
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.transfer.GrpcTransferClient
-import com.webank.eggroll.core.util.Logging
-import com.webank.eggroll.rollpair.component.RollPairServicer
+import com.webank.eggroll.core.util.{IdUtils, Logging}
 
 import scala.collection.JavaConverters._
-class RollPairContext(val session: ErSession, defaultStoreType:String = StoreTypes.ROLLPAIR_LMDB) extends Logging {
+class RollPairContext(val session: ErSession,
+                      defaultStoreType: String = StoreTypes.ROLLPAIR_LMDB) extends Logging {
 //  StandaloneManager.main(Array("-s",erSession.sessionId, "-p", erSession.cmClient.endpoint.port.toString))
+  private val sessionId = session.sessionId
+  private val sessionMeta = session.sessionMeta
 
-  def getRollEndpoint(): ErEndpoint = null
-  def getEggEndpoint(partitionId: Int): ErEndpoint = null
+  def routeToEgg(partition: ErPartition): ErProcessor = session.routeToEgg(partition)
 
-  def routeToEgg(partiton: ErPartition): ErProcessor = session.routeToEgg(partiton)
-
-
-  def load(namespace:String, name:String, opts: Map[String,String] = Map()): RollPair = {
+  def load(namespace: String, name: String, options: Map[String,String] = Map()): RollPair = {
     val store = ErStore(storeLocator = ErStoreLocator(
       namespace = namespace,
       name = name,
-      storeType = opts.getOrElse(StringConstants.STORE_TYPE, StoreTypes.ROLLPAIR_LMDB),
-      totalPartitions = opts.getOrElse(StringConstants.TOTAL_PARTITIONS, "1").toInt,
-      partitioner = opts.getOrElse(StringConstants.PARTITIONER, PartitionerTypes.BYTESTRING_HASH),
-      serdes = opts.getOrElse(StringConstants.SERDES, SerdesTypes.CLOUD_PICKLE)
+      storeType = options.getOrElse(StringConstants.STORE_TYPE, StoreTypes.ROLLPAIR_LMDB),
+      totalPartitions = options.getOrElse(StringConstants.TOTAL_PARTITIONS, "1").toInt,
+      partitioner = options.getOrElse(StringConstants.PARTITIONER, PartitionerTypes.BYTESTRING_HASH),
+      serdes = options.getOrElse(StringConstants.SERDES, SerdesTypes.CLOUD_PICKLE)
     ))
-    val loaded = session.cmClient.getOrCreateStore(store)
+    val loaded = session.clusterManagerClient.getOrCreateStore(store)
     new RollPair(loaded, this)
   }
 
-  // todo: partitioner factory depending on string, and mod partition number
+  // todo:1: partitioner factory depending on string, and mod partition number
   def partitioner(k: Array[Byte], n: Int): Int = {
     ByteString.copyFrom(k).hashCode() % n
   }
-  def getPartitionProcessor(id:Int): ErProcessor = {
-    ErProcessor(commandEndpoint = ErEndpoint("localhost", 20001), transferEndpoint = ErEndpoint("localhost", 20001))
-  }
 }
 
-class RollPair(val store: ErStore, val ctx:RollPairContext, val opts: Map[String,String] = Map()) extends Logging {
+class RollPair(val store: ErStore, val ctx: RollPairContext, val options: Map[String,String] = Map()) extends Logging {
   // todo: 1. consider recv-side shuffle; 2. pull up rowPairDb logic; 3. add partition calculation based on session logic;
   def putBatch(broker: Broker[ByteString], opts: util.Map[String, String] = Map[String, String]().asJava): Unit = {
     val totalPartitions = store.storeLocator.totalPartitions
     val transferClients = new Array[GrpcTransferClient](totalPartitions)
     val brokers = new Array[Broker[ByteString]](totalPartitions)
 
-    val job = ErJob(id = "1",
-      name = RollPairServicer.putAll,
+    val jobId = IdUtils.generateJobId(ctx.session.sessionId)
+    val job = ErJob(id = jobId,
+      name = RollPair.PUT_ALL,
       inputs = Array(store),
       outputs = Array(store),
       functors = Array.empty,
@@ -80,8 +76,8 @@ class RollPair(val store: ErStore, val ctx:RollPairContext, val opts: Map[String
 
     new Thread {
       override def run(): Unit = {
-        val commandClient = new CommandClient(defaultEndpoint = ErEndpoint("localhost", 4670))
-        commandClient.call(new CommandURI(RollPairServicer.rollRunJobCommand), job)
+        val commandClient = new CommandClient(ctx.session.rolls(0).commandEndpoint)
+        commandClient.call(RollPair.ROLL_RUN_JOB_COMMAND, job)
 
         logInfo("thread started")
       }
@@ -130,7 +126,7 @@ class RollPair(val store: ErStore, val ctx:RollPairContext, val opts: Map[String
           // tag = s"${job.id}-${partitionId}" to store.storeLocator.name
           newTransferClient.initForward(
             dataBroker = newBroker,
-            tag = store.storeLocator.name,
+            tag = IdUtils.generateTaskId(jobId, partitionId),
             processor = ctx.routeToEgg(store.partitions(partitionId)))
           transferClients.update(partitionId, newTransferClient)
         }
@@ -153,3 +149,33 @@ class RollPair(val store: ErStore, val ctx:RollPairContext, val opts: Map[String
   }
 }
 
+object RollPair {
+  val ROLL_PAIR_URI_PREFIX = "v1/roll-pair"
+  val EGG_PAIR_URI_PREFIX = "v1/egg-pair"
+
+  val RUN_JOB = "runJob"
+  val RUN_TASK = "runTask"
+
+  val AGGREGATE = "aggregate"
+  val COLLAPSE_PARTITIONS = "collapsePartitions"
+  val DELETE = "delete"
+  val DESTROY = "destroy"
+  val FILTER = "filter"
+  val FLAT_MAP = "flatMap"
+  val GET = "get"
+  val GET_ALL = "getAll"
+  val GLOM = "glom"
+  val JOIN = "join"
+  val MAP = "map"
+  val MAP_PARTITIONS = "mapPartitions"
+  val MAP_VALUES = "mapValues"
+  val PUT = "put"
+  val PUT_ALL = "putAll"
+  val REDUCE = "reduce"
+  val SAMPLE = "sample"
+  val SUBTRACT_BY_KEY = "subtractByKey"
+  val UNION = "union"
+
+  val EGG_RUN_TASK_COMMAND = new CommandURI(s"${EGG_PAIR_URI_PREFIX}/${RUN_TASK}")
+  val ROLL_RUN_JOB_COMMAND = new CommandURI(s"${ROLL_PAIR_URI_PREFIX}/${RUN_JOB}")
+}

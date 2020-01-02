@@ -15,24 +15,25 @@
 
 import os
 import threading
+
 import lmdb
 
-from eggroll.core.pair_store.adapter import PairIterator, PairWriteBatch, PairAdapter
+from eggroll.core.pair_store.adapter import PairIterator, PairWriteBatch, \
+    PairAdapter
 from eggroll.utils import log_utils
-log_utils.setDirectory()
-LOGGER = log_utils.getLogger()
 
-# LMDB_MAP_SIZE = 16 * 4_096 * 244_140        # follows storage-service-cxx's config here
-LMDB_MAP_SIZE = 64 * 1024 * 1024
+LOGGER = log_utils.get_logger()
+#64 * 1024 * 1024
+LMDB_MAP_SIZE = 16 * 4_096 * 244_140    # follows storage-service-cxx's config here
 DEFAULT_DB = b'main'
 # DELIMETER = '-'
 # DELIMETER_ENCODED = DELIMETER.encode()
 
 class LmdbIterator(PairIterator):
-    def __init__(self, adapter, cursor):
+    def __init__(self, adapter):
         LOGGER.info("create lmdb iterator")
         self.adapter = adapter
-        self.cursor = cursor
+        self.cursor = adapter.txn.cursor()
 
     #move cursor to the first key position
     #return True if success or False if db is empty
@@ -48,7 +49,7 @@ class LmdbIterator(PairIterator):
         return self.cursor.key()
 
     def close(self):
-        pass
+        self.cursor.close()
 
     def __iter__(self):
         return self.cursor.__iter__()
@@ -77,7 +78,6 @@ class LmdbAdapter(PairAdapter):
     env_dict = dict()
     count_dict = dict()
     sub_env_dict = dict()
-    txn_dict = dict()
 
     def get(self, key):
         return self.cursor.get(key)
@@ -90,23 +90,24 @@ class LmdbAdapter(PairAdapter):
             LOGGER.info("lmdb adapter init")
             super().__init__(options)
             self.path = options["path"]
+            lmdb_map_size = options.get("lmdb_map_size", LMDB_MAP_SIZE)
             create_if_missing = bool(options.get("create_if_missing", "True"))
             if self.path not in LmdbAdapter.env_dict:
                 if create_if_missing:
                     os.makedirs(self.path, exist_ok=True)
                 LOGGER.info("path not in dict db path:{}".format(self.path))
-                self.env = lmdb.open(self.path, create=create_if_missing, max_dbs=128, sync=False, map_size=LMDB_MAP_SIZE, writemap=True)
+                import platform
+                writemap = False if platform.system() == 'Darwin' else True
+                self.env = lmdb.open(self.path, create=create_if_missing, max_dbs=128, sync=False, map_size=lmdb_map_size, writemap=writemap)
                 self.sub_db = self.env.open_db(DEFAULT_DB)
-                self.txn = self.env.begin(db=self.sub_db, write=True)
                 LmdbAdapter.count_dict[self.path] = 0
                 LmdbAdapter.env_dict[self.path] = self.env
                 LmdbAdapter.sub_env_dict[self.path] = self.sub_db
-                LmdbAdapter.txn_dict[self.path] = self.txn
             else:
                 LOGGER.info("path in dict:{}".format(self.path))
                 self.env = LmdbAdapter.env_dict[self.path]
                 self.sub_db = LmdbAdapter.sub_env_dict[self.path]
-                self.txn = LmdbAdapter.txn_dict[self.path]
+            self.txn = self.env.begin(db=self.sub_db, write=True)
             self.cursor = self.txn.cursor()
             LmdbAdapter.count_dict[self.path] = LmdbAdapter.count_dict[self.path] + 1
 
@@ -115,31 +116,9 @@ class LmdbAdapter(PairAdapter):
     # TODO:0: duplicated code， lmdb.Error: Attempt to operate on closed/deleted/dropped object.
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
-        with LmdbAdapter.env_lock:
-            if self.env:
-                count = LmdbAdapter.count_dict[self.path]
-                if not count or count - 1 <= 0:
-                    LmdbAdapter.txn_dict[self.path].commit()
-                    LmdbAdapter.env_dict[self.path].close()
-                    del LmdbAdapter.txn_dict[self.path]
-                    del LmdbAdapter.env_dict[self.path]
-                    del LmdbAdapter.sub_env_dict[self.path]
-                    del LmdbAdapter.count_dict[self.path]
-                else:
-                    LmdbAdapter.count_dict[self.path] = count - 1
-                self.env = None
 
     def __del__(self):
-        with LmdbAdapter.env_lock:
-            if self.env:
-                count = LmdbAdapter.count_dict[self.path]
-                if not count or count - 1 <= 0:
-                    del LmdbAdapter.env_dict[self.path]
-                    del LmdbAdapter.sub_env_dict[self.path]
-                    del LmdbAdapter.txn_dict[self.path]
-                    del LmdbAdapter.count_dict[self.path]
-                else:
-                    LmdbAdapter.count_dict[self.path] = count - 1
+        self.close()
 
     def get_sub_db(self):
         return self.env.open_db(DEFAULT_DB)
@@ -149,10 +128,21 @@ class LmdbAdapter(PairAdapter):
             self.txn.commit()
             self.cursor.close()
         except:
-            LOGGER.warning("txn has closed")
+            LOGGER.warning("txn commit or cursor close failed")
+        with LmdbAdapter.env_lock:
+            if self.env:
+                count = LmdbAdapter.count_dict[self.path]
+                if not count or count - 1 <= 0:
+                    self.env.close()
+                    del LmdbAdapter.env_dict[self.path]
+                    del LmdbAdapter.sub_env_dict[self.path]
+                    del LmdbAdapter.count_dict[self.path]
+                else:
+                    LmdbAdapter.count_dict[self.path] = count - 1
+                self.env = None
 
     def iteritems(self):
-        return LmdbIterator(self, self.cursor)
+        return LmdbIterator(self)
 
     def new_batch(self):
         return LmdbWriteBatch(self, self.txn)
@@ -161,4 +151,10 @@ class LmdbAdapter(PairAdapter):
         return self.txn.stat()["entries"]
 
     def delete(self, k):
-        self.txn.delete(k)
+        return self.txn.delete(k)
+
+    def destroy(self):
+        self.close()
+        import shutil
+        shutil.rmtree(self.path)
+        LOGGER.info("finish destroy")

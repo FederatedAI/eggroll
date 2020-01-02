@@ -41,6 +41,7 @@ class JoinTaskPlan(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job)
 class AggregateTaskPlan(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job) {
   override def isAggregate: Boolean = true
 }
+class DestroyTaskPlan(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job)
 class FlatMapTaskPlan(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job)
 class GlomTaskPlan(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job)
 class SampleTaskPlan(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job)
@@ -49,3 +50,6 @@ class SubtractByKeyTaskPlan(uri: CommandURI, job: ErJob) extends BaseTaskPlan(ur
 class UnionTaskPlan(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job)
 class PutAllTaskPlan(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job)
 class GetAllTaskPlan(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job)
+class CollapsePartitionsTaskPlan(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job)
+class MapValuesTaskPlan(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job)
+class MapPartitionsTaskPlan(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job)

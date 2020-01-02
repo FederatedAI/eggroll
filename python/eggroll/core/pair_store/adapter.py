@@ -15,11 +15,12 @@ import mmap
 import os
 from collections import OrderedDict
 
-from eggroll.core.pair_store.format import PairBinReader, PairBinWriter, FileByteBuffer, ArrayByteBuffer
-from eggroll.utils import log_utils
 from eggroll.core.datastructure.broker import Broker
-log_utils.setDirectory()
-LOGGER = log_utils.getLogger()
+from eggroll.core.pair_store.format import PairBinReader, PairBinWriter, \
+    FileByteBuffer, ArrayByteBuffer
+from eggroll.utils import log_utils
+
+LOGGER = log_utils.get_logger()
 
 # TODO:0: usage?
 class AdapterManager:
@@ -29,6 +30,7 @@ class PairAdapter(object):
     """
     Pair(key->value) store adapter
     """
+
     def __init__(self, options):
         pass
 
@@ -170,10 +172,13 @@ class CacheAdapter(PairAdapter):
         return CacheWriteBatch(self.data)
 
     def get(self, key):
-        pass
+        return self.data[key]
 
     def put(self, key, value):
-        pass
+        self.data[key] = value
+
+    def count(self):
+        return len(self.data)
 
 class CacheIterator(PairIterator):
     def __init__(self, data):
@@ -200,8 +205,6 @@ class CacheWriteBatch(PairWriteBatch):
 
 
 class MmapAdapter(PairAdapter):
-    # block_size = 64
-    block_size = 64 * 1024 * 1024
     def destroy(self):
         self.close()
         os.remove(self._file.name)
@@ -210,34 +213,18 @@ class MmapAdapter(PairAdapter):
         super().__init__(options)
         path = options["path"]
         self._file = open(path, "w+b")
-        self.__grow_file(self._file, self.block_size)
-        self._mm = mmap.mmap(self._file.fileno(), 0)
-
-    def __grow_file(self, fd, size):
-        old_offset = fd.tell()
-        fd.seek(size - 1)
-        fd.write(b"\0")
-        fd.seek(old_offset)
-
-    def _resize(self):
-        file_size = os.fstat(self._file.fileno()).st_size
-        self.__grow_file(self._file, file_size * 2)
-        if self._mm:
-            self._mm.close()
-        self._mm = mmap.mmap(self._file.fileno(), 0)
 
     def is_sorted(self):
         return False
 
     def close(self):
         self._file.close()
-        self._mm.close()
 
     def iteritems(self):
-        return MmapIterator(self._mm)
+        return MmapIterator(self._file)
 
     def new_batch(self):
-        return MmapWriteBatch(self)
+        return MmapWriteBatch(self._file)
 
     def get(self, key):
         raise NameError("unsupported")
@@ -246,39 +233,30 @@ class MmapAdapter(PairAdapter):
         raise NameError("unsupported")
 
 class MmapIterator(PairIterator):
-    def __init__(self, mm):
-        mm.seek(0)
-        self.reader = PairBinReader(ArrayByteBuffer(mm))
+    def __init__(self, file):
+        self.mm = mmap.mmap(file.fileno(), 0)
+        self.mm.seek(0)
+        self.reader = PairBinReader(ArrayByteBuffer(self.mm))
 
     def close(self):
         pass
 
     def __iter__(self):
         return self.reader.read_all()
-# TODO:1: bathes in file?
+
 class MmapWriteBatch(PairWriteBatch):
-    def __init__(self, db: MmapAdapter):
-        self._db = db
-        self._buffer = ArrayByteBuffer(db._mm)
-        PairBinWriter.write_head(self._buffer)
+    def __init__(self, file):
+        self._file = open(file.name, "wb")
+        self.writer = PairBinWriter(FileByteBuffer(self._file ))
 
     def put(self, k, v):
-        try:
-            PairBinWriter.write_pair(self._buffer, k, v)
-        except IndexError as e:
-            # increase file
-            self._db._resize()
-            buf = ArrayByteBuffer(self._db._mm)
-            buf.set_offset(self._buffer.get_offset())
-            self._buffer = buf
-            PairBinWriter.write_pair(self._buffer, k, v)
+        self.writer.write(k, v)
 
     def write(self):
         pass
 
     def close(self):
-        pass
-
+        self._file.close()
 
 class BrokerAdapter(PairAdapter):
     def __init__(self, broker: Broker, options={}):
@@ -286,7 +264,7 @@ class BrokerAdapter(PairAdapter):
         self.__broker = broker
 
     def close(self):
-        self.__broker.signal_write_finish()
+        pass
 
     def iteritems(self):
         return BrokerIterator(self.__broker)
@@ -310,11 +288,12 @@ class BrokerIterator(PairIterator):
         while True:
             try:
                 if not self.__broker.is_closable():
-                    return self.__broker.get(block=True, timeout=1)
+                    return self.__broker.get(block=True, timeout=0.1)
                 else:
                     raise StopIteration()
             except Empty:
-                print('waiting for broker to fill')
+                #print('waiting for broker to fill')
+                pass
 
 
 class BrokerWriteBatch(PairWriteBatch):
@@ -322,7 +301,7 @@ class BrokerWriteBatch(PairWriteBatch):
         self.__broker = broker
 
     def put(self, k, v):
-        if self.__broker.get_remaining_write_signal_count():
+        if self.__broker.get_active_writers_count():
             self.__broker.put((k, v))
 
     def write(self):

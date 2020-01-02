@@ -26,6 +26,8 @@ public abstract class BasePipe implements Pipe {
     private volatile boolean closed = false;
     private volatile boolean drained = false;
     private volatile boolean status = false;
+    private volatile String type = "";
+    private volatile String tag_key = "";
     private volatile Throwable throwable = null;
 
     public BasePipe() {
@@ -102,6 +104,20 @@ public abstract class BasePipe implements Pipe {
     }
     public void setStatus(boolean status) {
         this.status = status;
+    }
+
+    public String getType() {
+        return this.type;
+    }
+    public void setType(String type) {
+        this.type = type;
+    }
+
+    public String getTagKey() {
+        return this.tag_key;
+    }
+    public void setTagKey(String tag_key) {
+        this.tag_key = tag_key;
     }
 
     public void checkNotClosed() {

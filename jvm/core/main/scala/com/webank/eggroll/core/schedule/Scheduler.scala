@@ -25,7 +25,7 @@ import com.webank.eggroll.core.datastructure.{RpcMessage, TaskPlan}
 import com.webank.eggroll.core.meta.{ErJob, ErPartition, ErStore, ErTask}
 import com.webank.eggroll.core.serdes.DefaultScalaSerdes
 import com.webank.eggroll.core.session.StaticErConf
-import com.webank.eggroll.core.util.Logging
+import com.webank.eggroll.core.util.{IdUtils, Logging}
 
 import scala.collection.mutable
 
@@ -35,7 +35,7 @@ trait Scheduler extends Logging {
 
 
 
-// todo: add another layer of abstraction if coupling with ErJob is proved a bad practice or
+// todo:3: add another layer of abstraction if coupling with ErJob is proved a bad practice or
 //  communication (e.g. broadcast), or io operation should be described in task plan as computing
 case class ListScheduler() extends Scheduler {
   private val stages = mutable.Queue[TaskPlan]()
@@ -53,16 +53,13 @@ case class ListScheduler() extends Scheduler {
 }
 
 object JobRunner {
+  // TODO:2: new session -> ErSession.get() ?
   val session = new ErSession(StaticErConf.getString(SessionConfKeys.CONFKEY_SESSION_ID))
 
   def run(plan: TaskPlan): Array[ErTask] = {
     val tasks = decomposeJob(taskPlan = plan)
-
-
     val commandClient = new CommandClient()
-
     val results = commandClient.call[ErTask](commandURI = plan.uri, args = tasks.map(t => (Array[RpcMessage](t), t.inputs.head.processor.commandEndpoint)))
-    results.foreach(println)
     tasks
   }
 
@@ -114,7 +111,7 @@ object JobRunner {
 
       result.append(
         ErTask(
-          id = s"${job.id}-${i}",
+          id = IdUtils.generateTaskId(job.id, i),
           name = job.name,
           inputs = inputPartitions.toArray,
           outputs = outputPartitions.toArray,

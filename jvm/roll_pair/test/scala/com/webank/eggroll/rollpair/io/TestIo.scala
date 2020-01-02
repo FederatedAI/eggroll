@@ -22,11 +22,9 @@ import java.nio.{ByteBuffer, ByteOrder}
 
 import com.google.protobuf.ByteString
 import com.webank.eggroll.core.ErSession
-import com.webank.eggroll.core.constant.{NetworkConstants, StoreTypes}
+import com.webank.eggroll.core.constant.{ClusterManagerConfKeys, NetworkConstants, StoreTypes}
 import com.webank.eggroll.core.datastructure.LinkedBlockingBroker
-import com.webank.eggroll.core.meta.{ErStore, ErStoreLocator}
 import com.webank.eggroll.rollpair.RollPairContext
-import com.webank.eggroll.rollpair.client.RollPair
 import org.junit.Test
 
 import scala.collection.mutable.ListBuffer
@@ -88,7 +86,8 @@ class TestIo {
   @Test
   def testPutBatch(): Unit = {
     val sid = "testing"
-    val ctx = new RollPairContext(new ErSession(sid))
+    val options = Map((ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST -> "localhost"), (ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT -> "4671"))
+    val ctx = new RollPairContext(new ErSession(sid, options=options))
     val rp = ctx.load("ns1","testPutBatch")
 
     var directBinPacketBuffer: ByteBuffer = ByteBuffer.allocateDirect(1<<10)
