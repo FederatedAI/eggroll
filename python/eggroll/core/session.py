@@ -19,9 +19,9 @@ from eggroll.core.constants import SessionStatus, ProcessorTypes
 from eggroll.core.meta_model import ErSessionMeta, \
     ErPartition
 from eggroll.core.utils import get_self_ip, time_now, DEFAULT_DATETIME_FORMAT
-from eggroll.utils import log_utils
+from eggroll.utils.log_utils import get_logger
 
-LOGGER = log_utils.get_logger()
+L = get_logger()
 
 
 def session_init(session_id, options={"eggroll.session.deploy.mode": "standalone"}):
@@ -60,17 +60,17 @@ class ErSession(object):
             os.makedirs(bootstrap_log_dir, mode=0o755, exist_ok=True)
             with open(f'{bootstrap_log_dir}/standalone-manager.out', 'a+') as outfile, \
                     open(f'{bootstrap_log_dir}/standalone-manager.err', 'a+') as errfile:
-                LOGGER.info(f'start up command: {startup_command}')
+                L.info(f'start up command: {startup_command}')
                 manager_process = subprocess.run(startup_command.split(), stdout=outfile, stderr=errfile)
                 returncode = manager_process.returncode
-                LOGGER.info(f'start up returncode: {returncode}')
+                L.info(f'start up returncode: {returncode}')
 
             def shutdown_standalone_manager(port, session_id, log_dir):
                 shutdown_command = f"ps aux | grep eggroll | grep Bootstrap | grep '{port}' | grep '{session_id}' | grep -v grep | awk '{{print $2}}' | xargs kill"
-                LOGGER.info(f'shutdown command: {shutdown_command}')
+                L.info(f'shutdown command: {shutdown_command}')
                 with open(f'{log_dir}/standalone-manager.out', 'a+') as outfile, open(f'{log_dir}/standalone-manager.err', 'a+') as errfile:
                     manager_process = subprocess.check_output(shutdown_command, shell=True)
-                    LOGGER.info(manager_process)
+                    L.info(manager_process)
 
             atexit.register(shutdown_standalone_manager, port, self.__session_id, bootstrap_log_dir)
 
@@ -101,7 +101,7 @@ class ErSession(object):
         self.__cleanup_tasks = list()
         self.__processors = self.__session_meta._processors
 
-        LOGGER.info('session init finished')
+        L.info('session init finished')
 
         self._rolls = list()
         self._eggs = dict()
