@@ -14,7 +14,6 @@
 #  limitations under the License.
 
 import queue
-import traceback
 from concurrent.futures import ThreadPoolExecutor
 
 from eggroll.core.datastructure.broker import FifoBroker, BrokerClosed
@@ -25,9 +24,10 @@ from eggroll.core.transfer.transfer_service import TransferClient, \
 from eggroll.core.utils import _exception_logger
 from eggroll.core.utils import generate_task_id
 from eggroll.roll_pair import create_adapter
-from eggroll.utils.log_utils import get_logger
+from eggroll.utils import log_utils
 
-LG = get_logger()
+LOGGER = log_utils.get_logger()
+
 
 class CompositeFuture(object):
     def __init__(self, futures):
@@ -44,6 +44,7 @@ class CompositeFuture(object):
 
     def result(self):
         return list(f.result() for f in self._futures)
+
 
 class BatchBroker(object):
     def __init__(self, broker, batch_size=100):
@@ -109,12 +110,12 @@ class TransferPair(object):
         futures = []
         @_exception_logger
         def do_partition():
-            LG.debug('do_partition start')
+            LOGGER.debug('do_partition start')
             done_count = 0
             for k, v in BatchBroker(input_broker):
                 partitioned_bb[partition_function(k)].put((k,v))
                 done_count +=1
-            LG.debug(f"do_partition end:{done_count}")
+            LOGGER.debug(f"do_partition end:{done_count}")
             for broker in partitioned_bb:
                 broker.signal_write_finish()
             return done_count
@@ -122,7 +123,7 @@ class TransferPair(object):
         client = TransferClient()
         for i, part in enumerate(output_partitions):
             tag = self.__generate_tag(i)
-            LG.debug(f"start_scatter_partition_tag:{tag}")
+            LOGGER.debug(f"start_scatter_partition_tag:{tag}")
             # TODO:1: change client.send to support iterator
             futures.append(
                 client.send(TransferPair.pair_to_bin_batch(BatchBroker(partitioned_brokers[i])),
@@ -134,7 +135,7 @@ class TransferPair(object):
         import os
         buffer_size = int(os.environ.get("EGGROLL_ROLLPAIR_BIN_BATCH_SIZE", buffer_size))
         # TODO:1: buffer_size auto adjust?
-        LG.debug('generate_bin_batch start')
+        LOGGER.debug('generate_bin_batch start')
         done_cont = 0
         ba = None
         buffer = None
@@ -162,15 +163,15 @@ class TransferPair(object):
                 except IndexError as e:
                     yield commit(max(buffer_size, len(k) + len(v) + 1024))
                     writer.write(k, v)
-            LG.debug(f'generate_bin_batch last one: {done_cont}')
+            LOGGER.debug(f'generate_bin_batch last one: {done_cont}')
             yield commit()
         except Exception as e:
-            LG.exception(f"bin_batch_generator error:{e}")
-        LG.debug(f'generate_bin_batch end: {done_cont}')
+            LOGGER.exception(f"bin_batch_generator error:{e}")
+        LOGGER.debug(f'generate_bin_batch end: {done_cont}')
 
     @staticmethod
     def bin_batch_to_pair(input_iter):
-        LG.debug(f"bin_batch_to_pair start")
+        LOGGER.debug(f"bin_batch_to_pair start")
         total_written = 0
         for batch in input_iter:
             try:
@@ -180,8 +181,8 @@ class TransferPair(object):
                     yield k_bytes, v_bytes
                     total_written += 1
             except IndexError as e:
-                LG.exception(f"error bin bath format:{e}")
-        LG.debug(f"bin_batch_to_pair total_written:{total_written}")
+                LOGGER.exception(f"error bin bath format:{e}")
+        LOGGER.debug(f"bin_batch_to_pair total_written:{total_written}")
 
     def store_broker(self, store_partition, is_shuffle, total_partitions=1):
         """
@@ -192,11 +193,11 @@ class TransferPair(object):
         def do_store():
             tag = self.__generate_tag(store_partition._id) if is_shuffle else self.__transfer_id
             broker = TransferService.get_or_create_broker(tag, write_signals=total_partitions)
-            LG.debug(f"do_store_start:{tag}")
+            LOGGER.debug(f"do_store_start:{tag}")
             done_cnt = 0
             batches = TransferPair.bin_batch_to_pair(b.data for b in broker)
             with create_adapter(store_partition) as db:
-                LG.debug(f"do_store_create_db:{tag}")
+                LOGGER.debug(f"do_store_create_db:{tag}")
                 with db.new_batch() as wb:
                     for k, v in batches:
                         wb.put(k, v)
