@@ -36,7 +36,7 @@ from eggroll.core.session import ErSession
 from eggroll.core.utils import generate_job_id, generate_task_id
 from eggroll.core.utils import string_to_bytes, hash_code
 from eggroll.roll_pair import create_serdes
-from eggroll.roll_pair.transfer_pair import TransferPair
+from eggroll.roll_pair.transfer_pair import TransferPair, BatchBroker
 from eggroll.roll_pair.utils.gc_utils import Recorder
 from eggroll.roll_pair.utils.pair_utils import partitioner
 from eggroll.utils import log_utils
@@ -217,14 +217,6 @@ class RollPair(object):
     def set_gc_disable(self):
         self.gc_enable = False
 
-    def __get_unary_input_adapter(self, options={}):
-        input_adapter = None
-        if self.ctx.default_store_type == StoreTypes.ROLLPAIR_LMDB:
-            input_adapter = LmdbSortedKvAdapter(options)
-        elif self.ctx.default_store_type == StoreTypes.ROLLPAIR_LEVELDB:
-            input_adapter = RocksdbSortedKvAdapter(options)
-        return input_adapter
-
     def get_store_serdes(self):
         serdes_type = self.__store._store_locator._serdes
         LOGGER.info(f'serdes type: {serdes_type}')
@@ -299,10 +291,7 @@ class RollPair(object):
                 serdes_type=self.__command_serdes
         )
         LOGGER.info("get resp:{}".format((job_resp._value)))
-
-        value = self.value_serdes.deserialize(job_resp._value)
-
-        return value
+        return self.value_serdes.deserialize(job_resp._value) if job_resp._value != b'' else None
 
     def put(self, k, v, options={}):
         k, v = create_serdes(self.__store._store_locator._serdes).serialize(k), \
@@ -340,7 +329,6 @@ class RollPair(object):
 
     def get_all(self, options={}):
         LOGGER.info('get all functor')
-
         job_id = generate_job_id(self.__session_id, RollPair.GET_ALL)
         def send_command():
             job = ErJob(id=job_id,
@@ -357,33 +345,15 @@ class RollPair(object):
                     serdes_type=SerdesTypes.PROTOBUF)
 
             return result
-
-        def pair_generator(broker_adapter: BrokerAdapter, key_serdes, value_serdes, cleanup_func):
-            for k, v in broker_adapter.iteritems():
-                yield key_serdes.deserialize(k), value_serdes.deserialize(v)
-            #broker_adapter.close()
-            cleanup_func()
-
-        def cleanup():
-            nonlocal transfer_pair
-            nonlocal command_thread
-            nonlocal adapter
-
-            command_thread.join()
-            transfer_pair.join()
-            adapter.close()
-
-        command_thread = Thread(target=send_command)
-        command_thread.start()
+        send_command()
 
         populated_store = self.ctx.populate_processor(self.__store)
-        transfer_pair = TransferPair(transfer_id=job_id, output_store=populated_store)
-
-        adapter = BrokerAdapter(FifoBroker(
-            writers=self.__store._store_locator._total_partitions))
-        transfer_pair.start_pull(adapter)
-
-        return pair_generator(adapter, self.key_serdes, self.value_serdes, cleanup)
+        transfer_pair = TransferPair(transfer_id=job_id)
+        done_cnt = 0
+        for k, v in transfer_pair.gather(populated_store):
+            done_cnt +=1
+            yield self.key_serdes.deserialize(k), self.value_serdes.deserialize(v)
+        LOGGER.debug(f"get_all count:{done_cnt}")
 
     def put_all(self, items, output=None, options={}):
         include_key = options.get("include_key", True)
@@ -405,37 +375,31 @@ class RollPair(object):
                     serdes_type=SerdesTypes.PROTOBUF)
 
             return result
-
-        command_thread = Thread(target=send_command)
-        command_thread.start()
-
+        th = Thread(target=send_command)
+        th.start()
         populated_store = self.ctx.populate_processor(self.__store)
-
-        shuffler = TransferPair(job_id, populated_store)
-
+        shuffler = TransferPair(job_id)
         broker = FifoBroker()
-        shuffler.start_push(input_broker=broker, partition_function=self.partitioner)
+        bb = BatchBroker(broker)
+        scatter_future = shuffler.scatter(broker, self.partitioner, populated_store)
 
         key_serdes = self.key_serdes
         value_serdes = self.value_serdes
-
         try:
             if include_key:
                 for k, v in items:
-                    broker.put(item=(key_serdes.serialize(k), value_serdes.serialize(v)))
+                    bb.put(item=(key_serdes.serialize(k), value_serdes.serialize(v)))
             else:
                 k = 0
                 for v in items:
-                    broker.put(item=(key_serdes.serialize(k), value_serdes.serialize(v)))
+                    bb.put(item=(key_serdes.serialize(k), value_serdes.serialize(v)))
                     k += 1
-        except StopIteration as e:
-            pass
         finally:
-            broker.signal_write_finish()
+            bb.signal_write_finish()
 
-        shuffler.join()
-        command_thread.join()
-
+        scatter_results = scatter_future.result()
+        LOGGER.debug(f"scatter_results:{scatter_results}")
+        th.join()
         return RollPair(populated_store, self.ctx)
 
     def count(self):
