@@ -93,7 +93,7 @@ class ClusterManagerBootstrap extends Bootstrap with Logging {
     val cmd = CommandArgsUtils.parseArgs(args = args)
     this.port = cmd.getOptionValue('p', "4670").toInt
     //this.sessionId = cmd.getOptionValue('s')
-    val confPath = cmd.getOptionValue('c', "./conf/eggroll.properties.local")
+    val confPath = cmd.getOptionValue('c', "./conf/eggroll.properties")
     StaticErConf.addProperties(confPath)
     val confFile = new File(confPath)
     StaticErConf.addProperty(CoreConfKeys.STATIC_CONF_PATH, confFile.getAbsolutePath)
