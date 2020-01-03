@@ -1,17 +1,17 @@
 {
   "local": {
     "role": "host",
-    "party_id": 10002
+    "party_id": 10001
   },
   "role": {
     "host": [
-      10002
+      10001
     ],
     "arbiter": [
       99999
     ],
     "guest": [
-      10001
+      10002
     ]
   }
 }
