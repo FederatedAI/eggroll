@@ -189,7 +189,7 @@ class RollSite:
 
                 rp = self.ctx.rp_ctx.load(namespace, name)
                 rp.put(_tagged_key, obj)
-                L.debug("[REMOTE] Sending {}".format(_tagged_key))
+                LOGGER.debug("[REMOTE] Sending {}".format(_tagged_key))
 
             def map_values(_tagged_key):
                 is_standalone = self.ctx.rp_ctx.get_session().get_option(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE) == "standalone"
