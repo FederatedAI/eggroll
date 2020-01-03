@@ -151,7 +151,7 @@ class RollSite:
                 table_namespace = self.job_id
 
             rp = self.ctx.rp_ctx.load(namespace=table_namespace, name=table_name)
-            if obj_type == 'object':
+            if obj_type == b'object':
                 __tagged_key = _tagged_key
                 ret_obj = rp.get(__tagged_key)
                 LOGGER.debug(f"ret_obj:{ret_obj}")
@@ -225,7 +225,7 @@ class RollSite:
                     if isinstance(obj, RollPair):
                         LOGGER.debug(f"_tagged_key:{_tagged_key}")
                         LOGGER.debug(f"push:{obj_type},{rp.get_name()}, {rp.get_namespace()}")
-                        status_rp.put(_tagged_key, (obj_type, rp.get_name(), rp.get_namespace()))
+                        status_rp.put(_tagged_key, (obj_type.encode("utf-8"), rp.get_name(), rp.get_namespace()))
                     else:
                         status_rp.put(_tagged_key, (obj_type, dst_name, namespace))
                     _a = status_rp.get(_tagged_key)
