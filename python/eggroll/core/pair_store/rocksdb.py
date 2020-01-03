@@ -161,6 +161,11 @@ class RocksdbAdapter(PairAdapter):
         from pathlib import Path
         shutil.rmtree(self.path)
         path = Path(self.path)
-        if os.path.exists(path.parent):
-            os.removedirs(path.parent)
-        L.info("finish destroy")
+
+        if os.path.exists(path.parent) and os.path.isdir(path.parent):
+            if not os.listdir(path.parent):
+                try:
+                    os.removedirs(path.parent)
+                    L.info("finish destroy")
+                except:
+                    L.info("has destroyed")
