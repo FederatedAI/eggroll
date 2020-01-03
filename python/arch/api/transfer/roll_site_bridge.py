@@ -38,39 +38,12 @@ def init_roll_site_context(runtime_conf, session_id):
     rs_context = RollSiteContext(session_id, options=options, rp_ctx=rp_context)
     return rp_context, rs_context
 
-
-async def check_status_and_get_value(_table, _key):
-    _value = _table.get(_key)
-    while _value is None:
-        await asyncio.sleep(0.1)
-        _value = _table.get(_key)
-        LOGGER.debug("k:{} v:{}".format(_key, _value))
-    LOGGER.debug("[GET] Got {} type {}".format(_key, 'Table' if isinstance(_value, tuple) else 'Object'))
-    return _value
-
-
-def _remote__object_key(*args):
-    return "-".join(["{}".format(arg) for arg in args])
-
-
 class FederationRuntime(Federation):
-
     def __init__(self, session_id, runtime_conf):
         super().__init__(session_id, runtime_conf)
         self.rpc, self.rsc = init_roll_site_context(runtime_conf, session_id)
         self._loop = asyncio.get_event_loop()
         self.role = runtime_conf.get("local").get("role")
-
-    def _send(self, name: str, tag: str, dst_party: Party, rubbish: Rubbish, table: RollPair, obj=None):
-        tagged_key = f"{name}-{tag}"
-        if isinstance(obj, object):
-            table.put(tagged_key, obj)
-            rubbish.add_obj(table, tagged_key)
-        else:
-            rubbish.add_table(table)
-
-    def _get_meta_table(self, _name, _job_id):
-        return self.rpc.load(name=_name, namespace=_job_id)
 
     def get(self, name, tag, parties: Union[Party, list]):
         if isinstance(parties, Party):

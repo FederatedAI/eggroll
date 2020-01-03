@@ -27,8 +27,6 @@ from eggroll.utils import file_utils
 from eggroll.utils import log_utils
 LOGGER = log_utils.get_logger()
 
-L = get_logger()
-
 _serdes = eggroll_serdes.PickleSerdes
 
 STATUS_TABLE_NAME = "__roll_site_standalone_status__"
@@ -183,13 +181,12 @@ class RollSite:
 
             if isinstance(obj, RollPair):
                 rp = obj
-                LOGGER.debug(f"_thread_receive491:{rp.__dict__},{rp.count()}")
             else:
                 # If it is a object, put the object in the table and send the table meta.
                 name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.job_id, self.name, self.tag,
                                                                      self.local_role, str(self.party_id),
                                                                      _role, str(_partyId)]))
-                print("RollPair type name:", name)
+
                 rp = self.ctx.rp_ctx.load(namespace, name)
                 rp.put(_tagged_key, obj)
                 L.debug("[REMOTE] Sending {}".format(_tagged_key))
