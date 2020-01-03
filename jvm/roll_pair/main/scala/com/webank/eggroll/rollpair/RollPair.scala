@@ -135,12 +135,6 @@ class RollPair(val store: ErStore, val ctx: RollPairContext, val options: Map[St
 
         brokers(partitionId).put(rowPairDB)
         transferClient.doSend()
-
-        /* send putBatch command*/
-        //val storeLocator = ErStoreLocator(StoreTypes.ROLLPAIR_LEVELDB, "ns", "name")
-/*        val rollPair = new RollPairServicer()
-
-        rollPair.putBatch(job)*/
       }
     }
 
