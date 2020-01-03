@@ -28,11 +28,13 @@ def wrap_host_scheme(host):
 
 
 class GrpcChannelFactory(object):
+    pool={}
     def create_channel(self, endpoint: ErEndpoint, is_secure_channel=False):
-        target = f'{wrap_host_scheme(endpoint._host)}:{repr(endpoint._port)}'
-        result = grpc.insecure_channel(
+        target = f"{endpoint._host}:{endpoint._port}"
+        if target not in self.pool:
+            result = grpc.insecure_channel(
             target=target,
             options=[('grpc.max_send_message_length', -1),
-                     ('grpc.max_receive_message_length', -1),
-                     ('grpc.lb_policy_name', 'grpclb')])
-        return result
+                     ('grpc.max_receive_message_length', -1)])
+            self.pool[target] = result
+        return self.pool[target]
