@@ -108,11 +108,11 @@ class RocksdbAdapter(PairAdapter):
                 if opts.create_if_missing:
                     os.makedirs(self.path, exist_ok=True)
                 self.db = rocksdb.DB(self.path, opts)
-                LOGGER.info("path not in dict db path:{}".format(self.path))
+                L.info("path not in dict db path:{}".format(self.path))
                 RocksdbAdapter.count_dict[self.path] = 0
                 RocksdbAdapter.env_dict[self.path] = self.db
             else:
-                LOGGER.info("path in dict:{}".format(self.path))
+                L.info("path in dict:{}".format(self.path))
                 self.db = RocksdbAdapter.env_dict[self.path]
         RocksdbAdapter.count_dict[self.path] = RocksdbAdapter.count_dict[self.path] + 1
 
