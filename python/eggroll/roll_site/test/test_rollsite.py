@@ -27,15 +27,13 @@ transfer_port_guest = 20004
 manager_port_host = 4670
 egg_port_host = 20001
 transfer_port_host = 20002
-remote_parties = [('host', '10002')]
-get_parties = [('guest', '10001')]
+remote_parties = [('host', '10001')]
+get_parties = [('guest', '10002')]
 
 options_host = {'runtime_conf_path': 'python/eggroll/roll_site/conf/role_conf.json',
-                'server_conf_path': 'python/eggroll/roll_site/conf/server_conf.json',
-                'transfer_conf_path': 'python/eggroll/roll_site/conf/transfer_conf.json'}
+                'server_conf_path': 'python/eggroll/roll_site/conf/server_conf.json'}
 options_guest = {'runtime_conf_path': 'python/eggroll/roll_site/conf_guest/role_conf.json',
-                 'server_conf_path': 'python/eggroll/roll_site/conf_guest/server_conf.json',
-                 'transfer_conf_path': 'python/eggroll/roll_site/conf_guest/transfer_conf.json'}
+                 'server_conf_path': 'python/eggroll/roll_site/conf_guest/server_conf.json'}
 
 class TestRollSite(unittest.TestCase):
     def test_host_init(self):
@@ -75,7 +73,7 @@ class TestRollSite(unittest.TestCase):
 
     def test_remote_rollpair(self):
         rp_context = get_debug_test_context(is_standalone, manager_port_guest, egg_port_guest, transfer_port_guest, 'testing_guest')
-        data = [("k1", "v1"), ("k2", "v2"), ("k3", "v3"), ("k4", "v4"), ("k5", "v5"), ("k6", "v6")]
+        data = [("k1", "v1"), ("k2", "v2"), ("k3", "v3")]
         context = RollSiteContext("atest2", options=options_guest, rp_ctx=rp_context)
         rp_options = {'include_key': True}
         rp = rp_context.load("namespace", "name").put_all(data, options=rp_options)
