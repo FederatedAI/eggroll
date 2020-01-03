@@ -155,6 +155,10 @@ class LmdbAdapter(PairAdapter):
 
     def destroy(self):
         self.close()
-        import shutil
+        import shutil, os
+        from pathlib import Path
         shutil.rmtree(self.path)
+        path = Path(self.path)
+        if os.path.exists(path.parent):
+            os.removedirs(path.parent)
         LOGGER.info("finish destroy")
