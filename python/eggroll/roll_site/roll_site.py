@@ -27,8 +27,6 @@ from eggroll.utils import file_utils
 from eggroll.utils import log_utils
 LOGGER = log_utils.get_logger()
 
-L = get_logger()
-
 _serdes = eggroll_serdes.PickleSerdes
 
 STATUS_TABLE_NAME = "__roll_site_standalone_status__"
