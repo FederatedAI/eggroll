@@ -15,19 +15,19 @@
 import os
 import threading
 
-from eggroll.utils import log_utils
+from eggroll.utils.log_utils import get_logger
 
-LOGGER = log_utils.get_logger()
+L = get_logger()
 
 try:
   import rocksdb
 except:
-  LOGGER.info("WRAN: failed to import rocksdb")
+  L.warn("WRAN: failed to import rocksdb")
 
 try:
   import lmdb
 except:
-  LOGGER.info("WRAN: failed to import lmdb")
+  L.warn("WRAN: failed to import lmdb")
 
 # LMDB_MAP_SIZE = 16 * 4_096 * 244_140        # follows storage-service-cxx's config here
 LMDB_MAP_SIZE = 64 * 1024 * 1024        # follows storage-service-cxx's config here
@@ -101,7 +101,7 @@ class SortedKvIterator:
 
 class LmdbIterator(SortedKvIterator):
   def __init__(self, adapter, cursor):
-    LOGGER.info("create lmdb iterator")
+    L.info("create lmdb iterator")
     self.adapter = adapter
     self.cursor = cursor
 
@@ -158,14 +158,14 @@ class LmdbSortedKvAdapter(SortedKvAdapter):
 
   def __init__(self, options):
     with LmdbSortedKvAdapter.env_lock:
-      LOGGER.info("lmdb adapter init")
+      L.info("lmdb adapter init")
       super().__init__(options)
       self.path = options["path"]
       create_if_missing = bool(options.get("create_if_missing", "True"))
       if self.path not in LmdbSortedKvAdapter.env_dict:
         if create_if_missing:
             os.makedirs(self.path, exist_ok=True)
-        LOGGER.info("path not in dict db path:{}".format(self.path))
+        L.info("path not in dict db path:{}".format(self.path))
         self.env = lmdb.open(self.path, create=create_if_missing, max_dbs=128, sync=False, map_size=LMDB_MAP_SIZE, writemap=True)
         self.sub_db = self.env.open_db(DEFAULT_DB)
         self.txn = self.env.begin(db=self.sub_db, write=True)
@@ -174,7 +174,7 @@ class LmdbSortedKvAdapter(SortedKvAdapter):
         LmdbSortedKvAdapter.sub_env_dict[self.path] = self.sub_db
         LmdbSortedKvAdapter.txn_dict[self.path] = self.txn
       else:
-        LOGGER.info("path in dict:{}".format(self.path))
+        L.info("path in dict:{}".format(self.path))
         self.env = LmdbSortedKvAdapter.env_dict[self.path]
         self.sub_db = LmdbSortedKvAdapter.sub_env_dict[self.path]
         self.txn = LmdbSortedKvAdapter.txn_dict[self.path]
@@ -220,7 +220,7 @@ class LmdbSortedKvAdapter(SortedKvAdapter):
       self.txn.commit()
       self.cursor.close()
     except:
-      LOGGER.warning("txn has closed")
+      L.warning("txn has closed")
 
   def iteritems(self):
     return LmdbIterator(self, self.cursor)
@@ -314,11 +314,11 @@ class RocksdbSortedKvAdapter(SortedKvAdapter):
         if opts.create_if_missing:
             os.makedirs(self.path, exist_ok=True)
         self.db = rocksdb.DB(self.path, opts)
-        LOGGER.info("path not in dict db path:{}".format(self.path))
+        L.info("path not in dict db path:{}".format(self.path))
         RocksdbSortedKvAdapter.count_dict[self.path] = 0
         RocksdbSortedKvAdapter.env_dict[self.path] = self.db
       else:
-        LOGGER.info("path in dict:{}".format(self.path))
+        L.info("path in dict:{}".format(self.path))
         self.db = RocksdbSortedKvAdapter.env_dict[self.path]
     RocksdbSortedKvAdapter.count_dict[self.path] = RocksdbSortedKvAdapter.count_dict[self.path] + 1
 
@@ -326,7 +326,7 @@ class RocksdbSortedKvAdapter(SortedKvAdapter):
     return self
 
   def __exit__(self, exc_type, exc_val, exc_tb):
-    LOGGER.info("exit")
+    L.info("exit")
     with RocksdbSortedKvAdapter.env_lock:
       if self.db:
         count = RocksdbSortedKvAdapter.count_dict[self.path]

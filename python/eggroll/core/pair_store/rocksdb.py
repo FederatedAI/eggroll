@@ -17,9 +17,9 @@ import threading
 
 import rocksdb
 
-from eggroll.utils import log_utils
+from eggroll.utils.log_utils import get_logger
 
-LOGGER = log_utils.get_logger()
+L = get_logger()
 
 from eggroll.core.pair_store.adapter import PairWriteBatch, PairIterator, PairAdapter
 
@@ -163,4 +163,4 @@ class RocksdbAdapter(PairAdapter):
         path = Path(self.path)
         if os.path.exists(path.parent):
             os.removedirs(path.parent)
-        LOGGER.info("finish destroy")
+        L.info("finish destroy")

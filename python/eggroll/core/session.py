@@ -18,10 +18,11 @@ from eggroll.core.conf_keys import SessionConfKeys
 from eggroll.core.constants import SessionStatus, ProcessorTypes
 from eggroll.core.meta_model import ErSessionMeta, \
     ErPartition
-from eggroll.core.utils import get_self_ip, time_now
+from eggroll.core.utils import get_self_ip, time_now, DEFAULT_DATETIME_FORMAT
+from eggroll.utils.log_utils import get_logger
 
+L = get_logger()
 
-# TODO:1: support windows
 
 def session_init(session_id, options={"eggroll.session.deploy.mode": "standalone"}):
     er_session = ErSession(session_id=session_id, options=options)
@@ -30,7 +31,7 @@ def session_init(session_id, options={"eggroll.session.deploy.mode": "standalone
 
 class ErSession(object):
     def __init__(self,
-            session_id=f'er_session_py_{time_now()}_{get_self_ip()}',
+            session_id=f'er_session_py_{time_now(format=DEFAULT_DATETIME_FORMAT)}_{get_self_ip()}',
             name='',
             tag='',
             processors=list(),
@@ -55,21 +56,21 @@ class ErSession(object):
             import subprocess
             import atexit
 
-            bootstrap_log_dir = f'{self.__eggroll_home}/logs/standalone-manager/bootstrap/'
+            bootstrap_log_dir = f'{self.__eggroll_home}/logs/eggroll/'
             os.makedirs(bootstrap_log_dir, mode=0o755, exist_ok=True)
-            with open(f'{bootstrap_log_dir}/standalone-manager.OUT', 'a+') as outfile, \
-                    open(f'{bootstrap_log_dir}/standalone-manager.ERR', 'a+') as errfile:
-                print(f'start up command: {startup_command}')
+            with open(f'{bootstrap_log_dir}/standalone-manager.out', 'a+') as outfile, \
+                    open(f'{bootstrap_log_dir}/standalone-manager.err', 'a+') as errfile:
+                L.info(f'start up command: {startup_command}')
                 manager_process = subprocess.run(startup_command.split(), stdout=outfile, stderr=errfile)
                 returncode = manager_process.returncode
-                print(f'start up returncode: {returncode}')
+                L.info(f'start up returncode: {returncode}')
 
             def shutdown_standalone_manager(port, session_id, log_dir):
                 shutdown_command = f"ps aux | grep eggroll | grep Bootstrap | grep '{port}' | grep '{session_id}' | grep -v grep | awk '{{print $2}}' | xargs kill"
-                print('shutdown command:', shutdown_command)
-                with open(f'{log_dir}/standalone-manager.OUT', 'a+') as outfile, open(f'{log_dir}/standalone-manager.ERR', 'a+') as errfile:
+                L.info(f'shutdown command: {shutdown_command}')
+                with open(f'{log_dir}/standalone-manager.out', 'a+') as outfile, open(f'{log_dir}/standalone-manager.err', 'a+') as errfile:
                     manager_process = subprocess.check_output(shutdown_command, shell=True)
-                    print(manager_process)
+                    L.info(manager_process)
 
             atexit.register(shutdown_standalone_manager, port, self.__session_id, bootstrap_log_dir)
 
@@ -100,7 +101,7 @@ class ErSession(object):
         self.__cleanup_tasks = list()
         self.__processors = self.__session_meta._processors
 
-        print('session init finished')
+        L.info('session init finished')
 
         self._rolls = list()
         self._eggs = dict()
