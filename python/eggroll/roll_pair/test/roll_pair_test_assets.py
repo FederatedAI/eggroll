@@ -65,7 +65,7 @@ def get_debug_test_context(is_standalone=False):
     return context
 
 
-def get_standalone_context():
+def  get_standalone_context():
     options = {}
     options[SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE] = DeployModes.STANDALONE
 
@@ -75,10 +75,10 @@ def get_standalone_context():
 
     return context
 
-def get_cluster_context():
+def get_cluster_context(cm_host=None, cm_port=None):
     options = {}
-    options[ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST] = "localhost"
-    options[ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT] = "4670"
+    options[ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST] = cm_host if cm_host else "localhost"
+    options[ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT] = cm_port if cm_port else "4670"
 
     session = ErSession(options=options)
     print(session.get_session_id())
