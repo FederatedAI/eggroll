@@ -94,11 +94,12 @@ class TestStandalone(unittest.TestCase):
         #data = [("k1", "v1"), ("k2", "v2")]
         options = get_default_options()
         t = self.ctx.load("ns1", "testPutAll", options=options)
-        options['include_key'] = True
-        t.put_all(((k, "a"*100) for k in range(1000)), options=options)
 
-        self.assertEqual(t.count(), 100)
-        self.assertUnOrderListEqual(t.get_all(), kv_list(100))
+        options['include_key'] = True
+        t.put_all(kv_list(1000), options=options)
+
+        self.assertEqual(t.count(), 1000)
+        self.assertUnOrderListEqual(t.get_all(), kv_list(1000))
         t.destroy()
 
     def test_put_all_value(self):
@@ -114,19 +115,24 @@ class TestStandalone(unittest.TestCase):
 
         options = get_default_options()
         options['include_key'] = True
-        table = self.ctx.load("ns1", "testMultiPartitionPutAll", options=options)
-        table.put_all(kv_generator(100), options=options)
-        self.assertEqual(table.count(), 100)
+        table = self.ctx.load("ns1", "testMultiPartitionPutAll2020", options=options)
+
+        table.put_all(kv_list(100), options=options)
+        #self.assertEqual(table.count(), 100)
         self.assertEqual(get_value(table), kv_list(100))
+        table.destroy()
 
     def test_get_all(self):
         options = get_default_options()
-        table =self.ctx.load("ns1", "testMultiPartitionPutAll", options=options)
+        options['include_key'] = True
+        table =self.ctx.load("ns1", "testMultiPartitionPutAll2020", options=options).put_all(kv_list(100), options=options)
+
         print(str(table))
         res = table.get_all()
         print(list(res))
         self.assertEqual(table.count(), 100)
         self.assertEqual(get_value(table), kv_list(100))
+        table.destroy()
 
     def test_count(self):
         options = {}
@@ -182,7 +188,7 @@ class TestStandalone(unittest.TestCase):
         options_kv['keys_only'] = False
         table = self.ctx.load('ns1', 'test_take_kv', options=options_kv).put_all(range(10), options=options_kv)
         print(table.first(options=options_kv))
-        self.assertEqual(table.first(options=options), (0, 0))
+        self.assertEqual(table.first(options=options_kv), (0, 0))
 
     def test_map_values(self):
         options = get_default_options()
@@ -221,7 +227,7 @@ class TestStandalone(unittest.TestCase):
         # print(rp.count())
         # print(rp.map_values(lambda v: v))
         print(rp.map(lambda k, v: (k + 1, v)).count())
-        self.assertEqual(get_value(rp.map(lambda k, v: (k + 1, v))).count(), 1000)
+        self.assertEqual(len(get_value(rp.map(lambda k, v: (k + 1, v)))), 1000)
         # print(rp.first())
         # print(rp.map(lambda k, v: (k + 1, v)).count())
 
@@ -305,19 +311,19 @@ class TestStandalone(unittest.TestCase):
     def test_subtract_by_key(self):
         options = get_default_options()
         options['total_partitions'] = 3
-        left_rp = self.ctx.load("namespace2020", "testSubtractByKeyLeft2020", options=options).put_all(range(10), options=options)
-        right_rp = self.ctx.load("namespace2020", "testSubtractByKeyRight2020", options=options).put_all(range(5), options=options)
+        left_rp = self.ctx.load("namespace2020", "testSubtractByKeyLeft202013", options=options).put_all(range(10), options=options)
+        right_rp = self.ctx.load("namespace202013", "testSubtractByKeyRight202013", options=options).put_all(range(5), options=options)
         print(list(left_rp.subtract_by_key(right_rp).get_all()))
         left_rp.destroy()
         right_rp.destroy()
 
     def test_union(self):
         options = get_default_options()
-        left_rp = self.ctx.load("ns1", "testUnionLeft", options=options).put_all([1, 2, 3], options=options)
+        left_rp = self.ctx.load("ns1", "testUnionLeft123", options=options).put_all([1, 2, 3], options=options)
 
         options['include_key'] = True
         options['total_partitions'] = 3
-        right_rp = self.ctx.load("ns1", "testUnionRight", options=options).put_all([(1, 1), (2, 2), (3, 3)])
+        right_rp = self.ctx.load("ns1", "testUnionRight123", options=options).put_all([(1, 1), (2, 2), (3, 3)])
         print(list(left_rp.union(right_rp, lambda v1, v2: v1 + v2).get_all()))
         left_rp.destroy()
         right_rp.destroy()
@@ -325,10 +331,10 @@ class TestStandalone(unittest.TestCase):
         options = get_default_options()
 
         options['total_partitions'] = 3
-        left_rp = self.ctx.load("namespace20200102", "testUnionLeft2020", options=options).put_all([1, 2, 3], options=options)
+        left_rp = self.ctx.load("namespace20200102", "testUnionLeft123", options=options).put_all([1, 2, 3], options=options)
         print("left:", left_rp)
         options['include_key'] = True
-        right_rp = self.ctx.load("namespace20200102", "testUnionRight2020", options=options).put_all([(1, 1), (2, 2), (3, 3)], options=options)
+        right_rp = self.ctx.load("namespace20200102", "testUnionRight123", options=options).put_all([(1, 1), (2, 2), (3, 3)], options=options)
         print("right:", right_rp)
         print("left:", list(left_rp.get_all()))
         print("right:", list(right_rp.get_all()))
