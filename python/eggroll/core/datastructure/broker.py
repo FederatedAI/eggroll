@@ -16,9 +16,9 @@ import queue
 import time
 from queue import Queue
 
-from eggroll.utils import log_utils
+from eggroll.utils.log_utils import get_logger
 
-LOGGER = log_utils.get_logger()
+L = get_logger()
 
 
 class Broker(object):

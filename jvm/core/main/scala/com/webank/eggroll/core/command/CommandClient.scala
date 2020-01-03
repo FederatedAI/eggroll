@@ -19,7 +19,7 @@
 package com.webank.eggroll.core.command
 
 import java.lang.reflect.{InvocationHandler, Method, Proxy}
-import java.util.concurrent.{CompletableFuture, CountDownLatch}
+import java.util.concurrent.CountDownLatch
 import java.util.function.Supplier
 
 import com.google.protobuf.{ByteString, UnsafeByteOperations}
@@ -29,7 +29,6 @@ import com.webank.eggroll.core.concurrent.AwaitSettableFuture
 import com.webank.eggroll.core.constant.{SerdesTypes, SessionConfKeys}
 import com.webank.eggroll.core.datastructure.RpcMessage
 import com.webank.eggroll.core.di.Singletons
-import com.webank.eggroll.core.error.DistributedRuntimeException
 import com.webank.eggroll.core.factory.GrpcChannelFactory
 import com.webank.eggroll.core.grpc.client.{GrpcClientContext, GrpcClientTemplate}
 import com.webank.eggroll.core.grpc.observer.SameTypeFutureCallerResponseStreamObserver
@@ -68,30 +67,41 @@ class CommandClient(defaultEndpoint:ErEndpoint = null, serdesType: String = Serd
   }
 
   def call[T](commandURI: CommandURI, args: RpcMessage*)(implicit tag:ClassTag[T]): T = {
-    val stub = CommandServiceGrpc.newBlockingStub(buildChannel(defaultEndpoint))
-    val argBytes = args.map(x => ByteString.copyFrom(SerdesUtils.rpcMessageToBytes(x, SerdesTypes.PROTOBUF)))
-    val resp = stub.call(Command.CommandRequest.newBuilder
+    try {
+      val stub = CommandServiceGrpc.newBlockingStub(buildChannel(defaultEndpoint))
+      val argBytes = args.map(x => ByteString.copyFrom(SerdesUtils.rpcMessageToBytes(x, SerdesTypes.PROTOBUF)))
+      val resp = stub.call(Command.CommandRequest.newBuilder
         .setId(System.currentTimeMillis + "")
         .setUri(commandURI.uri.toString)
         .addAllArgs(argBytes.asJava)
         .build)
-    SerdesUtils.rpcMessageFromBytes(resp.getResults(0).toByteArray,
-      tag.runtimeClass, SerdesTypes.PROTOBUF).asInstanceOf[T]
+      SerdesUtils.rpcMessageFromBytes(resp.getResults(0).toByteArray,
+        tag.runtimeClass, SerdesTypes.PROTOBUF).asInstanceOf[T]
+    } catch {
+      case t: Throwable =>
+        logError(s"[COMMAND] error calling to ${defaultEndpoint}. commandUri: ${commandURI.uriString}")
+        throw t
+    }
   }
 
   def call[T](commandURI: CommandURI, args: Array[(Array[RpcMessage], ErEndpoint)])(implicit tag:ClassTag[T]): Array[T] = {
     val futures = args.map {
       case (rpcMessages, endpoint) =>
-        val ch: ManagedChannel = Singletons.getNoCheck(classOf[GrpcChannelFactory]).getChannel(endpoint, isSecure)
-        val stub = CommandServiceGrpc.newFutureStub(ch)
-        val argBytes = rpcMessages.map(x => UnsafeByteOperations.unsafeWrap(SerdesUtils.rpcMessageToBytes(x, SerdesTypes.PROTOBUF)))
+        try {
+          val ch: ManagedChannel = Singletons.getNoCheck(classOf[GrpcChannelFactory]).getChannel(endpoint, isSecure)
+          val stub = CommandServiceGrpc.newFutureStub(ch)
+          val argBytes = rpcMessages.map(x => UnsafeByteOperations.unsafeWrap(SerdesUtils.rpcMessageToBytes(x, SerdesTypes.PROTOBUF)))
 
-        stub.call(
-          Command.CommandRequest.newBuilder
-            .setId(s"${sessionId}-command-${TimeUtils.getNowMs()}")
-            .setUri(commandURI.uri.toString)
-            .addAllArgs(argBytes.toList.asJava).build)
-
+          stub.call(
+            Command.CommandRequest.newBuilder
+              .setId(s"${sessionId}-command-${TimeUtils.getNowMs()}")
+              .setUri(commandURI.uri.toString)
+              .addAllArgs(argBytes.toList.asJava).build)
+        } catch {
+          case t: Throwable =>
+            logError(s"[COMMAND] error calling to ${endpoint}. commandUri: ${commandURI.uriString}")
+            throw t
+        }
     }
 
     futures.map(f => SerdesUtils.rpcMessageFromBytes(f.get().getResults(0).toByteArray,

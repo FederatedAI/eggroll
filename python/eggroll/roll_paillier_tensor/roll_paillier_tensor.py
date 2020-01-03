@@ -24,15 +24,16 @@ class Tensor(object):
 
 #tmpPub, tmpPriv = rptEngine.keygen()
 
-class RptContext:
-    def __init__(self, rp_ctx:RollPairContext):
+class RptContext(object):
+    def __init__(self, rp_ctx: RollPairContext):
         self.rp_ctx = rp_ctx
 
     def load(self, namespace, name, engine_type="cpu"):
         return RollPaillierTensor(self.rp_ctx.load(namespace, name), engine_type)
 
+
 class NumpyTensor(Tensor):
-    def __init__(self, ndarray, pub, type = 'cpu'):
+    def __init__(self, ndarray, pub, type='cpu'):
         self._pub = pub
         if isinstance(ndarray, int) or isinstance(ndarray, float):
             self._ndarray = np.array([[ndarray]])

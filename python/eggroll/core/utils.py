@@ -19,7 +19,7 @@ from datetime import datetime
 
 from eggroll.utils import log_utils
 
-LOGGER = log_utils.get_logger()
+L = log_utils.get_logger()
 
 def _to_proto(rpc_message):
     if rpc_message is not None:
@@ -72,6 +72,7 @@ def json_loads(src):
 
 def current_timestamp():
     return int(time.time()*1000)
+
 
 def _exception_logger(func):
     def wrapper(*args, **kw):
@@ -132,7 +133,7 @@ def hash_code(s):
         h = int(seed * h) + ord(c)
 
     if h == sys.maxsize or h == -sys.maxsize - 1:
-        LOGGER.warn("hash code:{} out of int bound".format(str(h)))
+        L.warn("hash code:{} out of int bound".format(str(h)))
         h = 0
 
     return h
