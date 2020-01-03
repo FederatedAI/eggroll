@@ -160,11 +160,9 @@ class LmdbAdapter(PairAdapter):
         from pathlib import Path
         shutil.rmtree(self.path)
         path = Path(self.path)
-
-        if os.path.exists(path.parent) and os.path.isdir(path.parent):
-            if not os.listdir(path.parent):
-                try:
-                    os.removedirs(path.parent)
-                    L.info("finish destroy")
-                except:
-                    L.info("has destroyed")
+        if not os.listdir(path.parent):
+            try:
+                os.removedirs(path.parent)
+                L.debug("finish destroy, path:{}".format(self.path))
+            except:
+                L.info("path :{} has destroyed".format(self.path))
