@@ -121,7 +121,7 @@ Use ssh to log in to each node with **app user**. Go to the install directory an
 
 ```bash
 cd ${EGGROLL_HOME}
-sh eggroll.sh all start						  --start all module service on this server
+sh bin/eggroll.sh all start						  --start all module service on this server
 ```
 
 And you can replace 'start' with 'status' to see the status of the process, replace 'start' with 'restart' to restart service, and replace 'start' with 'stop' to stop service, such as:
