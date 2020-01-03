@@ -16,7 +16,7 @@ def create_adapter(er_partition: ErPartition):
 def create_serdes(serdes_type: SerdesTypes = SerdesTypes.CLOUD_PICKLE):
     if serdes_type == SerdesTypes.CLOUD_PICKLE or serdes_type == SerdesTypes.PROTOBUF:
         return CloudPickleSerdes
-    elif serdes_type == SerdesTypes.PICKLE:
+    elif not serdes_type or serdes_type == SerdesTypes.PICKLE:
         return PickleSerdes
     else:
         return EmptySerdes

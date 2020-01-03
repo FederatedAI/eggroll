@@ -18,13 +18,15 @@ from collections import OrderedDict
 from eggroll.core.datastructure.broker import Broker
 from eggroll.core.pair_store.format import PairBinReader, PairBinWriter, \
     FileByteBuffer, ArrayByteBuffer
-from eggroll.utils import log_utils
+from eggroll.utils.log_utils import get_logger
 
-LOGGER = log_utils.get_logger()
+L = get_logger()
+
 
 # TODO:0: usage?
 class AdapterManager:
     pass
+
 
 class PairAdapter(object):
     """
@@ -81,6 +83,7 @@ class PairWriteBatch:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
+
 class PairIterator:
     def close(self):
         raise NotImplementedError()
@@ -93,6 +96,7 @@ class PairIterator:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
+
 
 class FileAdapter(PairAdapter):
     def destroy(self):
@@ -133,6 +137,7 @@ class FileIterator(PairIterator):
     def __iter__(self):
         return self.reader.read_all()
 
+
 class FileWriteBatch(PairWriteBatch):
     def __init__(self, file):
         self.writer = PairBinWriter(FileByteBuffer(file))
@@ -145,6 +150,7 @@ class FileWriteBatch(PairWriteBatch):
 
     def close(self):
         pass
+
 
 class CacheAdapter(PairAdapter):
     caches = {}
@@ -180,6 +186,7 @@ class CacheAdapter(PairAdapter):
     def count(self):
         return len(self.data)
 
+
 class CacheIterator(PairIterator):
     def __init__(self, data):
         self.data = data
@@ -189,6 +196,7 @@ class CacheIterator(PairIterator):
 
     def __iter__(self):
         return iter(self.data.items())
+
 
 class CacheWriteBatch(PairWriteBatch):
     def __init__(self, data):
@@ -232,6 +240,7 @@ class MmapAdapter(PairAdapter):
     def put(self, key, value):
         raise NameError("unsupported")
 
+
 class MmapIterator(PairIterator):
     def __init__(self, file):
         self.mm = mmap.mmap(file.fileno(), 0)
@@ -243,6 +252,7 @@ class MmapIterator(PairIterator):
 
     def __iter__(self):
         return self.reader.read_all()
+
 
 class MmapWriteBatch(PairWriteBatch):
     def __init__(self, file):
@@ -257,6 +267,7 @@ class MmapWriteBatch(PairWriteBatch):
 
     def close(self):
         self._file.close()
+
 
 class BrokerAdapter(PairAdapter):
     def __init__(self, broker: Broker, options={}):
