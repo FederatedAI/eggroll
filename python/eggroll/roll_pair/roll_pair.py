@@ -38,9 +38,9 @@ from eggroll.roll_pair import create_serdes
 from eggroll.roll_pair.transfer_pair import TransferPair, BatchBroker
 from eggroll.roll_pair.utils.gc_utils import Recorder
 from eggroll.roll_pair.utils.pair_utils import partitioner
-from eggroll.utils.log_utils import get_L
+from eggroll.utils.log_utils import get_logger
 
-L = get_L()
+L = get_logger()
 
 
 def runtime_init(session: ErSession):
