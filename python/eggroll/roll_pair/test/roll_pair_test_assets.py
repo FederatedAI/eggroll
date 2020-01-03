@@ -29,17 +29,17 @@ ER_STORE1 = ErStore(
                                  name="name"))
 
 
-def get_debug_test_context(is_standalone=False):
-    manager_port = 4670
-    egg_ports = [20001]
-    egg_transfer_ports = [20002]
+def get_debug_test_context(is_standalone=False, manager_port=4670, egg_port=20001, transfer_port=20002, session_id='testing'):
+    manager_port = manager_port
+    egg_ports = [egg_port]
+    egg_transfer_ports = [transfer_port]
     self_server_node_id = 2
 
     options = {}
     if is_standalone:
         options[SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE] = "standalone"
-    options[TransferConfKeys.CONFKEY_TRANSFER_SERVICE_HOST] = "localhost"
-    options[TransferConfKeys.CONFKEY_TRANSFER_SERVICE_PORT] = "20002"
+    options[TransferConfKeys.CONFKEY_TRANSFER_SERVICE_HOST] = "127.0.0.1"
+    options[TransferConfKeys.CONFKEY_TRANSFER_SERVICE_PORT] = str(transfer_port)
     options[ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT] = str(manager_port)
     options[NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT] = str(manager_port)
 
@@ -47,17 +47,17 @@ def get_debug_test_context(is_standalone=False):
                       server_node_id=self_server_node_id,
                       processor_type=ProcessorTypes.EGG_PAIR,
                       status=ProcessorStatus.RUNNING,
-                      command_endpoint=ErEndpoint("localhost", egg_ports[0]),
-                      transfer_endpoint=ErEndpoint("localhost",
+                      command_endpoint=ErEndpoint("127.0.0.1", egg_ports[0]),
+                      transfer_endpoint=ErEndpoint("127.0.0.1",
                                                    egg_transfer_ports[0]))
 
     roll = ErProcessor(id=1,
                        server_node_id=self_server_node_id,
                        processor_type=ProcessorTypes.ROLL_PAIR_MASTER,
                        status=ProcessorStatus.RUNNING,
-                       command_endpoint=ErEndpoint("localhost", manager_port))
+                       command_endpoint=ErEndpoint("127.0.0.1", manager_port))
 
-    session = ErSession(session_id='testing',
+    session = ErSession(session_id,
                         processors=[egg, roll],
                         options=options)
     # session = ErSession(options={})
