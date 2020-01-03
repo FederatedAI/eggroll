@@ -22,5 +22,6 @@ class GrpcChannelFactory(object):
         result = grpc.insecure_channel(
             target=f'{endpoint._host}:{repr(endpoint._port)}',
             options=[('grpc.max_send_message_length', -1),
-                     ('grpc.max_receive_message_length', -1)])
+                     ('grpc.max_receive_message_length', -1),
+                     ('grpc.lb_policy_name', 'grpclb')])
         return result

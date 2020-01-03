@@ -171,11 +171,7 @@ class TransferClient(object):
     @_exception_logger
     def send(self, broker, endpoint: ErEndpoint, tag):
         try:
-            channel = grpc.insecure_channel(
-                    target=f'{endpoint._host}:{endpoint._port}',
-                    options=[
-                        ('grpc.max_send_message_length', -1),
-                        ('grpc.max_receive_message_length', -1)])
+            channel = self.__grpc_channel_factory.create_channel(endpoint)
 
             stub = transfer_pb2_grpc.TransferServiceStub(channel)
             import types
@@ -201,11 +197,7 @@ class TransferClient(object):
                     broker.put(e)
                 broker.signal_write_finish()
 
-            channel = grpc.insecure_channel(
-                    target=f'{endpoint._host}:{endpoint._port}',
-                    options=[
-                        ('grpc.max_send_message_length', -1),
-                        ('grpc.max_receive_message_length', -1)])
+            channel = self.__grpc_channel_factory.create_channel(endpoint)
 
             stub = transfer_pb2_grpc.TransferServiceStub(channel)
             request = transfer_pb2.TransferBatch(
