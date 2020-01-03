@@ -180,6 +180,12 @@ class RollPair(object):
     SUBTRACT_BY_KEY = 'subtractByKey'
     UNION = 'union'
 
+    def __setstate__(self, state):
+        pass
+
+    def __getstate__(self):
+        pass
+
     def __init__(self, er_store: ErStore, rp_ctx: RollPairContext):
         self.__store = er_store
         self.ctx = rp_ctx
@@ -216,23 +222,8 @@ class RollPair(object):
     def set_gc_disable(self):
         self.gc_enable = False
 
-    def __get_unary_input_adapter(self, options={}):
-        input_adapter = None
-        if self.ctx.default_store_type == StoreTypes.ROLLPAIR_LMDB:
-            input_adapter = LmdbSortedKvAdapter(options)
-        elif self.ctx.default_store_type == StoreTypes.ROLLPAIR_LEVELDB:
-            input_adapter = RocksdbSortedKvAdapter(options)
-        return input_adapter
-
     def get_store_serdes(self):
-        serdes_type = self.__store._store_locator._serdes
-        L.info(f'serdes type: {serdes_type}')
-        if serdes_type == SerdesTypes.CLOUD_PICKLE or serdes_type == SerdesTypes.PROTOBUF:
-            return CloudPickleSerdes
-        elif serdes_type == SerdesTypes.PICKLE:
-            return PickleSerdes
-        else:
-            return EmptySerdes
+        return create_serdes(self.__store._store_locator._serdes)
 
     def get_partitions(self):
         return self.__store._store_locator._total_partitions
@@ -485,7 +476,6 @@ class RollPair(object):
                 command_uri=CommandURI(f'{RollPair.EGG_PAIR_URI_PREFIX}/{RollPair.RUN_TASK}'),
                 serdes_type=self.__command_serdes
         )
-        L.info("get resp:{}".format(ErPair.from_proto_string(job_resp._value)))
 
     def take(self, n: int, options={}):
         if n <= 0:
