@@ -130,8 +130,8 @@ class RollSite:
                 while True:
                     ret_list = status_rp.get(_tagged_key)
                     if ret_list:
-                        table_namespace=ret_list[2]
-                        table_name=ret_list[1]
+                        table_namespace = ret_list[2]
+                        table_name = ret_list[1]
                         obj_type = ret_list[0]
                         break
                     time.sleep(0.1)
@@ -172,8 +172,6 @@ class RollSite:
             # for _partyId in _partyIds:
             _role = role_partyId[0]
             _partyId = role_partyId[1]
-            LOGGER.info("_role: {}".format(_role))
-            LOGGER.info("_partyIds:".format(_partyId))
             _tagged_key = self.__remote__object_key(self.job_id, self.name, self.tag, self.local_role, self.party_id,
                                                     _role,
                                                     _partyId)
