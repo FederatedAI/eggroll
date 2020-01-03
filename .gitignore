@@ -1,9 +1,9 @@
 # common file patterns
-.DS_STORE
-.iml
-.pyc
-.jar
-.class
+*.DS_STORE
+*.iml
+*.pyc
+*.jar
+*.class
 
 # excluded paths
 jvm/**/target
