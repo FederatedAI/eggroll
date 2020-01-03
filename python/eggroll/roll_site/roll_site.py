@@ -151,7 +151,7 @@ class RollSite:
                 table_namespace = self.job_id
 
             rp = self.ctx.rp_ctx.load(namespace=table_namespace, name=table_name)
-            if obj_type == 'object'.encode('utf-8'):
+            if obj_type == 'object':
                 __tagged_key = _tagged_key
                 ret_obj = rp.get(__tagged_key)
                 LOGGER.debug(f"ret_obj:{ret_obj}")
