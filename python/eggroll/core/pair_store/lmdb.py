@@ -12,7 +12,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+import platform
 import os
 import threading
 
@@ -26,6 +26,7 @@ L = get_logger()
 
 #64 * 1024 * 1024
 LMDB_MAP_SIZE = 16 * 4_096 * 244_140    # follows storage-service-cxx's config here
+LMDB_MAP_SIZE_WINDOWS = 200 * 1024 * 1024
 DEFAULT_DB = b'main'
 # DELIMETER = '-'
 # DELIMETER_ENCODED = DELIMETER.encode()
@@ -91,13 +92,12 @@ class LmdbAdapter(PairAdapter):
             L.info("lmdb adapter init")
             super().__init__(options)
             self.path = options["path"]
-            lmdb_map_size = options.get("lmdb_map_size", LMDB_MAP_SIZE)
+            lmdb_map_size = options.get("lmdb_map_size", LMDB_MAP_SIZE if platform.system() != 'Windows' else LMDB_MAP_SIZE_WINDOWS)
             create_if_missing = bool(options.get("create_if_missing", "True"))
             if self.path not in LmdbAdapter.env_dict:
                 if create_if_missing:
                     os.makedirs(self.path, exist_ok=True)
                 L.info("path not in dict db path:{}".format(self.path))
-                import platform
                 writemap = False if platform.system() == 'Darwin' else True
                 self.env = lmdb.open(self.path, create=create_if_missing, max_dbs=128, sync=False, map_size=lmdb_map_size, writemap=writemap)
                 self.sub_db = self.env.open_db(DEFAULT_DB)
@@ -156,6 +156,13 @@ class LmdbAdapter(PairAdapter):
 
     def destroy(self):
         self.close()
-        import shutil
+        import shutil, os
+        from pathlib import Path
         shutil.rmtree(self.path)
-        L.info("finish destroy")
+        path = Path(self.path)
+        try:
+            if not os.listdir(path.parent):
+                os.removedirs(path.parent)
+                L.debug("finish destroy, path:{}".format(self.path))
+        except:
+            L.info("path :{} has destroyed".format(self.path))
