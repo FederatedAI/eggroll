@@ -38,7 +38,6 @@ class RollSiteContext:
 
         runtime_conf_path = options["runtime_conf_path"]
         server_conf_path = options["server_conf_path"]
-        transfer_conf_path = options["transfer_conf_path"]
 
         server_conf = file_utils.load_json_conf(server_conf_path)
         if CONF_KEY_SERVER not in server_conf:  # CONF_KEY_SERVER = "servers"
@@ -46,8 +45,6 @@ class RollSiteContext:
         if CONF_KEY_TARGET not in server_conf.get(CONF_KEY_SERVER):  # CONF_KEY_TARGET = "clustercomm"
             raise EnvironmentError(
                 "The {} should be a json file containing key: {}".format(server_conf_path, CONF_KEY_TARGET))
-
-        self.trans_conf = file_utils.load_json_conf(transfer_conf_path)
 
         self.dst_host = server_conf.get(CONF_KEY_SERVER).get(CONF_KEY_TARGET).get("host")
         self.dst_port = server_conf.get(CONF_KEY_SERVER).get(CONF_KEY_TARGET).get("port")
@@ -105,7 +102,6 @@ CONF_KEY_SERVER = "servers"
 class RollSite:
     def __init__(self, name: str, tag: str, rs_ctx: RollSiteContext):
         self.ctx = rs_ctx
-        self.trans_conf = self.ctx.trans_conf
         self.runtime_conf = self.ctx.runtime_conf
         self.party_id = self.ctx.party_id
         self.dst_host = self.ctx.dst_host
@@ -131,63 +127,59 @@ class RollSite:
     def __remote__object_key(*args):
         return "-".join(["{}".format(arg) for arg in args])
 
-    def __check_authorization(self, name, is_send=True):
-        algorithm, sub_name = name.split(".")
-        auth_dict = self.trans_conf.get(algorithm)
-
-        if auth_dict is None:
-            raise ValueError("{} did not set in transfer_conf.json".format(algorithm))
-
-        if auth_dict.get(sub_name) is None:
-            raise ValueError("{} did not set under algorithm {} in transfer_conf.json".format(sub_name, algorithm))
-
-        if is_send and auth_dict.get(sub_name).get('src') != self.local_role:
-            raise ValueError("not allow to send from {}".format(self.local_role))
-        elif not is_send and self.local_role not in auth_dict.get(sub_name).get('dst'):
-            raise ValueError("not allow to receive from {}".format(self.local_role))
-
-        return algorithm, sub_name
-
     def __get_parties(self, role):
         return self.runtime_conf.get('role').get(role)
 
     def _thread_receive(self, packet, namespace, _tagged_key):
-        is_standalone = self.ctx.rp_ctx.get_session().get_option(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE) == "standalone"
-        if is_standalone:
-            status_rp = self.ctx.rp_ctx.load(namespace, STATUS_TABLE_NAME)
-            LOGGER.debug(f"_thread_receive:{_tagged_key} ---  {namespace}")
-            import time
-            while True:
-                ret_list = status_rp.get(_tagged_key)
-                if ret_list:
-                    LOGGER.info("ret_list:{}".format(ret_list))
-                    table_name=ret_list[1]
-                    obj_type = ret_list[0]
-                    break
-                time.sleep(0.1)
-        else:
-            ret_packet = self.stub.unaryCall(packet)
-            while ret_packet.header.ack != 123:
-                if ret_packet.header.ack in ERROR_STATES:
-                    raise IOError("receive terminated")
+        try:
+            is_standalone = self.ctx.rp_ctx.get_session().get_option(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE) == "standalone"
+            if is_standalone:
+                status_rp = self.ctx.rp_ctx.load(namespace, STATUS_TABLE_NAME)
+                LOGGER.debug(f"_thread_receive:{_tagged_key} ---  {namespace}")
+                import time
+                while True:
+                    ret_list = status_rp.get(_tagged_key)
+                    if ret_list:
+                        LOGGER.info("ret_list33:{}".format(ret_list))
+                        LOGGER.debug(f"_thread_receive30:")
+                        table_namespace=ret_list[2]
+                        table_name=ret_list[1]
+                        obj_type = ret_list[0]
+                        LOGGER.debug(f"_thread_receive38:{obj_type},{table_name},{table_namespace},{self.job_id}")
+                        LOGGER.debug(f"_thread_receive31:")
+                        break
+                    time.sleep(0.1)
+            else:
                 ret_packet = self.stub.unaryCall(packet)
-            obj_type = ret_packet.body.value 
-            table_name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.job_id, self.name, self.tag,
-                                                                       ret_packet.header.src.role,
-                                                                       ret_packet.header.src.partyId,
-                                                                       ret_packet.header.dst.role,
-                                                                       ret_packet.header.dst.partyId]))
+                while ret_packet.header.ack != 123:
+                    if ret_packet.header.ack in ERROR_STATES:
+                        raise IOError("receive terminated")
+                    ret_packet = self.stub.unaryCall(packet)
+                obj_type = ret_packet.body.value 
+                table_name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.job_id, self.name, self.tag,
+                                                                           ret_packet.header.src.role,
+                                                                           ret_packet.header.src.partyId,
+                                                                           ret_packet.header.dst.role,
+                                                                           ret_packet.header.dst.partyId]))
+                table_namespace = self.job_id
 
-        print("namespace:", self.job_id, ", name:", table_name)
-        LOGGER.debug(f"_thread_receive:{obj_type},{type(obj_type)},{obj_type == str.encode('object')}")
-        rp = self.ctx.rp_ctx.load(namespace=self.job_id, name=table_name)
-        if obj_type == 'object':
-            __tagged_key = _tagged_key
-            ret_obj = rp.get(__tagged_key)
-            LOGGER.debug(f"ret_obj:{ret_obj}")
-            return ret_obj
-        else:
-            return rp
+                LOGGER.debug(f"_thread_receive32:")
+            LOGGER.debug(f"_thread_receive33:")
+            LOGGER.debug(f"_thread_receive37:{obj_type},{type(obj_type)},{obj_type == str.encode('object')}")
+            rp = self.ctx.rp_ctx.load(namespace=table_namespace, name=table_name)
+            if obj_type == 'object':
+                __tagged_key = _tagged_key
+                ret_obj = rp.get(__tagged_key)
+                LOGGER.debug(f"ret_obj:{ret_obj}")
+                return ret_obj
+            else:
+                LOGGER.debug(f"_thread_receive490:{rp.__dict__},{rp.count()}")
+                return rp
+        except:
+            LOGGER.exception("thread recv error")
+        finally:
+            LOGGER.debug("thread44 done")
+
 
     def push(self, obj, parties: list = None):
         futures = []
@@ -202,12 +194,13 @@ class RollSite:
             _tagged_key = self.__remote__object_key(self.job_id, self.name, self.tag, self.local_role, self.party_id,
                                                     _role,
                                                     _partyId)
-
+            LOGGER.debug(f"_tagged_key:{_tagged_key}")
             namespace = self.job_id
             obj_type = 'rollpair' if isinstance(obj, RollPair) else 'object'
 
             if isinstance(obj, RollPair):
                 rp = obj
+                LOGGER.debug(f"_thread_receive491:{rp.__dict__},{rp.count()}")
             else:
                 # If it is a object, put the object in the table and send the table meta.
                 name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.job_id, self.name, self.tag,
@@ -218,7 +211,7 @@ class RollSite:
                 rp.put(_tagged_key, obj)
                 LOGGER.debug("[REMOTE] Sending {}".format(_tagged_key))
 
-            def map_values():
+            def map_values(_tagged_key):
                 is_standalone = self.ctx.rp_ctx.get_session().get_option(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE) == "standalone"
                 #is_standalone = True
                 if is_standalone:
@@ -248,13 +241,19 @@ class RollSite:
 
                 if is_standalone:
                     status_rp = self.ctx.rp_ctx.load(namespace, STATUS_TABLE_NAME)
-                    status_rp.put(_tagged_key, (obj_type, dst_name, namespace))
+
+                    if isinstance(obj, RollPair):
+                        LOGGER.debug(f"_tagged_key:{_tagged_key}")
+                        LOGGER.debug(f"push:{obj_type},{rp.get_name()}, {rp.get_namespace()}")
+                        status_rp.put(_tagged_key, (obj_type, rp.get_name(), rp.get_namespace()))
+                    else:
+                        status_rp.put(_tagged_key, (obj_type, dst_name, namespace))
                     _a=status_rp.get(_tagged_key)
                     LOGGER.debug(f"push:{_tagged_key},{_a}")
 
                 return role_partyId
 
-            future = self.process_pool.submit(map_values)
+            future = self.process_pool.submit(map_values, _tagged_key)
             futures.append(future)
 
         self.process_pool.shutdown(wait=False)
