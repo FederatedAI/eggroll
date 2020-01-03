@@ -28,7 +28,6 @@ from eggroll.core.io.kv_adapter import LmdbSortedKvAdapter, \
     RocksdbSortedKvAdapter
 from eggroll.core.meta_model import ErStoreLocator, ErJob, ErStore, ErFunctor, \
     ErTask, ErPair, ErPartition
-from eggroll.core.pair_store.adapter import BrokerAdapter
 from eggroll.core.serdes import cloudpickle
 from eggroll.core.serdes.eggroll_serdes import PickleSerdes, CloudPickleSerdes, \
     EmptySerdes
@@ -39,9 +38,9 @@ from eggroll.roll_pair import create_serdes
 from eggroll.roll_pair.transfer_pair import TransferPair, BatchBroker
 from eggroll.roll_pair.utils.gc_utils import Recorder
 from eggroll.roll_pair.utils.pair_utils import partitioner
-from eggroll.utils import log_utils
+from eggroll.utils.log_utils import get_logger
 
-LOGGER = log_utils.get_logger()
+L = get_logger()
 
 
 def runtime_init(session: ErSession):
@@ -217,6 +216,14 @@ class RollPair(object):
     def set_gc_disable(self):
         self.gc_enable = False
 
+    def __get_unary_input_adapter(self, options={}):
+        input_adapter = None
+        if self.ctx.default_store_type == StoreTypes.ROLLPAIR_LMDB:
+            input_adapter = LmdbSortedKvAdapter(options)
+        elif self.ctx.default_store_type == StoreTypes.ROLLPAIR_LEVELDB:
+            input_adapter = RocksdbSortedKvAdapter(options)
+        return input_adapter
+
     def get_store_serdes(self):
         serdes_type = self.__store._store_locator._serdes
         LOGGER.info(f'serdes type: {serdes_type}')
@@ -282,7 +289,7 @@ class RollPair(object):
                       inputs=inputs,
                       outputs=output,
                       job=job)
-        LOGGER.info("start send req")
+        L.info("start send req")
         job_resp = self.__command_client.simple_sync_send(
                 input=task,
                 output_type=ErPair,
@@ -290,7 +297,7 @@ class RollPair(object):
                 command_uri=CommandURI(f'{RollPair.EGG_PAIR_URI_PREFIX}/{RollPair.RUN_TASK}'),
                 serdes_type=self.__command_serdes
         )
-        LOGGER.info("get resp:{}".format((job_resp._value)))
+        L.info("get resp:{}".format((job_resp._value)))
         return self.value_serdes.deserialize(job_resp._value) if job_resp._value != b'' else None
 
     def put(self, k, v, options={}):
@@ -315,7 +322,7 @@ class RollPair(object):
                       inputs=inputs,
                       outputs=output,
                       job=job)
-        LOGGER.info("start send req")
+        L.info("start send req")
         job_resp = self.__command_client.simple_sync_send(
                 input=task,
                 output_type=ErPair,
@@ -323,12 +330,12 @@ class RollPair(object):
                 command_uri=CommandURI(f'{RollPair.EGG_PAIR_URI_PREFIX}/{RollPair.RUN_TASK}'),
                 serdes_type=self.__command_serdes
         )
-        LOGGER.info("get resp:{}".format((job_resp._value)))
+        L.info("get resp:{}".format((job_resp._value)))
         value = job_resp._value
         return value
 
     def get_all(self, options={}):
-        LOGGER.info('get all functor')
+        L.info('get all functor')
         job_id = generate_job_id(self.__session_id, RollPair.GET_ALL)
         def send_command():
             job = ErJob(id=job_id,
@@ -353,7 +360,7 @@ class RollPair(object):
         for k, v in transfer_pair.gather(populated_store):
             done_cnt +=1
             yield self.key_serdes.deserialize(k), self.value_serdes.deserialize(v)
-        LOGGER.debug(f"get_all count:{done_cnt}")
+        L.debug(f"get_all count:{done_cnt}")
 
     def put_all(self, items, output=None, options={}):
         include_key = options.get("include_key", True)
@@ -398,7 +405,7 @@ class RollPair(object):
             bb.signal_write_finish()
 
         scatter_results = scatter_future.result()
-        LOGGER.debug(f"scatter_results:{scatter_results}")
+        L.debug(f"scatter_results:{scatter_results}")
         th.join()
         return RollPair(populated_store, self.ctx)
 
@@ -448,7 +455,7 @@ class RollPair(object):
                 command_uri=CommandURI(f'{RollPair.ROLL_PAIR_URI_PREFIX}/{RollPair.RUN_JOB}'),
                 serdes_type=self.__command_serdes)
 
-        LOGGER.info(f'{RollPair.DESTROY}: {self.__store}')
+        L.info(f'{RollPair.DESTROY}: {self.__store}')
 
     def delete(self, k, options={}):
         key = create_serdes(self.__store._store_locator._serdes).serialize(k)
@@ -457,8 +464,8 @@ class RollPair(object):
         value = None
         partition_id = self.partitioner(key)
         egg = self.ctx.route_to_egg(self.__store._partitions[partition_id])
-        LOGGER.info(egg._command_endpoint)
-        LOGGER.info(f"count: {self.__store._store_locator._total_partitions}")
+        L.info(egg._command_endpoint)
+        L.info(f"count: {self.__store._store_locator._total_partitions}")
         inputs = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
         output = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
 
@@ -469,7 +476,7 @@ class RollPair(object):
                     outputs=outputs,
                     functors=[ErFunctor(body=cloudpickle.dumps(er_pair))])
         task = ErTask(id=generate_task_id(job_id, partition_id), name=RollPair.DELETE, inputs=inputs, outputs=output, job=job)
-        LOGGER.info("start send req")
+        L.info("start send req")
         job_resp = self.__command_client.simple_sync_send(
                 input=task,
                 output_type=ErPair,
@@ -477,7 +484,7 @@ class RollPair(object):
                 command_uri=CommandURI(f'{RollPair.EGG_PAIR_URI_PREFIX}/{RollPair.RUN_TASK}'),
                 serdes_type=self.__command_serdes
         )
-        LOGGER.info("get resp:{}".format(ErPair.from_proto_string(job_resp._value)))
+        L.info("get resp:{}".format(ErPair.from_proto_string(job_resp._value)))
 
     def take(self, n: int, options={}):
         if n <= 0:
@@ -537,7 +544,7 @@ class RollPair(object):
                 serdes_type=self.__command_serdes)
 
         er_store = job_result._outputs[0]
-        LOGGER.info(er_store)
+        L.info(er_store)
 
         return RollPair(er_store, self.ctx)
 
@@ -560,8 +567,8 @@ class RollPair(object):
                 serdes_type=self.__command_serdes)
 
         er_store = job_result._outputs[0]
-        LOGGER.info(er_store)
-        LOGGER.info(er_store)
+        L.info(er_store)
+        L.info(er_store)
 
         return RollPair(er_store, self.ctx)
 
@@ -584,7 +591,7 @@ class RollPair(object):
                 serdes_type=self.__command_serdes
         )
         er_store = job_result._outputs[0]
-        LOGGER.info(er_store)
+        L.info(er_store)
 
         return RollPair(er_store, self.ctx)
 
@@ -608,7 +615,7 @@ class RollPair(object):
                 serdes_type=self.__command_serdes
         )
         er_store = job_result._outputs[0]
-        LOGGER.info(er_store)
+        L.info(er_store)
 
         return RollPair(er_store, self.ctx)
 
@@ -632,7 +639,7 @@ class RollPair(object):
                 serdes_type=self.__command_serdes
         )
         er_store = job_result._outputs[0]
-        LOGGER.info(er_store)
+        L.info(er_store)
 
         return RollPair(er_store, self.ctx)
 
@@ -704,7 +711,7 @@ class RollPair(object):
                 serdes_type=self.__command_serdes
         )
         er_store = job_result._outputs[0]
-        LOGGER.info(er_store)
+        L.info(er_store)
 
         return RollPair(er_store, self.ctx)
 
@@ -729,7 +736,7 @@ class RollPair(object):
                 serdes_type=self.__command_serdes)
 
         er_store = job_result._outputs[0]
-        LOGGER.info(er_store)
+        L.info(er_store)
 
         return RollPair(er_store, self.ctx)
 
@@ -753,7 +760,7 @@ class RollPair(object):
                 serdes_type=self.__command_serdes)
 
         er_store = job_result._outputs[0]
-        LOGGER.info(er_store)
+        L.info(er_store)
 
         return RollPair(er_store, self.ctx)
 
@@ -775,7 +782,7 @@ class RollPair(object):
                 command_uri=CommandURI(f'{RollPair.ROLL_PAIR_URI_PREFIX}/{RollPair.RUN_JOB}'),
                 serdes_type=self.__command_serdes)
         er_store = job_result._outputs[0]
-        LOGGER.info(er_store)
+        L.info(er_store)
 
         return RollPair(er_store, self.ctx)
 
@@ -797,7 +804,7 @@ class RollPair(object):
                 command_uri=CommandURI(f'{RollPair.ROLL_PAIR_URI_PREFIX}/{RollPair.RUN_JOB}'),
                 serdes_type=self.__command_serdes)
         er_store = job_result._outputs[0]
-        LOGGER.info(er_store)
+        L.info(er_store)
 
         return RollPair(er_store, self.ctx)
 
@@ -823,6 +830,6 @@ class RollPair(object):
                 command_uri=CommandURI(f'{RollPair.ROLL_PAIR_URI_PREFIX}/{RollPair.RUN_JOB}'),
                 serdes_type=self.__command_serdes)
         er_store = job_result._outputs[0]
-        LOGGER.info(er_store)
+        L.info(er_store)
 
         return RollPair(er_store, self.ctx)

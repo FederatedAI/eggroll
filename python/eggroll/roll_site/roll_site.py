@@ -27,6 +27,8 @@ from eggroll.utils import file_utils
 from eggroll.utils import log_utils
 LOGGER = log_utils.get_logger()
 
+L = get_logger()
+
 _serdes = eggroll_serdes.PickleSerdes
 
 STATUS_TABLE_NAME = "__roll_site_standalone_status__"
@@ -209,7 +211,7 @@ class RollSite:
                 print("RollPair type name:", name)
                 rp = self.ctx.rp_ctx.load(namespace, name)
                 rp.put(_tagged_key, obj)
-                LOGGER.debug("[REMOTE] Sending {}".format(_tagged_key))
+                L.debug("[REMOTE] Sending {}".format(_tagged_key))
 
             def map_values(_tagged_key):
                 is_standalone = self.ctx.rp_ctx.get_session().get_option(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE) == "standalone"

@@ -20,18 +20,16 @@ import os
 from logging.handlers import TimedRotatingFileHandler
 from threading import RLock
 
-from eggroll.core.utils import time_now
 from eggroll.utils import file_utils
 
 
 class LoggerFactory(object):
     TYPE = "FILE"
-    LEVEL = logging.DEBUG
+    LEVEL = os.environ.get('EGGROLL_LOG_LEVEL', logging.INFO)
     name_to_loggers = {}
     LOG_DIR = None
     lock = RLock()
-    # default_logger_name = os.environ.get('EGGROLL_DEFAULT_LOGGER_NAME', default=f'EGGROLL_LOG_{time_now()}')
-    default_logger_name = os.environ.get('EGGROLL_DEFAULT_LOGGER_NAME', default=f'eggroll')
+    default_logger_name = os.environ.get('EGGROLL_LOG_FILE', default=f'eggroll-py')
 
     @staticmethod
     def set_directory(directory=None):
@@ -52,7 +50,7 @@ class LoggerFactory(object):
     def get_logger(name):
         with LoggerFactory.lock:
             if not LoggerFactory.LOG_DIR:
-                LoggerFactory.LOG_DIR = os.environ.get('EGGROLL_LOGS_DIR', default=f'{os.environ["EGGROLL_HOME"]}/logs')
+                LoggerFactory.LOG_DIR = os.environ.get('EGGROLL_LOGS_DIR', default=f'{os.environ["EGGROLL_HOME"]}/logs/eggroll')
                 os.makedirs(LoggerFactory.LOG_DIR, exist_ok=True)
             if name in LoggerFactory.name_to_loggers.keys():
                 logger, handler = LoggerFactory.name_to_loggers[name]
@@ -67,7 +65,7 @@ class LoggerFactory(object):
         if not LoggerFactory.LOG_DIR:
             return logging.StreamHandler()
         formatter = logging.Formatter(
-                '[%(levelname)-5s][%(asctime)s,%(msecs)03d][%(threadName)s,pid:%(process)d,tid:%(thread)d][%(filename)s:%(lineno)s.%(funcName)s] - %(message)s', datefmt='%Y%m%dT%H%M%S')
+                '[%(levelname)-5s][%(asctime)s.%(msecs)03d][%(threadName)s,pid:%(process)d,tid:%(thread)d][%(filename)s:%(lineno)s.%(funcName)s] - %(message)s')
         log_file = os.path.join(LoggerFactory.LOG_DIR, "{}.log".format(name))
         handler = TimedRotatingFileHandler(log_file,
                                            when='H',
