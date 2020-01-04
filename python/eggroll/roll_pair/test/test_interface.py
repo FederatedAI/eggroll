@@ -13,18 +13,19 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import os
 import unittest
 
 from eggroll.roll_pair.test.roll_pair_test_assets import get_debug_test_context, \
     get_cluster_context, get_standalone_context, set_default_option, \
     get_default_options
-import os
-is_debug = os.environ.get("EGGROLL_STANDALONE_DEBUG", True)
+
+is_debug = os.environ.get("EGGROLL_STANDALONE_DEBUG", "false").lower() in ("t", "true", "yes", "y", 1)
 is_standalone = False
 # cm_host="172.16.153.19"
-cm_host="127.0.0.1"
+#cm_host = "127.0.0.1"
 # cm_port="4680"
-cm_port="4670"
+cm_port = "4670"
 total_partitions = 1
 
 
@@ -55,7 +56,7 @@ class TestStandalone(unittest.TestCase):
             if is_standalone:
                 cls.ctx = get_standalone_context()
             else:
-                cls.ctx = get_cluster_context(cm_host, cm_port)
+                cls.ctx = get_cluster_context()
         set_default_option('include_key', False)
         set_default_option('total_partitions', total_partitions)
 
