@@ -22,6 +22,7 @@ from eggroll.core.meta_model import ErSessionMeta, \
     ErPartition
 from eggroll.core.utils import get_self_ip, time_now, DEFAULT_DATETIME_FORMAT
 from eggroll.utils.log_utils import get_logger
+from eggroll.core.constants import static_er_conf
 
 L = get_logger()
 
