@@ -23,6 +23,7 @@ from eggroll.core.command.commands import MetadataCommands, NodeManagerCommands,
     SessionCommands
 from eggroll.core.conf_keys import ClusterManagerConfKeys, NodeManagerConfKeys
 from eggroll.core.constants import SerdesTypes
+from eggroll.core.constants import static_er_conf
 from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.meta_model import ErEndpoint, ErServerNode, ErServerCluster, \
     ErProcessor, ErProcessorBatch
@@ -82,8 +83,8 @@ class CommandClient(object):
 class ClusterManagerClient(object):
 
     def __init__(self, options={}):
-        self.__endpoint = ErEndpoint(options.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST, '127.0.0.1'),
-                                     int(options.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, '4670')))
+        self.__endpoint = ErEndpoint(options.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST, static_er_conf.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST, '127.0.0.1')),
+                                     int(options.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, static_er_conf.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, '4670'))))
         if 'serdes_type' in options:
             self.__serdes_type = options['serdes_type']
         else:

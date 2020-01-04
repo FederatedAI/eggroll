@@ -13,6 +13,9 @@
 #  limitations under the License.
 
 
+static_er_conf = {}
+
+
 class SerdesTypes(object):
     PROTOBUF = 'PROTOBUF'
     PICKLE = 'PICKLE'
