@@ -40,6 +40,7 @@ from eggroll.core.transfer.transfer_service import GrpcTransferServicer, \
     TransferClient, TransferService
 from eggroll.core.utils import _exception_logger
 from eggroll.core.utils import hash_code
+from eggroll.core.utils import set_static_er_conf
 from eggroll.roll_pair import create_adapter, create_serdes
 from eggroll.roll_pair.transfer_pair import TransferPair
 from eggroll.roll_pair.utils.pair_utils import generator, partitioner, \
@@ -515,7 +516,7 @@ if __name__ == '__main__':
         print(f'reading default config: {conf_file}')
 
     configs.read(conf_file)
-    static_er_conf = configs['eggroll']
+    set_static_er_conf(configs['eggroll'])
     if configs:
         if not args.data_dir:
             args.data_dir = configs['eggroll']['eggroll.data.dir']
