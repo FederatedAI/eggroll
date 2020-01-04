@@ -18,9 +18,13 @@ import unittest
 from eggroll.roll_pair.test.roll_pair_test_assets import get_debug_test_context, \
     get_cluster_context, get_standalone_context, set_default_option, \
     get_default_options
-
-is_debug = True
+import os
+is_debug = os.environ.get("EGGROLL_STANDALONE_DEBUG", True)
 is_standalone = False
+# cm_host="192.168.0.1"
+cm_host="127.0.0.1"
+# cm_port="4680"
+cm_port="4670"
 total_partitions = 1
 
 
@@ -51,7 +55,7 @@ class TestStandalone(unittest.TestCase):
             if is_standalone:
                 cls.ctx = get_standalone_context()
             else:
-                cls.ctx = get_cluster_context()
+                cls.ctx = get_cluster_context(cm_host, cm_port)
         set_default_option('include_key', False)
         set_default_option('total_partitions', total_partitions)
 
