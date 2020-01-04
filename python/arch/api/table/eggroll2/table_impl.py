@@ -133,7 +133,7 @@ class DTable(Table):
 
     @log_elapsed
     def reduce(self, func, **kwargs):
-        return self._dtable.reduce(func)
+        return self._dtable.reduce(func).first()[1]
 
     @log_elapsed
     def join(self, other, func, **kwargs):

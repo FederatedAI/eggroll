@@ -124,6 +124,7 @@ object IdUtils {
     if (StringUtils.isBlank(tag)) result else s"${result}_${tag}"
   }
 
-  def generateTaskId(jobId: String, partitionId: Int, delim: String = "-"): String =
-    String.join(delim, jobId, task, partitionId.toString)
+  def generateTaskId(jobId: String, partitionId: Int, tag: String = "", delim: String = "-"): String =
+    if (StringUtils.isBlank(tag)) String.join(delim, jobId, task, partitionId.toString)
+    else String.join(delim, jobId, tag, task, partitionId.toString)
 }
