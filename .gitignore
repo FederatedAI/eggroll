@@ -1,11 +1,15 @@
 # common file patterns
-.DS_STORE
-.idea
-.iml
-.pyc
-__pycache__
-.jar
-.class
+*.DS_STORE
+*.iml
+*.pyc
+*.jar
+*.class
 
 # excluded paths
-
+jvm/**/target
+python/**/__pycache__
+**/.idea
+**/pid
+data/**
+!data/meta_h2
+logs/**

@@ -58,11 +58,16 @@ class TestRollPairBase(unittest.TestCase):
         rp.destroy()
 
     def test_count(self):
-        rp = self.ctx.load("x1","x2")
-        # rp = self.ctx.parallelize(self.str_generator(row_limit=11))
-        self.assertEqual(0, rp.count())
+        rp = self.ctx.parallelize(self.str_generator(row_limit=11))
+        self.assertEqual(11, rp.count())
         rp.destroy()
 
+    def test_put_all(self):
+        rp = self.ctx.load("ns1","n1")
+        data = [("k1","v1"),("k2","v2"),("k3","v3"),("k4","v4"),("k5","v5"),("k6","v6")]
+        rp.put_all(data)
+        self.assertUnOrderListEqual(data, rp.get_all())
+        rp.destroy()
 
     def test_map(self):
         rp = self.ctx.parallelize(self.str_generator())
