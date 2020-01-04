@@ -30,48 +30,44 @@ from eggroll.core.meta_model import ErStore, ErSessionMeta
 from eggroll.core.proto import command_pb2_grpc
 from eggroll.core.utils import _to_proto_string, _map_and_listify
 from eggroll.core.utils import time_now
+from eggroll.utils.log_utils import get_logger
+
+L = get_logger()
 
 
 class CommandClient(object):
-
     def __init__(self):
         self._channel_factory = GrpcChannelFactory()
 
-    def simple_sync_send(self, input: RpcMessage, output_type, endpoint: ErEndpoint, command_uri: CommandURI, serdes_type = SerdesTypes.PROTOBUF):
-        # todo:2: add serializer logic here
-        request = ErCommandRequest(id=time_now(), uri=command_uri._uri, args=[input.to_proto_string()])
+    def simple_sync_send(self, input: RpcMessage, output_type, endpoint: ErEndpoint, command_uri: CommandURI, serdes_type=SerdesTypes.PROTOBUF):
+        results = self.sync_send(inputs=[input], output_types=[output_type], endpoint=endpoint, command_uri=command_uri, serdes_type=serdes_type)
 
-        _channel = self._channel_factory.create_channel(endpoint)
-        _command_stub = command_pb2_grpc.CommandServiceStub(_channel)
-        response = _command_stub.call(request.to_proto())
-        er_response = ErCommandResponse.from_proto(response)
-
-        byte_result = er_response._results[0]
-
-        # todo:2: add deserializer logic here
-        if len(byte_result):
-            return output_type.from_proto_string(byte_result)
+        if len(results):
+            return results[0]
         else:
             return None
 
     def sync_send(self, inputs: list, output_types: list, endpoint: ErEndpoint, command_uri: CommandURI, serdes_type=SerdesTypes.PROTOBUF):
+        try:
+            request = ErCommandRequest(id=time_now(),
+                                       uri=command_uri._uri,
+                                       args=_map_and_listify(_to_proto_string, inputs))
 
-        request = ErCommandRequest(id=time_now(),
-                                   uri=command_uri._uri,
-                                   args=_map_and_listify(_to_proto_string, inputs))
+            _channel = self._channel_factory.create_channel(endpoint)
+            _command_stub = command_pb2_grpc.CommandServiceStub(_channel)
+            response = _command_stub.call(request.to_proto())
+            er_response = ErCommandResponse.from_proto(response)
 
-        _channel = self._channel_factory.create_channel(endpoint)
-        _command_stub = command_pb2_grpc.CommandServiceStub(_channel)
-        response = _command_stub.call(request.to_proto())
-        er_response = ErCommandResponse.from_proto(response)
+            byte_results = er_response._results
 
-        byte_results = er_response._results
-
-        if len(byte_results):
-            zipped = zip(output_types, byte_results)
-            return list(map(lambda t: t[0].from_proto_string(t[1]) if t[1] is not None else None, zipped))
-        else:
-            return []
+            if len(byte_results):
+                zipped = zip(output_types, byte_results)
+                return list(map(lambda t: t[0].from_proto_string(t[1]) if t[1] is not None else None, zipped))
+            else:
+                return []
+        except Exception as e:
+            L.error(f'Error calling to {endpoint}, command_uri: {command_uri}')
+            raise e
 
     def async_call(self, args, output_types: list, command_uri: CommandURI, serdes_type=SerdesTypes.PROTOBUF, parallel_size=5):
         futures = list()
