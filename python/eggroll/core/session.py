@@ -11,14 +11,17 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+import configparser
 import os
 
 from eggroll.core.client import ClusterManagerClient
+from eggroll.core.conf_keys import CoreConfKeys
 from eggroll.core.conf_keys import SessionConfKeys
 from eggroll.core.constants import SessionStatus, ProcessorTypes
 from eggroll.core.meta_model import ErSessionMeta, \
     ErPartition
 from eggroll.core.utils import get_self_ip, time_now, DEFAULT_DATETIME_FORMAT
+from eggroll.core.utils import get_static_er_conf, set_static_er_conf
 from eggroll.utils.log_utils import get_logger
 
 L = get_logger()
@@ -42,12 +45,19 @@ class ErSession(object):
         self._cluster_manager_client = ClusterManagerClient(options=options)
         self._table_recorder = None
 
-        if "EGGROLL_DEBUG" not in os.environ:
-            os.environ['EGGROLL_DEBUG'] = "0"
-
         self.__eggroll_home = os.getenv('EGGROLL_HOME', None)
         if not self.__eggroll_home:
             raise EnvironmentError('EGGROLL_HOME is not set')
+
+        if "EGGROLL_DEBUG" not in os.environ:
+            os.environ['EGGROLL_DEBUG'] = "0"
+
+        static_er_conf = get_static_er_conf()
+        if not static_er_conf:
+            conf_path = options.get(CoreConfKeys.STATIC_CONF_PATH, f"{self.__eggroll_home}/conf/eggroll.properties")
+            configs = configparser.ConfigParser()
+            configs.read(conf_path)
+            set_static_er_conf(configs['eggroll'])
 
         self.__is_standalone = options.get(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE, "") == "standalone"
         if self.__is_standalone and os.name != 'nt':
