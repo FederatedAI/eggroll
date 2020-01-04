@@ -40,6 +40,7 @@ from eggroll.core.transfer.transfer_service import GrpcTransferServicer, \
     TransferClient, TransferService
 from eggroll.core.utils import _exception_logger
 from eggroll.core.utils import hash_code
+from eggroll.core.utils import set_static_er_conf
 from eggroll.roll_pair import create_adapter, create_serdes
 from eggroll.roll_pair.transfer_pair import TransferPair
 from eggroll.roll_pair.utils.pair_utils import generator, partitioner, \
@@ -429,7 +430,7 @@ def serve(args):
         transfer_pb2_grpc.add_TransferServiceServicer_to_server(transfer_servicer,
                                                                 transfer_server)
     else:
-        transfer_server = grpc.server(futures.ThreadPoolExecutor(max_workers=5),
+        transfer_server = grpc.server(futures.ThreadPoolExecutor(max_workers=5000),
                                       options=[
                                           (cygrpc.ChannelArgKey.max_send_message_length, -1),
                                           (cygrpc.ChannelArgKey.max_receive_message_length, -1)])
@@ -515,6 +516,7 @@ if __name__ == '__main__':
         print(f'reading default config: {conf_file}')
 
     configs.read(conf_file)
+    set_static_er_conf(configs['eggroll'])
     if configs:
         if not args.data_dir:
             args.data_dir = configs['eggroll']['eggroll.data.dir']
