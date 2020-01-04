@@ -12,16 +12,29 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import ipaddress
+
 import grpc
 
 from eggroll.core.meta_model import ErEndpoint
 
 
+def wrap_host_scheme(host):
+    try:
+        ip = ipaddress.ip_address(host)
+        return f'ipv{ip.version}:{host}'
+    except ValueError as e:
+        return host
+
+
 class GrpcChannelFactory(object):
+    pool={}
     def create_channel(self, endpoint: ErEndpoint, is_secure_channel=False):
-        result = grpc.insecure_channel(
-            target=f'{endpoint._host}:{repr(endpoint._port)}',
+        target = f"{endpoint._host}:{endpoint._port}"
+        if target not in self.pool:
+            result = grpc.insecure_channel(
+            target=target,
             options=[('grpc.max_send_message_length', -1),
-                     ('grpc.max_receive_message_length', -1),
-                     ('grpc.lb_policy_name', 'grpclb')])
-        return result
+                     ('grpc.max_receive_message_length', -1)])
+            self.pool[target] = result
+        return self.pool[target]
