@@ -429,7 +429,7 @@ def serve(args):
         transfer_pb2_grpc.add_TransferServiceServicer_to_server(transfer_servicer,
                                                                 transfer_server)
     else:
-        transfer_server = grpc.server(futures.ThreadPoolExecutor(max_workers=5),
+        transfer_server = grpc.server(futures.ThreadPoolExecutor(max_workers=5000),
                                       options=[
                                           (cygrpc.ChannelArgKey.max_send_message_length, -1),
                                           (cygrpc.ChannelArgKey.max_receive_message_length, -1)])
