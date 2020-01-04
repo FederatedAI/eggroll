@@ -192,6 +192,7 @@ class RollPair(object):
         self.__command_serdes = SerdesTypes.PROTOBUF
         self.__roll_pair_master = self.ctx.get_roll()
         self.__command_client = CommandClient()
+        self.functor_serdes =create_serdes(SerdesTypes.CLOUD_PICKLE)
         self.value_serdes = self.get_store_serdes()
         self.key_serdes = self.get_store_serdes()
         self.partitioner = partitioner(hash_code, self.__store._store_locator._total_partitions)
@@ -426,7 +427,7 @@ class RollPair(object):
         result = 0
         for future in done:
             pair = future.result()[0]
-            result += self.value_serdes.deserialize(pair._value)
+            result += self.functor_serdes.deserialize(pair._value)
 
         return result
 

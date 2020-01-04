@@ -51,7 +51,7 @@ L = get_logger()
 
 class EggPair(object):
     def __init__(self):
-        self.serdes = create_serdes(SerdesTypes.CLOUD_PICKLE)
+        self.functor_serdes = create_serdes(SerdesTypes.CLOUD_PICKLE)
 
     def __partitioner(self, hash_func, total_partitions):
         return lambda k: hash_func(k) % total_partitions
@@ -140,7 +140,7 @@ class EggPair(object):
             key_serdes = create_serdes(task._inputs[0]._store_locator._serdes)
             value_serdes = create_serdes(task._inputs[0]._store_locator._serdes)
             input_adapter = create_adapter(task._inputs[0])
-            result = ErPair(key=key_serdes.serialize('result'), value=value_serdes.serialize(input_adapter.count()))
+            result = ErPair(key=key_serdes.serialize('result'), value=self.functor_serdes.serialize(input_adapter.count()))
             input_adapter.close()
 
         # TODO:1: multiprocessor scenario
