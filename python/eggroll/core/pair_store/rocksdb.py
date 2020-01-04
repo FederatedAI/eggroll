@@ -17,9 +17,9 @@ import threading
 
 import rocksdb
 
-from eggroll.utils import log_utils
+from eggroll.utils.log_utils import get_logger
 
-LOGGER = log_utils.get_logger()
+L = get_logger()
 
 from eggroll.core.pair_store.adapter import PairWriteBatch, PairIterator, PairAdapter
 
@@ -108,11 +108,11 @@ class RocksdbAdapter(PairAdapter):
                 if opts.create_if_missing:
                     os.makedirs(self.path, exist_ok=True)
                 self.db = rocksdb.DB(self.path, opts)
-                LOGGER.info("path not in dict db path:{}".format(self.path))
+                L.info("path not in dict db path:{}".format(self.path))
                 RocksdbAdapter.count_dict[self.path] = 0
                 RocksdbAdapter.env_dict[self.path] = self.db
             else:
-                LOGGER.info("path in dict:{}".format(self.path))
+                L.info("path in dict:{}".format(self.path))
                 self.db = RocksdbAdapter.env_dict[self.path]
         RocksdbAdapter.count_dict[self.path] = RocksdbAdapter.count_dict[self.path] + 1
 
@@ -157,6 +157,13 @@ class RocksdbAdapter(PairAdapter):
 
     def destroy(self):
         self.close()
-        import shutil
+        import shutil, os
+        from pathlib import Path
         shutil.rmtree(self.path)
-        LOGGER.info("finish destroy")
+        path = Path(self.path)
+        try:
+            if not os.listdir(path.parent):
+                os.removedirs(path.parent)
+                L.debug("finish destroy, path:{}".format(self.path))
+        except:
+            L.info("path :{} has destroyed".format(self.path))

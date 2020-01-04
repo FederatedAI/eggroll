@@ -25,7 +25,7 @@ import java.time.format.DateTimeFormatter
 import org.apache.commons.lang3.StringUtils
 
 object TimeUtils {
-  val noSeparatorFormatter = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss.SSS")
+  val noSeparatorFormatter = DateTimeFormatter.ofPattern("yyyyMMdd.HHmmss.SSS")
 
   def getNowMs(dateFormat: String = null): String = {
     val now = LocalDateTime.now()
