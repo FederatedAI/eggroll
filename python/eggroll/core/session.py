@@ -21,8 +21,8 @@ from eggroll.core.constants import SessionStatus, ProcessorTypes
 from eggroll.core.meta_model import ErSessionMeta, \
     ErPartition
 from eggroll.core.utils import get_self_ip, time_now, DEFAULT_DATETIME_FORMAT
+from eggroll.core.utils import get_static_er_conf, set_static_er_conf
 from eggroll.utils.log_utils import get_logger
-from eggroll.core.constants import static_er_conf
 
 L = get_logger()
 
@@ -52,12 +52,12 @@ class ErSession(object):
         if "EGGROLL_DEBUG" not in os.environ:
             os.environ['EGGROLL_DEBUG'] = "0"
 
-        global static_er_conf
+        static_er_conf = get_static_er_conf()
         if not static_er_conf:
             conf_path = options.get(CoreConfKeys.STATIC_CONF_PATH, f"{self.__eggroll_home}/conf/eggroll.properties")
             configs = configparser.ConfigParser()
             configs.read(conf_path)
-            static_er_conf = configs['eggroll']
+            set_static_er_conf(configs['eggroll'])
 
         self.__is_standalone = options.get(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE, "") == "standalone"
         if self.__is_standalone and os.name != 'nt':
