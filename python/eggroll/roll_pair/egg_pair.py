@@ -515,6 +515,7 @@ if __name__ == '__main__':
         print(f'reading default config: {conf_file}')
 
     configs.read(conf_file)
+    static_er_conf = configs['eggroll']
     if configs:
         if not args.data_dir:
             args.data_dir = configs['eggroll']['eggroll.data.dir']
