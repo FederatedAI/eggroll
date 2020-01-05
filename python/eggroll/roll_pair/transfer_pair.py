@@ -96,7 +96,7 @@ class TransferPair(object):
     def __init__(self, transfer_id: str):
         # params from __init__ params
         self.__transfer_id = transfer_id
-        self._executor_pool = ThreadPoolExecutor(max_workers=100)
+        self._executor_pool = ThreadPoolExecutor(max_workers=5000)
 
     def __generate_tag(self, partition_id):
         return generate_task_id(job_id=self.__transfer_id, partition_id=partition_id)
@@ -131,6 +131,7 @@ class TransferPair(object):
         return CompositeFuture(futures)
 
     @staticmethod
+    @_exception_logger
     def pair_to_bin_batch(input_iter, buffer_size=32 * 1024 * 1024):
         import os
         buffer_size = int(os.environ.get("EGGROLL_ROLLPAIR_BIN_BATCH_SIZE", buffer_size))
