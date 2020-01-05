@@ -51,6 +51,12 @@ class TestRollPairBase(unittest.TestCase):
         self.assertUnOrderListEqual(self.str_generator(False), (v for k,v in rp.get_all()))
         rp.destroy()
 
+    def test_serdes(self):
+        rp = self.ctx.load("ns1","n_serdes", self.store_opts(serdes="EMPTY"))
+        rp.put_all((b"a",b"b") for k in range(10))
+        print(list(rp.get_all()))
+        print(rp.count())
+
     def test_get(self):
         rp = self.ctx.parallelize(self.str_generator())
         for i in range(10):
@@ -75,6 +81,14 @@ class TestRollPairBase(unittest.TestCase):
         self.assertUnOrderListEqual(((k + "_1", v) for k, v in self.str_generator()), rp2.get_all())
         rp.destroy()
         rp2.destroy()
+
+    def test_reduce(self):
+        rp = self.ctx.load("ns1","n_serdes", self.store_opts(serdes="EMPTY"))
+        rp.put_all((b'1', b'2') for k in range(10))
+        print(list(rp.get_all()))
+        print(rp.count())
+        from operator import add
+        print(list(rp.reduce(add).get_all()))
 
 class TestRollPairMultiPartition(TestRollPairBase):
     def setUp(self):
