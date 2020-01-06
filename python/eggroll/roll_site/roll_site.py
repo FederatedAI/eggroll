@@ -1,5 +1,4 @@
-#
-#  Copyright 2019 The Eggroll Authors. All Rights Reserved.
+#  Copyright (c) 2019 - now, Eggroll Authors. All Rights Reserved.
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
@@ -13,10 +12,27 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+#
+
+#
+#
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+#
+import time
 from concurrent.futures import ThreadPoolExecutor, wait, FIRST_EXCEPTION
 
 import grpc
-import time
+
 from eggroll.core.conf_keys import SessionConfKeys
 from eggroll.core.constants import StoreTypes
 from eggroll.core.meta_model import ErStoreLocator, ErStore
@@ -25,6 +41,7 @@ from eggroll.core.serdes import eggroll_serdes
 from eggroll.roll_pair.roll_pair import RollPair
 from eggroll.utils import file_utils
 from eggroll.utils import log_utils
+
 LOGGER = log_utils.get_logger()
 
 _serdes = eggroll_serdes.PickleSerdes
@@ -152,8 +169,7 @@ class RollSite:
 
             rp = self.ctx.rp_ctx.load(namespace=table_namespace, name=table_name)
             if obj_type == b'object':
-                __tagged_key = _tagged_key
-                ret_obj = rp.get(__tagged_key)
+                ret_obj = rp.get(_tagged_key)
                 LOGGER.debug(f"ret_obj:{ret_obj}")
                 return ret_obj
             else:
@@ -168,13 +184,13 @@ class RollSite:
         futures = []
         LOGGER.info("push parties:{}".format(parties))
         LOGGER.info("push session_id:{}".format(self.ctx.rp_ctx.session_id))
-        for role_partyId in parties:
+        for role_party_id in parties:
             # for _partyId in _partyIds:
-            _role = role_partyId[0]
-            _partyId = role_partyId[1]
+            _role = role_party_id[0]
+            _party_id = role_party_id[1]
             _tagged_key = self.__remote__object_key(self.job_id, self.name, self.tag, self.local_role, self.party_id,
                                                     _role,
-                                                    _partyId)
+                                                    _party_id)
             LOGGER.debug(f"_tagged_key:{_tagged_key}")
             namespace = self.job_id
             obj_type = 'rollpair' if isinstance(obj, RollPair) else 'object'
@@ -185,7 +201,7 @@ class RollSite:
                 # If it is a object, put the object in the table and send the table meta.
                 name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.job_id, self.name, self.tag,
                                                                      self.local_role, str(self.party_id),
-                                                                     _role, str(_partyId)]))
+                                                                     _role, str(_party_id)]))
 
                 rp = self.ctx.rp_ctx.load(namespace, name)
                 rp.put(_tagged_key, obj)
@@ -197,13 +213,13 @@ class RollSite:
                 if is_standalone:
                     dst_name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.job_id, self.name, self.tag,
                                                                              self.local_role, str(self.party_id),
-                                                                            _role, str(_partyId)]))
+                                                                            _role, str(_party_id)]))
                     store_type = rp.get_store_type()
                 else:
                     dst_name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.job_id, self.name,
                                                                              self.tag, self.local_role,
                                                                              str(self.party_id),
-                                                                             _role, str(_partyId),
+                                                                             _role, str(_party_id),
                                                                              self.dst_host,
                                                                              str(self.dst_port),
                                                                              obj_type]))
@@ -230,7 +246,7 @@ class RollSite:
                         status_rp.put(_tagged_key, (obj_type.encode("utf-8"), dst_name, namespace))
                     _a = status_rp.get(_tagged_key)
 
-                return role_partyId
+                return role_party_id
 
             future = self.process_pool.submit(map_values, _tagged_key)
             futures.append(future)
