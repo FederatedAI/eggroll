@@ -63,6 +63,7 @@ class EggPair(object):
         with create_adapter(task._inputs[0]) as input_db:
             L.debug(f"create_store_adatper:{task._inputs[0]}")
             with input_db.iteritems() as rb:
+                L.debug(f"create_store_adatper_iter:{task._inputs[0]}")
                 from eggroll.roll_pair.transfer_pair import TransferPair, BatchBroker
                 if shuffle:
                     total_partitions = task._inputs[0]._store_locator._total_partitions
@@ -411,7 +412,7 @@ def serve(args):
             route_to_class_name="EggPair",
             route_to_method_name="run_task")
 
-    command_server = grpc.server(futures.ThreadPoolExecutor(max_workers=5000),
+    command_server = grpc.server(futures.ThreadPoolExecutor(max_workers=500, thread_name_prefix="command_server"),
                                  options=[
                                      (cygrpc.ChannelArgKey.max_send_message_length, -1),
                                      (cygrpc.ChannelArgKey.max_receive_message_length, -1)])
@@ -433,7 +434,7 @@ def serve(args):
         transfer_pb2_grpc.add_TransferServiceServicer_to_server(transfer_servicer,
                                                                 transfer_server)
     else:
-        transfer_server = grpc.server(futures.ThreadPoolExecutor(max_workers=5000),
+        transfer_server = grpc.server(futures.ThreadPoolExecutor(max_workers=500, thread_name_prefix="transfer_server"),
                                       options=[
                                           (cygrpc.ChannelArgKey.max_send_message_length, -1),
                                           (cygrpc.ChannelArgKey.max_receive_message_length, -1)])

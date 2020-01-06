@@ -14,6 +14,7 @@
 #  limitations under the License.
 
 import queue
+import threading
 from concurrent.futures import ThreadPoolExecutor
 from threading import Semaphore
 
@@ -94,10 +95,11 @@ class BatchBroker(object):
 
 
 class TransferPair(object):
+    _executor_pool = ThreadPoolExecutor(max_workers=500, thread_name_prefix="TransferPair-pool")
     def __init__(self, transfer_id: str):
         # params from __init__ params
         self.__transfer_id = transfer_id
-        self._executor_pool = ThreadPoolExecutor(max_workers=5000)
+        # self._executor_pool = ThreadPoolExecutor(max_workers=5000, thread_name_prefix="TransferPair-pool")
 
     def __generate_tag(self, partition_id):
         return generate_task_id(job_id=self.__transfer_id, partition_id=partition_id)
@@ -122,34 +124,27 @@ class TransferPair(object):
             return done_count
         futures.append(self._executor_pool.submit(do_partition))
         client = TransferClient()
-        def f_done(x):
-            print("release1")
-            # TransferPair.buffer_count.release()
-            print("release2")
-        with ThreadPoolExecutor(max_workers=5) as tpe:
+        def do_send_all():
+            send_all_futs = []
             for i, part in enumerate(output_partitions):
-                def do_send():
-                    return client.send(TransferPair.pair_to_bin_batch(BatchBroker(partitioned_brokers[i])),
-                                part._processor._transfer_endpoint, tag, False)
                 tag = self.__generate_tag(i)
                 L.debug(f"start_scatter_partition_tag:{tag}")
                 # TODO:1: change client.send to support iterator
                 # TODO:0: set timeout and retry
-                futures.append(tpe.submit(do_send))
-                print("acquire1")
-                # TransferPair.buffer_count.acquire()
-                print("acquire2")
-                # fut = client.send(TransferPair.pair_to_bin_batch(BatchBroker(partitioned_brokers[i])),
-                #                   part._processor._transfer_endpoint, tag)
-                # fut.add_done_callback(f_done)
-                # futures.append(fut)
-            # TransferPair.buffer_count.release()
+                L.debug(f"do_send_all_acquire:{threading.active_count()}")
+                TransferPair._scatter_parallel.acquire()
+                fut = client.send(TransferPair.pair_to_bin_batch(BatchBroker(partitioned_brokers[i])),
+                                  part._processor._transfer_endpoint, tag)
+                fut.add_done_callback(lambda x: TransferPair._scatter_parallel.release())
+                send_all_futs.append(fut)
+            return CompositeFuture(send_all_futs).result()
+        futures.append(self._executor_pool.submit(do_send_all))
         return CompositeFuture(futures)
 
-    buffer_count = Semaphore(5)
+    _scatter_parallel = Semaphore(10)
     @staticmethod
     @_exception_logger
-    def pair_to_bin_batch(input_iter, buffer_size=1 * 1024 * 1024):
+    def pair_to_bin_batch(input_iter, buffer_size=32 * 1024 * 1024):
         import os
         buffer_size = int(os.environ.get("EGGROLL_ROLLPAIR_BIN_BATCH_SIZE", buffer_size))
         # TODO:1: buffer_size auto adjust? - max: initial size can be configured. but afterwards it will adjust depending on message size
