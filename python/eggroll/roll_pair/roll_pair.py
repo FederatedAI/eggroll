@@ -45,7 +45,6 @@ L = get_logger()
 
 def runtime_init(session: ErSession):
     rps = RollPairContext(session=session)
-    rps.set_session_table_recorder()
     return rps
 
 
@@ -54,10 +53,12 @@ class RollPairContext(object):
     def __init__(self, session: ErSession):
         self.__session = session
         self.session_id = session.get_session_id()
-        self.default_store_type = StoreTypes.ROLLPAIR_LMDB
+        self.default_store_type = StoreTypes.ROLLPAIR_IN_MEMORY
         self.default_store_serdes = SerdesTypes.PICKLE
         self.deploy_mode = session.get_option(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE)
         self.__session_meta = session.get_session_meta()
+        self.rpc_gc_enable = True
+        self.set_session_rp_recorder()
 
     def set_store_type(self, store_type: str):
         self.default_store_type = store_type
@@ -65,8 +66,15 @@ class RollPairContext(object):
     def set_store_serdes(self, serdes_type: str):
         self.default_store_serdes = serdes_type
 
-    def set_session_table_recorder(self):
-        self.__session.set_table_recorder(self)
+    def set_session_rp_recorder(self):
+        if self.rpc_gc_enable:
+            self.__session.set_rp_recorder(self)
+
+    def set_session_gc_enable(self):
+        self.rpc_gc_enable = True
+
+    def set_session_gc_disable(self):
+        self.rpc_gc_enable = False
 
     def get_session(self):
         return self.__session
@@ -198,7 +206,7 @@ class RollPair(object):
         self.partitioner = partitioner(hash_code, self.__store._store_locator._total_partitions)
         self.egg_router = default_egg_router
         self.__session_id = self.ctx.session_id
-        self.gc_enable = True
+        self.gc_enable = rp_ctx.rpc_gc_enable
         self.recorder = Recorder(er_store=er_store, rpc=rp_ctx)
         self.recorder.record()
 
