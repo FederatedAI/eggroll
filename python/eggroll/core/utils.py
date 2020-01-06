@@ -21,6 +21,20 @@ from eggroll.utils import log_utils
 
 L = log_utils.get_logger()
 
+static_er_conf = {}
+
+
+def set_static_er_conf(a_dict):
+    global static_er_conf
+    if static_er_conf:
+        raise ValueError('static_er_conf has already been set')
+    static_er_conf = a_dict
+
+
+def get_static_er_conf():
+    return static_er_conf
+
+
 def _to_proto(rpc_message):
     if rpc_message is not None:
         return rpc_message.to_proto()
@@ -87,7 +101,7 @@ def _exception_logger(func):
 
     return wrapper
 
-DEFAULT_DATETIME_FORMAT = '%Y%m%dT.%H%M%S.%f'
+DEFAULT_DATETIME_FORMAT = '%Y%m%d.%H%M%S.%f'
 def time_now(format: str = DEFAULT_DATETIME_FORMAT):
     formatted = datetime.now().strftime(format)
     if format == DEFAULT_DATETIME_FORMAT or ('%f' in format):
