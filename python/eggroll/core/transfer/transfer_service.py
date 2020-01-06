@@ -121,7 +121,9 @@ class GrpcTransferServicer(transfer_pb2_grpc.TransferServiceServicer):
                 inited = True
 
             broker.put(request)
-
+        if not broker:
+            L.debug("empty requests")
+            return transfer_pb2.TransferBatch()
         broker.signal_write_finish()
         print('GrpcTransferServicer stream finished. tag: ', base_tag, ', remaining write count: ', broker,broker.__dict__)
         return transfer_pb2.TransferBatch(header=response_header)
@@ -129,7 +131,7 @@ class GrpcTransferServicer(transfer_pb2_grpc.TransferServiceServicer):
     @_exception_logger
     def recv(self, request, context):
         base_tag = request.header.tag
-        print('GrpcTransferServicer send broker tag: ', base_tag)
+        print('GrpcTransferServicer recv broker tag: ', base_tag)
         callee_messages_broker = TransferService.get_broker(base_tag)
         import types
         if isinstance(callee_messages_broker, types.GeneratorType):
