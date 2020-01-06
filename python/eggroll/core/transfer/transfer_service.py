@@ -171,7 +171,7 @@ class TransferClient(object):
         self.__chunk_size = 100
 
     @_exception_logger
-    def send(self, broker, endpoint: ErEndpoint, tag):
+    def send(self, broker, endpoint: ErEndpoint, tag, is_future=True):
         try:
             channel = self.__grpc_channel_factory.create_channel(endpoint)
 
@@ -182,6 +182,8 @@ class TransferClient(object):
                             for i, d in enumerate(broker))
             else:
                 requests = TransferService.transfer_batch_generator_from_broker(broker, tag)
+            if not is_future:
+                return stub.send(requests)
             future = stub.send.future(requests)
 
             return future
