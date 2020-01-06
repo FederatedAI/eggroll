@@ -135,9 +135,12 @@ class GrpcForwardingTransferSendStreamProcessor(clientCallStreamObserver: Client
 
   override def onComplete(): Unit = {
     onProcess()
-
-    transferBatchBuilder.clear().setHeader(transferHeaderBuilder.setTotalSize(0).setTag(TransferStatus.TRANSFER_END))
-    clientCallStreamObserver.onNext(transferBatchBuilder.build())
+    /*
+    if (tag.indexOf() == -1) {
+      transferBatchBuilder.clear().setHeader(transferHeaderBuilder.setTotalSize(0).setTag(TransferStatus.TRANSFER_END))
+      clientCallStreamObserver.onNext(transferBatchBuilder.build())
+    }
+     */
     super.onComplete()
   }
 }
