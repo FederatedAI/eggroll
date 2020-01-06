@@ -21,6 +21,11 @@ from eggroll.roll_pair.test.roll_pair_test_assets import get_debug_test_context,
     get_cluster_context, get_standalone_context, set_default_option, \
     get_default_options
 
+
+def get_value(roll_pair):
+    return list(roll_pair.get_all())
+
+
 class TestRollPairBase(unittest.TestCase):
 
     def setUp(self):
@@ -91,6 +96,12 @@ class TestRollPairBase(unittest.TestCase):
         print(rp.count())
         from operator import add
         print(list(rp.reduce(add).get_all()))
+
+    def test_join_self(self):
+        options = get_default_options()
+        left_rp = self.ctx.load("ns1", "testJoinLeft2020", options=options).put_all([('a', 1), ('b', 4)], options={"include_key": True})
+        print(list(left_rp.join(left_rp, lambda v1, v2: v1 + v2).get_all()))
+        self.assertEqual(get_value(left_rp.join(left_rp, lambda v1, v2: v1 + v2)), [('a', 2), ('b', 8)])
 
 class TestRollPairMultiPartition(TestRollPairBase):
     def setUp(self):
