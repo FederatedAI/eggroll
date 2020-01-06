@@ -15,6 +15,8 @@
 
 import unittest
 
+from eggroll.core.session import ErSession
+from eggroll.roll_pair.roll_pair import RollPairContext
 from eggroll.roll_pair.test.roll_pair_test_assets import get_debug_test_context, \
     get_cluster_context, get_standalone_context, set_default_option, \
     get_default_options
@@ -121,5 +123,20 @@ class TestRollPairMultiPartition(TestRollPairBase):
 
 class TestRollPairCluster(TestRollPairBase):
     def setUp(self):
-        self.ctx = get_cluster_context()
+        options = {}
+        options["eggroll.session.max.processors.per.node"] = "1"
+        #options[ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST] = cm_host if cm_host else "localhost"
+        #options[ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT] = cm_port if cm_port else "4670"
 
+        # session = ErSession(options=options)
+        # print(session.get_session_id())
+        # self.ctx = RollPairContext(session)
+        self.ctx = get_debug_test_context()
+
+    def test_map(self):
+        rp = self.ctx.load("test_roll_pair","test_map_cluster9", options=self.store_opts(total_partitions=50))
+        rp.put("1","2")
+        rp2 = rp.map(lambda k,v: (k + "_1", v))
+        # self.assertUnOrderListEqual(((k + "_1", v) for k, v in self.str_generator()), rp2.get_all())
+        rp.destroy()
+        rp2.destroy()

@@ -15,6 +15,7 @@
 
 import queue
 from concurrent.futures import ThreadPoolExecutor
+from threading import Semaphore
 
 from eggroll.core.datastructure.broker import FifoBroker, BrokerClosed
 from eggroll.core.pair_store.format import PairBinReader, PairBinWriter, \
@@ -121,18 +122,34 @@ class TransferPair(object):
             return done_count
         futures.append(self._executor_pool.submit(do_partition))
         client = TransferClient()
-        for i, part in enumerate(output_partitions):
-            tag = self.__generate_tag(i)
-            L.debug(f"start_scatter_partition_tag:{tag}")
-            # TODO:1: change client.send to support iterator
-            futures.append(
-                client.send(TransferPair.pair_to_bin_batch(BatchBroker(partitioned_brokers[i])),
-                            part._processor._transfer_endpoint, tag))
+        def f_done(x):
+            print("release1")
+            # TransferPair.buffer_count.release()
+            print("release2")
+        with ThreadPoolExecutor(max_workers=5) as tpe:
+            for i, part in enumerate(output_partitions):
+                def do_send():
+                    return client.send(TransferPair.pair_to_bin_batch(BatchBroker(partitioned_brokers[i])),
+                                part._processor._transfer_endpoint, tag, False)
+                tag = self.__generate_tag(i)
+                L.debug(f"start_scatter_partition_tag:{tag}")
+                # TODO:1: change client.send to support iterator
+                # TODO:0: set timeout and retry
+                futures.append(tpe.submit(do_send))
+                print("acquire1")
+                # TransferPair.buffer_count.acquire()
+                print("acquire2")
+                # fut = client.send(TransferPair.pair_to_bin_batch(BatchBroker(partitioned_brokers[i])),
+                #                   part._processor._transfer_endpoint, tag)
+                # fut.add_done_callback(f_done)
+                # futures.append(fut)
+            # TransferPair.buffer_count.release()
         return CompositeFuture(futures)
 
+    buffer_count = Semaphore(5)
     @staticmethod
     @_exception_logger
-    def pair_to_bin_batch(input_iter, buffer_size=32 * 1024 * 1024):
+    def pair_to_bin_batch(input_iter, buffer_size=1 * 1024 * 1024):
         import os
         buffer_size = int(os.environ.get("EGGROLL_ROLLPAIR_BIN_BATCH_SIZE", buffer_size))
         # TODO:1: buffer_size auto adjust? - max: initial size can be configured. but afterwards it will adjust depending on message size
@@ -203,6 +220,7 @@ class TransferPair(object):
                     for k, v in batches:
                         wb.put(k, v)
                         done_cnt += 1
+                L.debug(f"do_store_done:{tag}")
             TransferService.remove_broker(tag)
             return done_cnt
         return self._executor_pool.submit(do_store)
