@@ -64,7 +64,7 @@ class TransferService(object):
             L.debug(f"waiting broker tag:{key}, retry:{retry}")
             result = TransferService.data_buffer.get(key, None)
             retry += 1
-            if retry > 50:
+            if retry > 600:
                 raise RuntimeError("cannot get broker:" + key)
         return result
 
@@ -171,7 +171,7 @@ class TransferClient(object):
         self.__chunk_size = 100
 
     @_exception_logger
-    def send(self, broker, endpoint: ErEndpoint, tag, is_future=True):
+    def send(self, broker, endpoint: ErEndpoint, tag):
         try:
             channel = self.__grpc_channel_factory.create_channel(endpoint)
 
@@ -182,8 +182,6 @@ class TransferClient(object):
                             for i, d in enumerate(broker))
             else:
                 requests = TransferService.transfer_batch_generator_from_broker(broker, tag)
-            if not is_future:
-                return stub.send(requests)
             future = stub.send.future(requests)
 
             return future

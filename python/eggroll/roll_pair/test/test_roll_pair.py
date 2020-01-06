@@ -134,20 +134,5 @@ class TestRollPairMultiPartition(TestRollPairBase):
 
 class TestRollPairCluster(TestRollPairBase):
     def setUp(self):
-        options = {}
-        options["eggroll.session.max.processors.per.node"] = "1"
-        #options[ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST] = cm_host if cm_host else "localhost"
-        #options[ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT] = cm_port if cm_port else "4670"
+        self.ctx = get_cluster_context()
 
-        # session = ErSession(options=options)
-        # print(session.get_session_id())
-        # self.ctx = RollPairContext(session)
-        self.ctx = get_debug_test_context()
-
-    def test_map(self):
-        rp = self.ctx.load("test_roll_pair","test_map_cluster9", options=self.store_opts(total_partitions=50))
-        rp.put("1","2")
-        rp2 = rp.map(lambda k,v: (k + "_1", v))
-        # self.assertUnOrderListEqual(((k + "_1", v) for k, v in self.str_generator()), rp2.get_all())
-        rp.destroy()
-        rp2.destroy()
