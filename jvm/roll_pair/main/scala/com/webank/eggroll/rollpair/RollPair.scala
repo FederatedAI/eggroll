@@ -33,7 +33,8 @@ import com.webank.eggroll.core.util.{IdUtils, Logging}
 
 import scala.collection.JavaConverters._
 class RollPairContext(val session: ErSession,
-                      defaultStoreType: String = StoreTypes.ROLLPAIR_LMDB) extends Logging {
+                      defaultStoreType: String = StoreTypes.ROLLPAIR_LMDB,
+                      defaultSerdesType: String = SerdesTypes.PICKLE) extends Logging {
 //  StandaloneManager.main(Array("-s",erSession.sessionId, "-p", erSession.cmClient.endpoint.port.toString))
   private val sessionId = session.sessionId
   private val sessionMeta = session.sessionMeta
@@ -47,7 +48,7 @@ class RollPairContext(val session: ErSession,
       storeType = options.getOrElse(StringConstants.STORE_TYPE, StoreTypes.ROLLPAIR_LMDB),
       totalPartitions = options.getOrElse(StringConstants.TOTAL_PARTITIONS, "1").toInt,
       partitioner = options.getOrElse(StringConstants.PARTITIONER, PartitionerTypes.BYTESTRING_HASH),
-      serdes = options.getOrElse(StringConstants.SERDES, SerdesTypes.CLOUD_PICKLE)
+      serdes = options.getOrElse(StringConstants.SERDES, defaultSerdesType)
     ))
     val loaded = session.clusterManagerClient.getOrCreateStore(store)
     new RollPair(loaded, this)
