@@ -149,8 +149,8 @@ public class PushStreamProcessor extends BaseClientCallStreamProcessor<Proxy.Pac
 
         //LOGGER.info("[CLUSTERCOMM][PUSHPROCESSOR] actual completes send stream for task: {}, packetCount: {}, transferBroker remaining: {}",
         //        transferMetaString, packetCount, transferBroker.getQueueSize());
-        LOGGER.info("[CLUSTERCOMM][PUSHPROCESSOR] actual completes send stream for task: {}, packetCount: {}",
-                   transferMetaString, packetCount);
+        //LOGGER.info("[CLUSTERCOMM][PUSHPROCESSOR] actual completes send stream for task: {}, packetCount: {}",
+        //           transferMetaString, packetCount);
         // transferBroker.setFinished();
         transferBroker.close();
         super.onComplete();
