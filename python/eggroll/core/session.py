@@ -17,7 +17,7 @@ import os
 from eggroll.core.client import ClusterManagerClient
 from eggroll.core.conf_keys import CoreConfKeys
 from eggroll.core.conf_keys import SessionConfKeys
-from eggroll.core.constants import SessionStatus, ProcessorTypes
+from eggroll.core.constants import SessionStatus, ProcessorTypes, StoreTypes
 from eggroll.core.meta_model import ErSessionMeta, \
     ErPartition
 from eggroll.core.utils import get_self_ip, time_now, DEFAULT_DATETIME_FORMAT
@@ -138,8 +138,12 @@ class ErSession(object):
     def stop(self):
         return self._cluster_manager_client.stop_session(self.__session_meta)
 
-    def set_table_recorder(self, roll_pair_contex):
-        self._table_recorder = roll_pair_contex.load(name='__gc__' + self.__session_id, namespace=self.__session_id)
+    def set_rp_recorder(self, roll_pair_contex):
+        options = {}
+        options['store_type'] = StoreTypes.ROLLPAIR_LMDB
+        self._table_recorder = roll_pair_contex.load(name='__gc__' + self.__session_id,
+                                                     namespace=self.__session_id,
+                                                     options=options)
 
     def get_table_recorder(self):
         return self._table_recorder
