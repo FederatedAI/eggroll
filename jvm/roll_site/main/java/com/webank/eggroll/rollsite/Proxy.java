@@ -16,6 +16,7 @@
 
 package com.webank.eggroll.rollsite;
 
+import com.webank.eggroll.core.session.StaticErConf;
 import com.webank.eggroll.rollsite.factory.GrpcServerFactory;
 import com.webank.eggroll.rollsite.factory.LocalBeanFactory;
 import com.webank.eggroll.rollsite.manager.ServerConfManager;
@@ -65,6 +66,8 @@ public class Proxy {
 
         LOGGER.info("Server started listening on port: {}", proxyServerConf.getPort());
         LOGGER.info("server conf: {}", proxyServerConf);
+
+        StaticErConf.addProperties(confFilePath);
 
         server.start();
         server.awaitTermination();

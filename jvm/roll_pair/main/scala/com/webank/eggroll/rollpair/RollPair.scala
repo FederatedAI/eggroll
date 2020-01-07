@@ -45,7 +45,7 @@ class RollPairContext(val session: ErSession,
     val store = ErStore(storeLocator = ErStoreLocator(
       namespace = namespace,
       name = name,
-      storeType = options.getOrElse(StringConstants.STORE_TYPE, StoreTypes.ROLLPAIR_LMDB),
+      storeType = options.getOrElse(StringConstants.STORE_TYPE, defaultStoreType),
       totalPartitions = options.getOrElse(StringConstants.TOTAL_PARTITIONS, "1").toInt,
       partitioner = options.getOrElse(StringConstants.PARTITIONER, PartitionerTypes.BYTESTRING_HASH),
       serdes = options.getOrElse(StringConstants.SERDES, defaultSerdesType)
