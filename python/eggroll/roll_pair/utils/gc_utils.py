@@ -33,7 +33,7 @@ class Recorder(object):
             return False
         record_count = self.table_recorder.get(self.record_store._store_locator._name)
         if record_count > 1:
-            L.debug("table:{} ref count is {}".format(self._name, record_count))
+            L.debug("table:{} ref count is {}".format(self.record_store._store_locator._name, record_count))
             self.table_recorder.put(self.record_store._store_locator._name, (record_count-1))
             return False
         elif 1 >= record_count >= 0:
