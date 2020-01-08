@@ -189,10 +189,8 @@ class PaillierTensor(Tensor):
     def T(self):
         return PaillierTensor(self._engine.transe(self._store), self._pub)
 
-    def mean(self, priv):
-        print("MMMMMMMMMMMMMMMMMMMMMMM")
-        _priv = self._engine.load_prv_key(priv)
-        return PaillierTensor(self._engine.mean(self._store, self._pub, _priv), self._pub)
+    def mean(self):
+        return PaillierTensor(self._engine.mean(self._store, self._pub), self._pub)
 
     def hstack(self, other):
         if isinstance(other, PaillierTensor):
@@ -221,7 +219,6 @@ class RollPaillierTensor(Tensor):
             return RollPaillierTensor(self._store.join(other._store, lambda mat1, mat2: mat1 + mat2))
 
     def __sub__(self, other):
-        print("aaaaaaaaa", other)
         if isinstance(other, NumpyTensor):
             print('XXXXXXXXXXXXXXXXXXXX')
             return RollPaillierTensor(self._store.map_values(lambda v: v - other))
@@ -246,9 +243,8 @@ class RollPaillierTensor(Tensor):
         if isinstance(other, RollPaillierTensor):
             return RollPaillierTensor(self._store.join(other._store, lambda mat1, mat2: mat1 @ mat2))
 
-    def mean(self, priv):
-        _priv = CPUEngine.dump_prv_key(priv)
-        return RollPaillierTensor(self._store.map_values(lambda mat: mat.mean(_priv)))
+    def mean(self):
+        return RollPaillierTensor(self._store.map_values(lambda mat: mat.mean()))
 
     def T(self):
         return RollPaillierTensor(self._store.map_values(lambda mat: mat.T()))
@@ -276,12 +272,8 @@ class RollPaillierTensor(Tensor):
         return RollPaillierTensor(self._store.map_values(lambda mat: functor(mat, dump_priv)))
 
     def out(self, priv, str2 = "[CHAN ZHEN NAN]"):
-        print("xx432")
         def outFunc(mat, priv, str):
-            # _priv = CPUEngine.load_prv_key(priv)
-            print("xx431")
-            # mat.out(_priv, str)
+            _priv = CPUEngine.load_prv_key(priv)
+            mat.out(_priv, str)
         dump_priv = CPUEngine.dump_prv_key(priv)
-        # return RollPaillierTensor(self._store.map_values(lambda v: outFunc(v, dump_priv, str)))
-        print("x123",list(self._store.map_values(lambda x:print(str(x),"o22")).get_all()))
-        return RollPaillierTensor(self._store.map_values(lambda v: print(str(v) + "o33")))
+        return RollPaillierTensor(self._store.map_values(lambda v: outFunc(v, dump_priv, str)))
