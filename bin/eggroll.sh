@@ -20,24 +20,32 @@ cwd=$(cd `dirname $0`; pwd)
 export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION='python'
 version=2.0
 cd ${EGGROLL_HOME}
+echo "EGGROLL_HOME:${EGGROLL_HOME}"
 
 eval action=\$$#
 modules=(clustermanager nodemanager)
 
-processor_tag=`cat ./conf/eggroll.properties | grep "eggroll.resourcemangaer.process.tag" | tail -n 1 | cut -d "=" -f2- | awk '{print $1}'`
+get_property "eggroll.resourcemangaer.process.tag"
+processor_tag=${property_value}
 if [ -z "${processor_tag}" ];then
 	processor_tag=EGGROLL_DAEMON
 fi
+echo "processor_tag:$processor_tag"
 
 main() {
 	case "$module" in
 		clustermanager)
 			main_class=com.webank.eggroll.core.resourcemanager.ClusterManagerBootstrap
-			port=`cat ./conf/eggroll.properties | grep "eggroll.resourcemanager.clustermanager.port" | tail -n 1 | cut -d "=" -f2- | awk '{print $1}'`
+			get_property "eggroll.resourcemanager.clustermanager.port"
+			port=${property_value}
 			;;
 		nodemanager)
 			main_class=com.webank.eggroll.core.resourcemanager.NodeManagerBootstrap
-			port=`cat ./conf/eggroll.properties | grep "eggroll.resourcemanager.nodemanager.port" | tail -n 1 | cut -d "=" -f2- | awk '{print $1}'`
+			get_property "eggroll.resourcemanager.nodemanager.port"
+			port=${property_value}
+			;;
+		rollsite)
+			main_class=com.webank.eggroll.rollsite.Proxy
 			;;
 		*)
 			usage："usage: `basename ${0}` {clustermanager | nodemanager | all} {start | restart | status}"
@@ -114,6 +122,10 @@ getpid() {
 	fi
 }
 
+get_property() {
+	property_value=`grep $1 ${EGGROLL_HOME}/conf/eggroll.properties | awk -F= '{print $2}'`
+}
+
 mklogsdir() {
 	if [[ ! -d "${EGGROLL_HOME}/logs" ]]; then
 		mkdir -p ${EGGROLL_HOME}/logs
@@ -137,8 +149,13 @@ start() {
 	if [[ $? -eq 1 ]]; then
 		mklogsdir
 		export EGGROLL_LOG_FILE=${module}
-		
-		java -Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.properties -cp ${EGGROLL_HOME}/lib/*: com.webank.eggroll.core.Bootstrap --bootstraps ${main_class} -c ${EGGROLL_HOME}/conf/eggroll.properties -p $port -s ${processor_tag} >> ${EGGROLL_HOME}/logs/${module}.out 2>>${EGGROLL_HOME}/logs/${module}.err &
+		if [ $module = rollsite ];then
+			cmd="java -Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.properties -cp ${EGGROLL_HOME}/lib/*:${EGGROLL_HOME}/conf/ com.webank.eggroll.rollsite.Proxy -c ${EGGROLL_HOME}/conf/eggroll.properties >> ${EGGROLL_HOME}/logs/bootstrap-rollsite.out 2>>${EGGROLL_HOME}/logs/bootstrap-rolsite.err &"
+		else
+			cmd="java -Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.properties -cp ${EGGROLL_HOME}/lib/*: com.webank.eggroll.core.Bootstrap --bootstraps ${main_class} -c ${EGGROLL_HOME}/conf/eggroll.properties -p $port -s ${processor_tag} >> ${EGGROLL_HOME}/logs/${module}.out 2>>${EGGROLL_HOME}/logs/${module}.err &"
+		fi
+		echo $cmd
+		exec $cmd
 		
 		echo $!>${module}_pid
 		getpid
