@@ -136,6 +136,7 @@ start() {
 	getpid
 	if [[ $? -eq 1 ]]; then
 		mklogsdir
+		export EGGROLL_LOG_FILE=${module}
 		
 		java -Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.properties -cp ${EGGROLL_HOME}/lib/*: com.webank.eggroll.core.Bootstrap --bootstraps ${main_class} -c ${EGGROLL_HOME}/conf/eggroll.properties -p $port -s ${processor_tag} >> ${EGGROLL_HOME}/logs/${module}.out 2>>${EGGROLL_HOME}/logs/${module}.err &
 		

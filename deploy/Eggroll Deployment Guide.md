@@ -96,6 +96,7 @@ vi ./conf/eggroll.properties
 | eggroll.bootstrap.roll_pair_master.classpath   | The classpath of roll_pair               | Use default value.                                           |
 | eggroll.bootstrap.roll_pair_master.mainclass   | The mainclass of roll_pair               | Use default value.                                           |
 | eggroll.bootstrap.roll_pair_master.jvm.options | The jvm options                          | Use default value, can be modified as server configuration.  |
+| eggroll.resourcemangaer.process.tag            | The tag of this cluster                  | Normal use default value. If you are deploying multiple clusters on the same server, modify this value to make then different. |
 
 
 
@@ -121,7 +122,7 @@ Use ssh to log in to each node with **app user**. Go to the install directory an
 
 ```bash
 cd ${EGGROLL_HOME}
-sh bin/eggroll.sh all start						  --start all module service on this server
+sh eggroll.sh all start						  --start all module service on this server
 ```
 
 And you can replace 'start' with 'status' to see the status of the process, replace 'start' with 'restart' to restart service, and replace 'start' with 'stop' to stop service, such as:
