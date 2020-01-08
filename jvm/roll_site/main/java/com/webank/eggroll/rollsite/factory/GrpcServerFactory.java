@@ -191,6 +191,7 @@ public class GrpcServerFactory {
         //if(proxyServerConf.getRole().equals("host")) {
         //    initRouteTable(routeTablePath);
         //}
+        /*
         if(proxyServerConf.getRole().equals("guest")) {
             fdnRouter.initRouteTableFile(routeTablePath);
             String srcIp = proxyServerConf.getIp();
@@ -205,6 +206,7 @@ public class GrpcServerFactory {
 
             fdnRouter.updateRouteTable(routeTablePath, dstPartyId, dstIp, dstPort);
         }
+        */
 
         fdnRouter.setRouteTable(routeTablePath);
         return serverBuilder.build();
