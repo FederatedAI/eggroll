@@ -83,9 +83,9 @@ vi ./conf/eggroll.properties
 | eggroll.cluster.manager.jdbc.username          | Username of database                     | h2:default null/Mysql:username of database                   |
 | eggroll.cluster.manager.jdbc.password          | Password of database                     | h2:default null/Mysql:password of database                   |
 | eggroll.logs.dir                               | The dir of logs                          | Use default value.                                           |
-| eggroll.node.manager.port                      | The port of NodeManager                  | Modify to designated port,default use 4670.                  |
+| eggroll.node.manager.port                      | The port of NodeManager                  | Modify to designated port,default use 9394.                  |
 | eggroll.cluster.manager.host                   | The host of ClusterManager               | Use default value.                                           |
-| eggroll.cluster.manager.port                   | The port of ClusterManager               | Modify to designated port,default use 9394.                  |
+| eggroll.cluster.manager.port                   | The port of ClusterManager               | Modify to designated port,default use 4670.                  |
 | eggroll.bootstrap.root.script                  | The startup script of scripts in exepath | Use default value.                                           |
 | eggroll.bootstrap.egg_pair.exepath             | The startup script of egg_pair           | Use default value.                                           |
 | eggroll.bootstrap.egg_pair.venv                | The path of venv_home                    | Use absolute path of venv_home or relative path to EGGROLL_HOME |
