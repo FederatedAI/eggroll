@@ -15,6 +15,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+set -x
 cwd=$(cd `dirname $0`; pwd)
 
 export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION='python'
@@ -24,19 +25,23 @@ cd ${EGGROLL_HOME}
 eval action=\$$#
 modules=(clustermanager nodemanager)
 
+processor_tag=`cat ./conf/eggroll.properties | grep "eggroll.resourcemangaer.process.tag" | tail -n 1 | cut -d "=" -f2- | awk '{print $1}'`
+if [ -z "${processor_tag}" ];then
+	processor_tag=EGGROLL_DAEMON
+fi
 
 main() {
 	case "$module" in
 		clustermanager)
 			main_class=com.webank.eggroll.core.resourcemanager.ClusterManagerBootstrap
-			port=`cat ./conf/eggroll.properties |grep "eggroll.resourcemanager.clustermanager.port" | tail -n 1 | cut -d "=" -f2- | awk '{print $1}'`
+			port=`cat ./conf/eggroll.properties | grep "eggroll.resourcemanager.clustermanager.port" | tail -n 1 | cut -d "=" -f2- | awk '{print $1}'`
 			;;
 		nodemanager)
 			main_class=com.webank.eggroll.core.resourcemanager.NodeManagerBootstrap
-			port=`cat ./conf/eggroll.properties |grep "eggroll.resourcemanager.nodemanager.port" | tail -n 1 | cut -d "=" -f2- | awk '{print $1}'`
+			port=`cat ./conf/eggroll.properties | grep "eggroll.resourcemanager.nodemanager.port" | tail -n 1 | cut -d "=" -f2- | awk '{print $1}'`
 			;;
 		*)
-			echo "usage: $module should be {clustermanager|nodemanager}"
+			usage："usage: `basename ${0}` {clustermanager | nodemanager | all} {start | restart | status}"
 			exit -1
 	esac
 }
@@ -101,7 +106,7 @@ getpid() {
 		echo "" > ${module}_pid
 	fi
 	module_pid=`cat ${module}_pid`
-	pid=`ps aux | grep $port | grep EGGROLL_DAEMON | grep -v grep | awk '{print $2}'`
+	pid=`ps aux | grep $port | grep ${processor_tag} | grep -v grep | awk '{print $2}'`
 	
 	if [[ -n ${pid} ]]; then
 		return 0
@@ -133,7 +138,7 @@ start() {
 	if [[ $? -eq 1 ]]; then
 		mklogsdir
 		
-		java -Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.properties -cp ${EGGROLL_HOME}/lib/*: com.webank.eggroll.core.Bootstrap --bootstraps ${main_class} -c ${EGGROLL_HOME}/conf/eggroll.properties -p $port -s EGGROLL_DAEMON >> ${EGGROLL_HOME}/logs/${module}_console.log 2>>${EGGROLL_HOME}/logs/${module}_error.log &
+		java -Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.properties -cp ${EGGROLL_HOME}/lib/*: com.webank.eggroll.core.Bootstrap --bootstraps ${main_class} -c ${EGGROLL_HOME}/conf/eggroll.properties -p $port -s ${processor_tag} >> ${EGGROLL_HOME}/logs/${module}.out 2>>${EGGROLL_HOME}/logs/${module}.err &
 		
 		echo $!>${module}_pid
 		getpid
@@ -180,3 +185,4 @@ case "$1" in
 esac
 
 cd $cwd
+
