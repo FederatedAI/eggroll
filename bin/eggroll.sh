@@ -15,7 +15,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
-set -x
 cwd=$(cd `dirname $0`; pwd)
 
 export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION='python'
