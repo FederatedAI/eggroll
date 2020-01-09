@@ -15,6 +15,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+export EGGROLL_HOME=`pwd`
 cwd=$(cd `dirname $0`; pwd)
 
 export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION='python'
@@ -24,6 +25,10 @@ echo "EGGROLL_HOME:${EGGROLL_HOME}"
 
 eval action=\$$#
 modules=(clustermanager nodemanager)
+
+get_property() {
+	property_value=`grep $1 ${EGGROLL_HOME}/conf/eggroll.properties | awk -F= '{print $2}'`
+}
 
 get_property "eggroll.resourcemangaer.process.tag"
 processor_tag=${property_value}
@@ -48,7 +53,7 @@ main() {
 			main_class=com.webank.eggroll.rollsite.Proxy
 			;;
 		*)
-			usage："usage: `basename ${0}` {clustermanager | nodemanager | all} {start | restart | status}"
+			usage
 			exit -1
 	esac
 }
@@ -72,7 +77,7 @@ action() {
 			status
 			;;
 		*)
-			echo "usage: $action should be {start|stop|status|restart}"
+			usage
 			exit -1
 	esac
 }
@@ -90,7 +95,7 @@ all() {
 }
 
 usage() {
-	echo "usage: $0 should be {all|[clustermanager|nodemanager...]} {start|stop|status|restart}"
+	echo "usage: `basename ${0}` {clustermanager | nodemanager | all} {start | stop | restart | status}"
 }
 
 multiple() {
@@ -122,10 +127,6 @@ getpid() {
 	fi
 }
 
-get_property() {
-	property_value=`grep $1 ${EGGROLL_HOME}/conf/eggroll.properties | awk -F= '{print $2}'`
-}
-
 mklogsdir() {
 	if [[ ! -d "${EGGROLL_HOME}/logs" ]]; then
 		mkdir -p ${EGGROLL_HOME}/logs
@@ -150,12 +151,12 @@ start() {
 		mklogsdir
 		export EGGROLL_LOG_FILE=${module}
 		if [ $module = rollsite ];then
-			cmd="java -Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.properties -cp ${EGGROLL_HOME}/lib/*:${EGGROLL_HOME}/conf/ com.webank.eggroll.rollsite.Proxy -c ${EGGROLL_HOME}/conf/eggroll.properties >> ${EGGROLL_HOME}/logs/bootstrap-rollsite.out 2>>${EGGROLL_HOME}/logs/bootstrap-rolsite.err &"
+			cmd="java -Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.properties -cp ${EGGROLL_HOME}/lib/*:${EGGROLL_HOME}/conf/ com.webank.eggroll.rollsite.Proxy -c ${EGGROLL_HOME}/conf/eggroll.properties"
 		else
-			cmd="java -Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.properties -cp ${EGGROLL_HOME}/lib/*: com.webank.eggroll.core.Bootstrap --bootstraps ${main_class} -c ${EGGROLL_HOME}/conf/eggroll.properties -p $port -s ${processor_tag} >> ${EGGROLL_HOME}/logs/${module}.out 2>>${EGGROLL_HOME}/logs/${module}.err &"
+			cmd="java -Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.properties -cp ${EGGROLL_HOME}/lib/*: com.webank.eggroll.core.Bootstrap --bootstraps ${main_class} -c ${EGGROLL_HOME}/conf/eggroll.properties -p $port -s ${processor_tag}"
 		fi
 		echo $cmd
-		exec $cmd
+		exec $cmd >> ${EGGROLL_HOME}/logs/${module}.out 2>>${EGGROLL_HOME}/logs/${module}.err &
 		
 		echo $!>${module}_pid
 		getpid
@@ -181,11 +182,11 @@ stop() {
 			echo "kill error"
 		else
 			echo "killed"
-			echo "999999" >${module}_pid
+			echo "-1" >${module}_pid
 		fi
 	else
 		echo "service not running"
-		echo "999999" >${module}_pid
+		echo "-1" >${module}_pid
 	fi
 }
 
