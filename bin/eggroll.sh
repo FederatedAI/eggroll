@@ -90,7 +90,7 @@ all() {
 }
 
 usage() {
-	echo "usage: `basename ${0}` {clustermanager | nodemanager | all} {start | restart | status}"
+	echo "usage: `basename ${0}` {clustermanager | nodemanager | all} {start | stop | restart | status}"
 }
 
 multiple() {
