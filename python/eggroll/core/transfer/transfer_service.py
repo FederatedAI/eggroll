@@ -64,7 +64,7 @@ class TransferService(object):
             L.debug(f"waiting broker tag:{key}, retry:{retry}")
             result = TransferService.data_buffer.get(key, None)
             retry += 1
-            if retry > 50:
+            if retry > 600:
                 raise RuntimeError("cannot get broker:" + key)
         return result
 
