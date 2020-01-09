@@ -84,7 +84,7 @@ class CommandClient(defaultEndpoint:ErEndpoint = null, serdesType: String = Serd
         tag.runtimeClass, SerdesTypes.PROTOBUF).asInstanceOf[T]
     } catch {
       case t: Throwable =>
-        logError(s"[COMMAND] error calling to ${defaultEndpoint}. commandUri: ${commandURI.uriString}")
+        logError(s"[COMMAND] error calling to ${defaultEndpoint}, message: ${args(0)}. commandUri: ${commandURI.uriString}", t)
         throw t
     }
   }
