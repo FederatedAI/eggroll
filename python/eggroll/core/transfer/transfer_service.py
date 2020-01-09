@@ -64,7 +64,7 @@ class TransferService(object):
             L.debug(f"waiting broker tag:{key}, retry:{retry}")
             result = TransferService.data_buffer.get(key, None)
             retry += 1
-            if retry > 50:
+            if retry > 600:
                 raise RuntimeError("cannot get broker:" + key)
         return result
 
@@ -121,7 +121,9 @@ class GrpcTransferServicer(transfer_pb2_grpc.TransferServiceServicer):
                 inited = True
 
             broker.put(request)
-
+        if not broker:
+            L.debug("empty requests")
+            return transfer_pb2.TransferBatch()
         broker.signal_write_finish()
         print('GrpcTransferServicer stream finished. tag: ', base_tag, ', remaining write count: ', broker,broker.__dict__)
         return transfer_pb2.TransferBatch(header=response_header)
@@ -129,7 +131,7 @@ class GrpcTransferServicer(transfer_pb2_grpc.TransferServiceServicer):
     @_exception_logger
     def recv(self, request, context):
         base_tag = request.header.tag
-        print('GrpcTransferServicer send broker tag: ', base_tag)
+        print('GrpcTransferServicer recv broker tag: ', base_tag)
         callee_messages_broker = TransferService.get_broker(base_tag)
         import types
         if isinstance(callee_messages_broker, types.GeneratorType):
@@ -171,11 +173,7 @@ class TransferClient(object):
     @_exception_logger
     def send(self, broker, endpoint: ErEndpoint, tag):
         try:
-            channel = grpc.insecure_channel(
-                    target=f'{endpoint._host}:{endpoint._port}',
-                    options=[
-                        ('grpc.max_send_message_length', -1),
-                        ('grpc.max_receive_message_length', -1)])
+            channel = self.__grpc_channel_factory.create_channel(endpoint)
 
             stub = transfer_pb2_grpc.TransferServiceStub(channel)
             import types
@@ -201,11 +199,7 @@ class TransferClient(object):
                     broker.put(e)
                 broker.signal_write_finish()
 
-            channel = grpc.insecure_channel(
-                    target=f'{endpoint._host}:{endpoint._port}',
-                    options=[
-                        ('grpc.max_send_message_length', -1),
-                        ('grpc.max_receive_message_length', -1)])
+            channel = self.__grpc_channel_factory.create_channel(endpoint)
 
             stub = transfer_pb2_grpc.TransferServiceStub(channel)
             request = transfer_pb2.TransferBatch(

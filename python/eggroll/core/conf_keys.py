@@ -13,10 +13,13 @@
 #  limitations under the License.
 
 
-
-
 class CoreConfKeys(object):
+    LOGS_DIR = "eggroll.logs.dir"
+    DATA_DIR = "eggroll.data.dir"
     STATIC_CONF_PATH = "eggroll.static.conf.path"
+    BOOTSTRAP_ROOT_SCRIPT = "eggroll.bootstrap.root.script"
+    BOOTSTRAP_SHELL = "eggroll.bootstrap.shell"
+    BOOTSTRAP_SHELL_ARGS = "eggroll.bootstrap.shell.args"
     CONFKEY_CORE_GRPC_CHANNEL_CACHE_EXPIRE_SEC = "eggroll.core.grpc.channel.cache.expire.sec"
     CONFKEY_CORE_GRPC_CHANNEL_CACHE_SIZE = "eggroll.core.grpc.channel.cache.size"
     CONFKEY_CORE_GRPC_CHANNEL_EXECUTOR_POOL_SIZE = "eggroll.core.grpc.channel.executor.pool.size"

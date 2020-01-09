@@ -39,6 +39,7 @@ import io.grpc.stub.StreamObserver
 import io.grpc.{ManagedChannel, ManagedChannelBuilder}
 
 import scala.collection.JavaConverters._
+import scala.collection.concurrent.TrieMap
 import scala.reflect.ClassTag
 
 class CommandClient(defaultEndpoint:ErEndpoint = null, serdesType: String = SerdesTypes.PROTOBUF, isSecure:Boolean=false)
@@ -60,10 +61,14 @@ class CommandClient(defaultEndpoint:ErEndpoint = null, serdesType: String = Serd
   val sessionId = StaticErConf.getString(SessionConfKeys.CONFKEY_SESSION_ID)
   // TODO:1: confirm client won't exit bug of Singletons.getNoCheck(classOf[GrpcChannelFactory]).getChannel(endpoint, isSecure)
   // TODO:0: add channel args
+  private val pool = TrieMap[String, ManagedChannel]()
   private def buildChannel(endpoint: ErEndpoint): ManagedChannel = {
-    val builder = ManagedChannelBuilder.forAddress(endpoint.host, endpoint.port)
-    builder.usePlaintext()
-    builder.build()
+    if(!pool.contains(endpoint.toString)) {
+      val builder = ManagedChannelBuilder.forAddress(endpoint.host, endpoint.port)
+      builder.usePlaintext()
+      pool(endpoint.toString) = builder.build()
+    }
+    pool(endpoint.toString)
   }
 
   def call[T](commandURI: CommandURI, args: RpcMessage*)(implicit tag:ClassTag[T]): T = {
@@ -79,7 +84,7 @@ class CommandClient(defaultEndpoint:ErEndpoint = null, serdesType: String = Serd
         tag.runtimeClass, SerdesTypes.PROTOBUF).asInstanceOf[T]
     } catch {
       case t: Throwable =>
-        logError(s"[COMMAND] error calling to ${defaultEndpoint}. commandUri: ${commandURI.uriString}")
+        logError(s"[COMMAND] error calling to ${defaultEndpoint}, message: ${args(0)}. commandUri: ${commandURI.uriString}", t)
         throw t
     }
   }
@@ -88,7 +93,7 @@ class CommandClient(defaultEndpoint:ErEndpoint = null, serdesType: String = Serd
     val futures = args.map {
       case (rpcMessages, endpoint) =>
         try {
-          val ch: ManagedChannel = Singletons.getNoCheck(classOf[GrpcChannelFactory]).getChannel(endpoint, isSecure)
+          val ch: ManagedChannel = buildChannel(endpoint)
           val stub = CommandServiceGrpc.newFutureStub(ch)
           val argBytes = rpcMessages.map(x => UnsafeByteOperations.unsafeWrap(SerdesUtils.rpcMessageToBytes(x, SerdesTypes.PROTOBUF)))
 

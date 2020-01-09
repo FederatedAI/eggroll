@@ -21,6 +21,20 @@ from eggroll.utils import log_utils
 
 L = log_utils.get_logger()
 
+static_er_conf = {}
+
+
+def set_static_er_conf(a_dict):
+    global static_er_conf
+    if static_er_conf:
+        raise ValueError('static_er_conf has already been set')
+    static_er_conf = a_dict
+
+
+def get_static_er_conf():
+    return static_er_conf
+
+
 def _to_proto(rpc_message):
     if rpc_message is not None:
         return rpc_message.to_proto()
@@ -73,7 +87,6 @@ def json_loads(src):
 def current_timestamp():
     return int(time.time()*1000)
 
-
 def _exception_logger(func):
     def wrapper(*args, **kw):
         try:
@@ -95,7 +108,6 @@ def time_now(format: str = DEFAULT_DATETIME_FORMAT):
         return formatted[:-3]
     else:
         return formatted
-
 
 def get_self_ip():
     import socket

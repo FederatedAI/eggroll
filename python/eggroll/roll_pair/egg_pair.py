@@ -40,6 +40,7 @@ from eggroll.core.transfer.transfer_service import GrpcTransferServicer, \
     TransferClient, TransferService
 from eggroll.core.utils import _exception_logger
 from eggroll.core.utils import hash_code
+from eggroll.core.utils import set_static_er_conf
 from eggroll.roll_pair import create_adapter, create_serdes
 from eggroll.roll_pair.transfer_pair import TransferPair
 from eggroll.roll_pair.utils.pair_utils import generator, partitioner, \
@@ -51,7 +52,7 @@ L = get_logger()
 
 class EggPair(object):
     def __init__(self):
-        self.serdes = create_serdes(SerdesTypes.CLOUD_PICKLE)
+        self.functor_serdes = create_serdes(SerdesTypes.CLOUD_PICKLE)
 
     def __partitioner(self, hash_func, total_partitions):
         return lambda k: hash_func(k) % total_partitions
@@ -59,30 +60,34 @@ class EggPair(object):
     def _run_unary(self, func, task, shuffle=False):
         key_serdes = create_serdes(task._inputs[0]._store_locator._serdes)
         value_serdes = create_serdes(task._inputs[0]._store_locator._serdes)
-        with create_adapter(task._inputs[0]) as input_db, input_db.iteritems() as rb:
-            from eggroll.roll_pair.transfer_pair import TransferPair, BatchBroker
-            if shuffle:
-                total_partitions = task._inputs[0]._store_locator._total_partitions
-                output_store = task._job._outputs[0]
-                shuffle_broker = FifoBroker()
-                write_bb = BatchBroker(shuffle_broker)
-                try:
-                    shuffler = TransferPair(transfer_id=task._job._id)
-                    store_future = shuffler.store_broker(task._outputs[0], True, total_partitions)
-                    scatter_future = shuffler.scatter(
-                        shuffle_broker,
-                        partitioner(hash_func=hash_code, total_partitions=total_partitions),
-                        output_store)
-                    func(rb, key_serdes, value_serdes, write_bb)
-                finally:
-                    write_bb.signal_write_finish()
-                scatter_results = scatter_future.result()
-                store_result = store_future.result()
-                L.debug(f"scatter_result:{scatter_results}")
-                L.debug(f"gather_result:{store_result}")
-            else:
-                with create_adapter(task._outputs[0]) as db, db.new_batch() as wb:
-                    func(rb, key_serdes, value_serdes, wb)
+        with create_adapter(task._inputs[0]) as input_db:
+            L.debug(f"create_store_adatper:{task._inputs[0]}")
+            with input_db.iteritems() as rb:
+                L.debug(f"create_store_adatper_iter:{task._inputs[0]}")
+                from eggroll.roll_pair.transfer_pair import TransferPair, BatchBroker
+                if shuffle:
+                    total_partitions = task._inputs[0]._store_locator._total_partitions
+                    output_store = task._job._outputs[0]
+                    shuffle_broker = FifoBroker()
+                    write_bb = BatchBroker(shuffle_broker)
+                    try:
+                        shuffler = TransferPair(transfer_id=task._job._id)
+                        store_future = shuffler.store_broker(task._outputs[0], True, total_partitions)
+                        scatter_future = shuffler.scatter(
+                            shuffle_broker,
+                            partitioner(hash_func=hash_code, total_partitions=total_partitions),
+                            output_store)
+                        func(rb, key_serdes, value_serdes, write_bb)
+                    finally:
+                        write_bb.signal_write_finish()
+                    scatter_results = scatter_future.result()
+                    store_result = store_future.result()
+                    L.debug(f"scatter_result:{scatter_results}")
+                    L.debug(f"gather_result:{store_result}")
+                else:
+                    with create_adapter(task._outputs[0]) as db, db.new_batch() as wb:
+                        func(rb, key_serdes, value_serdes, wb)
+                L.debug(f"close_store_adatper:{task._inputs[0]}")
 
     def _run_binary(self, func, task):
         left_key_serdes = create_serdes(task._inputs[0]._store_locator._serdes)
@@ -140,7 +145,7 @@ class EggPair(object):
             key_serdes = create_serdes(task._inputs[0]._store_locator._serdes)
             value_serdes = create_serdes(task._inputs[0]._store_locator._serdes)
             input_adapter = create_adapter(task._inputs[0])
-            result = ErPair(key=key_serdes.serialize('result'), value=value_serdes.serialize(input_adapter.count()))
+            result = ErPair(key=self.functor_serdes.serialize('result'), value=self.functor_serdes.serialize(input_adapter.count()))
             input_adapter.close()
 
         # TODO:1: multiprocessor scenario
@@ -407,7 +412,7 @@ def serve(args):
             route_to_class_name="EggPair",
             route_to_method_name="run_task")
 
-    command_server = grpc.server(futures.ThreadPoolExecutor(max_workers=5000),
+    command_server = grpc.server(futures.ThreadPoolExecutor(max_workers=500, thread_name_prefix="command_server"),
                                  options=[
                                      (cygrpc.ChannelArgKey.max_send_message_length, -1),
                                      (cygrpc.ChannelArgKey.max_receive_message_length, -1)])
@@ -429,7 +434,7 @@ def serve(args):
         transfer_pb2_grpc.add_TransferServiceServicer_to_server(transfer_servicer,
                                                                 transfer_server)
     else:
-        transfer_server = grpc.server(futures.ThreadPoolExecutor(max_workers=5),
+        transfer_server = grpc.server(futures.ThreadPoolExecutor(max_workers=500, thread_name_prefix="transfer_server"),
                                       options=[
                                           (cygrpc.ChannelArgKey.max_send_message_length, -1),
                                           (cygrpc.ChannelArgKey.max_receive_message_length, -1)])
@@ -515,6 +520,7 @@ if __name__ == '__main__':
         print(f'reading default config: {conf_file}')
 
     configs.read(conf_file)
+    set_static_er_conf(configs['eggroll'])
     if configs:
         if not args.data_dir:
             args.data_dir = configs['eggroll']['eggroll.data.dir']
