@@ -27,7 +27,7 @@ for ip in ${iplist[@]};do
 		fi
 	fi
 	scp eggroll.tar.gz app@$ip:${EGGROLL_HOME}
-	ssh -tt app@$ip "echo 'export EGGROLL_HOME=${EGGROLL_HOME}' >> ~/.bashrc;cd ${EGGROLL_HOME};tar -xzf eggroll.tar.gz;rm -f eggroll.tar.gz"
+	ssh -tt app@$ip "cd ${EGGROLL_HOME};tar -xzf eggroll.tar.gz;rm -f eggroll.tar.gz"
 done
 
 rm -f eggroll.tar.gz 
