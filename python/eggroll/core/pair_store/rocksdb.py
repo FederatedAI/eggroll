@@ -157,6 +157,13 @@ class RocksdbAdapter(PairAdapter):
 
     def destroy(self):
         self.close()
-        import shutil
+        import shutil, os
+        from pathlib import Path
         shutil.rmtree(self.path)
-        L.info("finish destroy")
+        path = Path(self.path)
+        try:
+            if not os.listdir(path.parent):
+                os.removedirs(path.parent)
+                L.debug("finish destroy, path:{}".format(self.path))
+        except:
+            L.info("path :{} has destroyed".format(self.path))

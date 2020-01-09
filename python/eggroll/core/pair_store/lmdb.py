@@ -12,7 +12,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+import platform
 import os
 import threading
 
@@ -26,6 +26,7 @@ L = get_logger()
 
 #64 * 1024 * 1024
 LMDB_MAP_SIZE = 16 * 4_096 * 244_140    # follows storage-service-cxx's config here
+LMDB_MAP_SIZE_WINDOWS = 200 * 1024 * 1024
 DEFAULT_DB = b'main'
 # DELIMETER = '-'
 # DELIMETER_ENCODED = DELIMETER.encode()
@@ -34,7 +35,7 @@ class LmdbIterator(PairIterator):
     def __init__(self, adapter):
         L.info("create lmdb iterator")
         self.adapter = adapter
-        self.cursor = adapter.txn.cursor()
+        self.cursor = adapter.txn_r.cursor()
 
     #move cursor to the first key position
     #return True if success or False if db is empty
@@ -79,37 +80,43 @@ class LmdbAdapter(PairAdapter):
     env_dict = dict()
     count_dict = dict()
     sub_env_dict = dict()
+    txn_r_dict = dict()
+    txn_w_dict = dict()
 
     def get(self, key):
         return self.cursor.get(key)
 
     def put(self, key, value):
-        return self.txn.put(key, value)
+        return self.txn_w.put(key, value)
 
     def __init__(self, options):
         with LmdbAdapter.env_lock:
             L.info("lmdb adapter init")
             super().__init__(options)
             self.path = options["path"]
-            lmdb_map_size = options.get("lmdb_map_size", LMDB_MAP_SIZE)
+            lmdb_map_size = options.get("lmdb_map_size", LMDB_MAP_SIZE if platform.system() != 'Windows' else LMDB_MAP_SIZE_WINDOWS)
             create_if_missing = bool(options.get("create_if_missing", "True"))
             if self.path not in LmdbAdapter.env_dict:
                 if create_if_missing:
                     os.makedirs(self.path, exist_ok=True)
                 L.info("path not in dict db path:{}".format(self.path))
-                import platform
                 writemap = False if platform.system() == 'Darwin' else True
                 self.env = lmdb.open(self.path, create=create_if_missing, max_dbs=128, sync=False, map_size=lmdb_map_size, writemap=writemap)
                 self.sub_db = self.env.open_db(DEFAULT_DB)
+                self.txn_r = self.env.begin(db=self.sub_db, write=False)
+                self.txn_w = self.env.begin(db=self.sub_db, write=True)
                 LmdbAdapter.count_dict[self.path] = 0
                 LmdbAdapter.env_dict[self.path] = self.env
                 LmdbAdapter.sub_env_dict[self.path] = self.sub_db
+                LmdbAdapter.txn_r_dict[self.path] = self.txn_r
+                LmdbAdapter.txn_w_dict[self.path] = self.txn_w
             else:
                 L.info("path in dict:{}".format(self.path))
                 self.env = LmdbAdapter.env_dict[self.path]
                 self.sub_db = LmdbAdapter.sub_env_dict[self.path]
-            self.txn = self.env.begin(db=self.sub_db, write=True)
-            self.cursor = self.txn.cursor()
+                self.txn_r = LmdbAdapter.txn_r_dict[self.path]
+                self.txn_w = LmdbAdapter.txn_w_dict[self.path]
+            self.cursor = self.txn_r.cursor()
             LmdbAdapter.count_dict[self.path] = LmdbAdapter.count_dict[self.path] + 1
 
     def __enter__(self):
@@ -125,19 +132,23 @@ class LmdbAdapter(PairAdapter):
         return self.env.open_db(DEFAULT_DB)
 
     def close(self):
-        try:
-            self.txn.commit()
-            self.cursor.close()
-        except:
-            L.warning("txn commit or cursor close failed")
         with LmdbAdapter.env_lock:
             if self.env:
                 count = LmdbAdapter.count_dict[self.path]
                 if not count or count - 1 <= 0:
-                    self.env.close()
+                    try:
+                        self.txn_r.commit()
+                        self.txn_w.commit()
+                        self.cursor.close()
+                        self.env.close()
+                    except:
+                        L.warning("txn commit or cursor, env have closed before")
+
                     del LmdbAdapter.env_dict[self.path]
                     del LmdbAdapter.sub_env_dict[self.path]
                     del LmdbAdapter.count_dict[self.path]
+                    del LmdbAdapter.txn_r_dict[self.path]
+                    del LmdbAdapter.txn_w_dict[self.path]
                 else:
                     LmdbAdapter.count_dict[self.path] = count - 1
                 self.env = None
@@ -146,16 +157,23 @@ class LmdbAdapter(PairAdapter):
         return LmdbIterator(self)
 
     def new_batch(self):
-        return LmdbWriteBatch(self, self.txn)
+        return LmdbWriteBatch(self, self.txn_w)
 
     def count(self):
-        return self.txn.stat()["entries"]
+        return self.txn_r.stat()["entries"]
 
     def delete(self, k):
-        return self.txn.delete(k)
+        return self.txn_w.delete(k)
 
     def destroy(self):
         self.close()
-        import shutil
+        import shutil, os
+        from pathlib import Path
         shutil.rmtree(self.path)
-        L.info("finish destroy")
+        path = Path(self.path)
+        try:
+            if not os.listdir(path.parent):
+                os.removedirs(path.parent)
+                L.debug("finish destroy, path:{}".format(self.path))
+        except:
+            L.info("path :{} has destroyed".format(self.path))

@@ -33,7 +33,8 @@ import com.webank.eggroll.core.util.{IdUtils, Logging}
 
 import scala.collection.JavaConverters._
 class RollPairContext(val session: ErSession,
-                      defaultStoreType: String = StoreTypes.ROLLPAIR_LMDB) extends Logging {
+                      defaultStoreType: String = StoreTypes.ROLLPAIR_IN_MEMORY,
+                      defaultSerdesType: String = SerdesTypes.PICKLE) extends Logging {
 //  StandaloneManager.main(Array("-s",erSession.sessionId, "-p", erSession.cmClient.endpoint.port.toString))
   private val sessionId = session.sessionId
   private val sessionMeta = session.sessionMeta
@@ -44,10 +45,10 @@ class RollPairContext(val session: ErSession,
     val store = ErStore(storeLocator = ErStoreLocator(
       namespace = namespace,
       name = name,
-      storeType = options.getOrElse(StringConstants.STORE_TYPE, StoreTypes.ROLLPAIR_LMDB),
+      storeType = options.getOrElse(StringConstants.STORE_TYPE, defaultStoreType),
       totalPartitions = options.getOrElse(StringConstants.TOTAL_PARTITIONS, "1").toInt,
       partitioner = options.getOrElse(StringConstants.PARTITIONER, PartitionerTypes.BYTESTRING_HASH),
-      serdes = options.getOrElse(StringConstants.SERDES, SerdesTypes.CLOUD_PICKLE)
+      serdes = options.getOrElse(StringConstants.SERDES, defaultSerdesType)
     ))
     val loaded = session.clusterManagerClient.getOrCreateStore(store)
     new RollPair(loaded, this)
@@ -74,10 +75,11 @@ class RollPair(val store: ErStore, val ctx: RollPairContext, val options: Map[St
       functors = Array.empty,
       options = Map(SessionConfKeys.CONFKEY_SESSION_ID -> ctx.session.sessionId))
 
+    logInfo(s"mw: job: ${job}")
     new Thread {
       override def run(): Unit = {
         val commandClient = new CommandClient(ctx.session.rolls(0).commandEndpoint)
-        commandClient.call(RollPair.ROLL_RUN_JOB_COMMAND, job)
+        commandClient.call[ErJob](RollPair.ROLL_RUN_JOB_COMMAND, job)
 
         logInfo("thread started")
       }
@@ -135,12 +137,6 @@ class RollPair(val store: ErStore, val ctx: RollPairContext, val options: Map[St
 
         brokers(partitionId).put(rowPairDB)
         transferClient.doSend()
-
-        /* send putBatch command*/
-        //val storeLocator = ErStoreLocator(StoreTypes.ROLLPAIR_LEVELDB, "ns", "name")
-/*        val rollPair = new RollPairServicer()
-
-        rollPair.putBatch(job)*/
       }
     }
 

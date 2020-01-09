@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
 
 SHELL_FOLDER=$(dirname "$0")
-# EGGROLL_HOME
 
-cd $SHELL_FOLDER/../
-base_dir=$SHELL_FOLDER/..
+if [[ -z ${EGGROLL_HOME} ]]; then
+  echo "env variable EGGROLL_HOME not set"
+  exit -1
+fi
+
+
 #set -x
 session_id="null_sid"
 manager_port=4670
@@ -26,10 +29,19 @@ while getopts ":s:p:e:" opt; do
   esac
 done
 
-echo "base_dir: ${base_dir}"
-cmd="java -Dlog4j.configurationFile=${base_dir}/conf/log4j2.properties -cp ${base_dir}/lib/*:${base_dir}/jvm/core/target/eggroll-core-${version}.jar:${base_dir}/jvm/core/target/lib/*:${base_dir}/jvm/roll_pair/target/lib/*:${base_dir}/jvm/roll_pair/target/eggroll-roll-pair-${version}.jar com.webank.eggroll.core.Bootstrap --ignore-rebind --bootstraps com.webank.eggroll.core.resourcemanager.ClusterManagerBootstrap,com.webank.eggroll.core.resourcemanager.NodeManagerBootstrap -c ${base_dir}/conf/eggroll.properties -s $session_id -p $manager_port &"
+if [[ -z ${EGGROLL_LOGS_DIR} ]]; then
+  EGGROLL_LOGS_DIR=${EGGROLL_HOME}/logs/
+fi
+
+if [[ ! -d "${EGGROLL_LOGS_DIR}/eggroll" ]]; then
+  mkdir -p ${EGGROLL_LOGS_DIR}/eggroll
+fi
+
+cd ${EGGROLL_HOME}
+echo "EGGROLL_HOME: ${EGGROLL_HOME}"
+cmd="java -Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.properties -cp ${EGGROLL_HOME}/lib/*:${EGGROLL_HOME}/jvm/core/target/eggroll-core-${version}.jar:${EGGROLL_HOME}/jvm/core/target/lib/*:${EGGROLL_HOME}/jvm/roll_pair/target/lib/*:${EGGROLL_HOME}/jvm/roll_pair/target/eggroll-roll-pair-${version}.jar com.webank.eggroll.core.Bootstrap --ignore-rebind --bootstraps com.webank.eggroll.core.resourcemanager.ClusterManagerBootstrap,com.webank.eggroll.core.resourcemanager.NodeManagerBootstrap -c ${EGGROLL_HOME}/conf/eggroll.properties -s $session_id -p $manager_port &"
 echo "cmd: ${cmd}"
-eval ${cmd} > ${base_dir}/logs/eggroll/bootstrap-standalone-manager.out 2>${base_dir}/logs/eggroll/bootstrap-standalone-manager.err
+eval ${cmd} > ${EGGROLL_HOME}/logs/eggroll/bootstrap-standalone-manager.out 2>${EGGROLL_HOME}/logs/eggroll/bootstrap-standalone-manager.err
 
 #while [ 1 ]; do
 #  sleep 1
