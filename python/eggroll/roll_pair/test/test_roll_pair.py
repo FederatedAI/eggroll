@@ -15,6 +15,8 @@
 
 import unittest
 
+from eggroll.core.session import ErSession
+from eggroll.roll_pair.roll_pair import RollPairContext
 from eggroll.roll_pair.test.roll_pair_test_assets import get_debug_test_context, \
     get_cluster_context, get_standalone_context, set_default_option, \
     get_default_options
