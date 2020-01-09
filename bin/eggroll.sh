@@ -48,7 +48,7 @@ main() {
 			main_class=com.webank.eggroll.rollsite.Proxy
 			;;
 		*)
-			usage："usage: `basename ${0}` {clustermanager | nodemanager | all} {start | restart | status}"
+			usage
 			exit -1
 	esac
 }
@@ -72,7 +72,7 @@ action() {
 			status
 			;;
 		*)
-			echo "usage: $action should be {start|stop|status|restart}"
+			usage
 			exit -1
 	esac
 }
@@ -90,7 +90,7 @@ all() {
 }
 
 usage() {
-	echo "usage: $0 should be {all|[clustermanager|nodemanager...]} {start|stop|status|restart}"
+	echo "usage: `basename ${0}` {clustermanager | nodemanager | all} {start | restart | status}"
 }
 
 multiple() {
