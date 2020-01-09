@@ -1,4 +1,4 @@
-cwd=`pwd`
+cwd=$(cd `dirname $0`; pwd)
 source ./conf.sh
 version=2.0
 cd ..
