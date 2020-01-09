@@ -18,7 +18,8 @@ from eggroll.core.pair_store.adapter import FileAdapter, MmapAdapter, CacheAdapt
 def create_pair_adapter(options: dict):
     ret = None
     # TODO:0: rename type name?
-    if options["store_type"] == StoreTypes.ROLLPAIR_LMDB:
+    if options["store_type"] == StoreTypes.ROLLPAIR_LMDB \
+            or options["store_type"] == StoreTypes.ROLLPAIR_IN_MEMORY:
       from eggroll.core.pair_store.lmdb import LmdbAdapter
       ret = LmdbAdapter(options=options)
     elif options["store_type"] == StoreTypes.ROLLPAIR_LEVELDB:

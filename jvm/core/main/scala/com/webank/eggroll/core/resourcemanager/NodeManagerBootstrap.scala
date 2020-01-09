@@ -5,7 +5,7 @@ import java.net.InetSocketAddress
 
 import com.webank.eggroll.core.Bootstrap
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
-import com.webank.eggroll.core.constant.{CoreConfKeys, NodeManagerCommands, ResourceManagerConfKeys}
+import com.webank.eggroll.core.constant.{ClusterManagerConfKeys, CoreConfKeys, NodeManagerCommands, NodeManagerConfKeys, ResourceManagerConfKeys}
 import com.webank.eggroll.core.meta.{ErProcessor, ErSessionMeta}
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.util.{CommandArgsUtils, Logging}
@@ -54,13 +54,15 @@ class NodeManagerBootstrap extends Bootstrap with Logging {
       routeToMethodName = NodeManagerCommands.heartbeat.getName())
 
     val cmd = CommandArgsUtils.parseArgs(args = args)
-    this.port = cmd.getOptionValue('p', "9394").toInt
+
     this.confPath = cmd.getOptionValue('c', "./jvm/core/main/resources/cluster-manager.properties.local")
     // val sessionId = cmd.getOptionValue('s')
     StaticErConf.addProperties(confPath)
     val confFile = new File(confPath)
     StaticErConf.addProperty(CoreConfKeys.STATIC_CONF_PATH, confFile.getAbsolutePath)
     logInfo(s"conf file: ${confFile.getAbsolutePath}")
+    this.port = cmd.getOptionValue('p', StaticErConf.getProperty(
+      NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT,"9394")).toInt
     // StaticErConf.addProperty(SessionConfKeys.CONFKEY_SESSION_ID, sessionId)
 
     // TODO:0: get from cluster manager

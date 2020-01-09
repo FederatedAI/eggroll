@@ -45,7 +45,6 @@ L = get_logger()
 
 def runtime_init(session: ErSession):
     rps = RollPairContext(session=session)
-    rps.set_session_table_recorder()
     return rps
 
 
@@ -54,10 +53,12 @@ class RollPairContext(object):
     def __init__(self, session: ErSession):
         self.__session = session
         self.session_id = session.get_session_id()
-        self.default_store_type = StoreTypes.ROLLPAIR_LMDB
+        self.default_store_type = StoreTypes.ROLLPAIR_IN_MEMORY
         self.default_store_serdes = SerdesTypes.PICKLE
         self.deploy_mode = session.get_option(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE)
         self.__session_meta = session.get_session_meta()
+        self.rpc_gc_enable = True
+        self.set_session_rp_recorder()
 
     def set_store_type(self, store_type: str):
         self.default_store_type = store_type
@@ -65,8 +66,15 @@ class RollPairContext(object):
     def set_store_serdes(self, serdes_type: str):
         self.default_store_serdes = serdes_type
 
-    def set_session_table_recorder(self):
-        self.__session.set_table_recorder(self)
+    def set_session_rp_recorder(self):
+        if self.rpc_gc_enable:
+            self.__session.set_rp_recorder(self)
+
+    def set_session_gc_enable(self):
+        self.rpc_gc_enable = True
+
+    def set_session_gc_disable(self):
+        self.rpc_gc_enable = False
 
     def get_session(self):
         return self.__session
@@ -180,18 +188,25 @@ class RollPair(object):
     SUBTRACT_BY_KEY = 'subtractByKey'
     UNION = 'union'
 
+    def __setstate__(self, state):
+        pass
+
+    def __getstate__(self):
+        pass
+
     def __init__(self, er_store: ErStore, rp_ctx: RollPairContext):
         self.__store = er_store
         self.ctx = rp_ctx
         self.__command_serdes = SerdesTypes.PROTOBUF
         self.__roll_pair_master = self.ctx.get_roll()
         self.__command_client = CommandClient()
+        self.functor_serdes =create_serdes(SerdesTypes.CLOUD_PICKLE)
         self.value_serdes = self.get_store_serdes()
         self.key_serdes = self.get_store_serdes()
         self.partitioner = partitioner(hash_code, self.__store._store_locator._total_partitions)
         self.egg_router = default_egg_router
         self.__session_id = self.ctx.session_id
-        self.gc_enable = True
+        self.gc_enable = rp_ctx.rpc_gc_enable
         self.recorder = Recorder(er_store=er_store, rpc=rp_ctx)
         self.recorder.record()
 
@@ -202,7 +217,7 @@ class RollPair(object):
             self.recorder.delete_record()
             self.destroy()
             L.debug("process {} thread {} run {} del table name:{}, namespace:{}".
-                    format(os.getpid(), threading.currentThread().ident,
+                         format(os.getpid(), threading.currentThread().ident,
                                 sys._getframe().f_code.co_name,
                                 self.__store._store_locator._name,
                                 self.__store._store_locator._namespace))
@@ -215,14 +230,6 @@ class RollPair(object):
 
     def set_gc_disable(self):
         self.gc_enable = False
-
-    def __get_unary_input_adapter(self, options={}):
-        input_adapter = None
-        if self.ctx.default_store_type == StoreTypes.ROLLPAIR_LMDB:
-            input_adapter = LmdbSortedKvAdapter(options)
-        elif self.ctx.default_store_type == StoreTypes.ROLLPAIR_LEVELDB:
-            input_adapter = RocksdbSortedKvAdapter(options)
-        return input_adapter
 
     def get_store_serdes(self):
         return create_serdes(self.__store._store_locator._serdes)
@@ -259,6 +266,7 @@ class RollPair(object):
     
     """
     def get(self, k, options={}):
+        L.info("get k:{}".format(k))
         k = create_serdes(self.__store._store_locator._serdes).serialize(k)
         er_pair = ErPair(key=k, value=None)
         outputs = []
@@ -290,11 +298,8 @@ class RollPair(object):
                 command_uri=CommandURI(f'{RollPair.EGG_PAIR_URI_PREFIX}/{RollPair.RUN_TASK}'),
                 serdes_type=self.__command_serdes
         )
-        L.info("get resp:{}".format((job_resp._value)))
-
-        value = self.value_serdes.deserialize(job_resp._value)
-
-        return value
+        L.info("get its resp:{}".format(job_resp._value))
+        return self.value_serdes.deserialize(job_resp._value) if job_resp._value != b'' else None
 
     def put(self, k, v, options={}):
         k, v = create_serdes(self.__store._store_locator._serdes).serialize(k), \
@@ -430,7 +435,7 @@ class RollPair(object):
         result = 0
         for future in done:
             pair = future.result()[0]
-            result += self.value_serdes.deserialize(pair._value)
+            result += self.functor_serdes.deserialize(pair._value)
 
         return result
 
@@ -480,7 +485,6 @@ class RollPair(object):
                 command_uri=CommandURI(f'{RollPair.EGG_PAIR_URI_PREFIX}/{RollPair.RUN_TASK}'),
                 serdes_type=self.__command_serdes
         )
-        L.info("get resp:{}".format(ErPair.from_proto_string(job_resp._value)))
 
     def take(self, n: int, options={}):
         if n <= 0:

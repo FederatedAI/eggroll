@@ -15,9 +15,16 @@
 
 import unittest
 
+from eggroll.core.session import ErSession
+from eggroll.roll_pair.roll_pair import RollPairContext
 from eggroll.roll_pair.test.roll_pair_test_assets import get_debug_test_context, \
     get_cluster_context, get_standalone_context, set_default_option, \
     get_default_options
+
+
+def get_value(roll_pair):
+    return list(roll_pair.get_all())
+
 
 class TestRollPairBase(unittest.TestCase):
 
@@ -44,32 +51,59 @@ class TestRollPairBase(unittest.TestCase):
         rp = self.ctx.parallelize(self.str_generator(True),
                                   options=self.store_opts(include_key=True))
         self.assertUnOrderListEqual(self.str_generator(True), rp.get_all())
-        rp.destroy()
+        #rp.destroy()
 
     def test_parallelize(self):
         rp = self.ctx.parallelize(self.str_generator(False), options=self.store_opts(include_key=False))
+        print(rp)
+        print(list(rp.get_all()))
         self.assertUnOrderListEqual(self.str_generator(False), (v for k,v in rp.get_all()))
-        rp.destroy()
+        #rp.destroy()
+
+    def test_serdes(self):
+        rp = self.ctx.load("ns1","n_serdes", self.store_opts(serdes="EMPTY"))
+        rp.put_all((b"a",b"b") for k in range(10))
+        print(list(rp.get_all()))
+        print(rp.count())
 
     def test_get(self):
         rp = self.ctx.parallelize(self.str_generator())
         for i in range(10):
             self.assertEqual(str(i), rp.get(str(i)))
-        rp.destroy()
+        #rp.destroy()
 
     def test_count(self):
-        rp = self.ctx.load("x1","x2")
-        # rp = self.ctx.parallelize(self.str_generator(row_limit=11))
-        self.assertEqual(0, rp.count())
-        rp.destroy()
+        rp = self.ctx.parallelize(self.str_generator(row_limit=11))
+        self.assertEqual(11, rp.count())
+        #rp.destroy()
 
+    def test_put_all(self):
+        rp = self.ctx.load("ns1","n1")
+        data = [("k1","v1"),("k2","v2"),("k3","v3"),("k4","v4"),("k5","v5"),("k6","v6")]
+        rp.put_all(data)
+        self.assertUnOrderListEqual(data, rp.get_all())
+        #rp.destroy()
 
     def test_map(self):
         rp = self.ctx.parallelize(self.str_generator())
         rp2 = rp.map(lambda k,v: (k + "_1", v))
         self.assertUnOrderListEqual(((k + "_1", v) for k, v in self.str_generator()), rp2.get_all())
-        rp.destroy()
-        rp2.destroy()
+        #rp.destroy()
+        #rp2.destroy()
+
+    def test_reduce(self):
+        rp = self.ctx.load("ns1","n_serdes", self.store_opts(serdes="EMPTY"))
+        rp.put_all((b'1', b'2') for k in range(10))
+        print(list(rp.get_all()))
+        print(rp.count())
+        from operator import add
+        print(list(rp.reduce(add).get_all()))
+
+    def test_join_self(self):
+        options = get_default_options()
+        left_rp = self.ctx.load("ns1", "testJoinLeft2020", options=options).put_all([('a', 1), ('b', 4)], options={"include_key": True})
+        print(list(left_rp.join(left_rp, lambda v1, v2: v1 + v2).get_all()))
+        self.assertEqual(get_value(left_rp.join(left_rp, lambda v1, v2: v1 + v2)), [('a', 2), ('b', 8)])
 
 class TestRollPairMultiPartition(TestRollPairBase):
     def setUp(self):

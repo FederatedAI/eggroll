@@ -5,7 +5,7 @@ import java.net.InetSocketAddress
 
 import com.webank.eggroll.core.Bootstrap
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
-import com.webank.eggroll.core.constant.{CoreConfKeys, MetadataCommands, SessionCommands}
+import com.webank.eggroll.core.constant.{ClusterManagerConfKeys, CoreConfKeys, MetadataCommands, SessionCommands}
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.resourcemanager.metadata.{ServerNodeCrudOperator, StoreCrudOperator}
 import com.webank.eggroll.core.session.StaticErConf
@@ -91,13 +91,15 @@ class ClusterManagerBootstrap extends Bootstrap with Logging {
       routeToMethodName = SessionCommands.heartbeat.getName())
 
     val cmd = CommandArgsUtils.parseArgs(args = args)
-    this.port = cmd.getOptionValue('p', "4670").toInt
+
     //this.sessionId = cmd.getOptionValue('s')
-    val confPath = cmd.getOptionValue('c', "./conf/eggroll.properties.local")
+    val confPath = cmd.getOptionValue('c', "./conf/eggroll.properties")
     StaticErConf.addProperties(confPath)
     val confFile = new File(confPath)
     StaticErConf.addProperty(CoreConfKeys.STATIC_CONF_PATH, confFile.getAbsolutePath)
     logInfo(s"conf file: ${confFile.getAbsolutePath}")
+    this.port = cmd.getOptionValue('p', cmd.getOptionValue('p', StaticErConf.getProperty(
+      ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT,"4670"))).toInt
     //StaticErConf.addProperty(SessionConfKeys.CONFKEY_SESSION_ID, sessionId)
   }
 
