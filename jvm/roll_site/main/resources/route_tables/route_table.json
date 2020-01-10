@@ -1,0 +1,28 @@
+
+{
+  "route_table":
+  {
+    "default":
+    {
+      "default":[
+        {
+          "port":"9395",
+          "ip":"127.0.0.1"
+        }
+      ]
+    },
+    "9996":
+    {
+      "default":[
+        {
+          "port":9396,
+          "ip":"127.0.0.1"
+        }
+      ]
+    }
+  },
+  "permission":
+  {
+    "default_allow":true
+  }
+}
