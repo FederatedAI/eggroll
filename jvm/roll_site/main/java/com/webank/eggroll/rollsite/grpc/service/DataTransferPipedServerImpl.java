@@ -215,8 +215,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
             responseObserver.onCompleted();
             return;
         }
-        if(request.getHeader().getOperator().equals("init_job_session_pair") &&
-                proxyServerConf.getPartyId().equals(inputMetadata.getDst().getPartyId())) {
+        if(request.getHeader().getOperator().equals("init_job_session_pair")) {
             String job_id = request.getHeader().getTask().getModel().getName();
             String session_id = request.getHeader().getTask().getModel().getDataKey();
             Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();

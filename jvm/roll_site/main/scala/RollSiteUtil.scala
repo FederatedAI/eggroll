@@ -43,13 +43,8 @@ class RollSiteUtil(val session_id: String, name:String, namespace:String) {
   })
 
   def putBatch(value:ByteBuffer): Unit = {
-    val directBinPacketBuffer: ByteBuffer = ByteBuffer.allocateDirect(1<<10)
-    directBinPacketBuffer.put(value)
-
-    directBinPacketBuffer.flip()
-
     val broker = new LinkedBlockingBroker[ByteString]()
-    broker.put(ByteString.copyFrom(directBinPacketBuffer))
+    broker.put(ByteString.copyFrom(value))
     broker.signalWriteFinish()
     rp.putBatch(broker)
   }
