@@ -53,7 +53,7 @@ class RollPairContext(object):
     def __init__(self, session: ErSession):
         self.__session = session
         self.session_id = session.get_session_id()
-        self.default_store_type = StoreTypes.ROLLPAIR_IN_MEMORY
+        self.default_store_type = StoreTypes.ROLLPAIR_LMDB
         self.default_store_serdes = SerdesTypes.PICKLE
         self.deploy_mode = session.get_option(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE)
         self.__session_meta = session.get_session_meta()
@@ -139,6 +139,7 @@ class RollPairContext(object):
     def parallelize(self, data, options={}):
         namespace = options.get("namespace", None)
         name = options.get("name", None)
+        options['store_type'] = StoreTypes.ROLLPAIR_IN_MEMORY
         create_if_missing = options.get("create_if_missing", True)
 
         if namespace is None:
