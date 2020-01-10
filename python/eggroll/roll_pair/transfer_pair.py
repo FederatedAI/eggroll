@@ -174,6 +174,7 @@ class TransferPair(object):
                     writer.write(k, v)
                     done_cnt += 1
                 except IndexError as e:
+                    # TODO:0: replace 1024 with constant
                     yield commit(max(buffer_size, len(k) + len(v) + 1024))
                     writer.write(k, v)
             L.debug(f'generate_bin_batch last one: {done_cnt}')

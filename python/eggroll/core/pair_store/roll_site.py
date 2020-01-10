@@ -135,7 +135,8 @@ class RollsiteWriteBatch(PairWriteBatch):
         except IndexError as e:
             bin_batch = bytes(self.ba[0:self.buffer.get_offset()])
             self.write(bin_batch)
-            self.ba = bytearray(self.__bin_packet_len)
+            # TODO:0: replace 1024 with constant
+            self.ba = bytearray(max(self.__bin_packet_len, len(k) + len(v) + 1024))
             self.buffer = ArrayByteBuffer(self.ba)
             self.writer = PairBinWriter(pair_buffer=self.buffer)
             self.writer.write(k, v)
