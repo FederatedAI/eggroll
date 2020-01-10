@@ -15,27 +15,26 @@ from arch.api.table.eggroll2.table_impl import DTable
 OBJECT_STORAGE_NAME = "__federation__"
 STATUS_TABLE_NAME = "__status__"
 
-from eggroll.utils import log_utils
+from eggroll.utils import log_utils, file_utils
+
 LOGGER = log_utils.get_logger()
 #LOGGER = getLogger()
 
 def init_roll_site_context(runtime_conf, session_id):
     from eggroll.roll_site.roll_site import RollSiteContext
     from eggroll.roll_pair.roll_pair import RollPairContext
-    default_opts = {'runtime_conf_path': 'python/eggroll/roll_site/conf/role_conf.json',
-                    'server_conf_path': 'python/eggroll/roll_site/conf/server_conf.json'}
-    if runtime_conf.get("local").get("role") == "host":
-        options = default_opts
-    elif runtime_conf.get("local").get("role") == "guest":
-        options = {'runtime_conf_path': 'python/eggroll/roll_site/conf_guest/role_conf.json',
-                   'server_conf_path': 'python/eggroll/roll_site/conf_guest/server_conf.json'}
-    else:
-        options = default_opts
 
     session_instance = FateSession.get_instance()._eggroll.get_session()
     rp_context = RollPairContext(session_instance)
 
-    rs_context = RollSiteContext(session_id, options=options, rp_ctx=rp_context)
+    role = runtime_conf.get("local").get("role")
+    partyId = runtime_conf.get("local").get("party_id")
+
+    server_conf = file_utils.load_json_conf('/data/projects/qijun/apps/fate_host/arch/conf/server_conf.json')
+    host = server_conf.get('servers').get('rollsite').get("host")
+    port = server_conf.get('servers').get('rollsite').get("port")
+
+    rs_context = RollSiteContext(session_id, self_role=role, self_partyId=partyId, rs_ip=host, rs_port=port, rp_ctx=rp_context)
     return rp_context, rs_context
 
 class FederationRuntime(Federation):
