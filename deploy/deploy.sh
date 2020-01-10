@@ -13,7 +13,7 @@ cp -r ./jvm/roll_site/target/eggroll-roll-site-${version}.jar ./lib
 cp -r ./jvm/roll_site/target/lib/* ./lib
 cp ./jvm/core/main/resources/create-eggroll-meta-tables.sql ./conf
 
-tar -czf eggroll.tar.gz lib bin conf data python deploy eggroll.sh
+tar -czf eggroll.tar.gz lib bin conf data python deploy
 
 for ip in ${iplist[@]};do
 	
