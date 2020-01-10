@@ -16,6 +16,7 @@
 
 package com.webank.eggroll.rollsite.grpc.client;
 
+import com.google.common.base.Preconditions;
 import com.webank.ai.eggroll.api.core.BasicMeta;
 import com.webank.ai.eggroll.api.networking.proxy.DataTransferServiceGrpc;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
@@ -189,37 +190,87 @@ public class DataTransferPipedClient {
     }
     */
 
-    public Proxy.Packet unaryCall(Proxy.Packet request, Pipe pipe, boolean initialize) {
+
+    public void unaryCall(Proxy.Packet packet, Pipe pipe) {
+        Preconditions.checkNotNull(packet);
+        Proxy.Metadata header = packet.getHeader();
+        LOGGER.info("[UNARYCALL][CLIENT] client send unary call to server: {}", header);
+        //LOGGER.info("[UNARYCALL][CLIENT] packet: {}", toStringUtils.toOneLineString(packet));
+
+        DataTransferServiceGrpc.DataTransferServiceStub stub = getStub(
+                packet.getHeader().getSrc(), packet.getHeader().getDst());
+
+        final CountDownLatch finishLatch = new CountDownLatch(1);
+        StreamObserver<Proxy.Packet> responseObserver = proxyGrpcStreamObserverFactory
+                .createClientUnaryCallResponseStreamObserver(pipe, finishLatch, packet.getHeader());
+        stub.unaryCall(packet, responseObserver);
+
+        LOGGER.info("[UNARYCALL][CLIENT] unary call stub: {}, metadata: {}",
+                stub.getChannel(), header);
+
+        try {
+            finishLatch.await(MAX_AWAIT_HOURS, TimeUnit.HOURS);
+        } catch (InterruptedException e) {
+            LOGGER.error("[UNARYCALL][CLIENT] client unary call: finishLatch.await() interrupted");
+            responseObserver.onError(ErrorUtils.toGrpcRuntimeException(e));
+            pipe.onError(e);
+            Thread.currentThread().interrupt();
+            return;
+        }
+
+        responseObserver.onCompleted();
+    }
+
+    public void unaryCall2(Proxy.Packet request, Pipe pipe, boolean initialize) {
+        Proxy.Metadata header = request.getHeader();
+        LOGGER.info("[UNARYCALL][CLIENT] client send unary call to server: {}", header);
         GrpcClientContext<DataTransferServiceGrpc.DataTransferServiceStub, Proxy.Packet, Proxy.Packet> context
             = new GrpcClientContext<>();
 
         Proxy.Metadata metadata = request.getHeader();
-        //System.out.println(metadata);
-        if(initialize == false)
-            endpoint = proxyGrpcStubFactory.getAsyncEndpoint(metadata.getDst());
-        System.out.println(endpoint);
-        System.out.println("ip:" + endpoint.getIp() + "port:" + endpoint.getPort());
 
-        AwaitSettableFuture<Packet> delayedResult = new AwaitSettableFuture<>();
-        context.setStubClass(DataTransferServiceGrpc.DataTransferServiceStub.class)
-            .setServerEndpoint(endpoint.getIp(), endpoint.getPort())
-            .setCalleeStreamingMethodInvoker(DataTransferServiceGrpc.DataTransferServiceStub::unaryCall)
-            .setCallerStreamObserverClassAndInitArgs(SameTypeFutureCallerResponseStreamObserver.class,
-                delayedResult);
+        DataTransferServiceGrpc.DataTransferServiceStub stub = getStub(
+                request.getHeader().getSrc(), request.getHeader().getDst());
 
-        GrpcClientTemplate<DataTransferServiceGrpc.DataTransferServiceStub, Proxy.Packet, Proxy.Packet> template
-            = new GrpcClientTemplate<>();
-        template.setGrpcClientContext(context);
+        final CountDownLatch finishLatch = new CountDownLatch(1);
+        StreamObserver<Proxy.Packet> responseObserver = proxyGrpcStreamObserverFactory
+                .createClientUnaryCallResponseStreamObserver(pipe, finishLatch, request.getHeader());
+        stub.unaryCall(request, responseObserver);
 
-        Proxy.Packet result = null;
+        LOGGER.info("[UNARYCALL][CLIENT] unary call stub: {}, metadata: {}",
+                stub.getChannel(), metadata);
+
         try {
-            result = template.calleeStreamingRpcWithImmediateDelayedResult(request, delayedResult);
-        } catch (ExecutionException | InterruptedException e) {
-            LOGGER.error("error getting result", e);
-            throw new RuntimeException(e);
+            finishLatch.await(MAX_AWAIT_HOURS, TimeUnit.HOURS);
+        } catch (InterruptedException e) {
+            LOGGER.error("[UNARYCALL][CLIENT] client unary call: finishLatch.await() interrupted");
+            responseObserver.onError(ErrorUtils.toGrpcRuntimeException(e));
+            pipe.onError(e);
+            Thread.currentThread().interrupt();
+            return;
         }
 
-        return result;
+        responseObserver.onCompleted();
+//        AwaitSettableFuture<Packet> delayedResult = new AwaitSettableFuture<>();
+//        context.setStubClass(DataTransferServiceGrpc.DataTransferServiceStub.class)
+//            .setServerEndpoint(endpoint.getIp(), endpoint.getPort())
+//            .setCalleeStreamingMethodInvoker(DataTransferServiceGrpc.DataTransferServiceStub::unaryCall)
+//            .setCallerStreamObserverClassAndInitArgs(SameTypeFutureCallerResponseStreamObserver.class,
+//                delayedResult);
+//
+//        GrpcClientTemplate<DataTransferServiceGrpc.DataTransferServiceStub, Proxy.Packet, Proxy.Packet> template
+//            = new GrpcClientTemplate<>();
+//        template.setGrpcClientContext(context);
+//
+//        Proxy.Packet result = null;
+//        try {
+//            result = template.calleeStreamingRpcWithImmediateDelayedResult(request, delayedResult);
+//        } catch (ExecutionException | InterruptedException e) {
+//            LOGGER.error("error getting result", e);
+//            throw new RuntimeException(e);
+//        }
+
+//        return result;
 
         /*
         AwaitSettableFuture<HelloResponse> delayedResult = new AwaitSettableFuture<>();
