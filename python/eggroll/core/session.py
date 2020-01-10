@@ -138,14 +138,14 @@ class ErSession(object):
     def stop(self):
         return self._cluster_manager_client.stop_session(self.__session_meta)
 
-    def set_rp_recorder(self, roll_pair_contex):
+    def set_gc_recorder(self, roll_pair_contex):
         options = {}
         options['store_type'] = StoreTypes.ROLLPAIR_LMDB
         self._table_recorder = roll_pair_contex.load(name='__gc__' + self.__session_id,
                                                      namespace=self.__session_id,
                                                      options=options)
 
-    def get_table_recorder(self):
+    def get_gc_recorder(self):
         return self._table_recorder
 
     def get_session_id(self):

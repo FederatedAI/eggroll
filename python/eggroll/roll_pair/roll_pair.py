@@ -58,7 +58,7 @@ class RollPairContext(object):
         self.deploy_mode = session.get_option(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE)
         self.__session_meta = session.get_session_meta()
         self.rpc_gc_enable = True
-        self.set_session_rp_recorder()
+        self.set_session_gc_recorder()
 
     def set_store_type(self, store_type: str):
         self.default_store_type = store_type
@@ -66,9 +66,9 @@ class RollPairContext(object):
     def set_store_serdes(self, serdes_type: str):
         self.default_store_serdes = serdes_type
 
-    def set_session_rp_recorder(self):
+    def set_session_gc_recorder(self):
         if self.rpc_gc_enable:
-            self.__session.set_rp_recorder(self)
+            self.__session.set_gc_recorder(self)
 
     def set_session_gc_enable(self):
         self.rpc_gc_enable = True
@@ -93,7 +93,7 @@ class RollPairContext(object):
         return ErStore(store_locator=store._store_locator, partitions=populated_partitions, options=store._options)
 
     def load(self, namespace=None, name=None, options={}):
-        store_type = options.get('store_type', self.default_store_type)
+        store_type = options.get('store_type', StoreTypes.ROLLPAIR_LMDB)
         total_partitions = options.get('total_partitions', 1)
         partitioner = options.get('partitioner', PartitionerTypes.BYTESTRING_HASH)
         store_serdes = options.get('serdes', self.default_store_serdes)
@@ -139,6 +139,7 @@ class RollPairContext(object):
     def parallelize(self, data, options={}):
         namespace = options.get("namespace", None)
         name = options.get("name", None)
+        options['store_type'] = self.default_store_type
         create_if_missing = options.get("create_if_missing", True)
 
         if namespace is None:
