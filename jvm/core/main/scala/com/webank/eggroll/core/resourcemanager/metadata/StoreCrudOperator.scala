@@ -36,9 +36,16 @@ class StoreCrudOperator extends CrudOperator with Logging {
   private val crudOperatorTemplate = new CrudOperatorTemplate()
   def getOrCreateStore(input: ErStore): ErStore = {
     def doGetOrCreateStore(input: ErStore, sqlSession: SqlSession): ErStore = {
-      val existing = StoreCrudOperator.doGetStore(input, sqlSession)
+      val inputStoreLocator = input.storeLocator
+      val inputWithoutType = input.copy(storeLocator = inputStoreLocator.copy(storeType = StringConstants.EMPTY))
+      val inputStoreType = inputStoreLocator.storeType
+      val existing = StoreCrudOperator.doGetStore(inputWithoutType, sqlSession)
       if (existing != null) {
-        existing
+        if (existing.storeLocator.storeType.equals(inputStoreType)) existing
+        else throw new CrudException(
+          s"store namespace: ${inputStoreLocator.namespace}, name: ${inputStoreLocator.name} " +
+            s"already exist with store type: ${existing.storeLocator.storeType}. " +
+            s"requires type: ${inputStoreLocator.storeType}")
       } else {
         StoreCrudOperator.doCreateStore(input, sqlSession)
       }
