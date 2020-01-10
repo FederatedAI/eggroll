@@ -117,7 +117,6 @@ class RollsiteWriteBatch(PairWriteBatch):
 
     def close(self):
         bin_batch = bytes(self.ba[0:self.buffer.get_offset()])
-        print("bin_batch:", bin_batch)
         self.write(bin_batch)
         self.send_end()
 
