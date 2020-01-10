@@ -24,7 +24,7 @@ cd ${EGGROLL_HOME}
 echo "EGGROLL_HOME:${EGGROLL_HOME}"
 
 eval action=\$$#
-modules=(clustermanager nodemanager)
+modules=(clustermanager nodemanager rollsite)
 
 get_property() {
 	property_value=`grep $1 ${EGGROLL_HOME}/conf/eggroll.properties | awk -F= '{print $2}'`
