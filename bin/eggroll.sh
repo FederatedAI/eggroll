@@ -30,7 +30,7 @@ get_property() {
 	property_value=`grep $1 ${EGGROLL_HOME}/conf/eggroll.properties | awk -F= '{print $2}'`
 }
 
-get_property "eggroll.resourcemangaer.process.tag"
+get_property "eggroll.resourcemanager.process.tag"
 processor_tag=${property_value}
 if [ -z "${processor_tag}" ];then
 	processor_tag=EGGROLL_DAEMON
