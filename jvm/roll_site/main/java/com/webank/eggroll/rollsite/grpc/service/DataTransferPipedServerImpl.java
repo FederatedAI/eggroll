@@ -268,12 +268,13 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
             return;
         }
 
-        if(!proxyServerConf.getPartyId().equals(inputMetadata.getDst().getPartyId())) {
-            PipeHandleNotificationEvent event =
-                eventFactory.createPipeHandleNotificationEvent(
-                    this, PipeHandleNotificationEvent.Type.UNARY_CALL, request, pipe);
-            applicationEventPublisher.publishEvent(event);
-        }
+
+        LOGGER.info("self send: {}", ByteString.copyFromUtf8(pipe.getType()));
+        PipeHandleNotificationEvent event =
+            eventFactory.createPipeHandleNotificationEvent(
+                this, PipeHandleNotificationEvent.Type.UNARY_CALL, request, pipe);
+        applicationEventPublisher.publishEvent(event);
+
 
         long startTimestamp = System.currentTimeMillis();
         long lastPacketTimestamp = startTimestamp;
@@ -281,8 +282,8 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
         while ((!hasReturnedBefore || !pipe.isDrained())
                 && !pipe.hasError()
                 && !timeouts.isTimeout(overallTimeout, startTimestamp, loopEndTimestamp)) {
-            //packet = (Proxy.Packet) pipe.read(1, TimeUnit.SECONDS);
-            packet = request;
+            packet = (Proxy.Packet) pipe.read(1, TimeUnit.SECONDS);
+//            packet = request;
             loopEndTimestamp = System.currentTimeMillis();
             if (packet != null) {
                 // LOGGER.info("server pull onNext()");
