@@ -51,6 +51,8 @@ main() {
 			;;
 		rollsite)
 			main_class=com.webank.eggroll.rollsite.Proxy
+			get_property "proxy.port"
+			port=${property_value}
 			;;
 		*)
 			usage
@@ -118,7 +120,12 @@ getpid() {
 		echo "" > ${module}_pid
 	fi
 	module_pid=`cat ${module}_pid`
-	pid=`ps aux | grep $port | grep ${processor_tag} | grep -v grep | awk '{print $2}'`
+	
+	if [ $module = rollsite ];then
+		pid=`ps aux | grep ${module_pid} | grep -v grep | grep -v $0 | awk '{print $2}'`
+	else
+		pid=`ps aux | grep $port | grep ${processor_tag} | grep -v grep | awk '{print $2}'`
+	fi
 	
 	if [[ -n ${pid} ]]; then
 		return 0
