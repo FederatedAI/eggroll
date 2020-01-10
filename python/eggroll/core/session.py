@@ -133,7 +133,11 @@ class ErSession(object):
         target_egg_processors = len(self._eggs[target_server_node])
         target_processor = (partition._id // target_egg_processors) % target_egg_processors
 
-        return self._eggs[target_server_node][target_processor]
+        result = self._eggs[target_server_node][target_processor]
+        if not result._host or not result._port:
+            raise ValueError(f'error routing to egg: {result}')
+
+        return result
 
     def stop(self):
         return self._cluster_manager_client.stop_session(self.__session_meta)
