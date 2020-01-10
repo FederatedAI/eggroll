@@ -61,7 +61,7 @@ class TestRollPairBase(unittest.TestCase):
         #rp.destroy()
 
     def test_serdes(self):
-        rp = self.ctx.load("ns1","n_serdes", self.store_opts(serdes="EMPTY"))
+        rp = self.ctx.load("ns12020","n_serdes", self.store_opts(serdes="EMPTY"))
         rp.put_all((b"a",b"b") for k in range(10))
         print(list(rp.get_all()))
         print(rp.count())
@@ -78,7 +78,7 @@ class TestRollPairBase(unittest.TestCase):
         #rp.destroy()
 
     def test_put_all(self):
-        rp = self.ctx.load("ns1","n1")
+        rp = self.ctx.load("ns12020","n1")
         data = [("k1","v1"),("k2","v2"),("k3","v3"),("k4","v4"),("k5","v5"),("k6","v6")]
         rp.put_all(data)
         self.assertUnOrderListEqual(data, rp.get_all())
@@ -92,7 +92,7 @@ class TestRollPairBase(unittest.TestCase):
         #rp2.destroy()
 
     def test_reduce(self):
-        rp = self.ctx.load("ns1","n_serdes", self.store_opts(serdes="EMPTY"))
+        rp = self.ctx.load("ns12020","n_serdes", self.store_opts(serdes="EMPTY"))
         rp.put_all((b'1', b'2') for k in range(10))
         print(list(rp.get_all()))
         print(rp.count())
@@ -101,9 +101,176 @@ class TestRollPairBase(unittest.TestCase):
 
     def test_join_self(self):
         options = get_default_options()
-        left_rp = self.ctx.load("ns1", "testJoinLeft2020", options=options).put_all([('a', 1), ('b', 4)], options={"include_key": True})
+        left_rp = self.ctx.load("ns12020", "testJoinLeft2020", options=options).put_all([('a', 1), ('b', 4)], options={"include_key": True})
         print(list(left_rp.join(left_rp, lambda v1, v2: v1 + v2).get_all()))
         self.assertEqual(get_value(left_rp.join(left_rp, lambda v1, v2: v1 + v2)), [('a', 2), ('b', 8)])
+
+    def test_delete(self):
+        options = get_default_options()
+        options['include_key'] = True
+        data = [("k1", "v1"), ("k2", "v2"), ("k3", "v3"), ("k4", "v4")]
+        table = self.ctx.load('ns1', 'test_delete_one', options=options).put_all(data, options=options)
+        print("before delete:{}".format(list(table.get_all())))
+        table.delete("k1")
+        print("after delete:{}".format(list(table.get_all())))
+        self.assertEqual(get_value(table), ([("k2", "v2"), ("k3", "v3"), ("k4", "v4")]))
+
+    def test_destroy(self):
+        options = get_default_options()
+        options['include_key'] = True
+        data = [("k1", "v1"), ("k2", "v2"), ("k3", "v3"), ("k4", "v4")]
+        table = self.ctx.load('ns1', 'test_destroy', options=options).put_all(data, options=options)
+        print("before destroy:{}".format(list(table.get_all())))
+        table.destroy()
+        # TODO:1: table which has been destroyed cannot get_all, should raise exception
+        print("after destroy:{}".format(list(table.get_all())))
+        self.assertEqual(table.count(), 0)
+
+    def test_take(self):
+        options = get_default_options()
+        options['keys_only'] = True
+        options['include_key'] = False
+        table = self.ctx.load('ns1', 'test_take', options=options).put_all(range(10), options=options)
+        print(table.take(n=3, options=options))
+        self.assertEqual(table.take(n=3, options=options), [0, 1, 2])
+
+        options_kv = get_default_options()
+        options_kv['keys_only'] = False
+        options_kv['include_key'] = False
+        table = self.ctx.load('ns1', 'test_take_kv', options=options_kv).put_all(range(10), options=options_kv)
+        print(table.take(n=3, options=options_kv))
+        self.assertEqual(table.take(n=3, options=options_kv), [(0, 0), (1, 1), (2, 2)])
+
+    def test_first(self):
+        options = get_default_options()
+        options['keys_only'] = True
+        options['include_key'] = False
+        table = self.ctx.load('ns1', 'test_take', options=options).put_all(range(10), options=options)
+        print(table.first(options=options))
+        self.assertEqual(table.first(options=options), 0)
+
+        options_kv = get_default_options()
+        options_kv['include_key'] = False
+        options_kv['keys_only'] = False
+        table = self.ctx.load('ns12020', 'test_take_kv', options=options_kv).put_all(range(10), options=options_kv)
+        print(table.first(options=options_kv))
+        self.assertEqual(table.first(options=options_kv), (0, 0))
+
+    def test_map_values(self):
+        options = get_default_options()
+        options['include_key'] = False
+        rp = self.ctx.load("ns12020", "test_map_values", options=options).put_all(range(10), options=options)
+        res = rp.map_values(lambda v: str(v) + 'map_values')
+        print(list(res.get_all()))
+        self.assertEqual(get_value(res), [(0, '0map_values'), (1, '1map_values'), (2, '2map_values'), (3, '3map_values'),
+                                          (4, '4map_values'), (5, '5map_values'), (6, '6map_values'), (7, '7map_values'),
+                                          (8, '8map_values'), (9, '9map_values')])
+
+    def test_map_partitions(self):
+        options = get_default_options()
+        data = [(str(i), i) for i in range(10)]
+        rp = self.ctx.load("ns1", "test_map_partitions", options=options).put_all(data, options={"include_key": True})
+        def func(iter):
+            ret = []
+            for k, v in iter:
+                ret.append((f"{k}_{v}_0", v ** 2))
+                ret.append((f"{k}_{v}_1", v ** 3))
+            return ret
+        table = rp.map_partitions(func)
+        print(list(rp.map_partitions(func).get_all()))
+        self.assertEqual(get_value(table), [('0_0_0', 0), ('0_0_1', 0), ('1_1_0', 1), ('1_1_1', 1), ('2_2_0', 4), ('2_2_1', 8),
+                                            ('3_3_0', 9), ('3_3_1', 27), ('4_4_0', 16), ('4_4_1', 64), ('5_5_0', 25),
+                                            ('5_5_1', 125), ('6_6_0', 36), ('6_6_1', 216), ('7_7_0', 49), ('7_7_1', 343),
+                                            ('8_8_0', 64), ('8_8_1', 512), ('9_9_0', 81), ('9_9_1', 729)])
+
+    def test_collapse_partitions(self):
+        options = get_default_options()
+        options['include_key'] = False
+        rp = self.ctx.load("ns1", "test_collapse_partitions", options=options).put_all(range(5), options=options)
+
+        def f(iterator):
+            sum = []
+            for k, v in iterator:
+                sum.append((k, v))
+            return sum
+        print(list(rp.collapse_partitions(f).get_all()))
+        self.assertEqual(get_value(rp.collapse_partitions(f)), [(4, [(0, 0), (1, 1), (2, 2), (3, 3), (4, 4)])])
+
+    def test_filter(self):
+        options = get_default_options()
+        options['include_key'] = False
+        rp = self.ctx.load("ns1", "test_filter", options=options).put_all(range(5), options=options)
+        print(list(rp.filter(lambda k, v: v % 2 != 0).get_all()))
+        self.assertEqual(get_value(rp.filter(lambda k, v: v % 2 != 0)), [(1, 1), (3, 3)])
+
+    def test_flatMap(self):
+        options = get_default_options()
+        options['include_key'] = False
+        rp = self.ctx.load("ns1", "test_flat_map", options=options).put_all(range(5), options=options)
+        import random
+
+        def foo(k, v):
+            result = []
+            r = random.randint(10000, 99999)
+            for i in range(0, k):
+                result.append((k + r + i, v + r + i))
+            return result
+        print(list(rp.flat_map(foo).get_all()))
+        self.assertEqual(rp.flat_map(foo).count(), 10)
+
+    def test_glom(self):
+        options = get_default_options()
+        options['include_key'] = False
+        rp = self.ctx.load("ns1", "test_glom", options=options).put_all(range(5), options=options)
+        print(list(rp.glom().get_all()))
+        self.assertEqual(get_value(rp.glom()), [(4, [(0, 0), (1, 1), (2, 2), (3, 3), (4, 4)])])
+
+    def test_join(self):
+        options = get_default_options()
+        left_rp = self.ctx.load("ns1", "testJoinLeft", options=options).put_all([('a', 1), ('b', 4)], options={"include_key": True})
+        right_rp = self.ctx.load("ns1", "testJoinRight", options=options).put_all([('a', 2), ('c', 4)], options={"include_key": True})
+        print(list(left_rp.join(right_rp, lambda v1, v2: v1 + v2).get_all()))
+        self.assertEqual(get_value(left_rp.join(right_rp, lambda v1, v2: v1 + v2)), [('a', 3)])
+
+    def test_sample(self):
+        options = get_default_options()
+        options['include_key'] = False
+        rp = self.ctx.load("ns1", "testSample", options=options).put_all(range(100), options=options)
+        self.assertEqual(6 <= rp.sample(0.1, 81).count() <= 14, True)
+
+    def test_subtract_by_key(self):
+        options = get_default_options()
+        options['total_partitions'] = 1
+        options['include_key'] = False
+        left_rp = self.ctx.load("namespace20201", "testSubtractByKeyLeft202013", options=options).put_all(range(10), options=options)
+        right_rp = self.ctx.load("namespace2020131", "testSubtractByKeyRight202013", options=options).put_all(range(5), options=options)
+        self.assertEqual(list(left_rp.subtract_by_key(right_rp).get_all()), [(5, 5), (6, 6), (7, 7), (8, 8), (9, 9)])
+
+    def test_union(self):
+        options = get_default_options()
+        options['include_key'] = False
+        left_rp = self.ctx.load("ns1202010", "testUnionLeft2020", options=options).put_all([1, 2, 3], options=options)
+        print(left_rp)
+        options['include_key'] = True
+        options['total_partitions'] = 1
+        right_rp = self.ctx.load("ns12020101", "testUnionRight2020", options=options).put_all([(1, 1), (2, 2), (3, 3)])
+        print(right_rp)
+        print(list(left_rp.union(right_rp, lambda v1, v2: v1 + v2).get_all()))
+
+        options = get_default_options()
+
+        options['total_partitions'] = 1
+        options['include_key'] = False
+        left_rp = self.ctx.load("namespace20200110", "testUnionLeft2020", options=options).put_all([1, 2, 3], options=options)
+        print("left:", left_rp)
+        options['include_key'] = True
+        right_rp = self.ctx.load("namespace20200110", "testUnionRight2020", options=options).put_all([(1, 1), (2, 2), (3, 3)], options=options)
+        print("right:", right_rp)
+        print("left:", list(left_rp.get_all()))
+        print("right:", list(right_rp.get_all()))
+        print(list(left_rp.union(right_rp, lambda v1, v2: v1 + v2).get_all()))
+
+
 
 class TestRollPairMultiPartition(TestRollPairBase):
     def setUp(self):
