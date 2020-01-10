@@ -68,22 +68,22 @@ class TestPairStore(unittest.TestCase):
             db.destroy()
 
     def test_rocksdb(self):
-        with create_pair_adapter({"store_type": STORE_TYPE_ROCKSDB, "path": self.dir + "rocksdb"}) as db:
+        with create_pair_adapter({"store_type": StoreTypes.ROLLPAIR_LEVELDB, "path": self.dir + "rocksdb"}) as db:
             self._run_case(db)
             db.destroy()
 
     def test_file(self):
-        with create_pair_adapter({"store_type": STORE_TYPE_FILE, "path": self.dir + "file"}) as db:
+        with create_pair_adapter({"store_type": StoreTypes.ROLLPAIR_FILE, "path": self.dir + "file"}) as db:
             self._run_case(db)
             db.destroy()
 
     def test_mmap(self):
-        with create_pair_adapter({"store_type": STORE_TYPE_MMAP, "path": self.dir + "mmap"}) as db:
+        with create_pair_adapter({"store_type": StoreTypes.ROLLPAIR_MMAP, "path": self.dir + "mmap"}) as db:
             self._run_case(db)
             db.destroy()
 
     def test_cache(self):
-        with create_pair_adapter({"store_type": STORE_TYPE_CACHE, "path": self.dir + "cache"}) as db:
+        with create_pair_adapter({"store_type": StoreTypes.ROLLPAIR_CACHE, "path": self.dir + "cache"}) as db:
             self._run_case(db)
             db.destroy()
 
@@ -114,8 +114,8 @@ class TestPairStore(unittest.TestCase):
         print(list(reader.read_all()))
 
     def test_join(self):
-        with create_pair_adapter({"store_type": STORE_TYPE_LMDB, "path": self.dir + "lmdb"}) as db1, \
-                create_pair_adapter({"store_type": STORE_TYPE_LMDB, "path": self.dir + "lmdb2"}) as db2:
+        with create_pair_adapter({"store_type": StoreTypes.ROLLPAIR_LMDB, "path": self.dir + "lmdb"}) as db1, \
+                create_pair_adapter({"store_type": StoreTypes.ROLLPAIR_LMDB, "path": self.dir + "lmdb2"}) as db2:
             self._run_join(db1, db2)
             db1.destroy()
             db2.destroy()

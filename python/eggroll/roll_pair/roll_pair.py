@@ -139,7 +139,7 @@ class RollPairContext(object):
     def parallelize(self, data, options={}):
         namespace = options.get("namespace", None)
         name = options.get("name", None)
-        options['store_type'] = self.default_store_type
+        options['store_type'] = options.get("store_type", StoreTypes.ROLLPAIR_IN_MEMORY)
         create_if_missing = options.get("create_if_missing", True)
 
         if namespace is None:
