@@ -38,7 +38,7 @@ class ErSession(object):
             name='',
             tag='',
             processors=list(),
-            options={}):
+            options=dict()):
         self.__eggroll_home = os.getenv('EGGROLL_HOME', None)
         if not self.__eggroll_home:
             raise EnvironmentError('EGGROLL_HOME is not set')
@@ -142,12 +142,12 @@ class ErSession(object):
     def stop(self):
         return self._cluster_manager_client.stop_session(self.__session_meta)
 
-    def set_rp_recorder(self, roll_pair_contex):
+    def set_rp_recorder(self, roll_pair_context):
         options = {}
         options['store_type'] = StoreTypes.ROLLPAIR_LMDB
-        self._table_recorder = roll_pair_contex.load(name='__gc__' + self.__session_id,
-                                                     namespace=self.__session_id,
-                                                     options=options)
+        self._table_recorder = roll_pair_context.load(name='__gc__' + self.__session_id,
+                                                      namespace=self.__session_id,
+                                                      options=options)
 
     def get_table_recorder(self):
         return self._table_recorder
@@ -158,6 +158,7 @@ class ErSession(object):
     def get_session_meta(self):
         return self.__session_meta
 
+    # todo:1: add_exit_task? not necessarily a cleanup semantic
     def add_cleanup_task(self, func):
         self.__cleanup_tasks.append(func)
 

@@ -79,7 +79,7 @@ class SessionManagerService extends SessionManager {
     val sessionMetaWithProcessors = sessionMeta.copy(processors = processorPlan, activeProcCount = expectedProcessorsCount, status = SessionStatus.NEW)
 
     smDao.register(sessionMetaWithProcessors)
-
+    // TODO:0: record session failure in database if session start is not successful, and returns error session
     val registeredSessionMeta = smDao.getSession(sessionMeta.id)
 
     serverNodes.par.foreach(n => {
