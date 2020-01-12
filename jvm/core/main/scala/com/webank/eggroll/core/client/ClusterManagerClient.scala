@@ -93,6 +93,7 @@ class ClusterManagerClient(val endpoint: ErEndpoint) {
   def registerSession(sessionMeta: ErSessionMeta): ErSessionMeta =
     cc.call[ErSessionMeta](SessionCommands.registerSession, sessionMeta)
 
+  // todo:0: heartbeat with process pid
   def heartbeat(processor: ErProcessor): ErProcessor =
     cc.call[ErProcessor](SessionCommands.heartbeat, processor)
 }

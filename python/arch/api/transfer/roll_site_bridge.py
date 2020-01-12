@@ -1,18 +1,14 @@
 import asyncio
-
-from arch.api.table.session import FateSession
-from arch.api.transfer import Rubbish, Party, Federation
 from typing import Union
 
-#from eggroll.utils import log_utils
-
+from arch.api.table.eggroll2.table_impl import DTable
+from arch.api.table.session import FateSession
+from arch.api.transfer import Rubbish, Party, Federation
+from eggroll.roll_pair.roll_pair import RollPair
 from eggroll.utils import file_utils
 
-#from arch.api.utils.log_utils import getLogger
-
-from eggroll.roll_pair.roll_pair import RollPair
-from eggroll.roll_site.roll_site import RollSite
-from arch.api.table.eggroll2.table_impl import DTable
+# from eggroll.utils import log_utils
+# from arch.api.utils.log_utils import getLogger
 #log_utils.setDirectory()
 #LOGGER = log_utils.get_logger()
 
@@ -106,6 +102,7 @@ class FederationRuntime(Federation):
             rs_parties.append((party.role, party.party_id))
 
         LOGGER.info("rs_parties:{}".format(rs_parties))
+        # TODO:0: check if exceptions are swallowed
         futures = rs.pull(parties=rs_parties)
         LOGGER.debug(f"cc657:")
         for future in futures:

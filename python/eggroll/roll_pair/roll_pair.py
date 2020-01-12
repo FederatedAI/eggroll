@@ -24,13 +24,9 @@ from eggroll.core.command.command_model import CommandURI
 from eggroll.core.conf_keys import SessionConfKeys
 from eggroll.core.constants import StoreTypes, SerdesTypes, PartitionerTypes
 from eggroll.core.datastructure.broker import FifoBroker
-from eggroll.core.io.kv_adapter import LmdbSortedKvAdapter, \
-    RocksdbSortedKvAdapter
 from eggroll.core.meta_model import ErStoreLocator, ErJob, ErStore, ErFunctor, \
     ErTask, ErPair, ErPartition
 from eggroll.core.serdes import cloudpickle
-from eggroll.core.serdes.eggroll_serdes import PickleSerdes, CloudPickleSerdes, \
-    EmptySerdes
 from eggroll.core.session import ErSession
 from eggroll.core.utils import generate_job_id, generate_task_id
 from eggroll.core.utils import string_to_bytes, hash_code
@@ -66,10 +62,14 @@ class RollPairContext(object):
     def set_store_serdes(self, serdes_type: str):
         self.default_store_serdes = serdes_type
 
+    # todo:3: public interface? add a hook in session?
     def set_session_rp_recorder(self):
         if self.rpc_gc_enable:
             self.__session.set_rp_recorder(self)
 
+    # todo:3: 1. session gc enable? context gc enable?
+    #  2. combine enable / disable into one method with bool arg?
+    #  3. check gc status by getter?
     def set_session_gc_enable(self):
         self.rpc_gc_enable = True
 
@@ -92,7 +92,8 @@ class RollPairContext(object):
             populated_partitions.append(pp)
         return ErStore(store_locator=store._store_locator, partitions=populated_partitions, options=store._options)
 
-    def load(self, namespace=None, name=None, options={}):
+    # todo:1: should default value of namespace be session id?
+    def load(self, namespace=None, name=None, options=dict()):
         store_type = options.get('store_type', self.default_store_type)
         total_partitions = options.get('total_partitions', 1)
         partitioner = options.get('partitioner', PartitionerTypes.BYTESTRING_HASH)
@@ -102,9 +103,11 @@ class RollPairContext(object):
         store_options = self.__session.get_all_options()
         store_options.update(options)
         final_options = store_options.copy()
+
         # TODO:1: tostring in er model
         if 'create_if_missing' in final_options:
             del final_options['create_if_missing']
+        # TODO:1: remove these codes by adding to string logic in ErStore
         if 'include_key' in final_options:
             del final_options['include_key']
         if 'total_partitions' in final_options:
@@ -113,8 +116,10 @@ class RollPairContext(object):
             del final_options['name']
         if 'namespace' in final_options:
             del final_options['namespace']
+        # TODO:1: remove these codes by adding to string logic in ErStore
         if 'keys_only' in final_options:
             del final_options['keys_only']
+        # TODO:0: add 'error_if_exist, persistent / default store type'
         L.info("final_options:{}".format(final_options))
         store = ErStore(
                 store_locator=ErStoreLocator(
@@ -136,7 +141,8 @@ class RollPairContext(object):
 
         return RollPair(self.populate_processor(result), self)
 
-    def parallelize(self, data, options={}):
+    # TODO:1: separates load parameters and put all parameters
+    def parallelize(self, data, options=dict()):
         namespace = options.get("namespace", None)
         name = options.get("name", None)
         options['store_type'] = StoreTypes.ROLLPAIR_IN_MEMORY
@@ -364,7 +370,7 @@ class RollPair(object):
             yield self.key_serdes.deserialize(k), self.value_serdes.deserialize(v)
         L.debug(f"get_all count:{done_cnt}")
 
-    def put_all(self, items, output=None, options={}):
+    def put_all(self, items, options={}):
         include_key = options.get("include_key", True)
         job_id = generate_job_id(self.__session_id, RollPair.PUT_ALL)
 
