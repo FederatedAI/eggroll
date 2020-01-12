@@ -25,7 +25,6 @@ from eggroll.core.meta_model import ErStoreLocator, ErStore
 from eggroll.core.proto import proxy_pb2, proxy_pb2_grpc
 from eggroll.core.serdes import eggroll_serdes
 from eggroll.roll_pair.roll_pair import RollPair
-from eggroll.utils import file_utils
 from eggroll.utils import log_utils
 
 LOGGER = log_utils.get_logger()
@@ -35,6 +34,9 @@ _serdes = eggroll_serdes.PickleSerdes
 STATUS_TABLE_NAME = "__roll_site_standalone_status__"
 
 class RollSiteContext:
+    # todo:0: use snake_naming instead of a mix of snake_andCamel
+    # todo:1: Adds an options dict
+    # todo:1: merge rs_ip and rs_port with ErEndpoint
     def __init__(self, job_id, self_role, self_partyId, rs_ip, rs_port, rp_ctx):
         self.job_id = job_id
         self.rp_ctx = rp_ctx
@@ -52,6 +54,7 @@ class RollSiteContext:
         if not self.is_standalone:
             self.init_job_session_pair(self.job_id, self.rp_ctx.session_id)
 
+    # todo:1: add options?
     def load(self, name: str, tag: str):
         return RollSite(name, tag, self)
 
