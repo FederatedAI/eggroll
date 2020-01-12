@@ -60,7 +60,7 @@ class BatchBroker(object):
         self.broker.put(self.batch, block, timeout)
         self.batch = []
 
-    def put(self, item, block=True, timeout=0):
+    def put(self, item, block=True, timeout=None):
         if len(self.batch) >= self.batch_size:
             self._commit(block, timeout)
         self.batch.append(item)
@@ -129,19 +129,14 @@ class TransferPair(object):
             for i, part in enumerate(output_partitions):
                 tag = self.__generate_tag(i)
                 L.debug(f"start_scatter_partition_tag:{tag}")
-                # TODO:1: change client.send to support iterator
-                # TODO:0: set timeout and retry
                 L.debug(f"do_send_all_acquire:{threading.active_count()}")
-                TransferPair._scatter_parallel.acquire()
                 fut = client.send(TransferPair.pair_to_bin_batch(BatchBroker(partitioned_brokers[i])),
                                   part._processor._transfer_endpoint, tag)
-                fut.add_done_callback(lambda x: TransferPair._scatter_parallel.release())
                 send_all_futs.append(fut)
             return CompositeFuture(send_all_futs).result()
         futures.append(self._executor_pool.submit(do_send_all))
         return CompositeFuture(futures)
 
-    _scatter_parallel = Semaphore(10)
     @staticmethod
     @_exception_logger
     def pair_to_bin_batch(input_iter, buffer_size=32 * 1024 * 1024):
@@ -155,7 +150,7 @@ class TransferPair(object):
         writer = None
 
         def commit(bs=buffer_size):
-            print('generate_bin_batch commit', done_cnt)
+            L.debug(f'generate_bin_batch commit:{done_cnt}')
             nonlocal ba
             nonlocal buffer
             nonlocal writer
@@ -169,7 +164,7 @@ class TransferPair(object):
         # init var
         commit()
         try:
-            for k, v in  input_iter:
+            for k, v in input_iter:
                 try:
                     writer.write(k, v)
                     done_cnt += 1
@@ -188,6 +183,7 @@ class TransferPair(object):
         L.debug(f"bin_batch_to_pair start")
         total_written = 0
         for batch in input_iter:
+            L.debug(f"bin_batch_to_pair batch start size:{len(batch)}")
             try:
                 bin_data = ArrayByteBuffer(batch)
                 reader = PairBinReader(pair_buffer=bin_data)
@@ -196,7 +192,8 @@ class TransferPair(object):
                     total_written += 1
             except IndexError as e:
                 L.exception(f"error bin bath format:{e}")
-        L.debug(f"bin_batch_to_pair total_written:{total_written}")
+            L.debug(f"bin_batch_to_pair batch end count:{total_written}")
+        L.debug(f"bin_batch_to_pair total_written count:{total_written}")
 
     def store_broker(self, store_partition, is_shuffle, total_partitions=1):
         """
