@@ -15,7 +15,6 @@
 
 import queue
 import threading
-from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from threading import Semaphore
 
@@ -109,60 +108,38 @@ class TransferPair(object):
     def scatter(self, input_broker, partition_function, output_store):
         output_partitions = output_store._partitions
         total_partitions = len(output_partitions)
-        partitioned_broker = FifoBroker(100)
+        partitioned_brokers = [FifoBroker() for i in range(total_partitions)]
+        partitioned_bb = [BatchBroker(v) for v in partitioned_brokers]
         futures = []
         @_exception_logger
         def do_partition():
-            import time
-            w_start, c_start = time.time(), time.clock()
-            partitioned_buffers = [list() for i in range(total_partitions)]
-            partitioned_stats = defaultdict(int)
             L.debug('do_partition start')
             done_count = 0
-
-            def commit(part_idx):
-                partitioned_broker.put((part_idx, partitioned_buffers[part_idx]))
-                partitioned_stats[part_idx] = 0
-                partitioned_buffers[part_idx] = list()
-                L.debug(f"do_partition commit:{done_count}")
             for k, v in BatchBroker(input_broker):
-                part_idx = partition_function(k)
-                partitioned_buffers[part_idx].append((k, v))
-                partitioned_stats[part_idx] = partitioned_stats[part_idx] + len(k) + len(v)
-                if partitioned_stats[part_idx] > 8*1024*1024:
-                    commit(part_idx)
+                partitioned_bb[partition_function(k)].put((k,v))
                 done_count +=1
-            for i in range(total_partitions):
-                commit(i)
-            L.debug(f"do_partition end:{done_count}, cost: {time.time() - w_start}, {time.clock() - c_start}")
-            partitioned_broker.signal_write_finish()
+            L.debug(f"do_partition end:{done_count}")
+            for broker in partitioned_bb:
+                broker.signal_write_finish()
             return done_count
-
         futures.append(self._executor_pool.submit(do_partition))
         client = TransferClient()
-        @_exception_logger
         def do_send_all():
-            try:
-                send_all_futs = []
-                for part_idx, cache_list in partitioned_broker:
-                    part = output_partitions[part_idx]
-                    tag = self.__generate_tag(part_idx)
-                    L.debug(f"start_scatter_partition_tag:{tag}")
-                    TransferPair._scatter_parallel.acquire()
-                    fut = client.send(TransferPair.pair_to_bin_batch(cache_list),
-                                      part._processor._transfer_endpoint, tag)
-                    fut.add_done_callback(lambda x: TransferPair._scatter_parallel.release())
-                    send_all_futs.append(fut)
-                return CompositeFuture(send_all_futs).result()
-            except Exception as e:
-                L.exception(f"send_all_error:{e}")
+            send_all_futs = []
+            for i, part in enumerate(output_partitions):
+                tag = self.__generate_tag(i)
+                L.debug(f"start_scatter_partition_tag:{tag}")
+                L.debug(f"do_send_all_acquire:{threading.active_count()}")
+                fut = client.send(TransferPair.pair_to_bin_batch(BatchBroker(partitioned_brokers[i])),
+                                  part._processor._transfer_endpoint, tag)
+                send_all_futs.append(fut)
+            return CompositeFuture(send_all_futs).result()
         futures.append(self._executor_pool.submit(do_send_all))
         return CompositeFuture(futures)
 
-    _scatter_parallel = Semaphore(10)
     @staticmethod
     @_exception_logger
-    def pair_to_bin_batch(input_iter, buffer_size=4 * 1024 * 1024):
+    def pair_to_bin_batch(input_iter, buffer_size=32 * 1024 * 1024):
         import os
         buffer_size = int(os.environ.get("EGGROLL_ROLLPAIR_BIN_BATCH_SIZE", buffer_size))
         # TODO:1: buffer_size auto adjust? - max: initial size can be configured. but afterwards it will adjust depending on message size
@@ -173,7 +150,7 @@ class TransferPair(object):
         writer = None
 
         def commit(bs=buffer_size):
-            L.debug('generate_bin_batch commit', done_cnt)
+            L.debug(f'generate_bin_batch commit:{done_cnt}')
             nonlocal ba
             nonlocal buffer
             nonlocal writer
@@ -206,7 +183,7 @@ class TransferPair(object):
         L.debug(f"bin_batch_to_pair start")
         total_written = 0
         for batch in input_iter:
-            L.debug(f"bin_batch_to_pair batch start:{len(batch)}")
+            L.debug(f"bin_batch_to_pair batch start size:{len(batch)}")
             try:
                 bin_data = ArrayByteBuffer(batch)
                 reader = PairBinReader(pair_buffer=bin_data)
@@ -215,8 +192,8 @@ class TransferPair(object):
                     total_written += 1
             except IndexError as e:
                 L.exception(f"error bin bath format:{e}")
-            L.debug(f"bin_batch_to_pair batch end:{total_written}")
-        L.debug(f"bin_batch_to_pair total_written:{total_written}")
+            L.debug(f"bin_batch_to_pair batch end count:{total_written}")
+        L.debug(f"bin_batch_to_pair total_written count:{total_written}")
 
     def store_broker(self, store_partition, is_shuffle, total_partitions=1):
         """
