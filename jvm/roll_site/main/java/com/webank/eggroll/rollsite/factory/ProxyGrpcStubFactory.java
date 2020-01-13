@@ -75,8 +75,11 @@ public class ProxyGrpcStubFactory {
                             endpoint.getPort(),
                             endpoint.getHostname(),
                             removalNotification.getCause());
-                    LOGGER.info("Managed channel state: isShutdown: {}, isTerminated: {}",
-                            managedChannel.isShutdown(), managedChannel.isTerminated());
+                    if (managedChannel != null) {
+                        if (!managedChannel.isShutdown() || !managedChannel.isTerminated()) {
+                            managedChannel.shutdown();
+                        }
+                    }
                 })
                 .build(new CacheLoader<BasicMeta.Endpoint, ManagedChannel>() {
                            @Override
