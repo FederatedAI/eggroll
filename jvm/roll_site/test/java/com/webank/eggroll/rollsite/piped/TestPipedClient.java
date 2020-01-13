@@ -136,7 +136,7 @@ public class TestPipedClient {
 
         Proxy.Packet packet = Proxy.Packet.newBuilder().setHeader(header).setBody(data).build();
         dataTransferPipedClient.setEndpoint(BasicMeta.Endpoint.newBuilder().setHostname("localhost").setPort(8888).build());
-        dataTransferPipedClient.unaryCall(packet, defaultPipeFactory.create("modelA"), false);
+        dataTransferPipedClient.unaryCall(packet, defaultPipeFactory.create("modelA"));
     }
 
     @Test
