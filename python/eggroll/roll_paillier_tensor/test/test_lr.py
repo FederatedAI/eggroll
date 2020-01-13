@@ -16,13 +16,14 @@ from eggroll.roll_paillier_tensor.roll_paillier_tensor import RptContext
 
 from eggroll.roll_pair.roll_pair import RollPairContext, RollPair
 #from eggroll.roll_paillier_tensor.test.test_roll_paillier_tensor import TestRollPaillierTensor
-from eggroll.roll_paillier_tensor.test.rpt_test_assets import get_debug_test_context
+#from eggroll.roll_paillier_tensor.test.rpt_test_assets import get_debug_test_context
+from eggroll.roll_pair.test.roll_pair_test_assets import get_debug_test_context
 
 import numpy as np
 import pandas as pd
 
 store_type = StoreTypes.ROLLPAIR_LEVELDB
-max_iter = 20
+max_iter = 10
 
 
 class TestLR(unittest.TestCase):
@@ -31,7 +32,8 @@ class TestLR(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        cls.rpc = get_debug_test_context()
+        #cls.rpc = get_debug_test_context()
+        cls.rpc = get_debug_test_context(True, 4671)
         cls.rptc = RptContext(cls.rpc)
 
     def test_lr(self):
@@ -93,7 +95,7 @@ class TestLR(unittest.TestCase):
 
             enc_agg_wx_square_G = enc_fw_square_G + enc_fw_square_H + fw_G1 * enc_fw_H * 2
 
-            enc_fore_grad_G = enc_agg_wx_G * 0.25 - X_Y * 0.5
+            enc_fore_grad_G = 0.25 * enc_agg_wx_G - 0.5 * X_Y
 
             enc_grad_G = (X_G * enc_fore_grad_G).mean()
             enc_grad_H = (X_H * enc_fore_grad_G).mean()
@@ -115,7 +117,7 @@ class TestLR(unittest.TestCase):
 
             enc_half_ywx_G = enc_agg_wx_G * 0.5 * X_Y
             # #todo diversion
-            enc_loss_G = (((enc_half_ywx_G * -1)) + enc_agg_wx_square_G / 8 + NumpyTensor(np.log(2), pub)).mean()
+            enc_loss_G = (((-1 * enc_half_ywx_G )) + enc_agg_wx_square_G / 8 + NumpyTensor(np.log(2), pub)).mean()
             loss_AA = enc_loss_G.decrypt(priv)
 
             loss_A = next(loss_AA._store.get_all())[1]._ndarray[0][0]

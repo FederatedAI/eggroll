@@ -35,28 +35,14 @@ _serdes = eggroll_serdes.PickleSerdes
 STATUS_TABLE_NAME = "__roll_site_standalone_status__"
 
 class RollSiteContext:
-    def __init__(self, job_id, options, rp_ctx):
+    def __init__(self, job_id, self_role, self_partyId, rs_ip, rs_port, rp_ctx):
         self.job_id = job_id
         self.rp_ctx = rp_ctx
 
-        runtime_conf_path = options["runtime_conf_path"]
-        server_conf_path = options["server_conf_path"]
-
-        server_conf = file_utils.load_json_conf(server_conf_path)
-        if CONF_KEY_SERVER not in server_conf:  # CONF_KEY_SERVER = "servers"
-            raise EnvironmentError("server_conf should contain key {}".format(CONF_KEY_SERVER))
-        if CONF_KEY_TARGET not in server_conf.get(CONF_KEY_SERVER):  # CONF_KEY_TARGET = "clustercomm"
-            raise EnvironmentError(
-                "The {} should be a json file containing key: {}".format(server_conf_path, CONF_KEY_TARGET))
-
-        self.dst_host = server_conf.get(CONF_KEY_SERVER).get(CONF_KEY_TARGET).get("host")
-        self.dst_port = server_conf.get(CONF_KEY_SERVER).get(CONF_KEY_TARGET).get("port")
-        self.runtime_conf = file_utils.load_json_conf(runtime_conf_path)
-        if CONF_KEY_LOCAL not in self.runtime_conf:
-            raise EnvironmentError("runtime_conf should be a dict containing key: {}".format(CONF_KEY_LOCAL))
-
-        self.party_id = self.runtime_conf.get(CONF_KEY_LOCAL).get("party_id")
-        self.role = self.runtime_conf.get(CONF_KEY_LOCAL).get("role")
+        self.role = self_role
+        self.party_id = self_partyId
+        self.dst_host = rs_ip
+        self.dst_port = rs_port
 
         channel = grpc.insecure_channel(
             target="{}:{}".format(self.dst_host, self.dst_port),
@@ -103,7 +89,6 @@ CONF_KEY_SERVER = "servers"
 class RollSite:
     def __init__(self, name: str, tag: str, rs_ctx: RollSiteContext):
         self.ctx = rs_ctx
-        self.runtime_conf = self.ctx.runtime_conf
         self.party_id = self.ctx.party_id
         self.dst_host = self.ctx.dst_host
         self.dst_port = self.ctx.dst_port
@@ -121,8 +106,6 @@ class RollSite:
     def __remote__object_key(*args):
         return "-".join(["{}".format(arg) for arg in args])
 
-    def __get_parties(self, role):
-        return self.runtime_conf.get('role').get(role)
 
     def _thread_receive(self, packet, namespace, _tagged_key):
         try:
@@ -145,7 +128,7 @@ class RollSite:
                         raise IOError("receive terminated")
                     ret_packet = self.stub.unaryCall(packet)
                     time.sleep(0.1)
-                obj_type = ret_packet.body.value 
+                obj_type = ret_packet.body.value
                 table_name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.job_id, self.name, self.tag,
                                                                            ret_packet.header.src.role,
                                                                            ret_packet.header.src.partyId,
@@ -199,7 +182,7 @@ class RollSite:
                 if is_standalone:
                     dst_name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.job_id, self.name, self.tag,
                                                                              self.local_role, str(self.party_id),
-                                                                            _role, str(_party_id)]))
+                                                                             _role, str(_party_id)]))
                     store_type = rp.get_store_type()
                 else:
                     dst_name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.job_id, self.name,

@@ -17,7 +17,7 @@ from eggroll.roll_paillier_tensor.roll_paillier_tensor import RptContext
 ##### RollSite
 from eggroll.roll_pair.roll_pair import RollPairContext, RollPair
 from eggroll.roll_site.roll_site import RollSiteContext
-from eggroll.roll_paillier_tensor.test.rpt_test_assets import get_debug_test_context
+from eggroll.roll_pair.test.roll_pair_test_assets import get_debug_test_context
 
 import numpy as np
 import pandas as pd
@@ -33,12 +33,14 @@ manager_port_host = 4671
 egg_port_host = 20001
 transfer_port_host = 20002
 
-options_host = {'runtime_conf_path': 'python/eggroll/roll_site/conf/role_conf.json',
-                'server_conf_path': 'python/eggroll/roll_site/conf/server_conf.json'}
-options_guest = {'runtime_conf_path': 'python/eggroll/roll_site/conf_guest/role_conf.json',
-                 'server_conf_path': 'python/eggroll/roll_site/conf_guest/server_conf.json'}
+host_parties = [('host', '20001')]
+guest_parties = [('guest', '20002')]
 
 
+options_host = {'runtime_conf_path': 'conf/role_conf.host.json',
+                'server_conf_path': 'conf/server_conf.host.json'}
+options_guest = {'runtime_conf_path': 'conf/role_conf.guest.json',
+                 'server_conf_path': 'conf/server_conf.guest.json'}
 
 
 class TestLR_guest(unittest.TestCase):
@@ -47,27 +49,29 @@ class TestLR_guest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        cls.rpc = get_debug_test_context()
+        cls.rpc = get_debug_test_context(is_standalone, manager_port_host, egg_port_host, transfer_port_host, 'testing')
         cls.rptc = RptContext(cls.rpc)
 
     def lr(self):
         #base obj
         rpc = TestLR_guest.rpc
-        context = TestLR_guest.rptc
-        store = ErStore(store_locator=ErStoreLocator(store_type=store_type, namespace="ns", name="mat_a"))
+        rpt_store = ErStore(store_locator=ErStoreLocator(store_type=store_type, namespace="ns", name="mat_a"))
 
+        # multi context
+        rpt_context = TestLR_guest.rptc
+        rp_context = TestLR_guest.rpc
+        rs_context = RollSiteContext("atest", options=options_guest, rp_ctx=rp_context)
+        _tag = "Hello2"
+        rollsite = rs_context.load(name="roll_pair_g2h.table", tag="{}".format(_tag))
+
+
+        #local RP
         G = np.array([[0.254879,-1.046633,0.209656,0.074214,-0.441366,-0.377645,-0.485934,0.347072,-0.28757,-0.733474],
                       [-1.142928,-0.781198,-1.166747,-0.923578,0.62823,-1.021418,-1.111867,-0.959523,-0.096672,-0.121683],
                       [-1.451067,-1.406518,-1.456564,-1.092337,-0.708765,-1.168557,-1.305831,-1.745063,-0.499499,-0.302893],
                       [-0.879933,0.420589,-0.877527,-0.780484,-1.037534,-0.48388,-0.555498,-0.768581,0.43396,-0.200928]])
 
         Y = np.array([[1], [1], [1], [1]])
-
-        rp_context = get_debug_test_context(is_standalone, manager_port_host, egg_port_host, transfer_port_host, 'testing')
-        context = RollSiteContext("atest", options=options_host, rp_ctx=rp_context)
-        _tag = "Hello2"
-        rs = context.load(name="RsaIntersectTransferVariable.rsa_pubkey", tag="{}".format(_tag))
-
         rp_x_G = rpc.load('egr', 'rp_x_G')
         rp_x_Y = rpc.load('egr', 'rp_x_Y')
 
@@ -80,8 +84,6 @@ class TestLR_guest(unittest.TestCase):
 
         w_G = NumpyTensor(np.ones((10, 1)), pub)
 
-        #X_H._store.map_values(lambda v: print("123", v._ndarry))
-
         learning_rate = 0.15
         itr = 0
         pre_loss_A = None
@@ -91,7 +93,7 @@ class TestLR_guest(unittest.TestCase):
             fw_G2 = X_G @ w_G
             enc_fw_G = fw_G1.encrypt()
 
-            # rs.push("enc_fw_G")
+            rollsite.push(enc_fw_G._store, host_parties)
 
 
             # enc_fw_square_G = (fw_G1 * fw_G2).encrypt()
