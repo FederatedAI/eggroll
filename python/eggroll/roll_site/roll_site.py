@@ -25,7 +25,6 @@ from eggroll.core.meta_model import ErStoreLocator, ErStore
 from eggroll.core.proto import proxy_pb2, proxy_pb2_grpc
 from eggroll.core.serdes import eggroll_serdes
 from eggroll.roll_pair.roll_pair import RollPair
-from eggroll.utils import file_utils
 from eggroll.utils import log_utils
 
 LOGGER = log_utils.get_logger()
@@ -35,6 +34,9 @@ _serdes = eggroll_serdes.PickleSerdes
 STATUS_TABLE_NAME = "__roll_site_standalone_status__"
 
 class RollSiteContext:
+    # todo:0: use snake_naming instead of a mix of snake_andCamel
+    # todo:1: Adds an options dict
+    # todo:1: merge rs_ip and rs_port with ErEndpoint
     def __init__(self, job_id, self_role, self_partyId, rs_ip, rs_port, rp_ctx):
         self.job_id = job_id
         self.rp_ctx = rp_ctx
@@ -52,6 +54,7 @@ class RollSiteContext:
         if not self.is_standalone:
             self.init_job_session_pair(self.job_id, self.rp_ctx.session_id)
 
+    # todo:1: add options?
     def load(self, name: str, tag: str):
         return RollSite(name, tag, self)
 
@@ -112,7 +115,7 @@ class RollSite:
             is_standalone = self.ctx.rp_ctx.get_session().get_option(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE) == "standalone"
             if is_standalone:
                 status_rp = self.ctx.rp_ctx.load(namespace, STATUS_TABLE_NAME)
-
+                # TODO:0: sleep retry count and timeout
                 while True:
                     ret_list = status_rp.get(_tagged_key)
                     if ret_list:
@@ -139,7 +142,7 @@ class RollSite:
             rp = self.ctx.rp_ctx.load(namespace=table_namespace, name=table_name)
             if obj_type == b'object':
                 ret_obj = rp.get(_tagged_key)
-                LOGGER.debug(f"ret_obj:{ret_obj}")
+                LOGGER.debug(f"ret_obj_key:{_tagged_key}")
                 return ret_obj
             else:
                 return rp

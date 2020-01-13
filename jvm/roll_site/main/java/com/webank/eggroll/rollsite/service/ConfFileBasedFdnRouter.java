@@ -371,6 +371,7 @@ public class ConfFileBasedFdnRouter implements FdnRouter {
 
     @Override
     public BasicMeta.Endpoint route(Proxy.Topic topic) {
+        LOGGER.debug("route:" + topic);
         Preconditions.checkNotNull(topic, "topic cannot be null");
 
         BasicMeta.Endpoint result = topicEndpointMapping.getOrDefault(topic, null);
