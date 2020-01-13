@@ -58,7 +58,6 @@ class ErSession(object):
         self.__options = options.copy()
         self.__options[SessionConfKeys.CONFKEY_SESSION_ID] = self.__session_id
         self._cluster_manager_client = ClusterManagerClient(options=options)
-        #self._table_recorder = None
 
         self.__is_standalone = options.get(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE, "") == "standalone"
         if self.__is_standalone and os.name != 'nt':
@@ -145,16 +144,6 @@ class ErSession(object):
 
     def stop(self):
         return self._cluster_manager_client.stop_session(self.__session_meta)
-
-    # def set_gc_recorder(self, roll_pair_contex):
-    #     options = {}
-    #     options['store_type'] = StoreTypes.ROLLPAIR_LMDB
-    #     self._table_recorder = roll_pair_contex.load(name='__gc__' + self.__session_id,
-    #                                                  namespace=self.__session_id,
-    #                                                  options=options)
-
-    # def get_gc_recorder(self):
-    #     return self._table_recorder
 
     def get_session_id(self):
         return self.__session_id
