@@ -33,7 +33,7 @@ import com.webank.eggroll.core.util.{IdUtils, Logging}
 
 import scala.collection.JavaConverters._
 class RollPairContext(val session: ErSession,
-                      defaultStoreType: String = StoreTypes.ROLLPAIR_LMDB,
+                      defaultStoreType: String = StoreTypes.ROLLPAIR_IN_MEMORY,
                       defaultSerdesType: String = SerdesTypes.PICKLE) extends Logging {
 //  StandaloneManager.main(Array("-s",erSession.sessionId, "-p", erSession.cmClient.endpoint.port.toString))
   private val sessionId = session.sessionId
@@ -75,10 +75,11 @@ class RollPair(val store: ErStore, val ctx: RollPairContext, val options: Map[St
       functors = Array.empty,
       options = Map(SessionConfKeys.CONFKEY_SESSION_ID -> ctx.session.sessionId))
 
+    logInfo(s"mw: job: ${job}")
     new Thread {
       override def run(): Unit = {
         val commandClient = new CommandClient(ctx.session.rolls(0).commandEndpoint)
-        commandClient.call(RollPair.ROLL_RUN_JOB_COMMAND, job)
+        commandClient.call[ErJob](RollPair.ROLL_RUN_JOB_COMMAND, job)
 
         logInfo("thread started")
       }

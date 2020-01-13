@@ -10,7 +10,7 @@ class Recorder(object):
     def __init__(self, er_store: ErStore, rpc):
         self.record_store = er_store
         self.record_rpc = rpc
-        self.table_recorder = self.record_rpc.get_session().get_table_recorder()
+        self.table_recorder = self.record_rpc.get_session().get_gc_recorder()
 
     def record(self):
         store_type = self.record_store._store_locator._store_type
