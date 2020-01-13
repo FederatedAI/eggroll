@@ -26,7 +26,7 @@ L = get_logger()
 
 #64 * 1024 * 1024
 LMDB_MAP_SIZE = 16 * 4_096 * 244_140    # follows storage-service-cxx's config here
-LMDB_MAP_SIZE_WINDOWS = 200 * 1024 * 1024
+LMDB_MAP_SIZE_WINDOWS = 200 * 1024 * 1024 * 10
 DEFAULT_DB = b'main'
 # DELIMETER = '-'
 # DELIMETER_ENCODED = DELIMETER.encode()
