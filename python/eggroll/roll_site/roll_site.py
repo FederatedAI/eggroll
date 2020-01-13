@@ -81,7 +81,6 @@ class RollSiteContext:
 
 ERROR_STATES = [proxy_pb2.STOP, proxy_pb2.KILL]
 OBJECT_STORAGE_NAME = "__federation__"
-CONF_KEY_TARGET = "rollsite"
 CONF_KEY_LOCAL = "local"
 CONF_KEY_SERVER = "servers"
 
@@ -139,7 +138,6 @@ class RollSite:
             rp = self.ctx.rp_ctx.load(namespace=table_namespace, name=table_name)
             if obj_type == b'object':
                 ret_obj = rp.get(_tagged_key)
-                LOGGER.debug(f"ret_obj:{ret_obj}")
                 return ret_obj
             else:
                 return rp
