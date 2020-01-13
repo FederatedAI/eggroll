@@ -162,7 +162,7 @@ class SessionManagerService extends SessionManager {
       (0 until maxRetries).foreach(i => {
         val cur = getSessionMain(sessionId)
         if (cur.activeProcCount > 0) Thread.sleep(100) else break
-        if (i == maxRetries - 1) throw new IllegalStateException("unable to start all processors")
+        if (i == maxRetries - 1) throw new IllegalStateException("unable to stop all processors")
       })
     }
 
