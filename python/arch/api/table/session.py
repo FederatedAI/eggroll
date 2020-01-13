@@ -49,6 +49,7 @@ def build_session(job_id=None,
             options['eggroll.session.deploy.mode'] = "standalone"
         elif work_mode == WorkMode.CLUSTER:
             options['eggroll.session.deploy.mode'] = "cluster"
+
         er_session = session_init(session_id=job_id, options=options)
         session = session_impl.FateSessionImpl(er_session, work_mode, persistent_engine)
     else:

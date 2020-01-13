@@ -24,19 +24,15 @@ from eggroll.core.command.command_model import CommandURI
 from eggroll.core.conf_keys import SessionConfKeys
 from eggroll.core.constants import StoreTypes, SerdesTypes, PartitionerTypes
 from eggroll.core.datastructure.broker import FifoBroker
-from eggroll.core.io.kv_adapter import LmdbSortedKvAdapter, \
-    RocksdbSortedKvAdapter
 from eggroll.core.meta_model import ErStoreLocator, ErJob, ErStore, ErFunctor, \
     ErTask, ErPair, ErPartition
 from eggroll.core.serdes import cloudpickle
-from eggroll.core.serdes.eggroll_serdes import PickleSerdes, CloudPickleSerdes, \
-    EmptySerdes
 from eggroll.core.session import ErSession
 from eggroll.core.utils import generate_job_id, generate_task_id
 from eggroll.core.utils import string_to_bytes, hash_code
 from eggroll.roll_pair import create_serdes
 from eggroll.roll_pair.transfer_pair import TransferPair, BatchBroker
-from eggroll.roll_pair.utils.gc_utils import Recorder
+from eggroll.roll_pair.utils.gc_utils import GcRecorder
 from eggroll.roll_pair.utils.pair_utils import partitioner
 from eggroll.utils.log_utils import get_logger
 
@@ -44,8 +40,8 @@ L = get_logger()
 
 
 def runtime_init(session: ErSession):
-    rps = RollPairContext(session=session)
-    return rps
+    rpc = RollPairContext(session=session)
+    return rpc
 
 
 class RollPairContext(object):
@@ -58,17 +54,13 @@ class RollPairContext(object):
         self.deploy_mode = session.get_option(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE)
         self.__session_meta = session.get_session_meta()
         self.rpc_gc_enable = True
-        self.set_session_gc_recorder()
+        self.gc_recorder = GcRecorder(self)
 
     def set_store_type(self, store_type: str):
         self.default_store_type = store_type
 
     def set_store_serdes(self, serdes_type: str):
         self.default_store_serdes = serdes_type
-
-    def set_session_gc_recorder(self):
-        if self.rpc_gc_enable:
-            self.__session.set_gc_recorder(self)
 
     def set_session_gc_enable(self):
         self.rpc_gc_enable = True
@@ -139,15 +131,19 @@ class RollPairContext(object):
     def parallelize(self, data, options={}):
         namespace = options.get("namespace", None)
         name = options.get("name", None)
-        options['store_type'] = options.get("store_type", StoreTypes.ROLLPAIR_IN_MEMORY)
+        options['store_type'] = options.get("store_type", self.default_store_type)
         create_if_missing = options.get("create_if_missing", True)
 
         if namespace is None:
             namespace = self.session_id
         if name is None:
             name = str(uuid.uuid1())
+        print('start para load, name:{}'.format(name))
         store = self.load(namespace=namespace, name=name, options=options)
-        return store.put_all(data, options=options)
+        print('finish para load, name:{}'.format(name))
+        tmp = store.put_all(data, options=options)
+        print('finish para put_all, name:{}'.format(name))
+        return tmp
 
     def cleanup(self, namespace, name, options={}):
         pass
@@ -208,14 +204,15 @@ class RollPair(object):
         self.egg_router = default_egg_router
         self.__session_id = self.ctx.session_id
         self.gc_enable = rp_ctx.rpc_gc_enable
-        self.recorder = Recorder(er_store=er_store, rpc=rp_ctx)
-        self.recorder.record()
+        self.gc_recorder = rp_ctx.gc_recorder
+        self.gc_recorder.record(er_store)
 
     def __del__(self):
         if not self.gc_enable:
             return
-        if self.recorder.check_table_deletable():
-            self.recorder.delete_record()
+        if self.ctx.gc_recorder.check_gc_executable(self.__store):
+            self.ctx.gc_recorder.delete_record(self.__store)
+            print('del rp:{}', str(self))
             self.destroy()
             L.debug("process {} thread {} run {} del table name:{}, namespace:{}".
                          format(os.getpid(), threading.currentThread().ident,
@@ -299,7 +296,7 @@ class RollPair(object):
                 command_uri=CommandURI(f'{RollPair.EGG_PAIR_URI_PREFIX}/{RollPair.RUN_TASK}'),
                 serdes_type=self.__command_serdes
         )
-        L.info("get its resp:{}".format(job_resp._value))
+
         return self.value_serdes.deserialize(job_resp._value) if job_resp._value != b'' else None
 
     def put(self, k, v, options={}):
