@@ -127,7 +127,6 @@ class EggPair(object):
             #input_adapter = self.get_unary_input_adapter(task_info=task)
             input_adapter = create_adapter(task._inputs[0])
             value = input_adapter.get(f._key)
-            L.info("value:{}".format(value))
             result = ErPair(key=f._key, value=value)
             input_adapter.close()
         elif task._name == 'getAll':
