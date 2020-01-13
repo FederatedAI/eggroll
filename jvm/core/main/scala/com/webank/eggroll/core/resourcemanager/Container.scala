@@ -46,7 +46,7 @@ class Container(conf: RuntimeErConf, moduleName: String, processorId: Long = 0) 
   }
 
   def start(): Boolean = {
-    val startCmd = s"""${boot} start "${exePath} --config ${conf.getString(CoreConfKeys.STATIC_CONF_PATH)} --session-id ${sessionId} --server-node-id ${myServerNodeId} --processor-id ${processorId}" ${moduleName}-${processorId} &"""
+    val startCmd = s"""${bootStrapShell} ${boot} start "${exePath} --config ${conf.getString(CoreConfKeys.STATIC_CONF_PATH)} --session-id ${sessionId} --server-node-id ${myServerNodeId} --processor-id ${processorId}" ${moduleName}-${processorId} &"""
     logInfo(s"${startCmd}")
 
     val thread = runCommand(startCmd)
@@ -58,7 +58,16 @@ class Container(conf: RuntimeErConf, moduleName: String, processorId: Long = 0) 
   }
 
   def stop(): Boolean = {
-    val stopCmd = s"""${boot} stop "ps aux | grep 'session-id ${sessionId}' | grep 'server-node-id ${myServerNodeId}' | grep 'processor-id ${processorId}'" ${moduleName}-${processorId}"""
+    doStop(force = false)
+  }
+
+  def kill(): Boolean = {
+    doStop(force = true)
+  }
+
+  private def doStop(force: Boolean = false): Boolean = {
+    val subCmd = "stop"
+    val stopCmd = s"""${bootStrapShell} ${boot} stop "ps aux | grep 'session-id ${sessionId}' | grep 'server-node-id ${myServerNodeId}' | grep 'processor-id ${processorId}'" ${moduleName}-${processorId}"""
     logInfo(stopCmd)
 
     val thread = runCommand(stopCmd)
@@ -67,10 +76,6 @@ class Container(conf: RuntimeErConf, moduleName: String, processorId: Long = 0) 
     thread.join()
     println("stopped")
     thread.isAlive
-  }
-  // TODO:0: kill -9
-  def kill(): Boolean = {
-    false
   }
 
   def runCommand(cmd: String): Thread = {
@@ -81,8 +86,8 @@ class Container(conf: RuntimeErConf, moduleName: String, processorId: Long = 0) 
       if(!logPath.exists()){
         logPath.mkdirs()
       }
-      processorBuilder.redirectOutput(new File(logPath, s"bootstrap-${moduleName}-${processorId}.OUT"))
-      processorBuilder.redirectError(new File(logPath, s"bootstrap-${moduleName}-${processorId}.ERR"))
+      processorBuilder.redirectOutput(new File(logPath, s"bootstrap-${moduleName}-${processorId}.out"))
+      processorBuilder.redirectError(new File(logPath, s"bootstrap-${moduleName}-${processorId}.err"))
       val process = processorBuilder.start()
       process.waitFor()
     })

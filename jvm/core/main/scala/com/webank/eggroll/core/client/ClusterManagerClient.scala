@@ -28,10 +28,14 @@ import com.webank.eggroll.core.session.StaticErConf
 import scala.collection.JavaConverters._
 
 class ClusterManagerClient(val endpoint: ErEndpoint) {
+  if (endpoint == null || !endpoint.isValid) {
+    throw new IllegalArgumentException(s"failed to create ClusterManagerClient for endpoint: ${endpoint}")
+  }
+
   private val cc = new CommandClient(endpoint)
   private val EMPTY_PARTITION_ARRAY = Array[ErPartition]();
 
-  def this(serverHost:String, serverPort: Int) {
+  def this(serverHost: String, serverPort: Int) {
     this(ErEndpoint(serverHost, serverPort));
   }
 
@@ -39,17 +43,17 @@ class ClusterManagerClient(val endpoint: ErEndpoint) {
   def this(options: Map[String, String]) {
     this(options.getOrElse(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST,
       StaticErConf.getString(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST,
-        "localhost")),
+        "")),
       options.getOrElse(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT,
         StaticErConf.getString(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT,
-          "4670")).toInt)
+          "-1")).toInt)
   }
 
   def this() {
     this(StaticErConf.getString(
-      ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST, "localhost"),
+      ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST, ""),
       StaticErConf.getInt(
-        ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, 4670))
+        ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, -1))
   }
 
   def getServerNode(input:ErServerNode):ErServerNode = cc.call[ErServerNode](MetadataCommands.GET_SERVER_NODE, input)
@@ -89,6 +93,7 @@ class ClusterManagerClient(val endpoint: ErEndpoint) {
   def registerSession(sessionMeta: ErSessionMeta): ErSessionMeta =
     cc.call[ErSessionMeta](SessionCommands.registerSession, sessionMeta)
 
+  // todo:0: heartbeat with process pid
   def heartbeat(processor: ErProcessor): ErProcessor =
     cc.call[ErProcessor](SessionCommands.heartbeat, processor)
 }
