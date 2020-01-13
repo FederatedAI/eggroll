@@ -15,11 +15,8 @@
 
 import unittest
 
-from eggroll.core.session import ErSession
-from eggroll.roll_pair.roll_pair import RollPairContext
 from eggroll.roll_pair.test.roll_pair_test_assets import get_debug_test_context, \
-    get_cluster_context, get_standalone_context, set_default_option, \
-    get_default_options
+    get_cluster_context, get_standalone_context, get_default_options
 
 
 def get_value(roll_pair):
@@ -134,9 +131,20 @@ class TestRollPairMultiPartition(TestRollPairBase):
         self.assertEqual(st_opts["total_partitions"], rp.get_partitions())
         rp.destroy()
 
+
 class TestRollPairStandalone(TestRollPairBase):
+    ctx = None
     def setUp(self):
-        self.ctx = get_standalone_context()
+        pass
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.ctx = get_standalone_context()
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls.ctx.get_session().stop()
+
 
 class TestRollPairCluster(TestRollPairBase):
     def setUp(self):

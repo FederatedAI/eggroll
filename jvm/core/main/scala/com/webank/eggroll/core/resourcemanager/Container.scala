@@ -58,6 +58,15 @@ class Container(conf: RuntimeErConf, moduleName: String, processorId: Long = 0) 
   }
 
   def stop(): Boolean = {
+    doStop(force = false)
+  }
+
+  def kill(): Boolean = {
+    doStop(force = true)
+  }
+
+  private def doStop(force: Boolean = false): Boolean = {
+    val subCmd = "stop"
     val stopCmd = s"""${boot} stop "ps aux | grep 'session-id ${sessionId}' | grep 'server-node-id ${myServerNodeId}' | grep 'processor-id ${processorId}'" ${moduleName}-${processorId}"""
     logInfo(stopCmd)
 
@@ -68,10 +77,6 @@ class Container(conf: RuntimeErConf, moduleName: String, processorId: Long = 0) 
     println("stopped")
     thread.isAlive
   }
-  // TODO:0: kill -9
-  def kill(): Boolean = {
-    false
-  }
 
   def runCommand(cmd: String): Thread = {
     new Thread(() => {
@@ -81,8 +86,8 @@ class Container(conf: RuntimeErConf, moduleName: String, processorId: Long = 0) 
       if(!logPath.exists()){
         logPath.mkdirs()
       }
-      processorBuilder.redirectOutput(new File(logPath, s"bootstrap-${moduleName}-${processorId}.OUT"))
-      processorBuilder.redirectError(new File(logPath, s"bootstrap-${moduleName}-${processorId}.ERR"))
+      processorBuilder.redirectOutput(new File(logPath, s"bootstrap-${moduleName}-${processorId}.out"))
+      processorBuilder.redirectError(new File(logPath, s"bootstrap-${moduleName}-${processorId}.err"))
       val process = processorBuilder.start()
       process.waitFor()
     })
