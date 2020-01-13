@@ -2,8 +2,9 @@ package com.webank.eggroll.core.resourcemanager
 
 import com.webank.eggroll.core.client.NodeManagerClient
 import com.webank.eggroll.core.constant._
-import com.webank.eggroll.core.meta.{ErProcessor, ErServerNode, ErSessionMeta}
+import com.webank.eggroll.core.meta.{ErEndpoint, ErProcessor, ErServerNode, ErSessionMeta}
 import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator
+import com.webank.eggroll.core.session.StaticErConf
 
 import scala.collection.JavaConverters._
 import scala.util.control.Breaks._
@@ -79,14 +80,16 @@ class SessionManagerService extends SessionManager {
     val sessionMetaWithProcessors = sessionMeta.copy(processors = processorPlan, activeProcCount = expectedProcessorsCount, status = SessionStatus.NEW)
 
     smDao.register(sessionMetaWithProcessors)
-
+    // TODO:0: record session failure in database if session start is not successful, and returns error session
     val registeredSessionMeta = smDao.getSession(sessionMeta.id)
 
     serverNodes.par.foreach(n => {
       // TODO:1: add new params?
       val newSessionMeta = registeredSessionMeta.copy(
         options = registeredSessionMeta.options ++ Map(ResourceManagerConfKeys.SERVER_NODE_ID -> n.id.toString))
-      val nodeManagerClient = new NodeManagerClient(n.endpoint)
+      val nodeManagerClient = new NodeManagerClient(
+        ErEndpoint(host = n.endpoint.host,
+          port = StaticErConf.getInt(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT, -1)))
       nodeManagerClient.startContainers(newSessionMeta)
     })
 
@@ -147,7 +150,9 @@ class SessionManagerService extends SessionManager {
       // TODO:1: add new params?
       val newSessionMeta = dbSessionMeta.copy(
         options = dbSessionMeta.options ++ Map(ResourceManagerConfKeys.SERVER_NODE_ID -> n.id.toString))
-      val nodeManagerClient = new NodeManagerClient(n.endpoint)
+      val nodeManagerClient = new NodeManagerClient(
+        ErEndpoint(host = n.endpoint.host,
+          port = StaticErConf.getInt(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT, -1)))
       nodeManagerClient.stopContainers(newSessionMeta)
     })
 
@@ -157,7 +162,7 @@ class SessionManagerService extends SessionManager {
       (0 until maxRetries).foreach(i => {
         val cur = getSessionMain(sessionId)
         if (cur.activeProcCount > 0) Thread.sleep(100) else break
-        if (i == maxRetries - 1) throw new IllegalStateException("unable to start all processors")
+        if (i == maxRetries - 1) throw new IllegalStateException("unable to stop all processors")
       })
     }
 

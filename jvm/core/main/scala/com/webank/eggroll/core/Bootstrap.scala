@@ -44,7 +44,7 @@ object Bootstrap extends Logging {
         case be: Exception
           if (be.getMessage.indexOf(" bind") > 0 || be.isInstanceOf[BindException]) && bs.length > 1 =>
             val msg = s"${b} rebind failed: ${be.getMessage}"
-            if (ignoreRebind) logInfo(s"${msg} but '--ignore-rebind' is on") else logWarning(msg)
+            if (ignoreRebind) logInfo(s"${msg} but '--ignore-rebind' is on") else throw be
       }
     }
 

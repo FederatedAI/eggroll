@@ -16,7 +16,7 @@ import os
 
 from eggroll.core.client import ClusterManagerClient
 from eggroll.core.conf_keys import CoreConfKeys
-from eggroll.core.conf_keys import SessionConfKeys
+from eggroll.core.conf_keys import SessionConfKeys, ClusterManagerConfKeys
 from eggroll.core.constants import SessionStatus, ProcessorTypes, StoreTypes
 from eggroll.core.meta_model import ErSessionMeta, \
     ErPartition
@@ -38,7 +38,7 @@ class ErSession(object):
             name='',
             tag='',
             processors=list(),
-            options={}):
+            options=dict()):
         self.__eggroll_home = os.getenv('EGGROLL_HOME', None)
         if not self.__eggroll_home:
             raise EnvironmentError('EGGROLL_HOME is not set')
@@ -52,6 +52,7 @@ class ErSession(object):
             configs = configparser.ConfigParser()
             configs.read(conf_path)
             set_static_er_conf(configs['eggroll'])
+            static_er_conf = get_static_er_conf()
 
         self.__session_id = session_id
         self.__options = options.copy()
@@ -61,7 +62,8 @@ class ErSession(object):
 
         self.__is_standalone = options.get(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE, "") == "standalone"
         if self.__is_standalone and os.name != 'nt':
-            port = int(options.get('eggroll.resourcemanager.standalone.port', "4670"))
+            port = int(options.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT,
+                                   static_er_conf.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, "4670")))
             startup_command = f'bash {self.__eggroll_home}/bin/eggroll_boot_standalone.sh -p {port} -s {self.__session_id}'
             import subprocess
             import atexit
@@ -79,8 +81,9 @@ class ErSession(object):
                 shutdown_command = f"ps aux | grep eggroll | grep Bootstrap | grep '{port}' | grep '{session_id}' | grep -v grep | awk '{{print $2}}' | xargs kill"
                 L.info(f'shutdown command: {shutdown_command}')
                 with open(f'{log_dir}/standalone-manager.out', 'a+') as outfile, open(f'{log_dir}/standalone-manager.err', 'a+') as errfile:
-                    manager_process = subprocess.check_output(shutdown_command, shell=True)
-                    L.info(manager_process)
+                    manager_process = subprocess.run(shutdown_command, shell=True, stdout=outfile, stderr=errfile)
+                    returncode = manager_process.returncode
+                    L.info(f'shutdown returncode: {returncode}')
 
             atexit.register(shutdown_standalone_manager, port, self.__session_id, bootstrap_log_dir)
 
@@ -95,6 +98,7 @@ class ErSession(object):
         timeout = int(options.get("eggroll.session.create.timeout.ms", "5000")) / 1000
         endtime = monotonic() + timeout
 
+        # TODO:0: ignores exception while starting up in standalone mod
         while True:
             try:
                 if not processors:
@@ -133,19 +137,23 @@ class ErSession(object):
         target_egg_processors = len(self._eggs[target_server_node])
         target_processor = (partition._id // target_egg_processors) % target_egg_processors
 
-        return self._eggs[target_server_node][target_processor]
+        result = self._eggs[target_server_node][target_processor]
+        if not result._command_endpoint._host or result._command_endpoint._port <= 0:
+            raise ValueError(f'error routing to egg: {result}')
+
+        return result
 
     def stop(self):
         return self._cluster_manager_client.stop_session(self.__session_meta)
 
-    def set_gc_recorder(self, roll_pair_contex):
+    def set_rp_recorder(self, roll_pair_context):
         options = {}
         options['store_type'] = StoreTypes.ROLLPAIR_LMDB
-        self._table_recorder = roll_pair_contex.load(name='__gc__' + self.__session_id,
-                                                     namespace=self.__session_id,
-                                                     options=options)
+        self._table_recorder = roll_pair_context.load(name='__gc__' + self.__session_id,
+                                                      namespace=self.__session_id,
+                                                      options=options)
 
-    def get_gc_recorder(self):
+    def get_table_recorder(self):
         return self._table_recorder
 
     def get_session_id(self):
@@ -154,6 +162,7 @@ class ErSession(object):
     def get_session_meta(self):
         return self.__session_meta
 
+    # todo:1: add_exit_task? not necessarily a cleanup semantic
     def add_cleanup_task(self, func):
         self.__cleanup_tasks.append(func)
 
