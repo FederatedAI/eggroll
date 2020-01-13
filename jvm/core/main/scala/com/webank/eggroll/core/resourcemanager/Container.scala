@@ -67,7 +67,7 @@ class Container(conf: RuntimeErConf, moduleName: String, processorId: Long = 0) 
 
   private def doStop(force: Boolean = false): Boolean = {
     val subCmd = "stop"
-    val stopCmd = s"""${boot} stop "ps aux | grep 'session-id ${sessionId}' | grep 'server-node-id ${myServerNodeId}' | grep 'processor-id ${processorId}'" ${moduleName}-${processorId}"""
+    val stopCmd = s"""${bootStrapShell} ${boot} stop "ps aux | grep 'session-id ${sessionId}' | grep 'server-node-id ${myServerNodeId}' | grep 'processor-id ${processorId}'" ${moduleName}-${processorId}"""
     logInfo(stopCmd)
 
     val thread = runCommand(stopCmd)
