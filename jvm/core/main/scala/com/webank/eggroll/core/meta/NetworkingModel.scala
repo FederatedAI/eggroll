@@ -25,6 +25,7 @@ import com.webank.eggroll.core.constant.StringConstants
 import com.webank.eggroll.core.datastructure.RpcMessage
 import com.webank.eggroll.core.serdes.{BaseSerializable, PbMessageDeserializer, PbMessageSerializer}
 import jdk.nashorn.internal.ir.annotations.Immutable
+import org.apache.commons.lang3.StringUtils
 
 import scala.beans.BeanProperty
 import scala.collection.JavaConverters._
@@ -36,6 +37,8 @@ trait NetworkingRpcMessage extends RpcMessage {
 @Immutable
 case class ErEndpoint(@BeanProperty host: String, @BeanProperty port: Int = -1) extends NetworkingRpcMessage {
   override def toString: String = s"$host:$port"
+
+  def isValid: Boolean = !StringUtils.isBlank(host) && port > 0
 }
 object ErEndpoint {
   def apply(url: String): ErEndpoint = {
