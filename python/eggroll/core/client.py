@@ -67,7 +67,7 @@ class CommandClient(object):
             else:
                 return []
         except Exception as e:
-            L.error(f'Error calling to {endpoint}, command_uri: {command_uri}')
+            L.exception(f'Error calling to {endpoint}, command_uri: {command_uri}, req:{request}')
             raise e
 
     def async_call(self, args, output_types: list, command_uri: CommandURI, serdes_type=SerdesTypes.PROTOBUF, parallel_size=5):
@@ -84,8 +84,13 @@ class ClusterManagerClient(object):
 
     def __init__(self, options={}):
         static_er_conf = get_static_er_conf()
-        self.__endpoint = ErEndpoint(options.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST, static_er_conf.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST, '127.0.0.1')),
-                                     int(options.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, static_er_conf.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, '4670'))))
+        host = options.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST, static_er_conf.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST, None))
+        port = options.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, static_er_conf.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, None))
+
+        if not host or not port:
+            raise ValueError(f'failed to load host or port in creating cluster manager client. host: {host}, port: {port}')
+
+        self.__endpoint = ErEndpoint(host, int(port))
         if 'serdes_type' in options:
             self.__serdes_type = options['serdes_type']
         else:

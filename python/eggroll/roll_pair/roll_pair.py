@@ -94,9 +94,11 @@ class RollPairContext(object):
         store_options = self.__session.get_all_options()
         store_options.update(options)
         final_options = store_options.copy()
+
         # TODO:1: tostring in er model
         if 'create_if_missing' in final_options:
             del final_options['create_if_missing']
+        # TODO:1: remove these codes by adding to string logic in ErStore
         if 'include_key' in final_options:
             del final_options['include_key']
         if 'total_partitions' in final_options:
@@ -105,8 +107,10 @@ class RollPairContext(object):
             del final_options['name']
         if 'namespace' in final_options:
             del final_options['namespace']
+        # TODO:1: remove these codes by adding to string logic in ErStore
         if 'keys_only' in final_options:
             del final_options['keys_only']
+        # TODO:0: add 'error_if_exist, persistent / default store type'
         L.info("final_options:{}".format(final_options))
         store = ErStore(
                 store_locator=ErStoreLocator(
@@ -128,7 +132,8 @@ class RollPairContext(object):
 
         return RollPair(self.populate_processor(result), self)
 
-    def parallelize(self, data, options={}):
+    # TODO:1: separates load parameters and put all parameters
+    def parallelize(self, data, options=dict()):
         namespace = options.get("namespace", None)
         name = options.get("name", None)
         options['store_type'] = options.get("store_type", self.default_store_type)
@@ -138,12 +143,8 @@ class RollPairContext(object):
             namespace = self.session_id
         if name is None:
             name = str(uuid.uuid1())
-        print('start para load, name:{}'.format(name))
         store = self.load(namespace=namespace, name=name, options=options)
-        print('finish para load, name:{}'.format(name))
-        tmp = store.put_all(data, options=options)
-        print('finish para put_all, name:{}'.format(name))
-        return tmp
+        return store.put_all(data, options=options)
 
     def cleanup(self, namespace, name, options={}):
         pass
