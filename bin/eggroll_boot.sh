@@ -18,4 +18,9 @@ elif [[ $sub_cmd == "stop" ]]; then
   cmd="${exe} | awk '{print \$2}' | xargs kill"
   echo "stop: $cmd, pid $pid"
   eval ${cmd}
+elif [[ $sub_cmd == "kill" ]]; then
+  pid=`cat $pid_file`
+  cmd="${exe} | awk '{print \$2}' | xargs kill -9"
+  echo "kill: $cmd, pid $pid"
+  eval ${cmd}
 fi
