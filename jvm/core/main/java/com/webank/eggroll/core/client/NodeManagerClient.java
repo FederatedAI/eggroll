@@ -46,6 +46,9 @@ public class NodeManagerClient {
   }
 
   public NodeManagerClient(ErEndpoint serverEndpoint) {
+    if (serverEndpoint == null || !serverEndpoint.isValid()) {
+      throw new IllegalArgumentException("failed to create NodeManagerClient for endpoint: " + serverEndpoint);
+    }
     this.nodeManagerEndpoint = serverEndpoint;
     this.commandClient = new CommandClient();
   }
