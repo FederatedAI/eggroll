@@ -134,6 +134,10 @@ class TestRollPairMultiPartition(TestRollPairBase):
         self.assertEqual(st_opts["total_partitions"], rp.get_partitions())
         rp.destroy()
 
+class TestRollPairStandalone(TestRollPairBase):
+    def setUp(self):
+        self.ctx = get_standalone_context()
+
 class TestRollPairCluster(TestRollPairBase):
     def setUp(self):
         self.ctx = get_cluster_context()
