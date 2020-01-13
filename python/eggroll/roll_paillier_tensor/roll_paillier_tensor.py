@@ -69,6 +69,8 @@ class NumpyTensor(Tensor):
             mng = self._engine.num2Mng(self._ndarray, self._pub)
             return PaillierTensor(self._engine.add(mng, other._store, self._pub), self._pub)
 
+
+
     def __sub__(self, other):
         if isinstance(other, NumpyTensor):
             return NumpyTensor((self._ndarray - other._ndarray), self._pub)
@@ -226,6 +228,12 @@ class RollPaillierTensor(Tensor):
             return RollPaillierTensor(self._store.join(other._store, lambda mat1, mat2: mat1 - mat2))
 
     def __mul__(self, other):
+        if isinstance(other, NumpyTensor) or isinstance(other, int) or isinstance(other, float):
+            return RollPaillierTensor(self._store.map_values(lambda v: v * other))
+        if isinstance(other, RollPaillierTensor):
+            return RollPaillierTensor(self._store.join(other._store, lambda mat1, mat2: mat1 * mat2))
+
+    def __rmul__(self, other):
         if isinstance(other, NumpyTensor) or isinstance(other, int) or isinstance(other, float):
             return RollPaillierTensor(self._store.map_values(lambda v: v * other))
         if isinstance(other, RollPaillierTensor):
