@@ -134,6 +134,7 @@ class TestRollPairMultiPartition(TestRollPairBase):
 
 class TestRollPairStandalone(TestRollPairBase):
     ctx = None
+
     def setUp(self):
         pass
 
