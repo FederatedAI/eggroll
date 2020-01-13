@@ -49,7 +49,7 @@ class RollPairContext(object):
     def __init__(self, session: ErSession):
         self.__session = session
         self.session_id = session.get_session_id()
-        self.default_store_type = StoreTypes.ROLLPAIR_IN_MEMORY
+        self.default_store_type = StoreTypes.ROLLPAIR_LMDB
         self.default_store_serdes = SerdesTypes.PICKLE
         self.deploy_mode = session.get_option(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE)
         self.__session_meta = session.get_session_meta()
@@ -85,7 +85,7 @@ class RollPairContext(object):
         return ErStore(store_locator=store._store_locator, partitions=populated_partitions, options=store._options)
 
     def load(self, namespace=None, name=None, options={}):
-        store_type = options.get('store_type', StoreTypes.ROLLPAIR_LMDB)
+        store_type = options.get('store_type', self.default_store_type)
         total_partitions = options.get('total_partitions', 1)
         partitioner = options.get('partitioner', PartitionerTypes.BYTESTRING_HASH)
         store_serdes = options.get('serdes', self.default_store_serdes)
@@ -136,7 +136,7 @@ class RollPairContext(object):
     def parallelize(self, data, options=dict()):
         namespace = options.get("namespace", None)
         name = options.get("name", None)
-        options['store_type'] = options.get("store_type", self.default_store_type)
+        options['store_type'] = options.get("store_type", StoreTypes.ROLLPAIR_IN_MEMORY)
         create_if_missing = options.get("create_if_missing", True)
 
         if namespace is None:
