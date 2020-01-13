@@ -69,7 +69,7 @@ public class CascadedCaller implements Runnable {
         } else if (PipeHandleNotificationEvent.Type.PULL == type) {
             client.pull(metadata, pipe);
         } else {
-            client.unaryCall(pipeHandlerInfo.getPacket(), pipe, false);
+            client.unaryCall(pipeHandlerInfo.getPacket(), pipe);
         }
     }
 }

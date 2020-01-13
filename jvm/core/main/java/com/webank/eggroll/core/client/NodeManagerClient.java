@@ -42,10 +42,13 @@ public class NodeManagerClient {
     this(StaticErConf.getString(
         NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HOST(), "localhost"),
         StaticErConf.getInt(
-            NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT(), 9394));
+            NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT(), -1));
   }
 
   public NodeManagerClient(ErEndpoint serverEndpoint) {
+    if (serverEndpoint == null || !serverEndpoint.isValid()) {
+      throw new IllegalArgumentException("failed to create NodeManagerClient for endpoint: " + serverEndpoint);
+    }
     this.nodeManagerEndpoint = serverEndpoint;
     this.commandClient = new CommandClient();
   }
