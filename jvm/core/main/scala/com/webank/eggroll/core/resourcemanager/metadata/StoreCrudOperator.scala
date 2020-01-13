@@ -27,6 +27,7 @@ import com.webank.eggroll.core.constant._
 import com.webank.eggroll.core.error.CrudException
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.util.Logging
+import org.apache.commons.lang3.StringUtils
 import org.apache.ibatis.session.{RowBounds, SqlSession}
 
 import scala.collection.JavaConverters._
@@ -72,11 +73,15 @@ object StoreCrudOperator {
     // getting input locator
     val inputStoreLocator = input.storeLocator
     val storeLocatorExample = new StoreLocatorExample
-    storeLocatorExample.createCriteria()
-      .andStoreTypeEqualTo(inputStoreLocator.storeType)
+    val criteria = storeLocatorExample.createCriteria()
       .andNamespaceEqualTo(inputStoreLocator.namespace)
       .andNameEqualTo(inputStoreLocator.name)
       .andStatusEqualTo(StoreStatus.NORMAL)
+
+    if (!StringUtils.isBlank(inputStoreLocator.storeType)) {
+      criteria.andStoreTypeEqualTo(inputStoreLocator.storeType)
+    }
+
     val storeLocatorMapper = sqlSession.getMapper(classOf[StoreLocatorMapper])
 
     val storeLocatorResult = storeLocatorMapper.selectByExampleWithRowbounds(storeLocatorExample, new RowBounds(0, 1))

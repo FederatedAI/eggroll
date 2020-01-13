@@ -16,7 +16,7 @@ import os
 
 from eggroll.core.client import ClusterManagerClient
 from eggroll.core.conf_keys import CoreConfKeys
-from eggroll.core.conf_keys import SessionConfKeys
+from eggroll.core.conf_keys import SessionConfKeys, ClusterManagerConfKeys
 from eggroll.core.constants import SessionStatus, ProcessorTypes, StoreTypes
 from eggroll.core.meta_model import ErSessionMeta, \
     ErPartition
@@ -52,6 +52,7 @@ class ErSession(object):
             configs = configparser.ConfigParser()
             configs.read(conf_path)
             set_static_er_conf(configs['eggroll'])
+            static_er_conf = get_static_er_conf()
 
         self.__session_id = session_id
         self.__options = options.copy()
@@ -61,7 +62,8 @@ class ErSession(object):
 
         self.__is_standalone = options.get(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE, "") == "standalone"
         if self.__is_standalone and os.name != 'nt':
-            port = int(options.get('eggroll.resourcemanager.standalone.port', "4670"))
+            port = int(options.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT,
+                                   static_er_conf.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, "4670")))
             startup_command = f'bash {self.__eggroll_home}/bin/eggroll_boot_standalone.sh -p {port} -s {self.__session_id}'
             import subprocess
             import atexit
@@ -79,8 +81,9 @@ class ErSession(object):
                 shutdown_command = f"ps aux | grep eggroll | grep Bootstrap | grep '{port}' | grep '{session_id}' | grep -v grep | awk '{{print $2}}' | xargs kill"
                 L.info(f'shutdown command: {shutdown_command}')
                 with open(f'{log_dir}/standalone-manager.out', 'a+') as outfile, open(f'{log_dir}/standalone-manager.err', 'a+') as errfile:
-                    manager_process = subprocess.check_output(shutdown_command, shell=True)
-                    L.info(manager_process)
+                    manager_process = subprocess.run(shutdown_command, shell=True, stdout=outfile, stderr=errfile)
+                    returncode = manager_process.returncode
+                    L.info(f'shutdown returncode: {returncode}')
 
             atexit.register(shutdown_standalone_manager, port, self.__session_id, bootstrap_log_dir)
 
@@ -95,6 +98,7 @@ class ErSession(object):
         timeout = int(options.get("eggroll.session.create.timeout.ms", "5000")) / 1000
         endtime = monotonic() + timeout
 
+        # TODO:0: ignores exception while starting up in standalone mod
         while True:
             try:
                 if not processors:
@@ -134,7 +138,7 @@ class ErSession(object):
         target_processor = (partition._id // target_egg_processors) % target_egg_processors
 
         result = self._eggs[target_server_node][target_processor]
-        if not result._host or not result._port:
+        if not result._command_endpoint._host or result._command_endpoint._port <= 0:
             raise ValueError(f'error routing to egg: {result}')
 
         return result
