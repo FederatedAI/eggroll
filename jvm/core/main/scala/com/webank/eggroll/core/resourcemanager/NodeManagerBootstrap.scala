@@ -5,7 +5,7 @@ import java.net.InetSocketAddress
 
 import com.webank.eggroll.core.Bootstrap
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
-import com.webank.eggroll.core.constant.{ClusterManagerConfKeys, CoreConfKeys, NodeManagerCommands, NodeManagerConfKeys, ResourceManagerConfKeys}
+import com.webank.eggroll.core.constant.{CoreConfKeys, NodeManagerCommands, NodeManagerConfKeys, ResourceManagerConfKeys}
 import com.webank.eggroll.core.meta.{ErProcessor, ErSessionMeta}
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.util.{CommandArgsUtils, Logging}
@@ -55,7 +55,7 @@ class NodeManagerBootstrap extends Bootstrap with Logging {
 
     val cmd = CommandArgsUtils.parseArgs(args = args)
 
-    this.confPath = cmd.getOptionValue('c', "./jvm/core/main/resources/cluster-manager.properties.local")
+    this.confPath = cmd.getOptionValue('c', "./jvm/core/main/resources/cluster-manager.properties")
     // val sessionId = cmd.getOptionValue('s')
     StaticErConf.addProperties(confPath)
     val confFile = new File(confPath)

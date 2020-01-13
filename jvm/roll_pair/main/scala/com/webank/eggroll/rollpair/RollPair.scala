@@ -33,7 +33,7 @@ import com.webank.eggroll.core.util.{IdUtils, Logging}
 
 import scala.collection.JavaConverters._
 class RollPairContext(val session: ErSession,
-                      defaultStoreType: String = StoreTypes.ROLLPAIR_IN_MEMORY,
+                      defaultStoreType: String = StoreTypes.ROLLPAIR_LMDB,
                       defaultSerdesType: String = SerdesTypes.PICKLE) extends Logging {
 //  StandaloneManager.main(Array("-s",erSession.sessionId, "-p", erSession.cmClient.endpoint.port.toString))
   private val sessionId = session.sessionId
@@ -113,34 +113,39 @@ class RollPair(val store: ErStore, val ctx: RollPairContext, val options: Map[St
 
         val bodySize = byteBuffer.getInt()
 
-        val kLen = byteBuffer.getInt()
-        val k = new Array[Byte](kLen)
-        byteBuffer.get(k)
+        if (byteBuffer.remaining() > 0) {
+          val kLen = byteBuffer.getInt()
+          val k = new Array[Byte](kLen)
+          byteBuffer.get(k)
 
-        val partitionId = ctx.partitioner(k, totalPartitions)
+          val partitionId = ctx.partitioner(k, totalPartitions)
 
-        if (transferClients(partitionId) == null) {
-          val newBroker = new LinkedBlockingBroker[ByteString]()
-          brokers.update(partitionId, newBroker)
+          if (transferClients(partitionId) == null) {
+            val newBroker = new LinkedBlockingBroker[ByteString]()
+            brokers.update(partitionId, newBroker)
 
-          val newTransferClient = new GrpcTransferClient()
-          // val proc = ErProcessor(commandEndpoint = ErEndpoint("localhost",20001))
-          // tag = s"${job.id}-${partitionId}" to store.storeLocator.name
-          newTransferClient.initForward(
-            dataBroker = newBroker,
-            tag = IdUtils.generateTaskId(jobId, partitionId),
-            processor = ctx.routeToEgg(store.partitions(partitionId)))
-          transferClients.update(partitionId, newTransferClient)
-        }
+            val newTransferClient = new GrpcTransferClient()
+            // val proc = ErProcessor(commandEndpoint = ErEndpoint("localhost",20001))
+            // tag = s"${job.id}-${partitionId}" to store.storeLocator.name
+            newTransferClient.initForward(
+              dataBroker = newBroker,
+              tag = IdUtils.generateTaskId(jobId, partitionId),
+              processor = ctx.routeToEgg(store.partitions(partitionId)))
+            transferClients.update(partitionId, newTransferClient)
+          }
 
-        val transferClient = transferClients(partitionId)
+          val transferClient = transferClients(partitionId)
 
-        brokers(partitionId).put(rowPairDB)
-        transferClient.doSend()
+          brokers(partitionId).put(rowPairDB)
+          transferClient.doSend()
+        } // else: skip this packet
       }
     }
 
-    transferClients.foreach(c => c.complete())
+    transferClients.foreach(
+      c => if(c!=null) {
+        c.complete()
+    })
 
   }
 }

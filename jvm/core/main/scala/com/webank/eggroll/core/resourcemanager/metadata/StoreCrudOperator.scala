@@ -27,6 +27,7 @@ import com.webank.eggroll.core.constant._
 import com.webank.eggroll.core.error.CrudException
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.util.Logging
+import org.apache.commons.lang3.StringUtils
 import org.apache.ibatis.session.{RowBounds, SqlSession}
 
 import scala.collection.JavaConverters._
@@ -36,9 +37,16 @@ class StoreCrudOperator extends CrudOperator with Logging {
   private val crudOperatorTemplate = new CrudOperatorTemplate()
   def getOrCreateStore(input: ErStore): ErStore = {
     def doGetOrCreateStore(input: ErStore, sqlSession: SqlSession): ErStore = {
-      val existing = StoreCrudOperator.doGetStore(input, sqlSession)
+      val inputStoreLocator = input.storeLocator
+      val inputWithoutType = input.copy(storeLocator = inputStoreLocator.copy(storeType = StringConstants.EMPTY))
+      val inputStoreType = inputStoreLocator.storeType
+      val existing = StoreCrudOperator.doGetStore(inputWithoutType, sqlSession)
       if (existing != null) {
-        existing
+        if (existing.storeLocator.storeType.equals(inputStoreType)) existing
+        else throw new CrudException(
+          s"store namespace: ${inputStoreLocator.namespace}, name: ${inputStoreLocator.name} " +
+            s"already exist with store type: ${existing.storeLocator.storeType}. " +
+            s"requires type: ${inputStoreLocator.storeType}")
       } else {
         StoreCrudOperator.doCreateStore(input, sqlSession)
       }
@@ -65,11 +73,15 @@ object StoreCrudOperator {
     // getting input locator
     val inputStoreLocator = input.storeLocator
     val storeLocatorExample = new StoreLocatorExample
-    storeLocatorExample.createCriteria()
-      .andStoreTypeEqualTo(inputStoreLocator.storeType)
+    val criteria = storeLocatorExample.createCriteria()
       .andNamespaceEqualTo(inputStoreLocator.namespace)
       .andNameEqualTo(inputStoreLocator.name)
       .andStatusEqualTo(StoreStatus.NORMAL)
+
+    if (!StringUtils.isBlank(inputStoreLocator.storeType)) {
+      criteria.andStoreTypeEqualTo(inputStoreLocator.storeType)
+    }
+
     val storeLocatorMapper = sqlSession.getMapper(classOf[StoreLocatorMapper])
 
     val storeLocatorResult = storeLocatorMapper.selectByExampleWithRowbounds(storeLocatorExample, new RowBounds(0, 1))
