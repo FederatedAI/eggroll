@@ -64,21 +64,14 @@ object SessionCommands {
   val getSessionEggs = new CommandURI(prefix = prefix, name = "getSessionEggs")
   val heartbeat = new CommandURI(prefix = prefix, name = "heartbeat")
   val stopSession = new CommandURI(prefix = prefix, name = "stopSession")
+  val killSession = new CommandURI(prefix = prefix, name = "killSession")
 }
 
 object NodeManagerCommands {
   val prefix = "v1/node-manager/processor"
 
-  val getOrCreateEggs = "getOrCreateEggs"
-  val getOrCreateEggsServiceName = CommandUtils.toServiceName(prefix, getOrCreateEggs)
-  val GET_OR_CREATE_EGGS = new CommandURI(getOrCreateEggsServiceName)
-
-  val getOrCreateRolls = "getOrCreateRolls"
-  val getOrCreateRollsServiceName = CommandUtils.toServiceName(prefix, getOrCreateRolls)
-  val GET_OR_CREATE_ROLLS = new CommandURI(getOrCreateRollsServiceName)
-
   val heartbeat = new CommandURI(prefix = prefix, name = "heartbeat")
-
   val startContainers = new CommandURI(prefix = prefix, name = "startContainers")
   val stopContainers = new CommandURI(prefix = prefix, name = "stopContainers")
+  val killContainers = new CommandURI(prefix = prefix, name = "killContainers")
 }

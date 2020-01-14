@@ -36,6 +36,8 @@ trait SessionManager {
   def registerSession(sessionMeta: ErSessionMeta): ErSessionMeta
 
   def stopSession(sessionMeta: ErSessionMeta): ErSessionMeta
+
+  def killSession(sessionMeta: ErSessionMeta): ErSessionMeta
 }
 
 class SessionManagerService extends SessionManager {
@@ -168,6 +170,38 @@ class SessionManagerService extends SessionManager {
 
     // todo:1: update selective
     smDao.updateSessionMain(dbSessionMeta.copy(activeProcCount = 0, status = SessionStatus.CLOSED))
+    getSession(dbSessionMeta)
+  }
+
+  override def killSession(sessionMeta: ErSessionMeta): ErSessionMeta = {
+    val sessionId = sessionMeta.id
+    if (!smDao.existSession(sessionId)) {
+      return null
+    }
+
+    val dbSessionMeta = smDao.getSession(sessionId)
+
+    if (dbSessionMeta.status.equals(SessionStatus.KILLED)) {
+      return dbSessionMeta
+    }
+
+    val sessionHosts = dbSessionMeta.processors.map(p => p.commandEndpoint.host).toSet
+
+    val serverNodeCrudOperator = new ServerNodeCrudOperator()
+    val sessionServerNodes = serverNodeCrudOperator.getServerClusterByHosts(sessionHosts.toList.asJava).serverNodes
+
+    sessionServerNodes.par.foreach(n => {
+      // TODO:1: add new params?
+      val newSessionMeta = dbSessionMeta.copy(
+        options = dbSessionMeta.options ++ Map(ResourceManagerConfKeys.SERVER_NODE_ID -> n.id.toString))
+      val nodeManagerClient = new NodeManagerClient(
+        ErEndpoint(host = n.endpoint.host,
+          port = StaticErConf.getInt(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT, -1)))
+      nodeManagerClient.killContainers(newSessionMeta)
+    })
+
+    // todo:1: update selective
+    smDao.updateSessionMain(dbSessionMeta.copy(activeProcCount = 0, status = SessionStatus.KILLED))
     getSession(dbSessionMeta)
   }
 }

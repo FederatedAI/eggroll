@@ -1,11 +1,13 @@
 package com.webank.eggroll.core.resourcemanager
 
-import com.webank.eggroll.core.constant.{ProcessorStatus, SessionConfKeys}
+import com.webank.eggroll.core.constant.{ProcessorStatus, SessionConfKeys, SessionStatus}
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.resourcemanager.ResourceDao.NotExistError
 import com.webank.eggroll.core.util.JdbcTemplate
 import com.webank.eggroll.core.util.JdbcTemplate.ResultSetIterator
 import org.apache.commons.lang3.StringUtils
+
+import scala.collection.mutable.ArrayBuffer
 
 class ServerMetaDao {
   private lazy val dbc = ResourceDao.dbc
@@ -153,9 +155,34 @@ class SessionMetaDao {
     dbc.queryOne("select 1 from session_main where session_id = ?", sessionId).nonEmpty
   }
 
-  def updateSessionMain(sessionMeta: ErSessionMeta):Unit = dbc.withTransaction { conn =>
-      dbc.update(conn, "update session_main set name = ? , status = ? , tag = ? , active_proc_count = ?",
-        sessionMeta.name, sessionMeta.status, sessionMeta.tag, sessionMeta.activeProcCount)
+  def updateSessionMain(sessionMeta: ErSessionMeta): Unit = dbc.withTransaction { conn =>
+    dbc.update(conn, "update session_main set name = ? , status = ? , tag = ? , active_proc_count = ? where session_id = ?",
+      sessionMeta.name, sessionMeta.status, sessionMeta.tag, sessionMeta.activeProcCount, sessionMeta.id)
+
+    if (SessionStatus.KILLED.equals(sessionMeta.status)) {
+      batchUpdateSessionProcessor(sessionMeta)
+    }
+  }
+
+  // status and tag only
+  def batchUpdateSessionProcessor(sessionMeta: ErSessionMeta): Unit = dbc.withTransaction { conn =>
+    if (StringUtils.isBlank(sessionMeta.id)) throw new IllegalArgumentException("session id cannot be blank")
+    var sql = "update session_processor set "
+
+    val args = ArrayBuffer[String]()
+    if (!StringUtils.isBlank(sessionMeta.status)) {
+      sql += "status = ? "
+      args += sessionMeta.status
+    }
+    if (!StringUtils.isBlank(sessionMeta.tag)) {
+      sql += " and tag = ? "
+      args += sessionMeta.tag
+    }
+
+    sql += "where session_id = ?"
+    args += sessionMeta.id
+
+    dbc.update(conn, sql, args: _*)
   }
 }
 object ResourceDao {
