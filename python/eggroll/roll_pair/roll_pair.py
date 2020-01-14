@@ -32,7 +32,7 @@ from eggroll.core.utils import generate_job_id, generate_task_id
 from eggroll.core.utils import string_to_bytes, hash_code
 from eggroll.roll_pair import create_serdes
 from eggroll.roll_pair.transfer_pair import TransferPair, BatchBroker
-from eggroll.roll_pair.utils.gc_utils import Recorder
+from eggroll.roll_pair.utils.gc_utils import GcRecorder
 from eggroll.roll_pair.utils.pair_utils import partitioner
 from eggroll.utils.log_utils import get_logger
 
@@ -40,8 +40,8 @@ L = get_logger()
 
 
 def runtime_init(session: ErSession):
-    rps = RollPairContext(session=session)
-    return rps
+    rpc = RollPairContext(session=session)
+    return rpc
 
 
 class RollPairContext(object):
@@ -54,7 +54,7 @@ class RollPairContext(object):
         self.deploy_mode = session.get_option(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE)
         self.__session_meta = session.get_session_meta()
         self.rpc_gc_enable = True
-        self.set_session_rp_recorder()
+        self.gc_recorder = GcRecorder(self)
 
     def set_store_type(self, store_type: str):
         self.default_store_type = store_type
@@ -62,14 +62,6 @@ class RollPairContext(object):
     def set_store_serdes(self, serdes_type: str):
         self.default_store_serdes = serdes_type
 
-    # todo:3: public interface? add a hook in session?
-    def set_session_rp_recorder(self):
-        if self.rpc_gc_enable:
-            self.__session.set_rp_recorder(self)
-
-    # todo:3: 1. session gc enable? context gc enable?
-    #  2. combine enable / disable into one method with bool arg?
-    #  3. check gc status by getter?
     def set_session_gc_enable(self):
         self.rpc_gc_enable = True
 
@@ -92,8 +84,7 @@ class RollPairContext(object):
             populated_partitions.append(pp)
         return ErStore(store_locator=store._store_locator, partitions=populated_partitions, options=store._options)
 
-    # todo:1: should default value of namespace be session id?
-    def load(self, namespace=None, name=None, options=dict()):
+    def load(self, namespace=None, name=None, options={}):
         store_type = options.get('store_type', self.default_store_type)
         total_partitions = options.get('total_partitions', 1)
         partitioner = options.get('partitioner', PartitionerTypes.BYTESTRING_HASH)
@@ -145,7 +136,7 @@ class RollPairContext(object):
     def parallelize(self, data, options=dict()):
         namespace = options.get("namespace", None)
         name = options.get("name", None)
-        options['store_type'] = StoreTypes.ROLLPAIR_IN_MEMORY
+        options['store_type'] = options.get("store_type", StoreTypes.ROLLPAIR_IN_MEMORY)
         create_if_missing = options.get("create_if_missing", True)
 
         if namespace is None:
@@ -214,14 +205,15 @@ class RollPair(object):
         self.egg_router = default_egg_router
         self.__session_id = self.ctx.session_id
         self.gc_enable = rp_ctx.rpc_gc_enable
-        self.recorder = Recorder(er_store=er_store, rpc=rp_ctx)
-        self.recorder.record()
+        self.gc_recorder = rp_ctx.gc_recorder
+        self.gc_recorder.record(er_store)
 
     def __del__(self):
         if not self.gc_enable:
             return
-        if self.recorder.check_table_deletable():
-            self.recorder.delete_record()
+        if self.ctx.gc_recorder.check_gc_executable(self.__store):
+            self.ctx.gc_recorder.delete_record(self.__store)
+            print('del rp:{}', str(self))
             self.destroy()
             L.debug("process {} thread {} run {} del table name:{}, namespace:{}".
                          format(os.getpid(), threading.currentThread().ident,
@@ -305,7 +297,7 @@ class RollPair(object):
                 command_uri=CommandURI(f'{RollPair.EGG_PAIR_URI_PREFIX}/{RollPair.RUN_TASK}'),
                 serdes_type=self.__command_serdes
         )
-        L.info("get its resp:{}".format(job_resp._value))
+
         return self.value_serdes.deserialize(job_resp._value) if job_resp._value != b'' else None
 
     def put(self, k, v, options={}):
@@ -370,7 +362,7 @@ class RollPair(object):
             yield self.key_serdes.deserialize(k), self.value_serdes.deserialize(v)
         L.debug(f"get_all count:{done_cnt}")
 
-    def put_all(self, items, options={}):
+    def put_all(self, items, output=None, options={}):
         include_key = options.get("include_key", True)
         job_id = generate_job_id(self.__session_id, RollPair.PUT_ALL)
 
