@@ -53,7 +53,7 @@ class Container(conf: RuntimeErConf, moduleName: String, processorId: Long = 0) 
 
     thread.start()
     thread.join()
-    println("ready to return")
+    println("start: ready to return")
     thread.isAlive
   }
 
@@ -66,15 +66,15 @@ class Container(conf: RuntimeErConf, moduleName: String, processorId: Long = 0) 
   }
 
   private def doStop(force: Boolean = false): Boolean = {
-    val subCmd = "stop"
-    val stopCmd = s"""${bootStrapShell} ${boot} stop "ps aux | grep 'session-id ${sessionId}' | grep 'server-node-id ${myServerNodeId}' | grep 'processor-id ${processorId}'" ${moduleName}-${processorId}"""
-    logInfo(stopCmd)
+    val subCmd =  if (force) "kill" else "stop"
+    val doStopCmd = s"""${bootStrapShell} ${boot} ${subCmd} "ps aux | grep 'session-id ${sessionId}' | grep 'server-node-id ${myServerNodeId}' | grep 'processor-id ${processorId}'" ${moduleName}-${processorId}"""
+    logInfo(doStopCmd)
 
-    val thread = runCommand(stopCmd)
+    val thread = runCommand(doStopCmd)
 
     thread.start()
     thread.join()
-    println("stopped")
+    logInfo(s"${if (force) "killed" else "stopped"}")
     thread.isAlive
   }
 

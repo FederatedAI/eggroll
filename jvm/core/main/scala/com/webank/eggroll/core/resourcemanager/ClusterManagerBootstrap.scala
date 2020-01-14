@@ -78,6 +78,12 @@ class ClusterManagerBootstrap extends Bootstrap with Logging {
       routeToClass = classOf[SessionManagerService],
       routeToMethodName = SessionCommands.stopSession.getName())
 
+    CommandRouter.register(serviceName = SessionCommands.killSession.uriString,
+      serviceParamTypes = Array(classOf[ErSessionMeta]),
+      serviceResultTypes = Array(classOf[ErSessionMeta]),
+      routeToClass = classOf[SessionManagerService],
+      routeToMethodName = SessionCommands.killSession.getName())
+
     CommandRouter.register(serviceName = SessionCommands.registerSession.uriString,
       serviceParamTypes = Array(classOf[ErSessionMeta]),
       serviceResultTypes = Array(classOf[ErSessionMeta]),

@@ -195,6 +195,13 @@ class ClusterManagerClient(object):
                 command_uri=SessionCommands.STOP_SESSION,
                 serdes_type=self.__serdes_type)
 
+    def kill_session(self, input: ErSessionMeta):
+        return self.__do_sync_request_internal(
+                input=input,
+                output_type=ErSessionMeta,
+                command_uri=SessionCommands.KILL_SESSION,
+                serdes_type=self.__serdes_type)
+
     def __do_sync_request_internal(self, input, output_type, command_uri, serdes_type):
         return self.__command_client.simple_sync_send(input=input,
                                                       output_type=output_type,

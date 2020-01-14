@@ -327,7 +327,7 @@ class TestRollPairCluster(TestRollPairBase):
 
     @staticmethod
     def store_opts(**kwargs):
-        opts= {'total_partitions': 10}
+        opts = {'total_partitions': 10}
         opts.update(kwargs)
         return opts
 
