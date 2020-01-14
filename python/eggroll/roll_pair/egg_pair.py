@@ -372,6 +372,10 @@ class EggPair(object):
             if 0 == partition_id:
                 partition_size = input_partition._store_locator._total_partitions
                 queue = TransferService.get_or_create_broker(transfer_tag, write_signals=partition_size - 1)
+                if not first:
+                    comb_op_result = seq_op_result
+                else:
+                    comb_op_result = None
 
                 for r in queue:
                     if not r.data:

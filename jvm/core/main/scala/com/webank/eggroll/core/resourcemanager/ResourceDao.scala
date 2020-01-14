@@ -31,7 +31,7 @@ class SessionMetaDao {
 
   private lazy val dbc = ResourceDao.dbc
   def register(sessionMeta: ErSessionMeta, replace: Boolean = true): Unit = {
-    require(sessionMeta.activeProcCount == sessionMeta.processors.count(_.status == ProcessorStatus.NEW),
+    require(sessionMeta.activeProcCount == sessionMeta.processors.count(_.status == ProcessorStatus.RUNNING),
       "conflict active proc count:" + sessionMeta)
     val sid = sessionMeta.id
     dbc.withTransaction{ conn =>
