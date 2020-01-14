@@ -109,11 +109,6 @@ class SessionMetaDao {
       (rs.getString("session_id"), rs.getString("status"))
     }, "select session_id, status from session_processor where processor_id=?", proc.id)
     dbc.withTransaction { conn =>
-      if (oldStatus == ProcessorStatus.RUNNING && proc.status != ProcessorStatus.RUNNING)  {
-        dbc.update(conn, "update session_main set active_proc_count = active_proc_count - 1 where session_id = ?", session_id)
-      } else if (oldStatus != ProcessorStatus.RUNNING && proc.status == ProcessorStatus.RUNNING) {
-        dbc.update(conn, "update session_main set active_proc_count = active_proc_count + 1 where session_id = ?", session_id)
-      }
       var sql = "update session_processor set status = ?"
       var params = List(proc.status)
       var host = dbc.query(rs => {
@@ -137,6 +132,11 @@ class SessionMetaDao {
       sql += " where processor_id = ?"
       params ++= Array(proc.id.toString)
       dbc.update(conn, sql, params:_*)
+      if (oldStatus == ProcessorStatus.RUNNING && proc.status != ProcessorStatus.RUNNING)  {
+        dbc.update(conn, "update session_main set active_proc_count = active_proc_count - 1 where session_id = ?", session_id)
+      } else if (oldStatus != ProcessorStatus.RUNNING && proc.status == ProcessorStatus.RUNNING) {
+        dbc.update(conn, "update session_main set active_proc_count = active_proc_count + 1 where session_id = ?", session_id)
+      }
     }
   }
 
