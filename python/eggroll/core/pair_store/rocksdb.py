@@ -24,7 +24,6 @@ L = get_logger()
 from eggroll.core.pair_store.adapter import PairWriteBatch, PairIterator, PairAdapter
 
 class RocksdbWriteBatch(PairWriteBatch):
-    write_count = 0
 
     def __init__(self, adapter, chunk_size=100000):
         self.chunk_size = chunk_size
@@ -32,13 +31,14 @@ class RocksdbWriteBatch(PairWriteBatch):
         self.adapter = adapter
         self.key = None
         self.value = None
+        self.write_count = 0
 
     def put(self, k, v):
         self.key = k
         self.value = v
         self.batch.put(k, v)
-        RocksdbWriteBatch.write_count += 1
-        if RocksdbWriteBatch.write_count >= 100000:
+        self.write_count += 1
+        if self.write_count >= 100000:
             self.write()
 
     def delete(self, k):
@@ -86,6 +86,7 @@ class RocksdbIterator(PairIterator):
 
     def __iter__(self):
         return self.it
+
 
 class RocksdbAdapter(PairAdapter):
     env_lock = threading.Lock()
