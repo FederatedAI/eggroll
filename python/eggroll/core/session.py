@@ -134,7 +134,7 @@ class ErSession(object):
     def route_to_egg(self, partition: ErPartition):
         target_server_node = partition._processor._server_node_id
         target_egg_processors = len(self._eggs[target_server_node])
-        target_processor = (partition._id // target_egg_processors) % target_egg_processors
+        target_processor = (partition._id // len(self._eggs)) % target_egg_processors
 
         result = self._eggs[target_server_node][target_processor]
         if not result._command_endpoint._host or result._command_endpoint._port <= 0:

@@ -413,6 +413,7 @@ def serve(args):
 
     command_server = grpc.server(futures.ThreadPoolExecutor(max_workers=500, thread_name_prefix="command_server"),
                                  options=[
+                                     ("grpc.max_metadata_size", 4*1024*1024),
                                      (cygrpc.ChannelArgKey.max_send_message_length, -1),
                                      (cygrpc.ChannelArgKey.max_receive_message_length, -1)])
 
