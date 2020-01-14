@@ -13,48 +13,52 @@
 #  limitations under the License.
 
 
-import os
 import unittest
 
-from eggroll.core.conf_keys import DeployConfKeys, SessionConfKeys
-from eggroll.core.session import ErSession
+from eggroll.core.test.session_test_asset import get_debug_test_context, \
+    get_cluster_context
 
 
-class TestSession(unittest.TestCase):
-  def test_create_session(self):
-    options = {}
-    base_dir = os.environ['EGGROLL_HOME']
+class TestSessionBase(unittest.TestCase):
+    session = None
 
-    options[DeployConfKeys.CONFKEY_DEPLOY_ROLLPAIR_VENV_PATH] = f"{base_dir}/venv"
-    options[DeployConfKeys.CONFKEY_DEPLOY_ROLLPAIR_DATA_DIR_PATH] = '/tmp/eggroll'
-    options[DeployConfKeys.CONFKEY_DEPLOY_ROLLPAIR_EGGPAIR_PATH] = f'{base_dir}/python/roll/egg_pair.py'
-    options[DeployConfKeys.CONFKEY_DEPLOY_ROLLPAIR_PYTHON_PATH] = f'{base_dir}/python'
-    options[DeployConfKeys.CONFKEY_DEPLOY_JVM_MAINCLASS] = 'com.webank.eggroll.rollpair.Main'
-    options[DeployConfKeys.CONFKEY_DEPLOY_JVM_CLASSPATH] = f'{base_dir}/target/lib/*:{base_dir}/target/eggroll-roll-pair-2.0.jar:{base_dir}/resources'
-    options[SessionConfKeys.CONFKEY_SESSION_ID] = 'testing'
-    options[SessionConfKeys.CONFKEY_SESSION_MAX_PROCESSORS_PER_NODE] = '1'
+    def setUp(self) -> None:
+        self.session = get_debug_test_context()
 
-    print(options)
-    session = ErSession(options=options)
+    def test_empty(self):
+        pass
 
-  def test_register_session(self):
-    options = {}
-    base_dir = os.environ['EGGROLL_HOME']
+    def test_kill_all(self):
+        self.session._cluster_manager_client.kill_all_sessions()
 
-    options[DeployConfKeys.CONFKEY_DEPLOY_ROLLPAIR_VENV_PATH] = f'{base_dir}/venv'
-    options[DeployConfKeys.CONFKEY_DEPLOY_ROLLPAIR_DATA_DIR_PATH] = '/tmp/eggroll'
-    options[DeployConfKeys.CONFKEY_DEPLOY_ROLLPAIR_EGGPAIR_PATH] = f'{base_dir}/python/roll_pair/egg_pair.py'
-    options[DeployConfKeys.CONFKEY_DEPLOY_ROLLPAIR_PYTHON_PATH] = f'{base_dir}/python'
-    options[DeployConfKeys.CONFKEY_DEPLOY_JVM_MAINCLASS] = 'com.webank.eggroll.rollpair.Main'
-    options[
-      DeployConfKeys.CONFKEY_DEPLOY_JVM_CLASSPATH] = f'{base_dir}/target/lib/*:{base_dir}/target/eggroll-roll-pair-2.0.jar:{base_dir}/resources'
-    options[SessionConfKeys.CONFKEY_SESSION_ID] = 'testing'
-    options[SessionConfKeys.CONFKEY_SESSION_MAX_PROCESSORS_PER_NODE] = '1'
-    options[DeployConfKeys.CONFKEY_DEPLOY_MODE] = 'standalone'
+    def tearDown(self) -> None:
+        self.session.kill()
 
-    print(options)
-    session = ErSession(options=options)
+
+class TestSessionCluster(TestSessionBase):
+    session = None
+
+    def setUp(self):
+        pass
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        opts = {"eggroll.session.max.processors.per.node": "5"}
+        cls.session = get_cluster_context(options=opts)
+
+    @staticmethod
+    def store_opts(**kwargs):
+        opts = {'total_partitions': 10}
+        opts.update(kwargs)
+        return opts
+
+    def tearDown(self) -> None:
+        pass
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls.session.kill()
 
 
 if __name__ == '__main__':
-  unittest.main()
+    unittest.main()
