@@ -34,11 +34,16 @@ def session_init(session_id, options={"eggroll.session.deploy.mode": "standalone
 
 class ErSession(object):
     def __init__(self,
-            session_id=f'er_session_py_{time_now(format=DEFAULT_DATETIME_FORMAT)}_{get_self_ip()}',
+            session_id=None,
             name='',
             tag='',
             processors=list(),
             options=dict()):
+        if not session_id:
+            self.__session_id = f'er_session_py_{time_now(format=DEFAULT_DATETIME_FORMAT)}_{get_self_ip()}'
+        else:
+            self.__session_id = session_id
+
         self.__eggroll_home = os.getenv('EGGROLL_HOME', None)
         if not self.__eggroll_home:
             raise EnvironmentError('EGGROLL_HOME is not set')
@@ -54,13 +59,12 @@ class ErSession(object):
             set_static_er_conf(configs['eggroll'])
             static_er_conf = get_static_er_conf()
 
-        self.__session_id = session_id
         self.__options = options.copy()
         self.__options[SessionConfKeys.CONFKEY_SESSION_ID] = self.__session_id
         self._cluster_manager_client = ClusterManagerClient(options=options)
 
         self.__is_standalone = options.get(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE, "") == "standalone"
-        if self.__is_standalone and os.name != 'nt':
+        if self.__is_standalone and os.name != 'nt' and not processors:
             port = int(options.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT,
                                    static_er_conf.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, "4670")))
             startup_command = f'bash {self.__eggroll_home}/bin/eggroll_boot_standalone.sh -p {port} -s {self.__session_id}'
@@ -94,7 +98,7 @@ class ErSession(object):
                                      options=options)
 
         from time import monotonic, sleep
-        timeout = int(options.get("eggroll.session.create.timeout.ms", "5000")) / 1000
+        timeout = int(options.get("eggroll.session.create.timeout.ms", "10000")) / 1000
         endtime = monotonic() + timeout
 
         # TODO:0: ignores exception while starting up in standalone mod
@@ -134,7 +138,7 @@ class ErSession(object):
     def route_to_egg(self, partition: ErPartition):
         target_server_node = partition._processor._server_node_id
         target_egg_processors = len(self._eggs[target_server_node])
-        target_processor = (partition._id // target_egg_processors) % target_egg_processors
+        target_processor = (partition._id // len(self._eggs)) % target_egg_processors
 
         result = self._eggs[target_server_node][target_processor]
         if not result._command_endpoint._host or result._command_endpoint._port <= 0:
