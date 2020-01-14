@@ -100,10 +100,14 @@ class DTable(Table):
         return self._dtable.put_if_absent(k=k, v=v, use_serialize=use_serialize)
 
     def take(self, n=1, keysOnly=False, use_serialize=True):
-        return self._dtable.take(n=n, keysOnly=keysOnly, use_serialize=use_serialize)
+        options = {}
+        options['keys_only'] = keysOnly
+        return self._dtable.take(n=n, options=options)
 
     def first(self, keysOnly=False, use_serialize=True):
-        return self._dtable.first(keysOnly=keysOnly, use_serialize=use_serialize)
+        options = {}
+        options['keys_only'] = keysOnly
+        return self._dtable.first(options=options)
 
     # noinspection PyProtectedMember
     def get_partitions(self):
@@ -124,7 +128,8 @@ class DTable(Table):
 
     @log_elapsed
     def mapPartitions(self, func, **kwargs):
-        return DTable(self._dtable.map_partitions(func), session_id=self._session_id)
+        #return DTable(self._dtable.map_partitions(func), session_id=self._session_id)
+        return DTable(self._dtable.collapse_partitions(func), session_id=self._session_id)
 
     @log_elapsed
     def collapsePartitions(self, func, **kwargs):
@@ -132,7 +137,7 @@ class DTable(Table):
 
     @log_elapsed
     def reduce(self, func, **kwargs):
-        return self._dtable.reduce(func).first()[1]
+        return (self._dtable.reduce(func).first()[1])
 
     @log_elapsed
     def join(self, other, func, **kwargs):
