@@ -203,7 +203,7 @@ class EggPair(object):
             reduce_task = copy(task)
             reduce_task._job = job
 
-            self.aggregate(reduce_task)
+            self.aggregate(reduce_task, True)
             L.info('reduce finished')
 
         elif task._name == 'mapPartitions':
@@ -339,64 +339,66 @@ class EggPair(object):
 
         return result
 
-    def aggregate(self, task: ErTask):
+    def aggregate(self, task: ErTask, is_reduce=False):
         functors = task._job._functors
         zero_value = None if functors[0] is None else cloudpickle.loads(functors[0]._body)
         seq_op = cloudpickle.loads(functors[1]._body)
         comb_op = cloudpickle.loads(functors[2]._body)
 
         input_partition = task._inputs[0]
-        input_adapter = create_adapter(task._inputs[0])
-        input_key_serdes = create_serdes(task._inputs[0]._store_locator._serdes)
-        input_value_serdes = input_key_serdes
-        output_key_serdes = create_serdes(task._outputs[0]._store_locator._serdes)
-        output_value_serdes = output_key_serdes
+        serialized_seq_results = list()
+        with create_adapter(input_partition) as input_adapter, \
+                input_adapter.iteritems() as input_iter:
+            input_key_serdes = create_serdes(task._inputs[0]._store_locator._serdes)
+            input_value_serdes = input_key_serdes
+            output_key_serdes = create_serdes(task._outputs[0]._store_locator._serdes)
+            output_value_serdes = output_key_serdes
+            first = True
 
-        seq_op_result = zero_value if zero_value is not None else None
+            seq_op_result = zero_value
 
-        for k_bytes, v_bytes in input_adapter.iteritems():
-            if seq_op_result:
-                seq_op_result = seq_op(seq_op_result, input_value_serdes.deserialize(v_bytes))
+            for k_bytes, v_bytes in input_iter:
+                v = input_value_serdes.deserialize(v_bytes)
+                if is_reduce and first:
+                    seq_op_result = v
+                    first = False
+                else:
+                    seq_op_result = seq_op(seq_op_result, v)
+
+
+            partition_id = input_partition._id
+            transfer_tag = task._job._id
+
+            if 0 == partition_id:
+                partition_size = input_partition._store_locator._total_partitions
+                queue = TransferService.get_or_create_broker(transfer_tag, write_signals=partition_size - 1)
+
+                for r in queue:
+                    if not r.data:
+                        continue
+                    v = output_value_serdes.deserialize(r.data)
+                    if first:
+                        comb_op_result = v
+                    else:
+                        comb_op_result = comb_op(comb_op_result, v)
+
+                L.info(f'aggregate finished. result: {comb_op_result} ')
+                with create_adapter(task._outputs[0]) as output_adapter, \
+                    output_adapter.new_batch() as output_writebatch:
+                    output_writebatch.put(output_key_serdes.serialize('result'.encode()), output_value_serdes.serialize(comb_op_result))
+
+                TransferService.remove_broker(transfer_tag)
             else:
-                seq_op_result = input_value_serdes.deserialize(v_bytes)
+                if not first:
+                    serialized_seq_results.append(output_value_serdes.serialize(seq_op_result))
+                else:
+                    serialized_seq_results.append(b'')
+                transfer_client = TransferClient()
+                future = transfer_client.send(broker=(v for v in serialized_seq_results),
+                                              endpoint=task._outputs[0]._processor._transfer_endpoint,
+                                              tag=transfer_tag)
+                future.result()
 
-        partition_id = input_partition._id
-        transfer_tag = task._job._id
-
-        if 0 == partition_id:
-            partition_size = input_partition._store_locator._total_partitions
-            queue = TransferService.get_or_create_broker(transfer_tag, write_signals=partition_size)
-
-            comb_op_result = seq_op_result
-
-            for i in range(1, partition_size):
-                L.debug(f'waiting for result #{i}')
-                # TODO:2: blocking timeout configurable?
-                other_seq_op_result = queue.get(block=True)
-                comb_op_result = comb_op(comb_op_result, output_value_serdes.deserialize(other_seq_op_result.data))
-
-            L.info(f'aggregate finished. result: {comb_op_result} ')
-            output_adapter = create_adapter(task._outputs[0])
-
-            output_writebatch = output_adapter.new_batch()
-            output_writebatch.put(output_key_serdes.serialize('result'.encode()), output_value_serdes.serialize(comb_op_result))
-
-            output_writebatch.close()
-            output_adapter.close()
-            TransferService.remove_broker(transfer_tag)
-        else:
-            ser_seq_op_result = output_value_serdes.serialize(seq_op_result)
-            transfer_client = TransferClient()
-
-            broker = FifoBroker()
-            future = transfer_client.send(broker=broker,
-                                          endpoint=task._outputs[0]._processor._transfer_endpoint,
-                                          tag=transfer_tag)
-            broker.put(ser_seq_op_result)
-            broker.signal_write_finish()
-            future.result()
-
-        input_adapter.close()
         L.info('aggregate finished')
 
 
@@ -413,9 +415,9 @@ def serve(args):
 
     command_server = grpc.server(futures.ThreadPoolExecutor(max_workers=500, thread_name_prefix="command_server"),
                                  options=[
-                                     ("grpc.max_metadata_size", 4*1024*1024),
-                                     (cygrpc.ChannelArgKey.max_send_message_length, -1),
-                                     (cygrpc.ChannelArgKey.max_receive_message_length, -1)])
+                                     ("grpc.max_metadata_size", 32 << 20),
+                                     (cygrpc.ChannelArgKey.max_send_message_length, 2 << 30 - 1),
+                                     (cygrpc.ChannelArgKey.max_receive_message_length, 2 << 30 - 1)])
 
     command_servicer = CommandServicer()
     command_pb2_grpc.add_CommandServiceServicer_to_server(command_servicer,
@@ -436,8 +438,9 @@ def serve(args):
     else:
         transfer_server = grpc.server(futures.ThreadPoolExecutor(max_workers=500, thread_name_prefix="transfer_server"),
                                       options=[
-                                          (cygrpc.ChannelArgKey.max_send_message_length, -1),
-                                          (cygrpc.ChannelArgKey.max_receive_message_length, -1)])
+                                          (cygrpc.ChannelArgKey.max_send_message_length, 2 << 30 - 1),
+                                          (cygrpc.ChannelArgKey.max_receive_message_length, 2 << 30 - 1),
+                                          ('grpc.max_metadata_size', 32 << 20)])
         transfer_port = transfer_server.add_insecure_port(f'[::]:{transfer_port}')
         transfer_pb2_grpc.add_TransferServiceServicer_to_server(transfer_servicer,
                                                                 transfer_server)
