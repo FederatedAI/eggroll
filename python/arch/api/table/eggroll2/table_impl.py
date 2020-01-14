@@ -68,7 +68,6 @@ class DTable(Table):
 
     def put_all(self, kv_list: Iterable, use_serialize=True, chunk_size=100000):
         #return self._dtable.put_all(kv_list=kv_list, use_serialize=use_serialize, chunk_size=chunk_size)
-        print("DTable put all")
         options = {}
         return self._dtable.put_all(kv_list, options=options)
 
