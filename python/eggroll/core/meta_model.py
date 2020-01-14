@@ -19,10 +19,14 @@ from eggroll.core.utils import _map_and_listify, _repr_list, _elements_to_proto,
 
 DEFAULT_DELIM = '/'
 
+
 class ErEndpoint(RpcMessage):
     def __init__(self, host, port: int):
         self._host = host
         self._port = port
+
+    def is_valid(self):
+        return self._host and self._port > 0
 
     def to_proto(self):
         return meta_pb2.Endpoint(host=self._host, port=self._port)
@@ -127,6 +131,11 @@ class ErProcessor(RpcMessage):
         self._transfer_endpoint = transfer_endpoint if transfer_endpoint else command_endpoint
         self._options = options
         self._tag = tag
+
+    def is_valid(self):
+        return self._command_endpoint.is_valid() \
+               and (self._transfer_endpoint and self._transfer_endpoint.is_valid()) \
+               and self._server_node_id > 0
 
     def to_proto(self):
         return meta_pb2.Processor(id=self._id,
@@ -472,6 +481,12 @@ class ErSessionMeta(RpcMessage):
         self._tag = tag
         self._processors = processors
         self._options = options
+
+    def is_processors_valid(self):
+        for p in self._processors:
+            if not p.is_valid():
+                return False
+        return True
 
     def to_proto(self):
         return meta_pb2.SessionMeta(id=self._id,

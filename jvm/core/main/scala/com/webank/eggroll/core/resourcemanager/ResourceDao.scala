@@ -82,6 +82,7 @@ class SessionMetaDao {
       "select * from session_processor where session_id = ?", sessionId)
     getSessionMain(sessionId).copy(options = opts, processors = procs.toArray)
   }
+
   def addSession(sessionMeta: ErSessionMeta): Unit = {
     if (dbc.queryOne("select * from session_main where session_id = ?", sessionMeta.id).nonEmpty) {
       throw new NotExistError("session exists:" + sessionMeta.id)
@@ -151,6 +152,36 @@ class SessionMetaDao {
     },"select * from session_main where session_id = ?", sessionId)
   }
 
+  def getSessionMains(sessionMeta: ErSessionMeta): Array[ErSessionMeta] = {
+    var sql = "select * from session_main where "
+    val whereFragments = ArrayBuffer[String]()
+    val args = ArrayBuffer[String]()
+    if (!StringUtils.isBlank(sessionMeta.status)) {
+      whereFragments += "status = ?"
+      args += sessionMeta.status
+    }
+
+    if (!StringUtils.isBlank(sessionMeta.tag)) {
+      whereFragments += "tag = ?"
+      args += sessionMeta.tag
+    }
+
+    sql += String.join(" and ", whereFragments: _*)
+
+    dbc.query(rs => {
+      val result = ArrayBuffer[ErSessionMeta]()
+      while (rs.next()) {
+        result += ErSessionMeta(
+          id = rs.getString("session_id"),
+          name = rs.getString("name"),
+          activeProcCount = rs.getInt("active_proc_count"),
+          status = rs.getString("status"),
+          tag = rs.getString("tag"))
+      }
+      result.toArray
+    }, sql, args: _*)
+  }
+
   def existSession(sessionId: String): Boolean = {
     dbc.queryOne("select 1 from session_main where session_id = ?", sessionId).nonEmpty
   }
@@ -169,15 +200,18 @@ class SessionMetaDao {
     if (StringUtils.isBlank(sessionMeta.id)) throw new IllegalArgumentException("session id cannot be blank")
     var sql = "update session_processor set "
 
+    val setFragments = ArrayBuffer[String]()
     val args = ArrayBuffer[String]()
     if (!StringUtils.isBlank(sessionMeta.status)) {
-      sql += "status = ? "
+      setFragments += "status = ?"
       args += sessionMeta.status
     }
     if (!StringUtils.isBlank(sessionMeta.tag)) {
-      sql += " and tag = ? "
+      setFragments += "tag = ?"
       args += sessionMeta.tag
     }
+
+    sql += String.join(", ", setFragments: _*)
 
     sql += "where session_id = ?"
     args += sessionMeta.id

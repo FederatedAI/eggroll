@@ -38,6 +38,8 @@ trait SessionManager {
   def stopSession(sessionMeta: ErSessionMeta): ErSessionMeta
 
   def killSession(sessionMeta: ErSessionMeta): ErSessionMeta
+
+  def killAllSessions(sessionMeta: ErSessionMeta): ErSessionMeta
 }
 
 class SessionManagerService extends SessionManager {
@@ -181,7 +183,7 @@ class SessionManagerService extends SessionManager {
 
     val dbSessionMeta = smDao.getSession(sessionId)
 
-    if (dbSessionMeta.status.equals(SessionStatus.KILLED)) {
+    if (dbSessionMeta.status.equals(SessionStatus.KILLED) || dbSessionMeta.status.equals(SessionStatus.CLOSED)) {
       return dbSessionMeta
     }
 
@@ -203,5 +205,15 @@ class SessionManagerService extends SessionManager {
     // todo:1: update selective
     smDao.updateSessionMain(dbSessionMeta.copy(activeProcCount = 0, status = SessionStatus.KILLED))
     getSession(dbSessionMeta)
+  }
+
+  // todo:1: return value
+  override def killAllSessions(sessionMeta: ErSessionMeta): ErSessionMeta = {
+    val sessionStatusStub = Array(ErSessionMeta(status = SessionStatus.NEW), ErSessionMeta(status = SessionStatus.ACTIVE))
+    val sessionsToKill = sessionStatusStub.flatMap(s => smDao.getSessionMains(s))
+
+    sessionsToKill.par.map(s => killSession(s))
+
+    ErSessionMeta()
   }
 }
