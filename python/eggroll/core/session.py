@@ -17,7 +17,7 @@ import os
 from eggroll.core.client import ClusterManagerClient
 from eggroll.core.conf_keys import CoreConfKeys
 from eggroll.core.conf_keys import SessionConfKeys, ClusterManagerConfKeys
-from eggroll.core.constants import SessionStatus, ProcessorTypes, StoreTypes
+from eggroll.core.constants import SessionStatus, ProcessorTypes
 from eggroll.core.meta_model import ErSessionMeta, \
     ErPartition
 from eggroll.core.utils import get_self_ip, time_now, DEFAULT_DATETIME_FORMAT
@@ -144,6 +144,9 @@ class ErSession(object):
 
     def stop(self):
         return self._cluster_manager_client.stop_session(self.__session_meta)
+
+    def kill(self):
+        return self._cluster_manager_client.kill_session(self.__session_meta)
 
     def get_session_id(self):
         return self.__session_id
