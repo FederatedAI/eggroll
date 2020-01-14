@@ -41,7 +41,9 @@ import io.grpc.{ManagedChannel, ManagedChannelBuilder}
 import scala.collection.JavaConverters._
 import scala.collection.concurrent.TrieMap
 import scala.reflect.ClassTag
-
+object CommandClient {
+  val pool = TrieMap[String, ManagedChannel]()
+}
 class CommandClient(defaultEndpoint:ErEndpoint = null, serdesType: String = SerdesTypes.PROTOBUF, isSecure:Boolean=false)
   extends Logging {
   // TODO:1: for java
@@ -61,14 +63,15 @@ class CommandClient(defaultEndpoint:ErEndpoint = null, serdesType: String = Serd
   val sessionId = StaticErConf.getString(SessionConfKeys.CONFKEY_SESSION_ID)
   // TODO:1: confirm client won't exit bug of Singletons.getNoCheck(classOf[GrpcChannelFactory]).getChannel(endpoint, isSecure)
   // TODO:0: add channel args
-  private val pool = TrieMap[String, ManagedChannel]()
-  private def buildChannel(endpoint: ErEndpoint): ManagedChannel = {
-    if(!pool.contains(endpoint.toString)) {
+
+  private def buildChannel(endpoint: ErEndpoint): ManagedChannel = synchronized {
+    if(!CommandClient.pool.contains(endpoint.toString)) {
       val builder = ManagedChannelBuilder.forAddress(endpoint.host, endpoint.port)
+      builder.maxInboundMetadataSize(4*1024*1024)
       builder.usePlaintext()
-      pool(endpoint.toString) = builder.build()
+      CommandClient.pool(endpoint.toString) = builder.build()
     }
-    pool(endpoint.toString)
+    CommandClient.pool(endpoint.toString)
   }
 
   def call[T](commandURI: CommandURI, args: RpcMessage*)(implicit tag:ClassTag[T]): T = {
@@ -109,8 +112,17 @@ class CommandClient(defaultEndpoint:ErEndpoint = null, serdesType: String = Serd
         }
     }
 
-    futures.map(f => SerdesUtils.rpcMessageFromBytes(f.get().getResults(0).toByteArray,
-      tag.runtimeClass, SerdesTypes.PROTOBUF).asInstanceOf[T])
+    futures.zipWithIndex.map{ case (f, n) =>
+      try{
+        SerdesUtils.rpcMessageFromBytes(f.get().getResults(0).toByteArray,
+          tag.runtimeClass, SerdesTypes.PROTOBUF).asInstanceOf[T]
+      } catch {
+        case t: Throwable =>
+          logError(s"[COMMAND] error waiting to ${args(n)._2}. commandUri: ${commandURI.uriString}")
+          throw t
+      }
+
+    }
   }
   @Deprecated
   def simpleSyncSend[T >: RpcMessage](input: RpcMessage,
