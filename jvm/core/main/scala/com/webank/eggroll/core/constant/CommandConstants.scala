@@ -65,6 +65,7 @@ object SessionCommands {
   val heartbeat = new CommandURI(prefix = prefix, name = "heartbeat")
   val stopSession = new CommandURI(prefix = prefix, name = "stopSession")
   val killSession = new CommandURI(prefix = prefix, name = "killSession")
+  val killAllSessions = new CommandURI(prefix = prefix, name = "killAllSessions")
 }
 
 object NodeManagerCommands {
