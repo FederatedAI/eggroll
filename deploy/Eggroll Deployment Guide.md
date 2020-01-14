@@ -142,6 +142,7 @@ source $venv_home/bin/activate
 export PYTHONPATH=${EGGROLL_HOME}/python
 cd ${EGGROLL_HOME}/python/eggroll/roll_pair/test
 python -m unittest test_interface.TestStandalone
+python -m unittest test_roll_pair.TestRollPairCluster
 ```
 
 Wait a few minutes, see the result show "OK" field to indicate that the operation is successful. In other cases, if FAILED or stuck, it means failure.
