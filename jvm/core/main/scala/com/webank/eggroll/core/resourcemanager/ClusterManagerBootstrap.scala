@@ -112,6 +112,16 @@ class ClusterManagerBootstrap extends Bootstrap with Logging {
     logInfo(s"conf file: ${confFile.getAbsolutePath}")
     this.port = cmd.getOptionValue('p', cmd.getOptionValue('p', StaticErConf.getProperty(
       ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT,"4670"))).toInt
+
+    Runtime.getRuntime.addShutdownHook(new Thread(() => {
+      logWarning("****** Shutting down Cluster Manager ******")
+      logInfo("Shutting down cluster manager. Force terminating NEW / ACTIVE sessions")
+
+      val sessionManagerService = new SessionManagerService()
+      sessionManagerService.killAllSessions(ErSessionMeta())
+
+      logWarning("****** All sessions stopped / killed. Cluster Manager exiting gracefully ******")
+    }))
     //StaticErConf.addProperty(SessionConfKeys.CONFKEY_SESSION_ID, sessionId)
   }
 
