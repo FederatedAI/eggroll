@@ -143,8 +143,8 @@ class RollPairContext(object):
             namespace = self.session_id
         if name is None:
             name = str(uuid.uuid1())
-        store = self.load(namespace=namespace, name=name, options=options)
-        return store.put_all(data, options=options)
+        rp = self.load(namespace=namespace, name=name, options=options)
+        return rp.put_all(data, options=options)
 
     def cleanup(self, namespace, name, options={}):
         pass
