@@ -117,7 +117,7 @@ case class ErTask(id: String,
   }
 }
 
-case class ErSessionMeta(id: String,
+case class ErSessionMeta(id: String = StringConstants.EMPTY,
                          name: String = StringConstants.EMPTY,
                          status: String = StringConstants.EMPTY,
                          activeProcCount: Int = 0,

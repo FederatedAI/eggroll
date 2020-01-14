@@ -28,6 +28,9 @@ class TestSessionBase(unittest.TestCase):
     def test_empty(self):
         pass
 
+    def test_kill_all(self):
+        self.session._cluster_manager_client.kill_all_sessions()
+
     def tearDown(self) -> None:
         self.session.kill()
 
