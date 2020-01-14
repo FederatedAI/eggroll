@@ -315,6 +315,22 @@ class TestRollPairStandalone(TestRollPairBase):
 
 
 class TestRollPairCluster(TestRollPairBase):
-    def setUp(self):
-        self.ctx = get_cluster_context()
+    ctx = None
 
+    def setUp(self):
+        pass
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        opts = {"eggroll.session.max.processors.per.node": "10"}
+        cls.ctx = get_cluster_context(options=opts)
+
+    @staticmethod
+    def store_opts(**kwargs):
+        opts= {'total_partitions': 10}
+        opts.update(kwargs)
+        return opts
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls.ctx.get_session().stop()
