@@ -72,7 +72,11 @@ class RollPairContext(object):
         return self.__session
 
     def get_roll(self):
-        return self.__session._rolls[0]
+        ret = self.__session._rolls[0]
+        if not ret._command_endpoint._host or not ret._command_endpoint._port:
+            L.error(f"invalid roll processor:{ret}, session_meta:{self.__session_meta}")
+            raise ValueError(f"invalid roll endpoint:{ret}")
+        return ret
 
     def route_to_egg(self, partition: ErPartition):
         return self.__session.route_to_egg(partition)

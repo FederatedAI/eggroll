@@ -114,7 +114,7 @@ class ErSession(object):
         self.__cleanup_tasks = list()
         self.__processors = self.__session_meta._processors
 
-        L.info('session init finished')
+        L.info(f'session init finished:{self.__session_id}, {self.__session_meta}')
 
         self._rolls = list()
         self._eggs = dict()
