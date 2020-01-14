@@ -24,7 +24,7 @@ from eggroll.core.constants import StoreTypes
 from eggroll.core.meta_model import ErStoreLocator, ErStore
 from eggroll.core.proto import proxy_pb2, proxy_pb2_grpc
 from eggroll.core.serdes import eggroll_serdes
-from eggroll.roll_pair.roll_pair import RollPair
+from eggroll.roll_pair.roll_pair import RollPair, RollPairContext
 from eggroll.utils import log_utils
 
 LOGGER = log_utils.get_logger()
@@ -34,32 +34,28 @@ _serdes = eggroll_serdes.PickleSerdes
 STATUS_TABLE_NAME = "__roll_site_standalone_status__"
 
 class RollSiteContext:
-    # todo:0: use snake_naming instead of a mix of snake_andCamel
-    # todo:1: Adds an options dict
-    # todo:1: merge rs_ip and rs_port with ErEndpoint
-    def __init__(self, job_id, self_role, self_partyId, rs_ip, rs_port, rp_ctx):
-        self.job_id = job_id
+    def __init__(self, federation_sessionId, options, rp_ctx: RollPairContext):
+        self.federation_sessionId = federation_sessionId
         self.rp_ctx = rp_ctx
 
-        self.role = self_role
-        self.party_id = self_partyId
-        self.dst_host = rs_ip
-        self.dst_port = rs_port
+        self.role = options["self_role"]
+        self.party_id = options["self_partyId"]
+        self.ErEndpoint = options["rs_endpoint"]
 
         channel = grpc.insecure_channel(
-            target="{}:{}".format(self.dst_host, self.dst_port),
+            target="{}:{}".format(self.ErEndpoint._host, self.ErEndpoint._port),
             options=[('grpc.max_send_message_length', -1), ('grpc.max_receive_message_length', -1)])
         self.stub = proxy_pb2_grpc.DataTransferServiceStub(channel)
         self.is_standalone = self.rp_ctx.get_session().get_option(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE) == "standalone"
         if not self.is_standalone:
-            self.init_job_session_pair(self.job_id, self.rp_ctx.session_id)
+            self.init_job_session_pair(self.federation_sessionId, self.rp_ctx.session_id)
 
     # todo:1: add options?
     def load(self, name: str, tag: str):
         return RollSite(name, tag, self)
 
-    def init_job_session_pair(self, job_id, session_id):
-        task_info = proxy_pb2.Task(model=proxy_pb2.Model(name=job_id, dataKey=bytes(session_id, encoding='utf8')))
+    def init_job_session_pair(self, federation_sessionId, session_id):
+        task_info = proxy_pb2.Task(model=proxy_pb2.Model(name=federation_sessionId, dataKey=bytes(session_id, encoding='utf8')))
         topic_src = proxy_pb2.Topic(name="init_job_session_pair", partyId="{}".format(self.party_id),
                                     role=self.role, callback=None)
         topic_dst = proxy_pb2.Topic(name="init_job_session_pair", partyId="{}".format(self.party_id),
@@ -95,14 +91,13 @@ class RollSite:
         self.party_id = self.ctx.party_id
         self.dst_host = self.ctx.dst_host
         self.dst_port = self.ctx.dst_port
-        self.job_id = self.ctx.job_id
+        self.federation_sessionId = self.ctx.federation_sessionId
         self.local_role = self.ctx.role
         self.name = name
         self.tag = tag
         self.stub = self.ctx.stub
         self.process_pool = ThreadPoolExecutor(10)
         self.complete_pool = ThreadPoolExecutor(10)
-        #self.init_job_session_pair(self.job_id, self.ctx.rp_ctx.session_id)
 
 
     @staticmethod
@@ -132,12 +127,12 @@ class RollSite:
                     ret_packet = self.stub.unaryCall(packet)
                     time.sleep(0.1)
                 obj_type = ret_packet.body.value
-                table_name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.job_id, self.name, self.tag,
+                table_name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.federation_sessionId, self.name, self.tag,
                                                                            ret_packet.header.src.role,
                                                                            ret_packet.header.src.partyId,
                                                                            ret_packet.header.dst.role,
                                                                            ret_packet.header.dst.partyId]))
-                table_namespace = self.job_id
+                table_namespace = self.federation_sessionId
 
             rp = self.ctx.rp_ctx.load(namespace=table_namespace, name=table_name)
             if obj_type == b'object':
@@ -160,18 +155,18 @@ class RollSite:
             # for _partyId in _partyIds:
             _role = role_party_id[0]
             _party_id = role_party_id[1]
-            _tagged_key = self.__remote__object_key(self.job_id, self.name, self.tag, self.local_role, self.party_id,
+            _tagged_key = self.__remote__object_key(self.federation_sessionId, self.name, self.tag, self.local_role, self.party_id,
                                                     _role,
                                                     _party_id)
             LOGGER.debug(f"_tagged_key:{_tagged_key}")
-            namespace = self.job_id
+            namespace = self.federation_sessionId
             obj_type = 'rollpair' if isinstance(obj, RollPair) else 'object'
 
             if isinstance(obj, RollPair):
                 rp = obj
             else:
                 # If it is a object, put the object in the table and send the table meta.
-                name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.job_id, self.name, self.tag,
+                name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.federation_sessionId, self.name, self.tag,
                                                                      self.local_role, str(self.party_id),
                                                                      _role, str(_party_id)]))
 
@@ -183,12 +178,12 @@ class RollSite:
                 is_standalone = self.ctx.rp_ctx.get_session().get_option(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE) == "standalone"
                 #is_standalone = True
                 if is_standalone:
-                    dst_name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.job_id, self.name, self.tag,
+                    dst_name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.federation_sessionId, self.name, self.tag,
                                                                              self.local_role, str(self.party_id),
                                                                              _role, str(_party_id)]))
                     store_type = rp.get_store_type()
                 else:
-                    dst_name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.job_id, self.name,
+                    dst_name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.federation_sessionId, self.name,
                                                                              self.tag, self.local_role,
                                                                              str(self.party_id),
                                                                              _role, str(_party_id),
@@ -235,10 +230,10 @@ class RollSite:
     def pull(self, parties: list = None):
         futures = []
         for src_role, party_id in parties:
-            _tagged_key = self.__remote__object_key(self.job_id, self.name, self.tag, src_role, str(party_id),
+            _tagged_key = self.__remote__object_key(self.federation_sessionId, self.name, self.tag, src_role, str(party_id),
                                                     self.local_role, str(self.party_id))
 
-            name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.job_id, self.name, self.tag,
+            name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.federation_sessionId, self.name, self.tag,
                                                                  src_role, str(party_id),
                                                                  self.local_role, str(self.party_id)]))
 
@@ -263,7 +258,7 @@ class RollSite:
                                           conf=conf_test)
 
             packet = proxy_pb2.Packet(header=metadata)
-            namespace = self.job_id
+            namespace = self.federation_sessionId
             futures.append(self.process_pool.submit(RollSite._thread_receive, self, packet, namespace, _tagged_key))
 
         self.process_pool.shutdown(wait=False)
