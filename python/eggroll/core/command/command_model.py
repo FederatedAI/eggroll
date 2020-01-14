@@ -99,6 +99,7 @@ class CommandURI(object):
             uri_string = getattr(command_request, "_uri")
 
         self._uri = uri_string
+        self._prefix = ''
         self._parse_result = urlparse(self._uri)
         self._query_string = self._parse_result.query
         self._query_pairs = parse_qs(
@@ -114,6 +115,9 @@ class CommandURI(object):
 
     def get_route(self):
         return self.get_query_value('route')
+
+    def get_service_name(self):
+        return "/".join([self._prefix, self._uri])
 
     def __repr__(self):
         return f'CommandURI(_uri={self._uri})'

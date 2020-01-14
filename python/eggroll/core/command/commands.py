@@ -109,6 +109,14 @@ class SessionCommands(object):
     stop_session_service_name = _to_service_name(prefix, stop_session)
     STOP_SESSION = CommandURI(stop_session_service_name)
 
+    kill_session = 'killSession'
+    kill_session_service_name = _to_service_name(prefix, kill_session)
+    KILL_SESSION = CommandURI(kill_session_service_name)
+
+    kill_all_sessions = "killAllSessions"
+    kill_all_sessions_service_name = _to_service_name(prefix, kill_all_sessions)
+    KILL_ALL_SESSIONS = CommandURI(kill_all_sessions_service_name)
+
 
 class RollPairCommands(object):
     roll_prefix = 'v1/roll-pair'

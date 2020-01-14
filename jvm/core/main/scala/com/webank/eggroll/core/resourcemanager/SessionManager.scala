@@ -36,6 +36,10 @@ trait SessionManager {
   def registerSession(sessionMeta: ErSessionMeta): ErSessionMeta
 
   def stopSession(sessionMeta: ErSessionMeta): ErSessionMeta
+
+  def killSession(sessionMeta: ErSessionMeta): ErSessionMeta
+
+  def killAllSessions(sessionMeta: ErSessionMeta): ErSessionMeta
 }
 
 class SessionManagerService extends SessionManager {
@@ -54,8 +58,17 @@ class SessionManagerService extends SessionManager {
    * @return session main and options and processors
    */
   def getOrCreateSession(sessionMeta: ErSessionMeta): ErSessionMeta = {
-    if (smDao.existSession(sessionMeta.id)) {
-      return smDao.getSession(sessionMeta.id)
+    val sessionId = sessionMeta.id
+    if (smDao.existSession(sessionId)) {
+      var result = smDao.getSession(sessionId)
+
+      if (result != null) {
+        if (result.status.equals(SessionStatus.ACTIVE)) {
+          return result
+        } else {
+          return this.getSession(sessionMeta)
+        }
+      }
     }
     // 0. generate a simple processors -> server plan, and fill sessionMeta.processors
     // 1. class NodeManager.startContainers
@@ -93,7 +106,6 @@ class SessionManagerService extends SessionManager {
       nodeManagerClient.startContainers(newSessionMeta)
     })
 
-    val sessionId = sessionMeta.id
     val maxRetries = 200
 
     breakable {
@@ -115,7 +127,25 @@ class SessionManagerService extends SessionManager {
    * @return session main and options and processors
    */
   def getSession(sessionMeta: ErSessionMeta): ErSessionMeta = {
-    smDao.getSession(sessionMeta.id)
+    var result: ErSessionMeta = null
+    // todo:1: use retry framework
+    breakable {
+      var retries = 0
+      while (retries < 200) {
+        result = smDao.getSession(sessionMeta.id)
+        if (result != null && result.status.equals(SessionStatus.ACTIVE)) {
+          break()
+        } else {
+          Thread.sleep(100)
+        }
+      }
+    }
+
+    if (result.status.equals(SessionStatus.ACTIVE)) {
+      result
+    } else {
+      throw new RuntimeException(s"Failed to get session ${sessionMeta.id} after retries")
+    }
   }
 
   /**
@@ -167,7 +197,50 @@ class SessionManagerService extends SessionManager {
     }
 
     // todo:1: update selective
-    smDao.updateSessionMain(dbSessionMeta.copy(activeProcCount = 0, status = SessionStatus.CLOSED))
+    val stoppedSessionMain = dbSessionMeta.copy(activeProcCount = 0, status = SessionStatus.CLOSED)
+    smDao.updateSessionMain(stoppedSessionMain)
+    stoppedSessionMain
+  }
+
+  override def killSession(sessionMeta: ErSessionMeta): ErSessionMeta = {
+    val sessionId = sessionMeta.id
+    if (!smDao.existSession(sessionId)) {
+      return null
+    }
+
+    val dbSessionMeta = smDao.getSession(sessionId)
+
+    if (dbSessionMeta.status.equals(SessionStatus.KILLED) || dbSessionMeta.status.equals(SessionStatus.CLOSED)) {
+      return dbSessionMeta
+    }
+
+    val sessionHosts = dbSessionMeta.processors.map(p => p.commandEndpoint.host).toSet
+
+    val serverNodeCrudOperator = new ServerNodeCrudOperator()
+    val sessionServerNodes = serverNodeCrudOperator.getServerClusterByHosts(sessionHosts.toList.asJava).serverNodes
+
+    sessionServerNodes.par.foreach(n => {
+      // TODO:1: add new params?
+      val newSessionMeta = dbSessionMeta.copy(
+        options = dbSessionMeta.options ++ Map(ResourceManagerConfKeys.SERVER_NODE_ID -> n.id.toString))
+      val nodeManagerClient = new NodeManagerClient(
+        ErEndpoint(host = n.endpoint.host,
+          port = StaticErConf.getInt(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT, -1)))
+      nodeManagerClient.killContainers(newSessionMeta)
+    })
+
+    // todo:1: update selective
+    smDao.updateSessionMain(dbSessionMeta.copy(activeProcCount = 0, status = SessionStatus.KILLED))
     getSession(dbSessionMeta)
+  }
+
+  // todo:1: return value
+  override def killAllSessions(sessionMeta: ErSessionMeta): ErSessionMeta = {
+    val sessionStatusStub = Array(ErSessionMeta(status = SessionStatus.NEW), ErSessionMeta(status = SessionStatus.ACTIVE))
+    val sessionsToKill = sessionStatusStub.flatMap(s => smDao.getSessionMains(s))
+
+    sessionsToKill.par.map(s => killSession(s))
+
+    ErSessionMeta()
   }
 }
