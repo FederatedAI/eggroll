@@ -99,7 +99,7 @@ class CommandClient(defaultEndpoint:ErEndpoint = null, serdesType: String = Serd
           val ch: ManagedChannel = buildChannel(endpoint)
           val stub = CommandServiceGrpc.newFutureStub(ch)
           val argBytes = rpcMessages.map(x => UnsafeByteOperations.unsafeWrap(SerdesUtils.rpcMessageToBytes(x, SerdesTypes.PROTOBUF)))
-
+          logDebug(s"[COMMAND] calling to ${endpoint}. commandUri: ${commandURI.uriString}, req:${rpcMessages}")
           stub.call(
             Command.CommandRequest.newBuilder
               .setId(s"${sessionId}-command-${TimeUtils.getNowMs()}")
