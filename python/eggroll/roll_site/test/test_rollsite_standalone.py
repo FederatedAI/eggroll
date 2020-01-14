@@ -30,18 +30,15 @@ transfer_port_host = 20002
 remote_parties = [('host', '10001')]
 get_parties = [('guest', '10002')]
 
-host_partyId = 10001
-host_ip = 'localhost'
-host_rs_port = 9395
-guest_partyId = 10002
-guest_ip = 'localhost'
-guest_rs_port = 9396
+options_host = {'runtime_conf_path': 'python/eggroll/roll_site/conf/role_conf.json',
+                'server_conf_path': 'python/eggroll/roll_site/conf/server_conf.json'}
+options_guest = {'runtime_conf_path': 'python/eggroll/roll_site/conf_guest/role_conf.json',
+                 'server_conf_path': 'python/eggroll/roll_site/conf_guest/server_conf.json'}
 
 class TestRollSite(unittest.TestCase):
     def test_remote(self):
         rp_context = get_debug_test_context(is_standalone, manager_port_guest, egg_port_guest, transfer_port_guest, 'testing_guest')
-        context = RollSiteContext("atest", self_role='guest', self_partyId=guest_partyId, rs_ip=guest_ip, rs_port=guest_rs_port, rp_ctx=rp_context)
-
+        context = RollSiteContext("atest", options=options_guest, rp_ctx=rp_context)
         _tag = "Hello2"
         rs = context.load(name="RsaIntersectTransferVariable.rsa_pubkey", tag="{}".format(_tag))
         fp = open("testA.model", 'r')
@@ -54,8 +51,6 @@ class TestRollSite(unittest.TestCase):
 
     def test_get(self):
         rp_context = get_debug_test_context(is_standalone, manager_port_host, egg_port_host, transfer_port_host, 'testing')
-        context = RollSiteContext("atest", self_role='host', self_partyId=host_partyId, rs_ip=host_ip, rs_port=host_rs_port, rp_ctx=rp_context)
-
         context = RollSiteContext("atest", options=options_host, rp_ctx=rp_context)
         _tag = "Hello2"
         rs = context.load(name="RsaIntersectTransferVariable.rsa_pubkey", tag="{}".format(_tag))
@@ -71,8 +66,7 @@ class TestRollSite(unittest.TestCase):
     def test_remote_rollpair(self):
         rp_context = get_debug_test_context(is_standalone, manager_port_guest, egg_port_guest, transfer_port_guest, 'testing_guest')
         data = [("k1", "v1"), ("k2", "v2"), ("k3", "v3"), ("k4", "v4"), ("k5", "v5"), ("k6", "v6")]
-        context = RollSiteContext("atest2", self_role='guest', self_partyId=guest_partyId, rs_ip=guest_ip, rs_port=guest_rs_port, rp_ctx=rp_context)
-
+        context = RollSiteContext("atest2", options=options_guest, rp_ctx=rp_context)
         rp_options = {'include_key': True}
         rp = rp_context.load("namespace", "name").put_all(data, options=rp_options)
         _tag = "Hello"
@@ -84,8 +78,7 @@ class TestRollSite(unittest.TestCase):
 
     def test_get_rollpair(self):
         rp_context = get_debug_test_context(is_standalone, manager_port_host, egg_port_host, transfer_port_host, 'testing')
-        context = RollSiteContext("atest2", self_role='host', self_partyId=host_partyId, rs_ip=host_ip, rs_port=host_rs_port, rp_ctx=rp_context)
-
+        context = RollSiteContext("atest2", options=options_host, rp_ctx=rp_context)
         _tag = "roll_pair_tag"
         rs = context.load(name="roll_pair_name.table", tag="{}".format(_tag))
         futures = rs.pull(get_parties)
