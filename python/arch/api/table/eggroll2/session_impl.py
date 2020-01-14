@@ -85,7 +85,8 @@ class FateSessionImpl(TableManger):
         options["namespace"] = namespace
         options["create_if_missing"] = create_if_missing
         options["total_partitions"] = partition
-
+        
+        options["include_key"] = include_key
         dtable = self._eggroll.parallelize(data=data, options=options)
         rdd_inst = DTable(dtable, session_id=self._session_id)
 
