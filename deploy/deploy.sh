@@ -1,4 +1,4 @@
-cwd=`pwd`
+cwd=$(cd `dirname $0`; pwd)
 source ./conf.sh
 version=2.0
 cd ..
@@ -7,11 +7,13 @@ mkdir lib
 
 cp -r ./jvm/core/target/eggroll-core-${version}.jar ./lib
 cp -r ./jvm/core/target/lib/* ./lib
-cp -r ./jvm/roll_pair/target/lib/* ./lib
 cp -r ./jvm/roll_pair/target/eggroll-roll-pair-${version}.jar ./lib
+cp -r ./jvm/roll_pair/target/lib/* ./lib
+cp -r ./jvm/roll_site/target/eggroll-roll-site-${version}.jar ./lib
+cp -r ./jvm/roll_site/target/lib/* ./lib
 cp ./jvm/core/main/resources/create-eggroll-meta-tables.sql ./conf
 
-tar -czf eggroll.tar.gz lib bin conf data python deploy eggroll.sh
+tar -czf eggroll.tar.gz lib bin conf data python deploy
 
 for ip in ${iplist[@]};do
 	
@@ -27,7 +29,7 @@ for ip in ${iplist[@]};do
 		fi
 	fi
 	scp eggroll.tar.gz app@$ip:${EGGROLL_HOME}
-	ssh -tt app@$ip "echo 'export EGGROLL_HOME=${EGGROLL_HOME}' >> ~/.bashrc;cd ${EGGROLL_HOME};tar -xzf eggroll.tar.gz;rm -f eggroll.tar.gz"
+	ssh -tt app@$ip "cd ${EGGROLL_HOME};tar -xzf eggroll.tar.gz;rm -f eggroll.tar.gz"
 done
 
 rm -f eggroll.tar.gz 
