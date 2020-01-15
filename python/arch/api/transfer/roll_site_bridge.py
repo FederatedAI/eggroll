@@ -4,6 +4,7 @@ from typing import Union
 from arch.api.table.eggroll2.table_impl import DTable
 from arch.api.table.session import FateSession
 from arch.api.transfer import Rubbish, Party, Federation
+from eggroll.core.meta_model import ErEndpoint
 from eggroll.roll_pair.roll_pair import RollPair
 from eggroll.utils import file_utils
 
@@ -45,10 +46,8 @@ def init_roll_site_context(runtime_conf, session_id):
     session_instance = FateSession.get_instance()._eggroll.get_session()
     rp_context = RollPairContext(session_instance)
 
-    LOGGER.info("### hwz init session_id:{}".format(session_instance.get_session_id()))
-    #rs_context = RollSiteContext(session_instance.get_session_id(), options=options, rp_ctx=rp_context)
     role = runtime_conf.get("local").get("role")
-    partyId = runtime_conf.get("local").get("party_id")
+    party_id = runtime_conf.get("local").get("party_id")
     import os
     _path = os.environ['FATE_HOME'] + "/arch/conf/server_conf.json"
 
@@ -56,7 +55,13 @@ def init_roll_site_context(runtime_conf, session_id):
     host = server_conf.get('servers').get('proxy').get("host")
     port = server_conf.get('servers').get('proxy').get("port")
 
-    rs_context = RollSiteContext(session_id, self_role=role, self_partyId=partyId, rs_ip=host, rs_port=port, rp_ctx=rp_context)
+    options = {'self_role': role,
+               'self_party_id': party_id,
+               'proxy_endpoint': ErEndpoint(host, int(port))
+              }
+
+    rs_context = RollSiteContext(session_id, options, rp_ctx=rp_context)
+
     return rp_context, rs_context
 
 
