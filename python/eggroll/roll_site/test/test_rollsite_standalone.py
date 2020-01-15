@@ -42,12 +42,12 @@ guest_rs_port = 9396
 
 host_options = {'self_role': 'host',
                 'self_partyId': 10001,
-                'rs_endpoint': ErEndpoint(host='localhost', port=9395),
+                'proxy_endpoint': ErEndpoint(host='localhost', port=9395),
                 }
 
 guest_options = {'self_role': 'guest',
                  'self_partyId': 10002,
-                 'rs_endpoint': ErEndpoint(host='localhost', port=9396),
+                 'proxy_endpoint': ErEndpoint(host='localhost', port=9396),
                  }
 
 
