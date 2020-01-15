@@ -73,7 +73,7 @@ class ErSession(val sessionId: String = s"er_session_jvm_${TimeUtils.getNowMs()}
   def routeToEgg(partition: ErPartition): ErProcessor = {
     val serverNodeId = partition.processor.serverNodeId
     val eggCountOnServerNode = eggs(serverNodeId).length
-    val eggIdx = partition.id / eggCountOnServerNode % eggCountOnServerNode
+    val eggIdx = partition.id / eggs.size % eggCountOnServerNode
 
     eggs(serverNodeId)(eggIdx)
   }
