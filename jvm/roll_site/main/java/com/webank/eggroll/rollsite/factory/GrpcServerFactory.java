@@ -277,6 +277,7 @@ public class GrpcServerFactory {
                 proxyServerConf.setPartyId(partyIdString);
             }
 
+            /*
             String role = properties.getProperty("role", null);
             if (role == null) {
                 throw new IllegalArgumentException("role cannot be null");
@@ -312,6 +313,7 @@ public class GrpcServerFactory {
                     proxyServerConf.setGatewayRole(gatewayRoleString);
                 }
             }
+            */
 
             String routeTablePath = properties.getProperty("route.table", null);
             if (routeTablePath == null) {
