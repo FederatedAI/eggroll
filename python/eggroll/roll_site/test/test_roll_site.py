@@ -22,11 +22,11 @@ from eggroll.roll_site.test.roll_site_test_asset import get_debug_test_context, 
     remote_parties, \
     get_parties
 
-props_file_host = default_props_file
-#props_file_host = default_props_file + '.host'
+#props_file_host = default_props_file
+props_file_host = default_props_file + '.host'
 
-props_file_guest = default_props_file
-#props_file_guest = default_props_file + '.guest'
+#props_file_guest = default_props_file
+props_file_guest = default_props_file + '.guest'
 
 
 class TestRollSiteBase(unittest.TestCase):
@@ -42,11 +42,13 @@ class TestRollSiteBase(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        cls.rs_context_host = get_debug_test_context(props_file=props_file_host)
+        cls.rs_context_host = get_debug_test_context(role='host',
+                                                     props_file=props_file_host)
         cls.rs_context_guest = get_debug_test_context(manager_port=4671,
                                                       egg_port=20003,
                                                       transfer_port=20004,
                                                       session_id='testing_guest',
+                                                      role='guest',
                                                       props_file=props_file_guest)
 
     def test_remote(self):
@@ -110,8 +112,8 @@ class TestRollSiteBase(unittest.TestCase):
 class TestRollSiteStandalone(TestRollSiteBase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.rs_context_host = get_standalone_context(props_file=props_file_host)
-        cls.rs_context_guest = get_standalone_context(props_file=props_file_guest)
+        cls.rs_context_host = get_standalone_context(role='host', props_file=props_file_host)
+        cls.rs_context_guest = get_standalone_context(role='guest', props_file=props_file_guest)
 
     def test_remote(self):
         super().test_remote()
@@ -130,8 +132,8 @@ class TestRollSiteCluster(TestRollSiteBase):
     @classmethod
     def setUpClass(cls) -> None:
         opts = {"eggroll.session.max.processors.per.node": "3"}
-        cls.rs_context_host = get_cluster_context(options=opts, props_file=props_file_host)
-        cls.rs_context_guest = get_cluster_context(options=opts, props_file=props_file_guest)
+        cls.rs_context_host = get_cluster_context(role='host', options=opts, props_file=props_file_host)
+        cls.rs_context_guest = get_cluster_context(role='guest', options=opts, props_file=props_file_guest)
 
     def test_remote(self):
         super().test_remote()
