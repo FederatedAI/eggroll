@@ -35,7 +35,7 @@ import scala.collection.mutable.ArrayBuffer
 
 class StoreCrudOperator extends CrudOperator with Logging {
   private val crudOperatorTemplate = new CrudOperatorTemplate()
-  def getOrCreateStore(input: ErStore): ErStore = {
+  def getOrCreateStore(input: ErStore): ErStore = synchronized {
     def doGetOrCreateStore(input: ErStore, sqlSession: SqlSession): ErStore = {
       val inputStoreLocator = input.storeLocator
       val inputWithoutType = input.copy(storeLocator = inputStoreLocator.copy(storeType = StringConstants.EMPTY))
