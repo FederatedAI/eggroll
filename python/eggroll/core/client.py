@@ -36,6 +36,11 @@ from eggroll.utils.log_utils import get_logger
 L = get_logger()
 
 
+class CommandCallError(Exception):
+    def __init__(self, command_uri: CommandURI, endpoint: ErEndpoint, *args: object) -> None:
+        super().__init__(f"Failed to call command: {command_uri} to endpoint: {endpoint}, caused by: ", *args)
+
+
 class CommandClient(object):
     def __init__(self):
         self._channel_factory = GrpcChannelFactory()
@@ -69,7 +74,7 @@ class CommandClient(object):
                 return []
         except Exception as e:
             L.exception(f'Error calling to {endpoint}, command_uri: {command_uri}, req:{request}')
-            raise e
+            raise CommandCallError(command_uri, endpoint, e)
 
     def async_call(self, args, output_types: list, command_uri: CommandURI, serdes_type=SerdesTypes.PROTOBUF, parallel_size=5):
         futures = list()
