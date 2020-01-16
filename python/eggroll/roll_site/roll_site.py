@@ -33,8 +33,10 @@ _serdes = eggroll_serdes.PickleSerdes
 
 STATUS_TABLE_NAME = "__roll_site_standalone_status__"
 
+
 class RollSiteContext:
-    def __init__(self, federation_session_id, options, rp_ctx: RollPairContext):
+    def __init__(self, federation_session_id, options: RollPairContext,
+            rp_ctx: dict):
         self.federation_session_id = federation_session_id
         self.rp_ctx = rp_ctx
 
@@ -51,7 +53,7 @@ class RollSiteContext:
             self.init_job_session_pair(self.federation_session_id, self.rp_ctx.session_id)
 
     # todo:1: add options?
-    def load(self, name: str, tag: str):
+    def load(self, name: str, tag: str, options={}):
         return RollSite(name, tag, self)
 
     def init_job_session_pair(self, federation_session_id, session_id):
@@ -86,7 +88,7 @@ CONF_KEY_SERVER = "servers"
 
 
 class RollSite:
-    def __init__(self, name: str, tag: str, rs_ctx: RollSiteContext):
+    def __init__(self, name: str, tag: str, rs_ctx: RollSiteContext, options={}):
         self.ctx = rs_ctx
         self.party_id = self.ctx.party_id
         self.dst_host = self.ctx.ErEndpoint._host
@@ -141,8 +143,9 @@ class RollSite:
                 return ret_obj
             else:
                 return rp
-        except:
+        except Exception as e:
             LOGGER.exception("thread recv error")
+            raise e
         finally:
             LOGGER.debug("done")
 
