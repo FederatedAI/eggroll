@@ -16,6 +16,7 @@ from urllib.parse import urlparse, parse_qs
 
 from eggroll.core.base_model import RpcMessage
 from eggroll.core.proto import command_pb2
+from eggroll.core.utils import _map_and_listify
 
 
 class ErCommandRequest(RpcMessage):
@@ -46,7 +47,9 @@ class ErCommandRequest(RpcMessage):
         return self.__repr__()
 
     def __repr__(self):
-        return f'ErCommandRequest(id={self._id}, uri={self._uri}, args=[***, len={len(self._args)}], kwargs=[***, len={len(self._kwargs)}])'
+        return f'ErCommandRequest(id={self._id}, uri={self._uri}, ' \
+               f'args=[{_map_and_listify(lambda v : v[:100], self.args)}, len={len(self._args)}], ' \
+               f'kwargs=[***, len={len(self._kwargs)}])'
 
 
 class ErCommandResponse(RpcMessage):

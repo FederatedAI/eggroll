@@ -114,6 +114,7 @@ class CommandClient(defaultEndpoint: ErEndpoint = null,
               .setUri(commandUri.uri.toString)
               .addAllArgs(argBytes.toList.asJava).build)
         } catch {
+
           case t: Throwable =>
             logError(s"[COMMAND] error calling to ${endpoint}. commandUri: ${commandUri.uriString}")
             throw new CommandCallException(commandUri, endpoint, t)
@@ -127,7 +128,7 @@ class CommandClient(defaultEndpoint: ErEndpoint = null,
       } catch {
         case t: Throwable =>
           logError(s"[COMMAND] error waiting to ${args(n)._2}. commandUri: ${commandUri.uriString}")
-          throw new CommandCallException(commandUri, null, t)
+          throw new CommandCallException(commandUri, args(n)._2, t)
       }
 
     }
