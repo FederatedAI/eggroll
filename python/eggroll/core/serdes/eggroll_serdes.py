@@ -21,9 +21,23 @@ from pickle import loads as p_loads
 from eggroll.core.constants import SerdesTypes
 from eggroll.core.serdes import cloudpickle
 from eggroll.utils.log_utils import get_logger
-
+import pickle, importlib, io
 L = get_logger()
 
+class EggrollUnpickler(pickle.Unpickler):
+    def find_class(self, module, name):
+        try:
+            return super().find_class(module, name)
+        except:
+            return getattr(importlib.import_module(module), name)
+
+def eggroll_pickle_loads(bin):
+    file = io.BytesIO(bin)
+    try:
+        up = EggrollUnpickler(file)
+        return up.load()
+    finally:
+        file.close()
 
 class ABCSerdes:
     __metaclass__ = ABCMeta
@@ -48,7 +62,10 @@ class CloudPickleSerdes(ABCSerdes):
     def deserialize(_bytes):
         if _bytes:
             bytes_security_check(_bytes)
-            return p_loads(_bytes)
+            try:
+                return p_loads(_bytes)
+            except:
+                return eggroll_pickle_loads(_bytes)
 
 
 class PickleSerdes(ABCSerdes):
@@ -60,7 +77,10 @@ class PickleSerdes(ABCSerdes):
     @staticmethod
     def deserialize(_bytes):
         bytes_security_check(_bytes)
-        return p_loads(_bytes)
+        try:
+            return p_loads(_bytes)
+        except:
+            return eggroll_pickle_loads(_bytes)
 
 
 class EmptySerdes(ABCSerdes):
