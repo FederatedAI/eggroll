@@ -265,7 +265,7 @@ public class GrpcServerFactory {
                 //int partyId = Integer.valueOf(partyIdString);
                 proxyServerConf.setPartyId(partyIdString);
             }
-
+/*
             String role = properties.getProperty("role", null);
             if (role == null) {
                 throw new IllegalArgumentException("role cannot be null");
@@ -274,7 +274,7 @@ public class GrpcServerFactory {
             }
 
             System.out.println("role:" + role);
-/*
+
             if(role.equals("guest")) {
                 String gatewayIpString = properties.getProperty("gatewayIp", null);
                 proxyServerConf.setGatewayIp(gatewayIpString);
