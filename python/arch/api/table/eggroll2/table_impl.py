@@ -83,8 +83,11 @@ class DTable(Table):
         return self._dtable.get_all()
 
     @log_elapsed
-    def get_all(self):
-        return self._dtable.get_all()
+    def get_all(self, should_sort=True):
+        ret = self._dtable.get_all()
+        if should_sort:
+            ret = sorted(ret, key=lambda x: x[0])
+        return ret
 
     def delete(self, k, use_serialize=True):
         return self._dtable.delete(k=k)
