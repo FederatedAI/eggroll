@@ -114,7 +114,6 @@ class CommandClient(defaultEndpoint: ErEndpoint = null,
               .setUri(commandUri.uri.toString)
               .addAllArgs(argBytes.toList.asJava).build)
         } catch {
-
           case t: Throwable =>
             logError(s"[COMMAND] error calling to ${endpoint}. commandUri: ${commandUri.uriString}")
             throw new CommandCallException(commandUri, endpoint, t)
