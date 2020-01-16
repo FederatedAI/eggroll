@@ -42,11 +42,13 @@ class StoreCrudOperator extends CrudOperator with Logging {
       val inputStoreType = inputStoreLocator.storeType
       val existing = StoreCrudOperator.doGetStore(inputWithoutType, sqlSession)
       if (existing != null) {
-        if (existing.storeLocator.storeType.equals(inputStoreType)) existing
-        else throw new CrudException(
-          s"store namespace: ${inputStoreLocator.namespace}, name: ${inputStoreLocator.name} " +
-            s"already exist with store type: ${existing.storeLocator.storeType}. " +
-            s"requires type: ${inputStoreLocator.storeType}")
+        if (!existing.storeLocator.storeType.equals(inputStoreType)) {
+          logWarning(
+            s"store namespace: ${inputStoreLocator.namespace}, name: ${inputStoreLocator.name} " +
+              s"already exist with store type: ${existing.storeLocator.storeType}. " +
+              s"requires type: ${inputStoreLocator.storeType}")
+        }
+        existing
       } else {
         StoreCrudOperator.doCreateStore(input, sqlSession)
       }

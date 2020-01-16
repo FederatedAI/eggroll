@@ -73,12 +73,12 @@ class CommandRouter(object):
             task = meta_pb2.Task()
             msg_len = task.ParseFromString(arg)
             deserialized_args.append(ErTask.from_proto(task))
-        L.debug(f"calling [{service_name}]")
+        L.info(f"[COMMAND] calling [{service_name}], args[0]: {repr(deserialized_args[0])[:1000]}")
         import time
         start = time.time()
         call_result = _method(_instance, *deserialized_args)
         cost = time.time() - start
-        L.debug(f"called [{service_name}], cost: {cost}, result:{call_result}")
+        L.info(f"called [{service_name}], time used: {cost}, result: {repr(call_result)[:1000]}")
 
         # todo:2: defaulting to pb message. need changes when other types of result is present
         return [call_result.to_proto().SerializeToString()]

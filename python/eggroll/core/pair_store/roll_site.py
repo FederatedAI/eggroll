@@ -13,25 +13,25 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
-import _io
 import sys
-import os
-import pickle
-import grpc
 
-from eggroll.core.pair_store.adapter import PairWriteBatch, PairIterator, PairAdapter
-
-from eggroll.core.proto import meta_pb2
-from eggroll.core.utils import _elements_to_proto
-
-from eggroll.core.proto import proxy_pb2, proxy_pb2_grpc
+from eggroll.core.grpc.factory import GrpcChannelFactory
+from eggroll.core.meta_model import ErEndpoint
+from eggroll.core.pair_store.adapter import PairWriteBatch, PairIterator, \
+    PairAdapter
 from eggroll.core.pair_store.format import PairBinWriter, ArrayByteBuffer
+from eggroll.core.proto import meta_pb2
+from eggroll.core.proto import proxy_pb2, proxy_pb2_grpc
 from eggroll.core.serdes import eggroll_serdes
+from eggroll.core.utils import _elements_to_proto
 
 _serdes = eggroll_serdes.PickleSerdes
 OBJECT_STORAGE_NAME = "__federation__"
 
+
 class RollsiteWriteBatch(PairWriteBatch):
+    grpc_channel_factory = GrpcChannelFactory()
+
     def __init__(self, adapter):
         self.adapter = adapter
         self.name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([adapter.job_id, adapter.name, adapter.tag,
@@ -47,9 +47,7 @@ class RollsiteWriteBatch(PairWriteBatch):
 
         host = adapter._dst_host
         port = adapter._dst_port
-        channel = grpc.insecure_channel(
-            target="{}:{}".format(host, port),
-            options=[('grpc.max_send_message_length', -1), ('grpc.max_receive_message_length', -1)])
+        channel = self.grpc_channel_factory.create_channel(ErEndpoint(host=host, port=port))
         self.stub = proxy_pb2_grpc.DataTransferServiceStub(channel)
 
         self.__bin_packet_len = 1 << 20
