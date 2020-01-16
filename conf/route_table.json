@@ -1,0 +1,28 @@
+
+{
+  "route_table":
+  {
+    "default":
+    {
+      "default":[
+        {
+          "port":"9395",
+          "ip":"localhost"
+        }
+      ]
+    },
+    "10002":
+    {
+      "default":[
+        {
+          "port":9396,
+          "ip":"localhost"
+        }
+      ]
+    }
+  },
+  "permission":
+  {
+    "default_allow":true
+  }
+}
