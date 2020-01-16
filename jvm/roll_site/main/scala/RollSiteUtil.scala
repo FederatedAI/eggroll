@@ -30,7 +30,6 @@ import com.webank.eggroll.rollpair.{RollPair, RollPairContext}
 class RollSiteUtil(val session_id: String, name:String, namespace:String) {
   private val session =  new ErSession(sessionId = session_id, createIfNotExists = false)
   private val ctx = new RollPairContext(session)
-  //private val nameStripped = name
   println("scalaPutBatch  name:" + name + ",namespace:" + namespace)
   val rp:RollPair = ctx.load(namespace, name)
 
