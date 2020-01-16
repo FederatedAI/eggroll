@@ -117,9 +117,12 @@ class RollSite:
                 retry_cnt = 0
                 # TODO:0: sleep retry count and timeout
                 while True:
-                    if retry_cnt % 100 == 0:
-                        L.info(f"retry pull:retry_cnt:{retry_cnt}," +
-                               f" tagged_key:{_tagged_key}, packet:{packet}, namespace:{namespace}")
+                    msg = f"retry pull: retry_cnt: {retry_cnt}," + \
+                          f" tagged_key: '{_tagged_key}', packet: {packet}, namespace: {namespace}"
+                    if retry_cnt % 10 == 0:
+                        L.info(msg)
+                    else:
+                        L.debug(msg)
                     retry_cnt += 1
                     ret_list = status_rp.get(_tagged_key)
                     if ret_list:
@@ -133,8 +136,12 @@ class RollSite:
                 retry_cnt = 0
                 ret_packet = self.stub.unaryCall(packet)
                 while ret_packet.header.ack != 123:
-                    if retry_cnt % 100 == 0:
-                        L.info(f"retry pull tagged_key:{_tagged_key}, packet:{packet}, namespace:{namespace}")
+                    msg = f"retry pull: retry_cnt: {retry_cnt}," + \
+                          f" tagged_key: '{_tagged_key}', packet: {packet}, namespace: {namespace}"
+                    if retry_cnt % 10 == 0:
+                        L.info(msg)
+                    else:
+                        L.debug(msg)
                     retry_cnt += 1
                     if ret_packet.header.ack in ERROR_STATES:
                         raise IOError("receive terminated")
