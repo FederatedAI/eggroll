@@ -1,5 +1,20 @@
 #!/usr/bin/env bash
 
+echo
+echo
+echo "====== start of $0 ======"
+
+echo "pwd: `pwd`"
+echo "$0, pid: $$"
+echo "script params: $@ "
+
+echo "------ env starts -----"
+env
+echo "------ env ends -----"
+
+
+echo "------ script body ------"
+
 ONE_ARG_LIST=(
   "config"
   "session-id"
@@ -114,8 +129,14 @@ else
   PYTHON=${venv}/bin/python
 fi
 
-export PYTHONPATH=${pythonpath}:$PYTHONPATH
+export PYTHONPATH=${pythonpath}:${PYTHONPATH}
 echo "PYTHONPATH: ${PYTHONPATH}"
+echo "PYTHON: `which python`"
+
+echo "------ python version starts ------"
+${PYTHON} --version
+echo "------ python version ends ------"
+
 cmd="${PYTHON} ${filepath} --config ${config} --session-id ${session_id} --server-node-id ${server_node_id} --cluster-manager ${cluster_manager_host}:${cluster_manager_port} --node-manager ${node_manager_port} --processor-id ${processor_id}"
 
 if [[ -n ${port} ]]; then
