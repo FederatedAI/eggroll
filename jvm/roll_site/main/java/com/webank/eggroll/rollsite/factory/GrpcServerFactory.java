@@ -20,40 +20,19 @@ import com.google.common.net.InetAddresses;
 import com.google.protobuf.ByteString;
 import com.webank.ai.eggroll.api.core.BasicMeta;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
-import com.webank.eggroll.rollsite.grpc.client.DataTransferPipedClient;
-import com.webank.eggroll.rollsite.infra.Pipe;
-import com.webank.eggroll.rollsite.manager.ServerConfManager;
-import com.webank.eggroll.rollsite.service.FdnRouter;
 import com.webank.eggroll.rollsite.channel.AccessRedirector;
+import com.webank.eggroll.rollsite.grpc.client.DataTransferPipedClient;
 import com.webank.eggroll.rollsite.grpc.service.DataTransferPipedServerImpl;
 import com.webank.eggroll.rollsite.grpc.service.RouteServerImpl;
+import com.webank.eggroll.rollsite.manager.ServerConfManager;
 import com.webank.eggroll.rollsite.model.ProxyServerConf;
+import com.webank.eggroll.rollsite.service.FdnRouter;
 import io.grpc.Server;
 import io.grpc.netty.shaded.io.grpc.netty.GrpcSslContexts;
 import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder;
 import io.grpc.netty.shaded.io.netty.handler.ssl.ClientAuth;
 import io.grpc.netty.shaded.io.netty.handler.ssl.SslContext;
 import io.grpc.netty.shaded.io.netty.handler.ssl.SslContextBuilder;
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.util.concurrent.CountDownLatch;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.core.config.ConfigurationSource;
-import org.apache.logging.log4j.core.config.Configurator;
-import org.json.JSONArray;
-import org.json.JSONObject;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationContext;
-import org.springframework.core.task.TaskExecutor;
-import org.springframework.stereotype.Component;
-import com.google.gson.JsonObject;
-
-import javax.net.ssl.SSLException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -64,6 +43,16 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
+import javax.net.ssl.SSLException;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.core.config.ConfigurationSource;
+import org.apache.logging.log4j.core.config.Configurator;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
+import org.springframework.core.task.TaskExecutor;
+import org.springframework.stereotype.Component;
 
 
 @Component
@@ -285,6 +274,7 @@ public class GrpcServerFactory {
             }
 
             System.out.println("role:" + role);
+/*
             if(role.equals("guest")) {
                 String gatewayIpString = properties.getProperty("gatewayIp", null);
                 proxyServerConf.setGatewayIp(gatewayIpString);
@@ -312,6 +302,7 @@ public class GrpcServerFactory {
                     proxyServerConf.setGatewayRole(gatewayRoleString);
                 }
             }
+*/
 
             String routeTablePath = properties.getProperty("route.table", null);
             if (routeTablePath == null) {

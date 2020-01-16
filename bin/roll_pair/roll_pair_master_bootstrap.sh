@@ -1,5 +1,19 @@
 #!/usr/bin/env bash
 
+echo
+echo
+echo "====== start of $0 ======"
+
+echo "pwd: `pwd`"
+echo "$0, pid: $$"
+echo "script params: $@ "
+
+echo "------ env starts -----"
+env
+echo "------ env ends -----"
+
+echo "------ script body ------"
+
 ONE_ARG_LIST=(
   "config"
   "session-id"
@@ -121,6 +135,11 @@ if [[ -z ${mainclass} ]]; then
 fi
 
 export EGGROLL_LOG_FILE="roll_pair_master-${processor_id}"
+
+echo "------ jvm version starts ------"
+${JAVA} --version
+echo "------ jvm version ends ------"
+
 
 cmd="${JAVA} ${jvm_options} -Dlog4j.configurationFile=${EGGROLL_LOG_CONF} -cp ${classpath} com.webank.eggroll.core.Bootstrap --bootstraps ${mainclass} --config ${config} --session-id ${session_id} --server-node-id ${server_node_id} --cluster-manager ${cluster_manager_host}:${cluster_manager_port} --node-manager ${node_manager_port} --processor-id ${processor_id}"
 
