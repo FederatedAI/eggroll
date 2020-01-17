@@ -34,9 +34,9 @@ class LmdbIterator(PairIterator):
     def __init__(self, adapter):
         L.info("create lmdb iterator")
         self.adapter = adapter
-        with LmdbAdapter.env_lock:
-            self.txn_r = adapter.env.begin(db=adapter.sub_db, write=False)
-            self.cursor = self.txn_r.cursor()
+        # with LmdbAdapter.env_lock:
+        self.txn_r = adapter.env.begin(db=adapter.sub_db, write=False)
+        self.cursor = self.txn_r.cursor()
 
     # move cursor to the first key position
     # return True if success or False if db is empty
@@ -100,7 +100,6 @@ class LmdbAdapter(PairAdapter):
         self.cursor = None
         self.options = options
         with LmdbAdapter.env_lock:
-            L.info("lmdb init")
             super().__init__(options)
             self.path = options["path"]
             lmdb_map_size = options.get("lmdb_map_size", LMDB_MAP_SIZE if platform.system() != 'Windows' else LMDB_MAP_SIZE_WINDOWS)
@@ -108,7 +107,7 @@ class LmdbAdapter(PairAdapter):
             if self.path not in LmdbAdapter.env_dict:
                 if create_if_missing:
                     os.makedirs(self.path, exist_ok=True)
-                L.debug("path not in dict db path:{}".format(self.path))
+                L.debug("lmdb init create env:{}".format(self.path))
                 writemap = False if platform.system() == 'Darwin' else True
                 self.env = lmdb.open(self.path, create=create_if_missing, max_dbs=128, sync=False, map_size=lmdb_map_size, writemap=writemap)
                 self.sub_db = self.env.open_db(DEFAULT_DB)
@@ -116,25 +115,26 @@ class LmdbAdapter(PairAdapter):
                 LmdbAdapter.env_dict[self.path] = self.env
                 LmdbAdapter.sub_db_dict[self.path] = self.sub_db
             else:
-                L.debug("path in dict:{}".format(self.path))
+                L.debug("lmdb init get env:{}".format(self.path))
                 self.env = LmdbAdapter.env_dict[self.path]
                 self.sub_db = LmdbAdapter.sub_db_dict[self.path]
             LmdbAdapter.count_dict[self.path] = LmdbAdapter.count_dict[self.path] + 1
+            L.info("lmdb inited:" + self.path)
 
     def _init_write(self):
         if self.txn_w:
             return
-        with LmdbAdapter.env_lock:
-            L.debug("lmdb init write:" + self.path)
-            self.txn_w = self.env.begin(db=self.sub_db, write=True)
+        # with LmdbAdapter.env_lock:
+        L.debug("lmdb init write:" + self.path)
+        self.txn_w = self.env.begin(db=self.sub_db, write=True)
 
     def _init_read(self):
         if self.txn_r:
             return
-        with LmdbAdapter.env_lock:
-            L.debug("lmdb init read:" + self.path)
-            self.txn_r = self.env.begin(db=self.sub_db, write=False)
-            self.cursor = self.txn_r.cursor()
+        # with LmdbAdapter.env_lock:
+        L.debug("lmdb init read:" + self.path)
+        self.txn_r = self.env.begin(db=self.sub_db, write=False)
+        self.cursor = self.txn_r.cursor()
 
     def __enter__(self):
         return self
@@ -147,12 +147,12 @@ class LmdbAdapter(PairAdapter):
         self.close()
 
     def close(self):
+        if self.txn_r:
+            self.txn_r.commit()
+            self.cursor.close()
+        if self.txn_w:
+            self.txn_w.commit()
         with LmdbAdapter.env_lock:
-            if self.txn_r:
-                self.txn_r.commit()
-                self.cursor.close()
-            if self.txn_w:
-                self.txn_w.commit()
             if self.env:
                 count = LmdbAdapter.count_dict[self.path]
                 if not count or count - 1 <= 0:
