@@ -15,6 +15,7 @@ import json
 import sys
 import time
 import traceback
+import uuid
 from datetime import datetime
 
 from google.protobuf.text_format import MessageToString
@@ -125,8 +126,9 @@ def get_self_ip():
     return self_ip
 
 
+# TODO:0: replace uuid with simpler human friendly solution
 def generate_job_id(session_id, tag='', delim='-'):
-    result = f'{session_id}{delim}job{delim}{time_now()}'
+    result = delim.join([session_id, 'job', time_now(), uuid.uuid4().hex])
     if not tag:
         return result
     else:
