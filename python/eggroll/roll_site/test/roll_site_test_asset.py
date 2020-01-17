@@ -39,7 +39,7 @@ EGGROLL_HOME = os.environ['EGGROLL_HOME']
 default_props_file = f"{EGGROLL_HOME}/conf/eggroll.properties"
 
 
-def get_option(conf_file=default_props_file):
+def get_option(role, conf_file=default_props_file):
     configs = configparser.ConfigParser()
 
     configs.read(conf_file)
@@ -48,7 +48,7 @@ def get_option(conf_file=default_props_file):
     options = {}
     party_id = eggroll_configs['partyId']
     options['self_party_id'] = party_id
-    options['self_role'] = eggroll_configs['role']
+    options['self_role'] = role
 
     with open(f"{EGGROLL_HOME}/conf/route_table.json") as route_table_file:
         route_table = json.load(route_table_file)["route_table"]
@@ -84,6 +84,7 @@ def get_debug_test_context(is_standalone=False,
         egg_port=20001,
         transfer_port=20002,
         session_id='testing',
+        role='host',
         props_file=default_props_file):
     rp_context = rpta.get_debug_test_context(is_standalone=is_standalone,
                                              manager_port=manager_port,
@@ -91,23 +92,23 @@ def get_debug_test_context(is_standalone=False,
                                              transfer_port=transfer_port,
                                              session_id=session_id)
 
-    rs_context = RollSiteContext("atest", options=get_option(props_file),
+    rs_context = RollSiteContext("atest", options=get_option(role, props_file),
                                  rp_ctx=rp_context)
 
     return rs_context
 
 
-def get_standalone_context(props_file=default_props_file):
+def get_standalone_context(role, props_file=default_props_file):
     rp_context = rpta.get_standalone_context()
-    rs_context = RollSiteContext("atest", options=get_option(props_file),
+    rs_context = RollSiteContext("atest", options=get_option(role, props_file),
                                  rp_ctx=rp_context)
 
     return rs_context
 
 
-def get_cluster_context(options={}, props_file=default_props_file):
+def get_cluster_context(role, options={}, props_file=default_props_file):
     rp_context = rpta.get_cluster_context(options=options)
-    rs_context = RollSiteContext("atest", options=get_option(props_file),
+    rs_context = RollSiteContext("atest", options=get_option(role, props_file),
                                  rp_ctx=rp_context)
 
     return rs_context

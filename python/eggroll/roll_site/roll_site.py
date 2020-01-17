@@ -17,10 +17,10 @@
 import time
 from concurrent.futures import ThreadPoolExecutor, wait, FIRST_EXCEPTION
 
-import grpc
-
 from eggroll.core.conf_keys import SessionConfKeys
 from eggroll.core.constants import StoreTypes
+from eggroll.core.error import GrpcCallError
+from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.meta_model import ErStoreLocator, ErStore
 from eggroll.core.proto import proxy_pb2, proxy_pb2_grpc
 from eggroll.core.serdes import eggroll_serdes
@@ -34,6 +34,8 @@ STATUS_TABLE_NAME = "__roll_site_standalone_status__"
 
 
 class RollSiteContext:
+    grpc_channel_factory = GrpcChannelFactory()
+
     def __init__(self, federation_session_id, options, rp_ctx: RollPairContext):
         self.federation_session_id = federation_session_id
         self.rp_ctx = rp_ctx
@@ -45,9 +47,7 @@ class RollSiteContext:
         if self.is_standalone:
             self.stub = None
         else:
-            channel = grpc.insecure_channel(
-                target="{}:{}".format(self.proxy_endpoint._host, self.proxy_endpoint._port),
-                options=[('grpc.max_send_message_length', -1), ('grpc.max_receive_message_length', -1)])
+            channel = self.grpc_channel_factory.create_channel(self.proxy_endpoint)
             self.stub = proxy_pb2_grpc.DataTransferServiceStub(channel)
             self.init_job_session_pair(self.federation_session_id, self.rp_ctx.session_id)
         L.info(f"inited RollSiteContext: {self.__dict__}")
@@ -56,29 +56,33 @@ class RollSiteContext:
     def load(self, name: str, tag: str, options={}):
         return RollSite(name, tag, self)
 
+    # todo:1: try-except as decorator
     def init_job_session_pair(self, federation_session_id, session_id):
-        task_info = proxy_pb2.Task(model=proxy_pb2.Model(name=federation_session_id, dataKey=bytes(session_id, encoding='utf8')))
-        topic_src = proxy_pb2.Topic(name="init_job_session_pair", partyId="{}".format(self.party_id),
-                                    role=self.role, callback=None)
-        topic_dst = proxy_pb2.Topic(name="init_job_session_pair", partyId="{}".format(self.party_id),
-                                    role=self.role, callback=None)
-        command_test = proxy_pb2.Command(name="init_job_session_pair")
-        conf_test = proxy_pb2.Conf(overallTimeout=1000,
-                                   completionWaitTimeout=1000,
-                                   packetIntervalTimeout=1000,
-                                   maxRetries=10)
+        try:
+            task_info = proxy_pb2.Task(model=proxy_pb2.Model(name=federation_session_id, dataKey=bytes(session_id, encoding='utf8')))
+            topic_src = proxy_pb2.Topic(name="init_job_session_pair", partyId="{}".format(self.party_id),
+                                        role=self.role, callback=None)
+            topic_dst = proxy_pb2.Topic(name="init_job_session_pair", partyId="{}".format(self.party_id),
+                                        role=self.role, callback=None)
+            command_test = proxy_pb2.Command(name="init_job_session_pair")
+            conf_test = proxy_pb2.Conf(overallTimeout=1000,
+                                       completionWaitTimeout=1000,
+                                       packetIntervalTimeout=1000,
+                                       maxRetries=10)
 
-        metadata = proxy_pb2.Metadata(task=task_info,
-                                      src=topic_src,
-                                      dst=topic_dst,
-                                      command=command_test,
-                                      operator="init_job_session_pair",
-                                      seq=0, ack=0,
-                                      conf=conf_test)
-        packet = proxy_pb2.Packet(header=metadata)
+            metadata = proxy_pb2.Metadata(task=task_info,
+                                          src=topic_src,
+                                          dst=topic_dst,
+                                          command=command_test,
+                                          operator="init_job_session_pair",
+                                          seq=0, ack=0,
+                                          conf=conf_test)
+            packet = proxy_pb2.Packet(header=metadata)
 
-        self.stub.unaryCall(packet)
-        L.info(f"send RollSiteContext init to Proxy: {packet}")
+            self.stub.unaryCall(packet)
+            L.info(f"send RollSiteContext init to Proxy: {packet}")
+        except Exception as e:
+            raise GrpcCallError("init_job_session_pair", self.proxy_endpoint, e)
 
 
 ERROR_STATES = [proxy_pb2.STOP, proxy_pb2.KILL]
@@ -161,8 +165,7 @@ class RollSite:
             return result
         except Exception as e:
             L.exception(f"pull error:{e}")
-            raise e
-
+            raise GrpcCallError("push", self.ctx.proxy_endpoint, e)
 
     def push(self, obj, parties: list = None):
         L.info(f"pushing: self:{self.__dict__}, obj_type:{type(obj)}, parties:{parties}")
