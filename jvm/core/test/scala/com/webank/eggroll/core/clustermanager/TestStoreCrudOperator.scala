@@ -42,7 +42,7 @@ class TestStoreCrudOperator {
 
   @Test
   def testInsertStore(): Unit = {
-    val proposedStore = ErStore(ErStoreLocator(StoreTypes.ROLLPAIR_LEVELDB, "namespace", "test", totalPartitions = 4))
+    val proposedStore = ErStore(ErStoreLocator(storeType = StoreTypes.ROLLPAIR_LEVELDB, namespace = "namespace", name = "test", totalPartitions = 4))
     val result = storeCrudOperator.getOrCreateStore(proposedStore)
 
     print(result)

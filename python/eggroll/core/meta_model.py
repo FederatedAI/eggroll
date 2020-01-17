@@ -277,8 +277,9 @@ class ErPairBatch(RpcMessage):
 
 
 class ErStoreLocator(RpcMessage):
-    def __init__(self, store_type: str, namespace: str, name: str,
-            path: str = '', total_partitions = 0, partitioner: str = '', serdes: str = ''):
+    def __init__(self, id=-1, store_type: str = '', namespace: str = '', name: str = '',
+            path: str = '', total_partitions=0, partitioner: str = '', serdes: str = ''):
+        self._id = id
         self._store_type = store_type
         self._namespace = namespace
         self._name = name
@@ -288,7 +289,8 @@ class ErStoreLocator(RpcMessage):
         self._serdes = serdes
 
     def to_proto(self):
-        return meta_pb2.StoreLocator(storeType=self._store_type,
+        return meta_pb2.StoreLocator(id=self._id,
+                                     storeType=self._store_type,
                                      namespace=self._namespace,
                                      name=self._name,
                                      path=self._path,
@@ -301,7 +303,8 @@ class ErStoreLocator(RpcMessage):
 
     @staticmethod
     def from_proto(pb_message):
-        return ErStoreLocator(store_type=pb_message.storeType,
+        return ErStoreLocator(id=pb_message.id,
+                              store_type=pb_message.storeType,
                               namespace=pb_message.namespace,
                               name=pb_message.name,
                               path=pb_message.path,
@@ -315,7 +318,7 @@ class ErStoreLocator(RpcMessage):
         return self._path
 
     def __repr__(self):
-        return f'ErStoreLocator(store_type={self._store_type}, namespace={self._namespace}, name={self._name}, path={self._path}, total_partitions={self._total_partitions}, partitioner={self._partitioner}, serdes={self._serdes})'
+        return f'ErStoreLocator(id={self._id}, store_type={self._store_type}, namespace={self._namespace}, name={self._name}, path={self._path}, total_partitions={self._total_partitions}, partitioner={self._partitioner}, serdes={self._serdes})'
 
 
 class ErPartition(RpcMessage):
