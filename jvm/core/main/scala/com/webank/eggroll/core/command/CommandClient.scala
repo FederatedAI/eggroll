@@ -127,7 +127,7 @@ class CommandClient(defaultEndpoint: ErEndpoint = null,
       } catch {
         case t: Throwable =>
           logError(s"[COMMAND] error waiting to ${args(n)._2}. commandUri: ${commandUri.uriString}")
-          throw new CommandCallException(commandUri, null, t)
+          throw new CommandCallException(commandUri, args(n)._2, t)
       }
 
     }
