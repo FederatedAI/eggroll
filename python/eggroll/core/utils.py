@@ -17,6 +17,8 @@ import time
 import traceback
 from datetime import datetime
 
+from google.protobuf.text_format import MessageToString
+
 from eggroll.utils import log_utils
 
 L = log_utils.get_logger()
@@ -149,3 +151,7 @@ def hash_code(s):
         h = 0
 
     return h
+
+
+def to_one_line_string(proto_msg, as_one_line=True):
+    return MessageToString(proto_msg, as_one_line=as_one_line)

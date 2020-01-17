@@ -15,6 +15,7 @@
 #
 import sys
 
+from eggroll.core.error import GrpcCallError
 from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.meta_model import ErEndpoint
 from eggroll.core.pair_store.adapter import PairWriteBatch, PairIterator, \
@@ -32,6 +33,7 @@ OBJECT_STORAGE_NAME = "__federation__"
 class RollsiteWriteBatch(PairWriteBatch):
     grpc_channel_factory = GrpcChannelFactory()
 
+    # TODO:0: check if secure channel needed
     def __init__(self, adapter):
         self.adapter = adapter
         self.name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([adapter.job_id, adapter.name, adapter.tag,
@@ -45,9 +47,8 @@ class RollsiteWriteBatch(PairWriteBatch):
         self.obj_type = adapter.obj_type
         self.tagged_key = ''
 
-        host = adapter._dst_host
-        port = adapter._dst_port
-        channel = self.grpc_channel_factory.create_channel(ErEndpoint(host=host, port=port))
+        self.proxy_endpoint = ErEndpoint(host=adapter._dst_host, port=adapter._dst_port)
+        channel = self.grpc_channel_factory.create_channel(self.proxy_endpoint)
         self.stub = proxy_pb2_grpc.DataTransferServiceStub(channel)
 
         self.__bin_packet_len = 1 << 20
@@ -65,6 +66,7 @@ class RollsiteWriteBatch(PairWriteBatch):
             yield packet
             break
 
+    # TODO:0: configurable
     def push(self, obj):
         task_info = proxy_pb2.Task(taskId=self.name, model=proxy_pb2.Model(name=self.name, dataKey=self.namespace))
         topic_src = proxy_pb2.Topic(name=self.name, partyId="{}".format(self.src_party_id),
@@ -83,7 +85,11 @@ class RollsiteWriteBatch(PairWriteBatch):
                                       command=command_test,
                                       seq=0, ack=0,
                                       conf=conf_test)
-        self.stub.push(self.generate_message(obj, metadata))
+
+        try:
+            self.stub.push(self.generate_message(obj, metadata))
+        except Exception as e:
+            raise GrpcCallError("push", self.proxy_endpoint, e)
 
     def write(self, bin_data):
         self.push(bin_data)
@@ -111,7 +117,10 @@ class RollsiteWriteBatch(PairWriteBatch):
 
         packet = proxy_pb2.Packet(header=metadata)
 
-        self.stub.unaryCall(packet)
+        try:
+            self.stub.unaryCall(packet)
+        except Exception as e:
+            raise GrpcCallError('send_end', self.proxy_endpoint, e)
 
     def close(self):
         bin_batch = bytes(self.ba[0:self.buffer.get_offset()])
@@ -205,15 +214,6 @@ class RollsiteAdapter(PairAdapter):
                                                     path=self._path,
                                                     partitioner=self._partitioner,
                                                     serdes=self._serdes)
-
-        '''
-        host = options["host"]
-        port = options["port"]
-        self.channel = grpc.insecure_channel(target="{}:{}".format(host, port),
-                                             options=[('grpc.max_send_message_length', -1),
-                                                      ('grpc.max_receive_message_length', -1)])
-        self.kv_stub = kv_pb2_grpc.KVServiceStub(self.channel)
-        '''
 
     def to_proto(self):
         return meta_pb2.Store(storeLocator=self._store_locator,
