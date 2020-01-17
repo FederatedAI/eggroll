@@ -89,7 +89,8 @@ class RollPairMasterBootstrap extends Bootstrap with Logging {
     StaticErConf.addProperty(SessionConfKeys.CONFKEY_SESSION_ID, sessionId)
     this.port = cmd.getOptionValue('p', "0").toInt
 
-    val rollServer = NettyServerBuilder.forAddress(new InetSocketAddress(this.port)).maxInboundMetadataSize(1024*1024)
+    val rollServer = NettyServerBuilder.forAddress(new InetSocketAddress(this.port))
+      .maxInboundMetadataSize(1024*1024)
       .addService(new CommandService)
       .build
     rollServer.start()

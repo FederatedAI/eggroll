@@ -21,7 +21,7 @@ package com.webank.eggroll.core.nodemanager
 import com.webank.eggroll.core.client.NodeManagerClient
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
 import com.webank.eggroll.core.constant.NodeManagerCommands
-import com.webank.eggroll.core.meta.{ErProcessor, ErProcessorBatch, ErSessionMeta}
+import com.webank.eggroll.core.meta.{ErProcessor, ErSessionMeta}
 import com.webank.eggroll.core.resourcemanager.NodeManagerService
 import com.webank.eggroll.core.session.StaticErConf
 import io.grpc.Server
@@ -33,18 +33,6 @@ class TestNodeManager {
   private var sessionMeta: ErSessionMeta = _
   @Before
   def setup(): Unit = {
-    CommandRouter.register(serviceName = NodeManagerCommands.getOrCreateEggsServiceName,
-      serviceParamTypes = Array(classOf[ErSessionMeta]),
-      serviceResultTypes = Array(classOf[ErProcessorBatch]),
-      routeToClass = classOf[NodeManagerService],
-      routeToMethodName = NodeManagerCommands.getOrCreateEggs)
-
-    CommandRouter.register(serviceName = NodeManagerCommands.getOrCreateRollsServiceName,
-      serviceParamTypes = Array(classOf[ErSessionMeta]),
-      serviceResultTypes = Array(classOf[ErProcessorBatch]),
-      routeToClass = classOf[NodeManagerService],
-      routeToMethodName = NodeManagerCommands.getOrCreateRolls)
-
     CommandRouter.register(serviceName = NodeManagerCommands.heartbeat.uriString,
       serviceParamTypes = Array(classOf[ErProcessor]),
       serviceResultTypes = Array(classOf[ErProcessor]),

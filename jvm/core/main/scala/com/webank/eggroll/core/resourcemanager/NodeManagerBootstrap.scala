@@ -15,26 +15,6 @@ class NodeManagerBootstrap extends Bootstrap with Logging {
   private var port = 0
   private var confPath = ""
   override def init(args: Array[String]): Unit = {
-/*
-        CommandRouter.register(serviceName = NodeManagerCommands.getOrCreateEggsServiceName,
-          serviceParamTypes = Array(classOf[ErSessionMeta]),
-          serviceResultTypes = Array(classOf[ErProcessorBatch]),
-          routeToClass = classOf[com.webank.eggroll.core.nodemanager.NodeManager],
-          routeToMethodName = NodeManagerCommands.getOrCreateEggs)
-
-        CommandRouter.register(serviceName = NodeManagerCommands.getOrCreateRollsServiceName,
-          serviceParamTypes = Array(classOf[ErSessionMeta]),
-          serviceResultTypes = Array(classOf[ErProcessorBatch]),
-          routeToClass = classOf[com.webank.eggroll.core.nodemanager.NodeManager],
-          routeToMethodName = NodeManagerCommands.getOrCreateRolls)
-
-        CommandRouter.register(serviceName = NodeManagerCommands.heartbeatServiceName,
-          serviceParamTypes = Array(classOf[ErProcessor]),
-          serviceResultTypes = Array(classOf[ErProcessor]),
-          routeToClass = classOf[com.webank.eggroll.core.nodemanager.NodeManager],
-          routeToMethodName = NodeManagerCommands.heartbeat)
-    */
-
     CommandRouter.register(serviceName = NodeManagerCommands.startContainers.uriString,
       serviceParamTypes = Array(classOf[ErSessionMeta]),
       serviceResultTypes = Array(classOf[ErSessionMeta]),
@@ -46,6 +26,12 @@ class NodeManagerBootstrap extends Bootstrap with Logging {
       serviceResultTypes = Array(classOf[ErSessionMeta]),
       routeToClass = classOf[NodeManagerService],
       routeToMethodName = NodeManagerCommands.stopContainers.getName())
+
+    CommandRouter.register(serviceName = NodeManagerCommands.killContainers.uriString,
+      serviceParamTypes = Array(classOf[ErSessionMeta]),
+      serviceResultTypes = Array(classOf[ErSessionMeta]),
+      routeToClass = classOf[NodeManagerService],
+      routeToMethodName = NodeManagerCommands.killContainers.getName())
 
     CommandRouter.register(serviceName = NodeManagerCommands.heartbeat.uriString,
       serviceParamTypes = Array(classOf[ErProcessor]),
