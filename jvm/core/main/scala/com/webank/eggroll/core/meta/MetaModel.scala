@@ -18,6 +18,7 @@
 
 package com.webank.eggroll.core.meta
 
+import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 import com.google.protobuf.{ByteString, Message => PbMessage}
@@ -57,11 +58,11 @@ case class ErStoreLocator(id: Long = -1L,
       String.join(delim, storeType, namespace, name)
     }
   }
-
+  // TODO:0: replace uuid with simpler human friendly solution
   def fork(postfix: String = StringConstants.EMPTY, delimiter: String = StringConstants.UNDERLINE): ErStoreLocator = {
-    val delimiterPos = StringUtils.lastIndexOf(this.name, delimiter)
+    val delimiterPos = StringUtils.lastOrdinalIndexOf(this.name, delimiter, 2)
 
-    val newPostfix = if (StringUtils.isBlank(postfix)) TimeUtils.getNowMs() else postfix
+    val newPostfix = if (StringUtils.isBlank(postfix)) String.join(delimiter, TimeUtils.getNowMs(), UUID.randomUUID().toString) else postfix
     val newName =
       if (delimiterPos > 0) s"${StringUtils.substring(this.name, 0, delimiterPos)}${delimiter}${newPostfix}"
       else s"${name}${delimiter}${newPostfix}"
