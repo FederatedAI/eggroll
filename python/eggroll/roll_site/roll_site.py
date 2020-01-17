@@ -113,7 +113,7 @@ class RollSite:
             is_standalone = self.ctx.rp_ctx.get_session().get_option(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE) \
                             == "standalone"
             if is_standalone:
-                status_rp = self.ctx.rp_ctx.load(namespace, STATUS_TABLE_NAME)
+                status_rp = self.ctx.rp_ctx.load(namespace, STATUS_TABLE_NAME + "-" + self.ctx.federation_session_id)
                 retry_cnt = 0
                 # TODO:0: sleep retry count and timeout
                 while True:
@@ -207,7 +207,7 @@ class RollSite:
                                                                              obj_type]))
                     store_type = StoreTypes.ROLLPAIR_ROLLSITE
                 if is_standalone:
-                    status_rp = self.ctx.rp_ctx.load(namespace, STATUS_TABLE_NAME)
+                    status_rp = self.ctx.rp_ctx.load(namespace, STATUS_TABLE_NAME + "-" + self.federation_session_id)
                     if isinstance(obj, RollPair):
                         status_rp.put(_tagged_key, (obj_type.encode("utf-8"), rp.get_name(), rp.get_namespace()))
                     else:
