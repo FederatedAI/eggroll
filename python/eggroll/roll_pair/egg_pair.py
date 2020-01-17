@@ -385,7 +385,7 @@ class EggPair(object):
                 if not first:
                     comb_op_result = seq_op_result
                 else:
-                    comb_op_result = None
+                    comb_op_result = zero_value
 
                 for r in queue:
                     if not r.data:
