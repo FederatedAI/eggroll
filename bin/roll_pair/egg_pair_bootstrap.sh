@@ -114,7 +114,7 @@ else
   PYTHON=${venv}/bin/python
 fi
 
-export PYTHONPATH=${pythonpath}
+export PYTHONPATH=${pythonpath}:$PYTHONPATH
 echo "PYTHONPATH: ${PYTHONPATH}"
 cmd="${PYTHON} ${filepath} --config ${config} --session-id ${session_id} --server-node-id ${server_node_id} --cluster-manager ${cluster_manager_host}:${cluster_manager_port} --node-manager ${node_manager_port} --processor-id ${processor_id}"
 

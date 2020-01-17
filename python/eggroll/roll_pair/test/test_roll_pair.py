@@ -314,6 +314,20 @@ class TestRollPairStandalone(TestRollPairBase):
         cls.ctx.get_session().stop()
 
 
+class TestRollPairClusterEverySession(TestRollPairBase):
+    def setUp(self):
+        self.ctx = get_cluster_context()
+
+    @staticmethod
+    def store_opts(**kwargs):
+        opts = {'total_partitions': 10}
+        opts.update(kwargs)
+        return opts
+
+    def tearDown(self) -> None:
+        self.ctx.get_session().stop()
+
+
 class TestRollPairCluster(TestRollPairBase):
     ctx = None
 
@@ -327,9 +341,12 @@ class TestRollPairCluster(TestRollPairBase):
 
     @staticmethod
     def store_opts(**kwargs):
-        opts= {'total_partitions': 10}
+        opts = {'total_partitions': 10}
         opts.update(kwargs)
         return opts
+
+    def tearDown(self) -> None:
+        pass
 
     @classmethod
     def tearDownClass(cls) -> None:

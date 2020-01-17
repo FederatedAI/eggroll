@@ -36,6 +36,7 @@ from eggroll.core.meta_model import ErPair
 from eggroll.core.meta_model import ErTask, ErProcessor, ErEndpoint
 from eggroll.core.proto import command_pb2_grpc, transfer_pb2_grpc
 from eggroll.core.serdes import cloudpickle
+from eggroll.core.serdes.eggroll_serdes import eggroll_pickle_loads
 from eggroll.core.transfer.transfer_service import GrpcTransferServicer, \
     TransferClient, TransferService
 from eggroll.core.utils import _exception_logger
@@ -47,7 +48,16 @@ from eggroll.roll_pair.utils.pair_utils import generator, partitioner, \
     set_data_dir
 from eggroll.utils.log_utils import get_logger
 
+
+def create_functor(func_bin):
+    try:
+        return cloudpickle.loads(func_bin)
+    except:
+        return eggroll_pickle_loads(func_bin)
+
+
 L = get_logger()
+
 
 
 class EggPair(object):
@@ -123,7 +133,7 @@ class EggPair(object):
         if task._name == 'get':
             L.info("egg_pair get call")
             # TODO:1: move to create_serdes
-            f = cloudpickle.loads(functors[0]._body)
+            f = create_functor(functors[0]._body)
             #input_adapter = self.get_unary_input_adapter(task_info=task)
             input_adapter = create_adapter(task._inputs[0])
             value = input_adapter.get(f._key)
@@ -160,7 +170,7 @@ class EggPair(object):
 
         if task._name == 'put':
             L.info("egg_pair put call")
-            f = cloudpickle.loads(functors[0]._body)
+            f = create_functor(functors[0]._body)
             input_adapter = create_adapter(task._inputs[0])
             value = input_adapter.put(f._key, f._value)
             #result = ErPair(key=f._key, value=bytes(value))
@@ -172,7 +182,7 @@ class EggPair(object):
             L.info("finish destroy")
 
         if task._name == 'delete':
-            f = cloudpickle.loads(functors[0]._body)
+            f = create_functor(functors[0]._body)
             input_adapter = create_adapter(task._inputs[0])
             L.info("delete k:{}, its value:{}".format(f._key, input_adapter.get(f._key)))
             if input_adapter.delete(f._key):
@@ -180,14 +190,14 @@ class EggPair(object):
             input_adapter.close()
 
         if task._name == 'mapValues':
-            f = cloudpickle.loads(functors[0]._body)
+            f = create_functor(functors[0]._body)
             def map_values_wrapper(input_iterator, key_serdes, value_serdes, output_writebatch):
                 for k_bytes, v_bytes in input_iterator:
                     v = value_serdes.deserialize(v_bytes)
                     output_writebatch.put(k_bytes, value_serdes.serialize(f(v)))
             self._run_unary(map_values_wrapper, task)
         elif task._name == 'map':
-            f = cloudpickle.loads(functors[0]._body)
+            f = create_functor(functors[0]._body)
 
             def map_wrapper(input_iterator, key_serdes, value_serdes, shuffle_broker):
                 for k_bytes, v_bytes in input_iterator:
@@ -203,12 +213,12 @@ class EggPair(object):
             reduce_task = copy(task)
             reduce_task._job = job
 
-            self.aggregate(reduce_task)
+            self.aggregate(reduce_task, True)
             L.info('reduce finished')
 
         elif task._name == 'mapPartitions':
             def map_partitions_wrapper(input_iterator, key_serdes, value_serdes, output_writebatch):
-                f = cloudpickle.loads(functors[0]._body)
+                f = create_functor(functors[0]._body)
                 value = f(generator(key_serdes, value_serdes, input_iterator))
                 if input_iterator.last():
                     L.info("value of mapPartitions2:{}".format(value))
@@ -222,7 +232,7 @@ class EggPair(object):
 
         elif task._name == 'collapsePartitions':
             def collapse_partitions_wrapper(input_iterator, key_serdes, value_serdes, output_writebatch):
-                f = cloudpickle.loads(functors[0]._body)
+                f = create_functor(functors[0]._body)
                 value = f(generator(key_serdes, value_serdes, input_iterator))
                 if input_iterator.last():
                     key = input_iterator.key()
@@ -231,7 +241,7 @@ class EggPair(object):
 
         elif task._name == 'flatMap':
             def flat_map_wraaper(input_iterator, key_serdes, value_serdes, output_writebatch):
-                f = cloudpickle.loads(functors[0]._body)
+                f = create_functor(functors[0]._body)
                 for k1, v1 in input_iterator:
                     for k2, v2 in f(key_serdes.deserialize(k1), value_serdes.deserialize(v1)):
                         output_writebatch.put(key_serdes.serialize(k2), value_serdes.serialize(v2))
@@ -250,8 +260,8 @@ class EggPair(object):
 
         elif task._name == 'sample':
             def sample_wrapper(input_iterator, key_serdes, value_serdes, output_writebatch):
-                fraction = cloudpickle.loads(functors[0]._body)
-                seed = cloudpickle.loads(functors[1]._body)
+                fraction = create_functor(functors[0]._body)
+                seed = create_functor(functors[1]._body)
                 input_iterator.first()
                 random_state = np.random.RandomState(seed)
                 for k, v in input_iterator:
@@ -261,7 +271,7 @@ class EggPair(object):
 
         elif task._name == 'filter':
             def filter_wrapper(input_iterator, key_serdes, value_serdes, output_writebatch):
-                f = cloudpickle.loads(functors[0]._body)
+                f = create_functor(functors[0]._body)
                 for k ,v in input_iterator:
                     if f(key_serdes.deserialize(k), value_serdes.deserialize(v)):
                         output_writebatch.put(k, v)
@@ -276,7 +286,7 @@ class EggPair(object):
             def join_wrapper(left_iterator, left_key_serdes, left_value_serdess,
                     right_iterator, right_key_serdes, right_value_serdess,
                     output_writebatch):
-                f = cloudpickle.loads(functors[0]._body)
+                f = create_functor(functors[0]._body)
                 is_diff_serdes = type(left_key_serdes) != type(right_key_serdes)
                 for k_left, l_v_bytes in left_iterator:
                     if is_diff_serdes:
@@ -309,7 +319,7 @@ class EggPair(object):
             def union_wrapper(left_iterator, left_key_serdes, left_value_serdess,
                     right_iterator, right_key_serdes, right_value_serdess,
                     output_writebatch):
-                f = cloudpickle.loads(functors[0]._body)
+                f = create_functor(functors[0]._body)
                 #store the iterator that has been iterated before
                 k_list_iterated = []
 
@@ -339,64 +349,70 @@ class EggPair(object):
 
         return result
 
-    def aggregate(self, task: ErTask):
+    def aggregate(self, task: ErTask, is_reduce=False):
         functors = task._job._functors
-        zero_value = None if functors[0] is None else cloudpickle.loads(functors[0]._body)
-        seq_op = cloudpickle.loads(functors[1]._body)
-        comb_op = cloudpickle.loads(functors[2]._body)
+        zero_value = None if functors[0] is None else create_functor(functors[0]._body)
+        seq_op = create_functor(functors[1]._body)
+        comb_op = create_functor(functors[2]._body)
 
         input_partition = task._inputs[0]
-        input_adapter = create_adapter(task._inputs[0])
-        input_key_serdes = create_serdes(task._inputs[0]._store_locator._serdes)
-        input_value_serdes = input_key_serdes
-        output_key_serdes = create_serdes(task._outputs[0]._store_locator._serdes)
-        output_value_serdes = output_key_serdes
+        serialized_seq_results = list()
+        with create_adapter(input_partition) as input_adapter, \
+                input_adapter.iteritems() as input_iter:
+            input_key_serdes = create_serdes(task._inputs[0]._store_locator._serdes)
+            input_value_serdes = input_key_serdes
+            output_key_serdes = create_serdes(task._outputs[0]._store_locator._serdes)
+            output_value_serdes = output_key_serdes
+            first = True
 
-        seq_op_result = zero_value if zero_value is not None else None
+            seq_op_result = zero_value
 
-        for k_bytes, v_bytes in input_adapter.iteritems():
-            if seq_op_result:
-                seq_op_result = seq_op(seq_op_result, input_value_serdes.deserialize(v_bytes))
+            for k_bytes, v_bytes in input_iter:
+                v = input_value_serdes.deserialize(v_bytes)
+                if is_reduce and first:
+                    seq_op_result = v
+                    first = False
+                else:
+                    seq_op_result = seq_op(seq_op_result, v)
+
+
+            partition_id = input_partition._id
+            transfer_tag = task._job._id
+
+            if 0 == partition_id:
+                partition_size = input_partition._store_locator._total_partitions
+                queue = TransferService.get_or_create_broker(transfer_tag, write_signals=partition_size - 1)
+                if not first:
+                    comb_op_result = seq_op_result
+                else:
+                    comb_op_result = None
+
+                for r in queue:
+                    if not r.data:
+                        continue
+                    v = output_value_serdes.deserialize(r.data)
+                    if first:
+                        comb_op_result = v
+                    else:
+                        comb_op_result = comb_op(comb_op_result, v)
+
+                L.info(f'aggregate finished. result: {comb_op_result} ')
+                with create_adapter(task._outputs[0]) as output_adapter, \
+                    output_adapter.new_batch() as output_writebatch:
+                    output_writebatch.put(output_key_serdes.serialize('result'.encode()), output_value_serdes.serialize(comb_op_result))
+
+                TransferService.remove_broker(transfer_tag)
             else:
-                seq_op_result = input_value_serdes.deserialize(v_bytes)
+                if not first:
+                    serialized_seq_results.append(output_value_serdes.serialize(seq_op_result))
+                else:
+                    serialized_seq_results.append(b'')
+                transfer_client = TransferClient()
+                future = transfer_client.send(broker=(v for v in serialized_seq_results),
+                                              endpoint=task._outputs[0]._processor._transfer_endpoint,
+                                              tag=transfer_tag)
+                future.result()
 
-        partition_id = input_partition._id
-        transfer_tag = task._job._id
-
-        if 0 == partition_id:
-            partition_size = input_partition._store_locator._total_partitions
-            queue = TransferService.get_or_create_broker(transfer_tag, write_signals=partition_size)
-
-            comb_op_result = seq_op_result
-
-            for i in range(1, partition_size):
-                L.debug(f'waiting for result #{i}')
-                # TODO:2: blocking timeout configurable?
-                other_seq_op_result = queue.get(block=True)
-                comb_op_result = comb_op(comb_op_result, output_value_serdes.deserialize(other_seq_op_result.data))
-
-            L.info(f'aggregate finished. result: {comb_op_result} ')
-            output_adapter = create_adapter(task._outputs[0])
-
-            output_writebatch = output_adapter.new_batch()
-            output_writebatch.put(output_key_serdes.serialize('result'.encode()), output_value_serdes.serialize(comb_op_result))
-
-            output_writebatch.close()
-            output_adapter.close()
-            TransferService.remove_broker(transfer_tag)
-        else:
-            ser_seq_op_result = output_value_serdes.serialize(seq_op_result)
-            transfer_client = TransferClient()
-
-            broker = FifoBroker()
-            future = transfer_client.send(broker=broker,
-                                          endpoint=task._outputs[0]._processor._transfer_endpoint,
-                                          tag=transfer_tag)
-            broker.put(ser_seq_op_result)
-            broker.signal_write_finish()
-            future.result()
-
-        input_adapter.close()
         L.info('aggregate finished')
 
 
@@ -413,9 +429,9 @@ def serve(args):
 
     command_server = grpc.server(futures.ThreadPoolExecutor(max_workers=500, thread_name_prefix="command_server"),
                                  options=[
-                                     ("grpc.max_metadata_size", 4*1024*1024),
-                                     (cygrpc.ChannelArgKey.max_send_message_length, -1),
-                                     (cygrpc.ChannelArgKey.max_receive_message_length, -1)])
+                                     ("grpc.max_metadata_size", 32 << 20),
+                                     (cygrpc.ChannelArgKey.max_send_message_length, 2 << 30 - 1),
+                                     (cygrpc.ChannelArgKey.max_receive_message_length, 2 << 30 - 1)])
 
     command_servicer = CommandServicer()
     command_pb2_grpc.add_CommandServiceServicer_to_server(command_servicer,
@@ -436,8 +452,9 @@ def serve(args):
     else:
         transfer_server = grpc.server(futures.ThreadPoolExecutor(max_workers=500, thread_name_prefix="transfer_server"),
                                       options=[
-                                          (cygrpc.ChannelArgKey.max_send_message_length, -1),
-                                          (cygrpc.ChannelArgKey.max_receive_message_length, -1)])
+                                          (cygrpc.ChannelArgKey.max_send_message_length, 2 << 30 - 1),
+                                          (cygrpc.ChannelArgKey.max_receive_message_length, 2 << 30 - 1),
+                                          ('grpc.max_metadata_size', 32 << 20)])
         transfer_port = transfer_server.add_insecure_port(f'[::]:{transfer_port}')
         transfer_pb2_grpc.add_TransferServiceServicer_to_server(transfer_servicer,
                                                                 transfer_server)
