@@ -128,7 +128,7 @@ def get_self_ip():
 
 # TODO:0: replace uuid with simpler human friendly solution
 def generate_job_id(session_id, tag='', delim='-'):
-    result = delim.join([session_id, 'job', time_now(), uuid.uuid4().hex])
+    result = delim.join([session_id, 'job', str(uuid.uuid1())])
     if not tag:
         return result
     else:
