@@ -300,7 +300,7 @@ class RollFrameTests {
         if(b.rootVectors(i) != null) a.writeDouble(i, 0, a.readDouble(i,0) + b.readDouble(i,0))
       }
       a
-    }, byColumn = true, broadcastZeroValue = true, output = ErStore(ErStoreLocator("file", "r1", "test1")))
+    }, byColumn = true, broadcastZeroValue = true, output = ErStore(ErStoreLocator(-1, "file", "r1", "test1")))
     println(System.currentTimeMillis() - start)
   }
 
