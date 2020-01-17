@@ -64,7 +64,7 @@ class ErSession(object):
         self._cluster_manager_client = ClusterManagerClient(options=options)
 
         self.__is_standalone = options.get(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE, "") == "standalone"
-        if self.__is_standalone and os.name != 'nt' and not processors:
+        if self.__is_standalone and os.name != 'nt' and not processors and os.environ.get("EGGROLL_RESOURCE_MANAGER_AUTO_BOOTSTRAP","1") == "1":
             port = int(options.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT,
                                    static_er_conf.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, "4670")))
             startup_command = f'bash {self.__eggroll_home}/bin/eggroll_boot_standalone.sh -p {port} -s {self.__session_id}'
@@ -76,7 +76,7 @@ class ErSession(object):
             with open(f'{bootstrap_log_dir}/standalone-manager.out', 'a+') as outfile, \
                     open(f'{bootstrap_log_dir}/standalone-manager.err', 'a+') as errfile:
                 L.info(f'start up command: {startup_command}')
-                manager_process = subprocess.run(startup_command.split(), stdout=outfile, stderr=errfile)
+                manager_process = subprocess.run(startup_command, shell=True,  stdout=outfile, stderr=errfile)
                 returncode = manager_process.returncode
                 L.info(f'start up returncode: {returncode}')
 
