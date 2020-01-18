@@ -59,12 +59,12 @@ class CommandClient(object):
             request = ErCommandRequest(id=time_now(),
                                        uri=command_uri._uri,
                                        args=_map_and_listify(_to_proto_string, inputs))
-
+            L.debug(f"calling:{endpoint} {command_uri} {request}")
             _channel = self._channel_factory.create_channel(endpoint)
             _command_stub = command_pb2_grpc.CommandServiceStub(_channel)
             response = _command_stub.call(request.to_proto())
             er_response = ErCommandResponse.from_proto(response)
-
+            L.debug(f"called:{endpoint} {command_uri} {request} {er_response}")
             byte_results = er_response._results
 
             if len(byte_results):
