@@ -154,3 +154,4 @@ final_logs_dir=${logs_dir}/${session_id}
 mkdir -p ${final_logs_dir}
 echo "${cmd}"
 ${cmd} >> ${final_logs_dir}/${EGGROLL_LOG_FILE}.out 2>${final_logs_dir}/${EGGROLL_LOG_FILE}.err &
+echo "roll_pair_master processor id:$processor_id, os process id:$!" >> ${final_logs_dir}/pid.txt

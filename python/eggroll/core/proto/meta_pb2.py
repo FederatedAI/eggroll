@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='com.webank.eggroll.core.meta',
   syntax='proto3',
   serialized_options=None,
-  serialized_pb=_b('\n\nmeta.proto\x12\x1c\x63om.webank.eggroll.core.meta\"&\n\x08\x45ndpoint\x12\x0c\n\x04host\x18\x01 \x01(\t\x12\x0c\n\x04port\x18\x02 \x01(\x05\"\x95\x01\n\nServerNode\x12\n\n\x02id\x18\x01 \x01(\x03\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x11\n\tclusterId\x18\x03 \x01(\x03\x12\x38\n\x08\x65ndpoint\x18\x04 \x01(\x0b\x32&.com.webank.eggroll.core.meta.Endpoint\x12\x10\n\x08nodeType\x18\x05 \x01(\t\x12\x0e\n\x06status\x18\x06 \x01(\t\"u\n\rServerCluster\x12\n\n\x02id\x18\x01 \x01(\x03\x12\x0c\n\x04name\x18\x02 \x01(\t\x12=\n\x0bserverNodes\x18\x03 \x03(\x0b\x32(.com.webank.eggroll.core.meta.ServerNode\x12\x0b\n\x03tag\x18\x04 \x01(\t\"\xe9\x02\n\tProcessor\x12\n\n\x02id\x18\x01 \x01(\x03\x12\x14\n\x0cserverNodeId\x18\x02 \x01(\x03\x12\x0c\n\x04name\x18\x03 \x01(\t\x12\x15\n\rprocessorType\x18\x04 \x01(\t\x12\x0e\n\x06status\x18\x05 \x01(\t\x12?\n\x0f\x63ommandEndpoint\x18\x06 \x01(\x0b\x32&.com.webank.eggroll.core.meta.Endpoint\x12@\n\x10transferEndpoint\x18\x07 \x01(\x0b\x32&.com.webank.eggroll.core.meta.Endpoint\x12\x45\n\x07options\x18\x08 \x03(\x0b\x32\x34.com.webank.eggroll.core.meta.Processor.OptionsEntry\x12\x0b\n\x03tag\x18\n \x01(\t\x1a.\n\x0cOptionsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"t\n\x0eProcessorBatch\x12\n\n\x02id\x18\x01 \x01(\x03\x12\x0c\n\x04name\x18\x02 \x01(\t\x12;\n\nprocessors\x18\x03 \x03(\x0b\x32\'.com.webank.eggroll.core.meta.Processor\x12\x0b\n\x03tag\x18\x04 \x01(\t\"\xaa\x01\n\x07\x46unctor\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0e\n\x06serdes\x18\x02 \x01(\t\x12\x0c\n\x04\x62ody\x18\x03 \x01(\x0c\x12\x43\n\x07options\x18\x04 \x03(\x0b\x32\x32.com.webank.eggroll.core.meta.Functor.OptionsEntry\x1a.\n\x0cOptionsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\"\n\x04Pair\x12\x0b\n\x03key\x18\x01 \x01(\x0c\x12\r\n\x05value\x18\x02 \x01(\x0c\">\n\tPairBatch\x12\x31\n\x05pairs\x18\x01 \x03(\x0b\x32\".com.webank.eggroll.core.meta.Pair\"\x8e\x01\n\x0cStoreLocator\x12\x11\n\tstoreType\x18\x01 \x01(\t\x12\x11\n\tnamespace\x18\x02 \x01(\t\x12\x0c\n\x04name\x18\x03 \x01(\t\x12\x0c\n\x04path\x18\x04 \x01(\t\x12\x17\n\x0ftotalPartitions\x18\x05 \x01(\x05\x12\x13\n\x0bpartitioner\x18\x06 \x01(\t\x12\x0e\n\x06serdes\x18\x07 \x01(\t\"\xf9\x01\n\x05Store\x12@\n\x0cstoreLocator\x18\x01 \x01(\x0b\x32*.com.webank.eggroll.core.meta.StoreLocator\x12;\n\npartitions\x18\x02 \x03(\x0b\x32\'.com.webank.eggroll.core.meta.Partition\x12\x41\n\x07options\x18\x03 \x03(\x0b\x32\x30.com.webank.eggroll.core.meta.Store.OptionsEntry\x1a.\n\x0cOptionsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\xab\x01\n\tPartition\x12\n\n\x02id\x18\x01 \x01(\x05\x12@\n\x0cstoreLocator\x18\x02 \x01(\x0b\x32*.com.webank.eggroll.core.meta.StoreLocator\x12:\n\tprocessor\x18\x03 \x01(\x0b\x32\'.com.webank.eggroll.core.meta.Processor\x12\x14\n\x0cserverNodeId\x18\x04 \x01(\x03\"\x1b\n\x08\x43\x61llInfo\x12\x0f\n\x07\x63\x61llSeq\x18\x01 \x01(\t\"\xb4\x02\n\x03Job\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x33\n\x06inputs\x18\x03 \x03(\x0b\x32#.com.webank.eggroll.core.meta.Store\x12\x34\n\x07outputs\x18\x04 \x03(\x0b\x32#.com.webank.eggroll.core.meta.Store\x12\x37\n\x08\x66unctors\x18\x05 \x03(\x0b\x32%.com.webank.eggroll.core.meta.Functor\x12?\n\x07options\x18\x06 \x03(\x0b\x32..com.webank.eggroll.core.meta.Job.OptionsEntry\x1a.\n\x0cOptionsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\xc3\x01\n\x04Task\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x37\n\x06inputs\x18\x03 \x03(\x0b\x32\'.com.webank.eggroll.core.meta.Partition\x12\x38\n\x07outputs\x18\x04 \x03(\x0b\x32\'.com.webank.eggroll.core.meta.Partition\x12.\n\x03job\x18\x05 \x01(\x0b\x32!.com.webank.eggroll.core.meta.Job\"\xfa\x01\n\x0bSessionMeta\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x0e\n\x06status\x18\x03 \x01(\t\x12\x0b\n\x03tag\x18\x04 \x01(\t\x12;\n\nprocessors\x18\x05 \x03(\x0b\x32\'.com.webank.eggroll.core.meta.Processor\x12G\n\x07options\x18\x06 \x03(\x0b\x32\x36.com.webank.eggroll.core.meta.SessionMeta.OptionsEntry\x1a.\n\x0cOptionsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\x62\x06proto3')
+  serialized_pb=_b('\n\nmeta.proto\x12\x1c\x63om.webank.eggroll.core.meta\"&\n\x08\x45ndpoint\x12\x0c\n\x04host\x18\x01 \x01(\t\x12\x0c\n\x04port\x18\x02 \x01(\x05\"\x95\x01\n\nServerNode\x12\n\n\x02id\x18\x01 \x01(\x03\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x11\n\tclusterId\x18\x03 \x01(\x03\x12\x38\n\x08\x65ndpoint\x18\x04 \x01(\x0b\x32&.com.webank.eggroll.core.meta.Endpoint\x12\x10\n\x08nodeType\x18\x05 \x01(\t\x12\x0e\n\x06status\x18\x06 \x01(\t\"u\n\rServerCluster\x12\n\n\x02id\x18\x01 \x01(\x03\x12\x0c\n\x04name\x18\x02 \x01(\t\x12=\n\x0bserverNodes\x18\x03 \x03(\x0b\x32(.com.webank.eggroll.core.meta.ServerNode\x12\x0b\n\x03tag\x18\x04 \x01(\t\"\xe9\x02\n\tProcessor\x12\n\n\x02id\x18\x01 \x01(\x03\x12\x14\n\x0cserverNodeId\x18\x02 \x01(\x03\x12\x0c\n\x04name\x18\x03 \x01(\t\x12\x15\n\rprocessorType\x18\x04 \x01(\t\x12\x0e\n\x06status\x18\x05 \x01(\t\x12?\n\x0f\x63ommandEndpoint\x18\x06 \x01(\x0b\x32&.com.webank.eggroll.core.meta.Endpoint\x12@\n\x10transferEndpoint\x18\x07 \x01(\x0b\x32&.com.webank.eggroll.core.meta.Endpoint\x12\x45\n\x07options\x18\x08 \x03(\x0b\x32\x34.com.webank.eggroll.core.meta.Processor.OptionsEntry\x12\x0b\n\x03tag\x18\n \x01(\t\x1a.\n\x0cOptionsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"t\n\x0eProcessorBatch\x12\n\n\x02id\x18\x01 \x01(\x03\x12\x0c\n\x04name\x18\x02 \x01(\t\x12;\n\nprocessors\x18\x03 \x03(\x0b\x32\'.com.webank.eggroll.core.meta.Processor\x12\x0b\n\x03tag\x18\x04 \x01(\t\"\xaa\x01\n\x07\x46unctor\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0e\n\x06serdes\x18\x02 \x01(\t\x12\x0c\n\x04\x62ody\x18\x03 \x01(\x0c\x12\x43\n\x07options\x18\x04 \x03(\x0b\x32\x32.com.webank.eggroll.core.meta.Functor.OptionsEntry\x1a.\n\x0cOptionsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\"\n\x04Pair\x12\x0b\n\x03key\x18\x01 \x01(\x0c\x12\r\n\x05value\x18\x02 \x01(\x0c\">\n\tPairBatch\x12\x31\n\x05pairs\x18\x01 \x03(\x0b\x32\".com.webank.eggroll.core.meta.Pair\"\x9a\x01\n\x0cStoreLocator\x12\n\n\x02id\x18\x01 \x01(\x03\x12\x11\n\tstoreType\x18\x02 \x01(\t\x12\x11\n\tnamespace\x18\x03 \x01(\t\x12\x0c\n\x04name\x18\x04 \x01(\t\x12\x0c\n\x04path\x18\x05 \x01(\t\x12\x17\n\x0ftotalPartitions\x18\x06 \x01(\x05\x12\x13\n\x0bpartitioner\x18\x07 \x01(\t\x12\x0e\n\x06serdes\x18\x08 \x01(\t\"\xf9\x01\n\x05Store\x12@\n\x0cstoreLocator\x18\x01 \x01(\x0b\x32*.com.webank.eggroll.core.meta.StoreLocator\x12;\n\npartitions\x18\x02 \x03(\x0b\x32\'.com.webank.eggroll.core.meta.Partition\x12\x41\n\x07options\x18\x03 \x03(\x0b\x32\x30.com.webank.eggroll.core.meta.Store.OptionsEntry\x1a.\n\x0cOptionsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\xab\x01\n\tPartition\x12\n\n\x02id\x18\x01 \x01(\x05\x12@\n\x0cstoreLocator\x18\x02 \x01(\x0b\x32*.com.webank.eggroll.core.meta.StoreLocator\x12:\n\tprocessor\x18\x03 \x01(\x0b\x32\'.com.webank.eggroll.core.meta.Processor\x12\x14\n\x0cserverNodeId\x18\x04 \x01(\x03\"\x1b\n\x08\x43\x61llInfo\x12\x0f\n\x07\x63\x61llSeq\x18\x01 \x01(\t\"\xb4\x02\n\x03Job\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x33\n\x06inputs\x18\x03 \x03(\x0b\x32#.com.webank.eggroll.core.meta.Store\x12\x34\n\x07outputs\x18\x04 \x03(\x0b\x32#.com.webank.eggroll.core.meta.Store\x12\x37\n\x08\x66unctors\x18\x05 \x03(\x0b\x32%.com.webank.eggroll.core.meta.Functor\x12?\n\x07options\x18\x06 \x03(\x0b\x32..com.webank.eggroll.core.meta.Job.OptionsEntry\x1a.\n\x0cOptionsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\xc3\x01\n\x04Task\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x37\n\x06inputs\x18\x03 \x03(\x0b\x32\'.com.webank.eggroll.core.meta.Partition\x12\x38\n\x07outputs\x18\x04 \x03(\x0b\x32\'.com.webank.eggroll.core.meta.Partition\x12.\n\x03job\x18\x05 \x01(\x0b\x32!.com.webank.eggroll.core.meta.Job\"\xfa\x01\n\x0bSessionMeta\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x0e\n\x06status\x18\x03 \x01(\t\x12\x0b\n\x03tag\x18\x04 \x01(\t\x12;\n\nprocessors\x18\x05 \x03(\x0b\x32\'.com.webank.eggroll.core.meta.Processor\x12G\n\x07options\x18\x06 \x03(\x0b\x32\x36.com.webank.eggroll.core.meta.SessionMeta.OptionsEntry\x1a.\n\x0cOptionsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\x62\x06proto3')
 )
 
 
@@ -524,50 +524,57 @@ _STORELOCATOR = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='storeType', full_name='com.webank.eggroll.core.meta.StoreLocator.storeType', index=0,
-      number=1, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=_b("").decode('utf-8'),
+      name='id', full_name='com.webank.eggroll.core.meta.StoreLocator.id', index=0,
+      number=1, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='namespace', full_name='com.webank.eggroll.core.meta.StoreLocator.namespace', index=1,
+      name='storeType', full_name='com.webank.eggroll.core.meta.StoreLocator.storeType', index=1,
       number=2, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='name', full_name='com.webank.eggroll.core.meta.StoreLocator.name', index=2,
+      name='namespace', full_name='com.webank.eggroll.core.meta.StoreLocator.namespace', index=2,
       number=3, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='path', full_name='com.webank.eggroll.core.meta.StoreLocator.path', index=3,
+      name='name', full_name='com.webank.eggroll.core.meta.StoreLocator.name', index=3,
       number=4, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='totalPartitions', full_name='com.webank.eggroll.core.meta.StoreLocator.totalPartitions', index=4,
-      number=5, type=5, cpp_type=1, label=1,
-      has_default_value=False, default_value=0,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR),
-    _descriptor.FieldDescriptor(
-      name='partitioner', full_name='com.webank.eggroll.core.meta.StoreLocator.partitioner', index=5,
-      number=6, type=9, cpp_type=9, label=1,
+      name='path', full_name='com.webank.eggroll.core.meta.StoreLocator.path', index=4,
+      number=5, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='serdes', full_name='com.webank.eggroll.core.meta.StoreLocator.serdes', index=6,
+      name='totalPartitions', full_name='com.webank.eggroll.core.meta.StoreLocator.totalPartitions', index=5,
+      number=6, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='partitioner', full_name='com.webank.eggroll.core.meta.StoreLocator.partitioner', index=6,
       number=7, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='serdes', full_name='com.webank.eggroll.core.meta.StoreLocator.serdes', index=7,
+      number=8, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -585,7 +592,7 @@ _STORELOCATOR = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=1111,
-  serialized_end=1253,
+  serialized_end=1265,
 )
 
 
@@ -666,8 +673,8 @@ _STORE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1256,
-  serialized_end=1505,
+  serialized_start=1268,
+  serialized_end=1517,
 )
 
 
@@ -718,8 +725,8 @@ _PARTITION = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1508,
-  serialized_end=1679,
+  serialized_start=1520,
+  serialized_end=1691,
 )
 
 
@@ -749,8 +756,8 @@ _CALLINFO = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1681,
-  serialized_end=1708,
+  serialized_start=1693,
+  serialized_end=1720,
 )
 
 
@@ -852,8 +859,8 @@ _JOB = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1711,
-  serialized_end=2019,
+  serialized_start=1723,
+  serialized_end=2031,
 )
 
 
@@ -911,8 +918,8 @@ _TASK = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2022,
-  serialized_end=2217,
+  serialized_start=2034,
+  serialized_end=2229,
 )
 
 
@@ -1014,8 +1021,8 @@ _SESSIONMETA = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2220,
-  serialized_end=2470,
+  serialized_start=2232,
+  serialized_end=2482,
 )
 
 _SERVERNODE.fields_by_name['endpoint'].message_type = _ENDPOINT
