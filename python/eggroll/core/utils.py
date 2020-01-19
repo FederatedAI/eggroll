@@ -90,12 +90,13 @@ def json_loads(src):
 def current_timestamp():
     return int(time.time()*1000)
 
+
 def _exception_logger(func):
     def wrapper(*args, **kw):
         try:
             return func(*args, **kw)
         except:
-            msg = (f"\n==== detail start ====\n"
+            msg = (f"\n\n==== detail start, at {time_now()} ====\n"
                    f"{traceback.format_exc()}"
                    f"\n==== detail end ====\n\n")
             # LOGGER.error(msg)
