@@ -16,7 +16,6 @@
 
 package com.webank.eggroll.rollsite.factory;
 
-import com.google.common.net.InetAddresses;
 import com.google.protobuf.ByteString;
 import com.webank.ai.eggroll.api.core.BasicMeta;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
@@ -37,8 +36,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.InetSocketAddress;
-import java.net.SocketAddress;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Properties;
@@ -89,22 +86,9 @@ public class GrpcServerFactory {
 
         NettyServerBuilder serverBuilder = null;
 
-        if (StringUtils.isBlank(proxyServerConf.getIp())) {
-            LOGGER.info("server build on port only :{}", proxyServerConf.getPort());
-            // LOGGER.warn("this may cause trouble in multiple network devices. you may want to consider binding to a ip");
-            serverBuilder = NettyServerBuilder.forPort(proxyServerConf.getPort());
-        } else {
-            LOGGER.info("server build on address {}:{}", proxyServerConf.getIp(), proxyServerConf.getPort());
-            InetSocketAddress inetSocketAddress = new InetSocketAddress(
-                    InetAddresses.forString(proxyServerConf.getIp()), proxyServerConf.getPort());
-
-            LOGGER.info(inetSocketAddress);
-            SocketAddress addr =
-                    new InetSocketAddress(
-                            InetAddresses.forString(proxyServerConf.getIp()), proxyServerConf.getPort());
-            serverBuilder = NettyServerBuilder.forAddress(addr);
-
-        }
+        LOGGER.info("server build on port:{}", proxyServerConf.getPort());
+        // LOGGER.warn("this may cause trouble in multiple network devices. you may want to consider binding to a ip");
+        serverBuilder = NettyServerBuilder.forPort(proxyServerConf.getPort());
 
         serverBuilder.addService(dataTransferPipedServer)
                 .addService(routeServer)
