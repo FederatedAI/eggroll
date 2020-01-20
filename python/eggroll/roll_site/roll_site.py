@@ -22,6 +22,7 @@ from eggroll.core.constants import StoreTypes
 from eggroll.core.error import GrpcCallError
 from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.meta_model import ErStoreLocator, ErStore
+from eggroll.core.pair_store.roll_site import DELIM
 from eggroll.core.proto import proxy_pb2, proxy_pb2_grpc
 from eggroll.core.serdes import eggroll_serdes
 from eggroll.roll_pair.roll_pair import RollPair, RollPairContext
@@ -54,7 +55,7 @@ class RollSiteContext:
 
     # todo:1: add options?
     def load(self, name: str, tag: str, options={}):
-        return RollSite(name, tag, self)
+        return RollSite(name, tag, self, options=options)
 
     # todo:1: try-except as decorator
     def init_job_session_pair(self, federation_session_id, session_id):
@@ -106,18 +107,19 @@ class RollSite:
         self.process_pool = ThreadPoolExecutor(10)
         self.complete_pool = ThreadPoolExecutor(10)
 
-
     @staticmethod
     def __remote__object_key(*args):
-        return "-".join(["{}".format(arg) for arg in args])
+        return DELIM.join(["{}".format(arg) for arg in args])
 
+    def __gen_store_name(self):
+        pass
 
     def _thread_receive(self, packet, namespace, _tagged_key):
         try:
             is_standalone = self.ctx.rp_ctx.get_session().get_option(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE) \
                             == "standalone"
             if is_standalone:
-                status_rp = self.ctx.rp_ctx.load(namespace, STATUS_TABLE_NAME + "-" + self.ctx.federation_session_id)
+                status_rp = self.ctx.rp_ctx.load(namespace, STATUS_TABLE_NAME + DELIM + self.ctx.federation_session_id)
                 retry_cnt = 0
                 # TODO:0: sleep retry count and timeout
                 while True:
@@ -152,11 +154,15 @@ class RollSite:
                     ret_packet = self.stub.unaryCall(packet)
                     time.sleep(min(0.1*retry_cnt, 60))
                 obj_type = ret_packet.body.value
-                table_name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.federation_session_id, self.name, self.tag,
-                                                                           ret_packet.header.src.role,
-                                                                           ret_packet.header.src.partyId,
-                                                                           ret_packet.header.dst.role,
-                                                                           ret_packet.header.dst.partyId]))
+                table_name = DELIM.join([OBJECT_STORAGE_NAME,
+                                         self.federation_session_id,
+                                         self.name,
+                                         self.tag,
+                                         ret_packet.header.src.role,
+                                         ret_packet.header.src.partyId,
+                                         ret_packet.header.dst.role,
+                                         ret_packet.header.dst.partyId])
+
                 table_namespace = self.federation_session_id
             L.debug(f"pull status done: tagged_key:{_tagged_key}, packet:{packet}, namespace:{namespace}")
             rp = self.ctx.rp_ctx.load(namespace=table_namespace, name=table_name)
@@ -184,33 +190,43 @@ class RollSite:
                 rp = obj
             else:
                 # If it is a object, put the object in the table and send the table meta.
-                name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.federation_session_id, self.name, self.tag,
-                                                                     self.local_role, str(self.party_id),
-                                                                     _role, str(_party_id)]))
+                name = DELIM.join([OBJECT_STORAGE_NAME,
+                                   self.federation_session_id,
+                                   self.name,
+                                   self.tag,
+                                   self.local_role,
+                                   str(self.party_id),
+                                   _role,
+                                   str(_party_id)])
                 rp = self.ctx.rp_ctx.load(namespace, name)
                 rp.put(_tagged_key, obj)
-            L.info(f"pushing prepared:{type(obj)}, tag_key:{_tagged_key}")
+
+            L.info(f"pushing prepared: {type(obj)}, tag_key:{_tagged_key}")
 
             def map_values(_tagged_key):
                 is_standalone = self.ctx.rp_ctx.get_session().get_option(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE) \
                                 == "standalone"
                 if is_standalone:
-                    dst_name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.federation_session_id, self.name,
-                                                                             self.tag,
-                                                                             self.local_role, str(self.party_id),
-                                                                             _role, str(_party_id)]))
+                    dst_name = DELIM.join([OBJECT_STORAGE_NAME,
+                                           self.federation_session_id,
+                                           self.name,
+                                           self.tag,
+                                           self.local_role, str(self.party_id),
+                                           _role, str(_party_id)])
                     store_type = rp.get_store_type()
                 else:
-                    dst_name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.federation_session_id, self.name,
-                                                                             self.tag, self.local_role,
-                                                                             str(self.party_id),
-                                                                             _role, str(_party_id),
-                                                                             self.dst_host,
-                                                                             str(self.dst_port),
-                                                                             obj_type]))
+                    dst_name = DELIM.join([OBJECT_STORAGE_NAME,
+                                           self.federation_session_id, self.name,
+                                           self.tag, self.local_role,
+                                           str(self.party_id),
+                                           _role,
+                                           str(_party_id),
+                                           self.dst_host,
+                                           str(self.dst_port),
+                                           obj_type])
                     store_type = StoreTypes.ROLLPAIR_ROLLSITE
                 if is_standalone:
-                    status_rp = self.ctx.rp_ctx.load(namespace, STATUS_TABLE_NAME + "-" + self.federation_session_id)
+                    status_rp = self.ctx.rp_ctx.load(namespace, STATUS_TABLE_NAME + DELIM + self.federation_session_id, self)
                     if isinstance(obj, RollPair):
                         status_rp.put(_tagged_key, (obj_type.encode("utf-8"), rp.get_name(), rp.get_namespace()))
                     else:
@@ -233,7 +249,8 @@ class RollSite:
         return futures
 
     def wait_futures(self, futures):
-        ret_future = self.complete_pool.submit(wait, futures, timeout=10, return_when=FIRST_EXCEPTION)
+        # TODO:0: configurable
+        ret_future = self.complete_pool.submit(wait, futures, timeout=1000, return_when=FIRST_EXCEPTION)
         self.complete_pool.shutdown(wait=False)
         return ret_future
 
@@ -243,16 +260,21 @@ class RollSite:
             _tagged_key = self.__remote__object_key(self.federation_session_id, self.name, self.tag, src_role, str(party_id),
                                                     self.local_role, str(self.party_id))
 
-            name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.federation_session_id, self.name, self.tag,
-                                                                 src_role, str(party_id),
-                                                                 self.local_role, str(self.party_id)]))
+            name = DELIM.join([OBJECT_STORAGE_NAME,
+                               self.federation_session_id,
+                               self.name,
+                               self.tag,
+                               src_role,
+                               str(party_id),
+                               self.local_role,
+                               str(self.party_id)])
 
             task_info = proxy_pb2.Task(taskId=name)
             topic_src = proxy_pb2.Topic(name="get_status", partyId="{}".format(party_id),
                                         role=src_role, callback=None)
             topic_dst = proxy_pb2.Topic(name="get_status", partyId="{}".format(self.party_id),
                                         role=self.local_role, callback=None)
-            command_test = proxy_pb2.Command(name="get_status")
+            get_status_command = proxy_pb2.Command(name="get_status")
             conf_test = proxy_pb2.Conf(overallTimeout=1000,
                                        completionWaitTimeout=1000,
                                        packetIntervalTimeout=1000,
@@ -261,10 +283,10 @@ class RollSite:
             metadata = proxy_pb2.Metadata(task=task_info,
                                           src=topic_src,
                                           dst=topic_dst,
-                                          command=command_test,
+                                          command=get_status_command,
                                           operator="getStatus",
-                                          seq=0, ack=0,
-                                          conf=conf_test)
+                                          seq=0,
+                                          ack=0)
 
             packet = proxy_pb2.Packet(header=metadata)
             namespace = self.federation_session_id

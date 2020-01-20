@@ -5,6 +5,7 @@ from arch.api.table.eggroll2.table_impl import DTable
 from arch.api.table.session import FateSession
 from arch.api.transfer import Rubbish, Party, Federation
 from eggroll.core.meta_model import ErEndpoint
+from eggroll.core.pair_store.roll_site import DELIM
 from eggroll.roll_pair.roll_pair import RollPair
 from eggroll.utils import file_utils
 
@@ -46,7 +47,7 @@ def init_roll_site_context(runtime_conf, session_id):
     return rp_context, rs_context
 
 def _remote__object_key(*args):
-    return "-".join(["{}".format(arg) for arg in args])
+    return DELIM.join(["{}".format(arg) for arg in args])
 
 
 class FederationRuntime(Federation):
