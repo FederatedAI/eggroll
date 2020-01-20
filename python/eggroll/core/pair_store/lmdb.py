@@ -12,8 +12,8 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-import platform
 import os
+import platform
 import threading
 
 import lmdb
@@ -147,6 +147,8 @@ class LmdbAdapter(PairAdapter):
         self.close()
 
     def close(self):
+        if not self.env:
+            return
         if self.txn_r:
             self.txn_r.commit()
             self.cursor.close()

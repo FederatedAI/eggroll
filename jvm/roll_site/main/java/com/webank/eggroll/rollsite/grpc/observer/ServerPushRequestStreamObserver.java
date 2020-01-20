@@ -36,7 +36,6 @@ import com.webank.eggroll.rollsite.utils.Timeouts;
 import io.grpc.Grpc;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
-
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
@@ -197,20 +196,26 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
                 String namespace = packet.getHeader().getTask().getModel().getDataKey();
                 LOGGER.info("name:{}, namespace:{}", name, namespace);
 
+                // TODO:0: better wait
                 if (rollSiteUtil == null) {
-                    String[] args = name.split("-");
+                    // TODO:0: change this when delim changes
+                    String[] args = name.split("#");
                     String job_id = args[1];
-
+                    try {
+                        while (!JobidSessionIdMap.jobidSessionIdMap.containsKey(job_id)) {
+                            Thread.sleep(1000);
+                        }
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
                     String session_id = JobidSessionIdMap.jobidSessionIdMap.get(job_id);
                     if(session_id != null) {
                         rollSiteUtil = new RollSiteUtil(session_id, name, namespace);
                     }
                 }
 
-                if(rollSiteUtil != null) {
-                    rollSiteUtil.putBatch(value.asReadOnlyByteBuffer());
-                    LOGGER.info("end putBatch");
-                }
+                rollSiteUtil.putBatch(value.asReadOnlyByteBuffer());
+                LOGGER.info("end putBatch");
             }
 
             if (timeouts.isTimeout(overallTimeout, overallStartTimestamp)) {
@@ -270,7 +275,7 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
 
     @Override
     public void onCompleted() {
-        LOGGER.info("[PUSH][OBSERVER] onCompleted");
+        LOGGER.info("[PUSH][OBSERVER] onCompleted. ackCount: {}", ackCount);
         long lastestAckCount = ackCount.get();
         LOGGER.info("[PUSH][OBSERVER][ONCOMPLETE] trying to complete task. metadata: {}, ackCount: {}",
                 oneLineStringInputMetadata, lastestAckCount);
@@ -307,7 +312,6 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
 
             }
         }
-
         //pipe.onComplete();
 
         try {
@@ -344,11 +348,11 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
                 //responseObserver.onNext(responseMetadata);
                 responseObserver.onNext(response);
                 responseObserver.onCompleted();
-
                 LOGGER.info("[PUSH][OBSERVER][ONCOMPLETE] push server complete. inputMetadata: {}",
                         ToStringUtils.toOneLineString(response));
                 streamStat.onComplete();
             }
+
         } catch (NullPointerException e) {
             LOGGER.error("[PUSH][OBSERVER][ONCOMPLETE] NullPointerException caught in push onComplete. metadata: {}",
                     oneLineStringInputMetadata);

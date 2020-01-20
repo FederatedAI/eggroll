@@ -25,9 +25,13 @@ from eggroll.core.proto import meta_pb2
 from eggroll.core.proto import proxy_pb2, proxy_pb2_grpc
 from eggroll.core.serdes import eggroll_serdes
 from eggroll.core.utils import _elements_to_proto
+from eggroll.utils.log_utils import get_logger
+
+L = get_logger()
 
 _serdes = eggroll_serdes.PickleSerdes
 OBJECT_STORAGE_NAME = "__federation__"
+DELIM = "#"
 
 
 class RollsiteWriteBatch(PairWriteBatch):
@@ -36,9 +40,15 @@ class RollsiteWriteBatch(PairWriteBatch):
     # TODO:0: check if secure channel needed
     def __init__(self, adapter):
         self.adapter = adapter
-        self.name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([adapter.job_id, adapter.name, adapter.tag,
-                                                                  adapter.src_role, adapter.src_party_id,
-                                                                  adapter.dst_role, adapter.dst_party_id]))
+        self.name = DELIM.join([OBJECT_STORAGE_NAME,
+                                adapter.job_id,
+                                adapter.name,
+                                adapter.tag,
+                                adapter.src_role,
+                                adapter.src_party_id,
+                                adapter.dst_role,
+                                adapter.dst_party_id])
+
         self.namespace = adapter.namespace
         self.src_role = adapter.src_role
         self.src_party_id = adapter.src_party_id
@@ -51,7 +61,7 @@ class RollsiteWriteBatch(PairWriteBatch):
         channel = self.grpc_channel_factory.create_channel(self.proxy_endpoint)
         self.stub = proxy_pb2_grpc.DataTransferServiceStub(channel)
 
-        self.__bin_packet_len = 1 << 20
+        self.__bin_packet_len = 16 << 20
         self.total_written = 0
 
         self.ba = bytearray(self.__bin_packet_len)
@@ -74,6 +84,8 @@ class RollsiteWriteBatch(PairWriteBatch):
         topic_dst = proxy_pb2.Topic(name=self.name, partyId="{}".format(self.dst_party_id),
                                     role=self.dst_role, callback=None)
         command_test = proxy_pb2.Command()
+
+        # TODO: conf test as config and use it
         conf_test = proxy_pb2.Conf(overallTimeout=200000,
                                    completionWaitTimeout=200000,
                                    packetIntervalTimeout=200000,
@@ -83,8 +95,8 @@ class RollsiteWriteBatch(PairWriteBatch):
                                       src=topic_src,
                                       dst=topic_dst,
                                       command=command_test,
-                                      seq=0, ack=0,
-                                      conf=conf_test)
+                                      seq=0,
+                                      ack=0)
 
         try:
             self.stub.push(self.generate_message(obj, metadata))
@@ -118,6 +130,7 @@ class RollsiteWriteBatch(PairWriteBatch):
         packet = proxy_pb2.Packet(header=metadata)
 
         try:
+            # TODO:0: retry and sleep for all grpc call in RollSite
             self.stub.unaryCall(packet)
         except Exception as e:
             raise GrpcCallError('send_end', self.proxy_endpoint, e)
@@ -126,7 +139,6 @@ class RollsiteWriteBatch(PairWriteBatch):
         bin_batch = bytes(self.ba[0:self.buffer.get_offset()])
         self.write(bin_batch)
         self.send_end()
-
 
     def put(self, k, v):
         print("self.type:", self.obj_type)
@@ -149,6 +161,7 @@ class RollsiteWriteBatch(PairWriteBatch):
         except:
             print("Unexpected error:", sys.exc_info()[0])
             raise
+
 
 class RollsiteIterator(PairIterator):
     def __init__(self, adapter):
@@ -189,7 +202,7 @@ class RollsiteAdapter(PairAdapter):
         name = options["path"].split("/")[-2]
         print("self._name:", name)
         self.namespace = options["path"].split("/")[-3]
-        args = name.split("-", 11)  #args[8]='9394/0'
+        args = name.split(DELIM, 11)  #args[8]='9394/0'
         print(args)
 
         self.job_id = args[1]

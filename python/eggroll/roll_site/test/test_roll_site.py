@@ -23,10 +23,15 @@ from eggroll.roll_site.test.roll_site_test_asset import get_debug_test_context, 
     get_parties
 
 props_file_host = default_props_file
-#props_file_host = default_props_file + '.host'
+props_file_host = default_props_file + '.host'
 
 props_file_guest = default_props_file
-#props_file_guest = default_props_file + '.guest'
+props_file_guest = default_props_file + '.guest'
+
+
+def data_generator(limit):
+    for i in range(limit):
+        yield (f"key-{i}", f"value-{i}")
 
 
 class TestRollSiteBase(unittest.TestCase):
@@ -40,6 +45,12 @@ class TestRollSiteBase(unittest.TestCase):
     _rp_rs_name = "roll_pair_name.table"
     _rp_rs_tag = "roll_pair_tag"
 
+    _rp_rs_name_big = "roll_pair_name.table.big"
+    _rp_rs_tag_big = "roll_pair_tag.big"
+
+    _rp_rs_name_big_mp = "roll_pair_name.table.big.mp"
+    _rp_rs_tag_big_mp = "roll_pair_tag.big.mp"
+
     @classmethod
     def setUpClass(cls) -> None:
         cls.rs_context_host = get_debug_test_context(role='host',
@@ -50,6 +61,9 @@ class TestRollSiteBase(unittest.TestCase):
                                                       session_id='testing_guest',
                                                       role='guest',
                                                       props_file=props_file_guest)
+
+    def test_init(self):
+        print(1)
 
     def test_remote(self):
         rs = self.rs_context_guest.load(name=self._obj_rs_name, tag=self._obj_rs_tag)
@@ -81,6 +95,32 @@ class TestRollSiteBase(unittest.TestCase):
             result = future.result()
             print("result: ", result)
 
+    def test_remote_rollpair_big(self):
+        rp_options = {'include_key': True}
+        rp_context = self.rs_context_guest.rp_ctx
+        rp = rp_context.load("namespace", "big_name")
+        rp.put_all(data_generator(10000), options=rp_options)
+        print(f"count: {rp.count()}")
+
+        rs = self.rs_context_guest.load(name=self._rp_rs_name_big, tag=self._rp_rs_tag_big)
+        futures = rs.push(rp, remote_parties)
+        for future in futures:
+            result = future.result()
+            print("result: ", result)
+
+    def test_remote_rollpair_big_multi_partitions(self):
+        rp_options = {'include_key': True, 'total_partitions': 10}
+        rp_context = self.rs_context_guest.rp_ctx
+        rp = rp_context.load("namespace", "big_mp_name")
+        rp.put_all(data_generator(10000), options=rp_options)
+        print(f"count: {rp.count()}")
+
+        rs = self.rs_context_guest.load(name=self._rp_rs_name_big_mp, tag=self._rp_rs_tag_big_mp)
+        futures = rs.push(rp, remote_parties)
+        for future in futures:
+            result = future.result()
+            print("result: ", result)
+
     def test_get_rollpair(self):
         rs = self.rs_context_host.load(name=self._rp_rs_name, tag=self._rp_rs_tag)
         futures = rs.pull(get_parties)
@@ -94,6 +134,32 @@ class TestRollSiteBase(unittest.TestCase):
             else:
                 raise TypeError(f'require getting a RollPair but obj found: {obj}')
 
+    def test_get_rollpair_big(self):
+        rs = self.rs_context_host.load(name=self._rp_rs_name_big, tag=self._rp_rs_tag_big)
+        futures = rs.pull(get_parties)
+        for future in futures:
+            obj = future.result()
+            if isinstance(obj, RollPair):
+                key = "key-1"
+                value = obj.get(key)
+                #self.assertEqual(value, "value-1", f"got wrong value. expected: 'value-1', actual: {value}")
+                print("obj:", obj, ", value:", value, ", count:", obj.count())
+            else:
+                raise TypeError(f'require getting a RollPair but obj found: {obj}')
+
+    def test_get_rollpair_big_multi_partitions(self):
+        rs = self.rs_context_host.load(name=self._rp_rs_name_big_mp, tag=self._rp_rs_tag_big_mp)
+        futures = rs.pull(get_parties)
+        for future in futures:
+            obj = future.result()
+            if isinstance(obj, RollPair):
+                key = "key-1"
+                value = obj.get(key)
+                #self.assertEqual(value, "value-1", f"got wrong value. expected: 'value-1', actual: {value}")
+                print("obj:", obj, ", value:", value, ", count:", obj.count())
+            else:
+                raise TypeError(f'require getting a RollPair but obj found: {obj}')
+
     def test_get_table(self):
         rp_context = self.rs_context_host.rp_ctx
 
@@ -104,7 +170,7 @@ class TestRollSiteBase(unittest.TestCase):
     def test_get_all(self):
         rp_context = self.rs_context_host.rp_ctx
 
-        rp = rp_context.load('atest', f'__federation__-atest-{self._rp_rs_name}-{self._rp_rs_tag}-10002-host-10001')
+        rp = rp_context.load('atest', f'__federation__#atest#RsaIntersectTransferVariable.rsa_pubkey#testing_rs_obj#guest#10002#host#10001')
         print(list(rp.get_all()))
 
 

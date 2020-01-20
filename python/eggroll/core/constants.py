@@ -69,3 +69,4 @@ class SessionStatus(object):
 class DeployModes(object):
     STANDALONE = 'standalone'
     CLUSTER = 'cluster'
+
