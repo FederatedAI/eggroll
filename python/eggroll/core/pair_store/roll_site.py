@@ -124,8 +124,8 @@ class RollsiteWriteBatch(PairWriteBatch):
                                       dst=topic_dst,
                                       command=command_test,
                                       operator="markEnd",
-                                      seq=0, ack=0,
-                                      conf=conf_test)
+                                      seq=0,
+                                      ack=0)
 
         packet = proxy_pb2.Packet(header=metadata)
 
@@ -216,17 +216,16 @@ class RollsiteAdapter(PairAdapter):
         self._dst_port = int(args[9])
         self.obj_type = args[10]          #obj or rollpair
 
-        self._store_type = 'roll_site'
-        self._path = ''
-        self._partitioner = ''
-        self._serdes = ''
-        self._partitions = []
-        self._store_locator = meta_pb2.StoreLocator(storeType=self._store_type,
+        er_partition = options['er_partition']
+        store_locator = er_partition._store_locator
+
+        _store_type = 'roll_site'
+        self._store_locator = meta_pb2.StoreLocator(storeType=_store_type,
                                                     namespace=self.namespace,
                                                     name=name,
-                                                    path=self._path,
-                                                    partitioner=self._partitioner,
-                                                    serdes=self._serdes)
+                                                    partitioner=store_locator._partitioner,
+                                                    serdes=store_locator._serdes,
+                                                    totalPartitions=store_locator._total_partitions)
 
     def to_proto(self):
         return meta_pb2.Store(storeLocator=self._store_locator,
