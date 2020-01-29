@@ -220,6 +220,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
             String session_id = request.getHeader().getTask().getModel().getDataKey();
             Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
             packet = packetBuilder.setHeader(request.getHeader()).build();
+            // TODO:1: rename job_id to federation_session_id, session_id -> eggroll_session_id
             LOGGER.info("init_job_session_pair, job_id:{}, session_id:{}", job_id, session_id);
             JobidSessionIdMap.jobidSessionIdMap.put(job_id, session_id);
             responseObserver.onNext(packet);
@@ -228,13 +229,12 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
         }
 
         if(request.getHeader().getOperator().equals("markEnd") && proxyServerConf.getPartyId().equals(inputMetadata.getDst().getPartyId())) {
-            LOGGER.info("markEnd");
             Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
             Proxy.Data data = Proxy.Data.newBuilder().build();
             packet = packetBuilder.setHeader(request.getHeader()).build();
             pipe.setStatus(true);
-            LOGGER.info("type: {}", request.getHeader().getTask().getModel().getName());  //obj or RollPair
-            LOGGER.info("tagkey: {}", request.getHeader().getTask().getModel().getDataKey());  //the key of the obj
+            LOGGER.info("markEnd: {}, {}",request.getHeader().getTask().getModel().getDataKey(),
+                    request.getHeader().getTask().getModel().getName());  //obj or RollPair
             pipe.setType(request.getHeader().getTask().getModel().getName());
             pipe.setTagKey(request.getHeader().getTask().getModel().getDataKey());
             responseObserver.onNext(packet);
