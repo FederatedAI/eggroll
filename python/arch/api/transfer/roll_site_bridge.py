@@ -5,7 +5,7 @@ from arch.api.table.eggroll2.table_impl import DTable
 from arch.api.table.session import FateSession
 from arch.api.transfer import Rubbish, Party, Federation
 from eggroll.core.meta_model import ErEndpoint
-from eggroll.core.pair_store.roll_site import DELIM
+from eggroll.core.pair_store.roll_site_adapter import DELIM
 from eggroll.roll_pair.roll_pair import RollPair
 from eggroll.utils import file_utils
 
