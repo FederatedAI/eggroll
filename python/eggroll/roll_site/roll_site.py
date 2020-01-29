@@ -22,7 +22,7 @@ from eggroll.core.constants import StoreTypes
 from eggroll.core.error import GrpcCallError
 from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.meta_model import ErStoreLocator, ErStore
-from eggroll.core.pair_store.roll_site import DELIM
+from eggroll.core.pair_store.roll_site_adapter import DELIM
 from eggroll.core.proto import proxy_pb2, proxy_pb2_grpc
 from eggroll.core.serdes import eggroll_serdes
 from eggroll.roll_pair.roll_pair import RollPair, RollPairContext

@@ -34,7 +34,7 @@ OBJECT_STORAGE_NAME = "__federation__"
 DELIM = "#"
 
 
-class RollsiteWriteBatch(PairWriteBatch):
+class RollSiteWriteBatch(PairWriteBatch):
     grpc_channel_factory = GrpcChannelFactory()
 
     # TODO:0: check if secure channel needed
@@ -163,7 +163,7 @@ class RollsiteWriteBatch(PairWriteBatch):
             raise
 
 
-class RollsiteIterator(PairIterator):
+class RollSiteIterator(PairIterator):
     def __init__(self, adapter):
         self.adapter = adapter
         self.it = adapter.db.iteritems()
@@ -196,7 +196,7 @@ class RollsiteIterator(PairIterator):
         return self.it
 
 
-class RollsiteAdapter(PairAdapter):
+class RollSiteAdapter(PairAdapter):
     def __init__(self, options):
         super().__init__(options)
         name = options["path"].split("/")[-2]
@@ -235,10 +235,10 @@ class RollsiteAdapter(PairAdapter):
         pass
 
     def iteritems(self):
-        return RollsiteIterator(self)
+        return RollSiteIterator(self)
 
     def new_batch(self):
-        return RollsiteWriteBatch(self)
+        return RollSiteWriteBatch(self)
 
     def get(self, key):
         pass
