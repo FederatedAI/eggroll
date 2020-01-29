@@ -46,6 +46,7 @@ def init_roll_site_context(runtime_conf, session_id):
     LOGGER.info("init_roll_site_context done: {}".format(rs_context.__dict__))
     return rp_context, rs_context
 
+
 def _remote__object_key(*args):
     return DELIM.join(["{}".format(arg) for arg in args])
 
@@ -57,7 +58,6 @@ class FederationRuntime(Federation):
         self.rpc, self.rsc = init_roll_site_context(runtime_conf, session_id)
         self._loop = asyncio.get_event_loop()
         self.role = runtime_conf.get("local").get("role")
-
 
     def get(self, name, tag, parties: Union[Party, list]):
         if isinstance(parties, Party):

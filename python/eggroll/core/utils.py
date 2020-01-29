@@ -20,10 +20,6 @@ from datetime import datetime
 
 from google.protobuf.text_format import MessageToString
 
-from eggroll.utils import log_utils
-
-L = log_utils.get_logger()
-
 static_er_conf = {}
 
 
@@ -57,8 +53,20 @@ def _map_and_listify(map_func, a_list):
     return list(map(map_func, a_list))
 
 
-def _repr_list(a_list):
+# bytes will be converted like "b'xxx'"
+def _stringify_dict(a_dict: dict):
+    return {str(k): str(v) for k, v in a_dict.items()}
+
+
+def _repr_list(a_list: list):
     return ", ".join(_map_and_listify(repr, a_list))
+
+
+def _repr_bytes(a_bytes: bytes):
+    if a_bytes is None:
+        return f"(None)"
+    else:
+        return f"({a_bytes[:200]}, len={len(a_bytes)})"
 
 
 def _elements_to_proto(rpc_message_list):
@@ -150,6 +158,8 @@ def hash_code(s):
         h = int(seed * h) + ord(c)
 
     if h == sys.maxsize or h == -sys.maxsize - 1:
+        from eggroll.utils import log_utils
+        L = log_utils.get_logger()
         L.warn("hash code:{} out of int bound".format(str(h)))
         h = 0
 
