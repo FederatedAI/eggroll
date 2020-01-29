@@ -33,6 +33,17 @@ message TransferBatch {
   bytes data = 3;
 }
 
+message FederationHeader {
+  string federationSessionId = 1;
+  string name = 2;
+  string tag = 3;
+  string srcRole = 4;
+  string srcPartyId = 5;
+  string dstRole = 6;
+  string dstPartyId = 7;
+  map<string, string> options = 10;
+}
+
 // TODO: use transfer lib
 service TransferService {
   rpc send (stream TransferBatch) returns (TransferBatch);

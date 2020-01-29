@@ -211,13 +211,17 @@ class RollSite:
                                            self.federation_session_id,
                                            self.name,
                                            self.tag,
-                                           self.local_role, str(self.party_id),
-                                           _role, str(_party_id)])
+                                           self.local_role,
+                                           str(self.party_id),
+                                           _role,
+                                           str(_party_id)])
                     store_type = rp.get_store_type()
                 else:
                     dst_name = DELIM.join([OBJECT_STORAGE_NAME,
-                                           self.federation_session_id, self.name,
-                                           self.tag, self.local_role,
+                                           self.federation_session_id,
+                                           self.name,
+                                           self.tag,
+                                           self.local_role,
                                            str(self.party_id),
                                            _role,
                                            str(_party_id),
@@ -232,12 +236,18 @@ class RollSite:
                     else:
                         status_rp.put(_tagged_key, (obj_type.encode("utf-8"), dst_name, namespace))
                 else:
-                    rp.map_values(
-                        lambda v: v,
-                        output=ErStore(store_locator=
-                                       ErStoreLocator(store_type=store_type,
-                                                      namespace=namespace,
-                                                      name=dst_name)))
+                    store = rp.get_store()
+                    store_locator = store._store_locator
+                    new_store_locator = ErStoreLocator(store_type=store_type,
+                                                       namespace=namespace,
+                                                       name=dst_name,
+                                                       total_partitions=store_locator._total_partitions,
+                                                       partitioner=store_locator._partitioner,
+                                                       serdes=store_locator._serdes)
+
+                    rp.map_values(lambda v: v,
+                        output=ErStore(store_locator=new_store_locator))
+
                 L.info(f"pushing map_values done:{type(obj)}, tag_key:{_tagged_key}")
                 return _tagged_key
 

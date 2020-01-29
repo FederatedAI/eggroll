@@ -246,6 +246,9 @@ class RollPair(object):
     def get_namespace(self):
         return self.__store._store_locator._namespace
 
+    def get_store(self):
+        return self.__store
+
     def get_store_type(self):
         return self.__store._store_locator._store_type
 
