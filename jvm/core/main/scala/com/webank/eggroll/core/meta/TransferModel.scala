@@ -41,6 +41,7 @@ case class ErFederationHeader(federationSessionId: String,
                               srcPartyId: String,
                               dstRole: String,
                               dstPartyId: String,
+                              dataType: String,
                               options: Map[String, String]) extends TransferRpcMessage
 
 object TransferModelPbMessageSerdes {
@@ -85,6 +86,7 @@ object TransferModelPbMessageSerdes {
         .setSrcPartyId(src.srcPartyId)
         .setDstRole(src.dstRole)
         .setDstPartyId(src.dstPartyId)
+        .setDataType(src.dataType)
         .putAllOptions(src.options.asJava)
 
       builder.build()
@@ -123,6 +125,7 @@ object TransferModelPbMessageSerdes {
         srcPartyId = src.getSrcPartyId,
         dstRole = src.getDstRole,
         dstPartyId = src.getDstPartyId,
+        dataType = src.getDataType,
         options = src.getOptionsMap.asScala.toMap
       )
     }

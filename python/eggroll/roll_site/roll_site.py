@@ -18,6 +18,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, wait, FIRST_EXCEPTION
 
 from eggroll.core.conf_keys import SessionConfKeys
+from eggroll.core.constants import DeployModes
 from eggroll.core.constants import StoreTypes
 from eggroll.core.error import GrpcCallError
 from eggroll.core.grpc.factory import GrpcChannelFactory
@@ -25,6 +26,7 @@ from eggroll.core.meta_model import ErStoreLocator, ErStore
 from eggroll.core.pair_store.roll_site_adapter import DELIM
 from eggroll.core.proto import proxy_pb2, proxy_pb2_grpc
 from eggroll.core.serdes import eggroll_serdes
+from eggroll.core.transfer_model import ErFederationHeader
 from eggroll.roll_pair.roll_pair import RollPair, RollPairContext
 from eggroll.utils import log_utils
 
@@ -32,6 +34,17 @@ L = log_utils.get_logger()
 _serdes = eggroll_serdes.PickleSerdes
 
 STATUS_TABLE_NAME = "__roll_site_standalone_status__"
+
+
+def create_store_name(federation_header: ErFederationHeader):
+    return DELIM.join([OBJECT_STORAGE_NAME,     # todo:0: remove this
+                       federation_header._federation_session_id,
+                       federation_header._name,
+                       federation_header._tag,
+                       federation_header._src_role,
+                       federation_header._src_party_id,
+                       federation_header._dst_role,
+                       federation_header._dst_party_id])
 
 
 class RollSiteContext:
@@ -61,9 +74,9 @@ class RollSiteContext:
     def init_job_session_pair(self, federation_session_id, session_id):
         try:
             task_info = proxy_pb2.Task(model=proxy_pb2.Model(name=federation_session_id, dataKey=bytes(session_id, encoding='utf8')))
-            topic_src = proxy_pb2.Topic(name="init_job_session_pair", partyId="{}".format(self.party_id),
+            topic_src = proxy_pb2.Topic(name="init_job_session_pair", partyId=self.party_id,
                                         role=self.role, callback=None)
-            topic_dst = proxy_pb2.Topic(name="init_job_session_pair", partyId="{}".format(self.party_id),
+            topic_dst = proxy_pb2.Topic(name="init_job_session_pair", partyId=self.party_id,
                                         role=self.role, callback=None)
             command_test = proxy_pb2.Command(name="init_job_session_pair")
             conf_test = proxy_pb2.Conf(overallTimeout=1000,
@@ -76,8 +89,8 @@ class RollSiteContext:
                                           dst=topic_dst,
                                           command=command_test,
                                           operator="init_job_session_pair",
-                                          seq=0, ack=0,
-                                          conf=conf_test)
+                                          seq=0,
+                                          ack=0)
             packet = proxy_pb2.Packet(header=metadata)
 
             self.stub.unaryCall(packet)
@@ -180,8 +193,17 @@ class RollSite:
             # for _partyId in _partyIds:
             _role = role_party_id[0]
             _party_id = role_party_id[1]
-            _tagged_key = self.__remote__object_key(self.federation_session_id, self.name, self.tag, self.local_role,
-                                                    self.party_id, _role, _party_id)
+
+            _options = {}
+            federation_header = ErFederationHeader(federation_session_id=self.federation_session_id,
+                                                   name=self.name,
+                                                   tag=self.tag,
+                                                   src_role=self.local_role,
+                                                   src_party_id=self.party_id,
+                                                   dst_role=_role,
+                                                   dst_party_id=_party_id,
+                                                   options=_options)
+            _tagged_key = create_store_name(federation_header)
             L.debug(f"pushing start party:{type(obj)}, {_tagged_key}")
             namespace = self.federation_session_id
             obj_type = 'rollpair' if isinstance(obj, RollPair) else 'object'
@@ -190,41 +212,36 @@ class RollSite:
                 rp = obj
             else:
                 # If it is a object, put the object in the table and send the table meta.
-                name = DELIM.join([OBJECT_STORAGE_NAME,
-                                   self.federation_session_id,
-                                   self.name,
-                                   self.tag,
-                                   self.local_role,
-                                   str(self.party_id),
-                                   _role,
-                                   str(_party_id)])
-                rp = self.ctx.rp_ctx.load(namespace, name)
+                # name = DELIM.join([OBJECT_STORAGE_NAME,
+                #                    self.federation_session_id,
+                #                    self.name,
+                #                    self.tag,
+                #                    self.local_role,
+                #                    str(self.party_id),
+                #                    _role,
+                #                    str(_party_id)])
+                rp = self.ctx.rp_ctx.load(namespace, _tagged_key)
                 rp.put(_tagged_key, obj)
 
             L.info(f"pushing prepared: {type(obj)}, tag_key:{_tagged_key}")
 
             def map_values(_tagged_key):
-                is_standalone = self.ctx.rp_ctx.get_session().get_option(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE) \
-                                == "standalone"
+                is_standalone = self.ctx.rp_ctx.get_session().get_option(
+                        SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE) == DeployModes.STANDALONE
+
                 if is_standalone:
-                    dst_name = DELIM.join([OBJECT_STORAGE_NAME,
-                                           self.federation_session_id,
-                                           self.name,
-                                           self.tag,
-                                           self.local_role,
-                                           str(self.party_id),
-                                           _role,
-                                           str(_party_id)])
+                    # dst_name = DELIM.join([OBJECT_STORAGE_NAME,
+                    #                        self.federation_session_id,
+                    #                        self.name,
+                    #                        self.tag,
+                    #                        self.local_role,
+                    #                        str(self.party_id),
+                    #                        _role,
+                    #                        str(_party_id)])
+                    dst_name = _tagged_key
                     store_type = rp.get_store_type()
                 else:
-                    dst_name = DELIM.join([OBJECT_STORAGE_NAME,
-                                           self.federation_session_id,
-                                           self.name,
-                                           self.tag,
-                                           self.local_role,
-                                           str(self.party_id),
-                                           _role,
-                                           str(_party_id),
+                    dst_name = DELIM.join([_tagged_key,
                                            self.dst_host,
                                            str(self.dst_port),
                                            obj_type])
@@ -266,21 +283,23 @@ class RollSite:
 
     def pull(self, parties: list = None):
         futures = []
-        for src_role, party_id in parties:
-            _tagged_key = self.__remote__object_key(self.federation_session_id, self.name, self.tag, src_role, str(party_id),
-                                                    self.local_role, str(self.party_id))
+        for src_role, src_party_id in parties:
+            # _tagged_key = self.__remote__object_key(self.federation_session_id, self.name, self.tag, src_role, str(src_party_id),
+            #                                         self.local_role, str(self.party_id))
 
-            name = DELIM.join([OBJECT_STORAGE_NAME,
-                               self.federation_session_id,
-                               self.name,
-                               self.tag,
-                               src_role,
-                               str(party_id),
-                               self.local_role,
-                               str(self.party_id)])
+            federation_header = ErFederationHeader(federation_session_id=self.federation_session_id,
+                                                   name=self.name,
+                                                   tag=self.tag,
+                                                   src_role=src_role,
+                                                   src_party_id=str(src_party_id),
+                                                   dst_role=self.local_role,
+                                                   dst_party_id=str(self.party_id))
+            _tagged_key = create_store_name(federation_header)
+
+            name = _tagged_key
 
             task_info = proxy_pb2.Task(taskId=name)
-            topic_src = proxy_pb2.Topic(name="get_status", partyId="{}".format(party_id),
+            topic_src = proxy_pb2.Topic(name="get_status", partyId="{}".format(src_party_id),
                                         role=src_role, callback=None)
             topic_dst = proxy_pb2.Topic(name="get_status", partyId="{}".format(self.party_id),
                                         role=self.local_role, callback=None)

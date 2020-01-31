@@ -38,7 +38,7 @@ class RollSiteWriteBatch(PairWriteBatch):
     grpc_channel_factory = GrpcChannelFactory()
 
     # TODO:0: check if secure channel needed
-    def __init__(self, adapter):
+    def __init__(self, adapter, options={}):
         self.adapter = adapter
         self.name = DELIM.join([OBJECT_STORAGE_NAME,
                                 adapter.job_id,
