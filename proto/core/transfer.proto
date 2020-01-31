@@ -41,6 +41,7 @@ message FederationHeader {
   string srcPartyId = 5;
   string dstRole = 6;
   string dstPartyId = 7;
+  string dataType = 8;
   map<string, string> options = 10;
 }
 

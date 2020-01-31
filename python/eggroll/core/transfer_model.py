@@ -94,6 +94,7 @@ class ErFederationHeader(RpcMessage):
             src_party_id: str,
             dst_role: str,
             dst_party_id: str,
+            data_type: str = '',
             options: dict = {}):
         self._federation_session_id = federation_session_id
         self._name = name
@@ -102,6 +103,7 @@ class ErFederationHeader(RpcMessage):
         self._src_party_id = src_party_id
         self._dst_role = dst_role
         self._dst_party_id = dst_party_id
+        self._data_type = data_type
         self._options = options.copy()
 
     def to_proto(self):
@@ -113,6 +115,7 @@ class ErFederationHeader(RpcMessage):
                 srcPartyId=self._src_party_id,
                 dstRole=self._dst_role,
                 dstPartyId=self._dst_party_id,
+                dataType=self._data_type,
                 options=_stringify_dict(self._options))
 
     @staticmethod
@@ -124,6 +127,7 @@ class ErFederationHeader(RpcMessage):
                                   src_party_id=pb_message.srcPartyId,
                                   dst_role=pb_message.dstRole,
                                   dst_party_id=pb_message.dstPartyId,
+                                  data_type=pb_message.dataType,
                                   options=dict(pb_message.options))
 
     @staticmethod
@@ -141,5 +145,6 @@ class ErFederationHeader(RpcMessage):
                f'src_party_id={repr(self._src_party_id)}, ' \
                f'dst_role={repr(self._dst_role)}, ' \
                f'dst_party_id={repr(self._dst_party_id)}, ' \
+               f'data_type={repr(self._data_type)}, ' \
                f'options=[{repr(self._options)}] ' \
                f'at {hex(id(self))}>'
