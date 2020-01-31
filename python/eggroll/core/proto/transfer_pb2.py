@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='com.webank.eggroll.core.transfer',
   syntax='proto3',
   serialized_options=None,
-  serialized_pb=_b('\n\x0etransfer.proto\x12 com.webank.eggroll.core.transfer\"L\n\x0eTransferHeader\x12\n\n\x02id\x18\x01 \x01(\x05\x12\x0b\n\x03tag\x18\x02 \x01(\t\x12\x11\n\ttotalSize\x18\x03 \x01(\x03\x12\x0e\n\x06status\x18\x04 \x01(\t\"r\n\rTransferBatch\x12@\n\x06header\x18\x01 \x01(\x0b\x32\x30.com.webank.eggroll.core.transfer.TransferHeader\x12\x11\n\tbatchSize\x18\x02 \x01(\x05\x12\x0c\n\x04\x64\x61ta\x18\x03 \x01(\x0c\"\x96\x02\n\x10\x46\x65\x64\x65rationHeader\x12\x1b\n\x13\x66\x65\x64\x65rationSessionId\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x0b\n\x03tag\x18\x03 \x01(\t\x12\x0f\n\x07srcRole\x18\x04 \x01(\t\x12\x12\n\nsrcPartyId\x18\x05 \x01(\t\x12\x0f\n\x07\x64stRole\x18\x06 \x01(\t\x12\x12\n\ndstPartyId\x18\x07 \x01(\t\x12P\n\x07options\x18\n \x03(\x0b\x32?.com.webank.eggroll.core.transfer.FederationHeader.OptionsEntry\x1a.\n\x0cOptionsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\x32\xdb\x02\n\x0fTransferService\x12j\n\x04send\x12/.com.webank.eggroll.core.transfer.TransferBatch\x1a/.com.webank.eggroll.core.transfer.TransferBatch(\x01\x12j\n\x04recv\x12/.com.webank.eggroll.core.transfer.TransferBatch\x1a/.com.webank.eggroll.core.transfer.TransferBatch0\x01\x12p\n\x08sendRecv\x12/.com.webank.eggroll.core.transfer.TransferBatch\x1a/.com.webank.eggroll.core.transfer.TransferBatch(\x01\x30\x01\x62\x06proto3')
+  serialized_pb=_b('\n\x0etransfer.proto\x12 com.webank.eggroll.core.transfer\"L\n\x0eTransferHeader\x12\n\n\x02id\x18\x01 \x01(\x05\x12\x0b\n\x03tag\x18\x02 \x01(\t\x12\x11\n\ttotalSize\x18\x03 \x01(\x03\x12\x0e\n\x06status\x18\x04 \x01(\t\"r\n\rTransferBatch\x12@\n\x06header\x18\x01 \x01(\x0b\x32\x30.com.webank.eggroll.core.transfer.TransferHeader\x12\x11\n\tbatchSize\x18\x02 \x01(\x05\x12\x0c\n\x04\x64\x61ta\x18\x03 \x01(\x0c\"\xa8\x02\n\x10\x46\x65\x64\x65rationHeader\x12\x1b\n\x13\x66\x65\x64\x65rationSessionId\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x0b\n\x03tag\x18\x03 \x01(\t\x12\x0f\n\x07srcRole\x18\x04 \x01(\t\x12\x12\n\nsrcPartyId\x18\x05 \x01(\t\x12\x0f\n\x07\x64stRole\x18\x06 \x01(\t\x12\x12\n\ndstPartyId\x18\x07 \x01(\t\x12\x10\n\x08\x64\x61taType\x18\x08 \x01(\t\x12P\n\x07options\x18\n \x03(\x0b\x32?.com.webank.eggroll.core.transfer.FederationHeader.OptionsEntry\x1a.\n\x0cOptionsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\x32\xdb\x02\n\x0fTransferService\x12j\n\x04send\x12/.com.webank.eggroll.core.transfer.TransferBatch\x1a/.com.webank.eggroll.core.transfer.TransferBatch(\x01\x12j\n\x04recv\x12/.com.webank.eggroll.core.transfer.TransferBatch\x1a/.com.webank.eggroll.core.transfer.TransferBatch0\x01\x12p\n\x08sendRecv\x12/.com.webank.eggroll.core.transfer.TransferBatch\x1a/.com.webank.eggroll.core.transfer.TransferBatch(\x01\x30\x01\x62\x06proto3')
 )
 
 
@@ -155,8 +155,8 @@ _FEDERATIONHEADER_OPTIONSENTRY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=479,
-  serialized_end=525,
+  serialized_start=497,
+  serialized_end=543,
 )
 
 _FEDERATIONHEADER = _descriptor.Descriptor(
@@ -216,7 +216,14 @@ _FEDERATIONHEADER = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='options', full_name='com.webank.eggroll.core.transfer.FederationHeader.options', index=7,
+      name='dataType', full_name='com.webank.eggroll.core.transfer.FederationHeader.dataType', index=7,
+      number=8, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='options', full_name='com.webank.eggroll.core.transfer.FederationHeader.options', index=8,
       number=10, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
@@ -235,7 +242,7 @@ _FEDERATIONHEADER = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=247,
-  serialized_end=525,
+  serialized_end=543,
 )
 
 _TRANSFERBATCH.fields_by_name['header'].message_type = _TRANSFERHEADER
@@ -284,8 +291,8 @@ _TRANSFERSERVICE = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=0,
   serialized_options=None,
-  serialized_start=528,
-  serialized_end=875,
+  serialized_start=546,
+  serialized_end=893,
   methods=[
   _descriptor.MethodDescriptor(
     name='send',
