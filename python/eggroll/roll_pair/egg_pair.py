@@ -95,7 +95,8 @@ class EggPair(object):
                     L.debug(f"scatter_result:{scatter_results}")
                     L.debug(f"gather_result:{store_result}")
                 else:
-                    with create_adapter(task._outputs[0]) as db, db.new_batch() as wb:
+                    # TODO: modification may be needed when store options finished
+                    with create_adapter(task._outputs[0], options=task._job._options) as db, db.new_batch() as wb:
                         func(rb, key_serdes, value_serdes, wb)
                 L.debug(f"close_store_adatper:{task._inputs[0]}")
 
