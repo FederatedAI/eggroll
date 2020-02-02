@@ -120,15 +120,9 @@ class RollSite:
         self.process_pool = ThreadPoolExecutor(10)
         self.complete_pool = ThreadPoolExecutor(10)
 
-    @staticmethod
-    def __remote__object_key(*args):
-        return DELIM.join(["{}".format(arg) for arg in args])
-
-    def __gen_store_name(self):
-        pass
-
-    def _thread_receive(self, packet, namespace, _tagged_key):
+    def _thread_receive(self, packet, namespace, federation_header: ErFederationHeader):
         try:
+            table_name = create_store_name(federation_header)
             is_standalone = self.ctx.rp_ctx.get_session().get_option(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE) \
                             == "standalone"
             if is_standalone:
@@ -137,13 +131,13 @@ class RollSite:
                 # TODO:0: sleep retry count and timeout
                 while True:
                     msg = f"retry pull: retry_cnt: {retry_cnt}," + \
-                          f" tagged_key: '{_tagged_key}', packet: {packet}, namespace: {namespace}"
+                          f" tagged_key: '{table_name}', packet: {packet}, namespace: {namespace}"
                     if retry_cnt % 10 == 0:
                         L.info(msg)
                     else:
                         L.debug(msg)
                     retry_cnt += 1
-                    ret_list = status_rp.get(_tagged_key)
+                    ret_list = status_rp.get(table_name)
                     if ret_list:
                         table_namespace = ret_list[2]
                         table_name = ret_list[1]
@@ -156,7 +150,7 @@ class RollSite:
                 ret_packet = self.stub.unaryCall(packet)
                 while ret_packet.header.ack != 123:
                     msg = f"retry pull: retry_cnt: {retry_cnt}," + \
-                          f" tagged_key: '{_tagged_key}', packet: {packet}, namespace: {namespace}"
+                          f" store_name: '{table_name}', packet: {packet}, namespace: {namespace}"
                     if retry_cnt % 10 == 0:
                         L.info(msg)
                     else:
@@ -167,20 +161,12 @@ class RollSite:
                     ret_packet = self.stub.unaryCall(packet)
                     time.sleep(min(0.1*retry_cnt, 60))
                 obj_type = ret_packet.body.value
-                table_name = DELIM.join([OBJECT_STORAGE_NAME,
-                                         self.federation_session_id,
-                                         self.name,
-                                         self.tag,
-                                         ret_packet.header.src.role,
-                                         ret_packet.header.src.partyId,
-                                         ret_packet.header.dst.role,
-                                         ret_packet.header.dst.partyId])
 
                 table_namespace = self.federation_session_id
-            L.debug(f"pull status done: tagged_key:{_tagged_key}, packet:{packet}, namespace:{namespace}")
+            L.debug(f"pull status done: table_name:{table_name}, packet:{packet}, namespace:{namespace}")
             rp = self.ctx.rp_ctx.load(namespace=table_namespace, name=table_name)
-            result = rp.get(_tagged_key) if obj_type == b'object' else rp
-            L.info(f"pull succuess: {_tagged_key}")
+            result = rp.get(table_name) if obj_type == b'object' else rp
+            L.info(f"pull succuess: {table_name}")
             return result
         except Exception as e:
             L.exception(f"pull error:{e}")
@@ -211,15 +197,6 @@ class RollSite:
             if isinstance(obj, RollPair):
                 rp = obj
             else:
-                # If it is a object, put the object in the table and send the table meta.
-                # name = DELIM.join([OBJECT_STORAGE_NAME,
-                #                    self.federation_session_id,
-                #                    self.name,
-                #                    self.tag,
-                #                    self.local_role,
-                #                    str(self.party_id),
-                #                    _role,
-                #                    str(_party_id)])
                 rp = self.ctx.rp_ctx.load(namespace, _tagged_key)
                 rp.put(_tagged_key, obj)
 
@@ -230,14 +207,6 @@ class RollSite:
                         SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE) == DeployModes.STANDALONE
 
                 if is_standalone:
-                    # dst_name = DELIM.join([OBJECT_STORAGE_NAME,
-                    #                        self.federation_session_id,
-                    #                        self.name,
-                    #                        self.tag,
-                    #                        self.local_role,
-                    #                        str(self.party_id),
-                    #                        _role,
-                    #                        str(_party_id)])
                     dst_name = _tagged_key
                     store_type = rp.get_store_type()
                 else:
@@ -262,8 +231,9 @@ class RollSite:
                                                        partitioner=store_locator._partitioner,
                                                        serdes=store_locator._serdes)
 
+                    # TODO:0: move options from job to store when database modification finished
                     rp.map_values(lambda v: v,
-                        output=ErStore(store_locator=new_store_locator))
+                        output=ErStore(store_locator=new_store_locator), options={"hello": "world"})
 
                 L.info(f"pushing map_values done:{type(obj)}, tag_key:{_tagged_key}")
                 return _tagged_key
@@ -284,9 +254,6 @@ class RollSite:
     def pull(self, parties: list = None):
         futures = []
         for src_role, src_party_id in parties:
-            # _tagged_key = self.__remote__object_key(self.federation_session_id, self.name, self.tag, src_role, str(src_party_id),
-            #                                         self.local_role, str(self.party_id))
-
             federation_header = ErFederationHeader(federation_session_id=self.federation_session_id,
                                                    name=self.name,
                                                    tag=self.tag,
@@ -320,7 +287,7 @@ class RollSite:
             packet = proxy_pb2.Packet(header=metadata)
             namespace = self.federation_session_id
             L.info(f"pulling prepared tagged_key: {_tagged_key}, packet:{packet}")
-            futures.append(self.process_pool.submit(RollSite._thread_receive, self, packet, namespace, _tagged_key))
+            futures.append(self.process_pool.submit(RollSite._thread_receive, self, packet, namespace, federation_header))
 
         self.process_pool.shutdown(wait=False)
         return futures
