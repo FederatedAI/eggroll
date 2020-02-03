@@ -62,7 +62,7 @@ class TestRollPair extends Logging {
       routeToMethodName = RollPair.RUN_TASK)
 
 
-    val storeLocator = ErStoreLocator(StoreTypes.ROLLPAIR_LEVELDB, "namespace", "name")
+    val storeLocator = ErStoreLocator(storeType = StoreTypes.ROLLPAIR_LEVELDB, namespace = "namespace", name = "name")
 
     val rollPair = new RollPairMaster()
 
@@ -114,7 +114,7 @@ class TestRollPair extends Logging {
       routeToMethodName = RollPair.RUN_TASK)
 
 
-    val storeLocator = ErStoreLocator("levelDb", "ns", "name")
+    val storeLocator = ErStoreLocator(storeType = StoreTypes.ROLLPAIR_LEVELDB, namespace = "ns", name = "name")
 
     val rollPair = new RollPairMaster()
 
@@ -161,7 +161,7 @@ class TestRollPair extends Logging {
       routeToClass = classOf[EggPair],
       routeToMethodName = RollPair.RUN_TASK)
 
-    val storeLocator = ErStoreLocator("levelDb", "ns", "name")
+    val storeLocator = ErStoreLocator(storeType = StoreTypes.ROLLPAIR_LEVELDB, namespace = "ns", name = "name")
 
     val rollPair = new RollPairMaster()
 
@@ -202,8 +202,8 @@ class TestRollPair extends Logging {
       routeToMethodName = RollPair.RUN_TASK)
 
 
-    val leftLocator = ErStoreLocator(StoreTypes.ROLLPAIR_LEVELDB, "namespace", "name")
-    val rightLocator = ErStoreLocator(StoreTypes.ROLLPAIR_LEVELDB, "namespace", "test")
+    val leftLocator = ErStoreLocator(storeType = StoreTypes.ROLLPAIR_LEVELDB, namespace = "namespace", name = "name")
+    val rightLocator = ErStoreLocator(storeType = StoreTypes.ROLLPAIR_LEVELDB, namespace = "namespace", name = "test")
 
     val rollPair = new RollPairMaster()
 

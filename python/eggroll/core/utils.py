@@ -15,7 +15,10 @@ import json
 import sys
 import time
 import traceback
+import uuid
 from datetime import datetime
+
+from google.protobuf.text_format import MessageToString
 
 from eggroll.utils import log_utils
 
@@ -87,12 +90,13 @@ def json_loads(src):
 def current_timestamp():
     return int(time.time()*1000)
 
+
 def _exception_logger(func):
     def wrapper(*args, **kw):
         try:
             return func(*args, **kw)
         except:
-            msg = (f"\n==== detail start ====\n"
+            msg = (f"\n\n==== detail start, at {time_now()} ====\n"
                    f"{traceback.format_exc()}"
                    f"\n==== detail end ====\n\n")
             # LOGGER.error(msg)
@@ -123,8 +127,9 @@ def get_self_ip():
     return self_ip
 
 
+# TODO:0: replace uuid with simpler human friendly solution
 def generate_job_id(session_id, tag='', delim='-'):
-    result = f'{session_id}{delim}job{delim}{time_now()}'
+    result = delim.join([session_id, 'job', str(uuid.uuid1())])
     if not tag:
         return result
     else:
@@ -149,3 +154,7 @@ def hash_code(s):
         h = 0
 
     return h
+
+
+def to_one_line_string(proto_msg, as_one_line=True):
+    return MessageToString(proto_msg, as_one_line=as_one_line)

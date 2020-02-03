@@ -71,9 +71,9 @@ class EggPair(object):
         key_serdes = create_serdes(task._inputs[0]._store_locator._serdes)
         value_serdes = create_serdes(task._inputs[0]._store_locator._serdes)
         with create_adapter(task._inputs[0]) as input_db:
-            L.debug(f"create_store_adatper:{task._inputs[0]}")
+            L.debug(f"create_store_adatper: {task._inputs[0]}")
             with input_db.iteritems() as rb:
-                L.debug(f"create_store_adatper_iter:{task._inputs[0]}")
+                L.debug(f"create_store_adatper_iter: {task._inputs[0]}")
                 from eggroll.roll_pair.transfer_pair import TransferPair, BatchBroker
                 if shuffle:
                     total_partitions = task._inputs[0]._store_locator._total_partitions
@@ -385,7 +385,7 @@ class EggPair(object):
                 if not first:
                     comb_op_result = seq_op_result
                 else:
-                    comb_op_result = None
+                    comb_op_result = zero_value
 
                 for r in queue:
                     if not r.data:
