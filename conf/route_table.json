@@ -2,12 +2,12 @@
 {
   "route_table":
   {
-    "default":
+    "10001":
     {
       "default":[
         {
-          "port":"9395",
-          "ip":"localhost"
+          "port": 9395,
+          "ip": "127.0.0.1"
         }
       ]
     },
@@ -15,14 +15,14 @@
     {
       "default":[
         {
-          "port":9396,
-          "ip":"localhost"
+          "port": 9396,
+          "ip": "127.0.0.1"
         }
       ]
     }
   },
   "permission":
   {
-    "default_allow":true
+    "default_allow": true
   }
 }

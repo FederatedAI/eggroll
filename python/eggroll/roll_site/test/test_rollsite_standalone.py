@@ -55,7 +55,8 @@ class TestRollSite(unittest.TestCase):
     def test_remote(self):
         rp_context = get_debug_test_context(is_standalone, manager_port_guest, egg_port_guest, transfer_port_guest,
                                             'testing_guest')
-        context = RollSiteContext("atest", guest_options, rp_ctx=rp_context)
+        context = RollSiteContext("atest", options=guest_options,
+                                  rp_ctx=rp_context)
 
         _tag = "Hello2"
         rs = context.load(name="RsaIntersectTransferVariable.rsa_pubkey", tag="{}".format(_tag))
@@ -70,7 +71,8 @@ class TestRollSite(unittest.TestCase):
     def test_get(self):
         rp_context = get_debug_test_context(is_standalone, manager_port_host, egg_port_host, transfer_port_host,
                                             'testing')
-        context = RollSiteContext("atest", options=host_options, rp_ctx=rp_context)
+        context = RollSiteContext("atest", options=host_options,
+                                  rp_ctx=rp_context)
         _tag = "Hello2"
         rs = context.load(name="RsaIntersectTransferVariable.rsa_pubkey", tag="{}".format(_tag))
         futures = rs.pull(get_parties)
@@ -86,7 +88,8 @@ class TestRollSite(unittest.TestCase):
         rp_context = get_debug_test_context(is_standalone, manager_port_guest, egg_port_guest, transfer_port_guest,
                                             'testing_guest')
         data = [("k1", "v1"), ("k2", "v2"), ("k3", "v3"), ("k4", "v4"), ("k5", "v5"), ("k6", "v6")]
-        context = RollSiteContext("atest2", guest_options, rp_ctx=rp_context)
+        context = RollSiteContext("atest2", options=guest_options,
+                                  rp_ctx=rp_context)
         rp_options = {'include_key': True}
         rp = rp_context.load("namespace", "name").put_all(data, options=rp_options)
         _tag = "Hello"
@@ -99,7 +102,8 @@ class TestRollSite(unittest.TestCase):
     def test_get_rollpair(self):
         rp_context = get_debug_test_context(is_standalone, manager_port_host, egg_port_host, transfer_port_host,
                                             'testing')
-        context = RollSiteContext("atest2", host_options, rp_ctx=rp_context)
+        context = RollSiteContext("atest2", options=host_options,
+                                  rp_ctx=rp_context)
 
         _tag = "roll_pair_tag"
         rs = context.load(name="roll_pair_name.table", tag="{}".format(_tag))
