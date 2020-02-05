@@ -24,6 +24,7 @@ import com.google.gson.JsonParser;
 import com.google.gson.stream.JsonReader;
 import com.webank.ai.eggroll.api.core.BasicMeta;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
+import com.webank.eggroll.core.util.ToStringUtils;
 import com.webank.eggroll.rollsite.model.ProxyServerConf;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -371,7 +372,7 @@ public class ConfFileBasedFdnRouter implements FdnRouter {
 
     @Override
     public BasicMeta.Endpoint route(Proxy.Topic topic) {
-        LOGGER.debug("route:" + topic);
+        LOGGER.debug("route:" + ToStringUtils.toOneLineString(topic));
         Preconditions.checkNotNull(topic, "topic cannot be null");
 
         BasicMeta.Endpoint result = topicEndpointMapping.getOrDefault(topic, null);

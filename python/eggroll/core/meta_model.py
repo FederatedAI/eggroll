@@ -32,9 +32,18 @@ class ErEndpoint(RpcMessage):
     def to_proto(self):
         return meta_pb2.Endpoint(host=self._host, port=self._port)
 
-    @staticmethod
-    def from_proto(pb_message):
+    def to_proto_string(self):
+        return self.to_proto().SerializeToString()
+
+    @classmethod
+    def from_proto(cls, pb_message):
         return ErEndpoint(host=pb_message.host, port=pb_message.port)
+
+    @classmethod
+    def from_proto_string(cls, pb_string):
+        pb_message = meta_pb2.Endpoint()
+        msg_len = pb_message.ParseFromString(pb_string)
+        return cls.from_proto(pb_message)
 
     def __str__(self):
         return f'{self._host}:{self._port}'
@@ -249,6 +258,9 @@ class ErFunctor(RpcMessage):
     def to_proto(self):
         return meta_pb2.Functor(name=self._name, serdes=self._serdes, body=self._body, options=_stringify_dict(self._options))
 
+    def to_proto_string(self):
+        return self.to_proto().SerializeT
+
     @staticmethod
     def from_proto(pb_message):
         return ErFunctor(name=pb_message.name, serdes=pb_message.serdes, body=pb_message.body, options=dict(pb_message.options))
@@ -296,6 +308,9 @@ class ErPairBatch(RpcMessage):
 
     def to_proto(self):
         return meta_pb2.PairBatch(pairs=_elements_to_proto(self._pairs))
+
+    def to_proto_string(self):
+        return self.to_proto().SerializeToString()
 
     @staticmethod
     def from_proto(pb_message):
@@ -348,7 +363,7 @@ class ErStoreLocator(RpcMessage):
                               partitioner=pb_message.partitioner,
                               serdes=pb_message.serdes)
 
-    def to_path(self, delim = DEFAULT_DELIM):
+    def to_path(self, delim=DEFAULT_DELIM):
         if not self._path:
             delim.join([self._store_type, self._namespace, self._name])
         return self._path
@@ -368,6 +383,9 @@ class ErPartition(RpcMessage):
         return meta_pb2.Partition(id=self._id,
                                   storeLocator=self._store_locator.to_proto() if self._store_locator else None,
                                   processor=self._processor.to_proto() if self._processor else None)
+
+    def to_proto_string(self):
+        return self.to_proto().SerializeToString()
 
     @staticmethod
     def from_proto(pb_message):

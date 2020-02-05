@@ -31,6 +31,9 @@ class ErTransferHeader(RpcMessage):
                                            totalSize=self._total_size,
                                            status=self._status)
 
+    def to_proto_string(self):
+        return self.to_proto().SerializeToString()
+
     @staticmethod
     def from_proto(pb_message):
         return ErTransferHeader(id=pb_message.id,
@@ -60,6 +63,9 @@ class ErTransferBatch(RpcMessage):
         return transfer_pb2.TransferBatch(header=self._header.to_proto(),
                                           batchSize=self._batch_size,
                                           data=self._data)
+
+    def to_proto_string(self):
+        return self.to_proto().SerializeToString()
 
     @staticmethod
     def from_proto(pb_message):
@@ -117,6 +123,9 @@ class ErFederationHeader(RpcMessage):
                 dstPartyId=self._dst_party_id,
                 dataType=self._data_type,
                 options=_stringify_dict(self._options))
+
+    def to_proto_string(self):
+        return self.to_proto().SerializeToString()
 
     @staticmethod
     def from_proto(pb_message):

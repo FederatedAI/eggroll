@@ -21,7 +21,7 @@ from datetime import datetime
 from google.protobuf.text_format import MessageToString
 
 static_er_conf = {}
-
+stringify_charset = 'iso-8859-1'
 
 def set_static_er_conf(a_dict):
     global static_er_conf
@@ -53,9 +53,21 @@ def _map_and_listify(map_func, a_list):
     return list(map(map_func, a_list))
 
 
-# bytes will be converted like "b'xxx'"
+def _stringify(data):
+    from eggroll.core.base_model import RpcMessage
+    if isinstance(data, str):
+        return data
+    elif isinstance(data, RpcMessage):
+        return data.to_proto_string().decode(stringify_charset)
+    elif isinstance(data, bytes):
+        return data.decode(stringify_charset)
+    else:
+        return str(data)
+
+
 def _stringify_dict(a_dict: dict):
-    return {str(k): str(v) for k, v in a_dict.items()}
+    return {_stringify(k): _stringify(v) for k, v in a_dict.items()}
+
 
 
 def _repr_list(a_list: list):

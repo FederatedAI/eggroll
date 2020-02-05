@@ -67,11 +67,13 @@ class CommandClient(defaultEndpoint: ErEndpoint = null,
   }
 
   val sessionId = StaticErConf.getString(SessionConfKeys.CONFKEY_SESSION_ID)
+
   // TODO:1: confirm client won't exit bug of Singletons.getNoCheck(classOf[GrpcChannelFactory]).getChannel(endpoint, isSecure)
   // TODO:0: add channel args
-
+  // TODO:0: universally caches channels
   private def buildChannel(endpoint: ErEndpoint): ManagedChannel = synchronized {
-    if(!CommandClient.pool.contains(endpoint.toString)) {
+    val channel = CommandClient.pool.getOrElse(endpoint.toString, null)
+    if(channel == null || channel.isShutdown || channel.isTerminated) {
       val builder = ManagedChannelBuilder.forAddress(endpoint.host, endpoint.port)
       builder.maxInboundMetadataSize(4*1024*1024)
       builder.usePlaintext()
