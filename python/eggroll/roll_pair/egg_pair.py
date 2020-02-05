@@ -59,7 +59,6 @@ def create_functor(func_bin):
 L = get_logger()
 
 
-
 class EggPair(object):
     def __init__(self):
         self.functor_serdes = create_serdes(SerdesTypes.CLOUD_PICKLE)
@@ -152,11 +151,8 @@ class EggPair(object):
             TransferService.set_broker(tag, generate_broker())
         elif task._name == 'count':
             L.info('egg_pair count call')
-            key_serdes = create_serdes(task._inputs[0]._store_locator._serdes)
-            value_serdes = create_serdes(task._inputs[0]._store_locator._serdes)
-            input_adapter = create_adapter(task._inputs[0])
-            result = ErPair(key=self.functor_serdes.serialize('result'), value=self.functor_serdes.serialize(input_adapter.count()))
-            input_adapter.close()
+            with create_adapter(task._inputs[0]) as input_adapter:
+                result = ErPair(key=self.functor_serdes.serialize('result'), value=self.functor_serdes.serialize(input_adapter.count()))
 
         # TODO:1: multiprocessor scenario
         elif task._name == 'putAll':
@@ -172,23 +168,21 @@ class EggPair(object):
         if task._name == 'put':
             L.info("egg_pair put call")
             f = create_functor(functors[0]._body)
-            input_adapter = create_adapter(task._inputs[0])
-            value = input_adapter.put(f._key, f._value)
-            #result = ErPair(key=f._key, value=bytes(value))
-            input_adapter.close()
+            with create_adapter(task._inputs[0]) as input_adapter:
+                value = input_adapter.put(f._key, f._value)
+                #result = ErPair(key=f._key, value=bytes(value))
 
         if task._name == 'destroy':
-            input_adapter = create_adapter(task._inputs[0])
-            input_adapter.destroy()
-            L.info("finish destroy")
+            with create_adapter(task._inputs[0]) as input_adapter:
+                input_adapter.destroy()
+                L.info("finish destroy")
 
         if task._name == 'delete':
             f = create_functor(functors[0]._body)
-            input_adapter = create_adapter(task._inputs[0])
-            L.info("delete k:{}, its value:{}".format(f._key, input_adapter.get(f._key)))
-            if input_adapter.delete(f._key):
-                L.info("delete k success")
-            input_adapter.close()
+            with create_adapter(task._inputs[0]) as input_adapter:
+                L.info("delete k:{}, its value:{}".format(f._key, input_adapter.get(f._key)))
+                if input_adapter.delete(f._key):
+                    L.info("delete k success")
 
         if task._name == 'mapValues':
             f = create_functor(functors[0]._body)

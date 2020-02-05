@@ -18,20 +18,26 @@ package com.webank.eggroll.rollsite.grpc.service;
 
 import com.google.common.collect.Maps;
 import com.google.protobuf.ByteString;
+import com.google.protobuf.InvalidProtocolBufferException;
 import com.webank.ai.eggroll.api.networking.proxy.DataTransferServiceGrpc;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
+import com.webank.eggroll.core.constant.StringConstants;
+import com.webank.eggroll.core.meta.ErFederationHeader;
+import com.webank.eggroll.core.meta.TransferModelPbMessageSerdes;
+import com.webank.eggroll.core.transfer.Transfer.FederationHeader;
 import com.webank.eggroll.core.util.ErrorUtils;
 import com.webank.eggroll.core.util.ToStringUtils;
 import com.webank.eggroll.rollsite.event.model.PipeHandleNotificationEvent;
 import com.webank.eggroll.rollsite.factory.EventFactory;
 import com.webank.eggroll.rollsite.factory.PipeFactory;
 import com.webank.eggroll.rollsite.factory.ProxyGrpcStreamObserverFactory;
-import com.webank.eggroll.rollsite.infra.JobidSessionIdMap;
+import com.webank.eggroll.rollsite.infra.JobStatus;
 import com.webank.eggroll.rollsite.infra.Pipe;
 import com.webank.eggroll.rollsite.infra.impl.PacketQueueSingleResultPipe;
 import com.webank.eggroll.rollsite.model.ProxyServerConf;
 import com.webank.eggroll.rollsite.utils.Timeouts;
 import io.grpc.stub.StreamObserver;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -199,145 +205,173 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
         long packetIntervalTimeout = timeouts.getPacketIntervalTimeout(inputMetadata);
 
         LOGGER.info("taskId:{}", inputMetadata.getTask().getTaskId());
-        Pipe pipe = getPipe(inputMetadata.getTask().getTaskId());
 
-        LOGGER.info("[UNARYCALL][SERVER] unary call pipe: {}", pipe);
-
-        if(request.getHeader().getOperator().equals("registerBroker")) {
-            //String routeTable = ;
-            //updateRouteTable(routeTable);
-            Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
-            Proxy.Data data = Proxy.Data.newBuilder().setValue(ByteString.copyFromUtf8("hello")).build();
-            packet = packetBuilder.setHeader(request.getHeader())
-                .setBody(data)
-                .build();
-            responseObserver.onNext(packet);
-            responseObserver.onCompleted();
-            return;
-        }
-        if(request.getHeader().getOperator().equals("init_job_session_pair")) {
-            String job_id = request.getHeader().getTask().getModel().getName();
-            String session_id = request.getHeader().getTask().getModel().getDataKey();
-            Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
-            packet = packetBuilder.setHeader(request.getHeader()).build();
-            // TODO:1: rename job_id to federation_session_id, session_id -> eggroll_session_id
-            LOGGER.info("init_job_session_pair, job_id:{}, session_id:{}", job_id, session_id);
-            JobidSessionIdMap.jobidSessionIdMap.put(job_id, session_id);
-            responseObserver.onNext(packet);
-            responseObserver.onCompleted();
-            return;
-        }
-
-        if(request.getHeader().getOperator().equals("markEnd") && proxyServerConf.getPartyId().equals(inputMetadata.getDst().getPartyId())) {
-            Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
-            Proxy.Data data = Proxy.Data.newBuilder().build();
-            packet = packetBuilder.setHeader(request.getHeader()).build();
-            pipe.setStatus(true);
-            LOGGER.info("markEnd: {}, {}",request.getHeader().getTask().getModel().getDataKey(),
-                    request.getHeader().getTask().getModel().getName());  //obj or RollPair
-            pipe.setType(request.getHeader().getTask().getModel().getName());
-            pipe.setTagKey(request.getHeader().getTask().getModel().getDataKey());
-            responseObserver.onNext(packet);
-            responseObserver.onCompleted();
-            return;
-        }
-        if(request.getHeader().getOperator().equals("getStatus")) {
-            LOGGER.info("getStatus");
-            Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
-            boolean status = pipe.getStatus();
-            Proxy.Metadata header = request.getHeader();
-            if(status) {
-                LOGGER.info("status == true");
-                header = Proxy.Metadata.newBuilder().setAck(123)
-                                                    .setSrc(request.getHeader().getSrc())
-                                                    .setDst(request.getHeader().getDst())
-                                                    .build();
+        try {
+            if (request.getHeader().getOperator().equals("registerBroker")) {
+                Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
+                Proxy.Data data = Proxy.Data.newBuilder().setValue(ByteString.copyFromUtf8("hello"))
+                    .build();
+                packet = packetBuilder.setHeader(request.getHeader())
+                    .setBody(data)
+                    .build();
+                responseObserver.onNext(packet);
+                responseObserver.onCompleted();
+                return;
             }
-            else {
-                LOGGER.info("status != true");
-                header = Proxy.Metadata.newBuilder().setAck(321).build();
+
+            if (request.getHeader().getOperator().equals("init_job_session_pair")) {
+                String job_id = request.getHeader().getTask().getModel().getName();
+                String session_id = request.getHeader().getTask().getModel().getDataKey();
+                Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
+                packet = packetBuilder.setHeader(request.getHeader()).build();
+                // TODO:1: rename job_id to federation_session_id, session_id -> eggroll_session_id
+                LOGGER.info("init_job_session_pair, job_id:{}, session_id:{}", job_id, session_id);
+                JobStatus.jobIdToSessionId.put(job_id, session_id);
+
+                responseObserver.onNext(packet);
+                responseObserver.onCompleted();
+                return;
             }
-            LOGGER.info("get tagkey: {}", pipe.getTagKey());
-            LOGGER.info("get type: {}", ByteString.copyFromUtf8(pipe.getType()));
-            Proxy.Data body = Proxy.Data.newBuilder().setKey(pipe.getTagKey())
-                                                     .setValue(ByteString.copyFromUtf8(pipe.getType())).build();
-            packet = packetBuilder.setHeader(header).setBody(body).build();
-            responseObserver.onNext(packet);
-            responseObserver.onCompleted();
-            return;
-        }
+
+            if (request.getHeader().getOperator().equals("markEnd") && proxyServerConf.getPartyId()
+                .equals(inputMetadata.getDst().getPartyId())) {
+                Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
+                packet = packetBuilder.setHeader(request.getHeader()).build();
+
+                ErFederationHeader federationHeader = restoreFederationHeader(
+                    request.getHeader().getTask().getModel().getName());
+                String tagKey = genTagKey(federationHeader);
 
 
-        LOGGER.info("self send: {}", ByteString.copyFromUtf8(pipe.getType()));
-        PipeHandleNotificationEvent event =
-            eventFactory.createPipeHandleNotificationEvent(
-                this, PipeHandleNotificationEvent.Type.UNARY_CALL, request, pipe);
-        applicationEventPublisher.publishEvent(event);
+                LOGGER.info("markEnd: {}, {}", federationHeader.federationSessionId(),
+                        tagKey);  //obj or RollPair
 
+                if (!JobStatus.hasLatch(tagKey)) {
+                    int totalPartitions = Integer.parseInt(
+                        federationHeader.options().getOrElse(StringConstants.TOTAL_PARTITIONS_SNAKECASE(), () -> "1"));
 
-        long startTimestamp = System.currentTimeMillis();
-        long lastPacketTimestamp = startTimestamp;
-        long loopEndTimestamp = System.currentTimeMillis();
-        while ((!hasReturnedBefore || !pipe.isDrained())
+                    JobStatus.createLatch(tagKey, totalPartitions);
+                }
+                JobStatus.countDownLatch(tagKey);
+                JobStatus.setType(tagKey, federationHeader.dataType());
+
+                responseObserver.onNext(packet);
+                responseObserver.onCompleted();
+                return;
+            }
+
+            if (request.getHeader().getOperator().equals("getStatus")) {
+                LOGGER.info("getStatus");
+                Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
+
+                ErFederationHeader federationHeader = restoreFederationHeader(
+                    request.getHeader().getTask().getModel().getName());
+                String tagKey = genTagKey(federationHeader);
+
+                boolean jobFinished = JobStatus.isAllCountDown(tagKey);
+                Proxy.Metadata header = request.getHeader();
+                String type = StringConstants.EMPTY();
+                if (jobFinished) {
+                    LOGGER.info("closed");
+                    header = Proxy.Metadata.newBuilder().setAck(123)
+                        .setSrc(request.getHeader().getSrc())
+                        .setDst(request.getHeader().getDst())
+                        .build();
+                    type = JobStatus.getType(tagKey);
+                } else {
+                    LOGGER.info("not closed");
+                    header = Proxy.Metadata.newBuilder().setAck(321).build();
+                }
+                Proxy.Data body = Proxy.Data.newBuilder().setKey(tagKey)
+                    .setValue(ByteString.copyFromUtf8(type)).build();
+                packet = packetBuilder.setHeader(header).setBody(body).build();
+                responseObserver.onNext(packet);
+                responseObserver.onCompleted();
+                return;
+            }
+
+            Pipe pipe = getPipe(inputMetadata.getTask().getTaskId());
+            LOGGER.info("self send: {}", ByteString.copyFromUtf8(pipe.getType()));
+            PipeHandleNotificationEvent event =
+                eventFactory.createPipeHandleNotificationEvent(
+                    this, PipeHandleNotificationEvent.Type.UNARY_CALL, request, pipe);
+            applicationEventPublisher.publishEvent(event);
+
+            long startTimestamp = System.currentTimeMillis();
+            long lastPacketTimestamp = startTimestamp;
+            long loopEndTimestamp = System.currentTimeMillis();
+            while ((!hasReturnedBefore || !pipe.isDrained())
                 && !pipe.hasError()
                 && !timeouts.isTimeout(overallTimeout, startTimestamp, loopEndTimestamp)) {
-            packet = (Proxy.Packet) pipe.read(1, TimeUnit.SECONDS);
+                packet = (Proxy.Packet) pipe.read(1, TimeUnit.SECONDS);
 //            packet = request;
-            loopEndTimestamp = System.currentTimeMillis();
-            if (packet != null) {
-                // LOGGER.info("server pull onNext()");
-                responseObserver.onNext(packet);
-                hasReturnedBefore = true;
-                emptyRetryCount = 0;
-                break;
-            } else {
-                long currentOverallWaitTime = loopEndTimestamp - lastPacketTimestamp;
+                loopEndTimestamp = System.currentTimeMillis();
+                if (packet != null) {
+                    // LOGGER.info("server pull onNext()");
+                    responseObserver.onNext(packet);
+                    hasReturnedBefore = true;
+                    emptyRetryCount = 0;
+                    break;
+                } else {
+                    long currentOverallWaitTime = loopEndTimestamp - lastPacketTimestamp;
 
-                if (++emptyRetryCount % 60 == 0) {
-                    LOGGER.info("[UNARYCALL][SERVER] unary call waiting. current overallWaitTime: {}, packetIntervalTimeout: {}, metadata: {}",
-                            currentOverallWaitTime, packetIntervalTimeout, oneLineStringInputMetadata);
+                    if (++emptyRetryCount % 60 == 0) {
+                        LOGGER.info(
+                            "[UNARYCALL][SERVER] unary call waiting. current overallWaitTime: {}, packetIntervalTimeout: {}, metadata: {}",
+                            currentOverallWaitTime, packetIntervalTimeout,
+                            oneLineStringInputMetadata);
+                    }
                 }
             }
-        }
-        boolean hasError = true;
+            boolean hasError = true;
 
-        if (pipe.hasError()) {
-            Throwable error = pipe.getError();
-            LOGGER.error("[UNARYCALL][SERVER] unary call finish with error: {}", ExceptionUtils.getStackTrace(error));
-            responseObserver.onError(error);
+            if (pipe.hasError()) {
+                Throwable error = pipe.getError();
+                LOGGER.error("[UNARYCALL][SERVER] unary call finish with error: {}",
+                    ExceptionUtils.getStackTrace(error));
+                responseObserver.onError(error);
 
-            return;
-        }
-
-        if (!hasReturnedBefore) {
-            if (timeouts.isTimeout(overallTimeout, startTimestamp, loopEndTimestamp)) {
-                String errorMsg = "[UNARYCALL][SERVER] unary call server error: overall process time exceeds timeout: " + overallTimeout
-                        + ", metadata: " + oneLineStringInputMetadata
-                        + ", lastPacketTimestamp: " + lastPacketTimestamp
-                        + ", loopEndTimestamp: " + loopEndTimestamp;
-                LOGGER.error(errorMsg);
-
-                TimeoutException e = new TimeoutException(errorMsg);
-                responseObserver.onError(ErrorUtils.toGrpcRuntimeException(e));
-                pipe.onError(e);
-            } else {
-                String errorMsg = "[PULL][SERVER] pull server error: overall process time exceeds timeout: " + overallTimeout
-                        + ", metadata: " + oneLineStringInputMetadata
-                        + ", startTimestamp: " + startTimestamp
-                        + ", loopEndTimestamp: " + loopEndTimestamp;
-
-                TimeoutException e = new TimeoutException(errorMsg);
-                responseObserver.onError(ErrorUtils.toGrpcRuntimeException(e));
-                pipe.onError(e);
+                return;
             }
-        } else {
-            hasError = false;
-            responseObserver.onCompleted();
-            pipe.onComplete();
-        }
 
-        LOGGER.info("[UNARYCALL][SERVER] server unary call completed. hasReturnedBefore: {}, hasError: {}, metadata: {}",
+            if (!hasReturnedBefore) {
+                if (timeouts.isTimeout(overallTimeout, startTimestamp, loopEndTimestamp)) {
+                    String errorMsg =
+                        "[UNARYCALL][SERVER] unary call server error: overall process time exceeds timeout: "
+                            + overallTimeout
+                            + ", metadata: " + oneLineStringInputMetadata
+                            + ", lastPacketTimestamp: " + lastPacketTimestamp
+                            + ", loopEndTimestamp: " + loopEndTimestamp;
+                    LOGGER.error(errorMsg);
+
+                    TimeoutException e = new TimeoutException(errorMsg);
+                    responseObserver.onError(ErrorUtils.toGrpcRuntimeException(e));
+                    pipe.onError(e);
+                } else {
+                    String errorMsg =
+                        "[PULL][SERVER] pull server error: overall process time exceeds timeout: "
+                            + overallTimeout
+                            + ", metadata: " + oneLineStringInputMetadata
+                            + ", startTimestamp: " + startTimestamp
+                            + ", loopEndTimestamp: " + loopEndTimestamp;
+
+                    TimeoutException e = new TimeoutException(errorMsg);
+                    responseObserver.onError(ErrorUtils.toGrpcRuntimeException(e));
+                    pipe.onError(e);
+                }
+            } else {
+                hasError = false;
+                responseObserver.onCompleted();
+                pipe.onComplete();
+            }
+
+            LOGGER.info(
+                "[UNARYCALL][SERVER] server unary call completed. hasReturnedBefore: {}, hasError: {}, metadata: {}",
                 hasReturnedBefore, hasError, oneLineStringInputMetadata);
+        } catch (Exception e) {
+            LOGGER.error("Error occured in unary call: ", e);
+            responseObserver.onError(e);
+        }
     }
 
     private void checkNotNull() {
@@ -355,6 +389,17 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
         }
 
         return result;
+    }
+
+    private ErFederationHeader restoreFederationHeader(String s)
+        throws InvalidProtocolBufferException {
+        return TransferModelPbMessageSerdes.ErFederationHeaderFromPbMessage(
+            FederationHeader.parseFrom(s.getBytes(StandardCharsets.ISO_8859_1))).fromProto();
+    }
+
+    private String genTagKey(ErFederationHeader federationHeader) {
+        return federationHeader
+            .concat(StringConstants.HASH(), new String[]{"__federation__"});
     }
 
     public void setDefaultPipe(Pipe defaultPipe) {

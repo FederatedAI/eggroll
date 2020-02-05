@@ -61,6 +61,7 @@ class Broker(object):
     def drain_to(self, target, max_elements=10000):
         raise NotImplementedError()
 
+
 class BrokerClosed(Exception):
     'Exception raised by eggroll Broker'
     pass
@@ -77,6 +78,7 @@ class FifoBroker(Broker):
         self.__queue = Queue(maxsize=max_capacity)
         self.__active_writers = writers
         self.__total_writers = writers
+        self.__name = name
 
     def get_total_writers(self):
         return self.__total_writers

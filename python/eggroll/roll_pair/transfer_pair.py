@@ -16,7 +16,6 @@
 import queue
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from threading import Semaphore
 
 from eggroll.core.datastructure.broker import FifoBroker, BrokerClosed
 from eggroll.core.pair_store.format import PairBinReader, PairBinWriter, \
@@ -195,7 +194,7 @@ class TransferPair(object):
             L.debug(f"bin_batch_to_pair batch end count:{total_written}")
         L.debug(f"bin_batch_to_pair total_written count:{total_written}")
 
-    def store_broker(self, store_partition, is_shuffle, total_partitions=1):
+    def store_broker(self, store_partition, is_shuffle, total_writers=1):
         """
         is_shuffle=True: all partition in one broker
         is_shuffle=False: just save broker to store, for put_all
@@ -203,7 +202,7 @@ class TransferPair(object):
         @_exception_logger
         def do_store():
             tag = self.__generate_tag(store_partition._id) if is_shuffle else self.__transfer_id
-            broker = TransferService.get_or_create_broker(tag, write_signals=total_partitions)
+            broker = TransferService.get_or_create_broker(tag, write_signals=total_writers)
             L.debug(f"do_store_start:{tag}")
             done_cnt = 0
             batches = TransferPair.bin_batch_to_pair(b.data for b in broker)

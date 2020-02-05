@@ -42,7 +42,12 @@ case class ErFederationHeader(federationSessionId: String,
                               dstRole: String,
                               dstPartyId: String,
                               dataType: String,
-                              options: Map[String, String]) extends TransferRpcMessage
+                              options: Map[String, String]) extends TransferRpcMessage {
+  def concat(delim: String = StringConstants.HASH, prefix: Array[String] = Array("__federation__")): String = {
+    val finalArray = prefix ++ Array(federationSessionId, name, tag, srcRole, srcPartyId, dstRole, dstPartyId)
+    String.join(delim, finalArray: _*)
+  }
+}
 
 object TransferModelPbMessageSerdes {
 

@@ -95,32 +95,6 @@ class TestRollSiteBase(unittest.TestCase):
             result = future.result()
             print("result: ", result)
 
-    def test_remote_rollpair_big(self):
-        rp_options = {'include_key': True}
-        rp_context = self.rs_context_guest.rp_ctx
-        rp = rp_context.load("namespace", "big_name")
-        rp.put_all(data_generator(10000), options=rp_options)
-        print(f"count: {rp.count()}")
-
-        rs = self.rs_context_guest.load(name=self._rp_rs_name_big, tag=self._rp_rs_tag_big)
-        futures = rs.push(rp, remote_parties)
-        for future in futures:
-            result = future.result()
-            print("result: ", result)
-
-    def test_remote_rollpair_big_multi_partitions(self):
-        rp_options = {'include_key': True, 'total_partitions': 10}
-        rp_context = self.rs_context_guest.rp_ctx
-        rp = rp_context.load("namespace", "big_mp_name", options=rp_options)
-        rp.put_all(data_generator(10000), options=rp_options)
-        print(f"count: {rp.count()}")
-
-        rs = self.rs_context_guest.load(name=self._rp_rs_name_big_mp, tag=self._rp_rs_tag_big_mp)
-        futures = rs.push(rp, remote_parties)
-        for future in futures:
-            result = future.result()
-            print("result: ", result)
-
     def test_get_rollpair(self):
         rs = self.rs_context_host.load(name=self._rp_rs_name, tag=self._rp_rs_tag)
         futures = rs.pull(get_parties)
@@ -133,6 +107,19 @@ class TestRollSiteBase(unittest.TestCase):
                 print("obj:", obj, ", value:", value)
             else:
                 raise TypeError(f'require getting a RollPair but obj found: {obj}')
+
+    def test_remote_rollpair_big(self):
+        rp_options = {'include_key': True}
+        rp_context = self.rs_context_guest.rp_ctx
+        rp = rp_context.load("namespace", self._rp_rs_name_big)
+        rp.put_all(data_generator(10000), options=rp_options)
+        print(f"count: {rp.count()}")
+
+        rs = self.rs_context_guest.load(name=self._rp_rs_name_big, tag=self._rp_rs_tag_big)
+        futures = rs.push(rp, remote_parties)
+        for future in futures:
+            result = future.result()
+            print("result: ", result)
 
     def test_get_rollpair_big(self):
         rs = self.rs_context_host.load(name=self._rp_rs_name_big, tag=self._rp_rs_tag_big)
@@ -147,9 +134,25 @@ class TestRollSiteBase(unittest.TestCase):
             else:
                 raise TypeError(f'require getting a RollPair but obj found: {obj}')
 
+    def test_remote_rollpair_big_multi_partitions(self):
+        rp_options = {'include_key': True, 'total_partitions': 3}
+        rp_context = self.rs_context_guest.rp_ctx
+        rp = rp_context.load("namespace", self._rp_rs_name_big_mp, options=rp_options)
+        rp.put_all(data_generator(10000), options=rp_options)
+        print(f"count: {rp.count()}")
+
+        if rp.count() <= 100:
+            print(list(rp.get_all()))
+
+        rs = self.rs_context_guest.load(name=self._rp_rs_name_big_mp, tag=self._rp_rs_tag_big_mp)
+        futures = rs.push(rp, remote_parties)
+        for future in futures:
+            result = future.result()
+            print("result: ", result)
+
     def test_get_rollpair_big_multi_partitions(self):
-        rp_options = {'include_key': True, 'total_partitions': 10}
-        rs = self.rs_context_host.load(name=self._rp_rs_name_big_mp, tag=self._rp_rs_tag_big_mp, options=rp_options)
+        #rp_options = {'include_key': True, 'total_partitions': 3}
+        rs = self.rs_context_host.load(name=self._rp_rs_name_big_mp, tag=self._rp_rs_tag_big_mp)
 
         futures = rs.pull(get_parties)
         for future in futures:
