@@ -151,7 +151,46 @@ class RollPairContext(object):
         return rp.put_all(data, options=options)
 
     def cleanup(self, namespace, name, options={}):
-        pass
+        total_partitions = options.get('total_partitions', 1)
+        partitioner = options.get('partitioner', PartitionerTypes.BYTESTRING_HASH)
+        store_serdes = options.get('serdes', self.default_store_serdes)
+
+        # todo:1: add combine options to pass it through
+        store_options = self.__session.get_all_options()
+        store_options.update(options)
+        final_options = store_options.copy()
+
+        # TODO:1: tostring in er model
+        if 'create_if_missing' in final_options:
+            del final_options['create_if_missing']
+        # TODO:1: remove these codes by adding to string logic in ErStore
+        if 'include_key' in final_options:
+            del final_options['include_key']
+        if 'total_partitions' in final_options:
+            del final_options['total_partitions']
+        if 'name' in final_options:
+            del final_options['name']
+        if 'namespace' in final_options:
+            del final_options['namespace']
+        # TODO:1: remove these codes by adding to string logic in ErStore
+        if 'keys_only' in final_options:
+            del final_options['keys_only']
+        # TODO:0: add 'error_if_exist, persistent / default store type'
+        L.info("final_options:{}".format(final_options))
+
+        store = ErStore(
+            store_locator=ErStoreLocator(
+                store_type=StoreTypes.ROLLPAIR_LMDB,
+                namespace=namespace,
+                name=name,
+                total_partitions=total_partitions,
+                partitioner=partitioner,
+                serdes=store_serdes),
+            options=final_options)
+        results = self.__session._cluster_manager_client.get_store_from_namespace(store)
+        for result in results:
+            rp = RollPair(self.populate_processor(result), self)
+            rp.destroy()
 
 
 def default_partitioner(k):
@@ -520,7 +559,7 @@ class RollPair(object):
         store_type = options.get('store_type', self.ctx.default_store_type)
         store = ErStore(store_locator=ErStoreLocator(store_type=store_type, namespace=namespace,
                                                      name=name, total_partitions=partition))
-        return self.map_values(lambda v: v, output=store)
+        return self.map(lambda k, v: (k, v), output=store)
 
     # computing api
     def map_values(self, func, output=None, options={}):

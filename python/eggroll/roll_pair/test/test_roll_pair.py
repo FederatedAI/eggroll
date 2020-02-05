@@ -81,6 +81,12 @@ class TestRollPairBase(unittest.TestCase):
         self.assertUnOrderListEqual(data, rp.get_all())
         #rp.destroy()
 
+    def test_cleanup(self):
+        rp = self.ctx.load("ns12020","n1")
+        data = [("k1","v1"),("k2","v2"),("k3","v3"),("k4","v4"),("k5","v5"),("k6","v6")]
+        rp.put_all(data)
+        self.ctx.cleanup(namespace='ns12020', name='n1')
+
     def test_map(self):
         rp = self.ctx.parallelize(self.str_generator())
         rp2 = rp.map(lambda k,v: (k + "_1", v))

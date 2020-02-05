@@ -60,6 +60,12 @@ class ClusterManagerBootstrap extends Bootstrap with Logging {
       routeToClass = classOf[StoreCrudOperator],
       routeToMethodName = MetadataCommands.deleteStore)
 
+    CommandRouter.register(serviceName = MetadataCommands.getStoreFromNamespaceServiceName,
+      serviceParamTypes = Array(classOf[ErStore]),
+      serviceResultTypes = Array(classOf[ErStore]),
+      routeToClass = classOf[StoreCrudOperator],
+      routeToMethodName = MetadataCommands.getStoreFromNamespace)
+
     CommandRouter.register(serviceName = SessionCommands.getSession.uriString,
       serviceParamTypes = Array(classOf[ErSessionMeta]),
       serviceResultTypes = Array(classOf[ErSessionMeta]),

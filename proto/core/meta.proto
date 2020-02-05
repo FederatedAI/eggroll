@@ -93,6 +93,10 @@ message Store {
   map<string, string> options = 3;
 }
 
+message StoreList {
+    repeated Store stores = 1;
+}
+
 message Partition {
   int32 id = 1;
   StoreLocator storeLocator = 2;

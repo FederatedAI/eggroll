@@ -25,7 +25,7 @@ from eggroll.core.conf_keys import ClusterManagerConfKeys, NodeManagerConfKeys
 from eggroll.core.constants import SerdesTypes
 from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.meta_model import ErEndpoint, ErServerNode, ErServerCluster, \
-    ErProcessor
+    ErProcessor, ErStoreList
 from eggroll.core.meta_model import ErStore, ErSessionMeta
 from eggroll.core.proto import command_pb2_grpc
 from eggroll.core.utils import _to_proto_string, _map_and_listify
@@ -151,6 +151,14 @@ class ClusterManagerClient(object):
                 output_type=ErStore,
                 command_uri=MetadataCommands.DELETE_STORE,
                 serdes_type=self.__serdes_type))
+
+    def get_store_from_namespace(self, input):
+        print('debug input:{}'.format(input))
+        return self.__do_sync_request_internal(
+            input=input,
+            output_type=ErStoreList,
+            command_uri=MetadataCommands.GET_STORE_FROM_NAMESPACE,
+            serdes_type=self.__serdes_type)
 
     def get_or_create_session(self, input: ErSessionMeta):
         return self.__check_processors(
