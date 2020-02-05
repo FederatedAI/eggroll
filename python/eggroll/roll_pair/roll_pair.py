@@ -498,6 +498,10 @@ class RollPair(object):
                 command_uri=CommandURI(f'{RollPair.ROLL_PAIR_URI_PREFIX}/{RollPair.RUN_JOB}'),
                 serdes_type=self.__command_serdes)
 
+        try:
+            self.ctx.get_session()._cluster_manager_client.delete_store(self.__store)
+        except:
+            L.error(f'delete store:{self.__store} failed')
         L.info(f'{RollPair.DESTROY}: {self.__store}')
 
     def delete(self, k, options={}):
