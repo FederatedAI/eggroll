@@ -178,6 +178,19 @@ class TestRollSiteBase(unittest.TestCase):
         rp = rp_context.load('atest', f'__federation__#atest#RsaIntersectTransferVariable.rsa_pubkey#testing_rs_obj#guest#10002#host#10001')
         print(list(rp.get_all()))
 
+    def test_count(self):
+        rp_context = self.rs_context_guest.rp_ctx
+        rp = rp_context.load("namespace", self._rp_rs_name_big_mp)
+
+        print(rp.count())
+
+    def test_put_all_multi_partitions(self):
+        rp_options = {'include_key': True, 'total_partitions': 3}
+        rp_context = self.rs_context_guest.rp_ctx
+        rp = rp_context.load("namespace", self._rp_rs_name_big_mp, options=rp_options)
+        rp.put_all(data_generator(9), options=rp_options)
+        print(f"count: {rp.count()}")
+
 
 
 class TestRollSiteStandalone(TestRollSiteBase):
