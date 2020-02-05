@@ -6,7 +6,9 @@ from eggroll.core.serdes.eggroll_serdes import PickleSerdes, \
 from eggroll.roll_pair.utils.pair_utils import get_db_path
 
 
-def create_adapter(er_partition: ErPartition, options={}):
+def create_adapter(er_partition: ErPartition, options=None):
+    if options is None:
+        options = {}
     options['store_type'] = er_partition._store_locator._store_type
     options['path'] = get_db_path(er_partition)
     options['er_partition'] = er_partition
