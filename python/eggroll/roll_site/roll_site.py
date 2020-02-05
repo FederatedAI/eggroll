@@ -23,28 +23,18 @@ from eggroll.core.constants import StoreTypes
 from eggroll.core.error import GrpcCallError
 from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.meta_model import ErStoreLocator, ErStore
-from eggroll.core.pair_store.roll_site_adapter import DELIM
 from eggroll.core.proto import proxy_pb2, proxy_pb2_grpc
 from eggroll.core.serdes import eggroll_serdes
 from eggroll.core.transfer_model import ErFederationHeader
+from eggroll.core.utils import _stringify
 from eggroll.roll_pair.roll_pair import RollPair, RollPairContext
+from eggroll.roll_site.utils.roll_site_utils import create_store_name, DELIM
 from eggroll.utils import log_utils
 
 L = log_utils.get_logger()
 _serdes = eggroll_serdes.PickleSerdes
 
 STATUS_TABLE_NAME = "__roll_site_standalone_status__"
-
-
-def create_store_name(federation_header: ErFederationHeader):
-    return DELIM.join([OBJECT_STORAGE_NAME,     # todo:0: remove this
-                       federation_header._federation_session_id,
-                       federation_header._name,
-                       federation_header._tag,
-                       federation_header._src_role,
-                       federation_header._src_party_id,
-                       federation_header._dst_role,
-                       federation_header._dst_party_id])
 
 
 class RollSiteContext:
@@ -181,6 +171,7 @@ class RollSite:
             _party_id = role_party_id[1]
 
             _options = {}
+            obj_type = 'rollpair' if isinstance(obj, RollPair) else 'object'
             federation_header = ErFederationHeader(federation_session_id=self.federation_session_id,
                                                    name=self.name,
                                                    tag=self.tag,
@@ -188,11 +179,11 @@ class RollSite:
                                                    src_party_id=self.party_id,
                                                    dst_role=_role,
                                                    dst_party_id=_party_id,
+                                                   data_type=obj_type,
                                                    options=_options)
             _tagged_key = create_store_name(federation_header)
             L.debug(f"pushing start party:{type(obj)}, {_tagged_key}")
             namespace = self.federation_session_id
-            obj_type = 'rollpair' if isinstance(obj, RollPair) else 'object'
 
             if isinstance(obj, RollPair):
                 rp = obj
@@ -232,8 +223,17 @@ class RollSite:
                                                        serdes=store_locator._serdes)
 
                     # TODO:0: move options from job to store when database modification finished
+
+                    options = {"federation_header": federation_header,
+                               "proxy_endpoint": self.ctx.proxy_endpoint,
+                               "obj_type": obj_type}
+
+                    if isinstance(obj, RollPair):
+                        federation_header._options['total_partitions'] = obj.get_store()._store_locator._total_partitions
+
                     rp.map_values(lambda v: v,
-                        output=ErStore(store_locator=new_store_locator), options={"hello": "world"})
+                        output=ErStore(store_locator=new_store_locator),
+                                  options=options)
 
                 L.info(f"pushing map_values done:{type(obj)}, tag_key:{_tagged_key}")
                 return _tagged_key
@@ -265,7 +265,8 @@ class RollSite:
 
             name = _tagged_key
 
-            task_info = proxy_pb2.Task(taskId=name)
+            model = proxy_pb2.Model(name=_stringify(federation_header))
+            task_info = proxy_pb2.Task(taskId=name, model=model)
             topic_src = proxy_pb2.Topic(name="get_status", partyId="{}".format(src_party_id),
                                         role=src_role, callback=None)
             topic_dst = proxy_pb2.Topic(name="get_status", partyId="{}".format(self.party_id),
