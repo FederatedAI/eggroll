@@ -116,7 +116,7 @@ class TransferPair(object):
             done_count = 0
             for k, v in BatchBroker(input_broker):
                 partitioned_bb[partition_function(k)].put((k,v))
-                done_count +=1
+                done_count += 1
             L.debug(f"do_partition end:{done_count}")
             for broker in partitioned_bb:
                 broker.signal_write_finish()
@@ -200,22 +200,22 @@ class TransferPair(object):
         is_shuffle=False: just save broker to store, for put_all
         """
         @_exception_logger
-        def do_store():
-            tag = self.__generate_tag(store_partition._id) if is_shuffle else self.__transfer_id
-            broker = TransferService.get_or_create_broker(tag, write_signals=total_writers)
+        def do_store(store_partition_inner, is_shuffle_inner, total_writers_inner):
+            tag = self.__generate_tag(store_partition_inner._id) if is_shuffle_inner else self.__transfer_id
+            broker = TransferService.get_or_create_broker(tag, write_signals=total_writers_inner)
             L.debug(f"do_store_start:{tag}")
             done_cnt = 0
             batches = TransferPair.bin_batch_to_pair(b.data for b in broker)
-            with create_adapter(store_partition) as db:
-                L.debug(f"do_store_create_db:{tag}")
+            with create_adapter(store_partition_inner) as db:
+                L.debug(f"do_store_create_db: {tag} for partition: {store_partition_inner}")
                 with db.new_batch() as wb:
                     for k, v in batches:
                         wb.put(k, v)
                         done_cnt += 1
-                L.debug(f"do_store_done:{tag}")
+                L.debug(f"do_store_done: {tag} for partition: {store_partition_inner}")
             TransferService.remove_broker(tag)
             return done_cnt
-        return self._executor_pool.submit(do_store)
+        return self._executor_pool.submit(do_store, store_partition, is_shuffle, total_writers)
 
     def gather(self, store):
         client = TransferClient()
