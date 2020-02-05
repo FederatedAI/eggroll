@@ -17,6 +17,7 @@
 import inspect
 import logging
 import os
+import sys
 from logging.handlers import TimedRotatingFileHandler
 from threading import RLock
 
@@ -30,6 +31,7 @@ class LoggerFactory(object):
     LOG_DIR = None
     lock = RLock()
     default_logger_name = os.environ.get('EGGROLL_LOG_FILE', default=f'eggroll-py')
+    default_log_formatter = logging.Formatter('[%(levelname)-5s][%(asctime)s][%(threadName)s,pid:%(process)d,tid:%(thread)d][%(filename)s:%(lineno)s.%(funcName)s] - %(message)s')
 
     @staticmethod
     def set_directory(directory=None):
@@ -63,9 +65,8 @@ class LoggerFactory(object):
     @staticmethod
     def get_handler(name):
         if not LoggerFactory.LOG_DIR:
-            return logging.StreamHandler()
-        formatter = logging.Formatter(
-                '[%(levelname)-5s][%(asctime)s][%(threadName)s,pid:%(process)d,tid:%(thread)d][%(filename)s:%(lineno)s.%(funcName)s] - %(message)s')
+            return logging.StreamHandler(sys.stdout)
+        formatter = LoggerFactory.default_log_formatter
         log_file = os.path.join(LoggerFactory.LOG_DIR, "{}.log".format(name))
         handler = TimedRotatingFileHandler(log_file,
                                            when='H',
@@ -83,6 +84,12 @@ class LoggerFactory(object):
             logger.setLevel(LoggerFactory.LEVEL)
             handler = LoggerFactory.get_handler(name)
             logger.addHandler(handler)
+            if logging._checkLevel(LoggerFactory.LEVEL) <= logging.DEBUG:
+                console_handler = logging.StreamHandler(sys.stdout)
+                console_handler.setLevel(LoggerFactory.LEVEL)
+                formatter = LoggerFactory.default_log_formatter
+                console_handler.setFormatter(formatter)
+                logger.addHandler(console_handler)
 
             LoggerFactory.name_to_loggers[name] = logger, handler
             return logger, handler

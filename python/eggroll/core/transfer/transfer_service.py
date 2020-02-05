@@ -15,7 +15,7 @@
 
 import queue
 from concurrent import futures
-from threading import Thread, RLock
+from threading import Thread, Lock
 from time import sleep
 from typing import Iterable
 
@@ -35,11 +35,12 @@ L = get_logger()
 
 TRANSFER_BROKER_NAME = 'transfer_broker_name'
 
+
 # TODO:0: thread safe?
 class TransferService(object):
     data_buffer = dict()
     _DEFAULT_QUEUE_SIZE = 10000
-    mutex = RLock()
+    mutex = Lock()
 
     def start(self, options: {}):
         raise NotImplementedError()

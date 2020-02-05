@@ -501,7 +501,7 @@ class RollPair(object):
         count = 0
         for item in self.get_all():
             if keys_only:
-                if item :
+                if item:
                     ret.append(item[0])
                 else:
                     ret.append(None)
