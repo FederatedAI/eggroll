@@ -7,7 +7,7 @@ import com.webank.eggroll.core.util.JdbcTemplate
 import com.webank.eggroll.core.util.JdbcTemplate.ResultSetIterator
 import org.apache.commons.lang3.StringUtils
 
-import scala.collection.mutable.ArrayBuffer
+import scala.collection.mutable.{ArrayBuffer, ListBuffer}
 
 class ServerMetaDao {
   private lazy val dbc = ResourceDao.dbc
@@ -145,6 +145,10 @@ class SessionMetaDao {
       if (!rs.next()) {
         throw new NotExistError("session id not found:" + sessionId)
       }
+//      println(s"get session main:${rs}")
+//      println(s"get session main 1:${rs.getString("name")}")
+//      println(s"get session main 2:${rs.getString("active_proc_count")}")
+//      println(s"get session main 3:${rs.getString("status")}")
       ErSessionMeta(
         id = sessionId, name = rs.getString("name"),
         activeProcCount = rs.getInt("active_proc_count"),
@@ -180,6 +184,55 @@ class SessionMetaDao {
       }
       result.toArray
     }, sql, args: _*)
+  }
+
+  def getStoreLocators(input: ErStore): ErStoreList ={
+    var sql = "select * from store_locator where"
+    val whereFragments = ArrayBuffer[String]()
+    val args = ArrayBuffer[String]()
+    println(s"debug sql111:${sql}")
+    val store_locator = input.storeLocator
+    val store_name = store_locator.name
+    val store_namespace = store_locator.namespace
+    val store_type = store_locator.storeType
+
+    if (!StringUtils.isBlank(store_name)) {
+      if (StringUtils.equals(store_name, "*")) {
+
+      }
+      whereFragments += " name = ?"
+      args += store_name
+    }
+
+    if (!StringUtils.isBlank(store_namespace)) {
+      whereFragments += "namespace = ?"
+      args += store_namespace
+    }
+
+    if (!StringUtils.isBlank(store_type)) {
+      whereFragments += "store_type = ?"
+      args += store_type
+    }
+
+    sql += String.join(" and ", whereFragments: _*)
+    println(s"debug sql111:${sql}")
+    println(s"debug args:${args}")
+    dbc.query(rs => {
+      val stores = ArrayBuffer[ErStore]()
+      while (rs.next()) {
+        println(s"rs:${rs}")
+        stores += ErStore(
+          storeLocator = ErStoreLocator(
+            storeType = rs.getString("store_type"),
+            name = rs.getString("name"),
+            namespace = rs.getString("namespace"),
+            totalPartitions = rs.getInt("total_partitions")
+          ))
+      }
+
+      ErStoreList(stores = stores.toArray)
+    }, sql, args: _*)
+
   }
 
   def existSession(sessionId: String): Boolean = {
