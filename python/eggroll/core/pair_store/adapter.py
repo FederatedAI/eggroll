@@ -320,3 +320,21 @@ class BrokerWriteBatch(PairWriteBatch):
 
     def close(self):
         self.__broker.signal_write_finish()
+
+if __name__ == "__main__":
+    import sys,pickle
+    # TODO:0 avoid lmdb.py conflict with py lmdb, remove first path
+    sys.path = sys.path[1:]
+    from eggroll.core.pair_store import create_pair_adapter
+    from eggroll.core.constants import StoreTypes
+    path = sys.argv[1]
+    limit = int(sys.argv[2]) if len(sys.argv) > 2 else 10000
+    use_pickle = len(sys.argv) > 3 and sys.argv[3].lower() == "pickle"
+    opts = {"path": path, "store_type": StoreTypes.ROLLPAIR_LMDB}
+    with create_pair_adapter(opts) as db, db.iteritems() as it:
+        print("total count:{}".format(db.count()))
+        for k,v in it:
+            if use_pickle:
+                print("{}\t{}".format(pickle.loads(k), pickle.loads(v)))
+            else:
+                print("{}\t{}".format(k, v))
