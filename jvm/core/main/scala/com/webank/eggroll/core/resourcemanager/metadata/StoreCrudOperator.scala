@@ -67,9 +67,7 @@ class StoreCrudOperator extends CrudOperator with Logging {
   }
 
   def getStoreFromNamespace(input: ErStore): ErStoreList = {
-    val res = StoreCrudOperator.dao.getStoreLocators(input: ErStore)
-    println(s"debug result:${res}")
-    res
+    StoreCrudOperator.dao.getStoreLocators(input: ErStore)
   }
 }
 
@@ -86,7 +84,7 @@ object StoreCrudOperator {
       .andNamespaceEqualTo(inputStoreLocator.namespace)
       .andNameEqualTo(inputStoreLocator.name)
       .andStatusEqualTo(StoreStatus.NORMAL)
-    println(s"criteria:${criteria.toString()}")
+
     if (!StringUtils.isBlank(inputStoreLocator.storeType)) {
       criteria.andStoreTypeEqualTo(inputStoreLocator.storeType)
     }
@@ -110,8 +108,7 @@ object StoreCrudOperator {
     storeLocatorExample.setOrderByClause("store_partition_id asc")
 
     val storePartitionMapper = sqlSession.getMapper(classOf[StorePartitionMapper])
-    println(s"debug 1 sql${storePartitionMapper.selectByExample(storePartitionExample)}")
-    println(s"debug sql:${storePartitionExample.getOredCriteria()}")
+
     val storePartitionResult = storePartitionMapper.selectByExample(storePartitionExample)
 
     if (storePartitionResult.isEmpty) {
