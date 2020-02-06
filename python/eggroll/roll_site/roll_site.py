@@ -57,7 +57,9 @@ class RollSiteContext:
         L.info(f"inited RollSiteContext: {self.__dict__}")
 
     # todo:1: add options?
-    def load(self, name: str, tag: str, options={}):
+    def load(self, name: str, tag: str, options: dict = None):
+        if options is None:
+            options = {}
         return RollSite(name, tag, self, options=options)
 
     # todo:1: try-except as decorator
@@ -97,7 +99,9 @@ CONF_KEY_SERVER = "servers"
 
 
 class RollSite:
-    def __init__(self, name: str, tag: str, rs_ctx: RollSiteContext, options={}):
+    def __init__(self, name: str, tag: str, rs_ctx: RollSiteContext, options: dict = None):
+        if options is None:
+            options = {}
         self.ctx = rs_ctx
         self.party_id = self.ctx.party_id
         self.dst_host = self.ctx.proxy_endpoint._host
