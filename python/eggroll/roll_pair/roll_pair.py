@@ -584,9 +584,13 @@ class RollPair(object):
         if options is None:
             options = {}
         store_type = options.get('store_type', self.ctx.default_store_type)
+
         store = ErStore(store_locator=ErStoreLocator(store_type=store_type, namespace=namespace,
                                                      name=name, total_partitions=partition))
-        return self.map(lambda k, v: (k, v), output=store)
+        if partition == self.get_partitions():
+            return self.map_values(lambda v: v, output=store)
+        else:
+            return self.map(lambda k, v: (k, v), output=store)
 
     # computing api
     def map_values(self, func, output=None, options=None):
