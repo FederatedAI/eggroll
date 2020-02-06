@@ -147,6 +147,8 @@ class LmdbAdapter(PairAdapter):
         self.close()
 
     def close(self):
+        if not self.env:
+            return
         if self.txn_r:
             self.txn_r.commit()
             self.cursor.close()

@@ -82,10 +82,13 @@ class TestRollPairBase(unittest.TestCase):
         #rp.destroy()
 
     def test_cleanup(self):
-        rp = self.ctx.load("ns12020","n1")
+        rp = self.ctx.load("ns168","n1")
         data = [("k1","v1"),("k2","v2"),("k3","v3"),("k4","v4"),("k5","v5"),("k6","v6")]
         rp.put_all(data)
-        self.ctx.cleanup(namespace='ns12020', name='n1')
+
+        rp1 = self.ctx.load("ns168","n111")
+        rp1.put_all(data)
+        self.ctx.cleanup(namespace='ns168', name='*')
 
     def test_map(self):
         rp = self.ctx.parallelize(self.str_generator())
@@ -122,11 +125,11 @@ class TestRollPairBase(unittest.TestCase):
         options = get_default_options()
         options['include_key'] = True
         data = [("k1", "v1"), ("k2", "v2"), ("k3", "v3"), ("k4", "v4")]
-        table = self.ctx.load('ns1', 'test_destroy', options=options).put_all(data, options=options)
+        table = self.ctx.load('ns12020020618', 'test_destroy', options=options)#.put_all(data, options=options)
         print("before destroy:{}".format(list(table.get_all())))
         table.destroy()
         # TODO:1: table which has been destroyed cannot get_all, should raise exception
-        print("after destroy:{}".format(list(table.get_all())))
+        #print("after destroy:{}".format(list(table.get_all())))
         self.assertEqual(table.count(), 0)
 
     def test_take(self):

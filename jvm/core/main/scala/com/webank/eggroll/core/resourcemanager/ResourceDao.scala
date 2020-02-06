@@ -145,10 +145,7 @@ class SessionMetaDao {
       if (!rs.next()) {
         throw new NotExistError("session id not found:" + sessionId)
       }
-//      println(s"get session main:${rs}")
-//      println(s"get session main 1:${rs.getString("name")}")
-//      println(s"get session main 2:${rs.getString("active_proc_count")}")
-//      println(s"get session main 3:${rs.getString("status")}")
+
       ErSessionMeta(
         id = sessionId, name = rs.getString("name"),
         activeProcCount = rs.getInt("active_proc_count"),
@@ -187,40 +184,36 @@ class SessionMetaDao {
   }
 
   def getStoreLocators(input: ErStore): ErStoreList ={
-    var sql = "select * from store_locator where"
+    var sql = "select * from store_locator where status = 'NORMAL' and"
     val whereFragments = ArrayBuffer[String]()
     val args = ArrayBuffer[String]()
-    println(s"debug sql111:${sql}")
+
     val store_locator = input.storeLocator
     val store_name = store_locator.name
     val store_namespace = store_locator.namespace
     val store_type = store_locator.storeType
-
+    var store_name_new = ""
     if (!StringUtils.isBlank(store_name)) {
-      if (StringUtils.equals(store_name, "*")) {
-
+      if (StringUtils.contains(store_name, "*")) {
+        store_name_new = store_name.replace('*', '%')
+        args += store_name_new
+      } else {
+        args += store_name
       }
-      whereFragments += " name = ?"
-      args += store_name
+      whereFragments += " name like ?"
     }
 
     if (!StringUtils.isBlank(store_namespace)) {
-      whereFragments += "namespace = ?"
+      whereFragments += " namespace = ?"
       args += store_namespace
     }
 
-    if (!StringUtils.isBlank(store_type)) {
-      whereFragments += "store_type = ?"
-      args += store_type
-    }
-
     sql += String.join(" and ", whereFragments: _*)
-    println(s"debug sql111:${sql}")
-    println(s"debug args:${args}")
+
     dbc.query(rs => {
       val stores = ArrayBuffer[ErStore]()
       while (rs.next()) {
-        println(s"rs:${rs}")
+
         stores += ErStore(
           storeLocator = ErStoreLocator(
             storeType = rs.getString("store_type"),

@@ -146,14 +146,13 @@ class ClusterManagerClient(object):
                 serdes_type=self.__serdes_type)
 
     def delete_store(self, input: ErStore):
-        return self.__check_processors(self.__do_sync_request_internal(
+        return self.__do_sync_request_internal(
                 input=input,
                 output_type=ErStore,
                 command_uri=MetadataCommands.DELETE_STORE,
-                serdes_type=self.__serdes_type))
+                serdes_type=self.__serdes_type)
 
     def get_store_from_namespace(self, input):
-        print('debug input:{}'.format(input))
         return self.__do_sync_request_internal(
             input=input,
             output_type=ErStoreList,
