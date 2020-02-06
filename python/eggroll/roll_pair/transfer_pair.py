@@ -110,12 +110,13 @@ class TransferPair(object):
         partitioned_brokers = [FifoBroker() for i in range(total_partitions)]
         partitioned_bb = [BatchBroker(v) for v in partitioned_brokers]
         futures = []
+
         @_exception_logger
         def do_partition():
             L.debug('do_partition start')
             done_count = 0
             for k, v in BatchBroker(input_broker):
-                partitioned_bb[partition_function(k)].put((k,v))
+                partitioned_bb[partition_function(k)].put((k, v))
                 done_count += 1
             L.debug(f"do_partition end:{done_count}")
             for broker in partitioned_bb:
@@ -123,6 +124,7 @@ class TransferPair(object):
             return done_count
         futures.append(self._executor_pool.submit(do_partition))
         client = TransferClient()
+
         def do_send_all():
             send_all_futs = []
             for i, part in enumerate(output_partitions):
@@ -133,6 +135,7 @@ class TransferPair(object):
                                   part._processor._transfer_endpoint, tag)
                 send_all_futs.append(fut)
             return CompositeFuture(send_all_futs).result()
+
         futures.append(self._executor_pool.submit(do_send_all))
         return CompositeFuture(futures)
 

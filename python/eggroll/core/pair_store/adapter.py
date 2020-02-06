@@ -154,7 +154,9 @@ class FileWriteBatch(PairWriteBatch):
 
 class CacheAdapter(PairAdapter):
     caches = {}
-    def __init__(self, options=None):
+    def __init__(self, options = None):
+        if options is None:
+            options = {}
         super().__init__(options)
         self.path = options["path"]
         if self.path not in self.caches:
@@ -270,7 +272,9 @@ class MmapWriteBatch(PairWriteBatch):
 
 
 class BrokerAdapter(PairAdapter):
-    def __init__(self, broker: Broker, options={}):
+    def __init__(self, broker: Broker, options: dict = None):
+        if options is None:
+            options = {}
         super().__init__(options=options)
         self.__broker = broker
 

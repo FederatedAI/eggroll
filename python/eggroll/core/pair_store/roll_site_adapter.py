@@ -97,7 +97,9 @@ class RollSiteWriteBatch(PairWriteBatch):
     grpc_channel_factory = GrpcChannelFactory()
 
     # TODO:0: check if secure channel needed
-    def __init__(self, adapter: RollSiteAdapter, options={}):
+    def __init__(self, adapter: RollSiteAdapter, options: dict = None):
+        if options is None:
+            options = {}
         self.adapter = adapter
 
         self.federation_header: ErFederationHeader = adapter.federation_header
