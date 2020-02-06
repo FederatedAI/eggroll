@@ -37,8 +37,12 @@ class ErSession(object):
             session_id=None,
             name='',
             tag='',
-            processors=list(),
-            options=dict()):
+            processors: list = None,
+            options: dict = None):
+        if processors is None:
+            processors = []
+        if options is None:
+            options = {}
         if not session_id:
             self.__session_id = f'er_session_py_{time_now(format=DEFAULT_DATETIME_FORMAT)}_{get_self_ip()}'
         else:

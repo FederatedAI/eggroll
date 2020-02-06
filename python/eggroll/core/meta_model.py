@@ -105,7 +105,9 @@ class ErServerNode(RpcMessage):
 
 
 class ErServerCluster(RpcMessage):
-    def __init__(self, id: int, name: str, server_nodes=list(), tag: str = ''):
+    def __init__(self, id: int, name: str, server_nodes: list = None, tag: str = ''):
+        if server_nodes is None:
+            server_nodes = []
         self._id = id
         self._name = name
         self._server_nodes = server_nodes
@@ -148,8 +150,10 @@ class ErProcessor(RpcMessage):
             status='',
             command_endpoint: ErEndpoint = None,
             transfer_endpoint: ErEndpoint = None,
-            options={},
+            options: dict = None,
             tag=''):
+        if options is None:
+            options = {}
         self._id = id
         self._server_node_id = server_node_id
         self._name = name
@@ -211,7 +215,9 @@ class ErProcessor(RpcMessage):
 
 
 class ErProcessorBatch(RpcMessage):
-    def __init__(self, id = -1, name: str = '', processors=list(), tag: str = ''):
+    def __init__(self, id=-1, name: str = '', processors: list = None, tag: str = ''):
+        if processors is None:
+            processors = []
         self._id = id
         self._name = name
         self._processors = processors
@@ -249,7 +255,9 @@ class ErProcessorBatch(RpcMessage):
 
 
 class ErFunctor(RpcMessage):
-    def __init__(self, name='', serdes='', body=b'', options=dict()):
+    def __init__(self, name='', serdes='', body=b'', options: dict = {}):
+        if options is None:
+            options = {}
         self._name = name
         self._serdes = serdes
         self._body = body
@@ -303,7 +311,9 @@ class ErPair(RpcMessage):
 
 
 class ErPairBatch(RpcMessage):
-    def __init__(self, pairs=list()):
+    def __init__(self, pairs: list = None):
+        if pairs is None:
+            pairs = []
         self._pairs = pairs
 
     def to_proto(self):
@@ -406,7 +416,11 @@ class ErPartition(RpcMessage):
 
 
 class ErStore(RpcMessage):
-    def __init__(self, store_locator: ErStoreLocator, partitions=list(), options=dict()):
+    def __init__(self, store_locator: ErStoreLocator, partitions: list = None, options: dict = None):
+        if partitions is None:
+            partitions = []
+        if options is None:
+            options = {}
         self._store_locator = store_locator
         self._partitions = partitions
         self._options = options
@@ -447,10 +461,19 @@ class ErJob(RpcMessage):
     def __init__(self,
             id: str,
             name: str = '',
-            inputs=list(),
-            outputs=list(),
-            functors=list(),
-            options=dict()):
+            inputs: list = None,
+            outputs: list = None,
+            functors: list = None,
+            options: dict = None):
+        if inputs is None:
+            inputs = []
+        if outputs is None:
+            outputs = []
+        if functors is None:
+            functors = []
+        if options is None:
+            options = {}
+
         self._id = id
         self._name = name
         self._inputs = inputs
@@ -497,8 +520,16 @@ class ErJob(RpcMessage):
 
 
 class ErTask(RpcMessage):
-    def __init__(self, id: str, name='', inputs=list(), outputs=list(),
+    def __init__(self,
+            id: str,
+            name='',
+            inputs: list = None,
+            outputs: list = None,
             job: ErJob = None):
+        if inputs is None:
+            inputs = []
+        if outputs is None:
+            outputs = []
         self._id = id
         self._name = name
         self._inputs = inputs
@@ -558,8 +589,12 @@ class ErSessionMeta(RpcMessage):
             name: str = '',
             status: str = '',
             tag: str = '',
-            processors=list(),
-            options={}):
+            processors: list = None,
+            options: dict = None):
+        if processors is None:
+            processors = []
+        if options is None:
+            options = {}
         self._id = id
         self._name = name
         self._status = status
