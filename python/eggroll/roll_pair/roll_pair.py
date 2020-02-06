@@ -150,6 +150,7 @@ class RollPairContext(object):
         rp = self.load(namespace=namespace, name=name, options=options)
         return rp.put_all(data, options=options)
 
+    '''store name only supports full name and reg: *, *abc ,abc* and a*c'''
     def cleanup(self, namespace, name, options={}):
         total_partitions = options.get('total_partitions', 1)
         partitioner = options.get('partitioner', PartitionerTypes.BYTESTRING_HASH)
@@ -188,9 +189,14 @@ class RollPairContext(object):
                 serdes=store_serdes),
             options=final_options)
         results = self.__session._cluster_manager_client.get_store_from_namespace(store)
-        for result in results:
-            rp = RollPair(self.populate_processor(result), self)
-            rp.destroy()
+        L.debug('res:{}'.format(results._stores))
+        if results._stores is not None:
+            L.debug("item count:{}".format(len(results._stores)))
+            for item in results._stores:
+                L.debug("item namespace:{} name:{}".format(item._store_locator._namespace,
+                                                         item._store_locator._name))
+                rp = RollPair(er_store=item, rp_ctx=self)
+                rp.destroy()
 
 
 def default_partitioner(k):
@@ -256,7 +262,7 @@ class RollPair(object):
             return
         if self.ctx.gc_recorder.check_gc_executable(self.__store):
             self.ctx.gc_recorder.delete_record(self.__store)
-            print('del rp:{}', str(self))
+            L.debug('del rp:{}', str(self))
             self.destroy()
             L.debug("process {} thread {} run {} del table name:{}, namespace:{}".
                          format(os.getpid(), threading.currentThread().ident,
@@ -488,7 +494,7 @@ class RollPair(object):
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.DESTROY),
                     name=RollPair.DESTROY,
                     inputs=[self.__store],
-                    outputs=[],
+                    outputs=[self.__store],
                     functors=[])
 
         job_resp = self.__command_client.simple_sync_send(
@@ -498,10 +504,7 @@ class RollPair(object):
                 command_uri=CommandURI(f'{RollPair.ROLL_PAIR_URI_PREFIX}/{RollPair.RUN_JOB}'),
                 serdes_type=self.__command_serdes)
 
-        try:
-            self.ctx.get_session()._cluster_manager_client.delete_store(self.__store)
-        except:
-            L.error(f'delete store:{self.__store} failed')
+        self.ctx.get_session()._cluster_manager_client.delete_store(self.__store)
         L.info(f'{RollPair.DESTROY}: {self.__store}')
 
     def delete(self, k, options={}):

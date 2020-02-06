@@ -399,7 +399,7 @@ class ErStoreList(RpcMessage):
         return ErStoreList.from_proto(pb_message)
 
     def __repr__(self):
-        return f'ErPairBatch(pairs={_repr_list(self._stores)})'
+        return f'ErStoreList(stores={_repr_list(self._stores)})'
 
 class ErJob(RpcMessage):
     def __init__(self,
