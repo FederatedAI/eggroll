@@ -30,7 +30,7 @@ class TestRollPairBase(unittest.TestCase):
 
     @staticmethod
     def store_opts(**kwargs):
-        opts= {'total_partitions':1}
+        opts = {'total_partitions': 1}
         opts.update(kwargs)
         return opts
 
