@@ -51,6 +51,10 @@ object MetadataCommands {
   val deleteStore = "deleteStore"
   val deleteStoreServiceName = CommandUtils.toServiceName(prefix, deleteStore)
   val DELETE_STORE = new CommandURI(deleteStoreServiceName)
+
+  val getStoreFromNamespace = "getStoreFromNamespace"
+  val getStoreFromNamespaceServiceName = CommandUtils.toServiceName(prefix, getStoreFromNamespace)
+  val GET_STORE_FROM_NAMESPACE = new CommandURI(getStoreFromNamespaceServiceName)
 }
 
 object SessionCommands {

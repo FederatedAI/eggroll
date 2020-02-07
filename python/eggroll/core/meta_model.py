@@ -381,6 +381,26 @@ class ErStore(RpcMessage):
         return f'ErStore(store_locator={repr(self._store_locator)}, partitions=[{_repr_list(self._partitions)}], options=[{repr(self._options)}])'
 
 
+class ErStoreList(RpcMessage):
+    def __init__(self, stores=list()):
+        self._stores = stores
+
+    def to_proto(self):
+        return meta_pb2.StoreList(stores=_elements_to_proto(self._stores))
+
+    @staticmethod
+    def from_proto(pb_message):
+        return ErStoreList(_map_and_listify(ErStore.from_proto, pb_message.stores))
+
+    @staticmethod
+    def from_proto_string(pb_string):
+        pb_message = meta_pb2.StoreList()
+        msg_len = pb_message.ParseFromString(pb_string)
+        return ErStoreList.from_proto(pb_message)
+
+    def __repr__(self):
+        return f'ErStoreList(stores={_repr_list(self._stores)})'
+
 class ErJob(RpcMessage):
     def __init__(self,
             id: str,
