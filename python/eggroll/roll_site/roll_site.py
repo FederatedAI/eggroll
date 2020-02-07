@@ -111,8 +111,8 @@ class RollSite:
         self.name = name
         self.tag = tag
         self.stub = self.ctx.stub
-        self.process_pool = ThreadPoolExecutor(10)
-        self.complete_pool = ThreadPoolExecutor(10)
+        self.process_pool = ThreadPoolExecutor(10, thread_name_prefix="thread-recieve")
+        self.complete_pool = ThreadPoolExecutor(10, thread_name_prefix="complete-wait")
 
     def _thread_receive(self, packet, namespace, federation_header: ErFederationHeader):
         try:
@@ -160,7 +160,7 @@ class RollSite:
             L.debug(f"pull status done: table_name:{table_name}, packet:{packet}, namespace:{namespace}")
             rp = self.ctx.rp_ctx.load(namespace=table_namespace, name=table_name)
             result = rp.get(table_name) if obj_type == b'object' else rp
-            L.info(f"pull succuess: {table_name}")
+            L.info(f"pull success: {table_name}, count: {rp.count()}, type: {obj_type}")
             return result
         except Exception as e:
             L.exception(f"pull error:{e}")
@@ -172,7 +172,7 @@ class RollSite:
         for role_party_id in parties:
             # for _partyId in _partyIds:
             _role = role_party_id[0]
-            _party_id = role_party_id[1]
+            _party_id = str(role_party_id[1])
 
             _options = {}
             obj_type = 'rollpair' if isinstance(obj, RollPair) else 'object'
@@ -258,22 +258,23 @@ class RollSite:
     def pull(self, parties: list = None):
         futures = []
         for src_role, src_party_id in parties:
+            src_party_id = str(src_party_id)
             federation_header = ErFederationHeader(federation_session_id=self.federation_session_id,
                                                    name=self.name,
                                                    tag=self.tag,
                                                    src_role=src_role,
-                                                   src_party_id=str(src_party_id),
+                                                   src_party_id=src_party_id,
                                                    dst_role=self.local_role,
-                                                   dst_party_id=str(self.party_id))
+                                                   dst_party_id=self.party_id)
             _tagged_key = create_store_name(federation_header)
 
             name = _tagged_key
 
             model = proxy_pb2.Model(name=_stringify(federation_header))
             task_info = proxy_pb2.Task(taskId=name, model=model)
-            topic_src = proxy_pb2.Topic(name="get_status", partyId="{}".format(src_party_id),
+            topic_src = proxy_pb2.Topic(name="get_status", partyId=src_party_id,
                                         role=src_role, callback=None)
-            topic_dst = proxy_pb2.Topic(name="get_status", partyId="{}".format(self.party_id),
+            topic_dst = proxy_pb2.Topic(name="get_status", partyId=self.party_id,
                                         role=self.local_role, callback=None)
             get_status_command = proxy_pb2.Command(name="get_status")
             conf_test = proxy_pb2.Conf(overallTimeout=1000,

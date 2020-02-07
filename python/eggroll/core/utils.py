@@ -117,13 +117,20 @@ def _exception_logger(func):
             return func(*args, **kw)
         except:
             msg = (f"\n\n==== detail start, at {time_now()} ====\n"
-                   f"{traceback.format_exc()}"
+                   f"{traceback.format_stack()}"
                    f"\n==== detail end ====\n\n")
             # LOGGER.error(msg)
             print(msg)
             raise RuntimeError(msg)
 
     return wrapper
+
+
+def get_stack():
+    return (f"\n\n==== stack start, at {time_now()} ====\n"
+           f"{traceback.format_exc()}"
+           f"\n==== stack end ====\n\n")
+
 
 DEFAULT_DATETIME_FORMAT = '%Y%m%d.%H%M%S.%f'
 def time_now(format: str = DEFAULT_DATETIME_FORMAT):
@@ -149,7 +156,7 @@ def get_self_ip():
 
 # TODO:0: replace uuid with simpler human friendly solution
 def generate_job_id(session_id, tag='', delim='-'):
-    result = delim.join([session_id, 'job', str(uuid.uuid1())])
+    result = delim.join([session_id, 'py', 'job', str(uuid.uuid1())])
     if not tag:
         return result
     else:

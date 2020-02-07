@@ -120,7 +120,7 @@ object IdUtils {
   private val job = "job"
   private val task = "task"
   def generateJobId(sessionId: String, tag: String = "", delim: String = "-"): String = {
-    val result = String.join(delim, sessionId, job, TimeUtils.getNowMs())
+    val result = String.join(delim, sessionId, "scala", job, TimeUtils.getNowMs())
     if (StringUtils.isBlank(tag)) result else s"${result}_${tag}"
   }
 
