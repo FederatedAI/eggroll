@@ -18,6 +18,7 @@
 
 package com.webank.eggroll.core.util
 
+import io.grpc.Metadata
 import io.grpc.stub.StreamObserver
 
 abstract class GrpcCalleeStreamObserver[R, E](val caller: StreamObserver[E])
@@ -34,4 +35,16 @@ abstract class GrpcCalleeStreamObserver[R, E](val caller: StreamObserver[E])
     caller.onCompleted()
   }
 
+}
+
+object GrpcUtils {
+  def toMetadata(kvs: Map[String, String]): Metadata = {
+    val result = new Metadata()
+
+    kvs.foreach(kv => {
+      result.put(Metadata.Key.of[String](kv._1, Metadata.ASCII_STRING_MARSHALLER), kv._2)
+    })
+
+    result
+  }
 }

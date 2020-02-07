@@ -17,7 +17,12 @@
 package com.webank.eggroll.rollsite.grpc.observer;
 
 import com.google.protobuf.ByteString;
+import com.google.protobuf.InvalidProtocolBufferException;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
+import com.webank.eggroll.core.constant.StringConstants;
+import com.webank.eggroll.core.meta.ErFederationHeader;
+import com.webank.eggroll.core.meta.TransferModelPbMessageSerdes;
+import com.webank.eggroll.core.transfer.Transfer.FederationHeader;
 import com.webank.eggroll.core.util.ErrorUtils;
 import com.webank.eggroll.core.util.ToStringUtils;
 import com.webank.eggroll.rollsite.RollSiteUtil;
@@ -25,7 +30,7 @@ import com.webank.eggroll.rollsite.event.model.PipeHandleNotificationEvent;
 import com.webank.eggroll.rollsite.factory.EventFactory;
 import com.webank.eggroll.rollsite.factory.PipeFactory;
 import com.webank.eggroll.rollsite.helper.ModelValidationHelper;
-import com.webank.eggroll.rollsite.infra.JobidSessionIdMap;
+import com.webank.eggroll.rollsite.infra.JobStatus;
 import com.webank.eggroll.rollsite.infra.Pipe;
 import com.webank.eggroll.rollsite.infra.impl.PacketQueuePipe;
 import com.webank.eggroll.rollsite.manager.StatsManager;
@@ -36,7 +41,7 @@ import com.webank.eggroll.rollsite.utils.Timeouts;
 import io.grpc.Grpc;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
-
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
@@ -48,6 +53,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
+import scala.collection.immutable.Map.Map1;
 
 /*
 class putBatchThread extends Thread{
@@ -137,7 +143,6 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
 
         inputMetadata = packet.getHeader();
         LOGGER.info("inputMetadata.getTask().getTaskId():{}", inputMetadata.getTask().getTaskId());
-        pipe = pipeFactory.create(inputMetadata.getTask().getTaskId());
 
         streamStat = new StreamStat(inputMetadata, StreamStat.PUSH);
         oneLineStringInputMetadata = ToStringUtils.toOneLineString(inputMetadata);
@@ -173,6 +178,7 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
 
         LOGGER.info("model name: {}", inputMetadata.getTask().getModel().getName());
 
+        pipe = pipeFactory.create(inputMetadata.getTask().getTaskId());
         if (noError) {
             pipe.write(packet);
             ackCount.incrementAndGet();
@@ -197,26 +203,47 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
                 String namespace = packet.getHeader().getTask().getModel().getDataKey();
                 LOGGER.info("name:{}, namespace:{}", name, namespace);
 
+                // TODO:0: better wait
                 if (rollSiteUtil == null) {
-                    String[] args = name.split("-");
-                    String job_id = args[1];
+                    // TODO:0: change this when delim changes
+                    ErFederationHeader federationHeader = null;
+                    try {
+                        federationHeader = TransferModelPbMessageSerdes.ErFederationHeaderFromPbMessage(
+                            FederationHeader.parseFrom(name.getBytes(StandardCharsets.ISO_8859_1))).fromProto();
+                    } catch (InvalidProtocolBufferException e) {
+                        LOGGER.error("error parsing federation header", e);
+                        onError(e);
+                    }
+                    int totalPartition = Integer.parseInt(federationHeader.options().getOrElse(
+                        StringConstants.TOTAL_PARTITIONS_SNAKECASE(), () -> "1"));
+                    String job_id = federationHeader.federationSessionId();
+                    try {
+                        while (!JobStatus.jobIdToSessionId.containsKey(job_id)) {
+                            Thread.sleep(1000);
+                        }
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    String sessionId = JobStatus.jobIdToSessionId.get(job_id);
+                    if(sessionId != null) {
+                        rollSiteUtil = new RollSiteUtil(sessionId, federationHeader, new Map1<>("job_id_tag", Thread.currentThread().getName()));
+                    }
 
-                    String session_id = JobidSessionIdMap.jobidSessionIdMap.get(job_id);
-                    if(session_id != null) {
-                        rollSiteUtil = new RollSiteUtil(session_id, name, namespace);
+                    String tagKey = federationHeader.concat(StringConstants.HASH(), new String[]{"__federation__"});
+                    if (!JobStatus.hasLatch(tagKey)) {
+                        JobStatus.createLatch(tagKey, totalPartition);
                     }
                 }
 
-                if(rollSiteUtil != null) {
-                    rollSiteUtil.putBatch(value.asReadOnlyByteBuffer());
-                    LOGGER.info("end putBatch");
-                }
+                rollSiteUtil.putBatch(value.asReadOnlyByteBuffer());
+                LOGGER.info("end putBatch");
             }
 
             if (timeouts.isTimeout(overallTimeout, overallStartTimestamp)) {
-                onError(new IllegalStateException("push overall wait timeout exceeds overall timeout: " + overallTimeout
-                        + ", metadata: " + oneLineStringInputMetadata));
-                pipe.close();
+                Throwable error = new IllegalStateException("push overall wait timeout exceeds overall timeout: " + overallTimeout
+                        + ", metadata: " + oneLineStringInputMetadata);
+                pipe.onError(error);
+                onError(error);
                 return;
             }
 
@@ -233,11 +260,6 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
                 DEBUGGING.info("-------------");
             }
             LOGGER.info("push server received size: {}, data size: {}", packet.getSerializedSize(), packet.getBody().getValue().size());
-        }
-
-        if(proxyServerConf.getPartyId().equals(inputMetadata.getDst().getPartyId())) {
-            pipe.setDrained();
-            pipe.onComplete();
         }
     }
 
@@ -270,7 +292,7 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
 
     @Override
     public void onCompleted() {
-        LOGGER.info("[PUSH][OBSERVER] onCompleted");
+        LOGGER.info("[PUSH][OBSERVER] onCompleted. ackCount: {}", ackCount);
         long lastestAckCount = ackCount.get();
         LOGGER.info("[PUSH][OBSERVER][ONCOMPLETE] trying to complete task. metadata: {}, ackCount: {}",
                 oneLineStringInputMetadata, lastestAckCount);
@@ -278,6 +300,11 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
         long completionWaitStartTimestamp = System.currentTimeMillis();
         long loopEndTimestamp = completionWaitStartTimestamp;
         long waitCount = 0;
+
+        if(proxyServerConf.getPartyId().equals(inputMetadata.getDst().getPartyId())) {
+            pipe.setDrained();
+            pipe.onComplete();
+        }
 
         /*LOGGER.info("closed: {}, completion timeout: {}, overall timeout: {}",
                 pipe.isClosed(),
@@ -307,7 +334,6 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
 
             }
         }
-
         //pipe.onComplete();
 
         try {
@@ -344,11 +370,11 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
                 //responseObserver.onNext(responseMetadata);
                 responseObserver.onNext(response);
                 responseObserver.onCompleted();
-
                 LOGGER.info("[PUSH][OBSERVER][ONCOMPLETE] push server complete. inputMetadata: {}",
                         ToStringUtils.toOneLineString(response));
                 streamStat.onComplete();
             }
+
         } catch (NullPointerException e) {
             LOGGER.error("[PUSH][OBSERVER][ONCOMPLETE] NullPointerException caught in push onComplete. metadata: {}",
                     oneLineStringInputMetadata);

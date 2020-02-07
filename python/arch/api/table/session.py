@@ -44,7 +44,7 @@ def build_session(job_id=None,
     elif backend.is_eggroll2():
         from eggroll.core.session import session_init
         from arch.api.table.eggroll2 import session_impl
-        options={}
+        options = {}
         if work_mode == WorkMode.STANDALONE:
             options['eggroll.session.deploy.mode'] = "standalone"
         elif work_mode == WorkMode.CLUSTER:
