@@ -87,8 +87,9 @@ class CommandClient(object):
 
 
 class ClusterManagerClient(object):
-
-    def __init__(self, options={}):
+    def __init__(self, options=None):
+        if options is None:
+            options = {}
         static_er_conf = get_static_er_conf()
         host = options.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST, static_er_conf.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST, None))
         port = options.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, static_er_conf.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, None))

@@ -21,18 +21,22 @@ import java.nio.ByteBuffer
 
 import com.google.protobuf.ByteString
 import com.webank.eggroll.core.ErSession
-import com.webank.eggroll.core.client.ClusterManagerClient
 import com.webank.eggroll.core.datastructure.LinkedBlockingBroker
-import com.webank.eggroll.core.meta.ErSessionMeta
+import com.webank.eggroll.core.meta.ErFederationHeader
 import com.webank.eggroll.rollpair.{RollPair, RollPairContext}
 
 
-class RollSiteUtil(val session_id: String, name:String, namespace:String) {
-  private val session =  new ErSession(sessionId = session_id, createIfNotExists = false)
+class RollSiteUtil(val erSessionId: String,
+                   federationHeader: ErFederationHeader,
+                   options: Map[String, String] = Map.empty) {
+  private val session =  new ErSession(sessionId = erSessionId, createIfNotExists = false)
   private val ctx = new RollPairContext(session)
   //private val nameStripped = name
+  val namespace = federationHeader.federationSessionId
+  val name = federationHeader.concat()
+
   println("scalaPutBatch  name:" + name + ",namespace:" + namespace)
-  val rp:RollPair = ctx.load(namespace, name)
+  val rp: RollPair = ctx.load(namespace, name, options = federationHeader.options)
 
   Runtime.getRuntime.addShutdownHook(new Thread(){
     override def run(): Unit = {
@@ -46,6 +50,6 @@ class RollSiteUtil(val session_id: String, name:String, namespace:String) {
     val broker = new LinkedBlockingBroker[ByteString]()
     broker.put(ByteString.copyFrom(value))
     broker.signalWriteFinish()
-    rp.putBatch(broker)
+    rp.putBatch(broker, options = options)
   }
 }

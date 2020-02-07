@@ -60,7 +60,6 @@ def get_debug_test_context(is_standalone=False, manager_port=4670, egg_port=2000
     session = ErSession(session_id,
                         processors=[egg, roll],
                         options=options)
-    # session = ErSession(options={})
     context = RollPairContext(session)
     return context
 
