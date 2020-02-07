@@ -21,6 +21,7 @@ from eggroll.core.constants import SessionStatus, ProcessorTypes, DeployModes
 from eggroll.core.meta_model import ErSessionMeta, \
     ErPartition
 from eggroll.core.utils import get_self_ip, time_now, DEFAULT_DATETIME_FORMAT
+from eggroll.core.utils import get_stack
 from eggroll.core.utils import get_static_er_conf, set_static_er_conf
 from eggroll.utils.log_utils import get_logger
 
@@ -153,11 +154,13 @@ class ErSession(object):
     def stop(self):
         L.info(f'stopping session (gracefully): {self.__session_id}')
         L.debug(f'stopping session (gracefully), details: {self.__session_meta}')
+        L.debug(f'stopping (gracefully) from: {get_stack()}')
         return self._cluster_manager_client.stop_session(self.__session_meta)
 
     def kill(self):
         L.info(f'killing session (forcefully): {self.__session_id}')
-        L.info(f'killing session (forcefully), details: {self.__session_meta}')
+        L.debug(f'killing session (forcefully), details: {self.__session_meta}')
+        L.debug(f'killing (forcefully) from: {get_stack()}')
         return self._cluster_manager_client.kill_session(self.__session_meta)
 
     def get_session_id(self):
