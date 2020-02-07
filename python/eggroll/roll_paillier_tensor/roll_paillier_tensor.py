@@ -127,7 +127,9 @@ class RollPaillierTensor(object):
         else:
             raise NotImplementedError("todo")
 
-    def put_all(self, data, options={}):
+    def put_all(self, data, options: dict = None):
+        if options is None:
+            options = {}
         self._store.put_all(data, options=options)
 
     def get_all(self):

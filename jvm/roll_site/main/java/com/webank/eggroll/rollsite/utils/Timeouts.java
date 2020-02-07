@@ -24,7 +24,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class Timeouts {
-    public static final long MAX_OVERALL_TIMEOUT = 12L * 3600 * 1000;                // 12h
+    public static final long MAX_OVERALL_TIMEOUT = 48L * 3600 * 1000;                // 48h
     public static final long DEFAULT_OVERALL_TIMEOUT = MAX_OVERALL_TIMEOUT;
 
     public static final long MAX_COMPLETION_WAIT_TIMEOUT = MAX_OVERALL_TIMEOUT;

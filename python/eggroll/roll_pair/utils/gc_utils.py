@@ -8,7 +8,7 @@ L = get_logger()
 class GcRecorder(object):
 
     def __init__(self, rpc):
-        print('init recorder')
+        L.debug('init recorder')
         self.record_store = None
         self.record_rpc = rpc
         self.gc_recorder = None

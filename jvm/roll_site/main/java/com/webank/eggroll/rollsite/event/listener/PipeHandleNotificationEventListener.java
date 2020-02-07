@@ -18,7 +18,6 @@ package com.webank.eggroll.rollsite.event.listener;
 
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
 import com.webank.eggroll.core.constant.CoreConfKeys;
-import com.webank.eggroll.core.meta.ErEndpoint;
 import com.webank.eggroll.core.retry.RetryException;
 import com.webank.eggroll.core.retry.Retryer;
 import com.webank.eggroll.core.retry.factory.AttemptOperations;
@@ -39,7 +38,6 @@ import java.util.concurrent.TimeUnit;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
@@ -94,11 +92,12 @@ public class PipeHandleNotificationEventListener implements ApplicationListener<
         long attemptTimeout = StaticErConf
             .getLong(CoreConfKeys.CONFKEY_CORE_RETRY_DEFAULT_ATTEMPT_TIMEOUT_MS(), 30000L);
 
+        // TODO:0: configurable
         Retryer<Integer> retryer = RetryerBuilder.<Integer>newBuilder()
             .withWaitTimeStrategy(WaitTimeStrategies.fixedWaitTime(fixedWaitTime))
             .withStopStrategy(StopStrategies.stopAfterMaxAttempt(maxAttempts))
             .withAttemptOperation(
-                AttemptOperations.<Integer>fixedTimeLimit(attemptTimeout, TimeUnit.MILLISECONDS))
+                AttemptOperations.<Integer>fixedTimeLimit(attemptTimeout, TimeUnit.MINUTES))
             .retryIfAnyException()
             .build();
 
