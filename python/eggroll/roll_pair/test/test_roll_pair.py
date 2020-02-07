@@ -123,6 +123,12 @@ class TestRollPairBase(unittest.TestCase):
         print("after destroy:{}".format(list(table.get_all())))
         self.assertEqual(table.count(), 0)
 
+    def test_destroy_simple(self):
+        options = get_default_options()
+        options['include_key'] = True
+        table = self.ctx.load('ns1', 'test_destroy', options=options)
+        table.destroy()
+
     def test_take(self):
         options = get_default_options()
         options['keys_only'] = True

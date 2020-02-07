@@ -17,7 +17,7 @@ import os
 from eggroll.core.client import ClusterManagerClient
 from eggroll.core.conf_keys import CoreConfKeys
 from eggroll.core.conf_keys import SessionConfKeys, ClusterManagerConfKeys
-from eggroll.core.constants import SessionStatus, ProcessorTypes
+from eggroll.core.constants import SessionStatus, ProcessorTypes, DeployModes
 from eggroll.core.meta_model import ErSessionMeta, \
     ErPartition
 from eggroll.core.utils import get_self_ip, time_now, DEFAULT_DATETIME_FORMAT
@@ -67,8 +67,8 @@ class ErSession(object):
         self.__options[SessionConfKeys.CONFKEY_SESSION_ID] = self.__session_id
         self._cluster_manager_client = ClusterManagerClient(options=options)
 
-        self.__is_standalone = options.get(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE, "") == "standalone"
-        if self.__is_standalone and os.name != 'nt' and not processors and os.environ.get("EGGROLL_RESOURCE_MANAGER_AUTO_BOOTSTRAP","1") == "1":
+        self.__is_standalone = options.get(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE, "") == DeployModes.STANDALONE
+        if self.__is_standalone and os.name != 'nt' and not processors and os.environ.get("EGGROLL_RESOURCE_MANAGER_AUTO_BOOTSTRAP", "1") == "1":
             port = int(options.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT,
                                    static_er_conf.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, "4670")))
             startup_command = f'bash {self.__eggroll_home}/bin/eggroll_boot_standalone.sh -p {port} -s {self.__session_id}'
@@ -122,7 +122,7 @@ class ErSession(object):
         self.__cleanup_tasks = list()
         self.__processors = self.__session_meta._processors
 
-        L.info(f'session init finished:{self.__session_id}, {self.__session_meta}')
+        L.info(f'session init finished:{self.__session_id}, details: {self.__session_meta}')
 
         self._rolls = list()
         self._eggs = dict()
@@ -137,7 +137,7 @@ class ErSession(object):
             elif processor_type == ProcessorTypes.ROLL_PAIR_MASTER:
                 self._rolls.append(processor)
             else:
-                raise ValueError(f"processor type {processor_type} not supported in roll pair")
+                raise ValueError(f'processor type {processor_type} not supported in roll pair')
 
     def route_to_egg(self, partition: ErPartition):
         target_server_node = partition._processor._server_node_id
@@ -146,14 +146,18 @@ class ErSession(object):
 
         result = self._eggs[target_server_node][target_processor]
         if not result._command_endpoint._host or result._command_endpoint._port <= 0:
-            raise ValueError(f'error routing to egg: {result}')
+            raise ValueError(f'error routing to egg: {result} in session: {self.__session_id}')
 
         return result
 
     def stop(self):
+        L.info(f'stopping session (gracefully): {self.__session_id}')
+        L.debug(f'stopping session (gracefully), details: {self.__session_meta}')
         return self._cluster_manager_client.stop_session(self.__session_meta)
 
     def kill(self):
+        L.info(f'killing session (forcefully): {self.__session_id}')
+        L.info(f'killing session (forcefully), details: {self.__session_meta}')
         return self._cluster_manager_client.kill_session(self.__session_meta)
 
     def get_session_id(self):
@@ -167,6 +171,7 @@ class ErSession(object):
         self.__cleanup_tasks.append(func)
 
     def run_cleanup_tasks(self):
+        L.debug(f'running cleanup tasks: {self.__session_id}')
         for func in self.__cleanup_tasks:
             func()
 

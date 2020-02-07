@@ -138,7 +138,7 @@ class TestRollSiteBase(unittest.TestCase):
         rp_options = {'include_key': True, 'total_partitions': 3}
         rp_context = self.rs_context_guest.rp_ctx
         rp = rp_context.load("namespace", self._rp_rs_name_big_mp, options=rp_options)
-        rp.put_all(data_generator(10000), options=rp_options)
+        rp.put_all(data_generator(100000), options=rp_options)
         print(f"count: {rp.count()}")
 
         if rp.count() <= 100:
