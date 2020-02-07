@@ -465,7 +465,7 @@ class RollPair(object):
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.DESTROY),
                     name=RollPair.DESTROY,
                     inputs=[self.__store],
-                    outputs=[],
+                    outputs=[self.__store],
                     functors=[])
 
         job_resp = self.__command_client.simple_sync_send(
@@ -858,6 +858,8 @@ class RollPair(object):
         return RollPair(er_store, self.ctx)
 
     def join(self, other, func, output=None, options: dict = None):
+        if options is None:
+            options = {}
         functor = ErFunctor(name=RollPair.JOIN, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
         outputs = []
         if output:
