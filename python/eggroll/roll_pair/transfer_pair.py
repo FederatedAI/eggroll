@@ -16,7 +16,6 @@
 import queue
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from threading import Semaphore
 
 from eggroll.core.datastructure.broker import FifoBroker, BrokerClosed
 from eggroll.core.pair_store.format import PairBinReader, PairBinWriter, \
@@ -111,19 +110,21 @@ class TransferPair(object):
         partitioned_brokers = [FifoBroker() for i in range(total_partitions)]
         partitioned_bb = [BatchBroker(v) for v in partitioned_brokers]
         futures = []
+
         @_exception_logger
         def do_partition():
             L.debug('do_partition start')
             done_count = 0
             for k, v in BatchBroker(input_broker):
-                partitioned_bb[partition_function(k)].put((k,v))
-                done_count +=1
+                partitioned_bb[partition_function(k)].put((k, v))
+                done_count += 1
             L.debug(f"do_partition end:{done_count}")
             for broker in partitioned_bb:
                 broker.signal_write_finish()
             return done_count
         futures.append(self._executor_pool.submit(do_partition))
         client = TransferClient()
+
         def do_send_all():
             send_all_futs = []
             for i, part in enumerate(output_partitions):
@@ -134,6 +135,7 @@ class TransferPair(object):
                                   part._processor._transfer_endpoint, tag)
                 send_all_futs.append(fut)
             return CompositeFuture(send_all_futs).result()
+
         futures.append(self._executor_pool.submit(do_send_all))
         return CompositeFuture(futures)
 
@@ -195,28 +197,28 @@ class TransferPair(object):
             L.debug(f"bin_batch_to_pair batch end count:{total_written}")
         L.debug(f"bin_batch_to_pair total_written count:{total_written}")
 
-    def store_broker(self, store_partition, is_shuffle, total_partitions=1):
+    def store_broker(self, store_partition, is_shuffle, total_writers=1):
         """
         is_shuffle=True: all partition in one broker
         is_shuffle=False: just save broker to store, for put_all
         """
         @_exception_logger
-        def do_store():
-            tag = self.__generate_tag(store_partition._id) if is_shuffle else self.__transfer_id
-            broker = TransferService.get_or_create_broker(tag, write_signals=total_partitions)
+        def do_store(store_partition_inner, is_shuffle_inner, total_writers_inner):
+            tag = self.__generate_tag(store_partition_inner._id) if is_shuffle_inner else self.__transfer_id
+            broker = TransferService.get_or_create_broker(tag, write_signals=total_writers_inner)
             L.debug(f"do_store_start:{tag}")
             done_cnt = 0
             batches = TransferPair.bin_batch_to_pair(b.data for b in broker)
-            with create_adapter(store_partition) as db:
-                L.debug(f"do_store_create_db:{tag}")
+            with create_adapter(store_partition_inner) as db:
+                L.debug(f"do_store_create_db: {tag} for partition: {store_partition_inner}")
                 with db.new_batch() as wb:
                     for k, v in batches:
                         wb.put(k, v)
                         done_cnt += 1
-                L.debug(f"do_store_done:{tag}")
+                L.debug(f"do_store_done: {tag} for partition: {store_partition_inner}")
             TransferService.remove_broker(tag)
             return done_cnt
-        return self._executor_pool.submit(do_store)
+        return self._executor_pool.submit(do_store, store_partition, is_shuffle, total_writers)
 
     def gather(self, store):
         client = TransferClient()

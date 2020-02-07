@@ -31,6 +31,7 @@ import com.webank.eggroll.core.grpc.observer.SameTypeCallerResponseStreamObserve
 import com.webank.eggroll.core.grpc.processor.BaseClientCallStreamProcessor
 import com.webank.eggroll.core.meta.TransferModelPbMessageSerdes._
 import com.webank.eggroll.core.meta.{ErProcessor, ErTransferBatch, ErTransferHeader}
+import com.webank.eggroll.core.util.GrpcUtils
 import io.grpc.stub.{ClientCallStreamObserver, StreamObserver}
 
 class GrpcTransferClient {
@@ -82,12 +83,16 @@ class GrpcTransferClient {
       throw new IllegalStateException("Illegal GrpcTransferClient state: duplicate init")
     }
 
+    val metadata = GrpcUtils.toMetadata(Map(StringConstants.TRANSFER_BROKER_NAME -> tag))
+
     context.setStubClass(classOf[TransferServiceGrpc.TransferServiceStub])
       .setServerEndpoint(processor.transferEndpoint)
       .setCallerStreamingMethodInvoker((stub: TransferServiceGrpc.TransferServiceStub,
                                         responseObserver: StreamObserver[Transfer.TransferBatch]) => stub.send(responseObserver))
       .setCallerStreamObserverClassAndInitArgs(classOf[SameTypeCallerResponseStreamObserver[Transfer.TransferBatch, Transfer.TransferBatch]])
       .setRequestStreamProcessorClassAndArgs(classOf[GrpcForwardingTransferSendStreamProcessor], dataBroker, tag, status)
+      .setGrpcMetadata(metadata)
+
 
     template.setGrpcClientContext(context)
 
