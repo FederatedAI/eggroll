@@ -154,9 +154,55 @@ class RollPairContext(object):
         rp = self.load(namespace=namespace, name=name, options=options)
         return rp.put_all(data, options=options)
 
+    '''store name only supports full name and reg: *, *abc ,abc* and a*c'''
     def cleanup(self, namespace, name, options: dict = None):
         if options is None:
             options = {}
+        total_partitions = options.get('total_partitions', 1)
+        partitioner = options.get('partitioner', PartitionerTypes.BYTESTRING_HASH)
+        store_serdes = options.get('serdes', self.default_store_serdes)
+
+        # todo:1: add combine options to pass it through
+        store_options = self.__session.get_all_options()
+        store_options.update(options)
+        final_options = store_options.copy()
+
+        # TODO:1: tostring in er model
+        if 'create_if_missing' in final_options:
+            del final_options['create_if_missing']
+        # TODO:1: remove these codes by adding to string logic in ErStore
+        if 'include_key' in final_options:
+            del final_options['include_key']
+        if 'total_partitions' in final_options:
+            del final_options['total_partitions']
+        if 'name' in final_options:
+            del final_options['name']
+        if 'namespace' in final_options:
+            del final_options['namespace']
+        # TODO:1: remove these codes by adding to string logic in ErStore
+        if 'keys_only' in final_options:
+            del final_options['keys_only']
+        # TODO:0: add 'error_if_exist, persistent / default store type'
+        L.info("final_options:{}".format(final_options))
+
+        store = ErStore(
+            store_locator=ErStoreLocator(
+                store_type=StoreTypes.ROLLPAIR_LMDB,
+                namespace=namespace,
+                name=name,
+                total_partitions=total_partitions,
+                partitioner=partitioner,
+                serdes=store_serdes),
+            options=final_options)
+        results = self.__session._cluster_manager_client.get_store_from_namespace(store)
+        L.debug('res:{}'.format(results._stores))
+        if results._stores is not None:
+            L.debug("item count:{}".format(len(results._stores)))
+            for item in results._stores:
+                L.debug("item namespace:{} name:{}".format(item._store_locator._namespace,
+                                                         item._store_locator._name))
+                rp = RollPair(er_store=item, rp_ctx=self)
+                rp.destroy()
 
 
 def default_partitioner(k):
@@ -222,7 +268,7 @@ class RollPair(object):
             return
         if self.ctx.gc_recorder.check_gc_executable(self.__store):
             self.ctx.gc_recorder.delete_record(self.__store)
-            print('del rp:{}', str(self))
+            L.debug(f'del rp: {self}')
             self.destroy()
             L.debug("process {} thread {} run {} del table name:{}, namespace:{}".
                          format(os.getpid(), threading.currentThread().ident,
@@ -475,6 +521,7 @@ class RollPair(object):
                 command_uri=CommandURI(f'{RollPair.ROLL_PAIR_URI_PREFIX}/{RollPair.RUN_JOB}'),
                 serdes_type=self.__command_serdes)
 
+        self.ctx.get_session()._cluster_manager_client.delete_store(self.__store)
         L.info(f'{RollPair.DESTROY}: {self.__store}')
 
     def delete(self, k, options: dict = None):
@@ -542,9 +589,13 @@ class RollPair(object):
         if options is None:
             options = {}
         store_type = options.get('store_type', self.ctx.default_store_type)
+
         store = ErStore(store_locator=ErStoreLocator(store_type=store_type, namespace=namespace,
                                                      name=name, total_partitions=partition))
-        return self.map_values(lambda v: v, output=store)
+        if partition == self.get_partitions():
+            return self.map_values(lambda v: v, output=store)
+        else:
+            return self.map(lambda k, v: (k, v), output=store)
 
     # computing api
     def map_values(self, func, output=None, options: dict = None):

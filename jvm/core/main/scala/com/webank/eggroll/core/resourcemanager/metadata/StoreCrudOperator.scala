@@ -26,6 +26,7 @@ import com.webank.eggroll.core.clustermanager.dao.generated.model._
 import com.webank.eggroll.core.constant._
 import com.webank.eggroll.core.error.CrudException
 import com.webank.eggroll.core.meta._
+import com.webank.eggroll.core.resourcemanager.SessionMetaDao
 import com.webank.eggroll.core.util.Logging
 import org.apache.commons.lang3.StringUtils
 import org.apache.ibatis.session.{RowBounds, SqlSession}
@@ -63,6 +64,10 @@ class StoreCrudOperator extends CrudOperator with Logging {
 
   def deleteStore(input: ErStore): ErStore = {
     crudOperatorTemplate.doCrudOperationSingleResult(StoreCrudOperator.doDeleteStore, input, openTransaction = true)
+  }
+
+  def getStoreFromNamespace(input: ErStore): ErStoreList = {
+    StoreCrudOperator.dao.getStoreLocators(input: ErStore)
   }
 }
 
@@ -103,6 +108,7 @@ object StoreCrudOperator {
     storeLocatorExample.setOrderByClause("store_partition_id asc")
 
     val storePartitionMapper = sqlSession.getMapper(classOf[StorePartitionMapper])
+
     val storePartitionResult = storePartitionMapper.selectByExample(storePartitionExample)
 
     if (storePartitionResult.isEmpty) {
@@ -270,4 +276,5 @@ object StoreCrudOperator {
 
     ErStore(storeLocator = outputStoreLocator)
   }
+  val dao = new SessionMetaDao()
 }

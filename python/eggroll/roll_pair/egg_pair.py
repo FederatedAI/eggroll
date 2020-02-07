@@ -35,25 +35,16 @@ from eggroll.core.datastructure.broker import FifoBroker
 from eggroll.core.meta_model import ErPair
 from eggroll.core.meta_model import ErTask, ErProcessor, ErEndpoint
 from eggroll.core.proto import command_pb2_grpc, transfer_pb2_grpc
-from eggroll.core.serdes import cloudpickle
-from eggroll.core.serdes.eggroll_serdes import eggroll_pickle_loads
 from eggroll.core.transfer.transfer_service import GrpcTransferServicer, \
     TransferClient, TransferService
 from eggroll.core.utils import _exception_logger
 from eggroll.core.utils import hash_code
 from eggroll.core.utils import set_static_er_conf
-from eggroll.roll_pair import create_adapter, create_serdes
+from eggroll.roll_pair import create_adapter, create_serdes, create_functor
 from eggroll.roll_pair.transfer_pair import TransferPair
 from eggroll.roll_pair.utils.pair_utils import generator, partitioner, \
     set_data_dir
 from eggroll.utils.log_utils import get_logger
-
-
-def create_functor(func_bin):
-    try:
-        return cloudpickle.loads(func_bin)
-    except:
-        return eggroll_pickle_loads(func_bin)
 
 
 L = get_logger()
