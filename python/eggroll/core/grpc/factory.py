@@ -28,7 +28,7 @@ def wrap_host_scheme(host):
 
 
 class GrpcChannelFactory(object):
-    pool={}
+    pool = {}
     def create_channel(self, endpoint: ErEndpoint, is_secure_channel=False):
         target = f"{endpoint._host}:{endpoint._port}"
         if target not in self.pool:

@@ -88,7 +88,9 @@ class RollPairContext(object):
             populated_partitions.append(pp)
         return ErStore(store_locator=store._store_locator, partitions=populated_partitions, options=store._options)
 
-    def load(self, namespace=None, name=None, options={}):
+    def load(self, namespace=None, name=None, options: dict = None):
+        if options is None:
+            options = {}
         store_type = options.get('store_type', self.default_store_type)
         total_partitions = options.get('total_partitions', 1)
         partitioner = options.get('partitioner', PartitionerTypes.BYTESTRING_HASH)
@@ -137,7 +139,9 @@ class RollPairContext(object):
         return RollPair(self.populate_processor(result), self)
 
     # TODO:1: separates load parameters and put all parameters
-    def parallelize(self, data, options=dict()):
+    def parallelize(self, data, options: dict = {}):
+        if options is None:
+            options = {}
         namespace = options.get("namespace", None)
         name = options.get("name", None)
         options['store_type'] = options.get("store_type", StoreTypes.ROLLPAIR_IN_MEMORY)
@@ -150,8 +154,55 @@ class RollPairContext(object):
         rp = self.load(namespace=namespace, name=name, options=options)
         return rp.put_all(data, options=options)
 
-    def cleanup(self, namespace, name, options={}):
-        pass
+    '''store name only supports full name and reg: *, *abc ,abc* and a*c'''
+    def cleanup(self, namespace, name, options: dict = None):
+        if options is None:
+            options = {}
+        total_partitions = options.get('total_partitions', 1)
+        partitioner = options.get('partitioner', PartitionerTypes.BYTESTRING_HASH)
+        store_serdes = options.get('serdes', self.default_store_serdes)
+
+        # todo:1: add combine options to pass it through
+        store_options = self.__session.get_all_options()
+        store_options.update(options)
+        final_options = store_options.copy()
+
+        # TODO:1: tostring in er model
+        if 'create_if_missing' in final_options:
+            del final_options['create_if_missing']
+        # TODO:1: remove these codes by adding to string logic in ErStore
+        if 'include_key' in final_options:
+            del final_options['include_key']
+        if 'total_partitions' in final_options:
+            del final_options['total_partitions']
+        if 'name' in final_options:
+            del final_options['name']
+        if 'namespace' in final_options:
+            del final_options['namespace']
+        # TODO:1: remove these codes by adding to string logic in ErStore
+        if 'keys_only' in final_options:
+            del final_options['keys_only']
+        # TODO:0: add 'error_if_exist, persistent / default store type'
+        L.info("final_options:{}".format(final_options))
+
+        store = ErStore(
+            store_locator=ErStoreLocator(
+                store_type=StoreTypes.ROLLPAIR_LMDB,
+                namespace=namespace,
+                name=name,
+                total_partitions=total_partitions,
+                partitioner=partitioner,
+                serdes=store_serdes),
+            options=final_options)
+        results = self.__session._cluster_manager_client.get_store_from_namespace(store)
+        L.debug('res:{}'.format(results._stores))
+        if results._stores is not None:
+            L.debug("item count:{}".format(len(results._stores)))
+            for item in results._stores:
+                L.debug("item namespace:{} name:{}".format(item._store_locator._namespace,
+                                                         item._store_locator._name))
+                rp = RollPair(er_store=item, rp_ctx=self)
+                rp.destroy()
 
 
 def default_partitioner(k):
@@ -217,7 +268,7 @@ class RollPair(object):
             return
         if self.ctx.gc_recorder.check_gc_executable(self.__store):
             self.ctx.gc_recorder.delete_record(self.__store)
-            print('del rp:{}', str(self))
+            L.debug(f'del rp: {self}')
             self.destroy()
             L.debug("process {} thread {} run {} del table name:{}, namespace:{}".
                          format(os.getpid(), threading.currentThread().ident,
@@ -246,6 +297,9 @@ class RollPair(object):
     def get_namespace(self):
         return self.__store._store_locator._namespace
 
+    def get_store(self):
+        return self.__store
+
     def get_store_type(self):
         return self.__store._store_locator._store_type
 
@@ -268,7 +322,9 @@ class RollPair(object):
       storage api
     
     """
-    def get(self, k, options={}):
+    def get(self, k, options: dict = None):
+        if options is None:
+            options = {}
         L.info("get k:{}".format(k))
         k = create_serdes(self.__store._store_locator._serdes).serialize(k)
         er_pair = ErPair(key=k, value=None)
@@ -304,7 +360,9 @@ class RollPair(object):
 
         return self.value_serdes.deserialize(job_resp._value) if job_resp._value != b'' else None
 
-    def put(self, k, v, options={}):
+    def put(self, k, v, options: dict = None):
+        if options is None:
+            options = {}
         k, v = create_serdes(self.__store._store_locator._serdes).serialize(k), \
                create_serdes(self.__store._store_locator._serdes).serialize(v)
         er_pair = ErPair(key=k, value=v)
@@ -338,7 +396,9 @@ class RollPair(object):
         value = job_resp._value
         return value
 
-    def get_all(self, options={}):
+    def get_all(self, options: dict = None):
+        if options is None:
+            options = {}
         L.info('get all functor')
         job_id = generate_job_id(self.__session_id, RollPair.GET_ALL)
         def send_command():
@@ -366,7 +426,9 @@ class RollPair(object):
             yield self.key_serdes.deserialize(k), self.value_serdes.deserialize(v)
         L.debug(f"get_all count:{done_cnt}")
 
-    def put_all(self, items, output=None, options={}):
+    def put_all(self, items, output=None, options: dict = None):
+        if options is None:
+            options = {}
         include_key = options.get("include_key", True)
         job_id = generate_job_id(self.__session_id, RollPair.PUT_ALL)
 
@@ -433,7 +495,7 @@ class RollPair(object):
                 output_types=[ErPair],
                 command_uri=CommandURI(f'{RollPair.EGG_PAIR_URI_PREFIX}/{RollPair.RUN_TASK}'))
 
-        done = wait(futures, timeout=10, return_when=FIRST_EXCEPTION).done
+        done = wait(futures, timeout=20, return_when=FIRST_EXCEPTION).done
 
         result = 0
         for future in done:
@@ -449,7 +511,7 @@ class RollPair(object):
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.DESTROY),
                     name=RollPair.DESTROY,
                     inputs=[self.__store],
-                    outputs=[],
+                    outputs=[self.__store],
                     functors=[])
 
         job_resp = self.__command_client.simple_sync_send(
@@ -459,9 +521,12 @@ class RollPair(object):
                 command_uri=CommandURI(f'{RollPair.ROLL_PAIR_URI_PREFIX}/{RollPair.RUN_JOB}'),
                 serdes_type=self.__command_serdes)
 
+        self.ctx.get_session()._cluster_manager_client.delete_store(self.__store)
         L.info(f'{RollPair.DESTROY}: {self.__store}')
 
-    def delete(self, k, options={}):
+    def delete(self, k, options: dict = None):
+        if options is None:
+            options = {}
         key = create_serdes(self.__store._store_locator._serdes).serialize(k)
         er_pair = ErPair(key=key, value=None)
         outputs = []
@@ -489,7 +554,9 @@ class RollPair(object):
                 serdes_type=self.__command_serdes
         )
 
-    def take(self, n: int, options={}):
+    def take(self, n: int, options: dict = {}):
+        if options is None:
+            options = {}
         if n <= 0:
             n = 1
 
@@ -498,7 +565,7 @@ class RollPair(object):
         count = 0
         for item in self.get_all():
             if keys_only:
-                if item :
+                if item:
                     ret.append(item[0])
                 else:
                     ret.append(None)
@@ -509,21 +576,31 @@ class RollPair(object):
                 break
         return ret
 
-    def first(self, options={}):
+    def first(self, options: dict = None):
+        if options is None:
+            options = {}
         resp = self.take(1, options=options)
         if resp:
             return resp[0]
         else:
             return None
 
-    def save_as(self, name, namespace, partition, options={}):
+    def save_as(self, name, namespace, partition, options: dict = None):
+        if options is None:
+            options = {}
         store_type = options.get('store_type', self.ctx.default_store_type)
+
         store = ErStore(store_locator=ErStoreLocator(store_type=store_type, namespace=namespace,
                                                      name=name, total_partitions=partition))
-        return self.map_values(lambda v: v, output=store)
+        if partition == self.get_partitions():
+            return self.map_values(lambda v: v, output=store)
+        else:
+            return self.map(lambda k, v: (k, v), output=store)
 
     # computing api
-    def map_values(self, func, output=None, options={}):
+    def map_values(self, func, output=None, options: dict = None):
+        if options is None:
+            options = {}
         functor = ErFunctor(name=RollPair.MAP_VALUES, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
         outputs = []
         if output:
@@ -551,7 +628,9 @@ class RollPair(object):
 
         return RollPair(er_store, self.ctx)
 
-    def map(self, func, output=None, options={}):
+    def map(self, func, output=None, options: dict = None):
+        if options is None:
+            options = {}
         functor = ErFunctor(name=RollPair.MAP, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
         outputs = []
         if output:
@@ -575,7 +654,9 @@ class RollPair(object):
 
         return RollPair(er_store, self.ctx)
 
-    def map_partitions(self, func, output=None, options={}):
+    def map_partitions(self, func, output=None, options: dict = None):
+        if options is None:
+            options = {}
         functor = ErFunctor(name=RollPair.MAP_PARTITIONS, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
         outputs = []
         if output:
@@ -598,7 +679,9 @@ class RollPair(object):
 
         return RollPair(er_store, self.ctx)
 
-    def collapse_partitions(self, func, output=None, options={}):
+    def collapse_partitions(self, func, output=None, options: dict = None):
+        if options is None:
+            options = {}
         functor = ErFunctor(name=RollPair.COLLAPSE_PARTITIONS, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
         outputs = []
         if output:
@@ -622,7 +705,7 @@ class RollPair(object):
 
         return RollPair(er_store, self.ctx)
 
-    def flat_map(self, func, output=None, options={}):
+    def flat_map(self, func, output=None, options: dict = None):
         functor = ErFunctor(name=RollPair.FLAT_MAP, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
         outputs = []
         if output:
@@ -646,7 +729,9 @@ class RollPair(object):
 
         return RollPair(er_store, self.ctx)
 
-    def reduce(self, func, output=None, options={}):
+    def reduce(self, func, output=None, options: dict = None):
+        if options is None:
+            options = {}
         functor = ErFunctor(name=RollPair.REDUCE, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
 
         outputs = []
@@ -669,7 +754,9 @@ class RollPair(object):
 
         return RollPair(er_store, self.ctx)
 
-    def aggregate(self, zero_value, seq_op, comb_op, output=None, options={}):
+    def aggregate(self, zero_value, seq_op, comb_op, output=None, options: dict = None):
+        if options is None:
+            options = {}
         zero_value_functor = ErFunctor(name=RollPair.AGGREGATE, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(zero_value))
         seq_op_functor = ErFunctor(name=RollPair.AGGREGATE, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(seq_op))
         comb_op_functor = ErFunctor(name=RollPair.AGGREGATE, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(comb_op))
@@ -694,7 +781,9 @@ class RollPair(object):
 
         return RollPair(er_store, self.ctx)
 
-    def glom(self, output=None, options={}):
+    def glom(self, output=None, options: dict = None):
+        if options is None:
+            options = {}
         functor = ErFunctor(name=RollPair.GLOM, serdes=SerdesTypes.CLOUD_PICKLE)
         outputs = []
         if output:
@@ -718,7 +807,9 @@ class RollPair(object):
 
         return RollPair(er_store, self.ctx)
 
-    def sample(self, fraction, seed=None, output=None, options={}):
+    def sample(self, fraction, seed=None, output=None, options: dict = None):
+        if options is None:
+            options = {}
         er_fraction = ErFunctor(name=RollPair.REDUCE, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(fraction))
         er_seed  = ErFunctor(name=RollPair.REDUCE, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(seed))
 
@@ -743,7 +834,9 @@ class RollPair(object):
 
         return RollPair(er_store, self.ctx)
 
-    def filter(self, func, output=None, options={}):
+    def filter(self, func, output=None, options: dict = None):
+        if options is None:
+            options = {}
         functor = ErFunctor(name=RollPair.FILTER, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
 
         outputs = []
@@ -767,7 +860,9 @@ class RollPair(object):
 
         return RollPair(er_store, self.ctx)
 
-    def subtract_by_key(self, other, output=None, options={}):
+    def subtract_by_key(self, other, output=None, options: dict = None):
+        if options is None:
+            options = {}
         functor = ErFunctor(name=RollPair.SUBTRACT_BY_KEY, serdes=SerdesTypes.CLOUD_PICKLE)
         outputs = []
         if output:
@@ -789,7 +884,9 @@ class RollPair(object):
 
         return RollPair(er_store, self.ctx)
 
-    def union(self, other, func=lambda v1, v2: v1, output=None, options={}):
+    def union(self, other, func=lambda v1, v2: v1, output=None, options: dict = None):
+        if options is None:
+            options = {}
         functor = ErFunctor(name=RollPair.UNION, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
         outputs = []
         if output:
@@ -811,7 +908,9 @@ class RollPair(object):
 
         return RollPair(er_store, self.ctx)
 
-    def join(self, other, func, output=None, options={}):
+    def join(self, other, func, output=None, options: dict = None):
+        if options is None:
+            options = {}
         functor = ErFunctor(name=RollPair.JOIN, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
         outputs = []
         if output:

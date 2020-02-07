@@ -30,7 +30,7 @@ class TestRollPairBase(unittest.TestCase):
 
     @staticmethod
     def store_opts(**kwargs):
-        opts= {'total_partitions':1}
+        opts = {'total_partitions': 1}
         opts.update(kwargs)
         return opts
 
@@ -81,6 +81,15 @@ class TestRollPairBase(unittest.TestCase):
         self.assertUnOrderListEqual(data, rp.get_all())
         #rp.destroy()
 
+    def test_cleanup(self):
+        rp = self.ctx.load("ns168","n1")
+        data = [("k1","v1"),("k2","v2"),("k3","v3"),("k4","v4"),("k5","v5"),("k6","v6")]
+        rp.put_all(data)
+
+        rp1 = self.ctx.load("ns168","n111")
+        rp1.put_all(data)
+        self.ctx.cleanup(namespace='ns168', name='*')
+
     def test_map(self):
         rp = self.ctx.parallelize(self.str_generator())
         rp2 = rp.map(lambda k,v: (k + "_1", v))
@@ -116,12 +125,18 @@ class TestRollPairBase(unittest.TestCase):
         options = get_default_options()
         options['include_key'] = True
         data = [("k1", "v1"), ("k2", "v2"), ("k3", "v3"), ("k4", "v4")]
-        table = self.ctx.load('ns1', 'test_destroy', options=options).put_all(data, options=options)
+        table = self.ctx.load('ns12020020618', 'test_destroy', options=options)#.put_all(data, options=options)
         print("before destroy:{}".format(list(table.get_all())))
         table.destroy()
         # TODO:1: table which has been destroyed cannot get_all, should raise exception
-        print("after destroy:{}".format(list(table.get_all())))
+        #print("after destroy:{}".format(list(table.get_all())))
         self.assertEqual(table.count(), 0)
+
+    def test_destroy_simple(self):
+        options = get_default_options()
+        options['include_key'] = True
+        table = self.ctx.load('ns1', 'test_destroy', options=options)
+        table.destroy()
 
     def test_take(self):
         options = get_default_options()
@@ -268,14 +283,13 @@ class TestRollPairBase(unittest.TestCase):
         print(list(left_rp.union(right_rp, lambda v1, v2: v1 + v2).get_all()))
 
 
-
 class TestRollPairMultiPartition(TestRollPairBase):
     def setUp(self):
         self.ctx = get_debug_test_context()
 
     @staticmethod
     def store_opts(**kwargs):
-        opts= {'total_partitions':3}
+        opts = {'total_partitions': 3}
         opts.update(kwargs)
         return opts
 
@@ -285,11 +299,20 @@ class TestRollPairMultiPartition(TestRollPairBase):
 
     def test_put_all(self):
         st_opts = self.store_opts(include_key=True)
-        rp = self.ctx.load("test_roll_pair","TestRollPairMultiPartition", options=self.store_opts())
-        rp.put_all(self.str_generator())
-        self.assertUnOrderListEqual(self.str_generator(include_key=True), rp.get_all())
+        rp = self.ctx.load("test_roll_pair", "TestRollPairMultiPartition", options=self.store_opts())
+        row_limit = 3
+        rp.put_all(self.str_generator(row_limit=row_limit))
+
+        self.assertUnOrderListEqual(self.str_generator(include_key=True, row_limit=row_limit), rp.get_all())
         self.assertEqual(st_opts["total_partitions"], rp.get_partitions())
-        rp.destroy()
+        #rp.destroy()
+
+    def test_count(self):
+        st_opts = self.store_opts(include_key=True)
+        rp = self.ctx.load("test_roll_pair", "TestRollPairMultiPartition", options=self.store_opts())
+        count = rp.count()
+        print(count)
+        self.assertEqual(count, 10000)
 
     def test_parallelize_include_key(self):
         st_opts = self.store_opts(include_key=True)

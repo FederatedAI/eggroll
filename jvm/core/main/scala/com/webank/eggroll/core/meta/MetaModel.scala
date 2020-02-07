@@ -92,6 +92,10 @@ case class ErStore(storeLocator: ErStoreLocator,
   }
 }
 
+case class ErStoreList(stores: Array[ErStore] = Array.empty,
+                   options: java.util.Map[String, String] = new ConcurrentHashMap[String, String]())
+  extends MetaRpcMessage
+
 case class ErJob(id: String,
                  name: String = StringConstants.EMPTY,
                  inputs: Array[ErStore],
@@ -201,6 +205,17 @@ object MetaModelPbMessageSerdes {
       baseSerializable.asInstanceOf[ErStore].toBytes()
   }
 
+  implicit class ErStoreListToPbMessage(src: ErStoreList) extends PbMessageSerializer {
+    override def toProto[T >: PbMessage](): Meta.StoreList = {
+      val builder = Meta.StoreList.newBuilder()
+          .addAllStores(src.stores.toList.map(_.toProto()).asJava)
+      builder.build()
+    }
+
+    override def toBytes(baseSerializable: BaseSerializable): Array[Byte] =
+      baseSerializable.asInstanceOf[ErStoreList].toBytes()
+  }
+
   implicit class ErPartitionToPbMessage(src: ErPartition) extends PbMessageSerializer {
     override def toProto[T >: PbMessage](): Meta.Partition = {
       val builder = Meta.Partition.newBuilder()
@@ -308,6 +323,7 @@ object MetaModelPbMessageSerdes {
       Meta.StoreLocator.parseFrom(bytes).fromProto()
   }
 
+
   implicit class ErStoreFromPbMessage(src: Meta.Store) extends PbMessageDeserializer {
     override def fromProto[T >: RpcMessage](): ErStore = {
       ErStore(
@@ -318,6 +334,15 @@ object MetaModelPbMessageSerdes {
 
     override def fromBytes(bytes: Array[Byte]): ErStore =
       Meta.Store.parseFrom(bytes).fromProto()
+  }
+
+  implicit class ErStoreListFromPbMessage(src: Meta.StoreList) extends PbMessageDeserializer {
+    override def fromProto[T >: RpcMessage](): ErStoreList = {
+      ErStoreList(stores = src.getStoresList.asScala.map(_.fromProto()).toArray)
+    }
+
+    override def fromBytes(bytes: Array[Byte]): ErStoreList =
+      Meta.StoreList.parseFrom(bytes).fromProto()
   }
 
   implicit class ErPartitionFromPbMessage(src: Meta.Partition) extends PbMessageDeserializer {
