@@ -1,8 +1,9 @@
 from eggroll.core.constants import SerdesTypes
 from eggroll.core.meta_model import ErPartition
 from eggroll.core.pair_store import create_pair_adapter
+from eggroll.core.serdes import cloudpickle
 from eggroll.core.serdes.eggroll_serdes import PickleSerdes, \
-    CloudPickleSerdes, EmptySerdes
+    CloudPickleSerdes, EmptySerdes, eggroll_pickle_loads
 from eggroll.roll_pair.utils.pair_utils import get_db_path
 
 
@@ -22,3 +23,10 @@ def create_serdes(serdes_type: SerdesTypes = SerdesTypes.CLOUD_PICKLE):
         return PickleSerdes
     else:
         return EmptySerdes
+
+
+def create_functor(func_bin):
+    try:
+        return cloudpickle.loads(func_bin)
+    except:
+        return eggroll_pickle_loads(func_bin)
