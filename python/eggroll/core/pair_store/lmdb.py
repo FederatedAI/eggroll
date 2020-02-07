@@ -12,8 +12,8 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-import platform
 import os
+import platform
 import threading
 
 import lmdb
@@ -125,14 +125,14 @@ class LmdbAdapter(PairAdapter):
         if self.txn_w:
             return
         # with LmdbAdapter.env_lock:
-        L.debug("lmdb init write:" + self.path)
+        L.debug(f"lmdb init write: {self.path}, path in options: {self.options['path']}")
         self.txn_w = self.env.begin(db=self.sub_db, write=True)
 
     def _init_read(self):
         if self.txn_r:
             return
         # with LmdbAdapter.env_lock:
-        L.debug("lmdb init read:" + self.path)
+        L.debug(f"lmdb init read: {self.path}, path in options: {self.options['path']}")
         self.txn_r = self.env.begin(db=self.sub_db, write=False)
         self.cursor = self.txn_r.cursor()
 

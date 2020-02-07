@@ -69,3 +69,8 @@ class SessionStatus(object):
 class DeployModes(object):
     STANDALONE = 'standalone'
     CLUSTER = 'cluster'
+
+
+class Charsets(object):
+    UTF8 = 'utf8'
+    ISO_8859_1 = 'iso-8859-1'

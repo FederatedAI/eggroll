@@ -45,10 +45,6 @@ public interface Pipe {
 
     Throwable getError();
 
-    void setStatus(boolean status);
-
-    boolean getStatus();
-
     void setType(String type);
 
     String getType();
@@ -56,4 +52,12 @@ public interface Pipe {
     void setTagKey(String type);
 
     String getTagKey();
+
+    void initWriters(int writersCount);
+
+    void signalWriteFinish();
+
+    boolean isWriteFinished();
+
+    boolean isWritersInited();
 }
