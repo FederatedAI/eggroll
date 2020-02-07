@@ -20,9 +20,9 @@ from eggroll.core.utils import _map_and_listify
 
 
 class ErCommandRequest(RpcMessage):
-    def __init__(self, id, uri: str, args: dict = None, kwargs: dict = {}):
+    def __init__(self, id, uri: str, args: list = None, kwargs: dict = None):
         if args is None:
-            args = {}
+            args = []
         if kwargs is None:
             kwargs = {}
         self._id = id
