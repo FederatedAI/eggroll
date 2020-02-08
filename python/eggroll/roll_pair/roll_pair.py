@@ -53,7 +53,8 @@ class RollPairContext(object):
         self.default_store_serdes = SerdesTypes.PICKLE
         self.deploy_mode = session.get_option(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE)
         self.__session_meta = session.get_session_meta()
-        self.rpc_gc_enable = True
+        self.__session.add_exit_task(self.clean_in_memory_data)
+        self.rpc_gc_enable = False
         self.gc_recorder = GcRecorder(self)
 
     def set_store_type(self, store_type: str):
@@ -77,6 +78,15 @@ class RollPairContext(object):
             L.error(f"invalid roll processor:{ret}, session_meta:{self.__session_meta}")
             raise ValueError(f"invalid roll endpoint:{ret}")
         return ret
+
+    def clean_in_memory_data(self):
+        if self.gc_recorder.gc_recorder is None:
+            return
+        for item in list(self.gc_recorder.gc_recorder.get_all()):
+            L.debug("cleanup item:{}".format(item))
+            name = item[0]
+            rp = self.load(namespace=self.session_id, name=name)
+            rp.destroy()
 
     def route_to_egg(self, partition: ErPartition):
         return self.__session.route_to_egg(partition)
