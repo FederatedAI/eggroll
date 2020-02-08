@@ -54,7 +54,20 @@ class RollSiteContext:
             channel = self.grpc_channel_factory.create_channel(self.proxy_endpoint)
             self.stub = proxy_pb2_grpc.DataTransferServiceStub(channel)
             self.init_job_session_pair(self.federation_session_id, self.rp_ctx.session_id)
+
+        self.push_count = 0
+        self.rp_ctx.get_session().add_exit_task(self.push_complete)
         L.info(f"inited RollSiteContext: {self.__dict__}")
+
+    def push_complete(self):
+        L.debug("run roll site exit func:{}".format(self.push_count))
+        while True:
+            if self.push_count:
+                L.debug("waiting for push complete")
+                import time
+                time.sleep(0.1)
+            else:
+                return
 
     # todo:1: add options?
     def load(self, name: str, tag: str, options: dict = None):
@@ -114,6 +127,12 @@ class RollSite:
         self.process_pool = ThreadPoolExecutor(10, thread_name_prefix="thread-recieve")
         self.complete_pool = ThreadPoolExecutor(10, thread_name_prefix="complete-wait")
 
+    def _decrease_push_count(self):
+        if self.ctx.push_count <= 0:
+            self.ctx.push_count = 0
+            return
+        self.ctx.push_count -= 1
+
     def _thread_receive(self, packet, namespace, federation_header: ErFederationHeader):
         try:
             table_name = create_store_name(federation_header)
@@ -168,6 +187,7 @@ class RollSite:
 
     def push(self, obj, parties: list = None):
         L.info(f"pushing: self:{self.__dict__}, obj_type:{type(obj)}, parties:{parties}")
+        self.ctx.push_count += 1
         futures = []
         for role_party_id in parties:
             # for _partyId in _partyIds:
@@ -243,6 +263,7 @@ class RollSite:
                 return _tagged_key
 
             future = self.process_pool.submit(map_values, _tagged_key)
+            future.add_done_callback(self._decrease_push_count)
             futures.append(future)
 
         self.process_pool.shutdown(wait=False)
