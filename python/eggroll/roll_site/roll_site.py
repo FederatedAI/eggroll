@@ -111,7 +111,7 @@ class RollSite:
         self.name = name
         self.tag = tag
         self.stub = self.ctx.stub
-        self.process_pool = ThreadPoolExecutor(10, thread_name_prefix="thread-recieve")
+        self.process_pool = ThreadPoolExecutor(10, thread_name_prefix="thread-receive")
         self.complete_pool = ThreadPoolExecutor(10, thread_name_prefix="complete-wait")
 
     def _thread_receive(self, packet, namespace, federation_header: ErFederationHeader):
