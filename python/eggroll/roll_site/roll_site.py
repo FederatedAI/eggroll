@@ -210,12 +210,11 @@ class RollSite:
             namespace = self.federation_session_id
 
             if isinstance(obj, RollPair):
-                obj.set_gc_disable()
                 rp = obj
             else:
                 rp = self.ctx.rp_ctx.load(namespace, _tagged_key)
                 rp.put(_tagged_key, obj)
-
+            rp.set_gc_disable()
             L.info(f"pushing prepared: {type(obj)}, tag_key:{_tagged_key}")
 
             def map_values(_tagged_key):
@@ -233,6 +232,7 @@ class RollSite:
                     store_type = StoreTypes.ROLLPAIR_ROLLSITE
                 if is_standalone:
                     status_rp = self.ctx.rp_ctx.load(namespace, STATUS_TABLE_NAME + DELIM + self.federation_session_id, self)
+                    status_rp.set_gc_disable()
                     if isinstance(obj, RollPair):
                         status_rp.put(_tagged_key, (obj_type.encode("utf-8"), rp.get_name(), rp.get_namespace()))
                     else:
