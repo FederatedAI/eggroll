@@ -16,6 +16,7 @@ import sys
 import time
 import traceback
 import uuid
+import numpy as np
 from datetime import datetime
 
 from google.protobuf.text_format import MessageToString
@@ -167,22 +168,17 @@ def generate_task_id(job_id, partition_id, delim='-'):
     return delim.join([job_id, "task", str(partition_id)])
 
 
-#AI copy from java ByteString.hashCode()
+#AI copy from java ByteString.hashCode(), @see RollPairContext.partitioner
 def hash_code(s):
     if isinstance(s, bytes):
         s = bytes_to_string(s)
     seed = 31
     h = 0
     for c in s:
-        h = int(seed * h) + ord(c)
-
-    if h == sys.maxsize or h == -sys.maxsize - 1:
-        from eggroll.utils import log_utils
-        L = log_utils.get_logger()
-        L.warn("hash code:{} out of int bound".format(str(h)))
-        h = 0
-
-    return h
+        h = np.int32(h) * np.int32(seed) + np.int32(ord(c))
+    if h == 0 or h == -2147483648:
+        h = 1
+    return abs(h)
 
 
 def to_one_line_string(proto_msg, as_one_line=True):
