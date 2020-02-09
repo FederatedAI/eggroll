@@ -40,13 +40,17 @@ class CommandRouter(object):
 
     def register(self,
             service_name: str,
-            service_param_deserializers=list(),
-            service_result_serializers=list(),
+            service_param_deserializers: list = None,
+            service_result_serializers: list = None,
             route_to_module_name: str = '',
             route_to_class_name: str = '',
             route_to_method_name: str = '',
             route_to_call_based_class_instance=None,
             call_based_class_instance_init_arg=None):
+        if service_param_deserializers is None:
+            service_param_deserializers = []
+        if service_result_serializers is None:
+            service_result_serializers = []
         if service_name in self._service_route_table:
             raise ValueError(
                     f'service {service_name} has already been registered at ${self._service_route_table[service_name]}')
@@ -73,12 +77,12 @@ class CommandRouter(object):
             task = meta_pb2.Task()
             msg_len = task.ParseFromString(arg)
             deserialized_args.append(ErTask.from_proto(task))
-        L.debug(f"calling [{service_name}]")
+        L.info(f"[COMMAND] calling [{service_name}], request: {args}")
         import time
         start = time.time()
         call_result = _method(_instance, *deserialized_args)
         cost = time.time() - start
-        L.debug(f"called [{service_name}], cost: {cost}, result:{call_result}")
+        L.info(f"called [{service_name}], time used: {cost}, request: {args}, result: {call_result}")
 
         # todo:2: defaulting to pb message. need changes when other types of result is present
         return [call_result.to_proto().SerializeToString()]

@@ -60,6 +60,12 @@ class ClusterManagerBootstrap extends Bootstrap with Logging {
       routeToClass = classOf[StoreCrudOperator],
       routeToMethodName = MetadataCommands.deleteStore)
 
+    CommandRouter.register(serviceName = MetadataCommands.getStoreFromNamespaceServiceName,
+      serviceParamTypes = Array(classOf[ErStore]),
+      serviceResultTypes = Array(classOf[ErStoreList]),
+      routeToClass = classOf[StoreCrudOperator],
+      routeToMethodName = MetadataCommands.getStoreFromNamespace)
+
     CommandRouter.register(serviceName = SessionCommands.getSession.uriString,
       serviceParamTypes = Array(classOf[ErSessionMeta]),
       serviceResultTypes = Array(classOf[ErSessionMeta]),
@@ -77,6 +83,18 @@ class ClusterManagerBootstrap extends Bootstrap with Logging {
       serviceResultTypes = Array(classOf[ErSessionMeta]),
       routeToClass = classOf[SessionManagerService],
       routeToMethodName = SessionCommands.stopSession.getName())
+
+    CommandRouter.register(serviceName = SessionCommands.killSession.uriString,
+      serviceParamTypes = Array(classOf[ErSessionMeta]),
+      serviceResultTypes = Array(classOf[ErSessionMeta]),
+      routeToClass = classOf[SessionManagerService],
+      routeToMethodName = SessionCommands.killSession.getName())
+
+    CommandRouter.register(serviceName = SessionCommands.killAllSessions.uriString,
+      serviceParamTypes = Array(classOf[ErSessionMeta]),
+      serviceResultTypes = Array(classOf[ErSessionMeta]),
+      routeToClass = classOf[SessionManagerService],
+      routeToMethodName = SessionCommands.killAllSessions.getName())
 
     CommandRouter.register(serviceName = SessionCommands.registerSession.uriString,
       serviceParamTypes = Array(classOf[ErSessionMeta]),
@@ -100,6 +118,16 @@ class ClusterManagerBootstrap extends Bootstrap with Logging {
     logInfo(s"conf file: ${confFile.getAbsolutePath}")
     this.port = cmd.getOptionValue('p', cmd.getOptionValue('p', StaticErConf.getProperty(
       ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT,"4670"))).toInt
+
+    Runtime.getRuntime.addShutdownHook(new Thread(() => {
+      logWarning("****** Shutting down Cluster Manager ******")
+      logInfo("Shutting down cluster manager. Force terminating NEW / ACTIVE sessions")
+
+      val sessionManagerService = new SessionManagerService()
+      sessionManagerService.killAllSessions(ErSessionMeta())
+
+      logWarning("****** All sessions stopped / killed. Cluster Manager exiting gracefully ******")
+    }))
     //StaticErConf.addProperty(SessionConfKeys.CONFKEY_SESSION_ID, sessionId)
   }
 

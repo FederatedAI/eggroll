@@ -37,6 +37,7 @@ class FateSessionImpl(TableManger):
         self._eggroll = runtime_init(session=eggroll_session)
         self._session_id = eggroll_session.get_session_id()
         self._persistent_engine = persistent_engine
+        self._session = eggroll_session
         TableManger.set_instance(self)
 
     def get_persistent_engine(self):
@@ -93,7 +94,7 @@ class FateSessionImpl(TableManger):
         return rdd_inst
 
     def cleanup(self, name, namespace, persistent):
-        self._eggroll.cleanup(name=name, namespace=namespace, persistent=persistent)
+        self._eggroll.cleanup(name=name, namespace=namespace)
 
     def generateUniqueId(self):
         return self._eggroll.generateUniqueId()
@@ -102,5 +103,5 @@ class FateSessionImpl(TableManger):
         return self._session_id
 
     def stop(self):
-        return
+        return self._session.stop()
         #self._eggroll.stop()

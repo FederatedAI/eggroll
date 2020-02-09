@@ -25,7 +25,7 @@ from eggroll.core.conf_keys import ClusterManagerConfKeys, NodeManagerConfKeys
 from eggroll.core.constants import SerdesTypes
 from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.meta_model import ErEndpoint, ErServerNode, ErServerCluster, \
-    ErProcessor, ErProcessorBatch
+    ErProcessor, ErStoreList
 from eggroll.core.meta_model import ErStore, ErSessionMeta
 from eggroll.core.proto import command_pb2_grpc
 from eggroll.core.utils import _to_proto_string, _map_and_listify
@@ -34,6 +34,11 @@ from eggroll.core.utils import time_now
 from eggroll.utils.log_utils import get_logger
 
 L = get_logger()
+
+
+class CommandCallError(Exception):
+    def __init__(self, command_uri: CommandURI, endpoint: ErEndpoint, *args: object) -> None:
+        super().__init__(f"Failed to call command: {command_uri} to endpoint: {endpoint}, caused by: ", *args)
 
 
 class CommandClient(object):
@@ -49,16 +54,17 @@ class CommandClient(object):
             return None
 
     def sync_send(self, inputs: list, output_types: list, endpoint: ErEndpoint, command_uri: CommandURI, serdes_type=SerdesTypes.PROTOBUF):
+        request = None
         try:
             request = ErCommandRequest(id=time_now(),
                                        uri=command_uri._uri,
                                        args=_map_and_listify(_to_proto_string, inputs))
-
+            L.debug(f"calling:{endpoint} {command_uri} {request}")
             _channel = self._channel_factory.create_channel(endpoint)
             _command_stub = command_pb2_grpc.CommandServiceStub(_channel)
             response = _command_stub.call(request.to_proto())
             er_response = ErCommandResponse.from_proto(response)
-
+            L.debug(f"called:{endpoint} {command_uri} {request} {er_response}")
             byte_results = er_response._results
 
             if len(byte_results):
@@ -68,7 +74,7 @@ class CommandClient(object):
                 return []
         except Exception as e:
             L.exception(f'Error calling to {endpoint}, command_uri: {command_uri}, req:{request}')
-            raise e
+            raise CommandCallError(command_uri, endpoint, e)
 
     def async_call(self, args, output_types: list, command_uri: CommandURI, serdes_type=SerdesTypes.PROTOBUF, parallel_size=5):
         futures = list()
@@ -81,8 +87,9 @@ class CommandClient(object):
 
 
 class ClusterManagerClient(object):
-
-    def __init__(self, options={}):
+    def __init__(self, options=None):
+        if options is None:
+            options = {}
         static_er_conf = get_static_er_conf()
         host = options.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST, static_er_conf.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST, None))
         port = options.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, static_er_conf.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, None))
@@ -146,39 +153,33 @@ class ClusterManagerClient(object):
                 command_uri=MetadataCommands.DELETE_STORE,
                 serdes_type=self.__serdes_type)
 
-    def get_or_create_session(self, input: ErSessionMeta):
+    def get_store_from_namespace(self, input):
         return self.__do_sync_request_internal(
-                input=input,
-                output_type=ErSessionMeta,
-                command_uri=SessionCommands.GET_OR_CREATE_SESSION,
-                serdes_type=self.__serdes_type)
+            input=input,
+            output_type=ErStoreList,
+            command_uri=MetadataCommands.GET_STORE_FROM_NAMESPACE,
+            serdes_type=self.__serdes_type)
+
+    def get_or_create_session(self, input: ErSessionMeta):
+        return self.__check_processors(
+                self.__do_sync_request_internal(input=input,
+                                                output_type=ErSessionMeta,
+                                                command_uri=SessionCommands.GET_OR_CREATE_SESSION,
+                                                serdes_type=self.__serdes_type))
 
     def register_session(self, session_meta: ErSessionMeta):
-        return self.__command_client.sync_send(inputs=[session_meta],
-                                               output_types=[ErSessionMeta],
-                                               endpoint=self.__endpoint,
-                                               command_uri=SessionCommands.REGISTER_SESSION,
-                                               serdes_type=self.__serdes_type)[0]
+        return self.__check_processors(
+                self.__command_client.sync_send(inputs=[session_meta],
+                                                output_types=[ErSessionMeta],
+                                                endpoint=self.__endpoint,
+                                                command_uri=SessionCommands.REGISTER_SESSION,
+                                                serdes_type=self.__serdes_type)[0])
 
     def get_session_server_nodes(self, input: ErSessionMeta):
         return self.__do_sync_request_internal(
                 input=input,
                 output_type=ErServerCluster,
                 command_uri=SessionCommands.GET_SESSION_SERVER_NODES,
-                serdes_type=self.__serdes_type)
-
-    def get_session_rolls(self, input: ErSessionMeta):
-        return self.__do_sync_request_internal(
-                input=input,
-                output_type=ErProcessorBatch,
-                command_uri=SessionCommands.GET_SESSION_ROLLS,
-                serdes_type=self.__serdes_type)
-
-    def get_session_eggs(self, input: ErSessionMeta):
-        return self.__do_sync_request_internal(
-                input=input,
-                output_type=ErProcessorBatch,
-                command_uri=SessionCommands.GET_SESSION_EGGS,
                 serdes_type=self.__serdes_type)
 
     def heartbeat(self, input: ErProcessor):
@@ -195,12 +196,31 @@ class ClusterManagerClient(object):
                 command_uri=SessionCommands.STOP_SESSION,
                 serdes_type=self.__serdes_type)
 
+    def kill_session(self, input: ErSessionMeta):
+        return self.__do_sync_request_internal(
+                input=input,
+                output_type=ErSessionMeta,
+                command_uri=SessionCommands.KILL_SESSION,
+                serdes_type=self.__serdes_type)
+
+    def kill_all_sessions(self):
+        return self.__do_sync_request_internal(
+                input=ErSessionMeta(),
+                output_type=ErSessionMeta,
+                command_uri=SessionCommands.KILL_ALL_SESSIONS,
+                serdes_type=self.__serdes_type)
+
     def __do_sync_request_internal(self, input, output_type, command_uri, serdes_type):
         return self.__command_client.simple_sync_send(input=input,
                                                       output_type=output_type,
                                                       endpoint=self.__endpoint,
                                                       command_uri=command_uri,
                                                       serdes_type=serdes_type)
+
+    def __check_processors(self, session_meta: ErSessionMeta):
+        if not session_meta.is_processors_valid():
+            raise ValueError(f"processor in session meta is not valid: {session_meta}")
+        return session_meta
 
 
 class NodeManagerClient(object):
@@ -211,7 +231,7 @@ class NodeManagerClient(object):
         else:
             self.__serdes_type = SerdesTypes.PROTOBUF
         self.__command_client = CommandClient()
-
+    """
     def get_or_create_servicer(self, session_meta: ErSessionMeta):
         result = self.__do_sync_request_internal(
                 input=session_meta,
@@ -226,6 +246,7 @@ class NodeManagerClient(object):
                 output_type=ErProcessorBatch,
                 command_uri=NodeManagerCommands.GET_OR_CREATE_PROCESSOR_BATCH,
                 serdes_type=self.__serdes_type)
+    """
 
     def heartbeat(self, processor: ErProcessor):
         return self.__do_sync_request_internal(

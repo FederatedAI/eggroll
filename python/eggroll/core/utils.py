@@ -15,14 +15,13 @@ import json
 import sys
 import time
 import traceback
+import uuid
 from datetime import datetime
 
-from eggroll.utils import log_utils
-
-L = log_utils.get_logger()
+from google.protobuf.text_format import MessageToString
 
 static_er_conf = {}
-
+stringify_charset = 'iso-8859-1'
 
 def set_static_er_conf(a_dict):
     global static_er_conf
@@ -54,8 +53,32 @@ def _map_and_listify(map_func, a_list):
     return list(map(map_func, a_list))
 
 
-def _repr_list(a_list):
+def _stringify(data):
+    from eggroll.core.base_model import RpcMessage
+    if isinstance(data, str):
+        return data
+    elif isinstance(data, RpcMessage):
+        return data.to_proto_string().decode(stringify_charset)
+    elif isinstance(data, bytes):
+        return data.decode(stringify_charset)
+    else:
+        return str(data)
+
+
+def _stringify_dict(a_dict: dict):
+    return {_stringify(k): _stringify(v) for k, v in a_dict.items()}
+
+
+
+def _repr_list(a_list: list):
     return ", ".join(_map_and_listify(repr, a_list))
+
+
+def _repr_bytes(a_bytes: bytes):
+    if a_bytes is None:
+        return f"(None)"
+    else:
+        return f"({a_bytes[:200]}, len={len(a_bytes)})"
 
 
 def _elements_to_proto(rpc_message_list):
@@ -87,19 +110,27 @@ def json_loads(src):
 def current_timestamp():
     return int(time.time()*1000)
 
+
 def _exception_logger(func):
     def wrapper(*args, **kw):
         try:
             return func(*args, **kw)
         except:
-            msg = (f"\n==== detail start ====\n"
-                   f"{traceback.format_exc()}"
+            msg = (f"\n\n==== detail start, at {time_now()} ====\n"
+                   f"{traceback.format_stack()}"
                    f"\n==== detail end ====\n\n")
             # LOGGER.error(msg)
             print(msg)
             raise RuntimeError(msg)
 
     return wrapper
+
+
+def get_stack():
+    return (f"\n\n==== stack start, at {time_now()} ====\n"
+           f"{traceback.format_exc()}"
+           f"\n==== stack end ====\n\n")
+
 
 DEFAULT_DATETIME_FORMAT = '%Y%m%d.%H%M%S.%f'
 def time_now(format: str = DEFAULT_DATETIME_FORMAT):
@@ -123,8 +154,9 @@ def get_self_ip():
     return self_ip
 
 
+# TODO:0: replace uuid with simpler human friendly solution
 def generate_job_id(session_id, tag='', delim='-'):
-    result = f'{session_id}{delim}job{delim}{time_now()}'
+    result = delim.join([session_id, 'py', 'job', str(uuid.uuid1())])
     if not tag:
         return result
     else:
@@ -145,7 +177,13 @@ def hash_code(s):
         h = int(seed * h) + ord(c)
 
     if h == sys.maxsize or h == -sys.maxsize - 1:
+        from eggroll.utils import log_utils
+        L = log_utils.get_logger()
         L.warn("hash code:{} out of int bound".format(str(h)))
         h = 0
 
     return h
+
+
+def to_one_line_string(proto_msg, as_one_line=True):
+    return MessageToString(proto_msg, as_one_line=as_one_line)
