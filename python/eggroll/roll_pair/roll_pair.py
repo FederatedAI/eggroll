@@ -289,10 +289,10 @@ class RollPair(object):
     def __repr__(self):
         return f'python RollPair(_store={self.__store})'
 
-    def set_gc_enable(self):
+    def enable_gc(self):
         self.gc_enable = True
 
-    def set_gc_disable(self):
+    def disable_gc(self):
         self.gc_enable = False
 
     def get_store_serdes(self):
