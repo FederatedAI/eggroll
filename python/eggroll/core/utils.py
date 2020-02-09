@@ -170,12 +170,10 @@ def generate_task_id(job_id, partition_id, delim='-'):
 
 #AI copy from java ByteString.hashCode(), @see RollPairContext.partitioner
 def hash_code(s):
-    if isinstance(s, bytes):
-        s = bytes_to_string(s)
     seed = 31
-    h = 0
+    h = np.int32(len(s))
     for c in s:
-        h = np.int32(h) * np.int32(seed) + np.int32(ord(c))
+        h = h * np.int32(seed) + np.int8(c)
     if h == 0 or h == -2147483648:
         h = 1
     return abs(h)

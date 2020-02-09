@@ -19,6 +19,7 @@
 package com.webank.eggroll.rollpair
 
 import java.nio.{ByteBuffer, ByteOrder}
+import java.util.Base64
 import java.util.concurrent.TimeUnit
 
 import com.google.protobuf.ByteString
@@ -57,11 +58,14 @@ class RollPairContext(val session: ErSession,
   // todo:1: partitioner factory depending on string, and mod partition number
   def partitioner(k: Array[Byte], n: Int): Int = {
     // Integer.MIN_VALUE  ==  Math.abs(Integer.MIN_VALUE)
+    hashKey(k) % n
+  }
+  def hashKey(k: Array[Byte]): Int = {
     var h = Math.abs(ByteString.copyFrom(k).hashCode())
     if (h == Integer.MIN_VALUE) {
       h = 1
     }
-    h % n
+    h
   }
 }
 
@@ -139,7 +143,7 @@ class RollPair(val store: ErStore, val ctx: RollPairContext, val options: Map[St
           val kLen = byteBuffer.getInt()
           val k = new Array[Byte](kLen)
           byteBuffer.get(k)
-
+          logDebug(s"put batch route: ${store.storeLocator},${new String(Base64.getEncoder.encode(k))}, ${ctx.hashKey(k)}, $totalPartitions, ${ctx.hashKey(k)%totalPartitions}")
           val partitionId = ctx.partitioner(k, totalPartitions)
           val transferClient = transferClients(partitionId)
 
