@@ -33,7 +33,7 @@ class GcRecorder(object):
         if store_type != StoreTypes.ROLLPAIR_IN_MEMORY:
             return
         else:
-            L.info("record in memory table namespace:{}, name:{}, type:{}"
+            L.debug("record in memory table namespace:{}, name:{}, type:{}"
                    .format(namespace, name, store_type))
             count = self.gc_recorder.get(name)
             if count is None:
