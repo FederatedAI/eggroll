@@ -81,6 +81,11 @@ class ClusterManagerClient(val endpoint: ErEndpoint) {
   def deleteStore(input: ErStoreLocator): ErStore =
     deleteStore(new ErStore(input, EMPTY_PARTITION_ARRAY, new ConcurrentHashMap[String, String]))
 
+  def getStoreFromNamespace(input: ErStore): ErStoreList = cc.call[ErStoreList](MetadataCommands.GET_STORE_FROM_NAMESPACE, input)
+
+  def getStoreFromNamespace(input: ErStoreLocator): ErStoreList = {
+    getStoreFromNamespace(new ErStore(input, EMPTY_PARTITION_ARRAY, new ConcurrentHashMap[String, String]))
+  }
   def getOrCreateSession(sessionMeta: ErSessionMeta): ErSessionMeta =
     cc.call[ErSessionMeta](SessionCommands.getOrCreateSession, sessionMeta)
 
@@ -89,6 +94,12 @@ class ClusterManagerClient(val endpoint: ErEndpoint) {
 
   def stopSession(sessionMeta: ErSessionMeta): ErSessionMeta =
     cc.call[ErSessionMeta](SessionCommands.stopSession, sessionMeta)
+
+  def killSession(sessionMeta: ErSessionMeta): ErSessionMeta =
+    cc.call[ErSessionMeta](SessionCommands.killSession, sessionMeta)
+
+  def killAllSessions(): Unit =
+    cc.call[ErSessionMeta](SessionCommands.killAllSessions, ErSessionMeta())
 
   def registerSession(sessionMeta: ErSessionMeta): ErSessionMeta =
     cc.call[ErSessionMeta](SessionCommands.registerSession, sessionMeta)

@@ -22,6 +22,7 @@ import java.lang.reflect.Method
 
 import com.google.protobuf.ByteString
 import com.webank.eggroll.core.constant.{CoreConfKeys, SerdesTypes, StringConstants}
+import com.webank.eggroll.core.error.CommandRoutingException
 import com.webank.eggroll.core.serdes.{BaseSerializable, ErDeserializer, ErSerializer, RpcMessageSerdesFactory}
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.util.Logging
@@ -171,8 +172,7 @@ object CommandRouter extends Logging {
       serviceRouteTable(serviceName)
     } catch {
       case e: Exception =>
-        logError(s"service name not registered: ${serviceName}")
-        throw e
+        throw new CommandRoutingException(serviceName, e)
     }
   }
 }

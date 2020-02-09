@@ -35,16 +35,22 @@ object Bootstrap extends Logging {
       throw new IllegalArgumentException("error args, example: --bootstraps com.webank.eggroll.Clz1,com.webank.eggroll.Clz2")
     }
 
+    i = 0
     for(b <- bs) {
       val obj = Class.forName(b).newInstance().asInstanceOf[Bootstrap]
       obj.init(newArgs.toArray)
       try {
         obj.start()
+        i += 1
       } catch {
         case be: Exception
-          if (be.getMessage.indexOf(" bind") > 0 || be.isInstanceOf[BindException]) && bs.length > 1 =>
+          if (be.getMessage.indexOf(" bind") > 0 || be.isInstanceOf[BindException]) && i > 0 =>
             val msg = s"${b} rebind failed: ${be.getMessage}"
-            if (ignoreRebind) logInfo(s"${msg} but '--ignore-rebind' is on") else throw be
+            if (ignoreRebind) {
+              logInfo(s"${msg} but '--ignore-rebind' is on")
+            } else{
+              throw be
+            }
       }
     }
 

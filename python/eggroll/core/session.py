@@ -17,10 +17,11 @@ import os
 from eggroll.core.client import ClusterManagerClient
 from eggroll.core.conf_keys import CoreConfKeys
 from eggroll.core.conf_keys import SessionConfKeys, ClusterManagerConfKeys
-from eggroll.core.constants import SessionStatus, ProcessorTypes, StoreTypes
+from eggroll.core.constants import SessionStatus, ProcessorTypes, DeployModes
 from eggroll.core.meta_model import ErSessionMeta, \
     ErPartition
 from eggroll.core.utils import get_self_ip, time_now, DEFAULT_DATETIME_FORMAT
+from eggroll.core.utils import get_stack
 from eggroll.core.utils import get_static_er_conf, set_static_er_conf
 from eggroll.utils.log_utils import get_logger
 
@@ -34,11 +35,20 @@ def session_init(session_id, options={"eggroll.session.deploy.mode": "standalone
 
 class ErSession(object):
     def __init__(self,
-            session_id=f'er_session_py_{time_now(format=DEFAULT_DATETIME_FORMAT)}_{get_self_ip()}',
+            session_id=None,
             name='',
             tag='',
-            processors=list(),
-            options=dict()):
+            processors: list = None,
+            options: dict = None):
+        if processors is None:
+            processors = []
+        if options is None:
+            options = {}
+        if not session_id:
+            self.__session_id = f'er_session_py_{time_now(format=DEFAULT_DATETIME_FORMAT)}_{get_self_ip()}'
+        else:
+            self.__session_id = session_id
+
         self.__eggroll_home = os.getenv('EGGROLL_HOME', None)
         if not self.__eggroll_home:
             raise EnvironmentError('EGGROLL_HOME is not set')
@@ -54,13 +64,12 @@ class ErSession(object):
             set_static_er_conf(configs['eggroll'])
             static_er_conf = get_static_er_conf()
 
-        self.__session_id = session_id
         self.__options = options.copy()
         self.__options[SessionConfKeys.CONFKEY_SESSION_ID] = self.__session_id
         self._cluster_manager_client = ClusterManagerClient(options=options)
 
-        self.__is_standalone = options.get(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE, "") == "standalone"
-        if self.__is_standalone and os.name != 'nt':
+        self.__is_standalone = options.get(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE, "") == DeployModes.STANDALONE
+        if self.__is_standalone and os.name != 'nt' and not processors and os.environ.get("EGGROLL_RESOURCE_MANAGER_AUTO_BOOTSTRAP", "1") == "1":
             port = int(options.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT,
                                    static_er_conf.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, "4670")))
             startup_command = f'bash {self.__eggroll_home}/bin/eggroll_boot_standalone.sh -p {port} -s {self.__session_id}'
@@ -72,7 +81,7 @@ class ErSession(object):
             with open(f'{bootstrap_log_dir}/standalone-manager.out', 'a+') as outfile, \
                     open(f'{bootstrap_log_dir}/standalone-manager.err', 'a+') as errfile:
                 L.info(f'start up command: {startup_command}')
-                manager_process = subprocess.run(startup_command.split(), stdout=outfile, stderr=errfile)
+                manager_process = subprocess.run(startup_command, shell=True,  stdout=outfile, stderr=errfile)
                 returncode = manager_process.returncode
                 L.info(f'start up returncode: {returncode}')
 
@@ -94,7 +103,7 @@ class ErSession(object):
                                      options=options)
 
         from time import monotonic, sleep
-        timeout = int(options.get("eggroll.session.create.timeout.ms", "5000")) / 1000
+        timeout = int(options.get("eggroll.session.create.timeout.ms", "10000")) / 1000
         endtime = monotonic() + timeout
 
         # TODO:0: ignores exception while starting up in standalone mod
@@ -114,7 +123,7 @@ class ErSession(object):
         self.__cleanup_tasks = list()
         self.__processors = self.__session_meta._processors
 
-        L.info('session init finished')
+        L.info(f'session init finished:{self.__session_id}, details: {self.__session_meta}')
 
         self._rolls = list()
         self._eggs = dict()
@@ -129,7 +138,7 @@ class ErSession(object):
             elif processor_type == ProcessorTypes.ROLL_PAIR_MASTER:
                 self._rolls.append(processor)
             else:
-                raise ValueError(f"processor type {processor_type} not supported in roll pair")
+                raise ValueError(f'processor type {processor_type} not supported in roll pair')
 
     def route_to_egg(self, partition: ErPartition):
         target_server_node = partition._processor._server_node_id
@@ -138,12 +147,21 @@ class ErSession(object):
 
         result = self._eggs[target_server_node][target_processor]
         if not result._command_endpoint._host or result._command_endpoint._port <= 0:
-            raise ValueError(f'error routing to egg: {result}')
+            raise ValueError(f'error routing to egg: {result} in session: {self.__session_id}')
 
         return result
 
     def stop(self):
+        L.info(f'stopping session (gracefully): {self.__session_id}')
+        L.debug(f'stopping session (gracefully), details: {self.__session_meta}')
+        L.debug(f'stopping (gracefully) from: {get_stack()}')
         return self._cluster_manager_client.stop_session(self.__session_meta)
+
+    def kill(self):
+        L.info(f'killing session (forcefully): {self.__session_id}')
+        L.debug(f'killing session (forcefully), details: {self.__session_meta}')
+        L.debug(f'killing (forcefully) from: {get_stack()}')
+        return self._cluster_manager_client.kill_session(self.__session_meta)
 
     def get_session_id(self):
         return self.__session_id
@@ -156,6 +174,7 @@ class ErSession(object):
         self.__cleanup_tasks.append(func)
 
     def run_cleanup_tasks(self):
+        L.debug(f'running cleanup tasks: {self.__session_id}')
         for func in self.__cleanup_tasks:
             func()
 

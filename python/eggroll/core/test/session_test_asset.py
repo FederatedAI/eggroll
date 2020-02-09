@@ -21,12 +21,11 @@ from eggroll.core.constants import StoreTypes
 from eggroll.core.meta_model import ErStore, ErStoreLocator, ErEndpoint, \
     ErProcessor
 from eggroll.core.session import ErSession
-from eggroll.roll_pair.roll_pair import RollPairContext
 
 ER_STORE1 = ErStore(
-    store_locator=ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LEVELDB,
-                                 namespace="namespace",
-                                 name="name"))
+        store_locator=ErStoreLocator(store_type=StoreTypes.ROLLPAIR_LEVELDB,
+                                     namespace="namespace",
+                                     name="name"))
 
 
 def get_debug_test_context(is_standalone=False, manager_port=4670, egg_port=20001, transfer_port=20002, session_id='testing'):
@@ -60,32 +59,33 @@ def get_debug_test_context(is_standalone=False, manager_port=4670, egg_port=2000
     session = ErSession(session_id,
                         processors=[egg, roll],
                         options=options)
-    context = RollPairContext(session)
-    return context
+    print(session.get_session_id())
+    return session
 
 
 def get_standalone_context():
-    options = {}
-    options[SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE] = DeployModes.STANDALONE
+    options = {
+        SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE: DeployModes.STANDALONE}
 
     session = ErSession(options=options)
     print(session.get_session_id())
-    context = RollPairContext(session)
+    return session
 
-    return context
 
 def get_cluster_context(options=None):
     if options is None:
         options = {}
     session = ErSession(options=options)
     print(session.get_session_id())
-    context = RollPairContext(session)
-    return context
+    return session
+
 
 default_option = {}
 
+
 def set_default_option(k, v):
     default_option[k] = v
+
 
 def get_default_options():
     return default_option.copy()
