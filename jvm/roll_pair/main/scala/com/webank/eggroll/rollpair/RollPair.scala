@@ -155,6 +155,10 @@ class RollPair(val store: ErStore, val ctx: RollPairContext, val options: Map[St
       if (c != null) {
         c.complete()
       })
+
+    logDebug(s"[PUTBATCH] joining ${putBatchThread.getName}")
+    putBatchThread.join()
+    logDebug(s"[PUTBATCH] put batch thread joined ${putBatchThread.getName}")
   }
 }
 
