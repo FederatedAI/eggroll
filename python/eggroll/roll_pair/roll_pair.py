@@ -448,7 +448,7 @@ class RollPair(object):
                     serdes_type=SerdesTypes.PROTOBUF)
 
             return result
-        th = Thread(target=send_command)
+        th = Thread(target=send_command, name=f'roll_pair-send_command-{job_id}')
         th.start()
         populated_store = self.ctx.populate_processor(self.__store)
         shuffler = TransferPair(job_id)
