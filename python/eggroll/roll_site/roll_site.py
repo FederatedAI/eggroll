@@ -210,6 +210,7 @@ class RollSite:
             namespace = self.federation_session_id
 
             if isinstance(obj, RollPair):
+                obj.set_gc_disable()
                 rp = obj
             else:
                 rp = self.ctx.rp_ctx.load(namespace, _tagged_key)
