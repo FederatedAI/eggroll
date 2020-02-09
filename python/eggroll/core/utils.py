@@ -118,7 +118,7 @@ def _exception_logger(func):
             return func(*args, **kw)
         except:
             msg = (f"\n\n==== detail start, at {time_now()} ====\n"
-                   f"{traceback.format_stack()}"
+                   f"{traceback.format_exc()}"
                    f"\n==== detail end ====\n\n")
             # LOGGER.error(msg)
             print(msg)
@@ -129,7 +129,7 @@ def _exception_logger(func):
 
 def get_stack():
     return (f"\n\n==== stack start, at {time_now()} ====\n"
-           f"{traceback.format_exc()}"
+           f"{''.join(traceback.format_stack())}"
            f"\n==== stack end ====\n\n")
 
 
