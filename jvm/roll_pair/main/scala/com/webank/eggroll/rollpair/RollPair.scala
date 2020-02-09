@@ -56,7 +56,12 @@ class RollPairContext(val session: ErSession,
 
   // todo:1: partitioner factory depending on string, and mod partition number
   def partitioner(k: Array[Byte], n: Int): Int = {
-    ByteString.copyFrom(k).hashCode() % n
+    // Integer.MIN_VALUE  ==  Math.abs(Integer.MIN_VALUE)
+    var h = Math.abs(ByteString.copyFrom(k).hashCode())
+    if (h == Integer.MIN_VALUE) {
+      h = 1
+    }
+    h % n
   }
 }
 
