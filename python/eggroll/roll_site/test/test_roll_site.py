@@ -29,6 +29,9 @@ props_file_guest = default_props_file
 props_file_guest = default_props_file + '.guest'
 
 
+row_limit = 3
+
+
 def data_generator(limit):
     for i in range(limit):
         yield (f"key-{i}", f"value-{i}")
@@ -112,7 +115,7 @@ class TestRollSiteBase(unittest.TestCase):
         rp_options = {'include_key': True}
         rp_context = self.rs_context_guest.rp_ctx
         rp = rp_context.load("namespace", self._rp_rs_name_big)
-        rp.put_all(data_generator(10000), options=rp_options)
+        rp.put_all(data_generator(row_limit), options=rp_options)
         print(f"count: {rp.count()}")
 
         rs = self.rs_context_guest.load(name=self._rp_rs_name_big, tag=self._rp_rs_tag_big)
@@ -138,7 +141,7 @@ class TestRollSiteBase(unittest.TestCase):
         rp_options = {'include_key': True, 'total_partitions': 3}
         rp_context = self.rs_context_guest.rp_ctx
         rp = rp_context.load("namespace", self._rp_rs_name_big_mp, options=rp_options)
-        rp.put_all(data_generator(3), options=rp_options)
+        rp.put_all(data_generator(row_limit), options=rp_options)
         print(f"count: {rp.count()}")
 
         if rp.count() <= 100:
@@ -170,7 +173,6 @@ class TestRollSiteBase(unittest.TestCase):
 
         rp = rp_context.load('atest', f'__federation__#atest#{self._rp_rs_name_big_mp}#{self._rp_rs_tag_big_mp}#guest#10002#host#10001')
 
-        print(f'key-2: {rp.get("key-2")}')
         print(f'key-1: {rp.get("key-1")}')
 
         print(f'1st: {rp.take(2)}')

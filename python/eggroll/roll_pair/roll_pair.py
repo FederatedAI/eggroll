@@ -139,7 +139,7 @@ class RollPairContext(object):
         return RollPair(self.populate_processor(result), self)
 
     # TODO:1: separates load parameters and put all parameters
-    def parallelize(self, data, options: dict = {}):
+    def parallelize(self, data, options: dict = None):
         if options is None:
             options = {}
         namespace = options.get("namespace", None)
