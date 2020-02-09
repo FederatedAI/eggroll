@@ -28,6 +28,10 @@ class TestRollPairBase(unittest.TestCase):
     def setUp(self):
         self.ctx = get_debug_test_context()
 
+    def tearDown(self) -> None:
+        print("stop test session")
+        self.ctx.get_session().stop()
+
     @staticmethod
     def store_opts(**kwargs):
         opts = {'total_partitions': 1}
