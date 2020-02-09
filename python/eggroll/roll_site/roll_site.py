@@ -61,9 +61,16 @@ class RollSiteContext:
 
     def push_complete(self):
         L.debug("run roll site exit func:{}".format(self.push_count))
+        try_count = 0
         while True:
+            if try_count >= 500:
+                L.error("try times reach 500, exit!!")
+                return
             if self.push_count:
-                L.debug("waiting for push complete")
+                if try_count % 10 == 0:
+                    L.debug("session:{} waiting for push complete"
+                            .format(self.rp_ctx.get_session().get_session_id()))
+                try_count += 1
                 import time
                 time.sleep(0.1)
             else:
