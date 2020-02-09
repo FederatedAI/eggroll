@@ -105,6 +105,8 @@ class TestClusterManager {
     val clusterManager = NettyServerBuilder
       .forPort(clusterManagerPort)
       .addService(new CommandService)
+      .maxInboundMetadataSize(1 << 20)
+      .maxInboundMessageSize(-1)
       .build()
 
     StaticErConf.setPort(clusterManagerPort)

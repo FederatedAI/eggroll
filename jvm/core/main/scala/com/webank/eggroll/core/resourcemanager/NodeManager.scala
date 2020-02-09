@@ -7,6 +7,7 @@ import com.webank.eggroll.core.session.RuntimeErConf
 trait NodeManager {
   def startContainers(sessionMeta: ErSessionMeta): ErSessionMeta
   def stopContainers(sessionMeta: ErSessionMeta): ErSessionMeta
+  def killContainers(sessionMeta: ErSessionMeta): ErSessionMeta
   def heartbeat(processor: ErProcessor): ErProcessor
 }
 
@@ -17,6 +18,10 @@ class NodeManagerService extends NodeManager {
 
   override def stopContainers(sessionMeta: ErSessionMeta): ErSessionMeta = {
     operateContainers(sessionMeta, "stop")
+  }
+
+  override def killContainers(sessionMeta: ErSessionMeta): ErSessionMeta = {
+    operateContainers(sessionMeta, "kill")
   }
 
   private def operateContainers(sessionMeta: ErSessionMeta, opType: String): ErSessionMeta = {
@@ -31,6 +36,7 @@ class NodeManagerService extends NodeManager {
         opType match {
           case "start" => container.start()
           case "stop" => container.stop()
+          case "kill" => container.kill()
           case _ => throw new IllegalArgumentException(s"op not supported: '${opType}'")
         }
       }

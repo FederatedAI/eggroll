@@ -29,6 +29,8 @@ class JdbcTemplate(dataSource: () => Connection, autoClose: Boolean = true) exte
   }
   def withConnection[T](func: Connection => T): T = {
     val connection = this.dataSource()
+    // defaulting transaction level to REPEATABLE_READ
+    connection.setTransactionIsolation(Connection.TRANSACTION_SERIALIZABLE)
     try {
       func(connection)
     } finally {
@@ -37,7 +39,9 @@ class JdbcTemplate(dataSource: () => Connection, autoClose: Boolean = true) exte
   }
 
   def withTransaction[T](func: Connection => T): T = withConnection { connection =>
+    val oldAutoCommit = connection.getAutoCommit
     connection.setAutoCommit(false)
+
     try {
       val ret = func(connection)
       connection.commit()
@@ -46,6 +50,8 @@ class JdbcTemplate(dataSource: () => Connection, autoClose: Boolean = true) exte
       case e: Exception =>
         connection.rollback()
         throw e
+    } finally {
+      connection.setAutoCommit(oldAutoCommit)
     }
   }
 

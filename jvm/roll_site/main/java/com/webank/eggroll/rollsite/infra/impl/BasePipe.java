@@ -16,19 +16,20 @@
 
 package com.webank.eggroll.rollsite.infra.impl;
 
+import com.google.common.base.Preconditions;
 import com.webank.eggroll.rollsite.infra.Pipe;
-
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 public abstract class BasePipe implements Pipe {
     private final CountDownLatch closeLatch;
+    private CountDownLatch writerLatch;
     private volatile boolean closed = false;
     private volatile boolean drained = false;
-    private volatile boolean status = false;
     private volatile String type = "";
     private volatile String tag_key = "";
     private volatile Throwable throwable = null;
+    private int initWriterLatchCount;
 
     public BasePipe() {
         this.closeLatch = new CountDownLatch(1);
@@ -66,6 +67,11 @@ public abstract class BasePipe implements Pipe {
 
     @Override
     public boolean isClosed() {
+        if (!closed) {
+            if (writerLatch.getCount() == 0 && isDrained()) {
+                close();
+            }
+        }
         return closed;
     }
 
@@ -99,13 +105,6 @@ public abstract class BasePipe implements Pipe {
         return throwable;
     }
 
-    public boolean getStatus() {
-        return this.status;
-    }
-    public void setStatus(boolean status) {
-        this.status = status;
-    }
-
     public String getType() {
         return this.type;
     }
@@ -124,5 +123,38 @@ public abstract class BasePipe implements Pipe {
         if (isClosed()) {
             throw new IllegalStateException("pipe closed");
         }
+    }
+
+    @Override
+    public void initWriters(int writersCount) {
+        if (!isWritersInited()) {
+            synchronized (this) {
+                if (!isWritersInited()) {
+                    Preconditions.checkArgument(writersCount > 0, "writer count must > 0");
+
+                    if (writerLatch == null) {
+                        writerLatch = new CountDownLatch(writersCount);
+                        initWriterLatchCount = writersCount;
+                    } else if (writersCount != initWriterLatchCount) {
+                        throw new IllegalStateException("duplicate resetting writerLatch");
+                    }
+                }
+            }
+        }
+    }
+
+    @Override
+    public void signalWriteFinish() {
+        writerLatch.countDown();
+    }
+
+    @Override
+    public boolean isWriteFinished() {
+        return writerLatch.getCount() <= 0;
+    }
+
+    @Override
+    public boolean isWritersInited() {
+        return writerLatch != null;
     }
 }
