@@ -64,7 +64,7 @@ class RollSiteContext:
         try_count = 0
         while True:
             if try_count >= 500:
-                L.error("try times reach 500, exit!!")
+                L.error("try times reach 500, exiting")
                 return
             if self.push_count:
                 if try_count % 10 == 0:
