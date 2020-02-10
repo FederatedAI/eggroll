@@ -29,6 +29,9 @@ props_file_guest = default_props_file
 props_file_guest = default_props_file + '.guest'
 
 
+row_limit = 3
+
+
 def data_generator(limit):
     for i in range(limit):
         yield (f"key-{i}", f"value-{i}")
@@ -112,7 +115,7 @@ class TestRollSiteBase(unittest.TestCase):
         rp_options = {'include_key': True}
         rp_context = self.rs_context_guest.rp_ctx
         rp = rp_context.load("namespace", self._rp_rs_name_big)
-        rp.put_all(data_generator(10000), options=rp_options)
+        rp.put_all(data_generator(row_limit), options=rp_options)
         print(f"count: {rp.count()}")
 
         rs = self.rs_context_guest.load(name=self._rp_rs_name_big, tag=self._rp_rs_tag_big)
@@ -138,7 +141,7 @@ class TestRollSiteBase(unittest.TestCase):
         rp_options = {'include_key': True, 'total_partitions': 3}
         rp_context = self.rs_context_guest.rp_ctx
         rp = rp_context.load("namespace", self._rp_rs_name_big_mp, options=rp_options)
-        rp.put_all(data_generator(100000), options=rp_options)
+        rp.put_all(data_generator(row_limit), options=rp_options)
         print(f"count: {rp.count()}")
 
         if rp.count() <= 100:
@@ -168,14 +171,17 @@ class TestRollSiteBase(unittest.TestCase):
     def test_get_table(self):
         rp_context = self.rs_context_host.rp_ctx
 
-        rp = rp_context.load('atest', f'__federation__-atest-{self._rp_rs_name}-{self._rp_rs_tag}-10002-host-10001')
+        rp = rp_context.load('atest', f'__federation__#atest#{self._rp_rs_name_big_mp}#{self._rp_rs_tag_big_mp}#guest#10002#host#10001')
 
-        print(f'k1: {rp.get("k1")}')
+        print(f'key-1: {rp.get("key-1")}')
+
+        print(f'1st: {rp.take(2)}')
+        print(f'count: {rp.count()}')
 
     def test_get_all(self):
         rp_context = self.rs_context_host.rp_ctx
 
-        rp = rp_context.load('atest', f'__federation__#atest#RsaIntersectTransferVariable.rsa_pubkey#testing_rs_obj#guest#10002#host#10001')
+        rp = rp_context.load('atest', f'__federation__#atest#{self._rp_rs_name_big_mp}#{self._rp_rs_tag_big_mp}#guest#10002#host#10001')
         print(list(rp.get_all()))
 
     def test_count(self):
@@ -219,6 +225,11 @@ class TestRollSiteCluster(TestRollSiteBase):
         cls.rs_context_host = get_cluster_context(role='host', options=opts, props_file=props_file_host)
         cls.rs_context_guest = get_cluster_context(role='guest', options=opts, props_file=props_file_guest)
 
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls.rs_context_guest.rp_ctx.get_session().stop()
+        cls.rs_context_host.rp_ctx.get_session().stop()
+
     def test_remote(self):
         super().test_remote()
     
@@ -230,3 +241,10 @@ class TestRollSiteCluster(TestRollSiteBase):
 
     def test_get_rollpair(self):
         super().test_get_rollpair()
+
+    def test_remote_rollpair_big_multi_partitions(self):
+        super().test_remote_rollpair_big_multi_partitions()
+
+    def test_get_rollpair_big_multi_partitions(self):
+        super().test_get_rollpair_big_multi_partitions()
+
