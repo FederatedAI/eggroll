@@ -150,7 +150,7 @@ class RollPairContext(object):
         return RollPair(self.populate_processor(result), self)
 
     # TODO:1: separates load parameters and put all parameters
-    def parallelize(self, data, options: dict = {}):
+    def parallelize(self, data, options: dict = None):
         if options is None:
             options = {}
         namespace = options.get("namespace", None)
@@ -459,7 +459,7 @@ class RollPair(object):
                     serdes_type=SerdesTypes.PROTOBUF)
 
             return result
-        th = Thread(target=send_command)
+        th = Thread(target=send_command, name=f'roll_pair-send_command-{job_id}')
         th.start()
         populated_store = self.ctx.populate_processor(self.__store)
         shuffler = TransferPair(job_id)

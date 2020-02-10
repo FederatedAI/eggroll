@@ -125,13 +125,22 @@ class RollSiteWriteBatch(PairWriteBatch):
         self.topic_dst = proxy_pb2.Topic(name=self.name, partyId=self.federation_header._dst_party_id,
                                          role=self.federation_header._dst_role, callback=None)
 
+    def __repr__(self):
+        return f'<ErRollSiteWriteBatch(' \
+               f'adapter={self.adapter}, ' \
+               f'roll_site_header={self.federation_header}' \
+               f'namespace={self.namespace}, ' \
+               f'name={self.name}, ' \
+               f'obj_type={self.obj_type}, ' \
+               f'proxy_endpoint={self.proxy_endpoint}) ' \
+               f'at {hex(id(self))}>'
+
     def generate_message(self, obj, metadata):
-        while True:
+        #while True:
             data = proxy_pb2.Data(value=obj)
             metadata.seq += 1
             packet = proxy_pb2.Packet(header=metadata, body=data)
             yield packet
-            break
 
     # TODO:0: configurable
     def push(self, obj):
@@ -157,7 +166,8 @@ class RollSiteWriteBatch(PairWriteBatch):
         except Exception as e:
             raise GrpcCallError("push", self.proxy_endpoint, e)
 
-    def write(self, bin_data):
+    def write(self):
+        bin_data = bytes(self.ba[0:self.buffer.get_offset()])
         self.push(bin_data)
 
     def send_end(self):
@@ -188,29 +198,26 @@ class RollSiteWriteBatch(PairWriteBatch):
 
     def close(self):
         bin_batch = bytes(self.ba[0:self.buffer.get_offset()])
-        self.write(bin_batch)
+        self.push(bin_batch)
         self.send_end()
 
     def put(self, k, v):
-        print("self.type:", self.obj_type)
-        print("type:", type(self.obj_type))
-        print("k:", k)
         if self.obj_type == 'object':
-            print("set tagged_key:", k)
+            L.debug("set tagged_key:", k)
             self.tagged_key = _serdes.deserialize(k)
 
         try:
             self.writer.write(k, v)
         except IndexError as e:
             bin_batch = bytes(self.ba[0:self.buffer.get_offset()])
-            self.write(bin_batch)
+            self.push(bin_batch)
             # TODO:0: replace 1024 with constant
             self.ba = bytearray(max(self.__bin_packet_len, len(k) + len(v) + 1024))
             self.buffer = ArrayByteBuffer(self.ba)
             self.writer = PairBinWriter(pair_buffer=self.buffer)
             self.writer.write(k, v)
         except:
-            print("Unexpected error:", sys.exc_info()[0])
+            L.error("Unexpected error: ", sys.exc_info()[0])
             raise
 
 
