@@ -62,7 +62,7 @@ class TaskExecutor(object):
             role = args.role
             party_id = int(args.party_id)
             executor_pid = os.getpid()
-            job_utils.task_killed_detector(job_id, role, party_id, component_name, executor_pid)
+            #job_utils.task_killed_detector(job_id, role, party_id, component_name, executor_pid)
             task_config = file_utils.load_json_conf(args.config)
             job_parameters = task_config['job_parameters']
             job_initiator = task_config['job_initiator']

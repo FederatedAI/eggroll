@@ -46,7 +46,6 @@ from eggroll.roll_pair.utils.pair_utils import generator, partitioner, \
     set_data_dir
 from eggroll.utils.log_utils import get_logger
 
-
 L = get_logger()
 
 
@@ -125,11 +124,9 @@ class EggPair(object):
             L.info("egg_pair get call")
             # TODO:1: move to create_serdes
             f = create_functor(functors[0]._body)
-            #input_adapter = self.get_unary_input_adapter(task_info=task)
-            input_adapter = create_adapter(task._inputs[0])
-            value = input_adapter.get(f._key)
-            result = ErPair(key=f._key, value=value)
-            input_adapter.close()
+            with create_adapter(task._inputs[0]) as input_adapter:
+                value = input_adapter.get(f._key)
+                result = ErPair(key=f._key, value=value)
         elif task._name == 'getAll':
             L.info("egg_pair getAll call")
             tag = f'{task._id}'

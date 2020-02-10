@@ -45,7 +45,7 @@ class RollSiteContext:
         self.rp_ctx = rp_ctx
 
         self.role = options["self_role"]
-        self.party_id = options["self_party_id"]
+        self.party_id = str(options["self_party_id"])
         self.proxy_endpoint = options["proxy_endpoint"]
         self.is_standalone = self.rp_ctx.get_session().get_option(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE) == "standalone"
         if self.is_standalone:
@@ -131,7 +131,7 @@ class RollSite:
         self.name = name
         self.tag = tag
         self.stub = self.ctx.stub
-        self.process_pool = ThreadPoolExecutor(10, thread_name_prefix="thread-recieve")
+        self.process_pool = ThreadPoolExecutor(10, thread_name_prefix="thread-receive")
         self.complete_pool = ThreadPoolExecutor(10, thread_name_prefix="complete-wait")
 
     def _decrease_push_count(self):
@@ -262,7 +262,7 @@ class RollSite:
 
                     if isinstance(obj, RollPair):
                         federation_header._options['total_partitions'] = obj.get_store()._store_locator._total_partitions
-
+                        L.debug(f"pushing map_values :{dst_name}, {obj.count()}, tag_key:{_tagged_key}")
                     rp.map_values(lambda v: v,
                         output=ErStore(store_locator=new_store_locator),
                                   options=options)
