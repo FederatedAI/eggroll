@@ -13,7 +13,6 @@
 #  limitations under the License.
 #
 #
-
 import time
 from concurrent.futures import ThreadPoolExecutor, wait, FIRST_EXCEPTION
 
@@ -134,7 +133,7 @@ class RollSite:
         self.process_pool = ThreadPoolExecutor(10, thread_name_prefix="thread-recieve")
         self.complete_pool = ThreadPoolExecutor(10, thread_name_prefix="complete-wait")
 
-    def _decrease_push_count(self):
+    def _decrease_push_count(self, fn):
         if self.ctx.push_count <= 0:
             self.ctx.push_count = 0
             return
