@@ -54,7 +54,7 @@ class RollPairContext(object):
         self.deploy_mode = session.get_option(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE)
         self.__session_meta = session.get_session_meta()
         self.__session.add_exit_task(self.context_gc)
-        self.rpc_gc_enable = False
+        self.rpc_gc_enable = True
         self.gc_recorder = GcRecorder(self)
 
     def set_store_type(self, store_type: str):
