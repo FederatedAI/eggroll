@@ -74,7 +74,7 @@ class FederationRuntime(Federation):
         futures = rs.pull(parties=rs_parties)
         for future in futures:
             obj = future.result()
-            LOGGER.info("federation got: {}".format(obj))
+            LOGGER.info(f'federation got data. tag: {tag}')
             if isinstance(obj, RollPair):
                 rtn.append(DTable.from_dtable(obj.ctx.get_session().get_session_id(),obj))
                 rubbish.add_table(obj)

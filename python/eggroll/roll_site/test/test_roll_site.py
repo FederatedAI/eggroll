@@ -132,7 +132,7 @@ class TestRollSiteBase(unittest.TestCase):
             if isinstance(obj, RollPair):
                 key = "key-1"
                 value = obj.get(key)
-                #self.assertEqual(value, "value-1", f"got wrong value. expected: 'value-1', actual: {value}")
+                self.assertEqual(value, "value-1", f"got wrong value. expected: 'value-1', actual: {value}")
                 print("obj:", obj, ", value:", value, ", count:", obj.count())
             else:
                 raise TypeError(f'require getting a RollPair but obj found: {obj}')
@@ -164,7 +164,8 @@ class TestRollSiteBase(unittest.TestCase):
                 key = "key-1"
                 value = obj.get(key)
                 #self.assertEqual(value, "value-1", f"got wrong value. expected: 'value-1', actual: {value}")
-                print("obj:", obj, ", value:", value, ", count:", obj.count())
+                self.assertEqual(value, "value-1", f"got wrong value. expected: 'value-1', actual: {value}")
+                self.assertEqual(obj.count(), row_limit, f"got wrong count value. expected: {row_limit}, actual: {obj.count()}")
             else:
                 raise TypeError(f'require getting a RollPair but obj found: {obj}')
 
@@ -196,7 +197,6 @@ class TestRollSiteBase(unittest.TestCase):
         rp = rp_context.load("namespace", self._rp_rs_name_big_mp, options=rp_options)
         rp.put_all(data_generator(9), options=rp_options)
         print(f"count: {rp.count()}")
-
 
 
 class TestRollSiteStandalone(TestRollSiteBase):
