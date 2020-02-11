@@ -20,9 +20,9 @@ import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
 import com.webank.eggroll.core.constant.StringConstants;
-import com.webank.eggroll.core.meta.ErFederationHeader;
+import com.webank.eggroll.core.meta.ErRollSiteHeader;
 import com.webank.eggroll.core.meta.TransferModelPbMessageSerdes;
-import com.webank.eggroll.core.transfer.Transfer.FederationHeader;
+import com.webank.eggroll.core.transfer.Transfer.RollSiteHeader;
 import com.webank.eggroll.core.util.ErrorUtils;
 import com.webank.eggroll.core.util.ToStringUtils;
 import com.webank.eggroll.rollsite.RollSiteUtil;
@@ -206,17 +206,17 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
                 // TODO:0: better wait
                 if (rollSiteUtil == null) {
                     // TODO:0: change this when delim changes
-                    ErFederationHeader federationHeader = null;
+                    ErRollSiteHeader rollSiteHeader = null;
                     try {
-                        federationHeader = TransferModelPbMessageSerdes.ErFederationHeaderFromPbMessage(
-                            FederationHeader.parseFrom(name.getBytes(StandardCharsets.ISO_8859_1))).fromProto();
+                        rollSiteHeader = TransferModelPbMessageSerdes.ErRollSiteHeaderFromPbMessage(
+                            RollSiteHeader.parseFrom(name.getBytes(StandardCharsets.ISO_8859_1))).fromProto();
                     } catch (InvalidProtocolBufferException e) {
-                        LOGGER.error("error parsing federation header", e);
+                        LOGGER.error("error parsing roll site header", e);
                         onError(e);
                     }
-                    int totalPartition = Integer.parseInt(federationHeader.options().getOrElse(
+                    int totalPartition = Integer.parseInt(rollSiteHeader.options().getOrElse(
                         StringConstants.TOTAL_PARTITIONS_SNAKECASE(), () -> "1"));
-                    String job_id = federationHeader.federationSessionId();
+                    String job_id = rollSiteHeader.rollSiteSessionId();
                     try {
                         while (!JobStatus.jobIdToSessionId.containsKey(job_id)) {
                             Thread.sleep(1000);
@@ -226,10 +226,10 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
                     }
                     String sessionId = JobStatus.jobIdToSessionId.get(job_id);
                     if(sessionId != null) {
-                        rollSiteUtil = new RollSiteUtil(sessionId, federationHeader, new Map1<>("job_id_tag", Thread.currentThread().getName()));
+                        rollSiteUtil = new RollSiteUtil(sessionId, rollSiteHeader, new Map1<>("job_id_tag", Thread.currentThread().getName()));
                     }
 
-                    String tagKey = federationHeader.concat(StringConstants.HASH(), new String[]{"__federation__"});
+                    String tagKey = rollSiteHeader.concat(StringConstants.HASH(), new String[]{"__federation__"});
                     if (!JobStatus.hasLatch(tagKey)) {
                         JobStatus.createLatch(tagKey, totalPartition);
                     }
