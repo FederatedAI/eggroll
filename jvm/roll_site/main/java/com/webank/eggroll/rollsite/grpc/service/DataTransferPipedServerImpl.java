@@ -22,9 +22,9 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import com.webank.ai.eggroll.api.networking.proxy.DataTransferServiceGrpc;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
 import com.webank.eggroll.core.constant.StringConstants;
-import com.webank.eggroll.core.meta.ErFederationHeader;
+import com.webank.eggroll.core.meta.ErRollSiteHeader;
 import com.webank.eggroll.core.meta.TransferModelPbMessageSerdes;
-import com.webank.eggroll.core.transfer.Transfer.FederationHeader;
+import com.webank.eggroll.core.transfer.Transfer.RollSiteHeader;
 import com.webank.eggroll.core.util.ErrorUtils;
 import com.webank.eggroll.core.util.ToStringUtils;
 import com.webank.eggroll.rollsite.event.model.PipeHandleNotificationEvent;
@@ -238,22 +238,22 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                 Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
                 packet = packetBuilder.setHeader(request.getHeader()).build();
 
-                ErFederationHeader federationHeader = restoreFederationHeader(
+                ErRollSiteHeader rollSiteHeader = restoreRollSiteHeader(
                     request.getHeader().getTask().getModel().getName());
-                String tagKey = genTagKey(federationHeader);
+                String tagKey = genTagKey(rollSiteHeader);
 
 
-                LOGGER.info("markEnd: {}, {}", federationHeader.federationSessionId(),
+                LOGGER.info("markEnd: {}, {}", rollSiteHeader.rollSiteSessionId(),
                         tagKey);  //obj or RollPair
 
                 if (!JobStatus.hasLatch(tagKey)) {
                     int totalPartitions = Integer.parseInt(
-                        federationHeader.options().getOrElse(StringConstants.TOTAL_PARTITIONS_SNAKECASE(), () -> "1"));
+                        rollSiteHeader.options().getOrElse(StringConstants.TOTAL_PARTITIONS_SNAKECASE(), () -> "1"));
 
                     JobStatus.createLatch(tagKey, totalPartitions);
                 }
                 JobStatus.countDownLatch(tagKey);
-                JobStatus.setType(tagKey, federationHeader.dataType());
+                JobStatus.setType(tagKey, rollSiteHeader.dataType());
 
                 responseObserver.onNext(packet);
                 responseObserver.onCompleted();
@@ -261,25 +261,25 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
             }
 
             if (request.getHeader().getOperator().equals("getStatus")) {
-                LOGGER.info("getStatus");
+                LOGGER.info("getStatus: {}", oneLineStringInputMetadata);
                 Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
 
-                ErFederationHeader federationHeader = restoreFederationHeader(
+                ErRollSiteHeader rollSiteHeader = restoreRollSiteHeader(
                     request.getHeader().getTask().getModel().getName());
-                String tagKey = genTagKey(federationHeader);
+                String tagKey = genTagKey(rollSiteHeader);
 
                 boolean jobFinished = JobStatus.isAllCountDown(tagKey);
                 Proxy.Metadata header = request.getHeader();
                 String type = StringConstants.EMPTY();
                 if (jobFinished) {
-                    LOGGER.info("closed");
+                    LOGGER.info("getStatus: job finished: {}", oneLineStringInputMetadata);
                     header = Proxy.Metadata.newBuilder().setAck(123)
                         .setSrc(request.getHeader().getSrc())
                         .setDst(request.getHeader().getDst())
                         .build();
                     type = JobStatus.getType(tagKey);
                 } else {
-                    LOGGER.info("not closed");
+                    LOGGER.info("getStatus: job NOT finished: {}", oneLineStringInputMetadata);
                     header = Proxy.Metadata.newBuilder().setAck(321).build();
                 }
                 Proxy.Data body = Proxy.Data.newBuilder().setKey(tagKey)
@@ -391,14 +391,14 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
         return result;
     }
 
-    private ErFederationHeader restoreFederationHeader(String s)
+    private ErRollSiteHeader restoreRollSiteHeader(String s)
         throws InvalidProtocolBufferException {
-        return TransferModelPbMessageSerdes.ErFederationHeaderFromPbMessage(
-            FederationHeader.parseFrom(s.getBytes(StandardCharsets.ISO_8859_1))).fromProto();
+        return TransferModelPbMessageSerdes.ErRollSiteHeaderFromPbMessage(
+            RollSiteHeader.parseFrom(s.getBytes(StandardCharsets.ISO_8859_1))).fromProto();
     }
 
-    private String genTagKey(ErFederationHeader federationHeader) {
-        return federationHeader
+    private String genTagKey(ErRollSiteHeader rollSiteHeader) {
+        return rollSiteHeader
             .concat(StringConstants.HASH(), new String[]{"__federation__"});
     }
 

@@ -24,7 +24,7 @@ from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.meta_model import ErStoreLocator, ErStore
 from eggroll.core.proto import proxy_pb2, proxy_pb2_grpc
 from eggroll.core.serdes import eggroll_serdes
-from eggroll.core.transfer_model import ErFederationHeader
+from eggroll.core.transfer_model import ErRollSiteHeader
 from eggroll.core.utils import _stringify
 from eggroll.roll_pair.roll_pair import RollPair, RollPairContext
 from eggroll.roll_site.utils.roll_site_utils import create_store_name, DELIM
@@ -139,7 +139,7 @@ class RollSite:
             return
         self.ctx.push_count -= 1
 
-    def _thread_receive(self, packet, namespace, federation_header: ErFederationHeader):
+    def _thread_receive(self, packet, namespace, federation_header: ErRollSiteHeader):
         try:
             table_name = create_store_name(federation_header)
             is_standalone = self.ctx.rp_ctx.get_session().get_option(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE) \
@@ -202,15 +202,16 @@ class RollSite:
 
             _options = {}
             obj_type = 'rollpair' if isinstance(obj, RollPair) else 'object'
-            federation_header = ErFederationHeader(federation_session_id=self.federation_session_id,
-                                                   name=self.name,
-                                                   tag=self.tag,
-                                                   src_role=self.local_role,
-                                                   src_party_id=self.party_id,
-                                                   dst_role=_role,
-                                                   dst_party_id=_party_id,
-                                                   data_type=obj_type,
-                                                   options=_options)
+            federation_header = ErRollSiteHeader(
+                roll_site_session_id=self.federation_session_id,
+                name=self.name,
+                tag=self.tag,
+                src_role=self.local_role,
+                src_party_id=self.party_id,
+                dst_role=_role,
+                dst_party_id=_party_id,
+                data_type=obj_type,
+                options=_options)
             _tagged_key = create_store_name(federation_header)
             L.debug(f"pushing start party:{type(obj)}, {_tagged_key}")
             namespace = self.federation_session_id
@@ -287,13 +288,14 @@ class RollSite:
         futures = []
         for src_role, src_party_id in parties:
             src_party_id = str(src_party_id)
-            federation_header = ErFederationHeader(federation_session_id=self.federation_session_id,
-                                                   name=self.name,
-                                                   tag=self.tag,
-                                                   src_role=src_role,
-                                                   src_party_id=src_party_id,
-                                                   dst_role=self.local_role,
-                                                   dst_party_id=self.party_id)
+            federation_header = ErRollSiteHeader(
+                roll_site_session_id=self.federation_session_id,
+                name=self.name,
+                tag=self.tag,
+                src_role=src_role,
+                src_party_id=src_party_id,
+                dst_role=self.local_role,
+                dst_party_id=self.party_id)
             _tagged_key = create_store_name(federation_header)
 
             name = _tagged_key

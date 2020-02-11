@@ -22,21 +22,21 @@ import java.nio.ByteBuffer
 import com.google.protobuf.ByteString
 import com.webank.eggroll.core.ErSession
 import com.webank.eggroll.core.datastructure.LinkedBlockingBroker
-import com.webank.eggroll.core.meta.ErFederationHeader
+import com.webank.eggroll.core.meta.ErRollSiteHeader
 import com.webank.eggroll.rollpair.{RollPair, RollPairContext}
 
 
 class RollSiteUtil(val erSessionId: String,
-                   federationHeader: ErFederationHeader,
+                   rollSiteHeader: ErRollSiteHeader,
                    options: Map[String, String] = Map.empty) {
   private val session =  new ErSession(sessionId = erSessionId, createIfNotExists = false)
   private val ctx = new RollPairContext(session)
   //private val nameStripped = name
-  val namespace = federationHeader.federationSessionId
-  val name = federationHeader.concat()
+  val namespace = rollSiteHeader.rollSiteSessionId
+  val name = rollSiteHeader.concat()
 
   println("scalaPutBatch  name:" + name + ",namespace:" + namespace)
-  val rp: RollPair = ctx.load(namespace, name, options = federationHeader.options)
+  val rp: RollPair = ctx.load(namespace, name, options = rollSiteHeader.options)
 
   Runtime.getRuntime.addShutdownHook(new Thread(){
     override def run(): Unit = {

@@ -25,7 +25,7 @@ from eggroll.core.pair_store.format import PairBinWriter, ArrayByteBuffer
 from eggroll.core.proto import meta_pb2
 from eggroll.core.proto import proxy_pb2, proxy_pb2_grpc
 from eggroll.core.serdes import eggroll_serdes
-from eggroll.core.transfer_model import ErFederationHeader
+from eggroll.core.transfer_model import ErRollSiteHeader
 from eggroll.core.utils import stringify_charset
 from eggroll.roll_site.utils.roll_site_utils import create_store_name
 from eggroll.utils.log_utils import get_logger
@@ -41,7 +41,7 @@ class RollSiteAdapter(PairAdapter):
 
         self.namespace = options["path"].split("/")[-3]
         self.federation_header_string = options['federation_header']
-        self.federation_header = ErFederationHeader.from_proto_string(self.federation_header_string.encode(stringify_charset))
+        self.federation_header = ErRollSiteHeader.from_proto_string(self.federation_header_string.encode(stringify_charset))
         self.proxy_endpoint = ErEndpoint.from_proto_string(options['proxy_endpoint'].encode(stringify_charset))
 
         name = options["path"].split("/")[-2]
@@ -102,7 +102,7 @@ class RollSiteWriteBatch(PairWriteBatch):
             options = {}
         self.adapter = adapter
 
-        self.federation_header: ErFederationHeader = adapter.federation_header
+        self.federation_header: ErRollSiteHeader = adapter.federation_header
         self.namespace = adapter.namespace
         self.name = create_store_name(self.federation_header)
 
