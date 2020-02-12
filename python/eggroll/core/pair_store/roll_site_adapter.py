@@ -100,7 +100,7 @@ class RollSiteWriteBatch(PairWriteBatch):
         channel = self.grpc_channel_factory.create_channel(self.proxy_endpoint)
         self.stub = proxy_pb2_grpc.DataTransferServiceStub(channel)
 
-        self.__bin_packet_len = 1 << 20
+        self.__bin_packet_len = 32 << 20
         self.total_written = 0
 
         self.ba = bytearray(self.__bin_packet_len)
@@ -164,7 +164,7 @@ class RollSiteWriteBatch(PairWriteBatch):
                 time.sleep(min(0.1 * i, 30))
 
         if exception:
-            raise GrpcCallError("error in push", self.proxy_endpoint, e)
+            raise GrpcCallError("error in push", self.proxy_endpoint, exception)
 
     def write(self):
         bin_data = bytes(self.ba[0:self.buffer.get_offset()])
