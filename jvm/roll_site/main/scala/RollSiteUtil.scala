@@ -51,6 +51,9 @@ class RollSiteUtil(val erSessionId: String,
   }
 
   def putBatch(value: ByteString): Unit = {
+    if(value.size() == 0) {
+      throw new IllegalArgumentException("roll site push batch zero size:" + name)
+    }
     val broker = new LinkedBlockingBroker[ByteString]()
     broker.put(value)
     broker.signalWriteFinish()

@@ -251,6 +251,7 @@ class RollPair(object):
     UNION = 'union'
 
     def __setstate__(self, state):
+        self.gc_enable = None
         pass
 
     def __getstate__(self):
