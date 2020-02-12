@@ -29,7 +29,7 @@ props_file_guest = default_props_file
 props_file_guest = default_props_file + '.guest'
 
 
-row_limit = 30000000
+row_limit = 3
 
 
 def data_generator(limit):
@@ -228,8 +228,8 @@ class TestRollSiteCluster(TestRollSiteBase):
     @classmethod
     def setUpClass(cls) -> None:
         opts = {"eggroll.session.max.processors.per.node": "3"}
-        cls.rs_context_host = get_cluster_context(role='host', options=opts, props_file=props_file_host)
         cls.rs_context_guest = get_cluster_context(role='guest', options=opts, props_file=props_file_guest)
+        cls.rs_context_host = get_cluster_context(role='host', options=opts, props_file=props_file_host)
 
     @classmethod
     def tearDownClass(cls) -> None:
