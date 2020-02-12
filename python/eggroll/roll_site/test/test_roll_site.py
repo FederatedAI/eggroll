@@ -29,7 +29,7 @@ props_file_guest = default_props_file
 props_file_guest = default_props_file + '.guest'
 
 
-row_limit = 100
+row_limit = 3
 
 
 def data_generator(limit):
@@ -51,7 +51,7 @@ class TestRollSiteBase(unittest.TestCase):
     _rp_rs_name_big = "roll_pair_name.table.big"
     _rp_rs_tag_big = "roll_pair_tag.big"
 
-    _rp_rs_name_big_mp = "roll_pair_name.table.big.mp.small"
+    _rp_rs_name_big_mp = "roll_pair_name.table.big.mp.0"
     _rp_rs_tag_big_mp = "roll_pair_tag.big.mp"
 
     @classmethod

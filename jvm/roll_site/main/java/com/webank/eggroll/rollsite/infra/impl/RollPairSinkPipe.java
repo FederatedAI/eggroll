@@ -65,7 +65,7 @@ public class RollPairSinkPipe extends BasePipe {
   @Override
   public void write(Object o) {
     if (o instanceof ByteString) {
-      this.rollSiteUtil.putBatch(((ByteString) o).asReadOnlyByteBuffer());
+      this.rollSiteUtil.putBatch((ByteString) o);
     } else {
       throw new IllegalArgumentException("Argument must be a ByteString instance");
     }
