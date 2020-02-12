@@ -26,6 +26,7 @@ from eggroll.core.proto import proxy_pb2, proxy_pb2_grpc
 from eggroll.core.serdes import eggroll_serdes
 from eggroll.core.transfer_model import ErRollSiteHeader
 from eggroll.core.utils import _stringify
+from eggroll.core.utils import to_one_line_string
 from eggroll.roll_pair.roll_pair import RollPair, RollPairContext
 from eggroll.roll_site.utils.roll_site_utils import create_store_name, DELIM
 from eggroll.utils import log_utils
@@ -39,8 +40,10 @@ STATUS_TABLE_NAME = "__roll_site_standalone_status__"
 class RollSiteContext:
     grpc_channel_factory = GrpcChannelFactory()
 
-    def __init__(self, federation_session_id, options, rp_ctx: RollPairContext):
-        self.federation_session_id = federation_session_id
+    def __init__(self, roll_site_session_id, rp_ctx: RollPairContext, options: dict = None):
+        if options is None:
+            options = {}
+        self.roll_site_session_id = roll_site_session_id
         self.rp_ctx = rp_ctx
 
         self.role = options["self_role"]
@@ -52,7 +55,7 @@ class RollSiteContext:
         else:
             channel = self.grpc_channel_factory.create_channel(self.proxy_endpoint)
             self.stub = proxy_pb2_grpc.DataTransferServiceStub(channel)
-            self.init_job_session_pair(self.federation_session_id, self.rp_ctx.session_id)
+            self.init_job_session_pair(self.roll_site_session_id, self.rp_ctx.session_id)
 
         self.push_count = 0
         self.rp_ctx.get_session().add_exit_task(self.push_complete)
@@ -105,7 +108,7 @@ class RollSiteContext:
             packet = proxy_pb2.Packet(header=metadata)
 
             self.stub.unaryCall(packet)
-            L.info(f"send RollSiteContext init to Proxy: {packet}")
+            L.info(f"send RollSiteContext init to Proxy: {to_one_line_string(packet)}")
         except Exception as e:
             raise GrpcCallError("init_job_session_pair", self.proxy_endpoint, e)
 
@@ -125,7 +128,7 @@ class RollSite:
         self.party_id = self.ctx.party_id
         self.dst_host = self.ctx.proxy_endpoint._host
         self.dst_port = self.ctx.proxy_endpoint._port
-        self.federation_session_id = self.ctx.federation_session_id
+        self.federation_session_id = self.ctx.roll_site_session_id
         self.local_role = self.ctx.role
         self.name = name
         self.tag = tag
@@ -145,12 +148,12 @@ class RollSite:
             is_standalone = self.ctx.rp_ctx.get_session().get_option(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE) \
                             == "standalone"
             if is_standalone:
-                status_rp = self.ctx.rp_ctx.load(namespace, STATUS_TABLE_NAME + DELIM + self.ctx.federation_session_id)
+                status_rp = self.ctx.rp_ctx.load(namespace, STATUS_TABLE_NAME + DELIM + self.ctx.roll_site_session_id)
                 retry_cnt = 0
                 # TODO:0: sleep retry count and timeout
                 while True:
                     msg = f"retry pull: retry_cnt: {retry_cnt}," + \
-                          f" tagged_key: '{table_name}', packet: {packet}, namespace: {namespace}"
+                          f" tagged_key: '{table_name}', packet: {to_one_line_string(packet)}, namespace: {namespace}"
                     if retry_cnt % 10 == 0:
                         L.info(msg)
                     else:
@@ -162,14 +165,14 @@ class RollSite:
                         table_name = ret_list[1]
                         obj_type = ret_list[0]
                         break
-                    time.sleep(min(0.1*retry_cnt, 60))
+                    time.sleep(min(0.1 * retry_cnt, 60))
 
             else:
                 retry_cnt = 0
                 ret_packet = self.stub.unaryCall(packet)
                 while ret_packet.header.ack != 123:
                     msg = f"retry pull: retry_cnt: {retry_cnt}," + \
-                          f" store_name: '{table_name}', packet: {packet}, namespace: {namespace}"
+                          f" store_name: '{table_name}', packet: {to_one_line_string(packet)}, namespace: {namespace}"
                     if retry_cnt % 10 == 0:
                         L.info(msg)
                     else:
@@ -182,7 +185,7 @@ class RollSite:
                 obj_type = ret_packet.body.value
 
                 table_namespace = self.federation_session_id
-            L.debug(f"pull status done: table_name:{table_name}, packet:{packet}, namespace:{namespace}")
+            L.debug(f"pull status done: table_name:{table_name}, packet:{to_one_line_string(packet)}, namespace:{namespace}")
             rp = self.ctx.rp_ctx.load(namespace=table_namespace, name=table_name)
             result = rp.get(table_name) if obj_type == b'object' else rp
             L.info(f"pull success: {table_name}, count: {rp.count()}, type: {obj_type}")
@@ -238,7 +241,7 @@ class RollSite:
                                            obj_type])
                     store_type = StoreTypes.ROLLPAIR_ROLLSITE
                 if is_standalone:
-                    status_rp = self.ctx.rp_ctx.load(namespace, STATUS_TABLE_NAME + DELIM + self.federation_session_id, self)
+                    status_rp = self.ctx.rp_ctx.load(namespace, STATUS_TABLE_NAME + DELIM + self.federation_session_id, options=_options)
                     status_rp.disable_gc()
                     if isinstance(obj, RollPair):
                         status_rp.put(_tagged_key, (obj_type.encode("utf-8"), rp.get_name(), rp.get_namespace()))
@@ -322,7 +325,7 @@ class RollSite:
 
             packet = proxy_pb2.Packet(header=metadata)
             namespace = self.federation_session_id
-            L.info(f"pulling prepared tagged_key: {_tagged_key}, packet:{packet}")
+            L.info(f"pulling prepared tagged_key: {_tagged_key}, packet:{to_one_line_string(packet)}")
             futures.append(self.process_pool.submit(RollSite._thread_receive, self, packet, namespace, federation_header))
 
         self.process_pool.shutdown(wait=False)
