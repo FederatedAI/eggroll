@@ -14,6 +14,7 @@
 #  limitations under the License.
 #
 import sys
+import time
 
 from eggroll.core.constants import StoreTypes
 from eggroll.core.error import GrpcCallError
@@ -40,30 +41,18 @@ class RollSiteAdapter(PairAdapter):
         super().__init__(options)
 
         self.namespace = options["path"].split("/")[-3]
-        self.federation_header_string = options['federation_header']
-        self.federation_header = ErRollSiteHeader.from_proto_string(self.federation_header_string.encode(stringify_charset))
+        self.roll_site_header_string = options['roll_site_header']
+        self.roll_site_header = ErRollSiteHeader.from_proto_string(self.roll_site_header_string.encode(stringify_charset))
         self.proxy_endpoint = ErEndpoint.from_proto_string(options['proxy_endpoint'].encode(stringify_charset))
 
-        name = options["path"].split("/")[-2]
-        print("self._name:", name)
         self.obj_type = options['obj_type']
 
-        # args = name.split(DELIM, 11)  #args[8]='9394/0'
-        # print(args)
-        #
-        # self.job_id = args[1]
-        # self.name = args[2]
-        # self.tag = args[3]
-        # self.src_role = args[4]
-        # self.src_party_id = args[5]
-        # self.dst_role = args[6]
-        # self.dst_party_id = args[7]
-        # self._dst_host = args[8]
-        # self._dst_port = int(args[9])
-        # self.obj_type = args[10]          #obj or rollpair
-
         er_partition = options['er_partition']
+        self.partition = er_partition
         self.store_locator = er_partition._store_locator
+        self.partition_id = er_partition._id
+
+        self.namespace = self.store_locator._namespace
 
         _store_type = StoreTypes.ROLLPAIR_ROLLSITE
         self._store_locator = meta_pb2.StoreLocator(storeType=_store_type,
@@ -73,9 +62,7 @@ class RollSiteAdapter(PairAdapter):
                                                     serdes=self.store_locator._serdes,
                                                     totalPartitions=self.store_locator._total_partitions)
 
-    # def to_proto(self):
-    #     return meta_pb2.Store(storeLocator=self._store_locator,
-    #                           partitions=_elements_to_proto(self._partitions))
+        L.info(f"proxy_endpoint: {self.proxy_endpoint}, partition: {self.partition}")
 
     def close(self):
         pass
@@ -102,9 +89,9 @@ class RollSiteWriteBatch(PairWriteBatch):
             options = {}
         self.adapter = adapter
 
-        self.federation_header: ErRollSiteHeader = adapter.federation_header
+        self.roll_site_header: ErRollSiteHeader = adapter.roll_site_header
         self.namespace = adapter.namespace
-        self.name = create_store_name(self.federation_header)
+        self.name = create_store_name(self.roll_site_header)
 
         self.tagged_key = ''
         self.obj_type = adapter.obj_type
@@ -113,22 +100,24 @@ class RollSiteWriteBatch(PairWriteBatch):
         channel = self.grpc_channel_factory.create_channel(self.proxy_endpoint)
         self.stub = proxy_pb2_grpc.DataTransferServiceStub(channel)
 
-        self.__bin_packet_len = 16 << 20
+        self.__bin_packet_len = 1 << 20
         self.total_written = 0
 
         self.ba = bytearray(self.__bin_packet_len)
         self.buffer = ArrayByteBuffer(self.ba)
         self.writer = PairBinWriter(pair_buffer=self.buffer)
 
-        self.topic_src = proxy_pb2.Topic(name=self.name, partyId=self.federation_header._src_party_id,
-                                         role=self.federation_header._src_role, callback=None)
-        self.topic_dst = proxy_pb2.Topic(name=self.name, partyId=self.federation_header._dst_party_id,
-                                         role=self.federation_header._dst_role, callback=None)
+        self.push_cnt = 0
+
+        self.topic_src = proxy_pb2.Topic(name=self.name, partyId=self.roll_site_header._src_party_id,
+                                         role=self.roll_site_header._src_role, callback=None)
+        self.topic_dst = proxy_pb2.Topic(name=self.name, partyId=self.roll_site_header._dst_party_id,
+                                         role=self.roll_site_header._dst_role, callback=None)
 
     def __repr__(self):
         return f'<ErRollSiteWriteBatch(' \
                f'adapter={self.adapter}, ' \
-               f'roll_site_header={self.federation_header}' \
+               f'roll_site_header={self.roll_site_header}' \
                f'namespace={self.namespace}, ' \
                f'name={self.name}, ' \
                f'obj_type={self.obj_type}, ' \
@@ -136,15 +125,16 @@ class RollSiteWriteBatch(PairWriteBatch):
                f'at {hex(id(self))}>'
 
     def generate_message(self, obj, metadata):
-        #while True:
-            data = proxy_pb2.Data(value=obj)
-            metadata.seq += 1
-            packet = proxy_pb2.Packet(header=metadata, body=data)
-            yield packet
+        data = proxy_pb2.Data(value=obj)
+        metadata.seq += 1
+        packet = proxy_pb2.Packet(header=metadata, body=data)
+        yield packet
 
     # TODO:0: configurable
     def push(self, obj):
-        task_info = proxy_pb2.Task(taskId=self.name, model=proxy_pb2.Model(name=self.adapter.federation_header_string, dataKey=self.namespace))
+        self.increase_push_count()
+        L.debug(f'pushing for task: {self.name}, partition id: {self.adapter.partition_id}, push cnt: {self.get_push_count()}')
+        task_info = proxy_pb2.Task(taskId=self.name, model=proxy_pb2.Model(name=self.adapter.roll_site_header_string, dataKey=self.namespace))
 
         command_test = proxy_pb2.Command()
 
@@ -161,18 +151,29 @@ class RollSiteWriteBatch(PairWriteBatch):
                                       seq=0,
                                       ack=0)
 
-        try:
-            self.stub.push(self.generate_message(obj, metadata))
-        except Exception as e:
-            raise GrpcCallError("push", self.proxy_endpoint, e)
+        max_retry_cnt = 60
+        exception = None
+        for i in range(1, max_retry_cnt + 1):
+            try:
+                self.stub.push(self.generate_message(obj, metadata))
+                exception = None
+                break
+            except Exception as e:
+                exception = e
+                L.info(f'caught exception in pushing {self.name}, partition_id: {self.adapter.partition_id}: {e}. retrying. current retry count: {i}, max_retry_cnt: {max_retry_cnt}')
+                time.sleep(min(0.1 * i, 30))
+
+        if exception:
+            raise GrpcCallError("error in push", self.proxy_endpoint, e)
 
     def write(self):
         bin_data = bytes(self.ba[0:self.buffer.get_offset()])
         self.push(bin_data)
+        self.buffer = ArrayByteBuffer(self.ba)
 
     def send_end(self):
-        print("send_end tagged_key:", self.tagged_key)
-        task_info = proxy_pb2.Task(taskId=self.name, model=proxy_pb2.Model(name=self.adapter.federation_header_string, dataKey=self.namespace))
+        L.info(f"send_end tagged_key:{self.tagged_key}")
+        task_info = proxy_pb2.Task(taskId=self.name, model=proxy_pb2.Model(name=self.adapter.roll_site_header_string, dataKey=self.namespace))
 
         command_test = proxy_pb2.Command(name="set_status")
         conf_test = proxy_pb2.Conf(overallTimeout=20000,
@@ -200,6 +201,7 @@ class RollSiteWriteBatch(PairWriteBatch):
         bin_batch = bytes(self.ba[0:self.buffer.get_offset()])
         self.push(bin_batch)
         self.send_end()
+        L.info(f'closing RollSiteWriteBatch for name: {self.name}, total push count: {self.push_cnt}')
 
     def put(self, k, v):
         if self.obj_type == 'object':
@@ -220,9 +222,15 @@ class RollSiteWriteBatch(PairWriteBatch):
             L.error("Unexpected error: ", sys.exc_info()[0])
             raise
 
+    def increase_push_count(self):
+        self.push_cnt += 1
+
+    def get_push_count(self):
+        return self.push_cnt
+
 
 class RollSiteIterator(PairIterator):
-    def __init__(self, adapter):
+    def __init__(self, adapter: RollSiteAdapter):
         self.adapter = adapter
         self.it = adapter.db.iteritems()
         self.it.seek_to_first()
@@ -252,4 +260,3 @@ class RollSiteIterator(PairIterator):
 
     def __iter__(self):
         return self.it
-
