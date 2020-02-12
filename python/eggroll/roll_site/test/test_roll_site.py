@@ -29,7 +29,7 @@ props_file_guest = default_props_file
 props_file_guest = default_props_file + '.guest'
 
 
-row_limit = 3
+row_limit = 30000000
 
 
 def data_generator(limit):
@@ -212,9 +212,15 @@ class TestRollSiteStandalone(TestRollSiteBase):
         super().test_get()
 
     def test_remote_rollpair(self):
-        super().test_remote_rollpair()
+            super().test_remote_rollpair()
 
     def test_get_rollpair(self):
+        super().test_get_rollpair()
+
+    def test_remote_rollpair_big_multi_partitions(self):
+        super().test_remote_rollpair()
+
+    def test_get_rollpair_big_multi_partitions(self):
         super().test_get_rollpair()
 
 
