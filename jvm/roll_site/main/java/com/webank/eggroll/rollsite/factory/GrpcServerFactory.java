@@ -92,7 +92,7 @@ public class GrpcServerFactory {
 
         serverBuilder.addService(dataTransferPipedServer)
                 .addService(routeServer)
-                .maxConcurrentCallsPerConnection(20000)
+                .maxConcurrentCallsPerConnection(20000).maxInboundMetadataSize(2 << 20)
                 .maxInboundMessageSize(32 << 20)
                 .flowControlWindow(32 << 20)
                 .keepAliveTime(6, TimeUnit.MINUTES)
