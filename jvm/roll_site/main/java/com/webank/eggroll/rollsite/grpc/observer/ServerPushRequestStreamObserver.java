@@ -235,7 +235,13 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
                     }
                 }
 
-                rollSiteUtil.putBatch(value.asReadOnlyByteBuffer());
+                if (value == null) {
+                    IllegalStateException e = new IllegalStateException("value is null for name: " + name);
+                    onError(e);
+                    throw e;
+                }
+
+                rollSiteUtil.putBatch(value);
                 LOGGER.info("end putBatch");
             }
 
@@ -301,6 +307,11 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
         long loopEndTimestamp = completionWaitStartTimestamp;
         long waitCount = 0;
 
+        if (inputMetadata == null) {
+            IllegalStateException e = new IllegalStateException("input metadata is null in onComplete");
+            onError(e);
+            throw e;
+        }
         if(proxyServerConf.getPartyId().equals(inputMetadata.getDst().getPartyId())) {
             pipe.setDrained();
             pipe.onComplete();

@@ -12,9 +12,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-import os
 import sys
-import threading
 import uuid
 from concurrent.futures import wait, FIRST_EXCEPTION
 from threading import Thread
@@ -281,14 +279,12 @@ class RollPair(object):
             self.ctx.gc_recorder.delete_record(self.__store)
             L.debug(f'del rp: {self}')
             self.destroy()
-            L.debug("process {} thread {} run {} del table name:{}, namespace:{}".
-                         format(os.getpid(), threading.currentThread().ident,
-                                sys._getframe().f_code.co_name,
-                                self.__store._store_locator._name,
-                                self.__store._store_locator._namespace))
+            L.debug(f"running gc: {sys._getframe().f_code.co_name}. "
+                    f"deleting store name: {self.__store._store_locator._name}, "
+                    f"namespace: {self.__store._store_locator._namespace}")
 
     def __repr__(self):
-        return f'python RollPair(_store={self.__store})'
+        return f'<RollPair(_store={self.__store}) at {hex(id(self))}>'
 
     def enable_gc(self):
         self.gc_enable = True

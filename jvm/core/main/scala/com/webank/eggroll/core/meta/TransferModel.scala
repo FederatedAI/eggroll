@@ -32,7 +32,7 @@ trait TransferRpcMessage extends RpcMessage {
 
 case class ErTransferHeader(id: Int, tag: String, totalSize: Long, status: String = StringConstants.EMPTY) extends TransferRpcMessage
 
-case class ErTransferBatch(header: ErTransferHeader, data: Array[Byte]) extends TransferRpcMessage
+case class ErTransferBatch(header: ErTransferHeader, data: Array[Byte] = Array.emptyByteArray) extends TransferRpcMessage
 
 case class ErRollSiteHeader(rollSiteSessionId: String,
                             name: String,
@@ -67,12 +67,13 @@ object TransferModelPbMessageSerdes {
       baseSerializable.asInstanceOf[ErTransferHeader].toBytes()
   }
 
-  implicit class ErBatchToPbMessage(src: ErTransferBatch) extends PbMessageSerializer {
+  implicit class ErTransferBatchToPbMessage(src: ErTransferBatch) extends PbMessageSerializer {
     override def toProto[T >: Message](): Transfer.TransferBatch = {
       val builder = Transfer.TransferBatch.newBuilder()
         .setHeader(src.header.toProto())
-        .setData(ByteString.copyFrom(src.data))
         .setBatchSize(src.data.size)
+
+        if (src.data.length > 0) builder.setData(ByteString.copyFrom(src.data))
 
       builder.build()
     }
@@ -102,7 +103,7 @@ object TransferModelPbMessageSerdes {
   }
 
   // deserializers
-  implicit class ErBatchIdFromPbMessage(src: Transfer.TransferHeader) extends PbMessageDeserializer {
+  implicit class ErTransferHeaderFromPbMessage(src: Transfer.TransferHeader) extends PbMessageDeserializer {
     override def fromProto[T >: RpcMessage](): ErTransferHeader = {
       ErTransferHeader(id = src.getId, tag = src.getTag, totalSize = src.getTotalSize, status = src.getStatus)
     }
@@ -111,7 +112,7 @@ object TransferModelPbMessageSerdes {
       Transfer.TransferHeader.parseFrom(bytes).fromProto()
   }
 
-  implicit class ErBatchFromPbMessage(src: Transfer.TransferBatch) extends PbMessageDeserializer {
+  implicit class ErTransferBatchFromPbMessage(src: Transfer.TransferBatch) extends PbMessageDeserializer {
     override def fromProto[T >: RpcMessage](): ErTransferBatch = {
       ErTransferBatch(header = src.getHeader.fromProto(), data = src.getData.toByteArray)
     }
