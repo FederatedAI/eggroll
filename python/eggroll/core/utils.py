@@ -12,13 +12,12 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import json
-import sys
 import time
 import traceback
 import uuid
-import numpy as np
 from datetime import datetime
 
+import numpy as np
 from google.protobuf.text_format import MessageToString
 
 static_er_conf = {}
@@ -179,5 +178,7 @@ def hash_code(s):
     return abs(h)
 
 
-def to_one_line_string(proto_msg, as_one_line=True):
-    return MessageToString(proto_msg, as_one_line=as_one_line)
+def to_one_line_string(msg, as_one_line=True):
+    if isinstance(msg, str) or isinstance(msg, bytes):
+        return msg
+    return MessageToString(msg, as_one_line=as_one_line)

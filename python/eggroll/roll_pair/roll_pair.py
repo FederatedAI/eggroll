@@ -344,7 +344,7 @@ class RollPair(object):
         partition_id = self.partitioner(k)
         egg = self.ctx.route_to_egg(self.__store._partitions[partition_id])
         L.info(egg._command_endpoint)
-        L.info(f"count:{self.__store._store_locator._total_partitions}")
+        L.info(f"partitions count: {self.__store._store_locator._total_partitions}")
         inputs = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
         output = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
 
@@ -482,7 +482,7 @@ class RollPair(object):
             bb.signal_write_finish()
 
         scatter_results = scatter_future.result()
-        L.debug(f"scatter_results:{scatter_results}")
+        L.debug(f"scatter_results: {scatter_results}")
         th.join()
         return RollPair(populated_store, self.ctx)
 

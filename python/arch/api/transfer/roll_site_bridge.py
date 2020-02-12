@@ -42,7 +42,7 @@ def init_roll_site_context(runtime_conf, session_id):
                'proxy_endpoint': ErEndpoint(host, int(port))
               }
 
-    rs_context = RollSiteContext(session_id, options=options, rp_ctx=rp_context)
+    rs_context = RollSiteContext(session_id, rp_ctx=rp_context, options=options)
     LOGGER.info("init_roll_site_context done: {}".format(rs_context.__dict__))
     return rp_context, rs_context
 

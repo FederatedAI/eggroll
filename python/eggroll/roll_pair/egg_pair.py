@@ -132,7 +132,6 @@ class EggPair(object):
             tag = f'{task._id}'
             def generate_broker():
                 with create_adapter(task._inputs[0]) as db, db.iteritems() as rb:
-                    print("create_adapter")
                     yield from TransferPair.pair_to_bin_batch(rb)
                     # TODO:0 how to remove?
                     # TransferService.remove_broker(tag)
@@ -410,7 +409,7 @@ def serve(args):
             route_to_class_name="EggPair",
             route_to_method_name="run_task")
 
-    command_server = grpc.server(futures.ThreadPoolExecutor(max_workers=500, thread_name_prefix="command_server"),
+    command_server = grpc.server(futures.ThreadPoolExecutor(max_workers=500, thread_name_prefix="grpc_server"),
                                  options=[
                                      ("grpc.max_metadata_size", 32 << 20),
                                      (cygrpc.ChannelArgKey.max_send_message_length, 2 << 30 - 1),
