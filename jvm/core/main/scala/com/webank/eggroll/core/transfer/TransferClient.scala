@@ -272,10 +272,14 @@ class TransferSendStreamProcessor(clientCallStreamObserver: ClientCallStreamObse
                                   status: String)
   extends BaseClientCallStreamProcessor[Transfer.TransferBatch](clientCallStreamObserver) {
   override def onProcess(): Unit = {
+    val finalData = if (data != null) data else Array.emptyByteArray
     val batch = ErTransferBatch(
       header = ErTransferHeader(
-        id = 100, tag = this.tag, totalSize = data.size, status = this.status),
-      data = this.data)
+        id = 100,
+        tag = tag,
+        totalSize = finalData.size,
+        status = status),
+      data = finalData)
     clientCallStreamObserver.onNext(batch.toProto())
   }
 }

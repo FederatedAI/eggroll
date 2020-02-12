@@ -40,29 +40,32 @@ class RollSiteAdapter(PairAdapter):
     def __init__(self, options):
         super().__init__(options)
 
-        self.namespace = options["path"].split("/")[-3]
-        self.roll_site_header_string = options['roll_site_header']
-        self.roll_site_header = ErRollSiteHeader.from_proto_string(self.roll_site_header_string.encode(stringify_charset))
-        self.proxy_endpoint = ErEndpoint.from_proto_string(options['proxy_endpoint'].encode(stringify_charset))
+        try:
+            self.roll_site_header_string = options['roll_site_header']
+            self.roll_site_header = ErRollSiteHeader.from_proto_string(self.roll_site_header_string.encode(stringify_charset))
+            self.proxy_endpoint = ErEndpoint.from_proto_string(options['proxy_endpoint'].encode(stringify_charset))
 
-        self.obj_type = options['obj_type']
+            self.obj_type = options['obj_type']
 
-        er_partition = options['er_partition']
-        self.partition = er_partition
-        self.store_locator = er_partition._store_locator
-        self.partition_id = er_partition._id
+            er_partition = options['er_partition']
+            self.partition = er_partition
+            self.store_locator = er_partition._store_locator
+            self.partition_id = er_partition._id
 
-        self.namespace = self.store_locator._namespace
+            self.namespace = self.store_locator._namespace
 
-        _store_type = StoreTypes.ROLLPAIR_ROLLSITE
-        self._store_locator = meta_pb2.StoreLocator(storeType=_store_type,
-                                                    namespace=self.namespace,
-                                                    name=self.store_locator._name,
-                                                    partitioner=self.store_locator._partitioner,
-                                                    serdes=self.store_locator._serdes,
-                                                    totalPartitions=self.store_locator._total_partitions)
+            _store_type = StoreTypes.ROLLPAIR_ROLLSITE
+            self._store_locator = meta_pb2.StoreLocator(storeType=_store_type,
+                                                        namespace=self.namespace,
+                                                        name=self.store_locator._name,
+                                                        partitioner=self.store_locator._partitioner,
+                                                        serdes=self.store_locator._serdes,
+                                                        totalPartitions=self.store_locator._total_partitions)
 
-        L.info(f"proxy_endpoint: {self.proxy_endpoint}, partition: {self.partition}")
+            L.info(f"proxy_endpoint: {self.proxy_endpoint}, partition: {self.partition}")
+        except Exception as e:
+            L.warn(f'options: {options}')
+            raise e
 
     def close(self):
         pass
@@ -201,13 +204,13 @@ class RollSiteWriteBatch(PairWriteBatch):
         bin_batch = bytes(self.ba[0:self.buffer.get_offset()])
         self.push(bin_batch)
         self.send_end()
-        L.info(f'closing RollSiteWriteBatch for name: {self.name}, total push count: {self.push_cnt}')
+        L.info(f'closing RollSiteWriteBatch for name: {self.name}, '
+               f'total push count: {self.push_cnt}')
 
     def put(self, k, v):
         if self.obj_type == 'object':
-            L.debug("set tagged_key:", k)
+            L.debug(f"set tagged_key: {k}")
             self.tagged_key = _serdes.deserialize(k)
-
         try:
             self.writer.write(k, v)
         except IndexError as e:
@@ -218,9 +221,9 @@ class RollSiteWriteBatch(PairWriteBatch):
             self.buffer = ArrayByteBuffer(self.ba)
             self.writer = PairBinWriter(pair_buffer=self.buffer)
             self.writer.write(k, v)
-        except:
-            L.error("Unexpected error: ", sys.exc_info()[0])
-            raise
+        except Exception as e:
+            L.error(f"Unexpected error: {sys.exc_info()[0]}")
+            raise e
 
     def increase_push_count(self):
         self.push_cnt += 1

@@ -74,95 +74,114 @@ class RollPair(val store: ErStore, val ctx: RollPairContext, val options: Map[St
   def putBatch(broker: Broker[ByteString], options: Map[String, String] = Map[String, String]()): Unit = {
     val totalPartitions = store.storeLocator.totalPartitions
     val brokers = new Array[Broker[ByteString]](totalPartitions)
+    val transferClients = new Array[GrpcTransferClient](totalPartitions)
+    val putBatchThreads = new Array[Thread](totalPartitions)
 
     val jobId = IdUtils.generateJobId(sessionId = ctx.session.sessionId, tag = options.getOrElse("job_id_tag", StringConstants.EMPTY))
+
     val job = ErJob(id = jobId,
       name = RollPair.PUT_ALL,
       inputs = Array(store),
       outputs = Array(store),
       functors = Array.empty,
       options = options ++ Map(SessionConfKeys.CONFKEY_SESSION_ID -> ctx.session.sessionId))
+    logInfo(s"put batch job: ${job}")
 
-    logInfo(s"mw: job: ${job}")
-    val putBatchThread = new Thread {
-      override def run(): Unit = {
-        logInfo("thread started")
-        val commandClient = new CommandClient(ctx.session.rolls(0).commandEndpoint)
-        commandClient.call[ErJob](RollPair.ROLL_RUN_JOB_COMMAND, job)
-
-        logInfo(s"thread ended for ${jobId}")
-      }
-    }
-    putBatchThread.setName(s"putBatch-${jobId}")
-    putBatchThread.setUncaughtExceptionHandler(new RollPairUncaughtExceptionHandler)
-    putBatchThread.start()
-
-    val transferClients = store.partitions.map(p => {
-      val newBroker = new LinkedBlockingBroker[ByteString]()
-      val partitionId = p.id
-      brokers.update(partitionId, newBroker)
-
-      val newTransferClient = new GrpcTransferClient()
-
-      newTransferClient.initForward(
-        dataBroker = newBroker,
-        tag = IdUtils.generateTaskId(jobId, partitionId),
-        processor = ctx.routeToEgg(store.partitions(partitionId)))
-      newTransferClient
-    })
 
     // todo: create RowPairDB
     while (!broker.isClosable()) {
       val rowPairDB = broker.poll(10, TimeUnit.SECONDS)
 
       if (rowPairDB != null) {
-        val magicNumber = new Array[Byte](4)
-        val protocolVersion = new Array[Byte](4)
+        if (rowPairDB.isEmpty) {
+          logWarning("Empty batch in rowPairDB")
+        } else {
+          val magicNumber = new Array[Byte](4)
+          val protocolVersion = new Array[Byte](4)
 
-        val byteBuffer: ByteBuffer = rowPairDB.asReadOnlyByteBuffer()
-        byteBuffer.order(ByteOrder.BIG_ENDIAN)
-        byteBuffer.get(magicNumber)
-        byteBuffer.get(protocolVersion)
+          val byteBuffer: ByteBuffer = rowPairDB.asReadOnlyByteBuffer()
+          byteBuffer.order(ByteOrder.BIG_ENDIAN)
+          byteBuffer.get(magicNumber)
+          byteBuffer.get(protocolVersion)
 
-        if (!magicNumber.sameElements(NetworkConstants.TRANSFER_PROTOCOL_MAGIC_NUMBER)) {
-          throw new IllegalArgumentException("transfer protocol magic number not match")
+          if (!magicNumber.sameElements(NetworkConstants.TRANSFER_PROTOCOL_MAGIC_NUMBER)) {
+            throw new IllegalArgumentException("transfer protocol magic number not match")
+          }
+
+          if (!protocolVersion.sameElements(NetworkConstants.TRANSFER_PROTOCOL_VERSION)) {
+            throw new IllegalArgumentException("protocol not supported")
+          }
+
+          val headerSize = byteBuffer.getInt
+          if (headerSize > 0) {
+            // todo: process header > 0
+          }
+
+          val bodySize = byteBuffer.getInt()
+
+          if (byteBuffer.remaining() > 0) {
+            val kLen = byteBuffer.getInt()
+            val k = new Array[Byte](kLen)
+            byteBuffer.get(k)
+            logDebug(s"put batch route: ${store.storeLocator},${new String(Base64.getEncoder.encode(k))}, ${ctx.hashKey(k)}, $totalPartitions, ${ctx.hashKey(k) % totalPartitions}")
+            val partitionId = ctx.partitioner(k, totalPartitions)
+
+            val transferClient = if (transferClients(partitionId) == null) {
+              val partition = store.partitions(partitionId)
+              val task = ErTask(id = IdUtils.generateTaskId(job.id, partitionId, RollPair.PUT_BATCH),
+                name = RollPair.PUT_ALL,
+                inputs = Array(partition),
+                outputs = Array(partition),
+                job = job)
+
+              val putBatchThread = new Thread {
+                override def run(): Unit = {
+                  logDebug(s"thread started for put batch task ${task.id}")
+                  val commandClient = new CommandClient(ctx.session.routeToEgg(partition).commandEndpoint)
+                  commandClient.call[ErTask](RollPair.EGG_RUN_TASK_COMMAND, task)
+                  logDebug(s"thread ended for put batch task ${task.id}")
+                }
+              }
+              putBatchThread.setName(s"putBatch-${task.id}")
+              putBatchThread.setUncaughtExceptionHandler(new RollPairUncaughtExceptionHandler)
+              putBatchThread.start()
+
+              putBatchThreads.update(partitionId, putBatchThread)
+
+              val newBroker = new LinkedBlockingBroker[ByteString]()
+              brokers.update(partitionId, newBroker)
+              val newTransferClient = new GrpcTransferClient()
+
+              newTransferClient.initForward(
+                dataBroker = newBroker,
+                tag = IdUtils.generateTaskId(jobId, partitionId, RollPair.PUT_BATCH),
+                processor = ctx.routeToEgg(store.partitions(partitionId)))
+
+              transferClients.update(partitionId, newTransferClient)
+
+              newTransferClient
+            } else {
+              transferClients(partitionId)
+            }
+
+            brokers(partitionId).put(rowPairDB)
+            transferClient.doSend()
+          } // else: skip this packet
         }
-
-        if (!protocolVersion.sameElements(NetworkConstants.TRANSFER_PROTOCOL_VERSION)) {
-          throw new IllegalArgumentException("protocol not supported")
-        }
-
-        val headerSize = byteBuffer.getInt
-        if (headerSize > 0) {
-          // todo: process header > 0
-        }
-
-        val bodySize = byteBuffer.getInt()
-
-        if (byteBuffer.remaining() > 0) {
-          val kLen = byteBuffer.getInt()
-          val k = new Array[Byte](kLen)
-          byteBuffer.get(k)
-          logDebug(s"put batch route: ${store.storeLocator},${new String(Base64.getEncoder.encode(k))}, ${ctx.hashKey(k)}, $totalPartitions, ${ctx.hashKey(k)%totalPartitions}")
-          val partitionId = ctx.partitioner(k, totalPartitions)
-          val transferClient = transferClients(partitionId)
-
-          brokers(partitionId).put(rowPairDB)
-          transferClient.doSend()
-        } // else: skip this packet
       }
     }
 
-    brokers.foreach(b => b.signalWriteFinish())
+    brokers.foreach(b => {
+      if (b != null) b.signalWriteFinish()
+    })
 
-    transferClients.foreach(c =>
-      if (c != null) {
-        c.complete()
-      })
+    transferClients.foreach(c => {
+      if (c != null) c.complete()
+    })
 
-    logDebug(s"[PUTBATCH] joining ${putBatchThread.getName}")
-    putBatchThread.join()
-    logDebug(s"[PUTBATCH] put batch thread joined ${putBatchThread.getName}")
+    putBatchThreads.foreach(t => {
+      if (t != null) t.join()
+    })
   }
 }
 
@@ -188,6 +207,7 @@ object RollPair {
   val MAP_VALUES = "mapValues"
   val PUT = "put"
   val PUT_ALL = "putAll"
+  val PUT_BATCH = "putBatch"
   val REDUCE = "reduce"
   val SAMPLE = "sample"
   val SUBTRACT_BY_KEY = "subtractByKey"
