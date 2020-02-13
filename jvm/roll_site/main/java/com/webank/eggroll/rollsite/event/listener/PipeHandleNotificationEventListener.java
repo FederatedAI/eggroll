@@ -36,6 +36,8 @@ public class PipeHandleNotificationEventListener implements ApplicationListener<
     private static final Logger LOGGER = LogManager.getLogger(PipeHandleNotificationEventListener.class);
     @Autowired
     private ApplicationContext applicationContext;
+//    @Autowired
+//    private ThreadPoolTaskExecutor asyncThreadPool;
 
     @Override
     public void onApplicationEvent(PipeHandleNotificationEvent pipeHandleNotificationEvent) {
@@ -47,6 +49,7 @@ public class PipeHandleNotificationEventListener implements ApplicationListener<
 
         if (pipe instanceof PacketQueuePipe) {
             CascadedCaller cascadedCaller = applicationContext.getBean(CascadedCaller.class, pipeHandlerInfo);
+            //asyncThreadPool.submit(cascadedCaller);
             cascadedCaller.run();
         }
     }

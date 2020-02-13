@@ -325,6 +325,16 @@ class TestRollPairMultiPartition(TestRollPairBase):
         self.assertEqual(st_opts["total_partitions"], rp.get_partitions())
         rp.destroy()
 
+    def test_count(self):
+        super().test_count()
+
+    def test_aggregate_parallelize(self):
+        from operator import mul, add
+        data1 = self.ctx.parallelize([(i, i) for i in range(1, 5)], options={"total_partitions": 1})
+        h2 = data1.aggregate(zero_value=1, seq_op=mul, comb_op=add)
+
+        self.assertEqual(h2.get(b'result'), 24)
+
 
 class TestRollPairStandalone(TestRollPairBase):
     ctx = None

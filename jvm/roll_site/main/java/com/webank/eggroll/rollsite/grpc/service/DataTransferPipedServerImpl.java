@@ -45,8 +45,10 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Scope;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -55,6 +57,10 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
     private static final Logger LOGGER = LogManager.getLogger(DataTransferPipedServerImpl.class);
     @Autowired
     private ApplicationEventPublisher applicationEventPublisher;
+    @Autowired
+    private ApplicationContext applicationContext;
+    @Autowired
+    private ThreadPoolTaskExecutor asyncThreadPool;
     @Autowired
     private ProxyGrpcStreamObserverFactory proxyGrpcStreamObserverFactory;
     @Autowired
@@ -252,7 +258,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
 
                     JobStatus.createLatch(tagKey, totalPartitions);
                 }
-                JobStatus.countDownLatch(tagKey);
+                JobStatus.countDownFinishLatch(tagKey);
                 JobStatus.setType(tagKey, rollSiteHeader.dataType());
 
                 responseObserver.onNext(packet);
@@ -268,7 +274,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                     request.getHeader().getTask().getModel().getName());
                 String tagKey = genTagKey(rollSiteHeader);
 
-                boolean jobFinished = JobStatus.isAllCountDown(tagKey);
+                boolean jobFinished = JobStatus.isAllCountDown(tagKey) && JobStatus.getPutBatchCount(tagKey) == 0;
                 Proxy.Metadata header = request.getHeader();
                 String type = StringConstants.EMPTY();
                 if (jobFinished) {
@@ -279,7 +285,10 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                         .build();
                     type = JobStatus.getType(tagKey);
                 } else {
-                    LOGGER.info("getStatus: job NOT finished: {}", oneLineStringInputMetadata);
+                    LOGGER.info("getStatus: job NOT finished: {}. current latch count: {}, current put batch count: {}",
+                        oneLineStringInputMetadata,
+                        JobStatus.getFinishLatchCount(tagKey),
+                        JobStatus.getPutBatchCount(tagKey));
                     header = Proxy.Metadata.newBuilder().setAck(321).build();
                 }
                 Proxy.Data body = Proxy.Data.newBuilder().setKey(tagKey)
@@ -295,6 +304,8 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
             PipeHandleNotificationEvent event =
                 eventFactory.createPipeHandleNotificationEvent(
                     this, PipeHandleNotificationEvent.Type.UNARY_CALL, request, pipe);
+/*            CascadedCaller cascadedCaller = applicationContext.getBean(CascadedCaller.class, event.getPipeHandlerInfo());
+            asyncThreadPool.submit(cascadedCaller);*/
             applicationEventPublisher.publishEvent(event);
 
             long startTimestamp = System.currentTimeMillis();
