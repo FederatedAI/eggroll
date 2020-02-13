@@ -21,6 +21,7 @@ import com.webank.ai.eggroll.api.networking.proxy.Proxy.Packet;
 import com.webank.eggroll.core.grpc.processor.BaseClientCallStreamProcessor;
 import com.webank.eggroll.rollsite.infra.Pipe;
 import io.grpc.stub.ClientCallStreamObserver;
+import java.util.concurrent.TimeUnit;
 import javax.annotation.PostConstruct;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -114,8 +115,7 @@ public class PushStreamProcessor extends BaseClientCallStreamProcessor<Proxy.Pac
         Proxy.Packet packet = null;
         do {
             //packet = (Proxy.Packet) pipe.read(1, TimeUnit.SECONDS);
-            //packet = (Proxy.Packet) transferBroker.read(1, TimeUnit.SECONDS);
-            packet = (Proxy.Packet) transferBroker.read();
+            packet = (Proxy.Packet) transferBroker.read(1, TimeUnit.SECONDS);
 
             if (packet != null) {
                 Proxy.Metadata outputMetadata = packet.getHeader();

@@ -51,8 +51,10 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Scope;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Component;
 import scala.collection.immutable.Map.Map1;
 
@@ -85,6 +87,10 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
     private final StreamObserver<Proxy.Metadata> responseObserver;
     @Autowired
     private ApplicationEventPublisher applicationEventPublisher;
+    @Autowired
+    private ApplicationContext applicationContext;
+    @Autowired
+    private ThreadPoolTaskExecutor asyncThreadPool;
     @Autowired
     private EventFactory eventFactory;
     @Autowired
@@ -195,6 +201,9 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
                     eventFactory.createPipeHandleNotificationEvent(
                         this, PipeHandleNotificationEvent.Type.PUSH, inputMetadata, pipe);
                 applicationEventPublisher.publishEvent(event);
+
+/*                CascadedCaller caller = applicationContext.getBean(CascadedCaller.class, event.getPipeHandlerInfo());
+                asyncThreadPool.submit(caller);*/
             } else {
                 //Thread thread = new putBatchThread(packet);
                 //thread.start();
@@ -315,10 +324,8 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
         }
 
         LOGGER.info("pipe in onCompleted: {}", pipe);
-        if(proxyServerConf.getPartyId().equals(inputMetadata.getDst().getPartyId())) {
-            pipe.setDrained();
-            pipe.onComplete();
-        }
+        pipe.setDrained();
+        pipe.onComplete();
 
         /*LOGGER.info("closed: {}, completion timeout: {}, overall timeout: {}",
                 pipe.isClosed(),
