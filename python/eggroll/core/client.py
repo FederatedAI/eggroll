@@ -73,7 +73,7 @@ class CommandClient(object):
             else:
                 return []
         except Exception as e:
-            L.exception(f'Error calling to {endpoint}, command_uri: {command_uri}, req:{request}')
+            L.error(f'Error calling to {endpoint}, command_uri: {command_uri}, req:{request}')
             raise CommandCallError(command_uri, endpoint, e)
 
     def async_call(self, args, output_types: list, command_uri: CommandURI, serdes_type=SerdesTypes.PROTOBUF, parallel_size=5):
@@ -224,7 +224,9 @@ class ClusterManagerClient(object):
 
 
 class NodeManagerClient(object):
-    def __init__(self, options={NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HOST: 'localhost', NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT: 9394}):
+    def __init__(self, options: dict = None):
+        if options is None:
+            options = {}
         self.__endpoint = ErEndpoint(options[NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HOST], int(options[NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT]))
         if 'serdes_type' in options:
             self.__serdes_type = options['serdes_type']

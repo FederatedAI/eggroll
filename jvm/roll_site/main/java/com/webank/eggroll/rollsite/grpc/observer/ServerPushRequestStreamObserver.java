@@ -33,6 +33,7 @@ import com.webank.eggroll.rollsite.helper.ModelValidationHelper;
 import com.webank.eggroll.rollsite.infra.JobStatus;
 import com.webank.eggroll.rollsite.infra.Pipe;
 import com.webank.eggroll.rollsite.infra.impl.PacketQueuePipe;
+import com.webank.eggroll.rollsite.infra.impl.PacketQueueSingleResultPipe;
 import com.webank.eggroll.rollsite.manager.StatsManager;
 import com.webank.eggroll.rollsite.model.ProxyServerConf;
 import com.webank.eggroll.rollsite.model.StreamStat;
@@ -178,7 +179,7 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
 
         LOGGER.info("model name: {}", inputMetadata.getTask().getModel().getName());
 
-        pipe = pipeFactory.create(inputMetadata.getTask().getTaskId());
+        pipe = new PacketQueueSingleResultPipe(inputMetadata);
         if (noError) {
             pipe.write(packet);
             ackCount.incrementAndGet();
@@ -242,7 +243,7 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
                 }
 
                 rollSiteUtil.putBatch(value);
-                LOGGER.info("end putBatch");
+                LOGGER.info("end putBatch for {}", name);
             }
 
             if (timeouts.isTimeout(overallTimeout, overallStartTimestamp)) {
@@ -312,6 +313,8 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
             onError(e);
             throw e;
         }
+
+        LOGGER.info("pipe in onCompleted: {}", pipe);
         if(proxyServerConf.getPartyId().equals(inputMetadata.getDst().getPartyId())) {
             pipe.setDrained();
             pipe.onComplete();

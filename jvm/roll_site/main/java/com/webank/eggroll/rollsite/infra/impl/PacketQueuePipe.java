@@ -18,25 +18,20 @@ package com.webank.eggroll.rollsite.infra.impl;
 
 
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
-import com.webank.eggroll.rollsite.factory.QueueFactory;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Scope;
-import org.springframework.stereotype.Component;
-
-import javax.annotation.PostConstruct;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.springframework.context.annotation.Scope;
+import org.springframework.stereotype.Component;
 
 @Component
 @Scope("prototype")
 public class PacketQueuePipe extends BasePipe {
     private static final Logger LOGGER = LogManager.getLogger(PacketQueuePipe.class);
-    @Autowired
-    private QueueFactory queueFactory;
+
     private Proxy.Metadata metadata;
-    private LinkedBlockingQueue<Proxy.Packet> queue;
+    private LinkedBlockingQueue<Proxy.Packet> queue = new LinkedBlockingQueue<>(3000);
     private int inCounter = 0;
     private int outCounter = 0;
 
@@ -48,11 +43,6 @@ public class PacketQueuePipe extends BasePipe {
         super();
         // this.queue = queueFactory.createConcurrentLinkedQueue();
         this.metadata = metadata;
-    }
-
-    @PostConstruct
-    private void init() {
-        this.queue = queueFactory.createLinkedBlockingQueue(3000);
     }
 
     @Override
