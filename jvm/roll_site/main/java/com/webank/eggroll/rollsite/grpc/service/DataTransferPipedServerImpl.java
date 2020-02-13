@@ -88,7 +88,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
         long overallTimeout = timeouts.getOverallTimeout(inputMetadata);
         long packetIntervalTimeout = timeouts.getPacketIntervalTimeout(inputMetadata);
 
-        Pipe pipe = getPipe(inputMetadata.getTask().getModel().getName());
+        Pipe pipe = new PacketQueueSingleResultPipe();
 
         LOGGER.info("[PULL][SERVER] pull pipe: {}", pipe);
 
@@ -290,7 +290,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                 return;
             }
 
-            Pipe pipe = getPipe(inputMetadata.getTask().getTaskId());
+            Pipe pipe = new PacketQueueSingleResultPipe();
             LOGGER.info("self send: {}", ByteString.copyFromUtf8(pipe.getType()));
             PipeHandleNotificationEvent event =
                 eventFactory.createPipeHandleNotificationEvent(
@@ -302,6 +302,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
             long loopEndTimestamp = System.currentTimeMillis();
             while ((!hasReturnedBefore || !pipe.isDrained())
                 && !pipe.hasError()
+                && emptyRetryCount < 300
                 && !timeouts.isTimeout(overallTimeout, startTimestamp, loopEndTimestamp)) {
                 packet = (Proxy.Packet) pipe.read(1, TimeUnit.SECONDS);
 //            packet = request;
@@ -340,6 +341,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                         "[UNARYCALL][SERVER] unary call server error: overall process time exceeds timeout: "
                             + overallTimeout
                             + ", metadata: " + oneLineStringInputMetadata
+                            + ", overallTimeout: " + overallTimeout
                             + ", lastPacketTimestamp: " + lastPacketTimestamp
                             + ", loopEndTimestamp: " + loopEndTimestamp;
                     LOGGER.error(errorMsg);

@@ -29,8 +29,8 @@ props_file_guest = default_props_file
 props_file_guest = default_props_file + '.guest'
 
 
-row_limit = 3
-
+row_limit = 100000
+obj_size = 1 << 20
 
 def data_generator(limit):
     for i in range(limit):
@@ -45,13 +45,17 @@ class TestRollSiteBase(unittest.TestCase):
     _obj_rs_tag = "testing_rs_obj"
     _obj = "This is the remote object in a str"
 
+    _obj_rs_name_big = "RsaIntersectTransferVariable.rsa_pubkey.big"
+    _obj_rs_tag_big = "testing_rs_obj.big"
+    _obj_big = b'1' * obj_size
+
     _rp_rs_name = "roll_pair_name.table"
     _rp_rs_tag = "roll_pair_tag"
 
     _rp_rs_name_big = "roll_pair_name.table.big"
     _rp_rs_tag_big = "roll_pair_tag.big"
 
-    _rp_rs_name_big_mp = "roll_pair_name.table.big.mp.0"
+    _rp_rs_name_big_mp = "roll_pair_name.table.big.mp"
     _rp_rs_tag_big_mp = "roll_pair_tag.big.mp"
 
     @classmethod
@@ -70,6 +74,7 @@ class TestRollSiteBase(unittest.TestCase):
 
     def test_remote(self):
         rs = self.rs_context_guest.load(name=self._obj_rs_name, tag=self._obj_rs_tag)
+
         futures = rs.push(self._obj, remote_parties)
         for future in futures:
             result = future.result()
@@ -85,6 +90,23 @@ class TestRollSiteBase(unittest.TestCase):
             else:
                 self.assertEqual(obj, self._obj, f"got wrong object. expected: {self._obj}, actual: {obj}")
                 print("obj:", obj)
+
+    def test_remote_big(self):
+        rs = self.rs_context_guest.load(name=self._obj_rs_name_big, tag=self._obj_rs_tag_big)
+        futures = rs.push(self._obj_big, remote_parties)
+        for future in futures:
+            result = future.result()
+            print("result:", result)
+
+    def test_get_big(self):
+        rs = self.rs_context_host.load(name=self._obj_rs_name_big, tag=self._obj_rs_tag_big)
+        futures = rs.pull(get_parties)
+        for future in futures:
+            obj = future.result()
+            if isinstance(obj, RollPair):
+                raise TypeError('require getting a obj but RollPair found')
+            else:
+                self.assertEqual(obj, self._obj_big, f"got wrong object. expected len: {len(self._obj)}, actual: {len(obj)}")
 
     def test_remote_rollpair(self):
         data = [("k1", "v1"), ("k2", "v2"), ("k3", "v3")]

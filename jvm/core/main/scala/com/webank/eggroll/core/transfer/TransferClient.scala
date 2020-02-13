@@ -159,7 +159,7 @@ class GrpcKvPackingTransferSendStreamProcessor(clientCallStreamObserver: ClientC
   private val transferHeaderBuilder = Transfer.TransferHeader.newBuilder()
   private val transferBatchBuilder = Transfer.TransferBatch.newBuilder()
   private var directBinPacketBuffer: ByteBuffer = _
-  private val binPacketLength = 1 << 20
+  private val binPacketLength = 32 << 20
   private val bufferElementSize = 100
   private var elementCount = 0
   private val dataBuffer = new util.ArrayList[(Array[Byte], Array[Byte])](bufferElementSize)

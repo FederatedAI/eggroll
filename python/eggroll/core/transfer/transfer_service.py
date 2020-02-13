@@ -185,8 +185,8 @@ class GrpcTransferService(TransferService):
 class TransferClient(object):
     def __init__(self):
         self.__grpc_channel_factory = GrpcChannelFactory()
-        self.__bin_packet_len = 1 << 20
-        self.__chunk_size = 100
+        #self.__bin_packet_len = 32 << 20
+        #self.__chunk_size = 100
 
     @_exception_logger
     def send(self, broker, endpoint: ErEndpoint, tag):

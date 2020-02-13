@@ -114,6 +114,7 @@ public class PushStreamProcessor extends BaseClientCallStreamProcessor<Proxy.Pac
         Proxy.Packet packet = null;
         do {
             //packet = (Proxy.Packet) pipe.read(1, TimeUnit.SECONDS);
+            //packet = (Proxy.Packet) transferBroker.read(1, TimeUnit.SECONDS);
             packet = (Proxy.Packet) transferBroker.read();
 
             if (packet != null) {
@@ -133,7 +134,7 @@ public class PushStreamProcessor extends BaseClientCallStreamProcessor<Proxy.Pac
                            emptyRetryCount);
                 }
             }
-        } while ((packet != null || !transferBroker.isDrained()) && emptyRetryCount < 30 && !transferBroker.hasError());
+        } while ((packet != null || !transferBroker.isDrained()) && emptyRetryCount < 300 && !transferBroker.hasError());
 
     }
 
@@ -150,7 +151,7 @@ public class PushStreamProcessor extends BaseClientCallStreamProcessor<Proxy.Pac
         //LOGGER.info("[CLUSTERCOMM][PUSHPROCESSOR] actual completes send stream for task: {}, packetCount: {}",
         //           transferMetaString, packetCount);
         // transferBroker.setFinished();
-        transferBroker.close();
+        //transferBroker.close();
         super.onComplete();
     }
 }

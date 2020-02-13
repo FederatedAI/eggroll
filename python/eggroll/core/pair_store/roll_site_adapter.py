@@ -16,14 +16,12 @@
 import sys
 import time
 
-from eggroll.core.constants import StoreTypes
 from eggroll.core.error import GrpcCallError
 from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.meta_model import ErEndpoint
 from eggroll.core.pair_store.adapter import PairWriteBatch, PairIterator, \
     PairAdapter
 from eggroll.core.pair_store.format import PairBinWriter, ArrayByteBuffer
-from eggroll.core.proto import meta_pb2
 from eggroll.core.proto import proxy_pb2, proxy_pb2_grpc
 from eggroll.core.serdes import eggroll_serdes
 from eggroll.core.transfer_model import ErRollSiteHeader
@@ -37,35 +35,36 @@ _serdes = eggroll_serdes.PickleSerdes
 
 
 class RollSiteAdapter(PairAdapter):
-    def __init__(self, options):
+    def __init__(self, options: dict = None):
+        if options is None:
+            options = {}
+
         super().__init__(options)
 
-        try:
-            self.roll_site_header_string = options['roll_site_header']
+        er_partition = options['er_partition']
+        self.partition = er_partition
+        self.store_locator = er_partition._store_locator
+        self.partition_id = er_partition._id
+
+        self.namespace = self.store_locator._namespace
+
+        #_store_type = StoreTypes.ROLLPAIR_ROLLSITE
+        # self._store_locator = meta_pb2.StoreLocator(storeType=_store_type,
+        #                                             namespace=self.namespace,
+        #                                             name=self.store_locator._name,
+        #                                             partitioner=self.store_locator._partitioner,
+        #                                             serdes=self.store_locator._serdes,
+        #                                             totalPartitions=self.store_locator._total_partitions)
+
+        self.roll_site_header_string = options.get('roll_site_header', None)
+        self.is_writable = False
+        if self.roll_site_header_string:
             self.roll_site_header = ErRollSiteHeader.from_proto_string(self.roll_site_header_string.encode(stringify_charset))
             self.proxy_endpoint = ErEndpoint.from_proto_string(options['proxy_endpoint'].encode(stringify_charset))
-
             self.obj_type = options['obj_type']
+            self.is_writable = True
 
-            er_partition = options['er_partition']
-            self.partition = er_partition
-            self.store_locator = er_partition._store_locator
-            self.partition_id = er_partition._id
-
-            self.namespace = self.store_locator._namespace
-
-            _store_type = StoreTypes.ROLLPAIR_ROLLSITE
-            self._store_locator = meta_pb2.StoreLocator(storeType=_store_type,
-                                                        namespace=self.namespace,
-                                                        name=self.store_locator._name,
-                                                        partitioner=self.store_locator._partitioner,
-                                                        serdes=self.store_locator._serdes,
-                                                        totalPartitions=self.store_locator._total_partitions)
-
-            L.info(f"proxy_endpoint: {self.proxy_endpoint}, partition: {self.partition}")
-        except Exception as e:
-            L.warn(f'options: {options}')
-            raise e
+            L.info(f"writable RollSiteAdapter: {self.namespace}, {self.partition_id}. proxy_endpoint: {self.proxy_endpoint}, partition: {self.partition}")
 
     def close(self):
         pass
@@ -74,6 +73,8 @@ class RollSiteAdapter(PairAdapter):
         return RollSiteIterator(self)
 
     def new_batch(self):
+        if not self.is_writable:
+            raise RuntimeError(f'RollSiteAdapter not writable for {self.partition}')
         return RollSiteWriteBatch(self)
 
     def get(self, key):
@@ -81,6 +82,9 @@ class RollSiteAdapter(PairAdapter):
 
     def put(self, key, value):
         pass
+
+    def destroy(self):
+        self.is_writable = False
 
 
 class RollSiteWriteBatch(PairWriteBatch):
