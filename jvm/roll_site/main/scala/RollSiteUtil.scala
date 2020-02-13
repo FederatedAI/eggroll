@@ -23,19 +23,21 @@ import com.google.protobuf.ByteString
 import com.webank.eggroll.core.ErSession
 import com.webank.eggroll.core.datastructure.LinkedBlockingBroker
 import com.webank.eggroll.core.meta.ErRollSiteHeader
+import com.webank.eggroll.core.util.Logging
 import com.webank.eggroll.rollpair.{RollPair, RollPairContext}
+import com.webank.eggroll.rollsite.infra.JobStatus
 
 
 class RollSiteUtil(val erSessionId: String,
                    rollSiteHeader: ErRollSiteHeader,
-                   options: Map[String, String] = Map.empty) {
+                   options: Map[String, String] = Map.empty) extends Logging {
   private val session =  new ErSession(sessionId = erSessionId, createIfNotExists = false)
   private val ctx = new RollPairContext(session)
   //private val nameStripped = name
   val namespace = rollSiteHeader.rollSiteSessionId
   val name = rollSiteHeader.concat()
 
-  println("scalaPutBatch  name:" + name + ",namespace:" + namespace)
+  logDebug("scalaPutBatch name:" + name + ",namespace:" + namespace)
   val rp: RollPair = ctx.load(namespace, name, options = rollSiteHeader.options)
 
   Runtime.getRuntime.addShutdownHook(new Thread(){
@@ -51,12 +53,20 @@ class RollSiteUtil(val erSessionId: String,
   }
 
   def putBatch(value: ByteString): Unit = {
-    if(value.size() == 0) {
-      throw new IllegalArgumentException("roll site push batch zero size:" + name)
+    JobStatus.increasePutBatchCount(name);
+    try {
+      if (value.size() == 0) {
+        throw new IllegalArgumentException("roll site push batch zero size:" + name)
+      }
+      val broker = new LinkedBlockingBroker[ByteString]()
+      broker.put(value)
+      broker.signalWriteFinish()
+      rp.putBatch(broker, options = options)
+
+      logInfo(s"put batch finished for name: ${name}, namespace: ${namespace}")
+    } finally {
+      JobStatus.decreasePutBatchCount(name);
     }
-    val broker = new LinkedBlockingBroker[ByteString]()
-    broker.put(value)
-    broker.signalWriteFinish()
-    rp.putBatch(broker, options = options)
   }
+
 }
