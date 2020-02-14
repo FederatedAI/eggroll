@@ -59,6 +59,7 @@ class ErSession(object):
         static_er_conf = get_static_er_conf()
         if not static_er_conf:
             conf_path = options.get(CoreConfKeys.STATIC_CONF_PATH, f"{self.__eggroll_home}/conf/eggroll.properties")
+            L.info(f"static conf path: {conf_path}")
             configs = configparser.ConfigParser()
             configs.read(conf_path)
             set_static_er_conf(configs['eggroll'])
