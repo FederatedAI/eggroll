@@ -430,7 +430,7 @@ class RollPair(object):
         transfer_pair = TransferPair(transfer_id=job_id)
         done_cnt = 0
         for k, v in transfer_pair.gather(populated_store):
-            done_cnt +=1
+            done_cnt += 1
             yield self.key_serdes.deserialize(k), self.value_serdes.deserialize(v)
         L.debug(f"get_all count:{done_cnt}")
 
@@ -762,7 +762,7 @@ class RollPair(object):
 
         er_store = job_result._outputs[0]
 
-        return RollPair(er_store, self.ctx)
+        return RollPair(er_store, self.ctx).get('result')
 
     def aggregate(self, zero_value, seq_op, comb_op, output=None, options: dict = None):
         if options is None:
@@ -789,7 +789,7 @@ class RollPair(object):
 
         er_store = job_result._outputs[0]
 
-        return RollPair(er_store, self.ctx)
+        return RollPair(er_store, self.ctx).get('result')
 
     def glom(self, output=None, options: dict = None):
         if options is None:
