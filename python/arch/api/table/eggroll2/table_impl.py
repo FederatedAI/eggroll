@@ -17,8 +17,9 @@
 import uuid
 from typing import Iterable
 
-from arch.api.table.table import Table
 from arch.api.utils.profile_util import log_elapsed
+
+from arch.api.table.table import Table
 
 
 # noinspection SpellCheckingInspection,PyProtectedMember,PyPep8Naming
@@ -140,7 +141,7 @@ class DTable(Table):
 
     @log_elapsed
     def reduce(self, func, **kwargs):
-        return (self._dtable.reduce(func).first()[1])
+        return self._dtable.reduce(func)
 
     @log_elapsed
     def join(self, other, func, **kwargs):

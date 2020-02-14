@@ -370,10 +370,10 @@ class EggPair(object):
                     comb_op_result = zero_value
 
                 for r in queue:
-                    if not r.data:
+                    if r.data is None:
                         continue
                     v = output_value_serdes.deserialize(r.data)
-                    if first:
+                    if first and is_reduce:
                         comb_op_result = v
                     else:
                         comb_op_result = comb_op(comb_op_result, v)
@@ -381,14 +381,14 @@ class EggPair(object):
                 L.info(f'aggregate finished. result: {comb_op_result} ')
                 with create_adapter(task._outputs[0]) as output_adapter, \
                     output_adapter.new_batch() as output_writebatch:
-                    output_writebatch.put(output_key_serdes.serialize('result'.encode()), output_value_serdes.serialize(comb_op_result))
+                    output_writebatch.put(output_key_serdes.serialize('result'), output_value_serdes.serialize(comb_op_result))
 
                 TransferService.remove_broker(transfer_tag)
             else:
-                if not first:
+                if not first or not is_reduce:
                     serialized_seq_results.append(output_value_serdes.serialize(seq_op_result))
                 else:
-                    serialized_seq_results.append(b'')
+                    serialized_seq_results.append(output_value_serdes.serialize(None))
                 transfer_client = TransferClient()
                 future = transfer_client.send(broker=(v for v in serialized_seq_results),
                                               endpoint=task._outputs[0]._processor._transfer_endpoint,
