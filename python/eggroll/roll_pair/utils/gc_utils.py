@@ -39,7 +39,6 @@ class GcRecorder(object):
             if count is None:
                 count = 0
             self.gc_recorder.put(name, (count+1))
-            L.debug("table recorded:{}".format(list(self.gc_recorder.get_all())))
 
     def check_gc_executable(self, er_store: ErStore):
         store_type = er_store._store_locator._store_type
