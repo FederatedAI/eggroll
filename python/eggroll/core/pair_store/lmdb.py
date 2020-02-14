@@ -30,53 +30,6 @@ LMDB_MAP_SIZE_WINDOWS = 200 * 1024 * 1024 * 10
 DEFAULT_DB = b'main'
 
 
-class LmdbIterator(PairIterator):
-    def __init__(self, adapter):
-        L.info("create lmdb iterator")
-        self.adapter = adapter
-        # with LmdbAdapter.env_lock:
-        self.txn_r = adapter.env.begin(db=adapter.sub_db, write=False)
-        self.cursor = self.txn_r.cursor()
-
-    # move cursor to the first key position
-    # return True if success or False if db is empty
-    def first(self):
-        return self.cursor.first()
-
-    # same as first() but last key position
-    def last(self):
-        return self.cursor.last()
-
-    # return the current key
-    def key(self):
-        return self.cursor.key()
-
-    def close(self):
-        self.cursor.close()
-        self.txn_r.commit()
-
-    def __iter__(self):
-        return self.cursor.__iter__()
-
-class LmdbWriteBatch(PairWriteBatch):
-
-    def __init__(self, adapter, txn):
-        self.adapter = adapter
-        self.txn = txn
-
-    def put(self, k, v):
-        self.txn.put(k, v)
-
-    def delete(self, k):
-        self.txn.delete(k)
-
-    def write(self):
-        pass
-
-    def close(self):
-        pass
-
-
 class LmdbAdapter(PairAdapter):
     env_lock = threading.Lock()
     env_dict = dict()
@@ -197,3 +150,52 @@ class LmdbAdapter(PairAdapter):
                 L.debug("finish destroy, path:{}".format(self.path))
         except:
             L.info("path :{} has destroyed".format(self.path))
+
+
+class LmdbIterator(PairIterator):
+    def __init__(self, adapter: LmdbAdapter):
+        L.info(f"creating lmdb iterator for {adapter.path}")
+        self.adapter = adapter
+        # with LmdbAdapter.env_lock:
+        self.txn_r = adapter.env.begin(db=adapter.sub_db, write=False)
+        self.cursor = self.txn_r.cursor()
+        L.info(f"created lmdb iterator for {adapter.path}")
+
+    # move cursor to the first key position
+    # return True if success or False if db is empty
+    def first(self):
+        return self.cursor.first()
+
+    # same as first() but last key position
+    def last(self):
+        return self.cursor.last()
+
+    # return the current key
+    def key(self):
+        return self.cursor.key()
+
+    def close(self):
+        self.cursor.close()
+        self.txn_r.commit()
+
+    def __iter__(self):
+        return self.cursor.__iter__()
+
+
+class LmdbWriteBatch(PairWriteBatch):
+    def __init__(self, adapter: LmdbAdapter, txn):
+        L.info(f'creating lmdb write batch for {adapter.path}')
+        self.adapter = adapter
+        self.txn = txn
+
+    def put(self, k, v):
+        self.txn.put(k, v)
+
+    def delete(self, k):
+        self.txn.delete(k)
+
+    def write(self):
+        pass
+
+    def close(self):
+        pass

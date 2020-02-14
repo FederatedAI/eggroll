@@ -42,7 +42,7 @@ def init_roll_site_context(runtime_conf, session_id):
                'proxy_endpoint': ErEndpoint(host, int(port))
               }
 
-    rs_context = RollSiteContext(session_id, options=options, rp_ctx=rp_context)
+    rs_context = RollSiteContext(session_id, rp_ctx=rp_context, options=options)
     LOGGER.info("init_roll_site_context done: {}".format(rs_context.__dict__))
     return rp_context, rs_context
 
@@ -74,7 +74,7 @@ class FederationRuntime(Federation):
         futures = rs.pull(parties=rs_parties)
         for future in futures:
             obj = future.result()
-            LOGGER.info("federation got: {}".format(obj))
+            LOGGER.info(f'federation got data. tag: {tag}')
             if isinstance(obj, RollPair):
                 rtn.append(DTable.from_dtable(obj.ctx.get_session().get_session_id(),obj))
                 rubbish.add_table(obj)

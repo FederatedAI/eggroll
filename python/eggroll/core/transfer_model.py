@@ -91,9 +91,9 @@ class ErTransferBatch(RpcMessage):
                f'at {hex(id(self))}>'
 
 
-class ErFederationHeader(RpcMessage):
+class ErRollSiteHeader(RpcMessage):
     def __init__(self,
-            federation_session_id: str,
+            roll_site_session_id: str,
             name: str,
             tag: str,
             src_role: str,
@@ -102,7 +102,7 @@ class ErFederationHeader(RpcMessage):
             dst_party_id: str,
             data_type: str = '',
             options: dict = {}):
-        self._federation_session_id = federation_session_id
+        self._roll_site_session_id = roll_site_session_id
         self._name = name
         self._tag = tag
         self._src_role = src_role
@@ -113,8 +113,8 @@ class ErFederationHeader(RpcMessage):
         self._options = options.copy()
 
     def to_proto(self):
-        return transfer_pb2.FederationHeader(
-                federationSessionId=self._federation_session_id,
+        return transfer_pb2.RollSiteHeader(
+                rollSiteSessionId=self._roll_site_session_id,
                 name=self._name,
                 tag=self._tag,
                 srcRole=self._src_role,
@@ -129,25 +129,26 @@ class ErFederationHeader(RpcMessage):
 
     @staticmethod
     def from_proto(pb_message):
-        return ErFederationHeader(federation_session_id=pb_message.federationSessionId,
-                                  name=pb_message.name,
-                                  tag=pb_message.tag,
-                                  src_role=pb_message.srcRole,
-                                  src_party_id=pb_message.srcPartyId,
-                                  dst_role=pb_message.dstRole,
-                                  dst_party_id=pb_message.dstPartyId,
-                                  data_type=pb_message.dataType,
-                                  options=dict(pb_message.options))
+        return ErRollSiteHeader(
+            roll_site_session_id=pb_message.rollSiteSessionId,
+            name=pb_message.name,
+            tag=pb_message.tag,
+            src_role=pb_message.srcRole,
+            src_party_id=pb_message.srcPartyId,
+            dst_role=pb_message.dstRole,
+            dst_party_id=pb_message.dstPartyId,
+            data_type=pb_message.dataType,
+            options=dict(pb_message.options))
 
     @staticmethod
     def from_proto_string(pb_string):
-        pb_message = transfer_pb2.FederationHeader()
+        pb_message = transfer_pb2.RollSiteHeader()
         msg_len = pb_message.ParseFromString(pb_string)
-        return ErFederationHeader.from_proto(pb_message)
+        return ErRollSiteHeader.from_proto(pb_message)
 
     def __repr__(self):
-        return f'<ErFederationHeader(' \
-               f'federation_session_id={repr(self._federation_session_id)}), ' \
+        return f'<ErRollSiteHeader(' \
+               f'roll_site_session_id={repr(self._roll_site_session_id)}), ' \
                f'name={repr(self._name)}, ' \
                f'tag={repr(self._tag)}, ' \
                f'src_role={repr(self._src_role)}, ' \
