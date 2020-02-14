@@ -23,6 +23,8 @@ from google.protobuf.text_format import MessageToString
 
 static_er_conf = {}
 stringify_charset = 'iso-8859-1'
+M = 2**31
+
 
 def set_static_er_conf(a_dict):
     global static_er_conf
@@ -168,15 +170,21 @@ def generate_task_id(job_id, partition_id, delim='-'):
     return delim.join([job_id, "task", str(partition_id)])
 
 
-#AI copy from java ByteString.hashCode(), @see RollPairContext.partitioner
+'''AI copy from java ByteString.hashCode(), @see RollPairContext.partitioner'''
 def hash_code(s):
     seed = 31
-    h = np.int32(len(s))
-    for c in s:
-        h = h * np.int32(seed) + np.int8(c)
+    h = len(s)
+    for i in range(len(s)):
+        c = s[i:i+1]
+        h = h * seed
+        if h > 2147483647 or h < -2147483648:
+            h = (h & (M - 1)) - (h & M)
+        h = h + int.from_bytes(c, byteorder='little', signed=True)
+        if h > 2147483647 or h < -2147483648:
+            h = (h & (M - 1)) - (h & M)
     if h == 0 or h == -2147483648:
         h = 1
-    return abs(h)
+    return h if h >= 0 else abs(h)
 
 
 def to_one_line_string(proto_msg, as_one_line=True):
