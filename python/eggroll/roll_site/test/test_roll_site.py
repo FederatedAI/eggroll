@@ -29,8 +29,8 @@ props_file_guest = default_props_file
 props_file_guest = default_props_file + '.guest'
 
 
-row_limit = 3
-
+row_limit = 100000
+obj_size = 1 << 20
 
 def data_generator(limit):
     for i in range(limit):
@@ -44,6 +44,10 @@ class TestRollSiteBase(unittest.TestCase):
     _obj_rs_name = "RsaIntersectTransferVariable.rsa_pubkey"
     _obj_rs_tag = "testing_rs_obj"
     _obj = "This is the remote object in a str"
+
+    _obj_rs_name_big = "RsaIntersectTransferVariable.rsa_pubkey.big"
+    _obj_rs_tag_big = "testing_rs_obj.big"
+    _obj_big = b'1' * obj_size
 
     _rp_rs_name = "roll_pair_name.table"
     _rp_rs_tag = "roll_pair_tag"
@@ -70,6 +74,7 @@ class TestRollSiteBase(unittest.TestCase):
 
     def test_remote(self):
         rs = self.rs_context_guest.load(name=self._obj_rs_name, tag=self._obj_rs_tag)
+
         futures = rs.push(self._obj, remote_parties)
         for future in futures:
             result = future.result()
@@ -85,6 +90,23 @@ class TestRollSiteBase(unittest.TestCase):
             else:
                 self.assertEqual(obj, self._obj, f"got wrong object. expected: {self._obj}, actual: {obj}")
                 print("obj:", obj)
+
+    def test_remote_big(self):
+        rs = self.rs_context_guest.load(name=self._obj_rs_name_big, tag=self._obj_rs_tag_big)
+        futures = rs.push(self._obj_big, remote_parties)
+        for future in futures:
+            result = future.result()
+            print("result:", result)
+
+    def test_get_big(self):
+        rs = self.rs_context_host.load(name=self._obj_rs_name_big, tag=self._obj_rs_tag_big)
+        futures = rs.pull(get_parties)
+        for future in futures:
+            obj = future.result()
+            if isinstance(obj, RollPair):
+                raise TypeError('require getting a obj but RollPair found')
+            else:
+                self.assertEqual(obj, self._obj_big, f"got wrong object. expected len: {len(self._obj)}, actual: {len(obj)}")
 
     def test_remote_rollpair(self):
         data = [("k1", "v1"), ("k2", "v2"), ("k3", "v3")]
@@ -132,7 +154,7 @@ class TestRollSiteBase(unittest.TestCase):
             if isinstance(obj, RollPair):
                 key = "key-1"
                 value = obj.get(key)
-                #self.assertEqual(value, "value-1", f"got wrong value. expected: 'value-1', actual: {value}")
+                self.assertEqual(value, "value-1", f"got wrong value. expected: 'value-1', actual: {value}")
                 print("obj:", obj, ", value:", value, ", count:", obj.count())
             else:
                 raise TypeError(f'require getting a RollPair but obj found: {obj}')
@@ -164,7 +186,8 @@ class TestRollSiteBase(unittest.TestCase):
                 key = "key-1"
                 value = obj.get(key)
                 #self.assertEqual(value, "value-1", f"got wrong value. expected: 'value-1', actual: {value}")
-                print("obj:", obj, ", value:", value, ", count:", obj.count())
+                self.assertEqual(value, "value-1", f"got wrong value. expected: 'value-1', actual: {value}")
+                self.assertEqual(obj.count(), row_limit, f"got wrong count value. expected: {row_limit}, actual: {obj.count()}")
             else:
                 raise TypeError(f'require getting a RollPair but obj found: {obj}')
 
@@ -198,7 +221,6 @@ class TestRollSiteBase(unittest.TestCase):
         print(f"count: {rp.count()}")
 
 
-
 class TestRollSiteStandalone(TestRollSiteBase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -212,9 +234,15 @@ class TestRollSiteStandalone(TestRollSiteBase):
         super().test_get()
 
     def test_remote_rollpair(self):
-        super().test_remote_rollpair()
+            super().test_remote_rollpair()
 
     def test_get_rollpair(self):
+        super().test_get_rollpair()
+
+    def test_remote_rollpair_big_multi_partitions(self):
+        super().test_remote_rollpair()
+
+    def test_get_rollpair_big_multi_partitions(self):
         super().test_get_rollpair()
 
 
@@ -222,8 +250,8 @@ class TestRollSiteCluster(TestRollSiteBase):
     @classmethod
     def setUpClass(cls) -> None:
         opts = {"eggroll.session.max.processors.per.node": "3"}
-        cls.rs_context_host = get_cluster_context(role='host', options=opts, props_file=props_file_host)
         cls.rs_context_guest = get_cluster_context(role='guest', options=opts, props_file=props_file_guest)
+        cls.rs_context_host = get_cluster_context(role='host', options=opts, props_file=props_file_host)
 
     @classmethod
     def tearDownClass(cls) -> None:
