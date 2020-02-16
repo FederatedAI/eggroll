@@ -120,7 +120,7 @@ class ErSession(object):
                 else:
                     raise
 
-        self.__cleanup_tasks = list()
+        self.__exit_tasks = list()
         self.__processors = self.__session_meta._processors
 
         L.info(f'session init finished:{self.__session_id}, details: {self.__session_meta}')
@@ -155,6 +155,7 @@ class ErSession(object):
         L.info(f'stopping session (gracefully): {self.__session_id}')
         L.debug(f'stopping session (gracefully), details: {self.__session_meta}')
         L.debug(f'stopping (gracefully) from: {get_stack()}')
+        self.run_exit_tasks()
         return self._cluster_manager_client.stop_session(self.__session_meta)
 
     def kill(self):
@@ -170,12 +171,12 @@ class ErSession(object):
         return self.__session_meta
 
     # todo:1: add_exit_task? not necessarily a cleanup semantic
-    def add_cleanup_task(self, func):
-        self.__cleanup_tasks.append(func)
+    def add_exit_task(self, func):
+        self.__exit_tasks.append(func)
 
-    def run_cleanup_tasks(self):
-        L.debug(f'running cleanup tasks: {self.__session_id}')
-        for func in self.__cleanup_tasks:
+    def run_exit_tasks(self):
+        L.debug(f'running exit tasks: {self.__session_id}')
+        for func in self.__exit_tasks:
             func()
 
     def get_option(self, key, default=None):
