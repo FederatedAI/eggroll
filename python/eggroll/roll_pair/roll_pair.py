@@ -53,6 +53,7 @@ class RollPairContext(object):
         self.default_store_serdes = SerdesTypes.PICKLE
         self.deploy_mode = session.get_option(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE)
         self.__session_meta = session.get_session_meta()
+        self.__session.add_exit_task(self.context_gc)
         self.rpc_gc_enable = True
         self.gc_recorder = GcRecorder(self)
 
@@ -77,6 +78,16 @@ class RollPairContext(object):
             L.error(f"invalid roll processor:{ret}, session_meta:{self.__session_meta}")
             raise ValueError(f"invalid roll endpoint:{ret}")
         return ret
+
+    def context_gc(self):
+        if self.gc_recorder.gc_recorder is None:
+            L.error("rp context gc_recorder is None!")
+            return
+        for item in list(self.gc_recorder.gc_recorder.get_all()):
+            L.debug("cleanup item:{}".format(item))
+            name = item[0]
+            rp = self.load(namespace=self.session_id, name=name)
+            rp.destroy()
 
     def route_to_egg(self, partition: ErPartition):
         return self.__session.route_to_egg(partition)
@@ -139,7 +150,7 @@ class RollPairContext(object):
         return RollPair(self.populate_processor(result), self)
 
     # TODO:1: separates load parameters and put all parameters
-    def parallelize(self, data, options: dict = {}):
+    def parallelize(self, data, options: dict = None):
         if options is None:
             options = {}
         namespace = options.get("namespace", None)
@@ -279,10 +290,10 @@ class RollPair(object):
     def __repr__(self):
         return f'python RollPair(_store={self.__store})'
 
-    def set_gc_enable(self):
+    def enable_gc(self):
         self.gc_enable = True
 
-    def set_gc_disable(self):
+    def disable_gc(self):
         self.gc_enable = False
 
     def get_store_serdes(self):
@@ -448,7 +459,7 @@ class RollPair(object):
                     serdes_type=SerdesTypes.PROTOBUF)
 
             return result
-        th = Thread(target=send_command)
+        th = Thread(target=send_command, name=f'roll_pair-send_command-{job_id}')
         th.start()
         populated_store = self.ctx.populate_processor(self.__store)
         shuffler = TransferPair(job_id)
