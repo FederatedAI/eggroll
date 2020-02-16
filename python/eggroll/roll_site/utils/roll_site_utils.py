@@ -14,19 +14,20 @@
 #
 #
 
-from eggroll.core.transfer_model import ErFederationHeader
+from eggroll.core.transfer_model import ErRollSiteHeader
 
 
 OBJECT_STORAGE_NAME = "__federation__"
 DELIM = "#"
 
-# TODO:1: consider moving it to ErFederationHeader class
-def create_store_name(federation_header: ErFederationHeader):
-    return DELIM.join([OBJECT_STORAGE_NAME,     # todo:0: remove this field
-                       federation_header._federation_session_id,
-                       federation_header._name,
-                       federation_header._tag,
-                       federation_header._src_role,
-                       federation_header._src_party_id,
-                       federation_header._dst_role,
-                       federation_header._dst_party_id])
+
+# TODO:1: consider moving it to ErRollSiteHeader class
+def create_store_name(roll_site_header: ErRollSiteHeader):
+    return DELIM.join([OBJECT_STORAGE_NAME,  # todo:0: remove this field
+                       roll_site_header._roll_site_session_id,
+                       roll_site_header._name,
+                       roll_site_header._tag,
+                       roll_site_header._src_role,
+                       roll_site_header._src_party_id,
+                       roll_site_header._dst_role,
+                       roll_site_header._dst_party_id])

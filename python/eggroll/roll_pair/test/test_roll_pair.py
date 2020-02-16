@@ -102,12 +102,24 @@ class TestRollPairBase(unittest.TestCase):
         #rp2.destroy()
 
     def test_reduce(self):
-        rp = self.ctx.load("ns12020","n_serdes", self.store_opts(serdes="EMPTY"))
-        rp.put_all((b'1', b'2') for k in range(10))
+        rp = self.ctx.parallelize([(i, i) for i in range(1, 7)], self.store_opts())
+        #data = [(1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6)]
+        #rp.put_all(data)
         print(list(rp.get_all()))
         print(rp.count())
         from operator import add
-        print(list(rp.reduce(add).get_all()))
+        result = rp.reduce(add)
+
+        print(f'reduce result: {result}')
+        self.assertEqual(result, 21)
+
+    def test_aggregate(self):
+        from operator import mul, add
+        data1 = self.ctx.parallelize([(i, i) for i in range(1, 7)], self.store_opts())
+        print(data1.get_partitions())
+        h2 = data1.aggregate(zero_value=1, seq_op=mul, comb_op=add)
+
+        self.assertEqual(h2, 720)
 
     def test_join_self(self):
         options = get_default_options()
@@ -324,6 +336,21 @@ class TestRollPairMultiPartition(TestRollPairBase):
         self.assertUnOrderListEqual(self.str_generator(True), rp.get_all())
         self.assertEqual(st_opts["total_partitions"], rp.get_partitions())
         rp.destroy()
+
+    def test_count(self):
+        super().test_count()
+
+    def test_reduce(self):
+        super().test_reduce()
+
+    def test_aggregate(self):
+        from operator import mul, add
+        data1 = self.ctx.parallelize([(i, i) for i in range(1, 7)], self.store_opts())
+        print(data1.get_partitions())
+        h2 = data1.aggregate(zero_value=1, seq_op=mul, comb_op=add)
+        print(f"aggregate result: {h2}")
+
+        self.assertEqual(h2, 32)
 
 
 class TestRollPairStandalone(TestRollPairBase):

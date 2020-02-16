@@ -12,9 +12,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-import os
 import sys
-import threading
 import uuid
 from concurrent.futures import wait, FIRST_EXCEPTION
 from threading import Thread
@@ -253,6 +251,7 @@ class RollPair(object):
     UNION = 'union'
 
     def __setstate__(self, state):
+        self.gc_enable = None
         pass
 
     def __getstate__(self):
@@ -281,14 +280,12 @@ class RollPair(object):
             self.ctx.gc_recorder.delete_record(self.__store)
             L.debug(f'del rp: {self}')
             self.destroy()
-            L.debug("process {} thread {} run {} del table name:{}, namespace:{}".
-                         format(os.getpid(), threading.currentThread().ident,
-                                sys._getframe().f_code.co_name,
-                                self.__store._store_locator._name,
-                                self.__store._store_locator._namespace))
+            L.debug(f"running gc: {sys._getframe().f_code.co_name}. "
+                    f"deleting store name: {self.__store._store_locator._name}, "
+                    f"namespace: {self.__store._store_locator._namespace}")
 
     def __repr__(self):
-        return f'python RollPair(_store={self.__store})'
+        return f'<RollPair(_store={self.__store}) at {hex(id(self))}>'
 
     def enable_gc(self):
         self.gc_enable = True
@@ -344,7 +341,7 @@ class RollPair(object):
         partition_id = self.partitioner(k)
         egg = self.ctx.route_to_egg(self.__store._partitions[partition_id])
         L.info(egg._command_endpoint)
-        L.info(f"count:{self.__store._store_locator._total_partitions}")
+        L.info(f"partitions count: {self.__store._store_locator._total_partitions}")
         inputs = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
         output = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
 
@@ -433,7 +430,7 @@ class RollPair(object):
         transfer_pair = TransferPair(transfer_id=job_id)
         done_cnt = 0
         for k, v in transfer_pair.gather(populated_store):
-            done_cnt +=1
+            done_cnt += 1
             yield self.key_serdes.deserialize(k), self.value_serdes.deserialize(v)
         L.debug(f"get_all count:{done_cnt}")
 
@@ -482,7 +479,7 @@ class RollPair(object):
             bb.signal_write_finish()
 
         scatter_results = scatter_future.result()
-        L.debug(f"scatter_results:{scatter_results}")
+        L.debug(f"scatter_results: {scatter_results}")
         th.join()
         return RollPair(populated_store, self.ctx)
 
@@ -601,11 +598,13 @@ class RollPair(object):
             options = {}
         store_type = options.get('store_type', self.ctx.default_store_type)
 
-        store = ErStore(store_locator=ErStoreLocator(store_type=store_type, namespace=namespace,
-                                                     name=name, total_partitions=partition))
         if partition == self.get_partitions():
+            store = ErStore(store_locator=ErStoreLocator(store_type=store_type, namespace=namespace,
+                                                         name=name, total_partitions=self.get_partitions()))
             return self.map_values(lambda v: v, output=store)
         else:
+            store = ErStore(store_locator=ErStoreLocator(store_type=store_type, namespace=namespace,
+                                                         name=name, total_partitions=partition))
             return self.map(lambda k, v: (k, v), output=store)
 
     # computing api
@@ -763,7 +762,7 @@ class RollPair(object):
 
         er_store = job_result._outputs[0]
 
-        return RollPair(er_store, self.ctx)
+        return RollPair(er_store, self.ctx).get('result')
 
     def aggregate(self, zero_value, seq_op, comb_op, output=None, options: dict = None):
         if options is None:
@@ -790,7 +789,7 @@ class RollPair(object):
 
         er_store = job_result._outputs[0]
 
-        return RollPair(er_store, self.ctx)
+        return RollPair(er_store, self.ctx).get('result')
 
     def glom(self, output=None, options: dict = None):
         if options is None:

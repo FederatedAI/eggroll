@@ -159,7 +159,7 @@ class GrpcKvPackingTransferSendStreamProcessor(clientCallStreamObserver: ClientC
   private val transferHeaderBuilder = Transfer.TransferHeader.newBuilder()
   private val transferBatchBuilder = Transfer.TransferBatch.newBuilder()
   private var directBinPacketBuffer: ByteBuffer = _
-  private val binPacketLength = 1 << 20
+  private val binPacketLength = 32 << 20
   private val bufferElementSize = 100
   private var elementCount = 0
   private val dataBuffer = new util.ArrayList[(Array[Byte], Array[Byte])](bufferElementSize)
@@ -272,10 +272,14 @@ class TransferSendStreamProcessor(clientCallStreamObserver: ClientCallStreamObse
                                   status: String)
   extends BaseClientCallStreamProcessor[Transfer.TransferBatch](clientCallStreamObserver) {
   override def onProcess(): Unit = {
+    val finalData = if (data != null) data else Array.emptyByteArray
     val batch = ErTransferBatch(
       header = ErTransferHeader(
-        id = 100, tag = this.tag, totalSize = data.size, status = this.status),
-      data = this.data)
+        id = 100,
+        tag = tag,
+        totalSize = finalData.size,
+        status = status),
+      data = finalData)
     clientCallStreamObserver.onNext(batch.toProto())
   }
 }

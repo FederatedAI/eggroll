@@ -79,6 +79,8 @@ ER_STORE1 = ErStore(
                                      name="name"))
 
 
+roll_site_session_id = f'atest'
+
 def get_debug_test_context(is_standalone=False,
         manager_port=4670,
         egg_port=20001,
@@ -92,16 +94,16 @@ def get_debug_test_context(is_standalone=False,
                                              transfer_port=transfer_port,
                                              session_id=session_id)
 
-    rs_context = RollSiteContext("atest", options=get_option(role, props_file),
-                                 rp_ctx=rp_context)
+    rs_context = RollSiteContext(roll_site_session_id, rp_ctx=rp_context,
+                                 options=get_option(role, props_file))
 
     return rs_context
 
 
 def get_standalone_context(role, props_file=default_props_file):
     rp_context = rpta.get_standalone_context()
-    rs_context = RollSiteContext("atest", options=get_option(role, props_file),
-                                 rp_ctx=rp_context)
+    rs_context = RollSiteContext(roll_site_session_id, rp_ctx=rp_context,
+                                 options=get_option(role, props_file))
 
     return rs_context
 
@@ -110,8 +112,8 @@ def get_cluster_context(role, options: dict = None, props_file=default_props_fil
     if options is None:
         options = {}
     rp_context = rpta.get_cluster_context(options=options)
-    rs_context = RollSiteContext("atest", options=get_option(role, props_file),
-                                 rp_ctx=rp_context)
+    rs_context = RollSiteContext(roll_site_session_id, rp_ctx=rp_context,
+                                 options=get_option(role, props_file))
 
     return rs_context
 
