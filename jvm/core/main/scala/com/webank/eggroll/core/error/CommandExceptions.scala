@@ -25,6 +25,6 @@ class CommandRoutingException(serviceName: String, cause: Throwable)
   extends RuntimeException(s"[COMMANDROUTING] Failed to route to serviceName ${serviceName}", cause)
 
 class CommandCallException(serviceName: String, endpoint: ErEndpoint, cause: Throwable)
-  extends RuntimeException(s"[COMMANDCALL] Failed to call to serviceName: ${serviceName} to endpoint: ${endpoint}", cause) {
+  extends RuntimeException(s"[COMMANDCALL] Error while calling serviceName: ${serviceName} to endpoint: ${endpoint}", cause) {
   def this(commandUri: CommandURI, endpoint: ErEndpoint, cause: Throwable) = this(commandUri.uriString, endpoint, cause)
 }
