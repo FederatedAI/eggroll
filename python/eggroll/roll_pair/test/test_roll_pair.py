@@ -359,6 +359,9 @@ class TestRollPairStandalone(TestRollPairBase):
     def setUp(self):
         pass
 
+    def tearDown(self) -> None:
+        pass
+
     @classmethod
     def setUpClass(cls) -> None:
         cls.ctx = get_standalone_context()
