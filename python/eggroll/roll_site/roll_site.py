@@ -13,73 +13,107 @@
 #  limitations under the License.
 #
 #
-
 import time
 from concurrent.futures import ThreadPoolExecutor, wait, FIRST_EXCEPTION
 
-import grpc
-
 from eggroll.core.conf_keys import SessionConfKeys
+from eggroll.core.constants import DeployModes
 from eggroll.core.constants import StoreTypes
+from eggroll.core.error import GrpcCallError
+from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.meta_model import ErStoreLocator, ErStore
 from eggroll.core.proto import proxy_pb2, proxy_pb2_grpc
 from eggroll.core.serdes import eggroll_serdes
-from eggroll.roll_pair.roll_pair import RollPair
+from eggroll.core.transfer_model import ErRollSiteHeader
+from eggroll.core.utils import _stringify
+from eggroll.core.utils import to_one_line_string
+from eggroll.roll_pair.roll_pair import RollPair, RollPairContext
+from eggroll.roll_site.utils.roll_site_utils import create_store_name, DELIM
 from eggroll.utils import log_utils
 
-LOGGER = log_utils.get_logger()
-
+L = log_utils.get_logger()
 _serdes = eggroll_serdes.PickleSerdes
 
 STATUS_TABLE_NAME = "__roll_site_standalone_status__"
 
+
 class RollSiteContext:
-    # todo:0: use snake_naming instead of a mix of snake_andCamel
-    # todo:1: Adds an options dict
-    # todo:1: merge rs_ip and rs_port with ErEndpoint
-    def __init__(self, job_id, self_role, self_partyId, rs_ip, rs_port, rp_ctx):
-        self.job_id = job_id
+    grpc_channel_factory = GrpcChannelFactory()
+
+    def __init__(self, roll_site_session_id, rp_ctx: RollPairContext, options: dict = None):
+        if options is None:
+            options = {}
+        self.roll_site_session_id = roll_site_session_id
         self.rp_ctx = rp_ctx
 
-        self.role = self_role
-        self.party_id = self_partyId
-        self.dst_host = rs_ip
-        self.dst_port = rs_port
-
-        channel = grpc.insecure_channel(
-            target="{}:{}".format(self.dst_host, self.dst_port),
-            options=[('grpc.max_send_message_length', -1), ('grpc.max_receive_message_length', -1)])
-        self.stub = proxy_pb2_grpc.DataTransferServiceStub(channel)
+        self.role = options["self_role"]
+        self.party_id = str(options["self_party_id"])
+        self.proxy_endpoint = options["proxy_endpoint"]
         self.is_standalone = self.rp_ctx.get_session().get_option(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE) == "standalone"
-        if not self.is_standalone:
-            self.init_job_session_pair(self.job_id, self.rp_ctx.session_id)
+        if self.is_standalone:
+            self.stub = None
+        else:
+            channel = self.grpc_channel_factory.create_channel(self.proxy_endpoint)
+            self.stub = proxy_pb2_grpc.DataTransferServiceStub(channel)
+            self.init_job_session_pair(self.roll_site_session_id, self.rp_ctx.session_id)
+
+        self.pushing_task_count = 0
+        self.rp_ctx.get_session().add_exit_task(self.push_complete)
+        L.info(f"inited RollSiteContext: {self.__dict__}")
+
+    def push_complete(self):
+        session_id = self.rp_ctx.get_session().get_session_id()
+        L.info(f"running roll site exit func for session: {session_id}")
+        try_count = 0
+        max_try_count = 800
+        while True:
+            if try_count >= max_try_count:
+                L.warn(f"try times reach {max_try_count} for session: {session_id}, exiting")
+                return
+            if self.pushing_task_count:
+                L.info(f"session: {session_id} "
+                       f"waiting for all push tasks complete. "
+                       f"current try_count: {try_count}, "
+                       f"current pushing task count: {self.pushing_task_count}")
+                try_count += 1
+                time.sleep(min(0.1 * try_count, 60))
+            else:
+                L.info(f"session: {session_id} finishes all pushing tasks")
+                return
 
     # todo:1: add options?
-    def load(self, name: str, tag: str):
-        return RollSite(name, tag, self)
+    def load(self, name: str, tag: str, options: dict = None):
+        if options is None:
+            options = {}
+        return RollSite(name, tag, self, options=options)
 
-    def init_job_session_pair(self, job_id, session_id):
-        task_info = proxy_pb2.Task(model=proxy_pb2.Model(name=job_id, dataKey=bytes(session_id, encoding='utf8')))
-        topic_src = proxy_pb2.Topic(name="init_job_session_pair", partyId="{}".format(self.party_id),
-                                    role=self.role, callback=None)
-        topic_dst = proxy_pb2.Topic(name="init_job_session_pair", partyId="{}".format(self.party_id),
-                                    role=self.role, callback=None)
-        command_test = proxy_pb2.Command(name="init_job_session_pair")
-        conf_test = proxy_pb2.Conf(overallTimeout=1000,
-                                   completionWaitTimeout=1000,
-                                   packetIntervalTimeout=1000,
-                                   maxRetries=10)
+    # todo:1: try-except as decorator
+    def init_job_session_pair(self, roll_site_session_id, er_session_id):
+        try:
+            task_info = proxy_pb2.Task(model=proxy_pb2.Model(name=roll_site_session_id, dataKey=bytes(er_session_id, encoding='utf8')))
+            topic_src = proxy_pb2.Topic(name="init_job_session_pair", partyId=self.party_id,
+                                        role=self.role, callback=None)
+            topic_dst = proxy_pb2.Topic(name="init_job_session_pair", partyId=self.party_id,
+                                        role=self.role, callback=None)
+            command_test = proxy_pb2.Command(name="init_job_session_pair")
+            conf_test = proxy_pb2.Conf(overallTimeout=1000,
+                                       completionWaitTimeout=1000,
+                                       packetIntervalTimeout=1000,
+                                       maxRetries=10)
 
-        metadata = proxy_pb2.Metadata(task=task_info,
-                                      src=topic_src,
-                                      dst=topic_dst,
-                                      command=command_test,
-                                      operator="init_job_session_pair",
-                                      seq=0, ack=0,
-                                      conf=conf_test)
-        packet = proxy_pb2.Packet(header=metadata)
+            metadata = proxy_pb2.Metadata(task=task_info,
+                                          src=topic_src,
+                                          dst=topic_dst,
+                                          command=command_test,
+                                          operator="init_job_session_pair",
+                                          seq=0,
+                                          ack=0)
+            packet = proxy_pb2.Packet(header=metadata)
 
-        self.stub.unaryCall(packet)
+            self.stub.unaryCall(packet)
+            L.info(f"send RollSiteContext init to Proxy: {to_one_line_string(packet)}")
+        except Exception as e:
+            raise GrpcCallError("init_job_session_pair", self.proxy_endpoint, e)
 
 
 ERROR_STATES = [proxy_pb2.STOP, proxy_pb2.KILL]
@@ -90,137 +124,160 @@ CONF_KEY_SERVER = "servers"
 
 
 class RollSite:
-    def __init__(self, name: str, tag: str, rs_ctx: RollSiteContext):
+    def __init__(self, name: str, tag: str, rs_ctx: RollSiteContext, options: dict = None):
+        if options is None:
+            options = {}
         self.ctx = rs_ctx
         self.party_id = self.ctx.party_id
-        self.dst_host = self.ctx.dst_host
-        self.dst_port = self.ctx.dst_port
-        self.job_id = self.ctx.job_id
+        self.dst_host = self.ctx.proxy_endpoint._host
+        self.dst_port = self.ctx.proxy_endpoint._port
+        self.roll_site_session_id = self.ctx.roll_site_session_id
         self.local_role = self.ctx.role
         self.name = name
         self.tag = tag
         self.stub = self.ctx.stub
-        self.process_pool = ThreadPoolExecutor(10)
-        self.complete_pool = ThreadPoolExecutor(10)
-        #self.init_job_session_pair(self.job_id, self.ctx.rp_ctx.session_id)
+        self.process_pool = ThreadPoolExecutor(10, thread_name_prefix="thread-receive")
+        self.complete_pool = ThreadPoolExecutor(10, thread_name_prefix="complete-wait")
 
+    def _decrease_push_count(self, fn):
+        if self.ctx.pushing_task_count <= 0:
+            self.ctx.pushing_task_count = 0
+            return
+        self.ctx.pushing_task_count -= 1
 
-    @staticmethod
-    def __remote__object_key(*args):
-        return "-".join(["{}".format(arg) for arg in args])
-
-
-    def _thread_receive(self, packet, namespace, _tagged_key):
+    def _thread_receive(self, packet, namespace, roll_site_header: ErRollSiteHeader):
         try:
-            is_standalone = self.ctx.rp_ctx.get_session().get_option(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE) == "standalone"
+            table_name = create_store_name(roll_site_header)
+            is_standalone = self.ctx.rp_ctx.get_session().get_option(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE) \
+                            == "standalone"
             if is_standalone:
-                status_rp = self.ctx.rp_ctx.load(namespace, STATUS_TABLE_NAME)
+                status_rp = self.ctx.rp_ctx.load(namespace, STATUS_TABLE_NAME + DELIM + self.ctx.roll_site_session_id)
+                retry_cnt = 0
                 # TODO:0: sleep retry count and timeout
                 while True:
-                    ret_list = status_rp.get(_tagged_key)
+                    msg = f"retry pull: retry_cnt: {retry_cnt}," + \
+                          f" tagged_key: '{table_name}', packet: {to_one_line_string(packet)}, namespace: {namespace}"
+                    if retry_cnt % 10 == 0:
+                        L.info(msg)
+                    else:
+                        L.debug(msg)
+                    retry_cnt += 1
+                    ret_list = status_rp.get(table_name)
                     if ret_list:
                         table_namespace = ret_list[2]
                         table_name = ret_list[1]
                         obj_type = ret_list[0]
                         break
-                    time.sleep(0.1)
+                    time.sleep(min(0.1 * retry_cnt, 30))
+
             else:
+                retry_cnt = 0
                 ret_packet = self.stub.unaryCall(packet)
                 while ret_packet.header.ack != 123:
+                    msg = f"retry pull: retry_cnt: {retry_cnt}," + \
+                          f" store_name: '{table_name}', packet: {to_one_line_string(packet)}, namespace: {namespace}"
+                    if retry_cnt % 10 == 0:
+                        L.info(msg)
+                    else:
+                        L.debug(msg)
+                    retry_cnt += 1
                     if ret_packet.header.ack in ERROR_STATES:
                         raise IOError("receive terminated")
                     ret_packet = self.stub.unaryCall(packet)
-                    time.sleep(0.1)
+                    time.sleep(min(0.1 * retry_cnt, 30))
                 obj_type = ret_packet.body.value
-                table_name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.job_id, self.name, self.tag,
-                                                                           ret_packet.header.src.role,
-                                                                           ret_packet.header.src.partyId,
-                                                                           ret_packet.header.dst.role,
-                                                                           ret_packet.header.dst.partyId]))
-                table_namespace = self.job_id
 
+                table_namespace = self.roll_site_session_id
+            L.debug(f"pull status done: table_name:{table_name}, packet:{to_one_line_string(packet)}, namespace:{namespace}")
             rp = self.ctx.rp_ctx.load(namespace=table_namespace, name=table_name)
-            if obj_type == b'object':
-                ret_obj = rp.get(_tagged_key)
-                LOGGER.debug(f"ret_obj_key:{_tagged_key}")
-                return ret_obj
-            else:
-                return rp
-        except:
-            LOGGER.exception("thread recv error")
-        finally:
-            LOGGER.debug("done")
-
+            result = rp.get(table_name) if obj_type == b'object' else rp
+            L.info(f"pull success: {table_name}, count: {rp.count()}, type: {obj_type}")
+            return result
+        except Exception as e:
+            L.exception(f"pull error:{e}")
+            raise GrpcCallError("push", self.ctx.proxy_endpoint, e)
 
     def push(self, obj, parties: list = None):
+        L.info(f"pushing: self:{self.__dict__}, obj_type:{type(obj)}, parties:{parties}")
+        self.ctx.pushing_task_count += 1
         futures = []
-        LOGGER.info("push parties:{}".format(parties))
-        LOGGER.info("push session_id:{}".format(self.ctx.rp_ctx.session_id))
         for role_party_id in parties:
             # for _partyId in _partyIds:
             _role = role_party_id[0]
-            _party_id = role_party_id[1]
-            _tagged_key = self.__remote__object_key(self.job_id, self.name, self.tag, self.local_role, self.party_id,
-                                                    _role,
-                                                    _party_id)
-            LOGGER.debug(f"_tagged_key:{_tagged_key}")
-            namespace = self.job_id
+            _party_id = str(role_party_id[1])
+
+            _options = {}
             obj_type = 'rollpair' if isinstance(obj, RollPair) else 'object'
+            roll_site_header = ErRollSiteHeader(
+                roll_site_session_id=self.roll_site_session_id,
+                name=self.name,
+                tag=self.tag,
+                src_role=self.local_role,
+                src_party_id=self.party_id,
+                dst_role=_role,
+                dst_party_id=_party_id,
+                data_type=obj_type,
+                options=_options)
+            _tagged_key = create_store_name(roll_site_header)
+            L.debug(f"pushing start party:{type(obj)}, {_tagged_key}")
+            namespace = self.roll_site_session_id
 
             if isinstance(obj, RollPair):
                 rp = obj
             else:
-                # If it is a object, put the object in the table and send the table meta.
-                name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.job_id, self.name, self.tag,
-                                                                     self.local_role, str(self.party_id),
-                                                                     _role, str(_party_id)]))
-
-                rp = self.ctx.rp_ctx.load(namespace, name)
+                rp = self.ctx.rp_ctx.load(namespace, _tagged_key)
                 rp.put(_tagged_key, obj)
-                LOGGER.debug("[REMOTE] Sending {}".format(_tagged_key))
+            rp.disable_gc()
+            L.info(f"pushing prepared: {type(obj)}, tag_key:{_tagged_key}")
 
             def map_values(_tagged_key):
-                is_standalone = self.ctx.rp_ctx.get_session().get_option(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE) == "standalone"
-                #is_standalone = True
+                is_standalone = self.ctx.rp_ctx.get_session().get_option(
+                        SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE) == DeployModes.STANDALONE
+
                 if is_standalone:
-                    dst_name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.job_id, self.name, self.tag,
-                                                                             self.local_role, str(self.party_id),
-                                                                             _role, str(_party_id)]))
+                    dst_name = _tagged_key
                     store_type = rp.get_store_type()
                 else:
-                    dst_name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.job_id, self.name,
-                                                                             self.tag, self.local_role,
-                                                                             str(self.party_id),
-                                                                             _role, str(_party_id),
-                                                                             self.dst_host,
-                                                                             str(self.dst_port),
-                                                                             obj_type]))
+                    dst_name = DELIM.join([_tagged_key,
+                                           self.dst_host,
+                                           str(self.dst_port),
+                                           obj_type])
                     store_type = StoreTypes.ROLLPAIR_ROLLSITE
-
-                LOGGER.info("namespace:{}".format(namespace))
-                LOGGER.info("name:{}".format(dst_name))
-                if is_standalone is False:
-                    rp.map_values(
-                        lambda v: v,
-                        output=ErStore(store_locator=
-                                       ErStoreLocator(store_type=store_type,
-                                                      namespace=namespace,
-                                                      name=dst_name)))
-
                 if is_standalone:
-                    status_rp = self.ctx.rp_ctx.load(namespace, STATUS_TABLE_NAME)
-
+                    status_rp = self.ctx.rp_ctx.load(namespace, STATUS_TABLE_NAME + DELIM + self.roll_site_session_id, options=_options)
+                    status_rp.disable_gc()
                     if isinstance(obj, RollPair):
-                        LOGGER.debug(f"_tagged_key:{_tagged_key}")
-                        LOGGER.debug(f"push:{obj_type},{rp.get_name()}, {rp.get_namespace()}")
                         status_rp.put(_tagged_key, (obj_type.encode("utf-8"), rp.get_name(), rp.get_namespace()))
                     else:
                         status_rp.put(_tagged_key, (obj_type.encode("utf-8"), dst_name, namespace))
-                    _a = status_rp.get(_tagged_key)
+                else:
+                    store = rp.get_store()
+                    store_locator = store._store_locator
+                    new_store_locator = ErStoreLocator(store_type=store_type,
+                                                       namespace=namespace,
+                                                       name=dst_name,
+                                                       total_partitions=store_locator._total_partitions,
+                                                       partitioner=store_locator._partitioner,
+                                                       serdes=store_locator._serdes)
 
-                return role_party_id
+                    # TODO:0: move options from job to store when database modification finished
+
+                    options = {"roll_site_header": roll_site_header,
+                               "proxy_endpoint": self.ctx.proxy_endpoint,
+                               "obj_type": obj_type}
+
+                    if isinstance(obj, RollPair):
+                        roll_site_header._options['total_partitions'] = obj.get_store()._store_locator._total_partitions
+                        L.debug(f"pushing map_values: {dst_name}, count: {obj.count()}, tag_key:{_tagged_key}")
+                    rp.map_values(lambda v: v,
+                        output=ErStore(store_locator=new_store_locator),
+                                  options=options)
+
+                L.info(f"pushing map_values done:{type(obj)}, tag_key:{_tagged_key}")
+                return _tagged_key
 
             future = self.process_pool.submit(map_values, _tagged_key)
+            future.add_done_callback(self._decrease_push_count)
             futures.append(future)
 
         self.process_pool.shutdown(wait=False)
@@ -228,27 +285,34 @@ class RollSite:
         return futures
 
     def wait_futures(self, futures):
-        ret_future = self.complete_pool.submit(wait, futures, timeout=10, return_when=FIRST_EXCEPTION)
+        # TODO:0: configurable
+        ret_future = self.complete_pool.submit(wait, futures, timeout=1000, return_when=FIRST_EXCEPTION)
         self.complete_pool.shutdown(wait=False)
         return ret_future
 
     def pull(self, parties: list = None):
         futures = []
-        for src_role, party_id in parties:
-            _tagged_key = self.__remote__object_key(self.job_id, self.name, self.tag, src_role, str(party_id),
-                                                    self.local_role, str(self.party_id))
+        for src_role, src_party_id in parties:
+            src_party_id = str(src_party_id)
+            roll_site_header = ErRollSiteHeader(
+                roll_site_session_id=self.roll_site_session_id,
+                name=self.name,
+                tag=self.tag,
+                src_role=src_role,
+                src_party_id=src_party_id,
+                dst_role=self.local_role,
+                dst_party_id=self.party_id)
+            _tagged_key = create_store_name(roll_site_header)
 
-            name = '{}-{}'.format(OBJECT_STORAGE_NAME, '-'.join([self.job_id, self.name, self.tag,
-                                                                 src_role, str(party_id),
-                                                                 self.local_role, str(self.party_id)]))
+            name = _tagged_key
 
-            LOGGER.info("pull _tagged_key: {}".format(_tagged_key))
-            task_info = proxy_pb2.Task(taskId=name)
-            topic_src = proxy_pb2.Topic(name="get_status", partyId="{}".format(party_id),
+            model = proxy_pb2.Model(name=_stringify(roll_site_header))
+            task_info = proxy_pb2.Task(taskId=name, model=model)
+            topic_src = proxy_pb2.Topic(name="get_status", partyId=src_party_id,
                                         role=src_role, callback=None)
-            topic_dst = proxy_pb2.Topic(name="get_status", partyId="{}".format(self.party_id),
+            topic_dst = proxy_pb2.Topic(name="get_status", partyId=self.party_id,
                                         role=self.local_role, callback=None)
-            command_test = proxy_pb2.Command(name="get_status")
+            get_status_command = proxy_pb2.Command(name="get_status")
             conf_test = proxy_pb2.Conf(overallTimeout=1000,
                                        completionWaitTimeout=1000,
                                        packetIntervalTimeout=1000,
@@ -257,14 +321,15 @@ class RollSite:
             metadata = proxy_pb2.Metadata(task=task_info,
                                           src=topic_src,
                                           dst=topic_dst,
-                                          command=command_test,
+                                          command=get_status_command,
                                           operator="getStatus",
-                                          seq=0, ack=0,
-                                          conf=conf_test)
+                                          seq=0,
+                                          ack=0)
 
             packet = proxy_pb2.Packet(header=metadata)
-            namespace = self.job_id
-            futures.append(self.process_pool.submit(RollSite._thread_receive, self, packet, namespace, _tagged_key))
+            namespace = self.roll_site_session_id
+            L.info(f"pulling prepared tagged_key: {_tagged_key}, packet:{to_one_line_string(packet)}")
+            futures.append(self.process_pool.submit(RollSite._thread_receive, self, packet, namespace, roll_site_header))
 
         self.process_pool.shutdown(wait=False)
         return futures

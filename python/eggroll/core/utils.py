@@ -12,16 +12,17 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import json
-import sys
 import time
 import traceback
+import uuid
 from datetime import datetime
 
-from eggroll.utils import log_utils
-
-L = log_utils.get_logger()
+import numpy as np
+from google.protobuf.text_format import MessageToString
 
 static_er_conf = {}
+stringify_charset = 'iso-8859-1'
+M = 2**31
 
 
 def set_static_er_conf(a_dict):
@@ -54,8 +55,32 @@ def _map_and_listify(map_func, a_list):
     return list(map(map_func, a_list))
 
 
-def _repr_list(a_list):
+def _stringify(data):
+    from eggroll.core.base_model import RpcMessage
+    if isinstance(data, str):
+        return data
+    elif isinstance(data, RpcMessage):
+        return data.to_proto_string().decode(stringify_charset)
+    elif isinstance(data, bytes):
+        return data.decode(stringify_charset)
+    else:
+        return str(data)
+
+
+def _stringify_dict(a_dict: dict):
+    return {_stringify(k): _stringify(v) for k, v in a_dict.items()}
+
+
+
+def _repr_list(a_list: list):
     return ", ".join(_map_and_listify(repr, a_list))
+
+
+def _repr_bytes(a_bytes: bytes):
+    if a_bytes is None:
+        return f"(None)"
+    else:
+        return f"({a_bytes[:200]}, len={len(a_bytes)})"
 
 
 def _elements_to_proto(rpc_message_list):
@@ -87,12 +112,13 @@ def json_loads(src):
 def current_timestamp():
     return int(time.time()*1000)
 
+
 def _exception_logger(func):
     def wrapper(*args, **kw):
         try:
             return func(*args, **kw)
         except:
-            msg = (f"\n==== detail start ====\n"
+            msg = (f"\n\n==== detail start, at {time_now()} ====\n"
                    f"{traceback.format_exc()}"
                    f"\n==== detail end ====\n\n")
             # LOGGER.error(msg)
@@ -100,6 +126,13 @@ def _exception_logger(func):
             raise RuntimeError(msg)
 
     return wrapper
+
+
+def get_stack():
+    return (f"\n\n==== stack start, at {time_now()} ====\n"
+           f"{''.join(traceback.format_stack())}"
+           f"\n==== stack end ====\n\n")
+
 
 DEFAULT_DATETIME_FORMAT = '%Y%m%d.%H%M%S.%f'
 def time_now(format: str = DEFAULT_DATETIME_FORMAT):
@@ -123,8 +156,9 @@ def get_self_ip():
     return self_ip
 
 
+# TODO:0: replace uuid with simpler human friendly solution
 def generate_job_id(session_id, tag='', delim='-'):
-    result = f'{session_id}{delim}job{delim}{time_now()}'
+    result = delim.join([session_id, 'py', 'job', str(uuid.uuid1())])
     if not tag:
         return result
     else:
@@ -135,17 +169,24 @@ def generate_task_id(job_id, partition_id, delim='-'):
     return delim.join([job_id, "task", str(partition_id)])
 
 
-#AI copy from java ByteString.hashCode()
+'''AI copy from java ByteString.hashCode(), @see RollPairContext.partitioner'''
 def hash_code(s):
-    if isinstance(s, bytes):
-        s = bytes_to_string(s)
     seed = 31
-    h = 0
-    for c in s:
-        h = int(seed * h) + ord(c)
+    h = len(s)
+    for i in range(len(s)):
+        c = s[i:i+1]
+        h = h * seed
+        if h > 2147483647 or h < -2147483648:
+            h = (h & (M - 1)) - (h & M)
+        h = h + int.from_bytes(c, byteorder='little', signed=True)
+        if h > 2147483647 or h < -2147483648:
+            h = (h & (M - 1)) - (h & M)
+    if h == 0 or h == -2147483648:
+        h = 1
+    return h if h >= 0 else abs(h)
 
-    if h == sys.maxsize or h == -sys.maxsize - 1:
-        L.warn("hash code:{} out of int bound".format(str(h)))
-        h = 0
 
-    return h
+def to_one_line_string(msg, as_one_line=True):
+    if isinstance(msg, str) or isinstance(msg, bytes):
+        return msg
+    return MessageToString(msg, as_one_line=as_one_line)

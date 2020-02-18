@@ -31,6 +31,7 @@ import com.webank.eggroll.core.grpc.observer.SameTypeCallerResponseStreamObserve
 import com.webank.eggroll.core.grpc.processor.BaseClientCallStreamProcessor
 import com.webank.eggroll.core.meta.TransferModelPbMessageSerdes._
 import com.webank.eggroll.core.meta.{ErProcessor, ErTransferBatch, ErTransferHeader}
+import com.webank.eggroll.core.util.GrpcUtils
 import io.grpc.stub.{ClientCallStreamObserver, StreamObserver}
 
 class GrpcTransferClient {
@@ -82,12 +83,16 @@ class GrpcTransferClient {
       throw new IllegalStateException("Illegal GrpcTransferClient state: duplicate init")
     }
 
+    val metadata = GrpcUtils.toMetadata(Map(StringConstants.TRANSFER_BROKER_NAME -> tag))
+
     context.setStubClass(classOf[TransferServiceGrpc.TransferServiceStub])
       .setServerEndpoint(processor.transferEndpoint)
       .setCallerStreamingMethodInvoker((stub: TransferServiceGrpc.TransferServiceStub,
                                         responseObserver: StreamObserver[Transfer.TransferBatch]) => stub.send(responseObserver))
       .setCallerStreamObserverClassAndInitArgs(classOf[SameTypeCallerResponseStreamObserver[Transfer.TransferBatch, Transfer.TransferBatch]])
       .setRequestStreamProcessorClassAndArgs(classOf[GrpcForwardingTransferSendStreamProcessor], dataBroker, tag, status)
+      .setGrpcMetadata(metadata)
+
 
     template.setGrpcClientContext(context)
 
@@ -154,7 +159,7 @@ class GrpcKvPackingTransferSendStreamProcessor(clientCallStreamObserver: ClientC
   private val transferHeaderBuilder = Transfer.TransferHeader.newBuilder()
   private val transferBatchBuilder = Transfer.TransferBatch.newBuilder()
   private var directBinPacketBuffer: ByteBuffer = _
-  private val binPacketLength = 1 << 20
+  private val binPacketLength = 32 << 20
   private val bufferElementSize = 100
   private var elementCount = 0
   private val dataBuffer = new util.ArrayList[(Array[Byte], Array[Byte])](bufferElementSize)
@@ -267,10 +272,14 @@ class TransferSendStreamProcessor(clientCallStreamObserver: ClientCallStreamObse
                                   status: String)
   extends BaseClientCallStreamProcessor[Transfer.TransferBatch](clientCallStreamObserver) {
   override def onProcess(): Unit = {
+    val finalData = if (data != null) data else Array.emptyByteArray
     val batch = ErTransferBatch(
       header = ErTransferHeader(
-        id = 100, tag = this.tag, totalSize = data.size, status = this.status),
-      data = this.data)
+        id = 100,
+        tag = tag,
+        totalSize = finalData.size,
+        status = status),
+      data = finalData)
     clientCallStreamObserver.onNext(batch.toProto())
   }
 }
