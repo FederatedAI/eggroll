@@ -14,10 +14,22 @@
 #
 #
 
-from eggroll.core.meta_model import ErEndpoint
+import unittest
+from time import monotonic
+
+from eggroll.core.utils import hash_code
 
 
-# todo:2: deprecate
-class GrpcCallError(Exception):
-    def __init__(self, name: str, endpoint: ErEndpoint, *args: object) -> None:
-        super().__init__(f"Failed to call {name} to endpoint: {endpoint}, caused by: ", *args)
+class TestMiscellaneous(unittest.TestCase):
+
+    def test_hash_code(self):
+        start = monotonic()
+        data = ('1' * 1000).encode()
+        for i in range(100000):
+            if i % 1000 == 0:
+                print(i)
+            hash_code(data)
+
+        end = monotonic()
+
+        print(end - start)

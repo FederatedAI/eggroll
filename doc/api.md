@@ -810,7 +810,6 @@ Aggregate operation to this `RollPair` using the specified associative binary op
 ``` python
 >>> from operator import add, mul
 >>> a = rpc.parallelize([1, 2, 3, 4], options={"total_partitions": 2}).aggregate(0, add, mul)
->>> a.get('result')
 >>> 24
 
 ```
@@ -1081,7 +1080,6 @@ Reduces operation to this `RollPair` using the specified associative binary oper
 ``` python
 >>> from operator import add
 >>> a = rpc.parallelize([1, 2, 3, 4, 5]).reduce(add)
->>> a.get('result')
 >>> 15
 
 ```
