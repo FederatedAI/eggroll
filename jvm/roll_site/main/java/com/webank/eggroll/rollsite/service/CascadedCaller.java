@@ -26,6 +26,7 @@ import com.webank.eggroll.core.retry.factory.RetryerBuilder;
 import com.webank.eggroll.core.retry.factory.StopStrategies;
 import com.webank.eggroll.core.retry.factory.WaitTimeStrategies;
 import com.webank.eggroll.core.session.StaticErConf;
+import com.webank.eggroll.core.util.ToStringUtils;
 import com.webank.eggroll.rollsite.event.model.PipeHandleNotificationEvent;
 import com.webank.eggroll.rollsite.event.model.PipeHandleNotificationEvent.Type;
 import com.webank.eggroll.rollsite.grpc.client.DataTransferPipedClient;
@@ -65,6 +66,7 @@ public class CascadedCaller implements Runnable {
     @Override
     @Async
     public void run() {
+        LOGGER.info("cascaded calling of {}", ToStringUtils.toOneLineString(pipeHandlerInfo.getMetadata()));
         Preconditions.checkNotNull(pipeHandlerInfo);
         Pipe pipe = pipeHandlerInfo.getPipe();
 
@@ -88,11 +90,10 @@ public class CascadedCaller implements Runnable {
             .build();
 
         final Callable<Integer> pushStreamRetry = () -> {
-            client.initPush(metadata, pipe);
-
             Type type = pipeHandlerInfo.getType();
 
             if (PipeHandleNotificationEvent.Type.PUSH == type) {
+                client.initPush(metadata, pipe);
                 //client.push(metadata, pipe);
                 //if(metadata.getDst() == metadata.getSrc())
                 //    return;
