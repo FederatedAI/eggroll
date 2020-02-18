@@ -19,33 +19,33 @@ from eggroll.roll_paillier_tensor.roll_paillier_tensor import RptContext
 ##### RollSite
 from eggroll.roll_pair.roll_pair import RollPairContext, RollPair
 from eggroll.roll_site.roll_site import RollSiteContext
-from eggroll.roll_pair.test.roll_pair_test_assets import get_debug_test_context
+from eggroll.roll_pair.test.roll_pair_test_assets import get_debug_test_context,\
+    get_cluster_context, get_standalone_context, get_default_options
 
 ##### Tool
 import numpy as np
 import pandas as pd
 
 
-
 store_type = StoreTypes.ROLLPAIR_LEVELDB
 max_iter = 1
 
 is_standalone = True
-manager_port_guest = 4671
+manager_port_guest = 5690
 egg_port_guest = 20001
 transfer_port_guest = 20002
-manager_port_host = 4671
+manager_port_host = 5690
 egg_port_host = 20001
 transfer_port_host = 20002
+remote_parties = [('host', '10001')]
+get_parties = [('guest', '10002')]
 
-host_parties = [('host', '20001')]
-guest_parties = [('guest', '20002')]
-
-options_host = {'runtime_conf_path': 'python/eggroll/roll_site/conf/role_conf.json',
-                'server_conf_path': 'python/eggroll/roll_site/conf/server_conf.json'}
-options_guest = {'runtime_conf_path': 'python/eggroll/roll_site/conf_guest/role_conf.json',
-                 'server_conf_path': 'python/eggroll/roll_site/conf_guest/server_conf.json'}
-
+host_partyId = 10001
+host_ip = 'localhost'
+host_rs_port = 9395
+guest_partyId = 10002
+guest_ip = 'localhost'
+guest_rs_port = 9396
 
 
 class TestLR_host(unittest.TestCase):
@@ -54,16 +54,17 @@ class TestLR_host(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        cls.rpc = get_debug_test_context(is_standalone, manager_port_host, egg_port_host, transfer_port_host, 'testing')
+        cls.rpc = get_standalone_context()
         cls.rptc = RptContext(cls.rpc)
 
     def lr(self):
         #multi context
-        rpt_context = TestLR_host.rptc
-        rp_context = TestLR_host.rpc
-        rs_context = RollSiteContext("atest", options=options_host, rp_ctx=rp_context)
+        rpt_ctx = TestLR_host.rptc
+        rp_ctx = TestLR_host.rpc
+        rs_ctx = RollSiteContext("atest",self_role='host', self_partyId=host_partyId,
+                                 rs_ip=host_ip, rs_port=host_rs_port, rp_ctx=rp_ctx)
         _tag = "Hello2"
-        rs = rs_context.load(name="roll_pair_h2g.table", tag="{}".format(_tag))
+        rs = rs_ctx.load(name="roll_pair_h2g.table", tag="{}".format(_tag))
         rpt_store = ErStore(store_locator=ErStoreLocator(store_type=store_type, namespace="ns", name="mat_a"))
 
         #local RP
@@ -73,7 +74,7 @@ class TestLR_host(unittest.TestCase):
                       [-0.851273,0.733108,-0.843535,-0.786363,-0.049836,-0.424532,-0.509221,-0.679649,0.797298,0.385927,-0.451772,0.453852,-0.431696,-0.494754,-1.182041,0.281228,0.084759,-0.25242,1.038575,0.351054]])
 
 
-        rp_x_H = rpt_context.load('egr', 'rp_x_H')
+        rp_x_H = rp_ctx.load('egr', 'rp_x_H')
 
         pub, priv = Ciper().genkey()
 
@@ -91,50 +92,50 @@ class TestLR_host(unittest.TestCase):
             enc_fw_H = fw_H1.encrypt()
 
             enc_fw_square_H = (fw_H1 * fw_H2).encrypt()
-            enc_fw_G = rs.pull("enc_fw_G")
-
-            # fw_G1 = X_G @ w_G
-            # fw_G2 = X_G @ w_G
-            # enc_fw_G = fw_G1.encrypt()
-            # enc_fw_square_G = (fw_G1 * fw_G2).encrypt()
-            #
-            # enc_agg_wx_G = enc_fw_G + enc_fw_H
-            #
-            # enc_agg_wx_square_G = enc_fw_square_G + enc_fw_square_H + fw_G1 * enc_fw_H * 2
-            #
-            # enc_fore_grad_G = enc_agg_wx_G * 0.25 - X_Y * 0.5
-            #
-            # enc_grad_G = (X_G * enc_fore_grad_G).mean()
-            # enc_grad_H = (X_H * enc_fore_grad_G).mean()
-            #
-            #
-            # enc_grad_G.out(priv, '123')
-            #
-            # grad_A = enc_grad_G.hstack(enc_grad_H)
-            #
-            # learning_rate *= 0.999
-            # optim_grad_A = grad_A * learning_rate
-            # optim_grad_G, optim_grad_H = optim_grad_A.decrypt(priv).split(10, 1)
-            #
-            # # w_G.out(priv, "111111111111")
-            # # optim_grad_G.out(priv, "22222222")
-            #
-            # w_G = w_G - optim_grad_G.T()
-            # w_H = w_H - optim_grad_H.T()
-            #
-            # enc_half_ywx_G = enc_agg_wx_G * 0.5 * X_Y
-            # # #todo diversion
-            # enc_loss_G = (((enc_half_ywx_G * -1)) + enc_agg_wx_square_G / 8 + NumpyTensor(np.log(2), pub)).mean()
-            # loss_AA = enc_loss_G.decrypt(priv)
-            #
-            # loss_A = next(loss_AA._store.get_all())[1]._ndarray[0][0]
-            # tmp = 99999 if pre_loss_A is None else loss_A - pre_loss_A
-            # if pre_loss_A is not None and abs(loss_A - pre_loss_A) < 1e-4:
-            #   break
-            # pre_loss_A = loss_A
-            # print("pre_loss_A:", pre_loss_A)
-
-            itr += 1
+            enc_fw_G = rs.push(enc_fw_square_H._store, )
+        #
+        #     # fw_G1 = X_G @ w_G
+        #     # fw_G2 = X_G @ w_G
+        #     # enc_fw_G = fw_G1.encrypt()
+        #     # enc_fw_square_G = (fw_G1 * fw_G2).encrypt()
+        #     #
+        #     # enc_agg_wx_G = enc_fw_G + enc_fw_H
+        #     #
+        #     # enc_agg_wx_square_G = enc_fw_square_G + enc_fw_square_H + fw_G1 * enc_fw_H * 2
+        #     #
+        #     # enc_fore_grad_G = enc_agg_wx_G * 0.25 - X_Y * 0.5
+        #     #
+        #     # enc_grad_G = (X_G * enc_fore_grad_G).mean()
+        #     # enc_grad_H = (X_H * enc_fore_grad_G).mean()
+        #     #
+        #     #
+        #     # enc_grad_G.out(priv, '123')
+        #     #
+        #     # grad_A = enc_grad_G.hstack(enc_grad_H)
+        #     #
+        #     # learning_rate *= 0.999
+        #     # optim_grad_A = grad_A * learning_rate
+        #     # optim_grad_G, optim_grad_H = optim_grad_A.decrypt(priv).split(10, 1)
+        #     #
+        #     # # w_G.out(priv, "111111111111")
+        #     # # optim_grad_G.out(priv, "22222222")
+        #     #
+        #     # w_G = w_G - optim_grad_G.T()
+        #     # w_H = w_H - optim_grad_H.T()
+        #     #
+        #     # enc_half_ywx_G = enc_agg_wx_G * 0.5 * X_Y
+        #     # # #todo diversion
+        #     # enc_loss_G = (((enc_half_ywx_G * -1)) + enc_agg_wx_square_G / 8 + NumpyTensor(np.log(2), pub)).mean()
+        #     # loss_AA = enc_loss_G.decrypt(priv)
+        #     #
+        #     # loss_A = next(loss_AA._store.get_all())[1]._ndarray[0][0]
+        #     # tmp = 99999 if pre_loss_A is None else loss_A - pre_loss_A
+        #     # if pre_loss_A is not None and abs(loss_A - pre_loss_A) < 1e-4:
+        #     #   break
+        #     # pre_loss_A = loss_A
+        #     # print("pre_loss_A:", pre_loss_A)
+        #
+        #     itr += 1
 
 
 
