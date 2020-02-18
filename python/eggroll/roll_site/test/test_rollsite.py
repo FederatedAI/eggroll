@@ -37,6 +37,10 @@ guest_ip = 'localhost'
 host_options = {'self_role': 'host',
                 'self_party_id': 10001,
                 'proxy_endpoint': ErEndpoint(host=host_ip, port=9395),
+                'is_secure_channel': True,
+                'root_certificates_path': 'conf/ca.crt',
+                'private_key_path': 'conf/client.key',
+                'certificate_chain_path': 'conf/client.crt'
                 }
 
 guest_options = {'self_role': 'guest',
@@ -51,14 +55,14 @@ class TestRollSite(unittest.TestCase):
         rp_context = get_cluster_context(options=opts)
         #rp_context = get_debug_test_context(is_standalone, manager_port_host, egg_port_host, transfer_port_host,
         #                                    'testing')
-        RollSiteContext("atest", host_options, {})
+        RollSiteContext("atest", host_options, rp_context)
 
     def test_remote(self):
         opts = {"eggroll.session.max.processors.per.node": "10"}
         rp_context = get_cluster_context(options=opts)
         #rp_context = get_debug_test_context(is_standalone, manager_port_guest, egg_port_guest, transfer_port_guest,
         #                                    'testing_guest')
-        context = RollSiteContext("atest", guest_options, {})
+        context = RollSiteContext("atest", {}, guest_options)
         _tag = "Hello2"
         rs = context.load(name="RsaIntersectTransferVariable.rsa_pubkey", tag="{}".format(_tag))
         fp = open("testA.model", 'r')
@@ -74,7 +78,7 @@ class TestRollSite(unittest.TestCase):
         rp_context = get_cluster_context(options=opts)
         #rp_context = get_debug_test_context(is_standalone, manager_port_host, egg_port_host, transfer_port_host,
         #                                    'testing')
-        context = RollSiteContext("atest", host_options, {})
+        context = RollSiteContext("atest", {}, host_options)
         _tag = "Hello2"
         rs = context.load(name="RsaIntersectTransferVariable.rsa_pubkey", tag="{}".format(_tag))
         futures = rs.pull(get_parties)
@@ -91,7 +95,7 @@ class TestRollSite(unittest.TestCase):
         rp_context = get_cluster_context(options=opts)
         #rp_context = get_debug_test_context(is_standalone, manager_port_host, egg_port_host, transfer_port_host,
         #                                    'testing')
-        RollSiteContext("atest2", host_options, {})
+        RollSiteContext("atest2", {}, host_options)
 
     def test_remote_rollpair(self):
         opts = {"eggroll.session.max.processors.per.node": "10"}
@@ -99,7 +103,7 @@ class TestRollSite(unittest.TestCase):
         #rp_context = get_debug_test_context(is_standalone, manager_port_guest, egg_port_guest, transfer_port_guest,
         #                                    'testing_guest')
         data = [("k1", "v1"), ("k2", "v2"), ("k3", "v3")]
-        context = RollSiteContext("atest2", guest_options, {})
+        context = RollSiteContext("atest2", {}, guest_options)
         rp_options = {'include_key': True}
         rp = rp_context.load("namespace", "name").put_all(data, options=rp_options)
         _tag = "Hello"
@@ -114,7 +118,7 @@ class TestRollSite(unittest.TestCase):
         rp_context = get_cluster_context(options=opts)
         #rp_context = get_debug_test_context(is_standalone, manager_port_host, egg_port_host, transfer_port_host,
         #                                    'testing')
-        context = RollSiteContext("atest2", host_options, {})
+        context = RollSiteContext("atest2", {}, host_options)
         _tag = "roll_pair_tag"
         rs = context.load(name="roll_pair_name.table", tag="{}".format(_tag))
         futures = rs.pull(get_parties)

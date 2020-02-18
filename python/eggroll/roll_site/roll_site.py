@@ -49,10 +49,20 @@ class RollSiteContext:
         self.role = options["self_role"]
         self.party_id = str(options["self_party_id"])
         self.proxy_endpoint = options["proxy_endpoint"]
-        self.is_secure_channel = options["is_secure_channel"]
-        self.root_certificates_path = options["root_certificates_path"]
-        self.private_key_path = options["private_key_path"]
-        self.certificate_chain_path = options["certificate_chain_path"]
+
+        self.is_secure_channel = False
+        self.root_certificates_path = None
+        self.private_key_pat = None
+        self.certificate_chain_path = None
+        if 'is_secure_channel' in options:
+            self.is_secure_channel = options["is_secure_channel"]
+        if 'root_certificates_path' in options:
+            self.root_certificates_path = options["root_certificates_path"]
+        if 'private_key_path' in options:
+            self.private_key_path = options["private_key_path"]
+        if 'certificate_chain_path' in options:
+            self.certificate_chain_path = options["certificate_chain_path"]
+
         self.is_standalone = self.rp_ctx.get_session().get_option(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE) == "standalone"
         if self.is_standalone:
             self.stub = None
