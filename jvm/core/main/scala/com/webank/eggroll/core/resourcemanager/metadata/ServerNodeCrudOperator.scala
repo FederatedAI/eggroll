@@ -78,7 +78,9 @@ object ServerNodeCrudOperator {
   private[metadata] def doGetServerCluster(input: ErServerCluster): ErServerCluster = {
     val sql = "select * from server_node where server_cluster_id = ?"
     val nodeResult = dbc.query(rs =>
-      rs.map(_ => ErServerNode(id = rs.getInt("server_node_id"), name = rs.getString("name"),
+      rs.map(_ => ErServerNode(
+        id = rs.getInt("server_node_id"), 
+        name = rs.getString("name"),
         endpoint = ErEndpoint(host=rs.getString("host"), port = rs.getInt("port")))
       ), sql, input.id)
 
