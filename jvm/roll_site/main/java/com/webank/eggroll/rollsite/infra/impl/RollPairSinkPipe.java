@@ -20,9 +20,9 @@ package com.webank.eggroll.rollsite.infra.impl;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
-import com.webank.eggroll.core.meta.ErFederationHeader;
+import com.webank.eggroll.core.meta.ErRollSiteHeader;
 import com.webank.eggroll.core.meta.TransferModelPbMessageSerdes;
-import com.webank.eggroll.core.transfer.Transfer.FederationHeader;
+import com.webank.eggroll.core.transfer.Transfer.RollSiteHeader;
 import com.webank.eggroll.rollsite.RollSiteUtil;
 import com.webank.eggroll.rollsite.infra.JobStatus;
 import java.nio.charset.StandardCharsets;
@@ -31,14 +31,14 @@ import scala.collection.immutable.Map.Map1;
 
 public class RollPairSinkPipe extends BasePipe {
 
-  private ErFederationHeader erFederationHeader;
+  private ErRollSiteHeader erRollSiteHeader;
   private RollSiteUtil rollSiteUtil;
   private String erSessionId;
   private String rollSiteSessionId;
 
-  public RollPairSinkPipe(ErFederationHeader erFederationHeader) {
-    this.erFederationHeader = erFederationHeader;
-    this.rollSiteSessionId = erFederationHeader.federationSessionId();
+  public RollPairSinkPipe(ErRollSiteHeader erRollSiteHeader) {
+    this.erRollSiteHeader = erRollSiteHeader;
+    this.rollSiteSessionId = erRollSiteHeader.rollSiteSessionId();
 
     try {
       while (!JobStatus.jobIdToSessionId.containsKey(rollSiteSessionId)) {
@@ -49,12 +49,12 @@ public class RollPairSinkPipe extends BasePipe {
     }
 
     this.erSessionId = JobStatus.jobIdToSessionId.get(rollSiteSessionId);
-    this.rollSiteUtil = new RollSiteUtil(erSessionId, erFederationHeader, new Map1<>("", ""));
+    this.rollSiteUtil = new RollSiteUtil(erSessionId, erRollSiteHeader, new Map1<>("", ""));
   }
 
-  public RollPairSinkPipe(String erFederationHeaderString) throws InvalidProtocolBufferException {
-    this(TransferModelPbMessageSerdes.ErFederationHeaderFromPbMessage(
-        FederationHeader.parseFrom(erFederationHeaderString.getBytes(StandardCharsets.ISO_8859_1))).fromProto());
+  public RollPairSinkPipe(String erRollSiteHeaderString) throws InvalidProtocolBufferException {
+    this(TransferModelPbMessageSerdes.ErRollSiteHeaderFromPbMessage(
+        RollSiteHeader.parseFrom(erRollSiteHeaderString.getBytes(StandardCharsets.ISO_8859_1))).fromProto());
   }
 
   @Override
@@ -65,7 +65,7 @@ public class RollPairSinkPipe extends BasePipe {
   @Override
   public void write(Object o) {
     if (o instanceof ByteString) {
-      this.rollSiteUtil.putBatch(((ByteString) o).asReadOnlyByteBuffer());
+      this.rollSiteUtil.putBatch((ByteString) o);
     } else {
       throw new IllegalArgumentException("Argument must be a ByteString instance");
     }

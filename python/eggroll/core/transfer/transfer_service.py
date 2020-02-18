@@ -66,7 +66,7 @@ class TransferService(object):
         result = TransferService.data_buffer.get(key, None)
         retry = 0
         while not result or key not in TransferService.data_buffer:
-            sleep(0.1)
+            sleep(min(0.1 * retry, 30))
             L.debug(f"waiting broker tag:{key}, retry:{retry}")
             result = TransferService.data_buffer.get(key, None)
             retry += 1
@@ -133,10 +133,11 @@ class GrpcTransferServicer(transfer_pb2_grpc.TransferServiceServicer):
             L.info(f'GrpcTransferServicer stream finished. tag: {base_tag}, remaining write count: {broker,broker.__dict__}, stream not empty')
             result = transfer_pb2.TransferBatch(header=response_header)
         else:
-            L.debug(f'broker is None. Getting tag from metadata')
+            L.warn(f'broker is None. Getting tag from metadata')
             metadata = dict(context.invocation_metadata())
-            broker = TransferService.get_broker(metadata[TRANSFER_BROKER_NAME])
-            L.debug("empty requests")
+            base_tag = metadata[TRANSFER_BROKER_NAME]
+            broker = TransferService.get_broker(base_tag)
+            L.debug(f"empty requests: {base_tag}")
             L.info(f'GrpcTransferServicer stream finished. tag: {base_tag}, remaining write count: {broker,broker.__dict__}, stream empty')
             result = transfer_pb2.TransferBatch()
 
@@ -184,8 +185,8 @@ class GrpcTransferService(TransferService):
 class TransferClient(object):
     def __init__(self):
         self.__grpc_channel_factory = GrpcChannelFactory()
-        self.__bin_packet_len = 1 << 20
-        self.__chunk_size = 100
+        #self.__bin_packet_len = 32 << 20
+        #self.__chunk_size = 100
 
     @_exception_logger
     def send(self, broker, endpoint: ErEndpoint, tag):

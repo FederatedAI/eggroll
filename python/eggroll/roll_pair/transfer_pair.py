@@ -152,7 +152,7 @@ class TransferPair(object):
         writer = None
 
         def commit(bs=buffer_size):
-            L.debug(f'generate_bin_batch commit:{done_cnt}')
+            L.debug(f'generate_bin_batch commit: {done_cnt}')
             nonlocal ba
             nonlocal buffer
             nonlocal writer
