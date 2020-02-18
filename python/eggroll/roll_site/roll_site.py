@@ -50,28 +50,31 @@ class RollSiteContext:
         self.party_id = str(options["self_party_id"])
         self.proxy_endpoint = options["proxy_endpoint"]
 
-        self.is_secure_channel = False
-        self.root_certificates_path = None
-        self.private_key_pat = None
-        self.certificate_chain_path = None
+        is_secure_channel = False
+        root_certificates = None
+        private_key = None
+        certificate_chain = None
         if 'is_secure_channel' in options:
-            self.is_secure_channel = options["is_secure_channel"]
+            is_secure_channel = options["is_secure_channel"]
         if 'root_certificates_path' in options:
-            self.root_certificates_path = options["root_certificates_path"]
+            with open(options["root_certificates_path"], 'rb') as f:
+                root_certificates = f.read()
         if 'private_key_path' in options:
-            self.private_key_path = options["private_key_path"]
+            with open(options["private_key_path"], 'rb') as f:
+                private_key = f.read()
         if 'certificate_chain_path' in options:
-            self.certificate_chain_path = options["certificate_chain_path"]
+            with open(options["certificate_chain_path"], 'rb') as f:
+                certificate_chain = f.read()
 
         self.is_standalone = self.rp_ctx.get_session().get_option(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE) == "standalone"
         if self.is_standalone:
             self.stub = None
         else:
             channel = self.grpc_channel_factory.create_channel(self.proxy_endpoint,
-                                                               self.is_secure_channel,
-                                                               self.root_certificates_path,
-                                                               self.private_key_path,
-                                                               self.certificate_chain_path)
+                                                               is_secure_channel,
+                                                               root_certificates,
+                                                               private_key,
+                                                               certificate_chain)
             self.stub = proxy_pb2_grpc.DataTransferServiceStub(channel)
             self.init_job_session_pair(self.roll_site_session_id, self.rp_ctx.session_id)
 

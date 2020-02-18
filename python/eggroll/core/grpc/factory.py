@@ -31,16 +31,10 @@ class GrpcChannelFactory(object):
     pool = {}
 
     def create_channel(self, endpoint: ErEndpoint, is_secure_channel=False,
-                       root_certificates_path=None, private_key_path=None, certificate_chain_path=None):
+                       root_certificates=None, private_key=None, certificate_chain=None):
         target = f"{endpoint._host}:{endpoint._port}"
         if target not in self.pool:
             if is_secure_channel is True:
-                with open(root_certificates_path, 'rb') as f:
-                    root_certificates = f.read()
-                with open(private_key_path, 'rb') as f:
-                    private_key = f.read()
-                with open(certificate_chain_path, 'rb') as f:
-                    certificate_chain = f.read()
                 creds = grpc.ssl_channel_credentials(root_certificates, private_key, certificate_chain)
                 result = grpc.secure_channel(
                     target=target,
