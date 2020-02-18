@@ -68,7 +68,7 @@ public abstract class BasePipe implements Pipe {
     @Override
     public boolean isClosed() {
         if (!closed) {
-            if (writerLatch.getCount() == 0 && isDrained()) {
+            if ((writerLatch == null || writerLatch.getCount() == 0) && isDrained()) {
                 close();
             }
         }
