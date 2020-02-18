@@ -19,17 +19,16 @@ package com.webank.eggroll.rollsite.grpc.client;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy.Packet;
 import com.webank.eggroll.core.grpc.processor.BaseClientCallStreamProcessor;
-import com.webank.eggroll.core.util.ToStringUtils;
-//import com.webank.eggroll.rollsite.grpc.core.utils.ToStringUtils;
 import com.webank.eggroll.rollsite.infra.Pipe;
 import io.grpc.stub.ClientCallStreamObserver;
-import io.grpc.stub.StreamObserver;
+import java.util.concurrent.TimeUnit;
 import javax.annotation.PostConstruct;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
+
+//import com.webank.eggroll.rollsite.grpc.core.utils.ToStringUtils;
 
 //import TransferBroker;
 
@@ -116,13 +115,13 @@ public class PushStreamProcessor extends BaseClientCallStreamProcessor<Proxy.Pac
         Proxy.Packet packet = null;
         do {
             //packet = (Proxy.Packet) pipe.read(1, TimeUnit.SECONDS);
-            packet = (Proxy.Packet) transferBroker.read();
+            packet = (Proxy.Packet) transferBroker.read(1, TimeUnit.SECONDS);
 
             if (packet != null) {
                 Proxy.Metadata outputMetadata = packet.getHeader();
                 Proxy.Data outData = packet.getBody();
-                LOGGER.info("PushStreamProcessor processing metadata: {}", ToStringUtils.toOneLineString(outputMetadata));
-                LOGGER.info("PushStreamProcessor processing outData: {}", ToStringUtils.toOneLineString(outData));
+                /*LOGGER.info("PushStreamProcessor processing metadata: {}", ToStringUtils.toOneLineString(outputMetadata));
+                LOGGER.info("PushStreamProcessor processing outData: {}", ToStringUtils.toOneLineString(outData));*/
 
                 clientCallStreamObserver.onNext(packet);
                 emptyRetryCount = 0;
@@ -135,7 +134,7 @@ public class PushStreamProcessor extends BaseClientCallStreamProcessor<Proxy.Pac
                            emptyRetryCount);
                 }
             }
-        } while ((packet != null || !transferBroker.isDrained()) && emptyRetryCount < 30 && !transferBroker.hasError());
+        } while ((packet != null || !transferBroker.isDrained()) && emptyRetryCount < 300 && !transferBroker.hasError());
 
     }
 
@@ -152,7 +151,7 @@ public class PushStreamProcessor extends BaseClientCallStreamProcessor<Proxy.Pac
         //LOGGER.info("[CLUSTERCOMM][PUSHPROCESSOR] actual completes send stream for task: {}, packetCount: {}",
         //           transferMetaString, packetCount);
         // transferBroker.setFinished();
-        transferBroker.close();
+        //transferBroker.close();
         super.onComplete();
     }
 }

@@ -22,7 +22,7 @@ import com.webank.eggroll.core.ErSession
 import com.webank.eggroll.core.command.CommandClient
 import com.webank.eggroll.core.constant.SessionConfKeys
 import com.webank.eggroll.core.datastructure.{RpcMessage, TaskPlan}
-import com.webank.eggroll.core.meta.{ErJob, ErPartition, ErStore, ErTask}
+import com.webank.eggroll.core.meta.{ErPartition, ErStore, ErTask}
 import com.webank.eggroll.core.serdes.DefaultScalaSerdes
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.util.{IdUtils, Logging}
@@ -59,7 +59,7 @@ object JobRunner {
   def run(plan: TaskPlan): Array[ErTask] = {
     val tasks = decomposeJob(taskPlan = plan)
     val commandClient = new CommandClient()
-    val results = commandClient.call[ErTask](commandURI = plan.uri, args = tasks.map(t => (Array[RpcMessage](t), t.inputs.head.processor.commandEndpoint)))
+    val results = commandClient.call[ErTask](commandUri = plan.uri, args = tasks.map(t => (Array[RpcMessage](t), t.inputs.head.processor.commandEndpoint)))
     tasks
   }
 
@@ -88,7 +88,9 @@ object JobRunner {
         inputs = populateProcessor(job.inputs),
         outputs = populateProcessor(job.outputs))
     } else {
-      ErJob(id = job.id, name = job.name, inputs = Array.empty, outputs = Array.empty, functors = job.functors)
+      job.copy(
+        inputs = Array.empty,
+        outputs = Array.empty)
     }
 
     for (i <- 0 until inputPartitionSize) {

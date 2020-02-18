@@ -24,13 +24,30 @@ import com.webank.eggroll.core.datastructure.RpcMessage
 import com.webank.eggroll.core.serdes.{BaseSerializable, PbMessageDeserializer, PbMessageSerializer}
 import com.webank.eggroll.core.transfer.Transfer
 
+import scala.collection.JavaConverters._
+
 trait TransferRpcMessage extends RpcMessage {
   override def rpcMessageType(): String = "Transfer"
 }
 
 case class ErTransferHeader(id: Int, tag: String, totalSize: Long, status: String = StringConstants.EMPTY) extends TransferRpcMessage
 
-case class ErTransferBatch(header: ErTransferHeader, data: Array[Byte]) extends TransferRpcMessage
+case class ErTransferBatch(header: ErTransferHeader, data: Array[Byte] = Array.emptyByteArray) extends TransferRpcMessage
+
+case class ErRollSiteHeader(rollSiteSessionId: String,
+                            name: String,
+                            tag: String,
+                            srcRole: String,
+                            srcPartyId: String,
+                            dstRole: String,
+                            dstPartyId: String,
+                            dataType: String,
+                            options: Map[String, String]) extends TransferRpcMessage {
+  def concat(delim: String = StringConstants.HASH, prefix: Array[String] = Array("__federation__")): String = {
+    val finalArray = prefix ++ Array(rollSiteSessionId, name, tag, srcRole, srcPartyId, dstRole, dstPartyId)
+    String.join(delim, finalArray: _*)
+  }
+}
 
 object TransferModelPbMessageSerdes {
 
@@ -50,12 +67,13 @@ object TransferModelPbMessageSerdes {
       baseSerializable.asInstanceOf[ErTransferHeader].toBytes()
   }
 
-  implicit class ErBatchToPbMessage(src: ErTransferBatch) extends PbMessageSerializer {
+  implicit class ErTransferBatchToPbMessage(src: ErTransferBatch) extends PbMessageSerializer {
     override def toProto[T >: Message](): Transfer.TransferBatch = {
       val builder = Transfer.TransferBatch.newBuilder()
         .setHeader(src.header.toProto())
-        .setData(ByteString.copyFrom(src.data))
         .setBatchSize(src.data.size)
+
+        if (src.data.length > 0) builder.setData(ByteString.copyFrom(src.data))
 
       builder.build()
     }
@@ -64,8 +82,28 @@ object TransferModelPbMessageSerdes {
       baseSerializable.asInstanceOf[ErTransferBatch].toBytes()
   }
 
+  implicit class ErRollSiteHeaderToPbMessage(src: ErRollSiteHeader) extends PbMessageSerializer {
+    override def toProto[T >: Message](): Transfer.RollSiteHeader = {
+      val builder = Transfer.RollSiteHeader.newBuilder()
+        .setRollSiteSessionId(src.rollSiteSessionId)
+        .setName(src.name)
+        .setTag(src.tag)
+        .setSrcRole(src.srcRole)
+        .setSrcPartyId(src.srcPartyId)
+        .setDstRole(src.dstRole)
+        .setDstPartyId(src.dstPartyId)
+        .setDataType(src.dataType)
+        .putAllOptions(src.options.asJava)
+
+      builder.build()
+    }
+
+    override def toBytes(baseSerializable: BaseSerializable): Array[Byte] =
+      baseSerializable.asInstanceOf[ErRollSiteHeader].toBytes()
+  }
+
   // deserializers
-  implicit class ErBatchIdFromPbMessage(src: Transfer.TransferHeader) extends PbMessageDeserializer {
+  implicit class ErTransferHeaderFromPbMessage(src: Transfer.TransferHeader) extends PbMessageDeserializer {
     override def fromProto[T >: RpcMessage](): ErTransferHeader = {
       ErTransferHeader(id = src.getId, tag = src.getTag, totalSize = src.getTotalSize, status = src.getStatus)
     }
@@ -74,13 +112,32 @@ object TransferModelPbMessageSerdes {
       Transfer.TransferHeader.parseFrom(bytes).fromProto()
   }
 
-  implicit class ErBatchFromPbMessage(src: Transfer.TransferBatch) extends PbMessageDeserializer {
+  implicit class ErTransferBatchFromPbMessage(src: Transfer.TransferBatch) extends PbMessageDeserializer {
     override def fromProto[T >: RpcMessage](): ErTransferBatch = {
       ErTransferBatch(header = src.getHeader.fromProto(), data = src.getData.toByteArray)
     }
 
     override def fromBytes(bytes: Array[Byte]): ErTransferHeader =
       Transfer.TransferHeader.parseFrom(bytes).fromProto()
+  }
+
+  implicit class ErRollSiteHeaderFromPbMessage(src: Transfer.RollSiteHeader) extends PbMessageDeserializer {
+    override def fromProto[T >: RpcMessage](): ErRollSiteHeader = {
+      ErRollSiteHeader(
+        rollSiteSessionId = src.getRollSiteSessionId,
+        name = src.getName,
+        tag = src.getTag,
+        srcRole = src.getSrcRole,
+        srcPartyId = src.getSrcPartyId,
+        dstRole = src.getDstRole,
+        dstPartyId = src.getDstPartyId,
+        dataType = src.getDataType,
+        options = src.getOptionsMap.asScala.toMap
+      )
+    }
+
+    override def fromBytes(bytes: Array[Byte]): ErRollSiteHeader =
+      Transfer.RollSiteHeader.parseFrom(bytes).fromProto()
   }
 }
 

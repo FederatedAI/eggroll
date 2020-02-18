@@ -26,6 +26,7 @@ import com.webank.eggroll.core.clustermanager.dao.generated.model._
 import com.webank.eggroll.core.constant._
 import com.webank.eggroll.core.error.CrudException
 import com.webank.eggroll.core.meta._
+import com.webank.eggroll.core.resourcemanager.SessionMetaDao
 import com.webank.eggroll.core.util.Logging
 import org.apache.commons.lang3.StringUtils
 import org.apache.ibatis.session.{RowBounds, SqlSession}
@@ -35,18 +36,20 @@ import scala.collection.mutable.ArrayBuffer
 
 class StoreCrudOperator extends CrudOperator with Logging {
   private val crudOperatorTemplate = new CrudOperatorTemplate()
-  def getOrCreateStore(input: ErStore): ErStore = {
+  def getOrCreateStore(input: ErStore): ErStore = synchronized {
     def doGetOrCreateStore(input: ErStore, sqlSession: SqlSession): ErStore = {
       val inputStoreLocator = input.storeLocator
       val inputWithoutType = input.copy(storeLocator = inputStoreLocator.copy(storeType = StringConstants.EMPTY))
       val inputStoreType = inputStoreLocator.storeType
       val existing = StoreCrudOperator.doGetStore(inputWithoutType, sqlSession)
       if (existing != null) {
-        if (existing.storeLocator.storeType.equals(inputStoreType)) existing
-        else throw new CrudException(
-          s"store namespace: ${inputStoreLocator.namespace}, name: ${inputStoreLocator.name} " +
-            s"already exist with store type: ${existing.storeLocator.storeType}. " +
-            s"requires type: ${inputStoreLocator.storeType}")
+        if (!existing.storeLocator.storeType.equals(inputStoreType)) {
+          logWarning(
+            s"store namespace: ${inputStoreLocator.namespace}, name: ${inputStoreLocator.name} " +
+              s"already exist with store type: ${existing.storeLocator.storeType}. " +
+              s"requires type: ${inputStoreLocator.storeType}")
+        }
+        existing
       } else {
         StoreCrudOperator.doCreateStore(input, sqlSession)
       }
@@ -61,6 +64,10 @@ class StoreCrudOperator extends CrudOperator with Logging {
 
   def deleteStore(input: ErStore): ErStore = {
     crudOperatorTemplate.doCrudOperationSingleResult(StoreCrudOperator.doDeleteStore, input, openTransaction = true)
+  }
+
+  def getStoreFromNamespace(input: ErStore): ErStoreList = {
+    StoreCrudOperator.dao.getStoreLocators(input: ErStore)
   }
 }
 
@@ -101,6 +108,7 @@ object StoreCrudOperator {
     storeLocatorExample.setOrderByClause("store_partition_id asc")
 
     val storePartitionMapper = sqlSession.getMapper(classOf[StorePartitionMapper])
+
     val storePartitionResult = storePartitionMapper.selectByExample(storePartitionExample)
 
     if (storePartitionResult.isEmpty) {
@@ -268,4 +276,5 @@ object StoreCrudOperator {
 
     ErStore(storeLocator = outputStoreLocator)
   }
+  val dao = new SessionMetaDao()
 }

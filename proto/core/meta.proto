@@ -77,19 +77,24 @@ message PairBatch {
 }
 
 message StoreLocator {
-  string storeType = 1;
-  string namespace = 2;
-  string name = 3;
-  string path = 4;
-  int32 totalPartitions = 5;
-  string partitioner = 6;
-  string serdes = 7;
+  int64 id = 1;
+  string storeType = 2;
+  string namespace = 3;
+  string name = 4;
+  string path = 5;
+  int32 totalPartitions = 6;
+  string partitioner = 7;
+  string serdes = 8;
 }
 
 message Store {
   StoreLocator storeLocator = 1;
   repeated Partition partitions = 2;
   map<string, string> options = 3;
+}
+
+message StoreList {
+    repeated Store stores = 1;
 }
 
 message Partition {

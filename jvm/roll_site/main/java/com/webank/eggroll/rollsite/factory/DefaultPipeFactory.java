@@ -24,14 +24,13 @@ import com.webank.eggroll.rollsite.infra.impl.InputStreamToPacketUnidirectionalP
 import com.webank.eggroll.rollsite.infra.impl.PacketQueuePipe;
 import com.webank.eggroll.rollsite.infra.impl.PacketQueueSingleResultPipe;
 import com.webank.eggroll.rollsite.infra.impl.PacketToOutputStreamUnidirectionalPipe;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.Map;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-
-import java.io.InputStream;
-import java.io.OutputStream;
 
 @Component("defaultPipeFactory")
 public class DefaultPipeFactory implements PipeFactory {
@@ -80,6 +79,11 @@ public class DefaultPipeFactory implements PipeFactory {
 
     @Override
     public Pipe create(String name) {
+        return create(name, 1);
+    }
+
+    @Override
+    public Pipe create(String name, int totalWriters) {
         PacketQueueSingleResultPipe pipe;
         LOGGER.info("pipeMap: {}", pipeMap);
         synchronized(this) {
@@ -89,6 +93,7 @@ public class DefaultPipeFactory implements PipeFactory {
             }
             else {
                 pipe = (PacketQueueSingleResultPipe) localBeanFactory.getBean(PacketQueueSingleResultPipe.class);
+                pipe.initWriters(totalWriters);
                 pipeMap.put(name, pipe);
 
                 LOGGER.info("create key {}", name);

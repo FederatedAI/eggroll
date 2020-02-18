@@ -90,6 +90,7 @@ class RollPairMasterBootstrap extends Bootstrap with Logging {
     this.port = cmd.getOptionValue('p', "0").toInt
 
     val rollServer = NettyServerBuilder.forAddress(new InetSocketAddress(this.port))
+      .maxInboundMetadataSize(1024*1024)
       .addService(new CommandService)
       .build
     rollServer.start()
