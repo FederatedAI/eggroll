@@ -16,6 +16,7 @@ from eggroll.utils import file_utils
 OBJECT_STORAGE_NAME = "__federation__"
 STATUS_TABLE_NAME = "__status__"
 
+from arch.api.utils import file_utils
 from eggroll.utils import log_utils
 LOGGER = log_utils.get_logger()
 #LOGGER = getLogger()
@@ -30,8 +31,7 @@ def init_roll_site_context(runtime_conf, session_id):
 
     role = runtime_conf.get("local").get("role")
     party_id = str(runtime_conf.get("local").get("party_id"))
-    import os
-    _path = os.environ['FATE_HOME'] + "/arch/conf/server_conf.json"
+    _path = file_utils.get_project_base_directory() + "/arch/conf/server_conf.json"
 
     server_conf = file_utils.load_json_conf(_path)
     host = server_conf.get('servers').get('proxy').get("host")
@@ -42,7 +42,7 @@ def init_roll_site_context(runtime_conf, session_id):
                'proxy_endpoint': ErEndpoint(host, int(port))
               }
 
-    rs_context = RollSiteContext(session_id, options=options, rp_ctx=rp_context)
+    rs_context = RollSiteContext(session_id, rp_ctx=rp_context, options=options)
     LOGGER.info("init_roll_site_context done: {}".format(rs_context.__dict__))
     return rp_context, rs_context
 
@@ -74,7 +74,7 @@ class FederationRuntime(Federation):
         futures = rs.pull(parties=rs_parties)
         for future in futures:
             obj = future.result()
-            LOGGER.info("federation got: {}".format(obj))
+            LOGGER.info(f'federation got data. tag: {tag}')
             if isinstance(obj, RollPair):
                 rtn.append(DTable.from_dtable(obj.ctx.get_session().get_session_id(),obj))
                 rubbish.add_table(obj)

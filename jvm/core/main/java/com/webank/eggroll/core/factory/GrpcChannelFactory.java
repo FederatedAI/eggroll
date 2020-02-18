@@ -138,9 +138,9 @@ public class GrpcChannelFactory {
     int channelFlowControlWindow = StaticErConf
         .getInt(CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_FLOW_CONTROL_WINDOW(), 16 << 20);
     int channelMaxInboundMessageSize = StaticErConf
-        .getInt(CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_MAX_INBOUND_MESSAGE_SIZE(), 32 << 20);
+        .getInt(CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_MAX_INBOUND_MESSAGE_SIZE(), 2 << 30 - 1);
     int channelMaxInboundMetadataSize = StaticErConf
-        .getInt(CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_MAX_INBOUND_METADATA_SIZE(), 64 << 10);
+        .getInt(CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_MAX_INBOUND_METADATA_SIZE(), 64 << 20);
     long channelRetryBufferSize = StaticErConf
         .getLong(CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_RETRY_BUFFER_SIZE(), 16 << 20);
     int channelMaxRetryAttempts = StaticErConf
