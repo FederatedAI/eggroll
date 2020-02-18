@@ -16,10 +16,15 @@ from urllib.parse import urlparse, parse_qs
 
 from eggroll.core.base_model import RpcMessage
 from eggroll.core.proto import command_pb2
+from eggroll.core.utils import _map_and_listify
 
 
 class ErCommandRequest(RpcMessage):
-    def __init__(self, id, uri: str, args=list(), kwargs=dict()):
+    def __init__(self, id, uri: str, args: list = None, kwargs: dict = None):
+        if args is None:
+            args = []
+        if kwargs is None:
+            kwargs = {}
         self._id = id
         self._uri = uri
         self._args = args
@@ -46,11 +51,15 @@ class ErCommandRequest(RpcMessage):
         return self.__repr__()
 
     def __repr__(self):
-        return f'ErCommandRequest(id={self._id}, uri={self._uri}, args=[***, len={len(self._args)}], kwargs=[***, len={len(self._kwargs)}])'
+        return f'ErCommandRequest(id={self._id}, uri={self._uri}, ' \
+               f'args=[{_map_and_listify(lambda v : v[:200], self._args)}, len={len(self._args)}], ' \
+               f'kwargs=[***, len={len(self._kwargs)}])'
 
 
 class ErCommandResponse(RpcMessage):
-    def __init__(self, id, request: ErCommandRequest = None, results=list()):
+    def __init__(self, id, request: ErCommandRequest = None, results: list = None):
+        if results is None:
+            results = []
         self._id = id
         self._request = request
         self._results = results
@@ -77,7 +86,7 @@ class ErCommandResponse(RpcMessage):
         return self.__repr__()
 
     def __repr__(self):
-        return f'ErCommandResponse(id={self._id}, request={repr(self._request)}, results=(***))'
+        return f'ErCommandResponse(id={self._id}, request={repr(self._request)}, results=[{_map_and_listify(lambda v : v[:200], self._results)}, len={len(self._results)}]'
 
 
 class ErService(object):
@@ -99,6 +108,7 @@ class CommandURI(object):
             uri_string = getattr(command_request, "_uri")
 
         self._uri = uri_string
+        self._prefix = ''
         self._parse_result = urlparse(self._uri)
         self._query_string = self._parse_result.query
         self._query_pairs = parse_qs(
@@ -114,6 +124,9 @@ class CommandURI(object):
 
     def get_route(self):
         return self.get_query_value('route')
+
+    def get_service_name(self):
+        return "/".join([self._prefix, self._uri])
 
     def __repr__(self):
         return f'CommandURI(_uri={self._uri})'

@@ -33,6 +33,18 @@ message TransferBatch {
   bytes data = 3;
 }
 
+message RollSiteHeader {
+  string rollSiteSessionId = 1;
+  string name = 2;
+  string tag = 3;
+  string srcRole = 4;
+  string srcPartyId = 5;
+  string dstRole = 6;
+  string dstPartyId = 7;
+  string dataType = 8;
+  map<string, string> options = 10;
+}
+
 // TODO: use transfer lib
 service TransferService {
   rpc send (stream TransferBatch) returns (TransferBatch);

@@ -51,6 +51,10 @@ object MetadataCommands {
   val deleteStore = "deleteStore"
   val deleteStoreServiceName = CommandUtils.toServiceName(prefix, deleteStore)
   val DELETE_STORE = new CommandURI(deleteStoreServiceName)
+
+  val getStoreFromNamespace = "getStoreFromNamespace"
+  val getStoreFromNamespaceServiceName = CommandUtils.toServiceName(prefix, getStoreFromNamespace)
+  val GET_STORE_FROM_NAMESPACE = new CommandURI(getStoreFromNamespaceServiceName)
 }
 
 object SessionCommands {
@@ -64,21 +68,15 @@ object SessionCommands {
   val getSessionEggs = new CommandURI(prefix = prefix, name = "getSessionEggs")
   val heartbeat = new CommandURI(prefix = prefix, name = "heartbeat")
   val stopSession = new CommandURI(prefix = prefix, name = "stopSession")
+  val killSession = new CommandURI(prefix = prefix, name = "killSession")
+  val killAllSessions = new CommandURI(prefix = prefix, name = "killAllSessions")
 }
 
 object NodeManagerCommands {
   val prefix = "v1/node-manager/processor"
 
-  val getOrCreateEggs = "getOrCreateEggs"
-  val getOrCreateEggsServiceName = CommandUtils.toServiceName(prefix, getOrCreateEggs)
-  val GET_OR_CREATE_EGGS = new CommandURI(getOrCreateEggsServiceName)
-
-  val getOrCreateRolls = "getOrCreateRolls"
-  val getOrCreateRollsServiceName = CommandUtils.toServiceName(prefix, getOrCreateRolls)
-  val GET_OR_CREATE_ROLLS = new CommandURI(getOrCreateRollsServiceName)
-
   val heartbeat = new CommandURI(prefix = prefix, name = "heartbeat")
-
   val startContainers = new CommandURI(prefix = prefix, name = "startContainers")
   val stopContainers = new CommandURI(prefix = prefix, name = "stopContainers")
+  val killContainers = new CommandURI(prefix = prefix, name = "killContainers")
 }

@@ -17,8 +17,9 @@
 import uuid
 from typing import Iterable
 
-from arch.api.table.table import Table
 from arch.api.utils.profile_util import log_elapsed
+
+from arch.api.table.table import Table
 
 
 # noinspection SpellCheckingInspection,PyProtectedMember,PyPep8Naming
@@ -68,7 +69,6 @@ class DTable(Table):
 
     def put_all(self, kv_list: Iterable, use_serialize=True, chunk_size=100000):
         #return self._dtable.put_all(kv_list=kv_list, use_serialize=use_serialize, chunk_size=chunk_size)
-        print("DTable put all")
         options = {}
         return self._dtable.put_all(kv_list, options=options)
 
@@ -84,8 +84,11 @@ class DTable(Table):
         return self._dtable.get_all()
 
     @log_elapsed
-    def get_all(self):
-        return self._dtable.get_all()
+    def get_all(self, should_sort=True):
+        ret = self._dtable.get_all()
+        if should_sort:
+            ret = sorted(ret, key=lambda x: x[0])
+        return ret
 
     def delete(self, k, use_serialize=True):
         return self._dtable.delete(k=k)
@@ -101,10 +104,14 @@ class DTable(Table):
         return self._dtable.put_if_absent(k=k, v=v, use_serialize=use_serialize)
 
     def take(self, n=1, keysOnly=False, use_serialize=True):
-        return self._dtable.take(n=n, keysOnly=keysOnly, use_serialize=use_serialize)
+        options = {}
+        options['keys_only'] = keysOnly
+        return self._dtable.take(n=n, options=options)
 
     def first(self, keysOnly=False, use_serialize=True):
-        return self._dtable.first(keysOnly=keysOnly, use_serialize=use_serialize)
+        options = {}
+        options['keys_only'] = keysOnly
+        return self._dtable.first(options=options)
 
     # noinspection PyProtectedMember
     def get_partitions(self):
@@ -125,7 +132,8 @@ class DTable(Table):
 
     @log_elapsed
     def mapPartitions(self, func, **kwargs):
-        return DTable(self._dtable.map_partitions(func), session_id=self._session_id)
+        #return DTable(self._dtable.map_partitions(func), session_id=self._session_id)
+        return DTable(self._dtable.collapse_partitions(func), session_id=self._session_id)
 
     @log_elapsed
     def collapsePartitions(self, func, **kwargs):
@@ -133,7 +141,7 @@ class DTable(Table):
 
     @log_elapsed
     def reduce(self, func, **kwargs):
-        return self._dtable.reduce(func).first()[1]
+        return self._dtable.reduce(func)
 
     @log_elapsed
     def join(self, other, func, **kwargs):
