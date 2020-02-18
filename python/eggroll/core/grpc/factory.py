@@ -29,13 +29,30 @@ def wrap_host_scheme(host):
 
 class GrpcChannelFactory(object):
     pool = {}
-    def create_channel(self, endpoint: ErEndpoint, is_secure_channel=False):
+
+    def create_channel(self, endpoint: ErEndpoint, is_secure_channel=False,
+                       root_certificates_path=None, private_key_path=None, certificate_chain_path=None):
         target = f"{endpoint._host}:{endpoint._port}"
         if target not in self.pool:
-            result = grpc.insecure_channel(
-            target=target,
-            options=[('grpc.max_send_message_length', 2 << 30 - 1),
-                     ('grpc.max_receive_message_length', 2 << 30 - 1),
-                     ('grpc.max_metadata_size', 32 << 20)])
+            if is_secure_channel is True:
+                with open(root_certificates_path, 'rb') as f:
+                    root_certificates = f.read()
+                with open(private_key_path, 'rb') as f:
+                    private_key = f.read()
+                with open(certificate_chain_path, 'rb') as f:
+                    certificate_chain = f.read()
+                creds = grpc.ssl_channel_credentials(root_certificates, private_key, certificate_chain)
+                result = grpc.secure_channel(
+                    target=target,
+                    credentials=creds,
+                    options=[('grpc.max_send_message_length', 2 << 30 - 1),
+                             ('grpc.max_receive_message_length', 2 << 30 - 1),
+                             ('grpc.max_metadata_size', 32 << 20)])
+            else:
+                result = grpc.insecure_channel(
+                    target=target,
+                    options=[('grpc.max_send_message_length', 2 << 30 - 1),
+                             ('grpc.max_receive_message_length', 2 << 30 - 1),
+                             ('grpc.max_metadata_size', 32 << 20)])
             self.pool[target] = result
         return self.pool[target]
