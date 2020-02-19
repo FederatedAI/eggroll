@@ -15,6 +15,7 @@ from eggroll.roll_paillier_tensor.roll_paillier_tensor import Ciper
 from eggroll.roll_paillier_tensor.roll_paillier_tensor import RptContext
 
 # ##### RollSite
+from eggroll.roll_paillier_tensor.test.tesst_assets import get_debug_rs_context, guest_options
 from eggroll.roll_pair.roll_pair import RollPairContext, RollPair
 from eggroll.roll_site.roll_site import RollSiteContext
 from eggroll.roll_pair.test.roll_pair_test_assets import get_debug_test_context, \
@@ -24,7 +25,7 @@ import numpy as np
 import pandas as pd
 
 store_type = StoreTypes.ROLLPAIR_LEVELDB
-max_iter = 1
+max_iter = 10
 #
 is_standalone = True
 manager_port_guest = 5690
@@ -50,24 +51,25 @@ class TestLR_guest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        cls.rpc = get_standalone_context()
+        cls.rpc = get_debug_test_context(True)
+        cls.rsc = get_debug_rs_context(cls.rpc, "rs_sid1", guest_options)
         cls.rptc = RptContext(cls.rpc)
 
-    def lr(self):
+    def testLRGuest(self):
         #base obj
         rpc = TestLR_guest.rpc
         rpt_store = ErStore(store_locator=ErStoreLocator(store_type=store_type, namespace="ns", name="mat_a"))
 
-        rpt_ctx = TestLR_guest.rptc
-        rp_ctx = TestLR_guest.rpc
-        rs_ctx = RollSiteContext("atest",self_role='guest', self_partyId=guest_partyId,
-                                 rs_ip=guest_ip, rs_port=guest_rs_port, rp_ctx=rp_ctx)
+        rpt_ctx = self.rptc
+        rp_ctx = self.rpc
+        rs_ctx = self.rsc
         _tag = "Hello2"
         #rs = rs_ctx.load(name="roll_pair_h2g.table", tag="{}".format(_tag))
         rpt_store = ErStore(store_locator=ErStoreLocator(store_type=store_type, namespace="ns", name="mat_a"))
 
         # #local RP
         pub, priv = Ciper().genkey()
+        rs_ctx.load(name="roll_pair_name.test_key_pair", tag="pub_priv_key").push((pub,priv), host_parties) #[0].result()
         #base data
         G = np.array([[0.254879,-1.046633,0.209656,0.074214,-0.441366,-0.377645,-0.485934,0.347072,-0.28757,-0.733474],
                       [-1.142928,-0.781198,-1.166747,-0.923578,0.62823,-1.021418,-1.111867,-0.959523,-0.096672,-0.121683],
@@ -96,7 +98,7 @@ class TestLR_guest(unittest.TestCase):
         #round 1
 
         while itr < max_iter:
-            round = str(1)
+            round = str(itr)
 
             fw_G1 = X_G @ w_G
             fw_G2 = X_G @ w_G
@@ -120,8 +122,8 @@ class TestLR_guest(unittest.TestCase):
             rs = rs_ctx.load(name="roll_pair_name.table", tag="X_G" + round)
             futures = rs.push(rp_x_G, host_parties)
 
-            rs = rs_ctx.load(name="roll_pair_name.table", tag="W_G" + round)
-            futures = rs.push(rp_w_G, host_parties)
+            # rs = rs_ctx.load(name="roll_pair_name.table", tag="W_G" + round)
+            # futures = rs.push(rp_w_G, host_parties)
 
 
             # time.sleep(5)
