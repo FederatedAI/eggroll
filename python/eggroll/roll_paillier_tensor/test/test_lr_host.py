@@ -98,15 +98,14 @@ class TestLR_host(unittest.TestCase):
             rs = rs_ctx.load(name="roll_pair_name.table", tag="fw_G1" + round)
             fw_G1 = rs.pull(guest_parties)[0].result()
 
-            rs = rs_ctx.load(name="roll_pair_name.table", tag="enc_fw_G1" + round)
+            rs = rs_ctx.load(name="roll_pair_name.table", tag="enc_fw_G" + round)
             enc_fw_G = rs.pull(guest_parties)[0].result()
 
             #get enc_fw_sqre_G
-            rs = rs_ctx.load(name="roll_pair_name.table", tag="enc_fw_square_G1" +round)
+            rs = rs_ctx.load(name="roll_pair_name.table", tag="enc_fw_square_G" +round)
             enc_fw_square_G = rs.pull(guest_parties)[0].result()
 
             enc_agg_wx_G = enc_fw_H + RollPaillierTensor(enc_fw_G)
-
 
             enc_agg_wx_square_G = RollPaillierTensor(enc_fw_square_G) + enc_fw_square_H + RollPaillierTensor(fw_G1) * enc_fw_H * 2
 
@@ -117,7 +116,7 @@ class TestLR_host(unittest.TestCase):
             rs = rs_ctx.load(name="roll_pair_name.table", tag="X_G" + round)
             X_G = rs.pull(guest_parties)[0].result()
 
-            rs = rs_ctx.load(name="roll_pair_name.table", tag="W_G1" + round)
+            rs = rs_ctx.load(name="roll_pair_name.table", tag="W_G" + round)
             w_G = rs.pull(guest_parties)[0].result()
 
             enc_fore_grad_G = 0.25 * enc_agg_wx_G - 0.5 * RollPaillierTensor(X_Y)
