@@ -26,10 +26,9 @@ import com.webank.eggroll.core.error.CrudException
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.resourcemanager.SessionMetaDao
 import com.webank.eggroll.core.resourcemanager.ResourceDao
-import com.webank.eggroll.core.util.Logging
+import com.webank.eggroll.core.util.{Logging, TimeUtils}
 import org.apache.commons.lang3.StringUtils
 import com.webank.eggroll.core.util.JdbcTemplate.ResultSetIterator
-import com.webank.eggroll.core.resourcemanager.metadata._
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -72,7 +71,7 @@ class StoreCrudOperator extends CrudOperator with Logging {
 
 object StoreCrudOperator {
   private lazy val dbc = ResourceDao.dbc
-  private val nodeIdToNode = new ConcurrentHashMap[java.lang.Long, ErServerNode]()
+  private val nodeIdToNode = new ConcurrentHashMap[java.lang.Long, DbServerNode]()
   private[metadata] def doGetStore(input: ErStore): ErStore = {
     val inputOptions = input.options
     val sessionId = inputOptions.getOrDefault(SessionConfKeys.CONFKEY_SESSION_ID, StringConstants.UNKNOWN)
@@ -137,7 +136,7 @@ object StoreCrudOperator {
       val queryServerNode = "select * from server_node where " +
         "server_node_id in (?) and node_type = ? and status = ?"
 
-      val nodeResult = dbc.query(rs => rs.map(_ => ErServerNode(
+      val nodeResult = dbc.query(rs => rs.map(_ => DbServerNode(
         id = rs.getLong("server_node_id"),
         name = rs.getString("name"),
         clusterId = rs.getLong("server_cluster_id"),
@@ -285,13 +284,13 @@ object StoreCrudOperator {
     }
 
     val nodeRecord = nodeResult(0)
-    val now = System.currentTimeMillis()
+    val nameNow = nodeRecord.name + "." + TimeUtils.getNowMs()
 
     val storeLocatorRecord = dbc.withTransaction(conn => {
       val sql = "update store_locator " +
         "set name = ?, status = ? where store_locator_id = ?"
 
-      dbc.update(conn, sql, now, StoreStatus.DELETED, nodeRecord.id)
+      dbc.update(conn, sql, nameNow, StoreStatus.DELETED, nodeRecord.id)
     })
 
     if (storeLocatorRecord.isEmpty) {
