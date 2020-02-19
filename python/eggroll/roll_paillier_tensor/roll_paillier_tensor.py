@@ -7,10 +7,15 @@ from eggroll.roll_pair.roll_pair import RollPair
 from eggroll.roll_pair.roll_pair import RollPairContext
 from eggroll.utils import log_utils
 import numpy as np
+import os
 
+if os.environ.get("EGGROLL_RPT_ENGINE_MOCK", "0") == "1":
+    import eggroll.roll_paillier_tensor.rpt_py_engine as CPUEngine
+    import eggroll.roll_paillier_tensor.rpt_py_engine as GPUEngine
+else:
+    import rptCPU as CPUEngine
+    import rptGPU as GPUEngine
 
-import rptCPU as CPUEngine
-import rptGPU as GPUEngine
 
 
 class Ciper(object):
@@ -284,4 +289,4 @@ class RollPaillierTensor(Tensor):
             _priv = CPUEngine.load_prv_key(priv)
             mat.out(_priv, str)
         dump_priv = CPUEngine.dump_prv_key(priv)
-        return RollPaillierTensor(self._store.map_values(lambda v: outFunc(v, dump_priv, str)))
+        return RollPaillierTensor(self._store.map_values(lambda v: outFunc(v, dump_priv, str2)))
