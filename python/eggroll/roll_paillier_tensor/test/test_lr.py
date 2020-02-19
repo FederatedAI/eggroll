@@ -33,7 +33,7 @@ class TestLR(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         #cls.rpc = get_debug_test_context()
-        cls.rpc = get_debug_test_context(True, 4671)
+        cls.rpc = get_debug_test_context(True)
         cls.rptc = RptContext(cls.rpc)
 
     def test_lr(self):

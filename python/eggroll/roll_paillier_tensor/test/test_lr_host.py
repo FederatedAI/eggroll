@@ -17,6 +17,7 @@ from eggroll.roll_paillier_tensor.roll_paillier_tensor import RptContext
 
 
 ##### RollSite
+from eggroll.roll_paillier_tensor.test.tesst_assets import get_debug_rs_context, host_options
 from eggroll.roll_pair.roll_pair import RollPairContext, RollPair
 from eggroll.roll_site.roll_site import RollSiteContext
 from eggroll.roll_pair.test.roll_pair_test_assets import get_debug_test_context, \
@@ -28,7 +29,7 @@ import pandas as pd
 
 
 store_type = StoreTypes.ROLLPAIR_LEVELDB
-max_iter = 1
+max_iter = 10
 
 is_standalone = True
 manager_port_guest = 5690
@@ -54,15 +55,15 @@ class TestLR_host(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        cls.rpc = get_standalone_context()
+        cls.rpc = get_debug_test_context(True)
         cls.rptc = RptContext(cls.rpc)
+        cls.rsc = get_debug_rs_context(cls.rpc, "rs_sid1", host_options)
 
-    def lr(self):
+    def testLRHost(self):
         #  #multi context
-        rpt_ctx = TestLR_host.rptc
-        rp_ctx = TestLR_host.rpc
-        rs_ctx = RollSiteContext("atest", self_role='host', self_partyId=host_partyId,
-                                 rs_ip=host_ip, rs_port=host_rs_port, rp_ctx=rp_ctx)
+        rpt_ctx = self.rptc
+        rp_ctx = self.rpc
+        rs_ctx = self.rsc
         _tag = "Hello2"
         #rs = rs_ctx.load(name="roll_pair_h2g.table", tag="{}".format(_tag))
 
@@ -77,11 +78,13 @@ class TestLR_host(unittest.TestCase):
 
         rp_x_H = rp_ctx.load('namespace', 'H')
 
-        pub, priv = Ciper().genkey()
+        # pub, priv = Ciper().genkey()
+        pub, priv = rs_ctx.load(name="roll_pair_name.test_key_pair", tag="pub_priv_key").pull(guest_parties)[0].result()
 
         rp_x_H.put('1', NumpyTensor(H, pub))
         X_H = RollPaillierTensor(rp_x_H)
         w_H = NumpyTensor(np.ones((20, 1)), pub)
+        w_G = NumpyTensor(np.ones((10, 1)), pub)
 
         learning_rate = 0.15
         itr = 0
@@ -116,8 +119,8 @@ class TestLR_host(unittest.TestCase):
             rs = rs_ctx.load(name="roll_pair_name.table", tag="X_G" + round)
             X_G = rs.pull(guest_parties)[0].result()
 
-            rs = rs_ctx.load(name="roll_pair_name.table", tag="W_G" + round)
-            w_G = rs.pull(guest_parties)[0].result()
+            # rs = rs_ctx.load(name="roll_pair_name.table", tag="W_G" + round)
+            # w_G = rs.pull(guest_parties)[0].result()
 
             enc_fore_grad_G = 0.25 * enc_agg_wx_G - 0.5 * RollPaillierTensor(X_Y)
 
@@ -130,7 +133,8 @@ class TestLR_host(unittest.TestCase):
             optim_grad_A = grad_A * learning_rate
             optim_grad_G, optim_grad_H = optim_grad_A.decrypt(priv).split(10, 1)
 
-            w_G = RollPaillierTensor(w_G) - optim_grad_G.T()
+            # w_G = RollPaillierTensor(w_G) - optim_grad_G.T()
+            w_G = w_G - optim_grad_G.T()
             w_H = w_H - optim_grad_H.T()
 
             #send w_G
