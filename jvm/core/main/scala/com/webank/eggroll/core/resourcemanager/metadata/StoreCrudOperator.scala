@@ -293,10 +293,6 @@ object StoreCrudOperator {
       dbc.update(conn, sql, nameNow, StoreStatus.DELETED, nodeRecord.id)
     })
 
-    if (storeLocatorRecord.isEmpty) {
-      throw new CrudException(s"Illegal rows affected returned when deleting store: ${storeLocatorRecord}")
-    }
-
     val outputStoreLocator = inputStoreLocator.copy(name = nodeRecord.name)
 
     ErStore(storeLocator = outputStoreLocator)
