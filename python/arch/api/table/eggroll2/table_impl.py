@@ -81,10 +81,7 @@ class DTable(Table):
 
     @log_elapsed
     def collect(self, min_chunk_size=0, use_serialize=True, should_sort=True, **kwargs) -> list:
-        ret = self._dtable.get_all()
-        if should_sort:
-            ret = sorted(ret, key=lambda x: x[0])
-        return ret
+        return self.get_all(should_sort=should_sort)
 
     @log_elapsed
     def get_all(self, should_sort=True):
