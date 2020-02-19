@@ -19,10 +19,10 @@ from eggroll.roll_pair.roll_pair import RollPairContext, RollPair
 from eggroll.roll_site.roll_site import RollSiteContext
 from eggroll.roll_pair.test.roll_pair_test_assets import get_debug_test_context, \
     get_cluster_context, get_standalone_context, get_default_options
-#
-# import numpy as np
-# import pandas as pd
-#
+
+import numpy as np
+import pandas as pd
+
 store_type = StoreTypes.ROLLPAIR_LEVELDB
 max_iter = 1
 #
@@ -33,8 +33,8 @@ transfer_port_guest = 20002
 manager_port_host = 5691
 egg_port_host = 20001
 transfer_port_host = 20002
-remote_parties = [('host', '10001')]
-get_parties = [('guest', '10002')]
+host_parties = [('host', '10001')]
+guest_parties = [('guest', '10002')]
 
 host_partyId = 10001
 host_ip = 'localhost'
@@ -63,42 +63,73 @@ class TestLR_guest(unittest.TestCase):
         rs_ctx = RollSiteContext("atest",self_role='guest', self_partyId=guest_partyId,
                                  rs_ip=guest_ip, rs_port=guest_rs_port, rp_ctx=rp_ctx)
         _tag = "Hello2"
-        rs = rs_ctx.load(name="roll_pair_h2g.table", tag="{}".format(_tag))
+        #rs = rs_ctx.load(name="roll_pair_h2g.table", tag="{}".format(_tag))
         rpt_store = ErStore(store_locator=ErStoreLocator(store_type=store_type, namespace="ns", name="mat_a"))
 
-        #local RP
+        # #local RP
+        pub, priv = Ciper().genkey()
+        #base data
         G = np.array([[0.254879,-1.046633,0.209656,0.074214,-0.441366,-0.377645,-0.485934,0.347072,-0.28757,-0.733474],
                       [-1.142928,-0.781198,-1.166747,-0.923578,0.62823,-1.021418,-1.111867,-0.959523,-0.096672,-0.121683],
                       [-1.451067,-1.406518,-1.456564,-1.092337,-0.708765,-1.168557,-1.305831,-1.745063,-0.499499,-0.302893],
                       [-0.879933,0.420589,-0.877527,-0.780484,-1.037534,-0.48388,-0.555498,-0.768581,0.43396,-0.200928]])
 
         Y = np.array([[1], [1], [1], [1]])
-        rp_x_G = rp_ctx.load('egr', 'rp_x_G')
-        rp_x_Y = rp_ctx.load('egr', 'rp_x_Y')
+        w_G = NumpyTensor(np.ones((10, 1)), pub)
 
-        pub, priv = Ciper().genkey()
+        #
+        rp_x_G = rp_ctx.load('namespace', 'G')
+        rp_x_Y = rp_ctx.load('namespace', 'Y')
+        rp_w_G = rp_ctx.load('namespace', 'w_G')
 
         rp_x_G.put('1', NumpyTensor(G, pub))
         rp_x_Y.put('1', NumpyTensor(Y, pub))
+        rp_w_G.put('1', w_G)
+
         X_G = RollPaillierTensor(rp_x_G)
         X_Y = RollPaillierTensor(rp_x_Y)
-
-        w_G = NumpyTensor(np.ones((10, 1)), pub)
 
         learning_rate = 0.15
         itr = 0
         pre_loss_A = None
 
+        #round 1
+
         while itr < max_iter:
+            round = str(1)
+
             fw_G1 = X_G @ w_G
             fw_G2 = X_G @ w_G
+
             enc_fw_G = fw_G1.encrypt()
+            enc_fw_square_G = (fw_G1 * fw_G2).encrypt()
+
+            rs = rs_ctx.load(name="roll_pair_name.table", tag="fw_G1" + round)
+            futures = rs.push(fw_G1._store, host_parties)
+
+            rs = rs_ctx.load(name="roll_pair_name.table", tag="enc_fw_G" + round)
+            futures = rs.push(enc_fw_G._store, host_parties)
+
+            rs = rs_ctx.load(name="roll_pair_name.table", tag="enc_fw_square_G" + round)
+            futures = rs.push(enc_fw_square_G._store, host_parties)
+
+            rs = rs_ctx.load(name="roll_pair_name.table", tag="X_Y" + round)
+            futures = rs.push(rp_x_Y, host_parties)
 
 
-            rs.push(enc_fw_G._store, host_partyId)
+            rs = rs_ctx.load(name="roll_pair_name.table", tag="X_G" + round)
+            futures = rs.push(rp_x_G, host_parties)
 
-        #
-        #     # enc_fw_square_G = (fw_G1 * fw_G2).encrypt()
+            rs = rs_ctx.load(name="roll_pair_name.table", tag="W_G" + round)
+            futures = rs.push(rp_w_G, host_parties)
+
+
+            # time.sleep(5)
+            # print("sleep 5 sec")
+            rs = rs_ctx.load(name="roll_pair_name.table", tag="W_G_result" + round)
+            w_G = RollPaillierTensor(rs.pull(host_parties)[0].result())
+
+    #     # enc_fw_square_G = (fw_G1 * fw_G2).encrypt()
         #     #
         #     # enc_agg_wx_G = enc_fw_G + enc_fw_H
         #     #
