@@ -1,0 +1,83 @@
+# -*- coding: utf-8 -*-
+#  Copyright (c) 2019 - now, Eggroll Authors. All Rights Reserved.
+#
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+import unittest
+from concurrent.futures.thread import ThreadPoolExecutor
+
+from eggroll.core.constants import StoreTypes
+from eggroll.roll_paillier_tensor import rpt_py_engine
+from eggroll.roll_paillier_tensor.roll_paillier_tensor import NumpyTensor, PaillierTensor
+from eggroll.roll_pair import *
+from eggroll.roll_pair.test.roll_pair_test_assets import get_debug_test_context
+from federatedml.secureprotol.fate_paillier import PaillierKeypair
+import numpy as np
+
+class TestAsynRpt(unittest.TestCase):
+    def setUp(self):
+        self.ctx = get_debug_test_context()
+
+    def tearDown(self) -> None:
+        print("stop test session")
+        self.ctx.get_session().stop()
+
+    def testWithStores(self):
+        # store_opts2 = {"store_type": StoreTypes.ROLLPAIR_QUEUE, "capacity": 100}
+        store_opts2 = {"store_type": StoreTypes.ROLLPAIR_QUEUE}
+        rp = self.ctx.load("ns1", "n1")
+        rp_q = self.ctx.load("ns1", "n2", store_opts2)
+        rp.put_all([("k1", "v1"), ("k2", "v2")])
+
+        def func_asyn(partitions):
+            import time
+            part1 = partitions[0]
+            serder1 = create_serdes(part1._store_locator._serdes)
+            with create_adapter(part1) as db1:
+                for i in range(100):
+                    db1.put(serder1.serialize("a" + str(i)))
+                    time.sleep(0.1)
+
+        def func_syn(partitions):
+            part1, part2 = partitions
+            serder1 = create_serdes(part1._store_locator._serdes)
+            serder2 = create_serdes(part2._store_locator._serdes)
+            with create_adapter(part1) as db1, create_adapter(part2) as db2:
+                for i in range(100):
+                    db1.put(serder1.serialize("q" + str(i)), db2.get())
+        with ThreadPoolExecutor() as pool:
+            pool.submit(rp_q.with_stores, func_asyn)
+
+        rp.with_stores(func_syn, [rp_q])
+        print(list(rp.get_all()))
+
+    def testSecProtocol(self):
+        pkp = PaillierKeypair()
+        print(pkp.generate_keypair())
+
+    def testPyEngine(self):
+        pub, priv = rpt_py_engine.keygen()
+        t1 = NumpyTensor(np.array([[1, 2], [3, 4], [5, 6]]), pub)
+        t2 = NumpyTensor(np.array([[0, 2], [3, 4], [5, 6]]), pub)
+        tp1 = PaillierTensor(np.array([[0, 2], [3, 4], [5, 6]]), pub)
+        add_expected = np.array([[1,  4],
+                                [6,  8],
+                                [10, 12]])
+        t3 = t1 + t2
+        print(t3._ndarray)
+        self.assertListEqual(add_expected.tolist(), t3._ndarray.tolist())
+        t4 = t1.encrypt() + tp1
+        print(t4.decrypt(priv)._ndarray, t4._store)
+        self.assertListEqual(add_expected.tolist(), t4.decrypt(priv)._ndarray.tolist())
+
+
+
