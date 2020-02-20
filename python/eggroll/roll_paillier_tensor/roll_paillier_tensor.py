@@ -1,5 +1,6 @@
 import uuid
 from concurrent.futures.thread import ThreadPoolExecutor
+from threading import Thread
 
 from eggroll.core.command.command_model import ErCommandRequest
 from eggroll.core.constants import StoreTypes
@@ -60,11 +61,13 @@ class RptContext(object):
                         db1.put(serder1.serialize(pub_key.gen_obfuscator()))
                     except InterruptedError as e:
                         L.info(f"finish create asyn obfuscato:{ns}.{name}: {i}")
+                        break
                     if i % 10000 == 0:
                         L.debug(f"generating asyn obfuscato:{ns}.{name}: {i}")
                     i += 1
-        pool = ThreadPoolExecutor()
-        pool.submit(self.rp_obf.with_stores, func_asyn)
+        th = Thread(target=self.rp_obf.with_stores, args=(func_asyn,), daemon=True, name=name)
+        # pool.submit(self.rp_obf.with_stores, func_asyn)
+        th.start()
         self.rp_ctx.get_session().add_exit_task(self.rp_obf.destroy)
 
     def load(self, namespace, name, options=None):
@@ -161,6 +164,7 @@ class NumpyTensor(Tensor):
     def out(self, priv, str = "[CHAN ZHEN NAN]"):
         print(str)
         print(self._ndarray)
+
 
 class PaillierTensor(Tensor):
     def __init__(self, store, pub, type = "cpu"):
