@@ -21,26 +21,23 @@ package com.webank.eggroll.core.resourcemanager.metadata
 import java.util
 import java.util.Date
 
-import com.webank.eggroll.core.clustermanager.dao.generated.mapper.ServerNodeMapper
-import com.webank.eggroll.core.clustermanager.dao.generated.model.{ServerNode, ServerNodeExample}
 import com.webank.eggroll.core.constant.{ServerNodeStatus, ServerNodeTypes}
 import com.webank.eggroll.core.error.CrudException
 import com.webank.eggroll.core.meta.{ErEndpoint, ErServerCluster, ErServerNode}
+import com.webank.eggroll.core.resourcemanager.ResourceDao
 import com.webank.eggroll.core.util.Logging
 import org.apache.commons.lang3.StringUtils
-import org.apache.ibatis.session.SqlSession
+import com.webank.eggroll.core.util.JdbcTemplate.ResultSetIterator
 
-import scala.collection.JavaConverters._
-import scala.collection.mutable.ArrayBuffer
+import scala.collection.mutable.ListBuffer
 
 class ServerNodeCrudOperator extends CrudOperator with Logging {
-  private val crudOperatorTemplate = new CrudOperatorTemplate()
   def getServerCluster(input: ErServerCluster): ErServerCluster = {
-    crudOperatorTemplate.doCrudOperationSingleResult(ServerNodeCrudOperator.doGetServerCluster, input)
+    ServerNodeCrudOperator.doGetServerCluster(input)
   }
 
   def getServerNode(input: ErServerNode): ErServerNode = {
-    val nodeResult = crudOperatorTemplate.doCrudOperationMultipleResults(ServerNodeCrudOperator.doGetServerNodes, input)
+    val nodeResult = ServerNodeCrudOperator.doGetServerNodes(input)
 
     if (nodeResult.nonEmpty) {
       nodeResult(0)
@@ -50,19 +47,19 @@ class ServerNodeCrudOperator extends CrudOperator with Logging {
   }
 
   def getOrCreateServerNode(input: ErServerNode): ErServerNode = {
-    crudOperatorTemplate.doCrudOperationSingleResult(functor = ServerNodeCrudOperator.doGetOrCreateServerNode, input = input, openTransaction = true)
+    ServerNodeCrudOperator.doGetOrCreateServerNode(input)
   }
 
   def createOrUpdateServerNode(input: ErServerNode): ErServerNode = {
-    def samFunctor(input: ErServerNode, sqlSession: SqlSession): ErServerNode = {
-      ServerNodeCrudOperator.doCreateOrUpdateServerNode(input = input, sqlSession = sqlSession, isHeartbeat = false)
+    def samFunctor(input: ErServerNode): ErServerNode = {
+      ServerNodeCrudOperator.doCreateOrUpdateServerNode(input = input, isHeartbeat = false)
     }
 
-    crudOperatorTemplate.doCrudOperationSingleResult(functor = samFunctor, input = input, openTransaction = true)
+    samFunctor(input)
   }
 
   def getServerNodes(input: ErServerNode): ErServerCluster = {
-    val serverNodes = crudOperatorTemplate.doCrudOperationMultipleResults(ServerNodeCrudOperator.doGetServerNodes, input)
+    val serverNodes = ServerNodeCrudOperator.doGetServerNodes(input)
 
     if (serverNodes.nonEmpty) {
       ErServerCluster(id = 0, serverNodes = serverNodes)
@@ -72,173 +69,219 @@ class ServerNodeCrudOperator extends CrudOperator with Logging {
   }
 
   def getServerClusterByHosts(input: util.List[String]): ErServerCluster = {
-    crudOperatorTemplate.doCrudOperationListInput(ServerNodeCrudOperator.doGetServerClusterByHosts, input)
+    ServerNodeCrudOperator.doGetServerClusterByHosts(input)
   }
 }
 
 object ServerNodeCrudOperator {
-  private[metadata] def doGetServerCluster(input: ErServerCluster, sqlSession: SqlSession): ErServerCluster = {
-    val nodeExample = new ServerNodeExample
-    nodeExample.createCriteria()
-      .andServerClusterIdEqualTo(input.id)
+  private lazy val dbc = ResourceDao.dbc
+  private[metadata] def doGetServerCluster(input: ErServerCluster): ErServerCluster = {
+    val sql = "select * from server_node where server_cluster_id = ?"
+    val nodeResult = dbc.query(rs =>
+      rs.map(_ => ErServerNode(
+        id = rs.getInt("server_node_id"), 
+        name = rs.getString("name"),
+        endpoint = ErEndpoint(host=rs.getString("host"), port = rs.getInt("port")))
+      ), sql, input.id)
 
-    val nodeMapper = sqlSession.getMapper(classOf[ServerNodeMapper])
+    if (nodeResult.isEmpty) return null
 
-    val nodeResult = nodeMapper.selectByExample(nodeExample)
-    if (nodeResult.isEmpty) {
-      return null
-    }
-
-    val nodes = ArrayBuffer[ErServerNode]()
-
-    nodeResult.forEach(n => {
-      nodes += ErServerNode(id = n.getServerNodeId, name = n.getName, endpoint = ErEndpoint(host = n.getHost, port = n.getPort))
-    })
-
-    input.copy(serverNodes = nodes.toArray)
+    ErServerCluster(serverNodes = nodeResult.toArray)
   }
 
-  private[metadata] def doCreateServerNode(input: ErServerNode, sqlSession: SqlSession): ErServerNode = {
-    val nodeRecord = new ServerNode
-    nodeRecord.setName(input.name)
-    nodeRecord.setServerClusterId(input.clusterId)
-    nodeRecord.setHost(input.endpoint.host)
-    nodeRecord.setPort(input.endpoint.port)
-    nodeRecord.setNodeType(input.nodeType)
-    nodeRecord.setStatus(input.status)
+  private[metadata] def doCreateServerNode(input: ErServerNode): ErServerNode = {
+    val nodeRecord = dbc.withTransaction(conn => {
+      val sql = "insert into server_node (name, server_cluster_id, host, port, node_type, status)" +
+        " values (?, ?, ?, ?, ?, ?)"
+      dbc.update(conn, sql, input.name, input.clusterId,
+        input.endpoint.host, input.endpoint.port, input.nodeType,input.status)
+    })
 
-    val nodeMapper = sqlSession.getMapper(classOf[ServerNodeMapper])
-    val rowsAffected = nodeMapper.insertSelective(nodeRecord)
-
-    if (rowsAffected != 1) {
-      throw new CrudException(s"Illegal rows affected when creating node: ${rowsAffected}")
+    if (nodeRecord.isEmpty) {
+      throw new CrudException(s"Illegal rows affected when creating node: ${nodeRecord}")
     }
 
     ErServerNode(
-      id = nodeRecord.getServerNodeId,
-      name = nodeRecord.getName,
-      clusterId = nodeRecord.getServerClusterId,
-      endpoint = ErEndpoint(host = nodeRecord.getHost, port = nodeRecord.getPort),
-      nodeType = nodeRecord.getNodeType,
-      status = nodeRecord.getStatus)
+      id = nodeRecord.get,
+      name = input.name,
+      clusterId = input.clusterId,
+      endpoint = ErEndpoint(host = input.endpoint.host, port = input.endpoint.port),
+      nodeType = input.nodeType,
+      status = input.status)
   }
 
-  private[metadata] def doUpdateServerNode(input: ErServerNode, sqlSession: SqlSession, isHeartbeat: Boolean = false): ErServerNode = {
-    val nodeRecord = new ServerNode
-    nodeRecord.setServerNodeId(input.id)
-    nodeRecord.setName(input.name)
-    nodeRecord.setServerClusterId(input.clusterId)
-    nodeRecord.setHost(input.endpoint.host)
-    nodeRecord.setPort(input.endpoint.port)
-    nodeRecord.setNodeType(input.nodeType)
-    nodeRecord.setStatus(input.status)
-    if (isHeartbeat) nodeRecord.setLastHeartbeatAt(new Date())
+  private[metadata] def existSession(sessionId: Long): Boolean = {
+    dbc.queryOne("select * from session_main where session_id = ?", sessionId).nonEmpty
+  }
 
-    val nodeMapper = sqlSession.getMapper(classOf[ServerNodeMapper])
-    val rowsAffected = nodeMapper.updateByPrimaryKeySelective(nodeRecord)
+  def doUpdateServerNode(input: ErServerNode, isHeartbeat: Boolean = false): ErServerNode = {
+    val nodeRecord = dbc.withTransaction(conn => {
+      var sql = "update server_node set " +
+        "server_node_id = ?, name = ?, server_cluster_id = ?, host = ?, port = ?, node_type = ?, status = ?"
+      var params = List(input.id, input.name, input.clusterId,
+        input.endpoint.host, input.endpoint.port, input.nodeType, input.status)
 
-    if (rowsAffected != 1) {
-      throw new CrudException(s"Illegal rows affected when updating node: ${rowsAffected}")
+      if (isHeartbeat) {
+        sql += ", last_heartbeat_at = ?"
+        params ++= Array(new Date())
+      }
+
+      dbc.update(conn, sql, params:_*)
+    })
+
+    if (nodeRecord.isEmpty) {
+      throw new CrudException(s"Illegal rows affected when creating node: ${nodeRecord}")
     }
 
     ErServerNode(
-      id = nodeRecord.getServerNodeId,
-      name = nodeRecord.getName,
-      clusterId = nodeRecord.getServerClusterId,
-      endpoint = ErEndpoint(host = nodeRecord.getHost, port = nodeRecord.getPort),
-      nodeType = nodeRecord.getNodeType,
-      status = nodeRecord.getStatus)
+      id = input.id,
+      name = input.name,
+      clusterId = input.clusterId,
+      endpoint = ErEndpoint(host = input.endpoint.host, port = input.endpoint.port),
+      nodeType = input.nodeType,
+      status = input.status)
+
   }
 
-  private[metadata] def doGetServerNodesUnwrapped(input: ErServerNode, sqlSession: SqlSession): Array[ServerNode] = {
-    val nodeExample = new ServerNodeExample
-    val criteria = nodeExample.createCriteria()
-    if (input.id > 0) criteria.andServerNodeIdEqualTo(input.id)
-    if (!StringUtils.isBlank(input.name)) criteria.andNameEqualTo(input.name)
-    if (input.clusterId >= 0) criteria.andServerClusterIdEqualTo(input.clusterId)
-    if (!StringUtils.isBlank(input.endpoint.host)) criteria.andHostEqualTo(input.endpoint.host)
-    if (input.endpoint.port > 0) criteria.andPortEqualTo(input.endpoint.port)
-    if (!StringUtils.isBlank(input.nodeType)) criteria.andNodeTypeEqualTo(input.nodeType)
-    if (!StringUtils.isBlank(input.status)) criteria.andStatusEqualTo(input.status)
+  private[metadata] def doGetServerNodesUnwrapped(input: ErServerNode): Array[DbServerNode] = {
+    var sql = "select * from server_node where 1=? "
+    var params = ListBuffer("1")
 
-    var nodeResult: util.List[ServerNode] = new util.ArrayList[ServerNode]()
-    if (criteria.isValid && !criteria.getAllCriteria.isEmpty) {
-      val nodeMapper = sqlSession.getMapper(classOf[ServerNodeMapper])
-      nodeResult = nodeMapper.selectByExample(nodeExample)
+    if (input.id > 0) {
+      sql += "and server_node_id = ?"
+      params ++= Array(input.id.toString)
     }
 
-    nodeResult.asScala.toArray
-  }
-
-  private[metadata] def doGetServerNodes(input: ErServerNode, sqlSession: SqlSession): Array[ErServerNode] = {
-    val nodeExample = new ServerNodeExample
-    val criteria = nodeExample.createCriteria()
-    if (input.id > 0) criteria.andServerNodeIdEqualTo(input.id)
-    if (!StringUtils.isBlank(input.name)) criteria.andNameEqualTo(input.name)
-    if (input.clusterId >= 0) criteria.andServerClusterIdEqualTo(input.clusterId)
-    if (!StringUtils.isBlank(input.endpoint.host)) criteria.andHostEqualTo(input.endpoint.host)
-    if (input.endpoint.port > 0) criteria.andPortEqualTo(input.endpoint.port)
-    if (!StringUtils.isBlank(input.nodeType)) criteria.andNodeTypeEqualTo(input.nodeType)
-    if (!StringUtils.isBlank(input.status)) criteria.andStatusEqualTo(input.status)
-
-    nodeExample.setOrderByClause("server_node_id asc")
-    var nodeResult: util.List[ServerNode] = new util.ArrayList[ServerNode]()
-    if (criteria.isValid && !criteria.getAllCriteria.isEmpty) {
-      val nodeMapper = sqlSession.getMapper(classOf[ServerNodeMapper])
-      nodeResult = nodeMapper.selectByExample(nodeExample)
+    if (!StringUtils.isBlank(input.name)) {
+      sql += "and name = ?"
+      params ++= Array(input.name)
     }
 
-    val resultBuffer = ArrayBuffer[ErServerNode]()
-    resultBuffer.sizeHint(nodeResult.size())
-    nodeResult.forEach(n => {
-      val erNode = ErServerNode(
-        id = n.getServerNodeId,
-        name = n.getName,
-        clusterId = n.getServerClusterId,
-        endpoint = ErEndpoint(host = n.getHost, port = n.getPort),
-        nodeType = n.getNodeType,
-        status = n.getStatus)
+    if (input.clusterId >= 0) {
+      sql += "and server_cluster_id = ?"
+      params ++= Array(input.clusterId.toString)
+    }
 
-      resultBuffer += erNode
-    })
+    if (!StringUtils.isBlank(input.endpoint.host)) {
+      sql += "and host = ?"
+      params ++= Array(input.endpoint.host)
+    }
 
-    resultBuffer.toArray
+    if (input.endpoint.port > 0) {
+      sql += "and port = ?"
+      params ++= Array(input.endpoint.port.toString)
+    }
+
+    if (!StringUtils.isBlank(input.nodeType)) {
+      sql += "and node_type = ?"
+      params ++= Array(input.nodeType)
+    }
+
+    if (!StringUtils.isBlank(input.status)) {
+      sql += "and status = ?"
+      params ++= Array(input.status)
+    }
+
+    val nodeResult = dbc.query( rs => rs.map(_ => DbServerNode(
+      id = rs.getLong("server_node_id"),
+      name = rs.getString("name"),
+      clusterId = rs.getLong("server_cluster_id"),
+      endpoint = ErEndpoint(host=rs.getString("host"), port = rs.getInt("port")),
+      nodeType = rs.getString("node_type"),
+      status = rs.getString("status"),
+      lastHeartbeatAt = rs.getDate("last_heartbeat_at"),
+      createdAt = rs.getDate("created_at"),
+      updatedAt = rs.getDate("updated_at"))), sql, params:_*).toList
+
+    nodeResult.toArray
   }
 
-  def doGetOrCreateServerNode(input: ErServerNode, sqlSession: SqlSession): ErServerNode = {
-    val existing = ServerNodeCrudOperator.doGetServerNodes(input, sqlSession)
+  private[metadata] def doGetServerNodes(input: ErServerNode): Array[ErServerNode] = {
+    var sql = "select * from server_node where 1=? "
+    var params = List("1")
+
+    if (input.id > 0) {
+      sql += "and server_node_id = ?"
+      params ++= Array(input.id.toString)
+    }
+
+    if (!StringUtils.isBlank(input.name)) {
+      sql += "and name = ?"
+      params ++= Array(input.name)
+    }
+
+    if (input.clusterId >= 0) {
+      sql += "and server_cluster_id = ?"
+      params ++= Array(input.clusterId.toString)
+    }
+
+    if (!StringUtils.isBlank(input.endpoint.host)) {
+      sql += "and host = ?"
+      params ++= Array(input.endpoint.host)
+    }
+
+    if (input.endpoint.port > 0) {
+      sql += "and port = ?"
+      params ++= Array(input.endpoint.port.toString)
+    }
+
+    if (!StringUtils.isBlank(input.nodeType)) {
+      sql += "and node_type = ?"
+      params ++= Array(input.nodeType)
+    }
+
+    if (!StringUtils.isBlank(input.status)) {
+      sql += "and status = ?"
+      params ++= Array(input.status)
+    }
+
+    sql += "order by server_node_id asc"
+
+    val nodeResult = dbc.query(rs => rs.map(_ =>
+      ErServerNode(
+        id = rs.getLong("server_node_id"),
+        name = rs.getString("name"),
+        clusterId = rs.getLong("server_cluster_id"),
+        endpoint = ErEndpoint(host = rs.getString("host"), port = rs.getInt("port")),
+        nodeType = rs.getString("node_type"),
+        status = rs.getString("status"))), sql, params: _*)
+
+    nodeResult.toArray
+
+  }
+
+  private[metadata] def doGetOrCreateServerNode(input: ErServerNode): ErServerNode = {
+    val existing = ServerNodeCrudOperator.doGetServerNodes(input)
 
     if (existing.nonEmpty) {
       existing(0)
     } else {
-      doCreateServerNode(input, sqlSession)
+      doCreateServerNode(input)
     }
   }
 
-  def doCreateOrUpdateServerNode(input: ErServerNode, sqlSession: SqlSession, isHeartbeat: Boolean = false): ErServerNode = {
-    val existing = ServerNodeCrudOperator.doGetServerNodes(ErServerNode(id = input.id), sqlSession)
+  def doCreateOrUpdateServerNode(input: ErServerNode, isHeartbeat: Boolean = false): ErServerNode = {
+    val existing = ServerNodeCrudOperator.doGetServerNodes(ErServerNode(id = input.id))
     if (existing.nonEmpty) {
-      doUpdateServerNode(input, sqlSession, isHeartbeat)
+      doUpdateServerNode(input, isHeartbeat)
     } else {
-      doCreateServerNode(input, sqlSession)
+      doCreateServerNode(input)
     }
   }
 
-  def doGetServerClusterByHosts(input: util.List[String], sqlSession: SqlSession): ErServerCluster = {
-    val example = new ServerNodeExample
-    example.createCriteria().andHostIn(input).andStatusEqualTo(ServerNodeStatus.HEALTHY)
-        .andNodeTypeEqualTo(ServerNodeTypes.NODE_MANAGER)
-    example.setOrderByClause("server_node_id asc")
+  def doGetServerClusterByHosts(input: util.List[String]): ErServerCluster = {
+    val inputTuple = String.join(", ", input)
 
-    val mapper = sqlSession.getMapper(classOf[ServerNodeMapper])
-    val nodeResult = mapper.selectByExample(example)
+    val sql = "select * from server_node where host in (?) and status = ? and node_type = ? " +
+      "order by server_node_id asc"
 
-    val nodes = ArrayBuffer[ErServerNode]()
+    val nodeResult = dbc.query(rs => rs.map(_ =>
+      ErServerNode(
+        id = rs.getLong("server_node_id"),
+        name = rs.getString("name"),
+        endpoint = ErEndpoint(host = rs.getString("host"), port = rs.getInt("port")))),
+      sql, inputTuple, ServerNodeStatus.HEALTHY, ServerNodeTypes.NODE_MANAGER)
 
-    nodeResult.forEach(n => {
-      nodes += ErServerNode(id = n.getServerNodeId, name = n.getName, endpoint = ErEndpoint(host = n.getHost, port = n.getPort))
-    })
-
-    ErServerCluster(serverNodes = nodes.toArray)
+    ErServerCluster(serverNodes = nodeResult.toArray)
   }
 }
