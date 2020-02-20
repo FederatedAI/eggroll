@@ -80,8 +80,8 @@ class DTable(Table):
             return split_get(k=k, use_serialize=use_serialize, get_call_back_func=self._dtable.get)
 
     @log_elapsed
-    def collect(self, min_chunk_size=0, use_serialize=True, **kwargs) -> list:
-        return self._dtable.get_all()
+    def collect(self, min_chunk_size=0, use_serialize=True, should_sort=True, **kwargs) -> list:
+        return self.get_all(should_sort=should_sort)
 
     @log_elapsed
     def get_all(self, should_sort=True):

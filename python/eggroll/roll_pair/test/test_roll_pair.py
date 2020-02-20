@@ -113,6 +113,22 @@ class TestRollPairBase(unittest.TestCase):
         print(f'reduce result: {result}')
         self.assertEqual(result, 21)
 
+    def test_reduce_numpy(self):
+        import numpy as np
+        rp = self.ctx.load('ns12020', 'testNumpyReduce', self.store_opts())
+        rp.put('0', np.array([[ 0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 57]]))
+        rp.put('1', np.array([[ 0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 57]]))
+        rp.put('2', np.array([[ 0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 57]]))
+        rp.put('3', np.array([[ 0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 57]]))
+        rp.put('4', np.array([[ 0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 57]]))
+        rp.put('5', np.array([[ 0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 57]]))
+        rp.put('6', None)
+
+        result = rp.reduce(lambda x, y: x + y)
+
+        print(result)
+
+
     def test_aggregate(self):
         from operator import mul, add
         data1 = self.ctx.parallelize([(i, i) for i in range(1, 7)], self.store_opts())
@@ -330,6 +346,9 @@ class TestRollPairMultiPartition(TestRollPairBase):
         print(count)
         self.assertEqual(count, 10000)
 
+    def test_reduce_numpy(self):
+        super().test_reduce_numpy()
+
     def test_parallelize_include_key(self):
         st_opts = self.store_opts(include_key=True)
         rp = self.ctx.parallelize(self.str_generator(True),st_opts)
@@ -359,9 +378,15 @@ class TestRollPairStandalone(TestRollPairBase):
     def setUp(self):
         pass
 
+    def tearDown(self) -> None:
+        pass
+
     @classmethod
     def setUpClass(cls) -> None:
         cls.ctx = get_standalone_context()
+
+    def tearDown(self) -> None:
+        pass
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -399,7 +424,10 @@ class TestRollPairCluster(TestRollPairBase):
         opts.update(kwargs)
         return opts
 
-    def tearDown(self) -> None:
+    def test_map_values(self):
+        super().test_map_values()
+
+    def test_empty(self):
         pass
 
     @classmethod
