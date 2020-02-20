@@ -80,7 +80,7 @@ class TestLR_host(unittest.TestCase):
 
         # pub, priv = Ciper().genkey()
         pub, priv = rs_ctx.load(name="roll_pair_name.test_key_pair", tag="pub_priv_key").pull(guest_parties)[0].result()
-        rpt_ctx.start_gen_obfuscator(pub_key=pub)
+        # rpt_ctx.start_gen_obfuscator(pub_key=pub)
         rp_x_H.put('1', NumpyTensor(H, pub))
         X_H = self.rptc.from_roll_pair(rp_x_H)
         w_H = NumpyTensor(np.ones((20, 1)), pub)
