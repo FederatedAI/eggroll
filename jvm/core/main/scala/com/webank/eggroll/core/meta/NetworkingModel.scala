@@ -68,10 +68,7 @@ case class ErServerNode(id: Long = -1,
                         clusterId: Long = 0,
                         endpoint: ErEndpoint = ErEndpoint(host = StringConstants.EMPTY, port = -1),
                         nodeType: String = StringConstants.EMPTY,
-                        status: String = StringConstants.EMPTY,
-                        lastHeartbeatAt: Date = new Date(),
-                        createdAt: Date = new Date(),
-                        updatedAt: Date = new Date()) extends NetworkingRpcMessage
+                        status: String = StringConstants.EMPTY) extends NetworkingRpcMessage
 
 case class ErServerCluster(id: Long = -1,
                            name: String = StringConstants.EMPTY,
