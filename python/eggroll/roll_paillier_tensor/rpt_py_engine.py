@@ -15,8 +15,57 @@ from pprint import pprint
 
 import numpy as np
 
-from federatedml.secureprotol.fate_paillier import PaillierKeypair
+from federatedml.secureprotol.fate_paillier import PaillierKeypair, PaillierPublicKey, PaillierEncryptedNumber
 from federatedml.secureprotol.fixedpoint import FixedPointNumber
+from federatedml.secureprotol import gmpy_math
+import random
+
+
+class AsyncPaillierPublicKey(PaillierPublicKey):
+    def __init__(self, pub):
+        super().__init__(pub.n)
+
+    def gen_obfuscator(self, random_value=None):
+        r = random_value or random.SystemRandom().randrange(1, self.n)
+        obfuscator = gmpy_math.powmod(r, self.n, self.nsquare)
+        return obfuscator
+
+    def apply_obfuscator(self, ciphertext, random_value=None, obf=None):
+        """
+        """
+        if obf is not None:
+            obfuscator = obf
+        else:
+            obfuscator = self.gen_obfuscator(random_value)
+        return (ciphertext * obfuscator) % self.nsquare
+
+    def raw_encrypt(self, plaintext, random_value=None):
+        if random_value is not None and random_value != 1:
+            raise NotImplementedError("unsupported in this class, use PaillierPublicKey instead")
+        if not isinstance(plaintext, int):
+            raise TypeError("plaintext should be int, but got: %s" %
+                            type(plaintext))
+        if plaintext >= (self.n - self.max_int) and plaintext < self.n:
+            # Very large plaintext, take a sneaky shortcut using inverses
+            neg_plaintext = self.n - plaintext  # = abs(plaintext - nsquare)
+            neg_ciphertext = (self.n * neg_plaintext + 1) % self.nsquare
+            ciphertext = gmpy_math.invert(neg_ciphertext, self.nsquare)
+        else:
+            ciphertext = (self.n * plaintext + 1) % self.nsquare
+        return ciphertext
+
+    def encode(self, value, precision=None):
+        return FixedPointNumber.encode(value, self.n, self.max_int, precision)
+
+    def encrypt(self, value, precision=None, random_value=None):
+        """Encode and Paillier encrypt a real number value.
+        """
+        encoding = self.encode(value)
+        ciphertext = self.raw_encrypt(encoding.encoding)
+        ciphertext = self.apply_obfuscator(ciphertext, random_value=random_value)
+        encryptednumber = PaillierEncryptedNumber(self, ciphertext, encoding.exponent)
+
+        return encryptednumber
 
 
 def load(data):
@@ -88,9 +137,18 @@ def print(data, pub, priv):
     pprint(data)
 
 
-def encrypt_and_obfuscate(data, pub):
-    return np.vectorize(pub.encrypt)(data)
+def encrypt_and_obfuscate(data, pub, obfs=None):
+    if obfs is None:
+        return np.vectorize(pub.encrypt)(data)
+    def func(value, obf):
+        encoding = pub.encode(value)
+        ciphertext = pub.raw_encrypt(encoding.encoding)
+        ciphertext = pub.apply_obfuscator(ciphertext, obf=obf)
+        return PaillierEncryptedNumber(pub, ciphertext, encoding.exponent)
+    return np.vectorize(func)(data, obfs)
 
 
 def keygen():
-    return PaillierKeypair().generate_keypair()
+    pub, priv = PaillierKeypair().generate_keypair()
+    return AsyncPaillierPublicKey(pub), priv
+

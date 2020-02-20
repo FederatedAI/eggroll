@@ -65,9 +65,9 @@ class TestLR(unittest.TestCase):
         rp_x_G.put('1', NumpyTensor(G, pub))
         rp_x_H.put('1', NumpyTensor(H, pub))
         rp_x_Y.put('1', NumpyTensor(Y, pub))
-        X_G = RollPaillierTensor(rp_x_G)
-        X_H = RollPaillierTensor(rp_x_H)
-        X_Y = RollPaillierTensor(rp_x_Y)
+        X_G = self.rptc.from_roll_pair(rp_x_G)
+        X_H = self.rptc.from_roll_pair(rp_x_H)
+        X_Y = self.rptc.from_roll_pair(rp_x_Y)
 
         w_H = NumpyTensor(np.ones((20, 1)), pub)
         w_G = NumpyTensor(np.ones((10, 1)), pub)

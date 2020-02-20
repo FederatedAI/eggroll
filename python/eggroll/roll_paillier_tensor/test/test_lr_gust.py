@@ -69,6 +69,7 @@ class TestLR_guest(unittest.TestCase):
 
         # #local RP
         pub, priv = Ciper().genkey()
+        # rpt_ctx.start_gen_obfuscator(pub_key=pub)
         rs_ctx.load(name="roll_pair_name.test_key_pair", tag="pub_priv_key").push((pub,priv), host_parties) #[0].result()
         #base data
         G = np.array([[0.254879,-1.046633,0.209656,0.074214,-0.441366,-0.377645,-0.485934,0.347072,-0.28757,-0.733474],
@@ -88,8 +89,8 @@ class TestLR_guest(unittest.TestCase):
         rp_x_Y.put('1', NumpyTensor(Y, pub))
         rp_w_G.put('1', w_G)
 
-        X_G = RollPaillierTensor(rp_x_G)
-        X_Y = RollPaillierTensor(rp_x_Y)
+        X_G = self.rptc.from_roll_pair(rp_x_G)
+        X_Y = self.rptc.from_roll_pair(rp_x_Y)
 
         learning_rate = 0.15
         itr = 0
@@ -129,7 +130,7 @@ class TestLR_guest(unittest.TestCase):
             # time.sleep(5)
             # print("sleep 5 sec")
             rs = rs_ctx.load(name="roll_pair_name.table", tag="W_G_result" + round)
-            w_G = RollPaillierTensor(rs.pull(host_parties)[0].result())
+            w_G = self.rptc.from_roll_pair(rs.pull(host_parties)[0].result())
 
     #     # enc_fw_square_G = (fw_G1 * fw_G2).encrypt()
         #     #

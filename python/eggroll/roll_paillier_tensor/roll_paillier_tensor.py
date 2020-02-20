@@ -1,13 +1,22 @@
+import uuid
+from concurrent.futures.thread import ThreadPoolExecutor
+
 from eggroll.core.command.command_model import ErCommandRequest
+from eggroll.core.constants import StoreTypes
 from eggroll.core.io.kv_adapter import RocksdbSortedKvAdapter
 from eggroll.core.meta_model import ErStoreLocator, ErJob, ErStore, ErFunctor
 from eggroll.core.proto import command_pb2_grpc
 from eggroll.core.serdes import cloudpickle
+from eggroll.roll_pair import create_serdes, create_adapter
 from eggroll.roll_pair.roll_pair import RollPair
 from eggroll.roll_pair.roll_pair import RollPairContext
 from eggroll.utils import log_utils
 import numpy as np
 import os
+
+from eggroll.utils.log_utils import get_logger
+
+L = get_logger()
 
 if os.environ.get("EGGROLL_RPT_ENGINE_MOCK", "0") == "1":
     import eggroll.roll_paillier_tensor.rpt_py_engine as CPUEngine
@@ -30,11 +39,42 @@ class Tensor(object):
 #tmpPub, tmpPriv = rptEngine.keygen()
 
 class RptContext(object):
-    def __init__(self, rp_ctx: RollPairContext):
+    def __init__(self, rp_ctx: RollPairContext, options=None):
+        if options is None:
+            options = {}
         self.rp_ctx = rp_ctx
+        self.rp_obf = None
 
-    def load(self, namespace, name, engine_type="cpu"):
-        return RollPaillierTensor(self.rp_ctx.load(namespace, name), engine_type)
+    def start_gen_obfuscator(self, pub_key, name="asyn_obfuscator"):
+        ns = self.rp_ctx.get_session().get_session_id()
+        store_opts = {"store_type": StoreTypes.ROLLPAIR_QUEUE}
+        self.rp_obf = self.rp_ctx.load(ns, name, store_opts)
+
+        def func_asyn(partitions):
+            part1 = partitions[0]
+            serder1 = create_serdes(part1._store_locator._serdes)
+            with create_adapter(part1) as db1:
+                i = 0
+                while True:
+                    try:
+                        db1.put(serder1.serialize(pub_key.gen_obfuscator()))
+                    except InterruptedError as e:
+                        L.info(f"finish create asyn obfuscato:{ns}.{name}: {i}")
+                    if i % 10000 == 0:
+                        L.debug(f"generating asyn obfuscato:{ns}.{name}: {i}")
+                    i += 1
+        pool = ThreadPoolExecutor()
+        pool.submit(self.rp_obf.with_stores, func_asyn)
+        self.rp_ctx.get_session().add_exit_task(self.rp_obf.destroy)
+
+    def load(self, namespace, name, options=None):
+        if options is not None:
+            options = {}
+        # TODO:0: engine_type
+        return self.from_roll_pair(self.rp_ctx.load(namespace, name))
+
+    def from_roll_pair(self, rp):
+        return RollPaillierTensor(rp, self)
 
 
 class NumpyTensor(Tensor):
@@ -84,7 +124,7 @@ class NumpyTensor(Tensor):
             sub = self._engine.scalar_mul(other._store, -1, self._pub)
             return PaillierTensor(self._engine.add(mng, sub, self._pub), self._pub)
         if isinstance(other, RollPaillierTensor):
-            return RollPaillierTensor(other._store.map_values(lambda v: self - v))
+            return other.rpt_ctx.from_roll_pair(other._store.map_values(lambda v: self - v))
 
     def __mul__(self, other):
         if isinstance(other, int) or isinstance(other, float):
@@ -114,9 +154,9 @@ class NumpyTensor(Tensor):
         else:
             return NumpyTensor(b, self._pub)
 
-    def encrypt(self):
+    def encrypt(self, obfs=None):
         mng = self._engine.num2Mng(self._ndarray, self._pub)
-        return PaillierTensor(self._engine.encrypt_and_obfuscate(mng, self._pub), self._pub)
+        return PaillierTensor(self._engine.encrypt_and_obfuscate(mng, self._pub, obfs=obfs), self._pub)
 
     def out(self, priv, str = "[CHAN ZHEN NAN]"):
         print(str)
@@ -216,65 +256,87 @@ class PaillierTensor(Tensor):
         self._engine.print(self._store, self._pub, priv)
 
 class RollPaillierTensor(Tensor):
-    def __init__(self, store):
+    def __init__(self, store, rpt_ctx):
         self._store = store
+        self.rpt_ctx =rpt_ctx
 
     def __add__(self, other):
         if isinstance(other, NumpyTensor):
-            return RollPaillierTensor(self._store.map_values(lambda v: v + other))
+            return self.rpt_ctx.from_roll_pair(self._store.map_values(lambda v: v + other))
         if isinstance(other, RollPaillierTensor):
-            return RollPaillierTensor(self._store.join(other._store, lambda mat1, mat2: mat1 + mat2))
+            return self.rpt_ctx.from_roll_pair(self._store.join(other._store, lambda mat1, mat2: mat1 + mat2))
 
     def __sub__(self, other):
         if isinstance(other, NumpyTensor):
             print('XXXXXXXXXXXXXXXXXXXX')
-            return RollPaillierTensor(self._store.map_values(lambda v: v - other))
+            return self.rpt_ctx.from_roll_pair(self._store.map_values(lambda v: v - other))
         if isinstance(other, RollPaillierTensor):
-            return RollPaillierTensor(self._store.join(other._store, lambda mat1, mat2: mat1 - mat2))
+            return self.rpt_ctx.from_roll_pair(self._store.join(other._store, lambda mat1, mat2: mat1 - mat2))
 
     def __mul__(self, other):
         if isinstance(other, NumpyTensor) or isinstance(other, int) or isinstance(other, float):
-            return RollPaillierTensor(self._store.map_values(lambda v: v * other))
+            return self.rpt_ctx.from_roll_pair(self._store.map_values(lambda v: v * other))
         if isinstance(other, RollPaillierTensor):
-            return RollPaillierTensor(self._store.join(other._store, lambda mat1, mat2: mat1 * mat2))
+            return self.rpt_ctx.from_roll_pair(self._store.join(other._store, lambda mat1, mat2: mat1 * mat2))
 
     def __rmul__(self, other):
         if isinstance(other, NumpyTensor) or isinstance(other, int) or isinstance(other, float):
-            return RollPaillierTensor(self._store.map_values(lambda v: v * other))
+            return self.rpt_ctx.from_roll_pair(self._store.map_values(lambda v: v * other))
         if isinstance(other, RollPaillierTensor):
-            return RollPaillierTensor(self._store.join(other._store, lambda mat1, mat2: mat1 * mat2))
+            return self.rpt_ctx.from_roll_pair(self._store.join(other._store, lambda mat1, mat2: mat1 * mat2))
 
     def __truediv__(self, other):
         if isinstance(other, int) or isinstance(other, float):
-            return RollPaillierTensor(self._store.map_values(lambda v: v / other))
+            return self.rpt_ctx.from_roll_pair(self._store.map_values(lambda v: v / other))
         if isinstance(other, NumpyTensor):
-            return RollPaillierTensor(self._store.map_values(lambda v: v / other))
+            return self.rpt_ctx.from_roll_pair(self._store.map_values(lambda v: v / other))
 
     def __matmul__(self, other):
         if isinstance(other, NumpyTensor):
-            return RollPaillierTensor(self._store.map_values(lambda v: v @ other))
+            return self.rpt_ctx.from_roll_pair(self._store.map_values(lambda v: v @ other))
         if isinstance(other, RollPaillierTensor):
-            return RollPaillierTensor(self._store.join(other._store, lambda mat1, mat2: mat1 @ mat2))
+            return self.rpt_ctx.from_roll_pair(self._store.join(other._store, lambda mat1, mat2: mat1 @ mat2))
 
     def mean(self):
-        return RollPaillierTensor(self._store.map_values(lambda mat: mat.mean()))
+        return self.rpt_ctx.from_roll_pair(self._store.map_values(lambda mat: mat.mean()))
 
     def T(self):
-        return RollPaillierTensor(self._store.map_values(lambda mat: mat.T()))
+        return self.rpt_ctx.from_roll_pair(self._store.map_values(lambda mat: mat.T()))
 
     def split(self, num, ax):
-        a = RollPaillierTensor(self._store.map_values(lambda mat: mat.split(num, ax, 0)))
-        b = RollPaillierTensor(self._store.map_values(lambda mat: mat.split(num, ax, 1)))
+        a = self.rpt_ctx.from_roll_pair(self._store.map_values(lambda mat: mat.split(num, ax, 0)))
+        b = self.rpt_ctx.from_roll_pair(self._store.map_values(lambda mat: mat.split(num, ax, 1)))
         return a, b
 
     def encrypt(self):
-        return RollPaillierTensor(self._store.map_values(lambda mat: mat.encrypt()))
+        if self.rpt_ctx.rp_obf is None:
+            return self.rpt_ctx.from_roll_pair(self._store.map_values(lambda mat: mat.encrypt()))
+        def func(partitions):
+            part_main, part_obf, part_ret = partitions
+            serder_main = create_serdes(part_main._store_locator._serdes)
+            serder_obf = create_serdes(part_obf._store_locator._serdes)
+            serder_ret = create_serdes(part_ret._store_locator._serdes)
+            with create_adapter(part_main) as db_main, \
+                    create_adapter(part_obf) as db_obf,\
+                    create_adapter(part_ret) as db_ret:
+                with db_main.iteritems() as rb, db_ret.new_batch() as wb:
+                    for k, v in rb:
+                        mat = serder_main.deserialize(v)
+                        obfs = []
+                        for i in range(mat._ndarray.size):
+                            obfs.append(serder_obf.deserialize(db_obf.get()))
+                        obfs = np.array(obfs).reshape(mat._ndarray.shape)
+                        wb.put(k, serder_ret.serialize(serder_main.deserialize(v).encrypt(obfs=obfs)))
+        rp_ret = self._store.ctx.load(self._store.get_namespace(), str(uuid.uuid1()))
+        self._store.with_stores(func, [self.rpt_ctx.rp_obf, rp_ret])
+        return self.rpt_ctx.from_roll_pair(rp_ret)
+
 
     def hstack(self, other):
         if isinstance(other, NumpyTensor):
-            return RollPaillierTensor(self._store.map_values(lambda v: v.hstack(other)))
+            return self.rpt_ctx.from_roll_pair(self._store.map_values(lambda v: v.hstack(other)))
         if isinstance(other, RollPaillierTensor):
-            return RollPaillierTensor(self._store.join(other._store, lambda mat1, mat2: mat1.hstack(mat2)))
+            return self.rpt_ctx.from_roll_pair(self._store.join(other._store, lambda mat1, mat2: mat1.hstack(mat2)))
 
     #paillier tool
     def decrypt(self, priv):
@@ -282,11 +344,11 @@ class RollPaillierTensor(Tensor):
             _priv = CPUEngine.load_prv_key(priv)
             return mat.decrypt(_priv)
         dump_priv = CPUEngine.dump_prv_key(priv)
-        return RollPaillierTensor(self._store.map_values(lambda mat: functor(mat, dump_priv)))
+        return self.rpt_ctx.from_roll_pair(self._store.map_values(lambda mat: functor(mat, dump_priv)))
 
     def out(self, priv, str2 = "[CHAN ZHEN NAN]"):
         def outFunc(mat, priv, str):
             _priv = CPUEngine.load_prv_key(priv)
             mat.out(_priv, str)
         dump_priv = CPUEngine.dump_prv_key(priv)
-        return RollPaillierTensor(self._store.map_values(lambda v: outFunc(v, dump_priv, str2)))
+        return self.rpt_ctx.from_roll_pair(self._store.map_values(lambda v: outFunc(v, dump_priv, str2)))

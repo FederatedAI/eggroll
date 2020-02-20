@@ -80,9 +80,9 @@ class TestLR_host(unittest.TestCase):
 
         # pub, priv = Ciper().genkey()
         pub, priv = rs_ctx.load(name="roll_pair_name.test_key_pair", tag="pub_priv_key").pull(guest_parties)[0].result()
-
+        rpt_ctx.start_gen_obfuscator(pub_key=pub)
         rp_x_H.put('1', NumpyTensor(H, pub))
-        X_H = RollPaillierTensor(rp_x_H)
+        X_H = self.rptc.from_roll_pair(rp_x_H)
         w_H = NumpyTensor(np.ones((20, 1)), pub)
         w_G = NumpyTensor(np.ones((10, 1)), pub)
 
@@ -108,9 +108,9 @@ class TestLR_host(unittest.TestCase):
             rs = rs_ctx.load(name="roll_pair_name.table", tag="enc_fw_square_G" +round)
             enc_fw_square_G = rs.pull(guest_parties)[0].result()
 
-            enc_agg_wx_G = enc_fw_H + RollPaillierTensor(enc_fw_G)
+            enc_agg_wx_G = enc_fw_H + self.rptc.from_roll_pair(enc_fw_G)
 
-            enc_agg_wx_square_G = RollPaillierTensor(enc_fw_square_G) + enc_fw_square_H + RollPaillierTensor(fw_G1) * enc_fw_H * 2
+            enc_agg_wx_square_G = self.rptc.from_roll_pair(enc_fw_square_G) + enc_fw_square_H + self.rptc.from_roll_pair(fw_G1) * enc_fw_H * 2
 
             #get X_Y X_G
             rs = rs_ctx.load(name="roll_pair_name.table", tag="X_Y" + round)
@@ -122,9 +122,9 @@ class TestLR_host(unittest.TestCase):
             # rs = rs_ctx.load(name="roll_pair_name.table", tag="W_G" + round)
             # w_G = rs.pull(guest_parties)[0].result()
 
-            enc_fore_grad_G = 0.25 * enc_agg_wx_G - 0.5 * RollPaillierTensor(X_Y)
+            enc_fore_grad_G = 0.25 * enc_agg_wx_G - 0.5 * self.rptc.from_roll_pair(X_Y)
 
-            enc_grad_G = (RollPaillierTensor(X_G) * enc_fore_grad_G).mean()
+            enc_grad_G = (self.rptc.from_roll_pair(X_G) * enc_fore_grad_G).mean()
             enc_grad_H = (X_H * enc_fore_grad_G).mean()
 
             grad_A = enc_grad_G.hstack(enc_grad_H)
@@ -142,7 +142,7 @@ class TestLR_host(unittest.TestCase):
             future = rs.push(w_G._store, guest_parties)
             print("W_G_result1 send")
 
-            enc_half_ywx_G = enc_agg_wx_G * 0.5 * RollPaillierTensor(X_Y)
+            enc_half_ywx_G = enc_agg_wx_G * 0.5 * self.rptc.from_roll_pair(X_Y)
 
             enc_loss_G = (((-1 * enc_half_ywx_G )) + enc_agg_wx_square_G / 8 + NumpyTensor(np.log(2), pub)).mean()
             loss_AA = enc_loss_G.decrypt(priv)
