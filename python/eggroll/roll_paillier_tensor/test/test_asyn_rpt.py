@@ -15,9 +15,14 @@
 import unittest
 from concurrent.futures.thread import ThreadPoolExecutor
 
+from collections import defaultdict
+
+import time
+
 from eggroll.core.constants import StoreTypes
 from eggroll.roll_paillier_tensor import rpt_py_engine
 from eggroll.roll_paillier_tensor.roll_paillier_tensor import NumpyTensor, PaillierTensor
+from eggroll.roll_paillier_tensor.rpt_py_engine import AsyncPaillierPublicKey
 from eggroll.roll_pair import *
 from eggroll.roll_pair.test.roll_pair_test_assets import get_debug_test_context
 from federatedml.secureprotol.fate_paillier import PaillierKeypair
@@ -54,15 +59,44 @@ class TestAsynRpt(unittest.TestCase):
             with create_adapter(part1) as db1, create_adapter(part2) as db2:
                 for i in range(100):
                     db1.put(serder1.serialize("q" + str(i)), db2.get())
-        with ThreadPoolExecutor() as pool:
-            pool.submit(rp_q.with_stores, func_asyn)
+        pool = ThreadPoolExecutor()
+        pool.submit(rp_q.with_stores, func_asyn)
 
         rp.with_stores(func_syn, [rp_q])
         print(list(rp.get_all()))
+        pool.shutdown()
 
     def testSecProtocol(self):
-        pkp = PaillierKeypair()
-        print(pkp.generate_keypair())
+        pub, priv = PaillierKeypair().generate_keypair()
+        pub2 = AsyncPaillierPublicKey(pub)
+        stat = defaultdict(float)
+        for i in range(1000):
+            # r = 0 is not compatible
+            r = i + 1
+            start = time.time()
+            expected = pub.encrypt(i, random_value=r).ciphertext(False)
+            stat["old_encrypt"] += time.time() - start
+            start = time.time()
+            actual = pub2.encrypt(i, random_value=r).ciphertext(False)
+            stat["new_encrypt"] += time.time() - start
+
+            self.assertEqual(expected, actual)
+            start = time.time()
+            encoding = pub2.encode(i).encoding
+            stat["new_encrypt:encode"] += time.time() - start
+            start = time.time()
+            cipher_text = pub2.raw_encrypt(encoding)
+            stat["new_encrypt:raw_encrypt"] += time.time() - start
+            start = time.time()
+            obf = pub2.gen_obfuscator(r)
+            stat["new_encrypt:gen_obfuscator"] += time.time() - start
+            start = time.time()
+            actual = pub2.apply_obfuscator(cipher_text, obf=obf)
+            stat["new_encrypt:apply_obfuscator"] += time.time() - start
+            self.assertEqual(expected, actual)
+        print("======stat_time=====")
+        for k, v in stat.items():
+            print(f"{k}\t{v}")
 
     def testPyEngine(self):
         pub, priv = rpt_py_engine.keygen()
