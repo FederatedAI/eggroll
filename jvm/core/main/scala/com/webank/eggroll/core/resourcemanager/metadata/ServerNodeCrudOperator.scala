@@ -143,7 +143,7 @@ object ServerNodeCrudOperator {
 
   }
 
-  private[metadata] def doGetServerNodesUnwrapped(input: ErServerNode): Array[ErServerNode] = {
+  private[metadata] def doGetServerNodesUnwrapped(input: ErServerNode): Array[DbServerNode] = {
     var sql = "select * from server_node where 1=? "
     var params = ListBuffer("1")
 
@@ -182,7 +182,7 @@ object ServerNodeCrudOperator {
       params ++= Array(input.status)
     }
 
-    val nodeResult = dbc.query( rs => rs.map(_ => ErServerNode(
+    val nodeResult = dbc.query( rs => rs.map(_ => DbServerNode(
       id = rs.getLong("server_node_id"),
       name = rs.getString("name"),
       clusterId = rs.getLong("server_cluster_id"),
