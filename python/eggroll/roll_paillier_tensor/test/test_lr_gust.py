@@ -55,6 +55,10 @@ class TestLR_guest(unittest.TestCase):
         cls.rsc = get_debug_rs_context(cls.rpc, "rs_sid1", guest_options)
         cls.rptc = RptContext(cls.rpc)
 
+    @classmethod
+    def tearDown(cls) -> None:
+        cls.rpc.get_session().stop()
+
     def testLRGuest(self):
         #base obj
         rpc = TestLR_guest.rpc
@@ -90,6 +94,10 @@ class TestLR_guest(unittest.TestCase):
         rp_w_G.put('1', w_G)
 
         X_G = self.rptc.from_roll_pair(rp_x_G)
+        # fw_G1 = X_G @ w_G
+        # enc_fw_square_G = (fw_G1 * fw_G1).encrypt()
+        # enc_fw_square_G.out(priv,"aa334")
+        # return
         X_Y = self.rptc.from_roll_pair(rp_x_Y)
 
         learning_rate = 0.15
@@ -100,7 +108,7 @@ class TestLR_guest(unittest.TestCase):
 
         while itr < max_iter:
             round = str(itr)
-
+            # X_G = NumpyTensor(G, pub)
             fw_G1 = X_G @ w_G
             fw_G2 = X_G @ w_G
 

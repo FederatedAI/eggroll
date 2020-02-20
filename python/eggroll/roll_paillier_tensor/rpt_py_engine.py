@@ -134,12 +134,13 @@ def decryptdecode(data, pub, priv):
 
 
 def print(data, pub, priv):
-    pprint(data)
+    pprint(decryptdecode(data, pub, priv))
 
 
 def encrypt_and_obfuscate(data, pub, obfs=None):
     if obfs is None:
         return np.vectorize(pub.encrypt)(data)
+
     def func(value, obf):
         encoding = pub.encode(value)
         ciphertext = pub.raw_encrypt(encoding.encoding)
