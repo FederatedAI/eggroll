@@ -57,7 +57,7 @@ class Table(object):
         pass
 
     @abc.abstractmethod
-    def collect(self, min_chunk_size=0, use_serialize=True) -> list:
+    def collect(self, min_chunk_size=0, use_serialize=True, should_sort=True) -> list:
         """
 
         Args:

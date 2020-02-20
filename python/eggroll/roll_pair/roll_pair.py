@@ -274,7 +274,7 @@ class RollPair(object):
         self.gc_recorder.record(er_store)
 
     def __del__(self):
-        if not self.gc_enable:
+        if not hasattr(self, 'gc_enable') or not self.gc_enable:
             return
         if self.ctx.gc_recorder.check_gc_executable(self.__store):
             self.ctx.gc_recorder.delete_record(self.__store)
@@ -762,7 +762,7 @@ class RollPair(object):
 
         er_store = job_result._outputs[0]
 
-        return RollPair(er_store, self.ctx).get('result')
+        return RollPair(er_store, self.ctx).first()[1]
 
     def aggregate(self, zero_value, seq_op, comb_op, output=None, options: dict = None):
         if options is None:
@@ -789,7 +789,7 @@ class RollPair(object):
 
         er_store = job_result._outputs[0]
 
-        return RollPair(er_store, self.ctx).get('result')
+        return RollPair(er_store, self.ctx).first()[1]
 
     def glom(self, output=None, options: dict = None):
         if options is None:
