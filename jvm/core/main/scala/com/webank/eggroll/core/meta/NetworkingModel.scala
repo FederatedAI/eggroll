@@ -18,6 +18,7 @@
 
 package com.webank.eggroll.core.meta
 
+import java.util.Date
 import java.util.concurrent.ConcurrentHashMap
 
 import com.google.protobuf.{Message => PbMessage}
