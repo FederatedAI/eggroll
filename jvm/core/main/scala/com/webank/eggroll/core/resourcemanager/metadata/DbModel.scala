@@ -26,6 +26,6 @@ case class DbServerNode(id: Long = -1,
                         endpoint: ErEndpoint = ErEndpoint(host = StringConstants.EMPTY, port = -1),
                         nodeType: String = StringConstants.EMPTY,
                         status: String = StringConstants.EMPTY,
-                        lastHeartbeatAt: Date = new Date(),
-                        createdAt: Date = new Date(),
-                        updatedAt: Date = new Date())
+                        lastHeartbeatAt: Date,
+                        createdAt: Date,
+                        updatedAt: Date)
