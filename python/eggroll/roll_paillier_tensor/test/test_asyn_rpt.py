@@ -16,13 +16,14 @@ import unittest
 from concurrent.futures.thread import ThreadPoolExecutor
 
 from collections import defaultdict
+import random
 
 import time
 
 from eggroll.core.constants import StoreTypes
 from eggroll.roll_paillier_tensor import rpt_py_engine
 from eggroll.roll_paillier_tensor.roll_paillier_tensor import NumpyTensor, PaillierTensor
-from eggroll.roll_paillier_tensor.rpt_py_engine import AsyncPaillierPublicKey
+from eggroll.roll_paillier_tensor.rpt_py_engine import AsyncPaillierPublicKey, encrypt_and_obfuscate, decryptdecode
 from eggroll.roll_pair import *
 from eggroll.roll_pair.test.roll_pair_test_assets import get_debug_test_context
 from federatedml.secureprotol.fate_paillier import PaillierKeypair
@@ -66,6 +67,29 @@ class TestAsynRpt(unittest.TestCase):
         print(list(rp.get_all()))
         pool.shutdown()
 
+    def testNpTensor(self):
+        pub, priv = PaillierKeypair().generate_keypair()
+        pub2 = AsyncPaillierPublicKey(pub)
+        np1 = np.array([[ -5.457078],
+                        [ -7.832643],
+                        [-14.418312],
+                        [ -2.831291]])
+        np2 = np.array([[  6.18417921],
+                        [ 44.85495244],
+                        [124.03486276],
+                        [ 22.37115939]])
+        np1 = np2
+        na1 = NumpyTensor(np1, pub2)
+        obfs = []
+        for i in range(np1.size):
+            obfs.append(pub2.gen_obfuscator())
+        obfs = np.array(obfs).reshape(np1.shape)
+        ea1 = encrypt_and_obfuscate(np1, pub2, obfs=obfs)
+        print("aa23",decryptdecode(ea1,pub2,priv))
+        pa1 = na1.encrypt()
+        pa1.decrypt(priv).out(priv,"aa22")
+
+
     def testSecProtocol(self):
         pub, priv = PaillierKeypair().generate_keypair()
         pub2 = AsyncPaillierPublicKey(pub)
@@ -73,16 +97,17 @@ class TestAsynRpt(unittest.TestCase):
         for i in range(1000):
             # r = 0 is not compatible
             r = i + 1
+            value = random.uniform(-1 * 2 << 40, 2 << 40)
             start = time.time()
-            expected = pub.encrypt(i, random_value=r).ciphertext(False)
+            expected = pub.encrypt(value, random_value=r).ciphertext(False)
             stat["old_encrypt"] += time.time() - start
             start = time.time()
-            actual = pub2.encrypt(i, random_value=r).ciphertext(False)
+            actual = pub2.encrypt(value, random_value=r).ciphertext(False)
             stat["new_encrypt"] += time.time() - start
 
             self.assertEqual(expected, actual)
             start = time.time()
-            encoding = pub2.encode(i).encoding
+            encoding = pub2.encode(value).encoding
             stat["new_encrypt:encode"] += time.time() - start
             start = time.time()
             cipher_text = pub2.raw_encrypt(encoding)
