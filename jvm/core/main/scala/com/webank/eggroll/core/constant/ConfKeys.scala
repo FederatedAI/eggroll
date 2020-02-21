@@ -101,7 +101,8 @@ object SessionConfKeys {
   val CONFKEY_SESSION_CONTEXT_ROLLPAIR_COUNT = "eggroll.session.context.rollpair.count"
   val CONFKEY_SESSION_ID = "eggroll.session.id"
   val CONFKEY_SESSION_NAME = "eggroll.session.name"
-  val CONFKEY_SESSION_MAX_PROCESSORS_PER_NODE = "eggroll.session.max.processors.per.node"
+  val CONFKEY_SESSION_PROCESSORS_PER_NODE = "eggroll.session.processors.per.node"
+
 }
 
 object DeployConfKeys {

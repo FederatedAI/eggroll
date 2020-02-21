@@ -111,6 +111,7 @@ class LmdbAdapter(PairAdapter):
             if self.env:
                 count = LmdbAdapter.count_dict[self.path]
                 if not count or count - 1 <= 0:
+                    L.debug(f"LmdbAdapter: actually closing {self.path}")
                     try:
                         self.env.close()
                     except:
