@@ -249,7 +249,7 @@ class TestRollSiteStandalone(TestRollSiteBase):
 class TestRollSiteCluster(TestRollSiteBase):
     @classmethod
     def setUpClass(cls) -> None:
-        opts = {"eggroll.session.max.processors.per.node": "3"}
+        opts = {"eggroll.session.processors.per.node": "3"}
         cls.rs_context_guest = get_cluster_context(role='guest', options=opts, props_file=props_file_guest)
         cls.rs_context_host = get_cluster_context(role='host', options=opts, props_file=props_file_host)
 

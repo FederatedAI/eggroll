@@ -232,7 +232,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                 packet = packetBuilder.setHeader(request.getHeader()).build();
                 // TODO:1: rename job_id to federation_session_id, session_id -> eggroll_session_id
                 LOGGER.info("init_job_session_pair, job_id:{}, session_id:{}", job_id, session_id);
-                JobStatus.jobIdToSessionId.put(job_id, session_id);
+                JobStatus.putJobIdToSessionId(job_id, session_id);
 
                 responseObserver.onNext(packet);
                 responseObserver.onCompleted();
