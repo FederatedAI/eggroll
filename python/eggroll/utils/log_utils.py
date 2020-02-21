@@ -30,7 +30,7 @@ class LoggerFactory(object):
     name_to_loggers = {}
     LOG_DIR = None
     lock = RLock()
-    default_logger_name = os.environ.get('EGGROLL_LOG_FILE', default=f'eggroll-py')
+    default_logger_name = os.environ.get('EGGROLL_LOG_FILE', default=f'eggroll')
     default_log_formatter = logging.Formatter('[%(levelname)-5s][%(asctime)s][%(threadName)s,pid:%(process)d,tid:%(thread)d][%(filename)s:%(lineno)s.%(funcName)s] - %(message)s')
 
     @staticmethod
