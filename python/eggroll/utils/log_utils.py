@@ -86,7 +86,7 @@ class LoggerFactory(object):
             logger.addHandler(handler)
 
             # also log to console if log level <= debug
-            if logging._checkLevel(LoggerFactory.LEVEL) <= logging.DEBUG:
+            if logging._checkLevel(LoggerFactory.LEVEL) <= logging.DEBUG or os.environ.get("EGGROLL_LOG_CONSOLE") == "1":
                 console_handler = logging.StreamHandler(sys.stdout)
                 console_handler.setLevel(LoggerFactory.LEVEL)
                 formatter = LoggerFactory.default_log_formatter
