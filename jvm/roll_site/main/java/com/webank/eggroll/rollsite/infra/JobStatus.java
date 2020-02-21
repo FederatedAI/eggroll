@@ -11,10 +11,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 // TODO:0: add method to clean the map
 public class JobStatus {
-    public static LoadingCache<String, String> jobIdToSessionId;
-    private static LoadingCache<String, CountDownLatch> jobIdToFinishLatch;
-    private static LoadingCache<String, AtomicInteger> jobIdToPutBatchCount;
-    private static LoadingCache<String, String> tagkeyToObjType;
+    private static final LoadingCache<String, String> jobIdToSessionId;
+    private static final LoadingCache<String, CountDownLatch> jobIdToFinishLatch;
+    private static final LoadingCache<String, AtomicInteger> jobIdToPutBatchCount;
+    private static final LoadingCache<String, String> tagkeyToObjType;
 
 
     static {
