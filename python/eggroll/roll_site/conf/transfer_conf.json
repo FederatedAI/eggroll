@@ -14,5 +14,21 @@
         "host"
       ]
     }
+  },
+  "roll_pair_g2h": {
+    "table": {
+      "src": "guest",
+      "dst": [
+        "host"
+      ]
+    }
+  },
+  "roll_pair_h2g": {
+    "table": {
+      "src": "host",
+      "dst": [
+        "guest"
+      ]
+    }
   }
 }

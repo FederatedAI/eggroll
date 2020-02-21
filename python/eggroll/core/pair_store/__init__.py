@@ -34,6 +34,9 @@ def create_pair_adapter(options: dict):
     elif options["store_type"] == StoreTypes.ROLLPAIR_ROLLSITE:
         from eggroll.core.pair_store.roll_site_adapter import RollSiteAdapter
         ret = RollSiteAdapter(options=options)
+    elif options["store_type"] == StoreTypes.ROLLPAIR_QUEUE:
+        from eggroll.core.pair_store.queue_adapter import QueueAdapter
+        ret = QueueAdapter(options=options)
     else:
         raise NotImplementedError(options)
     return ret
