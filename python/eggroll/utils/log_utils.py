@@ -67,7 +67,7 @@ class LoggerFactory(object):
         if not LoggerFactory.LOG_DIR:
             return logging.StreamHandler(sys.stdout)
         formatter = LoggerFactory.default_log_formatter
-        log_file = os.path.join(LoggerFactory.LOG_DIR, "{}.log".format(name))
+        log_file = os.path.join(LoggerFactory.LOG_DIR, f"{name}.py.log")
         handler = TimedRotatingFileHandler(log_file,
                                            when='H',
                                            interval=1,
@@ -84,12 +84,25 @@ class LoggerFactory(object):
             logger.setLevel(LoggerFactory.LEVEL)
             handler = LoggerFactory.get_handler(name)
             logger.addHandler(handler)
+
+            # also log to console if log level <= debug
             if logging._checkLevel(LoggerFactory.LEVEL) <= logging.DEBUG:
                 console_handler = logging.StreamHandler(sys.stdout)
                 console_handler.setLevel(LoggerFactory.LEVEL)
                 formatter = LoggerFactory.default_log_formatter
                 console_handler.setFormatter(formatter)
                 logger.addHandler(console_handler)
+
+            # log error to a separate file
+            error_log_file = os.path.join(LoggerFactory.LOG_DIR, f"{name}.py.err.log")
+            error_handler = TimedRotatingFileHandler(error_log_file,
+                                                     when='H',
+                                                     interval=1,
+                                                     backupCount=0,
+                                                     delay=True)
+            error_handler.setLevel(logging.ERROR)
+            error_handler.setFormatter(LoggerFactory.default_log_formatter)
+            logger.addHandler(error_handler)
 
             LoggerFactory.name_to_loggers[name] = logger, handler
             return logger, handler
