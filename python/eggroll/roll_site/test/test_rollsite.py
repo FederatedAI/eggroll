@@ -47,14 +47,14 @@ guest_options = {'self_role': 'guest',
 
 class TestRollSite(unittest.TestCase):
     def test_host_init(self):
-        opts = {"eggroll.session.max.processors.per.node": "10"}
+        opts = {"eggroll.session.processors.per.node": "10"}
         rp_context = get_cluster_context(options=opts)
         #rp_context = get_debug_test_context(is_standalone, manager_port_host, egg_port_host, transfer_port_host,
         #                                    'testing')
         RollSiteContext("atest", host_options, {})
 
     def test_remote(self):
-        opts = {"eggroll.session.max.processors.per.node": "10"}
+        opts = {"eggroll.session.processors.per.node": "10"}
         rp_context = get_cluster_context(options=opts)
         #rp_context = get_debug_test_context(is_standalone, manager_port_guest, egg_port_guest, transfer_port_guest,
         #                                    'testing_guest')
@@ -70,7 +70,7 @@ class TestRollSite(unittest.TestCase):
             print("result:", role, party)
 
     def test_get(self):
-        opts = {"eggroll.session.max.processors.per.node": "10"}
+        opts = {"eggroll.session.processors.per.node": "10"}
         rp_context = get_cluster_context(options=opts)
         #rp_context = get_debug_test_context(is_standalone, manager_port_host, egg_port_host, transfer_port_host,
         #                                    'testing')
@@ -87,14 +87,14 @@ class TestRollSite(unittest.TestCase):
                 print("obj:", obj)
 
     def test_host_init_rollpair(self):
-        opts = {"eggroll.session.max.processors.per.node": "10"}
+        opts = {"eggroll.session.processors.per.node": "10"}
         rp_context = get_cluster_context(options=opts)
         #rp_context = get_debug_test_context(is_standalone, manager_port_host, egg_port_host, transfer_port_host,
         #                                    'testing')
         RollSiteContext("atest2", host_options, {})
 
     def test_remote_rollpair(self):
-        opts = {"eggroll.session.max.processors.per.node": "10"}
+        opts = {"eggroll.session.processors.per.node": "10"}
         rp_context = get_cluster_context(options=opts)
         #rp_context = get_debug_test_context(is_standalone, manager_port_guest, egg_port_guest, transfer_port_guest,
         #                                    'testing_guest')
@@ -110,7 +110,7 @@ class TestRollSite(unittest.TestCase):
             print("result:", role, party)
 
     def test_get_rollpair(self):
-        opts = {"eggroll.session.max.processors.per.node": "10"}
+        opts = {"eggroll.session.processors.per.node": "10"}
         rp_context = get_cluster_context(options=opts)
         #rp_context = get_debug_test_context(is_standalone, manager_port_host, egg_port_host, transfer_port_host,
         #                                    'testing')
