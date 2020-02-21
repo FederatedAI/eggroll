@@ -326,6 +326,10 @@ class EggPair(object):
                         output_writebatch.put(k_right, v_right)
             self._run_binary(union_wrapper, task)
 
+        elif task._name == 'withStores':
+            f = create_functor(functors[0]._body)
+            result = ErPair(key=self.functor_serdes.serialize(task._inputs[0]._id),
+                            value=self.functor_serdes.serialize(f(task._inputs)))
         return result
 
     def aggregate(self, task: ErTask, is_reduce=False):
