@@ -945,3 +945,38 @@ class RollPair(object):
         L.info(er_store)
 
         return RollPair(er_store, self.ctx)
+
+    def with_stores(self, func, others=None, options=None):
+        tag = "withStores"
+        if others is None:
+            others = []
+        total_partitions = self.get_partitions()
+        for other in others:
+            if other.get_partitions() != total_partitions:
+                raise ValueError(f"diff partitions: expected:{total_partitions}, actual:{other.get_partitions()}")
+        job_id = generate_job_id(self.__session_id, tag=tag)
+        job = ErJob(id=job_id,
+                    name=tag,
+                    inputs=[self.ctx.populate_processor(rp.get_store()) for rp in [self] + others],
+                    functors=[ErFunctor(name=tag, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))],
+                    options=options)
+        args = list()
+        for i in range(total_partitions):
+            partition_self = job._inputs[0]._partitions[i]
+            task = ErTask(id=generate_task_id(job_id, i),
+                          name=job._name,
+                          inputs=[store._partitions[i] for store in job._inputs],
+                          job=job)
+            args.append(([task], partition_self._processor._command_endpoint))
+
+        futures = self.__command_client.async_call(
+            args=args,
+            output_types=[ErPair],
+            command_uri=CommandURI(f'{RollPair.EGG_PAIR_URI_PREFIX}/{RollPair.RUN_TASK}'))
+
+        result = list()
+        for future in futures:
+            ret_pair = future.result()[0]
+            result.append((self.functor_serdes.deserialize(ret_pair._key),
+                           self.functor_serdes.deserialize(ret_pair._value)))
+        return result
