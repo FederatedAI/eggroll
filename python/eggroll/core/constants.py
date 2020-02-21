@@ -38,6 +38,7 @@ class StoreTypes(object):
     ROLLPAIR_FILE = 'ROLL_PAIR_FILE'
     ROLLPAIR_MMAP = 'ROLL_PAIR_MMAP'
     ROLLPAIR_CACHE = 'ROLL_PAIR_CACHE'
+    ROLLPAIR_QUEUE = 'ROLL_PAIR_QUEUE'
 
 
 class PartitionerTypes(object):
