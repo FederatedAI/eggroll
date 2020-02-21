@@ -41,14 +41,14 @@ public class RollPairSinkPipe extends BasePipe {
     this.rollSiteSessionId = erRollSiteHeader.rollSiteSessionId();
 
     try {
-      while (!JobStatus.jobIdToSessionId.containsKey(rollSiteSessionId)) {
+      while (!JobStatus.isJobIdToSessionRegistered(rollSiteSessionId)) {
           Thread.sleep(500L);
       }
     } catch (InterruptedException e) {
       throw new RuntimeException(e);
     }
 
-    this.erSessionId = JobStatus.jobIdToSessionId.get(rollSiteSessionId);
+    this.erSessionId = JobStatus.getErSessionId(rollSiteSessionId);
     this.rollSiteUtil = new RollSiteUtil(erSessionId, erRollSiteHeader, new Map1<>("", ""));
   }
 

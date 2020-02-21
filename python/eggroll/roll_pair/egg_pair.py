@@ -370,8 +370,11 @@ class EggPair(object):
                     if r.data is None:
                         continue
                     v = output_value_serdes.deserialize(r.data)
+                    if v is None:
+                        continue
                     if first and is_reduce:
                         comb_op_result = v
+                        first = False
                     else:
                         comb_op_result = comb_op(comb_op_result, v)
 
