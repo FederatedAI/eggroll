@@ -16,7 +16,7 @@ object TestAssets {
   val cc1:CommandClient = new CommandClient(ErEndpoint("localhost:4670"))
   val sm1:SessionManager = cc1.proxy[SessionManager]
 
-  val getOrCreateSessionMeta = ErSessionMeta(id = "testing_reg", options = Map(SessionConfKeys.CONFKEY_SESSION_MAX_PROCESSORS_PER_NODE -> "2"))
+  val getOrCreateSessionMeta = ErSessionMeta(id = "testing_reg", options = Map(SessionConfKeys.CONFKEY_SESSION_PROCESSORS_PER_NODE -> "2"))
 
   def initConf(): Unit = {
     val confFile = new File("../../conf/eggroll.properties.local")

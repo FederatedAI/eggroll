@@ -13,6 +13,17 @@
 #  limitations under the License.
 
 
+class ErConfKey(object):
+    def __init__(self, name, default_value):
+        self.name = name
+        self.default_value = default_value
+
+    def get_name(self):
+        return self.name
+
+    def get_default_value(self):
+        return self.default_value
+
 class CoreConfKeys(object):
     LOGS_DIR = "eggroll.logs.dir"
     DATA_DIR = "eggroll.data.dir"
@@ -61,6 +72,7 @@ class CoreConfKeys(object):
 
     CONFKEY_CORE_COMMAND_DEFAULT_SERDES_TYPE = "eggroll.core.command.default.serdes.type"
     CONFKEY_CORE_LOG_DIR = "eggroll.core.log.dir"
+    EGGROLL_CORE_FIFOBROKER_DEFAULT_SIZE = ErConfKey("eggroll.core.fifobroker.default.size", 16)
 
 
 class ClusterManagerConfKeys(object):
@@ -86,7 +98,7 @@ class NodeManagerConfKeys(object):
 class SessionConfKeys(object):
     CONFKEY_SESSION_ID = "eggroll.session.id"
     CONFKEY_SESSION_NAME = "eggroll.session.name"
-    CONFKEY_SESSION_MAX_PROCESSORS_PER_NODE = "eggroll.session.max.processors.per.node"
+    CONFKEY_SESSION_PROCESSORS_PER_NODE = "eggroll.session.processors.per.node"
     CONFKEY_SESSION_DEPLOY_MODE = "eggroll.session.deploy.mode"
     CONFKEY_SESSION_STANDALONE_PORT = "eggroll.resourcemanager.standalone.port"
 
@@ -94,3 +106,8 @@ class SessionConfKeys(object):
 class TransferConfKeys(object):
     CONFKEY_TRANSFER_SERVICE_HOST = "eggroll.transfer.service.host"
     CONFKEY_TRANSFER_SERVICE_PORT = "eggroll.transfer.service.port"
+
+
+class RollPairConfKeys(object):
+    EGGROLL_ROLLPAIR_TRANSFERPAIR_SENDBUF_SIZE = ErConfKey("eggroll.rollpair.transferpair.sendbuf.size", 1 << 20)
+    EGGROLL_ROLLPAIR_TRANSFERPAIR_BATCHBROKER_DEFAULT_SIZE = ErConfKey("eggroll.rollpair.transferpair.broker.default.size", 100)

@@ -53,7 +53,7 @@ class TransferService(object):
                     print('creating broker: ', key, ", write signals: ", write_signals)
                     final_size = maxsize if maxsize > 0 else TransferService._DEFAULT_QUEUE_SIZE
                     TransferService.data_buffer[key] = \
-                        FifoBroker(max_capacity=final_size, writers=write_signals, name=key)
+                        FifoBroker(maxsize=final_size, writers=write_signals, name=key)
 
         return TransferService.data_buffer[key]
 

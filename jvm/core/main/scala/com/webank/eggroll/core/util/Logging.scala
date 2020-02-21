@@ -18,10 +18,12 @@
 
 package com.webank.eggroll.core.util
 
+import java.util.concurrent.atomic.AtomicBoolean
+
 import com.webank.eggroll.core.constant.StringConstants
-import com.webank.eggroll.core.error.DistributedRuntimeException
 import org.apache.commons.lang3.StringUtils
-import org.apache.logging.log4j.{LogManager, Logger}
+import org.apache.logging.log4j.core.LoggerContext
+import org.apache.logging.log4j.{Level, LogManager, Logger}
 
 trait Logging {
   @transient private var log_ : Logger = _
@@ -42,6 +44,24 @@ trait Logging {
 
   protected def log: Logger = {
     if (log_ == null) {
+      if (!Logging.logContextInited.get()) {
+        val logContext = LogManager.getContext(false).asInstanceOf[LoggerContext]
+        val logConf = logContext.getConfiguration
+
+        val eggrollLogLevelString = System.getenv("EGGROLL_LOG_LEVEL")
+        var eggrollLogLevel = Level.getLevel(eggrollLogLevelString)
+        if (eggrollLogLevel == null) eggrollLogLevel = Level.INFO
+
+        val eggrollLogConsoleString = System.getenv("EGGROLL_LOG_CONSOLE")
+        val eggrollLogConsole: Boolean = if ("1".equals(eggrollLogConsoleString)) true
+        else java.lang.Boolean.valueOf(eggrollLogConsoleString)
+
+        if (Level.DEBUG.compareTo(eggrollLogLevel) <= 0 || eggrollLogConsole) {
+          logConf.getRootLogger.addAppender(logConf.getAppender("STDOUT"), eggrollLogLevel, null)
+        }
+        Logging.logContextInited.compareAndSet(false, true)
+      }
+
       log_ = LogManager.getLogger(loggerName)
     }
 
@@ -92,6 +112,8 @@ trait Logging {
   protected def logError(throwable: Throwable): Unit = {
     if (log.isErrorEnabled) log.error(s"${prefix}${StringConstants.LOGGING_A_THROWABLE}", throwable)
   }
+}
 
-
+object Logging {
+  val logContextInited = new AtomicBoolean(false)
 }
