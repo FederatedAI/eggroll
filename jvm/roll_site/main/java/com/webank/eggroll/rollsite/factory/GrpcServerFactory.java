@@ -38,6 +38,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 import javax.net.ssl.SSLException;
@@ -70,7 +71,7 @@ public class GrpcServerFactory {
     @Autowired
     private DefaultPipeFactory defaultPipeFactory;
 
-    public Server createServer(ProxyServerConf proxyServerConf) {
+    public Server createServer(ProxyServerConf proxyServerConf, boolean isSecureServer) {
         this.serverConfManager.setProxyServerConf(proxyServerConf);
 
         String routeTablePath = proxyServerConf.getRouteTablePath();
@@ -88,7 +89,12 @@ public class GrpcServerFactory {
 
         LOGGER.info("server build on port:{}", proxyServerConf.getPort());
         // LOGGER.warn("this may cause trouble in multiple network devices. you may want to consider binding to a ip");
-        serverBuilder = NettyServerBuilder.forPort(proxyServerConf.getPort());
+        if (isSecureServer) {
+            serverBuilder = NettyServerBuilder.forPort(proxyServerConf.getSecurePort());
+        }
+        else {
+            serverBuilder = NettyServerBuilder.forPort(proxyServerConf.getPort());
+        }
 
         serverBuilder.addService(dataTransferPipedServer)
                 .addService(routeServer)
@@ -115,7 +121,7 @@ public class GrpcServerFactory {
                             "com.webank.ai.fate.api.networking.proxy.RouteService"));
         }
 
-        if (proxyServerConf.isSecureServer()) {
+        if (isSecureServer) {
             String serverCrtPath = proxyServerConf.getServerCrtPath().replaceAll("\\.\\./", "");
             String serverKeyPath = proxyServerConf.getServerKeyPath().replaceAll("\\.\\./", "");
             String caCrtPath = proxyServerConf.getCaCrtPath().replaceAll("\\.\\./", "");
@@ -215,7 +221,7 @@ public class GrpcServerFactory {
        client.unaryCall(packet, defaultPipeFactory.create("brokerInfo"));
     }
 
-    public Server createServer(String confPath) throws IOException {
+    public ArrayList<Server> createServers(String confPath) throws IOException {
         ProxyServerConf proxyServerConf = applicationContext.getBean(ProxyServerConf.class);
         Properties properties = new Properties();
 
@@ -241,6 +247,12 @@ public class GrpcServerFactory {
             } else {
                 int port = Integer.valueOf(portString);
                 proxyServerConf.setPort(port);
+            }
+
+            String securePortString = properties.getProperty("securePort", null);
+            if (securePortString != null) {
+                int port = Integer.valueOf(securePortString);
+                proxyServerConf.setSecurePort(port);
             }
 
             String partyIdString = properties.getProperty("partyId", null);
@@ -367,6 +379,16 @@ public class GrpcServerFactory {
             LOGGER.error(e);
             throw e;
         }
-        return createServer(proxyServerConf);
+
+
+        ArrayList<Server> serverList  = new ArrayList<Server>();
+        serverList.add(createServer(proxyServerConf, false));
+
+        if(proxyServerConf.isSecureServer()) {
+            serverList.add(createServer(proxyServerConf, proxyServerConf.isSecureServer()));
+        }
+
+        return serverList;
+
     }
 }
