@@ -32,6 +32,8 @@ import org.apache.logging.log4j.Logger;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
 
+import java.util.ArrayList;
+
 public class Proxy {
     private static final Logger LOGGER = LogManager.getLogger();
 
@@ -59,7 +61,7 @@ public class Proxy {
         localBeanFactory.setApplicationContext(context);
         GrpcServerFactory serverFactory = context.getBean(GrpcServerFactory.class);
 
-        Server server = serverFactory.createServer(confFilePath);
+        ArrayList<Server> servers = serverFactory.createServers(confFilePath);
 
         ServerConfManager serverConfManager = context.getBean(ServerConfManager.class);
         ProxyServerConf proxyServerConf = serverConfManager.getProxyServerConf();
@@ -69,7 +71,14 @@ public class Proxy {
 
         StaticErConf.addProperties(confFilePath);
 
-        server.start();
-        server.awaitTermination();
+        for (int i = 0; i < servers.size(); i++) {
+            Server server = servers.get(i);
+            server.start();
+        }
+
+        for (int i = 0; i < servers.size(); i++) {
+            Server server = servers.get(i);
+            server.awaitTermination();
+        }
     }
 }
