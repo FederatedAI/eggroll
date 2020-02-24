@@ -27,6 +27,7 @@ import java.util.Properties;
 public class ProxyServerConf {
     private String ip;
     private int port;
+    private int securePort;
     private String partyId;
     private String role;
 
@@ -96,6 +97,14 @@ public class ProxyServerConf {
 
     public void setPort(int port) {
         this.port = port;
+    }
+
+    public int getSecurePort() {
+        return securePort;
+    }
+
+    public void setSecurePort(int securePort) {
+        this.securePort = securePort;
     }
 
     public void setPartyId(String partyId) {
