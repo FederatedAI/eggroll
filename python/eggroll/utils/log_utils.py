@@ -116,7 +116,7 @@ def set_level(level):
     LoggerFactory.LEVEL = level
 
 
-def get_logger(name=None, use_class_name=False):
+def get_logger(name=None, use_class_name=False, filename=None):
     if not name:
         if not use_class_name:
             logger_name = LoggerFactory.default_logger_name
