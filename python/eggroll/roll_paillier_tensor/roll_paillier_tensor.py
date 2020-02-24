@@ -327,6 +327,7 @@ class RollPaillierTensor(Tensor):
                     for k, v in rb:
                         mat = serder_main.deserialize(v)
                         obfs = []
+                        L.debug(f"obf qsize: {db_obf.count()}, {part_obf}")
                         for i in range(mat._ndarray.size):
                             obfs.append(serder_obf.deserialize(db_obf.get()))
                         obfs = np.array(obfs).reshape(mat._ndarray.shape)
