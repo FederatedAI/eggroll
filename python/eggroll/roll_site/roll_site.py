@@ -16,6 +16,7 @@
 import time
 from concurrent.futures import ThreadPoolExecutor, wait, FIRST_EXCEPTION
 
+from eggroll.core.aspects import _method_profile_logger
 from eggroll.core.conf_keys import SessionConfKeys
 from eggroll.core.constants import DeployModes
 from eggroll.core.constants import StoreTypes
@@ -138,12 +139,21 @@ class RollSite:
         self.stub = self.ctx.stub
         self.process_pool = ThreadPoolExecutor(10, thread_name_prefix="thread-receive")
         self.complete_pool = ThreadPoolExecutor(10, thread_name_prefix="complete-wait")
+        self._push_start_wall_time = None
+        self._push_start_cpu_time = None
 
-    def _decrease_push_count(self, fn):
+
+    def _push_callback(self, fn):
         if self.ctx.pushing_task_count <= 0:
             self.ctx.pushing_task_count = 0
             return
         self.ctx.pushing_task_count -= 1
+        if self._push_start_wall_time:
+            end_wall_time = time.time()
+        if self._push_start_cpu_time:
+            end_cpu_time = time.perf_counter()
+
+        L.info(L.info(f'{{"metric_type": "func_profile", "qualname": "RollSite.push", "cpu_time": {end_cpu_time - self._push_start_cpu_time}, "wall_time": {end_wall_time - self._push_start_wall_time}}}'))
 
     def _thread_receive(self, packet, namespace, roll_site_header: ErRollSiteHeader):
         try:
@@ -199,6 +209,8 @@ class RollSite:
 
     def push(self, obj, parties: list = None):
         L.info(f"pushing: self:{self.__dict__}, obj_type:{type(obj)}, parties:{parties}")
+        self._push_start_wall_time = time.time()
+        self._push_start_cpu_time = time.perf_counter()
         self.ctx.pushing_task_count += 1
         futures = []
         for role_party_id in parties:
@@ -277,7 +289,7 @@ class RollSite:
                 return _tagged_key
 
             future = self.process_pool.submit(map_values, _tagged_key)
-            future.add_done_callback(self._decrease_push_count)
+            future.add_done_callback(self._push_callback)
             futures.append(future)
 
         self.process_pool.shutdown(wait=False)
@@ -290,6 +302,7 @@ class RollSite:
         self.complete_pool.shutdown(wait=False)
         return ret_future
 
+    @_method_profile_logger
     def pull(self, parties: list = None):
         futures = []
         for src_role, src_party_id in parties:
