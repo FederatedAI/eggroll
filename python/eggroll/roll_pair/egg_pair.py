@@ -92,26 +92,23 @@ class EggPair(object):
     def _run_binary(self, func, task):
         left_key_serdes = create_serdes(task._inputs[0]._store_locator._serdes)
         left_value_serdes = create_serdes(task._inputs[0]._store_locator._serdes)
-        left_adapter = create_adapter(task._inputs[0])
 
         right_key_serdes = create_serdes(task._inputs[1]._store_locator._serdes)
         right_value_serdes = create_serdes(task._inputs[1]._store_locator._serdes)
-        right_adapter = create_adapter(task._inputs[1])
-        output_adapter = create_adapter(task._outputs[0])
-        left_iterator = left_adapter.iteritems()
-        right_iterator = right_adapter.iteritems()
-        output_writebatch = output_adapter.new_batch()
-        try:
-            func(left_iterator, left_key_serdes, left_value_serdes,
-                 right_iterator, right_key_serdes, right_value_serdes,
-                 output_writebatch)
-        except:
-            raise EnvironmentError("exec task:{} error".format(task))
-        finally:
-            output_writebatch.close()
-            left_adapter.close()
-            right_adapter.close()
-            output_adapter.close()
+
+        with create_adapter(task._inputs[0]) as left_adapter, \
+                create_adapter(task._inputs[1]) as right_adapter, \
+                create_adapter(task._outputs[0]) as output_adapter, \
+                left_adapter.iteritems() as left_iterator, \
+                right_adapter.iteritems() as right_iterator, \
+                output_adapter.new_batch() as output_writebatch:
+            try:
+                func(left_iterator, left_key_serdes, left_value_serdes,
+                     right_iterator, right_key_serdes, right_value_serdes,
+                     output_writebatch)
+            except Exception as e:
+                raise EnvironmentError("exec task:{} error".format(task), e)
+
 
     @_exception_logger
     def run_task(self, task: ErTask):
@@ -329,6 +326,10 @@ class EggPair(object):
                         output_writebatch.put(k_right, v_right)
             self._run_binary(union_wrapper, task)
 
+        elif task._name == 'withStores':
+            f = create_functor(functors[0]._body)
+            result = ErPair(key=self.functor_serdes.serialize(task._inputs[0]._id),
+                            value=self.functor_serdes.serialize(f(task._inputs)))
         return result
 
     def aggregate(self, task: ErTask, is_reduce=False):
@@ -373,8 +374,11 @@ class EggPair(object):
                     if r.data is None:
                         continue
                     v = output_value_serdes.deserialize(r.data)
+                    if v is None:
+                        continue
                     if first and is_reduce:
                         comb_op_result = v
+                        first = False
                     else:
                         comb_op_result = comb_op(comb_op_result, v)
 

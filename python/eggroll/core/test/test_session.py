@@ -43,7 +43,7 @@ class TestSessionCluster(TestSessionBase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        opts = {"eggroll.session.max.processors.per.node": "5"}
+        opts = {"eggroll.session.processors.per.node": "5"}
         cls.session = get_cluster_context(options=opts)
 
     @staticmethod

@@ -102,7 +102,9 @@ class TestRollPairBase(unittest.TestCase):
         #rp2.destroy()
 
     def test_reduce(self):
-        rp = self.ctx.parallelize([(i, i) for i in range(1, 7)], self.store_opts())
+        options = self.store_opts()
+        #options['total_partitions'] = 10
+        rp = self.ctx.parallelize([(i, i) for i in range(1, 7)], options)
         #data = [(1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6)]
         #rp.put_all(data)
         print(list(rp.get_all()))
@@ -116,25 +118,28 @@ class TestRollPairBase(unittest.TestCase):
     def test_reduce_numpy(self):
         import numpy as np
         rp = self.ctx.load('ns12020', 'testNumpyReduce', self.store_opts())
-        rp.put('0', np.array([[ 0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 57]]))
-        rp.put('1', np.array([[ 0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 57]]))
-        rp.put('2', np.array([[ 0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 57]]))
-        rp.put('3', np.array([[ 0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 57]]))
-        rp.put('4', np.array([[ 0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 57]]))
-        rp.put('5', np.array([[ 0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 57]]))
-        rp.put('6', None)
+        rp.put('0', np.array([[ 0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 0]]))
+        rp.put('1', np.array([[ 0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 1]]))
+        rp.put('2', np.array([[ 0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 2]]))
+        rp.put('3', np.array([[ 0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 3]]))
+        rp.put('4', np.array([[ 0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 4]]))
+        rp.put('5', np.array([[ 0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 5]]))
+        #rp.put('6', None)
 
         result = rp.reduce(lambda x, y: x + y)
 
         print(result)
-
+        self.assertEqual(result[0][-1], 15)
 
     def test_aggregate(self):
         from operator import mul, add
-        data1 = self.ctx.parallelize([(i, i) for i in range(1, 7)], self.store_opts())
+        options = self.store_opts()
+        #options['total_partitions'] = 10
+        data1 = self.ctx.parallelize([(i, i) for i in range(1, 7)], options)
         print(data1.get_partitions())
         h2 = data1.aggregate(zero_value=1, seq_op=mul, comb_op=add)
-
+        print("aggregate result: ", h2)
+        #self.assertEqual(h2, 25)
         self.assertEqual(h2, 720)
 
     def test_join_self(self):
@@ -375,15 +380,12 @@ class TestRollPairMultiPartition(TestRollPairBase):
 class TestRollPairStandalone(TestRollPairBase):
     ctx = None
 
-    def setUp(self):
-        pass
-
-    def tearDown(self) -> None:
-        pass
-
     @classmethod
     def setUpClass(cls) -> None:
         cls.ctx = get_standalone_context()
+
+    def setUp(self):
+        pass
 
     def tearDown(self) -> None:
         pass
@@ -410,13 +412,13 @@ class TestRollPairClusterEverySession(TestRollPairBase):
 class TestRollPairCluster(TestRollPairBase):
     ctx = None
 
-    def setUp(self):
-        pass
-
     @classmethod
     def setUpClass(cls) -> None:
-        opts = {"eggroll.session.max.processors.per.node": "10"}
+        opts = {"eggroll.session.processors.per.node": "10"}
         cls.ctx = get_cluster_context(options=opts)
+
+    def setUp(self):
+        pass
 
     @staticmethod
     def store_opts(**kwargs):
@@ -424,10 +426,36 @@ class TestRollPairCluster(TestRollPairBase):
         opts.update(kwargs)
         return opts
 
+    def test_aggregate(self):
+        from operator import mul, add
+        data1 = self.ctx.parallelize([(i, i) for i in range(1, 7)], self.store_opts())
+        print(data1.get_partitions())
+        h2 = data1.aggregate(zero_value=1, seq_op=mul, comb_op=add)
+        print("aggregate result: ", h2)
+
+        # note that if there is no data in a partition then the zero value will be sent, thus 21 + 4 * 1 = 25
+        self.assertEqual(h2, 25)
+
     def test_map_values(self):
         super().test_map_values()
 
+    def test_reduce(self):
+        rp = self.ctx.parallelize([(i, i) for i in range(1, 7)], self.store_opts())
+
+        #data = [(1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6)]
+        #rp.put_all(data)
+        print("all: ", list(rp.get_all()))
+        print("count: ", rp.count())
+        from operator import add
+        result = rp.reduce(add)
+
+        print(f'reduce result: {result}')
+        self.assertEqual(result, 21)
+
     def test_empty(self):
+        pass
+
+    def tearDown(self) -> None:
         pass
 
     @classmethod

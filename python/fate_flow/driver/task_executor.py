@@ -16,12 +16,9 @@
 import argparse
 import importlib
 import os
-import signal
 import time
 import traceback
 
-from arch.api import federation
-from arch.api import session
 from arch.api.utils import file_utils, log_utils
 from arch.api.utils.core import current_timestamp, get_lan_ip
 from arch.api.utils.log_utils import schedule_logger
@@ -29,9 +26,12 @@ from fate_flow.db.db_models import Task
 from fate_flow.entity.runtime_config import RuntimeConfig
 from fate_flow.manager.tracking import Tracking
 from fate_flow.settings import API_VERSION
-from fate_flow.utils import job_utils
 from fate_flow.utils.api_utils import federated_api
+
+from arch.api import federation
+from arch.api import session
 from fate_flow.entity.constant_config import TaskStatus
+from fate_flow.utils import job_utils
 
 
 class TaskExecutor(object):
@@ -80,7 +80,8 @@ class TaskExecutor(object):
         try:
             # init environment, process is shared globally
             RuntimeConfig.init_config(WORK_MODE=job_parameters['work_mode'],
-                                      BACKEND=job_parameters.get('backend', 2))
+                                      BACKEND=2)
+                                      # BACKEND=job_parameters.get('backend', 2))
             session.init(job_id='{}_{}_{}'.format(task_id, role, party_id), mode=RuntimeConfig.WORK_MODE, backend=RuntimeConfig.BACKEND)
             federation.init(job_id=task_id, runtime_conf=parameters)
             job_log_dir = os.path.join(job_utils.get_job_log_directory(job_id=job_id), role, str(party_id))
