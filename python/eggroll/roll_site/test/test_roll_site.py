@@ -32,6 +32,7 @@ props_file_guest = default_props_file + '.guest'
 row_limit = 100000
 obj_size = 1 << 20
 
+
 def data_generator(limit):
     for i in range(limit):
         yield (f"key-{i}", f"value-{i}")
