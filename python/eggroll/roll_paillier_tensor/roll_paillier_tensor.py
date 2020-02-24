@@ -2,6 +2,7 @@ import uuid
 from concurrent.futures.thread import ThreadPoolExecutor
 from threading import Thread
 
+from eggroll.core.aspects import _method_profile_logger
 from eggroll.core.command.command_model import ErCommandRequest
 from eggroll.core.constants import StoreTypes
 from eggroll.core.io.kv_adapter import RocksdbSortedKvAdapter
@@ -45,6 +46,11 @@ class RptContext(object):
             options = {}
         self.rp_ctx = rp_ctx
         self.rp_obf = None
+
+    def set_obfuscator(self, name="asyn_obfuscator"):
+        ns = self.rp_ctx.get_session().get_session_id()
+        store_opts = {"store_type": StoreTypes.ROLLPAIR_QUEUE}
+        self.rp_obf = self.rp_ctx.load(ns, name, store_opts)
 
     def start_gen_obfuscator(self, pub_key, name="asyn_obfuscator"):
         ns = self.rp_ctx.get_session().get_session_id()
@@ -259,17 +265,20 @@ class PaillierTensor(Tensor):
         print(str)
         self._engine.print(self._store, self._pub, priv)
 
+
 class RollPaillierTensor(Tensor):
     def __init__(self, store, rpt_ctx):
         self._store = store
         self.rpt_ctx =rpt_ctx
 
+    @_method_profile_logger
     def __add__(self, other):
         if isinstance(other, NumpyTensor):
             return self.rpt_ctx.from_roll_pair(self._store.map_values(lambda v: v + other))
         if isinstance(other, RollPaillierTensor):
             return self.rpt_ctx.from_roll_pair(self._store.join(other._store, lambda mat1, mat2: mat1 + mat2))
 
+    @_method_profile_logger
     def __sub__(self, other):
         if isinstance(other, NumpyTensor):
             print('XXXXXXXXXXXXXXXXXXXX')
@@ -277,12 +286,13 @@ class RollPaillierTensor(Tensor):
         if isinstance(other, RollPaillierTensor):
             return self.rpt_ctx.from_roll_pair(self._store.join(other._store, lambda mat1, mat2: mat1 - mat2))
 
+    @_method_profile_logger
     def __mul__(self, other):
         if isinstance(other, NumpyTensor) or isinstance(other, int) or isinstance(other, float):
             return self.rpt_ctx.from_roll_pair(self._store.map_values(lambda v: v * other))
         if isinstance(other, RollPaillierTensor):
             return self.rpt_ctx.from_roll_pair(self._store.join(other._store, lambda mat1, mat2: mat1 * mat2))
-
+    @_method_profile_logger
     def __rmul__(self, other):
         if isinstance(other, NumpyTensor) or isinstance(other, int) or isinstance(other, float):
             return self.rpt_ctx.from_roll_pair(self._store.map_values(lambda v: v * other))
@@ -295,6 +305,7 @@ class RollPaillierTensor(Tensor):
         if isinstance(other, NumpyTensor):
             return self.rpt_ctx.from_roll_pair(self._store.map_values(lambda v: v / other))
 
+    @_method_profile_logger
     def __matmul__(self, other):
         if isinstance(other, NumpyTensor):
             return self.rpt_ctx.from_roll_pair(self._store.map_values(lambda v: v @ other))
@@ -312,6 +323,7 @@ class RollPaillierTensor(Tensor):
         b = self.rpt_ctx.from_roll_pair(self._store.map_values(lambda mat: mat.split(num, ax, 1)))
         return a, b
 
+    @_method_profile_logger
     def encrypt(self):
         if self.rpt_ctx.rp_obf is None:
             return self.rpt_ctx.from_roll_pair(self._store.map_values(lambda mat: mat.encrypt()))
