@@ -28,6 +28,7 @@ import com.webank.eggroll.rollsite.factory.ProxyGrpcStreamObserverFactory;
 import com.webank.eggroll.rollsite.factory.ProxyGrpcStubFactory;
 import com.webank.eggroll.rollsite.grpc.observer.PushClientResponseStreamObserver;
 import com.webank.eggroll.rollsite.infra.Pipe;
+import com.webank.eggroll.rollsite.model.ProxyServerConf;
 import com.webank.eggroll.rollsite.service.FdnRouter;
 import io.grpc.stub.StreamObserver;
 import java.util.concurrent.CountDownLatch;
@@ -50,6 +51,8 @@ public class DataTransferPipedClient {
     private ProxyGrpcStreamObserverFactory proxyGrpcStreamObserverFactory;
     @Autowired
     private FdnRouter fdnRouter;
+    @Autowired
+    private ProxyServerConf proxyServerConf;
     private BasicMeta.Endpoint endpoint;
     private boolean needSecureChannel;
     private long MAX_AWAIT_HOURS = 24;
@@ -74,10 +77,13 @@ public class DataTransferPipedClient {
 
         context.setStubClass(DataTransferServiceGrpc.DataTransferServiceStub.class);
 
+        needSecureChannel = proxyServerConf.isSecureServer();
+
         //.setCallerStreamObserverClassAndInitArgs(SameTypeCallerResponseStreamObserver.class)
         LOGGER.info("ip: {}, Port: {}", endpoint.getIp(), endpoint.getPort());
         context.setStubClass(DataTransferServiceGrpc.DataTransferServiceStub.class)
             .setServerEndpoint(endpoint.getIp(), endpoint.getPort())
+            .setSecureRequest(needSecureChannel)
             .setCallerStreamingMethodInvoker(DataTransferServiceGrpc.DataTransferServiceStub::push)
             .setCallerStreamObserverClassAndInitArgs(PushClientResponseStreamObserver.class, pipe)
             .setRequestStreamProcessorClassAndArgs(PushStreamProcessor.class, pipe);
