@@ -50,11 +50,8 @@ def get_option(role, conf_file=default_props_file):
     options['self_party_id'] = party_id
     options['self_role'] = role
 
-    with open(f"{EGGROLL_HOME}/conf/route_table.json") as route_table_file:
-        route_table = json.load(route_table_file)["route_table"]
-        proxy_endpoint = route_table[party_id]["default"][0]
-
-        options['proxy_endpoint'] = ErEndpoint(host=proxy_endpoint["ip"], port=proxy_endpoint["port"])
+    options['proxy_endpoint'] = \
+        ErEndpoint(host=eggroll_configs['ip'], port=int(eggroll_configs["port"]))
 
     return options
 
