@@ -228,21 +228,21 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
                         StringConstants.TOTAL_PARTITIONS_SNAKECASE(), () -> "1"));
                     String job_id = rollSiteHeader.rollSiteSessionId();
                     try {
-                        while (!JobStatus.jobIdToSessionId.containsKey(job_id)) {
+                        while (!JobStatus.isJobIdToSessionRegistered(job_id)) {
                             Thread.sleep(1000);
                         }
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
-                    String sessionId = JobStatus.jobIdToSessionId.get(job_id);
+                    String sessionId = JobStatus.getErSessionId(job_id);
                     if(sessionId != null) {
                         rollSiteUtil = new RollSiteUtil(sessionId, rollSiteHeader, new Map1<>("job_id_tag", Thread.currentThread().getName()));
                     }
 
-                    String tagKey = rollSiteHeader.concat(StringConstants.HASH(), new String[]{"__federation__"});
+/*                    String tagKey = rollSiteHeader.concat(StringConstants.HASH(), new String[]{"__federation__"});
                     if (!JobStatus.hasLatch(tagKey)) {
                         JobStatus.createLatch(tagKey, totalPartition);
-                    }
+                    }*/
                 }
 
                 if (value == null) {
