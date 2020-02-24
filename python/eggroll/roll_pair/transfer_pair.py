@@ -17,6 +17,7 @@ import queue
 import threading
 from concurrent.futures import ThreadPoolExecutor
 
+from eggroll.core.conf_keys import RollPairConfKeys
 from eggroll.core.datastructure.broker import FifoBroker, BrokerClosed
 from eggroll.core.pair_store.format import PairBinReader, PairBinWriter, \
     ArrayByteBuffer
@@ -48,7 +49,7 @@ class CompositeFuture(object):
 
 
 class BatchBroker(object):
-    def __init__(self, broker, batch_size=100):
+    def __init__(self, broker, batch_size=RollPairConfKeys.EGGROLL_ROLLPAIR_TRANSFERPAIR_BATCHBROKER_DEFAULT_SIZE.get_default_value()):
         self.broker = broker
         self.batch = []
         self.batch_size = batch_size
@@ -141,9 +142,10 @@ class TransferPair(object):
 
     @staticmethod
     @_exception_logger
-    def pair_to_bin_batch(input_iter, buffer_size=32 * 1024 * 1024):
+    def pair_to_bin_batch(input_iter, sendbuf_size=RollPairConfKeys.EGGROLL_ROLLPAIR_TRANSFERPAIR_SENDBUF_SIZE.default_value):
         import os
-        buffer_size = int(os.environ.get("EGGROLL_ROLLPAIR_BIN_BATCH_SIZE", buffer_size))
+        sendbuf_size = int(os.environ.get(RollPairConfKeys.EGGROLL_ROLLPAIR_TRANSFERPAIR_SENDBUF_SIZE.get_name(), sendbuf_size))
+
         # TODO:1: buffer_size auto adjust? - max: initial size can be configured. but afterwards it will adjust depending on message size
         L.debug('generate_bin_batch start')
         done_cnt = 0
@@ -151,7 +153,7 @@ class TransferPair(object):
         buffer = None
         writer = None
 
-        def commit(bs=buffer_size):
+        def commit(bs=sendbuf_size):
             L.debug(f'generate_bin_batch commit: {done_cnt}')
             nonlocal ba
             nonlocal buffer
@@ -172,7 +174,7 @@ class TransferPair(object):
                     done_cnt += 1
                 except IndexError as e:
                     # TODO:0: replace 1024 with constant
-                    yield commit(max(buffer_size, len(k) + len(v) + 1024))
+                    yield commit(max(sendbuf_size, len(k) + len(v) + 1024))
                     writer.write(k, v)
             L.debug(f'generate_bin_batch last one: {done_cnt}')
             yield commit()
