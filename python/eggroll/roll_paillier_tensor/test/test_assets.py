@@ -48,7 +48,7 @@ test_data_dir = os.environ["EGGROLL_HOME"] + "/" + "data/test_data/"
 class TestAssets(unittest.TestCase):
 
     def test_gen_breast_a_10000(self):
-        generate_dataset(self.test_data_dir + "breast_a.csv", self.test_data_dir + "breast_a_10000.csv", 0, 10000)
+        generate_dataset(test_data_dir + "breast_a.csv", test_data_dir + "breast_a_10000.csv", 0, 10000)
 
     def test_gen_breast_b_10000(self):
-        generate_dataset(self.test_data_dir + "breast_b.csv", self.test_data_dir + "breast_b_10000.csv", 0, 10000)
+        generate_dataset(test_data_dir + "breast_b.csv", test_data_dir + "breast_b_10000.csv", 0, 10000)
