@@ -11,6 +11,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+import pickle
 import unittest
 import numpy as np
 from eggroll.roll_paillier_tensor.roll_paillier_tensor import RptContext, Ciper, NumpyTensor, RollPaillierTensor
@@ -25,9 +26,14 @@ import time
 
 host_parties = [('host', host_options["self_party_id"])]
 guest_parties = [('guest', guest_options["self_party_id"])]
-max_iter = 3
+max_iter = 10
 
-
+"""
+run steps:
+1. testGenObfuscator
+2. testLRGuest
+3. testLRHost
+"""
 class TestLR2SitesBase(unittest.TestCase):
     def init_job(self):
         self.epoch = None
@@ -42,6 +48,17 @@ class TestLR2SitesBase(unittest.TestCase):
                 job_id_fd.write(self.job_id)
         print("rpt_job_id:", self.job_id)
 
+    def init_paillier_key(self):
+        paillier_key_path = test_data_dir + "paillier_key.pickle"
+        if os.path.exists(paillier_key_path):
+            with open(paillier_key_path, "rb") as fd:
+                pub, priv = pickle.load(fd)
+        else:
+            pub, priv = Ciper().genkey()
+            with open(paillier_key_path, "wb") as fd:
+                pickle.dump((pub, priv), fd)
+        return pub, priv
+
     def setUp(self) -> None:
         self.init_job()
         self.rpc = get_debug_test_context(True)
@@ -50,18 +67,22 @@ class TestLR2SitesBase(unittest.TestCase):
         self.rptc = RptContext(self.rpc)
 
     def tearDown(self) -> None:
-        self.rpc.get_session().stop()
+        # self.rpc.get_session().stop()
         if os.path.exists(self.job_id_path):
             os.remove(self.job_id_path)
+
+    def testGenObfuscator(self):
+        pub, priv = self.init_paillier_key()
+        self.rptc.start_gen_obfuscator(pub_key=pub)
+        time.sleep(100000)
 
     def testLRGuest(self):
         rp_ctx = self.rpc
         rs_ctx = self.rsc_guest
-
-        pub, priv = Ciper().genkey()
-        self.rptc.start_gen_obfuscator(pub_key=pub)
+        pub, priv = self.init_paillier_key()
+        self.rptc.set_obfuscator()
         rs_ctx.load(name="roll_pair_name.test_key_pair", tag="pub_priv_key").push((pub, priv), host_parties)
-        data = np.loadtxt(test_data_dir + "breast_b_10000.csv", delimiter=",", skiprows=1)
+        data = np.loadtxt(test_data_dir + "breast_b_mini.csv", delimiter=",", skiprows=1)
         G = data[:, 2:]
         Y = data[:, 1:2]
         w_G = NumpyTensor(np.ones((10, 1)), pub)
@@ -115,11 +136,11 @@ class TestLR2SitesBase(unittest.TestCase):
         rpt_ctx = self.rptc
         rp_ctx = self.rpc
         rs_ctx = self.rsc_host
-        data = np.loadtxt(test_data_dir + "breast_a_10000.csv", delimiter=",", skiprows=1)
+        data = np.loadtxt(test_data_dir + "breast_a_mini.csv", delimiter=",", skiprows=1)
         H = data[:, 1:]
         rp_x_H = rp_ctx.load(self.job_id, 'H')
         pub, priv = rs_ctx.load(name="roll_pair_name.test_key_pair", tag="pub_priv_key").pull(guest_parties)[0].result()
-        rpt_ctx.start_gen_obfuscator(pub_key=pub)
+        self.rptc.set_obfuscator()
         rp_x_H.put('1', NumpyTensor(H, pub))
         X_H = self.rptc.from_roll_pair(rp_x_H)
         w_H = NumpyTensor(np.ones((20, 1)), pub)
