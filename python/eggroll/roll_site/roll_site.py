@@ -138,18 +138,26 @@ class RollSite:
         self.stub = self.ctx.stub
         self.process_pool = ThreadPoolExecutor(10, thread_name_prefix="thread-receive")
         self.complete_pool = ThreadPoolExecutor(10, thread_name_prefix="complete-wait")
+        self._push_start_wall_time = None
+        self._push_start_cpu_time = None
+        self._pull_start_wall_time = None
+        self._pull_start_cpu_time = None
 
-    def _decrease_push_count(self, fn):
+    def _push_callback(self, fn):
         if self.ctx.pushing_task_count <= 0:
             self.ctx.pushing_task_count = 0
             return
         self.ctx.pushing_task_count -= 1
+        end_wall_time = time.time()
+        end_cpu_time = time.perf_counter()
+
+        L.info(L.info(f'{{"metric_type": "func_profile", "qualname": "RollSite.push", "cpu_time": {end_cpu_time - self._push_start_cpu_time}, "wall_time": {end_wall_time - self._push_start_wall_time}}}'))
 
     def _thread_receive(self, packet, namespace, roll_site_header: ErRollSiteHeader):
         try:
             table_name = create_store_name(roll_site_header)
-            is_standalone = self.ctx.rp_ctx.get_session().get_option(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE) \
-                            == "standalone"
+            is_standalone = self.ctx.rp_ctx.get_session().get_option(
+                    SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE) == "standalone"
             if is_standalone:
                 status_rp = self.ctx.rp_ctx.load(namespace, STATUS_TABLE_NAME + DELIM + self.ctx.roll_site_session_id)
                 retry_cnt = 0
@@ -169,7 +177,6 @@ class RollSite:
                         obj_type = ret_list[0]
                         break
                     time.sleep(min(0.1 * retry_cnt, 30))
-
             else:
                 retry_cnt = 0
                 ret_packet = self.stub.unaryCall(packet)
@@ -196,9 +203,16 @@ class RollSite:
         except Exception as e:
             L.exception(f"pull error:{e}")
             raise GrpcCallError("push", self.ctx.proxy_endpoint, e)
+        finally:
+            end_wall_time = time.time()
+            end_cpu_time = time.perf_counter()
+
+            L.info(f'{{"metric_type": "func_profile", "qualname": "RollSite.pull", "cpu_time": {end_cpu_time - self._pull_start_cpu_time}, "wall_time": {end_wall_time - self._pull_start_wall_time}}}')
 
     def push(self, obj, parties: list = None):
         L.info(f"pushing: self:{self.__dict__}, obj_type:{type(obj)}, parties:{parties}")
+        self._push_start_wall_time = time.time()
+        self._push_start_cpu_time = time.perf_counter()
         self.ctx.pushing_task_count += 1
         futures = []
         for role_party_id in parties:
@@ -277,7 +291,7 @@ class RollSite:
                 return _tagged_key
 
             future = self.process_pool.submit(map_values, _tagged_key)
-            future.add_done_callback(self._decrease_push_count)
+            future.add_done_callback(self._push_callback)
             futures.append(future)
 
         self.process_pool.shutdown(wait=False)
@@ -291,6 +305,8 @@ class RollSite:
         return ret_future
 
     def pull(self, parties: list = None):
+        self._pull_start_wall_time = time.time()
+        self._pull_start_cpu_time = time.perf_counter()
         futures = []
         for src_role, src_party_id in parties:
             src_party_id = str(src_party_id)
