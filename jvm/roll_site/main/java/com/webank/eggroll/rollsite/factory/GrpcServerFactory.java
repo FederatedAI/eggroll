@@ -380,7 +380,6 @@ public class GrpcServerFactory {
             throw e;
         }
 
-
         ArrayList<Server> serverList  = new ArrayList<Server>();
         serverList.add(createServer(proxyServerConf, false));
 
