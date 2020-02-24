@@ -19,6 +19,7 @@ package com.webank.eggroll.rollsite.factory;
 import com.google.protobuf.ByteString;
 import com.webank.ai.eggroll.api.core.BasicMeta;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
+import com.webank.eggroll.core.constant.CoreConfKeys;
 import com.webank.eggroll.rollsite.channel.AccessRedirector;
 import com.webank.eggroll.rollsite.grpc.client.DataTransferPipedClient;
 import com.webank.eggroll.rollsite.grpc.service.DataTransferPipedServerImpl;
@@ -311,8 +312,8 @@ public class GrpcServerFactory {
             boolean needCompatibility = Boolean.valueOf(properties.getProperty("eggroll.compatible.enabled", "false"));
             proxyServerConf.setCompatibleEnabled(needCompatibility);
 
-            String serverCrt = properties.getProperty("server.crt");
-            String serverKey = properties.getProperty("server.key");
+            String serverCrt = properties.getProperty(CoreConfKeys.CONFKEY_CORE_SECURITY_KEY_CRT_PATH());
+            String serverKey = properties.getProperty(CoreConfKeys.CONFKEY_CORE_SECURITY_KEY_PATH());
 
             proxyServerConf.setServerCrtPath(serverCrt);
             proxyServerConf.setServerKeyPath(serverKey);
@@ -323,7 +324,7 @@ public class GrpcServerFactory {
                 proxyServerConf.setSecureServer(true);
             }
 
-            String caCrt = properties.getProperty("ca.crt");
+            String caCrt = properties.getProperty(CoreConfKeys.CONFKEY_CORE_SECURITY_CA_CRT_PATH());
             proxyServerConf.setCaCrtPath(caCrt);
 
             if (StringUtils.isBlank(caCrt)) {
