@@ -49,7 +49,6 @@ class RollSiteContext:
         self.role = options["self_role"]
         self.party_id = str(options["self_party_id"])
         self.proxy_endpoint = options["proxy_endpoint"]
-
         self.is_standalone = self.rp_ctx.get_session().get_option(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE) == "standalone"
         if self.is_standalone:
             self.stub = None
