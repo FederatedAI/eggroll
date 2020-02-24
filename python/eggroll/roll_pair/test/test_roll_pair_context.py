@@ -53,7 +53,7 @@ class TestRollPairContext(unittest.TestCase):
     options[
       DeployConfKeys.CONFKEY_DEPLOY_JVM_CLASSPATH] = f'{base_dir}/jvm/roll_pair/target/lib/*:{base_dir}/jvm/roll_pair/target/eggroll-roll-pair-2.0.jar:{base_dir}/jvm/roll_pair/main/resources'
     options[SessionConfKeys.CONFKEY_SESSION_ID] = 'testing'
-    options[SessionConfKeys.CONFKEY_SESSION_MAX_PROCESSORS_PER_NODE] = '1'
+    options[SessionConfKeys.CONFKEY_SESSION_PROCESSORS_PER_NODE] = '1'
 
     session = ErSession(session_id='test_init', options=options)
     context = RollPairContext(session)

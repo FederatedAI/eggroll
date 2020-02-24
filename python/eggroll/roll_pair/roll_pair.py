@@ -17,6 +17,7 @@ import uuid
 from concurrent.futures import wait, FIRST_EXCEPTION
 from threading import Thread
 
+from eggroll.core.aspects import _method_profile_logger
 from eggroll.core.client import CommandClient
 from eggroll.core.command.command_model import CommandURI
 from eggroll.core.conf_keys import SessionConfKeys
@@ -273,6 +274,7 @@ class RollPair(object):
         self.gc_recorder = rp_ctx.gc_recorder
         self.gc_recorder.record(er_store)
 
+    @_method_profile_logger
     def __del__(self):
         if not hasattr(self, 'gc_enable') or not self.gc_enable:
             return
@@ -326,10 +328,9 @@ class RollPair(object):
             return self.value_serdes.serialize(v) if use_serialize else string_to_bytes(v)
 
     """
-    
       storage api
-    
     """
+    @_method_profile_logger
     def get(self, k, options: dict = None):
         if options is None:
             options = {}
@@ -368,6 +369,7 @@ class RollPair(object):
 
         return self.value_serdes.deserialize(job_resp._value) if job_resp._value != b'' else None
 
+    @_method_profile_logger
     def put(self, k, v, options: dict = None):
         if options is None:
             options = {}
@@ -404,6 +406,7 @@ class RollPair(object):
         value = job_resp._value
         return value
 
+    @_method_profile_logger
     def get_all(self, options: dict = None):
         if options is None:
             options = {}
@@ -434,6 +437,7 @@ class RollPair(object):
             yield self.key_serdes.deserialize(k), self.value_serdes.deserialize(v)
         L.debug(f"get_all count:{done_cnt}")
 
+    @_method_profile_logger
     def put_all(self, items, output=None, options: dict = None):
         if options is None:
             options = {}
@@ -483,6 +487,7 @@ class RollPair(object):
         th.join()
         return RollPair(populated_store, self.ctx)
 
+    @_method_profile_logger
     def count(self):
         total_partitions = self.__store._store_locator._total_partitions
         job_id = generate_job_id(self.__session_id, tag=RollPair.COUNT)
@@ -513,6 +518,7 @@ class RollPair(object):
         return result
 
     # todo:1: move to command channel to utilize batch command
+    @_method_profile_logger
     def destroy(self):
         total_partitions = self.__store._store_locator._total_partitions
 
@@ -532,6 +538,7 @@ class RollPair(object):
         self.ctx.get_session()._cluster_manager_client.delete_store(self.__store)
         L.info(f'{RollPair.DESTROY}: {self.__store}')
 
+    @_method_profile_logger
     def delete(self, k, options: dict = None):
         if options is None:
             options = {}
@@ -562,7 +569,8 @@ class RollPair(object):
                 serdes_type=self.__command_serdes
         )
 
-    def take(self, n: int, options: dict = {}):
+    @_method_profile_logger
+    def take(self, n: int, options: dict = None):
         if options is None:
             options = {}
         if n <= 0:
@@ -584,6 +592,7 @@ class RollPair(object):
                 break
         return ret
 
+    @_method_profile_logger
     def first(self, options: dict = None):
         if options is None:
             options = {}
@@ -593,6 +602,7 @@ class RollPair(object):
         else:
             return None
 
+    @_method_profile_logger
     def save_as(self, name, namespace, partition, options: dict = None):
         if options is None:
             options = {}
@@ -607,7 +617,10 @@ class RollPair(object):
                                                          name=name, total_partitions=partition))
             return self.map(lambda k, v: (k, v), output=store)
 
-    # computing api
+    """
+        computing api
+    """
+    @_method_profile_logger
     def map_values(self, func, output=None, options: dict = None):
         if options is None:
             options = {}
@@ -638,6 +651,7 @@ class RollPair(object):
 
         return RollPair(er_store, self.ctx)
 
+    @_method_profile_logger
     def map(self, func, output=None, options: dict = None):
         if options is None:
             options = {}
@@ -664,6 +678,7 @@ class RollPair(object):
 
         return RollPair(er_store, self.ctx)
 
+    @_method_profile_logger
     def map_partitions(self, func, output=None, options: dict = None):
         if options is None:
             options = {}
@@ -689,6 +704,7 @@ class RollPair(object):
 
         return RollPair(er_store, self.ctx)
 
+    @_method_profile_logger
     def collapse_partitions(self, func, output=None, options: dict = None):
         if options is None:
             options = {}
@@ -715,7 +731,10 @@ class RollPair(object):
 
         return RollPair(er_store, self.ctx)
 
+    @_method_profile_logger
     def flat_map(self, func, output=None, options: dict = None):
+        if options is None:
+            options = {}
         functor = ErFunctor(name=RollPair.FLAT_MAP, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
         outputs = []
         if output:
@@ -739,6 +758,7 @@ class RollPair(object):
 
         return RollPair(er_store, self.ctx)
 
+    @_method_profile_logger
     def reduce(self, func, output=None, options: dict = None):
         if options is None:
             options = {}
@@ -764,6 +784,7 @@ class RollPair(object):
 
         return RollPair(er_store, self.ctx).first()[1]
 
+    @_method_profile_logger
     def aggregate(self, zero_value, seq_op, comb_op, output=None, options: dict = None):
         if options is None:
             options = {}
@@ -791,6 +812,7 @@ class RollPair(object):
 
         return RollPair(er_store, self.ctx).first()[1]
 
+    @_method_profile_logger
     def glom(self, output=None, options: dict = None):
         if options is None:
             options = {}
@@ -817,6 +839,7 @@ class RollPair(object):
 
         return RollPair(er_store, self.ctx)
 
+    @_method_profile_logger
     def sample(self, fraction, seed=None, output=None, options: dict = None):
         if options is None:
             options = {}
@@ -844,6 +867,7 @@ class RollPair(object):
 
         return RollPair(er_store, self.ctx)
 
+    @_method_profile_logger
     def filter(self, func, output=None, options: dict = None):
         if options is None:
             options = {}
@@ -870,6 +894,7 @@ class RollPair(object):
 
         return RollPair(er_store, self.ctx)
 
+    @_method_profile_logger
     def subtract_by_key(self, other, output=None, options: dict = None):
         if options is None:
             options = {}
@@ -894,6 +919,7 @@ class RollPair(object):
 
         return RollPair(er_store, self.ctx)
 
+    @_method_profile_logger
     def union(self, other, func=lambda v1, v2: v1, output=None, options: dict = None):
         if options is None:
             options = {}
@@ -918,6 +944,7 @@ class RollPair(object):
 
         return RollPair(er_store, self.ctx)
 
+    @_method_profile_logger
     def join(self, other, func, output=None, options: dict = None):
         if options is None:
             options = {}
@@ -946,7 +973,10 @@ class RollPair(object):
 
         return RollPair(er_store, self.ctx)
 
-    def with_stores(self, func, others=None, options=None):
+    @_method_profile_logger
+    def with_stores(self, func, others=None, options: dict = None):
+        if options is None:
+            options = {}
         tag = "withStores"
         if others is None:
             others = []

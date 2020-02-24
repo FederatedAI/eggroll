@@ -81,7 +81,7 @@ class SessionManagerService extends SessionManager with Logging {
     val healthyCluster = serverNodeCrudOperator.getServerNodes(healthyNodeExample)
 
     val serverNodes = healthyCluster.serverNodes
-    val eggsPerNode = sessionMeta.options.getOrElse(SessionConfKeys.CONFKEY_SESSION_MAX_PROCESSORS_PER_NODE, "1").toInt
+    val eggsPerNode = sessionMeta.options.getOrElse(SessionConfKeys.CONFKEY_SESSION_PROCESSORS_PER_NODE, "1").toInt
     val processorPlan = Array(ErProcessor(
       serverNodeId = serverNodes.head.id,
       processorType = ProcessorTypes.ROLL_PAIR_MASTER,
