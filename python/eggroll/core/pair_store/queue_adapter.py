@@ -1,4 +1,4 @@
-from queue import Queue
+from queue import Queue, Empty
 
 import time
 
@@ -9,6 +9,9 @@ class _StatedQueue(Queue):
     def __init__(self, maxsize=0):
         super().__init__(maxsize)
         self.status = "ready"
+
+    def size(self):
+        return self.qsize()
 
 
 class QueueAdapter:
@@ -29,8 +32,15 @@ class QueueAdapter:
         while time.time() - start < self.action_timeout:
             if self.is_destroyed():
                 raise InterruptedError("queue has been destroyed:get")
-            return func(*args, **kwargs)
+            try:
+                return func(*args, **kwargs)
+            except Empty:
+                # continue
+                pass
         raise TimeoutError(f"QueueAdapter action timeout:{func.__name}, cost:{time.time() - start}")
+
+    def count(self):
+        return self.data.size()
 
     def get(self):
         return self._time_limit(self.data.get, timeout=0.1)
