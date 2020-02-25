@@ -138,5 +138,20 @@ class TestAsynRpt(unittest.TestCase):
         print(t4.decrypt(priv)._ndarray, t4._store)
         self.assertListEqual(add_expected.tolist(), t4.decrypt(priv)._ndarray.tolist())
 
+    def testPyEnginePerformance(self):
+        pub, priv = rpt_py_engine.keygen()
+        np1 = np.ones((10000, 1))
+        np2 = np.ones((10000, 10))
+        tp1 = PaillierTensor(np1, pub)
+        nt2 = NumpyTensor(np2, pub)
+        start = time.time()
+        tp1 = tp1.encrypt()
+        print("t1", time.time() - start)
+        start = time.time()
+        nt2 * tp1
+        print("t2", time.time() - start)
+        start = time.time()
+        nt2 + tp1
+        print("t3", time.time() - start)
 
 
