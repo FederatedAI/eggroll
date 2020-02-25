@@ -14,6 +14,7 @@
 #
 #
 
+import inspect
 from time import time, perf_counter
 
 from eggroll.utils.log_utils import get_logger
@@ -31,8 +32,18 @@ def _method_profile_logger(func):
         end_wall_time = time()
         end_cpu_time = perf_counter()
 
-        L.info(f'{{"metric_type": "func_profile", "qualname": "{func.__qualname__}", "cpu_time": {end_cpu_time - start_cpu_time}, "wall_time": {end_wall_time - start_wall_time}}}')
+        code = func.__code__
+        try:
+            outerframes = inspect.getouterframes(inspect.currentframe(), 2)
+            real_caller = outerframes[1]
+            L.info(f'{{"metric_type": "func_profile", '
+                   f'"qualname": "{func.__qualname__}", '
+                   f'"caller": "{real_caller.filename.rsplit("/", 1)[-1]}:{real_caller.lineno}", '
+                   f'"cpu_time": {end_cpu_time - start_cpu_time}, '
+                   f'"wall_time": {end_wall_time - start_wall_time}}}')
 
-        return result
-
+            return result
+        except Exception as e:
+            L.error(f'error calling method profile logger for {code.co_filename.rsplit("/", 1)[-1]}:{code.co_firstlineno}')
+            raise e
     return wrapper
