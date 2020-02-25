@@ -166,6 +166,7 @@ class SessionManagerService extends SessionManager with Logging {
 
   override def stopSession(sessionMeta: ErSessionMeta): ErSessionMeta = {
     val sessionId = sessionMeta.id
+    logDebug(s"stopping session: ${sessionId}")
     if (!smDao.existSession(sessionId)) {
       return null
     }
@@ -181,6 +182,11 @@ class SessionManagerService extends SessionManager with Logging {
     val serverNodeCrudOperator = new ServerNodeCrudOperator()
     val sessionServerNodes = serverNodeCrudOperator.getServerClusterByHosts(sessionHosts.toList.asJava).serverNodes
 
+    logDebug(s"stopping session. session id: ${sessionId}, hosts: ${sessionHosts}, nodes: ${sessionServerNodes.map(n => n.id).toList}")
+
+    if (sessionServerNodes.isEmpty) {
+      throw new IllegalStateException(s"stopping a session with empty nodes. session id: ${sessionId}")
+    }
     sessionServerNodes.foreach(n => {
       // TODO:1: add new params?
       val newSessionMeta = dbSessionMeta.copy(
