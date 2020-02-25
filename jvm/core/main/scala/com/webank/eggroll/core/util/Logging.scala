@@ -49,7 +49,7 @@ trait Logging {
         val logConf = logContext.getConfiguration
 
         val eggrollLogLevelString = System.getenv("EGGROLL_LOG_LEVEL")
-        var eggrollLogLevel = Level.getLevel(eggrollLogLevelString)
+        var eggrollLogLevel = if (StringUtils.isBlank(eggrollLogLevelString)) Level.INFO else Level.getLevel(eggrollLogLevelString)
         if (eggrollLogLevel == null) eggrollLogLevel = Level.INFO
 
         val eggrollLogConsoleString = System.getenv("EGGROLL_LOG_CONSOLE")
