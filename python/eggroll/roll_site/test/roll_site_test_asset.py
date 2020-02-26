@@ -16,7 +16,6 @@
 
 
 import configparser
-import json
 import os
 
 import eggroll.roll_pair.test.roll_pair_test_assets as rpta
@@ -40,6 +39,7 @@ default_props_file = f"{EGGROLL_HOME}/conf/eggroll.properties"
 
 
 def get_option(role, conf_file=default_props_file):
+    print(f'conf file: {conf_file}')
     configs = configparser.ConfigParser()
 
     configs.read(conf_file)
@@ -105,12 +105,17 @@ def get_standalone_context(role, props_file=default_props_file):
     return rs_context
 
 
-def get_cluster_context(role, options: dict = None, props_file=default_props_file):
+def get_cluster_context(role, options: dict = None, props_file=default_props_file, party_id=None):
     if options is None:
         options = {}
     rp_context = rpta.get_cluster_context(options=options)
+
+    rs_options = get_option(role, props_file)
+
+    if party_id:
+        rs_options['self_party_id'] = str(party_id)
     rs_context = RollSiteContext(roll_site_session_id, rp_ctx=rp_context,
-                                 options=get_option(role, props_file))
+                                 options=rs_options)
 
     return rs_context
 
