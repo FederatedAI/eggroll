@@ -119,7 +119,10 @@ def set_level(level):
 def get_logger(name=None, use_class_name=False, filename=None):
     if not name:
         if not use_class_name:
-            logger_name = LoggerFactory.default_logger_name
+            if not filename:
+                logger_name = LoggerFactory.default_logger_name
+            else:
+                logger_name = filename
         else:
             frame = inspect.stack()[1]
             module = inspect.getmodule(frame[0])
