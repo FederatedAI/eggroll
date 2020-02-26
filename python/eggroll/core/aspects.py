@@ -19,7 +19,7 @@ from time import time, perf_counter
 
 from eggroll.utils.log_utils import get_logger
 
-L = get_logger()
+L = get_logger(filename='profile')
 
 
 def _method_profile_logger(func):
@@ -44,6 +44,9 @@ def _method_profile_logger(func):
 
             return result
         except Exception as e:
-            L.error(f'error calling method profile logger for {code.co_filename.rsplit("/", 1)[-1]}:{code.co_firstlineno}')
-            raise e
+            L.info(f'{{"metric_type": "func_profile", '
+                   f'"qualname": "{func.__qualname__}", '
+                   f'"caller": "unknown", '
+                   f'"cpu_time": {end_cpu_time - start_cpu_time}, '
+                   f'"wall_time": {end_wall_time - start_wall_time}}}')
     return wrapper

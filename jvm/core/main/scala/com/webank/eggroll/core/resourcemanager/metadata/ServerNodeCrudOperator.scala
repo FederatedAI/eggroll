@@ -25,10 +25,11 @@ import com.webank.eggroll.core.constant.{ServerNodeStatus, ServerNodeTypes}
 import com.webank.eggroll.core.error.CrudException
 import com.webank.eggroll.core.meta.{ErEndpoint, ErServerCluster, ErServerNode}
 import com.webank.eggroll.core.resourcemanager.ResourceDao
+import com.webank.eggroll.core.util.JdbcTemplate.ResultSetIterator
 import com.webank.eggroll.core.util.Logging
 import org.apache.commons.lang3.StringUtils
-import com.webank.eggroll.core.util.JdbcTemplate.ResultSetIterator
 
+import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 
 class ServerNodeCrudOperator extends CrudOperator with Logging {
@@ -73,7 +74,7 @@ class ServerNodeCrudOperator extends CrudOperator with Logging {
   }
 }
 
-object ServerNodeCrudOperator {
+object ServerNodeCrudOperator extends Logging {
   private lazy val dbc = ResourceDao.dbc
   private[metadata] def doGetServerCluster(input: ErServerCluster): ErServerCluster = {
     val sql = "select * from server_node where server_cluster_id = ?"
@@ -270,17 +271,25 @@ object ServerNodeCrudOperator {
   }
 
   def doGetServerClusterByHosts(input: util.List[String]): ErServerCluster = {
-    val inputTuple = String.join(", ", input)
+    val inputListBuffer = input.asScala
 
-    val sql = "select * from server_node where host in (?) and status = ? and node_type = ? " +
-      "order by server_node_id asc"
+    var first = true
+    val sql = new StringBuilder()
+    sql.append(s"select * from server_node where status = '${ServerNodeStatus.HEALTHY}'")
+      .append(s" and node_type = '${ServerNodeTypes.NODE_MANAGER}'")
+      .append(s" and host in (")
+    inputListBuffer.foreach(_ => {
+      if (first) first = false else sql.append(", ")
+      sql.append("?")
+    })
+    sql.append(") order by server_node_id asc")
 
     val nodeResult = dbc.query(rs => rs.map(_ =>
       ErServerNode(
         id = rs.getLong("server_node_id"),
         name = rs.getString("name"),
         endpoint = ErEndpoint(host = rs.getString("host"), port = rs.getInt("port")))),
-      sql, inputTuple, ServerNodeStatus.HEALTHY, ServerNodeTypes.NODE_MANAGER)
+      sql.toString(), inputListBuffer:_*)
 
     ErServerCluster(serverNodes = nodeResult.toArray)
   }
