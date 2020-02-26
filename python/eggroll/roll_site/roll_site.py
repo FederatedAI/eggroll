@@ -32,6 +32,7 @@ from eggroll.roll_site.utils.roll_site_utils import create_store_name, DELIM
 from eggroll.utils import log_utils
 
 L = log_utils.get_logger()
+P = log_utils.get_logger('profile')
 _serdes = eggroll_serdes.PickleSerdes
 
 STATUS_TABLE_NAME = "__roll_site_standalone_status__"
@@ -151,7 +152,7 @@ class RollSite:
         end_wall_time = time.time()
         end_cpu_time = time.perf_counter()
 
-        L.info(L.info(f'{{"metric_type": "func_profile", "qualname": "RollSite.push", "cpu_time": {end_cpu_time - self._push_start_cpu_time}, "wall_time": {end_wall_time - self._push_start_wall_time}}}'))
+        P.info(f'{{"metric_type": "func_profile", "qualname": "RollSite.push", "cpu_time": {end_cpu_time - self._push_start_cpu_time}, "wall_time": {end_wall_time - self._push_start_wall_time}}}')
 
     def _thread_receive(self, packet, namespace, roll_site_header: ErRollSiteHeader):
         try:
@@ -207,7 +208,7 @@ class RollSite:
             end_wall_time = time.time()
             end_cpu_time = time.perf_counter()
 
-            L.info(f'{{"metric_type": "func_profile", "qualname": "RollSite.pull", "cpu_time": {end_cpu_time - self._pull_start_cpu_time}, "wall_time": {end_wall_time - self._pull_start_wall_time}}}')
+            P.info(f'{{"metric_type": "func_profile", "qualname": "RollSite.pull", "cpu_time": {end_cpu_time - self._pull_start_cpu_time}, "wall_time": {end_wall_time - self._pull_start_wall_time}}}')
 
     def push(self, obj, parties: list = None):
         L.info(f"pushing: self:{self.__dict__}, obj_type:{type(obj)}, parties:{parties}")
