@@ -19,7 +19,6 @@
 package com.webank.eggroll.core.resourcemanager.metadata
 
 import java.util.concurrent.ConcurrentHashMap
-import java.util
 
 import com.webank.eggroll.core.constant._
 import com.webank.eggroll.core.error.CrudException
@@ -119,22 +118,26 @@ object StoreCrudOperator {
       throw new IllegalStateException("store locator found but no partition found")
     }
 
-    val missingNodeId = new util.HashSet[java.lang.Long](storePartitionResult.size)
+    val missingNodeId = ArrayBuffer[Long]()
     val partitionAtNodeIds = ArrayBuffer[Long]()
 
-    for (i <- 0 until storePartitionResult.length){
+    for (i <- 0 until storePartitionResult.size){
       val nodeId = storePartitionResult(i).nodeId
-      if (!nodeIdToNode.containsKey(nodeId)) missingNodeId.add(nodeId)
+      if (!nodeIdToNode.containsKey(nodeId)) missingNodeId += nodeId
       partitionAtNodeIds += nodeId
     }
 
-    val missingNodeIdString = missingNodeId.toString
-    val missingNodeIdTuple = missingNodeIdString.substring(missingNodeIdString.indexOf("[") + 1,
-      missingNodeIdString.indexOf("]"))
-
     if (!missingNodeId.isEmpty) {
-      val queryServerNode = "select * from server_node where " +
-        "server_node_id in (?) and node_type = ? and status = ?"
+      var first = true
+      val queryServerNode = new StringBuilder()
+      queryServerNode.append(s"select * from server_node where status = '${ServerNodeStatus.HEALTHY}'")
+        .append(s" and node_type = '${ServerNodeTypes.NODE_MANAGER}'")
+        .append(s" and server_node_id in (")
+      for(i <- 0 until missingNodeId.length){
+        if (first) first = false else queryServerNode.append(", ")
+        queryServerNode.append("?")
+      }
+      queryServerNode.append(")")
 
       val nodeResult = dbc.query(rs => rs.map(_ => DbServerNode(
         id = rs.getLong("server_node_id"),
@@ -147,10 +150,8 @@ object StoreCrudOperator {
         createdAt = rs.getDate("created_at"),
         updatedAt = rs.getDate("updated_at")
       )),
-        queryServerNode,
-        missingNodeIdTuple,
-        ServerNodeTypes.NODE_MANAGER,
-        ServerNodeStatus.HEALTHY).toList
+        queryServerNode.toString(),
+        missingNodeId:_*).toList
 
       if (nodeResult.isEmpty) {
         throw new IllegalStateException(s"No valid node for this store: ${inputStoreLocator}")
