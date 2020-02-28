@@ -19,8 +19,7 @@ import unittest
 from eggroll.roll_pair.roll_pair import RollPair
 from eggroll.roll_site.test.roll_site_test_asset import get_debug_test_context, \
     get_cluster_context, get_standalone_context, default_props_file, \
-    remote_parties, \
-    get_parties
+    remote_parties, get_parties
 
 props_file_host = default_props_file
 props_file_host = default_props_file + '.host'

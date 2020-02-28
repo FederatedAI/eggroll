@@ -274,7 +274,6 @@ class RollPair(object):
         self.gc_recorder = rp_ctx.gc_recorder
         self.gc_recorder.record(er_store)
 
-    @_method_profile_logger
     def __del__(self):
         if not hasattr(self, 'gc_enable') or not self.gc_enable:
             return
