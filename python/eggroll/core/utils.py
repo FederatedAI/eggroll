@@ -17,6 +17,7 @@ import traceback
 import uuid
 from datetime import datetime
 
+import numba
 import numpy as np
 from google.protobuf.text_format import MessageToString
 
@@ -170,15 +171,18 @@ def generate_task_id(job_id, partition_id, delim='-'):
 
 
 '''AI copy from java ByteString.hashCode(), @see RollPairContext.partitioner'''
+@numba.jit
 def hash_code(s):
     seed = 31
     h = len(s)
-    for i in range(len(s)):
-        c = s[i:i+1]
+    for c in s:
+        # to singed int
+        if c > 127:
+            c = -256 + c
         h = h * seed
         if h > 2147483647 or h < -2147483648:
             h = (h & (M - 1)) - (h & M)
-        h = h + int.from_bytes(c, byteorder='little', signed=True)
+        h = h + c
         if h > 2147483647 or h < -2147483648:
             h = (h & (M - 1)) - (h & M)
     if h == 0 or h == -2147483648:
