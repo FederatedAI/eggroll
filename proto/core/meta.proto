@@ -49,6 +49,7 @@ message Processor {
   string status = 5;
   Endpoint commandEndpoint = 6;
   Endpoint transferEndpoint = 7;
+  int32 pid = 9;
   map<string, string> options = 8;
   string tag = 10;
 }

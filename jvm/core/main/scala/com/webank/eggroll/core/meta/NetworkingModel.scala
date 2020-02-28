@@ -18,7 +18,6 @@
 
 package com.webank.eggroll.core.meta
 
-import java.util.Date
 import java.util.concurrent.ConcurrentHashMap
 
 import com.google.protobuf.{Message => PbMessage}
@@ -55,6 +54,7 @@ case class ErProcessor(id: Long = -1,
                        status: String = StringConstants.EMPTY,
                        commandEndpoint: ErEndpoint = null,
                        transferEndpoint: ErEndpoint = null,
+                       pid: Int = -1,
                        options: java.util.Map[String, String] = new ConcurrentHashMap[String, String](),
                        tag: String = StringConstants.EMPTY) extends NetworkingRpcMessage
 
@@ -101,6 +101,7 @@ object NetworkingModelPbMessageSerdes {
         .setStatus(src.status)
         .setCommandEndpoint(if (src.commandEndpoint != null ) src.commandEndpoint.toProto() else Meta.Endpoint.getDefaultInstance)
         .setTransferEndpoint(if (src.transferEndpoint != null) src.transferEndpoint.toProto() else Meta.Endpoint.getDefaultInstance)
+        .setPid(src.pid)
         .putAllOptions(src.options)
         .setTag(src.tag)
 
@@ -177,6 +178,7 @@ object NetworkingModelPbMessageSerdes {
         status = src.getStatus,
         commandEndpoint = src.getCommandEndpoint.fromProto(),
         transferEndpoint = src.getTransferEndpoint.fromProto(),
+        pid = src.getPid,
         options = src.getOptionsMap,
         tag = src.getTag)
     }

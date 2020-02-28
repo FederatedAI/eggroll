@@ -27,6 +27,7 @@ object StringConstants {
 
   val GRPC_PARSE_FROM = "parseFrom"
 
+  val AT = "@"
   val AND = "&"
   val EQUAL = "="
 
