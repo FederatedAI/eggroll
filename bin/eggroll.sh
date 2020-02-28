@@ -135,8 +135,8 @@ getpid() {
 }
 
 mklogsdir() {
-	if [[ ! -d "${EGGROLL_HOME}/logs" ]]; then
-		mkdir -p ${EGGROLL_HOME}/logs
+	if [[ ! -d "${EGGROLL_HOME}/logs/eggroll" ]]; then
+		mkdir -p ${EGGROLL_HOME}/logs/eggroll
 	fi
 }
 
@@ -163,7 +163,7 @@ start() {
 			cmd="java -Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.properties -cp ${EGGROLL_HOME}/lib/*: com.webank.eggroll.core.Bootstrap --bootstraps ${main_class} -c ${EGGROLL_HOME}/conf/eggroll.properties -p $port -s ${processor_tag}"
 		fi
 		echo $cmd
-		exec $cmd >> ${EGGROLL_HOME}/logs/${module}.out 2>>${EGGROLL_HOME}/logs/${module}.err &
+		exec $cmd >> ${EGGROLL_HOME}/logs/eggroll/bootstrap.${module}.out 2>>${EGGROLL_HOME}/logs/eggroll/bootstrap.${module}.err &
 		
 		echo $!>${module}_pid
 		getpid
