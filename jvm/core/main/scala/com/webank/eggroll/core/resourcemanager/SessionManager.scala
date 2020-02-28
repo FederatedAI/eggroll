@@ -91,7 +91,11 @@ class SessionManagerService extends SessionManager with Logging {
         processorType = ProcessorTypes.EGG_PAIR,
         status = ProcessorStatus.NEW)))
     val expectedProcessorsCount = 1 + healthyCluster.serverNodes.length * eggsPerNode
-    val sessionMetaWithProcessors = sessionMeta.copy(processors = processorPlan, activeProcCount = 0, status = SessionStatus.NEW)
+    val sessionMetaWithProcessors = sessionMeta.copy(
+      processors = processorPlan,
+      totalProcCount = expectedProcessorsCount,
+      activeProcCount = 0,
+      status = SessionStatus.NEW)
 
     smDao.register(sessionMetaWithProcessors)
     // TODO:0: record session failure in database if session start is not successful, and returns error session

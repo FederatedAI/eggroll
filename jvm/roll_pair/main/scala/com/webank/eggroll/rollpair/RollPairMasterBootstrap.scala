@@ -1,6 +1,7 @@
 package com.webank.eggroll.rollpair
 
 import java.io.File
+import java.lang.management.ManagementFactory
 import java.net.InetSocketAddress
 import java.util.concurrent.ConcurrentHashMap
 
@@ -47,12 +48,15 @@ class RollPairMasterBootstrap extends Bootstrap with Logging {
     val options = new ConcurrentHashMap[String, String]()
     options.put(SessionConfKeys.CONFKEY_SESSION_ID, sessionId)
 
+    val processName = ManagementFactory.getRuntimeMXBean.getName
+    val pid = processName.split(StringConstants.AT, 2)(0).toInt
     val myself = ErProcessor(
       id = processorId,
       serverNodeId = serverNodeId,
       processorType = ProcessorTypes.ROLL_PAIR_MASTER,
       commandEndpoint = ErEndpoint("localhost", myCommandPort),
       transferEndpoint = ErEndpoint("localhost", myCommandPort),
+      pid = pid,
       options = options,
       status = ProcessorStatus.RUNNING)
     logInfo("ready to heartbeat")
