@@ -14,15 +14,10 @@
 
 
 class ErConfKey(object):
-    def __init__(self, name, default_value):
-        self.name = name
+    def __init__(self, key, default_value=None):
+        self.key = key
         self.default_value = default_value
 
-    def get_name(self):
-        return self.name
-
-    def get_default_value(self):
-        return self.default_value
 
 class CoreConfKeys(object):
     LOGS_DIR = "eggroll.logs.dir"
@@ -111,3 +106,15 @@ class TransferConfKeys(object):
 class RollPairConfKeys(object):
     EGGROLL_ROLLPAIR_TRANSFERPAIR_SENDBUF_SIZE = ErConfKey("eggroll.rollpair.transferpair.sendbuf.size", 1 << 20)
     EGGROLL_ROLLPAIR_TRANSFERPAIR_BATCHBROKER_DEFAULT_SIZE = ErConfKey("eggroll.rollpair.transferpair.broker.default.size", 100)
+
+
+class RollSiteConfKeys(object):
+    EGGROLL_ROLLSITE_COORDINATOR = ErConfKey("eggroll.rollsite.coordinator")
+    EGGROLL_ROLLSITE_HOST = ErConfKey("eggroll.rollsite.host", "127.0.0.1")
+    EGGROLL_ROLLSITE_PORT = ErConfKey("eggroll.rollsite.port", "9370")
+    EGGROLL_ROLLSITE_SECURE_PORT = ErConfKey("eggroll.rollsite.secure.port", "9380")
+    EGGROLL_ROLLSITE_PARTY_ID = ErConfKey("eggroll.rollsite.party.id")
+    EGGROLL_ROLLSITE_ROUTE_TABLE_PATH = ErConfKey("eggroll.rollsite.route.table.path", "conf/route_table.json")
+    EGGROLL_ROLLSITE_PROXY_COMPATIBLE_ENABLED = ErConfKey("eggroll.rollsite.proxy.compatible.enabled", "false")
+    EGGROLL_ROLLSITE_LAN_INSECURE_CHANNEL_ENABLED = ErConfKey("eggroll.rollsite.lan.insecure.channel.enabled")
+    EGGROLL_ROLLSITE_AUDIT_ENABLED = ErConfKey("eggroll.rollsite.audit.enabled")
