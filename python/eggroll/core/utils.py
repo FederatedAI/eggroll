@@ -178,7 +178,7 @@ def hash_code(s):
     for c in s:
         # to singed int
         if c > 127:
-            c = (256 - c) * (-1)
+            c = -256 + c
         h = h * seed
         if h > 2147483647 or h < -2147483648:
             h = (h & (M - 1)) - (h & M)
