@@ -7,7 +7,7 @@ import com.webank.eggroll.core.util.JdbcTemplate
 import com.webank.eggroll.core.util.JdbcTemplate.ResultSetIterator
 import org.apache.commons.lang3.StringUtils
 
-import scala.collection.mutable.{ArrayBuffer, ListBuffer}
+import scala.collection.mutable.ArrayBuffer
 
 class ServerMetaDao {
   private lazy val dbc = ResourceDao.dbc
@@ -41,21 +41,21 @@ class SessionMetaDao {
         dbc.update(conn, "delete from session_processor where session_id=?", sid)
       }
       dbc.update(conn,
-        "insert into session_main(session_id, name, status, tag, active_proc_count) values(?, ?, ?, ?, 0)",
-        sid, sessionMeta.name, sessionMeta.status, sessionMeta.tag)
+        "insert into session_main(session_id, name, status, tag, total_proc_count, active_proc_count) values(?, ?, ?, ?, ?, 0)",
+        sid, sessionMeta.name, sessionMeta.status, sessionMeta.tag, sessionMeta.totalProcCount)
       val opts = sessionMeta.options
-      if(opts.nonEmpty) {
+      if (opts.nonEmpty) {
         val valueSql = ("(?, ?, ?) ," * opts.size).stripSuffix(",")
         val params = opts.flatMap{case (k,v) => Seq(sid, k, v)}.toSeq
         dbc.update(conn, "insert into session_option(session_id, name, data) values " + valueSql, params:_*)
       }
       val procs = sessionMeta.processors
-      if(procs.nonEmpty) {
+      if (procs.nonEmpty) {
         val valueSql = ("(?, ?, ?, ?, ?, ?, ?)," * procs.length).stripSuffix(",")
         val params = procs.flatMap(proc => Seq(
           sid, proc.serverNodeId, proc.processorType, proc.status, proc.tag,
-          if(proc.commandEndpoint != null) proc.commandEndpoint.toString else "",
-          if(proc.transferEndpoint != null) proc.transferEndpoint.toString else ""))
+          if (proc.commandEndpoint != null) proc.commandEndpoint.toString else "",
+          if (proc.transferEndpoint != null) proc.transferEndpoint.toString else ""))
         dbc.update(conn,
                    "insert into session_processor(session_id, server_node_id, processor_type, status, " +
                    "tag, command_endpoint, transfer_endpoint) values " + valueSql,
@@ -127,6 +127,10 @@ class SessionMetaDao {
       if (proc.transferEndpoint != null) {
         sql += ", transfer_endpoint = ?"
         params ++= Array(s"${host}:${proc.transferEndpoint.port}")
+      }
+      if (proc.pid > 0) {
+        sql += ", pid = ?"
+        params ++= Array(proc.pid.toString)
       }
 
       sql += " where processor_id = ?"

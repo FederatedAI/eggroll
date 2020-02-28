@@ -150,6 +150,7 @@ class ErProcessor(RpcMessage):
             status='',
             command_endpoint: ErEndpoint = None,
             transfer_endpoint: ErEndpoint = None,
+            pid: int = -1,
             options: dict = None,
             tag=''):
         if options is None:
@@ -161,6 +162,7 @@ class ErProcessor(RpcMessage):
         self._status = status
         self._command_endpoint = command_endpoint
         self._transfer_endpoint = transfer_endpoint if transfer_endpoint else command_endpoint
+        self._pid = pid
         self._options = options
         self._tag = tag
 
@@ -177,6 +179,7 @@ class ErProcessor(RpcMessage):
                                   status=self._status,
                                   commandEndpoint=self._command_endpoint.to_proto(),
                                   transferEndpoint=self._transfer_endpoint.to_proto(),
+                                  pid=self._pid,
                                   options=_stringify_dict(self._options),
                                   tag=self._tag)
 
@@ -192,6 +195,7 @@ class ErProcessor(RpcMessage):
                            status=pb_message.status,
                            command_endpoint=ErEndpoint.from_proto(pb_message.commandEndpoint),
                            transfer_endpoint=ErEndpoint.from_proto(pb_message.transferEndpoint),
+                           pid=pb_message.pid,
                            options=dict(pb_message.options),
                            tag=pb_message.tag)
 
@@ -209,6 +213,7 @@ class ErProcessor(RpcMessage):
                f'status={self._status}, ' \
                f'command_endpoint={repr(self._command_endpoint)},' \
                f'transfer_endpoint={repr(self._transfer_endpoint)}, ' \
+               f'pid={self._pid}, ' \
                f'options=[{repr(self._options)}], ' \
                f'tag={self._tag}) ' \
                f'at {hex(id(self))}>'
