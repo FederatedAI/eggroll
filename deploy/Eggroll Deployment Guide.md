@@ -234,7 +234,7 @@ python -m unittest test_roll_site.TestRollSiteCluster.test_get_rollpair_big
 
 ```shell
 cd ${EGGROLL_HOME}/python/eggroll/roll_site/test
-python -m unittest test_roll_site.TestRollSiteCluster.test_get_rollpair
+python -m unittest test_roll_site.TestRollSiteCluster.test_remote_rollpair
 ```
 
 **Wait a few minutes, see the result show "OK" field to indicate that the operation is successful.**
