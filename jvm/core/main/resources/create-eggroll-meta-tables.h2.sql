@@ -1,8 +1,8 @@
--- insertSelective database if not exists
+-- create database if not exists
 CREATE schema IF NOT EXISTS `eggroll_meta`;
 
+-- all operation under this database
 USE `eggroll_meta`;
--- insertSelective table for fdn_meta
 
 -- store_locator
 CREATE TABLE IF NOT EXISTS `store_locator` (
@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS `store_locator` (
   `name` VARCHAR(2000) NOT NULL,
   `path` VARCHAR(2000) NOT NULL DEFAULT '',
   `total_partitions` INT UNSIGNED NOT NULL,
-  `partitioner` VARCHAR(2000) NOT NULL DEFAULT 'JAVA_HASH',
+  `partitioner` VARCHAR(2000) NOT NULL DEFAULT 'BYTESTRING_HASH',
   `serdes` VARCHAR(2000) NOT NULL DEFAULT '',
   `version` INT UNSIGNED NOT NULL DEFAULT 0,
   `status` VARCHAR(255) NOT NULL,
@@ -20,13 +20,25 @@ CREATE TABLE IF NOT EXISTS `store_locator` (
   `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ;
 
+CREATE UNIQUE INDEX `idx_u_store_locator_ns_n` ON `store_locator` (`namespace`, `name`);
+CREATE INDEX `idx_store_locator_st` ON `store_locator` (`store_type`);
+CREATE INDEX `idx_store_locator_ns` ON `store_locator` (`namespace`);
+CREATE INDEX `idx_store_locator_n` ON `store_locator` (`name`);
+CREATE INDEX `idx_store_locator_s` ON `store_locator` (`status`);
+CREATE INDEX `idx_store_locator_v` ON `store_locator` (`version`);
 
-CREATE UNIQUE INDEX `idx_u_store_locator_n_tn` ON `eggroll_meta`.`store_locator` (`namespace`, `name`);
-CREATE INDEX `idx_store_locator_tt` ON `eggroll_meta`.`store_locator` (`store_type`);
-CREATE INDEX `idx_store_locator_ns` ON `eggroll_meta`.`store_locator` (`namespace`);
-CREATE INDEX `idx_store_locator_n` ON `eggroll_meta`.`store_locator` (`name`);
-CREATE INDEX `idx_store_locator_st` ON `eggroll_meta`.`store_locator` (`status`);
-CREATE INDEX `idx_store_locator_v` ON `eggroll_meta`.`store_locator` (`version`);
+
+-- store (option)
+CREATE TABLE IF NOT EXISTS `store_option` (
+  `store_locator_id` VARCHAR(2000),
+  `name` VARCHAR(255) NOT NULL,
+  `data` VARCHAR(2000) NOT NULL DEFAULT '',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ;
+
+CREATE INDEX `idx_store_option_si` ON `store_option` (`store_locator_id`);
+
 
 -- store_partition
 CREATE TABLE IF NOT EXISTS `store_partition` (
@@ -39,10 +51,10 @@ CREATE TABLE IF NOT EXISTS `store_partition` (
   `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ;
 
-CREATE UNIQUE INDEX `idx_u_store_partition_s_sp_n` ON `eggroll_meta`.`store_partition` (`store_locator_id`, `store_partition_id`, `node_id`);
-CREATE INDEX `idx_store_partition_si` ON `eggroll_meta`.`store_partition` (`store_locator_id`);
-CREATE INDEX `idx_store_partition_ni` ON `eggroll_meta`.`store_partition` (`node_id`);
-CREATE INDEX `idx_store_partition_s` ON `eggroll_meta`.`store_partition` (`status`);
+CREATE UNIQUE INDEX `idx_u_store_partition_si_spi_ni` ON `store_partition` (`store_locator_id`, `store_partition_id`, `node_id`);
+CREATE INDEX `idx_store_partition_sli` ON `store_partition` (`store_locator_id`);
+CREATE INDEX `idx_store_partition_ni` ON `store_partition` (`node_id`);
+CREATE INDEX `idx_store_partition_s` ON `store_partition` (`status`);
 
 
 -- node
@@ -59,25 +71,29 @@ CREATE TABLE IF NOT EXISTS `server_node` (
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ;
 
-CREATE INDEX `idx_server_node_h_p_t` ON `eggroll_meta`.`server_node` (`host`, `port`, `node_type`);
-CREATE INDEX `idx_server_node_h` ON `eggroll_meta`.`server_node` (`host`);
-CREATE INDEX `idx_server_node_c` ON `eggroll_meta`.`server_node` (`server_cluster_id`);
-CREATE INDEX `idx_server_node_t` ON `eggroll_meta`.`server_node` (`node_type`);
-CREATE INDEX `idx_server_node_s` ON `eggroll_meta`.`server_node` (`status`);
+CREATE INDEX `idx_server_node_h_p_nt` ON `server_node` (`host`, `port`, `node_type`);
+CREATE INDEX `idx_server_node_h` ON `server_node` (`host`);
+CREATE INDEX `idx_server_node_sci` ON `server_node` (`server_cluster_id`);
+CREATE INDEX `idx_server_node_nt` ON `server_node` (`node_type`);
+CREATE INDEX `idx_server_node_s` ON `server_node` (`status`);
 
 
+-- session (main)
 CREATE TABLE IF NOT EXISTS `session_main` (
   `session_id` VARCHAR(2000) PRIMARY KEY,
   `name` VARCHAR(2000) NOT NULL DEFAULT '',
   `status` VARCHAR(255) NOT NULL,
   `tag` VARCHAR(255),
-  `active_proc_count` int,
+  `total_proc_count` INT,
+  `active_proc_count` INT,
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ;
 
-CREATE INDEX `idx_session_main_status` ON `eggroll_meta`.`session_main` (`status`);
+CREATE INDEX `idx_session_main_s` ON `session_main` (`status`);
 
+
+-- session (option)
 CREATE TABLE IF NOT EXISTS `session_option` (
   `session_id` VARCHAR(2000),
   `name` VARCHAR(255) NOT NULL,
@@ -86,8 +102,10 @@ CREATE TABLE IF NOT EXISTS `session_option` (
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ;
 
-CREATE INDEX `idx_session_option_session_id` ON `eggroll_meta`.`session_option` (`session_id`);
+CREATE INDEX `idx_session_option_si` ON `session_option` (`session_id`);
 
+
+-- session (processor)
 CREATE TABLE IF NOT EXISTS `session_processor` (
   `processor_id` SERIAL PRIMARY KEY,
   `session_id` VARCHAR(2000),
@@ -97,7 +115,9 @@ CREATE TABLE IF NOT EXISTS `session_processor` (
   `tag` VARCHAR(255),
   `command_endpoint` VARCHAR(255),
   `transfer_endpoint` VARCHAR(255),
+  `pid` INT NOT NULL DEFAULT -1,
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ;
-CREATE INDEX `idx_session_processor_session_id` ON `eggroll_meta`.`session_processor` (`session_id`);
+
+CREATE INDEX `idx_session_processor_si` ON `eggroll_meta`.`session_processor` (`session_id`);

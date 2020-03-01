@@ -19,6 +19,7 @@ import configparser
 import os
 
 import eggroll.roll_pair.test.roll_pair_test_assets as rpta
+from eggroll.core.conf_keys import RollSiteConfKeys
 from eggroll.core.constants import StoreTypes
 from eggroll.core.meta_model import ErStore, ErStoreLocator, ErEndpoint
 from eggroll.roll_site.roll_site import RollSiteContext
@@ -46,12 +47,13 @@ def get_option(role, conf_file=default_props_file):
     eggroll_configs = configs['eggroll']
 
     options = {}
-    party_id = eggroll_configs['partyId']
+    party_id = eggroll_configs[RollSiteConfKeys.EGGROLL_ROLLSITE_PARTY_ID.key]
     options['self_party_id'] = party_id
     options['self_role'] = role
 
     options['proxy_endpoint'] = \
-        ErEndpoint(host=eggroll_configs['ip'], port=int(eggroll_configs["port"]))
+        ErEndpoint(host=eggroll_configs[RollSiteConfKeys.EGGROLL_ROLLSITE_HOST.key],
+                   port=int(eggroll_configs[RollSiteConfKeys.EGGROLL_ROLLSITE_PORT.key]))
 
     return options
 

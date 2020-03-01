@@ -68,8 +68,6 @@ object CommandRouter extends Logging {
       serviceName
     }
 
-
-
     val finalRouteToMethodName =
       if (routeToMethodName != null) routeToMethodName
       else StringUtils.substringAfterLast(finalServiceName, StringConstants.DOT)
@@ -129,6 +127,7 @@ object CommandRouter extends Logging {
       routeToMethod = routeToMethod)
 
     serviceRouteTable.put(serviceName, command)
+    logInfo(s"[COMMAND] registered ${serviceName}")
   }
 
   def dispatch(serviceName: String, args: Array[_ <: AnyRef], kwargs: mutable.Map[String, _ <: AnyRef]): Array[Array[Byte]] = {
