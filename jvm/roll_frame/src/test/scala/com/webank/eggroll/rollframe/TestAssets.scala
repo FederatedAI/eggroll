@@ -64,7 +64,7 @@ object TestAssets {
     val cluster = mode match {
       case "cluster" =>
         ErProcessorBatch(id = clusterId, processors = Array(clusterNode0, clusterNode1, clusterNode2))
-      case _ => ErProcessorBatch(id = clusterId, processors = Array(localNode0, localNode1))
+      case _ => ErProcessorBatch(id = clusterId, processors = Array(localNode0))
     }
     cluster
   }
@@ -74,7 +74,7 @@ object TestAssets {
     // TODO:How to get partition num, frameBatch count?
     require(processorCount == 1, s"unsupported processorCount: ${processorCount}")
     val storeLocator = ErStoreLocator(
-      storeType = storeType,
+      storeType = storeType,totalPartitions = 3,
       namespace = namespace,
       name = name)
     val partitions = mode match {
