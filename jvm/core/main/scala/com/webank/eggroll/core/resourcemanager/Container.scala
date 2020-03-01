@@ -29,12 +29,14 @@ import org.apache.commons.lang3.StringUtils
 class Container(conf: RuntimeErConf, moduleName: String, processorId: Long = 0) extends Logging {
   // todo:1: constantize it
   private val confPrefix = s"eggroll.rollpair.bootstrap.${moduleName}"
+  private val bootPrefix = s"eggroll.resourcemanager.bootstrap.${moduleName}"
 
   private val isWindows = System.getProperty("os.name").toLowerCase().indexOf("windows") > 0
 
   private val bootStrapShell = conf.getString(CoreConfKeys.BOOTSTRAP_SHELL, if (isWindows) "c:\\windows\\cmd.exe" else "/bin/bash")
   private val bootStrapShellArgs = conf.getString(CoreConfKeys.BOOTSTRAP_SHELL_ARGS, if (isWindows) "\\c" else "-c")
-  private val exePath = conf.getString(s"${confPrefix}.exepath")
+  private val oldExePath = conf.getString(s"${confPrefix}.exepath","")
+  private val exePath = if(oldExePath.isEmpty) conf.getString(s"${bootPrefix}.exepath", null) else oldExePath
   private val sessionId = conf.getString(SessionConfKeys.CONFKEY_SESSION_ID)
   // todo:0: get from args instead of conf
   private val myServerNodeId = conf.getString(ResourceManagerConfKeys.SERVER_NODE_ID, "2")
