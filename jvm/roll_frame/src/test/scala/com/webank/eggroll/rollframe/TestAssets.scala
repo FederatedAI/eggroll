@@ -16,19 +16,90 @@
 
 package com.webank.eggroll.rollframe
 
+import com.webank.eggroll.core.ErSession
+import com.webank.eggroll.core.constant.{ProcessorStatus, ProcessorTypes, StringConstants}
+import com.webank.eggroll.core.meta._
+import com.webank.eggroll.format.FrameDB
+
 object TestAssets {
-  val clusterManager = new ClusterManager
-  def getDoubleSchema(fieldCount:Int):String = {
-    val sb = new StringBuilder
-    sb.append("""{
-                 "fields": [""")
-    (0 until 1000).foreach{i =>
-      if(i > 0) {
-        sb.append(",")
-      }
-      sb.append(s"""{"name":"double$i", "type": {"name" : "floatingpoint","precision" : "DOUBLE"}}""")
+
+  val DELTA = 0.0000001
+
+  def getRfContext(isDebug:Boolean = true): RollFrameContext = {
+    if(!isDebug) {
+      RollFrameContext()
+    } else {
+      RollFrameContext(new ErSession(sessionId = "debug-sid",
+        processors = getLiveProcessorBatch().processors))
     }
-    sb.append("]}")
-    sb.toString()
+
+  }
+  /**
+    * mock -- use to load Cache on local mode
+    * @param inStore  ErStore
+    * @return
+    */
+  def loadCache(inStore: ErStore): ErStore = {
+    val cacheStoreLocator = inStore.storeLocator.copy(storeType = StringConstants.CACHE)
+    val cacheStore = inStore.copy(storeLocator = cacheStoreLocator, partitions = inStore.partitions.map(p =>
+      p.copy(storeLocator = cacheStoreLocator)))
+    inStore.partitions.indices.foreach { i =>
+      val inputDB = FrameDB(inStore, i)
+      val outputDB = FrameDB(cacheStore, i)
+      outputDB.writeAll(inputDB.readAll())
+      inputDB.close()
+      outputDB.close()
+    }
+    cacheStore
+  }
+
+  val clusterNode0: ErProcessor = ErProcessor(id = 0, commandEndpoint = ErEndpoint("node1", 20100), transferEndpoint = ErEndpoint("node1", 20200), tag = "boss", status = ProcessorStatus.RUNNING, processorType = ProcessorTypes.EGG_FRAME)
+  val clusterNode1: ErProcessor = ErProcessor(id = 1, commandEndpoint = ErEndpoint("node2", 20101), transferEndpoint = ErEndpoint("node2", 20201), tag = "worker", status = ProcessorStatus.RUNNING, processorType = ProcessorTypes.EGG_FRAME)
+  val clusterNode2: ErProcessor = ErProcessor(id = 2, commandEndpoint = ErEndpoint("node3", 20102), transferEndpoint = ErEndpoint("node3", 20202), tag = "worker", status = ProcessorStatus.RUNNING, processorType = ProcessorTypes.EGG_FRAME)
+
+  val localNode0: ErProcessor = ErProcessor(id = 0, commandEndpoint = ErEndpoint("127.0.0.1", 4670), transferEndpoint = ErEndpoint("127.0.0.1", 20200), status = ProcessorStatus.RUNNING, processorType = ProcessorTypes.EGG_FRAME)
+  val localNode1: ErProcessor = ErProcessor(id = 1, commandEndpoint = ErEndpoint("127.0.0.1", 4670), transferEndpoint = ErEndpoint("127.0.0.1", 20201), status = ProcessorStatus.RUNNING, processorType = ProcessorTypes.EGG_FRAME)
+
+  def getLiveProcessorBatch(clusterId: Long = -1): ErProcessorBatch = {
+    val cluster = mode match {
+      case "cluster" =>
+        ErProcessorBatch(id = clusterId, processors = Array(clusterNode0, clusterNode1, clusterNode2))
+      case _ => ErProcessorBatch(id = clusterId, processors = Array(localNode0, localNode1))
+    }
+    cluster
+  }
+
+  def getRollFrameStore(name: String, namespace: String, storeType: String = StringConstants.FILE,
+                        processorCount:Int = 1): ErStore = {
+    // TODO:How to get partition num, frameBatch count?
+    require(processorCount == 1, s"unsupported processorCount: ${processorCount}")
+    val storeLocator = ErStoreLocator(
+      storeType = storeType,
+      namespace = namespace,
+      name = name)
+    val partitions = mode match {
+      case "cluster" => Array(
+        ErPartition(id = 0, storeLocator = storeLocator, processor = clusterNode0),
+        ErPartition(id = 1, storeLocator = storeLocator, processor = clusterNode1),
+        ErPartition(id = 2, storeLocator = storeLocator, processor = clusterNode2)
+      )
+      case _ => Array(
+        ErPartition(id = 0, storeLocator = storeLocator, processor = localNode0),
+        ErPartition(id = 1, storeLocator = storeLocator, processor = localNode0),
+        ErPartition(id = 2,storeLocator = storeLocator,processor = localNode0))
+    }
+    ErStore(storeLocator = storeLocator, partitions = partitions)
+  }
+
+  def getPreferredServer(store: ErStore, clusterId: Long = -1): Map[Int, ErProcessor] = {
+    val nodes = getLiveProcessorBatch(clusterId).processors
+
+    nodes.indices.zip(nodes).toMap
+  }
+
+  var mode: String = "cluster"
+
+  def setMode(mode: String): Unit = {
+    this.mode = mode
   }
 }
