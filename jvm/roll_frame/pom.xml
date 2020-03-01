@@ -25,13 +25,17 @@
         <groupId>com.webank.eggroll</groupId>
         <artifactId>eggroll-all</artifactId>
         <version>${eggroll.version}</version>
-        <relativePath>../pom.xml</relativePath>
     </parent>
 
     <artifactId>eggroll-roll-frame</artifactId>
     <name>Eggroll RollFrame</name>
 
     <dependencies>
+        <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-core_2.12</artifactId>
+            <version>2.4.3</version>
+        </dependency>
         <dependency>
             <groupId>org.apache.arrow</groupId>
             <artifactId>arrow-memory</artifactId>
@@ -67,28 +71,7 @@
     </dependencies>
 
     <build>
-<!--        <extensions>
-            &lt;!&ndash; os-maven-plugin &ndash;&gt;
-            <extension>
-                <groupId>kr.motd.maven</groupId>
-                <artifactId>os-maven-plugin</artifactId>
-                <version>${os-maven-plugin.version}</version>
-            </extension>
-        </extensions>-->
         <plugins>
-<!--            <plugin>
-                <groupId>net.alchim31.maven</groupId>
-                <artifactId>scala-maven-plugin</artifactId>
-                <version>3.2.2</version>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>compile</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>-->
-            <!-- protobuf-maven-plugin -->
             <plugin>
                 <groupId>org.xolstice.maven.plugins</groupId>
                 <artifactId>protobuf-maven-plugin</artifactId>
@@ -111,14 +94,6 @@
                     </execution>
                 </executions>
             </plugin>
-<!--            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <source>8</source>
-                    <target>8</target>
-                </configuration>
-            </plugin>-->
         </plugins>
     </build>
 </project>
