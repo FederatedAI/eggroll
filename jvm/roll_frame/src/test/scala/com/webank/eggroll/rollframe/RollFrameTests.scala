@@ -250,7 +250,7 @@ class RollFrameTests {
     val rf = ctx.load(inStore)
     println(System.currentTimeMillis() - start)
     start = System.currentTimeMillis()
-    val fieldCount = 10
+    val fieldCountLocal = fieldCount
     val schema = SchemaUtil.getDoubleSchema(fieldCount)
     val zeroValue = new FrameBatch(new FrameSchema(schema), 1)
     (0 until fieldCount).foreach(i => zeroValue.writeDouble(i, 0, 0))
@@ -272,7 +272,7 @@ class RollFrameTests {
       }
       x
     }, { (a, b) =>
-      for (i <- 0 until fieldCount) {
+      for (i <- 0 until fieldCountLocal) {
         a.writeDouble(i, 0, a.readDouble(i, 0) + b.readDouble(i, 0))
       }
       a
@@ -280,7 +280,7 @@ class RollFrameTests {
     println(System.currentTimeMillis() - start)
 
     val resultFb = FrameDB(outStore1, 0).readOne()
-    TestCase.assertEquals(resultFb.readDouble(0, 0), 200, TestAssets.DELTA)
+    TestCase.assertEquals(resultFb.readDouble(0, 0), rowCount * 3, TestAssets.DELTA)
   }
 
   @Test

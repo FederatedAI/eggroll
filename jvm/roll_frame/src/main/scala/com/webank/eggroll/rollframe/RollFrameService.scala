@@ -85,13 +85,13 @@ class RollFrameService(session: ErSession) {
     }
 
     val populatedJob = if (taskPlan.shouldShuffle) {
+      // TODO:2: check populated
       job.copy(
         inputs = populateProcessor(job.inputs),
         outputs = populateProcessor(job.outputs))
     } else {
-      job.copy(
-        inputs = Array.empty,
-        outputs = Array.empty)
+      // TODO:2: reduce task rpc data size
+      job
     }
 
     for (i <- 0 until inputPartitionSize) {
