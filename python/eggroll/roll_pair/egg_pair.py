@@ -465,6 +465,7 @@ def serve(args):
                              processor_type=ProcessorTypes.EGG_PAIR,
                              command_endpoint=ErEndpoint(host='localhost', port=port),
                              transfer_endpoint=ErEndpoint(host='localhost', port=transfer_port),
+                             pid=os.getpid(),
                              options=options,
                              status=ProcessorStatus.RUNNING)
 
@@ -507,7 +508,7 @@ if __name__ == '__main__':
     args_parser.add_argument('-nm', '--node-manager')
     args_parser.add_argument('-s', '--session-id')
     args_parser.add_argument('-p', '--port', default='0')
-    args_parser.add_argument('-t', '--transfer-port', default='-1')
+    args_parser.add_argument('-t', '--transfer-port', default='0')
     args_parser.add_argument('-sn', '--server-node-id')
     args_parser.add_argument('-prid', '--processor-id', default='0')
     args_parser.add_argument('-c', '--config')

@@ -20,6 +20,7 @@ import com.google.protobuf.ByteString;
 import com.webank.ai.eggroll.api.core.BasicMeta;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
 import com.webank.eggroll.core.constant.CoreConfKeys;
+import com.webank.eggroll.core.constant.RollSiteConfKeys;
 import com.webank.eggroll.rollsite.channel.AccessRedirector;
 import com.webank.eggroll.rollsite.grpc.client.DataTransferPipedClient;
 import com.webank.eggroll.rollsite.grpc.service.DataTransferPipedServerImpl;
@@ -232,17 +233,17 @@ public class GrpcServerFactory {
         try (InputStream is = new FileInputStream(finalConfPath)) {
             properties.load(is);
 
-            String coordinator = properties.getProperty("coordinator", null);
+            String coordinator = properties.getProperty(RollSiteConfKeys.EGGROLL_ROLLSITE_COORDINATOR().key(), null);
             if (coordinator == null) {
                 throw new IllegalArgumentException("coordinator cannot be null");
             } else {
                 proxyServerConf.setCoordinator(coordinator);
             }
 
-            String ipString = properties.getProperty("ip", null);
+            String ipString = properties.getProperty(RollSiteConfKeys.EGGROLL_ROLLSITE_HOST().key(), null);
             proxyServerConf.setIp(ipString);
 
-            String portString = properties.getProperty("port", null);
+            String portString = properties.getProperty(RollSiteConfKeys.EGGROLL_ROLLSITE_PORT().key(), null);
             if (portString == null) {
                 throw new IllegalArgumentException("port cannot be null");
             } else {
@@ -250,13 +251,13 @@ public class GrpcServerFactory {
                 proxyServerConf.setPort(port);
             }
 
-            String securePortString = properties.getProperty("securePort", null);
+            String securePortString = properties.getProperty(RollSiteConfKeys.EGGROLL_ROLLSITE_SECURE_PORT().key(), null);
             if (securePortString != null) {
                 int port = Integer.valueOf(securePortString);
                 proxyServerConf.setSecurePort(port);
             }
 
-            String partyIdString = properties.getProperty("partyId", null);
+            String partyIdString = properties.getProperty(RollSiteConfKeys.EGGROLL_ROLLSITE_PARTY_ID().key(), null);
             if (partyIdString == null) {
                 throw new IllegalArgumentException("partyId cannot be null");
             } else {
@@ -302,14 +303,15 @@ public class GrpcServerFactory {
             }
 */
 
-            String routeTablePath = properties.getProperty("route.table", null);
+            String routeTablePath = properties.getProperty(RollSiteConfKeys.EGGROLL_ROLLSITE_ROUTE_TABLE_PATH().key(), null);
             if (routeTablePath == null) {
                 throw new IllegalArgumentException("route table cannot be null");
             } else {
                 proxyServerConf.setRouteTablePath(routeTablePath);
             }
 
-            boolean needCompatibility = Boolean.valueOf(properties.getProperty("eggroll.compatible.enabled", "false"));
+            boolean needCompatibility = Boolean.valueOf(properties.getProperty(
+                RollSiteConfKeys.EGGROLL_ROLLSITE_PROXY_COMPATIBLE_ENABLED().key(), "false"));
             proxyServerConf.setCompatibleEnabled(needCompatibility);
 
             String serverCrt = properties.getProperty(CoreConfKeys.CONFKEY_CORE_SECURITY_KEY_CRT_PATH());
@@ -333,6 +335,7 @@ public class GrpcServerFactory {
                 proxyServerConf.setSecureClient(true);
             }
 
+            @Deprecated
             String logPropertiesPath = properties.getProperty("log.properties");
             if (StringUtils.isNotBlank(logPropertiesPath)) {
                 File logConfFile = new File(logPropertiesPath.replaceAll("\\.\\./", ""));
@@ -350,7 +353,8 @@ public class GrpcServerFactory {
                 }
             }
 
-            String isAuditEnabled = properties.getProperty("audit.enabled");
+            @Deprecated
+            String isAuditEnabled = properties.getProperty(RollSiteConfKeys.EGGROLL_ROLLSITE_AUDIT_ENABLED().key());
             if (StringUtils.isNotBlank(isAuditEnabled)
                     && ("true".equals(isAuditEnabled.toLowerCase()))
                     || ("1".equals(isAuditEnabled))) {
@@ -359,7 +363,8 @@ public class GrpcServerFactory {
                 proxyServerConf.setAuditEnabled(false);
             }
 
-            String isNeighbourInsecureChannelEnabled = properties.getProperty("neighbour.insecure.channel.enabled");
+            String isNeighbourInsecureChannelEnabled = properties.getProperty(
+                RollSiteConfKeys.EGGROLL_ROLLSITE_LAN_INSECURE_CHANNEL_ENABLED().key());
             if (StringUtils.isNotBlank(isNeighbourInsecureChannelEnabled)
                     && ("true".equals(isNeighbourInsecureChannelEnabled.toLowerCase()))
                     || ("1".equals(isNeighbourInsecureChannelEnabled))) {
@@ -368,6 +373,7 @@ public class GrpcServerFactory {
                 proxyServerConf.setNeighbourInsecureChannelEnabled(false);
             }
 
+            @Deprecated
             String isDebugEnabled = properties.getProperty("debug.enabled");
             if (StringUtils.isNotBlank(isDebugEnabled)
                     && ("true".equals(isDebugEnabled.toLowerCase()))
