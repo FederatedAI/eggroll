@@ -20,6 +20,7 @@ package com.webank.eggroll.rollframe
 
 import com.webank.eggroll.core.ErSession
 import com.webank.eggroll.core.command.CommandURI
+import com.webank.eggroll.core.constant.StringConstants
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.schedule.BaseTaskPlan
 import com.webank.eggroll.core.serdes.DefaultScalaSerdes
@@ -41,7 +42,22 @@ class MapPartitionTask(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, jo
 class TorchTask(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job)
 
 class RollFrameContext private[eggroll](val session: ErSession) {
+  val defaultStoreType = "file"
   def load(store: ErStore):RollFrame = RollFrame(store, this)
+
+  def load(namespace: String, name: String, options: Map[String,String] = Map()): RollFrame = {
+    // TODO:1: use snake case universally?
+    val storeType = options.getOrElse("store_type", defaultStoreType)
+    val totalPartitions = options.getOrElse("total_partitions","1").toInt
+    val store = ErStore(storeLocator = ErStoreLocator(
+      namespace = namespace,
+      name = name,
+      storeType = storeType,
+      totalPartitions = totalPartitions,
+    ))
+    val loaded = session.clusterManagerClient.getOrCreateStore(store)
+    new RollFrame(loaded, this)
+  }
 }
 object RollFrameContext {
   StaticErConf.addProperties("conf/eggroll.properties")
