@@ -54,7 +54,7 @@ class RollFrameTests {
     }
   }
 
-  private def writeCf(adapter: FrameDB): Unit = {
+  private def writeCf(adapter: FrameStore): Unit = {
     val randomObj = new Random()
     val fb = new FrameBatch(new FrameSchema(SchemaUtil.oneFieldSchemaString), fieldCount * rowCount)
     (0 until fieldCount * rowCount).foreach { i =>
@@ -66,7 +66,7 @@ class RollFrameTests {
     adapter.close()
   }
 
-  private def write(adapter: FrameDB): Unit = {
+  private def write(adapter: FrameStore): Unit = {
     val randomObj = new Random()
     (0 until fbCount).foreach { i =>
       val fb = new FrameBatch(new FrameSchema(SchemaUtil.getDoubleSchema(fieldCount)), rowCount)
@@ -81,7 +81,7 @@ class RollFrameTests {
     adapter.close()
   }
 
-  private def writeSplice(adapter: FrameDB): Unit = {
+  private def writeSplice(adapter: FrameStore): Unit = {
     val sliceFieldCount = fieldCount / 2
     val randomObj = new Random()
     (0 until fbCount).foreach { i =>
@@ -97,7 +97,7 @@ class RollFrameTests {
     adapter.close()
   }
 
-  private def read(adapter: FrameDB): Unit = {
+  private def read(adapter: FrameStore): Unit = {
     var num = 0
     adapter.readAll().foreach { fb =>
       num += 1
@@ -117,13 +117,13 @@ class RollFrameTests {
     val output1 = ta.getRollFrameStore("c1","test1",StringConstants.FILE)
     output.partitions.indices.foreach { i =>
       // create FrameBatch
-      write(FrameDB(output, i))
+      write(FrameStore(output, i))
       // create ColumnFrame
-      writeCf(FrameDB(output1, i))
+      writeCf(FrameStore(output1, i))
     }
-        write(FrameDB.hdfs("/tmp/unittests/RollFrameTests/hdfs/test1/a1/0"))
-        write(FrameDB.hdfs("/tmp/unittests/RollFrameTests/hdfs/test1/a1/1"))
-        write(FrameDB.hdfs("/tmp/unittests/RollFrameTests/hdfs/test1/a1/2"))
+        write(FrameStore.hdfs("/tmp/unittests/RollFrameTests/hdfs/test1/a1/0"))
+        write(FrameStore.hdfs("/tmp/unittests/RollFrameTests/hdfs/test1/a1/1"))
+        write(FrameStore.hdfs("/tmp/unittests/RollFrameTests/hdfs/test1/a1/2"))
 //        read(FrameDB.hdfs("/tmp/unittests/RollFrameTests/hdfs/test1/a1/0"))
 //        read(FrameDB.hdfs("/tmp/unittests/RollFrameTests/hdfs/test1/a1/1"))
   }
@@ -135,8 +135,8 @@ class RollFrameTests {
     networkStore.partitions.indices.foreach { i =>
       new Thread() {
         override def run(): Unit = {
-          val fbs = FrameDB.file("/tmp/unittests/RollFrameTests/file/test1/a1/" + i).readAll()
-          FrameDB(networkStore, i).writeAll(fbs)
+          val fbs = FrameStore.file("/tmp/unittests/RollFrameTests/file/test1/a1/" + i).readAll()
+          FrameStore(networkStore, i).writeAll(fbs)
         }
       }.start()
     }
@@ -160,15 +160,15 @@ class RollFrameTests {
     val storeLocator = ErStoreLocator(name = "a1", namespace = "test1", storeType = StringConstants.FILE)
     val input = ErStore(storeLocator = storeLocator,
       partitions = Array(ErPartition(id = 0, storeLocator = storeLocator, processor = ta.localNode0)))
-    val fb = FrameDB(input, 0).readOne()
+    val fb = FrameStore(input, 0).readOne()
 
     // 2. distribute and load to caches
     val networkStore = ta.getRollFrameStore("a1", "test1", StringConstants.NETWORK)
     val partitionsNum = networkStore.partitions.length
     val sliceRowCount = (partitionsNum + fb.rowCount - 1) / partitionsNum
-    (0 until partitionsNum).foreach(i => FrameDB(networkStore, i).append(fb.sliceRealByRow(i * sliceRowCount, sliceRowCount)))
+    (0 until partitionsNum).foreach(i => FrameStore(networkStore, i).append(fb.sliceRealByRow(i * sliceRowCount, sliceRowCount)))
     val cacheStore = ta.loadCache(networkStore)
-    (0 until partitionsNum).foreach(i => println(s"check id.$i partition's row number: ${FrameDB(cacheStore, i).readOne().rowCount}"))
+    (0 until partitionsNum).foreach(i => println(s"check id.$i partition's row number: ${FrameStore(cacheStore, i).readOne().rowCount}"))
 
     // 3. aggregate operation
     val rf = ctx.load(cacheStore)
@@ -204,15 +204,15 @@ class RollFrameTests {
       a
     }, output = outStore)
     println(System.currentTimeMillis() - start)
-    TestCase.assertEquals(FrameDB(outStore1, 0).readOne().readDouble(0, 0), rowCount, TestAssets.DELTA)
+    TestCase.assertEquals(FrameStore(outStore1, 0).readOne().readDouble(0, 0), rowCount, TestAssets.DELTA)
   }
 
   @Test
   def testHdfsToJvm(): Unit = {
     val input = ta.getRollFrameStore("a1", "test1", StringConstants.HDFS)
     val output = ta.loadCache(input)
-    TestCase.assertEquals(FrameDB(input, 0).readOne().readDouble(0, 0), FrameDB(output, 0).readOne().readDouble(0, 0), TestAssets.DELTA)
-    TestCase.assertEquals(FrameDB(input, 1).readOne().readDouble(0, 0), FrameDB(output, 1).readOne().readDouble(0, 0), TestAssets.DELTA)
+    TestCase.assertEquals(FrameStore(input, 0).readOne().readDouble(0, 0), FrameStore(output, 0).readOne().readDouble(0, 0), TestAssets.DELTA)
+    TestCase.assertEquals(FrameStore(input, 1).readOne().readDouble(0, 0), FrameStore(output, 1).readOne().readDouble(0, 0), TestAssets.DELTA)
   }
 
   @Test
@@ -231,9 +231,9 @@ class RollFrameTests {
       mapRf
     }, output = output)
 
-    val mapFb0 = FrameDB(output, 0).readOne() // take first partition to assert
+    val mapFb0 = FrameStore(output, 0).readOne() // take first partition to assert
     TestCase.assertEquals(mapFb0.readDouble(0, 0), 0.0, TestAssets.DELTA)
-    val mapFb1 = FrameDB(output, 1).readOne() // take second partition to assert
+    val mapFb1 = FrameStore(output, 1).readOne() // take second partition to assert
     TestCase.assertEquals(mapFb1.readDouble(2, 10), 10.0, TestAssets.DELTA)
   }
 
@@ -279,7 +279,7 @@ class RollFrameTests {
     }, threadsNum = 2, output = outStore)
     println(System.currentTimeMillis() - start)
 
-    val resultFb = FrameDB(outStore1, 0).readOne()
+    val resultFb = FrameStore(outStore1, 0).readOne()
     TestCase.assertEquals(resultFb.readDouble(0, 0), rowCount * 3, TestAssets.DELTA)
   }
 
@@ -334,8 +334,8 @@ class RollFrameTests {
       x
     }, output = output
     )
-    val fb = FrameDB(input, 0).readOne()
-    val fb1 = FrameDB(output, 0).readOne()
+    val fb = FrameStore(input, 0).readOne()
+    val fb1 = FrameStore(output, 0).readOne()
     TestCase.assertEquals(fb.fieldCount, fb1.fieldCount)
     TestCase.assertEquals(fb.rowCount, fb1.rowCount)
   }
@@ -397,7 +397,7 @@ class RollFrameTests {
       a
     })
     println(System.currentTimeMillis() - start)
-    val aggregateFb = FrameDB.file("/tmp/unittests/RollFrameTests/file/test1/a1_aggregate/0").readOne()
+    val aggregateFb = FrameStore.file("/tmp/unittests/RollFrameTests/file/test1/a1_aggregate/0").readOne()
     TestCase.assertEquals(aggregateFb.readDouble(0, 0), inStore.partitions.length * rowCount, TestAssets.DELTA)
   }
 
@@ -572,7 +572,7 @@ class RollFrameTests {
     println(s"matMul time= ${System.currentTimeMillis() - start}")
 
     output.partitions.indices.foreach { i =>
-      val resCF = new ColumnFrame(FrameDB(output, i).readOne(), matrixCols)
+      val resCF = new ColumnFrame(FrameStore(output, i).readOne(), matrixCols)
       TestCase.assertEquals(resCF.fb.rowCount, rowCount * matrixCols)
       println(s"partition $i, value = ${resCF.read(0, 0)}")
     }

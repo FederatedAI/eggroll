@@ -39,10 +39,10 @@ class FrameFormatTests {
   def testNullableFields(): Unit = {
     val fb = new FrameBatch(new FrameSchema(SchemaUtil.getDoubleSchema(4)), 3000)
     val path = "/tmp/unittests/RollFrameTests/file/test1/nullable_test"
-    val adapter = FrameDB.file(path)
+    val adapter = FrameStore.file(path)
     adapter.writeAll(Iterator(fb.sliceByColumn(0, 3)))
     adapter.close()
-    val adapter2 = FrameDB.file(path)
+    val adapter2 = FrameStore.file(path)
     val fb2 = adapter2.readOne()
     assert(fb2.rowCount == 3000)
   }
@@ -58,12 +58,12 @@ class FrameFormatTests {
     }
     // write FrameBatch data to File
     val filePath = "/tmp/unittests/RollFrameTests/file/test1/framedb_test"
-    val fileWriteAdapter = FrameDB.file(filePath)
+    val fileWriteAdapter = FrameStore.file(filePath)
     fileWriteAdapter.writeAll(Iterator(fb))
     fileWriteAdapter.close()
 
     // read FrameBatch data from File
-    val fileReadAdapter = FrameDB.file(filePath)
+    val fileReadAdapter = FrameStore.file(filePath)
     val fbFromFile = fileReadAdapter.readOne()
 
     assert(fbFromFile.readDouble(0, 3) == 3.0)
@@ -80,7 +80,7 @@ class FrameFormatTests {
     }
     // write FrameBatch data to Jvm
     val jvmPath = "/tmp/unittests/RollFrameTests/jvm/test1/framedb_test"
-    val jvmAdapter = FrameDB.cache(jvmPath)
+    val jvmAdapter = FrameStore.cache(jvmPath)
     jvmAdapter.writeAll(Iterator(fb))
     // read FrameBatch data from Jvm
     val fbFromJvm = jvmAdapter.readOne()
@@ -99,12 +99,12 @@ class FrameFormatTests {
     }
     // write FrameBatch data to HDFS
     val hdfsPath = "/tmp/unittests/RollFrameTests/hdfs/test1/framedb_test/0"
-    val hdfsWriteAdapter = FrameDB.hdfs(hdfsPath)
+    val hdfsWriteAdapter = FrameStore.hdfs(hdfsPath)
     hdfsWriteAdapter.writeAll(Iterator(fb))
     hdfsWriteAdapter.close() // must be closed
 
     // read FrameBatch data from HDFS
-    val hdfsReadAdapter = FrameDB.hdfs(hdfsPath)
+    val hdfsReadAdapter = FrameStore.hdfs(hdfsPath)
     val fbFromHdfs = hdfsReadAdapter.readOne()
 
     assert(fbFromHdfs.readDouble(0, 20) == 20.0)
@@ -135,14 +135,14 @@ class FrameFormatTests {
     }
     // write FrameBatch data to Network
     val networkPath = "/tmp/unittests/RollFrameTests/network/test1/framedb_test/0"
-    val networkWriteAdapter = FrameDB.network(networkPath, host, port.toString)
+    val networkWriteAdapter = FrameStore.network(networkPath, host, port.toString)
     networkWriteAdapter.append(fb)
     networkWriteAdapter.append(fb)
     //    networkWriteAdapter.writeAll(Iterator(fb))
     Thread.sleep(1000) // wait for QueueFrameDB insert the frame
 
     // read FrameBatch data from network
-    val networkReadAdapter = FrameDB.network(networkPath, host, port.toString)
+    val networkReadAdapter = FrameStore.network(networkPath, host, port.toString)
     networkReadAdapter.readAll().foreach(fb =>
       assert(fb.readDouble(0, 30) == 30.0)
     )
@@ -179,7 +179,7 @@ class FrameFormatTests {
     list0.writeLong(0, 44)
     list2.writeLong(3, 55)
     (0 until 10).foreach(i => arr.writeLong(i, i * 100 + 1))
-    val outputStore = FrameDB.file("/tmp/unittests/RollFrameTests/file/test1/type_test")
+    val outputStore = FrameStore.file("/tmp/unittests/RollFrameTests/file/test1/type_test")
 
     outputStore.append(batch)
     outputStore.close()
@@ -190,7 +190,7 @@ class FrameFormatTests {
     assert(list0.readLong(0) == 44)
     assert(list0Copy.readLong(0) == 44)
 
-    val inputStore = FrameDB.file("/tmp/unittests/RollFrameTests/file/test1/type_test")
+    val inputStore = FrameStore.file("/tmp/unittests/RollFrameTests/file/test1/type_test")
     for (b <- inputStore.readAll()) {
       assert(b.readDouble(0, 0) == 1.2)
       assert(b.readLong(1, 0) == 22)
@@ -441,7 +441,7 @@ class FrameFormatTests {
     println(sf.matrixRows)
     println(sf.fb.rowCount)
     println(sf.read(2, 9))
-    val adapter = FrameDB.cache("/tmp/unittests/RollFrameTests/file/test1/s1/0")
+    val adapter = FrameStore.cache("/tmp/unittests/RollFrameTests/file/test1/s1/0")
     adapter.append(sf.fb)
     start = System.currentTimeMillis()
     val fbC = adapter.readOne()
