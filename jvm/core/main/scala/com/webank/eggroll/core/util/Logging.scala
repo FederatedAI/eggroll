@@ -57,7 +57,7 @@ trait Logging {
         else java.lang.Boolean.valueOf(eggrollLogConsoleString)
 
         if (Level.DEBUG.compareTo(eggrollLogLevel) <= 0 || eggrollLogConsole) {
-          logConf.getRootLogger.addAppender(logConf.getAppender("STDOUT"), eggrollLogLevel, null)
+//          logConf.getRootLogger.addAppender(logConf.getAppender("STDOUT"), eggrollLogLevel, null)
         }
         Logging.logContextInited.compareAndSet(false, true)
       }

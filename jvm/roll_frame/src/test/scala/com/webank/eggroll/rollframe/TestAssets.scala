@@ -16,7 +16,9 @@
 
 package com.webank.eggroll.rollframe
 
-import com.webank.eggroll.core.ErSession
+import java.net.BindException
+
+import com.webank.eggroll.core.{Bootstrap, ErSession}
 import com.webank.eggroll.core.constant.{ProcessorStatus, ProcessorTypes, StringConstants}
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.format.FrameDB
@@ -25,10 +27,24 @@ object TestAssets {
 
   val DELTA = 0.0000001
 
-  def getRfContext(isDebug:Boolean = true): RollFrameContext = {
+  def getRfContext(isDebug:Boolean = true, withRm:Boolean = false): RollFrameContext = {
     if(!isDebug) {
       RollFrameContext()
     } else {
+      if(withRm) {
+        new Thread("eggroll-rm-bootstrap"){
+          override def run(): Unit = {
+            Bootstrap.main(s"--config conf/eggroll.properties --bootstraps com.webank.eggroll.core.resourcemanager.ClusterManagerBootstrap,com.webank.eggroll.core.resourcemanager.NodeManagerBootstrap -s debug-sid -p 4670 --ignore-rebind".split(" "))
+          }
+        }.start()
+        Thread.sleep(3000)
+      }
+      new Thread("eggroll-ef-bootstrap"){
+        override def run(): Unit = {
+          Bootstrap.main(s"--config conf/eggroll.properties --bootstraps com.webank.eggroll.rollframe.EggFrameBootstrap -s debug-sid -p 20100  -tp 20200 --ignore-rebind".split(" "))
+        }
+      }.start()
+
       RollFrameContext(new ErSession(sessionId = "debug-sid",
         processors = getLiveProcessorBatch().processors))
     }
@@ -57,8 +73,8 @@ object TestAssets {
   val clusterNode1: ErProcessor = ErProcessor(id = 1, commandEndpoint = ErEndpoint("node2", 20101), transferEndpoint = ErEndpoint("node2", 20201), tag = "worker", status = ProcessorStatus.RUNNING, processorType = ProcessorTypes.EGG_FRAME)
   val clusterNode2: ErProcessor = ErProcessor(id = 2, commandEndpoint = ErEndpoint("node3", 20102), transferEndpoint = ErEndpoint("node3", 20202), tag = "worker", status = ProcessorStatus.RUNNING, processorType = ProcessorTypes.EGG_FRAME)
 
-  val localNode0: ErProcessor = ErProcessor(id = 0, commandEndpoint = ErEndpoint("127.0.0.1", 4670), transferEndpoint = ErEndpoint("127.0.0.1", 20200), status = ProcessorStatus.RUNNING, processorType = ProcessorTypes.EGG_FRAME)
-  val localNode1: ErProcessor = ErProcessor(id = 1, commandEndpoint = ErEndpoint("127.0.0.1", 4670), transferEndpoint = ErEndpoint("127.0.0.1", 20201), status = ProcessorStatus.RUNNING, processorType = ProcessorTypes.EGG_FRAME)
+  val localNode0: ErProcessor = ErProcessor(id = 0, serverNodeId = 2, commandEndpoint = ErEndpoint("127.0.0.1", 20100), transferEndpoint = ErEndpoint("127.0.0.1", 20200), status = ProcessorStatus.RUNNING, processorType = ProcessorTypes.EGG_FRAME)
+  val localNode1: ErProcessor = ErProcessor(id = 1, serverNodeId = 2, commandEndpoint = ErEndpoint("127.0.0.1", 20100), transferEndpoint = ErEndpoint("127.0.0.1", 20201), status = ProcessorStatus.RUNNING, processorType = ProcessorTypes.EGG_FRAME)
 
   def getLiveProcessorBatch(clusterId: Long = -1): ErProcessorBatch = {
     val cluster = mode match {

@@ -49,29 +49,32 @@ class EggFrameBootstrap extends Bootstrap with Logging {
 
     val options = new ConcurrentHashMap[String, String]()
     options.put(SessionConfKeys.CONFKEY_SESSION_ID, sessionId)
+    // ignore heart beat when debugging
+    if(processorId > 0){
+      val processName = ManagementFactory.getRuntimeMXBean.getName
+      val pid = processName.split(StringConstants.AT, 2)(0).toInt
+      val myself = ErProcessor(
+        id = processorId,
+        serverNodeId = serverNodeId,
+        processorType = ProcessorTypes.EGG_FRAME,
+        commandEndpoint = ErEndpoint("localhost", myCommandPort),
+        transferEndpoint = ErEndpoint("localhost", myTransferPort),
+        pid = pid,
+        options = options,
+        status = ProcessorStatus.RUNNING)
+      logInfo("ready to heartbeat")
+      clusterManagerClient.heartbeat(myself)
 
-    val processName = ManagementFactory.getRuntimeMXBean.getName
-    val pid = processName.split(StringConstants.AT, 2)(0).toInt
-    val myself = ErProcessor(
-      id = processorId,
-      serverNodeId = serverNodeId,
-      processorType = ProcessorTypes.EGG_FRAME,
-      commandEndpoint = ErEndpoint("localhost", myCommandPort),
-      transferEndpoint = ErEndpoint("localhost", myTransferPort),
-      pid = pid,
-      options = options,
-      status = ProcessorStatus.RUNNING)
-    logInfo("ready to heartbeat")
-    clusterManagerClient.heartbeat(myself)
-
-    Runtime.getRuntime.addShutdownHook(new Thread() {
-      override def run(): Unit = { // Use stderr here since the logger may have been reset by its JVM shutdown hook.
-        logInfo(s"*** ${ProcessorTypes.EGG_FRAME} exit gracefully. sessionId: ${sessionId}, serverNodeId: ${serverNodeId}, processorId: ${processorId}, port: ${myCommandPort} ***")
-        val terminatedSelf = myself.copy(status = ProcessorStatus.STOPPED)
-        clusterManagerClient.heartbeat(terminatedSelf)
-        this.interrupt()
-      }
-    })
+      Runtime.getRuntime.addShutdownHook(new Thread() {
+        override def run(): Unit = { // Use stderr here since the logger may have been reset by its JVM shutdown hook.
+          logInfo(s"*** ${ProcessorTypes.EGG_FRAME} exit gracefully. sessionId: ${sessionId}, serverNodeId: ${serverNodeId}, processorId: ${processorId}, port: ${myCommandPort} ***")
+          val terminatedSelf = myself.copy(status = ProcessorStatus.STOPPED)
+          clusterManagerClient.heartbeat(terminatedSelf)
+          this.interrupt()
+        }
+      })
+      logInfo(s"heartbeated processorId: ${processorId}")
+    }
   }
   override def start(): Unit = {
     val specPort = cmd.getOptionValue("port", "0").toInt
@@ -86,9 +89,8 @@ class EggFrameBootstrap extends Bootstrap with Logging {
       .build
     cmdServer.start()
     val port = cmdServer.getPort
-    StaticErConf.setPort(port)
+//    StaticErConf.setPort(port)
     logInfo(s"server started at ${port}")
     reportStatus(port, transferPort)
-    logInfo(s"heartbeated: ${port}")
   }
 }
