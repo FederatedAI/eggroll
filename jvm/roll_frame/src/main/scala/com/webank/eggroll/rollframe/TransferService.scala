@@ -24,7 +24,7 @@ import java.nio.channels.{ServerSocketChannel, SocketChannel}
 import java.util.concurrent.Executors
 
 import com.webank.eggroll.core.meta.ErProcessor
-import com.webank.eggroll.format.{FrameBatch, FrameDB, FrameReader, FrameWriter}
+import com.webank.eggroll.format.{FrameBatch, FrameStore, FrameReader, FrameWriter}
 
 case class BatchData(headerSize: Int, header: Array[Byte], bodySize: Int, body: Array[Byte])
 
@@ -88,7 +88,7 @@ class NioTransferEndpoint {
                 headLenBuf.clear()
                 headPathBuf.clear()
                 val fr = new FrameReader(ch)
-                FrameDB.queue(path, -1).writeAll(fr.getColumnarBatches())
+                FrameStore.queue(path, -1).writeAll(fr.getColumnarBatches())
                 println("save finished:" + path)
               }
             }

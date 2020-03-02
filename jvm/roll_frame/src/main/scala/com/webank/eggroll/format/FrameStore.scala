@@ -42,7 +42,7 @@ import scala.collection.concurrent.TrieMap
 import scala.collection.mutable.ListBuffer
 
 // TODO: where to delete a RollFrame?
-trait FrameDB {
+trait FrameStore {
   def close(): Unit
 
   def readAll(): Iterator[FrameBatch]
@@ -54,7 +54,7 @@ trait FrameDB {
   def readOne(): FrameBatch = readAll().next() // need to check iterator whether hasNext element
 }
 
-object FrameDB {
+object FrameStore {
   val FILE: String = StringConstants.FILE
   val CACHE: String = StringConstants.CACHE
   val HDFS: String = StringConstants.HDFS
@@ -85,12 +85,12 @@ object FrameDB {
     IoUtils.getPath(partition, rootPath)
   }
 
-  def apply(opts: Map[String, String]): FrameDB = opts.getOrElse(TYPE, FILE) match {
-    case CACHE => new JvmFrameDB(opts(PATH))
-    case QUEUE => new QueueFrameDB(opts(PATH), opts(TOTAL).toInt)
-    case HDFS => new HdfsFrameDB(opts(PATH))
-    case NETWORK => new NetworkFrameDB(opts(PATH), opts(HOST), opts(PORT).toInt) // TODO: add total num
-    case _ => new FileFrameDB(opts(PATH))
+  def apply(opts: Map[String, String]): FrameStore = opts.getOrElse(TYPE, FILE) match {
+    case CACHE => new JvmFrameStore(opts(PATH))
+    case QUEUE => new QueueFrameStore(opts(PATH), opts(TOTAL).toInt)
+    case HDFS => new HdfsFrameStore(opts(PATH))
+    case NETWORK => new NetworkFrameStore(opts(PATH), opts(HOST), opts(PORT).toInt) // TODO: add total num
+    case _ => new FileFrameStore(opts(PATH))
   }
 
   /**
@@ -100,30 +100,30 @@ object FrameDB {
    * @param partitionId : 0,1,2 ...
    * @return
    */
-  def apply(store: ErStore, partitionId: Int): FrameDB =
+  def apply(store: ErStore, partitionId: Int): FrameStore =
     apply(Map(PATH -> getStorePath(store, partitionId), TYPE -> store.storeLocator.storeType,
       HOST -> store.partitions(partitionId).processor.transferEndpoint.host,
       PORT -> store.partitions(partitionId).processor.transferEndpoint.port.toString))
 
-  def apply(partition: ErPartition): FrameDB = {
+  def apply(partition: ErPartition): FrameStore = {
     apply(Map(PATH -> getStorePath(partition), TYPE -> partition.storeLocator.storeType,
       HOST -> partition.processor.transferEndpoint.host, PORT -> partition.processor.transferEndpoint.port.toString))
   }
 
-  def queue(path: String, total: Int): FrameDB = apply(Map(PATH -> path, TOTAL -> total.toString, TYPE -> QUEUE))
+  def queue(path: String, total: Int): FrameStore = apply(Map(PATH -> path, TOTAL -> total.toString, TYPE -> QUEUE))
 
-  def file(path: String): FrameDB = apply(Map(PATH -> path, TYPE -> FILE))
+  def file(path: String): FrameStore = apply(Map(PATH -> path, TYPE -> FILE))
 
-  def cache(path: String): FrameDB = apply(Map(PATH -> path, TYPE -> CACHE))
+  def cache(path: String): FrameStore = apply(Map(PATH -> path, TYPE -> CACHE))
 
-  def hdfs(path: String): FrameDB = apply(Map(PATH -> path, TYPE -> HDFS))
+  def hdfs(path: String): FrameStore = apply(Map(PATH -> path, TYPE -> HDFS))
 
-  def network(path: String, host: String, port: String): FrameDB = apply(Map(PATH -> path, TYPE -> NETWORK,
+  def network(path: String, host: String, port: String): FrameStore = apply(Map(PATH -> path, TYPE -> NETWORK,
     HOST -> host, PORT -> port))
 }
 
 // NOT thread safe
-class FileFrameDB(path: String) extends FrameDB {
+class FileFrameStore(path: String) extends FrameStore {
   var frameReader: FrameReader = _
   var frameWriter: FrameWriter = _
 
@@ -157,7 +157,7 @@ class FileFrameDB(path: String) extends FrameDB {
   }
 }
 
-class HdfsFrameDB(path: String) extends FrameDB {
+class HdfsFrameStore(path: String) extends FrameStore {
   var frameReader: FrameReader = _
   var frameWriter: FrameWriter = _
 
@@ -189,7 +189,7 @@ class HdfsFrameDB(path: String) extends FrameDB {
   }
 }
 
-object QueueFrameDB {
+object QueueFrameStore {
   private val map = TrieMap[String, BlockingQueue[FrameBatch]]()
 
   // key: a task name,e.g. mapBatch-0-doing , BlockingQueue[]: several batch FrameBatch
@@ -201,7 +201,7 @@ object QueueFrameDB {
   }
 }
 
-class QueueFrameDB(path: String, total: Int) extends FrameDB {
+class QueueFrameStore(path: String, total: Int) extends FrameStore {
   // TODO: QueueFrameStoreAdapter.getOrCreateQueue(path)
   override def close(): Unit = {}
 
@@ -215,7 +215,7 @@ class QueueFrameDB(path: String, total: Int) extends FrameDB {
       override def next(): FrameBatch = {
         remaining -= 1
         println("taking from queue:" + path)
-        val ret = QueueFrameDB.getOrCreateQueue(path).take()
+        val ret = QueueFrameStore.getOrCreateQueue(path).take()
         println("token from queue:" + path)
         ret
       }
@@ -223,11 +223,11 @@ class QueueFrameDB(path: String, total: Int) extends FrameDB {
   }
 
   override def writeAll(batches: Iterator[FrameBatch]): Unit = {
-    batches.foreach(QueueFrameDB.getOrCreateQueue(path).put)
+    batches.foreach(QueueFrameStore.getOrCreateQueue(path).put)
   }
 }
 
-class NetworkFrameDB(path: String, host: String, port: Int) extends FrameDB {
+class NetworkFrameStore(path: String, host: String, port: Int) extends FrameStore {
   var client: NioTransferEndpoint = _
 
   override def writeAll(batches: Iterator[FrameBatch]): Unit = {
@@ -253,7 +253,7 @@ class NetworkFrameDB(path: String, host: String, port: Int) extends FrameDB {
       override def next(): FrameBatch = {
         println("taking from network queue:" + path)
         remaining -= 1
-        val ret = QueueFrameDB.getOrCreateQueue(path).take
+        val ret = QueueFrameStore.getOrCreateQueue(path).take
         println("token from network queue:" + path)
         ret
       }
@@ -266,18 +266,18 @@ class NetworkFrameDB(path: String, host: String, port: Int) extends FrameDB {
   }
 }
 
-object JvmFrameDB {
+object JvmFrameStore {
   private val caches: TrieMap[String, ListBuffer[FrameBatch]] = new TrieMap[String, ListBuffer[FrameBatch]]()
 }
 
-class JvmFrameDB(path: String) extends FrameDB {
-  override def readAll(): Iterator[FrameBatch] = JvmFrameDB.caches(path).toIterator
+class JvmFrameStore(path: String) extends FrameStore {
+  override def readAll(): Iterator[FrameBatch] = JvmFrameStore.caches(path).toIterator
 
   override def writeAll(batches: Iterator[FrameBatch]): Unit = this.synchronized {
-    if (!JvmFrameDB.caches.contains(path)) {
-      JvmFrameDB.caches.put(path, ListBuffer())
+    if (!JvmFrameStore.caches.contains(path)) {
+      JvmFrameStore.caches.put(path, ListBuffer())
     }
-    JvmFrameDB.caches(path).appendAll(batches)
+    JvmFrameStore.caches(path).appendAll(batches)
   }
 
   // TODO : clear ?

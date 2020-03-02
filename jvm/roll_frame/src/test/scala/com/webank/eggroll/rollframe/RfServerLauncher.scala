@@ -2,7 +2,7 @@ package com.webank.eggroll.rollframe
 
 import com.webank.eggroll.core.constant.StringConstants
 import com.webank.eggroll.core.meta.{ErPartition, ErStore, ErStoreLocator}
-import com.webank.eggroll.format.{FrameBatch, FrameDB, FrameSchema}
+import com.webank.eggroll.format.{FrameBatch, FrameStore, FrameSchema}
 
 import scala.util.Random
 
@@ -47,14 +47,14 @@ object RfServerLauncher {
   }
 
   def verifyNetworkToJvm(): Unit = {
-    val fbs = (0 until 3).map(i => FrameDB(input, i).readAll())
+    val fbs = (0 until 3).map(i => FrameStore(input, i).readAll())
 
     val networkLocator = ErStoreLocator(name = "a1", namespace = "test1", storeType = StringConstants.NETWORK)
     val networkStore = input.copy(storeLocator = networkLocator, partitions = input.partitions.map(p =>
       p.copy(storeLocator = networkLocator)))
 
     var start = System.currentTimeMillis()
-    fbs.indices.foreach(i => FrameDB(networkStore, i).writeAll(fbs(i)))
+    fbs.indices.foreach(i => FrameStore(networkStore, i).writeAll(fbs(i)))
     println("finish fbs to network, time: " + (System.currentTimeMillis() - start))
 
     start = System.currentTimeMillis()
@@ -77,7 +77,7 @@ object RfServerLauncher {
     val rowCount = 100 // total value count = rowCount * fbCount * fieldCount
     val fbCount = 1 // the num of batch
 
-    def write(adapter: FrameDB): Unit = {
+    def write(adapter: FrameStore): Unit = {
       val randomObj = new Random()
       (0 until fbCount).foreach { i =>
         val fb = new FrameBatch(new FrameSchema(getSchema(fieldCount)), rowCount)
@@ -91,7 +91,7 @@ object RfServerLauncher {
       adapter.close()
     }
 
-    def read(adapter: FrameDB): Unit = {
+    def read(adapter: FrameStore): Unit = {
       var num = 0
       adapter.readAll().foreach(_ => num += 1)
       val oneFb = adapter.readOne()
@@ -104,8 +104,8 @@ object RfServerLauncher {
     val output = ErStore(storeLocator = ErStoreLocator(name = "a1", namespace = "test1", storeType = StringConstants.HDFS))
 
     (0 until 3).foreach{ i =>
-      write(FrameDB(output, i))
-      read(FrameDB(output, i))
+      write(FrameStore(output, i))
+      read(FrameStore(output, i))
     }
   }
 

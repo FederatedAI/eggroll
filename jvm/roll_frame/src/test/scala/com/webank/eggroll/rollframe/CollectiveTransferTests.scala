@@ -70,7 +70,7 @@ class CollectiveTransferTests {
     val start = System.currentTimeMillis()
     var n = 0
     while (n<10){
-      val fbs = FrameDB.queue(path, 1).readAll()
+      val fbs = FrameStore.queue(path, 1).readAll()
       fbs.hasNext
       println(fbs.next().rowCount)
       n+=1
@@ -120,7 +120,7 @@ class CollectiveTransferTests {
     var n = 0
     while (n<10){
       println("n:" + n)
-      val fbs = FrameDB.queue(path, 1).readAll()
+      val fbs = FrameStore.queue(path, 1).readAll()
       fbs.hasNext
       println(fbs.next().rowCount)
       n+=1

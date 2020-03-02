@@ -21,7 +21,7 @@ import java.net.BindException
 import com.webank.eggroll.core.{Bootstrap, ErSession}
 import com.webank.eggroll.core.constant.{ProcessorStatus, ProcessorTypes, StringConstants}
 import com.webank.eggroll.core.meta._
-import com.webank.eggroll.format.FrameDB
+import com.webank.eggroll.format.FrameStore
 
 object TestAssets {
 
@@ -60,8 +60,8 @@ object TestAssets {
     val cacheStore = inStore.copy(storeLocator = cacheStoreLocator, partitions = inStore.partitions.map(p =>
       p.copy(storeLocator = cacheStoreLocator)))
     inStore.partitions.indices.foreach { i =>
-      val inputDB = FrameDB(inStore, i)
-      val outputDB = FrameDB(cacheStore, i)
+      val inputDB = FrameStore(inStore, i)
+      val outputDB = FrameStore(cacheStore, i)
       outputDB.writeAll(inputDB.readAll())
       inputDB.close()
       outputDB.close()
