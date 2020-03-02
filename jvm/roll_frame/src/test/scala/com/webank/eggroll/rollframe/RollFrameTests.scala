@@ -108,6 +108,15 @@ class RollFrameTests {
     adapter.close()
   }
 
+  @Test
+  def testLoad():Unit = {
+    val rf = ctx.load("test1","a1")
+    rf.mapBatch( fb =>{
+      println("to do assert", fb.readDouble(0,0))
+      fb
+    })
+  }
+
   /**
    * the other test methods depend on these frameBatches, and make sure of configuration of HDFS correctly.
    */
