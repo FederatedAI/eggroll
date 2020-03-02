@@ -29,7 +29,7 @@ import com.webank.eggroll.core.util.IdUtils
 
 import scala.collection.mutable
 
-class RollFrameService(session: ErSession) {
+class RollFrameScheduler(session: ErSession) {
   val scheduler = new ListScheduler
 
   def mulMul(job: ErJob) : ErJob = {
