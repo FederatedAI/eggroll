@@ -26,7 +26,7 @@ import com.webank.eggroll.core.meta.{ErEndpoint, ErProcessor, ErSessionMeta, ErT
 import com.webank.eggroll.core.serdes.DefaultScalaSerdes
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.util.ThreadPoolUtils
-import com.webank.eggroll.format.{FrameBatch, FrameDB, _}
+import com.webank.eggroll.format.{FrameBatch, FrameStore, _}
 import com.webank.eggroll.rollframe.pytorch.linalg.Matrices
 
 import scala.collection.immutable.Range.Inclusive
@@ -58,7 +58,7 @@ class EggFrame {
 
   // TODO: remove roll site
   def runBroadcast(path: String): Unit = {
-    val list = FrameDB.cache(path).readAll()
+    val list = FrameStore.cache(path).readAll()
     serverNodes.foreach { server =>
       if (!server.equals(rootServer)) {
         list.foreach(fb => transferService.send(server.id, path, fb))
@@ -68,12 +68,12 @@ class EggFrame {
 
   def runMapBatch(task: ErTask,
                   input: Iterator[FrameBatch],
-                  output: FrameDB,
+                  output: FrameStore,
                   mapper: FrameBatch => FrameBatch): Unit = {
     // for concurrent writing
     val queuePath = task.id + "-doing"
     // total mean batch size, if given more than one, it just get one.
-    val queue = FrameDB.queue(queuePath, 1)
+    val queue = FrameStore.queue(queuePath, 1)
     input.foreach { fb =>
       ThreadPoolUtils.defaultThreadPool.submit(new Runnable {
         override def run(): Unit = {
@@ -85,15 +85,15 @@ class EggFrame {
   }
 
   def runMatMulV1(task: ErTask,
-                input: Iterator[FrameBatch],
-                output: FrameDB,
-                matrix: Array[Double],
-                rows: Int,
-                cols: Int
+                  input: Iterator[FrameBatch],
+                  output: FrameStore,
+                  matrix: Array[Double],
+                  rows: Int,
+                  cols: Int
                ): Unit = {
     val queuePath = task.id + "-doing"
     // total mean batch size, if given more than one, it just get one.
-    val queue = FrameDB.queue(queuePath, 1)
+    val queue = FrameStore.queue(queuePath, 1)
     input.foreach { fb =>
       ThreadPoolUtils.defaultThreadPool.submit(new Runnable {
         override def run(): Unit = {
@@ -113,14 +113,14 @@ class EggFrame {
 
   def runMatMul(task: ErTask,
                 input: Iterator[FrameBatch],
-                output: FrameDB,
+                output: FrameStore,
                 matrix: Array[Double],
                 rows: Int,
                 cols: Int
                ): Unit = {
     val queuePath = task.id + "-doing"
     // total mean batch size, if given more than one, it just get one.
-    val queue = FrameDB.queue(queuePath, 1)
+    val queue = FrameStore.queue(queuePath, 1)
     input.foreach { fb =>
       ThreadPoolUtils.defaultThreadPool.submit(new Runnable {
         override def run(): Unit = {
@@ -139,7 +139,7 @@ class EggFrame {
 
   def runReduceBatch(task: ErTask,
                      input: Iterator[FrameBatch],
-                     output: FrameDB,
+                     output: FrameStore,
                      reducer: (FrameBatch, FrameBatch) => FrameBatch,
                      byColumn: Boolean): Unit = {
     if (!input.hasNext) return
@@ -150,7 +150,7 @@ class EggFrame {
   //TODO: allgather = List[(FB)=>FB]
   def runAggregateBatch(task: ErTask,
                         input: Iterator[FrameBatch],
-                        output: FrameDB,
+                        output: FrameStore,
                         zeroValue: FrameBatch,
                         seqOp: (FrameBatch, FrameBatch) => FrameBatch,
                         combOp: (FrameBatch, FrameBatch) => FrameBatch,
@@ -163,16 +163,16 @@ class EggFrame {
     //    val localServer = clusterManager.getPreferredServer(store = task.job.inputs.head)(partition.id)
     val localServer = partition.processor
     println(s"runAggregateBatch: partion.id = ${partition.id}")
-    var localQueue: FrameDB = null
+    var localQueue: FrameStore = null
 
     // TODO: don't finish broadcast
     val zeroPath = "broadcast:" + task.job.id
     val zero: FrameBatch =
       if (zeroValue == null) {
         if (localServer.equals(rootServer))
-          FrameDB.cache(zeroPath).readOne()
+          FrameStore.cache(zeroPath).readOne()
         else
-          FrameDB.queue(zeroPath, 1).readOne()
+          FrameStore.queue(zeroPath, 1).readOne()
       } else {
         zeroValue
       }
@@ -193,7 +193,7 @@ class EggFrame {
         } else {
           threadsNum
         }
-        localQueue = FrameDB.queue(task.id + "-doing", parallel)
+        localQueue = FrameStore.queue(task.id + "-doing", parallel)
 
         println(s"egg parallel = $parallel")
         sliceByRow(parallel, fb).foreach { case inclusive: Inclusive =>
@@ -210,14 +210,14 @@ class EggFrame {
         }
       } else {
         // for reduce op
-        localQueue = FrameDB.queue(task.id + "-doing", 1)
+        localQueue = FrameStore.queue(task.id + "-doing", 1)
         localQueue.append(zero)
       }
     } else {
       // TODO: unfinished
       val parallel = Math.min(executorPool.getCorePoolSize, batchSize) // reduce zero value copy
       // for concurrent writing
-      localQueue = FrameDB.queue(task.id + "-doing", parallel)
+      localQueue = FrameStore.queue(task.id + "-doing", parallel)
       var batchIndex = 0
       (0 until parallel).foreach { i =>
         if (input.hasNext) { // merge to avoid zero copy
@@ -264,7 +264,7 @@ class EggFrame {
       splicedBatches.foreach { case (server, inclusive: Inclusive) =>
         val queuePath = "all2all:" + task.job.id + ":" + server.id
         if (server.equals(localServer)) {
-          for (tmp <- FrameDB.queue(queuePath, transferQueueSize).readAll()) {
+          for (tmp <- FrameStore.queue(queuePath, transferQueueSize).readAll()) {
             localBatch = combOp(localBatch, tmp.spareByColumn(localBatch.rootVectors.length, inclusive.start, inclusive.end))
           }
         }
@@ -274,13 +274,13 @@ class EggFrame {
       if (localServer.commandEndpoint.host.equals(rootServer.commandEndpoint.host)) {
         // the same root server
         if (partition.id == 0) {
-          for (tmp <- FrameDB.queue(queuePath, transferQueueSize).readAll()) {
+          for (tmp <- FrameStore.queue(queuePath, transferQueueSize).readAll()) {
             localBatch = combOp(localBatch, tmp)
           }
           output.append(localBatch)
         } else {
           // the same root server but different partition
-          FrameDB.queue(queuePath, -1).writeAll(Iterator(localBatch))
+          FrameStore.queue(queuePath, -1).writeAll(Iterator(localBatch))
         }
       } else {
         transferService.send(rootServer.id, queuePath, localBatch)
@@ -294,8 +294,8 @@ class EggFrame {
 
     println(s"run ${task.job.name}, input: ${IoUtils.getPath(inputPartition)}, output: ${IoUtils.getPath(outputPartition)}")
 
-    val inputDB = FrameDB(inputPartition)
-    val outputDB = FrameDB(outputPartition)
+    val inputDB = FrameStore(inputPartition)
+    val outputDB = FrameStore(outputPartition)
 
     // todo: task status track
     val result = task
