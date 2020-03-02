@@ -19,14 +19,12 @@
 package com.webank.eggroll.rollframe
 
 import com.webank.eggroll.core.ErSession
-import com.webank.eggroll.core.command.{CommandRouter, CommandService, CommandURI}
-import com.webank.eggroll.core.constant.{ProcessorStatus, ProcessorTypes, StringConstants}
+import com.webank.eggroll.core.command.CommandURI
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.schedule.BaseTaskPlan
 import com.webank.eggroll.core.serdes.DefaultScalaSerdes
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.format.{FrameBatch, _}
-import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
 
 // TODO: care about client task grpc whether closed and thread pool whether closed
 // TODO: always close in finally
@@ -58,7 +56,7 @@ object RollFrameContext {
 class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) {
 
   val serdes = new DefaultScalaSerdes
-  val rollFrameService = new RollFrameService(ctx.session)
+  val rfScheduler = new RollFrameScheduler(ctx.session)
 
   @deprecated
   def matMulV1(m: Array[Double], rows: Int, cols: Int, output: ErStore = null): RollFrame = {
@@ -71,7 +69,7 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
         ErFunctor(name = "rows", body = serdes.serialize(rows)),
         ErFunctor(name = "cols", body = serdes.serialize(cols)))
     )
-    processJobResult(rollFrameService.mulMul(job))
+    processJobResult(rfScheduler.mulMul(job))
   }
 
   @deprecated
@@ -85,7 +83,7 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
         ErFunctor(name = "rows", body = serdes.serialize(rows)),
         ErFunctor(name = "cols", body = serdes.serialize(cols)))
     )
-    processJobResult(rollFrameService.mulMul(job))
+    processJobResult(rfScheduler.mulMul(job))
   }
 
   def mapBatch(f: FrameBatch => FrameBatch, output: ErStore = null): RollFrame = {
@@ -97,7 +95,7 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
       outputs = Array(if (output == null) store.fork(postfix = jobType) else output),
       functors = Array(ErFunctor(name = RollFrame.mapBatch, body = serdes.serialize(f))))
 
-    processJobResult(rollFrameService.mapBatches(job))
+    processJobResult(rfScheduler.mapBatches(job))
   }
 
   // TODO: add reduce by rows operation
@@ -120,7 +118,7 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
       outputs = Array(if (output == null) store.fork(postfix = jobType) else output),
       functors = Array(ErFunctor(name = RollFrame.reduce, body = serdes.serialize(f))))
 
-    processJobResult(rollFrameService.reduce(job))
+    processJobResult(rfScheduler.reduce(job))
   }
 
   def aggregate(zeroValue: FrameBatch,
@@ -142,7 +140,7 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
         ErFunctor(name = "byColumn", body = serdes.serialize(byColumn)),
         ErFunctor(name = "broadcastZeroValue", body = serdes.serialize(broadcastZeroValue)),
         ErFunctor(name = "parallel", body = serdes.serialize(threadsNum))))
-    processJobResult(rollFrameService.aggregate(job))
+    processJobResult(rfScheduler.aggregate(job))
   }
 
   // todo: pull up
