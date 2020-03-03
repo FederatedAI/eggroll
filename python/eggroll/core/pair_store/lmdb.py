@@ -102,12 +102,12 @@ class LmdbAdapter(PairAdapter):
     def close(self):
         if not self.env:
             return
-        if self.txn_r:
-            self.txn_r.commit()
-            self.cursor.close()
-        if self.txn_w:
-            self.txn_w.commit()
         with LmdbAdapter.env_lock:
+            if self.txn_r:
+                self.txn_r.commit()
+                self.cursor.close()
+            if self.txn_w:
+                self.txn_w.commit()
             if self.env:
                 count = LmdbAdapter.count_dict[self.path]
                 if not count or count - 1 <= 0:
