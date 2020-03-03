@@ -162,6 +162,10 @@ class LmdbIterator(PairIterator):
         self.cursor = self.txn_r.cursor()
         L.info(f"created lmdb iterator for {adapter.path}")
 
+    #seek for key, if key not exits then seek to nearby key
+    def seek(self, key):
+        return self.cursor.set_range(key)
+
     # move cursor to the first key position
     # return True if success or False if db is empty
     def first(self):
