@@ -17,6 +17,8 @@
 
 package com.webank.eggroll.rollframe.pytorch;
 
+import java.util.ArrayList;
+
 public class Torch {
     /**
      * dot product between two array.
@@ -33,5 +35,17 @@ public class Torch {
      */
     public static native double[] mm(long address, long size, double[] v, long rows, long cols);
 
+    /**
+     * interface of torch script, init a model and get model point.Maybe not necessary.
+     */
+    public static native long getTorchScript(String path);
 
+    /**
+     * torch script's interface
+     * @param tensors: includes data and hpyer-parameters
+     * @return double[] include data and hpyer-parameters,if only run Map, output exclude hpyer-parameters.
+     */
+    public static native double[] run(long ptr, TorchTensor[] tensors, double[] parameters);
+
+//    public static native double[] run(long path, TorchTensor[] tensors);
 }

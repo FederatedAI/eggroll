@@ -36,18 +36,20 @@ import org.junit.{Before, Test}
  */
 class RollFrameTests {
   protected val ta = TestAssets
-  protected val fieldCount = 1000
-  protected val rowCount = 1000 // total value count = rowCount * fbCount * fieldCount
+  protected val fieldCount = 100
+  protected val rowCount = 100 // total value count = rowCount * fbCount * fieldCount
   // TODO: fbCount means a set of FrameBatch in one partition. fbCount value which larger then one maybe has bugs.
   protected val fbCount = 1 // the num of batch
 
-  protected var ctx:RollFrameContext = _
+  protected var ctx: RollFrameContext = _
+
   @Before
   def setup(): Unit = {
     ta.setMode("local")
+    // TODO: 3in1 run fail
     ctx = ta.getRfContext(true)
     HdfsBlockAdapter.fastSetLocal()
-    try{
+    try {
       LibraryLoader.load
     } catch {
       case _: Throwable => println("error when loading jni")
@@ -109,10 +111,10 @@ class RollFrameTests {
   }
 
   @Test
-  def testLoad():Unit = {
-    val rf = ctx.load("test1","a1")
-    rf.mapBatch( fb =>{
-      println("to do assert", fb.readDouble(0,0))
+  def testLoad(): Unit = {
+    val rf = ctx.load("test1", "a1")
+    rf.mapBatch(fb => {
+      println("to do assert", fb.readDouble(0, 0))
       fb
     })
   }
@@ -122,19 +124,21 @@ class RollFrameTests {
    */
   @Test
   def testCreateDataStore(): Unit = {
-    val output = ta.getRollFrameStore("a1", "test1", StringConstants.FILE)
-    val output1 = ta.getRollFrameStore("c1","test1",StringConstants.FILE)
-    output.partitions.indices.foreach { i =>
+    // TODO: more generally
+    val store = ta.getRollFrameStore("a1", "test1", StringConstants.FILE)
+    ctx.session.clusterManagerClient.deleteStore(store)
+    val store1 = ctx.session.clusterManagerClient.getOrCreateStore(store)
+    store1.partitions.indices.foreach { i =>
       // create FrameBatch
-      write(FrameStore(output, i))
+//      write(FrameStore(store1, i))
       // create ColumnFrame
-      writeCf(FrameStore(output1, i))
+            writeCf(FrameStore(store1, i))
     }
-        write(FrameStore.hdfs("/tmp/unittests/RollFrameTests/hdfs/test1/a1/0"))
-        write(FrameStore.hdfs("/tmp/unittests/RollFrameTests/hdfs/test1/a1/1"))
-        write(FrameStore.hdfs("/tmp/unittests/RollFrameTests/hdfs/test1/a1/2"))
-//        read(FrameDB.hdfs("/tmp/unittests/RollFrameTests/hdfs/test1/a1/0"))
-//        read(FrameDB.hdfs("/tmp/unittests/RollFrameTests/hdfs/test1/a1/1"))
+    //        write(FrameStore.hdfs("/tmp/unittests/RollFrameTests/hdfs/test1/a1/0"))
+    //        write(FrameStore.hdfs("/tmp/unittests/RollFrameTests/hdfs/test1/a1/1"))
+    //        write(FrameStore.hdfs("/tmp/unittests/RollFrameTests/hdfs/test1/a1/2"))
+    //        read(FrameDB.hdfs("/tmp/unittests/RollFrameTests/hdfs/test1/a1/0"))
+    //        read(FrameDB.hdfs("/tmp/unittests/RollFrameTests/hdfs/test1/a1/1"))
   }
 
   @Test
@@ -150,14 +154,14 @@ class RollFrameTests {
       }.start()
     }
     // TODO:2: pull data's not been implemented,  or should be tested in the same jvm process
-//    // 2.write to cache
-//    val cacheStore = ta.loadCache(networkStore)
-//    // 3.assert
-//    cacheStore.partitions.indices.foreach { i =>
-//      val fb = FrameDB(cacheStore, i).readOne()
-//      TestCase.assertEquals(fb.fieldCount, fieldCount)
-//      TestCase.assertEquals(fb.rowCount, rowCount)
-//    }
+    //    // 2.write to cache
+    //    val cacheStore = ta.loadCache(networkStore)
+    //    // 3.assert
+    //    cacheStore.partitions.indices.foreach { i =>
+    //      val fb = FrameDB(cacheStore, i).readOne()
+    //      TestCase.assertEquals(fb.fieldCount, fieldCount)
+    //      TestCase.assertEquals(fb.rowCount, rowCount)
+    //    }
   }
 
   /**
@@ -569,6 +573,29 @@ class RollFrameTests {
   }
 
   @Test
+  def testTorchScriptMap(): Unit = {
+    val input = ta.loadCache(ta.getRollFrameStore("a1", "test1", StringConstants.FILE))
+    val output = ta.getRollFrameStore("a1TorchMap", "test1", StringConstants.FILE)
+    val rf = ctx.load(input)
+    val newMatrixCols = 2
+    val parameters:Array[Double] = Array(fieldCount.toDouble) ++ Array(newMatrixCols.toDouble) ++ Array.fill[Double](fieldCount*newMatrixCols)(0.5);
+
+    rf.torchMap("D:/program/Java/torch_run_lib/torch_model_map.pt",parameters,output)
+    println(FrameStore(output, 0).readOne().rowCount)
+  }
+
+  @Test
+  def testTorchScriptMerge(): Unit ={
+    val input = ta.loadCache(ta.getRollFrameStore("a1Torch", "test1", StringConstants.FILE))
+    val output = ta.getRollFrameStore("a1TorchMerge", "test1", StringConstants.FILE)
+    val rf = ctx.load(input)
+    val parameters:Array[Double] = Array(fieldCount)
+    rf.torchMerge("D:/program/Java/torch_run_lib/torch_model_merge.pt",parameters,output)
+    val result = FrameStore(output, 0).readOne()
+    println(s"sum = ${result.readDouble(0,0)},size = ${result.rowCount}")
+  }
+
+  @Test
   def testMatMul(): Unit = {
     val input = ta.loadCache(ta.getRollFrameStore("c1", "test1", StringConstants.FILE))
     val output = ta.getRollFrameStore("c1Matrix1", "test1", StringConstants.CACHE)
@@ -594,7 +621,7 @@ class RollFrameClusterTests extends RollFrameTests {
     ctx = ta.getRfContext(false)
     HdfsBlockAdapter.fastSetLocal()
     ta.setMode("local")
-    try{
+    try {
       LibraryLoader.load
     } catch {
       case _: Throwable => println("error when loading jni")
