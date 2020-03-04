@@ -21,6 +21,7 @@ import java.io._
 import java.nio.ByteOrder
 import java.nio.channels.ReadableByteChannel
 
+import com.webank.eggroll.rollframe.pytorch.TorchTensor
 import com.webank.eggroll.util.SchemaUtil
 import org.apache.arrow.memory.RootAllocator
 import org.apache.arrow.vector._
@@ -39,7 +40,6 @@ class FrameFormat {
  */
 class ColumnFrame(val fb: FrameBatch, val matrixCols: Int) {
   val matrixRows: Int = fb.rowCount / matrixCols
-
 
   def write(field: Int, row: Int, item: Double): Unit = {
     val index = field + row * matrixCols
@@ -384,8 +384,8 @@ class FrameSchema(val arrowSchema: VectorSchemaRoot,
     this(VectorSchemaRoot.create(Schema.fromJSON(schema), FrameSchema.rootAllocator))
   }
 
-  def this(schema: Schema){
-    this(VectorSchemaRoot.create(schema , FrameSchema.rootAllocator))
+  def this(schema: Schema) {
+    this(VectorSchemaRoot.create(schema, FrameSchema.rootAllocator))
   }
 
   def this(fieldVectors: Array[FrameVector],
@@ -429,7 +429,7 @@ class FrameSchema(val arrowSchema: VectorSchemaRoot,
   }
 }
 
-object FrameSchema{
+object FrameSchema {
   val rootAllocator = new RootAllocator(Integer.MAX_VALUE)
   val oneFieldSchema: Schema = Schema.fromJSON(SchemaUtil.oneFieldSchemaString)
 }

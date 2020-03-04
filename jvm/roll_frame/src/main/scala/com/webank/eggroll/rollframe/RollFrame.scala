@@ -43,12 +43,13 @@ class TorchTask(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job)
 
 class RollFrameContext private[eggroll](val session: ErSession) {
   val defaultStoreType = "file"
-  def load(store: ErStore):RollFrame = RollFrame(store, this)
 
-  def load(namespace: String, name: String, options: Map[String,String] = Map()): RollFrame = {
+  def load(store: ErStore): RollFrame = RollFrame(store, this)
+
+  def load(namespace: String, name: String, options: Map[String, String] = Map()): RollFrame = {
     // TODO:1: use snake case universally?
     val storeType = options.getOrElse("store_type", defaultStoreType)
-    val totalPartitions = options.getOrElse("total_partitions","1").toInt
+    val totalPartitions = options.getOrElse("total_partitions", "1").toInt
     val store = ErStore(storeLocator = ErStoreLocator(
       namespace = namespace,
       name = name,
@@ -59,20 +60,48 @@ class RollFrameContext private[eggroll](val session: ErSession) {
     new RollFrame(loaded, this)
   }
 }
+
 object RollFrameContext {
   StaticErConf.addProperties("conf/eggroll.properties")
+
   def apply(session: ErSession): RollFrameContext = new RollFrameContext(session)
+
   def apply(): RollFrameContext = {
     val opts = Map("processor_types" -> "egg_frame", "processor_plan.egg_frame" -> "uniform")
-      apply(new ErSession(options = opts))
+    apply(new ErSession(options = opts))
   }
 }
+
 // create a instance when start a new job
 // TODO: reuse ErJob generate and separate client mode and cluster mode
 class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) {
 
   val serdes = new DefaultScalaSerdes
   val rfScheduler = new RollFrameScheduler(ctx.session)
+
+  def torchMap(path: String, parameters: Array[Double], output: ErStore = null): RollFrame = {
+    val jobType = "torch_map"
+    val job = ErJob(id = jobType,
+      name = "torch_map",
+      inputs = Array(store),
+      outputs = Array(if (output == null) store.fork(postfix = jobType) else output),
+      functors = Array(ErFunctor(name = "torch_map", body = serdes.serialize(parameters)),
+        ErFunctor(name = "path", body = serdes.serialize(path)))
+    )
+    processJobResult(rfScheduler.mulMul(job))
+  }
+
+  def torchMerge(path: String, parameters: Array[Double], output: ErStore = null): RollFrame = {
+    val jobType = "torch_merge"
+    val job = ErJob(id = jobType,
+      name = "torch_merge",
+      inputs = Array(store),
+      outputs = Array(if (output == null) store.fork(postfix = jobType) else output),
+      functors = Array(ErFunctor(name = "torch_merge", body = serdes.serialize(parameters)),
+        ErFunctor(name = "path", body = serdes.serialize(path)))
+    )
+    processJobResult(rfScheduler.mulMul(job))
+  }
 
   @deprecated
   def matMulV1(m: Array[Double], rows: Int, cols: Int, output: ErStore = null): RollFrame = {
