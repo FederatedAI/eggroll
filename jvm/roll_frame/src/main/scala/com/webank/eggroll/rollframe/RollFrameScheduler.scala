@@ -20,57 +20,30 @@ package com.webank.eggroll.rollframe
 
 import com.webank.eggroll.core.ErSession
 import com.webank.eggroll.core.command.{CommandClient, CommandURI}
-import com.webank.eggroll.core.constant.SessionConfKeys
-import com.webank.eggroll.core.datastructure.{RpcMessage, TaskPlan}
-import com.webank.eggroll.core.meta.{ErJob, ErPartition, ErStore, ErTask}
-import com.webank.eggroll.core.schedule.{BaseTaskPlan, ListScheduler}
-import com.webank.eggroll.core.session.StaticErConf
+import com.webank.eggroll.core.datastructure.RpcMessage
+import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.util.IdUtils
 
 import scala.collection.mutable
 
+
 class RollFrameScheduler(session: ErSession) {
-  val scheduler = new ListScheduler
 
-  def mulMul(job: ErJob) : ErJob = {
-    run(new TorchTask(uri = new CommandURI("EggFrame.runTask"),job = job))
-  }
-
-  def mapBatches(job: ErJob): ErJob = {
-    // todo: deal with output
-    run(new MapBatchTask(uri = new CommandURI("EggFrame.runTask"), job = job))
-  }
-
-  def reduce(job: ErJob): ErJob = {
-    run(new ReduceBatchTask(uri = new CommandURI("EggFrame.runTask"), job = job))
-  }
-
-  def aggregate(job: ErJob): ErJob = {
-    run(new AggregateBatchTask(uri = new CommandURI("EggFrame.runTask"), job = job))
-  }
-
-  def run(taskPlan: BaseTaskPlan): ErJob = {
-    scheduler.addPlan(taskPlan)
-    println("\nbegin run rollframe job\n")
-    run(scheduler.getPlan())
-    println("\nend run rollframe job\n")
-    taskPlan.job
-  }
-
-  def companionEgg(): EggFrame = new EggFrame
-
-  def run(plan: TaskPlan): Array[ErTask] = {
-    val tasks = decomposeJob(taskPlan = plan)
+  def run(job: ErJob, isAggregate:Boolean = false, shouldShuffle:Boolean = false): Array[ErPair] = {
+    val tasks = decomposeJob(job, isAggregate, shouldShuffle)
     val commandClient = new CommandClient()
-    val results = commandClient.call[ErTask](commandUri = plan.uri, args = tasks.map(t => (Array[RpcMessage](t), t.inputs.head.processor.commandEndpoint)))
-    tasks
+    val uri = new CommandURI("EggFrame.runTask")
+    commandClient.call[ErPair](
+      commandUri = uri,
+      args = tasks.map(t => (Array[RpcMessage](t), t.inputs.head.processor.commandEndpoint)))
   }
 
   def populateProcessor(stores: Array[ErStore]): Array[ErStore] =
-    stores.map(store => store.copy(partitions = store.partitions.map(partition => partition.copy(processor = session.routeToEgg(partition)))))
+    stores.map(store => store.copy(partitions =
+      store.partitions.map(partition =>
+        partition.copy(processor = session.routeToEgg(partition)))))
 
-  def decomposeJob(taskPlan: TaskPlan): Array[ErTask] = {
-    val job = taskPlan.job
+  def decomposeJob(job: ErJob, isAggregate:Boolean, shouldShuffle:Boolean): Array[ErTask] = {
     val inputStores: Array[ErStore] = job.inputs
     val partitions = inputStores.head.partitions
     val inputPartitionSize = partitions.length
@@ -80,11 +53,11 @@ class RollFrameScheduler(session: ErSession) {
     result.sizeHint(outputStores(0).partitions.length)
 
     var aggregateOutputPartition: ErPartition = null
-    if (taskPlan.isAggregate) {
-      aggregateOutputPartition = ErPartition(id = 0, storeLocator = outputStores.head.storeLocator, processor = session.routeToEgg(partitions(0)))
+    if (isAggregate) {
+      aggregateOutputPartition = ErPartition(id = 0, storeLocator = outputStores.head.storeLocator,
+        processor = session.routeToEgg(partitions(0)))
     }
-
-    val populatedJob = if (taskPlan.shouldShuffle) {
+    val populatedJob = if (shouldShuffle) {
       // TODO:2: check populated
       job.copy(
         inputs = populateProcessor(job.inputs),
@@ -103,7 +76,7 @@ class RollFrameScheduler(session: ErSession) {
           ErPartition(id = i, storeLocator = inputStore.storeLocator, processor = session.routeToEgg(partitions(i))))
       })
 
-      if (taskPlan.isAggregate) {
+      if (isAggregate) {
         outputPartitions.append(aggregateOutputPartition)
       } else {
         outputStores.foreach(outputStore => {

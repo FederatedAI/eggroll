@@ -1,9 +1,7 @@
-package com.webank.eggroll.rollframe.pytorch.linalg
+package com.webank.eggroll.rollframe.pytorch
 
 import com.webank.eggroll.format.{ColumnVectors, FrameBatch, FrameSchema}
 import com.webank.eggroll.rollframe.TestAssets
-import com.webank.eggroll.rollframe.pytorch.Torch
-import com.webank.eggroll.rollframe.pytorch.native.LibraryLoader
 import com.webank.eggroll.util.SchemaUtil
 import junit.framework.TestCase
 import org.junit.{Before, Test}
