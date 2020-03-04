@@ -21,12 +21,9 @@ import java.util.Random
 import java.util.concurrent.{Callable, Executors}
 
 import com.webank.eggroll.core.constant.StringConstants
-import com.webank.eggroll.core.meta.{ErPartition, ErProcessor, ErStore, ErStoreLocator}
-import com.webank.eggroll.core.session.StaticErConf
+import com.webank.eggroll.core.meta.{ErPartition, ErStore, ErStoreLocator}
 import com.webank.eggroll.format._
-import com.webank.eggroll.rollframe.RfServerLauncher.ctx
-import com.webank.eggroll.rollframe.pytorch.linalg.Matrices
-import com.webank.eggroll.rollframe.pytorch.native.LibraryLoader
+import com.webank.eggroll.rollframe.pytorch.{LibraryLoader, Matrices}
 import com.webank.eggroll.util.SchemaUtil
 import junit.framework.TestCase
 import org.junit.{Before, Test}

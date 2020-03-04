@@ -19,7 +19,7 @@ package com.webank.eggroll.rollframe
 import com.webank.eggroll.format._
 import org.junit.Test
 
-class CollectiveTransferTests {
+class FrameTransferTests {
   private def getSchema(fieldCount:Int):String = {
     val sb = new StringBuilder
     sb.append("""{

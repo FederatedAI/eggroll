@@ -24,32 +24,79 @@ import java.nio.channels.{ServerSocketChannel, SocketChannel}
 import java.util.concurrent.Executors
 
 import com.webank.eggroll.core.meta.ErProcessor
-import com.webank.eggroll.format.{FrameBatch, FrameStore, FrameReader, FrameWriter}
+import com.webank.eggroll.format.{FrameBatch, FrameReader, FrameStore, FrameWriter}
 
-case class BatchData(headerSize: Int, header: Array[Byte], bodySize: Int, body: Array[Byte])
+trait FrameTransfer {
+  def send(id: Long, path: String, frameBatch: FrameBatch): Unit = send(id, path, Iterator(frameBatch))
+  def send(id: Long, path: String, frameBatch: Iterator[FrameBatch]): Unit
+  def scatter(path: String, frameBatches: Iterator[FrameBatch]): Unit
+  def broadcast(path: String, frameBatches: Iterator[FrameBatch]): Unit
+}
 
-case class BatchID(id: Array[Byte])
-
-trait TransferService
-
-trait CollectiveTransfer
-
-class NioCollectiveTransfer(nodes: Array[ErProcessor], timeout: Int = 600 * 1000) extends CollectiveTransfer {
+class NioFrameTransfer(nodes: Array[ErProcessor], timeout: Int = 600 * 1000) extends FrameTransfer {
   // will open all channel,but some don't be used
   private lazy val clients = nodes.map { node =>
     (node.id, new NioTransferEndpoint().runClient(node.transferEndpoint.host, node.transferEndpoint.port))
   }.toMap
 
-  def send(id: Long, path: String, frameBatch: FrameBatch): Unit = {
-    // for aggregate, only sent FrameDb to rootServer
+  override def send(id: Long, path: String, frameBatch: Iterator[FrameBatch]): Unit = {
     clients(id).send(path, frameBatch)
+  }
+
+  override def broadcast(path: String, frameBatches: Iterator[FrameBatch]): Unit = {
+    nodes.foreach { server =>
+      frameBatches.foreach(fb => send(server.id, path, fb))
+    }
+  }
+
+  override def scatter(path: String, frameBatches: Iterator[FrameBatch]): Unit = {
+
   }
 }
 
-object NioTransferEndpoint {
-  val num = 0
+case class NioTransferHead(action:String, path:String, batchSize:Int) {
+  def write(ch: SocketChannel):Unit = {
+    val pathBytes = path.getBytes()
+    val headLen = 4 + 4 + pathBytes.length
+    val headBuf = ByteBuffer.allocateDirect(headLen + 4)
+    headBuf.putInt(headLen)
+    val actionInt = action match {
+      case "send" => 1
+      case "receive" => 2
+      case x => throw new IllegalArgumentException(s"unsupported action:$x")
+    }
+    headBuf.putInt(actionInt)
+    headBuf.putInt(batchSize) // if send all batches, set batchSize = 1
+    headBuf.put(pathBytes)
+    headBuf.flip()
+    ch.write(headBuf)
+    headBuf.clear()
+  }
 }
+object NioTransferHead {
+  def read(ch: SocketChannel): NioTransferHead = {
+    val headLenBuf = ByteBuffer.allocateDirect(4)
+    ch.read(headLenBuf)
+    headLenBuf.flip()
+    val headLen = headLenBuf.getInt()
+    val headBuf = ByteBuffer.allocateDirect(headLen.toInt)
+    ch.read(headBuf)
+    headBuf.flip()
+    val action = headBuf.getInt() match {
+      case 1 => "send"
+      case 2 => "receive"
+      case x => throw new IllegalArgumentException(s"unsupported action:$x")
+    }
 
+    val batchSize = headBuf.getInt()
+    val bytes = new Array[Byte](headLen.toInt - 8)
+    headBuf.get(bytes)
+    val path = new String(bytes)
+    headLenBuf.clear()
+    headBuf.clear()
+    NioTransferHead(action = action, path = path, batchSize = batchSize)
+  }
+}
 class NioTransferEndpoint {
   private var port = 0
   def getPort:Int = port
@@ -71,25 +118,19 @@ class NioTransferEndpoint {
               println("currentThread = " + Thread.currentThread.getName)
               val ch = socketChannel
               while (true) {
-                val headLenBuf = ByteBuffer.allocateDirect(8)
-                ch.read(headLenBuf)
-                println("save start: receive new batch")
-                val headLen = headLenBuf.getLong(0)
-                if (headLen > 1000 || headLen <= 0) {
-                  println("head too long:" + headLen + " port:" + port)
-                  throw new IllegalArgumentException("head too long:" + headLen)
+                val head = NioTransferHead.read(ch)
+                println("server receive head = " + head)
+                // only support one batch now
+                if(head.action == "send") { // client send
+                  val fr = new FrameReader(ch)
+                  FrameStore.queue(head.path, head.batchSize).writeAll(fr.getColumnarBatches())
+                } else if (head.action  == "receive") { // client recv
+                  head.write(ch)
+                  writeFrameBatches(ch, FrameStore.queue(head.path, head.batchSize).readAll())
+                } else {
+                  throw new IllegalArgumentException(s"unsupported action:$head")
                 }
-                val headPathBuf = ByteBuffer.allocateDirect(headLen.toInt)
-                ch.read(headPathBuf)
-                headPathBuf.flip()
-                val bytes = new Array[Byte](headLen.toInt)
-                headPathBuf.get(bytes)
-                val path = new String(bytes)
-                headLenBuf.clear()
-                headPathBuf.clear()
-                val fr = new FrameReader(ch)
-                FrameStore.queue(path, -1).writeAll(fr.getColumnarBatches())
-                println("save finished:" + path)
+                println("save finished:" + head)
               }
             }
           })
@@ -106,26 +147,33 @@ class NioTransferEndpoint {
     this
   }
 
-  def send(path: String, frameBatch: FrameBatch): Unit = {
+  def writeFrameBatches(ch:SocketChannel, frameBatches: Iterator[FrameBatch]):Unit = {
+    if(frameBatches.hasNext){
+      val fw = new FrameWriter(frameBatches.next(), ch)
+      fw.write()
+      while (frameBatches.hasNext) {
+        fw.writeSibling(frameBatches.next())
+      }
+      fw.close(false)
+    }
+  }
+  def send(path: String, frameBatch: FrameBatch): Unit = send(path, Iterator(frameBatch))
+  def send(path: String, frameBatches: Iterator[FrameBatch]): Unit = {
     println("send start:" + path)
     val ch = clientChannel
-
-    val pathBytes = path.getBytes()
-    val headLen = pathBytes.length
-    val headBuf = ByteBuffer.allocateDirect(8 + pathBytes.length)
-    headBuf.putLong(headLen)
-    headBuf.put(pathBytes)
-    headBuf.flip()
-    ch.write(headBuf)
-    headBuf.clear()
-    val fw = new FrameWriter(frameBatch, ch)
-    fw.write()
-    fw.close(false)
-
-
+    NioTransferHead(action = "send", path = path, batchSize = -1).write(ch)
+    writeFrameBatches(ch, frameBatches)
     println("send finished:" + path)
   }
-
+  def receive(path: String, batchSize:Int = 1): Iterator[FrameBatch] = {
+    val ch = clientChannel
+    val head = NioTransferHead(action = "receive", path = path, batchSize = batchSize)
+    head.write(ch)
+    val recvHead = NioTransferHead.read(ch)
+    require(path == recvHead.path, s"error receive:$recvHead != $head")
+    val fr = new FrameReader(ch)
+    fr.getColumnarBatches()
+  }
 }
 
 
