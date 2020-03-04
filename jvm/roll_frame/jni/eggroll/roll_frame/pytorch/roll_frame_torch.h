@@ -31,6 +31,22 @@ JNIEXPORT jdoubleArray JNICALL Java_com_webank_eggroll_rollframe_pytorch_Torch_m
 JNIEXPORT jdoubleArray JNICALL Java_com_webank_eggroll_rollframe_pytorch_Torch_mm__JJ_3DJJ
   (JNIEnv *, jclass, jlong, jlong, jdoubleArray, jlong, jlong);
 
+/*
+ * Class:     com_webank_eggroll_rollframe_pytorch_Torch
+ * Method:    getTorchScript
+ * Signature: (Ljava/lang/String;)J
+ */
+JNIEXPORT jlong JNICALL Java_com_webank_eggroll_rollframe_pytorch_Torch_getTorchScript
+  (JNIEnv *, jclass, jstring);
+
+/*
+ * Class:     com_webank_eggroll_rollframe_pytorch_Torch
+ * Method:    run
+ * Signature: (J[Lcom/webank/eggroll/rollframe/pytorch/TorchTensor;[D)[D
+ */
+JNIEXPORT jdoubleArray JNICALL Java_com_webank_eggroll_rollframe_pytorch_Torch_run
+  (JNIEnv *, jclass, jlong, jobjectArray, jdoubleArray);
+
 #ifdef __cplusplus
 }
 #endif

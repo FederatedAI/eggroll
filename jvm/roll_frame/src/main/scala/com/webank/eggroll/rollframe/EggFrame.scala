@@ -27,6 +27,7 @@ import com.webank.eggroll.core.serdes.DefaultScalaSerdes
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.util.ThreadPoolUtils
 import com.webank.eggroll.format.{FrameBatch, FrameStore, _}
+import com.webank.eggroll.rollframe.pytorch.{Script, Torch, TorchTensor}
 import com.webank.eggroll.rollframe.pytorch.linalg.Matrices
 
 import scala.collection.immutable.Range.Inclusive
@@ -90,14 +91,14 @@ class EggFrame {
                   matrix: Array[Double],
                   rows: Int,
                   cols: Int
-               ): Unit = {
+                 ): Unit = {
     val queuePath = task.id + "-doing"
     // total mean batch size, if given more than one, it just get one.
     val queue = FrameStore.queue(queuePath, 1)
     input.foreach { fb =>
       ThreadPoolUtils.defaultThreadPool.submit(new Runnable {
         override def run(): Unit = {
-          println(fb.rowCount,fb.fieldCount)
+          println(fb.rowCount, fb.fieldCount)
           var start = System.currentTimeMillis()
           val cb = fb.toColumnVectors
           println(s"FrameBatch to ColumnVectors time = ${System.currentTimeMillis() - start}")
@@ -125,11 +126,58 @@ class EggFrame {
       ThreadPoolUtils.defaultThreadPool.submit(new Runnable {
         override def run(): Unit = {
           var start = System.currentTimeMillis()
-          val cf = new ColumnFrame(fb,rows)
+          val cf = new ColumnFrame(fb, rows)
           println(s"get CF time = ${System.currentTimeMillis() - start}")
           start = System.currentTimeMillis()
           val resFb = Matrices.matMulToFb(cf, matrix, rows, cols)
           println(s"matMul and store as Fb time = ${System.currentTimeMillis() - start}")
+          queue.append(resFb)
+        }
+      })
+    }
+    output.writeAll(queue.readAll())
+  }
+
+  def runTorchMerge(task: ErTask,
+                    batches: Iterator[FrameBatch],
+                    output: FrameStore,
+                    path: String,
+                    parameters: Array[Double]): Unit ={
+    val queuePath = "gather:" + task.job.id
+    val partition = task.inputs.head
+    val localServer = partition.processor
+    val localBatch = batches.next()
+    if (localServer.commandEndpoint.host.equals(rootServer.commandEndpoint.host)) {
+      // the same root server
+      if (partition.id == 0) {
+        println("run merge ....")
+        FrameStore.queue(queuePath, -1).writeAll(Iterator(localBatch))
+        // TODO: total partition is MOCK, how to get partitions count
+        val allFrameBatch = FrameStore.queue(queuePath, 3).readAll()
+        val resFb = Script.runTorchMerge(path,allFrameBatch,parameters)
+        output.append(resFb)
+      } else {
+        // the same root server but different partition
+        FrameStore.queue(queuePath, -1).writeAll(Iterator(localBatch))
+      }
+    } else {
+      transferService.send(rootServer.id, queuePath, localBatch)
+    }
+  }
+  def runTorchMap(task: ErTask,
+                  input: Iterator[FrameBatch],
+                  output: FrameStore,
+                  path: String,
+                  parameters: Array[Double]
+                 ): Unit = {
+    val queuePath = task.id + "-doing"
+    // total mean batch size, if given more than one, it just get one.
+    val queue = FrameStore.queue(queuePath, 1)
+    import com.webank.eggroll.rollframe.pytorch.Script
+    input.foreach { fb =>
+      ThreadPoolUtils.defaultThreadPool.submit(new Runnable {
+        override def run(): Unit = {
+          val resFb = Script.runTorchMap(path,fb,parameters)
           queue.append(resFb)
         }
       })
@@ -318,15 +366,24 @@ class EggFrame {
         val threadsNum: Int = serdes.deserialize(functors(5).body)
         runAggregateBatch(task, inputDB.readAll(), outputDB, zeroValue, seqOp, combOp, byColumn, threadsNum)
       case EggFrame.mulMulTask =>
-        val matrix:Array[Double] = serdes.deserialize(functors.head.body)
+        val matrix: Array[Double] = serdes.deserialize(functors.head.body)
         val rows: Int = serdes.deserialize(functors(1).body)
         val cols: Int = serdes.deserialize(functors(2).body)
         runMatMul(task, inputDB.readAll(), outputDB, matrix, rows, cols)
       case EggFrame.mulMulTaskV1 =>
-        val matrix:Array[Double] = serdes.deserialize(functors.head.body)
+        val matrix: Array[Double] = serdes.deserialize(functors.head.body)
         val rows: Int = serdes.deserialize(functors(1).body)
         val cols: Int = serdes.deserialize(functors(2).body)
         runMatMulV1(task, inputDB.readAll(), outputDB, matrix, rows, cols)
+      case "torch_map" =>
+        val parameters: Array[Double] = serdes.deserialize(functors.head.body)
+        val path: String = serdes.deserialize(functors(1).body)
+        runTorchMap(task, inputDB.readAll(), outputDB, path, parameters)
+      case "torch_merge" =>
+        // TODO: sent parameters to egg is not necessary
+        val parameters: Array[Double] = serdes.deserialize(functors.head.body)
+        val path: String = serdes.deserialize(functors(1).body)
+        runTorchMerge(task, inputDB.readAll(), outputDB, path, parameters)
       case t => throw new UnsupportedOperationException(t)
     }
     outputDB.close()
@@ -336,7 +393,7 @@ class EggFrame {
 }
 
 object EggFrame {
-  private lazy val session =  new ClusterManagerClient().getSession(ErSessionMeta(
+  private lazy val session = new ClusterManagerClient().getSession(ErSessionMeta(
     id = StaticErConf.getString(SessionConfKeys.CONFKEY_SESSION_ID, null)))
 
   val EggFrame = "EggFrame"
