@@ -333,15 +333,14 @@ class RollPair(object):
     def get(self, k, options: dict = None):
         if options is None:
             options = {}
-        L.info("get k:{}".format(k))
+        L.debug(f"get k: {k}")
         k = create_serdes(self.__store._store_locator._serdes).serialize(k)
         er_pair = ErPair(key=k, value=None)
         outputs = []
         value = None
         partition_id = self.partitioner(k)
         egg = self.ctx.route_to_egg(self.__store._partitions[partition_id])
-        L.info(egg._command_endpoint)
-        L.info(f"partitions count: {self.__store._store_locator._total_partitions}")
+        L.info(f"partitions count: {self.__store._store_locator._total_partitions}, target partition: {partition_id}, endpoint: {egg._command_endpoint}")
         inputs = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
         output = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
 
@@ -357,7 +356,6 @@ class RollPair(object):
                       inputs=inputs,
                       outputs=output,
                       job=job)
-        L.info("start send req")
         job_resp = self.__command_client.simple_sync_send(
                 input=task,
                 output_type=ErPair,

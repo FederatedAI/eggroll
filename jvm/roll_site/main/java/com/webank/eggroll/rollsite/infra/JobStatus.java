@@ -16,7 +16,6 @@ public class JobStatus {
     private static final LoadingCache<String, AtomicInteger> jobIdToPutBatchCount;
     private static final LoadingCache<String, String> tagkeyToObjType;
 
-
     static {
         jobIdToSessionId = CacheBuilder.newBuilder()
             .maximumSize(1000000)
@@ -67,6 +66,7 @@ public class JobStatus {
                     throw new IllegalStateException("loading of this cache is not supported");
                 }
             });
+
     }
 
     private static final Object latchLock = new Object();
@@ -142,6 +142,32 @@ public class JobStatus {
         }
     }
 
+    public static boolean waitUntilAllCountDown(String jobId, long timeout, TimeUnit unit) {
+        CountDownLatch latch = null;
+        long timeoutWallClock = System.currentTimeMillis() + unit.toMillis(timeout);
+        try {
+            while (latch == null && System.currentTimeMillis() <= timeoutWallClock) {
+                synchronized (latchLock) {
+                    latch = jobIdToFinishLatch.getIfPresent(jobId);
+                }
+
+                if (latch == null) {
+                    Thread.sleep(50);
+                }
+            }
+
+            if (latch != null) {
+                return latch.await(timeout, unit);
+            } else {
+                return false;
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
+        }
+
+    }
+
     public static void setType(String name, String type) {
         tagkeyToObjType.put(name, type);
     }
@@ -182,5 +208,22 @@ public class JobStatus {
 
     public static boolean isPutBatchFinished(String jobId) {
         return getPutBatchCount(jobId) == 0;
+    }
+
+    public static boolean waitUntilPutBatchFinished(String jobId, long timeout, TimeUnit unit) {
+        long timeoutWallClock = System.currentTimeMillis() + unit.toMillis(timeout);
+        boolean result = false;
+        try {
+            result = getPutBatchCount(jobId) == 0;
+            while (!result && System.currentTimeMillis() <= timeoutWallClock) {
+                Thread.sleep(20);
+                result = getPutBatchCount(jobId) == 0;
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
+        }
+
+        return result;
     }
 }

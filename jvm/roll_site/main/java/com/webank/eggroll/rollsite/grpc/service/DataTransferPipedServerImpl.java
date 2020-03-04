@@ -27,6 +27,7 @@ import com.webank.eggroll.core.meta.TransferModelPbMessageSerdes;
 import com.webank.eggroll.core.transfer.Transfer.RollSiteHeader;
 import com.webank.eggroll.core.util.ErrorUtils;
 import com.webank.eggroll.core.util.ToStringUtils;
+import com.webank.eggroll.rollsite.RollSiteUtil;
 import com.webank.eggroll.rollsite.event.model.PipeHandleNotificationEvent;
 import com.webank.eggroll.rollsite.factory.EventFactory;
 import com.webank.eggroll.rollsite.factory.PipeFactory;
@@ -226,16 +227,18 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
             }
 
             if (request.getHeader().getOperator().equals("init_job_session_pair")) {
-                String job_id = request.getHeader().getTask().getModel().getName();
-                String session_id = request.getHeader().getTask().getModel().getDataKey();
+                String jobId = request.getHeader().getTask().getModel().getName();
+                String sessionId = request.getHeader().getTask().getModel().getDataKey();
                 Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
                 packet = packetBuilder.setHeader(request.getHeader()).build();
                 // TODO:1: rename job_id to federation_session_id, session_id -> eggroll_session_id
-                LOGGER.info("init_job_session_pair, job_id:{}, session_id:{}", job_id, session_id);
-                JobStatus.putJobIdToSessionId(job_id, session_id);
+                LOGGER.info("init_job_session_pair, job_id:{}, session_id:{}", jobId, sessionId);
+                JobStatus.putJobIdToSessionId(jobId, sessionId);
 
                 responseObserver.onNext(packet);
                 responseObserver.onCompleted();
+
+                RollSiteUtil.sessionCache().get(sessionId);
                 return;
             }
 
@@ -274,7 +277,10 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                     request.getHeader().getTask().getModel().getName());
                 String tagKey = genTagKey(rollSiteHeader);
 
-                boolean jobFinished = JobStatus.isAllCountDown(tagKey) && JobStatus.getPutBatchCount(tagKey) == 0;
+                long timeout = 5;
+                TimeUnit unit = TimeUnit.MINUTES;
+                boolean jobFinished = JobStatus.waitUntilAllCountDown(tagKey, timeout, unit)
+                    && JobStatus.waitUntilPutBatchFinished(tagKey, timeout, unit);
                 Proxy.Metadata header = request.getHeader();
                 String type = StringConstants.EMPTY();
                 if (jobFinished) {
