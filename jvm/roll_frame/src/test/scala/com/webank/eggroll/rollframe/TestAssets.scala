@@ -118,4 +118,18 @@ object TestAssets {
   def setMode(mode: String): Unit = {
     this.mode = mode
   }
+
+  def getSchema(fieldCount:Int):String = {
+    val sb = new StringBuilder
+    sb.append("""{
+                 "fields": [""")
+    (0 until 1000).foreach{i =>
+      if(i > 0) {
+        sb.append(",")
+      }
+      sb.append(s"""{"name":"double$i", "type": {"name" : "floatingpoint","precision" : "DOUBLE"}}""")
+    }
+    sb.append("]}")
+    sb.toString()
+  }
 }
