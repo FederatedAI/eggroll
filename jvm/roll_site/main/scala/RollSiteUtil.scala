@@ -18,7 +18,9 @@
 package com.webank.eggroll.rollsite
 
 import java.nio.ByteBuffer
+import java.util.concurrent.TimeUnit
 
+import com.google.common.cache.{CacheBuilder, CacheLoader, LoadingCache}
 import com.google.protobuf.ByteString
 import com.webank.eggroll.core.ErSession
 import com.webank.eggroll.core.datastructure.LinkedBlockingBroker
@@ -31,14 +33,18 @@ import com.webank.eggroll.rollsite.infra.JobStatus
 class RollSiteUtil(val erSessionId: String,
                    rollSiteHeader: ErRollSiteHeader,
                    options: Map[String, String] = Map.empty) extends Logging {
-  private val session =  new ErSession(sessionId = erSessionId, createIfNotExists = false)
+  logDebug("maxmax: ready to init session")
+  private val session = RollSiteUtil.sessionCache.get(erSessionId)
+  logDebug("maxmax: ready to init context")
   private val ctx = new RollPairContext(session)
+  logDebug("maxmax: context inited")
   //private val nameStripped = name
   val namespace = rollSiteHeader.rollSiteSessionId
   val name = rollSiteHeader.concat()
 
-  logDebug("scalaPutBatch name:" + name + ",namespace:" + namespace)
+  logDebug("scalaPutBatch name: " + name + ", namespace: " + namespace)
   val rp: RollPair = ctx.load(namespace, name, options = rollSiteHeader.options)
+  logDebug("maxmax: table loaded")
 
   Runtime.getRuntime.addShutdownHook(new Thread(){
     override def run(): Unit = {
@@ -69,4 +75,19 @@ class RollSiteUtil(val erSessionId: String,
     }
   }
 
+}
+
+object RollSiteUtil {
+  // todo: consider session closed
+  val sessionCache: LoadingCache[String, ErSession] = CacheBuilder.newBuilder
+    .maximumSize(1000)
+    .expireAfterWrite(10, TimeUnit.MINUTES)
+    .concurrencyLevel(30)
+    .recordStats
+    .softValues
+    .build(new CacheLoader[String, ErSession]() {
+    override def load(key: String): ErSession = {
+      new ErSession(sessionId = key, createIfNotExists = false)
+    }
+  })
 }

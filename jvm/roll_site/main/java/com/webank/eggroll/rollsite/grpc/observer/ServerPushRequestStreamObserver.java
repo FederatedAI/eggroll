@@ -229,14 +229,18 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
                     String job_id = rollSiteHeader.rollSiteSessionId();
                     try {
                         while (!JobStatus.isJobIdToSessionRegistered(job_id)) {
-                            Thread.sleep(1000);
+                            Thread.sleep(20);
                         }
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
                     String sessionId = JobStatus.getErSessionId(job_id);
+                    LOGGER.info("ready to create rollsite util");
                     if(sessionId != null) {
                         rollSiteUtil = new RollSiteUtil(sessionId, rollSiteHeader, new Map1<>("job_id_tag", Thread.currentThread().getName()));
+                    } else {
+                        Throwable t = new IllegalArgumentException("session id does not exist");
+                        onError(t);
                     }
 
 /*                    String tagKey = rollSiteHeader.concat(StringConstants.HASH(), new String[]{"__federation__"});
