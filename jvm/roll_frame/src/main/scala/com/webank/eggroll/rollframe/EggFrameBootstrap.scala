@@ -8,8 +8,8 @@ import java.util.concurrent.ConcurrentHashMap
 import com.webank.eggroll.core.Bootstrap
 import com.webank.eggroll.core.client.ClusterManagerClient
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
-import com.webank.eggroll.core.constant.{CoreConfKeys, ProcessorStatus, ProcessorTypes, SessionConfKeys, StringConstants}
-import com.webank.eggroll.core.meta.{ErEndpoint, ErJob, ErProcessor, ErTask}
+import com.webank.eggroll.core.constant._
+import com.webank.eggroll.core.meta.{ErEndpoint, ErPair, ErProcessor, ErTask}
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.util.{CommandArgsUtils, Logging}
 import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
@@ -32,7 +32,7 @@ class EggFrameBootstrap extends Bootstrap with Logging {
     CommandRouter.register(
       serviceName = "EggFrame.runTask",
       serviceParamTypes = Array(classOf[ErTask]),
-      serviceResultTypes = Array(classOf[ErTask]),
+      serviceResultTypes = Array(classOf[ErPair]),
       routeToClass = classOf[EggFrame],
       routeToMethodName = "runTask")
   }
@@ -41,7 +41,7 @@ class EggFrameBootstrap extends Bootstrap with Logging {
     // todo:2: heartbeat service
     val sessionId = cmd.getOptionValue("session-id")
     val clusterManager = cmd.getOptionValue("cluster-manager", "localhost:4670")
-    val nodeManager = cmd.getOptionValue("node-manager", "localhost:9394")
+//    val nodeManager = cmd.getOptionValue("node-manager", "localhost:9394")
     val serverNodeId = cmd.getOptionValue("server-node-id", "0").toLong
     val processorId = cmd.getOptionValue("processor-id", "0").toLong
 
@@ -67,13 +67,13 @@ class EggFrameBootstrap extends Bootstrap with Logging {
 
       Runtime.getRuntime.addShutdownHook(new Thread() {
         override def run(): Unit = { // Use stderr here since the logger may have been reset by its JVM shutdown hook.
-          logInfo(s"*** ${ProcessorTypes.EGG_FRAME} exit gracefully. sessionId: ${sessionId}, serverNodeId: ${serverNodeId}, processorId: ${processorId}, port: ${myCommandPort} ***")
+          logInfo(s"""*** ${ProcessorTypes.EGG_FRAME} exit gracefully. sessionId: $sessionId, serverNodeId: $serverNodeId, processorId: $processorId, port: $myCommandPort ***""")
           val terminatedSelf = myself.copy(status = ProcessorStatus.STOPPED)
           clusterManagerClient.heartbeat(terminatedSelf)
           this.interrupt()
         }
       })
-      logInfo(s"heartbeated processorId: ${processorId}")
+      logInfo(s"""heartbeated processorId: $processorId""")
     }
   }
   override def start(): Unit = {
@@ -82,7 +82,7 @@ class EggFrameBootstrap extends Bootstrap with Logging {
     val transferServer = new NioTransferEndpoint()
     transferServer.runServer("0.0.0.0", specTransferPort)
     val transferPort = transferServer.getPort
-    logInfo(s"server started at transferPort: ${transferPort}")
+    logInfo(s"""server started at transferPort: $transferPort""")
     val cmdServer = NettyServerBuilder.forAddress(new InetSocketAddress(specPort))
       .maxInboundMetadataSize(1024*1024)
       .addService(new CommandService)
@@ -90,7 +90,7 @@ class EggFrameBootstrap extends Bootstrap with Logging {
     cmdServer.start()
     val port = cmdServer.getPort
 //    StaticErConf.setPort(port)
-    logInfo(s"server started at ${port}")
+    logInfo(s"""server started at $port""")
     reportStatus(port, transferPort)
   }
 }

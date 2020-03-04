@@ -15,10 +15,9 @@
  *
  */
 
-package com.webank.eggroll.rollframe.pytorch.linalg
+package com.webank.eggroll.rollframe.pytorch
 
-import com.webank.eggroll.format.{ColumnVectors, FrameBatch, FrameSchema, FrameUtils, ColumnFrame}
-import com.webank.eggroll.rollframe.pytorch.Torch
+import com.webank.eggroll.format._
 import com.webank.eggroll.util.SchemaUtil
 
 class Matrices {

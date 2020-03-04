@@ -15,7 +15,7 @@
  *
  */
 
-package com.webank.eggroll.rollframe.pytorch.native
+package com.webank.eggroll.rollframe.pytorch
 
 object LibraryLoader {
   val libFiles: Array[String] = Array("roll_frame_torch")

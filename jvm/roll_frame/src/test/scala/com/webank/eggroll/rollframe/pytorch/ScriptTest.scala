@@ -1,8 +1,6 @@
-package com.webank.eggroll.rollframe.pytorch.script
-import com.webank.eggroll.format.{ColumnFrame, FrameBatch, FrameSchema, FrameUtils}
-import com.webank.eggroll.rollframe.pytorch.native.LibraryLoader
-import com.webank.eggroll.rollframe.pytorch.{Torch, TorchTensor}
-import junit.framework.TestCase
+package com.webank.eggroll.rollframe.pytorch
+
+import com.webank.eggroll.format.{FrameBatch, FrameSchema, FrameUtils}
 import org.junit.{Before, Test}
 
 class ScriptTest {
@@ -23,7 +21,7 @@ class ScriptTest {
     tensor.setSize(fb.rowCount)
     val parameters:Array[Double] = Array(matrixCols.toDouble) ++ Array(newMatrixCols.toDouble) ++ Array.fill[Double](matrixCols*newMatrixCols)(0.5);
     // run model
-    val ptr = Torch.getTorchScript("D:\\program\\Java\\torch_run_lib\\torch_model_map.pt")
+    val ptr = Torch.getTorchScript("jvm/roll_frame/src/test/resources/torch_model_map.pt")
     val res = Torch.run(ptr,Array(tensor),parameters)
     println(res.size)
     println(res(0),res(1))
@@ -46,7 +44,7 @@ class ScriptTest {
     tensor1.setSize(fb1.rowCount)
 
     val parameters:Array[Double] = Array(0.0)
-    val ptr = Torch.getTorchScript("D:\\program\\Java\\torch_run_lib\\torch_model_merge.pt")
+    val ptr = Torch.getTorchScript("jvm/roll_frame/src/test/resources/orch_model_merge.pt")
     val res = Torch.run(ptr,Array(tensor,tensor1),parameters)
     println(res.length)
     println(res(0))
