@@ -90,6 +90,7 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
   }
 
   def torchMerge(path: String, parameters: Array[Double], output: ErStore = null): RollFrame = {
+    val partitionNums = store.partitions.length
     def func(ctx: EggFrameContext, task: ErTask, input: Iterator[FrameBatch], output: FrameStore):ErPair = {
       val queuePath = "gather:" + task.job.id
       val partition = task.inputs.head
@@ -101,7 +102,7 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
           println("run merge ....")
           FrameStore.queue(queuePath, -1).writeAll(Iterator(localBatch))
           // TODO: total partition is MOCK, how to get partitions count
-          val allFrameBatch = FrameStore.queue(queuePath, 3).readAll()
+          val allFrameBatch = FrameStore.queue(queuePath, partitionNums).readAll()
           val resFb = Script.runTorchMerge(path,allFrameBatch,parameters)
           output.append(resFb)
         } else {
