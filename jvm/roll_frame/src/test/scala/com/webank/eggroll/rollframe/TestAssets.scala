@@ -48,7 +48,6 @@ object TestAssets {
       RollFrameContext(new ErSession(sessionId = "debug-sid",
         processors = getLiveProcessorBatch().processors))
     }
-
   }
   /**
     * mock -- use to load Cache on local mode

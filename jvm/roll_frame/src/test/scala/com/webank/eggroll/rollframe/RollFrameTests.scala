@@ -45,6 +45,7 @@ class RollFrameTests {
     ta.setMode("local")
     // TODO: 3in1 run fail
     ctx = ta.getRfContext(true)
+
     HdfsBlockAdapter.fastSetLocal()
     try {
       LibraryLoader.load
@@ -583,13 +584,13 @@ class RollFrameTests {
 
   @Test
   def testTorchScriptMerge(): Unit ={
-    val input = ta.loadCache(ta.getRollFrameStore("a1Torch", "test1", StringConstants.FILE))
+    val input = ta.loadCache(ta.getRollFrameStore("a1TorchMap", "test1", StringConstants.FILE))
     val output = ta.getRollFrameStore("a1TorchMerge", "test1", StringConstants.FILE)
     val rf = ctx.load(input)
-    val parameters:Array[Double] = Array(fieldCount)
+    val parameters:Array[Double] = Array(3)
     rf.torchMerge("D:/program/Java/torch_run_lib/torch_model_merge.pt",parameters,output)
-    val result = FrameStore(output, 0).readOne()
-    println(s"sum = ${result.readDouble(0,0)},size = ${result.rowCount}")
+//    val result = FrameStore(output, 0).readOne()
+//    println(s"sum = ${result.readDouble(0,0)},size = ${result.rowCount}")
   }
 
   @Test
