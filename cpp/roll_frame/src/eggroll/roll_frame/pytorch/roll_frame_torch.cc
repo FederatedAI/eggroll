@@ -77,8 +77,8 @@ JNIEXPORT jlong JNICALL Java_com_webank_eggroll_rollframe_pytorch_Torch_getTorch
  * Method:    run
  * Signature: (J[Lcom/webank/eggroll/rollframe/pytorch/TorchTensor;[D)[D
  */
-JNIEXPORT jdoubleArray JNICALL Java_com_webank_eggroll_rollframe_pytorch_Torch_run__J_3Lcom_webank_eggroll_rollframe_pytorch_TorchTensor_2_3D
-(JNIEnv* env, jclass jcls, jlong jptr, jobjectArray jarray, jdoubleArray jparameters) {
+JNIEXPORT jdoubleArray JNICALL Java_com_webank_eggroll_rollframe_pytorch_Torch_run
+ (JNIEnv* env, jclass jcls, jlong jptr, jobjectArray jarray, jdoubleArray jparameters) {
 	torch::jit::script::Module* ptr = reinterpret_cast<torch::jit::script::Module*>(jptr);
 	assert(ptr != nullptr);
 	std::vector<torch::jit::IValue> inputs;
