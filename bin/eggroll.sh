@@ -51,7 +51,7 @@ main() {
 			;;
 		rollsite)
 			main_class=com.webank.eggroll.rollsite.Proxy
-			get_property "proxy.port"
+			get_property "eggroll.rollsite.port"
 			port=${property_value}
 			;;
 		*)
