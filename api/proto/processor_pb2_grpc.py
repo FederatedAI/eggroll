@@ -41,6 +41,11 @@ class ProcessServiceStub(object):
         request_serializer=processor__pb2.UnaryProcess.SerializeToString,
         response_deserializer=storage__basic__pb2.StorageLocator.FromString,
         )
+    self.mapPartitions2 = channel.unary_unary(
+        '/com.webank.ai.eggroll.api.computing.processor.ProcessService/mapPartitions2',
+        request_serializer=processor__pb2.UnaryProcess.SerializeToString,
+        response_deserializer=storage__basic__pb2.StorageLocator.FromString,
+        )
     self.glom = channel.unary_unary(
         '/com.webank.ai.eggroll.api.computing.processor.ProcessService/glom',
         request_serializer=processor__pb2.UnaryProcess.SerializeToString,
@@ -106,6 +111,13 @@ class ProcessServiceServicer(object):
     raise NotImplementedError('Method not implemented!')
 
   def mapPartitions(self, request, context):
+    # missing associated documentation comment in .proto file
+    pass
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
+  def mapPartitions2(self, request, context):
     # missing associated documentation comment in .proto file
     pass
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -179,6 +191,11 @@ def add_ProcessServiceServicer_to_server(servicer, server):
       ),
       'mapPartitions': grpc.unary_unary_rpc_method_handler(
           servicer.mapPartitions,
+          request_deserializer=processor__pb2.UnaryProcess.FromString,
+          response_serializer=storage__basic__pb2.StorageLocator.SerializeToString,
+      ),
+      'mapPartitions2': grpc.unary_unary_rpc_method_handler(
+          servicer.mapPartitions2,
           request_deserializer=processor__pb2.UnaryProcess.FromString,
           response_serializer=storage__basic__pb2.StorageLocator.SerializeToString,
       ),
