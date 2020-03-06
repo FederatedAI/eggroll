@@ -56,12 +56,14 @@ class LmdbAdapter(PairAdapter):
             super().__init__(options)
             self.path = options["path"]
             lmdb_map_size = options.get("lmdb_map_size", LMDB_MAP_SIZE if platform.system() != 'Windows' else LMDB_MAP_SIZE_WINDOWS)
-            create_if_missing = bool(options.get("create_if_missing", "True"))
+            create_if_missing = options.get("create_if_missing", "True")
             if self.path not in LmdbAdapter.env_dict:
                 if create_if_missing:
                     os.makedirs(self.path, exist_ok=True)
                 L.debug("lmdb init create env:{}".format(self.path))
                 writemap = False if platform.system() == 'Darwin' else True
+                if not os.path.exists(self.path):
+                    os.makedirs(self.path, exist_ok=True)
                 self.env = lmdb.open(self.path, create=create_if_missing, max_dbs=128, sync=False, map_size=lmdb_map_size, writemap=writemap)
                 self.sub_db = self.env.open_db(DEFAULT_DB)
                 LmdbAdapter.count_dict[self.path] = 0
