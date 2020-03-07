@@ -59,7 +59,6 @@ class RollSiteUtil(val erSessionId: String,
   }
 
   def putBatch(value: ByteString): Unit = {
-    JobStatus.increasePutBatchCount(name);
     try {
       if (value.size() == 0) {
         throw new IllegalArgumentException("roll site push batch zero size:" + name)
@@ -70,8 +69,13 @@ class RollSiteUtil(val erSessionId: String,
       rp.putBatch(broker, options = options)
 
       logInfo(s"put batch finished for name: ${name}, namespace: ${namespace}")
+    } catch {
+      case e: Exception => {
+        logError(e)
+        throw new RuntimeException(e)
+      }
     } finally {
-      JobStatus.decreasePutBatchCount(name);
+      JobStatus.increasePutBatchFinishedCount(name);
     }
   }
 
