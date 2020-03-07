@@ -221,7 +221,6 @@ class RollSite:
         self.ctx.pushing_task_count += 1
         futures = []
         for role_party_id in parties:
-            # for _partyId in _partyIds:
             _role = role_party_id[0]
             _party_id = str(role_party_id[1])
 

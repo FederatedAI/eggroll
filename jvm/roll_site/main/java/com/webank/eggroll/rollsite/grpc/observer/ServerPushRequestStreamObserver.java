@@ -201,13 +201,7 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
                     eventFactory.createPipeHandleNotificationEvent(
                         this, PipeHandleNotificationEvent.Type.PUSH, inputMetadata, pipe);
                 applicationEventPublisher.publishEvent(event);
-
-/*                CascadedCaller caller = applicationContext.getBean(CascadedCaller.class, event.getPipeHandlerInfo());
-                asyncThreadPool.submit(caller);*/
             } else {
-                //Thread thread = new putBatchThread(packet);
-                //thread.start();
-                //notify(pipe);
                 ByteString value = packet.getBody().getValue();
                 String name = packet.getHeader().getTask().getModel().getName();
                 String namespace = packet.getHeader().getTask().getModel().getDataKey();
@@ -242,11 +236,6 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
                         Throwable t = new IllegalArgumentException("session id does not exist");
                         onError(t);
                     }
-
-/*                    String tagKey = rollSiteHeader.concat(StringConstants.HASH(), new String[]{"__federation__"});
-                    if (!JobStatus.hasLatch(tagKey)) {
-                        JobStatus.createLatch(tagKey, totalPartition);
-                    }*/
                 }
 
                 if (value == null) {

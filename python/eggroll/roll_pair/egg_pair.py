@@ -19,7 +19,6 @@ import os
 import signal
 from collections.abc import Iterable
 from concurrent import futures
-from copy import copy
 
 import grpc
 import numpy as np
@@ -36,7 +35,7 @@ from eggroll.core.meta_model import ErPair
 from eggroll.core.meta_model import ErTask, ErProcessor, ErEndpoint
 from eggroll.core.proto import command_pb2_grpc, transfer_pb2_grpc
 from eggroll.core.transfer.transfer_service import GrpcTransferServicer, \
-    TransferClient, TransferService
+    TransferService
 from eggroll.core.utils import _exception_logger
 from eggroll.core.utils import hash_code
 from eggroll.core.utils import set_static_er_conf
@@ -136,7 +135,8 @@ class EggPair(object):
         elif task._name == 'count':
             L.info('egg_pair count call')
             with create_adapter(task._inputs[0]) as input_adapter:
-                result = ErPair(key=self.functor_serdes.serialize('result'), value=self.functor_serdes.serialize(input_adapter.count()))
+                result = ErPair(key=self.functor_serdes.serialize('result'),
+                                value=self.functor_serdes.serialize(input_adapter.count()))
 
         # TODO:1: multiprocessor scenario
         elif task._name == 'putAll':
@@ -185,15 +185,19 @@ class EggPair(object):
                 L.info('finish calculating')
             self._run_unary(map_wrapper, task, shuffle=True)
             L.info('map finished')
-        elif task._name == 'reduce':
-            job = copy(task._job)
-            reduce_functor = job._functors[0]
-            job._functors = [None, reduce_functor, reduce_functor]
-            reduce_task = copy(task)
-            reduce_task._job = job
 
-            self.aggregate(reduce_task, True)
+        elif task._name == 'reduce':
+            seq_op_result = self.aggregate_seq(task=task)
             L.info('reduce finished')
+            result = ErPair(key=self.functor_serdes.serialize(task._inputs[0]._id),
+                            value=self.functor_serdes.serialize(seq_op_result))
+
+        elif task._name == 'aggregate':
+            L.info('ready to aggregate')
+            seq_op_result = self.aggregate_seq(task=task)
+            L.info('aggregate finished')
+            result = ErPair(key=self.functor_serdes.serialize(task._inputs[0]._id),
+                            value=self.functor_serdes.serialize(seq_op_result))
 
         elif task._name == 'mapPartitions':
             def map_partitions_wrapper(input_iterator, key_serdes, value_serdes, output_writebatch):
@@ -256,14 +260,61 @@ class EggPair(object):
                         output_writebatch.put(k, v)
             self._run_unary(filter_wrapper, task)
 
-        elif task._name == 'aggregate':
-            L.info('ready to aggregate')
-            self.aggregate(task)
-            L.info('aggregate finished')
-
         elif task._name == 'join':
-            def join_wrapper(left_iterator, left_key_serdes, left_value_serdess,
-                    right_iterator, right_key_serdes, right_value_serdess,
+            def merge_join_wrapper(left_iterator, left_key_serdes, left_value_serdes,
+                    right_iterator, right_key_serdes, right_value_serdes,
+                    output_writebatch):
+                if not left_iterator.adapter.is_sorted() or not right_iterator.adapter.is_sorted():
+                    raise RuntimeError(f"merge join cannot be applied: not both store types support sorting. "
+                                       f"left type: {type(left_iterator.adapter)}, is_sorted: {left_iterator.adapter.is_sorted()}; "
+                                       f"right type: {type(right_iterator.adapter)}, is_sorted: {right_iterator.adapter.is_sorted()}")
+                f = create_functor(functors[0]._body)
+                is_same_serdes = type(left_key_serdes) == type(right_key_serdes)
+
+                l_iter = iter(left_iterator)
+                r_iter = iter(right_iterator)
+
+                k_left = None
+                l_v_bytes = None
+                k_right = None
+                r_v_bytes = None
+                itered = True
+                while itered:
+                    itered = False
+                    for cur_k_left, cur_l_v_bytes in l_iter:
+                        itered = True
+                        if k_left is None or cur_k_left >= k_right:
+                            k_left = cur_k_left
+                            l_v_bytes = cur_l_v_bytes
+                            if k_right is None or k_left >= k_right:
+                                break
+
+                    for cur_k_right_bytes, cur_r_v_bytes in r_iter:
+                        itered = True
+                        if is_same_serdes:
+                            cur_k_right = cur_k_right_bytes
+                        else:
+                            cur_k_right = left_key_serdes.serialize(right_key_serdes.deserialize(cur_k_right_bytes))
+
+                        if k_right is None or cur_k_right >= k_left:
+                            k_right = cur_k_right
+                            r_v_bytes = cur_r_v_bytes
+                            if k_right >= k_left:
+                                break
+
+                    if not itered:
+                        break
+
+                    if k_left == k_right:
+                        output_writebatch.put(k_left,
+                                              left_value_serdes.serialize(
+                                                      f(left_value_serdes.deserialize(l_v_bytes),
+                                                        right_value_serdes.deserialize(r_v_bytes))))
+                        k_left = None
+                        k_right = None
+
+            def hash_join_wrapper(left_iterator, left_key_serdes, left_value_serdes,
+                    right_iterator, right_key_serdes, right_value_serdes,
                     output_writebatch):
                 f = create_functor(functors[0]._body)
                 is_diff_serdes = type(left_key_serdes) != type(right_key_serdes)
@@ -272,13 +323,18 @@ class EggPair(object):
                         k_left = right_key_serdes.serialize(left_key_serdes.deserialize(k_left))
                     r_v_bytes = right_iterator.adapter.get(k_left)
                     if r_v_bytes:
-                        L.info("egg join:{}".format(right_value_serdess.deserialize(r_v_bytes)))
+                        #L.info("egg join:{}".format(right_value_serdes.deserialize(r_v_bytes)))
                         output_writebatch.put(k_left,
-                                              left_value_serdess.serialize(
-                                                      f(left_value_serdess.deserialize(l_v_bytes),
-                                                        right_value_serdess.deserialize(r_v_bytes))
-                                              ))
-            self._run_binary(join_wrapper, task)
+                                              left_value_serdes.serialize(
+                                                      f(left_value_serdes.deserialize(l_v_bytes),
+                                                        right_value_serdes.deserialize(r_v_bytes))))
+
+            join_type = task._job._options.get('join_type', 'merge')
+
+            if join_type == 'merge':
+                self._run_binary(merge_join_wrapper, task)
+            else:
+                self._run_binary(hash_join_wrapper, task)
 
         elif task._name == 'subtractByKey':
             def subtract_by_key_wrapper(left_iterator, left_key_serdes, left_value_serdess,
@@ -332,24 +388,23 @@ class EggPair(object):
                             value=self.functor_serdes.serialize(f(task._inputs)))
         return result
 
-    def aggregate(self, task: ErTask, is_reduce=False):
+    def aggregate_seq(self, task: ErTask):
         functors = task._job._functors
-        zero_value = None if functors[0] is None else create_functor(functors[0]._body)
-        seq_op = create_functor(functors[1]._body)
-        comb_op = create_functor(functors[2]._body)
+        is_reduce = functors[0]._name == 'reduce'
+        zero_value = None if is_reduce or functors[0] is None else create_functor(functors[0]._body)
+        if is_reduce:
+            seq_op = create_functor(functors[0]._body)
+        else:
+            seq_op = create_functor(functors[1]._body)
 
+        first = True
+        seq_op_result = zero_value
         input_partition = task._inputs[0]
-        serialized_seq_results = list()
+        input_key_serdes = create_serdes(input_partition._store_locator._serdes)
+        input_value_serdes = input_key_serdes
+
         with create_adapter(input_partition) as input_adapter, \
-                input_adapter.iteritems() as input_iter:
-            input_key_serdes = create_serdes(task._inputs[0]._store_locator._serdes)
-            input_value_serdes = input_key_serdes
-            output_key_serdes = create_serdes(task._outputs[0]._store_locator._serdes)
-            output_value_serdes = output_key_serdes
-            first = True
-
-            seq_op_result = zero_value
-
+            input_adapter.iteritems() as input_iter:
             for k_bytes, v_bytes in input_iter:
                 v = input_value_serdes.deserialize(v_bytes)
                 if is_reduce and first:
@@ -358,48 +413,7 @@ class EggPair(object):
                 else:
                     seq_op_result = seq_op(seq_op_result, v)
 
-
-            partition_id = input_partition._id
-            transfer_tag = task._job._id
-
-            if 0 == partition_id:
-                partition_size = input_partition._store_locator._total_partitions
-                queue = TransferService.get_or_create_broker(transfer_tag, write_signals=partition_size - 1)
-                if not first or not is_reduce:
-                    comb_op_result = seq_op_result
-                else:
-                    comb_op_result = zero_value
-
-                for r in queue:
-                    if r.data is None:
-                        continue
-                    v = output_value_serdes.deserialize(r.data)
-                    if v is None:
-                        continue
-                    if first and is_reduce:
-                        comb_op_result = v
-                        first = False
-                    else:
-                        comb_op_result = comb_op(comb_op_result, v)
-
-                L.info(f'aggregate finished. result: {comb_op_result} ')
-                with create_adapter(task._outputs[0]) as output_adapter, \
-                    output_adapter.new_batch() as output_writebatch:
-                    output_writebatch.put(output_key_serdes.serialize('result'), output_value_serdes.serialize(comb_op_result))
-
-                TransferService.remove_broker(transfer_tag)
-            else:
-                if not first or not is_reduce:
-                    serialized_seq_results.append(output_value_serdes.serialize(seq_op_result))
-                else:
-                    serialized_seq_results.append(output_value_serdes.serialize(None))
-                transfer_client = TransferClient()
-                future = transfer_client.send(broker=(v for v in serialized_seq_results),
-                                              endpoint=task._outputs[0]._processor._transfer_endpoint,
-                                              tag=transfer_tag)
-                future.result()
-
-        L.info('aggregate finished')
+        return seq_op_result
 
 
 def serve(args):
