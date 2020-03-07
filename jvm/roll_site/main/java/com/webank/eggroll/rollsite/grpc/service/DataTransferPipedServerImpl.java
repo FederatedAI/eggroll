@@ -202,19 +202,19 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
         boolean hasReturnedBefore = false;
         int emptyRetryCount = 0;
 
-        Proxy.Metadata inputMetadata = request.getHeader();
-        String oneLineStringInputMetadata = ToStringUtils.toOneLineString(inputMetadata);
+        Proxy.Metadata header = request.getHeader();
+        String oneLineStringInputMetadata = ToStringUtils.toOneLineString(header);
         LOGGER.info("[UNARYCALL][SERVER] server unary request received. src: {}, dst: {}",
-                ToStringUtils.toOneLineString(inputMetadata.getSrc()),
-                ToStringUtils.toOneLineString(inputMetadata.getDst()));
+                ToStringUtils.toOneLineString(header.getSrc()),
+                ToStringUtils.toOneLineString(header.getDst()));
 
-        long overallTimeout = timeouts.getOverallTimeout(inputMetadata);
-        long packetIntervalTimeout = timeouts.getPacketIntervalTimeout(inputMetadata);
+        long overallTimeout = timeouts.getOverallTimeout(header);
+        long packetIntervalTimeout = timeouts.getPacketIntervalTimeout(header);
 
-        LOGGER.info("taskId:{}", inputMetadata.getTask().getTaskId());
+        LOGGER.info("taskId:{}", header.getTask().getTaskId());
 
         try {
-            if (request.getHeader().getOperator().equals("registerBroker")) {
+            if (header.getOperator().equals("registerBroker")) {
                 Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
                 Proxy.Data data = Proxy.Data.newBuilder().setValue(ByteString.copyFromUtf8("hello"))
                     .build();
@@ -226,11 +226,11 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                 return;
             }
 
-            if (request.getHeader().getOperator().equals("init_job_session_pair")) {
-                String jobId = request.getHeader().getTask().getModel().getName();
-                String sessionId = request.getHeader().getTask().getModel().getDataKey();
+            if (header.getOperator().equals("init_job_session_pair")) {
+                String jobId = header.getTask().getModel().getName();
+                String sessionId = header.getTask().getModel().getDataKey();
                 Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
-                packet = packetBuilder.setHeader(request.getHeader()).build();
+                packet = packetBuilder.setHeader(header).build();
                 // TODO:1: rename job_id to federation_session_id, session_id -> eggroll_session_id
                 LOGGER.info("init_job_session_pair, job_id:{}, session_id:{}", jobId, sessionId);
                 JobStatus.putJobIdToSessionId(jobId, sessionId);
@@ -242,15 +242,15 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                 return;
             }
 
-            if (request.getHeader().getOperator().equals("markEnd") && proxyServerConf.getPartyId()
-                .equals(inputMetadata.getDst().getPartyId())) {
+            if (header.getOperator().equals("markEnd")
+                && proxyServerConf.getPartyId().equals(header.getDst().getPartyId())) {
                 Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
-                packet = packetBuilder.setHeader(request.getHeader()).build();
+                packet = packetBuilder.setHeader(header).build();
 
                 ErRollSiteHeader rollSiteHeader = restoreRollSiteHeader(
                     request.getHeader().getTask().getModel().getName());
                 String tagKey = genTagKey(rollSiteHeader);
-
+                JobStatus.addPutBatchRequiredCount(tagKey, header.getSeq());
 
                 LOGGER.info("markEnd: {}, {}", rollSiteHeader.rollSiteSessionId(),
                         tagKey);  //obj or RollPair
@@ -269,7 +269,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                 return;
             }
 
-            if (request.getHeader().getOperator().equals("getStatus")) {
+            if (header.getOperator().equals("getStatus")) {
                 LOGGER.info("getStatus: {}", oneLineStringInputMetadata);
                 Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
 
@@ -281,25 +281,27 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                 TimeUnit unit = TimeUnit.MINUTES;
                 boolean jobFinished = JobStatus.waitUntilAllCountDown(tagKey, timeout, unit)
                     && JobStatus.waitUntilPutBatchFinished(tagKey, timeout, unit);
-                Proxy.Metadata header = request.getHeader();
+                Proxy.Metadata resultHeader = request.getHeader();
                 String type = StringConstants.EMPTY();
                 if (jobFinished) {
                     LOGGER.info("getStatus: job finished: {}", oneLineStringInputMetadata);
-                    header = Proxy.Metadata.newBuilder().setAck(123)
+                    resultHeader = Proxy.Metadata.newBuilder().setAck(123)
                         .setSrc(request.getHeader().getSrc())
                         .setDst(request.getHeader().getDst())
                         .build();
                     type = JobStatus.getType(tagKey);
                 } else {
-                    LOGGER.info("getStatus: job NOT finished: {}. current latch count: {}, current put batch count: {}",
+                    LOGGER.info("getStatus: job NOT finished: {}. current latch count: {}, "
+                            + "put batch required: {}, put batch finished: {}",
                         oneLineStringInputMetadata,
                         JobStatus.getFinishLatchCount(tagKey),
-                        JobStatus.getPutBatchCount(tagKey));
-                    header = Proxy.Metadata.newBuilder().setAck(321).build();
+                        JobStatus.getPutBatchRequiredCount(tagKey),
+                        JobStatus.getPutBatchFinishedCount(tagKey));
+                    resultHeader = Proxy.Metadata.newBuilder().setAck(321).build();
                 }
                 Proxy.Data body = Proxy.Data.newBuilder().setKey(tagKey)
                     .setValue(ByteString.copyFromUtf8(type)).build();
-                packet = packetBuilder.setHeader(header).setBody(body).build();
+                packet = packetBuilder.setHeader(resultHeader).setBody(body).build();
                 responseObserver.onNext(packet);
                 responseObserver.onCompleted();
                 return;
