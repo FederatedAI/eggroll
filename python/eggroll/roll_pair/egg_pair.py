@@ -283,15 +283,15 @@ class EggPair(object):
                         k_right = left_key_serdes.serialize(right_key_serdes.deserialize(k_right_raw))
 
                     while True:
-                        while k_left < k_right:
-                            k_left, v_left_bytes = next(l_iter)
-
                         while k_right < k_left:
                             k_right_raw, v_right_bytes = next(r_iter)
                             if is_same_serdes:
                                 k_right = k_right_raw
                             else:
                                 k_right = left_key_serdes.serialize(right_key_serdes.deserialize(k_right_raw))
+
+                        while k_left < k_right:
+                            k_left, v_left_bytes = next(l_iter)
 
                         if k_left == k_right:
                             output_writebatch.put(k_left,
