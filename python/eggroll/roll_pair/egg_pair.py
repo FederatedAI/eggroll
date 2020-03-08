@@ -274,44 +274,34 @@ class EggPair(object):
                 l_iter = iter(left_iterator)
                 r_iter = iter(right_iterator)
 
-                k_left = None
-                l_v_bytes = None
-                k_right = None
-                r_v_bytes = None
-                itered = True
-                while itered:
-                    itered = False
-                    for cur_k_left, cur_l_v_bytes in l_iter:
-                        itered = True
-                        if k_left is None or cur_k_left >= k_right:
-                            k_left = cur_k_left
-                            l_v_bytes = cur_l_v_bytes
-                            if k_right is None or k_left >= k_right:
-                                break
+                try:
+                    k_left, v_left_bytes = next(l_iter)
+                    k_right_raw, v_right_bytes = next(r_iter)
+                    if is_same_serdes:
+                        k_right = k_right_raw
+                    else:
+                        k_right = left_key_serdes.serialize(right_key_serdes.deserialize(k_right_raw))
 
-                    for cur_k_right_bytes, cur_r_v_bytes in r_iter:
-                        itered = True
-                        if is_same_serdes:
-                            cur_k_right = cur_k_right_bytes
-                        else:
-                            cur_k_right = left_key_serdes.serialize(right_key_serdes.deserialize(cur_k_right_bytes))
+                    while True:
+                        while k_left < k_right:
+                            k_left, v_left_bytes = next(l_iter)
 
-                        if k_right is None or cur_k_right >= k_left:
-                            k_right = cur_k_right
-                            r_v_bytes = cur_r_v_bytes
-                            if k_right >= k_left:
-                                break
+                        while k_right < k_left:
+                            k_right_raw, v_right_bytes = next(r_iter)
+                            if is_same_serdes:
+                                k_right = k_right_raw
+                            else:
+                                k_right = left_key_serdes.serialize(right_key_serdes.deserialize(k_right_raw))
 
-                    if not itered:
-                        break
-
-                    if k_left == k_right:
-                        output_writebatch.put(k_left,
-                                              left_value_serdes.serialize(
-                                                      f(left_value_serdes.deserialize(l_v_bytes),
-                                                        right_value_serdes.deserialize(r_v_bytes))))
-                        k_left = None
-                        k_right = None
+                        if k_left == k_right:
+                            output_writebatch.put(k_left,
+                                                  left_value_serdes.serialize(
+                                                          f(left_value_serdes.deserialize(v_left_bytes),
+                                                            right_value_serdes.deserialize(v_right_bytes))))
+                            k_left, v_left_bytes = next(l_iter)
+                            # skips next(r_iter) to avoid duplicate codes for the 3rd time
+                except StopIteration as e:
+                    return
 
             def hash_join_wrapper(left_iterator, left_key_serdes, left_value_serdes,
                     right_iterator, right_key_serdes, right_value_serdes,
