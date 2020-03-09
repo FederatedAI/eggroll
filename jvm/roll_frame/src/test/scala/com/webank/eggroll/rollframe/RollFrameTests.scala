@@ -44,6 +44,7 @@ class RollFrameTests {
   protected var inputStore: ErStore = _
   protected var inputHdfsStore: ErStore = _
   protected var inputTensorStore: ErStore = _
+  protected val partitions_ = 3
 
   @Before
   def setup(): Unit = {
@@ -52,9 +53,9 @@ class RollFrameTests {
     ctx = ta.getRfContext(true)
     printContextMessage()
     HdfsBlockAdapter.fastSetLocal()
-    inputStore = ctx.createStore("test1", "a1", StringConstants.FILE, 3)
-    inputHdfsStore = ctx.createStore("test1", "a1", StringConstants.HDFS, 3)
-    inputTensorStore = ctx.createStore("test1", "t1", StringConstants.FILE, 3)
+    inputStore = ctx.createStore("test1", "a1", StringConstants.FILE, partitions_)
+    inputHdfsStore = ctx.createStore("test1", "a1", StringConstants.HDFS, partitions_)
+    inputTensorStore = ctx.createStore("test1", "t1", StringConstants.FILE, partitions_)
 
     // use torchScript or not
     if (supportTorch) {
@@ -181,8 +182,6 @@ class RollFrameTests {
         }
       }.start()
     }
-
-
     // TODO:2: pull data's not been implemented,  or should be tested in the same jvm process
     //    // 2.write to cache
     //    val cacheStore = ta.loadCache(networkStore)
@@ -207,21 +206,21 @@ class RollFrameTests {
     val networkStore = ctx.forkStore(inputStore, "test1", "a1", StringConstants.NETWORK)
     val partitionsNum = networkStore.partitions.length
     val sliceRowCount = (partitionsNum + fb.rowCount - 1) / partitionsNum
-    (0 until partitionsNum).foreach(i => new Thread() {
-      override def run(): Unit = {
-        FrameStore(networkStore, i).append(fb.sliceRealByRow(i * sliceRowCount, sliceRowCount))
-      }
-    }.start())
+    (0 until partitionsNum).foreach(i=>
+      new Thread() {
+        override def run(): Unit = {
+          FrameStore(networkStore, i).append(fb.sliceRealByRow(i * sliceRowCount, sliceRowCount))
+        }
+      }.start())
 
-    (0 until partitionsNum).foreach(i => println(s"check id.$i partition's row number: ${FrameStore(networkStore, i).readOne().rowCount}"))
-
-    // 3. aggregate operation
+   // 3. aggregate operation
     val rf = ctx.load(networkStore)
     val start = System.currentTimeMillis()
     val fieldCount = fb.fieldCount
     val zeroValue = new FrameBatch(new FrameSchema(SchemaUtil.getDoubleSchema(fieldCount)), 1)
     zeroValue.initZero()
     val outStore = ctx.createStore("test1", "a1Sr", StringConstants.FILE, totalPartitions = 1)
+
     rf.aggregate(zeroValue, { (x, y) =>
       try {
         for (f <- y.rootVectors.indices) {
@@ -591,7 +590,7 @@ class RollFrameTests {
   @Test
   def testTorchScriptMap(): Unit = {
     val input = ta.loadCache(inputTensorStore)
-    val output = ctx.forkStore(input, "a1TorchMap", "test1", StringConstants.FILE)
+    val output = ctx.forkStore(input, "test1", "a1TorchMap", StringConstants.FILE)
     val rf = ctx.load(input)
     val newMatrixCols = 2
     val parameters: Array[Double] = Array(fieldCount.toDouble) ++ Array(newMatrixCols.toDouble) ++ Array.fill[Double](fieldCount * newMatrixCols)(0.5);
@@ -602,8 +601,8 @@ class RollFrameTests {
 
   @Test
   def testTorchScriptMerge(): Unit = {
-    val input = ta.loadCache(ctx.forkStore(inputTensorStore, "a1TorchMap", "test1", StringConstants.FILE))
-    val output = ctx.createStore("a1TorchMerge", "test1", StringConstants.FILE, totalPartitions = 1)
+    val input = ta.loadCache(ctx.forkStore(inputTensorStore, "test1", "a1TorchMap", StringConstants.FILE))
+    val output = ctx.createStore("test1", "a1TorchMerge", StringConstants.FILE, totalPartitions = 1)
     val rf = ctx.load(input)
     rf.torchMerge(path = "jvm/roll_frame/src/test/resources/torch_model_merge.pt", output = output)
     val result = FrameStore(output, 0).readOne()
