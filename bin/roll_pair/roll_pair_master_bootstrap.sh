@@ -137,7 +137,7 @@ fi
 export EGGROLL_LOG_FILE="roll_pair_master-${processor_id}"
 
 echo "------ jvm version starts ------"
-${JAVA} --version
+${JAVA} -version
 echo "------ jvm version ends ------"
 
 

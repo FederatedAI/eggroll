@@ -152,6 +152,9 @@ class LmdbAdapter(PairAdapter):
         except:
             L.info("path :{} has destroyed".format(self.path))
 
+    def is_sorted(self):
+        return True
+
 
 class LmdbIterator(PairIterator):
     def __init__(self, adapter: LmdbAdapter):
