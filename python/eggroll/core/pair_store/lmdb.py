@@ -56,7 +56,7 @@ class LmdbAdapter(PairAdapter):
             super().__init__(options)
             self.path = options["path"]
             lmdb_map_size = options.get("lmdb_map_size", LMDB_MAP_SIZE if platform.system() != 'Windows' else LMDB_MAP_SIZE_WINDOWS)
-            create_if_missing = options.get("create_if_missing", "True")
+            create_if_missing = (str(options.get("create_if_missing", "True")).lower() == 'true')
             if self.path not in LmdbAdapter.env_dict:
                 if create_if_missing:
                     os.makedirs(self.path, exist_ok=True)
