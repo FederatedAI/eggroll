@@ -42,7 +42,6 @@ object TestAssets {
       new Thread("eggroll-ef-bootstrap"){
         override def run(): Unit = {
           Bootstrap.main(s"--config conf/eggroll.properties --bootstraps com.webank.eggroll.rollframe.EggFrameBootstrap -s debug-sid -p 20100  -tp 20200 --ignore-rebind".split(" "))
-//          Bootstrap.main(s"--config conf/eggroll.properties --bootstraps com.webank.eggroll.rollframe.EggFrameBootstrap -s debug-sid -p 20101  -tp 20201 --ignore-rebind".split(" "))
         }
       }.start()
 
