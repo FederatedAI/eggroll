@@ -49,7 +49,7 @@ class RollFrameContext private[eggroll](val session: ErSession) {
   def load(namespace: String, name: String, options: Map[String, String] = Map()): RollFrame = {
     // TODO:1: use snake case universally?
     val storeType = options.getOrElse("store_type", defaultStoreType)
-    val totalPartitions = options.getOrElse("total_partitions", "4").toInt
+    val totalPartitions = options.getOrElse("total_partitions", "1").toInt
     val store = ErStore(storeLocator = ErStoreLocator(
       namespace = namespace,
       name = name,
@@ -61,7 +61,7 @@ class RollFrameContext private[eggroll](val session: ErSession) {
   }
 
   /**
-   * Provides three way to create/update or get Store by totalPartitions.
+   * Provides two way to create/update or get Store by totalPartitions.
    * IF totalPartitions = 0, return store with partitions the same as processors.
    * IF totalPartitions = N, return Store with N partition and uniformly distributed on each process,
    * For example: there are 3 processor and totalPartitions is 5, store would has [0,1][2,3],[4] partitions.
@@ -69,7 +69,7 @@ class RollFrameContext private[eggroll](val session: ErSession) {
    * @param namespace       Store namespace
    * @param name            store name
    * @param storeType       store type
-   * @param totalPartitions totalPartitions,{-1,1,N},
+   * @param totalPartitions totalPartitions,{-1,N},
    * @return ErStore
    */
   def createStore(namespace: String, name: String, storeType: String = defaultStoreType, totalPartitions: Int = 0,
