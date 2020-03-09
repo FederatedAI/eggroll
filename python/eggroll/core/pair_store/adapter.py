@@ -126,6 +126,7 @@ class FileAdapter(PairAdapter):
     def put(self, key, value):
         raise NameError("unsupported")
 
+
 class FileIterator(PairIterator):
     def __init__(self, file):
         file.seek(0)
