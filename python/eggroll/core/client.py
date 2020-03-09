@@ -42,6 +42,7 @@ class CommandCallError(Exception):
 
 
 class CommandClient(object):
+    executor = ThreadPoolExecutor(max_workers=50, thread_name_prefix="command_client")
     def __init__(self):
         self._channel_factory = GrpcChannelFactory()
 
@@ -76,12 +77,13 @@ class CommandClient(object):
             L.error(f'Error calling to {endpoint}, command_uri: {command_uri}, req:{request}')
             raise CommandCallError(command_uri, endpoint, e)
 
-    def async_call(self, args, output_types: list, command_uri: CommandURI, serdes_type=SerdesTypes.PROTOBUF, parallel_size=5):
+    def async_call(self, args, output_types: list, command_uri: CommandURI, serdes_type=SerdesTypes.PROTOBUF, callback=None):
         futures = list()
-        with ThreadPoolExecutor(max_workers=parallel_size) as executor:
-            for inputs, endpoint in args:
-                f = executor.submit(self.sync_send, inputs=inputs, output_types=output_types, endpoint=endpoint, command_uri=command_uri, serdes_type=serdes_type)
-                futures.append(f)
+        for inputs, endpoint in args:
+            f = self.executor.submit(self.sync_send, inputs=inputs, output_types=output_types, endpoint=endpoint, command_uri=command_uri, serdes_type=serdes_type)
+            if callback:
+                f.add_done_callback(callback)
+            futures.append(f)
 
         return futures
 

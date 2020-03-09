@@ -139,7 +139,6 @@ class RollSiteWriteBatch(PairWriteBatch):
 
     # TODO:0: configurable
     def push(self, obj):
-        self.increase_push_count()
         L.debug(f'pushing for task: {self.name}, partition id: {self.adapter.partition_id}, push cnt: {self.get_push_count()}')
         task_info = proxy_pb2.Task(taskId=self.name, model=proxy_pb2.Model(name=self.adapter.roll_site_header_string, dataKey=self.namespace))
 
@@ -158,12 +157,13 @@ class RollSiteWriteBatch(PairWriteBatch):
                                       seq=0,
                                       ack=0)
 
-        max_retry_cnt = 60
+        max_retry_cnt = 100
         exception = None
         for i in range(1, max_retry_cnt + 1):
             try:
                 self.stub.push(self.generate_message(obj, metadata))
                 exception = None
+                self.increase_push_count()
                 break
             except Exception as e:
                 exception = e
@@ -193,7 +193,7 @@ class RollSiteWriteBatch(PairWriteBatch):
                                       dst=self.topic_dst,
                                       command=command_test,
                                       operator="markEnd",
-                                      seq=0,
+                                      seq=self.get_push_count(),
                                       ack=0)
 
         packet = proxy_pb2.Packet(header=metadata)
