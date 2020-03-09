@@ -276,10 +276,11 @@ class TestRollPairBase(unittest.TestCase):
 
     def test_join(self):
         options = get_default_options()
-        left_rp = self.ctx.load("ns1", "testJoinLeft", options=options).put_all([('a', 1), ('b', 4)], options={"include_key": True})
-        right_rp = self.ctx.load("ns1", "testJoinRight", options=options).put_all([('a', 2), ('c', 4)], options={"include_key": True})
+        left_rp = self.ctx.load("ns1", "testJoinLeft", options=options).put_all([('a', 1), ('b', 4), ('d', 6), ('e', 0)], options={"include_key": True})
+        right_rp = self.ctx.load("ns1", "testJoinRight", options=options).put_all([('a', 2), ('c', 4), ('d', 1), ('f', 0), ('g', 1)], options={"include_key": True})
         print(list(left_rp.join(right_rp, lambda v1, v2: v1 + v2).get_all()))
-        self.assertEqual(get_value(left_rp.join(right_rp, lambda v1, v2: v1 + v2)), [('a', 3)])
+        self.assertEqual(get_value(left_rp.join(right_rp, lambda v1, v2: v1 + v2)), [('a', 3), ('d', 7)])
+        self.assertEqual(get_value(right_rp.join(left_rp, lambda v1, v2: v1 + v2)), [('a', 3), ('d', 7)])
 
     def test_sample(self):
         options = get_default_options()
@@ -414,8 +415,8 @@ class TestRollPairCluster(TestRollPairBase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        #opts = {"eggroll.session.processors.per.node": "10"}
-        opts = {}
+        opts = {"eggroll.session.processors.per.node": "10"}
+        #opts = {}
         cls.ctx = get_cluster_context(options=opts)
 
     def setUp(self):

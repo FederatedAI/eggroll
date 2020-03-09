@@ -152,6 +152,7 @@ class SessionMetaDao {
 
       ErSessionMeta(
         id = sessionId, name = rs.getString("name"),
+        totalProcCount = rs.getInt("total_proc_count"),
         activeProcCount = rs.getInt("active_proc_count"),
         status = rs.getString("status"), tag = rs.getString("tag"))
     },"select * from session_main where session_id = ?", sessionId)
@@ -179,6 +180,7 @@ class SessionMetaDao {
         result += ErSessionMeta(
           id = rs.getString("session_id"),
           name = rs.getString("name"),
+          totalProcCount = rs.getInt("total_proc_count"),
           activeProcCount = rs.getInt("active_proc_count"),
           status = rs.getString("status"),
           tag = rs.getString("tag"))
