@@ -28,6 +28,8 @@ import com.webank.eggroll.util.SchemaUtil
 import junit.framework.TestCase
 import org.junit.{Before, Test}
 
+import scala.collection.immutable.Range.Inclusive
+
 /**
  * all unit test run on local mode
  */
@@ -37,20 +39,30 @@ class RollFrameTests {
   protected val rowCount = 100 // total value count = rowCount * fbCount * fieldCount
   // TODO: fbCount means a set of FrameBatch in one partition. fbCount value which larger then one maybe has bugs.
   protected val fbCount = 1 // the num of batch
-
+  protected val supportTorch = false
   protected var ctx: RollFrameContext = _
+  protected var inputStore: ErStore = _
+  protected var inputHdfsStore: ErStore = _
+  protected var inputTensorStore: ErStore = _
 
   @Before
   def setup(): Unit = {
     ta.setMode("local")
     // TODO: 3in1 run fail
     ctx = ta.getRfContext(true)
-
+    printContextMessage()
     HdfsBlockAdapter.fastSetLocal()
-    try {
-      LibraryLoader.load
-    } catch {
-      case _: Throwable => println("error when loading jni")
+    inputStore = ctx.createStore("test1", "a1", StringConstants.FILE, 3)
+    inputHdfsStore = ctx.createStore("test1", "a1", StringConstants.HDFS, 3)
+    inputTensorStore = ctx.createStore("test1", "t1", StringConstants.FILE, 3)
+
+    // use torchScript or not
+    if (supportTorch) {
+      try {
+        LibraryLoader.load
+      } catch {
+        case _: Throwable => println("error when loading jni")
+      }
     }
   }
 
@@ -66,6 +78,7 @@ class RollFrameTests {
     adapter.close()
   }
 
+  // create Store for testing
   private def write(adapter: FrameStore): Unit = {
     val randomObj = new Random()
     (0 until fbCount).foreach { i =>
@@ -108,8 +121,17 @@ class RollFrameTests {
     adapter.close()
   }
 
+  private def printContextMessage(): Unit = {
+    val clusterManagerClient = ctx.session.clusterManagerClient
+    val processors = ctx.session.processors
+    println(s"ClusterManager host: ${clusterManagerClient.endpoint.host}, port:${clusterManagerClient.endpoint.port}")
+    println(s"Processors counts:${processors.length}, list:")
+    processors.indices.foreach(i => println(s"no $i: ${processors(i)}"))
+  }
+
   @Test
-  def testLoad(): Unit = {
+  def testLoadRollFrame(): Unit = {
+    // TODO: directly load rf failed
     val rf = ctx.load("test1", "a1")
     rf.mapBatch(fb => {
       println("to do assert", fb.readDouble(0, 0))
@@ -123,26 +145,34 @@ class RollFrameTests {
   @Test
   def testCreateDataStore(): Unit = {
     // TODO: more generally
-    val store = ta.getRollFrameStore("a1", "test1", StringConstants.FILE)
-    ctx.session.clusterManagerClient.deleteStore(store)
-    val store1 = ctx.session.clusterManagerClient.getOrCreateStore(store)
-    store1.partitions.indices.foreach { i =>
-      // create FrameBatch
-//      write(FrameStore(store1, i))
-      // create ColumnFrame
-            writeCf(FrameStore(store1, i))
+    inputStore.partitions.indices.foreach { i =>
+      //    create FrameBatch
+      write(FrameStore(inputStore, i))
+      //    create ColumnFrame
+      writeCf(FrameStore(inputTensorStore, i))
     }
-    //        write(FrameStore.hdfs("/tmp/unittests/RollFrameTests/hdfs/test1/a1/0"))
-    //        write(FrameStore.hdfs("/tmp/unittests/RollFrameTests/hdfs/test1/a1/1"))
-    //        write(FrameStore.hdfs("/tmp/unittests/RollFrameTests/hdfs/test1/a1/2"))
-    //        read(FrameDB.hdfs("/tmp/unittests/RollFrameTests/hdfs/test1/a1/0"))
-    //        read(FrameDB.hdfs("/tmp/unittests/RollFrameTests/hdfs/test1/a1/1"))
+    write(FrameStore.hdfs("/tmp/unittests/RollFrameTests/hdfs/test1/a1/0"))
+    write(FrameStore.hdfs("/tmp/unittests/RollFrameTests/hdfs/test1/a1/1"))
+    write(FrameStore.hdfs("/tmp/unittests/RollFrameTests/hdfs/test1/a1/2"))
+    read(FrameStore.hdfs("/tmp/unittests/RollFrameTests/hdfs/test1/a1/0"))
+    read(FrameStore.hdfs("/tmp/unittests/RollFrameTests/hdfs/test1/a1/1"))
+    read(FrameStore.hdfs("/tmp/unittests/RollFrameTests/hdfs/test1/a1/2"))
+  }
+
+  @Test
+  def testStoreMetaInDb(): Unit = {
+    // TODO: has bug, ErProcessor message didn't write into DB
+    val input = ta.getRollFrameStore("a1", "test1")
+    ctx.session.clusterManagerClient.deleteStore(input)
+    val output = ctx.session.clusterManagerClient.getOrCreateStore(input)
+    println(inputStore.partitions(0))
+    println(output.partitions(0))
   }
 
   @Test
   def testNetworkToJvm(): Unit = {
     // 1.write to network
-    val networkStore = ta.getRollFrameStore("a1", "test1", StringConstants.NETWORK)
+    val networkStore = ctx.forkStore(inputStore, "test1", "a1", StringConstants.NETWORK)
     networkStore.partitions.indices.foreach { i =>
       new Thread() {
         override def run(): Unit = {
@@ -151,6 +181,8 @@ class RollFrameTests {
         }
       }.start()
     }
+
+
     // TODO:2: pull data's not been implemented,  or should be tested in the same jvm process
     //    // 2.write to cache
     //    val cacheStore = ta.loadCache(networkStore)
@@ -164,34 +196,32 @@ class RollFrameTests {
 
   /**
    * a demo of slice a FrameBatch by rows and broadcast to the cluster to run aggregation
+   * TODO: has bug
    */
   @Test
   def testSliceByRowAndAggregate(): Unit = {
     // 1. FrameBatch on root server
-    val storeLocator = ErStoreLocator(name = "a1", namespace = "test1", storeType = StringConstants.FILE)
-    val input = ErStore(storeLocator = storeLocator,
-      partitions = Array(ErPartition(id = 0, storeLocator = storeLocator, processor = ta.localNode0)))
-    val fb = FrameStore(input, 0).readOne()
+    val fb = FrameStore(inputStore, 0).readOne()
 
     // 2. distribute and load to caches
-    val networkStore = ta.getRollFrameStore("a1", "test1", StringConstants.NETWORK)
+    val networkStore = ctx.forkStore(inputStore, "test1", "a1", StringConstants.NETWORK)
     val partitionsNum = networkStore.partitions.length
     val sliceRowCount = (partitionsNum + fb.rowCount - 1) / partitionsNum
-    (0 until partitionsNum).foreach(i => FrameStore(networkStore, i).append(fb.sliceRealByRow(i * sliceRowCount, sliceRowCount)))
-    val cacheStore = ta.loadCache(networkStore)
-    (0 until partitionsNum).foreach(i => println(s"check id.$i partition's row number: ${FrameStore(cacheStore, i).readOne().rowCount}"))
+    (0 until partitionsNum).foreach(i => new Thread() {
+      override def run(): Unit = {
+        FrameStore(networkStore, i).append(fb.sliceRealByRow(i * sliceRowCount, sliceRowCount))
+      }
+    }.start())
+
+    (0 until partitionsNum).foreach(i => println(s"check id.$i partition's row number: ${FrameStore(networkStore, i).readOne().rowCount}"))
 
     // 3. aggregate operation
-    val rf = ctx.load(cacheStore)
+    val rf = ctx.load(networkStore)
     val start = System.currentTimeMillis()
     val fieldCount = fb.fieldCount
     val zeroValue = new FrameBatch(new FrameSchema(SchemaUtil.getDoubleSchema(fieldCount)), 1)
     zeroValue.initZero()
-    val outStoreLocator = ErStoreLocator(name = "a1Sr", namespace = "test1", storeType = StringConstants.FILE)
-    // TODO: aggregate output Store is inconsistent here
-    val outStore = ta.getRollFrameStore("a1Sr", "test1", StringConstants.FILE)
-    val outStore1 = ErStore(storeLocator = outStoreLocator, partitions = Array(
-      ErPartition(id = 0, storeLocator = outStoreLocator, processor = ta.localNode0)))
+    val outStore = ctx.createStore("test1", "a1Sr", StringConstants.FILE, totalPartitions = 1)
     rf.aggregate(zeroValue, { (x, y) =>
       try {
         for (f <- y.rootVectors.indices) {
@@ -215,12 +245,12 @@ class RollFrameTests {
       a
     }, output = outStore)
     println(System.currentTimeMillis() - start)
-    TestCase.assertEquals(FrameStore(outStore1, 0).readOne().readDouble(0, 0), rowCount, TestAssets.DELTA)
+    TestCase.assertEquals(FrameStore(outStore, 0).readOne().readDouble(0, 0), rowCount, TestAssets.DELTA)
   }
 
   @Test
   def testHdfsToJvm(): Unit = {
-    val input = ta.getRollFrameStore("a1", "test1", StringConstants.HDFS)
+    val input = inputHdfsStore
     val output = ta.loadCache(input)
     TestCase.assertEquals(FrameStore(input, 0).readOne().readDouble(0, 0), FrameStore(output, 0).readOne().readDouble(0, 0), TestAssets.DELTA)
     TestCase.assertEquals(FrameStore(input, 1).readOne().readDouble(0, 0), FrameStore(output, 1).readOne().readDouble(0, 0), TestAssets.DELTA)
@@ -228,9 +258,8 @@ class RollFrameTests {
 
   @Test
   def testMapBatchWithHdfs(): Unit = {
-    val input = TestAssets.getRollFrameStore("a1", "test1", StringConstants.HDFS)
-    val output = TestAssets.getRollFrameStore("a1map", "test1", StringConstants.HDFS)
-
+    val input = ta.loadCache(inputHdfsStore)
+    val output = ctx.forkStore(input, "test1", "a1map1", StringConstants.HDFS)
     val rf = ctx.load(input)
     rf.mapBatch({ cb =>
       val mapRf = new FrameBatch(cb.rootSchema)
@@ -251,20 +280,15 @@ class RollFrameTests {
   @Test
   def testAggregateWithHdfs(): Unit = {
     var start = System.currentTimeMillis()
-    val inStore = ta.getRollFrameStore("a1", "test1", StringConstants.HDFS)
-    // TODO: aggregate output Store is inconsistent here
-    val outStore = ta.getRollFrameStore("a1_aggregate", "test1", StringConstants.HDFS)
-    val outStoreLocator = ErStoreLocator(name = "a1_aggregate", namespace = "test1", storeType = StringConstants.HDFS)
-    val outStore1 = ErStore(storeLocator = outStoreLocator, partitions = Array(
-      ErPartition(id = 0, storeLocator = outStoreLocator, processor = ta.localNode0)))
-
+    val inStore = ta.loadCache(inputHdfsStore)
+    val outStore = ctx.createStore("a1_aggregate", "test1", StringConstants.HDFS, totalPartitions = 1)
     val rf = ctx.load(inStore)
     println(System.currentTimeMillis() - start)
     start = System.currentTimeMillis()
     val fieldCountLocal = fieldCount
     val schema = SchemaUtil.getDoubleSchema(fieldCount)
     val zeroValue = new FrameBatch(new FrameSchema(schema), 1)
-    (0 until fieldCount).foreach(i => zeroValue.writeDouble(i, 0, 0))
+    zeroValue.initZero()
 
     rf.aggregate(zeroValue, { (x, y) =>
       try {
@@ -290,14 +314,14 @@ class RollFrameTests {
     }, threadsNum = 2, output = outStore)
     println(System.currentTimeMillis() - start)
 
-    val resultFb = FrameStore(outStore1, 0).readOne()
+    val resultFb = FrameStore(outStore, 0).readOne()
     TestCase.assertEquals(resultFb.readDouble(0, 0), rowCount * 3, TestAssets.DELTA)
   }
 
   @Test
   def testMapBatch(): Unit = {
-    val input = ta.loadCache(ta.getRollFrameStore("a1", "test1", StringConstants.FILE))
-    val output = ta.getRollFrameStore("a1map", "test1", StringConstants.CACHE)
+    val input = inputStore
+    val output = ctx.forkStore(inputStore, "test1", "a1map1", StringConstants.FILE)
     val rf = ctx.load(input)
     val start = System.currentTimeMillis()
     rf.mapBatch({ cb =>
@@ -329,8 +353,8 @@ class RollFrameTests {
 
   @Test
   def testReduceBatch(): Unit = {
-    val input = ta.getRollFrameStore("a1", "test1")
-    val output = ta.getRollFrameStore("a1_reduce", "test1", StringConstants.CACHE)
+    val input = inputStore
+    val output = ctx.forkStore(inputStore, "test1", "a1_reduce", StringConstants.CACHE)
     val rf = ctx.load(input)
     rf.reduce({ (x, y) =>
       try {
@@ -376,15 +400,14 @@ class RollFrameTests {
 
   @Test
   def testRollFrameAggregateBatch(): Unit = {
-    var start = System.currentTimeMillis()
-    val inStore = ta.getRollFrameStore("a1", "test1", StringConstants.FILE)
-    val rf = ctx.load(inStore)
-    println(System.currentTimeMillis() - start)
-    start = System.currentTimeMillis()
+    val input = inputStore
+    val output = ctx.createStore(namespace = "test1", name = "agg_1", totalPartitions = 1)
+    val rf = ctx.load(input)
+    val start = System.currentTimeMillis()
     val colsCount = fieldCount
     val schema = SchemaUtil.getDoubleSchema(colsCount)
     val zeroValue = new FrameBatch(new FrameSchema(schema), 1)
-    (0 until fieldCount).foreach(i => zeroValue.writeDouble(i, 0, 0))
+    (0 until colsCount).foreach(i => zeroValue.writeDouble(i, 0, 0))
 
     rf.aggregate(zeroValue, { (x, y) =>
       try {
@@ -406,10 +429,10 @@ class RollFrameTests {
         a.writeDouble(i, 0, a.readDouble(i, 0) + b.readDouble(i, 0))
       }
       a
-    })
+    }, output = output)
     println(System.currentTimeMillis() - start)
-    val aggregateFb = FrameStore.file("/tmp/unittests/RollFrameTests/file/test1/a1_aggregate/0").readOne()
-    TestCase.assertEquals(aggregateFb.readDouble(0, 0), inStore.partitions.length * rowCount, TestAssets.DELTA)
+    val aggregateFb = FrameStore(output, 0).readOne()
+    TestCase.assertEquals(aggregateFb.readDouble(0, 0), input.partitions.length * rowCount, TestAssets.DELTA)
   }
 
   /**
@@ -466,21 +489,14 @@ class RollFrameTests {
 
   @Test
   def testRollFrameMulti(): Unit = {
-    var start = System.currentTimeMillis()
-    val rf = ctx.load(ta.getRollFrameStore("a1", "test1"))
-    println(System.currentTimeMillis() - start)
-    start = System.currentTimeMillis()
-    val fieldCount = 10
-    val schema = SchemaUtil.getDoubleSchema(fieldCount)
-    /*    val output1 = RfStore("r1","test1",1, storeType = FrameDB.CACHE)
-        val output2 = RfStore("r2","test1",1, storeType = FrameDB.CACHE)
-        val output3 = RfStore("r3","test1",1, storeType = FrameDB.CACHE)*/
-
-
+    val rf = ctx.load(inputStore)
+    val start = System.currentTimeMillis()
+    val colsCount = fieldCount
+    val schema = SchemaUtil.getDoubleSchema(colsCount)
     val zeroValue = new FrameBatch(new FrameSchema(schema), 1)
-    (0 until fieldCount).foreach(i => zeroValue.writeDouble(i, 0, 0))
+    (0 until colsCount).foreach(i => zeroValue.writeDouble(i, 0, 0))
 
-    val output1 = rf.aggregate(zeroValue, { (x, y) =>
+    rf.aggregate(zeroValue, { (x, y) =>
       try {
         for (f <- y.rootVectors.indices) {
           var sum = 0.0
@@ -500,7 +516,7 @@ class RollFrameTests {
       print("x.valueCount", x.rootVectors(0).valueCount)
       x
     }, { (a, b) =>
-      for (i <- 0 until fieldCount) {
+      for (i <- 0 until colsCount) {
         if (b.rootVectors(i) != null) a.writeDouble(i, 0, a.readDouble(i, 0) + b.readDouble(i, 0))
       }
       a
@@ -529,12 +545,13 @@ class RollFrameTests {
   }
 
   /**
-   * a demo realizing matrix multiplication by using map function
+   * a demo realizing matrix multiplication by using map function, but cost time
    */
   @Test
-  def testMatMulV1ByMpBatch(): Unit = {
-    val input = ta.loadCache(ta.getRollFrameStore("a1", "test1", StringConstants.FILE))
-    val output = ta.getRollFrameStore("a1Matrix", "test1", StringConstants.CACHE)
+  @deprecated
+  def testMatMulV1ByMapBatch(): Unit = {
+    val input = ta.loadCache(inputStore)
+    val output = ctx.forkStore(input, "a1Matrix", "test1", StringConstants.CACHE)
     val rf = ctx.load(input)
     val start = System.currentTimeMillis()
     val matrixCols = 1
@@ -550,12 +567,13 @@ class RollFrameTests {
   }
 
   /**
-   * a demo realizing matrix multiplication using ColumnVectors
+   * a demo realizing matrix multiplication using ColumnVectors, but cost time
    */
   @Test
+  @deprecated
   def testMatMulV1(): Unit = {
-    val input = ta.loadCache(ta.getRollFrameStore("a1", "test1", StringConstants.FILE))
-    val output = ta.getRollFrameStore("a1Matrix1", "test1", StringConstants.CACHE)
+    val input = ta.loadCache(inputStore)
+    val output = ctx.forkStore(input, "test1", "a1Matrix1", StringConstants.CACHE)
     val rf = ctx.load(input)
     val matrixRows = fieldCount
     val matrixCols = 1
@@ -572,25 +590,24 @@ class RollFrameTests {
 
   @Test
   def testTorchScriptMap(): Unit = {
-    val input = ta.loadCache(ta.getRollFrameStore("a1", "test1", StringConstants.FILE))
-    val output = ta.getRollFrameStore("a1TorchMap", "test1", StringConstants.FILE)
+    val input = ta.loadCache(inputTensorStore)
+    val output = ctx.forkStore(input, "a1TorchMap", "test1", StringConstants.FILE)
     val rf = ctx.load(input)
     val newMatrixCols = 2
-    val parameters:Array[Double] = Array(fieldCount.toDouble) ++ Array(newMatrixCols.toDouble) ++ Array.fill[Double](fieldCount*newMatrixCols)(0.5);
+    val parameters: Array[Double] = Array(fieldCount.toDouble) ++ Array(newMatrixCols.toDouble) ++ Array.fill[Double](fieldCount * newMatrixCols)(0.5);
 
-    rf.torchMap("D:/program/Java/torch_run_lib/torch_model_map.pt",parameters,output)
-    println(FrameStore(output, 0).readOne().rowCount)
+    rf.torchMap("jvm/roll_frame/src/test/resources/torch_model_map.pt", parameters, output)
+    TestCase.assertEquals(FrameStore(output, 0).readOne().rowCount, rowCount * newMatrixCols)
   }
 
   @Test
-  def testTorchScriptMerge(): Unit ={
-    val input = ta.loadCache(ta.getRollFrameStore("a1TorchMap", "test1", StringConstants.FILE))
-    val output = ta.getRollFrameStore("a1TorchMerge", "test1", StringConstants.FILE)
+  def testTorchScriptMerge(): Unit = {
+    val input = ta.loadCache(ctx.forkStore(inputTensorStore, "a1TorchMap", "test1", StringConstants.FILE))
+    val output = ctx.createStore("a1TorchMerge", "test1", StringConstants.FILE, totalPartitions = 1)
     val rf = ctx.load(input)
-    val parameters:Array[Double] = Array(3)
-    rf.torchMerge("D:/program/Java/torch_run_lib/torch_model_merge.pt",parameters,output)
-//    val result = FrameStore(output, 0).readOne()
-//    println(s"sum = ${result.readDouble(0,0)},size = ${result.rowCount}")
+    rf.torchMerge(path = "jvm/roll_frame/src/test/resources/torch_model_merge.pt", output = output)
+    val result = FrameStore(output, 0).readOne()
+    println(s"sum = ${result.readDouble(0, 0)},size = ${result.rowCount}")
   }
 
   @Test

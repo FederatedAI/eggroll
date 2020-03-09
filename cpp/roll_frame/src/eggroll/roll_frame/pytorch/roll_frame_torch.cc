@@ -84,33 +84,33 @@ JNIEXPORT jdoubleArray JNICALL Java_com_webank_eggroll_rollframe_pytorch_Torch_r
 	std::vector<torch::jit::IValue> inputs;
 	c10::List<at::Tensor> inputs_element;
 	jsize tensor_count = env->GetArrayLength(jarray);
-	printf("tensor_count = %d", tensor_count);
+	//printf("tensor_count = %d", tensor_count);
 	for (int i = 0; i < tensor_count; i++) {
 		// get each FrameBatch members
 		jobject tensor_obj = env->GetObjectArrayElement(jarray, i);
 		if (NULL == tensor_obj) return NULL;
 		jclass tensor_clz = env->GetObjectClass(tensor_obj);
-		std::cout<<"get tensor_clz"<<std::endl;
+		//std::cout<<"get tensor_clz"<<std::endl;
 		jmethodID m_address_id = env->GetMethodID(tensor_clz, "getAddress", "()J");
-		std::cout << "get getAddress methodID" << std::endl;
+		//std::cout << "get getAddress methodID" << std::endl;
 		jlong address = env->CallLongMethod(tensor_obj, m_address_id);
-		std::cout << "get address..." << std::endl;
+		//std::cout << "get address..." << std::endl;
 		jmethodID m_size_id = env->GetMethodID(tensor_clz, "getSize", "()J");
 		jlong size = env->CallLongMethod(tensor_obj, m_size_id);
 		auto* tensor_ptr = reinterpret_cast<double*>(address);
 		torch::Tensor tensor = torch::from_blob(tensor_ptr, { size }, TORCH_OPTION_DOUBLE);
 		inputs_element.emplace_back(tensor);
 	}
-	std::cout << "finish tensor input" << std::endl;
+	//std::cout << "finish tensor input" << std::endl;
 	jsize parameters_size = env->GetArrayLength(jparameters);
 	auto* parameters = env->GetPrimitiveArrayCritical(jparameters, NULL);
 	torch::Tensor parameters_tensor = torch::from_blob(parameters, { parameters_size }, TORCH_OPTION_DOUBLE);
 	inputs_element.emplace_back(parameters_tensor);
 	inputs.emplace_back(inputs_element);
-	std::cout << "finish parameters input" << std::endl;
+	//std::cout << "finish parameters input" << std::endl;
 
 	torch::Tensor res = ptr->forward(inputs).toTensor();				// run model
-	std::cout << "finish run model..." << std::endl;
+	//std::cout << "finish run model..." << std::endl;
 	env->ReleasePrimitiveArrayCritical(jparameters, parameters, 0);		// release
 	jlong length = res.numel();
 	double* res_ptr = res.data_ptr<double>();
