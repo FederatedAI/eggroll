@@ -171,3 +171,6 @@ class RocksdbAdapter(PairAdapter):
                 L.debug("finish destroy, path:{}".format(self.path))
         except:
             L.info("path :{} has destroyed".format(self.path))
+
+    def is_sorted(self):
+        return True

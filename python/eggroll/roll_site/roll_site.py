@@ -196,10 +196,14 @@ class RollSite:
                 obj_type = ret_packet.body.value
 
                 table_namespace = self.roll_site_session_id
-            L.debug(f"pull status done: table_name:{table_name}, packet:{to_one_line_string(packet)}, namespace:{namespace}")
+            L.info(f"pull status done: table_name:{table_name}, packet:{to_one_line_string(packet)}, namespace:{namespace}")
             rp = self.ctx.rp_ctx.load(namespace=table_namespace, name=table_name)
-            result = rp.get(table_name) if obj_type == b'object' else rp
-            L.info(f"pull success: {table_name}, count: {rp.count()}, type: {obj_type}")
+            if obj_type == b'object':
+                result = rp.get(table_name)
+                L.info(f"pull success: {table_name}, type: {obj_type}")
+            else:
+                result = rp
+                L.info(f"pull success: {table_name}, count: {rp.count()}, type: {obj_type}")
             return result
         except Exception as e:
             L.exception(f"pull error:{e}")
@@ -217,7 +221,6 @@ class RollSite:
         self.ctx.pushing_task_count += 1
         futures = []
         for role_party_id in parties:
-            # for _partyId in _partyIds:
             _role = role_party_id[0]
             _party_id = str(role_party_id[1])
 
