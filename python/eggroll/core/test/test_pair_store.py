@@ -63,9 +63,25 @@ class TestPairStore(unittest.TestCase):
         print("time:", time.time() - start)
 
     def test_lmdb(self):
-        with create_pair_adapter({"store_type": StoreTypes.ROLLPAIR_LMDB, "path": self.dir + "lmdb"}) as db:
+        with create_pair_adapter({"store_type": StoreTypes.ROLLPAIR_LMDB, "path": self.dir + "LMDB"}) as db:
             self._run_case(db)
             db.destroy()
+
+    def test_lmdb_seek(self):
+        with create_pair_adapter({"store_type": StoreTypes.ROLLPAIR_LMDB, "path": "./data/LMDB/test_pair_store"}) as db:
+            with db.new_batch() as wb:
+                for i in range(7):
+                    if i == 5:
+                        continue
+                    wb.put(('k' + str(i)).encode(), ('v' + str(i)).encode())
+            with db.iteritems() as it:
+                for k, v in it:
+                    print(k, v)
+                print("++++++++++++++++++++++++++++++++++++++++++++++++")
+                it.first()
+                print(it.seek(b'k5'))
+                for k, v in it:
+                    print(k, v)
 
     def test_rocksdb(self):
         with create_pair_adapter({"store_type": StoreTypes.ROLLPAIR_LEVELDB, "path": self.dir + "rocksdb"}) as db:

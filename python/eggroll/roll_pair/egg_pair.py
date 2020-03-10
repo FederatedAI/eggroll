@@ -121,6 +121,7 @@ class EggPair(object):
             # TODO:1: move to create_serdes
             f = create_functor(functors[0]._body)
             with create_adapter(task._inputs[0]) as input_adapter:
+                print("get key:{} and path is:{}".format(self.functor_serdes.deserialize(f._key), input_adapter.path))
                 value = input_adapter.get(f._key)
                 result = ErPair(key=f._key, value=value)
         elif task._name == 'getAll':
@@ -200,18 +201,18 @@ class EggPair(object):
                             value=self.functor_serdes.serialize(seq_op_result))
 
         elif task._name == 'mapPartitions':
-            def map_partitions_wrapper(input_iterator, key_serdes, value_serdes, output_writebatch):
+            def map_partitions_wrapper(input_iterator, key_serdes, value_serdes, shuffle_broker):
                 f = create_functor(functors[0]._body)
                 value = f(generator(key_serdes, value_serdes, input_iterator))
                 if input_iterator.last():
-                    L.info("value of mapPartitions2:{}".format(value))
+                    L.info("value of mapPartitions:{}".format(value))
                     if isinstance(value, Iterable):
                         for k1, v1 in value:
-                            output_writebatch.put(key_serdes.serialize(k1), value_serdes.serialize(v1))
+                            shuffle_broker.put((key_serdes.serialize(k1), value_serdes.serialize(v1)))
                     else:
                         key = input_iterator.key()
-                        output_writebatch.put(key, value_serdes.serialize(value))
-            self._run_unary(map_partitions_wrapper, task)
+                        shuffle_broker.put((key, value_serdes.serialize(value)))
+            self._run_unary(map_partitions_wrapper, task, shuffle=True)
 
         elif task._name == 'collapsePartitions':
             def collapse_partitions_wrapper(input_iterator, key_serdes, value_serdes, output_writebatch):
