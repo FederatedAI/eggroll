@@ -99,7 +99,7 @@ class FrameBatch(val rootSchema: FrameSchema,
   def initZero(): Unit = {
     rootVectors.foreach { i =>
       val validityByteBuffer = i.fieldVector.getValidityBuffer
-      validityByteBuffer.setBytes(0, Array.fill[Byte](validityByteBuffer.capacity())(-1))
+      validityByteBuffer.setBytes(0, Array.fill[Byte](validityByteBuffer.capacity().toInt)(-1))
     }
   }
 
@@ -537,7 +537,7 @@ object FrameUtils {
     dataByteBuffer.asDoubleBuffer().put(value)
 
     val validityByteBuffer = fv.getValidityBuffer
-    val validityBits = Array.fill[Byte](validityByteBuffer.capacity())(-1)
+    val validityBits = Array.fill[Byte](validityByteBuffer.capacity().toInt)(-1)
     validityByteBuffer.setBytes(0, validityBits)
   }
 }
