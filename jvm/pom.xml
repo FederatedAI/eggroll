@@ -214,7 +214,7 @@
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
     <!-- Dependencies -->
-    <arrow.version>0.15.1</arrow.version>
+    <arrow.version>0.16.0</arrow.version>
     <commons-beanutils.version>1.9.3</commons-beanutils.version>
     <commons-io.version>2.6</commons-io.version>
     <commons-lang3.version>3.8.1</commons-lang3.version>
@@ -229,6 +229,7 @@
     <protobuf.version>3.6.1</protobuf.version>
     <rocksdb.version>6.2.2</rocksdb.version>
     <scalatest.version>3.0.8</scalatest.version>
+    <spark.version>2.4.3</spark.version>
 
     <!-- Plugins -->
     <build-helper-maven-plugin.version>3.0.0</build-helper-maven-plugin.version>

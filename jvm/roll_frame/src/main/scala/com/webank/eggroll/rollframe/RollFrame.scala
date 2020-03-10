@@ -54,7 +54,7 @@ class RollFrameContext private[eggroll](val session: ErSession) {
       namespace = namespace,
       name = name,
       storeType = storeType,
-      totalPartitions = totalPartitions,
+      totalPartitions = totalPartitions
     ))
     val loaded = session.clusterManagerClient.getOrCreateStore(store)
     new RollFrame(loaded, this)
