@@ -297,7 +297,7 @@ class FrameFormatTests {
 
 
     val validityByteBuffer = fb.rootVectors(0).fieldVector.getValidityBuffer
-    val validityBits = Array.fill[Byte](validityByteBuffer.capacity())(-1)
+    val validityBits = Array.fill[Byte](validityByteBuffer.capacity().toInt)(-1)
     validityByteBuffer.setBytes(0, validityBits)
 
     println(s"way 2 time = ${System.currentTimeMillis() - start}")

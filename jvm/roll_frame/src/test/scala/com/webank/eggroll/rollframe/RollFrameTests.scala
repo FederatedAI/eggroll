@@ -20,6 +20,7 @@ package com.webank.eggroll.rollframe
 import java.util.Random
 import java.util.concurrent.{Callable, Executors}
 
+import com.webank.eggroll.core.ErSession
 import com.webank.eggroll.core.constant.StringConstants
 import com.webank.eggroll.core.meta.{ErPartition, ErStore, ErStoreLocator}
 import com.webank.eggroll.format._
@@ -51,6 +52,7 @@ class RollFrameTests {
     ta.setMode("local")
     // TODO: 3in1 run fail
     ctx = ta.getRfContext(true)
+
     printContextMessage()
     HdfsBlockAdapter.fastSetLocal()
     inputStore = ctx.createStore("test1", "a1", StringConstants.FILE, partitions_)
@@ -152,12 +154,12 @@ class RollFrameTests {
       //    create ColumnFrame
       writeCf(FrameStore(inputTensorStore, i))
     }
-    write(FrameStore.hdfs("/tmp/unittests/RollFrameTests/hdfs/test1/a1/0"))
-    write(FrameStore.hdfs("/tmp/unittests/RollFrameTests/hdfs/test1/a1/1"))
-    write(FrameStore.hdfs("/tmp/unittests/RollFrameTests/hdfs/test1/a1/2"))
-    read(FrameStore.hdfs("/tmp/unittests/RollFrameTests/hdfs/test1/a1/0"))
-    read(FrameStore.hdfs("/tmp/unittests/RollFrameTests/hdfs/test1/a1/1"))
-    read(FrameStore.hdfs("/tmp/unittests/RollFrameTests/hdfs/test1/a1/2"))
+//    write(FrameStore.hdfs("/tmp/unittests/RollFrameTests/hdfs/test1/a1/0"))
+//    write(FrameStore.hdfs("/tmp/unittests/RollFrameTests/hdfs/test1/a1/1"))
+//    write(FrameStore.hdfs("/tmp/unittests/RollFrameTests/hdfs/test1/a1/2"))
+//    read(FrameStore.hdfs("/tmp/unittests/RollFrameTests/hdfs/test1/a1/0"))
+//    read(FrameStore.hdfs("/tmp/unittests/RollFrameTests/hdfs/test1/a1/1"))
+//    read(FrameStore.hdfs("/tmp/unittests/RollFrameTests/hdfs/test1/a1/2"))
   }
 
   @Test
@@ -257,7 +259,7 @@ class RollFrameTests {
 
   @Test
   def testMapBatchWithHdfs(): Unit = {
-    val input = ta.loadCache(inputHdfsStore)
+    val input =inputHdfsStore
     val output = ctx.forkStore(input, "test1", "a1map1", StringConstants.HDFS)
     val rf = ctx.load(input)
     rf.mapBatch({ cb =>
