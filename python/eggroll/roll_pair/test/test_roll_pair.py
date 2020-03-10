@@ -217,6 +217,7 @@ class TestRollPairBase(unittest.TestCase):
 
     def test_map_partitions(self):
         options = get_default_options()
+        options['total_partitions'] = 12
         data = [(str(i), i) for i in range(10)]
         rp = self.ctx.load("ns1", "test_map_partitions", options=options).put_all(data, options={"include_key": True})
         def func(iter):
@@ -226,8 +227,10 @@ class TestRollPairBase(unittest.TestCase):
                 ret.append((f"{k}_{v}_1", v ** 3))
             return ret
         table = rp.map_partitions(func)
-        print(list(rp.map_partitions(func).get_all()))
-        self.assertEqual(get_value(table), [('0_0_0', 0), ('0_0_1', 0), ('1_1_0', 1), ('1_1_1', 1), ('2_2_0', 4), ('2_2_1', 8),
+        self.assertEqual(table.get("6_6_0"), 36)
+        self.assertEqual(table.get("0_0_1"), 0)
+        self.assertEqual(table.get("1_1_0"), 1)
+        self.assertEqual(sorted(table.get_all(), key=lambda x: x[0]), [('0_0_0', 0), ('0_0_1', 0), ('1_1_0', 1), ('1_1_1', 1), ('2_2_0', 4), ('2_2_1', 8),
                                             ('3_3_0', 9), ('3_3_1', 27), ('4_4_0', 16), ('4_4_1', 64), ('5_5_0', 25),
                                             ('5_5_1', 125), ('6_6_0', 36), ('6_6_1', 216), ('7_7_0', 49), ('7_7_1', 343),
                                             ('8_8_0', 64), ('8_8_1', 512), ('9_9_0', 81), ('9_9_1', 729)])
