@@ -416,7 +416,7 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
         localBatch = combOp(localBatch, resultIterator.next())
       }
       val transferQueueSize = task.job.inputs.head.storeLocator.totalPartitions - 1
-      require(transferQueueSize > 0, s"""transferQueueSize:$transferQueueSize, task:$task""")
+      require(transferQueueSize > -1, s"""transferQueueSize:$transferQueueSize, task:$task""")
       // TODO: check asynchronous call
       if (byColumn) {
         val slicedBatches = ctx.sliceByColumn(localBatch)

@@ -316,12 +316,12 @@ class RollFrameTests {
     println(System.currentTimeMillis() - start)
 
     val resultFb = FrameStore(outStore, 0).readOne()
-    TestCase.assertEquals(resultFb.readDouble(0, 0), rowCount * 3, TestAssets.DELTA)
+    TestCase.assertEquals(resultFb.readDouble(0, 0), inStore.partitions.length *rowCount , TestAssets.DELTA)
   }
 
   @Test
   def testMapBatch(): Unit = {
-    val input = inputStore
+    val input = ctx.createStore("test1","a1",StringConstants.FILE,2)
     val output = ctx.forkStore(inputStore, "test1", "a1map1", StringConstants.FILE)
     val rf = ctx.load(input)
     val start = System.currentTimeMillis()
