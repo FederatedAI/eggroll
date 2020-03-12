@@ -201,6 +201,9 @@ class LmdbWriteBatch(PairWriteBatch):
     def put(self, k, v):
         self.txn.put(k, v)
 
+    def get(self, k):
+        return self.txn.get(k)
+
     def delete(self, k):
         self.txn.delete(k)
 
