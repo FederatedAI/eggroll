@@ -311,24 +311,6 @@ class TestRollPairBase(unittest.TestCase):
         for i in range(1, 2000000):
             yield [i, i]
 
-    def test_union_2000w(self):
-        options = get_default_options()
-        options['include_key'] = False
-        options['total_partitions'] = 1
-        left_rp = self.ctx.load("ns1202010", "testUnionLeft202000100w17", options=options).put_all(self.gen_data(), options=options)
-        print(left_rp.first())
-        print((left_rp.count()))
-        options['include_key'] = True
-        options['total_partitions'] = 1
-        right_rp = self.ctx.load("ns12020101", "testUnionRight202000100w18", options=options).put_all(self.gen_kv())
-        print(right_rp.first())
-        print((right_rp.count()))
-        import time
-        start = time.time()
-        print((left_rp.union(right_rp, lambda v1, v2: v1 + v2).count()))
-        end = time.time()
-        print('time:{}'.format(end - start))
-
     def test_union(self):
         options = get_default_options()
         options['include_key'] = False
