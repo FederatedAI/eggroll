@@ -346,8 +346,6 @@ class EggPair(object):
                     right_iterator, right_key_serdes, right_value_serdess,
                     output_writebatch):
                 f = create_functor(functors[0]._body)
-                #store the iterator that has been iterated before
-                k_list_iterated = []
 
                 is_diff_serdes = type(left_key_serdes) != type(right_key_serdes)
                 for k_left, v_left in left_iterator:
@@ -357,19 +355,19 @@ class EggPair(object):
                     if v_right is None:
                         output_writebatch.put(k_left, v_left)
                     else:
-                        k_list_iterated.append(left_key_serdes.deserialize(k_left))
                         v_final = f(left_value_serdess.deserialize(v_left),
                                     right_value_serdess.deserialize(v_right))
                         output_writebatch.put(k_left, left_value_serdess.serialize(v_final))
 
                 right_iterator.first()
                 for k_right, v_right in right_iterator:
-                    if right_key_serdes.deserialize(k_right) not in k_list_iterated:
-                        #because left value and right value may have different serdes
-                        if is_diff_serdes:
-                            k_right = left_key_serdes.serialize(left_key_serdes.deserialize(k_right))
-                        if is_diff_serdes:
-                            v_right = left_value_serdess.serialize(right_value_serdess.deserialize(v_right))
+                    if is_diff_serdes:
+                        final_v_bytes = output_writebatch.get(left_key_serdes.serialize(
+                            right_key_serdes.deserialize(k_right)))
+                    else:
+                        final_v_bytes = output_writebatch.get(k_right)
+
+                    if final_v_bytes is None:
                         output_writebatch.put(k_right, v_right)
             self._run_binary(union_wrapper, task)
 
