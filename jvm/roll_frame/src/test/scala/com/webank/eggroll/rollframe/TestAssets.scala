@@ -23,7 +23,7 @@ import com.webank.eggroll.core.constant.{ProcessorStatus, ProcessorTypes, String
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.format.FrameStore
 
-object TestAssets {
+object TestAssets extends Serializable {
 
   val DELTA = 0.0000001
 
