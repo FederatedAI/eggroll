@@ -22,7 +22,7 @@ import java.util.concurrent.{Callable, Executors}
 
 import com.webank.eggroll.core.ErSession
 import com.webank.eggroll.core.constant.StringConstants
-import com.webank.eggroll.core.meta.{ErPartition, ErStore, ErStoreLocator}
+import com.webank.eggroll.core.meta.{ErPartition, ErSessionMeta, ErStore, ErStoreLocator}
 import com.webank.eggroll.format._
 import com.webank.eggroll.rollframe.pytorch.{LibraryLoader, Matrices}
 import com.webank.eggroll.util.SchemaUtil
@@ -52,8 +52,8 @@ class RollFrameTests {
     ta.setMode("local")
     // TODO: 3in1 run fail
     ctx = ta.getRfContext(true)
+//    val ctx1 = ctx.session.clusterManagerClient.getSession(ErSessionMeta(id = "debug-sid"))
 
-    printContextMessage()
     HdfsBlockAdapter.fastSetLocal()
     inputStore = ctx.createStore("test1", "a1", StringConstants.FILE, partitions_)
     inputHdfsStore = ctx.createStore("test1", "a1", StringConstants.HDFS, partitions_)
