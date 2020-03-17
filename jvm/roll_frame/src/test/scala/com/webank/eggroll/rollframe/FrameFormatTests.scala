@@ -20,6 +20,7 @@ package com.webank.eggroll.rollframe
 
 import java.nio.{ByteBuffer, ByteOrder}
 
+import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.format._
 import com.webank.eggroll.util.SchemaUtil
 import io.netty.util.internal.PlatformDependent
@@ -32,7 +33,7 @@ class FrameFormatTests {
 
   @Before
   def setup(): Unit = {
-    HdfsBlockAdapter.fastSetLocal()
+    StaticErConf.addProperty("hadoop.fs.defaultFS","file:///")
   }
 
   @Test

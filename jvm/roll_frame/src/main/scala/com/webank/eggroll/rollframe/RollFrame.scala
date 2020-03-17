@@ -139,7 +139,7 @@ class RollFrameContext private[eggroll](val session: ErSession) {
 }
 
 object RollFrameContext {
-  StaticErConf.addProperties("conf/eggroll.properties")
+//  StaticErConf.addProperties("conf/eggroll.properties")
 
   def apply(session: ErSession): RollFrameContext = new RollFrameContext(session)
 
