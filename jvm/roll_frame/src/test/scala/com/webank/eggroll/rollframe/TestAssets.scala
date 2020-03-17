@@ -21,12 +21,15 @@ import java.net.BindException
 import com.webank.eggroll.core.{Bootstrap, ErSession}
 import com.webank.eggroll.core.constant.{ProcessorStatus, ProcessorTypes, StringConstants}
 import com.webank.eggroll.core.meta._
+import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.format.FrameStore
 
 object TestAssets extends Serializable {
 
   val DELTA = 0.0000001
-
+  StaticErConf.addProperty("eggroll.resourcemanager.clustermanager.host","127.0.0.1")
+  StaticErConf.addProperty("eggroll.resourcemanager.clustermanager.port","4670")
+  StaticErConf.addProperty("hadoop.fs.defaultFS","file:///")
   def getRfContext(isDebug:Boolean = true, withRm:Boolean = false): RollFrameContext = {
     if(!isDebug) {
       RollFrameContext()
@@ -41,7 +44,7 @@ object TestAssets extends Serializable {
       }
       new Thread("eggroll-ef-bootstrap"){
         override def run(): Unit = {
-          Bootstrap.main(s"--config conf/eggroll.properties --bootstraps com.webank.eggroll.rollframe.EggFrameBootstrap -s debug-sid -p 20100  -tp 20200 --ignore-rebind".split(" "))
+          Bootstrap.main(s"--config conf/eggroll.properties --bootstraps com.webank.eggroll.rollframe.EggFrameBootstrap -s debug-sid -p 20100  -tp 20200".split(" "))
         }
       }.start()
 

@@ -2,8 +2,7 @@ package com.webank.eggroll.rollframe
 
 import com.webank.eggroll.core.constant.StringConstants
 import com.webank.eggroll.core.meta.ErStore
-import com.webank.eggroll.format.{FrameBatch, FrameSchema, FrameStore, HdfsBlockAdapter}
-import com.webank.eggroll.rollframe.pytorch.LibraryLoader
+import com.webank.eggroll.format.{FrameBatch, FrameSchema, FrameStore}
 import junit.framework.TestCase
 import org.junit.{Before, Test}
 import org.apache.spark.sql.{Dataset, Row, SparkSession}
@@ -24,8 +23,6 @@ class SparkAppTest extends Serializable {
   println(s"Spark version: ${spark.version}")
   val df: Dataset[Row] = spark.read.format("csv").option("header", "true").option("inferSchema", "true")
     .load("jvm/roll_frame/src/test/resources/data_1w_10cols.csv").repartition(3)
-  ta.setMode("local")
-  HdfsBlockAdapter.fastSetLocal()
 
   @Test
   def testRddToRollFrame(): Unit = {
@@ -33,7 +30,7 @@ class SparkAppTest extends Serializable {
     val ctx: RollFrameContext = ta.getRfContext(true)
     val namespace = "test1"
     val name = "spark1"
-    val storeType = StringConstants.CACHE
+    val storeType = StringConstants.HDFS
     val path = String.join(StringConstants.SLASH, rootPath, storeType, namespace, name)
     val store = ctx.createStore(namespace, name, storeType, partitions_)
     // TODO: spark rdd and rollframe FrameBatch have different store order
@@ -46,7 +43,7 @@ class SparkAppTest extends Serializable {
           fb.writeDouble(field, row, data(row).get(field).toString.toDouble)
         }
       }
-      val adapter = FrameStore.file(path + TaskContext.getPartitionId())
+      val adapter = FrameStore.hdfs(path + TaskContext.getPartitionId())
       // TODO: store can't serialize, so it can't use NetWorkStore, only HdfsStore
       adapter.append(fb)
       adapter.close()
@@ -61,7 +58,7 @@ class SparkAppTest extends Serializable {
     val ctx: RollFrameContext = ta.getRfContext(true)
     val namespace = "test1"
     val name = "spark1"
-    val storeType = StringConstants.CACHE
+    val storeType = StringConstants.HDFS
     val path = String.join(StringConstants.SLASH, rootPath, storeType, namespace, name)
     val store = ctx.createStore(namespace, name, storeType, partitions_)
     val start = System.currentTimeMillis()
@@ -76,7 +73,7 @@ class SparkAppTest extends Serializable {
         i += 1
       }
 
-      val adapter = FrameStore.file(path + TaskContext.getPartitionId())
+      val adapter = FrameStore.hdfs(path + TaskContext.getPartitionId())
       adapter.append(fb)
       adapter.close()
     }

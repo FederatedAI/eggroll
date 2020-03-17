@@ -56,7 +56,6 @@
             <artifactId>spark-mllib_2.12</artifactId>
             <version>${spark.version}</version>
         </dependency>
-
     <dependency>
         <groupId>org.apache.arrow</groupId>
         <artifactId>arrow-memory</artifactId>
