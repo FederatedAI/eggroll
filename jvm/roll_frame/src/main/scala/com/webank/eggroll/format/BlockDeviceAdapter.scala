@@ -83,7 +83,6 @@ class FileBlockAdapter(path: String) extends BlockDeviceAdapter {
 
 object HdfsBlockAdapter {
   // TODO:add and test add xml config
-  private val HDFS_LOCAL_ROOT_PATH = "file:///"
   private var conf : Configuration = {
     val defaultConf = new Configuration()
     val fsName = StaticErConf.getString("hadoop.fs.defaultFS", "")
@@ -92,11 +91,6 @@ object HdfsBlockAdapter {
     }
     defaultConf
   }
-
-  def fastSetLocal(): Unit ={
-    conf.set("fs.defaultFS", HDFS_LOCAL_ROOT_PATH)
-  }
-
 
   /**
     * notice: hadoop conf can't set when use spark foreachPartition operation

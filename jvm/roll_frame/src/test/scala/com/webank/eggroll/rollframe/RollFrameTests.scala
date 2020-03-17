@@ -54,7 +54,6 @@ class RollFrameTests {
     ctx = ta.getRfContext(true)
 //    val ctx1 = ctx.session.clusterManagerClient.getSession(ErSessionMeta(id = "debug-sid"))
 
-    HdfsBlockAdapter.fastSetLocal()
     inputStore = ctx.createStore("test1", "a1", StringConstants.FILE, partitions_)
     inputHdfsStore = ctx.createStore("test1", "a1", StringConstants.HDFS, partitions_)
     inputTensorStore = ctx.createStore("test1", "t1", StringConstants.FILE, partitions_)
@@ -154,9 +153,9 @@ class RollFrameTests {
       //    create ColumnFrame
       writeCf(FrameStore(inputTensorStore, i))
     }
-//    write(FrameStore.hdfs("/tmp/unittests/RollFrameTests/hdfs/test1/a1/0"))
-//    write(FrameStore.hdfs("/tmp/unittests/RollFrameTests/hdfs/test1/a1/1"))
-//    write(FrameStore.hdfs("/tmp/unittests/RollFrameTests/hdfs/test1/a1/2"))
+    write(FrameStore.hdfs("/tmp/unittests/RollFrameTests/hdfs/test2/a1/0"))
+    write(FrameStore.hdfs("/tmp/unittests/RollFrameTests/hdfs/test2/a1/1"))
+    write(FrameStore.hdfs("/tmp/unittests/RollFrameTests/hdfs/test2/a1/2"))
 //    read(FrameStore.hdfs("/tmp/unittests/RollFrameTests/hdfs/test1/a1/0"))
 //    read(FrameStore.hdfs("/tmp/unittests/RollFrameTests/hdfs/test1/a1/1"))
 //    read(FrameStore.hdfs("/tmp/unittests/RollFrameTests/hdfs/test1/a1/2"))
@@ -321,9 +320,8 @@ class RollFrameTests {
 
   @Test
   def testMapBatch(): Unit = {
-    val input = ctx.createStore("test1","a1",StringConstants.FILE,2)
     val output = ctx.forkStore(inputStore, "test1", "a1map1", StringConstants.FILE)
-    val rf = ctx.load(input)
+    val rf = ctx.load(inputStore)
     val start = System.currentTimeMillis()
     rf.mapBatch({ cb =>
       val schema =
@@ -635,7 +633,6 @@ class RollFrameClusterTests extends RollFrameTests {
   @Before
   override def setup(): Unit = {
     ctx = ta.getRfContext(false)
-    HdfsBlockAdapter.fastSetLocal()
     ta.setMode("local")
     try {
       LibraryLoader.load
