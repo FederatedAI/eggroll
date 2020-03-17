@@ -125,7 +125,7 @@ class ErSession(object):
         self.__processors = self.__session_meta._processors
 
         L.info(f'session init finished:{self.__session_id}, details: {self.__session_meta}')
-
+        self.stopped = False
         self._rolls = list()
         self._eggs = dict()
 
@@ -157,12 +157,14 @@ class ErSession(object):
         L.debug(f'stopping session (gracefully), details: {self.__session_meta}')
         L.debug(f'stopping (gracefully) from: {get_stack()}')
         self.run_exit_tasks()
+        self.stopped = True
         return self._cluster_manager_client.stop_session(self.__session_meta)
 
     def kill(self):
         L.info(f'killing session (forcefully): {self.__session_id}')
         L.debug(f'killing session (forcefully), details: {self.__session_meta}')
         L.debug(f'killing (forcefully) from: {get_stack()}')
+        self.stopped = True
         return self._cluster_manager_client.kill_session(self.__session_meta)
 
     def get_session_id(self):
@@ -188,3 +190,6 @@ class ErSession(object):
 
     def get_all_options(self):
         return self.__options.copy()
+
+    def is_stopped(self):
+        return self.stopped
