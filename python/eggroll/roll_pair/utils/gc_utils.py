@@ -13,12 +13,13 @@ class GcRecorder(object):
         self.record_rpc = rpc
         self.gc_recorder = None
         self.gc_store_name = '__gc__' + self.record_rpc.get_session().get_session_id()
+        self.gc_store_namespace = '__gc__record'
 
     def __set_gc_recorder(self):
         options = dict()
         options['store_type'] = StoreTypes.ROLLPAIR_LMDB
         _table_recorder = self.record_rpc.load(name=self.gc_store_name,
-                                               namespace=self.record_rpc.get_session().get_session_id(),
+                                               namespace=self.gc_store_namespace,
                                                options=options)
         return _table_recorder
 
@@ -44,6 +45,10 @@ class GcRecorder(object):
         store_type = er_store._store_locator._store_type
         if store_type != StoreTypes.ROLLPAIR_IN_MEMORY:
             return False
+        if self.record_rpc.get_session().is_stopped():
+            L.info("session:{} has already been stopped while gc"
+                   .format(self.record_rpc.get_session().get_session_id()))
+            return
         record_count = self.gc_recorder.get(er_store._store_locator._name)
         if record_count is None:
             record_count = 0
@@ -55,5 +60,9 @@ class GcRecorder(object):
             return True
 
     def delete_record(self, er_store: ErStore):
+        if self.record_rpc.get_session().is_stopped():
+            L.info("session:{} has already been stopped while gc"
+                   .format(self.record_rpc.get_session().get_session_id()))
+            return
         name = er_store._store_locator._name
         self.gc_recorder.delete(name)
