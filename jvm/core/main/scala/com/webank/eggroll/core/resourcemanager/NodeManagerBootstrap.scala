@@ -3,7 +3,7 @@ package com.webank.eggroll.core.resourcemanager
 import java.io.File
 import java.net.InetSocketAddress
 
-import com.webank.eggroll.core.Bootstrap
+import com.webank.eggroll.core.BootstrapBase
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
 import com.webank.eggroll.core.constant.{CoreConfKeys, NodeManagerCommands, NodeManagerConfKeys, ResourceManagerConfKeys}
 import com.webank.eggroll.core.meta.{ErProcessor, ErSessionMeta}
@@ -11,7 +11,7 @@ import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.util.{CommandArgsUtils, Logging}
 import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
 
-class NodeManagerBootstrap extends Bootstrap with Logging {
+class NodeManagerBootstrap extends BootstrapBase with Logging {
   private var port = 0
   private var confPath = ""
   override def init(args: Array[String]): Unit = {
