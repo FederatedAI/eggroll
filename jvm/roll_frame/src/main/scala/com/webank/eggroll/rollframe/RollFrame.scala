@@ -163,7 +163,7 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
   }
 
   def torchMap(path: String, parameters: Array[Double], output: ErStore = null): RollFrame = {
-    def func(fb: FrameBatch): FrameBatch = {
+    val func: (FrameBatch) => FrameBatch = { fb =>
       Script.runTorchMap(path, fb, parameters)
     }
 
@@ -173,7 +173,8 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
   def torchMerge(path: String, parameters: Array[Double]=Array(), output: ErStore = null): RollFrame = {
     val partitionNums = store.partitions.length
 
-    def func(ctx: EggFrameContext, task: ErTask, input: Iterator[FrameBatch], output: FrameStore): ErPair = {
+    val func: (EggFrameContext, ErTask, Iterator[FrameBatch], FrameStore) => ErPair = {
+      (ctx, task, input, output) =>
       val queuePath = "gather:" + task.job.id
       val partition = task.inputs.head
       val localServer = partition.processor
@@ -201,7 +202,7 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
 
   @deprecated
   def matMulV1(m: Array[Double], rows: Int, cols: Int, output: ErStore = null): RollFrame = {
-    def func(fb: FrameBatch): FrameBatch = {
+    val func: (FrameBatch) => FrameBatch = { fb =>
       println(fb.rowCount, fb.fieldCount)
       var start = System.currentTimeMillis()
       val cb = fb.toColumnVectors
@@ -217,7 +218,7 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
 
   @deprecated
   def matMul(m: Array[Double], rows: Int, cols: Int, output: ErStore = null): RollFrame = {
-    def func(fb: FrameBatch): FrameBatch = {
+    val func: (FrameBatch) => FrameBatch = { fb =>
       println(fb.rowCount, fb.fieldCount)
       var start = System.currentTimeMillis()
       val cb = fb.toColumnVectors
@@ -258,7 +259,8 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
   }
 
   def mapBatch(f: FrameBatch => FrameBatch, output: ErStore = null): RollFrame = {
-    def func(ctx: EggFrameContext, task: ErTask, input: Iterator[FrameBatch], output: FrameStore): ErPair = {
+    val func: (EggFrameContext, ErTask, Iterator[FrameBatch], FrameStore) => ErPair = {
+      (ctx, task, input, output) =>
       // for concurrent writing
       val queuePath = task.id + "-doing"
       // total mean batch size, if given more than one, it just get one.
@@ -312,7 +314,8 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
       Array[Byte]()
     }
 
-    def func(ctx: EggFrameContext, task: ErTask, input: Iterator[FrameBatch], output: FrameStore): ErPair = {
+    val func: (EggFrameContext, ErTask, Iterator[FrameBatch], FrameStore) => ErPair = {
+      (ctx, task, input, output) =>
       val zeroValue: FrameBatch = if (zeroValueBytes.isEmpty) null else FrameUtils.fromBytes(zeroValueBytes)
       val partition = task.inputs.head
       val batchSize = 1
@@ -337,7 +340,7 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
             if (input.hasNext) {
               input.next()
             } else {
-              return null
+              null
             }
           }
         } else {
@@ -404,56 +407,60 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
         }
       }
 
-      if (localQueue == null) {
-        return null
-      }
-
-      // todo: local queue and result synchronization, maybe a countdown latch
-      val resultIterator = localQueue.readAll()
-      if (!resultIterator.hasNext) throw new IllegalStateException("empty result")
-      var localBatch: FrameBatch = resultIterator.next()
-      while (resultIterator.hasNext) {
-        localBatch = combOp(localBatch, resultIterator.next())
-      }
-      val transferQueueSize = task.job.inputs.head.storeLocator.totalPartitions - 1
-      require(transferQueueSize > -1, s"""transferQueueSize:$transferQueueSize, task:$task""")
-      // TODO: check asynchronous call
-      if (byColumn) {
-        val slicedBatches = ctx.sliceByColumn(localBatch)
-        // Don't block next receive step
-        slicedBatches.foreach { case (server, inclusive: Inclusive) =>
-          val queuePath = "all2all:" + task.job.id + ":" + server.id
-          if (!server.equals(localServer)) {
-            ctx.frameTransfer.send(server.id, queuePath, localBatch.sliceByColumn(inclusive.start, inclusive.end))
-          }
+//      if (localQueue == null) {
+//        return null
+//      }
+        // caution: cannot use return, in val func: xx,
+        // and cannot use def func(xx) in scala 2.11 because of serder problem
+      if(localQueue != null){
+        // todo: local queue and result synchronization, maybe a countdown latch
+        val resultIterator = localQueue.readAll()
+        if (!resultIterator.hasNext) throw new IllegalStateException("empty result")
+        var localBatch: FrameBatch = resultIterator.next()
+        while (resultIterator.hasNext) {
+          localBatch = combOp(localBatch, resultIterator.next())
         }
-
-        slicedBatches.foreach { case (server, inclusive: Inclusive) =>
-          val queuePath = "all2all:" + task.job.id + ":" + server.id
-          if (server.equals(localServer)) {
-            for (tmp <- FrameStore.queue(queuePath, transferQueueSize).readAll()) {
-              localBatch = combOp(localBatch, tmp.spareByColumn(localBatch.rootVectors.length, inclusive.start, inclusive.end))
+        val transferQueueSize = task.job.inputs.head.storeLocator.totalPartitions - 1
+        require(transferQueueSize > -1, s"""transferQueueSize:$transferQueueSize, task:$task""")
+        // TODO: check asynchronous call
+        if (byColumn) {
+          val slicedBatches = ctx.sliceByColumn(localBatch)
+          // Don't block next receive step
+          slicedBatches.foreach { case (server, inclusive: Inclusive) =>
+            val queuePath = "all2all:" + task.job.id + ":" + server.id
+            if (!server.equals(localServer)) {
+              ctx.frameTransfer.send(server.id, queuePath, localBatch.sliceByColumn(inclusive.start, inclusive.end))
             }
           }
-        }
-      } else {
-        val queuePath = "gather:" + task.job.id
-        if (localServer.commandEndpoint.host.equals(ctx.rootServer.commandEndpoint.host)) {
-          // the same root server
-          if (partition.id == 0) {
-            for (tmp <- FrameStore.queue(queuePath, transferQueueSize).readAll()) {
-              localBatch = combOp(localBatch, tmp)
+
+          slicedBatches.foreach { case (server, inclusive: Inclusive) =>
+            val queuePath = "all2all:" + task.job.id + ":" + server.id
+            if (server.equals(localServer)) {
+              for (tmp <- FrameStore.queue(queuePath, transferQueueSize).readAll()) {
+                localBatch = combOp(localBatch, tmp.spareByColumn(localBatch.rootVectors.length, inclusive.start, inclusive.end))
+              }
             }
-            output.append(localBatch)
-          } else {
-            // the same root server but different partition
-            FrameStore.queue(queuePath, -1).writeAll(Iterator(localBatch))
           }
         } else {
-          ctx.frameTransfer.send(ctx.rootServer.id, queuePath, localBatch)
+          val queuePath = "gather:" + task.job.id
+          if (localServer.commandEndpoint.host.equals(ctx.rootServer.commandEndpoint.host)) {
+            // the same root server
+            if (partition.id == 0) {
+              for (tmp <- FrameStore.queue(queuePath, transferQueueSize).readAll()) {
+                localBatch = combOp(localBatch, tmp)
+              }
+              output.append(localBatch)
+            } else {
+              // the same root server but different partition
+              FrameStore.queue(queuePath, -1).writeAll(Iterator(localBatch))
+            }
+          } else {
+            ctx.frameTransfer.send(ctx.rootServer.id, queuePath, localBatch)
+          }
         }
+        output.close()
       }
-      output.close()
+
       null
     }
 
