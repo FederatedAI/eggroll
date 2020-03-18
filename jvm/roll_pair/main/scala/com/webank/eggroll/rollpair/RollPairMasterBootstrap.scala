@@ -6,7 +6,7 @@ import java.net.InetSocketAddress
 import java.util.concurrent.ConcurrentHashMap
 
 import _root_.io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
-import com.webank.eggroll.core.Bootstrap
+import com.webank.eggroll.core.BootstrapBase
 import com.webank.eggroll.core.client.ClusterManagerClient
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
 import com.webank.eggroll.core.constant._
@@ -16,7 +16,7 @@ import com.webank.eggroll.core.util.{CommandArgsUtils, Logging}
 import org.apache.commons.cli.CommandLine
 import org.apache.commons.lang3.StringUtils
 
-class RollPairMasterBootstrap extends Bootstrap with Logging {
+class RollPairMasterBootstrap extends BootstrapBase with Logging {
   private var port = 0
   private var sessionId = "er_session_null"
   private var nodeManager = ""
