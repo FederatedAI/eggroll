@@ -277,6 +277,9 @@ class RollPair(object):
         self.gc_recorder.record(er_store)
 
     def __del__(self):
+        if self.ctx.get_session().is_stopped():
+            L.info('session:{} has already been stopped'.format(self.__session_id))
+            return
         if not hasattr(self, 'gc_enable') or not self.gc_enable:
             return
         if self.ctx.gc_recorder.check_gc_executable(self.__store):
