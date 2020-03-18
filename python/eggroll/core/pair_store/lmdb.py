@@ -26,7 +26,7 @@ L = get_logger()
 
 #64 * 1024 * 1024
 LMDB_MAP_SIZE = 16 * 4_096 * 244_140    # follows storage-service-cxx's config here
-LMDB_MAP_SIZE_WINDOWS = 200 * 1024 * 1024 * 10
+LMDB_MAP_SIZE_WINDOWS_OS = 40 * 1024 * 1024
 DEFAULT_DB = b'main'
 
 
@@ -55,7 +55,7 @@ class LmdbAdapter(PairAdapter):
         with LmdbAdapter.env_lock:
             super().__init__(options)
             self.path = options["path"]
-            lmdb_map_size = options.get("lmdb_map_size", LMDB_MAP_SIZE if platform.system() != 'Windows' else LMDB_MAP_SIZE_WINDOWS)
+            lmdb_map_size = options.get("lmdb_map_size", LMDB_MAP_SIZE if platform.system() != 'Windows' else LMDB_MAP_SIZE_WINDOWS_OS)
             create_if_missing = (str(options.get("create_if_missing", "True")).lower() == 'true')
             if self.path not in LmdbAdapter.env_dict:
                 if create_if_missing:
@@ -200,6 +200,9 @@ class LmdbWriteBatch(PairWriteBatch):
 
     def put(self, k, v):
         self.txn.put(k, v)
+
+    def get(self, k):
+        return self.txn.get(k)
 
     def delete(self, k):
         self.txn.delete(k)

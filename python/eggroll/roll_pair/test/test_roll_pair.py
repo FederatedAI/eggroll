@@ -299,6 +299,18 @@ class TestRollPairBase(unittest.TestCase):
         right_rp = self.ctx.load("namespace2020131", "testSubtractByKeyRight202013", options=options).put_all(range(5), options=options)
         self.assertEqual(list(left_rp.subtract_by_key(right_rp).get_all()), [(5, 5), (6, 6), (7, 7), (8, 8), (9, 9)])
 
+    @staticmethod
+    def gen_data(self):
+        ret = []
+        for i in range(1, 2000000):
+            ret.append(i)
+        return ret
+
+    @staticmethod
+    def gen_kv(self):
+        for i in range(1, 2000000):
+            yield [i, i]
+
     def test_union(self):
         options = get_default_options()
         options['include_key'] = False
