@@ -20,9 +20,8 @@ package com.webank.eggroll.rollframe
 import java.util.Random
 import java.util.concurrent.{Callable, Executors}
 
-import com.webank.eggroll.core.ErSession
 import com.webank.eggroll.core.constant.StringConstants
-import com.webank.eggroll.core.meta.{ErPartition, ErSessionMeta, ErStore, ErStoreLocator}
+import com.webank.eggroll.core.meta.{ErStore, ErStoreLocator}
 import com.webank.eggroll.format._
 import com.webank.eggroll.rollframe.pytorch.{LibraryLoader, Matrices}
 import com.webank.eggroll.util.SchemaUtil
@@ -610,6 +609,7 @@ class RollFrameTests {
   }
 
   @Test
+  @deprecated
   def testMatMul(): Unit = {
     val input = ta.loadCache(ta.getRollFrameStore("c1", "test1", StringConstants.FILE))
     val output = ta.getRollFrameStore("c1Matrix1", "test1", StringConstants.CACHE)
