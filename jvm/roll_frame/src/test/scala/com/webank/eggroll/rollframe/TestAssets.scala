@@ -125,7 +125,7 @@ object TestAssets extends Serializable {
     val sb = new StringBuilder
     sb.append("""{
                  "fields": [""")
-    (0 until 1000).foreach{i =>
+    (0 until fieldCount).foreach{i =>
       if(i > 0) {
         sb.append(",")
       }

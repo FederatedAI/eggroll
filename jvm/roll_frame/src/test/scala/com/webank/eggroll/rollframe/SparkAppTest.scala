@@ -27,6 +27,7 @@ class SparkAppTest extends Serializable {
   @Test
   def testRddToRollFrame(): Unit = {
     val cols = df.columns.length
+    println(s"columns nums = $cols")
     val ctx: RollFrameContext = ta.getRfContext(true)
     val namespace = "test1"
     val name = "spark1"
@@ -37,7 +38,7 @@ class SparkAppTest extends Serializable {
     val start = System.currentTimeMillis()
     df.rdd.foreachPartition { pData =>
       val data = pData.toList
-      val fb = new FrameBatch(new FrameSchema(ta.getSchema(cols)))
+      val fb = new FrameBatch(new FrameSchema(ta.getSchema(cols)),data.size)
       (0 until cols).foreach { field =>
         data.indices.foreach { row =>
           fb.writeDouble(field, row, data(row).get(field).toString.toDouble)
@@ -64,7 +65,7 @@ class SparkAppTest extends Serializable {
     val start = System.currentTimeMillis()
     df.rdd.foreachPartition { pData =>
       //      val data = pData.toList
-      val fb = new FrameBatch(new FrameSchema(ta.getSchema(cols)))
+      val fb = new FrameBatch(new FrameSchema(ta.getSchema(cols)),pData.size)
       var i = 0
       pData.foreach { rows =>
         (0 until cols).foreach { field =>
