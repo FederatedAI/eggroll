@@ -19,6 +19,7 @@
 package com.webank.eggroll.core.resourcemanager
 
 import java.io.{BufferedReader, File, InputStream, InputStreamReader}
+import java.lang.ProcessBuilder.Redirect
 
 import com.webank.eggroll.core.constant.{CoreConfKeys, ResourceManagerConfKeys, SessionConfKeys}
 import com.webank.eggroll.core.session.RuntimeErConf
@@ -86,8 +87,8 @@ class Container(conf: RuntimeErConf, moduleName: String, processorId: Long = 0) 
       if(!logPath.exists()){
         logPath.mkdirs()
       }
-      processorBuilder.redirectOutput(new File(logPath, s"bootstrap-${moduleName}-${processorId}.out"))
-      processorBuilder.redirectError(new File(logPath, s"bootstrap-${moduleName}-${processorId}.err"))
+      processorBuilder.redirectOutput(Redirect.appendTo(new File(logPath, s"bootstrap-${moduleName}-${processorId}.out")))
+      processorBuilder.redirectError(Redirect.appendTo(new File(logPath, s"bootstrap-${moduleName}-${processorId}.err")))
       val process = processorBuilder.start()
       process.waitFor()
     })
