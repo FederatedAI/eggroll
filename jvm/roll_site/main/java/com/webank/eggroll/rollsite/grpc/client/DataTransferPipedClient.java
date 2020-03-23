@@ -113,7 +113,7 @@ public class DataTransferPipedClient {
             LOGGER.info("[DEBUG][CLUSTERCOMM] proxyClient not inited yet");
 
             try {
-                Thread.sleep(1000);
+                Thread.sleep(50);
             } catch (InterruptedException e) {
                 LOGGER.error("error in doPush: " + ExceptionUtils.getStackTrace(e));
                 Thread.currentThread().interrupt();
