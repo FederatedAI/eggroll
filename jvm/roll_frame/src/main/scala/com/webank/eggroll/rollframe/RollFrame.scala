@@ -39,7 +39,6 @@ import scala.collection.immutable.Range.Inclusive
 
 class RollFrameContext private[eggroll](val session: ErSession) {
   lazy val serverNodes: Array[ErProcessor] = session.processors
-  lazy val clientNode = serverNodes(0) // TODO: Can confirm the first nodes is client node?
 
   private[eggroll] lazy val frameTransfer: NioFrameTransfer = new NioFrameTransfer(serverNodes)
   val defaultStoreType = StringConstants.FILE
