@@ -33,18 +33,14 @@ import com.webank.eggroll.rollsite.infra.JobStatus
 class RollSiteUtil(val erSessionId: String,
                    rollSiteHeader: ErRollSiteHeader,
                    options: Map[String, String] = Map.empty) extends Logging {
-  logDebug("maxmax: ready to init session")
   private val session = RollSiteUtil.sessionCache.get(erSessionId)
-  logDebug("maxmax: ready to init context")
   private val ctx = new RollPairContext(session)
-  logDebug("maxmax: context inited")
   //private val nameStripped = name
   val namespace = rollSiteHeader.rollSiteSessionId
   val name = rollSiteHeader.concat()
 
   logDebug("scalaPutBatch name: " + name + ", namespace: " + namespace)
   val rp: RollPair = ctx.load(namespace, name, options = rollSiteHeader.options)
-  logDebug("maxmax: table loaded")
 
   Runtime.getRuntime.addShutdownHook(new Thread(){
     override def run(): Unit = {
