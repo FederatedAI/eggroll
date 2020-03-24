@@ -58,9 +58,9 @@ class ErSession(val sessionId: String = s"er_session_jvm_${TimeUtils.getNowMs()}
   private val eggs_buffer = mutable.Map[Long, ArrayBuffer[ErProcessor]]()
   processors.foreach(p => {
     val processorType = p.processorType
-    if (ProcessorTypes.EGG_PAIR.equals(processorType)) {
+    if (processorType.toLowerCase().startsWith("egg_")) {
       eggs_buffer.getOrElseUpdate(p.serverNodeId, ArrayBuffer[ErProcessor]()) += p
-    } else if (ProcessorTypes.ROLL_PAIR_MASTER.equals(processorType)) {
+    } else if (processorType.toLowerCase().startsWith("roll_")) {
       rolls_buffer += p
     } else {
       throw new IllegalArgumentException(s"processor type ${processorType} not supported in roll pair")
