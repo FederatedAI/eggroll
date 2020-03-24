@@ -16,11 +16,14 @@
  *
  */
 
-package com.webank.eggroll.core.io.adapter
+package com.webank.eggroll.format
 
 import java.io._
 
 import com.webank.eggroll.core.constant.StringConstants
+import com.webank.eggroll.core.session.StaticErConf
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.fs._
 
 import scala.collection.concurrent.TrieMap
 
@@ -39,7 +42,8 @@ object BlockDeviceAdapter {
     opts.getOrElse(StringConstants.TYPE, StringConstants.FILE) match {
       case StringConstants.CACHE =>
         new JvmBlockAdapter(opts(StringConstants.PATH), opts(StringConstants.SIZE).toInt)
-
+      case StringConstants.HDFS =>
+        new HdfsBlockAdapter(opts(StringConstants.PATH))
       case _ =>
         new FileBlockAdapter(opts(StringConstants.PATH))
     }
@@ -47,6 +51,9 @@ object BlockDeviceAdapter {
 
   def file(path: String): BlockDeviceAdapter =
     apply(Map(StringConstants.PATH -> path, StringConstants.TYPE -> StringConstants.FILE))
+
+  def hdfs(path: String): BlockDeviceAdapter =
+    apply(Map(StringConstants.PATH -> path, StringConstants.TYPE -> StringConstants.HDFS))
 }
 
 class FileBlockAdapter(path: String) extends BlockDeviceAdapter {
@@ -74,9 +81,59 @@ class FileBlockAdapter(path: String) extends BlockDeviceAdapter {
   }
 }
 
+object HdfsBlockAdapter {
+  // TODO:add and test add xml config
+  private var conf : Configuration = {
+    val defaultConf = new Configuration()
+    val fsName = StaticErConf.getString("hadoop.fs.defaultFS", "")
+    if(fsName.nonEmpty) {
+      defaultConf.set("fs.defaultFS", fsName)
+    }
+    defaultConf
+  }
+
+  /**
+    * notice: hadoop conf can't set when use spark foreachPartition operation
+    * @param userConf conf
+    */
+  def setConfiguration(userConf:Configuration): Unit ={
+    conf = userConf
+  }
+}
+
+class HdfsBlockAdapter(path: String) extends BlockDeviceAdapter {
+  var inputStream: InputStream = _
+  var outputStream: OutputStream = _
+  val hadoop: FileSystem = {
+    FileSystem.get(HdfsBlockAdapter.conf)
+  }
+
+  override def getInputStream(): InputStream = {
+    inputStream = hadoop.open(new Path(path))
+    inputStream
+  }
+
+  override def getOutputStream(): OutputStream = {
+    outputStream = hadoop.create(new Path(path))
+    outputStream
+  }
+
+  override def close(): Unit = {
+    if (inputStream != null) {
+      inputStream.close()
+    }
+    if (outputStream != null) {
+      outputStream.close()
+    }
+    if (hadoop != null) {
+      hadoop.close()
+    }
+  }
+}
+
 class JvmBlockAdapter(path: String, size: Int) extends BlockDeviceAdapter {
   override def getInputStream(): InputStream = {
-    // TODO:2: check null and size
+    // TODO: check null and size
     new ByteArrayInputStream(JvmBlockAdapter.get(path).get)
   }
 

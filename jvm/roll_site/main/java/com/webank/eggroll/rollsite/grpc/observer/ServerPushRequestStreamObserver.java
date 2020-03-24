@@ -218,8 +218,6 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
                         LOGGER.error("error parsing roll site header", e);
                         onError(e);
                     }
-                    int totalPartition = Integer.parseInt(rollSiteHeader.options().getOrElse(
-                        StringConstants.TOTAL_PARTITIONS_SNAKECASE(), () -> "1"));
                     String job_id = rollSiteHeader.rollSiteSessionId();
                     try {
                         while (!JobStatus.isJobIdToSessionRegistered(job_id)) {
