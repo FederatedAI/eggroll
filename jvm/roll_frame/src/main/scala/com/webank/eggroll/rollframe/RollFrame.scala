@@ -38,10 +38,14 @@ import scala.collection.immutable.Range.Inclusive
 // TODO: always close in finally
 
 class RollFrameContext private[eggroll](val session: ErSession) {
-  lazy val serverNodes: Array[ErProcessor] = session.processors
+  private[eggroll] val commandPort: Int = StaticErConf.getString("eggroll.rollframe.command.port", "20100").toInt
+  private[eggroll] val transferPort: Int = StaticErConf.getString("eggroll.rollframe.transfer.port", "20200").toInt
+  println(s"comandPort = $commandPort, transferPort = $transferPort")
+  lazy val serverNodes: Array[ErProcessor] = session.processors.map(i => i.copy(commandEndpoint =
+    i.commandEndpoint.copy(port = commandPort), transferEndpoint = i.transferEndpoint.copy(port = transferPort)))
 
   private[eggroll] lazy val frameTransfer: NioFrameTransfer = new NioFrameTransfer(serverNodes)
-  val defaultStoreType = StringConstants.FILE
+  val defaultStoreType: String = StringConstants.FILE
 
   def load(store: ErStore): RollFrame = RollFrame(store, this)
 
@@ -98,7 +102,7 @@ class RollFrameContext private[eggroll](val session: ErSession) {
   }
 
   def forkStore(oldStore: ErStore, namespace: String, name: String, storeType: String = defaultStoreType,
-                           keep: Boolean = false): ErStore = {
+                keep: Boolean = false): ErStore = {
     val storeLocator: ErStoreLocator = oldStore.storeLocator.copy(namespace = namespace, name = name, storeType = storeType,
       totalPartitions = oldStore.storeLocator.totalPartitions)
     val partitions: Array[ErPartition] = oldStore.partitions.map(i => i.copy(storeLocator = storeLocator))
@@ -138,7 +142,7 @@ class RollFrameContext private[eggroll](val session: ErSession) {
 }
 
 object RollFrameContext {
-//  StaticErConf.addProperties("conf/eggroll.properties")
+  //  StaticErConf.addProperties("conf/eggroll.properties")
 
   def apply(session: ErSession): RollFrameContext = new RollFrameContext(session)
 
@@ -169,31 +173,31 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
     mapBatch(func, output)
   }
 
-  def torchMerge(path: String, parameters: Array[Double]=Array(), output: ErStore = null): RollFrame = {
+  def torchMerge(path: String, parameters: Array[Double] = Array(), output: ErStore = null): RollFrame = {
     val partitionNums = store.partitions.length
 
     val func: (EggFrameContext, ErTask, Iterator[FrameBatch], FrameStore) => ErPair = {
       (ctx, task, input, output) =>
-      val queuePath = "gather:" + task.job.id
-      val partition = task.inputs.head
-      val localServer = partition.processor
-      val localBatch = input.next()
-      if (localServer.commandEndpoint.host.equals(ctx.rootServer.commandEndpoint.host)) {
-        // the same root server
-        if (partition.id == 0) {
-          println("run merge ....")
-          FrameStore.queue(queuePath, -1).writeAll(Iterator(localBatch))
-          val allFrameBatch = FrameStore.queue(queuePath, partitionNums).readAll()
-          val resFb = Script.runTorchMerge(path, allFrameBatch, parameters)
-          output.append(resFb)
+        val queuePath = "gather:" + task.job.id
+        val partition = task.inputs.head
+        val localServer = partition.processor
+        val localBatch = input.next()
+        if (localServer.commandEndpoint.host.equals(ctx.rootServer.commandEndpoint.host)) {
+          // the same root server
+          if (partition.id == 0) {
+            println("run merge ....")
+            FrameStore.queue(queuePath, -1).writeAll(Iterator(localBatch))
+            val allFrameBatch = FrameStore.queue(queuePath, partitionNums).readAll()
+            val resFb = Script.runTorchMerge(path, allFrameBatch, parameters)
+            output.append(resFb)
+          } else {
+            // the same root server but different partition
+            FrameStore.queue(queuePath, -1).writeAll(Iterator(localBatch))
+          }
         } else {
-          // the same root server but different partition
-          FrameStore.queue(queuePath, -1).writeAll(Iterator(localBatch))
+          ctx.frameTransfer.send(ctx.rootServer.id, queuePath, localBatch)
         }
-      } else {
-        ctx.frameTransfer.send(ctx.rootServer.id, queuePath, localBatch)
-      }
-      null
+        null
     }
 
     runUnaryJob("torchMerge", func, output = output)
@@ -260,20 +264,20 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
   def mapBatch(f: FrameBatch => FrameBatch, output: ErStore = null): RollFrame = {
     val func: (EggFrameContext, ErTask, Iterator[FrameBatch], FrameStore) => ErPair = {
       (ctx, task, input, output) =>
-      // for concurrent writing
-      val queuePath = task.id + "-doing"
-      // total mean batch size, if given more than one, it just get one.
-      val queue = FrameStore.queue(queuePath, 1)
-      input.foreach { fb =>
-        ctx.executorPool.submit(new Runnable {
-          override def run(): Unit = {
-            queue.append(f(fb))
-          }
-        })
-      }
-      output.writeAll(queue.readAll())
-      output.close()
-      null
+        // for concurrent writing
+        val queuePath = task.id + "-doing"
+        // total mean batch size, if given more than one, it just get one.
+        val queue = FrameStore.queue(queuePath, 1)
+        input.foreach { fb =>
+          ctx.executorPool.submit(new Runnable {
+            override def run(): Unit = {
+              queue.append(f(fb))
+            }
+          })
+        }
+        output.writeAll(queue.readAll())
+        output.close()
+        null
     }
 
     runUnaryJob("mapBatch", func, output = output)
@@ -315,152 +319,152 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
 
     val func: (EggFrameContext, ErTask, Iterator[FrameBatch], FrameStore) => ErPair = {
       (ctx, task, input, output) =>
-      val zeroValue: FrameBatch = if (zeroValueBytes.isEmpty) null else FrameUtils.fromBytes(zeroValueBytes)
-      val partition = task.inputs.head
-      val batchSize = 1
-      // TODO: more generally, like repartition?
-      // TODO: route
-      //    val localServer = clusterManager.getPreferredServer(store = task.job.inputs.head)(partition.id)
-      val localServer = partition.processor
-      ctx.logInfo(s"runAggregateBatch: jobId=${task.job.id}, partitionId=${partition.id}, root=${ctx.rootServer}")
-      var localQueue: FrameStore = null
+        val zeroValue: FrameBatch = if (zeroValueBytes.isEmpty) null else FrameUtils.fromBytes(zeroValueBytes)
+        val partition = task.inputs.head
+        val batchSize = 1
+        // TODO: more generally, like repartition?
+        // TODO: route
+        //    val localServer = clusterManager.getPreferredServer(store = task.job.inputs.head)(partition.id)
+        val localServer = partition.processor
+        ctx.logInfo(s"runAggregateBatch: jobId=${task.job.id}, partitionId=${partition.id}, root=${ctx.rootServer}")
+        var localQueue: FrameStore = null
 
-      // TODO: don't finish broadcast
-      val zeroPath = "broadcast:" + task.job.id
-      val zero: FrameBatch =
-        if (zeroValue == null) {
-          if (broadcastZeroValue) {
-            if (localServer.equals(ctx.rootServer))
-              FrameStore.cache(zeroPath).readOne()
-            else
-              FrameStore.queue(zeroPath, 1).readOne()
-          } else {
-            // reduce need't zero value
-            if (input.hasNext) {
-              input.next()
+        // TODO: don't finish broadcast
+        val zeroPath = "broadcast:" + task.job.id
+        val zero: FrameBatch =
+          if (zeroValue == null) {
+            if (broadcastZeroValue) {
+              if (localServer.equals(ctx.rootServer))
+                FrameStore.cache(zeroPath).readOne()
+              else
+                FrameStore.queue(zeroPath, 1).readOne()
             } else {
-              null
+              // reduce need't zero value
+              if (input.hasNext) {
+                input.next()
+              } else {
+                null
+              }
+            }
+          } else {
+            zeroValue
+          }
+        // TODO: more generally, like repartition?
+        if (batchSize == 1) {
+          if (input.hasNext) {
+            val fb = input.next()
+            // use muti-thread by rows ,for example,parallel = 2, 100 rows can split to [0,50] and [50,100]
+            // for concurrent writing
+            // TODO: specify thread num, if zero value is to large , copy too many zero value will cause OOM
+            // TODO: whether care about memory state and then decide thread num.
+            val parallel: Int = if (threadsNum < 0) {
+              val availableProcessors = Runtime.getRuntime.availableProcessors() / 2 // testing suggestion
+              val eachThreadCount = 1000
+              val tmpParallel = fb.rowCount / eachThreadCount + 1
+              if (tmpParallel < availableProcessors) tmpParallel else availableProcessors
+              //          2 * availableProcessors
+            } else {
+              threadsNum
+            }
+            localQueue = FrameStore.queue(task.id + "-doing", parallel)
+
+            println(s"egg parallel = $parallel")
+            ctx.sliceByRow(parallel, fb).foreach { inclusive: Inclusive =>
+              ctx.executorPool.submit(new Callable[Unit] {
+                override def call(): Unit = {
+                  var start = System.currentTimeMillis()
+                  val tmpZeroValue = FrameUtils.fork(zero)
+                  println(s"fork time: ${System.currentTimeMillis() - start} ms")
+                  start = System.currentTimeMillis()
+                  localQueue.append(seqOp(tmpZeroValue, fb.sliceByRow(inclusive.start, inclusive.end)))
+                  println(s"seqOp time: ${System.currentTimeMillis() - start}")
+                }
+              })
+            }
+          } else {
+            // for reduce op
+            localQueue = FrameStore.queue(task.id + "-doing", 1)
+            localQueue.append(zero)
+          }
+        } else {
+          // TODO: unfinished
+          val parallel = Math.min(ctx.executorPool.getCorePoolSize, batchSize) // reduce zero value copy
+          // for concurrent writing
+          localQueue = FrameStore.queue(task.id + "-doing", parallel)
+          var batchIndex = 0
+          (0 until parallel).foreach { i =>
+            if (input.hasNext) { // merge to avoid zero copy
+              ctx.executorPool.submit(new Callable[Unit] {
+                override def call(): Unit = {
+                  val tmpZero = FrameUtils.fork(zero)
+                  var tmp = seqOp(tmpZero, input.next())
+                  batchIndex += 1
+                  while (batchIndex < ((parallel + batchSize - 1) / batchSize) * i && input.hasNext) {
+                    tmp = seqOp(tmp, input.next())
+                    batchIndex += 1
+                  }
+                  localQueue.append(tmp)
+                }
+              })
             }
           }
-        } else {
-          zeroValue
         }
-      // TODO: more generally, like repartition?
-      if (batchSize == 1) {
-        if (input.hasNext) {
-          val fb = input.next()
-          // use muti-thread by rows ,for example,parallel = 2, 100 rows can split to [0,50] and [50,100]
-          // for concurrent writing
-          // TODO: specify thread num, if zero value is to large , copy too many zero value will cause OOM
-          // TODO: whether care about memory state and then decide thread num.
-          val parallel: Int = if (threadsNum < 0) {
-            val availableProcessors = Runtime.getRuntime.availableProcessors() / 2 // testing suggestion
-            val eachThreadCount = 1000
-            val tmpParallel = fb.rowCount / eachThreadCount + 1
-            if (tmpParallel < availableProcessors) tmpParallel else availableProcessors
-            //          2 * availableProcessors
-          } else {
-            threadsNum
-          }
-          localQueue = FrameStore.queue(task.id + "-doing", parallel)
 
-          println(s"egg parallel = $parallel")
-          ctx.sliceByRow(parallel, fb).foreach { inclusive: Inclusive =>
-            ctx.executorPool.submit(new Callable[Unit] {
-              override def call(): Unit = {
-                var start = System.currentTimeMillis()
-                val tmpZeroValue = FrameUtils.fork(zero)
-                println(s"fork time: ${System.currentTimeMillis() - start} ms")
-                start = System.currentTimeMillis()
-                localQueue.append(seqOp(tmpZeroValue, fb.sliceByRow(inclusive.start, inclusive.end)))
-                println(s"seqOp time: ${System.currentTimeMillis() - start}")
-              }
-            })
-          }
-        } else {
-          // for reduce op
-          localQueue = FrameStore.queue(task.id + "-doing", 1)
-          localQueue.append(zero)
-        }
-      } else {
-        // TODO: unfinished
-        val parallel = Math.min(ctx.executorPool.getCorePoolSize, batchSize) // reduce zero value copy
-        // for concurrent writing
-        localQueue = FrameStore.queue(task.id + "-doing", parallel)
-        var batchIndex = 0
-        (0 until parallel).foreach { i =>
-          if (input.hasNext) { // merge to avoid zero copy
-            ctx.executorPool.submit(new Callable[Unit] {
-              override def call(): Unit = {
-                val tmpZero = FrameUtils.fork(zero)
-                var tmp = seqOp(tmpZero, input.next())
-                batchIndex += 1
-                while (batchIndex < ((parallel + batchSize - 1) / batchSize) * i && input.hasNext) {
-                  tmp = seqOp(tmp, input.next())
-                  batchIndex += 1
-                }
-                localQueue.append(tmp)
-              }
-            })
-          }
-        }
-      }
-
-//      if (localQueue == null) {
-//        return null
-//      }
+        //      if (localQueue == null) {
+        //        return null
+        //      }
         // caution: cannot use return, in val func: xx,
         // and cannot use def func(xx) in scala 2.11 because of serder problem
-      if(localQueue != null){
-        // todo: local queue and result synchronization, maybe a countdown latch
-        val resultIterator = localQueue.readAll()
-        if (!resultIterator.hasNext) throw new IllegalStateException("empty result")
-        var localBatch: FrameBatch = resultIterator.next()
-        while (resultIterator.hasNext) {
-          localBatch = combOp(localBatch, resultIterator.next())
-        }
-        val transferQueueSize = task.job.inputs.head.storeLocator.totalPartitions - 1
-        require(transferQueueSize > -1, s"""transferQueueSize:$transferQueueSize, task:$task""")
-        // TODO: check asynchronous call
-        if (byColumn) {
-          val slicedBatches = ctx.sliceByColumn(localBatch)
-          // Don't block next receive step
-          slicedBatches.foreach { case (server, inclusive: Inclusive) =>
-            val queuePath = "all2all:" + task.job.id + ":" + server.id
-            if (!server.equals(localServer)) {
-              ctx.frameTransfer.send(server.id, queuePath, localBatch.sliceByColumn(inclusive.start, inclusive.end))
-            }
+        if (localQueue != null) {
+          // todo: local queue and result synchronization, maybe a countdown latch
+          val resultIterator = localQueue.readAll()
+          if (!resultIterator.hasNext) throw new IllegalStateException("empty result")
+          var localBatch: FrameBatch = resultIterator.next()
+          while (resultIterator.hasNext) {
+            localBatch = combOp(localBatch, resultIterator.next())
           }
+          val transferQueueSize = task.job.inputs.head.storeLocator.totalPartitions - 1
+          require(transferQueueSize > -1, s"""transferQueueSize:$transferQueueSize, task:$task""")
+          // TODO: check asynchronous call
+          if (byColumn) {
+            val slicedBatches = ctx.sliceByColumn(localBatch)
+            // Don't block next receive step
+            slicedBatches.foreach { case (server, inclusive: Inclusive) =>
+              val queuePath = "all2all:" + task.job.id + ":" + server.id
+              if (!server.equals(localServer)) {
+                ctx.frameTransfer.send(server.id, queuePath, localBatch.sliceByColumn(inclusive.start, inclusive.end))
+              }
+            }
 
-          slicedBatches.foreach { case (server, inclusive: Inclusive) =>
-            val queuePath = "all2all:" + task.job.id + ":" + server.id
-            if (server.equals(localServer)) {
-              for (tmp <- FrameStore.queue(queuePath, transferQueueSize).readAll()) {
-                localBatch = combOp(localBatch, tmp.spareByColumn(localBatch.rootVectors.length, inclusive.start, inclusive.end))
+            slicedBatches.foreach { case (server, inclusive: Inclusive) =>
+              val queuePath = "all2all:" + task.job.id + ":" + server.id
+              if (server.equals(localServer)) {
+                for (tmp <- FrameStore.queue(queuePath, transferQueueSize).readAll()) {
+                  localBatch = combOp(localBatch, tmp.spareByColumn(localBatch.rootVectors.length, inclusive.start, inclusive.end))
+                }
               }
-            }
-          }
-        } else {
-          val queuePath = "gather:" + task.job.id
-          if (localServer.commandEndpoint.host.equals(ctx.rootServer.commandEndpoint.host)) {
-            // the same root server
-            if (partition.id == 0) {
-              for (tmp <- FrameStore.queue(queuePath, transferQueueSize).readAll()) {
-                localBatch = combOp(localBatch, tmp)
-              }
-              output.append(localBatch)
-            } else {
-              // the same root server but different partition
-              FrameStore.queue(queuePath, -1).writeAll(Iterator(localBatch))
             }
           } else {
-            ctx.frameTransfer.send(ctx.rootServer.id, queuePath, localBatch)
+            val queuePath = "gather:" + task.job.id
+            if (localServer.commandEndpoint.host.equals(ctx.rootServer.commandEndpoint.host)) {
+              // the same root server
+              if (partition.id == 0) {
+                for (tmp <- FrameStore.queue(queuePath, transferQueueSize).readAll()) {
+                  localBatch = combOp(localBatch, tmp)
+                }
+                output.append(localBatch)
+              } else {
+                // the same root server but different partition
+                FrameStore.queue(queuePath, -1).writeAll(Iterator(localBatch))
+              }
+            } else {
+              ctx.frameTransfer.send(ctx.rootServer.id, queuePath, localBatch)
+            }
           }
+          output.close()
         }
-        output.close()
-      }
 
-      null
+        null
     }
 
     runUnaryJob("aggregate", func, jobId = jobId, output = output)
