@@ -51,7 +51,6 @@ class RollFrameTests {
     ta.setMode("local")
     // TODO: 3in1 run fail
     ctx = ta.getRfContext(true)
-//    val ctx1 = ctx.session.clusterManagerClient.getSession(ErSessionMeta(id = "debug-sid"))
 
     inputStore = ctx.createStore("test1", "a1", StringConstants.FILE, partitions_)
     inputHdfsStore = ctx.createStore("test1", "a1", StringConstants.HDFS, partitions_)

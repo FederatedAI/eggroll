@@ -82,21 +82,44 @@ class FileBlockAdapter(path: String) extends BlockDeviceAdapter {
 }
 
 object HdfsBlockAdapter {
-  // TODO:add and test add xml config
-  private var conf : Configuration = {
+  /**
+   * Attention: In spark，will use the hdfs env in spark.
+   */
+  private var conf: Configuration = {
     val defaultConf = new Configuration()
     val fsName = StaticErConf.getString("hadoop.fs.defaultFS", "")
-    if(fsName.nonEmpty) {
+    val fsNameServices = StaticErConf.getString("hadoop.dfs.nameservices", "")
+    println(s"fsName = $fsName")
+    println(s"fsNameServices = $fsNameServices")
+
+    if (fsNameServices.nonEmpty) {
+      // HA mode
+      val nn1 = StaticErConf.getString("hadoop.dfs.namenode.rpc-address.nn1", "")
+      val nn2 = StaticErConf.getString("hadoop.dfs.namenode.rpc-address.nn2", "")
+      if (nn1.isEmpty) throw new NoSuchElementException("didn't set hadoop.dfs.namenode.rpc-address.nn1")
+      if (nn2.isEmpty) throw new NoSuchElementException("didn't set hadoop.dfs.namenode.rpc-address.nn2")
+
       defaultConf.set("fs.defaultFS", fsName)
+      defaultConf.set("dfs.nameservices", fsNameServices)
+      defaultConf.set(s"dfs.ha.namenodes.${fsNameServices}", "nn1,nn2") // specific name
+      defaultConf.set(s"dfs.namenode.rpc-address.${fsNameServices}.nn1", nn1)
+      defaultConf.set(s"dfs.namenode.rpc-address.${fsNameServices}.nn2", nn2)
+      defaultConf.set(s"dfs.client.failover.proxy.provider.${fsNameServices}", "org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider")
+    }
+    else {
+      if (fsName.nonEmpty) {
+        defaultConf.set("fs.defaultFS", fsName)
+      }
     }
     defaultConf
   }
 
   /**
-    * notice: hadoop conf can't set when use spark foreachPartition operation
-    * @param userConf conf
-    */
-  def setConfiguration(userConf:Configuration): Unit ={
+   * notice: hadoop conf can't set when use spark foreachPartition operation
+   *
+   * @param userConf conf
+   */
+  def setConfiguration(userConf: Configuration): Unit = {
     conf = userConf
   }
 }
