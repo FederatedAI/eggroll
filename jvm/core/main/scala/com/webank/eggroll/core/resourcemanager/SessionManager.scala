@@ -8,6 +8,8 @@ import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.util.Logging
 
 import scala.collection.JavaConverters._
+import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
 import scala.util.control.Breaks._
 
 // RollObjects talk to SessionManager only.
@@ -135,7 +137,30 @@ class SessionManagerService extends SessionManager with Logging {
       (0 until maxRetries).foreach(i => {
         val cur = getSessionMain(sessionId)
         if (cur.activeProcCount < expectedProcessorsCount) Thread.sleep(100) else break
-        if (i == maxRetries - 1) throw new IllegalStateException("unable to start all processors")
+        if (i >= maxRetries - 1) {
+          val curDetails = smDao.getSession(sessionId)
+
+          val actives = ListBuffer[Long]()
+          val inactives = ListBuffer[Long]()
+          val activesPerNode = mutable.Map[String, Int]()
+
+          serverNodes.foreach(n => activesPerNode += (n.endpoint.host -> 0))
+
+          curDetails.processors.foreach(p => {
+            if (p.status.equals(ProcessorStatus.RUNNING)) {
+              actives += p.id
+              activesPerNode(p.commandEndpoint.host) += 1
+            } else {
+              inactives += p.id
+            }
+          })
+          throw new IllegalStateException(s"unable to start all processors for session id: '${sessionId}'. please check bootstrap logs to check the reasons. Details:\n" +
+            s"total processors: ${curDetails.totalProcCount}, " +
+            s"started count: ${curDetails.activeProcCount}, " +
+            s"not started count: ${curDetails.totalProcCount - curDetails.activeProcCount}, " +
+            s"current active processors per node: ${activesPerNode}, " +
+            s"not started processors: ${String.join(", ", inactives.map(id => id.toString): _*)}")
+        }
       })
     }
 
@@ -181,7 +206,9 @@ class SessionManagerService extends SessionManager with Logging {
    */
   def registerSession(sessionMeta: ErSessionMeta): ErSessionMeta = {
     // TODO:0: + active processor count and expected ones; session status 'active' from client
-    smDao.register(sessionMeta.copy(status = SessionStatus.ACTIVE, activeProcCount = sessionMeta.processors.length))
+    smDao.register(sessionMeta.copy(status = SessionStatus.ACTIVE,
+      totalProcCount = sessionMeta.processors.length,
+      activeProcCount = sessionMeta.processors.length))
     // generated id
     smDao.getSession(sessionMeta.id)
   }
