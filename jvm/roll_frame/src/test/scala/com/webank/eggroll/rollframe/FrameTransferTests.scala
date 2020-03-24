@@ -19,7 +19,7 @@ package com.webank.eggroll.rollframe
 import com.webank.eggroll.format._
 import org.junit.Test
 
-class CollectiveTransferTests {
+class FrameTransferTests {
   private def getSchema(fieldCount:Int):String = {
     val sb = new StringBuilder
     sb.append("""{
@@ -37,7 +37,7 @@ class CollectiveTransferTests {
   @Test
   def testSendNio():Unit = {
     val path = "aa"
-    val fb = new FrameBatch(new FrameSchema(getSchema(1000)), 1000*20)
+    val fb = new FrameBatch(new FrameSchema(getSchema(100)), 100*20)
     val service = new NioTransferEndpoint
     val port = 8818
     val host = "127.0.0.1"
@@ -70,7 +70,7 @@ class CollectiveTransferTests {
     val start = System.currentTimeMillis()
     var n = 0
     while (n<10){
-      val fbs = FrameDB.queue(path, 1).readAll()
+      val fbs = FrameStore.queue(path, 1).readAll()
       fbs.hasNext
       println(fbs.next().rowCount)
       n+=1
@@ -87,7 +87,7 @@ class CollectiveTransferTests {
     val host = "127.0.0.1"
     val port = 8818
     val batchCount = 10
-    val fbs = (0 until batchCount).map(_=>new FrameBatch(new FrameSchema(getSchema(1000)), 1000*20)).toArray
+    val fbs = (0 until batchCount).map(_=>new FrameBatch(new FrameSchema(getSchema(100)), 100*20)).toArray
     val clients = (0 until batchCount).map(_=>new NioTransferEndpoint).toArray
 
     new Thread() {
@@ -99,12 +99,13 @@ class CollectiveTransferTests {
         }
       }
     }.start()
-    Thread.sleep(1000)
     clients.foreach(_.runClient(host, port))
     (0 until batchCount).foreach{ i=>
     new Thread() {
       override def run(): Unit = {
         try{
+          println()
+          println("Thread: " + i)
           val start = System.currentTimeMillis()
             clients(i).send(path, fbs(i))
 
@@ -118,13 +119,13 @@ class CollectiveTransferTests {
     val start = System.currentTimeMillis()
     var n = 0
     while (n<10){
-      val fbs = FrameDB.queue(path, 1).readAll()
+      println("n:" + n)
+      val fbs = FrameStore.queue(path, 1).readAll()
       fbs.hasNext
       println(fbs.next().rowCount)
       n+=1
     }
     println("recv time", System.currentTimeMillis() - start)
-
   }
 
 }
