@@ -26,7 +26,7 @@ L = get_logger()
 
 #64 * 1024 * 1024
 LMDB_MAP_SIZE = 16 * 4_096 * 244_140    # follows storage-service-cxx's config here
-LMDB_MAP_SIZE_WINDOWS = 200 * 1024 * 1024 * 10
+LMDB_MAP_SIZE_WINDOWS_OS = 40 * 1024 * 1024
 DEFAULT_DB = b'main'
 
 
@@ -55,13 +55,15 @@ class LmdbAdapter(PairAdapter):
         with LmdbAdapter.env_lock:
             super().__init__(options)
             self.path = options["path"]
-            lmdb_map_size = options.get("lmdb_map_size", LMDB_MAP_SIZE if platform.system() != 'Windows' else LMDB_MAP_SIZE_WINDOWS)
-            create_if_missing = bool(options.get("create_if_missing", "True"))
+            lmdb_map_size = options.get("lmdb_map_size", LMDB_MAP_SIZE if platform.system() != 'Windows' else LMDB_MAP_SIZE_WINDOWS_OS)
+            create_if_missing = (str(options.get("create_if_missing", "True")).lower() == 'true')
             if self.path not in LmdbAdapter.env_dict:
                 if create_if_missing:
                     os.makedirs(self.path, exist_ok=True)
                 L.debug("lmdb init create env:{}".format(self.path))
                 writemap = False if platform.system() == 'Darwin' else True
+                if not os.path.exists(self.path):
+                    os.makedirs(self.path, exist_ok=True)
                 self.env = lmdb.open(self.path, create=create_if_missing, max_dbs=128, sync=False, map_size=lmdb_map_size, writemap=writemap)
                 self.sub_db = self.env.open_db(DEFAULT_DB)
                 LmdbAdapter.count_dict[self.path] = 0
@@ -102,12 +104,12 @@ class LmdbAdapter(PairAdapter):
     def close(self):
         if not self.env:
             return
-        if self.txn_r:
-            self.txn_r.commit()
-            self.cursor.close()
-        if self.txn_w:
-            self.txn_w.commit()
         with LmdbAdapter.env_lock:
+            if self.txn_r:
+                self.txn_r.commit()
+                self.cursor.close()
+            if self.txn_w:
+                self.txn_w.commit()
             if self.env:
                 count = LmdbAdapter.count_dict[self.path]
                 if not count or count - 1 <= 0:
@@ -152,6 +154,9 @@ class LmdbAdapter(PairAdapter):
         except:
             L.info("path :{} has destroyed".format(self.path))
 
+    def is_sorted(self):
+        return True
+
 
 class LmdbIterator(PairIterator):
     def __init__(self, adapter: LmdbAdapter):
@@ -161,6 +166,10 @@ class LmdbIterator(PairIterator):
         self.txn_r = adapter.env.begin(db=adapter.sub_db, write=False)
         self.cursor = self.txn_r.cursor()
         L.info(f"created lmdb iterator for {adapter.path}")
+
+    #seek for key, if key not exits then seek to nearby key
+    def seek(self, key):
+        return self.cursor.set_range(key)
 
     # move cursor to the first key position
     # return True if success or False if db is empty
@@ -191,6 +200,9 @@ class LmdbWriteBatch(PairWriteBatch):
 
     def put(self, k, v):
         self.txn.put(k, v)
+
+    def get(self, k):
+        return self.txn.get(k)
 
     def delete(self, k):
         self.txn.delete(k)

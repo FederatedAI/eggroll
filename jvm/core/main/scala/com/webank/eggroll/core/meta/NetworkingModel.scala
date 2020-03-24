@@ -56,7 +56,11 @@ case class ErProcessor(id: Long = -1,
                        transferEndpoint: ErEndpoint = null,
                        pid: Int = -1,
                        options: java.util.Map[String, String] = new ConcurrentHashMap[String, String](),
-                       tag: String = StringConstants.EMPTY) extends NetworkingRpcMessage
+                       tag: String = StringConstants.EMPTY) extends NetworkingRpcMessage {
+  override def toString: String = {
+    s"<ErProcessor(id=${id}, serverNodeId=${serverNodeId}, name=${name}, processorType=${processorType}, status=${status}, commandEndpoint=${commandEndpoint}, transferEndpoint=${transferEndpoint}, pid=${pid}, options=${options}, tag=${tag}) at ${hashCode().toHexString}>"
+  }
+}
 
 case class ErProcessorBatch(id: Long = -1,
                             name: String = StringConstants.EMPTY,
