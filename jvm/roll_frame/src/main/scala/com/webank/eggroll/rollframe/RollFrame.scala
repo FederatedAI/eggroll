@@ -38,11 +38,7 @@ import scala.collection.immutable.Range.Inclusive
 // TODO: always close in finally
 
 class RollFrameContext private[eggroll](val session: ErSession) {
-  private[eggroll] val commandPort: Int = StaticErConf.getString("eggroll.rollframe.command.port", "20100").toInt
-  private[eggroll] val transferPort: Int = StaticErConf.getString("eggroll.rollframe.transfer.port", "20200").toInt
-  println(s"comandPort = $commandPort, transferPort = $transferPort")
-  lazy val serverNodes: Array[ErProcessor] = session.processors.map(i => i.copy(commandEndpoint =
-    i.commandEndpoint.copy(port = commandPort), transferEndpoint = i.transferEndpoint.copy(port = transferPort)))
+  lazy val serverNodes: Array[ErProcessor] = session.processors
 
   private[eggroll] lazy val frameTransfer: NioFrameTransfer = new NioFrameTransfer(serverNodes)
   val defaultStoreType: String = StringConstants.FILE
@@ -61,6 +57,10 @@ class RollFrameContext private[eggroll](val session: ErSession) {
     ))
     val loaded = session.clusterManagerClient.getOrCreateStore(store)
     new RollFrame(loaded, this)
+  }
+
+  def stopSession(): Unit ={
+    session.clusterManagerClient.stopSession(session.sessionMeta)
   }
 
   /**
