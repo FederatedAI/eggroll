@@ -182,7 +182,7 @@ stop() {
 	if [[ -n ${pid} ]]; then
 		echo "killing:
 		`ps aux | grep ${pid} | grep -v grep`"
-		kill -9 ${pid}
+		kill ${pid}
 		sleep 1
 		getpid
 		if [[ $pid -eq $module_pid ]]; then
