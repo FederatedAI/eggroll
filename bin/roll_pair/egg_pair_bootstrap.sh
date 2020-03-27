@@ -25,7 +25,7 @@ ONE_ARG_LIST=(
 )
 
 get_property() {
-  property_value=`grep $2 $1 | awk -F= '{print $2}'`
+  property_value=`grep $2 $1 | cut -d '=' -f 2-`
 }
 
 opts=$(getopt \

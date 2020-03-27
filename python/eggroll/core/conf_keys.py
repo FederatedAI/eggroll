@@ -118,3 +118,4 @@ class RollSiteConfKeys(object):
     EGGROLL_ROLLSITE_PROXY_COMPATIBLE_ENABLED = ErConfKey("eggroll.rollsite.proxy.compatible.enabled", "false")
     EGGROLL_ROLLSITE_LAN_INSECURE_CHANNEL_ENABLED = ErConfKey("eggroll.rollsite.lan.insecure.channel.enabled")
     EGGROLL_ROLLSITE_AUDIT_ENABLED = ErConfKey("eggroll.rollsite.audit.enabled")
+    EGGROLL_ROLLSITE_ADAPTER_SENDBUF_SIZE = ErConfKey("eggroll.rollsite.adapter.sendbuf.size", 32 << 20)
