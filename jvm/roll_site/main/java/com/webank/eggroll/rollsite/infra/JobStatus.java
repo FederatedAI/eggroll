@@ -20,6 +20,7 @@ public class JobStatus {
     static {
         jobIdToSessionId = CacheBuilder.newBuilder()
             .maximumSize(1000000)
+            .concurrencyLevel(50)
             .expireAfterAccess(48, TimeUnit.HOURS)
             .recordStats()
             .softValues()
@@ -32,6 +33,7 @@ public class JobStatus {
 
         jobIdToFinishLatch = CacheBuilder.newBuilder()
             .maximumSize(1000000)
+            .concurrencyLevel(50)
             .expireAfterAccess(48, TimeUnit.HOURS)
             .recordStats()
             .removalListener(removalNotification -> {
@@ -74,6 +76,7 @@ public class JobStatus {
 
         tagkeyToObjType = CacheBuilder.newBuilder()
             .maximumSize(1000000)
+            .concurrencyLevel(50)
             .expireAfterAccess(48, TimeUnit.HOURS)
             .recordStats()
             .build(new CacheLoader<String, String>() {
@@ -82,11 +85,11 @@ public class JobStatus {
                     throw new IllegalStateException("loading of this cache is not supported");
                 }
             });
-
     }
 
     private static final Object latchLock = new Object();
     private static final Object putBatchLock = new Object();
+    private static final Object tagKeyLock = new Object();
 
     public static boolean isJobIdToSessionRegistered(String jobId) {
         return jobIdToSessionId.getIfPresent(jobId) != null;
@@ -185,11 +188,19 @@ public class JobStatus {
     }
 
     public static void setType(String name, String type) {
-        tagkeyToObjType.put(name, type);
+        if (tagkeyToObjType.getIfPresent(name) == null) {
+            synchronized (tagKeyLock) {
+                if (tagkeyToObjType.getIfPresent(name) == null) {
+                    tagkeyToObjType.put(name, type);
+                }
+            }
+        }
     }
 
     public static String getType(String name) {
-        return tagkeyToObjType.getIfPresent(name);
+        synchronized (tagKeyLock) {
+            return tagkeyToObjType.getIfPresent(name);
+        }
     }
 
     public static long addPutBatchRequiredCount(String jobId, long count) {

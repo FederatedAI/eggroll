@@ -106,7 +106,7 @@ public class GrpcServerFactory {
                 .flowControlWindow(32 << 20)
                 .keepAliveTime(6, TimeUnit.MINUTES)
                 .keepAliveTimeout(24, TimeUnit.HOURS)
-                .maxConnectionIdle(1, TimeUnit.HOURS)
+                .maxConnectionIdle(1, TimeUnit.DAYS)
                 .permitKeepAliveTime(1, TimeUnit.SECONDS)
                 .permitKeepAliveWithoutCalls(true)
                 .executor((TaskExecutor) applicationContext.getBean("grpcServiceExecutor"))
