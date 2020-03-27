@@ -42,6 +42,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -289,7 +290,15 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                         .setSrc(request.getHeader().getSrc())
                         .setDst(request.getHeader().getDst())
                         .build();
-                    type = JobStatus.getType(tagKey);
+                    int retryCount = 300;
+                    while (retryCount > 0) {
+                        type = JobStatus.getType(tagKey);
+                        if (!StringUtils.isBlank(type)) {
+                            break;
+                        }
+                        Thread.sleep(50);
+                        --retryCount;
+                    }
                 } else {
                     LOGGER.info("getStatus: job NOT finished: {}. current latch count: {}, "
                             + "put batch required: {}, put batch finished: {}",
