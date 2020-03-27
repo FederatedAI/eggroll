@@ -139,8 +139,8 @@ class TestRollPairBase(unittest.TestCase):
         print(data1.get_partitions())
         h2 = data1.aggregate(zero_value=1, seq_op=mul, comb_op=add)
         print("aggregate result: ", h2)
-        #self.assertEqual(h2, 25)
-        self.assertEqual(h2, 720)
+        self.assertEqual(h2, 25)
+        #self.assertEqual(h2, 720)
 
     def test_join_self(self):
         options = get_default_options()
@@ -420,6 +420,19 @@ class TestRollPairClusterEverySession(TestRollPairBase):
         opts = {'total_partitions': 10}
         opts.update(kwargs)
         return opts
+
+    def test_get_and_stop_and_kill_session(self):
+        session = self.ctx.get_session()
+        id = session.get_session_id()
+
+        session.stop()
+
+        from eggroll.core.session import ErSession
+        dead_session = ErSession(id)
+        dead_session.stop()
+
+        dead_session = ErSession(id)
+        dead_session.kill()
 
     def tearDown(self) -> None:
         self.ctx.get_session().stop()

@@ -164,21 +164,15 @@ class SessionManagerService extends SessionManager with Logging {
       var retries = 0
       while (retries < 200) {
         result = smDao.getSession(sessionMeta.id)
-        if (result != null && result.status.equals(SessionStatus.ACTIVE)) {
+        if (result != null && !result.status.equals(SessionStatus.NEW)) {
           break()
-        } else if (result.status.equals(SessionStatus.CLOSED)) {
-          throw new IllegalStateException(s"Session has already stopped when getting: ${result}")
         } else {
           Thread.sleep(100)
         }
       }
     }
 
-    if (result.status.equals(SessionStatus.ACTIVE)) {
-      result
-    } else {
-      throw new RuntimeException(s"Failed to get session ${sessionMeta.id} after retries")
-    }
+    result
   }
 
   /**
