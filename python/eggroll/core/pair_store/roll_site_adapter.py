@@ -16,6 +16,7 @@
 import sys
 import time
 
+from eggroll.core.conf_keys import RollSiteConfKeys
 from eggroll.core.error import GrpcCallError
 from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.meta_model import ErEndpoint
@@ -25,6 +26,7 @@ from eggroll.core.pair_store.format import PairBinWriter, ArrayByteBuffer
 from eggroll.core.proto import proxy_pb2, proxy_pb2_grpc
 from eggroll.core.serdes import eggroll_serdes
 from eggroll.core.transfer_model import ErRollSiteHeader
+from eggroll.core.utils import get_static_er_conf
 from eggroll.core.utils import stringify_charset
 from eggroll.roll_site.utils.roll_site_utils import create_store_name
 from eggroll.utils.log_utils import get_logger
@@ -107,7 +109,11 @@ class RollSiteWriteBatch(PairWriteBatch):
         channel = self.grpc_channel_factory.create_channel(self.proxy_endpoint)
         self.stub = proxy_pb2_grpc.DataTransferServiceStub(channel)
 
-        self.__bin_packet_len = 32 << 20
+        static_er_conf = get_static_er_conf()
+        self.__bin_packet_len = int(options.get(
+                RollSiteConfKeys.EGGROLL_ROLLSITE_ADAPTER_SENDBUF_SIZE.key,
+                static_er_conf.get(RollSiteConfKeys.EGGROLL_ROLLSITE_ADAPTER_SENDBUF_SIZE.key,
+                                   RollSiteConfKeys.EGGROLL_ROLLSITE_ADAPTER_SENDBUF_SIZE.default_value)))
         self.total_written = 0
 
         self.ba = bytearray(self.__bin_packet_len)
