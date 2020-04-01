@@ -103,7 +103,7 @@ python-Levenshtein==0.12.0
 python-socketio==2.0.0
 python-speech-features==0.5
 pytz==2018.5
-PyYAML==3.13
+PyYAML==5.1
 pyzmq==17.1.2
 qtconsole==4.4.1
 redis==3.0.1
