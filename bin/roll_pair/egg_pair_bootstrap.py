@@ -3,6 +3,28 @@ from subprocess import Popen, PIPE
 import time
 import sys
 
+import struct
+from socket import *
+
+SENDERIP = '127.0.0.1'
+SENDERPORT = 1501
+MYPORT = 1234
+MYGROUP = ''
+MYTTL = 255
+
+def send_stop(pid):
+    s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
+    s.bind((SENDERIP,SENDERPORT))
+    ttl_bin = struct.pack('@i', MYTTL)
+    s.setsockopt(IPPROTO_IP, IP_MULTICAST_TTL, ttl_bin)
+    status = s.setsockopt(IPPROTO_IP,
+                          IP_ADD_MEMBERSHIP,
+                          inet_aton(MYGROUP) + inet_aton(SENDERIP))
+
+    data = 'stop ' + str(pid)
+    s.sendto((data + '\0').encode('utf-8'), (MYGROUP, MYPORT))
+    print("send data ok !")
+
 def get_property(config_file, property_name):
   with open(config_file) as i_file: #Open the file
     values = {}
@@ -29,7 +51,8 @@ def start(config_file, session_id, server_node_id, processor_id, port, transfer_
     pname_pid = 'bin/' + 'pid/' + pname + '.pid'
     with open(pname_pid, 'w') as fp:
         fp.write(str(pid))
-
+        fp.close()
+        
     if session_id is None:
       print("session-id is blank")
       return 1
@@ -116,3 +139,11 @@ def start(config_file, session_id, server_node_id, processor_id, port, transfer_
     #         cluster_manager_port, node_manager_port, processor_id)
 
     #print("egg_pair processor id:", processor_id, "os process id:" >> ${EGGROLL_LOGS_DIR}/pid.txt
+
+def stop(pid):
+    send_stop(pid)
+    '''
+    cmd = 'taskkill /pid ' + pid
+    print(cmd)
+    os.system(cmd)
+    '''

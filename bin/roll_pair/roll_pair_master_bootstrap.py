@@ -2,6 +2,17 @@ import os
 from subprocess import Popen, PIPE
 import time
 
+import struct
+from socket import *
+
+
+def send_stop(pid):
+  s = socket(AF_INET, SOCK_DGRAM)
+  s.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
+  send_data = 'stop ' + pid
+  s.sendto(send_data.encode('utf-8'), ('', 1234))
+  print("send data ok !")
+
 
 def get_property(config_file, property_name):
   with open(config_file) as i_file: #Open the file
@@ -26,7 +37,7 @@ def start(config_file, session_id, server_node_id, processor_id, port, transfer_
   print('sub id ：',os.getpid(),'parent id ：',os.getppid())
 
   pid = os.getpid()
-  pname_pid = 'pid/' + pname + '.pid'
+  pname_pid = 'bin/' + 'pid/' + pname + '.pid'
   #os.mkdir('pid')
   with open(pname_pid, 'w') as fp:
     fp.write(str(pid))
@@ -139,3 +150,13 @@ def start(config_file, session_id, server_node_id, processor_id, port, transfer_
   #         cluster_manager_port, node_manager_port, processor_id)
 
   #print("egg_pair processor id:", processor_id, "os process id:" >> ${EGGROLL_LOGS_DIR}/pid.txt
+
+
+def stop(pid):
+  send_stop(pid)
+
+  '''
+  cmd = 'taskkill /pid ' + pid + ' -f'
+  print(cmd)
+  os.system(cmd)
+  '''
