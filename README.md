@@ -33,7 +33,7 @@ options = {SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE: "standalone"}
 session = ErSession(options=options)
 rpc = RollPairContext(session)
 
-rp = rpc.parallelize(range(10))
+rp = rpc.parallelize(range(10), options={'include_key': False})
 ```
 
 Alternatively, if you want to use it in cluster mode:
@@ -44,7 +44,7 @@ from eggroll.roll_pair.roll_pair import RollPairContext
 session = ErSession(options=options)
 rpc = RollPairContext(session)
 
-rp = rpc.parallelize(range(10))
+rp = rpc.parallelize(range(10), options={'include_key': False})
 ```
 
 Running Tests
