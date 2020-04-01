@@ -59,7 +59,7 @@ class RollFrameContext private[eggroll](val session: ErSession) {
     new RollFrame(loaded, this)
   }
 
-  def stopSession(): Unit ={
+  def stopSession(): Unit = {
     session.clusterManagerClient.stopSession(session.sessionMeta)
   }
 
@@ -252,7 +252,7 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
         ret
       }
     }
-    val job = ErJob(id = if (jobId == null) genJobId() else jobId,
+    val job = ErJob(id = if (jobId == null) jobType + "_" + genJobId() else jobId,
       name = jobType,
       inputs = Array(store),
       outputs = Array(if (output == null) store.fork(postfix = jobType) else output),
@@ -307,7 +307,8 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
                 broadcastZeroValue: Boolean = false,
                 threadsNum: Int = -1,
                 output: ErStore = null): RollFrame = {
-    val jobId = genJobId()
+    val jobType = "aggregate"
+    val jobId = jobType + "_" + genJobId()
     val zeroValueBytes = if (broadcastZeroValue) {
       ctx.broadcast("broadcast:" + jobId, zeroValue)
       Array[Byte]()
@@ -319,6 +320,7 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
 
     val func: (EggFrameContext, ErTask, Iterator[FrameBatch], FrameStore) => ErPair = {
       (ctx, task, input, output) =>
+        val t = Thread.currentThread
         val zeroValue: FrameBatch = if (zeroValueBytes.isEmpty) null else FrameUtils.fromBytes(zeroValueBytes)
         val partition = task.inputs.head
         val batchSize = 1
@@ -334,10 +336,7 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
         val zero: FrameBatch =
           if (zeroValue == null) {
             if (broadcastZeroValue) {
-              if (localServer.equals(ctx.rootServer))
-                FrameStore.cache(zeroPath).readOne()
-              else
-                FrameStore.queue(zeroPath, 1).readOne()
+              FrameStore.cache(zeroPath).readOne()
             } else {
               // reduce need't zero value
               if (input.hasNext) {
@@ -426,6 +425,7 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
           val transferQueueSize = task.job.inputs.head.storeLocator.totalPartitions - 1
           require(transferQueueSize > -1, s"""transferQueueSize:$transferQueueSize, task:$task""")
           // TODO: check asynchronous call
+
           if (byColumn) {
             val slicedBatches = ctx.sliceByColumn(localBatch)
             // Don't block next receive step
@@ -458,12 +458,15 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
                 FrameStore.queue(queuePath, -1).writeAll(Iterator(localBatch))
               }
             } else {
-              ctx.frameTransfer.send(ctx.rootServer.id, queuePath, localBatch)
+              // - use different clients
+              // val ft = new NioFrameTransfer(ctx.serverNodes)
+              // ft.send(ctx.rootServer.id, queuePath, localBatch)
+              // - use the same client
+              ctx.frameTransfer.synchronized(ctx.frameTransfer.send(ctx.rootServer.id, queuePath, localBatch))
             }
           }
           output.close()
         }
-
         null
     }
 

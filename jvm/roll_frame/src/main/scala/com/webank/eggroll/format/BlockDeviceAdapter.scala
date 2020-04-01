@@ -86,6 +86,7 @@ object HdfsBlockAdapter {
    * Attention: In spark，will use the hdfs env in spark.
    */
   private var conf: Configuration = {
+    System.setProperty("HADOOP_USER_NAME", "hadoop")
     val defaultConf = new Configuration()
     val fsName = StaticErConf.getString("hadoop.fs.defaultFS", "")
     val fsNameServices = StaticErConf.getString("hadoop.dfs.nameservices", "")
