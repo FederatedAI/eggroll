@@ -23,11 +23,10 @@ import java.util.concurrent.ConcurrentHashMap
 import com.webank.eggroll.core.constant._
 import com.webank.eggroll.core.error.CrudException
 import com.webank.eggroll.core.meta._
-import com.webank.eggroll.core.resourcemanager.SessionMetaDao
 import com.webank.eggroll.core.resourcemanager.ResourceDao
+import com.webank.eggroll.core.util.JdbcTemplate.ResultSetIterator
 import com.webank.eggroll.core.util.{Logging, TimeUtils}
 import org.apache.commons.lang3.StringUtils
-import com.webank.eggroll.core.util.JdbcTemplate.ResultSetIterator
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -64,7 +63,9 @@ class StoreCrudOperator extends CrudOperator with Logging {
   }
 
   def getStoreFromNamespace(input: ErStore): ErStoreList = {
-    StoreCrudOperator.dao.getStoreLocators(input: ErStore)
+    val storeWithLocatorOnly = StoreCrudOperator.getStoreLocators(input: ErStore)
+
+    storeWithLocatorOnly.copy(stores = storeWithLocatorOnly.stores.map(s => StoreCrudOperator.doGetStore(s)))
   }
 }
 
@@ -298,5 +299,48 @@ object StoreCrudOperator {
 
     ErStore(storeLocator = outputStoreLocator)
   }
-  val dao = new SessionMetaDao()
+
+  def getStoreLocators(input: ErStore): ErStoreList = {
+    var sql = "select * from store_locator where status = 'NORMAL' and"
+    val whereFragments = ArrayBuffer[String]()
+    val args = ArrayBuffer[String]()
+
+    val storeLocator = input.storeLocator
+    val storeName = storeLocator.name
+    val storeNamespace = storeLocator.namespace
+    val storeType = storeLocator.storeType
+    var storeNameNew = ""
+    if (!StringUtils.isBlank(storeName)) {
+      if (StringUtils.contains(storeName, "*")) {
+        storeNameNew = storeName.replace('*', '%')
+        args += storeNameNew
+      } else {
+        args += storeName
+      }
+      whereFragments += " name like ?"
+    }
+
+    if (!StringUtils.isBlank(storeNamespace)) {
+      whereFragments += " namespace = ?"
+      args += storeNamespace
+    }
+
+    sql += String.join(" and ", whereFragments: _*)
+
+    dbc.query(rs => {
+      val stores = ArrayBuffer[ErStore]()
+      while (rs.next()) {
+
+        stores += ErStore(
+          storeLocator = ErStoreLocator(
+            storeType = rs.getString("store_type"),
+            name = rs.getString("name"),
+            namespace = rs.getString("namespace"),
+            totalPartitions = rs.getInt("total_partitions")
+          ))
+      }
+
+      ErStoreList(stores = stores.toArray)
+    }, sql, args: _*)
+  }
 }

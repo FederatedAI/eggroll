@@ -27,8 +27,6 @@ class StoreMetaDao {
 }
 
 class SessionMetaDao {
-
-
   private lazy val dbc = ResourceDao.dbc
   def register(sessionMeta: ErSessionMeta, replace: Boolean = true): Unit = {
     require(sessionMeta.activeProcCount == sessionMeta.processors.count(_.status == ProcessorStatus.RUNNING),
@@ -187,51 +185,6 @@ class SessionMetaDao {
       }
       result.toArray
     }, sql, args: _*)
-  }
-
-  def getStoreLocators(input: ErStore): ErStoreList ={
-    var sql = "select * from store_locator where status = 'NORMAL' and"
-    val whereFragments = ArrayBuffer[String]()
-    val args = ArrayBuffer[String]()
-
-    val store_locator = input.storeLocator
-    val store_name = store_locator.name
-    val store_namespace = store_locator.namespace
-    val store_type = store_locator.storeType
-    var store_name_new = ""
-    if (!StringUtils.isBlank(store_name)) {
-      if (StringUtils.contains(store_name, "*")) {
-        store_name_new = store_name.replace('*', '%')
-        args += store_name_new
-      } else {
-        args += store_name
-      }
-      whereFragments += " name like ?"
-    }
-
-    if (!StringUtils.isBlank(store_namespace)) {
-      whereFragments += " namespace = ?"
-      args += store_namespace
-    }
-
-    sql += String.join(" and ", whereFragments: _*)
-
-    dbc.query(rs => {
-      val stores = ArrayBuffer[ErStore]()
-      while (rs.next()) {
-
-        stores += ErStore(
-          storeLocator = ErStoreLocator(
-            storeType = rs.getString("store_type"),
-            name = rs.getString("name"),
-            namespace = rs.getString("namespace"),
-            totalPartitions = rs.getInt("total_partitions")
-          ))
-      }
-
-      ErStoreList(stores = stores.toArray)
-    }, sql, args: _*)
-
   }
 
   def existSession(sessionId: String): Boolean = {

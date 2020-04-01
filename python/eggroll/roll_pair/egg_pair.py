@@ -56,37 +56,59 @@ class EggPair(object):
         return lambda k: hash_func(k) % total_partitions
 
     def _run_unary(self, func, task, shuffle=False):
-        key_serdes = create_serdes(task._inputs[0]._store_locator._serdes)
-        value_serdes = create_serdes(task._inputs[0]._store_locator._serdes)
-        with create_adapter(task._inputs[0]) as input_db:
-            L.debug(f"create_store_adatper: {task._inputs[0]}")
-            with input_db.iteritems() as rb:
-                L.debug(f"create_store_adatper_iter: {task._inputs[0]}")
-                from eggroll.roll_pair.transfer_pair import TransferPair, BatchBroker
-                if shuffle:
-                    total_partitions = task._inputs[0]._store_locator._total_partitions
-                    output_store = task._job._outputs[0]
-                    shuffle_broker = FifoBroker()
-                    write_bb = BatchBroker(shuffle_broker)
-                    try:
-                        shuffler = TransferPair(transfer_id=task._job._id)
-                        store_future = shuffler.store_broker(task._outputs[0], True, total_partitions)
-                        scatter_future = shuffler.scatter(
-                            shuffle_broker,
-                            partitioner(hash_func=hash_code, total_partitions=total_partitions),
-                            output_store)
+        input_store_head = task._job._inputs[0]
+        output_store_head = task._job._outputs[0]
+        key_serdes = create_serdes(input_store_head._store_locator._serdes)
+        value_serdes = create_serdes(input_store_head._store_locator._serdes)
+
+        if shuffle:
+            from eggroll.roll_pair.transfer_pair import TransferPair, BatchBroker
+            input_total_partitions = input_store_head._store_locator._total_partitions
+            output_total_partitions = output_store_head._store_locator._total_partitions
+            output_store = output_store_head
+
+            shuffler = TransferPair(transfer_id=task._job._id)
+            if not task._outputs:
+                store_future = None
+            else:
+                store_future = shuffler.store_broker(
+                        store_partition=task._outputs[0],
+                        is_shuffle=True,
+                        total_writers=input_total_partitions)
+
+            if not task._inputs:
+                scatter_future = None
+            else:
+                shuffle_broker = FifoBroker()
+                write_bb = BatchBroker(shuffle_broker)
+                try:
+                    scatter_future = shuffler.scatter(
+                            input_broker=shuffle_broker,
+                            partition_function=partitioner(hash_func=hash_code, total_partitions=output_total_partitions),
+                            output_store=output_store)
+                    with create_adapter(task._inputs[0]) as input_db, \
+                        input_db.iteritems() as rb:
                         func(rb, key_serdes, value_serdes, write_bb)
-                    finally:
-                        write_bb.signal_write_finish()
-                    scatter_results = scatter_future.result()
-                    store_result = store_future.result()
-                    L.debug(f"scatter_result:{scatter_results}")
-                    L.debug(f"gather_result:{store_result}")
-                else:
-                    # TODO: modification may be needed when store options finished
-                    with create_adapter(task._outputs[0], options=task._job._options) as db, db.new_batch() as wb:
-                        func(rb, key_serdes, value_serdes, wb)
-                L.debug(f"close_store_adatper:{task._inputs[0]}")
+                finally:
+                    write_bb.signal_write_finish()
+
+            if scatter_future:
+                scatter_results = scatter_future.result()
+            else:
+                scatter_results = 'no scatter for this partition'
+            if store_future:
+                store_results = store_future.result()
+            else:
+                store_results = 'no store for this partition'
+            L.debug(f"scatter_result:{scatter_results}")
+            L.debug(f"gather_result:{store_results}")
+        else:       # no shuffle
+            with create_adapter(task._inputs[0]) as input_db, \
+                    input_db.iteritems() as rb, \
+                    create_adapter(task._outputs[0], options=task._job._options) as db, \
+                    db.new_batch() as wb:
+                func(rb, key_serdes, value_serdes, wb)
+            L.debug(f"close_store_adatper:{task._inputs[0]}")
 
     def _run_binary(self, func, task):
         left_key_serdes = create_serdes(task._inputs[0]._store_locator._serdes)

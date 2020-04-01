@@ -30,7 +30,7 @@ from eggroll.core.meta_model import ErStore, ErSessionMeta
 from eggroll.core.proto import command_pb2_grpc
 from eggroll.core.utils import _to_proto_string, _map_and_listify
 from eggroll.core.utils import get_static_er_conf
-from eggroll.core.utils import time_now
+from eggroll.core.utils import time_now_ns
 from eggroll.utils.log_utils import get_logger
 
 L = get_logger()
@@ -57,7 +57,7 @@ class CommandClient(object):
     def sync_send(self, inputs: list, output_types: list, endpoint: ErEndpoint, command_uri: CommandURI, serdes_type=SerdesTypes.PROTOBUF):
         request = None
         try:
-            request = ErCommandRequest(id=time_now(),
+            request = ErCommandRequest(id=time_now_ns(),
                                        uri=command_uri._uri,
                                        args=_map_and_listify(_to_proto_string, inputs))
             L.debug(f"calling:{endpoint} {command_uri} {request}")
