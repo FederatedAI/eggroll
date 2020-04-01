@@ -13,13 +13,18 @@
 #  limitations under the License.
 import configparser
 import os
+from concurrent.futures import wait, FIRST_EXCEPTION
+from copy import deepcopy
 
 from eggroll.core.client import ClusterManagerClient
+from eggroll.core.client import CommandClient
+from eggroll.core.command.command_model import CommandURI
 from eggroll.core.conf_keys import CoreConfKeys
 from eggroll.core.conf_keys import SessionConfKeys, ClusterManagerConfKeys
 from eggroll.core.constants import SessionStatus, ProcessorTypes, DeployModes
-from eggroll.core.meta_model import ErSessionMeta, \
-    ErPartition
+from eggroll.core.meta_model import ErJob, ErTask
+from eggroll.core.meta_model import ErSessionMeta, ErPartition, ErStore
+from eggroll.core.utils import generate_task_id
 from eggroll.core.utils import get_self_ip, time_now, DEFAULT_DATETIME_FORMAT
 from eggroll.core.utils import get_stack
 from eggroll.core.utils import get_static_er_conf, set_static_er_conf
@@ -152,6 +157,90 @@ class ErSession(object):
 
         return result
 
+    def populate_processor(self, store: ErStore):
+        populated_partitions = list()
+        for p in store._partitions:
+            pp = ErPartition(id=p._id, store_locator=p._store_locator, processor=self.route_to_egg(p))
+            populated_partitions.append(pp)
+        return ErStore(store_locator=store._store_locator, partitions=populated_partitions, options=store._options)
+
+    def submit_job(self,
+            job: ErJob,
+            output_types: list = None,
+            command_uri: CommandURI = None,
+            create_output_if_missing=True):
+        if not output_types:
+            output_types = [ErTask]
+        final_job = self.populate_output_store(job) if create_output_if_missing else job
+        tasks = self._decompose_job(final_job)
+        command_client = CommandClient()
+        return command_client.async_call(args=tasks, output_types=output_types, command_uri=command_uri)
+
+    def wait_until_job_finished(self, task_futures: list, timeout=None, return_when=FIRST_EXCEPTION):
+        return wait(task_futures, timeout=timeout, return_when=return_when).done
+
+    def _decompose_job(self, job: ErJob):
+        input_total_partitions = job._inputs[0]._store_locator._total_partitions
+        output_total_partitions = input_total_partitions \
+            if not job._outputs \
+            else job._outputs[0]._store_locator._total_partitions
+
+        larger_total_partitions = max(input_total_partitions, output_total_partitions)
+
+        if larger_total_partitions == input_total_partitions:
+            store = self.populate_processor(job._inputs[0])
+        else:
+            store = self.populate_processor(job._outputs[0])
+
+        partitions_with_processors = store._partitions
+
+        result = list()
+
+        for i in range(larger_total_partitions):
+            input_partitions = list()
+            output_partitions = list()
+            try:
+                target_processor = self.route_to_egg(partitions_with_processors[i])
+            except Exception as e:
+                raise e
+
+            if i < input_total_partitions:
+                for input_store in job._inputs:
+                    input_partitions.append(ErPartition(
+                            id=i,
+                            store_locator=input_store._store_locator,
+                            processor=target_processor))
+            if i < output_total_partitions:
+                for output_store in job._outputs:
+                    output_partitions.append(ErPartition(
+                            id=i,
+                            store_locator=output_store._store_locator,
+                            processor=target_processor))
+
+            result.append(
+                    ([ErTask(id=generate_task_id(job._id, i),
+                             name=f'{job._name}',
+                             inputs=input_partitions,
+                             outputs=output_partitions,
+                             job=job)],
+                     target_processor._command_endpoint))
+        return result
+
+    def populate_output_store(self, job: ErJob):
+        is_output_blank = not job._outputs or not job._outputs[0]
+        if is_output_blank:
+            final_output_proposal = ErStore(store_locator=job._inputs[0]._store_locator.fork())
+        else:
+            final_output_proposal = job._outputs[0]
+
+        cm_client = ClusterManagerClient()
+        final_output = self.populate_processor(cm_client.get_or_create_store(final_output_proposal))
+
+        final_job = deepcopy(job)
+        final_job._outputs = [final_output]
+
+        return final_job
+
     def stop(self):
         L.info(f'stopping session (gracefully): {self.__session_id}')
         L.debug(f'stopping session (gracefully), details: {self.__session_meta}')
@@ -193,3 +282,14 @@ class ErSession(object):
 
     def is_stopped(self):
         return self.stopped
+
+
+class JobRunner(object):
+    def __init__(self, session: ErSession):
+        self._session = session
+
+    def run(self, job: ErJob):
+        tasks = self.decompose_job()
+
+
+

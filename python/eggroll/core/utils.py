@@ -14,11 +14,9 @@
 import json
 import time
 import traceback
-import uuid
 from datetime import datetime
 
 import numba
-import numpy as np
 from google.protobuf.text_format import MessageToString
 
 static_er_conf = {}
@@ -143,6 +141,11 @@ def time_now(format: str = DEFAULT_DATETIME_FORMAT):
     else:
         return formatted
 
+
+def time_now_ns(format: str = DEFAULT_DATETIME_FORMAT):
+    return datetime.now().strftime(format)
+
+
 def get_self_ip():
     import socket
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -159,7 +162,7 @@ def get_self_ip():
 
 # TODO:0: replace uuid with simpler human friendly solution
 def generate_job_id(session_id, tag='', delim='-'):
-    result = delim.join([session_id, 'py', 'job', str(uuid.uuid1())])
+    result = delim.join([session_id, 'py', 'job', time_now_ns()])
     if not tag:
         return result
     else:
