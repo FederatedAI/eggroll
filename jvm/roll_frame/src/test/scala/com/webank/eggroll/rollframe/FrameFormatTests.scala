@@ -33,7 +33,7 @@ class FrameFormatTests {
 
   @Before
   def setup(): Unit = {
-    StaticErConf.addProperty("hadoop.fs.defaultFS","file:///")
+    StaticErConf.addProperty("hadoop.fs.defaultFS", "file:///")
   }
 
   @Test
@@ -49,7 +49,7 @@ class FrameFormatTests {
   }
 
   @Test
-  def TestFileFrameDB(): Unit = {
+  def TestFileFrameStore(): Unit = {
     // create FrameBatch data
     val fb = new FrameBatch(new FrameSchema(SchemaUtil.getDoubleSchema(2)), 100)
     for (i <- 0 until fb.fieldCount) {
@@ -71,7 +71,7 @@ class FrameFormatTests {
   }
 
   @Test
-  def testJvmFrameDB(): Unit = {
+  def testJvmFrameStore(): Unit = {
     // create FrameBatch data
     val fb = new FrameBatch(new FrameSchema(SchemaUtil.getDoubleSchema(2)), 100)
     for (i <- 0 until fb.fieldCount) {
@@ -90,7 +90,7 @@ class FrameFormatTests {
   }
 
   @Test
-  def testHdfsFrameDB(): Unit = {
+  def testHdfsFrameStore(): Unit = {
     // create FrameBatch data
     val fb = new FrameBatch(new FrameSchema(SchemaUtil.getDoubleSchema(2)), 100)
     for (i <- 0 until fb.fieldCount) {
@@ -112,7 +112,7 @@ class FrameFormatTests {
   }
 
   @Test
-  def testNetworkFrameDB(): Unit = {
+  def testNetworkFrameStore(): Unit = {
     // start transfer server
     val service = new NioTransferEndpoint
     val port = 8818
@@ -147,6 +147,20 @@ class FrameFormatTests {
     networkReadAdapter.readAll().foreach(fb =>
       assert(fb.readDouble(0, 30) == 30.0)
     )
+  }
+
+  @Test
+  def testQueueFrameStore(): Unit = {
+    val fb = new FrameBatch(new FrameSchema(SchemaUtil.getDoubleSchema(2)), 100)
+    fb.initZero()
+    val path = "abc"
+    val adapter = FrameStore.queue(path, 2)
+    adapter.append(fb)
+    adapter.append(fb)
+    val fbs = adapter.readAll()
+
+    assert(fbs.next().fieldCount == 2)
+    assert(fbs.next().rowCount == 100)
   }
 
   @Test

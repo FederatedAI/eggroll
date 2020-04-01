@@ -203,23 +203,31 @@ object QueueFrameStore {
 
 class QueueFrameStore(path: String, total: Int) extends FrameStore {
   // TODO: QueueFrameStoreAdapter.getOrCreateQueue(path)
-  override def close(): Unit = {}
 
-  override def readAll(): Iterator[FrameBatch] = {
-    require(total >= 0, "blocking queue need a total size before read")
+  private val fbIterator = if (total > 0) {
     new Iterator[FrameBatch] {
       private var remaining = total
 
       override def hasNext: Boolean = remaining > 0
 
       override def next(): FrameBatch = {
-        remaining -= 1
-        println("taking from queue:" + path)
-        val ret = QueueFrameStore.getOrCreateQueue(path).take()
-        println("token from queue:" + path)
-        ret
+        if (hasNext) {
+          remaining -= 1
+          println("taking from queue:" + path)
+          val ret = QueueFrameStore.getOrCreateQueue(path).take()
+          println("token from queue:" + path)
+          ret
+        }
+        else throw new NoSuchElementException("next on empty iterator")
       }
     }
+  } else Iterator()
+
+  override def close(): Unit = {}
+
+  override def readAll(): Iterator[FrameBatch] = {
+    require(total > 0, "blocking queue need a total size before read")
+    fbIterator
   }
 
   override def writeAll(batches: Iterator[FrameBatch]): Unit = {
