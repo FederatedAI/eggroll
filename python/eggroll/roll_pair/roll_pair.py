@@ -607,6 +607,8 @@ class RollPair(object):
 
     @_method_profile_logger
     def save_as(self, name, namespace, partition, options: dict = None):
+        if partition <= 0:
+            raise ValueError('partition cannot <= 0')
         if options is None:
             options = {}
         store_type = options.get('store_type', self.ctx.default_store_type)
