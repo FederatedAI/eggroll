@@ -30,7 +30,7 @@ class TestRollPairBase(unittest.TestCase):
 
     def tearDown(self) -> None:
         print("stop test session")
-        self.ctx.get_session().stop()
+        #self.ctx.get_session().stop()
 
     @staticmethod
     def store_opts(**kwargs):
@@ -139,8 +139,8 @@ class TestRollPairBase(unittest.TestCase):
         print(data1.get_partitions())
         h2 = data1.aggregate(zero_value=1, seq_op=mul, comb_op=add)
         print("aggregate result: ", h2)
-        self.assertEqual(h2, 25)
-        #self.assertEqual(h2, 720)
+        #self.assertEqual(h2, 25)
+        self.assertEqual(h2, 720)
 
     def test_join_self(self):
         options = get_default_options()
@@ -298,6 +298,27 @@ class TestRollPairBase(unittest.TestCase):
         left_rp = self.ctx.load("namespace20201", "testSubtractByKeyLeft202013", options=options).put_all(range(10), options=options)
         right_rp = self.ctx.load("namespace2020131", "testSubtractByKeyRight202013", options=options).put_all(range(5), options=options)
         self.assertEqual(list(left_rp.subtract_by_key(right_rp).get_all()), [(5, 5), (6, 6), (7, 7), (8, 8), (9, 9)])
+
+    def test_save_as_more_partition(self):
+        rp = self.ctx.parallelize(range(10), options={'include_key': False})
+        import time
+        sa = rp.save_as(f'test_name_{time.monotonic()}', 'test_ns', 2)
+        self.assertEqual(sa.get_partitions(), 2)
+        self.assertUnOrderListEqual(list(rp.get_all()), list(sa.get_all()))
+
+    def test_save_as_less_partition(self):
+        rp = self.ctx.parallelize(range(10), options={'include_key': False, 'total_partitions': 10})
+        import time
+        sa = rp.save_as(f'test_name_{time.monotonic()}', 'test_ns', 2)
+        self.assertEqual(sa.get_partitions(), 2)
+        self.assertUnOrderListEqual(list(rp.get_all()), list(sa.get_all()))
+
+    def test_save_as_equal_partition(self):
+        rp = self.ctx.parallelize(range(10), options={'include_key': False, 'total_partitions': 2})
+        import time
+        sa = rp.save_as(f'test_name_{time.monotonic()}', 'test_ns', 2)
+        self.assertEqual(sa.get_partitions(), 2)
+        self.assertUnOrderListEqual(list(rp.get_all()), list(sa.get_all()))
 
     @staticmethod
     def gen_data(self):
