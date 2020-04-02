@@ -9,7 +9,7 @@ def send_stop(pid):
   s.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
   send_data = 'stop ' + pid
   s.sendto(send_data.encode('utf-8'), ('', 1234))
-  print("send data ok !")
+  print("roll_pair_master send data ok !", pid)
 
 
 def get_property(config_file, property_name):
