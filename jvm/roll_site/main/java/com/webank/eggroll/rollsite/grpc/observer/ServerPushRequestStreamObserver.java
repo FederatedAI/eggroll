@@ -245,6 +245,8 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
                 }
 
                 rollSiteUtil.putBatch(value);
+                // for putBatch, on complete here; for cascaded call, on complete at cascaded call
+                pipe.onComplete();
                 LOGGER.info("end putBatch for {}", name);
             }
 
@@ -318,7 +320,7 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
 
         LOGGER.info("pipe in onCompleted: {}", pipe);
         pipe.setDrained();
-        pipe.onComplete();
+        // pipe.onComplete();
 
         /*LOGGER.info("closed: {}, completion timeout: {}, overall timeout: {}",
                 pipe.isClosed(),
@@ -342,13 +344,11 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
                     PacketQueuePipe pqp = (PacketQueuePipe) pipe;
                     extraInfo = "queueSize: " + pqp.getQueueSize();
                 }
-                //LOGGER.info("[PUSH][OBSERVER][ONCOMPLETE] waiting push to complete. wait time: {}. metadata: {}, extrainfo: {}",
-                //        (loopEndTimestamp - completionWaitStartTimestamp), oneLineStringInputMetadata, extraInfo);
-
-
+                LOGGER.info("[PUSH][OBSERVER][ONCOMPLETE] waiting push to complete. wait time: {}. metadata: {}, extrainfo: {}",
+                        (loopEndTimestamp - completionWaitStartTimestamp), oneLineStringInputMetadata, extraInfo);
             }
         }
-        //pipe.onComplete();
+        pipe.onComplete();
 
         try {
             if (timeouts.isTimeout(completionWaitTimeout, completionWaitStartTimestamp, loopEndTimestamp)) {
