@@ -32,11 +32,12 @@ import io.grpc.{BindableService, Server}
 object GrpcServerUtils extends Logging {
   private def modulePrefix = "[CORE][SERVER]"
 
-  def createServer(host: String,
-                   port: Int,
-                   grpcServices: List[BindableService],
+  def createServer(host: String = "0.0.0.0",
+                   port: Int = 0,
+                   grpcServices: List[BindableService] = List(),
                    options: Map[String, String] = Map()): Server = {
     if (port < 0) throw new IllegalArgumentException(s"${modulePrefix} cannot listen to port <= 0")
+    if (grpcServices.isEmpty) throw new IllegalArgumentException("grpc services cannot be empty")
 
     val addr = new InetSocketAddress(host, port)
 
@@ -98,12 +99,12 @@ object GrpcServerUtils extends Logging {
       else sslContextBuilder.clientAuth(ClientAuth.OPTIONAL)
 
       nettyServerBuilder.sslContext(sslContextBuilder.build)
-      logInfo(s"${port} starting in secure mode. " +
+      logInfo(s"gRPC server at ${port} starting in secure mode. " +
         s"server private key path: ${key.getAbsolutePath}, " +
         s"key crt path: ${keyCrt.getAbsoluteFile}, " +
         s"ca crt path: ${caCrt.getAbsolutePath}")
     } else {
-      logInfo(s"${port} starting in insecure mode")
+      logInfo(s"gRPC server at ${port} starting in insecure mode")
     }
 
     nettyServerBuilder.build()

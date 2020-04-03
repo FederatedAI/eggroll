@@ -1,15 +1,14 @@
 package com.webank.eggroll.core.resourcemanager
 
 import java.io.File
-import java.net.InetSocketAddress
 
 import com.webank.eggroll.core.Bootstrap
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
 import com.webank.eggroll.core.constant.{CoreConfKeys, NodeManagerCommands, NodeManagerConfKeys, ResourceManagerConfKeys}
 import com.webank.eggroll.core.meta.{ErProcessor, ErSessionMeta}
 import com.webank.eggroll.core.session.StaticErConf
+import com.webank.eggroll.core.transfer.GrpcServerUtils
 import com.webank.eggroll.core.util.{CommandArgsUtils, Logging}
-import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
 
 class NodeManagerBootstrap extends Bootstrap with Logging {
   private var port = 0
@@ -56,12 +55,12 @@ class NodeManagerBootstrap extends Bootstrap with Logging {
   }
 
   override def start(): Unit = {
-    val server = NettyServerBuilder
-      .forAddress(new InetSocketAddress(this.port))
-      .addService(new CommandService).build
-    server.start()
+    val server = GrpcServerUtils.createServer(
+      port = this.port, grpcServices = List(new CommandService))
 
-    val port = server.getPort
+    server.start()
+    this.port = server.getPort
+
     // TODO:0: why ?
 //    StaticErConf.setPort(this.port)
     val msg = s"server started at ${port}"
