@@ -22,6 +22,8 @@ from concurrent import futures
 import threading
 import time
 import socket
+import win32file
+import win32pipe
 
 import grpc
 import numpy as np
@@ -407,47 +409,44 @@ class EggPair(object):
 
         return seq_op_result
 
-GROUPIP = 'localhost'
-GROUPPORT = 1234
 
 def stop_processor(cluster_manager_client: ClusterManagerClient, myself: ErProcessor):
-    static_er_conf = get_static_er_conf()
-    group_ip = static_er_conf.get()
-    group_port = static_er_conf.get()
 
+    L.info(f"stop_processor pid:{os.getpid()}, ppid:{os.getppid()}")
+    pipe_name = r'\\.\pipe\pid_pipe' + str(os.getpid())
+    pipe_buffer_size = 1024
     while True:
-        L.info(f"stop_processor pid:{os.getpid()}, ppid:{os.getppid()}")
+        named_pipe = win32pipe.CreateNamedPipe(pipe_name,
+                                               win32pipe.PIPE_ACCESS_DUPLEX,
+                                               win32pipe.PIPE_TYPE_MESSAGE | win32pipe.PIPE_WAIT | win32pipe.PIPE_READMODE_MESSAGE,
+                                               win32pipe.PIPE_UNLIMITED_INSTANCES,
+                                               pipe_buffer_size,
+                                               pipe_buffer_size, 500, None)
+        try:
+            while True:
+                try:
+                    win32pipe.ConnectNamedPipe(named_pipe, None)
+                    data = win32file.ReadFile(named_pipe, pipe_buffer_size, None)
 
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        sock.bind(('127.0.0.1', GROUPPORT))
-        sock.setsockopt(socket.IPPROTO_IP,
-                                 socket.IP_ADD_MEMBERSHIP,
-                                 socket.inet_aton(GROUPIP) + socket.inet_aton('127.0.0.1'));
+                    if data is None or len(data) < 2:
+                        continue
 
-        sock.setblocking(0)
-        while 1:
-            try:
-                data, addr = sock.recvfrom(1024)
-            except socket.error as e:
-                pass
-            else:
-                L.info(f'Receive data:{data}')
-                with open('test_receive', 'w') as fp:
-                    fp.write("123")
-                    fp.close()
-
-                print("TIME:", time.time())
-                print("FROM:", addr)
-                L.info(f'DATA: {data.decode()}')
-                L.info(f'self pid: {os.getpid()}')
-                L.info(f'self ppid: {os.getppid()}')
-
-                if 'stop' in data.decode() and str(os.getpid()) in data.decode():
+                    print('111receive msg:', data)
+                    cmd_str = data[1].decode('utf-8')
+                    print('receive msg:', cmd_str, ' ', type(data))
+                    if 'stop' in cmd_str and str(os.getpid()) in cmd_str:
+                        print('release resource')
                         myself._status = ProcessorStatus.STOPPED
                         cluster_manager_client.heartbeat(myself)
 
-        time.sleep(1)
+                except BaseException as e:
+                    print("exception:", e)
+                    break
+        finally:
+            try:
+                win32pipe.DisconnectNamedPipe(named_pipe)
+            except:
+                pass
 
 def serve(args):
     prefix = 'v1/egg-pair'

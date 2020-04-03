@@ -2,21 +2,26 @@ import os
 from subprocess import Popen, PIPE
 import time
 from socket import *
-
-GROUPIP = 'localhost'
-GROUPORT = 1234
+import win32pipe, win32file
 
 def send_stop(pid):
-    s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
-    s.setsockopt(SOL_SOCKET, SO_REUSEADDR,1)
-    s.bind(('127.0.0.1', GROUPORT))
-    s.setsockopt(IPPROTO_IP,
-                 IP_ADD_MEMBERSHIP,
-                 inet_aton(GROUPIP) + inet_aton('127.0.0.1'))
-
-    data = 'stop ' + str(pid)
-    s.sendto((data + '\0').encode('utf-8'), (GROUPIP, GROUPORT))
-    print("egg_pair send data ok !", pid)
+    pipe_name = r'\\.\pipe\pid_pipe' + str(pid)
+    print("egg_pair send data ok !", pipe_name)
+    file_handle = win32file.CreateFile(pipe_name,
+                                       win32file.GENERIC_READ | win32file.GENERIC_WRITE,
+                                       win32file.FILE_SHARE_WRITE, None,
+                                       win32file.OPEN_EXISTING, 0, None)
+    try:
+        msg = 'stop ' + str(pid)
+        msg_bytes = bytes(msg, encoding='utf-8')
+        print('send msg:', msg_bytes)
+        win32file.WriteFile(file_handle, msg_bytes)
+        #time.sleep(1)
+    finally:
+        try:
+            win32file.CloseHandle(file_handle)
+        except:
+            pass
 
 
 def get_property(config_file, property_name):
