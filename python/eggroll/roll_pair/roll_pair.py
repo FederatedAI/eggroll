@@ -261,6 +261,8 @@ class RollPair(object):
         pass
 
     def __init__(self, er_store: ErStore, rp_ctx: RollPairContext):
+        if not rp_ctx:
+            raise ValueError('rp_ctx cannot be None')
         self.__store = er_store
         self.ctx = rp_ctx
         self.__command_serdes = SerdesTypes.PROTOBUF

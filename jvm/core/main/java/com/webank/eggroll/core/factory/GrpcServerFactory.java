@@ -18,27 +18,7 @@
 
 package com.webank.eggroll.core.factory;
 
-import com.webank.eggroll.core.constant.CoreConfKeys;
-import com.webank.eggroll.core.constant.StringConstants;
-import com.webank.eggroll.core.meta.ErEndpoint;
-import com.webank.eggroll.core.session.StaticErConf;
-import com.webank.eggroll.core.session.GrpcServerConf;
-import com.webank.eggroll.core.util.FileSystemUtils;
-import com.webank.eggroll.core.util.ThreadPoolUtils;
-import io.grpc.Server;
-import io.grpc.ServerServiceDefinition;
-import io.grpc.netty.shaded.io.grpc.netty.GrpcSslContexts;
-import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder;
-import io.grpc.netty.shaded.io.netty.handler.ssl.ClientAuth;
-import io.grpc.netty.shaded.io.netty.handler.ssl.SslContextBuilder;
-import java.io.File;
-import java.net.InetSocketAddress;
-import java.net.SocketAddress;
-import java.util.concurrent.TimeUnit;
-import javax.net.ssl.SSLException;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+/*
 
 public class GrpcServerFactory {
   private static final Logger LOGGER = LogManager.getLogger();
@@ -118,14 +98,10 @@ public class GrpcServerFactory {
         .maxConnectionAgeGrace(maxConnectionAgeGrace, TimeUnit.SECONDS);
 
     if (grpcServerConf.isSecureServer()) {
-      String caCrtPath = FileSystemUtils.stripParentDirReference(StaticErConf
-          .getString(CoreConfKeys.CONFKEY_CORE_SECURITY_CA_CRT_PATH(), StringConstants.EMPTY()));
-      String keyCrtPath = FileSystemUtils.stripParentDirReference(StaticErConf
-          .getString(CoreConfKeys.CONFKEY_CORE_SECURITY_KEY_CRT_PATH(), StringConstants.EMPTY()));
-      String keyPath = FileSystemUtils.stripParentDirReference(StaticErConf
-          .getString(CoreConfKeys.CONFKEY_CORE_SECURITY_KEY_PATH(), StringConstants.EMPTY()));
-      boolean secureClusterEnabled = StaticErConf
-          .getBoolean(CoreConfKeys.CONFKEY_CORE_SECURITY_SECURE_CLUSTER_ENABLED(), false);
+      String caCrtPath = FileSystemUtils.stripParentDirReference(CoreConfKeys.CONFKEY_CORE_SECURITY_CA_CRT_PATH().get());
+      String keyCrtPath = FileSystemUtils.stripParentDirReference(CoreConfKeys.CONFKEY_CORE_SECURITY_KEY_CRT_PATH().get());
+      String keyPath = FileSystemUtils.stripParentDirReference(CoreConfKeys.CONFKEY_CORE_SECURITY_KEY_PATH().get());
+      boolean secureClusterEnabled = Boolean.valueOf(CoreConfKeys.CONFKEY_CORE_SECURITY_SECURE_CLUSTER_ENABLED().get());
       long sslSessionTimeout = StaticErConf
           .getLong(CoreConfKeys.CONFKEY_CORE_GRPC_SERVER_CHANNEL_SSL_SESSION_TIMEOUT_SEC(),
               3600 << 4);
@@ -164,3 +140,4 @@ public class GrpcServerFactory {
     return serverBuilder.build();
   }
 }
+*/
