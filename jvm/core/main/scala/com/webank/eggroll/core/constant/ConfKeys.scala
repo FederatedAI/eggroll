@@ -18,7 +18,29 @@
 
 package com.webank.eggroll.core.constant
 
-case class ErConfKey(key: String, defaultValue: String = StringConstants.EMPTY)
+import com.webank.eggroll.core.session.StaticErConf
+
+case class ErConfKey(key: String, defaultValue: String = StringConstants.EMPTY) {
+  def get(): String = {
+    getWith()
+  }
+
+  def getWith(candidates: List[Map[String, String]] = List()): String = {
+    var result: String = null
+
+    for (c <- candidates) {
+      if (c.contains(key)) result = c(key)
+    }
+
+    if (result == null) result = StaticErConf.getString(key, defaultValue)
+
+    result
+  }
+
+  def getWith(candidate: Map[String, String]): String = {
+    getWith(List(candidate))
+  }
+}
 
 
 object CoreConfKeys {
@@ -46,31 +68,37 @@ object CoreConfKeys {
   val CONFKEY_CORE_GRPC_CHANNEL_SSL_SESSION_TIMEOUT_SEC = "eggroll.core.grpc.channel.ssl.session.timeout.sec"
   val CONFKEY_CORE_GRPC_CHANNEL_TERMINATION_AWAIT_TIMEOUT_SEC = "eggroll.core.grpc.channel.termination.await.timeout.sec"
 
-  val CONFKEY_CORE_GRPC_TRANSFER_SERVER_HOST = "eggroll.core.grpc.transfer.server.host"
-  val CONFKEY_CORE_GRPC_TRANSFER_SERVER_PORT = "eggroll.core.grpc.transfer.server.port"
+  val CONFKEY_CORE_GRPC_TRANSFER_SERVER_HOST = ErConfKey("eggroll.core.grpc.transfer.server.host", "0.0.0.0")
+  val CONFKEY_CORE_GRPC_TRANSFER_SERVER_PORT = ErConfKey("eggroll.core.grpc.transfer.server.port", "0")
   val CONFKEY_CORE_GRPC_TRANSFER_SECURE_SERVER_ENABLED = "eggroll.core.grpc.transfer.secure.server.enabled"
 
 
-  val CONFKEY_CORE_GRPC_SERVER_CHANNEL_FLOW_CONTROL_WINDOW = "eggroll.core.grpc.server.channel.flow.control.window"
-  val CONFKEY_CORE_GRPC_SERVER_CHANNEL_KEEPALIVE_TIME_SEC = "eggroll.core.grpc.server.channel.keepalive.time.sec"
-  val CONFKEY_CORE_GRPC_SERVER_CHANNEL_KEEPALIVE_TIMEOUT_SEC = "eggroll.core.grpc.server.channel.keepalive.timeout.sec"
-  val CONFKEY_CORE_GRPC_SERVER_CHANNEL_KEEPALIVE_WITHOUT_CALLS_ENABLED = "eggroll.core.grpc.server.channel.keepalive.without.calls.enabled"
-  val CONFKEY_CORE_GRPC_SERVER_CHANNEL_MAX_CONCURRENT_CALL_PER_CONNECTION = "eggroll.core.grpc.server.channel.max.concurrent.call.per.connection"
-  val CONFKEY_CORE_GRPC_SERVER_CHANNEL_MAX_CONNECTION_AGE_SEC = "eggroll.core.grpc.server.channel.max.connection.age.sec"
-  val CONFKEY_CORE_GRPC_SERVER_CHANNEL_MAX_CONNECTION_IDLE_SEC = "eggroll.core.grpc.server.channel.max.connection.idle.sec"
-  val CONFKEY_CORE_GRPC_SERVER_CHANNEL_MAX_INBOUND_MESSAGE_SIZE = "eggroll.core.grpc.server.channel.max.inbound.message.size"
-  val CONFKEY_CORE_GRPC_SERVER_CHANNEL_PERMIT_KEEPALIVE_TIME_SEC = "eggroll.core.grpc.server.channel.permit.keepalive.time.sec"
-  val CONFKEY_CORE_GRPC_SERVER_CHANNEL_SSL_SESSION_CACHE_SIZE = "eggroll.core.grpc.server.channel.ssl.session.cache.size"
-  val CONFKEY_CORE_GRPC_SERVER_CHANNEL_SSL_SESSION_TIMEOUT_SEC = "eggroll.core.grpc.server.channel.ssl.session.timeout.sec"
+  val CONFKEY_CORE_GRPC_SERVER_CORE_THREAD_POOL_SIZE = ErConfKey("eggroll.core.grpc.server.core.thread.pool.size", "20")
+  val CONFKEY_CORE_GRPC_SERVER_MAX_THREAD_POOL_SIZE = ErConfKey("eggroll.core.grpc.server.max.thread.pool.size", "1500")
+  val CONFKEY_CORE_GRPC_SERVER_THREAD_POOL_QUEUE_SIZE = ErConfKey("eggroll.core.grpc.server.thread.pool.queue.size", "0")
+  val CONFKEY_CORE_GRPC_SERVER_CHANNEL_FLOW_CONTROL_WINDOW = ErConfKey("eggroll.core.grpc.server.channel.flow.control.window", (8 << 20).toString)
+  val CONFKEY_CORE_GRPC_SERVER_CHANNEL_KEEPALIVE_TIME_SEC = ErConfKey("eggroll.core.grpc.server.channel.keepalive.time.sec", "86400")
+  val CONFKEY_CORE_GRPC_SERVER_CHANNEL_KEEPALIVE_TIMEOUT_SEC = ErConfKey("eggroll.core.grpc.server.channel.keepalive.timeout.sec", "86400")
+  val CONFKEY_CORE_GRPC_SERVER_CHANNEL_KEEPALIVE_WITHOUT_CALLS_ENABLED = ErConfKey("eggroll.core.grpc.server.channel.keepalive.without.calls.enabled", true.toString)
+  val CONFKEY_CORE_GRPC_SERVER_CHANNEL_MAX_CONCURRENT_CALL_PER_CONNECTION = ErConfKey("eggroll.core.grpc.server.channel.max.concurrent.call.per.connection", "10000")
+  val CONFKEY_CORE_GRPC_SERVER_CHANNEL_MAX_CONNECTION_AGE_SEC = ErConfKey("eggroll.core.grpc.server.channel.max.connection.age.sec", "86400")
+  val CONFKEY_CORE_GRPC_SERVER_CHANNEL_MAX_CONNECTION_AGE_GRACE_SEC = ErConfKey("eggroll.core.grpc.server.channel.max.connection.age.grace.sec", "86400")
+  val CONFKEY_CORE_GRPC_SERVER_CHANNEL_MAX_CONNECTION_IDLE_SEC = ErConfKey("eggroll.core.grpc.server.channel.max.connection.idle.sec", "86400")
+  val CONFKEY_CORE_GRPC_SERVER_CHANNEL_MAX_INBOUND_MESSAGE_SIZE = ErConfKey("eggroll.core.grpc.server.channel.max.inbound.message.size", (2 << 30 - 1).toString)
+  val CONFKEY_CORE_GRPC_SERVER_CHANNEL_MAX_INBOUND_METADATA_SIZE = ErConfKey("eggroll.core.grpc.server.channel.max.inbound.metadata.size", (32 << 20).toString)
+  val CONFKEY_CORE_GRPC_SERVER_CHANNEL_PERMIT_KEEPALIVE_TIME_SEC = ErConfKey("eggroll.core.grpc.server.channel.permit.keepalive.time.sec", "1")
+  val CONFKEY_CORE_GRPC_SERVER_CHANNEL_SSL_SESSION_CACHE_SIZE = ErConfKey("eggroll.core.grpc.server.channel.ssl.session.cache.size", "65536")
+  val CONFKEY_CORE_GRPC_SERVER_CHANNEL_SSL_SESSION_TIMEOUT_SEC = ErConfKey("eggroll.core.grpc.server.channel.ssl.session.timeout.sec", "86400")
 
   val CONFKEY_CORE_RETRY_DEFAULT_ATTEMPT_TIMEOUT_MS = "eggroll.core.retry.default.attempt.timeout.ms"
   val CONFKEY_CORE_RETRY_DEFAULT_MAX_ATTEMPTS = "eggroll.core.retry.default.max.attempts"
   val CONFKEY_CORE_RETRY_DEFAULT_WAIT_TIME_MS = "eggroll.core.retry.default.wait.time.ms"
 
-  val CONFKEY_CORE_SECURITY_CA_CRT_PATH = "eggroll.core.security.ca.crt.path"
-  val CONFKEY_CORE_SECURITY_KEY_CRT_PATH = "eggroll.core.security.crt.path"
-  val CONFKEY_CORE_SECURITY_KEY_PATH = "eggroll.core.security.key.path"
-  val CONFKEY_CORE_SECURITY_SECURE_CLUSTER_ENABLED = "eggroll.core.security.secure.cluster.enabled"
+  val CONFKEY_CORE_SECURITY_CA_CRT_PATH = ErConfKey("eggroll.core.security.ca.crt.path")
+  val CONFKEY_CORE_SECURITY_KEY_CRT_PATH = ErConfKey("eggroll.core.security.crt.path")
+  val CONFKEY_CORE_SECURITY_KEY_PATH = ErConfKey("eggroll.core.security.key.path")
+  val CONFKEY_CORE_SECURITY_SECURE_CLUSTER_ENABLED = ErConfKey("eggroll.core.security.secure.cluster.enabled", false.toString)
+  val CONFKEY_CORE_SECURITY_CLIENT_AUTH_ENABLED = ErConfKey("eggroll.core.security.secure.client.auth.enabled", false.toString)
 
   val CONFKEY_CORE_COMMAND_DEFAULT_SERDES_TYPE = "eggroll.core.command.default.serdes.type"
   val CONFKEY_CORE_LOG_DIR = "eggroll.core.log.dir"

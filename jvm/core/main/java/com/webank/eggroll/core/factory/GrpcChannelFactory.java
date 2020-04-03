@@ -23,7 +23,6 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.webank.eggroll.core.constant.CoreConfKeys;
 import com.webank.eggroll.core.constant.ModuleConstants;
-import com.webank.eggroll.core.constant.StringConstants;
 import com.webank.eggroll.core.meta.ErEndpoint;
 import com.webank.eggroll.core.retry.RetryException;
 import com.webank.eggroll.core.retry.Retryer;
@@ -147,8 +146,7 @@ public class GrpcChannelFactory {
         .getInt(CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_MAX_RETRY_ATTEMPTS(), 20);
     int channelExecutorPoolSize = StaticErConf
         .getInt(CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_EXECUTOR_POOL_SIZE(), 100);
-    String caCrtPath = StaticErConf
-        .getString(CoreConfKeys.CONFKEY_CORE_SECURITY_CA_CRT_PATH(), StringConstants.EMPTY());
+    String caCrtPath = CoreConfKeys.CONFKEY_CORE_SECURITY_CA_CRT_PATH().get();
 
     File caCrt = null;
     if (isSecureChannel) {
@@ -183,10 +181,8 @@ public class GrpcChannelFactory {
           .getLong(CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_SSL_SESSION_TIMEOUT_SEC(), 3600 << 4);
       long sslSessionCacheSize = StaticErConf
           .getLong(CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_SSL_SESSION_CACHE_SIZE(), 65536L);
-      String keyCrtPath = StaticErConf
-          .getString(CoreConfKeys.CONFKEY_CORE_SECURITY_KEY_CRT_PATH(), null);
-      String keyPath = StaticErConf
-          .getString(CoreConfKeys.CONFKEY_CORE_SECURITY_KEY_PATH(), null);
+      String keyCrtPath = CoreConfKeys.CONFKEY_CORE_SECURITY_KEY_CRT_PATH().get();
+      String keyPath = CoreConfKeys.CONFKEY_CORE_SECURITY_KEY_PATH().get();
 
       try {
         SslContextBuilder sslContextBuilder = GrpcSslContexts.forClient()
