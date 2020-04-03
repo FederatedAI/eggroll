@@ -16,6 +16,56 @@ import com.webank.eggroll.core.util.{CommandArgsUtils, Logging}
 import org.apache.commons.cli.CommandLine
 import org.apache.commons.lang3.StringUtils
 
+import scala.util.control.Breaks._
+import java.net.{InetAddress, MulticastSocket}
+import java.net.DatagramPacket
+import java.nio.charset.Charset
+import java.util.concurrent.ConcurrentHashMap
+
+
+class ThreadExample(clusterManagerClient:ClusterManagerClient, myself:ErProcessor) extends Thread with Logging {
+  override def run(){
+      val group = InetAddress.getByName("localhost")
+      logInfo("hwenzan##### stop")
+      println("hwenzan222##### stop")
+      try {
+        val socket = new MulticastSocket(1234)
+        socket.joinGroup(group)
+
+        socket.setLoopbackMode(false)
+
+        val inBuff = new Array[Byte](1024)
+
+        val inPacket = new DatagramPacket(inBuff, inBuff.length)
+        val name = ManagementFactory.getRuntimeMXBean().getName()
+        logInfo(name)
+        // get pid
+        val pid = name.split("@")(0)
+
+        while (true) {
+          socket.receive(inPacket)
+          val receive_msg = new String(inBuff, 0, inPacket.getLength)
+          logInfo("msg£º" + receive_msg)
+
+          logInfo("Pid is:" + pid)
+          if (receive_msg.indexOf("stop")>=0 && receive_msg.indexOf(pid)>=0) {
+            val terminatedSelf = myself.copy(status = ProcessorStatus.STOPPED)
+            clusterManagerClient.heartbeat(terminatedSelf)
+
+            socket.leaveGroup(group)
+            socket.close()
+            break()
+          }
+        }
+      } catch {
+        case t: Throwable => t.printStackTrace()
+      }
+
+      logInfo("Thread is running?");
+
+  }
+}
+
 class RollPairMasterBootstrap extends Bootstrap with Logging {
   private var port = 0
   private var sessionId = "er_session_null"
@@ -60,6 +110,9 @@ class RollPairMasterBootstrap extends Bootstrap with Logging {
       options = options,
       status = ProcessorStatus.RUNNING)
     logInfo("ready to heartbeat")
+    val t = new ThreadExample(clusterManagerClient, myself)
+    t.start()
+
     clusterManagerClient.heartbeat(myself)
 
     StaticErConf.addProperty(SessionConfKeys.CONFKEY_SESSION_ID, sessionId)

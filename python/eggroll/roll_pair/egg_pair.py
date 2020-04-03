@@ -19,6 +19,9 @@ import os
 import signal
 from collections.abc import Iterable
 from concurrent import futures
+import threading
+import time
+import socket
 
 import grpc
 import numpy as np
@@ -404,6 +407,47 @@ class EggPair(object):
 
         return seq_op_result
 
+GROUPIP = 'localhost'
+GROUPPORT = 1234
+
+def stop_processor(cluster_manager_client: ClusterManagerClient, myself: ErProcessor):
+    static_er_conf = get_static_er_conf()
+    group_ip = static_er_conf.get()
+    group_port = static_er_conf.get()
+
+    while True:
+        L.info(f"stop_processor pid:{os.getpid()}, ppid:{os.getppid()}")
+
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.bind(('127.0.0.1', GROUPPORT))
+        sock.setsockopt(socket.IPPROTO_IP,
+                                 socket.IP_ADD_MEMBERSHIP,
+                                 socket.inet_aton(GROUPIP) + socket.inet_aton('127.0.0.1'));
+
+        sock.setblocking(0)
+        while 1:
+            try:
+                data, addr = sock.recvfrom(1024)
+            except socket.error as e:
+                pass
+            else:
+                L.info(f'Receive data:{data}')
+                with open('test_receive', 'w') as fp:
+                    fp.write("123")
+                    fp.close()
+
+                print("TIME:", time.time())
+                print("FROM:", addr)
+                L.info(f'DATA: {data.decode()}')
+                L.info(f'self pid: {os.getpid()}')
+                L.info(f'self ppid: {os.getppid()}')
+
+                if 'stop' in data.decode() and str(os.getpid()) in data.decode():
+                        myself._status = ProcessorStatus.STOPPED
+                        cluster_manager_client.heartbeat(myself)
+
+        time.sleep(1)
 
 def serve(args):
     prefix = 'v1/egg-pair'
@@ -480,6 +524,10 @@ def serve(args):
             ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT: cluster_manager_port
         })
         cluster_manager_client.heartbeat(myself)
+        L.info(f'egg_pair sub id £º{os.getpid()}, parent id £º{os.getppid()}')
+
+        t1 = threading.Thread(target=stop_processor, args=[cluster_manager_client, myself])
+        t1.start()
 
     L.info(f'egg_pair started at port {port}, transfer_port {transfer_port}')
 
