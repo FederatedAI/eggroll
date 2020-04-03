@@ -8,7 +8,7 @@ def send_stop(pid):
   s = socket(AF_INET, SOCK_DGRAM)
   s.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
   send_data = 'stop ' + pid
-  s.sendto(send_data.encode('utf-8'), ('', 1234))
+  s.sendto(send_data.encode('utf-8'), ('localhost', 1234))
   print("roll_pair_master send data ok !", pid)
 
 

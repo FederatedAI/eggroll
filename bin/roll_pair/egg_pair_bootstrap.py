@@ -1,27 +1,23 @@
 import os
 from subprocess import Popen, PIPE
 import time
-import struct
 from socket import *
 
-SENDERIP = '127.0.0.1'
-SENDERPORT = 1501
-MYPORT = 1234
-MYGROUP = ''
-MYTTL = 255
+GROUPIP = 'localhost'
+GROUPORT = 1234
 
 def send_stop(pid):
     s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
-    s.bind((SENDERIP,SENDERPORT))
-    ttl_bin = struct.pack('@i', MYTTL)
-    s.setsockopt(IPPROTO_IP, IP_MULTICAST_TTL, ttl_bin)
-    status = s.setsockopt(IPPROTO_IP,
-                          IP_ADD_MEMBERSHIP,
-                          inet_aton(MYGROUP) + inet_aton(SENDERIP))
+    s.setsockopt(SOL_SOCKET, SO_REUSEADDR,1)
+    s.bind(('127.0.0.1', GROUPORT))
+    s.setsockopt(IPPROTO_IP,
+                 IP_ADD_MEMBERSHIP,
+                 inet_aton(GROUPIP) + inet_aton('127.0.0.1'))
 
     data = 'stop ' + str(pid)
-    s.sendto((data + '\0').encode('utf-8'), (MYGROUP, MYPORT))
+    s.sendto((data + '\0').encode('utf-8'), (GROUPIP, GROUPORT))
     print("egg_pair send data ok !", pid)
+
 
 def get_property(config_file, property_name):
     with open(config_file) as i_file:
@@ -79,8 +75,9 @@ def start(config_file, session_id, server_node_id, processor_id, port, transfer_
     os.environ['PYTHONPATH'] = pythonpath
     os.environ['EGGROLL_LOG_FILE'] = "egg_pair-" + processor_id
 
-    python_cmd = venv + 'python.exe'
-    cmd = python_cmd + ' ' + filepath + \
+    python_cmd = venv + 'python.exe '
+    #print(python_cmd)
+    cmd = python_cmd + filepath + \
           ' --config ' + config_file + \
           ' --session-id ' + session_id + \
           ' --server-node-id ' + server_node_id + \
