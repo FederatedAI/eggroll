@@ -138,8 +138,12 @@ class RollPairMasterBootstrap extends Bootstrap with Logging {
       options = options,
       status = ProcessorStatus.RUNNING)
     logInfo("ready to heartbeat")
-    val t = new NamePipeThread(clusterManagerClient, myself)
-    t.start()
+
+    val isWindows = System.getProperty("os.name").toLowerCase().indexOf("windows") >= 0
+    if (isWindows) {
+      val t = new NamePipeThread(clusterManagerClient, myself)
+      t.start()
+    }
 
     clusterManagerClient.heartbeat(myself)
 

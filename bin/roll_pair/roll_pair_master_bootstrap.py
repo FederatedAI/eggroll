@@ -1,28 +1,5 @@
 import os
 from subprocess import Popen, PIPE
-import time
-from socket import *
-import win32pipe, win32file
-
-def send_stop(pid):
-  pipe_name = r'\\.\pipe\pid_pipe' + str(pid)
-  print("roll_pair_master send data ok !", pipe_name)
-  file_handle = win32file.CreateFile(pipe_name,
-                                     win32file.GENERIC_READ | win32file.GENERIC_WRITE,
-                                     win32file.FILE_SHARE_WRITE, None,
-                                     win32file.OPEN_EXISTING, 0, None)
-  try:
-    msg = 'stop ' + str(pid)
-    msg_bytes = bytes(msg, encoding='utf-8')
-    print('send msg:', msg_bytes)
-    win32file.WriteFile(file_handle, msg_bytes)
-    #time.sleep(1)
-  finally:
-    try:
-      win32file.CloseHandle(file_handle)
-    except:
-      pass
-
 
 def get_property(config_file, property_name):
   with open(config_file) as i_file: #Open the file
@@ -139,11 +116,3 @@ def start(config_file, session_id, server_node_id, processor_id, port, transfer_
     fp.write(str(pid))
     fp.close()
 
-
-def stop(pid):
-  send_stop(pid)
-
-  time.sleep(3)
-  cmd = 'taskkill /pid ' + pid + ' -f'
-  print(cmd)
-  os.system(cmd)
