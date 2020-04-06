@@ -3,7 +3,7 @@ package com.webank.eggroll.rollpair
 import java.io.File
 import java.lang.management.ManagementFactory
 import java.net.InetSocketAddress
-import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
+import java.util.concurrent.TimeUnit
 
 import _root_.io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
 import com.webank.eggroll.core.Bootstrap
