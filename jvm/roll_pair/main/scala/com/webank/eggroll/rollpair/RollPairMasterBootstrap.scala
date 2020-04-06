@@ -5,6 +5,7 @@ import java.lang.management.ManagementFactory
 import java.net.InetSocketAddress
 import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
 
+import _root_.io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
 import com.webank.eggroll.core.Bootstrap
 import com.webank.eggroll.core.client.ClusterManagerClient
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
