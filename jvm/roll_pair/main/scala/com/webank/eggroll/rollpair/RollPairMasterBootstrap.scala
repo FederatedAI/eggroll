@@ -25,7 +25,7 @@ import com.sun.jna.platform.win32.WinError
 import com.sun.jna.platform.win32.WinNT
 import com.sun.jna.ptr.IntByReference
 
-class NamePipeThread(clusterManagerClient:ClusterManagerClient, myself:ErProcessor) extends Thread with Logging {
+class stopProcessor(clusterManagerClient:ClusterManagerClient, myself:ErProcessor) extends Thread with Logging {
   def assertValidHandle(message: String, handle: WinNT.HANDLE): WinNT.HANDLE = {
     if ((handle == null) || WinBase.INVALID_HANDLE_VALUE == handle) {
       val hr = Kernel32.INSTANCE.GetLastError
@@ -141,7 +141,7 @@ class RollPairMasterBootstrap extends Bootstrap with Logging {
 
     val isWindows = System.getProperty("os.name").toLowerCase().indexOf("windows") >= 0
     if (isWindows) {
-      val t = new NamePipeThread(clusterManagerClient, myself)
+      val t = new stopProcessor(clusterManagerClient, myself)
       t.start()
     }
 

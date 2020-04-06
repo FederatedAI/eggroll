@@ -20,10 +20,7 @@ import signal
 from collections.abc import Iterable
 from concurrent import futures
 import threading
-import time
-import socket
-import win32file
-import win32pipe
+import platform
 
 import grpc
 import numpy as np
@@ -411,6 +408,8 @@ class EggPair(object):
 
 
 def stop_processor(cluster_manager_client: ClusterManagerClient, myself: ErProcessor):
+    import win32file
+    import win32pipe
     L.info(f"stop_processor pid:{os.getpid()}, ppid:{os.getppid()}")
     pipe_name = r'\\.\pipe\pid_pipe' + str(os.getpid())
     pipe_buffer_size = 1024
@@ -522,10 +521,11 @@ def serve(args):
             ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT: cluster_manager_port
         })
         cluster_manager_client.heartbeat(myself)
-        L.info(f'egg_pair sub id ��{os.getpid()}, parent id ��{os.getppid()}')
+        L.info(f'egg_pair sub id ：{os.getpid()}, parent id ：{os.getppid()}')
 
-        t1 = threading.Thread(target=stop_processor, args=[cluster_manager_client, myself])
-        t1.start()
+        if platform.system() == "Windows":
+            t1 = threading.Thread(target=stop_processor, args=[cluster_manager_client, myself])
+            t1.start()
 
     L.info(f'egg_pair started at port {port}, transfer_port {transfer_port}')
 
