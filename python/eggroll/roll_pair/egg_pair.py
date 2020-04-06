@@ -429,11 +429,9 @@ def stop_processor(cluster_manager_client: ClusterManagerClient, myself: ErProce
                     if data is None or len(data) < 2:
                         continue
 
-                    print('111receive msg:', data)
+                    print('receive msg:', data)
                     cmd_str = data[1].decode('utf-8')
-                    print('receive msg:', cmd_str, ' ', type(data))
                     if 'stop' in cmd_str and str(os.getpid()) in cmd_str:
-                        print('release resource')
                         myself._status = ProcessorStatus.STOPPED
                         cluster_manager_client.heartbeat(myself)
 

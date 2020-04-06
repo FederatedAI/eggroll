@@ -3,9 +3,8 @@ package com.webank.eggroll.rollpair
 import java.io.File
 import java.lang.management.ManagementFactory
 import java.net.InetSocketAddress
-import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
 
-import _root_.io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
 import com.webank.eggroll.core.Bootstrap
 import com.webank.eggroll.core.client.ClusterManagerClient
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
@@ -15,7 +14,6 @@ import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.util.{CommandArgsUtils, Logging}
 import org.apache.commons.cli.CommandLine
 import org.apache.commons.lang3.StringUtils
-
 import java.util
 import java.util.concurrent.ConcurrentHashMap
 
@@ -67,7 +65,6 @@ class stopProcessor(clusterManagerClient:ClusterManagerClient, myself:ErProcesso
         assertCallSucceeded("ReadFile", Kernel32.INSTANCE.ReadFile(hNamedPipe, readBuffer, readBuffer.length, lpNumberOfBytesRead, null))
         val readSize = lpNumberOfBytesRead.getValue
         logInfo("Received client data - length=" + readSize)
-        //assertTrue("No data receieved from client", readSize > 0);
         val readBufferCut = util.Arrays.copyOfRange(readBuffer, 0, readSize)
         System.out.println(util.Arrays.toString(readBufferCut))
         val receive_msg = new String(readBufferCut,"ascii")
