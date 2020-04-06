@@ -1,15 +1,17 @@
 import os
+import platform
 from subprocess import Popen, PIPE
 
+
 def get_property(config_file, property_name):
-  with open(config_file) as i_file: #Open the file
-    values = {}
+  with open(config_file) as i_file:
+    #values = {}
 
     for line in i_file:
-      if line == "\n" or line.find("=") == -1: #Skip blank lines and lines with no equals sign
+      if line == "\n" or line.find("=") == -1:
         continue
 
-      values = line.strip("\n").strip(" ").split("=") #Split lines into two parts based on the "=" sign
+      values = line.strip("\n").strip(" ").split("=")
 
       if values[0] == property_name:
         return values[1]
@@ -61,21 +63,25 @@ def start(config_file, session_id, server_node_id, processor_id, port, transfer_
   if os.environ.get('EGGROLL_LOG_CONF') is None:
     os.environ['EGGROLL_LOG_CONF'] = eggroll_log_conf
 
-
   os.environ['EGGROLL_LOG_FILE'] ="egg_pair-" + processor_id
 
-
-  if javahome is None:
-    p = Popen(['which java'], stdout=PIPE, stderr=PIPE, stdin=PIPE)
-    java_cmd = p.stdout.read()
+  if platform.system() == "Windows":
+    if javahome is None:
+      java_cmd = 'java.exe'
+    else:
+      java_cmd = '\"' + javahome + '\\bin\\java.exe ' + '\"'
   else:
-    java_cmd = javahome + '/bin/java'
+    if javahome is None:
+      p = Popen(['which java'], stdout=PIPE, stderr=PIPE, stdin=PIPE)
+      java_cmd = p.stdout.read()
+    else:
+      java_cmd = javahome + '/bin/java'
 
   if mainclass is None:
     mainclass = "com.webank.eggroll.rollpair.RollPairMasterBootstrap"
 
 
-  cmd = 'java ' + jvm_options + ' -Dlog4j.configurationFile=' + eggroll_log_conf + ' -cp ' + \
+  cmd = java_cmd + jvm_options + ' -Dlog4j.configurationFile=' + eggroll_log_conf + ' -cp ' + \
         classpath +\
         " com.webank.eggroll.core.Bootstrap " + \
         ' --bootstraps ' + mainclass +\
@@ -85,8 +91,6 @@ def start(config_file, session_id, server_node_id, processor_id, port, transfer_
         ' --cluster-manager ' + cluster_manager_host + ':' + cluster_manager_port + \
         ' --node-manager ' + node_manager_port +\
         ' --processor-id ' + processor_id
-
-  #cmd = 'python ' + ' bar.py'
 
   if port is not None:
     cmd = cmd + ' --port ' + port

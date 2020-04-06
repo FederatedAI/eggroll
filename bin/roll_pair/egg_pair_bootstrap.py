@@ -1,16 +1,14 @@
 import os
+import platform
 from subprocess import Popen, PIPE
 
 def get_property(config_file, property_name):
     with open(config_file) as i_file:
-        values = {}
-
         for line in i_file:
-            if line == "\n" or line.find("=") == -1:  # Skip blank lines and lines with no equals sign
+            if line == "\n" or line.find("=") == -1:
                 continue
 
-            values = line.strip("\n").strip(" ").split("=")  # Split lines into two parts based on the "=" sign
-
+            values = line.strip("\n").strip(" ").split("=")
             if values[0] == property_name:
                 return values[1]
 
@@ -57,8 +55,18 @@ def start(config_file, session_id, server_node_id, processor_id, port, transfer_
     os.environ['PYTHONPATH'] = pythonpath
     os.environ['EGGROLL_LOG_FILE'] = "egg_pair-" + processor_id
 
-    python_cmd = venv + 'python.exe '
-    #print(python_cmd)
+    if platform.system() == "Windows":
+        python_cmd = venv + '\\python.exe '
+    else:
+        if venv is None:
+            p = Popen(['which python'], stdout=PIPE, stderr=PIPE, stdin=PIPE)
+            python_cmd = p.stdout.read()
+        else:
+            source_cmd = 'source ' + venv + '/bin/activate'
+            os.system(source_cmd)
+            python_cmd = venv + '/bin/python'
+
+
     cmd = python_cmd + filepath + \
           ' --config ' + config_file + \
           ' --session-id ' + session_id + \
