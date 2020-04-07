@@ -74,11 +74,11 @@ public class CascadedCaller implements Runnable {
 
         int result = 0;
         long fixedWaitTime = StaticErConf
-            .getLong(CoreConfKeys.CONFKEY_CORE_RETRY_DEFAULT_WAIT_TIME_MS(), 10000L);
+            .getLong(CoreConfKeys.CONFKEY_CORE_RETRY_DEFAULT_WAIT_TIME_MS().key(), 10000L);
         int maxAttempts = StaticErConf
-            .getInt(CoreConfKeys.CONFKEY_CORE_RETRY_DEFAULT_MAX_ATTEMPTS(), 10);
+            .getInt(CoreConfKeys.CONFKEY_CORE_RETRY_DEFAULT_MAX_ATTEMPTS().key(), 10);
         long attemptTimeout = StaticErConf
-            .getLong(CoreConfKeys.CONFKEY_CORE_RETRY_DEFAULT_ATTEMPT_TIMEOUT_MS(), 30000L);
+            .getLong(CoreConfKeys.CONFKEY_CORE_RETRY_DEFAULT_ATTEMPT_TIMEOUT_MS().key(), 30000L);
 
         // TODO:0: configurable
         Retryer<Integer> retryer = RetryerBuilder.<Integer>newBuilder()
