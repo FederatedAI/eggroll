@@ -120,9 +120,5 @@ public class CascadedCaller implements Runnable {
         } catch (RetryException e) {
             LOGGER.error("Error getting ManagedChannel after retries");
         }
-
-        if (pipe.hasError()) {
-            LOGGER.info("");
-        }
     }
 }
