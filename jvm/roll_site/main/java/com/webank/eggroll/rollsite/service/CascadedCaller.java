@@ -74,11 +74,11 @@ public class CascadedCaller implements Runnable {
 
         int result = 0;
         long fixedWaitTime = StaticErConf
-            .getLong(CoreConfKeys.CONFKEY_CORE_RETRY_DEFAULT_WAIT_TIME_MS().key(), 10000L);
+            .getLong(CoreConfKeys.CONFKEY_CORE_RETRY_DEFAULT_WAIT_TIME_MS().key(), 1000L);
         int maxAttempts = StaticErConf
-            .getInt(CoreConfKeys.CONFKEY_CORE_RETRY_DEFAULT_MAX_ATTEMPTS().key(), 10);
+            .getInt(CoreConfKeys.CONFKEY_CORE_RETRY_DEFAULT_MAX_ATTEMPTS().key(), 5);
         long attemptTimeout = StaticErConf
-            .getLong(CoreConfKeys.CONFKEY_CORE_RETRY_DEFAULT_ATTEMPT_TIMEOUT_MS().key(), 30000L);
+            .getLong(CoreConfKeys.CONFKEY_CORE_RETRY_DEFAULT_ATTEMPT_TIMEOUT_MS().key(), 300000L);
 
         // TODO:0: configurable
         Retryer<Integer> retryer = RetryerBuilder.<Integer>newBuilder()
@@ -100,13 +100,15 @@ public class CascadedCaller implements Runnable {
                 client.doPush();
                 //pipe.onComplete();
                 client.completePush();
-                pipe.onComplete();
             } else if (PipeHandleNotificationEvent.Type.PULL == type) {
                 client.pull(metadata, pipe);
             } else {
                 client.unaryCall(pipeHandlerInfo.getPacket(), pipe);
             }
 
+            if (!pipe.hasError()) {
+                pipe.onComplete();
+            }
             return 0;
         };
 
@@ -119,7 +121,8 @@ public class CascadedCaller implements Runnable {
             LOGGER.error("Error getting ManagedChannel after retries");
         }
 
-
-
+        if (pipe.hasError()) {
+            LOGGER.info("");
+        }
     }
 }
