@@ -204,11 +204,19 @@ class RollSiteWriteBatch(PairWriteBatch):
 
         packet = proxy_pb2.Packet(header=metadata)
 
-        try:
-            # TODO:0: retry and sleep for all grpc call in RollSite
-            self.stub.unaryCall(packet)
-        except Exception as e:
-            raise GrpcCallError('send_end', self.proxy_endpoint, e)
+        max_retry_cnt = 100
+        exception = None
+        for i in range(1, max_retry_cnt + 1):
+            try:
+                # TODO:0: retry and sleep for all grpc call in RollSite
+                self.stub.unaryCall(packet)
+                exception = None
+                break
+            except Exception as e:
+                L.info(f'caught exception in send_end for {self.name}, partition_id: {self.adapter.partition_id}: {e}. retrying. current retry count: {i}, max_retry_cnt: {max_retry_cnt}')
+                exception = GrpcCallError('send_end', self.proxy_endpoint, e)
+        if exception:
+            raise exception
 
     def close(self):
         bin_batch = bytes(self.ba[0:self.buffer.get_offset()])
