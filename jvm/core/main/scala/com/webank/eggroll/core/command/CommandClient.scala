@@ -28,13 +28,12 @@ import com.webank.eggroll.core.command.CommandModelPbMessageSerdes._
 import com.webank.eggroll.core.concurrent.AwaitSettableFuture
 import com.webank.eggroll.core.constant.{SerdesTypes, SessionConfKeys}
 import com.webank.eggroll.core.datastructure.RpcMessage
-import com.webank.eggroll.core.di.Singletons
 import com.webank.eggroll.core.error.CommandCallException
-import com.webank.eggroll.core.factory.GrpcChannelFactory
 import com.webank.eggroll.core.grpc.client.{GrpcClientContext, GrpcClientTemplate}
 import com.webank.eggroll.core.grpc.observer.SameTypeFutureCallerResponseStreamObserver
 import com.webank.eggroll.core.meta.ErEndpoint
 import com.webank.eggroll.core.session.StaticErConf
+import com.webank.eggroll.core.transfer.GrpcClientUtils
 import com.webank.eggroll.core.util.{Logging, SerdesUtils, TimeUtils}
 import io.grpc.stub.StreamObserver
 import io.grpc.{ManagedChannel, ManagedChannelBuilder}
@@ -179,7 +178,7 @@ class CommandClient(defaultEndpoint: ErEndpoint = null,
   }
   class CommandCallSupplier[T](endpoint: ErEndpoint, isSecure: Boolean, commandURI: CommandURI, args: RpcMessage*)(implicit tag:ClassTag[T]) extends Supplier[T] {
     override def get(): T = {
-      val ch: ManagedChannel = Singletons.getNoCheck(classOf[GrpcChannelFactory]).getChannel(endpoint, isSecure)
+      val ch: ManagedChannel = GrpcClientUtils.getChannel(endpoint, isSecure)
       val stub: CommandServiceGrpc.CommandServiceBlockingStub = CommandServiceGrpc.newBlockingStub(ch)
       val argBytes = args.map(x => UnsafeByteOperations.unsafeWrap(SerdesUtils.rpcMessageToBytes(x, SerdesTypes.PROTOBUF)))
 
@@ -193,7 +192,6 @@ class CommandClient(defaultEndpoint: ErEndpoint = null,
     }
   }
 }
-
 
 
 class CommandResponseObserver(finishLatch: CountDownLatch, asFuture: AwaitSettableFuture[CommandResponse])
