@@ -22,7 +22,7 @@ import com.webank.eggroll.core.ErSession
 import com.webank.eggroll.core.command.CommandClient
 import com.webank.eggroll.core.constant.SessionConfKeys
 import com.webank.eggroll.core.datastructure.{RpcMessage, TaskPlan}
-import com.webank.eggroll.core.meta.{ErPartition, ErStore, ErTask}
+import com.webank.eggroll.core.meta.{ErEndpoint, ErPartition, ErStore, ErTask}
 import com.webank.eggroll.core.serdes.DefaultScalaSerdes
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.util.{IdUtils, Logging}
@@ -57,67 +57,62 @@ object JobRunner {
   val session = new ErSession(StaticErConf.getString(SessionConfKeys.CONFKEY_SESSION_ID))
 
   def run(plan: TaskPlan): Array[ErTask] = {
-    val tasks = decomposeJob(taskPlan = plan)
+    val tasksWithEndpoints = decomposeJob(taskPlan = plan)
     val commandClient = new CommandClient()
-    val results = commandClient.call[ErTask](commandUri = plan.uri, args = tasks.map(t => (Array[RpcMessage](t), t.inputs.head.processor.commandEndpoint)))
-    tasks
+    val results = commandClient.call[ErTask](commandUri = plan.uri, args = tasksWithEndpoints)
+    results
   }
 
   def populateProcessor(stores: Array[ErStore]): Array[ErStore] =
     stores.map(store => store.copy(partitions = store.partitions.map(partition => partition.copy(processor = session.routeToEgg(partition)))))
 
-  def decomposeJob(taskPlan: TaskPlan): Array[ErTask] = {
+  def decomposeJob(taskPlan: TaskPlan): Array[(Array[RpcMessage], ErEndpoint)] = {
     val job = taskPlan.job
     val inputStores: Array[ErStore] = job.inputs
-    val inputPartitionSize = inputStores.head.storeLocator.totalPartitions
-    val inputOptions = job.options
-
-    val partitions = inputStores.head.partitions
-
     val outputStores: Array[ErStore] = job.outputs
-    val result = mutable.ArrayBuffer[ErTask]()
-    result.sizeHint(outputStores(0).partitions.length)
 
-    var aggregateOutputPartition: ErPartition = null
-    if (taskPlan.isAggregate) {
-      aggregateOutputPartition = ErPartition(id = 0, storeLocator = outputStores.head.storeLocator, processor = session.routeToEgg(partitions(0)))
-    }
+    val inputTotalPartitions = inputStores.head.storeLocator.totalPartitions
+    val outputTotalPartitions = outputStores.head.storeLocator.totalPartitions
 
-    val populatedJob = if (taskPlan.shouldShuffle) {
-      job.copy(
+    val largerPartitionSize = Math.max(inputTotalPartitions, outputTotalPartitions)
+    val store = if (largerPartitionSize == inputTotalPartitions) inputStores.head else outputStores.head
+
+    val partitions = store.partitions
+
+    val result = new mutable.ArrayBuffer[(Array[RpcMessage], ErEndpoint)](largerPartitionSize)
+
+    val populatedJob = job.copy(
         inputs = populateProcessor(job.inputs),
         outputs = populateProcessor(job.outputs))
-    } else {
-      job.copy(
-        inputs = Array.empty,
-        outputs = Array.empty)
-    }
 
-    for (i <- 0 until inputPartitionSize) {
+    for (i <- 0 until largerPartitionSize) {
       val inputPartitions = mutable.ArrayBuffer[ErPartition]()
       val outputPartitions = mutable.ArrayBuffer[ErPartition]()
 
-      inputStores.foreach(inputStore => {
-        inputPartitions.append(
-          ErPartition(id = i, storeLocator = inputStore.storeLocator, processor = session.routeToEgg(partitions(i))))
-      })
+      val targetProcessor = session.routeToEgg(partitions(i))
 
-      if (taskPlan.isAggregate) {
-        outputPartitions.append(aggregateOutputPartition)
-      } else {
-        outputStores.foreach(outputStore => {
-          outputPartitions.append(
-            ErPartition(id = i, storeLocator = outputStore.storeLocator, processor = session.routeToEgg(partitions(i))))
+      if (i < inputTotalPartitions) {
+        inputStores.foreach(inputStore => {
+          inputPartitions.append(
+            ErPartition(id = i, storeLocator = inputStore.storeLocator, processor = targetProcessor))
         })
       }
 
-      result.append(
-        ErTask(
+      if (i < outputTotalPartitions) {
+        outputStores.foreach(outputStore => {
+          outputPartitions.append(
+            ErPartition(id = i, storeLocator = outputStore.storeLocator, processor = targetProcessor))
+        })
+      }
+
+      result.append((
+        Array(ErTask(
           id = IdUtils.generateTaskId(job.id, i),
           name = job.name,
           inputs = inputPartitions.toArray,
           outputs = outputPartitions.toArray,
-          job = populatedJob))
+          job = populatedJob)),
+        targetProcessor.commandEndpoint))
     }
 
     result.toArray
