@@ -16,7 +16,6 @@
 
 package com.webank.eggroll.core.util;
 
-import com.webank.eggroll.core.factory.GrpcServerFactory;
 import com.webank.eggroll.core.grpc.observer.BaseCallerResponseStreamObserver;
 import java.lang.reflect.Constructor;
 import java.util.concurrent.CountDownLatch;
@@ -32,28 +31,4 @@ public class TestReflectionUtils {
         .findDeclaredConstructor(BaseCallerResponseStreamObserver.class, countDownLatch);
     assert (constructor != null);
   }
-
-  @Test
-  public void testFindDeclaredConstructorWithNoParameter() throws Exception {
-    Constructor<GrpcServerFactory> constructor = ReflectionUtils
-        .findDeclaredConstructor(GrpcServerFactory.class);
-    assert (constructor != null);
-  }
-
-  @Test
-  public void testFineDeclaredConstructorWithOneNullParameter() throws Exception {
-    CountDownLatch countDownLatch = null;
-
-    Constructor<BaseCallerResponseStreamObserver> constructor = ReflectionUtils
-        .findDeclaredConstructor(BaseCallerResponseStreamObserver.class, countDownLatch);
-    assert (constructor != null);
-  }
-
-  @Test
-  public void testNewInstanceWithNoInitArgs() throws Exception {
-    GrpcServerFactory grpcServerFactory = ReflectionUtils.newInstance(GrpcServerFactory.class);
-    assert (grpcServerFactory != null);
-  }
-
-
 }

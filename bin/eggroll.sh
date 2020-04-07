@@ -116,10 +116,10 @@ multiple() {
 }
 
 getpid() {
-	if [ ! -f "${module}_pid" ];then
-		echo "" > ${module}_pid
+	if [ ! -f "${EGGROLL_HOME}/bin/${module}" ];then
+		echo "" > ${EGGROLL_HOME}/bin/${module}
 	fi
-	module_pid=`cat ${module}_pid`
+	module_pid=`cat ${EGGROLL_HOME}/bin/${module}`
 	
 	if [ $module = rollsite ];then
 		pid=`ps aux | grep ${module_pid} | grep -v grep | grep -v $0 | awk '{print $2}'`
@@ -165,7 +165,7 @@ start() {
 		echo $cmd
 		exec $cmd >> ${EGGROLL_HOME}/logs/eggroll/bootstrap.${module}.out 2>>${EGGROLL_HOME}/logs/eggroll/bootstrap.${module}.err &
 		
-		echo $!>${module}_pid
+		echo $!>${EGGROLL_HOME}/bin/${module}
 		getpid
 		if [[ $? -eq 0 ]]; then
 			echo "service start sucessfully. pid: ${pid}"
@@ -184,16 +184,21 @@ stop() {
 		`ps aux | grep ${pid} | grep -v grep`"
 		kill ${pid}
 		sleep 1
-		getpid
+		flag=0
+		while [ $flag -eq 0 ]
+		do
+			getpid
+			flag=$?
+		done
 		if [[ $pid -eq $module_pid ]]; then
 			echo "kill error"
 		else
 			echo "killed"
-			echo "-1" >${module}_pid
+			echo "-1" >${EGGROLL_HOME}/bin/${module}
 		fi
 	else
 		echo "service not running"
-		echo "-1" >${module}_pid
+		echo "-1" >${EGGROLL_HOME}/bin/${module}
 	fi
 }
 

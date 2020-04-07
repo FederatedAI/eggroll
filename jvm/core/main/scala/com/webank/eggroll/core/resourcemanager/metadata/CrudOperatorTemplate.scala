@@ -17,11 +17,9 @@
  */
 
 package com.webank.eggroll.core.resourcemanager.metadata
+/*import org.apache.ibatis.session.SqlSession
 
-import com.webank.eggroll.core.resourcemanager.RdbConnectionPool
-import org.apache.ibatis.session.SqlSession
 
-trait CrudOperator
 
 class CrudOperatorTemplate {
   def doCrudOperationSingleResult[T](functor: (T, SqlSession) => T, input: T, sqlSession: SqlSession = null, openTransaction: Boolean = false): T = {
@@ -89,4 +87,4 @@ class CrudOperatorTemplate {
       }
     }
   }
-}
+}*/
