@@ -13,3 +13,4 @@ python/**/__pycache__
 data/**
 !data/meta_h2
 logs/**
+cpp/roll_frame/build

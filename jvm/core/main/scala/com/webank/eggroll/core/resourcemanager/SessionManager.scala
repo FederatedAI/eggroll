@@ -84,15 +84,33 @@ class SessionManagerService extends SessionManager with Logging {
 
     val serverNodes = healthyCluster.serverNodes
     val eggsPerNode = sessionMeta.options.getOrElse(SessionConfKeys.CONFKEY_SESSION_PROCESSORS_PER_NODE, StaticErConf.getString(SessionConfKeys.CONFKEY_SESSION_PROCESSORS_PER_NODE, "1")).toInt
-    val processorPlan = Array(ErProcessor(
-      serverNodeId = serverNodes.head.id,
-      processorType = ProcessorTypes.ROLL_PAIR_MASTER,
-      status = ProcessorStatus.NEW)) ++
-      serverNodes.flatMap(n => (0 until eggsPerNode).map(_ => ErProcessor(
-        serverNodeId = n.id,
-        processorType = ProcessorTypes.EGG_PAIR,
-        status = ProcessorStatus.NEW)))
-    val expectedProcessorsCount = 1 + healthyCluster.serverNodes.length * eggsPerNode
+    // TODO:1: use constants instead of processor_types,processor_plan,uniform
+    val processorPlan =
+      if(sessionMeta.options.contains("processor_types")) {
+        val processor_types = sessionMeta.options("processor_types").split(",")
+        processor_types.flatMap { pType =>
+          val planStrategy = sessionMeta.options("processor_plan." + pType)
+          require(planStrategy == "uniform", s"unsupported:${planStrategy}")
+          serverNodes.flatMap(n =>
+            (0 until eggsPerNode).map(_ => ErProcessor(
+              serverNodeId = n.id,
+              processorType = pType,
+              status = ProcessorStatus.NEW)
+            )
+          )
+        }
+      } else {
+        Array(ErProcessor(
+          serverNodeId = serverNodes.head.id,
+          processorType = ProcessorTypes.ROLL_PAIR_MASTER,
+          status = ProcessorStatus.NEW)) ++
+          serverNodes.flatMap(n => (0 until eggsPerNode).map(_ => ErProcessor(
+            serverNodeId = n.id,
+            processorType = ProcessorTypes.EGG_PAIR,
+            status = ProcessorStatus.NEW)))
+      }
+
+    val expectedProcessorsCount = processorPlan.length
     val sessionMetaWithProcessors = sessionMeta.copy(
       processors = processorPlan,
       totalProcCount = expectedProcessorsCount,

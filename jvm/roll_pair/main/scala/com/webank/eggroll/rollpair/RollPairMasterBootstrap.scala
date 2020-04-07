@@ -6,7 +6,7 @@ import java.net.InetSocketAddress
 import java.util.concurrent.TimeUnit
 
 import _root_.io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
-import com.webank.eggroll.core.Bootstrap
+import com.webank.eggroll.core.BootstrapBase
 import com.webank.eggroll.core.client.ClusterManagerClient
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
 import com.webank.eggroll.core.constant._
@@ -92,7 +92,7 @@ class stopProcessor(clusterManagerClient:ClusterManagerClient, myself:ErProcesso
   }
 }
 
-class RollPairMasterBootstrap extends Bootstrap with Logging {
+class RollPairMasterBootstrap extends BootstrapBase with Logging {
   private var port = 0
   private var sessionId = "er_session_null"
   private var nodeManager = ""

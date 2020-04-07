@@ -52,6 +52,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Scope;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Component;
+import scala.Function0;
 
 @Component
 @Scope("prototype")
@@ -257,8 +258,12 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                         tagKey);  //obj or RollPair
 
                 if (!JobStatus.hasLatch(tagKey)) {
-                    int totalPartitions = Integer.parseInt(
-                        rollSiteHeader.options().getOrElse(StringConstants.TOTAL_PARTITIONS_SNAKECASE(), () -> "1"));
+                    // replace getOrElse for scala-2.11
+                    int totalPartitions = 1;
+                    if(rollSiteHeader.options().contains(StringConstants.TOTAL_PARTITIONS_SNAKECASE())) {
+                        totalPartitions = Integer.parseInt(
+                                rollSiteHeader.options().apply(StringConstants.TOTAL_PARTITIONS_SNAKECASE()));
+                    }
 
                     JobStatus.createLatch(tagKey, totalPartitions);
                 }

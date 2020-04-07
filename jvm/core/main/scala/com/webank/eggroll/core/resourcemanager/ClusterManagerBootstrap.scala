@@ -3,7 +3,7 @@ package com.webank.eggroll.core.resourcemanager
 import java.io.File
 import java.net.InetSocketAddress
 
-import com.webank.eggroll.core.Bootstrap
+import com.webank.eggroll.core.BootstrapBase
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
 import com.webank.eggroll.core.constant.{ClusterManagerConfKeys, CoreConfKeys, MetadataCommands, SessionCommands}
 import com.webank.eggroll.core.meta._
@@ -13,7 +13,7 @@ import com.webank.eggroll.core.util.{CommandArgsUtils, Logging}
 import io.grpc.Server
 import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
 
-class ClusterManagerBootstrap extends Bootstrap with Logging {
+class ClusterManagerBootstrap extends BootstrapBase with Logging {
   private var port = 0
   //private var sessionId = "er_session_null"
   override def init(args: Array[String]): Unit = {
