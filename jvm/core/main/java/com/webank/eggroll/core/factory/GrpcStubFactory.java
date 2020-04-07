@@ -17,23 +17,19 @@
 package com.webank.eggroll.core.factory;
 
 import com.google.common.base.Preconditions;
-import com.webank.eggroll.core.di.Singletons;
 import com.webank.eggroll.core.meta.ErEndpoint;
+import com.webank.eggroll.core.transfer.GrpcClientUtils;
 import io.grpc.ManagedChannel;
 import io.grpc.stub.AbstractStub;
 import java.lang.reflect.InvocationTargetException;
 import org.apache.commons.lang3.reflect.MethodUtils;
+import scala.collection.immutable.HashMap;
 
 public class GrpcStubFactory {
 
   private static final String asyncStubMethodName = "newStub";
   private static final String blockingStubMethodName = "newBlockingStub";
 
-  private GrpcChannelFactory grpcChannelFactory;
-
-  public GrpcStubFactory() {
-    grpcChannelFactory = Singletons.getNoCheck(GrpcChannelFactory.class);
-  }
 
   public AbstractStub createGrpcStub(boolean isAsync, Class grpcClass,
       ManagedChannel managedChannel) {
@@ -58,7 +54,7 @@ public class GrpcStubFactory {
   public AbstractStub createGrpcStub(boolean isAsync, Class grpcClass, ErEndpoint endpoint,
       boolean isSecure) {
     Preconditions.checkNotNull(endpoint, "Endpoint cannot be null");
-    ManagedChannel managedChannel = grpcChannelFactory.getChannel(endpoint, isSecure);
+    ManagedChannel managedChannel = GrpcClientUtils.getChannel(endpoint, isSecure, new HashMap<>());
 
     return createGrpcStub(isAsync, grpcClass, managedChannel);
   }
