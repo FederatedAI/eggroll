@@ -94,7 +94,7 @@ class FateSessionImpl(TableManger):
         return rdd_inst
 
     def cleanup(self, name, namespace, persistent):
-        self._eggroll.cleanup(name=name, namespace=namespace, persistent=persistent)
+        self._eggroll.cleanup(name=name, namespace=namespace)
 
     def generateUniqueId(self):
         return self._eggroll.generateUniqueId()

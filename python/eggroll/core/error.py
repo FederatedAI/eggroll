@@ -20,4 +20,4 @@ from eggroll.core.meta_model import ErEndpoint
 # todo:2: deprecate
 class GrpcCallError(Exception):
     def __init__(self, name: str, endpoint: ErEndpoint, *args: object) -> None:
-        super().__init__(f"Failed to call {str} to endpoint: {endpoint}, caused by: ", *args)
+        super().__init__(f"Failed to call {name} to endpoint: {endpoint}, caused by: ", *args)

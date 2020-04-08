@@ -19,7 +19,6 @@ import os
 import signal
 from collections.abc import Iterable
 from concurrent import futures
-from copy import copy
 
 import grpc
 import numpy as np
@@ -35,29 +34,18 @@ from eggroll.core.datastructure.broker import FifoBroker
 from eggroll.core.meta_model import ErPair
 from eggroll.core.meta_model import ErTask, ErProcessor, ErEndpoint
 from eggroll.core.proto import command_pb2_grpc, transfer_pb2_grpc
-from eggroll.core.serdes import cloudpickle
-from eggroll.core.serdes.eggroll_serdes import eggroll_pickle_loads
 from eggroll.core.transfer.transfer_service import GrpcTransferServicer, \
-    TransferClient, TransferService
+    TransferService
 from eggroll.core.utils import _exception_logger
 from eggroll.core.utils import hash_code
 from eggroll.core.utils import set_static_er_conf
-from eggroll.roll_pair import create_adapter, create_serdes
+from eggroll.roll_pair import create_adapter, create_serdes, create_functor
 from eggroll.roll_pair.transfer_pair import TransferPair
 from eggroll.roll_pair.utils.pair_utils import generator, partitioner, \
     set_data_dir
 from eggroll.utils.log_utils import get_logger
 
-
-def create_functor(func_bin):
-    try:
-        return cloudpickle.loads(func_bin)
-    except:
-        return eggroll_pickle_loads(func_bin)
-
-
 L = get_logger()
-
 
 
 class EggPair(object):
@@ -95,33 +83,31 @@ class EggPair(object):
                     L.debug(f"scatter_result:{scatter_results}")
                     L.debug(f"gather_result:{store_result}")
                 else:
-                    with create_adapter(task._outputs[0]) as db, db.new_batch() as wb:
+                    # TODO: modification may be needed when store options finished
+                    with create_adapter(task._outputs[0], options=task._job._options) as db, db.new_batch() as wb:
                         func(rb, key_serdes, value_serdes, wb)
                 L.debug(f"close_store_adatper:{task._inputs[0]}")
 
     def _run_binary(self, func, task):
         left_key_serdes = create_serdes(task._inputs[0]._store_locator._serdes)
         left_value_serdes = create_serdes(task._inputs[0]._store_locator._serdes)
-        left_adapter = create_adapter(task._inputs[0])
 
         right_key_serdes = create_serdes(task._inputs[1]._store_locator._serdes)
         right_value_serdes = create_serdes(task._inputs[1]._store_locator._serdes)
-        right_adapter = create_adapter(task._inputs[1])
-        output_adapter = create_adapter(task._outputs[0])
-        left_iterator = left_adapter.iteritems()
-        right_iterator = right_adapter.iteritems()
-        output_writebatch = output_adapter.new_batch()
-        try:
-            func(left_iterator, left_key_serdes, left_value_serdes,
-                 right_iterator, right_key_serdes, right_value_serdes,
-                 output_writebatch)
-        except:
-            raise EnvironmentError("exec task:{} error".format(task))
-        finally:
-            output_writebatch.close()
-            left_adapter.close()
-            right_adapter.close()
-            output_adapter.close()
+
+        with create_adapter(task._inputs[0]) as left_adapter, \
+                create_adapter(task._inputs[1]) as right_adapter, \
+                create_adapter(task._outputs[0]) as output_adapter, \
+                left_adapter.iteritems() as left_iterator, \
+                right_adapter.iteritems() as right_iterator, \
+                output_adapter.new_batch() as output_writebatch:
+            try:
+                func(left_iterator, left_key_serdes, left_value_serdes,
+                     right_iterator, right_key_serdes, right_value_serdes,
+                     output_writebatch)
+            except Exception as e:
+                raise EnvironmentError("exec task:{} error".format(task), e)
+
 
     @_exception_logger
     def run_task(self, task: ErTask):
@@ -134,28 +120,24 @@ class EggPair(object):
             L.info("egg_pair get call")
             # TODO:1: move to create_serdes
             f = create_functor(functors[0]._body)
-            #input_adapter = self.get_unary_input_adapter(task_info=task)
-            input_adapter = create_adapter(task._inputs[0])
-            value = input_adapter.get(f._key)
-            result = ErPair(key=f._key, value=value)
-            input_adapter.close()
+            with create_adapter(task._inputs[0]) as input_adapter:
+                print("get key:{} and path is:{}".format(self.functor_serdes.deserialize(f._key), input_adapter.path))
+                value = input_adapter.get(f._key)
+                result = ErPair(key=f._key, value=value)
         elif task._name == 'getAll':
             L.info("egg_pair getAll call")
             tag = f'{task._id}'
             def generate_broker():
                 with create_adapter(task._inputs[0]) as db, db.iteritems() as rb:
-                    print("create_adapter")
                     yield from TransferPair.pair_to_bin_batch(rb)
                     # TODO:0 how to remove?
                     # TransferService.remove_broker(tag)
             TransferService.set_broker(tag, generate_broker())
         elif task._name == 'count':
             L.info('egg_pair count call')
-            key_serdes = create_serdes(task._inputs[0]._store_locator._serdes)
-            value_serdes = create_serdes(task._inputs[0]._store_locator._serdes)
-            input_adapter = create_adapter(task._inputs[0])
-            result = ErPair(key=self.functor_serdes.serialize('result'), value=self.functor_serdes.serialize(input_adapter.count()))
-            input_adapter.close()
+            with create_adapter(task._inputs[0]) as input_adapter:
+                result = ErPair(key=self.functor_serdes.serialize('result'),
+                                value=self.functor_serdes.serialize(input_adapter.count()))
 
         # TODO:1: multiprocessor scenario
         elif task._name == 'putAll':
@@ -171,23 +153,21 @@ class EggPair(object):
         if task._name == 'put':
             L.info("egg_pair put call")
             f = create_functor(functors[0]._body)
-            input_adapter = create_adapter(task._inputs[0])
-            value = input_adapter.put(f._key, f._value)
-            #result = ErPair(key=f._key, value=bytes(value))
-            input_adapter.close()
+            with create_adapter(task._inputs[0]) as input_adapter:
+                value = input_adapter.put(f._key, f._value)
+                #result = ErPair(key=f._key, value=bytes(value))
 
         if task._name == 'destroy':
-            input_adapter = create_adapter(task._inputs[0])
-            input_adapter.destroy()
-            L.info("finish destroy")
+            with create_adapter(task._inputs[0]) as input_adapter:
+                input_adapter.destroy()
+                L.info("finish destroy")
 
         if task._name == 'delete':
             f = create_functor(functors[0]._body)
-            input_adapter = create_adapter(task._inputs[0])
-            L.info("delete k:{}, its value:{}".format(f._key, input_adapter.get(f._key)))
-            if input_adapter.delete(f._key):
-                L.info("delete k success")
-            input_adapter.close()
+            with create_adapter(task._inputs[0]) as input_adapter:
+                L.info("delete k:{}, its value:{}".format(f._key, input_adapter.get(f._key)))
+                if input_adapter.delete(f._key):
+                    L.info("delete k success")
 
         if task._name == 'mapValues':
             f = create_functor(functors[0]._body)
@@ -206,29 +186,33 @@ class EggPair(object):
                 L.info('finish calculating')
             self._run_unary(map_wrapper, task, shuffle=True)
             L.info('map finished')
-        elif task._name == 'reduce':
-            job = copy(task._job)
-            reduce_functor = job._functors[0]
-            job._functors = [None, reduce_functor, reduce_functor]
-            reduce_task = copy(task)
-            reduce_task._job = job
 
-            self.aggregate(reduce_task, True)
+        elif task._name == 'reduce':
+            seq_op_result = self.aggregate_seq(task=task)
             L.info('reduce finished')
+            result = ErPair(key=self.functor_serdes.serialize(task._inputs[0]._id),
+                            value=self.functor_serdes.serialize(seq_op_result))
+
+        elif task._name == 'aggregate':
+            L.info('ready to aggregate')
+            seq_op_result = self.aggregate_seq(task=task)
+            L.info('aggregate finished')
+            result = ErPair(key=self.functor_serdes.serialize(task._inputs[0]._id),
+                            value=self.functor_serdes.serialize(seq_op_result))
 
         elif task._name == 'mapPartitions':
-            def map_partitions_wrapper(input_iterator, key_serdes, value_serdes, output_writebatch):
+            def map_partitions_wrapper(input_iterator, key_serdes, value_serdes, shuffle_broker):
                 f = create_functor(functors[0]._body)
                 value = f(generator(key_serdes, value_serdes, input_iterator))
                 if input_iterator.last():
-                    L.info("value of mapPartitions2:{}".format(value))
+                    L.info("value of mapPartitions:{}".format(value))
                     if isinstance(value, Iterable):
                         for k1, v1 in value:
-                            output_writebatch.put(key_serdes.serialize(k1), value_serdes.serialize(v1))
+                            shuffle_broker.put((key_serdes.serialize(k1), value_serdes.serialize(v1)))
                     else:
                         key = input_iterator.key()
-                        output_writebatch.put(key, value_serdes.serialize(value))
-            self._run_unary(map_partitions_wrapper, task)
+                        shuffle_broker.put((key, value_serdes.serialize(value)))
+            self._run_unary(map_partitions_wrapper, task, shuffle=True)
 
         elif task._name == 'collapsePartitions':
             def collapse_partitions_wrapper(input_iterator, key_serdes, value_serdes, output_writebatch):
@@ -277,14 +261,51 @@ class EggPair(object):
                         output_writebatch.put(k, v)
             self._run_unary(filter_wrapper, task)
 
-        elif task._name == 'aggregate':
-            L.info('ready to aggregate')
-            self.aggregate(task)
-            L.info('aggregate finished')
-
         elif task._name == 'join':
-            def join_wrapper(left_iterator, left_key_serdes, left_value_serdess,
-                    right_iterator, right_key_serdes, right_value_serdess,
+            def merge_join_wrapper(left_iterator, left_key_serdes, left_value_serdes,
+                    right_iterator, right_key_serdes, right_value_serdes,
+                    output_writebatch):
+                if not left_iterator.adapter.is_sorted() or not right_iterator.adapter.is_sorted():
+                    raise RuntimeError(f"merge join cannot be applied: not both store types support sorting. "
+                                       f"left type: {type(left_iterator.adapter)}, is_sorted: {left_iterator.adapter.is_sorted()}; "
+                                       f"right type: {type(right_iterator.adapter)}, is_sorted: {right_iterator.adapter.is_sorted()}")
+                f = create_functor(functors[0]._body)
+                is_same_serdes = type(left_key_serdes) == type(right_key_serdes)
+
+                l_iter = iter(left_iterator)
+                r_iter = iter(right_iterator)
+
+                try:
+                    k_left, v_left_bytes = next(l_iter)
+                    k_right_raw, v_right_bytes = next(r_iter)
+                    if is_same_serdes:
+                        k_right = k_right_raw
+                    else:
+                        k_right = left_key_serdes.serialize(right_key_serdes.deserialize(k_right_raw))
+
+                    while True:
+                        while k_right < k_left:
+                            k_right_raw, v_right_bytes = next(r_iter)
+                            if is_same_serdes:
+                                k_right = k_right_raw
+                            else:
+                                k_right = left_key_serdes.serialize(right_key_serdes.deserialize(k_right_raw))
+
+                        while k_left < k_right:
+                            k_left, v_left_bytes = next(l_iter)
+
+                        if k_left == k_right:
+                            output_writebatch.put(k_left,
+                                                  left_value_serdes.serialize(
+                                                          f(left_value_serdes.deserialize(v_left_bytes),
+                                                            right_value_serdes.deserialize(v_right_bytes))))
+                            k_left, v_left_bytes = next(l_iter)
+                            # skips next(r_iter) to avoid duplicate codes for the 3rd time
+                except StopIteration as e:
+                    return
+
+            def hash_join_wrapper(left_iterator, left_key_serdes, left_value_serdes,
+                    right_iterator, right_key_serdes, right_value_serdes,
                     output_writebatch):
                 f = create_functor(functors[0]._body)
                 is_diff_serdes = type(left_key_serdes) != type(right_key_serdes)
@@ -293,13 +314,18 @@ class EggPair(object):
                         k_left = right_key_serdes.serialize(left_key_serdes.deserialize(k_left))
                     r_v_bytes = right_iterator.adapter.get(k_left)
                     if r_v_bytes:
-                        L.info("egg join:{}".format(right_value_serdess.deserialize(r_v_bytes)))
+                        #L.info("egg join:{}".format(right_value_serdes.deserialize(r_v_bytes)))
                         output_writebatch.put(k_left,
-                                              left_value_serdess.serialize(
-                                                      f(left_value_serdess.deserialize(l_v_bytes),
-                                                        right_value_serdess.deserialize(r_v_bytes))
-                                              ))
-            self._run_binary(join_wrapper, task)
+                                              left_value_serdes.serialize(
+                                                      f(left_value_serdes.deserialize(l_v_bytes),
+                                                        right_value_serdes.deserialize(r_v_bytes))))
+
+            join_type = task._job._options.get('join_type', 'merge')
+
+            if join_type == 'merge':
+                self._run_binary(merge_join_wrapper, task)
+            else:
+                self._run_binary(hash_join_wrapper, task)
 
         elif task._name == 'subtractByKey':
             def subtract_by_key_wrapper(left_iterator, left_key_serdes, left_value_serdess,
@@ -320,8 +346,6 @@ class EggPair(object):
                     right_iterator, right_key_serdes, right_value_serdess,
                     output_writebatch):
                 f = create_functor(functors[0]._body)
-                #store the iterator that has been iterated before
-                k_list_iterated = []
 
                 is_diff_serdes = type(left_key_serdes) != type(right_key_serdes)
                 for k_left, v_left in left_iterator:
@@ -331,42 +355,45 @@ class EggPair(object):
                     if v_right is None:
                         output_writebatch.put(k_left, v_left)
                     else:
-                        k_list_iterated.append(left_key_serdes.deserialize(k_left))
                         v_final = f(left_value_serdess.deserialize(v_left),
                                     right_value_serdess.deserialize(v_right))
                         output_writebatch.put(k_left, left_value_serdess.serialize(v_final))
 
                 right_iterator.first()
                 for k_right, v_right in right_iterator:
-                    if right_key_serdes.deserialize(k_right) not in k_list_iterated:
-                        #because left value and right value may have different serdes
-                        if is_diff_serdes:
-                            k_right = left_key_serdes.serialize(left_key_serdes.deserialize(k_right))
-                        if is_diff_serdes:
-                            v_right = left_value_serdess.serialize(right_value_serdess.deserialize(v_right))
+                    if is_diff_serdes:
+                        final_v_bytes = output_writebatch.get(left_key_serdes.serialize(
+                            right_key_serdes.deserialize(k_right)))
+                    else:
+                        final_v_bytes = output_writebatch.get(k_right)
+
+                    if final_v_bytes is None:
                         output_writebatch.put(k_right, v_right)
             self._run_binary(union_wrapper, task)
 
+        elif task._name == 'withStores':
+            f = create_functor(functors[0]._body)
+            result = ErPair(key=self.functor_serdes.serialize(task._inputs[0]._id),
+                            value=self.functor_serdes.serialize(f(task._inputs)))
         return result
 
-    def aggregate(self, task: ErTask, is_reduce=False):
+    def aggregate_seq(self, task: ErTask):
         functors = task._job._functors
-        zero_value = None if functors[0] is None else create_functor(functors[0]._body)
-        seq_op = create_functor(functors[1]._body)
-        comb_op = create_functor(functors[2]._body)
+        is_reduce = functors[0]._name == 'reduce'
+        zero_value = None if is_reduce or functors[0] is None else create_functor(functors[0]._body)
+        if is_reduce:
+            seq_op = create_functor(functors[0]._body)
+        else:
+            seq_op = create_functor(functors[1]._body)
 
+        first = True
+        seq_op_result = zero_value
         input_partition = task._inputs[0]
-        serialized_seq_results = list()
+        input_key_serdes = create_serdes(input_partition._store_locator._serdes)
+        input_value_serdes = input_key_serdes
+
         with create_adapter(input_partition) as input_adapter, \
-                input_adapter.iteritems() as input_iter:
-            input_key_serdes = create_serdes(task._inputs[0]._store_locator._serdes)
-            input_value_serdes = input_key_serdes
-            output_key_serdes = create_serdes(task._outputs[0]._store_locator._serdes)
-            output_value_serdes = output_key_serdes
-            first = True
-
-            seq_op_result = zero_value
-
+            input_adapter.iteritems() as input_iter:
             for k_bytes, v_bytes in input_iter:
                 v = input_value_serdes.deserialize(v_bytes)
                 if is_reduce and first:
@@ -375,45 +402,7 @@ class EggPair(object):
                 else:
                     seq_op_result = seq_op(seq_op_result, v)
 
-
-            partition_id = input_partition._id
-            transfer_tag = task._job._id
-
-            if 0 == partition_id:
-                partition_size = input_partition._store_locator._total_partitions
-                queue = TransferService.get_or_create_broker(transfer_tag, write_signals=partition_size - 1)
-                if not first:
-                    comb_op_result = seq_op_result
-                else:
-                    comb_op_result = zero_value
-
-                for r in queue:
-                    if not r.data:
-                        continue
-                    v = output_value_serdes.deserialize(r.data)
-                    if first:
-                        comb_op_result = v
-                    else:
-                        comb_op_result = comb_op(comb_op_result, v)
-
-                L.info(f'aggregate finished. result: {comb_op_result} ')
-                with create_adapter(task._outputs[0]) as output_adapter, \
-                    output_adapter.new_batch() as output_writebatch:
-                    output_writebatch.put(output_key_serdes.serialize('result'.encode()), output_value_serdes.serialize(comb_op_result))
-
-                TransferService.remove_broker(transfer_tag)
-            else:
-                if not first:
-                    serialized_seq_results.append(output_value_serdes.serialize(seq_op_result))
-                else:
-                    serialized_seq_results.append(b'')
-                transfer_client = TransferClient()
-                future = transfer_client.send(broker=(v for v in serialized_seq_results),
-                                              endpoint=task._outputs[0]._processor._transfer_endpoint,
-                                              tag=transfer_tag)
-                future.result()
-
-        L.info('aggregate finished')
+        return seq_op_result
 
 
 def serve(args):
@@ -427,7 +416,7 @@ def serve(args):
             route_to_class_name="EggPair",
             route_to_method_name="run_task")
 
-    command_server = grpc.server(futures.ThreadPoolExecutor(max_workers=500, thread_name_prefix="command_server"),
+    command_server = grpc.server(futures.ThreadPoolExecutor(max_workers=500, thread_name_prefix="grpc_server"),
                                  options=[
                                      ("grpc.max_metadata_size", 32 << 20),
                                      (cygrpc.ChannelArgKey.max_send_message_length, 2 << 30 - 1),
@@ -479,6 +468,7 @@ def serve(args):
                              processor_type=ProcessorTypes.EGG_PAIR,
                              command_endpoint=ErEndpoint(host='localhost', port=port),
                              transfer_endpoint=ErEndpoint(host='localhost', port=transfer_port),
+                             pid=os.getpid(),
                              options=options,
                              status=ProcessorStatus.RUNNING)
 
@@ -521,7 +511,7 @@ if __name__ == '__main__':
     args_parser.add_argument('-nm', '--node-manager')
     args_parser.add_argument('-s', '--session-id')
     args_parser.add_argument('-p', '--port', default='0')
-    args_parser.add_argument('-t', '--transfer-port', default='-1')
+    args_parser.add_argument('-t', '--transfer-port', default='0')
     args_parser.add_argument('-sn', '--server-node-id')
     args_parser.add_argument('-prid', '--processor-id', default='0')
     args_parser.add_argument('-c', '--config')

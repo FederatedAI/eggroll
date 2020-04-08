@@ -1,8 +1,8 @@
 package com.webank.eggroll.rollsite
 
-import com.webank.eggroll.core.Bootstrap
+import com.webank.eggroll.core.BootstrapBase
 
-class EggSiteBootstrap extends Bootstrap {
+class EggSiteBootstrap extends BootstrapBase {
   private var args: Array[String] = _
   override def init(args: Array[String]): Unit = this.args = args
 

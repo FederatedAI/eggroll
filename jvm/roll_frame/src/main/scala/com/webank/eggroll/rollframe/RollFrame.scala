@@ -18,55 +18,283 @@
 
 package com.webank.eggroll.rollframe
 
-import com.webank.eggroll.core.command.{CommandRouter, CommandService, CommandURI}
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.concurrent.{Callable, ConcurrentHashMap}
+import java.util.concurrent.atomic.AtomicInteger
+
+import com.webank.eggroll.core.ErSession
 import com.webank.eggroll.core.constant.StringConstants
 import com.webank.eggroll.core.meta._
-import com.webank.eggroll.core.schedule.BaseTaskPlan
 import com.webank.eggroll.core.serdes.DefaultScalaSerdes
+import com.webank.eggroll.core.session.StaticErConf
+import com.webank.eggroll.core.util.Logging
 import com.webank.eggroll.format.{FrameBatch, _}
-import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
+import com.webank.eggroll.rollframe.pytorch.{Matrices, Script}
 
+import scala.collection.immutable.Range.Inclusive
 
+// TODO: care about client task grpc whether closed and thread pool whether closed
 // TODO: always close in finally
-// TODO: Use a dag to express program with base plan like reading/writing/scatter/broadcast etc.
 
-class AggregateBatchTask(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job)
-class MapBatchTask(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job)
-class ReduceBatchTask(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job)
-class MapPartitionTask(uri: CommandURI, job: ErJob) extends BaseTaskPlan(uri, job)
+class RollFrameContext private[eggroll](val session: ErSession) {
+  lazy val serverNodes: Array[ErProcessor] = session.processors
+  lazy val clientNode = serverNodes(0) // TODO: Can confirm the first nodes is client node?
 
+  private[eggroll] lazy val frameTransfer: NioFrameTransfer = new NioFrameTransfer(serverNodes)
+  val defaultStoreType = StringConstants.FILE
 
-trait RollFrame
+  def load(store: ErStore): RollFrame = RollFrame(store, this)
+
+  def load(namespace: String, name: String, options: Map[String, String] = Map()): RollFrame = {
+    // TODO:1: use snake case universally?
+    val storeType = options.getOrElse("store_type", defaultStoreType)
+    val totalPartitions = options.getOrElse("total_partitions", "1").toInt
+    val store = ErStore(storeLocator = ErStoreLocator(
+      namespace = namespace,
+      name = name,
+      storeType = storeType,
+      totalPartitions = totalPartitions
+    ))
+    val loaded = session.clusterManagerClient.getOrCreateStore(store)
+    new RollFrame(loaded, this)
+  }
+
+  /**
+   * Provides two way to create/update or get Store by totalPartitions.
+   * IF totalPartitions = 0, return store with partitions the same as processors.
+   * IF totalPartitions = N, return Store with N partition and uniformly distributed on each process,
+   * For example: there are 3 processor and totalPartitions is 5, store would has [0,1][2,3],[4] partitions.
+   *
+   * @param namespace       Store namespace
+   * @param name            store name
+   * @param storeType       store type
+   * @param totalPartitions totalPartitions,{-1,N},
+   * @return ErStore
+   */
+  def createStore(namespace: String, name: String, storeType: String = defaultStoreType, totalPartitions: Int = 0,
+                  keep: Boolean = false): ErStore = {
+    val storeLocator: ErStoreLocator = ErStoreLocator(
+      namespace = namespace,
+      name = name,
+      storeType = storeType,
+      totalPartitions = if (totalPartitions == 0) serverNodes.length else totalPartitions
+    )
+    val partitions: Array[ErPartition] = totalPartitions match {
+      case 0 =>
+        // partitions num equal processors
+        serverNodes.indices.map(i => ErPartition(id = i, storeLocator = storeLocator, processor = serverNodes(i))).toArray
+      case _ =>
+        val _processors = assignProcessors(serverNodes, totalPartitions)
+        (0 until totalPartitions).map { i =>
+          ErPartition(id = i, storeLocator = storeLocator, processor = _processors(i))
+        }.toArray
+    }
+    val store = ErStore(storeLocator = storeLocator, partitions = partitions)
+    if (keep) {
+      session.clusterManagerClient.deleteStore(storeLocator)
+      session.clusterManagerClient.getOrCreateStore(store)
+    }
+    store
+  }
+
+  def forkStore(oldStore: ErStore, namespace: String, name: String, storeType: String = defaultStoreType,
+                           keep: Boolean = false): ErStore = {
+    val storeLocator: ErStoreLocator = oldStore.storeLocator.copy(namespace = namespace, name = name, storeType = storeType,
+      totalPartitions = oldStore.storeLocator.totalPartitions)
+    val partitions: Array[ErPartition] = oldStore.partitions.map(i => i.copy(storeLocator = storeLocator))
+    val store = ErStore(storeLocator = storeLocator, partitions = partitions)
+    if (keep) {
+      session.clusterManagerClient.deleteStore(storeLocator)
+      session.clusterManagerClient.getOrCreateStore(store)
+    }
+    store
+  }
+
+  def getStore(namespace: String, name: String, storeType: String = defaultStoreType): ErStore = {
+    val storeLocator = ErStoreLocator(
+      namespace = namespace,
+      name = name,
+      storeType = storeType
+    )
+    session.clusterManagerClient.getStore(storeLocator)
+  }
+
+  private def assignProcessors(processors: Array[ErProcessor], totalPartitions: Int): Array[ErProcessor] = {
+    val nodesLength = processors.length
+    val quotient = totalPartitions / nodesLength
+    val remainder = totalPartitions % nodesLength
+    val processorsCounts = Array.fill(nodesLength)(quotient)
+    (0 until remainder).foreach(i => processorsCounts(i) += 1)
+    var res = Array[ErProcessor]()
+    (0 until nodesLength).foreach(i => res = res ++ Array.fill(processorsCounts(i))(processors(i)))
+    res
+  }
+
+  def broadcast(path: String, frameBatches: Iterator[FrameBatch]): Unit = {
+    frameTransfer.broadcast(path, frameBatches)
+  }
+
+  def broadcast(path: String, frameBatch: FrameBatch): Unit = broadcast(path, Iterator(frameBatch))
+}
+
+object RollFrameContext {
+//  StaticErConf.addProperties("conf/eggroll.properties")
+
+  def apply(session: ErSession): RollFrameContext = new RollFrameContext(session)
+
+  def apply(): RollFrameContext = {
+    val opts = Map("processor_types" -> "egg_frame", "processor_plan.egg_frame" -> "uniform")
+    apply(new ErSession(options = opts))
+  }
+}
 
 // create a instance when start a new job
 // TODO: reuse ErJob generate and separate client mode and cluster mode
-class RollFrameClientMode(val store: ErStore) extends RollFrame {
-
+class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) extends Logging {
   val serdes = new DefaultScalaSerdes
+  val rfScheduler = new RollFrameScheduler(ctx.session)
 
-  val rollFrameService = new RollFrameService
+  private val seqJobId = new AtomicInteger()
+  private val jobIdDf = new SimpleDateFormat("yyyyMMdd_HHmmss_SSS")
 
-  def mapBatch(f: FrameBatch => FrameBatch, output: ErStore = null): RollFrameClientMode = {
-    val jobType = RollFrame.mapBatch
-    val job = ErJob(id = jobType,
-      // name = s"${RollFrame.rollFrame}.${RollFrame.mapBatch}",
-      name = EggFrame.mapBatchTask,
-      inputs = Array(store),
-      outputs = Array(if (output == null) store.fork(postfix = jobType) else output),
-      functors = Array(ErFunctor(name = RollFrame.mapBatch, body = serdes.serialize(f))))
-
-    processJobResult(rollFrameService.mapBatches(job))
+  def genJobId(): String = {
+    jobIdDf.format(new Date()) + "_" + seqJobId.incrementAndGet()
   }
 
-  def reduce(f: (FrameBatch, FrameBatch) => FrameBatch, output: ErStore = null): RollFrameClientMode = {
-    val jobType = RollFrame.reduce
-    val job = ErJob(id = RollFrame.reduce,
-      name = EggFrame.reduceTask,
+  def torchMap(path: String, parameters: Array[Double], output: ErStore = null): RollFrame = {
+    val func: (FrameBatch) => FrameBatch = { fb =>
+      Script.runTorchMap(path, fb, parameters)
+    }
+
+    mapBatch(func, output)
+  }
+
+  def torchMerge(path: String, parameters: Array[Double]=Array(), output: ErStore = null): RollFrame = {
+    val partitionNums = store.partitions.length
+
+    val func: (EggFrameContext, ErTask, Iterator[FrameBatch], FrameStore) => ErPair = {
+      (ctx, task, input, output) =>
+      val queuePath = "gather:" + task.job.id
+      val partition = task.inputs.head
+      val localServer = partition.processor
+      val localBatch = input.next()
+      if (localServer.commandEndpoint.host.equals(ctx.rootServer.commandEndpoint.host)) {
+        // the same root server
+        if (partition.id == 0) {
+          println("run merge ....")
+          FrameStore.queue(queuePath, -1).writeAll(Iterator(localBatch))
+          val allFrameBatch = FrameStore.queue(queuePath, partitionNums).readAll()
+          val resFb = Script.runTorchMerge(path, allFrameBatch, parameters)
+          output.append(resFb)
+        } else {
+          // the same root server but different partition
+          FrameStore.queue(queuePath, -1).writeAll(Iterator(localBatch))
+        }
+      } else {
+        ctx.frameTransfer.send(ctx.rootServer.id, queuePath, localBatch)
+      }
+      null
+    }
+
+    runUnaryJob("torchMerge", func, output = output)
+  }
+
+  @deprecated
+  def matMulV1(m: Array[Double], rows: Int, cols: Int, output: ErStore = null): RollFrame = {
+    val func: (FrameBatch) => FrameBatch = { fb =>
+      println(fb.rowCount, fb.fieldCount)
+      var start = System.currentTimeMillis()
+      val cb = fb.toColumnVectors
+      println(s"FrameBatch to ColumnVectors time = ${System.currentTimeMillis() - start}")
+      start = System.currentTimeMillis()
+      val resFb = Matrices.matMulToFbV1(cb, m, rows, cols)
+      println(s"matMul and store as Fb time = ${System.currentTimeMillis() - start}")
+      resFb
+    }
+
+    mapBatch(func, output)
+  }
+
+  @deprecated
+  def matMul(m: Array[Double], rows: Int, cols: Int, output: ErStore = null): RollFrame = {
+    val func: (FrameBatch) => FrameBatch = { fb =>
+      println(fb.rowCount, fb.fieldCount)
+      var start = System.currentTimeMillis()
+      val cb = fb.toColumnVectors
+      println(s"FrameBatch to ColumnVectors time = ${System.currentTimeMillis() - start}")
+      start = System.currentTimeMillis()
+      val resFb = Matrices.matMulToFbV1(cb, m, rows, cols)
+      println(s"matMul and store as Fb time = ${System.currentTimeMillis() - start}")
+      resFb
+    }
+
+    mapBatch(func, output)
+  }
+
+  private def runUnaryJob(jobType: String,
+                          func: (EggFrameContext, ErTask, Iterator[FrameBatch], FrameStore) => ErPair, jobId: String = null,
+                          output: ErStore = null): RollFrame = {
+    val retFunc: (EggFrameContext, ErTask) => ErPair = { (ctx, task) =>
+      val inputPartition = task.inputs.head
+      val outputPartition = task.outputs.head
+      ctx.logInfo(s"""start runUnary ${task.job.name}, input: $inputPartition, output: $outputPartition""")
+      val inputDB = FrameStore(inputPartition)
+      val outputDB = FrameStore(outputPartition)
+      val ret = func(ctx, task, inputDB.readAll(), outputDB)
+      ctx.logInfo(s"""finish runUnary ${task.job.name}, input: $inputPartition, output: $outputPartition""")
+      if (ret == null) {
+        ErPair(key = ctx.serdes.serialize(inputPartition.id), value = Array())
+      } else {
+        ret
+      }
+    }
+    val job = ErJob(id = if (jobId == null) genJobId() else jobId,
+      name = jobType,
       inputs = Array(store),
       outputs = Array(if (output == null) store.fork(postfix = jobType) else output),
-      functors = Array(ErFunctor(name = RollFrame.reduce, body = serdes.serialize(f))))
+      functors = Array(ErFunctor(name = RollFrame.mapBatch, body = serdes.serialize(retFunc))))
+    rfScheduler.run(job)
+    ctx.load(job.outputs.head)
+  }
 
-    processJobResult(rollFrameService.reduce(job))
+  def mapBatch(f: FrameBatch => FrameBatch, output: ErStore = null): RollFrame = {
+    val func: (EggFrameContext, ErTask, Iterator[FrameBatch], FrameStore) => ErPair = {
+      (ctx, task, input, output) =>
+      // for concurrent writing
+      val queuePath = task.id + "-doing"
+      // total mean batch size, if given more than one, it just get one.
+      val queue = FrameStore.queue(queuePath, 1)
+      input.foreach { fb =>
+        ctx.executorPool.submit(new Runnable {
+          override def run(): Unit = {
+            queue.append(f(fb))
+          }
+        })
+      }
+      output.writeAll(queue.readAll())
+      output.close()
+      null
+    }
+
+    runUnaryJob("mapBatch", func, output = output)
+  }
+
+
+  // TODO: add reduce by rows operation
+  /**
+   * reduce frameBatchs between different partitions
+   * eg:
+   * 1 1 1   2 2 2   3 3 3
+   * 1 1 1 + 2 2 2 = 3 3 3
+   * 1 1 1   2 2 2   3 3 3
+   *
+   * @param f      reducer
+   * @param output ErStore
+   * @return
+   */
+  def reduce(f: (FrameBatch, FrameBatch) => FrameBatch, output: ErStore = null): RollFrame = {
+    aggregate(null, f, f, output = output)
   }
 
   def aggregate(zeroValue: FrameBatch,
@@ -74,26 +302,169 @@ class RollFrameClientMode(val store: ErStore) extends RollFrame {
                 combOp: (FrameBatch, FrameBatch) => FrameBatch,
                 byColumn: Boolean = false,
                 broadcastZeroValue: Boolean = false,
-                output: ErStore = null): RollFrameClientMode = {
-    val jobType = RollFrame.aggregate
-    val job = ErJob(id = RollFrame.aggregate,
-      name = EggFrame.aggregateBatchTask,
-      inputs = Array(store),
-      outputs = Array(if (output == null) store.fork(postfix = jobType) else output),
-      // todo: broadcast of zeroValue needs another implementation because there is a gRPC message size limit here
-      functors = Array(ErFunctor(name = "zeroValue", body = FrameUtils.toBytes(zeroValue)),
-        ErFunctor(name = "seqOp", body = serdes.serialize(seqOp)),
-        ErFunctor(name = "combOp", body = serdes.serialize(combOp)),
-        ErFunctor(name = "byColumn", body = serdes.serialize(byColumn)),
-        ErFunctor(name = "broadcastZeroValue", body = serdes.serialize(broadcastZeroValue))))
+                threadsNum: Int = -1,
+                output: ErStore = null): RollFrame = {
+    val jobId = genJobId()
+    val zeroValueBytes = if (broadcastZeroValue) {
+      ctx.broadcast("broadcast:" + jobId, zeroValue)
+      Array[Byte]()
+    } else if (zeroValue != null) {
+      FrameUtils.toBytes(zeroValue)
+    } else {
+      Array[Byte]()
+    }
 
-    processJobResult(rollFrameService.aggregate(job))
-  }
+    val func: (EggFrameContext, ErTask, Iterator[FrameBatch], FrameStore) => ErPair = {
+      (ctx, task, input, output) =>
+      val zeroValue: FrameBatch = if (zeroValueBytes.isEmpty) null else FrameUtils.fromBytes(zeroValueBytes)
+      val partition = task.inputs.head
+      val batchSize = 1
+      // TODO: more generally, like repartition?
+      // TODO: route
+      //    val localServer = clusterManager.getPreferredServer(store = task.job.inputs.head)(partition.id)
+      val localServer = partition.processor
+      ctx.logInfo(s"runAggregateBatch: jobId=${task.job.id}, partitionId=${partition.id}, root=${ctx.rootServer}")
+      var localQueue: FrameStore = null
 
-  // todo: pull up
+      // TODO: don't finish broadcast
+      val zeroPath = "broadcast:" + task.job.id
+      val zero: FrameBatch =
+        if (zeroValue == null) {
+          if (broadcastZeroValue) {
+            if (localServer.equals(ctx.rootServer))
+              FrameStore.cache(zeroPath).readOne()
+            else
+              FrameStore.queue(zeroPath, 1).readOne()
+          } else {
+            // reduce need't zero value
+            if (input.hasNext) {
+              input.next()
+            } else {
+              null
+            }
+          }
+        } else {
+          zeroValue
+        }
+      // TODO: more generally, like repartition?
+      if (batchSize == 1) {
+        if (input.hasNext) {
+          val fb = input.next()
+          // use muti-thread by rows ,for example,parallel = 2, 100 rows can split to [0,50] and [50,100]
+          // for concurrent writing
+          // TODO: specify thread num, if zero value is to large , copy too many zero value will cause OOM
+          // TODO: whether care about memory state and then decide thread num.
+          val parallel: Int = if (threadsNum < 0) {
+            val availableProcessors = Runtime.getRuntime.availableProcessors() / 2 // testing suggestion
+            val eachThreadCount = 1000
+            val tmpParallel = fb.rowCount / eachThreadCount + 1
+            if (tmpParallel < availableProcessors) tmpParallel else availableProcessors
+            //          2 * availableProcessors
+          } else {
+            threadsNum
+          }
+          localQueue = FrameStore.queue(task.id + "-doing", parallel)
 
-  def processJobResult(job: ErJob): RollFrameClientMode = {
-    new RollFrameClientMode(job.outputs.head)
+          println(s"egg parallel = $parallel")
+          ctx.sliceByRow(parallel, fb).foreach { inclusive: Inclusive =>
+            ctx.executorPool.submit(new Callable[Unit] {
+              override def call(): Unit = {
+                var start = System.currentTimeMillis()
+                val tmpZeroValue = FrameUtils.fork(zero)
+                println(s"fork time: ${System.currentTimeMillis() - start} ms")
+                start = System.currentTimeMillis()
+                localQueue.append(seqOp(tmpZeroValue, fb.sliceByRow(inclusive.start, inclusive.end)))
+                println(s"seqOp time: ${System.currentTimeMillis() - start}")
+              }
+            })
+          }
+        } else {
+          // for reduce op
+          localQueue = FrameStore.queue(task.id + "-doing", 1)
+          localQueue.append(zero)
+        }
+      } else {
+        // TODO: unfinished
+        val parallel = Math.min(ctx.executorPool.getCorePoolSize, batchSize) // reduce zero value copy
+        // for concurrent writing
+        localQueue = FrameStore.queue(task.id + "-doing", parallel)
+        var batchIndex = 0
+        (0 until parallel).foreach { i =>
+          if (input.hasNext) { // merge to avoid zero copy
+            ctx.executorPool.submit(new Callable[Unit] {
+              override def call(): Unit = {
+                val tmpZero = FrameUtils.fork(zero)
+                var tmp = seqOp(tmpZero, input.next())
+                batchIndex += 1
+                while (batchIndex < ((parallel + batchSize - 1) / batchSize) * i && input.hasNext) {
+                  tmp = seqOp(tmp, input.next())
+                  batchIndex += 1
+                }
+                localQueue.append(tmp)
+              }
+            })
+          }
+        }
+      }
+
+//      if (localQueue == null) {
+//        return null
+//      }
+        // caution: cannot use return, in val func: xx,
+        // and cannot use def func(xx) in scala 2.11 because of serder problem
+      if(localQueue != null){
+        // todo: local queue and result synchronization, maybe a countdown latch
+        val resultIterator = localQueue.readAll()
+        if (!resultIterator.hasNext) throw new IllegalStateException("empty result")
+        var localBatch: FrameBatch = resultIterator.next()
+        while (resultIterator.hasNext) {
+          localBatch = combOp(localBatch, resultIterator.next())
+        }
+        val transferQueueSize = task.job.inputs.head.storeLocator.totalPartitions - 1
+        require(transferQueueSize > -1, s"""transferQueueSize:$transferQueueSize, task:$task""")
+        // TODO: check asynchronous call
+        if (byColumn) {
+          val slicedBatches = ctx.sliceByColumn(localBatch)
+          // Don't block next receive step
+          slicedBatches.foreach { case (server, inclusive: Inclusive) =>
+            val queuePath = "all2all:" + task.job.id + ":" + server.id
+            if (!server.equals(localServer)) {
+              ctx.frameTransfer.send(server.id, queuePath, localBatch.sliceByColumn(inclusive.start, inclusive.end))
+            }
+          }
+
+          slicedBatches.foreach { case (server, inclusive: Inclusive) =>
+            val queuePath = "all2all:" + task.job.id + ":" + server.id
+            if (server.equals(localServer)) {
+              for (tmp <- FrameStore.queue(queuePath, transferQueueSize).readAll()) {
+                localBatch = combOp(localBatch, tmp.spareByColumn(localBatch.rootVectors.length, inclusive.start, inclusive.end))
+              }
+            }
+          }
+        } else {
+          val queuePath = "gather:" + task.job.id
+          if (localServer.commandEndpoint.host.equals(ctx.rootServer.commandEndpoint.host)) {
+            // the same root server
+            if (partition.id == 0) {
+              for (tmp <- FrameStore.queue(queuePath, transferQueueSize).readAll()) {
+                localBatch = combOp(localBatch, tmp)
+              }
+              output.append(localBatch)
+            } else {
+              // the same root server but different partition
+              FrameStore.queue(queuePath, -1).writeAll(Iterator(localBatch))
+            }
+          } else {
+            ctx.frameTransfer.send(ctx.rootServer.id, queuePath, localBatch)
+          }
+        }
+        output.close()
+      }
+
+      null
+    }
+
+    runUnaryJob("aggregate", func, jobId = jobId, output = output)
   }
 }
 
@@ -103,85 +474,8 @@ object RollFrame {
   val mapBatch = "mapBatch"
   val reduce = "reduce"
   val aggregate = "aggregate"
-}
+  val broadcast = "broadcast"
+  val mulMul = "mulMulTask"
 
-// TODO: MOCK
-class ClusterManager(mode: String = "local") {
-  val clusterNode0 = ErProcessor(id = 0, commandEndpoint = ErEndpoint("node1", 20100), transferEndpoint = ErEndpoint("node1", 20200), tag = "boss")
-  val clusterNode1 = ErProcessor(id = 1, commandEndpoint = ErEndpoint("node2", 20101), transferEndpoint = ErEndpoint("node2", 20201), tag = "worker")
-  val clusterNode2 = ErProcessor(id = 2, commandEndpoint = ErEndpoint("node3", 20102), transferEndpoint = ErEndpoint("node3", 20202), tag = "worker")
-
-  val localNode0 = ErProcessor(id = 0, commandEndpoint = ErEndpoint("127.0.0.1", 20100), transferEndpoint = ErEndpoint("127.0.0.1", 20200), tag = "boss")
-  val localNode1 = ErProcessor(id = 1, commandEndpoint = ErEndpoint("127.0.0.1", 20101), transferEndpoint = ErEndpoint("127.0.0.1", 20201), tag = "worker")
-  def getLiveProcessorBatch(clusterId: Long = -1): ErProcessorBatch = {
-    val cluster = mode match {
-      case "cluster" =>
-        ErProcessorBatch(id = clusterId, processors = Array(clusterNode0, clusterNode1, clusterNode2))
-      case _ => ErProcessorBatch(id = clusterId, processors = Array(localNode0, localNode1))
-    }
-    cluster
-  }
-
-  def getRollFrameStore(name: String, namespace: String): ErStore = {
-    // TODO:How to get partition num, frameBatch count?
-    val storeLocator = ErStoreLocator(
-      storeType = StringConstants.FILE,
-      namespace = namespace,
-      name = name)
-    val partitions = mode match {
-      case "cluster" => Array(
-        ErPartition(id = 0, storeLocator = storeLocator, processor = clusterNode0),
-        ErPartition(id = 1, storeLocator = storeLocator, processor = clusterNode1),
-        ErPartition(id = 2, storeLocator = storeLocator, processor = clusterNode2)
-      )
-      case _ => Array(
-        ErPartition(id = 0, storeLocator = storeLocator, processor = localNode0),
-        ErPartition(id = 1, storeLocator = storeLocator, processor = localNode1))
-    }
-    ErStore(storeLocator = storeLocator, partitions = partitions)
-  }
-
-  def getPreferredServer(store: ErStore, clusterId: Long = -1): Map[Int, ErProcessor] = {
-    val nodes = getLiveProcessorBatch(clusterId).processors
-
-    nodes.indices.zip(nodes).toMap
-  }
-
-  def startServerCluster(clusterId: Long = -1, nodeId: Long = -1): Unit = {
-
-    CommandRouter.register(
-      serviceName = "EggFrame.runTask",
-      serviceParamTypes = Array(classOf[ErTask]),
-      serviceResultTypes = Array(classOf[ErTask]),
-      routeToClass = classOf[EggFrame],
-      routeToMethodName = "runTask")
-
-    getLiveProcessorBatch(clusterId).processors.foreach { server =>
-      val idMatch = mode match {
-        case "cluster" => server.id == nodeId
-        case _ => true
-      }
-      val commandEndpoint = server.commandEndpoint
-      val dataEndpoint = server.transferEndpoint
-      if (idMatch) {
-        val sb = NettyServerBuilder.forPort(commandEndpoint.port)
-        sb.addService(new CommandService).build.start
-        println("Start GrpcCommandService...")
-        new Thread("transfer-" + dataEndpoint.port) {
-          override def run(): Unit = {
-            try {
-              println(s"Start TransferServer:server.host: ${server.transferEndpoint.host}, transferPost: ${server.transferEndpoint.port}")
-              new NioTransferEndpoint().runServer(server.transferEndpoint.host, server.transferEndpoint.port)
-            } catch {
-              case e: Throwable => e.printStackTrace()
-            }
-          }
-        }.start()
-      }
-    }
-  }
-}
-
-object ClusterManager {
-  def getOrCreate(): ClusterManager = new ClusterManager
+  def apply(store: ErStore, ctx: RollFrameContext): RollFrame = new RollFrame(store, ctx)
 }

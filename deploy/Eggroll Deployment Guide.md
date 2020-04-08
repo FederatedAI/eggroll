@@ -74,40 +74,80 @@ vi ./deploy/conf.sh
 vi ./conf/eggroll.properties
 ```
 
-*<u>Notes: this configuration file contains two database configuration modes. If the default H2 database is used, the first four JDBC configurations can be unmodified. If the MySQL database is used, the configuration can be modified in the JDBC mode of MySQL.</u>*
+*<u>Notes: this configuration file contains two database configuration modes. If the default H2 database is used, the first four JDBC configurations can be unmodified. If the MySQL database is used, the configuration can be modified in the JDBC mode of MySQL. The bold option needs to be modified.</u>*
 
-| Configuration item                             | Configuration item meaning               | Configuration Item Value                                     |
-| ---------------------------------------------- | ---------------------------------------- | ------------------------------------------------------------ |
-| eggroll.cluster.manager.jdbc.driver.class.name | The driver of  database                  | h2:org.h2.Driver/Mysql:com.mysql.cj.jdbc.Driver              |
-| eggroll.cluster.manager.jdbc.url               | JDBC connection mode of database         | h2:use the default/Mysql:JDBC connection url.                |
-| eggroll.cluster.manager.jdbc.username          | Username of database                     | h2:default null/Mysql:username of database                   |
-| eggroll.cluster.manager.jdbc.password          | Password of database                     | h2:default null/Mysql:password of database                   |
-| eggroll.logs.dir                               | The dir of logs                          | Use default value.                                           |
-| eggroll.node.manager.port                      | The port of NodeManager                  | Modify to designated port,default use 9394.                  |
-| eggroll.cluster.manager.host                   | The host of ClusterManager               | Use default value.                                           |
-| eggroll.cluster.manager.port                   | The port of ClusterManager               | Modify to designated port,default use 4670.                  |
-| eggroll.bootstrap.root.script                  | The startup script of scripts in exepath | Use default value.                                           |
-| eggroll.bootstrap.egg_pair.exepath             | The startup script of egg_pair           | Use default value.                                           |
-| eggroll.bootstrap.egg_pair.venv                | The path of venv_home                    | Use absolute path of venv_home or relative path to EGGROLL_HOME |
-| eggroll.bootstrap.egg_pair.pythonpath          | The path of PATHON_PATH                  | Use default value.                                           |
-| eggroll.bootstrap.egg_pair.filepath            | The path of egg_pair.py                  | Use default value.                                           |
-| eggroll.bootstrap.roll_pair_master.exepath     | The startup script of roll_pair          | Use default value.                                           |
-| eggroll.bootstrap.roll_pair_master.javahome    | The path of JAVA_HOME                    | Use default value and export the JAVA_HOME variable to the app user variable |
-| eggroll.bootstrap.roll_pair_master.classpath   | The classpath of roll_pair               | Use default value.                                           |
-| eggroll.bootstrap.roll_pair_master.mainclass   | The mainclass of roll_pair               | Use default value.                                           |
-| eggroll.bootstrap.roll_pair_master.jvm.options | The jvm options                          | Use default value, can be modified as server configuration.  |
-| eggroll.resourcemangaer.process.tag            | The tag of this cluster                  | Normal use default value. If you are deploying multiple clusters on the same server, modify this value to make then different. |
+| Configuration item                                           | Configuration item meaning               | Configuration Item Value                                     |
+| ------------------------------------------------------------ | ---------------------------------------- | ------------------------------------------------------------ |
+| **eggroll.cluster.manager.jdbc.driver.class.name**           | The driver of  database                  | h2:org.h2.Driver/Mysql:com.mysql.cj.jdbc.Driver              |
+| **eggroll.cluster.manager.jdbc.url**                         | JDBC connection mode of database         | h2:use the default/Mysql:JDBC connection url.                |
+| **eggroll.cluster.manager.jdbc.username**                    | Username of database                     | h2:default null/Mysql:username of database                   |
+| **eggroll.cluster.manager.jdbc.password**                    | Password of database                     | h2:default null/Mysql:password of database                   |
+| eggroll.data.dir                                             | The path of data                         | Use default value.                                           |
+| eggroll.logs.dir                                             | The dir of logs                          | Use default value.                                           |
+| **eggroll.resourcemanager.clustermanager.host**              | The host of ClusterManager               | Modify to designated ip of ClusterManager server.            |
+| **eggroll.resourcemanager.clustermanager.port**              | The port of ClusterManager               | Modify to designated port,default use 4670.                  |
+| **eggroll.resourcemanager.nodemanager.port**                 | The port of NodeManager                  | Modify to designated port,default use 9394.                  |
+| **eggroll.resourcemangaer.process.tag**                      | The tag of this cluster                  | Normal use default value. If you are deploying multiple clusters on the same server, modify this value to make then different. |
+| eggroll.bootstrap.root.script                                | The startup script of scripts in exepath | Use default value.                                           |
+| eggroll.resourcemanager.bootstrap.egg_pair.exepath           | The startup script of egg_pair           | Use default value.                                           |
+| **eggroll.resourcemanager.bootstrap.egg_pair.venv**          | The path of venv_home                    | Use absolute path of venv_home or relative path to EGGROLL_HOME |
+| eggroll.resourcemanager.bootstrap.egg_pair.pythonpath        | The path of PATHON_PATH                  | Use default value.                                           |
+| eggroll.resourcemanager.bootstrap.egg_pair.filepath          | The path of egg_pair.py                  | Use default value.                                           |
+| eggroll.resourcemanager.bootstrap.roll_pair_master.exepath   | The startup script of roll_pair          | Use default value.                                           |
+| eggroll.resourcemanager.bootstrap.roll_pair_master.javahome  | The path of JAVA_HOME                    | Use default value and export the JAVA_HOME variable to the app user variable |
+| eggroll.resourcemanager.bootstrap.roll_pair_master.classpath | The classpath of roll_pair               | Use default value.                                           |
+| eggroll.resourcemanager.bootstrap.roll_pair_master.mainclass | The mainclass of roll_pair               | Use default value.                                           |
+| eggroll.resourcemanager.bootstrap.roll_pair_master.jvm.options | The jvm options                          | Use default value, can be modified as server configuration.  |
+| eggroll.rollsite.coordinator                                 | The tag of rollsite                      | Use default value.                                           |
+| **eggroll.rollsite.host**                                    | The ip of rollsite server                | Modify to designated ip of rollsite server.                  |
+| **eggroll.rollsite.port**                                    | The port of rollsite                     | Modify to designated port , such as 9370.                    |
+| **eggroll.rollsite.party.id**                                | The party id of this cluster             | Modify to designated value, different from other cluster,such as 10001, 10002 |
+| eggroll.rollsite.route.table.path                            | The path of route_table.json             | Use default value.                                           |
+
+```shell
+vi ./conf/route_table.json 			--configuration file for rollsite
+```
+
+```json
+{
+  "route_table":
+  {
+    "$partyId_host":
+    {   
+      "default":[
+        {   
+          "port": $rollsite_port_host,
+          "ip": "$rollsite_ip_host"
+        }   
+      ]   
+    },  
+    "$partyId_guest":
+    {   
+      "default":[
+        {   
+          "port": $rollsite_port_guest,
+          "ip": "$rollsite_ip_guest"
+        }   
+      ]   
+    }   
+  },  
+  "permission":
+  {
+    "default_allow": true
+  }
+}
+```
 
 
 
-3. Executing the **deploy.sh** script:
+3. **Executing the deploy.sh script:**
 
 ```bash
 cd deploy
 sh deploy.sh
 ```
 
-4. Executing the SQL script(if you use the h2 database, skip this step):
+4. **Executing the SQL script(if you use the h2 database, skip this step):**
 
 ```bash
 1   Scp conf/create-eggroll-meta-tables.sql to the server of Mysql;
@@ -116,16 +156,16 @@ sh deploy.sh
     INSERT INTO server_node (host, port, node_type, status) values ('$node_ip', '$node_port', 'NODE_MANAGER', 'HEALTHY');
 ```
 
-## 4.     Start And Stop Service
+## **4.     Start And Stop Service**
 
-Use ssh to log in to each node with **app user**. Go to the install directory and run the following command to start services:
+**Use ssh to log in to each node with app user. Go to the install directory and run the following command to start services:**
 
 ```bash
-cd ${EGGROLL_HOME}
-sh bin/eggroll.sh all start						  --start all module service on this server
+cd ${EGGROLL_HOME}				    --${EGGROLL_HOME} means the absolute path of eggroll
+sh bin/eggroll.sh all start			 --start all module service on this server
 ```
 
-And you can replace 'start' with 'status' to see the status of the process, replace 'start' with 'restart' to restart service, and replace 'start' with 'stop' to stop service, such as:
+**And you can replace 'start' with 'status' to see the status of the process, replace 'start' with 'restart' to restart service, and replace 'start' with 'stop' to stop service, such as:**
 
 ```bash
 sh bin/eggroll.sh all|$module_name start|stop|restart|status
@@ -133,16 +173,78 @@ sh bin/eggroll.sh all|$module_name start|stop|restart|status
 
 ***Notes: value of $module_name: clustermanager|nodemanager***
 
-## 5.     Test 
+## **5.     Test** 
 
-Log in the server of ClusterManager or NodeManager,running the commands:
+1. **Init  test environment,when first time log in the server, running the commands:**
 
 ```bash
-source $venv_home/bin/activate
-export PYTHONPATH=${EGGROLL_HOME}/python
+export EGGROLL_HOME=$EGGROLL_HOME		--${EGGROLL_HOME} means the absolute path of eggroll
+export PYTHONPATH=${EGGROLL_HOME}/python				
+source $venv_home/venv/bin/activateTestRollPair
+```
+
+2. **Log in the server of ClusterManager or NodeManager,running the commands:**
+
+```bash
 cd ${EGGROLL_HOME}/python/eggroll/roll_pair/test
-python -m unittest test_interface.TestStandalone
+python -m unittest test_roll_pair.TestRollPairStandalone
 python -m unittest test_roll_pair.TestRollPairCluster
 ```
 
-Wait a few minutes, see the result show "OK" field to indicate that the operation is successful. In other cases, if FAILED or stuck, it means failure.
+**Wait a few minutes, see the result show "OK" field to indicate that the operation is successful. In other cases, if FAILED or stuck, it means failure.**
+
+3. **TestRollSite**
+
+**Log in the server of ClusterManager in guest party,running the commands:**
+
+```shell
+cd ${EGGROLL_HOME}/python/eggroll/roll_site/test
+python -m unittest test_roll_site.TestRollSiteCluster.test_remote
+```
+
+**Wait a few minutes, see the result show "OK" field to indicate that the operation is successful.**
+
+**Then log in the server of ClusterManager in host party,running the commands:**
+
+```shell
+cd ${EGGROLL_HOME}/python/eggroll/roll_site/test
+python -m unittest test_roll_site.TestRollSiteCluster.test_get
+```
+
+**Wait a few minutes, see the result show "OK" field to indicate that the operation is successful.**
+
+**Log in the server of ClusterManager in guest party,running the commands:**
+
+```shell
+cd ${EGGROLL_HOME}/python/eggroll/roll_site/test
+python -m unittest test_roll_site.TestRollSiteCluster.test_remote_rollpair_big
+```
+
+**Wait a few minutes, see the result show "OK" field to indicate that the operation is successful.**
+
+**Then log in the server of ClusterManager in host party,running the commands:**
+
+```shell
+cd ${EGGROLL_HOME}/python/eggroll/roll_site/test
+python -m unittest test_roll_site.TestRollSiteCluster.test_get_rollpair_big
+```
+
+**Wait a few minutes, see the result show "OK" field to indicate that the operation is successful.**
+
+**Log in the server of ClusterManager in guest party,running the commands:**
+
+```shell
+cd ${EGGROLL_HOME}/python/eggroll/roll_site/test
+python -m unittest test_roll_site.TestRollSiteCluster.test_remote_rollpair
+```
+
+**Wait a few minutes, see the result show "OK" field to indicate that the operation is successful.**
+
+**Then log in the server of ClusterManager in host party,running the commands:**
+
+```shell
+cd ${EGGROLL_HOME}/python/eggroll/roll_site/test
+python -m unittest test_roll_site.TestRollSiteCluster.test_get_rollpair
+```
+
+**Wait a few minutes, see the result show "OK" field to indicate that the operation is successful.**

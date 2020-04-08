@@ -49,6 +49,7 @@ message Processor {
   string status = 5;
   Endpoint commandEndpoint = 6;
   Endpoint transferEndpoint = 7;
+  int32 pid = 9;
   map<string, string> options = 8;
   string tag = 10;
 }
@@ -91,6 +92,10 @@ message Store {
   StoreLocator storeLocator = 1;
   repeated Partition partitions = 2;
   map<string, string> options = 3;
+}
+
+message StoreList {
+    repeated Store stores = 1;
 }
 
 message Partition {

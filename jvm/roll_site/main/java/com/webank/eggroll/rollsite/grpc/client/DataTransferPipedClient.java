@@ -20,20 +20,18 @@ import com.google.common.base.Preconditions;
 import com.webank.ai.eggroll.api.core.BasicMeta;
 import com.webank.ai.eggroll.api.networking.proxy.DataTransferServiceGrpc;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
-import com.webank.ai.eggroll.api.networking.proxy.Proxy.Packet;
-import com.webank.eggroll.core.concurrent.AwaitSettableFuture;
 import com.webank.eggroll.core.grpc.client.GrpcClientContext;
 import com.webank.eggroll.core.grpc.client.GrpcClientTemplate;
-import com.webank.eggroll.core.grpc.observer.SameTypeFutureCallerResponseStreamObserver;
+import com.webank.eggroll.core.util.ErrorUtils;
 import com.webank.eggroll.core.util.ToStringUtils;
 import com.webank.eggroll.rollsite.factory.ProxyGrpcStreamObserverFactory;
 import com.webank.eggroll.rollsite.factory.ProxyGrpcStubFactory;
 import com.webank.eggroll.rollsite.grpc.observer.PushClientResponseStreamObserver;
 import com.webank.eggroll.rollsite.infra.Pipe;
+import com.webank.eggroll.rollsite.model.ProxyServerConf;
 import com.webank.eggroll.rollsite.service.FdnRouter;
 import io.grpc.stub.StreamObserver;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -42,7 +40,6 @@ import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
-import com.webank.eggroll.core.util.ErrorUtils;
 
 @Component
 @Scope("prototype")
@@ -54,6 +51,8 @@ public class DataTransferPipedClient {
     private ProxyGrpcStreamObserverFactory proxyGrpcStreamObserverFactory;
     @Autowired
     private FdnRouter fdnRouter;
+    @Autowired
+    private ProxyServerConf proxyServerConf;
     private BasicMeta.Endpoint endpoint;
     private boolean needSecureChannel;
     private long MAX_AWAIT_HOURS = 24;
@@ -78,10 +77,13 @@ public class DataTransferPipedClient {
 
         context.setStubClass(DataTransferServiceGrpc.DataTransferServiceStub.class);
 
+        needSecureChannel = proxyServerConf.isSecureServer();
+
         //.setCallerStreamObserverClassAndInitArgs(SameTypeCallerResponseStreamObserver.class)
         LOGGER.info("ip: {}, Port: {}", endpoint.getIp(), endpoint.getPort());
         context.setStubClass(DataTransferServiceGrpc.DataTransferServiceStub.class)
             .setServerEndpoint(endpoint.getIp(), endpoint.getPort())
+            .setSecureRequest(needSecureChannel)
             .setCallerStreamingMethodInvoker(DataTransferServiceGrpc.DataTransferServiceStub::push)
             .setCallerStreamObserverClassAndInitArgs(PushClientResponseStreamObserver.class, pipe)
             .setRequestStreamProcessorClassAndArgs(PushStreamProcessor.class, pipe);
@@ -111,7 +113,7 @@ public class DataTransferPipedClient {
             LOGGER.info("[DEBUG][CLUSTERCOMM] proxyClient not inited yet");
 
             try {
-                Thread.sleep(1000);
+                Thread.sleep(50);
             } catch (InterruptedException e) {
                 LOGGER.error("error in doPush: " + ExceptionUtils.getStackTrace(e));
                 Thread.currentThread().interrupt();
@@ -194,7 +196,7 @@ public class DataTransferPipedClient {
     public void unaryCall(Proxy.Packet packet, Pipe pipe) {
         Preconditions.checkNotNull(packet);
         Proxy.Metadata header = packet.getHeader();
-        LOGGER.info("[UNARYCALL][CLIENT] client send unary call to server: {}", header);
+        LOGGER.info("[UNARYCALL][CLIENT] client send unary call to server: {}", ToStringUtils.toOneLineString(header));
         //LOGGER.info("[UNARYCALL][CLIENT] packet: {}", toStringUtils.toOneLineString(packet));
 
         DataTransferServiceGrpc.DataTransferServiceStub stub = getStub(
@@ -206,7 +208,7 @@ public class DataTransferPipedClient {
         stub.unaryCall(packet, responseObserver);
 
         LOGGER.info("[UNARYCALL][CLIENT] unary call stub: {}, metadata: {}",
-                stub.getChannel(), header);
+                stub.getChannel(), ToStringUtils.toOneLineString(header));
 
         try {
             finishLatch.await(MAX_AWAIT_HOURS, TimeUnit.HOURS);

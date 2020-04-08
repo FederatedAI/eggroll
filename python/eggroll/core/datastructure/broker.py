@@ -16,6 +16,7 @@ import queue
 import time
 from queue import Queue
 
+from eggroll.core.conf_keys import CoreConfKeys
 from eggroll.utils.log_utils import get_logger
 
 L = get_logger()
@@ -61,6 +62,7 @@ class Broker(object):
     def drain_to(self, target, max_elements=10000):
         raise NotImplementedError()
 
+
 class BrokerClosed(Exception):
     'Exception raised by eggroll Broker'
     pass
@@ -70,13 +72,16 @@ class FifoBroker(Broker):
     __broker_seq = 0
 
     # todo:1: make maxsize configurable
-    def __init__(self, max_capacity=10000, writers=1,
+    def __init__(self,
+            maxsize=CoreConfKeys.EGGROLL_CORE_FIFOBROKER_DEFAULT_SIZE.default_value,
+            writers=1,
             name=f"fifobroker-{time.time()}-{__broker_seq}"):
         FifoBroker.__broker_seq += 1
-        self.__max_capacity = max_capacity
-        self.__queue = Queue(maxsize=max_capacity)
+        self.__max_capacity = maxsize
+        self.__queue = Queue(maxsize=maxsize)
         self.__active_writers = writers
         self.__total_writers = writers
+        self.__name = name
 
     def get_total_writers(self):
         return self.__total_writers

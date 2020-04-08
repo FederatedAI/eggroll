@@ -22,7 +22,7 @@ from eggroll.roll_pair.test.roll_pair_test_assets import get_debug_test_context,
 
 is_debug = os.environ.get("EGGROLL_STANDALONE_DEBUG", "false").lower() in ("t", "true", "yes", "y", 1)
 is_standalone = False
-# cm_host="172.16.153.19"
+# cm_host="192.168.0.1"
 #cm_host = "127.0.0.1"
 # cm_port="4680"
 cm_port = "4670"

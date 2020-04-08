@@ -25,7 +25,6 @@
         <groupId>com.webank.eggroll</groupId>
         <artifactId>eggroll-all</artifactId>
         <version>${eggroll.version}</version>
-        <relativePath>../pom.xml</relativePath>
     </parent>
 
     <artifactId>eggroll-roll-frame</artifactId>
@@ -33,92 +32,61 @@
 
     <dependencies>
         <dependency>
-            <groupId>org.apache.arrow</groupId>
-            <artifactId>arrow-memory</artifactId>
-            <version>${arrow.version}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>io.netty</groupId>
-                    <artifactId>netty-buffer</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>io.netty</groupId>
-                    <artifactId>netty-common</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-
-        <dependency>
-            <groupId>org.apache.arrow</groupId>
-            <artifactId>arrow-vector</artifactId>
-            <version>${arrow.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>io.netty</groupId>
-            <artifactId>netty-all</artifactId>
-            <version>${netty.version}</version>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-core_2.11</artifactId>
+            <version>${spark.version}</version>
         </dependency>
         <dependency>
-            <artifactId>eggroll-core</artifactId>
-            <groupId>com.webank.eggroll</groupId>
-            <version>${eggroll.version}</version>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-streaming_2.11</artifactId>
+            <version>${spark.version}</version>
         </dependency>
-    </dependencies>
+        <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-sql_2.11</artifactId>
+            <version>${spark.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-hive_2.11</artifactId>
+            <version>${spark.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-mllib_2.11</artifactId>
+            <version>${spark.version}</version>
+        </dependency>
+    <dependency>
+        <groupId>org.apache.arrow</groupId>
+        <artifactId>arrow-memory</artifactId>
+        <version>${arrow.version}</version>
+        <exclusions>
+            <exclusion>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-buffer</artifactId>
+            </exclusion>
+            <exclusion>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-common</artifactId>
+            </exclusion>
+        </exclusions>
+    </dependency>
 
-    <build>
-<!--        <extensions>
-            &lt;!&ndash; os-maven-plugin &ndash;&gt;
-            <extension>
-                <groupId>kr.motd.maven</groupId>
-                <artifactId>os-maven-plugin</artifactId>
-                <version>${os-maven-plugin.version}</version>
-            </extension>
-        </extensions>-->
-        <plugins>
-<!--            <plugin>
-                <groupId>net.alchim31.maven</groupId>
-                <artifactId>scala-maven-plugin</artifactId>
-                <version>3.2.2</version>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>compile</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>-->
-            <!-- protobuf-maven-plugin -->
-            <plugin>
-                <groupId>org.xolstice.maven.plugins</groupId>
-                <artifactId>protobuf-maven-plugin</artifactId>
-                <version>${protobuf-maven-plugin.version}</version>
-                <configuration>
-                    <forceMojoExecution>true</forceMojoExecution>
-                    <protocArtifact>com.google.protobuf:protoc:${protobuf.version}:exe:${os.detected.classifier}
-                    </protocArtifact>
-                    <pluginId>grpc-java</pluginId>
-                    <pluginArtifact>io.grpc:protoc-gen-grpc-java:${grpc.version}:exe:${os.detected.classifier}
-                    </pluginArtifact>
-                    <protoSourceRoot>${basedir}/proto</protoSourceRoot>
-                </configuration>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>compile</goal>
-                            <goal>compile-custom</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-<!--            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <source>8</source>
-                    <target>8</target>
-                </configuration>
-            </plugin>-->
-        </plugins>
-    </build>
-</project>
+    <dependency>
+        <groupId>org.apache.arrow</groupId>
+        <artifactId>arrow-vector</artifactId>
+        <version>${arrow.version}</version>
+    </dependency>
+
+    <dependency>
+        <groupId>io.netty</groupId>
+        <artifactId>netty-all</artifactId>
+        <version>${netty.version}</version>
+    </dependency>
+    <dependency>
+        <artifactId>eggroll-core</artifactId>
+        <groupId>com.webank.eggroll</groupId>
+        <version>${eggroll.version}</version>
+    </dependency>
+</dependencies>
+        </project>

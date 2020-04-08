@@ -25,7 +25,7 @@ from eggroll.core.conf_keys import ClusterManagerConfKeys, NodeManagerConfKeys
 from eggroll.core.constants import SerdesTypes
 from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.meta_model import ErEndpoint, ErServerNode, ErServerCluster, \
-    ErProcessor
+    ErProcessor, ErStoreList
 from eggroll.core.meta_model import ErStore, ErSessionMeta
 from eggroll.core.proto import command_pb2_grpc
 from eggroll.core.utils import _to_proto_string, _map_and_listify
@@ -42,6 +42,7 @@ class CommandCallError(Exception):
 
 
 class CommandClient(object):
+    executor = ThreadPoolExecutor(max_workers=50, thread_name_prefix="command_client")
     def __init__(self):
         self._channel_factory = GrpcChannelFactory()
 
@@ -73,22 +74,24 @@ class CommandClient(object):
             else:
                 return []
         except Exception as e:
-            L.exception(f'Error calling to {endpoint}, command_uri: {command_uri}, req:{request}')
+            L.error(f'Error calling to {endpoint}, command_uri: {command_uri}, req:{request}')
             raise CommandCallError(command_uri, endpoint, e)
 
-    def async_call(self, args, output_types: list, command_uri: CommandURI, serdes_type=SerdesTypes.PROTOBUF, parallel_size=5):
+    def async_call(self, args, output_types: list, command_uri: CommandURI, serdes_type=SerdesTypes.PROTOBUF, callback=None):
         futures = list()
-        with ThreadPoolExecutor(max_workers=parallel_size) as executor:
-            for inputs, endpoint in args:
-                f = executor.submit(self.sync_send, inputs=inputs, output_types=output_types, endpoint=endpoint, command_uri=command_uri, serdes_type=serdes_type)
-                futures.append(f)
+        for inputs, endpoint in args:
+            f = self.executor.submit(self.sync_send, inputs=inputs, output_types=output_types, endpoint=endpoint, command_uri=command_uri, serdes_type=serdes_type)
+            if callback:
+                f.add_done_callback(callback)
+            futures.append(f)
 
         return futures
 
 
 class ClusterManagerClient(object):
-
-    def __init__(self, options={}):
+    def __init__(self, options=None):
+        if options is None:
+            options = {}
         static_er_conf = get_static_er_conf()
         host = options.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST, static_er_conf.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST, None))
         port = options.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, static_er_conf.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, None))
@@ -146,11 +149,18 @@ class ClusterManagerClient(object):
                 serdes_type=self.__serdes_type)
 
     def delete_store(self, input: ErStore):
-        return self.__check_processors(self.__do_sync_request_internal(
+        return self.__do_sync_request_internal(
                 input=input,
                 output_type=ErStore,
                 command_uri=MetadataCommands.DELETE_STORE,
-                serdes_type=self.__serdes_type))
+                serdes_type=self.__serdes_type)
+
+    def get_store_from_namespace(self, input):
+        return self.__do_sync_request_internal(
+            input=input,
+            output_type=ErStoreList,
+            command_uri=MetadataCommands.GET_STORE_FROM_NAMESPACE,
+            serdes_type=self.__serdes_type)
 
     def get_or_create_session(self, input: ErSessionMeta):
         return self.__check_processors(
@@ -216,7 +226,9 @@ class ClusterManagerClient(object):
 
 
 class NodeManagerClient(object):
-    def __init__(self, options={NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HOST: 'localhost', NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT: 9394}):
+    def __init__(self, options: dict = None):
+        if options is None:
+            options = {}
         self.__endpoint = ErEndpoint(options[NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HOST], int(options[NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT]))
         if 'serdes_type' in options:
             self.__serdes_type = options['serdes_type']

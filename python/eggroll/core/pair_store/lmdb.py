@@ -12,8 +12,8 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-import platform
 import os
+import platform
 import threading
 
 import lmdb
@@ -26,55 +26,8 @@ L = get_logger()
 
 #64 * 1024 * 1024
 LMDB_MAP_SIZE = 16 * 4_096 * 244_140    # follows storage-service-cxx's config here
-LMDB_MAP_SIZE_WINDOWS = 200 * 1024 * 1024 * 10
+LMDB_MAP_SIZE_WINDOWS_OS = 40 * 1024 * 1024
 DEFAULT_DB = b'main'
-
-
-class LmdbIterator(PairIterator):
-    def __init__(self, adapter):
-        L.info("create lmdb iterator")
-        self.adapter = adapter
-        # with LmdbAdapter.env_lock:
-        self.txn_r = adapter.env.begin(db=adapter.sub_db, write=False)
-        self.cursor = self.txn_r.cursor()
-
-    # move cursor to the first key position
-    # return True if success or False if db is empty
-    def first(self):
-        return self.cursor.first()
-
-    # same as first() but last key position
-    def last(self):
-        return self.cursor.last()
-
-    # return the current key
-    def key(self):
-        return self.cursor.key()
-
-    def close(self):
-        self.cursor.close()
-        self.txn_r.commit()
-
-    def __iter__(self):
-        return self.cursor.__iter__()
-
-class LmdbWriteBatch(PairWriteBatch):
-
-    def __init__(self, adapter, txn):
-        self.adapter = adapter
-        self.txn = txn
-
-    def put(self, k, v):
-        self.txn.put(k, v)
-
-    def delete(self, k):
-        self.txn.delete(k)
-
-    def write(self):
-        pass
-
-    def close(self):
-        pass
 
 
 class LmdbAdapter(PairAdapter):
@@ -102,13 +55,15 @@ class LmdbAdapter(PairAdapter):
         with LmdbAdapter.env_lock:
             super().__init__(options)
             self.path = options["path"]
-            lmdb_map_size = options.get("lmdb_map_size", LMDB_MAP_SIZE if platform.system() != 'Windows' else LMDB_MAP_SIZE_WINDOWS)
-            create_if_missing = bool(options.get("create_if_missing", "True"))
+            lmdb_map_size = options.get("lmdb_map_size", LMDB_MAP_SIZE if platform.system() != 'Windows' else LMDB_MAP_SIZE_WINDOWS_OS)
+            create_if_missing = (str(options.get("create_if_missing", "True")).lower() == 'true')
             if self.path not in LmdbAdapter.env_dict:
                 if create_if_missing:
                     os.makedirs(self.path, exist_ok=True)
                 L.debug("lmdb init create env:{}".format(self.path))
                 writemap = False if platform.system() == 'Darwin' else True
+                if not os.path.exists(self.path):
+                    os.makedirs(self.path, exist_ok=True)
                 self.env = lmdb.open(self.path, create=create_if_missing, max_dbs=128, sync=False, map_size=lmdb_map_size, writemap=writemap)
                 self.sub_db = self.env.open_db(DEFAULT_DB)
                 LmdbAdapter.count_dict[self.path] = 0
@@ -125,14 +80,14 @@ class LmdbAdapter(PairAdapter):
         if self.txn_w:
             return
         # with LmdbAdapter.env_lock:
-        L.debug("lmdb init write:" + self.path)
+        L.debug(f"lmdb init write: {self.path}, path in options: {self.options['path']}")
         self.txn_w = self.env.begin(db=self.sub_db, write=True)
 
     def _init_read(self):
         if self.txn_r:
             return
         # with LmdbAdapter.env_lock:
-        L.debug("lmdb init read:" + self.path)
+        L.debug(f"lmdb init read: {self.path}, path in options: {self.options['path']}")
         self.txn_r = self.env.begin(db=self.sub_db, write=False)
         self.cursor = self.txn_r.cursor()
 
@@ -147,15 +102,18 @@ class LmdbAdapter(PairAdapter):
         self.close()
 
     def close(self):
-        if self.txn_r:
-            self.txn_r.commit()
-            self.cursor.close()
-        if self.txn_w:
-            self.txn_w.commit()
+        if not self.env:
+            return
         with LmdbAdapter.env_lock:
+            if self.txn_r:
+                self.txn_r.commit()
+                self.cursor.close()
+            if self.txn_w:
+                self.txn_w.commit()
             if self.env:
                 count = LmdbAdapter.count_dict[self.path]
                 if not count or count - 1 <= 0:
+                    L.debug(f"LmdbAdapter: actually closing {self.path}")
                     try:
                         self.env.close()
                     except:
@@ -195,3 +153,62 @@ class LmdbAdapter(PairAdapter):
                 L.debug("finish destroy, path:{}".format(self.path))
         except:
             L.info("path :{} has destroyed".format(self.path))
+
+    def is_sorted(self):
+        return True
+
+
+class LmdbIterator(PairIterator):
+    def __init__(self, adapter: LmdbAdapter):
+        L.info(f"creating lmdb iterator for {adapter.path}")
+        self.adapter = adapter
+        # with LmdbAdapter.env_lock:
+        self.txn_r = adapter.env.begin(db=adapter.sub_db, write=False)
+        self.cursor = self.txn_r.cursor()
+        L.info(f"created lmdb iterator for {adapter.path}")
+
+    #seek for key, if key not exits then seek to nearby key
+    def seek(self, key):
+        return self.cursor.set_range(key)
+
+    # move cursor to the first key position
+    # return True if success or False if db is empty
+    def first(self):
+        return self.cursor.first()
+
+    # same as first() but last key position
+    def last(self):
+        return self.cursor.last()
+
+    # return the current key
+    def key(self):
+        return self.cursor.key()
+
+    def close(self):
+        self.cursor.close()
+        self.txn_r.commit()
+
+    def __iter__(self):
+        return self.cursor.__iter__()
+
+
+class LmdbWriteBatch(PairWriteBatch):
+    def __init__(self, adapter: LmdbAdapter, txn):
+        L.info(f'creating lmdb write batch for {adapter.path}')
+        self.adapter = adapter
+        self.txn = txn
+
+    def put(self, k, v):
+        self.txn.put(k, v)
+
+    def get(self, k):
+        return self.txn.get(k)
+
+    def delete(self, k):
+        self.txn.delete(k)
+
+    def write(self):
+        pass
+
+    def close(self):
+        pass

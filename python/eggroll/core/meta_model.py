@@ -15,7 +15,8 @@
 
 from eggroll.core.base_model import RpcMessage
 from eggroll.core.proto import meta_pb2
-from eggroll.core.utils import _map_and_listify, _repr_list, _elements_to_proto, _to_proto, _from_proto
+from eggroll.core.utils import _map_and_listify, _repr_list, _repr_bytes, \
+    _elements_to_proto, _to_proto, _from_proto, _stringify_dict
 
 DEFAULT_DELIM = '/'
 
@@ -31,19 +32,34 @@ class ErEndpoint(RpcMessage):
     def to_proto(self):
         return meta_pb2.Endpoint(host=self._host, port=self._port)
 
-    @staticmethod
-    def from_proto(pb_message):
+    def to_proto_string(self):
+        return self.to_proto().SerializeToString()
+
+    @classmethod
+    def from_proto(cls, pb_message):
         return ErEndpoint(host=pb_message.host, port=pb_message.port)
+
+    @classmethod
+    def from_proto_string(cls, pb_string):
+        pb_message = meta_pb2.Endpoint()
+        msg_len = pb_message.ParseFromString(pb_string)
+        return cls.from_proto(pb_message)
 
     def __str__(self):
         return f'{self._host}:{self._port}'
 
     def __repr__(self):
-        return f'ErEndpoint(host={self._host}, port={self._port})'
+        return f'<ErEndpoint(host={self._host}, port={self._port}) at {hex(id(self))}>'
 
 
 class ErServerNode(RpcMessage):
-    def __init__(self, id: int = -1, name: str = '', cluster_id: int = 0, endpoint: ErEndpoint = None, node_type: str = '', status: str = ''):
+    def __init__(self,
+            id: int = -1,
+            name: str = '',
+            cluster_id: int = 0,
+            endpoint: ErEndpoint = None,
+            node_type: str = '',
+            status: str = ''):
         self._id = id
         self._name = name
         self._cluster_id = cluster_id
@@ -78,11 +94,20 @@ class ErServerNode(RpcMessage):
         return ErServerNode.from_proto(pb_message)
 
     def __repr__(self):
-        return f'ErServerNode(id={repr(self._id)}, name={self._name}, cluster_id={repr(self._cluster_id)}, endpoint={repr(self._endpoint)}, node_type={self._node_type}, status={self._status})'
+        return f'<ErServerNode(' \
+               f'id={repr(self._id)}, ' \
+               f'name={self._name}, ' \
+               f'cluster_id={repr(self._cluster_id)}, ' \
+               f'endpoint={repr(self._endpoint)}, ' \
+               f'node_type={self._node_type}, ' \
+               f'status={self._status}) ' \
+               f'at {hex(id(self))}>'
 
 
 class ErServerCluster(RpcMessage):
-    def __init__(self, id: int, name: str, server_nodes = list(), tag: str = ''):
+    def __init__(self, id: int, name: str, server_nodes: list = None, tag: str = ''):
+        if server_nodes is None:
+            server_nodes = []
         self._id = id
         self._name = name
         self._server_nodes = server_nodes
@@ -108,7 +133,12 @@ class ErServerCluster(RpcMessage):
         return ErServerCluster.from_proto(pb_message)
 
     def __repr__(self):
-        return f'ErServerCluster(id={repr(self._id)}, name={self._name}, server_nodes={_repr_list(self._server_nodes)}, tag={self._tag})'
+        return f'<ErServerCluster(' \
+               f'id={repr(self._id)}, ' \
+               f'name={self._name}, ' \
+               f'server_nodes={_repr_list(self._server_nodes)}, ' \
+               f'tag={self._tag}) ' \
+               f'at {hex(id(self))}>'
 
 
 class ErProcessor(RpcMessage):
@@ -120,8 +150,11 @@ class ErProcessor(RpcMessage):
             status='',
             command_endpoint: ErEndpoint = None,
             transfer_endpoint: ErEndpoint = None,
-            options = {},
+            pid: int = -1,
+            options: dict = None,
             tag=''):
+        if options is None:
+            options = {}
         self._id = id
         self._server_node_id = server_node_id
         self._name = name
@@ -129,6 +162,7 @@ class ErProcessor(RpcMessage):
         self._status = status
         self._command_endpoint = command_endpoint
         self._transfer_endpoint = transfer_endpoint if transfer_endpoint else command_endpoint
+        self._pid = pid
         self._options = options
         self._tag = tag
 
@@ -145,7 +179,8 @@ class ErProcessor(RpcMessage):
                                   status=self._status,
                                   commandEndpoint=self._command_endpoint.to_proto(),
                                   transferEndpoint=self._transfer_endpoint.to_proto(),
-                                  options=self._options,
+                                  pid=self._pid,
+                                  options=_stringify_dict(self._options),
                                   tag=self._tag)
 
     def to_proto_string(self):
@@ -160,7 +195,8 @@ class ErProcessor(RpcMessage):
                            status=pb_message.status,
                            command_endpoint=ErEndpoint.from_proto(pb_message.commandEndpoint),
                            transfer_endpoint=ErEndpoint.from_proto(pb_message.transferEndpoint),
-                           options=pb_message.options,
+                           pid=pb_message.pid,
+                           options=dict(pb_message.options),
                            tag=pb_message.tag)
 
     @staticmethod
@@ -170,17 +206,23 @@ class ErProcessor(RpcMessage):
         return ErProcessor.from_proto(pb_message)
 
     def __repr__(self):
-        return f'ErProcessor(id={repr(self._id)}, ' \
+        return f'<ErProcessor(id={repr(self._id)}, ' \
                f'server_node_id={self._server_node_id}, ' \
                f'name={self._name}, ' \
-               f'processor_type={self._processor_type}, status={self._status}, ' \
+               f'processor_type={self._processor_type}, ' \
+               f'status={self._status}, ' \
                f'command_endpoint={repr(self._command_endpoint)},' \
                f'transfer_endpoint={repr(self._transfer_endpoint)}, ' \
-               f'options=[{self._options}], tag={self._tag})'
+               f'pid={self._pid}, ' \
+               f'options=[{repr(self._options)}], ' \
+               f'tag={self._tag}) ' \
+               f'at {hex(id(self))}>'
 
 
 class ErProcessorBatch(RpcMessage):
-    def __init__(self, id = -1, name: str = '', processors=list(), tag: str = ''):
+    def __init__(self, id=-1, name: str = '', processors: list = None, tag: str = ''):
+        if processors is None:
+            processors = []
         self._id = id
         self._name = name
         self._processors = processors
@@ -209,25 +251,40 @@ class ErProcessorBatch(RpcMessage):
         return ErProcessorBatch.from_proto(pb_message)
 
     def __repr__(self):
-        return f'ErProcessorBatch(id={repr(self._id)}, name={self._name}, processors=[{_repr_list(self._processors)}], tag={self._tag})'
+        return f'<ErProcessorBatch(' \
+               f'id={repr(self._id)}, ' \
+               f'name={self._name}, ' \
+               f'processors=[{_repr_list(self._processors)}], ' \
+               f'tag={self._tag}) ' \
+               f'at {hex(id(self))}>'
 
 
 class ErFunctor(RpcMessage):
-    def __init__(self, name='', serdes='', body=b'', options=dict()):
+    def __init__(self, name='', serdes='', body=b'', options: dict = {}):
+        if options is None:
+            options = {}
         self._name = name
         self._serdes = serdes
         self._body = body
         self._options = options
 
     def to_proto(self):
-        return meta_pb2.Functor(name=self._name, serdes=self._serdes, body=self._body, options=self._options)
+        return meta_pb2.Functor(name=self._name, serdes=self._serdes, body=self._body, options=_stringify_dict(self._options))
+
+    def to_proto_string(self):
+        return self.to_proto().SerializeT
 
     @staticmethod
     def from_proto(pb_message):
-        return ErFunctor(name=pb_message.name, serdes=pb_message.serdes, body=pb_message.body, options=pb_message.options)
+        return ErFunctor(name=pb_message.name, serdes=pb_message.serdes, body=pb_message.body, options=dict(pb_message.options))
 
     def __repr__(self):
-        return f'ErFunctor(name={self._name}, serdes={self._serdes}, body=***;{len(self._body)}, options=[{self._options}])'
+        return f'<ErFunctor(' \
+               f'name={repr(self._name)}, ' \
+               f'serdes={repr(self._serdes)}, ' \
+               f'body={_repr_bytes(self._body)}, ' \
+               f'options=[{repr(self._options)}]) ' \
+               f'at {hex(id(self))}>'
 
 
 class ErPair(RpcMessage):
@@ -252,15 +309,23 @@ class ErPair(RpcMessage):
         return ErPair.from_proto(pb_message)
 
     def __repr__(self):
-        return f'ErPair(key={self._key}, value={self._value})'
+        return f'<ErPair(' \
+               f'key={_repr_bytes(self._key)}, ' \
+               f'value={_repr_bytes(self._value)}) ' \
+               f'at {hex(id(self))}>'
 
 
 class ErPairBatch(RpcMessage):
-    def __init__(self, pairs=list()):
+    def __init__(self, pairs: list = None):
+        if pairs is None:
+            pairs = []
         self._pairs = pairs
 
     def to_proto(self):
         return meta_pb2.PairBatch(pairs=_elements_to_proto(self._pairs))
+
+    def to_proto_string(self):
+        return self.to_proto().SerializeToString()
 
     @staticmethod
     def from_proto(pb_message):
@@ -273,7 +338,8 @@ class ErPairBatch(RpcMessage):
         return ErPairBatch.from_proto(pb_message)
 
     def __repr__(self):
-        return f'ErPairBatch(pairs={_repr_list(self._pairs)})'
+        return f'<ErPairBatch(pairs={_repr_list(self._pairs)}) ' \
+               f'at {hex(id(self))}>'
 
 
 class ErStoreLocator(RpcMessage):
@@ -312,13 +378,13 @@ class ErStoreLocator(RpcMessage):
                               partitioner=pb_message.partitioner,
                               serdes=pb_message.serdes)
 
-    def to_path(self, delim = DEFAULT_DELIM):
+    def to_path(self, delim=DEFAULT_DELIM):
         if not self._path:
             delim.join([self._store_type, self._namespace, self._name])
         return self._path
 
     def __repr__(self):
-        return f'ErStoreLocator(id={self._id}, store_type={self._store_type}, namespace={self._namespace}, name={self._name}, path={self._path}, total_partitions={self._total_partitions}, partitioner={self._partitioner}, serdes={self._serdes})'
+        return f'<ErStoreLocator(id={self._id}, store_type={self._store_type}, namespace={self._namespace}, name={self._name}, path={self._path}, total_partitions={self._total_partitions}, partitioner={self._partitioner}, serdes={self._serdes}) at {hex(id(self))}>'
 
 
 class ErPartition(RpcMessage):
@@ -333,6 +399,9 @@ class ErPartition(RpcMessage):
                                   storeLocator=self._store_locator.to_proto() if self._store_locator else None,
                                   processor=self._processor.to_proto() if self._processor else None)
 
+    def to_proto_string(self):
+        return self.to_proto().SerializeToString()
+
     @staticmethod
     def from_proto(pb_message):
         return ErPartition(id=pb_message.id,
@@ -344,11 +413,19 @@ class ErPartition(RpcMessage):
         return DEFAULT_DELIM.join([self._store_locator.to_path(delim=delim), self._id])
 
     def __repr__(self):
-        return f'ErPartition(id={repr(self._id)}, store_locator={repr(self._store_locator)}, processor={repr(self._processor)})'
+        return f'<ErPartition(' \
+               f'id={repr(self._id)}, ' \
+               f'store_locator={repr(self._store_locator)}, ' \
+               f'processor={repr(self._processor)}) ' \
+               f'at {hex(id(self))}>'
 
 
 class ErStore(RpcMessage):
-    def __init__(self, store_locator: ErStoreLocator, partitions=list(), options=dict()):
+    def __init__(self, store_locator: ErStoreLocator, partitions: list = None, options: dict = None):
+        if partitions is None:
+            partitions = []
+        if options is None:
+            options = {}
         self._store_locator = store_locator
         self._partitions = partitions
         self._options = options
@@ -356,20 +433,20 @@ class ErStore(RpcMessage):
     def to_proto(self):
         return meta_pb2.Store(storeLocator=self._store_locator.to_proto(),
                               partitions=_elements_to_proto(self._partitions),
-                              options=self._options)
+                              options=_stringify_dict(self._options))
 
     def to_proto_string(self):
         return self.to_proto().SerializeToString()
 
-    def to_path(self, delim = DEFAULT_DELIM):
-        return self._store_locator.to_path(DEFAULT_DELIM)
+    def to_path(self, delim=DEFAULT_DELIM):
+        return self._store_locator.to_path(delim)
 
     @staticmethod
     def from_proto(pb_message):
         return ErStore(
                 store_locator=ErStoreLocator.from_proto(pb_message.storeLocator),
                 partitions=_map_and_listify(ErPartition.from_proto, pb_message.partitions),
-                options=pb_message.options)
+                options=dict(pb_message.options))
 
     @staticmethod
     def from_proto_string(pb_string):
@@ -378,17 +455,50 @@ class ErStore(RpcMessage):
         return ErStore.from_proto(pb_message)
 
     def __repr__(self):
-        return f'ErStore(store_locator={repr(self._store_locator)}, partitions=[{_repr_list(self._partitions)}], options=[{repr(self._options)}])'
+        return f'<ErStore(' \
+               f'store_locator={repr(self._store_locator)}, ' \
+               f'partitions=[{_repr_list(self._partitions)}], ' \
+               f'options=[{repr(self._options)}]) ' \
+               f'at {hex(id(self))}>'
 
+
+class ErStoreList(RpcMessage):
+    def __init__(self, stores=list()):
+        self._stores = stores
+
+    def to_proto(self):
+        return meta_pb2.StoreList(stores=_elements_to_proto(self._stores))
+
+    @staticmethod
+    def from_proto(pb_message):
+        return ErStoreList(_map_and_listify(ErStore.from_proto, pb_message.stores))
+
+    @staticmethod
+    def from_proto_string(pb_string):
+        pb_message = meta_pb2.StoreList()
+        msg_len = pb_message.ParseFromString(pb_string)
+        return ErStoreList.from_proto(pb_message)
+
+    def __repr__(self):
+        return f'ErStoreList(stores={_repr_list(self._stores)})'
 
 class ErJob(RpcMessage):
     def __init__(self,
             id: str,
             name: str = '',
-            inputs=list(),
-            outputs=list(),
-            functors=list(),
-            options=dict()):
+            inputs: list = None,
+            outputs: list = None,
+            functors: list = None,
+            options: dict = None):
+        if inputs is None:
+            inputs = []
+        if outputs is None:
+            outputs = []
+        if functors is None:
+            functors = []
+        if options is None:
+            options = {}
+
         self._id = id
         self._name = name
         self._inputs = inputs
@@ -402,7 +512,7 @@ class ErJob(RpcMessage):
                             inputs=_elements_to_proto(self._inputs),
                             outputs=_elements_to_proto(self._outputs),
                             functors=_elements_to_proto(self._functors),
-                            options=self._options)
+                            options=_stringify_dict(self._options))
 
     def to_proto_string(self):
         return self.to_proto().SerializeToString()
@@ -415,7 +525,7 @@ class ErJob(RpcMessage):
                      outputs=_map_and_listify(ErStore.from_proto, pb_message.outputs),
                      functors=_map_and_listify(ErFunctor.from_proto,
                                                pb_message.functors),
-                     options=pb_message.options)
+                     options=dict(pb_message.options))
 
     @staticmethod
     def from_proto_string(pb_string):
@@ -424,12 +534,27 @@ class ErJob(RpcMessage):
         return ErJob.from_proto(pb_message)
 
     def __repr__(self):
-        return f'ErJob(id={self._id}, name={self._name}, inputs=[{_repr_list(self._inputs)}], outputs=[{_repr_list(self._outputs)}], functors=[{len(self._functors)}], options={self._options})'
+        return f'<ErJob(' \
+               f'id={self._id}, ' \
+               f'name={self._name}, ' \
+               f'inputs=[{_repr_list(self._inputs)}], ' \
+               f'outputs=[{_repr_list(self._outputs)}], ' \
+               f'functors=[{len(self._functors)}], ' \
+               f'options={repr(self._options)}) ' \
+               f'at {hex(id(self))}>'
 
 
 class ErTask(RpcMessage):
-    def __init__(self, id: str, name='', inputs=list(), outputs=list(),
+    def __init__(self,
+            id: str,
+            name='',
+            inputs: list = None,
+            outputs: list = None,
             job: ErJob = None):
+        if inputs is None:
+            inputs = []
+        if outputs is None:
+            outputs = []
         self._id = id
         self._name = name
         self._inputs = inputs
@@ -463,7 +588,13 @@ class ErTask(RpcMessage):
         return ErTask.from_proto(pb_message)
 
     def __repr__(self):
-        return f'ErTask(id={self._id}, name={self._name}, inputs=[{_repr_list(self._inputs)}], outputs=[{_repr_list(self._outputs)}], job={self._job})'
+        return f'<ErTask(' \
+               f'id={self._id}, ' \
+               f'name={self._name}, ' \
+               f'inputs=[{_repr_list(self._inputs)}], ' \
+               f'outputs=[{_repr_list(self._outputs)}], ' \
+               f'job={repr(self._job)}) ' \
+               f'at {hex(id(self))}>'
 
     def get_endpoint(self):
         if not self._inputs or len(self._inputs) == 0:
@@ -476,8 +607,19 @@ class ErTask(RpcMessage):
 
         return node._endpoint
 
+
 class ErSessionMeta(RpcMessage):
-    def __init__(self, id='', name: str = '', status: str = '', tag: str = '', processors=list(), options={}):
+    def __init__(self,
+            id='',
+            name: str = '',
+            status: str = '',
+            tag: str = '',
+            processors: list = None,
+            options: dict = None):
+        if processors is None:
+            processors = []
+        if options is None:
+            options = {}
         self._id = id
         self._name = name
         self._status = status
@@ -497,7 +639,7 @@ class ErSessionMeta(RpcMessage):
                                     status=self._status,
                                     tag=self._tag,
                                     processors=_elements_to_proto(self._processors),
-                                    options=self._options)
+                                    options=_stringify_dict(self._options))
 
     def to_proto_string(self):
         return self.to_proto().SerializeToString()
@@ -510,7 +652,7 @@ class ErSessionMeta(RpcMessage):
                              tag=pb_message.tag,
                              processors=_map_and_listify(ErProcessor.from_proto,
                                                          pb_message.processors),
-                             options=pb_message.options)
+                             options=dict(pb_message.options))
 
     @staticmethod
     def from_proto_string(pb_string):
@@ -519,7 +661,11 @@ class ErSessionMeta(RpcMessage):
         return ErSessionMeta.from_proto(pb_message)
 
     def __repr__(self):
-        return f'ErSessionMeta(id={self._id}, name={self._name}, ' \
-               f'status={self._status}, tag={self._tag}, ' \
+        return f'<ErSessionMeta(' \
+               f'id={self._id}, ' \
+               f'name={self._name}, ' \
+               f'status={self._status}, ' \
+               f'tag={self._tag}, ' \
                f'processors=[{_repr_list(self._processors)}], ' \
-               f'options=[{self._options}])'
+               f'options=[{repr(self._options)}]) ' \
+               f'at {hex(id(self))}>'

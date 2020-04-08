@@ -90,7 +90,7 @@ class TestIo {
     val ctx = new RollPairContext(new ErSession(sid, options=options))
     val rp = ctx.load("ns1","testPutBatch")
 
-    var directBinPacketBuffer: ByteBuffer = ByteBuffer.allocateDirect(1<<10)
+    var directBinPacketBuffer: ByteBuffer = ByteBuffer.allocateDirect(32 << 20)
     directBinPacketBuffer.order(ByteOrder.BIG_ENDIAN)
 
     directBinPacketBuffer.put(NetworkConstants.TRANSFER_PROTOCOL_MAGIC_NUMBER)   // magic num

@@ -54,8 +54,13 @@ case class ErProcessor(id: Long = -1,
                        status: String = StringConstants.EMPTY,
                        commandEndpoint: ErEndpoint = null,
                        transferEndpoint: ErEndpoint = null,
+                       pid: Int = -1,
                        options: java.util.Map[String, String] = new ConcurrentHashMap[String, String](),
-                       tag: String = StringConstants.EMPTY) extends NetworkingRpcMessage
+                       tag: String = StringConstants.EMPTY) extends NetworkingRpcMessage {
+  override def toString: String = {
+    s"<ErProcessor(id=${id}, serverNodeId=${serverNodeId}, name=${name}, processorType=${processorType}, status=${status}, commandEndpoint=${commandEndpoint}, transferEndpoint=${transferEndpoint}, pid=${pid}, options=${options}, tag=${tag}) at ${hashCode().toHexString}>"
+  }
+}
 
 case class ErProcessorBatch(id: Long = -1,
                             name: String = StringConstants.EMPTY,
@@ -100,6 +105,7 @@ object NetworkingModelPbMessageSerdes {
         .setStatus(src.status)
         .setCommandEndpoint(if (src.commandEndpoint != null ) src.commandEndpoint.toProto() else Meta.Endpoint.getDefaultInstance)
         .setTransferEndpoint(if (src.transferEndpoint != null) src.transferEndpoint.toProto() else Meta.Endpoint.getDefaultInstance)
+        .setPid(src.pid)
         .putAllOptions(src.options)
         .setTag(src.tag)
 
@@ -176,6 +182,7 @@ object NetworkingModelPbMessageSerdes {
         status = src.getStatus,
         commandEndpoint = src.getCommandEndpoint.fromProto(),
         transferEndpoint = src.getTransferEndpoint.fromProto(),
+        pid = src.getPid,
         options = src.getOptionsMap,
         tag = src.getTag)
     }

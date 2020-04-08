@@ -28,9 +28,13 @@ class TestRollPairBase(unittest.TestCase):
     def setUp(self):
         self.ctx = get_debug_test_context()
 
+    def tearDown(self) -> None:
+        print("stop test session")
+        self.ctx.get_session().stop()
+
     @staticmethod
     def store_opts(**kwargs):
-        opts= {'total_partitions':1}
+        opts = {'total_partitions': 1}
         opts.update(kwargs)
         return opts
 
@@ -81,6 +85,15 @@ class TestRollPairBase(unittest.TestCase):
         self.assertUnOrderListEqual(data, rp.get_all())
         #rp.destroy()
 
+    def test_cleanup(self):
+        rp = self.ctx.load("ns168","n1")
+        data = [("k1","v1"),("k2","v2"),("k3","v3"),("k4","v4"),("k5","v5"),("k6","v6")]
+        rp.put_all(data)
+
+        rp1 = self.ctx.load("ns168","n111")
+        rp1.put_all(data)
+        self.ctx.cleanup(namespace='ns168', name='*')
+
     def test_map(self):
         rp = self.ctx.parallelize(self.str_generator())
         rp2 = rp.map(lambda k,v: (k + "_1", v))
@@ -89,12 +102,45 @@ class TestRollPairBase(unittest.TestCase):
         #rp2.destroy()
 
     def test_reduce(self):
-        rp = self.ctx.load("ns12020","n_serdes", self.store_opts(serdes="EMPTY"))
-        rp.put_all((b'1', b'2') for k in range(10))
+        options = self.store_opts()
+        #options['total_partitions'] = 10
+        rp = self.ctx.parallelize([(i, i) for i in range(1, 7)], options)
+        #data = [(1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6)]
+        #rp.put_all(data)
         print(list(rp.get_all()))
         print(rp.count())
         from operator import add
-        print(list(rp.reduce(add).get_all()))
+        result = rp.reduce(add)
+
+        print(f'reduce result: {result}')
+        self.assertEqual(result, 21)
+
+    def test_reduce_numpy(self):
+        import numpy as np
+        rp = self.ctx.load('ns12020', 'testNumpyReduce', self.store_opts())
+        rp.put('0', np.array([[ 0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 0]]))
+        rp.put('1', np.array([[ 0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 1]]))
+        rp.put('2', np.array([[ 0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 2]]))
+        rp.put('3', np.array([[ 0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 3]]))
+        rp.put('4', np.array([[ 0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 4]]))
+        rp.put('5', np.array([[ 0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 5]]))
+        #rp.put('6', None)
+
+        result = rp.reduce(lambda x, y: x + y)
+
+        print(result)
+        self.assertEqual(result[0][-1], 15)
+
+    def test_aggregate(self):
+        from operator import mul, add
+        options = self.store_opts()
+        #options['total_partitions'] = 10
+        data1 = self.ctx.parallelize([(i, i) for i in range(1, 7)], options)
+        print(data1.get_partitions())
+        h2 = data1.aggregate(zero_value=1, seq_op=mul, comb_op=add)
+        print("aggregate result: ", h2)
+        #self.assertEqual(h2, 25)
+        self.assertEqual(h2, 720)
 
     def test_join_self(self):
         options = get_default_options()
@@ -116,12 +162,18 @@ class TestRollPairBase(unittest.TestCase):
         options = get_default_options()
         options['include_key'] = True
         data = [("k1", "v1"), ("k2", "v2"), ("k3", "v3"), ("k4", "v4")]
-        table = self.ctx.load('ns1', 'test_destroy', options=options).put_all(data, options=options)
+        table = self.ctx.load('ns12020020618', 'test_destroy', options=options)#.put_all(data, options=options)
         print("before destroy:{}".format(list(table.get_all())))
         table.destroy()
         # TODO:1: table which has been destroyed cannot get_all, should raise exception
-        print("after destroy:{}".format(list(table.get_all())))
+        #print("after destroy:{}".format(list(table.get_all())))
         self.assertEqual(table.count(), 0)
+
+    def test_destroy_simple(self):
+        options = get_default_options()
+        options['include_key'] = True
+        table = self.ctx.load('ns1', 'test_destroy', options=options)
+        table.destroy()
 
     def test_take(self):
         options = get_default_options()
@@ -165,6 +217,7 @@ class TestRollPairBase(unittest.TestCase):
 
     def test_map_partitions(self):
         options = get_default_options()
+        options['total_partitions'] = 12
         data = [(str(i), i) for i in range(10)]
         rp = self.ctx.load("ns1", "test_map_partitions", options=options).put_all(data, options={"include_key": True})
         def func(iter):
@@ -174,8 +227,10 @@ class TestRollPairBase(unittest.TestCase):
                 ret.append((f"{k}_{v}_1", v ** 3))
             return ret
         table = rp.map_partitions(func)
-        print(list(rp.map_partitions(func).get_all()))
-        self.assertEqual(get_value(table), [('0_0_0', 0), ('0_0_1', 0), ('1_1_0', 1), ('1_1_1', 1), ('2_2_0', 4), ('2_2_1', 8),
+        self.assertEqual(table.get("6_6_0"), 36)
+        self.assertEqual(table.get("0_0_1"), 0)
+        self.assertEqual(table.get("1_1_0"), 1)
+        self.assertEqual(sorted(table.get_all(), key=lambda x: x[0]), [('0_0_0', 0), ('0_0_1', 0), ('1_1_0', 1), ('1_1_1', 1), ('2_2_0', 4), ('2_2_1', 8),
                                             ('3_3_0', 9), ('3_3_1', 27), ('4_4_0', 16), ('4_4_1', 64), ('5_5_0', 25),
                                             ('5_5_1', 125), ('6_6_0', 36), ('6_6_1', 216), ('7_7_0', 49), ('7_7_1', 343),
                                             ('8_8_0', 64), ('8_8_1', 512), ('9_9_0', 81), ('9_9_1', 729)])
@@ -224,10 +279,11 @@ class TestRollPairBase(unittest.TestCase):
 
     def test_join(self):
         options = get_default_options()
-        left_rp = self.ctx.load("ns1", "testJoinLeft", options=options).put_all([('a', 1), ('b', 4)], options={"include_key": True})
-        right_rp = self.ctx.load("ns1", "testJoinRight", options=options).put_all([('a', 2), ('c', 4)], options={"include_key": True})
+        left_rp = self.ctx.load("ns1", "testJoinLeft", options=options).put_all([('a', 1), ('b', 4), ('d', 6), ('e', 0)], options={"include_key": True})
+        right_rp = self.ctx.load("ns1", "testJoinRight", options=options).put_all([('a', 2), ('c', 4), ('d', 1), ('f', 0), ('g', 1)], options={"include_key": True})
         print(list(left_rp.join(right_rp, lambda v1, v2: v1 + v2).get_all()))
-        self.assertEqual(get_value(left_rp.join(right_rp, lambda v1, v2: v1 + v2)), [('a', 3)])
+        self.assertEqual(get_value(left_rp.join(right_rp, lambda v1, v2: v1 + v2)), [('a', 3), ('d', 7)])
+        self.assertEqual(get_value(right_rp.join(left_rp, lambda v1, v2: v1 + v2)), [('a', 3), ('d', 7)])
 
     def test_sample(self):
         options = get_default_options()
@@ -242,6 +298,18 @@ class TestRollPairBase(unittest.TestCase):
         left_rp = self.ctx.load("namespace20201", "testSubtractByKeyLeft202013", options=options).put_all(range(10), options=options)
         right_rp = self.ctx.load("namespace2020131", "testSubtractByKeyRight202013", options=options).put_all(range(5), options=options)
         self.assertEqual(list(left_rp.subtract_by_key(right_rp).get_all()), [(5, 5), (6, 6), (7, 7), (8, 8), (9, 9)])
+
+    @staticmethod
+    def gen_data(self):
+        ret = []
+        for i in range(1, 2000000):
+            ret.append(i)
+        return ret
+
+    @staticmethod
+    def gen_kv(self):
+        for i in range(1, 2000000):
+            yield [i, i]
 
     def test_union(self):
         options = get_default_options()
@@ -268,14 +336,13 @@ class TestRollPairBase(unittest.TestCase):
         print(list(left_rp.union(right_rp, lambda v1, v2: v1 + v2).get_all()))
 
 
-
 class TestRollPairMultiPartition(TestRollPairBase):
     def setUp(self):
         self.ctx = get_debug_test_context()
 
     @staticmethod
     def store_opts(**kwargs):
-        opts= {'total_partitions':3}
+        opts = {'total_partitions': 3}
         opts.update(kwargs)
         return opts
 
@@ -285,11 +352,23 @@ class TestRollPairMultiPartition(TestRollPairBase):
 
     def test_put_all(self):
         st_opts = self.store_opts(include_key=True)
-        rp = self.ctx.load("test_roll_pair","TestRollPairMultiPartition", options=self.store_opts())
-        rp.put_all(self.str_generator())
-        self.assertUnOrderListEqual(self.str_generator(include_key=True), rp.get_all())
+        rp = self.ctx.load("test_roll_pair", "TestRollPairMultiPartition", options=self.store_opts())
+        row_limit = 3
+        rp.put_all(self.str_generator(row_limit=row_limit))
+
+        self.assertUnOrderListEqual(self.str_generator(include_key=True, row_limit=row_limit), rp.get_all())
         self.assertEqual(st_opts["total_partitions"], rp.get_partitions())
-        rp.destroy()
+        #rp.destroy()
+
+    def test_count(self):
+        st_opts = self.store_opts(include_key=True)
+        rp = self.ctx.load("test_roll_pair", "TestRollPairMultiPartition", options=self.store_opts())
+        count = rp.count()
+        print(count)
+        self.assertEqual(count, 10000)
+
+    def test_reduce_numpy(self):
+        super().test_reduce_numpy()
 
     def test_parallelize_include_key(self):
         st_opts = self.store_opts(include_key=True)
@@ -298,16 +377,34 @@ class TestRollPairMultiPartition(TestRollPairBase):
         self.assertEqual(st_opts["total_partitions"], rp.get_partitions())
         rp.destroy()
 
+    def test_count(self):
+        super().test_count()
+
+    def test_reduce(self):
+        super().test_reduce()
+
+    def test_aggregate(self):
+        from operator import mul, add
+        data1 = self.ctx.parallelize([(i, i) for i in range(1, 7)], self.store_opts())
+        print(data1.get_partitions())
+        h2 = data1.aggregate(zero_value=1, seq_op=mul, comb_op=add)
+        print(f"aggregate result: {h2}")
+
+        self.assertEqual(h2, 32)
+
 
 class TestRollPairStandalone(TestRollPairBase):
     ctx = None
 
-    def setUp(self):
-        pass
-
     @classmethod
     def setUpClass(cls) -> None:
         cls.ctx = get_standalone_context()
+
+    def setUp(self):
+        pass
+
+    def tearDown(self) -> None:
+        pass
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -331,19 +428,49 @@ class TestRollPairClusterEverySession(TestRollPairBase):
 class TestRollPairCluster(TestRollPairBase):
     ctx = None
 
-    def setUp(self):
-        pass
-
     @classmethod
     def setUpClass(cls) -> None:
-        opts = {"eggroll.session.max.processors.per.node": "10"}
+        opts = {"eggroll.session.processors.per.node": "10"}
+        #opts = {}
         cls.ctx = get_cluster_context(options=opts)
+
+    def setUp(self):
+        pass
 
     @staticmethod
     def store_opts(**kwargs):
         opts = {'total_partitions': 10}
         opts.update(kwargs)
         return opts
+
+    def test_aggregate(self):
+        from operator import mul, add
+        data1 = self.ctx.parallelize([(i, i) for i in range(1, 7)], self.store_opts())
+        print(data1.get_partitions())
+        h2 = data1.aggregate(zero_value=1, seq_op=mul, comb_op=add)
+        print("aggregate result: ", h2)
+
+        # note that if there is no data in a partition then the zero value will be sent, thus 21 + 4 * 1 = 25
+        self.assertEqual(h2, 25)
+
+    def test_map_values(self):
+        super().test_map_values()
+
+    def test_reduce(self):
+        rp = self.ctx.parallelize([(i, i) for i in range(1, 7)], self.store_opts())
+
+        #data = [(1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6)]
+        #rp.put_all(data)
+        print("all: ", list(rp.get_all()))
+        print("count: ", rp.count())
+        from operator import add
+        result = rp.reduce(add)
+
+        print(f'reduce result: {result}')
+        self.assertEqual(result, 21)
+
+    def test_empty(self):
+        pass
 
     def tearDown(self) -> None:
         pass

@@ -56,6 +56,14 @@ object CommandArgsUtils {
       .desc("port to bind")
       .build
 
+    val transferPort = Option.builder("tp")
+      .argName("transfer port to bind")
+      .longOpt("transfer-port")
+      .optionalArg(true)
+      .hasArg.numberOfArgs(1)
+      .desc("transfer port to bind")
+      .build
+
     val clusterManager = Option.builder("cm")
       .argName("cluster manager of this service")
       .longOpt("cluster-manager")
@@ -93,6 +101,7 @@ object CommandArgsUtils {
       .addOption(help)
       .addOption(sessionId)
       .addOption(port)
+      .addOption(transferPort)
       .addOption(clusterManager)
       .addOption(nodeManager)
       .addOption(serverNodeId)
@@ -120,7 +129,7 @@ object IdUtils {
   private val job = "job"
   private val task = "task"
   def generateJobId(sessionId: String, tag: String = "", delim: String = "-"): String = {
-    val result = String.join(delim, sessionId, job, TimeUtils.getNowMs())
+    val result = String.join(delim, sessionId, "scala", job, TimeUtils.getNowMs())
     if (StringUtils.isBlank(tag)) result else s"${result}_${tag}"
   }
 

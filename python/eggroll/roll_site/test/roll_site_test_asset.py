@@ -16,10 +16,10 @@
 
 
 import configparser
-import json
 import os
 
 import eggroll.roll_pair.test.roll_pair_test_assets as rpta
+from eggroll.core.conf_keys import RollSiteConfKeys
 from eggroll.core.constants import StoreTypes
 from eggroll.core.meta_model import ErStore, ErStoreLocator, ErEndpoint
 from eggroll.roll_site.roll_site import RollSiteContext
@@ -40,21 +40,20 @@ default_props_file = f"{EGGROLL_HOME}/conf/eggroll.properties"
 
 
 def get_option(role, conf_file=default_props_file):
+    print(f'conf file: {conf_file}')
     configs = configparser.ConfigParser()
 
     configs.read(conf_file)
     eggroll_configs = configs['eggroll']
 
     options = {}
-    party_id = eggroll_configs['partyId']
+    party_id = eggroll_configs[RollSiteConfKeys.EGGROLL_ROLLSITE_PARTY_ID.key]
     options['self_party_id'] = party_id
     options['self_role'] = role
 
-    with open(f"{EGGROLL_HOME}/conf/route_table.json") as route_table_file:
-        route_table = json.load(route_table_file)["route_table"]
-        proxy_endpoint = route_table[party_id]["default"][0]
-
-        options['proxy_endpoint'] = ErEndpoint(host=proxy_endpoint["ip"], port=proxy_endpoint["port"])
+    options['proxy_endpoint'] = \
+        ErEndpoint(host=eggroll_configs[RollSiteConfKeys.EGGROLL_ROLLSITE_HOST.key],
+                   port=int(eggroll_configs[RollSiteConfKeys.EGGROLL_ROLLSITE_PORT.key]))
 
     return options
 
@@ -79,6 +78,8 @@ ER_STORE1 = ErStore(
                                      name="name"))
 
 
+roll_site_session_id = f'atest'
+
 def get_debug_test_context(is_standalone=False,
         manager_port=4670,
         egg_port=20001,
@@ -92,24 +93,31 @@ def get_debug_test_context(is_standalone=False,
                                              transfer_port=transfer_port,
                                              session_id=session_id)
 
-    rs_context = RollSiteContext("atest", options=get_option(role, props_file),
-                                 rp_ctx=rp_context)
+    rs_context = RollSiteContext(roll_site_session_id, rp_ctx=rp_context,
+                                 options=get_option(role, props_file))
 
     return rs_context
 
 
 def get_standalone_context(role, props_file=default_props_file):
     rp_context = rpta.get_standalone_context()
-    rs_context = RollSiteContext("atest", options=get_option(role, props_file),
-                                 rp_ctx=rp_context)
+    rs_context = RollSiteContext(roll_site_session_id, rp_ctx=rp_context,
+                                 options=get_option(role, props_file))
 
     return rs_context
 
 
-def get_cluster_context(role, options={}, props_file=default_props_file):
+def get_cluster_context(role, options: dict = None, props_file=default_props_file, party_id=None):
+    if options is None:
+        options = {}
     rp_context = rpta.get_cluster_context(options=options)
-    rs_context = RollSiteContext("atest", options=get_option(role, props_file),
-                                 rp_ctx=rp_context)
+
+    rs_options = get_option(role, props_file)
+
+    if party_id:
+        rs_options['self_party_id'] = str(party_id)
+    rs_context = RollSiteContext(roll_site_session_id, rp_ctx=rp_context,
+                                 options=rs_options)
 
     return rs_context
 

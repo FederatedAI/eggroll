@@ -41,21 +41,21 @@ class SessionMetaDao {
         dbc.update(conn, "delete from session_processor where session_id=?", sid)
       }
       dbc.update(conn,
-        "insert into session_main(session_id, name, status, tag, active_proc_count) values(?, ?, ?, ?, 0)",
-        sid, sessionMeta.name, sessionMeta.status, sessionMeta.tag)
+        "insert into session_main(session_id, name, status, tag, total_proc_count, active_proc_count) values(?, ?, ?, ?, ?, 0)",
+        sid, sessionMeta.name, sessionMeta.status, sessionMeta.tag, sessionMeta.totalProcCount)
       val opts = sessionMeta.options
-      if(opts.nonEmpty) {
+      if (opts.nonEmpty) {
         val valueSql = ("(?, ?, ?) ," * opts.size).stripSuffix(",")
         val params = opts.flatMap{case (k,v) => Seq(sid, k, v)}.toSeq
         dbc.update(conn, "insert into session_option(session_id, name, data) values " + valueSql, params:_*)
       }
       val procs = sessionMeta.processors
-      if(procs.nonEmpty) {
+      if (procs.nonEmpty) {
         val valueSql = ("(?, ?, ?, ?, ?, ?, ?)," * procs.length).stripSuffix(",")
         val params = procs.flatMap(proc => Seq(
           sid, proc.serverNodeId, proc.processorType, proc.status, proc.tag,
-          if(proc.commandEndpoint != null) proc.commandEndpoint.toString else "",
-          if(proc.transferEndpoint != null) proc.transferEndpoint.toString else ""))
+          if (proc.commandEndpoint != null) proc.commandEndpoint.toString else "",
+          if (proc.transferEndpoint != null) proc.transferEndpoint.toString else ""))
         dbc.update(conn,
                    "insert into session_processor(session_id, server_node_id, processor_type, status, " +
                    "tag, command_endpoint, transfer_endpoint) values " + valueSql,
@@ -128,6 +128,10 @@ class SessionMetaDao {
         sql += ", transfer_endpoint = ?"
         params ++= Array(s"${host}:${proc.transferEndpoint.port}")
       }
+      if (proc.pid > 0) {
+        sql += ", pid = ?"
+        params ++= Array(proc.pid.toString)
+      }
 
       sql += " where processor_id = ?"
       params ++= Array(proc.id.toString)
@@ -145,8 +149,10 @@ class SessionMetaDao {
       if (!rs.next()) {
         throw new NotExistError("session id not found:" + sessionId)
       }
+
       ErSessionMeta(
         id = sessionId, name = rs.getString("name"),
+        totalProcCount = rs.getInt("total_proc_count"),
         activeProcCount = rs.getInt("active_proc_count"),
         status = rs.getString("status"), tag = rs.getString("tag"))
     },"select * from session_main where session_id = ?", sessionId)
@@ -174,12 +180,58 @@ class SessionMetaDao {
         result += ErSessionMeta(
           id = rs.getString("session_id"),
           name = rs.getString("name"),
+          totalProcCount = rs.getInt("total_proc_count"),
           activeProcCount = rs.getInt("active_proc_count"),
           status = rs.getString("status"),
           tag = rs.getString("tag"))
       }
       result.toArray
     }, sql, args: _*)
+  }
+
+  def getStoreLocators(input: ErStore): ErStoreList ={
+    var sql = "select * from store_locator where status = 'NORMAL' and"
+    val whereFragments = ArrayBuffer[String]()
+    val args = ArrayBuffer[String]()
+
+    val store_locator = input.storeLocator
+    val store_name = store_locator.name
+    val store_namespace = store_locator.namespace
+    val store_type = store_locator.storeType
+    var store_name_new = ""
+    if (!StringUtils.isBlank(store_name)) {
+      if (StringUtils.contains(store_name, "*")) {
+        store_name_new = store_name.replace('*', '%')
+        args += store_name_new
+      } else {
+        args += store_name
+      }
+      whereFragments += " name like ?"
+    }
+
+    if (!StringUtils.isBlank(store_namespace)) {
+      whereFragments += " namespace = ?"
+      args += store_namespace
+    }
+
+    sql += String.join(" and ", whereFragments: _*)
+
+    dbc.query(rs => {
+      val stores = ArrayBuffer[ErStore]()
+      while (rs.next()) {
+
+        stores += ErStore(
+          storeLocator = ErStoreLocator(
+            storeType = rs.getString("store_type"),
+            name = rs.getString("name"),
+            namespace = rs.getString("namespace"),
+            totalPartitions = rs.getInt("total_partitions")
+          ))
+      }
+
+      ErStoreList(stores = stores.toArray)
+    }, sql, args: _*)
+
   }
 
   def existSession(sessionId: String): Boolean = {

@@ -24,6 +24,7 @@ import com.google.gson.JsonParser;
 import com.google.gson.stream.JsonReader;
 import com.webank.ai.eggroll.api.core.BasicMeta;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
+import com.webank.eggroll.core.util.ToStringUtils;
 import com.webank.eggroll.rollsite.model.ProxyServerConf;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -44,7 +45,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
@@ -79,7 +79,7 @@ public class ConfFileBasedFdnRouter implements FdnRouter {
 
     public ConfFileBasedFdnRouter() {
         routeTable = new ConcurrentHashMap<>();
-        topicEndpointMapping = new WeakHashMap<>();
+        topicEndpointMapping = new ConcurrentHashMap<>();
         endpointBuilder = BasicMeta.Endpoint.newBuilder();
         routeNeighbours = new HashSet<>();
         intranetEndpoints = new HashSet<>();
@@ -371,7 +371,7 @@ public class ConfFileBasedFdnRouter implements FdnRouter {
 
     @Override
     public BasicMeta.Endpoint route(Proxy.Topic topic) {
-        LOGGER.debug("route:" + topic);
+        LOGGER.debug("route:" + ToStringUtils.toOneLineString(topic));
         Preconditions.checkNotNull(topic, "topic cannot be null");
 
         BasicMeta.Endpoint result = topicEndpointMapping.getOrDefault(topic, null);

@@ -12,19 +12,18 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import json
-import sys
 import time
 import traceback
 import uuid
 from datetime import datetime
 
+import numba
+import numpy as np
 from google.protobuf.text_format import MessageToString
 
-from eggroll.utils import log_utils
-
-L = log_utils.get_logger()
-
 static_er_conf = {}
+stringify_charset = 'iso-8859-1'
+M = 2**31
 
 
 def set_static_er_conf(a_dict):
@@ -57,8 +56,32 @@ def _map_and_listify(map_func, a_list):
     return list(map(map_func, a_list))
 
 
-def _repr_list(a_list):
+def _stringify(data):
+    from eggroll.core.base_model import RpcMessage
+    if isinstance(data, str):
+        return data
+    elif isinstance(data, RpcMessage):
+        return data.to_proto_string().decode(stringify_charset)
+    elif isinstance(data, bytes):
+        return data.decode(stringify_charset)
+    else:
+        return str(data)
+
+
+def _stringify_dict(a_dict: dict):
+    return {_stringify(k): _stringify(v) for k, v in a_dict.items()}
+
+
+
+def _repr_list(a_list: list):
     return ", ".join(_map_and_listify(repr, a_list))
+
+
+def _repr_bytes(a_bytes: bytes):
+    if a_bytes is None:
+        return f"(None)"
+    else:
+        return f"({a_bytes[:200]}, len={len(a_bytes)})"
 
 
 def _elements_to_proto(rpc_message_list):
@@ -105,6 +128,13 @@ def _exception_logger(func):
 
     return wrapper
 
+
+def get_stack():
+    return (f"\n\n==== stack start, at {time_now()} ====\n"
+           f"{''.join(traceback.format_stack())}"
+           f"\n==== stack end ====\n\n")
+
+
 DEFAULT_DATETIME_FORMAT = '%Y%m%d.%H%M%S.%f'
 def time_now(format: str = DEFAULT_DATETIME_FORMAT):
     formatted = datetime.now().strftime(format)
@@ -129,7 +159,7 @@ def get_self_ip():
 
 # TODO:0: replace uuid with simpler human friendly solution
 def generate_job_id(session_id, tag='', delim='-'):
-    result = delim.join([session_id, 'job', str(uuid.uuid1())])
+    result = delim.join([session_id, 'py', 'job', str(uuid.uuid1())])
     if not tag:
         return result
     else:
@@ -140,21 +170,27 @@ def generate_task_id(job_id, partition_id, delim='-'):
     return delim.join([job_id, "task", str(partition_id)])
 
 
-#AI copy from java ByteString.hashCode()
+'''AI copy from java ByteString.hashCode(), @see RollPairContext.partitioner'''
+@numba.jit
 def hash_code(s):
-    if isinstance(s, bytes):
-        s = bytes_to_string(s)
     seed = 31
-    h = 0
+    h = len(s)
     for c in s:
-        h = int(seed * h) + ord(c)
+        # to singed int
+        if c > 127:
+            c = -256 + c
+        h = h * seed
+        if h > 2147483647 or h < -2147483648:
+            h = (h & (M - 1)) - (h & M)
+        h = h + c
+        if h > 2147483647 or h < -2147483648:
+            h = (h & (M - 1)) - (h & M)
+    if h == 0 or h == -2147483648:
+        h = 1
+    return h if h >= 0 else abs(h)
 
-    if h == sys.maxsize or h == -sys.maxsize - 1:
-        L.warn("hash code:{} out of int bound".format(str(h)))
-        h = 0
 
-    return h
-
-
-def to_one_line_string(proto_msg, as_one_line=True):
-    return MessageToString(proto_msg, as_one_line=as_one_line)
+def to_one_line_string(msg, as_one_line=True):
+    if isinstance(msg, str) or isinstance(msg, bytes):
+        return msg
+    return MessageToString(msg, as_one_line=as_one_line)

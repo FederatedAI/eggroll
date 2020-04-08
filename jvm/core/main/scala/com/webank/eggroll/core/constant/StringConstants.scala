@@ -27,6 +27,7 @@ object StringConstants {
 
   val GRPC_PARSE_FROM = "parseFrom"
 
+  val AT = "@"
   val AND = "&"
   val EQUAL = "="
 
@@ -39,6 +40,7 @@ object StringConstants {
   val UNDERLINE = "_"
   val DOUBLE_UNDERLINES = "__"
   val COMMA = ","
+  val HASH = "#"
 
   val HOST = "host"
   val PORT = "port"
@@ -87,6 +89,8 @@ object StringConstants {
   val LMDB = "lmdb"
   val LEVELDB = "leveldb"
   val FILE = "file"
+  val HDFS = "hdfs"
+  val NETWORK = "network"
   val CACHE = "cache"
   val QUEUE = "queue"
   val TOTAL = "total"
@@ -94,10 +98,12 @@ object StringConstants {
   val LOCALHOST = "localhost"
 
   val STORE_TYPE = "storeType"
+  val STORE_TYPE_SNAKECASE = "store_type"
   val NAMESPACE = "namespace"
   val NAME = "name"
   val TOTAL_PARTITIONS = "totalPartitions"
+  val TOTAL_PARTITIONS_SNAKECASE = "total_partitions"
   val PARTITIONER = "partitioner"
   val SERDES = "serdes"
-
+  val TRANSFER_BROKER_NAME = "transfer_broker_name"
 }
