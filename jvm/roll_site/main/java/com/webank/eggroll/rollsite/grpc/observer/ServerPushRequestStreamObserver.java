@@ -19,7 +19,6 @@ package com.webank.eggroll.rollsite.grpc.observer;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
-import com.webank.eggroll.core.constant.StringConstants;
 import com.webank.eggroll.core.meta.ErRollSiteHeader;
 import com.webank.eggroll.core.meta.TransferModelPbMessageSerdes;
 import com.webank.eggroll.core.transfer.Transfer.RollSiteHeader;
@@ -227,8 +226,8 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
                             LOGGER.error("error parsing roll site header", e);
                             onError(e);
                         }
-                        int totalPartition = Integer.parseInt(rollSiteHeader.options().getOrElse(
-                            StringConstants.TOTAL_PARTITIONS_SNAKECASE(), () -> "1"));
+                        /*int totalPartition = Integer.parseInt(rollSiteHeader.options().getOrElse(
+                            StringConstants.TOTAL_PARTITIONS_SNAKECASE(), () -> "1"));*/
                         String job_id = rollSiteHeader.rollSiteSessionId();
                         try {
                             while (!JobStatus.isJobIdToSessionRegistered(job_id)) {
