@@ -147,6 +147,8 @@ class FrameFormatTests {
     networkReadAdapter.readAll().foreach(fb =>
       assert(fb.readDouble(0, 30) == 30.0)
     )
+    val fb1 = FrameStore.network(networkPath,host,port.toString).readOne()
+    val a = 0
   }
 
   @Test

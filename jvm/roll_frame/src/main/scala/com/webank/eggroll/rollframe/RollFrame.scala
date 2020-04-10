@@ -39,9 +39,18 @@ import scala.collection.immutable.Range.Inclusive
 
 class RollFrameContext private[eggroll](val session: ErSession) {
   lazy val serverNodes: Array[ErProcessor] = session.processors
+  lazy val rollNodes: ErProcessor = session.processors(0)
 
-  private[eggroll] lazy val frameTransfer: NioFrameTransfer = new NioFrameTransfer(serverNodes)
+  // TODO: set private
+  lazy val frameTransfer: NioFrameTransfer = new NioFrameTransfer(serverNodes)
+
   val defaultStoreType: String = StringConstants.FILE
+
+  def dumpCache(store: ErStore): ErStore = {
+    val cacheStore = forkStore(store, store.storeLocator.namespace, store.storeLocator.name, StringConstants.CACHE)
+    load(store).mapBatch(f => f, cacheStore)
+    cacheStore
+  }
 
   def load(store: ErStore): RollFrame = RollFrame(store, this)
 
@@ -449,6 +458,7 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
             if (localServer.commandEndpoint.host.equals(ctx.rootServer.commandEndpoint.host)) {
               // the same root server
               if (partition.id == 0) {
+                println(s"transferQueueSize = ${transferQueueSize}")
                 for (tmp <- FrameStore.queue(queuePath, transferQueueSize).readAll()) {
                   localBatch = combOp(localBatch, tmp)
                 }

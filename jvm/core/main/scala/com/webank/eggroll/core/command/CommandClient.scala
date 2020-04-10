@@ -76,6 +76,7 @@ class CommandClient(defaultEndpoint: ErEndpoint = null,
     if(channel == null || channel.isShutdown || channel.isTerminated) {
       val builder = ManagedChannelBuilder.forAddress(endpoint.host, endpoint.port)
       builder.maxInboundMetadataSize(4*1024*1024)
+      builder.maxInboundMessageSize(1024*1024*1024)
       builder.usePlaintext()
       CommandClient.pool(endpoint.toString) = builder.build()
     }
