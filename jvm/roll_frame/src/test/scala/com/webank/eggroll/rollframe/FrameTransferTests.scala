@@ -63,7 +63,6 @@ class FrameTransferTests {
       n += 1
     }
     println("recv time", System.currentTimeMillis() - start)
-
   }
 
 
@@ -123,8 +122,8 @@ class FrameTransferTests {
     val service = new NioTransferEndpoint
     val host = "127.0.0.1"
     val port = 8818
-    val batchCount = 20
-    val fbs = (0 until batchCount).map(_ => new FrameBatch(new FrameSchema(TestAssets.getSchema(1000)), 100 * 20)).toArray
+    val batchCount = 10
+    val fbs = new FrameBatch(new FrameSchema(TestAssets.getSchema(1000)), 100 * 20)
     val client = new NioTransferEndpoint
 
     new Thread() {
@@ -138,15 +137,15 @@ class FrameTransferTests {
     }.start()
     client.runClient(host, port)
     val start = System.currentTimeMillis()
-    (0 until batchCount).foreach { i =>
+    (0 until batchCount - 1).foreach { i =>
       new Thread() {
         override def run(): Unit = {
           try {
 
             println("Thread: " + i)
             val start = System.currentTimeMillis()
-            client.synchronized{
-              client.send(path, fbs(i))
+            client.synchronized {
+              client.send(path, fbs)
             }
 
             println("send time", System.currentTimeMillis() - start)
@@ -156,15 +155,59 @@ class FrameTransferTests {
         }
       }.start()
     }
+    // the last thread send fy spend long time.
+    new Thread() {
+      override def run(): Unit = {
+        try {
+          Thread.sleep(10000)
+          println("Thread: " + (batchCount - 1).toString)
+          val start = System.currentTimeMillis()
+          client.synchronized {
+            client.send(path, fbs)
+          }
+          println("send time", System.currentTimeMillis() - start)
+        } catch {
+          case e: Throwable => e.printStackTrace()
+        }
+      }
+    }.start()
 
     var n = 0
-    while (n < batchCount) {
+
+    val fbs1 = FrameStore.queue(path, batchCount).readAll()
+    while (fbs1.hasNext) {
       println("n:" + n)
-      val fbs = FrameStore.queue(path, 1).readAll()
-      fbs.hasNext
-      println(fbs.next().rowCount)
+      val fb = fbs1.next()
+      assert(fb.fieldCount == 1000)
       n += 1
     }
     println("recv time", System.currentTimeMillis() - start)
+  }
+
+  @Test
+  def testClientReceive(): Unit = {
+    val path = "aa"
+    val fb = new FrameBatch(new FrameSchema(TestAssets.getSchema(1000)), 100 * 20)
+    FrameStore.queue(path, 1).append(fb)
+    FrameStore.cache(path).append(fb)
+    val service = new NioTransferEndpoint
+    val port = 8818
+    val host = "127.0.0.1"
+    new Thread() {
+      override def run(): Unit = {
+        try {
+          service.runServer(host, port)
+        } catch {
+          case e: Throwable => e.printStackTrace()
+        }
+      }
+    }.start()
+    val client = new NioTransferEndpoint
+    client.runClient(host, port)
+
+    val queueFb = client.receive(path, 1)
+    println(s"queue fb: ${queueFb.next().fieldCount}")
+    val cacheFb = client.pull(path)
+    println(s"cache fb: ${cacheFb.next().fieldCount}")
   }
 }

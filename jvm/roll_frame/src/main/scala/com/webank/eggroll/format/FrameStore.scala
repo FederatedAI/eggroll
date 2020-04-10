@@ -69,19 +69,26 @@ object FrameStore {
 
   private val rootPath = "/tmp/unittests/RollFrameTests/"
 
-  private def getStorePath(store: ErStore, partitionId: Int): String = {
-    val storeLocator = store.storeLocator
-    val path = storeLocator.path
-    val dir =
-      if (StringUtils.isBlank(path))
-        s"$rootPath/${storeLocator.toPath()}"
-      else
-        path
-
-    s"$dir/$partitionId"
+  def getPartitionsMeta(store: ErStore): Seq[Map[String, String]] = {
+    val storeDir = getStoreDir(store)
+    store.partitions.indices.map(i => Map("path" -> s"$storeDir/$i",
+      "host" -> store.partitions(i).processor.transferEndpoint.host,
+      "port" -> store.partitions(i).processor.transferEndpoint.port.toString))
   }
 
-  private def getStorePath(partition: ErPartition): String = {
+  private def getStoreDir(store: ErStore): String = {
+    val path = store.storeLocator.path
+    if (StringUtils.isBlank(path))
+      s"$rootPath/${store.storeLocator.toPath()}"
+    else
+      path
+  }
+
+  private def getStorePath(store: ErStore, partitionId: Int): String = {
+    s"${getStoreDir(store)}/$partitionId"
+  }
+
+  def getStorePath(partition: ErPartition): String = {
     IoUtils.getPath(partition, rootPath)
   }
 
@@ -190,7 +197,7 @@ class HdfsFrameStore(path: String) extends FrameStore {
 }
 
 object QueueFrameStore {
-  private val map = TrieMap[String, BlockingQueue[FrameBatch]]()
+  val map = TrieMap[String, BlockingQueue[FrameBatch]]()
 
   // key: a task name,e.g. mapBatch-0-doing , BlockingQueue[]: several batch FrameBatch
   def getOrCreateQueue(key: String): BlockingQueue[FrameBatch] = this.synchronized {
@@ -226,7 +233,7 @@ class QueueFrameStore(path: String, total: Int) extends FrameStore {
   override def close(): Unit = {}
 
   override def readAll(): Iterator[FrameBatch] = {
-    require(total > 0, "blocking queue need a total size before read")
+    require(total >= 0, "blocking queue need a total size before read")
     fbIterator
   }
 
@@ -237,6 +244,26 @@ class QueueFrameStore(path: String, total: Int) extends FrameStore {
 
 class NetworkFrameStore(path: String, host: String, port: Int) extends FrameStore {
   var client: NioTransferEndpoint = _
+  val fbIterator: Iterator[FrameBatch] = {
+    // read FrameBatch from local queue, if FrameBatch was used many time, must be loaded to cache
+    new Iterator[FrameBatch] {
+      // TODO: only send/receive one batch currently. If add a variable named 'total' like queueFrameDB, can't keep a union
+      //       apply function of FrameDB.
+      private var remaining = 1
+
+      override def hasNext: Boolean = remaining > 0
+
+      override def next(): FrameBatch = {
+        if (hasNext) {
+          println("taking from network queue:" + path)
+          remaining -= 1
+          val ret = QueueFrameStore.getOrCreateQueue(path).take
+          println("token from network queue:" + path)
+          ret
+        } else throw new NoSuchElementException("next on empty iterator")
+      }
+    }
+  }
 
   override def writeAll(batches: Iterator[FrameBatch]): Unit = {
     // write FrameBatch to remote server
@@ -247,26 +274,7 @@ class NetworkFrameStore(path: String, host: String, port: Int) extends FrameStor
     batches.foreach(batch => client.send(path, batch))
   }
 
-  override def readAll(): Iterator[FrameBatch] = {
-    // read FrameBatch from local queue, if FrameBatch was used many time, must be loaded to cache
-    new Iterator[FrameBatch] {
-      // TODO: only send/receive one batch currently. If add a variable named 'total' like queueFrameDB, can't keep a union
-      //       apply function of FrameDB.
-      private var remaining = 1
-
-      override def hasNext: Boolean = {
-        remaining > 0
-      }
-
-      override def next(): FrameBatch = {
-        println("taking from network queue:" + path)
-        remaining -= 1
-        val ret = QueueFrameStore.getOrCreateQueue(path).take
-        println("token from network queue:" + path)
-        ret
-      }
-    }
-  }
+  override def readAll(): Iterator[FrameBatch] = fbIterator
 
   override def close(): Unit = {
     // need to close ?

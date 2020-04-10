@@ -24,7 +24,7 @@ import java.nio.channels.{ServerSocketChannel, SocketChannel}
 import java.util.concurrent.Executors
 
 import com.webank.eggroll.core.meta.ErProcessor
-import com.webank.eggroll.format.{FrameBatch, FrameReader, FrameStore, FrameWriter}
+import com.webank.eggroll.format.{FrameBatch, FrameReader, FrameStore, FrameWriter, QueueFrameStore}
 
 trait FrameTransfer {
   def send(id: Long, path: String, frameBatch: FrameBatch): Unit = send(id, path, Iterator(frameBatch))
@@ -44,12 +44,21 @@ class NioFrameTransfer(nodes: Array[ErProcessor], timeout: Int = 600 * 1000) ext
     (node.id, new NioTransferEndpoint().runClient(node.transferEndpoint.host, node.transferEndpoint.port))
   }.toMap
 
+  // the first node is roll
+  private lazy val roll = clients(nodes(0).id)
+
+  object Roll {
+    def pull(path: String): Iterator[FrameBatch] = {
+      roll.pull(path)
+    }
+  }
+
   override def send(id: Long, path: String, frameBatch: Iterator[FrameBatch]): Unit = {
     clients(id).send(path, frameBatch)
   }
 
   override def broadcast(path: String, frameBatches: Iterator[FrameBatch]): Unit = {
-    clients.foreach(c => c._2.broadcast(path,frameBatches))
+    clients.foreach(c => c._2.broadcast(path, frameBatches))
   }
 
   override def scatter(path: String, frameBatches: Iterator[FrameBatch]): Unit = {
@@ -67,6 +76,7 @@ case class NioTransferHead(action: String, path: String, batchSize: Int) {
       case "send" => 1
       case "broadcast" => 2
       case "receive" => 3
+      case "pull" => 4
       case x => throw new IllegalArgumentException(s"unsupported action:$x")
     }
     headBuf.putInt(actionInt)
@@ -91,6 +101,7 @@ object NioTransferHead {
       case 1 => "send"
       case 2 => "broadcast"
       case 3 => "receive"
+      case 4 => "pull"
       case x => throw new IllegalArgumentException(s"unsupported action:$x")
     }
 
@@ -139,6 +150,9 @@ class NioTransferEndpoint {
                   case "receive" => // client receive
                     head.write(ch)
                     writeFrameBatches(ch, FrameStore.queue(head.path, head.batchSize).readAll())
+                  case "pull" =>
+                    head.write(ch)
+                    writeFrameBatches(ch, FrameStore.cache(head.path).readAll())
                   case _ => throw new IllegalArgumentException(s"unsupported action:$head")
                 }
                 println("save finished:" + head)
@@ -170,6 +184,7 @@ class NioTransferEndpoint {
   }
 
   def send(path: String, frameBatch: FrameBatch): Unit = send(path, Iterator(frameBatch))
+
   def send(path: String, frameBatches: Iterator[FrameBatch]): Unit = {
     println("send start:" + path)
     val ch = clientChannel
@@ -178,12 +193,14 @@ class NioTransferEndpoint {
     println("send finished:" + path)
   }
 
-  def broadcast(path: String, frameBatch: FrameBatch): Unit = broadcast(path,Iterator(frameBatch))
+  def broadcast(path: String, frameBatch: FrameBatch): Unit = broadcast(path, Iterator(frameBatch))
+
   def broadcast(path: String, frameBatches: Iterator[FrameBatch]): Unit = {
     println("broadcast start:" + path)
     val ch = clientChannel
     NioTransferHead(action = "broadcast", path = path, batchSize = -1).write(ch)
     writeFrameBatches(ch, frameBatches)
+    println("broadcast finished:" + path)
   }
 
   def receive(path: String, batchSize: Int = 1): Iterator[FrameBatch] = {
@@ -196,7 +213,15 @@ class NioTransferEndpoint {
     fr.getColumnarBatches()
   }
 
-
+  def pull(path: String): Iterator[FrameBatch] = {
+    val ch = clientChannel
+    val head = NioTransferHead(action = "pull", path = path, batchSize = 1)
+    head.write(ch)
+    val recvHead = NioTransferHead.read(ch)
+    require(path == recvHead.path, s"error pul:$recvHead != $head")
+    val fr = new FrameReader(ch)
+    fr.getColumnarBatches()
+  }
 }
 
 

@@ -22,6 +22,7 @@ import java.util.concurrent.{Callable, Executors}
 
 import com.webank.eggroll.core.constant.StringConstants
 import com.webank.eggroll.core.meta.{ErStore, ErStoreLocator}
+import com.webank.eggroll.core.util.Logging
 import com.webank.eggroll.format._
 import com.webank.eggroll.rollframe.pytorch.{LibraryLoader, Matrices}
 import com.webank.eggroll.util.SchemaUtil
@@ -33,9 +34,9 @@ import scala.collection.immutable.Range.Inclusive
 /**
  * all unit test run on local mode
  */
-class RollFrameTests {
+class RollFrameTests extends Logging {
   protected val ta = TestAssets
-  protected val fieldCount = 1000
+  val fieldCount: Int = 1000
   protected val rowCount = 1000 // total value count = rowCount * fbCount * fieldCount
   // TODO: fbCount means a set of FrameBatch in one partition. fbCount value which larger then one maybe has bugs.
   protected val fbCount = 1 // the num of batch
@@ -44,11 +45,10 @@ class RollFrameTests {
   protected var inputStore: ErStore = _
   protected var inputHdfsStore: ErStore = _
   protected var inputTensorStore: ErStore = _
-  protected val partitions_ = 2
+  protected val partitions_ = 3
 
   @Before
   def setup(): Unit = {
-    ta.setMode("local")
     // TODO: 3in1 run fail
     ctx = ta.getRfContext(true)
 
@@ -168,7 +168,7 @@ class RollFrameTests {
 
   @Test
   def testNetworkToJvm(): Unit = {
-    // 1.write to network
+    // 1.write to network and continue write to file
     val networkStore = ctx.forkStore(inputStore, "test1", "a1", StringConstants.NETWORK)
     networkStore.partitions.indices.foreach { i =>
       new Thread() {
@@ -178,17 +178,25 @@ class RollFrameTests {
         }
       }.start()
     }
-    Thread.sleep(1000)
-    val a = 0
-    // TODO:2: pull data's not been implemented,  or should be tested in the same jvm process
-    //    // 2.write to cache
-    //    val cacheStore = ta.loadCache(networkStore)
-    //    // 3.assert
-    //    cacheStore.partitions.indices.foreach { i =>
-    //      val fb = FrameDB(cacheStore, i).readOne()
-    //      TestCase.assertEquals(fb.fieldCount, fieldCount)
-    //      TestCase.assertEquals(fb.rowCount, rowCount)
-    //    }
+    val start = System.currentTimeMillis()
+    val cacheStore = ctx.dumpCache(networkStore)
+    println(s"run time = ${System.currentTimeMillis() - start}")
+    val fieldCount1 = fieldCount
+    val rowCount1 = rowCount
+    ctx.load(cacheStore).mapBatch({ fb =>
+      TestCase.assertEquals(fb.fieldCount, fieldCount1)
+      TestCase.assertEquals(fb.rowCount, rowCount1)
+      fb
+    })
+  }
+
+  @Test
+  def testPull(): Unit = {
+    val cacheStore = ctx.dumpCache(inputStore)
+    val path = FrameStore.getStorePath(cacheStore.partitions(0))
+    println(path)
+    val fb = ctx.frameTransfer.Roll.pull(path)
+    println(fb.next().fieldCount)
   }
 
   /**
@@ -277,7 +285,8 @@ class RollFrameTests {
   @Test
   def testAggregateWithHdfs(): Unit = {
     var start = System.currentTimeMillis()
-    val inStore = ta.loadCache(inputHdfsStore)
+    //    val inStore = ta.loadCache(inputHdfsStore)
+    val inStore = ctx.dumpCache(inputStore)
     val outStore = ctx.createStore("a1_aggregate", "test1", StringConstants.HDFS, totalPartitions = 1)
     val rf = ctx.load(inStore)
     println(System.currentTimeMillis() - start)
@@ -426,7 +435,7 @@ class RollFrameTests {
     }, broadcastZeroValue = false, output = output)
     println(System.currentTimeMillis() - start)
     val aggregateFb = FrameStore(output, 0).readOne()
-//    TestCase.assertEquals(aggregateFb.readDouble(0, 0), input.partitions.length * rowCount, TestAssets.DELTA)
+    //    TestCase.assertEquals(aggregateFb.readDouble(0, 0), input.partitions.length * rowCount, TestAssets.DELTA)
   }
 
   /**
@@ -629,7 +638,6 @@ class RollFrameClusterTests extends RollFrameTests {
   @Before
   override def setup(): Unit = {
     ctx = ta.getRfContext(false)
-    ta.setMode("local")
     try {
       LibraryLoader.load
     } catch {

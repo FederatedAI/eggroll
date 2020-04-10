@@ -86,6 +86,7 @@ class EggFrameBootstrap extends BootstrapBase with Logging {
     println(s"""server started at transferPort: $transferPort""")
     val cmdServer = NettyServerBuilder.forAddress(new InetSocketAddress(specPort))
       .maxInboundMetadataSize(1024*1024)
+      .maxInboundMessageSize(1024*1024*1024)
       .addService(new CommandService)
       .build
     cmdServer.start()
