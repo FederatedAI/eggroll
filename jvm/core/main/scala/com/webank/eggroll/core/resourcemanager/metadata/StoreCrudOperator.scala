@@ -173,6 +173,16 @@ object StoreCrudOperator {
       partitioner = store.partitioner,
       serdes = store.serdes)
 
+    val storeOpts = dbc.query(
+      rs => rs.map(
+        _ => DbStoreOption(
+          name = rs.getString("name"),
+          data = rs.getString("data"),
+          createdAt = rs.getDate("created_at"),
+          updatedAt = rs.getDate("updated_at"))
+      ),
+      "select * from store_option where store_locator_id = ?", storeLocatorId).toList
+
     val outputOptions = new ConcurrentHashMap[String, String]()
     if (inputOptions != null) {
       outputOptions.putAll(inputOptions)
@@ -261,6 +271,18 @@ object StoreCrudOperator {
 
     val newOptions = new ConcurrentHashMap[String, String]()
     if (inputOptions != null) newOptions.putAll(inputOptions)
+    val itOptions = newOptions.entrySet().iterator()
+    while(itOptions.hasNext){
+      val entry = itOptions.next()
+      dbc.withTransaction(conn => {
+        dbc.update(conn,
+          "insert into store_option(store_locator_id, name, data) values (?, ?, ?)",
+          newStoreLocator.get,
+          entry.getKey,
+          entry.getValue)
+      })
+    }
+
     val result = ErStore(
       storeLocator = inputStoreLocator,
       partitions = newPartitions.toArray,
