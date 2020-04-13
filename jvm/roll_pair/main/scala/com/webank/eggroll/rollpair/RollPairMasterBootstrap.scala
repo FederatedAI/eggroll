@@ -3,6 +3,7 @@ package com.webank.eggroll.rollpair
 import java.io.File
 import java.lang.management.ManagementFactory
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
 
 import _root_.io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
 import com.webank.eggroll.core.BootstrapBase
@@ -15,6 +16,80 @@ import com.webank.eggroll.core.transfer.GrpcServerUtils
 import com.webank.eggroll.core.util.{CommandArgsUtils, Logging}
 import org.apache.commons.cli.CommandLine
 import org.apache.commons.lang3.StringUtils
+import java.util
+import com.sun.jna.platform.win32.Kernel32
+import com.sun.jna.platform.win32.WinBase
+import com.sun.jna.platform.win32.WinError
+import com.sun.jna.platform.win32.WinNT
+import com.sun.jna.ptr.IntByReference
+
+class stopProcessor(clusterManagerClient:ClusterManagerClient, myself:ErProcessor) extends Thread with Logging {
+  def assertValidHandle(message: String, handle: WinNT.HANDLE): WinNT.HANDLE = {
+    if ((handle == null) || WinBase.INVALID_HANDLE_VALUE == handle) {
+      val hr = Kernel32.INSTANCE.GetLastError
+      if (hr == WinError.ERROR_SUCCESS) logInfo(message + " failed with unknown reason code")
+      else logInfo(message + " failed: hr=" + hr + " - 0x" + Integer.toHexString(hr))
+    }
+    handle
+  }
+
+  def assertCallSucceeded(message: String, result: Boolean): Unit = {
+    if (result) return
+    val hr = Kernel32.INSTANCE.GetLastError
+    if (hr == WinError.ERROR_SUCCESS) logInfo(message + " failed with unknown reason code")
+    else logInfo(message + " failed: hr=" + hr + " - 0x" + Integer.toHexString(hr))
+  }
+
+  override def run(){
+    val name = ManagementFactory.getRuntimeMXBean().getName()
+    logInfo(name)
+    val pid = name.split("@")(0)
+
+    val pipeName = "\\\\.\\pipe\\pid_pipe" + pid
+    val pipe_buffer_size = 1024
+    val hNamedPipe = assertValidHandle("CreateNamedPipe",
+      Kernel32.INSTANCE.CreateNamedPipe(pipeName, WinBase.PIPE_ACCESS_DUPLEX,
+        WinBase.PIPE_TYPE_MESSAGE | WinBase.PIPE_READMODE_MESSAGE | WinBase.PIPE_WAIT,
+        1,
+        pipe_buffer_size,
+        pipe_buffer_size,
+        TimeUnit.SECONDS.toMillis(30L).toInt,
+        null))
+
+    try {
+      logInfo("Await client connection")
+      assertCallSucceeded("ConnectNamedPipe", Kernel32.INSTANCE.ConnectNamedPipe(hNamedPipe, null))
+      logInfo("Client connected")
+      val readBuffer = new Array[Byte](pipe_buffer_size)
+      val lpNumberOfBytesRead = new IntByReference(0)
+      assertCallSucceeded("ReadFile", Kernel32.INSTANCE.ReadFile(hNamedPipe, readBuffer, readBuffer.length, lpNumberOfBytesRead, null))
+      val readSize = lpNumberOfBytesRead.getValue
+      logInfo("Received client data - length=" + readSize)
+      val readBufferCut = util.Arrays.copyOfRange(readBuffer, 0, readSize)
+      System.out.println(util.Arrays.toString(readBufferCut))
+      val receive_msg = new String(readBufferCut,"ascii")
+      System.out.println(receive_msg)
+
+      // Flush the pipe to allow the client to read the pipe's contents before disconnecting
+      assertCallSucceeded("FlushFileBuffers", Kernel32.INSTANCE.FlushFileBuffers(hNamedPipe))
+      logInfo("Disconnecting")
+      assertCallSucceeded("DisconnectNamedPipe", Kernel32.INSTANCE.DisconnectNamedPipe(hNamedPipe))
+      logInfo("Disconnected")
+
+      if (receive_msg.indexOf("stop")>=0 && receive_msg.indexOf(pid)>=0) {
+        System.out.println("receive msg")
+        val terminatedSelf = myself.copy(status = ProcessorStatus.STOPPED)
+        clusterManagerClient.heartbeat(terminatedSelf)
+      }
+    } finally {
+      // clean up
+      assertCallSucceeded("Named pipe handle close", Kernel32.INSTANCE.CloseHandle(hNamedPipe))
+    }
+
+    logInfo("Thread is running?");
+
+  }
+}
 
 class RollPairMasterBootstrap extends BootstrapBase with Logging {
   private var port = 0
@@ -60,6 +135,13 @@ class RollPairMasterBootstrap extends BootstrapBase with Logging {
       options = options,
       status = ProcessorStatus.RUNNING)
     logInfo("ready to heartbeat")
+
+    val isWindows = System.getProperty("os.name").toLowerCase().indexOf("windows") >= 0
+    if (isWindows) {
+      val t = new stopProcessor(clusterManagerClient, myself)
+      t.start()
+    }
+
     clusterManagerClient.heartbeat(myself)
 
     StaticErConf.addProperty(SessionConfKeys.CONFKEY_SESSION_ID, sessionId)
@@ -77,6 +159,7 @@ class RollPairMasterBootstrap extends BootstrapBase with Logging {
       }
     })
   }
+
   override def start(): Unit = {
     val managerEndpoint = if (StringUtils.isBlank(nodeManager)) {
       ErEndpoint(host = "localhost", port = 9394)
