@@ -70,8 +70,8 @@ object GrpcServerUtils extends Logging {
     val maxConnectionAge = CoreConfKeys.CONFKEY_CORE_GRPC_SERVER_CHANNEL_MAX_CONNECTION_AGE_SEC.getWith(options).toLong
     val maxConnectionAgeGrace = CoreConfKeys.CONFKEY_CORE_GRPC_SERVER_CHANNEL_MAX_CONNECTION_AGE_GRACE_SEC.getWith(options).toLong
 
-    nettyServerBuilder.
-      executor(ThreadPoolUtils.newCachedThreadPool(s"grpc-server-${port}"))
+    nettyServerBuilder
+      .executor(ThreadPoolUtils.newCachedThreadPool(s"grpc-server-${port}"))
       .maxConcurrentCallsPerConnection(maxConcurrentCallPerConnection)
       .maxInboundMessageSize(maxInboundMessageSize)
       .maxInboundMetadataSize(maxInboundMetadataSize)

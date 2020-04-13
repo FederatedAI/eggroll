@@ -18,19 +18,19 @@
 
 package com.webank.eggroll.core.serdes
 
+import java.lang.reflect.Constructor
 import java.util.concurrent.ConcurrentHashMap
 
 import com.webank.eggroll.core.command.CommandRpcMessage
 import com.webank.eggroll.core.constant.{SerdesTypes, StringConstants}
 import com.webank.eggroll.core.datastructure.SerdesFactory
 import com.webank.eggroll.core.meta.{MetaRpcMessage, NetworkingRpcMessage, TransferRpcMessage}
+import com.webank.eggroll.core.util.Logging
 import org.apache.commons.lang3.StringUtils
 
-import scala.reflect.runtime.universe
-
-object RpcMessageSerdesFactory extends SerdesFactory {
+object RpcMessageSerdesFactory extends SerdesFactory with Logging {
   private val serdesTypeToNames = Map((SerdesTypes.PROTOBUF -> "PbMessage"))
-  private val serdesToConstructors = new ConcurrentHashMap[String, universe.MethodMirror]()
+  private val serdesToConstructors = new ConcurrentHashMap[String, Constructor[_]]()
   private val DIRECTION_SERIALIZE = "To"
   private val DIRECTION_DESERIALIZE = "From"
 
@@ -38,11 +38,6 @@ object RpcMessageSerdesFactory extends SerdesFactory {
     newSerdesInternal(
       javaClass = javaClass, serdesType = serdesType, direction = DIRECTION_SERIALIZE)
       .asInstanceOf[ErSerializer]
-  }
-
-  def newSerializer(any: Any, serdesTypes: String): ErSerializer = {
-    assert(any != null)
-    newSerializer(any.getClass, serdesTypes)
   }
 
   def newDeserializer(javaClass: Class[_], serdesType: String = SerdesTypes.PROTOBUF): ErDeserializer = {
@@ -57,11 +52,11 @@ object RpcMessageSerdesFactory extends SerdesFactory {
 
     var cacheKey = genCacheKey(
       className = javaClassCanonicalName, serdesType = serdesType, direction = direction)
-    var constructorMirror = serdesToConstructors.get(cacheKey)
+    var constructor = serdesToConstructors.get(cacheKey)
 
     // return from cache if exists
-    if (constructorMirror != null) {
-      return constructorMirror(null)
+    if (constructor != null) {
+      return constructor.newInstance(null)
     }
 
     // create and put to cache otherwise
@@ -86,22 +81,18 @@ object RpcMessageSerdesFactory extends SerdesFactory {
     val serdesName = serdesTypeToNames(serdesType)
     val scalaClassName =
       s"com.webank.eggroll.core.meta.${rpcMessageType}Model${serdesName}Serdes" +
-        s".${finalJavaClass.getSimpleName}${direction}${serdesName}"
+        s"$$${finalJavaClass.getSimpleName}${direction}${serdesName}"
 
-    val runtimeMirror = universe.runtimeMirror(getClass.getClassLoader)
-    val serdesClass = runtimeMirror.staticClass(scalaClassName)
-    val reflectedSerdesClass = runtimeMirror.reflectClass(serdesClass)
+    val clz = Class.forName(scalaClassName)
 
-    //val a = NetworkingModelPbMessageSerdes.ErServerNodeFromPbMessage(null)
-    val constructorSymbol = serdesClass.primaryConstructor
-    constructorMirror = reflectedSerdesClass.reflectConstructor(constructorSymbol.asMethod)
+    constructor = clz.getConstructors()(0)
 
     cacheKey = genCacheKey(
       className = strippedJavaClassName, serdesType = serdesType, direction = direction)
-    serdesToConstructors.putIfAbsent(cacheKey, constructorMirror)
-    serdesToConstructors.putIfAbsent(cacheKey + StringConstants.DOLLAR, constructorMirror)
+    serdesToConstructors.putIfAbsent(cacheKey, constructor)
+    serdesToConstructors.putIfAbsent(cacheKey + StringConstants.DOLLAR, constructor)
 
-    constructorMirror(null)
+    constructor.newInstance(null)
   }
 
   private def genCacheKey(className: String, serdesType: String, direction: String): String = {

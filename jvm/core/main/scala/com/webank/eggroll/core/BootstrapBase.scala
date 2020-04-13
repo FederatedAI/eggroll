@@ -15,6 +15,7 @@ trait BootstrapBase {
 object Bootstrap extends Logging {
   val stopped = new AtomicBoolean(false)
   def main(args: Array[String]): Unit =  this.synchronized {
+    logInfo("main started")
     var bs = Array[String]()
     val newArgs = ArrayBuffer[String]()
     var i = 0
