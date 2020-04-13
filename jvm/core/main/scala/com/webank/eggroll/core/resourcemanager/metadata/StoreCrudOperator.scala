@@ -74,7 +74,6 @@ object StoreCrudOperator {
   private val nodeIdToNode = new ConcurrentHashMap[java.lang.Long, DbServerNode]()
   private[metadata] def doGetStore(input: ErStore): ErStore = {
     val inputOptions = input.options
-    val sessionId = inputOptions.getOrDefault(SessionConfKeys.CONFKEY_SESSION_ID, StringConstants.UNKNOWN)
 
     // getting input locator
     val inputStoreLocator = input.storeLocator
@@ -199,7 +198,6 @@ object StoreCrudOperator {
 
   private[metadata] def doCreateStore(input: ErStore): ErStore = {
     val inputOptions = input.options
-    val sessionId = inputOptions.getOrDefault(SessionConfKeys.CONFKEY_SESSION_ID, StringConstants.UNKNOWN)
 
     // create store locator
     val inputStoreLocator = input.storeLocator
