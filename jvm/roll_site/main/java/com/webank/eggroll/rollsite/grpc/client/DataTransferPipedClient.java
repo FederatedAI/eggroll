@@ -74,7 +74,7 @@ public class DataTransferPipedClient {
             = new GrpcClientContext<>();
 
         endpoint = proxyGrpcStubFactory.getAsyncEndpoint(metadata.getDst());
-
+        this.pipe = pipe;
         context.setStubClass(DataTransferServiceGrpc.DataTransferServiceStub.class);
 
         needSecureChannel = proxyServerConf.isSecureServer();
@@ -101,6 +101,7 @@ public class DataTransferPipedClient {
 
         template.completeStreamingRpc();
         */
+
     }
 
     public void doPush() {
@@ -121,7 +122,6 @@ public class DataTransferPipedClient {
         }
         LOGGER.info("[DEBUG][CLUSTERCOMM] doPush call processCallerStreamingRpc");
         pushTemplate.processCallerStreamingRpc();
-
     }
 
     public synchronized void completePush() {
@@ -129,7 +129,11 @@ public class DataTransferPipedClient {
         if (pushTemplate == null) {
             throw new IllegalStateException("pushTemplate has not been initialized yet");
         }
-        pushTemplate.completeStreamingRpc();
+        if (!pipe.hasError()) {
+            pushTemplate.completeStreamingRpc();
+        } else {
+            pushTemplate.errorCallerStreamingRpc(pipe.getError());
+        }
     }
 
     public void pull(Proxy.Metadata metadata, Pipe pipe) {

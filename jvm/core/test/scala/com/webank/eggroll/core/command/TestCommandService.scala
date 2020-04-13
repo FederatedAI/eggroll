@@ -24,7 +24,7 @@ import com.webank.eggroll.core.command.CommandModelPbMessageSerdes._
 import com.webank.eggroll.core.command.CommandServiceGrpc.CommandServiceBlockingStub
 import com.webank.eggroll.core.constant.StringConstants
 import com.webank.eggroll.core.di.Singletons
-import com.webank.eggroll.core.factory.{GrpcChannelFactory, GrpcStubFactory}
+import com.webank.eggroll.core.factory.GrpcStubFactory
 import com.webank.eggroll.core.meta.ErEndpoint
 import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
 import org.apache.commons.lang3.StringUtils
@@ -52,7 +52,6 @@ class TestCommandService {
       sayHelloToPbMethod.getName)
     CommandRouter.register(sayHelloToPbServiceName, sayHelloToPbMethod.getParameterTypes)
 
-    val grpcChannelFactory = Singletons.get(classOf[GrpcChannelFactory])
     val grpcStubFactory = Singletons.get(classOf[GrpcStubFactory])
 
     val endpoint = ErEndpoint("localhost", 60000)

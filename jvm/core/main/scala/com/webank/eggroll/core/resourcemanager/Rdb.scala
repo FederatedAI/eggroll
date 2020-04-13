@@ -21,13 +21,9 @@ package com.webank.eggroll.core.resourcemanager
 import com.webank.eggroll.core.constant.ClusterManagerConfKeys
 import com.webank.eggroll.core.session.StaticErConf
 import org.apache.commons.dbcp2.BasicDataSource
-import org.apache.ibatis.mapping.Environment
-import org.apache.ibatis.session.defaults.DefaultSqlSessionFactory
-import org.apache.ibatis.session.{Configuration, SqlSession, TransactionIsolationLevel}
-import org.apache.ibatis.transaction.jdbc.JdbcTransactionFactory
 
 object RdbConnectionPool {
-  val dataSource: BasicDataSource = new BasicDataSource
+  val dataSource: BasicDataSource = new BasicDataSource()
   dataSource.setDriverClassName(StaticErConf.getString(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_JDBC_DRIVER_CLASS_NAME, "com.mysql.cj.jdbc.Driver"))
   dataSource.setUrl(StaticErConf.getString(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_JDBC_URL))
   dataSource.setUsername(StaticErConf.getString(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_JDBC_USERNAME))
@@ -37,17 +33,5 @@ object RdbConnectionPool {
   dataSource.setTimeBetweenEvictionRunsMillis(StaticErConf.getLong(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_TIME_BETWEEN_EVICTION_RUNS_MS, 10000L))
   dataSource.setMinEvictableIdleTimeMillis(StaticErConf.getLong(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_MIN_EVICTABLE_IDLE_TIME_MS, 120000L))
   dataSource.setDefaultAutoCommit(StaticErConf.getBoolean(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_DEFAULT_AUTO_COMMIT, false))
-
-  private val transactionFactory = new JdbcTransactionFactory
-  private val environment = new Environment("meta-service", transactionFactory, dataSource)
-
-  private val configuration = new Configuration(environment)
-  configuration.addMappers("com.webank.eggroll.core.clustermanager.dao.generated.mapper")
-
-  private val sqlSessionFactory = new DefaultSqlSessionFactory(configuration)
-
-  def openSession(level: TransactionIsolationLevel = TransactionIsolationLevel.READ_COMMITTED): SqlSession = {
-    sqlSessionFactory.openSession(level)
-  }
 }
 

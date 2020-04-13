@@ -16,7 +16,7 @@
 
 package com.webank.eggroll.core.util
 
-import java.util.concurrent.{ExecutorService, Executors, ThreadFactory, ThreadPoolExecutor}
+import java.util.concurrent._
 
 import com.google.common.util.concurrent.{MoreExecutors, ThreadFactoryBuilder}
 
@@ -35,6 +35,22 @@ object ThreadPoolUtils {
     new ThreadFactoryBuilder().setDaemon(isDaemon).setNameFormat(prefix + "-%d").build()
   }
 
+  def newCachedThreadPool(prefix: String, isDaemon: Boolean = false): ThreadPoolExecutor = {
+    val threadFactory = namedThreadFactory(prefix, isDaemon)
+    Executors.newCachedThreadPool(threadFactory).asInstanceOf[ThreadPoolExecutor]
+  }
+
+  def newThreadPool(nCoreThreads: Int,
+                    nMaxThreads: Int,
+                    nQueueSize: Int,
+                    keepAliveTimeInSec: Int,
+                    prefix: String,
+                    isDaemon: Boolean = false): ThreadPoolExecutor = {
+    val threadFactory = namedThreadFactory(prefix, isDaemon)
+
+    val workQueue = if (nQueueSize <= 0) new SynchronousQueue[Runnable]() else new LinkedBlockingQueue[Runnable](nQueueSize)
+    new ThreadPoolExecutor(nCoreThreads, nMaxThreads, keepAliveTimeInSec, TimeUnit.SECONDS, workQueue, threadFactory)
+  }
   def newFixedThreadPool(nThreads: Int, prefix: String, isDaemon: Boolean = false): ThreadPoolExecutor = {
     val threadFactory = namedThreadFactory(prefix, isDaemon)
     Executors.newFixedThreadPool(nThreads, threadFactory).asInstanceOf[ThreadPoolExecutor]

@@ -2,16 +2,15 @@ package com.webank.eggroll.rollpair
 
 import java.io.File
 import java.lang.management.ManagementFactory
-import java.net.InetSocketAddress
 import java.util.concurrent.ConcurrentHashMap
 
-import _root_.io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
 import com.webank.eggroll.core.Bootstrap
 import com.webank.eggroll.core.client.ClusterManagerClient
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
 import com.webank.eggroll.core.constant._
 import com.webank.eggroll.core.meta.{ErEndpoint, ErJob, ErProcessor}
 import com.webank.eggroll.core.session.StaticErConf
+import com.webank.eggroll.core.transfer.GrpcServerUtils
 import com.webank.eggroll.core.util.{CommandArgsUtils, Logging}
 import org.apache.commons.cli.CommandLine
 import org.apache.commons.lang3.StringUtils
@@ -93,17 +92,15 @@ class RollPairMasterBootstrap extends Bootstrap with Logging {
     StaticErConf.addProperty(SessionConfKeys.CONFKEY_SESSION_ID, sessionId)
     this.port = cmd.getOptionValue('p', "0").toInt
 
-    val rollServer = NettyServerBuilder.forAddress(new InetSocketAddress(this.port))
-      .maxInboundMetadataSize(1024*1024)
-      .addService(new CommandService)
-      .build
-    rollServer.start()
-    this.port = rollServer.getPort
+    val server = GrpcServerUtils.createServer(
+      port = this.port, grpcServices = List(new CommandService))
+
+    server.start()
+    this.port = server.getPort
     StaticErConf.setPort(port)
     logInfo(s"server started at ${port}")
     // job
     reportCM(sessionId, args, port)
-
 
     logInfo("heartbeated")
   }
