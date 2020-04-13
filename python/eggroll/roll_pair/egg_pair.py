@@ -19,8 +19,6 @@ import os
 import signal
 from collections.abc import Iterable
 from concurrent import futures
-import threading
-import platform
 
 import grpc
 import numpy as np
@@ -407,43 +405,6 @@ class EggPair(object):
         return seq_op_result
 
 
-def stop_processor(cluster_manager_client: ClusterManagerClient, myself: ErProcessor):
-    import win32file
-    import win32pipe
-    L.info(f"stop_processor pid:{os.getpid()}, ppid:{os.getppid()}")
-    pipe_name = r'\\.\pipe\pid_pipe' + str(os.getpid())
-    pipe_buffer_size = 1024
-    while True:
-        named_pipe = win32pipe.CreateNamedPipe(pipe_name,
-                                               win32pipe.PIPE_ACCESS_DUPLEX,
-                                               win32pipe.PIPE_TYPE_MESSAGE | win32pipe.PIPE_WAIT | win32pipe.PIPE_READMODE_MESSAGE,
-                                               win32pipe.PIPE_UNLIMITED_INSTANCES,
-                                               pipe_buffer_size,
-                                               pipe_buffer_size, 500, None)
-        try:
-            while True:
-                try:
-                    win32pipe.ConnectNamedPipe(named_pipe, None)
-                    data = win32file.ReadFile(named_pipe, pipe_buffer_size, None)
-
-                    if data is None or len(data) < 2:
-                        continue
-
-                    print('receive msg:', data)
-                    cmd_str = data[1].decode('utf-8')
-                    if 'stop' in cmd_str and str(os.getpid()) in cmd_str:
-                        myself._status = ProcessorStatus.STOPPED
-                        cluster_manager_client.heartbeat(myself)
-
-                except BaseException as e:
-                    print("exception:", e)
-                    break
-        finally:
-            try:
-                win32pipe.DisconnectNamedPipe(named_pipe)
-            except:
-                pass
-
 def serve(args):
     prefix = 'v1/egg-pair'
 
@@ -519,10 +480,6 @@ def serve(args):
             ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT: cluster_manager_port
         })
         cluster_manager_client.heartbeat(myself)
-
-        if platform.system() == "Windows":
-            t1 = threading.Thread(target=stop_processor, args=[cluster_manager_client, myself])
-            t1.start()
 
     L.info(f'egg_pair started at port {port}, transfer_port {transfer_port}')
 
