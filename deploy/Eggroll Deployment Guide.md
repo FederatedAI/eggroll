@@ -161,13 +161,14 @@ sh deploy.sh
 **Use ssh to log in to each node with app user. Go to the install directory and run the following command to start services:**
 
 ```bash
-cd ${EGGROLL_HOME}				    --${EGGROLL_HOME} means the absolute path of eggroll
+source ${EGGROLL_HOME}/init.sh       --${EGGROLL_HOME} means the absolute path of eggroll
 sh bin/eggroll.sh all start			 --start all module service on this server
 ```
 
 **And you can replace 'start' with 'status' to see the status of the process, replace 'start' with 'restart' to restart service, and replace 'start' with 'stop' to stop service, such as:**
 
 ```bash
+source ${EGGROLL_HOME}/init.sh       --${EGGROLL_HOME} means the absolute path of eggroll
 sh bin/eggroll.sh all|$module_name start|stop|restart|status
 ```
 
@@ -178,9 +179,7 @@ sh bin/eggroll.sh all|$module_name start|stop|restart|status
 1. **Init  test environment,when first time log in the server, running the commands:**
 
 ```bash
-export EGGROLL_HOME=$EGGROLL_HOME		--${EGGROLL_HOME} means the absolute path of eggroll
-export PYTHONPATH=${EGGROLL_HOME}/python				
-source $venv_home/venv/bin/activateTestRollPair
+source ${EGGROLL_HOME}/init.sh       --${EGGROLL_HOME} means the absolute path of eggroll
 ```
 
 2. **Log in the server of ClusterManager or NodeManager,running the commands:**
