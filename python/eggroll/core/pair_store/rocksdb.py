@@ -33,6 +33,9 @@ class RocksdbWriteBatch(PairWriteBatch):
         self.value = None
         self.write_count = 0
 
+    def get(self, k):
+        return self.adapter.db.get(k)
+
     def put(self, k, v):
         self.key = k
         self.value = v

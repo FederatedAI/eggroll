@@ -79,12 +79,13 @@ class RollPairContext(object):
         return ret
 
     def context_gc(self):
+        self.gc_recorder.stop()
         if self.gc_recorder.gc_recorder is None:
-            L.error("rp context gc_recorder is None!")
+            L.info("rp context gc_recorder is None!")
             return
-        for item in list(self.gc_recorder.gc_recorder.get_all()):
-            L.debug("cleanup item:{}".format(item))
-            name = item[0]
+        for k ,v in (self.gc_recorder.gc_recorder.items()):
+            L.debug("before exit the task:{} cleaning item:{}".format(self.session_id, k))
+            name = k
             rp = self.load(namespace=self.session_id, name=name)
             rp.destroy()
 
@@ -162,6 +163,7 @@ class RollPairContext(object):
         if name is None:
             name = str(uuid.uuid1())
         rp = self.load(namespace=namespace, name=name, options=options)
+        print("before putAll rp:{}".format(rp))
         return rp.put_all(data, options=options)
 
     '''store name only supports full name and reg: *, *abc ,abc* and a*c'''
@@ -275,20 +277,16 @@ class RollPair(object):
         self.gc_enable = rp_ctx.rpc_gc_enable
         self.gc_recorder = rp_ctx.gc_recorder
         self.gc_recorder.record(er_store)
+        print(f"init:{self}")
 
     def __del__(self):
-        if self.ctx.get_session().is_stopped():
+        print(f"del obj addr:{self} calling")
+        if not hasattr(self, 'gc_enable') \
+                or not self.gc_enable:
             L.info('session:{} has already been stopped'.format(self.__session_id))
+            print(f"debug123:{hasattr(self, 'gc_enable')}, {self.ctx.get_session().is_stopped()}, {not self.gc_enable}")
             return
-        if not hasattr(self, 'gc_enable') or not self.gc_enable:
-            return
-        if self.ctx.gc_recorder.check_gc_executable(self.__store):
-            self.ctx.gc_recorder.delete_record(self.__store)
-            L.debug(f'del rp: {self}')
-            self.destroy()
-            L.debug(f"running gc: {sys._getframe().f_code.co_name}. "
-                    f"deleting store name: {self.__store._store_locator._name}, "
-                    f"namespace: {self.__store._store_locator._namespace}")
+        self.ctx.gc_recorder.decrease_ref_count(self.__store)
 
     def __repr__(self):
         return f'<RollPair(_store={self.__store}) at {hex(id(self))}>'
@@ -523,6 +521,7 @@ class RollPair(object):
     # todo:1: move to command channel to utilize batch command
     @_method_profile_logger
     def destroy(self):
+        print("destroy rp:{}".format(self.__store._store_locator._name))
         total_partitions = self.__store._store_locator._total_partitions
 
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.DESTROY),

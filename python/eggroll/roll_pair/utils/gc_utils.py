@@ -1,3 +1,8 @@
+import threading
+import queue
+from threading import Thread
+import time
+
 from eggroll.core.constants import StoreTypes
 from eggroll.core.meta_model import ErStore
 from eggroll.utils.log_utils import get_logger
@@ -5,64 +10,57 @@ from eggroll.utils.log_utils import get_logger
 L = get_logger()
 
 
-class GcRecorder(object):
+class GcRecorder(threading.Thread):
 
     def __init__(self, rpc):
-        L.debug('init recorder')
+        super(GcRecorder, self).__init__()
+        self._stop_event = threading.Event()
+        L.debug('session:{} initializing recorder'.format(rpc.session_id))
         self.record_store = None
         self.record_rpc = rpc
-        self.gc_recorder = None
-        self.gc_store_name = '__gc__' + self.record_rpc.get_session().get_session_id()
-        self.gc_store_namespace = '__gc__record'
+        self.gc_recorder = dict()
+        self.gc_thread = Thread(target=self.run, daemon=True)
+        self.record_start = False
+        self.gc_queue = queue.Queue()
+        self.gc_thread.start()
+        self.gc_recorded = set()
+        print("starting gc_thread......")
 
-    def __set_gc_recorder(self):
-        options = dict()
-        options['store_type'] = StoreTypes.ROLLPAIR_LMDB
-        _table_recorder = self.record_rpc.load(name=self.gc_store_name,
-                                               namespace=self.gc_store_namespace,
-                                               options=options)
-        return _table_recorder
+    def stop(self):
+        self._stop_event.set()
+
+    def run(self):
+        while not self._stop_event.is_set():
+            if self.gc_queue.empty() and self.record_start:
+                print("gc_queue is empty, stop the thread")
+                self._stop_event.set()
+            if not self.gc_queue.empty():
+                rp_name = self.gc_queue.get()
+                self.record_rpc.load(namespace=self.record_rpc.get_session().get_session_id(),
+                                     name=rp_name).destroy()
 
     def record(self, er_store: ErStore):
-        if er_store._store_locator._name == self.gc_store_name:
-            return
-        if self.gc_recorder is None:
-            self.gc_recorder = self.__set_gc_recorder()
         store_type = er_store._store_locator._store_type
         name = er_store._store_locator._name
         namespace = er_store._store_locator._namespace
         if store_type != StoreTypes.ROLLPAIR_IN_MEMORY:
             return
         else:
-            L.debug("record in memory table namespace:{}, name:{}, type:{}"
-                   .format(namespace, name, store_type))
+            self.record_start = True
+            print("record in memory table namespace:{}, name:{}, type:{}"
+                  .format(namespace, name, store_type))
             count = self.gc_recorder.get(name)
             if count is None:
                 count = 0
-            self.gc_recorder.put(name, (count+1))
+            self.gc_recorder[name] = count + 1
+            self.gc_recorded.add(name)
+            print(f"recorded:{self.gc_recorder}")
 
-    def check_gc_executable(self, er_store: ErStore):
-        store_type = er_store._store_locator._store_type
-        if store_type != StoreTypes.ROLLPAIR_IN_MEMORY:
-            return False
-        if self.record_rpc.get_session().is_stopped():
-            L.info("session:{} has already been stopped while gc"
-                   .format(self.record_rpc.get_session().get_session_id()))
-            return
-        record_count = self.gc_recorder.get(er_store._store_locator._name)
-        if record_count is None:
-            record_count = 0
-        if record_count > 1:
-            L.debug("table:{} ref count is {}".format(er_store._store_locator._name, record_count))
-            self.gc_recorder.put(er_store._store_locator._name, (record_count-1))
-            return False
-        elif 1 >= record_count >= 0:
-            return True
-
-    def delete_record(self, er_store: ErStore):
-        if self.record_rpc.get_session().is_stopped():
-            L.info("session:{} has already been stopped while gc"
-                   .format(self.record_rpc.get_session().get_session_id()))
-            return
-        name = er_store._store_locator._name
-        self.gc_recorder.delete(name)
+    def decrease_ref_count(self, er_store):
+        record_count = 0 if self.gc_recorder.get(er_store._store_locator._name) is None \
+            else (self.gc_recorder.get(er_store._store_locator._name) - 1)
+        self.gc_recorder[er_store._store_locator._name] = record_count
+        if record_count == 0 and er_store._store_locator._name in self.gc_recorded:
+            print('put in queue')
+            self.gc_queue.put(er_store._store_locator._name)
+            self.gc_recorded.remove(er_store._store_locator._name)
