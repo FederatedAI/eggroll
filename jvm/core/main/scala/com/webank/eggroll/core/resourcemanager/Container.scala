@@ -70,7 +70,7 @@ class Container(conf: RuntimeErConf, moduleName: String, processorId: Long = 0) 
   private def doStop(force: Boolean = false): Boolean = {
     val subCmd =  if (force) "kill" else "stop"
     val taskInfo = if (isWindows) "None" else "ps aux | grep 'session-id ${sessionId}' | grep 'server-node-id ${myServerNodeId}' | grep 'processor-id ${processorId}'"
-    val doStopCmd = s"""${exe_cmd} ${boot} ${subCmd} ${taskInfo} ${moduleName}-${processorId}"""
+    val doStopCmd = s"""${exe_cmd} ${boot} ${subCmd} \"${taskInfo}\" ${moduleName}-${processorId}"""
     logInfo(doStopCmd)
 
     val thread = runCommand(doStopCmd)
