@@ -1,9 +1,9 @@
 cwd=$(cd `dirname $0`; pwd)
 source ./conf.sh
-version=2.0
+version=2.1.0
 
-sed -i "s#EGGROLL_HOME=.*#${EGGROLL_HOME}#g" ./init.sh
-mv ./init.sh ../
+sed -i "s#EGGROLL_HOME=.*#EGGROLL_HOME=${EGGROLL_HOME}#g" ./init.sh
+cp ./init.sh ../
 
 cd ..
 mkdir lib
