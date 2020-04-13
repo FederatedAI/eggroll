@@ -263,6 +263,8 @@ class RollPair(object):
         pass
 
     def __init__(self, er_store: ErStore, rp_ctx: RollPairContext):
+        if not rp_ctx:
+            raise ValueError('rp_ctx cannot be None')
         self.__store = er_store
         self.ctx = rp_ctx
         self.__command_serdes = SerdesTypes.PROTOBUF
@@ -606,6 +608,8 @@ class RollPair(object):
 
     @_method_profile_logger
     def save_as(self, name, namespace, partition, options: dict = None):
+        if partition <= 0:
+            raise ValueError('partition cannot <= 0')
         if options is None:
             options = {}
         store_type = options.get('store_type', self.ctx.default_store_type)

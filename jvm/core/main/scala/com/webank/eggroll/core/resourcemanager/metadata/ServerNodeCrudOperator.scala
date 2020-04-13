@@ -32,6 +32,8 @@ import org.apache.commons.lang3.StringUtils
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 
+trait CrudOperator
+
 class ServerNodeCrudOperator extends CrudOperator with Logging {
   def getServerCluster(input: ErServerCluster): ErServerCluster = {
     ServerNodeCrudOperator.doGetServerCluster(input)

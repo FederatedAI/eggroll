@@ -25,7 +25,6 @@ import com.webank.eggroll.core.command.CommandURI
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.schedule._
 import com.webank.eggroll.core.serdes.DefaultScalaSerdes
-import org.apache.commons.lang3.StringUtils
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
@@ -50,8 +49,8 @@ class RollPairMaster() {
     })
     val finalInputTemplate = finalInputs.head
     val outputTotalPartitions =
-      if (StringUtils.equalsAny(RollPair.REDUCE, RollPair.AGGREGATE)) 1
-      else finalInputTemplate.storeLocator.totalPartitions
+      if (inputJob.outputs.isEmpty) finalInputTemplate.storeLocator.totalPartitions
+      else inputJob.outputs.head.storeLocator.totalPartitions
     val outputStoreProposal = if (isOutputSpecified) {
       val specifiedOutput = inputJob.outputs.head
       if (specifiedOutput.partitions.isEmpty) {
