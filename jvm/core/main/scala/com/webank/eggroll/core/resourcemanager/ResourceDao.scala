@@ -75,7 +75,8 @@ class SessionMetaDao {
           commandEndpoint = if(StringUtils.isBlank(rs.getString("command_endpoint"))) null
                             else ErEndpoint(rs.getString("command_endpoint")),
           transferEndpoint = if(StringUtils.isBlank(rs.getString("transfer_endpoint"))) null
-                              else ErEndpoint(rs.getString("transfer_endpoint")))
+                              else ErEndpoint(rs.getString("transfer_endpoint")),
+          pid = rs.getInt("pid"))
         ),
       "select * from session_processor where session_id = ?", sessionId)
     getSessionMain(sessionId).copy(options = opts, processors = procs.toArray)
