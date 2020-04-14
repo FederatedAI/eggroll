@@ -159,3 +159,8 @@ object RollSiteConfKeys {
   val EGGROLL_ROLLSITE_LAN_INSECURE_CHANNEL_ENABLED = ErConfKey("eggroll.rollsite.lan.insecure.channel.enabled")
   val EGGROLL_ROLLSITE_AUDIT_ENABLED = ErConfKey("eggroll.rollsite.audit.enabled")
 }
+
+object RollPairConfKeys {
+  val EGGROLL_ROLLPAIR_PUTBATCH_EXECUTOR_POOL_MAX_SIZE = ErConfKey("eggroll.rollpair.putbatch.executor.pool.max.size", 600)
+  val EGGROLL_ROLLPAIR_PUTBATCH_EXECUTOR_POOL_KEEPALIVE_SEC = ErConfKey("eggroll.rollpair.putbatch.executor.pool.keepalive.sec", 30)
+}

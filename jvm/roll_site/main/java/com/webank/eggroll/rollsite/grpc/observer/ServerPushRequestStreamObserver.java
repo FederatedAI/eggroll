@@ -18,16 +18,19 @@ package com.webank.eggroll.rollsite.grpc.observer;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
+import com.webank.ai.eggroll.api.core.BasicMeta.Endpoint;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
 import com.webank.eggroll.core.meta.ErRollSiteHeader;
 import com.webank.eggroll.core.meta.TransferModelPbMessageSerdes;
 import com.webank.eggroll.core.transfer.Transfer.RollSiteHeader;
 import com.webank.eggroll.core.util.ErrorUtils;
+import com.webank.eggroll.core.util.RuntimeUtils;
 import com.webank.eggroll.core.util.ToStringUtils;
 import com.webank.eggroll.rollsite.RollSiteUtil;
 import com.webank.eggroll.rollsite.event.model.PipeHandleNotificationEvent;
 import com.webank.eggroll.rollsite.factory.EventFactory;
 import com.webank.eggroll.rollsite.factory.PipeFactory;
+import com.webank.eggroll.rollsite.factory.ProxyGrpcStubFactory;
 import com.webank.eggroll.rollsite.helper.ModelValidationHelper;
 import com.webank.eggroll.rollsite.infra.JobStatus;
 import com.webank.eggroll.rollsite.infra.Pipe;
@@ -102,6 +105,8 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
     private ProxyServerConf proxyServerConf;
     @Autowired
     private PipeUtils pipeUtils;
+    @Autowired
+    private ProxyGrpcStubFactory proxyGrpcStubFactory;
     private Pipe pipe;
     private PipeFactory pipeFactory;
     private Proxy.Metadata inputMetadata;
@@ -293,28 +298,16 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
 
     @Override
     public void onError(Throwable throwable) {
-        LOGGER.info("[PUSH][OBSERVER] onError");
+        Endpoint next = proxyGrpcStubFactory.getAsyncEndpoint(inputMetadata.getDst());
+        Throwable throwableWithIp = new Throwable("my address: " + RuntimeUtils.getMySiteLocalAddress(true) + ":" + proxyServerConf.getPort() + " -> next hop: " + next.getIp() + ":" + next.getPort(), throwable);
         LOGGER.error("[PUSH][OBSERVER][ONERROR] error in push server: {}, metadata: {}, ackCount: {}",
-                Status.fromThrowable(throwable), oneLineStringInputMetadata, ackCount.get());
-        LOGGER.error(ExceptionUtils.getStackTrace(throwable));
+                Status.fromThrowable(throwableWithIp), oneLineStringInputMetadata, ackCount.get());
+        LOGGER.error(ExceptionUtils.getStackTrace(throwableWithIp));
 
         pipe.setDrained();
 
-/*        if (Status.fromThrowable(throwable).getCode() != Status.Code.CANCELLED) {
-            pipe.onError(throwable);
-            responseObserver.onError(errorUtils.toGrpcRuntimeException(throwable));
-            streamStat.onError();
-        } else {
-            noError = false;
-            pipe.onComplete();
-            LOGGER.info("[PUSH][OBSERVER][ONERROR] connection cancelled. turning into completed.");
-            onCompleted();
-            streamStat.onComplete();
-            return;
-        }*/
-
-        pipe.onError(throwable);
-        responseObserver.onError(ErrorUtils.toGrpcRuntimeException(throwable));
+        pipe.onError(throwableWithIp);
+        responseObserver.onError(ErrorUtils.toGrpcRuntimeException(throwableWithIp));
         streamStat.onError();
     }
 
