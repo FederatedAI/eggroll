@@ -21,7 +21,7 @@ from eggroll.core.aspects import _method_profile_logger
 from eggroll.core.client import CommandClient
 from eggroll.core.command.command_model import CommandURI
 from eggroll.core.conf_keys import SessionConfKeys
-from eggroll.core.constants import StoreTypes, SerdesTypes, PartitionerTypes
+from eggroll.core.constants import StoreTypes, SerdesTypes, PartitionerTypes, SessionStatus
 from eggroll.core.datastructure.broker import FifoBroker
 from eggroll.core.meta_model import ErStoreLocator, ErJob, ErStore, ErFunctor, \
     ErTask, ErPair, ErPartition
@@ -46,6 +46,8 @@ def runtime_init(session: ErSession):
 class RollPairContext(object):
 
     def __init__(self, session: ErSession):
+        if session.get_session_meta()._status != SessionStatus.ACTIVE:
+            raise Exception(f"session:{session.get_session_id()} is not available, init first!")
         self.__session = session
         self.session_id = session.get_session_id()
         self.default_store_type = StoreTypes.ROLLPAIR_LMDB
