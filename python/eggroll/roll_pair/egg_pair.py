@@ -504,13 +504,14 @@ def serve(args):
                                       options=[
                                           (cygrpc.ChannelArgKey.max_send_message_length, 2 << 30 - 1),
                                           (cygrpc.ChannelArgKey.max_receive_message_length, 2 << 30 - 1),
-                                          ('grpc.max_metadata_size', 32 << 20)])
+                                          ('grpc.max_metadata_size', 128 << 20)])
         transfer_port = transfer_server.add_insecure_port(f'[::]:{transfer_port}')
         transfer_pb2_grpc.add_TransferServiceServicer_to_server(transfer_servicer,
                                                                 transfer_server)
         transfer_server.start()
+    pid = os.getpid()
 
-    L.info(f"starting egg_pair service, port:{port}, transfer port: {transfer_port}")
+    L.info(f"starting egg_pair service, port: {port}, transfer port: {transfer_port}, pid: {pid}")
     command_server.start()
 
     cluster_manager = args.cluster_manager
@@ -529,7 +530,7 @@ def serve(args):
                              processor_type=ProcessorTypes.EGG_PAIR,
                              command_endpoint=ErEndpoint(host='localhost', port=port),
                              transfer_endpoint=ErEndpoint(host='localhost', port=transfer_port),
-                             pid=os.getpid(),
+                             pid=pid,
                              options=options,
                              status=ProcessorStatus.RUNNING)
 
