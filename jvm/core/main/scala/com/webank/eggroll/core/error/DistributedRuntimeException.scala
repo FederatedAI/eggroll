@@ -26,7 +26,7 @@ import scala.collection.mutable
 class DistributedRuntimeException extends RuntimeException {
   private val causes = mutable.ListBuffer[Throwable]()
 
-  def append(t: Throwable): Unit = causes.append(t)
+  def append(t: Throwable): Unit = synchronized(causes.append(t))
 
   def raise(): Unit = {
     if (causes.nonEmpty) {
@@ -34,7 +34,7 @@ class DistributedRuntimeException extends RuntimeException {
     }
   }
 
-  def check(): Boolean = {
+  def checkEmpty(): Boolean = {
     causes.isEmpty
   }
 
