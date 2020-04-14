@@ -24,7 +24,6 @@ import com.webank.eggroll.core.meta.ErRollSiteHeader;
 import com.webank.eggroll.core.meta.TransferModelPbMessageSerdes;
 import com.webank.eggroll.core.transfer.Transfer.RollSiteHeader;
 import com.webank.eggroll.core.util.ErrorUtils;
-import com.webank.eggroll.core.util.RuntimeUtils;
 import com.webank.eggroll.core.util.ToStringUtils;
 import com.webank.eggroll.rollsite.RollSiteUtil;
 import com.webank.eggroll.rollsite.event.model.PipeHandleNotificationEvent;
@@ -299,15 +298,28 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
     @Override
     public void onError(Throwable throwable) {
         Endpoint next = proxyGrpcStubFactory.getAsyncEndpoint(inputMetadata.getDst());
-        Throwable throwableWithIp = new Throwable("my address: " + RuntimeUtils.getMySiteLocalAddress(true) + ":" + proxyServerConf.getPort() + " -> next hop: " + next.getIp() + ":" + next.getPort(), throwable);
+        StringBuilder builder = new StringBuilder();
+        builder.append("src: ")
+            .append(ToStringUtils.toOneLineString(inputMetadata.getSrc()))
+            .append(", dst: ")
+            .append(ToStringUtils.toOneLineString(inputMetadata.getDst()))
+            .append(", my hop: ")
+            .append(proxyServerConf.getPartyId())
+            .append(":")
+            .append(proxyServerConf.getPort())
+            .append(" -> next hop: ")
+            .append(next.getIp())
+            .append(":")
+            .append(next.getPort());
+        RuntimeException exceptionWithHop = new RuntimeException(builder.toString(), throwable);
         LOGGER.error("[PUSH][OBSERVER][ONERROR] error in push server: {}, metadata: {}, ackCount: {}",
-                Status.fromThrowable(throwableWithIp), oneLineStringInputMetadata, ackCount.get());
-        LOGGER.error(ExceptionUtils.getStackTrace(throwableWithIp));
+                Status.fromThrowable(exceptionWithHop), oneLineStringInputMetadata, ackCount.get());
+        LOGGER.error(ExceptionUtils.getStackTrace(exceptionWithHop));
 
         pipe.setDrained();
 
-        pipe.onError(throwableWithIp);
-        responseObserver.onError(ErrorUtils.toGrpcRuntimeException(throwableWithIp));
+        pipe.onError(exceptionWithHop);
+        responseObserver.onError(ErrorUtils.toGrpcRuntimeException(exceptionWithHop));
         streamStat.onError();
     }
 
