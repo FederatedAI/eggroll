@@ -82,10 +82,10 @@ class RollPairContext(object):
 
     def context_gc(self):
         self.gc_recorder.stop()
-        if self.gc_recorder.gc_recorder is None:
-            L.info("rp context gc_recorder is None!")
+        if self.gc_recorder.gc_recorder is None or len(self.gc_recorder.gc_recorder) == 0:
+            L.info("rp context gc_recorder is None or empty!")
             return
-        for k ,v in (self.gc_recorder.gc_recorder.items()):
+        for k, v in (self.gc_recorder.gc_recorder.items()):
             L.debug("before exit the task:{} cleaning item:{}".format(self.session_id, k))
             name = k
             rp = self.load(namespace=self.session_id, name=name)
