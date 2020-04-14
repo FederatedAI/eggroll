@@ -155,7 +155,7 @@ class DefaultShuffler(shuffleId: String,
 
   override def getTotalPartitionedCount(): Long = totalPartitionedElementsCount.get()
 
-  override def hasError(): Boolean = errors.check()
+  override def hasError(): Boolean = errors.checkEmpty()
 
   override def getError(): DistributedRuntimeException = errors
 }
