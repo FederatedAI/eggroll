@@ -95,7 +95,6 @@ class SessionConfKeys(object):
     EGGROLL_SESSION_START_TIMEOUT_MS = ErConfKey("eggroll.session.start.timeout.ms", 20000)
     EGGROLL_SESSION_STOP_TIMEOUT_MS = ErConfKey("eggroll.session.stop.timeout.ms", 20000)
 
-
 class TransferConfKeys(object):
     CONFKEY_TRANSFER_SERVICE_HOST = "eggroll.transfer.service.host"
     CONFKEY_TRANSFER_SERVICE_PORT = "eggroll.transfer.service.port"
@@ -104,6 +103,7 @@ class TransferConfKeys(object):
 class RollPairConfKeys(object):
     EGGROLL_ROLLPAIR_TRANSFERPAIR_SENDBUF_SIZE = ErConfKey("eggroll.rollpair.transferpair.sendbuf.size", 1 << 20)
     EGGROLL_ROLLPAIR_TRANSFERPAIR_BATCHBROKER_DEFAULT_SIZE = ErConfKey("eggroll.rollpair.transferpair.broker.default.size", 100)
+    EGGROLL_ROLLPAIR_EGGPAIR_MAX_EXECUTORS = ErConfKey("eggroll.rollpair.eggpair.max.executors", 500)
 
 
 class RollSiteConfKeys(object):
