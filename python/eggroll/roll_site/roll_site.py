@@ -16,7 +16,7 @@
 import time
 from concurrent.futures import ThreadPoolExecutor, wait, FIRST_EXCEPTION
 
-from eggroll.core.conf_keys import SessionConfKeys
+from eggroll.core.conf_keys import SessionConfKeys, RollSiteConfKeys
 from eggroll.core.constants import DeployModes
 from eggroll.core.constants import StoreTypes
 from eggroll.core.error import GrpcCallError
@@ -137,8 +137,11 @@ class RollSite:
         self.name = name
         self.tag = tag
         self.stub = self.ctx.stub
-        self.process_pool = ThreadPoolExecutor(10, thread_name_prefix="thread-receive")
-        self.complete_pool = ThreadPoolExecutor(10, thread_name_prefix="complete-wait")
+
+        receive_executor_pool_size = int(RollSiteConfKeys.EGGROLL_ROLLSITE_RECEIVE_EXECUTOR_POOL_MAX_SIZE.get_with(options))
+        complete_executor_pool_size = int(RollSiteConfKeys.EGGROLL_ROLLSITE_COMPLETE_EXECUTOR_POOL_MAX_SIZE.get_with(options))
+        self.receive_exeutor_pool = ThreadPoolExecutor(receive_executor_pool_size, thread_name_prefix="thread-receive")
+        self.complete_executor_pool = ThreadPoolExecutor(complete_executor_pool_size, thread_name_prefix="complete-wait")
         self._push_start_wall_time = None
         self._push_start_cpu_time = None
         self._pull_start_wall_time = None
@@ -294,18 +297,18 @@ class RollSite:
                 L.info(f"pushing map_values done:{type(obj)}, tag_key:{_tagged_key}")
                 return _tagged_key
 
-            future = self.process_pool.submit(map_values, _tagged_key)
+            future = self.receive_exeutor_pool.submit(map_values, _tagged_key)
             future.add_done_callback(self._push_callback)
             futures.append(future)
 
-        self.process_pool.shutdown(wait=False)
+        self.receive_exeutor_pool.shutdown(wait=False)
 
         return futures
 
     def wait_futures(self, futures):
         # TODO:0: configurable
-        ret_future = self.complete_pool.submit(wait, futures, timeout=1000, return_when=FIRST_EXCEPTION)
-        self.complete_pool.shutdown(wait=False)
+        ret_future = self.complete_executor_pool.submit(wait, futures, timeout=1000, return_when=FIRST_EXCEPTION)
+        self.complete_executor_pool.shutdown(wait=False)
         return ret_future
 
     def pull(self, parties: list = None):
@@ -349,7 +352,7 @@ class RollSite:
             packet = proxy_pb2.Packet(header=metadata)
             namespace = self.roll_site_session_id
             L.info(f"pulling prepared tagged_key: {_tagged_key}, packet:{to_one_line_string(packet)}")
-            futures.append(self.process_pool.submit(RollSite._thread_receive, self, packet, namespace, roll_site_header))
+            futures.append(self.receive_exeutor_pool.submit(RollSite._thread_receive, self, packet, namespace, roll_site_header))
 
-        self.process_pool.shutdown(wait=False)
+        self.receive_exeutor_pool.shutdown(wait=False)
         return futures

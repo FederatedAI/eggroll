@@ -30,7 +30,7 @@ from eggroll.core.client import ClusterManagerClient
 from eggroll.core.command.command_router import CommandRouter
 from eggroll.core.command.command_service import CommandServicer
 from eggroll.core.conf_keys import SessionConfKeys, \
-    ClusterManagerConfKeys
+    ClusterManagerConfKeys, RollPairConfKeys
 from eggroll.core.constants import ProcessorTypes, ProcessorStatus, SerdesTypes
 from eggroll.core.datastructure.broker import FifoBroker
 from eggroll.core.meta_model import ErPair
@@ -477,11 +477,14 @@ def serve(args):
             route_to_class_name="EggPair",
             route_to_method_name="run_task")
 
-    command_server = grpc.server(futures.ThreadPoolExecutor(max_workers=500, thread_name_prefix="grpc_server"),
-                                 options=[
-                                     ("grpc.max_metadata_size", 32 << 20),
-                                     (cygrpc.ChannelArgKey.max_send_message_length, 2 << 30 - 1),
-                                     (cygrpc.ChannelArgKey.max_receive_message_length, 2 << 30 - 1)])
+    max_workers = RollPairConfKeys.EGGROLL_ROLLPAIR_EGGPAIR_MAX_EXECUTORS.get()
+    command_server = grpc.server(futures.ThreadPoolExecutor(
+            max_workers=max_workers,
+            thread_name_prefix="eggpair_server"),
+            options=[
+                ("grpc.max_metadata_size", 128 << 20),
+                (cygrpc.ChannelArgKey.max_send_message_length, 2 << 30 - 1),
+                (cygrpc.ChannelArgKey.max_receive_message_length, 2 << 30 - 1)])
 
     command_servicer = CommandServicer()
     command_pb2_grpc.add_CommandServiceServicer_to_server(command_servicer,
