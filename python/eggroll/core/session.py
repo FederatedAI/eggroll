@@ -106,7 +106,7 @@ class ErSession(object):
                                      options=options)
 
         from time import monotonic, sleep
-        timeout = int(options.get("eggroll.session.create.timeout.ms", "10000")) / 1000
+        timeout = int(SessionConfKeys.EGGROLL_SESSION_START_TIMEOUT_MS.get_with(options)) / 1000 + 2
         endtime = monotonic() + timeout
 
         # TODO:0: ignores exception while starting up in standalone mod

@@ -12,11 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-
-class ErConfKey(object):
-    def __init__(self, key, default_value=None):
-        self.key = key
-        self.default_value = default_value
+from eggroll.core.utils import ErConfKey
 
 
 class CoreConfKeys(object):
@@ -96,6 +92,8 @@ class SessionConfKeys(object):
     CONFKEY_SESSION_PROCESSORS_PER_NODE = "eggroll.session.processors.per.node"
     CONFKEY_SESSION_DEPLOY_MODE = "eggroll.session.deploy.mode"
     CONFKEY_SESSION_STANDALONE_PORT = "eggroll.resourcemanager.standalone.port"
+    EGGROLL_SESSION_START_TIMEOUT_MS = ErConfKey("eggroll.session.start.timeout.ms", 20000)
+    EGGROLL_SESSION_STOP_TIMEOUT_MS = ErConfKey("eggroll.session.stop.timeout.ms", 20000)
 
 
 class TransferConfKeys(object):
@@ -119,3 +117,5 @@ class RollSiteConfKeys(object):
     EGGROLL_ROLLSITE_LAN_INSECURE_CHANNEL_ENABLED = ErConfKey("eggroll.rollsite.lan.insecure.channel.enabled")
     EGGROLL_ROLLSITE_AUDIT_ENABLED = ErConfKey("eggroll.rollsite.audit.enabled")
     EGGROLL_ROLLSITE_ADAPTER_SENDBUF_SIZE = ErConfKey("eggroll.rollsite.adapter.sendbuf.size", 32 << 20)
+    EGGROLL_ROLLSITE_RECEIVE_EXECUTOR_POOL_MAX_SIZE = ErConfKey("eggroll.rollsite.receive.executor.pool.max.size", 200)
+    EGGROLL_ROLLSITE_COMPLETE_EXECUTOR_POOL_MAX_SIZE = ErConfKey("eggroll.rollsite.complete.executor.pool.max.size", 200)
