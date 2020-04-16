@@ -28,7 +28,7 @@ class GcRecorder(object):
         else:
             self.gc_thread = Thread(target=self.run, daemon=True)
             self.gc_thread.start()
-            print("starting gc_thread......")
+            L.debug("starting gc_thread......")
 
     def stop(self):
         self.should_stop = True
@@ -42,7 +42,6 @@ class GcRecorder(object):
             try:
                 rp_name = self.gc_queue.get(block=True, timeout=0.5)
             except queue.Empty:
-                print("gc queue still empty, continue loop")
                 continue
             if not rp_name:
                 continue
@@ -70,6 +69,6 @@ class GcRecorder(object):
         record_count = 0 if ref_count is None or ref_count == 0 else (ref_count - 1)
         self.gc_recorder[er_store._store_locator._name] = record_count
         if record_count == 0 and er_store._store_locator._name in self.gc_recorder:
-            print('put in queue')
+            L.debug('put in queue')
             self.gc_queue.put(er_store._store_locator._name)
             self.gc_recorder.pop(er_store._store_locator._name)
