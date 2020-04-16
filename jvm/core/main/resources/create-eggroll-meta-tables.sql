@@ -30,7 +30,7 @@ CREATE INDEX `idx_store_locator_v` ON `store_locator` (`version`);
 
 -- store (option)
 CREATE TABLE IF NOT EXISTS `store_option` (
-  `store_locator_id` VARCHAR(2000),
+  `store_locator_id` BIGINT UNSIGNED NOT NULL,
   `name` VARCHAR(255) NOT NULL,
   `data` VARCHAR(2000) NOT NULL DEFAULT '',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
