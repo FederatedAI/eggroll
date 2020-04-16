@@ -33,6 +33,9 @@ class ErConfKey(object):
         self.key = key
         self.default_value = default_value
 
+    def get(self):
+        return get_static_er_conf().get(self.key, self.default_value)
+
     def get_with(self, options: dict):
         result = options.get(self.key,
                              get_static_er_conf().get(self.key, self.default_value))
