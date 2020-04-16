@@ -40,7 +40,7 @@ class Container(conf: RuntimeErConf, moduleName: String, processorId: Long = 0) 
   // todo:0: get from args instead of conf
   private val myServerNodeId = conf.getString(ResourceManagerConfKeys.SERVER_NODE_ID, "2")
   private val boot = conf.getString(CoreConfKeys.BOOTSTRAP_ROOT_SCRIPT, s"bin/eggroll_boot.${if(isWindows) "bat" else "sh"}")
-  private val logsDir = conf.getString(CoreConfKeys.LOGS_DIR)
+  private val logsDir = s"${CoreConfKeys.EGGROLL_LOGS_DIR.get()}"
 
   if (StringUtils.isBlank(sessionId)) {
     throw new IllegalArgumentException("session Id is blank when creating processor")
