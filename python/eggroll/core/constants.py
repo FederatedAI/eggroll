@@ -63,9 +63,10 @@ class ProcessorStatus(object):
 
 class SessionStatus(object):
     NEW = 'NEW'
-    RUNNING = 'RUNNING'
+    ACTIVE = 'ACTIVE'
     CLOSED = 'CLOSED'
     KILLED = 'KILLED'
+    ERROR = 'ERROR'
 
 
 class DeployModes(object):
