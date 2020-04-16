@@ -17,15 +17,18 @@ class GcRecorder(object):
     def __init__(self, rpc):
         super(GcRecorder, self).__init__()
         self.should_stop = False
-        L.debug('session:{} initializing recorder'.format(rpc.session_id))
+        L.debug('session:{} initializing gc recorder'.format(rpc.session_id))
         self.record_rpc = rpc
         self.gc_recorder = dict()
-        self.gc_thread = Thread(target=self.run, daemon=True)
         self.record_start = False
         self.gc_queue = queue.Queue()
-        self.gc_thread.start()
-        self.gc_recorded = set()
-        print("starting gc_thread......")
+        if "GC_SWITCH" in os.environ and os.environ["GC_SWITCH"] == 'close':
+            L.info("global gc switch is close, "
+                  "will not execute gc but only record temporary RollPair during the whole session")
+        else:
+            self.gc_thread = Thread(target=self.run, daemon=True)
+            self.gc_thread.start()
+            print("starting gc_thread......")
 
     def stop(self):
         self.should_stop = True
@@ -33,10 +36,14 @@ class GcRecorder(object):
     def run(self):
         if "GC_SWITCH" in os.environ and os.environ["GC_SWITCH"] == 'close':
             L.info("global gc switch is close, "
-                   "will not execute gc but only record temporary RollPair on the whole session")
+                  "will not execute gc but only record temporary RollPair during the whole session")
             return
         while not self.should_stop:
-            rp_name = self.gc_queue.get(block=True, timeout=0.8)
+            try:
+                rp_name = self.gc_queue.get(block=True, timeout=0.5)
+            except queue.Empty:
+                print("gc queue still empty, continue loop")
+                continue
             if not rp_name:
                 continue
             self.record_rpc.load(namespace=self.record_rpc.get_session().get_session_id(),
@@ -50,13 +57,13 @@ class GcRecorder(object):
             return
         else:
             self.record_start = True
-            print("record in memory table namespace:{}, name:{}, type:{}"
+            L.debug("record in memory table namespace:{}, name:{}, type:{}"
                   .format(namespace, name, store_type))
             count = self.gc_recorder.get(name)
             if count is None:
                 count = 0
             self.gc_recorder[name] = count + 1
-            print(f"recorded:{self.gc_recorder}")
+            L.debug(f"recorded:{self.gc_recorder}")
 
     def decrease_ref_count(self, er_store):
         ref_count = self.gc_recorder.get(er_store._store_locator._name)

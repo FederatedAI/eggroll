@@ -12,7 +12,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-import sys
+import os
 import uuid
 from concurrent.futures import wait, FIRST_EXCEPTION
 from threading import Thread
@@ -281,14 +281,18 @@ class RollPair(object):
         self.gc_enable = rp_ctx.rpc_gc_enable
         self.gc_recorder = rp_ctx.gc_recorder
         self.gc_recorder.record(er_store)
-        print(f"init:{self}")
 
     def __del__(self):
-        print(f"del obj addr:{self} calling")
+        if "GC_SWITCH" in os.environ and os.environ["GC_SWITCH"] == 'close':
+            L.info("global gc switch is close, not exec __del__ of RollPair")
+            return
+        if self.ctx.get_session().is_stopped():
+            L.debug('session:{} has already been stopped'.format(self.__session_id))
+            return
+        L.debug(f"del obj addr:{self} calling")
         if not hasattr(self, 'gc_enable') \
                 or not self.gc_enable:
-            L.info('session:{} has already been stopped'.format(self.__session_id))
-            print(f"debug123:{hasattr(self, 'gc_enable')}, {self.ctx.get_session().is_stopped()}, {not self.gc_enable}")
+            L.info('session:{} gc not enable'.format(self.__session_id))
             return
         self.ctx.gc_recorder.decrease_ref_count(self.__store)
 
@@ -982,6 +986,44 @@ class RollPair(object):
     def join(self, other, func, output=None, options: dict = None):
         if options is None:
             options = {}
+
+        inputs_arr = [self.__store, other.__store]
+        # if other.get_partitions() != self.get_partitions():
+        #     print(f"partitions of rp:{self.get_name()} is: {self.get_partitions()} "
+        #            f"and other:{other.get_name()} is: {other.get_partitions()}, reshuffling......")
+        #
+        #     shuffle_rp = self if self.count() < other.count() else other
+        #     print(f'shuffle_rp name:{shuffle_rp.get_name()}')
+        #     store = ErStore(store_locator=ErStoreLocator(store_type=shuffle_rp.get_store_type(),
+        #                                              namespace=shuffle_rp.get_namespace(),
+        #                                              name=str(uuid.uuid1()),
+        #                                              total_partitions=shuffle_rp.get_partitions()))
+        #     store_shuffle = shuffle_rp.map(lambda k, v: (k, v), output=store).get_store()
+        #     print(f"finish repartitions:{store_shuffle}")
+        #     inputs_arr = [store_shuffle, other.__store] if self.count() < other.count() else [self.__store, store_shuffle]
+        if other.get_partitions() != self.get_partitions():
+            print(f"partitions of rp:{self.get_name()} is: {self.get_partitions()} "
+                       f"and other:{other.get_name()} is: {other.get_partitions()}, reshuffling......")
+            if self.count() < other.count():
+                print(f"left:{self.get_name()} count:{self.count()} is smaller than right:{other.get_name()} count:{other.count()}, reshuffle the small one")
+                store = ErStore(store_locator=ErStoreLocator(store_type=self.get_store_type(),
+                                                             namespace=self.get_namespace(),
+                                                             name=str(uuid.uuid1()),
+                                                             total_partitions=other.get_partitions()))
+                store_shuffle = self.map(lambda k, v: (k, v), output=store).get_store()
+                inputs_arr = [store_shuffle, other.__store]
+            else:
+                print(f"right:{self.get_name()} count:{other.count()} is smaller than left:{other.get_name()} count:{self.count()}, reshuffle the small one")
+                store = ErStore(store_locator=ErStoreLocator(store_type=other.get_store_type(),
+                                                             namespace=other.get_namespace(),
+                                                             name=str(uuid.uuid1()),
+                                                             total_partitions=self.get_partitions()))
+
+                store_shuffle = other.map(lambda k, v: (k, v), output=store).get_store()
+                inputs_arr = [self.__store, store_shuffle]
+            print(inputs_arr[0]._store_locator._total_partitions, inputs_arr[1]._store_locator._total_partitions)
+
+
         functor = ErFunctor(name=RollPair.JOIN, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
         outputs = []
         if output:
@@ -991,7 +1033,7 @@ class RollPair(object):
         final_options.update(options)
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.JOIN),
                     name=RollPair.JOIN,
-                    inputs=[self.__store, other.__store],
+                    inputs=inputs_arr,
                     outputs=outputs,
                     functors=[functor],
                     options=final_options)
