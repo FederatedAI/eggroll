@@ -20,7 +20,7 @@ from eggroll.roll_pair.test.roll_pair_test_assets import get_debug_test_context,
 
 
 def get_value(roll_pair):
-    return list(roll_pair.get_all())
+    return list(sorted(roll_pair.get_all(), key=lambda x: x[0]))
 
 
 class TestRollPairBase(unittest.TestCase):
@@ -284,6 +284,20 @@ class TestRollPairBase(unittest.TestCase):
         print(list(left_rp.join(right_rp, lambda v1, v2: v1 + v2).get_all()))
         self.assertEqual(get_value(left_rp.join(right_rp, lambda v1, v2: v1 + v2)), [('a', 3), ('d', 7)])
         self.assertEqual(get_value(right_rp.join(left_rp, lambda v1, v2: v1 + v2)), [('a', 3), ('d', 7)])
+
+    def test_join_diff_partitions(self):
+        options_left = get_default_options()
+        options_right = get_default_options()
+        options_left['total_partitions'] = 10
+        options_right['total_partitions'] = 5
+        left_rp = self.ctx.load("ns1", "testJoinLeft_10p_5", options=options_left).put_all([('a', 1), ('b', 4), ('d', 6), ('e', 0), ('f', 3), ('g', 12), ('h', 13), ('i', 14), ('j', 15), ('k', 16), ('l', 17)],
+                                                                                    options={"include_key": True})
+        right_rp = self.ctx.load("ns1", "testJoinRight_5p_5", options=options_right).put_all([('a', 2), ('c', 4), ('d', 1), ('f', 0), ('g', 1)],
+                                                                                     options={"include_key": True})
+        print(f'left:{get_value(left_rp)}, right:{get_value(right_rp)}')
+        print(get_value(left_rp.join(right_rp, lambda v1, v2: v1 + v2)))
+        # print(get_value(left_rp.join(right_rp, lambda v1, v2: v1 + v2)))
+        # print(get_value(right_rp.join(left_rp, lambda v1, v2: v1 + v2)))
 
     def test_sample(self):
         options = get_default_options()
