@@ -66,6 +66,7 @@ class SessionStatus(object):
     ACTIVE = 'ACTIVE'
     CLOSED = 'CLOSED'
     KILLED = 'KILLED'
+    ERROR = 'ERROR'
 
 
 class DeployModes(object):
