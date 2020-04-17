@@ -282,7 +282,7 @@ class RollPair(object):
         self.gc_recorder.record(er_store)
 
     def __del__(self):
-        if "GC_SWITCH" in os.environ and os.environ["GC_SWITCH"] == 'close':
+        if "EGGROLL_GC_SWITCH" in os.environ and os.environ["EGGROLL_GC_SWITCH"] == 'close':
             L.info("global gc switch is close, not exec __del__ of RollPair")
             return
         if self.ctx.get_session().is_stopped():

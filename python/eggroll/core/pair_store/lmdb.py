@@ -114,9 +114,9 @@ class LmdbAdapter(PairAdapter):
                 if not count or count - 1 <= 0:
                     L.debug(f"LmdbAdapter: actually closing {self.path}")
                     try:
-                        if "LMDB_ENV_CLOSE" in os.environ and os.environ["LMDB_ENV_CLOSE"] == 'open':
+                        if "EGGROLL_LMDB_ENV_CLOSE" in os.environ and os.environ["EGGROLL_LMDB_ENV_CLOSE"] == 'open':
                             self.env.close()
-                            L.debug(f"LMDB_ENV_CLOSE is open, finish close lmdb env obj:{self.path}")
+                            L.debug(f"EGGROLL_LMDB_ENV_CLOSE is open, finish close lmdb env obj:{self.path}")
                         else:
                             L.debug("lmdb env not close while closing LmdbAdapter")
                     except:
