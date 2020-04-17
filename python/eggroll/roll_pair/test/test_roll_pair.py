@@ -52,14 +52,12 @@ class TestRollPairBase(unittest.TestCase):
         rp = self.ctx.parallelize(self.str_generator(True),
                                   options=self.store_opts(include_key=True))
         self.assertUnOrderListEqual(self.str_generator(True), rp.get_all())
-        #rp.destroy()
 
     def test_parallelize(self):
         rp = self.ctx.parallelize(self.str_generator(False), options=self.store_opts(include_key=False))
         print(rp)
         print(list(rp.get_all()))
         self.assertUnOrderListEqual(self.str_generator(False), (v for k,v in rp.get_all()))
-        #rp.destroy()
 
     def test_serdes(self):
         rp = self.ctx.load("ns12020","n_serdes", self.store_opts(serdes="EMPTY"))
@@ -71,19 +69,16 @@ class TestRollPairBase(unittest.TestCase):
         rp = self.ctx.parallelize(self.str_generator())
         for i in range(10):
             self.assertEqual(str(i), rp.get(str(i)))
-        #rp.destroy()
 
     def test_count(self):
         rp = self.ctx.parallelize(self.str_generator(row_limit=11))
         self.assertEqual(11, rp.count())
-        #rp.destroy()
 
     def test_put_all(self):
         rp = self.ctx.load("ns12020","n1")
         data = [("k1","v1"),("k2","v2"),("k3","v3"),("k4","v4"),("k5","v5"),("k6","v6")]
         rp.put_all(data)
         self.assertUnOrderListEqual(data, rp.get_all())
-        #rp.destroy()
 
     def test_cleanup(self):
         rp = self.ctx.load("ns168","n1")
@@ -98,8 +93,6 @@ class TestRollPairBase(unittest.TestCase):
         rp = self.ctx.parallelize(self.str_generator())
         rp2 = rp.map(lambda k,v: (k + "_1", v))
         self.assertUnOrderListEqual(((k + "_1", v) for k, v in self.str_generator()), rp2.get_all())
-        #rp.destroy()
-        #rp2.destroy()
 
     def test_reduce(self):
         options = self.store_opts()
@@ -452,7 +445,6 @@ class TestRollPairMultiPartition(TestRollPairBase):
 
         self.assertUnOrderListEqual(self.str_generator(include_key=True, row_limit=row_limit), rp.get_all())
         self.assertEqual(st_opts["total_partitions"], rp.get_partitions())
-        #rp.destroy()
 
     def test_count(self):
         st_opts = self.store_opts(include_key=True)
@@ -469,7 +461,6 @@ class TestRollPairMultiPartition(TestRollPairBase):
         rp = self.ctx.parallelize(self.str_generator(True),st_opts)
         self.assertUnOrderListEqual(self.str_generator(True), rp.get_all())
         self.assertEqual(st_opts["total_partitions"], rp.get_partitions())
-        rp.destroy()
 
     def test_count(self):
         super().test_count()
