@@ -45,7 +45,7 @@ class GcRecorder(object):
                 continue
             if not rp_name:
                 continue
-            print(f"debug123 gc thread destroying rp:{rp_name}")
+            L.info(f"debug123 gc thread destroying rp:{rp_name}")
             self.record_rpc.load(namespace=self.record_rpc.get_session().get_session_id(),
                                      name=rp_name).destroy()
 
@@ -57,7 +57,7 @@ class GcRecorder(object):
             return
         else:
             self.record_start = True
-            print("record in memory table namespace:{}, name:{}, type:{}"
+            L.info("record in memory table namespace:{}, name:{}, type:{}"
                   .format(namespace, name, store_type))
             count = self.gc_recorder.get(name)
             if count is None:
@@ -72,6 +72,6 @@ class GcRecorder(object):
         record_count = 0 if ref_count is None or ref_count == 0 else (ref_count - 1)
         self.gc_recorder[er_store._store_locator._name] = record_count
         if record_count == 0 and er_store._store_locator._name in self.gc_recorder:
-            print(f'put in queue:{er_store._store_locator._name}')
+            L.info(f'put in queue:{er_store._store_locator._name}')
             self.gc_queue.put(er_store._store_locator._name)
             self.gc_recorder.pop(er_store._store_locator._name)
