@@ -20,10 +20,9 @@ class GcRecorder(object):
         L.debug('session:{} initializing gc recorder'.format(rpc.session_id))
         self.record_rpc = rpc
         self.gc_recorder = dict()
-        self.record_start = False
         self.gc_queue = queue.Queue()
-        if "GC_SWITCH" in os.environ and os.environ["GC_SWITCH"] == 'close':
-            L.info("global gc switch is close, "
+        if "EGGROLL_GC_DISABLE" in os.environ and os.environ["EGGROLL_GC_DISABLE"] == '1':
+            L.info("global gc is disable, "
                   "will not execute gc but only record temporary RollPair during the whole session")
         else:
             self.gc_thread = Thread(target=self.run, daemon=True)
@@ -34,7 +33,7 @@ class GcRecorder(object):
         self.should_stop = True
 
     def run(self):
-        if "GC_SWITCH" in os.environ and os.environ["GC_SWITCH"] == 'close':
+        if "EGGROLL_GC_DISABLE" in os.environ and os.environ["EGGROLL_GC_DISABLE"] == '1':
             L.info("global gc switch is close, "
                   "will not execute gc but only record temporary RollPair during the whole session")
             return
@@ -45,7 +44,7 @@ class GcRecorder(object):
                 continue
             if not rp_name:
                 continue
-            L.info(f"debug123 gc thread destroying rp:{rp_name}")
+            L.info(f"gc thread destroying rp:{rp_name}")
             self.record_rpc.load(namespace=self.record_rpc.get_session().get_session_id(),
                                      name=rp_name).destroy()
 
@@ -56,7 +55,6 @@ class GcRecorder(object):
         if store_type != StoreTypes.ROLLPAIR_IN_MEMORY:
             return
         else:
-            self.record_start = True
             L.info("record in memory table namespace:{}, name:{}, type:{}"
                   .format(namespace, name, store_type))
             count = self.gc_recorder.get(name)
