@@ -94,7 +94,6 @@ class LmdbAdapter(PairAdapter):
     def __enter__(self):
         return self
 
-    # TODO:0: duplicated code， lmdb.Error: Attempt to operate on closed/deleted/dropped object.
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
@@ -102,9 +101,9 @@ class LmdbAdapter(PairAdapter):
         self.close()
 
     def close(self):
-        if not self.env:
-            return
         with LmdbAdapter.env_lock:
+            if not self.env:
+                return
             if self.txn_r:
                 self.txn_r.commit()
                 self.cursor.close()
@@ -115,7 +114,12 @@ class LmdbAdapter(PairAdapter):
                 if not count or count - 1 <= 0:
                     L.debug(f"LmdbAdapter: actually closing {self.path}")
                     try:
-                        self.env.close()
+                        if "EGGROLL_LMDB_ENV_CLOSE_DISABLE" in os.environ \
+                                and os.environ["EGGROLL_LMDB_ENV_CLOSE_DISABLE"] == '0':
+                            self.env.close()
+                            L.debug(f"EGGROLL_LMDB_ENV_CLOSE is open, finish close lmdb env obj:{self.path}")
+                        else:
+                            L.debug("lmdb env not close while closing LmdbAdapter")
                     except:
                         L.warning("txn commit or cursor, env have closed before")
 
