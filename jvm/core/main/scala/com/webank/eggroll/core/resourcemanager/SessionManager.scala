@@ -161,8 +161,8 @@ class SessionManagerService extends SessionManager with Logging {
       if (curDetails.activeProcCount < expectedProcessorsCount) {
         val actives = ListBuffer[Long]()
         val inactives = ListBuffer[Long]()
-        val activesPerNode = mutable.TreeMap[String, Int]()
-        val inactivesToNode = mutable.TreeMap[Long, String]()
+        val activesPerNode = mutable.Map[String, Int]()
+        val inactivesToNode = mutable.Map[Long, String]()
 
         serverNodes.foreach(n => activesPerNode += (n.endpoint.host -> 0))
 
@@ -251,7 +251,7 @@ class SessionManagerService extends SessionManager with Logging {
 
     val sessionHosts = mutable.Set[String]()
     dbSessionMeta.processors.foreach(p => {
-      if (p != null && p.commandEndpoint != null) sessionHosts + p.commandEndpoint.host
+      if (p != null && p.commandEndpoint != null) sessionHosts += p.commandEndpoint.host
     })
 
     val serverNodeCrudOperator = new ServerNodeCrudOperator()
