@@ -282,7 +282,7 @@ class RollPair(object):
         self.gc_recorder.record(er_store)
 
     def __del__(self):
-        if "EGGROLL_GC_SWITCH" in os.environ and os.environ["EGGROLL_GC_SWITCH"] == 'close':
+        if "EGGROLL_GC_DISABLE" in os.environ and os.environ["EGGROLL_GC_DISABLE"] == '1':
             L.info("global gc switch is close, not exec __del__ of RollPair")
             return
         if self.ctx.get_session().is_stopped():
@@ -298,21 +298,24 @@ class RollPair(object):
     def __repr__(self):
         return f'<RollPair(_store={self.__store}) at {hex(id(self))}>'
 
-    def __reshuffler(self, other):
-        L.info(f"partitions of rp:{self.get_name()} is: {self.get_partitions()} "
-               f"and other:{other.get_name()} is: {other.get_partitions()}, reshuffling......")
+    def __repartitions_with(self, other):
+        if other.get_partitions() != self.get_partitions():
+            L.info(f"partitions of rp:{self.get_name()} is: {self.get_partitions()} "
+                   f"and other:{other.get_name()} is: {other.get_partitions()}, reshuffling......")
 
-        shuffle_rp = self if self.count() < other.count() else other
-        not_shuffle_rp = other if self.count() < other.count() else self
+            shuffle_rp = self if self.count() < other.count() else other
+            not_shuffle_rp = other if self.count() < other.count() else self
 
-        L.debug(f"rp:{shuffle_rp.get_name()} count:{shuffle_rp.count()} "
-                f"is smaller than rp:{not_shuffle_rp.get_name()} count:{not_shuffle_rp.count()}, reshuffle the small one")
-        store = ErStore(store_locator=ErStoreLocator(store_type=shuffle_rp.get_store_type(),
-                                                     namespace=shuffle_rp.get_namespace(),
-                                                     name=str(uuid.uuid1()),
-                                                     total_partitions=not_shuffle_rp.get_partitions()))
-        store_shuffle = shuffle_rp.map(lambda k, v: (k, v), output=store).get_store()
-        return [store_shuffle, other.get_store()] if self.count() < other.count() else [self.get_store(), store_shuffle]
+            L.debug(f"rp:{shuffle_rp.get_name()} count:{shuffle_rp.count()} "
+                    f"is smaller than rp:{not_shuffle_rp.get_name()} count:{not_shuffle_rp.count()}, reshuffle the small one")
+            store = ErStore(store_locator=ErStoreLocator(store_type=shuffle_rp.get_store_type(),
+                                                         namespace=shuffle_rp.get_namespace(),
+                                                         name=str(uuid.uuid1()),
+                                                         total_partitions=not_shuffle_rp.get_partitions()))
+            store_shuffle = shuffle_rp.map(lambda k, v: (k, v), output=store).get_store()
+            return [store_shuffle, other.get_store()] if self.count() < other.count() else [self.get_store(), store_shuffle]
+        else:
+            return [self.__store, other.__store]
 
     def enable_gc(self):
         self.gc_enable = True
@@ -950,9 +953,6 @@ class RollPair(object):
     def subtract_by_key(self, other, output=None, options: dict = None):
         if options is None:
             options = {}
-        inputs_arr = [self.__store, other.get_store()]
-        if self.get_partitions() != other.get_partitions():
-            inputs_arr = self.__reshuffler(other)
 
         functor = ErFunctor(name=RollPair.SUBTRACT_BY_KEY, serdes=SerdesTypes.CLOUD_PICKLE)
         outputs = []
@@ -960,7 +960,7 @@ class RollPair(object):
             outputs.append(output)
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.SUBTRACT_BY_KEY),
                     name=RollPair.SUBTRACT_BY_KEY,
-                    inputs=inputs_arr,
+                    inputs=self.__repartitions_with(other),
                     outputs=outputs,
                     functors=[functor])
 
@@ -980,17 +980,13 @@ class RollPair(object):
         if options is None:
             options = {}
 
-        inputs_arr = [self.__store, other.get_store()]
-        if self.get_partitions() != other.get_partitions():
-            inputs_arr = self.__reshuffler(other)
-
         functor = ErFunctor(name=RollPair.UNION, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
         outputs = []
         if output:
             outputs.append(output)
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.UNION),
                     name=RollPair.UNION,
-                    inputs=inputs_arr,
+                    inputs=self.__repartitions_with(other),
                     outputs=outputs,
                     functors=[functor])
 
@@ -1010,10 +1006,6 @@ class RollPair(object):
         if options is None:
             options = {}
 
-        inputs_arr = [self.__store, other.__store]
-        if other.get_partitions() != self.get_partitions():
-            inputs_arr = self.__reshuffler(other)
-
         functor = ErFunctor(name=RollPair.JOIN, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
         outputs = []
         if output:
@@ -1023,7 +1015,7 @@ class RollPair(object):
         final_options.update(options)
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.JOIN),
                     name=RollPair.JOIN,
-                    inputs=inputs_arr,
+                    inputs=self.__repartitions_with(other),
                     outputs=outputs,
                     functors=[functor],
                     options=final_options)
