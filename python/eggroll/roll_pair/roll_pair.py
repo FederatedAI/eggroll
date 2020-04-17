@@ -298,7 +298,7 @@ class RollPair(object):
     def __repr__(self):
         return f'<RollPair(_store={self.__store}) at {hex(id(self))}>'
 
-    def __repartitions_with(self, other):
+    def __repartition_with(self, other):
         if other.get_partitions() != self.get_partitions():
             L.info(f"partitions of rp:{self.get_name()} is: {self.get_partitions()} "
                    f"and other:{other.get_name()} is: {other.get_partitions()}, reshuffling......")
