@@ -21,7 +21,8 @@ from eggroll.core.aspects import _method_profile_logger
 from eggroll.core.client import CommandClient
 from eggroll.core.command.command_model import CommandURI
 from eggroll.core.conf_keys import SessionConfKeys
-from eggroll.core.constants import StoreTypes, SerdesTypes, PartitionerTypes, SessionStatus
+from eggroll.core.constants import StoreTypes, SerdesTypes, PartitionerTypes, \
+    SessionStatus
 from eggroll.core.datastructure.broker import FifoBroker
 from eggroll.core.meta_model import ErStoreLocator, ErJob, ErStore, ErFunctor, \
     ErTask, ErPair, ErPartition
