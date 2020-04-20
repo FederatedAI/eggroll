@@ -5,8 +5,9 @@ import com.webank.eggroll.core.meta.ErStore
 import com.webank.eggroll.format.{FrameBatch, FrameSchema, FrameStore}
 import junit.framework.TestCase
 import org.junit.{Before, Test}
-import org.apache.spark.sql.{Dataset, Row, SparkSession}
+import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
 import org.apache.spark.TaskContext
+import org.apache.spark.rdd.RDD
 
 class SparkAppTest extends Serializable {
   protected val ta = TestAssets
@@ -24,10 +25,9 @@ class SparkAppTest extends Serializable {
     .load("jvm/roll_frame/src/test/resources/data_1w_10cols.csv").repartition(partitions_)
   val cols: Int = df.columns.length
 
-
   @Test
   def testRddToRollFrame(): Unit = {
-    val ctx = ta.getRfContext(true)
+    val ctx = ta.getRfContext()
     val namespace = "test1"
     val name = "dataframe"
     val storeType = StringConstants.NETWORK
@@ -35,9 +35,11 @@ class SparkAppTest extends Serializable {
     val partitionsMata = FrameStore.getPartitionsMeta(networkStore)
     val start = System.currentTimeMillis()
     df.rdd.foreachPartition { pData =>
-      val fb = new FrameBatch(new FrameSchema(ta.getSchema(cols)), pData.size)
+      val (iterator1, iterator2) = pData.duplicate
+      val rowCount = iterator1.length
+      val fb = new FrameBatch(new FrameSchema(ta.getSchema(cols)), rowCount)
       var i = 0
-      pData.foreach { rows =>
+      iterator2.foreach { rows =>
         (0 until cols).foreach { field =>
           fb.writeDouble(field, i, rows.get(field).toString.toDouble)
         }
@@ -49,10 +51,51 @@ class SparkAppTest extends Serializable {
       adapter.close()
     }
     // to cache
+    println("\n ======= to Cache =======\n")
     val cacheStore = ctx.dumpCache(networkStore)
     val end = System.currentTimeMillis()
     println(s"RddToRollFrame Time: ${end - start} ms")
+    ctx.load(cacheStore).mapBatch({ fb =>
+      TestCase.assertEquals(fb.fieldCount, cols)
+      fb
+    })
+  }
 
+  @Test
+  def testRddToRollFrame1(): Unit = {
+    val ctx = ta.getRfContext(true)
+    val namespace = "test1"
+    val name = "dataframe"
+    val storeType = StringConstants.NETWORK
+    val networkStore = ctx.createStore(namespace, name, storeType, partitions_)
+    val partitionsMata = FrameStore.getPartitionsMeta(networkStore)
+    val start = System.currentTimeMillis()
+
+    df.rdd.foreachPartition { pData =>
+      val (iterator1, iterator2) = pData.duplicate
+      var it:Iterator[Row] = iterator2
+      val rowCount = iterator1.length
+      val fb = new FrameBatch(new FrameSchema(ta.getSchema(cols)), rowCount)
+
+      (0 until cols).foreach{ field =>
+        var i = 0
+        val (it1,it2) = it.duplicate
+        it1.foreach{ row =>
+          i += 1
+          fb.writeDouble(field,i,row.get(field).toString.toDouble)
+        }
+        it = it2
+      }
+      val partitionMeta = partitionsMata(TaskContext.getPartitionId())
+      val adapter = FrameStore.network(partitionMeta("path"), partitionMeta("host"), partitionMeta("port"))
+      adapter.append(fb)
+      adapter.close()
+    }
+    // to cache
+    println("\n ======= to Cache =======\n")
+    val cacheStore = ctx.dumpCache(networkStore)
+    val end = System.currentTimeMillis()
+    println(s"RddToRollFrame Time: ${end - start} ms")
     ctx.load(cacheStore).mapBatch({ fb =>
       TestCase.assertEquals(fb.fieldCount, cols)
       fb

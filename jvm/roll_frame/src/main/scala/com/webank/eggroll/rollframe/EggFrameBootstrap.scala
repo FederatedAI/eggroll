@@ -28,6 +28,10 @@ class EggFrameBootstrap extends BootstrapBase with Logging {
     StaticErConf.addProperties(confPath)
     val confFile = new File(confPath)
     StaticErConf.addProperty(CoreConfKeys.STATIC_CONF_PATH, confFile.getAbsolutePath)
+    if (StaticErConf.getBoolean("arrow.enable_unsafe_memory_access",defaultValue = false)) {
+      System.setProperty("arrow.enable_unsafe_memory_access", "true")
+      println(s"EggFrame:${System.getProperty("arrow.enable_unsafe_memory_access")}")
+    }
 
     CommandRouter.register(
       serviceName = "EggFrame.runTask",

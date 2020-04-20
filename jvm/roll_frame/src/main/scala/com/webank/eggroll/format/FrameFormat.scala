@@ -21,7 +21,7 @@ import java.io._
 import java.nio.ByteOrder
 import java.nio.channels.ReadableByteChannel
 
-import com.webank.eggroll.rollframe.pytorch.TorchTensor
+import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.util.SchemaUtil
 import org.apache.arrow.memory.RootAllocator
 import org.apache.arrow.vector._
@@ -67,7 +67,7 @@ class FrameBatch(val rootSchema: FrameSchema,
                  virtualRowCount: Int = -1) {
   val rootVectors: Array[FrameVector] = if (virtualRowCount > 0) {
     rootSchema.columnarVectors.map(v =>
-      new FrameVector(v.fieldVector, virtualRowStart, virtualRowCount))
+      FrameVector(v.fieldVector, virtualRowStart, virtualRowCount))
   } else {
     rootSchema.columnarVectors
   }
@@ -182,7 +182,7 @@ class FrameBatch(val rootSchema: FrameSchema,
   }
 }
 
-
+@deprecated
 class ColumnVector(matrixRows: Int, matrixColumns: Int) {
   val allocator = new RootAllocator(Int.MaxValue)
   val fieldVector: Float8Vector = new Float8Vector("cv", allocator)
@@ -208,6 +208,7 @@ class ColumnVector(matrixRows: Int, matrixColumns: Int) {
  * package several ColumnVector with the same partition
  * Double type's max capacity is 134217728
  */
+@deprecated
 class ColumnVectors(val matrixColumns: Int) {
   val frames: ArrayBuffer[ColumnVector] = new ArrayBuffer[ColumnVector]
 
@@ -234,14 +235,30 @@ class ColumnVectors(val matrixColumns: Int) {
   def matrixRows: Int = rowCount / matrixColumns
 }
 
+@deprecated
 object ColumnVectors {
   val MAX_EACH_PART_SIZE = 134217727 //134217728
 }
 
-// TODO: didn't finish
-class FrameVector(val fieldVector: FieldVector,
-                  virtualRowStart: Int = 0,
-                  virtualRowCount: Int = -1) {
+
+class FrameVectorUnSafe(val fieldVector: FieldVector,
+                        val virtualRowStart: Int = 0,
+                        val virtualRowCount: Int = -1) extends FrameVector {
+  override def writeDouble(index: Int, item: Double): Unit =
+    fieldVector.asInstanceOf[Float8Vector].set(index + virtualRowStart, item)
+
+  override def writeLong(index: Int, item: Long): Unit =
+    fieldVector.asInstanceOf[BigIntVector].set(index + virtualRowStart, item)
+
+
+  override def writeInt(index: Int, item: Int): Unit =
+    fieldVector.asInstanceOf[IntVector].set(index + virtualRowStart, item)
+}
+
+trait FrameVector {
+  val fieldVector: FieldVector
+  val virtualRowStart: Int
+  val virtualRowCount: Int
   private var nullable = false
 
   def isNullable: Boolean = nullable
@@ -258,23 +275,19 @@ class FrameVector(val fieldVector: FieldVector,
 
   def getDataBufferAddress: Long = fieldVector.getDataBufferAddress
 
-  // TODO: not safe set?
   def readDouble(index: Int): Double =
     fieldVector.asInstanceOf[Float8Vector].get(index + virtualRowStart)
 
-  def writeDouble(index: Int, item: Double): Unit =
-    fieldVector.asInstanceOf[Float8Vector].setSafe(index + virtualRowStart, item)
+  def writeDouble(index: Int, item: Double): Unit
 
   def readLong(index: Int): Long =
     fieldVector.asInstanceOf[BigIntVector].get(index + virtualRowStart)
 
-  def writeLong(index: Int, item: Long): Unit =
-    fieldVector.asInstanceOf[BigIntVector].setSafe(index + virtualRowStart, item)
+  def writeLong(index: Int, item: Long): Unit
 
   def readInt(index: Int): Int = fieldVector.asInstanceOf[IntVector].get(index + virtualRowStart)
 
-  def writeInt(index: Int, item: Int): Unit =
-    fieldVector.asInstanceOf[IntVector].setSafe(index + virtualRowStart, item)
+  def writeInt(index: Int, item: Int): Unit
 
   def getArray(index: Int): FrameVector = getList(index)
 
@@ -283,7 +296,7 @@ class FrameVector(val fieldVector: FieldVector,
     val realIndex = index + virtualRowStart
     fieldVector match {
       case fv: FixedSizeListVector =>
-        new FrameListVector(fv,
+        FrameListVector(fv,
           realIndex * fv.getListSize,
           realIndex * fv.getListSize + fv.getListSize)
 
@@ -291,12 +304,12 @@ class FrameVector(val fieldVector: FieldVector,
         if (initialSize > 0) {
           if (realIndex < fv.getLastSet) {
             throw new IllegalStateException(
-              s"can not reinit list: lastSet:${fv.getLastSet}, index:(${index}, ${realIndex})")
+              s"""can not reinit list: lastSet:${fv.getLastSet}, index:($index, $realIndex)""")
           }
           fv.startNewValue(realIndex)
           fv.endValue(realIndex, initialSize)
         }
-        new FrameListVector(fv, fv.getOffsetBuffer.getInt(realIndex * 4),
+        FrameListVector(fv, fv.getOffsetBuffer.getInt(realIndex * 4),
           fv.getOffsetBuffer.getInt((realIndex + 1) * 4))
 
       case _ => throw new UnsupportedOperationException("to do")
@@ -304,8 +317,63 @@ class FrameVector(val fieldVector: FieldVector,
   }
 }
 
-class FrameListVector(fieldVector: FieldVector, val startOffset: Int, val endOffset: Int)
-  extends FrameVector(fieldVector.getChildrenFromFields.get(0)) {
+object FrameVector {
+  private val UN_SAFE: Boolean = System.getProperty("arrow.enable_unsafe_memory_access", "false").toBoolean
+
+  def apply(fieldVector: FieldVector, virtualRowStart: Int = 0, virtualRowCount: Int = -1): FrameVector = {
+    if (UN_SAFE) new FrameVectorUnSafe(fieldVector, virtualRowStart, virtualRowCount) else
+      new FrameVectorSafe(fieldVector, virtualRowStart, virtualRowCount)
+  }
+}
+
+
+class FrameVectorSafe(val fieldVector: FieldVector,
+                      val virtualRowStart: Int = 0,
+                      val virtualRowCount: Int = -1) extends FrameVector {
+  def writeDouble(index: Int, item: Double): Unit =
+    fieldVector.asInstanceOf[Float8Vector].setSafe(index + virtualRowStart, item)
+
+  def writeLong(index: Int, item: Long): Unit =
+    fieldVector.asInstanceOf[BigIntVector].setSafe(index + virtualRowStart, item)
+
+  def writeInt(index: Int, item: Int): Unit =
+    fieldVector.asInstanceOf[IntVector].setSafe(index + virtualRowStart, item)
+}
+
+
+object FrameListVector {
+  private val UN_SAFE: Boolean = System.getProperty("arrow.enable_unsafe_memory_access", "false").toBoolean
+
+  def apply(fieldVector: FieldVector, startOffset: Int, endOffset: Int): FrameVector = {
+    if (UN_SAFE) new FrameListVectorUnSafe(fieldVector, startOffset, endOffset) else
+      new FrameListVectorSafe(fieldVector, startOffset, endOffset)
+  }
+}
+
+
+class FrameListVectorSafe(fieldVector: FieldVector, val startOffset: Int, val endOffset: Int)
+  extends FrameVectorSafe(fieldVector.getChildrenFromFields.get(0)) {
+  // override def valueCount(count: Int): Unit = throw new UnsupportedOperationException("can't change value count")
+  // override def valueCount(count: Int): Unit = fieldVector.asInstanceOf[ListVector].startNewValue(count)
+  override def valueCount: Int = endOffset - startOffset
+
+  override def readDouble(index: Int): Double = super.readDouble(startOffset + index)
+
+  override def writeDouble(index: Int, item: Double): Unit =
+    super.writeDouble(startOffset + index, item)
+
+  override def readLong(index: Int): Long = super.readLong(startOffset + index)
+
+  override def writeLong(index: Int, item: Long): Unit = super.writeLong(startOffset + index, item)
+
+  override def readInt(index: Int): Int = super.readInt(startOffset + index)
+
+  override def writeInt(index: Int, item: Int): Unit = super.writeInt(startOffset + index, item)
+}
+
+
+class FrameListVectorUnSafe(fieldVector: FieldVector, val startOffset: Int, val endOffset: Int)
+  extends FrameVectorUnSafe(fieldVector.getChildrenFromFields.get(0)) {
   // override def valueCount(count: Int): Unit = throw new UnsupportedOperationException("can't change value count")
   // override def valueCount(count: Int): Unit = fieldVector.asInstanceOf[ListVector].startNewValue(count)
 
@@ -403,11 +471,11 @@ class FrameSchema(val arrowSchema: VectorSchemaRoot,
 
   val columnarVectors: Array[FrameVector] = {
     if (fieldCount == -1 && placeholders.isEmpty) {
-      arrowSchema.getFieldVectors.asScala.map(new FrameVector(_)).toArray
+      arrowSchema.getFieldVectors.asScala.map(FrameVector(_)).toArray
     } else {
       val ret = new Array[FrameVector](fieldCount)
       placeholders.zipWithIndex.foreach {
-        case (n, i) => ret(n) = new FrameVector(arrowSchema.getFieldVectors.get(i))
+        case (n, i) => ret(n) = FrameVector(arrowSchema.getFieldVectors.get(i))
       }
       ret
     }

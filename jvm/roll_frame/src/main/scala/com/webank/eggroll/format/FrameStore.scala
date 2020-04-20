@@ -446,7 +446,7 @@ class FrameWriter(val rootSchema: VectorSchemaRoot, val arrowWriter: ArrowStream
         try {
           vector.setInitialCapacity(rowCount)
           vector.allocateNew()
-          f(fieldIndex, new FrameVector(vector))
+          f(fieldIndex, FrameVector(vector))
           vector.setValueCount(rowCount)
         } finally {
           // todo: should be closed with config?

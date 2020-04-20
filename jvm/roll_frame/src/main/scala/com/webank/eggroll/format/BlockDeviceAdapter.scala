@@ -83,15 +83,17 @@ class FileBlockAdapter(path: String) extends BlockDeviceAdapter {
 
 object HdfsBlockAdapter {
   /**
-   * Attention: In spark，will use the hdfs env in spark.
+   * HDFS configuration get from properties file or user codes, example:
+   * >> StaticErConf.addProperty("hadoop.fs.defaultFS","...")
+   * >> StaticErConf.addProperty("hadoop.dfs.nameservices","...")
+   * >> StaticErConf.addProperty("hadoop.dfs.namenode.rpc-address.nn1","...")
+   * >> StaticErConf.addProperty("hadoop.dfs.namenode.rpc-address.nn2","...")
    */
   private var conf: Configuration = {
-    System.setProperty("HADOOP_USER_NAME", "hadoop")
+    //System.setProperty("HADOOP_USER_NAME", "hadoop")
     val defaultConf = new Configuration()
     val fsName = StaticErConf.getString("hadoop.fs.defaultFS", "")
     val fsNameServices = StaticErConf.getString("hadoop.dfs.nameservices", "")
-    println(s"fsName = $fsName")
-    println(s"fsNameServices = $fsNameServices")
 
     if (fsNameServices.nonEmpty) {
       // HA mode
@@ -108,8 +110,11 @@ object HdfsBlockAdapter {
       defaultConf.set(s"dfs.client.failover.proxy.provider.${fsNameServices}", "org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider")
     }
     else {
+      // not HA model
       if (fsName.nonEmpty) {
         defaultConf.set("fs.defaultFS", fsName)
+      } else {
+        defaultConf.set("fs.defaultFS", "file://")
       }
     }
     defaultConf

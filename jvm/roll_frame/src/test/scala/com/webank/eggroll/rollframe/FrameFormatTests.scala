@@ -19,7 +19,6 @@
 package com.webank.eggroll.rollframe
 
 import java.nio.{ByteBuffer, ByteOrder}
-
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.format._
 import com.webank.eggroll.util.SchemaUtil
@@ -27,6 +26,7 @@ import io.netty.util.internal.PlatformDependent
 import junit.framework.TestCase
 import org.apache.arrow.vector.BitVectorHelper
 import org.junit.{Before, Test}
+import scala.util.Random
 
 class FrameFormatTests {
   private val testAssets = TestAssets
@@ -147,8 +147,6 @@ class FrameFormatTests {
     networkReadAdapter.readAll().foreach(fb =>
       assert(fb.readDouble(0, 30) == 30.0)
     )
-    val fb1 = FrameStore.network(networkPath,host,port.toString).readOne()
-    val a = 0
   }
 
   @Test
@@ -163,6 +161,32 @@ class FrameFormatTests {
 
     assert(fbs.next().fieldCount == 2)
     assert(fbs.next().rowCount == 100)
+  }
+
+  @Test
+  def testUnSafe(): Unit = {
+    System.setProperty("arrow.enable_unsafe_memory_access", "true")
+    val cols = 1000
+    val rows = 50000
+    val loop = 2
+    val random = new Random()
+    (0 until loop).foreach { i =>
+      val fb = new FrameBatch(new FrameSchema(SchemaUtil.getDoubleSchema(cols)), rows)
+      var start = System.currentTimeMillis()
+      (0 until cols).foreach(f =>
+        (0 until rows).foreach { r =>
+          fb.writeDouble(f, r, random.nextDouble())
+        })
+      println(s"write time = ${System.currentTimeMillis() - start} ms")
+      start = System.currentTimeMillis()
+      var sum = 0.0
+      (0 until cols).foreach(f =>
+        (0 until rows).foreach { r =>
+          sum += fb.readDouble(f, r)
+        })
+      println(s"read time = ${System.currentTimeMillis() - start} ms")
+    }
+    println(s"property: ${System.getProperty("arrow.enable_unsafe_memory_access")}")
   }
 
   @Test
@@ -402,10 +426,6 @@ class FrameFormatTests {
     }
     assert(parts == columnVectors.parts)
     assert(parts * rows * columns == columnVectors.rowCount)
-  }
-
-  @Test
-  def testV1: Unit = {
   }
 
   @Test
