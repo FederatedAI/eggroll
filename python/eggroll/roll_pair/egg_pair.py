@@ -437,7 +437,7 @@ def serve(args):
             route_to_class_name="EggPair",
             route_to_method_name="run_task")
 
-    max_workers = RollPairConfKeys.EGGROLL_ROLLPAIR_EGGPAIR_SERVER_EXECUTOR_POOL_MAX_SIZE.get()
+    max_workers = int(RollPairConfKeys.EGGROLL_ROLLPAIR_EGGPAIR_SERVER_EXECUTOR_POOL_MAX_SIZE.get())
     command_server = grpc.server(futures.ThreadPoolExecutor(
             max_workers=max_workers,
             thread_name_prefix="eggpair-command-server"),
@@ -466,7 +466,7 @@ def serve(args):
         transfer_pb2_grpc.add_TransferServiceServicer_to_server(transfer_servicer,
                                                                 transfer_server)
     else:
-        transfer_server_max_workers = RollPairConfKeys.EGGROLL_ROLLPAIR_EGGPAIR_TRANSFER_SERVER_EXECUTOR_POOL_MAX_SIZE.get()
+        transfer_server_max_workers = int(RollPairConfKeys.EGGROLL_ROLLPAIR_EGGPAIR_DATA_SERVER_EXECUTOR_POOL_MAX_SIZE.get())
         transfer_server = grpc.server(futures.ThreadPoolExecutor(
                 max_workers=transfer_server_max_workers,
                 thread_name_prefix="transfer_server"),
