@@ -438,10 +438,10 @@ def serve(args):
             route_to_class_name="EggPair",
             route_to_method_name="run_task")
 
-    max_workers = RollPairConfKeys.EGGROLL_ROLLPAIR_EGGPAIR_MAX_EXECUTORS.get()
+    max_workers = RollPairConfKeys.EGGROLL_ROLLPAIR_EGGPAIR_SERVER_EXECUTOR_POOL_MAX_SIZE.get()
     command_server = grpc.server(futures.ThreadPoolExecutor(
             max_workers=max_workers,
-            thread_name_prefix="eggpair_server"),
+            thread_name_prefix="eggpair-command-server"),
             options=[
                 ("grpc.max_metadata_size", 128 << 20),
                 (cygrpc.ChannelArgKey.max_send_message_length, 2 << 30 - 1),
@@ -464,11 +464,14 @@ def serve(args):
         transfer_pb2_grpc.add_TransferServiceServicer_to_server(transfer_servicer,
                                                                 transfer_server)
     else:
-        transfer_server = grpc.server(futures.ThreadPoolExecutor(max_workers=500, thread_name_prefix="transfer_server"),
-                                      options=[
-                                          (cygrpc.ChannelArgKey.max_send_message_length, 2 << 30 - 1),
-                                          (cygrpc.ChannelArgKey.max_receive_message_length, 2 << 30 - 1),
-                                          ('grpc.max_metadata_size', 128 << 20)])
+        transfer_pair_max_workers = RollPairConfKeys.EGGROLL_ROLLPAIR_EGGPAIR_TRANSFER_SERVER_EXECUTOR_POOL_MAX_SIZE.get()
+        transfer_server = grpc.server(futures.ThreadPoolExecutor(
+                max_workers=transfer_pair_max_workers,
+                thread_name_prefix="transfer_server"),
+                options=[
+                    (cygrpc.ChannelArgKey.max_send_message_length, 2 << 30 - 1),
+                    (cygrpc.ChannelArgKey.max_receive_message_length, 2 << 30 - 1),
+                    ('grpc.max_metadata_size', 128 << 20)])
         transfer_port = transfer_server.add_insecure_port(f'[::]:{transfer_port}')
         transfer_pb2_grpc.add_TransferServiceServicer_to_server(transfer_servicer,
                                                                 transfer_server)
