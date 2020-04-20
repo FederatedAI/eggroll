@@ -960,7 +960,7 @@ class RollPair(object):
             outputs.append(output)
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.SUBTRACT_BY_KEY),
                     name=RollPair.SUBTRACT_BY_KEY,
-                    inputs=self.__repartitions_with(other),
+                    inputs=self.__repartition_with(other),
                     outputs=outputs,
                     functors=[functor])
 
@@ -986,7 +986,7 @@ class RollPair(object):
             outputs.append(output)
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.UNION),
                     name=RollPair.UNION,
-                    inputs=self.__repartitions_with(other),
+                    inputs=self.__repartition_with(other),
                     outputs=outputs,
                     functors=[functor])
 
@@ -1015,7 +1015,7 @@ class RollPair(object):
         final_options.update(options)
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.JOIN),
                     name=RollPair.JOIN,
-                    inputs=self.__repartitions_with(other),
+                    inputs=self.__repartition_with(other),
                     outputs=outputs,
                     functors=[functor],
                     options=final_options)
