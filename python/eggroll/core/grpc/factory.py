@@ -36,6 +36,6 @@ class GrpcChannelFactory(object):
             target=target,
             options=[('grpc.max_send_message_length', 2 << 30 - 1),
                      ('grpc.max_receive_message_length', 2 << 30 - 1),
-                     ('grpc.max_metadata_size', 32 << 20)])
+                     ('grpc.max_metadata_size', 128 << 20)])
             self.pool[target] = result
         return self.pool[target]
