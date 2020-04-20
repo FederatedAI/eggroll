@@ -233,7 +233,7 @@ class SessionManagerService extends SessionManager with Logging {
 
     val sessionHosts = mutable.Set[String]()
     dbSessionMeta.processors.foreach(p => {
-      if (p != null && p.commandEndpoint != null) sessionHosts + p.commandEndpoint.host
+      if (p != null && p.commandEndpoint != null) sessionHosts += p.commandEndpoint.host
     })
 
     val serverNodeCrudOperator = new ServerNodeCrudOperator()
