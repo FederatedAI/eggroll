@@ -15,6 +15,7 @@
 
 import unittest
 
+from eggroll.core.utils import time_now
 from eggroll.roll_pair.test.roll_pair_test_assets import get_debug_test_context, \
     get_cluster_context, get_standalone_context, get_default_options
 
@@ -65,10 +66,27 @@ class TestRollPairBase(unittest.TestCase):
         print(list(rp.get_all()))
         print(rp.count())
 
+    def test_put(self):
+        rp = self.ctx.load('ns12020', f'test_put_{time_now()}')
+        object = b'1' * 10
+        rp.put(b'k1', object)
+        rp.destroy()
+
     def test_get(self):
         rp = self.ctx.parallelize(self.str_generator())
         for i in range(10):
             self.assertEqual(str(i), rp.get(str(i)))
+
+    def test_put_get(self):
+        rp = self.ctx.load('ns12020', f'test_put_get_{time_now()}')
+        length = (2 << 10) - 10
+        k = b'k'
+        v = b'1' * length
+        rp.put(k, v)
+        v1 = rp.get(k)
+        print(f'length: {len(v1)}')
+        self.assertEqual(len(v1), length)
+        self.assertEquals(v, v1)
 
     def test_count(self):
         rp = self.ctx.parallelize(self.str_generator(row_limit=11))
