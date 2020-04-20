@@ -203,6 +203,7 @@ class RollSite:
             rp = self.ctx.rp_ctx.load(namespace=table_namespace, name=table_name)
             if obj_type == b'object':
                 result = rp.get(table_name)
+                rp.destroy()
                 L.info(f"pull success: {table_name}, type: {obj_type}")
             else:
                 result = rp
