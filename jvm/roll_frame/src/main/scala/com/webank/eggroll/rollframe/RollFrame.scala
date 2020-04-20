@@ -20,7 +20,7 @@ package com.webank.eggroll.rollframe
 
 import java.text.SimpleDateFormat
 import java.util.Date
-import java.util.concurrent.{Callable, ConcurrentHashMap}
+import java.util.concurrent.{Callable, ConcurrentHashMap, CountDownLatch, TimeUnit}
 import java.util.concurrent.atomic.AtomicInteger
 
 import com.webank.eggroll.core.ErSession
@@ -264,32 +264,38 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
     val job = ErJob(id = if (jobId == null) jobType + "_" + genJobId() else jobId,
       name = jobType,
       inputs = Array(store),
-      outputs = Array(if (output == null) store.fork(postfix = jobType) else output),
+      outputs = Array(if (output == null) store.fork(postfix = jobId) else output),
       functors = Array(ErFunctor(name = RollFrame.mapBatch, body = serdes.serialize(retFunc))))
     rfScheduler.run(job)
     ctx.load(job.outputs.head)
   }
 
   def mapBatch(f: FrameBatch => FrameBatch, output: ErStore = null): RollFrame = {
+    val jobType = "mapBatch"
+    val jobId = jobType + "_" + genJobId()
+
     val func: (EggFrameContext, ErTask, Iterator[FrameBatch], FrameStore) => ErPair = {
       (ctx, task, input, output) =>
-        // for concurrent writing
+        //         for concurrent writing
         val queuePath = task.id + "-doing"
-        // total mean batch size, if given more than one, it just get one.
+        //         total mean batch size, if given more than one, it just get one.
         val queue = FrameStore.queue(queuePath, 1)
         input.foreach { fb =>
           ctx.executorPool.submit(new Runnable {
             override def run(): Unit = {
+              val start = System.currentTimeMillis()
               queue.append(f(fb))
+              println(s"thread: ${Thread.currentThread().getName},time of ${System.currentTimeMillis() - start} ms")
             }
           })
         }
+        println(s"thread: ${Thread.currentThread().getName}")
         output.writeAll(queue.readAll())
         output.close()
         null
     }
 
-    runUnaryJob("mapBatch", func, output = output)
+    runUnaryJob("mapBatch", func, jobId = jobId, output = output)
   }
 
 
@@ -329,7 +335,7 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
 
     val func: (EggFrameContext, ErTask, Iterator[FrameBatch], FrameStore) => ErPair = {
       (ctx, task, input, output) =>
-        val t = Thread.currentThread
+
         val zeroValue: FrameBatch = if (zeroValueBytes.isEmpty) null else FrameUtils.fromBytes(zeroValueBytes)
         val partition = task.inputs.head
         val batchSize = 1
@@ -459,15 +465,33 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
               // the same root server
               if (partition.id == 0) {
                 println(s"transferQueueSize = ${transferQueueSize}")
-                for (tmp <- FrameStore.queue(queuePath, transferQueueSize).readAll()) {
-                  localBatch = combOp(localBatch, tmp)
+                // parallel combine
+                FrameStore.queue(queuePath, -1).writeAll(Iterator(localBatch))
+                val latch = new CountDownLatch(transferQueueSize)
+                (0 until transferQueueSize).foreach { i =>
+                  val iter = FrameStore.queue(queuePath, 2).readAll()
+                  val a = iter.next()
+                  val b = iter.next()
+                  ctx.executorPool.submit(new Callable[Unit] {
+                    override def call(): Unit = {
+                      FrameStore.queue(queuePath, -1).writeAll(Iterator(combOp(a, b)))
+                      latch.countDown()
+                    }
+                  })
                 }
-                output.append(localBatch)
+                latch.await(10, TimeUnit.SECONDS)
+                output.writeAll(FrameStore.queue(queuePath, 1).readAll())
+                //   serial combine
+                //      for (tmp <- FrameStore.queue(queuePath, transferQueueSize).readAll()) {
+                //            localBatch = combOp(localBatch, tmp)
+                //       }
+                //       output.append(localBatch)
               } else {
                 // the same root server but different partition
                 FrameStore.queue(queuePath, -1).writeAll(Iterator(localBatch))
               }
             } else {
+              // TODO: combine in every processor, reduce time of network transfer
               // - use different clients
               // val ft = new NioFrameTransfer(ctx.serverNodes)
               // ft.send(ctx.rootServer.id, queuePath, localBatch)

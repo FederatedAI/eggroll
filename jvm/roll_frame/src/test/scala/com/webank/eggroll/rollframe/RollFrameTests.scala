@@ -36,7 +36,7 @@ import scala.collection.immutable.Range.Inclusive
  */
 class RollFrameTests extends Logging {
   protected val ta = TestAssets
-  val fieldCount: Int = 1000
+  val fieldCount: Int = 100
   protected val rowCount = 1000 // total value count = rowCount * fbCount * fieldCount
   // TODO: fbCount means a set of FrameBatch in one partition. fbCount value which larger then one maybe has bugs.
   protected val fbCount = 1 // the num of batch
@@ -51,7 +51,7 @@ class RollFrameTests extends Logging {
   def setup(): Unit = {
     // TODO: 3in1 run fail
     ctx = ta.getRfContext(true)
-
+    println(s"get RfContext property unsafe:${System.getProperty("arrow.enable_unsafe_memory_access")}")
     inputStore = ctx.createStore("test1", "a1", StringConstants.FILE, partitions_)
     inputHdfsStore = ctx.createStore("test1", "a1", StringConstants.HDFS, partitions_)
     inputTensorStore = ctx.createStore("test1", "t1", StringConstants.FILE, partitions_)
@@ -326,8 +326,7 @@ class RollFrameTests extends Logging {
 
   @Test
   def testMapBatch(): Unit = {
-    val output = ctx.forkStore(inputStore, "test1", "a1map1", StringConstants.FILE)
-    val rf = ctx.load(inputStore)
+    val rf = ctx.load(ctx.dumpCache(inputStore))
     val start = System.currentTimeMillis()
     rf.mapBatch({ cb =>
       val schema =
@@ -344,21 +343,20 @@ class RollFrameTests extends Logging {
       batch.writeDouble(0, 1, 0.1)
       batch.writeDouble(1, 0, 1.0)
       batch.writeDouble(1, 1, 1.1)
+      Thread.sleep(5000)
       batch
-    }, output)
-    println(s"map time = ${System.currentTimeMillis() - start}")
-    ctx.load(output)
-      .mapBatch { fb =>
-        TestCase.assertEquals(fb.readDouble(0, 1), 0.1, TestAssets.DELTA)
-        TestCase.assertEquals(fb.readDouble(1, 0), 1.0, TestAssets.DELTA)
-        TestCase.assertEquals(fb.readDouble(1, 1), 1.1, TestAssets.DELTA)
-        fb
-      }
+    }).mapBatch { fb =>
+      TestCase.assertEquals(fb.readDouble(0, 1), 0.1, TestAssets.DELTA)
+      TestCase.assertEquals(fb.readDouble(1, 0), 1.0, TestAssets.DELTA)
+      TestCase.assertEquals(fb.readDouble(1, 1), 1.1, TestAssets.DELTA)
+      fb
+    }
+    println(s"run time = ${System.currentTimeMillis() - start} ms")
   }
 
   @Test
   def testReduceBatch(): Unit = {
-    val input = inputStore
+    val input = ctx.dumpCache(inputStore)
     val output = ctx.forkStore(inputStore, "test1", "a1_reduce", StringConstants.CACHE)
     val rf = ctx.load(input)
     rf.reduce({ (x, y) =>
@@ -403,18 +401,15 @@ class RollFrameTests extends Logging {
     pass("/tmp/unittests/RollFrameTests/file/test1/b1/1")
   }
 
-  /**
-   * TODO: zero value are larger than 4M cause error.
-   */
   @Test
   def testRollFrameAggregateBatch(): Unit = {
-    val input = inputStore
+    val input = ctx.dumpCache(inputStore)
     val output = ctx.createStore(namespace = "test1", name = "agg_1", totalPartitions = 1)
     val rf = ctx.load(input)
     val start = System.currentTimeMillis()
     val colsCount = fieldCount
     val schema = SchemaUtil.getDoubleSchema(colsCount)
-    val zeroValue = new FrameBatch(new FrameSchema(schema), 5000)
+    val zeroValue = new FrameBatch(new FrameSchema(schema), 1000)
     zeroValue.initZero()
     rf.aggregate(zeroValue, { (x, y) =>
       try {
@@ -433,8 +428,8 @@ class RollFrameTests extends Logging {
       }
       a
     }, broadcastZeroValue = false, output = output)
-    println(System.currentTimeMillis() - start)
-    val aggregateFb = FrameStore(output, 0).readOne()
+    println(s"time = ${System.currentTimeMillis() - start} ms")
+    //    val aggregateFb = FrameStore(output, 0).readOne()
     //    TestCase.assertEquals(aggregateFb.readDouble(0, 0), input.partitions.length * rowCount, TestAssets.DELTA)
   }
 
