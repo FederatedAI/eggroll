@@ -74,15 +74,15 @@ class ErSession(object):
 
         self.__options = options.copy()
         self.__options[SessionConfKeys.CONFKEY_SESSION_ID] = self.__session_id
-        self._cluster_manager_client = ClusterManagerClient(options=options)
 
         self.__is_standalone = options.get(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE, "") == DeployModes.STANDALONE
         if self.__is_standalone and os.name != 'nt' and not processors and os.environ.get("EGGROLL_RESOURCE_MANAGER_AUTO_BOOTSTRAP", "1") == "1":
             port = int(options.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT,
-                                   static_er_conf.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, "4670")))
+                                   static_er_conf.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, "0")))
             startup_command = f'bash {self.__eggroll_home}/bin/eggroll_boot_standalone.sh -c {conf_path} -s {self.__session_id}'
             import subprocess
             import atexit
+            import psutil
 
             bootstrap_log_dir = f'{self.__eggroll_home}/logs/eggroll/'
             os.makedirs(bootstrap_log_dir, mode=0o755, exist_ok=True)
@@ -101,8 +101,36 @@ class ErSession(object):
                     returncode = manager_process.returncode
                     L.info(f'shutdown returncode: {returncode}')
 
-            atexit.register(shutdown_standalone_manager, port, self.__session_id, bootstrap_log_dir)
+            def find_pid_by_session_id(session_id):
+                pid_list = psutil.pids()
+                for pid in pid_list:
+                    p = psutil.Process(pid)
+                    cmdline = p.cmdline()
+                    session_id_index = cmdline.index('-s')
+                    if session_id == cmdline[session_id_index+1]:
+                        module_index = cmdline.index('--bootstraps')
+                        if 'ClusterManagerBootstrap' in cmdline[module_index + 1] or 'NodeManagerBootstrap' in cmdline[module_index + 1]:
+                            return pid
 
+            def find_port_by_pid(pid):
+                proc = subprocess.Popen(['netstat', '-anp'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                #Proto  Recv-Q  Send-Q  Local_Address  Foreign_Address  State  PID/Program_Name
+                for line in proc.stdout:
+                    line_list = line.split()
+                    if 'tcp'==line_list[0] and '0.0.0.0:' in line_list[3] and pid in line_list[5]:
+                        local_address = line_list[3].split(':')
+                        local_address_port = local_address[1]
+                        if local_address_port.isdigit() is True:
+                            return local_address_port
+                proc.wait()
+                return 0
+
+                pid = find_pid_by_session_id(session_id)
+                port = find_port_by_pid(pid)
+                options[ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT] = port
+                atexit.register(shutdown_standalone_manager, port, self.__session_id, bootstrap_log_dir)
+
+        self._cluster_manager_client = ClusterManagerClient(options=options)
         session_meta = ErSessionMeta(id=self.__session_id,
                                      name=name,
                                      status=SessionStatus.NEW,
