@@ -187,7 +187,7 @@ class EggPair(object):
         if task._name == 'delete':
             f = create_functor(functors[0]._body)
             with create_adapter(task._inputs[0]) as input_adapter:
-                L.info("delete k:{}, its value:{}".format(f._key, input_adapter.get(f._key)))
+                L.info("delete k:{}".format(f._key))
                 if input_adapter.delete(f._key):
                     L.info("delete k success")
 

@@ -12,7 +12,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-import sys
+import os
 import uuid
 from concurrent.futures import wait, FIRST_EXCEPTION
 from threading import Thread
@@ -21,7 +21,7 @@ from eggroll.core.aspects import _method_profile_logger
 from eggroll.core.client import CommandClient
 from eggroll.core.command.command_model import CommandURI
 from eggroll.core.conf_keys import SessionConfKeys
-from eggroll.core.constants import StoreTypes, SerdesTypes, PartitionerTypes
+from eggroll.core.constants import StoreTypes, SerdesTypes, PartitionerTypes, SessionStatus
 from eggroll.core.datastructure.broker import FifoBroker
 from eggroll.core.meta_model import ErStoreLocator, ErJob, ErStore, ErFunctor, \
     ErTask, ErPair, ErPartition
@@ -46,6 +46,8 @@ def runtime_init(session: ErSession):
 class RollPairContext(object):
 
     def __init__(self, session: ErSession):
+        if session.get_session_meta()._status != SessionStatus.ACTIVE:
+            raise Exception(f"session:{session.get_session_id()} is not available, init first!")
         self.__session = session
         self.session_id = session.get_session_id()
         self.default_store_type = StoreTypes.ROLLPAIR_LMDB
@@ -79,12 +81,13 @@ class RollPairContext(object):
         return ret
 
     def context_gc(self):
-        if self.gc_recorder.gc_recorder is None:
-            L.error("rp context gc_recorder is None!")
+        self.gc_recorder.stop()
+        if self.gc_recorder.gc_recorder is None or len(self.gc_recorder.gc_recorder) == 0:
+            L.info("rp context gc_recorder is None or empty!")
             return
-        for item in list(self.gc_recorder.gc_recorder.get_all()):
-            L.debug("cleanup item:{}".format(item))
-            name = item[0]
+        for k, v in (self.gc_recorder.gc_recorder.items()):
+            L.debug("before exit the task:{} cleaning item:{}".format(self.session_id, k))
+            name = k
             rp = self.load(namespace=self.session_id, name=name)
             rp.destroy()
 
@@ -279,21 +282,40 @@ class RollPair(object):
         self.gc_recorder.record(er_store)
 
     def __del__(self):
+        if "EGGROLL_GC_DISABLE" in os.environ and os.environ["EGGROLL_GC_DISABLE"] == '1':
+            L.info("global gc switch is close, not exec __del__ of RollPair")
+            return
         if self.ctx.get_session().is_stopped():
-            L.info('session:{} has already been stopped'.format(self.__session_id))
+            L.debug('session:{} has already been stopped'.format(self.__session_id))
             return
-        if not hasattr(self, 'gc_enable') or not self.gc_enable:
+        L.debug(f"del obj addr:{self} calling")
+        if not hasattr(self, 'gc_enable') \
+                or not self.gc_enable:
+            L.info('session:{} gc not enable'.format(self.__session_id))
             return
-        if self.ctx.gc_recorder.check_gc_executable(self.__store):
-            self.ctx.gc_recorder.delete_record(self.__store)
-            L.debug(f'del rp: {self}')
-            self.destroy()
-            L.debug(f"running gc: {sys._getframe().f_code.co_name}. "
-                    f"deleting store name: {self.__store._store_locator._name}, "
-                    f"namespace: {self.__store._store_locator._namespace}")
+        self.ctx.gc_recorder.decrease_ref_count(self.__store)
 
     def __repr__(self):
         return f'<RollPair(_store={self.__store}) at {hex(id(self))}>'
+
+    def __repartition_with(self, other):
+        if other.get_partitions() != self.get_partitions():
+            L.info(f"partitions of rp:{self.get_name()} is: {self.get_partitions()} "
+                   f"and other:{other.get_name()} is: {other.get_partitions()}, reshuffling......")
+
+            shuffle_rp = self if self.count() < other.count() else other
+            not_shuffle_rp = other if self.count() < other.count() else self
+
+            L.debug(f"rp:{shuffle_rp.get_name()} count:{shuffle_rp.count()} "
+                    f"is smaller than rp:{not_shuffle_rp.get_name()} count:{not_shuffle_rp.count()}, reshuffle the small one")
+            store = ErStore(store_locator=ErStoreLocator(store_type=shuffle_rp.get_store_type(),
+                                                         namespace=shuffle_rp.get_namespace(),
+                                                         name=str(uuid.uuid1()),
+                                                         total_partitions=not_shuffle_rp.get_partitions()))
+            store_shuffle = shuffle_rp.map(lambda k, v: (k, v), output=store).get_store()
+            return [store_shuffle, other.get_store()] if self.count() < other.count() else [self.get_store(), store_shuffle]
+        else:
+            return [self.__store, other.__store]
 
     def enable_gc(self):
         self.gc_enable = True
@@ -931,13 +953,14 @@ class RollPair(object):
     def subtract_by_key(self, other, output=None, options: dict = None):
         if options is None:
             options = {}
+
         functor = ErFunctor(name=RollPair.SUBTRACT_BY_KEY, serdes=SerdesTypes.CLOUD_PICKLE)
         outputs = []
         if output:
             outputs.append(output)
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.SUBTRACT_BY_KEY),
                     name=RollPair.SUBTRACT_BY_KEY,
-                    inputs=[self.__store, other.__store],
+                    inputs=self.__repartitions_with(other),
                     outputs=outputs,
                     functors=[functor])
 
@@ -956,13 +979,14 @@ class RollPair(object):
     def union(self, other, func=lambda v1, v2: v1, output=None, options: dict = None):
         if options is None:
             options = {}
+
         functor = ErFunctor(name=RollPair.UNION, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
         outputs = []
         if output:
             outputs.append(output)
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.UNION),
                     name=RollPair.UNION,
-                    inputs=[self.__store, other.__store],
+                    inputs=self.__repartitions_with(other),
                     outputs=outputs,
                     functors=[functor])
 
@@ -981,6 +1005,7 @@ class RollPair(object):
     def join(self, other, func, output=None, options: dict = None):
         if options is None:
             options = {}
+
         functor = ErFunctor(name=RollPair.JOIN, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
         outputs = []
         if output:
@@ -990,7 +1015,7 @@ class RollPair(object):
         final_options.update(options)
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.JOIN),
                     name=RollPair.JOIN,
-                    inputs=[self.__store, other.__store],
+                    inputs=self.__repartitions_with(other),
                     outputs=outputs,
                     functors=[functor],
                     options=final_options)
