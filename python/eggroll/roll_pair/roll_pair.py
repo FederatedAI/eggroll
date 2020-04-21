@@ -286,14 +286,17 @@ class RollPair(object):
         if "EGGROLL_GC_DISABLE" in os.environ and os.environ["EGGROLL_GC_DISABLE"] == '1':
             L.info("global gc switch is close, not exec __del__ of RollPair")
             return
+        if not hasattr(self, 'gc_enable') \
+                or not hasattr(self, 'ctx'):
+            return
+        if not self.gc_enable:
+            L.info('session:{} gc not enable'.format(self.__session_id))
+            return
         if self.ctx.get_session().is_stopped():
             L.debug('session:{} has already been stopped'.format(self.__session_id))
             return
         L.debug(f"del obj addr:{self} calling")
-        if not hasattr(self, 'gc_enable') \
-                or not self.gc_enable:
-            L.info('session:{} gc not enable'.format(self.__session_id))
-            return
+
         self.ctx.gc_recorder.decrease_ref_count(self.__store)
 
     def __repr__(self):
