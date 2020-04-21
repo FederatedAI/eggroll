@@ -13,6 +13,8 @@
 #  limitations under the License.
 #
 #
+
+import functools
 import time
 from concurrent.futures import ThreadPoolExecutor, wait, FIRST_EXCEPTION
 
@@ -70,6 +72,7 @@ class RollSiteContext:
         while True:
             if try_count >= max_try_count:
                 L.warn(f"try times reach {max_try_count} for session: {session_id}, exiting")
+                self.__cleanup_tmp_obj_store()
                 return
             if self.pushing_task_count:
                 L.info(f"session: {session_id} "
@@ -80,6 +83,7 @@ class RollSiteContext:
                 time.sleep(min(0.1 * try_count, 60))
             else:
                 L.info(f"session: {session_id} finishes all pushing tasks")
+                self.__cleanup_tmp_obj_store()
                 return
 
     # todo:1: add options?
@@ -146,8 +150,12 @@ class RollSite:
         self._push_start_cpu_time = None
         self._pull_start_wall_time = None
         self._pull_start_cpu_time = None
+        self._is_standalone = self.ctx.rp_ctx.get_session().get_option(
+                SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE) == DeployModes.STANDALONE
 
-    def _push_callback(self, fn):
+    def _push_callback(self, fn, tmp_rp):
+        if tmp_rp:
+            tmp_rp.destroy()
         if self.ctx.pushing_task_count <= 0:
             self.ctx.pushing_task_count = 0
             return
@@ -160,9 +168,7 @@ class RollSite:
     def _thread_receive(self, packet, namespace, roll_site_header: ErRollSiteHeader):
         try:
             table_name = create_store_name(roll_site_header)
-            is_standalone = self.ctx.rp_ctx.get_session().get_option(
-                    SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE) == "standalone"
-            if is_standalone:
+            if self._is_standalone:
                 status_rp = self.ctx.rp_ctx.load(namespace, STATUS_TABLE_NAME + DELIM + self.ctx.roll_site_session_id)
                 retry_cnt = 0
                 # TODO:0: sleep retry count and timeout
@@ -203,7 +209,8 @@ class RollSite:
             rp = self.ctx.rp_ctx.load(namespace=table_namespace, name=table_name)
             if obj_type == b'object':
                 result = rp.get(table_name)
-                rp.destroy()
+                if not self._is_standalone:
+                    rp.destroy()
                 L.info(f"pull success: {table_name}, type: {obj_type}")
             else:
                 result = rp
@@ -252,10 +259,7 @@ class RollSite:
             rp.disable_gc()
             L.info(f"pushing prepared: {type(obj)}, tag_key:{_tagged_key}")
 
-            def map_values(_tagged_key):
-                is_standalone = self.ctx.rp_ctx.get_session().get_option(
-                        SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE) == DeployModes.STANDALONE
-
+            def map_values(_tagged_key, is_standalone):
                 if is_standalone:
                     dst_name = _tagged_key
                     store_type = rp.get_store_type()
@@ -298,8 +302,13 @@ class RollSite:
                 L.info(f"pushing map_values done:{type(obj)}, tag_key:{_tagged_key}")
                 return _tagged_key
 
-            future = self.receive_exeutor_pool.submit(map_values, _tagged_key)
-            future.add_done_callback(self._push_callback)
+            future = self.receive_exeutor_pool.submit(map_values, _tagged_key, self._is_standalone)
+            if not self._is_standalone and (obj_type == 'object' or obj_type == b'object'):
+                tmp_rp = rp
+            else:
+                tmp_rp = None
+
+            future.add_done_callback(functools.partial(self._push_callback, tmp_rp=tmp_rp))
             futures.append(future)
 
         self.receive_exeutor_pool.shutdown(wait=False)
