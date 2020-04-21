@@ -151,12 +151,12 @@ class RollSite:
                 SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE) == DeployModes.STANDALONE
 
     def _push_callback(self, fn, rp, obj_type, is_standalone):
-        self.ctx.pushing_task_count -= 1
+        if not is_standalone and obj_type == 'object':
+            rp.destroy()
         if self.ctx.pushing_task_count <= 0:
             self.ctx.pushing_task_count = 0
-            if not is_standalone and obj_type == 'object':
-                rp.destroy()
 
+        self.ctx.pushing_task_count -= 1
         end_wall_time = time.time()
         end_cpu_time = time.perf_counter()
 
