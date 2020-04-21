@@ -22,13 +22,12 @@ from concurrent import futures
 
 import grpc
 import numpy as np
-from grpc._cython import cygrpc
 
 from eggroll.core.client import ClusterManagerClient
 from eggroll.core.command.command_router import CommandRouter
 from eggroll.core.command.command_service import CommandServicer
 from eggroll.core.conf_keys import SessionConfKeys, \
-    ClusterManagerConfKeys, RollPairConfKeys
+    ClusterManagerConfKeys, RollPairConfKeys, CoreConfKeys
 from eggroll.core.constants import ProcessorTypes, ProcessorStatus, SerdesTypes
 from eggroll.core.datastructure.broker import FifoBroker
 from eggroll.core.meta_model import ErPair
@@ -438,14 +437,17 @@ def serve(args):
             route_to_class_name="EggPair",
             route_to_method_name="run_task")
 
-    max_workers = RollPairConfKeys.EGGROLL_ROLLPAIR_EGGPAIR_SERVER_EXECUTOR_POOL_MAX_SIZE.get()
+    max_workers = int(RollPairConfKeys.EGGROLL_ROLLPAIR_EGGPAIR_SERVER_EXECUTOR_POOL_MAX_SIZE.get())
     command_server = grpc.server(futures.ThreadPoolExecutor(
             max_workers=max_workers,
             thread_name_prefix="eggpair-command-server"),
             options=[
-                ("grpc.max_metadata_size", 128 << 20),
-                (cygrpc.ChannelArgKey.max_send_message_length, 2 << 30 - 1),
-                (cygrpc.ChannelArgKey.max_receive_message_length, 2 << 30 - 1)])
+                ("grpc.max_metadata_size",
+                 int(CoreConfKeys.EGGROLL_CORE_GRPC_SERVER_CHANNEL_MAX_INBOUND_METADATA_SIZE.get())),
+                ('grpc.max_send_message_length',
+                 int(CoreConfKeys.EGGROLL_CORE_GRPC_SERVER_CHANNEL_MAX_INBOUND_MESSAGE_SIZE.get())),
+                ('grpc.max_receive_message_length',
+                 int(CoreConfKeys.EGGROLL_CORE_GRPC_SERVER_CHANNEL_MAX_INBOUND_MESSAGE_SIZE.get()))])
 
     command_servicer = CommandServicer()
     command_pb2_grpc.add_CommandServiceServicer_to_server(command_servicer,
@@ -464,14 +466,17 @@ def serve(args):
         transfer_pb2_grpc.add_TransferServiceServicer_to_server(transfer_servicer,
                                                                 transfer_server)
     else:
-        transfer_pair_max_workers = RollPairConfKeys.EGGROLL_ROLLPAIR_EGGPAIR_TRANSFER_SERVER_EXECUTOR_POOL_MAX_SIZE.get()
+        transfer_server_max_workers = int(RollPairConfKeys.EGGROLL_ROLLPAIR_EGGPAIR_DATA_SERVER_EXECUTOR_POOL_MAX_SIZE.get())
         transfer_server = grpc.server(futures.ThreadPoolExecutor(
-                max_workers=transfer_pair_max_workers,
+                max_workers=transfer_server_max_workers,
                 thread_name_prefix="transfer_server"),
                 options=[
-                    (cygrpc.ChannelArgKey.max_send_message_length, 2 << 30 - 1),
-                    (cygrpc.ChannelArgKey.max_receive_message_length, 2 << 30 - 1),
-                    ('grpc.max_metadata_size', 128 << 20)])
+                    ('grpc.max_metadata_size',
+                     int(CoreConfKeys.EGGROLL_CORE_GRPC_SERVER_CHANNEL_MAX_INBOUND_METADATA_SIZE.get())),
+                    ('grpc.max_send_message_length',
+                     int(CoreConfKeys.EGGROLL_CORE_GRPC_SERVER_CHANNEL_MAX_INBOUND_MESSAGE_SIZE.get())),
+                    ('grpc.max_receive_message_length',
+                     int(CoreConfKeys.EGGROLL_CORE_GRPC_SERVER_CHANNEL_MAX_INBOUND_MESSAGE_SIZE.get()))])
         transfer_port = transfer_server.add_insecure_port(f'[::]:{transfer_port}')
         transfer_pb2_grpc.add_TransferServiceServicer_to_server(transfer_servicer,
                                                                 transfer_server)

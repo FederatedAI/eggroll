@@ -44,7 +44,7 @@ class CommandCallError(Exception):
 
 class CommandClient(object):
     executor = ThreadPoolExecutor(
-            max_workers=CoreConfKeys.EGGROLL_CORE_CLIENT_COMMAND_EXECUTOR_POOL_MAX_SIZE.get(),
+            max_workers=int(CoreConfKeys.EGGROLL_CORE_CLIENT_COMMAND_EXECUTOR_POOL_MAX_SIZE.get()),
             thread_name_prefix="command_client")
     def __init__(self):
         self._channel_factory = GrpcChannelFactory()
