@@ -157,7 +157,7 @@ class ErSession(object):
     def stop(self):
         L.info(f'stopping session (gracefully): {self.__session_id}')
         L.debug(f'stopping session (gracefully), details: {self.__session_meta}')
-        L.debug(f'stopping (gracefully) from: {get_stack()}')
+        L.debug(f'stopping (gracefully) for {self.__session_id} from: {get_stack()}')
         self.run_exit_tasks()
         self.stopped = True
         return self._cluster_manager_client.stop_session(self.__session_meta)
@@ -165,7 +165,7 @@ class ErSession(object):
     def kill(self):
         L.info(f'killing session (forcefully): {self.__session_id}')
         L.debug(f'killing session (forcefully), details: {self.__session_meta}')
-        L.debug(f'killing (forcefully) from: {get_stack()}')
+        L.debug(f'killing (forcefully) for {self.__session_id} from: {get_stack()}')
         self.stopped = True
         return self._cluster_manager_client.kill_session(self.__session_meta)
 
