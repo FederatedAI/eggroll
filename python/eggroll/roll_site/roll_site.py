@@ -13,6 +13,8 @@
 #  limitations under the License.
 #
 #
+
+import functools
 import time
 from concurrent.futures import ThreadPoolExecutor, wait, FIRST_EXCEPTION
 
@@ -60,15 +62,7 @@ class RollSiteContext:
 
         self.pushing_task_count = 0
         self.rp_ctx.get_session().add_exit_task(self.push_complete)
-        self._tmp_obj_store = list()
         L.info(f"inited RollSiteContext: {self.__dict__}")
-
-    def add_tmp_obj_store(self, store: RollPair):
-        self._tmp_obj_store.append(store)
-
-    def __cleanup_tmp_obj_store(self):
-        for store in self._tmp_obj_store:
-            store.destroy()
 
     def push_complete(self):
         session_id = self.rp_ctx.get_session().get_session_id()
@@ -159,7 +153,9 @@ class RollSite:
         self._is_standalone = self.ctx.rp_ctx.get_session().get_option(
                 SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE) == DeployModes.STANDALONE
 
-    def _push_callback(self, fn):
+    def _push_callback(self, fn, tmp_rp):
+        if tmp_rp:
+            tmp_rp.destroy()
         if self.ctx.pushing_task_count <= 0:
             self.ctx.pushing_task_count = 0
             return
@@ -214,7 +210,7 @@ class RollSite:
             if obj_type == b'object':
                 result = rp.get(table_name)
                 if not self._is_standalone:
-                    self.ctx.add_tmp_obj_store(rp)
+                    rp.destroy()
                 L.info(f"pull success: {table_name}, type: {obj_type}")
             else:
                 result = rp
@@ -307,10 +303,12 @@ class RollSite:
                 return _tagged_key
 
             future = self.receive_exeutor_pool.submit(map_values, _tagged_key, self._is_standalone)
-            if not self._is_standalone and obj_type == 'object':
-                self.ctx.add_tmp_obj_store(rp)
+            if not self._is_standalone and (obj_type == 'object' or obj_type == b'object'):
+                tmp_rp = rp
+            else:
+                tmp_rp = None
 
-            future.add_done_callback(self._push_callback)
+            future.add_done_callback(functools.partial(self._push_callback, tmp_rp=tmp_rp))
             futures.append(future)
 
         self.receive_exeutor_pool.shutdown(wait=False)
