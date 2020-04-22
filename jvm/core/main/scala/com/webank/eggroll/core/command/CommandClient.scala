@@ -85,7 +85,7 @@ class CommandClient(defaultEndpoint: ErEndpoint = null,
   def call[T](commandUri: CommandURI, args: RpcMessage*)(implicit tag:ClassTag[T]): T = {
     logDebug(s"[CommandClient.call, single endpoint] commandUri: ${commandUri.uriString}, endpoint: ${defaultEndpoint}")
     try {
-      val stub = CommandServiceGrpc.newBlockingStub(buildChannel(defaultEndpoint))
+      val stub = CommandServiceGrpc.newBlockingStub(GrpcClientUtils.getChannel(defaultEndpoint))
       val argBytes = args.map(x => ByteString.copyFrom(SerdesUtils.rpcMessageToBytes(x, SerdesTypes.PROTOBUF)))
       val resp = stub.call(Command.CommandRequest.newBuilder
         .setId(System.currentTimeMillis + "")
@@ -106,7 +106,7 @@ class CommandClient(defaultEndpoint: ErEndpoint = null,
     val futures = args.map {
       case (rpcMessages, endpoint) =>
         try {
-          val ch: ManagedChannel = buildChannel(endpoint)
+          val ch: ManagedChannel = GrpcClientUtils.getChannel(endpoint)
           val stub = CommandServiceGrpc.newFutureStub(ch)
           val argBytes = rpcMessages.map(x => UnsafeByteOperations.unsafeWrap(SerdesUtils.rpcMessageToBytes(x, SerdesTypes.PROTOBUF)))
           logDebug(s"[CommandClient.call, multiple endpoints] commandUri: ${commandUri.uriString}, endpoint: ${endpoint}")
