@@ -72,7 +72,6 @@ class RollSiteContext:
         while True:
             if try_count >= max_try_count:
                 L.warn(f"try times reach {max_try_count} for session: {session_id}, exiting")
-                self.__cleanup_tmp_obj_store()
                 return
             if self.pushing_task_count:
                 L.info(f"session: {session_id} "
@@ -83,7 +82,6 @@ class RollSiteContext:
                 time.sleep(min(0.1 * try_count, 60))
             else:
                 L.info(f"session: {session_id} finishes all pushing tasks")
-                self.__cleanup_tmp_obj_store()
                 return
 
     # todo:1: add options?
