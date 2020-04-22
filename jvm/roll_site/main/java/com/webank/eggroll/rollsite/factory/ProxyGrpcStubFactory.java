@@ -63,7 +63,7 @@ public class ProxyGrpcStubFactory {
     public ProxyGrpcStubFactory() {
         channelCache = CacheBuilder.newBuilder()
                 .maximumSize(100)
-                .expireAfterWrite(20, TimeUnit.MINUTES)
+                .expireAfterWrite(180, TimeUnit.MINUTES)
                 .recordStats()
                 .weakValues()
                 .removalListener(removalNotification -> {
