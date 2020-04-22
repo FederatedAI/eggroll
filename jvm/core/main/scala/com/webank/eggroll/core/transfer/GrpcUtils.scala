@@ -176,7 +176,6 @@ object GrpcClientUtils extends Logging {
     }
     val builder = NettyChannelBuilder
       .forAddress(endpoint.host, endpoint.port)
-      .executor(ThreadPoolUtils.newFixedThreadPool(channelExecutorPoolSize, s"grpc-client-${endpoint.host}:${endpoint.port}"))
       .keepAliveTime(channelKeepAliveTimeSec, TimeUnit.SECONDS)
       .keepAliveTimeout(channelKeepAliveTimeoutSec, TimeUnit.SECONDS)
       .keepAliveWithoutCalls(channelKeepAliveWithoutCallsEnabled)
@@ -233,7 +232,7 @@ object GrpcClientUtils extends Logging {
   }
 
   def getChannel(endpoint: ErEndpoint,
-                 isSecureChannel: Boolean,
+                 isSecureChannel: Boolean = false,
                  options: Map[String, String] = Map.empty): ManagedChannel = {
     var result: ManagedChannel = null
     val fixedWaitTime = CoreConfKeys.CONFKEY_CORE_RETRY_DEFAULT_WAIT_TIME_MS.getWith(options).toLong

@@ -58,7 +58,7 @@ object CoreConfKeys {
   val BOOTSTRAP_ROOT_SCRIPT = "eggroll.bootstrap.root.script"
   val BOOTSTRAP_SHELL = "eggroll.bootstrap.shell"
   val BOOTSTRAP_SHELL_ARGS = "eggroll.bootstrap.shell.args"
-  val CONFKEY_CORE_GRPC_CHANNEL_CACHE_EXPIRE_SEC = ErConfKey("eggroll.core.grpc.channel.cache.expire.sec", 1200)
+  val CONFKEY_CORE_GRPC_CHANNEL_CACHE_EXPIRE_SEC = ErConfKey("eggroll.core.grpc.channel.cache.expire.sec", 7200)
   val CONFKEY_CORE_GRPC_CHANNEL_CACHE_SIZE = ErConfKey("eggroll.core.grpc.channel.cache.size", 256)
   val CONFKEY_CORE_GRPC_CHANNEL_EXECUTOR_POOL_SIZE = ErConfKey("eggroll.core.grpc.channel.executor.pool.size", 128)
   val CONFKEY_CORE_GRPC_CHANNEL_FLOW_CONTROL_WINDOW = ErConfKey("eggroll.core.grpc.channel.flow.control.window", 8 << 20)
