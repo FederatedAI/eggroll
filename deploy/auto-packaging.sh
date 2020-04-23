@@ -1,6 +1,6 @@
 pwd=`pwd`
 cwd=$(cd `dirname $0`; pwd)
-version=2.0
+version=`grep version ../BUILD_INFO | awk -F= '{print $2}'`
 
 cd $cwd
 cd ../jvm
