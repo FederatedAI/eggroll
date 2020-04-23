@@ -19,7 +19,6 @@ export EGGROLL_HOME=`pwd`
 cwd=$(cd `dirname $0`; pwd)
 
 export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION='python'
-version=2.0.1
 cd ${EGGROLL_HOME}
 echo "EGGROLL_HOME:${EGGROLL_HOME}"
 
