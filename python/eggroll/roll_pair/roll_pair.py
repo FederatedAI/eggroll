@@ -214,7 +214,7 @@ class RollPairContext(object):
             L.debug("item count:{}".format(len(results._stores)))
             for item in results._stores:
                 L.debug("item namespace:{} name:{}".format(item._store_locator._namespace,
-                                                         item._store_locator._name))
+                                                           item._store_locator._name))
                 rp = RollPair(er_store=item, rp_ctx=self)
                 rp.destroy()
 
@@ -551,6 +551,9 @@ class RollPair(object):
     # todo:1: move to command channel to utilize batch command
     @_method_profile_logger
     def destroy(self):
+        if len(self.ctx.get_session()._cluster_manager_client.get_store(self.get_store())._partitions) == 0:
+            L.info(f"store:{self.get_store()} has been destroyed before")
+            raise ValueError(f"store:{self.get_store()} has been destroyed before")
         total_partitions = self.__store._store_locator._total_partitions
 
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.DESTROY),
