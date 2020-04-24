@@ -52,8 +52,8 @@ object ErConfKey {
 
 
 object CoreConfKeys {
-  val LOGS_DIR = "eggroll.logs.dir"
-  val DATA_DIR = "eggroll.data.dir"
+  val EGGROLL_LOGS_DIR = ErConfKey("eggroll.logs.dir")
+  val EGGROLL_DATA_DIR = ErConfKey("eggroll.data.dir")
   val STATIC_CONF_PATH = "eggroll.static.conf.path"
   val BOOTSTRAP_ROOT_SCRIPT = "eggroll.bootstrap.root.script"
   val BOOTSTRAP_SHELL = "eggroll.bootstrap.shell"
@@ -141,7 +141,8 @@ object SessionConfKeys {
   val CONFKEY_SESSION_ID = "eggroll.session.id"
   val CONFKEY_SESSION_NAME = "eggroll.session.name"
   val CONFKEY_SESSION_PROCESSORS_PER_NODE = "eggroll.session.processors.per.node"
-
+  val EGGROLL_SESSION_START_TIMEOUT_MS = ErConfKey("eggroll.session.start.timeout.ms", 20000)
+  val EGGROLL_SESSION_STOP_TIMEOUT_MS = ErConfKey("eggroll.session.stop.timeout.ms", 20000)
 }
 
 object DeployConfKeys {
@@ -158,4 +159,9 @@ object RollSiteConfKeys {
   val EGGROLL_ROLLSITE_PROXY_COMPATIBLE_ENABLED = ErConfKey("eggroll.rollsite.proxy.compatible.enabled", "false")
   val EGGROLL_ROLLSITE_LAN_INSECURE_CHANNEL_ENABLED = ErConfKey("eggroll.rollsite.lan.insecure.channel.enabled")
   val EGGROLL_ROLLSITE_AUDIT_ENABLED = ErConfKey("eggroll.rollsite.audit.enabled")
+}
+
+object RollPairConfKeys {
+  val EGGROLL_ROLLPAIR_PUTBATCH_EXECUTOR_POOL_MAX_SIZE = ErConfKey("eggroll.rollpair.putbatch.executor.pool.max.size", 600)
+  val EGGROLL_ROLLPAIR_PUTBATCH_EXECUTOR_POOL_KEEPALIVE_SEC = ErConfKey("eggroll.rollpair.putbatch.executor.pool.keepalive.sec", 30)
 }

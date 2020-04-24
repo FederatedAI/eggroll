@@ -75,7 +75,8 @@ class SessionMetaDao {
           commandEndpoint = if(StringUtils.isBlank(rs.getString("command_endpoint"))) null
                             else ErEndpoint(rs.getString("command_endpoint")),
           transferEndpoint = if(StringUtils.isBlank(rs.getString("transfer_endpoint"))) null
-                              else ErEndpoint(rs.getString("transfer_endpoint")))
+                              else ErEndpoint(rs.getString("transfer_endpoint")),
+          pid = rs.getInt("pid"))
         ),
       "select * from session_processor where session_id = ?", sessionId)
     getSessionMain(sessionId).copy(options = opts, processors = procs.toArray)
@@ -152,7 +153,8 @@ class SessionMetaDao {
         id = sessionId, name = rs.getString("name"),
         totalProcCount = rs.getInt("total_proc_count"),
         activeProcCount = rs.getInt("active_proc_count"),
-        status = rs.getString("status"), tag = rs.getString("tag"))
+        status = rs.getString("status"),
+        tag = rs.getString("tag"))
     },"select * from session_main where session_id = ?", sessionId)
   }
 
