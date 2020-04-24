@@ -71,7 +71,10 @@ case class ErStoreLocator(id: Long = -1L,
   }
 }
 
-case class ErPartition(id: Int, storeLocator: ErStoreLocator = null, processor: ErProcessor = null) extends MetaRpcMessage {
+case class ErPartition(id: Int,
+                       storeLocator: ErStoreLocator = null,
+                       processor: ErProcessor = null,
+                       rankInNode: Int = -1) extends MetaRpcMessage {
   def toPath(delim: String = StringConstants.SLASH): String = String.join(delim, storeLocator.toPath(delim = delim), id.toString)
 }
 
@@ -222,6 +225,7 @@ object MetaModelPbMessageSerdes {
       val builder = Meta.Partition.newBuilder()
         .setId(src.id)
         .setProcessor(src.processor.toProto())
+        .setRankInNode(src.rankInNode)
       if (src.storeLocator != null) builder.setStoreLocator(src.storeLocator.toProto())
 
       builder.build()
@@ -348,7 +352,7 @@ object MetaModelPbMessageSerdes {
 
   implicit class ErPartitionFromPbMessage(src: Meta.Partition) extends PbMessageDeserializer {
     override def fromProto[T >: RpcMessage](): ErPartition = {
-      ErPartition(id = src.getId, storeLocator = src.getStoreLocator.fromProto(), processor = src.getProcessor.fromProto())
+      ErPartition(id = src.getId, storeLocator = src.getStoreLocator.fromProto(), processor = src.getProcessor.fromProto(), rankInNode = src.getRankInNode)
     }
 
     override def fromBytes(bytes: Array[Byte]): ErPartition =

@@ -103,6 +103,7 @@ message Partition {
   StoreLocator storeLocator = 2;
   Processor processor = 3;
   int64 serverNodeId = 4;
+  int32 rankInNode = 5;
 }
 
 message CallInfo {

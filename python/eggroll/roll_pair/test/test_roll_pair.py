@@ -503,6 +503,15 @@ class TestRollPairCluster(TestRollPairBase):
         print(f'reduce result: {result}')
         self.assertEqual(result, 21)
 
+    def test_save_as_equal_partition(self):
+        super().test_save_as_equal_partition()
+
+    def test_save_as_less_partition(self):
+        super().test_save_as_less_partition()
+
+    def test_save_as_more_partition(self):
+        super().test_save_as_more_partition()
+
     def test_empty(self):
         pass
 

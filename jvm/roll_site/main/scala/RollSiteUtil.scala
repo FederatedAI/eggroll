@@ -64,14 +64,13 @@ class RollSiteUtil(val erSessionId: String,
       broker.signalWriteFinish()
       rp.putBatch(broker, options = options)
 
+      JobStatus.increasePutBatchFinishedCount(name);
       logInfo(s"put batch finished for name: ${name}, namespace: ${namespace}")
     } catch {
       case e: Exception => {
         logError(e)
         throw new RuntimeException(e)
       }
-    } finally {
-      JobStatus.increasePutBatchFinishedCount(name);
     }
   }
 
