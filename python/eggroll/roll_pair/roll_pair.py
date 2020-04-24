@@ -523,16 +523,7 @@ class RollPair(object):
                     outputs=[self.__store],
                     functors=[])
 
-        #task_futures = self._run_job(job=job, create_output_if_missing=False)
-        job_resp = self.__command_client.simple_sync_send(
-                input=job,
-                output_type=ErJob,
-                endpoint=self.ctx.get_roll()._command_endpoint,
-                command_uri=CommandURI(f'{RollPair.ROLL_PAIR_URI_PREFIX}/{RollPair.RUN_JOB}'),
-                serdes_type=self.__command_serdes)
-
-        self.ctx.get_session()._cluster_manager_client.delete_store(self.__store)
-        L.info(f'{RollPair.DESTROY}: {self.__store}')
+        task_futures = self._run_job(job=job, create_output_if_missing=False)
 
     @_method_profile_logger
     def delete(self, k, options: dict = None):
@@ -554,15 +545,8 @@ class RollPair(object):
                     inputs=[self.__store],
                     outputs=[],
                     functors=[ErFunctor(body=cloudpickle.dumps(er_pair))])
-        task = ErTask(id=generate_task_id(job_id, partition_id), name=RollPair.DELETE, inputs=inputs, outputs=output, job=job)
-        L.info("start send req")
-        job_resp = self.__command_client.simple_sync_send(
-                input=task,
-                output_type=ErPair,
-                endpoint=egg._command_endpoint,
-                command_uri=RollPair.RUN_TASK_URI,
-                serdes_type=self.__command_serdes
-        )
+
+        task_futures = self._run_job(job=job, create_output_if_missing=False)
 
     @_method_profile_logger
     def take(self, n: int, options: dict = None):
@@ -670,16 +654,8 @@ class RollPair(object):
                     outputs=outputs,
                     functors=[functor])
 
-        job_result = self.__command_client.simple_sync_send(
-                input=job,
-                output_type=ErJob,
-                endpoint=self.ctx.get_roll()._command_endpoint,
-                command_uri=CommandURI(f'{RollPair.ROLL_PAIR_URI_PREFIX}/{RollPair.RUN_JOB}'),
-                serdes_type=self.__command_serdes
-        )
-        er_store = job_result._outputs[0]
-        L.info(er_store)
-
+        task_future = self._run_job(job=job)
+        er_store = self.__get_output_from_result(task_future)
         return RollPair(er_store, self.ctx)
 
     @_method_profile_logger
@@ -862,15 +838,8 @@ class RollPair(object):
                     outputs=outputs,
                     functors=[functor])
 
-        job_result = self.__command_client.simple_sync_send(
-                input=job,
-                output_type=ErJob,
-                endpoint=self.ctx.get_roll()._command_endpoint,
-                command_uri=CommandURI(f'{RollPair.ROLL_PAIR_URI_PREFIX}/{RollPair.RUN_JOB}'),
-                serdes_type=self.__command_serdes)
-        er_store = job_result._outputs[0]
-        L.info(er_store)
-
+        task_future = self._run_job(job=job)
+        er_store = self.__get_output_from_result(task_future)
         return RollPair(er_store, self.ctx)
 
     @_method_profile_logger
@@ -887,15 +856,8 @@ class RollPair(object):
                     outputs=outputs,
                     functors=[functor])
 
-        job_result = self.__command_client.simple_sync_send(
-                input=job,
-                output_type=ErJob,
-                endpoint=self.ctx.get_roll()._command_endpoint,
-                command_uri=CommandURI(f'{RollPair.ROLL_PAIR_URI_PREFIX}/{RollPair.RUN_JOB}'),
-                serdes_type=self.__command_serdes)
-        er_store = job_result._outputs[0]
-        L.info(er_store)
-
+        task_future = self._run_job(job=job)
+        er_store = self.__get_output_from_result(task_future)
         return RollPair(er_store, self.ctx)
 
     @_method_profile_logger
