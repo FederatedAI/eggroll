@@ -174,7 +174,7 @@ class RollSiteWriteBatch(PairWriteBatch):
             except Exception as e:
                 exception = e
                 L.info(f'caught exception in pushing {self.name}, partition_id: {self.adapter.partition_id}: {e}. retrying. current retry count: {i}, max_retry_cnt: {max_retry_cnt}')
-                time.sleep(min(0.1 * i, 30))
+                time.sleep(min(5 * i, 30))
 
         if exception:
             raise GrpcCallError("error in push", self.proxy_endpoint, exception)
