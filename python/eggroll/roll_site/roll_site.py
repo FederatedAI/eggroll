@@ -152,11 +152,10 @@ class RollSite:
                 SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE) == DeployModes.STANDALONE
 
     def _push_callback(self, fn, tmp_rp):
-        if tmp_rp:
-            tmp_rp.destroy()
+        #if tmp_rp:
+        #tmp_rp.destroy()
         if self.ctx.pushing_task_count <= 0:
-            self.ctx.pushing_task_count = 0
-            return
+            raise ValueError(f'pushing task count <= 0: {tmp_rp}')
         self.ctx.pushing_task_count -= 1
         end_wall_time = time.time()
         end_cpu_time = time.perf_counter()
@@ -227,9 +226,9 @@ class RollSite:
         L.info(f"pushing: self:{self.__dict__}, obj_type:{type(obj)}, parties:{parties}")
         self._push_start_wall_time = time.time()
         self._push_start_cpu_time = time.perf_counter()
-        self.ctx.pushing_task_count += 1
         futures = []
         for role_party_id in parties:
+            self.ctx.pushing_task_count += 1
             _role = role_party_id[0]
             _party_id = str(role_party_id[1])
 
@@ -294,7 +293,7 @@ class RollSite:
                         roll_site_header._options['total_partitions'] = obj.get_store()._store_locator._total_partitions
                         L.debug(f"pushing map_values: {dst_name}, count: {obj.count()}, tag_key:{_tagged_key}")
                     rp.map_values(lambda v: v,
-                        output=ErStore(store_locator=new_store_locator),
+                                  output=ErStore(store_locator=new_store_locator),
                                   options=options)
 
                 L.info(f"pushing map_values done:{type(obj)}, tag_key:{_tagged_key}")
