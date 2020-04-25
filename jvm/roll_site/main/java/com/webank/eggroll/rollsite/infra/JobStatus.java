@@ -92,11 +92,17 @@ public class JobStatus {
     private static final Object tagKeyLock = new Object();
 
     public static void cleanupJobStatus(String jobId) {
-        removeJobIdToSessionId(jobId);
-        removeLatch(jobId);
-        removePutBatchRequiredCount(jobId);
-        removePutBatchFinishedCount(jobId);
-        removeType(jobId);
+        synchronized (latchLock) {
+            synchronized (putBatchLock) {
+                synchronized (tagKeyLock) {
+                    removeJobIdToSessionId(jobId);
+                    removeLatch(jobId);
+                    removePutBatchRequiredCount(jobId);
+                    removePutBatchFinishedCount(jobId);
+                    removeType(jobId);
+                }
+            }
+        }
     }
 
     public static boolean isJobIdToSessionRegistered(String jobId) {
