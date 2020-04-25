@@ -91,6 +91,20 @@ public class JobStatus {
     private static final Object putBatchLock = new Object();
     private static final Object tagKeyLock = new Object();
 
+    public static void cleanupJobStatus(String jobId) {
+        synchronized (latchLock) {
+            synchronized (putBatchLock) {
+                synchronized (tagKeyLock) {
+                    removeJobIdToSessionId(jobId);
+                    removeLatch(jobId);
+                    removePutBatchRequiredCount(jobId);
+                    removePutBatchFinishedCount(jobId);
+                    removeType(jobId);
+                }
+            }
+        }
+    }
+
     public static boolean isJobIdToSessionRegistered(String jobId) {
         return jobIdToSessionId.getIfPresent(jobId) != null;
     }
@@ -99,6 +113,10 @@ public class JobStatus {
         String old = jobIdToSessionId.getIfPresent(jobId);
         jobIdToSessionId.put(jobId, erSessionId);
         return old;
+    }
+
+    private static void removeJobIdToSessionId(String jobId) {
+        jobIdToSessionId.invalidate(jobId);
     }
 
     public static String getErSessionId(String jobId) {
@@ -122,6 +140,12 @@ public class JobStatus {
         } catch (ExecutionException e) {
             Thread.currentThread().interrupt();
             throw new RuntimeException(e);
+        }
+    }
+
+    private static void removeLatch(String jobId) {
+        synchronized (latchLock) {
+            jobIdToFinishLatch.invalidate(jobId);
         }
     }
 
@@ -203,6 +227,12 @@ public class JobStatus {
         }
     }
 
+    private static void removeType(String name) {
+        synchronized (tagKeyLock) {
+            tagkeyToObjType.invalidate(name);
+        }
+    }
+
     public static long addPutBatchRequiredCount(String jobId, long count) {
         try {
             return jobIdToPutBatchRequiredCount.get(jobId).addAndGet(count);
@@ -219,6 +249,10 @@ public class JobStatus {
         }
     }
 
+    private static void removePutBatchRequiredCount(String jobId) {
+        jobIdToPutBatchRequiredCount.invalidate(jobId);
+    }
+
     public static long increasePutBatchFinishedCount(String jobId) {
         try {
             return jobIdToPutBatchFinishedCount.get(jobId).incrementAndGet();
@@ -233,6 +267,10 @@ public class JobStatus {
         } catch (ExecutionException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private static void removePutBatchFinishedCount(String jobId) {
+        jobIdToPutBatchFinishedCount.invalidate(jobId);
     }
 
     public static boolean isPutBatchFinished(String jobId) {
