@@ -308,6 +308,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                         Thread.sleep(50);
                         --retryCount;
                     }
+                    JobStatus.cleanupJobStatus(tagKey);
                 } else {
                     LOGGER.info("getStatus: job NOT finished: {}. current latch count: {}, "
                             + "put batch required: {}, put batch finished: {}",
