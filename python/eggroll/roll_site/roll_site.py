@@ -67,7 +67,7 @@ class RollSiteContext:
 
     def push_complete(self):
         session_id = self.rp_ctx.get_session().get_session_id()
-        L.info(f"running roll site exit func for session: {session_id}")
+        L.info(f"running roll site exit func for er session: {session_id}, roll site session id: {self.roll_site_session_id}")
         try_count = 0
         max_try_count = 800
         while True:
@@ -150,6 +150,7 @@ class RollSite:
         self._pull_start_cpu_time = None
         self._is_standalone = self.ctx.rp_ctx.get_session().get_option(
                 SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE) == DeployModes.STANDALONE
+        L.info(f'inited RollSite. my party id: {self.ctx.party_id}. proxy endpoint: {self.dst_host}:{self.dst_port}')
 
     def _push_callback(self, fn, tmp_rp):
         #if tmp_rp:
@@ -204,6 +205,7 @@ class RollSite:
                 table_namespace = self.roll_site_session_id
             L.info(f"pull status done: table_name:{table_name}, packet:{to_one_line_string(packet)}, namespace:{namespace}")
             rp = self.ctx.rp_ctx.load(namespace=table_namespace, name=table_name)
+            success_msg_prefix = f'RollSite.Pull: pull {roll_site_header} success.'
             if obj_type == b'object':
                 result = rp.get(table_name)
                 if result is not None:
@@ -212,10 +214,10 @@ class RollSite:
                     empty = "empty"
                 if not self._is_standalone:
                     rp.destroy()
-                L.info(f"pull success: {table_name}, type: {type(result)}, empty_or_not: {empty}")
+                L.info(f"{success_msg_prefix} type: {type(result)}, empty_or_not: {empty}")
             else:
                 result = rp
-                L.info(f"pull success: {table_name}, count: {rp.count()}, type: {obj_type}")
+                L.info(f"{success_msg_prefix} type: {obj_type}, count: {rp.count()}")
             return result
         except Exception as e:
             L.exception(f"pull error:{e}")
@@ -295,12 +297,14 @@ class RollSite:
 
                     if isinstance(obj, RollPair):
                         roll_site_header._options['total_partitions'] = obj.get_store()._store_locator._total_partitions
-                        L.debug(f"pushing map_values: {dst_name}, count: {obj.count()}, tag_key:{_tagged_key}")
+                        L.info(f"RollSite.push: pushing {roll_site_header}, type: RollPair, count: {obj.count()}")
+                    else:
+                        L.info(f"RollSite.push: pushing {roll_site_header}, type: object")
                     rp.map_values(lambda v: v,
                                   output=ErStore(store_locator=new_store_locator),
                                   options=options)
 
-                L.info(f"pushing map_values done:{type(obj)}, tag_key:{_tagged_key}")
+                L.info(f"RollSite.push: push {roll_site_header} done. type:{type(obj)}")
                 return _tagged_key
 
             future = RollSite.receive_exeutor_pool.submit(map_values, _tagged_key, self._is_standalone)

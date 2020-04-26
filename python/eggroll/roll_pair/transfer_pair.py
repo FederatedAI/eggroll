@@ -95,9 +95,11 @@ class BatchBroker(object):
 
 
 class TransferPair(object):
+    _max_workers = int(RollPairConfKeys.EGGROLL_ROLLPAIR_TRANSFERPAIR_EXECUTOR_POOL_MAX_SIZE.get())
     _executor_pool = ThreadPoolExecutor(
-            max_workers=int(RollPairConfKeys.EGGROLL_ROLLPAIR_TRANSFERPAIR_EXECUTOR_POOL_MAX_SIZE.get()),
+            max_workers=_max_workers,
             thread_name_prefix="transferpair-pool")
+    L.info(f'_executor pool size: {_max_workers}')
 
     def __init__(self, transfer_id: str):
         # params from __init__ params

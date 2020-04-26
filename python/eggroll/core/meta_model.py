@@ -462,11 +462,12 @@ class ErStore(RpcMessage):
                f'at {hex(id(self))}>'
 
     def __repr__(self):
-        return f'<ErStore(' \
-               f'store_locator={repr(self._store_locator)}, ' \
-               f'partitions=[{_repr_list(self._partitions)}], ' \
-               f'options=[{repr(self._options)}]) ' \
-               f'at {hex(id(self))}>'
+        return self.__str__()
+        # return f'<ErStore(' \
+        #        f'store_locator={repr(self._store_locator)}, ' \
+        #        f'partitions=[{_repr_list(self._partitions)}], ' \
+        #        f'options=[{repr(self._options)}]) ' \
+        #        f'at {hex(id(self))}>'
 
 
 class ErStoreList(RpcMessage):
@@ -667,12 +668,23 @@ class ErSessionMeta(RpcMessage):
         msg_len = pb_message.ParseFromString(pb_string)
         return ErSessionMeta.from_proto(pb_message)
 
-    def __repr__(self):
+    def __str__(self):
         return f'<ErSessionMeta(' \
                f'id={self._id}, ' \
                f'name={self._name}, ' \
                f'status={self._status}, ' \
                f'tag={self._tag}, ' \
-               f'processors=[{_repr_list(self._processors)}], ' \
+               f'processors=[***, len={len(self._processors)}], ' \
                f'options=[{repr(self._options)}]) ' \
                f'at {hex(id(self))}>'
+
+    def __repr__(self):
+        return self.__str__()
+        # return f'<ErSessionMeta(' \
+        #        f'id={self._id}, ' \
+        #        f'name={self._name}, ' \
+        #        f'status={self._status}, ' \
+        #        f'tag={self._tag}, ' \
+        #        f'processors=[{_repr_list(self._processors)}], ' \
+        #        f'options=[{repr(self._options)}]) ' \
+        #        f'at {hex(id(self))}>'
