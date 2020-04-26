@@ -66,6 +66,10 @@ class LmdbAdapter(PairAdapter):
                     os.makedirs(self.path, exist_ok=True)
                 self.env = lmdb.open(self.path, create=create_if_missing, max_dbs=128, sync=False, map_size=lmdb_map_size, writemap=writemap)
                 self.sub_db = self.env.open_db(DEFAULT_DB)
+                try:
+                    L.debug(f"in LmdbAdapter init get the data count of env:{self.path}, its count:{self.count()}")
+                except:
+                    L.debug(f"in LmdbAdapter init cannot get the count of env:{self.path} while closing")
                 LmdbAdapter.count_dict[self.path] = 0
                 LmdbAdapter.env_dict[self.path] = self.env
                 LmdbAdapter.sub_db_dict[self.path] = self.sub_db
@@ -100,6 +104,10 @@ class LmdbAdapter(PairAdapter):
     def __del__(self):
         self.close()
 
+    def __get_write_count(self):
+        self._init_write()
+        return self.txn_w.stat()['entries']
+
     def close(self):
         with LmdbAdapter.env_lock:
             if not self.env:
@@ -108,6 +116,10 @@ class LmdbAdapter(PairAdapter):
                 self.txn_r.commit()
                 self.cursor.close()
             if self.txn_w:
+                try:
+                    L.debug(f"in LmdbAdapter close get the data count of env:{self.path}, its count:{self.__get_write_count()}")
+                except:
+                    L.debug(f"in LmdbAdapter close cannot get the count of env:{self.path} while closing")
                 self.txn_w.commit()
             if self.env:
                 count = LmdbAdapter.count_dict[self.path]
