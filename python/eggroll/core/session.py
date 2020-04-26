@@ -123,7 +123,7 @@ class ErSession(object):
         self.__exit_tasks = list()
         self.__processors = self.__session_meta._processors
 
-        L.info(f'session init finished:{self.__session_id}, details: {self.__session_meta}')
+        L.info(f'session init finished: {self.__session_id}, details: {self.__session_meta}')
         self.stopped = self.__session_meta._status == SessionStatus.CLOSED or self.__session_meta._status == SessionStatus.KILLED
         self._rolls = list()
         self._eggs = dict()
