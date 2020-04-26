@@ -13,6 +13,7 @@
 #  limitations under the License.
 
 import logging
+import time
 from importlib import import_module
 
 from eggroll.core.meta_model import ErTask
@@ -83,19 +84,19 @@ class CommandRouter(object):
                 task_name = deserialized_task._name
             deserialized_args.append(deserialized_task)
 
-        L.info(f"[COMMAND] calling [{service_name}], task_name: {task_name}, request: {deserialized_args}, len: {len(args)}")
-        import time
+        L.info(f"[CS] calling: [{service_name}], task_name: {task_name}, request: {deserialized_args}, len: {len(args)}")
+
         start = time.time()
         try:
             call_result = _method(_instance, *deserialized_args)
         except Exception as e:
             L.error(f'Failed to dispatch to [{service_name}], task_name: {task_name}, request: {deserialized_args}')
             raise e
-        cost = time.time() - start
+        elapsed = time.time() - start
         if L.isEnabledFor(logging.DEBUG):
-            L.info(f"called [{service_name}], task_name: {task_name}, time used: {cost}, request: {deserialized_args}, result: {call_result}")
+            L.info(f"[CS] called (elapsed: {elapsed}): [{service_name}]: task_name: {task_name}, request: {deserialized_args}, result: {call_result}")
         else:
-            L.info(f"called [{service_name}], task_name: {task_name}, time used: {cost}, request: {deserialized_args}")
+            L.info(f"[CS] called (elapsed: {elapsed}): [{service_name}], task_name: {task_name}, request: {deserialized_args}")
 
         # todo:2: defaulting to pb message. need changes when other types of result is present
         return [call_result.to_proto().SerializeToString()]

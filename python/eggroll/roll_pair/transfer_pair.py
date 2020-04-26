@@ -138,8 +138,7 @@ class TransferPair(object):
             send_all_futs = []
             for i, part in enumerate(output_partitions):
                 tag = self.__generate_tag(i)
-                L.debug(f"do_send_all for {self.__transfer_id}: "
-                        f"start_scatter_partition_tag: {tag}, "
+                L.debug(f"do_send_all for tag: {tag}, "
                         f"active thread count: {threading.active_count()}")
                 fut = client.send(
                         TransferPair.pair_to_bin_batch(
@@ -165,7 +164,6 @@ class TransferPair(object):
         writer = None
 
         def commit(bs=sendbuf_size):
-            L.debug(f'pair_to_bin_batch commit. cur processed pair count: {pair_count}')
             nonlocal ba
             nonlocal buffer
             nonlocal writer
@@ -206,7 +204,7 @@ class TransferPair(object):
                     yield k_bytes, v_bytes
                     write_count += 1
             except IndexError as e:
-                L.exception(f"error bin bath format:{e}")
+                L.exception(f"error bin bath format: {e}")
             L.debug(f"bin_batch_to_pair batch ends. total write count: {write_count}")
         L.debug(f"bin_batch_to_pair total_written count: {write_count}")
 
@@ -218,10 +216,10 @@ class TransferPair(object):
         @_exception_logger
         def do_store(store_partition_inner, is_shuffle_inner, total_writers_inner):
             done_cnt = 0
+            tag = self.__generate_tag(store_partition_inner._id) if is_shuffle_inner else self.__transfer_id
             try:
-                tag = self.__generate_tag(store_partition_inner._id) if is_shuffle_inner else self.__transfer_id
                 broker = TransferService.get_or_create_broker(tag, write_signals=total_writers_inner)
-                L.debug(f"do_store start for tag:{tag}")
+                L.debug(f"do_store start for tag: {tag}")
                 batches = TransferPair.bin_batch_to_pair(b.data for b in broker)
                 with create_adapter(store_partition_inner) as db:
                     L.debug(f"do_store create_db for tag: {tag} for partition: {store_partition_inner}")
@@ -232,7 +230,7 @@ class TransferPair(object):
                     L.debug(f"do_store done for tag: {tag} for partition: {store_partition_inner}")
                 TransferService.remove_broker(tag)
             except Exception as e:
-                L.error(f'Error in do_store for transfer id {self.__transfer_id}')
+                L.error(f'Error in do_store for tag {tag}')
                 raise e
             return done_cnt
         return self._executor_pool.submit(do_store, store_partition, is_shuffle, total_writers)

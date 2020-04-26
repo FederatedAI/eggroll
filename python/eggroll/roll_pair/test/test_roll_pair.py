@@ -594,6 +594,9 @@ class TestRollPairCluster(TestRollPairBase):
     def test_save_as_more_partition(self):
         super().test_save_as_more_partition()
 
+    def test_join_diff_partitions(self):
+        super().test_join_diff_partitions()
+
     def test_empty(self):
         pass
 
