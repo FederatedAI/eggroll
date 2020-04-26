@@ -43,6 +43,7 @@ from eggroll.roll_pair.transfer_pair import TransferPair
 from eggroll.roll_pair.utils.pair_utils import generator, partitioner, \
     set_data_dir
 from eggroll.utils.log_utils import get_logger
+from eggroll.utils.profile import get_system_metric
 
 L = get_logger()
 
@@ -535,7 +536,8 @@ def serve(args):
         myself._status = ProcessorStatus.STOPPED
         cluster_manager_client.heartbeat(myself)
 
-    L.info(f'egg_pair at port {port}, transfer_port {transfer_port} stopped gracefully')
+    L.info(f'system metric at exit: {get_system_metric(1)}')
+    L.info(f'egg_pair {args.processor_id} at port {port}, transfer_port {transfer_port} of pid: {pid} stopped gracefully')
 
 
 if __name__ == '__main__':
