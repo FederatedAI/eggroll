@@ -287,8 +287,8 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
                     }
                     DEBUGGING.info("-------------");
                 }
-                LOGGER.info("push server received size: {}, data size: {}",
-                    packet.getSerializedSize(), packet.getBody().getValue().size());
+                LOGGER.info("push server received size: {}, data size: {} for tag: {}",
+                    packet.getSerializedSize(), packet.getBody().getValue().size(), oneLineStringInputMetadata);
             }
         } catch (Exception e) {
             onError(e);

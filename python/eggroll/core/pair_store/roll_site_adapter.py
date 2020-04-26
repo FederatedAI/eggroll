@@ -120,7 +120,8 @@ class RollSiteWriteBatch(PairWriteBatch):
         self.buffer = ArrayByteBuffer(self.ba)
         self.writer = PairBinWriter(pair_buffer=self.buffer)
 
-        self.push_cnt = 0
+        self.push_batch_cnt = 0
+        self.push_pair_cnt = 0
 
         self.topic_src = proxy_pb2.Topic(name=self.name, partyId=self.roll_site_header._src_party_id,
                                          role=self.roll_site_header._src_role, callback=None)
@@ -145,7 +146,7 @@ class RollSiteWriteBatch(PairWriteBatch):
 
     # TODO:0: configurable
     def push(self, obj):
-        L.debug(f'pushing for task: {self.name}, partition id: {self.adapter.partition_id}, push cnt: {self.get_push_count()}')
+        L.debug(f'pushing for task: {self.name}, partition id: {self.adapter.partition_id}, push cnt: {self.push_batch_cnt}')
         task_info = proxy_pb2.Task(taskId=self.name, model=proxy_pb2.Model(name=self.adapter.roll_site_header_string, dataKey=self.namespace))
 
         command_test = proxy_pb2.Command()
@@ -169,11 +170,11 @@ class RollSiteWriteBatch(PairWriteBatch):
             try:
                 self.stub.push(self.generate_message(obj, metadata))
                 exception = None
-                self.increase_push_count()
+                self.push_batch_cnt += 1
                 break
             except Exception as e:
                 exception = e
-                L.info(f'caught exception in pushing {self.name}, partition_id: {self.adapter.partition_id}: {e}. retrying. current retry count: {i}, max_retry_cnt: {max_retry_cnt}')
+                L.info(f'caught exception in pushing {self.roll_site_header}, partition_id: {self.adapter.partition_id}: {e}. retrying. current retry count: {i}, max_retry_cnt: {max_retry_cnt}')
                 time.sleep(min(5 * i, 30))
 
         if exception:
@@ -185,7 +186,7 @@ class RollSiteWriteBatch(PairWriteBatch):
         self.buffer = ArrayByteBuffer(self.ba)
 
     def send_end(self):
-        L.info(f"send_end tagged_key:{self.tagged_key}")
+        L.info(f"RollSiteAdapter.send_end: tagged_key:{self.tagged_key}")
         task_info = proxy_pb2.Task(taskId=self.name, model=proxy_pb2.Model(name=self.adapter.roll_site_header_string, dataKey=self.namespace))
 
         command_test = proxy_pb2.Command(name="set_status")
@@ -199,7 +200,7 @@ class RollSiteWriteBatch(PairWriteBatch):
                                       dst=self.topic_dst,
                                       command=command_test,
                                       operator="markEnd",
-                                      seq=self.get_push_count(),
+                                      seq=self.push_batch_cnt,
                                       ack=0)
 
         packet = proxy_pb2.Packet(header=metadata)
@@ -222,8 +223,10 @@ class RollSiteWriteBatch(PairWriteBatch):
         bin_batch = bytes(self.ba[0:self.buffer.get_offset()])
         self.push(bin_batch)
         self.send_end()
-        L.info(f'closing RollSiteWriteBatch for name: {self.name}, '
-               f'total push count: {self.push_cnt}')
+        L.info(f'RollSiteWriteBatch.close: Closing for name: {self.name}, '
+               f'partition id: {self.adapter.partition_id}, '
+               f'total push batch count: {self.push_batch_cnt}, '
+               f'total push pair count: {self.push_pair_cnt}')
 
     def put(self, k, v):
         if self.obj_type == 'object':
@@ -231,6 +234,7 @@ class RollSiteWriteBatch(PairWriteBatch):
             self.tagged_key = _serdes.deserialize(k)
         try:
             self.writer.write(k, v)
+            self.push_pair_cnt += 1
         except IndexError as e:
             bin_batch = bytes(self.ba[0:self.buffer.get_offset()])
             self.push(bin_batch)
@@ -239,15 +243,10 @@ class RollSiteWriteBatch(PairWriteBatch):
             self.buffer = ArrayByteBuffer(self.ba)
             self.writer = PairBinWriter(pair_buffer=self.buffer)
             self.writer.write(k, v)
+            self.push_pair_cnt += 1
         except Exception as e:
-            L.error(f"Unexpected error: {sys.exc_info()[0]}")
+            L.error(f"Unexpected error when pushing to {self.roll_site_header}: {sys.exc_info()[0]}")
             raise e
-
-    def increase_push_count(self):
-        self.push_cnt += 1
-
-    def get_push_count(self):
-        return self.push_cnt
 
 
 class RollSiteIterator(PairIterator):
