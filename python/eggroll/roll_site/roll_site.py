@@ -16,7 +16,7 @@
 
 import functools
 import time
-from concurrent.futures import ThreadPoolExecutor, wait, FIRST_EXCEPTION
+from concurrent.futures import ThreadPoolExecutor
 
 from eggroll.core.conf_keys import SessionConfKeys, RollSiteConfKeys
 from eggroll.core.constants import DeployModes
@@ -62,11 +62,12 @@ class RollSiteContext:
 
         self.pushing_task_count = 0
         self.rp_ctx.get_session().add_exit_task(self.push_complete)
+
         L.info(f"inited RollSiteContext: {self.__dict__}")
 
     def push_complete(self):
         session_id = self.rp_ctx.get_session().get_session_id()
-        L.info(f"running roll site exit func for session: {session_id}")
+        L.info(f"running roll site exit func for er session: {session_id}, roll site session id: {self.roll_site_session_id}")
         try_count = 0
         max_try_count = 800
         while True:
@@ -127,6 +128,7 @@ CONF_KEY_SERVER = "servers"
 
 
 class RollSite:
+    receive_exeutor_pool = None
     def __init__(self, name: str, tag: str, rs_ctx: RollSiteContext, options: dict = None):
         if options is None:
             options = {}
@@ -139,17 +141,16 @@ class RollSite:
         self.name = name
         self.tag = tag
         self.stub = self.ctx.stub
-
-        receive_executor_pool_size = int(RollSiteConfKeys.EGGROLL_ROLLSITE_RECEIVE_EXECUTOR_POOL_MAX_SIZE.get_with(options))
-        complete_executor_pool_size = int(RollSiteConfKeys.EGGROLL_ROLLSITE_COMPLETE_EXECUTOR_POOL_MAX_SIZE.get_with(options))
-        self.receive_exeutor_pool = ThreadPoolExecutor(receive_executor_pool_size, thread_name_prefix="thread-receive")
-        self.complete_executor_pool = ThreadPoolExecutor(complete_executor_pool_size, thread_name_prefix="complete-wait")
+        if RollSite.receive_exeutor_pool is None:
+            receive_executor_pool_size = int(RollSiteConfKeys.EGGROLL_ROLLSITE_RECEIVE_EXECUTOR_POOL_MAX_SIZE.get_with(options))
+            RollSite.receive_exeutor_pool = ThreadPoolExecutor(receive_executor_pool_size, thread_name_prefix="rollsite-receive")
         self._push_start_wall_time = None
         self._push_start_cpu_time = None
         self._pull_start_wall_time = None
         self._pull_start_cpu_time = None
         self._is_standalone = self.ctx.rp_ctx.get_session().get_option(
                 SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE) == DeployModes.STANDALONE
+        L.info(f'inited RollSite. my party id: {self.ctx.party_id}. proxy endpoint: {self.dst_host}:{self.dst_port}')
 
     def _push_callback(self, fn, tmp_rp):
         #if tmp_rp:
@@ -204,14 +205,19 @@ class RollSite:
                 table_namespace = self.roll_site_session_id
             L.info(f"pull status done: table_name:{table_name}, packet:{to_one_line_string(packet)}, namespace:{namespace}")
             rp = self.ctx.rp_ctx.load(namespace=table_namespace, name=table_name)
+            success_msg_prefix = f'RollSite.Pull: pull {roll_site_header} success.'
             if obj_type == b'object':
                 result = rp.get(table_name)
+                if result is not None:
+                    empty = "NOT empty"
+                else:
+                    empty = "empty"
                 if not self._is_standalone:
                     rp.destroy()
-                L.info(f"pull success: {table_name}, type: {obj_type}")
+                L.info(f"{success_msg_prefix} type: {type(result)}, empty_or_not: {empty}")
             else:
                 result = rp
-                L.info(f"pull success: {table_name}, count: {rp.count()}, type: {obj_type}")
+                L.info(f"{success_msg_prefix} type: {obj_type}, count: {rp.count()}")
             return result
         except Exception as e:
             L.exception(f"pull error:{e}")
@@ -291,15 +297,17 @@ class RollSite:
 
                     if isinstance(obj, RollPair):
                         roll_site_header._options['total_partitions'] = obj.get_store()._store_locator._total_partitions
-                        L.debug(f"pushing map_values: {dst_name}, count: {obj.count()}, tag_key:{_tagged_key}")
+                        L.info(f"RollSite.push: pushing {roll_site_header}, type: RollPair, count: {obj.count()}")
+                    else:
+                        L.info(f"RollSite.push: pushing {roll_site_header}, type: object")
                     rp.map_values(lambda v: v,
                                   output=ErStore(store_locator=new_store_locator),
                                   options=options)
 
-                L.info(f"pushing map_values done:{type(obj)}, tag_key:{_tagged_key}")
+                L.info(f"RollSite.push: push {roll_site_header} done. type:{type(obj)}")
                 return _tagged_key
 
-            future = self.receive_exeutor_pool.submit(map_values, _tagged_key, self._is_standalone)
+            future = RollSite.receive_exeutor_pool.submit(map_values, _tagged_key, self._is_standalone)
             if not self._is_standalone and (obj_type == 'object' or obj_type == b'object'):
                 tmp_rp = rp
             else:
@@ -308,15 +316,13 @@ class RollSite:
             future.add_done_callback(functools.partial(self._push_callback, tmp_rp=tmp_rp))
             futures.append(future)
 
-        self.receive_exeutor_pool.shutdown(wait=False)
-
         return futures
 
-    def wait_futures(self, futures):
-        # TODO:0: configurable
-        ret_future = self.complete_executor_pool.submit(wait, futures, timeout=1000, return_when=FIRST_EXCEPTION)
-        self.complete_executor_pool.shutdown(wait=False)
-        return ret_future
+    # def wait_futures(self, futures):
+    #     # TODO:0: configurable
+    #     ret_future = self.complete_executor_pool.submit(wait, futures, timeout=1000, return_when=FIRST_EXCEPTION)
+    #     self.complete_executor_pool.shutdown(wait=False)
+    #     return ret_future
 
     def pull(self, parties: list = None):
         self._pull_start_wall_time = time.time()
@@ -359,7 +365,6 @@ class RollSite:
             packet = proxy_pb2.Packet(header=metadata)
             namespace = self.roll_site_session_id
             L.info(f"pulling prepared tagged_key: {_tagged_key}, packet:{to_one_line_string(packet)}")
-            futures.append(self.receive_exeutor_pool.submit(RollSite._thread_receive, self, packet, namespace, roll_site_header))
+            futures.append(RollSite.receive_exeutor_pool.submit(RollSite._thread_receive, self, packet, namespace, roll_site_header))
 
-        self.receive_exeutor_pool.shutdown(wait=False)
         return futures

@@ -64,7 +64,13 @@ class LmdbAdapter(PairAdapter):
                 writemap = False if platform.system() == 'Darwin' else True
                 if not os.path.exists(self.path):
                     os.makedirs(self.path, exist_ok=True)
-                self.env = lmdb.open(self.path, create=create_if_missing, max_dbs=128, sync=False, map_size=lmdb_map_size, writemap=writemap)
+                self.env = lmdb.open(self.path,
+                                     create=create_if_missing,
+                                     max_dbs=128,
+                                     sync=False,
+                                     map_size=lmdb_map_size,
+                                     writemap=writemap,
+                                     lock=False)
                 self.sub_db = self.env.open_db(DEFAULT_DB)
                 try:
                     L.debug(f"in LmdbAdapter init get the data count of env:{self.path}, its count:{self.count()}")
