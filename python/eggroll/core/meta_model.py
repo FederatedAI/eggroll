@@ -454,6 +454,13 @@ class ErStore(RpcMessage):
         msg_len = pb_message.ParseFromString(pb_string)
         return ErStore.from_proto(pb_message)
 
+    def __str__(self):
+        return f'<ErStore(' \
+               f'store_locator={repr(self._store_locator)}, ' \
+               f'partitions=[***, len={len(self._partitions)}], ' \
+               f'options=[{repr(self._options)}]) ' \
+               f'at {hex(id(self))}>'
+
     def __repr__(self):
         return f'<ErStore(' \
                f'store_locator={repr(self._store_locator)}, ' \
