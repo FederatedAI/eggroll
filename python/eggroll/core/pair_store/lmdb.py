@@ -73,9 +73,9 @@ class LmdbAdapter(PairAdapter):
                                      lock=False)
                 self.sub_db = self.env.open_db(DEFAULT_DB)
                 try:
-                    L.debug(f"in LmdbAdapter init get the data count of env:{self.path}, its count:{self.count()}")
-                except:
-                    L.debug(f"in LmdbAdapter init cannot get the count of env:{self.path} while closing")
+                    L.debug(f"LmdbAdapter.init: data count of env: {self.path}: {self.count()}")
+                except Exception as e:
+                    L.debug(f"LmdbAdapter.init: fail to get data count of env: {self.path}", e)
                 LmdbAdapter.count_dict[self.path] = 0
                 LmdbAdapter.env_dict[self.path] = self.env
                 LmdbAdapter.sub_db_dict[self.path] = self.sub_db
@@ -123,9 +123,9 @@ class LmdbAdapter(PairAdapter):
                 self.cursor.close()
             if self.txn_w:
                 try:
-                    L.debug(f"in LmdbAdapter close get the data count of env:{self.path}, its count:{self.__get_write_count()}")
-                except:
-                    L.debug(f"in LmdbAdapter close cannot get the count of env:{self.path} while closing")
+                    L.debug(f"LmdbAdapter.close: data count of env: {self.path} :{self.__get_write_count()}")
+                except Exception as e:
+                    L.debug(f"LmdbAdapter.close: fail to get data count of env: {self.path}", e)
                 self.txn_w.commit()
             if self.env:
                 count = LmdbAdapter.count_dict[self.path]
@@ -135,7 +135,7 @@ class LmdbAdapter(PairAdapter):
                         if "EGGROLL_LMDB_ENV_CLOSE_DISABLE" in os.environ \
                                 and os.environ["EGGROLL_LMDB_ENV_CLOSE_DISABLE"] == '0':
                             self.env.close()
-                            L.debug(f"EGGROLL_LMDB_ENV_CLOSE is open, finish close lmdb env obj:{self.path}")
+                            L.debug(f"EGGROLL_LMDB_ENV_CLOSE_DISABLE is True, finish close lmdb env obj: {self.path}")
                         else:
                             L.debug("lmdb env not close while closing LmdbAdapter")
                     except:
