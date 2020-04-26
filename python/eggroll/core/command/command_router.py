@@ -12,6 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import logging
 from importlib import import_module
 
 from eggroll.core.meta_model import ErTask
@@ -91,7 +92,10 @@ class CommandRouter(object):
             L.error(f'Failed to dispatch to [{service_name}], task_name: {task_name}, request: {deserialized_args}')
             raise e
         cost = time.time() - start
-        L.info(f"called [{service_name}], task_name: {task_name}, time used: {cost}, request: {deserialized_args}, result: {call_result}")
+        if L.isEnabledFor(logging.DEBUG):
+            L.info(f"called [{service_name}], task_name: {task_name}, time used: {cost}, request: {deserialized_args}, result: {call_result}")
+        else:
+            L.info(f"called [{service_name}], task_name: {task_name}, time used: {cost}, request: {deserialized_args}")
 
         # todo:2: defaulting to pb message. need changes when other types of result is present
         return [call_result.to_proto().SerializeToString()]

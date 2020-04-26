@@ -15,8 +15,10 @@
 
 import argparse
 import configparser
+import logging
 import os
 import signal
+import time
 from collections.abc import Iterable
 from concurrent import futures
 
@@ -133,13 +135,14 @@ class EggPair(object):
 
     @_exception_logger
     def run_task(self, task: ErTask):
-        L.info("start run task")
-        L.debug("start run task")
+        if L.isEnabledFor(logging.DEBUG):
+            L.debug(f'egg_pair run_task start. task name: {task._name}, inputs: {task._inputs}, outputs: {task._outputs}, task id: {task._id}')
+        else:
+            L.info(f'egg_pair run_task start. task name: {task._name}, task id: {task._id}')
         functors = task._job._functors
         result = task
 
         if task._name == 'get':
-            L.info("egg_pair get call")
             # TODO:1: move to create_serdes
             f = create_functor(functors[0]._body)
             with create_adapter(task._inputs[0]) as input_adapter:
@@ -147,7 +150,6 @@ class EggPair(object):
                 value = input_adapter.get(f._key)
                 result = ErPair(key=f._key, value=value)
         elif task._name == 'getAll':
-            L.info("egg_pair getAll call")
             tag = f'{task._id}'
             def generate_broker():
                 with create_adapter(task._inputs[0]) as db, db.iteritems() as rb:
@@ -156,24 +158,21 @@ class EggPair(object):
                     # TransferService.remove_broker(tag)
             TransferService.set_broker(tag, generate_broker())
         elif task._name == 'count':
-            L.info('egg_pair count call')
             with create_adapter(task._inputs[0]) as input_adapter:
                 result = ErPair(key=self.functor_serdes.serialize('result'),
                                 value=self.functor_serdes.serialize(input_adapter.count()))
 
         # TODO:1: multiprocessor scenario
         elif task._name == 'putAll':
-            L.info("egg_pair putAll call")
             output_partition = task._outputs[0]
             tag = f'{task._id}'
-            L.info(f'egg_pair transfer service tag:{tag}')
+            L.info(f'egg_pair putAll: transfer service tag: {tag}')
             tf = TransferPair(tag)
             store_broker_result = tf.store_broker(output_partition, False).result()
             # TODO:2: should wait complete?, command timeout?
             L.debug(f"putAll result:{store_broker_result}")
 
         if task._name == 'put':
-            L.info("egg_pair put call")
             f = create_functor(functors[0]._body)
             with create_adapter(task._inputs[0]) as input_adapter:
                 value = input_adapter.put(f._key, f._value)
@@ -182,7 +181,6 @@ class EggPair(object):
         if task._name == 'destroy':
             with create_adapter(task._inputs[0]) as input_adapter:
                 input_adapter.destroy()
-                L.info("finish destroy")
 
         if task._name == 'delete':
             f = create_functor(functors[0]._body)
@@ -207,18 +205,14 @@ class EggPair(object):
                     shuffle_broker.put((key_serdes.serialize(k1), value_serdes.serialize(v1)))
                 L.info('finish calculating')
             self._run_unary(map_wrapper, task, shuffle=True)
-            L.info('map finished')
 
         elif task._name == 'reduce':
             seq_op_result = self.aggregate_seq(task=task)
-            L.info('reduce finished')
             result = ErPair(key=self.functor_serdes.serialize(task._inputs[0]._id),
                             value=self.functor_serdes.serialize(seq_op_result))
 
         elif task._name == 'aggregate':
-            L.info('ready to aggregate')
             seq_op_result = self.aggregate_seq(task=task)
-            L.info('aggregate finished')
             result = ErPair(key=self.functor_serdes.serialize(task._inputs[0]._id),
                             value=self.functor_serdes.serialize(seq_op_result))
 
@@ -397,7 +391,14 @@ class EggPair(object):
             f = create_functor(functors[0]._body)
             result = ErPair(key=self.functor_serdes.serialize(task._inputs[0]._id),
                             value=self.functor_serdes.serialize(f(task._inputs)))
+
+        if L.isEnabledFor(logging.DEBUG):
+            L.debug(f'egg_pair run_task end. task name: {task._name}, inputs: {task._inputs}, outputs: {task._outputs}, task id: {task._id}')
+        else:
+            L.info(f'egg_pair run_task end. task name: {task._name}, task id: {task._id}')
+
         return result
+        # run_task ends here
 
     def aggregate_seq(self, task: ErTask):
         functors = task._job._functors
@@ -523,11 +524,10 @@ def serve(args):
     def exit_gracefully(signum, frame):
         nonlocal run
         run = False
+        L.info(f'egg_pair {args.processor_id} at port {port}, transfer_port {transfer_port}, pid {pid} receives signum {signal.getsignal(signum)}, stopping gracefully.')
 
     signal.signal(signal.SIGTERM, exit_gracefully)
     signal.signal(signal.SIGINT, exit_gracefully)
-
-    import time
 
     while run:
         time.sleep(1)
@@ -537,7 +537,7 @@ def serve(args):
         cluster_manager_client.heartbeat(myself)
 
     L.info(f'system metric at exit: {get_system_metric(1)}')
-    L.info(f'egg_pair {args.processor_id} at port {port}, transfer_port {transfer_port} of pid: {pid} stopped gracefully')
+    L.info(f'egg_pair {args.processor_id} at port {port}, transfer_port {transfer_port}, pid {pid} stopped gracefully')
 
 
 if __name__ == '__main__':
