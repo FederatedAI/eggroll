@@ -304,22 +304,27 @@ class RollPair(object):
 
     def __repartition_with(self, other):
         if other.get_partitions() != self.get_partitions():
-            L.info(f"partitions of rp:{self.get_name()} is: {self.get_partitions()} "
-                   f"and other:{other.get_name()} is: {other.get_partitions()}, reshuffling......")
+            L.info(f"repartition start: partitions of rp: {self.get_name()}: {self.get_partitions()}, "
+                   f"other:{other.get_name()}: {other.get_partitions()}, repartitioning")
 
             shuffle_rp = self if self.count() < other.count() else other
             not_shuffle_rp = other if self.count() < other.count() else self
 
-            L.debug(f"rp:{shuffle_rp.get_name()} count:{shuffle_rp.count()} "
-                    f"is smaller than rp:{not_shuffle_rp.get_name()} count:{not_shuffle_rp.count()}, reshuffle the small one")
+            L.debug(f"repatition selection: rp: {shuffle_rp.get_name()} count:{shuffle_rp.count()} "
+                    f"< rp: {not_shuffle_rp.get_name()} count:{not_shuffle_rp.count()}. "
+                    f"repartitioning {shuffle_rp.get_name()}")
             store = ErStore(store_locator=ErStoreLocator(store_type=shuffle_rp.get_store_type(),
                                                          namespace=shuffle_rp.get_namespace(),
                                                          name=str(uuid.uuid1()),
                                                          total_partitions=not_shuffle_rp.get_partitions()))
             res_rp = shuffle_rp.map(lambda k, v: (k, v), output=store)
             res_rp.disable_gc()
-            L.info("input rp:{shuffle_rp.get_name()}, count:{shuffle_rp.count()}, par:{shuffle_rp.get_partitions()}, "
-                   "res rp:{res_rp.get_name()}, count:{res_rp.count()}, par:{res_rp.get_partitions()}")
+            L.debug(f"repartition end: rp to shuffle: {shuffle_rp.get_name()}, "
+                    f"count: {shuffle_rp.count()}, partitions: {shuffle_rp.get_partitions()}; "
+                    f"rp NOT shuffle: {not_shuffle_rp.get_name()}, "
+                    f"count: {not_shuffle_rp.count()}, partitions: {not_shuffle_rp.get_partitions()}' "
+                    f"res rp: {res_rp.get_name()}, "
+                    f"count: {res_rp.count()}, partitions :{res_rp.get_partitions()}")
             store_shuffle = res_rp.get_store()
             return [store_shuffle, other.get_store()] if self.count() < other.count() \
                 else [self.get_store(), store_shuffle]
