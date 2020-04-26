@@ -256,7 +256,6 @@ class RollSiteIterator(PairIterator):
         self.it.seek_to_first()
 
     def first(self):
-        print("first called")
         count = 0
         self.it.seek_to_first()
         for k, v in self.it:

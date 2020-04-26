@@ -146,7 +146,7 @@ class EggPair(object):
             # TODO:1: move to create_serdes
             f = create_functor(functors[0]._body)
             with create_adapter(task._inputs[0]) as input_adapter:
-                print("get key:{} and path is:{}".format(self.functor_serdes.deserialize(f._key), input_adapter.path))
+                L.debug(f"get: key: {self.functor_serdes.deserialize(f._key)}, path: {input_adapter.path}")
                 value = input_adapter.get(f._key)
                 result = ErPair(key=f._key, value=value)
         elif task._name == 'getAll':
@@ -510,7 +510,7 @@ def serve(args):
 
         cluster_manager_host, cluster_manager_port = cluster_manager.strip().split(':')
 
-        L.info(f'cluster_manager: {cluster_manager}')
+        L.info(f'egg_pair cluster_manager: {cluster_manager}')
         cluster_manager_client = ClusterManagerClient(options={
             ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST: cluster_manager_host,
             ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT: cluster_manager_port
@@ -541,6 +541,7 @@ def serve(args):
 
 
 if __name__ == '__main__':
+    L.info(f'system metric at start: {get_system_metric(0.1)}')
     args_parser = argparse.ArgumentParser()
     args_parser.add_argument('-d', '--data-dir')
     args_parser.add_argument('-cm', '--cluster-manager')
@@ -558,9 +559,10 @@ if __name__ == '__main__':
     configs = configparser.ConfigParser()
     if args.config:
         conf_file = args.config
+        L.info(f'reading config path: {conf_file}')
     else:
         conf_file = f'{EGGROLL_HOME}/conf/eggroll.properties'
-        print(f'reading default config: {conf_file}')
+        L.info(f'reading default config: {conf_file}')
 
     configs.read(conf_file)
     set_static_er_conf(configs['eggroll'])
