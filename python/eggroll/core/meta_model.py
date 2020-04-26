@@ -211,7 +211,7 @@ class ErProcessor(RpcMessage):
                f'name={self._name}, ' \
                f'processor_type={self._processor_type}, ' \
                f'status={self._status}, ' \
-               f'command_endpoint={repr(self._command_endpoint)},' \
+               f'command_endpoint={repr(self._command_endpoint)}, ' \
                f'transfer_endpoint={repr(self._transfer_endpoint)}, ' \
                f'pid={self._pid}, ' \
                f'options=[{repr(self._options)}], ' \
