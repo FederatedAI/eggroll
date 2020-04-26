@@ -316,8 +316,13 @@ class RollPair(object):
                                                          namespace=shuffle_rp.get_namespace(),
                                                          name=str(uuid.uuid1()),
                                                          total_partitions=not_shuffle_rp.get_partitions()))
-            store_shuffle = shuffle_rp.map(lambda k, v: (k, v), output=store).get_store()
-            return [store_shuffle, other.get_store()] if self.count() < other.count() else [self.get_store(), store_shuffle]
+            res_rp = shuffle_rp.map(lambda k, v: (k, v), output=store)
+            res_rp.disable_gc()
+            L.info("input rp:{shuffle_rp.get_name()}, count:{shuffle_rp.count()}, par:{shuffle_rp.get_partitions()}, "
+                   "res rp:{res_rp.get_name()}, count:{res_rp.count()}, par:{res_rp.get_partitions()}")
+            store_shuffle = res_rp.get_store()
+            return [store_shuffle, other.get_store()] if self.count() < other.count() \
+                else [self.get_store(), store_shuffle]
         else:
             return [self.__store, other.__store]
 
@@ -709,7 +714,6 @@ class RollPair(object):
                 serdes_type=self.__command_serdes)
 
         er_store = job_result._outputs[0]
-        L.info(er_store)
         L.info(er_store)
 
         return RollPair(er_store, self.ctx)
