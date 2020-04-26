@@ -70,7 +70,6 @@ case class ErStoreLocator(id: Long = -1L,
     this.copy(name = newName)
   }
 }
-__federation_time1_uuid1
 
 case class ErPartition(id: Int, storeLocator: ErStoreLocator = null, processor: ErProcessor = null) extends MetaRpcMessage {
   def toPath(delim: String = StringConstants.SLASH): String = String.join(delim, storeLocator.toPath(delim = delim), id.toString)
