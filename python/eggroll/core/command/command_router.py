@@ -85,7 +85,11 @@ class CommandRouter(object):
         L.info(f"[COMMAND] calling [{service_name}], task_name: {task_name}, request: {deserialized_args}, len: {len(args)}")
         import time
         start = time.time()
-        call_result = _method(_instance, *deserialized_args)
+        try:
+            call_result = _method(_instance, *deserialized_args)
+        except Exception as e:
+            L.error(f'Failed to dispatch to [{service_name}], task_name: {task_name}, request: {deserialized_args}')
+            raise e
         cost = time.time() - start
         L.info(f"called [{service_name}], task_name: {task_name}, time used: {cost}, request: {deserialized_args}, result: {call_result}")
 

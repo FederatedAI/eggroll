@@ -212,10 +212,14 @@ class TransferClient(object):
         try:
             @_exception_logger
             def fill_broker(iterable: Iterable, broker):
-                iterator = iter(iterable)
-                for e in iterator:
-                    broker.put(e)
-                broker.signal_write_finish()
+                try:
+                    iterator = iter(iterable)
+                    for e in iterator:
+                        broker.put(e)
+                    broker.signal_write_finish()
+                except Exception as e:
+                    L.error(f'Fail to fill broker for tag: {tag}, endpoint: {endpoint}')
+                    raise e
 
             channel = self.__grpc_channel_factory.create_channel(endpoint)
 
