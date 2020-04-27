@@ -352,7 +352,7 @@ class RollPair(object):
                     f"res rp: {res_rp.get_name()}, "
                     f"count: {res_rp.count()}, partitions :{res_rp.get_partitions()}")
             store_shuffle = res_rp.get_store()
-            return [store_shuffle, other.get_store()] if self_count < other_count \
+            return [store_shuffle, other.get_store()] if self_count <= other_count \
                 else [self.get_store(), store_shuffle]
         else:
             return [self.__store, other.__store]
