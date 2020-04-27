@@ -200,14 +200,14 @@ class RollPairContext(object):
         L.info("final_options:{}".format(final_options))
 
         store = ErStore(
-            store_locator=ErStoreLocator(
-                store_type=StoreTypes.ROLLPAIR_LMDB,
-                namespace=namespace,
-                name=name,
-                total_partitions=total_partitions,
-                partitioner=partitioner,
-                serdes=store_serdes),
-            options=final_options)
+                store_locator=ErStoreLocator(
+                        store_type=StoreTypes.ROLLPAIR_LMDB,
+                        namespace=namespace,
+                        name=name,
+                        total_partitions=total_partitions,
+                        partitioner=partitioner,
+                        serdes=store_serdes),
+                options=final_options)
         results = self.__session._cluster_manager_client.get_store_from_namespace(store)
         L.debug('res:{}'.format(results._stores))
         if results._stores is not None:
@@ -303,30 +303,56 @@ class RollPair(object):
         return f'<RollPair(_store={self.__store}) at {hex(id(self))}>'
 
     def __repartition_with(self, other):
+        self_partition = self.get_partitions()
+        other_partition = other.get_partitions()
+
         if other.get_partitions() != self.get_partitions():
-            L.info(f"repartition start: partitions of rp: {self.get_name()}: {self.get_partitions()}, "
-                   f"other:{other.get_name()}: {other.get_partitions()}, repartitioning")
+            self_name = self.get_name()
+            self_count = self.count()
+            other_name = other.get_name()
+            other_count = other.count()
 
-            shuffle_rp = self if self.count() < other.count() else other
-            not_shuffle_rp = other if self.count() < other.count() else self
+            L.info(f"repartition start: partitions of rp: {self_name}: {self_partition}, "
+                   f"other: {other_name}: {other_partition}, repartitioning")
 
-            L.debug(f"repatition selection: rp: {shuffle_rp.get_name()} count:{shuffle_rp.count()} "
-                    f"< rp: {not_shuffle_rp.get_name()} count:{not_shuffle_rp.count()}. "
-                    f"repartitioning {shuffle_rp.get_name()}")
+            if self_count <= other_count:
+                shuffle_rp = self
+                shuffle_rp_count = self_count
+                shuffle_rp_name = self_name
+                shuffle_rp_partition = self_partition
+
+                not_shuffle_rp = other
+                not_shuffle_rp_count = other_count
+                not_shuffle_rp_name = other_name
+                not_shuffle_rp_partition = other_partition
+            else:
+                not_shuffle_rp = self
+                not_shuffle_rp_count = self_count
+                not_shuffle_rp_name = self_name
+                not_shuffle_rp_partition = self_partition
+
+                shuffle_rp = other
+                shuffle_rp_count = other_count
+                shuffle_rp_name = other_name
+                shuffle_rp_partition = other_partition
+
+            L.debug(f"repatition selection: rp: {shuffle_rp_name} count:{shuffle_rp_count} "
+                    f"<= rp: {not_shuffle_rp_name} count:{not_shuffle_rp_name}. "
+                    f"repartitioning {shuffle_rp_name}")
             store = ErStore(store_locator=ErStoreLocator(store_type=shuffle_rp.get_store_type(),
                                                          namespace=shuffle_rp.get_namespace(),
                                                          name=str(uuid.uuid1()),
-                                                         total_partitions=not_shuffle_rp.get_partitions()))
+                                                         total_partitions=not_shuffle_rp_partition))
             res_rp = shuffle_rp.map(lambda k, v: (k, v), output=store)
             res_rp.disable_gc()
-            L.debug(f"repartition end: rp to shuffle: {shuffle_rp.get_name()}, "
-                    f"count: {shuffle_rp.count()}, partitions: {shuffle_rp.get_partitions()}; "
-                    f"rp NOT shuffle: {not_shuffle_rp.get_name()}, "
-                    f"count: {not_shuffle_rp.count()}, partitions: {not_shuffle_rp.get_partitions()}' "
+            L.debug(f"repartition end: rp to shuffle: {shuffle_rp_name}, "
+                    f"count: {shuffle_rp_count}, partitions: {shuffle_rp_partition}; "
+                    f"rp NOT shuffle: {not_shuffle_rp_name}, "
+                    f"count: {not_shuffle_rp_count}, partitions: {not_shuffle_rp_partition}' "
                     f"res rp: {res_rp.get_name()}, "
                     f"count: {res_rp.count()}, partitions :{res_rp.get_partitions()}")
             store_shuffle = res_rp.get_store()
-            return [store_shuffle, other.get_store()] if self.count() < other.count() \
+            return [store_shuffle, other.get_store()] if self_count < other_count \
                 else [self.get_store(), store_shuffle]
         else:
             return [self.__store, other.__store]
@@ -693,7 +719,6 @@ class RollPair(object):
                 serdes_type=self.__command_serdes)
 
         er_store = job_result._outputs[0]
-        L.info(er_store)
 
         return RollPair(er_store, self.ctx)
 
@@ -719,7 +744,6 @@ class RollPair(object):
                 serdes_type=self.__command_serdes)
 
         er_store = job_result._outputs[0]
-        L.info(er_store)
 
         return RollPair(er_store, self.ctx)
 
@@ -745,7 +769,6 @@ class RollPair(object):
                 serdes_type=self.__command_serdes
         )
         er_store = job_result._outputs[0]
-        L.info(er_store)
 
         return RollPair(er_store, self.ctx)
 
@@ -772,7 +795,6 @@ class RollPair(object):
                 serdes_type=self.__command_serdes
         )
         er_store = job_result._outputs[0]
-        L.info(er_store)
 
         return RollPair(er_store, self.ctx)
 
@@ -799,7 +821,6 @@ class RollPair(object):
                 serdes_type=self.__command_serdes
         )
         er_store = job_result._outputs[0]
-        L.info(er_store)
 
         return RollPair(er_store, self.ctx)
 
@@ -906,7 +927,6 @@ class RollPair(object):
                 serdes_type=self.__command_serdes
         )
         er_store = job_result._outputs[0]
-        L.info(er_store)
 
         return RollPair(er_store, self.ctx)
 
@@ -934,7 +954,6 @@ class RollPair(object):
                 serdes_type=self.__command_serdes)
 
         er_store = job_result._outputs[0]
-        L.info(er_store)
 
         return RollPair(er_store, self.ctx)
 
@@ -961,7 +980,6 @@ class RollPair(object):
                 serdes_type=self.__command_serdes)
 
         er_store = job_result._outputs[0]
-        L.info(er_store)
 
         return RollPair(er_store, self.ctx)
 
@@ -987,7 +1005,6 @@ class RollPair(object):
                 command_uri=CommandURI(f'{RollPair.ROLL_PAIR_URI_PREFIX}/{RollPair.RUN_JOB}'),
                 serdes_type=self.__command_serdes)
         er_store = job_result._outputs[0]
-        L.info(er_store)
 
         return RollPair(er_store, self.ctx)
 
@@ -1013,7 +1030,6 @@ class RollPair(object):
                 command_uri=CommandURI(f'{RollPair.ROLL_PAIR_URI_PREFIX}/{RollPair.RUN_JOB}'),
                 serdes_type=self.__command_serdes)
         er_store = job_result._outputs[0]
-        L.info(er_store)
 
         return RollPair(er_store, self.ctx)
 
@@ -1043,7 +1059,6 @@ class RollPair(object):
                 command_uri=CommandURI(f'{RollPair.ROLL_PAIR_URI_PREFIX}/{RollPair.RUN_JOB}'),
                 serdes_type=self.__command_serdes)
         er_store = job_result._outputs[0]
-        L.info(er_store)
 
         return RollPair(er_store, self.ctx)
 
@@ -1074,9 +1089,9 @@ class RollPair(object):
             args.append(([task], partition_self._processor._command_endpoint))
 
         futures = self.__command_client.async_call(
-            args=args,
-            output_types=[ErPair],
-            command_uri=CommandURI(f'{RollPair.EGG_PAIR_URI_PREFIX}/{RollPair.RUN_TASK}'))
+                args=args,
+                output_types=[ErPair],
+                command_uri=CommandURI(f'{RollPair.EGG_PAIR_URI_PREFIX}/{RollPair.RUN_TASK}'))
 
         result = list()
         for future in futures:

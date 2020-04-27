@@ -21,7 +21,7 @@ public class JobStatus {
         jobIdToSessionId = CacheBuilder.newBuilder()
             .maximumSize(1000000)
             .concurrencyLevel(50)
-            .expireAfterAccess(48, TimeUnit.HOURS)
+            .expireAfterAccess(60, TimeUnit.HOURS)
             .recordStats()
             .softValues()
             .build(new CacheLoader<String, String>() {
@@ -95,7 +95,6 @@ public class JobStatus {
         synchronized (latchLock) {
             synchronized (putBatchLock) {
                 synchronized (tagKeyLock) {
-                    removeJobIdToSessionId(jobId);
                     removeLatch(jobId);
                     removePutBatchRequiredCount(jobId);
                     removePutBatchFinishedCount(jobId);
