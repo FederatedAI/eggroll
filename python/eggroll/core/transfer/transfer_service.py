@@ -208,10 +208,7 @@ class TransferClient(object):
             raise e
 
     @_exception_logger
-    def recv(self, endpoint: ErEndpoint, tag, broker: FifoBroker = None):
-        if broker is None:
-            broker = FifoBroker()
-
+    def recv(self, endpoint: ErEndpoint, tag, broker):
         try:
             L.debug(f'TransferClient.recv for endpoint: {endpoint}, tag: {tag}')
             @_exception_logger
