@@ -205,7 +205,7 @@ class RollSite:
                 table_namespace = self.roll_site_session_id
             L.info(f"pull status done: table_name:{table_name}, packet:{to_one_line_string(packet)}, namespace:{namespace}")
             rp = self.ctx.rp_ctx.load(namespace=table_namespace, name=table_name)
-            success_msg_prefix = f'RollSite.pull: pull {roll_site_header} success.'
+            success_msg_prefix = f'RollSite.Pull: pull {roll_site_header} success.'
             if obj_type == b'object':
                 result = rp.get(table_name)
                 if result is not None:
@@ -304,7 +304,7 @@ class RollSite:
                                   output=ErStore(store_locator=new_store_locator),
                                   options=options)
 
-                L.info(f"RollSite.push: pushed {roll_site_header} done. type:{type(obj)}")
+                L.info(f"RollSite.push: push {roll_site_header} done. type:{type(obj)}")
                 return _tagged_key
 
             future = RollSite.receive_exeutor_pool.submit(map_values, _tagged_key, self._is_standalone, roll_site_header)
