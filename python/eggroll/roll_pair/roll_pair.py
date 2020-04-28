@@ -281,6 +281,7 @@ class RollPair(object):
         self.gc_enable = rp_ctx.rpc_gc_enable
         self.gc_recorder = rp_ctx.gc_recorder
         self.gc_recorder.record(er_store)
+        self.destroyed = False
 
     def __del__(self):
         if "EGGROLL_GC_DISABLE" in os.environ and os.environ["EGGROLL_GC_DISABLE"] == '1':
@@ -293,6 +294,8 @@ class RollPair(object):
             return
         if not self.gc_enable:
             L.info('session:{} gc not enable'.format(self.__session_id))
+            return
+        if self.destroyed:
             return
         if self.ctx.get_session().is_stopped():
             L.debug('session:{} has already been stopped'.format(self.__session_id))
@@ -609,6 +612,7 @@ class RollPair(object):
 
         self.ctx.get_session()._cluster_manager_client.delete_store(self.__store)
         L.info(f'{RollPair.DESTROY}: {self.__store}')
+        self.destroyed = True
 
     @_method_profile_logger
     def delete(self, k, options: dict = None):
