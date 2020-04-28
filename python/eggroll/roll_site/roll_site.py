@@ -262,7 +262,7 @@ class RollSite:
             rp.disable_gc()
             L.info(f"pushing prepared: {type(obj)}, tag_key:{_tagged_key}")
 
-            def map_values(_tagged_key, is_standalone):
+            def map_values(_tagged_key, is_standalone, roll_site_header):
                 if is_standalone:
                     dst_name = _tagged_key
                     store_type = rp.get_store_type()
@@ -307,7 +307,7 @@ class RollSite:
                 L.info(f"RollSite.push: push {roll_site_header} done. type:{type(obj)}")
                 return _tagged_key
 
-            future = RollSite.receive_exeutor_pool.submit(map_values, _tagged_key, self._is_standalone)
+            future = RollSite.receive_exeutor_pool.submit(map_values, _tagged_key, self._is_standalone, roll_site_header)
             if not self._is_standalone and (obj_type == 'object' or obj_type == b'object'):
                 tmp_rp = rp
             else:
