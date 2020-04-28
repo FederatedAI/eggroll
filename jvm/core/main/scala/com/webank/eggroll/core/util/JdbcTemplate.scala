@@ -30,7 +30,7 @@ class JdbcTemplate(dataSource: () => Connection, autoClose: Boolean = true) exte
   def withConnection[T](func: Connection => T): T = {
     val connection = this.dataSource()
     // defaulting transaction level to REPEATABLE_READ
-    // connection.setTransactionIsolation(Connection.TRANSACTION_SERIALIZABLE)
+    connection.setTransactionIsolation(Connection.TRANSACTION_SERIALIZABLE)
     try {
       func(connection)
     } finally {
