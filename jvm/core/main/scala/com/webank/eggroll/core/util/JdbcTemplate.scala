@@ -19,7 +19,7 @@
 package com.webank.eggroll.core.util
 
 import java.io.File
-import java.sql._
+import java.sql.{Connection, DriverManager, PreparedStatement, ResultSet, SQLException, Statement, Types}
 
 import scala.io.BufferedSource
 
