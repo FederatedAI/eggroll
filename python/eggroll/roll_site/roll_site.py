@@ -205,7 +205,7 @@ class RollSite:
                 table_namespace = self.roll_site_session_id
             L.info(f"pull status done: table_name:{table_name}, packet:{to_one_line_string(packet)}, namespace:{namespace}")
             rp = self.ctx.rp_ctx.load(namespace=table_namespace, name=table_name)
-            success_msg_prefix = f'RollSite.Pull: pull {roll_site_header} success.'
+            success_msg_prefix = f'RollSite.pull: pull {roll_site_header} success.'
             if obj_type == b'object':
                 result = rp.get(table_name)
                 if result is not None:
@@ -262,7 +262,7 @@ class RollSite:
             rp.disable_gc()
             L.info(f"pushing prepared: {type(obj)}, tag_key:{_tagged_key}")
 
-            def map_values(_tagged_key, is_standalone):
+            def map_values(_tagged_key, is_standalone, roll_site_header):
                 if is_standalone:
                     dst_name = _tagged_key
                     store_type = rp.get_store_type()
@@ -304,10 +304,10 @@ class RollSite:
                                   output=ErStore(store_locator=new_store_locator),
                                   options=options)
 
-                L.info(f"RollSite.push: push {roll_site_header} done. type:{type(obj)}")
+                L.info(f"RollSite.push: pushed {roll_site_header} done. type:{type(obj)}")
                 return _tagged_key
 
-            future = RollSite.receive_exeutor_pool.submit(map_values, _tagged_key, self._is_standalone)
+            future = RollSite.receive_exeutor_pool.submit(map_values, _tagged_key, self._is_standalone, roll_site_header)
             if not self._is_standalone and (obj_type == 'object' or obj_type == b'object'):
                 tmp_rp = rp
             else:
