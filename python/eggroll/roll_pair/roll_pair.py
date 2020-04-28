@@ -290,8 +290,6 @@ class RollPair(object):
         if not hasattr(self, 'gc_enable') \
                 or not hasattr(self, 'ctx'):
             return
-        if self.__store._store_locator._store_type != StoreTypes.ROLLPAIR_IN_MEMORY:
-            return
         if not self.gc_enable:
             L.info('session:{} gc not enable'.format(self.__session_id))
             return
