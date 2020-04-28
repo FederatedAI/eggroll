@@ -284,7 +284,7 @@ class RollPair(object):
 
     def __del__(self):
         if "EGGROLL_GC_DISABLE" in os.environ and os.environ["EGGROLL_GC_DISABLE"] == '1':
-            L.info("global gc switch is close, not exec __del__ of RollPair")
+            L.info("global RollPair gc is diable")
             return
         if not hasattr(self, 'gc_enable') \
                 or not hasattr(self, 'ctx'):
