@@ -120,12 +120,7 @@ getpid() {
 	fi
 	module_pid=`cat ${EGGROLL_HOME}/bin/${module}`
 	
-	if [ $module = rollsite ];then
-		pid=`ps aux | grep ${module_pid} | grep -v grep | grep -v $0 | awk '{print $2}'`
-	else
-		pid=`ps aux | grep $port | grep ${processor_tag} | grep -v grep | awk '{print $2}'`
-	fi
-	
+	pid=`ps aux | grep ${module_pid} | grep ${processor_tag} | grep -v grep | awk '{print $2}'`
 	if [[ -n ${pid} ]]; then
 		return 0
 	else
@@ -157,7 +152,7 @@ start() {
 		mklogsdir
 		export EGGROLL_LOG_FILE=${module}
 		if [ $module = rollsite ];then
-			cmd="java -Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.properties -cp ${EGGROLL_HOME}/lib/*:${EGGROLL_HOME}/conf/ com.webank.eggroll.rollsite.Proxy -c ${EGGROLL_HOME}/conf/eggroll.properties"
+			cmd="java -Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.properties -Dprocessor_tag=${processor_tag} -cp ${EGGROLL_HOME}/lib/*:${EGGROLL_HOME}/conf/ com.webank.eggroll.rollsite.Proxy -c ${EGGROLL_HOME}/conf/eggroll.properties"
 		else
 			cmd="java -Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.properties -cp ${EGGROLL_HOME}/lib/*: com.webank.eggroll.core.Bootstrap --bootstraps ${main_class} -c ${EGGROLL_HOME}/conf/eggroll.properties -p $port -s ${processor_tag}"
 		fi
@@ -189,15 +184,11 @@ stop() {
 			getpid
 			flag=$?
 		done
-		if [[ $pid -eq $module_pid ]]; then
-			echo "kill error"
-		else
-			echo "killed"
-			echo "-1" >${EGGROLL_HOME}/bin/${module}
-		fi
+		echo "killed"
+		echo "stoped" >${EGGROLL_HOME}/bin/${module}
 	else
 		echo "service not running"
-		echo "-1" >${EGGROLL_HOME}/bin/${module}
+		echo "stoped" >${EGGROLL_HOME}/bin/${module}
 	fi
 }
 
