@@ -116,6 +116,10 @@ def start(config_file, session_id, server_node_id, processor_id, port, transfer_
 
   print("pid:", pid)
   pname_pid = 'bin/' + 'pid/' + pname + '.pid'
+
+  if not os.path.exists('bin/pid'):
+    os.makedirs('bin/pid')
+
   with open(pname_pid, 'w') as fp:
     fp.write(str(pid))
     fp.close()
