@@ -30,7 +30,7 @@ class SessionMetaDao {
 
 
   private lazy val dbc = ResourceDao.dbc
-  def register(sessionMeta: ErSessionMeta, replace: Boolean = true): Unit = {
+  def register(sessionMeta: ErSessionMeta, replace: Boolean = true): Unit = synchronized {
     require(sessionMeta.activeProcCount == sessionMeta.processors.count(_.status == ProcessorStatus.RUNNING),
       "conflict active proc count:" + sessionMeta)
     val sid = sessionMeta.id
@@ -102,7 +102,7 @@ class SessionMetaDao {
     proc
   }
 
-  def updateProcessor(proc: ErProcessor): Unit = {
+  def updateProcessor(proc: ErProcessor): Unit = synchronized {
     val (session_id: String, oldStatus: String) = dbc.query( rs => {
       if (!rs.next()) {
         throw new NotExistError("processor not exits:" + proc)
@@ -145,7 +145,7 @@ class SessionMetaDao {
     }
   }
 
-  def getSessionMain(sessionId: String): ErSessionMeta = {
+  def getSessionMain(sessionId: String): ErSessionMeta = synchronized {
     dbc.query( rs => {
       if (!rs.next()) {
         throw new NotExistError("session id not found:" + sessionId)
