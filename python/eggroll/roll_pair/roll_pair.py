@@ -578,7 +578,7 @@ class RollPair(object):
                 output_types=[ErPair],
                 command_uri=CommandURI(f'{RollPair.EGG_PAIR_URI_PREFIX}/{RollPair.RUN_TASK}'))
 
-        done = wait(futures, timeout=20, return_when=FIRST_EXCEPTION).done
+        done = wait(futures, return_when=FIRST_EXCEPTION).done
 
         result = 0
         for future in done:
