@@ -309,7 +309,7 @@ class RollPair(object):
         self_partition = self.get_partitions()
         other_partition = other.get_partitions()
 
-        if other.get_partitions() != self.get_partitions():
+        if other_partition != self_partition:
             self_name = self.get_name()
             self_count = self.count()
             other_name = other.get_name()
@@ -340,7 +340,7 @@ class RollPair(object):
                 shuffle_rp_partition = other_partition
 
             L.debug(f"repatition selection: rp: {shuffle_rp_name} count:{shuffle_rp_count} "
-                    f"<= rp: {not_shuffle_rp_name} count:{not_shuffle_rp_name}. "
+                    f"<= rp: {not_shuffle_rp_name} count:{not_shuffle_rp_count}. "
                     f"repartitioning {shuffle_rp_name}")
             store = ErStore(store_locator=ErStoreLocator(store_type=shuffle_rp.get_store_type(),
                                                          namespace=shuffle_rp.get_namespace(),
