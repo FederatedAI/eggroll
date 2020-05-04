@@ -25,6 +25,7 @@ if __name__ == '__main__':
     args_parser.add_argument('-s', '--session-id')
     args_parser.add_argument('-p', '--port', default='0')
     args_parser.add_argument('-c', '--config')
+    args_parser.add_argument('-t', '--timestamp')
 
     args = args_parser.parse_args()
 
@@ -39,6 +40,7 @@ if __name__ == '__main__':
         print(f'reading default config: {conf_file}')
 
     session_id = args.session_id
+    timestamp = args.timestamp
 
     eggroll_logs_dir = os.environ.get('EGGROLL_LOGS_DIR')
     if eggroll_logs_dir is None:
@@ -73,17 +75,18 @@ if __name__ == '__main__':
             java_cmd = javahome + '/bin/java'
 
     print("EGGROLL_HOME:", eggroll_home)
+    os.chdir(eggroll_home)
     cmd = java_cmd + ' -Dlog4j.configurationFile=' + eggroll_log_conf + ' -cp ' +\
           classpath +\
           ' com.webank.eggroll.core.Bootstrap ' +\
           ' --ignore-rebind ' +\
-          ' --bootstraps com.webank.eggroll.core.resourcemanager.ClusterManagerBootstrap,  com.webank.eggroll.core.resourcemanager.NodeManagerBootstrap ' +\
+          ' --bootstraps com.webank.eggroll.core.resourcemanager.ClusterManagerBootstrap,com.webank.eggroll.core.resourcemanager.NodeManagerBootstrap ' +\
           ' -c ' + conf_file +\
           ' -s ' + session_id +\
           ' -p ' + cluster_manager_port
 
-    eggroll_log_file = 'bootstrap-standalone-manager.out'
-    eggroll_err_file = 'bootstrap-standalone-manager.err'
+    eggroll_log_file = 'bootstrap-standalone-manager-' + timestamp + '.out'
+    eggroll_err_file = 'bootstrap-standalone-manager-' + timestamp + '.err'
 
     log_file = os.path.join(eggroll_logs_dir, eggroll_log_file)
     err_file = os.path.join(eggroll_logs_dir, eggroll_err_file)
