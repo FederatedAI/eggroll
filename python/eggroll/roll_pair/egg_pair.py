@@ -17,6 +17,7 @@ import argparse
 import configparser
 import logging
 import os
+import shutil
 import signal
 import time
 from collections.abc import Iterable
@@ -179,8 +180,25 @@ class EggPair(object):
                 #result = ErPair(key=f._key, value=bytes(value))
 
         if task._name == 'destroy':
-            with create_adapter(task._inputs[0]) as input_adapter:
-                input_adapter.destroy()
+            if task._inputs[0]._store_locator._name == '*':
+                from eggroll.roll_pair.utils.pair_utils import get_db_path, get_data_dir
+                target_paths = list()
+                if task._inputs[0]._store_locator._store_type == '*':
+                    data_dir = get_data_dir()
+                    namespace = task._inputs[0]._store_locator._namespace
+                    store_types = os.listdir(data_dir)
+                    for store_type in store_types:
+                        target_paths.append('/'.join([data_dir, store_type, namespace]))
+                else:
+                    db_path = get_db_path(task._inputs[0])
+                    target_paths.append(db_path[:db_path.rfind('*')])
+
+                for path in target_paths:
+                    if os.path.exists(path):
+                        shutil.rmtree(path)
+            else:
+                with create_adapter(task._inputs[0]) as input_adapter:
+                    input_adapter.destroy()
 
         if task._name == 'delete':
             f = create_functor(functors[0]._body)

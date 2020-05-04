@@ -15,6 +15,7 @@
 
 import unittest
 
+from eggroll.core.constants import StoreTypes
 from eggroll.core.utils import time_now
 from eggroll.roll_pair.test.roll_pair_test_assets import get_debug_test_context, \
     get_cluster_context, get_standalone_context, get_default_options
@@ -105,7 +106,29 @@ class TestRollPairBase(unittest.TestCase):
 
         rp1 = self.ctx.load("ns168","n111")
         rp1.put_all(data)
-        self.ctx.cleanup(namespace='ns168', name='*')
+        self.ctx.cleanup(namespace='ns168', name='n11*')
+
+    def test_cleanup_namespace(self):
+        namespace = 'ns180'
+        rp = self.ctx.load(namespace,"n1")
+        data = [("k1","v1"),("k2","v2"),("k3","v3"),("k4","v4"),("k5","v5"),("k6","v6")]
+        rp.put_all(data)
+
+        rp1 = self.ctx.load(namespace,"n111")
+        rp1.put_all(data)
+        rp2 = self.ctx.parallelize(data, options={'namespace': namespace})
+        self.ctx.cleanup(namespace=namespace, name='*')
+
+    def test_cleanup_namespace_specified_store_type(self):
+        namespace = 'ns181'
+        rp = self.ctx.load(namespace,"n1")
+        data = [("k1","v1"),("k2","v2"),("k3","v3"),("k4","v4"),("k5","v5"),("k6","v6")]
+        rp.put_all(data)
+
+        rp1 = self.ctx.parallelize(data, options={'namespace': namespace})
+        self.ctx.cleanup(namespace=namespace,
+                         name='*',
+                         options={'store_type': StoreTypes.ROLLPAIR_IN_MEMORY})
 
     def test_map(self):
         rp = self.ctx.parallelize(self.str_generator())
