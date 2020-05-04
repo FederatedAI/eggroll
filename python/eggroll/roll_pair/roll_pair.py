@@ -180,7 +180,7 @@ class RollPairContext(object):
 
         if name == '*':
             store_type = options.get('store_type', '*')
-            L.info(f'cleaning up whole namespace={namespace}, name={name}, store_type={store_type}')
+            L.info(f'cleaning up whole store_type={store_type}, namespace={namespace}, name={name}')
             er_store = ErStore(store_locator=ErStoreLocator(namespace=namespace,
                                                             name=name,
                                                             store_type=store_type))
