@@ -400,15 +400,17 @@ class ErStoreLocator(RpcMessage):
 
 class ErPartition(RpcMessage):
     def __init__(self, id: int, store_locator: ErStoreLocator,
-            processor: ErProcessor=None):
+            processor: ErProcessor=None, rank_in_node=-1):
         self._id = id
         self._store_locator = store_locator
         self._processor = processor
+        self._rank_in_node = rank_in_node
 
     def to_proto(self):
         return meta_pb2.Partition(id=self._id,
                                   storeLocator=self._store_locator.to_proto() if self._store_locator else None,
-                                  processor=self._processor.to_proto() if self._processor else None)
+                                  processor=self._processor.to_proto() if self._processor else None,
+                                  rankInNode=self._rank_in_node)
 
     def to_proto_string(self):
         return self.to_proto().SerializeToString()
@@ -418,7 +420,8 @@ class ErPartition(RpcMessage):
         return ErPartition(id=pb_message.id,
                            store_locator=ErStoreLocator.from_proto(
                                    pb_message.storeLocator),
-                           processor=ErProcessor.from_proto(pb_message.processor))
+                           processor=ErProcessor.from_proto(pb_message.processor),
+                           rank_in_node=pb_message.rankInNode)
 
     def to_path(self, delim=DEFAULT_PATH_DELIM):
         return DEFAULT_PATH_DELIM.join([self._store_locator.to_path(delim=delim), self._id])
@@ -427,7 +430,8 @@ class ErPartition(RpcMessage):
         return f'<ErPartition(' \
                f'id={repr(self._id)}, ' \
                f'store_locator={repr(self._store_locator)}, ' \
-               f'processor={repr(self._processor)}) ' \
+               f'processor={repr(self._processor)}, ' \
+               f'rank_in_node={repr(self._rank_in_node)}) ' \
                f'at {hex(id(self))}>'
 
 

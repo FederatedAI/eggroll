@@ -27,6 +27,7 @@ import com.webank.eggroll.core.ErSession
 import com.webank.eggroll.core.command.{CommandClient, CommandURI}
 import com.webank.eggroll.core.constant._
 import com.webank.eggroll.core.datastructure.{Broker, LinkedBlockingBroker}
+import com.webank.eggroll.core.error.DistributedRuntimeException
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.transfer.GrpcTransferClient
 import com.webank.eggroll.core.util.{IdUtils, Logging}
@@ -76,6 +77,7 @@ class RollPair(val store: ErStore, val ctx: RollPairContext, val options: Map[St
     val brokers = new Array[Broker[ByteString]](totalPartitions)
     val transferClients = new Array[GrpcTransferClient](totalPartitions)
     val putBatchThreads = new Array[Thread](totalPartitions)
+    val error = new DistributedRuntimeException()
 
     val jobId = IdUtils.generateJobId(sessionId = ctx.session.sessionId, tag = options.getOrElse("job_id_tag", StringConstants.EMPTY))
 
@@ -143,7 +145,7 @@ class RollPair(val store: ErStore, val ctx: RollPairContext, val options: Map[St
                 }
               }
               putBatchThread.setName(s"putBatch-${task.id}")
-              putBatchThread.setUncaughtExceptionHandler(new RollPairUncaughtExceptionHandler)
+              putBatchThread.setUncaughtExceptionHandler(new RollPairUncaughtExceptionHandler(error))
               putBatchThread.start()
 
               putBatchThreads.update(partitionId, putBatchThread)
@@ -182,6 +184,8 @@ class RollPair(val store: ErStore, val ctx: RollPairContext, val options: Map[St
     putBatchThreads.foreach(t => {
       if (t != null) t.join()
     })
+
+    if (!error.checkEmpty()) error.raise()
   }
 }
 
@@ -217,8 +221,10 @@ object RollPair {
   val ROLL_RUN_JOB_COMMAND = new CommandURI(s"${ROLL_PAIR_URI_PREFIX}/${RUN_JOB}")
 }
 
-class RollPairUncaughtExceptionHandler extends Thread.UncaughtExceptionHandler with Logging {
+class RollPairUncaughtExceptionHandler(error: DistributedRuntimeException) extends Thread.UncaughtExceptionHandler with Logging {
   override def uncaughtException(t: Thread, e: Throwable): Unit = {
     logError(s"Error in thread ${t.getName}", e)
+    error.append(e)
+    t.interrupt()
   }
 }
