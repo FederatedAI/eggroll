@@ -273,9 +273,16 @@ object StoreCrudOperator {
 
     val outputStoreLocator = if (inputStoreLocator.name.equals("*")) {
       val result = dbc.withTransaction(conn => {
-        val sql = "update store_locator set name = concat(name, ?), status = ? where namespace = ? and status = ?"
-        dbc.update(conn, sql,
-          TimeUtils.getNowMs(), StoreStatus.DELETED, inputStoreLocator.namespace, StoreStatus.NORMAL)
+        var sql = "update store_locator set name = concat(name, ?), status = ? where namespace = ? and status = ? "
+        val storeType = inputStoreLocator.storeType
+        if (storeType.equals("*")) {
+          dbc.update(conn, sql,
+            s".${TimeUtils.getNowMs()}", StoreStatus.DELETED, inputStoreLocator.namespace, StoreStatus.NORMAL)
+        } else {
+          sql += "and store_type = ?"
+          dbc.update(conn, sql,
+            s".${TimeUtils.getNowMs()}", StoreStatus.DELETED, inputStoreLocator.namespace, StoreStatus.NORMAL, storeType)
+        }
       })
 
       inputStoreLocator

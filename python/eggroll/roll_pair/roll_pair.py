@@ -208,6 +208,8 @@ class RollPairContext(object):
 
             for future in futures:
                 result = future.result()
+
+            self.get_session()._cluster_manager_client.delete_store(er_store)
         else:
             # todo:1: add combine options to pass it through
             store_options = self.__session.get_all_options()
