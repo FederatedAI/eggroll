@@ -180,12 +180,16 @@ class EggPair(object):
                 #result = ErPair(key=f._key, value=bytes(value))
 
         if task._name == 'destroy':
-            if task._inputs[0]._store_locator._name == '*':
+            input_store_locator = task._inputs[0]._store_locator
+            namespace = input_store_locator._namespace
+            name = input_store_locator._name
+            store_type = input_store_locator._store_type
+            L.info(f'destroying store_type={store_type}, namespace={namespace}, name={name}')
+            if name == '*':
                 from eggroll.roll_pair.utils.pair_utils import get_db_path, get_data_dir
                 target_paths = list()
-                if task._inputs[0]._store_locator._store_type == '*':
+                if store_type == '*':
                     data_dir = get_data_dir()
-                    namespace = task._inputs[0]._store_locator._namespace
                     store_types = os.listdir(data_dir)
                     for store_type in store_types:
                         target_paths.append('/'.join([data_dir, store_type, namespace]))
