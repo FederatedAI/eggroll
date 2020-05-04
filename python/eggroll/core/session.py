@@ -12,7 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import configparser
-import os
+import os, re
 
 import time 
 from eggroll.core.client import ClusterManagerClient
@@ -72,15 +72,15 @@ class ErSession(object):
 
 
         self.__is_standalone = options.get(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE, "") == DeployModes.STANDALONE
-        if self.__is_standalone and os.name != 'nt' and not processors and os.environ.get("EGGROLL_RESOURCE_MANAGER_AUTO_BOOTSTRAP", "1") == "1":
+        if self.__is_standalone and not processors and os.environ.get("EGGROLL_RESOURCE_MANAGER_AUTO_BOOTSTRAP", "1") == "1":
             #port = int(options.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT,
              #                      static_er_conf.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, "4689")))
             port = 0
-            startup_command = f'bash {self.__eggroll_home}/bin/eggroll_boot_standalone.sh -p {port} -s {self.__session_id}'
+            timestamp = time_now(format=DEFAULT_DATETIME_FORMAT)
+            startup_command = f'{self.__eggroll_home}/bin/eggroll_boot_standalone.py -p {port} -s {self.__session_id} -t {timestamp}'
             print("startup_command:", startup_command)
             import subprocess
             import atexit
-            import psutil
 
             pid = 0
             bootstrap_log_dir = f'{self.__eggroll_home}/logs/eggroll/'
@@ -95,65 +95,30 @@ class ErSession(object):
                 returncode = manager_process.returncode
                 L.info(f'start up returncode: {returncode}')
 
-            time.sleep(5)
+            time.sleep(3)
             def shutdown_standalone_manager(session_id, log_dir):
-                shutdown_command = f"ps aux | grep eggroll | grep Bootstrap | grep '0' | grep '{session_id}' | grep -v grep | awk '{{print $2}}' | xargs kill"
+                if os.name != 'nt':
+                    shutdown_command = f"ps aux | grep eggroll | grep Bootstrap | grep '0' | grep '{session_id}' | grep -v grep | awk '{{print $2}}' | xargs kill"
+                else:
+                    shutdown_command = ''
+
                 L.info(f'shutdown command: {shutdown_command}')
                 with open(f'{log_dir}/standalone-manager.out', 'a+') as outfile, open(f'{log_dir}/standalone-manager.err', 'a+') as errfile:
                     manager_process = subprocess.run(shutdown_command, shell=True, stdout=outfile, stderr=errfile)
                     returncode = manager_process.returncode
                     L.info(f'shutdown returncode: {returncode}')
 
+            file_name = f'{self.__eggroll_home}/logs/bootstrap-standalone-manager-{timestamp}.out'
+            with open(file_name) as fp:
+                for line in fp.readlines():
+                    key = "server started at port "
+                    if key in line:
+                        port = re.findall("\d+", line)
+                        print("**************", line)
+                        print("port：", port[0])
+                fp.close()
 
-            def find_pid_by_session_id(session_id):
-                pid_list = psutil.pids()
-                for pid in pid_list:
-                    p = psutil.Process(pid)
-                    cmdline = p.cmdline()
-                    if '-s' not in cmdline or '--bootstraps' not in cmdline:
-                        continue
-
-                    #print(cmdline)
-                    session_id_index = cmdline.index('-s')
-                    #print("session_id:", self.__session_id)
-                    #print("cmdline[]", cmdline[session_id_index+1])
-                    if self.__session_id == cmdline[session_id_index+1]:
-                        module_index = cmdline.index('--bootstraps')
-                        #print("find pid:", pid)
-                        if 'ClusterManagerBootstrap' in cmdline[module_index + 1] and 'NodeManagerBootstrap' in cmdline[module_index + 1]:
-                            print(cmdline)
-                            return pid
-
-            def find_port_by_pid(pid):
-                print("input pid:", pid)
-                proc = subprocess.Popen(['netstat', '-anp'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-                print("222input pid:", pid)
-                #Proto  Recv-Q  Send-Q  Local_Address  Foreign_Address  State  PID/Program_Name
-                for line in proc.stdout:
-                    line_list = line.split()
-                    if len(line_list) != 7:
-                        continue
-                    if '0.0.0.0:' in str(line_list[3], encoding="utf8") and 'java' in str(line_list[6], encoding="utf8"):
-                        print(line_list)
-                    #if 'tcp'==str(line_list[0], encoding="utf8") and '0.0.0.0:' in str(line_list[3], encoding="utf8") and str(pid) in str(line_list[5], encoding="utf8"):
-                    proto = str(line_list[0], encoding="utf8")
-                    local_address = str(line_list[3], encoding="utf8")
-                    pid_program_name = str(line_list[5], encoding="utf8")
-
-                    if str(pid) in str(line_list[6], encoding="utf8"):
-                        local_address_list = local_address.split(':')
-                        local_address_port = local_address_list[1]
-                        print("address:", local_address, " port:", local_address_port)
-                        if local_address_port.isdigit() is True:
-                            return int(local_address_port)
-                time.sleep(3)
-                proc.wait()
-                return 0
-
-            pid = find_pid_by_session_id(session_id)
-            print("para:", pid)
-            port = find_port_by_pid(pid)
-            options[ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT] = port
+            options[ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT] = port[0]
             atexit.register(shutdown_standalone_manager, self.__session_id, bootstrap_log_dir)
 
         self._cluster_manager_client = ClusterManagerClient(options=options)
