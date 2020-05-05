@@ -200,11 +200,13 @@ class EggPair(object):
                 real_data_dir = os.path.realpath(get_data_dir())
                 for path in target_paths:
                     realpath = os.path.realpath(path)
-                    if os.path.exists(path) \
-                            and realpath != "/" \
-                            and realpath != real_data_dir \
-                            and realpath.startswith(real_data_dir):
-                        shutil.rmtree(path)
+                    if os.path.exists(path):
+                        if realpath == "/" \
+                                or realpath == real_data_dir \
+                                or not realpath.startswith(real_data_dir):
+                            raise ValueError(f'trying to delete a dangerous path: {realpath}')
+                        else:
+                            shutil.rmtree(path)
             else:
                 with create_adapter(task._inputs[0]) as input_adapter:
                     input_adapter.destroy()
