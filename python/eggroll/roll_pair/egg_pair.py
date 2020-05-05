@@ -197,8 +197,11 @@ class EggPair(object):
                     db_path = get_db_path(task._inputs[0])
                     target_paths.append(db_path[:db_path.rfind('*')])
 
+                real_data_dir = os.path.realpath(get_data_dir())
                 for path in target_paths:
-                    if os.path.exists(path) and os.path.realpath(path) != "/":
+                    if os.path.exists(path) \
+                            and os.path.realpath(path) != "/" \
+                            and os.path.realpath(path) != real_data_dir:
                         shutil.rmtree(path)
             else:
                 with create_adapter(task._inputs[0]) as input_adapter:

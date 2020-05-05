@@ -171,6 +171,8 @@ class RollPairContext(object):
 
     '''store name only supports full name and reg: *, *abc ,abc* and a*c'''
     def cleanup(self, namespace, name, options: dict = None):
+        if not namespace:
+            raise ValueError('namespace cannot be blank')
         L.info(f'cleaning up namespace={namespace}, name={name}')
         if options is None:
             options = {}
