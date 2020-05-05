@@ -107,12 +107,13 @@ class RollPairMasterBootstrap extends BootstrapBase with Logging {
     sessionId = cmd.getOptionValue('s')
     val cm = cmd.getOptionValue("cm")
     nm_port = cmd.getOptionValue("nm")
-    val toks = cm.split(":")
-    cm_host = toks(0)
-    cm_port = toks(1).toInt
-    StaticErConf.addProperty(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST, cm_host)
-    StaticErConf.addProperty(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, cm_port.toString)
-    val cm_port_ = StaticErConf.getProperty(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, "0").toInt
+    if (cm != null) {
+      val toks = cm.split(":")
+      cm_host = toks(0)
+      cm_port = toks(1).toInt
+      StaticErConf.addProperty(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST, cm_host)
+      StaticErConf.addProperty(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, cm_port.toString)
+    }
 
     CommandRouter.register(serviceName = RollPair.ROLL_RUN_JOB_COMMAND.uriString,
       serviceParamTypes = Array(classOf[ErJob]),

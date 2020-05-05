@@ -125,9 +125,9 @@ class ErSession(object):
                 fp.close()
 
             options[ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT] = port[0]
+            self.__options[ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT] = options[ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT]
             atexit.register(shutdown_standalone_manager, self.__session_id, bootstrap_log_dir)
 
-        self.__options[ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT] = options[ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT]
         self._cluster_manager_client = ClusterManagerClient(options=options)
         session_meta = ErSessionMeta(id=self.__session_id,
                                      name=name,
