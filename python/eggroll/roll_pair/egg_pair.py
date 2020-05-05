@@ -199,9 +199,11 @@ class EggPair(object):
 
                 real_data_dir = os.path.realpath(get_data_dir())
                 for path in target_paths:
+                    realpath = os.path.realpath(path)
                     if os.path.exists(path) \
-                            and os.path.realpath(path) != "/" \
-                            and os.path.realpath(path) != real_data_dir:
+                            and realpath != "/" \
+                            and realpath != real_data_dir \
+                            and realpath.startswith(realpath):
                         shutil.rmtree(path)
             else:
                 with create_adapter(task._inputs[0]) as input_adapter:
