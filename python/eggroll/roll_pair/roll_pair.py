@@ -58,6 +58,7 @@ class RollPairContext(object):
         self.__session.add_exit_task(self.context_gc)
         self.rpc_gc_enable = True
         self.gc_recorder = GcRecorder(self)
+        self.__command_client = CommandClient()
 
     def set_store_type(self, store_type: str):
         self.default_store_type = store_type
@@ -170,53 +171,89 @@ class RollPairContext(object):
 
     '''store name only supports full name and reg: *, *abc ,abc* and a*c'''
     def cleanup(self, namespace, name, options: dict = None):
+        if not namespace:
+            raise ValueError('namespace cannot be blank')
+        L.info(f'cleaning up namespace={namespace}, name={name}')
         if options is None:
             options = {}
         total_partitions = options.get('total_partitions', 1)
         partitioner = options.get('partitioner', PartitionerTypes.BYTESTRING_HASH)
         store_serdes = options.get('serdes', self.default_store_serdes)
 
-        # todo:1: add combine options to pass it through
-        store_options = self.__session.get_all_options()
-        store_options.update(options)
-        final_options = store_options.copy()
+        if name == '*':
+            store_type = options.get('store_type', '*')
+            L.info(f'cleaning up whole store_type={store_type}, namespace={namespace}, name={name}')
+            er_store = ErStore(store_locator=ErStoreLocator(namespace=namespace,
+                                                            name=name,
+                                                            store_type=store_type))
+            job_id = generate_job_id(namespace, tag=RollPair.CLEANUP)
+            job = ErJob(id=job_id,
+                        name=RollPair.DESTROY,
+                        inputs=[er_store],
+                        options=options)
 
-        # TODO:1: tostring in er model
-        if 'create_if_missing' in final_options:
-            del final_options['create_if_missing']
-        # TODO:1: remove these codes by adding to string logic in ErStore
-        if 'include_key' in final_options:
-            del final_options['include_key']
-        if 'total_partitions' in final_options:
-            del final_options['total_partitions']
-        if 'name' in final_options:
-            del final_options['name']
-        if 'namespace' in final_options:
-            del final_options['namespace']
-        # TODO:1: remove these codes by adding to string logic in ErStore
-        if 'keys_only' in final_options:
-            del final_options['keys_only']
-        # TODO:0: add 'error_if_exist, persistent / default store type'
-        L.info("final_options:{}".format(final_options))
+            args = list()
+            cleanup_partitions = [ErPartition(id=-1, store_locator=er_store._store_locator)]
 
-        store = ErStore(
-                store_locator=ErStoreLocator(
-                        store_type=StoreTypes.ROLLPAIR_LMDB,
-                        namespace=namespace,
-                        name=name,
-                        total_partitions=total_partitions,
-                        partitioner=partitioner,
-                        serdes=store_serdes),
-                options=final_options)
-        results = self.__session._cluster_manager_client.get_store_from_namespace(store)
-        L.debug('res:{}'.format(results._stores))
-        if results._stores is not None:
-            L.debug("item count:{}".format(len(results._stores)))
-            for item in results._stores:
-                L.debug("item namespace:{} name:{}".format(item._store_locator._namespace,
-                                                           item._store_locator._name))
-                rp = RollPair(er_store=item, rp_ctx=self)
-                rp.destroy()
+            for server_node, eggs in self.__session._eggs.items():
+                egg = eggs[0]
+                task = ErTask(id=generate_task_id(job_id, egg._command_endpoint._host),
+                              name=job._name,
+                              inputs=cleanup_partitions,
+                              job=job)
+                args.append(([task], egg._command_endpoint))
+
+            futures = self.__command_client.async_call(
+                    args=args,
+                    output_types=[ErTask],
+                    command_uri=CommandURI(f'{RollPair.EGG_PAIR_URI_PREFIX}/{RollPair.RUN_TASK}'))
+
+            for future in futures:
+                result = future.result()
+
+            self.get_session()._cluster_manager_client.delete_store(er_store)
+        else:
+            # todo:1: add combine options to pass it through
+            store_options = self.__session.get_all_options()
+            store_options.update(options)
+            final_options = store_options.copy()
+
+            # TODO:1: tostring in er model
+            if 'create_if_missing' in final_options:
+                del final_options['create_if_missing']
+            # TODO:1: remove these codes by adding to string logic in ErStore
+            if 'include_key' in final_options:
+                del final_options['include_key']
+            if 'total_partitions' in final_options:
+                del final_options['total_partitions']
+            if 'name' in final_options:
+                del final_options['name']
+            if 'namespace' in final_options:
+                del final_options['namespace']
+            # TODO:1: remove these codes by adding to string logic in ErStore
+            if 'keys_only' in final_options:
+                del final_options['keys_only']
+            # TODO:0: add 'error_if_exist, persistent / default store type'
+            L.info("final_options:{}".format(final_options))
+
+            store = ErStore(
+                    store_locator=ErStoreLocator(
+                            store_type=StoreTypes.ROLLPAIR_LMDB,
+                            namespace=namespace,
+                            name=name,
+                            total_partitions=total_partitions,
+                            partitioner=partitioner,
+                            serdes=store_serdes),
+                    options=final_options)
+            results = self.__session._cluster_manager_client.get_store_from_namespace(store)
+            L.debug('res:{}'.format(results._stores))
+            if results._stores is not None:
+                L.debug("item count:{}".format(len(results._stores)))
+                for item in results._stores:
+                    L.debug("item namespace:{} name:{}".format(item._store_locator._namespace,
+                                                               item._store_locator._name))
+                    rp = RollPair(er_store=item, rp_ctx=self)
+                    rp.destroy()
 
 
 def default_partitioner(k):
@@ -236,6 +273,7 @@ class RollPair(object):
 
     AGGREGATE = 'aggregate'
     COLLAPSE_PARTITIONS = 'collapsePartitions'
+    CLEANUP = 'cleanup'
     COUNT = 'count'
     DELETE = "delete"
     DESTROY = "destroy"
