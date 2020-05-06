@@ -12,6 +12,11 @@ def set_data_dir(data_dir):
         __data_dir = str(abs_path)
 
 
+def get_data_dir():
+    global __data_dir
+    return __data_dir
+
+
 def get_db_path(partition: ErPartition):
     store_locator = partition._store_locator
 
