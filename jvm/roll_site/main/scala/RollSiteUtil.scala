@@ -56,13 +56,19 @@ class RollSiteUtil(val erSessionId: String,
 
   def putBatch(value: ByteString): Unit = {
     try {
-      if (value.size() == 0) {
-        throw new IllegalArgumentException("roll site push batch zero size:" + name)
+      val srcPartyId = rollSiteHeader.srcPartyId
+      val dstPartyId = rollSiteHeader.dstPartyId
+      if (!srcPartyId.equals(dstPartyId) || !rollSiteHeader.dataType.toLowerCase.equals("object")) {
+        if (value.size() == 0) {
+          throw new IllegalArgumentException(s"roll site push batch zero size: ${name}")
+        }
+        val broker = new LinkedBlockingBroker[ByteString]()
+        broker.put(value)
+        broker.signalWriteFinish()
+        rp.putBatch(broker, options = options)
+      } else {
+        logInfo(s"sending OBJECT from / to same party id, skipping. src: ${srcPartyId}, dst: ${dstPartyId}, tag: ${rollSiteHeader.concat()}")
       }
-      val broker = new LinkedBlockingBroker[ByteString]()
-      broker.put(value)
-      broker.signalWriteFinish()
-      rp.putBatch(broker, options = options)
 
       JobStatus.increasePutBatchFinishedCount(name);
       logInfo(s"put batch finished for name: ${name}, namespace: ${namespace}")

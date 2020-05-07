@@ -64,8 +64,18 @@ class LmdbAdapter(PairAdapter):
                 writemap = False if platform.system() == 'Darwin' else True
                 if not os.path.exists(self.path):
                     os.makedirs(self.path, exist_ok=True)
-                self.env = lmdb.open(self.path, create=create_if_missing, max_dbs=128, sync=False, map_size=lmdb_map_size, writemap=writemap)
+                self.env = lmdb.open(self.path,
+                                     create=create_if_missing,
+                                     max_dbs=128,
+                                     sync=False,
+                                     map_size=lmdb_map_size,
+                                     writemap=writemap,
+                                     lock=False)
                 self.sub_db = self.env.open_db(DEFAULT_DB)
+                try:
+                    L.debug(f"LmdbAdapter.init: data count of env: {self.path}: {self.count()}")
+                except Exception as e:
+                    L.debug(f"LmdbAdapter.init: fail to get data count of env: {self.path}", e)
                 LmdbAdapter.count_dict[self.path] = 0
                 LmdbAdapter.env_dict[self.path] = self.env
                 LmdbAdapter.sub_db_dict[self.path] = self.sub_db
@@ -94,28 +104,40 @@ class LmdbAdapter(PairAdapter):
     def __enter__(self):
         return self
 
-    # TODO:0: duplicated code， lmdb.Error: Attempt to operate on closed/deleted/dropped object.
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
     def __del__(self):
         self.close()
 
+    def __get_write_count(self):
+        self._init_write()
+        return self.txn_w.stat()['entries']
+
     def close(self):
-        if not self.env:
-            return
         with LmdbAdapter.env_lock:
+            if not self.env:
+                return
             if self.txn_r:
                 self.txn_r.commit()
                 self.cursor.close()
             if self.txn_w:
+                try:
+                    L.debug(f"LmdbAdapter.close: data count of env: {self.path} :{self.__get_write_count()}")
+                except Exception as e:
+                    L.debug(f"LmdbAdapter.close: fail to get data count of env: {self.path}", e)
                 self.txn_w.commit()
             if self.env:
                 count = LmdbAdapter.count_dict[self.path]
                 if not count or count - 1 <= 0:
                     L.debug(f"LmdbAdapter: actually closing {self.path}")
                     try:
-                        self.env.close()
+                        if "EGGROLL_LMDB_ENV_CLOSE_DISABLE" in os.environ \
+                                and os.environ["EGGROLL_LMDB_ENV_CLOSE_DISABLE"] == '0':
+                            self.env.close()
+                            L.debug(f"EGGROLL_LMDB_ENV_CLOSE_DISABLE is True, finish close lmdb env obj: {self.path}")
+                        else:
+                            L.debug("lmdb env not close while closing LmdbAdapter")
                     except:
                         L.warning("txn commit or cursor, env have closed before")
 
