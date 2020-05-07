@@ -13,6 +13,7 @@
 #  limitations under the License.
 import configparser
 import os, re
+import random
 from concurrent.futures import wait, FIRST_EXCEPTION
 from copy import deepcopy
 
@@ -83,13 +84,12 @@ class ErSession(object):
             #port = int(options.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT,
              #                      static_er_conf.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, "4689")))
             port = 0
-            timestamp = time_now(format=DEFAULT_DATETIME_FORMAT)
-            startup_command = f'{self.__eggroll_home}/bin/eggroll_boot_standalone.py -p {port} -s {self.__session_id} -t {timestamp}'
+            random_value = str(random.random())
+            startup_command = f'{self.__eggroll_home}/bin/eggroll_boot_standalone.py -p {port} -s {self.__session_id} -r {random_value}'
             print("startup_command:", startup_command)
             import subprocess
             import atexit
 
-            pid = 0
             bootstrap_log_dir = f'{self.__eggroll_home}/logs/eggroll/'
             os.makedirs(bootstrap_log_dir, mode=0o755, exist_ok=True)
             with open(f'{bootstrap_log_dir}/standalone-manager.out', 'a+') as outfile, \
@@ -97,12 +97,9 @@ class ErSession(object):
                 L.info(f'start up command: {startup_command}')
                 manager_process = subprocess.Popen(startup_command, shell=True,  stdout=outfile, stderr=errfile)
                 manager_process.wait()
-                print("pid:", manager_process.pid)
-                pid = manager_process.pid
                 returncode = manager_process.returncode
                 L.info(f'start up returncode: {returncode}')
 
-            time.sleep(3)
             def shutdown_standalone_manager(session_id, log_dir):
                 if os.name != 'nt':
                     shutdown_command = f"ps aux | grep eggroll | grep Bootstrap | grep '0' | grep '{session_id}' | grep -v grep | awk '{{print $2}}' | xargs kill"
@@ -115,16 +112,42 @@ class ErSession(object):
                     returncode = manager_process.returncode
                     L.info(f'shutdown returncode: {returncode}')
 
-            file_name = f'{self.__eggroll_home}/logs/bootstrap-standalone-manager-{timestamp}.out'
-            with open(file_name) as fp:
-                for line in fp.readlines():
-                    key = "server started at port "
-                    if key in line:
-                        port = re.findall("\d+", line)
-                        print("port：", port[0])
-                fp.close()
+            file_name = f'{self.__eggroll_home}/logs/bootstrap-standalone-manager.out'
+            retry_cnt = 0
+            while True:
+                msg = f"retry get port of ClusterManager and NodeManager: retry_cnt: {retry_cnt},"
+                if retry_cnt % 10 == 0:
+                    L.info(msg)
+                else:
+                    L.debug(msg)
+                retry_cnt += 1
 
-            options[ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT] = port[0]
+                if os.path.exists(file_name):
+                    break
+                time.sleep(min(0.1 * retry_cnt, 30))
+
+            retry_cnt = 0
+            with open(file_name) as fp:
+                while True:
+                    msg = f"retry get port of ClusterManager and NodeManager: retry_cnt: {retry_cnt},"
+                    if retry_cnt % 10 == 0:
+                        L.info(msg)
+                    else:
+                        L.debug(msg)
+                    retry_cnt += 1
+
+                    for line in fp.readlines():
+                        key = str(random_value) + " server started at port "
+                        if key in line:
+                            port = re.findall("\d+", line)
+
+                    if port != 0:
+                        break
+                    time.sleep(min(0.1 * retry_cnt, 30))
+            fp.close()
+
+            index = len(port)
+            options[ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT] = port[index-1]
             self.__options[ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT] = options[ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT]
             atexit.register(shutdown_standalone_manager, self.__session_id, bootstrap_log_dir)
 

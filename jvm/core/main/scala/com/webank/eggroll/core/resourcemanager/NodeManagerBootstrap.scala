@@ -41,6 +41,7 @@ class NodeManagerBootstrap extends BootstrapBase with Logging {
     val cmd = CommandArgsUtils.parseArgs(args = args)
 
     this.confPath = cmd.getOptionValue('c', "./jvm/core/main/resources/cluster-manager.properties")
+
     // val sessionId = cmd.getOptionValue('s')
     StaticErConf.addProperties(confPath)
     val confFile = new File(confPath)
