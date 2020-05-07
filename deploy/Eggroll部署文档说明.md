@@ -200,6 +200,7 @@ sed -i "s/eggroll_meta/数据库名称/" conf/create-eggroll-meta-tables.sql
 Eggroll的bin目录中附带启动脚本bin/eggroll.sh使用说明：
 
 ```shell
+source ${EGGROLL_HOME}/init.sh       --${EGGROLL_HOME} means the absolute path of eggroll
 sh bin/eggroll.sh $1 $2		
 <--
 	$1：需要执行操作的服务名称，例如clustermanager，nodemanager，rollsite，all(表示所有服务)；
@@ -210,6 +211,7 @@ sh bin/eggroll.sh $1 $2
 使用例子：
 
 ```shell
+source ${EGGROLL_HOME}/init.sh       --${EGGROLL_HOME} means the absolute path of eggroll
 <--启动所有服务-->
 sh bin/eggroll.sh all start
 
@@ -234,9 +236,7 @@ sh bin/eggroll.sh nodemanager stop
 登录服务器进行测试时需要执行以下语句进行环境变量初始化
 
 ```shell
-export EGGROLL_HOME=Eggroll安装绝对路径		--例如/data/projects/eggroll
-export PYTHONPATH=${EGGROLL_HOME}/python		
-source virtualenv/bin/activate				--进入virtualenv独立环境
+source ${EGGROLL_HOME}/init.sh       --${EGGROLL_HOME} means the absolute path of eggroll
 ```
 
 ### 6.2.  roll_pair测试
