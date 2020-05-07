@@ -12,7 +12,7 @@ echo "script params: $@ "
 
 echo "------ mkdir starts ------"
 mkdir -p $SHELL_FOLDER/pid
-pid_file=$SHELL_FOLDER/pid/$pname.pid
+#pid_file=$SHELL_FOLDER/pid/$pname.pid
 echo "------ mkdir ends ------"
 
 
@@ -27,15 +27,17 @@ if [[ $sub_cmd == "start" ]]; then
   ${BASH} ${exe} &
   pid=$?
   echo "start: $exe, pid $pid"
-  echo $pid > $SHELL_FOLDER/pid/$pname.pid
+  #echo $pid > $SHELL_FOLDER/pid/$pname.pid
 elif [[ $sub_cmd == "stop" ]]; then
-  pid=`cat $pid_file`
+  #pid=`cat $pid_file`
   cmd="${exe} | awk '{print \$2}' | xargs kill"
-  echo "stop: $cmd, pid $pid"
+  #echo "stop: $cmd, pid $pid"
+  echo "stop: $cmd"
   eval ${cmd}
 elif [[ $sub_cmd == "kill" ]]; then
-  pid=`cat $pid_file`
+  #pid=`cat $pid_file`
   cmd="${exe} | awk '{print \$2}' | xargs kill -9"
-  echo "kill: $cmd, pid $pid"
+  #echo "kill: $cmd, pid $pid"
+  echo "kill: $cmd"
   eval ${cmd}
 fi
