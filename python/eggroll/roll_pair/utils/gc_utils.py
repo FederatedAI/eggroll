@@ -120,7 +120,7 @@ class GcRecorder(object):
                 continue
             if not rp_name:
                 continue
-            L.info(f"gc thread destroying rp:{rp_name}")
+            L.info(f"GC thread destroying rp:{rp_name}")
             self.record_rpc.load(namespace=self.record_rpc.get_session().get_session_id(),
                                      name=rp_name).destroy()
 
@@ -131,13 +131,13 @@ class GcRecorder(object):
         if store_type != StoreTypes.ROLLPAIR_IN_MEMORY:
             return
         else:
-            L.info("record in memory table namespace:{}, name:{}, type:{}"
+            L.info("GC recording in memory table namespace={}, name={}, type={}"
                   .format(namespace, name, store_type))
             count = self.gc_recorder.get(name)
             if count is None:
                 count = 0
             self.gc_recorder[name] = count + 1
-            L.debug(f"recorded:{self.gc_recorder}")
+            L.info(f"GC recorded count={len(self.gc_recorder)}")
 
     def decrease_ref_count(self, er_store):
         if er_store._store_locator._store_type != StoreTypes.ROLLPAIR_IN_MEMORY:
@@ -146,6 +146,6 @@ class GcRecorder(object):
         record_count = 0 if ref_count is None or ref_count == 0 else (ref_count - 1)
         self.gc_recorder[er_store._store_locator._name] = record_count
         if record_count == 0 and er_store._store_locator._name in self.gc_recorder:
-            L.info(f'put in queue:{er_store._store_locator._name}')
+            L.info(f'GC put in queue:{er_store._store_locator._name}')
             self.gc_queue.put(er_store._store_locator._name)
             self.gc_recorder.pop(er_store._store_locator._name)
