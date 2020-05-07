@@ -308,6 +308,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                         Thread.sleep(50);
                         --retryCount;
                     }
+                    JobStatus.cleanupJobStatus(tagKey);
                 } else {
                     LOGGER.info("getStatus: job NOT finished: {}. current latch count: {}, "
                             + "put batch required: {}, put batch finished: {}",
@@ -339,7 +340,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
             long loopEndTimestamp = System.currentTimeMillis();
             while ((!hasReturnedBefore || !pipe.isDrained())
                 && !pipe.hasError()
-                && emptyRetryCount < 300
+                && emptyRetryCount < 30_000
                 && !timeouts.isTimeout(overallTimeout, startTimestamp, loopEndTimestamp)) {
                 packet = (Proxy.Packet) pipe.read(1, TimeUnit.SECONDS);
 //            packet = request;
@@ -388,7 +389,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                     pipe.onError(e);
                 } else {
                     String errorMsg =
-                        "[PULL][SERVER] pull server error: overall process time exceeds timeout: "
+                        "[UNARYCALL][SERVER] unary call server error: overall process time exceeds timeout: "
                             + overallTimeout
                             + ", metadata: " + oneLineStringInputMetadata
                             + ", startTimestamp: " + startTimestamp
