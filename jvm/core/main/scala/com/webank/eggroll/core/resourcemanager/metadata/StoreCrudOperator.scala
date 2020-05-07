@@ -55,15 +55,15 @@ class StoreCrudOperator extends CrudOperator with Logging {
     doGetOrCreateStore(input)
   }
 
-  def getStore(input: ErStore): ErStore = {
+  def getStore(input: ErStore): ErStore = synchronized {
     StoreCrudOperator.doGetStore(input)
   }
 
-  def deleteStore(input: ErStore): ErStore = {
+  def deleteStore(input: ErStore): ErStore = synchronized {
     StoreCrudOperator.doDeleteStore(input)
   }
 
-  def getStoreFromNamespace(input: ErStore): ErStoreList = {
+  def getStoreFromNamespace(input: ErStore): ErStoreList = synchronized {
     StoreCrudOperator.dao.getStoreLocators(input: ErStore)
   }
 }
