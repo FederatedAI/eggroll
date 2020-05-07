@@ -250,7 +250,7 @@ class EggPair(object):
                 f = create_functor(functors[0]._body)
                 value = f(generator(key_serdes, value_serdes, input_iterator))
                 if input_iterator.last():
-                    L.debug("value of mapPartitions:{}".format(value))
+                    #L.debug("value of mapPartitions:{}".format(value))
                     if isinstance(value, Iterable):
                         for k1, v1 in value:
                             shuffle_broker.put((key_serdes.serialize(k1), value_serdes.serialize(v1)))
