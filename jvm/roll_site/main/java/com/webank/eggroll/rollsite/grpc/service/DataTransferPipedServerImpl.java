@@ -327,7 +327,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                 return;
             }
 
-            if (System.getenv("PUSH_OBJ_WITH_ROLL_PAIR").equals("TRUE")) {
+            if (System.getenv("PUSH_OBJ_WITH_ROLL_PAIR") != null && System.getenv("PUSH_OBJ_WITH_ROLL_PAIR").equals("TRUE")) {
                 Pipe pipe = new PacketQueueSingleResultPipe();
                 LOGGER.info("self send: {}", ByteString.copyFromUtf8(pipe.getType()));
                 PipeHandleNotificationEvent event =

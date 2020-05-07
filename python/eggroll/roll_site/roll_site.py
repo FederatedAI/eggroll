@@ -24,7 +24,7 @@ from eggroll.core.error import GrpcCallError
 from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.meta_model import ErStoreLocator, ErStore
 from eggroll.core.proto import proxy_pb2, proxy_pb2_grpc
-from eggroll.core.serdes import eggroll_serdes
+from eggroll.core.serdes import eggroll_serdes, cloudpickle
 from eggroll.core.transfer_model import ErRollSiteHeader
 from eggroll.core.utils import _stringify
 from eggroll.core.utils import to_one_line_string
@@ -222,13 +222,14 @@ class RollSite:
                                                   src=topic_src,
                                                   dst=topic_dst,
                                                   command=command_test,
-                                                  operator="get_obj",
+                                                  operator="pull_obj",
                                                   seq=0,
                                                   ack=0)
                     packet = proxy_pb2.Packet(header=metadata)
 
                     ret = self.stub.unaryCall(packet)
-                    result = ret.body.value
+                    #result = ret.body.value
+                    result = cloudpickle.loads(ret.body.value)
             else:
                 rp = self.ctx.rp_ctx.load(namespace=table_namespace, name=table_name)
                 result = rp
@@ -360,7 +361,9 @@ class RollSite:
                                               operator="push_obj",
                                               seq=0,
                                               ack=0)
-                data = proxy_pb2.Data(key=_tagged_key, value=bytes(obj, encoding="utf8"))
+
+                #data = proxy_pb2.Data(key=_tagged_key, value=bytes(obj, encoding="utf8"))
+                data = proxy_pb2.Data(key=_tagged_key, value=cloudpickle.dumps(obj))
                 packet = proxy_pb2.Packet(header=metadata, body=data)
 
                 future = self.receive_exeutor_pool.submit(RollSite.send_packet, self, packet)
