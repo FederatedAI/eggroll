@@ -199,7 +199,7 @@ class RollSite:
                     time.sleep(min(0.1 * retry_cnt, 30))
                 obj_type = ret_packet.body.value
 
-                table_namespace = self.roll_site_session_id
+            table_namespace = self.roll_site_session_id
             L.info(f"pull status done: table_name:{table_name}, packet:{to_one_line_string(packet)}, namespace:{namespace}")
             if obj_type == b'object':
                 if os.environ.get('PUSH_OBJ_WITH_ROLL_PAIR') == "TRUE":
