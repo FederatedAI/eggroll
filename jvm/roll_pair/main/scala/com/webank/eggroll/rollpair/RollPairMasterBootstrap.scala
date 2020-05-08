@@ -97,22 +97,22 @@ class RollPairMasterBootstrap extends BootstrapBase with Logging {
   private var nodeManager = ""
   private var args: Array[String] = _
   private var cmd: CommandLine = null
-  private var cm_host = ""
-  private var cm_port = 0
-  private var nm_port = ""
+  private var cmHost = ""
+  private var cmPort = 0
+  private var nmPort = ""
 
   override def init(args: Array[String]): Unit = {
     this.args = args
     cmd = CommandArgsUtils.parseArgs(args)
     sessionId = cmd.getOptionValue('s')
     val cm = cmd.getOptionValue("cm")
-    nm_port = cmd.getOptionValue("nm")
+    nmPort = cmd.getOptionValue("nm")
     if (cm != null) {
       val toks = cm.split(":")
-      cm_host = toks(0)
-      cm_port = toks(1).toInt
-      StaticErConf.addProperty(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST, cm_host)
-      StaticErConf.addProperty(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, cm_port.toString)
+      cmHost = toks(0)
+      cmPort = toks(1).toInt
+      StaticErConf.addProperty(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST, cmHost)
+      StaticErConf.addProperty(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, cmPort.toString)
     }
 
     CommandRouter.register(serviceName = RollPair.ROLL_RUN_JOB_COMMAND.uriString,
@@ -158,12 +158,11 @@ class RollPairMasterBootstrap extends BootstrapBase with Logging {
 
     StaticErConf.addProperty(SessionConfKeys.CONFKEY_SESSION_ID, sessionId)
 
-    val cm_port2 = StaticErConf.getProperty(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, "0").toInt
     StaticErConf.addProperties(confPath)
     val confFile = new File(confPath)
     StaticErConf.addProperty(CoreConfKeys.STATIC_CONF_PATH, confFile.getAbsolutePath)
-    StaticErConf.addProperty(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, cm_port.toString)
-    StaticErConf.addProperty(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT, nm_port)
+    StaticErConf.addProperty(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, cmPort.toString)
+    StaticErConf.addProperty(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT, nmPort)
 
     Runtime.getRuntime.addShutdownHook(new Thread() {
       override def run(): Unit = { // Use stderr here since the logger may have been reset by its JVM shutdown hook.
