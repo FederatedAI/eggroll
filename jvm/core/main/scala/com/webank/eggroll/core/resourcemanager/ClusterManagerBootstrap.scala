@@ -1,6 +1,7 @@
 package com.webank.eggroll.core.resourcemanager
 
 import java.io.File
+import org.apache.commons.lang3.StringUtils
 
 import com.webank.eggroll.core.BootstrapBase
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
@@ -13,7 +14,7 @@ import com.webank.eggroll.core.util.{CommandArgsUtils, Logging}
 
 class ClusterManagerBootstrap extends BootstrapBase with Logging {
   private var port = 0
-  private var tagValue = "0"
+  private var standaloneTag = "0"
   //private var sessionId = "er_session_null"
   override def init(args: Array[String]): Unit = {
 
@@ -111,7 +112,7 @@ class ClusterManagerBootstrap extends BootstrapBase with Logging {
 
     //this.sessionId = cmd.getOptionValue('s')
     val confPath = cmd.getOptionValue('c', "./conf/eggroll.properties")
-    tagValue = System.getProperty("standalone.tag")
+    standaloneTag = System.getProperty("standalone.tag")
 
     StaticErConf.addProperties(confPath)
     val confFile = new File(confPath)
@@ -120,7 +121,7 @@ class ClusterManagerBootstrap extends BootstrapBase with Logging {
     this.port = cmd.getOptionValue('p', cmd.getOptionValue('p', StaticErConf.getProperty(
       ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT,"4670"))).toInt
 
-    if(tagValue == null) {
+    if(StringUtils.isBlank(standaloneTag)) {
       Runtime.getRuntime.addShutdownHook(new Thread(() => {
         logWarning("****** Shutting down Cluster Manager ******")
         logInfo("Shutting down cluster manager. Force terminating NEW / ACTIVE sessions")
@@ -141,7 +142,7 @@ class ClusterManagerBootstrap extends BootstrapBase with Logging {
     this.port = server.getPort
 
     StaticErConf.setPort(port)
-    logInfo(s"${tagValue} server started at port ${port}")
-    println(s"${tagValue} server started at port ${port}")
+    logInfo(s"${standaloneTag} server started at port ${port}")
+    println(s"${standaloneTag} server started at port ${port}")
   }
 }
