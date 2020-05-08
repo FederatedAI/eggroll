@@ -61,16 +61,13 @@ class ErSession(object):
         if "EGGROLL_DEBUG" not in os.environ:
             os.environ['EGGROLL_DEBUG'] = "0"
 
+        conf_path = options.get(CoreConfKeys.STATIC_CONF_PATH, f"{self.__eggroll_home}/conf/eggroll.properties")
+
+        L.info(f"static conf path: {conf_path}")
+        configs = configparser.ConfigParser()
+        configs.read(conf_path)
+        set_static_er_conf(configs['eggroll'])
         static_er_conf = get_static_er_conf()
-        if not static_er_conf:
-            conf_path = options.get(CoreConfKeys.STATIC_CONF_PATH, f"{self.__eggroll_home}/conf/eggroll.properties")
-            L.info(f"static conf path: {conf_path}")
-            configs = configparser.ConfigParser()
-            configs.read(conf_path)
-            set_static_er_conf(configs['eggroll'])
-            static_er_conf = get_static_er_conf()
-        else:
-            conf_path = options.get(CoreConfKeys.STATIC_CONF_PATH, f"{self.__eggroll_home}/conf/eggroll.properties")
 
         self.__options = options.copy()
         self.__options[SessionConfKeys.CONFKEY_SESSION_ID] = self.__session_id
@@ -111,7 +108,7 @@ class ErSession(object):
                                      options=options)
 
         from time import monotonic, sleep
-        timeout = int(options.get("eggroll.session.create.timeout.ms", "10000")) / 1000
+        timeout = int(SessionConfKeys.EGGROLL_SESSION_START_TIMEOUT_MS.get_with(options)) / 1000 + 2
         endtime = monotonic() + timeout
 
         # TODO:0: ignores exception while starting up in standalone mod
@@ -131,7 +128,7 @@ class ErSession(object):
         self.__exit_tasks = list()
         self.__processors = self.__session_meta._processors
 
-        L.info(f'session init finished:{self.__session_id}, details: {self.__session_meta}')
+        L.info(f'session init finished: {self.__session_id}, details: {self.__session_meta}')
         self.stopped = self.__session_meta._status == SessionStatus.CLOSED or self.__session_meta._status == SessionStatus.KILLED
         self._rolls = list()
         self._eggs = dict()
@@ -148,12 +145,26 @@ class ErSession(object):
             else:
                 raise ValueError(f'processor type {processor_type} not supported in roll pair')
 
-    def route_to_egg(self, partition: ErPartition):
-        target_server_node = partition._processor._server_node_id
-        target_egg_processors = len(self._eggs[target_server_node])
-        target_processor = (partition._id // len(self._eggs)) % target_egg_processors
+    def get_rank_in_node(self, partition_id, server_node_id):
+        processor_count_of_node = len(self._eggs[server_node_id])
+        node_count = len(self._eggs)
+        rank_in_node = (partition_id // node_count) % processor_count_of_node
 
-        result = self._eggs[target_server_node][target_processor]
+        return rank_in_node
+
+    def route_to_egg(self, partition: ErPartition):
+        server_node_id = partition._processor._server_node_id
+        rank_in_node = partition._rank_in_node
+        if partition._rank_in_node is None or rank_in_node < 0:
+            rank_in_node = self.get_rank_in_node(partition_id=partition._id,
+                                                 server_node_id=server_node_id)
+
+        result = self.route_to_egg_by_rank(server_node_id, rank_in_node)
+
+        return result
+
+    def route_to_egg_by_rank(self, server_node_id, rank_in_node):
+        result = self._eggs[server_node_id][rank_in_node]
         if not result._command_endpoint._host or result._command_endpoint._port <= 0:
             raise ValueError(f'error routing to egg: {result} in session: {self.__session_id}')
 
@@ -162,7 +173,12 @@ class ErSession(object):
     def populate_processor(self, store: ErStore):
         populated_partitions = list()
         for p in store._partitions:
-            pp = ErPartition(id=p._id, store_locator=p._store_locator, processor=self.route_to_egg(p))
+            server_node_id = p._processor._server_node_id
+            rank_in_node = self.get_rank_in_node(p._id, p._processor._server_node_id)
+            pp = ErPartition(id=p._id,
+                             store_locator=p._store_locator,
+                             processor=self.route_to_egg_by_rank(server_node_id, rank_in_node),
+                             rank_in_node=rank_in_node)
             populated_partitions.append(pp)
         return ErStore(store_locator=store._store_locator, partitions=populated_partitions, options=store._options)
 
@@ -246,7 +262,7 @@ class ErSession(object):
     def stop(self):
         L.info(f'stopping session (gracefully): {self.__session_id}')
         L.debug(f'stopping session (gracefully), details: {self.__session_meta}')
-        L.debug(f'stopping (gracefully) from: {get_stack()}')
+        L.debug(f'stopping (gracefully) for {self.__session_id} from: {get_stack()}')
         self.run_exit_tasks()
         self.stopped = True
         return self._cluster_manager_client.stop_session(self.__session_meta)
@@ -254,7 +270,7 @@ class ErSession(object):
     def kill(self):
         L.info(f'killing session (forcefully): {self.__session_id}')
         L.debug(f'killing session (forcefully), details: {self.__session_meta}')
-        L.debug(f'killing (forcefully) from: {get_stack()}')
+        L.debug(f'killing (forcefully) for {self.__session_id} from: {get_stack()}')
         self.stopped = True
         return self._cluster_manager_client.kill_session(self.__session_meta)
 

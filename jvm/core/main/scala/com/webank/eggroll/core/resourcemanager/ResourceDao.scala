@@ -28,7 +28,7 @@ class StoreMetaDao {
 
 class SessionMetaDao {
   private lazy val dbc = ResourceDao.dbc
-  def register(sessionMeta: ErSessionMeta, replace: Boolean = true): Unit = {
+  def register(sessionMeta: ErSessionMeta, replace: Boolean = true): Unit = synchronized {
     require(sessionMeta.activeProcCount == sessionMeta.processors.count(_.status == ProcessorStatus.RUNNING),
       "conflict active proc count:" + sessionMeta)
     val sid = sessionMeta.id
@@ -75,7 +75,8 @@ class SessionMetaDao {
           commandEndpoint = if(StringUtils.isBlank(rs.getString("command_endpoint"))) null
                             else ErEndpoint(rs.getString("command_endpoint")),
           transferEndpoint = if(StringUtils.isBlank(rs.getString("transfer_endpoint"))) null
-                              else ErEndpoint(rs.getString("transfer_endpoint")))
+                              else ErEndpoint(rs.getString("transfer_endpoint")),
+          pid = rs.getInt("pid"))
         ),
       "select * from session_processor where session_id = ?", sessionId)
     getSessionMain(sessionId).copy(options = opts, processors = procs.toArray)
@@ -99,7 +100,7 @@ class SessionMetaDao {
     proc
   }
 
-  def updateProcessor(proc: ErProcessor): Unit = {
+  def updateProcessor(proc: ErProcessor): Unit = synchronized {
     val (session_id: String, oldStatus: String) = dbc.query( rs => {
       if (!rs.next()) {
         throw new NotExistError("processor not exits:" + proc)
@@ -142,7 +143,7 @@ class SessionMetaDao {
     }
   }
 
-  def getSessionMain(sessionId: String): ErSessionMeta = {
+  def getSessionMain(sessionId: String): ErSessionMeta = synchronized {
     dbc.query( rs => {
       if (!rs.next()) {
         throw new NotExistError("session id not found:" + sessionId)
@@ -152,7 +153,8 @@ class SessionMetaDao {
         id = sessionId, name = rs.getString("name"),
         totalProcCount = rs.getInt("total_proc_count"),
         activeProcCount = rs.getInt("active_proc_count"),
-        status = rs.getString("status"), tag = rs.getString("tag"))
+        status = rs.getString("status"),
+        tag = rs.getString("tag"))
     },"select * from session_main where session_id = ?", sessionId)
   }
 

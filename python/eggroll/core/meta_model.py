@@ -215,7 +215,7 @@ class ErProcessor(RpcMessage):
                f'name={self._name}, ' \
                f'processor_type={self._processor_type}, ' \
                f'status={self._status}, ' \
-               f'command_endpoint={repr(self._command_endpoint)},' \
+               f'command_endpoint={repr(self._command_endpoint)}, ' \
                f'transfer_endpoint={repr(self._transfer_endpoint)}, ' \
                f'pid={self._pid}, ' \
                f'options=[{repr(self._options)}], ' \
@@ -400,15 +400,17 @@ class ErStoreLocator(RpcMessage):
 
 class ErPartition(RpcMessage):
     def __init__(self, id: int, store_locator: ErStoreLocator,
-            processor: ErProcessor=None):
+            processor: ErProcessor=None, rank_in_node=-1):
         self._id = id
         self._store_locator = store_locator
         self._processor = processor
+        self._rank_in_node = rank_in_node
 
     def to_proto(self):
         return meta_pb2.Partition(id=self._id,
                                   storeLocator=self._store_locator.to_proto() if self._store_locator else None,
-                                  processor=self._processor.to_proto() if self._processor else None)
+                                  processor=self._processor.to_proto() if self._processor else None,
+                                  rankInNode=self._rank_in_node)
 
     def to_proto_string(self):
         return self.to_proto().SerializeToString()
@@ -418,7 +420,8 @@ class ErPartition(RpcMessage):
         return ErPartition(id=pb_message.id,
                            store_locator=ErStoreLocator.from_proto(
                                    pb_message.storeLocator),
-                           processor=ErProcessor.from_proto(pb_message.processor))
+                           processor=ErProcessor.from_proto(pb_message.processor),
+                           rank_in_node=pb_message.rankInNode)
 
     def to_path(self, delim=DEFAULT_PATH_DELIM):
         return DEFAULT_PATH_DELIM.join([self._store_locator.to_path(delim=delim), self._id])
@@ -427,7 +430,8 @@ class ErPartition(RpcMessage):
         return f'<ErPartition(' \
                f'id={repr(self._id)}, ' \
                f'store_locator={repr(self._store_locator)}, ' \
-               f'processor={repr(self._processor)}) ' \
+               f'processor={repr(self._processor)}, ' \
+               f'rank_in_node={repr(self._rank_in_node)}) ' \
                f'at {hex(id(self))}>'
 
 
@@ -465,12 +469,20 @@ class ErStore(RpcMessage):
         msg_len = pb_message.ParseFromString(pb_string)
         return ErStore.from_proto(pb_message)
 
-    def __repr__(self):
+    def __str__(self):
         return f'<ErStore(' \
                f'store_locator={repr(self._store_locator)}, ' \
-               f'partitions=[{_repr_list(self._partitions)}], ' \
+               f'partitions=[***, len={len(self._partitions)}], ' \
                f'options=[{repr(self._options)}]) ' \
                f'at {hex(id(self))}>'
+
+    def __repr__(self):
+        return self.__str__()
+        # return f'<ErStore(' \
+        #        f'store_locator={repr(self._store_locator)}, ' \
+        #        f'partitions=[{_repr_list(self._partitions)}], ' \
+        #        f'options=[{repr(self._options)}]) ' \
+        #        f'at {hex(id(self))}>'
 
 
 class ErStoreList(RpcMessage):
@@ -671,12 +683,23 @@ class ErSessionMeta(RpcMessage):
         msg_len = pb_message.ParseFromString(pb_string)
         return ErSessionMeta.from_proto(pb_message)
 
-    def __repr__(self):
+    def __str__(self):
         return f'<ErSessionMeta(' \
                f'id={self._id}, ' \
                f'name={self._name}, ' \
                f'status={self._status}, ' \
                f'tag={self._tag}, ' \
-               f'processors=[{_repr_list(self._processors)}], ' \
+               f'processors=[***, len={len(self._processors)}], ' \
                f'options=[{repr(self._options)}]) ' \
                f'at {hex(id(self))}>'
+
+    def __repr__(self):
+        return self.__str__()
+        # return f'<ErSessionMeta(' \
+        #        f'id={self._id}, ' \
+        #        f'name={self._name}, ' \
+        #        f'status={self._status}, ' \
+        #        f'tag={self._tag}, ' \
+        #        f'processors=[{_repr_list(self._processors)}], ' \
+        #        f'options=[{repr(self._options)}]) ' \
+        #        f'at {hex(id(self))}>'

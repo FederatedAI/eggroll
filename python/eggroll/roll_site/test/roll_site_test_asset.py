@@ -116,9 +116,11 @@ def get_standalone_context(role, props_file=default_props_file):
     return rs_context
 
 
-def get_cluster_context(role, options: dict = None, props_file=default_props_file, party_id=None):
+def get_cluster_context(role, options: dict = None, props_file=default_props_file, party_id=None, session_id=None):
     if options is None:
         options = {}
+    if session_id:
+        options['session_id'] = session_id
     options[CoreConfKeys.STATIC_CONF_PATH] = props_file
     rp_context = rpta.get_cluster_context(options=options)
 
