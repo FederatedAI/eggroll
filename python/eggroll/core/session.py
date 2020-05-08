@@ -85,7 +85,10 @@ class ErSession(object):
              #                      static_er_conf.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, "4689")))
             port = 0
             random_value = str(random.random())
-            startup_command = f'{self.__eggroll_home}/bin/eggroll_boot_standalone.py -p {port} -s {self.__session_id} -r {random_value}'
+            if os.name != 'nt':
+                startup_command = f'{self.__eggroll_home}/bin/eggroll_boot_standalone.sh -p {port} -s {self.__session_id} -r {random_value}'
+            else:
+                startup_command = f'{self.__eggroll_home}/bin/eggroll_boot_standalone.py -p {port} -s {self.__session_id} -r {random_value}'
             print("startup_command:", startup_command)
             import subprocess
             import atexit
@@ -112,10 +115,10 @@ class ErSession(object):
                     returncode = manager_process.returncode
                     L.info(f'shutdown returncode: {returncode}')
 
-            file_name = f'{self.__eggroll_home}/logs/bootstrap-standalone-manager.out'
+            file_name = f'{self.__eggroll_home}/logs/eggroll/bootstrap-standalone-manager.out'
             retry_cnt = 0
             while True:
-                msg = f"retry get port of ClusterManager and NodeManager: retry_cnt: {retry_cnt},"
+                msg = f"retry get port from bootstrap-standalone-manager.out: retry_cnt: {retry_cnt},"
                 if retry_cnt % 10 == 0:
                     L.info(msg)
                 else:

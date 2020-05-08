@@ -45,11 +45,8 @@ if __name__ == '__main__':
     eggroll_logs_dir = os.environ.get('EGGROLL_LOGS_DIR')
     if eggroll_logs_dir is None:
         eggroll_logs_dir = get_property(conf_file, "eggroll.logs.dir")
-
         if eggroll_logs_dir is None:
-
             eggroll_logs_dir = os.path.join(eggroll_home, 'logs')
-
 
     os.environ["EGGROLL_LOGS_DIR"] = os.path.join(eggroll_logs_dir, session_id)
 
@@ -89,8 +86,8 @@ if __name__ == '__main__':
           ' -s ' + session_id +\
           ' -p ' + cluster_manager_port
 
-    eggroll_log_file = 'bootstrap-standalone-manager.out'
-    eggroll_err_file = 'bootstrap-standalone-manager.err'
+    eggroll_log_file = '/eggroll/bootstrap-standalone-manager.out'
+    eggroll_err_file = '/eggroll/bootstrap-standalone-manager.err'
 
     log_file = os.path.join(eggroll_logs_dir, eggroll_log_file)
     err_file = os.path.join(eggroll_logs_dir, eggroll_err_file)
