@@ -144,7 +144,6 @@ class ErSession(object):
                     if port != 0:
                         break
                     time.sleep(min(0.1 * retry_cnt, 30))
-            fp.close()
 
             index = len(port)
             options[ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT] = port[index-1]
