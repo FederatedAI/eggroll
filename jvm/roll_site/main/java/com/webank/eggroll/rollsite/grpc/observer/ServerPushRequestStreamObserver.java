@@ -18,6 +18,7 @@ package com.webank.eggroll.rollsite.grpc.observer;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
+import com.webank.ai.eggroll.api.core.BasicMeta.Endpoint;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
 import com.webank.eggroll.core.meta.ErRollSiteHeader;
 import com.webank.eggroll.core.meta.TransferModelPbMessageSerdes;
@@ -28,6 +29,7 @@ import com.webank.eggroll.rollsite.RollSiteUtil;
 import com.webank.eggroll.rollsite.event.model.PipeHandleNotificationEvent;
 import com.webank.eggroll.rollsite.factory.EventFactory;
 import com.webank.eggroll.rollsite.factory.PipeFactory;
+import com.webank.eggroll.rollsite.factory.ProxyGrpcStubFactory;
 import com.webank.eggroll.rollsite.helper.ModelValidationHelper;
 import com.webank.eggroll.rollsite.infra.JobStatus;
 import com.webank.eggroll.rollsite.infra.Pipe;
@@ -102,6 +104,8 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
     private ProxyServerConf proxyServerConf;
     @Autowired
     private PipeUtils pipeUtils;
+    @Autowired
+    private ProxyGrpcStubFactory proxyGrpcStubFactory;
     private Pipe pipe;
     private PipeFactory pipeFactory;
     private Proxy.Metadata inputMetadata;
@@ -283,8 +287,8 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
                     }
                     DEBUGGING.info("-------------");
                 }
-                LOGGER.info("push server received size: {}, data size: {}",
-                    packet.getSerializedSize(), packet.getBody().getValue().size());
+                LOGGER.info("push server received size: {}, data size: {} for tag: {}",
+                    packet.getSerializedSize(), packet.getBody().getValue().size(), oneLineStringInputMetadata);
             }
         } catch (Exception e) {
             onError(e);
@@ -293,28 +297,29 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
 
     @Override
     public void onError(Throwable throwable) {
-        LOGGER.info("[PUSH][OBSERVER] onError");
+        Endpoint next = proxyGrpcStubFactory.getAsyncEndpoint(inputMetadata.getDst());
+        StringBuilder builder = new StringBuilder();
+        builder.append("src: ")
+            .append(ToStringUtils.toOneLineString(inputMetadata.getSrc()))
+            .append(", dst: ")
+            .append(ToStringUtils.toOneLineString(inputMetadata.getDst()))
+            .append(", my hop: ")
+            .append(proxyServerConf.getPartyId())
+            .append(":")
+            .append(proxyServerConf.getPort())
+            .append(" -> next hop: ")
+            .append(next.getIp())
+            .append(":")
+            .append(next.getPort());
+        RuntimeException exceptionWithHop = new RuntimeException(builder.toString(), throwable);
         LOGGER.error("[PUSH][OBSERVER][ONERROR] error in push server: {}, metadata: {}, ackCount: {}",
-                Status.fromThrowable(throwable), oneLineStringInputMetadata, ackCount.get());
-        LOGGER.error(ExceptionUtils.getStackTrace(throwable));
+                Status.fromThrowable(exceptionWithHop), oneLineStringInputMetadata, ackCount.get());
+        LOGGER.error(ExceptionUtils.getStackTrace(exceptionWithHop));
 
         pipe.setDrained();
 
-/*        if (Status.fromThrowable(throwable).getCode() != Status.Code.CANCELLED) {
-            pipe.onError(throwable);
-            responseObserver.onError(errorUtils.toGrpcRuntimeException(throwable));
-            streamStat.onError();
-        } else {
-            noError = false;
-            pipe.onComplete();
-            LOGGER.info("[PUSH][OBSERVER][ONERROR] connection cancelled. turning into completed.");
-            onCompleted();
-            streamStat.onComplete();
-            return;
-        }*/
-
-        pipe.onError(throwable);
-        responseObserver.onError(ErrorUtils.toGrpcRuntimeException(throwable));
+        pipe.onError(exceptionWithHop);
+        responseObserver.onError(ErrorUtils.toGrpcRuntimeException(exceptionWithHop));
         streamStat.onError();
     }
 

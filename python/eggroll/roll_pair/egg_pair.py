@@ -15,8 +15,11 @@
 
 import argparse
 import configparser
+import logging
 import os
+import shutil
 import signal
+import time
 from collections.abc import Iterable
 from concurrent import futures
 import threading
@@ -24,13 +27,12 @@ import platform
 
 import grpc
 import numpy as np
-from grpc._cython import cygrpc
 
 from eggroll.core.client import ClusterManagerClient
 from eggroll.core.command.command_router import CommandRouter
 from eggroll.core.command.command_service import CommandServicer
 from eggroll.core.conf_keys import SessionConfKeys, \
-    ClusterManagerConfKeys
+    ClusterManagerConfKeys, RollPairConfKeys, CoreConfKeys
 from eggroll.core.constants import ProcessorTypes, ProcessorStatus, SerdesTypes
 from eggroll.core.datastructure.broker import FifoBroker
 from eggroll.core.meta_model import ErPair
@@ -46,6 +48,7 @@ from eggroll.roll_pair.transfer_pair import TransferPair
 from eggroll.roll_pair.utils.pair_utils import generator, partitioner, \
     set_data_dir
 from eggroll.utils.log_utils import get_logger
+from eggroll.utils.profile import get_system_metric
 
 L = get_logger()
 
@@ -135,21 +138,21 @@ class EggPair(object):
 
     @_exception_logger
     def run_task(self, task: ErTask):
-        L.info("start run task")
-        L.debug("start run task")
+        if L.isEnabledFor(logging.DEBUG):
+            L.debug(f'egg_pair run_task start. task name: {task._name}, inputs: {task._inputs}, outputs: {task._outputs}, task id: {task._id}')
+        else:
+            L.info(f'egg_pair run_task start. task name: {task._name}, task id: {task._id}')
         functors = task._job._functors
         result = task
 
         if task._name == 'get':
-            L.info("egg_pair get call")
             # TODO:1: move to create_serdes
             f = create_functor(functors[0]._body)
             with create_adapter(task._inputs[0]) as input_adapter:
-                print("get key:{} and path is:{}".format(self.functor_serdes.deserialize(f._key), input_adapter.path))
+                L.debug(f"get: key: {self.functor_serdes.deserialize(f._key)}, path: {input_adapter.path}")
                 value = input_adapter.get(f._key)
                 result = ErPair(key=f._key, value=value)
         elif task._name == 'getAll':
-            L.info("egg_pair getAll call")
             tag = f'{task._id}'
             def generate_broker():
                 with create_adapter(task._inputs[0]) as db, db.iteritems() as rb:
@@ -158,38 +161,62 @@ class EggPair(object):
                     # TransferService.remove_broker(tag)
             TransferService.set_broker(tag, generate_broker())
         elif task._name == 'count':
-            L.info('egg_pair count call')
             with create_adapter(task._inputs[0]) as input_adapter:
                 result = ErPair(key=self.functor_serdes.serialize('result'),
                                 value=self.functor_serdes.serialize(input_adapter.count()))
 
         # TODO:1: multiprocessor scenario
         elif task._name == 'putAll':
-            L.info("egg_pair putAll call")
             output_partition = task._outputs[0]
             tag = f'{task._id}'
-            L.info(f'egg_pair transfer service tag:{tag}')
+            L.info(f'egg_pair putAll: transfer service tag: {tag}')
             tf = TransferPair(tag)
             store_broker_result = tf.store_broker(output_partition, False).result()
             # TODO:2: should wait complete?, command timeout?
             L.debug(f"putAll result:{store_broker_result}")
 
         if task._name == 'put':
-            L.info("egg_pair put call")
             f = create_functor(functors[0]._body)
             with create_adapter(task._inputs[0]) as input_adapter:
                 value = input_adapter.put(f._key, f._value)
                 #result = ErPair(key=f._key, value=bytes(value))
 
         if task._name == 'destroy':
-            with create_adapter(task._inputs[0]) as input_adapter:
-                input_adapter.destroy()
-                L.info("finish destroy")
+            input_store_locator = task._inputs[0]._store_locator
+            namespace = input_store_locator._namespace
+            name = input_store_locator._name
+            store_type = input_store_locator._store_type
+            L.info(f'destroying store_type={store_type}, namespace={namespace}, name={name}')
+            if name == '*':
+                from eggroll.roll_pair.utils.pair_utils import get_db_path, get_data_dir
+                target_paths = list()
+                if store_type == '*':
+                    data_dir = get_data_dir()
+                    store_types = os.listdir(data_dir)
+                    for store_type in store_types:
+                        target_paths.append('/'.join([data_dir, store_type, namespace]))
+                else:
+                    db_path = get_db_path(task._inputs[0])
+                    target_paths.append(db_path[:db_path.rfind('*')])
+
+                real_data_dir = os.path.realpath(get_data_dir())
+                for path in target_paths:
+                    realpath = os.path.realpath(path)
+                    if os.path.exists(path):
+                        if realpath == "/" \
+                                or realpath == real_data_dir \
+                                or not realpath.startswith(real_data_dir):
+                            raise ValueError(f'trying to delete a dangerous path: {realpath}')
+                        else:
+                            shutil.rmtree(path)
+            else:
+                with create_adapter(task._inputs[0]) as input_adapter:
+                    input_adapter.destroy()
 
         if task._name == 'delete':
             f = create_functor(functors[0]._body)
             with create_adapter(task._inputs[0]) as input_adapter:
-                L.info("delete k:{}, its value:{}".format(f._key, input_adapter.get(f._key)))
+                L.info("delete k:{}".format(f._key))
                 if input_adapter.delete(f._key):
                     L.info("delete k success")
 
@@ -209,18 +236,14 @@ class EggPair(object):
                     shuffle_broker.put((key_serdes.serialize(k1), value_serdes.serialize(v1)))
                 L.info('finish calculating')
             self._run_unary(map_wrapper, task, shuffle=True)
-            L.info('map finished')
 
         elif task._name == 'reduce':
             seq_op_result = self.aggregate_seq(task=task)
-            L.info('reduce finished')
             result = ErPair(key=self.functor_serdes.serialize(task._inputs[0]._id),
                             value=self.functor_serdes.serialize(seq_op_result))
 
         elif task._name == 'aggregate':
-            L.info('ready to aggregate')
             seq_op_result = self.aggregate_seq(task=task)
-            L.info('aggregate finished')
             result = ErPair(key=self.functor_serdes.serialize(task._inputs[0]._id),
                             value=self.functor_serdes.serialize(seq_op_result))
 
@@ -229,7 +252,7 @@ class EggPair(object):
                 f = create_functor(functors[0]._body)
                 value = f(generator(key_serdes, value_serdes, input_iterator))
                 if input_iterator.last():
-                    L.info("value of mapPartitions:{}".format(value))
+                    #L.debug("value of mapPartitions:{}".format(value))
                     if isinstance(value, Iterable):
                         for k1, v1 in value:
                             shuffle_broker.put((key_serdes.serialize(k1), value_serdes.serialize(v1)))
@@ -399,7 +422,14 @@ class EggPair(object):
             f = create_functor(functors[0]._body)
             result = ErPair(key=self.functor_serdes.serialize(task._inputs[0]._id),
                             value=self.functor_serdes.serialize(f(task._inputs)))
+
+        if L.isEnabledFor(logging.DEBUG):
+            L.debug(f'egg_pair run_task end. task name: {task._name}, inputs: {task._inputs}, outputs: {task._outputs}, task id: {task._id}')
+        else:
+            L.info(f'egg_pair run_task end. task name: {task._name}, task id: {task._id}')
+
         return result
+        # run_task ends here
 
     def aggregate_seq(self, task: ErTask):
         functors = task._job._functors
@@ -477,11 +507,17 @@ def serve(args):
             route_to_class_name="EggPair",
             route_to_method_name="run_task")
 
-    command_server = grpc.server(futures.ThreadPoolExecutor(max_workers=500, thread_name_prefix="grpc_server"),
-                                 options=[
-                                     ("grpc.max_metadata_size", 32 << 20),
-                                     (cygrpc.ChannelArgKey.max_send_message_length, 2 << 30 - 1),
-                                     (cygrpc.ChannelArgKey.max_receive_message_length, 2 << 30 - 1)])
+    max_workers = int(RollPairConfKeys.EGGROLL_ROLLPAIR_EGGPAIR_SERVER_EXECUTOR_POOL_MAX_SIZE.get())
+    command_server = grpc.server(futures.ThreadPoolExecutor(
+            max_workers=max_workers,
+            thread_name_prefix="eggpair-command-server"),
+            options=[
+                ("grpc.max_metadata_size",
+                 int(CoreConfKeys.EGGROLL_CORE_GRPC_SERVER_CHANNEL_MAX_INBOUND_METADATA_SIZE.get())),
+                ('grpc.max_send_message_length',
+                 int(CoreConfKeys.EGGROLL_CORE_GRPC_SERVER_CHANNEL_MAX_INBOUND_MESSAGE_SIZE.get())),
+                ('grpc.max_receive_message_length',
+                 int(CoreConfKeys.EGGROLL_CORE_GRPC_SERVER_CHANNEL_MAX_INBOUND_MESSAGE_SIZE.get()))])
 
     command_servicer = CommandServicer()
     command_pb2_grpc.add_CommandServiceServicer_to_server(command_servicer,
@@ -500,17 +536,24 @@ def serve(args):
         transfer_pb2_grpc.add_TransferServiceServicer_to_server(transfer_servicer,
                                                                 transfer_server)
     else:
-        transfer_server = grpc.server(futures.ThreadPoolExecutor(max_workers=500, thread_name_prefix="transfer_server"),
-                                      options=[
-                                          (cygrpc.ChannelArgKey.max_send_message_length, 2 << 30 - 1),
-                                          (cygrpc.ChannelArgKey.max_receive_message_length, 2 << 30 - 1),
-                                          ('grpc.max_metadata_size', 32 << 20)])
+        transfer_server_max_workers = int(RollPairConfKeys.EGGROLL_ROLLPAIR_EGGPAIR_DATA_SERVER_EXECUTOR_POOL_MAX_SIZE.get())
+        transfer_server = grpc.server(futures.ThreadPoolExecutor(
+                max_workers=transfer_server_max_workers,
+                thread_name_prefix="transfer_server"),
+                options=[
+                    ('grpc.max_metadata_size',
+                     int(CoreConfKeys.EGGROLL_CORE_GRPC_SERVER_CHANNEL_MAX_INBOUND_METADATA_SIZE.get())),
+                    ('grpc.max_send_message_length',
+                     int(CoreConfKeys.EGGROLL_CORE_GRPC_SERVER_CHANNEL_MAX_INBOUND_MESSAGE_SIZE.get())),
+                    ('grpc.max_receive_message_length',
+                     int(CoreConfKeys.EGGROLL_CORE_GRPC_SERVER_CHANNEL_MAX_INBOUND_MESSAGE_SIZE.get()))])
         transfer_port = transfer_server.add_insecure_port(f'[::]:{transfer_port}')
         transfer_pb2_grpc.add_TransferServiceServicer_to_server(transfer_servicer,
                                                                 transfer_server)
         transfer_server.start()
+    pid = os.getpid()
 
-    L.info(f"starting egg_pair service, port:{port}, transfer port: {transfer_port}")
+    L.info(f"starting egg_pair service, port: {port}, transfer port: {transfer_port}, pid: {pid}")
     command_server.start()
 
     cluster_manager = args.cluster_manager
@@ -529,13 +572,13 @@ def serve(args):
                              processor_type=ProcessorTypes.EGG_PAIR,
                              command_endpoint=ErEndpoint(host='localhost', port=port),
                              transfer_endpoint=ErEndpoint(host='localhost', port=transfer_port),
-                             pid=os.getpid(),
+                             pid=pid,
                              options=options,
                              status=ProcessorStatus.RUNNING)
 
         cluster_manager_host, cluster_manager_port = cluster_manager.strip().split(':')
 
-        L.info(f'cluster_manager: {cluster_manager}')
+        L.info(f'egg_pair cluster_manager: {cluster_manager}')
         cluster_manager_client = ClusterManagerClient(options={
             ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST: cluster_manager_host,
             ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT: cluster_manager_port
@@ -553,11 +596,10 @@ def serve(args):
     def exit_gracefully(signum, frame):
         nonlocal run
         run = False
+        L.info(f'egg_pair {args.processor_id} at port {port}, transfer_port {transfer_port}, pid {pid} receives signum {signal.getsignal(signum)}, stopping gracefully.')
 
     signal.signal(signal.SIGTERM, exit_gracefully)
     signal.signal(signal.SIGINT, exit_gracefully)
-
-    import time
 
     while run:
         time.sleep(1)
@@ -566,10 +608,12 @@ def serve(args):
         myself._status = ProcessorStatus.STOPPED
         cluster_manager_client.heartbeat(myself)
 
-    L.info(f'egg_pair at port {port}, transfer_port {transfer_port} stopped gracefully')
+    L.info(f'system metric at exit: {get_system_metric(1)}')
+    L.info(f'egg_pair {args.processor_id} at port {port}, transfer_port {transfer_port}, pid {pid} stopped gracefully')
 
 
 if __name__ == '__main__':
+    L.info(f'system metric at start: {get_system_metric(0.1)}')
     args_parser = argparse.ArgumentParser()
     args_parser.add_argument('-d', '--data-dir')
     args_parser.add_argument('-cm', '--cluster-manager')
@@ -587,9 +631,10 @@ if __name__ == '__main__':
     configs = configparser.ConfigParser()
     if args.config:
         conf_file = args.config
+        L.info(f'reading config path: {conf_file}')
     else:
         conf_file = f'{EGGROLL_HOME}/conf/eggroll.properties'
-        print(f'reading default config: {conf_file}')
+        L.info(f'reading default config: {conf_file}')
 
     configs.read(conf_file)
     set_static_er_conf(configs['eggroll'])
