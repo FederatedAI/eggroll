@@ -13,6 +13,7 @@ import com.webank.eggroll.core.util.{CommandArgsUtils, Logging}
 
 class ClusterManagerBootstrap extends BootstrapBase with Logging {
   private var port = 0
+  private var tagValue = "0"
   //private var sessionId = "er_session_null"
   override def init(args: Array[String]): Unit = {
 
@@ -110,6 +111,7 @@ class ClusterManagerBootstrap extends BootstrapBase with Logging {
 
     //this.sessionId = cmd.getOptionValue('s')
     val confPath = cmd.getOptionValue('c', "./conf/eggroll.properties")
+    tagValue = System.getProperty("standalone.tag")
 
     StaticErConf.addProperties(confPath)
     val confFile = new File(confPath)
@@ -118,15 +120,17 @@ class ClusterManagerBootstrap extends BootstrapBase with Logging {
     this.port = cmd.getOptionValue('p', cmd.getOptionValue('p', StaticErConf.getProperty(
       ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT,"4670"))).toInt
 
-    Runtime.getRuntime.addShutdownHook(new Thread(() => {
-      logWarning("****** Shutting down Cluster Manager ******")
-      logInfo("Shutting down cluster manager. Force terminating NEW / ACTIVE sessions")
+    if(tagValue == null) {
+      Runtime.getRuntime.addShutdownHook(new Thread(() => {
+        logWarning("****** Shutting down Cluster Manager ******")
+        logInfo("Shutting down cluster manager. Force terminating NEW / ACTIVE sessions")
 
-      val sessionManagerService = new SessionManagerService()
-      sessionManagerService.killAllSessions(ErSessionMeta())
+        val sessionManagerService = new SessionManagerService()
+        sessionManagerService.killAllSessions(ErSessionMeta())
 
-      logWarning("****** All sessions stopped / killed. Cluster Manager exiting gracefully ******")
-    }))
+        logWarning("****** All sessions stopped / killed. Cluster Manager exiting gracefully ******")
+      }))
+    }
     //StaticErConf.addProperty(SessionConfKeys.CONFKEY_SESSION_ID, sessionId)
   }
 
@@ -137,7 +141,7 @@ class ClusterManagerBootstrap extends BootstrapBase with Logging {
     this.port = server.getPort
 
     StaticErConf.setPort(port)
-    logInfo(s"server started at port ${port}")
-    println(s"server started at port ${port}")
+    logInfo(s"${tagValue} server started at port ${port}")
+    println(s"${tagValue} server started at port ${port}")
   }
 }

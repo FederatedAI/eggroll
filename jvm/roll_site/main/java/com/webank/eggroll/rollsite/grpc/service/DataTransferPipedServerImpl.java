@@ -29,9 +29,7 @@ import com.webank.eggroll.core.util.ErrorUtils;
 import com.webank.eggroll.core.util.ToStringUtils;
 import com.webank.eggroll.rollsite.RollSiteUtil;
 import com.webank.eggroll.rollsite.event.model.PipeHandleNotificationEvent;
-import com.webank.eggroll.rollsite.factory.EventFactory;
-import com.webank.eggroll.rollsite.factory.PipeFactory;
-import com.webank.eggroll.rollsite.factory.ProxyGrpcStreamObserverFactory;
+import com.webank.eggroll.rollsite.factory.*;
 import com.webank.eggroll.rollsite.infra.JobStatus;
 import com.webank.eggroll.rollsite.infra.Pipe;
 import com.webank.eggroll.rollsite.infra.impl.PacketQueueSingleResultPipe;
@@ -73,8 +71,12 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
     private EventFactory eventFactory;
     @Autowired
     private ProxyServerConf proxyServerConf;
+    @Autowired
+    private ProxyGrpcStubFactory proxyGrpcStubFactory;
     private Pipe defaultPipe;
     private PipeFactory pipeFactory;
+    @Autowired
+    private DefaultPipeFactory defaultPipeFactory;
 
     static Map<String, PacketQueueSingleResultPipe> pipeMap = Maps.newConcurrentMap();
 
@@ -326,88 +328,142 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                 return;
             }
 
-            Pipe pipe = new PacketQueueSingleResultPipe();
-            LOGGER.info("self send: {}", ByteString.copyFromUtf8(pipe.getType()));
-            PipeHandleNotificationEvent event =
-                eventFactory.createPipeHandleNotificationEvent(
-                    this, PipeHandleNotificationEvent.Type.UNARY_CALL, request, pipe);
-/*            CascadedCaller cascadedCaller = applicationContext.getBean(CascadedCaller.class, event.getPipeHandlerInfo());
-            asyncThreadPool.submit(cascadedCaller);*/
-            applicationEventPublisher.publishEvent(event);
+            if (System.getenv("PUSH_OBJ_WITH_ROLL_PAIR") != null && System.getenv("PUSH_OBJ_WITH_ROLL_PAIR").equals("TRUE")) {
+                Pipe pipe = new PacketQueueSingleResultPipe();
+                LOGGER.info("self send: {}", ByteString.copyFromUtf8(pipe.getType()));
+                PipeHandleNotificationEvent event =
+                    eventFactory.createPipeHandleNotificationEvent(
+                        this, PipeHandleNotificationEvent.Type.UNARY_CALL, request, pipe);
+    /*            CascadedCaller cascadedCaller = applicationContext.getBean(CascadedCaller.class, event.getPipeHandlerInfo());
+                asyncThreadPool.submit(cascadedCaller);*/
+                applicationEventPublisher.publishEvent(event);
 
-            long startTimestamp = System.currentTimeMillis();
-            long lastPacketTimestamp = startTimestamp;
-            long loopEndTimestamp = System.currentTimeMillis();
-            while ((!hasReturnedBefore || !pipe.isDrained())
-                && !pipe.hasError()
-                && emptyRetryCount < 30_000
-                && !timeouts.isTimeout(overallTimeout, startTimestamp, loopEndTimestamp)) {
-                packet = (Proxy.Packet) pipe.read(1, TimeUnit.SECONDS);
-//            packet = request;
-                loopEndTimestamp = System.currentTimeMillis();
-                if (packet != null) {
-                    // LOGGER.info("server pull onNext()");
-                    responseObserver.onNext(packet);
-                    hasReturnedBefore = true;
-                    emptyRetryCount = 0;
-                    break;
-                } else {
-                    long currentOverallWaitTime = loopEndTimestamp - lastPacketTimestamp;
+                long startTimestamp = System.currentTimeMillis();
+                long lastPacketTimestamp = startTimestamp;
+                long loopEndTimestamp = System.currentTimeMillis();
+                while ((!hasReturnedBefore || !pipe.isDrained())
+                    && !pipe.hasError()
+                    && emptyRetryCount < 30_000
+                    && !timeouts.isTimeout(overallTimeout, startTimestamp, loopEndTimestamp)) {
+                    packet = (Proxy.Packet) pipe.read(1, TimeUnit.SECONDS);
+    //            packet = request;
+                    loopEndTimestamp = System.currentTimeMillis();
+                    if (packet != null) {
+                        // LOGGER.info("server pull onNext()");
+                        responseObserver.onNext(packet);
+                        hasReturnedBefore = true;
+                        emptyRetryCount = 0;
+                        break;
+                    } else {
+                        long currentOverallWaitTime = loopEndTimestamp - lastPacketTimestamp;
 
-                    if (++emptyRetryCount % 60 == 0) {
-                        LOGGER.info(
-                            "[UNARYCALL][SERVER] unary call waiting. current overallWaitTime: {}, packetIntervalTimeout: {}, metadata: {}",
-                            currentOverallWaitTime, packetIntervalTimeout,
-                            oneLineStringInputMetadata);
+                        if (++emptyRetryCount % 60 == 0) {
+                            LOGGER.info(
+                                "[UNARYCALL][SERVER] unary call waiting. current overallWaitTime: {}, packetIntervalTimeout: {}, metadata: {}",
+                                currentOverallWaitTime, packetIntervalTimeout,
+                                oneLineStringInputMetadata);
+                        }
                     }
                 }
-            }
-            boolean hasError = true;
+                boolean hasError = true;
 
-            if (pipe.hasError()) {
-                Throwable error = pipe.getError();
-                LOGGER.error("[UNARYCALL][SERVER] unary call finish with error: {}",
-                    ExceptionUtils.getStackTrace(error));
-                responseObserver.onError(error);
+                if (pipe.hasError()) {
+                    Throwable error = pipe.getError();
+                    LOGGER.error("[UNARYCALL][SERVER] unary call finish with error: {}",
+                        ExceptionUtils.getStackTrace(error));
+                    responseObserver.onError(error);
 
-                return;
-            }
-
-            if (!hasReturnedBefore) {
-                if (timeouts.isTimeout(overallTimeout, startTimestamp, loopEndTimestamp)) {
-                    String errorMsg =
-                        "[UNARYCALL][SERVER] unary call server error: overall process time exceeds timeout: "
-                            + overallTimeout
-                            + ", metadata: " + oneLineStringInputMetadata
-                            + ", overallTimeout: " + overallTimeout
-                            + ", lastPacketTimestamp: " + lastPacketTimestamp
-                            + ", loopEndTimestamp: " + loopEndTimestamp;
-                    LOGGER.error(errorMsg);
-
-                    TimeoutException e = new TimeoutException(errorMsg);
-                    responseObserver.onError(ErrorUtils.toGrpcRuntimeException(e));
-                    pipe.onError(e);
-                } else {
-                    String errorMsg =
-                        "[UNARYCALL][SERVER] unary call server error: overall process time exceeds timeout: "
-                            + overallTimeout
-                            + ", metadata: " + oneLineStringInputMetadata
-                            + ", startTimestamp: " + startTimestamp
-                            + ", loopEndTimestamp: " + loopEndTimestamp;
-
-                    TimeoutException e = new TimeoutException(errorMsg);
-                    responseObserver.onError(ErrorUtils.toGrpcRuntimeException(e));
-                    pipe.onError(e);
+                    return;
                 }
-            } else {
-                hasError = false;
-                responseObserver.onCompleted();
-                pipe.onComplete();
-            }
 
-            LOGGER.info(
-                "[UNARYCALL][SERVER] server unary call completed. hasReturnedBefore: {}, hasError: {}, metadata: {}",
-                hasReturnedBefore, hasError, oneLineStringInputMetadata);
+                if (!hasReturnedBefore) {
+                    if (timeouts.isTimeout(overallTimeout, startTimestamp, loopEndTimestamp)) {
+                        String errorMsg =
+                            "[UNARYCALL][SERVER] unary call server error: overall process time exceeds timeout: "
+                                + overallTimeout
+                                + ", metadata: " + oneLineStringInputMetadata
+                                + ", overallTimeout: " + overallTimeout
+                                + ", lastPacketTimestamp: " + lastPacketTimestamp
+                                + ", loopEndTimestamp: " + loopEndTimestamp;
+                        LOGGER.error(errorMsg);
+
+                        TimeoutException e = new TimeoutException(errorMsg);
+                        responseObserver.onError(ErrorUtils.toGrpcRuntimeException(e));
+                        pipe.onError(e);
+                    } else {
+                        String errorMsg =
+                            "[UNARYCALL][SERVER] unary call server error: overall process time exceeds timeout: "
+                                + overallTimeout
+                                + ", metadata: " + oneLineStringInputMetadata
+                                + ", startTimestamp: " + startTimestamp
+                                + ", loopEndTimestamp: " + loopEndTimestamp;
+
+                        TimeoutException e = new TimeoutException(errorMsg);
+                        responseObserver.onError(ErrorUtils.toGrpcRuntimeException(e));
+                        pipe.onError(e);
+                    }
+                } else {
+                    hasError = false;
+                    responseObserver.onCompleted();
+                    pipe.onComplete();
+                }
+
+                LOGGER.info(
+                    "[UNARYCALL][SERVER] server unary call completed. hasReturnedBefore: {}, hasError: {}, metadata: {}",
+                    hasReturnedBefore, hasError, oneLineStringInputMetadata);
+                }
+            else {
+                if (header.getOperator().equals("push_obj")) {
+                    if (!proxyServerConf.getPartyId().equals(header.getDst().getPartyId())) {
+                        Proxy.Topic dstTopic = header.getDst();
+                        DataTransferServiceGrpc.DataTransferServiceBlockingStub blockstub = proxyGrpcStubFactory.getBlockingStub(dstTopic);
+
+                        Proxy.Packet ret_packet = blockstub.unaryCall(request);
+                        //LOGGER.info("{}", ret_packet);
+                        responseObserver.onNext(ret_packet);
+                        responseObserver.onCompleted();
+                    } else {
+                        ErRollSiteHeader rollSiteHeader = restoreRollSiteHeader(
+                                request.getHeader().getTask().getModel().getName());
+                        String tagKey = genTagKey(rollSiteHeader);
+                        JobStatus.addPutBatchRequiredCount(tagKey, 1);
+
+                        LOGGER.info("markEnd: {}, {}", rollSiteHeader.rollSiteSessionId(),
+                                tagKey);  //obj or RollPair
+
+                        if (!JobStatus.hasLatch(tagKey)) {
+                            int totalPartitions = 1;
+
+                            String tpString = "1";
+                            Option<String> tpOption =
+                                    rollSiteHeader.options().get(StringConstants.TOTAL_PARTITIONS_SNAKECASE());
+                            if (tpOption instanceof Some) {
+                                tpString = ((Some<String>) tpOption).get();
+                            }
+
+                            totalPartitions = Integer.parseInt(tpString);
+                            JobStatus.createLatch(tagKey, totalPartitions);
+                        }
+                        JobStatus.countDownFinishLatch(tagKey);
+                        JobStatus.setType(tagKey, rollSiteHeader.dataType());
+
+                        Pipe pipe = defaultPipeFactory.create(tagKey);
+                        pipe.write(request);
+
+                        JobStatus.increasePutBatchFinishedCount(tagKey);
+
+                        responseObserver.onNext(request);
+                        responseObserver.onCompleted();
+                    }
+                }
+                else if (header.getOperator().equals("pull_obj")) {
+                    String tag_key = header.getDst().getName();
+                    Pipe pipe = defaultPipeFactory.create(tag_key);
+                    Proxy.Packet ret = (Proxy.Packet) pipe.read(1, TimeUnit.SECONDS);
+                    responseObserver.onNext(ret);
+                    responseObserver.onCompleted();
+                }
+            }
         } catch (Exception e) {
             LOGGER.error("Error occured in unary call: ", e);
             responseObserver.onError(e);

@@ -14,7 +14,7 @@ get_property() {
 #set -x
 session_id="null_sid"
 version=2.0
-while getopts ":s:p:e:c:" opt; do
+while getopts ":s:p:e:c:r:" opt; do
   case $opt in
     s)
       session_id=$OPTARG
@@ -27,6 +27,9 @@ while getopts ":s:p:e:c:" opt; do
       ;;
     c)
       config=$OPTARG
+      ;;
+    r)
+      tag_value=$OPTARG
       ;;
     ?)
       echo "Invalid option: -$OPTARG index:$OPTIND"
@@ -54,7 +57,14 @@ fi
 
 cd ${EGGROLL_HOME}
 echo "EGGROLL_HOME: ${EGGROLL_HOME}"
-cmd="java -Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.properties -cp ${EGGROLL_HOME}/conf:${EGGROLL_HOME}/lib/* com.webank.eggroll.core.Bootstrap --ignore-rebind --bootstraps com.webank.eggroll.core.resourcemanager.ClusterManagerBootstrap,com.webank.eggroll.core.resourcemanager.NodeManagerBootstrap -c ${config} -s $session_id -p $manager_port &"
+
+if [[ -z ${tag_value} ]]; then
+    java_define="-Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.properties"
+else
+    java_define="-Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.properties -Dstandalone.tag=$tag_value"
+fi
+
+cmd="java $java_define -cp ${EGGROLL_HOME}/conf:${EGGROLL_HOME}/lib/* com.webank.eggroll.core.Bootstrap --ignore-rebind --bootstraps com.webank.eggroll.core.resourcemanager.ClusterManagerBootstrap,com.webank.eggroll.core.resourcemanager.NodeManagerBootstrap -c ${config} -s $session_id -p $manager_port &"
 echo "cmd: ${cmd}"
 eval ${cmd} >> ${EGGROLL_HOME}/logs/eggroll/bootstrap-standalone-manager.out 2>>${EGGROLL_HOME}/logs/eggroll/bootstrap-standalone-manager.err
 

@@ -21,10 +21,11 @@ package com.webank.eggroll.core.resourcemanager
 import java.io.{BufferedReader, File, InputStream, InputStreamReader}
 import java.lang.ProcessBuilder.Redirect
 
-import com.webank.eggroll.core.constant.{CoreConfKeys, ResourceManagerConfKeys, SessionConfKeys}
+import com.webank.eggroll.core.constant.{ClusterManagerConfKeys, CoreConfKeys, NodeManagerConfKeys, ResourceManagerConfKeys, SessionConfKeys}
 import com.webank.eggroll.core.session.RuntimeErConf
 import com.webank.eggroll.core.util.Logging
 import org.apache.commons.lang3.StringUtils
+import com.webank.eggroll.core.session.StaticErConf
 
 // todo:2: args design
 class Container(conf: RuntimeErConf, moduleName: String, processorId: Long = 0) extends Logging {
@@ -42,13 +43,20 @@ class Container(conf: RuntimeErConf, moduleName: String, processorId: Long = 0) 
   private val myServerNodeId = conf.getString(ResourceManagerConfKeys.SERVER_NODE_ID, "2")
   private val boot = conf.getString(CoreConfKeys.BOOTSTRAP_ROOT_SCRIPT, s"bin/eggroll_boot.${if(isWindows) "py" else "sh"}")
   private val logsDir = s"${CoreConfKeys.EGGROLL_LOGS_DIR.get()}"
+  private val cm_host = conf.getString(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST)
+  private val cm_port = conf.getString(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT)
+  private val nm_host = conf.getString(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HOST)
+  private val nm_port = conf.getString(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT)
+  private val conf_port = conf.getPort()
 
   if (StringUtils.isBlank(sessionId)) {
     throw new IllegalArgumentException("session Id is blank when creating processor")
   }
 
   def start(): Boolean = {
-    val startCmd = s"""${exeCmd} ${boot} start "${exePath} --config ${conf.getString(CoreConfKeys.STATIC_CONF_PATH)} --session-id ${sessionId} --server-node-id ${myServerNodeId} --processor-id ${processorId}" ${moduleName}-${processorId} &"""
+    val cluster_manager_port = StaticErConf.getPort() //StaticErConf.getProperty(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, "0")
+    val node_manager_port = cluster_manager_port //StaticErConf.getProperty(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT, "0")
+    val startCmd = s"""${exeCmd} ${boot} start "${exePath} --config ${conf.getString(CoreConfKeys.STATIC_CONF_PATH)} --session-id ${sessionId} --server-node-id ${myServerNodeId} --cm-port $cluster_manager_port --nm-port $node_manager_port --processor-id ${processorId}" ${moduleName}-${processorId} &"""
     logInfo(s"${startCmd}")
 
     val thread = runCommand(startCmd)
@@ -69,8 +77,8 @@ class Container(conf: RuntimeErConf, moduleName: String, processorId: Long = 0) 
 
   private def doStop(force: Boolean = false): Boolean = {
     val op =  if (force) "kill" else "stop"
-    val subCmd = if (isWindows) "None" else s"ps aux | grep 'session-id ${sessionId}' | grep 'server-node-id ${myServerNodeId}' | grep 'processor-id ${processorId}'"
-    val doStopCmd = s"""${exeCmd} ${boot} ${op} "${subCmd}" ${moduleName}-${processorId}"""
+    val taskInfo = if (isWindows) "None" else s"ps aux | grep 'session-id ${sessionId}' | grep 'server-node-id ${myServerNodeId}' | grep 'processor-id ${processorId}'"
+    val doStopCmd = s"""${exeCmd} ${boot} ${op} \"${taskInfo}\" ${moduleName}-${processorId}"""
     logInfo(doStopCmd)
 
     val thread = runCommand(doStopCmd)
