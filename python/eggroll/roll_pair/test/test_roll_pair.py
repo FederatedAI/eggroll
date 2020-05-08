@@ -200,7 +200,6 @@ class TestRollPairBase(unittest.TestCase):
         print("before destroy:{}".format(list(table.get_all())))
         table.destroy()
         # TODO:1: table which has been destroyed cannot get_all, should raise exception
-        #print("after destroy:{}".format(list(table.get_all())))
         self.assertEqual(table.count(), 0)
 
     def test_destroy_simple(self):
