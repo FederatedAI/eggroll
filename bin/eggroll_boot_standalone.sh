@@ -58,10 +58,11 @@ fi
 cd ${EGGROLL_HOME}
 echo "EGGROLL_HOME: ${EGGROLL_HOME}"
 
-if tag_value == None:
-    java_define = -Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.properties
-else:
-    java_define = -Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.properties -Dstandalone.tag=$tag_value
+if [[ -z ${tag_value} ]]; then
+    java_define="-Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.properties"
+else
+    java_define="-Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.properties -Dstandalone.tag=$tag_value"
+fi
 
 cmd="java $java_define -cp ${EGGROLL_HOME}/conf:${EGGROLL_HOME}/lib/* com.webank.eggroll.core.Bootstrap --ignore-rebind --bootstraps com.webank.eggroll.core.resourcemanager.ClusterManagerBootstrap,com.webank.eggroll.core.resourcemanager.NodeManagerBootstrap -c ${config} -s $session_id -p $manager_port &"
 echo "cmd: ${cmd}"
