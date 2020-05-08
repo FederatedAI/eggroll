@@ -86,8 +86,8 @@ if __name__ == '__main__':
           ' -s ' + session_id +\
           ' -p ' + cluster_manager_port
 
-    eggroll_log_file = '/eggroll/bootstrap-standalone-manager.out'
-    eggroll_err_file = '/eggroll/bootstrap-standalone-manager.err'
+    eggroll_log_file = 'eggroll/bootstrap-standalone-manager.out'
+    eggroll_err_file = 'eggroll/bootstrap-standalone-manager.err'
 
     log_file = os.path.join(eggroll_logs_dir, eggroll_log_file)
     err_file = os.path.join(eggroll_logs_dir, eggroll_err_file)
