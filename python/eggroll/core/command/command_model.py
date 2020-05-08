@@ -52,7 +52,7 @@ class ErCommandRequest(RpcMessage):
 
     def __repr__(self):
         return f'ErCommandRequest(id={self._id}, uri={self._uri}, ' \
-               f'args=[{_map_and_listify(lambda v : v[:200], self._args)}, len={len(self._args)}], ' \
+               f'args=[{_map_and_listify(lambda v : v[:300], self._args)}, len={len(self._args)}], ' \
                f'kwargs=[***, len={len(self._kwargs)}])'
 
 
@@ -86,7 +86,7 @@ class ErCommandResponse(RpcMessage):
         return self.__repr__()
 
     def __repr__(self):
-        return f'ErCommandResponse(id={self._id}, request={repr(self._request)}, results=[{_map_and_listify(lambda v : v[:200], self._results)}, len={len(self._results)}]'
+        return f'ErCommandResponse(id={self._id}, request={repr(self._request)}, results=[{_map_and_listify(lambda v : v[:300], self._results)}, len={len(self._results)}]'
 
 
 class ErService(object):

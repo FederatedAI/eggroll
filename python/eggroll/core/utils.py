@@ -42,9 +42,8 @@ class ErConfKey(object):
 
 def set_static_er_conf(a_dict):
     global static_er_conf
-    if static_er_conf:
-        raise ValueError('static_er_conf has already been set')
-    static_er_conf = a_dict
+
+    static_er_conf.update(a_dict)
 
 
 def get_static_er_conf(options: dict = None):
