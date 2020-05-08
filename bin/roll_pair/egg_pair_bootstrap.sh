@@ -45,6 +45,14 @@ while [[ $# -gt 0 ]]; do
       session_id=$2
       shift 2
       ;;
+    --cm-port)
+      cm_port=$2
+      shift 2
+      ;;
+    --nm-port)
+      nm_port=$2
+      shift 2
+      ;;
     --processor-id)
       processor_id=$2
       shift 2
@@ -96,12 +104,18 @@ logs_dir=${property_value}
 
 get_property ${config} "eggroll.resourcemanager.nodemanager.port"
 node_manager_port=${property_value}
+if [[ -z ${node_manager_port} ]] || [ "0" == ${node_manager_port} ]; then
+    node_manager_port=${nm_port}
+fi
 
 get_property ${config} "eggroll.resourcemanager.clustermanager.host"
 cluster_manager_host=${property_value}
 
 get_property ${config} "eggroll.resourcemanager.clustermanager.port"
 cluster_manager_port=${property_value}
+if [[ -z ${cluster_manager_port} ]] || [ "0" == ${cluster_manager_port} ]; then
+    cluster_manager_port=${cm_port}
+fi
 
 if [[ -z ${EGGROLL_LOGS_DIR} ]]; then
   get_property ${config} "eggroll.logs.dir"

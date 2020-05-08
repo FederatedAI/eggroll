@@ -97,11 +97,23 @@ class RollPairMasterBootstrap extends BootstrapBase with Logging {
   private var nodeManager = ""
   private var args: Array[String] = _
   private var cmd: CommandLine = null
+  private var cm_host = ""
+  private var cm_port = 0
+  private var nm_port = ""
 
   override def init(args: Array[String]): Unit = {
     this.args = args
     cmd = CommandArgsUtils.parseArgs(args)
     sessionId = cmd.getOptionValue('s')
+    val cm = cmd.getOptionValue("cm")
+    nm_port = cmd.getOptionValue("nm")
+    if (cm != null) {
+      val toks = cm.split(":")
+      cm_host = toks(0)
+      cm_port = toks(1).toInt
+      StaticErConf.addProperty(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST, cm_host)
+      StaticErConf.addProperty(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, cm_port.toString)
+    }
 
     CommandRouter.register(serviceName = RollPair.ROLL_RUN_JOB_COMMAND.uriString,
       serviceParamTypes = Array(classOf[ErJob]),
@@ -146,9 +158,12 @@ class RollPairMasterBootstrap extends BootstrapBase with Logging {
 
     StaticErConf.addProperty(SessionConfKeys.CONFKEY_SESSION_ID, sessionId)
 
+    val cm_port2 = StaticErConf.getProperty(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, "0").toInt
     StaticErConf.addProperties(confPath)
     val confFile = new File(confPath)
     StaticErConf.addProperty(CoreConfKeys.STATIC_CONF_PATH, confFile.getAbsolutePath)
+    StaticErConf.addProperty(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, cm_port.toString)
+    StaticErConf.addProperty(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT, nm_port)
 
     Runtime.getRuntime.addShutdownHook(new Thread() {
       override def run(): Unit = { // Use stderr here since the logger may have been reset by its JVM shutdown hook.
@@ -172,6 +187,7 @@ class RollPairMasterBootstrap extends BootstrapBase with Logging {
       val managerPort = if (splittedManager.length == 1) splittedManager(0) else splittedManager(1)
 
       ErEndpoint(host = managerHost, port = managerPort.toInt)
+      StaticErConf.addProperty(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, managerPort)
     }
     StaticErConf.addProperty(SessionConfKeys.CONFKEY_SESSION_ID, sessionId)
     this.port = cmd.getOptionValue('p', "0").toInt

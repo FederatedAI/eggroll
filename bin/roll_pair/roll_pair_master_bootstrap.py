@@ -21,8 +21,8 @@ def get_property(config_file, property_name):
     return None
 
 
-def start(config_file, session_id, server_node_id, processor_id, port, transfer_port, pname):
-  print('roll_pair_master sub id ：', os.getpid(), 'parent id ：', os.getppid())
+def start(config_file, session_id, server_node_id, cm_port, nm_port, processor_id, port, transfer_port, pname):
+  print('roll_pair_master sub id ：', os.getpid(), 'parent id ：', os.getppid(), "cm_port:", cm_port, "nm_port:", nm_port)
 
   if session_id is None:
     print("session-id is blank")
@@ -37,8 +37,13 @@ def start(config_file, session_id, server_node_id, processor_id, port, transfer_
 
   #venv = get_property(config_file, "eggroll.resourcemanager.bootstrap.egg_pair.venv")
   node_manager_port = get_property(config_file, "eggroll.resourcemanager.nodemanager.port")
+  if int(node_manager_port) == 0 or node_manager_port is None:
+    node_manager_port = nm_port
+
   cluster_manager_host = get_property(config_file, "eggroll.resourcemanager.clustermanager.host")
   cluster_manager_port = get_property(config_file, "eggroll.resourcemanager.clustermanager.port")
+  if int(cluster_manager_port) is 0 or cluster_manager_port is None:
+    cluster_manager_port = cm_port
 
   javahome = get_property(config_file, "eggroll.resourcemanager.bootstrap.roll_pair_master.javahome")
   classpath = get_property(config_file, "eggroll.resourcemanager.bootstrap.roll_pair_master.classpath")
@@ -116,6 +121,10 @@ def start(config_file, session_id, server_node_id, processor_id, port, transfer_
 
   print("pid:", pid)
   pname_pid = 'bin/' + 'pid/' + pname + '.pid'
+
+  if not os.path.exists('bin/pid'):
+    os.makedirs('bin/pid')
+
   with open(pname_pid, 'w') as fp:
     fp.write(str(pid))
     fp.close()

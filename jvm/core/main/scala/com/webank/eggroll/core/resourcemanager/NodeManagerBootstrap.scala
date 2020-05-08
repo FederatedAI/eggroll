@@ -41,6 +41,7 @@ class NodeManagerBootstrap extends BootstrapBase with Logging {
     val cmd = CommandArgsUtils.parseArgs(args = args)
 
     this.confPath = cmd.getOptionValue('c', "./jvm/core/main/resources/cluster-manager.properties")
+
     // val sessionId = cmd.getOptionValue('s')
     StaticErConf.addProperties(confPath)
     val confFile = new File(confPath)
@@ -55,6 +56,15 @@ class NodeManagerBootstrap extends BootstrapBase with Logging {
   }
 
   override def start(): Unit = {
+    val port1 = StaticErConf.getPort()
+    var port = 0
+    if (port1 < 0) {
+      port = 0
+    }
+    else {
+      port = port1.toInt
+    }
+    StaticErConf.addProperty(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT, port.toString)
     val server = GrpcServerUtils.createServer(
       port = this.port, grpcServices = List(new CommandService))
 
