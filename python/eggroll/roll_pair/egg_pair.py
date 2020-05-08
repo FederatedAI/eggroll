@@ -271,12 +271,12 @@ class EggPair(object):
             self._run_unary(collapse_partitions_wrapper, task)
 
         elif task._name == 'flatMap':
-            def flat_map_wraaper(input_iterator, key_serdes, value_serdes, output_writebatch):
+            def flat_map_wraaper(input_iterator, key_serdes, value_serdes, shuffle_broker):
                 f = create_functor(functors[0]._body)
                 for k1, v1 in input_iterator:
                     for k2, v2 in f(key_serdes.deserialize(k1), value_serdes.deserialize(v1)):
-                        output_writebatch.put(key_serdes.serialize(k2), value_serdes.serialize(v2))
-            self._run_unary(flat_map_wraaper, task)
+                        shuffle_broker.put((key_serdes.serialize(k2), value_serdes.serialize(v2)))
+            self._run_unary(flat_map_wraaper, task, shuffle=True)
 
         elif task._name == 'glom':
             def glom_wrapper(input_iterator, key_serdes, value_serdes, output_writebatch):
