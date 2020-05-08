@@ -287,7 +287,45 @@ class RollSite:
             L.debug(f"pushing start party:{type(obj)}, {_tagged_key}")
             namespace = self.roll_site_session_id
 
-            if os.environ.get('PUSH_OBJ_WITH_ROLL_PAIR') == "TRUE":
+            if not self._is_standalone and obj_type == 'object' and os.environ.get('PUSH_OBJ_WITH_ROLL_PAIR') != "1":
+                roll_site_header = ErRollSiteHeader(
+                    roll_site_session_id=self.roll_site_session_id,
+                    name=self.name,
+                    tag=self.tag,
+                    src_role=self.local_role,
+                    src_party_id=self.party_id,
+                    dst_role=_role,
+                    dst_party_id=_party_id,
+                    data_type='object')
+
+                task_info = proxy_pb2.Task(model=proxy_pb2.Model(name=_stringify(roll_site_header)))
+                topic_src = proxy_pb2.Topic(name=_tagged_key, partyId=self.party_id,
+                                            role=self.local_role, callback=None)
+                topic_dst = proxy_pb2.Topic(name=_tagged_key, partyId=_party_id,
+                                            role=_role, callback=None)
+                command_test = proxy_pb2.Command(name="push_obj")
+                conf = proxy_pb2.Conf(overallTimeout=3000,
+                                           completionWaitTimeout=3000,
+                                           packetIntervalTimeout=3000,
+                                           maxRetries=10)
+
+                metadata = proxy_pb2.Metadata(task=task_info,
+                                              src=topic_src,
+                                              dst=topic_dst,
+                                              command=command_test,
+                                              operator="push_obj",
+                                              seq=0,
+                                              ack=0,
+                                              conf=conf)
+
+                data = proxy_pb2.Data(key=_tagged_key, value=cloudpickle.dumps(obj))
+                packet = proxy_pb2.Packet(header=metadata, body=data)
+
+                future = self.receive_exeutor_pool.submit(RollSite.send_packet, self, packet)
+                future.add_done_callback(self._push_callback)
+                futures.append(future)
+
+            else:
                 if isinstance(obj, RollPair):
                     rp = obj
                 else:
@@ -350,44 +388,6 @@ class RollSite:
                 future.add_done_callback(functools.partial(self._push_callback, tmp_rp=tmp_rp))
                 futures.append(future)
 
-            else:
-                roll_site_header = ErRollSiteHeader(
-                    roll_site_session_id=self.roll_site_session_id,
-                    name=self.name,
-                    tag=self.tag,
-                    src_role=self.local_role,
-                    src_party_id=self.party_id,
-                    dst_role=_role,
-                    dst_party_id=_party_id,
-                    data_type='object')
-
-                task_info = proxy_pb2.Task(model=proxy_pb2.Model(name=_stringify(roll_site_header)))
-                topic_src = proxy_pb2.Topic(name=_tagged_key, partyId=self.party_id,
-                                            role=self.local_role, callback=None)
-                topic_dst = proxy_pb2.Topic(name=_tagged_key, partyId=_party_id,
-                                            role=_role, callback=None)
-                command_test = proxy_pb2.Command(name="push_obj")
-                conf_test = proxy_pb2.Conf(overallTimeout=1000,
-                                           completionWaitTimeout=1000,
-                                           packetIntervalTimeout=1000,
-                                           maxRetries=10)
-
-                metadata = proxy_pb2.Metadata(task=task_info,
-                                              src=topic_src,
-                                              dst=topic_dst,
-                                              command=command_test,
-                                              operator="push_obj",
-                                              seq=0,
-                                              ack=0)
-
-                #data = proxy_pb2.Data(key=_tagged_key, value=bytes(obj, encoding="utf8"))
-                data = proxy_pb2.Data(key=_tagged_key, value=cloudpickle.dumps(obj))
-                packet = proxy_pb2.Packet(header=metadata, body=data)
-
-                future = self.receive_exeutor_pool.submit(RollSite.send_packet, self, packet)
-                future.add_done_callback(self._push_callback)
-                futures.append(future)
-				
         return futures
 
     # def wait_futures(self, futures):
