@@ -1,6 +1,5 @@
 import os
 import argparse
-import configparser
 import platform
 from subprocess import Popen, PIPE
 
@@ -40,7 +39,7 @@ if __name__ == '__main__':
         print(f'reading default config: {conf_file}')
 
     session_id = args.session_id
-    tag_value = args.random
+    standalone_tag = args.random
 
     eggroll_logs_dir = os.environ.get('EGGROLL_LOGS_DIR')
     if eggroll_logs_dir is None:
@@ -73,10 +72,10 @@ if __name__ == '__main__':
 
     print("EGGROLL_HOME:", eggroll_home)
     os.chdir(eggroll_home)
-    if tag_value == None:
+    if standalone_tag == None:
         java_define = ' -Dlog4j.configurationFile=' + eggroll_log_conf
     else:
-        java_define = ' -Dlog4j.configurationFile=' + eggroll_log_conf + ' -Dstandalone.tag=' + tag_value
+        java_define = ' -Dlog4j.configurationFile=' + eggroll_log_conf + ' -Dstandalone.tag=' + standalone_tag
 
     cmd = java_cmd + java_define + ' -cp ' + classpath +\
           ' com.webank.eggroll.core.Bootstrap ' +\
