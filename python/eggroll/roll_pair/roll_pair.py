@@ -329,6 +329,10 @@ class RollPair(object):
         if not self.gc_enable:
             L.info('session:{} gc not enable'.format(self.__session_id))
             return
+
+        if self.get_store_type() != StoreTypes.ROLLPAIR_IN_MEMORY:
+            return
+
         if self.destroyed:
             return
         if self.ctx.get_session().is_stopped():
@@ -632,18 +636,10 @@ class RollPair(object):
                     outputs=[self.__store],
                     functors=[])
 
-        #task_futures = self._run_job(job=job, create_output_if_missing=False)
-        job_resp = self.__command_client.simple_sync_send(
-                input=job,
-                output_type=ErJob,
-                endpoint=self.ctx.get_roll()._command_endpoint,
-                command_uri=CommandURI(f'{RollPair.ROLL_PAIR_URI_PREFIX}/{RollPair.RUN_JOB}'),
-                serdes_type=self.__command_serdes)
-
+        task_futures = self._run_job(job=job, create_output_if_missing=False)
         self.ctx.get_session()._cluster_manager_client.delete_store(self.__store)
         L.info(f'{RollPair.DESTROY}: {self.__store}')
         self.destroyed = True
-        task_futures = self._run_job(job=job, create_output_if_missing=False)
 
     @_method_profile_logger
     def delete(self, k, options: dict = None):
