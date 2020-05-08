@@ -43,11 +43,6 @@ class Container(conf: RuntimeErConf, moduleName: String, processorId: Long = 0) 
   private val myServerNodeId = conf.getString(ResourceManagerConfKeys.SERVER_NODE_ID, "2")
   private val boot = conf.getString(CoreConfKeys.BOOTSTRAP_ROOT_SCRIPT, s"bin/eggroll_boot.${if(isWindows) "py" else "sh"}")
   private val logsDir = s"${CoreConfKeys.EGGROLL_LOGS_DIR.get()}"
-  private val cm_host = conf.getString(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST)
-  private val cm_port = conf.getString(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT)
-  private val nm_host = conf.getString(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HOST)
-  private val nm_port = conf.getString(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT)
-  private val conf_port = conf.getPort()
 
   if (StringUtils.isBlank(sessionId)) {
     throw new IllegalArgumentException("session Id is blank when creating processor")
