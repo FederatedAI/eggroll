@@ -292,17 +292,21 @@ class TestRollPairBase(unittest.TestCase):
     def test_flatMap(self):
         options = get_default_options()
         options['include_key'] = False
-        rp = self.ctx.load("ns1", "test_flat_map", options=options).put_all(range(5), options=options)
+        options['total_partitions'] = 3
+        rp = self.ctx.load("ns1", "test_flat_map_3p", options=options).put_all(range(5), options=options)
         import random
 
         def foo(k, v):
             result = []
             r = random.randint(10000, 99999)
             for i in range(0, k):
-                result.append((k + r + i, v + r + i))
+                result.append((k + r + i, v + r + i + 1))
             return result
-        print(list(rp.flat_map(foo).get_all()))
-        self.assertEqual(rp.flat_map(foo).count(), 10)
+        res = rp.flat_map(foo)
+        print(list(res.get_all()))
+        print(f"get value:{res.get(res.first(options={'keys_only': True}))} of key:{res.first(options={'keys_only': True})}")
+        self.assertEqual(res.first(options={'keys_only': False})[1], res.get(res.first(options={'keys_only': True})))
+        self.assertEqual(res.count(), 10)
 
     def test_glom(self):
         options = get_default_options()
