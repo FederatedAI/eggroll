@@ -29,7 +29,7 @@ while getopts ":s:p:e:c:r:" opt; do
       config=$OPTARG
       ;;
     r)
-      tag_value=$OPTARG
+      standalone_tag=$OPTARG
       ;;
     ?)
       echo "Invalid option: -$OPTARG index:$OPTIND"
@@ -58,10 +58,10 @@ fi
 cd ${EGGROLL_HOME}
 echo "EGGROLL_HOME: ${EGGROLL_HOME}"
 
-if [[ -z ${tag_value} ]]; then
+if [[ -z ${standalone_tag} ]]; then
     java_define="-Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.properties"
 else
-    java_define="-Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.properties -Dstandalone.tag=$tag_value"
+    java_define="-Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.properties -Dstandalone.tag=$standalone_tag"
 fi
 
 cmd="java $java_define -cp ${EGGROLL_HOME}/conf:${EGGROLL_HOME}/lib/* com.webank.eggroll.core.Bootstrap --ignore-rebind --bootstraps com.webank.eggroll.core.resourcemanager.ClusterManagerBootstrap,com.webank.eggroll.core.resourcemanager.NodeManagerBootstrap -c ${config} -s $session_id -p $manager_port &"
