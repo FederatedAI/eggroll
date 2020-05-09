@@ -28,6 +28,9 @@ if __name__ == '__main__':
     sub_cmd = sys.argv[1]
     exe = sys.argv[2]
     pname = sys.argv[3]
+    standalone_port = None
+    if len(sys.argv) == 5:
+        standalone_port = sys.argv[4]
 
     os_type = platform.system()
 
@@ -40,16 +43,14 @@ if __name__ == '__main__':
         config_file = params[2]
         session_id = params[4]
         server_node_id = params[6]
-        cm_port = params[8]
-        nm_port = params[10]
-        processor_id = params[12]
+        processor_id = params[8]
 
         if "egg_pair" in module:
             import roll_pair.egg_pair_bootstrap as bootstrap
         if "roll_pair_master" in module:
             import roll_pair.roll_pair_master_bootstrap as bootstrap
 
-        bootstrap.start(config_file, session_id, server_node_id, cm_port, nm_port, processor_id, port=None, transfer_port=None, pname=pname)
+        bootstrap.start(config_file, session_id, server_node_id, processor_id, port=None, transfer_port=None, pname=pname, standalone_port=standalone_port)
 
     elif sub_cmd == "stop":
         pid_file = os.path.join('bin', 'pid', pname+'.pid')

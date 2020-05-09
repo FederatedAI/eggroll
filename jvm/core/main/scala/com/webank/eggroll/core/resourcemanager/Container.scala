@@ -44,15 +44,20 @@ class Container(conf: RuntimeErConf, moduleName: String, processorId: Long = 0) 
   private val boot = conf.getString(CoreConfKeys.BOOTSTRAP_ROOT_SCRIPT, s"bin/eggroll_boot.${if(isWindows) "py" else "sh"}")
   private val logsDir = s"${CoreConfKeys.EGGROLL_LOGS_DIR.get()}"
   private val cmPort = conf.getString(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT)
-  private val nmPort = conf.getString(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT)
 
   if (StringUtils.isBlank(sessionId)) {
     throw new IllegalArgumentException("session Id is blank when creating processor")
   }
 
   def start(): Boolean = {
-    val startCmd = s"""${exeCmd} ${boot} start "${exePath} --config ${conf.getString(CoreConfKeys.STATIC_CONF_PATH)} --session-id ${sessionId} --server-node-id ${myServerNodeId} --cm-port $cmPort --nm-port $nmPort --processor-id ${processorId}" ${moduleName}-${processorId} &"""
-    logInfo(s"${startCmd}")
+    var standalonePort = ""
+    if(StringUtils.isNotBlank(System.getProperty("standalone.tag"))) {
+      standalonePort = cmPort
+    }
+
+    val startCmd = s"""${exeCmd} ${boot} start "${exePath} --config ${conf.getString(CoreConfKeys.STATIC_CONF_PATH)} --session-id ${sessionId} --server-node-id ${myServerNodeId} --processor-id ${processorId}" ${moduleName}-${processorId} ${standalonePort} &"""
+    val standaloneTag = System.getProperty("standalone.tag")
+    logInfo(s"${standaloneTag} ${startCmd}")
 
     val thread = runCommand(startCmd)
 
@@ -72,8 +77,8 @@ class Container(conf: RuntimeErConf, moduleName: String, processorId: Long = 0) 
 
   private def doStop(force: Boolean = false): Boolean = {
     val op =  if (force) "kill" else "stop"
-    val taskInfo = if (isWindows) "None" else s"ps aux | grep 'session-id ${sessionId}' | grep 'server-node-id ${myServerNodeId}' | grep 'processor-id ${processorId}'"
-    val doStopCmd = s"""${exeCmd} ${boot} ${op} \"${taskInfo}\" ${moduleName}-${processorId}"""
+    val subCmd = if (isWindows) "None" else s"ps aux | grep 'session-id ${sessionId}' | grep 'server-node-id ${myServerNodeId}' | grep 'processor-id ${processorId}'"
+    val doStopCmd = s"""${exeCmd} ${boot} ${op} \"${subCmd}\" ${moduleName}-${processorId}"""
     logInfo(doStopCmd)
 
     val thread = runCommand(doStopCmd)
