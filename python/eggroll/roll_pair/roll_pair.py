@@ -760,7 +760,10 @@ class RollPair(object):
     def map_partitions(self, func, output=None, options: dict = None):
         if options is None:
             options = {}
+        need_shuffle = options.get('need_shuffle', True)
         functor = ErFunctor(name=RollPair.MAP_PARTITIONS, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
+        shuffle = ErFunctor(name=RollPair.FLAT_MAP, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(need_shuffle))
+
         outputs = []
         if output:
             outputs.append(output)
@@ -768,7 +771,7 @@ class RollPair(object):
                     name=RollPair.MAP_PARTITIONS,
                     inputs=[self.__store],
                     outputs=outputs,
-                    functors=[functor])
+                    functors=[functor, shuffle])
 
         task_future = self._run_job(job=job)
         er_store = self.__get_output_from_result(task_future)
@@ -778,8 +781,8 @@ class RollPair(object):
     def collapse_partitions(self, func, output=None, options: dict = None):
         if options is None:
             options = {}
-        functor = ErFunctor(name=RollPair.COLLAPSE_PARTITIONS, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
 
+        functor = ErFunctor(name=RollPair.COLLAPSE_PARTITIONS, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.COLLAPSE_PARTITIONS),
                     name=RollPair.COLLAPSE_PARTITIONS,
                     inputs=[self.__store],
@@ -795,13 +798,16 @@ class RollPair(object):
     def flat_map(self, func, output=None, options: dict = None):
         if options is None:
             options = {}
+
+        need_shuffle = options.get('need_shuffle', True)
         functor = ErFunctor(name=RollPair.FLAT_MAP, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
+        shuffle = ErFunctor(name=RollPair.FLAT_MAP, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(need_shuffle))
 
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.FLAT_MAP),
                     name=RollPair.FLAT_MAP,
                     inputs=[self.__store],
                     outputs=[output],
-                    functors=[functor])
+                    functors=[functor, shuffle])
 
         task_futures = self._run_job(job=job)
         er_store = self.__get_output_from_result(task_futures)
