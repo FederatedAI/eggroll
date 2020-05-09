@@ -102,19 +102,17 @@ filepath=${property_value}
 get_property ${config} "eggroll.logs.dir"
 logs_dir=${property_value}
 
-get_property ${config} "eggroll.resourcemanager.nodemanager.port"
-node_manager_port=${property_value}
-if [[ -z ${node_manager_port} ]] || [ "0" == ${node_manager_port} ]; then
-    node_manager_port=${nm_port}
-fi
-
 get_property ${config} "eggroll.resourcemanager.clustermanager.host"
 cluster_manager_host=${property_value}
 
-get_property ${config} "eggroll.resourcemanager.clustermanager.port"
-cluster_manager_port=${property_value}
-if [[ -z ${cluster_manager_port} ]] || [ "0" == ${cluster_manager_port} ]; then
-    cluster_manager_port=${cm_port}
+if [[ ! -n ${STANDALONE_PORT} ]]; then
+    get_property ${config} "eggroll.resourcemanager.clustermanager.port"
+    cluster_manager_port=${property_value}
+    get_property ${config} "eggroll.resourcemanager.nodemanager.port"
+    node_manager_port=${property_value}
+else
+    cluster_manager_port=${STANDALONE_PORT}
+    node_manager_port=${STANDALONE_PORT}
 fi
 
 if [[ -z ${EGGROLL_LOGS_DIR} ]]; then
@@ -163,5 +161,5 @@ fi
 export EGGROLL_LOGS_DIR=${EGGROLL_LOGS_DIR}/${EGGROLL_SESSION_ID}
 mkdir -p ${EGGROLL_LOGS_DIR}
 echo "${cmd}"
-${cmd} >> ${EGGROLL_LOGS_DIR}/${EGGROLL_LOG_FILE}.out 2>${EGGROLL_LOGS_DIR}/${EGGROLL_LOG_FILE}.err &
+#${cmd} >> ${EGGROLL_LOGS_DIR}/${EGGROLL_LOG_FILE}.out 2>${EGGROLL_LOGS_DIR}/${EGGROLL_LOG_FILE}.err &
 echo "egg_pair processor id:$processor_id, os process id:$!" >> ${EGGROLL_LOGS_DIR}/pid.txt
