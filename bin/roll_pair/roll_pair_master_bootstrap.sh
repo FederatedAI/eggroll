@@ -44,14 +44,6 @@ while [[ $# -gt 0 ]]; do
       session_id=$2
       shift 2
       ;;
-    --cm-port)
-      cm_port=$2
-      shift 2
-      ;;
-    --nm-port)
-      nm_port=$2
-      shift 2
-      ;;
     --processor-id)
       processor_id=$2
       shift 2
