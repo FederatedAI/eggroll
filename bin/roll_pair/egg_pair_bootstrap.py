@@ -17,8 +17,8 @@ def get_property(config_file, property_name):
         return None
 
 
-def start(config_file, session_id, server_node_id, cm_port, nm_port, processor_id, port, transfer_port, pname):
-    print('sub id ：', os.getpid(), 'parent id ：', os.getppid(), "cm_port:", cm_port, "nm_port:", nm_port)
+def start(config_file, session_id, server_node_id, processor_id, port, transfer_port, pname, standalone_port):
+    print('sub id ：', os.getpid(), 'parent id ：', os.getppid(), "standalone_port:", standalone_port)
 
     if session_id is None:
         print("session-id is blank")
@@ -35,15 +35,14 @@ def start(config_file, session_id, server_node_id, cm_port, nm_port, processor_i
     pythonpath = get_property(config_file, "eggroll.resourcemanager.bootstrap.egg_pair.pythonpath")
     filepath = get_property(config_file, "eggroll.resourcemanager.bootstrap.egg_pair.filepath")
 
-    node_manager_port = get_property(config_file, "eggroll.resourcemanager.nodemanager.port")
-    if int(node_manager_port) == 0 or node_manager_port is None:
-        node_manager_port = nm_port
-
     cluster_manager_host = get_property(config_file, "eggroll.resourcemanager.clustermanager.host")
 
-    cluster_manager_port = get_property(config_file, "eggroll.resourcemanager.clustermanager.port")
-    if int(cluster_manager_port) is 0 or cluster_manager_port is None:
-        cluster_manager_port = cm_port
+    if standalone_port is None:
+        node_manager_port = get_property(config_file, "eggroll.resourcemanager.nodemanager.port")
+        cluster_manager_port = get_property(config_file, "eggroll.resourcemanager.clustermanager.port")
+    else:
+        node_manager_port = standalone_port
+        cluster_manager_port = standalone_port
 
     eggroll_logs_dir = os.environ.get('EGGROLL_LOGS_DIR')
     if eggroll_logs_dir is None:
