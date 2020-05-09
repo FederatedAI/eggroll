@@ -51,9 +51,7 @@ class Container(conf: RuntimeErConf, moduleName: String, processorId: Long = 0) 
   }
 
   def start(): Boolean = {
-    val cluster_manager_port = cmPort
-    val node_manager_port = nmPort
-    val startCmd = s"""${exeCmd} ${boot} start "${exePath} --config ${conf.getString(CoreConfKeys.STATIC_CONF_PATH)} --session-id ${sessionId} --server-node-id ${myServerNodeId} --cm-port $cluster_manager_port --nm-port $node_manager_port --processor-id ${processorId}" ${moduleName}-${processorId} &"""
+    val startCmd = s"""${exeCmd} ${boot} start "${exePath} --config ${conf.getString(CoreConfKeys.STATIC_CONF_PATH)} --session-id ${sessionId} --server-node-id ${myServerNodeId} --cm-port $cmPort --nm-port $nmPort --processor-id ${processorId}" ${moduleName}-${processorId} &"""
     logInfo(s"${startCmd}")
 
     val thread = runCommand(startCmd)
