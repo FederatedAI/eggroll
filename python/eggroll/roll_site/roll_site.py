@@ -207,7 +207,7 @@ class RollSite:
             L.info(f"pull status done: table_name:{table_name}, packet:{to_one_line_string(packet)}, namespace:{namespace}")
 
             if obj_type == b'object':
-                if os.environ.get('PUSH_OBJ_WITH_ROLL_PAIR') == "TRUE":
+                if os.environ.get('EGGROLL_PUSH_OBJ_WITH_ROLL_PAIR') == "1":
                     rp = self.ctx.rp_ctx.load(namespace=table_namespace, name=table_name)
                     success_msg_prefix = f'RollSite.Pull: pull {roll_site_header} success.'
                     result = rp.get(table_name)
@@ -287,7 +287,7 @@ class RollSite:
             L.debug(f"pushing start party:{type(obj)}, {_tagged_key}")
             namespace = self.roll_site_session_id
 
-            if not self._is_standalone and obj_type == 'object' and os.environ.get('PUSH_OBJ_WITH_ROLL_PAIR') != "1":
+            if not self._is_standalone and obj_type == 'object' and os.environ.get('EGGROLL_PUSH_OBJ_WITH_ROLL_PAIR') != "1":
                 roll_site_header = ErRollSiteHeader(
                     roll_site_session_id=self.roll_site_session_id,
                     name=self.name,
