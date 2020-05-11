@@ -760,6 +760,8 @@ class RollPair(object):
         if options is None:
             options = {}
         shuffle = options.get('shuffle', True)
+        if not shuffle and reduce_op:
+            raise ValueError(f"shuffle cannot be False when reduce is needed!")
         functor = ErFunctor(name=RollPair.MAP_PARTITIONS, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
         reduce_functor = ErFunctor(name=RollPair.MAP_PARTITIONS, serdes=SerdesTypes.CLOUD_PICKLE,
                                    body=cloudpickle.dumps(reduce_op))
