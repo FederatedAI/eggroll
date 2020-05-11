@@ -107,7 +107,7 @@ class ErSession(object):
             def shutdown_standalone_manager(session_id, log_dir):
                 standalone_tag = f'-Dstandalone.tag={random_value}'
                 if os.name != 'nt':
-                    shutdown_command = f"ps aux | grep eggroll | grep Bootstrap | grep standalone_tag | grep '{session_id}' | grep -v grep | awk '{{print $2}}' | xargs kill"
+                    shutdown_command = f"ps aux | grep eggroll | grep Bootstrap | grep '{standalone_tag}' | grep '{session_id}' | grep -v grep | awk '{{print $2}}' | xargs kill"
                 else:
                     pid_list = psutil.pids()
                     ret_pid = 0
