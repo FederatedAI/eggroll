@@ -85,10 +85,8 @@ class ErSession(object):
             random_value = str(random.random())
             if os.name != 'nt':
                 startup_command = f'{self.__eggroll_home}/bin/eggroll_boot_standalone.sh -p {port} -s {self.__session_id} -r {random_value}'
-                os.chmod(f'{self.__eggroll_home}/bin/eggroll_boot_standalone.sh', stat.S_IXGRP)
             else:
                 startup_command = f'{self.__eggroll_home}/bin/eggroll_boot_standalone.py -p {port} -s {self.__session_id} -r {random_value}'
-                os.chmod(f'{self.__eggroll_home}/bin/eggroll_boot_standalone.py', stat.S_IXGRP)
 
             print("startup_command:", startup_command)
             import subprocess
