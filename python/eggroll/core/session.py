@@ -12,7 +12,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import configparser
-import os, re
+import os, stat, re
+import psutil
 import random
 from concurrent.futures import wait, FIRST_EXCEPTION
 from copy import deepcopy
@@ -79,13 +80,16 @@ class ErSession(object):
         self.__is_standalone = options.get(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE, "") == DeployModes.STANDALONE
         if self.__is_standalone and not processors and os.environ.get("EGGROLL_RESOURCE_MANAGER_BOOTSTRAP_DEBUG", "0") == "0":
             #port = int(options.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT,
-             #                      static_er_conf.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, "4689")))
+            #                      static_er_conf.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, "4689")))
             port = 0
             random_value = str(random.random())
             if os.name != 'nt':
                 startup_command = f'{self.__eggroll_home}/bin/eggroll_boot_standalone.sh -p {port} -s {self.__session_id} -r {random_value}'
+                os.chmod(f'{self.__eggroll_home}/bin/eggroll_boot_standalone.sh', stat.S_IXGRP)
             else:
                 startup_command = f'{self.__eggroll_home}/bin/eggroll_boot_standalone.py -p {port} -s {self.__session_id} -r {random_value}'
+                os.chmod(f'{self.__eggroll_home}/bin/eggroll_boot_standalone.py', stat.S_IXGRP)
+
             print("startup_command:", startup_command)
             import subprocess
             import atexit
@@ -101,10 +105,25 @@ class ErSession(object):
                 L.info(f'start up returncode: {returncode}')
 
             def shutdown_standalone_manager(session_id, log_dir):
+                standalone_tag = f'-Dstandalone.tag={random_value}'
                 if os.name != 'nt':
-                    shutdown_command = f"ps aux | grep eggroll | grep Bootstrap | grep '0' | grep '{session_id}' | grep -v grep | awk '{{print $2}}' | xargs kill"
+                    shutdown_command = f"ps aux | grep eggroll | grep Bootstrap | grep standalone_tag | grep '{session_id}' | grep -v grep | awk '{{print $2}}' | xargs kill"
                 else:
-                    shutdown_command = ''
+                    pid_list = psutil.pids()
+                    ret_pid = 0
+                    for pid in pid_list:
+                        p = psutil.Process(pid)
+                        if "java.exe" not in p.name():
+                            continue
+                        # if it is a system process, call p.cmdline() will dump
+                        cmdline = p.cmdline()
+                        if standalone_tag not in cmdline or '--bootstraps' not in cmdline:
+                            continue
+
+                        ret_pid = pid
+                        break
+
+                    shutdown_command = f"taskkill /pid {ret_pid} /f"
 
                 L.info(f'shutdown command: {shutdown_command}')
                 with open(f'{log_dir}/standalone-manager.out', 'a+') as outfile, open(f'{log_dir}/standalone-manager.err', 'a+') as errfile:
