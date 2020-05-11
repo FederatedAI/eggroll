@@ -707,11 +707,13 @@ class RollPair(object):
 
         if partition == self.get_partitions():
             store = ErStore(store_locator=ErStoreLocator(store_type=store_type, namespace=namespace,
-                                                         name=name, total_partitions=self.get_partitions()))
+                                                         name=name, total_partitions=self.get_partitions()),
+                            partitions=self.__store._partitions)
             return self.map_values(lambda v: v, output=store)
         else:
             store = ErStore(store_locator=ErStoreLocator(store_type=store_type, namespace=namespace,
-                                                         name=name, total_partitions=partition))
+                                                         name=name, total_partitions=partition),
+                            partitions=self.__store._partitions)
             return self.map(lambda k, v: (k, v), output=store)
 
     """
