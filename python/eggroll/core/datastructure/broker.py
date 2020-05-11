@@ -18,6 +18,7 @@ from queue import Queue
 
 from eggroll.core.conf_keys import CoreConfKeys
 from eggroll.utils.log_utils import get_logger
+from threading import Lock
 
 L = get_logger()
 
@@ -81,23 +82,27 @@ class FifoBroker(Broker):
         self.__queue = Queue(maxsize=maxsize)
         self.__active_writers = writers
         self.__total_writers = writers
+        self.__active_writers_lock = Lock()
         self.__name = name
 
     def get_total_writers(self):
         return self.__total_writers
 
     def is_write_finished(self):
-        return self.__active_writers <= 0
+        with self.__active_writers_lock:
+            return self.__active_writers <= 0
 
     def signal_write_finish(self):
         if self.is_write_finished():
             raise ValueError(
                 f"finish signaling overflows. initial value: {self.__total_writers}")
         else:
-            self.__active_writers -= 1
+            with self.__active_writers_lock:
+                self.__active_writers -= 1
 
     def get_active_writers_count(self):
-        return self.__active_writers
+        with self.__active_writers_lock:
+            return self.__active_writers
 
     def is_read_ready(self):
         return not self.__queue.empty()

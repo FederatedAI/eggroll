@@ -12,23 +12,12 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ *
  */
 
-package com.webank.eggroll.core.util;
+package com.webank.eggroll.core.error
 
-import com.webank.eggroll.core.grpc.observer.BaseCallerResponseStreamObserver;
-import java.lang.reflect.Constructor;
-import java.util.concurrent.CountDownLatch;
-import org.junit.Test;
-
-public class TestReflectionUtils {
-
-  @Test
-  public void testFindDeclaredConstructorWithOneParameter() throws Exception {
-    CountDownLatch countDownLatch = new CountDownLatch(1);
-
-    Constructor<BaseCallerResponseStreamObserver> constructor = ReflectionUtils
-        .findDeclaredConstructor(BaseCallerResponseStreamObserver.class, countDownLatch);
-    assert (constructor != null);
-  }
+class ErSessionException(message: String = null,
+                         cause: Throwable = null) extends RuntimeException(message, cause) {
 }

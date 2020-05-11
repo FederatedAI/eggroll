@@ -55,15 +55,15 @@ class StoreCrudOperator extends CrudOperator with Logging {
     doGetOrCreateStore(input)
   }
 
-  def getStore(input: ErStore): ErStore = {
+  def getStore(input: ErStore): ErStore = synchronized {
     StoreCrudOperator.doGetStore(input)
   }
 
-  def deleteStore(input: ErStore): ErStore = {
+  def deleteStore(input: ErStore): ErStore = synchronized {
     StoreCrudOperator.doDeleteStore(input)
   }
 
-  def getStoreFromNamespace(input: ErStore): ErStoreList = {
+  def getStoreFromNamespace(input: ErStore): ErStoreList = synchronized {
     StoreCrudOperator.dao.getStoreLocators(input: ErStore)
   }
 }
@@ -271,31 +271,47 @@ object StoreCrudOperator {
   private[metadata] def doDeleteStore(input: ErStore): ErStore = {
     val inputStoreLocator = input.storeLocator
 
-    val sql = "select * from store_locator " +
-      "where store_type = ? and namespace = ? and name = ? and status = ? limit 1"
+    val outputStoreLocator = if (inputStoreLocator.name.equals("*")) {
+      val result = dbc.withTransaction(conn => {
+        var sql = "update store_locator set name = concat(name, ?), status = ? where namespace = ? and status = ? "
+        val storeType = inputStoreLocator.storeType
+        if (storeType.equals("*")) {
+          dbc.update(conn, sql,
+            s".${TimeUtils.getNowMs()}", StoreStatus.DELETED, inputStoreLocator.namespace, StoreStatus.NORMAL)
+        } else {
+          sql += "and store_type = ?"
+          dbc.update(conn, sql,
+            s".${TimeUtils.getNowMs()}", StoreStatus.DELETED, inputStoreLocator.namespace, StoreStatus.NORMAL, storeType)
+        }
+      })
 
-    val nodeResult = dbc.query(rs => rs.map(_ => DbStoreLocator(
-      id = rs.getLong("store_locator_id"),
-      name = rs.getString("name"))), sql,
-      inputStoreLocator.storeType, inputStoreLocator.namespace,
-      inputStoreLocator.name, StoreStatus.NORMAL).toList
+      inputStoreLocator
+    } else {
+      val sql = "select * from store_locator " +
+        "where store_type = ? and namespace = ? and name = ? and status = ? limit 1"
 
-    if (nodeResult.isEmpty) {
-      return null
+      val nodeResult = dbc.query(rs => rs.map(_ => DbStoreLocator(
+        id = rs.getLong("store_locator_id"),
+        name = rs.getString("name"))), sql,
+        inputStoreLocator.storeType, inputStoreLocator.namespace,
+        inputStoreLocator.name, StoreStatus.NORMAL).toList
+
+      if (nodeResult.isEmpty) {
+        return null
+      }
+
+      val nodeRecord = nodeResult(0)
+      val nameNow = nodeRecord.name + "." + TimeUtils.getNowMs()
+
+      val storeLocatorRecord = dbc.withTransaction(conn => {
+        val sql = "update store_locator " +
+          "set name = ?, status = ? where store_locator_id = ?"
+
+        dbc.update(conn, sql, nameNow, StoreStatus.DELETED, nodeRecord.id)
+      })
+
+      inputStoreLocator.copy(name = nodeRecord.name)
     }
-
-    val nodeRecord = nodeResult(0)
-    val nameNow = nodeRecord.name + "." + TimeUtils.getNowMs()
-
-    val storeLocatorRecord = dbc.withTransaction(conn => {
-      val sql = "update store_locator " +
-        "set name = ?, status = ? where store_locator_id = ?"
-
-      dbc.update(conn, sql, nameNow, StoreStatus.DELETED, nodeRecord.id)
-    })
-
-    val outputStoreLocator = inputStoreLocator.copy(name = nodeRecord.name)
-
     ErStore(storeLocator = outputStoreLocator)
   }
   val dao = new SessionMetaDao()
