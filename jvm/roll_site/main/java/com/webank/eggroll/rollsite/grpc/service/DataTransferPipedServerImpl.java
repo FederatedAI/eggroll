@@ -52,6 +52,8 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Scope;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Component;
+import scala.Option;
+import scala.Some;
 
 @Component
 @Scope("prototype")
@@ -257,9 +259,16 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                         tagKey);  //obj or RollPair
 
                 if (!JobStatus.hasLatch(tagKey)) {
-                    int totalPartitions = Integer.parseInt(
-                        rollSiteHeader.options().getOrElse(StringConstants.TOTAL_PARTITIONS_SNAKECASE(), () -> "1"));
+                    int totalPartitions = 1;
 
+                    String tpString = "1";
+                    Option<String> tpOption =
+                        rollSiteHeader.options().get(StringConstants.TOTAL_PARTITIONS_SNAKECASE());
+                    if (tpOption instanceof Some) {
+                        tpString = ((Some<String>) tpOption).get();
+                    }
+
+                    totalPartitions = Integer.parseInt(tpString);
                     JobStatus.createLatch(tagKey, totalPartitions);
                 }
                 JobStatus.countDownFinishLatch(tagKey);
@@ -299,6 +308,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                         Thread.sleep(50);
                         --retryCount;
                     }
+                    JobStatus.cleanupJobStatus(tagKey);
                 } else {
                     LOGGER.info("getStatus: job NOT finished: {}. current latch count: {}, "
                             + "put batch required: {}, put batch finished: {}",
@@ -330,7 +340,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
             long loopEndTimestamp = System.currentTimeMillis();
             while ((!hasReturnedBefore || !pipe.isDrained())
                 && !pipe.hasError()
-                && emptyRetryCount < 300
+                && emptyRetryCount < 30_000
                 && !timeouts.isTimeout(overallTimeout, startTimestamp, loopEndTimestamp)) {
                 packet = (Proxy.Packet) pipe.read(1, TimeUnit.SECONDS);
 //            packet = request;
@@ -379,7 +389,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                     pipe.onError(e);
                 } else {
                     String errorMsg =
-                        "[PULL][SERVER] pull server error: overall process time exceeds timeout: "
+                        "[UNARYCALL][SERVER] unary call server error: overall process time exceeds timeout: "
                             + overallTimeout
                             + ", metadata: " + oneLineStringInputMetadata
                             + ", startTimestamp: " + startTimestamp

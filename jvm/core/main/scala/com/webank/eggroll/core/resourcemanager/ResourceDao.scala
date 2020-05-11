@@ -11,7 +11,7 @@ import scala.collection.mutable.ArrayBuffer
 
 class ServerMetaDao {
   private lazy val dbc = ResourceDao.dbc
-  def getServerCluster(clusterId:Long = 0): ErServerCluster = {
+  def getServerCluster(clusterId:Long = 0): ErServerCluster = synchronized {
     val nodes = dbc.query(rs =>
       rs.map(_ => ErServerNode(
         id = rs.getLong("server_id"), clusterId=clusterId, name = rs.getString("name"),
@@ -30,7 +30,7 @@ class SessionMetaDao {
 
 
   private lazy val dbc = ResourceDao.dbc
-  def register(sessionMeta: ErSessionMeta, replace: Boolean = true): Unit = {
+  def register(sessionMeta: ErSessionMeta, replace: Boolean = true): Unit = synchronized {
     require(sessionMeta.activeProcCount == sessionMeta.processors.count(_.status == ProcessorStatus.RUNNING),
       "conflict active proc count:" + sessionMeta)
     val sid = sessionMeta.id
@@ -64,7 +64,7 @@ class SessionMetaDao {
     }
   }
 
-  def getSession(sessionId: String): ErSessionMeta = {
+  def getSession(sessionId: String): ErSessionMeta = synchronized {
     val opts = dbc.query(
           rs => rs.map(
             _ => (rs.getString("name"), rs.getString("data"))
@@ -77,20 +77,21 @@ class SessionMetaDao {
           commandEndpoint = if(StringUtils.isBlank(rs.getString("command_endpoint"))) null
                             else ErEndpoint(rs.getString("command_endpoint")),
           transferEndpoint = if(StringUtils.isBlank(rs.getString("transfer_endpoint"))) null
-                              else ErEndpoint(rs.getString("transfer_endpoint")))
+                              else ErEndpoint(rs.getString("transfer_endpoint")),
+          pid = rs.getInt("pid"))
         ),
       "select * from session_processor where session_id = ?", sessionId)
     getSessionMain(sessionId).copy(options = opts, processors = procs.toArray)
   }
 
-  def addSession(sessionMeta: ErSessionMeta): Unit = {
+  def addSession(sessionMeta: ErSessionMeta): Unit = synchronized {
     if (dbc.queryOne("select * from session_main where session_id = ?", sessionMeta.id).nonEmpty) {
       throw new NotExistError("session exists:" + sessionMeta.id)
     }
     register(sessionMeta)
   }
 
-  def createProcessor(proc: ErProcessor): ErProcessor = {
+  def createProcessor(proc: ErProcessor): ErProcessor = synchronized {
     dbc.withTransaction(conn => {
       val sql = "insert into session_processor " +
         "(session_id, server_node_id, processor_type, status, tag, command_endpoint, transfer_endpoint) values " +
@@ -101,7 +102,7 @@ class SessionMetaDao {
     proc
   }
 
-  def updateProcessor(proc: ErProcessor): Unit = {
+  def updateProcessor(proc: ErProcessor): Unit = synchronized {
     val (session_id: String, oldStatus: String) = dbc.query( rs => {
       if (!rs.next()) {
         throw new NotExistError("processor not exits:" + proc)
@@ -144,7 +145,7 @@ class SessionMetaDao {
     }
   }
 
-  def getSessionMain(sessionId: String): ErSessionMeta = {
+  def getSessionMain(sessionId: String): ErSessionMeta = synchronized {
     dbc.query( rs => {
       if (!rs.next()) {
         throw new NotExistError("session id not found:" + sessionId)
@@ -154,11 +155,12 @@ class SessionMetaDao {
         id = sessionId, name = rs.getString("name"),
         totalProcCount = rs.getInt("total_proc_count"),
         activeProcCount = rs.getInt("active_proc_count"),
-        status = rs.getString("status"), tag = rs.getString("tag"))
+        status = rs.getString("status"),
+        tag = rs.getString("tag"))
     },"select * from session_main where session_id = ?", sessionId)
   }
 
-  def getSessionMains(sessionMeta: ErSessionMeta): Array[ErSessionMeta] = {
+  def getSessionMains(sessionMeta: ErSessionMeta): Array[ErSessionMeta] = synchronized {
     var sql = "select * from session_main where "
     val whereFragments = ArrayBuffer[String]()
     val args = ArrayBuffer[String]()
@@ -189,7 +191,7 @@ class SessionMetaDao {
     }, sql, args: _*)
   }
 
-  def getStoreLocators(input: ErStore): ErStoreList ={
+  def getStoreLocators(input: ErStore): ErStoreList = synchronized {
     var sql = "select * from store_locator where status = 'NORMAL' and"
     val whereFragments = ArrayBuffer[String]()
     val args = ArrayBuffer[String]()
@@ -234,43 +236,48 @@ class SessionMetaDao {
 
   }
 
-  def existSession(sessionId: String): Boolean = {
+  def existSession(sessionId: String): Boolean = synchronized {
     dbc.queryOne("select 1 from session_main where session_id = ?", sessionId).nonEmpty
   }
 
-  def updateSessionMain(sessionMeta: ErSessionMeta): Unit = dbc.withTransaction { conn =>
-    dbc.update(conn, "update session_main set name = ? , status = ? , tag = ? , active_proc_count = ? where session_id = ?",
-      sessionMeta.name, sessionMeta.status, sessionMeta.tag, sessionMeta.activeProcCount, sessionMeta.id)
+  def updateSessionMain(sessionMeta: ErSessionMeta): Unit = synchronized {
+    dbc.withTransaction { conn =>
+      dbc.update(conn, "update session_main set name = ? , status = ? , tag = ? , active_proc_count = ? where session_id = ?",
+        sessionMeta.name, sessionMeta.status, sessionMeta.tag, sessionMeta.activeProcCount, sessionMeta.id)
 
-    if (SessionStatus.KILLED.equals(sessionMeta.status)) {
-      batchUpdateSessionProcessor(sessionMeta)
+      if (SessionStatus.KILLED.equals(sessionMeta.status)) {
+        batchUpdateSessionProcessor(sessionMeta)
+      }
     }
   }
 
   // status and tag only
-  def batchUpdateSessionProcessor(sessionMeta: ErSessionMeta): Unit = dbc.withTransaction { conn =>
-    if (StringUtils.isBlank(sessionMeta.id)) throw new IllegalArgumentException("session id cannot be blank")
-    var sql = "update session_processor set "
+  def batchUpdateSessionProcessor(sessionMeta: ErSessionMeta): Unit = synchronized {
+    dbc.withTransaction { conn =>
+      if (StringUtils.isBlank(sessionMeta.id)) throw new IllegalArgumentException("session id cannot be blank")
+      var sql = "update session_processor set "
 
-    val setFragments = ArrayBuffer[String]()
-    val args = ArrayBuffer[String]()
-    if (!StringUtils.isBlank(sessionMeta.status)) {
-      setFragments += "status = ?"
-      args += sessionMeta.status
+      val setFragments = ArrayBuffer[String]()
+      val args = ArrayBuffer[String]()
+      if (!StringUtils.isBlank(sessionMeta.status)) {
+        setFragments += "status = ?"
+        args += sessionMeta.status
+      }
+      if (!StringUtils.isBlank(sessionMeta.tag)) {
+        setFragments += "tag = ?"
+        args += sessionMeta.tag
+      }
+
+      sql += String.join(", ", setFragments: _*)
+
+      sql += "where session_id = ?"
+      args += sessionMeta.id
+
+      dbc.update(conn, sql, args: _*)
     }
-    if (!StringUtils.isBlank(sessionMeta.tag)) {
-      setFragments += "tag = ?"
-      args += sessionMeta.tag
-    }
-
-    sql += String.join(", ", setFragments: _*)
-
-    sql += "where session_id = ?"
-    args += sessionMeta.id
-
-    dbc.update(conn, sql, args: _*)
   }
 }
+
 object ResourceDao {
   class NotExistError(msg: String) extends Exception(msg)
   val dbc: JdbcTemplate = new JdbcTemplate(RdbConnectionPool.dataSource.getConnection)

@@ -2,10 +2,12 @@ package com.webank.eggroll.core.resourcemanager
 
 import com.webank.eggroll.core.client.NodeManagerClient
 import com.webank.eggroll.core.constant._
+import com.webank.eggroll.core.error.ErSessionException
 import com.webank.eggroll.core.meta.{ErEndpoint, ErProcessor, ErServerNode, ErSessionMeta}
 import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.util.Logging
+import org.apache.commons.lang3.StringUtils
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
@@ -41,6 +43,8 @@ trait SessionManager {
   def stopSession(sessionMeta: ErSessionMeta): ErSessionMeta
 
   def killSession(sessionMeta: ErSessionMeta): ErSessionMeta
+
+  def killSession(sessionMeta: ErSessionMeta, afterState: String): ErSessionMeta
 
   def killAllSessions(sessionMeta: ErSessionMeta): ErSessionMeta
 }
@@ -83,15 +87,20 @@ class SessionManagerService extends SessionManager with Logging {
     val healthyCluster = serverNodeCrudOperator.getServerNodes(healthyNodeExample)
 
     val serverNodes = healthyCluster.serverNodes
+    val serverNodesToHost = mutable.Map[Long, String]()
+    serverNodes.foreach(n => serverNodesToHost += (n.id -> n.endpoint.host))
+
     val eggsPerNode = sessionMeta.options.getOrElse(SessionConfKeys.CONFKEY_SESSION_PROCESSORS_PER_NODE, StaticErConf.getString(SessionConfKeys.CONFKEY_SESSION_PROCESSORS_PER_NODE, "1")).toInt
     val processorPlan = Array(ErProcessor(
       serverNodeId = serverNodes.head.id,
       processorType = ProcessorTypes.ROLL_PAIR_MASTER,
+      commandEndpoint = ErEndpoint(serverNodesToHost(serverNodes.head.id), 0),
       status = ProcessorStatus.NEW)) ++
       serverNodes.flatMap(n => (0 until eggsPerNode).map(_ => ErProcessor(
-        serverNodeId = n.id,
-        processorType = ProcessorTypes.EGG_PAIR,
-        status = ProcessorStatus.NEW)))
+          serverNodeId = n.id,
+          processorType = ProcessorTypes.EGG_PAIR,
+          commandEndpoint = ErEndpoint(serverNodesToHost(n.id), 0),
+          status = ProcessorStatus.NEW)))
     val expectedProcessorsCount = 1 + healthyCluster.serverNodes.length * eggsPerNode
     val sessionMetaWithProcessors = sessionMeta.copy(
       processors = processorPlan,
@@ -113,41 +122,61 @@ class SessionManagerService extends SessionManager with Logging {
       nodeManagerClient.startContainers(newSessionMeta)
     })
 
-    val maxRetries = 200
-
+    val startTimeout = System.currentTimeMillis() + SessionConfKeys.EGGROLL_SESSION_START_TIMEOUT_MS.get().toLong
+    var isStarted = false
     breakable {
-      (0 until maxRetries).foreach(i => {
+      while (System.currentTimeMillis() <= startTimeout) {
         val cur = getSessionMain(sessionId)
-        if (cur.activeProcCount < expectedProcessorsCount) Thread.sleep(100) else break
-        if (i >= maxRetries - 1) {
-          val curDetails = smDao.getSession(sessionId)
-
-          val actives = ListBuffer[Long]()
-          val inactives = ListBuffer[Long]()
-          val activesPerNode = mutable.Map[String, Int]()
-
-          serverNodes.foreach(n => activesPerNode += (n.endpoint.host -> 0))
-
-          curDetails.processors.foreach(p => {
-            if (p.status.equals(ProcessorStatus.RUNNING)) {
-              actives += p.id
-              activesPerNode(p.commandEndpoint.host) += 1
-            } else {
-              inactives += p.id
-            }
-          })
-          throw new IllegalStateException(s"unable to start all processors for session id: '${sessionId}'. please check bootstrap logs to check the reasons. Details:\n" +
-            s"total processors: ${curDetails.totalProcCount}, " +
-            s"started count: ${curDetails.activeProcCount}, " +
-            s"not started count: ${curDetails.totalProcCount - curDetails.activeProcCount}, " +
-            s"current active processors per node: ${activesPerNode}, " +
-            s"not started processors: ${String.join(", ", inactives.map(id => id.toString): _*)}")
+        if (cur.activeProcCount < expectedProcessorsCount) {
+          Thread.sleep(100)
+        } else {
+          isStarted = true
+          break
         }
-      })
+      }
+    }
+
+    if (!isStarted) {
+      val curDetails = smDao.getSession(sessionId)
+
+      // last chance to check
+      if (curDetails.activeProcCount < expectedProcessorsCount) {
+        val actives = ListBuffer[Long]()
+        val inactives = ListBuffer[Long]()
+        val activesPerNode = mutable.TreeMap[String, Int]()
+        val inactivesToNode = mutable.TreeMap[Long, String]()
+
+        serverNodes.foreach(n => activesPerNode += (n.endpoint.host -> 0))
+
+        curDetails.processors.foreach(p => {
+          if (p.status.equals(ProcessorStatus.RUNNING)) {
+            actives += p.id
+            activesPerNode(p.commandEndpoint.host) += 1
+          } else {
+            inactives += p.id
+            inactivesToNode += (p.id -> serverNodesToHost(p.serverNodeId))
+          }
+        })
+
+        killSession(sessionMeta = curDetails, afterState = SessionStatus.ERROR)
+
+        val builder = new mutable.StringBuilder()
+        builder.append(s"unable to start all processors for session id: '${sessionId}'. ")
+          .append(s"Please check corresponding bootstrap logs at '${CoreConfKeys.EGGROLL_LOGS_DIR.get()}/${sessionId}' to check the reasons. Details:\n")
+          .append("=================\n")
+          .append(s"total processors: ${curDetails.totalProcCount}, \n")
+          .append(s"started count: ${curDetails.activeProcCount}, \n")
+          .append(s"not started count: ${curDetails.totalProcCount - curDetails.activeProcCount}, \n")
+          .append(s"current active processors per node: ${activesPerNode}, \n")
+          .append(s"not started processors and their nodes: ${inactivesToNode}")
+        val exception = new ErSessionException(builder.toString())
+        throw exception
+      }
     }
 
     // todo:1: update selective
-    smDao.updateSessionMain(registeredSessionMeta.copy(status = SessionStatus.ACTIVE, activeProcCount = expectedProcessorsCount))
+    smDao.updateSessionMain(registeredSessionMeta.copy(
+      status = SessionStatus.ACTIVE, activeProcCount = expectedProcessorsCount))
     getSession(sessionMeta)
   }
 
@@ -159,10 +188,10 @@ class SessionManagerService extends SessionManager with Logging {
   def getSession(sessionMeta: ErSessionMeta): ErSessionMeta = {
     logDebug(s"SESSION getSession: ${sessionMeta}")
     var result: ErSessionMeta = null
+    val startTimeout = System.currentTimeMillis() + SessionConfKeys.EGGROLL_SESSION_START_TIMEOUT_MS.get().toLong
     // todo:1: use retry framework
     breakable {
-      var retries = 0
-      while (retries < 200) {
+      while (System.currentTimeMillis() <= startTimeout) {
         result = smDao.getSession(sessionMeta.id)
         if (result != null && !result.status.equals(SessionStatus.NEW)) {
           break()
@@ -202,7 +231,10 @@ class SessionManagerService extends SessionManager with Logging {
       return dbSessionMeta
     }
 
-    val sessionHosts = dbSessionMeta.processors.map(p => p.commandEndpoint.host).toSet
+    val sessionHosts = mutable.Set[String]()
+    dbSessionMeta.processors.foreach(p => {
+      if (p != null && p.commandEndpoint != null) sessionHosts += p.commandEndpoint.host
+    })
 
     val serverNodeCrudOperator = new ServerNodeCrudOperator()
     val sessionServerNodes = serverNodeCrudOperator.getServerClusterByHosts(sessionHosts.toList.asJava).serverNodes
@@ -222,15 +254,21 @@ class SessionManagerService extends SessionManager with Logging {
       nodeManagerClient.stopContainers(newSessionMeta)
     })
 
-    val maxRetries = 200
+    val stopTimeout = System.currentTimeMillis() + SessionConfKeys.EGGROLL_SESSION_STOP_TIMEOUT_MS.get().toLong
+    var isStopped = false
 
     breakable {
-      (0 until maxRetries).foreach(i => {
+      while (System.currentTimeMillis() <= stopTimeout) {
         val cur = getSessionMain(sessionId)
-        if (cur.activeProcCount > 0) Thread.sleep(100) else break
-        if (i == maxRetries - 1) throw new IllegalStateException("unable to stop all processors")
-      })
+        if (cur.activeProcCount > 0) {
+          Thread.sleep(100)
+        } else {
+          isStopped = true
+          break
+        }
+      }
     }
+    if (!isStopped) throw new IllegalStateException("unable to stop all processors")
 
     // todo:1: update selective
     val stoppedSessionMain = dbSessionMeta.copy(activeProcCount = 0, status = SessionStatus.CLOSED)
@@ -239,6 +277,10 @@ class SessionManagerService extends SessionManager with Logging {
   }
 
   override def killSession(sessionMeta: ErSessionMeta): ErSessionMeta = {
+    killSession(sessionMeta, SessionStatus.KILLED)
+  }
+
+  override def killSession(sessionMeta: ErSessionMeta, afterState: String): ErSessionMeta = {
     val sessionId = sessionMeta.id
     if (!smDao.existSession(sessionId)) {
       return null
@@ -246,7 +288,7 @@ class SessionManagerService extends SessionManager with Logging {
 
     val dbSessionMeta = smDao.getSession(sessionId)
 
-    if (dbSessionMeta.status.equals(SessionStatus.KILLED) || dbSessionMeta.status.equals(SessionStatus.CLOSED)) {
+    if (StringUtils.equalsAny(dbSessionMeta.status, SessionStatus.KILLED, SessionStatus.CLOSED, SessionStatus.ERROR)) {
       return dbSessionMeta
     }
 
@@ -266,7 +308,7 @@ class SessionManagerService extends SessionManager with Logging {
     })
 
     // todo:1: update selective
-    smDao.updateSessionMain(dbSessionMeta.copy(activeProcCount = 0, status = SessionStatus.KILLED))
+    smDao.updateSessionMain(dbSessionMeta.copy(activeProcCount = 0, status = afterState))
     getSession(dbSessionMeta)
   }
 

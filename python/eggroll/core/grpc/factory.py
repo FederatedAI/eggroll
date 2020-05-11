@@ -16,6 +16,7 @@ import ipaddress
 
 import grpc
 
+from eggroll.core.conf_keys import CoreConfKeys
 from eggroll.core.meta_model import ErEndpoint
 
 
@@ -34,8 +35,11 @@ class GrpcChannelFactory(object):
         if target not in self.pool:
             result = grpc.insecure_channel(
             target=target,
-            options=[('grpc.max_send_message_length', 2 << 30 - 1),
-                     ('grpc.max_receive_message_length', 2 << 30 - 1),
-                     ('grpc.max_metadata_size', 32 << 20)])
+            options=[('grpc.max_send_message_length',
+                      int(CoreConfKeys.EGGROLL_CORE_GRPC_CHANNEL_MAX_INBOUND_MESSAGE_SIZE.get())),
+                     ('grpc.max_receive_message_length',
+                      int(CoreConfKeys.EGGROLL_CORE_GRPC_CHANNEL_MAX_INBOUND_MESSAGE_SIZE.get())),
+                     ('grpc.max_metadata_size',
+                      int(CoreConfKeys.EGGROLL_CORE_GRPC_CHANNEL_MAX_INBOUND_METADATA_SIZE.get()))])
             self.pool[target] = result
         return self.pool[target]

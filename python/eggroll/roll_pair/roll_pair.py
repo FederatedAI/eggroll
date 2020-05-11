@@ -12,7 +12,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-import sys
+import os
 import uuid
 from concurrent.futures import wait, FIRST_EXCEPTION
 from threading import Thread
@@ -21,7 +21,8 @@ from eggroll.core.aspects import _method_profile_logger
 from eggroll.core.client import CommandClient
 from eggroll.core.command.command_model import CommandURI
 from eggroll.core.conf_keys import SessionConfKeys
-from eggroll.core.constants import StoreTypes, SerdesTypes, PartitionerTypes
+from eggroll.core.constants import StoreTypes, SerdesTypes, PartitionerTypes, \
+    SessionStatus
 from eggroll.core.datastructure.broker import FifoBroker
 from eggroll.core.meta_model import ErStoreLocator, ErJob, ErStore, ErFunctor, \
     ErTask, ErPair, ErPartition
@@ -46,6 +47,8 @@ def runtime_init(session: ErSession):
 class RollPairContext(object):
 
     def __init__(self, session: ErSession):
+        if session.get_session_meta()._status != SessionStatus.ACTIVE:
+            raise Exception(f"session:{session.get_session_id()} is not available, init first!")
         self.__session = session
         self.session_id = session.get_session_id()
         self.default_store_type = StoreTypes.ROLLPAIR_LMDB
@@ -55,6 +58,7 @@ class RollPairContext(object):
         self.__session.add_exit_task(self.context_gc)
         self.rpc_gc_enable = True
         self.gc_recorder = GcRecorder(self)
+        self.__command_client = CommandClient()
 
     def set_store_type(self, store_type: str):
         self.default_store_type = store_type
@@ -79,12 +83,13 @@ class RollPairContext(object):
         return ret
 
     def context_gc(self):
-        if self.gc_recorder.gc_recorder is None:
-            L.error("rp context gc_recorder is None!")
+        self.gc_recorder.stop()
+        if self.gc_recorder.gc_recorder is None or len(self.gc_recorder.gc_recorder) == 0:
+            L.info("rp context gc_recorder is None or empty!")
             return
-        for item in list(self.gc_recorder.gc_recorder.get_all()):
-            L.debug("cleanup item:{}".format(item))
-            name = item[0]
+        for k, v in (self.gc_recorder.gc_recorder.items()):
+            L.debug("before exit the task:{} cleaning item:{}".format(self.session_id, k))
+            name = k
             rp = self.load(namespace=self.session_id, name=name)
             rp.destroy()
 
@@ -166,53 +171,89 @@ class RollPairContext(object):
 
     '''store name only supports full name and reg: *, *abc ,abc* and a*c'''
     def cleanup(self, namespace, name, options: dict = None):
+        if not namespace:
+            raise ValueError('namespace cannot be blank')
+        L.info(f'cleaning up namespace={namespace}, name={name}')
         if options is None:
             options = {}
         total_partitions = options.get('total_partitions', 1)
         partitioner = options.get('partitioner', PartitionerTypes.BYTESTRING_HASH)
         store_serdes = options.get('serdes', self.default_store_serdes)
 
-        # todo:1: add combine options to pass it through
-        store_options = self.__session.get_all_options()
-        store_options.update(options)
-        final_options = store_options.copy()
+        if name == '*':
+            store_type = options.get('store_type', '*')
+            L.info(f'cleaning up whole store_type={store_type}, namespace={namespace}, name={name}')
+            er_store = ErStore(store_locator=ErStoreLocator(namespace=namespace,
+                                                            name=name,
+                                                            store_type=store_type))
+            job_id = generate_job_id(namespace, tag=RollPair.CLEANUP)
+            job = ErJob(id=job_id,
+                        name=RollPair.DESTROY,
+                        inputs=[er_store],
+                        options=options)
 
-        # TODO:1: tostring in er model
-        if 'create_if_missing' in final_options:
-            del final_options['create_if_missing']
-        # TODO:1: remove these codes by adding to string logic in ErStore
-        if 'include_key' in final_options:
-            del final_options['include_key']
-        if 'total_partitions' in final_options:
-            del final_options['total_partitions']
-        if 'name' in final_options:
-            del final_options['name']
-        if 'namespace' in final_options:
-            del final_options['namespace']
-        # TODO:1: remove these codes by adding to string logic in ErStore
-        if 'keys_only' in final_options:
-            del final_options['keys_only']
-        # TODO:0: add 'error_if_exist, persistent / default store type'
-        L.info("final_options:{}".format(final_options))
+            args = list()
+            cleanup_partitions = [ErPartition(id=-1, store_locator=er_store._store_locator)]
 
-        store = ErStore(
-            store_locator=ErStoreLocator(
-                store_type=StoreTypes.ROLLPAIR_LMDB,
-                namespace=namespace,
-                name=name,
-                total_partitions=total_partitions,
-                partitioner=partitioner,
-                serdes=store_serdes),
-            options=final_options)
-        results = self.__session._cluster_manager_client.get_store_from_namespace(store)
-        L.debug('res:{}'.format(results._stores))
-        if results._stores is not None:
-            L.debug("item count:{}".format(len(results._stores)))
-            for item in results._stores:
-                L.debug("item namespace:{} name:{}".format(item._store_locator._namespace,
-                                                         item._store_locator._name))
-                rp = RollPair(er_store=item, rp_ctx=self)
-                rp.destroy()
+            for server_node, eggs in self.__session._eggs.items():
+                egg = eggs[0]
+                task = ErTask(id=generate_task_id(job_id, egg._command_endpoint._host),
+                              name=job._name,
+                              inputs=cleanup_partitions,
+                              job=job)
+                args.append(([task], egg._command_endpoint))
+
+            futures = self.__command_client.async_call(
+                    args=args,
+                    output_types=[ErTask],
+                    command_uri=CommandURI(f'{RollPair.EGG_PAIR_URI_PREFIX}/{RollPair.RUN_TASK}'))
+
+            for future in futures:
+                result = future.result()
+
+            self.get_session()._cluster_manager_client.delete_store(er_store)
+        else:
+            # todo:1: add combine options to pass it through
+            store_options = self.__session.get_all_options()
+            store_options.update(options)
+            final_options = store_options.copy()
+
+            # TODO:1: tostring in er model
+            if 'create_if_missing' in final_options:
+                del final_options['create_if_missing']
+            # TODO:1: remove these codes by adding to string logic in ErStore
+            if 'include_key' in final_options:
+                del final_options['include_key']
+            if 'total_partitions' in final_options:
+                del final_options['total_partitions']
+            if 'name' in final_options:
+                del final_options['name']
+            if 'namespace' in final_options:
+                del final_options['namespace']
+            # TODO:1: remove these codes by adding to string logic in ErStore
+            if 'keys_only' in final_options:
+                del final_options['keys_only']
+            # TODO:0: add 'error_if_exist, persistent / default store type'
+            L.info("final_options:{}".format(final_options))
+
+            store = ErStore(
+                    store_locator=ErStoreLocator(
+                            store_type=StoreTypes.ROLLPAIR_LMDB,
+                            namespace=namespace,
+                            name=name,
+                            total_partitions=total_partitions,
+                            partitioner=partitioner,
+                            serdes=store_serdes),
+                    options=final_options)
+            results = self.__session._cluster_manager_client.get_store_from_namespace(store)
+            L.debug('res:{}'.format(results._stores))
+            if results._stores is not None:
+                L.debug("item count:{}".format(len(results._stores)))
+                for item in results._stores:
+                    L.debug("item namespace:{} name:{}".format(item._store_locator._namespace,
+                                                               item._store_locator._name))
+                    rp = RollPair(er_store=item, rp_ctx=self)
+                    rp.destroy()
 
 
 def default_partitioner(k):
@@ -232,6 +273,7 @@ class RollPair(object):
 
     AGGREGATE = 'aggregate'
     COLLAPSE_PARTITIONS = 'collapsePartitions'
+    CLEANUP = 'cleanup'
     COUNT = 'count'
     DELETE = "delete"
     DESTROY = "destroy"
@@ -261,6 +303,8 @@ class RollPair(object):
         pass
 
     def __init__(self, er_store: ErStore, rp_ctx: RollPairContext):
+        if not rp_ctx:
+            raise ValueError('rp_ctx cannot be None')
         self.__store = er_store
         self.ctx = rp_ctx
         self.__command_serdes = SerdesTypes.PROTOBUF
@@ -275,23 +319,84 @@ class RollPair(object):
         self.gc_enable = rp_ctx.rpc_gc_enable
         self.gc_recorder = rp_ctx.gc_recorder
         self.gc_recorder.record(er_store)
+        self.destroyed = False
 
     def __del__(self):
+        if "EGGROLL_GC_DISABLE" in os.environ and os.environ["EGGROLL_GC_DISABLE"] == '1':
+            L.debug("global RollPair gc is disable")
+            return
+        if not hasattr(self, 'gc_enable') \
+                or not hasattr(self, 'ctx'):
+            return
+        if not self.gc_enable:
+            L.info('session:{} gc not enable'.format(self.__session_id))
+            return
+        if self.destroyed:
+            return
         if self.ctx.get_session().is_stopped():
-            L.info('session:{} has already been stopped'.format(self.__session_id))
+            L.debug('session:{} has already been stopped'.format(self.__session_id))
             return
-        if not hasattr(self, 'gc_enable') or not self.gc_enable:
-            return
-        if self.ctx.gc_recorder.check_gc_executable(self.__store):
-            self.ctx.gc_recorder.delete_record(self.__store)
-            L.debug(f'del rp: {self}')
-            self.destroy()
-            L.debug(f"running gc: {sys._getframe().f_code.co_name}. "
-                    f"deleting store name: {self.__store._store_locator._name}, "
-                    f"namespace: {self.__store._store_locator._namespace}")
+        L.debug(f"del obj addr:{self} calling")
+
+        self.ctx.gc_recorder.decrease_ref_count(self.__store)
 
     def __repr__(self):
         return f'<RollPair(_store={self.__store}) at {hex(id(self))}>'
+
+    def __repartition_with(self, other):
+        self_partition = self.get_partitions()
+        other_partition = other.get_partitions()
+
+        if other_partition != self_partition:
+            self_name = self.get_name()
+            self_count = self.count()
+            other_name = other.get_name()
+            other_count = other.count()
+
+            L.info(f"repartition start: partitions of rp: {self_name}: {self_partition}, "
+                   f"other: {other_name}: {other_partition}, repartitioning")
+
+            if self_count <= other_count:
+                shuffle_rp = self
+                shuffle_rp_count = self_count
+                shuffle_rp_name = self_name
+                shuffle_rp_partition = self_partition
+
+                not_shuffle_rp = other
+                not_shuffle_rp_count = other_count
+                not_shuffle_rp_name = other_name
+                not_shuffle_rp_partition = other_partition
+            else:
+                not_shuffle_rp = self
+                not_shuffle_rp_count = self_count
+                not_shuffle_rp_name = self_name
+                not_shuffle_rp_partition = self_partition
+
+                shuffle_rp = other
+                shuffle_rp_count = other_count
+                shuffle_rp_name = other_name
+                shuffle_rp_partition = other_partition
+
+            L.debug(f"repatition selection: rp: {shuffle_rp_name} count:{shuffle_rp_count} "
+                    f"<= rp: {not_shuffle_rp_name} count:{not_shuffle_rp_count}. "
+                    f"repartitioning {shuffle_rp_name}")
+            store = ErStore(store_locator=ErStoreLocator(store_type=shuffle_rp.get_store_type(),
+                                                         namespace=shuffle_rp.get_namespace(),
+                                                         name=str(uuid.uuid1()),
+                                                         total_partitions=not_shuffle_rp_partition))
+            res_rp = shuffle_rp.map(lambda k, v: (k, v), output=store)
+            res_rp.disable_gc()
+            L.debug(f"repartition end: rp to shuffle: {shuffle_rp_name}, "
+                    f"count: {shuffle_rp_count}, partitions: {shuffle_rp_partition}; "
+                    f"rp NOT shuffle: {not_shuffle_rp_name}, "
+                    f"count: {not_shuffle_rp_count}, partitions: {not_shuffle_rp_partition}' "
+                    f"res rp: {res_rp.get_name()}, "
+                    f"count: {res_rp.count()}, partitions :{res_rp.get_partitions()}")
+            store_shuffle = res_rp.get_store()
+            return [store_shuffle, other.get_store()] if self_count <= other_count \
+                else [self.get_store(), store_shuffle]
+        else:
+            return [self.__store, other.__store]
 
     def enable_gc(self):
         self.gc_enable = True
@@ -511,7 +616,7 @@ class RollPair(object):
                 output_types=[ErPair],
                 command_uri=CommandURI(f'{RollPair.EGG_PAIR_URI_PREFIX}/{RollPair.RUN_TASK}'))
 
-        done = wait(futures, timeout=20, return_when=FIRST_EXCEPTION).done
+        done = wait(futures, return_when=FIRST_EXCEPTION).done
 
         result = 0
         for future in done:
@@ -523,6 +628,9 @@ class RollPair(object):
     # todo:1: move to command channel to utilize batch command
     @_method_profile_logger
     def destroy(self):
+        if len(self.ctx.get_session()._cluster_manager_client.get_store(self.get_store())._partitions) == 0:
+            L.info(f"store:{self.get_store()} has been destroyed before")
+            raise ValueError(f"store:{self.get_store()} has been destroyed before")
         total_partitions = self.__store._store_locator._total_partitions
 
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.DESTROY),
@@ -540,6 +648,7 @@ class RollPair(object):
 
         self.ctx.get_session()._cluster_manager_client.delete_store(self.__store)
         L.info(f'{RollPair.DESTROY}: {self.__store}')
+        self.destroyed = True
 
     @_method_profile_logger
     def delete(self, k, options: dict = None):
@@ -607,6 +716,8 @@ class RollPair(object):
 
     @_method_profile_logger
     def save_as(self, name, namespace, partition, options: dict = None):
+        if partition <= 0:
+            raise ValueError('partition cannot <= 0')
         if options is None:
             options = {}
         store_type = options.get('store_type', self.ctx.default_store_type)
@@ -650,7 +761,6 @@ class RollPair(object):
                 serdes_type=self.__command_serdes)
 
         er_store = job_result._outputs[0]
-        L.info(er_store)
 
         return RollPair(er_store, self.ctx)
 
@@ -676,8 +786,6 @@ class RollPair(object):
                 serdes_type=self.__command_serdes)
 
         er_store = job_result._outputs[0]
-        L.info(er_store)
-        L.info(er_store)
 
         return RollPair(er_store, self.ctx)
 
@@ -703,7 +811,6 @@ class RollPair(object):
                 serdes_type=self.__command_serdes
         )
         er_store = job_result._outputs[0]
-        L.info(er_store)
 
         return RollPair(er_store, self.ctx)
 
@@ -730,7 +837,6 @@ class RollPair(object):
                 serdes_type=self.__command_serdes
         )
         er_store = job_result._outputs[0]
-        L.info(er_store)
 
         return RollPair(er_store, self.ctx)
 
@@ -757,7 +863,6 @@ class RollPair(object):
                 serdes_type=self.__command_serdes
         )
         er_store = job_result._outputs[0]
-        L.info(er_store)
 
         return RollPair(er_store, self.ctx)
 
@@ -864,7 +969,6 @@ class RollPair(object):
                 serdes_type=self.__command_serdes
         )
         er_store = job_result._outputs[0]
-        L.info(er_store)
 
         return RollPair(er_store, self.ctx)
 
@@ -892,7 +996,6 @@ class RollPair(object):
                 serdes_type=self.__command_serdes)
 
         er_store = job_result._outputs[0]
-        L.info(er_store)
 
         return RollPair(er_store, self.ctx)
 
@@ -919,7 +1022,6 @@ class RollPair(object):
                 serdes_type=self.__command_serdes)
 
         er_store = job_result._outputs[0]
-        L.info(er_store)
 
         return RollPair(er_store, self.ctx)
 
@@ -927,13 +1029,14 @@ class RollPair(object):
     def subtract_by_key(self, other, output=None, options: dict = None):
         if options is None:
             options = {}
+
         functor = ErFunctor(name=RollPair.SUBTRACT_BY_KEY, serdes=SerdesTypes.CLOUD_PICKLE)
         outputs = []
         if output:
             outputs.append(output)
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.SUBTRACT_BY_KEY),
                     name=RollPair.SUBTRACT_BY_KEY,
-                    inputs=[self.__store, other.__store],
+                    inputs=self.__repartition_with(other),
                     outputs=outputs,
                     functors=[functor])
 
@@ -944,7 +1047,6 @@ class RollPair(object):
                 command_uri=CommandURI(f'{RollPair.ROLL_PAIR_URI_PREFIX}/{RollPair.RUN_JOB}'),
                 serdes_type=self.__command_serdes)
         er_store = job_result._outputs[0]
-        L.info(er_store)
 
         return RollPair(er_store, self.ctx)
 
@@ -952,13 +1054,14 @@ class RollPair(object):
     def union(self, other, func=lambda v1, v2: v1, output=None, options: dict = None):
         if options is None:
             options = {}
+
         functor = ErFunctor(name=RollPair.UNION, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
         outputs = []
         if output:
             outputs.append(output)
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.UNION),
                     name=RollPair.UNION,
-                    inputs=[self.__store, other.__store],
+                    inputs=self.__repartition_with(other),
                     outputs=outputs,
                     functors=[functor])
 
@@ -969,7 +1072,6 @@ class RollPair(object):
                 command_uri=CommandURI(f'{RollPair.ROLL_PAIR_URI_PREFIX}/{RollPair.RUN_JOB}'),
                 serdes_type=self.__command_serdes)
         er_store = job_result._outputs[0]
-        L.info(er_store)
 
         return RollPair(er_store, self.ctx)
 
@@ -977,6 +1079,7 @@ class RollPair(object):
     def join(self, other, func, output=None, options: dict = None):
         if options is None:
             options = {}
+
         functor = ErFunctor(name=RollPair.JOIN, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
         outputs = []
         if output:
@@ -986,7 +1089,7 @@ class RollPair(object):
         final_options.update(options)
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.JOIN),
                     name=RollPair.JOIN,
-                    inputs=[self.__store, other.__store],
+                    inputs=self.__repartition_with(other),
                     outputs=outputs,
                     functors=[functor],
                     options=final_options)
@@ -998,7 +1101,6 @@ class RollPair(object):
                 command_uri=CommandURI(f'{RollPair.ROLL_PAIR_URI_PREFIX}/{RollPair.RUN_JOB}'),
                 serdes_type=self.__command_serdes)
         er_store = job_result._outputs[0]
-        L.info(er_store)
 
         return RollPair(er_store, self.ctx)
 
@@ -1029,9 +1131,9 @@ class RollPair(object):
             args.append(([task], partition_self._processor._command_endpoint))
 
         futures = self.__command_client.async_call(
-            args=args,
-            output_types=[ErPair],
-            command_uri=CommandURI(f'{RollPair.EGG_PAIR_URI_PREFIX}/{RollPair.RUN_TASK}'))
+                args=args,
+                output_types=[ErPair],
+                command_uri=CommandURI(f'{RollPair.EGG_PAIR_URI_PREFIX}/{RollPair.RUN_TASK}'))
 
         result = list()
         for future in futures:

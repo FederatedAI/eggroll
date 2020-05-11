@@ -120,7 +120,8 @@ class RollSiteWriteBatch(PairWriteBatch):
         self.buffer = ArrayByteBuffer(self.ba)
         self.writer = PairBinWriter(pair_buffer=self.buffer)
 
-        self.push_cnt = 0
+        self.push_batch_cnt = 0
+        self.push_pair_cnt = 0
 
         self.topic_src = proxy_pb2.Topic(name=self.name, partyId=self.roll_site_header._src_party_id,
                                          role=self.roll_site_header._src_role, callback=None)
@@ -145,7 +146,7 @@ class RollSiteWriteBatch(PairWriteBatch):
 
     # TODO:0: configurable
     def push(self, obj):
-        L.debug(f'pushing for task: {self.name}, partition id: {self.adapter.partition_id}, push cnt: {self.get_push_count()}')
+        L.debug(f'pushing for task: {self.name}, partition id: {self.adapter.partition_id}, push cnt: {self.push_batch_cnt}')
         task_info = proxy_pb2.Task(taskId=self.name, model=proxy_pb2.Model(name=self.adapter.roll_site_header_string, dataKey=self.namespace))
 
         command_test = proxy_pb2.Command()
@@ -169,12 +170,12 @@ class RollSiteWriteBatch(PairWriteBatch):
             try:
                 self.stub.push(self.generate_message(obj, metadata))
                 exception = None
-                self.increase_push_count()
+                self.push_batch_cnt += 1
                 break
             except Exception as e:
                 exception = e
-                L.info(f'caught exception in pushing {self.name}, partition_id: {self.adapter.partition_id}: {e}. retrying. current retry count: {i}, max_retry_cnt: {max_retry_cnt}')
-                time.sleep(min(0.1 * i, 30))
+                L.info(f'caught exception in pushing {self.roll_site_header}, partition_id: {self.adapter.partition_id}: {e}. retrying. current retry count: {i}, max_retry_cnt: {max_retry_cnt}')
+                time.sleep(min(5 * i, 30))
 
         if exception:
             raise GrpcCallError("error in push", self.proxy_endpoint, exception)
@@ -185,7 +186,7 @@ class RollSiteWriteBatch(PairWriteBatch):
         self.buffer = ArrayByteBuffer(self.ba)
 
     def send_end(self):
-        L.info(f"send_end tagged_key:{self.tagged_key}")
+        L.info(f"RollSiteAdapter.send_end: tagged_key:{self.tagged_key}")
         task_info = proxy_pb2.Task(taskId=self.name, model=proxy_pb2.Model(name=self.adapter.roll_site_header_string, dataKey=self.namespace))
 
         command_test = proxy_pb2.Command(name="set_status")
@@ -199,23 +200,33 @@ class RollSiteWriteBatch(PairWriteBatch):
                                       dst=self.topic_dst,
                                       command=command_test,
                                       operator="markEnd",
-                                      seq=self.get_push_count(),
+                                      seq=self.push_batch_cnt,
                                       ack=0)
 
         packet = proxy_pb2.Packet(header=metadata)
 
-        try:
-            # TODO:0: retry and sleep for all grpc call in RollSite
-            self.stub.unaryCall(packet)
-        except Exception as e:
-            raise GrpcCallError('send_end', self.proxy_endpoint, e)
+        max_retry_cnt = 100
+        exception = None
+        for i in range(1, max_retry_cnt + 1):
+            try:
+                # TODO:0: retry and sleep for all grpc call in RollSite
+                self.stub.unaryCall(packet)
+                exception = None
+                break
+            except Exception as e:
+                L.info(f'caught exception in send_end for {self.name}, partition_id: {self.adapter.partition_id}: {e}. retrying. current retry count: {i}, max_retry_cnt: {max_retry_cnt}')
+                exception = GrpcCallError('send_end', self.proxy_endpoint, e)
+        if exception:
+            raise exception
 
     def close(self):
         bin_batch = bytes(self.ba[0:self.buffer.get_offset()])
         self.push(bin_batch)
         self.send_end()
-        L.info(f'closing RollSiteWriteBatch for name: {self.name}, '
-               f'total push count: {self.push_cnt}')
+        L.info(f'RollSiteWriteBatch.close: Closing for name: {self.name}, '
+               f'partition id: {self.adapter.partition_id}, '
+               f'total push batch count: {self.push_batch_cnt}, '
+               f'total push pair count: {self.push_pair_cnt}')
 
     def put(self, k, v):
         if self.obj_type == 'object':
@@ -223,6 +234,7 @@ class RollSiteWriteBatch(PairWriteBatch):
             self.tagged_key = _serdes.deserialize(k)
         try:
             self.writer.write(k, v)
+            self.push_pair_cnt += 1
         except IndexError as e:
             bin_batch = bytes(self.ba[0:self.buffer.get_offset()])
             self.push(bin_batch)
@@ -231,15 +243,10 @@ class RollSiteWriteBatch(PairWriteBatch):
             self.buffer = ArrayByteBuffer(self.ba)
             self.writer = PairBinWriter(pair_buffer=self.buffer)
             self.writer.write(k, v)
+            self.push_pair_cnt += 1
         except Exception as e:
-            L.error(f"Unexpected error: {sys.exc_info()[0]}")
+            L.error(f"Unexpected error when pushing to {self.roll_site_header}: {sys.exc_info()[0]}")
             raise e
-
-    def increase_push_count(self):
-        self.push_cnt += 1
-
-    def get_push_count(self):
-        return self.push_cnt
 
 
 class RollSiteIterator(PairIterator):
@@ -249,7 +256,6 @@ class RollSiteIterator(PairIterator):
         self.it.seek_to_first()
 
     def first(self):
-        print("first called")
         count = 0
         self.it.seek_to_first()
         for k, v in self.it:
