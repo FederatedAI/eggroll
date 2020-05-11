@@ -245,7 +245,11 @@ class ErSession(object):
         return result
 
     def populate_output_store(self, job: ErJob):
-        final_output_proposal = job._inputs[0].fork()
+        is_output_blank = not job._outputs or not job._outputs[0]
+        if is_output_blank:
+            final_output_proposal = job._inputs[0].fork()
+        else:
+            final_output_proposal = job._outputs[0]
 
         cm_client = ClusterManagerClient()
         final_output = self.populate_processor(cm_client.get_or_create_store(final_output_proposal))
