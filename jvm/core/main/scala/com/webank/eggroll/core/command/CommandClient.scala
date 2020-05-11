@@ -28,13 +28,12 @@ import com.webank.eggroll.core.command.CommandModelPbMessageSerdes._
 import com.webank.eggroll.core.concurrent.AwaitSettableFuture
 import com.webank.eggroll.core.constant.{SerdesTypes, SessionConfKeys}
 import com.webank.eggroll.core.datastructure.RpcMessage
-import com.webank.eggroll.core.di.Singletons
 import com.webank.eggroll.core.error.CommandCallException
-import com.webank.eggroll.core.factory.GrpcChannelFactory
 import com.webank.eggroll.core.grpc.client.{GrpcClientContext, GrpcClientTemplate}
 import com.webank.eggroll.core.grpc.observer.SameTypeFutureCallerResponseStreamObserver
 import com.webank.eggroll.core.meta.ErEndpoint
 import com.webank.eggroll.core.session.StaticErConf
+import com.webank.eggroll.core.transfer.GrpcClientUtils
 import com.webank.eggroll.core.util.{Logging, SerdesUtils, TimeUtils}
 import io.grpc.stub.StreamObserver
 import io.grpc.{ManagedChannel, ManagedChannelBuilder}
@@ -75,7 +74,8 @@ class CommandClient(defaultEndpoint: ErEndpoint = null,
     val channel = CommandClient.pool.getOrElse(endpoint.toString, null)
     if(channel == null || channel.isShutdown || channel.isTerminated) {
       val builder = ManagedChannelBuilder.forAddress(endpoint.host, endpoint.port)
-      builder.maxInboundMetadataSize(4*1024*1024)
+      builder.maxInboundMetadataSize(1024*1024*1024)
+      builder.maxInboundMessageSize(1024*1024*1024)
       builder.usePlaintext()
       CommandClient.pool(endpoint.toString) = builder.build()
     }
@@ -85,7 +85,7 @@ class CommandClient(defaultEndpoint: ErEndpoint = null,
   def call[T](commandUri: CommandURI, args: RpcMessage*)(implicit tag:ClassTag[T]): T = {
     logDebug(s"[CommandClient.call, single endpoint] commandUri: ${commandUri.uriString}, endpoint: ${defaultEndpoint}")
     try {
-      val stub = CommandServiceGrpc.newBlockingStub(buildChannel(defaultEndpoint))
+      val stub = CommandServiceGrpc.newBlockingStub(GrpcClientUtils.getChannel(defaultEndpoint))
       val argBytes = args.map(x => ByteString.copyFrom(SerdesUtils.rpcMessageToBytes(x, SerdesTypes.PROTOBUF)))
       val resp = stub.call(Command.CommandRequest.newBuilder
         .setId(System.currentTimeMillis + "")
@@ -106,7 +106,7 @@ class CommandClient(defaultEndpoint: ErEndpoint = null,
     val futures = args.map {
       case (rpcMessages, endpoint) =>
         try {
-          val ch: ManagedChannel = buildChannel(endpoint)
+          val ch: ManagedChannel = GrpcClientUtils.getChannel(endpoint)
           val stub = CommandServiceGrpc.newFutureStub(ch)
           val argBytes = rpcMessages.map(x => UnsafeByteOperations.unsafeWrap(SerdesUtils.rpcMessageToBytes(x, SerdesTypes.PROTOBUF)))
           logDebug(s"[CommandClient.call, multiple endpoints] commandUri: ${commandUri.uriString}, endpoint: ${endpoint}")
@@ -128,7 +128,7 @@ class CommandClient(defaultEndpoint: ErEndpoint = null,
           tag.runtimeClass, SerdesTypes.PROTOBUF).asInstanceOf[T]
       } catch {
         case t: Throwable =>
-          logError(s"[COMMAND] error waiting to ${args(n)._2}. commandUri: ${commandUri.uriString}")
+          logError(s"[COMMAND] error calling to ${args(n)._2}. commandUri: ${commandUri.uriString}")
           throw new CommandCallException(commandUri, args(n)._2, t)
       }
 
@@ -178,7 +178,7 @@ class CommandClient(defaultEndpoint: ErEndpoint = null,
   }
   class CommandCallSupplier[T](endpoint: ErEndpoint, isSecure: Boolean, commandURI: CommandURI, args: RpcMessage*)(implicit tag:ClassTag[T]) extends Supplier[T] {
     override def get(): T = {
-      val ch: ManagedChannel = Singletons.getNoCheck(classOf[GrpcChannelFactory]).getChannel(endpoint, isSecure)
+      val ch: ManagedChannel = GrpcClientUtils.getChannel(endpoint, isSecure)
       val stub: CommandServiceGrpc.CommandServiceBlockingStub = CommandServiceGrpc.newBlockingStub(ch)
       val argBytes = args.map(x => UnsafeByteOperations.unsafeWrap(SerdesUtils.rpcMessageToBytes(x, SerdesTypes.PROTOBUF)))
 
@@ -192,7 +192,6 @@ class CommandClient(defaultEndpoint: ErEndpoint = null,
     }
   }
 }
-
 
 
 class CommandResponseObserver(finishLatch: CountDownLatch, asFuture: AwaitSettableFuture[CommandResponse])

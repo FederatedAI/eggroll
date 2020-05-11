@@ -101,8 +101,8 @@ public class GrpcServerFactory {
         serverBuilder.addService(dataTransferPipedServer)
                 .addService(routeServer)
                 .maxConcurrentCallsPerConnection(20000)
-                .maxInboundMetadataSize(64 << 20)
-                .maxInboundMessageSize(2 << 30 - 1)
+                .maxInboundMetadataSize(128 << 20)
+                .maxInboundMessageSize((2 << 30) - 1)
                 .flowControlWindow(32 << 20)
                 .keepAliveTime(6, TimeUnit.MINUTES)
                 .keepAliveTimeout(24, TimeUnit.HOURS)
@@ -314,8 +314,8 @@ public class GrpcServerFactory {
                 RollSiteConfKeys.EGGROLL_ROLLSITE_PROXY_COMPATIBLE_ENABLED().key(), "false"));
             proxyServerConf.setCompatibleEnabled(needCompatibility);
 
-            String serverCrt = properties.getProperty(CoreConfKeys.CONFKEY_CORE_SECURITY_KEY_CRT_PATH());
-            String serverKey = properties.getProperty(CoreConfKeys.CONFKEY_CORE_SECURITY_KEY_PATH());
+            String serverCrt = properties.getProperty(CoreConfKeys.CONFKEY_CORE_SECURITY_KEY_CRT_PATH().key());
+            String serverKey = properties.getProperty(CoreConfKeys.CONFKEY_CORE_SECURITY_KEY_PATH().key());
 
             proxyServerConf.setServerCrtPath(serverCrt);
             proxyServerConf.setServerKeyPath(serverKey);
@@ -326,7 +326,7 @@ public class GrpcServerFactory {
                 proxyServerConf.setSecureServer(true);
             }
 
-            String caCrt = properties.getProperty(CoreConfKeys.CONFKEY_CORE_SECURITY_CA_CRT_PATH());
+            String caCrt = properties.getProperty(CoreConfKeys.CONFKEY_CORE_SECURITY_CA_CRT_PATH().key());
             proxyServerConf.setCaCrtPath(caCrt);
 
             if (StringUtils.isBlank(caCrt)) {

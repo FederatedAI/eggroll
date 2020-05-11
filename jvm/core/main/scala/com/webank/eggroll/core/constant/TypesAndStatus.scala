@@ -81,6 +81,7 @@ object SessionStatus {
   val ACTIVE = "ACTIVE"
   val CLOSED = "CLOSED"
   val KILLED = "KILLED"
+  val ERROR = "ERROR"
 }
 
 object BindingStrategies {

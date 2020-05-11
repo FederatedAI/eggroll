@@ -1,7 +1,6 @@
 package com.webank.eggroll.core.resourcemanager
 
 import java.io.File
-import java.net.InetSocketAddress
 
 import com.webank.eggroll.core.Bootstrap
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
@@ -9,9 +8,8 @@ import com.webank.eggroll.core.constant.{ClusterManagerConfKeys, CoreConfKeys, M
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.resourcemanager.metadata.{ServerNodeCrudOperator, StoreCrudOperator}
 import com.webank.eggroll.core.session.StaticErConf
+import com.webank.eggroll.core.transfer.GrpcServerUtils
 import com.webank.eggroll.core.util.{CommandArgsUtils, Logging}
-import io.grpc.Server
-import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
 
 class ClusterManagerBootstrap extends Bootstrap with Logging {
   private var port = 0
@@ -112,6 +110,7 @@ class ClusterManagerBootstrap extends Bootstrap with Logging {
 
     //this.sessionId = cmd.getOptionValue('s')
     val confPath = cmd.getOptionValue('c', "./conf/eggroll.properties")
+
     StaticErConf.addProperties(confPath)
     val confFile = new File(confPath)
     StaticErConf.addProperty(CoreConfKeys.STATIC_CONF_PATH, confFile.getAbsolutePath)
@@ -133,16 +132,10 @@ class ClusterManagerBootstrap extends Bootstrap with Logging {
 
   override def start(): Unit = {
     // TODO:0: use user's config
-    val clusterManager = NettyServerBuilder
-      .forAddress(new InetSocketAddress(this.port))
-      .addService(new CommandService)
-      .maxInboundMessageSize(1024 * 1024 *1024)
-      .maxInboundMetadataSize(1024 * 1024)
-      .build()
+    val server = GrpcServerUtils.createServer(port = this.port, grpcServices = List(new CommandService))
+    server.start()
+    this.port = server.getPort
 
-    val server: Server = clusterManager.start()
-
-    val port = server.getPort
     StaticErConf.setPort(port)
     logInfo(s"server started at port ${port}")
     println(s"server started at port ${port}")

@@ -50,7 +50,7 @@ class TransferService(object):
         if not TransferService.has_broker(key):
             with TransferService.mutex as m:
                 if not TransferService.has_broker(key):
-                    print('creating broker: ', key, ", write signals: ", write_signals)
+                    L.info(f'creating broker: {key}, write signals: {write_signals}')
                     final_size = maxsize if maxsize > 0 else TransferService._DEFAULT_QUEUE_SIZE
                     TransferService.data_buffer[key] = \
                         FifoBroker(maxsize=final_size, writers=write_signals, name=key)
@@ -121,7 +121,7 @@ class GrpcTransferServicer(transfer_pb2_grpc.TransferServiceServicer):
         for request in request_iterator:
             if not inited:
                 base_tag = request.header.tag
-                print('GrpcTransferServicer send broker tag: ', base_tag)
+                L.info(f'GrpcTransferServicer send broker init. tag: {base_tag}')
                 broker = TransferService.get_broker(base_tag)
                 # response_header = request.header
                 # linux error:TypeError: Parameter to MergeFrom() must be instance of same class: expected TransferHeader got TransferHeader. for field TransferBatch.header
@@ -137,19 +137,17 @@ class GrpcTransferServicer(transfer_pb2_grpc.TransferServiceServicer):
             metadata = dict(context.invocation_metadata())
             base_tag = metadata[TRANSFER_BROKER_NAME]
             broker = TransferService.get_broker(base_tag)
-            L.debug(f"empty requests: {base_tag}")
+            L.info(f"empty requests for tag: {base_tag}")
             L.info(f'GrpcTransferServicer stream finished. tag: {base_tag}, remaining write count: {broker,broker.__dict__}, stream empty')
             result = transfer_pb2.TransferBatch()
 
         broker.signal_write_finish()
         return result
 
-
-
     @_exception_logger
     def recv(self, request, context):
         base_tag = request.header.tag
-        print('GrpcTransferServicer recv broker tag: ', base_tag)
+        L.info(f'GrpcTransferServicer recv broker tag: {base_tag}')
         callee_messages_broker = TransferService.get_broker(base_tag)
         import types
         if isinstance(callee_messages_broker, types.GeneratorType):
@@ -164,7 +162,9 @@ class GrpcTransferServicer(transfer_pb2_grpc.TransferServiceServicer):
 
 
 class GrpcTransferService(TransferService):
-    def start(self, options: dict = {}):
+    def start(self, options: dict = None):
+        if dict is None:
+            options = {}
         server = grpc.server(futures.ThreadPoolExecutor(max_workers=1),
                              options=[(cygrpc.ChannelArgKey.max_send_message_length, -1),
                                       (cygrpc.ChannelArgKey.max_receive_message_length, -1)])
@@ -208,23 +208,28 @@ class TransferClient(object):
             raise e
 
     @_exception_logger
-    def recv(self, endpoint: ErEndpoint, tag, broker=FifoBroker()):
+    def recv(self, endpoint: ErEndpoint, tag, broker):
         try:
+            L.debug(f'TransferClient.recv for endpoint: {endpoint}, tag: {tag}')
             @_exception_logger
             def fill_broker(iterable: Iterable, broker):
-                iterator = iter(iterable)
-                for e in iterator:
-                    broker.put(e)
-                broker.signal_write_finish()
+                try:
+                    iterator = iter(iterable)
+                    for e in iterator:
+                        broker.put(e)
+                    broker.signal_write_finish()
+                except Exception as e:
+                    L.error(f'Fail to fill broker for tag: {tag}, endpoint: {endpoint}')
+                    raise e
 
             channel = self.__grpc_channel_factory.create_channel(endpoint)
 
             stub = transfer_pb2_grpc.TransferServiceStub(channel)
             request = transfer_pb2.TransferBatch(
-                    header=transfer_pb2.TransferHeader(id=1,
-                                                       tag=tag))
+                    header=transfer_pb2.TransferHeader(id=1, tag=tag))
 
-            response_iter = stub.recv(request, metadata=[(TRANSFER_BROKER_NAME, tag)])
+            response_iter = stub.recv(
+                    request, metadata=[(TRANSFER_BROKER_NAME, tag)])
             if broker is None:
                 return response_iter
             else:

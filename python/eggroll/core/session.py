@@ -56,14 +56,13 @@ class ErSession(object):
         if "EGGROLL_DEBUG" not in os.environ:
             os.environ['EGGROLL_DEBUG'] = "0"
 
+        conf_path = options.get(CoreConfKeys.STATIC_CONF_PATH, f"{self.__eggroll_home}/conf/eggroll.properties")
+
+        L.info(f"static conf path: {conf_path}")
+        configs = configparser.ConfigParser()
+        configs.read(conf_path)
+        set_static_er_conf(configs['eggroll'])
         static_er_conf = get_static_er_conf()
-        if not static_er_conf:
-            conf_path = options.get(CoreConfKeys.STATIC_CONF_PATH, f"{self.__eggroll_home}/conf/eggroll.properties")
-            L.info(f"static conf path: {conf_path}")
-            configs = configparser.ConfigParser()
-            configs.read(conf_path)
-            set_static_er_conf(configs['eggroll'])
-            static_er_conf = get_static_er_conf()
 
         self.__options = options.copy()
         self.__options[SessionConfKeys.CONFKEY_SESSION_ID] = self.__session_id
@@ -73,7 +72,7 @@ class ErSession(object):
         if self.__is_standalone and os.name != 'nt' and not processors and os.environ.get("EGGROLL_RESOURCE_MANAGER_AUTO_BOOTSTRAP", "1") == "1":
             port = int(options.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT,
                                    static_er_conf.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, "4670")))
-            startup_command = f'bash {self.__eggroll_home}/bin/eggroll_boot_standalone.sh -p {port} -s {self.__session_id}'
+            startup_command = f'bash {self.__eggroll_home}/bin/eggroll_boot_standalone.sh -c {conf_path} -s {self.__session_id}'
             import subprocess
             import atexit
 
@@ -104,7 +103,7 @@ class ErSession(object):
                                      options=options)
 
         from time import monotonic, sleep
-        timeout = int(options.get("eggroll.session.create.timeout.ms", "10000")) / 1000
+        timeout = int(SessionConfKeys.EGGROLL_SESSION_START_TIMEOUT_MS.get_with(options)) / 1000 + 2
         endtime = monotonic() + timeout
 
         # TODO:0: ignores exception while starting up in standalone mod
@@ -124,7 +123,7 @@ class ErSession(object):
         self.__exit_tasks = list()
         self.__processors = self.__session_meta._processors
 
-        L.info(f'session init finished:{self.__session_id}, details: {self.__session_meta}')
+        L.info(f'session init finished: {self.__session_id}, details: {self.__session_meta}')
         self.stopped = self.__session_meta._status == SessionStatus.CLOSED or self.__session_meta._status == SessionStatus.KILLED
         self._rolls = list()
         self._eggs = dict()
@@ -155,7 +154,7 @@ class ErSession(object):
     def stop(self):
         L.info(f'stopping session (gracefully): {self.__session_id}')
         L.debug(f'stopping session (gracefully), details: {self.__session_meta}')
-        L.debug(f'stopping (gracefully) from: {get_stack()}')
+        L.debug(f'stopping (gracefully) for {self.__session_id} from: {get_stack()}')
         self.run_exit_tasks()
         self.stopped = True
         return self._cluster_manager_client.stop_session(self.__session_meta)
@@ -163,7 +162,7 @@ class ErSession(object):
     def kill(self):
         L.info(f'killing session (forcefully): {self.__session_id}')
         L.debug(f'killing session (forcefully), details: {self.__session_meta}')
-        L.debug(f'killing (forcefully) from: {get_stack()}')
+        L.debug(f'killing (forcefully) for {self.__session_id} from: {get_stack()}')
         self.stopped = True
         return self._cluster_manager_client.kill_session(self.__session_meta)
 
