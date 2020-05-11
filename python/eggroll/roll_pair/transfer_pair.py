@@ -25,7 +25,7 @@ from eggroll.core.transfer.transfer_service import TransferClient, \
     TransferService
 from eggroll.core.utils import _exception_logger
 from eggroll.core.utils import generate_task_id
-from eggroll.roll_pair import create_adapter
+from eggroll.roll_pair import create_adapter, create_serdes
 from eggroll.utils.log_utils import get_logger
 
 L = get_logger()
@@ -208,13 +208,17 @@ class TransferPair(object):
             L.debug(f"bin_batch_to_pair batch ends. total write count: {write_count}")
         L.debug(f"bin_batch_to_pair total_written count: {write_count}")
 
-    def store_broker(self, store_partition, is_shuffle, total_writers=1):
+    def store_broker(self, store_partition, is_shuffle, total_writers=1, reduce_op=None):
         """
         is_shuffle=True: all partition in one broker
         is_shuffle=False: just save broker to store, for put_all
         """
         @_exception_logger
-        def do_store(store_partition_inner, is_shuffle_inner, total_writers_inner):
+        def do_store(store_partition_inner, is_shuffle_inner, total_writers_inner, reduce_op_inner):
+            if reduce_op is None:
+                do_reduce = False
+            else:
+                do_reduce = True
             done_cnt = 0
             tag = self.__generate_tag(store_partition_inner._id) if is_shuffle_inner else self.__transfer_id
             try:
@@ -223,9 +227,18 @@ class TransferPair(object):
                 batches = TransferPair.bin_batch_to_pair(b.data for b in broker)
                 with create_adapter(store_partition_inner) as db:
                     L.debug(f"do_store create_db for tag: {tag} for partition: {store_partition_inner}")
+                    serdes = create_serdes(store_partition_inner._store_locator._serdes)
                     with db.new_batch() as wb:
                         for k, v in batches:
-                            wb.put(k, v)
+                            if not reduce_op_inner:
+                                wb.put(k, v)
+                            else:
+                                v1 = wb.get(k)
+                                if v1:
+                                    v2 = reduce_op_inner(serdes.deserialize(v), serdes.deserialize(v1))
+                                    wb.put(k, serdes.serialize(v2))
+                                else:
+                                    wb.put(k, v)
                             done_cnt += 1
                     L.debug(f"do_store done for tag: {tag} for partition: {store_partition_inner}")
                 TransferService.remove_broker(tag)
@@ -233,7 +246,7 @@ class TransferPair(object):
                 L.error(f'Error in do_store for tag {tag}')
                 raise e
             return done_cnt
-        return self._executor_pool.submit(do_store, store_partition, is_shuffle, total_writers)
+        return self._executor_pool.submit(do_store, store_partition, is_shuffle, total_writers, reduce_op)
 
     def gather(self, store):
         L.debug(f'gather start for transfer id: {self.__transfer_id}, store: {store}')

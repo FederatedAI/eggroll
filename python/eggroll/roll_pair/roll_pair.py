@@ -13,7 +13,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import os
-import sys
 import uuid
 from concurrent.futures import wait, FIRST_EXCEPTION
 from threading import Thread
@@ -757,12 +756,15 @@ class RollPair(object):
         return RollPair(er_store, self.ctx)
 
     @_method_profile_logger
-    def map_partitions(self, func, output=None, options: dict = None):
+    def map_partitions(self, func, reduce_op=None, output=None, options: dict = None):
         if options is None:
             options = {}
-        need_shuffle = options.get('need_shuffle', True)
+        shuffle = options.get('shuffle', True)
         functor = ErFunctor(name=RollPair.MAP_PARTITIONS, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
-        shuffle = ErFunctor(name=RollPair.FLAT_MAP, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(need_shuffle))
+        reduce_functor = ErFunctor(name=RollPair.MAP_PARTITIONS, serdes=SerdesTypes.CLOUD_PICKLE,
+                                   body=cloudpickle.dumps(reduce_op))
+        need_shuffle = ErFunctor(name=RollPair.FLAT_MAP, serdes=SerdesTypes.CLOUD_PICKLE,
+                                 body=cloudpickle.dumps(shuffle))
 
         outputs = []
         if output:
@@ -771,7 +773,7 @@ class RollPair(object):
                     name=RollPair.MAP_PARTITIONS,
                     inputs=[self.__store],
                     outputs=outputs,
-                    functors=[functor, shuffle])
+                    functors=[functor, reduce_functor, need_shuffle])
 
         task_future = self._run_job(job=job)
         er_store = self.__get_output_from_result(task_future)
@@ -799,15 +801,15 @@ class RollPair(object):
         if options is None:
             options = {}
 
-        need_shuffle = options.get('need_shuffle', True)
+        shuffle = options.get('shuffle', True)
         functor = ErFunctor(name=RollPair.FLAT_MAP, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
-        shuffle = ErFunctor(name=RollPair.FLAT_MAP, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(need_shuffle))
+        need_shuffle = ErFunctor(name=RollPair.FLAT_MAP, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(shuffle))
 
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.FLAT_MAP),
                     name=RollPair.FLAT_MAP,
                     inputs=[self.__store],
                     outputs=[output],
-                    functors=[functor, shuffle])
+                    functors=[functor, need_shuffle])
 
         task_futures = self._run_job(job=job)
         er_store = self.__get_output_from_result(task_futures)
