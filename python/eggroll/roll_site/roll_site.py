@@ -422,8 +422,8 @@ class RollSite:
                                         role=self.local_role, callback=None)
             get_status_command = proxy_pb2.Command(name="get_status")
             conf_test = proxy_pb2.Conf(overallTimeout=1000,
-                                       completionWaitTimeout=1000
-                                       packetIntervalTimeout=1000,,
+                                       completionWaitTimeout=1000,
+                                       packetIntervalTimeout=1000,
                                        maxRetries=10)
 
             metadata = proxy_pb2.Metadata(task=task_info,
