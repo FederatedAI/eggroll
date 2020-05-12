@@ -89,8 +89,9 @@ class RollPairContext(object):
             return
         for k, v in (self.gc_recorder.gc_recorder.items()):
             L.debug("before exit the task:{} cleaning item:{}".format(self.session_id, k))
-            name = k
-            rp = self.load(namespace=self.session_id, name=name)
+            namespace = k[0]
+            name = k[1]
+            rp = self.load(namespace=namespace, name=name)
             rp.destroy()
 
     def route_to_egg(self, partition: ErPartition):

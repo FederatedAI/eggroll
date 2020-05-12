@@ -32,7 +32,7 @@ class TestRollPairBase(unittest.TestCase):
 
     def tearDown(self) -> None:
         print("stop test session")
-        #self.ctx.get_session().stop()
+        # self.ctx.get_session().stop()
 
     @staticmethod
     def store_opts(**kwargs):
