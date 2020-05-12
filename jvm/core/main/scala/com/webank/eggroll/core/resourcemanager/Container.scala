@@ -88,9 +88,10 @@ class Container(conf: RuntimeErConf, moduleName: String, processorId: Long = 0) 
     new Thread(() => {
       val processorBuilder = new ProcessBuilder(bootStrapShell, bootStrapShellArgs, cmd)
       val builderEnv = processorBuilder.environment()
-    if(StringUtils.isNotBlank(System.getProperty("standalone.tag"))) {
-      builderEnv.put("standalone.port", cmPort)
-    }
+      if(StringUtils.isNotBlank(System.getProperty("standalone.tag"))) {
+        logInfo(s"set standalone.port ${cmPort}")
+        builderEnv.put("standalone.port", cmPort)
+      }
       val logPath = new File(s"${logsDir}${File.separator}${sessionId}${File.separator}")
       if(!logPath.exists()){
         logPath.mkdirs()
