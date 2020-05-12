@@ -3,11 +3,6 @@
 sub_cmd=$1
 exe=$2
 pname=$3
-if [ $# == 4 ]; then
-    export STANDALONE_PORT=$4
-else
-    export STANDALONE_PORT=
-fi
 
 SHELL_FOLDER=$(dirname "$0")
 BASH=`which bash`

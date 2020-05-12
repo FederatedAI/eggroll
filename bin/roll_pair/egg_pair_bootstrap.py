@@ -37,7 +37,7 @@ def start(config_file, session_id, server_node_id, processor_id, port, transfer_
 
     cluster_manager_host = get_property(config_file, "eggroll.resourcemanager.clustermanager.host")
 
-    standalone_port = os.environ.get("standalone.port", None)
+    standalone_port = os.environ.get("STANDALONE_PORT", None)
     if standalone_port is None:
         node_manager_port = get_property(config_file, "eggroll.resourcemanager.nodemanager.port")
         cluster_manager_port = get_property(config_file, "eggroll.resourcemanager.clustermanager.port")

@@ -58,7 +58,7 @@ fi
 cd ${EGGROLL_HOME}
 echo "EGGROLL_HOME: ${EGGROLL_HOME}"
 
-if [[ -z ${standalone_tag} ]]; then
+if [[ -z ${STANDALONE_TAG} ]]; then
     java_define="-Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.properties"
 else
     java_define="-Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.properties -Dstandalone.tag=$standalone_tag"
