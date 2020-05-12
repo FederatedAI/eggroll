@@ -28,9 +28,6 @@ while getopts ":s:p:e:c:r:" opt; do
     c)
       config=$OPTARG
       ;;
-    r)
-      standalone_tag=$OPTARG
-      ;;
     ?)
       echo "Invalid option: -$OPTARG index:$OPTIND"
       ;;
