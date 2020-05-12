@@ -104,6 +104,11 @@ class RollPairContext(object):
             options = {}
         store_type = options.get('store_type', self.default_store_type)
         total_partitions = options.get('total_partitions', 1)
+        no_partitions_param = False
+        if total_partitions is None:
+            no_partitions_param = True
+            total_partitions = 1
+
         partitioner = options.get('partitioner', PartitionerTypes.BYTESTRING_HASH)
         store_serdes = options.get('serdes', self.default_store_serdes)
         create_if_missing = options.get('create_if_missing', True)
@@ -146,6 +151,10 @@ class RollPairContext(object):
             if result is None:
                 raise EnvironmentError(
                         "result is None, please check whether the store:{} has been created before".format(store))
+
+        if not no_partitions_param and total_partitions != result._store_locator._total_partitions:
+            raise ValueError(f"store:{result._store_locator._name} input total_partitions:{total_partitions}, "
+                             f"output total_partitions:{result._store_locator._total_partitions}, must be the same!")
 
         return RollPair(self.populate_processor(result), self)
 
@@ -343,6 +352,14 @@ class RollPair(object):
 
     def __repr__(self):
         return f'<RollPair(_store={self.__store}) at {hex(id(self))}>'
+
+    @staticmethod
+    def __check_partitions(input_partitions, output_partitions, shuffle=False):
+        if not shuffle:
+            return
+        if input_partitions != output_partitions:
+            raise ValueError(f"input partitions:{input_partitions}, output partitions:{output_partitions},"
+                             f"must be the same!")
 
     def __repartition_with(self, other):
         self_partition = self.get_partitions()
@@ -720,6 +737,12 @@ class RollPair(object):
     def map_values(self, func, output=None, options: dict = None):
         if options is None:
             options = {}
+
+        outputs = []
+        if output:
+            RollPair.__check_partitions(self.get_partitions(), output._store_locator._total_partitions)
+            outputs.append(output)
+
         functor = ErFunctor(name=RollPair.MAP_VALUES, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
         # todo:1: options issues. refer to line 77
         final_options = {}
@@ -728,7 +751,7 @@ class RollPair(object):
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.MAP_VALUES),
                     name=RollPair.MAP_VALUES,
                     inputs=[self.__store],
-                    outputs=[output],
+                    outputs=outputs,
                     functors=[functor],
                     options=final_options)
 
@@ -759,6 +782,12 @@ class RollPair(object):
     def map_partitions(self, func, reduce_op=None, output=None, options: dict = None):
         if options is None:
             options = {}
+
+        outputs = []
+        if output:
+            RollPair.__check_partitions(self.get_partitions(), output._store_locator._total_partitions)
+            outputs.append(output)
+
         shuffle = options.get('shuffle', True)
         if not shuffle and reduce_op:
             raise ValueError(f"shuffle cannot be False when reduce is needed!")
@@ -768,9 +797,6 @@ class RollPair(object):
         need_shuffle = ErFunctor(name=RollPair.FLAT_MAP, serdes=SerdesTypes.CLOUD_PICKLE,
                                  body=cloudpickle.dumps(shuffle))
 
-        outputs = []
-        if output:
-            outputs.append(output)
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.MAP_PARTITIONS),
                     name=RollPair.MAP_PARTITIONS,
                     inputs=[self.__store],
@@ -786,11 +812,16 @@ class RollPair(object):
         if options is None:
             options = {}
 
+        outputs = []
+        if output:
+            RollPair.__check_partitions(self.get_partitions(), output._store_locator._total_partitions)
+            outputs.append(output)
+
         functor = ErFunctor(name=RollPair.COLLAPSE_PARTITIONS, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.COLLAPSE_PARTITIONS),
                     name=RollPair.COLLAPSE_PARTITIONS,
                     inputs=[self.__store],
-                    outputs=[output],
+                    outputs=outputs,
                     functors=[functor])
 
         task_futures = self._run_job(job=job)
@@ -803,6 +834,11 @@ class RollPair(object):
         if options is None:
             options = {}
 
+        outputs = []
+        if output:
+            RollPair.__check_partitions(self.get_partitions(), output._store_locator._total_partitions)
+            outputs.append(output)
+
         shuffle = options.get('shuffle', True)
         functor = ErFunctor(name=RollPair.FLAT_MAP, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
         need_shuffle = ErFunctor(name=RollPair.FLAT_MAP, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(shuffle))
@@ -810,7 +846,7 @@ class RollPair(object):
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.FLAT_MAP),
                     name=RollPair.FLAT_MAP,
                     inputs=[self.__store],
-                    outputs=[output],
+                    outputs=outputs,
                     functors=[functor, need_shuffle])
 
         task_futures = self._run_job(job=job)
@@ -902,12 +938,18 @@ class RollPair(object):
     def glom(self, output=None, options: dict = None):
         if options is None:
             options = {}
+
+        outputs = []
+        if output:
+            RollPair.__check_partitions(self.get_partitions(), output._store_locator._total_partitions)
+            outputs.append(output)
+
         functor = ErFunctor(name=RollPair.GLOM, serdes=SerdesTypes.CLOUD_PICKLE)
 
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.GLOM),
                     name=RollPair.GLOM,
                     inputs=[self.__store],
-                    outputs=[output],
+                    outputs=outputs,
                     functors=[functor])
 
         task_futures = self._run_job(job=job)
@@ -919,13 +961,19 @@ class RollPair(object):
     def sample(self, fraction, seed=None, output=None, options: dict = None):
         if options is None:
             options = {}
+
+        outputs = []
+        if output:
+            RollPair.__check_partitions(self.get_partitions(), output._store_locator._total_partitions)
+            outputs.append(output)
+
         er_fraction = ErFunctor(name=RollPair.REDUCE, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(fraction))
         er_seed  = ErFunctor(name=RollPair.REDUCE, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(seed))
 
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.SAMPLE),
                     name=RollPair.SAMPLE,
                     inputs=[self.__store],
-                    outputs=[output],
+                    outputs=outputs,
                     functors=[er_fraction, er_seed])
 
         task_futures = self._run_job(job=job)
@@ -937,12 +985,18 @@ class RollPair(object):
     def filter(self, func, output=None, options: dict = None):
         if options is None:
             options = {}
+
+        outputs = []
+        if output:
+            RollPair.__check_partitions(self.get_partitions(), output._store_locator._total_partitions)
+            outputs.append(output)
+
         functor = ErFunctor(name=RollPair.FILTER, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
 
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.FILTER),
                     name=RollPair.FILTER,
                     inputs=[self.__store],
-                    outputs=[output],
+                    outputs=outputs,
                     functors=[functor])
 
         task_futures = self._run_job(job=job)
@@ -955,13 +1009,18 @@ class RollPair(object):
         if options is None:
             options = {}
 
-        functor = ErFunctor(name=RollPair.SUBTRACT_BY_KEY, serdes=SerdesTypes.CLOUD_PICKLE)
+        inputs = self.__repartition_with(other)
+
         outputs = []
         if output:
+            RollPair.__check_partitions(inputs[0]._store_locator._total_partitions,
+                                        output._store_locator._total_partitions)
             outputs.append(output)
+
+        functor = ErFunctor(name=RollPair.SUBTRACT_BY_KEY, serdes=SerdesTypes.CLOUD_PICKLE)
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.SUBTRACT_BY_KEY),
                     name=RollPair.SUBTRACT_BY_KEY,
-                    inputs=self.__repartition_with(other),
+                    inputs=inputs,
                     outputs=outputs,
                     functors=[functor])
 
@@ -974,13 +1033,18 @@ class RollPair(object):
         if options is None:
             options = {}
 
-        functor = ErFunctor(name=RollPair.UNION, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
+        inputs = self.__repartition_with(other)
+
         outputs = []
         if output:
+            RollPair.__check_partitions(inputs[0]._store_locator._total_partitions,
+                                        output._store_locator._total_partitions)
             outputs.append(output)
+
+        functor = ErFunctor(name=RollPair.UNION, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.UNION),
                     name=RollPair.UNION,
-                    inputs=self.__repartition_with(other),
+                    inputs=inputs,
                     outputs=outputs,
                     functors=[functor])
 
@@ -992,6 +1056,15 @@ class RollPair(object):
     def join(self, other, func, output=None, options: dict = None):
         if options is None:
             options = {}
+
+        inputs = self.__repartition_with(other)
+
+        outputs = []
+        if output:
+            RollPair.__check_partitions(inputs[0]._store_locator._total_partitions,
+                                        output._store_locator._total_partitions)
+            outputs.append(output)
+
         functor = ErFunctor(name=RollPair.JOIN, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
 
         final_options = {}
@@ -999,8 +1072,8 @@ class RollPair(object):
         final_options.update(options)
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.JOIN),
                     name=RollPair.JOIN,
-                    inputs=self.__repartition_with(other),
-                    outputs=[output],
+                    inputs=inputs,
+                    outputs=outputs,
                     functors=[functor],
                     options=final_options)
 
