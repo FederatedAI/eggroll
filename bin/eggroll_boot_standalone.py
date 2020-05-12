@@ -24,7 +24,6 @@ if __name__ == '__main__':
     args_parser.add_argument('-s', '--session-id')
     args_parser.add_argument('-p', '--port', default='0')
     args_parser.add_argument('-c', '--config')
-    args_parser.add_argument('-r', '--random')
 
     args = args_parser.parse_args()
 
@@ -39,7 +38,6 @@ if __name__ == '__main__':
         print(f'reading default config: {conf_file}')
 
     session_id = args.session_id
-    standalone_tag = args.random
 
     eggroll_logs_dir = os.environ.get('EGGROLL_LOGS_DIR')
     if eggroll_logs_dir is None:

@@ -28,9 +28,6 @@ if __name__ == '__main__':
     sub_cmd = sys.argv[1]
     exe = sys.argv[2]
     pname = sys.argv[3]
-    standalone_port = None
-    if len(sys.argv) == 5:
-        standalone_port = sys.argv[4]
 
     os_type = platform.system()
 
@@ -50,7 +47,7 @@ if __name__ == '__main__':
         if "roll_pair_master" in module:
             import roll_pair.roll_pair_master_bootstrap as bootstrap
 
-        bootstrap.start(config_file, session_id, server_node_id, processor_id, port=None, transfer_port=None, pname=pname, standalone_port=standalone_port)
+        bootstrap.start(config_file, session_id, server_node_id, processor_id, port=None, transfer_port=None, pname=pname)
 
     elif sub_cmd == "stop":
         pid_file = os.path.join('bin', 'pid', pname+'.pid')
