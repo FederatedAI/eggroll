@@ -251,6 +251,12 @@ class ErSession(object):
         else:
             final_output_proposal = job._outputs[0]
 
+        refresh_nodes = job._options.get('refresh_nodes', False)
+        if refresh_nodes:
+            final_output_proposal._partitions = []
+        else:
+            final_output_proposal._partitions = job._inputs[0]._partitions
+
         cm_client = ClusterManagerClient()
         final_output = self.populate_processor(cm_client.get_or_create_store(final_output_proposal))
 
