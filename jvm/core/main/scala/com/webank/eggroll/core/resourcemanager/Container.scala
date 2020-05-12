@@ -50,12 +50,7 @@ class Container(conf: RuntimeErConf, moduleName: String, processorId: Long = 0) 
   }
 
   def start(): Boolean = {
-    var standalonePort = ""
-    if(StringUtils.isNotBlank(System.getProperty("standalone.tag"))) {
-      standalonePort = cmPort
-    }
-
-    val startCmd = s"""${exeCmd} ${boot} start "${exePath} --config ${conf.getString(CoreConfKeys.STATIC_CONF_PATH)} --session-id ${sessionId} --server-node-id ${myServerNodeId} --processor-id ${processorId}" ${moduleName}-${processorId} ${standalonePort} &"""
+    val startCmd = s"""${exeCmd} ${boot} start "${exePath} --config ${conf.getString(CoreConfKeys.STATIC_CONF_PATH)} --session-id ${sessionId} --server-node-id ${myServerNodeId} --processor-id ${processorId}" ${moduleName}-${processorId} &"""
     val standaloneTag = System.getProperty("standalone.tag")
     logInfo(s"${standaloneTag} ${startCmd}")
 
@@ -93,6 +88,9 @@ class Container(conf: RuntimeErConf, moduleName: String, processorId: Long = 0) 
     new Thread(() => {
       val processorBuilder = new ProcessBuilder(bootStrapShell, bootStrapShellArgs, cmd)
       val builderEnv = processorBuilder.environment()
+    if(StringUtils.isNotBlank(System.getProperty("standalone.tag"))) {
+      builderEnv.put("standalone.port", cmPort)
+    }
       val logPath = new File(s"${logsDir}${File.separator}${sessionId}${File.separator}")
       if(!logPath.exists()){
         logPath.mkdirs()

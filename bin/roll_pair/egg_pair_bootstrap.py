@@ -17,8 +17,8 @@ def get_property(config_file, property_name):
         return None
 
 
-def start(config_file, session_id, server_node_id, processor_id, port, transfer_port, pname, standalone_port):
-    print('sub id ：', os.getpid(), 'parent id ：', os.getppid(), "standalone_port:", standalone_port)
+def start(config_file, session_id, server_node_id, processor_id, port, transfer_port, pname):
+    print('sub id ：', os.getpid(), 'parent id ：', os.getppid())
 
     if session_id is None:
         print("session-id is blank")
@@ -37,6 +37,7 @@ def start(config_file, session_id, server_node_id, processor_id, port, transfer_
 
     cluster_manager_host = get_property(config_file, "eggroll.resourcemanager.clustermanager.host")
 
+    standalone_port = os.environ.get("standalone.port", None)
     if standalone_port is None:
         node_manager_port = get_property(config_file, "eggroll.resourcemanager.nodemanager.port")
         cluster_manager_port = get_property(config_file, "eggroll.resourcemanager.clustermanager.port")
