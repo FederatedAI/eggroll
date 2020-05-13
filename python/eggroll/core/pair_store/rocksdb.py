@@ -147,7 +147,7 @@ class RocksdbAdapter(PairAdapter):
                     del RocksdbAdapter.count_dict[self.path]
                 else:
                     RocksdbAdapter.count_dict[self.path] = count - 1
-        del self.db
+                del self.db
 
     def iteritems(self):
         return RocksdbIterator(self)

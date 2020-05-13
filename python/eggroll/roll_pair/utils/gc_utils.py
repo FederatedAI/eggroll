@@ -115,14 +115,14 @@ class GcRecorder(object):
             return
         while not self.should_stop:
             try:
-                rp_name = self.gc_queue.get(block=True, timeout=0.5)
+                rp_namespace_name = self.gc_queue.get(block=True, timeout=0.5)
             except queue.Empty:
                 continue
-            if not rp_name:
+            if not rp_namespace_name:
                 continue
-            L.info(f"GC thread destroying rp:{rp_name}")
-            self.record_rpc.load(namespace=self.record_rpc.get_session().get_session_id(),
-                                     name=rp_name).destroy()
+            L.info(f"GC thread destroying rp:{rp_namespace_name}")
+            self.record_rpc.load(namespace=rp_namespace_name[0],
+                                     name=rp_namespace_name[1]).destroy()
 
     def record(self, er_store: ErStore):
         store_type = er_store._store_locator._store_type
@@ -133,19 +133,19 @@ class GcRecorder(object):
         else:
             L.info("GC recording in memory table namespace={}, name={}, type={}"
                   .format(namespace, name, store_type))
-            count = self.gc_recorder.get(name)
+            count = self.gc_recorder.get((namespace, name))
             if count is None:
                 count = 0
-            self.gc_recorder[name] = count + 1
+            self.gc_recorder[(namespace, name)] = count + 1
             L.info(f"GC recorded count={len(self.gc_recorder)}")
 
     def decrease_ref_count(self, er_store):
         if er_store._store_locator._store_type != StoreTypes.ROLLPAIR_IN_MEMORY:
             return
-        ref_count = self.gc_recorder.get(er_store._store_locator._name)
+        ref_count = self.gc_recorder.get((er_store._store_locator._namespace, er_store._store_locator._name))
         record_count = 0 if ref_count is None or ref_count == 0 else (ref_count - 1)
-        self.gc_recorder[er_store._store_locator._name] = record_count
+        self.gc_recorder[(er_store._store_locator._namespace, er_store._store_locator._name)] = record_count
         if record_count == 0 and er_store._store_locator._name in self.gc_recorder:
             L.info(f'GC put in queue:{er_store._store_locator._name}')
-            self.gc_queue.put(er_store._store_locator._name)
-            self.gc_recorder.pop(er_store._store_locator._name)
+            self.gc_queue.put((er_store._store_locator._namespace, er_store._store_locator._name))
+            self.gc_recorder.pop((er_store._store_locator._namespace, er_store._store_locator._name))
