@@ -355,7 +355,7 @@ class RollPair(object):
         return f'<RollPair(_store={self.__store}) at {hex(id(self))}>'
 
     @staticmethod
-    def __check_partitions(input_partitions, output_partitions, shuffle=False):
+    def __check_partition(input_partitions, output_partitions, shuffle=False):
         if not shuffle:
             return
         if input_partitions != output_partitions:
@@ -741,7 +741,7 @@ class RollPair(object):
 
         outputs = []
         if output:
-            RollPair.__check_partitions(self.get_partitions(), output._store_locator._total_partitions)
+            RollPair.__check_partition(self.get_partitions(), output._store_locator._total_partitions)
             outputs.append(output)
 
         functor = ErFunctor(name=RollPair.MAP_VALUES, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
@@ -786,7 +786,7 @@ class RollPair(object):
 
         outputs = []
         if output:
-            RollPair.__check_partitions(self.get_partitions(), output._store_locator._total_partitions)
+            RollPair.__check_partition(self.get_partitions(), output._store_locator._total_partitions)
             outputs.append(output)
 
         shuffle = options.get('shuffle', True)
@@ -815,7 +815,7 @@ class RollPair(object):
 
         outputs = []
         if output:
-            RollPair.__check_partitions(self.get_partitions(), output._store_locator._total_partitions)
+            RollPair.__check_partition(self.get_partitions(), output._store_locator._total_partitions)
             outputs.append(output)
 
         functor = ErFunctor(name=RollPair.COLLAPSE_PARTITIONS, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
@@ -837,7 +837,7 @@ class RollPair(object):
 
         outputs = []
         if output:
-            RollPair.__check_partitions(self.get_partitions(), output._store_locator._total_partitions)
+            RollPair.__check_partition(self.get_partitions(), output._store_locator._total_partitions)
             outputs.append(output)
 
         shuffle = options.get('shuffle', True)
@@ -942,7 +942,7 @@ class RollPair(object):
 
         outputs = []
         if output:
-            RollPair.__check_partitions(self.get_partitions(), output._store_locator._total_partitions)
+            RollPair.__check_partition(self.get_partitions(), output._store_locator._total_partitions)
             outputs.append(output)
 
         functor = ErFunctor(name=RollPair.GLOM, serdes=SerdesTypes.CLOUD_PICKLE)
@@ -965,7 +965,7 @@ class RollPair(object):
 
         outputs = []
         if output:
-            RollPair.__check_partitions(self.get_partitions(), output._store_locator._total_partitions)
+            RollPair.__check_partition(self.get_partitions(), output._store_locator._total_partitions)
             outputs.append(output)
 
         er_fraction = ErFunctor(name=RollPair.REDUCE, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(fraction))
@@ -989,7 +989,7 @@ class RollPair(object):
 
         outputs = []
         if output:
-            RollPair.__check_partitions(self.get_partitions(), output._store_locator._total_partitions)
+            RollPair.__check_partition(self.get_partitions(), output._store_locator._total_partitions)
             outputs.append(output)
 
         functor = ErFunctor(name=RollPair.FILTER, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
@@ -1014,7 +1014,7 @@ class RollPair(object):
 
         outputs = []
         if output:
-            RollPair.__check_partitions(inputs[0]._store_locator._total_partitions,
+            RollPair.__check_partition(inputs[0]._store_locator._total_partitions,
                                         output._store_locator._total_partitions)
             outputs.append(output)
 
@@ -1038,7 +1038,7 @@ class RollPair(object):
 
         outputs = []
         if output:
-            RollPair.__check_partitions(inputs[0]._store_locator._total_partitions,
+            RollPair.__check_partition(inputs[0]._store_locator._total_partitions,
                                         output._store_locator._total_partitions)
             outputs.append(output)
 
@@ -1062,7 +1062,7 @@ class RollPair(object):
 
         outputs = []
         if output:
-            RollPair.__check_partitions(inputs[0]._store_locator._total_partitions,
+            RollPair.__check_partition(inputs[0]._store_locator._total_partitions,
                                         output._store_locator._total_partitions)
             outputs.append(output)
 
