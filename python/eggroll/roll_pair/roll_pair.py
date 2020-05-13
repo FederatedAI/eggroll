@@ -719,21 +719,39 @@ class RollPair(object):
             return None
 
     @_method_profile_logger
-    def save_as(self, name, namespace, partition, options: dict = None):
-        if partition <= 0:
+    def save_as(self, name=None, namespace=None, partition=None, options: dict = None):
+        if partition is not None and partition <= 0:
             raise ValueError('partition cannot <= 0')
+
+        if not namespace:
+            namespace = self.get_namespace()
+
+        if not name:
+            if self.get_namespace() == namespace:
+                forked_store_locator = self.get_store()._store_locator.fork()
+                name = forked_store_locator._name
+            else:
+                name = self.get_name()
+
+        if not partition:
+            partition = self.get_partitions()
+
         if options is None:
             options = {}
-        store_type = options.get('store_type', self.ctx.default_store_type)
 
-        if partition == self.get_partitions():
-            store = ErStore(store_locator=ErStoreLocator(store_type=store_type, namespace=namespace,
-                                                         name=name, total_partitions=self.get_partitions()))
-            return self.map_values(lambda v: v, output=store, options=options)
+        store_type = options.get('store_type', self.ctx.default_store_type)
+        refresh_nodes = options.get('refresh_nodes', False)
+
+        saved_as_store = ErStore(store_locator=ErStoreLocator(
+                store_type=store_type,
+                namespace=namespace,
+                name=name,
+                total_partitions=partition))
+
+        if partition == self.get_partitions() and not refresh_nodes:
+            return self.map_values(lambda v: v, output=saved_as_store, options=options)
         else:
-            store = ErStore(store_locator=ErStoreLocator(store_type=store_type, namespace=namespace,
-                                                         name=name, total_partitions=partition))
-            return self.map(lambda k, v: (k, v), output=store, options=options)
+            return self.map(lambda k, v: (k, v), output=saved_as_store, options=options)
 
     """
         computing api
