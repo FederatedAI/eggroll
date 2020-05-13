@@ -708,11 +708,11 @@ class RollPair(object):
         if partition == self.get_partitions():
             store = ErStore(store_locator=ErStoreLocator(store_type=store_type, namespace=namespace,
                                                          name=name, total_partitions=self.get_partitions()))
-            return self.map_values(lambda v: v, output=store)
+            return self.map_values(lambda v: v, output=store, options=options)
         else:
             store = ErStore(store_locator=ErStoreLocator(store_type=store_type, namespace=namespace,
                                                          name=name, total_partitions=partition))
-            return self.map(lambda k, v: (k, v), output=store)
+            return self.map(lambda k, v: (k, v), output=store, options=options)
 
     """
         computing api
