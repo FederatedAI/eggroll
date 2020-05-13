@@ -250,8 +250,6 @@ class ErSession(object):
             final_output_proposal = job._inputs[0].fork()
         else:
             final_output_proposal = job._outputs[0]
-            if not final_output_proposal._partitions:
-                final_output_proposal._partitions = job._inputs[0].fork()._partitions
 
         refresh_nodes = job._options.get('refresh_nodes', False)
         if refresh_nodes:
