@@ -322,7 +322,7 @@ class RollSite:
                 packet = proxy_pb2.Packet(header=metadata, body=data)
 
                 future = self.receive_exeutor_pool.submit(RollSite.send_packet, self, packet)
-                future.add_done_callback(self._push_callback)
+                future.add_done_callback(functools.partial(self._push_callback, tmp_rp=None))
                 futures.append(future)
 
             else:
