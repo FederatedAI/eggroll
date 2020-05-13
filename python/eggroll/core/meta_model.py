@@ -471,7 +471,11 @@ class ErStore(RpcMessage):
 
     def fork(self, postfix='', delim=DEFAULT_FORK_DELIM):
         final_store_locator = self._store_locator.fork(postfix, delim)
-        final_partitions = map(lambda p: ErPartition(id=-1, store_locator=final_store_locator, processor=p._processor), self._partitions)
+        final_partitions = map(
+                lambda p: ErPartition(id=-1,
+                                      store_locator=final_store_locator,
+                                      processor=p._processor),
+                self._partitions)
         return ErStore(store_locator=final_store_locator,
                        partitions=list(final_partitions),
                        options=self._options)

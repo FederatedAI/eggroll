@@ -104,7 +104,7 @@ class RollPairContext(object):
         if options is None:
             options = {}
         store_type = options.get('store_type', self.default_store_type)
-        total_partitions = options.get('total_partitions', 1)
+        total_partitions = options.get('total_partitions', None)
         no_partitions_param = False
         if total_partitions is None:
             no_partitions_param = True
@@ -155,7 +155,7 @@ class RollPairContext(object):
 
         if not no_partitions_param and total_partitions != result._store_locator._total_partitions:
             raise ValueError(f"store:{result._store_locator._name} input total_partitions:{total_partitions}, "
-                             f"output total_partitions:{result._store_locator._total_partitions}, must be the same!")
+                             f"output total_partitions:{result._store_locator._total_partitions}, must be the same")
 
         return RollPair(self.populate_processor(result), self)
 
@@ -251,11 +251,11 @@ class RollPairContext(object):
                             partitioner=partitioner,
                             serdes=store_serdes),
                     options=final_options)
-            results = self.__session._cluster_manager_client.get_store_from_namespace(store)
-            L.debug('res:{}'.format(results._stores))
-            if results._stores is not None:
-                L.debug("item count:{}".format(len(results._stores)))
-                for item in results._stores:
+            task_results = self.__session._cluster_manager_client.get_store_from_namespace(store)
+            L.debug('res:{}'.format(task_results._stores))
+            if task_results._stores is not None:
+                L.debug("item count:{}".format(len(task_results._stores)))
+                for item in task_results._stores:
                     L.debug("item namespace:{} name:{}".format(item._store_locator._namespace,
                                                                item._store_locator._name))
                     rp = RollPair(er_store=item, rp_ctx=self)
@@ -461,15 +461,19 @@ class RollPair(object):
             command_uri: CommandURI = RUN_TASK_URI,
             create_output_if_missing: bool = True):
         futures = self.ctx.get_session().submit_job(
-                job=job, output_types=output_types, command_uri=command_uri, create_output_if_missing=create_output_if_missing)
+                job=job,
+                output_types=output_types,
+                command_uri=command_uri,
+                create_output_if_missing=create_output_if_missing)
 
-        self.ctx.get_session().wait_until_job_finished(
-                task_futures=futures)
+        results = list()
+        for future in futures:
+            results.append(future.result())
 
-        return futures
+        return results
 
-    def __get_output_from_result(self, futures):
-        return futures[0].result()[0]._job._outputs[0]
+    def __get_output_from_result(self, results):
+        return results[0][0]._job._outputs[0]
 
     """
       storage api
@@ -562,8 +566,8 @@ class RollPair(object):
                         outputs=[self.__store],
                         functors=[])
 
-            task_futures = self._run_job(job=job)
-            er_store = self.__get_output_from_result(task_futures)
+            task_results = self._run_job(job=job)
+            er_store = self.__get_output_from_result(task_results)
 
             return er_store
         send_command()
@@ -591,9 +595,9 @@ class RollPair(object):
                         outputs=[self.__store],
                         functors=[])
 
-            task_futures = self._run_job(job)
+            task_results = self._run_job(job)
 
-            return self.__get_output_from_result(task_futures)
+            return self.__get_output_from_result(task_results)
         th = Thread(target=send_command, name=f'roll_pair-send_command-{job_id}')
         th.start()
         populated_store = self.ctx.populate_processor(self.__store)
@@ -630,11 +634,11 @@ class RollPair(object):
                     name=RollPair.COUNT,
                     inputs=[self.__store])
 
-        task_futures = self._run_job(job=job, output_types=[ErPair], create_output_if_missing=False)
+        task_results = self._run_job(job=job, output_types=[ErPair], create_output_if_missing=False)
 
         result = 0
-        for future in task_futures:
-            pair = future.result()[0]
+        for task_result in task_results:
+            pair = task_result[0]
             result += self.functor_serdes.deserialize(pair._value)
 
         return result
@@ -653,7 +657,7 @@ class RollPair(object):
                     outputs=[self.__store],
                     functors=[])
 
-        task_futures = self._run_job(job=job, create_output_if_missing=False)
+        task_results = self._run_job(job=job, create_output_if_missing=False)
         self.ctx.get_session()._cluster_manager_client.delete_store(self.__store)
         L.info(f'{RollPair.DESTROY}: {self.__store}')
         self.destroyed = True
@@ -679,7 +683,7 @@ class RollPair(object):
                     outputs=[],
                     functors=[ErFunctor(body=cloudpickle.dumps(er_pair))])
 
-        task_futures = self._run_job(job=job, create_output_if_missing=False)
+        task_results = self._run_job(job=job, create_output_if_missing=False)
 
     @_method_profile_logger
     def take(self, n: int, options: dict = None):
@@ -756,8 +760,8 @@ class RollPair(object):
                     functors=[functor],
                     options=final_options)
 
-        task_futures = self._run_job(job=job)
-        er_store = self.__get_output_from_result(task_futures)
+        task_results = self._run_job(job=job)
+        er_store = self.__get_output_from_result(task_results)
 
         return RollPair(er_store, self.ctx)
 
@@ -774,8 +778,8 @@ class RollPair(object):
                     functors=[functor],
                     options=options)
 
-        task_futures = self._run_job(job=job)
-        er_store = self.__get_output_from_result(task_futures)
+        task_results = self._run_job(job=job)
+        er_store = self.__get_output_from_result(task_results)
 
         return RollPair(er_store, self.ctx)
 
@@ -825,8 +829,8 @@ class RollPair(object):
                     outputs=outputs,
                     functors=[functor])
 
-        task_futures = self._run_job(job=job)
-        er_store = self.__get_output_from_result(task_futures)
+        task_results = self._run_job(job=job)
+        er_store = self.__get_output_from_result(task_results)
 
         return RollPair(er_store, self.ctx)
 
@@ -850,8 +854,8 @@ class RollPair(object):
                     outputs=outputs,
                     functors=[functor, need_shuffle])
 
-        task_futures = self._run_job(job=job)
-        er_store = self.__get_output_from_result(task_futures)
+        task_results = self._run_job(job=job)
+        er_store = self.__get_output_from_result(task_results)
 
         return RollPair(er_store, self.ctx)
 
@@ -953,8 +957,8 @@ class RollPair(object):
                     outputs=outputs,
                     functors=[functor])
 
-        task_futures = self._run_job(job=job)
-        er_store = self.__get_output_from_result(task_futures)
+        task_results = self._run_job(job=job)
+        er_store = self.__get_output_from_result(task_results)
 
         return RollPair(er_store, self.ctx)
 
@@ -977,8 +981,8 @@ class RollPair(object):
                     outputs=outputs,
                     functors=[er_fraction, er_seed])
 
-        task_futures = self._run_job(job=job)
-        er_store = self.__get_output_from_result(task_futures)
+        task_results = self._run_job(job=job)
+        er_store = self.__get_output_from_result(task_results)
 
         return RollPair(er_store, self.ctx)
 
@@ -1000,8 +1004,8 @@ class RollPair(object):
                     outputs=outputs,
                     functors=[functor])
 
-        task_futures = self._run_job(job=job)
-        er_store = self.__get_output_from_result(task_futures)
+        task_results = self._run_job(job=job)
+        er_store = self.__get_output_from_result(task_results)
 
         return RollPair(er_store, self.ctx)
 
@@ -1078,8 +1082,8 @@ class RollPair(object):
                     functors=[functor],
                     options=final_options)
 
-        task_futures = self._run_job(job=job)
-        er_store = self.__get_output_from_result(task_futures)
+        task_results = self._run_job(job=job)
+        er_store = self.__get_output_from_result(task_results)
 
         return RollPair(er_store, self.ctx)
 
