@@ -250,7 +250,7 @@ class RollSite:
             return result
         except Exception as e:
             L.exception(f"pull error:{e}")
-            raise GrpcCallError("push", self.ctx.proxy_endpoint, e)
+            raise GrpcCallError("pull", self.ctx.proxy_endpoint, e)
         finally:
             end_wall_time = time.time()
             end_cpu_time = time.perf_counter()
