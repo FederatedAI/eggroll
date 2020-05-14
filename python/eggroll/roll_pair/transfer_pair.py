@@ -215,10 +215,6 @@ class TransferPair(object):
         """
         @_exception_logger
         def do_store(store_partition_inner, is_shuffle_inner, total_writers_inner, reduce_op_inner):
-            if reduce_op is None:
-                do_reduce = False
-            else:
-                do_reduce = True
             done_cnt = 0
             tag = self.__generate_tag(store_partition_inner._id) if is_shuffle_inner else self.__transfer_id
             try:
@@ -230,12 +226,12 @@ class TransferPair(object):
                     serdes = create_serdes(store_partition_inner._store_locator._serdes)
                     with db.new_batch() as wb:
                         for k, v in batches:
-                            if not reduce_op_inner:
+                            if reduce_op_inner is None:
                                 wb.put(k, v)
                             else:
                                 v1 = wb.get(k)
                                 if v1:
-                                    v2 = reduce_op_inner(serdes.deserialize(v), serdes.deserialize(v1))
+                                    v2 = reduce_op_inner(serdes.deserialize(v1), serdes.deserialize(v))
                                     wb.put(k, serdes.serialize(v2))
                                 else:
                                     wb.put(k, v)
