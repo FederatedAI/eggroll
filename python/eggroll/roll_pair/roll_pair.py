@@ -13,7 +13,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import os
-import sys
 import uuid
 from concurrent.futures import wait, FIRST_EXCEPTION
 from threading import Thread
@@ -90,8 +89,9 @@ class RollPairContext(object):
             return
         for k, v in (self.gc_recorder.gc_recorder.items()):
             L.debug("before exit the task:{} cleaning item:{}".format(self.session_id, k))
-            name = k
-            rp = self.load(namespace=self.session_id, name=name)
+            namespace = k[0]
+            name = k[1]
+            rp = self.load(namespace=namespace, name=name)
             rp.destroy()
 
     def route_to_egg(self, partition: ErPartition):
@@ -105,6 +105,11 @@ class RollPairContext(object):
             options = {}
         store_type = options.get('store_type', self.default_store_type)
         total_partitions = options.get('total_partitions', 1)
+        no_partitions_param = False
+        if total_partitions is None:
+            no_partitions_param = True
+            total_partitions = 1
+
         partitioner = options.get('partitioner', PartitionerTypes.BYTESTRING_HASH)
         store_serdes = options.get('serdes', self.default_store_serdes)
         create_if_missing = options.get('create_if_missing', True)
@@ -147,6 +152,10 @@ class RollPairContext(object):
             if result is None:
                 raise EnvironmentError(
                         "result is None, please check whether the store:{} has been created before".format(store))
+
+        if not no_partitions_param and total_partitions != result._store_locator._total_partitions:
+            raise ValueError(f"store:{result._store_locator._name} input total_partitions:{total_partitions}, "
+                             f"output total_partitions:{result._store_locator._total_partitions}, must be the same!")
 
         return RollPair(self.populate_processor(result), self)
 
@@ -329,6 +338,10 @@ class RollPair(object):
         if not self.gc_enable:
             L.info('session:{} gc not enable'.format(self.__session_id))
             return
+
+        if self.get_store_type() != StoreTypes.ROLLPAIR_IN_MEMORY:
+            return
+
         if self.destroyed:
             return
         if self.ctx.get_session().is_stopped():
@@ -340,6 +353,14 @@ class RollPair(object):
 
     def __repr__(self):
         return f'<RollPair(_store={self.__store}) at {hex(id(self))}>'
+
+    @staticmethod
+    def __check_partition(input_partitions, output_partitions, shuffle=False):
+        if not shuffle:
+            return
+        if input_partitions != output_partitions:
+            raise ValueError(f"input partitions:{input_partitions}, output partitions:{output_partitions},"
+                             f"must be the same!")
 
     def __repartition_with(self, other):
         self_partition = self.get_partitions()
@@ -632,14 +653,7 @@ class RollPair(object):
                     outputs=[self.__store],
                     functors=[])
 
-        #task_futures = self._run_job(job=job, create_output_if_missing=False)
-        job_resp = self.__command_client.simple_sync_send(
-                input=job,
-                output_type=ErJob,
-                endpoint=self.ctx.get_roll()._command_endpoint,
-                command_uri=CommandURI(f'{RollPair.ROLL_PAIR_URI_PREFIX}/{RollPair.RUN_JOB}'),
-                serdes_type=self.__command_serdes)
-
+        task_futures = self._run_job(job=job, create_output_if_missing=False)
         self.ctx.get_session()._cluster_manager_client.delete_store(self.__store)
         L.info(f'{RollPair.DESTROY}: {self.__store}')
         self.destroyed = True
@@ -664,15 +678,8 @@ class RollPair(object):
                     inputs=[self.__store],
                     outputs=[],
                     functors=[ErFunctor(body=cloudpickle.dumps(er_pair))])
-        task = ErTask(id=generate_task_id(job_id, partition_id), name=RollPair.DELETE, inputs=inputs, outputs=output, job=job)
-        L.info("start send req")
-        job_resp = self.__command_client.simple_sync_send(
-                input=task,
-                output_type=ErPair,
-                endpoint=egg._command_endpoint,
-                command_uri=RollPair.RUN_TASK_URI,
-                serdes_type=self.__command_serdes
-        )
+
+        task_futures = self._run_job(job=job, create_output_if_missing=False)
 
     @_method_profile_logger
     def take(self, n: int, options: dict = None):
@@ -718,11 +725,11 @@ class RollPair(object):
         if partition == self.get_partitions():
             store = ErStore(store_locator=ErStoreLocator(store_type=store_type, namespace=namespace,
                                                          name=name, total_partitions=self.get_partitions()))
-            return self.map_values(lambda v: v, output=store)
+            return self.map_values(lambda v: v, output=store, options=options)
         else:
             store = ErStore(store_locator=ErStoreLocator(store_type=store_type, namespace=namespace,
                                                          name=name, total_partitions=partition))
-            return self.map(lambda k, v: (k, v), output=store)
+            return self.map(lambda k, v: (k, v), output=store, options=options)
 
     """
         computing api
@@ -731,6 +738,12 @@ class RollPair(object):
     def map_values(self, func, output=None, options: dict = None):
         if options is None:
             options = {}
+
+        outputs = []
+        if output:
+            RollPair.__check_partition(self.get_partitions(), output._store_locator._total_partitions)
+            outputs.append(output)
+
         functor = ErFunctor(name=RollPair.MAP_VALUES, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
         # todo:1: options issues. refer to line 77
         final_options = {}
@@ -739,7 +752,7 @@ class RollPair(object):
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.MAP_VALUES),
                     name=RollPair.MAP_VALUES,
                     inputs=[self.__store],
-                    outputs=[output],
+                    outputs=outputs,
                     functors=[functor],
                     options=final_options)
 
@@ -767,40 +780,49 @@ class RollPair(object):
         return RollPair(er_store, self.ctx)
 
     @_method_profile_logger
-    def map_partitions(self, func, output=None, options: dict = None):
+    def map_partitions(self, func, reduce_op=None, output=None, options: dict = None):
         if options is None:
             options = {}
-        functor = ErFunctor(name=RollPair.MAP_PARTITIONS, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
+
         outputs = []
         if output:
+            RollPair.__check_partition(self.get_partitions(), output._store_locator._total_partitions)
             outputs.append(output)
+
+        shuffle = options.get('shuffle', True)
+        if not shuffle and reduce_op:
+            raise ValueError(f"shuffle cannot be False when reduce is needed!")
+        functor = ErFunctor(name=RollPair.MAP_PARTITIONS, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
+        reduce_functor = ErFunctor(name=RollPair.MAP_PARTITIONS, serdes=SerdesTypes.CLOUD_PICKLE,
+                                   body=cloudpickle.dumps(reduce_op))
+        need_shuffle = ErFunctor(name=RollPair.FLAT_MAP, serdes=SerdesTypes.CLOUD_PICKLE,
+                                 body=cloudpickle.dumps(shuffle))
+
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.MAP_PARTITIONS),
                     name=RollPair.MAP_PARTITIONS,
                     inputs=[self.__store],
                     outputs=outputs,
-                    functors=[functor])
+                    functors=[functor, reduce_functor, need_shuffle])
 
-        job_result = self.__command_client.simple_sync_send(
-                input=job,
-                output_type=ErJob,
-                endpoint=self.ctx.get_roll()._command_endpoint,
-                command_uri=CommandURI(f'{RollPair.ROLL_PAIR_URI_PREFIX}/{RollPair.RUN_JOB}'),
-                serdes_type=self.__command_serdes
-        )
-        er_store = job_result._outputs[0]
-
+        task_future = self._run_job(job=job)
+        er_store = self.__get_output_from_result(task_future)
         return RollPair(er_store, self.ctx)
 
     @_method_profile_logger
     def collapse_partitions(self, func, output=None, options: dict = None):
         if options is None:
             options = {}
-        functor = ErFunctor(name=RollPair.COLLAPSE_PARTITIONS, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
 
+        outputs = []
+        if output:
+            RollPair.__check_partition(self.get_partitions(), output._store_locator._total_partitions)
+            outputs.append(output)
+
+        functor = ErFunctor(name=RollPair.COLLAPSE_PARTITIONS, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.COLLAPSE_PARTITIONS),
                     name=RollPair.COLLAPSE_PARTITIONS,
                     inputs=[self.__store],
-                    outputs=[output],
+                    outputs=outputs,
                     functors=[functor])
 
         task_futures = self._run_job(job=job)
@@ -812,13 +834,21 @@ class RollPair(object):
     def flat_map(self, func, output=None, options: dict = None):
         if options is None:
             options = {}
+
+        outputs = []
+        if output:
+            RollPair.__check_partition(self.get_partitions(), output._store_locator._total_partitions)
+            outputs.append(output)
+
+        shuffle = options.get('shuffle', True)
         functor = ErFunctor(name=RollPair.FLAT_MAP, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
+        need_shuffle = ErFunctor(name=RollPair.FLAT_MAP, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(shuffle))
 
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.FLAT_MAP),
                     name=RollPair.FLAT_MAP,
                     inputs=[self.__store],
-                    outputs=[output],
-                    functors=[functor])
+                    outputs=outputs,
+                    functors=[functor, need_shuffle])
 
         task_futures = self._run_job(job=job)
         er_store = self.__get_output_from_result(task_futures)
@@ -909,12 +939,18 @@ class RollPair(object):
     def glom(self, output=None, options: dict = None):
         if options is None:
             options = {}
+
+        outputs = []
+        if output:
+            RollPair.__check_partition(self.get_partitions(), output._store_locator._total_partitions)
+            outputs.append(output)
+
         functor = ErFunctor(name=RollPair.GLOM, serdes=SerdesTypes.CLOUD_PICKLE)
 
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.GLOM),
                     name=RollPair.GLOM,
                     inputs=[self.__store],
-                    outputs=[output],
+                    outputs=outputs,
                     functors=[functor])
 
         task_futures = self._run_job(job=job)
@@ -926,13 +962,19 @@ class RollPair(object):
     def sample(self, fraction, seed=None, output=None, options: dict = None):
         if options is None:
             options = {}
+
+        outputs = []
+        if output:
+            RollPair.__check_partition(self.get_partitions(), output._store_locator._total_partitions)
+            outputs.append(output)
+
         er_fraction = ErFunctor(name=RollPair.REDUCE, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(fraction))
         er_seed  = ErFunctor(name=RollPair.REDUCE, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(seed))
 
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.SAMPLE),
                     name=RollPair.SAMPLE,
                     inputs=[self.__store],
-                    outputs=[output],
+                    outputs=outputs,
                     functors=[er_fraction, er_seed])
 
         task_futures = self._run_job(job=job)
@@ -944,12 +986,18 @@ class RollPair(object):
     def filter(self, func, output=None, options: dict = None):
         if options is None:
             options = {}
+
+        outputs = []
+        if output:
+            RollPair.__check_partition(self.get_partitions(), output._store_locator._total_partitions)
+            outputs.append(output)
+
         functor = ErFunctor(name=RollPair.FILTER, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
 
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.FILTER),
                     name=RollPair.FILTER,
                     inputs=[self.__store],
-                    outputs=[output],
+                    outputs=outputs,
                     functors=[functor])
 
         task_futures = self._run_job(job=job)
@@ -962,24 +1010,23 @@ class RollPair(object):
         if options is None:
             options = {}
 
-        functor = ErFunctor(name=RollPair.SUBTRACT_BY_KEY, serdes=SerdesTypes.CLOUD_PICKLE)
+        inputs = self.__repartition_with(other)
+
         outputs = []
         if output:
+            RollPair.__check_partition(inputs[0]._store_locator._total_partitions,
+                                        output._store_locator._total_partitions)
             outputs.append(output)
+
+        functor = ErFunctor(name=RollPair.SUBTRACT_BY_KEY, serdes=SerdesTypes.CLOUD_PICKLE)
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.SUBTRACT_BY_KEY),
                     name=RollPair.SUBTRACT_BY_KEY,
-                    inputs=self.__repartition_with(other),
+                    inputs=inputs,
                     outputs=outputs,
                     functors=[functor])
 
-        job_result = self.__command_client.simple_sync_send(
-                input=job,
-                output_type=ErJob,
-                endpoint=self.ctx.get_roll()._command_endpoint,
-                command_uri=CommandURI(f'{RollPair.ROLL_PAIR_URI_PREFIX}/{RollPair.RUN_JOB}'),
-                serdes_type=self.__command_serdes)
-        er_store = job_result._outputs[0]
-
+        task_future = self._run_job(job=job)
+        er_store = self.__get_output_from_result(task_future)
         return RollPair(er_store, self.ctx)
 
     @_method_profile_logger
@@ -987,30 +1034,37 @@ class RollPair(object):
         if options is None:
             options = {}
 
-        functor = ErFunctor(name=RollPair.UNION, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
+        inputs = self.__repartition_with(other)
+
         outputs = []
         if output:
+            RollPair.__check_partition(inputs[0]._store_locator._total_partitions,
+                                        output._store_locator._total_partitions)
             outputs.append(output)
+
+        functor = ErFunctor(name=RollPair.UNION, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.UNION),
                     name=RollPair.UNION,
-                    inputs=self.__repartition_with(other),
+                    inputs=inputs,
                     outputs=outputs,
                     functors=[functor])
 
-        job_result = self.__command_client.simple_sync_send(
-                input=job,
-                output_type=ErJob,
-                endpoint=self.ctx.get_roll()._command_endpoint,
-                command_uri=CommandURI(f'{RollPair.ROLL_PAIR_URI_PREFIX}/{RollPair.RUN_JOB}'),
-                serdes_type=self.__command_serdes)
-        er_store = job_result._outputs[0]
-
+        task_future = self._run_job(job=job)
+        er_store = self.__get_output_from_result(task_future)
         return RollPair(er_store, self.ctx)
 
     @_method_profile_logger
     def join(self, other, func, output=None, options: dict = None):
         if options is None:
             options = {}
+
+        inputs = self.__repartition_with(other)
+
+        outputs = []
+        if output:
+            RollPair.__check_partition(inputs[0]._store_locator._total_partitions,
+                                        output._store_locator._total_partitions)
+            outputs.append(output)
 
         functor = ErFunctor(name=RollPair.JOIN, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
 
@@ -1019,8 +1073,8 @@ class RollPair(object):
         final_options.update(options)
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.JOIN),
                     name=RollPair.JOIN,
-                    inputs=self.__repartition_with(other),
-                    outputs=[output],
+                    inputs=inputs,
+                    outputs=outputs,
                     functors=[functor],
                     options=final_options)
 
