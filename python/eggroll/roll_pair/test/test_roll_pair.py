@@ -32,7 +32,7 @@ class TestRollPairBase(unittest.TestCase):
 
     def tearDown(self) -> None:
         print("stop test session")
-        #self.ctx.get_session().stop()
+        # self.ctx.get_session().stop()
 
     @staticmethod
     def store_opts(**kwargs):
@@ -196,11 +196,10 @@ class TestRollPairBase(unittest.TestCase):
         options = get_default_options()
         options['include_key'] = True
         data = [("k1", "v1"), ("k2", "v2"), ("k3", "v3"), ("k4", "v4")]
-        table = self.ctx.load('ns12020020618', 'test_destroy', options=options)#.put_all(data, options=options)
+        table = self.ctx.load('ns12020020618', 'test_destroy', options=options).put_all(data, options=options)
         print("before destroy:{}".format(list(table.get_all())))
         table.destroy()
         # TODO:1: table which has been destroyed cannot get_all, should raise exception
-        #print("after destroy:{}".format(list(table.get_all())))
         self.assertEqual(table.count(), 0)
 
     def test_destroy_simple(self):
@@ -254,6 +253,7 @@ class TestRollPairBase(unittest.TestCase):
         options['total_partitions'] = 12
         data = [(str(i), i) for i in range(10)]
         rp = self.ctx.load("ns1", "test_map_partitions", options=options).put_all(data, options={"include_key": True})
+
         def func(iter):
             ret = []
             for k, v in iter:
@@ -268,6 +268,42 @@ class TestRollPairBase(unittest.TestCase):
                                             ('3_3_0', 9), ('3_3_1', 27), ('4_4_0', 16), ('4_4_1', 64), ('5_5_0', 25),
                                             ('5_5_1', 125), ('6_6_0', 36), ('6_6_1', 216), ('7_7_0', 49), ('7_7_1', 343),
                                             ('8_8_0', 64), ('8_8_1', 512), ('9_9_0', 81), ('9_9_1', 729)])
+
+    def test_map_partitions_with_reduce(self):
+        options = get_default_options()
+        options['total_partitions'] = 3
+        data = [('a', 1), ('b', 2), ('c', 10), ('d', 4), ('e', 5), ('f', 20), ('g', 6), ('h', 7), ('i', 30), ('j', 66)]
+        rp = self.ctx.load("ns1", "test_map_partitions_with_reduce_3par",
+                           options=options).put_all(data, options={"include_key": True})
+
+        def func(iter):
+            ret = []
+            for k, v in iter:
+                print(f'k:{k}, v:{v}')
+                if k in ('a', 'b', 'c'):
+                    k = 'A'
+                elif k in ('d', 'e', 'f'):
+                    k = 'B'
+                elif k in ('g', 'h', 'i'):
+                    k = 'C'
+                ret.append((f"{k}_0", v))
+                ret.append((f"{k}_1", v+1))
+            print(f'lambda ret:{ret}')
+            return ret
+        from operator import add
+        table = rp.map_partitions(func, reduce_op=add)
+        print(f"res:{sorted(list(table.get_all()), key=lambda x: x[0])}")
+        self.assertEqual(sorted(list(table.get_all()), key=lambda x: x[0]),
+                         [('A_0', 13), ('A_1', 16), ('B_0', 29), ('B_1', 32),
+                          ('C_0', 43), ('C_1', 46), ('j_0', 66), ('j_1', 67)])
+        self.assertEqual(table.get('A_0'), 13)
+        self.assertEqual(table.get('A_1'), 16)
+        self.assertEqual(table.get('B_0'), 29)
+        self.assertEqual(table.get('B_1'), 32)
+        self.assertEqual(table.get('C_0'), 43)
+        self.assertEqual(table.get('C_1'), 46)
+        self.assertEqual(table.get('j_0'), 66)
+        self.assertEqual(table.get('j_1'), 67)
 
     def test_collapse_partitions(self):
         options = get_default_options()
@@ -292,17 +328,21 @@ class TestRollPairBase(unittest.TestCase):
     def test_flatMap(self):
         options = get_default_options()
         options['include_key'] = False
-        rp = self.ctx.load("ns1", "test_flat_map", options=options).put_all(range(5), options=options)
+        options['total_partitions'] = 3
+        rp = self.ctx.load("ns1", "test_flat_map_3p", options=options).put_all(range(5), options=options)
         import random
 
         def foo(k, v):
             result = []
             r = random.randint(10000, 99999)
             for i in range(0, k):
-                result.append((k + r + i, v + r + i))
+                result.append((k + r + i, v + r + i + 1))
             return result
-        print(list(rp.flat_map(foo).get_all()))
-        self.assertEqual(rp.flat_map(foo).count(), 10)
+        res = rp.flat_map(foo)
+        print(list(res.get_all()))
+        print(f"get value:{res.get(res.first(options={'keys_only': True}))} of key:{res.first(options={'keys_only': True})}")
+        self.assertEqual(res.first(options={'keys_only': False})[1], res.get(res.first(options={'keys_only': True})))
+        self.assertEqual(res.count(), 10)
 
     def test_glom(self):
         options = get_default_options()
