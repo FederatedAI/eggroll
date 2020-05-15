@@ -343,8 +343,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                     String tagKey = genTagKey(rollSiteHeader);
                     JobStatus.addPutBatchRequiredCount(tagKey, 1);
 
-                    LOGGER.info("markEnd: {}, {}", rollSiteHeader.rollSiteSessionId(),
-                            tagKey);  //obj or RollPair
+                    LOGGER.info("received obj, tagKey: {}", tagKey);
 
                     if (!JobStatus.hasLatch(tagKey)) {
                         int totalPartitions = 1;
