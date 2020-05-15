@@ -14,6 +14,7 @@
 #  limitations under the License.
 
 import unittest
+from concurrent.futures.thread import ThreadPoolExecutor
 
 from eggroll.core.constants import StoreTypes
 from eggroll.core.utils import time_now
@@ -42,6 +43,7 @@ class TestRollPairBase(unittest.TestCase):
 
     def assertUnOrderListEqual(self, list1, list2):
         self.assertEqual(sorted(list1), sorted(list2))
+
     @staticmethod
     def str_generator(include_key=True, row_limit=10, key_suffix_size=0, value_suffix_size=0):
         for i in range(row_limit):
@@ -87,7 +89,7 @@ class TestRollPairBase(unittest.TestCase):
         v1 = rp.get(k)
         print(f'length: {len(v1)}')
         self.assertEqual(len(v1), length)
-        self.assertEquals(v, v1)
+        self.assertEqual(v, v1)
 
     def test_count(self):
         rp = self.ctx.parallelize(self.str_generator(row_limit=11))
@@ -98,6 +100,10 @@ class TestRollPairBase(unittest.TestCase):
         data = [("k1","v1"),("k2","v2"),("k3","v3"),("k4","v4"),("k5","v5"),("k6","v6")]
         rp.put_all(data)
         self.assertUnOrderListEqual(data, rp.get_all())
+
+    def test_put_all_multi_thread(self):
+        exe = ThreadPoolExecutor(max_workers=2)
+        exe.submit(self.test_put_all)
 
     def test_cleanup(self):
         rp = self.ctx.load("ns168","n1")
@@ -133,7 +139,15 @@ class TestRollPairBase(unittest.TestCase):
     def test_map(self):
         rp = self.ctx.parallelize(self.str_generator())
         rp2 = rp.map(lambda k, v: (k + "_1", v))
+        print(list(rp2.get_all()))
         self.assertUnOrderListEqual(((k + "_1", v) for k, v in self.str_generator()), rp2.get_all())
+
+    def test_map_1m(self):
+        rp = self.ctx.parallelize(self.str_generator(row_limit=1000000))
+        rp2 = rp.map(lambda k, v: (str(int(k) + 1), v))
+        print(rp2.count())
+        print(list(rp2.get_all())[:10])
+        # self.assertUnOrderListEqual(((k + "_1", v) for k, v in self.str_generator()), rp2.get_all())
 
     def test_reduce(self):
         options = self.store_opts()

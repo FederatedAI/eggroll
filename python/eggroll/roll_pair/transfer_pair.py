@@ -19,7 +19,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from eggroll.core.conf_keys import RollPairConfKeys
 from eggroll.core.datastructure.broker import FifoBroker, BrokerClosed
-from eggroll.core.pair_store.format import PairBinReader, PairBinWriter
+from eggroll.core.pair_store.format import PairBinReader, PairBinWriter, ArrayByteBuffer
 from eggroll.core.transfer.transfer_service import TransferClient, \
     TransferService
 from eggroll.core.utils import _exception_logger
@@ -167,11 +167,13 @@ class TransferPair(object):
             nonlocal buffer
             nonlocal writer
             bin_batch = None
+            # if ba:
+            #     bin_batch = bytes(ba[0:writer.get_offset()])
             if ba:
-                bin_batch = bytes(ba[0:writer.get_offset()])
+                bin_batch = bytes(ba[0:buffer.get_offset()])
             ba = bytearray(bs)
-            # buffer = ArrayByteBuffer(ba)
-            writer = PairBinWriter(data=ba)
+            buffer = ArrayByteBuffer(ba)
+            writer = PairBinWriter(pair_buffer=buffer, data=None)
             return bin_batch
         # init var
         commit()
@@ -197,8 +199,8 @@ class TransferPair(object):
         for batch in input_iter:
             L.debug(f"bin_batch_to_pair: cur batch size: {len(batch)}")
             try:
-                # bin_data = ArrayByteBuffer(batch)
-                reader = PairBinReader(data=batch)
+                bin_data = ArrayByteBuffer(batch)
+                reader = PairBinReader(pair_buffer=bin_data, data=None)
                 for k_bytes, v_bytes in reader.read_all():
                     yield k_bytes, v_bytes
                     write_count += 1
