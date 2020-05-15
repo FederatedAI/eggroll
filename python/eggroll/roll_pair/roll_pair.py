@@ -740,7 +740,9 @@ class RollPair(object):
             options = {}
 
         store_type = options.get('store_type', self.ctx.default_store_type)
-        refresh_nodes = options.get('refresh_nodes', False)
+        if 'refresh_nodes' not in options:
+            options['refresh_nodes'] = True
+        refresh_nodes = options['refresh_nodes']
 
         saved_as_store = ErStore(store_locator=ErStoreLocator(
                 store_type=store_type,
