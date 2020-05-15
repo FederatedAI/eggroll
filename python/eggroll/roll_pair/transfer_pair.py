@@ -156,7 +156,6 @@ class TransferPair(object):
         import os
         sendbuf_size = int(os.environ.get(RollPairConfKeys.EGGROLL_ROLLPAIR_TRANSFERPAIR_SENDBUF_SIZE.key, sendbuf_size))
 
-        # TODO:1: buffer_size auto adjust? - max: initial size can be configured. but afterwards it will adjust depending on message size
         L.debug(f'pair_to_bin_batch start')
         pair_count = 0
         ba = None

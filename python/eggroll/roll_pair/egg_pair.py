@@ -42,7 +42,7 @@ from eggroll.core.transfer.transfer_service import GrpcTransferServicer, \
     TransferService
 from eggroll.core.utils import _exception_logger
 from eggroll.core.utils import hash_code
-from eggroll.core.utils import set_static_er_conf
+from eggroll.core.utils import set_static_er_conf, get_static_er_conf
 from eggroll.roll_pair import create_adapter, create_serdes, create_functor
 from eggroll.roll_pair.transfer_pair import TransferPair
 from eggroll.roll_pair.utils.pair_utils import generator, partitioner, \
@@ -72,8 +72,11 @@ class EggPair(object):
             output_total_partitions = output_store_head._store_locator._total_partitions
             output_store = output_store_head
 
+            my_server_node_id = get_static_er_conf().get('server_node_id', None)
             shuffler = TransferPair(transfer_id=task._job._id)
-            if not task._outputs:
+            if not task._outputs or \
+                    (my_server_node_id is not None
+                     and my_server_node_id != task._outputs[0]._processor._server_node_id):
                 store_future = None
             else:
                 store_future = shuffler.store_broker(
@@ -82,7 +85,9 @@ class EggPair(object):
                         total_writers=input_total_partitions,
                         reduce_op=reduce_op)
 
-            if not task._inputs:
+            if not task._inputs or \
+                    (my_server_node_id is not None
+                     and my_server_node_id != task._inputs[0]._processor._server_node_id):
                 scatter_future = None
             else:
                 shuffle_broker = FifoBroker()
@@ -502,6 +507,7 @@ def stop_processor(cluster_manager_client: ClusterManagerClient, myself: ErProce
             except:
                 pass
 
+
 def serve(args):
     prefix = 'v1/egg-pair'
 
@@ -567,6 +573,9 @@ def serve(args):
     cluster_manager_client = None
     if cluster_manager:
         session_id = args.session_id
+        server_node_id = int(args.server_node_id)
+        static_er_conf = get_static_er_conf()
+        static_er_conf['server_node_id'] = server_node_id
 
         if not session_id:
             raise ValueError('session id is missing')
@@ -574,7 +583,7 @@ def serve(args):
             SessionConfKeys.CONFKEY_SESSION_ID: args.session_id
         }
         myself = ErProcessor(id=int(args.processor_id),
-                             server_node_id=int(args.server_node_id),
+                             server_node_id=server_node_id,
                              processor_type=ProcessorTypes.EGG_PAIR,
                              command_endpoint=ErEndpoint(host='localhost', port=port),
                              transfer_endpoint=ErEndpoint(host='localhost', port=transfer_port),
