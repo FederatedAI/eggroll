@@ -241,21 +241,21 @@ class ErSession(object):
                 output_processor = None
                 output_server_node_id = None
 
-            task = [ErTask(id=generate_task_id(job._id, i),
+            tasks = [ErTask(id=generate_task_id(job._id, i),
                            name=f'{job._name}',
                            inputs=input_partitions,
                            outputs=output_partitions,
                            job=job)]
             if input_server_node_id == output_server_node_id:
                 result.append(
-                        (task, input_processor._command_endpoint))
+                        (tasks, input_processor._command_endpoint))
             else:
                 if input_server_node_id is not None:
                     result.append(
-                            (task, input_processor._command_endpoint))
+                            (tasks, input_processor._command_endpoint))
                 if output_server_node_id is not None:
                     result.append(
-                            (task, output_processor._command_endpoint))
+                            (tasks, output_processor._command_endpoint))
 
         return result
 
@@ -271,6 +271,9 @@ class ErSession(object):
             refresh_nodes = job._options.get('refresh_nodes', False)
             if refresh_nodes:
                 final_output_proposal._partitions = []
+            else:
+                if not final_output_proposal._partitions:
+                    final_output_proposal._partitions = job._inputs[0]._partitions
         else:
             final_output_proposal = job._outputs[0]
 
