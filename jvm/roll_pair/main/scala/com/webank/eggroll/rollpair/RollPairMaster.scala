@@ -34,15 +34,14 @@ import scala.collection.mutable.ArrayBuffer
 class RollPairMaster() {
   val scheduler = ListScheduler()
   lazy val clusterManagerClient = new ClusterManagerClient()
-  val cm_port: Int = StaticErConf.getProperty(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, "0").toInt
+  val cmPort: Int = StaticErConf.getProperty(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, "0").toInt
 
   def runJob(inputJob: ErJob): ErJob = {
     val inputStore = inputJob.inputs.head
 
     val isOutputSpecified = inputJob.outputs.nonEmpty
     val finalInputs = ArrayBuffer[ErStore]()
-    val cm_port_ = StaticErConf.getProperty(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, "0").toInt
-    StaticErConf.addProperty(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, cm_port.toString)
+    StaticErConf.addProperty(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, cmPort.toString)
     finalInputs.sizeHint(inputJob.inputs.length)
     inputJob.inputs.foreach(input => {
       val inputStoreWithPartitions = clusterManagerClient.getStore(input)

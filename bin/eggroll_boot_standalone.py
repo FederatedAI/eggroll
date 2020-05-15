@@ -75,7 +75,7 @@ if __name__ == '__main__':
     if standalone_tag == None:
         java_define = ' -Dlog4j.configurationFile=' + eggroll_log_conf
     else:
-        java_define = ' -Dlog4j.configurationFile=' + eggroll_log_conf + ' -Dstandalone.tag=' + standalone_tag
+        java_define = ' -Dlog4j.configurationFile=' + eggroll_log_conf + ' -Deggroll.standalone.tag=' + standalone_tag
 
     cmd = java_cmd + java_define + ' -cp ' + classpath +\
           ' com.webank.eggroll.core.Bootstrap ' +\
