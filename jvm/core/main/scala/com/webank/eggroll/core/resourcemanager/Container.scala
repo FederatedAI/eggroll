@@ -51,7 +51,7 @@ class Container(conf: RuntimeErConf, moduleName: String, processorId: Long = 0) 
 
   def start(): Boolean = {
     val startCmd = s"""${exeCmd} ${boot} start "${exePath} --config ${conf.getString(CoreConfKeys.STATIC_CONF_PATH)} --session-id ${sessionId} --server-node-id ${myServerNodeId} --processor-id ${processorId}" ${moduleName}-${processorId} &"""
-    val standaloneTag = System.getProperty("standalone.tag")
+    val standaloneTag = System.getProperty("eggroll.standalone.tag")
     logInfo(s"${standaloneTag} ${startCmd}")
 
     val thread = runCommand(startCmd)
@@ -88,7 +88,7 @@ class Container(conf: RuntimeErConf, moduleName: String, processorId: Long = 0) 
     new Thread(() => {
       val processorBuilder = new ProcessBuilder(bootStrapShell, bootStrapShellArgs, cmd)
       val builderEnv = processorBuilder.environment()
-      if(StringUtils.isNotBlank(System.getProperty("standalone.tag"))) {
+      if(StringUtils.isNotBlank(System.getProperty("eggroll.standalone.tag"))) {
         logInfo(s"set STANDALONE_PORT ${cmPort}")
         builderEnv.put("STANDALONE_PORT", cmPort)
       }

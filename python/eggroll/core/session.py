@@ -104,7 +104,7 @@ class ErSession(object):
                 L.info(f'start up returncode: {returncode}')
 
             def shutdown_standalone_manager(session_id, log_dir):
-                standalone_tag = f'-Dstandalone.tag={random_value}'
+                standalone_tag = f'-Deggroll.standalone.tag={random_value}'
                 if os.name != 'nt':
                     shutdown_command = f"ps aux | grep eggroll | grep Bootstrap | grep '{standalone_tag}' | grep '{session_id}' | grep -v grep | awk '{{print $2}}' | xargs kill"
                 else:
