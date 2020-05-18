@@ -54,11 +54,11 @@ class StoreCrudOperator extends CrudOperator with Logging {
     doGetOrCreateStore(input)
   }
 
-  def getStore(input: ErStore): ErStore = {
+  def getStore(input: ErStore): ErStore = synchronized {
     StoreCrudOperator.doGetStore(input)
   }
 
-  def deleteStore(input: ErStore): ErStore = {
+  def deleteStore(input: ErStore): ErStore = synchronized {
     StoreCrudOperator.doDeleteStore(input)
   }
 
@@ -249,7 +249,7 @@ object StoreCrudOperator {
 
         dbc.update(conn, sql,
           newStoreLocator.get,
-          if (isPartitionsSpecified) input.partitions(i).processor.serverNodeId else node.id,
+          if (isPartitionsSpecified) input.partitions(i % specifiedPartitions.length).processor.serverNodeId else node.id,
           i,
           PartitionStatus.PRIMARY)
       })
@@ -263,7 +263,7 @@ object StoreCrudOperator {
         id = i,
         storeLocator = inputStoreLocator,
         processor = ErProcessor(id = i,
-          serverNodeId = if (isPartitionsSpecified) input.partitions(i).processor.serverNodeId else node.id,
+          serverNodeId = if (isPartitionsSpecified) input.partitions(i % specifiedPartitions.length).processor.serverNodeId else node.id,
           tag = "binding"))
     }
 

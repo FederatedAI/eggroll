@@ -246,14 +246,26 @@ class ErSession(object):
 
     def populate_output_store(self, job: ErJob):
         is_output_blank = not job._outputs or not job._outputs[0]
-        if is_output_blank:
-            final_output_proposal = ErStore(store_locator=job._inputs[0]._store_locator.fork())
+        is_output_not_populated = is_output_blank or not job._outputs[0]._partitions
+        if is_output_not_populated:
+            if is_output_blank:
+                final_output_proposal = job._inputs[0].fork()
+            else:
+                final_output_proposal = job._outputs[0]
+
+            refresh_nodes = job._options.get('refresh_nodes', False)
+            if refresh_nodes:
+                final_output_proposal._partitions = []
         else:
             final_output_proposal = job._outputs[0]
 
-        cm_client = ClusterManagerClient()
-        final_output = self.populate_processor(cm_client.get_or_create_store(final_output_proposal))
+        final_output = self.populate_processor(
+                self._cluster_manager_client.get_or_create_store(final_output_proposal))
 
+        if final_output._store_locator._total_partitions != \
+                final_output_proposal._store_locator._total_partitions:
+            raise ValueError(f'partition count of actual output and proposed output does not match. '
+                             f'actual={final_output}, proposed={final_output_proposal}')
         final_job = deepcopy(job)
         final_job._outputs = [final_output]
 
