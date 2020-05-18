@@ -20,8 +20,10 @@ package com.webank.eggroll.format
 import java.io._
 import java.nio.ByteOrder
 import java.nio.channels.ReadableByteChannel
+import java.util.concurrent.{Callable, ThreadPoolExecutor}
 
 import com.webank.eggroll.core.session.StaticErConf
+import com.webank.eggroll.core.util.ThreadPoolUtils
 import com.webank.eggroll.util.SchemaUtil
 import org.apache.arrow.memory.RootAllocator
 import org.apache.arrow.vector._
@@ -79,7 +81,7 @@ class FrameBatch(val rootSchema: FrameSchema,
     }
     rootSchema.arrowSchema.setRowCount(allocateNewRows)
   }
-
+  Integer.MAX_VALUE
   val fieldCount: Int = rootSchema.columnarVectors.length
 
   lazy val memorySize: Int = {
@@ -93,14 +95,54 @@ class FrameBatch(val rootSchema: FrameSchema,
   def rowCount: Int =
     if (virtualRowCount > 0) virtualRowCount else rootSchema.arrowSchema.getRowCount
 
+  def isEmpty: Boolean ={
+    rowCount == 0
+  }
+
   /**
-   * Mark the particular position in the vector as non-null.
+   * Mark the particular position in the vector as non-null. just use first initialization
    */
   def initZero(): Unit = {
     rootVectors.foreach { i =>
-      val validityByteBuffer = i.fieldVector.getValidityBuffer
-      validityByteBuffer.setBytes(0, Array.fill[Byte](validityByteBuffer.capacity().toInt)(-1))
+      i.fieldVector match {
+        case fv: FixedSizeListVector =>
+          val validityByteBuffer = i.getArray(0).fieldVector.getValidityBuffer
+          validityByteBuffer.setBytes(0, Array.fill[Byte](validityByteBuffer.capacity().toInt)(-1))
+        case fv: ListVector =>
+          //   val validityByteBuffer = i.getArray(0).fieldVector.getValidityBuffer
+          //   validityByteBuffer.setBytes(0, Array.fill[Byte](validityByteBuffer.capacity().toInt)(-1))
+          throw new UnsupportedOperationException("Don't support ListVector init, except finishing init of values size")
+        case _ =>
+          val validityByteBuffer = i.fieldVector.getValidityBuffer
+          validityByteBuffer.setBytes(0, Array.fill[Byte](validityByteBuffer.capacity().toInt)(-1))
+      }
     }
+  }
+
+  /**
+   * release direct buffer with block way
+   */
+  def clear(): Unit = {
+    rootSchema.arrowSchema.clear()
+  }
+
+  /**
+   * use a thread to release direct buffer, attention not to create the same name Frame Batch immediately.
+   */
+  val executorPool: ThreadPoolExecutor = ThreadPoolUtils.defaultThreadPool
+
+  def close(): Unit = {
+    new Thread() {
+      override def run(): Unit = {
+        try {
+          clear()
+        } catch {
+          case e: Throwable =>
+            println("close frame store failed")
+            e.printStackTrace()
+        }
+      }
+    }.start()
   }
 
   def sliceByColumn(from: Int, to: Int): FrameBatch =
@@ -250,7 +292,6 @@ class FrameVectorUnSafe(val fieldVector: FieldVector,
   override def writeLong(index: Int, item: Long): Unit =
     fieldVector.asInstanceOf[BigIntVector].set(index + virtualRowStart, item)
 
-
   override def writeInt(index: Int, item: Int): Unit =
     fieldVector.asInstanceOf[IntVector].set(index + virtualRowStart, item)
 }
@@ -308,9 +349,10 @@ trait FrameVector {
           }
           fv.startNewValue(realIndex)
           fv.endValue(realIndex, initialSize)
+          fv.setValueCount(initialSize)
         }
-        FrameListVector(fv, fv.getOffsetBuffer.getInt(realIndex * 4),
-          fv.getOffsetBuffer.getInt((realIndex + 1) * 4))
+        FrameListVector(fv, fv.getElementStartIndex(realIndex),
+          fv.getElementEndIndex(realIndex))
 
       case _ => throw new UnsupportedOperationException("to do")
     }
@@ -340,7 +382,9 @@ class FrameVectorSafe(val fieldVector: FieldVector,
     fieldVector.asInstanceOf[IntVector].setSafe(index + virtualRowStart, item)
 }
 
-
+/**
+ * FrameListVector’s fieldVector is the same fieldVector and set row to  get part of fieldVector by offset
+ */
 object FrameListVector {
   private val UN_SAFE: Boolean = System.getProperty("arrow.enable_unsafe_memory_access", "false").toBoolean
 
@@ -391,6 +435,7 @@ class FrameListVectorUnSafe(fieldVector: FieldVector, val startOffset: Int, val 
   override def readInt(index: Int): Int = super.readInt(startOffset + index)
 
   override def writeInt(index: Int, item: Int): Unit = super.writeInt(startOffset + index, item)
+
 }
 
 class FrameReader(val arrowReader: ArrowStreamReusableReader,
@@ -481,6 +526,13 @@ class FrameSchema(val arrowSchema: VectorSchemaRoot,
     }
   }
 
+  /**
+   * placeholders value are FieldVector, and other place are null.
+   *
+   * @param from start position of all FieldVectors
+   * @param to   end position of all FieldVectors
+   * @return FrameSchema
+   */
   def slice(from: Int, to: Int): FrameSchema = {
     require(to >= from, s"illegal arg. require to >= from. from: $from, to: $to")
     val fieldVectors = columnarVectors.zipWithIndex.filter {
@@ -498,7 +550,7 @@ class FrameSchema(val arrowSchema: VectorSchemaRoot,
 }
 
 object FrameSchema {
-  val rootAllocator = new RootAllocator(Integer.MAX_VALUE)
+  val rootAllocator = new RootAllocator(Long.MaxValue)
   val oneFieldSchema: Schema = Schema.fromJSON(SchemaUtil.oneFieldSchemaString)
 }
 

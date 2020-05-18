@@ -145,6 +145,5 @@ class ClusterManagerBootstrap extends BootstrapBase with Logging {
     val port = server.getPort
     StaticErConf.setPort(port)
     logInfo(s"server started at port ${port}")
-    println(s"server started at port ${port}")
   }
 }
