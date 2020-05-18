@@ -24,7 +24,7 @@ ONE_ARG_LIST=(
 )
 
 get_property() {
-  property_value=`grep $2 $1 | awk -F= '{print $2}'`
+  property_value=`grep $2 $1 | cut -d '=' -f 2-`
 }
 
 opts=$(getopt \
@@ -121,7 +121,11 @@ if [[ -z ${EGGROLL_LOG_LEVEL} ]]; then
 fi
 
 if [[ -z ${EGGROLL_LOG_CONF} ]]; then
-  export EGGROLL_LOG_CONF=${EGGROLL_HOME}/conf/log4j2.properties
+  if [[ -z ${EGGROLL_HOME} ]]; then
+    export EGGROLL_LOG_CONF=./conf/log4j2.properties
+  else
+    export EGGROLL_LOG_CONF=${EGGROLL_HOME}/conf/log4j2.properties
+  fi
 fi
 
 if [[ -z ${javahome} ]]; then

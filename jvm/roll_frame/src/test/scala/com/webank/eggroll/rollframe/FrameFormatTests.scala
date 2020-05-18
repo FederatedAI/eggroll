@@ -19,8 +19,10 @@
 package com.webank.eggroll.rollframe
 
 import java.nio.{ByteBuffer, ByteOrder}
+import java.util.concurrent.{CountDownLatch, TimeUnit}
 
 import com.webank.eggroll.core.session.StaticErConf
+import com.webank.eggroll.core.util.Logging
 import com.webank.eggroll.format._
 import com.webank.eggroll.util.SchemaUtil
 import io.netty.util.internal.PlatformDependent
@@ -28,12 +30,13 @@ import junit.framework.TestCase
 import org.apache.arrow.vector.BitVectorHelper
 import org.junit.{Before, Test}
 
-class FrameFormatTests {
-  private val testAssets = TestAssets
+import scala.collection.immutable.Range.Inclusive
+import scala.util.Random
 
+class FrameFormatTests extends Logging {
   @Before
   def setup(): Unit = {
-    StaticErConf.addProperty("hadoop.fs.defaultFS","file:///")
+    StaticErConf.addProperty("hadoop.fs.defaultFS", "file:///")
   }
 
   @Test
@@ -48,8 +51,152 @@ class FrameFormatTests {
     assert(fb2.rowCount == 3000)
   }
 
+  /**
+   * mul-thread to write data on FrameBatch faster than one thread
+   **/
   @Test
-  def TestFileFrameDB(): Unit = {
+  def testParallelFrameBatchByCol(): Unit = {
+    //    System.setProperty("arrow.enable_unsafe_memory_access", "true")
+    val fieldCount = 200
+    val rowCount = 50000
+
+    val zeroValue = new FrameBatch(new FrameSchema(SchemaUtil.getDoubleSchema(fieldCount)), rowCount)
+    var start = System.currentTimeMillis()
+    for {x <- 0 until fieldCount
+         y <- 0 until rowCount} {
+      zeroValue.writeDouble(x, y, 1)
+    }
+    println(s"z time = ${System.currentTimeMillis() - start} ms")
+    val sliceFieldCount = 20
+    val count = fieldCount / sliceFieldCount
+
+    val slices = (0 until count).map { i =>
+      zeroValue.sliceByColumn(i * sliceFieldCount, (i + 1) * sliceFieldCount)
+    }
+
+    start = System.currentTimeMillis()
+    val latch = new CountDownLatch(count)
+    (0 until count).foreach { x =>
+      new Thread() {
+        override def run(): Unit = {
+          for (f <- slices(x).rootVectors) {
+            if (f.!=(null)) {
+              0.until(rowCount).foreach { i =>
+                f.writeDouble(i, 1)
+              }
+            }
+          }
+          latch.countDown()
+        }
+      }.start()
+    }
+    latch.await(10, TimeUnit.SECONDS)
+    println(s"s time = ${System.currentTimeMillis() - start} ms")
+    start = System.currentTimeMillis()
+    val latch1 = new CountDownLatch(count)
+    sliceByColumn(zeroValue, count).foreach { inclusive: Inclusive =>
+      new Thread() {
+        override def run(): Unit = {
+          for (f <- zeroValue.sliceByColumn(inclusive.start, inclusive.end).rootVectors) {
+            if (f.!=(null)) {
+              0.until(rowCount).foreach { i =>
+                f.writeDouble(i, 1)
+              }
+            }
+          }
+
+          latch1.countDown()
+        }
+      }.start()
+    }
+    latch1.await()
+    println(s"s time = ${System.currentTimeMillis() - start} ms")
+  }
+
+  @Test
+  def testParallelFrameBatchByRow(): Unit = {
+    Thread.sleep(10000)
+    // way 1: FrameStore with several FrameBatch
+    val jvmPath = "/parallel/fbs_part"
+    val jvmPath1 = "/parallel/fbs_big"
+    val jvmAdapter = FrameStore.cache(jvmPath)
+    val jvmAdapter1 = FrameStore.cache(jvmPath1)
+    val randomObj = new Random() // block in threads
+    val fbCount = 6
+    val fieldCount = 200
+    val rowCount = 10000
+    val rowCountBig = fbCount * rowCount
+    (0 until fbCount).foreach { i =>
+      val fb = new FrameBatch(new FrameSchema(SchemaUtil.getDoubleSchema(fieldCount)), rowCount)
+      for {x <- 0 until fieldCount
+           y <- 0 until rowCount} {
+        fb.writeDouble(x, y, randomObj.nextDouble())
+        //          fb.writeDouble(x, y, 1)
+      }
+      jvmAdapter.append(fb)
+    }
+    var start = System.currentTimeMillis()
+    val latch = new CountDownLatch(fbCount)
+    (0 until fbCount).foreach { i =>
+      new Thread() {
+        override def run(): Unit = {
+          val randomObj1 = new Random()
+          val fbj = jvmAdapter.readOne()
+          (0 until fbj.fieldCount).foreach(f =>
+            (0 until fbj.rowCount).foreach { r =>
+              fbj.writeDouble(f, r, randomObj1.nextDouble())
+            }
+          )
+          latch.countDown()
+        }
+      }.start()
+    }
+    latch.await(10, TimeUnit.SECONDS)
+    println(s"Time = ${System.currentTimeMillis() - start} ms")
+    // way 2: FrameStore with a FrameBatch
+    jvmAdapter1.append({
+      val fb = new FrameBatch(new FrameSchema(SchemaUtil.getDoubleSchema(fieldCount)), rowCountBig)
+      fb
+    })
+    start = System.currentTimeMillis()
+    val fbj1 = jvmAdapter1.readOne()
+    (0 until fbj1.fieldCount).foreach(f =>
+      (0 until fbj1.rowCount).foreach { r =>
+        fbj1.writeDouble(f, r, randomObj.nextDouble())
+      }
+    )
+    println(s"Time = ${System.currentTimeMillis() - start} ms")
+    // way 3: FrameStore with a FrameBatch, but sliced by row
+    start = System.currentTimeMillis()
+    val latch1 = new CountDownLatch(fbCount)
+    val fbBig = jvmAdapter1.readOne()
+    sliceByRow(fbCount, rowCountBig).foreach { inclusive: Inclusive =>
+      new Thread() {
+        override def run(): Unit = {
+          val randomObj1 = new Random()
+          val fbu = fbBig.sliceByRow(inclusive.start, inclusive.end)
+          (0 until fbu.fieldCount).foreach(f =>
+            (0 until fbu.rowCount).foreach { r =>
+              fbu.writeDouble(f, r, randomObj1.nextDouble())
+            }
+          )
+          latch1.countDown()
+        }
+      }.start()
+    }
+    latch1.await(10, TimeUnit.SECONDS)
+    println(s"Time = ${System.currentTimeMillis() - start} ms")
+  }
+
+  private def sliceByRow(parts: Int, rows: Int): List[Inclusive] = {
+    val partSize = (parts + rows - 1) / parts
+    (0 until parts).map { sid =>
+      new Inclusive(sid * partSize, Math.min((sid + 1) * partSize, rows), 1)
+    }.toList
+  }
+
+  @Test
+  def TestFileFrameStore(): Unit = {
     // create FrameBatch data
     val fb = new FrameBatch(new FrameSchema(SchemaUtil.getDoubleSchema(2)), 100)
     for (i <- 0 until fb.fieldCount) {
@@ -71,26 +218,27 @@ class FrameFormatTests {
   }
 
   @Test
-  def testJvmFrameDB(): Unit = {
-    // create FrameBatch data
-    val fb = new FrameBatch(new FrameSchema(SchemaUtil.getDoubleSchema(2)), 100)
-    for (i <- 0 until fb.fieldCount) {
-      for (j <- 0 until fb.rowCount) {
-        fb.writeDouble(i, j, j)
-      }
+  def testJvmFrameStore(): Unit = {
+    (0 until 5).foreach { i =>
+      val begin = System.currentTimeMillis()
+      val fb = new FrameBatch(new FrameSchema(SchemaUtil.getDoubleSchema(200)), 1000000)
+      fb.initZero()
+      println(s"create:${System.currentTimeMillis() - begin} ms")
+      val begin1 = System.currentTimeMillis()
+      fb.close()
+      println(s"close:${System.currentTimeMillis() - begin1} ms")
     }
-    // write FrameBatch data to Jvm
+    val fb1 = new FrameBatch(new FrameSchema(SchemaUtil.getDoubleSchema(200)), 1000000)
+    //     write FrameBatch data to Jvm
     val jvmPath = "/tmp/unittests/RollFrameTests/jvm/test1/framedb_test"
     val jvmAdapter = FrameStore.cache(jvmPath)
-    jvmAdapter.writeAll(Iterator(fb))
-    // read FrameBatch data from Jvm
+    jvmAdapter.writeAll(Iterator(fb1))
+    //    // read FrameBatch data from Jvm
     val fbFromJvm = jvmAdapter.readOne()
-
-    assert(fbFromJvm.readDouble(0, 10) == 10.0)
   }
 
   @Test
-  def testHdfsFrameDB(): Unit = {
+  def testHdfsFrameStore(): Unit = {
     // create FrameBatch data
     val fb = new FrameBatch(new FrameSchema(SchemaUtil.getDoubleSchema(2)), 100)
     for (i <- 0 until fb.fieldCount) {
@@ -112,7 +260,7 @@ class FrameFormatTests {
   }
 
   @Test
-  def testNetworkFrameDB(): Unit = {
+  def testNetworkFrameStore(): Unit = {
     // start transfer server
     val service = new NioTransferEndpoint
     val port = 8818
@@ -138,7 +286,6 @@ class FrameFormatTests {
     val networkPath = "/tmp/unittests/RollFrameTests/network/test1/framedb_test/0"
     val networkWriteAdapter = FrameStore.network(networkPath, host, port.toString)
     networkWriteAdapter.append(fb)
-    networkWriteAdapter.append(fb)
     //    networkWriteAdapter.writeAll(Iterator(fb))
     Thread.sleep(1000) // wait for QueueFrameDB insert the frame
 
@@ -150,7 +297,173 @@ class FrameFormatTests {
   }
 
   @Test
+  def testQueueFrameStore(): Unit = {
+    val fb = new FrameBatch(new FrameSchema(SchemaUtil.getDoubleSchema(2)), 100)
+    fb.initZero()
+    val path = "abc"
+    val adapter = FrameStore.queue(path, 2)
+    adapter.append(fb)
+    adapter.append(fb)
+    val fbs = adapter.readAll()
+
+    assert(fbs.next().fieldCount == 2)
+    assert(fbs.next().rowCount == 100)
+  }
+
+  def printTime(call: => Unit): Unit = {
+    val startTime = System.currentTimeMillis()
+    call
+    println()
+    println(s"use time : ${System.currentTimeMillis() - startTime}")
+  }
+
+  @Test
+  def testSpecialArray(): Unit = {
+    System.setProperty("arrow.enable_unsafe_memory_access", "true")
+
+    def getSchemaArray(fieldCount: Int, length: Array[Int], classNum: Int): String = {
+      val sb = new StringBuilder
+      sb.append(
+        """{
+                 "fields": [""")
+      (0 until fieldCount).foreach { i =>
+        if (i > 0) {
+          sb.append(",")
+        }
+        val curLength = length(i) * classNum
+        sb.append(
+          s"""{"name":"longarray$i", "type": {"name" : "fixedsizelist","listSize" : $curLength},
+             |"children":[{"name":"data", "type": {"name" : "int","bitWidth" : 32,"isSigned":true}}]}""")
+      }
+      sb.append(",")
+      sb.append(s"""{"name":"node_id", "type": {"name" : "int","bitWidth" : 32,"isSigned":true}}""")
+      sb.append("]}")
+      sb.toString().stripMargin
+    }
+
+    val featureNumber = 999
+    val length = Array(715, 708, 718, 723, 720, 713, 709, 714, 716, 718, 712, 709, 704, 710, 711, 705, 705, 717, 707, 721, 717, 722, 719, 716, 713, 719, 719, 723, 716, 702, 718, 703, 714, 716, 718, 721, 725, 724, 701, 714, 714, 711, 722, 720, 724, 710, 725, 717, 715, 723, 716, 715, 711, 709, 732, 726, 706, 724, 715, 722, 730, 719, 723, 712, 710, 716, 723, 708, 724, 725, 706, 711, 714, 710, 716, 710, 706, 734, 708, 704, 718, 725, 720, 712, 713, 729, 707, 713, 716, 722, 703, 707, 716, 720, 715, 719, 716, 708, 722, 715, 713, 715, 723, 719, 712, 715, 717, 715, 711, 719, 716, 707, 718, 712, 716, 717, 717, 719, 724, 707, 718, 718, 714, 710, 716, 725, 710, 719, 725, 712, 717, 703, 726, 715, 725, 716, 713, 710, 715, 705, 716, 713, 716, 715, 712, 714, 720, 711, 710, 712, 719, 705, 723, 710, 710, 712, 716, 713, 720, 711, 717, 725, 717, 719, 716, 723, 721, 716, 706, 710, 717, 708, 712, 720, 714, 712, 711, 717, 713, 710, 709, 723, 713, 711, 722, 714, 717, 714, 711, 718, 721, 714, 715, 710, 706, 713, 715, 717, 715, 714, 715, 707, 723, 711, 725, 713, 722, 707, 708, 710, 719, 714, 720, 716, 711, 733, 700, 709, 717, 716, 715, 712, 716, 714, 720, 715, 714, 711, 723, 714, 718, 715, 720, 724, 717, 720, 710, 719, 705, 705, 724, 729, 713, 706, 715, 714, 706, 724, 723, 719, 724, 714, 708, 713, 717, 713, 714, 717, 724, 721, 721, 712, 719, 725, 710, 713, 707, 710, 720, 716, 729, 711, 726, 716, 708, 719, 713, 716, 720, 711, 724, 711, 716, 717, 725, 713, 717, 720, 708, 720, 715, 714, 716, 713, 712, 713, 718, 721, 714, 709, 712, 712, 718, 705, 705, 711, 721, 712, 725, 701, 716, 715, 696, 699, 713, 701, 720, 713, 719, 702, 710, 724, 715, 702, 724, 718, 712, 707, 711, 720, 710, 717, 717, 713, 715, 716, 716, 720, 724, 716, 714, 719, 719, 717, 726, 716, 720, 712, 711, 714, 714, 720, 717, 718, 716, 715, 713, 716, 726, 718, 716, 712, 715, 719, 730, 709, 714, 720, 715, 722, 708, 713, 712, 706, 713, 713, 714, 710, 718, 716, 720, 717, 724, 713, 718, 718, 724, 726, 719, 722, 713, 722, 719, 716, 718, 717, 710, 709, 705, 723, 715, 710, 715, 720, 715, 721, 718, 724, 721, 715, 712, 717, 715, 716, 712, 707, 717, 717, 723, 721, 712, 714, 717, 717, 722, 720, 711, 713, 713, 710, 725, 709, 705, 723, 716, 714, 715, 719, 705, 722, 722, 714, 714, 712, 715, 724, 706, 702, 718, 718, 712, 722, 713, 716, 719, 710, 710, 717, 711, 717, 720, 715, 713, 715, 717, 705, 714, 710, 721, 714, 707, 704, 724, 729, 710, 711, 706, 717, 713, 725, 711, 723, 726, 716, 718, 721, 718, 710, 706, 724, 715, 711, 729, 715, 702, 728, 723, 723, 710, 711, 717, 723, 715, 712, 705, 719, 720, 709, 714, 708, 715, 715, 728, 709, 710, 715, 711, 718, 723, 716, 708, 710, 729, 717, 710, 719, 716, 713, 708, 726, 720, 700, 721, 714, 721, 718, 718, 716, 716, 712, 716, 723, 719, 712, 715, 714, 711, 704, 714, 714, 708, 724, 713, 714, 717, 701, 720, 715, 732, 708, 710, 728, 709, 718, 718, 719, 709, 720, 719, 718, 714, 709, 718, 710, 720, 709, 721, 715, 708, 707, 710, 720, 709, 712, 711, 718, 727, 714, 709, 720, 718, 712, 709, 714, 711, 709, 718, 708, 709, 711, 720, 718, 713, 719, 717, 708, 708, 718, 719, 716, 736, 712, 717, 715, 720, 716, 718, 710, 707, 715, 718, 713, 716, 723, 711, 711, 712, 727, 705, 708, 711, 727, 718, 711, 710, 701, 723, 713, 702, 726, 721, 722, 712, 710, 720, 717, 716, 718, 712, 715, 711, 720, 720, 709, 708, 715, 713, 724, 712, 706, 698, 724, 714, 710, 715, 722, 709, 717, 716, 710, 715, 715, 718, 706, 711, 720, 722, 707, 711, 720, 715, 709, 720, 714, 712, 707, 711, 716, 711, 705, 716, 718, 712, 710, 710, 713, 723, 706, 709, 711, 716, 706, 709, 714, 718, 714, 717, 714, 719, 713, 708, 719, 711, 712, 712, 710, 707, 713, 710, 712, 717, 717, 712, 714, 719, 711, 729, 719, 712, 711, 706, 712, 725, 715, 724, 709, 714, 715, 713, 711, 714, 724, 711, 708, 723, 714, 719, 715, 715, 721, 709, 702, 722, 735, 717, 720, 722, 714, 725, 721, 723, 714, 712, 723, 713, 713, 720, 707, 711, 712, 719, 723, 711, 722, 708, 712, 709, 723, 717, 712, 711, 708, 703, 717, 713, 709, 713, 735, 721, 728, 721, 726, 727, 707, 702, 718, 719, 725, 726, 710, 710, 719, 721, 723, 714, 705, 727, 715, 718, 715, 710, 716, 719, 711, 710, 713, 721, 714, 722, 715, 724, 708, 712, 709, 713, 713, 712, 712, 720, 719, 711, 715, 723, 725, 713, 714, 720, 707, 719, 713, 706, 730, 707, 718, 710, 703, 715, 720, 724, 710, 721, 716, 716, 707, 707, 703, 727, 718, 723, 721, 720, 723, 715, 713, 720, 703, 719, 705, 704, 712, 708, 721, 721, 708, 706, 720, 706, 718, 718, 721, 721, 715, 721, 709, 713, 716, 714, 703, 730, 716, 707, 707, 709, 722, 720, 709, 715, 712, 711, 712, 719, 716, 711, 717, 713, 705, 716, 719, 708, 711, 733, 718, 719, 724, 714, 712, 722, 725, 720, 717, 715, 710, 713, 720, 713, 721, 719, 708, 712, 706, 705, 704, 711, 719, 712, 709, 706, 716, 728, 703, 712, 713, 709, 712, 714, 712, 719, 708, 719, 715, 716, 717, 718, 718, 705, 716, 721, 718, 718, 711, 699, 715, 711, 713, 723, 711, 716, 717, 719, 712, 720, 705, 709, 716, 711, 724, 712, 714, 711, 708, 711, 716, 708, 708, 714, 709, 713, 713, 716, 710, 719, 716, 720, 708, 714, 709, 707, 709, 720)
+    val classNum = 2
+    val nodeNum = 10
+    var start = System.currentTimeMillis()
+    val schemaString = getSchemaArray(featureNumber, length, classNum)
+    println(s"schemaString time = ${System.currentTimeMillis() - start} ms")
+    start = System.currentTimeMillis()
+    val x = new FrameBatch(new FrameSchema(schemaString), nodeNum)
+    println(s"create time = ${System.currentTimeMillis() - start} ms")
+    start = System.currentTimeMillis()
+    x.initZero()
+    println(s"init time = ${System.currentTimeMillis() - start} ms")
+    start = System.currentTimeMillis()
+    (0 until nodeNum).foreach(n => {
+      (0 until featureNumber).foreach(i => {
+        val arr = x.getArray(i, n)
+        (0 until length(i) * classNum).foreach(j => arr.writeInt(j, 0))
+      })
+      x.writeInt(featureNumber, n, 1000)
+    })
+    //    FrameStore.cache("/tmp/unittests/RollFrameTests/file/test1/0").append(x)
+    println(s"set value time = ${System.currentTimeMillis() - start} ms")
+    start = System.currentTimeMillis()
+    val fb1 = FrameUtils.fork(x)
+    println(s"fork time = ${System.currentTimeMillis() - start} ms")
+    start = System.currentTimeMillis()
+    val by = FrameUtils.toBytes(x)
+    println(s"toBytes time:${System.currentTimeMillis() - start} ms")
+
+  }
+
+  @Test
+  def testUnSafe(): Unit = {
+    System.setProperty("arrow.enable_unsafe_memory_access", "true")
+    val cols = 1000
+    val rows = 20000
+    val loop = 2
+    val random = new Random()
+    (0 until loop).foreach { i =>
+      val fb = new FrameBatch(new FrameSchema(SchemaUtil.getDoubleSchema(cols)), rows)
+      var start = System.currentTimeMillis()
+      (0 until cols).foreach(f =>
+        (0 until rows).foreach { r =>
+          fb.writeDouble(f, r, random.nextDouble())
+        })
+      println(s"write time = ${System.currentTimeMillis() - start} ms")
+      start = System.currentTimeMillis()
+      var sum = 0.0
+      (0 until cols).foreach(f =>
+        (0 until rows).foreach { r =>
+          sum += fb.readDouble(f, r)
+        })
+      println(s"read time = ${System.currentTimeMillis() - start} ms")
+
+
+    }
+    println(s"property: ${System.getProperty("arrow.enable_unsafe_memory_access")}")
+  }
+
+
+  @Test
+  def testListVector(): Unit = {
+    System.setProperty("arrow.enable_unsafe_memory_access", "true")
+    val schema =
+      """
+      {
+        "fields": [
+          {"name":"doublelist0", "type": {"name" : "list"},
+             "children":[{"name":"$data$", "type": {"name" : "floatingpoint","precision" : "DOUBLE"}}]
+           }
+        ]
+      }
+      """.stripMargin
+    val rowCount = 4
+    val perListLength = 10000
+    val random = Random
+    val batch = new FrameBatch(new FrameSchema(schema), rowCount)
+    var start = System.currentTimeMillis()
+    (0 until rowCount).foreach { i =>
+      batch.getList(0, i, perListLength)
+    }
+
+    println(s"Time = ${System.currentTimeMillis() - start} ms")
+    start = System.currentTimeMillis()
+    //    (0 until rowCount).foreach { i =>
+    //      val row = batch.getList(0, i)
+    //      (0 until perListLength).foreach(j => row.writeDouble(j * random.nextDouble().toInt, 0))
+    //    }
+    batch.initZero()
+    println(s"Time = ${System.currentTimeMillis() - start} ms")
+  }
+
+  @Test
+  def testArrayVector(): Unit = {
+    System.setProperty("arrow.enable_unsafe_memory_access", "true")
+    val schema =
+      """
+      {
+        "fields": [
+        {"name":"doublearray1", "type": {"name" : "fixedsizelist","listSize" : 20},
+            "children":[{"name":"$data$", "type": {"name" : "floatingpoint","precision" : "DOUBLE"}}]
+          }
+        ]
+      }
+      """.stripMargin
+
+    val batch = new FrameBatch(new FrameSchema(schema), 2)
+    batch.initZero()
+    batch.close()
+
+    //    val r1 = batch.getArray(0, 0)
+    //    val r2 = batch.getArray(0, 1)
+    //
+    //    (0 until 20).foreach(i => r1.writeDouble(i, i))
+    //    (0 until 20).foreach(i => r2.writeDouble(i, i))
+    val stop = 0
+    Thread.sleep(3000)
+  }
+
+  @Test
   def testFrameDataType(): Unit = {
+    System.setProperty("arrow.enable_unsafe_memory_access", "true")
     val schema =
       """
       {
@@ -389,10 +702,6 @@ class FrameFormatTests {
   }
 
   @Test
-  def testV1: Unit = {
-  }
-
-  @Test
   def testFrameBatchToColumnVectors(): Unit = {
     val fieldCount = 1000
     val rowCount = 10000 // total value count = rowCount * fbCount * fieldCount
@@ -448,5 +757,21 @@ class FrameFormatTests {
     val fbC = adapter.readOne()
     val reCf = new ColumnFrame(fbC, matrixCols)
     println(reCf.fb.rowCount)
+  }
+
+  def sliceByColumn(frameBatch: FrameBatch, parallel: Int): List[Inclusive] = {
+    val columns = frameBatch.rootVectors.length
+    val quotient = columns / parallel
+    val remainder = columns % parallel
+    val processorsCounts = Array.fill(parallel)(quotient)
+    (0 until remainder).foreach(i => processorsCounts(i) += 1)
+    var start = 0
+    var end = 0
+    processorsCounts.map { count =>
+      end = start + count
+      val range = new Inclusive(start, end, 1)
+      start = end
+      range
+    }.toList
   }
 }
