@@ -262,7 +262,7 @@ class RollSite:
         max_retry_cnt = 10
         exception = None
         ret_packet = None
-        for i in range(1, max_retry_cnt + 1):
+        for i in range(max_retry_cnt):
             try:
                 ret_packet = self.stub.unaryCall(packet)
                 exception = None

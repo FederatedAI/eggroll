@@ -132,7 +132,7 @@ class ErSession(object):
 
             file_name = f'{self.__eggroll_home}/logs/eggroll/bootstrap-standalone-manager.out'
             max_retry_cnt = 10
-            for i in range(1, max_retry_cnt + 1):
+            for i in range(max_retry_cnt):
                 msg = f"retry get port from bootstrap-standalone-manager.out: retry_cnt: {i},"
                 L.info(msg)
 
@@ -142,7 +142,7 @@ class ErSession(object):
 
             try:
                 with open(file_name) as fp:
-                    for i in range(1, max_retry_cnt + 1):
+                    for i in range(max_retry_cnt):
                         msg = f"retry get port of ClusterManager and NodeManager: retry_cnt: {i},"
                         L.info(msg)
 
