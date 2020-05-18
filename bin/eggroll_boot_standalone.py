@@ -38,6 +38,7 @@ if __name__ == '__main__':
         print(f'reading default config: {conf_file}')
 
     session_id = args.session_id
+    cluster_manager_port = args.port
 
     eggroll_logs_dir = os.environ.get('EGGROLL_LOGS_DIR')
     if eggroll_logs_dir is None:
@@ -54,7 +55,6 @@ if __name__ == '__main__':
 
     javahome = get_property(conf_file, "eggroll.resourcemanager.bootstrap.roll_pair_master.javahome")
     classpath = os.path.join(eggroll_home, 'conf/') + ";" + os.path.join(eggroll_home, 'lib/*')
-    cluster_manager_port = get_property(conf_file, "eggroll.resourcemanager.clustermanager.port")
 
     if platform.system() == "Windows":
         if javahome is None:
