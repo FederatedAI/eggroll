@@ -315,7 +315,7 @@ class RollPair(object):
         self.__store = er_store
         self.ctx = rp_ctx
         self.__command_serdes = SerdesTypes.PROTOBUF
-        self.__roll_pair_master = self.ctx.get_roll()
+        #self.__roll_pair_master = self.ctx.get_roll()
         self.__command_client = CommandClient()
         self.functor_serdes =create_serdes(SerdesTypes.CLOUD_PICKLE)
         self.value_serdes = self.get_store_serdes()
