@@ -154,18 +154,20 @@ class ErSession(object):
                         L.debug(msg)
                     retry_cnt += 1
 
+                    port = 0
+                    key = f"{random_value} server started at port "
                     for line in fp.readlines():
-                        key = str(random_value) + " server started at port "
                         if key in line:
-                            port = re.findall("\d+", line)
+                            port = int(line.rsplit('port ', 2)[1])
+                            if port != 0:
+                                break
 
                     if port != 0:
                         break
                     time.sleep(min(0.1 * retry_cnt, 30))
 
-            index = len(port)
-            options[ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT] = port[index-1]
-            self.__options[ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT] = options[ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT]
+            options[ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT] = port
+            self.__options[ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT] = port
             atexit.register(shutdown_standalone_manager, self.__session_id, bootstrap_log_dir)
 
         self._cluster_manager_client = ClusterManagerClient(options=options)
