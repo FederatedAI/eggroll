@@ -71,7 +71,7 @@ if __name__ == '__main__':
     print("EGGROLL_HOME:", eggroll_home)
     os.chdir(eggroll_home)
 
-    standalone_tag = os.environ.get("STANDALONE_TAG", None)
+    standalone_tag = os.environ.get("EGGROLL_STANDALONE_TAG", None)
     if standalone_tag == None:
         java_define = ' -Dlog4j.configurationFile=' + eggroll_log_conf
     else:
