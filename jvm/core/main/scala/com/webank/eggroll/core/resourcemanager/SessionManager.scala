@@ -107,16 +107,11 @@ class SessionManagerService extends SessionManager with Logging {
           )
         }
       } else {
-        Array(ErProcessor(
-          serverNodeId = serverNodes.head.id,
-          processorType = ProcessorTypes.ROLL_PAIR_MASTER,
-          commandEndpoint = ErEndpoint(serverNodesToHost(serverNodes.head.id), 0),
-          status = ProcessorStatus.NEW)) ++
-          serverNodes.flatMap(n => (0 until eggsPerNode).map(_ => ErProcessor(
-            serverNodeId = n.id,
-            processorType = ProcessorTypes.EGG_PAIR,
-            commandEndpoint = ErEndpoint(serverNodesToHost(n.id), 0),
-            status = ProcessorStatus.NEW)))
+        serverNodes.flatMap(n => (0 until eggsPerNode).map(_ => ErProcessor(
+          serverNodeId = n.id,
+          processorType = ProcessorTypes.EGG_PAIR,
+          commandEndpoint = ErEndpoint(serverNodesToHost(n.id), 0),
+          status = ProcessorStatus.NEW)))
       }
 
     val expectedProcessorsCount = processorPlan.length

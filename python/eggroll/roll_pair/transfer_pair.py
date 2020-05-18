@@ -19,13 +19,12 @@ from concurrent.futures import ThreadPoolExecutor
 
 from eggroll.core.conf_keys import RollPairConfKeys
 from eggroll.core.datastructure.broker import FifoBroker, BrokerClosed
-from eggroll.core.pair_store.format import PairBinReader, PairBinWriter, \
-    ArrayByteBuffer
+from eggroll.core.pair_store.format import PairBinReader, PairBinWriter, ArrayByteBuffer
 from eggroll.core.transfer.transfer_service import TransferClient, \
     TransferService
 from eggroll.core.utils import _exception_logger
 from eggroll.core.utils import generate_task_id
-from eggroll.roll_pair import create_adapter
+from eggroll.roll_pair import create_adapter, create_serdes
 from eggroll.utils.log_utils import get_logger
 
 L = get_logger()
@@ -156,7 +155,6 @@ class TransferPair(object):
         import os
         sendbuf_size = int(os.environ.get(RollPairConfKeys.EGGROLL_ROLLPAIR_TRANSFERPAIR_SENDBUF_SIZE.key, sendbuf_size))
 
-        # TODO:1: buffer_size auto adjust? - max: initial size can be configured. but afterwards it will adjust depending on message size
         L.debug(f'pair_to_bin_batch start')
         pair_count = 0
         ba = None
@@ -169,10 +167,12 @@ class TransferPair(object):
             nonlocal writer
             bin_batch = None
             if ba:
-                bin_batch = bytes(ba[0:buffer.get_offset()])
+                bin_batch = bytes(ba[0:writer.get_offset()])
+            # if ba:
+            #     bin_batch = bytes(ba[0:buffer.get_offset()])
             ba = bytearray(bs)
             buffer = ArrayByteBuffer(ba)
-            writer = PairBinWriter(pair_buffer=buffer)
+            writer = PairBinWriter(pair_buffer=buffer, data=ba)
             return bin_batch
         # init var
         commit()
@@ -199,7 +199,7 @@ class TransferPair(object):
             L.debug(f"bin_batch_to_pair: cur batch size: {len(batch)}")
             try:
                 bin_data = ArrayByteBuffer(batch)
-                reader = PairBinReader(pair_buffer=bin_data)
+                reader = PairBinReader(pair_buffer=bin_data, data=batch)
                 for k_bytes, v_bytes in reader.read_all():
                     yield k_bytes, v_bytes
                     write_count += 1
@@ -208,13 +208,13 @@ class TransferPair(object):
             L.debug(f"bin_batch_to_pair batch ends. total write count: {write_count}")
         L.debug(f"bin_batch_to_pair total_written count: {write_count}")
 
-    def store_broker(self, store_partition, is_shuffle, total_writers=1):
+    def store_broker(self, store_partition, is_shuffle, total_writers=1, reduce_op=None):
         """
         is_shuffle=True: all partition in one broker
         is_shuffle=False: just save broker to store, for put_all
         """
         @_exception_logger
-        def do_store(store_partition_inner, is_shuffle_inner, total_writers_inner):
+        def do_store(store_partition_inner, is_shuffle_inner, total_writers_inner, reduce_op_inner):
             done_cnt = 0
             tag = self.__generate_tag(store_partition_inner._id) if is_shuffle_inner else self.__transfer_id
             try:
@@ -223,9 +223,18 @@ class TransferPair(object):
                 batches = TransferPair.bin_batch_to_pair(b.data for b in broker)
                 with create_adapter(store_partition_inner) as db:
                     L.debug(f"do_store create_db for tag: {tag} for partition: {store_partition_inner}")
+                    serdes = create_serdes(store_partition_inner._store_locator._serdes)
                     with db.new_batch() as wb:
                         for k, v in batches:
-                            wb.put(k, v)
+                            if reduce_op_inner is None:
+                                wb.put(k, v)
+                            else:
+                                v1 = wb.get(k)
+                                if v1 is not None:
+                                    v2 = reduce_op_inner(serdes.deserialize(v1), serdes.deserialize(v))
+                                    wb.put(k, serdes.serialize(v2))
+                                else:
+                                    wb.put(k, v)
                             done_cnt += 1
                     L.debug(f"do_store done for tag: {tag} for partition: {store_partition_inner}")
                 TransferService.remove_broker(tag)
@@ -233,7 +242,7 @@ class TransferPair(object):
                 L.error(f'Error in do_store for tag {tag}')
                 raise e
             return done_cnt
-        return self._executor_pool.submit(do_store, store_partition, is_shuffle, total_writers)
+        return self._executor_pool.submit(do_store, store_partition, is_shuffle, total_writers, reduce_op)
 
     def gather(self, store):
         L.debug(f'gather start for transfer id: {self.__transfer_id}, store: {store}')

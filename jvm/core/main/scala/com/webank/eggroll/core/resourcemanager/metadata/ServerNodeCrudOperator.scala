@@ -39,7 +39,7 @@ class ServerNodeCrudOperator extends CrudOperator with Logging {
     ServerNodeCrudOperator.doGetServerCluster(input)
   }
 
-  def getServerNode(input: ErServerNode): ErServerNode = {
+  def getServerNode(input: ErServerNode): ErServerNode = synchronized {
     val nodeResult = ServerNodeCrudOperator.doGetServerNodes(input)
 
     if (nodeResult.nonEmpty) {
@@ -49,11 +49,11 @@ class ServerNodeCrudOperator extends CrudOperator with Logging {
     }
   }
 
-  def getOrCreateServerNode(input: ErServerNode): ErServerNode = {
+  def getOrCreateServerNode(input: ErServerNode): ErServerNode = synchronized {
     ServerNodeCrudOperator.doGetOrCreateServerNode(input)
   }
 
-  def createOrUpdateServerNode(input: ErServerNode): ErServerNode = {
+  def createOrUpdateServerNode(input: ErServerNode): ErServerNode = synchronized {
     def samFunctor(input: ErServerNode): ErServerNode = {
       ServerNodeCrudOperator.doCreateOrUpdateServerNode(input = input, isHeartbeat = false)
     }
@@ -61,7 +61,7 @@ class ServerNodeCrudOperator extends CrudOperator with Logging {
     samFunctor(input)
   }
 
-  def getServerNodes(input: ErServerNode): ErServerCluster = {
+  def getServerNodes(input: ErServerNode): ErServerCluster = synchronized {
     val serverNodes = ServerNodeCrudOperator.doGetServerNodes(input)
 
     if (serverNodes.nonEmpty) {
@@ -71,7 +71,7 @@ class ServerNodeCrudOperator extends CrudOperator with Logging {
     }
   }
 
-  def getServerClusterByHosts(input: util.List[String]): ErServerCluster = {
+  def getServerClusterByHosts(input: util.List[String]): ErServerCluster = synchronized {
     ServerNodeCrudOperator.doGetServerClusterByHosts(input)
   }
 }

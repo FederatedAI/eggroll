@@ -94,14 +94,18 @@ filepath=${property_value}
 get_property ${config} "eggroll.logs.dir"
 logs_dir=${property_value}
 
-get_property ${config} "eggroll.resourcemanager.nodemanager.port"
-node_manager_port=${property_value}
-
 get_property ${config} "eggroll.resourcemanager.clustermanager.host"
 cluster_manager_host=${property_value}
 
-get_property ${config} "eggroll.resourcemanager.clustermanager.port"
-cluster_manager_port=${property_value}
+if [[ ! -n ${EGGROLL_STANDALONE_PORT} ]]; then
+    get_property ${config} "eggroll.resourcemanager.clustermanager.port"
+    cluster_manager_port=${property_value}
+    get_property ${config} "eggroll.resourcemanager.nodemanager.port"
+    node_manager_port=${property_value}
+else
+    cluster_manager_port=${EGGROLL_STANDALONE_PORT}
+    node_manager_port=${EGGROLL_STANDALONE_PORT}
+fi
 
 if [[ -z ${EGGROLL_LOGS_DIR} ]]; then
   get_property ${config} "eggroll.logs.dir"
