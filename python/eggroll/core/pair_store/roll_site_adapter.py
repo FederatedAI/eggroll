@@ -119,7 +119,6 @@ class RollSiteWriteBatch(PairWriteBatch):
         self.ba = bytearray(self.__bin_packet_len)
         self.buffer = ArrayByteBuffer(self.ba)
         self.writer = PairBinWriter(pair_buffer=self.buffer)
-
         self.push_batch_cnt = 0
         self.push_pair_cnt = 0
 
