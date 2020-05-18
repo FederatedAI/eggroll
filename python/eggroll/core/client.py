@@ -13,6 +13,7 @@
 #  limitations under the License.
 
 
+import time
 from concurrent.futures import ThreadPoolExecutor
 
 from eggroll.core.base_model import RpcMessage
@@ -21,7 +22,8 @@ from eggroll.core.command.command_model import ErCommandRequest, \
     ErCommandResponse
 from eggroll.core.command.commands import MetadataCommands, NodeManagerCommands, \
     SessionCommands
-from eggroll.core.conf_keys import ClusterManagerConfKeys, NodeManagerConfKeys
+from eggroll.core.conf_keys import ClusterManagerConfKeys, NodeManagerConfKeys, \
+    CoreConfKeys
 from eggroll.core.constants import SerdesTypes
 from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.meta_model import ErEndpoint, ErServerNode, ErServerCluster, \
@@ -30,7 +32,7 @@ from eggroll.core.meta_model import ErStore, ErSessionMeta
 from eggroll.core.proto import command_pb2_grpc
 from eggroll.core.utils import _to_proto_string, _map_and_listify
 from eggroll.core.utils import get_static_er_conf
-from eggroll.core.utils import time_now
+from eggroll.core.utils import time_now_ns
 from eggroll.utils.log_utils import get_logger
 
 L = get_logger()
@@ -42,6 +44,9 @@ class CommandCallError(Exception):
 
 
 class CommandClient(object):
+    executor = ThreadPoolExecutor(
+            max_workers=int(CoreConfKeys.EGGROLL_CORE_CLIENT_COMMAND_EXECUTOR_POOL_MAX_SIZE.get()),
+            thread_name_prefix="command_client")
     def __init__(self):
         self._channel_factory = GrpcChannelFactory()
 
@@ -56,15 +61,17 @@ class CommandClient(object):
     def sync_send(self, inputs: list, output_types: list, endpoint: ErEndpoint, command_uri: CommandURI, serdes_type=SerdesTypes.PROTOBUF):
         request = None
         try:
-            request = ErCommandRequest(id=time_now(),
+            request = ErCommandRequest(id=time_now_ns(),
                                        uri=command_uri._uri,
                                        args=_map_and_listify(_to_proto_string, inputs))
-            L.debug(f"calling:{endpoint} {command_uri} {request}")
+            start = time.time()
+            L.debug(f"[CC] calling: {endpoint} {command_uri} {request}")
             _channel = self._channel_factory.create_channel(endpoint)
             _command_stub = command_pb2_grpc.CommandServiceStub(_channel)
             response = _command_stub.call(request.to_proto())
             er_response = ErCommandResponse.from_proto(response)
-            L.debug(f"called:{endpoint} {command_uri} {request} {er_response}")
+            elapsed = time.time() - start
+            L.debug(f"[CC] called (elapsed: {elapsed}): {endpoint}, {command_uri}, {request}, {er_response}")
             byte_results = er_response._results
 
             if len(byte_results):
@@ -73,15 +80,16 @@ class CommandClient(object):
             else:
                 return []
         except Exception as e:
-            L.error(f'Error calling to {endpoint}, command_uri: {command_uri}, req:{request}')
+            L.error(f'Error calling to {endpoint}, command_uri: {command_uri}, req:{request}', exc_info=e)
             raise CommandCallError(command_uri, endpoint, e)
 
-    def async_call(self, args, output_types: list, command_uri: CommandURI, serdes_type=SerdesTypes.PROTOBUF, parallel_size=5):
+    def async_call(self, args, output_types: list, command_uri: CommandURI, serdes_type=SerdesTypes.PROTOBUF, callback=None):
         futures = list()
-        with ThreadPoolExecutor(max_workers=parallel_size) as executor:
-            for inputs, endpoint in args:
-                f = executor.submit(self.sync_send, inputs=inputs, output_types=output_types, endpoint=endpoint, command_uri=command_uri, serdes_type=serdes_type)
-                futures.append(f)
+        for inputs, endpoint in args:
+            f = self.executor.submit(self.sync_send, inputs=inputs, output_types=output_types, endpoint=endpoint, command_uri=command_uri, serdes_type=serdes_type)
+            if callback:
+                f.add_done_callback(callback)
+            futures.append(f)
 
         return futures
 

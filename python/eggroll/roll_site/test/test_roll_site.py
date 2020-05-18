@@ -22,10 +22,10 @@ from eggroll.roll_site.test.roll_site_test_asset import get_debug_test_context, 
     remote_parties, get_parties
 
 props_file_host = default_props_file
-props_file_host = default_props_file + '.host'
+#props_file_host = default_props_file + '.host'
 
 props_file_guest = default_props_file
-props_file_guest = default_props_file + '.guest'
+#props_file_guest = default_props_file + '.guest'
 
 
 row_limit = 100000
@@ -221,26 +221,55 @@ class TestRollSiteBase(unittest.TestCase):
         print(f"count: {rp.count()}")
 
 
-class TestRollSiteStandalone(TestRollSiteBase):
+class TestRollSiteDebugGuest(TestRollSiteBase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.rs_context_host = get_standalone_context(role='host', props_file=props_file_host)
+        cls.rs_context_guest = get_debug_test_context(manager_port=4671,
+                                                      egg_port=20003,
+                                                      transfer_port=20004,
+                                                      session_id='testing_guest',
+                                                      role='guest',
+                                                      props_file=props_file_guest)
+
+    def test_remote_rollpair_big_multi_partitions(self):
+        super().test_remote_rollpair_big_multi_partitions()
+
+
+class TestRollSiteDebugHost(TestRollSiteBase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.rs_context_host = get_debug_test_context(role='host',
+                                                     props_file=props_file_host)
+
+    def test_get_rollpair_big_multi_partitions(self):
+        super().test_get_rollpair_big_multi_partitions()
+
+
+class TestRollSiteStandaloneGuest(TestRollSiteBase):
+    @classmethod
+    def setUpClass(cls) -> None:
         cls.rs_context_guest = get_standalone_context(role='guest', props_file=props_file_guest)
 
     def test_remote(self):
         super().test_remote()
 
-    def test_get(self):
-        super().test_get()
-
     def test_remote_rollpair(self):
             super().test_remote_rollpair()
 
-    def test_get_rollpair(self):
-        super().test_get_rollpair()
-
     def test_remote_rollpair_big_multi_partitions(self):
         super().test_remote_rollpair()
+
+
+class TestRollSiteStandaloneHost(TestRollSiteBase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.rs_context_host = get_standalone_context(role='host', props_file=props_file_host)
+
+    def test_get(self):
+        super().test_get()
+
+    def test_get_rollpair(self):
+        super().test_get_rollpair()
 
     def test_get_rollpair_big_multi_partitions(self):
         super().test_get_rollpair()
@@ -276,3 +305,42 @@ class TestRollSiteCluster(TestRollSiteBase):
     def test_get_rollpair_big_multi_partitions(self):
         super().test_get_rollpair_big_multi_partitions()
 
+
+class TestRollSiteClusterGuest(TestRollSiteBase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        opts = {"eggroll.session.processors.per.node": "3"}
+        cls.rs_context_guest = get_cluster_context(role='guest', options=opts, props_file=props_file_guest, party_id=10002)
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls.rs_context_guest.rp_ctx.get_session().stop()
+
+    def test_remote(self):
+        super().test_remote()
+
+    def test_remote_rollpair(self):
+        super().test_remote_rollpair()
+
+    def test_remote_rollpair_big_multi_partitions(self):
+        super().test_remote_rollpair_big_multi_partitions()
+
+
+class TestRollSiteClusterHost(TestRollSiteBase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        opts = {"eggroll.session.processors.per.node": "3"}
+        cls.rs_context_host = get_cluster_context(role='host', options=opts, props_file=props_file_host, party_id=10001)
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls.rs_context_host.rp_ctx.get_session().stop()
+
+    def test_get(self):
+        super().test_get()
+
+    def test_get_rollpair(self):
+        super().test_get_rollpair()
+
+    def test_get_rollpair_big_multi_partitions(self):
+        super().test_get_rollpair_big_multi_partitions()

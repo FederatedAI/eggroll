@@ -29,3 +29,9 @@ case class DbServerNode(id: Long = -1,
                         lastHeartbeatAt: Date,
                         createdAt: Date,
                         updatedAt: Date)
+
+case class DbStoreOption(storeLocatorId: Long = -1,
+                         name: String = StringConstants.EMPTY,
+                         data: String = StringConstants.EMPTY,
+                         createdAt: Date,
+                         updatedAt: Date)

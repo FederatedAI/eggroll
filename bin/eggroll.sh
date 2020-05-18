@@ -19,7 +19,6 @@ export EGGROLL_HOME=`pwd`
 cwd=$(cd `dirname $0`; pwd)
 
 export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION='python'
-version=2.0
 cd ${EGGROLL_HOME}
 echo "EGGROLL_HOME:${EGGROLL_HOME}"
 
@@ -52,7 +51,7 @@ main() {
 			;;
 		rollsite)
 			main_class=com.webank.eggroll.rollsite.Proxy
-			get_property "proxy.port"
+			get_property "eggroll.rollsite.port"
 			port=${property_value}
 			;;
 		*)
@@ -117,17 +116,12 @@ multiple() {
 }
 
 getpid() {
-	if [ ! -f "${module}_pid" ];then
-		echo "" > ${module}_pid
+	if [ ! -f "${EGGROLL_HOME}/bin/${module}" ];then
+		echo "" > ${EGGROLL_HOME}/bin/${module}
 	fi
-	module_pid=`cat ${module}_pid`
+	module_pid=`cat ${EGGROLL_HOME}/bin/${module}`
 	
-	if [ $module = rollsite ];then
-		pid=`ps aux | grep ${module_pid} | grep -v grep | grep -v $0 | awk '{print $2}'`
-	else
-		pid=`ps aux | grep $port | grep ${processor_tag} | grep -v grep | awk '{print $2}'`
-	fi
-	
+	pid=`ps aux | grep ${module_pid} | grep ${processor_tag} | grep -v grep | awk '{print $2}'`
 	if [[ -n ${pid} ]]; then
 		return 0
 	else
@@ -159,14 +153,14 @@ start() {
 		mklogsdir
 		export EGGROLL_LOG_FILE=${module}
 		if [ $module = rollsite ];then
-			cmd="java -Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.properties -cp ${EGGROLL_HOME}/lib/*:${EGGROLL_HOME}/conf/ com.webank.eggroll.rollsite.Proxy -c ${EGGROLL_HOME}/conf/eggroll.properties"
+			cmd="java -Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.properties -Dprocessor_tag=${processor_tag} -cp ${EGGROLL_HOME}/lib/*:${EGGROLL_HOME}/conf/ com.webank.eggroll.rollsite.Proxy -c ${EGGROLL_HOME}/conf/eggroll.properties"
 		else
 			cmd="java -Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.properties -cp ${EGGROLL_HOME}/lib/*: com.webank.eggroll.core.Bootstrap --bootstraps ${main_class} -c ${EGGROLL_HOME}/conf/eggroll.properties -p $port -s ${processor_tag}"
 		fi
 		echo $cmd
 		exec $cmd >> ${EGGROLL_HOME}/logs/eggroll/bootstrap.${module}.out 2>>${EGGROLL_HOME}/logs/eggroll/bootstrap.${module}.err &
-		
-		echo $!>${module}_pid
+
+		echo $!>${EGGROLL_HOME}/bin/${module}
 		getpid
 		if [[ $? -eq 0 ]]; then
 			echo "service start sucessfully. pid: ${pid}"
@@ -183,18 +177,19 @@ stop() {
 	if [[ -n ${pid} ]]; then
 		echo "killing:
 		`ps aux | grep ${pid} | grep -v grep`"
-		kill -9 ${pid}
+		kill ${pid}
 		sleep 1
-		getpid
-		if [[ $pid -eq $module_pid ]]; then
-			echo "kill error"
-		else
-			echo "killed"
-			echo "-1" >${module}_pid
-		fi
+		flag=0
+		while [ $flag -eq 0 ]
+		do
+			getpid
+			flag=$?
+		done
+		echo "killed"
+		echo "stoped" >${EGGROLL_HOME}/bin/${module}
 	else
 		echo "service not running"
-		echo "-1" >${module}_pid
+		echo "stoped" >${EGGROLL_HOME}/bin/${module}
 	fi
 }
 

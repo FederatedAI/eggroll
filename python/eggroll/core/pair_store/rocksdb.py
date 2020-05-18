@@ -33,6 +33,9 @@ class RocksdbWriteBatch(PairWriteBatch):
         self.value = None
         self.write_count = 0
 
+    def get(self, k):
+        return self.adapter.db.get(k)
+
     def put(self, k, v):
         self.key = k
         self.value = v
@@ -77,6 +80,9 @@ class RocksdbIterator(PairIterator):
             break
         self.it.seek_to_last()
         return (count != 0)
+
+    def seek(self, key):
+        self.it.seek(key)
 
     def key(self):
         return self.it.get()[0]
@@ -168,3 +174,6 @@ class RocksdbAdapter(PairAdapter):
                 L.debug("finish destroy, path:{}".format(self.path))
         except:
             L.info("path :{} has destroyed".format(self.path))
+
+    def is_sorted(self):
+        return True

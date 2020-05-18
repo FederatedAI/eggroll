@@ -63,7 +63,7 @@ public class ProxyGrpcStubFactory {
     public ProxyGrpcStubFactory() {
         channelCache = CacheBuilder.newBuilder()
                 .maximumSize(100)
-                .expireAfterWrite(20, TimeUnit.MINUTES)
+                .expireAfterWrite(180, TimeUnit.MINUTES)
                 .recordStats()
                 .weakValues()
                 .removalListener(removalNotification -> {
@@ -186,13 +186,13 @@ public class ProxyGrpcStubFactory {
                 .forAddress(target, endpoint.getPort())
                 .executor((Executor) applicationContext.getBean("grpcClientExecutor"))
                 .keepAliveTime(6, TimeUnit.MINUTES)
-                .keepAliveTimeout(1, TimeUnit.HOURS)
+                .keepAliveTimeout(1, TimeUnit.DAYS)
                 .keepAliveWithoutCalls(true)
-                .idleTimeout(1, TimeUnit.HOURS)
+                .idleTimeout(1, TimeUnit.DAYS)
                 .perRpcBufferLimit(16 << 20)
                 .flowControlWindow(32 << 20)
-                .maxInboundMessageSize(2 << 30 - 1)
-                .maxInboundMetadataSize(64 << 20)
+                .maxInboundMessageSize((2 << 30) - 1)
+                .maxInboundMetadataSize(128 << 20)
                 .enableRetry()
                 .retryBufferSize(16 << 20)
                 .maxRetryAttempts(20);      // todo:1: configurable

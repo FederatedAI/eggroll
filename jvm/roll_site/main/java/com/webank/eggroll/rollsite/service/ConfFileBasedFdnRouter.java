@@ -45,7 +45,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
@@ -80,7 +79,7 @@ public class ConfFileBasedFdnRouter implements FdnRouter {
 
     public ConfFileBasedFdnRouter() {
         routeTable = new ConcurrentHashMap<>();
-        topicEndpointMapping = new WeakHashMap<>();
+        topicEndpointMapping = new ConcurrentHashMap<>();
         endpointBuilder = BasicMeta.Endpoint.newBuilder();
         routeNeighbours = new HashSet<>();
         intranetEndpoints = new HashSet<>();

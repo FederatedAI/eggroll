@@ -19,8 +19,9 @@ import configparser
 import os
 
 import eggroll.roll_pair.test.roll_pair_test_assets as rpta
-from eggroll.core.conf_keys import RollSiteConfKeys
-from eggroll.core.constants import StoreTypes
+from eggroll.core.conf_keys import RollSiteConfKeys, SessionConfKeys, \
+    CoreConfKeys
+from eggroll.core.constants import StoreTypes, DeployModes
 from eggroll.core.meta_model import ErStore, ErStoreLocator, ErEndpoint
 from eggroll.roll_site.roll_site import RollSiteContext
 
@@ -100,16 +101,27 @@ def get_debug_test_context(is_standalone=False,
 
 
 def get_standalone_context(role, props_file=default_props_file):
-    rp_context = rpta.get_standalone_context()
+    options = {}
+    options[SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE] = DeployModes.STANDALONE
+    options[CoreConfKeys.STATIC_CONF_PATH] = props_file
+    os.environ["EGGROLL_RESOURCE_MANAGER_AUTO_BOOTSTRAP"] = "1"
+
+    rp_context = rpta.get_standalone_context(options=options)
+
+    rs_options = get_option(role, props_file)
+    options.update(rs_options)
     rs_context = RollSiteContext(roll_site_session_id, rp_ctx=rp_context,
                                  options=get_option(role, props_file))
 
     return rs_context
 
 
-def get_cluster_context(role, options: dict = None, props_file=default_props_file, party_id=None):
+def get_cluster_context(role, options: dict = None, props_file=default_props_file, party_id=None, session_id=None):
     if options is None:
         options = {}
+    if session_id:
+        options['session_id'] = session_id
+    options[CoreConfKeys.STATIC_CONF_PATH] = props_file
     rp_context = rpta.get_cluster_context(options=options)
 
     rs_options = get_option(role, props_file)

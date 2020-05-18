@@ -25,7 +25,7 @@ ONE_ARG_LIST=(
 )
 
 get_property() {
-  property_value=`grep $2 $1 | awk -F= '{print $2}'`
+  property_value=`grep $2 $1 | cut -d '=' -f 2-`
 }
 
 opts=$(getopt \
@@ -82,13 +82,13 @@ if [[ ${transfer_port} -eq 0 ]] && [[ ${port} -ne 0 ]]; then
   transfer_port=${port}
 fi
 
-get_property ${config} "eggroll.rollpair.bootstrap.egg_pair.venv"
+get_property ${config} "eggroll.resourcemanager.bootstrap.egg_pair.venv"
 venv=${property_value}
 
-get_property ${config} "eggroll.rollpair.bootstrap.egg_pair.pythonpath"
+get_property ${config} "eggroll.resourcemanager.bootstrap.egg_pair.pythonpath"
 pythonpath=${property_value}
 
-get_property ${config} "eggroll.rollpair.bootstrap.egg_pair.filepath"
+get_property ${config} "eggroll.resourcemanager.bootstrap.egg_pair.filepath"
 filepath=${property_value}
 
 get_property ${config} "eggroll.logs.dir"

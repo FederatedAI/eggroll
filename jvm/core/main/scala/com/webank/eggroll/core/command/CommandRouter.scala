@@ -60,6 +60,7 @@ object CommandRouter extends Logging {
     if (serviceRouteTable.contains(serviceName)) {
       throw new IllegalStateException(s"Service ${serviceName} has been registered at: ${serviceRouteTable(serviceName)}")
     }
+
     val finalServiceName = if(serviceName.startsWith("/v2/")){
       val toks = serviceName.replaceFirst("/v2/","com/webank/").split("/")
       toks(toks.length - 2) += "Service"
@@ -84,6 +85,7 @@ object CommandRouter extends Logging {
     if (routeToMethod == null) {
       throw new NoSuchMethodException(s"accessible method not found for ${finalServiceName}")
     }
+
     val finaleServiceParamTypes = routeToMethod.getParameterTypes
     val finalServiceResultTypes: Array[Class[_]] =
       if (serviceResultTypes.isEmpty) Array(routeToMethod.getReturnType) else serviceResultTypes
