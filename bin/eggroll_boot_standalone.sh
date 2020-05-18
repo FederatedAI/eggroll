@@ -14,7 +14,7 @@ get_property() {
 #set -x
 session_id="null_sid"
 version=2.0
-while getopts ":s:p:e:c:r:" opt; do
+while getopts ":s:p:e:c:" opt; do
   case $opt in
     s)
       session_id=$OPTARG
