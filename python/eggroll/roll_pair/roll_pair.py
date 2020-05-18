@@ -366,7 +366,15 @@ class RollPair(object):
         self_partition = self.get_partitions()
         other_partition = other.get_partitions()
 
-        if other_partition != self_partition or self.__store._partitions != other.__store._partitions:
+        should_shuffle = False
+        if len(self.__store._partitions) != len(other.__store._partitions):
+            should_shuffle = True
+        else:
+            for i in range(len(self.__store._partitions)):
+                if self.__store._partitions[i]._processor._id != other.__store._partitions[i]._processor._id:
+                    should_shuffle = True
+
+        if other_partition != self_partition or should_shuffle:
             self_name = self.get_name()
             self_count = self.count()
             other_name = other.get_name()
@@ -379,25 +387,25 @@ class RollPair(object):
                 shuffle_rp = self
                 shuffle_rp_count = self_count
                 shuffle_rp_name = self_name
-                shuffle_rp_partition = self_partition
+                shuffle_total_partitions = self_partition
                 shuffle_rp_partitions = other.__store._partitions
 
                 not_shuffle_rp = other
                 not_shuffle_rp_count = other_count
                 not_shuffle_rp_name = other_name
-                not_shuffle_rp_partition = other_partition
+                not_shuffle_total_partitions = other_partition
                 not_shuffle_rp_partitions = self.__store._partitions
             else:
                 not_shuffle_rp = self
                 not_shuffle_rp_count = self_count
                 not_shuffle_rp_name = self_name
-                not_shuffle_rp_partition = self_partition
+                not_shuffle_total_partitions = self_partition
                 not_shuffle_rp_partitions = other.__store._partitions
 
                 shuffle_rp = other
                 shuffle_rp_count = other_count
                 shuffle_rp_name = other_name
-                shuffle_rp_partition = other_partition
+                shuffle_total_partitions = other_partition
                 shuffle_rp_partitions = self.__store._partitions
 
             L.debug(f"repatition selection: rp: {shuffle_rp_name} count:{shuffle_rp_count} "
@@ -406,14 +414,14 @@ class RollPair(object):
             store = ErStore(store_locator=ErStoreLocator(store_type=shuffle_rp.get_store_type(),
                                                          namespace=shuffle_rp.get_namespace(),
                                                          name=str(uuid.uuid1()),
-                                                         total_partitions=not_shuffle_rp_partition),
+                                                         total_partitions=not_shuffle_total_partitions),
                             partitions=shuffle_rp_partitions)
             res_rp = shuffle_rp.map(lambda k, v: (k, v), output=store)
             res_rp.disable_gc()
             L.debug(f"repartition end: rp to shuffle: {shuffle_rp_name}, "
-                    f"count: {shuffle_rp_count}, partitions: {shuffle_rp_partition}; "
+                    f"count: {shuffle_rp_count}, partitions: {shuffle_total_partitions}; "
                     f"rp NOT shuffle: {not_shuffle_rp_name}, "
-                    f"count: {not_shuffle_rp_count}, partitions: {not_shuffle_rp_partition}' "
+                    f"count: {not_shuffle_rp_count}, partitions: {not_shuffle_total_partitions}' "
                     f"res rp: {res_rp.get_name()}, "
                     f"count: {res_rp.count()}, partitions :{res_rp.get_partitions()}")
             store_shuffle = res_rp.get_store()
