@@ -83,7 +83,7 @@ class ErSession(object):
             #                      static_er_conf.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, "4689")))
             port = 0
             random_value = str(random.random())
-            os.environ['STANDALONE_TAG'] = random_value
+            os.environ['EGGROLL_STANDALONE_TAG'] = random_value
             if os.name != 'nt':
                 startup_command = f'{self.__eggroll_home}/bin/eggroll_boot_standalone.sh -p {port} -s {self.__session_id}'
             else:
