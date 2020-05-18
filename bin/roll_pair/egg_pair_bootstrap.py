@@ -34,9 +34,16 @@ def start(config_file, session_id, server_node_id, processor_id, port, transfer_
     venv = get_property(config_file, "eggroll.resourcemanager.bootstrap.egg_pair.venv")
     pythonpath = get_property(config_file, "eggroll.resourcemanager.bootstrap.egg_pair.pythonpath")
     filepath = get_property(config_file, "eggroll.resourcemanager.bootstrap.egg_pair.filepath")
-    node_manager_port = get_property(config_file, "eggroll.resourcemanager.nodemanager.port")
+
     cluster_manager_host = get_property(config_file, "eggroll.resourcemanager.clustermanager.host")
-    cluster_manager_port = get_property(config_file, "eggroll.resourcemanager.clustermanager.port")
+
+    standalone_port = os.environ.get("EGGROLL_STANDALONE_PORT", None)
+    if standalone_port is None:
+        node_manager_port = get_property(config_file, "eggroll.resourcemanager.nodemanager.port")
+        cluster_manager_port = get_property(config_file, "eggroll.resourcemanager.clustermanager.port")
+    else:
+        node_manager_port = standalone_port
+        cluster_manager_port = standalone_port
 
     eggroll_logs_dir = os.environ.get('EGGROLL_LOGS_DIR')
     if eggroll_logs_dir is None:

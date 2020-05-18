@@ -42,7 +42,7 @@ from eggroll.core.transfer.transfer_service import GrpcTransferServicer, \
     TransferService
 from eggroll.core.utils import _exception_logger
 from eggroll.core.utils import hash_code
-from eggroll.core.utils import set_static_er_conf
+from eggroll.core.utils import set_static_er_conf, get_static_er_conf
 from eggroll.roll_pair import create_adapter, create_serdes, create_functor
 from eggroll.roll_pair.transfer_pair import TransferPair
 from eggroll.roll_pair.utils.pair_utils import generator, partitioner, \
@@ -60,7 +60,7 @@ class EggPair(object):
     def __partitioner(self, hash_func, total_partitions):
         return lambda k: hash_func(k) % total_partitions
 
-    def _run_unary(self, func, task, shuffle=False):
+    def _run_unary(self, func, task, shuffle=False, reduce_op=None):
         input_store_head = task._job._inputs[0]
         output_store_head = task._job._outputs[0]
         key_serdes = create_serdes(input_store_head._store_locator._serdes)
@@ -72,16 +72,22 @@ class EggPair(object):
             output_total_partitions = output_store_head._store_locator._total_partitions
             output_store = output_store_head
 
+            my_server_node_id = get_static_er_conf().get('server_node_id', None)
             shuffler = TransferPair(transfer_id=task._job._id)
-            if not task._outputs:
+            if not task._outputs or \
+                    (my_server_node_id is not None
+                     and my_server_node_id != task._outputs[0]._processor._server_node_id):
                 store_future = None
             else:
                 store_future = shuffler.store_broker(
                         store_partition=task._outputs[0],
                         is_shuffle=True,
-                        total_writers=input_total_partitions)
+                        total_writers=input_total_partitions,
+                        reduce_op=reduce_op)
 
-            if not task._inputs:
+            if not task._inputs or \
+                    (my_server_node_id is not None
+                     and my_server_node_id != task._inputs[0]._processor._server_node_id):
                 scatter_future = None
             else:
                 shuffle_broker = FifoBroker()
@@ -154,6 +160,7 @@ class EggPair(object):
                 result = ErPair(key=f._key, value=value)
         elif task._name == 'getAll':
             tag = f'{task._id}'
+
             def generate_broker():
                 with create_adapter(task._inputs[0]) as db, db.iteritems() as rb:
                     yield from TransferPair.pair_to_bin_batch(rb)
@@ -222,6 +229,7 @@ class EggPair(object):
 
         if task._name == 'mapValues':
             f = create_functor(functors[0]._body)
+
             def map_values_wrapper(input_iterator, key_serdes, value_serdes, output_writebatch):
                 for k_bytes, v_bytes in input_iterator:
                     v = value_serdes.deserialize(v_bytes)
@@ -248,18 +256,19 @@ class EggPair(object):
                             value=self.functor_serdes.serialize(seq_op_result))
 
         elif task._name == 'mapPartitions':
+            reduce_op = create_functor(functors[1]._body)
+            shuffle = create_functor(functors[2]._body)
             def map_partitions_wrapper(input_iterator, key_serdes, value_serdes, shuffle_broker):
                 f = create_functor(functors[0]._body)
                 value = f(generator(key_serdes, value_serdes, input_iterator))
                 if input_iterator.last():
-                    #L.debug("value of mapPartitions:{}".format(value))
                     if isinstance(value, Iterable):
                         for k1, v1 in value:
                             shuffle_broker.put((key_serdes.serialize(k1), value_serdes.serialize(v1)))
                     else:
                         key = input_iterator.key()
                         shuffle_broker.put((key, value_serdes.serialize(value)))
-            self._run_unary(map_partitions_wrapper, task, shuffle=True)
+            self._run_unary(map_partitions_wrapper, task, shuffle=shuffle, reduce_op=reduce_op)
 
         elif task._name == 'collapsePartitions':
             def collapse_partitions_wrapper(input_iterator, key_serdes, value_serdes, output_writebatch):
@@ -271,12 +280,14 @@ class EggPair(object):
             self._run_unary(collapse_partitions_wrapper, task)
 
         elif task._name == 'flatMap':
+            shuffle = create_functor(functors[1]._body)
+
             def flat_map_wraaper(input_iterator, key_serdes, value_serdes, shuffle_broker):
                 f = create_functor(functors[0]._body)
                 for k1, v1 in input_iterator:
                     for k2, v2 in f(key_serdes.deserialize(k1), value_serdes.deserialize(v1)):
                         shuffle_broker.put((key_serdes.serialize(k2), value_serdes.serialize(v2)))
-            self._run_unary(flat_map_wraaper, task, shuffle=True)
+            self._run_unary(flat_map_wraaper, task, shuffle=shuffle)
 
         elif task._name == 'glom':
             def glom_wrapper(input_iterator, key_serdes, value_serdes, output_writebatch):
@@ -496,6 +507,7 @@ def stop_processor(cluster_manager_client: ClusterManagerClient, myself: ErProce
             except:
                 pass
 
+
 def serve(args):
     prefix = 'v1/egg-pair'
 
@@ -561,6 +573,9 @@ def serve(args):
     cluster_manager_client = None
     if cluster_manager:
         session_id = args.session_id
+        server_node_id = int(args.server_node_id)
+        static_er_conf = get_static_er_conf()
+        static_er_conf['server_node_id'] = server_node_id
 
         if not session_id:
             raise ValueError('session id is missing')
@@ -568,7 +583,7 @@ def serve(args):
             SessionConfKeys.CONFKEY_SESSION_ID: args.session_id
         }
         myself = ErProcessor(id=int(args.processor_id),
-                             server_node_id=int(args.server_node_id),
+                             server_node_id=server_node_id,
                              processor_type=ProcessorTypes.EGG_PAIR,
                              command_endpoint=ErEndpoint(host='localhost', port=port),
                              transfer_endpoint=ErEndpoint(host='localhost', port=transfer_port),

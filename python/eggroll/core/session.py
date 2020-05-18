@@ -12,10 +12,13 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import configparser
-import os
+import os, stat, re
+import psutil
+import random
 from concurrent.futures import wait, FIRST_EXCEPTION
 from copy import deepcopy
 
+import time
 from eggroll.core.client import ClusterManagerClient
 from eggroll.core.client import CommandClient
 from eggroll.core.command.command_model import CommandURI
@@ -71,13 +74,22 @@ class ErSession(object):
 
         self.__options = options.copy()
         self.__options[SessionConfKeys.CONFKEY_SESSION_ID] = self.__session_id
-        self._cluster_manager_client = ClusterManagerClient(options=options)
+        #self._cluster_manager_client = ClusterManagerClient(options=options)
+
 
         self.__is_standalone = options.get(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE, "") == DeployModes.STANDALONE
-        if self.__is_standalone and os.name != 'nt' and not processors and os.environ.get("EGGROLL_RESOURCE_MANAGER_AUTO_BOOTSTRAP", "1") == "1":
-            port = int(options.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT,
-                                   static_er_conf.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, "4670")))
-            startup_command = f'bash {self.__eggroll_home}/bin/eggroll_boot_standalone.sh -c {conf_path} -s {self.__session_id}'
+        if self.__is_standalone and not processors and os.environ.get("EGGROLL_RESOURCE_MANAGER_BOOTSTRAP_DEBUG", "0") == "0":
+            #port = int(options.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT,
+            #                      static_er_conf.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, "4689")))
+            port = 0
+            random_value = str(random.random())
+            os.environ['EGGROLL_STANDALONE_TAG'] = random_value
+            if os.name != 'nt':
+                startup_command = f'{self.__eggroll_home}/bin/eggroll_boot_standalone.sh -p {port} -s {self.__session_id}'
+            else:
+                startup_command = f'{self.__eggroll_home}/bin/eggroll_boot_standalone.py -p {port} -s {self.__session_id}'
+
+            print("startup_command:", startup_command)
             import subprocess
             import atexit
 
@@ -86,20 +98,79 @@ class ErSession(object):
             with open(f'{bootstrap_log_dir}/standalone-manager.out', 'a+') as outfile, \
                     open(f'{bootstrap_log_dir}/standalone-manager.err', 'a+') as errfile:
                 L.info(f'start up command: {startup_command}')
-                manager_process = subprocess.run(startup_command, shell=True,  stdout=outfile, stderr=errfile)
+                manager_process = subprocess.Popen(startup_command, shell=True,  stdout=outfile, stderr=errfile)
+                manager_process.wait()
                 returncode = manager_process.returncode
                 L.info(f'start up returncode: {returncode}')
 
-            def shutdown_standalone_manager(port, session_id, log_dir):
-                shutdown_command = f"ps aux | grep eggroll | grep Bootstrap | grep '{port}' | grep '{session_id}' | grep -v grep | awk '{{print $2}}' | xargs kill"
+            def shutdown_standalone_manager(session_id, log_dir):
+                standalone_tag = f'-Deggroll.standalone.tag={random_value}'
+                if os.name != 'nt':
+                    shutdown_command = f"ps aux | grep eggroll | grep Bootstrap | grep '{standalone_tag}' | grep '{session_id}' | grep -v grep | awk '{{print $2}}' | xargs kill"
+                else:
+                    pid_list = psutil.pids()
+                    ret_pid = 0
+                    for pid in pid_list:
+                        p = psutil.Process(pid)
+                        if "java.exe" not in p.name():
+                            continue
+                        # if it is a system process, call p.cmdline() will dump
+                        cmdline = p.cmdline()
+                        if standalone_tag not in cmdline or '--bootstraps' not in cmdline:
+                            continue
+
+                        ret_pid = pid
+                        break
+
+                    shutdown_command = f"taskkill /pid {ret_pid} /f"
+
                 L.info(f'shutdown command: {shutdown_command}')
                 with open(f'{log_dir}/standalone-manager.out', 'a+') as outfile, open(f'{log_dir}/standalone-manager.err', 'a+') as errfile:
                     manager_process = subprocess.run(shutdown_command, shell=True, stdout=outfile, stderr=errfile)
                     returncode = manager_process.returncode
                     L.info(f'shutdown returncode: {returncode}')
 
-            atexit.register(shutdown_standalone_manager, port, self.__session_id, bootstrap_log_dir)
+            file_name = f'{self.__eggroll_home}/logs/eggroll/bootstrap-standalone-manager.out'
+            retry_cnt = 0
+            while True:
+                msg = f"retry get port from bootstrap-standalone-manager.out: retry_cnt: {retry_cnt},"
+                if retry_cnt % 10 == 0:
+                    L.info(msg)
+                else:
+                    L.debug(msg)
+                retry_cnt += 1
 
+                if os.path.exists(file_name):
+                    break
+                time.sleep(min(0.1 * retry_cnt, 30))
+
+            retry_cnt = 0
+            with open(file_name) as fp:
+                while True:
+                    msg = f"retry get port of ClusterManager and NodeManager: retry_cnt: {retry_cnt},"
+                    if retry_cnt % 10 == 0:
+                        L.info(msg)
+                    else:
+                        L.debug(msg)
+                    retry_cnt += 1
+
+                    port = 0
+                    key = f"{random_value} server started at port "
+                    for line in fp.readlines():
+                        if key in line:
+                            port = int(line.rsplit('port ', 2)[1])
+                            if port != 0:
+                                break
+
+                    if port != 0:
+                        break
+                    time.sleep(min(0.1 * retry_cnt, 30))
+
+            options[ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT] = port
+            self.__options[ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT] = port
+            atexit.register(shutdown_standalone_manager, self.__session_id, bootstrap_log_dir)
+
+        self._cluster_manager_client = ClusterManagerClient(options=options)
         session_meta = ErSessionMeta(id=self.__session_id,
                                      name=name,
                                      status=SessionStatus.NEW,
@@ -199,61 +270,91 @@ class ErSession(object):
 
     def _decompose_job(self, job: ErJob):
         input_total_partitions = job._inputs[0]._store_locator._total_partitions
-        output_total_partitions = input_total_partitions \
+        output_total_partitions = 0 \
             if not job._outputs \
             else job._outputs[0]._store_locator._total_partitions
 
         larger_total_partitions = max(input_total_partitions, output_total_partitions)
 
-        if larger_total_partitions == input_total_partitions:
-            store = self.populate_processor(job._inputs[0])
-        else:
-            store = self.populate_processor(job._outputs[0])
+        populated_input_partitions = self.populate_processor(job._inputs[0])._partitions
 
-        partitions_with_processors = store._partitions
+        if output_total_partitions > 0:
+            populated_output_partitions = self.populate_processor(job._outputs[0])._partitions
+        else:
+            populated_output_partitions = list()
 
         result = list()
-
         for i in range(larger_total_partitions):
             input_partitions = list()
             output_partitions = list()
-            try:
-                target_processor = self.route_to_egg(partitions_with_processors[i])
-            except Exception as e:
-                raise e
 
             if i < input_total_partitions:
+                input_processor = populated_input_partitions[i]._processor
+                input_server_node_id = input_processor._server_node_id
                 for input_store in job._inputs:
                     input_partitions.append(ErPartition(
                             id=i,
                             store_locator=input_store._store_locator,
-                            processor=target_processor))
+                            processor=input_processor))
+            else:
+                input_processor = None
+                input_server_node_id = None
+
             if i < output_total_partitions:
+                output_processor = populated_output_partitions[i]._processor
+                output_server_node_id = output_processor._server_node_id
                 for output_store in job._outputs:
                     output_partitions.append(ErPartition(
                             id=i,
                             store_locator=output_store._store_locator,
-                            processor=target_processor))
+                            processor=output_processor))
+            else:
+                output_processor = None
+                output_server_node_id = None
 
-            result.append(
-                    ([ErTask(id=generate_task_id(job._id, i),
-                             name=f'{job._name}',
-                             inputs=input_partitions,
-                             outputs=output_partitions,
-                             job=job)],
-                     target_processor._command_endpoint))
+            tasks = [ErTask(id=generate_task_id(job._id, i),
+                           name=f'{job._name}',
+                           inputs=input_partitions,
+                           outputs=output_partitions,
+                           job=job)]
+            if input_server_node_id == output_server_node_id:
+                result.append(
+                        (tasks, input_processor._command_endpoint))
+            else:
+                if input_server_node_id is not None:
+                    result.append(
+                            (tasks, input_processor._command_endpoint))
+                if output_server_node_id is not None:
+                    result.append(
+                            (tasks, output_processor._command_endpoint))
+
         return result
 
     def populate_output_store(self, job: ErJob):
         is_output_blank = not job._outputs or not job._outputs[0]
-        if is_output_blank:
-            final_output_proposal = ErStore(store_locator=job._inputs[0]._store_locator.fork())
+        is_output_not_populated = is_output_blank or not job._outputs[0]._partitions
+        if is_output_not_populated:
+            if is_output_blank:
+                final_output_proposal = job._inputs[0].fork()
+            else:
+                final_output_proposal = job._outputs[0]
+
+            refresh_nodes = job._options.get('refresh_nodes', False)
+            if refresh_nodes:
+                final_output_proposal._partitions = []
+            else:
+                if not final_output_proposal._partitions:
+                    final_output_proposal._partitions = job._inputs[0]._partitions
         else:
             final_output_proposal = job._outputs[0]
 
-        cm_client = ClusterManagerClient()
-        final_output = self.populate_processor(cm_client.get_or_create_store(final_output_proposal))
+        final_output = self.populate_processor(
+                self._cluster_manager_client.get_or_create_store(final_output_proposal))
 
+        if final_output._store_locator._total_partitions != \
+                final_output_proposal._store_locator._total_partitions:
+            raise ValueError(f'partition count of actual output and proposed output does not match. '
+                             f'actual={final_output}, proposed={final_output_proposal}')
         final_job = deepcopy(job)
         final_job._outputs = [final_output]
 
