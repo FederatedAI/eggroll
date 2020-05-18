@@ -35,10 +35,15 @@ def start(config_file, session_id, server_node_id, processor_id, port, transfer_
   if transfer_port is 0 and port is not 0:
     transfer_port = port
 
-  #venv = get_property(config_file, "eggroll.resourcemanager.bootstrap.egg_pair.venv")
-  node_manager_port = get_property(config_file, "eggroll.resourcemanager.nodemanager.port")
   cluster_manager_host = get_property(config_file, "eggroll.resourcemanager.clustermanager.host")
-  cluster_manager_port = get_property(config_file, "eggroll.resourcemanager.clustermanager.port")
+
+  standalone_port = os.environ.get("STANDALONE_PORT", None)
+  if standalone_port is None:
+    node_manager_port = get_property(config_file, "eggroll.resourcemanager.nodemanager.port")
+    cluster_manager_port = get_property(config_file, "eggroll.resourcemanager.clustermanager.port")
+  else:
+    node_manager_port = standalone_port
+    cluster_manager_port = standalone_port
 
   javahome = get_property(config_file, "eggroll.resourcemanager.bootstrap.roll_pair_master.javahome")
   classpath = get_property(config_file, "eggroll.resourcemanager.bootstrap.roll_pair_master.classpath")
@@ -116,6 +121,10 @@ def start(config_file, session_id, server_node_id, processor_id, port, transfer_
 
   print("pid:", pid)
   pname_pid = 'bin/' + 'pid/' + pname + '.pid'
+
+  if not os.path.exists('bin/pid'):
+    os.makedirs('bin/pid')
+
   with open(pname_pid, 'w') as fp:
     fp.write(str(pid))
     fp.close()
