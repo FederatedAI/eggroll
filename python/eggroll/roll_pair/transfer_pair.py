@@ -231,10 +231,8 @@ class TransferPair(object):
                                 wb.put(k, v)
                             else:
                                 v1 = wb.get(k)
-                                if v1:
-                                    v2 = reduce_op_inner(serdes.deserialize(v1), serdes.deserialize(v))
                                 if v1 is not None:
-                                    v2 = reduce_op_inner(serdes.deserialize(v), serdes.deserialize(v1))
+                                    v2 = reduce_op_inner(serdes.deserialize(v1), serdes.deserialize(v))
                                     wb.put(k, serdes.serialize(v2))
                                 else:
                                     wb.put(k, v)
