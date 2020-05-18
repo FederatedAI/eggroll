@@ -240,7 +240,7 @@ class RollSiteWriteBatch(PairWriteBatch):
             # TODO:0: replace 1024 with constant
             self.ba = bytearray(max(self.__bin_packet_len, len(k) + len(v) + 1024))
             self.buffer = ArrayByteBuffer(self.ba)
-            self.writer = PairBinWriter(pair_buffer=self.buffer, data=self.ba)
+            self.writer = PairBinWriter(pair_buffer=self.buffer)
             self.writer.write(k, v)
             self.push_pair_cnt += 1
         except Exception as e:
