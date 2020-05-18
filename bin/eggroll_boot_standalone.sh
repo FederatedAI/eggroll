@@ -54,7 +54,14 @@ fi
 
 cd ${EGGROLL_HOME}
 echo "EGGROLL_HOME: ${EGGROLL_HOME}"
-cmd="java -Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.properties -cp ${EGGROLL_HOME}/conf:${EGGROLL_HOME}/lib/* com.webank.eggroll.core.Bootstrap --ignore-rebind --bootstraps com.webank.eggroll.core.resourcemanager.ClusterManagerBootstrap,com.webank.eggroll.core.resourcemanager.NodeManagerBootstrap -c ${config} -s $session_id -p $manager_port &"
+
+if [[ -z ${EGGROLL_STANDALONE_TAG} ]]; then
+    java_define="-Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.properties"
+else
+    java_define="-Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.properties -Deggroll.standalone.tag=${EGGROLL_STANDALONE_TAG}"
+fi
+
+cmd="java $java_define -cp ${EGGROLL_HOME}/conf:${EGGROLL_HOME}/lib/* com.webank.eggroll.core.Bootstrap --ignore-rebind --bootstraps com.webank.eggroll.core.resourcemanager.ClusterManagerBootstrap,com.webank.eggroll.core.resourcemanager.NodeManagerBootstrap -c ${config} -s $session_id -p $manager_port &"
 echo "cmd: ${cmd}"
 eval ${cmd} >> ${EGGROLL_HOME}/logs/eggroll/bootstrap-standalone-manager.out 2>>${EGGROLL_HOME}/logs/eggroll/bootstrap-standalone-manager.err
 

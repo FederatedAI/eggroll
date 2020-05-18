@@ -14,8 +14,10 @@
 #
 #
 
+import os
 import functools
 import time
+import pickle
 from concurrent.futures import ThreadPoolExecutor
 
 from eggroll.core.conf_keys import SessionConfKeys, RollSiteConfKeys
@@ -204,18 +206,46 @@ class RollSite:
 
                 table_namespace = self.roll_site_session_id
             L.info(f"pull status done: table_name:{table_name}, packet:{to_one_line_string(packet)}, namespace:{namespace}")
-            rp = self.ctx.rp_ctx.load(namespace=table_namespace, name=table_name)
-            success_msg_prefix = f'RollSite.Pull: pull {roll_site_header} success.'
+
             if obj_type == b'object':
-                result = rp.get(table_name)
-                if result is not None:
-                    empty = "NOT empty"
+                if os.environ.get('EGGROLL_PUSH_OBJ_WITH_ROLL_PAIR') == "1":
+                    rp = self.ctx.rp_ctx.load(namespace=table_namespace, name=table_name)
+                    success_msg_prefix = f'RollSite.Pull: pull {roll_site_header} success.'
+                    result = rp.get(table_name)
+                    if result is not None:
+                        empty = "NOT empty"
+                    else:
+                        empty = "empty"
+                    if not self._is_standalone:
+                        rp.destroy()
+                    L.info(f"{success_msg_prefix} type: {type(result)}, empty_or_not: {empty}")
                 else:
-                    empty = "empty"
-                if not self._is_standalone:
-                    rp.destroy()
-                L.info(f"{success_msg_prefix} type: {type(result)}, empty_or_not: {empty}")
+                    task_info = proxy_pb2.Task(model=proxy_pb2.Model(name=_stringify(roll_site_header)))
+                    topic_src = proxy_pb2.Topic(name=table_name, partyId=self.party_id,
+                                                role=self.local_role, callback=None)
+                    topic_dst = proxy_pb2.Topic(name=table_name, partyId=self.party_id,
+                                                role=self.local_role, callback=None)
+                    command_test = proxy_pb2.Command(name="pull_obj")
+                    conf_test = proxy_pb2.Conf(overallTimeout=1000,
+                                               completionWaitTimeout=1000,
+                                               packetIntervalTimeout=1000,
+                                               maxRetries=10)
+
+                    metadata = proxy_pb2.Metadata(task=task_info,
+                                                  src=topic_src,
+                                                  dst=topic_dst,
+                                                  command=command_test,
+                                                  operator="pull_obj",
+                                                  seq=0,
+                                                  ack=0)
+                    packet = proxy_pb2.Packet(header=metadata)
+
+                    ret = self.stub.unaryCall(packet)
+                    #result = ret.body.value
+                    result = pickle.loads(ret.body.value)
             else:
+                rp = self.ctx.rp_ctx.load(namespace=table_namespace, name=table_name)
+                success_msg_prefix = f'RollSite.Pull: pull {roll_site_header} success.'
                 result = rp
                 L.info(f"{success_msg_prefix} type: {obj_type}, count: {rp.count()}")
             return result
@@ -227,6 +257,10 @@ class RollSite:
             end_cpu_time = time.perf_counter()
 
             P.info(f'{{"metric_type": "func_profile", "qualname": "RollSite.pull", "cpu_time": {end_cpu_time - self._pull_start_cpu_time}, "wall_time": {end_wall_time - self._pull_start_wall_time}}}')
+
+    def send_packet(self, packet):
+        ret = self.stub.unaryCall(packet)
+        return ret
 
     def push(self, obj, parties: list = None):
         L.info(f"pushing: self:{self.__dict__}, obj_type:{type(obj)}, parties:{parties}")
@@ -254,67 +288,106 @@ class RollSite:
             L.debug(f"pushing start party:{type(obj)}, {_tagged_key}")
             namespace = self.roll_site_session_id
 
-            if isinstance(obj, RollPair):
-                rp = obj
+            if not self._is_standalone and obj_type == 'object' and os.environ.get('EGGROLL_PUSH_OBJ_WITH_ROLL_PAIR') != "1":
+                roll_site_header = ErRollSiteHeader(
+                    roll_site_session_id=self.roll_site_session_id,
+                    name=self.name,
+                    tag=self.tag,
+                    src_role=self.local_role,
+                    src_party_id=self.party_id,
+                    dst_role=_role,
+                    dst_party_id=_party_id,
+                    data_type='object')
+
+                task_info = proxy_pb2.Task(model=proxy_pb2.Model(name=_stringify(roll_site_header)))
+                topic_src = proxy_pb2.Topic(name=_tagged_key, partyId=self.party_id,
+                                            role=self.local_role, callback=None)
+                topic_dst = proxy_pb2.Topic(name=_tagged_key, partyId=_party_id,
+                                            role=_role, callback=None)
+                command_test = proxy_pb2.Command(name="push_obj")
+                conf = proxy_pb2.Conf(overallTimeout=3000,
+                                           completionWaitTimeout=3000,
+                                           packetIntervalTimeout=3000,
+                                           maxRetries=10)
+
+                metadata = proxy_pb2.Metadata(task=task_info,
+                                              src=topic_src,
+                                              dst=topic_dst,
+                                              command=command_test,
+                                              operator="push_obj",
+                                              seq=0,
+                                              ack=0,
+                                              conf=conf)
+
+                data = proxy_pb2.Data(key=_tagged_key, value=pickle.dumps(obj))
+                packet = proxy_pb2.Packet(header=metadata, body=data)
+
+                future = self.receive_exeutor_pool.submit(RollSite.send_packet, self, packet)
+                future.add_done_callback(functools.partial(self._push_callback, tmp_rp=None))
+                futures.append(future)
+
             else:
-                rp = self.ctx.rp_ctx.load(namespace, _tagged_key)
-                rp.put(_tagged_key, obj)
-            rp.disable_gc()
-            L.info(f"pushing prepared: {type(obj)}, tag_key:{_tagged_key}")
-
-            def map_values(_tagged_key, is_standalone, roll_site_header):
-                if is_standalone:
-                    dst_name = _tagged_key
-                    store_type = rp.get_store_type()
+                if isinstance(obj, RollPair):
+                    rp = obj
                 else:
-                    dst_name = DELIM.join([_tagged_key,
-                                           self.dst_host,
-                                           str(self.dst_port),
-                                           obj_type])
-                    store_type = StoreTypes.ROLLPAIR_ROLLSITE
-                if is_standalone:
-                    status_rp = self.ctx.rp_ctx.load(namespace, STATUS_TABLE_NAME + DELIM + self.roll_site_session_id, options=_options)
-                    status_rp.disable_gc()
-                    if isinstance(obj, RollPair):
-                        status_rp.put(_tagged_key, (obj_type.encode("utf-8"), rp.get_name(), rp.get_namespace()))
+                    rp = self.ctx.rp_ctx.load(namespace, _tagged_key)
+                    rp.put(_tagged_key, obj)
+                rp.disable_gc()
+                L.info(f"pushing prepared: {type(obj)}, tag_key:{_tagged_key}")
+
+                def map_values(_tagged_key, is_standalone, roll_site_header):
+                    if is_standalone:
+                        dst_name = _tagged_key
+                        store_type = rp.get_store_type()
                     else:
-                        status_rp.put(_tagged_key, (obj_type.encode("utf-8"), dst_name, namespace))
+                        dst_name = DELIM.join([_tagged_key,
+                                               self.dst_host,
+                                               str(self.dst_port),
+                                               obj_type])
+                        store_type = StoreTypes.ROLLPAIR_ROLLSITE
+                    if is_standalone:
+                        status_rp = self.ctx.rp_ctx.load(namespace, STATUS_TABLE_NAME + DELIM + self.roll_site_session_id, options=_options)
+                        status_rp.disable_gc()
+                        if isinstance(obj, RollPair):
+                            status_rp.put(_tagged_key, (obj_type.encode("utf-8"), rp.get_name(), rp.get_namespace()))
+                        else:
+                            status_rp.put(_tagged_key, (obj_type.encode("utf-8"), dst_name, namespace))
+                    else:
+                        store = rp.get_store()
+                        store_locator = store._store_locator
+                        new_store_locator = ErStoreLocator(store_type=store_type,
+                                                           namespace=namespace,
+                                                           name=dst_name,
+                                                           total_partitions=store_locator._total_partitions,
+                                                           partitioner=store_locator._partitioner,
+                                                           serdes=store_locator._serdes)
+
+                        # TODO:0: move options from job to store when database modification finished
+
+                        options = {"roll_site_header": roll_site_header,
+                                   "proxy_endpoint": self.ctx.proxy_endpoint,
+                                   "obj_type": obj_type}
+
+                        if isinstance(obj, RollPair):
+                            roll_site_header._options['total_partitions'] = obj.get_store()._store_locator._total_partitions
+                            L.info(f"RollSite.push: pushing {roll_site_header}, type: RollPair, count: {obj.count()}")
+                        else:
+                            L.info(f"RollSite.push: pushing {roll_site_header}, type: object")
+                        rp.map_values(lambda v: v,
+                                      output=ErStore(store_locator=new_store_locator),
+                                      options=options)
+
+                    L.info(f"RollSite.push: push {roll_site_header} done. type:{type(obj)}")
+                    return _tagged_key
+
+                future = RollSite.receive_exeutor_pool.submit(map_values, _tagged_key, self._is_standalone, roll_site_header)
+                if not self._is_standalone and (obj_type == 'object' or obj_type == b'object'):
+                    tmp_rp = rp
                 else:
-                    store = rp.get_store()
-                    store_locator = store._store_locator
-                    new_store_locator = ErStoreLocator(store_type=store_type,
-                                                       namespace=namespace,
-                                                       name=dst_name,
-                                                       total_partitions=store_locator._total_partitions,
-                                                       partitioner=store_locator._partitioner,
-                                                       serdes=store_locator._serdes)
+                    tmp_rp = None
 
-                    # TODO:0: move options from job to store when database modification finished
-
-                    options = {"roll_site_header": roll_site_header,
-                               "proxy_endpoint": self.ctx.proxy_endpoint,
-                               "obj_type": obj_type}
-
-                    if isinstance(obj, RollPair):
-                        roll_site_header._options['total_partitions'] = obj.get_store()._store_locator._total_partitions
-                        L.info(f"RollSite.push: pushing {roll_site_header}, type: RollPair, count: {obj.count()}")
-                    else:
-                        L.info(f"RollSite.push: pushing {roll_site_header}, type: object")
-                    rp.map_values(lambda v: v,
-                                  output=ErStore(store_locator=new_store_locator),
-                                  options=options)
-
-                L.info(f"RollSite.push: push {roll_site_header} done. type:{type(obj)}")
-                return _tagged_key
-
-            future = RollSite.receive_exeutor_pool.submit(map_values, _tagged_key, self._is_standalone, roll_site_header)
-            if not self._is_standalone and (obj_type == 'object' or obj_type == b'object'):
-                tmp_rp = rp
-            else:
-                tmp_rp = None
-
-            future.add_done_callback(functools.partial(self._push_callback, tmp_rp=tmp_rp))
-            futures.append(future)
+                future.add_done_callback(functools.partial(self._push_callback, tmp_rp=tmp_rp))
+                futures.append(future)
 
         return futures
 

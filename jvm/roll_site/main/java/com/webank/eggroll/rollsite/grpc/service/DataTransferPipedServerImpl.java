@@ -29,9 +29,7 @@ import com.webank.eggroll.core.util.ErrorUtils;
 import com.webank.eggroll.core.util.ToStringUtils;
 import com.webank.eggroll.rollsite.RollSiteUtil;
 import com.webank.eggroll.rollsite.event.model.PipeHandleNotificationEvent;
-import com.webank.eggroll.rollsite.factory.EventFactory;
-import com.webank.eggroll.rollsite.factory.PipeFactory;
-import com.webank.eggroll.rollsite.factory.ProxyGrpcStreamObserverFactory;
+import com.webank.eggroll.rollsite.factory.*;
 import com.webank.eggroll.rollsite.infra.JobStatus;
 import com.webank.eggroll.rollsite.infra.Pipe;
 import com.webank.eggroll.rollsite.infra.impl.PacketQueueSingleResultPipe;
@@ -73,8 +71,12 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
     private EventFactory eventFactory;
     @Autowired
     private ProxyServerConf proxyServerConf;
+    @Autowired
+    private ProxyGrpcStubFactory proxyGrpcStubFactory;
     private Pipe defaultPipe;
     private PipeFactory pipeFactory;
+    @Autowired
+    private DefaultPipeFactory defaultPipeFactory;
 
     static Map<String, PacketQueueSingleResultPipe> pipeMap = Maps.newConcurrentMap();
 
@@ -322,6 +324,58 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                     .setValue(ByteString.copyFromUtf8(type)).build();
                 packet = packetBuilder.setHeader(resultHeader).setBody(body).build();
                 responseObserver.onNext(packet);
+                responseObserver.onCompleted();
+                return;
+            }
+
+            if (header.getOperator().equals("push_obj")) {
+                if (!proxyServerConf.getPartyId().equals(header.getDst().getPartyId())) {
+                    Proxy.Topic dstTopic = header.getDst();
+                    DataTransferServiceGrpc.DataTransferServiceBlockingStub blockstub = proxyGrpcStubFactory.getBlockingStub(dstTopic);
+
+                    Proxy.Packet ret_packet = blockstub.unaryCall(request);
+                    //LOGGER.info("{}", ret_packet);
+                    responseObserver.onNext(ret_packet);
+                    responseObserver.onCompleted();
+                } else {
+                    ErRollSiteHeader rollSiteHeader = restoreRollSiteHeader(
+                            request.getHeader().getTask().getModel().getName());
+                    String tagKey = genTagKey(rollSiteHeader);
+                    JobStatus.addPutBatchRequiredCount(tagKey, 1);
+
+                    LOGGER.info("received obj, tagKey: {}", tagKey);
+
+                    if (!JobStatus.hasLatch(tagKey)) {
+                        int totalPartitions = 1;
+
+                        String tpString = "1";
+                        Option<String> tpOption =
+                                rollSiteHeader.options().get(StringConstants.TOTAL_PARTITIONS_SNAKECASE());
+                        if (tpOption instanceof Some) {
+                            tpString = ((Some<String>) tpOption).get();
+                        }
+
+                        totalPartitions = Integer.parseInt(tpString);
+                        JobStatus.createLatch(tagKey, totalPartitions);
+                    }
+                    JobStatus.countDownFinishLatch(tagKey);
+                    JobStatus.setType(tagKey, rollSiteHeader.dataType());
+
+                    Pipe pipe = defaultPipeFactory.create(tagKey);
+                    pipe.write(request);
+
+                    JobStatus.increasePutBatchFinishedCount(tagKey);
+
+                    responseObserver.onNext(request);
+                    responseObserver.onCompleted();
+                }
+                return;
+            }
+            if (header.getOperator().equals("pull_obj")) {
+                String tag_key = header.getDst().getName();
+                Pipe pipe = defaultPipeFactory.create(tag_key);
+                Proxy.Packet ret = (Proxy.Packet) pipe.read(1, TimeUnit.SECONDS);
+                responseObserver.onNext(ret);
                 responseObserver.onCompleted();
                 return;
             }

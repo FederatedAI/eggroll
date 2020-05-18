@@ -1,6 +1,7 @@
 package com.webank.eggroll.core.resourcemanager
 
 import java.io.File
+import org.apache.commons.lang3.StringUtils
 
 import com.webank.eggroll.core.BootstrapBase
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
@@ -13,6 +14,7 @@ import com.webank.eggroll.core.util.{CommandArgsUtils, Logging}
 
 class ClusterManagerBootstrap extends BootstrapBase with Logging {
   private var port = 0
+  private var standaloneTag = "0"
   //private var sessionId = "er_session_null"
   override def init(args: Array[String]): Unit = {
 
@@ -110,6 +112,7 @@ class ClusterManagerBootstrap extends BootstrapBase with Logging {
 
     //this.sessionId = cmd.getOptionValue('s')
     val confPath = cmd.getOptionValue('c', "./conf/eggroll.properties")
+    standaloneTag = System.getProperty("eggroll.standalone.tag")
 
     StaticErConf.addProperties(confPath)
     val confFile = new File(confPath)
@@ -118,15 +121,17 @@ class ClusterManagerBootstrap extends BootstrapBase with Logging {
     this.port = cmd.getOptionValue('p', cmd.getOptionValue('p', StaticErConf.getProperty(
       ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT,"4670"))).toInt
 
-    Runtime.getRuntime.addShutdownHook(new Thread(() => {
-      logWarning("****** Shutting down Cluster Manager ******")
-      logInfo("Shutting down cluster manager. Force terminating NEW / ACTIVE sessions")
+    if(StringUtils.isBlank(standaloneTag)) {
+      Runtime.getRuntime.addShutdownHook(new Thread(() => {
+        logWarning("****** Shutting down Cluster Manager ******")
+        logInfo("Shutting down cluster manager. Force terminating NEW / ACTIVE sessions")
 
-      val sessionManagerService = new SessionManagerService()
-      sessionManagerService.killAllSessions(ErSessionMeta())
+        val sessionManagerService = new SessionManagerService()
+        sessionManagerService.killAllSessions(ErSessionMeta())
 
-      logWarning("****** All sessions stopped / killed. Cluster Manager exiting gracefully ******")
-    }))
+        logWarning("****** All sessions stopped / killed. Cluster Manager exiting gracefully ******")
+      }))
+    }
     //StaticErConf.addProperty(SessionConfKeys.CONFKEY_SESSION_ID, sessionId)
   }
 
@@ -137,7 +142,7 @@ class ClusterManagerBootstrap extends BootstrapBase with Logging {
     this.port = server.getPort
 
     StaticErConf.setPort(port)
-    logInfo(s"server started at port ${port}")
-    println(s"server started at port ${port}")
+    logInfo(s"${standaloneTag} server started at port ${port}")
+    println(s"${standaloneTag} server started at port ${port}")
   }
 }
