@@ -19,6 +19,7 @@
 package com.webank.eggroll.format
 
 import java.io._
+import java.net.ConnectException
 import java.nio.ByteOrder
 import java.nio.channels.{Channels, ReadableByteChannel, WritableByteChannel}
 import java.util.concurrent.{BlockingQueue, LinkedBlockingQueue}
@@ -40,6 +41,7 @@ import org.apache.commons.lang3.StringUtils
 import scala.collection.JavaConverters._
 import scala.collection.concurrent.TrieMap
 import scala.collection.mutable.ListBuffer
+import scala.collection.mutable.{Set => mutableSet}
 
 // TODO: where to delete a RollFrame?
 trait FrameStore {
@@ -67,22 +69,34 @@ object FrameStore {
   val HOST: String = StringConstants.HOST
   val PORT: String = StringConstants.PORT
 
-  private val rootPath = "/tmp/unittests/RollFrameTests/"
+  val NETWORK_CONNECT_NUM = 10
+  private val ROOT_PATH = "/tmp/unittests/RollFrameTests/"
 
-  private def getStorePath(store: ErStore, partitionId: Int): String = {
-    val storeLocator = store.storeLocator
-    val path = storeLocator.path
-    val dir =
-      if (StringUtils.isBlank(path))
-        s"$rootPath/${storeLocator.toPath()}"
-      else
-        path
-
-    s"$dir/$partitionId"
+  def getPartitionsMeta(store: ErStore): Seq[Map[String, String]] = {
+    val storeDir = getStoreDir(store)
+    store.partitions.indices.map(i => Map("path" -> s"$storeDir/$i",
+      "host" -> store.partitions(i).processor.transferEndpoint.host,
+      "port" -> store.partitions(i).processor.transferEndpoint.port.toString))
   }
 
-  private def getStorePath(partition: ErPartition): String = {
-    IoUtils.getPath(partition, rootPath)
+  def getStoreDir(store: ErStore): String = {
+    val path = store.storeLocator.path
+    if (StringUtils.isBlank(path))
+      s"$ROOT_PATH/${store.storeLocator.toPath()}"
+    else
+      path
+  }
+
+  def getStoreDir(namespace: String, name: String, storeType: String = StringConstants.CACHE): String = {
+    s"$ROOT_PATH/${String.join(StringConstants.SLASH, storeType, namespace, name)}"
+  }
+
+  def getStorePath(store: ErStore, partitionId: Int): String = {
+    s"${getStoreDir(store)}/$partitionId"
+  }
+
+  def getStorePath(partition: ErPartition): String = {
+    IoUtils.getPath(partition, ROOT_PATH)
   }
 
   def apply(opts: Map[String, String]): FrameStore = opts.getOrElse(TYPE, FILE) match {
@@ -190,7 +204,7 @@ class HdfsFrameStore(path: String) extends FrameStore {
 }
 
 object QueueFrameStore {
-  private val map = TrieMap[String, BlockingQueue[FrameBatch]]()
+  val map = TrieMap[String, BlockingQueue[FrameBatch]]()
 
   // key: a task name,e.g. mapBatch-0-doing , BlockingQueue[]: several batch FrameBatch
   def getOrCreateQueue(key: String): BlockingQueue[FrameBatch] = this.synchronized {
@@ -203,23 +217,31 @@ object QueueFrameStore {
 
 class QueueFrameStore(path: String, total: Int) extends FrameStore {
   // TODO: QueueFrameStoreAdapter.getOrCreateQueue(path)
-  override def close(): Unit = {}
 
-  override def readAll(): Iterator[FrameBatch] = {
-    require(total >= 0, "blocking queue need a total size before read")
+  private val fbIterator = if (total > 0) {
     new Iterator[FrameBatch] {
       private var remaining = total
 
       override def hasNext: Boolean = remaining > 0
 
       override def next(): FrameBatch = {
-        remaining -= 1
-        println("taking from queue:" + path)
-        val ret = QueueFrameStore.getOrCreateQueue(path).take()
-        println("token from queue:" + path)
-        ret
+        if (hasNext) {
+          remaining -= 1
+          //          println("taking from queue:" + path)
+          val ret = QueueFrameStore.getOrCreateQueue(path).take()
+          //          println("token from queue:" + path)
+          ret
+        }
+        else throw new NoSuchElementException("next on empty iterator")
       }
     }
+  } else Iterator()
+
+  override def close(): Unit = {}
+
+  override def readAll(): Iterator[FrameBatch] = {
+    require(total >= 0, "blocking queue need a total size before read")
+    fbIterator
   }
 
   override def writeAll(batches: Iterator[FrameBatch]): Unit = {
@@ -229,49 +251,130 @@ class QueueFrameStore(path: String, total: Int) extends FrameStore {
 
 class NetworkFrameStore(path: String, host: String, port: Int) extends FrameStore {
   var client: NioTransferEndpoint = _
-
-  override def writeAll(batches: Iterator[FrameBatch]): Unit = {
-    // write FrameBatch to remote server
-    if (client == null) {
-      client = new NioTransferEndpoint()
-      client.runClient(host, port)
-    }
-    batches.foreach(batch => client.send(path, batch))
-  }
-
-  override def readAll(): Iterator[FrameBatch] = {
+  val fbIterator: Iterator[FrameBatch] = {
     // read FrameBatch from local queue, if FrameBatch was used many time, must be loaded to cache
     new Iterator[FrameBatch] {
       // TODO: only send/receive one batch currently. If add a variable named 'total' like queueFrameDB, can't keep a union
       //       apply function of FrameDB.
       private var remaining = 1
 
-      override def hasNext: Boolean = {
-        remaining > 0
-      }
+      override def hasNext: Boolean = remaining > 0
 
       override def next(): FrameBatch = {
-        println("taking from network queue:" + path)
-        remaining -= 1
-        val ret = QueueFrameStore.getOrCreateQueue(path).take
-        println("token from network queue:" + path)
-        ret
+        if (hasNext) {
+          remaining -= 1
+          val ret = QueueFrameStore.getOrCreateQueue(path).take
+          ret
+        } else throw new NoSuchElementException("next on empty iterator")
       }
     }
   }
 
+  override def writeAll(batches: Iterator[FrameBatch]): Unit = {
+    // write FrameBatch to remote server
+    var loop = 0
+    var success: Boolean = false
+    var error: Throwable = null
+    if (client == null) {
+      while (loop < FrameStore.NETWORK_CONNECT_NUM && !success) {
+        try {
+          client = new NioTransferEndpoint()
+          client.runClient(host, port)
+          success = true
+        }
+        catch {
+          case e: Throwable => e.printStackTrace()
+            loop += 1
+            error = e
+        }
+      }
+      if (loop >= FrameStore.NETWORK_CONNECT_NUM) {
+        println(s"loop = $loop")
+        throw new RuntimeException(s"Error to connect to EggRoll servers, Please try run again.", error)
+      }
+    }
+
+    try {
+      batches.foreach(batch => client.send(path, batch))
+    } catch {
+      case e: Throwable => e.printStackTrace()
+        throw new IOException(s"Write FrameBatch to Network failed,server host:$host,port:$port", e)
+    }
+  }
+
+  override def readAll(): Iterator[FrameBatch] = fbIterator
+
   override def close(): Unit = {
     // need to close ?
-    //    client.clientChannel.close()
+    client.clientChannel.close()
+    println(s"close client,host:$host,port:$port")
   }
 }
 
 object JvmFrameStore {
   private val caches: TrieMap[String, ListBuffer[FrameBatch]] = new TrieMap[String, ListBuffer[FrameBatch]]()
+  private val persistence: mutableSet[String] = mutableSet[String]()
+
+  def addExclude(path: String): Unit = {
+    persistence += path
+  }
+
+  def deleteExclude(path: String): Unit = {
+    persistence -= path
+  }
+
+  def reSetExclude(): Unit = {
+    persistence.clear()
+  }
+
+  def release(): Unit = {
+    // TODO： deal with exception in a new thread
+    new Thread() {
+      override def run(): Unit = {
+        try {
+          if (persistence.nonEmpty) {
+            for (element <- caches) {
+              for (path <- persistence) {
+                if (!element._1.toLowerCase.startsWith(path.toLowerCase)) {
+                  println(s"clear:${element._1}")
+                  element._2.foreach { i =>
+                    i.clear()
+                    assert(i.isEmpty)
+                  }
+                  caches.-=(element._1)
+                }
+              }
+            }
+          } else {
+            for (element <- caches) {
+              println(s"clear:${element._1}")
+              element._2.foreach { i =>
+                i.clear()
+                assert(i.isEmpty)
+              }
+              caches.-=(element._1)
+            }
+          }
+          println("success to clear")
+        } catch {
+          case e: Throwable =>
+            println("release store failed")
+            e.printStackTrace()
+        }
+      }
+    }.start()
+  }
 }
 
 class JvmFrameStore(path: String) extends FrameStore {
-  override def readAll(): Iterator[FrameBatch] = JvmFrameStore.caches(path).toIterator
+  override def readAll(): Iterator[FrameBatch] = {
+    try {
+      JvmFrameStore.caches(path).toIterator
+    } catch {
+      case t: Throwable => t.printStackTrace()
+        throw new NoSuchElementException(s"path:$path isn't in jvm frame store")
+    }
+  }
 
   override def writeAll(batches: Iterator[FrameBatch]): Unit = this.synchronized {
     if (!JvmFrameStore.caches.contains(path)) {
@@ -430,7 +533,7 @@ class FrameWriter(val rootSchema: VectorSchemaRoot, val arrowWriter: ArrowStream
         try {
           vector.setInitialCapacity(rowCount)
           vector.allocateNew()
-          f(fieldIndex, new FrameVector(vector))
+          f(fieldIndex, FrameVector(vector))
           vector.setValueCount(rowCount)
         } finally {
           // todo: should be closed with config?
@@ -438,7 +541,6 @@ class FrameWriter(val rootSchema: VectorSchemaRoot, val arrowWriter: ArrowStream
         }
       }
       arrowWriter.writeBatch()
-      println("batch index", b)
     }
   }
 
