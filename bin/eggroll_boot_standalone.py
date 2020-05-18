@@ -54,7 +54,11 @@ if __name__ == '__main__':
 
     javahome = get_property(conf_file, "eggroll.resourcemanager.bootstrap.roll_pair_master.javahome")
     classpath = os.path.join(eggroll_home, 'conf/') + ";" + os.path.join(eggroll_home, 'lib/*')
-    cluster_manager_port = get_property(conf_file, "eggroll.resourcemanager.clustermanager.port")
+
+    if os.environ.get("EGGROLL_RESOURCE_MANAGER_BOOTSTRAP_DEBUG", "0") == "0":
+        cluster_manager_port = '0'
+    else:
+        cluster_manager_port = get_property(conf_file, "eggroll.resourcemanager.clustermanager.port")
 
     if platform.system() == "Windows":
         if javahome is None:
