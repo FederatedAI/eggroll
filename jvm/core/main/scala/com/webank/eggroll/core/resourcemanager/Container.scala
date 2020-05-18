@@ -89,8 +89,8 @@ class Container(conf: RuntimeErConf, moduleName: String, processorId: Long = 0) 
       val processorBuilder = new ProcessBuilder(bootStrapShell, bootStrapShellArgs, cmd)
       val builderEnv = processorBuilder.environment()
       if(StringUtils.isNotBlank(System.getProperty("eggroll.standalone.tag"))) {
-        logInfo(s"set STANDALONE_PORT ${cmPort}")
-        builderEnv.put("STANDALONE_PORT", cmPort)
+        logInfo(s"set EGGROLL_STANDALONE_PORT ${cmPort}")
+        builderEnv.put("EGGROLL_STANDALONE_PORT", cmPort)
       }
       val logPath = new File(s"${logsDir}${File.separator}${sessionId}${File.separator}")
       if(!logPath.exists()){
