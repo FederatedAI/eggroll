@@ -129,6 +129,24 @@ class TestPairStore(unittest.TestCase):
         print("last")
         print(list(reader.read_all()))
 
+    def test_pair_bin_no_abb(self):
+        bs = bytearray(32)
+        buf = ArrayByteBuffer(bs)
+        writer = PairBinWriter(pair_buffer=buf, data=bs)
+        for i in range(10):
+            try:
+                writer.write(str(i).encode(), str(i).encode())
+            except IndexError as e:
+                writer.set_offset(0)
+                writer = PairBinWriter(pair_buffer=buf, data=bs)
+                writer.write(str(i).encode(), str(i).encode())
+                pbr = PairBinReader(pair_buffer=buf, data=writer.get_data())
+                print(pbr.read_bytes(writer.get_offset(), 0))
+        writer.set_offset(0)
+        reader = PairBinReader(pair_buffer=buf, data=bs)
+        print("last")
+        print(list(reader.read_all()))
+
     def test_join(self):
         with create_pair_adapter({"store_type": StoreTypes.ROLLPAIR_LMDB, "path": self.dir + "lmdb"}) as db1, \
                 create_pair_adapter({"store_type": StoreTypes.ROLLPAIR_LMDB, "path": self.dir + "lmdb2"}) as db2:
