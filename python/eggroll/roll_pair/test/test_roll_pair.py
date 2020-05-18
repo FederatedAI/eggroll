@@ -15,12 +15,14 @@
 
 import unittest
 
+from eggroll.core.constants import StoreTypes
+from eggroll.core.utils import time_now
 from eggroll.roll_pair.test.roll_pair_test_assets import get_debug_test_context, \
     get_cluster_context, get_standalone_context, get_default_options
 
 
 def get_value(roll_pair):
-    return list(roll_pair.get_all())
+    return list(sorted(roll_pair.get_all(), key=lambda x: x[0]))
 
 
 class TestRollPairBase(unittest.TestCase):
@@ -30,7 +32,7 @@ class TestRollPairBase(unittest.TestCase):
 
     def tearDown(self) -> None:
         print("stop test session")
-        self.ctx.get_session().stop()
+        #self.ctx.get_session().stop()
 
     @staticmethod
     def store_opts(**kwargs):
@@ -52,14 +54,12 @@ class TestRollPairBase(unittest.TestCase):
         rp = self.ctx.parallelize(self.str_generator(True),
                                   options=self.store_opts(include_key=True))
         self.assertUnOrderListEqual(self.str_generator(True), rp.get_all())
-        #rp.destroy()
 
     def test_parallelize(self):
         rp = self.ctx.parallelize(self.str_generator(False), options=self.store_opts(include_key=False))
         print(rp)
         print(list(rp.get_all()))
         self.assertUnOrderListEqual(self.str_generator(False), (v for k,v in rp.get_all()))
-        #rp.destroy()
 
     def test_serdes(self):
         rp = self.ctx.load("ns12020","n_serdes", self.store_opts(serdes="EMPTY"))
@@ -67,23 +67,37 @@ class TestRollPairBase(unittest.TestCase):
         print(list(rp.get_all()))
         print(rp.count())
 
+    def test_put(self):
+        rp = self.ctx.load('ns12020', f'test_put_{time_now()}')
+        object = b'1' * 10
+        rp.put(b'k1', object)
+        rp.destroy()
+
     def test_get(self):
         rp = self.ctx.parallelize(self.str_generator())
         for i in range(10):
             self.assertEqual(str(i), rp.get(str(i)))
-        #rp.destroy()
+
+    def test_put_get(self):
+        rp = self.ctx.load('ns12020', f'test_put_get_{time_now()}')
+        length = (2 << 10) - 10
+        k = b'k'
+        v = b'1' * length
+        rp.put(k, v)
+        v1 = rp.get(k)
+        print(f'length: {len(v1)}')
+        self.assertEqual(len(v1), length)
+        self.assertEquals(v, v1)
 
     def test_count(self):
         rp = self.ctx.parallelize(self.str_generator(row_limit=11))
         self.assertEqual(11, rp.count())
-        #rp.destroy()
 
     def test_put_all(self):
         rp = self.ctx.load("ns12020","n1")
         data = [("k1","v1"),("k2","v2"),("k3","v3"),("k4","v4"),("k5","v5"),("k6","v6")]
         rp.put_all(data)
         self.assertUnOrderListEqual(data, rp.get_all())
-        #rp.destroy()
 
     def test_cleanup(self):
         rp = self.ctx.load("ns168","n1")
@@ -92,14 +106,34 @@ class TestRollPairBase(unittest.TestCase):
 
         rp1 = self.ctx.load("ns168","n111")
         rp1.put_all(data)
-        self.ctx.cleanup(namespace='ns168', name='*')
+        self.ctx.cleanup(namespace='ns168', name='n11*')
+
+    def test_cleanup_namespace(self):
+        namespace = 'ns180'
+        rp = self.ctx.load(namespace,"n1")
+        data = [("k1","v1"),("k2","v2"),("k3","v3"),("k4","v4"),("k5","v5"),("k6","v6")]
+        rp.put_all(data)
+
+        rp1 = self.ctx.load(namespace,"n111")
+        rp1.put_all(data)
+        rp2 = self.ctx.parallelize(data, options={'namespace': namespace})
+        self.ctx.cleanup(namespace=namespace, name='*')
+
+    def test_cleanup_namespace_specified_store_type(self):
+        namespace = 'ns181'
+        rp = self.ctx.load(namespace,"n1")
+        data = [("k1","v1"),("k2","v2"),("k3","v3"),("k4","v4"),("k5","v5"),("k6","v6")]
+        rp.put_all(data)
+
+        rp1 = self.ctx.parallelize(data, options={'namespace': namespace})
+        self.ctx.cleanup(namespace=namespace,
+                         name='*',
+                         options={'store_type': StoreTypes.ROLLPAIR_IN_MEMORY})
 
     def test_map(self):
         rp = self.ctx.parallelize(self.str_generator())
-        rp2 = rp.map(lambda k,v: (k + "_1", v))
+        rp2 = rp.map(lambda k, v: (k + "_1", v))
         self.assertUnOrderListEqual(((k + "_1", v) for k, v in self.str_generator()), rp2.get_all())
-        #rp.destroy()
-        #rp2.destroy()
 
     def test_reduce(self):
         options = self.store_opts()
@@ -162,11 +196,10 @@ class TestRollPairBase(unittest.TestCase):
         options = get_default_options()
         options['include_key'] = True
         data = [("k1", "v1"), ("k2", "v2"), ("k3", "v3"), ("k4", "v4")]
-        table = self.ctx.load('ns12020020618', 'test_destroy', options=options)#.put_all(data, options=options)
+        table = self.ctx.load('ns12020020618', 'test_destroy', options=options).put_all(data, options=options)
         print("before destroy:{}".format(list(table.get_all())))
         table.destroy()
         # TODO:1: table which has been destroyed cannot get_all, should raise exception
-        #print("after destroy:{}".format(list(table.get_all())))
         self.assertEqual(table.count(), 0)
 
     def test_destroy_simple(self):
@@ -217,6 +250,7 @@ class TestRollPairBase(unittest.TestCase):
 
     def test_map_partitions(self):
         options = get_default_options()
+        options['total_partitions'] = 12
         data = [(str(i), i) for i in range(10)]
         rp = self.ctx.load("ns1", "test_map_partitions", options=options).put_all(data, options={"include_key": True})
         def func(iter):
@@ -226,8 +260,10 @@ class TestRollPairBase(unittest.TestCase):
                 ret.append((f"{k}_{v}_1", v ** 3))
             return ret
         table = rp.map_partitions(func)
-        print(list(rp.map_partitions(func).get_all()))
-        self.assertEqual(get_value(table), [('0_0_0', 0), ('0_0_1', 0), ('1_1_0', 1), ('1_1_1', 1), ('2_2_0', 4), ('2_2_1', 8),
+        self.assertEqual(table.get("6_6_0"), 36)
+        self.assertEqual(table.get("0_0_1"), 0)
+        self.assertEqual(table.get("1_1_0"), 1)
+        self.assertEqual(sorted(table.get_all(), key=lambda x: x[0]), [('0_0_0', 0), ('0_0_1', 0), ('1_1_0', 1), ('1_1_1', 1), ('2_2_0', 4), ('2_2_1', 8),
                                             ('3_3_0', 9), ('3_3_1', 27), ('4_4_0', 16), ('4_4_1', 64), ('5_5_0', 25),
                                             ('5_5_1', 125), ('6_6_0', 36), ('6_6_1', 216), ('7_7_0', 49), ('7_7_1', 343),
                                             ('8_8_0', 64), ('8_8_1', 512), ('9_9_0', 81), ('9_9_1', 729)])
@@ -255,17 +291,21 @@ class TestRollPairBase(unittest.TestCase):
     def test_flatMap(self):
         options = get_default_options()
         options['include_key'] = False
-        rp = self.ctx.load("ns1", "test_flat_map", options=options).put_all(range(5), options=options)
+        options['total_partitions'] = 3
+        rp = self.ctx.load("ns1", "test_flat_map_3p", options=options).put_all(range(5), options=options)
         import random
 
         def foo(k, v):
             result = []
             r = random.randint(10000, 99999)
             for i in range(0, k):
-                result.append((k + r + i, v + r + i))
+                result.append((k + r + i, v + r + i + 1))
             return result
-        print(list(rp.flat_map(foo).get_all()))
-        self.assertEqual(rp.flat_map(foo).count(), 10)
+        res = rp.flat_map(foo)
+        print(list(res.get_all()))
+        print(f"get value:{res.get(res.first(options={'keys_only': True}))} of key:{res.first(options={'keys_only': True})}")
+        self.assertEqual(res.first(options={'keys_only': False})[1], res.get(res.first(options={'keys_only': True})))
+        self.assertEqual(res.count(), 10)
 
     def test_glom(self):
         options = get_default_options()
@@ -276,10 +316,34 @@ class TestRollPairBase(unittest.TestCase):
 
     def test_join(self):
         options = get_default_options()
-        left_rp = self.ctx.load("ns1", "testJoinLeft", options=options).put_all([('a', 1), ('b', 4)], options={"include_key": True})
-        right_rp = self.ctx.load("ns1", "testJoinRight", options=options).put_all([('a', 2), ('c', 4)], options={"include_key": True})
+        left_rp = self.ctx.load("ns1", "testJoinLeft", options=options).put_all([('a', 1), ('b', 4), ('d', 6), ('e', 0)], options={"include_key": True})
+        right_rp = self.ctx.load("ns1", "testJoinRight", options=options).put_all([('a', 2), ('c', 4), ('d', 1), ('f', 0), ('g', 1)], options={"include_key": True})
         print(list(left_rp.join(right_rp, lambda v1, v2: v1 + v2).get_all()))
-        self.assertEqual(get_value(left_rp.join(right_rp, lambda v1, v2: v1 + v2)), [('a', 3)])
+        self.assertEqual(get_value(left_rp.join(right_rp, lambda v1, v2: v1 + v2)), [('a', 3), ('d', 7)])
+        self.assertEqual(get_value(right_rp.join(left_rp, lambda v1, v2: v1 + v2)), [('a', 3), ('d', 7)])
+
+    def test_join_diff_partitions(self):
+        options_left = get_default_options()
+        options_right = get_default_options()
+        options_left['total_partitions'] = 10
+        options_right['total_partitions'] = 5
+        left_rp = self.ctx.load("ns1", "testJoinLeft_10p_6", options=options_left).put_all([('a', 1), ('b', 4), ('d', 6), ('e', 0), ('f', 3), ('g', 12), ('h', 13), ('i', 14), ('j', 15), ('k', 16), ('l', 17)],
+                                                                                    options={"include_key": True})
+        right_rp = self.ctx.load("ns1", "testJoinRight_5p_6", options=options_right).put_all([('a', 2), ('c', 4), ('d', 1), ('f', 0), ('g', 1)],
+                                                                                     options={"include_key": True})
+        print(f'left:{get_value(left_rp)}, right:{get_value(right_rp)}')
+        print('111', get_value(left_rp.join(right_rp, lambda v1, v2: v1 + v2)))
+        print('222', get_value(right_rp.join(left_rp, lambda v1, v2: v1 + v2)))
+        self.assertEqual(get_value(left_rp.join(right_rp, lambda v1, v2: v1 + v2)), [('a', 3), ('d', 7), ('f', 3), ('g', 13)])
+        self.assertEqual(get_value(right_rp.join(left_rp, lambda v1, v2: v1 + v2)), [('a', 3), ('d', 7), ('f', 3), ('g', 13)])
+
+        right_rp = self.ctx.load("ns1", "testJoinRight_10p_7", options=options_right).put_all([('a', 1), ('b', 4), ('d', 6), ('e', 0), ('f', 3), ('g', 12), ('h', 13), ('i', 14), ('j', 15), ('k', 16), ('l', 17)],
+                                                                                           options={"include_key": True})
+        left_rp = self.ctx.load("ns1", "testJoinLeft_5p_7", options=options_left).put_all([('a', 2), ('c', 4), ('d', 1), ('f', 0), ('g', 1)],
+                                                                                             options={"include_key": True})
+        print(f'left:{get_value(left_rp)}, right:{get_value(right_rp)}')
+        print('333', get_value(left_rp.join(right_rp, lambda v1, v2: v1 + v2)))
+        self.assertEqual(get_value(left_rp.join(right_rp, lambda v1, v2: v1 + v2)), [('a', 3), ('d', 7), ('f', 3), ('g', 13)])
 
     def test_sample(self):
         options = get_default_options()
@@ -294,6 +358,63 @@ class TestRollPairBase(unittest.TestCase):
         left_rp = self.ctx.load("namespace20201", "testSubtractByKeyLeft202013", options=options).put_all(range(10), options=options)
         right_rp = self.ctx.load("namespace2020131", "testSubtractByKeyRight202013", options=options).put_all(range(5), options=options)
         self.assertEqual(list(left_rp.subtract_by_key(right_rp).get_all()), [(5, 5), (6, 6), (7, 7), (8, 8), (9, 9)])
+        print(list(left_rp.subtract_by_key(right_rp).get_all()))
+
+    def test_subtract_diff_partitions(self):
+        options_left = get_default_options()
+        options_right = get_default_options()
+        options_left['total_partitions'] = 10
+        options_right['total_partitions'] = 5
+        left_rp = self.ctx.load("ns1", "testSubtractLeft_10p_6", options=options_left).put_all([('a', 1), ('b', 4), ('d', 6), ('e', 0), ('f', 3), ('g', 12), ('h', 13), ('i', 14), ('j', 15), ('k', 16), ('l', 17)],
+                                                                                           options={"include_key": True})
+        right_rp = self.ctx.load("ns1", "testSubtractRight_5p_6", options=options_right).put_all([('a', 2), ('c', 4), ('d', 1), ('f', 0), ('g', 1)],
+                                                                                             options={"include_key": True})
+        print(f'left:{get_value(left_rp)}, right:{get_value(right_rp)}')
+        print('111', get_value(left_rp.subtract_by_key(right_rp)))
+        print('222', get_value(right_rp.subtract_by_key(left_rp)))
+        self.assertEqual(get_value(left_rp.subtract_by_key(right_rp)), [('b', 4), ('e', 0), ('h', 13), ('i', 14), ('j', 15), ('k', 16), ('l', 17)])
+        self.assertEqual(get_value(right_rp.subtract_by_key(left_rp)), [('c', 4)])
+
+        right_rp = self.ctx.load("ns1", "testSubtractRight_10p_7", options=options_right).put_all([('a', 1), ('b', 4), ('d', 6), ('e', 0), ('f', 3), ('g', 12), ('h', 13), ('i', 14), ('j', 15), ('k', 16), ('l', 17)],
+                                                                                              options={"include_key": True})
+        left_rp = self.ctx.load("ns1", "testSubtractLeft_5p_7", options=options_left).put_all([('a', 2), ('c', 4), ('d', 1), ('f', 0), ('g', 1)],
+                                                                                          options={"include_key": True})
+        print(f'left:{get_value(left_rp)}, right:{get_value(right_rp)}')
+        print('333', get_value(left_rp.subtract_by_key(right_rp)))
+        self.assertEqual(get_value(left_rp.subtract_by_key(right_rp)), [('c', 4)])
+
+    def test_save_as_more_partition(self):
+        rp = self.ctx.parallelize(range(10), options={'include_key': False})
+        import time
+        sa = rp.save_as(f'test_name_{time.monotonic()}', 'test_ns', 2)
+        self.assertEqual(sa.get_partitions(), 2)
+        self.assertUnOrderListEqual(list(rp.get_all()), list(sa.get_all()))
+
+    def test_save_as_less_partition(self):
+        rp = self.ctx.parallelize(range(10), options={'include_key': False, 'total_partitions': 10})
+        import time
+        sa = rp.save_as(f'test_name_{time.monotonic()}', 'test_ns', 2)
+        self.assertEqual(sa.get_partitions(), 2)
+        self.assertUnOrderListEqual(list(rp.get_all()), list(sa.get_all()))
+
+    def test_save_as_equal_partition(self):
+        rp = self.ctx.parallelize(range(10), options={'include_key': False, 'total_partitions': 2})
+        import time
+        sa = rp.save_as(f'test_name_{time.monotonic()}', 'test_ns', 2)
+        self.assertEqual(sa.get_partitions(), 2)
+        self.assertUnOrderListEqual(list(rp.get_all()), list(sa.get_all()))
+
+    @staticmethod
+    def gen_data(self):
+        ret = []
+        for i in range(1, 2000000):
+            ret.append(i)
+        return ret
+
+    @staticmethod
+    def gen_kv(self):
+        for i in range(1, 2000000):
+            yield [i, i]
 
     def test_union(self):
         options = get_default_options()
@@ -319,6 +440,32 @@ class TestRollPairBase(unittest.TestCase):
         print("right:", list(right_rp.get_all()))
         print(list(left_rp.union(right_rp, lambda v1, v2: v1 + v2).get_all()))
 
+    def test_union_diff_partitions(self):
+        options_left = get_default_options()
+        options_right = get_default_options()
+        options_left['total_partitions'] = 10
+        options_right['total_partitions'] = 5
+        left_rp = self.ctx.load("ns1", "testUniontLeft_10p_6", options=options_left).put_all([('a', 1), ('b', 4), ('d', 6), ('e', 0), ('f', 3), ('g', 12), ('h', 13), ('i', 14), ('j', 15), ('k', 16), ('l', 17)],
+                                                                                               options={"include_key": True})
+        right_rp = self.ctx.load("ns1", "testUniontRight_5p_6", options=options_right).put_all([('a', 2), ('c', 4), ('d', 1), ('f', 0), ('g', 1)],
+                                                                                                 options={"include_key": True})
+        print(f'left:{get_value(left_rp)}, right:{get_value(right_rp)}')
+        print('111', get_value(left_rp.union(right_rp, lambda v1, v2: v1 + v2)))
+        print('222', get_value(right_rp.union(left_rp, lambda v1, v2: v1 + v2)))
+        self.assertEqual(get_value(left_rp.union(right_rp, lambda v1, v2: v1 + v2)),
+                         [('a', 3), ('b', 4), ('c', 4), ('d', 7), ('e', 0), ('f', 3), ('g', 13), ('h', 13), ('i', 14), ('j', 15), ('k', 16), ('l', 17)])
+        self.assertEqual(get_value(right_rp.union(left_rp, lambda v1, v2: v1 + v2)),
+                         [('a', 3), ('b', 4), ('c', 4), ('d', 7), ('e', 0), ('f', 3), ('g', 13), ('h', 13), ('i', 14), ('j', 15), ('k', 16), ('l', 17)])
+
+        right_rp = self.ctx.load("ns1", "testUniontRight_10p_7", options=options_right).put_all([('a', 1), ('b', 4), ('d', 6), ('e', 0), ('f', 3), ('g', 12), ('h', 13), ('i', 14), ('j', 15), ('k', 16), ('l', 17)],
+                                                                                                  options={"include_key": True})
+        left_rp = self.ctx.load("ns1", "testUniontLeft_5p_7", options=options_left).put_all([('a', 2), ('c', 4), ('d', 1), ('f', 0), ('g', 1)],
+                                                                                              options={"include_key": True})
+        print(f'left:{get_value(left_rp)}, right:{get_value(right_rp)}')
+        print('333', get_value(left_rp.union(right_rp, lambda v1, v2: v1 + v2)))
+        self.assertEqual(get_value(left_rp.union(right_rp, lambda v1, v2: v1 + v2)),
+                         [('a', 3), ('b', 4), ('c', 4), ('d', 7), ('e', 0), ('f', 3), ('g', 13), ('h', 13), ('i', 14), ('j', 15), ('k', 16), ('l', 17)])
+
 
 class TestRollPairMultiPartition(TestRollPairBase):
     def setUp(self):
@@ -342,7 +489,6 @@ class TestRollPairMultiPartition(TestRollPairBase):
 
         self.assertUnOrderListEqual(self.str_generator(include_key=True, row_limit=row_limit), rp.get_all())
         self.assertEqual(st_opts["total_partitions"], rp.get_partitions())
-        #rp.destroy()
 
     def test_count(self):
         st_opts = self.store_opts(include_key=True)
@@ -359,7 +505,6 @@ class TestRollPairMultiPartition(TestRollPairBase):
         rp = self.ctx.parallelize(self.str_generator(True),st_opts)
         self.assertUnOrderListEqual(self.str_generator(True), rp.get_all())
         self.assertEqual(st_opts["total_partitions"], rp.get_partitions())
-        rp.destroy()
 
     def test_count(self):
         super().test_count()
@@ -405,6 +550,19 @@ class TestRollPairClusterEverySession(TestRollPairBase):
         opts.update(kwargs)
         return opts
 
+    def test_get_and_stop_and_kill_session(self):
+        session = self.ctx.get_session()
+        id = session.get_session_id()
+
+        session.stop()
+
+        from eggroll.core.session import ErSession
+        dead_session = ErSession(id)
+        dead_session.stop()
+
+        dead_session = ErSession(id)
+        dead_session.kill()
+
     def tearDown(self) -> None:
         self.ctx.get_session().stop()
 
@@ -414,8 +572,8 @@ class TestRollPairCluster(TestRollPairBase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        #opts = {"eggroll.session.processors.per.node": "10"}
-        opts = {}
+        opts = {"eggroll.session.processors.per.node": "10"}
+        #opts = {}
         cls.ctx = get_cluster_context(options=opts)
 
     def setUp(self):
@@ -453,6 +611,18 @@ class TestRollPairCluster(TestRollPairBase):
         print(f'reduce result: {result}')
         self.assertEqual(result, 21)
 
+    def test_save_as_equal_partition(self):
+        super().test_save_as_equal_partition()
+
+    def test_save_as_less_partition(self):
+        super().test_save_as_less_partition()
+
+    def test_save_as_more_partition(self):
+        super().test_save_as_more_partition()
+
+    def test_join_diff_partitions(self):
+        super().test_join_diff_partitions()
+
     def test_empty(self):
         pass
 
@@ -462,3 +632,10 @@ class TestRollPairCluster(TestRollPairBase):
     @classmethod
     def tearDownClass(cls) -> None:
         cls.ctx.get_session().stop()
+
+
+if __name__ == '__main__':
+    #suite = unittest.TestSuite()
+    suite = unittest.defaultTestLoader.loadTestsFromTestCase(TestRollPairBase)
+    runner = unittest.TextTestRunner()
+    runner.run(suite)

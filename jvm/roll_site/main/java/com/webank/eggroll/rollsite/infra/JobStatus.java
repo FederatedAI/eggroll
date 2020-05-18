@@ -7,20 +7,21 @@ import com.google.common.cache.LoadingCache;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 // TODO:0: add method to clean the map
 public class JobStatus {
     private static final LoadingCache<String, String> jobIdToSessionId;
     private static final LoadingCache<String, CountDownLatch> jobIdToFinishLatch;
-    private static final LoadingCache<String, AtomicInteger> jobIdToPutBatchCount;
+    private static final LoadingCache<String, AtomicLong> jobIdToPutBatchRequiredCount;
+    private static final LoadingCache<String, AtomicLong> jobIdToPutBatchFinishedCount;
     private static final LoadingCache<String, String> tagkeyToObjType;
-
 
     static {
         jobIdToSessionId = CacheBuilder.newBuilder()
             .maximumSize(1000000)
-            .expireAfterAccess(48, TimeUnit.HOURS)
+            .concurrencyLevel(50)
+            .expireAfterAccess(60, TimeUnit.HOURS)
             .recordStats()
             .softValues()
             .build(new CacheLoader<String, String>() {
@@ -32,6 +33,7 @@ public class JobStatus {
 
         jobIdToFinishLatch = CacheBuilder.newBuilder()
             .maximumSize(1000000)
+            .concurrencyLevel(50)
             .expireAfterAccess(48, TimeUnit.HOURS)
             .recordStats()
             .removalListener(removalNotification -> {
@@ -44,21 +46,37 @@ public class JobStatus {
                 }
             });
 
-        jobIdToPutBatchCount = CacheBuilder.newBuilder()
+        jobIdToPutBatchRequiredCount = CacheBuilder.newBuilder()
             .maximumSize(1000000)
+            .concurrencyLevel(50)
             .expireAfterAccess(48, TimeUnit.HOURS)
             .recordStats()
-            .build(new CacheLoader<String, AtomicInteger>() {
+            .build(new CacheLoader<String, AtomicLong>() {
                 @Override
-                public AtomicInteger load(String key) throws Exception {
+                public AtomicLong load(String key) throws Exception {
                     synchronized (putBatchLock) {
-                        return new AtomicInteger(0);
+                        return new AtomicLong(0);
+                    }
+                }
+            });
+
+        jobIdToPutBatchFinishedCount = CacheBuilder.newBuilder()
+            .maximumSize(1000000)
+            .concurrencyLevel(50)
+            .expireAfterAccess(48, TimeUnit.HOURS)
+            .recordStats()
+            .build(new CacheLoader<String, AtomicLong>() {
+                @Override
+                public AtomicLong load(String key) throws Exception {
+                    synchronized (putBatchLock) {
+                        return new AtomicLong(0);
                     }
                 }
             });
 
         tagkeyToObjType = CacheBuilder.newBuilder()
             .maximumSize(1000000)
+            .concurrencyLevel(50)
             .expireAfterAccess(48, TimeUnit.HOURS)
             .recordStats()
             .build(new CacheLoader<String, String>() {
@@ -71,6 +89,20 @@ public class JobStatus {
 
     private static final Object latchLock = new Object();
     private static final Object putBatchLock = new Object();
+    private static final Object tagKeyLock = new Object();
+
+    public static void cleanupJobStatus(String jobId) {
+        synchronized (latchLock) {
+            synchronized (putBatchLock) {
+                synchronized (tagKeyLock) {
+                    removeLatch(jobId);
+                    removePutBatchRequiredCount(jobId);
+                    removePutBatchFinishedCount(jobId);
+                    removeType(jobId);
+                }
+            }
+        }
+    }
 
     public static boolean isJobIdToSessionRegistered(String jobId) {
         return jobIdToSessionId.getIfPresent(jobId) != null;
@@ -80,6 +112,10 @@ public class JobStatus {
         String old = jobIdToSessionId.getIfPresent(jobId);
         jobIdToSessionId.put(jobId, erSessionId);
         return old;
+    }
+
+    private static void removeJobIdToSessionId(String jobId) {
+        jobIdToSessionId.invalidate(jobId);
     }
 
     public static String getErSessionId(String jobId) {
@@ -103,6 +139,12 @@ public class JobStatus {
         } catch (ExecutionException e) {
             Thread.currentThread().interrupt();
             throw new RuntimeException(e);
+        }
+    }
+
+    private static void removeLatch(String jobId) {
+        synchronized (latchLock) {
+            jobIdToFinishLatch.invalidate(jobId);
         }
     }
 
@@ -142,45 +184,114 @@ public class JobStatus {
         }
     }
 
+    public static boolean waitUntilAllCountDown(String jobId, long timeout, TimeUnit unit) {
+        CountDownLatch latch = null;
+        long timeoutWallClock = System.currentTimeMillis() + unit.toMillis(timeout);
+        try {
+            while (latch == null && System.currentTimeMillis() <= timeoutWallClock) {
+                synchronized (latchLock) {
+                    latch = jobIdToFinishLatch.getIfPresent(jobId);
+                }
+
+                if (latch == null) {
+                    Thread.sleep(50);
+                }
+            }
+
+            if (latch != null) {
+                return latch.await(timeout, unit);
+            } else {
+                return false;
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
+        }
+
+    }
+
     public static void setType(String name, String type) {
-        tagkeyToObjType.put(name, type);
+        if (tagkeyToObjType.getIfPresent(name) == null) {
+            synchronized (tagKeyLock) {
+                if (tagkeyToObjType.getIfPresent(name) == null) {
+                    tagkeyToObjType.put(name, type);
+                }
+            }
+        }
     }
 
     public static String getType(String name) {
-        return tagkeyToObjType.getIfPresent(name);
+        synchronized (tagKeyLock) {
+            return tagkeyToObjType.getIfPresent(name);
+        }
     }
 
-    public static int increasePutBatchCount(String jobId) {
+    private static void removeType(String name) {
+        synchronized (tagKeyLock) {
+            tagkeyToObjType.invalidate(name);
+        }
+    }
+
+    public static long addPutBatchRequiredCount(String jobId, long count) {
         try {
-            synchronized (putBatchLock) {
-                return jobIdToPutBatchCount.get(jobId).incrementAndGet();
-            }
+            return jobIdToPutBatchRequiredCount.get(jobId).addAndGet(count);
         } catch (ExecutionException e) {
-            Thread.currentThread().interrupt();
             throw new RuntimeException(e);
         }
     }
 
-    public static int decreasePutBatchCount(String jobId) {
-        AtomicInteger count = jobIdToPutBatchCount.getIfPresent(jobId);
-        if (count != null) {
-            return count.decrementAndGet();
-        } else {
-            return Integer.MIN_VALUE;
+    public static long getPutBatchRequiredCount(String jobId) {
+        try {
+            return jobIdToPutBatchRequiredCount.get(jobId).get();
+        } catch (ExecutionException e) {
+            throw new RuntimeException(e);
         }
     }
 
-    public static int getPutBatchCount(String jobId) {
-        AtomicInteger count = jobIdToPutBatchCount.getIfPresent(jobId);
+    private static void removePutBatchRequiredCount(String jobId) {
+        jobIdToPutBatchRequiredCount.invalidate(jobId);
+    }
 
-        if (count != null) {
-            return count.get();
+    public static long increasePutBatchFinishedCount(String jobId) {
+        try {
+            return jobIdToPutBatchFinishedCount.get(jobId).incrementAndGet();
+        } catch (ExecutionException e) {
+            throw new RuntimeException(e);
         }
+    }
 
-        return Integer.MIN_VALUE;
+    public static long getPutBatchFinishedCount(String jobId) {
+        try {
+            return jobIdToPutBatchFinishedCount.get(jobId).get();
+        } catch (ExecutionException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static void removePutBatchFinishedCount(String jobId) {
+        jobIdToPutBatchFinishedCount.invalidate(jobId);
     }
 
     public static boolean isPutBatchFinished(String jobId) {
-        return getPutBatchCount(jobId) == 0;
+        long requiredCount = getPutBatchRequiredCount(jobId);
+        long finishedCount = getPutBatchFinishedCount(jobId);
+        return requiredCount == finishedCount && requiredCount > 0;
+    }
+
+    public static boolean waitUntilPutBatchFinished(String jobId, long timeout, TimeUnit unit) {
+        long timeoutWallClock = System.currentTimeMillis() + unit.toMillis(timeout);
+        boolean result = false;
+        try {
+            result = isPutBatchFinished(jobId);
+            while (!result && System.currentTimeMillis() <= timeoutWallClock) {
+                Thread.sleep(20);
+                result = isPutBatchFinished(jobId);
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
+        }
+
+        return result;
     }
 }

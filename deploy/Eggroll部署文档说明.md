@@ -99,25 +99,25 @@ eggroll.resourcemanager.process.tag=	<--集群服务标签，对不同集群需�
 
 eggroll.bootstrap.root.script=bin/eggroll_boot.sh	<--eggroll_boot.sh启动脚本路径，默认即可-->
 
-eggroll.rollpair.bootstrap.egg_pair.exepath=bin/roll_pair/egg_pair_bootstrap.sh		<--egg_pair启动脚本路径，默认即可-->
-eggroll.rollpair.bootstrap.egg_pair.venv=		<--virtualenv安装路径，需要修改-->
-eggroll.rollpair.bootstrap.egg_pair.pythonpath=python		<--python文件路径，也作PYTHONPATH，默认即可-->
-eggroll.rollpair.bootstrap.egg_pair.filepath=python/eggroll/roll_pair/egg_pair.py	<--egg_pair.py文件路径，默认即可-->
+eggroll.resourcemanager.bootstrap.egg_pair.exepath=bin/roll_pair/egg_pair_bootstrap.sh		<--egg_pair启动脚本路径，默认即可-->
+eggroll.resourcemanager.bootstrap.egg_pair.venv=		<--virtualenv安装路径，需要修改-->
+eggroll.resourcemanager.bootstrap.egg_pair.pythonpath=python		<--python文件路径，也作PYTHONPATH，默认即可-->
+eggroll.resourcemanager.bootstrap.egg_pair.filepath=python/eggroll/roll_pair/egg_pair.py	<--egg_pair.py文件路径，默认即可-->
 
 <--以下几项默认即可-->
-eggroll.rollpair.bootstrap.roll_pair_master.exepath=bin/roll_pair/roll_pair_master_bootstrap.sh		<--roll_pair_master_bootstrap.sh文件路径-->
-eggroll.rollpair.bootstrap.roll_pair_master.javahome=	<--java环境变量，系统安装jdk1.8-->
-eggroll.rollpair.bootstrap.roll_pair_master.classpath=conf/:lib/*	<--eggroll启动时读取classpath文件路径-->
-eggroll.rollpair.bootstrap.roll_pair_master.mainclass=com.webank.eggroll.rollpair.RollPairMasterBootstrap	<--roll_pair_master主类-->
-eggroll.rollpair.bootstrap.roll_pair_master.jvm.options=	<--jvm启动参数-->
+eggroll.resourcemanager.bootstrap.roll_pair_master.exepath=bin/roll_pair/roll_pair_master_bootstrap.sh		<--roll_pair_master_bootstrap.sh文件路径-->
+eggroll.resourcemanager.bootstrap.roll_pair_master.javahome=	<--java环境变量，系统安装jdk1.8-->
+eggroll.resourcemanager.bootstrap.roll_pair_master.classpath=conf/:lib/*	<--eggroll启动时读取classpath文件路径-->
+eggroll.resourcemanager.bootstrap.roll_pair_master.mainclass=com.webank.eggroll.rollpair.RollPairMasterBootstrap	<--roll_pair_master主类-->
+eggroll.resourcemanager.bootstrap.roll_pair_master.jvm.options=	<--jvm启动参数-->
 <--以上几项默认即可-->
 
 <--rollsite配置说明：其服务ip、端口与partyId需要与route_table.json配置文件中对应一致-->
-coordinator=webank			<--rollsite服务标签，默认即可-->
-ip=127.0.0.1				<--rollsite服务ip，需要修改-->
-port=9370					<--rollsite服务端口，建议默认-->
-partyId=10001				<--集群partyId，不同集群需要使用不同的partyId，需要修改-->
-route.table=conf/route_table.json	<--route_table.json路由配置文件路径，默认即可-->
+eggroll.rollsite.coordinator=webank			<--rollsite服务标签，默认即可-->
+eggroll.rollsite.host=127.0.0.1				<--rollsite服务ip，需要修改-->
+eggroll.rollsite.port=9370					<--rollsite服务端口，建议默认-->
+eggroll.rollsite.party.id=10001				<--集群partyId，不同集群需要使用不同的partyId，需要修改-->
+eggroll.rollsite.route.table.path=conf/route_table.json	<--route_table.json路由配置文件路径，默认即可-->
 
 ```
 
@@ -200,6 +200,7 @@ sed -i "s/eggroll_meta/数据库名称/" conf/create-eggroll-meta-tables.sql
 Eggroll的bin目录中附带启动脚本bin/eggroll.sh使用说明：
 
 ```shell
+source ${EGGROLL_HOME}/init.sh       --${EGGROLL_HOME} means the absolute path of eggroll
 sh bin/eggroll.sh $1 $2		
 <--
 	$1：需要执行操作的服务名称，例如clustermanager，nodemanager，rollsite，all(表示所有服务)；
@@ -210,6 +211,7 @@ sh bin/eggroll.sh $1 $2
 使用例子：
 
 ```shell
+source ${EGGROLL_HOME}/init.sh       --${EGGROLL_HOME} means the absolute path of eggroll
 <--启动所有服务-->
 sh bin/eggroll.sh all start
 
@@ -234,9 +236,7 @@ sh bin/eggroll.sh nodemanager stop
 登录服务器进行测试时需要执行以下语句进行环境变量初始化
 
 ```shell
-export EGGROLL_HOME=Eggroll安装绝对路径		--例如/data/projects/eggroll
-export PYTHONPATH=${EGGROLL_HOME}/python		
-source virtualenv/bin/activate				--进入virtualenv独立环境
+source ${EGGROLL_HOME}/init.sh       --${EGGROLL_HOME} means the absolute path of eggroll
 ```
 
 ### 6.2.  roll_pair测试

@@ -23,11 +23,10 @@ import java.util.concurrent.ConcurrentHashMap
 import com.webank.eggroll.core.constant._
 import com.webank.eggroll.core.error.CrudException
 import com.webank.eggroll.core.meta._
-import com.webank.eggroll.core.resourcemanager.SessionMetaDao
 import com.webank.eggroll.core.resourcemanager.ResourceDao
+import com.webank.eggroll.core.util.JdbcTemplate.ResultSetIterator
 import com.webank.eggroll.core.util.{Logging, TimeUtils}
 import org.apache.commons.lang3.StringUtils
-import com.webank.eggroll.core.util.JdbcTemplate.ResultSetIterator
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -64,7 +63,9 @@ class StoreCrudOperator extends CrudOperator with Logging {
   }
 
   def getStoreFromNamespace(input: ErStore): ErStoreList = {
-    StoreCrudOperator.dao.getStoreLocators(input: ErStore)
+    val storeWithLocatorOnly = StoreCrudOperator.getStoreLocators(input: ErStore)
+
+    storeWithLocatorOnly.copy(stores = storeWithLocatorOnly.stores.map(s => StoreCrudOperator.doGetStore(s)))
   }
 }
 
@@ -73,7 +74,6 @@ object StoreCrudOperator {
   private val nodeIdToNode = new ConcurrentHashMap[java.lang.Long, DbServerNode]()
   private[metadata] def doGetStore(input: ErStore): ErStore = {
     val inputOptions = input.options
-    val sessionId = inputOptions.getOrDefault(SessionConfKeys.CONFKEY_SESSION_ID, StringConstants.UNKNOWN)
 
     // getting input locator
     val inputStoreLocator = input.storeLocator
@@ -172,6 +172,16 @@ object StoreCrudOperator {
       partitioner = store.partitioner,
       serdes = store.serdes)
 
+    val storeOpts = dbc.query(
+      rs => rs.map(
+        _ => DbStoreOption(
+          name = rs.getString("name"),
+          data = rs.getString("data"),
+          createdAt = rs.getDate("created_at"),
+          updatedAt = rs.getDate("updated_at"))
+      ),
+      "select * from store_option where store_locator_id = ?", storeLocatorId).toList
+
     val outputOptions = new ConcurrentHashMap[String, String]()
     if (inputOptions != null) {
       outputOptions.putAll(inputOptions)
@@ -188,7 +198,6 @@ object StoreCrudOperator {
 
   private[metadata] def doCreateStore(input: ErStore): ErStore = {
     val inputOptions = input.options
-    val sessionId = inputOptions.getOrDefault(SessionConfKeys.CONFKEY_SESSION_ID, StringConstants.UNKNOWN)
 
     // create store locator
     val inputStoreLocator = input.storeLocator
@@ -260,6 +269,18 @@ object StoreCrudOperator {
 
     val newOptions = new ConcurrentHashMap[String, String]()
     if (inputOptions != null) newOptions.putAll(inputOptions)
+    val itOptions = newOptions.entrySet().iterator()
+    while(itOptions.hasNext){
+      val entry = itOptions.next()
+      dbc.withTransaction(conn => {
+        dbc.update(conn,
+          "insert into store_option(store_locator_id, name, data) values (?, ?, ?)",
+          newStoreLocator.get,
+          entry.getKey,
+          entry.getValue)
+      })
+    }
+
     val result = ErStore(
       storeLocator = inputStoreLocator,
       partitions = newPartitions.toArray,
@@ -271,32 +292,91 @@ object StoreCrudOperator {
   private[metadata] def doDeleteStore(input: ErStore): ErStore = {
     val inputStoreLocator = input.storeLocator
 
-    val sql = "select * from store_locator " +
-      "where store_type = ? and namespace = ? and name = ? and status = ? limit 1"
+    val outputStoreLocator = if (inputStoreLocator.name.equals("*")) {
+      val result = dbc.withTransaction(conn => {
+        var sql = "update store_locator set name = concat(name, ?), status = ? where namespace = ? and status = ? "
+        val storeType = inputStoreLocator.storeType
+        if (storeType.equals("*")) {
+          dbc.update(conn, sql,
+            s".${TimeUtils.getNowMs()}", StoreStatus.DELETED, inputStoreLocator.namespace, StoreStatus.NORMAL)
+        } else {
+          sql += "and store_type = ?"
+          dbc.update(conn, sql,
+            s".${TimeUtils.getNowMs()}", StoreStatus.DELETED, inputStoreLocator.namespace, StoreStatus.NORMAL, storeType)
+        }
+      })
 
-    val nodeResult = dbc.query(rs => rs.map(_ => DbStoreLocator(
-      id = rs.getLong("store_locator_id"),
-      name = rs.getString("name"))), sql,
-      inputStoreLocator.storeType, inputStoreLocator.namespace,
-      inputStoreLocator.name, StoreStatus.NORMAL).toList
+      inputStoreLocator
+    } else {
+      val sql = "select * from store_locator " +
+        "where store_type = ? and namespace = ? and name = ? and status = ? limit 1"
 
-    if (nodeResult.isEmpty) {
-      return null
+      val nodeResult = dbc.query(rs => rs.map(_ => DbStoreLocator(
+        id = rs.getLong("store_locator_id"),
+        name = rs.getString("name"))), sql,
+        inputStoreLocator.storeType, inputStoreLocator.namespace,
+        inputStoreLocator.name, StoreStatus.NORMAL).toList
+
+      if (nodeResult.isEmpty) {
+        return null
+      }
+
+      val nodeRecord = nodeResult(0)
+      val nameNow = nodeRecord.name + "." + TimeUtils.getNowMs()
+
+      val storeLocatorRecord = dbc.withTransaction(conn => {
+        val sql = "update store_locator " +
+          "set name = ?, status = ? where store_locator_id = ?"
+
+        dbc.update(conn, sql, nameNow, StoreStatus.DELETED, nodeRecord.id)
+      })
+
+      inputStoreLocator.copy(name = nodeRecord.name)
     }
-
-    val nodeRecord = nodeResult(0)
-    val nameNow = nodeRecord.name + "." + TimeUtils.getNowMs()
-
-    val storeLocatorRecord = dbc.withTransaction(conn => {
-      val sql = "update store_locator " +
-        "set name = ?, status = ? where store_locator_id = ?"
-
-      dbc.update(conn, sql, nameNow, StoreStatus.DELETED, nodeRecord.id)
-    })
-
-    val outputStoreLocator = inputStoreLocator.copy(name = nodeRecord.name)
-
     ErStore(storeLocator = outputStoreLocator)
   }
-  val dao = new SessionMetaDao()
+
+  def getStoreLocators(input: ErStore): ErStoreList = {
+    var sql = "select * from store_locator where status = 'NORMAL' and"
+    val whereFragments = ArrayBuffer[String]()
+    val args = ArrayBuffer[String]()
+
+    val storeLocator = input.storeLocator
+    val storeName = storeLocator.name
+    val storeNamespace = storeLocator.namespace
+    val storeType = storeLocator.storeType
+    var storeNameNew = ""
+    if (!StringUtils.isBlank(storeName)) {
+      if (StringUtils.contains(storeName, "*")) {
+        storeNameNew = storeName.replace('*', '%')
+        args += storeNameNew
+      } else {
+        args += storeName
+      }
+      whereFragments += " name like ?"
+    }
+
+    if (!StringUtils.isBlank(storeNamespace)) {
+      whereFragments += " namespace = ?"
+      args += storeNamespace
+    }
+
+    sql += String.join(" and ", whereFragments: _*)
+
+    dbc.query(rs => {
+      val stores = ArrayBuffer[ErStore]()
+      while (rs.next()) {
+
+        stores += ErStore(
+          storeLocator = ErStoreLocator(
+            storeType = rs.getString("store_type"),
+            name = rs.getString("name"),
+            namespace = rs.getString("namespace"),
+            totalPartitions = rs.getInt("total_partitions")
+          ))
+      }
+
+      ErStoreList(stores = stores.toArray)
+    }, sql, args: _*)
+  }
 }

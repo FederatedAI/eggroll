@@ -13,13 +13,18 @@
 #  limitations under the License.
 import configparser
 import os
+from concurrent.futures import wait, FIRST_EXCEPTION
+from copy import deepcopy
 
 from eggroll.core.client import ClusterManagerClient
+from eggroll.core.client import CommandClient
+from eggroll.core.command.command_model import CommandURI
 from eggroll.core.conf_keys import CoreConfKeys
 from eggroll.core.conf_keys import SessionConfKeys, ClusterManagerConfKeys
 from eggroll.core.constants import SessionStatus, ProcessorTypes, DeployModes
-from eggroll.core.meta_model import ErSessionMeta, \
-    ErPartition
+from eggroll.core.meta_model import ErJob, ErTask
+from eggroll.core.meta_model import ErSessionMeta, ErPartition, ErStore
+from eggroll.core.utils import generate_task_id
 from eggroll.core.utils import get_self_ip, time_now, DEFAULT_DATETIME_FORMAT
 from eggroll.core.utils import get_stack
 from eggroll.core.utils import get_static_er_conf, set_static_er_conf
@@ -56,14 +61,13 @@ class ErSession(object):
         if "EGGROLL_DEBUG" not in os.environ:
             os.environ['EGGROLL_DEBUG'] = "0"
 
+        conf_path = options.get(CoreConfKeys.STATIC_CONF_PATH, f"{self.__eggroll_home}/conf/eggroll.properties")
+
+        L.info(f"static conf path: {conf_path}")
+        configs = configparser.ConfigParser()
+        configs.read(conf_path)
+        set_static_er_conf(configs['eggroll'])
         static_er_conf = get_static_er_conf()
-        if not static_er_conf:
-            conf_path = options.get(CoreConfKeys.STATIC_CONF_PATH, f"{self.__eggroll_home}/conf/eggroll.properties")
-            L.info(f"static conf path: {conf_path}")
-            configs = configparser.ConfigParser()
-            configs.read(conf_path)
-            set_static_er_conf(configs['eggroll'])
-            static_er_conf = get_static_er_conf()
 
         self.__options = options.copy()
         self.__options[SessionConfKeys.CONFKEY_SESSION_ID] = self.__session_id
@@ -73,7 +77,7 @@ class ErSession(object):
         if self.__is_standalone and os.name != 'nt' and not processors and os.environ.get("EGGROLL_RESOURCE_MANAGER_AUTO_BOOTSTRAP", "1") == "1":
             port = int(options.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT,
                                    static_er_conf.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, "4670")))
-            startup_command = f'bash {self.__eggroll_home}/bin/eggroll_boot_standalone.sh -p {port} -s {self.__session_id}'
+            startup_command = f'bash {self.__eggroll_home}/bin/eggroll_boot_standalone.sh -c {conf_path} -s {self.__session_id}'
             import subprocess
             import atexit
 
@@ -104,7 +108,7 @@ class ErSession(object):
                                      options=options)
 
         from time import monotonic, sleep
-        timeout = int(options.get("eggroll.session.create.timeout.ms", "10000")) / 1000
+        timeout = int(SessionConfKeys.EGGROLL_SESSION_START_TIMEOUT_MS.get_with(options)) / 1000 + 2
         endtime = monotonic() + timeout
 
         # TODO:0: ignores exception while starting up in standalone mod
@@ -124,8 +128,8 @@ class ErSession(object):
         self.__exit_tasks = list()
         self.__processors = self.__session_meta._processors
 
-        L.info(f'session init finished:{self.__session_id}, details: {self.__session_meta}')
-
+        L.info(f'session init finished: {self.__session_id}, details: {self.__session_meta}')
+        self.stopped = self.__session_meta._status == SessionStatus.CLOSED or self.__session_meta._status == SessionStatus.KILLED
         self._rolls = list()
         self._eggs = dict()
 
@@ -141,28 +145,133 @@ class ErSession(object):
             else:
                 raise ValueError(f'processor type {processor_type} not supported in roll pair')
 
-    def route_to_egg(self, partition: ErPartition):
-        target_server_node = partition._processor._server_node_id
-        target_egg_processors = len(self._eggs[target_server_node])
-        target_processor = (partition._id // len(self._eggs)) % target_egg_processors
+    def get_rank_in_node(self, partition_id, server_node_id):
+        processor_count_of_node = len(self._eggs[server_node_id])
+        node_count = len(self._eggs)
+        rank_in_node = (partition_id // node_count) % processor_count_of_node
 
-        result = self._eggs[target_server_node][target_processor]
+        return rank_in_node
+
+    def route_to_egg(self, partition: ErPartition):
+        server_node_id = partition._processor._server_node_id
+        rank_in_node = partition._rank_in_node
+        if partition._rank_in_node is None or rank_in_node < 0:
+            rank_in_node = self.get_rank_in_node(partition_id=partition._id,
+                                                 server_node_id=server_node_id)
+
+        result = self.route_to_egg_by_rank(server_node_id, rank_in_node)
+
+        return result
+
+    def route_to_egg_by_rank(self, server_node_id, rank_in_node):
+        result = self._eggs[server_node_id][rank_in_node]
         if not result._command_endpoint._host or result._command_endpoint._port <= 0:
             raise ValueError(f'error routing to egg: {result} in session: {self.__session_id}')
 
         return result
 
+    def populate_processor(self, store: ErStore):
+        populated_partitions = list()
+        for p in store._partitions:
+            server_node_id = p._processor._server_node_id
+            rank_in_node = self.get_rank_in_node(p._id, p._processor._server_node_id)
+            pp = ErPartition(id=p._id,
+                             store_locator=p._store_locator,
+                             processor=self.route_to_egg_by_rank(server_node_id, rank_in_node),
+                             rank_in_node=rank_in_node)
+            populated_partitions.append(pp)
+        return ErStore(store_locator=store._store_locator, partitions=populated_partitions, options=store._options)
+
+    def submit_job(self,
+            job: ErJob,
+            output_types: list = None,
+            command_uri: CommandURI = None,
+            create_output_if_missing=True):
+        if not output_types:
+            output_types = [ErTask]
+        final_job = self.populate_output_store(job) if create_output_if_missing else job
+        tasks = self._decompose_job(final_job)
+        command_client = CommandClient()
+        return command_client.async_call(args=tasks, output_types=output_types, command_uri=command_uri)
+
+    def wait_until_job_finished(self, task_futures: list, timeout=None, return_when=FIRST_EXCEPTION):
+        return wait(task_futures, timeout=timeout, return_when=return_when).done
+
+    def _decompose_job(self, job: ErJob):
+        input_total_partitions = job._inputs[0]._store_locator._total_partitions
+        output_total_partitions = input_total_partitions \
+            if not job._outputs \
+            else job._outputs[0]._store_locator._total_partitions
+
+        larger_total_partitions = max(input_total_partitions, output_total_partitions)
+
+        if larger_total_partitions == input_total_partitions:
+            store = self.populate_processor(job._inputs[0])
+        else:
+            store = self.populate_processor(job._outputs[0])
+
+        partitions_with_processors = store._partitions
+
+        result = list()
+
+        for i in range(larger_total_partitions):
+            input_partitions = list()
+            output_partitions = list()
+            try:
+                target_processor = self.route_to_egg(partitions_with_processors[i])
+            except Exception as e:
+                raise e
+
+            if i < input_total_partitions:
+                for input_store in job._inputs:
+                    input_partitions.append(ErPartition(
+                            id=i,
+                            store_locator=input_store._store_locator,
+                            processor=target_processor))
+            if i < output_total_partitions:
+                for output_store in job._outputs:
+                    output_partitions.append(ErPartition(
+                            id=i,
+                            store_locator=output_store._store_locator,
+                            processor=target_processor))
+
+            result.append(
+                    ([ErTask(id=generate_task_id(job._id, i),
+                             name=f'{job._name}',
+                             inputs=input_partitions,
+                             outputs=output_partitions,
+                             job=job)],
+                     target_processor._command_endpoint))
+        return result
+
+    def populate_output_store(self, job: ErJob):
+        is_output_blank = not job._outputs or not job._outputs[0]
+        if is_output_blank:
+            final_output_proposal = ErStore(store_locator=job._inputs[0]._store_locator.fork())
+        else:
+            final_output_proposal = job._outputs[0]
+
+        cm_client = ClusterManagerClient()
+        final_output = self.populate_processor(cm_client.get_or_create_store(final_output_proposal))
+
+        final_job = deepcopy(job)
+        final_job._outputs = [final_output]
+
+        return final_job
+
     def stop(self):
         L.info(f'stopping session (gracefully): {self.__session_id}')
         L.debug(f'stopping session (gracefully), details: {self.__session_meta}')
-        L.debug(f'stopping (gracefully) from: {get_stack()}')
+        L.debug(f'stopping (gracefully) for {self.__session_id} from: {get_stack()}')
         self.run_exit_tasks()
+        self.stopped = True
         return self._cluster_manager_client.stop_session(self.__session_meta)
 
     def kill(self):
         L.info(f'killing session (forcefully): {self.__session_id}')
         L.debug(f'killing session (forcefully), details: {self.__session_meta}')
-        L.debug(f'killing (forcefully) from: {get_stack()}')
+        L.debug(f'killing (forcefully) for {self.__session_id} from: {get_stack()}')
+        self.stopped = True
         return self._cluster_manager_client.kill_session(self.__session_meta)
 
     def get_session_id(self):
@@ -188,3 +297,17 @@ class ErSession(object):
 
     def get_all_options(self):
         return self.__options.copy()
+
+    def is_stopped(self):
+        return self.stopped
+
+
+class JobRunner(object):
+    def __init__(self, session: ErSession):
+        self._session = session
+
+    def run(self, job: ErJob):
+        tasks = self.decompose_job()
+
+
+

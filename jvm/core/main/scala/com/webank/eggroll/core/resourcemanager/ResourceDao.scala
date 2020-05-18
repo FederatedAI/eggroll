@@ -27,10 +27,8 @@ class StoreMetaDao {
 }
 
 class SessionMetaDao {
-
-
   private lazy val dbc = ResourceDao.dbc
-  def register(sessionMeta: ErSessionMeta, replace: Boolean = true): Unit = {
+  def register(sessionMeta: ErSessionMeta, replace: Boolean = true): Unit = synchronized {
     require(sessionMeta.activeProcCount == sessionMeta.processors.count(_.status == ProcessorStatus.RUNNING),
       "conflict active proc count:" + sessionMeta)
     val sid = sessionMeta.id
@@ -77,7 +75,8 @@ class SessionMetaDao {
           commandEndpoint = if(StringUtils.isBlank(rs.getString("command_endpoint"))) null
                             else ErEndpoint(rs.getString("command_endpoint")),
           transferEndpoint = if(StringUtils.isBlank(rs.getString("transfer_endpoint"))) null
-                              else ErEndpoint(rs.getString("transfer_endpoint")))
+                              else ErEndpoint(rs.getString("transfer_endpoint")),
+          pid = rs.getInt("pid"))
         ),
       "select * from session_processor where session_id = ?", sessionId)
     getSessionMain(sessionId).copy(options = opts, processors = procs.toArray)
@@ -101,7 +100,7 @@ class SessionMetaDao {
     proc
   }
 
-  def updateProcessor(proc: ErProcessor): Unit = {
+  def updateProcessor(proc: ErProcessor): Unit = synchronized {
     val (session_id: String, oldStatus: String) = dbc.query( rs => {
       if (!rs.next()) {
         throw new NotExistError("processor not exits:" + proc)
@@ -144,7 +143,7 @@ class SessionMetaDao {
     }
   }
 
-  def getSessionMain(sessionId: String): ErSessionMeta = {
+  def getSessionMain(sessionId: String): ErSessionMeta = synchronized {
     dbc.query( rs => {
       if (!rs.next()) {
         throw new NotExistError("session id not found:" + sessionId)
@@ -152,8 +151,10 @@ class SessionMetaDao {
 
       ErSessionMeta(
         id = sessionId, name = rs.getString("name"),
+        totalProcCount = rs.getInt("total_proc_count"),
         activeProcCount = rs.getInt("active_proc_count"),
-        status = rs.getString("status"), tag = rs.getString("tag"))
+        status = rs.getString("status"),
+        tag = rs.getString("tag"))
     },"select * from session_main where session_id = ?", sessionId)
   }
 
@@ -179,57 +180,13 @@ class SessionMetaDao {
         result += ErSessionMeta(
           id = rs.getString("session_id"),
           name = rs.getString("name"),
+          totalProcCount = rs.getInt("total_proc_count"),
           activeProcCount = rs.getInt("active_proc_count"),
           status = rs.getString("status"),
           tag = rs.getString("tag"))
       }
       result.toArray
     }, sql, args: _*)
-  }
-
-  def getStoreLocators(input: ErStore): ErStoreList ={
-    var sql = "select * from store_locator where status = 'NORMAL' and"
-    val whereFragments = ArrayBuffer[String]()
-    val args = ArrayBuffer[String]()
-
-    val store_locator = input.storeLocator
-    val store_name = store_locator.name
-    val store_namespace = store_locator.namespace
-    val store_type = store_locator.storeType
-    var store_name_new = ""
-    if (!StringUtils.isBlank(store_name)) {
-      if (StringUtils.contains(store_name, "*")) {
-        store_name_new = store_name.replace('*', '%')
-        args += store_name_new
-      } else {
-        args += store_name
-      }
-      whereFragments += " name like ?"
-    }
-
-    if (!StringUtils.isBlank(store_namespace)) {
-      whereFragments += " namespace = ?"
-      args += store_namespace
-    }
-
-    sql += String.join(" and ", whereFragments: _*)
-
-    dbc.query(rs => {
-      val stores = ArrayBuffer[ErStore]()
-      while (rs.next()) {
-
-        stores += ErStore(
-          storeLocator = ErStoreLocator(
-            storeType = rs.getString("store_type"),
-            name = rs.getString("name"),
-            namespace = rs.getString("namespace"),
-            totalPartitions = rs.getInt("total_partitions")
-          ))
-      }
-
-      ErStoreList(stores = stores.toArray)
-    }, sql, args: _*)
-
   }
 
   def existSession(sessionId: String): Boolean = {

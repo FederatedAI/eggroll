@@ -24,7 +24,7 @@ ONE_ARG_LIST=(
 )
 
 get_property() {
-  property_value=`grep $2 $1 | awk -F= '{print $2}'`
+  property_value=`grep $2 $1 | cut -d '=' -f 2-`
 }
 
 opts=$(getopt \
@@ -81,16 +81,16 @@ if [[ ${transfer_port} -eq 0 ]] && [[ ${port} -ne 0 ]]; then
   transfer_port=${port}
 fi
 
-get_property ${config} "eggroll.rollpair.bootstrap.roll_pair_master.javahome"
+get_property ${config} "eggroll.resourcemanager.bootstrap.roll_pair_master.javahome"
 javahome=${property_value}
 
-get_property ${config} "eggroll.rollpair.bootstrap.roll_pair_master.classpath"
+get_property ${config} "eggroll.resourcemanager.bootstrap.roll_pair_master.classpath"
 classpath=${property_value}
 
-get_property ${config} "eggroll.rollpair.bootstrap.roll_pair_master.mainclass"
+get_property ${config} "eggroll.resourcemanager.bootstrap.roll_pair_master.mainclass"
 mainclass=${property_value}
 
-get_property ${config} "eggroll.rollpair.bootstrap.roll_pair_master.jvm.options"
+get_property ${config} "eggroll.resourcemanager.bootstrap.roll_pair_master.jvm.options"
 jvm_options=${property_value}
 
 get_property ${config} "eggroll.logs.dir"
@@ -137,7 +137,7 @@ fi
 export EGGROLL_LOG_FILE="roll_pair_master-${processor_id}"
 
 echo "------ jvm version starts ------"
-${JAVA} --version
+${JAVA} -version
 echo "------ jvm version ends ------"
 
 

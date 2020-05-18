@@ -27,6 +27,7 @@ import com.webank.eggroll.core.meta.TransferModelPbMessageSerdes;
 import com.webank.eggroll.core.transfer.Transfer.RollSiteHeader;
 import com.webank.eggroll.core.util.ErrorUtils;
 import com.webank.eggroll.core.util.ToStringUtils;
+import com.webank.eggroll.rollsite.RollSiteUtil;
 import com.webank.eggroll.rollsite.event.model.PipeHandleNotificationEvent;
 import com.webank.eggroll.rollsite.factory.EventFactory;
 import com.webank.eggroll.rollsite.factory.PipeFactory;
@@ -41,6 +42,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -50,7 +52,8 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Scope;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Component;
-import scala.Function0;
+import scala.Option;
+import scala.Some;
 
 @Component
 @Scope("prototype")
@@ -202,19 +205,19 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
         boolean hasReturnedBefore = false;
         int emptyRetryCount = 0;
 
-        Proxy.Metadata inputMetadata = request.getHeader();
-        String oneLineStringInputMetadata = ToStringUtils.toOneLineString(inputMetadata);
+        Proxy.Metadata header = request.getHeader();
+        String oneLineStringInputMetadata = ToStringUtils.toOneLineString(header);
         LOGGER.info("[UNARYCALL][SERVER] server unary request received. src: {}, dst: {}",
-                ToStringUtils.toOneLineString(inputMetadata.getSrc()),
-                ToStringUtils.toOneLineString(inputMetadata.getDst()));
+                ToStringUtils.toOneLineString(header.getSrc()),
+                ToStringUtils.toOneLineString(header.getDst()));
 
-        long overallTimeout = timeouts.getOverallTimeout(inputMetadata);
-        long packetIntervalTimeout = timeouts.getPacketIntervalTimeout(inputMetadata);
+        long overallTimeout = timeouts.getOverallTimeout(header);
+        long packetIntervalTimeout = timeouts.getPacketIntervalTimeout(header);
 
-        LOGGER.info("taskId:{}", inputMetadata.getTask().getTaskId());
+        LOGGER.info("taskId:{}", header.getTask().getTaskId());
 
         try {
-            if (request.getHeader().getOperator().equals("registerBroker")) {
+            if (header.getOperator().equals("registerBroker")) {
                 Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
                 Proxy.Data data = Proxy.Data.newBuilder().setValue(ByteString.copyFromUtf8("hello"))
                     .build();
@@ -226,41 +229,46 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                 return;
             }
 
-            if (request.getHeader().getOperator().equals("init_job_session_pair")) {
-                String job_id = request.getHeader().getTask().getModel().getName();
-                String session_id = request.getHeader().getTask().getModel().getDataKey();
+            if (header.getOperator().equals("init_job_session_pair")) {
+                String jobId = header.getTask().getModel().getName();
+                String sessionId = header.getTask().getModel().getDataKey();
                 Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
-                packet = packetBuilder.setHeader(request.getHeader()).build();
+                packet = packetBuilder.setHeader(header).build();
                 // TODO:1: rename job_id to federation_session_id, session_id -> eggroll_session_id
-                LOGGER.info("init_job_session_pair, job_id:{}, session_id:{}", job_id, session_id);
-                JobStatus.putJobIdToSessionId(job_id, session_id);
+                LOGGER.info("init_job_session_pair, job_id:{}, session_id:{}", jobId, sessionId);
+                JobStatus.putJobIdToSessionId(jobId, sessionId);
 
                 responseObserver.onNext(packet);
                 responseObserver.onCompleted();
+
+                RollSiteUtil.sessionCache().get(sessionId);
                 return;
             }
 
-            if (request.getHeader().getOperator().equals("markEnd") && proxyServerConf.getPartyId()
-                .equals(inputMetadata.getDst().getPartyId())) {
+            if (header.getOperator().equals("markEnd")
+                && proxyServerConf.getPartyId().equals(header.getDst().getPartyId())) {
                 Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
-                packet = packetBuilder.setHeader(request.getHeader()).build();
+                packet = packetBuilder.setHeader(header).build();
 
                 ErRollSiteHeader rollSiteHeader = restoreRollSiteHeader(
                     request.getHeader().getTask().getModel().getName());
                 String tagKey = genTagKey(rollSiteHeader);
-
+                JobStatus.addPutBatchRequiredCount(tagKey, header.getSeq());
 
                 LOGGER.info("markEnd: {}, {}", rollSiteHeader.rollSiteSessionId(),
                         tagKey);  //obj or RollPair
 
                 if (!JobStatus.hasLatch(tagKey)) {
-                    // replace getOrElse for scala-2.11
                     int totalPartitions = 1;
-                    if(rollSiteHeader.options().contains(StringConstants.TOTAL_PARTITIONS_SNAKECASE())) {
-                        totalPartitions = Integer.parseInt(
-                                rollSiteHeader.options().apply(StringConstants.TOTAL_PARTITIONS_SNAKECASE()));
+
+                    String tpString = "1";
+                    Option<String> tpOption =
+                        rollSiteHeader.options().get(StringConstants.TOTAL_PARTITIONS_SNAKECASE());
+                    if (tpOption instanceof Some) {
+                        tpString = ((Some<String>) tpOption).get();
                     }
 
+                    totalPartitions = Integer.parseInt(tpString);
                     JobStatus.createLatch(tagKey, totalPartitions);
                 }
                 JobStatus.countDownFinishLatch(tagKey);
@@ -271,7 +279,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                 return;
             }
 
-            if (request.getHeader().getOperator().equals("getStatus")) {
+            if (header.getOperator().equals("getStatus")) {
                 LOGGER.info("getStatus: {}", oneLineStringInputMetadata);
                 Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
 
@@ -279,26 +287,40 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                     request.getHeader().getTask().getModel().getName());
                 String tagKey = genTagKey(rollSiteHeader);
 
-                boolean jobFinished = JobStatus.isAllCountDown(tagKey) && JobStatus.getPutBatchCount(tagKey) == 0;
-                Proxy.Metadata header = request.getHeader();
+                long timeout = 5;
+                TimeUnit unit = TimeUnit.MINUTES;
+                boolean jobFinished = JobStatus.waitUntilAllCountDown(tagKey, timeout, unit)
+                    && JobStatus.waitUntilPutBatchFinished(tagKey, timeout, unit);
+                Proxy.Metadata resultHeader = request.getHeader();
                 String type = StringConstants.EMPTY();
                 if (jobFinished) {
                     LOGGER.info("getStatus: job finished: {}", oneLineStringInputMetadata);
-                    header = Proxy.Metadata.newBuilder().setAck(123)
+                    resultHeader = Proxy.Metadata.newBuilder().setAck(123)
                         .setSrc(request.getHeader().getSrc())
                         .setDst(request.getHeader().getDst())
                         .build();
-                    type = JobStatus.getType(tagKey);
+                    int retryCount = 300;
+                    while (retryCount > 0) {
+                        type = JobStatus.getType(tagKey);
+                        if (!StringUtils.isBlank(type)) {
+                            break;
+                        }
+                        Thread.sleep(50);
+                        --retryCount;
+                    }
+                    JobStatus.cleanupJobStatus(tagKey);
                 } else {
-                    LOGGER.info("getStatus: job NOT finished: {}. current latch count: {}, current put batch count: {}",
+                    LOGGER.info("getStatus: job NOT finished: {}. current latch count: {}, "
+                            + "put batch required: {}, put batch finished: {}",
                         oneLineStringInputMetadata,
                         JobStatus.getFinishLatchCount(tagKey),
-                        JobStatus.getPutBatchCount(tagKey));
-                    header = Proxy.Metadata.newBuilder().setAck(321).build();
+                        JobStatus.getPutBatchRequiredCount(tagKey),
+                        JobStatus.getPutBatchFinishedCount(tagKey));
+                    resultHeader = Proxy.Metadata.newBuilder().setAck(321).build();
                 }
                 Proxy.Data body = Proxy.Data.newBuilder().setKey(tagKey)
                     .setValue(ByteString.copyFromUtf8(type)).build();
-                packet = packetBuilder.setHeader(header).setBody(body).build();
+                packet = packetBuilder.setHeader(resultHeader).setBody(body).build();
                 responseObserver.onNext(packet);
                 responseObserver.onCompleted();
                 return;
@@ -318,7 +340,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
             long loopEndTimestamp = System.currentTimeMillis();
             while ((!hasReturnedBefore || !pipe.isDrained())
                 && !pipe.hasError()
-                && emptyRetryCount < 300
+                && emptyRetryCount < 30_000
                 && !timeouts.isTimeout(overallTimeout, startTimestamp, loopEndTimestamp)) {
                 packet = (Proxy.Packet) pipe.read(1, TimeUnit.SECONDS);
 //            packet = request;
@@ -367,7 +389,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                     pipe.onError(e);
                 } else {
                     String errorMsg =
-                        "[PULL][SERVER] pull server error: overall process time exceeds timeout: "
+                        "[UNARYCALL][SERVER] unary call server error: overall process time exceeds timeout: "
                             + overallTimeout
                             + ", metadata: " + oneLineStringInputMetadata
                             + ", startTimestamp: " + startTimestamp
