@@ -17,6 +17,7 @@
 import os
 import functools
 import time
+import pickle
 from concurrent.futures import ThreadPoolExecutor
 
 from eggroll.core.conf_keys import SessionConfKeys, RollSiteConfKeys
@@ -26,7 +27,7 @@ from eggroll.core.error import GrpcCallError
 from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.meta_model import ErStoreLocator, ErStore
 from eggroll.core.proto import proxy_pb2, proxy_pb2_grpc
-from eggroll.core.serdes import eggroll_serdes, cloudpickle
+from eggroll.core.serdes import eggroll_serdes
 from eggroll.core.transfer_model import ErRollSiteHeader
 from eggroll.core.utils import _stringify
 from eggroll.core.utils import to_one_line_string
@@ -241,7 +242,7 @@ class RollSite:
 
                     ret = self.stub.unaryCall(packet)
                     #result = ret.body.value
-                    result = cloudpickle.loads(ret.body.value)
+                    result = pickle.loads(ret.body.value)
             else:
                 rp = self.ctx.rp_ctx.load(namespace=table_namespace, name=table_name)
                 success_msg_prefix = f'RollSite.Pull: pull {roll_site_header} success.'
@@ -318,7 +319,7 @@ class RollSite:
                                               ack=0,
                                               conf=conf)
 
-                data = proxy_pb2.Data(key=_tagged_key, value=cloudpickle.dumps(obj))
+                data = proxy_pb2.Data(key=_tagged_key, value=pickle.dumps(obj))
                 packet = proxy_pb2.Packet(header=metadata, body=data)
 
                 future = self.receive_exeutor_pool.submit(RollSite.send_packet, self, packet)
