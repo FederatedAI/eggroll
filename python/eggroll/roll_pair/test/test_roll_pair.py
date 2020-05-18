@@ -142,13 +142,6 @@ class TestRollPairBase(unittest.TestCase):
         print(list(rp2.get_all()))
         self.assertUnOrderListEqual(((k + "_1", v) for k, v in self.str_generator()), rp2.get_all())
 
-    def test_map_1m(self):
-        rp = self.ctx.parallelize(self.str_generator(row_limit=1000000))
-        rp2 = rp.map(lambda k, v: (str(int(k) + 1), v))
-        print(rp2.count())
-        print(list(rp2.get_all())[:10])
-        # self.assertUnOrderListEqual(((k + "_1", v) for k, v in self.str_generator()), rp2.get_all())
-
     def test_reduce(self):
         options = self.store_opts()
         #options['total_partitions'] = 10
