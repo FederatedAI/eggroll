@@ -259,8 +259,23 @@ class RollSite:
             P.info(f'{{"metric_type": "func_profile", "qualname": "RollSite.pull", "cpu_time": {end_cpu_time - self._pull_start_cpu_time}, "wall_time": {end_wall_time - self._pull_start_wall_time}}}')
 
     def send_packet(self, packet):
-        ret = self.stub.unaryCall(packet)
-        return ret
+        max_retry_cnt = 100
+        exception = None
+        ret_packet = None
+        for i in range(max_retry_cnt):
+            try:
+                ret_packet = self.stub.unaryCall(packet)
+                exception = None
+                break
+            except Exception as e:
+                exception = e
+                L.info(f'caught exception in pushing obj: {e}. retrying. current retry count: {i}, max_retry_cnt: {max_retry_cnt}')
+                time.sleep(min(5 * i, 30))
+
+        if exception:
+            raise GrpcCallError("error in pushing obj", self.dst_host, self.dst_port)
+
+        return ret_packet
 
     def push(self, obj, parties: list = None):
         L.info(f"pushing: self:{self.__dict__}, obj_type:{type(obj)}, parties:{parties}")

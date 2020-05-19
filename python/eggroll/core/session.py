@@ -76,7 +76,6 @@ class ErSession(object):
         self.__options[SessionConfKeys.CONFKEY_SESSION_ID] = self.__session_id
         #self._cluster_manager_client = ClusterManagerClient(options=options)
 
-
         self.__is_standalone = options.get(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE, "") == DeployModes.STANDALONE
         if self.__is_standalone and not processors and os.environ.get("EGGROLL_RESOURCE_MANAGER_BOOTSTRAP_DEBUG", "0") == "0":
             #port = int(options.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT,
@@ -98,7 +97,7 @@ class ErSession(object):
             with open(f'{bootstrap_log_dir}/standalone-manager.out', 'a+') as outfile, \
                     open(f'{bootstrap_log_dir}/standalone-manager.err', 'a+') as errfile:
                 L.info(f'start up command: {startup_command}')
-                manager_process = subprocess.Popen(startup_command, shell=True,  stdout=outfile, stderr=errfile)
+                manager_process = subprocess.Popen(startup_command, shell=True, stdout=outfile, stderr=errfile)
                 manager_process.wait()
                 returncode = manager_process.returncode
                 L.info(f'start up returncode: {returncode}')
@@ -131,40 +130,38 @@ class ErSession(object):
                     L.info(f'shutdown returncode: {returncode}')
 
             file_name = f'{self.__eggroll_home}/logs/eggroll/bootstrap-standalone-manager.out'
-            retry_cnt = 0
-            while True:
-                msg = f"retry get port from bootstrap-standalone-manager.out: retry_cnt: {retry_cnt},"
-                if retry_cnt % 10 == 0:
-                    L.info(msg)
-                else:
-                    L.debug(msg)
-                retry_cnt += 1
+            max_retry_cnt = 10
+            for i in range(max_retry_cnt):
+                msg = f"retry get port from bootstrap-standalone-manager.out: retry_cnt: {i},"
+                L.info(msg)
 
                 if os.path.exists(file_name):
                     break
-                time.sleep(min(0.1 * retry_cnt, 30))
+                time.sleep(min(0.1 * i, 10))
 
-            retry_cnt = 0
-            with open(file_name) as fp:
-                while True:
-                    msg = f"retry get port of ClusterManager and NodeManager: retry_cnt: {retry_cnt},"
-                    if retry_cnt % 10 == 0:
+            try:
+                with open(file_name) as fp:
+                    for i in range(max_retry_cnt):
+                        msg = f"retry get port of ClusterManager and NodeManager: retry_cnt: {i},"
                         L.info(msg)
-                    else:
-                        L.debug(msg)
-                    retry_cnt += 1
 
-                    port = 0
-                    key = f"{random_value} server started at port "
-                    for line in fp.readlines():
-                        if key in line:
-                            port = int(line.rsplit('port ', 2)[1])
-                            if port != 0:
-                                break
+                        port = 0
+                        key = f"{random_value} server started at port "
+                        for line in fp.readlines():
+                            if key in line:
+                                port = int(line.rsplit('port ', 2)[1])
+                                if port != 0:
+                                    break
 
-                    if port != 0:
-                        break
-                    time.sleep(min(0.1 * retry_cnt, 30))
+                        if port != 0:
+                            break
+                        time.sleep(min(0.1 * i, 10))
+            except IOError as e:
+                L.info(f"get port from {file_name} failed!")
+                raise e
+
+            if port == 0:
+                raise RuntimeError(f"get port from {file_name} failed!")
 
             options[ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT] = port
             self.__options[ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT] = port
@@ -409,6 +406,3 @@ class JobRunner(object):
 
     def run(self, job: ErJob):
         tasks = self.decompose_job()
-
-
-
