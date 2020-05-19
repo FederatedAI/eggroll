@@ -56,6 +56,8 @@ def get_option(role, conf_file=default_props_file):
         ErEndpoint(host=eggroll_configs[RollSiteConfKeys.EGGROLL_ROLLSITE_HOST.key],
                    port=int(eggroll_configs[RollSiteConfKeys.EGGROLL_ROLLSITE_PORT.key]))
 
+    options['deploy_mode'] = eggroll_configs[RollSiteConfKeys.EGGROLL_ROLLSITE_DEPLOY_MODE.key]
+
     return options
 
 
