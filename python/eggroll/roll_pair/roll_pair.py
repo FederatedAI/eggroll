@@ -20,7 +20,7 @@ from threading import Thread
 from eggroll.core.aspects import _method_profile_logger
 from eggroll.core.client import CommandClient
 from eggroll.core.command.command_model import CommandURI
-from eggroll.core.conf_keys import SessionConfKeys
+from eggroll.core.conf_keys import SessionConfKeys, RollPairConfKeys
 from eggroll.core.constants import StoreTypes, SerdesTypes, PartitionerTypes, \
     SessionStatus
 from eggroll.core.datastructure.broker import FifoBroker
@@ -51,7 +51,10 @@ class RollPairContext(object):
             raise Exception(f"session:{session.get_session_id()} is not ACTIVE. current status={session.get_session_meta()._status}")
         self.__session = session
         self.session_id = session.get_session_id()
-        self.default_store_type = StoreTypes.ROLLPAIR_LMDB
+        default_store_type_str = RollPairConfKeys.EGGROLL_ROLLPAIR_DEFAULT_STORE_TYPE.get_with(session.get_all_options())
+        self.default_store_type = getattr(StoreTypes, default_store_type_str, None)
+        if not self.default_store_type:
+            raise ValueError(f'store type "{default_store_type_str}" not found for roll pair')
         self.default_store_serdes = SerdesTypes.PICKLE
         self.deploy_mode = session.get_option(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE)
         self.__session_meta = session.get_session_meta()
