@@ -137,7 +137,7 @@ class ErSession(object):
 
                 if os.path.exists(file_name):
                     break
-                time.sleep(min(0.1 * i, 20))
+                time.sleep(min(0.1 * i, 10))
 
             try:
                 with open(file_name) as fp:
@@ -155,7 +155,7 @@ class ErSession(object):
 
                         if port != 0:
                             break
-                        time.sleep(min(0.1 * i, 20))
+                        time.sleep(min(0.1 * i, 10))
             except IOError as e:
                 L.info(f"get port from {file_name} failed!")
                 raise e
