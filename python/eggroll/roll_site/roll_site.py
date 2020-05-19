@@ -54,7 +54,7 @@ class RollSiteContext:
         self.role = options["self_role"]
         self.party_id = str(options["self_party_id"])
         self.proxy_endpoint = options["proxy_endpoint"]
-        self.is_standalone = self.rp_ctx.get_session().get_option(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE) == "standalone"
+        self.is_standalone = True if options["deploy_mode"] == "standalone" else False
         if self.is_standalone:
             self.stub = None
         else:
@@ -150,8 +150,7 @@ class RollSite:
         self._push_start_cpu_time = None
         self._pull_start_wall_time = None
         self._pull_start_cpu_time = None
-        self._is_standalone = self.ctx.rp_ctx.get_session().get_option(
-                SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE) == DeployModes.STANDALONE
+        self._is_standalone = self.ctx.is_standalone
         L.info(f'inited RollSite. my party id: {self.ctx.party_id}. proxy endpoint: {self.dst_host}:{self.dst_port}')
 
     def _push_callback(self, fn, tmp_rp):
@@ -208,7 +207,7 @@ class RollSite:
             L.info(f"pull status done: table_name:{table_name}, packet:{to_one_line_string(packet)}, namespace:{namespace}")
 
             if obj_type == b'object':
-                if os.environ.get('EGGROLL_PUSH_OBJ_WITH_ROLL_PAIR') == "1":
+                if os.environ.get('EGGROLL_PUSH_OBJ_WITH_ROLL_PAIR') == "1" or self._is_standalone is True:
                     rp = self.ctx.rp_ctx.load(namespace=table_namespace, name=table_name)
                     success_msg_prefix = f'RollSite.Pull: pull {roll_site_header} success.'
                     result = rp.get(table_name)

@@ -112,6 +112,7 @@ class RollPairConfKeys(object):
 
 class RollSiteConfKeys(object):
     EGGROLL_ROLLSITE_COORDINATOR = ErConfKey("eggroll.rollsite.coordinator")
+    EGGROLL_ROLLSITE_DEPLOY_MODE = ErConfKey("eggroll.rollsite.deploy.mode", "cluster")
     EGGROLL_ROLLSITE_HOST = ErConfKey("eggroll.rollsite.host", "127.0.0.1")
     EGGROLL_ROLLSITE_PORT = ErConfKey("eggroll.rollsite.port", "9370")
     EGGROLL_ROLLSITE_SECURE_PORT = ErConfKey("eggroll.rollsite.secure.port", "9380")
