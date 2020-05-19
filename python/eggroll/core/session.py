@@ -161,7 +161,7 @@ class ErSession(object):
                 raise e
 
             if port == 0:
-                raise RuntimeError("get port from '{}' failed!".format(file_name))
+                raise RuntimeError(f"get port from {file_name} failed!")
 
             options[ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT] = port
             self.__options[ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT] = port
