@@ -130,7 +130,7 @@ class RocksdbAdapter(PairAdapter):
 
 class RocksdbWriteBatch(PairWriteBatch):
 
-    def __init__(self, adapter: RocksdbAdapter, chunk_size=100000):
+    def __init__(self, adapter: RocksdbAdapter, chunk_size=100_000):
         self.chunk_size = chunk_size
         self.batch = rocksdb.WriteBatch()
         self.adapter = adapter
@@ -150,7 +150,7 @@ class RocksdbWriteBatch(PairWriteBatch):
             #self.value = v
             self.batch.put(k, v)
             self.write_count += 1
-            if self.write_count % 100_000 == 0:
+            if self.write_count % self.chunk_size == 0:
                 self.write()
         else:
             self.manual_merger[k] = v
@@ -170,7 +170,7 @@ class RocksdbWriteBatch(PairWriteBatch):
                     self.manual_merger[k] = v
                 else:
                     self.manual_merger[k] = merge_func(old_value, v)
-        if len(self.manual_merger) > 100_000:
+        if len(self.manual_merger) >= self.chunk_size:
             self.write_merged()
 
     def delete(self, k):
