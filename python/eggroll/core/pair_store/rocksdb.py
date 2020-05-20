@@ -12,34 +12,15 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+
 import os
 import threading
-
 import rocksdb
 
+from eggroll.core.pair_store.adapter import PairWriteBatch, PairIterator, PairAdapter
 from eggroll.utils.log_utils import get_logger
 
 L = get_logger()
-
-from eggroll.core.pair_store.adapter import PairWriteBatch, PairIterator, PairAdapter
-
-
-class RocksdbGenericAssociateMerger(rocksdb.interfaces.AssociativeMergeOperator):
-    def __init__(self, merge_func=None):
-        self._merge_func = merge_func
-
-    def merge(self, key, existing_value, value):
-        if self._merge_func is None:
-            return (True, value)
-        if existing_value:
-            result = self._merge_func(existing_value, value)
-        else:
-            result = value
-
-        return (True, result)
-
-    def name(self):
-        return b'RocksdbGenericAssociateMerger'
 
 
 class RocksdbAdapter(PairAdapter):
