@@ -1,4 +1,5 @@
 cwd=$(cd `dirname $0`; pwd)
+cd $cwd
 source ./conf.sh
 version=`grep version ../BUILD_INFO | awk -F= '{print $2}'`
 
@@ -6,7 +7,9 @@ sed -i "s#EGGROLL_HOME=.*#EGGROLL_HOME=${EGGROLL_HOME}#g" ./init.sh
 cp ./init.sh ../
 
 cd ..
-mkdir lib
+if [[ ! -d "lib" ]]; then
+    mkdir lib
+fi
 
 cp -r ./jvm/core/target/eggroll-core-${version}.jar ./lib
 cp -r ./jvm/core/target/lib/* ./lib
