@@ -418,7 +418,7 @@ class EggPair(object):
                 v_right_bytes = None
                 none_none = (None, None)
 
-                is_left_ends = False
+                is_left_stopped = False
                 is_equal = False
                 try:
                     k_left, v_left_bytes = next(l_iter, none_none)
@@ -427,10 +427,10 @@ class EggPair(object):
                     if k_left is None and k_right_raw is None:
                         return
                     elif k_left is None:
-                        is_left_ends = True
+                        is_left_stopped = True
                         raise StopIteration()
                     elif k_right_raw is None:
-                        is_left_ends = False
+                        is_left_stopped = False
                         raise StopIteration()
 
                     if is_same_serdes:
@@ -439,7 +439,7 @@ class EggPair(object):
                         k_right = left_key_serdes.serialize(right_key_serdes.deserialize(k_right_raw))
 
                     while True:
-                        is_left_ends = False
+                        is_left_stopped = False
                         while k_right < k_left:
                             if is_same_serdes:
                                 output_writebatch.put(k_right, v_right_bytes)
@@ -453,7 +453,7 @@ class EggPair(object):
                             else:
                                 k_right = left_key_serdes.serialize(right_key_serdes.deserialize(k_right_raw))
 
-                        is_left_ends = True
+                        is_left_stopped = True
                         while k_left < k_right:
                             output_writebatch.put(k_left, v_left_bytes)
                             k_left, v_left_bytes = next(l_iter)
@@ -464,10 +464,10 @@ class EggPair(object):
                                                   left_value_serdes.serialize(
                                                           f(left_value_serdes.deserialize(v_left_bytes),
                                                             right_value_serdes.deserialize(v_right_bytes))))
-                            is_left_ends = True
+                            is_left_stopped = True
                             k_left, v_left_bytes = next(l_iter)
 
-                            is_left_ends = False
+                            is_left_stopped = False
                             k_right_raw, v_right_bytes = next(r_iter)
 
                             if is_same_serdes:
@@ -478,7 +478,7 @@ class EggPair(object):
                 except StopIteration as e:
                     pass
 
-                if not is_left_ends:
+                if not is_left_stopped:
                     try:
                         output_writebatch.put(k_left, v_left_bytes)
                         while True:
