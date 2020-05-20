@@ -13,6 +13,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import functools
 import queue
 import threading
 from concurrent.futures import ThreadPoolExecutor
@@ -213,6 +214,10 @@ class TransferPair(object):
         is_shuffle=True: all partition in one broker
         is_shuffle=False: just save broker to store, for put_all
         """
+        def do_merge(old_value, update_value, merge_func, serdes):
+            new_value = merge_func(serdes.deserialize(old_value), serdes.deserialize(update_value))
+            return serdes.serialize(new_value)
+
         @_exception_logger
         def do_store(store_partition_inner, is_shuffle_inner, total_writers_inner, reduce_op_inner):
             done_cnt = 0
@@ -221,20 +226,23 @@ class TransferPair(object):
                 broker = TransferService.get_or_create_broker(tag, write_signals=total_writers_inner)
                 L.debug(f"do_store start for tag: {tag}")
                 batches = TransferPair.bin_batch_to_pair(b.data for b in broker)
-                with create_adapter(store_partition_inner) as db:
+
+                serdes = create_serdes(store_partition_inner._store_locator._serdes)
+                if reduce_op_inner is not None:
+                    merger = functools.partial(do_merge,
+                                               merge_func=reduce_op_inner,
+                                               serdes=serdes)
+                else:
+                    merger = None
+
+                with create_adapter(store_partition_inner, options={"merge_func": merger}) as db:
                     L.debug(f"do_store create_db for tag: {tag} for partition: {store_partition_inner}")
-                    serdes = create_serdes(store_partition_inner._store_locator._serdes)
                     with db.new_batch() as wb:
                         for k, v in batches:
                             if reduce_op_inner is None:
                                 wb.put(k, v)
                             else:
-                                v1 = wb.get(k)
-                                if v1 is not None:
-                                    v2 = reduce_op_inner(serdes.deserialize(v1), serdes.deserialize(v))
-                                    wb.put(k, serdes.serialize(v2))
-                                else:
-                                    wb.put(k, v)
+                                wb.merge(merger, k, v)
                             done_cnt += 1
                     L.debug(f"do_store done for tag: {tag} for partition: {store_partition_inner}")
                 TransferService.remove_broker(tag)

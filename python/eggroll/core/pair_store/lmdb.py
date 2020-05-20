@@ -220,11 +220,20 @@ class LmdbWriteBatch(PairWriteBatch):
         self.adapter = adapter
         self.txn = txn
 
+    def get(self, k):
+        return self.txn.get(k)
+
     def put(self, k, v):
         self.txn.put(k, v)
 
-    def get(self, k):
-        return self.txn.get(k)
+    def merge(self, merge_func, k, v):
+        old_value = self.txn.get(k)
+        if old_value is not None:
+            new_value = merge_func(old_value, v)
+        else:
+            new_value = v
+
+        self.txn.put(k, new_value)
 
     def delete(self, k):
         self.txn.delete(k)
