@@ -15,8 +15,9 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
-export EGGROLL_HOME=`pwd`
 cwd=$(cd `dirname $0`; pwd)
+cd $cwd/..
+export EGGROLL_HOME=`pwd`
 
 export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION='python'
 cd ${EGGROLL_HOME}
