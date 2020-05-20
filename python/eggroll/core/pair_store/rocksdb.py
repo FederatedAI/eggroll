@@ -115,8 +115,6 @@ class RocksdbWriteBatch(PairWriteBatch):
         self.chunk_size = chunk_size
         self.batch = rocksdb.WriteBatch()
         self.adapter = adapter
-        #self.key = None
-        #self.value = None
         self.write_count = 0
         self.manual_merger = dict()
         self.has_write_op = False
@@ -127,8 +125,6 @@ class RocksdbWriteBatch(PairWriteBatch):
     def put(self, k, v):
         if len(self.manual_merger) == 0:
             self.has_write_op = True
-            #self.key = k
-            #self.value = v
             self.batch.put(k, v)
             self.write_count += 1
             if self.write_count % self.chunk_size == 0:
@@ -158,8 +154,9 @@ class RocksdbWriteBatch(PairWriteBatch):
         self.batch.delete(k)
 
     def write(self):
-        self.adapter.db.write(self.batch)
-        self.batch.clear()
+        if self.batch.count() > 0:
+            self.adapter.db.write(self.batch)
+            self.batch.clear()
 
     def write_merged(self):
         for k in sorted(self.manual_merger.keys()):
@@ -167,6 +164,7 @@ class RocksdbWriteBatch(PairWriteBatch):
             self.write_count += 1
         self.has_write_op = True
         self.manual_merger.clear()
+        self.write()
 
     def close(self):
         if self.batch:
