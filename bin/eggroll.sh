@@ -42,6 +42,7 @@ main() {
 			main_class=com.webank.eggroll.core.resourcemanager.ClusterManagerBootstrap
 			get_property "eggroll.resourcemanager.clustermanager.port"
 			port=${property_value}
+			port=${property_value}
 			;;
 		nodemanager)
 			main_class=com.webank.eggroll.core.resourcemanager.NodeManagerBootstrap
