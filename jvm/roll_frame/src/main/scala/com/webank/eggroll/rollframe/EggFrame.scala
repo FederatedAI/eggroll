@@ -47,6 +47,23 @@ class EggFrameContext extends Logging {
     }.toList
   }
 
+  def sliceByColumn(frameBatch: FrameBatch, parallel: Int): List[Inclusive] = {
+    val columns = frameBatch.rootVectors.length
+    assert(columns > parallel, "FrameBatch's fields counts smaller than parallel num.")
+    val quotient = columns / parallel
+    val remainder = columns % parallel
+    val processorsCounts = Array.fill(parallel)(quotient)
+    (0 until remainder).foreach(i => processorsCounts(i) += 1)
+    var start = 0
+    var end = 0
+    processorsCounts.map { count =>
+      end = start + count
+      val range = new Inclusive(start, end, 1)
+      start = end
+      range
+    }.toList
+  }
+
   def sliceByRow(parts: Int, frameBatch: FrameBatch): List[Inclusive] = {
     val rows = frameBatch.rowCount
     val partSize = (parts + rows - 1) / parts
@@ -54,7 +71,6 @@ class EggFrameContext extends Logging {
       new Inclusive(sid * partSize, Math.min((sid + 1) * partSize, rows), 1)
     }.toList
   }
-
 }
 
 class EggFrame {
@@ -67,6 +83,6 @@ class EggFrame {
 }
 
 object EggFrame {
-  private[eggroll] lazy val session =  new ClusterManagerClient().getSession(ErSessionMeta(
+  private[eggroll] lazy val session = new ClusterManagerClient().getSession(ErSessionMeta(
     id = StaticErConf.getString(SessionConfKeys.CONFKEY_SESSION_ID, null)))
 }

@@ -28,6 +28,12 @@ class EggFrameBootstrap extends BootstrapBase with Logging {
     StaticErConf.addProperties(confPath)
     val confFile = new File(confPath)
     StaticErConf.addProperty(CoreConfKeys.STATIC_CONF_PATH, confFile.getAbsolutePath)
+    if (StaticErConf.getBoolean("arrow.enable_unsafe_memory_access", defaultValue = false)) {
+      System.setProperty("arrow.enable_unsafe_memory_access", "true")
+      logInfo(s"EggFrame unSafe :${System.getProperty("arrow.enable_unsafe_memory_access")}")
+    } else {
+      logInfo(s"EggFrame unSafe :${System.getProperty("arrow.enable_unsafe_memory_access")}")
+    }
 
     CommandRouter.register(
       serviceName = "EggFrame.runTask",
@@ -41,7 +47,7 @@ class EggFrameBootstrap extends BootstrapBase with Logging {
     // todo:2: heartbeat service
     val sessionId = cmd.getOptionValue("session-id")
     val clusterManager = cmd.getOptionValue("cluster-manager", "localhost:4670")
-//    val nodeManager = cmd.getOptionValue("node-manager", "localhost:9394")
+    //    val nodeManager = cmd.getOptionValue("node-manager", "localhost:9394")
     val serverNodeId = cmd.getOptionValue("server-node-id", "0").toLong
     val processorId = cmd.getOptionValue("processor-id", "0").toLong
 
@@ -50,7 +56,7 @@ class EggFrameBootstrap extends BootstrapBase with Logging {
     val options = new ConcurrentHashMap[String, String]()
     options.put(SessionConfKeys.CONFKEY_SESSION_ID, sessionId)
     // ignore heart beat when debugging
-    if(processorId > 0){
+    if (processorId > 0) {
       val processName = ManagementFactory.getRuntimeMXBean.getName
       val pid = processName.split(StringConstants.AT, 2)(0).toInt
       val myself = ErProcessor(
@@ -76,6 +82,7 @@ class EggFrameBootstrap extends BootstrapBase with Logging {
       logInfo(s"""heartbeated processorId: $processorId""")
     }
   }
+
   override def start(): Unit = {
     val specPort = cmd.getOptionValue("port", "0").toInt
     val specTransferPort = cmd.getOptionValue("transfer-port", "0").toInt
@@ -83,16 +90,16 @@ class EggFrameBootstrap extends BootstrapBase with Logging {
     transferServer.runServer("0.0.0.0", specTransferPort)
     val transferPort = transferServer.getPort
     logInfo(s"""server started at transferPort: $transferPort""")
-    println(s"""server started at transferPort: $transferPort""")
+    logInfo(s"""server started at transferPort: $transferPort""")
     val cmdServer = NettyServerBuilder.forAddress(new InetSocketAddress(specPort))
-      .maxInboundMetadataSize(1024*1024)
+      .maxInboundMetadataSize(1024 * 1024)
+      .maxInboundMessageSize(1024 * 1024 * 1024)
       .addService(new CommandService)
       .build
     cmdServer.start()
     val port = cmdServer.getPort
-//    StaticErConf.setPort(port)
+    //    StaticErConf.setPort(port)
     logInfo(s"""server started at $port""")
-    println(s"""server started at $port""")
     reportStatus(port, transferPort)
   }
 }
