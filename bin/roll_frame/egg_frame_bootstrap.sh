@@ -128,6 +128,8 @@ if [[ -z ${EGGROLL_LOG_CONF} ]]; then
   fi
 fi
 
+echo "EGGROLL_LOG_CONF: ${EGGROLL_LOG_CONF}"
+
 if [[ -z ${javahome} ]]; then
   JAVA=`which java`
 else

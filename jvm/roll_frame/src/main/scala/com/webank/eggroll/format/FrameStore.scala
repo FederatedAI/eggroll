@@ -27,7 +27,7 @@ import java.util.concurrent.{BlockingQueue, LinkedBlockingQueue}
 import com.webank.eggroll.core.constant.StringConstants
 import com.webank.eggroll.core.io.util.IoUtils
 import com.webank.eggroll.core.meta.{ErPartition, ErStore}
-import com.webank.eggroll.rollframe.NioTransferEndpoint
+import com.webank.eggroll.rollframe.{HttpUtil, NioTransferEndpoint}
 import io.netty.util.internal.PlatformDependent
 import org.apache.arrow.flatbuf.MessageHeader
 import org.apache.arrow.memory.BufferAllocator
@@ -69,7 +69,7 @@ object FrameStore {
   val HOST: String = StringConstants.HOST
   val PORT: String = StringConstants.PORT
 
-  val NETWORK_CONNECT_NUM = 10
+  val NETWORK_CONNECT_NUM = 3
   private val ROOT_PATH = "/tmp/unittests/RollFrameTests/"
 
   def getPartitionsMeta(store: ErStore): Seq[Map[String, String]] = {
@@ -314,6 +314,16 @@ class NetworkFrameStore(path: String, host: String, port: Int) extends FrameStor
 object JvmFrameStore {
   private val caches: TrieMap[String, ListBuffer[FrameBatch]] = new TrieMap[String, ListBuffer[FrameBatch]]()
   private val persistence: mutableSet[String] = mutableSet[String]()
+
+  def printJvmFrameStore(): Unit ={
+    println("-----------------------")
+    caches.foreach(i => println(i._1))
+    println("-----------------------")
+  }
+
+  def checkFrameBatch(path: String): Boolean = {
+    JvmFrameStore.caches.contains(path)
+  }
 
   def addExclude(path: String): Unit = {
     persistence += path
