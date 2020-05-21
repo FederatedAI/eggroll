@@ -68,8 +68,14 @@ class PairAdapter(object):
 
 
 class PairWriteBatch:
+    def get(self, k):
+        raise NotImplementedError
+
     def put(self, k, v):
         raise NotImplementedError()
+
+    def merge(self, merge_func, k, v):
+        raise NotImplementedError
 
     def write(self):
         raise NotImplementedError()
