@@ -47,11 +47,16 @@ class NioFrameTransfer(nodes: Array[ErProcessor], timeout: Int = 600 * 1000) ext
   }.toMap
 
   // the first node is roll
+  // TODO: can specify roll
   private lazy val roll = clients(nodes(0).id)
 
   object Roll {
     def pull(path: String): Iterator[FrameBatch] = {
       roll.pull(path)
+    }
+
+    def broadcast(path:String,frameBatch: FrameBatch):Unit = {
+      roll.broadcast(path,frameBatch)
     }
   }
 
@@ -61,7 +66,8 @@ class NioFrameTransfer(nodes: Array[ErProcessor], timeout: Int = 600 * 1000) ext
 
   override def broadcast(path: String, frameBatch: FrameBatch): Unit = {
     val latch = new CountDownLatch(clients.size)
-    var error:Throwable = null
+    // TODO: use more elegant code;
+    var error: Throwable = null
     clients.foreach { c =>
       new Thread() {
         override def run(): Unit = {
@@ -78,8 +84,8 @@ class NioFrameTransfer(nodes: Array[ErProcessor], timeout: Int = 600 * 1000) ext
       }.start()
     }
     latch.await()
-    if (error != null){
-      throw new RuntimeException("boradcast failed",error)
+    if (error != null) {
+      throw new RuntimeException("boradcast failed", error)
     }
     //    clients.foreach(c => c._2.broadcast(path, frameBatch))
   }
@@ -207,7 +213,7 @@ class NioTransferEndpoint extends Logging {
   def runServer(host: String, port: Int): Unit = {
     logInfo("start Transfer server endpoint")
     val serverSocketChannel = ServerSocketChannel.open
-
+    // TODO: deal with exception
     serverSocketChannel.socket.bind(new InetSocketAddress(host, port))
     this.port = serverSocketChannel.socket.getLocalPort
     val executors = Executors.newCachedThreadPool()
@@ -231,15 +237,15 @@ class NioTransferEndpoint extends Logging {
                     FrameStore.queue(head.path, head.batchSize).writeAll(fr.getColumnarBatches())
                   case NioTransferHead.BROADCAST => // client broadcast
                     try {
-                      val fr = new FrameReader(ch)
-                      val fb = fr.getColumnarBatches().next()
-                      if (fb.isEmpty){
-                        throw new Exception("receive broadcast frame baatch is empty")
+                      val fb = new FrameReader(ch).getColumnarBatches().next()
+                      if (fb.isEmpty) {
+                        throw new Exception("receive broadcast frame batch is empty")
                       }
                       FrameStore.cache(head.path).append(fb)
                     }
                     catch {
-                      case e: Throwable => e.printStackTrace()
+                      case e: Throwable =>
+                        e.printStackTrace()
                         logError("receive broadcast failed:", e)
                     }
                   case NioTransferHead.RECEIVE => // client receive
@@ -343,6 +349,16 @@ class NioTransferEndpoint extends Logging {
 
   def release(): Unit = {
     NioTransferHead(action = "release", path = "", batchSize = -1).write(clientChannel)
+  }
+}
+
+object HttpUtil {
+
+  import java.net.InetAddress
+
+  def isReachable(host: String): Boolean = {
+    val a = InetAddress.getByName(host);
+    a.isReachable(1000)
   }
 }
 

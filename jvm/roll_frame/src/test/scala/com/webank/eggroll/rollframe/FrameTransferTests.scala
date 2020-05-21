@@ -210,4 +210,9 @@ class FrameTransferTests {
     val cacheFb = client.pull(path)
     println(s"cache fb: ${cacheFb.next().fieldCount}")
   }
+
+  @Test
+  def testIsReachable(): Unit ={
+    println(HttpUtil.isReachable("172.13.153.10"))
+  }
 }

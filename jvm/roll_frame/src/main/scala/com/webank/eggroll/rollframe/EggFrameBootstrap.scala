@@ -90,7 +90,6 @@ class EggFrameBootstrap extends BootstrapBase with Logging {
     transferServer.runServer("0.0.0.0", specTransferPort)
     val transferPort = transferServer.getPort
     logInfo(s"""server started at transferPort: $transferPort""")
-    logInfo(s"""server started at transferPort: $transferPort""")
     val cmdServer = NettyServerBuilder.forAddress(new InetSocketAddress(specPort))
       .maxInboundMetadataSize(1024 * 1024)
       .maxInboundMessageSize(1024 * 1024 * 1024)
