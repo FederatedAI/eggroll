@@ -267,49 +267,64 @@ class ErSession(object):
 
     def _decompose_job(self, job: ErJob):
         input_total_partitions = job._inputs[0]._store_locator._total_partitions
-        output_total_partitions = input_total_partitions \
+        output_total_partitions = 0 \
             if not job._outputs \
             else job._outputs[0]._store_locator._total_partitions
 
         larger_total_partitions = max(input_total_partitions, output_total_partitions)
 
-        if larger_total_partitions == input_total_partitions:
-            store = self.populate_processor(job._inputs[0])
-        else:
-            store = self.populate_processor(job._outputs[0])
+        populated_input_partitions = self.populate_processor(job._inputs[0])._partitions
 
-        partitions_with_processors = store._partitions
+        if output_total_partitions > 0:
+            populated_output_partitions = self.populate_processor(job._outputs[0])._partitions
+        else:
+            populated_output_partitions = list()
 
         result = list()
-
         for i in range(larger_total_partitions):
             input_partitions = list()
             output_partitions = list()
-            try:
-                target_processor = self.route_to_egg(partitions_with_processors[i])
-            except Exception as e:
-                raise e
 
             if i < input_total_partitions:
+                input_processor = populated_input_partitions[i]._processor
+                input_server_node_id = input_processor._server_node_id
                 for input_store in job._inputs:
                     input_partitions.append(ErPartition(
                             id=i,
                             store_locator=input_store._store_locator,
-                            processor=target_processor))
+                            processor=input_processor))
+            else:
+                input_processor = None
+                input_server_node_id = None
+
             if i < output_total_partitions:
+                output_processor = populated_output_partitions[i]._processor
+                output_server_node_id = output_processor._server_node_id
                 for output_store in job._outputs:
                     output_partitions.append(ErPartition(
                             id=i,
                             store_locator=output_store._store_locator,
-                            processor=target_processor))
+                            processor=output_processor))
+            else:
+                output_processor = None
+                output_server_node_id = None
 
-            result.append(
-                    ([ErTask(id=generate_task_id(job._id, i),
-                             name=f'{job._name}',
-                             inputs=input_partitions,
-                             outputs=output_partitions,
-                             job=job)],
-                     target_processor._command_endpoint))
+            tasks = [ErTask(id=generate_task_id(job._id, i),
+                           name=f'{job._name}',
+                           inputs=input_partitions,
+                           outputs=output_partitions,
+                           job=job)]
+            if input_server_node_id == output_server_node_id:
+                result.append(
+                        (tasks, input_processor._command_endpoint))
+            else:
+                if input_server_node_id is not None:
+                    result.append(
+                            (tasks, input_processor._command_endpoint))
+                if output_server_node_id is not None:
+                    result.append(
+                            (tasks, output_processor._command_endpoint))
+
         return result
 
     def populate_output_store(self, job: ErJob):
@@ -324,6 +339,9 @@ class ErSession(object):
             refresh_nodes = job._options.get('refresh_nodes', False)
             if refresh_nodes:
                 final_output_proposal._partitions = []
+            else:
+                if not final_output_proposal._partitions:
+                    final_output_proposal._partitions = job._inputs[0]._partitions
         else:
             final_output_proposal = job._outputs[0]
 

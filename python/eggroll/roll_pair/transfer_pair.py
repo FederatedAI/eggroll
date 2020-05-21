@@ -13,14 +13,14 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import functools
 import queue
 import threading
 from concurrent.futures import ThreadPoolExecutor
 
 from eggroll.core.conf_keys import RollPairConfKeys
 from eggroll.core.datastructure.broker import FifoBroker, BrokerClosed
-from eggroll.core.pair_store.format import PairBinReader, PairBinWriter, \
-    ArrayByteBuffer
+from eggroll.core.pair_store.format import PairBinReader, PairBinWriter, ArrayByteBuffer
 from eggroll.core.transfer.transfer_service import TransferClient, \
     TransferService
 from eggroll.core.utils import _exception_logger
@@ -156,7 +156,6 @@ class TransferPair(object):
         import os
         sendbuf_size = int(os.environ.get(RollPairConfKeys.EGGROLL_ROLLPAIR_TRANSFERPAIR_SENDBUF_SIZE.key, sendbuf_size))
 
-        # TODO:1: buffer_size auto adjust? - max: initial size can be configured. but afterwards it will adjust depending on message size
         L.debug(f'pair_to_bin_batch start')
         pair_count = 0
         ba = None
@@ -169,10 +168,12 @@ class TransferPair(object):
             nonlocal writer
             bin_batch = None
             if ba:
-                bin_batch = bytes(ba[0:buffer.get_offset()])
+                bin_batch = bytes(ba[0:writer.get_offset()])
+            # if ba:
+            #     bin_batch = bytes(ba[0:buffer.get_offset()])
             ba = bytearray(bs)
             buffer = ArrayByteBuffer(ba)
-            writer = PairBinWriter(pair_buffer=buffer)
+            writer = PairBinWriter(pair_buffer=buffer, data=ba)
             return bin_batch
         # init var
         commit()
@@ -199,7 +200,7 @@ class TransferPair(object):
             L.debug(f"bin_batch_to_pair: cur batch size: {len(batch)}")
             try:
                 bin_data = ArrayByteBuffer(batch)
-                reader = PairBinReader(pair_buffer=bin_data)
+                reader = PairBinReader(pair_buffer=bin_data, data=batch)
                 for k_bytes, v_bytes in reader.read_all():
                     yield k_bytes, v_bytes
                     write_count += 1
@@ -213,6 +214,10 @@ class TransferPair(object):
         is_shuffle=True: all partition in one broker
         is_shuffle=False: just save broker to store, for put_all
         """
+        def do_merge(old_value, update_value, merge_func, serdes):
+            new_value = merge_func(serdes.deserialize(old_value), serdes.deserialize(update_value))
+            return serdes.serialize(new_value)
+
         @_exception_logger
         def do_store(store_partition_inner, is_shuffle_inner, total_writers_inner, reduce_op_inner):
             done_cnt = 0
@@ -221,20 +226,23 @@ class TransferPair(object):
                 broker = TransferService.get_or_create_broker(tag, write_signals=total_writers_inner)
                 L.debug(f"do_store start for tag: {tag}")
                 batches = TransferPair.bin_batch_to_pair(b.data for b in broker)
+
+                serdes = create_serdes(store_partition_inner._store_locator._serdes)
+                if reduce_op_inner is not None:
+                    merger = functools.partial(do_merge,
+                                               merge_func=reduce_op_inner,
+                                               serdes=serdes)
+                else:
+                    merger = None
+
                 with create_adapter(store_partition_inner) as db:
                     L.debug(f"do_store create_db for tag: {tag} for partition: {store_partition_inner}")
-                    serdes = create_serdes(store_partition_inner._store_locator._serdes)
                     with db.new_batch() as wb:
                         for k, v in batches:
                             if reduce_op_inner is None:
                                 wb.put(k, v)
                             else:
-                                v1 = wb.get(k)
-                                if v1:
-                                    v2 = reduce_op_inner(serdes.deserialize(v1), serdes.deserialize(v))
-                                    wb.put(k, serdes.serialize(v2))
-                                else:
-                                    wb.put(k, v)
+                                wb.merge(merger, k, v)
                             done_cnt += 1
                     L.debug(f"do_store done for tag: {tag} for partition: {store_partition_inner}")
                 TransferService.remove_broker(tag)
