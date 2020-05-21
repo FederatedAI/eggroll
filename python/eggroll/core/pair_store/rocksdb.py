@@ -159,8 +159,8 @@ class RocksdbWriteBatch(PairWriteBatch):
             self.batch.clear()
 
     def write_merged(self):
-        for k in sorted(self.manual_merger.keys()):
-            self.batch.put(k, self.manual_merger[k])
+        for k, v in sorted(self.manual_merger.items(), key=lambda kv: kv[0]):
+            self.batch.put(k, v)
             self.write_count += 1
         self.has_write_op = True
         self.manual_merger.clear()
@@ -173,6 +173,7 @@ class RocksdbWriteBatch(PairWriteBatch):
             self.write()
             del self.batch
             self.batch = None
+
 
 class RocksdbIterator(PairIterator):
     def __init__(self, adapter: RocksdbAdapter):
