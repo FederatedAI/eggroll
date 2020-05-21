@@ -235,7 +235,7 @@ class TransferPair(object):
                 else:
                     merger = None
 
-                with create_adapter(store_partition_inner, options={"merge_func": merger}) as db:
+                with create_adapter(store_partition_inner) as db:
                     L.debug(f"do_store create_db for tag: {tag} for partition: {store_partition_inner}")
                     with db.new_batch() as wb:
                         for k, v in batches:
