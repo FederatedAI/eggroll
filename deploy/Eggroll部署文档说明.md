@@ -105,11 +105,11 @@ eggroll.resourcemanager.bootstrap.egg_pair.pythonpath=python		<--python文件路
 eggroll.resourcemanager.bootstrap.egg_pair.filepath=python/eggroll/roll_pair/egg_pair.py	<--egg_pair.py文件路径，默认即可-->
 
 <--以下几项默认即可-->
-eggroll.resourcemanager.bootstrap.roll_pair_master.exepath=bin/roll_pair/roll_pair_master_bootstrap.sh		<--roll_pair_master_bootstrap.sh文件路径-->
-eggroll.resourcemanager.bootstrap.roll_pair_master.javahome=	<--java环境变量，系统安装jdk1.8-->
-eggroll.resourcemanager.bootstrap.roll_pair_master.classpath=conf/:lib/*	<--eggroll启动时读取classpath文件路径-->
-eggroll.resourcemanager.bootstrap.roll_pair_master.mainclass=com.webank.eggroll.rollpair.RollPairMasterBootstrap	<--roll_pair_master主类-->
-eggroll.resourcemanager.bootstrap.roll_pair_master.jvm.options=	<--jvm启动参数-->
+eggroll.resourcemanager.bootstrap.egg_frame.exepath=bin/roll_frame/egg_frame_bootstrap.sh		<--egg_frame_bootstrap.sh文件路径-->
+eggroll.resourcemanager.bootstrap.egg_frame.javahome=	<--java环境变量，系统安装jdk1.8-->
+eggroll.resourcemanager.bootstrap.egg_frame.classpath=conf/:lib/*	<--eggroll启动时读取classpath文件路径-->
+eggroll.resourcemanager.bootstrap.egg_frame.mainclass=com.webank.eggroll.rollframe.EggFrameBootstrap	<--roll_frame主类-->
+eggroll.resourcemanager.bootstrap.egg_frame.jvm.options=	<--jvm启动参数-->
 <--以上几项默认即可-->
 
 <--rollsite配置说明：其服务ip、端口与partyId需要与route_table.json配置文件中对应一致-->
@@ -204,7 +204,7 @@ source ${EGGROLL_HOME}/init.sh       --${EGGROLL_HOME} means the absolute path o
 sh bin/eggroll.sh $1 $2		
 <--
 	$1：需要执行操作的服务名称，例如clustermanager，nodemanager，rollsite，all(表示所有服务)；
-	$2：需要执行的操作，例如start(启动)，status（查看状态），stop（关闭），restart（重启）
+	$2：需要执行的操作，例如start(启动)，starting(阻塞启动)，status（查看状态），stop（关闭），restart（重启），restarting（阻塞重启）
 -->
 ```
 
@@ -215,11 +215,17 @@ source ${EGGROLL_HOME}/init.sh       --${EGGROLL_HOME} means the absolute path o
 <--启动所有服务-->
 sh bin/eggroll.sh all start
 
+<--阻塞启动clustermanager服务-->
+sh bin/eggroll.sh clustermanager starting
+
 <--查看clustermanager服务状态-->
 sh bin/eggroll.sh clustermanager status
 
 <--重启rollsite服务-->
 sh bin/eggroll.sh rollsite restart
+
+<--阻塞重启rollsite服务-->
+sh bin/eggroll.sh rollsite restarting
 
 <--关闭nodemanager服务-->
 sh bin/eggroll.sh nodemanager stop
