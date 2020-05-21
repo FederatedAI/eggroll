@@ -18,16 +18,20 @@
 
 package com.webank.eggroll.core.util
 
+import java.io.File
+import java.nio.file.Files
 import java.util.concurrent.atomic.AtomicBoolean
 
 import com.webank.eggroll.core.constant.StringConstants
 import org.apache.commons.lang3.StringUtils
 import org.apache.logging.log4j.core.LoggerContext
+import org.apache.logging.log4j.core.config.Configurator
 import org.apache.logging.log4j.{Level, LogManager, Logger}
 
 trait Logging {
   @transient private var log_ : Logger = _
   private var prefix: String = StringConstants.EMPTY
+  private val usingDefaultPropertiesAndNotWarned = new AtomicBoolean(false)
 
   protected def setLogPrefix(prefix: String): Unit = {
     if (StringUtils.isNotBlank(prefix)) {
@@ -43,10 +47,28 @@ trait Logging {
   }
 
   protected def log: Logger = {
+    var defaultLogProperties: File = null
     if (log_ == null) {
-      if (!Logging.logContextInited.get()) {
-        val logContext = LogManager.getContext(false).asInstanceOf[LoggerContext]
-        val logConf = logContext.getConfiguration
+      if (!Logging.logContextInited.get()) synchronized {
+        var logContext = LogManager.getContext(false).asInstanceOf[LoggerContext]
+        var logConf = logContext.getConfiguration
+
+        if (logConf.getAppenders.size() <= 1) {
+          val eggrollHome = System.getenv("EGGROLL_HOME")
+          if (StringUtils.isBlank(eggrollHome)) throw new IllegalStateException("EGGROLL_HOME is not set")
+
+          defaultLogProperties = new File(s"${eggrollHome}/conf/log4j2.properties")
+          if (!Files.exists(defaultLogProperties.toPath)) {
+            throw new IllegalStateException(s"log properties not found and default log path ${defaultLogProperties.getAbsolutePath} not found")
+          }
+
+          Configurator.initialize(null, defaultLogProperties.getAbsolutePath)
+          logContext.reconfigure()
+          logContext = LogManager.getContext(false).asInstanceOf[LoggerContext]
+          logConf = logContext.getConfiguration
+
+          usingDefaultPropertiesAndNotWarned.set(true)
+        }
 
         val eggrollLogLevelString = System.getenv("EGGROLL_LOG_LEVEL")
         var eggrollLogLevel = if (StringUtils.isBlank(eggrollLogLevelString)) Level.INFO else Level.getLevel(eggrollLogLevelString)
@@ -60,6 +82,11 @@ trait Logging {
           logConf.getRootLogger.addAppender(logConf.getAppender("STDOUT"), eggrollLogLevel, null)
         }
         Logging.logContextInited.compareAndSet(false, true)
+
+        if (usingDefaultPropertiesAndNotWarned.get()) {
+          LogManager.getLogger().warn(s"Log4j2 properties file not set. using default properties file at ${defaultLogProperties.getAbsolutePath}")
+          usingDefaultPropertiesAndNotWarned.set(false)
+        }
       }
 
       log_ = LogManager.getLogger(loggerName)
