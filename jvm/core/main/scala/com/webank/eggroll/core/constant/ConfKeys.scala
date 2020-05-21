@@ -164,4 +164,5 @@ object RollSiteConfKeys {
 object RollPairConfKeys {
   val EGGROLL_ROLLPAIR_PUTBATCH_EXECUTOR_POOL_MAX_SIZE = ErConfKey("eggroll.rollpair.putbatch.executor.pool.max.size", 600)
   val EGGROLL_ROLLPAIR_PUTBATCH_EXECUTOR_POOL_KEEPALIVE_SEC = ErConfKey("eggroll.rollpair.putbatch.executor.pool.keepalive.sec", 30)
+  val EGGROLL_ROLLPAIR_DEFAULT_STORE_TYPE = ErConfKey("eggroll.rollpair.default.store.type", "ROLLPAIR_LMDB")
 }
