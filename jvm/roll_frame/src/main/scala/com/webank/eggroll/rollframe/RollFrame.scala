@@ -145,10 +145,6 @@ class RollFrameContext private[eggroll](val session: ErSession) {
   def broadcast(path: String, frameBatch: FrameBatch): Unit = {
     frameTransfer.broadcast(path, frameBatch)
   }
-
-  def excludeStore(prefixPath: String): Unit = {
-    //    frameTransfer.
-  }
 }
 
 object RollFrameContext {
@@ -275,9 +271,7 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
       inputs = Array(store),
       outputs = Array(if (output == null) store.fork(postfix = jobId) else output),
       functors = Array(ErFunctor(name = RollFrame.mapBatch, body = serdes.serialize(retFunc))))
-    val begin = System.currentTimeMillis()
     rfScheduler.run(job)
-    println(s"run Unary:${System.currentTimeMillis() - begin} ms")
     ctx.load(job.outputs.head)
   }
 
@@ -371,16 +365,19 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
                           output: ErStore = null): RollFrame = {
     val jobType = RollFrame.aggregate
     val jobId = jobType + "_" + genJobId()
-    val begin = System.currentTimeMillis()
+    val driverZeroPath = "broadcast_" + jobId
     val zeroValueBytes = if (broadcastZeroValue) {
-      ctx.broadcast("broadcast:" + jobId, zeroValue)
+      if (store.storeLocator.totalPartitions == 1) {
+        ctx.frameTransfer.Roll.broadcast(driverZeroPath, zeroValue)
+      } else {
+        ctx.broadcast(driverZeroPath, zeroValue)
+      }
       Array[Byte]()
     } else if (zeroValue != null) {
       FrameUtils.toBytes(zeroValue)
     } else {
       Array[Byte]()
     } // broadcast spend > 200ms
-    println(s"driver zero:${System.currentTimeMillis() - begin}ms")
 
     val treeComb: (EggFrameContext, String, Int) => Iterator[FrameBatch] = {
       (ctx, queuePath, comQueueSize) =>
@@ -428,16 +425,25 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
           ctx.logInfo(s"runAggregateBatch: jobId=${task.job.id}, partitionId=${partition.id}, root=${ctx.rootServer}")
           var localQueue: FrameStore = null
           var localParallel: Int = 1
-          val zeroPath = "broadcast:" + jobId
           val zero: FrameBatch =
             if (zeroValue == null) {
+              val eggZeroValue = "broadcast_" + jobId
               if (broadcastZeroValue) {
                 try {
-                  FrameStore.cache(zeroPath).readOne()
+                  var accTime = 0
+                  // TODO: use elegent code
+                  while (!JvmFrameStore.checkFrameBatch(eggZeroValue)) {
+                    Thread.sleep(50)
+                    accTime += 50
+                    if (accTime >= RollFrame.stopTime) {
+                      throw new RuntimeException(s"Egg Nodes didn't receive broadcast:$eggZeroValue")
+                    }
+                  }
+                  FrameStore.cache(eggZeroValue).readOne()
                 } catch {
                   case e: Throwable =>
                     e.printStackTrace()
-                    throw new NoSuchElementException(s"get $zeroPath value failed")
+                    throw new RuntimeException(s"get $eggZeroValue value failed", e)
                 }
               } else {
                 // reduce need't zero value
@@ -625,6 +631,7 @@ object RollFrame {
   val aggregate = "aggregate"
   val broadcast = "broadcast"
   val mulMul = "mulMulTask"
+  val stopTime = 10000
 
   def apply(store: ErStore, ctx: RollFrameContext): RollFrame = new RollFrame(store, ctx)
 }
