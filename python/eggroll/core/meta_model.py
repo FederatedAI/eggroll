@@ -14,6 +14,7 @@
 #  limitations under the License.
 
 from copy import deepcopy
+from threading import Lock
 
 from eggroll.core.base_model import RpcMessage
 from eggroll.core.proto import meta_pb2
@@ -347,6 +348,8 @@ class ErPairBatch(RpcMessage):
 
 
 class ErStoreLocator(RpcMessage):
+    seq = 0
+    seq_lock = Lock()
     def __init__(self, id=-1, store_type: str = '', namespace: str = '', name: str = '',
             path: str = '', total_partitions=0, partitioner: str = '', serdes: str = ''):
         self._id = id
@@ -390,7 +393,10 @@ class ErStoreLocator(RpcMessage):
     def fork(self, postfix='', delim=DEFAULT_FORK_DELIM):
         duplicate = deepcopy(self)
         prefix = duplicate._name[:duplicate._name.rfind(delim)]
-        final_postfix = postfix if postfix else time_now_ns()
+        with self.seq_lock:
+            self.seq += 1
+            final_postfix = postfix if postfix else f'{time_now_ns()}.{self.seq}'
+
         duplicate._name = f'{prefix}{delim}{final_postfix}'
         return duplicate
 
