@@ -21,11 +21,13 @@ package com.webank.eggroll.rollframe
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.channels.{ServerSocketChannel, SocketChannel}
-import java.util.concurrent.{CountDownLatch, Executors}
+import java.util.concurrent.{ Executors, Future}
 
 import com.webank.eggroll.core.meta.{ErProcessor, ErStore}
 import com.webank.eggroll.core.util.Logging
 import com.webank.eggroll.format.{FrameBatch, FrameReader, FrameStore, FrameWriter, JvmFrameStore, QueueFrameStore}
+
+import scala.collection.mutable.ListBuffer
 
 // TODO: egg node use thread pool
 trait FrameTransfer {
@@ -55,8 +57,8 @@ class NioFrameTransfer(nodes: Array[ErProcessor], timeout: Int = 600 * 1000) ext
       roll.pull(path)
     }
 
-    def broadcast(path:String,frameBatch: FrameBatch):Unit = {
-      roll.broadcast(path,frameBatch)
+    def broadcast(path: String, frameBatch: FrameBatch): Unit = {
+      roll.broadcast(path, frameBatch)
     }
   }
 
@@ -65,27 +67,21 @@ class NioFrameTransfer(nodes: Array[ErProcessor], timeout: Int = 600 * 1000) ext
   }
 
   override def broadcast(path: String, frameBatch: FrameBatch): Unit = {
-    val latch = new CountDownLatch(clients.size)
-    // TODO: use more elegant code;
-    var error: Throwable = null
+    val futures = new ListBuffer[Future[Unit]]
+    val pool = Executors.newCachedThreadPool()
     clients.foreach { c =>
-      new Thread() {
-        override def run(): Unit = {
-          try {
-            c._2.broadcast(path, frameBatch)
-          } catch {
-            case e: Throwable =>
-              e.printStackTrace()
-              error = e
-          } finally {
-            latch.countDown()
-          }
-        }
-      }.start()
+      futures.append(pool.submit(() => {
+        c._2.broadcast(path, frameBatch)
+      }))
     }
-    latch.await()
-    if (error != null) {
-      throw new RuntimeException("boradcast failed", error)
+    try {
+      futures.foreach { i =>
+        i.get()
+      }
+    } catch {
+      case e: Throwable => throw new RuntimeException("broadcast failed.", e)
+    } finally {
+      pool.shutdown()
     }
     //    clients.foreach(c => c._2.broadcast(path, frameBatch))
   }
@@ -105,8 +101,9 @@ class NioFrameTransfer(nodes: Array[ErProcessor], timeout: Int = 600 * 1000) ext
   }
 
   def addExcludeStore(path: String): Unit = {
-    clients.foreach { c =>
-      c._2.addExclude(path)
+    clients.foreach {
+      c =>
+        c._2.addExclude(path)
     }
   }
 
@@ -121,20 +118,23 @@ class NioFrameTransfer(nodes: Array[ErProcessor], timeout: Int = 600 * 1000) ext
   }
 
   def deleteExcludeStore(path: String): Unit = {
-    clients.foreach { c =>
-      c._2.deleteExclude(path)
+    clients.foreach {
+      c =>
+        c._2.deleteExclude(path)
     }
   }
 
   def resetExcludeStore(): Unit = {
-    clients.foreach { c =>
-      c._2.reSetExclude()
+    clients.foreach {
+      c =>
+        c._2.reSetExclude()
     }
   }
 
   def releaseStore(): Unit = {
-    clients.foreach { c =>
-      c._2.release()
+    clients.foreach {
+      c =>
+        c._2.release()
     }
   }
 }
@@ -222,7 +222,6 @@ class NioTransferEndpoint extends Logging {
         while (true) {
           val socketChannel = serverSocketChannel.accept // had client connected
           logInfo(s"receive a connected request,server ip: ${socketChannel.getLocalAddress}, remote ip: ${socketChannel.getRemoteAddress}")
-          println(s"receive a connected request,server ip: ${socketChannel.getLocalAddress}, remote ip: ${socketChannel.getRemoteAddress}")
           executors.submit(new Runnable {
             override def run(): Unit = {
               val ch = socketChannel
