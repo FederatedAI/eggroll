@@ -44,7 +44,7 @@ class ScriptTest {
     tensor1.setSize(fb1.rowCount)
 
     val parameters:Array[Double] = Array(0.0)
-    val ptr = Torch.getTorchScript("jvm/roll_frame/src/test/resources/orch_model_merge.pt")
+    val ptr = Torch.getTorchScript("jvm/roll_frame/src/test/resources/torch_model_merge.pt")
     val res = Torch.run(ptr,Array(tensor,tensor1),parameters)
     println(res.length)
     println(res(0))
