@@ -54,7 +54,9 @@ class RollSiteContext:
         self.role = options["self_role"]
         self.party_id = str(options["self_party_id"])
         self.proxy_endpoint = options["proxy_endpoint"]
-        self.is_standalone = True if options["deploy_mode"] == "standalone" else False
+        # TODO:0 deploy mode should be the same as the fate flow
+        #self.is_standalone = options["deploy_mode"] == "standalone"
+        self.is_standalone = RollSiteConfKeys.EGGROLL_ROLLSITE_DEPLOY_MODE.get_with(options) == "standalone"
         if self.is_standalone:
             self.stub = None
         else:
