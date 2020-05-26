@@ -13,7 +13,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import gc
 import os
 import threading
 import rocksdb
@@ -27,7 +26,9 @@ L = get_logger()
 class RocksdbAdapter(PairAdapter):
     env_lock = threading.Lock()
     env_dict = dict()
+    ref_dict = dict()
     count_dict = dict()
+    _db_collected = False
 
     def __init__(self, options):
         """
@@ -46,12 +47,15 @@ class RocksdbAdapter(PairAdapter):
                 if opts.create_if_missing:
                     os.makedirs(self.path, exist_ok=True)
                 self.db = rocksdb.DB(self.path, opts)
+                self._dbref = rocksdb.weakref.ref(self.db, self._on_db_collected)
                 L.info("path not in dict db path:{}".format(self.path))
                 RocksdbAdapter.count_dict[self.path] = 0
                 RocksdbAdapter.env_dict[self.path] = self.db
+                RocksdbAdapter.ref_dict = self._dbref
             else:
                 L.info("path in dict:{}".format(self.path))
                 self.db = RocksdbAdapter.env_dict[self.path]
+                self._dbref = RocksdbAdapter.ref_dict[self.path]
         RocksdbAdapter.count_dict[self.path] = RocksdbAdapter.count_dict[self.path] + 1
 
     def __enter__(self):
@@ -63,24 +67,34 @@ class RocksdbAdapter(PairAdapter):
     def __del__(self):
         self.close()
 
+    def _on_db_collected(self, ref):
+        RocksdbAdapter._db_collected = True
+
+    def close(self):
+        while not self._db_collected:
+            try:
+                del(self.db)
+            except AttributeError:
+                pass
+            gc.collect()
+
+
     def get(self, key):
         return self.db.get(key)
 
     def put(self, key, value):
         self.db.put(key, value)
 
-    def close(self):
+    def _close(self):
         with RocksdbAdapter.env_lock:
             if hasattr(self, 'db'):
                 count = RocksdbAdapter.count_dict[self.path]
                 if not count or count - 1 <= 0:
                     del RocksdbAdapter.env_dict[self.path]
                     del RocksdbAdapter.count_dict[self.path]
-                    del self.db
-                    # todo:0: NEEDS OPTIMISATION
-                    gc.collect()
                 else:
                     RocksdbAdapter.count_dict[self.path] = count - 1
+                del self.db
 
     def iteritems(self):
         return RocksdbIterator(self)
