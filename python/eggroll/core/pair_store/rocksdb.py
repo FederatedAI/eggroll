@@ -19,6 +19,7 @@ import rocksdb
 
 from eggroll.core.pair_store.adapter import PairWriteBatch, PairIterator, PairAdapter
 from eggroll.utils.log_utils import get_logger
+from eggroll.roll_pair.utils.pair_utils import get_data_dir
 
 L = get_logger()
 
@@ -89,26 +90,13 @@ class RocksdbAdapter(PairAdapter):
 
     def close(self):
         with RocksdbAdapter.db_lock:
-            if hasattr(self, 'db'):
-                count = RocksdbAdapter.count_dict[self.path]
-                if not count or count - 1 <= 0:
-                    del RocksdbAdapter.db_dict[self.path]
-                    del RocksdbAdapter.count_dict[self.path]
-                    del self.db
-                    gc.collect()
-                else:
-                    RocksdbAdapter.count_dict[self.path] = count - 1
+            if hasattr(self, 'db') and self.path in RocksdbAdapter.db_dict:
+                del RocksdbAdapter.db_dict[self.path]
+                del self.db
 
     def close_forcefully(self):
-        with RocksdbAdapter.db_lock:
-            if hasattr(self, 'db'):
-                del RocksdbAdapter.db_dict[self.path]
-                del RocksdbAdapter.count_dict[self.path]
-                try:
-                    del self.db
-                except AttributeError:
-                    pass
-                gc.collect()
+        self.close()
+        gc.collect()
 
     def iteritems(self):
         return RocksdbIterator(self)
@@ -124,21 +112,22 @@ class RocksdbAdapter(PairAdapter):
         self.db.delete(k)
 
     def destroy(self, options: dict = None):
-        if options is not None and 'gc_destroy' in options and options['gc_destroy']:
-            self.close_forcefully()
-        else:
-            self.close()
+        self.close()
 
         import shutil, os
         from pathlib import Path
-        shutil.rmtree(self.path)
         path = Path(self.path)
-        try:
-            if not os.listdir(path.parent):
-                os.removedirs(path.parent)
-                L.debug("finish destroy, path:{}".format(self.path))
-        except:
-            L.info("path :{} has destroyed".format(self.path))
+        store_path = path.parent
+        real_data_dir = os.path.realpath(get_data_dir())
+
+        if os.path.exists(store_path) \
+            and not (store_path == "/"
+                    or store_path == real_data_dir):
+            try:
+                shutil.rmtree(store_path)
+                L.info(f'path: {store_path} has been destroyed')
+            except FileNotFoundError:
+                L.info(f'path: {store_path} has been destroyed by another partition')
 
     def is_sorted(self):
         return True
