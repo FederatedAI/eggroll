@@ -3,6 +3,7 @@ package com.webank.eggroll.rollframe
 import com.webank.eggroll.core.constant.StringConstants
 import com.webank.eggroll.core.meta.ErStore
 import com.webank.eggroll.format.{FrameBatch, FrameSchema, FrameStore}
+import com.webank.eggroll.util.SchemaUtil
 import junit.framework.TestCase
 import org.junit.{Before, Test}
 import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
@@ -30,13 +31,9 @@ class SparkAppTest extends Serializable {
     val ctx = ta.getRfContext()
     val namespace = "test1"
     val name = "dataframe"
-    val name1 = "dataframe1"
     val storeType = StringConstants.NETWORK
     val networkStore = ctx.createStore(namespace, name, storeType, partitions_)
     val partitionsMata = FrameStore.getPartitionsMeta(networkStore)
-
-    val networkStore1 = ctx.createStore(namespace,name1,storeType,partitions_)
-    val partitionsMata1 = FrameStore.getPartitionsMeta(networkStore1)
     val start = System.currentTimeMillis()
     df.rdd.foreachPartition { pData =>
       val data = pData.toArray
@@ -56,29 +53,17 @@ class SparkAppTest extends Serializable {
     // to cache
     println("\n ======= to Cache =======\n")
     val cacheStore = ctx.dumpCache(networkStore)
+    val output = ctx.forkStore(cacheStore,"b1","b")
     val end = System.currentTimeMillis()
     println(s"RddToRollFrame Time: ${end - start} ms")
     ctx.load(cacheStore).mapBatch({ fb =>
       TestCase.assertEquals(fb.fieldCount, cols)
-      fb
+      val zeroValue = new FrameBatch(new FrameSchema(SchemaUtil.getDoubleSchema(1000)), 40000)
+      zeroValue
     })
-
-    // ..........................
-    df.rdd.foreachPartition { pData =>
-      val data = pData.toArray
-      val columns = data(0).length
-      val rowCount = data.length
-      val fb = new FrameBatch(new FrameSchema(ta.getSchema(cols)), rowCount)
-      (0 until columns).foreach{f =>
-        (0 until rowCount).foreach{ r =>
-          fb.writeDouble(f,r,data(r).get(f).toString.toDouble)
-        }
-      }
-      val partitionMeta = partitionsMata1(TaskContext.getPartitionId())
-      val adapter = FrameStore.network(partitionMeta("path"), partitionMeta("host"), partitionMeta("port"))
-      adapter.append(fb)
-      adapter.close()
-    }
+    Thread.sleep(2000)
+    ctx.frameTransfer.releaseStore()
+    Thread.sleep(3000)
     println("done")
   }
 
