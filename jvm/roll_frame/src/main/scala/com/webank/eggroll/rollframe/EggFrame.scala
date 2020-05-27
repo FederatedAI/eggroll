@@ -49,7 +49,7 @@ class EggFrameContext extends Logging {
 
   def sliceByColumn(frameBatch: FrameBatch, parallel: Int): List[Inclusive] = {
     val columns = frameBatch.rootVectors.length
-    assert(columns > parallel, "FrameBatch's fields counts smaller than parallel num.")
+//    assert(columns > parallel, "FrameBatch's fields counts smaller than parallel num.")
     val quotient = columns / parallel
     val remainder = columns % parallel
     val processorsCounts = Array.fill(parallel)(quotient)
