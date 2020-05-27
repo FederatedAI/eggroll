@@ -432,8 +432,9 @@ class RollFrameTests extends Logging {
     }
     JvmFrameStore.printJvmFrameStore()
     ctx.frameTransfer.addExcludeStore("test1", "a1")
-    ctx.frameTransfer.deleteExcludeStore(store1)
-    ctx.frameTransfer.addExcludeStore(store1)
+//    Thread.sleep(2000)
+//    ctx.frameTransfer.deleteExcludeStore(store1)
+//    ctx.frameTransfer.addExcludeStore(store1)
     ctx.frameTransfer.releaseStore()
     Thread.sleep(2000)
   }
@@ -449,6 +450,8 @@ class RollFrameTests extends Logging {
       zeroValue.initZero()
       zeroValue
     }, output)
+
+    ctx.frameTransfer.addExcludeStore(input)
     Thread.sleep(2000)
     ctx.frameTransfer.releaseStore()
     Thread.sleep(2000)
@@ -461,9 +464,13 @@ class RollFrameTests extends Logging {
     val input = ctx.dumpCache(inputStore)
     val output = ctx.createStore("test1", "r1", StringConstants.CACHE, 1)
     val cols = 1000
-    val rows = 10000
+    val rows = 1000
     val zeroValue = new FrameBatch(new FrameSchema(SchemaUtil.getDoubleSchema(cols)), rows)
-    zeroValue.initZero()
+    (0 until zeroValue.fieldCount).foreach{ f =>
+      (0 until zeroValue.rowCount).foreach{ r =>
+        zeroValue.writeDouble(f,r,1)
+      }
+    }
     val out = ctx.load(input).aggregate(zeroValue, combOp = { (a, b) =>
       for (i <- 0 until a.fieldCount) {
         a.writeDouble(i, 0, a.readDouble(i, 0) + b.readDouble(i, 0))
@@ -474,10 +481,12 @@ class RollFrameTests extends Logging {
         (0 until cb.fieldCount).foreach(i =>
           if (cb.rootVectors(i) != null) {
             for (j <- 0 until zero.rowCount) {
-              zero.writeDouble(i, j, 1)
+              zero.writeDouble(i, j, 1+zero.readDouble(i,j))
             }
           })
       }, broadcastZeroValue = true, output = output)
+
+    val stop = 0
   }
 
   @Test
@@ -560,21 +569,11 @@ class RollFrameTests extends Logging {
       override def call(): Long = {
         val start = System.currentTimeMillis()
         rf.simpleAggregate(zeroValue, (x, _) => x, (a, _) => a)
-        throw new RuntimeException("yyyyyyyyyyyy")
         System.currentTimeMillis() - start
       }
     })
 
     val result1 = future1.get()
-
-    val future = pool.submit(new Callable[Long] {
-      override def call(): Long = {
-        val start = System.currentTimeMillis()
-        rf.simpleAggregate(zeroValue, (x, _) => x, (a, _) => a)
-        throw new RuntimeException("yyyyyyyyyyyy")
-        System.currentTimeMillis() - start
-      }
-    })
 
     val future2 = pool.submit(new Callable[Long] {
       override def call(): Long = {
@@ -602,10 +601,11 @@ class RollFrameTests extends Logging {
   @Test
   def testTorchScriptMerge(): Unit = {
     val input = ta.loadCache(ctx.forkStore(inputTensorStore, "test1", "a1TorchMap", StringConstants.FILE))
-    val output = ctx.createStore("test1", "a1TorchMerge", StringConstants.FILE, totalPartitions = 1)
+    val output = ctx.createStore("test1", "a1TorchMerge", StringConstants.CACHE, totalPartitions = 1)
     val rf = ctx.load(input)
     rf.torchMerge(path = "jvm/roll_frame/src/test/resources/torch_model_merge.pt", output = output)
-    val result = FrameStore(output, 0).readOne()
+    val path = FrameStore.getStorePath(output.partitions(0))
+    val result = ctx.frameTransfer.Roll.pull(path).next()
     println(s"sum = ${result.readDouble(0, 0)},size = ${result.rowCount}")
   }
 
