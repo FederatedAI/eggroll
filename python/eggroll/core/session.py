@@ -109,8 +109,15 @@ class ErSession(object):
                 else:
                     pid_list = psutil.pids()
                     ret_pid = 0
+                    exception = None
                     for pid in pid_list:
-                        p = psutil.Process(pid)
+                        try:
+                            p = psutil.Process(pid)
+                            exception = None
+                        except Exception as e:
+                            exception = e
+                            continue
+
                         if "java.exe" not in p.name():
                             continue
                         # if it is a system process, call p.cmdline() will dump
@@ -120,6 +127,8 @@ class ErSession(object):
 
                         ret_pid = pid
                         break
+                    if exception:
+                        raise RuntimeError("can not find the bootstrap process")
 
                     shutdown_command = f"taskkill /pid {ret_pid} /f"
 
@@ -140,8 +149,8 @@ class ErSession(object):
                 time.sleep(min(0.1 * i, 100))
 
             try:
-                with open(file_name) as fp:
-                    for i in range(max_retry_cnt):
+                for i in range(max_retry_cnt):
+                    with open(file_name) as fp:
                         msg = f"retry get port of ClusterManager and NodeManager: retry_cnt: {i},"
                         L.info(msg)
 
@@ -155,7 +164,7 @@ class ErSession(object):
 
                         if port != 0:
                             break
-                        time.sleep(min(0.1 * i, 100))
+                    time.sleep(min(0.1 * i, 100))
             except IOError as e:
                 L.info(f"get port from {file_name} failed!")
                 raise e
