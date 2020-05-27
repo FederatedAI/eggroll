@@ -29,9 +29,8 @@ class ScriptTest {
 
   @Test
   def runScriptMergeTest(): Unit ={
-    val matrixRows = 10
-    val matrixCols = 5
-    val newMatrixCols = 3
+    val matrixRows = 1000
+    val matrixCols = 50
     val fb = new FrameBatch(new FrameSchema(FrameSchema.oneFieldSchema), matrixCols * matrixRows)
     (0 until fb.rowCount).foreach(i=>fb.writeDouble(0,i,1))
     val tensor = new TorchTensor

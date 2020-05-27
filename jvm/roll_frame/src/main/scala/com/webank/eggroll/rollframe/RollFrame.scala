@@ -417,6 +417,7 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
     val func: (EggFrameContext, ErTask, Iterator[FrameBatch], FrameStore) => ErPair = {
       (ctx, task, input, output) =>
         try {
+          val broadcastTime = System.currentTimeMillis()
           val zeroValue: FrameBatch = if (zeroValueBytes.isEmpty) null else FrameUtils.fromBytes(zeroValueBytes)
           val partition = task.inputs.head
           val localQueuePath = task.id + "-doing"
@@ -442,7 +443,8 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
                       throw new RuntimeException(s"Egg Nodes didn't receive broadcast:$eggZeroValue")
                     }
                   }
-                  FrameStore.cache(eggZeroValue).readOne()
+//                  FrameStore.cache(eggZeroValue).readOne()
+                  FrameUtils.fork(FrameStore.cache(eggZeroValue).readOne())
                 } catch {
                   case e: Throwable =>
                     e.printStackTrace()
@@ -459,19 +461,22 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
             } else {
               zeroValue
             }
-          ctx.logInfo("get zero succeed")
-
+          ctx.logInfo("get zero succeed.")
+          println(s"get zero time:${System.currentTimeMillis() - broadcastTime}")
           // TODO: more generally, like repartition?
           if (input.hasNext) {
             val fb = input.next()
             if (seqByColumnOp != null) {
               val commonParameter = commParaOp(zero, fb)
               val begin = System.currentTimeMillis()
-              val parallel: Int = if (seqParallel < 0) {
+              var parallel: Int = if (seqParallel < 0) {
                 val availableProcessors = Runtime.getRuntime.availableProcessors() - 1
                 availableProcessors
               } else {
                 seqParallel
+              }
+              if (fb.fieldCount <= parallel) {
+                parallel = fb.fieldCount
               }
               ctx.logInfo(s"seq parallel mode,num=$parallel")
               val futures = new ListBuffer[Future[Unit]]
