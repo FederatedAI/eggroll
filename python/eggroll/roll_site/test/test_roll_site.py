@@ -316,6 +316,15 @@ class TestRollSiteStandaloneGet(TestRollSiteBase):
     def setUpClass(cls) -> None:
         cls.rs_context_get = get_standalone_context(role='dst', self_party_id=cls.self_party_id, props_file=props_file_get)
 
+    def test_get(self):
+        super().test_get()
+
+    def test_get_rollpair(self):
+        super().test_get_rollpair()
+
+    def test_get_rollpair_big_multi_partitions(self):
+        super().test_get_rollpair()
+
     def test_remote(self):
         pass
 
@@ -331,15 +340,11 @@ class TestRollSiteStandaloneGet(TestRollSiteBase):
     def test_remote_rollpair_big_multi_partitions(self):
         pass
 
-    def test_get(self):
-        super().test_get()
+    def test_count(self):
+        pass
 
-    def test_get_rollpair(self):
-        super().test_get_rollpair()
-
-    def test_get_rollpair_big_multi_partitions(self):
-        super().test_get_rollpair()
-
+    def test_put_all_multi_partitions(self):
+        pass
 
 class TestRollSiteCluster(TestRollSiteBase):
     @classmethod
@@ -376,7 +381,7 @@ class TestRollSiteClusterRemote(TestRollSiteBase):
     @classmethod
     def setUpClass(cls) -> None:
         opts = {"eggroll.session.processors.per.node": "3"}
-        cls.rs_context_remote = get_cluster_context(role='guest', options=opts, props_file=props_file_remote, party_id=10002)
+        cls.rs_context_remote = get_cluster_context(role='src', options=opts, props_file=props_file_remote, party_id=cls.self_party_id)
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -391,12 +396,35 @@ class TestRollSiteClusterRemote(TestRollSiteBase):
     def test_remote_rollpair_big_multi_partitions(self):
         super().test_remote_rollpair_big_multi_partitions()
 
+    def test_get(self):
+        pass
+
+    def test_get_all(self):
+        pass
+
+    def test_get_big(self):
+        pass
+
+    def test_get_rollpair(self):
+        pass
+
+    def test_get_rollpair_big(self):
+        pass
+
+    def test_get_rollpair_big_multi_partitions(self):
+        pass
+
+    def test_get_table(self):
+        pass
+
+    def test_get_tables(self):
+        pass
 
 class TestRollSiteClusterGet(TestRollSiteBase):
     @classmethod
     def setUpClass(cls) -> None:
         opts = {"eggroll.session.processors.per.node": "3"}
-        cls.rs_context_get = get_cluster_context(role='host', options=opts, props_file=props_file_get, party_id=10001)
+        cls.rs_context_get = get_cluster_context(role='dst', options=opts, props_file=props_file_get, party_id=cls.self_party_id)
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -410,6 +438,27 @@ class TestRollSiteClusterGet(TestRollSiteBase):
 
     def test_get_rollpair_big_multi_partitions(self):
         super().test_get_rollpair_big_multi_partitions()
+
+    def test_remote(self):
+        pass
+
+    def test_remote_big(self):
+        pass
+
+    def test_remote_rollpair(self):
+        pass
+
+    def test_remote_rollpair_big(self):
+        pass
+
+    def test_remote_rollpair_big_multi_partitions(self):
+        pass
+
+    def test_count(self):
+        pass
+
+    def test_put_all_multi_partitions(self):
+        pass
 
 
 def option():
