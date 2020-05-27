@@ -217,8 +217,9 @@ class EggPair(object):
                         else:
                             shutil.rmtree(path)
             else:
+                options = task._job._options
                 with create_adapter(task._inputs[0]) as input_adapter:
-                    input_adapter.destroy()
+                    input_adapter.destroy(options=options)
 
         if task._name == 'delete':
             f = create_functor(functors[0]._body)

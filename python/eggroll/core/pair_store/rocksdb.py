@@ -12,7 +12,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+import gc
 import os
 import threading
 import rocksdb
@@ -24,8 +24,8 @@ L = get_logger()
 
 
 class RocksdbAdapter(PairAdapter):
-    env_lock = threading.Lock()
-    env_dict = dict()
+    db_lock = threading.Lock()
+    db_dict = dict()
     ref_dict = dict()
     count_dict = dict()
     _db_collected = False
@@ -36,41 +36,43 @@ class RocksdbAdapter(PairAdapter):
           path: absolute local fs path
           create_if_missing: default true
         """
-        with RocksdbAdapter.env_lock:
+        with RocksdbAdapter.db_lock:
             super().__init__(options)
             self.path = options["path"]
             opts = rocksdb.Options()
             opts.create_if_missing = bool(options.get("create_if_missing", "True"))
             opts.compression = rocksdb.CompressionType.no_compression
 
-            if self.path not in RocksdbAdapter.env_dict:
+            if self.path not in RocksdbAdapter.db_dict:
                 if opts.create_if_missing:
                     os.makedirs(self.path, exist_ok=True)
                 self.db = rocksdb.DB(self.path, opts)
-                self._dbref = rocksdb.weakref.ref(self.db, self._on_db_collected)
+                # self._dbref = rocksdb.weakref.ref(self.db, self._on_db_collected)
                 L.info("path not in dict db path:{}".format(self.path))
                 RocksdbAdapter.count_dict[self.path] = 0
-                RocksdbAdapter.env_dict[self.path] = self.db
-                RocksdbAdapter.ref_dict = self._dbref
+                RocksdbAdapter.db_dict[self.path] = self.db
+                # RocksdbAdapter.ref_dict = self._dbref
             else:
                 L.info("path in dict:{}".format(self.path))
-                self.db = RocksdbAdapter.env_dict[self.path]
-                self._dbref = RocksdbAdapter.ref_dict[self.path]
+                self.db = RocksdbAdapter.db_dict[self.path]
+                # self._dbref = RocksdbAdapter.ref_dict[self.path]
         RocksdbAdapter.count_dict[self.path] = RocksdbAdapter.count_dict[self.path] + 1
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.close()
+        # self.close()
+        pass
 
     def __del__(self):
-        self.close()
+        # self.close()
+        pass
 
     def _on_db_collected(self, ref):
         RocksdbAdapter._db_collected = True
 
-    def close(self):
+    def ref_close(self):
         while not self._db_collected:
             try:
                 del(self.db)
@@ -85,16 +87,28 @@ class RocksdbAdapter(PairAdapter):
     def put(self, key, value):
         self.db.put(key, value)
 
-    def _close(self):
-        with RocksdbAdapter.env_lock:
+    def close(self):
+        with RocksdbAdapter.db_lock:
             if hasattr(self, 'db'):
                 count = RocksdbAdapter.count_dict[self.path]
                 if not count or count - 1 <= 0:
-                    del RocksdbAdapter.env_dict[self.path]
+                    del RocksdbAdapter.db_dict[self.path]
                     del RocksdbAdapter.count_dict[self.path]
+                    del self.db
+                    gc.collect()
                 else:
                     RocksdbAdapter.count_dict[self.path] = count - 1
-                del self.db
+
+    def close_forcefully(self):
+        with RocksdbAdapter.db_lock:
+            if hasattr(self, 'db'):
+                del RocksdbAdapter.db_dict[self.path]
+                del RocksdbAdapter.count_dict[self.path]
+                try:
+                    del self.db
+                except AttributeError:
+                    pass
+                gc.collect()
 
     def iteritems(self):
         return RocksdbIterator(self)
@@ -109,8 +123,12 @@ class RocksdbAdapter(PairAdapter):
     def delete(self, k):
         self.db.delete(k)
 
-    def destroy(self):
-        self.close()
+    def destroy(self, options: dict = None):
+        if options is not None and options['gc_destroy']:
+            self.close_forcefully()
+        else:
+            self.close()
+
         import shutil, os
         from pathlib import Path
         shutil.rmtree(self.path)
