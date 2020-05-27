@@ -124,7 +124,7 @@ class RocksdbAdapter(PairAdapter):
         self.db.delete(k)
 
     def destroy(self, options: dict = None):
-        if options is not None and options['gc_destroy']:
+        if options is not None and 'gc_destroy' in options and options['gc_destroy']:
             self.close_forcefully()
         else:
             self.close()
