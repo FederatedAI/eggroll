@@ -400,8 +400,115 @@ class EggPair(object):
             self._run_binary(subtract_by_key_wrapper, task)
 
         elif task._name == 'union':
-            def union_wrapper(left_iterator, left_key_serdes, left_value_serdess,
-                    right_iterator, right_key_serdes, right_value_serdess,
+            def merge_union_wrapper(left_iterator, left_key_serdes, left_value_serdes,
+                    right_iterator, right_key_serdes, right_value_serdes,
+                    output_writebatch):
+                if not left_iterator.adapter.is_sorted() or not right_iterator.adapter.is_sorted():
+                    raise RuntimeError(f"merge union cannot be applied: not both store types support sorting. "
+                                       f"left type: {type(left_iterator.adapter)}, is_sorted: {left_iterator.adapter.is_sorted()}; "
+                                       f"right type: {type(right_iterator.adapter)}, is_sorted: {right_iterator.adapter.is_sorted()}")
+                f = create_functor(functors[0]._body)
+                is_same_serdes = type(left_key_serdes) == type(right_key_serdes)
+
+                l_iter = iter(left_iterator)
+                r_iter = iter(right_iterator)
+                k_left = None
+                v_left_bytes = None
+                k_right = None
+                v_right_bytes = None
+                none_none = (None, None)
+
+                is_left_stopped = False
+                is_equal = False
+                try:
+                    k_left, v_left_bytes = next(l_iter, none_none)
+                    k_right_raw, v_right_bytes = next(r_iter, none_none)
+
+                    if k_left is None and k_right_raw is None:
+                        return
+                    elif k_left is None:
+                        is_left_stopped = True
+                        raise StopIteration()
+                    elif k_right_raw is None:
+                        is_left_stopped = False
+                        raise StopIteration()
+
+                    if is_same_serdes:
+                        k_right = k_right_raw
+                    else:
+                        k_right = left_key_serdes.serialize(right_key_serdes.deserialize(k_right_raw))
+
+                    while True:
+                        is_left_stopped = False
+                        while k_right < k_left:
+                            if is_same_serdes:
+                                output_writebatch.put(k_right, v_right_bytes)
+                            else:
+                                output_writebatch.put(k_right, left_value_serdes.serialize(right_value_serdes.deserialize(v_right_bytes)))
+
+                            k_right_raw, v_right_bytes = next(r_iter)
+
+                            if is_same_serdes:
+                                k_right = k_right_raw
+                            else:
+                                k_right = left_key_serdes.serialize(right_key_serdes.deserialize(k_right_raw))
+
+                        is_left_stopped = True
+                        while k_left < k_right:
+                            output_writebatch.put(k_left, v_left_bytes)
+                            k_left, v_left_bytes = next(l_iter)
+
+                        if k_left == k_right:
+                            is_equal = True
+                            output_writebatch.put(k_left,
+                                                  left_value_serdes.serialize(
+                                                          f(left_value_serdes.deserialize(v_left_bytes),
+                                                            right_value_serdes.deserialize(v_right_bytes))))
+                            is_left_stopped = True
+                            k_left, v_left_bytes = next(l_iter)
+
+                            is_left_stopped = False
+                            k_right_raw, v_right_bytes = next(r_iter)
+
+                            if is_same_serdes:
+                                k_right = k_right_raw
+                            else:
+                                k_right = left_key_serdes.serialize(right_key_serdes.deserialize(k_right_raw))
+                            is_equal = False
+                except StopIteration as e:
+                    pass
+
+                if not is_left_stopped:
+                    try:
+                        output_writebatch.put(k_left, v_left_bytes)
+                        while True:
+                            k_left, v_left_bytes = next(l_iter)
+                            output_writebatch.put(k_left, v_left_bytes)
+                    except StopIteration as e:
+                        pass
+                else:
+                    try:
+                        if not is_equal:
+                            if is_same_serdes:
+                                output_writebatch.put(k_right_raw, v_right_bytes)
+                            else:
+                                output_writebatch.put(left_key_serdes.serialize(right_key_serdes.deserialize(k_right_raw)),
+                                                      left_value_serdes.serialize(right_value_serdes.deserialize(v_right_bytes)))
+                        while True:
+                            k_right_raw, v_right_bytes = next(r_iter)
+                            if is_same_serdes:
+                                output_writebatch.put(k_right_raw, v_right_bytes)
+                            else:
+                                output_writebatch.put(left_key_serdes.serialize(right_key_serdes.deserialize(k_right_raw)),
+                                                      left_value_serdes.serialize(right_value_serdes.deserialize(v_right_bytes)))
+                    except StopIteration as e:
+                        pass
+
+                    # end of merge union wrapper
+                    return
+
+            def hash_union_wrapper(left_iterator, left_key_serdes, left_value_serdes,
+                    right_iterator, right_key_serdes, right_value_serdes,
                     output_writebatch):
                 f = create_functor(functors[0]._body)
 
@@ -413,9 +520,9 @@ class EggPair(object):
                     if v_right is None:
                         output_writebatch.put(k_left, v_left)
                     else:
-                        v_final = f(left_value_serdess.deserialize(v_left),
-                                    right_value_serdess.deserialize(v_right))
-                        output_writebatch.put(k_left, left_value_serdess.serialize(v_final))
+                        v_final = f(left_value_serdes.deserialize(v_left),
+                                    right_value_serdes.deserialize(v_right))
+                        output_writebatch.put(k_left, left_value_serdes.serialize(v_final))
 
                 right_iterator.first()
                 for k_right, v_right in right_iterator:
@@ -427,7 +534,13 @@ class EggPair(object):
 
                     if final_v_bytes is None:
                         output_writebatch.put(k_right, v_right)
-            self._run_binary(union_wrapper, task)
+
+            union_type = task._job._options.get('union_type', 'merge')
+
+            if union_type == 'merge':
+                self._run_binary(merge_union_wrapper, task)
+            else:
+                self._run_binary(hash_union_wrapper, task)
 
         elif task._name == 'withStores':
             f = create_functor(functors[0]._body)

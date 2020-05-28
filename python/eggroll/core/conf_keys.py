@@ -108,10 +108,12 @@ class RollPairConfKeys(object):
     EGGROLL_ROLLPAIR_EGGPAIR_SERVER_EXECUTOR_POOL_MAX_SIZE = ErConfKey("eggroll.rollpair.eggpair.server.executor.pool.max.size", 100)
     EGGROLL_ROLLPAIR_EGGPAIR_DATA_SERVER_EXECUTOR_POOL_MAX_SIZE = ErConfKey("eggroll.rollpair.eggpair.data.server.executor.pool.max.size", 100)
     EGGROLL_ROLLPAIR_TRANSFERPAIR_EXECUTOR_POOL_MAX_SIZE = ErConfKey("eggroll.rollpair.transferpair.executor.pool.max.size", 300)
+    EGGROLL_ROLLPAIR_DEFAULT_STORE_TYPE = ErConfKey("eggroll.rollpair.default.store.type", "ROLLPAIR_LMDB")
 
 
 class RollSiteConfKeys(object):
     EGGROLL_ROLLSITE_COORDINATOR = ErConfKey("eggroll.rollsite.coordinator")
+    EGGROLL_ROLLSITE_DEPLOY_MODE = ErConfKey("eggroll.rollsite.deploy.mode", "cluster")
     EGGROLL_ROLLSITE_HOST = ErConfKey("eggroll.rollsite.host", "127.0.0.1")
     EGGROLL_ROLLSITE_PORT = ErConfKey("eggroll.rollsite.port", "9370")
     EGGROLL_ROLLSITE_SECURE_PORT = ErConfKey("eggroll.rollsite.secure.port", "9380")

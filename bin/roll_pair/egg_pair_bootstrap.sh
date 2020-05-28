@@ -91,6 +91,9 @@ pythonpath=${property_value}
 get_property ${config} "eggroll.resourcemanager.bootstrap.egg_pair.filepath"
 filepath=${property_value}
 
+get_property ${config} "eggroll.resourcemanager.bootstrap.egg_pair.ld_library_path"
+ld_library_path=${property_value}
+
 get_property ${config} "eggroll.logs.dir"
 logs_dir=${property_value}
 
@@ -115,6 +118,14 @@ if [[ -z ${EGGROLL_LOGS_DIR} ]]; then
     EGGROLL_LOGS_DIR=${EGGROLL_HOME}/logs
   fi
 fi
+
+if [[ -z ${ld_library_path} ]]; then
+  export LD_LIBRARY_PATH=${EGGROLL_HOME}/native/lib:${LD_LIBRARY_PATH}
+else
+  export LD_LIBRARY_PATH=${ld_library_path}:${LD_LIBRARY_PATH}
+fi
+
+echo "LD_LIBRARY_PATH=${LD_LIBRARY_PATH}"
 
 
 EGGROLL_SESSION_ID=${session_id}

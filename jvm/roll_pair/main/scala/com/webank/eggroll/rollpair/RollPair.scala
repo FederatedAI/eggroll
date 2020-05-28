@@ -32,7 +32,7 @@ import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.transfer.GrpcTransferClient
 import com.webank.eggroll.core.util.{IdUtils, Logging}
 class RollPairContext(val session: ErSession,
-                      defaultStoreType: String = StoreTypes.ROLLPAIR_LMDB,
+                      defaultStoreType: String = RollPairConfKeys.EGGROLL_ROLLPAIR_DEFAULT_STORE_TYPE.get(),
                       defaultSerdesType: String = SerdesTypes.PICKLE) extends Logging {
 //  StandaloneManager.main(Array("-s",erSession.sessionId, "-p", erSession.cmClient.endpoint.port.toString))
   private val sessionId = session.sessionId
@@ -42,7 +42,8 @@ class RollPairContext(val session: ErSession,
 
   def load(namespace: String, name: String, options: Map[String,String] = Map()): RollPair = {
     // TODO:1: use snake case universally?
-    val storeType = options.getOrElse(StringConstants.STORE_TYPE, options.getOrElse(StringConstants.STORE_TYPE_SNAKECASE, defaultStoreType))
+    val defaultStoreTypeValue = defaultStoreType.split("_")(1)
+    val storeType = options.getOrElse(StringConstants.STORE_TYPE, options.getOrElse(StringConstants.STORE_TYPE_SNAKECASE, defaultStoreTypeValue))
     val totalPartitions = options.getOrElse(StringConstants.TOTAL_PARTITIONS, options.getOrElse(StringConstants.TOTAL_PARTITIONS_SNAKECASE, "1")).toInt
     val store = ErStore(storeLocator = ErStoreLocator(
       namespace = namespace,
