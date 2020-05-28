@@ -41,7 +41,7 @@ class RocksdbAdapter(PairAdapter):
             super().__init__(options)
             self.path = options["path"]
             opts = rocksdb.Options()
-            opts.create_if_missing = bool(options.get("create_if_missing", "True"))
+            opts.create_if_missing = (str(options.get("create_if_missing", "True")).lower() == 'true')
             opts.compression = rocksdb.CompressionType.no_compression
 
             if self.path not in RocksdbAdapter.db_dict:
