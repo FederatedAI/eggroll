@@ -403,6 +403,7 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
                   case e: Throwable => e.printStackTrace()
                 } finally {
                   latch.countDown()
+                  b.clear()
                 }
               }
             })
