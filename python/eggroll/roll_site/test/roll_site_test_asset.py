@@ -40,7 +40,7 @@ EGGROLL_HOME = os.environ['EGGROLL_HOME']
 default_props_file = f"{EGGROLL_HOME}/conf/eggroll.properties"
 
 
-def get_option(role, conf_file=default_props_file):
+def get_option(role, conf_file=default_props_file, deploy_mode=DeployModes.CLUSTER):
     print(f'conf file: {conf_file}')
     configs = configparser.ConfigParser()
 
@@ -55,6 +55,8 @@ def get_option(role, conf_file=default_props_file):
     options['proxy_endpoint'] = \
         ErEndpoint(host=eggroll_configs[RollSiteConfKeys.EGGROLL_ROLLSITE_HOST.key],
                    port=int(eggroll_configs[RollSiteConfKeys.EGGROLL_ROLLSITE_PORT.key]))
+
+    options[RollSiteConfKeys.EGGROLL_ROLLSITE_DEPLOY_MODE.key] = deploy_mode
 
     return options
 
@@ -108,10 +110,10 @@ def get_standalone_context(role, props_file=default_props_file):
 
     rp_context = rpta.get_standalone_context(options=options)
 
-    rs_options = get_option(role, props_file)
+    rs_options = get_option(role, props_file, deploy_mode=DeployModes.STANDALONE)
     options.update(rs_options)
     rs_context = RollSiteContext(roll_site_session_id, rp_ctx=rp_context,
-                                 options=get_option(role, props_file))
+                                 options=get_option(role, props_file, deploy_mode=DeployModes.STANDALONE))
 
     return rs_context
 
