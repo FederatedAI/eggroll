@@ -12,86 +12,16 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+
+import gc
 import os
 import threading
-
 import rocksdb
 
+from eggroll.core.pair_store.adapter import PairWriteBatch, PairIterator, PairAdapter
 from eggroll.utils.log_utils import get_logger
 
 L = get_logger()
-
-from eggroll.core.pair_store.adapter import PairWriteBatch, PairIterator, PairAdapter
-
-class RocksdbWriteBatch(PairWriteBatch):
-
-    def __init__(self, adapter, chunk_size=100000):
-        self.chunk_size = chunk_size
-        self.batch = rocksdb.WriteBatch()
-        self.adapter = adapter
-        self.key = None
-        self.value = None
-        self.write_count = 0
-
-    def get(self, k):
-        return self.adapter.db.get(k)
-
-    def put(self, k, v):
-        self.key = k
-        self.value = v
-        self.batch.put(k, v)
-        self.write_count += 1
-        if self.write_count >= 100000:
-            self.write()
-
-    def delete(self, k):
-        self.adapter.db.delete(k)
-
-    def write(self):
-        self.adapter.db.write(self.batch)
-        self.batch.clear()
-
-    def close(self):
-        if self.batch:
-            self.write()
-            del self.batch
-            self.batch = None
-
-class RocksdbIterator(PairIterator):
-    def __init__(self, adapter):
-        self.adapter = adapter
-        self.it = adapter.db.iteritems()
-        self.it.seek_to_first()
-
-    def first(self):
-        count = 0
-        self.it.seek_to_first()
-        for k, v in self.it:
-            count += 1
-            break
-        self.it.seek_to_first()
-        return (count != 0)
-
-    def last(self):
-        count = 0
-        self.it.seek_to_last()
-        for k, v in self.it:
-            count += 1
-            break
-        self.it.seek_to_last()
-        return (count != 0)
-
-    def seek(self, key):
-        self.it.seek(key)
-
-    def key(self):
-        return self.it.get()[0]
-
-    def close(self):
-        pass
-
-    def __iter__(self):
-        return self.it
 
 
 class RocksdbAdapter(PairAdapter):
@@ -111,6 +41,7 @@ class RocksdbAdapter(PairAdapter):
             opts = rocksdb.Options()
             opts.create_if_missing = bool(options.get("create_if_missing", "True"))
             opts.compression = rocksdb.CompressionType.no_compression
+
             if self.path not in RocksdbAdapter.env_dict:
                 if opts.create_if_missing:
                     os.makedirs(self.path, exist_ok=True)
@@ -145,9 +76,11 @@ class RocksdbAdapter(PairAdapter):
                 if not count or count - 1 <= 0:
                     del RocksdbAdapter.env_dict[self.path]
                     del RocksdbAdapter.count_dict[self.path]
+                    del self.db
+                    # todo:0: NEEDS OPTIMISATION
+                    gc.collect()
                 else:
                     RocksdbAdapter.count_dict[self.path] = count - 1
-                del self.db
 
     def iteritems(self):
         return RocksdbIterator(self)
@@ -177,3 +110,106 @@ class RocksdbAdapter(PairAdapter):
 
     def is_sorted(self):
         return True
+
+
+class RocksdbWriteBatch(PairWriteBatch):
+
+    def __init__(self, adapter: RocksdbAdapter, chunk_size=100_000):
+        self.chunk_size = chunk_size
+        self.batch = rocksdb.WriteBatch()
+        self.adapter = adapter
+        self.write_count = 0
+        self.manual_merger = dict()
+        self.has_write_op = False
+
+    def get(self, k):
+        raise NotImplementedError
+
+    def put(self, k, v):
+        if len(self.manual_merger) == 0:
+            self.has_write_op = True
+            self.batch.put(k, v)
+            self.write_count += 1
+            if self.write_count % self.chunk_size == 0:
+                self.write()
+        else:
+            self.manual_merger[k] = v
+
+    def merge(self, merge_func, k, v):
+        if self.has_write_op:
+            self.write()
+
+        if k in self.manual_merger:
+            self.manual_merger[k] = merge_func(self.manual_merger[k], v)
+        else:
+            if not self.has_write_op:
+                self.manual_merger[k] = v
+            else:
+                old_value = self.adapter.get(k)
+                if old_value is None:
+                    self.manual_merger[k] = v
+                else:
+                    self.manual_merger[k] = merge_func(old_value, v)
+        if len(self.manual_merger) >= self.chunk_size:
+            self.write_merged()
+
+    def delete(self, k):
+        self.batch.delete(k)
+
+    def write(self):
+        if self.batch.count() > 0:
+            self.adapter.db.write(self.batch)
+            self.batch.clear()
+
+    def write_merged(self):
+        for k, v in sorted(self.manual_merger.items(), key=lambda kv: kv[0]):
+            self.batch.put(k, v)
+            self.write_count += 1
+        self.has_write_op = True
+        self.manual_merger.clear()
+        self.write()
+
+    def close(self):
+        if self.batch:
+            if self.manual_merger is not None:
+                self.write_merged()
+            self.write()
+            del self.batch
+            self.batch = None
+
+
+class RocksdbIterator(PairIterator):
+    def __init__(self, adapter: RocksdbAdapter):
+        self.adapter = adapter
+        self.it = adapter.db.iteritems()
+        self.it.seek_to_first()
+
+    def first(self):
+        count = 0
+        self.it.seek_to_first()
+        for k, v in self.it:
+            count += 1
+            break
+        self.it.seek_to_first()
+        return (count != 0)
+
+    def last(self):
+        count = 0
+        self.it.seek_to_last()
+        for k, v in self.it:
+            count += 1
+            break
+        self.it.seek_to_last()
+        return (count != 0)
+
+    def seek(self, key):
+        self.it.seek(key)
+
+    def key(self):
+        return self.it.get()[0]
+
+    def close(self):
+        pass
+
+    def __iter__(self):
+        return self.it

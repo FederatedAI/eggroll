@@ -54,7 +54,9 @@ class RollSiteContext:
         self.role = options["self_role"]
         self.party_id = str(options["self_party_id"])
         self.proxy_endpoint = options["proxy_endpoint"]
-        self.is_standalone = self.rp_ctx.get_session().get_option(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE) == "standalone"
+        # TODO:0 deploy mode should be the same as the fate flow
+        #self.is_standalone = options["deploy_mode"] == "standalone"
+        self.is_standalone = RollSiteConfKeys.EGGROLL_ROLLSITE_DEPLOY_MODE.get_with(options) == "standalone"
         if self.is_standalone:
             self.stub = None
         else:
@@ -150,8 +152,7 @@ class RollSite:
         self._push_start_cpu_time = None
         self._pull_start_wall_time = None
         self._pull_start_cpu_time = None
-        self._is_standalone = self.ctx.rp_ctx.get_session().get_option(
-                SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE) == DeployModes.STANDALONE
+        self._is_standalone = self.ctx.is_standalone
         L.info(f'inited RollSite. my party id: {self.ctx.party_id}. proxy endpoint: {self.dst_host}:{self.dst_port}')
 
     def _push_callback(self, fn, tmp_rp):
@@ -208,7 +209,7 @@ class RollSite:
             L.info(f"pull status done: table_name:{table_name}, packet:{to_one_line_string(packet)}, namespace:{namespace}")
 
             if obj_type == b'object':
-                if os.environ.get('EGGROLL_PUSH_OBJ_WITH_ROLL_PAIR') == "1":
+                if os.environ.get('EGGROLL_PUSH_OBJ_WITH_ROLL_PAIR') == "1" or self._is_standalone is True:
                     rp = self.ctx.rp_ctx.load(namespace=table_namespace, name=table_name)
                     success_msg_prefix = f'RollSite.Pull: pull {roll_site_header} success.'
                     result = rp.get(table_name)
@@ -259,8 +260,23 @@ class RollSite:
             P.info(f'{{"metric_type": "func_profile", "qualname": "RollSite.pull", "cpu_time": {end_cpu_time - self._pull_start_cpu_time}, "wall_time": {end_wall_time - self._pull_start_wall_time}}}')
 
     def send_packet(self, packet):
-        ret = self.stub.unaryCall(packet)
-        return ret
+        max_retry_cnt = 100
+        exception = None
+        ret_packet = None
+        for i in range(max_retry_cnt):
+            try:
+                ret_packet = self.stub.unaryCall(packet)
+                exception = None
+                break
+            except Exception as e:
+                exception = e
+                L.info(f'caught exception in pushing obj: {e}. retrying. current retry count: {i}, max_retry_cnt: {max_retry_cnt}')
+                time.sleep(min(5 * i, 30))
+
+        if exception:
+            raise GrpcCallError("error in pushing obj", self.dst_host, self.dst_port)
+
+        return ret_packet
 
     def push(self, obj, parties: list = None):
         L.info(f"pushing: self:{self.__dict__}, obj_type:{type(obj)}, parties:{parties}")
