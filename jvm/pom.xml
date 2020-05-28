@@ -224,7 +224,7 @@
     <junit4.version>4.12</junit4.version>
     <junit.jupiter.version>5.5.1</junit.jupiter.version>
     <junit.platform.version>1.5.1</junit.platform.version>
-    <log4j2.version>2.10.0</log4j2.version>
+    <log4j2.version>2.11.2</log4j2.version>
     <netty.version>4.1.27.Final</netty.version>
     <protobuf.version>3.6.1</protobuf.version>
     <rocksdb.version>6.7.3</rocksdb.version>
