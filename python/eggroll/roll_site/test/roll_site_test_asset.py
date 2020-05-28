@@ -129,10 +129,8 @@ def get_cluster_context(role, options: dict = None, props_file=default_props_fil
     options[CoreConfKeys.STATIC_CONF_PATH] = props_file
     rp_context = rpta.get_cluster_context(options=options)
 
-    rs_options = get_option(role, props_file)
+    rs_options = get_option(role, self_party_id=party_id, conf_file=props_file)
 
-    if party_id:
-        rs_options['self_party_id'] = str(party_id)
     rs_context = RollSiteContext(roll_site_session_id, rp_ctx=rp_context,
                                  options=rs_options)
 
