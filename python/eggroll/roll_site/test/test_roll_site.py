@@ -26,8 +26,8 @@ from eggroll.roll_site.test.roll_site_test_asset import get_debug_test_context, 
 props_file_get = default_props_file
 #props_file_remote = default_props_file + '.host'
 
-#props_file_get = default_props_file
-props_file_remote = default_props_file + '.guest'
+props_file_remote = default_props_file
+#props_file_remote = default_props_file + '.guest'
 
 
 row_limit = 100000
