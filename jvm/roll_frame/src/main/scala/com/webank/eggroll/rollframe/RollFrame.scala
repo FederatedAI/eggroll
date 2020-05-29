@@ -30,13 +30,14 @@ import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.serdes.DefaultScalaSerdes
 import com.webank.eggroll.format.{FrameBatch, _}
 import com.webank.eggroll.rollframe.pytorch.{Matrices, Script}
+import com.webank.eggroll.util.Logging
 
 import scala.collection.immutable.Range.Inclusive
 
 // TODO: care about client task grpc whether closed and thread pool whether closed
 // TODO: always close in finally
 
-class RollFrameContext private[eggroll](val session: ErSession) {
+class RollFrameContext private[eggroll](val session: ErSession) extends Logging{
   lazy val serverNodes: Array[ErProcessor] = session.processors
   lazy val rollNodes: ErProcessor = session.processors(0)
 
@@ -72,6 +73,7 @@ class RollFrameContext private[eggroll](val session: ErSession) {
   def getSessionId: String = session.sessionId
 
   def stopSession(): Unit = {
+    logger.info(s"Stop EggFrame Session:${session.sessionId}")
     session.clusterManagerClient.stopSession(session.sessionMeta)
   }
 
@@ -151,10 +153,12 @@ class RollFrameContext private[eggroll](val session: ErSession) {
   }
 }
 
-object RollFrameContext {
+object RollFrameContext extends {
   //  StaticErConf.addProperties("conf/eggroll.properties")
 
-  def apply(session: ErSession): RollFrameContext = new RollFrameContext(session)
+  def apply(session: ErSession): RollFrameContext = {
+    new RollFrameContext(session)
+  }
 
   def apply(): RollFrameContext = {
     val opts = Map("processor_types" -> "egg_frame", "processor_plan.egg_frame" -> "uniform")
