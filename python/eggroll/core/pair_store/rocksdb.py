@@ -16,6 +16,8 @@ import gc
 import os
 import threading
 import rocksdb
+import shutil
+from pathlib import Path
 
 from eggroll.core.pair_store.adapter import PairWriteBatch, PairIterator, PairAdapter
 from eggroll.utils.log_utils import get_logger
@@ -28,7 +30,6 @@ class RocksdbAdapter(PairAdapter):
     db_lock = threading.Lock()
     db_dict = dict()
     ref_dict = dict()
-    count_dict = dict()
     _db_collected = False
 
     def __init__(self, options):
@@ -40,24 +41,28 @@ class RocksdbAdapter(PairAdapter):
         with RocksdbAdapter.db_lock:
             super().__init__(options)
             self.path = options["path"]
-            opts = rocksdb.Options()
-            opts.create_if_missing = (str(options.get("create_if_missing", "True")).lower() == 'true')
-            opts.compression = rocksdb.CompressionType.no_compression
 
-            if self.path not in RocksdbAdapter.db_dict:
+            is_destroy = options.get('is_destroy', False)
+
+            if self.path not in RocksdbAdapter.db_dict and not is_destroy:
+                opts = rocksdb.Options()
+                opts.create_if_missing = (str(options.get("create_if_missing", "True")).lower() == 'true')
+                opts.compression = rocksdb.CompressionType.no_compression
+                opts.wal_ttl_seconds = 10
                 if opts.create_if_missing:
                     os.makedirs(self.path, exist_ok=True)
                 self.db = rocksdb.DB(self.path, opts)
                 # self._dbref = rocksdb.weakref.ref(self.db, self._on_db_collected)
                 L.info("path not in dict db path:{}".format(self.path))
-                RocksdbAdapter.count_dict[self.path] = 0
                 RocksdbAdapter.db_dict[self.path] = self.db
                 # RocksdbAdapter.ref_dict = self._dbref
             else:
                 L.info("path in dict:{}".format(self.path))
-                self.db = RocksdbAdapter.db_dict[self.path]
+                if not is_destroy:
+                    self.db = RocksdbAdapter.db_dict[self.path]
+                else:
+                    self.db = RocksdbAdapter.db_dict.get(self.path, None)
                 # self._dbref = RocksdbAdapter.ref_dict[self.path]
-        RocksdbAdapter.count_dict[self.path] = RocksdbAdapter.count_dict[self.path] + 1
 
     def __enter__(self):
         return self
@@ -114,8 +119,6 @@ class RocksdbAdapter(PairAdapter):
     def destroy(self, options: dict = None):
         self.close()
 
-        import shutil, os
-        from pathlib import Path
         path = Path(self.path)
         store_path = path.parent
         real_data_dir = os.path.realpath(get_data_dir())
@@ -124,7 +127,7 @@ class RocksdbAdapter(PairAdapter):
             and not (store_path == "/"
                     or store_path == real_data_dir):
             try:
-                shutil.rmtree(store_path)
+                shutil.rmtree(store_path, ignore_errors=True)
                 L.info(f'path: {store_path} has been destroyed')
             except FileNotFoundError:
                 L.info(f'path: {store_path} has been destroyed by another partition')
