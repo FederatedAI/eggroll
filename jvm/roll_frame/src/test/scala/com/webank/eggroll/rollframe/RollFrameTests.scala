@@ -22,7 +22,7 @@ import java.util.concurrent.{Callable, Executors}
 
 import com.webank.eggroll.core.constant.StringConstants
 import com.webank.eggroll.core.meta.ErStore
-import com.webank.eggroll.core.util.Logging
+import com.webank.eggroll.util.Logging
 import com.webank.eggroll.format._
 import com.webank.eggroll.rollframe.pytorch.{LibraryLoader, Matrices}
 import com.webank.eggroll.util.SchemaUtil
@@ -46,7 +46,7 @@ class RollFrameTests extends Logging {
   @Before
   def setup(): Unit = {
     ctx = ta.getRfContext()
-    logInfo(s"get RfContext property unsafe:${System.getProperty("arrow.enable_unsafe_memory_access")}")
+    info(s"get RfContext property unsafe:${System.getProperty("arrow.enable_unsafe_memory_access")}")
     inputStore = ctx.createStore("test1", "a1", StringConstants.FILE, partitions_)
     inputTensorStore = ctx.createStore("test1", "t1", StringConstants.FILE, partitions_)
 
@@ -390,7 +390,7 @@ class RollFrameTests extends Logging {
       }
       x
     }, output = output)
-    logInfo(s"time = ${System.currentTimeMillis() - start} ms")
+    println(s"time = ${System.currentTimeMillis() - start} ms")
   }
 
   /**
