@@ -218,7 +218,8 @@ class EggPair(object):
                             shutil.rmtree(path)
             else:
                 options = task._job._options
-                with create_adapter(task._inputs[0]) as input_adapter:
+                options['is_destroy'] = True
+                with create_adapter(task._inputs[0], options=options) as input_adapter:
                     input_adapter.destroy(options=options)
 
         if task._name == 'delete':
