@@ -121,7 +121,10 @@ public class DataTransferPipedClient {
             }
         }
         LOGGER.info("[DEBUG][CLUSTERCOMM] doPush call processCallerStreamingRpc");
-        pushTemplate.processCallerStreamingRpc();
+
+        if (!pipe.hasError()) {
+            pushTemplate.processCallerStreamingRpc();
+        }
     }
 
     public synchronized void completePush() {
