@@ -124,7 +124,9 @@ public class DataTransferPipedClient {
         }
         LOGGER.info("[DEBUG][CLUSTERCOMM] doPush call processCallerStreamingRpc");
 
-        if (!pipe.hasError()) {
+        if (pipe.hasError()) {
+            pushTemplate.errorCallerStreamingRpc(pipe.getError());
+        } else {
             pushTemplate.processCallerStreamingRpc();
         }
     }
@@ -136,8 +138,6 @@ public class DataTransferPipedClient {
         }
         if (!pipe.hasError()) {
             pushTemplate.completeStreamingRpc();
-        } else {
-            pushTemplate.errorCallerStreamingRpc(pipe.getError());
         }
     }
 

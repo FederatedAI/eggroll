@@ -28,6 +28,8 @@ public class ProxyServerConf {
     private String ip;
     private int port;
     private int securePort;
+    private long pushRetryCount;
+    private long unaryCallRetryCount;
     private String partyId;
     private String role;
 
@@ -105,6 +107,20 @@ public class ProxyServerConf {
 
     public void setSecurePort(int securePort) {
         this.securePort = securePort;
+    }
+
+    public long getPushRetryCount() {
+        return pushRetryCount;
+    }
+    public void setPushRetryCount(int pushRetryCount) {
+        this.pushRetryCount = pushRetryCount;
+    }
+
+    public long getUnaryCallRetryCount() {
+        return unaryCallRetryCount;
+    }
+    public void setUnaryCallRetryCount(int unaryCallRetryCount) {
+        this.unaryCallRetryCount = unaryCallRetryCount;
     }
 
     public void setPartyId(String partyId) {
