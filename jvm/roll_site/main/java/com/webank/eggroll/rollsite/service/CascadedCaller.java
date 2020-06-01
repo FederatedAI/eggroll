@@ -52,17 +52,6 @@ public class CascadedCaller implements Runnable {
 
     private static final Logger LOGGER = LogManager.getLogger();
 
-    public CascadedCaller() {
-    }
-
-    public CascadedCaller(PipeHandlerInfo pipeHandlerInfo) {
-        this.pipeHandlerInfo = pipeHandlerInfo;
-    }
-
-    public void setPipeHandlerInfo(PipeHandlerInfo pipeHandlerInfo) {
-        this.pipeHandlerInfo = pipeHandlerInfo;
-    }
-
     @Override
     @Async
     public void run() {
@@ -76,11 +65,7 @@ public class CascadedCaller implements Runnable {
 
         if (PipeHandleNotificationEvent.Type.PUSH == type) {
             client.initPush(metadata, pipe);
-            //client.push(metadata, pipe);
-            //if(metadata.getDst() == metadata.getSrc())
-            //    return;
             client.doPush();
-            //pipe.onComplete();
             client.completePush();
         } else if (PipeHandleNotificationEvent.Type.PULL == type) {
             client.pull(metadata, pipe);

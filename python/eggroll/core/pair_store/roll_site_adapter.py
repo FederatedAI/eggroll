@@ -127,6 +127,11 @@ class RollSiteWriteBatch(PairWriteBatch):
         self.topic_dst = proxy_pb2.Topic(name=self.name, partyId=self.roll_site_header._dst_party_id,
                                          role=self.roll_site_header._dst_role, callback=None)
 
+        self.unarycall_max_retry_cnt = static_er_conf.get(RollSiteConfKeys.EGGROLL_ROLLSITE_UNARYCALL_RETRY_COUNT.key, 100)
+        self.push_max_retry_cnt = static_er_conf.get(RollSiteConfKeys.EGGROLL_ROLLSITE_UNARYCALL_RETRY_COUNT.key, 100)
+        self.unarycall_overall_timeout = static_er_conf.get(RollSiteConfKeys.EGGROLL_ROLLSITE_PUSH_OVERALL_TIMEOUT.key, 48L * 3600 * 1000)
+        self.push_overall_timeout = static_er_conf.get(RollSiteConfKeys.EGGROLL_ROLLSITE_PUSH_OVERALL_TIMEOUT.key, 48L * 3600 * 1000)
+
     def __repr__(self):
         return f'<ErRollSiteWriteBatch(' \
                f'adapter={self.adapter}, ' \
@@ -151,9 +156,9 @@ class RollSiteWriteBatch(PairWriteBatch):
         command_test = proxy_pb2.Command()
 
         # TODO: conf test as config and use it
-        conf_test = proxy_pb2.Conf(overallTimeout=200000,
-                                   completionWaitTimeout=200000,
-                                   packetIntervalTimeout=200000,
+        push_conf = proxy_pb2.Conf(overallTimeout=self.push_overall_timeout,
+                                   completionWaitTimeout=60L * 60 * 1000,
+                                   packetIntervalTimeout=20L * 1000,
                                    maxRetries=10)
 
         metadata = proxy_pb2.Metadata(task=task_info,
@@ -161,11 +166,12 @@ class RollSiteWriteBatch(PairWriteBatch):
                                       dst=self.topic_dst,
                                       command=command_test,
                                       seq=0,
-                                      ack=0)
+                                      ack=0,
+                                      conf=push_conf)
 
-        max_retry_cnt = 100
+        #max_retry_cnt = 100
         exception = None
-        for i in range(1, max_retry_cnt + 1):
+        for i in range(1, self.push_max_retry_cnt + 1):
             try:
                 self.stub.push(self.generate_message(obj, metadata))
                 exception = None
@@ -173,7 +179,7 @@ class RollSiteWriteBatch(PairWriteBatch):
                 break
             except Exception as e:
                 exception = e
-                L.info(f'caught exception in pushing {self.roll_site_header}, partition_id: {self.adapter.partition_id}: {e}. retrying. current retry count: {i}, max_retry_cnt: {max_retry_cnt}')
+                L.info(f'caught exception in pushing {self.roll_site_header}, partition_id: {self.adapter.partition_id}: {e}. retrying. current retry count: {i}, max_retry_cnt: {self.push_max_retry_cnt}')
                 time.sleep(min(5 * i, 30))
 
         if exception:
@@ -189,9 +195,9 @@ class RollSiteWriteBatch(PairWriteBatch):
         task_info = proxy_pb2.Task(taskId=self.name, model=proxy_pb2.Model(name=self.adapter.roll_site_header_string, dataKey=self.namespace))
 
         command_test = proxy_pb2.Command(name="set_status")
-        conf_test = proxy_pb2.Conf(overallTimeout=20000,
-                                   completionWaitTimeout=20000,
-                                   packetIntervalTimeout=20000,
+        unarycall_conf = proxy_pb2.Conf(overallTimeout=self.unarycall_overall_timeout,
+                                   completionWaitTimeout=60L * 60 * 1000,
+                                   packetIntervalTimeout=20L * 1000,
                                    maxRetries=10)
 
         metadata = proxy_pb2.Metadata(task=task_info,
@@ -200,20 +206,21 @@ class RollSiteWriteBatch(PairWriteBatch):
                                       command=command_test,
                                       operator="markEnd",
                                       seq=self.push_batch_cnt,
-                                      ack=0)
+                                      ack=0,
+                                      conf=unarycall_conf)
 
         packet = proxy_pb2.Packet(header=metadata)
 
-        max_retry_cnt = 100
+        #max_retry_cnt = 100
         exception = None
-        for i in range(1, max_retry_cnt + 1):
+        for i in range(1, self.unarycall_max_retry_cnt + 1):
             try:
                 # TODO:0: retry and sleep for all grpc call in RollSite
                 self.stub.unaryCall(packet)
                 exception = None
                 break
             except Exception as e:
-                L.info(f'caught exception in send_end for {self.name}, partition_id: {self.adapter.partition_id}: {e}. retrying. current retry count: {i}, max_retry_cnt: {max_retry_cnt}')
+                L.info(f'caught exception in send_end for {self.name}, partition_id: {self.adapter.partition_id}: {e}. retrying. current retry count: {i}, max_retry_cnt: {self.unarycall_max_retry_cnt}')
                 exception = GrpcCallError('send_end', self.proxy_endpoint, e)
         if exception:
             raise exception

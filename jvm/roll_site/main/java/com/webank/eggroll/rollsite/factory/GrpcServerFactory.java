@@ -335,6 +335,20 @@ public class GrpcServerFactory {
                 proxyServerConf.setSecureClient(true);
             }
 
+            String pushRetryCount = properties.getProperty(RollSiteConfKeys.EGGROLL_ROLLSITE_PUSH_RETRY_COUNT().key(), "300");
+            if (StringUtils.isBlank(pushRetryCount)) {
+                throw new IllegalArgumentException("Illegal push retry count");
+            } else {
+                proxyServerConf.setPushRetryCount(Integer.valueOf(pushRetryCount));
+            }
+
+            String unaryCallRetryCount = properties.getProperty(RollSiteConfKeys.EGGROLL_ROLLSITE_UNARYCALL_RETRY_COUNT().key(), "300");
+            if (StringUtils.isBlank(unaryCallRetryCount)) {
+                throw new IllegalArgumentException("Illegal unaryCall retry count");
+            } else {
+                proxyServerConf.setUnaryCallRetryCount(Integer.valueOf(unaryCallRetryCount));
+            }
+
             @Deprecated
             String logPropertiesPath = properties.getProperty("log.properties");
             if (StringUtils.isNotBlank(logPropertiesPath)) {
