@@ -52,6 +52,17 @@ public class CascadedCaller implements Runnable {
 
     private static final Logger LOGGER = LogManager.getLogger();
 
+    public CascadedCaller() {
+    }
+
+    public CascadedCaller(PipeHandlerInfo pipeHandlerInfo) {
+        this.pipeHandlerInfo = pipeHandlerInfo;
+    }
+
+    public void setPipeHandlerInfo(PipeHandlerInfo pipeHandlerInfo) {
+        this.pipeHandlerInfo = pipeHandlerInfo;
+    }
+
     @Override
     @Async
     public void run() {
