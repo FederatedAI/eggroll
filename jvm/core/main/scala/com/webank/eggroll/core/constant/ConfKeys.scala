@@ -163,8 +163,9 @@ object RollSiteConfKeys {
   val EGGROLL_ROLLSITE_UNARYCALL_OVERALL_TIMEOUT = ErConfKey("eggroll.rollsite.unarycall.client.overall.timeout", 30000)
   val EGGROLL_ROLLSITE_UNARYCALL_RETRY_COUNT = ErConfKey("eggroll.rollsite.unarycall.client.retry.count", 100)
   val EGGROLL_ROLLSITE_PUSH_CLIENT_RETRY_COUNT = ErConfKey("eggroll.rollsite.push.client.retry.count", 100)
-  val EGGROLL_ROLLSITE_PUSH_OVERALL_TIMEOUT = ErConfKey("eggroll.rollsite.push.client.overall.timeout", 30000)
+  val EGGROLL_ROLLSITE_PUSH_OVERALL_TIMEOUT = ErConfKey("eggroll.rollsite.push.client.overall.timeout", 172800000)
   val EGGROLL_ROLLSITE_PUSH_RETRY_COUNT = ErConfKey("eggroll.rollsite.push.retry.count", 100)
+  val EGGROLL_ROLLSITE_PULL_CLIENT_RETRY_COUNT = ErConfKey("eggroll.rollsite.pull.client.retry.count", 300)
   val EGGROLL_ROLLSITE_PULL_TIMEOUT = ErConfKey("eggroll.rollsite.pull.timeout", 5)
 }
 

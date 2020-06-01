@@ -103,11 +103,6 @@ class RollSiteContext:
             topic_dst = proxy_pb2.Topic(name="init_job_session_pair", partyId=self.party_id,
                                         role=self.role, callback=None)
             command_test = proxy_pb2.Command(name="init_job_session_pair")
-            conf_test = proxy_pb2.Conf(overallTimeout=1000,
-                                       completionWaitTimeout=1000,
-                                       packetIntervalTimeout=1000,
-                                       maxRetries=10)
-
             metadata = proxy_pb2.Metadata(task=task_info,
                                           src=topic_src,
                                           dst=topic_dst,
@@ -189,6 +184,7 @@ class RollSite:
                     time.sleep(min(0.1 * retry_cnt, 30))
             else:
                 retry_cnt = 0
+                max_retry_cnt = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PULL_CLIENT_RETRY_COUNT.get())
                 ret_packet = self.stub.unaryCall(packet)
                 while ret_packet.header.ack != 123:
                     msg = f"retry pull: retry_cnt: {retry_cnt}," + \
@@ -202,6 +198,9 @@ class RollSite:
                         raise IOError("receive terminated")
                     ret_packet = self.stub.unaryCall(packet)
                     time.sleep(min(0.1 * retry_cnt, 30))
+                    if retry_cnt > max_retry_cnt:
+                        raise IOError("receive terminated")
+
                 obj_type = ret_packet.body.value
 
                 table_namespace = self.roll_site_session_id
@@ -226,11 +225,6 @@ class RollSite:
                     topic_dst = proxy_pb2.Topic(name=table_name, partyId=self.party_id,
                                                 role=self.local_role, callback=None)
                     command_test = proxy_pb2.Command(name="pull_obj")
-                    conf_test = proxy_pb2.Conf(overallTimeout=1000,
-                                               completionWaitTimeout=1000,
-                                               packetIntervalTimeout=1000,
-                                               maxRetries=10)
-
                     metadata = proxy_pb2.Metadata(task=task_info,
                                                   src=topic_src,
                                                   dst=topic_dst,
@@ -436,10 +430,6 @@ class RollSite:
             topic_dst = proxy_pb2.Topic(name="get_status", partyId=self.party_id,
                                         role=self.local_role, callback=None)
             get_status_command = proxy_pb2.Command(name="get_status")
-            conf_test = proxy_pb2.Conf(overallTimeout=1000,
-                                       completionWaitTimeout=1000,
-                                       packetIntervalTimeout=1000,
-                                       maxRetries=10)
 
             metadata = proxy_pb2.Metadata(task=task_info,
                                           src=topic_src,

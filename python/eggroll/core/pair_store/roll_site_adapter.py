@@ -128,8 +128,7 @@ class RollSiteWriteBatch(PairWriteBatch):
                                          role=self.roll_site_header._dst_role, callback=None)
 
         self.unarycall_max_retry_cnt = int(RollSiteConfKeys.EGGROLL_ROLLSITE_UNARYCALL_CLIENT_RETRY_COUNT.get())
-        self.push_max_retry_cnt = int(RollSiteConfKeys.EGGROLL_ROLLSITE_UNARYCALL_CLIENT_RETRY_COUNT.key.get())
-        self.unarycall_overall_timeout = int(RollSiteConfKeys.EGGROLL_ROLLSITE_UNARYCALL_OVERALL_TIMEOUT.get())
+        self.push_max_retry_cnt = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PUSH_CLIENT_RETRY_COUNT.get())
         self.push_overall_timeout = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PUSH_OVERALL_TIMEOUT.get())
 
     def __repr__(self):
@@ -194,10 +193,6 @@ class RollSiteWriteBatch(PairWriteBatch):
         task_info = proxy_pb2.Task(taskId=self.name, model=proxy_pb2.Model(name=self.adapter.roll_site_header_string, dataKey=self.namespace))
 
         command_test = proxy_pb2.Command(name="set_status")
-        unarycall_conf = proxy_pb2.Conf(overallTimeout=self.unarycall_overall_timeout,
-                                        completionWaitTimeout=60 * 60 * 1000,
-                                        packetIntervalTimeout=20 * 1000,
-                                        maxRetries=10)
 
         metadata = proxy_pb2.Metadata(task=task_info,
                                       src=self.topic_src,
@@ -205,8 +200,7 @@ class RollSiteWriteBatch(PairWriteBatch):
                                       command=command_test,
                                       operator="markEnd",
                                       seq=self.push_batch_cnt,
-                                      ack=0,
-                                      conf=unarycall_conf)
+                                      ack=0)
 
         packet = proxy_pb2.Packet(header=metadata)
 
