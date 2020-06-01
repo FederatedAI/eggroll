@@ -349,6 +349,13 @@ public class GrpcServerFactory {
                 proxyServerConf.setUnaryCallRetryCount(Integer.valueOf(unaryCallRetryCount));
             }
 
+            String pullTimeout = properties.getProperty(RollSiteConfKeys.EGGROLL_ROLLSITE_PULL_TIMEOUT().key(), "5");
+            if (StringUtils.isBlank(pullTimeout)) {
+                throw new IllegalArgumentException("Illegal pull time out value");
+            } else {
+                proxyServerConf.setPullTimeout(Integer.valueOf(pullTimeout));
+            }
+
             @Deprecated
             String logPropertiesPath = properties.getProperty("log.properties");
             if (StringUtils.isNotBlank(logPropertiesPath)) {

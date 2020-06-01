@@ -30,6 +30,7 @@ public class ProxyServerConf {
     private int securePort;
     private long pushRetryCount;
     private long unaryCallRetryCount;
+    private long pullTimeout;
     private String partyId;
     private String role;
 
@@ -121,6 +122,13 @@ public class ProxyServerConf {
     }
     public void setUnaryCallRetryCount(int unaryCallRetryCount) {
         this.unaryCallRetryCount = unaryCallRetryCount;
+    }
+
+    public long getPullTimeout() {
+        return pullTimeout;
+    }
+    public void setPullTimeout(int pullTimeout) {
+        this.pullTimeout = pullTimeout;
     }
 
     public void setPartyId(String partyId) {
