@@ -288,7 +288,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                     request.getHeader().getTask().getModel().getName());
                 String tagKey = genTagKey(rollSiteHeader);
 
-                long timeout = 5;
+                long timeout = proxyServerConf.getPullTimeout();
                 TimeUnit unit = TimeUnit.MINUTES;
                 boolean jobFinished = JobStatus.waitUntilAllCountDown(tagKey, timeout, unit)
                     && JobStatus.waitUntilPutBatchFinished(tagKey, timeout, unit);
