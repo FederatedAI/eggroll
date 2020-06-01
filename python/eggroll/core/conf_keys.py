@@ -131,3 +131,5 @@ class RollSiteConfKeys(object):
     EGGROLL_ROLLSITE_PUSH_CLIENT_RETRY_COUNT = ErConfKey("eggroll.rollsite.push.client.retry.count", 100)
     EGGROLL_ROLLSITE_PUSH_OVERALL_TIMEOUT = ErConfKey("eggroll.rollsite.push.overall.timeout", 30000)
     EGGROLL_ROLLSITE_PUSH_RETRY_COUNT = ErConfKey("eggroll.rollsite.push.retry.count", 100)
+    EGGROLL_ROLLSITE_PULL_CLIENT_RETRY_COUNT = ErConfKey("eggroll.rollsite.pull.client.retry.count", 300)
+    EGGROLL_ROLLSITE_PULL_TIMEOUT = ErConfKey("eggroll.rollsite.pull.timeout", 5)
