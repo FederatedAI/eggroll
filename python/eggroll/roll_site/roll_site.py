@@ -55,7 +55,6 @@ class RollSiteContext:
         self.party_id = str(options["self_party_id"])
         self.proxy_endpoint = options["proxy_endpoint"]
         # TODO:0 deploy mode should be the same as the fate flow
-        #self.is_standalone = options["deploy_mode"] == "standalone"
         self.is_standalone = RollSiteConfKeys.EGGROLL_ROLLSITE_DEPLOY_MODE.get_with(options) == "standalone"
         if self.is_standalone:
             self.stub = None
@@ -242,7 +241,6 @@ class RollSite:
                     packet = proxy_pb2.Packet(header=metadata)
 
                     ret = self.stub.unaryCall(packet)
-                    #result = ret.body.value
                     result = pickle.loads(ret.body.value)
             else:
                 rp = self.ctx.rp_ctx.load(namespace=table_namespace, name=table_name)

@@ -45,6 +45,7 @@ public class PushStreamProcessor extends BaseClientCallStreamProcessor<Proxy.Pac
     private Proxy.Data.Builder bodyBuilder;
     private Proxy.Metadata.Builder headerBuilder;
     private long seq;
+    private long maxRetryCount;
     private Pipe transferBroker;
     //private ClusterComm.TransferMeta transferMeta;
     private String transferMetaString;
@@ -52,7 +53,7 @@ public class PushStreamProcessor extends BaseClientCallStreamProcessor<Proxy.Pac
 
     private volatile boolean inited;
 
-    public PushStreamProcessor(ClientCallStreamObserver<Packet> streamObserver, Pipe pipe) {
+    public PushStreamProcessor(ClientCallStreamObserver<Packet> streamObserver, Pipe pipe, long maxRetryCount) {
         super(streamObserver);
         this.transferBroker = pipe;
         //this.transferMeta = transferBroker.getTransferMeta();
@@ -61,6 +62,8 @@ public class PushStreamProcessor extends BaseClientCallStreamProcessor<Proxy.Pac
         this.packetBuilder = Proxy.Packet.newBuilder();
         this.headerBuilder = Proxy.Metadata.newBuilder();
         this.bodyBuilder = Proxy.Data.newBuilder();
+
+        this.maxRetryCount = maxRetryCount;
     }
 
     @PostConstruct
@@ -134,7 +137,7 @@ public class PushStreamProcessor extends BaseClientCallStreamProcessor<Proxy.Pac
                            emptyRetryCount);
                 }
             }
-        } while ((packet != null || !transferBroker.isDrained()) && emptyRetryCount < 300 && !transferBroker.hasError());
+        } while ((packet != null || !transferBroker.isDrained()) && emptyRetryCount < maxRetryCount && !transferBroker.hasError());
 
     }
 

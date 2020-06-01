@@ -104,13 +104,6 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
 
         LOGGER.info("[PULL][SERVER] pull pipe: {}", pipe);
 
-        /*
-        PipeHandleNotificationEvent event =
-                eventFactory.createPipeHandleNotificationEvent(
-                        this, PipeHandleNotificationEvent.Type.PULL, inputMetadata, pipe);
-        applicationEventPublisher.publishEvent(event);
-        */
-
         long startTimestamp = System.currentTimeMillis();
         long lastPacketTimestamp = startTimestamp;
         long loopEndTimestamp = lastPacketTimestamp;
@@ -207,14 +200,20 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
         boolean hasReturnedBefore = false;
         int emptyRetryCount = 0;
 
+        //long completionWaitTimeout = Timeouts.DEFAULT_COMPLETION_WAIT_TIMEOUT;
+        long overallTimeout = Timeouts.DEFAULT_OVERALL_TIMEOUT;
+        long packetIntervalTimeout = Timeouts.DEFAULT_PACKET_INTERVAL_TIMEOUT;
+
         Proxy.Metadata header = request.getHeader();
         String oneLineStringInputMetadata = ToStringUtils.toOneLineString(header);
         LOGGER.info("[UNARYCALL][SERVER] server unary request received. src: {}, dst: {}",
                 ToStringUtils.toOneLineString(header.getSrc()),
                 ToStringUtils.toOneLineString(header.getDst()));
 
-        long overallTimeout = timeouts.getOverallTimeout(header);
-        long packetIntervalTimeout = timeouts.getPacketIntervalTimeout(header);
+        if (header.hasConf()) {
+            overallTimeout = timeouts.getOverallTimeout(header);
+            packetIntervalTimeout = timeouts.getPacketIntervalTimeout(header);
+        }
 
         LOGGER.info("taskId:{}", header.getTask().getTaskId());
 
@@ -392,9 +391,10 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
             long startTimestamp = System.currentTimeMillis();
             long lastPacketTimestamp = startTimestamp;
             long loopEndTimestamp = System.currentTimeMillis();
+            long maxRetryCount = proxyServerConf.getUnaryCallRetryCount();
             while ((!hasReturnedBefore || !pipe.isDrained())
                 && !pipe.hasError()
-                && emptyRetryCount < 30_000
+                && emptyRetryCount < maxRetryCount
                 && !timeouts.isTimeout(overallTimeout, startTimestamp, loopEndTimestamp)) {
                 packet = (Proxy.Packet) pipe.read(1, TimeUnit.SECONDS);
 //            packet = request;
