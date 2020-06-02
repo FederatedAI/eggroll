@@ -63,7 +63,10 @@ def start(config_file, session_id, server_node_id, processor_id, port, transfer_
     os.environ['EGGROLL_LOG_FILE'] = "egg_pair-" + processor_id
 
     if platform.system() == "Windows":
-        python_cmd = venv + '\\python.exe '
+        if venv is None:
+            python_cmd = 'python.exe '
+        else:
+            python_cmd = venv + '\\python.exe '
     else:
         if venv is None:
             p = Popen(['which python'], stdout=PIPE, stderr=PIPE, stdin=PIPE)
