@@ -39,10 +39,7 @@ def data_generator(limit):
         yield (f"key-{i}", f"value-{i}")
 
 
-def parametrize(testcase_class, func_name=None, src_party_id=None, dst_party_id=None):
-    """ Create a suite containing all tests taken from the given
-     subclass, passing them the parameter 'param'.
-    """
+def args_to_testcase(testcase_class, func_name=None, src_party_id=None, dst_party_id=None):
     testloader = unittest.TestLoader()
     testnames = testloader.getTestCaseNames(testcase_class)
     suite = unittest.TestSuite()
@@ -487,6 +484,6 @@ if __name__ == '__main__':
     dst_party_id = args.dst_party_id
 
     suite = unittest.TestSuite()
-    suite.addTest(parametrize(str_to_class(class_name_str), func_name=func_name, src_party_id=src_party_id, dst_party_id=dst_party_id))
+    suite.addTest(args_to_testcase(str_to_class(class_name_str), func_name=func_name, src_party_id=src_party_id, dst_party_id=dst_party_id))
 
     unittest.TextTestRunner(verbosity=2).run(suite)
