@@ -56,6 +56,11 @@ def start(config_file, session_id, server_node_id, processor_id, port, transfer_
 
             eggroll_logs_dir = os.path.join(eggroll_home, 'logs')
 
+        eggroll_logs_dir = os.path.join(eggroll_logs_dir, session_id)
+        os.environ["EGGROLL_LOGS_DIR"] = eggroll_logs_dir
+
+    os.makedirs(eggroll_logs_dir, exist_ok=True)
+
     if os.environ.get('EGGROLL_LOG_LEVEL') is None:
         os.environ['EGGROLL_LOG_LEVEL'] = "INFO"
 
@@ -88,11 +93,6 @@ def start(config_file, session_id, server_node_id, processor_id, port, transfer_
         cmd = cmd + ' --port ' + port
         if transfer_port is not None:
             cmd = cmd + ' --transfer-port ' + transfer_port
-
-    os.environ["EGGROLL_LOGS_DIR"] = os.path.join(eggroll_logs_dir, session_id)
-
-    if os.path.exists(os.path.join(eggroll_logs_dir, session_id)) is not True:
-        os.makedirs(os.path.join(eggroll_logs_dir, session_id))
 
     eggroll_log_file = "egg_pair-" + processor_id + '.out'
     eggroll_err_file = "egg_pair-" + processor_id + '.err'

@@ -139,7 +139,7 @@ class ErSession(object):
                     L.info(f'shutdown returncode: {returncode}')
 
             file_name = f'{self.__eggroll_home}/logs/eggroll/bootstrap-standalone-manager.out'
-            max_retry_cnt = 10
+            max_retry_cnt = 100
             for i in range(max_retry_cnt):
                 msg = f"retry get port from bootstrap-standalone-manager.out: retry_cnt: {i},"
                 L.info(msg)
