@@ -199,7 +199,7 @@ class RollSite:
                     ret_packet = self.stub.unaryCall(packet)
                     time.sleep(min(0.1 * retry_cnt, 30))
                     if retry_cnt > max_retry_cnt:
-                        raise IOError("receive terminated")
+                        raise IOError("receive timeout")
 
                 obj_type = ret_packet.body.value
 
