@@ -172,7 +172,7 @@ class RollPairContext(object):
                 raise EnvironmentError(
                         "result is None, please check whether the store:{} has been created before".format(store))
 
-        if not no_partitions_param and result._store_locator._total_partitions != 0\
+        if False and not no_partitions_param and result._store_locator._total_partitions != 0\
                 and total_partitions != result._store_locator._total_partitions:
             raise ValueError(f"store:{result._store_locator._name} input total_partitions:{total_partitions}, "
                              f"output total_partitions:{result._store_locator._total_partitions}, must be the same")
