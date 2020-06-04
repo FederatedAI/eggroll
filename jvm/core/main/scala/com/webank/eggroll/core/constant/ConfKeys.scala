@@ -159,14 +159,12 @@ object RollSiteConfKeys {
   val EGGROLL_ROLLSITE_PROXY_COMPATIBLE_ENABLED = ErConfKey("eggroll.rollsite.proxy.compatible.enabled", "false")
   val EGGROLL_ROLLSITE_LAN_INSECURE_CHANNEL_ENABLED = ErConfKey("eggroll.rollsite.lan.insecure.channel.enabled")
   val EGGROLL_ROLLSITE_AUDIT_ENABLED = ErConfKey("eggroll.rollsite.audit.enabled")
-  val EGGROLL_ROLLSITE_UNARYCALL_CLIENT_RETRY_COUNT = ErConfKey("eggroll.rollsite.unarycall.client.retry.count", 100)
-  val EGGROLL_ROLLSITE_UNARYCALL_OVERALL_TIMEOUT = ErConfKey("eggroll.rollsite.unarycall.client.overall.timeout", 30000)
-  val EGGROLL_ROLLSITE_UNARYCALL_RETRY_COUNT = ErConfKey("eggroll.rollsite.unarycall.client.retry.count", 100)
-  val EGGROLL_ROLLSITE_PUSH_CLIENT_RETRY_COUNT = ErConfKey("eggroll.rollsite.push.client.retry.count", 100)
-  val EGGROLL_ROLLSITE_PUSH_OVERALL_TIMEOUT = ErConfKey("eggroll.rollsite.push.client.overall.timeout", 172800000)
-  val EGGROLL_ROLLSITE_PUSH_RETRY_COUNT = ErConfKey("eggroll.rollsite.push.retry.count", 100)
-  val EGGROLL_ROLLSITE_PULL_CLIENT_RETRY_COUNT = ErConfKey("eggroll.rollsite.pull.client.retry.count", 300)
-  val EGGROLL_ROLLSITE_PULL_TIMEOUT = ErConfKey("eggroll.rollsite.pull.timeout", 5)
+  val EGGROLL_ROLLSITE_UNARYCALL_CLIENT_MAX_RETRY = ErConfKey("eggroll.rollsite.unarycall.client.retry.count", 100)
+  val EGGROLL_ROLLSITE_UNARYCALL_MAX_RETRY = ErConfKey("eggroll.rollsite.unarycall.client.retry.count", 100)
+  val EGGROLL_ROLLSITE_PUSH_CLIENT_MAX_RETRY = ErConfKey("eggroll.rollsite.push.client.retry.count", 100)
+  val EGGROLL_ROLLSITE_PUSH_MAX_RETRY = ErConfKey("eggroll.rollsite.push.retry.count", 100)
+  val EGGROLL_ROLLSITE_PULL_CLIENT_MAX_RETRY = ErConfKey("eggroll.rollsite.pull.client.retry.count", 300)
+  val EGGROLL_ROLLSITE_OVERALL_TIMEOUT_SEC = ErConfKey("eggroll.rollsite.overall.timeout_sec", 172800000)
 }
 
 object RollPairConfKeys {

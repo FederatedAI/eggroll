@@ -18,6 +18,7 @@ package com.webank.eggroll.rollsite.grpc.client;
 
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy.Packet;
+import com.webank.eggroll.core.constant.RollSiteConfKeys;
 import com.webank.eggroll.core.grpc.processor.BaseClientCallStreamProcessor;
 import com.webank.eggroll.rollsite.infra.Pipe;
 import io.grpc.stub.ClientCallStreamObserver;
@@ -45,7 +46,6 @@ public class PushStreamProcessor extends BaseClientCallStreamProcessor<Proxy.Pac
     private Proxy.Data.Builder bodyBuilder;
     private Proxy.Metadata.Builder headerBuilder;
     private long seq;
-    private long maxRetryCount;
     private Pipe transferBroker;
     //private ClusterComm.TransferMeta transferMeta;
     private String transferMetaString;
@@ -53,7 +53,7 @@ public class PushStreamProcessor extends BaseClientCallStreamProcessor<Proxy.Pac
 
     private volatile boolean inited;
 
-    public PushStreamProcessor(ClientCallStreamObserver<Packet> streamObserver, Pipe pipe, long maxRetryCount) {
+    public PushStreamProcessor(ClientCallStreamObserver<Packet> streamObserver, Pipe pipe) {
         super(streamObserver);
         this.transferBroker = pipe;
         //this.transferMeta = transferBroker.getTransferMeta();
@@ -62,8 +62,6 @@ public class PushStreamProcessor extends BaseClientCallStreamProcessor<Proxy.Pac
         this.packetBuilder = Proxy.Packet.newBuilder();
         this.headerBuilder = Proxy.Metadata.newBuilder();
         this.bodyBuilder = Proxy.Data.newBuilder();
-
-        this.maxRetryCount = maxRetryCount;
     }
 
     @PostConstruct
@@ -115,6 +113,7 @@ public class PushStreamProcessor extends BaseClientCallStreamProcessor<Proxy.Pac
         */
 
         int emptyRetryCount = 0;
+        long maxRetryCount = Long.parseLong(RollSiteConfKeys.EGGROLL_ROLLSITE_PUSH_MAX_RETRY().get());
         Proxy.Packet packet = null;
         do {
             //packet = (Proxy.Packet) pipe.read(1, TimeUnit.SECONDS);

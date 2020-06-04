@@ -110,27 +110,6 @@ public class ProxyServerConf {
         this.securePort = securePort;
     }
 
-    public long getPushRetryCount() {
-        return pushRetryCount;
-    }
-    public void setPushRetryCount(int pushRetryCount) {
-        this.pushRetryCount = pushRetryCount;
-    }
-
-    public long getUnaryCallRetryCount() {
-        return unaryCallRetryCount;
-    }
-    public void setUnaryCallRetryCount(int unaryCallRetryCount) {
-        this.unaryCallRetryCount = unaryCallRetryCount;
-    }
-
-    public long getPullTimeout() {
-        return pullTimeout;
-    }
-    public void setPullTimeout(int pullTimeout) {
-        this.pullTimeout = pullTimeout;
-    }
-
     public void setPartyId(String partyId) {
         this.partyId = partyId;
     }
