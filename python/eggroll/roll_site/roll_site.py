@@ -184,7 +184,7 @@ class RollSite:
                     time.sleep(min(0.1 * retry_cnt, 30))
             else:
                 retry_cnt = 0
-                max_retry_cnt = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PULL_CLIENT_RETRY_COUNT.get())
+                max_retry_cnt = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PULL_CLIENT_MAX_RETRY.get())
                 ret_packet = self.stub.unaryCall(packet)
                 while ret_packet.header.ack != 123:
                     msg = f"retry pull: retry_cnt: {retry_cnt}," + \
@@ -252,7 +252,7 @@ class RollSite:
             P.info(f'{{"metric_type": "func_profile", "qualname": "RollSite.pull", "cpu_time": {end_cpu_time - self._pull_start_cpu_time}, "wall_time": {end_wall_time - self._pull_start_wall_time}}}')
 
     def send_packet(self, packet):
-        max_retry_cnt = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PUSH_CLIENT_RETRY_COUNT.get())
+        max_retry_cnt = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PUSH_CLIENT_MAX_RETRY.get())
         exception = None
         ret_packet = None
         for i in range(max_retry_cnt):
