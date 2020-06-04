@@ -55,7 +55,6 @@ public class DataTransferPipedClient {
     private ProxyServerConf proxyServerConf;
     private BasicMeta.Endpoint endpoint;
     private boolean needSecureChannel;
-    private long maxRetryCount;
     private long MAX_AWAIT_HOURS = 24;
     private AtomicBoolean inited = new AtomicBoolean(false);
 
@@ -79,7 +78,6 @@ public class DataTransferPipedClient {
         context.setStubClass(DataTransferServiceGrpc.DataTransferServiceStub.class);
 
         needSecureChannel = proxyServerConf.isSecureServer();
-        maxRetryCount = proxyServerConf.getPushRetryCount();
 
         //.setCallerStreamObserverClassAndInitArgs(SameTypeCallerResponseStreamObserver.class)
         LOGGER.info("ip: {}, Port: {}", endpoint.getIp(), endpoint.getPort());
@@ -88,7 +86,7 @@ public class DataTransferPipedClient {
             .setSecureRequest(needSecureChannel)
             .setCallerStreamingMethodInvoker(DataTransferServiceGrpc.DataTransferServiceStub::push)
             .setCallerStreamObserverClassAndInitArgs(PushClientResponseStreamObserver.class, pipe)
-            .setRequestStreamProcessorClassAndArgs(PushStreamProcessor.class, pipe, maxRetryCount);
+            .setRequestStreamProcessorClassAndArgs(PushStreamProcessor.class, pipe);
 
         pushTemplate = new GrpcClientTemplate<>();
 

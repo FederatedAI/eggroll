@@ -21,6 +21,7 @@ import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.webank.ai.eggroll.api.networking.proxy.DataTransferServiceGrpc;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
+import com.webank.eggroll.core.constant.RollSiteConfKeys;
 import com.webank.eggroll.core.constant.StringConstants;
 import com.webank.eggroll.core.meta.ErRollSiteHeader;
 import com.webank.eggroll.core.meta.TransferModelPbMessageSerdes;
@@ -288,7 +289,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                     request.getHeader().getTask().getModel().getName());
                 String tagKey = genTagKey(rollSiteHeader);
 
-                long timeout = proxyServerConf.getPullTimeout();
+                long timeout = 5;
                 TimeUnit unit = TimeUnit.MINUTES;
                 boolean jobFinished = JobStatus.waitUntilAllCountDown(tagKey, timeout, unit)
                     && JobStatus.waitUntilPutBatchFinished(tagKey, timeout, unit);
@@ -391,7 +392,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
             long startTimestamp = System.currentTimeMillis();
             long lastPacketTimestamp = startTimestamp;
             long loopEndTimestamp = System.currentTimeMillis();
-            long maxRetryCount = proxyServerConf.getUnaryCallRetryCount();
+            long maxRetryCount = Long.parseLong(RollSiteConfKeys.EGGROLL_ROLLSITE_UNARYCALL_MAX_RETRY().get());
             while ((!hasReturnedBefore || !pipe.isDrained())
                 && !pipe.hasError()
                 && emptyRetryCount < maxRetryCount
