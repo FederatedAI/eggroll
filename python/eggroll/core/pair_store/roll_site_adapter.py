@@ -127,9 +127,9 @@ class RollSiteWriteBatch(PairWriteBatch):
         self.topic_dst = proxy_pb2.Topic(name=self.name, partyId=self.roll_site_header._dst_party_id,
                                          role=self.roll_site_header._dst_role, callback=None)
 
-        self.unarycall_max_retry_cnt = int(RollSiteConfKeys.EGGROLL_ROLLSITE_UNARYCALL_CLIENT_RETRY_COUNT.get())
-        self.push_max_retry_cnt = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PUSH_CLIENT_RETRY_COUNT.get())
-        self.push_overall_timeout = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PUSH_OVERALL_TIMEOUT.get())
+        self.unarycall_max_retry_cnt = int(RollSiteConfKeys.EGGROLL_ROLLSITE_UNARYCALL_CLIENT_MAX_RETRY.get())
+        self.push_max_retry_cnt = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PUSH_CLIENT_MAX_RETRY.get())
+        self.push_overall_timeout = int(RollSiteConfKeys.EGGROLL_ROLLSITE_OVERALL_TIMEOUT_SEC.get())
 
     def __repr__(self):
         return f'<ErRollSiteWriteBatch(' \
