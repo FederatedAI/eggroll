@@ -653,7 +653,7 @@ class TestRollPairCluster(TestRollPairBase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        opts = {"eggroll.session.processors.per.node": "10"}
+        opts = {"eggroll.session.processors.per.node": "3"}
         #opts = {}
         cls.ctx = get_cluster_context(options=opts)
 
