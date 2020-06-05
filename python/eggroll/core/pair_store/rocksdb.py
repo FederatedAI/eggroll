@@ -30,7 +30,6 @@ from eggroll.roll_pair.utils.pair_utils import get_data_dir
 L = get_logger()
 
 class RocksdbAdapter(PairAdapter):
-    db_lock = threading.Lock()
     db_dict = dict()
     count_dict = dict()
     lock_dict = defaultdict(threading.Lock)
@@ -113,6 +112,7 @@ class RocksdbAdapter(PairAdapter):
                 L.debug(f'RocksdbAdapter.close: actually closing path={self.path}. count={count}')
                 del RocksdbAdapter.db_dict[self.path]
                 del RocksdbAdapter.count_dict[self.path]
+                del RocksdbAdapter.lock_dict[self.path]
                 del self.db
                 gc.collect()
                 self.is_closed = True
