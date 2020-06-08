@@ -159,6 +159,14 @@ object RollSiteConfKeys {
   val EGGROLL_ROLLSITE_PROXY_COMPATIBLE_ENABLED = ErConfKey("eggroll.rollsite.proxy.compatible.enabled", "false")
   val EGGROLL_ROLLSITE_LAN_INSECURE_CHANNEL_ENABLED = ErConfKey("eggroll.rollsite.lan.insecure.channel.enabled")
   val EGGROLL_ROLLSITE_AUDIT_ENABLED = ErConfKey("eggroll.rollsite.audit.enabled")
+  val EGGROLL_ROLLSITE_UNARYCALL_CLIENT_MAX_RETRY = ErConfKey("eggroll.rollsite.unarycall.client.max.retry", 100)
+  val EGGROLL_ROLLSITE_UNARYCALL_MAX_RETRY = ErConfKey("eggroll.rollsite.unarycall.client.max.retry", 30000)
+  val EGGROLL_ROLLSITE_PUSH_CLIENT_MAX_RETRY = ErConfKey("eggroll.rollsite.push.client.max.retry", 100)
+  val EGGROLL_ROLLSITE_PUSH_MAX_RETRY = ErConfKey("eggroll.rollsite.push.max.retry", 300)
+  val EGGROLL_ROLLSITE_PULL_CLIENT_MAX_RETRY = ErConfKey("eggroll.rollsite.pull.client.max.retry", 300)
+  val EGGROLL_ROLLSITE_OVERALL_TIMEOUT_SEC = ErConfKey("eggroll.rollsite.overall.timeout_sec", 172800000)
+  val EGGROLL_ROLLSITE_COMPLETION_WAIT_TIMEOUT = ErConfKey("eggroll.rollsite.completion.wait.timeout.sec", 3600000)
+  val EGGROLL_ROLLSITE_PACKET_INTERVAL_TIMEOUT = ErConfKey("eggroll.rollsite.packet.interval.timeout.sec", 20000)
 }
 
 object RollPairConfKeys {
