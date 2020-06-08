@@ -59,6 +59,7 @@ class RollPairContext(object):
         self.deploy_mode = session.get_option(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE)
         self.__session_meta = session.get_session_meta()
         self.__session.add_exit_task(self.context_gc)
+        self.__session.add_exit_task(self.close_context_db)
         self.rpc_gc_enable = True
         self.gc_recorder = GcRecorder(self)
         self.__command_client = CommandClient()
@@ -90,12 +91,27 @@ class RollPairContext(object):
         if self.gc_recorder.gc_recorder is None or len(self.gc_recorder.gc_recorder) == 0:
             L.info("rp context gc_recorder is None or empty!")
             return
+        options = dict()
+        options['gc_destroy'] = True
         for k, v in (self.gc_recorder.gc_recorder.items()):
             L.debug("before exit the task:{} cleaning item:{}".format(self.session_id, k))
             namespace = k[0]
             name = k[1]
             rp = self.load(namespace=namespace, name=name)
-            rp.destroy()
+            rp.destroy(options=options)
+
+    def close_context_db(self):
+        if self.gc_recorder.leveldb_recorder is None or len(self.gc_recorder.leveldb_recorder) == 0:
+            L.info("rp context leveldb_recorder is None or empty!")
+            return
+        options = dict()
+        options['gc_destroy'] = True
+        for val in self.gc_recorder.leveldb_recorder:
+            L.debug("before exit the task:{} cleaning leveldb namespace:{} name:{}".format(self.session_id, val[0], val[1]))
+            namespace = val[0]
+            name = val[1]
+            rp = self.load(namespace=namespace, name=name)
+            rp.destroy(options=options)
 
     def route_to_egg(self, partition: ErPartition):
         return self.__session.route_to_egg(partition)
@@ -156,7 +172,7 @@ class RollPairContext(object):
                 raise EnvironmentError(
                         "result is None, please check whether the store:{} has been created before".format(store))
 
-        if not no_partitions_param and result._store_locator._total_partitions != 0\
+        if False and not no_partitions_param and result._store_locator._total_partitions != 0\
                 and total_partitions != result._store_locator._total_partitions:
             raise ValueError(f"store:{result._store_locator._name} input total_partitions:{total_partitions}, "
                              f"output total_partitions:{result._store_locator._total_partitions}, must be the same")
@@ -351,7 +367,7 @@ class RollPair(object):
         if self.ctx.get_session().is_stopped():
             L.debug('session:{} has already been stopped'.format(self.__session_id))
             return
-        L.debug(f"del obj addr:{self} calling")
+        L.debug(f"del obj :{self} calling")
 
         self.ctx.gc_recorder.decrease_ref_count(self.__store)
 
@@ -662,17 +678,22 @@ class RollPair(object):
 
     # todo:1: move to command channel to utilize batch command
     @_method_profile_logger
-    def destroy(self):
+    def destroy(self, options: dict = None):
         if len(self.ctx.get_session()._cluster_manager_client.get_store(self.get_store())._partitions) == 0:
             L.info(f"store:{self.get_store()} has been destroyed before")
             raise ValueError(f"store:{self.get_store()} has been destroyed before")
+
+        if options is None:
+            options = {}
+
         total_partitions = self.__store._store_locator._total_partitions
 
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.DESTROY),
                     name=RollPair.DESTROY,
                     inputs=[self.__store],
                     outputs=[self.__store],
-                    functors=[])
+                    functors=[],
+                    options=options)
 
         task_results = self._run_job(job=job, create_output_if_missing=False)
         self.ctx.get_session()._cluster_manager_client.delete_store(self.__store)
