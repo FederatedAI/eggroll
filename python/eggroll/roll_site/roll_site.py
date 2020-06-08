@@ -162,6 +162,7 @@ class RollSite:
 
     def _thread_receive(self, packet, namespace, roll_site_header: ErRollSiteHeader):
         try:
+            max_retry_cnt = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PULL_CLIENT_MAX_RETRY.get())
             table_name = create_store_name(roll_site_header)
             if self._is_standalone:
                 status_rp = self.ctx.rp_ctx.load(namespace, STATUS_TABLE_NAME + DELIM + self.ctx.roll_site_session_id)
@@ -182,9 +183,10 @@ class RollSite:
                         obj_type = ret_list[0]
                         break
                     time.sleep(min(0.1 * retry_cnt, 30))
+                    if retry_cnt > max_retry_cnt:
+                        raise IOError("receive timeout")
             else:
                 retry_cnt = 0
-                max_retry_cnt = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PULL_CLIENT_MAX_RETRY.get())
                 ret_packet = self.stub.unaryCall(packet)
                 while ret_packet.header.ack != 123:
                     msg = f"retry pull: retry_cnt: {retry_cnt}," + \
