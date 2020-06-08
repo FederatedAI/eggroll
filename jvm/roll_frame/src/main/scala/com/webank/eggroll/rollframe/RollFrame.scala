@@ -25,18 +25,21 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import scala.collection.mutable.ListBuffer
 import com.webank.eggroll.core.ErSession
-import com.webank.eggroll.core.constant.StringConstants
+import com.webank.eggroll.core.client.ClusterManagerClient
+import com.webank.eggroll.core.constant.{ProcessorStatus, SessionStatus, StringConstants}
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.serdes.DefaultScalaSerdes
-import com.webank.eggroll.format.{FrameBatch, _}
+import com.webank.eggroll.core.util.TimeUtils
+import com.webank.eggroll.format._
 import com.webank.eggroll.rollframe.pytorch.{Matrices, Script}
+import com.webank.eggroll.util.Logging
 
 import scala.collection.immutable.Range.Inclusive
 
 // TODO: care about client task grpc whether closed and thread pool whether closed
 // TODO: always close in finally
 
-class RollFrameContext private[eggroll](val session: ErSession) {
+class RollFrameContext private[eggroll](val session: ErSession) extends Logging {
   lazy val serverNodes: Array[ErProcessor] = session.processors
   lazy val rollNodes: ErProcessor = session.processors(0)
 
@@ -72,6 +75,7 @@ class RollFrameContext private[eggroll](val session: ErSession) {
   def getSessionId: String = session.sessionId
 
   def stopSession(): Unit = {
+    logger.info(s"Stop EggFrame Session:${session.sessionId}")
     session.clusterManagerClient.stopSession(session.sessionMeta)
   }
 
@@ -151,13 +155,38 @@ class RollFrameContext private[eggroll](val session: ErSession) {
   }
 }
 
-object RollFrameContext {
-  //  StaticErConf.addProperties("conf/eggroll.properties")
+object RollFrameSession {
+  val opts = Map("processor_types" -> "egg_frame", "processor_plan.egg_frame" -> "uniform")
 
-  def apply(session: ErSession): RollFrameContext = new RollFrameContext(session)
+  def getOrCreateNewSession(oldSessionId: String, sessionIdPrefix: String = ""): ErSession = {
+    val oldSession = new ErSession(oldSessionId, options = opts)
+    if (oldSession.sessionMeta.status == SessionStatus.ACTIVE) {
+      oldSession
+    } else {
+      if (sessionIdPrefix.isEmpty) new ErSession(options = opts)
+      else new ErSession(sessionId = s"${sessionIdPrefix}_${TimeUtils.getNowMs()}", options = opts)
+    }
+  }
+
+  def createSession(sessionIdPrefix: String = ""): ErSession ={
+    if (sessionIdPrefix.isEmpty) new ErSession(options = opts)
+    else new ErSession(sessionId = s"${sessionIdPrefix}_${TimeUtils.getNowMs()}", options = opts)
+  }
+}
+
+object RollFrameContext extends {
+  //  StaticErConf.addProperties("conf/eggroll.properties")
+  val opts = Map("processor_types" -> "egg_frame", "processor_plan.egg_frame" -> "uniform")
+
+  def apply(session: ErSession): RollFrameContext = {
+    new RollFrameContext(session)
+  }
+
+  def apply(sessionIdPrefix: String): RollFrameContext = {
+    apply(new ErSession(sessionId = s"${sessionIdPrefix}_${TimeUtils.getNowMs()}", options = opts))
+  }
 
   def apply(): RollFrameContext = {
-    val opts = Map("processor_types" -> "egg_frame", "processor_plan.egg_frame" -> "uniform")
     apply(new ErSession(options = opts))
   }
 
@@ -444,7 +473,7 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
                       throw new RuntimeException(s"Egg Nodes didn't receive broadcast:$eggZeroValue")
                     }
                   }
-//                  FrameStore.cache(eggZeroValue).readOne()
+                  //                  FrameStore.cache(eggZeroValue).readOne()
                   FrameUtils.fork(FrameStore.cache(eggZeroValue).readOne())
                 } catch {
                   case e: Throwable =>
