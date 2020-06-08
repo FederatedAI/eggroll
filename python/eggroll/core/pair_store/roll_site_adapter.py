@@ -68,6 +68,12 @@ class RollSiteAdapter(PairAdapter):
 
             L.info(f"writable RollSiteAdapter: {self.namespace}, {self.partition_id}. proxy_endpoint: {self.proxy_endpoint}, partition: {self.partition}")
 
+        self.unarycall_max_retry_cnt = int(RollSiteConfKeys.EGGROLL_ROLLSITE_UNARYCALL_CLIENT_MAX_RETRY.get_with(options))
+        self.push_max_retry_cnt = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PUSH_CLIENT_MAX_RETRY.get_with(options))
+        self.push_overall_timeout = int(RollSiteConfKeys.EGGROLL_ROLLSITE_OVERALL_TIMEOUT_SEC.get_with(options))
+        self.push_completion_wait_timeout = int(RollSiteConfKeys.EGGROLL_ROLLSITE_COMPLETION_WAIT_TIMEOUT_SEC.get_with(options))
+        self.push_packet_interval_timeout = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PACKET_INTERVAL_TIMEOUT_SEC.get_with(options))
+
     def close(self):
         pass
 
@@ -99,6 +105,12 @@ class RollSiteWriteBatch(PairWriteBatch):
         self.adapter = adapter
 
         self.roll_site_header: ErRollSiteHeader = adapter.roll_site_header
+        self.unarycall_max_retry_cnt = adapter.unarycall_max_retry_cnt
+        self.push_max_retry_cnt = adapter.push_max_retry_cnt
+        self.push_overall_timeout = adapter.push_overall_timeout
+        self.push_completion_wait_timeout = adapter.push_completion_wait_timeout
+        self.push_packet_interval_timeout = adapter.push_packet_interval_timeout
+
         self.namespace = adapter.namespace
         self.name = create_store_name(self.roll_site_header)
 
@@ -127,10 +139,6 @@ class RollSiteWriteBatch(PairWriteBatch):
         self.topic_dst = proxy_pb2.Topic(name=self.name, partyId=self.roll_site_header._dst_party_id,
                                          role=self.roll_site_header._dst_role, callback=None)
 
-        self.unarycall_max_retry_cnt = int(RollSiteConfKeys.EGGROLL_ROLLSITE_UNARYCALL_CLIENT_MAX_RETRY.get())
-        self.push_max_retry_cnt = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PUSH_CLIENT_MAX_RETRY.get())
-        self.push_overall_timeout = int(RollSiteConfKeys.EGGROLL_ROLLSITE_OVERALL_TIMEOUT_SEC.get())
-
     def __repr__(self):
         return f'<ErRollSiteWriteBatch(' \
                f'adapter={self.adapter}, ' \
@@ -156,8 +164,8 @@ class RollSiteWriteBatch(PairWriteBatch):
 
         # TODO: conf test as config and use it
         push_conf = proxy_pb2.Conf(overallTimeout=self.push_overall_timeout,
-                                   completionWaitTimeout=60 * 60 * 1000,
-                                   packetIntervalTimeout=20 * 1000,
+                                   completionWaitTimeout=self.push_completion_wait_timeout,
+                                   packetIntervalTimeout=self.push_packet_interval_timeout,
                                    maxRetries=10)
 
         metadata = proxy_pb2.Metadata(task=task_info,
