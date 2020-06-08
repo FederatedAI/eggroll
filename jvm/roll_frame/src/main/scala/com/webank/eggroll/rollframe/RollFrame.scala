@@ -117,10 +117,6 @@ class RollFrameContext private[eggroll](val session: ErSession) extends Logging 
     store
   }
 
-//  def checkStoreExists(erStore: ErStore):Boolean ={
-//    frameTransfer.addExcludeStore()
-//  }
-
   def forkStore(oldStore: ErStore, namespace: String, name: String, storeType: String = defaultStoreType,
                 keep: Boolean = false): ErStore = {
     val storeLocator: ErStoreLocator = oldStore.storeLocator.copy(namespace = namespace, name = name, storeType = storeType,
