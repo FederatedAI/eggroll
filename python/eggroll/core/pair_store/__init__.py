@@ -21,6 +21,8 @@ def create_pair_adapter(options: dict):
     # TODO:0: rename type name?
     if options["store_type"] == StoreTypes.ROLLPAIR_IN_MEMORY:
         actual_store_type = RollPairConfKeys.EGGROLL_ROLLPAIR_DEFAULT_STORE_TYPE.get()
+        if actual_store_type == "ROLLPAIR_IN_MEMORY":
+            raise ValueError('default store type cannot be IN_MEMORY')
         duplicate_options = options.copy()
         duplicate_options["store_type"] = getattr(StoreTypes, actual_store_type)
         ret = create_pair_adapter(options=duplicate_options)
