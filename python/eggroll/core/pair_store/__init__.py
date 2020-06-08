@@ -13,13 +13,20 @@
 #  limitations under the License.
 from eggroll.core.constants import StoreTypes
 from eggroll.core.pair_store.adapter import FileAdapter, MmapAdapter, CacheAdapter
+from eggroll.core.conf_keys import RollPairConfKeys
 
 
 def create_pair_adapter(options: dict):
     ret = None
     # TODO:0: rename type name?
-    if options["store_type"] == StoreTypes.ROLLPAIR_LMDB \
-            or options["store_type"] == StoreTypes.ROLLPAIR_IN_MEMORY:
+    if options["store_type"] == StoreTypes.ROLLPAIR_IN_MEMORY:
+        actual_store_type = RollPairConfKeys.EGGROLL_ROLLPAIR_DEFAULT_STORE_TYPE.get()
+        if actual_store_type == "ROLLPAIR_IN_MEMORY":
+            raise ValueError('default store type cannot be IN_MEMORY')
+        duplicate_options = options.copy()
+        duplicate_options["store_type"] = getattr(StoreTypes, actual_store_type)
+        ret = create_pair_adapter(options=duplicate_options)
+    elif options["store_type"] == StoreTypes.ROLLPAIR_LMDB:
       from eggroll.core.pair_store.lmdb import LmdbAdapter
       ret = LmdbAdapter(options=options)
     elif options["store_type"] == StoreTypes.ROLLPAIR_LEVELDB:

@@ -63,6 +63,33 @@ class TestRollPairBase(unittest.TestCase):
         print(list(rp.get_all()))
         self.assertUnOrderListEqual(self.str_generator(False), (v for k,v in rp.get_all()))
 
+    def test_load_destroy_load(self):
+        options = {'total_partitions': 16}
+        rp = self.ctx.load('test_ns', 'test_name16', options)
+        rp.destroy()
+        rp = self.ctx.load('test_ns', 'test_name16', options)
+
+    def test_ldl(self):
+        from eggroll.core.session import session_init
+        from eggroll.roll_pair.roll_pair import RollPairContext
+        import uuid
+        options = dict()
+        print(111)
+        print(222)
+        table = self.ctx.load(name='fate_flow_detect_table_name', namespace='fate_flow_detect_table_namespace', options={'total_partitions': 16})
+        table.put_all([("k1","v1"),("k2","v2"),("k3","v3"),("k4","v4"),("k5","v5"),("k6","v6")])
+        print(table.count())
+        print(333)
+        table.destroy()
+        table = self.ctx.load(name='fate_flow_detect_table_name', namespace='fate_flow_detect_table_namespace')
+
+    def test_parallelize_map_values(self):
+        rp = self.ctx.parallelize(self.str_generator(False), options=self.store_opts(include_key=False))
+        print(rp)
+        print(list(rp.get_all()))
+        self.assertUnOrderListEqual(self.str_generator(False), (v for k,v in rp.get_all()))
+        rp.map_values(lambda v:v)
+
     def test_serdes(self):
         rp = self.ctx.load("ns12020","n_serdes", self.store_opts(serdes="EMPTY"))
         rp.put_all((b"a",b"b") for k in range(10))
@@ -202,6 +229,7 @@ class TestRollPairBase(unittest.TestCase):
     def test_destroy(self):
         options = get_default_options()
         options['include_key'] = True
+
         data = [("k1", "v1"), ("k2", "v2"), ("k3", "v3"), ("k4", "v4")]
         table = self.ctx.load('ns12020020618', 'test_destroy', options=options).put_all(data, options=options)
         print("before destroy:{}".format(list(table.get_all())))
@@ -254,6 +282,15 @@ class TestRollPairBase(unittest.TestCase):
         self.assertEqual(get_value(res), [(0, '0map_values'), (1, '1map_values'), (2, '2map_values'), (3, '3map_values'),
                                           (4, '4map_values'), (5, '5map_values'), (6, '6map_values'), (7, '7map_values'),
                                           (8, '8map_values'), (9, '9map_values')])
+
+    def test_map_values_many(self):
+        options = get_default_options()
+        options['include_key'] = False
+        rp = self.ctx.load("ns12020", "test_map_values", options=options).put_all(range(10), options=options)
+
+        for i in range(100):
+            rp.map_values(lambda v:v)
+
 
     def test_map_partitions(self):
         options = get_default_options()
@@ -616,12 +653,15 @@ class TestRollPairCluster(TestRollPairBase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        opts = {"eggroll.session.processors.per.node": "10"}
+        opts = {"eggroll.session.processors.per.node": "3"}
         #opts = {}
         cls.ctx = get_cluster_context(options=opts)
 
     def setUp(self):
         pass
+
+    def test_ldl(self):
+        super().test_ldl()
 
     @staticmethod
     def store_opts(**kwargs):
