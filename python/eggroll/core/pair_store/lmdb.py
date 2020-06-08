@@ -163,7 +163,7 @@ class LmdbAdapter(PairAdapter):
         self._init_write()
         return self.txn_w.delete(k)
 
-    def destroy(self):
+    def destroy(self, options: dict = None):
         self.close()
         import shutil, os
         from pathlib import Path
