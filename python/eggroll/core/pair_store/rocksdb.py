@@ -12,21 +12,27 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+import gc
+import logging
 import os
 import threading
+from collections import defaultdict
+
 import rocksdb
+import shutil
+from pathlib import Path
+import time
 
 from eggroll.core.pair_store.adapter import PairWriteBatch, PairIterator, PairAdapter
 from eggroll.utils.log_utils import get_logger
+from eggroll.roll_pair.utils.pair_utils import get_data_dir
 
 L = get_logger()
 
-
 class RocksdbAdapter(PairAdapter):
-    env_lock = threading.Lock()
-    env_dict = dict()
+    db_dict = dict()
     count_dict = dict()
+    lock_dict = defaultdict(threading.Lock)
 
     def __init__(self, options):
         """
@@ -34,24 +40,48 @@ class RocksdbAdapter(PairAdapter):
           path: absolute local fs path
           create_if_missing: default true
         """
-        with RocksdbAdapter.env_lock:
+        self.path = options["path"].strip()
+        with RocksdbAdapter.lock_dict[self.path]:
             super().__init__(options)
-            self.path = options["path"]
-            opts = rocksdb.Options()
-            opts.create_if_missing = bool(options.get("create_if_missing", "True"))
-            opts.compression = rocksdb.CompressionType.no_compression
 
-            if self.path not in RocksdbAdapter.env_dict:
+            L.debug(f'initing {self.path}, db_dict={RocksdbAdapter.db_dict}')
+            self.is_closed = False
+
+            if self.path not in RocksdbAdapter.db_dict:
+                opts = rocksdb.Options()
+                opts.create_if_missing = (str(options.get("create_if_missing", "True")).lower() == 'true')
+                opts.compression = rocksdb.CompressionType.no_compression
+                # todo:0: parameterize write_buffer_size
+                opts.write_buffer_size = 1 << 20
+
                 if opts.create_if_missing:
                     os.makedirs(self.path, exist_ok=True)
-                self.db = rocksdb.DB(self.path, opts)
-                L.info("path not in dict db path:{}".format(self.path))
+                self.db = None
+                # todo:0: parameterize max_retry_cnt
+                max_retry_cnt = 120
+                retry_cnt = 0
+                while not self.db:
+                    try:
+                        self.db = rocksdb.DB(self.path, opts)
+                    except rocksdb.errors.RocksIOError as e:
+                        if retry_cnt > max_retry_cnt:
+                            L.exception(f'failed to open path={self.path} after retry.')
+                            raise e
+                        retry_cnt += 1
+                        L.info(f'fail to open db path={self.path}. retry_cnt={retry_cnt}. db_dict={RocksdbAdapter.db_dict}')
+                        gc.collect()
+                        time.sleep(1)
+                # self._dbref = rocksdb.weakref.ref(self.db, self._on_db_collected)
+                L.info(f'RocksdbAdapter.__init__: path not in dict db path={self.path}')
+                RocksdbAdapter.db_dict[self.path] = self.db
                 RocksdbAdapter.count_dict[self.path] = 0
-                RocksdbAdapter.env_dict[self.path] = self.db
+                # RocksdbAdapter.ref_dict = self._dbref
             else:
-                L.info("path in dict:{}".format(self.path))
-                self.db = RocksdbAdapter.env_dict[self.path]
-        RocksdbAdapter.count_dict[self.path] = RocksdbAdapter.count_dict[self.path] + 1
+                L.info(f'RocksdbAdapter.__init__: path in dict={self.path}')
+                self.db = RocksdbAdapter.db_dict[self.path]
+            prev_count = RocksdbAdapter.count_dict[self.path]
+            RocksdbAdapter.count_dict[self.path] = prev_count + 1
+            L.info(f"RocksdbAdapter.__init__: path={self.path}, prev_count={prev_count}, cur_count={prev_count + 1}")
 
     def __enter__(self):
         return self
@@ -60,7 +90,8 @@ class RocksdbAdapter(PairAdapter):
         self.close()
 
     def __del__(self):
-        self.close()
+        pass
+        #self.close()
 
     def get(self, key):
         return self.db.get(key)
@@ -69,15 +100,30 @@ class RocksdbAdapter(PairAdapter):
         self.db.put(key, value)
 
     def close(self):
-        with RocksdbAdapter.env_lock:
-            if hasattr(self, 'db'):
-                count = RocksdbAdapter.count_dict[self.path]
-                if not count or count - 1 <= 0:
-                    del RocksdbAdapter.env_dict[self.path]
-                    del RocksdbAdapter.count_dict[self.path]
-                else:
-                    RocksdbAdapter.count_dict[self.path] = count - 1
+        if L.isEnabledFor(logging.DEBUG):
+            L.info(f'RocksdbAdapter.close for path={self.path}. is_closed={self.is_closed}, db_dict={RocksdbAdapter.db_dict}')
+        else:
+            L.info(f'RocksdbAdapter.close for path={self.path}. is_closed={self.is_closed}')
+        with RocksdbAdapter.lock_dict[self.path]:
+            if self.is_closed:
+                return
+            count = RocksdbAdapter.count_dict.get(self.path, None)
+            if not count or count - 1 <= 0:
+                L.debug(f'RocksdbAdapter.close: actually closing path={self.path}. count={count}')
+                del RocksdbAdapter.db_dict[self.path]
+                del RocksdbAdapter.count_dict[self.path]
+                del RocksdbAdapter.lock_dict[self.path]
                 del self.db
+                gc.collect()
+                self.is_closed = True
+            else:
+                count -= 1
+                RocksdbAdapter.count_dict[self.path] = count
+                L.debug(f'RocksdbAdapter.close: ref count -= 1 for path={self.path}. current ref count={count}')
+        if L.isEnabledFor(logging.DEBUG):
+            L.info(f'RocksdbAdapter.closed: path={self.path}, is_closed={self.is_closed}, db_dict={RocksdbAdapter.db_dict}')
+        else:
+            L.info(f'RocksdbAdapter.closed: path={self.path}, is_closed={self.is_closed}')
 
     def iteritems(self):
         return RocksdbIterator(self)
@@ -92,18 +138,25 @@ class RocksdbAdapter(PairAdapter):
     def delete(self, k):
         self.db.delete(k)
 
-    def destroy(self):
+    def destroy(self, options: dict = None):
         self.close()
-        import shutil, os
-        from pathlib import Path
-        shutil.rmtree(self.path)
+
         path = Path(self.path)
-        try:
-            if not os.listdir(path.parent):
-                os.removedirs(path.parent)
-                L.debug("finish destroy, path:{}".format(self.path))
-        except:
-            L.info("path :{} has destroyed".format(self.path))
+        store_path = path.parent
+        real_data_dir = os.path.realpath(get_data_dir())
+
+        if os.path.exists(path) \
+                and not (path == "/"
+                         or store_path == real_data_dir):
+            try:
+                shutil.rmtree(path, ignore_errors=False)
+                L.info(f'path: {path} has been destroyed')
+                os.rmdir(store_path)
+            except FileNotFoundError as e:
+                L.info(f'path: {path} has been destroyed by another partition')
+            except OSError as e:
+                if e.args[0] != 66 and e.args[0] != 39:
+                    raise e
 
     def is_sorted(self):
         return True

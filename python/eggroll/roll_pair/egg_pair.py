@@ -15,6 +15,7 @@
 
 import argparse
 import configparser
+import gc
 import logging
 import os
 import shutil
@@ -217,8 +218,9 @@ class EggPair(object):
                         else:
                             shutil.rmtree(path)
             else:
-                with create_adapter(task._inputs[0]) as input_adapter:
-                    input_adapter.destroy()
+                options = task._job._options
+                with create_adapter(task._inputs[0], options=options) as input_adapter:
+                    input_adapter.destroy(options=options)
 
         if task._name == 'delete':
             f = create_functor(functors[0]._body)
@@ -732,9 +734,18 @@ def serve(args):
     while run:
         time.sleep(1)
 
+    L.info(f'sending exit heartbeat to cm')
     if cluster_manager:
         myself._status = ProcessorStatus.STOPPED
         cluster_manager_client.heartbeat(myself)
+
+    L.info(f'closing RocksDB open dbs')
+    #todo:1: move to RocksdbAdapter and provide a cleanup method
+    from eggroll.core.pair_store.rocksdb import RocksdbAdapter
+    for path, db in RocksdbAdapter.db_dict.items():
+        del db
+
+    gc.collect()
 
     L.info(f'system metric at exit: {get_system_metric(1)}')
     L.info(f'egg_pair {args.processor_id} at port {port}, transfer_port {transfer_port}, pid {pid} stopped gracefully')
