@@ -493,6 +493,10 @@ public class ConfFileBasedFdnRouter implements FdnRouter {
             // loop through role in coordinator
             for (Map.Entry<String, JsonElement> roleEntry : coordinatorValue.entrySet()) {
                 String roleKey = roleEntry.getKey();
+                if (proxyServerConf.getPartyId().equals(coordinatorKey)) {
+                    isIntranet = true;
+                }
+
                 JsonArray roleValue = roleEntry.getValue().getAsJsonArray();
 
                 List<BasicMeta.Endpoint> endpoints = roleTable.get(roleKey);
@@ -530,6 +534,7 @@ public class ConfFileBasedFdnRouter implements FdnRouter {
                         newIntranetEndpoints.add(endpoint);
                     }
                 }
+                isIntranet = false;
             }
         }
 
