@@ -16,9 +16,9 @@
 import functools
 import queue
 import threading
-from concurrent.futures import ThreadPoolExecutor
 
-from eggroll.core.conf_keys import RollPairConfKeys
+from eggroll.core.conf_keys import CoreConfKeys, RollPairConfKeys
+from eggroll.core.datastructure import create_executor_pool
 from eggroll.core.datastructure.broker import FifoBroker, BrokerClosed
 from eggroll.core.pair_store.format import PairBinReader, PairBinWriter, ArrayByteBuffer
 from eggroll.core.transfer.transfer_service import TransferClient, \
@@ -95,16 +95,22 @@ class BatchBroker(object):
 
 
 class TransferPair(object):
-    _max_workers = int(RollPairConfKeys.EGGROLL_ROLLPAIR_TRANSFERPAIR_EXECUTOR_POOL_MAX_SIZE.get())
-    _executor_pool = ThreadPoolExecutor(
-            max_workers=_max_workers,
-            thread_name_prefix="transferpair-pool")
-    L.info(f'_executor pool size: {_max_workers}')
+    _executor_pool = None
+    _executor_pool_lock = threading.Lock()
 
     def __init__(self, transfer_id: str):
         # params from __init__ params
         self.__transfer_id = transfer_id
-        # self._executor_pool = ThreadPoolExecutor(max_workers=5000, thread_name_prefix="TransferPair-pool")
+        if TransferPair._executor_pool is None:
+            with TransferPair._executor_pool_lock:
+                if TransferPair._executor_pool is None:
+                    _max_workers = int(RollPairConfKeys.EGGROLL_ROLLPAIR_TRANSFERPAIR_EXECUTOR_POOL_MAX_SIZE.get())
+                    _thread_pool_type = CoreConfKeys.EGGROLL_CORE_DEFAULT_EXECUTOR_POOL.get()
+                    TransferPair._executor_pool = create_executor_pool(
+                            canonical_name=_thread_pool_type,
+                            max_workers=_max_workers,
+                            thread_name_prefix="transferpair_pool")
+                    L.info(f'transfer pair _executor_pool max_workers={_max_workers}')
 
     def __generate_tag(self, partition_id):
         return generate_task_id(job_id=self.__transfer_id, partition_id=partition_id)
