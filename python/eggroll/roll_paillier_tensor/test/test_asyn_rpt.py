@@ -13,14 +13,12 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import unittest
-from concurrent.futures.thread import ThreadPoolExecutor
-
-from collections import defaultdict
 import random
-
 import time
+from collections import defaultdict
 
 from eggroll.core.constants import StoreTypes
+from eggroll.core.datastructure import create_executor_pool
 from eggroll.roll_paillier_tensor import rpt_py_engine
 from eggroll.roll_paillier_tensor.roll_paillier_tensor import NumpyTensor, PaillierTensor
 from eggroll.roll_paillier_tensor.rpt_py_engine import AsyncPaillierPublicKey, encrypt_and_obfuscate, decryptdecode
@@ -28,6 +26,7 @@ from eggroll.roll_pair import *
 from eggroll.roll_pair.test.roll_pair_test_assets import get_debug_test_context
 from federatedml.secureprotol.fate_paillier import PaillierKeypair
 import numpy as np
+
 
 class TestAsynRpt(unittest.TestCase):
     def setUp(self):
@@ -60,7 +59,7 @@ class TestAsynRpt(unittest.TestCase):
             with create_adapter(part1) as db1, create_adapter(part2) as db2:
                 for i in range(100):
                     db1.put(serder1.serialize("q" + str(i)), db2.get())
-        pool = ThreadPoolExecutor()
+        pool = create_executor_pool()
         pool.submit(rp_q.with_stores, func_asyn)
 
         rp.with_stores(func_syn, [rp_q])
