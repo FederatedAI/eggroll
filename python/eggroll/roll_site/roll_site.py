@@ -18,11 +18,12 @@ import os
 import functools
 import time
 import pickle
-from concurrent.futures import ThreadPoolExecutor
 
-from eggroll.core.conf_keys import SessionConfKeys, RollSiteConfKeys
+from eggroll.core.conf_keys import SessionConfKeys, RollSiteConfKeys, \
+    CoreConfKeys
 from eggroll.core.constants import DeployModes
 from eggroll.core.constants import StoreTypes
+from eggroll.core.datastructure import create_executor_pool
 from eggroll.core.error import GrpcCallError
 from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.meta_model import ErStoreLocator, ErStore
@@ -126,7 +127,8 @@ CONF_KEY_SERVER = "servers"
 
 
 class RollSite:
-    receive_exeutor_pool = None
+    _receive_executor_pool = None
+
     def __init__(self, name: str, tag: str, rs_ctx: RollSiteContext, options: dict = None):
         if options is None:
             options = {}
@@ -139,9 +141,13 @@ class RollSite:
         self.name = name
         self.tag = tag
         self.stub = self.ctx.stub
-        if RollSite.receive_exeutor_pool is None:
+        if RollSite._receive_executor_pool is None:
             receive_executor_pool_size = int(RollSiteConfKeys.EGGROLL_ROLLSITE_RECEIVE_EXECUTOR_POOL_MAX_SIZE.get_with(options))
-            RollSite.receive_exeutor_pool = ThreadPoolExecutor(receive_executor_pool_size, thread_name_prefix="rollsite-receive")
+            receive_executor_pool_type = CoreConfKeys.EGGROLL_CORE_DEFAULT_EXECUTOR_POOL.get_with(options)
+            RollSite._receive_executor_pool = create_executor_pool(
+                    canonical_name=receive_executor_pool_type,
+                    max_workers=receive_executor_pool_size,
+                    thread_name_prefix="rollsite-receive")
         self._push_start_wall_time = None
         self._push_start_cpu_time = None
         self._pull_start_wall_time = None
@@ -325,7 +331,7 @@ class RollSite:
                 data = proxy_pb2.Data(key=_tagged_key, value=pickle.dumps(obj))
                 packet = proxy_pb2.Packet(header=metadata, body=data)
 
-                future = self.receive_exeutor_pool.submit(RollSite.send_packet, self, packet)
+                future = self._receive_executor_pool.submit(RollSite.send_packet, self, packet)
                 future.add_done_callback(functools.partial(self._push_callback, tmp_rp=None))
                 futures.append(future)
 
@@ -383,7 +389,7 @@ class RollSite:
                     L.info(f"RollSite.push: push {roll_site_header} done. type:{type(obj)}")
                     return _tagged_key
 
-                future = RollSite.receive_exeutor_pool.submit(map_values, _tagged_key, self._is_standalone, roll_site_header)
+                future = RollSite._receive_executor_pool.submit(map_values, _tagged_key, self._is_standalone, roll_site_header)
                 if not self._is_standalone and (obj_type == 'object' or obj_type == b'object'):
                     tmp_rp = rp
                 else:
@@ -437,6 +443,6 @@ class RollSite:
             packet = proxy_pb2.Packet(header=metadata)
             namespace = self.roll_site_session_id
             L.info(f"pulling prepared tagged_key: {_tagged_key}, packet:{to_one_line_string(packet)}")
-            futures.append(RollSite.receive_exeutor_pool.submit(RollSite._thread_receive, self, packet, namespace, roll_site_header))
+            futures.append(RollSite._receive_executor_pool.submit(RollSite._thread_receive, self, packet, namespace, roll_site_header))
 
         return futures

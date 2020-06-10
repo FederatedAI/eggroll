@@ -66,6 +66,7 @@ class CoreConfKeys(object):
     CONFKEY_CORE_LOG_DIR = "eggroll.core.log.dir"
     EGGROLL_CORE_FIFOBROKER_DEFAULT_SIZE = ErConfKey("eggroll.core.fifobroker.default.size", 16)
     EGGROLL_CORE_CLIENT_COMMAND_EXECUTOR_POOL_MAX_SIZE = ErConfKey("eggroll.core.client.command.executor.pool.max.size", 50)
+    EGGROLL_CORE_DEFAULT_EXECUTOR_POOL = ErConfKey("eggroll.core.default.executor.pool", "concurrent.futures.ThreadPoolExecutor")
 
 
 class ClusterManagerConfKeys(object):

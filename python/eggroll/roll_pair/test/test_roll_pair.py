@@ -14,9 +14,10 @@
 #  limitations under the License.
 
 import unittest
-from concurrent.futures.thread import ThreadPoolExecutor
 
+from eggroll.core.conf_keys import CoreConfKeys
 from eggroll.core.constants import StoreTypes
+from eggroll.core.datastructure import create_executor_pool
 from eggroll.core.utils import time_now
 from eggroll.roll_pair.test.roll_pair_test_assets import get_debug_test_context, \
     get_cluster_context, get_standalone_context, get_default_options
@@ -129,7 +130,8 @@ class TestRollPairBase(unittest.TestCase):
         self.assertUnOrderListEqual(data, rp.get_all())
 
     def test_put_all_multi_thread(self):
-        exe = ThreadPoolExecutor(max_workers=2)
+        executor_pool_type = CoreConfKeys.EGGROLL_CORE_DEFAULT_EXECUTOR_POOL.get()
+        exe = create_executor_pool(canonical_name=executor_pool_type, max_workers=2)
         exe.submit(self.test_put_all)
 
     def test_cleanup(self):
@@ -291,10 +293,9 @@ class TestRollPairBase(unittest.TestCase):
         for i in range(100):
             rp.map_values(lambda v:v)
 
-
     def test_map_partitions(self):
         options = get_default_options()
-        options['total_partitions'] = 12
+        options['total_partitions'] = 10
         data = [(str(i), i) for i in range(10)]
         rp = self.ctx.load("ns1", "test_map_partitions", options=options).put_all(data, options={"include_key": True})
 

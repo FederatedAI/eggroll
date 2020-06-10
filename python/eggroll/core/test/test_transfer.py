@@ -16,19 +16,22 @@
 import queue
 import threading
 import unittest
-from concurrent.futures import ThreadPoolExecutor
+
 
 from eggroll.core.conf_keys import TransferConfKeys
+from eggroll.core.datastructure import create_executor_pool
 from eggroll.core.datastructure.broker import FifoBroker, BrokerClosed
 from eggroll.core.meta_model import ErEndpoint
 from eggroll.core.transfer.transfer_service import TransferService, \
     GrpcTransferService, TransferClient
 
 transfer_port = 20002
-transfer_endpont = ErEndpoint('localhost', transfer_port)
+transfer_endpoint = ErEndpoint('localhost', transfer_port)
+
+
 class TestTransfer(unittest.TestCase):
     def setUp(self) -> None:
-        self.__executor_pool = ThreadPoolExecutor(max_workers=5)
+        self.__executor_pool = create_executor_pool(max_workers=5)
 
     def test_recv(self):
         def start_server():
@@ -91,7 +94,7 @@ class TestTransfer(unittest.TestCase):
         sleep(1)
 
         transfer_client = TransferClient()
-        recv_broker = transfer_client.recv(transfer_endpont, tag)
+        recv_broker = transfer_client.recv(transfer_endpoint, tag)
 
         while not recv_broker.is_closable():
             print('recv:', recv_broker.get())
