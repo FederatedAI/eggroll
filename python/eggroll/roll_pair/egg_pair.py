@@ -21,13 +21,14 @@ import os
 import shutil
 import signal
 import time
-from collections.abc import Iterable
-from concurrent import futures
+
 import threading
 import platform
 
 import grpc
 import numpy as np
+
+from collections.abc import Iterable
 
 from eggroll.core.client import ClusterManagerClient
 from eggroll.core.command.command_router import CommandRouter
@@ -35,6 +36,7 @@ from eggroll.core.command.command_service import CommandServicer
 from eggroll.core.conf_keys import SessionConfKeys, \
     ClusterManagerConfKeys, RollPairConfKeys, CoreConfKeys
 from eggroll.core.constants import ProcessorTypes, ProcessorStatus, SerdesTypes
+from eggroll.core.datastructure import create_executor_pool
 from eggroll.core.datastructure.broker import FifoBroker
 from eggroll.core.meta_model import ErPair
 from eggroll.core.meta_model import ErTask, ErProcessor, ErEndpoint
@@ -635,7 +637,9 @@ def serve(args):
             route_to_method_name="run_task")
 
     max_workers = int(RollPairConfKeys.EGGROLL_ROLLPAIR_EGGPAIR_SERVER_EXECUTOR_POOL_MAX_SIZE.get())
-    command_server = grpc.server(futures.ThreadPoolExecutor(
+    executor_pool_type = CoreConfKeys.EGGROLL_CORE_DEFAULT_EXECUTOR_POOL.get()
+    command_server = grpc.server(create_executor_pool(
+            canonical_name=executor_pool_type,
             max_workers=max_workers,
             thread_name_prefix="eggpair-command-server"),
             options=[
@@ -664,7 +668,8 @@ def serve(args):
                                                                 transfer_server)
     else:
         transfer_server_max_workers = int(RollPairConfKeys.EGGROLL_ROLLPAIR_EGGPAIR_DATA_SERVER_EXECUTOR_POOL_MAX_SIZE.get())
-        transfer_server = grpc.server(futures.ThreadPoolExecutor(
+        transfer_server = grpc.server(create_executor_pool(
+                canonical_name=executor_pool_type,
                 max_workers=transfer_server_max_workers,
                 thread_name_prefix="transfer_server"),
                 options=[
