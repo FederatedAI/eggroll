@@ -20,23 +20,26 @@ package com.webank.eggroll.rollframe
 
 import java.text.SimpleDateFormat
 import java.util.Date
-import java.util.concurrent.{Callable, ConcurrentHashMap, CountDownLatch, TimeUnit}
+import java.util.concurrent.{Callable, ConcurrentHashMap, CountDownLatch, Future, RejectedExecutionException, TimeUnit}
 import java.util.concurrent.atomic.AtomicInteger
 
+import scala.collection.mutable.ListBuffer
 import com.webank.eggroll.core.ErSession
-import com.webank.eggroll.core.constant.StringConstants
+import com.webank.eggroll.core.client.ClusterManagerClient
+import com.webank.eggroll.core.constant.{ProcessorStatus, SessionStatus, StringConstants}
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.serdes.DefaultScalaSerdes
-import com.webank.eggroll.format.{FrameBatch, _}
+import com.webank.eggroll.core.util.TimeUtils
+import com.webank.eggroll.format._
 import com.webank.eggroll.rollframe.pytorch.{Matrices, Script}
-import org.apache.spark.broadcast.Broadcast
+import com.webank.eggroll.util.Logging
 
 import scala.collection.immutable.Range.Inclusive
 
 // TODO: care about client task grpc whether closed and thread pool whether closed
 // TODO: always close in finally
 
-class RollFrameContext private[eggroll](val session: ErSession) {
+class RollFrameContext private[eggroll](val session: ErSession) extends Logging {
   lazy val serverNodes: Array[ErProcessor] = session.processors
   lazy val rollNodes: ErProcessor = session.processors(0)
 
@@ -67,7 +70,12 @@ class RollFrameContext private[eggroll](val session: ErSession) {
     new RollFrame(loaded, this)
   }
 
+  def getSession: ErSession = session
+
+  def getSessionId: String = session.sessionId
+
   def stopSession(): Unit = {
+    logger.info(s"Stop EggFrame Session:${session.sessionId}")
     session.clusterManagerClient.stopSession(session.sessionMeta)
   }
 
@@ -145,19 +153,40 @@ class RollFrameContext private[eggroll](val session: ErSession) {
   def broadcast(path: String, frameBatch: FrameBatch): Unit = {
     frameTransfer.broadcast(path, frameBatch)
   }
+}
 
-  def excludeStore(prefixPath: String): Unit = {
-    //    frameTransfer.
+object RollFrameSession {
+  val opts = Map("processor_types" -> "egg_frame", "processor_plan.egg_frame" -> "uniform")
+
+  def getOrCreateNewSession(oldSessionId: String, sessionIdPrefix: String = ""): ErSession = {
+    val oldSession = new ErSession(oldSessionId, options = opts)
+    if (oldSession.sessionMeta.status == SessionStatus.ACTIVE) {
+      oldSession
+    } else {
+      if (sessionIdPrefix.isEmpty) new ErSession(options = opts)
+      else new ErSession(sessionId = s"${sessionIdPrefix}_${TimeUtils.getNowMs()}", options = opts)
+    }
+  }
+
+  def createSession(sessionIdPrefix: String = ""): ErSession ={
+    if (sessionIdPrefix.isEmpty) new ErSession(options = opts)
+    else new ErSession(sessionId = s"${sessionIdPrefix}_${TimeUtils.getNowMs()}", options = opts)
   }
 }
 
-object RollFrameContext {
+object RollFrameContext extends {
   //  StaticErConf.addProperties("conf/eggroll.properties")
+  val opts = Map("processor_types" -> "egg_frame", "processor_plan.egg_frame" -> "uniform")
 
-  def apply(session: ErSession): RollFrameContext = new RollFrameContext(session)
+  def apply(session: ErSession): RollFrameContext = {
+    new RollFrameContext(session)
+  }
+
+  def apply(sessionIdPrefix: String): RollFrameContext = {
+    apply(new ErSession(sessionId = s"${sessionIdPrefix}_${TimeUtils.getNowMs()}", options = opts))
+  }
 
   def apply(): RollFrameContext = {
-    val opts = Map("processor_types" -> "egg_frame", "processor_plan.egg_frame" -> "uniform")
     apply(new ErSession(options = opts))
   }
 
@@ -275,9 +304,7 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
       inputs = Array(store),
       outputs = Array(if (output == null) store.fork(postfix = jobId) else output),
       functors = Array(ErFunctor(name = RollFrame.mapBatch, body = serdes.serialize(retFunc))))
-    val begin = System.currentTimeMillis()
     rfScheduler.run(job)
-    println(s"run Unary:${System.currentTimeMillis() - begin} ms")
     ctx.load(job.outputs.head)
   }
 
@@ -371,16 +398,19 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
                           output: ErStore = null): RollFrame = {
     val jobType = RollFrame.aggregate
     val jobId = jobType + "_" + genJobId()
-    val begin = System.currentTimeMillis()
+    val driverZeroPath = "broadcast_" + jobId
     val zeroValueBytes = if (broadcastZeroValue) {
-      ctx.broadcast("broadcast:" + jobId, zeroValue)
+      if (store.storeLocator.totalPartitions == 1) {
+        ctx.frameTransfer.Roll.broadcast(driverZeroPath, zeroValue)
+      } else {
+        ctx.broadcast(driverZeroPath, zeroValue)
+      }
       Array[Byte]()
     } else if (zeroValue != null) {
       FrameUtils.toBytes(zeroValue)
     } else {
       Array[Byte]()
     } // broadcast spend > 200ms
-    println(s"driver zero:${System.currentTimeMillis() - begin}ms")
 
     val treeComb: (EggFrameContext, String, Int) => Iterator[FrameBatch] = {
       (ctx, queuePath, comQueueSize) =>
@@ -402,6 +432,7 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
                   case e: Throwable => e.printStackTrace()
                 } finally {
                   latch.countDown()
+                  b.clear()
                 }
               }
             })
@@ -416,6 +447,7 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
     val func: (EggFrameContext, ErTask, Iterator[FrameBatch], FrameStore) => ErPair = {
       (ctx, task, input, output) =>
         try {
+          val broadcastTime = System.currentTimeMillis()
           val zeroValue: FrameBatch = if (zeroValueBytes.isEmpty) null else FrameUtils.fromBytes(zeroValueBytes)
           val partition = task.inputs.head
           val localQueuePath = task.id + "-doing"
@@ -424,20 +456,29 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
           // get store/partition/server message
           val localServer = partition.processor
 
-
           ctx.logInfo(s"runAggregateBatch: jobId=${task.job.id}, partitionId=${partition.id}, root=${ctx.rootServer}")
           var localQueue: FrameStore = null
           var localParallel: Int = 1
-          val zeroPath = "broadcast:" + jobId
           val zero: FrameBatch =
             if (zeroValue == null) {
+              val eggZeroValue = "broadcast_" + jobId
               if (broadcastZeroValue) {
                 try {
-                  FrameStore.cache(zeroPath).readOne()
+                  var accTime = 0
+                  // TODO: use elegent code
+                  while (!JvmFrameStore.checkFrameBatch(eggZeroValue)) {
+                    Thread.sleep(50)
+                    accTime += 50
+                    if (accTime >= RollFrame.stopTime) {
+                      throw new RuntimeException(s"Egg Nodes didn't receive broadcast:$eggZeroValue")
+                    }
+                  }
+                  //                  FrameStore.cache(eggZeroValue).readOne()
+                  FrameUtils.fork(FrameStore.cache(eggZeroValue).readOne())
                 } catch {
                   case e: Throwable =>
                     e.printStackTrace()
-                    throw new NoSuchElementException(s"get $zeroPath value failed")
+                    throw new RuntimeException(s"get $eggZeroValue value failed", e)
                 }
               } else {
                 // reduce need't zero value
@@ -450,36 +491,31 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
             } else {
               zeroValue
             }
-          ctx.logInfo("get zero succeed")
-
+          ctx.logInfo("get zero succeed.")
+          println(s"get zero time:${System.currentTimeMillis() - broadcastTime}")
           // TODO: more generally, like repartition?
           if (input.hasNext) {
             val fb = input.next()
             if (seqByColumnOp != null) {
               val commonParameter = commParaOp(zero, fb)
               val begin = System.currentTimeMillis()
-              val parallel: Int = if (seqParallel < 0) {
+              var parallel: Int = if (seqParallel < 0) {
                 val availableProcessors = Runtime.getRuntime.availableProcessors() - 1
                 availableProcessors
               } else {
                 seqParallel
               }
+              if (fb.fieldCount <= parallel) {
+                parallel = fb.fieldCount
+              }
               ctx.logInfo(s"seq parallel mode,num=$parallel")
-              val latch = new CountDownLatch(parallel)
+              val futures = new ListBuffer[Future[Unit]]
               if (!seqByZeroValue) {
                 val slices = ctx.sliceByColumn(fb, parallel)
                 slices.foreach { inclusive: Inclusive =>
-                  ctx.executorPool.submit(new Callable[Unit] {
-                    override def call(): Unit = {
-                      try {
-                        seqByColumnOp(zero, fb.sliceByColumn(inclusive.start, inclusive.end), commonParameter)
-                      } catch {
-                        case e: Throwable => e.printStackTrace()
-                      } finally {
-                        latch.countDown()
-                      }
-                    }
-                  })
+                  futures.append(ctx.executorPool.submit(() => {
+                    seqByColumnOp(zero, fb.sliceByColumn(inclusive.start, inclusive.end), commonParameter)
+                  }))
                   //                  new Thread() {
                   //                    override def run(): Unit = {
                   //                      try {
@@ -496,32 +532,14 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
                 val slices = ctx.sliceByColumn(zero, parallel)
                 slices.foreach { inclusive: Inclusive =>
                   // TODO: check thread pool
-                  ctx.executorPool.submit(new Callable[Unit] {
-                    override def call(): Unit = {
-                      try {
-                        seqByColumnOp(zero.sliceByColumn(inclusive.start, inclusive.end), fb, commonParameter)
-                      } catch {
-                        case e: Throwable => e.printStackTrace()
-                      } finally {
-                        latch.countDown()
-                      }
-                    }
-                  })
-
-                  //                  new Thread() {
-                  //                    override def run(): Unit = {
-                  //                      try {
-                  //                        seqByColumnOp(zero.sliceByColumn(inclusive.start, inclusive.end), fb, commonParameter)
-                  //                      } catch {
-                  //                        case e: Throwable => e.printStackTrace()
-                  //                      } finally {
-                  //                        latch.countDown()
-                  //                      }
-                  //                    }
-                  //                  }.start()
+                  futures.append(ctx.executorPool.submit(() => {
+                    seqByColumnOp(zero.sliceByColumn(inclusive.start, inclusive.end), fb, commonParameter)
+                  }))
                 }
               }
-              latch.await(30, TimeUnit.SECONDS)
+              futures.foreach { i =>
+                i.get()
+              }
               println(s"egg seq:${System.currentTimeMillis() - begin} ms")
               localQueue = FrameStore.queue(localQueuePath, 1)
               localQueue.append(zero)
@@ -542,17 +560,17 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
               localQueue = FrameStore.queue(localQueuePath, parallel)
 
               ctx.logInfo(s"map parallel = $parallel")
+              val futures = new ListBuffer[Future[Unit]]
               ctx.sliceByRow(parallel, fb).foreach { inclusive: Inclusive =>
-                ctx.executorPool.submit(new Callable[Unit] {
-                  override def call(): Unit = {
-                    var start = System.currentTimeMillis()
-                    val tmpZeroValue = FrameUtils.fork(zero)
-                    ctx.logInfo(s"fork time: ${System.currentTimeMillis() - start} ms")
-                    start = System.currentTimeMillis()
-                    localQueue.append(seqOp(tmpZeroValue, fb.sliceByRow(inclusive.start, inclusive.end)))
-                    ctx.logInfo(s"seqOp time: ${System.currentTimeMillis() - start}")
-                  }
-                })
+                futures.append(ctx.executorPool.submit(() => {
+                  val tmpZeroValue = FrameUtils.fork(zero)
+                  val start = System.currentTimeMillis()
+                  localQueue.append(seqOp(tmpZeroValue, fb.sliceByRow(inclusive.start, inclusive.end)))
+                  ctx.logInfo(s"seqOp time: ${System.currentTimeMillis() - start}")
+                }))
+              }
+              futures.foreach { i =>
+                i.get()
               }
             }
           } else {
@@ -609,7 +627,7 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
             output.close()
           }
         } catch {
-          case e: Throwable => throw new RuntimeException("aggregate task failed,task:$task", e)
+          case e: Throwable => throw new RuntimeException(s"aggregate task failed,task:$task", e)
         }
         null
     }
@@ -625,6 +643,7 @@ object RollFrame {
   val aggregate = "aggregate"
   val broadcast = "broadcast"
   val mulMul = "mulMulTask"
+  val stopTime = 10000
 
   def apply(store: ErStore, ctx: RollFrameContext): RollFrame = new RollFrame(store, ctx)
 }

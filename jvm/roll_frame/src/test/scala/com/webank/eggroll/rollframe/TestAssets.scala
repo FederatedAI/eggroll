@@ -31,9 +31,11 @@ object TestAssets extends Serializable {
   StaticErConf.addProperty("eggroll.resourcemanager.clustermanager.port", "4670")
   StaticErConf.addProperty("hadoop.fs.defaultFS", "file:///")
 
-  def getRfContext(isDebug: Boolean = true, withRm: Boolean = false): RollFrameContext = {
+  def getRfContext(isDebug: Boolean = true, withRm: Boolean = false, prefix: String = ""): RollFrameContext = {
     if (!isDebug) {
-      RollFrameContext()
+      if (prefix.isEmpty) {
+        RollFrameContext(sessionIdPrefix = prefix)
+      } else RollFrameContext()
     } else {
       if (withRm) {
         new Thread("eggroll-rm-bootstrap") {
