@@ -395,8 +395,6 @@ class FrameFormatTests extends Logging {
           sum += fb.readDouble(f, r)
         })
       println(s"read time = ${System.currentTimeMillis() - start} ms")
-
-
     }
     println(s"property: ${System.getProperty("arrow.enable_unsafe_memory_access")}")
   }

@@ -21,11 +21,13 @@ package com.webank.eggroll.rollframe
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.channels.{ServerSocketChannel, SocketChannel}
-import java.util.concurrent.{CountDownLatch, Executors}
+import java.util.concurrent.{Executors, Future}
 
-import com.webank.eggroll.core.meta.{ErProcessor, ErStore}
+import com.webank.eggroll.core.meta.{ErProcessor, ErStore, ErStoreLocator}
 import com.webank.eggroll.core.util.Logging
 import com.webank.eggroll.format.{FrameBatch, FrameReader, FrameStore, FrameWriter, JvmFrameStore, QueueFrameStore}
+
+import scala.collection.mutable.ListBuffer
 
 // TODO: egg node use thread pool
 trait FrameTransfer {
@@ -47,11 +49,26 @@ class NioFrameTransfer(nodes: Array[ErProcessor], timeout: Int = 600 * 1000) ext
   }.toMap
 
   // the first node is roll
+  // TODO: can specify roll
   private lazy val roll = clients(nodes(0).id)
 
   object Roll {
     def pull(path: String): Iterator[FrameBatch] = {
       roll.pull(path)
+    }
+
+    def broadcast(path: String, frameBatch: FrameBatch): Unit = {
+      roll.broadcast(path, frameBatch)
+    }
+
+    private def checkStoreExists(path: String): Boolean = {
+      roll.checkStoreExists(path)
+    }
+
+    def checkStoreExists(erStoreLocator: ErStoreLocator): Boolean = {
+      // only check first partition
+      val path = FrameStore.getStoreDir(erStoreLocator) + "/0"
+      checkStoreExists(path)
     }
   }
 
@@ -60,26 +77,21 @@ class NioFrameTransfer(nodes: Array[ErProcessor], timeout: Int = 600 * 1000) ext
   }
 
   override def broadcast(path: String, frameBatch: FrameBatch): Unit = {
-    val latch = new CountDownLatch(clients.size)
-    var error:Throwable = null
+    val futures = new ListBuffer[Future[Unit]]
+    val pool = Executors.newCachedThreadPool()
     clients.foreach { c =>
-      new Thread() {
-        override def run(): Unit = {
-          try {
-            c._2.broadcast(path, frameBatch)
-          } catch {
-            case e: Throwable =>
-              e.printStackTrace()
-              error = e
-          } finally {
-            latch.countDown()
-          }
-        }
-      }.start()
+      futures.append(pool.submit(() => {
+        c._2.broadcast(path, frameBatch)
+      }))
     }
-    latch.await()
-    if (error != null){
-      throw new RuntimeException("boradcast failed",error)
+    try {
+      futures.foreach { i =>
+        i.get()
+      }
+    } catch {
+      case e: Throwable => throw new RuntimeException("broadcast failed.", e)
+    } finally {
+      pool.shutdown()
     }
     //    clients.foreach(c => c._2.broadcast(path, frameBatch))
   }
@@ -99,8 +111,9 @@ class NioFrameTransfer(nodes: Array[ErProcessor], timeout: Int = 600 * 1000) ext
   }
 
   def addExcludeStore(path: String): Unit = {
-    clients.foreach { c =>
-      c._2.addExclude(path)
+    clients.foreach {
+      c =>
+        c._2.addExclude(path)
     }
   }
 
@@ -115,20 +128,23 @@ class NioFrameTransfer(nodes: Array[ErProcessor], timeout: Int = 600 * 1000) ext
   }
 
   def deleteExcludeStore(path: String): Unit = {
-    clients.foreach { c =>
-      c._2.deleteExclude(path)
+    clients.foreach {
+      c =>
+        c._2.deleteExclude(path)
     }
   }
 
   def resetExcludeStore(): Unit = {
-    clients.foreach { c =>
-      c._2.reSetExclude()
+    clients.foreach {
+      c =>
+        c._2.reSetExclude()
     }
   }
 
   def releaseStore(): Unit = {
-    clients.foreach { c =>
-      c._2.release()
+    clients.foreach {
+      c =>
+        c._2.release()
     }
   }
 }
@@ -148,6 +164,7 @@ case class NioTransferHead(action: String, path: String, batchSize: Int) {
       case NioTransferHead.DELETE_EXCLUDE => 6
       case NioTransferHead.RESET_EXCLUDE => 7
       case NioTransferHead.RELEASE => 8
+      case NioTransferHead.CHECK_STORE => 9
       case x => throw new IllegalArgumentException(s"unsupported action:$x")
     }
     headBuf.putInt(actionInt)
@@ -177,6 +194,7 @@ object NioTransferHead {
       case 6 => DELETE_EXCLUDE
       case 7 => RESET_EXCLUDE
       case 8 => RELEASE
+      case 9 => CHECK_STORE
       case x => throw new IllegalArgumentException(s"unsupported action:$x")
     }
 
@@ -197,6 +215,7 @@ object NioTransferHead {
   val DELETE_EXCLUDE = "delete_exclude"
   val RESET_EXCLUDE = "reset_exclude"
   val RELEASE = "release"
+  val CHECK_STORE = "check_store"
 }
 
 class NioTransferEndpoint extends Logging {
@@ -207,8 +226,8 @@ class NioTransferEndpoint extends Logging {
   def runServer(host: String, port: Int): Unit = {
     logInfo("start Transfer server endpoint")
     val serverSocketChannel = ServerSocketChannel.open
-
-    serverSocketChannel.socket.bind(new InetSocketAddress(host, port))
+    // TODO: deal with exception
+    serverSocketChannel.bind(new InetSocketAddress(host, port))
     this.port = serverSocketChannel.socket.getLocalPort
     val executors = Executors.newCachedThreadPool()
     executors.submit(new Runnable {
@@ -216,7 +235,6 @@ class NioTransferEndpoint extends Logging {
         while (true) {
           val socketChannel = serverSocketChannel.accept // had client connected
           logInfo(s"receive a connected request,server ip: ${socketChannel.getLocalAddress}, remote ip: ${socketChannel.getRemoteAddress}")
-          println(s"receive a connected request,server ip: ${socketChannel.getLocalAddress}, remote ip: ${socketChannel.getRemoteAddress}")
           executors.submit(new Runnable {
             override def run(): Unit = {
               val ch = socketChannel
@@ -231,15 +249,15 @@ class NioTransferEndpoint extends Logging {
                     FrameStore.queue(head.path, head.batchSize).writeAll(fr.getColumnarBatches())
                   case NioTransferHead.BROADCAST => // client broadcast
                     try {
-                      val fr = new FrameReader(ch)
-                      val fb = fr.getColumnarBatches().next()
-                      if (fb.isEmpty){
-                        throw new Exception("receive broadcast frame baatch is empty")
+                      val fb = new FrameReader(ch).getColumnarBatches().next()
+                      if (fb.isEmpty) {
+                        throw new Exception("receive broadcast frame batch is empty")
                       }
                       FrameStore.cache(head.path).append(fb)
                     }
                     catch {
-                      case e: Throwable => e.printStackTrace()
+                      case e: Throwable =>
+                        e.printStackTrace()
                         logError("receive broadcast failed:", e)
                     }
                   case NioTransferHead.RECEIVE => // client receive
@@ -256,6 +274,13 @@ class NioTransferEndpoint extends Logging {
                     JvmFrameStore.reSetExclude()
                   case NioTransferHead.RELEASE =>
                     JvmFrameStore.release()
+                  case NioTransferHead.CHECK_STORE =>
+                    val response = JvmFrameStore.checkFrameBatch(head.path)
+                    val byteBuffer = ByteBuffer.allocateDirect(4)
+                    byteBuffer.putInt(if (response) 1 else 0)
+                    byteBuffer.flip()
+                    ch.write(byteBuffer)
+                    byteBuffer.clear()
                   case _ => throw new IllegalArgumentException(s"unsupported action:$head")
                 }
                 logInfo("save finished:" + head)
@@ -342,7 +367,25 @@ class NioTransferEndpoint extends Logging {
   }
 
   def release(): Unit = {
-    NioTransferHead(action = "release", path = "", batchSize = -1).write(clientChannel)
+    NioTransferHead(action = NioTransferHead.RELEASE, path = "", batchSize = -1).write(clientChannel)
+  }
+
+  def checkStoreExists(path: String): Boolean = {
+    NioTransferHead(action = NioTransferHead.CHECK_STORE, path = path, batchSize = -1).write(clientChannel)
+    val reponse = ByteBuffer.allocateDirect(4)
+    clientChannel.read(reponse)
+    reponse.flip()
+    if (reponse.getInt > 0) true else false
+  }
+}
+
+object HttpUtil {
+
+  import java.net.InetAddress
+
+  def isReachable(host: String): Boolean = {
+    val a = InetAddress.getByName(host);
+    a.isReachable(1000)
   }
 }
 
