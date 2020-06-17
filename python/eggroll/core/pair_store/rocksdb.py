@@ -13,6 +13,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import gc
 import os
 import threading
 import rocksdb
@@ -75,9 +76,11 @@ class RocksdbAdapter(PairAdapter):
                 if not count or count - 1 <= 0:
                     del RocksdbAdapter.env_dict[self.path]
                     del RocksdbAdapter.count_dict[self.path]
+                    del self.db
+                    # todo:0: NEEDS OPTIMISATION
+                    gc.collect()
                 else:
                     RocksdbAdapter.count_dict[self.path] = count - 1
-                del self.db
 
     def iteritems(self):
         return RocksdbIterator(self)
