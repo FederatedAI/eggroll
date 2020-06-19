@@ -36,10 +36,10 @@ import org.junit.{Before, Test}
  */
 class RollFrameTests extends Logging {
   protected val ta: TestAssets.type = TestAssets
-  val fieldCount: Int = 1000
+  val fieldCount: Int = 300
   protected val rowCount = 10000 // total value count = rowCount * fbCount * fieldCount
   protected val fbCount = 1 // the num of batch
-  protected val supportTorch = false
+  protected val supportTorch = true
   protected var ctx: RollFrameContext = _
   protected var inputStore: ErStore = _
   protected var inputTensorStore: ErStore = _
@@ -51,20 +51,7 @@ class RollFrameTests extends Logging {
     info(s"get RfContext property unsafe:${System.getProperty("arrow.enable_unsafe_memory_access")}")
     inputStore = ctx.createStore("test1", "a1", StringConstants.FILE, partitions_)
     inputTensorStore = ctx.createStore("test1", "t1", StringConstants.FILE, partitions_)
-//    val z = RollFrameSession.getOrCreateNewSession(sessionId = ctx.session.sessionId)
-    val x = RollFrameSession.getOrCreateNewSession(oldSessionId = ctx.session.sessionId)
-
-    // use torchScript or not
-    if (supportTorch) {
-      try {
-        LibraryLoader.load
-      } catch {
-        case _: Throwable => println("error when loading jni")
-      }
-    }
     printContextMessage()
-
-    ctx.frameTransfer
   }
 
   private def writeTensorFb(adapter: FrameStore): Unit = {
@@ -302,8 +289,8 @@ class RollFrameTests extends Logging {
           val fv = y.rootVectors(f)
           var sum = 0.0
           for (i <- 0 until fv.valueCount) {
-            //            sum += fv.readDouble(i)
-            sum += 1
+                        sum += fv.readDouble(i)
+//            sum += 1
           }
           x.writeDouble(f, 0, sum)
         }
@@ -598,92 +585,5 @@ class RollFrameTests extends Logging {
     })
     val result2 = future2.get()
     println(System.currentTimeMillis() - start, result1, result2)
-  }
-
-  @Test
-  def testTorchScriptMap(): Unit = {
-    val input = ta.loadCache(inputTensorStore)
-    val output = ctx.forkStore(input, "test1", "a1TorchMap", StringConstants.FILE)
-    val rf = ctx.load(input)
-    val newMatrixCols = 2
-    val parameters: Array[Double] = Array(fieldCount.toDouble) ++ Array(newMatrixCols.toDouble) ++ Array.fill[Double](fieldCount * newMatrixCols)(0.5);
-
-    rf.torchMap("jvm/roll_frame/src/test/resources/torch_model_map.pt", parameters, output)
-    TestCase.assertEquals(FrameStore(output, 0).readOne().rowCount, rowCount * newMatrixCols)
-  }
-
-  @Test
-  def testTorchScriptMerge(): Unit = {
-    val input = ta.loadCache(ctx.forkStore(inputTensorStore, "test1", "a1TorchMap", StringConstants.FILE))
-    val output = ctx.createStore("test1", "a1TorchMerge", StringConstants.CACHE, totalPartitions = 1)
-    val rf = ctx.load(input)
-    rf.torchMerge(path = "jvm/roll_frame/src/test/resources/torch_model_merge.pt", output = output)
-    val path = FrameStore.getStorePath(output.partitions(0))
-    val result = ctx.frameTransfer.Roll.pull(path).next()
-    println(s"sum = ${result.readDouble(0, 0)},size = ${result.rowCount}")
-  }
-
-  @Test
-  @deprecated
-  def testMatMul(): Unit = {
-    val input = ta.loadCache(ta.getRollFrameStore("c1", "test1", StringConstants.FILE))
-    val output = ta.getRollFrameStore("c1Matrix1", "test1", StringConstants.CACHE)
-    val rf = ctx.load(input)
-    val matrixRows = fieldCount
-    val matrixCols = 1
-    val matrix = Array.fill[Double](matrixRows * matrixCols)(1.0)
-    val start = System.currentTimeMillis()
-    rf.matMul(matrix, matrixRows, matrixCols, output)
-    println(s"matMul time= ${System.currentTimeMillis() - start}")
-
-    output.partitions.indices.foreach { i =>
-      val resCF = new ColumnFrame(FrameStore(output, i).readOne(), matrixCols)
-      TestCase.assertEquals(resCF.fb.rowCount, rowCount * matrixCols)
-      println(s"partition $i, value = ${resCF.read(0, 0)}")
-    }
-  }
-
-  /**
-   * a demo realizing matrix multiplication by using map function, but cost time
-   */
-  @Test
-  @deprecated
-  def testMatMulV1ByMapBatch(): Unit = {
-    val input = ta.loadCache(inputStore)
-    val output = ctx.forkStore(input, "a1Matrix", "test1", StringConstants.CACHE)
-    val rf = ctx.load(input)
-    val start = System.currentTimeMillis()
-    val matrixCols = 1
-    rf.mapBatch({ cb =>
-      val matrix = Array.fill[Double](cb.fieldCount * matrixCols)(1.0)
-      Matrices.matMulToFbV1(cb.toColumnVectors, matrix, cb.fieldCount, matrixCols)
-    }, output)
-    println(s"matMul time= ${System.currentTimeMillis() - start}")
-    ctx.load(output).mapBatch { fb =>
-      TestCase.assertEquals(fb.fieldCount, matrixCols)
-      fb
-    }
-  }
-
-  /**
-   * a demo realizing matrix multiplication using ColumnVectors, but cost time
-   */
-  @Test
-  @deprecated
-  def testMatMulV1(): Unit = {
-    val input = ta.loadCache(inputStore)
-    val output = ctx.forkStore(input, "test1", "a1Matrix1", StringConstants.CACHE)
-    val rf = ctx.load(input)
-    val matrixRows = fieldCount
-    val matrixCols = 1
-    val matrix = Array.fill[Double](matrixRows * matrixCols)(1.0)
-    val start = System.currentTimeMillis()
-    rf.matMulV1(matrix, matrixRows, matrixCols, output)
-    println(s"matMul time= ${System.currentTimeMillis() - start}")
-    ctx.load(output)
-      .mapBatch { fb =>
-        TestCase.assertEquals(fb.fieldCount, matrixCols)
-        fb
-      }
   }
 }

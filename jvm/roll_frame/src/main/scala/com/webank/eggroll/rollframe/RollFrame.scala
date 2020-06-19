@@ -552,7 +552,7 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
                 val eachThreadCount = 1000
                 val tmpParallel = fb.rowCount / eachThreadCount + 1
                 if (tmpParallel < availableProcessors) tmpParallel else availableProcessors
-                //          2 * availableProcessors
+//                          availableProcessors
               } else {
                 seqParallel
               }
@@ -560,6 +560,7 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
               localQueue = FrameStore.queue(localQueuePath, parallel)
 
               ctx.logInfo(s"map parallel = $parallel")
+              println(parallel)
               val futures = new ListBuffer[Future[Unit]]
               ctx.sliceByRow(parallel, fb).foreach { inclusive: Inclusive =>
                 futures.append(ctx.executorPool.submit(() => {
@@ -623,6 +624,7 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
               // - use the same client
               ctx.frameTransfer.synchronized(ctx.frameTransfer.send(ctx.rootServer.id, queuePath, localBatch))
               println(s"send roll: ${System.currentTimeMillis() - sendTime} ms")
+              localBatch.clear()
             }
             output.close()
           }

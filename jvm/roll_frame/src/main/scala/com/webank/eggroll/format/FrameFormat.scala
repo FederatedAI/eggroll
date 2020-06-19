@@ -649,15 +649,27 @@ object FrameUtils {
   }
 
   /**
-   * a fast way to copy data from heap memory to director memory
+   * a fast way to copy data from heap memory to direct memory
    */
-  def copyMemory(fv: FieldVector, value: Array[Double]): Unit = {
-    val dataByteBuffer = fv.getDataBuffer.nioBuffer()
+  def copyMemory(fv: FrameVector, value: Array[Double]): Unit = {
+    val dataByteBuffer = fv.fieldVector.getDataBuffer.nioBuffer()
     dataByteBuffer.order(ByteOrder.LITTLE_ENDIAN) // 改变读写顺序为小端,转为ByteBuffer后由小端变成大端，要人为修改回来。
     dataByteBuffer.asDoubleBuffer().put(value)
 
-    val validityByteBuffer = fv.getValidityBuffer
+    val validityByteBuffer = fv.fieldVector.getValidityBuffer
     val validityBits = Array.fill[Byte](validityByteBuffer.capacity().toInt)(-1)
     validityByteBuffer.setBytes(0, validityBits)
+  }
+
+  /**
+   * convert direct memory to double array
+   */
+  def toDoubleArray(fv:FrameVector):Array[Double]= {
+    val count = fv.valueCount
+    val res = new Array[Double](count)
+    res.indices.foreach{i =>
+      res(i) = fv.readDouble(i)
+    }
+    res
   }
 }

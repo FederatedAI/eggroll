@@ -351,16 +351,22 @@ object JvmFrameStore {
       override def run(): Unit = {
         try {
           if (persistence.nonEmpty) {
+            println("persistence:")
+            persistence.foreach(i => println(i))
             for (element <- caches) {
+              var isClean = true
               for (path <- persistence) {
-                if (!element._1.toLowerCase.startsWith(path.toLowerCase)) {
-                  println(s"clear:${element._1}")
-                  element._2.foreach { i =>
-                    i.clear()
-                    assert(i.isEmpty)
-                  }
-                  caches.-=(element._1)
+                if (element._1.toLowerCase.startsWith(path.toLowerCase)) {
+                  isClean = false
                 }
+              }
+              if (isClean){
+                println(s"clear:${element._1}")
+                element._2.foreach { i =>
+                  i.clear()
+                  assert(i.isEmpty)
+                }
+                caches.-=(element._1)
               }
             }
           } else {

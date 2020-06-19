@@ -373,6 +373,7 @@ class FrameFormatTests extends Logging {
 
   }
 
+
   @Test
   def testUnSafe(): Unit = {
     System.setProperty("arrow.enable_unsafe_memory_access", "true")
@@ -397,6 +398,69 @@ class FrameFormatTests extends Logging {
       println(s"read time = ${System.currentTimeMillis() - start} ms")
     }
     println(s"property: ${System.getProperty("arrow.enable_unsafe_memory_access")}")
+  }
+
+  @Test
+  def testLargeColumnFb(): Unit = {
+    System.setProperty("arrow.enable_unsafe_memory_access", "true")
+    val cols = 1000000
+    val rows = 100
+    val fb = new FrameBatch(new FrameSchema(SchemaUtil.getDoubleSchema(cols)), rows)
+    var start = System.currentTimeMillis()
+    (0 until cols).foreach(f =>
+      (0 until rows).foreach { r =>
+        fb.writeDouble(f, r, 1)
+      })
+    println(s"write time = ${System.currentTimeMillis() - start} ms")
+    start = System.currentTimeMillis()
+    var sum = 0.0
+    (0 until cols).foreach(f =>
+      (0 until rows).foreach { r =>
+        sum += fb.readDouble(f, r)
+      })
+    println(s"read time = ${System.currentTimeMillis() - start} ms")
+  }
+
+  @Test
+  def testLargeRowFb(): Unit = {
+    System.setProperty("arrow.enable_unsafe_memory_access", "true")
+    val cols = 100
+    val rows = 100000
+    val fb = new FrameBatch(new FrameSchema(SchemaUtil.getDoubleSchema(cols)), rows)
+    var start = System.currentTimeMillis()
+    (0 until cols).foreach(f =>
+      (0 until rows).foreach { r =>
+        fb.writeDouble(f, r, 1)
+      })
+    println(s"write time = ${System.currentTimeMillis() - start} ms")
+    start = System.currentTimeMillis()
+    var sum = 0.0
+    (0 until cols).foreach(f =>
+      (0 until rows).foreach { r =>
+        sum += fb.readDouble(f, r)
+      })
+    println(s"read time = ${System.currentTimeMillis() - start} ms")
+  }
+
+  @Test
+  def testOneFieldFb(): Unit = {
+    System.setProperty("arrow.enable_unsafe_memory_access", "true")
+    val cols = 1
+    val rows = 100000000
+    val fb = new FrameBatch(new FrameSchema(SchemaUtil.getDoubleSchema(cols)), rows)
+    var start = System.currentTimeMillis()
+    (0 until cols).foreach(f =>
+      (0 until rows).foreach { r =>
+        fb.writeDouble(f, r, 1)
+      })
+    println(s"write time = ${System.currentTimeMillis() - start} ms")
+    start = System.currentTimeMillis()
+    var sum = 0.0
+    (0 until cols).foreach(f =>
+      (0 until rows).foreach { r =>
+        sum += fb.readDouble(f, r)
+      })
+    println(s"read time = ${System.currentTimeMillis() - start} ms")
   }
 
 
@@ -594,7 +658,7 @@ class FrameFormatTests extends Logging {
   @Test
   def testHeapToDirect(): Unit = {
     val fieldCount = 1
-    val rowCount = 1000000
+    val rowCount = 50000000
     val schema = SchemaUtil.getDoubleSchema(fieldCount)
     val fb = new FrameBatch(new FrameSchema(schema), rowCount)
 
@@ -612,7 +676,7 @@ class FrameFormatTests extends Logging {
     val validityBits = Array.fill[Byte](validityByteBuffer.capacity().toInt)(-1)
     validityByteBuffer.setBytes(0, validityBits)
 
-    println(s"way 2 time = ${System.currentTimeMillis() - start}")
+    println(s"method 1 time = ${System.currentTimeMillis() - start}")
     println(fb.readDouble(0, 19))
 
     // method 2: two for loop
@@ -620,7 +684,7 @@ class FrameFormatTests extends Logging {
     for (i <- 0 until rowCount) {
       fb.writeDouble(0, i, value2(i))
     }
-    println(System.currentTimeMillis() - start)
+    println(s"method 2 time = ${System.currentTimeMillis() - start}")
     println(fb.readDouble(0, 19))
 
     // method 3: toByte spent some time.
@@ -628,6 +692,16 @@ class FrameFormatTests extends Logging {
     //    val length = fb.rootVectors(0).fieldVector.getValueCapacity
     //    PlatformDependent.copyMemory(value3.map(_.toByte), 0,fb.rootVectors(0).fieldVector.getDataBuffer.memoryAddress, length)
     //    println(fb.readDouble(0,19))
+  }
+
+  @Test
+  def testDirectToHeap(): Unit = {
+    val rows = 50000000
+    val fb = new FrameBatch(new FrameSchema(SchemaUtil.oneFieldSchemaString), rows)
+    fb.initZero()
+    val start = System.currentTimeMillis()
+    val res = FrameUtils.toDoubleArray(fb.rootVectors(0))
+    println(s"time:${System.currentTimeMillis() - start} ms")
   }
 
   /**

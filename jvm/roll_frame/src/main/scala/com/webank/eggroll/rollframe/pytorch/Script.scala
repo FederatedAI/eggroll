@@ -12,7 +12,7 @@ object Script {
     val partitionResult = Torch.run(ptr, Array(tensor), parameters)
     val rootSchema = new FrameSchema(SchemaUtil.oneFieldSchemaString)
     val outFb = new FrameBatch(rootSchema, partitionResult.size)
-    FrameUtils.copyMemory(outFb.rootVectors(0).fieldVector, partitionResult)
+    FrameUtils.copyMemory(outFb.rootVectors(0), partitionResult)
     outFb
   }
 
@@ -29,7 +29,7 @@ object Script {
     val partitionResult = Torch.run(ptr, tensors, parameters)
     val rootSchema = new FrameSchema(SchemaUtil.oneFieldSchemaString)
     val outFb = new FrameBatch(rootSchema, partitionResult.size)
-    FrameUtils.copyMemory(outFb.rootVectors(0).fieldVector, partitionResult)
+    FrameUtils.copyMemory(outFb.rootVectors(0), partitionResult)
     outFb
   }
 }
