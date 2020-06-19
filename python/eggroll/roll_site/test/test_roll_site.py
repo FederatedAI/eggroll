@@ -270,6 +270,9 @@ class TestRollSiteDebugGet(TestRollSiteBase):
 
 
 class TestRollSiteStandaloneRemote(TestRollSiteBase):
+    def __init__(self, methodName='TestRollSiteStandaloneRemote', src_party_id=10002, dst_party_id=10001):
+        super().__init__(methodName, src_party_id, dst_party_id)
+
     @classmethod
     def setUpClass(cls) -> None:
         cls.rs_context_remote = get_standalone_context(role='src', self_party_id=cls.self_party_id, props_file=props_file_remote)
@@ -309,6 +312,9 @@ class TestRollSiteStandaloneRemote(TestRollSiteBase):
 
 
 class TestRollSiteStandaloneGet(TestRollSiteBase):
+    def __init__(self, methodName='TestRollSiteStandaloneGet', src_party_id=10001, dst_party_id=10002):
+        super().__init__(methodName, src_party_id, dst_party_id)
+
     @classmethod
     def setUpClass(cls) -> None:
         cls.rs_context_get = get_standalone_context(role='dst', self_party_id=cls.self_party_id, props_file=props_file_get)
@@ -375,6 +381,9 @@ class TestRollSiteCluster(TestRollSiteBase):
 
 
 class TestRollSiteClusterRemote(TestRollSiteBase):
+    def __init__(self, methodName='TestRollSiteClusterRemote', src_party_id=10002, dst_party_id=10001):
+        super().__init__(methodName, src_party_id, dst_party_id)
+
     @classmethod
     def setUpClass(cls) -> None:
         opts = {"eggroll.session.processors.per.node": "3"}
@@ -418,6 +427,9 @@ class TestRollSiteClusterRemote(TestRollSiteBase):
         pass
 
 class TestRollSiteClusterGet(TestRollSiteBase):
+    def __init__(self, methodName='TestRollSiteClusterGet', src_party_id=10001, dst_party_id=10002):
+        super().__init__(methodName, src_party_id, dst_party_id)
+
     @classmethod
     def setUpClass(cls) -> None:
         opts = {"eggroll.session.processors.per.node": "3"}
