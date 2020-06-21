@@ -92,6 +92,7 @@ def get_debug_test_context(is_standalone=False,
         transfer_port=20002,
         session_id='testing',
         role='host',
+        self_party_id=10002,
         props_file=default_props_file):
     rp_context = rpta.get_debug_test_context(is_standalone=is_standalone,
                                              manager_port=manager_port,
@@ -100,7 +101,7 @@ def get_debug_test_context(is_standalone=False,
                                              session_id=session_id)
 
     rs_context = RollSiteContext(roll_site_session_id, rp_ctx=rp_context,
-                                 options=get_option(role=role, conf_file=props_file))
+                                 options=get_option(role=role, self_party_id=self_party_id, conf_file=props_file))
 
     return rs_context
 
