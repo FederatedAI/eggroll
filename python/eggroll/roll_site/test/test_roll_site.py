@@ -471,8 +471,8 @@ class TestRollSiteClusterGet(TestRollSiteBase):
 
 
 def option():
-    """examples:\n\tremote obj to from 10002 to 10001:\n\t\tpython test_roll_site.py -c TestRollSiteClusterRemote -f test_remote -s 10002 -d 10001
-    get obj from 10002 to 10001:\n\t\tpython test_roll_site.py -c TestRollSiteClusterGet -f test_get -s 10002 -d 10001
+    """examples:\n\tremote obj from 10002 to 10001:\n\t\tpython test_roll_site.py -c TestRollSiteClusterRemote -f test_remote -s 10002 -d 10001
+    get obj from 10001:\n\t\tpython test_roll_site.py -c TestRollSiteClusterGet -f test_get -s 10002 -d 10001
     """
     print(option.__doc__)
 
