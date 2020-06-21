@@ -92,7 +92,7 @@ def get_debug_test_context(is_standalone=False,
         transfer_port=20002,
         session_id='testing',
         role='host',
-        self_party_id=10002,
+        self_party_id=None,
         props_file=default_props_file):
     rp_context = rpta.get_debug_test_context(is_standalone=is_standalone,
                                              manager_port=manager_port,
