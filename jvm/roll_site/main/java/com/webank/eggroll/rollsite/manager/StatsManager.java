@@ -67,18 +67,18 @@ public class StatsManager {
     }
 
     public void add(StreamStat streamStat) {
-        try {
+/*        try {
             streamStatsRwLock.writeLock().lock();
             streamStats.add(streamStat);
         } catch (Exception e) {
             LOGGER.error("unexpected error: {}", ExceptionUtils.getStackTrace(e));
         } finally {
             streamStatsRwLock.writeLock().unlock();
-        }
+        }*/
     }
 
     public void logAllStatus() {
-        LOGGER.info("------------ streaming stat ------------");
+/*        LOGGER.info("------------ streaming stat ------------");
 
         if (streamStats.size() <= 0) {
             return;
@@ -144,6 +144,6 @@ public class StatsManager {
         }
 
         LOGGER.info("stream logCount: {}, not finished: {}, not removed: {}",
-                logCount, notFinishedCount, notRemovedCount);
+                logCount, notFinishedCount, notRemovedCount);*/
     }
 }
