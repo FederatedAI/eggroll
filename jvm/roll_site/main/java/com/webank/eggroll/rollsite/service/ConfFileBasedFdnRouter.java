@@ -452,10 +452,10 @@ public class ConfFileBasedFdnRouter implements FdnRouter {
             result = endpoints.get(pos);
         }
 
-        topicEndpointMapping.put(topic, result);
+/*        topicEndpointMapping.put(topic, result);
         if (noCallbackTopic != null && !topicEndpointMapping.containsKey(noCallbackTopic)) {
             topicEndpointMapping.put(noCallbackTopic, result);
-        }
+        }*/
 
         return result;
     }
