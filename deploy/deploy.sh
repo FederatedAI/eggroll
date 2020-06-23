@@ -41,10 +41,10 @@ get_property "eggroll.resourcemanager.nodemanager.port"
 nodemanager_port=$property_value
 
 sed -i "s/eggroll_meta/$jdbc_database/g" ./deploy/create-eggroll-meta-tables.sql
-echo "insert into server_node (name,host,port,node_type,status) values('$clustermanager_ip','$clustermanager_ip','$clustermanager_port','CLUSTER_MANAGER','HEALTHY')" >> ./deploy/create-eggroll-meta-tables.sql
+echo "insert into server_node (name,host,port,node_type,status) values('$clustermanager_ip','$clustermanager_ip','$clustermanager_port','CLUSTER_MANAGER','HEALTHY');" >> ./deploy/create-eggroll-meta-tables.sql
 
 for ip in ${iplist[@]};do
-	echo "insert into server_node (name,host,port,node_type,status) values('$ip','$ip','$nodemanager_port','NODE_MANAGER','HEALTHY')" >> ./deploy/create-eggroll-meta-tables.sql
+	echo "insert into server_node (name,host,port,node_type,status) values('$ip','$ip','$nodemanager_port','NODE_MANAGER','HEALTHY');" >> ./deploy/create-eggroll-meta-tables.sql
 	if ssh -tt app@$ip test -e ${EGGROLL_HOME};then
 		echo "[INFO] ${EGGROLL_HOME} in $ip already exist"
 	else
@@ -75,7 +75,6 @@ cd ${EGGROLL_HOME}/deploy
 ${MYSQL_HOME}/bin/mysql -u$jdbc_name -p$jdbc_password -S ${MYSQL_HOME}/mysql.sock
 source ${EGGROLL_HOME}/deploy/create-eggroll-meta-tables.sql
 exit;
-rm -f create-eggroll-meta-tables.sql
 exit
 eeooff
 else
