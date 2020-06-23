@@ -62,6 +62,8 @@ main() {
 			main_class=com.webank.eggroll.rollsite.Proxy
 			get_property "eggroll.rollsite.port"
 			port=${property_value}
+			get_property "eggroll.rollsite.jvm.options"
+			jvm_options=${property_value}
 			;;
 		*)
 			usage
@@ -156,7 +158,7 @@ start() {
 		mklogsdir
 		export EGGROLL_LOG_FILE=${module}
 		if [ $module = rollsite ];then
-			cmd="java -Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.properties -Dprocessor_tag=${processor_tag} -cp ${EGGROLL_HOME}/lib/*:${EGGROLL_HOME}/conf/ com.webank.eggroll.rollsite.Proxy -c ${EGGROLL_HOME}/conf/eggroll.properties"
+			cmd="java $jvm_options -Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.properties -Dprocessor_tag=${processor_tag} -cp ${EGGROLL_HOME}/lib/*:${EGGROLL_HOME}/conf/ com.webank.eggroll.rollsite.Proxy -c ${EGGROLL_HOME}/conf/eggroll.properties"
 		else
 			cmd="java -Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.properties -cp ${EGGROLL_HOME}/lib/*: com.webank.eggroll.core.Bootstrap --bootstraps ${main_class} -c ${EGGROLL_HOME}/conf/eggroll.properties -p $port -s ${processor_tag}"
 		fi
