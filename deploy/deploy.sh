@@ -27,8 +27,8 @@ get_property() {
 	property_value=`grep $1 $cwd/../conf/eggroll.properties | awk -F= '{print $2}'`
 }
 
-jdbc_ip=`grep 'jdbc:mysql' $cwd/..conf/eggroll.properties | awk -F// '{print $2}' |awk -F: '{print $1}'`
-jdbc_database=`grep 'jdbc:mysql' $cwd/..conf/eggroll.properties | awk -F/ '{print $4}' | awk -F? '{print $1}'`
+jdbc_ip=`grep 'jdbc:mysql' $cwd/../conf/eggroll.properties | awk -F// '{print $2}' |awk -F: '{print $1}'`
+jdbc_database=`grep 'jdbc:mysql' $cwd/../conf/eggroll.properties | awk -F/ '{print $4}' | awk -F? '{print $1}'`
 get_property "eggroll.resourcemanager.clustermanager.jdbc.username"
 jdbc_name=$property_value
 get_property "eggroll.resourcemanager.clustermanager.jdbc.password"
@@ -41,10 +41,10 @@ get_property "eggroll.resourcemanager.nodemanager.port"
 nodemanager_port=$property_value
 
 sed -i "s/eggroll_meta/$jdbc_database/g" ./deploy/create-eggroll-meta-tables.sql
-echo "insert into server_node (name,host,port,node_type,status) values($clustermanager_ip,$clustermanager_ip,$clustermanager_port,'CLUSTER_MANAGER','HEALTHY')" >> ./deploy/create-eggroll-meta-tables.sql
+echo "insert into server_node (name,host,port,node_type,status) values('$clustermanager_ip','$clustermanager_ip','$clustermanager_port','CLUSTER_MANAGER','HEALTHY')" >> ./deploy/create-eggroll-meta-tables.sql
 
 for ip in ${iplist[@]};do
-	echo "insert into server_node (name,host,port,node_type,status) values($ip,$ip,$nodemanager_port,'NODE_MANAGER','HEALTHY')" >> ./deploy/create-eggroll-meta-tables.sql
+	echo "insert into server_node (name,host,port,node_type,status) values('$ip','$ip','$nodemanager_port','NODE_MANAGER','HEALTHY')" >> ./deploy/create-eggroll-meta-tables.sql
 	if ssh -tt app@$ip test -e ${EGGROLL_HOME};then
 		echo "[INFO] ${EGGROLL_HOME} in $ip already exist"
 	else
@@ -72,7 +72,7 @@ if ssh -tt app@$jdbc_ip test -e ${MYSQL_HOME};then
     echo "[INFO] ${MYSQL_HOME} in $jdbc_ip already exist"
     ssh -tt app@$jdbc_ip << eeooff
 cd ${EGGROLL_HOME}/deploy
-${mysqldir}/bin/mysql -u$jdbc_name -p$jdbc_password -S ${mysqldir}/mysql.sock
+${MYSQL_HOME}/bin/mysql -u$jdbc_name -p$jdbc_password -S ${MYSQL_HOME}/mysql.sock
 source ${EGGROLL_HOME}/deploy/create-eggroll-meta-tables.sql
 exit;
 rm -f create-eggroll-meta-tables.sql
