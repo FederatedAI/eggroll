@@ -66,6 +66,7 @@ vi ./deploy/conf.sh
 | Configuration item | Configuration item meaning    | Configuration Item Value                           | Notes                                 |
 | ------------------ | ----------------------------- | -------------------------------------------------- | ------------------------------------- |
 | EGGROLL_HOME       | Deploy path of Eggroll        | Default : /data/projects/Eggroll                   | Use the default value                 |
+| MYSQL_HOME         | Mysql install path            | Modify as actual mysql path                        | Modify as actual mysql path           |
 | IPLIST             | Server IP list of the cluster | The ip of each server in the cluser to be deployed | List of each server IP to be deployed |
 
 2. Modify the **eggroll.properties** configuration file:

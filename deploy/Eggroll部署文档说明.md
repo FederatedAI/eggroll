@@ -157,39 +157,40 @@ vi conf/route_table.json
 }
 ```
 
-- **修改数据库初始化sql脚本**
 
-```shell
-<--修改说明：此文件为初始化mysql数据库建表及建库使用的sql脚本，若使用默认数据库名为eggroll_meta则跳过此步骤，若实际需要使用其他库名，可使用以下语句替换为实际的数据库名称，此处数据库名称应与eggroll.properties中所填数据库名称一致-->
-
-sed -i "s/eggroll_meta/数据库名称/" conf/create-eggroll-meta-tables.sql
-```
 
 ### 3.3.  多节点部署
 
-按上述说明修改完配置文件后，若集群内需多节点部署，由于各节点的配置文件完全相同，将其打包发送到集群各个节点的Eggroll安装目录下即可。
+按上述说明修改完配置文件后，若集群内需多节点部署，可使用部署脚本进行打包部署：
+
+- 修改部署配置文件deploy/conf.sh
+
+```shell
+vi deploy/conf.sh
+
+export EGGROLL_HOME=/data/projects/eggroll		<--部署到目标服务器的eggroll路径，修改为EGGROLL要部署的绝对路径-->
+export MYSQL_HOME=/data/projects/mysql		<--mysql服务器上的mysql安装路径，直到mysql目录-->
+iplist=(127.0.0.xxx 127.0.0.xxx)		<--本集群内所以节点的ip列表-->
+```
+
+- 执行部署脚本deploy/deploy.sh
+
+```shell
+cd deploy
+sh deploy.sh
+```
 
 
 
 ## 4.    添加元信息
 
-集群多节点之间的服务之间是通过查询数据库存储的元信息来感知的，因此需要登录数据库服务器对数据库初始化并插入节点信息，在数据库中执行以下sql步骤：
+集群多节点之间的服务之间是通过查询数据库存储的元信息来感知的，因此执行上述步骤需要登录数据库服务器对数据库进行检查节点信息，查询server_node表检查数据是否准确：
 
 ```sql
 登录数据库执行：
-
-<--此处注意使用create-eggroll-meta-tables.sql文件的绝对路径-->
->>source Eggroll安装目录/conf/create-eggroll-meta-tables.sql;
-
-<--将集群内所有节点clustermanager和nodemanager服务信息插入server_node表中-->
->>INSERT INTO server_node (host, port, node_type, status) values ('clustermanager服务ip', 'clustermanager服务端口', 'CLUSTER_MANAGER', 'HEALTHY');
->>INSERT INTO server_node (host, port, node_type, status) values ('nodemanager服务ip', 'nodemanager服务port', 'NODE_MANAGER', 'HEALTHY');
-```
-
-执行完成执行查询server_node表检查数据是否准确：
-
-```sql
->>select * from server_node;
+>>use 数据库名称					<--切换到部署的数据库-->
+>>show tables;					<--检查是否有5个表-->
+>>select * from server_node;	<--检查元信息是否包含所以节点及角色-->
 >>exit
 ```
 
