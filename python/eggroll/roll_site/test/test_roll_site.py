@@ -80,7 +80,7 @@ class TestRollSiteBase(unittest.TestCase):
         super(TestRollSiteBase, self).__init__(methodName)
         TestRollSiteBase.src_party_id = src_party_id
         TestRollSiteBase.dst_party_id = dst_party_id
-        self.src_party_id = [("src", src_party_id)]
+        self.get_parties = [("src", src_party_id)]
         self.remote_parties = [("dst", dst_party_id)]
 
     @classmethod
