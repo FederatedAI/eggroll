@@ -96,6 +96,7 @@ class GcRecorder(object):
         L.debug('session:{} initializing gc recorder'.format(rpc.session_id))
         self.record_rpc = rpc
         self.gc_recorder = dict()
+        self.leveldb_recorder = set()
         self.gc_queue = SimpleQueue()
         if "EGGROLL_GC_DISABLE" in os.environ and os.environ["EGGROLL_GC_DISABLE"] == '1':
             L.info("global gc is disable, "
@@ -121,15 +122,19 @@ class GcRecorder(object):
             if not rp_namespace_name:
                 continue
             L.info(f"GC thread destroying rp:{rp_namespace_name}")
+            options = dict()
+            options['gc_destroy'] = True
             self.record_rpc.load(namespace=rp_namespace_name[0],
-                                     name=rp_namespace_name[1]).destroy()
+                                     name=rp_namespace_name[1]).destroy(options=options)
 
     def record(self, er_store: ErStore):
         store_type = er_store._store_locator._store_type
         name = er_store._store_locator._name
         namespace = er_store._store_locator._namespace
-        if store_type != StoreTypes.ROLLPAIR_IN_MEMORY:
+        if store_type != StoreTypes.ROLLPAIR_IN_MEMORY and store_type != StoreTypes.ROLLPAIR_LEVELDB:
             return
+        elif store_type == StoreTypes.ROLLPAIR_LEVELDB:
+            self.leveldb_recorder.add((namespace, name))
         else:
             L.info("GC recording in memory table namespace={}, name={}, type={}"
                   .format(namespace, name, store_type))
