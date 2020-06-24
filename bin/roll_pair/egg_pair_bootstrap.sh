@@ -144,9 +144,11 @@ else
   PYTHON=${venv}/bin/python
 fi
 
+export PYTHONMALLOC=pymalloc
+echo "PYTHONMALLOC=${PYTHONMALLOC}"
 export PYTHONPATH=${pythonpath}:${PYTHONPATH}
-echo "PYTHONPATH: ${PYTHONPATH}"
-echo "PYTHON: `which python`"
+echo "PYTHONPATH=${PYTHONPATH}"
+echo "PYTHON=`which python`"
 
 echo "------ python version starts ------"
 ${PYTHON} --version
