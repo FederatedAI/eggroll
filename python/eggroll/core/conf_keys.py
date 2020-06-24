@@ -104,7 +104,7 @@ class TransferConfKeys(object):
 
 
 class RollPairConfKeys(object):
-    EGGROLL_ROLLPAIR_TRANSFERPAIR_SENDBUF_SIZE = ErConfKey("eggroll.rollpair.transferpair.sendbuf.size", 4150000)
+    EGGROLL_ROLLPAIR_TRANSFERPAIR_SENDBUF_SIZE = ErConfKey("eggroll.rollpair.transferpair.sendbuf.size", 250_000)
     EGGROLL_ROLLPAIR_TRANSFERPAIR_BATCHBROKER_DEFAULT_SIZE = ErConfKey("eggroll.rollpair.transferpair.broker.default.size", 100)
     EGGROLL_ROLLPAIR_EGGPAIR_SERVER_EXECUTOR_POOL_MAX_SIZE = ErConfKey("eggroll.rollpair.eggpair.server.executor.pool.max.size", 100)
     EGGROLL_ROLLPAIR_EGGPAIR_DATA_SERVER_EXECUTOR_POOL_MAX_SIZE = ErConfKey("eggroll.rollpair.eggpair.data.server.executor.pool.max.size", 100)
