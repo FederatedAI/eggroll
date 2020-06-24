@@ -20,11 +20,9 @@ package com.webank.eggroll.rollframe
 import java.util.Random
 import java.util.concurrent.{Callable, Executors}
 
-import com.webank.eggroll.core.ErSession
-import com.webank.eggroll.core.constant.{StoreTypes, StringConstants}
-import com.webank.eggroll.core.meta.{ErStore, ErStoreLocator}
-import com.webank.eggroll.core.util.TimeUtils
-import com.webank.eggroll.util.Logging
+import com.webank.eggroll.core.constant.StringConstants
+import com.webank.eggroll.core.meta.ErStore
+import com.webank.eggroll.core.util.Logging
 import com.webank.eggroll.format._
 import com.webank.eggroll.rollframe.pytorch.{LibraryLoader, Matrices}
 import com.webank.eggroll.util.SchemaUtil
@@ -48,11 +46,9 @@ class RollFrameTests extends Logging {
   @Before
   def setup(): Unit = {
     ctx = ta.getRfContext()
-    info(s"get RfContext property unsafe:${System.getProperty("arrow.enable_unsafe_memory_access")}")
+    logInfo(s"get RfContext property unsafe:${System.getProperty("arrow.enable_unsafe_memory_access")}")
     inputStore = ctx.createStore("test1", "a1", StringConstants.FILE, partitions_)
     inputTensorStore = ctx.createStore("test1", "t1", StringConstants.FILE, partitions_)
-//    val z = RollFrameSession.getOrCreateNewSession(sessionId = ctx.session.sessionId)
-    val x = RollFrameSession.getOrCreateNewSession(oldSessionId = ctx.session.sessionId)
 
     // use torchScript or not
     if (supportTorch) {
@@ -134,16 +130,6 @@ class RollFrameTests extends Logging {
       TestCase.assertNotNull(fb.isEmpty)
       fb
     })
-  }
-
-  @Test
-  def testCheckStoreExists(): Unit ={
-    val cacheStore = ctx.dumpCache(inputStore)
-    val res = ctx.frameTransfer.Roll.checkStoreExists(cacheStore.storeLocator)
-    TestCase.assertEquals(res,true)
-    val cacheStore1 = ctx.createStore("test1", "aa1", StringConstants.CACHE, partitions_)
-    val res1 = ctx.frameTransfer.Roll.checkStoreExists(cacheStore1.storeLocator)
-    TestCase.assertEquals(res1,false)
   }
 
   @Test
@@ -404,7 +390,7 @@ class RollFrameTests extends Logging {
       }
       x
     }, output = output)
-    println(s"time = ${System.currentTimeMillis() - start} ms")
+    logInfo(s"time = ${System.currentTimeMillis() - start} ms")
   }
 
   /**
