@@ -81,6 +81,10 @@ action() {
 			stop
 			status
 			;;
+		kill)
+			shut
+			status
+			;;
 		status)
 			status
 			;;
@@ -108,7 +112,7 @@ all() {
 }
 
 usage() {
-	echo "usage: `basename ${0}` {clustermanager | nodemanager | all} {start | stop | restart | status}"
+	echo "usage: `basename ${0}` {clustermanager | nodemanager | all} {start | stop | kill | restart | status}"
 }
 
 multiple() {
@@ -126,7 +130,11 @@ multiple() {
 }
 
 getpid() {
-	pid=`ps aux | grep ${port} | grep ${processor_tag} | grep ${main_class} | grep -v grep | awk '{print $2}'`
+	if [ $module = rollsite ];then
+        pid=`ps aux | grep ${EGGROLL_HOME} | grep ${processor_tag} | grep ${main_class} | grep -v grep | awk '{print $2}'`
+    else
+        pid=`ps aux | grep ${port} | grep ${processor_tag} | grep ${main_class} | grep -v grep | awk '{print $2}'`
+    fi
 	if [[ -n ${pid} ]]; then
 		return 0
 	else
@@ -181,6 +189,25 @@ start() {
 }
 
 stop() {
+	getpid
+	if [[ -n ${pid} ]]; then
+		echo "killing:
+		`ps aux | grep ${pid} | grep ${processor_tag} | grep ${main_class} | grep -v grep`"
+		kill ${pid}
+		sleep 1
+		flag=0
+		while [ $flag -eq 0 ]
+		do
+			getpid
+			flag=$?
+		done
+		echo "killed"
+	else
+		echo "service not running"
+	fi
+}
+
+shut() {
 	getpid
 	if [[ -n ${pid} ]]; then
 		echo "killing:
