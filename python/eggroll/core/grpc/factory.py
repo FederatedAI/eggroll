@@ -13,6 +13,7 @@
 #  limitations under the License.
 
 import ipaddress
+import threading
 
 import grpc
 
@@ -30,16 +31,21 @@ def wrap_host_scheme(host):
 
 class GrpcChannelFactory(object):
     pool = {}
-    def create_channel(self, endpoint: ErEndpoint, is_secure_channel=False):
+    _pool_lock = threading.Lock()
+
+    def create_channel(self, endpoint: ErEndpoint, is_secure_channel=False, force_create=False):
         target = f"{endpoint._host}:{endpoint._port}"
-        if target not in self.pool:
-            result = grpc.insecure_channel(
-            target=target,
-            options=[('grpc.max_send_message_length',
-                      int(CoreConfKeys.EGGROLL_CORE_GRPC_CHANNEL_MAX_INBOUND_MESSAGE_SIZE.get())),
-                     ('grpc.max_receive_message_length',
-                      int(CoreConfKeys.EGGROLL_CORE_GRPC_CHANNEL_MAX_INBOUND_MESSAGE_SIZE.get())),
-                     ('grpc.max_metadata_size',
-                      int(CoreConfKeys.EGGROLL_CORE_GRPC_CHANNEL_MAX_INBOUND_METADATA_SIZE.get()))])
-            self.pool[target] = result
-        return self.pool[target]
+        with GrpcChannelFactory._pool_lock:
+            result = GrpcChannelFactory.pool.get(target, None)
+            if result is None \
+                    or grpc._common.CYGRPC_CONNECTIVITY_STATE_TO_CHANNEL_CONNECTIVITY[result._channel.check_connectivity_state(True)] == grpc.ChannelConnectivity.SHUTDOWN:
+                result = grpc.insecure_channel(
+                target=target,
+                options=[('grpc.max_send_message_length',
+                          int(CoreConfKeys.EGGROLL_CORE_GRPC_CHANNEL_MAX_INBOUND_MESSAGE_SIZE.get())),
+                         ('grpc.max_receive_message_length',
+                          int(CoreConfKeys.EGGROLL_CORE_GRPC_CHANNEL_MAX_INBOUND_MESSAGE_SIZE.get())),
+                         ('grpc.max_metadata_size',
+                          int(CoreConfKeys.EGGROLL_CORE_GRPC_CHANNEL_MAX_INBOUND_METADATA_SIZE.get()))])
+                self.pool[target] = result
+            return self.pool[target]

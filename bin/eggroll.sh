@@ -15,15 +15,25 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
-export EGGROLL_HOME=`pwd`
 cwd=$(cd `dirname $0`; pwd)
+cd $cwd/..
+export EGGROLL_HOME=`pwd`
 
 export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION='python'
 cd ${EGGROLL_HOME}
 echo "EGGROLL_HOME:${EGGROLL_HOME}"
 
 eval action=\$$#
+start_mode=1
 modules=(clustermanager nodemanager rollsite)
+
+if [ $action = starting ];then
+	action=start
+	start_mode=0
+elif [ $action = restarting ];then
+	action=restart
+	start_mode=0
+fi
 
 get_property() {
 	property_value=`grep $1 ${EGGROLL_HOME}/conf/eggroll.properties | awk -F= '{print $2}'`
@@ -42,7 +52,6 @@ main() {
 			main_class=com.webank.eggroll.core.resourcemanager.ClusterManagerBootstrap
 			get_property "eggroll.resourcemanager.clustermanager.port"
 			port=${property_value}
-			port=${property_value}
 			;;
 		nodemanager)
 			main_class=com.webank.eggroll.core.resourcemanager.NodeManagerBootstrap
@@ -53,6 +62,8 @@ main() {
 			main_class=com.webank.eggroll.rollsite.Proxy
 			get_property "eggroll.rollsite.port"
 			port=${property_value}
+			get_property "eggroll.rollsite.jvm.options"
+			jvm_options=${property_value}
 			;;
 		*)
 			usage
@@ -68,6 +79,10 @@ action() {
 			;;
 		stop)
 			stop
+			status
+			;;
+		kill)
+			shut
 			status
 			;;
 		status)
@@ -97,12 +112,11 @@ all() {
 }
 
 usage() {
-	echo "usage: `basename ${0}` {clustermanager | nodemanager | all} {start | stop | restart | status}"
+	echo "usage: `basename ${0}` {clustermanager | nodemanager | all} {start | stop | kill | restart | status}"
 }
 
 multiple() {
 	total=$#
-	action=${!total}
 	for (( i=1; i<total; i++)); do
 		module=${!i//\//}
 		main
@@ -116,12 +130,11 @@ multiple() {
 }
 
 getpid() {
-	if [ ! -f "${EGGROLL_HOME}/bin/${module}" ];then
-		echo "" > ${EGGROLL_HOME}/bin/${module}
-	fi
-	module_pid=`cat ${EGGROLL_HOME}/bin/${module}`
-	
-	pid=`ps aux | grep ${module_pid} | grep ${processor_tag} | grep -v grep | awk '{print $2}'`
+	if [ $module = rollsite ];then
+        pid=`ps aux | grep ${EGGROLL_HOME} | grep ${processor_tag} | grep ${main_class} | grep -v grep | awk '{print $2}'`
+    else
+        pid=`ps aux | grep ${port} | grep ${processor_tag} | grep ${main_class} | grep -v grep | awk '{print $2}'`
+    fi
 	if [[ -n ${pid} ]]; then
 		return 0
 	else
@@ -139,7 +152,7 @@ status() {
 	getpid
 	if [[ -n ${pid} ]]; then
 		echo "status:
-		`ps aux | grep ${pid} | grep -v grep`"
+		`ps aux | grep ${pid} | grep ${processor_tag} | grep ${main_class} | grep -v grep`"
 		return 0
 	else
 		echo "service not running"
@@ -153,14 +166,17 @@ start() {
 		mklogsdir
 		export EGGROLL_LOG_FILE=${module}
 		if [ $module = rollsite ];then
-			cmd="java -Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.properties -Dprocessor_tag=${processor_tag} -cp ${EGGROLL_HOME}/lib/*:${EGGROLL_HOME}/conf/ com.webank.eggroll.rollsite.Proxy -c ${EGGROLL_HOME}/conf/eggroll.properties"
+			cmd="java $jvm_options -Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.properties -Dprocessor_tag=${processor_tag} -cp ${EGGROLL_HOME}/lib/*:${EGGROLL_HOME}/conf/ com.webank.eggroll.rollsite.Proxy -c ${EGGROLL_HOME}/conf/eggroll.properties"
 		else
 			cmd="java -Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.properties -cp ${EGGROLL_HOME}/lib/*: com.webank.eggroll.core.Bootstrap --bootstraps ${main_class} -c ${EGGROLL_HOME}/conf/eggroll.properties -p $port -s ${processor_tag}"
 		fi
 		echo $cmd
-		exec $cmd >> ${EGGROLL_HOME}/logs/eggroll/bootstrap.${module}.out 2>>${EGGROLL_HOME}/logs/eggroll/bootstrap.${module}.err &
+		if [ $start_mode = 0 ];then
+			exec $cmd >> ${EGGROLL_HOME}/logs/eggroll/bootstrap.${module}.out 2>>${EGGROLL_HOME}/logs/eggroll/bootstrap.${module}.err
+		else
+			exec $cmd >> ${EGGROLL_HOME}/logs/eggroll/bootstrap.${module}.out 2>>${EGGROLL_HOME}/logs/eggroll/bootstrap.${module}.err &
+		fi
 
-		echo $!>${EGGROLL_HOME}/bin/${module}
 		getpid
 		if [[ $? -eq 0 ]]; then
 			echo "service start sucessfully. pid: ${pid}"
@@ -176,7 +192,7 @@ stop() {
 	getpid
 	if [[ -n ${pid} ]]; then
 		echo "killing:
-		`ps aux | grep ${pid} | grep -v grep`"
+		`ps aux | grep ${pid} | grep ${processor_tag} | grep ${main_class} | grep -v grep`"
 		kill ${pid}
 		sleep 1
 		flag=0
@@ -186,10 +202,27 @@ stop() {
 			flag=$?
 		done
 		echo "killed"
-		echo "stoped" >${EGGROLL_HOME}/bin/${module}
 	else
 		echo "service not running"
-		echo "stoped" >${EGGROLL_HOME}/bin/${module}
+	fi
+}
+
+shut() {
+	getpid
+	if [[ -n ${pid} ]]; then
+		echo "killing:
+		`ps aux | grep ${pid} | grep ${processor_tag} | grep ${main_class} | grep -v grep`"
+		kill -9 ${pid}
+		sleep 1
+		flag=0
+		while [ $flag -eq 0 ]
+		do
+			getpid
+			flag=$?
+		done
+		echo "killed"
+	else
+		echo "service not running"
 	fi
 }
 
