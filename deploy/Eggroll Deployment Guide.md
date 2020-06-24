@@ -161,7 +161,7 @@ sh bin/eggroll.sh all start			 --start all module service on this server
 
 ```bash
 source ${EGGROLL_HOME}/init.sh       --${EGGROLL_HOME} means the absolute path of eggroll
-sh bin/eggroll.sh all|$module_name start|stop|restart|status|starting|restarting
+sh bin/eggroll.sh all|$module_name start|stop|kill|restart|status|starting|restarting
 ```
 
 ***Notes: value of $module_name: clustermanager|nodemanager***
