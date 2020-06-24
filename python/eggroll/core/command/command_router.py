@@ -90,7 +90,7 @@ class CommandRouter(object):
         try:
             call_result = _method(_instance, *deserialized_args)
         except Exception as e:
-            L.error(f'Failed to dispatch to [{service_name}], task_name: {task_name}, request: {deserialized_args}')
+            L.exception(f'Failed to dispatch to [{service_name}], task_name: {task_name}, request: {deserialized_args}')
             raise e
         elapsed = time.time() - start
         if L.isEnabledFor(logging.DEBUG):
