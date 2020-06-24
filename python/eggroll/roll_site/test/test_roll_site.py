@@ -57,7 +57,7 @@ class TestRollSiteBase(unittest.TestCase):
     rs_context_get = None
     rs_context_remote = None
 
-    self_party_id = None
+    self_party_id = 10002
 
     _obj_rs_name = "RsaIntersectTransferVariable.rsa_pubkey"
     _obj_rs_tag = "testing_rs_obj"
@@ -78,20 +78,19 @@ class TestRollSiteBase(unittest.TestCase):
 
     def __init__(self, methodName='runTest', src_party_id=None, dst_party_id=None):
         super(TestRollSiteBase, self).__init__(methodName)
-        TestRollSiteBase.self_party_id = src_party_id
-        self.remote_parties = [("dst", dst_party_id)]
-        self.get_parties = [("src", dst_party_id)]
+        self.remote_parties = [("dst", 10001)]
+        self.get_parties = [("src", 10002)]
 
     @classmethod
     def setUpClass(cls) -> None:
-        cls.rs_context_get = get_debug_test_context(role='host',
-                                                     props_file=props_file_get)
+        cls.rs_context_get = get_debug_test_context(role='dst',
+                                                    props_file=props_file_get)
         cls.rs_context_remote = get_debug_test_context(manager_port=4671,
-                                                      egg_port=20003,
-                                                      transfer_port=20004,
-                                                      session_id='testing_guest',
-                                                      role='guest',
-                                                      props_file=props_file_remote)
+                                                       egg_port=20003,
+                                                       transfer_port=20004,
+                                                       session_id='testing_guest',
+                                                       role='src',
+                                                       props_file=props_file_remote)
 
     def test_init(self):
         print(1)
@@ -106,6 +105,7 @@ class TestRollSiteBase(unittest.TestCase):
 
     def test_get(self):
         rs = self.rs_context_get.load(name=self._obj_rs_name, tag=self._obj_rs_tag)
+
         futures = rs.pull(self.get_parties)
         for future in futures:
             obj = future.result()
@@ -161,7 +161,7 @@ class TestRollSiteBase(unittest.TestCase):
         rp_options = {'include_key': True}
         rp_context = self.rs_context_remote.rp_ctx
         rp = rp_context.load("namespace", self._rp_rs_name_big)
-        rp.put_all(data_generator(row_limit), options=rp_options)
+        #rp.put_all(data_generator(row_limit), options=rp_options)
         print(f"count: {rp.count()}")
 
         rs = self.rs_context_remote.load(name=self._rp_rs_name_big, tag=self._rp_rs_tag_big)
@@ -249,11 +249,11 @@ class TestRollSiteDebugRemote(TestRollSiteBase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.rs_context_remote = get_debug_test_context(manager_port=4671,
-                                                      egg_port=20003,
-                                                      transfer_port=20004,
-                                                      session_id='testing_guest',
-                                                      role='guest',
-                                                      props_file=props_file_remote)
+                                                       egg_port=20003,
+                                                       transfer_port=20004,
+                                                       session_id='testing_guest',
+                                                       role='guest',
+                                                       props_file=props_file_remote)
 
     def test_remote_rollpair_big_multi_partitions(self):
         super().test_remote_rollpair_big_multi_partitions()
@@ -263,7 +263,7 @@ class TestRollSiteDebugGet(TestRollSiteBase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.rs_context_get = get_debug_test_context(role='host',
-                                                     props_file=props_file_get)
+                                                    props_file=props_file_get)
 
     def test_get_rollpair_big_multi_partitions(self):
         super().test_get_rollpair_big_multi_partitions()
@@ -363,7 +363,7 @@ class TestRollSiteCluster(TestRollSiteBase):
 
     def test_remote(self):
         super().test_remote()
-    
+
     def test_get(self):
         super().test_get()
 
