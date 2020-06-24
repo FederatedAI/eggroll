@@ -57,7 +57,7 @@ class TestRollSiteBase(unittest.TestCase):
     rs_context_get = None
     rs_context_remote = None
 
-    self_party_id = 10002
+    self_party_id = None
 
     _obj_rs_name = "RsaIntersectTransferVariable.rsa_pubkey"
     _obj_rs_tag = "testing_rs_obj"
@@ -76,10 +76,12 @@ class TestRollSiteBase(unittest.TestCase):
     _rp_rs_name_big_mp = "roll_pair_name.table.big.mp"
     _rp_rs_tag_big_mp = "roll_pair_tag.big.mp"
 
-    def __init__(self, methodName='runTest', src_party_id=None, dst_party_id=None):
+    def __init__(self, methodName='runTest', src_party_id=10002, dst_party_id=10001):
         super(TestRollSiteBase, self).__init__(methodName)
-        self.remote_parties = [("dst", 10001)]
-        self.get_parties = [("src", 10002)]
+        TestRollSiteBase.src_party_id = src_party_id
+        TestRollSiteBase.dst_party_id = dst_party_id
+        self.get_parties = [("src", src_party_id)]
+        self.remote_parties = [("dst", dst_party_id)]
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -161,7 +163,7 @@ class TestRollSiteBase(unittest.TestCase):
         rp_options = {'include_key': True}
         rp_context = self.rs_context_remote.rp_ctx
         rp = rp_context.load("namespace", self._rp_rs_name_big)
-        #rp.put_all(data_generator(row_limit), options=rp_options)
+        rp.put_all(data_generator(row_limit), options=rp_options)
         print(f"count: {rp.count()}")
 
         rs = self.rs_context_remote.load(name=self._rp_rs_name_big, tag=self._rp_rs_tag_big)
@@ -270,12 +272,9 @@ class TestRollSiteDebugGet(TestRollSiteBase):
 
 
 class TestRollSiteStandaloneRemote(TestRollSiteBase):
-    def __init__(self, methodName='TestRollSiteStandaloneRemote', src_party_id=10002, dst_party_id=10001):
-        super().__init__(methodName, src_party_id, dst_party_id)
-
     @classmethod
     def setUpClass(cls) -> None:
-        cls.rs_context_remote = get_standalone_context(role='src', self_party_id=cls.self_party_id, props_file=props_file_remote)
+        cls.rs_context_remote = get_standalone_context(role='src', self_party_id=cls.src_party_id, props_file=props_file_remote)
 
     def test_remote(self):
         super().test_remote()
@@ -312,12 +311,9 @@ class TestRollSiteStandaloneRemote(TestRollSiteBase):
 
 
 class TestRollSiteStandaloneGet(TestRollSiteBase):
-    def __init__(self, methodName='TestRollSiteStandaloneGet', src_party_id=10001, dst_party_id=10002):
-        super().__init__(methodName, src_party_id, dst_party_id)
-
     @classmethod
     def setUpClass(cls) -> None:
-        cls.rs_context_get = get_standalone_context(role='dst', self_party_id=cls.self_party_id, props_file=props_file_get)
+        cls.rs_context_get = get_standalone_context(role='dst', self_party_id=cls.dst_party_id, props_file=props_file_get)
 
     def test_get(self):
         super().test_get()
@@ -381,13 +377,10 @@ class TestRollSiteCluster(TestRollSiteBase):
 
 
 class TestRollSiteClusterRemote(TestRollSiteBase):
-    def __init__(self, methodName='TestRollSiteClusterRemote', src_party_id=10002, dst_party_id=10001):
-        super().__init__(methodName, src_party_id, dst_party_id)
-
     @classmethod
     def setUpClass(cls) -> None:
         opts = {"eggroll.session.processors.per.node": "3"}
-        cls.rs_context_remote = get_cluster_context(role='src', options=opts, props_file=props_file_remote, party_id=cls.self_party_id)
+        cls.rs_context_remote = get_cluster_context(role='src', options=opts, props_file=props_file_remote, party_id=cls.src_party_id)
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -427,13 +420,10 @@ class TestRollSiteClusterRemote(TestRollSiteBase):
         pass
 
 class TestRollSiteClusterGet(TestRollSiteBase):
-    def __init__(self, methodName='TestRollSiteClusterGet', src_party_id=10001, dst_party_id=10002):
-        super().__init__(methodName, src_party_id, dst_party_id)
-
     @classmethod
     def setUpClass(cls) -> None:
         opts = {"eggroll.session.processors.per.node": "3"}
-        cls.rs_context_get = get_cluster_context(role='dst', options=opts, props_file=props_file_get, party_id=cls.self_party_id)
+        cls.rs_context_get = get_cluster_context(role='dst', options=opts, props_file=props_file_get, party_id=cls.dst_party_id)
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -471,8 +461,8 @@ class TestRollSiteClusterGet(TestRollSiteBase):
 
 
 def option():
-    """examples:\n\tremote obj to dst party:\n\t\tpython test_roll_site.py -c TestRollSiteClusterRemote -f test_remote -s 10002 -d 10001
-    get from dst party:\n\t\tpython test_roll_site.py -c TestRollSiteClusterGet -f test_get -s 10001 -d 10002
+    """examples:\n\tremote obj from 10002 to 10001:\n\t\tpython test_roll_site.py -c TestRollSiteClusterRemote -f test_remote -s 10002 -d 10001
+    get obj from 10001:\n\t\tpython test_roll_site.py -c TestRollSiteClusterGet -f test_get -s 10002 -d 10001
     """
     print(option.__doc__)
 
