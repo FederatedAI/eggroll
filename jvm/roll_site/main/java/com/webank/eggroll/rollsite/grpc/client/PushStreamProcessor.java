@@ -18,6 +18,7 @@ package com.webank.eggroll.rollsite.grpc.client;
 
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy.Packet;
+import com.webank.eggroll.core.constant.RollSiteConfKeys;
 import com.webank.eggroll.core.grpc.processor.BaseClientCallStreamProcessor;
 import com.webank.eggroll.rollsite.infra.Pipe;
 import io.grpc.stub.ClientCallStreamObserver;
@@ -112,6 +113,7 @@ public class PushStreamProcessor extends BaseClientCallStreamProcessor<Proxy.Pac
         */
 
         int emptyRetryCount = 0;
+        long maxRetryCount = Long.parseLong(RollSiteConfKeys.EGGROLL_ROLLSITE_PUSH_MAX_RETRY().get());
         Proxy.Packet packet = null;
         do {
             //packet = (Proxy.Packet) pipe.read(1, TimeUnit.SECONDS);
@@ -134,7 +136,7 @@ public class PushStreamProcessor extends BaseClientCallStreamProcessor<Proxy.Pac
                            emptyRetryCount);
                 }
             }
-        } while ((packet != null || !transferBroker.isDrained()) && emptyRetryCount < 300 && !transferBroker.hasError());
+        } while ((packet != null || !transferBroker.isDrained()) && emptyRetryCount < maxRetryCount && !transferBroker.hasError());
 
     }
 
