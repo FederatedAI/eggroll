@@ -112,7 +112,7 @@ class ClusterManagerBootstrap extends BootstrapBase with Logging {
 
     //this.sessionId = cmd.getOptionValue('s')
     val confPath = cmd.getOptionValue('c', "./conf/eggroll.properties")
-    standaloneTag = System.getProperty("eggroll.standalone.tag")
+    standaloneTag = System.getProperty("eggroll.standalone.tag", "")
 
     StaticErConf.addProperties(confPath)
     val confFile = new File(confPath)
