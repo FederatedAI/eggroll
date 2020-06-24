@@ -18,19 +18,12 @@
 
 ## 2.    项目拉取及打包
 
-方式一：从github拉取Eggroll项目，通过执行auto-packaging.sh自动打包脚本在同目录下生成eggroll.tar.gz
+从github拉取Eggroll项目，通过执行auto-packaging.sh自动打包脚本在同目录下生成eggroll.tar.gz
 
 ```shell
 git clone -b v2.x https://github.com/WeBankFinTech/Eggroll.git
 cd Eggroll
 sh deploy/auto-packaging.sh
-```
-
-方式二：从webank-ai云直接拉取
-
-```shell
-wget https://webank-ai-1251170195.cos.ap-guangzhou.myqcloud.com/eggroll-v2.x-init.tar.gz
-mv eggroll-v2.x-init.tar.gz eggroll.tar.gz
 ```
 
 
