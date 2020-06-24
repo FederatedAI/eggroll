@@ -103,6 +103,7 @@ eggroll.resourcemanager.bootstrap.egg_pair.exepath=bin/roll_pair/egg_pair_bootst
 eggroll.resourcemanager.bootstrap.egg_pair.venv=		<--virtualenv安装路径，需要修改-->
 eggroll.resourcemanager.bootstrap.egg_pair.pythonpath=python		<--python文件路径，也作PYTHONPATH，默认即可-->
 eggroll.resourcemanager.bootstrap.egg_pair.filepath=python/eggroll/roll_pair/egg_pair.py	<--egg_pair.py文件路径，默认即可-->
+eggroll.resourcemanager.bootstrap.egg_pair.ld_library_path=		<--egg_pair ld_library_path路径，默认即可-->
 
 <--以下几项默认即可-->
 eggroll.resourcemanager.bootstrap.egg_frame.exepath=bin/roll_frame/egg_frame_bootstrap.sh		<--egg_frame_bootstrap.sh文件路径-->
@@ -112,13 +113,29 @@ eggroll.resourcemanager.bootstrap.egg_frame.mainclass=com.webank.eggroll.rollfra
 eggroll.resourcemanager.bootstrap.egg_frame.jvm.options=	<--jvm启动参数-->
 <--以上几项默认即可-->
 
+# roll_frame
+arrow.enable_unsafe_memory_access=true
+
+# hadoop
+hadoop.fs.defaultFS=file:///
+
+# hadoop HA mode
+hadoop.dfs.nameservices=
+hadoop.dfs.namenode.rpc-address.nn1=
+hadoop.dfs.namenode.rpc-address.nn2=
+
 <--rollsite配置说明：其服务ip、端口与partyId需要与route_table.json配置文件中对应一致-->
 eggroll.rollsite.coordinator=webank			<--rollsite服务标签，默认即可-->
 eggroll.rollsite.host=127.0.0.1				<--rollsite服务ip，需要修改-->
 eggroll.rollsite.port=9370					<--rollsite服务端口，建议默认-->
 eggroll.rollsite.party.id=10001				<--集群partyId，不同集群需要使用不同的partyId，需要修改-->
 eggroll.rollsite.route.table.path=conf/route_table.json	<--route_table.json路由配置文件路径，默认即可-->
+eggroll.rollsite.jvm.options=			<--rollsite jvm启动参数添加，默认即可，有需要可自行添加-->
 
+eggroll.session.processors.per.node=4		<--单节点启动egg pair个数，小于或等于cpu核数，建议16-->
+eggroll.session.start.timeout.ms=180000		<--session超时设定ms数，默认即可-->
+eggroll.rollsite.adapter.sendbuf.size=1048576	<--rollsite传输块大小，默认即可-->
+eggroll.rollpair.transferpair.sendbuf.size=4150000		<--rollpair传输块大小，默认即可-->
 ```
 
 - **修改route_table.json路由信息**
