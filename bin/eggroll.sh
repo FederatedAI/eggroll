@@ -81,6 +81,10 @@ action() {
 			stop
 			status
 			;;
+		kill)
+			kill
+			status
+			;;
 		status)
 			status
 			;;
@@ -108,7 +112,7 @@ all() {
 }
 
 usage() {
-	echo "usage: `basename ${0}` {clustermanager | nodemanager | all} {start | stop | restart | status}"
+	echo "usage: `basename ${0}` {clustermanager | nodemanager | all} {start | stop | kill | restart | status}"
 }
 
 multiple() {
@@ -181,6 +185,25 @@ start() {
 }
 
 stop() {
+	getpid
+	if [[ -n ${pid} ]]; then
+		echo "killing:
+		`ps aux | grep ${pid} | grep ${processor_tag} | grep ${main_class} | grep -v grep`"
+		kill ${pid}
+		sleep 1
+		flag=0
+		while [ $flag -eq 0 ]
+		do
+			getpid
+			flag=$?
+		done
+		echo "killed"
+	else
+		echo "service not running"
+	fi
+}
+
+kill() {
 	getpid
 	if [[ -n ${pid} ]]; then
 		echo "killing:
