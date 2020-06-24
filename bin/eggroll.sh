@@ -82,7 +82,7 @@ action() {
 			status
 			;;
 		kill)
-			kill
+			shut
 			status
 			;;
 		status)
@@ -130,7 +130,11 @@ multiple() {
 }
 
 getpid() {
-	pid=`ps aux | grep ${port} | grep ${processor_tag} | grep ${main_class} | grep -v grep | awk '{print $2}'`
+	if [ $module = rollsite ];then
+        pid=`ps aux | grep ${EGGROLL_HOME} | grep ${processor_tag} | grep ${main_class} | grep -v grep | awk '{print $2}'`
+    else
+        pid=`ps aux | grep ${port} | grep ${processor_tag} | grep ${main_class} | grep -v grep | awk '{print $2}'`
+    fi
 	if [[ -n ${pid} ]]; then
 		return 0
 	else
@@ -203,7 +207,7 @@ stop() {
 	fi
 }
 
-kill() {
+shut() {
 	getpid
 	if [[ -n ${pid} ]]; then
 		echo "killing:
