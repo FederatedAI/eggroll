@@ -38,7 +38,7 @@ EGGROLL_HOME = os.environ['EGGROLL_HOME']
 default_props_file = f"{EGGROLL_HOME}/conf/eggroll.properties"
 
 
-def get_option(role, self_party_id, conf_file=default_props_file, deploy_mode=DeployModes.CLUSTER):
+def get_option(role, self_party_id=None, conf_file=default_props_file, deploy_mode=DeployModes.CLUSTER):
     print(f'conf file: {conf_file}')
     configs = configparser.ConfigParser()
 
@@ -100,7 +100,7 @@ def get_debug_test_context(is_standalone=False,
                                              session_id=session_id)
 
     rs_context = RollSiteContext(roll_site_session_id, rp_ctx=rp_context,
-                                 options=get_option(role, props_file))
+                                 options=get_option(role=role, conf_file=props_file))
 
     return rs_context
 
