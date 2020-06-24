@@ -14,7 +14,6 @@
 
 
 import queue
-from concurrent import futures
 from threading import Thread, Lock
 from time import sleep
 from typing import Iterable
@@ -22,7 +21,8 @@ from typing import Iterable
 import grpc
 from grpc._cython import cygrpc
 
-from eggroll.core.conf_keys import TransferConfKeys
+from eggroll.core.conf_keys import CoreConfKeys, TransferConfKeys
+from eggroll.core.datastructure import create_executor_pool
 from eggroll.core.datastructure.broker import FifoBroker, BrokerClosed
 from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.meta_model import ErEndpoint
@@ -166,7 +166,10 @@ class GrpcTransferService(TransferService):
     def start(self, options: dict = None):
         if dict is None:
             options = {}
-        server = grpc.server(futures.ThreadPoolExecutor(max_workers=1),
+        _executor_pool_type = CoreConfKeys.EGGROLL_CORE_DEFAULT_EXECUTOR_POOL.get_with(options)
+        server = grpc.server(create_executor_pool(canonical_name=_executor_pool_type,
+                                                  max_workers=1,
+                                                  thread_name_prefix="roll_pair_transfer_service"),
                              options=[(cygrpc.ChannelArgKey.max_send_message_length, -1),
                                       (cygrpc.ChannelArgKey.max_receive_message_length, -1)])
 
