@@ -21,9 +21,9 @@ package com.webank.eggroll.rollframe
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.channels.{ServerSocketChannel, SocketChannel}
-import java.util.concurrent.{Executors, Future}
+import java.util.concurrent.{ Executors, Future}
 
-import com.webank.eggroll.core.meta.{ErProcessor, ErStore, ErStoreLocator}
+import com.webank.eggroll.core.meta.{ErProcessor, ErStore}
 import com.webank.eggroll.core.util.Logging
 import com.webank.eggroll.format.{FrameBatch, FrameReader, FrameStore, FrameWriter, JvmFrameStore, QueueFrameStore}
 
@@ -59,16 +59,6 @@ class NioFrameTransfer(nodes: Array[ErProcessor], timeout: Int = 600 * 1000) ext
 
     def broadcast(path: String, frameBatch: FrameBatch): Unit = {
       roll.broadcast(path, frameBatch)
-    }
-
-    private def checkStoreExists(path: String): Boolean = {
-      roll.checkStoreExists(path)
-    }
-
-    def checkStoreExists(erStoreLocator: ErStoreLocator): Boolean = {
-      // only check first partition
-      val path = FrameStore.getStoreDir(erStoreLocator) + "/0"
-      checkStoreExists(path)
     }
   }
 
@@ -164,7 +154,6 @@ case class NioTransferHead(action: String, path: String, batchSize: Int) {
       case NioTransferHead.DELETE_EXCLUDE => 6
       case NioTransferHead.RESET_EXCLUDE => 7
       case NioTransferHead.RELEASE => 8
-      case NioTransferHead.CHECK_STORE => 9
       case x => throw new IllegalArgumentException(s"unsupported action:$x")
     }
     headBuf.putInt(actionInt)
@@ -194,7 +183,6 @@ object NioTransferHead {
       case 6 => DELETE_EXCLUDE
       case 7 => RESET_EXCLUDE
       case 8 => RELEASE
-      case 9 => CHECK_STORE
       case x => throw new IllegalArgumentException(s"unsupported action:$x")
     }
 
@@ -215,7 +203,6 @@ object NioTransferHead {
   val DELETE_EXCLUDE = "delete_exclude"
   val RESET_EXCLUDE = "reset_exclude"
   val RELEASE = "release"
-  val CHECK_STORE = "check_store"
 }
 
 class NioTransferEndpoint extends Logging {
@@ -227,7 +214,7 @@ class NioTransferEndpoint extends Logging {
     logInfo("start Transfer server endpoint")
     val serverSocketChannel = ServerSocketChannel.open
     // TODO: deal with exception
-    serverSocketChannel.bind(new InetSocketAddress(host, port))
+    serverSocketChannel.socket.bind(new InetSocketAddress(host, port))
     this.port = serverSocketChannel.socket.getLocalPort
     val executors = Executors.newCachedThreadPool()
     executors.submit(new Runnable {
@@ -274,13 +261,6 @@ class NioTransferEndpoint extends Logging {
                     JvmFrameStore.reSetExclude()
                   case NioTransferHead.RELEASE =>
                     JvmFrameStore.release()
-                  case NioTransferHead.CHECK_STORE =>
-                    val response = JvmFrameStore.checkFrameBatch(head.path)
-                    val byteBuffer = ByteBuffer.allocateDirect(4)
-                    byteBuffer.putInt(if (response) 1 else 0)
-                    byteBuffer.flip()
-                    ch.write(byteBuffer)
-                    byteBuffer.clear()
                   case _ => throw new IllegalArgumentException(s"unsupported action:$head")
                 }
                 logInfo("save finished:" + head)
@@ -367,15 +347,7 @@ class NioTransferEndpoint extends Logging {
   }
 
   def release(): Unit = {
-    NioTransferHead(action = NioTransferHead.RELEASE, path = "", batchSize = -1).write(clientChannel)
-  }
-
-  def checkStoreExists(path: String): Boolean = {
-    NioTransferHead(action = NioTransferHead.CHECK_STORE, path = path, batchSize = -1).write(clientChannel)
-    val reponse = ByteBuffer.allocateDirect(4)
-    clientChannel.read(reponse)
-    reponse.flip()
-    if (reponse.getInt > 0) true else false
+    NioTransferHead(action = "release", path = "", batchSize = -1).write(clientChannel)
   }
 }
 
