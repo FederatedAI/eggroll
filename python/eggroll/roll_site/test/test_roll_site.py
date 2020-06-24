@@ -99,6 +99,7 @@ class TestRollSiteBase(unittest.TestCase):
 
     def test_remote(self):
         rs = self.rs_context_remote.load(name=self._obj_rs_name, tag=self._obj_rs_tag)
+
         futures = rs.push(self._obj, self.remote_parties)
         for future in futures:
             result = future.result()
@@ -106,6 +107,7 @@ class TestRollSiteBase(unittest.TestCase):
 
     def test_get(self):
         rs = self.rs_context_get.load(name=self._obj_rs_name, tag=self._obj_rs_tag)
+
         futures = rs.pull(self.get_parties)
         for future in futures:
             obj = future.result()
@@ -165,7 +167,6 @@ class TestRollSiteBase(unittest.TestCase):
         print(f"count: {rp.count()}")
 
         rs = self.rs_context_remote.load(name=self._rp_rs_name_big, tag=self._rp_rs_tag_big)
-
         futures = rs.push(rp, self.remote_parties)
         for future in futures:
             result = future.result()
@@ -203,6 +204,7 @@ class TestRollSiteBase(unittest.TestCase):
     def test_get_rollpair_big_multi_partitions(self):
         #rp_options = {'include_key': True, 'total_partitions': 3}
         rs = self.rs_context_get.load(name=self._rp_rs_name_big_mp, tag=self._rp_rs_tag_big_mp)
+
         futures = rs.pull(self.get_parties)
         for future in futures:
             obj = future.result()
