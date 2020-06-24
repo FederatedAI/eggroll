@@ -1,8 +1,8 @@
 pwd=`pwd`
 cwd=$(cd `dirname $0`; pwd)
+cd $cwd
 version=`grep version ../BUILD_INFO | awk -F= '{print $2}'`
 
-cd $cwd
 cd ../jvm
 mvn clean package -DskipTests
 
