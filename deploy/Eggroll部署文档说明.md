@@ -18,19 +18,12 @@
 
 ## 2.    项目拉取及打包
 
-方式一：从github拉取Eggroll项目，通过执行auto-packaging.sh自动打包脚本在同目录下生成eggroll.tar.gz
+从github拉取Eggroll项目，通过执行auto-packaging.sh自动打包脚本在同目录下生成eggroll.tar.gz
 
 ```shell
 git clone -b v2.x https://github.com/WeBankFinTech/Eggroll.git
 cd Eggroll
 sh deploy/auto-packaging.sh
-```
-
-方式二：从webank-ai云直接拉取
-
-```shell
-wget https://webank-ai-1251170195.cos.ap-guangzhou.myqcloud.com/eggroll-v2.x-init.tar.gz
-mv eggroll-v2.x-init.tar.gz eggroll.tar.gz
 ```
 
 
@@ -103,14 +96,26 @@ eggroll.resourcemanager.bootstrap.egg_pair.exepath=bin/roll_pair/egg_pair_bootst
 eggroll.resourcemanager.bootstrap.egg_pair.venv=		<--virtualenv安装路径，需要修改-->
 eggroll.resourcemanager.bootstrap.egg_pair.pythonpath=python		<--python文件路径，也作PYTHONPATH，默认即可-->
 eggroll.resourcemanager.bootstrap.egg_pair.filepath=python/eggroll/roll_pair/egg_pair.py	<--egg_pair.py文件路径，默认即可-->
+eggroll.resourcemanager.bootstrap.egg_pair.ld_library_path=		<--egg_pair ld_library_path路径，默认即可-->
 
 <--以下几项默认即可-->
-eggroll.resourcemanager.bootstrap.roll_pair_master.exepath=bin/roll_pair/roll_pair_master_bootstrap.sh		<--roll_pair_master_bootstrap.sh文件路径-->
-eggroll.resourcemanager.bootstrap.roll_pair_master.javahome=	<--java环境变量，系统安装jdk1.8-->
-eggroll.resourcemanager.bootstrap.roll_pair_master.classpath=conf/:lib/*	<--eggroll启动时读取classpath文件路径-->
-eggroll.resourcemanager.bootstrap.roll_pair_master.mainclass=com.webank.eggroll.rollpair.RollPairMasterBootstrap	<--roll_pair_master主类-->
-eggroll.resourcemanager.bootstrap.roll_pair_master.jvm.options=	<--jvm启动参数-->
+eggroll.resourcemanager.bootstrap.egg_frame.exepath=bin/roll_frame/egg_frame_bootstrap.sh		<--egg_frame_bootstrap.sh文件路径-->
+eggroll.resourcemanager.bootstrap.egg_frame.javahome=	<--java环境变量，系统安装jdk1.8-->
+eggroll.resourcemanager.bootstrap.egg_frame.classpath=conf/:lib/*	<--eggroll启动时读取classpath文件路径-->
+eggroll.resourcemanager.bootstrap.egg_frame.mainclass=com.webank.eggroll.rollframe.EggFrameBootstrap	<--roll_frame主类-->
+eggroll.resourcemanager.bootstrap.egg_frame.jvm.options=	<--jvm启动参数-->
 <--以上几项默认即可-->
+
+# roll_frame
+arrow.enable_unsafe_memory_access=true
+
+# hadoop
+hadoop.fs.defaultFS=file:///
+
+# hadoop HA mode
+hadoop.dfs.nameservices=
+hadoop.dfs.namenode.rpc-address.nn1=
+hadoop.dfs.namenode.rpc-address.nn2=
 
 <--rollsite配置说明：其服务ip、端口与partyId需要与route_table.json配置文件中对应一致-->
 eggroll.rollsite.coordinator=webank			<--rollsite服务标签，默认即可-->
@@ -118,7 +123,12 @@ eggroll.rollsite.host=127.0.0.1				<--rollsite服务ip，需要修改-->
 eggroll.rollsite.port=9370					<--rollsite服务端口，建议默认-->
 eggroll.rollsite.party.id=10001				<--集群partyId，不同集群需要使用不同的partyId，需要修改-->
 eggroll.rollsite.route.table.path=conf/route_table.json	<--route_table.json路由配置文件路径，默认即可-->
+eggroll.rollsite.jvm.options=			<--rollsite jvm启动参数添加，默认即可，有需要可自行添加-->
 
+eggroll.session.processors.per.node=4		<--单节点启动egg pair个数，小于或等于cpu核数，建议16-->
+eggroll.session.start.timeout.ms=180000		<--session超时设定ms数，默认即可-->
+eggroll.rollsite.adapter.sendbuf.size=1048576	<--rollsite传输块大小，默认即可-->
+eggroll.rollpair.transferpair.sendbuf.size=4150000		<--rollpair传输块大小，默认即可-->
 ```
 
 - **修改route_table.json路由信息**
@@ -157,39 +167,48 @@ vi conf/route_table.json
 }
 ```
 
-- **修改数据库初始化sql脚本**
 
-```shell
-<--修改说明：此文件为初始化mysql数据库建表及建库使用的sql脚本，若使用默认数据库名为eggroll_meta则跳过此步骤，若实际需要使用其他库名，可使用以下语句替换为实际的数据库名称，此处数据库名称应与eggroll.properties中所填数据库名称一致-->
-
-sed -i "s/eggroll_meta/数据库名称/" conf/create-eggroll-meta-tables.sql
-```
 
 ### 3.3.  多节点部署
 
-按上述说明修改完配置文件后，若集群内需多节点部署，由于各节点的配置文件完全相同，将其打包发送到集群各个节点的Eggroll安装目录下即可。
+按上述说明修改完配置文件后，若集群内需多节点部署，可使用部署脚本进行打包部署：
+
+- 修改部署配置文件deploy/conf.sh
+
+```shell
+vi deploy/conf.sh
+
+export EGGROLL_HOME=/data/projects/eggroll		<--部署到目标服务器的eggroll路径，修改为EGGROLL要部署的绝对路径-->
+export MYSQL_HOME=/data/projects/mysql		<--mysql服务器上的mysql安装路径，直到mysql目录-->
+iplist=(127.0.0.xxx 127.0.0.xxx)		<--本集群内所以节点的ip列表-->
+```
+
+- 执行部署脚本deploy/deploy.sh
+
+```shell
+cd deploy
+sh deploy.sh
+```
 
 
 
 ## 4.    添加元信息
 
-集群多节点之间的服务之间是通过查询数据库存储的元信息来感知的，因此需要登录数据库服务器对数据库初始化并插入节点信息，在数据库中执行以下sql步骤：
+集群多节点之间的服务之间是通过查询数据库存储的元信息来感知的，因此执行上述步骤需要登录数据库服务器对数据库进行检查节点信息，查询server_node表检查数据是否准确：
 
 ```sql
 登录数据库执行：
-
-<--此处注意使用create-eggroll-meta-tables.sql文件的绝对路径-->
->>source Eggroll安装目录/conf/create-eggroll-meta-tables.sql;
-
-<--将集群内所有节点clustermanager和nodemanager服务信息插入server_node表中-->
->>INSERT INTO server_node (host, port, node_type, status) values ('clustermanager服务ip', 'clustermanager服务端口', 'CLUSTER_MANAGER', 'HEALTHY');
->>INSERT INTO server_node (host, port, node_type, status) values ('nodemanager服务ip', 'nodemanager服务port', 'NODE_MANAGER', 'HEALTHY');
-```
-
-执行完成执行查询server_node表检查数据是否准确：
-
-```sql
->>select * from server_node;
+>>use 数据库名称					<--切换到部署的数据库-->
+>>show tables;					<--检查是否有以下7个表-->
+    | server_node                       |
+    | session_main                      |
+    | session_option                    |
+    | session_processor                 |
+    | store_locator                     |
+    | store_option                      |
+    | store_partition                   |
+    
+>>select * from server_node;	<--检查是否包含所有节点及角色元信息-->
 >>exit
 ```
 
@@ -204,7 +223,7 @@ source ${EGGROLL_HOME}/init.sh       --${EGGROLL_HOME} means the absolute path o
 sh bin/eggroll.sh $1 $2		
 <--
 	$1：需要执行操作的服务名称，例如clustermanager，nodemanager，rollsite，all(表示所有服务)；
-	$2：需要执行的操作，例如start(启动)，status（查看状态），stop（关闭），restart（重启）
+	$2：需要执行的操作，例如start(启动)，starting(阻塞启动)，status（查看状态），stop（关闭），kill(杀掉服务,stop失效时使用)，restart（重启），restarting（阻塞重启）
 -->
 ```
 
@@ -215,14 +234,23 @@ source ${EGGROLL_HOME}/init.sh       --${EGGROLL_HOME} means the absolute path o
 <--启动所有服务-->
 sh bin/eggroll.sh all start
 
+<--阻塞启动clustermanager服务-->
+sh bin/eggroll.sh clustermanager starting
+
 <--查看clustermanager服务状态-->
 sh bin/eggroll.sh clustermanager status
 
 <--重启rollsite服务-->
 sh bin/eggroll.sh rollsite restart
 
+<--阻塞重启rollsite服务-->
+sh bin/eggroll.sh rollsite restarting
+
 <--关闭nodemanager服务-->
 sh bin/eggroll.sh nodemanager stop
+
+<--杀掉nodemanager服务，当stop不成功时使用-->
+sh bin/eggroll.sh nodemanager kill
 ```
 
 将各节点对应的服务启动成功后，部署完成，进入测试步骤。

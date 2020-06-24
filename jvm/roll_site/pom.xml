@@ -109,12 +109,6 @@
             <artifactId>commons-text</artifactId>
             <version>1.4</version>
         </dependency>
-	
-        <dependency>
-            <groupId>org.rocksdb</groupId>
-            <artifactId>rocksdbjni</artifactId>
-            <version>6.2.2</version>
-        </dependency>
 
         <dependency>
             <groupId>org.json</groupId>
