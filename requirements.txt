@@ -1,8 +1,8 @@
 cachetools>=3.0.0
 cloudpickle==0.6.1
 gmpy2==2.0.8
-grpcio>=1.29.0
-grpcio-tools>=1.29.0
+grpcio>=1.30.0
+grpcio-tools>=1.30.0
 lmdb==0.98
 numba==0.40.1
 numpy>=1.17.0
