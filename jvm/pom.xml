@@ -201,7 +201,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <properties>
-    <eggroll.version>2.1.0</eggroll.version>
+    <eggroll.version>2.1.1</eggroll.version>
 
     <!-- Languages -->
     <code.cache.size>512m</code.cache.size>
@@ -219,7 +219,7 @@
     <commons-io.version>2.6</commons-io.version>
     <commons-lang3.version>3.8.1</commons-lang3.version>
     <guava.version>28.0-jre</guava.version>
-    <grpc.version>1.22.2</grpc.version>
+    <grpc.version>1.29.0</grpc.version>
     <javax.annotation-api.version>1.3.2</javax.annotation-api.version>
     <junit4.version>4.12</junit4.version>
     <junit.jupiter.version>5.5.1</junit.jupiter.version>

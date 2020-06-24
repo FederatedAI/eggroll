@@ -57,7 +57,7 @@ class TestRollSiteBase(unittest.TestCase):
     rs_context_get = None
     rs_context_remote = None
 
-    self_party_id = None
+    self_party_id = 10002
 
     _obj_rs_name = "RsaIntersectTransferVariable.rsa_pubkey"
     _obj_rs_tag = "testing_rs_obj"
@@ -76,39 +76,37 @@ class TestRollSiteBase(unittest.TestCase):
     _rp_rs_name_big_mp = "roll_pair_name.table.big.mp"
     _rp_rs_tag_big_mp = "roll_pair_tag.big.mp"
 
-    def __init__(self, methodName='runTest', src_party_id=10002, dst_party_id=10001):
+    def __init__(self, methodName='runTest', src_party_id=None, dst_party_id=None):
         super(TestRollSiteBase, self).__init__(methodName)
-        TestRollSiteBase.src_party_id = src_party_id
-        TestRollSiteBase.dst_party_id = dst_party_id
-        self.src_party_id = src_party_id
-        self.dst_party_id = dst_party_id
+        self.remote_parties = [("dst", 10001)]
+        self.get_parties = [("src", 10002)]
 
     @classmethod
     def setUpClass(cls) -> None:
         cls.rs_context_get = get_debug_test_context(role='dst',
                                                     props_file=props_file_get)
         cls.rs_context_remote = get_debug_test_context(manager_port=4671,
-                                                      egg_port=20003,
-                                                      transfer_port=20004,
-                                                      session_id='testing_guest',
-                                                      role='src',
-                                                      props_file=props_file_remote)
+                                                       egg_port=20003,
+                                                       transfer_port=20004,
+                                                       session_id='testing_guest',
+                                                       role='src',
+                                                       props_file=props_file_remote)
 
     def test_init(self):
         print(1)
 
     def test_remote(self):
         rs = self.rs_context_remote.load(name=self._obj_rs_name, tag=self._obj_rs_tag)
-        remote_parties = [("dst", self.dst_party_id)]
-        futures = rs.push(self._obj, remote_parties)
+
+        futures = rs.push(self._obj, self.remote_parties)
         for future in futures:
             result = future.result()
             print("result:", result)
 
     def test_get(self):
         rs = self.rs_context_get.load(name=self._obj_rs_name, tag=self._obj_rs_tag)
-        get_parties = [("src", self.src_party_id)]
-        futures = rs.pull(get_parties)
+
+        futures = rs.pull(self.get_parties)
         for future in futures:
             obj = future.result()
             if isinstance(obj, RollPair):
@@ -119,16 +117,14 @@ class TestRollSiteBase(unittest.TestCase):
 
     def test_remote_big(self):
         rs = self.rs_context_remote.load(name=self._obj_rs_name_big, tag=self._obj_rs_tag_big)
-        remote_parties = [("dst", self.dst_party_id)]
-        futures = rs.push(self._obj_big, remote_parties)
+        futures = rs.push(self._obj_big, self.remote_parties)
         for future in futures:
             result = future.result()
             print("result:", result)
 
     def test_get_big(self):
         rs = self.rs_context_get.load(name=self._obj_rs_name_big, tag=self._obj_rs_tag_big)
-        get_parties = [("src", self.src_party_id)]
-        futures = rs.pull(get_parties)
+        futures = rs.pull(self.get_parties)
         for future in futures:
             obj = future.result()
             if isinstance(obj, RollPair):
@@ -143,16 +139,14 @@ class TestRollSiteBase(unittest.TestCase):
         rp = rp_context.load("namespace", "name").put_all(data, options=rp_options)
 
         rs = self.rs_context_remote.load(name=self._rp_rs_name, tag=self._rp_rs_tag)
-        remote_parties = [("dst", self.dst_party_id)]
-        futures = rs.push(rp, remote_parties)
+        futures = rs.push(rp, self.remote_parties)
         for future in futures:
             result = future.result()
             print("result: ", result)
 
     def test_get_rollpair(self):
         rs = self.rs_context_get.load(name=self._rp_rs_name, tag=self._rp_rs_tag)
-        get_parties = [("src", self.src_party_id)]
-        futures = rs.pull(get_parties)
+        futures = rs.pull(self.get_parties)
         for future in futures:
             obj = future.result()
             if isinstance(obj, RollPair):
@@ -167,21 +161,18 @@ class TestRollSiteBase(unittest.TestCase):
         rp_options = {'include_key': True}
         rp_context = self.rs_context_remote.rp_ctx
         rp = rp_context.load("namespace", self._rp_rs_name_big)
-        rp.put_all(data_generator(row_limit), options=rp_options)
+        #rp.put_all(data_generator(row_limit), options=rp_options)
         print(f"count: {rp.count()}")
 
         rs = self.rs_context_remote.load(name=self._rp_rs_name_big, tag=self._rp_rs_tag_big)
-
-        remote_parties = [("dst", self.dst_party_id)]
-        futures = rs.push(rp, remote_parties)
+        futures = rs.push(rp, self.remote_parties)
         for future in futures:
             result = future.result()
             print("result: ", result)
 
     def test_get_rollpair_big(self):
         rs = self.rs_context_get.load(name=self._rp_rs_name_big, tag=self._rp_rs_tag_big)
-        get_parties = [("src", self.src_party_id)]
-        futures = rs.pull(get_parties)
+        futures = rs.pull(self.get_parties)
         for future in futures:
             obj = future.result()
             if isinstance(obj, RollPair):
@@ -203,8 +194,7 @@ class TestRollSiteBase(unittest.TestCase):
             print(list(rp.get_all()))
 
         rs = self.rs_context_remote.load(name=self._rp_rs_name_big_mp, tag=self._rp_rs_tag_big_mp)
-        remote_parties = [("dst", self.dst_party_id)]
-        futures = rs.push(rp, remote_parties)
+        futures = rs.push(rp, self.remote_parties)
         for future in futures:
             result = future.result()
             print("result: ", result)
@@ -212,8 +202,8 @@ class TestRollSiteBase(unittest.TestCase):
     def test_get_rollpair_big_multi_partitions(self):
         #rp_options = {'include_key': True, 'total_partitions': 3}
         rs = self.rs_context_get.load(name=self._rp_rs_name_big_mp, tag=self._rp_rs_tag_big_mp)
-        get_parties = [("src", self.src_party_id)]
-        futures = rs.pull(get_parties)
+
+        futures = rs.pull(self.get_parties)
         for future in futures:
             obj = future.result()
             if isinstance(obj, RollPair):
@@ -259,11 +249,11 @@ class TestRollSiteDebugRemote(TestRollSiteBase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.rs_context_remote = get_debug_test_context(manager_port=4671,
-                                                      egg_port=20003,
-                                                      transfer_port=20004,
-                                                      session_id='testing_guest',
-                                                      role='guest',
-                                                      props_file=props_file_remote)
+                                                       egg_port=20003,
+                                                       transfer_port=20004,
+                                                       session_id='testing_guest',
+                                                       role='guest',
+                                                       props_file=props_file_remote)
 
     def test_remote_rollpair_big_multi_partitions(self):
         super().test_remote_rollpair_big_multi_partitions()
@@ -273,16 +263,19 @@ class TestRollSiteDebugGet(TestRollSiteBase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.rs_context_get = get_debug_test_context(role='host',
-                                                     props_file=props_file_get)
+                                                    props_file=props_file_get)
 
     def test_get_rollpair_big_multi_partitions(self):
         super().test_get_rollpair_big_multi_partitions()
 
 
 class TestRollSiteStandaloneRemote(TestRollSiteBase):
+    def __init__(self, methodName='TestRollSiteStandaloneRemote', src_party_id=10002, dst_party_id=10001):
+        super().__init__(methodName, src_party_id, dst_party_id)
+
     @classmethod
     def setUpClass(cls) -> None:
-        cls.rs_context_remote = get_standalone_context(role='src', self_party_id=cls.src_party_id, props_file=props_file_remote)
+        cls.rs_context_remote = get_standalone_context(role='src', self_party_id=cls.self_party_id, props_file=props_file_remote)
 
     def test_remote(self):
         super().test_remote()
@@ -319,9 +312,12 @@ class TestRollSiteStandaloneRemote(TestRollSiteBase):
 
 
 class TestRollSiteStandaloneGet(TestRollSiteBase):
+    def __init__(self, methodName='TestRollSiteStandaloneGet', src_party_id=10001, dst_party_id=10002):
+        super().__init__(methodName, src_party_id, dst_party_id)
+
     @classmethod
     def setUpClass(cls) -> None:
-        cls.rs_context_get = get_standalone_context(role='dst', self_party_id=cls.dst_party_id, props_file=props_file_get)
+        cls.rs_context_get = get_standalone_context(role='dst', self_party_id=cls.self_party_id, props_file=props_file_get)
 
     def test_get(self):
         super().test_get()
@@ -367,7 +363,7 @@ class TestRollSiteCluster(TestRollSiteBase):
 
     def test_remote(self):
         super().test_remote()
-    
+
     def test_get(self):
         super().test_get()
 
@@ -385,10 +381,13 @@ class TestRollSiteCluster(TestRollSiteBase):
 
 
 class TestRollSiteClusterRemote(TestRollSiteBase):
+    def __init__(self, methodName='TestRollSiteClusterRemote', src_party_id=10002, dst_party_id=10001):
+        super().__init__(methodName, src_party_id, dst_party_id)
+
     @classmethod
     def setUpClass(cls) -> None:
         opts = {"eggroll.session.processors.per.node": "3"}
-        cls.rs_context_remote = get_cluster_context(role='src', options=opts, props_file=props_file_remote, party_id=cls.src_party_id)
+        cls.rs_context_remote = get_cluster_context(role='src', options=opts, props_file=props_file_remote, party_id=cls.self_party_id)
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -428,10 +427,13 @@ class TestRollSiteClusterRemote(TestRollSiteBase):
         pass
 
 class TestRollSiteClusterGet(TestRollSiteBase):
+    def __init__(self, methodName='TestRollSiteClusterGet', src_party_id=10001, dst_party_id=10002):
+        super().__init__(methodName, src_party_id, dst_party_id)
+
     @classmethod
     def setUpClass(cls) -> None:
         opts = {"eggroll.session.processors.per.node": "3"}
-        cls.rs_context_get = get_cluster_context(role='dst', options=opts, props_file=props_file_get, party_id=cls.dst_party_id)
+        cls.rs_context_get = get_cluster_context(role='dst', options=opts, props_file=props_file_get, party_id=cls.self_party_id)
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -469,8 +471,8 @@ class TestRollSiteClusterGet(TestRollSiteBase):
 
 
 def option():
-    """examples:\n\tremote obj from 10002 to 10001:\n\t\tpython test_roll_site.py -c TestRollSiteClusterRemote -f test_remote -s 10002 -d 10001
-    get obj from 10001:\n\t\tpython test_roll_site.py -c TestRollSiteClusterGet -f test_get -s 10002 -d 10001
+    """examples:\n\tremote obj to dst party:\n\t\tpython test_roll_site.py -c TestRollSiteClusterRemote -f test_remote -s 10002 -d 10001
+    get from dst party:\n\t\tpython test_roll_site.py -c TestRollSiteClusterGet -f test_get -s 10001 -d 10002
     """
     print(option.__doc__)
 

@@ -128,6 +128,8 @@ object GrpcClientUtils extends Logging {
     .weakValues()
     .removalListener((notification: RemovalNotification[ErEndpoint, ManagedChannel]) => {
       val endpoint = notification.getKey
+      val managedChannel = notification.getValue
+      if (managedChannel != null) if (!managedChannel.isShutdown || !managedChannel.isTerminated) managedChannel.shutdown
 
       logInfo(s"[CHANNEL][REMOVAL] removing for endpoint: ${endpoint}. reason: ${notification.getCause.name()}")
     })
