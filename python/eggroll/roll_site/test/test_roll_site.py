@@ -80,8 +80,8 @@ class TestRollSiteBase(unittest.TestCase):
         super(TestRollSiteBase, self).__init__(methodName)
         TestRollSiteBase.src_party_id = src_party_id
         TestRollSiteBase.dst_party_id = dst_party_id
-        self.src_party_id = src_party_id
-        self.dst_party_id = dst_party_id
+        self.src_party_id = [("src", src_party_id)]
+        self.remote_parties = [("dst", dst_party_id)]
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -99,16 +99,14 @@ class TestRollSiteBase(unittest.TestCase):
 
     def test_remote(self):
         rs = self.rs_context_remote.load(name=self._obj_rs_name, tag=self._obj_rs_tag)
-        remote_parties = [("dst", self.dst_party_id)]
-        futures = rs.push(self._obj, remote_parties)
+        futures = rs.push(self._obj, self.remote_parties)
         for future in futures:
             result = future.result()
             print("result:", result)
 
     def test_get(self):
         rs = self.rs_context_get.load(name=self._obj_rs_name, tag=self._obj_rs_tag)
-        get_parties = [("src", self.src_party_id)]
-        futures = rs.pull(get_parties)
+        futures = rs.pull(self.get_parties)
         for future in futures:
             obj = future.result()
             if isinstance(obj, RollPair):
@@ -119,16 +117,14 @@ class TestRollSiteBase(unittest.TestCase):
 
     def test_remote_big(self):
         rs = self.rs_context_remote.load(name=self._obj_rs_name_big, tag=self._obj_rs_tag_big)
-        remote_parties = [("dst", self.dst_party_id)]
-        futures = rs.push(self._obj_big, remote_parties)
+        futures = rs.push(self._obj_big, self.remote_parties)
         for future in futures:
             result = future.result()
             print("result:", result)
 
     def test_get_big(self):
         rs = self.rs_context_get.load(name=self._obj_rs_name_big, tag=self._obj_rs_tag_big)
-        get_parties = [("src", self.src_party_id)]
-        futures = rs.pull(get_parties)
+        futures = rs.pull(self.get_parties)
         for future in futures:
             obj = future.result()
             if isinstance(obj, RollPair):
@@ -143,16 +139,14 @@ class TestRollSiteBase(unittest.TestCase):
         rp = rp_context.load("namespace", "name").put_all(data, options=rp_options)
 
         rs = self.rs_context_remote.load(name=self._rp_rs_name, tag=self._rp_rs_tag)
-        remote_parties = [("dst", self.dst_party_id)]
-        futures = rs.push(rp, remote_parties)
+        futures = rs.push(rp, self.remote_parties)
         for future in futures:
             result = future.result()
             print("result: ", result)
 
     def test_get_rollpair(self):
         rs = self.rs_context_get.load(name=self._rp_rs_name, tag=self._rp_rs_tag)
-        get_parties = [("src", self.src_party_id)]
-        futures = rs.pull(get_parties)
+        futures = rs.pull(self.get_parties)
         for future in futures:
             obj = future.result()
             if isinstance(obj, RollPair):
@@ -172,16 +166,14 @@ class TestRollSiteBase(unittest.TestCase):
 
         rs = self.rs_context_remote.load(name=self._rp_rs_name_big, tag=self._rp_rs_tag_big)
 
-        remote_parties = [("dst", self.dst_party_id)]
-        futures = rs.push(rp, remote_parties)
+        futures = rs.push(rp, self.remote_parties)
         for future in futures:
             result = future.result()
             print("result: ", result)
 
     def test_get_rollpair_big(self):
         rs = self.rs_context_get.load(name=self._rp_rs_name_big, tag=self._rp_rs_tag_big)
-        get_parties = [("src", self.src_party_id)]
-        futures = rs.pull(get_parties)
+        futures = rs.pull(self.get_parties)
         for future in futures:
             obj = future.result()
             if isinstance(obj, RollPair):
@@ -203,8 +195,7 @@ class TestRollSiteBase(unittest.TestCase):
             print(list(rp.get_all()))
 
         rs = self.rs_context_remote.load(name=self._rp_rs_name_big_mp, tag=self._rp_rs_tag_big_mp)
-        remote_parties = [("dst", self.dst_party_id)]
-        futures = rs.push(rp, remote_parties)
+        futures = rs.push(rp, self.remote_parties)
         for future in futures:
             result = future.result()
             print("result: ", result)
@@ -212,8 +203,7 @@ class TestRollSiteBase(unittest.TestCase):
     def test_get_rollpair_big_multi_partitions(self):
         #rp_options = {'include_key': True, 'total_partitions': 3}
         rs = self.rs_context_get.load(name=self._rp_rs_name_big_mp, tag=self._rp_rs_tag_big_mp)
-        get_parties = [("src", self.src_party_id)]
-        futures = rs.pull(get_parties)
+        futures = rs.pull(self.get_parties)
         for future in futures:
             obj = future.result()
             if isinstance(obj, RollPair):
