@@ -54,14 +54,12 @@ trait Logging {
         var logConf = logContext.getConfiguration
 
         if (logConf.getAppenders.size() <= 1) {
-          var eggrollHome = System.getenv("EGGROLL_HOME")
-          if (StringUtils.isBlank(eggrollHome))
-            eggrollHome = "."
-//            throw new IllegalStateException("EGGROLL_HOME is not set")
+          val eggrollHome = System.getenv("EGGROLL_HOME")
+          if (StringUtils.isBlank(eggrollHome)) throw new IllegalStateException("EGGROLL_HOME is not set")
 
           defaultLogProperties = new File(s"${eggrollHome}/conf/log4j2.properties")
           if (!Files.exists(defaultLogProperties.toPath)) {
-//            throw new IllegalStateException(s"log properties not found and default log path ${defaultLogProperties.getAbsolutePath} not found")
+            throw new IllegalStateException(s"log properties not found and default log path ${defaultLogProperties.getAbsolutePath} not found")
           }
 
           Configurator.initialize(null, defaultLogProperties.getAbsolutePath)
