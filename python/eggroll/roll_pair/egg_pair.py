@@ -166,9 +166,10 @@ class EggPair(object):
 
             def generate_broker():
                 with create_adapter(task._inputs[0]) as db, db.iteritems() as rb:
-                    yield from TransferPair.pair_to_bin_batch(rb)
-                    # TODO:0 how to remove?
-                    # TransferService.remove_broker(tag)
+                    try:
+                        yield from TransferPair.pair_to_bin_batch(rb)
+                    finally:
+                        TransferService.remove_broker(tag)
             TransferService.set_broker(tag, generate_broker())
         elif task._name == 'count':
             with create_adapter(task._inputs[0]) as input_adapter:
