@@ -199,8 +199,16 @@ sh deploy.sh
 ```sql
 登录数据库执行：
 >>use 数据库名称					<--切换到部署的数据库-->
->>show tables;					<--检查是否有5个表-->
->>select * from server_node;	<--检查元信息是否包含所以节点及角色-->
+>>show tables;					<--检查是否有以下7个表-->
+    | server_node                       |
+    | session_main                      |
+    | session_option                    |
+    | session_processor                 |
+    | store_locator                     |
+    | store_option                      |
+    | store_partition                   |
+    
+>>select * from server_node;	<--检查是否包含所有节点及角色元信息-->
 >>exit
 ```
 
