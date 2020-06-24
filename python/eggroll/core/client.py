@@ -80,7 +80,7 @@ class CommandClient(object):
             else:
                 return []
         except Exception as e:
-            L.error(f'Error calling to {endpoint}, command_uri: {command_uri}, req:{request}', exc_info=e)
+            L.exception(f'Error calling to {endpoint}, command_uri: {command_uri}, req:{request}', exc_info=e)
             raise CommandCallError(command_uri, endpoint, e)
 
     def async_call(self, args, output_types: list, command_uri: CommandURI, serdes_type=SerdesTypes.PROTOBUF, callback=None):

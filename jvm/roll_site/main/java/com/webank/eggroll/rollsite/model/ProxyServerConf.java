@@ -28,6 +28,9 @@ public class ProxyServerConf {
     private String ip;
     private int port;
     private int securePort;
+    private long pushRetryCount;
+    private long unaryCallRetryCount;
+    private long pullTimeout;
     private String partyId;
     private String role;
 

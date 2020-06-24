@@ -275,6 +275,10 @@ public class JobStatus {
     public static boolean isPutBatchFinished(String jobId) {
         long requiredCount = getPutBatchRequiredCount(jobId);
         long finishedCount = getPutBatchFinishedCount(jobId);
+        if (finishedCount > requiredCount) {
+            throw new IllegalStateException("Illegal finishedCount: finishedCount is more than requiredCount");
+        }
+
         return requiredCount == finishedCount && requiredCount > 0;
     }
 

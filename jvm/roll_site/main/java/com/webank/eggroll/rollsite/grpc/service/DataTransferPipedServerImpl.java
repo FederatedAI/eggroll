@@ -21,6 +21,7 @@ import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.webank.ai.eggroll.api.networking.proxy.DataTransferServiceGrpc;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
+import com.webank.eggroll.core.constant.RollSiteConfKeys;
 import com.webank.eggroll.core.constant.StringConstants;
 import com.webank.eggroll.core.meta.ErRollSiteHeader;
 import com.webank.eggroll.core.meta.TransferModelPbMessageSerdes;
@@ -103,13 +104,6 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
         Pipe pipe = new PacketQueueSingleResultPipe();
 
         LOGGER.info("[PULL][SERVER] pull pipe: {}", pipe);
-
-        /*
-        PipeHandleNotificationEvent event =
-                eventFactory.createPipeHandleNotificationEvent(
-                        this, PipeHandleNotificationEvent.Type.PULL, inputMetadata, pipe);
-        applicationEventPublisher.publishEvent(event);
-        */
 
         long startTimestamp = System.currentTimeMillis();
         long lastPacketTimestamp = startTimestamp;
@@ -207,14 +201,20 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
         boolean hasReturnedBefore = false;
         int emptyRetryCount = 0;
 
+        //long completionWaitTimeout = Timeouts.DEFAULT_COMPLETION_WAIT_TIMEOUT;
+        long overallTimeout = Timeouts.DEFAULT_OVERALL_TIMEOUT;
+        long packetIntervalTimeout = Timeouts.DEFAULT_PACKET_INTERVAL_TIMEOUT;
+
         Proxy.Metadata header = request.getHeader();
         String oneLineStringInputMetadata = ToStringUtils.toOneLineString(header);
         LOGGER.info("[UNARYCALL][SERVER] server unary request received. src: {}, dst: {}",
                 ToStringUtils.toOneLineString(header.getSrc()),
                 ToStringUtils.toOneLineString(header.getDst()));
 
-        long overallTimeout = timeouts.getOverallTimeout(header);
-        long packetIntervalTimeout = timeouts.getPacketIntervalTimeout(header);
+        if (header.hasConf()) {
+            overallTimeout = timeouts.getOverallTimeout(header);
+            packetIntervalTimeout = timeouts.getPacketIntervalTimeout(header);
+        }
 
         LOGGER.info("taskId:{}", header.getTask().getTaskId());
 
@@ -392,9 +392,10 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
             long startTimestamp = System.currentTimeMillis();
             long lastPacketTimestamp = startTimestamp;
             long loopEndTimestamp = System.currentTimeMillis();
+            long maxRetryCount = Long.parseLong(RollSiteConfKeys.EGGROLL_ROLLSITE_UNARYCALL_MAX_RETRY().get());
             while ((!hasReturnedBefore || !pipe.isDrained())
                 && !pipe.hasError()
-                && emptyRetryCount < 30_000
+                && emptyRetryCount < maxRetryCount
                 && !timeouts.isTimeout(overallTimeout, startTimestamp, loopEndTimestamp)) {
                 packet = (Proxy.Packet) pipe.read(1, TimeUnit.SECONDS);
 //            packet = request;

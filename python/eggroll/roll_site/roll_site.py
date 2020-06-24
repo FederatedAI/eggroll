@@ -55,7 +55,6 @@ class RollSiteContext:
         self.party_id = str(options["self_party_id"])
         self.proxy_endpoint = options["proxy_endpoint"]
         # TODO:0 deploy mode should be the same as the fate flow
-        #self.is_standalone = options["deploy_mode"] == "standalone"
         self.is_standalone = RollSiteConfKeys.EGGROLL_ROLLSITE_DEPLOY_MODE.get_with(options) == "standalone"
         if self.is_standalone:
             self.stub = None
@@ -104,11 +103,6 @@ class RollSiteContext:
             topic_dst = proxy_pb2.Topic(name="init_job_session_pair", partyId=self.party_id,
                                         role=self.role, callback=None)
             command_test = proxy_pb2.Command(name="init_job_session_pair")
-            conf_test = proxy_pb2.Conf(overallTimeout=1000,
-                                       completionWaitTimeout=1000,
-                                       packetIntervalTimeout=1000,
-                                       maxRetries=10)
-
             metadata = proxy_pb2.Metadata(task=task_info,
                                           src=topic_src,
                                           dst=topic_dst,
@@ -168,6 +162,7 @@ class RollSite:
 
     def _thread_receive(self, packet, namespace, roll_site_header: ErRollSiteHeader):
         try:
+            max_retry_cnt = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PULL_CLIENT_MAX_RETRY.get())
             table_name = create_store_name(roll_site_header)
             if self._is_standalone:
                 status_rp = self.ctx.rp_ctx.load(namespace, STATUS_TABLE_NAME + DELIM + self.ctx.roll_site_session_id)
@@ -188,6 +183,8 @@ class RollSite:
                         obj_type = ret_list[0]
                         break
                     time.sleep(min(0.1 * retry_cnt, 30))
+                    if retry_cnt > max_retry_cnt:
+                        raise IOError("receive timeout")
             else:
                 retry_cnt = 0
                 ret_packet = self.stub.unaryCall(packet)
@@ -203,6 +200,9 @@ class RollSite:
                         raise IOError("receive terminated")
                     ret_packet = self.stub.unaryCall(packet)
                     time.sleep(min(0.1 * retry_cnt, 30))
+                    if retry_cnt > max_retry_cnt:
+                        raise IOError("receive timeout")
+
                 obj_type = ret_packet.body.value
 
                 table_namespace = self.roll_site_session_id
@@ -227,11 +227,6 @@ class RollSite:
                     topic_dst = proxy_pb2.Topic(name=table_name, partyId=self.party_id,
                                                 role=self.local_role, callback=None)
                     command_test = proxy_pb2.Command(name="pull_obj")
-                    conf_test = proxy_pb2.Conf(overallTimeout=1000,
-                                               completionWaitTimeout=1000,
-                                               packetIntervalTimeout=1000,
-                                               maxRetries=10)
-
                     metadata = proxy_pb2.Metadata(task=task_info,
                                                   src=topic_src,
                                                   dst=topic_dst,
@@ -242,7 +237,6 @@ class RollSite:
                     packet = proxy_pb2.Packet(header=metadata)
 
                     ret = self.stub.unaryCall(packet)
-                    #result = ret.body.value
                     result = pickle.loads(ret.body.value)
             else:
                 rp = self.ctx.rp_ctx.load(namespace=table_namespace, name=table_name)
@@ -260,7 +254,7 @@ class RollSite:
             P.info(f'{{"metric_type": "func_profile", "qualname": "RollSite.pull", "cpu_time": {end_cpu_time - self._pull_start_cpu_time}, "wall_time": {end_wall_time - self._pull_start_wall_time}}}')
 
     def send_packet(self, packet):
-        max_retry_cnt = 100
+        max_retry_cnt = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PUSH_CLIENT_MAX_RETRY.get())
         exception = None
         ret_packet = None
         for i in range(max_retry_cnt):
@@ -321,10 +315,6 @@ class RollSite:
                 topic_dst = proxy_pb2.Topic(name=_tagged_key, partyId=_party_id,
                                             role=_role, callback=None)
                 command_test = proxy_pb2.Command(name="push_obj")
-                conf = proxy_pb2.Conf(overallTimeout=3000,
-                                           completionWaitTimeout=3000,
-                                           packetIntervalTimeout=3000,
-                                           maxRetries=10)
 
                 metadata = proxy_pb2.Metadata(task=task_info,
                                               src=topic_src,
@@ -332,8 +322,7 @@ class RollSite:
                                               command=command_test,
                                               operator="push_obj",
                                               seq=0,
-                                              ack=0,
-                                              conf=conf)
+                                              ack=0)
 
                 data = proxy_pb2.Data(key=_tagged_key, value=pickle.dumps(obj))
                 packet = proxy_pb2.Packet(header=metadata, body=data)
@@ -438,10 +427,6 @@ class RollSite:
             topic_dst = proxy_pb2.Topic(name="get_status", partyId=self.party_id,
                                         role=self.local_role, callback=None)
             get_status_command = proxy_pb2.Command(name="get_status")
-            conf_test = proxy_pb2.Conf(overallTimeout=1000,
-                                       completionWaitTimeout=1000,
-                                       packetIntervalTimeout=1000,
-                                       maxRetries=10)
 
             metadata = proxy_pb2.Metadata(task=task_info,
                                           src=topic_src,
