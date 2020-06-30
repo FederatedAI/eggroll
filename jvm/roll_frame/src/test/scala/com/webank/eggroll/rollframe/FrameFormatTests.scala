@@ -759,6 +759,7 @@ class FrameFormatTests extends Logging {
   }
 
   @Test
+  @deprecated
   def testColumnVectors(): Unit = {
     val parts = 3
     val columns = 10
@@ -774,6 +775,7 @@ class FrameFormatTests extends Logging {
   }
 
   @Test
+  @deprecated
   def testFrameBatchToColumnVectors(): Unit = {
     val fieldCount = 1000
     val rowCount = 10000 // total value count = rowCount * fbCount * fieldCount
@@ -802,6 +804,7 @@ class FrameFormatTests extends Logging {
   }
 
   @Test
+  @deprecated
   def testColumnFrame(): Unit = {
     val matrixRows = 10000
     val matrixCols = 100

@@ -138,7 +138,7 @@ class RollFrameTests extends Logging {
     // 1.write to network and continue write to file
     val fieldCount = 1000
     val rowCount = 10000
-    val networkStore = ctx.createStore("test1", "a1", StringConstants.NETWORK, 10)
+    val networkStore = ctx.createStore("test1", "a1", StringConstants.NETWORK, partitions_)
     val fb = new FrameBatch(new FrameSchema(SchemaUtil.getDoubleSchema(fieldCount)), rowCount)
     networkStore.partitions.indices.foreach { i =>
       new Thread() {
@@ -147,6 +147,7 @@ class RollFrameTests extends Logging {
         }
       }.start()
     }
+    Thread.sleep(2000)
     val start = System.currentTimeMillis()
     val cacheStore = ctx.dumpCache(networkStore)
     println(s"run time = ${System.currentTimeMillis() - start}")
@@ -168,6 +169,7 @@ class RollFrameTests extends Logging {
   @Test
   def testPull(): Unit = {
     val cacheStore = ctx.dumpCache(inputStore)
+    cacheStore.partitions.foreach(println)
     val path = FrameStore.getStorePath(cacheStore.partitions(0))
     println(path)
     val fb = ctx.frameTransfer.Roll.pull(path)
@@ -418,9 +420,30 @@ class RollFrameTests extends Logging {
   }
 
   @Test
+  def testCombineDoubleFbs(): Unit ={
+    val input = ctx.dumpCache(inputStore)
+    val output = ctx.combineDoubleFbs(input)
+    TestCase.assertEquals(FrameStore(input,0).readOne().readDouble(0,1),FrameStore(output,0).readOne().readDouble(0,1))
+    TestCase.assertEquals(FrameStore(input,1).readOne().readDouble(10,1),FrameStore(output,0).readOne().readDouble(10,rowCount+1))
+  }
+
+  @Test
+  def testCreateJvmDataStore(): Unit ={
+    val input = ctx.createStore("test1", "a1", StringConstants.CACHE,4)
+    ctx.load(input).mapCommand(_ => {
+      val zeroValue = new FrameBatch(new FrameSchema(SchemaUtil.getDoubleSchema(10)), 1000)
+      zeroValue.initZero()
+      zeroValue
+    })
+    val fb = FrameStore(input,0).readOne()
+    TestCase.assertEquals(fb.fieldCount,10)
+    TestCase.assertEquals(fb.rowCount,1000)
+  }
+
+  @Test
   def testRelease(): Unit = {
     val store1 = ctx.createStore("test1", "a1", StringConstants.CACHE, 3)
-    val store2 = ctx.createStore("test1", "b1", StringConstants.CACHE, 4)
+    val store2 = ctx.createStore("test1", "a11", StringConstants.CACHE, 4)
     store1.partitions.indices.foreach { i =>
       val fb = new FrameBatch(new FrameSchema(SchemaUtil.getDoubleSchema(1000)), 50000)
       fb.initZero()
@@ -458,7 +481,6 @@ class RollFrameTests extends Logging {
     Thread.sleep(2000)
     val stop = 0
   }
-
 
   @Test
   def testParallelAggregateByData(): Unit = {

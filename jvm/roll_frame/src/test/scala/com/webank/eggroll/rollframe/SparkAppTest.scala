@@ -14,7 +14,7 @@ class SparkAppTest extends Serializable {
   protected val ta = TestAssets
   protected val supportTorch = false
   protected var inputStore: ErStore = _
-  protected val partitions_ = 3
+  protected val partitions_ = 8
   protected val spark: SparkSession = SparkSession
     .builder()
     .appName("frame-debug")
@@ -53,15 +53,8 @@ class SparkAppTest extends Serializable {
     // to cache
     println("\n ======= to Cache =======\n")
     val cacheStore = ctx.dumpCache(networkStore)
-    val output = ctx.forkStore(cacheStore,"b1","b")
     val end = System.currentTimeMillis()
     println(s"RddToRollFrame Time: ${end - start} ms")
-    ctx.load(cacheStore).mapBatch({ fb =>
-      TestCase.assertEquals(fb.fieldCount, cols)
-      val zeroValue = new FrameBatch(new FrameSchema(SchemaUtil.getDoubleSchema(1000)), 40000)
-      zeroValue
-    })
-    Thread.sleep(2000)
     ctx.frameTransfer.releaseStore()
     Thread.sleep(3000)
     println("done")
@@ -142,5 +135,43 @@ class SparkAppTest extends Serializable {
       TestCase.assertEquals(fb.fieldCount, cols)
       fb
     })
+  }
+
+  @Test
+  def testRddToRollFrame3(): Unit = {
+    val ctx = ta.getRfContext()
+    val namespace = "test1"
+    val name = "dataframe"
+    val storeType = StringConstants.NETWORK
+//    val numPartitions = df.rdd.getNumPartitions
+    val networkStore = ctx.createStore(namespace, name, storeType, partitions_)
+    val partitionsMata = FrameStore.getPartitionsMeta(networkStore)
+    var start = System.currentTimeMillis()
+    df.rdd.foreachPartition { pData =>
+      val data = pData.toArray
+      val columns = data(0).length
+      val rowCount = data.length
+      val fb = new FrameBatch(new FrameSchema(ta.getSchema(cols)), rowCount)
+      (0 until columns).foreach{f =>
+        (0 until rowCount).foreach{ r =>
+          fb.writeDouble(f,r,data(r).get(f).toString.toDouble)
+        }
+      }
+      val partitionMeta = partitionsMata(TaskContext.getPartitionId())
+      val adapter = FrameStore.network(partitionMeta("path"), partitionMeta("host"), partitionMeta("port"))
+      adapter.append(fb)
+      adapter.close()
+    }
+    // to cache
+    println("\n ======= to Cache =======\n")
+    val cacheStore = ctx.dumpCache(networkStore)
+    println(s"RddToRollFrame Time: ${System.currentTimeMillis() - start} ms")
+    start = System.currentTimeMillis()
+    println(FrameStore.getStorePath(cacheStore.partitions(0)))
+    val combineStore = ctx.combineDoubleFbs(cacheStore)
+    println(s"combine Time: ${System.currentTimeMillis() - start} ms")
+    ctx.frameTransfer.releaseStore()
+    Thread.sleep(3000)
+    println("done")
   }
 }

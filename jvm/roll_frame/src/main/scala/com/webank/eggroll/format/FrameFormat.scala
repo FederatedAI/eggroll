@@ -63,6 +63,7 @@ class ColumnFrame(val fb: FrameBatch, val matrixCols: Int) {
  * @param virtualRowStart begin index of virtual Row
  * @param virtualRowCount virtual rows count
  */
+
 class FrameBatch(val rootSchema: FrameSchema,
                  allocateNewRows: Int = -1,
                  virtualRowStart: Int = 0,
@@ -671,5 +672,10 @@ object FrameUtils {
       res(i) = fv.readDouble(i)
     }
     res
+  }
+
+  val mockEmptyBatch:FrameBatch = {
+    val schema = """{"fields": [{"name":"double0", "type": {"name" : "floatingpoint","precision" : "DOUBLE"}}]}"""
+    new FrameBatch(new FrameSchema(schema), 0)
   }
 }

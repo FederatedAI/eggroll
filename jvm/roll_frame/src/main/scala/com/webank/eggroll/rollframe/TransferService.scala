@@ -67,7 +67,7 @@ class NioFrameTransfer(nodes: Array[ErProcessor], timeout: Int = 600 * 1000) ext
 
     def checkStoreExists(erStoreLocator: ErStoreLocator): Boolean = {
       // only check first partition
-      val path = FrameStore.getStoreDir(erStoreLocator) + "/0"
+      val path = FrameStore.getStoreDir(erStoreLocator) + "0"
       checkStoreExists(path)
     }
   }

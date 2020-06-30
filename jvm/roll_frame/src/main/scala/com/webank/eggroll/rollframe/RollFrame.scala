@@ -32,7 +32,7 @@ import com.webank.eggroll.core.serdes.DefaultScalaSerdes
 import com.webank.eggroll.core.util.TimeUtils
 import com.webank.eggroll.format._
 import com.webank.eggroll.rollframe.pytorch.{Matrices, Script}
-import com.webank.eggroll.util.Logging
+import com.webank.eggroll.util.{Logging, SchemaUtil}
 
 import scala.collection.immutable.Range.Inclusive
 
@@ -51,6 +51,43 @@ class RollFrameContext private[eggroll](val session: ErSession) extends Logging 
   def dumpCache(store: ErStore): ErStore = {
     val cacheStore = forkStore(store, store.storeLocator.namespace, store.storeLocator.name, StringConstants.CACHE)
     load(store).mapBatch(f => f, cacheStore)
+    cacheStore
+  }
+
+
+  def combineDoubleFbs(store: ErStore): ErStore = {
+    val partitions = if (store.partitions.length < serverNodes.length) {
+      store.partitions.length
+    } else {
+      serverNodes.length
+    }
+    val cacheStore = createStore(store.storeLocator.namespace, "all_" + store.storeLocator.name, StringConstants.CACHE, partitions)
+    // repartition
+    val dir = FrameStore.getStoreDir(store)
+    load(cacheStore).mapCommand(_ => {
+      // get all FrameBatch
+      val elements = JvmFrameStore.getJvmFrameBatches(dir)
+      val totalRows = elements.foldLeft(0)((a, b) => {
+        a + b._2.head.rowCount
+      })
+      val fbs = new FrameBatch(new FrameSchema(elements.head._2.head.rootSchema.arrowSchema.getSchema), totalRows)
+      (0 until fbs.fieldCount).foreach { f =>
+        var rowBatch = 0
+        elements.foreach { i =>
+          // serial
+          val fb = i._2.head
+          (0 until fb.rowCount).foreach { r =>
+            fbs.writeDouble(f, rowBatch + r, fb.readDouble(f, r))
+          }
+          rowBatch += fb.rowCount
+        }
+      }
+      // clean fbs
+      elements.foreach { i =>
+        JvmFrameStore.remove(i._1)
+      }
+      fbs
+    })
     cacheStore
   }
 
@@ -168,7 +205,7 @@ object RollFrameSession {
     }
   }
 
-  def createSession(sessionIdPrefix: String = ""): ErSession ={
+  def createSession(sessionIdPrefix: String = ""): ErSession = {
     if (sessionIdPrefix.isEmpty) new ErSession(options = opts)
     else new ErSession(sessionId = s"${sessionIdPrefix}_${TimeUtils.getNowMs()}", options = opts)
   }
@@ -290,7 +327,12 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
       ctx.logInfo(s"""start runUnary ${task.job.name}, input: $inputPartition, output: $outputPartition""")
       val inputDB = FrameStore(inputPartition)
       val outputDB = FrameStore(outputPartition)
-      val ret = func(ctx, task, inputDB.readAll(), outputDB)
+      val inputIterator = if (task.name.equals(RollFrame.mapCommand)) {
+        Iterator(FrameUtils.mockEmptyBatch)
+      } else {
+        inputDB.readAll()
+      }
+      val ret = func(ctx, task, inputIterator, outputDB)
       ctx.logInfo(s"""finish runUnary ${task.job.name}, input: $inputPartition""")
       if (ret == null) {
         ErPair(key = ctx.serdes.serialize(inputPartition.id), value = Array())
@@ -308,8 +350,27 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
     ctx.load(job.outputs.head)
   }
 
+  def mapCommand(f: FrameBatch => FrameBatch): RollFrame = {
+    val jobType = RollFrame.mapCommand
+    val jobId = jobType + "_" + genJobId()
+    // input store equal ouput store
+    val output: ErStore = store
+
+    val func: (EggFrameContext, ErTask, Iterator[FrameBatch], FrameStore) => ErPair = {
+      (ctx, task, input, output) =>
+        try {
+          output.append(f(input.next()))
+          output.close()
+        } catch {
+          case e: Throwable => throw new RuntimeException(s"mapCommand task failed,task:$task", e)
+        }
+        null
+    }
+    runUnaryJob(RollFrame.mapCommand, func, jobId = jobId, output = output)
+  }
+
   def mapBatch(f: FrameBatch => FrameBatch, output: ErStore = null): RollFrame = {
-    val jobType = "mapBatch"
+    val jobType = RollFrame.mapBatch
     val jobId = jobType + "_" + genJobId()
 
     val func: (EggFrameContext, ErTask, Iterator[FrameBatch], FrameStore) => ErPair = {
@@ -340,9 +401,8 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
         }
         null
     }
-    runUnaryJob("mapBatch", func, jobId = jobId, output = output)
+    runUnaryJob(RollFrame.mapBatch, func, jobId = jobId, output = output)
   }
-
 
   // TODO: add reduce by rows operation
   /**
@@ -552,7 +612,7 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
                 val eachThreadCount = 1000
                 val tmpParallel = fb.rowCount / eachThreadCount + 1
                 if (tmpParallel < availableProcessors) tmpParallel else availableProcessors
-//                          availableProcessors
+                //                          availableProcessors
               } else {
                 seqParallel
               }
@@ -641,6 +701,7 @@ object RollFrame {
   val rollFrame = "RollFrame"
   val eggFrame = "EggFrame"
   val mapBatch = "mapBatch"
+  val mapCommand = "mapCommand"
   val reduce = "reduce"
   val aggregate = "aggregate"
   val broadcast = "broadcast"
