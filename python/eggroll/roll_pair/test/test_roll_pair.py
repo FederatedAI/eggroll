@@ -21,6 +21,7 @@ from eggroll.core.datastructure import create_executor_pool
 from eggroll.core.utils import time_now
 from eggroll.roll_pair.test.roll_pair_test_assets import get_debug_test_context, \
     get_cluster_context, get_standalone_context, get_default_options
+from eggroll.roll_pair.utils.pair_utils import natural_keys
 
 
 def get_value(roll_pair):
@@ -246,19 +247,40 @@ class TestRollPairBase(unittest.TestCase):
         table.destroy()
 
     def test_take(self):
-        options = get_default_options()
-        options['keys_only'] = True
-        options['include_key'] = False
-        table = self.ctx.load('ns1', 'test_take', options=options).put_all(range(10), options=options)
-        print(table.take(n=3, options=options))
-        self.assertEqual(table.take(n=3, options=options), [0, 1, 2])
+        alist=[("something1",  1), ("something3", 2), ("something2", 2), ("something10", 3), ("something125", 4), ("something5", 5),
+               ("something16", 6), ("something0", 6), ("something4", 6)]
+        blist=[("something1",  1), ("something3", 2), ("something2", 2), ("something1.34", 3), ("something1.0", 3), ("something1.25", 4), ("something1.105", 5),
+               ("something0.105", 6), ("something0.104", 6)]
+        clist = [('1112', '2'), ('35', '5'), ('18', '8'), ('0', '0'), ('23', '3'), ('6', '6'), ('9', '9'), ('1', '1'), ('4', '4'), ('7', '7')]
+        dlist = [('1112.1', '2'), ('35.2', '5'), ('18.3', '8'), ('0', '0'), ('23.9', '3'), ('35.1', '6'), ('18.2', '9'), ('1', '1'), ('4', '4'), ('23.6', '7')]
+        elist=[("1something",  1), ("3tomething", 2), ("3something", 2), ("2something", 2), ("1.34something", 3), ("1.0something", 3),
+               ("1.25something", 4), ("1.105something", 5),
+               ("0.105something", 6)]
 
-        options_kv = get_default_options()
-        options_kv['keys_only'] = False
-        options_kv['include_key'] = False
-        table = self.ctx.load('ns1', 'test_take_kv', options=options_kv).put_all(range(10), options=options_kv)
-        print(table.take(n=3, options=options_kv))
-        self.assertEqual(table.take(n=3, options=options_kv), [(0, 0), (1, 1), (2, 2)])
+        all_list = [alist, blist, clist, dlist, elist]
+
+        for lst in all_list:
+            options = get_default_options()
+            options['keys_only'] = True
+            options['include_key'] = True
+            options['total_partitions'] = 3
+            table = self.ctx.parallelize(lst, options=options)
+            print(f'get_all:{list(table.get_all())}')
+            print('start take')
+            print(table.take(n=6, options=options))
+            self.assertEqual(table.take(n=3, options=options),
+                             [item[0] for item in sorted((table.get_all()), key=natural_keys)[:3]])
+
+            options_kv = get_default_options()
+            options_kv['keys_only'] = False
+            options_kv['include_key'] = True
+            options_kv['total_partitions'] = 3
+            # table = self.ctx.load('ns1', 'test_take_kv_3', options=options_kv).put_all(range(10), options=options_kv)
+            table = self.ctx.parallelize(lst, options=options_kv)
+            print(f'get_all:{list(table.get_all())}')
+            print('start take')
+            print(table.take(n=6, options=options_kv))
+            self.assertEqual(table.take(n=3, options=options_kv), sorted((table.get_all()), key=natural_keys)[:3])
 
     def test_first(self):
         options = get_default_options()

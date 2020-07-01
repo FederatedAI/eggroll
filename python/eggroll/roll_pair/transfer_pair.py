@@ -158,7 +158,7 @@ class TransferPair(object):
 
     @staticmethod
     @_exception_logger
-    def pair_to_bin_batch(input_iter, sendbuf_size=RollPairConfKeys.EGGROLL_ROLLPAIR_TRANSFERPAIR_SENDBUF_SIZE.default_value):
+    def pair_to_bin_batch(input_iter, limit=None, sendbuf_size=RollPairConfKeys.EGGROLL_ROLLPAIR_TRANSFERPAIR_SENDBUF_SIZE.default_value):
         import os
         sendbuf_size = int(RollPairConfKeys.EGGROLL_ROLLPAIR_TRANSFERPAIR_SENDBUF_SIZE.get())
 
@@ -188,6 +188,8 @@ class TransferPair(object):
                 try:
                     writer.write(k, v)
                     pair_count += 1
+                    if limit is not None and pair_count == limit:
+                        break
                 except IndexError as e:
                     # TODO:0: replace 1024 with constant
                     yield commit(max(sendbuf_size, len(k) + len(v) + 1024))
