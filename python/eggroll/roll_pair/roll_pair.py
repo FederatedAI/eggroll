@@ -33,7 +33,7 @@ from eggroll.core.utils import string_to_bytes, hash_code
 from eggroll.roll_pair import create_serdes
 from eggroll.roll_pair.transfer_pair import TransferPair, BatchBroker
 from eggroll.roll_pair.utils.gc_utils import GcRecorder
-from eggroll.roll_pair.utils.pair_utils import partitioner
+from eggroll.roll_pair.utils.pair_utils import partitioner, natural_keys
 from eggroll.utils.log_utils import get_logger
 
 L = get_logger()
@@ -586,23 +586,30 @@ class RollPair(object):
         return value
 
     @_method_profile_logger
-    def get_all(self, options: dict = None):
+    def get_all(self, limit=None, options: dict = None):
         if options is None:
             options = {}
-        L.info('get all functor')
+
+        if limit is not None and not isinstance(limit, int):
+            raise ValueError(f"n:{limit} must be int")
+
         job_id = generate_job_id(self.__session_id, RollPair.GET_ALL)
+        er_pair = ErPair(key=create_serdes(self.__store._store_locator._serdes)
+                         .serialize(limit) if limit is not None else None,
+                         value=None)
 
         def send_command():
             job = ErJob(id=job_id,
                         name=RollPair.GET_ALL,
                         inputs=[self.__store],
                         outputs=[self.__store],
-                        functors=[])
+                        functors=[ErFunctor(body=cloudpickle.dumps(er_pair))])
 
             task_results = self._run_job(job=job)
             er_store = self.__get_output_from_result(task_results)
 
             return er_store
+
         send_command()
 
         populated_store = self.ctx.populate_processor(self.__store)
@@ -733,7 +740,7 @@ class RollPair(object):
         keys_only = options.get("keys_only", False)
         ret = []
         count = 0
-        for item in self.get_all():
+        for item in sorted(self.get_all(limit=n), key=natural_keys):
             if keys_only:
                 if item:
                     ret.append(item[0])
