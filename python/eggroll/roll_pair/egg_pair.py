@@ -163,11 +163,14 @@ class EggPair(object):
                 result = ErPair(key=f._key, value=value)
         elif task._name == 'getAll':
             tag = f'{task._id}'
-
+            er_pair = create_functor(functors[0]._body)
+            input_store_head = task._job._inputs[0]
+            key_serdes = create_serdes(input_store_head._store_locator._serdes)
             def generate_broker():
                 with create_adapter(task._inputs[0]) as db, db.iteritems() as rb:
+                    limit = db.count() if er_pair._key is None else key_serdes.deserialize(er_pair._key)
                     try:
-                        yield from TransferPair.pair_to_bin_batch(rb)
+                        yield from TransferPair.pair_to_bin_batch(rb, limit=limit)
                     finally:
                         TransferService.remove_broker(tag)
             TransferService.set_broker(tag, generate_broker())
