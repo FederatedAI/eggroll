@@ -266,16 +266,19 @@ class EggPair(object):
         elif task._name == 'mapPartitions':
             reduce_op = create_functor(functors[1]._body)
             shuffle = create_functor(functors[2]._body)
-            def map_partitions_wrapper(input_iterator, key_serdes, value_serdes, shuffle_broker):
+            def map_partitions_wrapper(input_iterator, key_serdes, value_serdes, output_writebatch):
                 f = create_functor(functors[0]._body)
                 value = f(generator(key_serdes, value_serdes, input_iterator))
                 if input_iterator.last():
                     if isinstance(value, Iterable):
                         for k1, v1 in value:
-                            shuffle_broker.put((key_serdes.serialize(k1), value_serdes.serialize(v1)))
+                            if shuffle:
+                                output_writebatch.put((key_serdes.serialize(k1), value_serdes.serialize(v1)))
+                            else:
+                                output_writebatch.put(key_serdes.serialize(k1), value_serdes.serialize(v1))
                     else:
                         key = input_iterator.key()
-                        shuffle_broker.put((key, value_serdes.serialize(value)))
+                        output_writebatch.put((key, value_serdes.serialize(value)))
             self._run_unary(map_partitions_wrapper, task, shuffle=shuffle, reduce_op=reduce_op)
 
         elif task._name == 'collapsePartitions':
