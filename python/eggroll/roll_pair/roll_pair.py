@@ -33,7 +33,7 @@ from eggroll.core.utils import string_to_bytes, hash_code
 from eggroll.roll_pair import create_serdes
 from eggroll.roll_pair.transfer_pair import TransferPair, BatchBroker
 from eggroll.roll_pair.utils.gc_utils import GcRecorder
-from eggroll.roll_pair.utils.pair_utils import partitioner, natural_keys
+from eggroll.roll_pair.utils.pair_utils import partitioner
 from eggroll.utils.log_utils import get_logger
 
 L = get_logger()
@@ -590,8 +590,8 @@ class RollPair(object):
         if options is None:
             options = {}
 
-        if limit is not None and not isinstance(limit, int):
-            raise ValueError(f"n:{limit} must be int")
+        if limit is not None and not isinstance(limit, int) and limit <= 0:
+            raise ValueError(f"limit:{limit} must be positive int")
 
         job_id = generate_job_id(self.__session_id, RollPair.GET_ALL)
         er_pair = ErPair(key=create_serdes(self.__store._store_locator._serdes)
@@ -740,7 +740,7 @@ class RollPair(object):
         keys_only = options.get("keys_only", False)
         ret = []
         count = 0
-        for item in sorted(self.get_all(limit=n), key=natural_keys):
+        for item in self.get_all(limit=n):
             if keys_only:
                 if item:
                     ret.append(item[0])

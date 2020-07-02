@@ -21,7 +21,6 @@ from eggroll.core.datastructure import create_executor_pool
 from eggroll.core.utils import time_now
 from eggroll.roll_pair.test.roll_pair_test_assets import get_debug_test_context, \
     get_cluster_context, get_standalone_context, get_default_options
-from eggroll.roll_pair.utils.pair_utils import natural_keys
 
 
 def get_value(roll_pair):
@@ -269,7 +268,7 @@ class TestRollPairBase(unittest.TestCase):
             print('start take')
             print(table.take(n=6, options=options))
             self.assertEqual(table.take(n=3, options=options),
-                             [item[0] for item in sorted((table.get_all()), key=natural_keys)[:3]])
+                             [item[0] for item in list(table.get_all())[:3]])
 
             options_kv = get_default_options()
             options_kv['keys_only'] = False
@@ -280,7 +279,7 @@ class TestRollPairBase(unittest.TestCase):
             print(f'get_all:{list(table.get_all())}')
             print('start take')
             print(table.take(n=6, options=options_kv))
-            self.assertEqual(table.take(n=3, options=options_kv), sorted((table.get_all()), key=natural_keys)[:3])
+            self.assertEqual(table.take(n=3, options=options_kv), list(table.get_all())[:3])
 
     def test_first(self):
         options = get_default_options()
