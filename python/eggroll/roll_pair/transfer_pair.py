@@ -188,7 +188,7 @@ class TransferPair(object):
                 try:
                     writer.write(k, v)
                     pair_count += 1
-                    if limit is not None and pair_count == limit:
+                    if limit is not None and pair_count >= limit:
                         break
                 except IndexError as e:
                     # TODO:0: replace 1024 with constant
