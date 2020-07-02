@@ -59,7 +59,6 @@ class RollPairContext(object):
         self.deploy_mode = session.get_option(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE)
         self.__session_meta = session.get_session_meta()
         self.__session.add_exit_task(self.context_gc)
-        self.__session.add_exit_task(self.close_context_db)
         self.rpc_gc_enable = True
         self.gc_recorder = GcRecorder(self)
         self.__command_client = CommandClient()
@@ -97,19 +96,6 @@ class RollPairContext(object):
             L.debug("before exit the task:{} cleaning item:{}".format(self.session_id, k))
             namespace = k[0]
             name = k[1]
-            rp = self.load(namespace=namespace, name=name)
-            rp.destroy(options=options)
-
-    def close_context_db(self):
-        if self.gc_recorder.leveldb_recorder is None or len(self.gc_recorder.leveldb_recorder) == 0:
-            L.info("rp context leveldb_recorder is None or empty!")
-            return
-        options = dict()
-        options['gc_destroy'] = True
-        for val in self.gc_recorder.leveldb_recorder:
-            L.debug("before exit the task:{} cleaning leveldb namespace:{} name:{}".format(self.session_id, val[0], val[1]))
-            namespace = val[0]
-            name = val[1]
             rp = self.load(namespace=namespace, name=name)
             rp.destroy(options=options)
 
