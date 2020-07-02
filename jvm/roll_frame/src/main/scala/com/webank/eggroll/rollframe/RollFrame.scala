@@ -64,7 +64,7 @@ class RollFrameContext private[eggroll](val session: ErSession) extends Logging 
     val cacheStore = createStore(store.storeLocator.namespace, "all_" + store.storeLocator.name, StringConstants.CACHE, partitions)
     // repartition
     val dir = FrameStore.getStoreDir(store)
-    load(cacheStore).mapCommand(_ => {
+    load(cacheStore).genData(_ => {
       // get all FrameBatch
       val elements = JvmFrameStore.getJvmFrameBatches(dir)
       val totalRows = elements.foldLeft(0)((a, b) => {
@@ -189,6 +189,10 @@ class RollFrameContext private[eggroll](val session: ErSession) extends Logging 
 
   def broadcast(path: String, frameBatch: FrameBatch): Unit = {
     frameTransfer.broadcast(path, frameBatch)
+  }
+
+  def scatter(path: String, frameBatch: FrameBatch): Unit = {
+    frameTransfer.scatter(path, frameBatch)
   }
 }
 
@@ -327,7 +331,7 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
       ctx.logInfo(s"""start runUnary ${task.job.name}, input: $inputPartition, output: $outputPartition""")
       val inputDB = FrameStore(inputPartition)
       val outputDB = FrameStore(outputPartition)
-      val inputIterator = if (task.name.equals(RollFrame.mapCommand)) {
+      val inputIterator = if (task.name.equals(RollFrame.genData)) {
         Iterator(FrameUtils.mockEmptyBatch)
       } else {
         inputDB.readAll()
@@ -350,8 +354,32 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
     ctx.load(job.outputs.head)
   }
 
-  def mapCommand(f: FrameBatch => FrameBatch): RollFrame = {
+  // There are two way to send command to  each processor.
+  // 1. use runUnaryJob
+  // 2. use transfer
+  /**
+   * execute command in each processor and no output.
+   *
+   * @param f functor
+   */
+  def mapCommand(f: FrameBatch => Unit): Unit = {
     val jobType = RollFrame.mapCommand
+    val jobId = jobType + "_" + genJobId()
+
+    val func: (EggFrameContext, ErTask, Iterator[FrameBatch], FrameStore) => ErPair = {
+      (ctx, task, input, output) =>
+        try {
+          f(input.next())
+        } catch {
+          case e: Throwable => throw new RuntimeException(s"mapCommand task failed,task:$task", e)
+        }
+        null
+    }
+    runUnaryJob(RollFrame.mapCommand, func, jobId = jobId)
+  }
+
+  def genData(f: FrameBatch => FrameBatch): RollFrame = {
+    val jobType = RollFrame.genData
     val jobId = jobType + "_" + genJobId()
     // input store equal ouput store
     val output: ErStore = store
@@ -362,11 +390,12 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
           output.append(f(input.next()))
           output.close()
         } catch {
-          case e: Throwable => throw new RuntimeException(s"mapCommand task failed,task:$task", e)
+          case e: Throwable => throw new RuntimeException(s"genData task failed,task:$task", e)
         }
         null
     }
-    runUnaryJob(RollFrame.mapCommand, func, jobId = jobId, output = output)
+
+    runUnaryJob(RollFrame.genData, func, jobId = jobId, output = output)
   }
 
   def mapBatch(f: FrameBatch => FrameBatch, output: ErStore = null): RollFrame = {
@@ -404,27 +433,57 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
     runUnaryJob(RollFrame.mapBatch, func, jobId = jobId, output = output)
   }
 
+  /**
+   * Simple all reduce.
+   * - Each processor's FrameBatch was't scattered to other processor and finish reduce operation.
+   */
+  def allReduce(f: (FrameBatch, FrameBatch) => FrameBatch, output: ErStore = null): RollFrame = {
+    val jobType = RollFrame.allReduce
+    val jobId = jobType + "_" + genJobId()
+    // assume each process only has one data partition
+    val func: (EggFrameContext, ErTask, Iterator[FrameBatch], FrameStore) => ErPair = {
+      (ctx, task, input, output) =>
+        // 1.scatter
+        val eggQueuePath = "scatter_" + jobId
+        val localFrameBatch: FrameBatch = input.next()
+        ctx.frameTransfer.scatter(eggQueuePath, localFrameBatch)
+        // 2. while for scatter data and reduce
+        val partitionNum = task.inputs.head.storeLocator.totalPartitions
+        //        if (partition.id == 0) {
+        val localQueue = FrameStore.queue(eggQueuePath, partitionNum)
+        val resultIterator = localQueue.readAll()
+        if (!resultIterator.hasNext) throw new IllegalStateException("empty result")
+        var localBatch: FrameBatch = FrameUtils.fork(resultIterator.next())
+        while (resultIterator.hasNext) {
+          localBatch = f(localBatch, resultIterator.next())
+        }
+        output.append(localBatch)
+        output.close()
+        //        }
+        null
+    }
+    runUnaryJob(RollFrame.allReduce, func, jobId = jobId, output = output)
+  }
+
+
   // TODO: add reduce by rows operation
   /**
-   * * reduce frameBatchs between different partitions
-   * * eg:
-   * * 1 1 1   2 2 2   3 3 3
-   * * 1 1 1 + 2 2 2 = 3 3 3
-   * * 1 1 1   2 2 2   3 3 3
+   * reduce frameBatchs between different partitions
+   * eg:
+   * 1 1 1   2 2 2   3 3 3
+   * 1 1 1 + 2 2 2 = 3 3 3
+   * 1 1 1   2 2 2   3 3 3
    *
-   * //   * @param mf     map function to generate zero value
-   * //   * @param f      zero value
-   * //   * @param output ErStore
-   *
-   * @return
+   * @return RollFrame
    */
-  //  def MapReduce(mf: FrameBatch => FrameBatch,f: (FrameBatch, FrameBatch) => FrameBatch, output: ErStore = null): RollFrame = {
-  //    aggregateOp(null, f, f, mf, output = output)
-  //  }
-
   def reduce(f: (FrameBatch, FrameBatch) => FrameBatch, output: ErStore = null): RollFrame = {
     aggregate(null, combOp = f, output = output)
   }
+
+  // Todo: integration of mapReduce
+  //  def MapReduce(mf: FrameBatch => FrameBatch,f: (FrameBatch, FrameBatch) => FrameBatch, output: ErStore = null): RollFrame = {
+  //    aggregateOp(null, f, f, mf, output = output)
+  //  }
 
   def simpleAggregate(zeroValue: FrameBatch,
                       seqOp: (FrameBatch, FrameBatch) => FrameBatch,
@@ -703,9 +762,12 @@ object RollFrame {
   val mapBatch = "mapBatch"
   val mapCommand = "mapCommand"
   val reduce = "reduce"
+  val genData = "genData"
+  val allReduce = "allReduce"
   val aggregate = "aggregate"
   val broadcast = "broadcast"
   val mulMul = "mulMulTask"
+
   val stopTime = 10000
 
   def apply(store: ErStore, ctx: RollFrameContext): RollFrame = new RollFrame(store, ctx)
