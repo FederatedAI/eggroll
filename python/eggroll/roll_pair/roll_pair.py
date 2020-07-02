@@ -667,7 +667,6 @@ class RollPair(object):
 
     @_method_profile_logger
     def count(self):
-        # total_partitions = self.__store._store_locator._total_partitions
         job_id = generate_job_id(self.__session_id, tag=RollPair.COUNT)
 
         job = ErJob(id=job_id,
@@ -693,8 +692,6 @@ class RollPair(object):
         if options is None:
             options = {}
 
-        total_partitions = self.__store._store_locator._total_partitions
-
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.DESTROY),
                     name=RollPair.DESTROY,
                     inputs=[self.__store],
@@ -716,10 +713,6 @@ class RollPair(object):
         value = None
         partition_id = self.partitioner(key)
         egg = self.ctx.route_to_egg(self.__store._partitions[partition_id])
-        L.info(egg._command_endpoint)
-        L.info(f"count: {self.__store._store_locator._total_partitions}")
-        inputs = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
-        output = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
 
         job_id = generate_job_id(self.__session_id, RollPair.DELETE)
         job = ErJob(id=job_id,
@@ -864,7 +857,7 @@ class RollPair(object):
         functor = ErFunctor(name=RollPair.MAP_PARTITIONS, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
         reduce_functor = ErFunctor(name=RollPair.MAP_PARTITIONS, serdes=SerdesTypes.CLOUD_PICKLE,
                                    body=cloudpickle.dumps(reduce_op))
-        need_shuffle = ErFunctor(name=RollPair.FLAT_MAP, serdes=SerdesTypes.CLOUD_PICKLE,
+        need_shuffle = ErFunctor(name=RollPair.MAP_PARTITIONS, serdes=SerdesTypes.CLOUD_PICKLE,
                                  body=cloudpickle.dumps(shuffle))
 
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.MAP_PARTITIONS),
