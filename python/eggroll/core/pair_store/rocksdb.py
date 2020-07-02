@@ -23,6 +23,7 @@ import shutil
 from pathlib import Path
 import time
 
+from eggroll.core.conf_keys import RollPairConfKeys
 from eggroll.core.pair_store.adapter import PairWriteBatch, PairIterator, PairAdapter
 from eggroll.utils.log_utils import get_logger
 from eggroll.roll_pair.utils.pair_utils import get_data_dir
@@ -52,7 +53,22 @@ class RocksdbAdapter(PairAdapter):
                 opts.create_if_missing = (str(options.get("create_if_missing", "True")).lower() == 'true')
                 opts.compression = rocksdb.CompressionType.no_compression
                 # todo:0: parameterize write_buffer_size
-                opts.write_buffer_size = 1 << 20
+                opts.max_open_files = -1
+                # opts.allow_concurrent_memtable_write = True
+                opts.write_buffer_size = 128 * 1024
+                opts.max_write_buffer_number = 1
+                opts.allow_mmap_writes = False
+                opts.allow_mmap_reads = False
+                opts.arena_block_size = 1024
+                opts.allow_concurrent_memtable_write = True
+                opts.max_bytes_for_level_base = 1 << 20
+                opts.target_file_size_base = 1 << 22
+                opts.num_levels = 1
+                opts.level0_slowdown_writes_trigger = 1
+                opts.table_cache_numshardbits = 1
+                opts.manifest_preallocation_size = 128 * 1024
+                opts.table_factory = rocksdb.BlockBasedTableFactory(no_block_cache=True, block_size=128*1024)
+                L.info(f'default:{opts.target_file_size_multiplier}')
 
                 if opts.create_if_missing:
                     os.makedirs(self.path, exist_ok=True)
@@ -164,13 +180,15 @@ class RocksdbAdapter(PairAdapter):
 
 class RocksdbWriteBatch(PairWriteBatch):
 
-    def __init__(self, adapter: RocksdbAdapter, chunk_size=100_000):
+    def __init__(self, adapter: RocksdbAdapter,
+                 chunk_size=RollPairConfKeys.EGGROLL_ROLLPAIR_ROCKSDB_WRITEBATCH_CHUNKSIZE.default_value):
         self.chunk_size = chunk_size
         self.batch = rocksdb.WriteBatch()
         self.adapter = adapter
         self.write_count = 0
         self.manual_merger = dict()
         self.has_write_op = False
+        L.debug(f"writeBatch chunk_size is:{self.chunk_size}")
 
     def get(self, k):
         raise NotImplementedError
