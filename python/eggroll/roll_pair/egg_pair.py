@@ -168,7 +168,7 @@ class EggPair(object):
             key_serdes = create_serdes(input_store_head._store_locator._serdes)
             def generate_broker():
                 with create_adapter(task._inputs[0]) as db, db.iteritems() as rb:
-                    limit = db.count() if er_pair._key is None else key_serdes.deserialize(er_pair._key)
+                    limit = None if er_pair._key is None else key_serdes.deserialize(er_pair._key)
                     try:
                         yield from TransferPair.pair_to_bin_batch(rb, limit=limit)
                     finally:
@@ -293,11 +293,14 @@ class EggPair(object):
         elif task._name == 'flatMap':
             shuffle = create_functor(functors[1]._body)
 
-            def flat_map_wraaper(input_iterator, key_serdes, value_serdes, shuffle_broker):
+            def flat_map_wraaper(input_iterator, key_serdes, value_serdes, output_writebatch):
                 f = create_functor(functors[0]._body)
                 for k1, v1 in input_iterator:
                     for k2, v2 in f(key_serdes.deserialize(k1), value_serdes.deserialize(v1)):
-                        shuffle_broker.put((key_serdes.serialize(k2), value_serdes.serialize(v2)))
+                        if shuffle:
+                            output_writebatch.put((key_serdes.serialize(k2), value_serdes.serialize(v2)))
+                        else:
+                            output_writebatch.put(key_serdes.serialize(k2), value_serdes.serialize(v2))
             self._run_unary(flat_map_wraaper, task, shuffle=shuffle)
 
         elif task._name == 'glom':
