@@ -367,7 +367,7 @@ class RollPair(object):
         if self.ctx.get_session().is_stopped():
             L.debug('session:{} has already been stopped'.format(self.__session_id))
             return
-        L.debug(f"del obj :{self} calling")
+        L.debug(f"del obj namespace: {self.get_namespace()}, name:{self.get_name()} calling")
 
         self.ctx.gc_recorder.decrease_ref_count(self.__store)
 
