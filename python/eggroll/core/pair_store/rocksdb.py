@@ -68,7 +68,6 @@ class RocksdbAdapter(PairAdapter):
                 opts.table_cache_numshardbits = 1
                 opts.manifest_preallocation_size = 128 * 1024
                 opts.table_factory = rocksdb.BlockBasedTableFactory(no_block_cache=True, block_size=128*1024)
-                L.info(f'default:{opts.target_file_size_multiplier}')
 
                 if opts.create_if_missing:
                     os.makedirs(self.path, exist_ok=True)
@@ -87,11 +86,9 @@ class RocksdbAdapter(PairAdapter):
                         L.info(f'fail to open db path={self.path}. retry_cnt={retry_cnt}. db_dict={RocksdbAdapter.db_dict}')
                         gc.collect()
                         time.sleep(1)
-                # self._dbref = rocksdb.weakref.ref(self.db, self._on_db_collected)
                 L.info(f'RocksdbAdapter.__init__: path not in dict db path={self.path}')
                 RocksdbAdapter.db_dict[self.path] = self.db
                 RocksdbAdapter.count_dict[self.path] = 0
-                # RocksdbAdapter.ref_dict = self._dbref
             else:
                 L.info(f'RocksdbAdapter.__init__: path in dict={self.path}')
                 self.db = RocksdbAdapter.db_dict[self.path]
