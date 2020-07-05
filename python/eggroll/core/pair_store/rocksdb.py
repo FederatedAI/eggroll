@@ -178,14 +178,14 @@ class RocksdbAdapter(PairAdapter):
 class RocksdbWriteBatch(PairWriteBatch):
 
     def __init__(self, adapter: RocksdbAdapter,
-                 chunk_size=RollPairConfKeys.EGGROLL_ROLLPAIR_ROCKSDB_WRITEBATCH_CHUNKSIZE.default_value):
+                 chunk_size=RollPairConfKeys.EGGROLL_ROLLPAIR_ROCKSDB_WRITEBATCH_CHUNKSIZE.get()):
         self.chunk_size = chunk_size
         self.batch = rocksdb.WriteBatch()
         self.adapter = adapter
         self.write_count = 0
         self.manual_merger = dict()
         self.has_write_op = False
-        L.debug(f"writeBatch chunk_size is:{self.chunk_size}")
+        L.debug(f"writeBatch:{self.adapter.path} chunk_size is:{self.chunk_size}")
 
     def get(self, k):
         raise NotImplementedError
