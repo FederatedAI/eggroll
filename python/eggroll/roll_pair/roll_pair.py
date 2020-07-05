@@ -504,8 +504,6 @@ class RollPair(object):
         L.debug(f"get k: {k}")
         k = create_serdes(self.__store._store_locator._serdes).serialize(k)
         er_pair = ErPair(key=k, value=None)
-        outputs = []
-        value = None
         partition_id = self.partitioner(k)
         egg = self.ctx.route_to_egg(self.__store._partitions[partition_id])
         L.info(f"partitions count: {self.__store._store_locator._total_partitions}, target partition: {partition_id}, endpoint: {egg._command_endpoint}")
@@ -629,7 +627,6 @@ class RollPair(object):
         populated_store = self.ctx.populate_processor(self.__store)
         shuffler = TransferPair(job_id)
         broker = FifoBroker()
-        bb = BatchBroker(broker)
         scatter_future = shuffler.scatter(broker, self.partitioner, populated_store)
 
         key_serdes = self.key_serdes
