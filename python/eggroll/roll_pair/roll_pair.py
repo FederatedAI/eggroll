@@ -637,14 +637,14 @@ class RollPair(object):
         try:
             if include_key:
                 for k, v in items:
-                    bb.put(item=(key_serdes.serialize(k), value_serdes.serialize(v)))
+                    broker.put(item=(key_serdes.serialize(k), value_serdes.serialize(v)))
             else:
                 k = 0
                 for v in items:
-                    bb.put(item=(key_serdes.serialize(k), value_serdes.serialize(v)))
+                    broker.put(item=(key_serdes.serialize(k), value_serdes.serialize(v)))
                     k += 1
         finally:
-            bb.signal_write_finish()
+            broker.signal_write_finish()
 
         scatter_results = scatter_future.result()
         L.debug(f"scatter_results: {scatter_results}")

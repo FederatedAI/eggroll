@@ -128,7 +128,7 @@ class TransferPair(object):
         def do_partition():
             L.debug(f'do_partition start for {self.__transfer_id}')
             done_count = 0
-            for k, v in BatchBroker(input_broker):
+            for k, v in input_broker:
                 partitioned_bb[partition_function(k)].put((k, v))
                 done_count += 1
             L.debug(f"do_partition end for transfer id: {self.__transfer_id}, "
