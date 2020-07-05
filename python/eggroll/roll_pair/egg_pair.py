@@ -102,9 +102,9 @@ class EggPair(object):
                             output_store=output_store)
                     with create_adapter(task._inputs[0]) as input_db, \
                         input_db.iteritems() as rb:
-                        func(rb, key_serdes, value_serdes, write_bb)
+                        func(rb, key_serdes, value_serdes, shuffle_broker)
                 finally:
-                    write_bb.signal_write_finish()
+                    shuffle_broker.signal_write_finish()
 
             if scatter_future:
                 scatter_results = scatter_future.result()
