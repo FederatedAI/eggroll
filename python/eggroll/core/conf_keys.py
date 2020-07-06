@@ -65,8 +65,8 @@ class CoreConfKeys(object):
     CONFKEY_CORE_COMMAND_DEFAULT_SERDES_TYPE = "eggroll.core.command.default.serdes.type"
     CONFKEY_CORE_LOG_DIR = "eggroll.core.log.dir"
     EGGROLL_CORE_FIFOBROKER_DEFAULT_SIZE = ErConfKey("eggroll.core.fifobroker.default.size", 16)
-    EGGROLL_CORE_CLIENT_COMMAND_EXECUTOR_POOL_MAX_SIZE = ErConfKey("eggroll.core.client.command.executor.pool.max.size", 50)
-    EGGROLL_CORE_DEFAULT_EXECUTOR_POOL = ErConfKey("eggroll.core.default.executor.pool", "concurrent.futures.ThreadPoolExecutor")
+    EGGROLL_CORE_CLIENT_COMMAND_EXECUTOR_POOL_MAX_SIZE = ErConfKey("eggroll.core.client.command.executor.pool.max.size", 500)
+    EGGROLL_CORE_DEFAULT_EXECUTOR_POOL = ErConfKey("eggroll.core.default.executor.pool", "eggroll.core.datastructure.threadpool.ErThreadUnpooledExecutor")
 
 
 class ClusterManagerConfKeys(object):
@@ -95,8 +95,8 @@ class SessionConfKeys(object):
     CONFKEY_SESSION_PROCESSORS_PER_NODE = "eggroll.session.processors.per.node"
     CONFKEY_SESSION_DEPLOY_MODE = "eggroll.session.deploy.mode"
     CONFKEY_SESSION_STANDALONE_PORT = "eggroll.resourcemanager.standalone.port"
-    EGGROLL_SESSION_START_TIMEOUT_MS = ErConfKey("eggroll.session.start.timeout.ms", 20000)
-    EGGROLL_SESSION_STOP_TIMEOUT_MS = ErConfKey("eggroll.session.stop.timeout.ms", 20000)
+    EGGROLL_SESSION_START_TIMEOUT_MS = ErConfKey("eggroll.session.start.timeout.ms", 20_000)
+    EGGROLL_SESSION_STOP_TIMEOUT_MS = ErConfKey("eggroll.session.stop.timeout.ms", 20_000)
 
 class TransferConfKeys(object):
     CONFKEY_TRANSFER_SERVICE_HOST = "eggroll.transfer.service.host"
@@ -105,12 +105,12 @@ class TransferConfKeys(object):
 
 class RollPairConfKeys(object):
     EGGROLL_ROLLPAIR_TRANSFERPAIR_SENDBUF_SIZE = ErConfKey("eggroll.rollpair.transferpair.sendbuf.size", 250_000)
-    EGGROLL_ROLLPAIR_TRANSFERPAIR_BATCHBROKER_DEFAULT_SIZE = ErConfKey("eggroll.rollpair.transferpair.broker.default.size", 100)
-    EGGROLL_ROLLPAIR_EGGPAIR_SERVER_EXECUTOR_POOL_MAX_SIZE = ErConfKey("eggroll.rollpair.eggpair.server.executor.pool.max.size", 100)
-    EGGROLL_ROLLPAIR_EGGPAIR_DATA_SERVER_EXECUTOR_POOL_MAX_SIZE = ErConfKey("eggroll.rollpair.eggpair.data.server.executor.pool.max.size", 100)
-    EGGROLL_ROLLPAIR_TRANSFERPAIR_EXECUTOR_POOL_MAX_SIZE = ErConfKey("eggroll.rollpair.transferpair.executor.pool.max.size", 300)
+    #EGGROLL_ROLLPAIR_TRANSFERPAIR_BATCHBROKER_DEFAULT_SIZE = ErConfKey("eggroll.rollpair.transferpair.broker.default.size", 100)
+    EGGROLL_ROLLPAIR_EGGPAIR_SERVER_EXECUTOR_POOL_MAX_SIZE = ErConfKey("eggroll.rollpair.eggpair.server.executor.pool.max.size", 500)
+    EGGROLL_ROLLPAIR_EGGPAIR_DATA_SERVER_EXECUTOR_POOL_MAX_SIZE = ErConfKey("eggroll.rollpair.eggpair.data.server.executor.pool.max.size", 500)
+    EGGROLL_ROLLPAIR_TRANSFERPAIR_EXECUTOR_POOL_MAX_SIZE = ErConfKey("eggroll.rollpair.transferpair.executor.pool.max.size", 1500)
     EGGROLL_ROLLPAIR_DEFAULT_STORE_TYPE = ErConfKey("eggroll.rollpair.default.store.type", "ROLLPAIR_LMDB")
-    EGGROLL_ROLLPAIR_ROCKSDB_WRITEBATCH_SIZE = ErConfKey("eggroll.rollpair.rocksdb.writebatch.size", 100)
+    EGGROLL_ROLLPAIR_ROCKSDB_WRITEBATCH_SIZE = ErConfKey("eggroll.rollpair.rocksdb.writebatch.size", 500)
 
 
 class RollSiteConfKeys(object):
@@ -125,13 +125,13 @@ class RollSiteConfKeys(object):
     EGGROLL_ROLLSITE_LAN_INSECURE_CHANNEL_ENABLED = ErConfKey("eggroll.rollsite.lan.insecure.channel.enabled")
     EGGROLL_ROLLSITE_AUDIT_ENABLED = ErConfKey("eggroll.rollsite.audit.enabled")
     EGGROLL_ROLLSITE_ADAPTER_SENDBUF_SIZE = ErConfKey("eggroll.rollsite.adapter.sendbuf.size", 1 << 20)
-    EGGROLL_ROLLSITE_RECEIVE_EXECUTOR_POOL_MAX_SIZE = ErConfKey("eggroll.rollsite.receive.executor.pool.max.size", 100)
-    EGGROLL_ROLLSITE_COMPLETE_EXECUTOR_POOL_MAX_SIZE = ErConfKey("eggroll.rollsite.complete.executor.pool.max.size", 5)
+    EGGROLL_ROLLSITE_RECEIVE_EXECUTOR_POOL_MAX_SIZE = ErConfKey("eggroll.rollsite.receive.executor.pool.max.size", 500)
+    EGGROLL_ROLLSITE_COMPLETE_EXECUTOR_POOL_MAX_SIZE = ErConfKey("eggroll.rollsite.complete.executor.pool.max.size", 50)
     EGGROLL_ROLLSITE_UNARYCALL_CLIENT_MAX_RETRY = ErConfKey("eggroll.rollsite.unarycall.client.max.retry", 100)
-    EGGROLL_ROLLSITE_UNARYCALL_MAX_RETRY = ErConfKey("eggroll.rollsite.unarycall.max.retry", 30000)
+    EGGROLL_ROLLSITE_UNARYCALL_MAX_RETRY = ErConfKey("eggroll.rollsite.unarycall.max.retry", 30_000)
     EGGROLL_ROLLSITE_PUSH_CLIENT_MAX_RETRY = ErConfKey("eggroll.rollsite.push.client.max.retry", 100)
     EGGROLL_ROLLSITE_PUSH_MAX_RETRY = ErConfKey("eggroll.rollsite.push.max.retry", 300)
     EGGROLL_ROLLSITE_PULL_CLIENT_MAX_RETRY = ErConfKey("eggroll.rollsite.pull.client.max.retry", 300)
-    EGGROLL_ROLLSITE_OVERALL_TIMEOUT_SEC = ErConfKey("eggroll.rollsite.overall.timeout.sec", 172800000)
-    EGGROLL_ROLLSITE_COMPLETION_WAIT_TIMEOUT_SEC = ErConfKey("eggroll.rollsite.completion.wait.timeout.sec", 3600000)
-    EGGROLL_ROLLSITE_PACKET_INTERVAL_TIMEOUT_SEC = ErConfKey("eggroll.rollsite.packet.interval.timeout.sec", 20000)
+    EGGROLL_ROLLSITE_OVERALL_TIMEOUT_SEC = ErConfKey("eggroll.rollsite.overall.timeout.sec", 172_800_000)
+    EGGROLL_ROLLSITE_COMPLETION_WAIT_TIMEOUT_SEC = ErConfKey("eggroll.rollsite.completion.wait.timeout.sec", 3_600_000)
+    EGGROLL_ROLLSITE_PACKET_INTERVAL_TIMEOUT_SEC = ErConfKey("eggroll.rollsite.packet.interval.timeout.sec", 20_000)

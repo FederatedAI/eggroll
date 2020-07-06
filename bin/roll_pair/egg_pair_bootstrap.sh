@@ -144,8 +144,11 @@ else
   PYTHON=${venv}/bin/python
 fi
 
-export PYTHONMALLOC=pymalloc
-echo "PYTHONMALLOC=${PYTHONMALLOC}"
+
+export MALLOC_MMAP_THRESHOLD_=4000
+echo "MALLOC_MMAP_THRESHOLD_=${MALLOC_MMAP_THRESHOLD_}"
+export MALLOC_MMAP_MAX_=200000
+echo "MALLOC_MMAP_MAX_=${MALLOC_MMAP_MAX_}"
 export PYTHONPATH=${pythonpath}:${PYTHONPATH}
 echo "PYTHONPATH=${PYTHONPATH}"
 echo "PYTHON=`which python`"
