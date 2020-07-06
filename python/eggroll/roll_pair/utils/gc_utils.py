@@ -58,8 +58,8 @@ class GcRecorder(object):
         elif store_type == StoreTypes.ROLLPAIR_LEVELDB:
             self.leveldb_recorder.add((namespace, name))
         else:
-            L.info("GC recording in memory table namespace={}, name={}, type={}"
-                  .format(namespace, name, store_type))
+            L.info("GC recording in memory table namespace={}, name={}"
+                  .format(namespace, name))
             count = self.gc_recorder.get((namespace, name))
             if count is None:
                 count = 0
