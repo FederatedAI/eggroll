@@ -515,7 +515,7 @@ class RollPair(object):
                     name=RollPair.GET,
                     inputs=[self.__store],
                     outputs=[self.__store],
-                    functors=[ErFunctor(body=cloudpickle.dumps(er_pair))])
+                    functors=[ErFunctor(name=RollPair.GET, body=cloudpickle.dumps(er_pair))])
 
         task = ErTask(id=generate_task_id(job_id, partition_id),
                       name=RollPair.GET,
@@ -550,7 +550,7 @@ class RollPair(object):
                     name=RollPair.PUT,
                     inputs=[self.__store],
                     outputs=outputs,
-                    functors=[ErFunctor(body=cloudpickle.dumps(er_pair))])
+                    functors=[ErFunctor(name=RollPair.PUT, body=cloudpickle.dumps(er_pair))])
 
         task = ErTask(id=generate_task_id(job_id, partition_id),
                       name=RollPair.PUT,
@@ -587,7 +587,7 @@ class RollPair(object):
                         name=RollPair.GET_ALL,
                         inputs=[self.__store],
                         outputs=[self.__store],
-                        functors=[ErFunctor(body=cloudpickle.dumps(er_pair))])
+                        functors=[ErFunctor(name=RollPair.GET_ALL, body=cloudpickle.dumps(er_pair))])
 
             task_results = self._run_job(job=job)
             er_store = self.__get_output_from_result(task_results)
@@ -702,7 +702,7 @@ class RollPair(object):
                     name=RollPair.DELETE,
                     inputs=[self.__store],
                     outputs=[],
-                    functors=[ErFunctor(body=cloudpickle.dumps(er_pair))])
+                    functors=[ErFunctor(name=RollPair.DELETE, body=cloudpickle.dumps(er_pair))])
 
         task_results = self._run_job(job=job, create_output_if_missing=False)
 
