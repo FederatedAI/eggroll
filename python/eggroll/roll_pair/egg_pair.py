@@ -70,7 +70,7 @@ class EggPair(object):
         value_serdes = create_serdes(input_store_head._store_locator._serdes)
 
         if shuffle:
-            from eggroll.roll_pair.transfer_pair import TransferPair, BatchBroker
+            from eggroll.roll_pair.transfer_pair import TransferPair
             input_total_partitions = input_store_head._store_locator._total_partitions
             output_total_partitions = output_store_head._store_locator._total_partitions
             output_store = output_store_head
@@ -94,7 +94,6 @@ class EggPair(object):
                 scatter_future = None
             else:
                 shuffle_broker = FifoBroker()
-                write_bb = BatchBroker(shuffle_broker)
                 try:
                     scatter_future = shuffler.scatter(
                             input_broker=shuffle_broker,
