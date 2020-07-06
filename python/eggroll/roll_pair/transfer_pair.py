@@ -48,52 +48,6 @@ class CompositeFuture(object):
         return list(f.result() for f in self._futures)
 
 
-class BatchBroker(object):
-    def __init__(self, broker, batch_size=RollPairConfKeys.EGGROLL_ROLLPAIR_TRANSFERPAIR_BATCHBROKER_DEFAULT_SIZE.default_value):
-        self.broker = broker
-        self.batch = []
-        self.batch_size = batch_size
-
-    def _commit(self, block=True, timeout=None):
-        if len(self.batch) == 0:
-            return
-        self.broker.put(self.batch, block, timeout)
-        self.batch = []
-
-    def put(self, item, block=True, timeout=None):
-        if len(self.batch) >= self.batch_size:
-            self._commit(block, timeout)
-        self.batch.append(item)
-
-    def signal_write_finish(self):
-        self._commit()
-        self.broker.signal_write_finish()
-
-    def is_closable(self):
-        return len(self.batch) == 0 and self.broker.is_closable()
-
-    def get(self, block=True, timeout=None):
-        if len(self.batch) == 0:
-            self.batch = self.broker.get(block, timeout)
-        if len(self.batch) == 0:
-            raise queue.Empty("empty")
-        return self.batch.pop(0)
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        while not self.is_closable():
-            try:
-                return self.get(block=True, timeout=0.1)
-            except queue.Empty as e:
-                # retry
-                pass
-            except BrokerClosed as e:
-                raise StopIteration
-        raise StopIteration
-
-
 class TransferPair(object):
     _executor_pool = None
     _executor_pool_lock = threading.Lock()
@@ -121,7 +75,6 @@ class TransferPair(object):
         total_partitions = len(output_partitions)
         L.debug(f'scatter starts for {self.__transfer_id}, total partitions: {total_partitions}, output_store: {output_store}')
         partitioned_brokers = [FifoBroker() for i in range(total_partitions)]
-        partitioned_bb = [BatchBroker(v) for v in partitioned_brokers]
         futures = []
 
         @_exception_logger
@@ -129,13 +82,13 @@ class TransferPair(object):
             L.debug(f'do_partition start for {self.__transfer_id}')
             done_count = 0
             for k, v in input_broker:
-                partitioned_bb[partition_function(k)].put((k, v))
+                partitioned_brokers[partition_function(k)].put((k, v))
                 done_count += 1
+            for pb in partitioned_brokers:
+                pb.signal_write_finish()
             L.debug(f"do_partition end for transfer id: {self.__transfer_id}, "
                     f"total partitions: {total_partitions}, "
                     f"cur done partition count: {done_count}")
-            for broker in partitioned_bb:
-                broker.signal_write_finish()
             return done_count
         futures.append(self._executor_pool.submit(do_partition))
         client = TransferClient()
@@ -148,7 +101,7 @@ class TransferPair(object):
                         f"active thread count: {threading.active_count()}")
                 fut = client.send(
                         TransferPair.pair_to_bin_batch(
-                                BatchBroker(partitioned_brokers[i])),
+                                partitioned_brokers[i]),
                                 part._processor._transfer_endpoint, tag)
                 send_all_futs.append(fut)
             return CompositeFuture(send_all_futs).result()
