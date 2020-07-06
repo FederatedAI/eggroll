@@ -31,7 +31,7 @@ from eggroll.core.session import ErSession
 from eggroll.core.utils import generate_job_id, generate_task_id
 from eggroll.core.utils import string_to_bytes, hash_code
 from eggroll.roll_pair import create_serdes
-from eggroll.roll_pair.transfer_pair import TransferPair, BatchBroker
+from eggroll.roll_pair.transfer_pair import TransferPair
 from eggroll.roll_pair.utils.gc_utils import GcRecorder
 from eggroll.roll_pair.utils.pair_utils import partitioner
 from eggroll.utils.log_utils import get_logger
@@ -59,7 +59,6 @@ class RollPairContext(object):
         self.deploy_mode = session.get_option(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE)
         self.__session_meta = session.get_session_meta()
         self.__session.add_exit_task(self.context_gc)
-        self.__session.add_exit_task(self.close_context_db)
         self.rpc_gc_enable = True
         self.gc_recorder = GcRecorder(self)
         self.__command_client = CommandClient()
@@ -97,19 +96,6 @@ class RollPairContext(object):
             L.debug("before exit the task:{} cleaning item:{}".format(self.session_id, k))
             namespace = k[0]
             name = k[1]
-            rp = self.load(namespace=namespace, name=name)
-            rp.destroy(options=options)
-
-    def close_context_db(self):
-        if self.gc_recorder.leveldb_recorder is None or len(self.gc_recorder.leveldb_recorder) == 0:
-            L.info("rp context leveldb_recorder is None or empty!")
-            return
-        options = dict()
-        options['gc_destroy'] = True
-        for val in self.gc_recorder.leveldb_recorder:
-            L.debug("before exit the task:{} cleaning leveldb namespace:{} name:{}".format(self.session_id, val[0], val[1]))
-            namespace = val[0]
-            name = val[1]
             rp = self.load(namespace=namespace, name=name)
             rp.destroy(options=options)
 
@@ -367,7 +353,7 @@ class RollPair(object):
         if self.ctx.get_session().is_stopped():
             L.debug('session:{} has already been stopped'.format(self.__session_id))
             return
-        L.debug(f"del obj :{self} calling")
+        L.debug(f"del obj namespace: {self.get_namespace()}, name:{self.get_name()} calling")
 
         self.ctx.gc_recorder.decrease_ref_count(self.__store)
 
@@ -518,8 +504,6 @@ class RollPair(object):
         L.debug(f"get k: {k}")
         k = create_serdes(self.__store._store_locator._serdes).serialize(k)
         er_pair = ErPair(key=k, value=None)
-        outputs = []
-        value = None
         partition_id = self.partitioner(k)
         egg = self.ctx.route_to_egg(self.__store._partitions[partition_id])
         L.info(f"partitions count: {self.__store._store_locator._total_partitions}, target partition: {partition_id}, endpoint: {egg._command_endpoint}")
@@ -531,7 +515,7 @@ class RollPair(object):
                     name=RollPair.GET,
                     inputs=[self.__store],
                     outputs=[self.__store],
-                    functors=[ErFunctor(body=cloudpickle.dumps(er_pair))])
+                    functors=[ErFunctor(name=RollPair.GET, body=cloudpickle.dumps(er_pair))])
 
         task = ErTask(id=generate_task_id(job_id, partition_id),
                       name=RollPair.GET,
@@ -566,7 +550,7 @@ class RollPair(object):
                     name=RollPair.PUT,
                     inputs=[self.__store],
                     outputs=outputs,
-                    functors=[ErFunctor(body=cloudpickle.dumps(er_pair))])
+                    functors=[ErFunctor(name=RollPair.PUT, body=cloudpickle.dumps(er_pair))])
 
         task = ErTask(id=generate_task_id(job_id, partition_id),
                       name=RollPair.PUT,
@@ -586,23 +570,30 @@ class RollPair(object):
         return value
 
     @_method_profile_logger
-    def get_all(self, options: dict = None):
+    def get_all(self, limit=None, options: dict = None):
         if options is None:
             options = {}
-        L.info('get all functor')
+
+        if limit is not None and not isinstance(limit, int) and limit <= 0:
+            raise ValueError(f"limit:{limit} must be positive int")
+
         job_id = generate_job_id(self.__session_id, RollPair.GET_ALL)
+        er_pair = ErPair(key=create_serdes(self.__store._store_locator._serdes)
+                         .serialize(limit) if limit is not None else None,
+                         value=None)
 
         def send_command():
             job = ErJob(id=job_id,
                         name=RollPair.GET_ALL,
                         inputs=[self.__store],
                         outputs=[self.__store],
-                        functors=[])
+                        functors=[ErFunctor(name=RollPair.GET_ALL, body=cloudpickle.dumps(er_pair))])
 
             task_results = self._run_job(job=job)
             er_store = self.__get_output_from_result(task_results)
 
             return er_store
+
         send_command()
 
         populated_store = self.ctx.populate_processor(self.__store)
@@ -636,7 +627,6 @@ class RollPair(object):
         populated_store = self.ctx.populate_processor(self.__store)
         shuffler = TransferPair(job_id)
         broker = FifoBroker()
-        bb = BatchBroker(broker)
         scatter_future = shuffler.scatter(broker, self.partitioner, populated_store)
 
         key_serdes = self.key_serdes
@@ -644,14 +634,14 @@ class RollPair(object):
         try:
             if include_key:
                 for k, v in items:
-                    bb.put(item=(key_serdes.serialize(k), value_serdes.serialize(v)))
+                    broker.put(item=(key_serdes.serialize(k), value_serdes.serialize(v)))
             else:
                 k = 0
                 for v in items:
-                    bb.put(item=(key_serdes.serialize(k), value_serdes.serialize(v)))
+                    broker.put(item=(key_serdes.serialize(k), value_serdes.serialize(v)))
                     k += 1
         finally:
-            bb.signal_write_finish()
+            broker.signal_write_finish()
 
         scatter_results = scatter_future.result()
         L.debug(f"scatter_results: {scatter_results}")
@@ -660,7 +650,6 @@ class RollPair(object):
 
     @_method_profile_logger
     def count(self):
-        # total_partitions = self.__store._store_locator._total_partitions
         job_id = generate_job_id(self.__session_id, tag=RollPair.COUNT)
 
         job = ErJob(id=job_id,
@@ -686,8 +675,6 @@ class RollPair(object):
         if options is None:
             options = {}
 
-        total_partitions = self.__store._store_locator._total_partitions
-
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.DESTROY),
                     name=RollPair.DESTROY,
                     inputs=[self.__store],
@@ -709,17 +696,13 @@ class RollPair(object):
         value = None
         partition_id = self.partitioner(key)
         egg = self.ctx.route_to_egg(self.__store._partitions[partition_id])
-        L.info(egg._command_endpoint)
-        L.info(f"count: {self.__store._store_locator._total_partitions}")
-        inputs = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
-        output = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
 
         job_id = generate_job_id(self.__session_id, RollPair.DELETE)
         job = ErJob(id=job_id,
                     name=RollPair.DELETE,
                     inputs=[self.__store],
                     outputs=[],
-                    functors=[ErFunctor(body=cloudpickle.dumps(er_pair))])
+                    functors=[ErFunctor(name=RollPair.DELETE, body=cloudpickle.dumps(er_pair))])
 
         task_results = self._run_job(job=job, create_output_if_missing=False)
 
@@ -733,7 +716,7 @@ class RollPair(object):
         keys_only = options.get("keys_only", False)
         ret = []
         count = 0
-        for item in self.get_all():
+        for item in self.get_all(limit=n):
             if keys_only:
                 if item:
                     ret.append(item[0])
@@ -857,7 +840,7 @@ class RollPair(object):
         functor = ErFunctor(name=RollPair.MAP_PARTITIONS, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
         reduce_functor = ErFunctor(name=RollPair.MAP_PARTITIONS, serdes=SerdesTypes.CLOUD_PICKLE,
                                    body=cloudpickle.dumps(reduce_op))
-        need_shuffle = ErFunctor(name=RollPair.FLAT_MAP, serdes=SerdesTypes.CLOUD_PICKLE,
+        need_shuffle = ErFunctor(name=RollPair.MAP_PARTITIONS, serdes=SerdesTypes.CLOUD_PICKLE,
                                  body=cloudpickle.dumps(shuffle))
 
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.MAP_PARTITIONS),
