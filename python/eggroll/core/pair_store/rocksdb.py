@@ -177,15 +177,14 @@ class RocksdbAdapter(PairAdapter):
 
 class RocksdbWriteBatch(PairWriteBatch):
 
-    def __init__(self, adapter: RocksdbAdapter,
-                 chunk_size=RollPairConfKeys.EGGROLL_ROLLPAIR_ROCKSDB_WRITEBATCH_CHUNKSIZE.get()):
-        self.chunk_size = chunk_size
+    def __init__(self, adapter: RocksdbAdapter):
+        self.batch_size = RollPairConfKeys.EGGROLL_ROLLPAIR_ROCKSDB_WRITEBATCH_SIZE.get()
         self.batch = rocksdb.WriteBatch()
         self.adapter = adapter
         self.write_count = 0
         self.manual_merger = dict()
         self.has_write_op = False
-        L.debug(f"writeBatch:{self.adapter.path} chunk_size is:{self.chunk_size}")
+        L.debug(f"writeBatch:{self.adapter.path} batch_size is:{self.batch_size}")
 
     def get(self, k):
         raise NotImplementedError
@@ -195,7 +194,7 @@ class RocksdbWriteBatch(PairWriteBatch):
             self.has_write_op = True
             self.batch.put(k, v)
             self.write_count += 1
-            if self.write_count % self.chunk_size == 0:
+            if self.write_count % self.batch_size == 0:
                 self.write()
         else:
             self.manual_merger[k] = v
@@ -215,7 +214,7 @@ class RocksdbWriteBatch(PairWriteBatch):
                     self.manual_merger[k] = v
                 else:
                     self.manual_merger[k] = merge_func(old_value, v)
-        if len(self.manual_merger) >= self.chunk_size:
+        if len(self.manual_merger) >= self.batch_size:
             self.write_merged()
 
     def delete(self, k):
