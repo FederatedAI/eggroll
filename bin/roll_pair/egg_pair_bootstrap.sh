@@ -26,6 +26,9 @@ ONE_ARG_LIST=(
 
 get_property() {
   property_value=`grep $2 $1 | cut -d '=' -f 2-`
+  if [[ -z ${property_value} ]]; then
+    property_value=$3
+  fi
 }
 
 opts=$(getopt \
@@ -100,6 +103,13 @@ logs_dir=${property_value}
 get_property ${config} "eggroll.resourcemanager.clustermanager.host"
 cluster_manager_host=${property_value}
 
+get_property ${config} "eggroll.core.malloc.mmap.threshold" 4000
+malloc_mmap_threshold=${property_value}
+
+get_property ${config} "eggroll.core.malloc.mmap.max" 200000
+malloc_mmap_max=${property_value}
+
+
 if [[ ! -n ${EGGROLL_STANDALONE_PORT} ]]; then
     get_property ${config} "eggroll.resourcemanager.clustermanager.port"
     cluster_manager_port=${property_value}
@@ -145,9 +155,9 @@ else
 fi
 
 
-export MALLOC_MMAP_THRESHOLD_=4000
+export MALLOC_MMAP_THRESHOLD_=${malloc_mmap_threshold}
 echo "MALLOC_MMAP_THRESHOLD_=${MALLOC_MMAP_THRESHOLD_}"
-export MALLOC_MMAP_MAX_=200000
+export MALLOC_MMAP_MAX_=${malloc_mmap_max}
 echo "MALLOC_MMAP_MAX_=${MALLOC_MMAP_MAX_}"
 export PYTHONPATH=${pythonpath}:${PYTHONPATH}
 echo "PYTHONPATH=${PYTHONPATH}"
