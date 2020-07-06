@@ -31,7 +31,7 @@ from eggroll.core.session import ErSession
 from eggroll.core.utils import generate_job_id, generate_task_id
 from eggroll.core.utils import string_to_bytes, hash_code
 from eggroll.roll_pair import create_serdes
-from eggroll.roll_pair.transfer_pair import TransferPair, BatchBroker
+from eggroll.roll_pair.transfer_pair import TransferPair
 from eggroll.roll_pair.utils.gc_utils import GcRecorder
 from eggroll.roll_pair.utils.pair_utils import partitioner
 from eggroll.utils.log_utils import get_logger
