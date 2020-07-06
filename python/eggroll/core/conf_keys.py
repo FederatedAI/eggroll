@@ -67,6 +67,8 @@ class CoreConfKeys(object):
     EGGROLL_CORE_FIFOBROKER_DEFAULT_SIZE = ErConfKey("eggroll.core.fifobroker.default.size", 16)
     EGGROLL_CORE_CLIENT_COMMAND_EXECUTOR_POOL_MAX_SIZE = ErConfKey("eggroll.core.client.command.executor.pool.max.size", 500)
     EGGROLL_CORE_DEFAULT_EXECUTOR_POOL = ErConfKey("eggroll.core.default.executor.pool", "eggroll.core.datastructure.threadpool.ErThreadUnpooledExecutor")
+    EGGROLL_CORE_MALLOC_MMAP_THRESHOLD = ErConfKey("eggroll.core.malloc.mmap.threshold", 4_000)
+    EGGROLL_CORE_MALLOC_MMAP_MAX = ErConfKey("eggroll.core.malloc.mmap.max", 200_000)
 
 
 class ClusterManagerConfKeys(object):
@@ -129,7 +131,7 @@ class RollSiteConfKeys(object):
     EGGROLL_ROLLSITE_COMPLETE_EXECUTOR_POOL_MAX_SIZE = ErConfKey("eggroll.rollsite.complete.executor.pool.max.size", 50)
     EGGROLL_ROLLSITE_UNARYCALL_CLIENT_MAX_RETRY = ErConfKey("eggroll.rollsite.unarycall.client.max.retry", 100)
     EGGROLL_ROLLSITE_UNARYCALL_MAX_RETRY = ErConfKey("eggroll.rollsite.unarycall.max.retry", 30_000)
-    EGGROLL_ROLLSITE_PUSH_CLIENT_MAX_RETRY = ErConfKey("eggroll.rollsite.push.client.max.retry", 100)
+    EGGROLL_ROLLSITE_PUSH_CLIENT_MAX_RETRY = ErConfKey("eggroll.rollsite.push.client.max.retry", 10)
     EGGROLL_ROLLSITE_PUSH_MAX_RETRY = ErConfKey("eggroll.rollsite.push.max.retry", 300)
     EGGROLL_ROLLSITE_PULL_CLIENT_MAX_RETRY = ErConfKey("eggroll.rollsite.pull.client.max.retry", 300)
     EGGROLL_ROLLSITE_OVERALL_TIMEOUT_SEC = ErConfKey("eggroll.rollsite.overall.timeout.sec", 172_800_000)
