@@ -35,6 +35,7 @@ import com.webank.eggroll.rollsite.infra.JobStatus;
 import com.webank.eggroll.rollsite.infra.Pipe;
 import com.webank.eggroll.rollsite.infra.impl.PacketQueueSingleResultPipe;
 import com.webank.eggroll.rollsite.model.ProxyServerConf;
+import com.webank.eggroll.rollsite.service.FdnRouter;
 import com.webank.eggroll.rollsite.utils.Timeouts;
 import io.grpc.stub.StreamObserver;
 
@@ -81,6 +82,8 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
     private PipeFactory pipeFactory;
     @Autowired
     private DefaultPipeFactory defaultPipeFactory;
+    @Autowired
+    private FdnRouter fdnRouter;
 
     static Map<String, PacketQueueSingleResultPipe> pipeMap = Maps.newConcurrentMap();
 
@@ -407,7 +410,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
             String routeTablePath = proxyServerConf.getRouteTablePath();
             String srcIp = (String) AddrAuthServerInterceptor.REMOTE_ADDR.get();
 
-            if (srcIp != null) {
+            if (srcIp == null) {
                 throw new IllegalArgumentException("srcIp cannot be null");
             } else {
                 String[] whiteList = proxyServerConf.getWhiteList();
@@ -426,8 +429,12 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                     }
                 }
             }
-            Proxy.Data body = Proxy.Data.newBuilder().setValue(ByteString.copyFromUtf8(jsonContent)).build();
-            packet = packetBuilder.setBody(body).build();
+            if(jsonContent != null) {
+                Proxy.Data body = Proxy.Data.newBuilder().setValue(ByteString.copyFromUtf8(jsonContent)).build();
+                packet = packetBuilder.setBody(body).build();
+            } else {
+                packet = packetBuilder.build();
+            }
             responseObserver.onNext(packet);
             responseObserver.onCompleted();
         }
@@ -446,7 +453,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
             } else {
                 String[] whiteList = proxyServerConf.getWhiteList();
                 if (Arrays.asList(whiteList).contains(srcIp)) {
-                    String jsonString = request.getBody().getValue().toString();
+                    String jsonString = request.getBody().getValue().toStringUtf8();
                     //String jsonString = format(result.toString());
                     try {
                         System.out.println("routeTablePath:" + routeTablePath);
@@ -463,6 +470,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                         write.write(jsonString);
                         write.flush();
                         write.close();
+                        fdnRouter.updateRouteTable();
                     } catch (Exception e) {
                         LOGGER.error("setRouteTable failed: ", e);
                         responseObserver.onError(e);
