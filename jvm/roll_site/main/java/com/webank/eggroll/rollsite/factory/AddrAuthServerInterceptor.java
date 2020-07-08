@@ -18,7 +18,8 @@ public class AddrAuthServerInterceptor implements ServerInterceptor {
                 headers, call.getMethodDescriptor(), call.getMethodDescriptor().getFullMethodName());
 
         String remoteAddr = call.getAttributes().get(Grpc.TRANSPORT_ATTR_REMOTE_ADDR).toString();
-        Context context = Context.current().withValue(REMOTE_ADDR, remoteAddr);
+        String[] remoteAddrStriped = remoteAddr.split(":");
+        Context context = Context.current().withValue(REMOTE_ADDR, remoteAddrStriped[0].replaceAll("\\/", ""));
         return Contexts.interceptCall(context, call, headers, next);
     }
 }
