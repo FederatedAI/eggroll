@@ -22,10 +22,8 @@ L = get_logger()
 
 try:
     from queue import SimpleQueue
-    L.info(f'GC: using SimpleQueue from cython')
 except ImportError:
     SimpleQueue = _PySimpleQueue
-    L.info(f'GC: using SimpleQueue from _PySimpleQueue')
 
 
 def create_executor_pool(canonical_name: str = None, max_workers=None, thread_name_prefix=None, *args, **kwargs) -> _base.Executor:
