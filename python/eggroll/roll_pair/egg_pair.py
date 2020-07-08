@@ -425,20 +425,25 @@ class EggPair(object):
                 l_iter = iter(left_iterator)
                 r_iter = iter(right_iterator)
                 is_left_stopped = False
-                k_left = None
-                v_left = None
-                k_right = None
-                v_right = None
+                is_equal = False
                 try:
                     k_left, v_left = next(l_iter)
+                except StopIteration:
+                    is_left_stopped = True
+                    k_left = None
+                    v_left = None
+
+                try:
                     k_right_raw, v_right = next(r_iter)
-                    if k_left is None and k_right_raw is None:
-                        return
-                    elif k_left is None:
-                        is_left_stopped = True
+                except StopIteration:
+                    is_left_stopped = False
+                    k_right_raw = None
+                    v_right = None
+
+                try:
+                    if k_left is None:
                         raise StopIteration()
-                    elif k_right_raw is None:
-                        is_left_stopped = False
+                    if k_right_raw is None:
                         raise StopIteration()
 
                     if is_same_serdes:
@@ -447,36 +452,34 @@ class EggPair(object):
                         k_right = left_key_serdes.serialize(right_key_serdes.deserialize(k_right_raw))
 
                     while True:
-                        while k_left < k_right:
+                        is_left_stopped = False
+                        if k_left < k_right:
                             output_writebatch.put(k_left, v_left)
-                            is_left_stopped = True
                             k_left, v_left = next(l_iter)
-                            is_left_stopped = False
-                        while k_left == k_right:
                             is_left_stopped = True
+                        elif k_left == k_right:
+                            is_equal = True
                             k_left, v_left = next(l_iter)
+                            # is_left_stopped = True
+                            is_equal = False
+                            k_right, v_right = next(r_iter)
                             is_left_stopped = False
+                        else:
                             k_right, v_right = next(r_iter)
-                        while k_left > k_right:
-                            is_left_stopped = True
-                            k_right, v_right = next(r_iter)
-
+                        is_left_stopped = True
                 except StopIteration as e:
                     pass
-                if not is_left_stopped:
-                    if k_left is None and k_right is None:
-                        try:
-                            k_left, v_left_bytes = next(l_iter)
-                        except StopIteration:
-                            pass
-                    else:
-                        try:
+                if not is_left_stopped and not is_equal:
+                    try:
+                        output_writebatch.put(k_left, v_left)
+                        while True:
+                            k_left, v_left = next(l_iter)
                             output_writebatch.put(k_left, v_left)
-                            while True:
-                                k_left, v_left_bytes = next(l_iter)
-                                output_writebatch.put(k_left, v_left_bytes)
-                        except StopIteration as e:
-                            pass
+                    except StopIteration as e:
+                        pass
+                elif is_left_stopped and not is_equal and k_left is not None:
+                    output_writebatch.put(k_left, v_left)
+
                 return
 
             def hash_subtract_by_key_wrapper(left_iterator, left_key_serdes, left_value_serdes,
