@@ -23,6 +23,7 @@ import shutil
 from pathlib import Path
 import time
 
+from eggroll.core.conf_keys import RollPairConfKeys
 from eggroll.core.pair_store.adapter import PairWriteBatch, PairIterator, PairAdapter
 from eggroll.utils.log_utils import get_logger
 from eggroll.roll_pair.utils.pair_utils import get_data_dir
@@ -52,7 +53,21 @@ class RocksdbAdapter(PairAdapter):
                 opts.create_if_missing = (str(options.get("create_if_missing", "True")).lower() == 'true')
                 opts.compression = rocksdb.CompressionType.no_compression
                 # todo:0: parameterize write_buffer_size
-                opts.write_buffer_size = 1 << 20
+                opts.max_open_files = -1
+                # opts.allow_concurrent_memtable_write = True
+                opts.write_buffer_size = 128 * 1024
+                opts.max_write_buffer_number = 1
+                opts.allow_mmap_writes = False
+                opts.allow_mmap_reads = False
+                opts.arena_block_size = 1024
+                opts.allow_concurrent_memtable_write = True
+                opts.max_bytes_for_level_base = 1 << 20
+                opts.target_file_size_base = 1 << 22
+                opts.num_levels = 1
+                opts.level0_slowdown_writes_trigger = 1
+                opts.table_cache_numshardbits = 1
+                opts.manifest_preallocation_size = 128 * 1024
+                opts.table_factory = rocksdb.BlockBasedTableFactory(no_block_cache=True, block_size=128*1024)
 
                 if opts.create_if_missing:
                     os.makedirs(self.path, exist_ok=True)
@@ -71,11 +86,9 @@ class RocksdbAdapter(PairAdapter):
                         L.info(f'fail to open db path={self.path}. retry_cnt={retry_cnt}. db_dict={RocksdbAdapter.db_dict}')
                         gc.collect()
                         time.sleep(1)
-                # self._dbref = rocksdb.weakref.ref(self.db, self._on_db_collected)
                 L.info(f'RocksdbAdapter.__init__: path not in dict db path={self.path}')
                 RocksdbAdapter.db_dict[self.path] = self.db
                 RocksdbAdapter.count_dict[self.path] = 0
-                # RocksdbAdapter.ref_dict = self._dbref
             else:
                 L.info(f'RocksdbAdapter.__init__: path in dict={self.path}')
                 self.db = RocksdbAdapter.db_dict[self.path]
@@ -164,13 +177,14 @@ class RocksdbAdapter(PairAdapter):
 
 class RocksdbWriteBatch(PairWriteBatch):
 
-    def __init__(self, adapter: RocksdbAdapter, chunk_size=100_000):
-        self.chunk_size = chunk_size
+    def __init__(self, adapter: RocksdbAdapter):
+        self.batch_size = RollPairConfKeys.EGGROLL_ROLLPAIR_ROCKSDB_WRITEBATCH_SIZE.get()
         self.batch = rocksdb.WriteBatch()
         self.adapter = adapter
         self.write_count = 0
         self.manual_merger = dict()
         self.has_write_op = False
+        L.debug(f"writeBatch:{self.adapter.path} batch_size is:{self.batch_size}")
 
     def get(self, k):
         raise NotImplementedError
@@ -180,7 +194,7 @@ class RocksdbWriteBatch(PairWriteBatch):
             self.has_write_op = True
             self.batch.put(k, v)
             self.write_count += 1
-            if self.write_count % self.chunk_size == 0:
+            if self.write_count % self.batch_size == 0:
                 self.write()
         else:
             self.manual_merger[k] = v
@@ -200,7 +214,7 @@ class RocksdbWriteBatch(PairWriteBatch):
                     self.manual_merger[k] = v
                 else:
                     self.manual_merger[k] = merge_func(old_value, v)
-        if len(self.manual_merger) >= self.chunk_size:
+        if len(self.manual_merger) >= self.batch_size:
             self.write_merged()
 
     def delete(self, k):
