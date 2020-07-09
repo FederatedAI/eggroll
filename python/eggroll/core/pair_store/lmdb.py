@@ -61,7 +61,7 @@ class LmdbAdapter(PairAdapter):
             if self.path not in LmdbAdapter.env_dict:
                 if create_if_missing:
                     os.makedirs(self.path, exist_ok=True)
-                L.trace("lmdb init create env={}".format(self.path))
+                L.debug("lmdb init create env={}".format(self.path))
                 writemap = False if platform.system() == 'Darwin' else True
                 if not os.path.exists(self.path):
                     os.makedirs(self.path, exist_ok=True)
@@ -131,7 +131,7 @@ class LmdbAdapter(PairAdapter):
             if self.env:
                 count = LmdbAdapter.count_dict[self.path]
                 if not count or count - 1 <= 0:
-                    L.trace(f"LmdbAdapter: actually closing {self.path}")
+                    L.debug(f"LmdbAdapter: actually closing {self.path}")
                     try:
                         if "EGGROLL_LMDB_ENV_CLOSE_ENABLE" in os.environ \
                                 and os.environ["EGGROLL_LMDB_ENV_CLOSE_ENABLE"] == '1'\
@@ -139,9 +139,9 @@ class LmdbAdapter(PairAdapter):
                             self.env.close()
                             L.debug(f"EGGROLL_LMDB_ENV_CLOSE_ENABLE is True, finish close lmdb env obj: {self.path}")
                         else:
-                            L.trace("lmdb env not close while closing LmdbAdapter")
+                            L.trace(f"lmdb env=:{self.path} not close while closing LmdbAdapter")
                     except:
-                        L.warning("txn commit or cursor, env have closed before")
+                        L.warning(f"txn commit or cursor, env={self.path} have closed before")
 
                     del LmdbAdapter.env_dict[self.path]
                     del LmdbAdapter.sub_db_dict[self.path]
