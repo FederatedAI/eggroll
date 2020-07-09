@@ -463,19 +463,34 @@ class TestRollPairBase(unittest.TestCase):
         self.assertEqual(list(left_rp.subtract_by_key(right_rp).get_all()), [(5, 5), (6, 6), (7, 7), (8, 8), (9, 9)])
         print(list(left_rp.subtract_by_key(right_rp).get_all()))
 
+    def test_subtract_by_key_second(self):
+        options_left = get_default_options()
+        options_right = get_default_options()
+        options_left['total_partitions'] = 1
+        options_right['total_partitions'] = 1
+        left_rp = self.ctx.load("ns1", "testSubtractLeft_10p_3", options=options_left).put_all([('a', 2), ('c', 4), ('d', 1), ('f', 0), ('g', 1)], options={"include_key": True})
+        right_rp = self.ctx.load("ns1", "testSubtractRight_5p_3", options=options_right).put_all([('a', 1), ('b', 4), ('d', 6), ('e', 0)],
+                                                                                                 options={"include_key": True})
+        print(f'left:{get_value(left_rp)}, right:{get_value(right_rp)}')
+        print('111', get_value(left_rp.subtract_by_key(right_rp)))
+        self.assertEqual([('c', 4), ('f', 0), ('g', 1)], get_value(left_rp.subtract_by_key(right_rp)))
+
     def test_subtract_diff_partitions(self):
         options_left = get_default_options()
         options_right = get_default_options()
         options_left['total_partitions'] = 10
         options_right['total_partitions'] = 5
-        left_rp = self.ctx.load("ns1", "testSubtractLeft_10p_6", options=options_left).put_all([('a', 1), ('b', 4), ('d', 6), ('e', 0), ('f', 3), ('g', 12), ('h', 13), ('i', 14), ('j', 15), ('k', 16), ('l', 17)],
+        left_rp = self.ctx.load("ns1", "testSubtractLeft_10p_7", options=options_left).put_all([('a', 1), ('b', 4), ('d', 6),
+                                                                                                ('e', 0), ('f', 3), ('g', 12), ('h', 13), ('i', 14), ('j', 15), ('k', 16), ('l', 17)],
                                                                                            options={"include_key": True})
-        right_rp = self.ctx.load("ns1", "testSubtractRight_5p_6", options=options_right).put_all([('a', 2), ('c', 4), ('d', 1), ('f', 0), ('g', 1)],
+        right_rp = self.ctx.load("ns1", "testSubtractRight_5p_7", options=options_right).put_all([('a', 2), ('c', 4), ('d', 1), ('f', 0), ('g', 1)],
                                                                                              options={"include_key": True})
         print(f'left:{get_value(left_rp)}, right:{get_value(right_rp)}')
         print('111', get_value(left_rp.subtract_by_key(right_rp)))
         print('222', get_value(right_rp.subtract_by_key(left_rp)))
-        self.assertEqual(get_value(left_rp.subtract_by_key(right_rp)), [('b', 4), ('e', 0), ('h', 13), ('i', 14), ('j', 15), ('k', 16), ('l', 17)])
+        rs = get_value(left_rp.subtract_by_key(right_rp))
+        print('rs:', rs)
+        self.assertEqual([('b', 4), ('e', 0), ('h', 13), ('i', 14), ('j', 15), ('k', 16), ('l', 17)], rs)
         self.assertEqual(get_value(right_rp.subtract_by_key(left_rp)), [('c', 4)])
 
         right_rp = self.ctx.load("ns1", "testSubtractRight_10p_7", options=options_right).put_all([('a', 1), ('b', 4), ('d', 6), ('e', 0), ('f', 3), ('g', 12), ('h', 13), ('i', 14), ('j', 15), ('k', 16), ('l', 17)],
