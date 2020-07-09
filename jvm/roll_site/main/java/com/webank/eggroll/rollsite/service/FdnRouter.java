@@ -27,7 +27,7 @@ public interface FdnRouter {
 
     void initRouteTableFile(String filename);
 
-    void updateRouteTable(String filename, String partId, String ip, int port);
+    void updateRouteTable();
 
     boolean isAllowed(Proxy.Topic from, Proxy.Topic to);
 

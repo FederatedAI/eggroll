@@ -36,9 +36,6 @@ public class JobStatus {
             .concurrencyLevel(50)
             .expireAfterAccess(48, TimeUnit.HOURS)
             .recordStats()
-            .removalListener(removalNotification -> {
-                throw new IllegalStateException("removing " + removalNotification.getKey() + ", " + removalNotification.getValue() + ". reason: " + removalNotification.getCause());
-            })
             .build(new CacheLoader<String, CountDownLatch>() {
                 @Override
                 public CountDownLatch load(String key) throws Exception {
