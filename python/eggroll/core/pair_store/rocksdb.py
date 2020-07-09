@@ -45,7 +45,7 @@ class RocksdbAdapter(PairAdapter):
         with RocksdbAdapter.lock_dict[self.path]:
             super().__init__(options)
 
-            L.trace(f'initing db={self.path}, db_dict={RocksdbAdapter.db_dict}')
+            L.debug(f'initing db={self.path}, db_dict={RocksdbAdapter.db_dict}')
             self.is_closed = False
 
             if self.path not in RocksdbAdapter.db_dict:
@@ -122,7 +122,7 @@ class RocksdbAdapter(PairAdapter):
                 return
             count = RocksdbAdapter.count_dict.get(self.path, None)
             if not count or count - 1 <= 0:
-                L.trace(f'RocksdbAdapter.close: actually closing path={self.path}. count={count}')
+                L.debug(f'RocksdbAdapter.close: actually closing path={self.path}. count={count}')
                 del RocksdbAdapter.db_dict[self.path]
                 del RocksdbAdapter.count_dict[self.path]
                 del RocksdbAdapter.lock_dict[self.path]
