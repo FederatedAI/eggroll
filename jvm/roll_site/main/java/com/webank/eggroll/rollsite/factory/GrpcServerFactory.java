@@ -29,6 +29,7 @@ import com.webank.eggroll.rollsite.manager.ServerConfManager;
 import com.webank.eggroll.rollsite.model.ProxyServerConf;
 import com.webank.eggroll.rollsite.service.FdnRouter;
 import io.grpc.Server;
+import io.grpc.ServerInterceptors;
 import io.grpc.netty.shaded.io.grpc.netty.GrpcSslContexts;
 import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder;
 import io.grpc.netty.shaded.io.netty.handler.ssl.ClientAuth;
@@ -120,7 +121,8 @@ public class GrpcServerFactory {
                     "com.webank.ai.eggroll.api.networking.proxy.DataTransferService",
                     "com.webank.ai.fate.api.networking.proxy.DataTransferService"))
                     .addService(accessRedirector.redirect(routeServer, "com.webank.ai.eggroll.api.networking.proxy.RouteService",
-                            "com.webank.ai.fate.api.networking.proxy.RouteService"));
+                            "com.webank.ai.fate.api.networking.proxy.RouteService"))
+                    .addService(ServerInterceptors.intercept(dataTransferPipedServer.bindService(), new AddrAuthServerInterceptor()));
         }
 
         if (isSecureServer) {
@@ -308,6 +310,11 @@ public class GrpcServerFactory {
                 throw new IllegalArgumentException("route table cannot be null");
             } else {
                 proxyServerConf.setRouteTablePath(routeTablePath);
+            }
+
+            String whiteList = properties.getProperty(RollSiteConfKeys.EGGROLL_ROLLSITE_ROUTETABLE_WHITELIST().key(), null);
+            if (whiteList != null) {
+                proxyServerConf.setWhiteList(whiteList);
             }
 
             boolean needCompatibility = Boolean.valueOf(properties.getProperty(
