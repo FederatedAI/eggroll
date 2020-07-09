@@ -16,6 +16,8 @@
 import argparse
 import sys
 import unittest
+import grpc
+from eggroll.core.proto import proxy_pb2, proxy_pb2_grpc
 
 print(sys.path)
 
@@ -458,6 +460,38 @@ class TestRollSiteClusterGet(TestRollSiteBase):
 
     def test_put_all_multi_partitions(self):
         pass
+
+
+class TestRollSiteRouteTable(unittest.TestCase):
+    def test_get_route_table(self):
+        channel = grpc.insecure_channel('localhost:9370')
+        stub = proxy_pb2_grpc.DataTransferServiceStub(channel)
+
+        topic_dst = proxy_pb2.Topic(partyId='10002')
+        metadata = proxy_pb2.Metadata(dst=topic_dst, operator="get_route_table")
+        packet = proxy_pb2.Packet(header=metadata)
+        ret_packet = stub.unaryCall(packet)
+
+        return ret_packet.body.value.decode('utf8')
+
+
+    def test_set_route_table(self):
+        route_table_path = '../conf/route_table_set.json'
+        with open(route_table_path, 'r') as fp:
+            route_table_content = fp.read()
+
+        channel = grpc.insecure_channel('localhost:9370')
+        stub = proxy_pb2_grpc.DataTransferServiceStub(channel)
+
+        topic_dst = proxy_pb2.Topic(partyId='10002')
+        metadata = proxy_pb2.Metadata(dst=topic_dst, operator="set_route_table")
+
+        data = proxy_pb2.Data(value=route_table_content.encode('utf-8'))
+        packet = proxy_pb2.Packet(header=metadata, body=data)
+
+        ret_packet = stub.unaryCall(packet)
+
+        return ret_packet.body.value.decode('utf8')
 
 
 def option():

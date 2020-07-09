@@ -167,6 +167,7 @@ object RollSiteConfKeys {
   val EGGROLL_ROLLSITE_OVERALL_TIMEOUT_SEC = ErConfKey("eggroll.rollsite.overall.timeout_sec", 172800000)
   val EGGROLL_ROLLSITE_COMPLETION_WAIT_TIMEOUT = ErConfKey("eggroll.rollsite.completion.wait.timeout.sec", 3600000)
   val EGGROLL_ROLLSITE_PACKET_INTERVAL_TIMEOUT = ErConfKey("eggroll.rollsite.packet.interval.timeout.sec", 20000)
+  val EGGROLL_ROLLSITE_ROUTETABLE_WHITELIST = ErConfKey("eggroll.rollsite.routetable.whitelist")
 }
 
 object RollPairConfKeys {
