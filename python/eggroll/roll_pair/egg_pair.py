@@ -66,11 +66,18 @@ class EggPair(object):
     def _run_unary(self, func, task, shuffle=False, reduce_op=None):
         input_store_head = task._job._inputs[0]
         output_store_head = task._job._outputs[0]
-        key_serdes = create_serdes(input_store_head._store_locator._serdes)
-        value_serdes = create_serdes(input_store_head._store_locator._serdes)
+        input_key_serdes = create_serdes(input_store_head._store_locator._serdes)
+        input_value_serdes = create_serdes(input_store_head._store_locator._serdes)
+        output_key_serdes = create_serdes(output_store_head._store_locator._serdes)
+        output_value_serdes = create_serdes(output_store_head._store_locator._serdes)
+
+        if type(input_key_serdes) != type(output_key_serdes) or \
+                type(input_value_serdes) != type(output_value_serdes):
+            raise ValueError(f"input key-value serdes:{(input_key_serdes, input_value_serdes)}"
+                             f"differ from output key-value serdes:{(output_key_serdes, output_value_serdes)}")
 
         if shuffle:
-            from eggroll.roll_pair.transfer_pair import TransferPair, BatchBroker
+            from eggroll.roll_pair.transfer_pair import TransferPair
             input_total_partitions = input_store_head._store_locator._total_partitions
             output_total_partitions = output_store_head._store_locator._total_partitions
             output_store = output_store_head
@@ -94,7 +101,6 @@ class EggPair(object):
                 scatter_future = None
             else:
                 shuffle_broker = FifoBroker()
-                write_bb = BatchBroker(shuffle_broker)
                 try:
                     scatter_future = shuffler.scatter(
                             input_broker=shuffle_broker,
@@ -102,9 +108,9 @@ class EggPair(object):
                             output_store=output_store)
                     with create_adapter(task._inputs[0]) as input_db, \
                         input_db.iteritems() as rb:
-                        func(rb, key_serdes, value_serdes, write_bb)
+                        func(rb, input_key_serdes, input_value_serdes, shuffle_broker)
                 finally:
-                    write_bb.signal_write_finish()
+                    shuffle_broker.signal_write_finish()
 
             if scatter_future:
                 scatter_results = scatter_future.result()
@@ -121,7 +127,7 @@ class EggPair(object):
                     input_db.iteritems() as rb, \
                     create_adapter(task._outputs[0], options=task._job._options) as db, \
                     db.new_batch() as wb:
-                func(rb, key_serdes, value_serdes, wb)
+                func(rb, input_key_serdes, input_value_serdes, wb)
             L.debug(f"close_store_adatper:{task._inputs[0]}")
 
     def _run_binary(self, func, task):
@@ -130,6 +136,14 @@ class EggPair(object):
 
         right_key_serdes = create_serdes(task._inputs[1]._store_locator._serdes)
         right_value_serdes = create_serdes(task._inputs[1]._store_locator._serdes)
+
+        output_key_serdes = create_serdes(task._outputs[0]._store_locator._serdes)
+        output_value_serdes = create_serdes(task._outputs[0]._store_locator._serdes)
+
+        if type(left_key_serdes) != type(output_key_serdes) or \
+                type(left_value_serdes) != type(output_value_serdes):
+            raise ValueError(f"input key-value serdes:{(left_key_serdes, left_value_serdes)}"
+                             f"differ from output key-value serdes:{(output_key_serdes, output_value_serdes)}")
 
         with create_adapter(task._inputs[0]) as left_adapter, \
                 create_adapter(task._inputs[1]) as right_adapter, \
@@ -163,11 +177,14 @@ class EggPair(object):
                 result = ErPair(key=f._key, value=value)
         elif task._name == 'getAll':
             tag = f'{task._id}'
-
+            er_pair = create_functor(functors[0]._body)
+            input_store_head = task._job._inputs[0]
+            key_serdes = create_serdes(input_store_head._store_locator._serdes)
             def generate_broker():
                 with create_adapter(task._inputs[0]) as db, db.iteritems() as rb:
+                    limit = None if er_pair._key is None else key_serdes.deserialize(er_pair._key)
                     try:
-                        yield from TransferPair.pair_to_bin_batch(rb)
+                        yield from TransferPair.pair_to_bin_batch(rb, limit=limit)
                     finally:
                         TransferService.remove_broker(tag)
             TransferService.set_broker(tag, generate_broker())
@@ -263,16 +280,19 @@ class EggPair(object):
         elif task._name == 'mapPartitions':
             reduce_op = create_functor(functors[1]._body)
             shuffle = create_functor(functors[2]._body)
-            def map_partitions_wrapper(input_iterator, key_serdes, value_serdes, shuffle_broker):
+            def map_partitions_wrapper(input_iterator, key_serdes, value_serdes, output_writebatch):
                 f = create_functor(functors[0]._body)
                 value = f(generator(key_serdes, value_serdes, input_iterator))
                 if input_iterator.last():
                     if isinstance(value, Iterable):
                         for k1, v1 in value:
-                            shuffle_broker.put((key_serdes.serialize(k1), value_serdes.serialize(v1)))
+                            if shuffle:
+                                output_writebatch.put((key_serdes.serialize(k1), value_serdes.serialize(v1)))
+                            else:
+                                output_writebatch.put(key_serdes.serialize(k1), value_serdes.serialize(v1))
                     else:
                         key = input_iterator.key()
-                        shuffle_broker.put((key, value_serdes.serialize(value)))
+                        output_writebatch.put((key, value_serdes.serialize(value)))
             self._run_unary(map_partitions_wrapper, task, shuffle=shuffle, reduce_op=reduce_op)
 
         elif task._name == 'collapsePartitions':
@@ -287,11 +307,14 @@ class EggPair(object):
         elif task._name == 'flatMap':
             shuffle = create_functor(functors[1]._body)
 
-            def flat_map_wraaper(input_iterator, key_serdes, value_serdes, shuffle_broker):
+            def flat_map_wraaper(input_iterator, key_serdes, value_serdes, output_writebatch):
                 f = create_functor(functors[0]._body)
                 for k1, v1 in input_iterator:
                     for k2, v2 in f(key_serdes.deserialize(k1), value_serdes.deserialize(v1)):
-                        shuffle_broker.put((key_serdes.serialize(k2), value_serdes.serialize(v2)))
+                        if shuffle:
+                            output_writebatch.put((key_serdes.serialize(k2), value_serdes.serialize(v2)))
+                        else:
+                            output_writebatch.put(key_serdes.serialize(k2), value_serdes.serialize(v2))
             self._run_unary(flat_map_wraaper, task, shuffle=shuffle)
 
         elif task._name == 'glom':
@@ -377,7 +400,6 @@ class EggPair(object):
                         k_left = right_key_serdes.serialize(left_key_serdes.deserialize(k_left))
                     r_v_bytes = right_iterator.adapter.get(k_left)
                     if r_v_bytes:
-                        #L.info("egg join:{}".format(right_value_serdes.deserialize(r_v_bytes)))
                         output_writebatch.put(k_left,
                                               left_value_serdes.serialize(
                                                       f(left_value_serdes.deserialize(l_v_bytes),
@@ -391,10 +413,75 @@ class EggPair(object):
                 self._run_binary(hash_join_wrapper, task)
 
         elif task._name == 'subtractByKey':
-            def subtract_by_key_wrapper(left_iterator, left_key_serdes, left_value_serdess,
-                    right_iterator, right_key_serdes, right_value_serdess,
+            def merge_subtract_by_key_wrapper(left_iterator, left_key_serdes, left_value_serdes,
+                                              right_iterator, right_key_serdes, right_value_serdes,
+                                              output_writebatch):
+                if not left_iterator.adapter.is_sorted() or not right_iterator.adapter.is_sorted():
+                    raise RuntimeError(f"merge join cannot be applied: not both store types support sorting. "
+                                       f"left type: {type(left_iterator.adapter)}, is_sorted: {left_iterator.adapter.is_sorted()}; "
+                                       f"right type: {type(right_iterator.adapter)}, is_sorted: {right_iterator.adapter.is_sorted()}")
+
+                is_same_serdes = type(left_key_serdes) == type(right_key_serdes)
+                l_iter = iter(left_iterator)
+                r_iter = iter(right_iterator)
+                is_left_stopped = False
+                k_left = None
+                v_left = None
+                k_right = None
+                v_right = None
+                try:
+                    k_left, v_left = next(l_iter)
+                    k_right_raw, v_right = next(r_iter)
+                    if k_left is None and k_right_raw is None:
+                        return
+                    elif k_left is None:
+                        is_left_stopped = True
+                        raise StopIteration()
+                    elif k_right_raw is None:
+                        is_left_stopped = False
+                        raise StopIteration()
+
+                    if is_same_serdes:
+                        k_right = k_right_raw
+                    else:
+                        k_right = left_key_serdes.serialize(right_key_serdes.deserialize(k_right_raw))
+
+                    while True:
+                        while k_left < k_right:
+                            output_writebatch.put(k_left, v_left)
+                            is_left_stopped = True
+                            k_left, v_left = next(l_iter)
+                            is_left_stopped = False
+                        while k_left == k_right:
+                            is_left_stopped = True
+                            k_left, v_left = next(l_iter)
+                            is_left_stopped = False
+                            k_right, v_right = next(r_iter)
+                        while k_left > k_right:
+                            is_left_stopped = True
+                            k_right, v_right = next(r_iter)
+
+                except StopIteration as e:
+                    pass
+                if not is_left_stopped:
+                    if k_left is None and k_right is None:
+                        try:
+                            k_left, v_left_bytes = next(l_iter)
+                        except StopIteration:
+                            pass
+                    else:
+                        try:
+                            output_writebatch.put(k_left, v_left)
+                            while True:
+                                k_left, v_left_bytes = next(l_iter)
+                                output_writebatch.put(k_left, v_left_bytes)
+                        except StopIteration as e:
+                            pass
+                return
+
+            def hash_subtract_by_key_wrapper(left_iterator, left_key_serdes, left_value_serdes,
+                    right_iterator, right_key_serdes, right_value_serdes,
                     output_writebatch):
-                L.info("sub wrapper")
                 is_diff_serdes = type(left_key_serdes) != type(right_key_serdes)
                 for k_left, v_left in left_iterator:
                     if is_diff_serdes:
@@ -402,11 +489,16 @@ class EggPair(object):
                     v_right = right_iterator.adapter.get(k_left)
                     if v_right is None:
                         output_writebatch.put(k_left, v_left)
-            self._run_binary(subtract_by_key_wrapper, task)
+
+            subtract_by_key_type = task._job._options.get('subtract_by_key_type', 'merge')
+            if subtract_by_key_type == 'merge':
+                self._run_binary(merge_subtract_by_key_wrapper, task)
+            else:
+                self._run_binary(hash_subtract_by_key_wrapper, task)
 
         elif task._name == 'union':
             def merge_union_wrapper(left_iterator, left_key_serdes, left_value_serdes,
-                    right_iterator, right_key_serdes, right_value_serdes,
+                right_iterator, right_key_serdes, right_value_serdes,
                     output_writebatch):
                 if not left_iterator.adapter.is_sorted() or not right_iterator.adapter.is_sorted():
                     raise RuntimeError(f"merge union cannot be applied: not both store types support sorting. "
