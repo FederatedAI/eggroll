@@ -185,7 +185,7 @@ class RollSiteWriteBatch(PairWriteBatch):
                 break
             except Exception as e:
                 exception = e
-                L.trace(f'caught exception in pushing {self.roll_site_header}, partition_id: {self.adapter.partition_id}: {e}. retrying. current retry count: {i}, max_retry_cnt: {self.push_max_retry_cnt}')
+                L.debug(f'caught exception in pushing {self.roll_site_header}, partition_id: {self.adapter.partition_id}: {e}. retrying. current retry count: {i}, max_retry_cnt: {self.push_max_retry_cnt}')
                 time.sleep(min(5 * i, 30))
 
         if exception:
@@ -221,7 +221,7 @@ class RollSiteWriteBatch(PairWriteBatch):
                 exception = None
                 break
             except Exception as e:
-                L.trace(f'caught exception in send_end for {self.name}, partition_id= {self.adapter.partition_id}: {e}. retrying. current retry count={i}, max_retry_cnt={self.unarycall_max_retry_cnt}')
+                L.debug(f'caught exception in send_end for {self.name}, partition_id= {self.adapter.partition_id}: {e}. retrying. current retry count={i}, max_retry_cnt={self.unarycall_max_retry_cnt}')
                 exception = GrpcCallError('send_end', self.proxy_endpoint, e)
         if exception:
             raise exception
