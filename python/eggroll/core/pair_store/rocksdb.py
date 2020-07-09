@@ -45,7 +45,7 @@ class RocksdbAdapter(PairAdapter):
         with RocksdbAdapter.lock_dict[self.path]:
             super().__init__(options)
 
-            L.debug(f'initing {self.path}, db_dict={RocksdbAdapter.db_dict}')
+            L.trace(f'initing db={self.path}, db_dict={RocksdbAdapter.db_dict}')
             self.is_closed = False
 
             if self.path not in RocksdbAdapter.db_dict:
@@ -83,18 +83,18 @@ class RocksdbAdapter(PairAdapter):
                             L.exception(f'failed to open path={self.path} after retry.')
                             raise e
                         retry_cnt += 1
-                        L.info(f'fail to open db path={self.path}. retry_cnt={retry_cnt}. db_dict={RocksdbAdapter.db_dict}')
+                        L.warn(f'fail to open db path={self.path}. retry_cnt={retry_cnt}. db_dict={RocksdbAdapter.db_dict}')
                         gc.collect()
                         time.sleep(1)
-                L.info(f'RocksdbAdapter.__init__: path not in dict db path={self.path}')
+                L.trace(f'RocksdbAdapter.__init__: path not in dict db path={self.path}')
                 RocksdbAdapter.db_dict[self.path] = self.db
                 RocksdbAdapter.count_dict[self.path] = 0
             else:
-                L.info(f'RocksdbAdapter.__init__: path in dict={self.path}')
+                L.trace(f'RocksdbAdapter.__init__: path in dict={self.path}')
                 self.db = RocksdbAdapter.db_dict[self.path]
             prev_count = RocksdbAdapter.count_dict[self.path]
             RocksdbAdapter.count_dict[self.path] = prev_count + 1
-            L.info(f"RocksdbAdapter.__init__: path={self.path}, prev_count={prev_count}, cur_count={prev_count + 1}")
+            L.trace(f"RocksdbAdapter.__init__: path={self.path}, prev_count={prev_count}, cur_count={prev_count + 1}")
 
     def __enter__(self):
         return self
@@ -113,16 +113,16 @@ class RocksdbAdapter(PairAdapter):
         self.db.put(key, value)
 
     def close(self):
-        if L.isEnabledFor(logging.DEBUG):
-            L.info(f'RocksdbAdapter.close for path={self.path}. is_closed={self.is_closed}, db_dict={RocksdbAdapter.db_dict}')
+        if L.isEnabledFor(logging.TRACE):
+            L.trace(f'RocksdbAdapter.close for path={self.path}. is_closed={self.is_closed}, db_dict={RocksdbAdapter.db_dict}')
         else:
-            L.info(f'RocksdbAdapter.close for path={self.path}. is_closed={self.is_closed}')
+            L.debug(f'RocksdbAdapter.close for path={self.path}. is_closed={self.is_closed}')
         with RocksdbAdapter.lock_dict[self.path]:
             if self.is_closed:
                 return
             count = RocksdbAdapter.count_dict.get(self.path, None)
             if not count or count - 1 <= 0:
-                L.debug(f'RocksdbAdapter.close: actually closing path={self.path}. count={count}')
+                L.trace(f'RocksdbAdapter.close: actually closing path={self.path}. count={count}')
                 del RocksdbAdapter.db_dict[self.path]
                 del RocksdbAdapter.count_dict[self.path]
                 del RocksdbAdapter.lock_dict[self.path]
@@ -132,11 +132,11 @@ class RocksdbAdapter(PairAdapter):
             else:
                 count -= 1
                 RocksdbAdapter.count_dict[self.path] = count
-                L.debug(f'RocksdbAdapter.close: ref count -= 1 for path={self.path}. current ref count={count}')
-        if L.isEnabledFor(logging.DEBUG):
-            L.info(f'RocksdbAdapter.closed: path={self.path}, is_closed={self.is_closed}, db_dict={RocksdbAdapter.db_dict}')
+                L.trace(f'RocksdbAdapter.close: ref count -= 1 for path={self.path}. current ref count={count}')
+        if L.isEnabledFor(logging.TRACE):
+            L.trace(f'RocksdbAdapter.closed: path={self.path}, is_closed={self.is_closed}, db_dict={RocksdbAdapter.db_dict}')
         else:
-            L.info(f'RocksdbAdapter.closed: path={self.path}, is_closed={self.is_closed}')
+            L.debug(f'RocksdbAdapter.closed: path={self.path}, is_closed={self.is_closed}')
 
     def iteritems(self):
         return RocksdbIterator(self)
@@ -163,10 +163,10 @@ class RocksdbAdapter(PairAdapter):
                          or store_path == real_data_dir):
             try:
                 shutil.rmtree(path, ignore_errors=False)
-                L.info(f'path: {path} has been destroyed')
+                L.trace(f'path={path} has been destroyed')
                 os.rmdir(store_path)
             except FileNotFoundError as e:
-                L.info(f'path: {path} has been destroyed by another partition')
+                L.trace(f'path={path} has been destroyed by another partition')
             except OSError as e:
                 if e.args[0] != 66 and e.args[0] != 39:
                     raise e
@@ -184,7 +184,7 @@ class RocksdbWriteBatch(PairWriteBatch):
         self.write_count = 0
         self.manual_merger = dict()
         self.has_write_op = False
-        L.debug(f"writeBatch:{self.adapter.path} batch_size is:{self.batch_size}")
+        L.trace(f"created writeBatch={self.adapter.path} batch_size={self.batch_size}")
 
     def get(self, k):
         raise NotImplementedError
@@ -247,6 +247,7 @@ class RocksdbIterator(PairIterator):
         self.adapter = adapter
         self.it = adapter.db.iteritems()
         self.it.seek_to_first()
+        L.trace(f"created Iterator={self.adapter.path}")
 
     def first(self):
         count = 0
