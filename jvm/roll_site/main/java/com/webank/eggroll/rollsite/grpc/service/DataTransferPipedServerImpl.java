@@ -544,11 +544,6 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                 return;
             }
 
-            if (header.getOperator().equals("push_obj")) {
-                pushObj(request, responseObserver);
-                return;
-            }
-
             if (header.getOperator().equals("get_route_table")) {
                 getRouteTable(request, responseObserver);
                 return;
