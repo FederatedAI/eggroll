@@ -103,10 +103,10 @@ logs_dir=${property_value}
 get_property ${config} "eggroll.resourcemanager.clustermanager.host"
 cluster_manager_host=${property_value}
 
-get_property ${config} "eggroll.core.malloc.mmap.threshold" 4000
+get_property ${config} "eggroll.core.malloc.mmap.threshold"
 malloc_mmap_threshold=${property_value}
 
-get_property ${config} "eggroll.core.malloc.mmap.max" 200000
+get_property ${config} "eggroll.core.malloc.mmap.max"
 malloc_mmap_max=${property_value}
 
 
