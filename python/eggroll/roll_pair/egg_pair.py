@@ -120,15 +120,13 @@ class EggPair(object):
                 store_results = store_future.result()
             else:
                 store_results = 'no store for this partition'
-            L.debug(f"scatter_result:{scatter_results}")
-            L.debug(f"gather_result:{store_results}")
         else:       # no shuffle
             with create_adapter(task._inputs[0]) as input_db, \
                     input_db.iteritems() as rb, \
                     create_adapter(task._outputs[0], options=task._job._options) as db, \
                     db.new_batch() as wb:
                 func(rb, input_key_serdes, input_value_serdes, wb)
-            L.debug(f"close_store_adatper:{task._inputs[0]}")
+            L.trace(f"close_store_adatper:{task._inputs[0]}")
 
     def _run_binary(self, func, task):
         left_key_serdes = create_serdes(task._inputs[0]._store_locator._serdes)
@@ -161,10 +159,10 @@ class EggPair(object):
 
     @_exception_logger
     def run_task(self, task: ErTask):
-        if L.isEnabledFor(logging.DEBUG):
-            L.debug(f'egg_pair run_task start. task name: {task._name}, inputs: {task._inputs}, outputs: {task._outputs}, task id: {task._id}')
+        if L.isEnabledFor(logging.TRACE):
+            L.trace(f'[RUNTASK] start. task name={task._name}, inputs={task._inputs}, outputs={task._outputs}, task id={task._id}')
         else:
-            L.info(f'egg_pair run_task start. task name: {task._name}, task id: {task._id}')
+            L.debug(f'[RUNTASK] start. task name={task._name}, task_id={task._id}')
         functors = task._job._functors
         result = task
 
@@ -172,7 +170,7 @@ class EggPair(object):
             # TODO:1: move to create_serdes
             f = create_functor(functors[0]._body)
             with create_adapter(task._inputs[0]) as input_adapter:
-                L.debug(f"get: key: {self.functor_serdes.deserialize(f._key)}, path: {input_adapter.path}")
+                L.trace(f"get: key: {self.functor_serdes.deserialize(f._key)}, path: {input_adapter.path}")
                 value = input_adapter.get(f._key)
                 result = ErPair(key=f._key, value=value)
         elif task._name == 'getAll':
@@ -197,11 +195,10 @@ class EggPair(object):
         elif task._name == 'putAll':
             output_partition = task._outputs[0]
             tag = f'{task._id}'
-            L.info(f'egg_pair putAll: transfer service tag: {tag}')
+            L.trace(f'egg_pair putAll: transfer service tag={tag}')
             tf = TransferPair(tag)
             store_broker_result = tf.store_broker(output_partition, False).result()
             # TODO:2: should wait complete?, command timeout?
-            L.debug(f"putAll result:{store_broker_result}")
 
         if task._name == 'put':
             f = create_functor(functors[0]._body)
@@ -214,7 +211,7 @@ class EggPair(object):
             namespace = input_store_locator._namespace
             name = input_store_locator._name
             store_type = input_store_locator._store_type
-            L.info(f'destroying store_type={store_type}, namespace={namespace}, name={name}')
+            L.debug(f'destroying store_type={store_type}, namespace={namespace}, name={name}')
             if name == '*':
                 from eggroll.roll_pair.utils.pair_utils import get_db_path, get_data_dir
                 target_paths = list()
@@ -245,9 +242,8 @@ class EggPair(object):
         if task._name == 'delete':
             f = create_functor(functors[0]._body)
             with create_adapter(task._inputs[0]) as input_adapter:
-                L.info("delete k:{}".format(f._key))
                 if input_adapter.delete(f._key):
-                    L.info("delete k success")
+                    L.trace("delete k success")
 
         if task._name == 'mapValues':
             f = create_functor(functors[0]._body)
@@ -264,7 +260,6 @@ class EggPair(object):
                 for k_bytes, v_bytes in input_iterator:
                     k1, v1 = f(key_serdes.deserialize(k_bytes), value_serdes.deserialize(v_bytes))
                     shuffle_broker.put((key_serdes.serialize(k1), value_serdes.serialize(v1)))
-                L.info('finish calculating')
             self._run_unary(map_wrapper, task, shuffle=True)
 
         elif task._name == 'reduce':
@@ -425,20 +420,25 @@ class EggPair(object):
                 l_iter = iter(left_iterator)
                 r_iter = iter(right_iterator)
                 is_left_stopped = False
-                k_left = None
-                v_left = None
-                k_right = None
-                v_right = None
+                is_equal = False
                 try:
                     k_left, v_left = next(l_iter)
+                except StopIteration:
+                    is_left_stopped = True
+                    k_left = None
+                    v_left = None
+
+                try:
                     k_right_raw, v_right = next(r_iter)
-                    if k_left is None and k_right_raw is None:
-                        return
-                    elif k_left is None:
-                        is_left_stopped = True
+                except StopIteration:
+                    is_left_stopped = False
+                    k_right_raw = None
+                    v_right = None
+
+                try:
+                    if k_left is None:
                         raise StopIteration()
-                    elif k_right_raw is None:
-                        is_left_stopped = False
+                    if k_right_raw is None:
                         raise StopIteration()
 
                     if is_same_serdes:
@@ -447,36 +447,34 @@ class EggPair(object):
                         k_right = left_key_serdes.serialize(right_key_serdes.deserialize(k_right_raw))
 
                     while True:
-                        while k_left < k_right:
+                        is_left_stopped = False
+                        if k_left < k_right:
                             output_writebatch.put(k_left, v_left)
-                            is_left_stopped = True
                             k_left, v_left = next(l_iter)
-                            is_left_stopped = False
-                        while k_left == k_right:
                             is_left_stopped = True
+                        elif k_left == k_right:
+                            is_equal = True
                             k_left, v_left = next(l_iter)
+                            # is_left_stopped = True
+                            is_equal = False
+                            k_right, v_right = next(r_iter)
                             is_left_stopped = False
+                        else:
                             k_right, v_right = next(r_iter)
-                        while k_left > k_right:
-                            is_left_stopped = True
-                            k_right, v_right = next(r_iter)
-
+                        is_left_stopped = True
                 except StopIteration as e:
                     pass
-                if not is_left_stopped:
-                    if k_left is None and k_right is None:
-                        try:
-                            k_left, v_left_bytes = next(l_iter)
-                        except StopIteration:
-                            pass
-                    else:
-                        try:
+                if not is_left_stopped and not is_equal:
+                    try:
+                        output_writebatch.put(k_left, v_left)
+                        while True:
+                            k_left, v_left = next(l_iter)
                             output_writebatch.put(k_left, v_left)
-                            while True:
-                                k_left, v_left_bytes = next(l_iter)
-                                output_writebatch.put(k_left, v_left_bytes)
-                        except StopIteration as e:
-                            pass
+                    except StopIteration as e:
+                        pass
+                elif is_left_stopped and not is_equal and k_left is not None:
+                    output_writebatch.put(k_left, v_left)
+
                 return
 
             def hash_subtract_by_key_wrapper(left_iterator, left_key_serdes, left_value_serdes,
@@ -644,10 +642,10 @@ class EggPair(object):
             result = ErPair(key=self.functor_serdes.serialize(task._inputs[0]._id),
                             value=self.functor_serdes.serialize(f(task._inputs)))
 
-        if L.isEnabledFor(logging.DEBUG):
-            L.debug(f'egg_pair run_task end. task name: {task._name}, inputs: {task._inputs}, outputs: {task._outputs}, task id: {task._id}')
+        if L.isEnabledFor(logging.TRACE):
+            L.trace(f'[RUNTASK] end. task name={task._name}, inputs={task._inputs}, outputs={task._outputs}, task_id={task._id}')
         else:
-            L.info(f'egg_pair run_task end. task name: {task._name}, task id: {task._id}')
+            L.debug(f'[RUNTASK] end. task name={task._name}, task_id={task._id}')
 
         return result
         # run_task ends here
@@ -817,14 +815,14 @@ def serve(args):
             t1 = threading.Thread(target=stop_processor, args=[cluster_manager_client, myself])
             t1.start()
 
-    L.info(f'egg_pair started at port {port}, transfer_port {transfer_port}')
+    L.info(f'egg_pair started at port={port}, transfer_port={transfer_port}')
 
     run = True
 
     def exit_gracefully(signum, frame):
         nonlocal run
         run = False
-        L.info(f'egg_pair {args.processor_id} at port {port}, transfer_port {transfer_port}, pid {pid} receives signum {signal.getsignal(signum)}, stopping gracefully.')
+        L.info(f'egg_pair {args.processor_id} at port={port}, transfer_port={transfer_port}, pid={pid} receives signum={signal.getsignal(signum)}, stopping gracefully.')
 
     signal.signal(signal.SIGTERM, exit_gracefully)
     signal.signal(signal.SIGINT, exit_gracefully)
@@ -846,7 +844,7 @@ def serve(args):
     gc.collect()
 
     L.info(f'system metric at exit: {get_system_metric(1)}')
-    L.info(f'egg_pair {args.processor_id} at port {port}, transfer_port {transfer_port}, pid {pid} stopped gracefully')
+    L.info(f'egg_pair {args.processor_id} at port={port}, transfer_port={transfer_port}, pid={pid} stopped gracefully')
 
 
 if __name__ == '__main__':
