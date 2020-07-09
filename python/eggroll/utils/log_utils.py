@@ -23,6 +23,17 @@ from threading import RLock
 
 from eggroll.utils import file_utils
 
+logging.TRACE = logging.DEBUG - 5
+logging.addLevelName(logging.DEBUG - 5, "TRACE")
+
+
+def trace(self, msg, *args, **kwargs):
+    if self.isEnabledFor(logging.TRACE):
+        self._log(logging.TRACE, msg, args, **kwargs)
+
+
+logging.Logger.trace = trace
+
 
 TRACE = logging.DEBUG - 5
 logging.addLevelName(logging.DEBUG - 5, "TRACE")
