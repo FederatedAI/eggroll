@@ -23,8 +23,10 @@ import com.webank.eggroll.rollsite.infra.Pipe;
 import com.webank.eggroll.rollsite.manager.StatsManager;
 import com.webank.eggroll.rollsite.model.ProxyServerConf;
 import com.webank.eggroll.rollsite.model.StreamStat;
+import com.webank.eggroll.rollsite.utils.ToAuditString;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
+import java.util.Arrays;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicLong;
 import javax.annotation.PostConstruct;
@@ -92,6 +94,12 @@ public class ClientUnaryCallResponseStreamObserver implements StreamObserver<Pro
             AUDIT.info(ToStringUtils.toOneLineString(packet));
         }
 
+        String[] auditTopics = proxyServerConf.getAuditTopics();
+        if (auditTopics != null
+                && (Arrays.asList(auditTopics).contains(packet.getHeader().getSrc().getRole())
+                    || Arrays.asList(auditTopics).contains(packet.getHeader().getDst().getRole()))){
+            AUDIT.info(ToAuditString.toOneLineString(packet.getHeader(), "|"));
+        }
 
         if (packet.getBody() != null && packet.getBody().getValue() != null) {
             ByteString value = packet.getBody().getValue();
