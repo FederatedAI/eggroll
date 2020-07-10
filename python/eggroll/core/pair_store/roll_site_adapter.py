@@ -66,7 +66,7 @@ class RollSiteAdapter(PairAdapter):
             self.obj_type = options['obj_type']
             self.is_writable = True
 
-            L.info(f"writable RollSiteAdapter: {self.namespace}, {self.partition_id}. proxy_endpoint: {self.proxy_endpoint}, partition: {self.partition}")
+            L.trace(f"writable RollSiteAdapter: {self.namespace}, partition_id={self.partition_id}. proxy_endpoint={self.proxy_endpoint}, partition={self.partition}")
 
         self.unarycall_max_retry_cnt = int(RollSiteConfKeys.EGGROLL_ROLLSITE_UNARYCALL_CLIENT_MAX_RETRY.get_with(options))
         self.push_max_retry_cnt = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PUSH_CLIENT_MAX_RETRY.get_with(options))
@@ -185,7 +185,7 @@ class RollSiteWriteBatch(PairWriteBatch):
                 break
             except Exception as e:
                 exception = e
-                L.info(f'caught exception in pushing {self.roll_site_header}, partition_id: {self.adapter.partition_id}: {e}. retrying. current retry count: {i}, max_retry_cnt: {self.push_max_retry_cnt}')
+                L.debug(f'caught exception in pushing {self.roll_site_header}, partition_id: {self.adapter.partition_id}: {e}. retrying. current retry count: {i}, max_retry_cnt: {self.push_max_retry_cnt}')
                 time.sleep(min(5 * i, 30))
 
         if exception:
@@ -197,7 +197,7 @@ class RollSiteWriteBatch(PairWriteBatch):
         self.buffer = ArrayByteBuffer(self.ba)
 
     def send_end(self):
-        L.info(f"RollSiteAdapter.send_end: tagged_key:{self.tagged_key}")
+        L.debug(f"RollSiteAdapter.send_end: tagged_key={self.tagged_key}")
         task_info = proxy_pb2.Task(taskId=self.name, model=proxy_pb2.Model(name=self.adapter.roll_site_header_string, dataKey=self.namespace))
 
         command_test = proxy_pb2.Command(name="set_status")
@@ -221,7 +221,7 @@ class RollSiteWriteBatch(PairWriteBatch):
                 exception = None
                 break
             except Exception as e:
-                L.info(f'caught exception in send_end for {self.name}, partition_id: {self.adapter.partition_id}: {e}. retrying. current retry count: {i}, max_retry_cnt: {self.unarycall_max_retry_cnt}')
+                L.debug(f'caught exception in send_end for {self.name}, partition_id= {self.adapter.partition_id}: {e}. retrying. current retry count={i}, max_retry_cnt={self.unarycall_max_retry_cnt}')
                 exception = GrpcCallError('send_end', self.proxy_endpoint, e)
         if exception:
             raise exception
@@ -230,14 +230,13 @@ class RollSiteWriteBatch(PairWriteBatch):
         bin_batch = bytes(self.ba[0:self.buffer.get_offset()])
         self.push(bin_batch)
         self.send_end()
-        L.info(f'RollSiteWriteBatch.close: Closing for name: {self.name}, '
-               f'partition id: {self.adapter.partition_id}, '
-               f'total push batch count: {self.push_batch_cnt}, '
-               f'total push pair count: {self.push_pair_cnt}')
+        L.debug(f'RollSiteWriteBatch.close: Closing for name={self.name}, '
+               f'partition_id={self.adapter.partition_id}, '
+               f'total push_batch_cnt={self.push_batch_cnt}, '
+               f'total push_pair_cnt={self.push_pair_cnt}')
 
     def put(self, k, v):
         if self.obj_type == 'object':
-            L.debug(f"set tagged_key: {k}")
             self.tagged_key = _serdes.deserialize(k)
         try:
             self.writer.write(k, v)
@@ -252,7 +251,7 @@ class RollSiteWriteBatch(PairWriteBatch):
             self.writer.write(k, v)
             self.push_pair_cnt += 1
         except Exception as e:
-            L.error(f"Unexpected error when pushing to {self.roll_site_header}: {sys.exc_info()[0]}")
+            L.exception(f"Unexpected error when pushing to {self.roll_site_header}: {sys.exc_info()[0]}")
             raise e
 
 
