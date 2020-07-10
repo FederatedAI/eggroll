@@ -16,6 +16,9 @@
 
 package com.webank.eggroll.rollsite.grpc.service;
 
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import com.google.common.collect.Maps;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
@@ -85,7 +88,17 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
     @Autowired
     private FdnRouter fdnRouter;
 
-    static Map<String, PacketQueueSingleResultPipe> pipeMap = Maps.newConcurrentMap();
+    private static LoadingCache<String, Proxy.Packet> transferObjectCache = CacheBuilder.newBuilder()
+            .maximumSize(1000000)
+            .concurrencyLevel(50)
+            .expireAfterWrite(10, TimeUnit.MINUTES)
+            .recordStats()
+            .build(new CacheLoader<String, Proxy.Packet>() {
+        @Override
+        public Proxy.Packet load(String key) throws Exception {
+            throw new IllegalStateException("loading of this cache is not supported");
+        }
+    });
 
     @Override
     public StreamObserver<Proxy.Packet> push(StreamObserver<Proxy.Metadata> responseObserver) {
@@ -374,8 +387,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                 JobStatus.countDownFinishLatch(tagKey);
                 JobStatus.setType(tagKey, rollSiteHeader.dataType());
 
-                Pipe pipe = defaultPipeFactory.create(tagKey);
-                pipe.write(request);
+                transferObjectCache.put(tagKey, request);
 
                 JobStatus.increasePutBatchFinishedCount(tagKey);
 
@@ -391,9 +403,9 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
     private void pullObj(Proxy.Packet request, StreamObserver<Proxy.Packet> responseObserver) {
         Proxy.Metadata header = request.getHeader();
 
-        String tag_key = header.getDst().getName();
-        Pipe pipe = defaultPipeFactory.create(tag_key);
-        Proxy.Packet ret = (Proxy.Packet) pipe.read(1, TimeUnit.SECONDS);
+        String tagKey = header.getDst().getName();
+        Proxy.Packet ret = transferObjectCache.getIfPresent(tagKey);
+        transferObjectCache.invalidate(tagKey);
         responseObserver.onNext(ret);
         responseObserver.onCompleted();
     }
