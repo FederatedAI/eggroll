@@ -19,7 +19,6 @@ package com.webank.eggroll.rollsite.grpc.service;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
-import com.google.common.collect.Maps;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.webank.ai.eggroll.api.networking.proxy.DataTransferServiceGrpc;
@@ -33,7 +32,12 @@ import com.webank.eggroll.core.util.ErrorUtils;
 import com.webank.eggroll.core.util.ToStringUtils;
 import com.webank.eggroll.rollsite.RollSiteUtil;
 import com.webank.eggroll.rollsite.event.model.PipeHandleNotificationEvent;
-import com.webank.eggroll.rollsite.factory.*;
+import com.webank.eggroll.rollsite.factory.AddrAuthServerInterceptor;
+import com.webank.eggroll.rollsite.factory.DefaultPipeFactory;
+import com.webank.eggroll.rollsite.factory.EventFactory;
+import com.webank.eggroll.rollsite.factory.PipeFactory;
+import com.webank.eggroll.rollsite.factory.ProxyGrpcStreamObserverFactory;
+import com.webank.eggroll.rollsite.factory.ProxyGrpcStubFactory;
 import com.webank.eggroll.rollsite.infra.JobStatus;
 import com.webank.eggroll.rollsite.infra.Pipe;
 import com.webank.eggroll.rollsite.infra.impl.PacketQueueSingleResultPipe;
@@ -41,11 +45,14 @@ import com.webank.eggroll.rollsite.model.ProxyServerConf;
 import com.webank.eggroll.rollsite.service.FdnRouter;
 import com.webank.eggroll.rollsite.utils.Timeouts;
 import io.grpc.stub.StreamObserver;
-
-import java.io.*;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import org.apache.commons.lang3.StringUtils;
@@ -91,8 +98,16 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
     private static LoadingCache<String, Proxy.Packet> transferObjectCache = CacheBuilder.newBuilder()
             .maximumSize(1000000)
             .concurrencyLevel(50)
-            .expireAfterWrite(10, TimeUnit.MINUTES)
+            .expireAfterWrite(Integer.parseInt(RollSiteConfKeys.EGGROLL_ROLLSITE_PULL_OBJECT_TIMEOUT_SEC().get()), TimeUnit.SECONDS)
             .recordStats()
+            .removalListener(removalNotification -> {
+                String key = (String) removalNotification.getKey();
+
+                if (removalNotification.wasEvicted()) {
+                    LOGGER.debug("[TIMEOUT] transfer object cache removed for key: {}. reason: {}",
+                        key, removalNotification.getCause());
+                }
+            })
             .build(new CacheLoader<String, Proxy.Packet>() {
         @Override
         public Proxy.Packet load(String key) throws Exception {
