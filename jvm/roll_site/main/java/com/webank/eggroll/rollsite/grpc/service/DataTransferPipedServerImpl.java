@@ -414,7 +414,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                 throw new IllegalArgumentException("srcIp cannot be null");
             } else {
                 String[] whiteList = proxyServerConf.getWhiteList();
-                if (Arrays.asList(whiteList).contains(srcIp)) {
+                if (whiteList != null && Arrays.asList(whiteList).contains(srcIp)) {
                     File jsonFile = new File(routeTablePath);
                     try {
                         String encoding = "UTF-8";
@@ -452,7 +452,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                 throw new IllegalArgumentException("srcIp cannot be null");
             } else {
                 String[] whiteList = proxyServerConf.getWhiteList();
-                if (Arrays.asList(whiteList).contains(srcIp)) {
+                if (whiteList != null && Arrays.asList(whiteList).contains(srcIp)) {
                     String jsonString = request.getBody().getValue().toStringUtf8();
                     //String jsonString = format(result.toString());
                     try {
