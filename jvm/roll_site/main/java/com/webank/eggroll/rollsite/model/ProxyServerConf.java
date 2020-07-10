@@ -40,7 +40,7 @@ public class ProxyServerConf {
     private String gatewayRole;
 
     private String routeTablePath;
-    private String [] whiteList;
+    private String[] whiteList;
 
     private boolean isSecureServer;
     private String serverCrtPath;
