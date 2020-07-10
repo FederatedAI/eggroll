@@ -15,7 +15,6 @@ class GcRecorder(object):
     def __init__(self, rpc):
         super(GcRecorder, self).__init__()
         self.should_stop = False
-        L.debug('session:{} initializing gc recorder'.format(rpc.session_id))
         self.record_rpc = rpc
         self.gc_recorder = dict()
         self.leveldb_recorder = set()
@@ -26,7 +25,6 @@ class GcRecorder(object):
         else:
             self.gc_thread = Thread(target=self.run, daemon=True)
             self.gc_thread.start()
-            L.debug("starting gc_thread......")
 
     def stop(self):
         self.should_stop = True
@@ -43,7 +41,7 @@ class GcRecorder(object):
                 continue
             if not rp_namespace_name:
                 continue
-            L.info(f"GC thread destroying rp:{rp_namespace_name}")
+            L.trace(f"GC thread destroying rp={rp_namespace_name}")
             options = dict()
             options['gc_destroy'] = True
             self.record_rpc.load(namespace=rp_namespace_name[0],
@@ -58,13 +56,13 @@ class GcRecorder(object):
         elif store_type == StoreTypes.ROLLPAIR_LEVELDB:
             self.leveldb_recorder.add((namespace, name))
         else:
-            L.info("GC recording in memory table namespace={}, name={}"
-                  .format(namespace, name))
+            L.trace("GC recording in memory table namespace={}, name={}"
+                    .format(namespace, name))
             count = self.gc_recorder.get((namespace, name))
             if count is None:
                 count = 0
             self.gc_recorder[(namespace, name)] = count + 1
-            L.info(f"GC recorded count={len(self.gc_recorder)}")
+            L.trace(f"GC recorded count={len(self.gc_recorder)}")
 
     def decrease_ref_count(self, er_store):
         if er_store._store_locator._store_type != StoreTypes.ROLLPAIR_IN_MEMORY:
@@ -73,6 +71,6 @@ class GcRecorder(object):
         record_count = 0 if ref_count is None or ref_count == 0 else (ref_count - 1)
         self.gc_recorder[(er_store._store_locator._namespace, er_store._store_locator._name)] = record_count
         if record_count == 0 and er_store._store_locator._name in self.gc_recorder:
-            L.info(f'GC put in queue:{er_store._store_locator._name}')
+            L.trace(f'GC put in queue:{er_store._store_locator._name}')
             self.gc_queue.put((er_store._store_locator._namespace, er_store._store_locator._name))
             self.gc_recorder.pop((er_store._store_locator._namespace, er_store._store_locator._name))
