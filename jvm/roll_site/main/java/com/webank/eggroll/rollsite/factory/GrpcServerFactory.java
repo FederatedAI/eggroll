@@ -317,6 +317,11 @@ public class GrpcServerFactory {
                 proxyServerConf.setWhiteList(whiteList);
             }
 
+            String auditTopics = properties.getProperty(RollSiteConfKeys.EGGROLL_ROLLSITE_AUDIT_TOPICS().key(), null);
+            if (auditTopics != null) {
+                proxyServerConf.setAuditTopics(auditTopics);
+            }
+
             boolean needCompatibility = Boolean.valueOf(properties.getProperty(
                 RollSiteConfKeys.EGGROLL_ROLLSITE_PROXY_COMPATIBLE_ENABLED().key(), "false"));
             proxyServerConf.setCompatibleEnabled(needCompatibility);
