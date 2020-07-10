@@ -78,13 +78,13 @@ class CommandClient(object):
                                        uri=command_uri._uri,
                                        args=_map_and_listify(_to_proto_string, inputs))
             start = time.time()
-            L.debug(f"[CC] calling: {endpoint} {command_uri} {request}")
+            L.trace(f"[CC] calling: {endpoint} {command_uri} {request}")
             _channel = self._channel_factory.create_channel(endpoint)
             _command_stub = command_pb2_grpc.CommandServiceStub(_channel)
             response = _command_stub.call(request.to_proto())
             er_response = ErCommandResponse.from_proto(response)
             elapsed = time.time() - start
-            L.debug(f"[CC] called (elapsed: {elapsed}): {endpoint}, {command_uri}, {request}, {er_response}")
+            L.trace(f"[CC] called (elapsed={elapsed}): {endpoint}, {command_uri}, {request}, {er_response}")
             byte_results = er_response._results
 
             if len(byte_results):

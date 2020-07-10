@@ -225,3 +225,22 @@ def to_one_line_string(msg, as_one_line=True):
     if isinstance(msg, str) or isinstance(msg, bytes):
         return msg
     return MessageToString(msg, as_one_line=as_one_line)
+
+
+_eggroll_home = None
+def get_eggroll_home():
+    global _eggroll_home
+    if not _eggroll_home:
+        _eggroll_home = os.getenv("EGGROLL_HOME", os.path.realpath(f'{__file__}/../../../..'))
+    return _eggroll_home
+
+
+_eggroll_bin_truncate_limit = None
+def get_eggroll_bin_truncate_limit():
+    global _eggroll_bin_truncate_limit
+    if not _eggroll_bin_truncate_limit:
+        _eggroll_bin_truncate_limit = os.getenv("EGGROLL_BIN_TRUNCATE_LIMIT", 0)
+        if _eggroll_bin_truncate_limit <= 0:
+            _eggroll_bin_truncate_limit = 300
+
+    return _eggroll_bin_truncate_limit
