@@ -40,7 +40,8 @@ public class ProxyServerConf {
     private String gatewayRole;
 
     private String routeTablePath;
-    private String [] whiteList;
+    private String[] whiteList;
+    private String[] auditTopics;
 
     private boolean isSecureServer;
     private String serverCrtPath;
@@ -254,6 +255,15 @@ public class ProxyServerConf {
 
     public void setAuditEnabled(boolean auditEnabled) {
         this.isAuditEnabled = auditEnabled;
+    }
+
+    public String[] getAuditTopics() {
+        return auditTopics;
+    }
+
+    public void setAuditTopics(String auditTopics) {
+        String[] auditTopicsArray = auditTopics.split("\\,");
+        this.auditTopics = auditTopicsArray;
     }
 
     public boolean isNeighbourInsecureChannelEnabled() {
