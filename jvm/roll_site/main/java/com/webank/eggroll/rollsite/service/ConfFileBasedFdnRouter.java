@@ -258,74 +258,8 @@ public class ConfFileBasedFdnRouter implements FdnRouter {
 
 
     @Override
-    public void updateRouteTable(String fileName, String partyId, String ip, int port) {
-        String ws;
-        String jsonString;
-
-        System.out.println("filename:" + fileName);
-
-        try {
-            File jsonFile = new File(fileName);
-            FileReader fileReader = new FileReader(jsonFile);
-
-            Reader reader = new InputStreamReader(new FileInputStream(jsonFile), "utf-8");
-            int ch = 0;
-            StringBuffer data = new StringBuffer();
-            while ((ch = reader.read()) != -1) {
-                data.append((char) ch);
-            }
-
-            //System.out.println("data:" + data);
-            JSONObject seg0 = new JSONObject();
-            JSONObject seg1 = new JSONObject();
-            JSONObject seg2 = new JSONObject();
-
-            jsonString = data.toString();
-            JSONObject dataJson = new JSONObject(jsonString);
-            //JSONObject dataJson = new JSONObject(data);
-            //JSONArray item = dataJson.getJSONArray("route_table");
-
-            seg0.put("ip", ip);
-            seg0.put("port", port);
-
-            JSONArray jsonArray = new JSONArray();
-            jsonArray.put(0, seg0);
-
-            seg1.put("default", jsonArray);
-            //seg2.put(partId, seg1);
-
-            JSONObject addJson = dataJson.getJSONObject("route_table");
-            addJson.put(partyId, seg1);
-
-            dataJson.put("route_table", addJson);
-
-            ws = dataJson.toString();
-            //System.out.println(ws);
-
-            fileReader.close();
-            reader.close();
-
-            jsonString = format(ws);
-            File file = new File(fileName);
-            if (!file.getParentFile().exists()) {
-                file.getParentFile().mkdirs();
-            }
-            if (file.exists()) {
-                file.delete();
-            }
-            file.createNewFile();
-
-            Writer write = new OutputStreamWriter(new FileOutputStream(file), "UTF-8");
-            write.write(jsonString);
-            write.flush();
-            write.close();
-        } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+    public void updateRouteTable() {
+        init();
     }
 
     @Override

@@ -16,6 +16,9 @@
 
 package com.webank.eggroll.rollsite.grpc.service;
 
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import com.google.common.collect.Maps;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
@@ -35,9 +38,13 @@ import com.webank.eggroll.rollsite.infra.JobStatus;
 import com.webank.eggroll.rollsite.infra.Pipe;
 import com.webank.eggroll.rollsite.infra.impl.PacketQueueSingleResultPipe;
 import com.webank.eggroll.rollsite.model.ProxyServerConf;
+import com.webank.eggroll.rollsite.service.FdnRouter;
 import com.webank.eggroll.rollsite.utils.Timeouts;
 import io.grpc.stub.StreamObserver;
+
+import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -78,8 +85,20 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
     private PipeFactory pipeFactory;
     @Autowired
     private DefaultPipeFactory defaultPipeFactory;
+    @Autowired
+    private FdnRouter fdnRouter;
 
-    static Map<String, PacketQueueSingleResultPipe> pipeMap = Maps.newConcurrentMap();
+    private static LoadingCache<String, Proxy.Packet> transferObjectCache = CacheBuilder.newBuilder()
+            .maximumSize(1000000)
+            .concurrencyLevel(50)
+            .expireAfterWrite(10, TimeUnit.MINUTES)
+            .recordStats()
+            .build(new CacheLoader<String, Proxy.Packet>() {
+        @Override
+        public Proxy.Packet load(String key) throws Exception {
+            throw new IllegalStateException("loading of this cache is not supported");
+        }
+    });
 
     @Override
     public StreamObserver<Proxy.Packet> push(StreamObserver<Proxy.Metadata> responseObserver) {
@@ -195,6 +214,293 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
         //LOGGER.warn("pull last returned packet: {}", lastReturnedPacket);
     }
 
+    private void registerBroker(Proxy.Packet request, StreamObserver<Proxy.Packet> responseObserver) {
+        Proxy.Packet packet = null;
+
+        Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
+        Proxy.Data data = Proxy.Data.newBuilder().setValue(ByteString.copyFromUtf8("hello"))
+                .build();
+        packet = packetBuilder.setHeader(request.getHeader())
+                .setBody(data)
+                .build();
+        responseObserver.onNext(packet);
+        responseObserver.onCompleted();
+        return;
+    }
+
+    private void initJobSessionPair(Proxy.Packet request, StreamObserver<Proxy.Packet> responseObserver) {
+        try {
+            Proxy.Packet packet = null;
+
+            Proxy.Metadata header = request.getHeader();
+
+            String jobId = header.getTask().getModel().getName();
+            String sessionId = header.getTask().getModel().getDataKey();
+            Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
+            packet = packetBuilder.setHeader(header).build();
+            // TODO:1: rename job_id to federation_session_id, session_id -> eggroll_session_id
+            LOGGER.info("init_job_session_pair, job_id:{}, session_id:{}", jobId, sessionId);
+            JobStatus.putJobIdToSessionId(jobId, sessionId);
+
+            responseObserver.onNext(packet);
+            responseObserver.onCompleted();
+
+            RollSiteUtil.sessionCache().get(sessionId);
+        } catch (Exception e) {
+                LOGGER.error("Error occured in unary call: ", e);
+                responseObserver.onError(e);
+        }
+    }
+
+
+    private void markEnd(Proxy.Packet request, StreamObserver<Proxy.Packet> responseObserver) {
+        try {
+            Proxy.Packet packet = null;
+            Proxy.Metadata header = request.getHeader();
+
+            Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
+            packet = packetBuilder.setHeader(header).build();
+
+            ErRollSiteHeader rollSiteHeader = restoreRollSiteHeader(
+                    request.getHeader().getTask().getModel().getName());
+            String tagKey = genTagKey(rollSiteHeader);
+            JobStatus.addPutBatchRequiredCount(tagKey, header.getSeq());
+
+            LOGGER.info("markEnd: {}, {}", rollSiteHeader.rollSiteSessionId(),
+                    tagKey);  //obj or RollPair
+
+            if (!JobStatus.hasLatch(tagKey)) {
+                int totalPartitions = 1;
+
+                String tpString = "1";
+                Option<String> tpOption =
+                        rollSiteHeader.options().get(StringConstants.TOTAL_PARTITIONS_SNAKECASE());
+                if (tpOption instanceof Some) {
+                    tpString = ((Some<String>) tpOption).get();
+                }
+
+                totalPartitions = Integer.parseInt(tpString);
+                JobStatus.createLatch(tagKey, totalPartitions);
+            }
+            JobStatus.countDownFinishLatch(tagKey);
+            JobStatus.setType(tagKey, rollSiteHeader.dataType());
+
+            responseObserver.onNext(packet);
+            responseObserver.onCompleted();
+        } catch (Exception e) {
+            LOGGER.error("Error occured in unary call: ", e);
+            responseObserver.onError(e);
+        }
+    }
+
+    private void getStatus(Proxy.Packet request, StreamObserver<Proxy.Packet> responseObserver) {
+        Proxy.Packet packet = null;
+        Proxy.Metadata header = request.getHeader();
+        String oneLineStringInputMetadata = ToStringUtils.toOneLineString(header);
+        LOGGER.info("[UNARYCALL][SERVER] server unary request received. src: {}, dst: {}",
+                ToStringUtils.toOneLineString(header.getSrc()),
+                ToStringUtils.toOneLineString(header.getDst()));
+
+        LOGGER.info("getStatus: {}", oneLineStringInputMetadata);
+        Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
+
+        try {
+            ErRollSiteHeader rollSiteHeader = restoreRollSiteHeader(
+                    request.getHeader().getTask().getModel().getName());
+            String tagKey = genTagKey(rollSiteHeader);
+
+            long timeout = 5;
+            TimeUnit unit = TimeUnit.MINUTES;
+            boolean jobFinished = JobStatus.waitUntilAllCountDown(tagKey, timeout, unit)
+                    && JobStatus.waitUntilPutBatchFinished(tagKey, timeout, unit);
+            Proxy.Metadata resultHeader = request.getHeader();
+            String type = StringConstants.EMPTY();
+            if (jobFinished) {
+                LOGGER.info("getStatus: job finished: {}", oneLineStringInputMetadata);
+                resultHeader = Proxy.Metadata.newBuilder().setAck(123)
+                        .setSrc(request.getHeader().getSrc())
+                        .setDst(request.getHeader().getDst())
+                        .build();
+                int retryCount = 300;
+                while (retryCount > 0) {
+                    type = JobStatus.getType(tagKey);
+                    if (!StringUtils.isBlank(type)) {
+                        break;
+                    }
+                    Thread.sleep(50);
+                    --retryCount;
+                }
+                JobStatus.cleanupJobStatus(tagKey);
+            } else {
+                LOGGER.info("getStatus: job NOT finished: {}. current latch count: {}, "
+                                + "put batch required: {}, put batch finished: {}",
+                        oneLineStringInputMetadata,
+                        JobStatus.getFinishLatchCount(tagKey),
+                        JobStatus.getPutBatchRequiredCount(tagKey),
+                        JobStatus.getPutBatchFinishedCount(tagKey));
+                resultHeader = Proxy.Metadata.newBuilder().setAck(321).build();
+            }
+            Proxy.Data body = Proxy.Data.newBuilder().setKey(tagKey)
+                    .setValue(ByteString.copyFromUtf8(type)).build();
+            packet = packetBuilder.setHeader(resultHeader).setBody(body).build();
+            responseObserver.onNext(packet);
+            responseObserver.onCompleted();
+        } catch (Exception e) {
+            LOGGER.error("Error occured in unary call: ", e);
+            responseObserver.onError(e);
+        }
+    }
+
+    private void pushObj(Proxy.Packet request, StreamObserver<Proxy.Packet> responseObserver) {
+        try {
+            Proxy.Metadata header = request.getHeader();
+
+            if (!proxyServerConf.getPartyId().equals(header.getDst().getPartyId())) {
+                Proxy.Topic dstTopic = header.getDst();
+                DataTransferServiceGrpc.DataTransferServiceBlockingStub blockstub = proxyGrpcStubFactory.getBlockingStub(dstTopic);
+
+                Proxy.Packet ret_packet = blockstub.unaryCall(request);
+                //LOGGER.info("{}", ret_packet);
+                responseObserver.onNext(ret_packet);
+                responseObserver.onCompleted();
+            } else {
+                ErRollSiteHeader rollSiteHeader = restoreRollSiteHeader(
+                        request.getHeader().getTask().getModel().getName());
+                String tagKey = genTagKey(rollSiteHeader);
+                JobStatus.addPutBatchRequiredCount(tagKey, 1);
+
+                LOGGER.info("received obj, tagKey: {}", tagKey);
+
+                if (!JobStatus.hasLatch(tagKey)) {
+                    int totalPartitions = 1;
+
+                    String tpString = "1";
+                    Option<String> tpOption =
+                            rollSiteHeader.options().get(StringConstants.TOTAL_PARTITIONS_SNAKECASE());
+                    if (tpOption instanceof Some) {
+                        tpString = ((Some<String>) tpOption).get();
+                    }
+
+                    totalPartitions = Integer.parseInt(tpString);
+                    JobStatus.createLatch(tagKey, totalPartitions);
+                }
+                JobStatus.countDownFinishLatch(tagKey);
+                JobStatus.setType(tagKey, rollSiteHeader.dataType());
+
+                transferObjectCache.put(tagKey, request);
+
+                JobStatus.increasePutBatchFinishedCount(tagKey);
+
+                responseObserver.onNext(request);
+                responseObserver.onCompleted();
+            }
+        } catch (Exception e) {
+            LOGGER.error("Error occured in unary call: ", e);
+            responseObserver.onError(e);
+        }
+    }
+
+    private void pullObj(Proxy.Packet request, StreamObserver<Proxy.Packet> responseObserver) {
+        Proxy.Metadata header = request.getHeader();
+
+        String tagKey = header.getDst().getName();
+        Proxy.Packet ret = transferObjectCache.getIfPresent(tagKey);
+        transferObjectCache.invalidate(tagKey);
+        responseObserver.onNext(ret);
+        responseObserver.onCompleted();
+    }
+
+    private void getRouteTable(Proxy.Packet request, StreamObserver<Proxy.Packet> responseObserver) {
+        Proxy.Metadata header = request.getHeader();
+        Proxy.Packet packet = null;
+        String jsonContent = null;
+        Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
+
+        if (!proxyServerConf.getPartyId().equals(header.getDst().getPartyId())) {
+            throw new IllegalArgumentException("dst partyId is illegal.");
+        } else {
+            String routeTablePath = proxyServerConf.getRouteTablePath();
+            String srcIp = (String) AddrAuthServerInterceptor.REMOTE_ADDR.get();
+
+            if (srcIp == null) {
+                throw new IllegalArgumentException("srcIp cannot be null");
+            } else {
+                String[] whiteList = proxyServerConf.getWhiteList();
+                if (Arrays.asList(whiteList).contains(srcIp)) {
+                    File jsonFile = new File(routeTablePath);
+                    try {
+                        String encoding = "UTF-8";
+                        Long filelength = jsonFile.length();
+                        byte[] filecontent = new byte[filelength.intValue()];
+                        FileInputStream in = new FileInputStream(jsonFile);
+                        in.read(filecontent);
+                        jsonContent = new String(filecontent, encoding);
+                    } catch (IOException e) {
+                        LOGGER.error("getRouteTable failed: ", e);
+                        responseObserver.onError(e);
+                    }
+                }
+            }
+            if(jsonContent != null) {
+                Proxy.Data body = Proxy.Data.newBuilder().setValue(ByteString.copyFromUtf8(jsonContent)).build();
+                packet = packetBuilder.setBody(body).build();
+            } else {
+                packet = packetBuilder.build();
+            }
+            responseObserver.onNext(packet);
+            responseObserver.onCompleted();
+        }
+    }
+
+    private void setRouteTable(Proxy.Packet request, StreamObserver<Proxy.Packet> responseObserver) {
+        Proxy.Metadata header = request.getHeader();
+        if (!proxyServerConf.getPartyId().equals(header.getDst().getPartyId())) {
+            throw new IllegalArgumentException("dst partyId is illegal.");
+        } else {
+            String routeTablePath = proxyServerConf.getRouteTablePath();
+            String srcIp = (String) AddrAuthServerInterceptor.REMOTE_ADDR.get();
+
+            if (srcIp == null) {
+                throw new IllegalArgumentException("srcIp cannot be null");
+            } else {
+                String[] whiteList = proxyServerConf.getWhiteList();
+                if (Arrays.asList(whiteList).contains(srcIp)) {
+                    String jsonString = request.getBody().getValue().toStringUtf8();
+                    //String jsonString = format(result.toString());
+                    try {
+                        System.out.println("routeTablePath:" + routeTablePath);
+                        File file = new File(routeTablePath);
+                        if (!file.getParentFile().exists()) {
+                            file.getParentFile().mkdirs();
+                        }
+                        if (file.exists()) {
+                            file.delete();
+                        }
+                        file.createNewFile();
+
+                        Writer write = new OutputStreamWriter(new FileOutputStream(file), "UTF-8");
+                        write.write(jsonString);
+                        write.flush();
+                        write.close();
+                        fdnRouter.updateRouteTable();
+                    } catch (Exception e) {
+                        LOGGER.error("setRouteTable failed: ", e);
+                        responseObserver.onError(e);
+                    }
+                }
+            }
+
+            Proxy.Packet packet = null;
+
+            Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
+            Proxy.Data data = Proxy.Data.newBuilder().setValue(ByteString.copyFromUtf8("setRouteTable finished"))
+                    .build();
+            packet = packetBuilder.setBody(data).build();
+            responseObserver.onNext(packet);
+            responseObserver.onCompleted();
+        }
+    }
+
     @Override
     public void unaryCall(Proxy.Packet request, StreamObserver<Proxy.Packet> responseObserver) {
         Proxy.Packet packet = null;
@@ -220,163 +526,43 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
 
         try {
             if (header.getOperator().equals("registerBroker")) {
-                Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
-                Proxy.Data data = Proxy.Data.newBuilder().setValue(ByteString.copyFromUtf8("hello"))
-                    .build();
-                packet = packetBuilder.setHeader(request.getHeader())
-                    .setBody(data)
-                    .build();
-                responseObserver.onNext(packet);
-                responseObserver.onCompleted();
+                registerBroker(request, responseObserver);
                 return;
             }
 
             if (header.getOperator().equals("init_job_session_pair")) {
-                String jobId = header.getTask().getModel().getName();
-                String sessionId = header.getTask().getModel().getDataKey();
-                Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
-                packet = packetBuilder.setHeader(header).build();
-                // TODO:1: rename job_id to federation_session_id, session_id -> eggroll_session_id
-                LOGGER.info("init_job_session_pair, job_id:{}, session_id:{}", jobId, sessionId);
-                JobStatus.putJobIdToSessionId(jobId, sessionId);
-
-                responseObserver.onNext(packet);
-                responseObserver.onCompleted();
-
-                RollSiteUtil.sessionCache().get(sessionId);
+                initJobSessionPair(request, responseObserver);
                 return;
             }
 
             if (header.getOperator().equals("markEnd")
                 && proxyServerConf.getPartyId().equals(header.getDst().getPartyId())) {
-                Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
-                packet = packetBuilder.setHeader(header).build();
-
-                ErRollSiteHeader rollSiteHeader = restoreRollSiteHeader(
-                    request.getHeader().getTask().getModel().getName());
-                String tagKey = genTagKey(rollSiteHeader);
-                JobStatus.addPutBatchRequiredCount(tagKey, header.getSeq());
-
-                LOGGER.info("markEnd: {}, {}", rollSiteHeader.rollSiteSessionId(),
-                        tagKey);  //obj or RollPair
-
-                if (!JobStatus.hasLatch(tagKey)) {
-                    int totalPartitions = 1;
-
-                    String tpString = "1";
-                    Option<String> tpOption =
-                        rollSiteHeader.options().get(StringConstants.TOTAL_PARTITIONS_SNAKECASE());
-                    if (tpOption instanceof Some) {
-                        tpString = ((Some<String>) tpOption).get();
-                    }
-
-                    totalPartitions = Integer.parseInt(tpString);
-                    JobStatus.createLatch(tagKey, totalPartitions);
-                }
-                JobStatus.countDownFinishLatch(tagKey);
-                JobStatus.setType(tagKey, rollSiteHeader.dataType());
-
-                responseObserver.onNext(packet);
-                responseObserver.onCompleted();
+                markEnd(request, responseObserver);
                 return;
             }
 
             if (header.getOperator().equals("getStatus")) {
-                LOGGER.info("getStatus: {}", oneLineStringInputMetadata);
-                Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
-
-                ErRollSiteHeader rollSiteHeader = restoreRollSiteHeader(
-                    request.getHeader().getTask().getModel().getName());
-                String tagKey = genTagKey(rollSiteHeader);
-
-                long timeout = 5;
-                TimeUnit unit = TimeUnit.MINUTES;
-                boolean jobFinished = JobStatus.waitUntilAllCountDown(tagKey, timeout, unit)
-                    && JobStatus.waitUntilPutBatchFinished(tagKey, timeout, unit);
-                Proxy.Metadata resultHeader = request.getHeader();
-                String type = StringConstants.EMPTY();
-                if (jobFinished) {
-                    LOGGER.info("getStatus: job finished: {}", oneLineStringInputMetadata);
-                    resultHeader = Proxy.Metadata.newBuilder().setAck(123)
-                        .setSrc(request.getHeader().getSrc())
-                        .setDst(request.getHeader().getDst())
-                        .build();
-                    int retryCount = 300;
-                    while (retryCount > 0) {
-                        type = JobStatus.getType(tagKey);
-                        if (!StringUtils.isBlank(type)) {
-                            break;
-                        }
-                        Thread.sleep(50);
-                        --retryCount;
-                    }
-                    JobStatus.cleanupJobStatus(tagKey);
-                } else {
-                    LOGGER.info("getStatus: job NOT finished: {}. current latch count: {}, "
-                            + "put batch required: {}, put batch finished: {}",
-                        oneLineStringInputMetadata,
-                        JobStatus.getFinishLatchCount(tagKey),
-                        JobStatus.getPutBatchRequiredCount(tagKey),
-                        JobStatus.getPutBatchFinishedCount(tagKey));
-                    resultHeader = Proxy.Metadata.newBuilder().setAck(321).build();
-                }
-                Proxy.Data body = Proxy.Data.newBuilder().setKey(tagKey)
-                    .setValue(ByteString.copyFromUtf8(type)).build();
-                packet = packetBuilder.setHeader(resultHeader).setBody(body).build();
-                responseObserver.onNext(packet);
-                responseObserver.onCompleted();
+                getStatus(request, responseObserver);
                 return;
             }
 
             if (header.getOperator().equals("push_obj")) {
-                if (!proxyServerConf.getPartyId().equals(header.getDst().getPartyId())) {
-                    Proxy.Topic dstTopic = header.getDst();
-                    DataTransferServiceGrpc.DataTransferServiceBlockingStub blockstub = proxyGrpcStubFactory.getBlockingStub(dstTopic);
-
-                    Proxy.Packet ret_packet = blockstub.unaryCall(request);
-                    //LOGGER.info("{}", ret_packet);
-                    responseObserver.onNext(ret_packet);
-                    responseObserver.onCompleted();
-                } else {
-                    ErRollSiteHeader rollSiteHeader = restoreRollSiteHeader(
-                            request.getHeader().getTask().getModel().getName());
-                    String tagKey = genTagKey(rollSiteHeader);
-                    JobStatus.addPutBatchRequiredCount(tagKey, 1);
-
-                    LOGGER.info("received obj, tagKey: {}", tagKey);
-
-                    if (!JobStatus.hasLatch(tagKey)) {
-                        int totalPartitions = 1;
-
-                        String tpString = "1";
-                        Option<String> tpOption =
-                                rollSiteHeader.options().get(StringConstants.TOTAL_PARTITIONS_SNAKECASE());
-                        if (tpOption instanceof Some) {
-                            tpString = ((Some<String>) tpOption).get();
-                        }
-
-                        totalPartitions = Integer.parseInt(tpString);
-                        JobStatus.createLatch(tagKey, totalPartitions);
-                    }
-                    JobStatus.countDownFinishLatch(tagKey);
-                    JobStatus.setType(tagKey, rollSiteHeader.dataType());
-
-                    Pipe pipe = defaultPipeFactory.create(tagKey);
-                    pipe.write(request);
-
-                    JobStatus.increasePutBatchFinishedCount(tagKey);
-
-                    responseObserver.onNext(request);
-                    responseObserver.onCompleted();
-                }
+                pushObj(request, responseObserver);
                 return;
             }
+
             if (header.getOperator().equals("pull_obj")) {
-                String tag_key = header.getDst().getName();
-                Pipe pipe = defaultPipeFactory.create(tag_key);
-                Proxy.Packet ret = (Proxy.Packet) pipe.read(1, TimeUnit.SECONDS);
-                responseObserver.onNext(ret);
-                responseObserver.onCompleted();
+                pullObj(request, responseObserver);
+                return;
+            }
+
+            if (header.getOperator().equals("get_route_table")) {
+                getRouteTable(request, responseObserver);
+                return;
+            }
+
+            if (header.getOperator().equals("set_route_table")) {
+                setRouteTable(request, responseObserver);
                 return;
             }
 
