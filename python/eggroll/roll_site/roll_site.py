@@ -71,22 +71,22 @@ class RollSiteContext:
 
     def push_complete(self):
         session_id = self.rp_ctx.get_session().get_session_id()
-        L.info(f"running roll site exit func for er session: {session_id}, roll site session id: {self.roll_site_session_id}")
+        L.info(f"running roll site exit func for er session={session_id}, roll site session id={self.roll_site_session_id}")
         try_count = 0
         max_try_count = 800
         while True:
             if try_count >= max_try_count:
-                L.warn(f"try times reach {max_try_count} for session: {session_id}, exiting")
+                L.warn(f"try times reach {max_try_count} for session={session_id}, exiting")
                 return
             if self.pushing_task_count:
-                L.info(f"session: {session_id} "
+                L.debug(f"session={session_id} "
                        f"waiting for all push tasks complete. "
-                       f"current try_count: {try_count}, "
-                       f"current pushing task count: {self.pushing_task_count}")
+                       f"current try_count={try_count}, "
+                       f"current pushing task count={self.pushing_task_count}")
                 try_count += 1
                 time.sleep(min(0.1 * try_count, 60))
             else:
-                L.info(f"session: {session_id} finishes all pushing tasks")
+                L.info(f"session={session_id} finishes all pushing tasks")
                 return
 
     # todo:1: add options?
@@ -114,7 +114,7 @@ class RollSiteContext:
             packet = proxy_pb2.Packet(header=metadata)
 
             self.stub.unaryCall(packet)
-            L.info(f"send RollSiteContext init to Proxy: {to_one_line_string(packet)}")
+            L.info(f"send RollSiteContext init to Proxy={to_one_line_string(packet)}")
         except Exception as e:
             raise GrpcCallError("init_job_session_pair", self.proxy_endpoint, e)
 
@@ -153,7 +153,7 @@ class RollSite:
         self._pull_start_wall_time = None
         self._pull_start_cpu_time = None
         self._is_standalone = self.ctx.is_standalone
-        L.info(f'inited RollSite. my party id: {self.ctx.party_id}. proxy endpoint: {self.dst_host}:{self.dst_port}')
+        L.debug(f'inited RollSite. my party id={self.ctx.party_id}. proxy endpoint={self.dst_host}:{self.dst_port}')
 
     def _push_callback(self, fn, tmp_rp):
         #if tmp_rp:
@@ -163,8 +163,6 @@ class RollSite:
         self.ctx.pushing_task_count -= 1
         end_wall_time = time.time()
         end_cpu_time = time.perf_counter()
-
-        P.info(f'{{"metric_type": "func_profile", "qualname": "RollSite.push", "cpu_time": {end_cpu_time - self._push_start_cpu_time}, "wall_time": {end_wall_time - self._push_start_wall_time}}}')
 
     def _thread_receive(self, packet, namespace, roll_site_header: ErRollSiteHeader):
         try:
@@ -178,9 +176,9 @@ class RollSite:
                     msg = f"retry pull: retry_cnt: {retry_cnt}," + \
                           f" tagged_key: '{table_name}', packet: {to_one_line_string(packet)}, namespace: {namespace}"
                     if retry_cnt % 10 == 0:
-                        L.info(msg)
-                    else:
                         L.debug(msg)
+                    else:
+                        L.trace(msg)
                     retry_cnt += 1
                     ret_list = status_rp.get(table_name)
                     if ret_list:
@@ -198,9 +196,9 @@ class RollSite:
                     msg = f"retry pull: retry_cnt: {retry_cnt}," + \
                           f" store_name: '{table_name}', packet: {to_one_line_string(packet)}, namespace: {namespace}"
                     if retry_cnt % 10 == 0:
-                        L.info(msg)
-                    else:
                         L.debug(msg)
+                    else:
+                        L.trace(msg)
                     retry_cnt += 1
                     if ret_packet.header.ack in ERROR_STATES:
                         raise IOError("receive terminated")
@@ -212,12 +210,13 @@ class RollSite:
                 obj_type = ret_packet.body.value
 
                 table_namespace = self.roll_site_session_id
-            L.info(f"pull status done: table_name:{table_name}, packet:{to_one_line_string(packet)}, namespace:{namespace}")
+            L.debug(f"pull status done: namespace={namespace}, name={table_name}, packet={to_one_line_string(packet)}")
 
             if obj_type == b'object':
+                success_msg_prefix = f'RollSite.pull: pulled {roll_site_header}'
                 if os.environ.get('EGGROLL_PUSH_OBJ_WITH_ROLL_PAIR') == "1" or self._is_standalone is True:
                     rp = self.ctx.rp_ctx.load(namespace=table_namespace, name=table_name)
-                    success_msg_prefix = f'RollSite.Pull: pull {roll_site_header} success.'
+
                     result = rp.get(table_name)
                     if result is not None:
                         empty = "NOT empty"
@@ -225,7 +224,6 @@ class RollSite:
                         empty = "empty"
                     if not self._is_standalone:
                         rp.destroy()
-                    L.info(f"{success_msg_prefix} type: {type(result)}, empty_or_not: {empty}")
                 else:
                     task_info = proxy_pb2.Task(model=proxy_pb2.Model(name=_stringify(roll_site_header)))
                     topic_src = proxy_pb2.Topic(name=table_name, partyId=self.party_id,
@@ -244,11 +242,13 @@ class RollSite:
 
                     ret = self.stub.unaryCall(packet)
                     result = pickle.loads(ret.body.value)
+                    empty = "empty" if result is None else "NOT empty"
+                L.trace(f"{success_msg_prefix} type={type(result)}, empty_or_not={empty}")
             else:
                 rp = self.ctx.rp_ctx.load(namespace=table_namespace, name=table_name)
-                success_msg_prefix = f'RollSite.Pull: pull {roll_site_header} success.'
+                success_msg_prefix = f'RollSite.pull: pulled {roll_site_header}.'
                 result = rp
-                L.info(f"{success_msg_prefix} type: {obj_type}, count: {rp.count()}")
+                L.debug(f"{success_msg_prefix} type={obj_type}, count={rp.count()}")
             return result
         except Exception as e:
             L.exception(f"pull error:{e}")
@@ -257,29 +257,32 @@ class RollSite:
             end_wall_time = time.time()
             end_cpu_time = time.perf_counter()
 
-            P.info(f'{{"metric_type": "func_profile", "qualname": "RollSite.pull", "cpu_time": {end_cpu_time - self._pull_start_cpu_time}, "wall_time": {end_wall_time - self._pull_start_wall_time}}}')
-
     def send_packet(self, packet):
         max_retry_cnt = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PUSH_CLIENT_MAX_RETRY.get())
         exception = None
         ret_packet = None
-        for i in range(max_retry_cnt):
+        for retry_cnt in range(max_retry_cnt):
             try:
                 ret_packet = self.stub.unaryCall(packet)
                 exception = None
                 break
             except Exception as e:
                 exception = e
-                L.info(f'caught exception in pushing obj: {e}. retrying. current retry count: {i}, max_retry_cnt: {max_retry_cnt}')
-                time.sleep(min(5 * i, 30))
+                msg = f'caught exception in pushing obj. retrying. current retry count={retry_cnt}, max_retry_cnt={max_retry_cnt}'
+                if retry_cnt % 10 == 0:
+                    L.debug(msg)
+                else:
+                    L.trace(msg)
+                time.sleep(min(5 * retry_cnt, 30))
 
         if exception:
+            L.exception(exception)
             raise GrpcCallError("error in pushing obj", self.dst_host, self.dst_port)
 
         return ret_packet
 
     def push(self, obj, parties: list = None):
-        L.info(f"pushing: self:{self.__dict__}, obj_type:{type(obj)}, parties:{parties}")
+        L.debug(f"pushing: self={self.__dict__}, obj_type={type(obj)}, parties={parties}")
         self._push_start_wall_time = time.time()
         self._push_start_cpu_time = time.perf_counter()
         futures = []
@@ -301,7 +304,7 @@ class RollSite:
                 data_type=obj_type,
                 options=_options)
             _tagged_key = create_store_name(roll_site_header)
-            L.debug(f"pushing start party:{type(obj)}, {_tagged_key}")
+            L.debug(f"pushing start party={type(obj)}, key={_tagged_key}")
             namespace = self.roll_site_session_id
 
             if not self._is_standalone and obj_type == 'object' and os.environ.get('EGGROLL_PUSH_OBJ_WITH_ROLL_PAIR') != "1":
@@ -344,7 +347,7 @@ class RollSite:
                     rp = self.ctx.rp_ctx.load(namespace, _tagged_key)
                     rp.put(_tagged_key, obj)
                 rp.disable_gc()
-                L.info(f"pushing prepared: {type(obj)}, tag_key:{_tagged_key}")
+                L.trace(f"pushing prepared={type(obj)}, tag_key={_tagged_key}")
 
                 def map_values(_tagged_key, is_standalone, roll_site_header):
                     if is_standalone:
@@ -381,14 +384,14 @@ class RollSite:
 
                         if isinstance(obj, RollPair):
                             roll_site_header._options['total_partitions'] = obj.get_store()._store_locator._total_partitions
-                            L.info(f"RollSite.push: pushing {roll_site_header}, type: RollPair, count: {obj.count()}")
+                            L.debug(f"RollSite.push: pushing {roll_site_header}, type: RollPair, count={obj.count()}")
                         else:
-                            L.info(f"RollSite.push: pushing {roll_site_header}, type: object")
+                            L.debug(f"RollSite.push: pushing {roll_site_header}, type: object")
                         rp.map_values(lambda v: v,
                                       output=ErStore(store_locator=new_store_locator),
                                       options=options)
 
-                    L.info(f"RollSite.push: push {roll_site_header} done. type:{type(obj)}")
+                    L.debug(f"RollSite.push: pushed {roll_site_header}. type={type(obj)}")
                     return _tagged_key
 
                 future = RollSite._receive_executor_pool.submit(map_values, _tagged_key, self._is_standalone, roll_site_header)
@@ -444,7 +447,7 @@ class RollSite:
 
             packet = proxy_pb2.Packet(header=metadata)
             namespace = self.roll_site_session_id
-            L.info(f"pulling prepared tagged_key: {_tagged_key}, packet:{to_one_line_string(packet)}")
+            L.trace(f"pulling prepared tagged_key={_tagged_key}, packet={to_one_line_string(packet)}")
             futures.append(RollSite._receive_executor_pool.submit(RollSite._thread_receive, self, packet, namespace, roll_site_header))
 
         return futures

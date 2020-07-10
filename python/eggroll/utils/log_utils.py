@@ -23,6 +23,13 @@ from threading import RLock
 
 from eggroll.utils import file_utils
 
+logging.TRACE = logging.DEBUG - 5
+logging.addLevelName(logging.DEBUG - 5, "TRACE")
+def trace(self, msg, *args, **kwargs):
+    if self.isEnabledFor(logging.TRACE):
+        self._log(logging.TRACE, msg, args, **kwargs)
+logging.Logger.trace = trace
+
 
 class LoggerFactory(object):
     TYPE = "FILE"
@@ -32,6 +39,7 @@ class LoggerFactory(object):
     lock = RLock()
     default_logger_name = os.environ.get('EGGROLL_LOG_FILE', default=f'eggroll')
     default_log_formatter = logging.Formatter('[%(levelname)-5s][%(asctime)s][%(threadName)s,pid:%(process)d,tid:%(thread)d][%(filename)s:%(lineno)s.%(funcName)s] - %(message)s')
+
 
     @staticmethod
     def set_directory(directory=None):
