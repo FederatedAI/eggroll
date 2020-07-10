@@ -40,6 +40,7 @@ public class ProxyServerConf {
     private String gatewayRole;
 
     private String routeTablePath;
+    private String[] whiteList;
 
     private boolean isSecureServer;
     private String serverCrtPath;
@@ -164,6 +165,15 @@ public class ProxyServerConf {
 
     public void setRouteTablePath(String routeTablePath) {
         this.routeTablePath = routeTablePath;
+    }
+
+    public String[] getWhiteList() {
+        return whiteList;
+    }
+
+    public void setWhiteList(String whiteList) {
+        String[] whiteListArray = whiteList.split("\\,");
+        this.whiteList = whiteListArray;
     }
 
     public boolean isSecureServer() {
