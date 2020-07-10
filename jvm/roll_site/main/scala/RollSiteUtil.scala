@@ -42,14 +42,6 @@ class RollSiteUtil(val erSessionId: String,
   logDebug("scalaPutBatch name: " + name + ", namespace: " + namespace)
   val rp: RollPair = ctx.load(namespace, name, options = rollSiteHeader.options)
 
-  Runtime.getRuntime.addShutdownHook(new Thread(){
-    override def run(): Unit = {
-      // TODO:0: un comment
-      //      session.stop
-      //      ctx.stop
-    }
-  })
-
   def putBatch(value: ByteBuffer): Unit = {
     putBatch(ByteString.copyFrom(value))
   }
