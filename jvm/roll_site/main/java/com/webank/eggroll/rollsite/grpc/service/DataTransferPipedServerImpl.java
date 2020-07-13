@@ -117,7 +117,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
 
     @Override
     public StreamObserver<Proxy.Packet> push(StreamObserver<Proxy.Metadata> responseObserver) {
-        LOGGER.info("[PUSH][SERVER] request received");
+        LOGGER.debug("[PUSH][SERVER] request received");
 
         StreamObserver<Proxy.Packet> requestObserver;
         requestObserver = proxyGrpcStreamObserverFactory
@@ -129,15 +129,13 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
     @Override
     public void pull(Proxy.Metadata inputMetadata, StreamObserver<Proxy.Packet> responseObserver) {
         String oneLineStringInputMetadata = ToStringUtils.toOneLineString(inputMetadata);
-        LOGGER.info("[PULL][SERVER] request received. metadata: {}",
+        LOGGER.info("[PULL][SERVER] request received. metadata={}",
                 oneLineStringInputMetadata);
 
         long overallTimeout = timeouts.getOverallTimeout(inputMetadata);
         long packetIntervalTimeout = timeouts.getPacketIntervalTimeout(inputMetadata);
 
         Pipe pipe = new PacketQueueSingleResultPipe();
-
-        LOGGER.info("[PULL][SERVER] pull pipe: {}", pipe);
 
         long startTimestamp = System.currentTimeMillis();
         long lastPacketTimestamp = startTimestamp;
@@ -153,15 +151,12 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                 && !timeouts.isTimeout(packetIntervalTimeout, lastPacketTimestamp, loopEndTimestamp)
                 && !timeouts.isTimeout(overallTimeout, startTimestamp, loopEndTimestamp)) {
             packet = (Proxy.Packet) pipe.read(1, TimeUnit.SECONDS);
-            // LOGGER.info("packet is null: {}", Proxy.Packet == null);
             loopEndTimestamp = System.currentTimeMillis();
             if (packet != null) {
                 Proxy.Metadata outputMetadata = packet.getHeader();
                 Proxy.Data outData = packet.getBody();
-                LOGGER.info("PushStreamProcessor processing metadata: {}", ToStringUtils.toOneLineString(outputMetadata));
-                LOGGER.info("PushStreamProcessor processing outData: {}", ToStringUtils.toOneLineString(outData));
+                LOGGER.trace("[PULL][SERVER] PushStreamProcessor processing metadata={}", oneLineStringInputMetadata);
 
-                // LOGGER.info("server pull onNext()");
                 responseObserver.onNext(packet);
                 hasReturnedBefore = true;
                 lastReturnedPacket = packet;
@@ -170,7 +165,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
             } else {
                 long currentPacketInterval = loopEndTimestamp - lastPacketTimestamp;
                 if (++emptyRetryCount % 60 == 0) {
-                    LOGGER.info("[PULL][SERVER] pull waiting. current packetInterval: {}, packetIntervalTimeout: {}, metadata: {}",
+                    LOGGER.trace("[PULL][SERVER] pull waiting. current packetInterval: {}, packetIntervalTimeout: {}, metadata: {}",
                             currentPacketInterval, packetIntervalTimeout, oneLineStringInputMetadata);
                 }
                 break;
@@ -198,7 +193,6 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                     .append(loopEndTimestamp);
 
             String errorMsg = sb.toString();
-
             LOGGER.error(errorMsg);
 
             TimeoutException e = new TimeoutException(errorMsg);
@@ -224,7 +218,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
             hasError = false;
             pipe.onComplete();
         }
-        LOGGER.info("[PULL][SERVER] server pull finshed. hasReturnedBefore: {}, hasError: {}, metadata: {}",
+        LOGGER.debug("[PULL][SERVER] server pull finshed. hasReturnedBefore: {}, hasError: {}, metadata: {}",
                 hasReturnedBefore, hasError, oneLineStringInputMetadata);
         //LOGGER.warn("pull last returned packet: {}", lastReturnedPacket);
     }
@@ -240,7 +234,6 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                 .build();
         responseObserver.onNext(packet);
         responseObserver.onCompleted();
-        return;
     }
 
     private void initJobSessionPair(Proxy.Packet request, StreamObserver<Proxy.Packet> responseObserver) {
@@ -518,26 +511,22 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
 
     @Override
     public void unaryCall(Proxy.Packet request, StreamObserver<Proxy.Packet> responseObserver) {
+        Proxy.Metadata header = request.getHeader();
+        String oneLineStringInputMetadata = ToStringUtils.toOneLineString(header);
+        LOGGER.debug("[UNARYCALL][SERVER] server unary request received for task_id={}. metadata={}",
+            header.getTask().getTaskId(), oneLineStringInputMetadata);
+
         Proxy.Packet packet = null;
         boolean hasReturnedBefore = false;
         int emptyRetryCount = 0;
-
         //long completionWaitTimeout = Timeouts.DEFAULT_COMPLETION_WAIT_TIMEOUT;
         long overallTimeout = Timeouts.DEFAULT_OVERALL_TIMEOUT;
         long packetIntervalTimeout = Timeouts.DEFAULT_PACKET_INTERVAL_TIMEOUT;
-
-        Proxy.Metadata header = request.getHeader();
-        String oneLineStringInputMetadata = ToStringUtils.toOneLineString(header);
-        LOGGER.info("[UNARYCALL][SERVER] server unary request received. src: {}, dst: {}",
-                ToStringUtils.toOneLineString(header.getSrc()),
-                ToStringUtils.toOneLineString(header.getDst()));
 
         if (header.hasConf()) {
             overallTimeout = timeouts.getOverallTimeout(header);
             packetIntervalTimeout = timeouts.getPacketIntervalTimeout(header);
         }
-
-        LOGGER.info("taskId:{}", header.getTask().getTaskId());
 
         try {
             if (header.getOperator().equals("registerBroker")) {
@@ -582,7 +571,6 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
             }
 
             Pipe pipe = new PacketQueueSingleResultPipe();
-            LOGGER.info("self send: {}", ByteString.copyFromUtf8(pipe.getType()));
             PipeHandleNotificationEvent event =
                 eventFactory.createPipeHandleNotificationEvent(
                     this, PipeHandleNotificationEvent.Type.UNARY_CALL, request, pipe);
@@ -599,10 +587,8 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                 && emptyRetryCount < maxRetryCount
                 && !timeouts.isTimeout(overallTimeout, startTimestamp, loopEndTimestamp)) {
                 packet = (Proxy.Packet) pipe.read(1, TimeUnit.SECONDS);
-//            packet = request;
                 loopEndTimestamp = System.currentTimeMillis();
                 if (packet != null) {
-                    // LOGGER.info("server pull onNext()");
                     responseObserver.onNext(packet);
                     hasReturnedBefore = true;
                     emptyRetryCount = 0;
@@ -611,10 +597,8 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                     long currentOverallWaitTime = loopEndTimestamp - lastPacketTimestamp;
 
                     if (++emptyRetryCount % 60 == 0) {
-                        LOGGER.info(
-                            "[UNARYCALL][SERVER] unary call waiting. current overallWaitTime: {}, packetIntervalTimeout: {}, metadata: {}",
-                            currentOverallWaitTime, packetIntervalTimeout,
-                            oneLineStringInputMetadata);
+                        LOGGER.debug("[UNARYCALL][SERVER] unary call waiting. current overallWaitTime: {}, packetIntervalTimeout: {}, metadata: {}",
+                            currentOverallWaitTime, packetIntervalTimeout, oneLineStringInputMetadata);
                     }
                 }
             }
@@ -638,6 +622,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                             + ", overallTimeout: " + overallTimeout
                             + ", lastPacketTimestamp: " + lastPacketTimestamp
                             + ", loopEndTimestamp: " + loopEndTimestamp;
+
                     LOGGER.error(errorMsg);
 
                     TimeoutException e = new TimeoutException(errorMsg);
@@ -661,30 +646,12 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                 pipe.onComplete();
             }
 
-            LOGGER.info(
-                "[UNARYCALL][SERVER] server unary call completed. hasReturnedBefore: {}, hasError: {}, metadata: {}",
+            LOGGER.debug("[UNARYCALL][SERVER] server unary call completed. hasReturnedBefore: {}, hasError: {}, metadata: {}",
                 hasReturnedBefore, hasError, oneLineStringInputMetadata);
         } catch (Exception e) {
             LOGGER.error("Error occured in unary call: ", e);
             responseObserver.onError(e);
         }
-    }
-
-    private void checkNotNull() {
-        if (defaultPipe == null && pipeFactory == null) {
-            throw new NullPointerException("defaultPipe and pipeFactory are both null");
-        }
-    }
-
-    private Pipe getPipe(String name) {
-        checkNotNull();
-
-        Pipe result = defaultPipe;
-        if (pipeFactory != null) {
-            result = pipeFactory.create(name);
-        }
-
-        return result;
     }
 
     private ErRollSiteHeader restoreRollSiteHeader(String s)
