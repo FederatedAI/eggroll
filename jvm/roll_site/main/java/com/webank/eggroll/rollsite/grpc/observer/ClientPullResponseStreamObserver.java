@@ -138,14 +138,14 @@ public class ClientPullResponseStreamObserver implements StreamObserver<Proxy.Pa
     @Override
     public void onCompleted() {
         long latestAckCount = ackCount.get();
-        LOGGER.info("[PULL][OBSERVER][ONCOMPLETE] Client pull completed. metadata: {}, ackCount: {}",
+        LOGGER.debug("[PULL][OBSERVER][ONCOMPLETE] Client pull completed. metadata: {}, ackCount: {}",
                 oneLineStringMetadata, latestAckCount);
 
         pipe.onComplete();
         finishLatch.countDown();
 
         try {
-            LOGGER.info("[PULL][OBSERVER][ONCOMPLETE] is streamStat set: {}", isStreamStatSet);
+            LOGGER.debug("[PULL][OBSERVER][ONCOMPLETE] is streamStat set: {}", isStreamStatSet);
             if (streamStat != null) {
                 streamStat.onComplete();
             }

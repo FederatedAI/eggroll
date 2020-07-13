@@ -57,9 +57,6 @@ public abstract class BaseCallerResponseStreamObserver<R extends Message, E exte
 
   @Override
   public void onCompleted() {
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("{}.onCompleted", classSimpleName);
-    }
     finishLatch.countDown();
   }
 }
