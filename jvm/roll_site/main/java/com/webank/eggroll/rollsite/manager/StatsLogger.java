@@ -16,6 +16,12 @@
 
 package com.webank.eggroll.rollsite.manager;
 
+import com.webank.ai.eggroll.api.core.BasicMeta.Job;
+import com.webank.eggroll.core.transfer.GrpcClientUtils;
+import com.webank.eggroll.rollsite.RollSiteUtil;
+import com.webank.eggroll.rollsite.factory.ProxyGrpcStubFactory;
+import com.webank.eggroll.rollsite.infra.JobStatus;
+import io.grpc.Grpc;
 import org.apache.commons.text.StringSubstitutor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -31,14 +37,14 @@ import java.util.List;
 import java.util.Map;
 
 @Component
-public class ExecutorManager {
+public class StatsLogger {
     private static final String LOG_TEMPLATE;
     private static final Logger LOGGER = LogManager.getLogger("stat");
 
     static {
-        LOG_TEMPLATE = "executor stat: pool name: ${name}, " +
-                "size: ${size}, " +
-                "active count: ${activeCount}";
+        LOG_TEMPLATE = "executor poolName=${name}, " +
+                "size=${size}, " +
+                "activeCount=${activeCount}";
     }
 
     @Autowired
@@ -49,10 +55,12 @@ public class ExecutorManager {
     private ThreadPoolTaskExecutor grpcClientExecutor;
     @Autowired
     private ThreadPoolTaskScheduler routineScheduler;
+    @Autowired
+    private ProxyGrpcStubFactory proxyGrpcStubFactory;
 
     private List<ThreadPoolTaskExecutor> threadPoolExecutors;
 
-    public ExecutorManager() {
+    public StatsLogger() {
         threadPoolExecutors = new LinkedList<>();
     }
 
@@ -63,11 +71,10 @@ public class ExecutorManager {
         threadPoolExecutors.add(grpcClientExecutor);
     }
 
-    public void statExecutor() {
-        //LOGGER.info("------------ executor stat ------------");
-
+    public String logStats() {
         Map<String, String> valuesMap = new HashMap<>(10);
         StringSubstitutor stringSubstitutor = new StringSubstitutor(valuesMap);
+        StringBuilder builder = new StringBuilder();
 
         for (ThreadPoolTaskExecutor executor : threadPoolExecutors) {
             valuesMap.clear();
@@ -76,7 +83,39 @@ public class ExecutorManager {
             valuesMap.put("activeCount", String.valueOf(executor.getActiveCount()));
 
             String log = stringSubstitutor.replace(LOG_TEMPLATE);
-            //LOGGER.info(log);
+            builder.append(log)
+                .append("; ");
         }
+
+        builder.append("jobIcToSessionId.size=")
+            .append(JobStatus.getJobIdToSessionId().size());
+
+        builder.append("; jobIdToFinishLatch.size=")
+            .append(JobStatus.getJobIdToFinishLatch().size());
+
+        builder.append("; jobIdToPutBatchRequiredCount.size=")
+            .append(JobStatus.getJobIdToPutBatchRequiredCount().size());
+
+        builder.append("; jobIdToPutBatchFinishedCount.size=")
+            .append(JobStatus.getJobIdToPutBatchFinishedCount().size());
+
+        builder.append("; tagkeyToObjType.size=")
+            .append(JobStatus.getTagkeyToObjType().size());
+
+        builder.append("; erSessionCache.size")
+            .append(RollSiteUtil.sessionCache().size());
+
+        builder.append("; GrpcClientUtils.insecureChannelCache.size=")
+            .append(GrpcClientUtils.getChannelCacheSize(false))
+            .append("; GrpcClientUtils.secureChannelCache.size=")
+            .append(GrpcClientUtils.getChannelCacheSize(true));
+
+        builder.append("; ProxyGrpcStubFactory.channelCache.size=")
+            .append(proxyGrpcStubFactory.getChannelCacheSize());
+
+        String finalLog = builder.toString();
+        LOGGER.info(finalLog);
+
+        return finalLog;
     }
 }
