@@ -338,8 +338,8 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
             } else if (timeouts.isTimeout(overallTimeout, overallStartTimestamp, loopEndTimestamp)) {
                 StringBuilder errmsgBuilder = new StringBuilder();
                 errmsgBuilder.append("[PUSH][SERVER][ONCOMPLETE] push server overall time exceeds overallTimeout ")
-                    .append("completionWaitTimeout=")
-                    .append(completionWaitTimeout)
+                    .append("overallTimeout=")
+                    .append(overallTimeout)
                     .append(", metadata=")
                     .append(oneLineStringInputMetadata)
                     .append(", completionWaitStartTimestamp=")
