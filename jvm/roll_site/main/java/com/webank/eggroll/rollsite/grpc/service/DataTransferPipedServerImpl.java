@@ -129,7 +129,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
     @Override
     public void pull(Proxy.Metadata inputMetadata, StreamObserver<Proxy.Packet> responseObserver) {
         String oneLineStringInputMetadata = ToStringUtils.toOneLineString(inputMetadata);
-        LOGGER.info("[PULL][SERVER] request received. metadata={}",
+        LOGGER.debug("[PULL][SERVER] request received. metadata={}",
                 oneLineStringInputMetadata);
 
         long overallTimeout = timeouts.getOverallTimeout(inputMetadata);
@@ -174,8 +174,8 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
 
         boolean hasError = true;
         if (pipe.hasError()) {
-            Throwable error = pipe.getError();
-            LOGGER.error("[PULL][SERVER] pull finish with error: {}", ExceptionUtils.getStackTrace(error));
+            Throwable error = ErrorUtils.toGrpcRuntimeException(pipe.getError());
+            LOGGER.error("[PULL][SERVER] pull finish with error: {}", error);
             responseObserver.onError(error);
 
             return;
@@ -247,7 +247,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
             Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
             packet = packetBuilder.setHeader(header).build();
             // TODO:1: rename job_id to federation_session_id, session_id -> eggroll_session_id
-            LOGGER.info("init_job_session_pair, job_id:{}, session_id:{}", jobId, sessionId);
+            LOGGER.debug("init_job_session_pair, job_id:{}, session_id:{}", jobId, sessionId);
             JobStatus.putJobIdToSessionId(jobId, sessionId);
 
             responseObserver.onNext(packet);
@@ -274,7 +274,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
             String tagKey = genTagKey(rollSiteHeader);
             JobStatus.addPutBatchRequiredCount(tagKey, header.getSeq());
 
-            LOGGER.info("markEnd: {}, {}", rollSiteHeader.rollSiteSessionId(),
+            LOGGER.debug("markEnd: rollsiteSessionId={}, tagKey={}", rollSiteHeader.rollSiteSessionId(),
                     tagKey);  //obj or RollPair
 
             if (!JobStatus.hasLatch(tagKey)) {
@@ -305,11 +305,8 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
         Proxy.Packet packet = null;
         Proxy.Metadata header = request.getHeader();
         String oneLineStringInputMetadata = ToStringUtils.toOneLineString(header);
-        LOGGER.info("[UNARYCALL][SERVER] server unary request received. src: {}, dst: {}",
-                ToStringUtils.toOneLineString(header.getSrc()),
-                ToStringUtils.toOneLineString(header.getDst()));
+        LOGGER.debug("[UNARYCALL][SERVER] server unary request received. metadata={}", oneLineStringInputMetadata);
 
-        LOGGER.info("getStatus: {}", oneLineStringInputMetadata);
         Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
 
         try {
@@ -324,7 +321,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
             Proxy.Metadata resultHeader = request.getHeader();
             String type = StringConstants.EMPTY();
             if (jobFinished) {
-                LOGGER.info("getStatus: job finished: {}", oneLineStringInputMetadata);
+                LOGGER.debug("getStatus: job finished. metadata={}", oneLineStringInputMetadata);
                 resultHeader = Proxy.Metadata.newBuilder().setAck(123)
                         .setSrc(request.getHeader().getSrc())
                         .setDst(request.getHeader().getDst())
@@ -340,8 +337,8 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                 }
                 JobStatus.cleanupJobStatus(tagKey);
             } else {
-                LOGGER.info("getStatus: job NOT finished: {}. current latch count: {}, "
-                                + "put batch required: {}, put batch finished: {}",
+                LOGGER.debug("getStatus: job NOT finished: metadata={}. current latch count={}, "
+                                + "put batch required={}, put batch finished={}",
                         oneLineStringInputMetadata,
                         JobStatus.getFinishLatchCount(tagKey),
                         JobStatus.getPutBatchRequiredCount(tagKey),
@@ -377,7 +374,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                 String tagKey = genTagKey(rollSiteHeader);
                 JobStatus.addPutBatchRequiredCount(tagKey, 1);
 
-                LOGGER.info("received obj, tagKey: {}", tagKey);
+                LOGGER.debug("received obj, tagKey={}", tagKey);
 
                 if (!JobStatus.hasLatch(tagKey)) {
                     int totalPartitions = 1;
@@ -425,7 +422,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
         Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
 
         if (!proxyServerConf.getPartyId().equals(header.getDst().getPartyId())) {
-            throw new IllegalArgumentException("dst partyId is illegal.");
+            throw new IllegalArgumentException("dst partyId={} is illegal", header.getDst().getPartyId());
         } else {
             String routeTablePath = proxyServerConf.getRouteTablePath();
             String srcIp = (String) AddrAuthServerInterceptor.REMOTE_ADDR.get();
@@ -437,12 +434,11 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                 if (Arrays.asList(whiteList).contains(srcIp)) {
                     File jsonFile = new File(routeTablePath);
                     try {
-                        String encoding = "UTF-8";
                         Long filelength = jsonFile.length();
                         byte[] filecontent = new byte[filelength.intValue()];
                         FileInputStream in = new FileInputStream(jsonFile);
                         in.read(filecontent);
-                        jsonContent = new String(filecontent, encoding);
+                        jsonContent = new String(filecontent, StandardCharsets.UTF_8);
                     } catch (IOException e) {
                         LOGGER.error("getRouteTable failed: ", e);
                         responseObserver.onError(e);
@@ -463,7 +459,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
     private void setRouteTable(Proxy.Packet request, StreamObserver<Proxy.Packet> responseObserver) {
         Proxy.Metadata header = request.getHeader();
         if (!proxyServerConf.getPartyId().equals(header.getDst().getPartyId())) {
-            throw new IllegalArgumentException("dst partyId is illegal.");
+            throw new IllegalArgumentException("dst partyId={} is illegal", header.getDst().getPartyId());
         } else {
             String routeTablePath = proxyServerConf.getRouteTablePath();
             String srcIp = (String) AddrAuthServerInterceptor.REMOTE_ADDR.get();
@@ -476,7 +472,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                     String jsonString = request.getBody().getValue().toStringUtf8();
                     //String jsonString = format(result.toString());
                     try {
-                        System.out.println("routeTablePath:" + routeTablePath);
+                        LOGGER.debug("setting routeTablePath={}", routeTablePath);
                         File file = new File(routeTablePath);
                         if (!file.getParentFile().exists()) {
                             file.getParentFile().mkdirs();
@@ -486,13 +482,13 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                         }
                         file.createNewFile();
 
-                        Writer write = new OutputStreamWriter(new FileOutputStream(file), "UTF-8");
+                        Writer write = new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8);
                         write.write(jsonString);
                         write.flush();
                         write.close();
                         fdnRouter.updateRouteTable();
                     } catch (Exception e) {
-                        LOGGER.error("setRouteTable failed: ", e);
+                        LOGGER.error("setRouteTable failed for path={}", routeTablePath, e);
                         responseObserver.onError(e);
                     }
                 }
