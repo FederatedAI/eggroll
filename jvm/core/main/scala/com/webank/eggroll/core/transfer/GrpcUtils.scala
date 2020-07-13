@@ -131,7 +131,7 @@ object GrpcClientUtils extends Logging {
       val managedChannel = notification.getValue
       if (managedChannel != null) if (!managedChannel.isShutdown || !managedChannel.isTerminated) managedChannel.shutdown
 
-      logInfo(s"[CHANNEL][REMOVAL] removing for endpoint: ${endpoint}. reason: ${notification.getCause.name()}")
+      logDebug(s"[CHANNEL][REMOVAL] removing for endpoint: ${endpoint}. reason: ${notification.getCause.name()}")
     })
   private val insecureChannelCache: LoadingCache[ErEndpoint, ManagedChannel] = cacheBuilder
     .build(new CacheLoader[ErEndpoint, ManagedChannel]() {
@@ -154,6 +154,8 @@ object GrpcClientUtils extends Logging {
   private val createWithBuckets = "[CREATE]"
   private val prefix = ModuleConstants.CORE_WITH_BRACKETS + channelWithBuckets
 
+  def getChannelCacheSize(isSecure: Boolean): Long =
+    if (isSecure) secureChannelCache.size() else insecureChannelCache.size()
 
   private def createChannel(endpoint: ErEndpoint,
                             isSecureChannel: Boolean = false,

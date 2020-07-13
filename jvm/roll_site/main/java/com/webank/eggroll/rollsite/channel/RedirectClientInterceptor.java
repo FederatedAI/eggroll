@@ -20,7 +20,7 @@ public class RedirectClientInterceptor implements ClientInterceptor {
         MethodDescriptor<ReqT, RespT> redirectedMethod = method.toBuilder()
                 .setFullMethodName(existingFullMethodName.replace(existing, redirected)).build();
 
-        LOGGER.info("[PROXY] existing: {}, redirected: {}, redirectedMethod: {}, next channel: {}", existing, redirected, redirectedMethod.getFullMethodName(), next.authority());
+        LOGGER.trace("[PROXY] existing: {}, redirected: {}, redirectedMethod: {}, next channel: {}", existing, redirected, redirectedMethod.getFullMethodName(), next.authority());
 
         return new ForwardingClientCall.SimpleForwardingClientCall<ReqT, RespT>(next.newCall(redirectedMethod, callOptions)) {};
     }
