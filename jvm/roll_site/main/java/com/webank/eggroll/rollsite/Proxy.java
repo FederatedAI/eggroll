@@ -66,8 +66,8 @@ public class Proxy {
         ServerConfManager serverConfManager = context.getBean(ServerConfManager.class);
         ProxyServerConf proxyServerConf = serverConfManager.getProxyServerConf();
 
-        LOGGER.info("Server started listening on port: {}", proxyServerConf.getPort());
-        LOGGER.info("server conf: {}", proxyServerConf);
+        LOGGER.info("Server started listening on port={}", proxyServerConf.getPort());
+        LOGGER.info("server conf={}", proxyServerConf);
 
         StaticErConf.addProperties(confFilePath);
 

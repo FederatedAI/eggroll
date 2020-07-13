@@ -17,6 +17,7 @@
 package com.webank.eggroll.rollsite.grpc.client;
 
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
+import com.webank.ai.eggroll.api.networking.proxy.Proxy.Metadata;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy.Packet;
 import com.webank.eggroll.core.constant.RollSiteConfKeys;
 import com.webank.eggroll.core.grpc.processor.BaseClientCallStreamProcessor;
@@ -49,7 +50,7 @@ public class PushStreamProcessor extends BaseClientCallStreamProcessor<Proxy.Pac
     private Pipe transferBroker;
     //private ClusterComm.TransferMeta transferMeta;
     private String transferMetaString;
-    private int packetCount = 0;
+    private Proxy.Metadata metadata;
 
     private volatile boolean inited;
 
@@ -85,7 +86,7 @@ public class PushStreamProcessor extends BaseClientCallStreamProcessor<Proxy.Pac
         if (!inited) {
             init();
         }
-        LOGGER.info("PushStreamProcessor processing");
+        LOGGER.trace("PushStreamProcessor processing, tagKey={}", transferBroker.getTagKey());
 
         //super.process();
 
@@ -132,8 +133,8 @@ public class PushStreamProcessor extends BaseClientCallStreamProcessor<Proxy.Pac
                 if (emptyRetryCount % 60 == 0) {
                     //LOGGER.info("[PUSH][CLIENT] push stub waiting. empty retry count: {}, metadata: {}",
                     //   emptyRetryCount, onelineStringMetadata);
-                    LOGGER.info("[PUSH][CLIENT] push stub waiting. empty retry count: {}",
-                           emptyRetryCount);
+                    LOGGER.debug("[PUSH][CLIENT] push stub waiting. tagKey={}, emptyRetryCount={}",
+                           this.transferBroker.getTagKey(), emptyRetryCount);
                 }
             }
         } while ((packet != null || !transferBroker.isDrained()) && emptyRetryCount < maxRetryCount && !transferBroker.hasError());
