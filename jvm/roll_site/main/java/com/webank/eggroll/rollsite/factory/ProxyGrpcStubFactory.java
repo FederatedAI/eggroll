@@ -93,6 +93,10 @@ public class ProxyGrpcStubFactory {
                 );
     }
 
+    public long getChannelCacheSize() {
+        return channelCache.size();
+    }
+
     public DataTransferServiceGrpc.DataTransferServiceBlockingStub getBlockingStub(Proxy.Topic topic) {
         BasicMeta.Endpoint endpoint = fdnRouter.route(topic);
 
