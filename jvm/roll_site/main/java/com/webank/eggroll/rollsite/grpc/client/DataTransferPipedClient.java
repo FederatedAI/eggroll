@@ -80,7 +80,7 @@ public class DataTransferPipedClient {
         needSecureChannel = proxyServerConf.isSecureServer();
 
         //.setCallerStreamObserverClassAndInitArgs(SameTypeCallerResponseStreamObserver.class)
-        LOGGER.info("ip: {}, Port: {}", endpoint.getIp(), endpoint.getPort());
+        LOGGER.trace("ip={}, Port={}", endpoint.getIp(), endpoint.getPort());
         context.setStubClass(DataTransferServiceGrpc.DataTransferServiceStub.class)
             .setServerEndpoint(endpoint.getIp(), endpoint.getPort())
             .setSecureRequest(needSecureChannel)
@@ -111,16 +111,16 @@ public class DataTransferPipedClient {
         }
 
         while (!inited.get()) {
-            LOGGER.info("[DEBUG][CLUSTERCOMM] proxyClient not inited yet");
+            LOGGER.trace("[DEBUG][ROLLSITE] proxyClient not inited yet");
 
             try {
                 Thread.sleep(50);
             } catch (InterruptedException e) {
-                LOGGER.error("error in doPush: " + ExceptionUtils.getStackTrace(e));
+                LOGGER.error("error in doPush", e);
                 Thread.currentThread().interrupt();
             }
         }
-        LOGGER.info("[DEBUG][CLUSTERCOMM] doPush call processCallerStreamingRpc");
+        LOGGER.trace("[DEBUG][ROLLSITE] doPush call processCallerStreamingRpc");
 
         if (pipe.hasError()) {
             pushTemplate.errorCallerStreamingRpc(pipe.getError());
@@ -141,7 +141,7 @@ public class DataTransferPipedClient {
 
     public void pull(Proxy.Metadata metadata, Pipe pipe) {
         String onelineStringMetadata = ToStringUtils.toOneLineString(metadata);
-        LOGGER.info("[PULL][CLIENT] client send pull to server: {}", onelineStringMetadata);
+        LOGGER.debug("[PULL][CLIENT] client send pull to server={}", onelineStringMetadata);
         DataTransferServiceGrpc.DataTransferServiceStub stub = getStub(metadata.getDst(), metadata.getSrc());
 
         final CountDownLatch finishLatch = new CountDownLatch(1);
@@ -150,13 +150,13 @@ public class DataTransferPipedClient {
                 proxyGrpcStreamObserverFactory.createClientPullResponseStreamObserver(pipe, finishLatch, metadata);
 
         stub.pull(metadata, responseObserver);
-        LOGGER.info("[PULL][CLIENT] pull stub: {}, metadata: {}",
+        LOGGER.trace("[PULL][CLIENT] pull stub={}, metadata={}",
                 stub.getChannel(), onelineStringMetadata);
 
         try {
             finishLatch.await(MAX_AWAIT_HOURS, TimeUnit.HOURS);
         } catch (InterruptedException e) {
-            LOGGER.error("[PULL][CLIENT] client pull: finishLatch.await() interrupted");
+            LOGGER.error("[PULL][CLIENT] client pull: finishLatch.await() interrupted. metadata={}", onelineStringMetadata);
             responseObserver.onError(ErrorUtils.toGrpcRuntimeException(e));
             pipe.onError(e);
             Thread.currentThread().interrupt();
