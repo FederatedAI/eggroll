@@ -165,7 +165,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
             } else {
                 long currentPacketInterval = loopEndTimestamp - lastPacketTimestamp;
                 if (++emptyRetryCount % 60 == 0) {
-                    LOGGER.trace("[PULL][SERVER] pull waiting. current packetInterval: {}, packetIntervalTimeout: {}, metadata: {}",
+                    LOGGER.trace("[PULL][SERVER] pull waiting. current packetInterval={}, packetIntervalTimeout={}, metadata={}",
                             currentPacketInterval, packetIntervalTimeout, oneLineStringInputMetadata);
                 }
                 break;
@@ -321,7 +321,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
             Proxy.Metadata resultHeader = request.getHeader();
             String type = StringConstants.EMPTY();
             if (jobFinished) {
-                LOGGER.debug("getStatus: job finished. metadata={}", oneLineStringInputMetadata);
+                LOGGER.debug("[getStatus] job finished. metadata={}", oneLineStringInputMetadata);
                 resultHeader = Proxy.Metadata.newBuilder().setAck(123)
                         .setSrc(request.getHeader().getSrc())
                         .setDst(request.getHeader().getDst())
@@ -593,7 +593,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                     long currentOverallWaitTime = loopEndTimestamp - lastPacketTimestamp;
 
                     if (++emptyRetryCount % 60 == 0) {
-                        LOGGER.debug("[UNARYCALL][SERVER] unary call waiting. current overallWaitTime: {}, packetIntervalTimeout: {}, metadata: {}",
+                        LOGGER.debug("[UNARYCALL][SERVER] unary call waiting. current overallWaitTime={}, packetIntervalTimeout={}, metadata={}",
                             currentOverallWaitTime, packetIntervalTimeout, oneLineStringInputMetadata);
                     }
                 }
@@ -612,12 +612,12 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
             if (!hasReturnedBefore) {
                 if (timeouts.isTimeout(overallTimeout, startTimestamp, loopEndTimestamp)) {
                     String errorMsg =
-                        "[UNARYCALL][SERVER] unary call server error: overall process time exceeds timeout: "
+                        "[UNARYCALL][SERVER] unary call server error: overall process time exceeds timeout="
                             + overallTimeout
-                            + ", metadata: " + oneLineStringInputMetadata
-                            + ", overallTimeout: " + overallTimeout
-                            + ", lastPacketTimestamp: " + lastPacketTimestamp
-                            + ", loopEndTimestamp: " + loopEndTimestamp;
+                            + ", metadata=" + oneLineStringInputMetadata
+                            + ", overallTimeout=" + overallTimeout
+                            + ", lastPacketTimestamp=" + lastPacketTimestamp
+                            + ", loopEndTimestamp=" + loopEndTimestamp;
 
                     LOGGER.error(errorMsg);
 
@@ -626,11 +626,11 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                     pipe.onError(e);
                 } else {
                     String errorMsg =
-                        "[UNARYCALL][SERVER] unary call server error: overall process time exceeds timeout: "
+                        "[UNARYCALL][SERVER] unary call server error: overall process time exceeds timeout="
                             + overallTimeout
-                            + ", metadata: " + oneLineStringInputMetadata
-                            + ", startTimestamp: " + startTimestamp
-                            + ", loopEndTimestamp: " + loopEndTimestamp;
+                            + ", metadata=" + oneLineStringInputMetadata
+                            + ", startTimestamp=" + startTimestamp
+                            + ", loopEndTimestamp=" + loopEndTimestamp;
 
                     TimeoutException e = new TimeoutException(errorMsg);
                     responseObserver.onError(ErrorUtils.toGrpcRuntimeException(e));
@@ -642,7 +642,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                 pipe.onComplete();
             }
 
-            LOGGER.debug("[UNARYCALL][SERVER] server unary call completed. hasReturnedBefore: {}, hasError: {}, metadata: {}",
+            LOGGER.debug("[UNARYCALL][SERVER] server unary call completed. hasReturnedBefore={}, hasError={}, metadata={}",
                 hasReturnedBefore, hasError, oneLineStringInputMetadata);
         } catch (Exception e) {
             LOGGER.error("Error occured in unary call: ", e);

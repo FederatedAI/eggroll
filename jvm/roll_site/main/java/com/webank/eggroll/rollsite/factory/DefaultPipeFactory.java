@@ -43,7 +43,6 @@ public class DefaultPipeFactory implements PipeFactory {
     private static Map<String, PacketQueueSingleResultPipe> pipeMap = Maps.newConcurrentMap();
 
     public DefaultPipeFactory() {
-        LOGGER.info("DefaultPipeFactory construct");
         //pipeMap = Maps.newConcurrentMap();
     }
 
@@ -85,10 +84,8 @@ public class DefaultPipeFactory implements PipeFactory {
     @Override
     public Pipe create(String name, int totalWriters) {
         PacketQueueSingleResultPipe pipe;
-        LOGGER.info("pipeMap: {}", pipeMap);
         synchronized(this) {
             if (pipeMap.containsKey(name)) {
-                LOGGER.info("key {} exited", name);
                 pipe = pipeMap.get(name);
             }
             else {
@@ -96,7 +93,6 @@ public class DefaultPipeFactory implements PipeFactory {
                 pipe.initWriters(totalWriters);
                 pipeMap.put(name, pipe);
 
-                LOGGER.info("create key {}", name);
             }
         }
 

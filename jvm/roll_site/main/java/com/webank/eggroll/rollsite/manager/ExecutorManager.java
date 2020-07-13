@@ -64,7 +64,7 @@ public class ExecutorManager {
     }
 
     public void statExecutor() {
-        LOGGER.info("------------ executor stat ------------");
+        //LOGGER.info("------------ executor stat ------------");
 
         Map<String, String> valuesMap = new HashMap<>(10);
         StringSubstitutor stringSubstitutor = new StringSubstitutor(valuesMap);
@@ -76,7 +76,7 @@ public class ExecutorManager {
             valuesMap.put("activeCount", String.valueOf(executor.getActiveCount()));
 
             String log = stringSubstitutor.replace(LOG_TEMPLATE);
-            LOGGER.info(log);
+            //LOGGER.info(log);
         }
     }
 }
