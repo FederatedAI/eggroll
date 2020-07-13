@@ -422,7 +422,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
         Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
 
         if (!proxyServerConf.getPartyId().equals(header.getDst().getPartyId())) {
-            throw new IllegalArgumentException("dst partyId={} is illegal", header.getDst().getPartyId());
+            throw new IllegalArgumentException("dst is illegal, partyId=" + header.getDst().getPartyId());
         } else {
             String routeTablePath = proxyServerConf.getRouteTablePath();
             String srcIp = (String) AddrAuthServerInterceptor.REMOTE_ADDR.get();
@@ -459,7 +459,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
     private void setRouteTable(Proxy.Packet request, StreamObserver<Proxy.Packet> responseObserver) {
         Proxy.Metadata header = request.getHeader();
         if (!proxyServerConf.getPartyId().equals(header.getDst().getPartyId())) {
-            throw new IllegalArgumentException("dst partyId={} is illegal", header.getDst().getPartyId());
+            throw new IllegalArgumentException("dst is illegal, partyId=" + header.getDst().getPartyId());
         } else {
             String routeTablePath = proxyServerConf.getRouteTablePath();
             String srcIp = (String) AddrAuthServerInterceptor.REMOTE_ADDR.get();
