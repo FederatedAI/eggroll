@@ -51,7 +51,7 @@ public class PacketToOutputStreamUnidirectionalPipe extends BasePipe {
 
     @Override
     public void write(Object o) {
-        LOGGER.info("write for the {} time", ++counter);
+        LOGGER.trace("write for the {} time", ++counter);
         if (o instanceof Proxy.Packet) {
             Proxy.Packet packet = (Proxy.Packet) o;
             try {

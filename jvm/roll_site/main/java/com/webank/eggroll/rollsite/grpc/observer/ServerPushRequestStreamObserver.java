@@ -38,9 +38,7 @@ import com.webank.eggroll.rollsite.infra.impl.PacketQueueSingleResultPipe;
 import com.webank.eggroll.rollsite.manager.StatsManager;
 import com.webank.eggroll.rollsite.model.ProxyServerConf;
 import com.webank.eggroll.rollsite.model.StreamStat;
-import com.webank.eggroll.rollsite.utils.PipeUtils;
 import com.webank.eggroll.rollsite.utils.Timeouts;
-import io.grpc.Grpc;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import java.nio.charset.StandardCharsets;
@@ -52,32 +50,11 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Scope;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Component;
 import scala.collection.immutable.Map.Map1;
 
-/*
-class putBatchThread extends Thread{
-    private Proxy.Packet inputPacket;
-
-    public putBatchThread(Proxy.Packet packet)
-    {
-        this.inputPacket = packet;
-    }
-
-    @Override
-    public void run() {
-        ByteString value = inputPacket.getBody().getValue();
-        String name = inputPacket.getHeader().getTask().getModel().getName();
-        String namespace = inputPacket.getHeader().getTask().getModel().getDataKey();
-        RollSiteUtil.putBatch(name, namespace, value.asReadOnlyByteBuffer());
-    }
-
-}
-*/
 
 @Component
 @Scope("prototype")
@@ -89,10 +66,6 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
     @Autowired
     private ApplicationEventPublisher applicationEventPublisher;
     @Autowired
-    private ApplicationContext applicationContext;
-    @Autowired
-    private ThreadPoolTaskExecutor asyncThreadPool;
-    @Autowired
     private EventFactory eventFactory;
     @Autowired
     private ModelValidationHelper modelValidationHelper;
@@ -103,11 +76,8 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
     @Autowired
     private ProxyServerConf proxyServerConf;
     @Autowired
-    private PipeUtils pipeUtils;
-    @Autowired
     private ProxyGrpcStubFactory proxyGrpcStubFactory;
     private Pipe pipe;
-    private PipeFactory pipeFactory;
     private Proxy.Metadata inputMetadata;
     private StreamStat streamStat;
     private String myCoordinator;
@@ -124,9 +94,6 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
     private RollSiteUtil rollSiteUtil;
 
     public ServerPushRequestStreamObserver(PipeFactory pipeFactory, StreamObserver<Proxy.Metadata> responseObserver) {
-        //this.pipe = pipe;
-        this.pipeFactory = pipeFactory;
-        //this.pipeMap = pipeMap;
         this.responseObserver = responseObserver;
         this.completionWaitTimeout = Timeouts.DEFAULT_COMPLETION_WAIT_TIMEOUT;
         this.overallTimeout = Timeouts.DEFAULT_OVERALL_TIMEOUT;
@@ -140,6 +107,8 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
             return;
         }
 
+        LOGGER.debug("[PUSH][SERVER] init metadata={}",
+            ToStringUtils.toOneLineString(metadata));
         this.response = metadata;
         this.inputMetadata = metadata;
         this.inited = true;
@@ -148,27 +117,18 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
     @Override
     public void onNext(Proxy.Packet packet) {
         try {
-            LOGGER.info("[SEND][SERVER][OBSERVER][ONNEXT] header: {}",
-                ToStringUtils.toOneLineString(packet.getHeader()));
             if (!inited) {
                 init(packet.getHeader());
             }
 
             inputMetadata = packet.getHeader();
-            LOGGER.info("inputMetadata.getTask().getTaskId():{}",
-                inputMetadata.getTask().getTaskId());
 
             streamStat = new StreamStat(inputMetadata, StreamStat.PUSH);
             oneLineStringInputMetadata = ToStringUtils.toOneLineString(inputMetadata);
             statsManager.add(streamStat);
 
-            LOGGER.info(Grpc.TRANSPORT_ATTR_REMOTE_ADDR.toString());
-
-            LOGGER.info("[PUSH][OBSERVER][ONNEXT] metadata: {}", oneLineStringInputMetadata);
-            LOGGER.info("[PUSH][OBSERVER][ONNEXT] request src: {}, dst: {}, data size: {}",
-                ToStringUtils.toOneLineString(inputMetadata.getSrc()),
-                ToStringUtils.toOneLineString(inputMetadata.getDst()),
-                packet.getBody().getValue().size());
+            LOGGER.trace("[PUSH][SERVER][ONNEXT] metadata={}, data size={}",
+                oneLineStringInputMetadata, packet.getBody().getValue().size());
 
             if (StringUtils.isBlank(myCoordinator)) {
                 myCoordinator = proxyServerConf.getCoordinator();
@@ -191,13 +151,10 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
                 return;
             }
 
-            LOGGER.info("model name: {}", inputMetadata.getTask().getModel().getName());
-
             pipe = new PacketQueueSingleResultPipe(inputMetadata);
             if (noError) {
                 pipe.write(packet);
                 ackCount.incrementAndGet();
-                //LOGGER.info("myCoordinator: {}, Proxy.Packet coordinator: {}", myCoordinator, packet.getHeader().getSrc().getCoordinator());
                 if (isAuditEnabled && packet.getHeader().getSrc().getPartyId()
                     .equals(myCoordinator)) {
                     AUDIT.info(ToStringUtils.toOneLineString(packet));
@@ -214,7 +171,8 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
                     ByteString value = packet.getBody().getValue();
                     String name = packet.getHeader().getTask().getModel().getName();
                     String namespace = packet.getHeader().getTask().getModel().getDataKey();
-                    LOGGER.info("name:{}, namespace:{}", name, namespace);
+                    LOGGER.trace("[SEND][SERVER][OBSERVER] ready to putBatch for namespace={}, name={}",
+                        namespace, name);
 
                     // TODO:0: better wait
                     if (rollSiteUtil == null) {
@@ -230,8 +188,6 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
                             LOGGER.error("error parsing roll site header", e);
                             onError(e);
                         }
-                        /*int totalPartition = Integer.parseInt(rollSiteHeader.options().getOrElse(
-                            StringConstants.TOTAL_PARTITIONS_SNAKECASE(), () -> "1"));*/
                         String job_id = rollSiteHeader.rollSiteSessionId();
                         try {
                             while (!JobStatus.isJobIdToSessionRegistered(job_id)) {
@@ -241,7 +197,6 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
                             e.printStackTrace();
                         }
                         String sessionId = JobStatus.getErSessionId(job_id);
-                        LOGGER.info("ready to create rollsite util");
                         if (sessionId != null) {
                             rollSiteUtil = new RollSiteUtil(sessionId, rollSiteHeader,
                                 new Map1<>("job_id_tag", Thread.currentThread().getName()));
@@ -261,7 +216,7 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
                     rollSiteUtil.putBatch(value);
                     // for putBatch, on complete here; for cascaded call, on complete at cascaded call
                     pipe.onComplete();
-                    LOGGER.info("end putBatch for {}", name);
+                    LOGGER.trace("[SEND][SERVER][OBSERVER] end putBatch for namespace={}, name={}", namespace, name);
                 }
 
                 if (timeouts.isTimeout(overallTimeout, overallStartTimestamp)) {
@@ -274,21 +229,19 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
                 }
 
                 if (isDebugEnabled) {
-                    DEBUGGING.info("[PUSH][OBSERVER][ONNEXT] server: {}, ackCount: {}", packet,
+                    DEBUGGING.info("[PUSH][SERVER][ONNEXT] server: {}, ackCount: {}", packet,
                         ackCount.get());
                     if (packet.getBody() != null && packet.getBody().getValue() != null) {
                         ByteString value = packet.getBody().getValue();
                         streamStat.increment(value.size());
-                        DEBUGGING.info("[PUSH][OBSERVER][ONNEXT] length: {}, metadata: {}",
+                        DEBUGGING.info("[PUSH][SERVER][ONNEXT] length: {}, metadata: {}",
                             packet.getBody().getValue().size(), oneLineStringInputMetadata);
                     } else {
-                        DEBUGGING.info("[PUSH][OBSERVER][ONNEXT] length : null, metadata: {}",
+                        DEBUGGING.info("[PUSH][SERVER][ONNEXT] length : null, metadata: {}",
                             oneLineStringInputMetadata);
                     }
                     DEBUGGING.info("-------------");
                 }
-                LOGGER.info("push server received size: {}, data size: {} for tag: {}",
-                    packet.getSerializedSize(), packet.getBody().getValue().size(), oneLineStringInputMetadata);
             }
         } catch (Exception e) {
             onError(e);
@@ -312,8 +265,8 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
             .append(":")
             .append(next.getPort());
         RuntimeException exceptionWithHop = new RuntimeException(builder.toString(), throwable);
-        LOGGER.error("[PUSH][OBSERVER][ONERROR] error in push server: {}, metadata: {}, ackCount: {}",
-                Status.fromThrowable(exceptionWithHop), oneLineStringInputMetadata, ackCount.get());
+        LOGGER.error("[PUSH][OBSERVER][ONERROR] error in push server. metadata={}, ackCount={}",
+                oneLineStringInputMetadata, ackCount.get(), exceptionWithHop);
         LOGGER.error(ExceptionUtils.getStackTrace(exceptionWithHop));
 
         pipe.setDrained();
@@ -325,10 +278,8 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
 
     @Override
     public void onCompleted() {
-        LOGGER.info("[PUSH][OBSERVER] onCompleted. ackCount: {}", ackCount);
         long lastestAckCount = ackCount.get();
-        LOGGER.info("[PUSH][OBSERVER][ONCOMPLETE] trying to complete task. metadata: {}, ackCount: {}",
-                oneLineStringInputMetadata, lastestAckCount);
+        LOGGER.trace("[PUSH][SERVER][ONCOMPLETE] onCompleted for metadata={}. ackCount={}", oneLineStringInputMetadata, lastestAckCount);
 
         long completionWaitStartTimestamp = System.currentTimeMillis();
         long loopEndTimestamp = completionWaitStartTimestamp;
@@ -340,18 +291,11 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
             throw e;
         }
 
-        LOGGER.info("pipe in onCompleted: {}", pipe);
         pipe.setDrained();
-        // pipe.onComplete();
 
-        /*LOGGER.info("closed: {}, completion timeout: {}, overall timeout: {}",
-                pipe.isClosed(),
-                timeouts.isTimeout(completionWaitTimeout, completionWaitStartTimestamp, loopEnd),
-                timeouts.isTimeout(overallTimeout, overallStartTimestamp, loopEnd));*/
         while (!pipe.isClosed()
                 && !timeouts.isTimeout(completionWaitTimeout, completionWaitStartTimestamp, loopEndTimestamp)
                 && !timeouts.isTimeout(overallTimeout, overallStartTimestamp, loopEndTimestamp)) {
-            // LOGGER.info("waiting for next level result");
             try {
                 pipe.awaitClosed(1, TimeUnit.SECONDS);
             } catch (InterruptedException e) {
@@ -360,60 +304,64 @@ public class ServerPushRequestStreamObserver implements StreamObserver<Proxy.Pac
                 loopEndTimestamp = System.currentTimeMillis();
             }
             if (++waitCount % 60 == 0) {
-
                 String extraInfo = "";
                 if (pipe instanceof PacketQueuePipe) {
                     PacketQueuePipe pqp = (PacketQueuePipe) pipe;
                     extraInfo = "queueSize: " + pqp.getQueueSize();
                 }
-                LOGGER.info("[PUSH][OBSERVER][ONCOMPLETE] waiting push to complete. wait time: {}. metadata: {}, extrainfo: {}",
+                LOGGER.trace("[PUSH][SERVER][ONCOMPLETE] waiting push to complete. wait time={}. metadata={}, extrainfo={}",
                         (loopEndTimestamp - completionWaitStartTimestamp), oneLineStringInputMetadata, extraInfo);
             }
         }
-        //pipe.onComplete();
 
         try {
             if (pipe.hasError()) {
                 onError(pipe.getError());
             } else if (timeouts.isTimeout(completionWaitTimeout, completionWaitStartTimestamp, loopEndTimestamp)) {
-                String errmsg = "[PUSH][OBSERVER][ONCOMPLETE] push server completion wait exceeds completionWaitTimeout. "
-                        + "completionWaitTimeout: " + completionWaitTimeout
-                        + ", metadata: " + oneLineStringInputMetadata
-                        + ", completionWaitStartTimestamp: " + completionWaitStartTimestamp
-                        + ", loopEndTimestamp: " + loopEndTimestamp
-                        + ", ackCount: " + lastestAckCount;
+                StringBuilder errmsgBuilder = new StringBuilder();
+                errmsgBuilder.append("[PUSH][SERVER][ONCOMPLETE] push server completion wait exceeds completionWaitTimeout. ")
+                    .append("completionWaitTimeout=")
+                    .append(completionWaitTimeout)
+                    .append(", metadata=")
+                    .append(oneLineStringInputMetadata)
+                    .append(", completionWaitStartTimestamp=")
+                    .append(completionWaitStartTimestamp)
+                    .append(", loopEndTimestamp=")
+                    .append(loopEndTimestamp)
+                    .append(", ackCount=")
+                    .append(lastestAckCount);
+
+                String errmsg = errmsgBuilder.toString();
                 LOGGER.error(errmsg);
                 responseObserver.onError(new TimeoutException(errmsg));
                 streamStat.onError();
             } else if (timeouts.isTimeout(overallTimeout, overallStartTimestamp, loopEndTimestamp)) {
-                String errmsg = "[PUSH][OBSERVER][ONCOMPLETE] push server overall time exceeds overallTimeout. "
-                        + "overallTimeout: " + overallTimeout
-                        + ", metadata: " + oneLineStringInputMetadata
-                        + ", overallStartTimestamp: " + overallStartTimestamp
-                        + ", loopEndTimestamp: " + loopEndTimestamp
-                        + ", ackCount: " + lastestAckCount;
+                StringBuilder errmsgBuilder = new StringBuilder();
+                errmsgBuilder.append("[PUSH][SERVER][ONCOMPLETE] push server overall time exceeds overallTimeout ")
+                    .append("overallTimeout=")
+                    .append(overallTimeout)
+                    .append(", metadata=")
+                    .append(oneLineStringInputMetadata)
+                    .append(", completionWaitStartTimestamp=")
+                    .append(completionWaitStartTimestamp)
+                    .append(", loopEndTimestamp=")
+                    .append(loopEndTimestamp)
+                    .append(", ackCount=")
+                    .append(lastestAckCount);
 
+                String errmsg = errmsgBuilder.toString();
                 LOGGER.error(errmsg);
                 responseObserver.onError(new TimeoutException(errmsg));
                 streamStat.onError();
             } else {
-                /*
-                Proxy.Metadata responseMetadata = pipeUtils.getResultFromPipe(pipe);
-                if (responseMetadata == null) {
-                    LOGGER.warn("[PUSH][OBSERVER][ONCOMPLETE] response Proxy.Metadata is null. inputMetadata: {}",
-                            toStringUtils.toOneLineString(responseMetadata));
-                }
-                */
-
-                //responseObserver.onNext(responseMetadata);
                 responseObserver.onNext(response);
                 responseObserver.onCompleted();
-                LOGGER.info("[PUSH][OBSERVER][ONCOMPLETE] push server complete. inputMetadata: {}",
+                LOGGER.debug("[PUSH][SERVER][ONCOMPLETE] push server complete. inputMetadata={}",
                         ToStringUtils.toOneLineString(response));
                 streamStat.onComplete();
             }
         } catch (NullPointerException e) {
-            LOGGER.error("[PUSH][OBSERVER][ONCOMPLETE] NullPointerException caught in push onComplete. metadata: {}",
+            LOGGER.error("[PUSH][SERVER][ONCOMPLETE] NullPointerException caught in push onComplete. metadata={}",
                     oneLineStringInputMetadata);
         }
     }
