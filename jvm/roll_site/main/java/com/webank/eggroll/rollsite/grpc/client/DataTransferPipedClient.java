@@ -203,8 +203,8 @@ public class DataTransferPipedClient {
     public void unaryCall(Proxy.Packet packet, Pipe pipe) {
         Preconditions.checkNotNull(packet);
         Proxy.Metadata header = packet.getHeader();
-        LOGGER.info("[UNARYCALL][CLIENT] client send unary call to server: {}", ToStringUtils.toOneLineString(header));
-        //LOGGER.info("[UNARYCALL][CLIENT] packet: {}", toStringUtils.toOneLineString(packet));
+        String oneLineStringMetadata = ToStringUtils.toOneLineString(header);
+        LOGGER.debug("[UNARYCALL][CLIENT] client send unary call to server. metadata={}", oneLineStringMetadata);
 
         DataTransferServiceGrpc.DataTransferServiceStub stub = getStub(
                 packet.getHeader().getSrc(), packet.getHeader().getDst());
@@ -213,9 +213,6 @@ public class DataTransferPipedClient {
         StreamObserver<Proxy.Packet> responseObserver = proxyGrpcStreamObserverFactory
                 .createClientUnaryCallResponseStreamObserver(pipe, finishLatch, packet.getHeader());
         stub.unaryCall(packet, responseObserver);
-
-        LOGGER.info("[UNARYCALL][CLIENT] unary call stub: {}, metadata: {}",
-                stub.getChannel(), ToStringUtils.toOneLineString(header));
 
         try {
             finishLatch.await(MAX_AWAIT_HOURS, TimeUnit.HOURS);
@@ -232,7 +229,8 @@ public class DataTransferPipedClient {
 
     public void unaryCall2(Proxy.Packet request, Pipe pipe, boolean initialize) {
         Proxy.Metadata header = request.getHeader();
-        LOGGER.info("[UNARYCALL][CLIENT] client send unary call to server: {}", header);
+        String oneLineStringMetadata = ToStringUtils.toOneLineString(header);
+        LOGGER.debug("[UNARYCALL][CLIENT] client send unary call to server. metadata={}", oneLineStringMetadata);
         GrpcClientContext<DataTransferServiceGrpc.DataTransferServiceStub, Proxy.Packet, Proxy.Packet> context
             = new GrpcClientContext<>();
 
@@ -246,8 +244,8 @@ public class DataTransferPipedClient {
                 .createClientUnaryCallResponseStreamObserver(pipe, finishLatch, request.getHeader());
         stub.unaryCall(request, responseObserver);
 
-        LOGGER.info("[UNARYCALL][CLIENT] unary call stub: {}, metadata: {}",
-                stub.getChannel(), metadata);
+        LOGGER.info("[UNARYCALL][CLIENT] unary call stub={}, metadata={}",
+                stub.getChannel(), oneLineStringMetadata);
 
         try {
             finishLatch.await(MAX_AWAIT_HOURS, TimeUnit.HOURS);
@@ -316,7 +314,7 @@ public class DataTransferPipedClient {
             stub = proxyGrpcStubFactory.getAsyncStub(endpoint);
         }
 
-        LOGGER.info("[ROUTE] route info: {} routed to {}", ToStringUtils.toOneLineString(to),
+        LOGGER.debug("[ROUTE] route info={} routed to endpoint={}", ToStringUtils.toOneLineString(to),
                 ToStringUtils.toOneLineString(fdnRouter.route(to)));
 
         fdnRouter.route(from);
