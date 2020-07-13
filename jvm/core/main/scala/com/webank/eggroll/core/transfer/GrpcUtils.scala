@@ -154,6 +154,8 @@ object GrpcClientUtils extends Logging {
   private val createWithBuckets = "[CREATE]"
   private val prefix = ModuleConstants.CORE_WITH_BRACKETS + channelWithBuckets
 
+  def getChannelCacheSize(isSecure: Boolean): Long =
+    if (isSecure) secureChannelCache.size() else insecureChannelCache.size()
 
   private def createChannel(endpoint: ErEndpoint,
                             isSecureChannel: Boolean = false,
