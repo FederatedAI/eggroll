@@ -88,6 +88,26 @@ public class JobStatus {
     private static final Object putBatchLock = new Object();
     private static final Object tagKeyLock = new Object();
 
+    public static LoadingCache<String, String> getJobIdToSessionId() {
+        return jobIdToSessionId;
+    }
+
+    public static LoadingCache<String, CountDownLatch> getJobIdToFinishLatch() {
+        return jobIdToFinishLatch;
+    }
+
+    public static LoadingCache<String, AtomicLong> getJobIdToPutBatchRequiredCount() {
+        return jobIdToPutBatchRequiredCount;
+    }
+
+    public static LoadingCache<String, AtomicLong> getJobIdToPutBatchFinishedCount() {
+        return jobIdToPutBatchFinishedCount;
+    }
+
+    public static LoadingCache<String, String> getTagkeyToObjType() {
+        return tagkeyToObjType;
+    }
+
     public static void cleanupJobStatus(String jobId) {
         synchronized (latchLock) {
             synchronized (putBatchLock) {
