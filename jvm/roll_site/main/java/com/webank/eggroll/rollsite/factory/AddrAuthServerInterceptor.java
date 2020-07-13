@@ -14,7 +14,7 @@ public class AddrAuthServerInterceptor implements ServerInterceptor {
     public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(ServerCall<ReqT, RespT> call, Metadata headers, ServerCallHandler<ReqT, RespT> next) {
         String inetSocketString = call.getAttributes().get(Grpc.TRANSPORT_ATTR_REMOTE_ADDR).toString();
 
-        LOGGER.info("inetSocketString={},headers={},methodNameDesctiptor={}, methodName={}", inetSocketString,
+        LOGGER.trace("inetSocketString={}, headers={}, methodNameDesctiptor={}, methodName={}", inetSocketString,
                 headers, call.getMethodDescriptor(), call.getMethodDescriptor().getFullMethodName());
 
         String remoteAddr = call.getAttributes().get(Grpc.TRANSPORT_ATTR_REMOTE_ADDR).toString();

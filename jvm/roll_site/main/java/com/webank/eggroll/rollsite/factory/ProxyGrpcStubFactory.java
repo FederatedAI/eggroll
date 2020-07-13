@@ -70,7 +70,7 @@ public class ProxyGrpcStubFactory {
                     BasicMeta.Endpoint endpoint = (BasicMeta.Endpoint) removalNotification.getKey();
                     ManagedChannel managedChannel = (ManagedChannel) removalNotification.getValue();
 
-                    LOGGER.info("Managed channel removed for ip: {}, port: {}, hostname: {}. reason: {}",
+                    LOGGER.trace("Managed channel removed for ip={}, port={}, hostname={}. reason={}",
                             endpoint.getIp(),
                             endpoint.getPort(),
                             endpoint.getHostname(),
@@ -85,7 +85,7 @@ public class ProxyGrpcStubFactory {
                            @Override
                            public ManagedChannel load(BasicMeta.Endpoint endpoint) throws Exception {
                                Preconditions.checkNotNull(endpoint);
-                               LOGGER.info("creating channel for endpoint: ip: {}, port: {}, hostname: {}",
+                               LOGGER.trace("creating channel for endpoint: ip={}, port={}, hostname={}",
                                        endpoint.getIp(), endpoint.getPort(), endpoint.getHostname());
                                return createChannel(endpoint);
                            }
@@ -131,8 +131,8 @@ public class ProxyGrpcStubFactory {
                     break;
                 }
             } catch (Exception e) {
-                LOGGER.warn("get channel failed. target: {}, \n {}",
-                        ToStringUtils.toOneLineString(endpoint), ExceptionUtils.getStackTrace(e));
+                LOGGER.debug("get channel failed. target={}",
+                        ToStringUtils.toOneLineString(endpoint), e);
                 try {
                     Thread.sleep(1000);
                 } catch (InterruptedException ignore) {
