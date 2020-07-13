@@ -61,7 +61,7 @@ public class InputStreamToPacketUnidirectionalPipe extends BasePipe {
 
     @Override
     public Proxy.Packet read() {
-        LOGGER.info("read for the {} time", ++counter);
+        LOGGER.trace("read for the {} time", ++counter);
 
         ByteString value = null;
         ByteString cur = null;
