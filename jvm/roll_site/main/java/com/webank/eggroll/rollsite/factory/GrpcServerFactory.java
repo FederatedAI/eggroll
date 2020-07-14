@@ -312,13 +312,13 @@ public class GrpcServerFactory {
                 proxyServerConf.setRouteTablePath(routeTablePath);
             }
 
-            String whiteList = properties.getProperty(RollSiteConfKeys.EGGROLL_ROLLSITE_ROUTE_TABLE_WHITELIST().key(), null);
-            if (whiteList != null) {
+            String whiteList = RollSiteConfKeys.EGGROLL_ROLLSITE_ROUTE_TABLE_WHITELIST().get();
+            if (!StringUtils.isBlank(whiteList)) {
                 proxyServerConf.setWhiteList(whiteList);
             }
 
-            String auditTopics = properties.getProperty(RollSiteConfKeys.EGGROLL_ROLLSITE_AUDIT_TOPICS().key(), null);
-            if (auditTopics != null) {
+            String auditTopics = RollSiteConfKeys.EGGROLL_ROLLSITE_AUDIT_TOPICS().get();
+            if (!StringUtils.isBlank(auditTopics)) {
                 proxyServerConf.setAuditTopics(auditTopics);
             }
 
