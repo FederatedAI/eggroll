@@ -63,7 +63,7 @@ public class Retryer<T> {
       AttemptContext<T> attemptContext;
 
       if (!StringUtils.isBlank(description)) {
-        LOGGER.info("attempt count: {}; {}", attemptCount, description);
+        LOGGER.debug("attempt count: {}; {}", attemptCount, description);
       }
 
       // 2. actual call
