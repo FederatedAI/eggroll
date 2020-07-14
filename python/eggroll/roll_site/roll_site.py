@@ -26,7 +26,7 @@ from eggroll.core.constants import StoreTypes
 from eggroll.core.datastructure import create_executor_pool
 from eggroll.core.error import GrpcCallError
 from eggroll.core.grpc.factory import GrpcChannelFactory
-from eggroll.core.meta_model import ErStoreLocator, ErStore
+from eggroll.core.meta_model import ErStoreLocator, ErStore, ErEndpoint
 from eggroll.core.proto import proxy_pb2, proxy_pb2_grpc
 from eggroll.core.serdes import eggroll_serdes
 from eggroll.core.transfer_model import ErRollSiteHeader
@@ -54,7 +54,15 @@ class RollSiteContext:
 
         self.role = options["self_role"]
         self.party_id = str(options["self_party_id"])
-        self.proxy_endpoint = options["proxy_endpoint"]
+        endpoint = options["proxy_endpoint"]
+        if isinstance(endpoint, str):
+            splitted = endpoint.split(':')
+            self.proxy_endpoint = ErEndpoint(host=splitted[0].replace(" ", ""), port=int(splitted[1].replace(" ", "")))
+        elif isinstance(endpoint, ErEndpoint):
+            self.proxy_endpoint = endpoint
+        else:
+            raise ValueError("endpoint only support str and ErEndpoint type")
+
         # TODO:0 deploy mode should be the same as the fate flow
         self.is_standalone = RollSiteConfKeys.EGGROLL_ROLLSITE_DEPLOY_MODE.get_with(options) == "standalone"
         if self.is_standalone:
@@ -169,7 +177,8 @@ class RollSite:
             max_retry_cnt = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PULL_CLIENT_MAX_RETRY.get())
             table_name = create_store_name(roll_site_header)
             if self._is_standalone:
-                status_rp = self.ctx.rp_ctx.load(namespace, STATUS_TABLE_NAME + DELIM + self.ctx.roll_site_session_id)
+                status_rp = self.ctx.rp_ctx.load(namespace, STATUS_TABLE_NAME + DELIM + self.ctx.roll_site_session_id,
+                                                 options={'create_if_missing': True})
                 retry_cnt = 0
                 # TODO:0: sleep retry count and timeout
                 while True:
@@ -215,7 +224,8 @@ class RollSite:
             if obj_type == b'object':
                 success_msg_prefix = f'RollSite.pull: pulled {roll_site_header}'
                 if os.environ.get('EGGROLL_PUSH_OBJ_WITH_ROLL_PAIR') == "1" or self._is_standalone is True:
-                    rp = self.ctx.rp_ctx.load(namespace=table_namespace, name=table_name)
+                    rp = self.ctx.rp_ctx.load(namespace=table_namespace, name=table_name,
+                                              options={'create_if_missing': True})
 
                     result = rp.get(table_name)
                     if result is not None:
@@ -245,7 +255,7 @@ class RollSite:
                     empty = "empty" if result is None else "NOT empty"
                 L.trace(f"{success_msg_prefix} type={type(result)}, empty_or_not={empty}")
             else:
-                rp = self.ctx.rp_ctx.load(namespace=table_namespace, name=table_name)
+                rp = self.ctx.rp_ctx.load(namespace=table_namespace, name=table_name, options={'create_if_missing': True})
                 success_msg_prefix = f'RollSite.pull: pulled {roll_site_header}.'
                 result = rp
                 L.debug(f"{success_msg_prefix} type={obj_type}, count={rp.count()}")
@@ -344,7 +354,7 @@ class RollSite:
                 if isinstance(obj, RollPair):
                     rp = obj
                 else:
-                    rp = self.ctx.rp_ctx.load(namespace, _tagged_key)
+                    rp = self.ctx.rp_ctx.load(namespace, _tagged_key, options={'create_if_missing': True})
                     rp.put(_tagged_key, obj)
                 rp.disable_gc()
                 L.trace(f"pushing prepared={type(obj)}, tag_key={_tagged_key}")
@@ -360,7 +370,9 @@ class RollSite:
                                                obj_type])
                         store_type = StoreTypes.ROLLPAIR_ROLLSITE
                     if is_standalone:
-                        status_rp = self.ctx.rp_ctx.load(namespace, STATUS_TABLE_NAME + DELIM + self.roll_site_session_id, options=_options)
+                        status_rp = self.ctx.rp_ctx.load(namespace,
+                                                         STATUS_TABLE_NAME + DELIM + self.roll_site_session_id,
+                                                         options=_options.update(create_if_missing=True))
                         status_rp.disable_gc()
                         if isinstance(obj, RollPair):
                             status_rp.put(_tagged_key, (obj_type.encode("utf-8"), rp.get_name(), rp.get_namespace()))
