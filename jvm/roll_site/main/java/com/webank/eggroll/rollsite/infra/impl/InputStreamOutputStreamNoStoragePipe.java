@@ -58,7 +58,7 @@ public class InputStreamOutputStreamNoStoragePipe extends BasePipe {
 
     @Override
     public Proxy.Packet read() {
-        LOGGER.info("read for the {} time", ++inCounter);
+        LOGGER.trace("read for the {} time", ++inCounter);
 
         ByteString value = null;
         ByteString cur = null;
@@ -100,7 +100,7 @@ public class InputStreamOutputStreamNoStoragePipe extends BasePipe {
 
     @Override
     public void write(Object o) {
-        LOGGER.info("write for the {} time", ++outCounter);
+        LOGGER.trace("write for the {} time", ++outCounter);
         if (o instanceof Proxy.Packet) {
             Proxy.Packet packet = (Proxy.Packet) o;
             try {

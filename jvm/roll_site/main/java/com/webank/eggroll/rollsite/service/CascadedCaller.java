@@ -66,7 +66,7 @@ public class CascadedCaller implements Runnable {
     @Override
     @Async
     public void run() {
-        LOGGER.info("cascaded calling of {}", ToStringUtils.toOneLineString(pipeHandlerInfo.getMetadata()));
+        LOGGER.trace("cascaded calling of metadata={}", ToStringUtils.toOneLineString(pipeHandlerInfo.getMetadata()));
         Preconditions.checkNotNull(pipeHandlerInfo);
         Pipe pipe = pipeHandlerInfo.getPipe();
 
