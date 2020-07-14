@@ -54,6 +54,7 @@ public class Proxy {
         CommandLine cmd = parser.parse(options, args);
 
         String confFilePath = cmd.getOptionValue("c");
+        StaticErConf.addProperties(confFilePath);
 
         ApplicationContext context = new ClassPathXmlApplicationContext("applicationContext-proxy.xml");
 
@@ -68,8 +69,6 @@ public class Proxy {
 
         LOGGER.info("Server started listening on port: {}", proxyServerConf.getPort());
         LOGGER.info("server conf: {}", proxyServerConf);
-
-        StaticErConf.addProperties(confFilePath);
 
         for (int i = 0; i < servers.size(); i++) {
             Server server = servers.get(i);
