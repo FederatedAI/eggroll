@@ -82,10 +82,10 @@ public class ClientUnaryCallResponseStreamObserver implements StreamObserver<Pro
             init();
         }
 
-        if (proxyServerConf.isDebugEnabled()) {
+/*        if (proxyServerConf.isDebugEnabled()) {
             DEBUGGING.info("[UNARYCALL][OBSERVER][ONNEXT]: {}", packet);
             DEBUGGING.info("-------------");
-        }
+        }*/
 
         if (proxyServerConf.isAuditEnabled()
                 && packet.getHeader().getSrc().getPartyId().equals(proxyServerConf.getCoordinator())) {
@@ -115,7 +115,7 @@ public class ClientUnaryCallResponseStreamObserver implements StreamObserver<Pro
 
     @Override
     public void onCompleted() {
-        LOGGER.info("[UNARYCALL][OBSERVER][ONCOMPLETE] Client unary call completed. metadata: {}",
+        LOGGER.debug("[UNARYCALL][OBSERVER][ONCOMPLETE] Client unary call completed. metadata: {}",
                 ToStringUtils.toOneLineString(metadata));
 
         pipe.onComplete();
