@@ -312,7 +312,7 @@ public class GrpcServerFactory {
                 proxyServerConf.setRouteTablePath(routeTablePath);
             }
 
-            String whiteList = properties.getProperty(RollSiteConfKeys.EGGROLL_ROLLSITE_ROUTETABLE_WHITELIST().key(), null);
+            String whiteList = properties.getProperty(RollSiteConfKeys.EGGROLL_ROLLSITE_ROUTE_TABLE_WHITELIST().key(), null);
             if (whiteList != null) {
                 proxyServerConf.setWhiteList(whiteList);
             }
