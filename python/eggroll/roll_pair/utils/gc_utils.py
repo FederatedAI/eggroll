@@ -43,9 +43,9 @@ class GcRecorder(object):
                 continue
             L.trace(f"GC thread destroying rp={rp_namespace_name}")
             options = dict()
-            options['gc_destroy'] = True
+            options['create_if_missing'] = True
             self.record_rpc.load(namespace=rp_namespace_name[0],
-                                     name=rp_namespace_name[1]).destroy(options=options)
+                                     name=rp_namespace_name[1], options=options).destroy()
 
     def record(self, er_store: ErStore):
         store_type = er_store._store_locator._store_type

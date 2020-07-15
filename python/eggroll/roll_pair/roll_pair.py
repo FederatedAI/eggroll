@@ -91,12 +91,12 @@ class RollPairContext(object):
         if self.gc_recorder.gc_recorder is None or len(self.gc_recorder.gc_recorder) == 0:
             return
         options = dict()
-        options['gc_destroy'] = True
+        options['create_if_missing'] = True
         for k, v in (self.gc_recorder.gc_recorder.items()):
             namespace = k[0]
             name = k[1]
-            rp = self.load(namespace=namespace, name=name)
-            rp.destroy(options=options)
+            rp = self.load(namespace=namespace, name=name, options=options)
+            rp.destroy()
 
     def route_to_egg(self, partition: ErPartition):
         return self.__session.route_to_egg(partition)
@@ -116,7 +116,7 @@ class RollPairContext(object):
 
         partitioner = options.get('partitioner', PartitionerTypes.BYTESTRING_HASH)
         store_serdes = options.get('serdes', self.default_store_serdes)
-        create_if_missing = options.get('create_if_missing', True)
+        create_if_missing = options.get('create_if_missing', False)
         # todo:1: add combine options to pass it through
         store_options = self.__session.get_all_options()
         store_options.update(options)
@@ -137,9 +137,10 @@ class RollPairContext(object):
             result = self.__session._cluster_manager_client.get_or_create_store(store)
         else:
             result = self.__session._cluster_manager_client.get_store(store)
-            if result is None:
-                raise EnvironmentError(
-                        "result is None, please check whether the store:{} has been created before".format(store))
+            if len(result._partitions) == 0:
+                L.exception(f"store: namespace={namespace}, name={name} not exist, "
+                                 f"create_if_missing={create_if_missing}, create first")
+                return None
 
         if False and not no_partitions_param and result._store_locator._total_partitions != 0\
                 and total_partitions != result._store_locator._total_partitions:
@@ -155,7 +156,8 @@ class RollPairContext(object):
         namespace = options.get("namespace", None)
         name = options.get("name", None)
         options['store_type'] = options.get("store_type", StoreTypes.ROLLPAIR_IN_MEMORY)
-        create_if_missing = options.get("create_if_missing", True)
+        options['include_key '] = options.get('include_key', False)
+        options['create_if_missing'] = True
 
         if namespace is None:
             namespace = self.session_id

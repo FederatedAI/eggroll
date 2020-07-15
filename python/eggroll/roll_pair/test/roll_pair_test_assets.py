@@ -94,4 +94,5 @@ def set_default_option(k, v):
     default_option[k] = v
 
 def get_default_options():
+    default_option['create_if_missing'] = True
     return default_option.copy()
