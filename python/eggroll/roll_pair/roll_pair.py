@@ -104,9 +104,11 @@ class RollPairContext(object):
     def populate_processor(self, store: ErStore):
         return self.__session.populate_processor(store)
 
-    def load(self, namespace=None, name=None, options: dict = None):
+    def load(self, name=None, namespace=None, options: dict = None):
         if options is None:
             options = {}
+        if not namespace:
+            namespace = options.get('namespace', self.get_session().get_session_id())
         store_type = options.get('store_type', self.default_store_type)
         total_partitions = options.get('total_partitions', None)
         no_partitions_param = False
