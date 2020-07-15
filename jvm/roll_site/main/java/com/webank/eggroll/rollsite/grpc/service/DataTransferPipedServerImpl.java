@@ -477,10 +477,9 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                         if (!file.getParentFile().exists()) {
                             file.getParentFile().mkdirs();
                         }
-                        if (file.exists()) {
-                            file.delete();
+                        if (!file.exists()) {
+                            file.createNewFile();
                         }
-                        file.createNewFile();
 
                         Writer write = new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8);
                         write.write(jsonString);
