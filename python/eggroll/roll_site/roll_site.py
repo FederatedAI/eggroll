@@ -57,7 +57,7 @@ class RollSiteContext:
         endpoint = options["proxy_endpoint"]
         if isinstance(endpoint, str):
             splitted = endpoint.split(':')
-            self.proxy_endpoint = ErEndpoint(host=splitted[0].replace(" ", ""), port=int(splitted[1].replace(" ", "")))
+            self.proxy_endpoint = ErEndpoint(host=splitted[0].strip(), port=int(splitted[1].strip()))
         elif isinstance(endpoint, ErEndpoint):
             self.proxy_endpoint = endpoint
         else:
