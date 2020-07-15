@@ -36,7 +36,7 @@ from eggroll.utils.log_utils import get_logger
 L = get_logger()
 
 
-def session_init(session_id, options={"eggroll.session.deploy.mode": "standalone"}):
+def session_init(session_id, options: dict = None):
     er_session = ErSession(session_id=session_id, options=options)
     return er_session
 
