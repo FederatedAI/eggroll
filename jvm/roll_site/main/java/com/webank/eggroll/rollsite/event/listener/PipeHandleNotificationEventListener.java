@@ -42,7 +42,7 @@ public class PipeHandleNotificationEventListener implements ApplicationListener<
     @Override
     public void onApplicationEvent(PipeHandleNotificationEvent pipeHandleNotificationEvent) {
         // LOGGER.warn("event listened: {}", pipeHandleNotificationEvent.getPipeHandlerInfo());
-        LOGGER.info("event metadata: {}", ToStringUtils.toOneLineString(pipeHandleNotificationEvent.getPipeHandlerInfo().getMetadata()));
+        LOGGER.trace("event metadata={}", ToStringUtils.toOneLineString(pipeHandleNotificationEvent.getPipeHandlerInfo().getMetadata()));
 
         PipeHandlerInfo pipeHandlerInfo = pipeHandleNotificationEvent.getPipeHandlerInfo();
         Pipe pipe = pipeHandlerInfo.getPipe();

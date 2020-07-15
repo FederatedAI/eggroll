@@ -46,7 +46,7 @@ public class ClientPushResponseStreamObserver implements StreamObserver<Proxy.Me
     public void onNext(Proxy.Metadata metadata) {
         this.metadata = metadata;
         resultCallback.setResult(metadata);
-        LOGGER.info("[PUSH][CLIENTOBSERVER][ONNEXT] ClientPushResponseStreamObserver.onNext(), metadata: {}",
+        LOGGER.trace("[PUSH][CLIENTOBSERVER][ONNEXT] ClientPushResponseStreamObserver.onNext(), metadata: {}",
                 ToStringUtils.toOneLineString(metadata));
     }
 
@@ -59,7 +59,7 @@ public class ClientPushResponseStreamObserver implements StreamObserver<Proxy.Me
 
     @Override
     public void onCompleted() {
-        LOGGER.info("[PUSH][CLIENTOBSERVER][ONCOMPLETE] ClientPushResponseStreamObserver.onCompleted(), metadata: {}",
+        LOGGER.trace("[PUSH][CLIENTOBSERVER][ONCOMPLETE] ClientPushResponseStreamObserver.onCompleted(), metadata: {}",
             ToStringUtils.toOneLineString(metadata));
         finishLatch.countDown();
     }

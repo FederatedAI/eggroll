@@ -67,8 +67,8 @@ public class Proxy {
         ServerConfManager serverConfManager = context.getBean(ServerConfManager.class);
         ProxyServerConf proxyServerConf = serverConfManager.getProxyServerConf();
 
-        LOGGER.info("Server started listening on port: {}", proxyServerConf.getPort());
-        LOGGER.info("server conf: {}", proxyServerConf);
+        LOGGER.info("Server started listening on port={}", proxyServerConf.getPort());
+        LOGGER.info("server conf={}", proxyServerConf);
 
         for (int i = 0; i < servers.size(); i++) {
             Server server = servers.get(i);
