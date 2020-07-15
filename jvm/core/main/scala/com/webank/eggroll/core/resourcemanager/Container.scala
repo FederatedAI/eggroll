@@ -21,7 +21,7 @@ package com.webank.eggroll.core.resourcemanager
 import java.io.{BufferedReader, File, InputStream, InputStreamReader}
 import java.lang.ProcessBuilder.Redirect
 
-import com.webank.eggroll.core.constant.{ClusterManagerConfKeys, CoreConfKeys, NodeManagerConfKeys, ResourceManagerConfKeys, SessionConfKeys}
+import com.webank.eggroll.core.constant.{ClusterManagerConfKeys, CoreConfKeys, NodeManagerConfKeys, ResourceManagerConfKeys, SessionConfKeys, StringConstants}
 import com.webank.eggroll.core.session.RuntimeErConf
 import com.webank.eggroll.core.util.Logging
 import org.apache.commons.lang3.StringUtils
@@ -51,7 +51,7 @@ class Container(conf: RuntimeErConf, moduleName: String, processorId: Long = 0) 
 
   def start(): Boolean = {
     val startCmd = s"""${exeCmd} ${boot} start "${exePath} --config ${conf.getString(CoreConfKeys.STATIC_CONF_PATH)} --session-id ${sessionId} --server-node-id ${myServerNodeId} --processor-id ${processorId}" ${moduleName}-${processorId} &"""
-    val standaloneTag = System.getProperty("eggroll.standalone.tag")
+    val standaloneTag = System.getProperty("eggroll.standalone.tag", StringConstants.EMPTY)
     logInfo(s"${standaloneTag} ${startCmd}")
 
     val thread = runCommand(startCmd)
