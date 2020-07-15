@@ -39,7 +39,6 @@ class RollSiteUtil(val erSessionId: String,
   val namespace = rollSiteHeader.rollSiteSessionId
   val name = rollSiteHeader.concat()
 
-  logDebug("scalaPutBatch name: " + name + ", namespace: " + namespace)
   val rp: RollPair = ctx.load(namespace, name, options = rollSiteHeader.options)
 
   def putBatch(value: ByteBuffer): Unit = {
@@ -48,25 +47,26 @@ class RollSiteUtil(val erSessionId: String,
 
   def putBatch(value: ByteString): Unit = {
     try {
+      logDebug(s"put batch started for namespace=${namespace}, name=${name}")
       val srcPartyId = rollSiteHeader.srcPartyId
       val dstPartyId = rollSiteHeader.dstPartyId
       if (!srcPartyId.equals(dstPartyId) || !rollSiteHeader.dataType.toLowerCase.equals("object")) {
         if (value.size() == 0) {
-          throw new IllegalArgumentException(s"roll site push batch zero size: ${name}")
+          throw new IllegalArgumentException(s"roll site push batch zero size. namespace=${namespace}, name=${name}")
         }
         val broker = new LinkedBlockingBroker[ByteString]()
         broker.put(value)
         broker.signalWriteFinish()
         rp.putBatch(broker, options = options)
       } else {
-        logInfo(s"sending OBJECT from / to same party id, skipping. src: ${srcPartyId}, dst: ${dstPartyId}, tag: ${rollSiteHeader.concat()}")
+        logTrace(s"sending OBJECT from / to same party id, skipping. src=${srcPartyId}, dst=${dstPartyId}, tag=${rollSiteHeader.concat()}")
       }
 
       JobStatus.increasePutBatchFinishedCount(name);
-      logInfo(s"put batch finished for name: ${name}, namespace: ${namespace}")
+      logDebug(s"put batch finished for namespace=${namespace}, name=${name}")
     } catch {
       case e: Exception => {
-        logError(e)
+        logError("put batch error for namespace=${namespace}, name=${name}", e)
         throw new RuntimeException(e)
       }
     }

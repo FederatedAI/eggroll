@@ -88,7 +88,7 @@ class RollPair(val store: ErStore, val ctx: RollPairContext, val options: Map[St
       outputs = Array(store),
       functors = Array.empty,
       options = options ++ Map(SessionConfKeys.CONFKEY_SESSION_ID -> ctx.session.sessionId))
-    logInfo(s"put batch job: ${job}")
+    logTrace(s"put batch job metadata=${job}")
 
 
     // todo: create RowPairDB
@@ -97,7 +97,7 @@ class RollPair(val store: ErStore, val ctx: RollPairContext, val options: Map[St
 
       if (rowPairDB != null) {
         if (rowPairDB.isEmpty) {
-          logWarning("Empty batch in rowPairDB")
+          logDebug(s"Empty batch in rowPairDB. jobId=${jobId}")
         } else {
           val magicNumber = new Array[Byte](4)
           val protocolVersion = new Array[Byte](4)
@@ -126,7 +126,7 @@ class RollPair(val store: ErStore, val ctx: RollPairContext, val options: Map[St
             val kLen = byteBuffer.getInt()
             val k = new Array[Byte](kLen)
             byteBuffer.get(k)
-            logDebug(s"put batch route: ${store.storeLocator},${new String(Base64.getEncoder.encode(k))}, ${ctx.hashKey(k)}, $totalPartitions, ${ctx.hashKey(k) % totalPartitions}")
+            logTrace(s"put batch route=${store.storeLocator}, ${new String(Base64.getEncoder.encode(k))}, ${ctx.hashKey(k)}, $totalPartitions, ${ctx.hashKey(k) % totalPartitions}")
             val partitionId = ctx.partitioner(k, totalPartitions)
 
             val transferClient = if (transferClients(partitionId) == null) {
@@ -139,10 +139,10 @@ class RollPair(val store: ErStore, val ctx: RollPairContext, val options: Map[St
 
               val putBatchThread = new Thread {
                 override def run(): Unit = {
-                  logDebug(s"thread started for put batch task ${task.id}")
+                  logTrace(s"thread started for put batch taskId=${task.id}")
                   val commandClient = new CommandClient(ctx.session.routeToEgg(partition).commandEndpoint)
                   commandClient.call[ErTask](RollPair.EGG_RUN_TASK_COMMAND, task)
-                  logDebug(s"thread ended for put batch task ${task.id}")
+                  logTrace(s"thread ended for put batch taskId=${task.id}")
                 }
               }
               putBatchThread.setName(s"putBatch-${task.id}")

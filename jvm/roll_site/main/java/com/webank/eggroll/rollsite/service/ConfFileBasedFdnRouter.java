@@ -100,11 +100,11 @@ public class ConfFileBasedFdnRouter implements FdnRouter {
     @Override
     public synchronized void setRouteTable(String filename) {
         if (StringUtils.isBlank(routeTableFilename)) {
-            LOGGER.info("setting routeTable path to {}", filename);
+            LOGGER.debug("setting routeTable path={}", filename);
             this.routeTableFilename = filename;
             init();
         } else {
-            LOGGER.warn("trying to reset routeTable path. current path: {}, tried path: {}",
+            LOGGER.debug("trying to reset routeTable path. current path={}, new path={}",
                     routeTableFilename, filename);
         }
     }
@@ -286,13 +286,14 @@ public class ConfFileBasedFdnRouter implements FdnRouter {
             jsonReader = new JsonReader(new FileReader(routeTableFilename.replaceAll("\\.\\./", "")));
             confJson = jsonParser.parse(jsonReader).getAsJsonObject();
         } catch (FileNotFoundException e) {
-            LOGGER.error("File not found: {}", routeTableFilename);
+            LOGGER.error("File not found. path={}", routeTableFilename);
             throw new RuntimeException(e);
         } finally {
             if (jsonReader != null) {
                 try {
                     jsonReader.close();
-                } catch (IOException ignore) {
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
                 }
             }
         }
@@ -300,13 +301,13 @@ public class ConfFileBasedFdnRouter implements FdnRouter {
         initRouteTable(confJson.getAsJsonObject("route_table"));
         initPermission(confJson.getAsJsonObject("permission"));
 
-        LOGGER.info("refreshed route table at: {}", routeTableFilename);
+        LOGGER.debug("refreshed route table at={}", routeTableFilename);
     }
 
     @Override
     public BasicMeta.Endpoint route(Proxy.Topic topic) {
-        LOGGER.debug("route:" + ToStringUtils.toOneLineString(topic));
         Preconditions.checkNotNull(topic, "topic cannot be null");
+        LOGGER.trace("routing to topic={}", ToStringUtils.toOneLineString(topic));
 
         BasicMeta.Endpoint result = topicEndpointMapping.getOrDefault(topic, null);
 
@@ -381,7 +382,7 @@ public class ConfFileBasedFdnRouter implements FdnRouter {
 
             pos = pos % len;
 
-            LOGGER.info("route: hashcode: {}, len: {}, pos: {}", topic.hashCode(), len, pos);
+            LOGGER.trace("route: hashcode: {}, len: {}, pos: {}", topic.hashCode(), len, pos);
 
             result = endpoints.get(pos);
         }

@@ -48,14 +48,13 @@ public class ProxyToStringUtils {
         String result = "[null]";
 
         if (target == null) {
-            LOGGER.info("target is null");
             return result;
         }
 
         try {
             result = protoPrinter.print(target);
         } catch (Exception e) {
-            LOGGER.info(ExceptionUtils.getStackTrace(e));
+            LOGGER.warn(ExceptionUtils.getStackTrace(e));
         }
 
         return result;

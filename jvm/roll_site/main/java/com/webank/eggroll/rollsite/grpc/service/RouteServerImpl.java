@@ -40,15 +40,15 @@ public class RouteServerImpl extends RouteServiceGrpc.RouteServiceImplBase {
     @Override
     public void query(Proxy.Topic request, StreamObserver<BasicMeta.Endpoint> responseObserver) {
         String requestString = ToStringUtils.toOneLineString(request);
-        LOGGER.info("[ROUTE] querying route for topic: {}", requestString);
+        LOGGER.trace("[ROUTE] querying route for topic={}", requestString);
         BasicMeta.Endpoint result = fdnRouter.route(request);
 
         if (result == null) {
-            NullPointerException e = new NullPointerException("no valid route for topic: " + requestString);
+            NullPointerException e = new NullPointerException("no valid route for topic=" + requestString);
             responseObserver.onError(ErrorUtils.toGrpcRuntimeException(e));
         }
 
-        LOGGER.info("[ROUTE] querying route result for topic: {}, result: {}", requestString, ToStringUtils.toOneLineString(result));
+        LOGGER.trace("[ROUTE] querying route result for topic={}, result={}", requestString, ToStringUtils.toOneLineString(result));
         responseObserver.onNext(result);
         responseObserver.onCompleted();
     }

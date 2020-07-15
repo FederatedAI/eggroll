@@ -90,7 +90,7 @@ public class GrpcServerFactory {
 
         NettyServerBuilder serverBuilder = null;
 
-        LOGGER.info("server build on port:{}", proxyServerConf.getPort());
+        LOGGER.info("server build on port={}", proxyServerConf.getPort());
         // LOGGER.warn("this may cause trouble in multiple network devices. you may want to consider binding to a ip");
         if (isSecureServer) {
             serverBuilder = NettyServerBuilder.forPort(proxyServerConf.getSecurePort());
@@ -155,7 +155,7 @@ public class GrpcServerFactory {
             }
 
 
-            LOGGER.info("running in secure mode. server crt path: {}, server key path: {}, ca crt path: {}",
+            LOGGER.info("running in secure mode. server crt path={}, server key path={}, ca crt path={}",
                     serverCrtPath, serverKeyPath, caCrtPath);
         } else {
             LOGGER.info("running in insecure mode");
@@ -358,9 +358,9 @@ public class GrpcServerFactory {
                         Configurator.initialize(null, configurationSource);
 
                         proxyServerConf.setLogPropertiesPath(logPropertiesPath);
-                        LOGGER.info("using log conf file: {}", logPropertiesPath);
+                        LOGGER.info("using log conf file={}", logPropertiesPath);
                     } catch (Exception e) {
-                        LOGGER.warn("failed to set log conf file at {}. using default conf", logPropertiesPath);
+                        LOGGER.warn("failed to set log conf file={}. using default conf", logPropertiesPath);
                     }
                 }
             }
