@@ -18,6 +18,7 @@ package com.webank.eggroll.rollsite.infra.impl;
 
 
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
+import com.webank.eggroll.core.util.ToStringUtils;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import org.apache.logging.log4j.LogManager;
@@ -58,7 +59,7 @@ public class PacketQueuePipe extends BasePipe {
         try {
             result = queue.poll(timeout, unit);
         } catch (InterruptedException e) {
-            LOGGER.debug("read wait timeout");
+            LOGGER.debug("read wait timeout. metadata={}", ToStringUtils.toOneLineString(this.metadata));
             Thread.currentThread().interrupt();
         }
 
