@@ -13,6 +13,9 @@
 #  limitations under the License.
 #
 #
-export EGGROLL_HOME=/data/projects/eggroll
-export MYSQL_HOME=/data/projects/mysql
-iplist=(127.0.0.xxx 127.0.0.xxx)
+export EGGROLL_HOME= 
+export PYTHONPATH=$EGGROLL_HOME/python 
+export EGGROLL_LOG_LEVEL=DEBUG
+export EGGROLL_RESOURCE_MANAGER_AUTO_BOOTSTRAP=0
+export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=
+source $EGGROLL_HOME/venv/bin/activate
