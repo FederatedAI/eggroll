@@ -13,6 +13,11 @@
 #  limitations under the License.
 #
 #
-export EGGROLL_HOME=/data/projects/eggroll
-export MYSQL_HOME=/data/projects/mysql
-iplist=(127.0.0.xxx 127.0.0.xxx)
+cwd=$(cd `dirname $0`; pwd)
+source ./check_iplist.sh
+
+for ip in ${iplist[@]};do
+	mkdir -p $1/$ip
+	scp -r $user@$ip:$EGGROLL_HOME/logs/*$1* $1/$ip
+done
+cd $cwd
