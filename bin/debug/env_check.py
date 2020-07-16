@@ -64,32 +64,32 @@ def check_actual_max_threads():
 			return result
 
 		mem = psutil.virtual_memory()
-		MemTotal = round2(mem.total)
-		MemUsed = round2(mem.used)
-		MemUsedPer = str(round(mem.percent)) + '%'
+		mem_total = round2(mem.total)
+		mem_used = round2(mem.used)
+		mem_used_per = str(round(mem.percent)) + '%'
 
-		swapMem = psutil.swap_memory()
-		SwapTotal = round2(swapMem.total)
-		SwapUsed = round2(swapMem.used)
-		SwapUsePer = str(round(swapMem.percent)) + '%'
+		swap_mem = psutil.swap_memory()
+		swap_total = round2(swap_mem.total)
+		swap_used = round2(swap_mem.used)
+		swap_use_per = str(round(swap_mem.percent)) + '%'
 		
-		dataDisk = psutil.disk_usage('/data')
-		DiskTotal = round2(dataDisk.total)
-		DiskUsed = round2(dataDisk.used)
-		DiskPer = str(round(dataDisk.percent)) + '%'
+		data_disk = psutil.disk_usage('/data')
+		disk_total = round2(data_disk.total)
+		disk_used = round2(data_disk.used)
+		disk_per = str(round(data_disk.percent)) + '%'
 		
 		mem_info = {}
-		mem_info["MemTotal"] = MemTotal
-		mem_info["MemUsed"] = MemUsed
-		mem_info["MemUsedPer"] = MemUsedPer
+		mem_info["MemTotal"] = mem_total
+		mem_info["MemUsed"] = mem_used
+		mem_info["MemUsedPer"] = mem_used_per
 		
-		mem_info["SwapTotal"] = SwapTotal
-		mem_info["SwapUsed"] = SwapUsed
-		mem_info["SwapUsePer"] = SwapUsePer
+		mem_info["SwapTotal"] = swap_total
+		mem_info["SwapUsed"] = swap_used
+		mem_info["SwapUsePer"] = swap_use_per
 		
-		mem_info["DiskTotal"] = DiskTotal
-		mem_info["DiskUsed"] = DiskUsed
-		mem_info["DiskPer"] = DiskPer
+		mem_info["DiskTotal"] = disk_total
+		mem_info["DiskUsed"] = disk_used
+		mem_info["DiskPer"] = disk_per
 		
 		mem_info["/proc/sys/kernel/threads-max"] = query_cmd("cat /proc/sys/kernel/threads-max")
 		mem_info["/etc/sysctl.conf"] = query_cmd("grep kernel.pid_max /etc/sysctl.conf | awk -F= '{print $2}'")
