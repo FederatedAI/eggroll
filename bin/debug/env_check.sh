@@ -16,7 +16,7 @@
 cwd=$(cd `dirname $0`; pwd)
 
 get_property() {
-    property_value=`grep $1 $2 | awk -F= '{print $2}'`
+    property_value=`grep $1 $2 | cut -d '=' -f 2-`
     test_value $1 $2 ${property_value}
 }
 
