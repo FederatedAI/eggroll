@@ -71,8 +71,8 @@ class EggPair(object):
         output_key_serdes = create_serdes(output_store_head._store_locator._serdes)
         output_value_serdes = create_serdes(output_store_head._store_locator._serdes)
 
-        if type(input_key_serdes) != type(output_key_serdes) or \
-                type(input_value_serdes) != type(output_value_serdes):
+        if input_key_serdes != output_key_serdes or \
+                input_value_serdes != output_value_serdes:
             raise ValueError(f"input key-value serdes:{(input_key_serdes, input_value_serdes)}"
                              f"differ from output key-value serdes:{(output_key_serdes, output_value_serdes)}")
 
@@ -138,8 +138,8 @@ class EggPair(object):
         output_key_serdes = create_serdes(task._outputs[0]._store_locator._serdes)
         output_value_serdes = create_serdes(task._outputs[0]._store_locator._serdes)
 
-        if type(left_key_serdes) != type(output_key_serdes) or \
-                type(left_value_serdes) != type(output_value_serdes):
+        if left_key_serdes != output_key_serdes or \
+                left_value_serdes != output_value_serdes:
             raise ValueError(f"input key-value serdes:{(left_key_serdes, left_value_serdes)}"
                              f"differ from output key-value serdes:{(output_key_serdes, output_value_serdes)}")
 
