@@ -40,6 +40,7 @@ class FrameFormat {
 /**
  * Store all data in a column
  */
+@deprecated
 class ColumnFrame(val fb: FrameBatch, val matrixCols: Int) {
   val matrixRows: Int = fb.rowCount / matrixCols
 
@@ -188,6 +189,7 @@ class FrameBatch(val rootSchema: FrameSchema,
   def getList(field: Int, row: Int, initialSize: Int = -1): FrameVector =
     rootVectors(field).getList(row, initialSize)
 
+  @deprecated
   private def getRowsList: List[Int] = {
     val realColumns = ColumnVectors.MAX_EACH_PART_SIZE / fieldCount
     if (realColumns > rowCount) {
@@ -283,20 +285,6 @@ object ColumnVectors {
   val MAX_EACH_PART_SIZE = 134217727 //134217728
 }
 
-
-class FrameVectorUnSafe(val fieldVector: FieldVector,
-                        val virtualRowStart: Int = 0,
-                        val virtualRowCount: Int = -1) extends FrameVector {
-  override def writeDouble(index: Int, item: Double): Unit =
-    fieldVector.asInstanceOf[Float8Vector].set(index + virtualRowStart, item)
-
-  override def writeLong(index: Int, item: Long): Unit =
-    fieldVector.asInstanceOf[BigIntVector].set(index + virtualRowStart, item)
-
-  override def writeInt(index: Int, item: Int): Unit =
-    fieldVector.asInstanceOf[IntVector].set(index + virtualRowStart, item)
-}
-
 trait FrameVector {
   val fieldVector: FieldVector
   val virtualRowStart: Int
@@ -369,17 +357,29 @@ object FrameVector {
   }
 }
 
+class FrameVectorUnSafe(val fieldVector: FieldVector,
+                        val virtualRowStart: Int = 0,
+                        val virtualRowCount: Int = -1) extends FrameVector {
+  override def writeDouble(index: Int, item: Double): Unit =
+    fieldVector.asInstanceOf[Float8Vector].set(index + virtualRowStart, item)
+
+  override def writeLong(index: Int, item: Long): Unit =
+    fieldVector.asInstanceOf[BigIntVector].set(index + virtualRowStart, item)
+
+  override def writeInt(index: Int, item: Int): Unit =
+    fieldVector.asInstanceOf[IntVector].set(index + virtualRowStart, item)
+}
 
 class FrameVectorSafe(val fieldVector: FieldVector,
                       val virtualRowStart: Int = 0,
                       val virtualRowCount: Int = -1) extends FrameVector {
-  def writeDouble(index: Int, item: Double): Unit =
+  override def writeDouble(index: Int, item: Double): Unit =
     fieldVector.asInstanceOf[Float8Vector].setSafe(index + virtualRowStart, item)
 
-  def writeLong(index: Int, item: Long): Unit =
+  override def writeLong(index: Int, item: Long): Unit =
     fieldVector.asInstanceOf[BigIntVector].setSafe(index + virtualRowStart, item)
 
-  def writeInt(index: Int, item: Int): Unit =
+  override def writeInt(index: Int, item: Int): Unit =
     fieldVector.asInstanceOf[IntVector].setSafe(index + virtualRowStart, item)
 }
 

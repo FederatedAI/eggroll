@@ -33,6 +33,7 @@
 
     <properties>
         <jackson.version>2.10.4</jackson.version>
+        <jep.version>3.9.0</jep.version>
     </properties>
 
     <dependencies>
@@ -48,7 +49,6 @@
             <version>${spark.version}</version>
             <scope>provided</scope>
         </dependency>
-
         <dependency>
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-mllib_2.11</artifactId>
@@ -81,6 +81,21 @@
             <version>${jackson.version}</version>
         </dependency>
         <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>${jackson.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.module</groupId>
+            <artifactId>jackson-module-scala_2.11</artifactId>
+            <version>${jackson.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.module</groupId>
+            <artifactId>jackson-module-paranamer</artifactId>
+            <version>${jackson.version}</version>
+        </dependency>
+        <dependency>
             <groupId>org.apache.arrow</groupId>
             <artifactId>arrow-vector</artifactId>
             <version>${arrow.version}</version>
@@ -104,6 +119,13 @@
             <artifactId>netty-all</artifactId>
             <version>${netty.version}</version>
         </dependency>
+        <!-- https://mvnrepository.com/artifact/black.ninia/jep -->
+        <dependency>
+            <groupId>black.ninia</groupId>
+            <artifactId>jep</artifactId>
+            <version>${jep.version}</version>
+        </dependency>
+
         <dependency>
             <artifactId>eggroll-core</artifactId>
             <groupId>com.webank.eggroll</groupId>
@@ -124,9 +146,9 @@
                             <goal>copy-dependencies</goal>
                         </goals>
                         <configuration>
-<!--                            <excludeGroupIds>org.scala-lang,org.slf4j,junit,com.fasterxml.jackson.core</excludeGroupIds>-->
-<!--                            <excludeArtifactIds>commons-lang3</excludeArtifactIds>-->
-<!--                            <excludeScope>provided</excludeScope>-->
+                            <!--                            <excludeGroupIds>org.scala-lang,org.slf4j,junit,com.fasterxml.jackson.core</excludeGroupIds>-->
+                            <!--                            <excludeArtifactIds>commons-lang3</excludeArtifactIds>-->
+                            <!--                            <excludeScope>provided</excludeScope>-->
                             <outputDirectory>${project.build.directory}/lib</outputDirectory>
                         </configuration>
                     </execution>
