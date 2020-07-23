@@ -1,3 +1,4 @@
+#!/bin/bash
 #  Copyright (c) 2019 - now, Eggroll Authors. All Rights Reserved.
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
@@ -70,15 +71,15 @@ check_file_count "/etc/security/limits.d/80-nofile.conf" "nofile"
 get_property "fs.file-max" "/etc/sysctl.conf"
 check_max_count "/proc/sys/fs/file-max"
 
-MemTotal=`free -lh | grep Mem | awk '{print $2}' | tr -cd "[0-9,.]"`
-MemUsed=`free -lh | grep Mem | awk '{print $3}' | tr -cd "[0-9],."`
-SwapTotal=`free -lh | grep Swap | awk '{print $2}' | tr -cd "[0-9,.]"`
-SwapUsed=`free -lh | grep Swap | awk '{print $3}' | tr -cd "[0-9,.]"`
+mem_total=`free -m | grep Mem | awk '{print $2}' | tr -cd "[0-9,.]"`
+mem_used=`free -m | grep Mem | awk '{print $3}' | tr -cd "[0-9],."`
+swap_total=`free -m | grep Swap | awk '{print $2}' | tr -cd "[0-9,.]"`
+swap_used=`free -m | grep Swap | awk '{print $3}' | tr -cd "[0-9,.]"`
 
 echo_green "=============Memory used and total==============="
-echo_yellow "[WARNING] MemTotal:${MemTotal}G, MemUsed:${MemUsed}G, MemUsed%:`awk 'BEGIN{printf "%.2f%%\n",('$MemUsed'/'$MemTotal')*100}'`"
+echo_yellow "[WARNING] MemTotal:`awk 'BEGIN{printf "%.2f%%\n",('$mem_total'/1024)}'`G, MemUsed:`awk 'BEGIN{printf "%.2f%%\n",('$mem_used'/1024)}'`G, MemUsed%:`awk 'BEGIN{printf "%.2f%%\n",('$mem_used'/'$mem_total')*100}'`"
 echo_green "=============SwapMem used and total==============="
-echo_yellow "[WARNING] SwapTotal:${SwapTotal}G, SwapUsed:${SwapUsed}G, SwapUsed%:`awk 'BEGIN{printf "%.2f%%\n",('$SwapUsed'/'$SwapTotal')*100}'`"
+echo_yellow "[WARNING] SwapTotal:`awk 'BEGIN{printf "%.2f%%\n",('$swap_total'/1024)}'`G, SwapUsed:`awk 'BEGIN{printf "%.2f%%\n",('$swap_used'/1024)}'`G, SwapUsed%:`awk 'BEGIN{printf "%.2f%%\n",('$swap_used'/'$swap_total')*100}'`"
 echo_green "=============Disk use and total=================="
 echo_yellow "[WARNING] `df -lh | grep /data`"
 
