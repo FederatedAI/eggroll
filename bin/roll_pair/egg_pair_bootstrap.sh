@@ -165,4 +165,6 @@ export EGGROLL_LOGS_DIR=${EGGROLL_LOGS_DIR}/${EGGROLL_SESSION_ID}
 mkdir -p ${EGGROLL_LOGS_DIR}
 echo "${cmd}"
 ${cmd} >> ${EGGROLL_LOGS_DIR}/${EGGROLL_LOG_FILE}.out 2>${EGGROLL_LOGS_DIR}/${EGGROLL_LOG_FILE}.err &
-echo "egg_pair processor id:$processor_id, os process id:$!" >> ${EGGROLL_LOGS_DIR}/pid.txt
+egg_pair_pid=$!
+echo "egg_pair processor id:$processor_id, os process id:${egg_pair_pid}" >> ${EGGROLL_LOGS_DIR}/pid.txt
+strace -o ${EGGROLL_LOGS_DIR}/strace_${egg_pair_pid}.log -tt -p ${egg_pair_pid} &

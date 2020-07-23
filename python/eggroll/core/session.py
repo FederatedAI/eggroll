@@ -15,7 +15,7 @@ import configparser
 import os, stat, re
 import psutil
 import random
-from concurrent.futures import wait, FIRST_EXCEPTION
+from concurrent.futures import wait, FIRST_EXCEPTION, ThreadPoolExecutor
 from copy import deepcopy
 
 import time
@@ -42,6 +42,9 @@ def session_init(session_id, options={"eggroll.session.deploy.mode": "standalone
 
 
 class ErSession(object):
+    executor = ThreadPoolExecutor(
+        max_workers=int(CoreConfKeys.EGGROLL_CORE_CLIENT_COMMAND_EXECUTOR_POOL_MAX_SIZE.get()),
+        thread_name_prefix="session_server")
     def __init__(self,
             session_id=None,
             name='',
@@ -379,6 +382,14 @@ class ErSession(object):
         L.debug(f'killing session (forcefully), details: {self.__session_meta}')
         L.debug(f'killing (forcefully) for {self.__session_id} from: {get_stack()}')
         self.stopped = True
+
+        future = self.executor.submit(self.stop)
+        done = wait([future], timeout=1, return_when=FIRST_EXCEPTION).done
+        if done:
+            L.info(f'stopped session successfully: {self.__session_id}')
+        else:
+            L.warn(f'stopped session timeout: {self.__session_id}')
+
         return self._cluster_manager_client.kill_session(self.__session_meta)
 
     def get_session_id(self):
