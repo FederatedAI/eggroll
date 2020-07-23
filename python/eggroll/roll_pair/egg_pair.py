@@ -466,10 +466,11 @@ class EggPair(object):
                     pass
                 if not is_left_stopped and not is_equal:
                     try:
-                        output_writebatch.put(k_left, v_left)
-                        while True:
-                            k_left, v_left = next(l_iter)
+                        if k_left is not None and v_left is not None:
                             output_writebatch.put(k_left, v_left)
+                            while True:
+                                k_left, v_left = next(l_iter)
+                                output_writebatch.put(k_left, v_left)
                     except StopIteration as e:
                         pass
                 elif is_left_stopped and not is_equal and k_left is not None:
