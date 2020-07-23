@@ -107,10 +107,20 @@ class RocksdbAdapter(PairAdapter):
         #self.close()
 
     def get(self, key):
-        return self.db.get(key)
+        ret = None
+        try:
+            ret = self.db.get(key)
+        except:
+            raise ValueError(f"get k={key} raise Error")
+        return ret
 
     def put(self, key, value):
-        self.db.put(key, value)
+        ret = None
+        try:
+            ret = self.db.put(key, value)
+        except:
+            raise ValueError(f"put k={key}, v={value} raise Error")
+        return ret
 
     def close(self):
         if L.isEnabledFor(logging.TRACE):
