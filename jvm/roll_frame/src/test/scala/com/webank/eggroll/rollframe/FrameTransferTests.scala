@@ -213,6 +213,6 @@ class FrameTransferTests {
 
   @Test
   def testIsReachable(): Unit ={
-    println(HttpUtil.isReachable("172.13.153.10"))
+    println(HttpUtil.isReachable("127.0.0.1"))
   }
 }
