@@ -17,6 +17,7 @@
 
 package com.webank.eggroll.rollframe.embpython
 import org.junit.Test
+import com.webank.eggroll.util.File
 
 class PyInterpreterTests {
   val interp: PyInterpreter = PyInterpreter()
@@ -26,4 +27,36 @@ class PyInterpreterTests {
     interp.close()
   }
 
+  @Test
+  def testRunPythonDemo(): Unit ={
+    val codes =
+      """
+        |def max(a,b):
+        |    return a if a>b else b
+        |
+        |a = 2
+        |b = 3
+        |m = max(a,b)
+        |print(m)
+        |""".stripMargin
+
+    interp.exec(codes)
+    val m = interp.getValue("m").asInstanceOf[Long]
+    assert(m==3)
+    interp.setValue("c",1)
+    interp.setValue("d",2)
+    val r = interp.invoke("max",Array(1),Array(2))
+
+//    interp.invoke("max",1,2)
+    val stop = 1
+  }
+
+  @Test
+  def testPyTorch(): Unit ={
+    // 先提供一个输入python字符的接口吧
+    val pyCodes = File.getStringFromFile("jvm/roll_frame/src/test/resources/lr_test.py")
+    // 假设数据已经有了，包含在代码中
+
+    val stop = 1
+  }
 }

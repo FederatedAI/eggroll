@@ -16,38 +16,64 @@
  */
 
 package com.webank.eggroll.rollframe.embpython
+
 import jep.{JepException, SharedInterpreter}
-class PyInterpreter private{
+
+class PyInterpreter private {
   private val interp = new SharedInterpreter
 
-  def exec(code:String): Unit ={
-    try{
-    interp.exec(code)
+  def exec(code: String): Unit = {
+    try {
+      interp.exec(code)
     } catch {
-      case e:Throwable => e.printStackTrace()
+      case e: Throwable => e.printStackTrace()
         throw new JepException(e)
     }
   }
 
-  def close(): Unit ={
+  def getValue(name: String): AnyRef = {
+    try {
+      interp.getValue(name)
+    } catch {
+      case e: Throwable => e.printStackTrace()
+        throw new JepException(e)
+    }
+  }
+
+  def setValue(name: String, v: Any): Unit = {
+    try {
+      interp.set(name, v)
+    } catch {
+      case e: Throwable => e.printStackTrace()
+        throw new JepException(e)
+    }
+  }
+
+  def invoke(name:String,vars:Any*): AnyRef ={
     try{
+      println(vars)
+      this.interp.invoke(name,vars)
+    } catch {
+      case e:Throwable => e.printStackTrace()
+        throw e
+    }
+  }
+
+  def close(): Unit = {
+    try {
       interp.close()
     } catch {
-      case e:Throwable => e.printStackTrace()
+      case e: Throwable => e.printStackTrace()
         throw new JepException(e)
     }
   }
-
-
 }
 
-object PyInterpreter{
-  private val instance:PyInterpreter = new PyInterpreter
+object PyInterpreter {
+  private val instance: PyInterpreter = new PyInterpreter
 
-  def getInstance:PyInterpreter = instance
+  def getInstance: PyInterpreter = instance
 
   def apply(): PyInterpreter = instance
-
-
 
 }
