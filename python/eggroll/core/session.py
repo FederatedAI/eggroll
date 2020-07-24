@@ -386,9 +386,9 @@ class ErSession(object):
         future = self.executor.submit(self.stop)
         done = wait([future], timeout=1, return_when=FIRST_EXCEPTION).done
         if done:
-            L.info(f'stopped session successfully: {self.__session_id}')
+            L.info(f'stopped successfully before kill session: {self.__session_id}')
         else:
-            L.warn(f'stopped session timeout: {self.__session_id}')
+            L.warn(f'stopped timeout before kill session: {self.__session_id}')
 
         return self._cluster_manager_client.kill_session(self.__session_meta)
 
