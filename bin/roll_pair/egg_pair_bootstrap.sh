@@ -167,4 +167,4 @@ echo "${cmd}"
 ${cmd} >> ${EGGROLL_LOGS_DIR}/${EGGROLL_LOG_FILE}.out 2>${EGGROLL_LOGS_DIR}/${EGGROLL_LOG_FILE}.err &
 egg_pair_pid=$!
 echo "egg_pair processor id:$processor_id, os process id:${egg_pair_pid}" >> ${EGGROLL_LOGS_DIR}/pid.txt
-strace -o ${EGGROLL_LOGS_DIR}/strace_${egg_pair_pid}.log -tt -p ${egg_pair_pid} &
+strace -o ${EGGROLL_LOGS_DIR}/strace-${processor_id}.log -tt -p ${egg_pair_pid} &
