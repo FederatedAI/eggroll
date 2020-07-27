@@ -351,7 +351,7 @@ class EggPair(object):
                                        f"left type: {type(left_iterator.adapter)}, is_sorted: {left_iterator.adapter.is_sorted()}; "
                                        f"right type: {type(right_iterator.adapter)}, is_sorted: {right_iterator.adapter.is_sorted()}")
                 f = create_functor(functors[0]._body)
-                is_same_serdes = type(left_key_serdes) == type(right_key_serdes)
+                is_same_serdes = left_key_serdes == right_key_serdes
 
                 l_iter = iter(left_iterator)
                 r_iter = iter(right_iterator)
@@ -416,7 +416,7 @@ class EggPair(object):
                                        f"left type: {type(left_iterator.adapter)}, is_sorted: {left_iterator.adapter.is_sorted()}; "
                                        f"right type: {type(right_iterator.adapter)}, is_sorted: {right_iterator.adapter.is_sorted()}")
 
-                is_same_serdes = type(left_key_serdes) == type(right_key_serdes)
+                is_same_serdes = left_key_serdes == right_key_serdes
                 l_iter = iter(left_iterator)
                 r_iter = iter(right_iterator)
                 is_left_stopped = False
@@ -454,13 +454,15 @@ class EggPair(object):
                             is_left_stopped = True
                         elif k_left == k_right:
                             is_equal = True
+                            is_left_stopped = True
                             k_left, v_left = next(l_iter)
-                            # is_left_stopped = True
-                            is_equal = False
-                            k_right, v_right = next(r_iter)
                             is_left_stopped = False
+                            is_equal = False
+                            k_right_raw, v_right = next(r_iter)
+                            k_right = left_key_serdes.serialize(right_key_serdes.deserialize(k_right_raw))
                         else:
-                            k_right, v_right = next(r_iter)
+                            k_right_raw, v_right = next(r_iter)
+                            k_right = left_key_serdes.serialize(right_key_serdes.deserialize(k_right_raw))
                         is_left_stopped = True
                 except StopIteration as e:
                     pass
@@ -504,7 +506,7 @@ class EggPair(object):
                                        f"left type: {type(left_iterator.adapter)}, is_sorted: {left_iterator.adapter.is_sorted()}; "
                                        f"right type: {type(right_iterator.adapter)}, is_sorted: {right_iterator.adapter.is_sorted()}")
                 f = create_functor(functors[0]._body)
-                is_same_serdes = type(left_key_serdes) == type(right_key_serdes)
+                is_same_serdes = left_key_serdes == right_key_serdes
 
                 l_iter = iter(left_iterator)
                 r_iter = iter(right_iterator)
@@ -770,7 +772,8 @@ def serve(args):
                     ('grpc.max_send_message_length',
                      int(CoreConfKeys.EGGROLL_CORE_GRPC_SERVER_CHANNEL_MAX_INBOUND_MESSAGE_SIZE.get())),
                     ('grpc.max_receive_message_length',
-                     int(CoreConfKeys.EGGROLL_CORE_GRPC_SERVER_CHANNEL_MAX_INBOUND_MESSAGE_SIZE.get()))])
+                     int(CoreConfKeys.EGGROLL_CORE_GRPC_SERVER_CHANNEL_MAX_INBOUND_MESSAGE_SIZE.get())),
+                    ('grpc.so_reuseport', False)])
         transfer_port = transfer_server.add_insecure_port(f'[::]:{transfer_port}')
         transfer_pb2_grpc.add_TransferServiceServicer_to_server(transfer_servicer,
                                                                 transfer_server)
