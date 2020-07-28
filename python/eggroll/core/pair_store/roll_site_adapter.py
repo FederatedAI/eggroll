@@ -197,7 +197,7 @@ class RollSiteWriteBatch(PairWriteBatch):
         self.buffer = ArrayByteBuffer(self.ba)
 
     def send_end(self):
-        L.debug(f"RollSiteAdapter.send_end: tagged_key={self.tagged_key}")
+        L.debug(f"RollSiteAdapter.send_end: name={self.name}")
         task_info = proxy_pb2.Task(taskId=self.name, model=proxy_pb2.Model(name=self.adapter.roll_site_header_string, dataKey=self.namespace))
 
         command_test = proxy_pb2.Command(name="set_status")

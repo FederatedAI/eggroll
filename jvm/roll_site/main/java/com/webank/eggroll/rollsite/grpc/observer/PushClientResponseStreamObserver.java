@@ -62,7 +62,7 @@ public class PushClientResponseStreamObserver extends BaseCallerResponseStreamOb
     @Override
     public void onError(Throwable throwable) {
         //LOGGER.info("[PUSH][CLIENTOBSERVER][ONERROR]SendClientResponseStreamObserver.onError. metadata: {}", toStringUtils.toOneLineString(metadata));
-        LOGGER.trace("[PUSH][CLIENTOBSERVER][ONERROR]SendClientResponseStreamObserver.onError, metadata={}", oneLineMetadata);
+        LOGGER.error("[PUSH][CLIENTOBSERVER][ONERROR]SendClientResponseStreamObserver.onError, metadata={}", oneLineMetadata);
         transferBroker.onError(throwable);
         super.onError(throwable);
     }
