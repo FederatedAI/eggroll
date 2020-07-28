@@ -44,7 +44,12 @@ class LmdbAdapter(PairAdapter):
 
     def put(self, key, value):
         self._init_write()
-        return self.txn_w.put(key, value)
+        ret = None
+        try:
+            ret = self.txn_w.put(key, value)
+        except lmdb.BadValsizeError as e:
+            L.info(f"key={key}, value={value} raise lmdb.BadValsizeError")
+        return ret
 
     def __init__(self, options):
         self.env = None
@@ -224,10 +229,24 @@ class LmdbWriteBatch(PairWriteBatch):
         self.txn = txn
 
     def get(self, k):
-        return self.txn.get(k)
+        ret = None
+        try:
+            ret = self.txn.get(k)
+        except lmdb.BadValsizeError as e:
+            raise ValueError(f"get key={k} raise lmdb.BadValsizeError")
+        except:
+            raise ValueError(f"get key={k} raise Exception")
+        return ret
 
     def put(self, k, v):
-        self.txn.put(k, v)
+        ret = None
+        try:
+            ret = self.txn.put(k, v)
+        except lmdb.BadValsizeError as e:
+            raise ValueError(f"put key={k}, value={v} raise lmdb.BadValsizeError")
+        except:
+            raise ValueError(f"put key={k}, value={v} raise Exception")
+        return ret
 
     def merge(self, merge_func, k, v):
         old_value = self.txn.get(k)
@@ -236,7 +255,14 @@ class LmdbWriteBatch(PairWriteBatch):
         else:
             new_value = v
 
-        self.txn.put(k, new_value)
+        ret = None
+        try:
+            ret = self.txn.put(k, new_value)
+        except lmdb.BadValsizeError as e:
+            L.info(f"put key={k}, value={new_value} raise lmdb.BadValsizeError")
+        except:
+            L.info(f"put key={k}, value={new_value} raise Exception")
+        return ret
 
     def delete(self, k):
         self.txn.delete(k)
