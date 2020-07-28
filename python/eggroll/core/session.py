@@ -25,6 +25,7 @@ from eggroll.core.command.command_model import CommandURI
 from eggroll.core.conf_keys import CoreConfKeys
 from eggroll.core.conf_keys import SessionConfKeys, ClusterManagerConfKeys
 from eggroll.core.constants import SessionStatus, ProcessorTypes, DeployModes
+from eggroll.core.datastructure.threadpool import ErThreadUnpooledExecutor
 from eggroll.core.meta_model import ErJob, ErTask
 from eggroll.core.meta_model import ErSessionMeta, ErPartition, ErStore
 from eggroll.core.utils import generate_task_id
@@ -42,6 +43,9 @@ def session_init(session_id, options: dict = None):
 
 
 class ErSession(object):
+    executor = ErThreadUnpooledExecutor(
+        max_workers=int(CoreConfKeys.EGGROLL_CORE_CLIENT_COMMAND_EXECUTOR_POOL_MAX_SIZE.get()),
+        thread_name_prefix="session_server")
     def __init__(self,
             session_id=None,
             name='',
@@ -379,6 +383,14 @@ class ErSession(object):
         L.debug(f'killing session (forcefully), details: {self.__session_meta}')
         L.debug(f'killing (forcefully) for {self.__session_id} from: {get_stack()}')
         self.stopped = True
+
+        future = self.executor.submit(self.stop)
+        done = wait([future], timeout=1, return_when=FIRST_EXCEPTION).done
+        if done:
+            L.info(f'stopped successfully before kill session: {self.__session_id}')
+        else:
+            L.warn(f'stopped timeout before kill session: {self.__session_id}')
+
         return self._cluster_manager_client.kill_session(self.__session_meta)
 
     def get_session_id(self):

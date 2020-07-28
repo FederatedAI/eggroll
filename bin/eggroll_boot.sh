@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
 sub_cmd=$1
 exe=$2
@@ -26,7 +26,7 @@ echo "------ script body ------"
 # TODO:2: check pid file and delete?
 if [[ $sub_cmd == "start" ]]; then
   ${BASH} ${exe} &
-  pid=$?
+  pid=$!
   echo "start: $exe, pid $pid"
   #echo $pid > $SHELL_FOLDER/pid/$pname.pid
 elif [[ $sub_cmd == "stop" ]]; then
@@ -35,10 +35,12 @@ elif [[ $sub_cmd == "stop" ]]; then
   #echo "stop: $cmd, pid $pid"
   echo "stop: $cmd"
   eval ${cmd}
+  echo "stop result: $?, 0 is success, 1 is fail"
 elif [[ $sub_cmd == "kill" ]]; then
   #pid=`cat $pid_file`
   cmd="${exe} | awk '{print \$2}' | xargs kill -9"
   #echo "kill: $cmd, pid $pid"
   echo "kill: $cmd"
   eval ${cmd}
+  echo "kill result: $?, 0 is success, 1 is fail"
 fi
