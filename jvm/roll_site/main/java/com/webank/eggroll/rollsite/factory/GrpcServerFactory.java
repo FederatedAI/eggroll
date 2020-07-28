@@ -194,7 +194,7 @@ public class GrpcServerFactory {
         return serverBuilder.build();
     }
 
-    public void connecteToGateway(String srcIp, int srcPort, String srcPartyId, String srcRole,
+/*    public void connecteToGateway(String srcIp, int srcPort, String srcPartyId, String srcRole,
                                     String gatewayIp, int gatewayPort, String gatewayPartyId, String gatewayRole) {
         //DefaultPipeFactory defaultPipeFactory = new DefaultPipeFactory();
         String operator = "registerBroker";
@@ -220,8 +220,8 @@ public class GrpcServerFactory {
 
         Proxy.Packet packet = Proxy.Packet.newBuilder().setHeader(header).setBody(data).build();
         client.setEndpoint(BasicMeta.Endpoint.newBuilder().setIp(gatewayIp).setPort(gatewayPort).build());
-       client.unaryCall(packet, defaultPipeFactory.create("brokerInfo"));
-    }
+        client.unaryCall(packet, defaultPipeFactory.create("brokerInfo"));
+    }*/
 
     public ArrayList<Server> createServers(String confPath) throws IOException {
         ProxyServerConf proxyServerConf = applicationContext.getBean(ProxyServerConf.class);
@@ -314,8 +314,13 @@ public class GrpcServerFactory {
                 RollSiteConfKeys.EGGROLL_ROLLSITE_PROXY_COMPATIBLE_ENABLED().key(), "false"));
             proxyServerConf.setCompatibleEnabled(needCompatibility);
 
-            String serverCrt = properties.getProperty(CoreConfKeys.CONFKEY_CORE_SECURITY_KEY_CRT_PATH().key());
-            String serverKey = properties.getProperty(CoreConfKeys.CONFKEY_CORE_SECURITY_KEY_PATH().key());
+            String serverCrt = properties.getProperty(
+                CoreConfKeys.CONFKEY_CORE_SECURITY_SERVER_CRT_PATH().key(),
+                properties.getProperty(CoreConfKeys.CONFKEY_CORE_SECURITY_CRT_PATH().key()));
+
+            String serverKey = properties.getProperty(
+                CoreConfKeys.CONFKEY_CORE_SECURITY_SERVER_KEY_PATH().key(),
+                properties.getProperty(CoreConfKeys.CONFKEY_CORE_SECURITY_KEY_PATH().key()));
 
             proxyServerConf.setServerCrtPath(serverCrt);
             proxyServerConf.setServerKeyPath(serverKey);

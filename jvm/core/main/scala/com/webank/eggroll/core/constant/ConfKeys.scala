@@ -103,8 +103,13 @@ object CoreConfKeys {
   val CONFKEY_CORE_RETRY_DEFAULT_WAIT_TIME_MS = ErConfKey("eggroll.core.retry.default.wait.time.ms", 1000)
 
   val CONFKEY_CORE_SECURITY_CA_CRT_PATH = ErConfKey("eggroll.core.security.ca.crt.path")
-  val CONFKEY_CORE_SECURITY_KEY_CRT_PATH = ErConfKey("eggroll.core.security.crt.path")
+  val CONFKEY_CORE_SECURITY_CRT_PATH = ErConfKey("eggroll.core.security.crt.path")
   val CONFKEY_CORE_SECURITY_KEY_PATH = ErConfKey("eggroll.core.security.key.path")
+  val CONFKEY_CORE_SECURITY_CLIENT_CRT_PATH = ErConfKey("eggroll.core.security.client.crt.path")
+  val CONFKEY_CORE_SECURITY_CLIENT_KEY_PATH = ErConfKey("eggroll.core.security.client.key.path")
+  val CONFKEY_CORE_SECURITY_SERVER_CRT_PATH = ErConfKey("eggroll.core.security.server.crt.path")
+  val CONFKEY_CORE_SECURITY_SERVER_KEY_PATH = ErConfKey("eggroll.core.security.server.key.path")
+
   val CONFKEY_CORE_SECURITY_SECURE_CLUSTER_ENABLED = ErConfKey("eggroll.core.security.secure.cluster.enabled", false)
   val CONFKEY_CORE_SECURITY_CLIENT_AUTH_ENABLED = ErConfKey("eggroll.core.security.secure.client.auth.enabled", false)
 
