@@ -160,9 +160,9 @@ class EggPair(object):
     @_exception_logger
     def run_task(self, task: ErTask):
         if L.isEnabledFor(logging.TRACE):
-            L.trace(f'[RUNTASK] start. task name={task._name}, inputs={task._inputs}, outputs={task._outputs}, task id={task._id}')
+            L.trace(f'[RUNTASK] start. task_name={task._name}, inputs={task._inputs}, outputs={task._outputs}, task_id={task._id}')
         else:
-            L.debug(f'[RUNTASK] start. task name={task._name}, task_id={task._id}')
+            L.debug(f'[RUNTASK] start. task_name={task._name}, task_id={task._id}')
         functors = task._job._functors
         result = task
 
@@ -412,7 +412,7 @@ class EggPair(object):
                                               right_iterator, right_key_serdes, right_value_serdes,
                                               output_writebatch):
                 if not left_iterator.adapter.is_sorted() or not right_iterator.adapter.is_sorted():
-                    raise RuntimeError(f"merge join cannot be applied: not both store types support sorting. "
+                    raise RuntimeError(f"merge subtract_by_key cannot be applied: not both store types support sorting. "
                                        f"left type: {type(left_iterator.adapter)}, is_sorted: {left_iterator.adapter.is_sorted()}; "
                                        f"right type: {type(right_iterator.adapter)}, is_sorted: {right_iterator.adapter.is_sorted()}")
 
@@ -646,9 +646,9 @@ class EggPair(object):
                             value=self.functor_serdes.serialize(f(task._inputs)))
 
         if L.isEnabledFor(logging.TRACE):
-            L.trace(f'[RUNTASK] end. task name={task._name}, inputs={task._inputs}, outputs={task._outputs}, task_id={task._id}')
+            L.trace(f'[RUNTASK] end. task_name={task._name}, inputs={task._inputs}, outputs={task._outputs}, task_id={task._id}')
         else:
-            L.debug(f'[RUNTASK] end. task name={task._name}, task_id={task._id}')
+            L.debug(f'[RUNTASK] end. task_name={task._name}, task_id={task._id}')
 
         return result
         # run_task ends here
