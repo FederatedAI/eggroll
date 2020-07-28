@@ -123,7 +123,7 @@ public class ClientUnaryCallResponseStreamObserver implements StreamObserver<Pro
 
     @Override
     public void onCompleted() {
-        LOGGER.debug("[UNARYCALL][OBSERVER][ONCOMPLETE] Client unary call completed. metadata: {}",
+        LOGGER.trace("[UNARYCALL][OBSERVER][ONCOMPLETE] Client unary call completed. metadata: {}",
                 ToStringUtils.toOneLineString(metadata));
 
         pipe.onComplete();
