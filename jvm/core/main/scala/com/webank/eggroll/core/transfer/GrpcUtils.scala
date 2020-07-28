@@ -87,7 +87,7 @@ object GrpcServerUtils extends Logging {
     val secureClusterEnabled = CoreConfKeys.CONFKEY_CORE_SECURITY_SECURE_CLUSTER_ENABLED.getWith(options).toBoolean
     if (secureClusterEnabled) {
       val caCrtPath = FileSystemUtils.stripParentDirReference(CoreConfKeys.CONFKEY_CORE_SECURITY_CA_CRT_PATH.getWith(options))
-      val keyCrtPath = FileSystemUtils.stripParentDirReference(CoreConfKeys.CONFKEY_CORE_SECURITY_KEY_CRT_PATH.getWith(options))
+      val keyCrtPath = FileSystemUtils.stripParentDirReference(CoreConfKeys.CONFKEY_CORE_SECURITY_CRT_PATH.getWith(options))
       val keyPath = FileSystemUtils.stripParentDirReference(CoreConfKeys.CONFKEY_CORE_SECURITY_KEY_PATH.getWith(options))
 
       val clientAuthEnabled = CoreConfKeys.CONFKEY_CORE_SECURITY_CLIENT_AUTH_ENABLED.getWith(options).toBoolean
@@ -191,7 +191,7 @@ object GrpcClientUtils extends Logging {
       var sslContext: SslContext = null
       val sslSessionTimeout = CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_SSL_SESSION_TIMEOUT_SEC.getWith(options).toLong
       val sslSessionCacheSize = CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_SSL_SESSION_CACHE_SIZE.getWith(options).toLong
-      val keyCrtPath = CoreConfKeys.CONFKEY_CORE_SECURITY_KEY_CRT_PATH.getWith(options)
+      val keyCrtPath = CoreConfKeys.CONFKEY_CORE_SECURITY_CRT_PATH.getWith(options)
       val keyPath = CoreConfKeys.CONFKEY_CORE_SECURITY_KEY_PATH.getWith(options)
       val sslContextBuilder = GrpcSslContexts
         .forClient

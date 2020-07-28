@@ -420,7 +420,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
         }
     }
 
-    private Pipe getPipe(String name) {
+/*    private Pipe getPipe(String name) {
         checkNotNull();
 
         Pipe result = defaultPipe;
@@ -429,7 +429,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
         }
 
         return result;
-    }
+    }*/
 
     private ErRollSiteHeader restoreRollSiteHeader(String s)
         throws InvalidProtocolBufferException {

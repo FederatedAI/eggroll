@@ -24,6 +24,7 @@ import com.google.common.cache.LoadingCache;
 import com.webank.ai.eggroll.api.core.BasicMeta;
 import com.webank.ai.eggroll.api.networking.proxy.DataTransferServiceGrpc;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
+import com.webank.eggroll.core.constant.CoreConfKeys;
 import com.webank.eggroll.core.util.ToStringUtils;
 import com.webank.eggroll.rollsite.channel.RedirectClientInterceptor;
 import com.webank.eggroll.rollsite.model.ProxyServerConf;
@@ -40,6 +41,7 @@ import java.io.File;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import javax.net.ssl.SSLException;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -210,8 +212,19 @@ public class ProxyGrpcStubFactory {
                 (!proxyServerConf.isNeighbourInsecureChannelEnabled() || !fdnRouter.isIntranet(endpoint))) {
             // todo:1: add configuration reading mechanism
             File caCrt = new File(proxyServerConf.getCaCrtPath());
-            File serverCrt = new File(proxyServerConf.getServerCrtPath());
-            File serverKey = new File(proxyServerConf.getServerKeyPath());
+
+            String clientCrtPath = CoreConfKeys.CONFKEY_CORE_SECURITY_CLIENT_CRT_PATH().get();
+            if (StringUtils.isBlank(clientCrtPath)) {
+                clientCrtPath = CoreConfKeys.CONFKEY_CORE_SECURITY_CRT_PATH().get();
+            }
+
+            String clientKeyPath = CoreConfKeys.CONFKEY_CORE_SECURITY_CLIENT_KEY_PATH().get();
+            if (StringUtils.isBlank(clientKeyPath)) {
+                clientKeyPath = CoreConfKeys.CONFKEY_CORE_SECURITY_KEY_PATH().get();
+            }
+
+            File clientCrt = new File(clientCrtPath);
+            File clientKey = new File(clientKeyPath);
 
             SslContext sslContext = null;
             try {
@@ -219,7 +232,7 @@ public class ProxyGrpcStubFactory {
                 // sslContext = GrpcSslContexts.forClient().trustManager(trustManagerFactory).build();
                 sslContext = GrpcSslContexts.forClient()
                         .trustManager(caCrt)
-                        .keyManager(serverCrt, serverKey)
+                        .keyManager(clientCrt, clientKey)
                         .sessionTimeout(3600 << 4)
                         .sessionCacheSize(65536)
                         .build();
