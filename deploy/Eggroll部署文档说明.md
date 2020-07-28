@@ -219,7 +219,7 @@ sh deploy.sh
 Eggroll的bin目录中附带启动脚本bin/eggroll.sh使用说明：
 
 ```shell
-source ${EGGROLL_HOME}/init.sh       --${EGGROLL_HOME} means the absolute path of eggroll
+source ${EGGROLL_HOME}/init_env.sh       --${EGGROLL_HOME} means the absolute path of eggroll
 sh bin/eggroll.sh $1 $2		
 <--
 	$1：需要执行操作的服务名称，例如clustermanager，nodemanager，rollsite，all(表示所有服务)；
@@ -230,7 +230,7 @@ sh bin/eggroll.sh $1 $2
 使用例子：
 
 ```shell
-source ${EGGROLL_HOME}/init.sh       --${EGGROLL_HOME} means the absolute path of eggroll
+source ${EGGROLL_HOME}/init_env.sh       --${EGGROLL_HOME} means the absolute path of eggroll
 <--启动所有服务-->
 sh bin/eggroll.sh all start
 
@@ -264,7 +264,7 @@ sh bin/eggroll.sh nodemanager kill
 登录服务器进行测试时需要执行以下语句进行环境变量初始化
 
 ```shell
-source ${EGGROLL_HOME}/init.sh       --${EGGROLL_HOME} means the absolute path of eggroll
+source ${EGGROLL_HOME}/init_env.sh       --${EGGROLL_HOME} means the absolute path of eggroll
 ```
 
 ### 6.2.  roll_pair测试
