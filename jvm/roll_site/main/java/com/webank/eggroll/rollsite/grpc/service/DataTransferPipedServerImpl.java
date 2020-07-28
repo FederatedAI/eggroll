@@ -645,8 +645,8 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
             LOGGER.debug("[UNARYCALL][SERVER] server unary call completed. hasReturnedBefore={}, hasError={}, metadata={}",
                 hasReturnedBefore, hasError, oneLineStringInputMetadata);
         } catch (Exception e) {
-            LOGGER.error("Error occured in unary call: ", e);
-            responseObserver.onError(e);
+            LOGGER.error("[UNARYCALL][SERVER] Error occured in unary call: ", e);
+            responseObserver.onError(ErrorUtils.toGrpcRuntimeException(e));
         }
     }
 
