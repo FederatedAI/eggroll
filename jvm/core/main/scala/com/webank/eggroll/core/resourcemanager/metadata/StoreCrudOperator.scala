@@ -196,26 +196,24 @@ object StoreCrudOperator {
     ErStore(storeLocator = outputStoreLocator, partitions = outputPartitions.toArray, options = outputOptions)
   }
 
-  private[metadata] def doCreateStore(input: ErStore): ErStore = {
+  private[metadata] def doCreateStore(input: ErStore): ErStore = dbc.withTransaction(conn => {
     val inputOptions = input.options
 
     // create store locator
     val inputStoreLocator = input.storeLocator
 
-    val newStoreLocator = dbc.withTransaction(conn => {
-      val sql = "insert into store_locator " +
-        "(store_type, namespace, name, path, total_partitions, " +
-        "partitioner, serdes, status) values (?, ?, ?, ?, ?, ?, ?, ?)"
-      dbc.update(conn, sql,
-        inputStoreLocator.storeType,
-        inputStoreLocator.namespace,
-        inputStoreLocator.name,
-        inputStoreLocator.path,
-        inputStoreLocator.totalPartitions,
-        inputStoreLocator.partitioner,
-        inputStoreLocator.serdes,
-        StoreStatus.NORMAL)
-    })
+    val sql = "insert into store_locator " +
+      "(store_type, namespace, name, path, total_partitions, " +
+      "partitioner, serdes, status) values (?, ?, ?, ?, ?, ?, ?, ?)"
+    val newStoreLocator = dbc.update(conn, sql,
+      inputStoreLocator.storeType,
+      inputStoreLocator.namespace,
+      inputStoreLocator.name,
+      inputStoreLocator.path,
+      inputStoreLocator.totalPartitions,
+      inputStoreLocator.partitioner,
+      inputStoreLocator.serdes,
+      StoreStatus.NORMAL)
 
     if (newStoreLocator.isEmpty){
       throw new CrudException(s"Illegal rows affected returned when creating store locator: 0")
@@ -244,15 +242,13 @@ object StoreCrudOperator {
 
       val node: ErServerNode = serverNodes(i % nodesCount)
 
-      val nodeRecord = dbc.withTransaction( conn => {
-        val sql = "insert into store_partition (store_locator_id, node_id, partition_id, status) values (?, ?, ?, ?)"
+      val sql = "insert into store_partition (store_locator_id, node_id, partition_id, status) values (?, ?, ?, ?)"
 
-        dbc.update(conn, sql,
-          newStoreLocator.get,
-          if (isPartitionsSpecified) input.partitions(i % specifiedPartitions.length).processor.serverNodeId else node.id,
-          i,
-          PartitionStatus.PRIMARY)
-      })
+      val nodeRecord = dbc.update(conn, sql,
+        newStoreLocator.get,
+        if (isPartitionsSpecified) input.partitions(i % specifiedPartitions.length).processor.serverNodeId else node.id,
+        i,
+        PartitionStatus.PRIMARY)
 
       if (nodeRecord.isEmpty) {
         throw new CrudException(s"Illegal rows affected when creating node: 0")
@@ -272,13 +268,11 @@ object StoreCrudOperator {
     val itOptions = newOptions.entrySet().iterator()
     while(itOptions.hasNext){
       val entry = itOptions.next()
-      dbc.withTransaction(conn => {
-        dbc.update(conn,
-          "insert into store_option(store_locator_id, name, data) values (?, ?, ?)",
-          newStoreLocator.get,
-          entry.getKey,
-          entry.getValue)
-      })
+      dbc.update(conn,
+        "insert into store_option(store_locator_id, name, data) values (?, ?, ?)",
+        newStoreLocator.get,
+        entry.getKey,
+        entry.getValue)
     }
 
     val result = ErStore(
@@ -287,7 +281,7 @@ object StoreCrudOperator {
       options = newOptions)
 
     result
-  }
+  })
 
   private[metadata] def doDeleteStore(input: ErStore): ErStore = {
     val inputStoreLocator = input.storeLocator
