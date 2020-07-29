@@ -101,7 +101,9 @@ class ErRollSiteHeader(RpcMessage):
             dst_role: str,
             dst_party_id: str,
             data_type: str = '',
-            options: dict = {}):
+            options: dict = None):
+        if options is None:
+            options = dict()
         self._roll_site_session_id = roll_site_session_id
         self._name = name
         self._tag = tag
