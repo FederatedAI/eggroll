@@ -164,7 +164,7 @@ class RollSiteWriteBatch(PairWriteBatch):
                                       seq=0,
                                       ack=0)
 
-        max_retry_cnt = 100
+        max_retry_cnt = 10
         exception = None
         for i in range(1, max_retry_cnt + 1):
             try:
