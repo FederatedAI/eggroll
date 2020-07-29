@@ -62,7 +62,9 @@ class RollSiteUtil(val erSessionId: String,
         logTrace(s"sending OBJECT from / to same party id, skipping. src=${srcPartyId}, dst=${dstPartyId}, tag=${rollSiteHeader.concat()}")
       }
 
-      JobStatus.increasePutBatchFinishedCount(name);
+      JobStatus.increasePutBatchFinishedCount(name)
+      val partition:Option[String] = rollSiteHeader.options.get("partition_id")
+      JobStatus.increasePutBatchFinishedCountPerPartition(name, partition.getOrElse(0).toString.toInt)
       logDebug(s"put batch finished for namespace=${namespace}, name=${name}")
     } catch {
       case e: Exception => {

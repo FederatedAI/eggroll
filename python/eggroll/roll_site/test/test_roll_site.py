@@ -140,7 +140,8 @@ class TestRollSiteBase(unittest.TestCase):
         data = [("k1", "v1"), ("k2", "v2"), ("k3", "v3")]
         rp_options = {'include_key': True}
         rp_context = self.rs_context_remote.rp_ctx
-        rp = rp_context.load("namespace", "name").put_all(data, options=rp_options)
+        options = {'create_if_missing': True}
+        rp = rp_context.load("namespace3", "name3", options).put_all(data, options=rp_options)
 
         rs = self.rs_context_remote.load(name=self._rp_rs_name, tag=self._rp_rs_tag)
         futures = rs.push(rp, self.remote_parties)
@@ -163,8 +164,9 @@ class TestRollSiteBase(unittest.TestCase):
 
     def test_remote_rollpair_big(self):
         rp_options = {'include_key': True}
+        rp_options.update(create_if_missing=True)
         rp_context = self.rs_context_remote.rp_ctx
-        rp = rp_context.load("namespace", self._rp_rs_name_big)
+        rp = rp_context.load("namespace", self._rp_rs_name_big, options=rp_options)
         rp.put_all(data_generator(row_limit), options=rp_options)
         print(f"count: {rp.count()}")
 
@@ -189,6 +191,7 @@ class TestRollSiteBase(unittest.TestCase):
 
     def test_remote_rollpair_big_multi_partitions(self):
         rp_options = {'include_key': True, 'total_partitions': 3}
+        rp_options.update(create_if_missing=True)
         rp_context = self.rs_context_remote.rp_ctx
         rp = rp_context.load("namespace", self._rp_rs_name_big_mp, options=rp_options)
         rp.put_all(data_generator(row_limit), options=rp_options)
@@ -243,6 +246,7 @@ class TestRollSiteBase(unittest.TestCase):
 
     def test_put_all_multi_partitions(self):
         rp_options = {'include_key': True, 'total_partitions': 3}
+        rp_options.update(create_if_missing=True)
         rp_context = self.rs_context_remote.rp_ctx
         rp = rp_context.load("namespace", self._rp_rs_name_big_mp, options=rp_options)
         rp.put_all(data_generator(9), options=rp_options)

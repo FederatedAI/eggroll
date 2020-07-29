@@ -146,6 +146,10 @@ class ErRollSiteHeader(RpcMessage):
         msg_len = pb_message.ParseFromString(pb_string)
         return ErRollSiteHeader.from_proto(pb_message)
 
+    def set_option(self, name, value):
+        option = {name:value}
+        self._options.update(option)
+
     def __repr__(self):
         return f'<ErRollSiteHeader(' \
                f'roll_site_session_id={repr(self._roll_site_session_id)}), ' \

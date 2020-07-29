@@ -4,6 +4,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import com.google.common.util.concurrent.AtomicLongMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -16,6 +17,8 @@ public class JobStatus {
     private static final LoadingCache<String, AtomicLong> jobIdToPutBatchRequiredCount;
     private static final LoadingCache<String, AtomicLong> jobIdToPutBatchFinishedCount;
     private static final LoadingCache<String, String> tagkeyToObjType;
+    private static final LoadingCache<String, AtomicLongMap<Integer>> jobIdToPutBatchFinishedCountPartitions;
+    private static final LoadingCache<String, AtomicLongMap<Integer>> jobIdToPutBatchRequiredCountPartitions;
 
     static {
         jobIdToSessionId = CacheBuilder.newBuilder()
@@ -82,6 +85,34 @@ public class JobStatus {
                     throw new IllegalStateException("loading of this cache is not supported");
                 }
             });
+
+        jobIdToPutBatchFinishedCountPartitions = CacheBuilder.newBuilder()
+                .maximumSize(1000000)
+                .concurrencyLevel(50)
+                .expireAfterAccess(48, TimeUnit.HOURS)
+                .recordStats()
+                .build(new CacheLoader<String, AtomicLongMap<Integer>>() {
+                    @Override
+                    public AtomicLongMap<Integer> load(String key) throws Exception {
+                        synchronized (putBatchLock) {
+                            return AtomicLongMap.create();
+                        }
+                    }
+                });
+
+        jobIdToPutBatchRequiredCountPartitions = CacheBuilder.newBuilder()
+                .maximumSize(1000000)
+                .concurrencyLevel(50)
+                .expireAfterAccess(48, TimeUnit.HOURS)
+                .recordStats()
+                .build(new CacheLoader<String, AtomicLongMap<Integer>>() {
+                    @Override
+                    public AtomicLongMap<Integer> load(String key) throws Exception {
+                        synchronized (putBatchLock) {
+                            return AtomicLongMap.create();
+                        }
+                    }
+                });
     }
 
     private static final Object latchLock = new Object();
@@ -115,6 +146,8 @@ public class JobStatus {
                     removeLatch(jobId);
                     removePutBatchRequiredCount(jobId);
                     removePutBatchFinishedCount(jobId);
+                    removePutBatchRequiredCountAllPartitions(jobId);
+                    removePutBatchFinishedCountAllPartitions(jobId);
                     removeType(jobId);
                 }
             }
@@ -315,4 +348,114 @@ public class JobStatus {
 
         return result;
     }
+
+    public static boolean isPutBatchFinishedPerPartition(String jobId, int partitionId) {
+        long requiredCount = getPutBatchRequiredCountPerPartition(jobId, partitionId);
+        long finishedCount = getPutBatchFinishedCountPerPartition(jobId, partitionId);
+        if (finishedCount > requiredCount) {
+            throw new IllegalStateException("Illegal finishedCount: finishedCount is more than requiredCount");
+        }
+
+        return requiredCount == finishedCount && requiredCount > 0;
+    }
+
+    public static long increasePutBatchFinishedCountPerPartition(String jobId, int partitionId) {
+        try {
+            return jobIdToPutBatchFinishedCountPartitions.get(jobId).incrementAndGet(partitionId);
+        }catch (ExecutionException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static long getPutBatchFinishedCountPerPartition(String jobId, int partitionId) {
+        try {
+            if(jobIdToPutBatchFinishedCountPartitions.get(jobId).containsKey(partitionId)) {
+                return jobIdToPutBatchFinishedCountPartitions.get(jobId).get(partitionId);
+            }
+            else {
+                return 0;
+            }
+        } catch (ExecutionException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static AtomicLongMap<Integer> getPutBatchFinishedCountAllPartitions(String jobId) {
+        try {
+            return jobIdToPutBatchFinishedCountPartitions.get(jobId);
+        } catch (ExecutionException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static void removePutBatchFinishedCountAllPartitions(String jobId) {
+        jobIdToPutBatchFinishedCountPartitions.invalidate(jobId);
+    }
+
+    public static boolean waitUntilPutBatchFinishedPerPartition(String jobId, long timeout, TimeUnit unit) {
+        long timeoutWallClock = System.currentTimeMillis() + unit.toMillis(timeout);
+        boolean result = false;
+        long totalPartitons = 0;
+
+        try {
+            while (jobIdToFinishLatch.getIfPresent(jobId).getCount() != 0) {
+                Thread.sleep(20);
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
+        }
+
+        try {
+            totalPartitons = jobIdToPutBatchRequiredCountPartitions.get(jobId).size();
+        }catch (ExecutionException e) {
+            throw new RuntimeException(e);
+        }
+
+        for(int partitionId = 0; partitionId < totalPartitons; partitionId = partitionId+1) {
+            try {
+                result = isPutBatchFinishedPerPartition(jobId, partitionId);
+                while (!result && System.currentTimeMillis() <= timeoutWallClock) {
+                    Thread.sleep(20);
+                    result = isPutBatchFinishedPerPartition(jobId, partitionId);
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException(e);
+            }
+        }
+
+        return result;
+    }
+
+    public static long addPutBatchRequiredCountPerPartition(String jobId, int partitionId, long count) {
+        try {
+            return jobIdToPutBatchRequiredCountPartitions.get(jobId).addAndGet(partitionId, count);
+        }catch (ExecutionException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+
+    public static long getPutBatchRequiredCountPerPartition(String jobId, int partitionId) {
+        try {
+            return jobIdToPutBatchRequiredCountPartitions.get(jobId).get(partitionId);
+        } catch (ExecutionException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static AtomicLongMap<Integer> getPutBatchRequiredCountAllPartitions(String jobId) {
+        try {
+            return jobIdToPutBatchRequiredCountPartitions.get(jobId);
+        } catch (ExecutionException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static void removePutBatchRequiredCountAllPartitions(String jobId) {
+        jobIdToPutBatchRequiredCountPartitions.invalidate(jobId);
+    }
+
+
 }

@@ -26,7 +26,7 @@ from eggroll.core.pair_store.format import PairBinWriter, ArrayByteBuffer
 from eggroll.core.proto import proxy_pb2, proxy_pb2_grpc
 from eggroll.core.serdes import eggroll_serdes
 from eggroll.core.transfer_model import ErRollSiteHeader
-from eggroll.core.utils import get_static_er_conf
+from eggroll.core.utils import get_static_er_conf, _stringify
 from eggroll.core.utils import stringify_charset
 from eggroll.roll_site.utils.roll_site_utils import create_store_name
 from eggroll.utils.log_utils import get_logger
@@ -158,7 +158,8 @@ class RollSiteWriteBatch(PairWriteBatch):
     # TODO:0: configurable
     def push(self, obj):
         L.debug(f'pushing for task: {self.name}, partition id: {self.adapter.partition_id}, push cnt: {self.push_batch_cnt}')
-        task_info = proxy_pb2.Task(taskId=self.name, model=proxy_pb2.Model(name=self.adapter.roll_site_header_string, dataKey=self.namespace))
+        self.roll_site_header.set_option("partition_id", self.adapter.partition_id)
+        task_info = proxy_pb2.Task(taskId=self.name, model=proxy_pb2.Model(name=_stringify(self.roll_site_header), dataKey=self.namespace))
 
         command_test = proxy_pb2.Command()
 
@@ -197,8 +198,9 @@ class RollSiteWriteBatch(PairWriteBatch):
         self.buffer = ArrayByteBuffer(self.ba)
 
     def send_end(self):
-        L.debug(f"RollSiteAdapter.send_end: name={self.name}")
-        task_info = proxy_pb2.Task(taskId=self.name, model=proxy_pb2.Model(name=self.adapter.roll_site_header_string, dataKey=self.namespace))
+        L.debug(f"RollSiteAdapter.send_end: tagged_key={self.tagged_key}")
+        self.roll_site_header.set_option("partition_id", self.adapter.partition_id)
+        task_info = proxy_pb2.Task(taskId=self.name, model=proxy_pb2.Model(name=_stringify(self.roll_site_header), dataKey=self.namespace))
 
         command_test = proxy_pb2.Command(name="set_status")
 
