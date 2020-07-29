@@ -104,9 +104,11 @@ class RollPairContext(object):
     def populate_processor(self, store: ErStore):
         return self.__session.populate_processor(store)
 
-    def load(self, namespace=None, name=None, options: dict = None):
+    def load(self, name=None, namespace=None, options: dict = None):
         if options is None:
             options = {}
+        if not namespace:
+            namespace = options.get('namespace', self.get_session().get_session_id())
         store_type = options.get('store_type', self.default_store_type)
         total_partitions = options.get('total_partitions', None)
         no_partitions_param = False
@@ -167,7 +169,7 @@ class RollPairContext(object):
         return rp.put_all(data, options=options)
 
     '''store name only supports full name and reg: *, *abc ,abc* and a*c'''
-    def cleanup(self, namespace, name, options: dict = None):
+    def cleanup(self, name, namespace, options: dict = None):
         if not namespace:
             raise ValueError('namespace cannot be blank')
         L.debug(f'cleaning up namespace={namespace}, name={name}')

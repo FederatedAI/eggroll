@@ -1,3 +1,4 @@
+#!/bin/bash
 #  Copyright (c) 2019 - now, Eggroll Authors. All Rights Reserved.
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,6 +14,7 @@
 #  limitations under the License.
 #
 #
-export EGGROLL_HOME=/data/projects/eggroll
-export MYSQL_HOME=/data/projects/mysql
-iplist=(127.0.0.xxx 127.0.0.xxx)
+
+user=app
+EGGROLL_HOME=/data/projects/eggroll
+iplist=(xxx xxx)
