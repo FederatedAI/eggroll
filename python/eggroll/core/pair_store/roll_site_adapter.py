@@ -205,7 +205,7 @@ class RollSiteWriteBatch(PairWriteBatch):
 
         packet = proxy_pb2.Packet(header=metadata)
 
-        max_retry_cnt = 100
+        max_retry_cnt = 1
         exception = None
         for i in range(1, max_retry_cnt + 1):
             try:
