@@ -62,6 +62,7 @@ class RollSiteAdapter(PairAdapter):
         self.is_writable = False
         if self.roll_site_header_string:
             self.roll_site_header = ErRollSiteHeader.from_proto_string(self.roll_site_header_string.encode(stringify_charset))
+            self.roll_site_header._options['partition_id'] = self.partition_id
             self.proxy_endpoint = ErEndpoint.from_proto_string(options['proxy_endpoint'].encode(stringify_charset))
             self.obj_type = options['obj_type']
             self.is_writable = True
@@ -158,8 +159,7 @@ class RollSiteWriteBatch(PairWriteBatch):
     # TODO:0: configurable
     def push(self, obj):
         L.debug(f'pushing for task: {self.name}, partition id: {self.adapter.partition_id}, push cnt: {self.push_batch_cnt}')
-        task_info = proxy_pb2.Task(taskId=self.name, model=proxy_pb2.Model(name=self.adapter.roll_site_header_string, dataKey=self.namespace))
-
+        task_info = proxy_pb2.Task(taskId=self.name, model=proxy_pb2.Model(name=_stringify(self.roll_site_header), dataKey=self.namespace))
         command_test = proxy_pb2.Command()
 
         # TODO: conf test as config and use it
@@ -198,7 +198,7 @@ class RollSiteWriteBatch(PairWriteBatch):
 
     def send_end(self):
         L.debug(f"RollSiteAdapter.send_end: name={self.name}")
-        task_info = proxy_pb2.Task(taskId=self.name, model=proxy_pb2.Model(name=self.adapter.roll_site_header_string, dataKey=self.namespace))
+        task_info = proxy_pb2.Task(taskId=self.name, model=proxy_pb2.Model(name=_stringify(self.roll_site_header), dataKey=self.namespace))
 
         command_test = proxy_pb2.Command(name="set_status")
 
