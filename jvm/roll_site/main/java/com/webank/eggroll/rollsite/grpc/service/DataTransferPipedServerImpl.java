@@ -223,19 +223,6 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
         //LOGGER.warn("pull last returned packet: {}", lastReturnedPacket);
     }
 
-    private void registerBroker(Proxy.Packet request, StreamObserver<Proxy.Packet> responseObserver) {
-        Proxy.Packet packet = null;
-
-        Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
-        Proxy.Data data = Proxy.Data.newBuilder().setValue(ByteString.copyFromUtf8("hello"))
-                .build();
-        packet = packetBuilder.setHeader(request.getHeader())
-                .setBody(data)
-                .build();
-        responseObserver.onNext(packet);
-        responseObserver.onCompleted();
-    }
-
     private void initJobSessionPair(Proxy.Packet request, StreamObserver<Proxy.Packet> responseObserver) {
         try {
             Proxy.Packet packet = null;
@@ -293,6 +280,13 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
             JobStatus.countDownFinishLatch(tagKey);
             JobStatus.setType(tagKey, rollSiteHeader.dataType());
 
+            String partitionId;
+            Option<String> tpOption = rollSiteHeader.options().get(StringConstants.PARTITION_ID_SNAKECASE());
+            if (tpOption instanceof Some) {
+                partitionId = ((Some<String>) tpOption).get();
+                JobStatus.addPutBatchRequiredCountPerPartition(tagKey, Integer.parseInt(partitionId), header.getSeq());
+            }
+
             responseObserver.onNext(packet);
             responseObserver.onCompleted();
         } catch (Exception e) {
@@ -317,7 +311,8 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
             long timeout = 5;
             TimeUnit unit = TimeUnit.MINUTES;
             boolean jobFinished = JobStatus.waitUntilAllCountDown(tagKey, timeout, unit)
-                    && JobStatus.waitUntilPutBatchFinished(tagKey, timeout, unit);
+                    && JobStatus.waitUntilPutBatchFinished(tagKey, timeout, unit)
+                    && JobStatus.waitUntilPutBatchFinishedPerPartition(tagKey, timeout, unit);
             Proxy.Metadata resultHeader = request.getHeader();
             String type = StringConstants.EMPTY();
             if (jobFinished) {
@@ -338,11 +333,14 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                 JobStatus.cleanupJobStatus(tagKey);
             } else {
                 LOGGER.debug("getStatus: job NOT finished: metadata={}. current latch count={}, "
-                                + "put batch required={}, put batch finished={}",
+                                + "put batch required={}, put batch finished={}, "
+                                + "put batch required all partitions={}, put batch finished all partitions={}",
                         oneLineStringInputMetadata,
                         JobStatus.getFinishLatchCount(tagKey),
                         JobStatus.getPutBatchRequiredCount(tagKey),
-                        JobStatus.getPutBatchFinishedCount(tagKey));
+                        JobStatus.getPutBatchFinishedCount(tagKey),
+                        JobStatus.getPutBatchRequiredCountAllPartitions(tagKey),
+                        JobStatus.getPutBatchFinishedCountAllPartitions(tagKey));
                 resultHeader = Proxy.Metadata.newBuilder().setAck(321).build();
             }
             Proxy.Data body = Proxy.Data.newBuilder().setKey(tagKey)
@@ -524,11 +522,6 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
         }
 
         try {
-            if (header.getOperator().equals("registerBroker")) {
-                registerBroker(request, responseObserver);
-                return;
-            }
-
             if (header.getOperator().equals("init_job_session_pair")) {
                 initJobSessionPair(request, responseObserver);
                 return;
