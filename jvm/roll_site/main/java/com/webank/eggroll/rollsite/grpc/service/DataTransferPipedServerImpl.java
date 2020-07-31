@@ -21,6 +21,7 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
+import com.webank.ai.eggroll.api.core.BasicMeta;
 import com.webank.ai.eggroll.api.networking.proxy.DataTransferServiceGrpc;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
 import com.webank.eggroll.core.constant.RollSiteConfKeys;
@@ -398,8 +399,25 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                 responseObserver.onCompleted();
             }
         } catch (Exception e) {
-            LOGGER.error("Error occured in unary call: ", e);
-            responseObserver.onError(e);
+            BasicMeta.Endpoint next = proxyGrpcStubFactory.getAsyncEndpoint(request.getHeader().getDst());
+            StringBuilder builder = new StringBuilder();
+            builder.append("src: ")
+                    .append(ToStringUtils.toOneLineString(request.getHeader().getSrc()))
+                    .append(", dst: ")
+                    .append(ToStringUtils.toOneLineString(request.getHeader().getDst()))
+                    .append(", my hop: ")
+                    .append(proxyServerConf.getPartyId())
+                    .append(":")
+                    .append(proxyServerConf.getPort())
+                    .append(" -> next hop: ")
+                    .append(next.getIp())
+                    .append(":")
+                    .append(next.getPort());
+            RuntimeException exceptionWithHop = new RuntimeException(builder.toString(), e);
+            String oneLineStringInputMetadata = ToStringUtils.toOneLineString(request.getHeader());
+            LOGGER.error("[PUSH][OBSERVER][ONERROR] error in push obj. metadata={}", oneLineStringInputMetadata);
+            LOGGER.error(ExceptionUtils.getStackTrace(exceptionWithHop));
+            responseObserver.onError(ErrorUtils.toGrpcRuntimeException(exceptionWithHop));
         }
     }
 
