@@ -191,8 +191,8 @@ object GrpcClientUtils extends Logging {
       var sslContext: SslContext = null
       val sslSessionTimeout = CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_SSL_SESSION_TIMEOUT_SEC.getWith(options).toLong
       val sslSessionCacheSize = CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_SSL_SESSION_CACHE_SIZE.getWith(options).toLong
-      val keyCrtPath = CoreConfKeys.CONFKEY_CORE_SECURITY_CRT_PATH.getWith(options)
-      val keyPath = CoreConfKeys.CONFKEY_CORE_SECURITY_KEY_PATH.getWith(options)
+      val keyCrtPath = CoreConfKeys.CONFKEY_CORE_SECURITY_CLIENT_CRT_PATH.getWith(options)
+      val keyPath = CoreConfKeys.CONFKEY_CORE_SECURITY_CLIENT_KEY_PATH.getWith(options)
       val sslContextBuilder = GrpcSslContexts
         .forClient
         .trustManager(caCrt)

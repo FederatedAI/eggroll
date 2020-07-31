@@ -77,7 +77,7 @@ public class DataTransferPipedClient {
         this.pipe = pipe;
         context.setStubClass(DataTransferServiceGrpc.DataTransferServiceStub.class);
 
-        needSecureChannel = proxyServerConf.isSecureServer();
+        needSecureChannel = proxyServerConf.isSecureClient();
 
         //.setCallerStreamObserverClassAndInitArgs(SameTypeCallerResponseStreamObserver.class)
         LOGGER.info("ip: {}, Port: {}", endpoint.getIp(), endpoint.getPort());
