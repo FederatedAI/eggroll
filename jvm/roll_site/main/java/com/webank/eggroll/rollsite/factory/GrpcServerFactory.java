@@ -334,7 +334,9 @@ public class GrpcServerFactory {
             String caCrt = properties.getProperty(CoreConfKeys.CONFKEY_CORE_SECURITY_CA_CRT_PATH().key());
             proxyServerConf.setCaCrtPath(caCrt);
 
-            if (StringUtils.isBlank(caCrt)) {
+            String clientCrt = CoreConfKeys.CONFKEY_CORE_SECURITY_CLIENT_CRT_PATH().get();
+            String clientKey = CoreConfKeys.CONFKEY_CORE_SECURITY_CLIENT_KEY_PATH().get();
+            if (StringUtils.isBlank(clientCrt) && StringUtils.isBlank(clientKey)) {
                 proxyServerConf.setSecureClient(false);
             } else {
                 proxyServerConf.setSecureClient(true);

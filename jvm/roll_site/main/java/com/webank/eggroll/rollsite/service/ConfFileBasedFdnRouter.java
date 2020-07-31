@@ -486,7 +486,8 @@ public class ConfFileBasedFdnRouter implements FdnRouter {
                 newRouteTable.put(coordinatorKey, roleTable);
             }
 
-            if (coordinatorKey.equals(proxyServerConf.getCoordinator())) {
+            if (coordinatorKey.equals(proxyServerConf.getCoordinator())
+                    || coordinatorKey.equals(proxyServerConf.getPartyId())) {
                 isIntranet = true;
             }
 
