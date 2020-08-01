@@ -31,6 +31,7 @@ import com.webank.eggroll.core.error.DistributedRuntimeException
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.transfer.GrpcTransferClient
 import com.webank.eggroll.core.util.{IdUtils, Logging}
+import org.apache.commons.lang3.exception.ExceptionUtils
 class RollPairContext(val session: ErSession,
                       defaultStoreType: String = RollPairConfKeys.EGGROLL_ROLLPAIR_DEFAULT_STORE_TYPE.get(),
                       defaultSerdesType: String = SerdesTypes.PICKLE) extends Logging {
@@ -131,6 +132,7 @@ class RollPair(val store: ErStore, val ctx: RollPairContext, val options: Map[St
 
             val transferClient = if (transferClients(partitionId) == null) {
               val partition = store.partitions(partitionId)
+              val egg = ctx.session.routeToEgg(partition)
               val task = ErTask(id = IdUtils.generateTaskId(job.id, partitionId, RollPair.PUT_BATCH),
                 name = RollPair.PUT_ALL,
                 inputs = Array(partition),
@@ -140,13 +142,13 @@ class RollPair(val store: ErStore, val ctx: RollPairContext, val options: Map[St
               val putBatchThread = new Thread {
                 override def run(): Unit = {
                   logTrace(s"thread started for put batch taskId=${task.id}")
-                  val commandClient = new CommandClient(ctx.session.routeToEgg(partition).commandEndpoint)
+                  val commandClient = new CommandClient(egg.commandEndpoint)
                   commandClient.call[ErTask](RollPair.EGG_RUN_TASK_COMMAND, task)
                   logTrace(s"thread ended for put batch taskId=${task.id}")
                 }
               }
               putBatchThread.setName(s"putBatch-${task.id}")
-              putBatchThread.setUncaughtExceptionHandler(new RollPairUncaughtExceptionHandler(error))
+              putBatchThread.setUncaughtExceptionHandler(new RollPairUncaughtExceptionHandler(error, egg))
               putBatchThread.start()
 
               putBatchThreads.update(partitionId, putBatchThread)
@@ -158,7 +160,7 @@ class RollPair(val store: ErStore, val ctx: RollPairContext, val options: Map[St
               newTransferClient.initForward(
                 dataBroker = newBroker,
                 tag = IdUtils.generateTaskId(jobId, partitionId, RollPair.PUT_BATCH),
-                processor = ctx.routeToEgg(store.partitions(partitionId)))
+                processor = egg)
 
               transferClients.update(partitionId, newTransferClient)
 
@@ -222,10 +224,21 @@ object RollPair {
   val ROLL_RUN_JOB_COMMAND = new CommandURI(s"${ROLL_PAIR_URI_PREFIX}/${RUN_JOB}")
 }
 
-class RollPairUncaughtExceptionHandler(error: DistributedRuntimeException) extends Thread.UncaughtExceptionHandler with Logging {
+class RollPairUncaughtExceptionHandler(error: DistributedRuntimeException, egg: ErProcessor) extends Thread.UncaughtExceptionHandler with Logging {
   override def uncaughtException(t: Thread, e: Throwable): Unit = {
-    logError(s"Error in thread ${t.getName}", e)
-    error.append(e)
+    val builder = new StringBuilder
+    builder.append("dst processor id: ")
+      .append(egg.id)
+      .append(", dst server node id: ")
+      .append(egg.serverNodeId)
+      .append(", dst host: ")
+      .append(egg.commandEndpoint.host)
+      .append(", dst port: ")
+      .append(egg.commandEndpoint.port)
+    val exceptionWithEggInfo = new RuntimeException(builder.toString, e)
+    logError(ExceptionUtils.getStackTrace(exceptionWithEggInfo))
+    logError(s"Error in thread ${t.getName}", exceptionWithEggInfo)
+    error.append(exceptionWithEggInfo)
     t.interrupt()
   }
 }
