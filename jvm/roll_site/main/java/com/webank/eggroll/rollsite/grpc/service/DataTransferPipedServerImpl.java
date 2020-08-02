@@ -335,13 +335,15 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
             } else {
                 LOGGER.debug("getStatus: job NOT finished: metadata={}. current latch count={}, "
                                 + "put batch required={}, put batch finished={}, "
-                                + "put batch required all partitions={}, put batch finished all partitions={}",
+                                + "put batch required all partitions={}, put batch finished all partitions={}, "
+                                + "put batch status={}",
                         oneLineStringInputMetadata,
                         JobStatus.getFinishLatchCount(tagKey),
                         JobStatus.getPutBatchRequiredCount(tagKey),
                         JobStatus.getPutBatchFinishedCount(tagKey),
                         JobStatus.getPutBatchRequiredCountAllPartitions(tagKey),
-                        JobStatus.getPutBatchFinishedCountAllPartitions(tagKey));
+                        JobStatus.getPutBatchFinishedCountAllPartitions(tagKey),
+                        JobStatus.getPutBatchStatus(tagKey));
                 resultHeader = Proxy.Metadata.newBuilder().setAck(321).build();
             }
             Proxy.Data body = Proxy.Data.newBuilder().setKey(tagKey)

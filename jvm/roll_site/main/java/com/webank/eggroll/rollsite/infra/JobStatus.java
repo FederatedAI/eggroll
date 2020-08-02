@@ -17,6 +17,7 @@ public class JobStatus {
     private static final LoadingCache<String, AtomicLong> jobIdToPutBatchRequiredCount;
     private static final LoadingCache<String, AtomicLong> jobIdToPutBatchFinishedCount;
     private static final LoadingCache<String, String> tagkeyToObjType;
+    private static final LoadingCache<String, String> jobIdToPutBatchStatus;
     private static final LoadingCache<String, AtomicLongMap<Integer>> jobIdToPutBatchFinishedCountPartitions;
     private static final LoadingCache<String, AtomicLongMap<Integer>> jobIdToPutBatchRequiredCountPartitions;
 
@@ -110,6 +111,20 @@ public class JobStatus {
                     public AtomicLongMap<Integer> load(String key) throws Exception {
                         synchronized (putBatchLock) {
                             return AtomicLongMap.create();
+                        }
+                    }
+                });
+
+        jobIdToPutBatchStatus = CacheBuilder.newBuilder()
+                .maximumSize(1000000)
+                .concurrencyLevel(50)
+                .expireAfterAccess(48, TimeUnit.HOURS)
+                .recordStats()
+                .build(new CacheLoader<String, String>() {
+                    @Override
+                    public String load(String key) throws Exception {
+                        synchronized (putBatchLock) {
+                            return "";
                         }
                     }
                 });
@@ -448,5 +463,15 @@ public class JobStatus {
         jobIdToPutBatchRequiredCountPartitions.invalidate(jobId);
     }
 
+    public static String addPutBatchStatus(String jobId, String putBatchStatus) {
+        String old = jobIdToPutBatchStatus.getIfPresent(jobId);
+        jobIdToSessionId.put(jobId, putBatchStatus);
+        return old;
+    }
+
+
+    public static String getPutBatchStatus(String jobId) {
+        return jobIdToSessionId.getIfPresent(jobId);
+    }
 
 }
