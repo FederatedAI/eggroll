@@ -68,6 +68,8 @@ class RollSiteUtil(val erSessionId: String,
       logDebug(s"put batch finished for namespace=${namespace}, name=${name}")
     } catch {
       case e: Exception => {
+        val errorMsg = "put batch error for namespace=${namespace}, name=${name}" + e.toString
+        JobStatus.addPutBatchStatus(name, errorMsg)
         logError("put batch error for namespace=${namespace}, name=${name}", e)
         throw new RuntimeException(e)
       }
