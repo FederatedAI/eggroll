@@ -27,7 +27,7 @@ from eggroll.core.proto import proxy_pb2, proxy_pb2_grpc
 from eggroll.core.serdes import eggroll_serdes
 from eggroll.core.transfer_model import ErRollSiteHeader
 from eggroll.core.utils import get_static_er_conf
-from eggroll.core.utils import stringify_charset
+from eggroll.core.utils import stringify_charset, _stringify
 from eggroll.roll_site.utils.roll_site_utils import create_store_name
 from eggroll.utils.log_utils import get_logger
 

@@ -260,7 +260,6 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
             ErRollSiteHeader rollSiteHeader = restoreRollSiteHeader(
                     request.getHeader().getTask().getModel().getName());
             String tagKey = genTagKey(rollSiteHeader);
-            JobStatus.addPutBatchRequiredCount(tagKey, header.getSeq());
 
             LOGGER.debug("markEnd: rollsiteSessionId={}, tagKey={}", rollSiteHeader.rollSiteSessionId(),
                     tagKey);  //obj or RollPair
@@ -277,15 +276,19 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
 
                 totalPartitions = Integer.parseInt(tpString);
                 JobStatus.createLatch(tagKey, totalPartitions);
+                JobStatus.createJobIdToMarkEnd(tagKey);
             }
-            JobStatus.countDownFinishLatch(tagKey);
             JobStatus.setType(tagKey, rollSiteHeader.dataType());
 
-            String partitionId;
-            Option<String> tpOption = rollSiteHeader.options().get(StringConstants.PARTITION_ID_SNAKECASE());
-            if (tpOption instanceof Some) {
-                partitionId = ((Some<String>) tpOption).get();
-                JobStatus.addPutBatchRequiredCountPerPartition(tagKey, Integer.parseInt(partitionId), header.getSeq());
+            Option<String> piOption = rollSiteHeader.options().get(StringConstants.PARTITION_ID_SNAKECASE());
+            if (piOption instanceof Some) {
+                Integer partitionId = Integer.parseInt(((Some<String>) piOption).get());
+
+                JobStatus.addPutBatchRequiredCountPerPartition(tagKey, partitionId, header.getSeq());
+                JobStatus.setPartitionMarkedEnd(tagKey, partitionId);
+            } else {
+                JobStatus.countDownFinishLatch(tagKey);
+                JobStatus.addPutBatchRequiredCount(tagKey, header.getSeq());
             }
 
             responseObserver.onNext(packet);
@@ -312,8 +315,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
             long timeout = 5;
             TimeUnit unit = TimeUnit.MINUTES;
             boolean jobFinished = JobStatus.waitUntilAllCountDown(tagKey, timeout, unit)
-                    && JobStatus.waitUntilPutBatchFinished(tagKey, timeout, unit)
-                    && JobStatus.waitUntilPutBatchFinishedPerPartition(tagKey, timeout, unit);
+                    && JobStatus.waitUntilPutBatchFinished(tagKey, timeout, unit);
             Proxy.Metadata resultHeader = request.getHeader();
             String type = StringConstants.EMPTY();
             if (jobFinished) {
