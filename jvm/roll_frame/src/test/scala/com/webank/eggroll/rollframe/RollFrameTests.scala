@@ -25,6 +25,7 @@ import com.webank.eggroll.core.meta.{ErStore, ErStoreLocator}
 import com.webank.eggroll.core.util.TimeUtils
 import com.webank.eggroll.util.Logging
 import com.webank.eggroll.format._
+import com.webank.eggroll.rollframe.embpython.PyInterpreter
 import com.webank.eggroll.util.SchemaUtil
 import junit.framework.TestCase
 import org.junit.{Before, Ignore, Test}
@@ -34,7 +35,7 @@ import org.junit.{Before, Ignore, Test}
  */
 class RollFrameTests extends Logging {
   protected val ta: TestAssets.type = TestAssets
-  val fieldCount: Int = 300
+  val fieldCount: Int = 100
   protected val rowCount = 10000 // total value count = rowCount * fbCount * fieldCount
   protected val fbCount = 1 // the num of batch
   protected val supportTorch = true
@@ -113,6 +114,52 @@ class RollFrameTests extends Logging {
   }
 
   @Test
+  def testRunPythonCodeMock(): Unit ={
+    inputStore = ctx.createStore("test1", "a1", StringConstants.FILE, 1)
+    val rf = ctx.load(inputStore)
+    val code:String =
+      """
+        |a = partition_id
+        |b = 3
+        |c = a + b
+        |state = 0
+        |""".stripMargin
+    rf.runPythonDistributedMock(code)
+
+    val stop = 1
+
+  }
+
+  @Test
+  def testRunPythonCode(): Unit ={
+    inputTensorStore = ctx.createStore("test1", "t1", StringConstants.FILE, 1)
+    val inputCacheStore = ctx.dumpCache(inputTensorStore)
+    val outputStore = ctx.forkStore(inputCacheStore,"test","out1")
+    val rf = ctx.load(inputCacheStore)
+    val code:String =
+      """
+        |import numpy as np
+        |import torch
+        |data = torch.from_numpy(input_data)
+        |print(data.type())
+        |a = world_size
+        |b = rank
+        |print(parameters)
+        |print(parameters.dtype)
+        |
+        |state = 0
+        |result = torch.ones(3).numpy()
+        |result = result.astype(np.float64)
+        |""".stripMargin
+
+    val parameters = Array(1.0,2.0)
+    rf.runPythonDistributed(code,fieldCount,parameters,outputStore)
+    val res = FrameStore(outputStore,0).readOne()
+    assert(res.readDouble(0,0) == 1.0)
+    println("结束")
+  }
+
+  @Test
   def testLoadRollFrame(): Unit = {
     val rf = ctx.load(ctx.dumpCache(inputStore))
     rf.mapBatch(fb => {
@@ -170,7 +217,7 @@ class RollFrameTests extends Logging {
     cacheStore.partitions.foreach(println)
     val path = FrameStore.getStorePath(cacheStore.partitions(0))
     println(path)
-    val fb = ctx.frameTransfer.Roll.pull(path)
+    val fb = ctx.frameTransfer.Roll.pull(path).next()
     TestCase.assertNotNull(fb.isEmpty)
   }
 

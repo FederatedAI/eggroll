@@ -741,6 +741,9 @@ class FrameFormatTests extends Logging {
     start = System.currentTimeMillis()
     val fb4 = FrameUtils.fork(fb)
     println(s"fork fb4 time = ${System.currentTimeMillis() - start} ms")
+    start = System.currentTimeMillis()
+    val fb5 = FrameUtils.transfer(fb)
+    println(s"fork fb5 time = ${System.currentTimeMillis() - start} ms")
 
 
     val ads = fb.rootSchema.arrowSchema.getVector(0).getDataBufferAddress

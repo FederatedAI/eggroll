@@ -4,6 +4,7 @@ import com.webank.eggroll.format.{FrameBatch, FrameSchema, FrameUtils}
 import com.webank.eggroll.util.SchemaUtil
 
 object Script {
+  // TODO: output tensor share the same memory
   def runTorchMap(path:String, fb: FrameBatch, parameters: Array[Double]): FrameBatch = {
     val tensor = new TorchTensor
     tensor.setAddress(fb.rootVectors(0).getDataBufferAddress)

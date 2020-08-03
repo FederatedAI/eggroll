@@ -654,7 +654,8 @@ object FrameUtils {
    */
   def copyMemory(fv: FrameVector, value: Array[Double]): Unit = {
     val dataByteBuffer = fv.fieldVector.getDataBuffer.nioBuffer()
-    dataByteBuffer.order(ByteOrder.LITTLE_ENDIAN) // 改变读写顺序为小端,转为ByteBuffer后由小端变成大端，要人为修改回来。
+    // Order changed form little endian to big little after converting to ByteBuffer.So needing to set manually
+    dataByteBuffer.order(ByteOrder.LITTLE_ENDIAN)
     dataByteBuffer.asDoubleBuffer().put(value)
 
     val validityByteBuffer = fv.fieldVector.getValidityBuffer
@@ -670,6 +671,18 @@ object FrameUtils {
     val res = new Array[Double](count)
     res.indices.foreach{i =>
       res(i) = fv.readDouble(i)
+    }
+    res
+  }
+
+  /**
+   * convert direct memory double type to float array
+   */
+  def toFloatArray(fv:FrameVector):Array[Float] = {
+    val count = fv.valueCount
+    val res = new Array[Float](count)
+    res.indices.foreach{i =>
+      res(i) = fv.readDouble(i).toFloat
     }
     res
   }

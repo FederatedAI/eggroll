@@ -31,8 +31,10 @@ import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.serdes.DefaultScalaSerdes
 import com.webank.eggroll.core.util.TimeUtils
 import com.webank.eggroll.format._
+import com.webank.eggroll.rollframe.embpython.PyInterpreter
 import com.webank.eggroll.rollframe.pytorch.{Matrices, Script}
 import com.webank.eggroll.util.{Logging, SchemaUtil}
+import jep.NDArray
 
 import scala.collection.immutable.Range.Inclusive
 
@@ -255,7 +257,7 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
   def torchMap(path: String, parameters: Array[Double], output: ErStore = null): RollFrame = {
     val func: (FrameBatch) => FrameBatch = { fb =>
       Script.runTorchMap(path, fb, parameters)
-    }
+  }
 
     mapBatch(func, output)
   }
@@ -377,6 +379,72 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
     }
     runUnaryJob(RollFrame.mapCommand, func, jobId = jobId)
   }
+
+  /**
+   * thd method don't have return value, can set a fix variable
+   * @param code Python code
+   */
+  def runPythonDistributedMock(code:String): Unit ={
+    val jobType = RollFrame.embeddedPython
+    val jobId = jobType + "_" + genJobId()
+    val func: (EggFrameContext, ErTask, Iterator[FrameBatch], FrameStore) => ErPair = {
+      (ctx, task, input, output) =>
+        try {
+          // ignore data input
+          val interp = PyInterpreter()
+          // TODO: host and ip can be config.
+          ctx.serverNodes(0).transferEndpoint.host
+          interp.setValue("world_size",ctx.serverNodes.length)
+          interp.setValue("rank",task.inputs.head.id)
+          interp.exec(code)
+          // can get a state variable
+          assert(interp.getValue("state").asInstanceOf[Long] == 0,"Some error in python interpreter,because get error state")
+        } catch {
+          case e: Throwable => throw new RuntimeException(s"mapCommand task failed,task:$task", e)
+        }
+        null
+    }
+    runUnaryJob(RollFrame.embeddedPython, func, jobId = jobId)
+    println("finished run pytorch distributed model")
+  }
+
+  def runPythonDistributed(code:String,field:Int,parameters:Array[Double], output: ErStore = null):Unit = {
+    val jobType = RollFrame.embeddedPython
+    val jobId = jobType + "_" + genJobId()
+    val func: (EggFrameContext, ErTask, Iterator[FrameBatch], FrameStore) => ErPair = {
+      (ctx, task, input, output) =>
+        try {
+          // TODO: host and ip can be config.
+          // three input args: data, field, parameters
+          // one output args: result, state
+          val interp = PyInterpreter()
+          interp.setValue("world_size",ctx.serverNodes.length)
+          interp.setValue("rank",task.inputs.head.id)
+          val data = FrameUtils.toFloatArray(input.next().rootVectors(0))
+          val inputData = new NDArray[Array[Float]](data, data.length/field, field)
+          val inputParameters = new NDArray[Array[Float]](parameters.map(_.toFloat),parameters.length)
+          interp.setValue("parameters",inputParameters)
+          interp.setValue("input_data",inputData)
+          interp.exec(code)
+          // can get a state variable
+          assert(interp.getValue("state").asInstanceOf[Long] == 0,"Some error in python interpreter,because get error state")
+          val result = interp.getValue("result").asInstanceOf[NDArray[Double]]
+          val resData = result.getData.asInstanceOf[Array[Double]]
+          val rootSchema = new FrameSchema(SchemaUtil.oneFieldSchemaString)
+          val outFb = new FrameBatch(rootSchema, resData.length)
+          FrameUtils.copyMemory(outFb.rootVectors(0), resData)
+          output.append(outFb)
+          output.close()
+          println("PythonDistributed state:" + interp.getValue("state"))
+        } catch {
+          case e: Throwable => throw new RuntimeException(s"mapCommand task failed,task:$task", e)
+        }
+        null
+    }
+    runUnaryJob(RollFrame.embeddedPython, func, jobId = jobId,output = output)
+    println("finished run pytorch distributed model.")
+  }
+
 
   def genData(f: FrameBatch => FrameBatch): RollFrame = {
     val jobType = RollFrame.genData
@@ -761,6 +829,7 @@ object RollFrame {
   val eggFrame = "EggFrame"
   val mapBatch = "mapBatch"
   val mapCommand = "mapCommand"
+  val embeddedPython = "embeddedPython"
   val reduce = "reduce"
   val genData = "genData"
   val allReduce = "allReduce"

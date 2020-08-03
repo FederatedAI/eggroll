@@ -51,7 +51,6 @@ class PyInterpreter private {
 
   def invoke(name:String,vars:Any*): AnyRef ={
     try{
-      println(vars)
       this.interp.invoke(name,vars)
     } catch {
       case e:Throwable => e.printStackTrace()
