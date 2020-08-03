@@ -5,6 +5,7 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.util.concurrent.AtomicLongMap;
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -17,9 +18,15 @@ public class JobStatus {
     private static final LoadingCache<String, AtomicLong> jobIdToPutBatchRequiredCount;
     private static final LoadingCache<String, AtomicLong> jobIdToPutBatchFinishedCount;
     private static final LoadingCache<String, String> tagkeyToObjType;
-    private static final LoadingCache<String, String> jobIdToPutBatchStatus;
+    private static final LoadingCache<String, String> jobIdToPutBatchException;
     private static final LoadingCache<String, AtomicLongMap<Integer>> jobIdToPutBatchFinishedCountPartitions;
     private static final LoadingCache<String, AtomicLongMap<Integer>> jobIdToPutBatchRequiredCountPartitions;
+    private static final LoadingCache<String, ConcurrentSkipListSet<Integer>> jobIdToMarkedEndPartitions;
+
+    private static final Object latchLock = new Object();
+    private static final Object putBatchLock = new Object();
+    private static final Object tagKeyLock = new Object();
+    private static final Object markEndLock = new Object();
 
     static {
         jobIdToSessionId = CacheBuilder.newBuilder()
@@ -109,13 +116,13 @@ public class JobStatus {
                 .build(new CacheLoader<String, AtomicLongMap<Integer>>() {
                     @Override
                     public AtomicLongMap<Integer> load(String key) throws Exception {
-                        synchronized (putBatchLock) {
+                        synchronized (markEndLock) {
                             return AtomicLongMap.create();
                         }
                     }
                 });
 
-        jobIdToPutBatchStatus = CacheBuilder.newBuilder()
+        jobIdToPutBatchException = CacheBuilder.newBuilder()
                 .maximumSize(1000000)
                 .concurrencyLevel(50)
                 .expireAfterAccess(48, TimeUnit.HOURS)
@@ -128,11 +135,21 @@ public class JobStatus {
                         }
                     }
                 });
-    }
 
-    private static final Object latchLock = new Object();
-    private static final Object putBatchLock = new Object();
-    private static final Object tagKeyLock = new Object();
+        jobIdToMarkedEndPartitions = CacheBuilder.newBuilder()
+            .maximumSize(1000000)
+            .concurrencyLevel(50)
+            .expireAfterAccess(48, TimeUnit.HOURS)
+            .recordStats()
+            .build(new CacheLoader<String, ConcurrentSkipListSet<Integer>>() {
+                @Override
+                public ConcurrentSkipListSet<Integer> load(String key) throws Exception {
+                    synchronized (markEndLock) {
+                        return new ConcurrentSkipListSet<Integer>();
+                    }
+                }
+            });
+    }
 
     public static LoadingCache<String, String> getJobIdToSessionId() {
         return jobIdToSessionId;
@@ -158,12 +175,15 @@ public class JobStatus {
         synchronized (latchLock) {
             synchronized (putBatchLock) {
                 synchronized (tagKeyLock) {
-                    removeLatch(jobId);
-                    removePutBatchRequiredCount(jobId);
-                    removePutBatchFinishedCount(jobId);
-                    removePutBatchRequiredCountAllPartitions(jobId);
-                    removePutBatchFinishedCountAllPartitions(jobId);
-                    removeType(jobId);
+                    synchronized (markEndLock) {
+                        removeLatch(jobId);
+                        removePutBatchRequiredCount(jobId);
+                        removePutBatchFinishedCount(jobId);
+                        removeJobIdToMarkEnd(jobId);
+                        removePutBatchRequiredCountAllPartitions(jobId);
+                        removePutBatchFinishedCountAllPartitions(jobId);
+                        removeType(jobId);
+                    }
                 }
             }
         }
@@ -435,10 +455,14 @@ public class JobStatus {
     }
 
     public static long addPutBatchRequiredCountPerPartition(String jobId, int partitionId, long count) {
-        try {
-            return jobIdToPutBatchRequiredCountPartitions.get(jobId).addAndGet(partitionId, count);
-        }catch (ExecutionException e) {
-            throw new RuntimeException(e);
+        synchronized (markEndLock) {
+            AtomicLongMap<Integer> jobRequiredCountPerPartition = jobIdToPutBatchRequiredCountPartitions
+                .getUnchecked(jobId);
+            if (!jobRequiredCountPerPartition.containsKey(partitionId)) {
+                jobRequiredCountPerPartition.addAndGet(partitionId, count);
+                addPutBatchRequiredCount(jobId, count);
+            }
+            return jobRequiredCountPerPartition.get(partitionId);
         }
     }
 
@@ -464,14 +488,39 @@ public class JobStatus {
     }
 
     public static String addPutBatchStatus(String jobId, String putBatchStatus) {
-        String old = jobIdToPutBatchStatus.getIfPresent(jobId);
+        String old = jobIdToPutBatchException.getIfPresent(jobId);
         jobIdToSessionId.put(jobId, putBatchStatus);
         return old;
     }
-
 
     public static String getPutBatchStatus(String jobId) {
         return jobIdToSessionId.getIfPresent(jobId);
     }
 
+    public static void createJobIdToMarkEnd(String jobId) {
+        synchronized (markEndLock) {
+            jobIdToMarkedEndPartitions.put(jobId, new ConcurrentSkipListSet<>());
+        }
+    }
+
+    public static void removeJobIdToMarkEnd(String jobId) {
+        synchronized (markEndLock) {
+            jobIdToMarkedEndPartitions.invalidate(jobId);
+        }
+    }
+
+    public static void setPartitionMarkedEnd(String jobId, Integer partitionId) {
+        synchronized (markEndLock) {
+            if (!hasPartitionMarkedEnd(jobId, partitionId)) {
+                jobIdToMarkedEndPartitions.getUnchecked(jobId).add(partitionId);
+                countDownFinishLatch(jobId);
+            }
+        }
+    }
+
+    public static boolean hasPartitionMarkedEnd(String jobId, Integer partitionId) {
+        synchronized (markEndLock) {
+            return jobIdToMarkedEndPartitions.getUnchecked(jobId).contains(partitionId);
+        }
+    }
 }
