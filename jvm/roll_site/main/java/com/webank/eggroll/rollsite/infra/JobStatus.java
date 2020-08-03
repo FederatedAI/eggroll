@@ -18,7 +18,7 @@ public class JobStatus {
     private static final LoadingCache<String, AtomicLong> jobIdToPutBatchRequiredCount;
     private static final LoadingCache<String, AtomicLong> jobIdToPutBatchFinishedCount;
     private static final LoadingCache<String, String> tagkeyToObjType;
-    private static final LoadingCache<String, String> jobIdToPutBatchException;
+    private static final LoadingCache<String, Throwable> jobIdToError;
     private static final LoadingCache<String, AtomicLongMap<Integer>> jobIdToPutBatchFinishedCountPartitions;
     private static final LoadingCache<String, AtomicLongMap<Integer>> jobIdToPutBatchRequiredCountPartitions;
     private static final LoadingCache<String, ConcurrentSkipListSet<Integer>> jobIdToMarkedEndPartitions;
@@ -27,6 +27,7 @@ public class JobStatus {
     private static final Object putBatchLock = new Object();
     private static final Object tagKeyLock = new Object();
     private static final Object markEndLock = new Object();
+    private static final Object errorLock = new Object();
 
     static {
         jobIdToSessionId = CacheBuilder.newBuilder()
@@ -90,7 +91,7 @@ public class JobStatus {
             .build(new CacheLoader<String, String>() {
                 @Override
                 public String load(String key) throws Exception {
-                    throw new IllegalStateException("loading of this cache is not supported");
+                throw new IllegalStateException("loading of this cache is not supported");
                 }
             });
 
@@ -122,17 +123,15 @@ public class JobStatus {
                     }
                 });
 
-        jobIdToPutBatchException = CacheBuilder.newBuilder()
+        jobIdToError = CacheBuilder.newBuilder()
                 .maximumSize(1000000)
                 .concurrencyLevel(50)
                 .expireAfterAccess(48, TimeUnit.HOURS)
                 .recordStats()
-                .build(new CacheLoader<String, String>() {
+                .build(new CacheLoader<String, Throwable>() {
                     @Override
-                    public String load(String key) throws Exception {
-                        synchronized (putBatchLock) {
-                            return "";
-                        }
+                    public Throwable load(String key) throws Exception {
+                        throw new IllegalStateException("loading of this cache is not supported");
                     }
                 });
 
@@ -144,9 +143,7 @@ public class JobStatus {
             .build(new CacheLoader<String, ConcurrentSkipListSet<Integer>>() {
                 @Override
                 public ConcurrentSkipListSet<Integer> load(String key) throws Exception {
-                    synchronized (markEndLock) {
-                        return new ConcurrentSkipListSet<Integer>();
-                    }
+                    throw new IllegalStateException("loading of this cache is not supported");
                 }
             });
     }
@@ -176,13 +173,16 @@ public class JobStatus {
             synchronized (putBatchLock) {
                 synchronized (tagKeyLock) {
                     synchronized (markEndLock) {
-                        removeLatch(jobId);
-                        removePutBatchRequiredCount(jobId);
-                        removePutBatchFinishedCount(jobId);
-                        removeJobIdToMarkEnd(jobId);
-                        removePutBatchRequiredCountAllPartitions(jobId);
-                        removePutBatchFinishedCountAllPartitions(jobId);
-                        removeType(jobId);
+                        synchronized (errorLock) {
+                            removeLatch(jobId);
+                            removePutBatchRequiredCount(jobId);
+                            removePutBatchFinishedCount(jobId);
+                            removeJobIdToMarkEnd(jobId);
+                            removePutBatchRequiredCountAllPartitions(jobId);
+                            removePutBatchFinishedCountAllPartitions(jobId);
+                            removeType(jobId);
+                            removeJobError(jobId);
+                        }
                     }
                 }
             }
@@ -396,6 +396,7 @@ public class JobStatus {
 
     public static long increasePutBatchFinishedCountPerPartition(String jobId, int partitionId) {
         try {
+            increasePutBatchFinishedCount(jobId);
             return jobIdToPutBatchFinishedCountPartitions.get(jobId).incrementAndGet(partitionId);
         }catch (ExecutionException e) {
             throw new RuntimeException(e);
@@ -416,11 +417,7 @@ public class JobStatus {
     }
 
     public static AtomicLongMap<Integer> getPutBatchFinishedCountAllPartitions(String jobId) {
-        try {
-            return jobIdToPutBatchFinishedCountPartitions.get(jobId);
-        } catch (ExecutionException e) {
-            throw new RuntimeException(e);
-        }
+        return jobIdToPutBatchFinishedCountPartitions.getIfPresent(jobId);
     }
 
     private static void removePutBatchFinishedCountAllPartitions(String jobId) {
@@ -476,25 +473,31 @@ public class JobStatus {
     }
 
     public static AtomicLongMap<Integer> getPutBatchRequiredCountAllPartitions(String jobId) {
-        try {
-            return jobIdToPutBatchRequiredCountPartitions.get(jobId);
-        } catch (ExecutionException e) {
-            throw new RuntimeException(e);
-        }
+        return jobIdToPutBatchRequiredCountPartitions.getIfPresent(jobId);
     }
 
     private static void removePutBatchRequiredCountAllPartitions(String jobId) {
         jobIdToPutBatchRequiredCountPartitions.invalidate(jobId);
     }
 
-    public static String addPutBatchStatus(String jobId, String putBatchStatus) {
-        String old = jobIdToPutBatchException.getIfPresent(jobId);
-        jobIdToSessionId.put(jobId, putBatchStatus);
-        return old;
+    public static Throwable addJobError(String jobId, Throwable jobError) {
+        synchronized (errorLock) {
+            Throwable old = jobIdToError.getIfPresent(jobId);
+            jobIdToError.put(jobId, jobError);
+            return old;
+        }
     }
 
-    public static String getPutBatchStatus(String jobId) {
-        return jobIdToSessionId.getIfPresent(jobId);
+    public static Throwable getJobError(String jobId) {
+        synchronized (errorLock) {
+            return jobIdToError.getIfPresent(jobId);
+        }
+    }
+
+    public static void removeJobError(String jobId) {
+        synchronized (errorLock) {
+            jobIdToError.invalidate(jobId);
+        }
     }
 
     public static void createJobIdToMarkEnd(String jobId) {

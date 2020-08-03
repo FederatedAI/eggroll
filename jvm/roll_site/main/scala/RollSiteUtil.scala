@@ -62,15 +62,21 @@ class RollSiteUtil(val erSessionId: String,
         logTrace(s"sending OBJECT from / to same party id, skipping. src=${srcPartyId}, dst=${dstPartyId}, tag=${rollSiteHeader.concat()}")
       }
 
-      JobStatus.increasePutBatchFinishedCount(name)
-      val partition:Option[String] = rollSiteHeader.options.get("partition_id")
-      JobStatus.increasePutBatchFinishedCountPerPartition(name, partition.getOrElse(0).toString.toInt)
-      logDebug(s"put batch finished for namespace=${namespace}, name=${name}")
+      val partition = rollSiteHeader.options.get("partition_id")
+
+      partition match {
+        case Some(s) =>
+          val partitionId = partition.get.toInt
+          JobStatus.increasePutBatchFinishedCountPerPartition(name, partitionId)
+          logDebug(s"put batch finished for namespace=${namespace}, name=${name}, partitionId=${partitionId}")
+        case None =>
+          JobStatus.increasePutBatchFinishedCount(name)
+          logDebug(s"put batch finished for namespace=${namespace}, name=${name}, partitionId=UNKNOWN")
+      }
     } catch {
       case e: Exception => {
-        val errorMsg = "put batch error for namespace=${namespace}, name=${name}" + e.toString
-        JobStatus.addPutBatchStatus(name, errorMsg)
-        logError("put batch error for namespace=${namespace}, name=${name}", e)
+        JobStatus.addJobError(name, e)
+        logError(s"put batch error for namespace=${namespace}, name=${name}", e)
         throw new RuntimeException(e)
       }
     }
