@@ -68,10 +68,11 @@ class TransferService(object):
         while not result or key not in TransferService.data_buffer:
             sleep(min(0.1 * retry, 30))
             L.debug(f"waiting broker tag:{key}, retry:{retry}")
-            result = TransferService.data_buffer.get(key, None)
+            with TransferService.mutex as e:
+                result = TransferService.data_buffer.get(key, None)
             retry += 1
             if retry > 600:
-                raise RuntimeError("cannot get broker:" + key)
+                raise RuntimeError(f"cannot get broker={key}, result={result}, data_buffer={TransferService.data_buffer}")
         return result
 
     @staticmethod
