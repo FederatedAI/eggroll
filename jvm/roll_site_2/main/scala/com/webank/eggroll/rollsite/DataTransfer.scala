@@ -120,6 +120,7 @@ class DataTransferClient(defaultEndpoint: ErEndpoint, isSecure: Boolean = false)
     }
 
     streamObserver.onCompleted()
+    finishLatch.await()
 
     result
   }
