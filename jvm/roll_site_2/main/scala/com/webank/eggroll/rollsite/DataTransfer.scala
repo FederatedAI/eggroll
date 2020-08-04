@@ -18,6 +18,8 @@
 
 package com.webank.eggroll.rollsite
 
+import java.util.concurrent.CountDownLatch
+
 import com.webank.ai.eggroll.api.networking.proxy.{DataTransferServiceGrpc, Proxy}
 import com.webank.eggroll.core.constant.RollSiteConfKeys
 import com.webank.eggroll.core.meta.ErEndpoint
@@ -92,6 +94,8 @@ class DataTransferClient(defaultEndpoint: ErEndpoint, isSecure: Boolean = false)
     val channel = GrpcClientUtils.getChannel(endpoint, isSecure, options)
     val stub = DataTransferServiceGrpc.newStub(channel)
     var result: Proxy.Metadata = null
+    val finishLatch = new CountDownLatch(1)
+
     val streamObserver = stub.push(new StreamObserver[Proxy.Metadata] {
       // define what to do when server responds
       override def onNext(v: Proxy.Metadata): Unit = {
@@ -99,12 +103,17 @@ class DataTransferClient(defaultEndpoint: ErEndpoint, isSecure: Boolean = false)
       }
 
       // define what to do when server gives error - backward propagation
-      override def onError(throwable: Throwable): Unit = ???
+      override def onError(throwable: Throwable): Unit = {
+        // process error here
+        finishLatch.countDown()
+      }
 
       // define what to do when server finishes
-      override def onCompleted(): Unit = ???
+      override def onCompleted(): Unit = {
+        // process finish here
+        finishLatch.countDown()
+      }
     })
-
 
     for (request <- requests) {
       streamObserver.onNext(request)
