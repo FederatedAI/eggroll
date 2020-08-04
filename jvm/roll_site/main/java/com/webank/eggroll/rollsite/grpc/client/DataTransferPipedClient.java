@@ -77,7 +77,11 @@ public class DataTransferPipedClient {
         this.pipe = pipe;
         context.setStubClass(DataTransferServiceGrpc.DataTransferServiceStub.class);
 
-        needSecureChannel = proxyServerConf.isSecureClient();
+        if(fdnRouter.isIntranet(endpoint)) {
+            needSecureChannel = false;
+        } else {
+            needSecureChannel = proxyServerConf.isSecureClient();
+        }
 
         //.setCallerStreamObserverClassAndInitArgs(SameTypeCallerResponseStreamObserver.class)
         LOGGER.info("ip: {}, Port: {}", endpoint.getIp(), endpoint.getPort());

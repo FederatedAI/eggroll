@@ -59,6 +59,7 @@ public class ConfFileBasedFdnRouter implements FdnRouter {
     private static final String IP = "ip";
     private static final String PORT = "port";
     private static final String HOSTNAME = "hostname";
+    private static final String SECURE = "is_secure";
     private static final String DEFAULT = "default";
     private static final Logger LOGGER = LogManager.getLogger(ConfFileBasedFdnRouter.class);
     private final BasicMeta.Endpoint emptyEndpoint;
@@ -522,6 +523,13 @@ public class ConfFileBasedFdnRouter implements FdnRouter {
                         String targetHostname = endpointJson.get(HOSTNAME).getAsString();
                         endpointBuilder.setHostname(targetHostname);
                         newRouteNeighbours.add(targetHostname);
+                    }
+
+                    if (endpointJson.has(SECURE)) {
+                        String securePort = endpointJson.get(SECURE).getAsString();
+                        if("false".equals(securePort.toLowerCase()) || ("0".equals(securePort))) {
+                            isIntranet = true;
+                        }
                     }
 
                     BasicMeta.Endpoint endpoint = endpointBuilder.build();
