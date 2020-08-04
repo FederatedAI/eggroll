@@ -526,8 +526,8 @@ public class ConfFileBasedFdnRouter implements FdnRouter {
                     }
 
                     if (endpointJson.has(SECURE)) {
-                        String securePort = endpointJson.get(SECURE).getAsString();
-                        if("false".equals(securePort.toLowerCase()) || ("0".equals(securePort))) {
+                        String isSecure = endpointJson.get(SECURE).getAsString();
+                        if("false".equals(isSecure.toLowerCase()) || ("0".equals(isSecure))) {
                             isIntranet = true;
                         }
                     }
