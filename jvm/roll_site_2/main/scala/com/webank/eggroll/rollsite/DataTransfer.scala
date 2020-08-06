@@ -18,13 +18,14 @@
 
 package com.webank.eggroll.rollsite
 
-import java.util.concurrent.CountDownLatch
+import java.util.concurrent.{ArrayBlockingQueue, CountDownLatch, Future}
+import java.util.concurrent.atomic.AtomicBoolean
 
 import com.webank.ai.eggroll.api.networking.proxy.{DataTransferServiceGrpc, Proxy}
 import com.webank.eggroll.core.constant.RollSiteConfKeys
 import com.webank.eggroll.core.meta.ErEndpoint
 import com.webank.eggroll.core.transfer.GrpcClientUtils
-import com.webank.eggroll.core.util.{ErrorUtils, Logging}
+import com.webank.eggroll.core.util.{ErrorUtils, Logging, ThreadPoolUtils, ToStringUtils}
 import io.grpc.stub.StreamObserver
 
 class DataTransferService extends DataTransferServiceGrpc.DataTransferServiceImplBase with Logging {
@@ -33,34 +34,88 @@ class DataTransferService extends DataTransferServiceGrpc.DataTransferServiceImp
   override def push(responseObserver: StreamObserver[Proxy.Metadata]): StreamObserver[Proxy.Packet] = {
     // refer to ServerPushRequestStreamObserver, and simplifies it
     new StreamObserver[Proxy.Packet] {
-      override def onNext(v: Proxy.Packet): Unit = {
+      val inited = new AtomicBoolean(false)
+      val broker = new FifoBroker[Proxy.Packet]()
+      var processFunc: Proxy.Packet => Unit = _
+      var response: Proxy.Metadata = _
+      var client: DataTransferClient = _
+      var clientFuture: Future[Proxy.Metadata] = _
+      var isDst: Boolean = _
+
+      override def onNext(request: Proxy.Packet): Unit = {
         /**
          * check if dst is myself:
          *   - yes -> gets a ErSession and sends data to it using internal protocol (the one which TransferService is using), but reserve the possibility to use external protocol (proxy protocol).
          *   - no -> forwards it to the next hop.
          */
 
+        def whenDst(request: Proxy.Packet): Unit = {
+          // use internal protocol to put all
+          logInfo(s"got data in dst: ${ToStringUtils.toOneLineString(request)}")
+        }
 
+        def whenNotDst(request: Proxy.Packet): Unit = {
+          broker.broker.put(request)
+        }
+
+        val myPartyId = RollSiteConfKeys.EGGROLL_ROLLSITE_PARTY_ID.get()
+        val dstPartyId = request.getHeader.getDst.getPartyId
+        if (!inited.get()) {
+          // get host:port from router
+          processFunc = if (myPartyId.equals(dstPartyId)) {
+            isDst = true
+            logInfo("i am dst")
+            clientFuture = DataTransferService.dataTransferExecutor.submit(() => {
+              Proxy.Metadata.getDefaultInstance
+            })
+            whenDst
+          } else {
+            isDst = false
+            logInfo("i am not dst")
+
+            clientFuture = DataTransferService.dataTransferExecutor.submit(() => {
+              client = new DataTransferClient(ErEndpoint("localhost", 9470))
+              client.push(broker)
+            })
+            whenNotDst
+          }
+
+          response = request.getHeader
+          inited.compareAndSet(false, true)
+        }
+
+        processFunc(request)
+        logInfo(s"push on next: ${ToStringUtils.toOneLineString(request)}")
       }
 
       override def onError(throwable: Throwable): Unit = {
         // error logic here
+        logError(throwable)
       }
 
       override def onCompleted(): Unit = {
         // complete logic here
+        broker.signalWriteFinish()
+
+        response = clientFuture.get()
+
+        responseObserver.onNext(response)
+        responseObserver.onCompleted()
+        logInfo("completed")
       }
     }
   }
 
   /**
    */
-  override def unaryCall(request: Proxy.Packet, responseObserver: StreamObserver[Proxy.Packet]): Unit = {
+  override def unaryCall(request: Proxy.Packet,
+                         responseObserver: StreamObserver[Proxy.Packet]): Unit = {
     /**
      * Check if dst is myself.
      *   - yes -> check command to see what the request wants.
      *   - no -> forwards it to the next hop synchronously.
      */
+    logInfo(s"unary call received. ${ToStringUtils.toOneLineString(request)}")
 
     try {
       val myPartyId = RollSiteConfKeys.EGGROLL_ROLLSITE_PARTY_ID.get()
@@ -68,14 +123,14 @@ class DataTransferService extends DataTransferServiceGrpc.DataTransferServiceImp
       val result = if (myPartyId.equals(dstPartyId)) {
         processCommand(request)
       } else {
-        val client = new DataTransferClient(ErEndpoint("next.hop", 9999))
+        val client = new DataTransferClient(ErEndpoint("localhost", 9470))
         client.unaryCall(request)
       }
 
       responseObserver.onNext(result)
       responseObserver.onCompleted()
     } catch {
-      case t: _ =>
+      case t: Throwable =>
         val wrapped = ErrorUtils.toGrpcRuntimeException(t)
         logError(wrapped)
         responseObserver.onError(wrapped)
@@ -83,7 +138,14 @@ class DataTransferService extends DataTransferServiceGrpc.DataTransferServiceImp
   }
 
   // processes commands e.g. getStatus, pushObj, pullObj etc.
-  private def processCommand(request: Proxy.Packet): Proxy.Packet = ???
+  private def processCommand(request: Proxy.Packet): Proxy.Packet = {
+    logInfo(s"packet to myself. response: ${ToStringUtils.toOneLineString(request)}")
+    request
+  }
+}
+
+object DataTransferService {
+  val dataTransferExecutor = ThreadPoolUtils.newFixedThreadPool(10, "data-transfer")
 }
 
 class DataTransferClient(defaultEndpoint: ErEndpoint, isSecure: Boolean = false) extends Logging {
@@ -100,6 +162,7 @@ class DataTransferClient(defaultEndpoint: ErEndpoint, isSecure: Boolean = false)
       // define what to do when server responds
       override def onNext(v: Proxy.Metadata): Unit = {
         result = v
+        logInfo(s"response metadata: ${result}")
       }
 
       // define what to do when server gives error - backward propagation
