@@ -106,7 +106,7 @@ class NioFrameTransfer(nodes: Array[ErProcessor], timeout: Int = 600 * 1000) ext
   }
 
   /**
-   * The scatter op in here mya be different with another scatter op than split and transfer to every egg node.
+   * The scatter op in here mya be different with another scatter op that split and transfer to every egg node.
    * Here only do the last job.
    *
    * @param path       queuePath

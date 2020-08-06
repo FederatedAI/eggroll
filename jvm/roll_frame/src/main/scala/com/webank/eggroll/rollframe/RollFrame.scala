@@ -417,11 +417,11 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
     val func: (EggFrameContext, ErTask, Iterator[FrameBatch], FrameStore) => ErPair = {
       (ctx, task, input, output) =>
         try {
-          // three input args: data, field, parameters, input_data,_master_addr, _master_port
-          // one output args: result, state
+          // input args of python interpreter: _world_size, _rank, _input_data, _parameters, _master_addr, _master_port
+          // output args of python interpreter : _result, _state
           val interp = PyInterpreter()
-          interp.setValue("world_size", ctx.serverNodes.length)
-          interp.setValue("rank", task.inputs.head.id)
+          interp.setValue("_world_size", ctx.serverNodes.length)
+          interp.setValue("_rank", task.inputs.head.id)
           // default is the first server
           val rollServerIp = ctx.rootServer.transferEndpoint.host
           interp.setValue("_master_addr", rollServerIp)
@@ -431,12 +431,12 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
           val data = FrameUtils.toFloatArray(input.next().rootVectors(0))
           val inputData = new NDArray[Array[Float]](data, data.length / field, field)
           val inputParameters = new NDArray[Array[Float]](parameters.map(_.toFloat), parameters.length)
-          interp.setValue("parameters", inputParameters)
-          interp.setValue("input_data", inputData)
+          interp.setValue("_parameters", inputParameters)
+          interp.setValue("_input_data", inputData)
           interp.exec(code)
           // can get a state variable
-          assert(interp.getValue("state").asInstanceOf[Long] == 0, "Some error in python interpreter,because get error state")
-          val result = interp.getValue("result").asInstanceOf[NDArray[Double]]
+          assert(interp.getValue("_state").asInstanceOf[Long] == 0, "Some error in python interpreter,because get error state")
+          val result = interp.getValue("_result").asInstanceOf[NDArray[Double]]
           val resData = result.getData.asInstanceOf[Array[Double]]
           val rootSchema = new FrameSchema(SchemaUtil.oneFieldSchemaString)
           val outFb = new FrameBatch(rootSchema, resData.length)
