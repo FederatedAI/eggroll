@@ -18,11 +18,8 @@
 
 package com.webank.eggroll.rollsite
 
-import java.util.concurrent.locks.{Condition, ReentrantLock}
-import java.util.concurrent.{ArrayBlockingQueue, CountDownLatch, LinkedBlockingQueue, TimeUnit}
-
-import com.webank.eggroll.core.datastructure.LinkedBlockingBroker
-import org.apache.logging.log4j.core.async.ArrayBlockingQueueFactory
+import java.util.concurrent.locks.ReentrantLock
+import java.util.concurrent.{ArrayBlockingQueue, CountDownLatch}
 
 trait Broker {
 
