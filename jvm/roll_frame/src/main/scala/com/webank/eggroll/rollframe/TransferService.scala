@@ -18,16 +18,17 @@
 
 package com.webank.eggroll.rollframe
 
-import java.net.{InetAddress, InetSocketAddress}
+import java.net.{InetAddress, InetSocketAddress, SocketException}
 import java.nio.ByteBuffer
 import java.nio.channels.{ServerSocketChannel, SocketChannel}
 import java.util.concurrent.{ExecutorService, Executors, Future}
 
+import scala.collection.mutable.ListBuffer
 import com.webank.eggroll.core.meta.{ErProcessor, ErStore, ErStoreLocator}
 import com.webank.eggroll.core.util.Logging
-import com.webank.eggroll.format.{FrameBatch, FrameReader, FrameStore, FrameWriter, JvmFrameStore, QueueFrameStore}
+import com.webank.eggroll.format.{FrameBatch, FrameReader, FrameStore, FrameWriter, JvmFrameStore}
 
-import scala.collection.mutable.ListBuffer
+import scala.util.Random
 
 // TODO: egg node use thread pool
 trait FrameTransfer {
@@ -42,6 +43,7 @@ trait FrameTransfer {
   def broadcast(path: String, frameBatch: FrameBatch): Unit
 }
 
+// TODO: reduce duplicated code
 class NioFrameTransfer(nodes: Array[ErProcessor], timeout: Int = 600 * 1000) extends FrameTransfer {
   val executors: ExecutorService = Executors.newCachedThreadPool()
   // will open all channel,but some don't be used
@@ -72,6 +74,10 @@ class NioFrameTransfer(nodes: Array[ErProcessor], timeout: Int = 600 * 1000) ext
       val path = FrameStore.getStoreDir(erStoreLocator) + "0"
       checkStoreExists(path)
     }
+
+    def getAvailablePort: Int = {
+      roll.getAvailable
+    }
   }
 
   def checkSameHost(host: String): Boolean = {
@@ -99,17 +105,26 @@ class NioFrameTransfer(nodes: Array[ErProcessor], timeout: Int = 600 * 1000) ext
     //    clients.foreach(c => c._2.broadcast(path, frameBatch))
   }
 
+  /**
+   * The scatter op in here mya be different with another scatter op than split and transfer to every egg node.
+   * Here only do the last job.
+   *
+   * @param path       queuePath
+   * @param frameBatch localFrameBatch
+   */
   override def scatter(path: String, frameBatch: FrameBatch): Unit = {
     // scatter are used in egg server
     val futures = new ListBuffer[Future[Unit]]
     clients.foreach { c =>
       futures.append(executors.submit(() => {
-        if (checkSameHost(c._2.getClientHost)) {
-          // push to queue
-          FrameStore.queue(path, -1).append(frameBatch)
-        } else {
-          c._2.scatter(path, frameBatch)
-        }
+        // may be there can directly reuse broadcast instead of rebuild a scatter function like broadcast
+        //        if (checkSameHost(c._2.getClientHost)) {
+        //          // push to queue
+        //          FrameStore.queue(path, -1).append(frameBatch)
+        //        } else {
+        //          c._2.scatter(path, frameBatch)
+        //        }
+        c._2.broadcast(path, frameBatch)
       }))
     }
     try {
@@ -188,6 +203,7 @@ case class NioTransferHead(action: String, path: String, batchSize: Int) {
       case NioTransferHead.RELEASE => 8
       case NioTransferHead.CHECK_STORE => 9
       case NioTransferHead.SCATTER => 10
+      case NioTransferHead.GET_AVAILABLE_PORT => 11
       case x => throw new IllegalArgumentException(s"unsupported action:$x")
     }
     headBuf.putInt(actionInt)
@@ -219,6 +235,7 @@ object NioTransferHead {
       case 8 => RELEASE
       case 9 => CHECK_STORE
       case 10 => SCATTER
+      case 11 => GET_AVAILABLE_PORT
       case x => throw new IllegalArgumentException(s"unsupported action:$x")
     }
 
@@ -241,6 +258,7 @@ object NioTransferHead {
   val RELEASE = "release"
   val CHECK_STORE = "check_store"
   val SCATTER = "scatter"
+  val GET_AVAILABLE_PORT = "get_available_port"
 }
 
 class NioTransferEndpoint extends Logging {
@@ -254,6 +272,7 @@ class NioTransferEndpoint extends Logging {
   def runServer(host: String, port: Int): Unit = {
     logInfo("start Transfer server endpoint")
     val serverSocketChannel = ServerSocketChannel.open
+
     // TODO: deal with exception
     serverSocketChannel.bind(new InetSocketAddress(host, port))
     this.port = serverSocketChannel.socket.getLocalPort
@@ -306,6 +325,12 @@ class NioTransferEndpoint extends Logging {
                     val response = JvmFrameStore.checkFrameBatch(head.path)
                     val byteBuffer = ByteBuffer.allocateDirect(4)
                     byteBuffer.putInt(if (response) 1 else 0)
+                    byteBuffer.flip()
+                    ch.write(byteBuffer)
+                    byteBuffer.clear()
+                  case NioTransferHead.GET_AVAILABLE_PORT =>
+                    val byteBuffer = ByteBuffer.allocateDirect(4)
+                    byteBuffer.putInt(HttpUtil.getAvailablePort(host))
                     byteBuffer.flip()
                     ch.write(byteBuffer)
                     byteBuffer.clear()
@@ -407,20 +432,56 @@ class NioTransferEndpoint extends Logging {
 
   def checkStoreExists(path: String): Boolean = {
     NioTransferHead(action = NioTransferHead.CHECK_STORE, path = path, batchSize = -1).write(clientChannel)
-    val reponse = ByteBuffer.allocateDirect(4)
-    clientChannel.read(reponse)
-    reponse.flip()
-    if (reponse.getInt > 0) true else false
+    val response = ByteBuffer.allocateDirect(4)
+    clientChannel.read(response)
+    response.flip()
+    if (response.getInt > 0) true else false
+  }
+
+  def getAvailable: Int = {
+    NioTransferHead(action = NioTransferHead.GET_AVAILABLE_PORT, path = "", batchSize = -1).write(clientChannel)
+    val response = ByteBuffer.allocate(4)
+    clientChannel.read(response)
+    response.flip()
+    response.getInt
   }
 }
 
 object HttpUtil {
-
-  import java.net.InetAddress
+  val PORT_CHECK_TIME = 10
+  val PORT_CHECK_STRIDE = 10
+  val ORIGIN_PORT = 10001
 
   def isReachable(host: String): Boolean = {
-    val a = InetAddress.getByName(host);
+    val a = InetAddress.getByName(host)
     a.isReachable(1000)
+  }
+
+  def checkAvailablePort(host: String, port: Int): Boolean = {
+    var state = true
+    try {
+      val serverSocketChannel = ServerSocketChannel.open
+      serverSocketChannel.bind(new InetSocketAddress(host, port))
+      serverSocketChannel.close()
+    } catch {
+      case _: SocketException => state = false
+    }
+    state
+  }
+
+  def getAvailablePort(host: String): Int = {
+    import scala.util.control.Breaks._
+    var availablePort = this.ORIGIN_PORT
+    val randomObj = new Random()
+    breakable {
+      for (_ <- 0 until this.PORT_CHECK_TIME) {
+        if (HttpUtil.checkAvailablePort(host, availablePort)) {
+          break
+        }
+        availablePort += randomObj.nextInt(this.PORT_CHECK_STRIDE)
+      }
+    }
+    availablePort
   }
 }
 

@@ -6,6 +6,7 @@ import com.webank.eggroll.util.SchemaUtil
 import junit.framework.TestCase
 import org.junit.{Before, Test}
 
+@Deprecated
 class MatricesTest {
 
   @Before

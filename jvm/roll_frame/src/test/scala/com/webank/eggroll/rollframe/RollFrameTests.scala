@@ -20,12 +20,11 @@ package com.webank.eggroll.rollframe
 import java.util.Random
 import java.util.concurrent.{Callable, Executors}
 
-import com.webank.eggroll.core.constant.{StoreTypes, StringConstants}
-import com.webank.eggroll.core.meta.{ErStore, ErStoreLocator}
+import com.webank.eggroll.core.constant.StringConstants
+import com.webank.eggroll.core.meta.ErStore
 import com.webank.eggroll.core.util.TimeUtils
 import com.webank.eggroll.util.Logging
 import com.webank.eggroll.format._
-import com.webank.eggroll.rollframe.embpython.PyInterpreter
 import com.webank.eggroll.util.SchemaUtil
 import junit.framework.TestCase
 import org.junit.{Before, Ignore, Test}
@@ -219,6 +218,11 @@ class RollFrameTests extends Logging {
     println(path)
     val fb = ctx.frameTransfer.Roll.pull(path).next()
     TestCase.assertNotNull(fb.isEmpty)
+  }
+
+  @Test
+  def testGetAvailablePort(): Unit ={
+    TestCase.assertTrue(ctx.frameTransfer.Roll.getAvailablePort>=HttpUtil.ORIGIN_PORT)
   }
 
   /**

@@ -53,7 +53,7 @@ class PyInterpreterTests {
 
   @Test
   def testTransferData(): Unit = {
-    val f = Array[Double](1.1f, 2.2f, 3.3f, 4.4f, 5.5f, 6.6f)
+    val f = Array[Double](1.1, 2.2, 3.3, 4.4, 5.5, 6.6)
     val nd = new NDArray[Array[Double]](f, 3, 2)
 
     interp.setValue("input", nd)
@@ -62,8 +62,8 @@ class PyInterpreterTests {
 
     val input = interp.getValue("input").asInstanceOf[NDArray[_]]
     val output = interp.getValue("output").asInstanceOf[NDArray[_]]
-    val inputData = input.getData.asInstanceOf[Array[Float]]
-    val outputData = output.getData.asInstanceOf[Array[Float]]
+    val inputData = input.getData.asInstanceOf[Array[Double]]
+    val outputData = output.getData.asInstanceOf[Array[Double]]
     inputData.indices.foreach(i => assert(inputData(i) * 2 == outputData(i)))
   }
 

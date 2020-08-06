@@ -20,6 +20,11 @@ package com.webank.eggroll.rollframe.embpython
 import jep.{JepException, SharedInterpreter}
 
 class PyInterpreter private {
+  /**
+   * jep.SharedInterpreter must use the thread the same as the thread when created.
+   * Because there are all operations running step by step, keeping the same thread.
+   * Here don't use ThreadLocal. But is better to use it.
+   */
   private val interp = new SharedInterpreter
 
   def exec(code: String): Unit = {

@@ -20,13 +20,15 @@ package com.webank.eggroll.rollframe
 
 import java.text.SimpleDateFormat
 import java.util.Date
-import java.util.concurrent.{Callable, ConcurrentHashMap, CountDownLatch, Future, RejectedExecutionException, TimeUnit}
+import java.util.concurrent.{Callable, CountDownLatch, Future}
 import java.util.concurrent.atomic.AtomicInteger
-
 import scala.collection.mutable.ListBuffer
+import scala.collection.immutable.Range.Inclusive
+import scala.util.Random
+import jep.NDArray
+
 import com.webank.eggroll.core.ErSession
-import com.webank.eggroll.core.client.ClusterManagerClient
-import com.webank.eggroll.core.constant.{ProcessorStatus, SessionStatus, StringConstants}
+import com.webank.eggroll.core.constant.{SessionStatus, StringConstants}
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.serdes.DefaultScalaSerdes
 import com.webank.eggroll.core.util.TimeUtils
@@ -34,9 +36,6 @@ import com.webank.eggroll.format._
 import com.webank.eggroll.rollframe.embpython.PyInterpreter
 import com.webank.eggroll.rollframe.pytorch.{Matrices, Script}
 import com.webank.eggroll.util.{Logging, SchemaUtil}
-import jep.NDArray
-
-import scala.collection.immutable.Range.Inclusive
 
 // TODO: care about client task grpc whether closed and thread pool whether closed
 // TODO: always close in finally
@@ -255,9 +254,9 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
   }
 
   def torchMap(path: String, parameters: Array[Double], output: ErStore = null): RollFrame = {
-    val func: (FrameBatch) => FrameBatch = { fb =>
+    val func: FrameBatch => FrameBatch = { fb =>
       Script.runTorchMap(path, fb, parameters)
-  }
+    }
 
     mapBatch(func, output)
   }
@@ -294,7 +293,7 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
 
   @deprecated
   def matMulV1(m: Array[Double], rows: Int, cols: Int, output: ErStore = null): RollFrame = {
-    val func: (FrameBatch) => FrameBatch = { fb =>
+    val func: FrameBatch => FrameBatch = { fb =>
       println(fb.rowCount, fb.fieldCount)
       var start = System.currentTimeMillis()
       val cb = fb.toColumnVectors
@@ -310,7 +309,7 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
 
   @deprecated
   def matMul(m: Array[Double], rows: Int, cols: Int, output: ErStore = null): RollFrame = {
-    val func: (FrameBatch) => FrameBatch = { fb =>
+    val func: FrameBatch => FrameBatch = { fb =>
       println(fb.rowCount, fb.fieldCount)
       var start = System.currentTimeMillis()
       val cb = fb.toColumnVectors
@@ -382,9 +381,10 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
 
   /**
    * thd method don't have return value, can set a fix variable
+   *
    * @param code Python code
    */
-  def runPythonDistributedMock(code:String): Unit ={
+  def runPythonDistributedMock(code: String): Unit = {
     val jobType = RollFrame.embeddedPython
     val jobId = jobType + "_" + genJobId()
     val func: (EggFrameContext, ErTask, Iterator[FrameBatch], FrameStore) => ErPair = {
@@ -394,11 +394,11 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
           val interp = PyInterpreter()
           // TODO: host and ip can be config.
           ctx.serverNodes(0).transferEndpoint.host
-          interp.setValue("world_size",ctx.serverNodes.length)
-          interp.setValue("rank",task.inputs.head.id)
+          interp.setValue("world_size", ctx.serverNodes.length)
+          interp.setValue("rank", task.inputs.head.id)
           interp.exec(code)
           // can get a state variable
-          assert(interp.getValue("state").asInstanceOf[Long] == 0,"Some error in python interpreter,because get error state")
+          assert(interp.getValue("state").asInstanceOf[Long] == 0, "Some error in python interpreter,because get error state")
         } catch {
           case e: Throwable => throw new RuntimeException(s"mapCommand task failed,task:$task", e)
         }
@@ -408,26 +408,34 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
     println("finished run pytorch distributed model")
   }
 
-  def runPythonDistributed(code:String,field:Int,parameters:Array[Double], output: ErStore = null):Unit = {
+  def runPythonDistributed(code: String, field: Int, parameters: Array[Double], output: ErStore = null): Unit = {
+    // to get available port
+    val rollServerPort: Int = ctx.frameTransfer.Roll.getAvailablePort
+    println(s"Roll Server available port: $rollServerPort")
     val jobType = RollFrame.embeddedPython
     val jobId = jobType + "_" + genJobId()
     val func: (EggFrameContext, ErTask, Iterator[FrameBatch], FrameStore) => ErPair = {
       (ctx, task, input, output) =>
         try {
-          // TODO: host and ip can be config.
-          // three input args: data, field, parameters
+          // three input args: data, field, parameters, input_data,_master_addr, _master_port
           // one output args: result, state
           val interp = PyInterpreter()
-          interp.setValue("world_size",ctx.serverNodes.length)
-          interp.setValue("rank",task.inputs.head.id)
+          interp.setValue("world_size", ctx.serverNodes.length)
+          interp.setValue("rank", task.inputs.head.id)
+          // default is the first server
+          val rollServerIp = ctx.rootServer.transferEndpoint.host
+          interp.setValue("_master_addr", rollServerIp)
+          interp.setValue("_master_port", rollServerPort.toString)
+
+          ctx.logInfo(s"_master_port: $rollServerPort")
           val data = FrameUtils.toFloatArray(input.next().rootVectors(0))
-          val inputData = new NDArray[Array[Float]](data, data.length/field, field)
-          val inputParameters = new NDArray[Array[Float]](parameters.map(_.toFloat),parameters.length)
-          interp.setValue("parameters",inputParameters)
-          interp.setValue("input_data",inputData)
+          val inputData = new NDArray[Array[Float]](data, data.length / field, field)
+          val inputParameters = new NDArray[Array[Float]](parameters.map(_.toFloat), parameters.length)
+          interp.setValue("parameters", inputParameters)
+          interp.setValue("input_data", inputData)
           interp.exec(code)
           // can get a state variable
-          assert(interp.getValue("state").asInstanceOf[Long] == 0,"Some error in python interpreter,because get error state")
+          assert(interp.getValue("state").asInstanceOf[Long] == 0, "Some error in python interpreter,because get error state")
           val result = interp.getValue("result").asInstanceOf[NDArray[Double]]
           val resData = result.getData.asInstanceOf[Array[Double]]
           val rootSchema = new FrameSchema(SchemaUtil.oneFieldSchemaString)
@@ -436,12 +444,13 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
           output.append(outFb)
           output.close()
           println("PythonDistributed state:" + interp.getValue("state"))
-        } catch {
+        }
+        catch {
           case e: Throwable => throw new RuntimeException(s"mapCommand task failed,task:$task", e)
         }
         null
     }
-    runUnaryJob(RollFrame.embeddedPython, func, jobId = jobId,output = output)
+    runUnaryJob(RollFrame.embeddedPython, func, jobId = jobId, output = output)
     println("finished run pytorch distributed model.")
   }
 
@@ -582,7 +591,9 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
                           seqParallel: Int,
                           seqByZeroValue: Boolean = false,
                           combOp: (FrameBatch, FrameBatch) => FrameBatch = null,
-                          output: ErStore = null): RollFrame = {
+                          output: ErStore = null): RollFrame
+
+  = {
     val jobType = RollFrame.aggregate
     val jobId = jobType + "_" + genJobId()
     val driverZeroPath = "broadcast_" + jobId
@@ -652,11 +663,10 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
               if (broadcastZeroValue) {
                 try {
                   var accTime = 0
-                  // TODO: use elegent code
                   while (!JvmFrameStore.checkFrameBatch(eggZeroValue)) {
                     Thread.sleep(50)
                     accTime += 50
-                    if (accTime >= RollFrame.stopTime) {
+                    if (accTime >= RollFrame.BROADCAST_MAX_WAIT_TIME) {
                       throw new RuntimeException(s"Egg Nodes didn't receive broadcast:$eggZeroValue")
                     }
                   }
@@ -837,7 +847,7 @@ object RollFrame {
   val broadcast = "broadcast"
   val mulMul = "mulMulTask"
 
-  val stopTime = 10000
+  val BROADCAST_MAX_WAIT_TIME = 10000 // ms
 
   def apply(store: ErStore, ctx: RollFrameContext): RollFrame = new RollFrame(store, ctx)
 }
