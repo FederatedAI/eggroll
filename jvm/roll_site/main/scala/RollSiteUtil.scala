@@ -57,7 +57,7 @@ class RollSiteUtil(val erSessionId: String,
         val broker = new LinkedBlockingBroker[ByteString]()
         broker.put(value)
         broker.signalWriteFinish()
-        rp.putBatch(broker, options = options)
+        //rp.putBatch(broker, options = options)
       } else {
         logTrace(s"sending OBJECT from / to same party id, skipping. src=${srcPartyId}, dst=${dstPartyId}, tag=${rollSiteHeader.concat()}")
       }

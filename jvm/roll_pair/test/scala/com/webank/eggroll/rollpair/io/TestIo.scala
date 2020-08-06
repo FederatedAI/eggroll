@@ -107,7 +107,7 @@ class TestIo {
     val broker = new LinkedBlockingBroker[ByteString]()
     broker.put(ByteString.copyFrom(directBinPacketBuffer))
     broker.signalWriteFinish()
-    rp.putBatch(broker)
+    //rp.putBatch(broker, Map.empty)
   }
 
   @Test
