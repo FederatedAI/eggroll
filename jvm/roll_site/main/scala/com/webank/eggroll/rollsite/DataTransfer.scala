@@ -18,10 +18,11 @@
 
 package com.webank.eggroll.rollsite
 
-import java.util.concurrent.{ArrayBlockingQueue, CountDownLatch, Future}
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.{CountDownLatch, Future}
 
-import com.webank.ai.eggroll.api.networking.proxy.{DataTransferServiceGrpc, Proxy}
+import com.webank.ai.eggroll.api.networking.proxy.Proxy
+import com.webank.ai.eggroll.api.networking.proxy.DataTransferServiceGrpc
 import com.webank.eggroll.core.constant.RollSiteConfKeys
 import com.webank.eggroll.core.meta.ErEndpoint
 import com.webank.eggroll.core.transfer.GrpcClientUtils
