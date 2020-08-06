@@ -19,10 +19,12 @@
 package com.webank.eggroll.rollsite
 
 import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.{CountDownLatch, Future}
+import java.util.concurrent.{CountDownLatch, Future, ThreadPoolExecutor, TimeUnit}
 
+import com.google.common.cache.{CacheBuilder, CacheLoader, LoadingCache}
 import com.webank.ai.eggroll.api.networking.proxy.Proxy
 import com.webank.ai.eggroll.api.networking.proxy.DataTransferServiceGrpc
+import com.webank.eggroll.core.ErSession
 import com.webank.eggroll.core.constant.RollSiteConfKeys
 import com.webank.eggroll.core.meta.ErEndpoint
 import com.webank.eggroll.core.transfer.GrpcClientUtils
@@ -30,6 +32,9 @@ import com.webank.eggroll.core.util.{ErrorUtils, Logging, ThreadPoolUtils, ToStr
 import io.grpc.stub.StreamObserver
 
 class DataTransferService extends DataTransferServiceGrpc.DataTransferServiceImplBase with Logging {
+  private val packetBuilder = Proxy.Packet.newBuilder()
+  private val headerBuilder = Proxy.Metadata.newBuilder()
+  private val bodyBuilder = Proxy.Data.newBuilder()
   /**
    */
   override def push(responseObserver: StreamObserver[Proxy.Metadata]): StreamObserver[Proxy.Packet] = {
@@ -141,12 +146,47 @@ class DataTransferService extends DataTransferServiceGrpc.DataTransferServiceImp
   // processes commands e.g. getStatus, pushObj, pullObj etc.
   private def processCommand(request: Proxy.Packet): Proxy.Packet = {
     logInfo(s"packet to myself. response: ${ToStringUtils.toOneLineString(request)}")
-    request
+
+    val header = request.getHeader
+    val operator = header.getOperator
+
+
+    if (operator.equals("init_job_session_pair")) doInitJobSessionPair(request)
+    else throw new UnsupportedOperationException(s"operation ${operator} not supported")
+  }
+
+  private def doInitJobSessionPair(request: Proxy.Packet): Proxy.Packet = {
+    val header = request.getHeader
+    val pairInfo = header.getTask.getModel
+
+    val jobId = pairInfo.getName
+    if (!DataTransferService.jobIdToSession.asMap().containsKey(jobId)) {
+      val erSessionId = pairInfo.getDataKey
+      val erSession = new ErSession(sessionId = erSessionId, createIfNotExists = false)
+
+      DataTransferService.jobIdToSession.put(jobId, erSession)
+    }
+
+    request.toBuilder
+      .setHeader(header.toBuilder.setAck(header.getSeq))
+      .build()
   }
 }
 
 object DataTransferService {
-  val dataTransferExecutor = ThreadPoolUtils.newFixedThreadPool(10, "data-transfer")
+  val dataTransferExecutor: ThreadPoolExecutor =
+    ThreadPoolUtils.newFixedThreadPool(10, "data-transfer")
+
+  val jobIdToSession: LoadingCache[String, ErSession] = CacheBuilder.newBuilder
+    .maximumSize(100000)
+    .expireAfterAccess(60, TimeUnit.HOURS)
+    .concurrencyLevel(50)
+    .recordStats
+    .build(new CacheLoader[String, ErSession]() {
+      override def load(key: String): ErSession = {
+        throw new IllegalAccessException("this cache cannot be loaded")
+      }
+    })
 }
 
 class DataTransferClient(defaultEndpoint: ErEndpoint, isSecure: Boolean = false) extends Logging {
