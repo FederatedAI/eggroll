@@ -18,16 +18,19 @@
 
 package com.webank.eggroll.rollsite
 
+import java.nio.charset.StandardCharsets
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.{CountDownLatch, Future, ThreadPoolExecutor, TimeUnit}
 
 import com.google.common.cache.{CacheBuilder, CacheLoader, LoadingCache}
-import com.webank.ai.eggroll.api.networking.proxy.Proxy
-import com.webank.ai.eggroll.api.networking.proxy.DataTransferServiceGrpc
+import com.webank.ai.eggroll.api.networking.proxy.{DataTransferServiceGrpc, Proxy}
 import com.webank.eggroll.core.ErSession
 import com.webank.eggroll.core.constant.RollSiteConfKeys
-import com.webank.eggroll.core.meta.ErEndpoint
+import com.webank.eggroll.core.datastructure.FifoBroker
+import com.webank.eggroll.core.meta.TransferModelPbMessageSerdes._
+import com.webank.eggroll.core.meta.{ErEndpoint, ErRollSiteHeader}
 import com.webank.eggroll.core.transfer.GrpcClientUtils
+import com.webank.eggroll.core.transfer.Transfer.RollSiteHeader
 import com.webank.eggroll.core.util.{ErrorUtils, Logging, ThreadPoolUtils, ToStringUtils}
 import io.grpc.stub.StreamObserver
 
@@ -47,6 +50,7 @@ class DataTransferService extends DataTransferServiceGrpc.DataTransferServiceImp
       var client: DataTransferClient = _
       var clientFuture: Future[Proxy.Metadata] = _
       var isDst: Boolean = _
+      var rollSiteHeader: ErRollSiteHeader = _
 
       override def onNext(request: Proxy.Packet): Unit = {
         /**
@@ -56,6 +60,8 @@ class DataTransferService extends DataTransferServiceGrpc.DataTransferServiceImp
          */
 
         def whenDst(request: Proxy.Packet): Unit = {
+
+
           // use internal protocol to put all
           logInfo(s"got data in dst: ${ToStringUtils.toOneLineString(request)}")
         }
@@ -68,18 +74,24 @@ class DataTransferService extends DataTransferServiceGrpc.DataTransferServiceImp
         val dstPartyId = request.getHeader.getDst.getPartyId
         if (!inited.get()) {
           // get host:port from router
+
           processFunc = if (myPartyId.equals(dstPartyId)) {
             isDst = true
             logInfo("i am dst")
-            clientFuture = DataTransferService.dataTransferExecutor.submit(() => {
+            clientFuture = DataTransferService.dataTransferServerExecutor.submit(() => {
               Proxy.Metadata.getDefaultInstance
             })
+
+            rollSiteHeader = RollSiteHeader.parseFrom(
+              request.getHeader.getTask.getModel.getName.getBytes(StandardCharsets.ISO_8859_1)).fromProto()
+
+
             whenDst
           } else {
             isDst = false
             logInfo("i am not dst")
 
-            clientFuture = DataTransferService.dataTransferExecutor.submit(() => {
+            clientFuture = DataTransferService.dataTransferServerExecutor.submit(() => {
               client = new DataTransferClient(ErEndpoint("localhost", 9470))
               client.push(broker)
             })
@@ -174,8 +186,10 @@ class DataTransferService extends DataTransferServiceGrpc.DataTransferServiceImp
 }
 
 object DataTransferService {
-  val dataTransferExecutor: ThreadPoolExecutor =
-    ThreadPoolUtils.newFixedThreadPool(10, "data-transfer")
+  val dataTransferServerExecutor: ThreadPoolExecutor =
+    ThreadPoolUtils.newCachedThreadPool("data-transfer-server")
+  val dataTransferClientExecutor: ThreadPoolExecutor =
+    ThreadPoolUtils.newCachedThreadPool("data-transfer-client")
 
   val jobIdToSession: LoadingCache[String, ErSession] = CacheBuilder.newBuilder
     .maximumSize(100000)
@@ -229,6 +243,14 @@ class DataTransferClient(defaultEndpoint: ErEndpoint, isSecure: Boolean = false)
     result
   }
 
+  def pushAsync(requests: Iterator[Proxy.Packet],
+                endpoint: ErEndpoint = defaultEndpoint,
+                options: Map[String, String] = Map.empty): Future[Proxy.Metadata] = {
+    DataTransferService.dataTransferClientExecutor.submit(() => {
+      push(requests, endpoint, options)
+    })
+  }
+
   def unaryCall(request: Proxy.Packet,
                 endpoint: ErEndpoint = defaultEndpoint,
                 options: Map[String, String] = Map.empty): Proxy.Packet = {
@@ -237,4 +259,6 @@ class DataTransferClient(defaultEndpoint: ErEndpoint, isSecure: Boolean = false)
 
     stub.unaryCall(request)
   }
+
 }
+

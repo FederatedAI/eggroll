@@ -25,38 +25,4 @@ trait Broker {
 
 }
 
-class FifoBroker[E](maxSize: Int = 100, writers: Int = 1, name: String = "") extends Iterator[E] {
-  val broker = new ArrayBlockingQueue[E](maxSize)
-  private val remainingWriters = new CountDownLatch(writers)
-  private val lock = new ReentrantLock()
 
-  override def hasNext: Boolean = {
-    while (true) {
-      if (!broker.isEmpty) {
-        return true
-      } else {
-        if (getRemainingWritersCount() <= 0) return false
-        else Thread.sleep(10) // continue
-      }
-    }
-
-    throw new IllegalStateException(
-      s"FifoBroker should not get here name=${name}," +
-        s"maxSize=${maxSize}, " +
-        s"writers=${writers}, " +
-        s"remainingWriters=${remainingWriters.getCount}")
-  }
-
-  override def next(): E = broker.take()
-
-  def signalWriteFinish(): Unit = {
-    if (remainingWriters.getCount > 0) remainingWriters.countDown()
-    else throw new IllegalStateException(
-      s"FifoBroker name=${name} countdown underflow." +
-        s"maxSize=${maxSize}, " +
-        s"writers=${writers}, " +
-        s"remainingWriters=${remainingWriters.getCount}")
-  }
-
-  def getRemainingWritersCount(): Long = remainingWriters.getCount
-}
