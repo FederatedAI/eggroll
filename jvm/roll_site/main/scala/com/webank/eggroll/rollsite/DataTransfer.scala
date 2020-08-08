@@ -18,11 +18,9 @@
 
 package com.webank.eggroll.rollsite
 
-import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.{CountDownLatch, Future, ThreadPoolExecutor, TimeUnit}
+import java.util.concurrent.{ThreadPoolExecutor, TimeUnit}
 
 import com.google.common.cache.{CacheBuilder, CacheLoader, LoadingCache}
-import com.webank.ai.eggroll.api.networking.proxy.Proxy.Metadata
 import com.webank.ai.eggroll.api.networking.proxy.{DataTransferServiceGrpc, Proxy}
 import com.webank.eggroll.core.ErSession
 import com.webank.eggroll.core.constant.RollSiteConfKeys
@@ -38,7 +36,7 @@ class DataTransferService extends DataTransferServiceGrpc.DataTransferServiceImp
   /**
    */
   override def push(responseObserver: StreamObserver[Proxy.Metadata]): StreamObserver[Proxy.Packet] = {
-    new ProxyForwardStreamObserver(responseObserver)
+    new ProxyDispatchStreamObserver(responseObserver)
   }
 
   /**
@@ -60,8 +58,10 @@ class DataTransferService extends DataTransferServiceGrpc.DataTransferServiceImp
         request
         //processCommand(request)
       } else {
-        val client = new DataTransferForwarder(ErEndpoint("localhost", 9470))
-        client.unaryCall(request)
+        val channel = GrpcClientUtils.getChannel(new ErEndpoint("localhost", 9470))
+        val stub = DataTransferServiceGrpc.newBlockingStub(channel)
+
+        stub.unaryCall(request)
       }
 
       responseSO.onNext(result)
@@ -123,64 +123,39 @@ object DataTransferService {
 }
 
 
-////////////////////////////
+/************ Observers ************/
 
-
-class DataTransferForwarder(defaultEndpoint: ErEndpoint,
-                            isSecure: Boolean = false) extends Logging {
-  var stub:DataTransferServiceGrpc.DataTransferServiceStub = _
-  def push(requests: StreamObserver[Proxy.Metadata],
-           endpoint: ErEndpoint = defaultEndpoint,
-           options: Map[String, String] = Map.empty): StreamObserver[Proxy.Packet] = {
-    val channel = GrpcClientUtils.getChannel(endpoint, isSecure, options)
-    DataTransferServiceGrpc.newStub(channel)
-
-    stub.push(requests)
-  }
-
-  def unaryCall(packet: Proxy.Packet,
-                endpoint: ErEndpoint = defaultEndpoint,
-                options: Map[String, String] = Map.empty): Proxy.Packet = {
-    val channel = GrpcClientUtils.getChannel(endpoint, isSecure, options)
-    val stub = DataTransferServiceGrpc.newBlockingStub(channel)
-
-    stub.unaryCall(packet)
-  }
-}
-
-
-class ProxyForwardStreamObserver(responseSO: StreamObserver[Proxy.Metadata]) extends StreamObserver[Proxy.Packet] with Logging {
-  private var forwarderSO: StreamObserver[Proxy.Packet] = _
-  private var inited = new AtomicBoolean(false)
-
+class ProxyDispatchStreamObserver(responseSO: StreamObserver[Proxy.Metadata]) extends StreamObserver[Proxy.Packet] with Logging {
+  private var proxySO: StreamObserver[Proxy.Packet] = _
+  private var inited = false
+  logInfo("358constructing proxy dispatcher")
   override def onNext(request: Proxy.Packet): Unit = {
-    if (!inited.get()) {
+    if (!inited) {
       val myPartyId = RollSiteConfKeys.EGGROLL_ROLLSITE_PARTY_ID.get()
       val dstPartyId = request.getHeader.getDst.getPartyId
+      logInfo("initing proxy dispatcher")
 
-      forwarderSO = if (myPartyId.equals(dstPartyId)) {
+      proxySO = if (myPartyId.equals(dstPartyId)) {
         new SinkRequestStreamObserver(responseSO)
       } else {
         new ForwardRequestStreamObserver(responseSO)
       }
-      inited.compareAndSet(false, true)
+      inited = true
     }
 
-    forwarderSO.onNext(request)
+    proxySO.onNext(request)
   }
 
   override def onError(throwable: Throwable): Unit = {
-    forwarderSO.onError(throwable)
+    proxySO.onError(throwable)
   }
 
   override def onCompleted(): Unit = {
-
-    forwarderSO.onCompleted()
+    proxySO.onCompleted()
   }
 }
 
-
-class SinkRequestStreamObserver(responseSO: StreamObserver[Proxy.Metadata])
+class SinkRequestStreamObserver(respSO: StreamObserver[Proxy.Metadata])
   extends StreamObserver[Proxy.Packet] with Logging {
   private var response: Proxy.Metadata = _
   private var rollSiteHeader: ErRollSiteHeader = _
@@ -196,63 +171,58 @@ class SinkRequestStreamObserver(responseSO: StreamObserver[Proxy.Metadata])
 
   override def onCompleted(): Unit = {
     // complete logic here
-    responseSO.onNext(Proxy.Metadata.getDefaultInstance)
-    responseSO.onCompleted()
+    respSO.onNext(Proxy.Metadata.getDefaultInstance)
+    respSO.onCompleted()
 
     logInfo("completed")
-    Thread.sleep(1000)
   }
 }
 
 
 class ForwardRequestStreamObserver(prevRespSO: StreamObserver[Proxy.Metadata])
   extends StreamObserver[Proxy.Packet] with Logging {
-  private val inited = new AtomicBoolean(false)
+  private var inited = false
   private var nextReqSO: StreamObserver[Proxy.Packet] = _
   private val self = this
-  private val finishLatch = new CountDownLatch(1)
 
-  val forwarder = new DataTransferForwarder(new ErEndpoint("localhost", 9470))
   override def onNext(request: Proxy.Packet): Unit = {
     logInfo(s"onnext: ${ToStringUtils.toOneLineString(request)}")
 
-    if (!inited.get()) {
-
-
-      nextReqSO = forwarder.push(new StreamObserver[Proxy.Metadata] {
-
+    if (!inited) {
+      val channel = GrpcClientUtils.getChannel(new ErEndpoint("localhost", 9470))
+      val stub = DataTransferServiceGrpc.newStub(channel)
+      nextReqSO = stub.push(new StreamObserver[Proxy.Metadata] {
         override def onNext(value: Proxy.Metadata): Unit = {
-
+          prevRespSO.onNext(value)
           logInfo("response received")
         }
 
         override def onError(t: Throwable): Unit = {
-          //self.onError(t)
+          self.onError(t)
         }
 
         override def onCompleted(): Unit = {
           logInfo("prevRespSO onComplete")
-          prevRespSO.onNext(Proxy.Metadata.getDefaultInstance)
-          finishLatch.countDown()
           prevRespSO.onCompleted()
 
           logInfo("finish forwarding")
         }
       })
+      inited = true
     }
 
     nextReqSO.onNext(request)
+
     logInfo("forwarding")
   }
 
   override def onError(throwable: Throwable): Unit = {
-    //nextSO.onError(throwable)
-    //prevSO.onError(throwable)
+    nextReqSO.onError(throwable)
+    prevRespSO.onError(throwable)
   }
 
   override def onCompleted(): Unit = {
     logInfo("nextReqSO onComplete")
     nextReqSO.onCompleted()
-
   }
 }
