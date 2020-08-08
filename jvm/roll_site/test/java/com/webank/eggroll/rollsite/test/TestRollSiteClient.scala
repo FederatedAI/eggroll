@@ -23,6 +23,7 @@ import java.util.concurrent.CountDownLatch
 import com.google.protobuf.ByteString
 import com.webank.ai.eggroll.api.networking.proxy.Proxy.{Model, Task}
 import com.webank.ai.eggroll.api.networking.proxy.{DataTransferServiceGrpc, Proxy}
+import com.webank.eggroll.core.meta.TransferModelPbMessageSerdes.ErRollSiteHeaderToPbMessage
 import com.webank.eggroll.core.meta.{ErEndpoint, ErRollSiteHeader}
 import com.webank.eggroll.core.transfer.GrpcClientUtils
 import com.webank.eggroll.core.util.{Logging, ToStringUtils}
@@ -80,7 +81,7 @@ class TestRollSiteClient extends Logging {
     val seq = 0
 
     for (i <- 0 until 10) {
-      val rollsiteHeader = ErRollSiteHeader(rollSiteSessionId = "testing", name = "transfer.variable", tag = "fit.1.0", srcRole = "guest", srcPartyId = "10000", dstRole = "host", dstPartyId = "10001", dataType = "rollpair", options = Map("total_partition" -> "1"))
+      val rollsiteHeader = ErRollSiteHeader(rollSiteSessionId = "testing-guest", name = "transfer.variable", tag = "fit.1.0", srcRole = "guest", srcPartyId = "10000", dstRole = "host", dstPartyId = "10001", dataType = "rollpair", options = Map("total_partition" -> "1", "partition_id" -> "0"))
         streamObserver.onNext(
         packetBuilder.setHeader(
           headerBuilder
@@ -88,7 +89,7 @@ class TestRollSiteClient extends Logging {
             .setDst(topic10002)
             .setTask(taskBuilder.setModel(
               modelBuilder.setNameBytes(
-                ByteString.copyFrom(rollsiteHeader.toBytes())))))
+                rollsiteHeader.toProto().toByteString))))
           .build())
     }
     logInfo("client complete")

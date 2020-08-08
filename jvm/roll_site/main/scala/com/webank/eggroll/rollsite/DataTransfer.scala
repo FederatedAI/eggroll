@@ -220,7 +220,7 @@ class PutBatchSinkRequestStreamObserver(prevRespSO: StreamObserver[Proxy.Metadat
       functors = Array.empty,
       options = rollSiteHeader.options ++ Map(SessionConfKeys.CONFKEY_SESSION_ID -> ctx.session.sessionId))
 
-    val task = ErTask(id = IdUtils.generateTaskId(job.id, partitionId, RollPair.PUT_BATCH),
+    val task = ErTask(id = s"${RollPair.PUT_BATCH}-${rollSiteHeader.encode()}-${partitionId}",
       name = RollPair.PUT_BATCH,
       inputs = Array(partition),
       outputs = Array(partition),
@@ -263,7 +263,7 @@ class PutBatchSinkRequestStreamObserver(prevRespSO: StreamObserver[Proxy.Metadat
 
     val tbHeader = transferHeaderBuilder.setId(packetHeader.getSeq.toInt)
       .setStatus(encodedRollSiteHeader)
-      .setTotalSize(rollSiteHeader.options.getOrElse("stream_batch_count", "-1L").toLong)
+      .setTotalSize(rollSiteHeader.options.getOrElse("stream_batch_count", "-1").toLong)
 
     val tbBatch = transferBatchBuilder.setHeader(tbHeader)
       .setData(request.getBody.getValue)
