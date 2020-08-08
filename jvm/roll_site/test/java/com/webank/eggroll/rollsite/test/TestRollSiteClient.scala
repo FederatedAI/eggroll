@@ -20,15 +20,13 @@ package com.webank.eggroll.rollsite.test
 
 import java.util.concurrent.CountDownLatch
 
-import com.webank.ai.eggroll.api.networking.proxy.{DataTransferServiceGrpc, Proxy}
 import com.webank.ai.eggroll.api.networking.proxy.Proxy.{Model, Task}
+import com.webank.ai.eggroll.api.networking.proxy.{DataTransferServiceGrpc, Proxy}
 import com.webank.eggroll.core.meta.ErEndpoint
 import com.webank.eggroll.core.transfer.GrpcClientUtils
 import com.webank.eggroll.core.util.{Logging, ToStringUtils}
 import io.grpc.stub.StreamObserver
 import org.junit.Test
-
-import scala.collection.mutable.ListBuffer
 
 class TestRollSiteClient extends Logging {
   private val headerBuilder = Proxy.Metadata.newBuilder()
@@ -77,7 +75,7 @@ class TestRollSiteClient extends Logging {
     })
 
     val seq = 0
-    for (i <- 0 until 2) {
+    for (i <- 0 until 10) {
       streamObserver.onNext(packetBuilder.setHeader(headerBuilder.setSeq(seq + i).setDst(topic10002)).build())
     }
     logInfo("client complete")
