@@ -24,6 +24,7 @@ import time
 
 import threading
 import platform
+from collections import defaultdict
 
 import grpc
 import numpy as np
@@ -40,6 +41,7 @@ from eggroll.core.datastructure import create_executor_pool
 from eggroll.core.datastructure.broker import FifoBroker
 from eggroll.core.meta_model import ErPair
 from eggroll.core.meta_model import ErTask, ErProcessor, ErEndpoint
+from eggroll.core.pair_store.format import ArrayByteBuffer, PairBinReader
 from eggroll.core.proto import command_pb2_grpc, transfer_pb2_grpc
 from eggroll.core.transfer.transfer_service import GrpcTransferServicer, \
     TransferService
@@ -47,6 +49,7 @@ from eggroll.core.utils import _exception_logger
 from eggroll.core.utils import hash_code
 from eggroll.core.utils import set_static_er_conf, get_static_er_conf
 from eggroll.roll_pair import create_adapter, create_serdes, create_functor
+from eggroll.roll_pair.task.storage import PutBatchTask
 from eggroll.roll_pair.transfer_pair import TransferPair
 from eggroll.roll_pair.utils.pair_utils import generator, partitioner, \
     set_data_dir
@@ -191,7 +194,11 @@ class EggPair(object):
                 result = ErPair(key=self.functor_serdes.serialize('result'),
                                 value=self.functor_serdes.serialize(input_adapter.count()))
 
-        # TODO:1: multiprocessor scenario
+        elif task._name == 'putBatch':
+            partition = task._outputs[0]
+            tag = f'{task._id}'
+            PutBatchTask(tag, partition).run()
+
         elif task._name == 'putAll':
             output_partition = task._outputs[0]
             tag = f'{task._id}'
