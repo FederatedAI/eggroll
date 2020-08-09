@@ -39,15 +39,20 @@ from eggroll.roll_pair import create_adapter
 from eggroll.roll_pair.roll_pair import RollPair, RollPairContext
 from eggroll.roll_pair.task.storage import PutBatchTask
 from eggroll.roll_pair.transfer_pair import TransferPair
-from eggroll.roll_site.utils.roll_site_utils import create_store_name, DELIM
+from eggroll.roll_site.utils.roll_site_utils import create_store_name
 from eggroll.utils import log_utils
 
 L = log_utils.get_logger()
 P = log_utils.get_logger('profile')
 _serdes = eggroll_serdes.PickleSerdes
+RS_KEY_DELIM = "#"
+STATUS_TABLE_NAME = "__rs_status"
 
-STATUS_TABLE_NAME = "__roll_site_standalone_status__"
-
+ERROR_STATES = [proxy_pb2.STOP, proxy_pb2.KILL]
+RS_KEY_PREFIX = "__rsk"
+CONF_KEY_TARGET = "rollsite"
+CONF_KEY_LOCAL = "local"
+CONF_KEY_SERVER = "servers"
 
 class CountDownLatch(object):
     def __init__(self, count):
@@ -122,11 +127,7 @@ class RollSiteContext:
         return RollSite(name, tag, self, options=options)
 
 
-ERROR_STATES = [proxy_pb2.STOP, proxy_pb2.KILL]
-OBJECT_STORAGE_NAME = "__federation__"
-CONF_KEY_TARGET = "rollsite"
-CONF_KEY_LOCAL = "local"
-CONF_KEY_SERVER = "servers"
+
 
 
 class RollSiteBase:
@@ -156,59 +157,12 @@ class RollSiteBase:
         self._is_standalone = self.ctx.is_standalone
         L.debug(f'inited RollSite. my party id={self.ctx.party_id}. proxy endpoint={self.dst_host}:{self.dst_port}')
 
-    def is_object(self, object_type):
-        # bad smell
-        return object_type == b'object' or object_type == 'object'
-
-    # def _fetch_result(self, content_type):
-    #     is_object = content_type == b'object' or content_type == 'object'
-    #     if self.is_object(obj_type):
-    #         result = rp.get(table_name)
-    #         L.debug(f"roll site pulled object: table_name={table_name}, is_none={result is None}")
-    #     else:
-    #     result = rp
-    #     if L.isEnabledFor(logging.DEBUG):
-    #         L.debug(f"roll site pulled roll_pair: table_name={table_name}, count={rp.count()}")
-
-    def _push_callback(self, fn, tmp_rp):
-        self.ctx.pushing_latch.count_down()
-        L.debug(f"push {self.tag} callback: total_time={time.time() - self._push_start_time}")
+    def _run_thread(self, fn, *args, **kwargs):
+        return self._executor_pool.submit(fn, *args, **kwargs)
 
 
 class RollSiteLocalMock(RollSiteBase):
-
-    def _pull_waiting(self, packet, namespace, roll_site_header: ErRollSiteHeader):
-        max_retry_cnt = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PULL_CLIENT_MAX_RETRY.get())
-        status_rp = self.ctx.rp_ctx.load(namespace, STATUS_TABLE_NAME + DELIM + self.ctx.roll_site_session_id,
-                                         options={'create_if_missing': True})
-        table_name = create_store_name(roll_site_header)
-        retry_cnt = 0
-        while True:
-            msg = f"retry pull: retry_cnt: {retry_cnt}," + \
-                  f" tagged_key: '{table_name}', packet: {to_one_line_string(packet)}, namespace: {namespace}"
-            if retry_cnt % 10 == 0:
-                L.debug(msg)
-            else:
-                L.trace(msg)
-            retry_cnt += 1
-            ret_list = status_rp.get(table_name)
-            if ret_list:
-                table_namespace = ret_list[2]
-                table_name = ret_list[1]
-                obj_type = ret_list[0]
-                break
-            time.sleep(min(0.1 * retry_cnt, 30))
-            if retry_cnt > max_retry_cnt:
-                raise IOError("receive timeout")
-        rp = self.ctx.rp_ctx.load(namespace=table_namespace, name=table_name, options={'create_if_missing': True})
-        if self.is_object(obj_type):
-            result = rp.get(table_name)
-            L.debug(f"roll site pulled object: table_name={table_name}, is_none={result is None}")
-        else:
-            result = rp
-            if L.isEnabledFor(logging.DEBUG):
-                L.debug(f"roll site pulled roll_pair: table_name={table_name}, count={rp.count()}")
-        return result
+    pass
 
 
 class RollSite(RollSiteBase):
@@ -216,9 +170,18 @@ class RollSite(RollSiteBase):
         super().__init__(name, tag, rs_ctx)
         self.batch_body_bytes = int(static_er_conf.get(RollSiteConfKeys.EGGROLL_ROLLSITE_ADAPTER_SENDBUF_SIZE.key,
                                RollSiteConfKeys.EGGROLL_ROLLSITE_ADAPTER_SENDBUF_SIZE.default_value))
+        # TODO:0: configurable
         self.stream_chunk_count = 10
+        self.polling_header_timeout = 10 * 60
+        self.polling_timeout = 10 * 60
+        self.polling_max_retry = 3
 
-    def _push_bytes(self, data):
+    def _push_bytes(self, obj, rs_header):
+        start_time = time.time()
+        data = pickle.dumps(obj)
+        rs_key = self._get_rs_key(rs_header)
+        int_size = 4
+
         def _generate_batch_streams(chunk_count, body_bytes):
             total_batches = len(data) // self.batch_body_bytes + 1
             total_streams = total_batches // chunk_count + 1
@@ -230,18 +193,30 @@ class RollSite(RollSiteBase):
                     seq_id += 1
                     batch_bytes = data[seq_id * body_bytes: (seq_id + 1) * body_bytes]
                     if batch_bytes:
-                        yield batch_bytes
+                        yield (seq_id.to_bytes(int_size, "big"), batch_bytes)
                     else:
                         # out of len
                         break
             for s in range(total_streams):
                 yield chunk_batch_stream()
-        for batch_stream in _generate_batch_streams(self.stream_chunk_count, self.batch_body_bytes):
+        # bin format: key_len=4, key=4, val_len=4, val=?,  we count val only
+        batch_streams = TransferPair.pair_to_bin_batch(
+            _generate_batch_streams(self.stream_chunk_count, self.batch_body_bytes - int_size - 8),
+            sendbuf_size=self.batch_body_bytes)
+        for batch_stream in batch_streams:
             self.stub.push(batch_stream)
+        L.debug(f"pushed object: rs_key={rs_key}, is_none={obj is None}, time_cost={time.time() - start_time}")
+        self.ctx.pushing_latch.count_down()
 
-    def _push_rollpair(self):
+    def _push_rollpair(self, rp, rs_header):
+        rs_key = self._get_rs_key(rs_header)
+        if L.isEnabledFor(logging.DEBUG):
+            L.debug(f"pushing object: rs_key={rs_key}, count={rp.count()}")
+        start_time = time.time()
+
         def _generate_batch_streams(rb, chunk_size):
             batches = TransferPair.pair_to_bin_batch(rb, sendbuf_size=self.batch_body_bytes)
+
             def chunk_batch_stream():
                 for i in range(chunk_size - 1):
                     yield next(batches)
@@ -257,128 +232,96 @@ class RollSite(RollSiteBase):
                 for batch_stream in _generate_batch_streams(rb):
                     self.stub.push(batch_stream)
 
-        table_name = create_store_name(roll_site_header)
-        table_namespace = self.roll_site_session_id
-        self.ctx.rp_ctx.load(table_name, table_namespace).with_stores(_push_partiton)
+        rp.with_stores(_push_partiton)
+        if L.isEnabledFor(logging.DEBUG):
+            L.debug(f"pushed object: rs_key={rs_key}, count={rp.count()}, time_cost={time.time() - start_time}")
+        self.ctx.pushing_latch.count_down()
 
-    def _pull_one(self, packet, namespace, roll_site_header: ErRollSiteHeader):
-        table_name = create_store_name(roll_site_header)
-        table_namespace = self.roll_site_session_id
-        tag = table_name
+    def _pull_one(self, rs_header: ErRollSiteHeader):
+        start_time = time.time()
+        rs_key = rp_name = self._get_rs_key(rs_header)
+        rp_namespace = self.roll_site_session_id
+        transfer_tag_prefix = "putBatch-" + self._get_rs_key(rs_header) + "-"
         last_total_batches = None
-        max_retry_cnt = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PULL_CLIENT_MAX_RETRY.get())
-        attempt_count = 0
-        content_type = None
+        polling_attempts = 0
+        data_type = None
         try:
-            for i in range(max_retry_cnt):
-                attempt_count = i
+            # make sure rollpair already created
+            header = self.ctx.rp_ctx.load(name=STATUS_TABLE_NAME, namespace=rp_namespace,
+                                          options={'create_if_missing': False, 'total_partitions': 1}).with_stores(
+                lambda x: PutBatchTask(transfer_tag_prefix + "0").get_header(self.polling_header_timeout))
+            if header is None:
+                raise IOError(f"roll site pull_status failed: rs_key={rs_key}, timeout={self.polling_header_timeout}")
+            else:
+                data_type = header.data_type
+                L.debug(f"roll site pull_status ok: rs_key={rs_key}, header={header}")
+            for i in range(self.polling_max_retry):
+                polling_attempts = i
                 total_batches = 0
                 all_finished = True
-                all_status = self.ctx.rp_ctx.load(table_name, table_namespace).with_stores(
-                    lambda x: PutBatchTask(tag, None).get_status(5 * 60))
+                all_status = self.ctx.rp_ctx.load(name=rp_name, namespace=rp_namespace,
+                                                  options={'create_if_missing': False}).with_stores(
+                    lambda x: PutBatchTask(transfer_tag_prefix + str(x[0]._id), None).get_status(self.polling_timeout))
                 for part_id, part_status in all_status:
-                    part_finished, part_batches, part_counter, content_type = part_status
+                    part_finished, part_batches, part_counter, _ = part_status
                     if not part_finished:
                         all_finished = False
                     total_batches += part_batches
                 if not all_finished and last_total_batches == total_batches:
-                    raise IOError(f"roll site pull_waiting failed because there is no updated progress: "
+                    raise IOError(f"roll site pull_waiting failed because there is no updated progress: rs_key={rs_key}"
                                   f"detail={all_status}")
                 last_total_batches = total_batches
 
                 if all_finished:
-                    rp = self.ctx.rp_ctx.load(namespace=table_namespace, name=table_name,
-                                              options={'create_if_missing': False})
-                    if self.is_object(content_type):
-                        result = rp.get(table_name)
-                        L.debug(f"roll site pulled object: table_name={table_name}, is_none={result is None}")
+                    rp = self.ctx.rp_ctx.load(name=rp_name, namespace=rp_namespace)
+                    if data_type == "object":
+                        result = pickle.loads("".join(sorted(rp.get_all(), key=lambda x: int.from_bytes(x[0], "big"))))
+                        L.debug(f"roll site pulled object: rs_key={rs_key}, is_none={result is None}, "
+                                f"time_cost={time.time() - start_time}")
                     else:
                         result = rp
-                    if L.isEnabledFor(logging.DEBUG):
-                        L.debug(f"roll site pulled roll_pair: table_name={table_name}, count={rp.count()}")
+                        if L.isEnabledFor(logging.DEBUG):
+                            L.debug(f"roll site pulled roll_pair: rs_key={rs_key}, count={rp.count()}, "
+                                    f"time_cost={time.time() - start_time}")
                     return result
-
-            raise IOError(f"roll site pull_waiting failed because exceed max retry: retry_cnt={max_retry_cnt}"
+                else:
+                    L.debug(f"roll site pulling attempt: rs_key={rs_key}, attempt={polling_attempts}"
+                            f"time_cost={time.time() - start_time}")
+            raise IOError(f"roll site polling failed because exceed max try: {self.polling_max_retry}, rs_key={rs_key}"
                           f"detail={all_status}")
         except Exception as ex:
-            L.exception(f"fatal error: when pulling tag={tag}, attempt_count={attempt_count}")
+            L.exception(f"fatal error: when pulling rs_key={rs_key}, attempt_count={polling_attempts}")
             raise ex
 
+    def _get_rs_key(self, header: ErRollSiteHeader):
+        return RS_KEY_DELIM.join([RS_KEY_PREFIX,
+                                  header._roll_site_session_id, header._name, header._tag,
+                                  header._src_role, header._src_party_id, header._dst_role, header._dst_party_id])
+
     def push(self, obj, parties: list = None):
-        L.debug(f"pushing: self={self.__dict__}, obj_type={type(obj)}, parties={parties}")
-        self._push_start_wall_time = time.time()
-        self._push_start_cpu_time = time.perf_counter()
         futures = []
         for role_party_id in parties:
             self.ctx.pushing_latch.count_up()
-            _role = role_party_id[0]
-            _party_id = str(role_party_id[1])
-
-            _options = {}
-            obj_type = 'rollpair' if isinstance(obj, RollPair) else 'object'
-            roll_site_header = ErRollSiteHeader(
-                roll_site_session_id=self.roll_site_session_id,
-                name=self.name,
-                tag=self.tag,
-                src_role=self.local_role,
-                src_party_id=self.party_id,
-                dst_role=_role,
-                dst_party_id=_party_id,
-                data_type=obj_type,
-                options=_options)
-            _tagged_key = create_store_name(roll_site_header)
-            L.debug(f"pushing start party={type(obj)}, key={_tagged_key}")
-            namespace = self.roll_site_session_id
-
-            self._push_bytes()
-            self._push_rollpair()
-
-            future = RollSite._receive_executor_pool.submit(map_values, _tagged_key, self._is_standalone, roll_site_header)
-            if not self._is_standalone and (obj_type == 'object' or obj_type == b'object'):
-                tmp_rp = rp
+            dst_role = role_party_id[0]
+            dst_party_id = str(role_party_id[1])
+            data_type = 'rollpair' if isinstance(obj, RollPair) else 'object'
+            rs_header = ErRollSiteHeader(
+                roll_site_session_id=self.roll_site_session_id, name=self.name, tag=self.tag,
+                src_role=self.local_role, src_party_id=self.party_id, dst_role=dst_role, dst_party_id=dst_party_id,
+                data_type=data_type)
+            if isinstance(obj, RollPair):
+                future = self._run_thread(self._push_bytes, obj, rs_header)
             else:
-                tmp_rp = None
-
-            future.add_done_callback(functools.partial(self._push_callback, tmp_rp=tmp_rp))
+                future = self._run_thread(self._push_rollpair, obj, rs_header)
             futures.append(future)
-
         return futures
 
     def pull(self, parties: list = None):
         futures = []
         for src_role, src_party_id in parties:
             src_party_id = str(src_party_id)
-            roll_site_header = ErRollSiteHeader(
-                roll_site_session_id=self.roll_site_session_id,
-                name=self.name,
-                tag=self.tag,
-                src_role=src_role,
-                src_party_id=src_party_id,
-                dst_role=self.local_role,
-                dst_party_id=self.party_id)
-            _tagged_key = create_store_name(roll_site_header)
-
-            name = _tagged_key
-
-            model = proxy_pb2.Model(name=_stringify(roll_site_header))
-            task_info = proxy_pb2.Task(taskId=name, model=model)
-            topic_src = proxy_pb2.Topic(name="get_status", partyId=src_party_id,
-                                        role=src_role, callback=None)
-            topic_dst = proxy_pb2.Topic(name="get_status", partyId=self.party_id,
-                                        role=self.local_role, callback=None)
-            get_status_command = proxy_pb2.Command(name="get_status")
-
-            metadata = proxy_pb2.Metadata(task=task_info,
-                                          src=topic_src,
-                                          dst=topic_dst,
-                                          command=get_status_command,
-                                          operator="getStatus",
-                                          seq=0,
-                                          ack=0)
-
-            packet = proxy_pb2.Packet(header=metadata)
-            namespace = self.roll_site_session_id
-            L.trace(f"pulling prepared tagged_key={_tagged_key}, packet={to_one_line_string(packet)}")
-            futures.append(self._executor_pool.submit(self._pull_one, self, packet, namespace, roll_site_header))
-
+            rs_header = ErRollSiteHeader(
+                roll_site_session_id=self.roll_site_session_id, name=self.name, tag=self.tag,
+                src_role=src_role, src_party_id=src_party_id, dst_role=self.local_role, dst_party_id=self.party_id)
+            futures.append(self._executor_pool.submit(self._pull_one, rs_header))
         return futures
