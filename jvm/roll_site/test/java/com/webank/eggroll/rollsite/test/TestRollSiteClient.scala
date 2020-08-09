@@ -81,15 +81,28 @@ class TestRollSiteClient extends Logging {
     val seq = 0
 
     for (i <- 0 until 10) {
-      val rollsiteHeader = ErRollSiteHeader(rollSiteSessionId = "testing-guest", name = "transfer.variable", tag = "fit.1.0", srcRole = "guest", srcPartyId = "10000", dstRole = "host", dstPartyId = "10001", dataType = "rollpair", options = Map("total_partition" -> "1", "partition_id" -> "0"))
-        streamObserver.onNext(
+      val rollsiteHeader = ErRollSiteHeader(
+        rollSiteSessionId = "testing-guest",
+        name = "transfer.variable",
+        tag = "fit.1.0",
+        srcRole = "guest",
+        srcPartyId = "10000",
+        dstRole = "host",
+        dstPartyId = "10001",
+        dataType = "rollpair",
+        options = Map.empty,
+        totalPartitions = 1,
+        partitionId = 0,
+        batchStreams = 3,
+        seq = 0,
+        stage = "")
+      streamObserver.onNext(
         packetBuilder.setHeader(
           headerBuilder
             .setSeq(seq + i)
             .setDst(topic10002)
-            .setTask(taskBuilder.setModel(
-              modelBuilder.setNameBytes(
-                rollsiteHeader.toProto().toByteString))))
+            .setExt(rollsiteHeader.toProto().toByteString).build())
+          .setBody(Proxy.Data.getDefaultInstance)
           .build())
     }
     logInfo("client complete")

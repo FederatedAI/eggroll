@@ -61,6 +61,7 @@ message Metadata {
     int64 seq = 6;                      // stream seq (reserved)
     int64 ack = 7;                      // stream ack (reserved)
     Conf conf = 8;                      // operation config
+    bytes ext = 9;
 }
 
 // includes key and value field, supporting sequential and random data transfer
