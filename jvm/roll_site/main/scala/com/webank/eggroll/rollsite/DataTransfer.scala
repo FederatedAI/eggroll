@@ -18,15 +18,20 @@
 
 package com.webank.eggroll.rollsite
 
-import java.util.concurrent.{ThreadPoolExecutor, TimeUnit}
+import java.nio.charset.StandardCharsets
+import java.util.concurrent.{Callable, ThreadPoolExecutor, TimeUnit}
 
 import com.google.common.cache.{CacheBuilder, CacheLoader, LoadingCache}
 import com.webank.ai.eggroll.api.networking.proxy.{DataTransferServiceGrpc, Proxy}
 import com.webank.eggroll.core.ErSession
-import com.webank.eggroll.core.constant.RollSiteConfKeys
-import com.webank.eggroll.core.meta.{ErEndpoint, ErRollSiteHeader}
-import com.webank.eggroll.core.transfer.GrpcClientUtils
-import com.webank.eggroll.core.util.{ErrorUtils, Logging, ThreadPoolUtils, ToStringUtils}
+import com.webank.eggroll.core.command.CommandClient
+import com.webank.eggroll.core.constant.{RollSiteConfKeys, SessionConfKeys, StringConstants}
+import com.webank.eggroll.core.meta.TransferModelPbMessageSerdes.ErRollSiteHeaderFromPbMessage
+import com.webank.eggroll.core.meta.{ErEndpoint, ErJob, ErRollSiteHeader, ErTask}
+import com.webank.eggroll.core.transfer.Transfer.RollSiteHeader
+import com.webank.eggroll.core.transfer.{GrpcClientUtils, Transfer, TransferServiceGrpc}
+import com.webank.eggroll.core.util._
+import com.webank.eggroll.rollpair.{RollPair, RollPairContext}
 import io.grpc.stub.StreamObserver
 
 class DataTransferService extends DataTransferServiceGrpc.DataTransferServiceImplBase with Logging {
@@ -125,7 +130,7 @@ object DataTransferService {
 
 /************ Observers ************/
 
-class ProxyDispatchStreamObserver(responseSO: StreamObserver[Proxy.Metadata]) extends StreamObserver[Proxy.Packet] with Logging {
+class ProxyDispatchStreamObserver(prevRespSO: StreamObserver[Proxy.Metadata]) extends StreamObserver[Proxy.Packet] with Logging {
   private var proxySO: StreamObserver[Proxy.Packet] = _
   private var inited = false
   logInfo("358constructing proxy dispatcher")
@@ -136,9 +141,9 @@ class ProxyDispatchStreamObserver(responseSO: StreamObserver[Proxy.Metadata]) ex
       logInfo("initing proxy dispatcher")
 
       proxySO = if (myPartyId.equals(dstPartyId)) {
-        new SinkRequestStreamObserver(responseSO)
+        new PutBatchSinkRequestStreamObserver(prevRespSO)
       } else {
-        new ForwardRequestStreamObserver(responseSO)
+        new ForwardRequestStreamObserver(prevRespSO)
       }
       inited = true
     }
@@ -155,7 +160,7 @@ class ProxyDispatchStreamObserver(responseSO: StreamObserver[Proxy.Metadata]) ex
   }
 }
 
-class SinkRequestStreamObserver(respSO: StreamObserver[Proxy.Metadata])
+class JvmSinkRequestStreamObserver(respSO: StreamObserver[Proxy.Metadata])
   extends StreamObserver[Proxy.Packet] with Logging {
   private var response: Proxy.Metadata = _
   private var rollSiteHeader: ErRollSiteHeader = _
@@ -175,6 +180,105 @@ class SinkRequestStreamObserver(respSO: StreamObserver[Proxy.Metadata])
     respSO.onCompleted()
 
     logInfo("completed")
+  }
+}
+
+
+class PutBatchSinkRequestStreamObserver(prevRespSO: StreamObserver[Proxy.Metadata])
+  extends StreamObserver[Proxy.Packet] with Logging {
+  private var inited = false
+  //private var ctx: RollPairContext = _
+  private var reqHeader: Proxy.Metadata = _
+  private var nextReqSO: StreamObserver[Transfer.TransferBatch] = _
+  private val self = this
+
+  private val transferBatchBuilder = Transfer.TransferBatch.newBuilder()
+  private val transferHeaderBuilder = Transfer.TransferHeader.newBuilder()
+    .setTotalSize(-1L)
+    .setStatus("stream_partition")
+
+  private def doInit(rollSiteHeader: ErRollSiteHeader): Unit = {
+    val sessionId = String.join("_", rollSiteHeader.rollSiteSessionId, rollSiteHeader.dstRole, rollSiteHeader.dstPartyId)
+    val session = new ErSession(sessionId)
+    val namespace = rollSiteHeader.rollSiteSessionId
+    val name = rollSiteHeader.encode()
+    val ctx = new RollPairContext(session)
+
+    val rp = ctx.load(namespace, name, options = rollSiteHeader.options)
+
+    val partitionId = rollSiteHeader.options("partition_id").toInt
+
+    val partition = rp.store.partitions(partitionId)
+    val egg = ctx.session.routeToEgg(partition)
+
+    val jobId = IdUtils.generateJobId(sessionId = ctx.session.sessionId,
+      tag = rollSiteHeader.options.getOrElse("job_id_tag", StringConstants.EMPTY))
+    val job = ErJob(id = jobId,
+      name = RollPair.PUT_ALL,
+      inputs = Array(rp.store),
+      outputs = Array(rp.store),
+      functors = Array.empty,
+      options = rollSiteHeader.options ++ Map(SessionConfKeys.CONFKEY_SESSION_ID -> ctx.session.sessionId))
+
+    val task = ErTask(id = s"${RollPair.PUT_BATCH}-${rollSiteHeader.encode()}-${partitionId}",
+      name = RollPair.PUT_BATCH,
+      inputs = Array(partition),
+      outputs = Array(partition),
+      job = job)
+
+    val commandFuture = RollPairContext.executor.submit(new Callable[ErTask] {
+      override def call(): ErTask = {
+        val commandClient = new CommandClient(egg.commandEndpoint)
+        commandClient.call(RollPair.EGG_RUN_TASK_COMMAND, task)
+      }
+    })
+
+    val channel = GrpcClientUtils.getChannel(egg.transferEndpoint)
+    val stub = TransferServiceGrpc.newStub(channel)
+
+    nextReqSO = stub.send(new StreamObserver[Transfer.TransferBatch] {
+      override def onNext(resp: Transfer.TransferBatch): Unit = {
+        prevRespSO.onNext(reqHeader.toBuilder.setAck(resp.getHeader.getId).build())
+      }
+
+      override def onError(t: Throwable): Unit = {
+        self.onError(t)
+      }
+
+      override def onCompleted(): Unit = {
+        prevRespSO.onCompleted()
+        commandFuture.get()
+      }
+    })
+    inited = true
+  }
+
+  override def onNext(request: Proxy.Packet): Unit = {
+    val packetHeader = request.getHeader
+    val encodedRollSiteHeader = packetHeader.getTask.getModel.getName
+    val rollSiteHeader: ErRollSiteHeader = RollSiteHeader.parseFrom(
+      encodedRollSiteHeader.getBytes(StandardCharsets.ISO_8859_1)).fromProto()
+
+    if (!inited) doInit(rollSiteHeader)
+
+    val tbHeader = transferHeaderBuilder.setId(packetHeader.getSeq.toInt)
+      .setStatus(encodedRollSiteHeader)
+      .setTotalSize(rollSiteHeader.options.getOrElse("stream_batch_count", "-1").toLong)
+
+    val tbBatch = transferBatchBuilder.setHeader(tbHeader)
+      .setData(request.getBody.getValue)
+      .build()
+
+    nextReqSO.onNext(tbBatch)
+  }
+
+  override def onError(t: Throwable): Unit = {
+    nextReqSO.onError(t)
+    prevRespSO.onError(t)
+  }
+
+  override def onCompleted(): Unit = {
+    nextReqSO.onCompleted()
   }
 }
 

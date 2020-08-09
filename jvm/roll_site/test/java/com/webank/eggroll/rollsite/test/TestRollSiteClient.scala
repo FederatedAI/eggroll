@@ -20,9 +20,11 @@ package com.webank.eggroll.rollsite.test
 
 import java.util.concurrent.CountDownLatch
 
+import com.google.protobuf.ByteString
 import com.webank.ai.eggroll.api.networking.proxy.Proxy.{Model, Task}
 import com.webank.ai.eggroll.api.networking.proxy.{DataTransferServiceGrpc, Proxy}
-import com.webank.eggroll.core.meta.ErEndpoint
+import com.webank.eggroll.core.meta.TransferModelPbMessageSerdes.ErRollSiteHeaderToPbMessage
+import com.webank.eggroll.core.meta.{ErEndpoint, ErRollSiteHeader}
 import com.webank.eggroll.core.transfer.GrpcClientUtils
 import com.webank.eggroll.core.util.{Logging, ToStringUtils}
 import io.grpc.stub.StreamObserver
@@ -33,6 +35,8 @@ class TestRollSiteClient extends Logging {
   private val bodyBuilder = Proxy.Data.newBuilder()
   private val packetBuilder = Proxy.Packet.newBuilder()
   private val topicBuilder = Proxy.Topic.newBuilder()
+  private val taskBuilder = Proxy.Task.newBuilder()
+  private val modelBuilder = Proxy.Model.newBuilder()
   private val endpoint10001 = new ErEndpoint("localhost", 9370)
   private val topic10001 = topicBuilder.setPartyId("10001").build()
 
@@ -75,8 +79,18 @@ class TestRollSiteClient extends Logging {
     })
 
     val seq = 0
+
     for (i <- 0 until 10) {
-      streamObserver.onNext(packetBuilder.setHeader(headerBuilder.setSeq(seq + i).setDst(topic10002)).build())
+      val rollsiteHeader = ErRollSiteHeader(rollSiteSessionId = "testing-guest", name = "transfer.variable", tag = "fit.1.0", srcRole = "guest", srcPartyId = "10000", dstRole = "host", dstPartyId = "10001", dataType = "rollpair", options = Map("total_partition" -> "1", "partition_id" -> "0"))
+        streamObserver.onNext(
+        packetBuilder.setHeader(
+          headerBuilder
+            .setSeq(seq + i)
+            .setDst(topic10002)
+            .setTask(taskBuilder.setModel(
+              modelBuilder.setNameBytes(
+                rollsiteHeader.toProto().toByteString))))
+          .build())
     }
     logInfo("client complete")
 //    Thread.sleep(3000)
