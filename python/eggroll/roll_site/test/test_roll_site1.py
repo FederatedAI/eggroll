@@ -19,6 +19,8 @@ import unittest
 import grpc
 from eggroll.core.proto import proxy_pb2, proxy_pb2_grpc
 
+print(sys.path)
+
 from eggroll.roll_pair.roll_pair import RollPair
 from eggroll.roll_site.test.roll_site_test_asset import get_debug_test_context, \
     get_cluster_context, get_standalone_context, default_props_file
