@@ -24,7 +24,7 @@ L = get_logger()
 FINISH_STATUS = "finish_partition"
 
 
-class BatchStreamStatus:
+class _BatchStreamStatus:
     _recorder = {}
     _recorder_lock = threading.Lock()
 
@@ -32,9 +32,11 @@ class BatchStreamStatus:
         self._tag = tag
         self._stage = "doing"
         self.total_batches = -1
-        self.content_type = "unknown"
+        self.data_type = None
         self.counter = defaultdict(int)
         self._condition = threading.Condition()
+        self._header_condition = threading.Condition()
+        self._header = None
         with self._recorder_lock:
             self._recorder[self._tag] = self
 
@@ -51,7 +53,11 @@ class BatchStreamStatus:
             self._condition.notify_all()
             L.trace(f"All BatchStreams finish normally, {self._debug_string()}")
 
-    def count_batch(self, batch_seq_id, batch_pairs):
+    def count_batch(self, header, batch_pairs):
+        batch_seq_id = header.partition_seq_id
+        if self._header is None:
+            self._header = header
+            self._header_condition.notify_all()
         self.counter[batch_seq_id] = batch_pairs
         if self._stage == "done" and self.total_batches == len(self.counter):
             self._condition.notify_all()
@@ -61,7 +67,7 @@ class BatchStreamStatus:
     def get_or_create(cls, tag):
         with cls._recorder_lock:
             if tag not in cls._recorder:
-                bss = BatchStreamStatus(tag)
+                bss = _BatchStreamStatus(tag)
             else:
                 bss = cls._recorder[tag]
         return bss
@@ -73,11 +79,17 @@ class BatchStreamStatus:
         finished = bss._stage == "done" and bss.total_batches == len(bss.counter)
         if finished:
             del cls._recorder[tag]
-        return finished, bss.total_batches, bss.counter, bss.content_type
+        return finished, bss.total_batches, bss.counter, bss.data_type
+
+    @classmethod
+    def wait_header(cls, tag, timeout):
+        bss = cls.get_or_create(tag)
+        bss._condition.wait(timeout)
+        return bss._header
 
 
 class PutBatchTask:
-    def __init__(self, tag, partition):
+    def __init__(self, tag, partition=None):
         self.partition = partition
         self.tag = tag
 
@@ -92,22 +104,23 @@ class PutBatchTask:
         # batch stream must be executed serially, and reinit.
         with self._put_batch_lock:
             L.trace(f"do_store start for tag={self.tag}")
-            bss = BatchStreamStatus.get_or_create(self.tag)
+            bss = _BatchStreamStatus.get_or_create(self.tag)
             try:
                 broker = TransferService.get_or_create_broker(self.tag, write_signals=1)
                 with create_adapter(self.partition) as db, db.new_batch() as wb:
                     for batch in broker:
+                        rs_header = batch.header.ext
                         batch_pairs = 0
                         bin_data = ArrayByteBuffer(batch.data)
                         reader = PairBinReader(pair_buffer=bin_data, data=batch.data)
                         for k_bytes, v_bytes in reader.read_all():
                             wb.put(k_bytes, v_bytes)
                             batch_pairs += 1
-                        bss.count_batch(batch.header.id, batch_pairs)
+                        bss.count_batch(rs_header.seq, batch_pairs)
                         # TODO:0
-                        bss.content_type = batch.header.status
-                        if batch.header.status == FINISH_STATUS:
-                            bss.set_finish(batch.header.totalSize)
+                        bss.data_type = rs_header.data_type
+                        if rs_header.state == FINISH_STATUS:
+                            bss.set_finish(rs_header.total_size)
 
                     # TransferService.remove_broker(tag) will be called in get_status phrase finished or exception got
             except Exception as e:
@@ -115,5 +128,7 @@ class PutBatchTask:
                 raise e
 
     def get_status(self, timeout):
-        return BatchStreamStatus.wait_finish(self.tag, timeout)
+        return _BatchStreamStatus.wait_finish(self.tag, timeout)
 
+    def get_header(self, timeout):
+        return _BatchStreamStatus.wait_header(self.tag, timeout)
