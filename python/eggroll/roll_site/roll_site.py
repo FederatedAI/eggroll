@@ -253,6 +253,7 @@ class RollSite(RollSiteBase):
             if header is None:
                 raise IOError(f"roll site pull_status failed: rs_key={rs_key}, timeout={self.polling_header_timeout}")
             else:
+                # TODO:0:  push bytes has only one partition, that means it has finished, need not get_status
                 data_type = header.data_type
                 L.debug(f"roll site pull_status ok: rs_key={rs_key}, header={header}")
             for i in range(self.polling_max_retry):

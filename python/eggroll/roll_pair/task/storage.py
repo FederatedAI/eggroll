@@ -78,13 +78,14 @@ class _BatchStreamStatus:
         bss._condition.wait(timeout)
         finished = bss._stage == "done" and bss.total_batches == len(bss.counter)
         if finished:
+            TransferService.remove_broker(tag)
             del cls._recorder[tag]
         return finished, bss.total_batches, bss.counter, bss.data_type
 
     @classmethod
     def wait_header(cls, tag, timeout):
         bss = cls.get_or_create(tag)
-        bss._condition.wait(timeout)
+        bss._header_condition.wait(timeout)
         return bss._header
 
 
@@ -102,6 +103,7 @@ class PutBatchTask:
 
     def run(self):
         # batch stream must be executed serially, and reinit.
+        # TODO:0:  remove lock to bss
         with self._put_batch_lock:
             L.trace(f"do_store start for tag={self.tag}")
             bss = _BatchStreamStatus.get_or_create(self.tag)
