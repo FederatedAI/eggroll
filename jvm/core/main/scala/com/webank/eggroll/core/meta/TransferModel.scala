@@ -18,6 +18,8 @@
 
 package com.webank.eggroll.core.meta
 
+import java.nio.charset.StandardCharsets
+
 import com.google.protobuf.{ByteString, Message}
 import com.webank.eggroll.core.constant.StringConstants
 import com.webank.eggroll.core.datastructure.RpcMessage
@@ -43,9 +45,14 @@ case class ErRollSiteHeader(rollSiteSessionId: String,
                             dstPartyId: String,
                             dataType: String,
                             options: Map[String, String]) extends TransferRpcMessage {
-  def concat(delim: String = StringConstants.HASH, prefix: Array[String] = Array("__federation__")): String = {
+  def encode(delim: String = "#", prefix: Array[String] = Array("__federation__")): String = {
     val finalArray = prefix ++ Array(rollSiteSessionId, name, tag, srcRole, srcPartyId, dstRole, dstPartyId)
     String.join(delim, finalArray: _*)
+  }
+
+  def toBytes(delim: String = "#", prefix: Array[String] = Array("__federation__")): Array[Byte] = {
+    val str = encode(delim, prefix)
+    str.getBytes(StandardCharsets.ISO_8859_1)
   }
 }
 
