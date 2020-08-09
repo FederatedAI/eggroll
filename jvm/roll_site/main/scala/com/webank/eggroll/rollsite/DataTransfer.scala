@@ -206,7 +206,7 @@ class PutBatchSinkRequestStreamObserver(prevRespSO: StreamObserver[Proxy.Metadat
 
     val rp = ctx.load(namespace, name, options = rollSiteHeader.options)
 
-    val partitionId = rollSiteHeader.options("partition_id").toInt
+    val partitionId = rollSiteHeader.partitionId
 
     val partition = rp.store.partitions(partitionId)
     val egg = ctx.session.routeToEgg(partition)
@@ -255,14 +255,14 @@ class PutBatchSinkRequestStreamObserver(prevRespSO: StreamObserver[Proxy.Metadat
 
   override def onNext(request: Proxy.Packet): Unit = {
     val packetHeader = request.getHeader
-    val encodedRollSiteHeader = packetHeader.getTask.getModel.getName
+    val encodedRollSiteHeader = packetHeader.getExt
     val rollSiteHeader: ErRollSiteHeader = RollSiteHeader.parseFrom(
-      encodedRollSiteHeader.getBytes(StandardCharsets.ISO_8859_1)).fromProto()
+      encodedRollSiteHeader).fromProto()
 
     if (!inited) doInit(rollSiteHeader)
 
     val tbHeader = transferHeaderBuilder.setId(packetHeader.getSeq.toInt)
-      .setStatus(encodedRollSiteHeader)
+      .setExt(encodedRollSiteHeader)
       .setTotalSize(rollSiteHeader.options.getOrElse("stream_batch_count", "-1").toLong)
 
     val tbBatch = transferBatchBuilder.setHeader(tbHeader)

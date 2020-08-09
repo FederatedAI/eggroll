@@ -32,7 +32,7 @@ trait TransferRpcMessage extends RpcMessage {
   override def rpcMessageType(): String = "Transfer"
 }
 
-case class ErTransferHeader(id: Int, tag: String, totalSize: Long, status: String = StringConstants.EMPTY) extends TransferRpcMessage
+case class ErTransferHeader(id: Int, tag: String, totalSize: Long, status: String = StringConstants.EMPTY, ext: Array[Byte] = Array.emptyByteArray) extends TransferRpcMessage
 
 case class ErTransferBatch(header: ErTransferHeader, data: Array[Byte] = Array.emptyByteArray) extends TransferRpcMessage
 
@@ -44,7 +44,12 @@ case class ErRollSiteHeader(rollSiteSessionId: String,
                             dstRole: String,
                             dstPartyId: String,
                             dataType: String,
-                            options: Map[String, String]) extends TransferRpcMessage {
+                            options: Map[String, String],
+                            totalPartitions: Int,
+                            partitionId: Int,
+                            batchStreams: Long,
+                            seq: Long,
+                            stage: String) extends TransferRpcMessage {
   def encode(delim: String = "#", prefix: Array[String] = Array("__federation__")): String = {
     val finalArray = prefix ++ Array(rollSiteSessionId, name, tag, srcRole, srcPartyId, dstRole, dstPartyId)
     String.join(delim, finalArray: _*)
@@ -66,6 +71,7 @@ object TransferModelPbMessageSerdes {
         .setTag(src.tag)
         .setTotalSize(src.totalSize)
         .setStatus(src.status)
+        .setExt(ByteString.copyFrom(src.ext))
 
       builder.build()
     }
@@ -101,6 +107,11 @@ object TransferModelPbMessageSerdes {
         .setDstPartyId(src.dstPartyId)
         .setDataType(src.dataType)
         .putAllOptions(src.options.asJava)
+        .setTotalPartitions(src.totalPartitions)
+        .setPartitionId(src.partitionId)
+        .setBatchStreams(src.batchStreams)
+        .setSeq(src.seq)
+        .setStage(src.stage)
 
       builder.build()
     }
@@ -112,7 +123,12 @@ object TransferModelPbMessageSerdes {
   // deserializers
   implicit class ErTransferHeaderFromPbMessage(src: Transfer.TransferHeader) extends PbMessageDeserializer {
     override def fromProto[T >: RpcMessage](): ErTransferHeader = {
-      ErTransferHeader(id = src.getId, tag = src.getTag, totalSize = src.getTotalSize, status = src.getStatus)
+      ErTransferHeader(
+        id = src.getId,
+        tag = src.getTag,
+        totalSize = src.getTotalSize,
+        status = src.getStatus,
+        ext = src.getExt.toByteArray)
     }
 
     override def fromBytes(bytes: Array[Byte]): ErTransferHeader =
@@ -139,8 +155,12 @@ object TransferModelPbMessageSerdes {
         dstRole = src.getDstRole,
         dstPartyId = src.getDstPartyId,
         dataType = src.getDataType,
-        options = src.getOptionsMap.asScala.toMap
-      )
+        options = src.getOptionsMap.asScala.toMap,
+        totalPartitions = src.getTotalPartitions,
+        partitionId = src.getPartitionId,
+        batchStreams = src.getBatchStreams,
+        seq = src.getSeq,
+        stage = src.getStage)
     }
 
     override def fromBytes(bytes: Array[Byte]): ErRollSiteHeader =
