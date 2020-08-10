@@ -179,56 +179,8 @@ class RollSite(RollSiteBase):
     def _push_bytes(self, obj, rs_header: ErRollSiteHeader):
         start_time = time.time()
 
-        #data = pickle.dumps(obj)
         rs_key = self._get_rs_key(rs_header)
         int_size = 4
-        #
-        # def _generate_batch_streams(chunk_count, body_bytes):
-        #     total_batches = len(data) // body_bytes + 1
-        #     total_streams = total_batches // chunk_count + 1
-        #     seq_id = -1
-        #
-        #     def chunk_batch_stream():
-        #         nonlocal seq_id
-        #         for i in range(chunk_count):
-        #             seq_id += 1
-        #             rs_header._seq = seq_id
-        #
-        #             # TODO:0: consider this protocol
-        #             rs_header._batch_streams = total_streams
-        #             rs_header._total_partitions = 1
-        #             rs_header._partition_id = 0
-        #             rs_header._data_type = 'object'
-        #             rs_header._stage = "finish_partition"   # storage.py: FINISH_STATUS
-        #
-        #             batch_bytes = data[seq_id * body_bytes: (seq_id + 1) * body_bytes]
-        #             if batch_bytes:
-        #                 value = list(TransferPair.pair_to_bin_batch([(seq_id.to_bytes(int_size, "big"), batch_bytes)]))[0]
-        #                 yield proxy_pb2.Packet(
-        #                         header=proxy_pb2.Metadata(
-        #                                 src=proxy_pb2.Topic(partyId=rs_header._src_party_id, role=rs_header._src_role),
-        #                                 dst=proxy_pb2.Topic(partyId=rs_header._dst_party_id, role=rs_header._dst_role),
-        #                                 ext=rs_header.to_proto_string(),
-        #                                 version="2.2.0"),
-        #                         body=proxy_pb2.Data(value=value))
-        #             else:
-        #                 # out of len
-        #                 break
-        #
-        #     for s in range(total_streams):
-        #         yield chunk_batch_stream()
-
-        #batch_streams = _generate_batch_streams(self.stream_chunk_count, self.batch_body_bytes - int_size - 8)
-        # for batch_stream in batch_streams:
-        #     batches = TransferPair.pair_to_bin_batch(batch_stream)
-        #     def _generate_transfer_batches(bytes_iter):
-        #         for b in bytes_iter:
-        #             yield TransferBatch(TransferHeader())
-
-        # bin format: key_len=4, key=4, val_len=4, val=?,  we count val only
-        # batch_streams = TransferPair.pair_to_bin_batch(
-        #     _generate_batch_streams(self.stream_chunk_count, self.batch_body_bytes - int_size - 8),
-        #     sendbuf_size=self.batch_body_bytes)
 
         def _generate_obj_bytes(py_obj, body_bytes):
             key_id = 0
