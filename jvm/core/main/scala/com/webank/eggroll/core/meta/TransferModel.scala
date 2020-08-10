@@ -50,14 +50,9 @@ case class ErRollSiteHeader(rollSiteSessionId: String,
                             batchStreams: Long,
                             seq: Long,
                             stage: String) extends TransferRpcMessage {
-  def encode(delim: String = "#", prefix: Array[String] = Array("__federation__")): String = {
+  def getRsKey(delim: String = "#", prefix: Array[String] = Array("__rsk")): String = {
     val finalArray = prefix ++ Array(rollSiteSessionId, name, tag, srcRole, srcPartyId, dstRole, dstPartyId)
     String.join(delim, finalArray: _*)
-  }
-
-  def toBytes(delim: String = "#", prefix: Array[String] = Array("__federation__")): Array[Byte] = {
-    val str = encode(delim, prefix)
-    str.getBytes(StandardCharsets.ISO_8859_1)
   }
 }
 

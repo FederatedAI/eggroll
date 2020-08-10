@@ -24,10 +24,10 @@ from eggroll.roll_site.test.roll_site_test_asset import get_debug_test_context, 
     get_cluster_context, get_standalone_context, default_props_file
 
 props_file_get = default_props_file
-#props_file_remote = default_props_file + '.host'
+props_file_remote = default_props_file + '.host'
 
 props_file_remote = default_props_file
-#props_file_remote = default_props_file + '.guest'
+props_file_remote = default_props_file + '.guest'
 
 
 row_limit = 100000
@@ -86,11 +86,12 @@ class TestRollSiteBase(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.rs_context_get = get_debug_test_context(role='dst',
-                                                    props_file=props_file_get)
+                                                    props_file=props_file_get,
+                                                    session_id='_'.join(['atest', 'dst', '10001']))
         cls.rs_context_remote = get_debug_test_context(manager_port=4671,
                                                        egg_port=20003,
                                                        transfer_port=20004,
-                                                       session_id='testing_guest',
+                                                       session_id='_'.join(['atest', 'src', '10002']),
                                                        role='src',
                                                        props_file=props_file_remote)
 
@@ -139,7 +140,7 @@ class TestRollSiteBase(unittest.TestCase):
         rp_options = {'include_key': True}
         rp_context = self.rs_context_remote.rp_ctx
         options = {'create_if_missing': True}
-        rp = rp_context.load("namespace", "name").put_all(data, options=rp_options)
+        rp = rp_context.load("namespace", "name", options={"create_if_missing": True}).put_all(data, options=rp_options)
 
         rs = self.rs_context_remote.load(name=self._rp_rs_name, tag=self._rp_rs_tag)
         futures = rs.push(rp, self.remote_parties)
@@ -223,7 +224,7 @@ class TestRollSiteBase(unittest.TestCase):
     def test_get_table(self):
         rp_context = self.rs_context_get.rp_ctx
 
-        rp = rp_context.load('atest', f'__federation__#atest#{self._rp_rs_name_big_mp}#{self._rp_rs_tag_big_mp}#guest#10002#host#10001')
+        rp = rp_context.load('atest', f'__rskey#testing#{self._rp_rs_name_big_mp}#{self._rp_rs_tag_big_mp}#guest#10002#host#10001')
 
         print(f'key-1: {rp.get("key-1")}')
 

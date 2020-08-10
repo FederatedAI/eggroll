@@ -31,6 +31,7 @@ from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.meta_model import ErStoreLocator, ErStore, ErEndpoint
 from eggroll.core.pair_store.format import ArrayByteBuffer, PairBinWriter
 from eggroll.core.proto import proxy_pb2, proxy_pb2_grpc
+from eggroll.core.proto.transfer_pb2 import TransferBatch, TransferHeader
 from eggroll.core.serdes import eggroll_serdes
 from eggroll.core.transfer_model import ErRollSiteHeader
 from eggroll.core.utils import _stringify, static_er_conf
@@ -54,6 +55,7 @@ CONF_KEY_TARGET = "rollsite"
 CONF_KEY_LOCAL = "local"
 CONF_KEY_SERVER = "servers"
 
+
 class CountDownLatch(object):
     def __init__(self, count):
         self.count = count
@@ -69,7 +71,7 @@ class CountDownLatch(object):
             if self.count <= 0:
                 self.lock.notifyAll()
 
-    def await(self, timeout=None, attempt=1, after_attempt=None):
+    def await_latch(self, timeout=None, attempt=1, after_attempt=None):
         try_count = 0
         with self.lock:
             while self.count > 0 and try_count < attempt:
@@ -116,7 +118,7 @@ class RollSiteContext:
         session_id = self.rp_ctx.get_session().get_session_id()
         L.info(f"running roll site exit func for er session={session_id},"
                f" roll site session id={self.roll_site_session_id}")
-        residual_count = self.pushing_latch.await(self._wait_push_exit_timeout)
+        residual_count = self.pushing_latch.await_latch(self._wait_push_exit_timeout)
         if residual_count != 0:
             L.error(f"exit session when not finish push: "
                     f"residual_count={residual_count}, timeout={self._wait_push_exit_timeout}")
@@ -127,11 +129,8 @@ class RollSiteContext:
         return RollSite(name, tag, self, options=options)
 
 
-
-
-
 class RollSiteBase:
-    _executor_pool = None
+    _receive_executor_pool = None
 
     def __init__(self, name: str, tag: str, rs_ctx: RollSiteContext, options: dict = None):
         if options is None:
@@ -145,7 +144,7 @@ class RollSiteBase:
         self.name = name
         self.tag = tag
         self.stub = self.ctx.stub
-        if self._receive_executor_pool is None:
+        if RollSiteBase._receive_executor_pool is None:
             receive_executor_pool_size = int(RollSiteConfKeys.EGGROLL_ROLLSITE_RECEIVE_EXECUTOR_POOL_MAX_SIZE.get_with(options))
             receive_executor_pool_type = CoreConfKeys.EGGROLL_CORE_DEFAULT_EXECUTOR_POOL.get_with(options)
             self._receive_executor_pool = create_executor_pool(
@@ -158,7 +157,7 @@ class RollSiteBase:
         L.debug(f'inited RollSite. my party id={self.ctx.party_id}. proxy endpoint={self.dst_host}:{self.dst_port}')
 
     def _run_thread(self, fn, *args, **kwargs):
-        return self._executor_pool.submit(fn, *args, **kwargs)
+        return self._receive_executor_pool.submit(fn, *args, **kwargs)
 
 
 class RollSiteLocalMock(RollSiteBase):
@@ -166,47 +165,134 @@ class RollSiteLocalMock(RollSiteBase):
 
 
 class RollSite(RollSiteBase):
-    def __init__(self, name: str, tag: str, rs_ctx: RollSiteContext):
+    def __init__(self, name: str, tag: str, rs_ctx: RollSiteContext, options: dict = None):
+        if options is None:
+            options = dict()
         super().__init__(name, tag, rs_ctx)
-        self.batch_body_bytes = int(static_er_conf.get(RollSiteConfKeys.EGGROLL_ROLLSITE_ADAPTER_SENDBUF_SIZE.key,
-                               RollSiteConfKeys.EGGROLL_ROLLSITE_ADAPTER_SENDBUF_SIZE.default_value))
+        self.batch_body_bytes = int(RollSiteConfKeys.EGGROLL_ROLLSITE_ADAPTER_SENDBUF_SIZE.get_with(options))
         # TODO:0: configurable
         self.stream_chunk_count = 10
         self.polling_header_timeout = 10 * 60
         self.polling_timeout = 10 * 60
         self.polling_max_retry = 3
 
-    def _push_bytes(self, obj, rs_header):
+    def _push_bytes(self, obj, rs_header: ErRollSiteHeader):
         start_time = time.time()
         data = pickle.dumps(obj)
         rs_key = self._get_rs_key(rs_header)
         int_size = 4
+        #
+        # def _generate_batch_streams(chunk_count, body_bytes):
+        #     total_batches = len(data) // body_bytes + 1
+        #     total_streams = total_batches // chunk_count + 1
+        #     seq_id = -1
+        #
+        #     def chunk_batch_stream():
+        #         nonlocal seq_id
+        #         for i in range(chunk_count):
+        #             seq_id += 1
+        #             rs_header._seq = seq_id
+        #
+        #             # TODO:0: consider this protocol
+        #             rs_header._batch_streams = total_streams
+        #             rs_header._total_partitions = 1
+        #             rs_header._partition_id = 0
+        #             rs_header._data_type = 'object'
+        #             rs_header._stage = "finish_partition"   # storage.py: FINISH_STATUS
+        #
+        #             batch_bytes = data[seq_id * body_bytes: (seq_id + 1) * body_bytes]
+        #             if batch_bytes:
+        #                 value = list(TransferPair.pair_to_bin_batch([(seq_id.to_bytes(int_size, "big"), batch_bytes)]))[0]
+        #                 yield proxy_pb2.Packet(
+        #                         header=proxy_pb2.Metadata(
+        #                                 src=proxy_pb2.Topic(partyId=rs_header._src_party_id, role=rs_header._src_role),
+        #                                 dst=proxy_pb2.Topic(partyId=rs_header._dst_party_id, role=rs_header._dst_role),
+        #                                 ext=rs_header.to_proto_string(),
+        #                                 version="2.2.0"),
+        #                         body=proxy_pb2.Data(value=value))
+        #             else:
+        #                 # out of len
+        #                 break
+        #
+        #     for s in range(total_streams):
+        #         yield chunk_batch_stream()
 
-        def _generate_batch_streams(chunk_count, body_bytes):
-            total_batches = len(data) // self.batch_body_bytes + 1
-            total_streams = total_batches // chunk_count + 1
-            seq_id = -1
+        #batch_streams = _generate_batch_streams(self.stream_chunk_count, self.batch_body_bytes - int_size - 8)
+        # for batch_stream in batch_streams:
+        #     batches = TransferPair.pair_to_bin_batch(batch_stream)
+        #     def _generate_transfer_batches(bytes_iter):
+        #         for b in bytes_iter:
+        #             yield TransferBatch(TransferHeader())
 
-            def chunk_batch_stream():
-                nonlocal seq_id
-                for i in range(chunk_count):
-                    seq_id += 1
-                    batch_bytes = data[seq_id * body_bytes: (seq_id + 1) * body_bytes]
-                    if batch_bytes:
-                        yield (seq_id.to_bytes(int_size, "big"), batch_bytes)
-                    else:
-                        # out of len
-                        break
-            for s in range(total_streams):
-                yield chunk_batch_stream()
         # bin format: key_len=4, key=4, val_len=4, val=?,  we count val only
-        batch_streams = TransferPair.pair_to_bin_batch(
-            _generate_batch_streams(self.stream_chunk_count, self.batch_body_bytes - int_size - 8),
-            sendbuf_size=self.batch_body_bytes)
-        for batch_stream in batch_streams:
-            self.stub.push(batch_stream)
+        # batch_streams = TransferPair.pair_to_bin_batch(
+        #     _generate_batch_streams(self.stream_chunk_count, self.batch_body_bytes - int_size - 8),
+        #     sendbuf_size=self.batch_body_bytes)
+
+        def _generate_obj_bytes(py_obj, body_bytes):
+            key_id = 0
+            obj_bytes = pickle.dumps(py_obj)
+            obj_bytes_len = len(obj_bytes)
+            cur_pos = 0
+
+            while cur_pos <= obj_bytes_len:
+                yield key_id.to_bytes(int_size, "big"), obj_bytes[cur_pos:cur_pos + body_bytes]
+                key_id += 1
+                cur_pos += body_bytes
+
+        bin_batch_streams = self._generate_batch_streams(
+                pair_iter=_generate_obj_bytes(obj, self.batch_body_bytes),
+                chunk_size=self.stream_chunk_count,
+                body_bytes=self.batch_body_bytes)
+
+        rs_header._total_partitions = 1
+        rs_header._partition_id = 0
+        rs_header._data_type = 'object'
+
+        # if use stub.push.future here, retry mechanism is a problem to solve
+        for batch_stream in bin_batch_streams:
+            self.stub.push(self.generate_packet(batch_stream, rs_header))
+
         L.debug(f"pushed object: rs_key={rs_key}, is_none={obj is None}, time_cost={time.time() - start_time}")
         self.ctx.pushing_latch.count_down()
+
+    @staticmethod
+    def generate_packet(bin_batch_iter, rs_header: ErRollSiteHeader):
+        def encode_packet():
+            rs_header._seq = seq
+            return proxy_pb2.Packet(
+                    header=proxy_pb2.Metadata(
+                            src=proxy_pb2.Topic(partyId=rs_header._src_party_id, role=rs_header._src_role),
+                            dst=proxy_pb2.Topic(partyId=rs_header._dst_party_id, role=rs_header._dst_role),
+                            seq=seq,
+                            ext=rs_header.to_proto_string(),
+                            version="2.2.0"),
+                    body=proxy_pb2.Data(value=bin_batch))
+
+        prev_batch = None
+        seq = 0
+        for bin_batch in bin_batch_iter:
+            if prev_batch:
+                yield encode_packet()
+                seq += 1
+            prev_batch = bin_batch
+
+        rs_header._stage = "finish_partition"
+        yield encode_packet()
+
+    @staticmethod
+    def _generate_batch_streams(pair_iter, chunk_size, body_bytes):
+        batches = TransferPair.pair_to_bin_batch(pair_iter, sendbuf_size=body_bytes)
+
+        def chunk_batch_stream():
+            try:
+                for i in range(chunk_size - 1):
+                    yield next(batches)
+            except StopIteration as e:
+                L.info("stop iteration in chunk_batch_stream")
+
+        for first in batches:
+             yield itertools.chain([first], chunk_batch_stream())
 
     def _push_rollpair(self, rp, rs_header):
         rs_key = self._get_rs_key(rs_header)
@@ -214,22 +300,13 @@ class RollSite(RollSiteBase):
             L.debug(f"pushing object: rs_key={rs_key}, count={rp.count()}")
         start_time = time.time()
 
-        def _generate_batch_streams(rb, chunk_size):
-            batches = TransferPair.pair_to_bin_batch(rb, sendbuf_size=self.batch_body_bytes)
-
-            def chunk_batch_stream():
-                for i in range(chunk_size - 1):
-                    yield next(batches)
-            for first in batches:
-                yield itertools.chain([first], chunk_batch_stream())
-
         def _push_partiton(inputs):
             partition = inputs[0]
             written_batched = 0
             written_pairs = 0
 
             with create_adapter(partition) as db, db.iteritems() as rb:
-                for batch_stream in _generate_batch_streams(rb):
+                for batch_stream in self._generate_batch_streams(rb, self.stream_chunk_count, self.batch_body_bytes):
                     self.stub.push(batch_stream)
 
         rp.with_stores(_push_partiton)
@@ -324,5 +401,5 @@ class RollSite(RollSiteBase):
             rs_header = ErRollSiteHeader(
                 roll_site_session_id=self.roll_site_session_id, name=self.name, tag=self.tag,
                 src_role=src_role, src_party_id=src_party_id, dst_role=self.local_role, dst_party_id=self.party_id)
-            futures.append(self._executor_pool.submit(self._pull_one, rs_header))
+            futures.append(self._receive_executor_pool.submit(self._pull_one, rs_header))
         return futures
