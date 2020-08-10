@@ -186,7 +186,7 @@ class ErRollSiteHeader(RpcMessage):
                f'options=[{repr(self._options)}], ' \
                f'total_partitions={repr(self._total_partitions)}, ' \
                f'partition_id={repr(self._partition_id)}, ' \
-               f'batch_streams={repr(self._batch_streams)},' \
+               f'batch_streams={repr(self._batch_streams)}, ' \
                f'seq={self._seq}, ' \
                f'stage={self._stage}) ' \
                f'at {hex(id(self))}>'
