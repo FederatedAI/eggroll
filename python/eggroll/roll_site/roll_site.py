@@ -178,7 +178,8 @@ class RollSite(RollSiteBase):
 
     def _push_bytes(self, obj, rs_header: ErRollSiteHeader):
         start_time = time.time()
-        data = pickle.dumps(obj)
+
+        #data = pickle.dumps(obj)
         rs_key = self._get_rs_key(rs_header)
         int_size = 4
         #
@@ -236,7 +237,8 @@ class RollSite(RollSiteBase):
             cur_pos = 0
 
             while cur_pos <= obj_bytes_len:
-                yield key_id.to_bytes(int_size, "big"), obj_bytes[cur_pos:cur_pos + body_bytes]
+                # TODO:0: find a way to escape picking bytes again
+                yield pickle.dumps(key_id), pickle.dumps(obj_bytes[cur_pos:cur_pos + body_bytes])
                 key_id += 1
                 cur_pos += body_bytes
 
@@ -324,22 +326,25 @@ class RollSite(RollSiteBase):
         data_type = None
         try:
             # make sure rollpair already created
-            header = self.ctx.rp_ctx.load(name=STATUS_TABLE_NAME, namespace=rp_namespace,
-                                          options={'create_if_missing': False, 'total_partitions': 1}).with_stores(
-                lambda x: PutBatchTask(transfer_tag_prefix + "0").get_header(self.polling_header_timeout))
-            if header is None:
+            polling_header_timeout = self.polling_timeout       # skips pickling self
+            header_response = self.ctx.rp_ctx.load(name=STATUS_TABLE_NAME, namespace=rp_namespace,
+                                          options={'create_if_missing': True, 'total_partitions': 1}).with_stores(
+                lambda x: PutBatchTask(transfer_tag_prefix + "0").get_header(polling_header_timeout))
+            if not header_response or not isinstance(header_response[0][1], ErRollSiteHeader):
                 raise IOError(f"roll site pull_status failed: rs_key={rs_key}, timeout={self.polling_header_timeout}")
             else:
+                header: ErRollSiteHeader = header_response[0][1]
                 # TODO:0:  push bytes has only one partition, that means it has finished, need not get_status
-                data_type = header.data_type
+                data_type = header._data_type
                 L.debug(f"roll site pull_status ok: rs_key={rs_key}, header={header}")
             for i in range(self.polling_max_retry):
                 polling_attempts = i
+                polling_timeout = self.polling_timeout          # skips pickling self
                 total_batches = 0
                 all_finished = True
                 all_status = self.ctx.rp_ctx.load(name=rp_name, namespace=rp_namespace,
                                                   options={'create_if_missing': False}).with_stores(
-                    lambda x: PutBatchTask(transfer_tag_prefix + str(x[0]._id), None).get_status(self.polling_timeout))
+                    lambda x: PutBatchTask(transfer_tag_prefix + str(x[0]._id), None).get_status(polling_timeout))
                 for part_id, part_status in all_status:
                     part_finished, part_batches, part_counter, _ = part_status
                     if not part_finished:
@@ -353,7 +358,7 @@ class RollSite(RollSiteBase):
                 if all_finished:
                     rp = self.ctx.rp_ctx.load(name=rp_name, namespace=rp_namespace)
                     if data_type == "object":
-                        result = pickle.loads("".join(sorted(rp.get_all(), key=lambda x: int.from_bytes(x[0], "big"))))
+                        result = pickle.loads(b''.join(map(lambda t: t[1], sorted(rp.get_all(), key=lambda x: x[0]))))
                         L.debug(f"roll site pulled object: rs_key={rs_key}, is_none={result is None}, "
                                 f"time_cost={time.time() - start_time}")
                     else:
@@ -388,9 +393,9 @@ class RollSite(RollSiteBase):
                 src_role=self.local_role, src_party_id=self.party_id, dst_role=dst_role, dst_party_id=dst_party_id,
                 data_type=data_type)
             if isinstance(obj, RollPair):
-                future = self._run_thread(self._push_bytes, obj, rs_header)
-            else:
                 future = self._run_thread(self._push_rollpair, obj, rs_header)
+            else:
+                future = self._run_thread(self._push_bytes, obj, rs_header)
             futures.append(future)
         return futures
 

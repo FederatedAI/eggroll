@@ -37,8 +37,8 @@ class _BatchStreamStatus:
         self.total_batches = -1
         self.data_type = None
         self.counter = defaultdict(int)
-        self._condition = threading.Condition()
-        self._header_condition = threading.Condition()
+        self._stream_finish_event = threading.Event()
+        self._header_arrive_event = threading.Event()
         self._header = None
         # removes lock. otherwise it deadlocks
         self._recorder[self._tag] = self
@@ -48,24 +48,23 @@ class _BatchStreamStatus:
                f"total_batches={self.total_batches}:total_elems={sum(self.counter.values())}"
 
     def set_finish(self, total_batches):
+        self.total_batches = total_batches
         if self.total_batches != len(self.counter):
             L.debug(f"MarkEnd BatchStream ahead of all BatchStreams received, {self._debug_string()}")
         else:
             self._stage = "done"
-            self.total_batches = total_batches
-            self._condition.notify_all()
+            #self.total_batches = total_batches
+            self._stream_finish_event.set()
             L.trace(f"All BatchStreams finish normally, {self._debug_string()}")
 
     def count_batch(self, header: ErRollSiteHeader, batch_pairs):
         batch_seq_id = header._seq
         if self._header is None:
             self._header = header
-            with self._header_condition:
-                self._header_condition.notify_all()
+            self._header_arrive_event.set()
         self.counter[batch_seq_id] = batch_pairs
         if self._stage == "done" and self.total_batches == len(self.counter):
-            with self._condition:
-                self._condition.notify_all()
+            self._stream_finish_event.set()
             L.debug(f"All BatchStreams finish out-of-order, {self._debug_string()}")
 
     @classmethod
@@ -80,7 +79,7 @@ class _BatchStreamStatus:
     @classmethod
     def wait_finish(cls, tag, timeout):
         bss = cls.get_or_create(tag)
-        bss._condition.wait(timeout)
+        bss._stream_finish_event.wait(timeout)
         finished = bss._stage == "done" and bss.total_batches == len(bss.counter)
         if finished:
             TransferService.remove_broker(tag)
@@ -90,7 +89,7 @@ class _BatchStreamStatus:
     @classmethod
     def wait_header(cls, tag, timeout):
         bss = cls.get_or_create(tag)
-        bss._header_condition.wait(timeout)
+        bss._header_arrive_event.wait(timeout)
         return bss._header
 
 
@@ -127,7 +126,7 @@ class PutBatchTask:
                         # TODO:0
                         bss.data_type = rs_header._data_type
                         if rs_header._stage == FINISH_STATUS:
-                            bss.set_finish(rs_header._seq)
+                            bss.set_finish(rs_header._seq + 1)  # starting from 0
 
                     # TransferService.remove_broker(tag) will be called in get_status phrase finished or exception got
             except Exception as e:
