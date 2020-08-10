@@ -21,7 +21,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto3',
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x0bproxy.proto\x12*com.webank.ai.eggroll.api.networking.proxy\x1a\x10\x62\x61sic-meta.proto\"&\n\x05Model\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0f\n\x07\x64\x61taKey\x18\x02 \x01(\t\"X\n\x04Task\x12\x0e\n\x06taskId\x18\x01 \x01(\t\x12@\n\x05model\x18\x02 \x01(\x0b\x32\x31.com.webank.ai.eggroll.api.networking.proxy.Model\"p\n\x05Topic\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0f\n\x07partyId\x18\x02 \x01(\t\x12\x0c\n\x04role\x18\x03 \x01(\t\x12:\n\x08\x63\x61llback\x18\x04 \x01(\x0b\x32(.com.webank.ai.eggroll.api.core.Endpoint\"\x17\n\x07\x43ommand\x12\x0c\n\x04name\x18\x01 \x01(\t\"p\n\x04\x43onf\x12\x16\n\x0eoverallTimeout\x18\x01 \x01(\x03\x12\x1d\n\x15\x63ompletionWaitTimeout\x18\x02 \x01(\x03\x12\x1d\n\x15packetIntervalTimeout\x18\x03 \x01(\x03\x12\x12\n\nmaxRetries\x18\x04 \x01(\x05\"\xfc\x02\n\x08Metadata\x12>\n\x04task\x18\x01 \x01(\x0b\x32\x30.com.webank.ai.eggroll.api.networking.proxy.Task\x12>\n\x03src\x18\x02 \x01(\x0b\x32\x31.com.webank.ai.eggroll.api.networking.proxy.Topic\x12>\n\x03\x64st\x18\x03 \x01(\x0b\x32\x31.com.webank.ai.eggroll.api.networking.proxy.Topic\x12\x44\n\x07\x63ommand\x18\x04 \x01(\x0b\x32\x33.com.webank.ai.eggroll.api.networking.proxy.Command\x12\x10\n\x08operator\x18\x05 \x01(\t\x12\x0b\n\x03seq\x18\x06 \x01(\x03\x12\x0b\n\x03\x61\x63k\x18\x07 \x01(\x03\x12>\n\x04\x63onf\x18\x08 \x01(\x0b\x32\x30.com.webank.ai.eggroll.api.networking.proxy.Conf\"\"\n\x04\x44\x61ta\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x0c\"\x8e\x01\n\x06Packet\x12\x44\n\x06header\x18\x01 \x01(\x0b\x32\x34.com.webank.ai.eggroll.api.networking.proxy.Metadata\x12>\n\x04\x62ody\x18\x02 \x01(\x0b\x32\x30.com.webank.ai.eggroll.api.networking.proxy.Data\"\xa3\x01\n\x11HeartbeatResponse\x12\x44\n\x06header\x18\x01 \x01(\x0b\x32\x34.com.webank.ai.eggroll.api.networking.proxy.Metadata\x12H\n\toperation\x18\x02 \x01(\x0e\x32\x35.com.webank.ai.eggroll.api.networking.proxy.Operation*O\n\tOperation\x12\t\n\x05START\x10\x00\x12\x07\n\x03RUN\x10\x01\x12\x08\n\x04STOP\x10\x02\x12\x08\n\x04KILL\x10\x03\x12\x0c\n\x08GET_DATA\x10\x04\x12\x0c\n\x08PUT_DATA\x10\x05\x32\xf2\x02\n\x13\x44\x61taTransferService\x12r\n\x04push\x12\x32.com.webank.ai.eggroll.api.networking.proxy.Packet\x1a\x34.com.webank.ai.eggroll.api.networking.proxy.Metadata(\x01\x12r\n\x04pull\x12\x34.com.webank.ai.eggroll.api.networking.proxy.Metadata\x1a\x32.com.webank.ai.eggroll.api.networking.proxy.Packet0\x01\x12s\n\tunaryCall\x12\x32.com.webank.ai.eggroll.api.networking.proxy.Packet\x1a\x32.com.webank.ai.eggroll.api.networking.proxy.Packet2t\n\x0cRouteService\x12\x64\n\x05query\x12\x31.com.webank.ai.eggroll.api.networking.proxy.Topic\x1a(.com.webank.ai.eggroll.api.core.Endpointb\x06proto3'
+  serialized_pb=b'\n\x0bproxy.proto\x12*com.webank.ai.eggroll.api.networking.proxy\x1a\x10\x62\x61sic-meta.proto\"&\n\x05Model\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0f\n\x07\x64\x61taKey\x18\x02 \x01(\t\"X\n\x04Task\x12\x0e\n\x06taskId\x18\x01 \x01(\t\x12@\n\x05model\x18\x02 \x01(\x0b\x32\x31.com.webank.ai.eggroll.api.networking.proxy.Model\"p\n\x05Topic\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0f\n\x07partyId\x18\x02 \x01(\t\x12\x0c\n\x04role\x18\x03 \x01(\t\x12:\n\x08\x63\x61llback\x18\x04 \x01(\x0b\x32(.com.webank.ai.eggroll.api.core.Endpoint\"\x17\n\x07\x43ommand\x12\x0c\n\x04name\x18\x01 \x01(\t\"p\n\x04\x43onf\x12\x16\n\x0eoverallTimeout\x18\x01 \x01(\x03\x12\x1d\n\x15\x63ompletionWaitTimeout\x18\x02 \x01(\x03\x12\x1d\n\x15packetIntervalTimeout\x18\x03 \x01(\x03\x12\x12\n\nmaxRetries\x18\x04 \x01(\x05\"\x9a\x03\n\x08Metadata\x12>\n\x04task\x18\x01 \x01(\x0b\x32\x30.com.webank.ai.eggroll.api.networking.proxy.Task\x12>\n\x03src\x18\x02 \x01(\x0b\x32\x31.com.webank.ai.eggroll.api.networking.proxy.Topic\x12>\n\x03\x64st\x18\x03 \x01(\x0b\x32\x31.com.webank.ai.eggroll.api.networking.proxy.Topic\x12\x44\n\x07\x63ommand\x18\x04 \x01(\x0b\x32\x33.com.webank.ai.eggroll.api.networking.proxy.Command\x12\x10\n\x08operator\x18\x05 \x01(\t\x12\x0b\n\x03seq\x18\x06 \x01(\x03\x12\x0b\n\x03\x61\x63k\x18\x07 \x01(\x03\x12>\n\x04\x63onf\x18\x08 \x01(\x0b\x32\x30.com.webank.ai.eggroll.api.networking.proxy.Conf\x12\x0b\n\x03\x65xt\x18\t \x01(\x0c\x12\x0f\n\x07version\x18\x64 \x01(\t\"\"\n\x04\x44\x61ta\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x0c\"\x8e\x01\n\x06Packet\x12\x44\n\x06header\x18\x01 \x01(\x0b\x32\x34.com.webank.ai.eggroll.api.networking.proxy.Metadata\x12>\n\x04\x62ody\x18\x02 \x01(\x0b\x32\x30.com.webank.ai.eggroll.api.networking.proxy.Data\"\xa3\x01\n\x11HeartbeatResponse\x12\x44\n\x06header\x18\x01 \x01(\x0b\x32\x34.com.webank.ai.eggroll.api.networking.proxy.Metadata\x12H\n\toperation\x18\x02 \x01(\x0e\x32\x35.com.webank.ai.eggroll.api.networking.proxy.Operation*O\n\tOperation\x12\t\n\x05START\x10\x00\x12\x07\n\x03RUN\x10\x01\x12\x08\n\x04STOP\x10\x02\x12\x08\n\x04KILL\x10\x03\x12\x0c\n\x08GET_DATA\x10\x04\x12\x0c\n\x08PUT_DATA\x10\x05\x32\xf2\x02\n\x13\x44\x61taTransferService\x12r\n\x04push\x12\x32.com.webank.ai.eggroll.api.networking.proxy.Packet\x1a\x34.com.webank.ai.eggroll.api.networking.proxy.Metadata(\x01\x12r\n\x04pull\x12\x34.com.webank.ai.eggroll.api.networking.proxy.Metadata\x1a\x32.com.webank.ai.eggroll.api.networking.proxy.Packet0\x01\x12s\n\tunaryCall\x12\x32.com.webank.ai.eggroll.api.networking.proxy.Packet\x1a\x32.com.webank.ai.eggroll.api.networking.proxy.Packet2t\n\x0cRouteService\x12\x64\n\x05query\x12\x31.com.webank.ai.eggroll.api.networking.proxy.Topic\x1a(.com.webank.ai.eggroll.api.core.Endpointb\x06proto3'
   ,
   dependencies=[basic__meta__pb2.DESCRIPTOR,])
 
@@ -65,8 +65,8 @@ _OPERATION = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=1190,
-  serialized_end=1269,
+  serialized_start=1220,
+  serialized_end=1299,
 )
 _sym_db.RegisterEnumDescriptor(_OPERATION)
 
@@ -360,6 +360,20 @@ _METADATA = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='ext', full_name='com.webank.ai.eggroll.api.networking.proxy.Metadata.ext', index=8,
+      number=9, type=12, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"",
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='version', full_name='com.webank.ai.eggroll.api.networking.proxy.Metadata.version', index=9,
+      number=100, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
   ],
   extensions=[
   ],
@@ -373,7 +387,7 @@ _METADATA = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=461,
-  serialized_end=841,
+  serialized_end=871,
 )
 
 
@@ -411,8 +425,8 @@ _DATA = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=843,
-  serialized_end=877,
+  serialized_start=873,
+  serialized_end=907,
 )
 
 
@@ -450,8 +464,8 @@ _PACKET = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=880,
-  serialized_end=1022,
+  serialized_start=910,
+  serialized_end=1052,
 )
 
 
@@ -489,8 +503,8 @@ _HEARTBEATRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1025,
-  serialized_end=1188,
+  serialized_start=1055,
+  serialized_end=1218,
 )
 
 _TASK.fields_by_name['model'].message_type = _MODEL
@@ -588,8 +602,8 @@ _DATATRANSFERSERVICE = _descriptor.ServiceDescriptor(
   index=0,
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_start=1272,
-  serialized_end=1642,
+  serialized_start=1302,
+  serialized_end=1672,
   methods=[
   _descriptor.MethodDescriptor(
     name='push',
@@ -634,8 +648,8 @@ _ROUTESERVICE = _descriptor.ServiceDescriptor(
   index=1,
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_start=1644,
-  serialized_end=1760,
+  serialized_start=1674,
+  serialized_end=1790,
   methods=[
   _descriptor.MethodDescriptor(
     name='query',

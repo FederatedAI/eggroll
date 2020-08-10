@@ -207,13 +207,13 @@ class EggPair(object):
             store_broker_result = tf.store_broker(output_partition, False).result()
             # TODO:2: should wait complete?, command timeout?
 
-        if task._name == 'put':
+        elif task._name == 'put':
             f = create_functor(functors[0]._body)
             with create_adapter(task._inputs[0]) as input_adapter:
                 value = input_adapter.put(f._key, f._value)
                 #result = ErPair(key=f._key, value=bytes(value))
 
-        if task._name == 'destroy':
+        elif task._name == 'destroy':
             input_store_locator = task._inputs[0]._store_locator
             namespace = input_store_locator._namespace
             name = input_store_locator._name
@@ -246,13 +246,13 @@ class EggPair(object):
                 with create_adapter(task._inputs[0], options=options) as input_adapter:
                     input_adapter.destroy(options=options)
 
-        if task._name == 'delete':
+        elif task._name == 'delete':
             f = create_functor(functors[0]._body)
             with create_adapter(task._inputs[0]) as input_adapter:
                 if input_adapter.delete(f._key):
                     L.trace("delete k success")
 
-        if task._name == 'mapValues':
+        elif task._name == 'mapValues':
             f = create_functor(functors[0]._body)
 
             def map_values_wrapper(input_iterator, key_serdes, value_serdes, output_writebatch):

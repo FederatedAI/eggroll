@@ -111,6 +111,9 @@ class ErRollSiteHeader(RpcMessage):
             batch_streams: int = -1,
             seq: int = -1,
             stage: str = ''):
+        if options is None:
+            options = {}
+
         self._roll_site_session_id = roll_site_session_id
         self._name = name
         self._tag = tag
@@ -172,7 +175,7 @@ class ErRollSiteHeader(RpcMessage):
 
     def __repr__(self):
         return f'<ErRollSiteHeader(' \
-               f'roll_site_session_id={repr(self._roll_site_session_id)}), ' \
+               f'roll_site_session_id={repr(self._roll_site_session_id)}, ' \
                f'name={repr(self._name)}, ' \
                f'tag={repr(self._tag)}, ' \
                f'src_role={repr(self._src_role)}, ' \

@@ -41,6 +41,7 @@ class DataTransferService extends DataTransferServiceGrpc.DataTransferServiceImp
   /**
    */
   override def push(responseObserver: StreamObserver[Proxy.Metadata]): StreamObserver[Proxy.Packet] = {
+    logInfo("push request received")
     new ProxyDispatchStreamObserver(responseObserver)
   }
 
@@ -63,7 +64,7 @@ class DataTransferService extends DataTransferServiceGrpc.DataTransferServiceImp
         request
         //processCommand(request)
       } else {
-        val channel = GrpcClientUtils.getChannel(new ErEndpoint("localhost", 9470))
+        val channel = GrpcClientUtils.getChannel(new ErEndpoint("localhost", 9370))
         val stub = DataTransferServiceGrpc.newBlockingStub(channel)
 
         stub.unaryCall(request)
@@ -160,7 +161,7 @@ class ProxyDispatchStreamObserver(prevRespSO: StreamObserver[Proxy.Metadata]) ex
   }
 }
 
-class JvmSinkRequestStreamObserver(respSO: StreamObserver[Proxy.Metadata])
+class MockingSinkRequestStreamObserver(respSO: StreamObserver[Proxy.Metadata])
   extends StreamObserver[Proxy.Packet] with Logging {
   private var response: Proxy.Metadata = _
   private var rollSiteHeader: ErRollSiteHeader = _
@@ -191,17 +192,22 @@ class PutBatchSinkRequestStreamObserver(prevRespSO: StreamObserver[Proxy.Metadat
   private var reqHeader: Proxy.Metadata = _
   private var nextReqSO: StreamObserver[Transfer.TransferBatch] = _
   private val self = this
+  private var rsKey: String = _
+  private var brokerTag: String = _
 
   private val transferBatchBuilder = Transfer.TransferBatch.newBuilder()
   private val transferHeaderBuilder = Transfer.TransferHeader.newBuilder()
     .setTotalSize(-1L)
     .setStatus("stream_partition")
 
-  private def doInit(rollSiteHeader: ErRollSiteHeader): Unit = {
+  private def ensureInit(firstRequest: Proxy.Packet, rollSiteHeader: ErRollSiteHeader): Unit = {
+    if (inited) return
+    reqHeader = firstRequest.getHeader
     val sessionId = String.join("_", rollSiteHeader.rollSiteSessionId, rollSiteHeader.dstRole, rollSiteHeader.dstPartyId)
     val session = new ErSession(sessionId)
     val namespace = rollSiteHeader.rollSiteSessionId
-    val name = rollSiteHeader.encode()
+    rsKey = rollSiteHeader.getRsKey()
+    val name = rsKey
     val ctx = new RollPairContext(session)
 
     val rp = ctx.load(namespace, name, options = rollSiteHeader.options)
@@ -214,13 +220,14 @@ class PutBatchSinkRequestStreamObserver(prevRespSO: StreamObserver[Proxy.Metadat
     val jobId = IdUtils.generateJobId(sessionId = ctx.session.sessionId,
       tag = rollSiteHeader.options.getOrElse("job_id_tag", StringConstants.EMPTY))
     val job = ErJob(id = jobId,
-      name = RollPair.PUT_ALL,
+      name = RollPair.PUT_BATCH,
       inputs = Array(rp.store),
       outputs = Array(rp.store),
       functors = Array.empty,
       options = rollSiteHeader.options ++ Map(SessionConfKeys.CONFKEY_SESSION_ID -> ctx.session.sessionId))
 
-    val task = ErTask(id = s"${RollPair.PUT_BATCH}-${rollSiteHeader.encode()}-${partitionId}",
+    brokerTag = s"${RollPair.PUT_BATCH}-${rollSiteHeader.getRsKey()}-${partitionId}"
+    val task = ErTask(id = brokerTag,
       name = RollPair.PUT_BATCH,
       inputs = Array(partition),
       outputs = Array(partition),
@@ -229,7 +236,7 @@ class PutBatchSinkRequestStreamObserver(prevRespSO: StreamObserver[Proxy.Metadat
     val commandFuture = RollPairContext.executor.submit(new Callable[ErTask] {
       override def call(): ErTask = {
         val commandClient = new CommandClient(egg.commandEndpoint)
-        commandClient.call(RollPair.EGG_RUN_TASK_COMMAND, task)
+        commandClient.call[ErTask](RollPair.EGG_RUN_TASK_COMMAND, task)
       }
     })
 
@@ -238,20 +245,26 @@ class PutBatchSinkRequestStreamObserver(prevRespSO: StreamObserver[Proxy.Metadat
 
     nextReqSO = stub.send(new StreamObserver[Transfer.TransferBatch] {
       override def onNext(resp: Transfer.TransferBatch): Unit = {
+        logInfo("200 putbatch sink onnext")
         prevRespSO.onNext(reqHeader.toBuilder.setAck(resp.getHeader.getId).build())
+        logInfo("201 putbatch sink onnext finished")
       }
 
       override def onError(t: Throwable): Unit = {
+        logInfo("500 putbatch sink error", t)
         self.onError(t)
       }
 
       override def onCompleted(): Unit = {
-        prevRespSO.onCompleted()
+        logInfo("600 putbatch on complete")
         commandFuture.get()
+        prevRespSO.onCompleted()
+        logInfo("601 putbatch on complete finished")
       }
     })
     inited = true
   }
+
 
   override def onNext(request: Proxy.Packet): Unit = {
     val packetHeader = request.getHeader
@@ -259,9 +272,10 @@ class PutBatchSinkRequestStreamObserver(prevRespSO: StreamObserver[Proxy.Metadat
     val rollSiteHeader: ErRollSiteHeader = RollSiteHeader.parseFrom(
       encodedRollSiteHeader).fromProto()
 
-    if (!inited) doInit(rollSiteHeader)
+    ensureInit(request, rollSiteHeader)
 
     val tbHeader = transferHeaderBuilder.setId(packetHeader.getSeq.toInt)
+      .setTag(brokerTag)
       .setExt(encodedRollSiteHeader)
       .setTotalSize(rollSiteHeader.options.getOrElse("stream_batch_count", "-1").toLong)
 
@@ -279,6 +293,7 @@ class PutBatchSinkRequestStreamObserver(prevRespSO: StreamObserver[Proxy.Metadat
 
   override def onCompleted(): Unit = {
     nextReqSO.onCompleted()
+    logInfo(s"put batch finished. rsKey=${rsKey}")
   }
 }
 
@@ -293,15 +308,17 @@ class ForwardRequestStreamObserver(prevRespSO: StreamObserver[Proxy.Metadata])
     logInfo(s"onnext: ${ToStringUtils.toOneLineString(request)}")
 
     if (!inited) {
-      val channel = GrpcClientUtils.getChannel(new ErEndpoint("localhost", 9470))
+      val channel = GrpcClientUtils.getChannel(new ErEndpoint("localhost", 9370))
       val stub = DataTransferServiceGrpc.newStub(channel)
       nextReqSO = stub.push(new StreamObserver[Proxy.Metadata] {
         override def onNext(value: Proxy.Metadata): Unit = {
+          logInfo("forward onnext")
           prevRespSO.onNext(value)
           logInfo("response received")
         }
 
         override def onError(t: Throwable): Unit = {
+          logInfo("forward on error", t)
           self.onError(t)
         }
 
@@ -326,7 +343,7 @@ class ForwardRequestStreamObserver(prevRespSO: StreamObserver[Proxy.Metadata])
   }
 
   override def onCompleted(): Unit = {
-    logInfo("nextReqSO onComplete")
     nextReqSO.onCompleted()
+    logInfo("nextReqSO onComplete")
   }
 }

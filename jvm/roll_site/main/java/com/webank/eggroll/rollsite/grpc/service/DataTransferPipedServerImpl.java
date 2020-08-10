@@ -655,7 +655,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
 
     private String genTagKey(ErRollSiteHeader rollSiteHeader) {
         return rollSiteHeader
-            .encode(StringConstants.HASH(), new String[]{"__federation__"});
+            .getRsKey(StringConstants.HASH(), new String[]{"__federation__"});
     }
 
     public void setDefaultPipe(Pipe defaultPipe) {

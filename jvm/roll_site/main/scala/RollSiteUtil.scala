@@ -37,7 +37,7 @@ class RollSiteUtil(val erSessionId: String,
   private val ctx = new RollPairContext(session)
   //private val nameStripped = name
   val namespace = rollSiteHeader.rollSiteSessionId
-  val name = rollSiteHeader.encode()
+  val name = rollSiteHeader.getRsKey()
 
   val rp: RollPair = ctx.load(namespace, name, options = rollSiteHeader.options)
 
@@ -59,7 +59,7 @@ class RollSiteUtil(val erSessionId: String,
         broker.signalWriteFinish()
        // rp.putBatch(broker, options = options)
       } else {
-        logTrace(s"sending OBJECT from / to same party id, skipping. src=${srcPartyId}, dst=${dstPartyId}, tag=${rollSiteHeader.encode()}")
+        logTrace(s"sending OBJECT from / to same party id, skipping. src=${srcPartyId}, dst=${dstPartyId}, tag=${rollSiteHeader.getRsKey()}")
       }
 
       val partition = rollSiteHeader.options.get("partition_id")

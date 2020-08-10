@@ -17,6 +17,7 @@ from collections import defaultdict
 
 from eggroll.core.pair_store.format import ArrayByteBuffer, PairBinReader
 from eggroll.core.transfer.transfer_service import TransferService
+from eggroll.core.transfer_model import ErRollSiteHeader
 from eggroll.roll_pair import create_adapter
 from eggroll.utils.log_utils import get_logger
 
@@ -26,8 +27,10 @@ FINISH_STATUS = "finish_partition"
 
 class _BatchStreamStatus:
     _recorder = {}
+
     _recorder_lock = threading.Lock()
 
+    # Initialisation of this class MUST BE wrapped in lock
     def __init__(self, tag):
         self._tag = tag
         self._stage = "doing"
@@ -37,8 +40,8 @@ class _BatchStreamStatus:
         self._condition = threading.Condition()
         self._header_condition = threading.Condition()
         self._header = None
-        with self._recorder_lock:
-            self._recorder[self._tag] = self
+        # removes lock. otherwise it deadlocks
+        self._recorder[self._tag] = self
 
     def _debug_string(self):
         return f"BatchStreams end normally, tag={self._tag} " \
@@ -53,14 +56,16 @@ class _BatchStreamStatus:
             self._condition.notify_all()
             L.trace(f"All BatchStreams finish normally, {self._debug_string()}")
 
-    def count_batch(self, header, batch_pairs):
-        batch_seq_id = header.partition_seq_id
+    def count_batch(self, header: ErRollSiteHeader, batch_pairs):
+        batch_seq_id = header._seq
         if self._header is None:
             self._header = header
-            self._header_condition.notify_all()
+            with self._header_condition:
+                self._header_condition.notify_all()
         self.counter[batch_seq_id] = batch_pairs
         if self._stage == "done" and self.total_batches == len(self.counter):
-            self._condition.notify_all()
+            with self._condition:
+                self._condition.notify_all()
             L.debug(f"All BatchStreams finish out-of-order, {self._debug_string()}")
 
     @classmethod
@@ -111,23 +116,25 @@ class PutBatchTask:
                 broker = TransferService.get_or_create_broker(self.tag, write_signals=1)
                 with create_adapter(self.partition) as db, db.new_batch() as wb:
                     for batch in broker:
-                        rs_header = batch.header.ext
+                        rs_header = ErRollSiteHeader.from_proto_string(batch.header.ext)
                         batch_pairs = 0
                         bin_data = ArrayByteBuffer(batch.data)
                         reader = PairBinReader(pair_buffer=bin_data, data=batch.data)
                         for k_bytes, v_bytes in reader.read_all():
                             wb.put(k_bytes, v_bytes)
                             batch_pairs += 1
-                        bss.count_batch(rs_header.seq, batch_pairs)
+                        bss.count_batch(rs_header, batch_pairs)
                         # TODO:0
-                        bss.data_type = rs_header.data_type
-                        if rs_header.state == FINISH_STATUS:
-                            bss.set_finish(rs_header.total_size)
+                        bss.data_type = rs_header._data_type
+                        if rs_header._stage == FINISH_STATUS:
+                            bss.set_finish(rs_header._seq)
 
                     # TransferService.remove_broker(tag) will be called in get_status phrase finished or exception got
             except Exception as e:
                 L.exception(f'_run_put_batch error, tag={self.tag}')
                 raise e
+            finally:
+                TransferService.remove_broker(self.tag)
 
     def get_status(self, timeout):
         return _BatchStreamStatus.wait_finish(self.tag, timeout)
