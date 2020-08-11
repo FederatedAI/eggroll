@@ -650,7 +650,7 @@ class EggPair(object):
         elif task._name == 'withStores':
             f = create_functor(functors[0]._body)
             result = ErPair(key=self.functor_serdes.serialize(task._inputs[0]._id),
-                            value=self.functor_serdes.serialize(f(task._inputs)))
+                            value=self.functor_serdes.serialize(f(task)))
 
         if L.isEnabledFor(logging.TRACE):
             L.trace(f'[RUNTASK] end. task_name={task._name}, inputs={task._inputs}, outputs={task._outputs}, task_id={task._id}')

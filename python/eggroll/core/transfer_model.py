@@ -96,6 +96,9 @@ class ErTransferBatch(RpcMessage):
 
 
 class ErRollSiteHeader(RpcMessage):
+    RS_KEY_DELIM = '#'
+    RS_KEY_PREFIX = '__rsk'
+
     def __init__(self,
             roll_site_session_id: str,
             name: str,
@@ -190,3 +193,14 @@ class ErRollSiteHeader(RpcMessage):
                f'seq={self._seq}, ' \
                f'stage={self._stage}) ' \
                f'at {hex(id(self))}>'
+
+    def get_rs_key(self):
+        return ErRollSiteHeader.RS_KEY_DELIM.join([
+            ErRollSiteHeader.RS_KEY_PREFIX,
+            self._roll_site_session_id,
+            self._name,
+            self._tag,
+            self._src_role,
+            self._src_party_id,
+            self._dst_role,
+            self._dst_party_id])
