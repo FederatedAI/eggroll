@@ -46,7 +46,8 @@ message RollSiteHeader {
   map<string, string> options = 10;
   int32 totalPartitions = 15;
   int32 partitionId = 16;
-  int64 batchStreams = 17;
+  int64 totalStreams = 17;
+  int64 totalBatches = 18;
   int64 seq = 20;
   string stage = 30;
 }

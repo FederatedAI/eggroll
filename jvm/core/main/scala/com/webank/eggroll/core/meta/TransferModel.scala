@@ -47,7 +47,8 @@ case class ErRollSiteHeader(rollSiteSessionId: String,
                             options: Map[String, String],
                             totalPartitions: Int,
                             partitionId: Int,
-                            batchStreams: Long,
+                            totalStreams: Long,
+                            totalBatches: Long,
                             seq: Long,
                             stage: String) extends TransferRpcMessage {
   def getRsKey(delim: String = "#", prefix: Array[String] = Array("__rsk")): String = {
@@ -104,7 +105,8 @@ object TransferModelPbMessageSerdes {
         .putAllOptions(src.options.asJava)
         .setTotalPartitions(src.totalPartitions)
         .setPartitionId(src.partitionId)
-        .setBatchStreams(src.batchStreams)
+        .setTotalStreams(src.totalStreams)
+        .setTotalBatches(src.totalBatches)
         .setSeq(src.seq)
         .setStage(src.stage)
 
@@ -153,7 +155,8 @@ object TransferModelPbMessageSerdes {
         options = src.getOptionsMap.asScala.toMap,
         totalPartitions = src.getTotalPartitions,
         partitionId = src.getPartitionId,
-        batchStreams = src.getBatchStreams,
+        totalStreams = src.getTotalStreams,
+        totalBatches = src.getTotalBatches,
         seq = src.getSeq,
         stage = src.getStage)
     }
