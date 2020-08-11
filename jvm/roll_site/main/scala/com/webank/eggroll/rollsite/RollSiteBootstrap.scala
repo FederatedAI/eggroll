@@ -39,6 +39,10 @@ class RollSiteBootstrap extends BootstrapBase with Logging {
     StaticErConf.addProperty(CoreConfKeys.STATIC_CONF_PATH, confFile.getAbsolutePath)
     logInfo(s"conf file: ${confFile.getAbsolutePath}")
     this.port = cmd.getOptionValue('p', RollSiteConfKeys.EGGROLL_ROLLSITE_PORT.get()).toInt
+    val routerFilePath = StaticErConf.get(RollSiteConfKeys.EGGROLL_ROLLSITE_ROUTE_TABLE_PATH.key,
+      RollSiteConfKeys.EGGROLL_ROLLSITE_ROUTE_TABLE_PATH.defaultValue)
+    logInfo(s"init router. path: $routerFilePath")
+    Router.initOrUpdateRouterTable(routerFilePath)
   }
 
   override def start(): Unit = {
@@ -46,8 +50,16 @@ class RollSiteBootstrap extends BootstrapBase with Logging {
     plainServer.start()
     this.port = plainServer.getPort
 
-    val msg = s"server started at ${port}"
+    val msg = s"server started at $port"
     logInfo(msg)
     print(msg)
+  }
+}
+
+object RollSiteBootstrap {
+  def main(args: Array[String]): Unit = {
+    val rsBootstrap = new RollSiteBootstrap()
+    rsBootstrap.init(args)
+    rsBootstrap.start()
   }
 }
