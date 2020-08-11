@@ -61,7 +61,8 @@ class DataTransferServicer extends DataTransferServiceGrpc.DataTransferServiceIm
         request
         //processCommand(request)
       } else {
-        val channel = GrpcClientUtils.getChannel(new ErEndpoint("localhost", 9370))
+        val endPoint = Router.query(myPartyId)
+        val channel = GrpcClientUtils.getChannel(endPoint)
         val stub = DataTransferServiceGrpc.newBlockingStub(channel)
 
         stub.unaryCall(request)
@@ -311,10 +312,11 @@ class ForwardRequestStreamObserver(prevRespSO: StreamObserver[Proxy.Metadata])
   private var nextReqSO: StreamObserver[Proxy.Packet] = _
   private val self = this
 
-  private def ensureInited(): Unit = {
+  private def ensureInited(partyId: String): Unit = {
     if (inited) return
-
-    val channel = GrpcClientUtils.getChannel(new ErEndpoint("localhost", 9370))
+    logInfo("ForwardRequestStreamObserver do init")
+    val endPoint = Router.query(partyId)
+    val channel = GrpcClientUtils.getChannel(endPoint)
     val stub = DataTransferServiceGrpc.newStub(channel)
     nextReqSO = stub.push(new ForwardResponseStreamObserver(prevRespSO, nextReqSO))
     inited = true
@@ -322,7 +324,9 @@ class ForwardRequestStreamObserver(prevRespSO: StreamObserver[Proxy.Metadata])
 
   override def onNext(request: Proxy.Packet): Unit = {
     logInfo(s"onnext: ${ToStringUtils.toOneLineString(request)}")
-    ensureInited()
+    val partyId: String = request.getHeader.getDst.getPartyId
+
+    ensureInited(partyId)
 
     nextReqSO.onNext(request)
 
