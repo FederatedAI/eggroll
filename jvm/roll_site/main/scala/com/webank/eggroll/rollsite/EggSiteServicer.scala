@@ -216,16 +216,17 @@ class PutBatchSinkRequestStreamObserver(prevRespSO: StreamObserver[Proxy.Metadat
     val partition = rp.store.partitions(partitionId)
     val egg = ctx.session.routeToEgg(partition)
 
-    val jobId = IdUtils.generateJobId(sessionId = ctx.session.sessionId,
-      tag = rollSiteHeader.options.getOrElse("job_id_tag", StringConstants.EMPTY))
-    val job = ErJob(id = jobId,
+    brokerTag = s"${RollPair.PUT_BATCH}-${rollSiteHeader.getRsKey()}-${partitionId}"
+
+    val jobId = IdUtils.generateJobId(sessionId = ctx.session.sessionId, tag = brokerTag)
+    val job = ErJob(
+      id = jobId,
       name = RollPair.PUT_BATCH,
       inputs = Array(rp.store),
       outputs = Array(rp.store),
       functors = Array.empty,
       options = rollSiteHeader.options ++ Map(SessionConfKeys.CONFKEY_SESSION_ID -> ctx.session.sessionId))
 
-    brokerTag = s"${RollPair.PUT_BATCH}-${rollSiteHeader.getRsKey()}-${partitionId}"
     val task = ErTask(id = brokerTag,
       name = RollPair.PUT_BATCH,
       inputs = Array(partition),
