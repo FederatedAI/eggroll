@@ -24,14 +24,14 @@ from eggroll.roll_site.test.roll_site_test_asset import get_debug_test_context, 
     get_cluster_context, get_standalone_context, default_props_file
 
 props_file_get = default_props_file
-props_file_remote = default_props_file + '.host'
+props_file_get = default_props_file + '.host'
 
 props_file_remote = default_props_file
 props_file_remote = default_props_file + '.guest'
 
 
-row_limit = 100000
-obj_size = 1 << 20
+row_limit = 10000
+obj_size = 2 << 20
 
 
 def data_generator(limit):
@@ -189,7 +189,7 @@ class TestRollSiteBase(unittest.TestCase):
                 raise TypeError(f'require getting a RollPair but obj found: {obj}')
 
     def test_remote_rollpair_big_multi_partitions(self):
-        rp_options = {'include_key': True, 'total_partitions': 3}
+        rp_options = {'include_key': True, 'total_partitions': 3, 'create_if_missing': True}
         rp_options.update(create_if_missing=True)
         rp_context = self.rs_context_remote.rp_ctx
         rp = rp_context.load("namespace", self._rp_rs_name_big_mp, options=rp_options)

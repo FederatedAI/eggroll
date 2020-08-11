@@ -191,7 +191,7 @@ class RollSite(RollSiteBase):
 
             while cur_pos <= obj_bytes_len:
                 # TODO:0: find a way to escape picking bytes again
-                yield pickle.dumps(key_id), pickle.dumps(obj_bytes[cur_pos:cur_pos + body_bytes])
+                yield key_id.to_bytes(int_size, "big"), obj_bytes[cur_pos:cur_pos + body_bytes]
                 key_id += 1
                 cur_pos += body_bytes
 
@@ -327,7 +327,7 @@ class RollSite(RollSiteBase):
                 if all_finished:
                     rp = self.ctx.rp_ctx.load(name=rp_name, namespace=rp_namespace)
                     if data_type == "object":
-                        result = pickle.loads(b''.join(map(lambda t: t[1], sorted(rp.get_all(), key=lambda x: x[0]))))
+                        result = pickle.loads(b''.join(map(lambda t: t[1], sorted(rp.get_all(), key=lambda x: int.from_bytes(x[0], "big")))))
                         L.debug(f"roll site pulled object: rs_key={rs_key}, is_none={result is None}, "
                                 f"time_cost={time.time() - start_time}")
                     else:

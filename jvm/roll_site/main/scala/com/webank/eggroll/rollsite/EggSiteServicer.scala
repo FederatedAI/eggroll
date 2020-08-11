@@ -25,7 +25,7 @@ import com.google.common.cache.{CacheBuilder, CacheLoader, LoadingCache}
 import com.webank.ai.eggroll.api.networking.proxy.{DataTransferServiceGrpc, Proxy}
 import com.webank.eggroll.core.ErSession
 import com.webank.eggroll.core.command.CommandClient
-import com.webank.eggroll.core.constant.{RollSiteConfKeys, SessionConfKeys, StringConstants}
+import com.webank.eggroll.core.constant.{RollSiteConfKeys, SerdesTypes, SessionConfKeys, StringConstants}
 import com.webank.eggroll.core.meta.TransferModelPbMessageSerdes.ErRollSiteHeaderFromPbMessage
 import com.webank.eggroll.core.meta.{ErEndpoint, ErJob, ErRollSiteHeader, ErTask}
 import com.webank.eggroll.core.transfer.Transfer.RollSiteHeader
@@ -210,7 +210,11 @@ class PutBatchSinkRequestStreamObserver(prevRespSO: StreamObserver[Proxy.Metadat
     val name = rsKey
     val ctx = new RollPairContext(session)
 
-    val rp = ctx.load(namespace, name, options = rollSiteHeader.options)
+
+    var rpOptions = rollSiteHeader.options ++ Map(StringConstants.TOTAL_PARTITIONS_SNAKECASE -> rollSiteHeader.totalPartitions.toString)
+    if (rollSiteHeader.dataType.equals("object")) rpOptions ++= Map(StringConstants.SERDES -> SerdesTypes.EMPTY)
+
+    val rp = ctx.load(namespace, name, options = rpOptions)
 
     val partitionId = rollSiteHeader.partitionId
 
