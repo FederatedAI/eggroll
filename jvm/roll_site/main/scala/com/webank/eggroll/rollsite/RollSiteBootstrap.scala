@@ -42,7 +42,7 @@ class RollSiteBootstrap extends BootstrapBase with Logging {
   }
 
   override def start(): Unit = {
-    val plainServer = GrpcServerUtils.createServer(port = this.port, grpcServices = List(new DataTransferService))
+    val plainServer = GrpcServerUtils.createServer(port = this.port, grpcServices = List(new DataTransferServicer))
     plainServer.start()
     this.port = plainServer.getPort
 

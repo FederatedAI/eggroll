@@ -111,7 +111,8 @@ class ErRollSiteHeader(RpcMessage):
             options: dict = None,
             total_partitions: int = -1,
             partition_id: int = -1,
-            batch_streams: int = -1,
+            total_streams: int = -1,
+            total_batches: int = -1,
             seq: int = -1,
             stage: str = ''):
         if options is None:
@@ -128,7 +129,8 @@ class ErRollSiteHeader(RpcMessage):
         self._options = options.copy()
         self._total_partitions = total_partitions
         self._partition_id = partition_id
-        self._batch_streams = batch_streams
+        self._total_streams = total_streams
+        self._total_batches = total_batches
         self._seq = seq
         self._stage = stage
 
@@ -145,7 +147,8 @@ class ErRollSiteHeader(RpcMessage):
                 options=_stringify_dict(self._options),
                 totalPartitions=self._total_partitions,
                 partitionId=self._partition_id,
-                batchStreams=self._batch_streams,
+                totalStreams=self._total_streams,
+                totalBatches=self._total_batches,
                 seq=self._seq,
                 stage=self._stage)
 
@@ -166,7 +169,8 @@ class ErRollSiteHeader(RpcMessage):
             options=dict(pb_message.options),
             total_partitions=pb_message.totalPartitions,
             partition_id=pb_message.partitionId,
-            batch_streams=pb_message.batchStreams,
+            total_streams=pb_message.totalStreams,
+            total_batches=pb_message.totalBatches,
             seq=pb_message.seq,
             stage=pb_message.stage)
 
@@ -189,7 +193,8 @@ class ErRollSiteHeader(RpcMessage):
                f'options=[{repr(self._options)}], ' \
                f'total_partitions={repr(self._total_partitions)}, ' \
                f'partition_id={repr(self._partition_id)}, ' \
-               f'batch_streams={repr(self._batch_streams)}, ' \
+               f'total_streams={repr(self._total_streams)}, ' \
+               f'total_batches={self._total_batches}, ' \
                f'seq={self._seq}, ' \
                f'stage={self._stage}) ' \
                f'at {hex(id(self))}>'

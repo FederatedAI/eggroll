@@ -93,7 +93,8 @@ class TestRollSiteClient extends Logging {
         options = Map.empty,
         totalPartitions = 1,
         partitionId = 0,
-        batchStreams = 3,
+        totalStreams = 3,
+        totalBatches = 3,
         seq = 0,
         stage = "")
       streamObserver.onNext(

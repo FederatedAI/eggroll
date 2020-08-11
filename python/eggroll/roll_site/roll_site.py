@@ -15,33 +15,23 @@
 #
 import itertools
 import logging
-import os
-import functools
+import pickle
 import threading
 import time
-import pickle
 
 from eggroll import __version__ as eggroll_version
-from eggroll.core.conf_keys import SessionConfKeys, RollSiteConfKeys, \
+from eggroll.core.conf_keys import RollSiteConfKeys, \
     CoreConfKeys
-from eggroll.core.constants import DeployModes
-from eggroll.core.constants import StoreTypes
 from eggroll.core.datastructure import create_executor_pool
-from eggroll.core.error import GrpcCallError
 from eggroll.core.grpc.factory import GrpcChannelFactory
-from eggroll.core.meta_model import ErStoreLocator, ErStore, ErEndpoint
-from eggroll.core.pair_store.format import ArrayByteBuffer, PairBinWriter
+from eggroll.core.meta_model import ErEndpoint
 from eggroll.core.proto import proxy_pb2, proxy_pb2_grpc
-from eggroll.core.proto.transfer_pb2 import TransferBatch, TransferHeader
 from eggroll.core.serdes import eggroll_serdes
 from eggroll.core.transfer_model import ErRollSiteHeader
-from eggroll.core.utils import _stringify, static_er_conf
-from eggroll.core.utils import to_one_line_string
 from eggroll.roll_pair import create_adapter
 from eggroll.roll_pair.roll_pair import RollPair, RollPairContext
 from eggroll.roll_pair.task.storage import PutBatchTask
 from eggroll.roll_pair.transfer_pair import TransferPair
-from eggroll.roll_site.utils.roll_site_utils import create_store_name
 from eggroll.utils import log_utils
 
 L = log_utils.get_logger()
@@ -190,12 +180,11 @@ class RollSite(RollSiteBase):
             cur_pos = 0
 
             while cur_pos <= obj_bytes_len:
-                # TODO:0: find a way to escape picking bytes again
                 yield key_id.to_bytes(int_size, "big"), obj_bytes[cur_pos:cur_pos + body_bytes]
                 key_id += 1
                 cur_pos += body_bytes
 
-        bin_batch_streams = self._generate_batch_streams(
+        bin_batch_streams = RollSite._generate_batch_streams(
                 pair_iter=_generate_obj_bytes(obj, self.batch_body_bytes),
                 chunk_size=self.stream_chunk_count,
                 body_bytes=self.batch_body_bytes)
@@ -203,8 +192,10 @@ class RollSite(RollSiteBase):
         rs_header._total_partitions = 1
         rs_header._partition_id = 0
 
+        rs_header._total_streams = 0
         # if use stub.push.future here, retry mechanism is a problem to solve
         for batch_stream in bin_batch_streams:
+            rs_header._total_streams += 1
             self.stub.push(self.generate_packet(batch_stream, rs_header))
 
         L.debug(f"pushed object: rs_key={rs_key}, is_none={obj is None}, time_cost={time.time() - start_time}")
@@ -224,13 +215,14 @@ class RollSite(RollSiteBase):
                     body=proxy_pb2.Data(value=bin_batch))
 
         prev_batch = None
-        seq = 0
+        seq = 1     # seq starting from 1, not 0
         for bin_batch in bin_batch_iter:
             if prev_batch:
                 yield encode_packet()
                 seq += 1
             prev_batch = bin_batch
 
+        rs_header._total_batches = seq
         rs_header._stage = "finish_partition"
         yield encode_packet()
 
@@ -267,7 +259,7 @@ class RollSite(RollSiteBase):
             rs_header._partition_id = ertask._inputs[0]._id
 
             from eggroll.core.grpc.factory import GrpcChannelFactory
-            from eggroll.core.proto import proxy_pb2, proxy_pb2_grpc
+            from eggroll.core.proto import proxy_pb2_grpc
             grpc_channel_factory = GrpcChannelFactory()
 
             with create_adapter(ertask._inputs[0]) as db, db.iteritems() as rb:
@@ -277,7 +269,10 @@ class RollSite(RollSiteBase):
                 bin_batch_stream = RollSite._generate_batch_streams(pair_iter=rb,
                                                                     chunk_size=chunk_size,
                                                                     body_bytes=body_bytes)
+
+                rs_header._total_streams = 0
                 for batch_stream in bin_batch_stream:
+                    rs_header._total_streams += 1
                     stub.push(RollSite.generate_packet(batch_stream, rs_header))
 
         rp.with_stores(_push_partition)
@@ -344,12 +339,6 @@ class RollSite(RollSiteBase):
         except Exception as ex:
             L.exception(f"fatal error: when pulling rs_key={rs_key}, attempt_count={polling_attempts}")
             raise ex
-
-    # @staticmethod
-    # def _get_rs_key(header: ErRollSiteHeader):
-    #     return RS_KEY_DELIM.join([RS_KEY_PREFIX,
-    #                               header._roll_site_session_id, header._name, header._tag,
-    #                               header._src_role, header._src_party_id, header._dst_role, header._dst_party_id])
 
     def push(self, obj, parties: list = None):
         futures = []

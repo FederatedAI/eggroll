@@ -126,7 +126,7 @@ class PutBatchTask:
                         # TODO:0
                         bss.data_type = rs_header._data_type
                         if rs_header._stage == FINISH_STATUS:
-                            bss.set_finish(rs_header._seq + 1)  # starting from 0
+                            bss.set_finish(rs_header._total_batches)  # starting from 0
 
                     # TransferService.remove_broker(tag) will be called in get_status phrase finished or exception got
             except Exception as e:

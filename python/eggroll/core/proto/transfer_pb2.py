@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto3',
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x0etransfer.proto\x12 com.webank.eggroll.core.transfer\"Y\n\x0eTransferHeader\x12\n\n\x02id\x18\x01 \x01(\x05\x12\x0b\n\x03tag\x18\x02 \x01(\t\x12\x11\n\ttotalSize\x18\x03 \x01(\x03\x12\x0e\n\x06status\x18\x04 \x01(\t\x12\x0b\n\x03\x65xt\x18\x05 \x01(\x0c\"r\n\rTransferBatch\x12@\n\x06header\x18\x01 \x01(\x0b\x32\x30.com.webank.eggroll.core.transfer.TransferHeader\x12\x11\n\tbatchSize\x18\x02 \x01(\x03\x12\x0c\n\x04\x64\x61ta\x18\x03 \x01(\x0c\"\x82\x03\n\x0eRollSiteHeader\x12\x19\n\x11rollSiteSessionId\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x0b\n\x03tag\x18\x03 \x01(\t\x12\x0f\n\x07srcRole\x18\x04 \x01(\t\x12\x12\n\nsrcPartyId\x18\x05 \x01(\t\x12\x0f\n\x07\x64stRole\x18\x06 \x01(\t\x12\x12\n\ndstPartyId\x18\x07 \x01(\t\x12\x10\n\x08\x64\x61taType\x18\x08 \x01(\t\x12N\n\x07options\x18\n \x03(\x0b\x32=.com.webank.eggroll.core.transfer.RollSiteHeader.OptionsEntry\x12\x17\n\x0ftotalPartitions\x18\x0f \x01(\x05\x12\x13\n\x0bpartitionId\x18\x10 \x01(\x05\x12\x14\n\x0c\x62\x61tchStreams\x18\x11 \x01(\x03\x12\x0b\n\x03seq\x18\x14 \x01(\x03\x12\r\n\x05stage\x18\x1e \x01(\t\x1a.\n\x0cOptionsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\x32\xdb\x02\n\x0fTransferService\x12j\n\x04send\x12/.com.webank.eggroll.core.transfer.TransferBatch\x1a/.com.webank.eggroll.core.transfer.TransferBatch(\x01\x12j\n\x04recv\x12/.com.webank.eggroll.core.transfer.TransferBatch\x1a/.com.webank.eggroll.core.transfer.TransferBatch0\x01\x12p\n\x08sendRecv\x12/.com.webank.eggroll.core.transfer.TransferBatch\x1a/.com.webank.eggroll.core.transfer.TransferBatch(\x01\x30\x01\x62\x06proto3'
+  serialized_pb=b'\n\x0etransfer.proto\x12 com.webank.eggroll.core.transfer\"Y\n\x0eTransferHeader\x12\n\n\x02id\x18\x01 \x01(\x05\x12\x0b\n\x03tag\x18\x02 \x01(\t\x12\x11\n\ttotalSize\x18\x03 \x01(\x03\x12\x0e\n\x06status\x18\x04 \x01(\t\x12\x0b\n\x03\x65xt\x18\x05 \x01(\x0c\"r\n\rTransferBatch\x12@\n\x06header\x18\x01 \x01(\x0b\x32\x30.com.webank.eggroll.core.transfer.TransferHeader\x12\x11\n\tbatchSize\x18\x02 \x01(\x03\x12\x0c\n\x04\x64\x61ta\x18\x03 \x01(\x0c\"\x98\x03\n\x0eRollSiteHeader\x12\x19\n\x11rollSiteSessionId\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x0b\n\x03tag\x18\x03 \x01(\t\x12\x0f\n\x07srcRole\x18\x04 \x01(\t\x12\x12\n\nsrcPartyId\x18\x05 \x01(\t\x12\x0f\n\x07\x64stRole\x18\x06 \x01(\t\x12\x12\n\ndstPartyId\x18\x07 \x01(\t\x12\x10\n\x08\x64\x61taType\x18\x08 \x01(\t\x12N\n\x07options\x18\n \x03(\x0b\x32=.com.webank.eggroll.core.transfer.RollSiteHeader.OptionsEntry\x12\x17\n\x0ftotalPartitions\x18\x0f \x01(\x05\x12\x13\n\x0bpartitionId\x18\x10 \x01(\x05\x12\x14\n\x0ctotalStreams\x18\x11 \x01(\x03\x12\x14\n\x0ctotalBatches\x18\x12 \x01(\x03\x12\x0b\n\x03seq\x18\x14 \x01(\x03\x12\r\n\x05stage\x18\x1e \x01(\t\x1a.\n\x0cOptionsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\x32\xdb\x02\n\x0fTransferService\x12j\n\x04send\x12/.com.webank.eggroll.core.transfer.TransferBatch\x1a/.com.webank.eggroll.core.transfer.TransferBatch(\x01\x12j\n\x04recv\x12/.com.webank.eggroll.core.transfer.TransferBatch\x1a/.com.webank.eggroll.core.transfer.TransferBatch0\x01\x12p\n\x08sendRecv\x12/.com.webank.eggroll.core.transfer.TransferBatch\x1a/.com.webank.eggroll.core.transfer.TransferBatch(\x01\x30\x01\x62\x06proto3'
 )
 
 
@@ -165,8 +165,8 @@ _ROLLSITEHEADER_OPTIONSENTRY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=600,
-  serialized_end=646,
+  serialized_start=622,
+  serialized_end=668,
 )
 
 _ROLLSITEHEADER = _descriptor.Descriptor(
@@ -255,21 +255,28 @@ _ROLLSITEHEADER = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='batchStreams', full_name='com.webank.eggroll.core.transfer.RollSiteHeader.batchStreams', index=11,
+      name='totalStreams', full_name='com.webank.eggroll.core.transfer.RollSiteHeader.totalStreams', index=11,
       number=17, type=3, cpp_type=2, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='seq', full_name='com.webank.eggroll.core.transfer.RollSiteHeader.seq', index=12,
+      name='totalBatches', full_name='com.webank.eggroll.core.transfer.RollSiteHeader.totalBatches', index=12,
+      number=18, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='seq', full_name='com.webank.eggroll.core.transfer.RollSiteHeader.seq', index=13,
       number=20, type=3, cpp_type=2, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='stage', full_name='com.webank.eggroll.core.transfer.RollSiteHeader.stage', index=13,
+      name='stage', full_name='com.webank.eggroll.core.transfer.RollSiteHeader.stage', index=14,
       number=30, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=b"".decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
@@ -288,7 +295,7 @@ _ROLLSITEHEADER = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=260,
-  serialized_end=646,
+  serialized_end=668,
 )
 
 _TRANSFERBATCH.fields_by_name['header'].message_type = _TRANSFERHEADER
@@ -338,8 +345,8 @@ _TRANSFERSERVICE = _descriptor.ServiceDescriptor(
   index=0,
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_start=649,
-  serialized_end=996,
+  serialized_start=671,
+  serialized_end=1018,
   methods=[
   _descriptor.MethodDescriptor(
     name='send',
