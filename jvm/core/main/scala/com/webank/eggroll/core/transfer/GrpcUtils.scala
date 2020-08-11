@@ -225,7 +225,7 @@ object GrpcClientUtils extends Logging {
   private def getChannelInternal(endpoint: ErEndpoint, isSecureChannel: Boolean, options: Map[String, String] = Map.empty): ManagedChannel = {
     var result: ManagedChannel = null
     val cache = if (isSecureChannel) secureChannelCache else insecureChannelCache
-    result = cache.get(endpoint)
+    result = cache.getUnchecked(endpoint)
     if (result == null || result.isShutdown || result.isTerminated) {
       if (isSecureChannel)
         cache.invalidate(result)
