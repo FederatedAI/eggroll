@@ -540,6 +540,8 @@ public class ConfFileBasedFdnRouter implements FdnRouter {
                     }
                 }
             }
+            
+            isIntranet = false;
         }
 
         routeTable = newRouteTable;
