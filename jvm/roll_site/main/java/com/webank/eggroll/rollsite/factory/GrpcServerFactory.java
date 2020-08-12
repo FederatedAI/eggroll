@@ -126,7 +126,14 @@ public class GrpcServerFactory {
         if (isSecureServer) {
             String serverCrtPath = proxyServerConf.getServerCrtPath().replaceAll("\\.\\./", "");
             String serverKeyPath = proxyServerConf.getServerKeyPath().replaceAll("\\.\\./", "");
-            String caCrtPath = proxyServerConf.getServerCaCrtPath().replaceAll("\\.\\./", "");
+
+            String caCrtPath = null;
+            if(StringUtils.isBlank(proxyServerConf.getCaCrtPath())) {
+                caCrtPath = proxyServerConf.getServerCaCrtPath().replaceAll("\\.\\./", "");
+            }
+            else {
+                caCrtPath = proxyServerConf.getCaCrtPath().replaceAll("\\.\\./", "");
+            }
 
             File serverCrt = new File(serverCrtPath);
             File serverKey = new File(serverKeyPath);
@@ -330,6 +337,9 @@ public class GrpcServerFactory {
             } else {
                 proxyServerConf.setSecureServer(true);
             }
+
+            String caCrt = properties.getProperty(CoreConfKeys.CONFKEY_CORE_SECURITY_CA_CRT_PATH().key());
+            proxyServerConf.setCaCrtPath(caCrt);
 
             String caServerCrt = properties.getProperty(CoreConfKeys.CONFKEY_CORE_SECURITY_SERVER_CA_CRT_PATH().key());
             proxyServerConf.setServerCaCrtPath(caServerCrt);

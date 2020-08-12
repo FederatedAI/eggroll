@@ -92,7 +92,7 @@ public class TestPipedClient {
         //fdnRouter.setRouteTable("src/main/resources/route_tables/route_table1.json");
 //office_wifi_office365.pkg, StarUML-3.0.1.dmg, IDiskForMac.dmg
         proxyServerConf.setSecureClient(false);
-        proxyServerConf.setClientCaCrtPath("/Users/max-webank/Documents/zmodem/ca.crt");
+        proxyServerConf.setCaCrtPath("/Users/max-webank/Documents/zmodem/ca.crt");
         proxyServerConf.setCoordinator("10000");
 
         InputStream inputStream = new FileInputStream("e://eggroll//console.log");

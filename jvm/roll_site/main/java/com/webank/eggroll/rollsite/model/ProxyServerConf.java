@@ -43,6 +43,7 @@ public class ProxyServerConf {
     private String serverKeyPath;
 
     private boolean isSecureClient;
+    private String caCrtPath;
     private String caClientCrtPath;
     private String caServerCrtPath;
 
@@ -194,6 +195,14 @@ public class ProxyServerConf {
 
     public void setSecureClient(boolean secureClient) {
         isSecureClient = secureClient;
+    }
+
+    public String getCaCrtPath() {
+        return caCrtPath;
+    }
+
+    public void setCaCrtPath(String caCrtPath) {
+        this.caCrtPath = caCrtPath;
     }
 
     public String getClientCaCrtPath() {
