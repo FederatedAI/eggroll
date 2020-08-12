@@ -43,7 +43,8 @@ public class ProxyServerConf {
     private String serverKeyPath;
 
     private boolean isSecureClient;
-    private String caCrtPath;
+    private String caClientCrtPath;
+    private String caServerCrtPath;
 
     private Pipe pipe;
     private PipeFactory pipeFactory;
@@ -195,12 +196,20 @@ public class ProxyServerConf {
         isSecureClient = secureClient;
     }
 
-    public String getCaCrtPath() {
-        return caCrtPath;
+    public String getClientCaCrtPath() {
+        return caClientCrtPath;
     }
 
-    public void setCaCrtPath(String caCrtPath) {
-        this.caCrtPath = caCrtPath;
+    public void setClientCaCrtPath(String caCrtPath) {
+        this.caClientCrtPath = caCrtPath;
+    }
+
+    public String getServerCaCrtPath() {
+        return caServerCrtPath;
+    }
+
+    public void setServerCaCrtPath(String caCrtPath) {
+        this.caServerCrtPath = caCrtPath;
     }
 
     public Pipe getPipe() {

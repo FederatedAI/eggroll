@@ -105,8 +105,10 @@ object CoreConfKeys {
   val CONFKEY_CORE_SECURITY_CA_CRT_PATH = ErConfKey("eggroll.core.security.ca.crt.path")
   val CONFKEY_CORE_SECURITY_CRT_PATH = ErConfKey("eggroll.core.security.crt.path")
   val CONFKEY_CORE_SECURITY_KEY_PATH = ErConfKey("eggroll.core.security.key.path")
+  val CONFKEY_CORE_SECURITY_CLIENT_CA_CRT_PATH = ErConfKey("eggroll.core.security.client.ca.crt.path")
   val CONFKEY_CORE_SECURITY_CLIENT_CRT_PATH = ErConfKey("eggroll.core.security.client.crt.path")
   val CONFKEY_CORE_SECURITY_CLIENT_KEY_PATH = ErConfKey("eggroll.core.security.client.key.path")
+  val CONFKEY_CORE_SECURITY_SERVER_CA_CRT_PATH = ErConfKey("eggroll.core.security.server.ca.crt.path")
   val CONFKEY_CORE_SECURITY_SERVER_CRT_PATH = ErConfKey("eggroll.core.security.server.crt.path")
   val CONFKEY_CORE_SECURITY_SERVER_KEY_PATH = ErConfKey("eggroll.core.security.server.key.path")
 

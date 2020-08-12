@@ -167,7 +167,7 @@ object GrpcClientUtils extends Logging {
     val channelRetryBufferSize = CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_RETRY_BUFFER_SIZE.getWith(options).toInt
     val channelMaxRetryAttempts = CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_MAX_RETRY_ATTEMPTS.getWith(options).toInt
     val channelExecutorPoolSize = CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_EXECUTOR_POOL_SIZE.getWith(options).toInt
-    val caCrtPath = CoreConfKeys.CONFKEY_CORE_SECURITY_CA_CRT_PATH.getWith(options)
+    val caCrtPath = CoreConfKeys.CONFKEY_CORE_SECURITY_CLIENT_CA_CRT_PATH.getWith(options)
     var caCrt: File = null
     if (isSecureChannel) {
       if (StringUtils.isBlank(caCrtPath)) throw new IllegalArgumentException("secure channel required but no ca crt conf found")
