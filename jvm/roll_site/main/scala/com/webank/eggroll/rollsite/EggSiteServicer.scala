@@ -249,28 +249,43 @@ class PutBatchSinkRequestStreamObserver(prevRespSO: StreamObserver[Proxy.Metadat
 
 
   override def onNext(request: Proxy.Packet): Unit = {
-    val packetHeader = request.getHeader
-    val encodedRollSiteHeader = packetHeader.getExt
-    val rollSiteHeader: ErRollSiteHeader = RollSiteHeader.parseFrom(
-      encodedRollSiteHeader).fromProto()
+    try {
+      val packetHeader = request.getHeader
+      val encodedRollSiteHeader = packetHeader.getExt
+      val rollSiteHeader: ErRollSiteHeader = RollSiteHeader.parseFrom(
+        encodedRollSiteHeader).fromProto()
 
-    ensureInited(request, rollSiteHeader)
+      ensureInited(request, rollSiteHeader)
 
-    val tbHeader = transferHeaderBuilder.setId(packetHeader.getSeq.toInt)
-      .setTag(brokerTag)
-      .setExt(encodedRollSiteHeader)
-      .setTotalSize(rollSiteHeader.options.getOrElse("stream_batch_count", "-1").toLong)
+      val tbHeader = transferHeaderBuilder.setId(packetHeader.getSeq.toInt)
+        .setTag(brokerTag)
+        .setExt(encodedRollSiteHeader)
+        .setTotalSize(rollSiteHeader.options.getOrElse("stream_batch_count", "-1").toLong)
 
-    val tbBatch = transferBatchBuilder.setHeader(tbHeader)
-      .setData(request.getBody.getValue)
-      .build()
+      val tbBatch = transferBatchBuilder.setHeader(tbHeader)
+        .setData(request.getBody.getValue)
+        .build()
 
-    nextReqSO.onNext(tbBatch)
+      nextReqSO.onNext(tbBatch)
+
+      //throw new Exception("++++++++++++++++*&%&*$&++++++++++++++++++")
+      //val test: Array[Int] = Array()
+      //println(test(20))
+    } catch {
+      case e: Exception => {
+        e.printStackTrace()
+        val statusException = ExceptionTransferHelp.throwableToException(e, request.getHeader.getDst)
+        prevRespSO.onError(statusException)
+        //nextReqSO.onError(statusException)
+      }
+    }
   }
 
   override def onError(t: Throwable): Unit = {
-    prevRespSO.onError(t)
-    nextReqSO.onError(t)
+    logInfo("onError")
+    val statusException = ExceptionTransferHelp.throwableToException(t)
+    prevRespSO.onError(statusException)
+    //nextReqSO.onError(statusException)
   }
 
   override def onCompleted(): Unit = {
@@ -292,9 +307,10 @@ class PutBatchSinkResponseStreamObserver(val reqHeader: Proxy.Metadata,
   }
 
   override def onError(t: Throwable): Unit = {
-    logInfo("500 putbatch sink error", t)
-    prevRespSO.onError(t)
-    nextReqSO.onError(t)
+    logInfo("onError")
+    val e = ExceptionTransferHelp.throwableToException(t)
+    prevRespSO.onError(e)
+    nextReqSO.onError(e)
   }
 
   override def onCompleted(): Unit = {
@@ -323,19 +339,27 @@ class ForwardRequestStreamObserver(prevRespSO: StreamObserver[Proxy.Metadata])
   }
 
   override def onNext(request: Proxy.Packet): Unit = {
-    logInfo(s"onnext: ${ToStringUtils.toOneLineString(request)}")
-    val partyId: String = request.getHeader.getDst.getPartyId
-
-    ensureInited(partyId)
-
-    nextReqSO.onNext(request)
-
-    logInfo("forwarding")
+    try {
+      logInfo(s"onnext: ${ToStringUtils.toOneLineString(request)}")
+      val partyId: String = request.getHeader.getDst.getPartyId
+      ensureInited(partyId)
+      nextReqSO.onNext(request)
+      logInfo("forwarding")
+    } catch {
+      case e: Exception => {
+        logInfo("onError")
+        val rsException = ExceptionTransferHelp.throwableToException(e)
+        //nextReqSO.onError(rsException)
+        prevRespSO.onError(rsException)
+      }
+    }
   }
 
-  override def onError(throwable: Throwable): Unit = {
-    prevRespSO.onError(throwable)
-    nextReqSO.onError(throwable)
+  override def onError(t: Throwable): Unit = {
+    logInfo("onError")
+    val e = ExceptionTransferHelp.throwableToException(t)
+    //nextReqSO.onError(e)
+    prevRespSO.onError(e)
   }
 
   override def onCompleted(): Unit = {
@@ -355,9 +379,10 @@ class ForwardResponseStreamObserver(val prevRespSO: StreamObserver[Proxy.Metadat
   }
 
   override def onError(t: Throwable): Unit = {
-    logInfo("forward on error", t)
-    prevRespSO.onError(t)
-    nextReqSO.onError(t)
+    logInfo("onError")
+    val e = ExceptionTransferHelp.throwableToException(t)
+    prevRespSO.onError(e)
+    //nextReqSO.onError(e)
   }
 
   override def onCompleted(): Unit = {
