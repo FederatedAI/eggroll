@@ -211,7 +211,13 @@ public class ProxyGrpcStubFactory {
         if (proxyServerConf.isSecureClient() &&
                 (!proxyServerConf.isNeighbourInsecureChannelEnabled() || !fdnRouter.isIntranet(endpoint))) {
             // todo:1: add configuration reading mechanism
-            File caCrt = new File(proxyServerConf.getCaCrtPath());
+            File caCrt;
+            if(StringUtils.isBlank(proxyServerConf.getCaCrtPath())) {
+                caCrt = new File(proxyServerConf.getClientCaCrtPath());
+            }
+            else {
+                caCrt = new File(proxyServerConf.getCaCrtPath());
+            }
 
             String clientCrtPath = CoreConfKeys.CONFKEY_CORE_SECURITY_CLIENT_CRT_PATH().get();
             if (StringUtils.isBlank(clientCrtPath)) {
