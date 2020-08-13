@@ -40,7 +40,7 @@ class DataTransferServicer extends DataTransferServiceGrpc.DataTransferServiceIm
    */
   override def push(responseObserver: StreamObserver[Proxy.Metadata]): StreamObserver[Proxy.Packet] = {
     logInfo("push request received")
-    new ProxyDispatchStreamObserver(responseObserver)
+    new ProxyDispatchSO(responseObserver)
   }
 
   /**
@@ -130,7 +130,7 @@ object DataTransferServicer {
 
 /************ Observers ************/
 
-class ProxyDispatchStreamObserver(prevRespSO: StreamObserver[Proxy.Metadata]) extends StreamObserver[Proxy.Packet] with Logging {
+class ProxyDispatchSO(prevRespSO: StreamObserver[Proxy.Metadata]) extends StreamObserver[Proxy.Packet] with Logging {
   private var proxySO: StreamObserver[Proxy.Packet] = _
   private var inited = false
   logInfo("358constructing proxy dispatcher")
@@ -143,7 +143,7 @@ class ProxyDispatchStreamObserver(prevRespSO: StreamObserver[Proxy.Metadata]) ex
       proxySO = if (myPartyId.equals(dstPartyId)) {
         new PutBatchSinkRequestStreamObserver(prevRespSO)
       } else {
-        new ForwardRequestStreamObserver(prevRespSO)
+        new ForwardReqSO(prevRespSO)
       }
       inited = true
     }
@@ -243,7 +243,7 @@ class PutBatchSinkRequestStreamObserver(prevRespSO: StreamObserver[Proxy.Metadat
     val channel = GrpcClientUtils.getChannel(egg.transferEndpoint)
     val stub = TransferServiceGrpc.newStub(channel)
 
-    nextReqSO = stub.send(new PutBatchSinkResponseStreamObserver(reqHeader, commandFuture, prevRespSO, nextReqSO))
+    nextReqSO = stub.send(new PutBatchSinkRespSO(reqHeader, commandFuture, prevRespSO, nextReqSO))
 
     inited = true
   }
@@ -296,7 +296,7 @@ class PutBatchSinkRequestStreamObserver(prevRespSO: StreamObserver[Proxy.Metadat
   }
 }
 
-class PutBatchSinkResponseStreamObserver(val reqHeader: Proxy.Metadata,
+class PutBatchSinkRespSO(val reqHeader: Proxy.Metadata,
                                          val commandFuture: Future[ErTask],
                                          val prevRespSO: StreamObserver[Proxy.Metadata],
                                          val nextReqSO: StreamObserver[Transfer.TransferBatch])
@@ -324,7 +324,7 @@ class PutBatchSinkResponseStreamObserver(val reqHeader: Proxy.Metadata,
 }
 
 
-class ForwardRequestStreamObserver(prevRespSO: StreamObserver[Proxy.Metadata])
+class ForwardReqSO(prevRespSO: StreamObserver[Proxy.Metadata])
   extends StreamObserver[Proxy.Packet] with Logging {
   private var inited = false
   private var nextReqSO: StreamObserver[Proxy.Packet] = _
@@ -337,7 +337,7 @@ class ForwardRequestStreamObserver(prevRespSO: StreamObserver[Proxy.Metadata])
     val endPoint = Router.query(partyId)
     val channel = GrpcClientUtils.getChannel(endPoint)
     val stub = DataTransferServiceGrpc.newStub(channel)
-    nextReqSO = stub.push(new ForwardResponseStreamObserver(prevRespSO))
+    nextReqSO = stub.push(new ForwardRespSO(prevRespSO))
     inited = true
   }
 
@@ -394,7 +394,7 @@ class ForwardRequestStreamObserver(prevRespSO: StreamObserver[Proxy.Metadata])
   }
 }
 
-class ForwardResponseStreamObserver(val prevRespSO: StreamObserver[Proxy.Metadata])
+class ForwardRespSO(val prevRespSO: StreamObserver[Proxy.Metadata])
   extends StreamObserver[Proxy.Metadata] with Logging {
 
   override def onNext(value: Proxy.Metadata): Unit = {
