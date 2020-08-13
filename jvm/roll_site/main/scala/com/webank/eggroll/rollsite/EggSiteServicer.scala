@@ -32,6 +32,7 @@ import com.webank.eggroll.core.transfer.{GrpcClientUtils, Transfer, TransferServ
 import com.webank.eggroll.core.util._
 import com.webank.eggroll.rollpair.{RollPair, RollPairContext}
 import io.grpc.stub.StreamObserver
+import scala.collection.parallel.mutable
 
 class DataTransferServicer extends DataTransferServiceGrpc.DataTransferServiceImplBase with Logging {
 
@@ -249,34 +250,36 @@ class PutBatchSinkRequestStreamObserver(prevRespSO: StreamObserver[Proxy.Metadat
 
 
   override def onNext(request: Proxy.Packet): Unit = {
+    logInfo("onNext")
     try {
-      val packetHeader = request.getHeader
-      val encodedRollSiteHeader = packetHeader.getExt
-      val rollSiteHeader: ErRollSiteHeader = RollSiteHeader.parseFrom(
-        encodedRollSiteHeader).fromProto()
+      if (ExceptionTransferHelp.checkPacketIsException(request)) {
+        logInfo("error -> onNext")
+        logInfo(new String(request.getBody.getValue.toByteArray))
+        // todo :error handing
+      } else {
+        val packetHeader = request.getHeader
+        val encodedRollSiteHeader = packetHeader.getExt
+        val rollSiteHeader: ErRollSiteHeader = RollSiteHeader.parseFrom(
+          encodedRollSiteHeader).fromProto()
 
-      ensureInited(request, rollSiteHeader)
+        ensureInited(request, rollSiteHeader)
 
-      val tbHeader = transferHeaderBuilder.setId(packetHeader.getSeq.toInt)
-        .setTag(brokerTag)
-        .setExt(encodedRollSiteHeader)
-        .setTotalSize(rollSiteHeader.options.getOrElse("stream_batch_count", "-1").toLong)
+        val tbHeader = transferHeaderBuilder.setId(packetHeader.getSeq.toInt)
+          .setTag(brokerTag)
+          .setExt(encodedRollSiteHeader)
+          .setTotalSize(rollSiteHeader.options.getOrElse("stream_batch_count", "-1").toLong)
 
-      val tbBatch = transferBatchBuilder.setHeader(tbHeader)
-        .setData(request.getBody.getValue)
-        .build()
+        val tbBatch = transferBatchBuilder.setHeader(tbHeader)
+          .setData(request.getBody.getValue)
+          .build()
 
-      nextReqSO.onNext(tbBatch)
-
-      //throw new Exception("++++++++++++++++*&%&*$&++++++++++++++++++")
-      //val test: Array[Int] = Array()
-      //println(test(20))
+        nextReqSO.onNext(tbBatch)
+      }
     } catch {
       case e: Exception => {
         e.printStackTrace()
         val statusException = ExceptionTransferHelp.throwableToException(e, request.getHeader.getDst)
         prevRespSO.onError(statusException)
-        //nextReqSO.onError(statusException)
       }
     }
   }
@@ -285,7 +288,6 @@ class PutBatchSinkRequestStreamObserver(prevRespSO: StreamObserver[Proxy.Metadat
     logInfo("onError")
     val statusException = ExceptionTransferHelp.throwableToException(t)
     prevRespSO.onError(statusException)
-    //nextReqSO.onError(statusException)
   }
 
   override def onCompleted(): Unit = {
@@ -310,7 +312,7 @@ class PutBatchSinkResponseStreamObserver(val reqHeader: Proxy.Metadata,
     logInfo("onError")
     val e = ExceptionTransferHelp.throwableToException(t)
     prevRespSO.onError(e)
-    nextReqSO.onError(e)
+    //nextReqSO.onError(e)
   }
 
   override def onCompleted(): Unit = {
@@ -327,6 +329,7 @@ class ForwardRequestStreamObserver(prevRespSO: StreamObserver[Proxy.Metadata])
   private var inited = false
   private var nextReqSO: StreamObserver[Proxy.Packet] = _
   private val self = this
+  private var failRequest: mutable.ParHashSet[Proxy.Metadata] = new mutable.ParHashSet[Proxy.Metadata]()
 
   private def ensureInited(partyId: String): Unit = {
     if (inited) return
@@ -334,31 +337,54 @@ class ForwardRequestStreamObserver(prevRespSO: StreamObserver[Proxy.Metadata])
     val endPoint = Router.query(partyId)
     val channel = GrpcClientUtils.getChannel(endPoint)
     val stub = DataTransferServiceGrpc.newStub(channel)
-    nextReqSO = stub.push(new ForwardResponseStreamObserver(prevRespSO, nextReqSO))
+    nextReqSO = stub.push(new ForwardResponseStreamObserver(prevRespSO))
     inited = true
   }
 
   override def onNext(request: Proxy.Packet): Unit = {
     try {
-      logInfo(s"onnext: ${ToStringUtils.toOneLineString(request)}")
+      logInfo(s"onNext")
+      val nextReq = if (ExceptionTransferHelp.checkPacketIsException(request)) {
+        ExceptionTransferHelp.genExceptionToNextSite(request)
+      } else {
+        request
+      }
       val partyId: String = request.getHeader.getDst.getPartyId
       ensureInited(partyId)
-      nextReqSO.onNext(request)
-      logInfo("forwarding")
-    } catch {
-      case e: Exception => {
-        logInfo("onError")
-        val rsException = ExceptionTransferHelp.throwableToException(e)
-        //nextReqSO.onError(rsException)
-        prevRespSO.onError(rsException)
+
+      /*
+      // exception transfer test
+      if (System.currentTimeMillis() % 4 == 0) {
+        val test: Array[Int] = Array()
+        println(test(20))
       }
+      */
+
+      nextReqSO.onNext(nextReq)
+      logInfo("forwarding")
+
+    } catch {
+      case e: Exception =>
+        e.printStackTrace()
+
+        // exception transfer of per packet only try once
+        if (!failRequest.contains(request.getHeader)) {
+          failRequest += request.getHeader
+
+          val rsException = ExceptionTransferHelp.throwableToException(e)
+          println("do nextReqSO.onNext")
+          nextReqSO.onNext(ExceptionTransferHelp.genExceptionToNextSite(request, e))
+
+          logInfo("do prevRespSO onError")
+          prevRespSO.onError(rsException)
+        }
+        failRequest -= request.getHeader
     }
   }
 
   override def onError(t: Throwable): Unit = {
     logInfo("onError")
     val e = ExceptionTransferHelp.throwableToException(t)
-    //nextReqSO.onError(e)
     prevRespSO.onError(e)
   }
 
@@ -368,8 +394,7 @@ class ForwardRequestStreamObserver(prevRespSO: StreamObserver[Proxy.Metadata])
   }
 }
 
-class ForwardResponseStreamObserver(val prevRespSO: StreamObserver[Proxy.Metadata],
-                                    val nextReqSO: StreamObserver[Proxy.Packet])
+class ForwardResponseStreamObserver(val prevRespSO: StreamObserver[Proxy.Metadata])
   extends StreamObserver[Proxy.Metadata] with Logging {
 
   override def onNext(value: Proxy.Metadata): Unit = {
@@ -382,7 +407,6 @@ class ForwardResponseStreamObserver(val prevRespSO: StreamObserver[Proxy.Metadat
     logInfo("onError")
     val e = ExceptionTransferHelp.throwableToException(t)
     prevRespSO.onError(e)
-    //nextReqSO.onError(e)
   }
 
   override def onCompleted(): Unit = {
