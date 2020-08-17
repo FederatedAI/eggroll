@@ -89,6 +89,7 @@ class TransferService(object):
             options=(),
             channel_credentials=None,
             call_credentials=None,
+            insecure=False,
             compression=None,
             wait_for_ready=None,
             timeout=None,
@@ -97,7 +98,7 @@ class TransferService(object):
             transfer__pb2.TransferBatch.SerializeToString,
             transfer__pb2.TransferBatch.FromString,
             options, channel_credentials,
-            call_credentials, compression, wait_for_ready, timeout, metadata)
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
     def recv(request,
@@ -105,6 +106,7 @@ class TransferService(object):
             options=(),
             channel_credentials=None,
             call_credentials=None,
+            insecure=False,
             compression=None,
             wait_for_ready=None,
             timeout=None,
@@ -113,7 +115,7 @@ class TransferService(object):
             transfer__pb2.TransferBatch.SerializeToString,
             transfer__pb2.TransferBatch.FromString,
             options, channel_credentials,
-            call_credentials, compression, wait_for_ready, timeout, metadata)
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
     def sendRecv(request_iterator,
@@ -121,6 +123,7 @@ class TransferService(object):
             options=(),
             channel_credentials=None,
             call_credentials=None,
+            insecure=False,
             compression=None,
             wait_for_ready=None,
             timeout=None,
@@ -129,4 +132,4 @@ class TransferService(object):
             transfer__pb2.TransferBatch.SerializeToString,
             transfer__pb2.TransferBatch.FromString,
             options, channel_credentials,
-            call_credentials, compression, wait_for_ready, timeout, metadata)
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

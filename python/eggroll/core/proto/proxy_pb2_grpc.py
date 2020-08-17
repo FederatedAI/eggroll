@@ -90,6 +90,7 @@ class DataTransferService(object):
             options=(),
             channel_credentials=None,
             call_credentials=None,
+            insecure=False,
             compression=None,
             wait_for_ready=None,
             timeout=None,
@@ -98,7 +99,7 @@ class DataTransferService(object):
             proxy__pb2.Packet.SerializeToString,
             proxy__pb2.Metadata.FromString,
             options, channel_credentials,
-            call_credentials, compression, wait_for_ready, timeout, metadata)
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
     def pull(request,
@@ -106,6 +107,7 @@ class DataTransferService(object):
             options=(),
             channel_credentials=None,
             call_credentials=None,
+            insecure=False,
             compression=None,
             wait_for_ready=None,
             timeout=None,
@@ -114,7 +116,7 @@ class DataTransferService(object):
             proxy__pb2.Metadata.SerializeToString,
             proxy__pb2.Packet.FromString,
             options, channel_credentials,
-            call_credentials, compression, wait_for_ready, timeout, metadata)
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
     def unaryCall(request,
@@ -122,6 +124,7 @@ class DataTransferService(object):
             options=(),
             channel_credentials=None,
             call_credentials=None,
+            insecure=False,
             compression=None,
             wait_for_ready=None,
             timeout=None,
@@ -130,7 +133,7 @@ class DataTransferService(object):
             proxy__pb2.Packet.SerializeToString,
             proxy__pb2.Packet.FromString,
             options, channel_credentials,
-            call_credentials, compression, wait_for_ready, timeout, metadata)
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
 
 class RouteServiceStub(object):
@@ -182,6 +185,7 @@ class RouteService(object):
             options=(),
             channel_credentials=None,
             call_credentials=None,
+            insecure=False,
             compression=None,
             wait_for_ready=None,
             timeout=None,
@@ -190,4 +194,4 @@ class RouteService(object):
             proxy__pb2.Topic.SerializeToString,
             basic__meta__pb2.Endpoint.FromString,
             options, channel_credentials,
-            call_credentials, compression, wait_for_ready, timeout, metadata)
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
