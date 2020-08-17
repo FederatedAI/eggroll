@@ -188,8 +188,14 @@ object GrpcClientUtils extends Logging {
       .flowControlWindow(channelFlowControlWindow)
       .maxInboundMessageSize(channelMaxInboundMessageSize)
       .maxInboundMetadataSize(channelMaxInboundMetadataSize)
-      .enableRetry.retryBufferSize(channelRetryBufferSize)
-      .maxRetryAttempts(channelMaxRetryAttempts)
+
+    if (channelMaxRetryAttempts > 0) {
+      builder.enableRetry()
+        .retryBufferSize(channelRetryBufferSize)
+        .maxRetryAttempts(channelMaxRetryAttempts)
+    } else {
+      builder.disableRetry()
+    }
 
     if (isSecureChannel) {
       var sslContext: SslContext = null

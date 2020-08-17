@@ -27,7 +27,7 @@ from eggroll.core.constants import StoreTypes, SerdesTypes, PartitionerTypes, \
 from eggroll.core.datastructure.broker import FifoBroker
 from eggroll.core.meta_model import ErStoreLocator, ErJob, ErStore, ErFunctor, \
     ErTask, ErPair, ErPartition
-from eggroll.core.serdes import cloudpickle
+import cloudpickle
 from eggroll.core.session import ErSession
 from eggroll.core.utils import generate_job_id, generate_task_id
 from eggroll.core.utils import string_to_bytes, hash_code

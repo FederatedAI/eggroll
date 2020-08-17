@@ -19,9 +19,9 @@ from pickle import dumps as p_dumps
 from pickle import loads as p_loads
 
 from eggroll.core.constants import SerdesTypes
-from eggroll.core.serdes import cloudpickle
 from eggroll.utils.log_utils import get_logger
 import pickle, importlib, io
+import cloudpickle
 L = get_logger()
 
 class EggrollUnpickler(pickle.Unpickler):
