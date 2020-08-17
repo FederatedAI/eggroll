@@ -443,7 +443,6 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
           FrameUtils.copyMemory(outFb.rootVectors(0), resData)
           output.append(outFb)
           output.close()
-          println("PythonDistributed state:" + interp.getValue("state"))
         }
         catch {
           case e: Throwable => throw new RuntimeException(s"mapCommand task failed,task:$task", e)

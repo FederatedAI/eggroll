@@ -139,16 +139,16 @@ class RollFrameTests extends Logging {
       """
         |import numpy as np
         |import torch
-        |data = torch.from_numpy(input_data)
+        |data = torch.from_numpy(_input_data)
         |print(data.type())
-        |a = world_size
-        |b = rank
-        |print(parameters)
-        |print(parameters.dtype)
+        |a = _world_size
+        |b = _rank
+        |print(_parameters)
+        |print(_parameters.dtype)
         |
-        |state = 0
-        |result = torch.ones(3).numpy()
-        |result = result.astype(np.float64)
+        |_state = 0
+        |_result = torch.ones(3).numpy()
+        |_result = _result.astype(np.float64)
         |""".stripMargin
 
     val parameters = Array(1.0,2.0)

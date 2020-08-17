@@ -41,14 +41,16 @@ class FrameFormatTests extends Logging {
 
   @Test
   def testNullableFields(): Unit = {
-    val fb = new FrameBatch(new FrameSchema(SchemaUtil.getDoubleSchema(4)), 3000)
+    val fb1 = new FrameBatch(new FrameSchema(SchemaUtil.getDoubleSchema(4)), 3000)
     val path = "/tmp/unittests/RollFrameTests/file/test1/nullable_test"
     val adapter = FrameStore.file(path)
-    adapter.writeAll(Iterator(fb.sliceByColumn(0, 3)))
+    adapter.writeAll(Iterator(fb1.sliceByColumn(0, 3)))
     adapter.close()
     val adapter2 = FrameStore.file(path)
     val fb2 = adapter2.readOne()
     assert(fb2.rowCount == 3000)
+    fb1.clear()
+    fb2.clear()
   }
 
   /**
@@ -111,11 +113,11 @@ class FrameFormatTests extends Logging {
     }
     latch1.await()
     println(s"s time = ${System.currentTimeMillis() - start} ms")
+    zeroValue.clear()
   }
 
   @Test
   def testParallelFrameBatchByRow(): Unit = {
-    Thread.sleep(10000)
     // way 1: FrameStore with several FrameBatch
     val jvmPath = "/parallel/fbs_part"
     val jvmPath1 = "/parallel/fbs_big"
