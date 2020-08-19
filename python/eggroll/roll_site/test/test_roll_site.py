@@ -40,17 +40,17 @@ def data_generator(limit):
         yield (f"key-{i}", f"value-{i}")
 
 
-def args_to_testcase(testcase_class, func_name=None, src_party_id=None, dst_party_id=None):
+def args_to_testcase(testcase_class, func_name=None, src_party_id=None, dst_party_id=None, job_id=None):
     testloader = unittest.TestLoader()
     testnames = testloader.getTestCaseNames(testcase_class)
     suite = unittest.TestSuite()
     if func_name is None:
         for name in testnames:
-            suite.addTest(testcase_class(name, src_party_id=src_party_id, dst_party_id=dst_party_id))
+            suite.addTest(testcase_class(name, src_party_id=src_party_id, dst_party_id=dst_party_id, job_id=job_id))
     else:
         for name in testnames:
             if func_name == name:
-                suite.addTest(testcase_class(name, src_party_id=src_party_id, dst_party_id=dst_party_id))
+                suite.addTest(testcase_class(name, src_party_id=src_party_id, dst_party_id=dst_party_id, job_id=job_id))
     return suite
 
 
@@ -77,24 +77,35 @@ class TestRollSiteBase(unittest.TestCase):
     _rp_rs_name_big_mp = "roll_pair_name.table.big.mp"
     _rp_rs_tag_big_mp = "roll_pair_tag.big.mp"
 
-    def __init__(self, methodName='runTest', src_party_id=10002, dst_party_id=10001):
+    src_party_id = None
+    dst_party_id = None
+    job_id = None
+
+    def __init__(self, methodName='runTest', src_party_id=10002, dst_party_id=10001, job_id=None):
         super(TestRollSiteBase, self).__init__(methodName)
         TestRollSiteBase.src_party_id = src_party_id
         TestRollSiteBase.dst_party_id = dst_party_id
+        TestRollSiteBase.job_id = job_id
         self.get_parties = [("src", src_party_id)]
         self.remote_parties = [("dst", dst_party_id)]
 
     @classmethod
     def setUpClass(cls) -> None:
-        cls.rs_context_get = get_debug_test_context(role='dst',
+        cls.rs_context_get = get_debug_test_context(manager_port=4670,
+                                                    command_port=20001,
+                                                    transfer_port=20002,
+                                                    role='dst',
+                                                    self_party_id=10001,
                                                     props_file=props_file_get,
-                                                    session_id='_'.join(['atest', 'dst', '10001']))
+                                                    roll_site_session_id="atest")
+
         cls.rs_context_remote = get_debug_test_context(manager_port=4671,
-                                                       egg_port=20003,
+                                                       command_port=20003,
                                                        transfer_port=20004,
-                                                       session_id='_'.join(['atest', 'src', '10002']),
                                                        role='src',
-                                                       props_file=props_file_remote)
+                                                       self_party_id=10002,
+                                                       props_file=props_file_remote,
+                                                       roll_site_session_id="atest")
 
     def test_init(self):
         print(1)
@@ -257,11 +268,11 @@ class TestRollSiteDebugRemote(TestRollSiteBase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.rs_context_remote = get_debug_test_context(manager_port=4671,
-                                                       egg_port=20003,
+                                                       command_port=20003,
                                                        transfer_port=20004,
-                                                       session_id='testing_guest',
-                                                       role='guest',
-                                                       props_file=props_file_remote)
+                                                       role='src',
+                                                       props_file=props_file_remote,
+                                                       roll_site_session_id=cls.job_id)
 
     def test_remote_rollpair_big_multi_partitions(self):
         super().test_remote_rollpair_big_multi_partitions()
@@ -270,8 +281,12 @@ class TestRollSiteDebugRemote(TestRollSiteBase):
 class TestRollSiteDebugGet(TestRollSiteBase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.rs_context_get = get_debug_test_context(role='host',
-                                                    props_file=props_file_get)
+        cls.rs_context_get = get_debug_test_context(manager_port=4670,
+                                                    command_port=20001,
+                                                    transfer_port=20002,
+                                                    role='dst',
+                                                    props_file=props_file_get,
+                                                    roll_site_session_id=cls.job_id)
 
     def test_get_rollpair_big_multi_partitions(self):
         super().test_get_rollpair_big_multi_partitions()
@@ -351,6 +366,7 @@ class TestRollSiteStandaloneGet(TestRollSiteBase):
     def test_put_all_multi_partitions(self):
         pass
 
+
 class TestRollSiteCluster(TestRollSiteBase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -386,7 +402,7 @@ class TestRollSiteClusterRemote(TestRollSiteBase):
     @classmethod
     def setUpClass(cls) -> None:
         opts = {"eggroll.session.processors.per.node": "3"}
-        cls.rs_context_remote = get_cluster_context(role='src', options=opts, props_file=props_file_remote, party_id=cls.src_party_id)
+        cls.rs_context_remote = get_cluster_context(role='src', options=opts, props_file=props_file_remote, party_id=cls.src_party_id, roll_site_session_id=cls.job_id)
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -429,7 +445,11 @@ class TestRollSiteClusterGet(TestRollSiteBase):
     @classmethod
     def setUpClass(cls) -> None:
         opts = {"eggroll.session.processors.per.node": "3"}
-        cls.rs_context_get = get_cluster_context(role='dst', options=opts, props_file=props_file_get, party_id=cls.dst_party_id)
+        cls.rs_context_get = get_cluster_context(role='dst',
+                                                 options=opts,
+                                                 props_file=props_file_get,
+                                                 party_id=cls.dst_party_id,
+                                                 roll_site_session_id=cls.job_id)
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -478,7 +498,6 @@ class TestRollSiteRouteTable(unittest.TestCase):
 
         return ret_packet.body.value.decode('utf8')
 
-
     def test_set_route_table(self):
         route_table_path = '../conf/route_table_set.json'
         with open(route_table_path, 'r') as fp:
@@ -516,14 +535,16 @@ if __name__ == '__main__':
     parser.add_argument("-f", "--function", required=False, type=str, help="the function to test")
     parser.add_argument("-s", "--src_party_id", required=False, type=str, help="source party_id, get from eggroll.properties if it is None")
     parser.add_argument("-d", "--dst_party_id", required=True, type=str, help="destination party_id")
+    parser.add_argument("-j", "--job_id", required=True, type=str, help="job_id/roll_site_header_id")
 
     args = parser.parse_args()
     class_name_str = args.class_name
     func_name = args.function
     src_party_id = args.src_party_id
     dst_party_id = args.dst_party_id
+    job_id = args.job_id
 
     suite = unittest.TestSuite()
-    suite.addTest(args_to_testcase(str_to_class(class_name_str), func_name=func_name, src_party_id=src_party_id, dst_party_id=dst_party_id))
+    suite.addTest(args_to_testcase(str_to_class(class_name_str), func_name=func_name, src_party_id=src_party_id, dst_party_id=dst_party_id, job_id=args.job_id))
 
     unittest.TextTestRunner(verbosity=2).run(suite)
