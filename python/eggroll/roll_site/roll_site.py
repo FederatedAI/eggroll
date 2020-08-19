@@ -203,14 +203,14 @@ class RollSite(RollSiteBase):
 
     @staticmethod
     def generate_packet(bin_batch_iter, rs_header: ErRollSiteHeader):
-        def encode_packet():
-            rs_header._seq = seq
+        def encode_packet(rs_header_inner):
+            rs_header_inner._seq = seq
             return proxy_pb2.Packet(
                     header=proxy_pb2.Metadata(
-                            src=proxy_pb2.Topic(partyId=rs_header._src_party_id, role=rs_header._src_role),
-                            dst=proxy_pb2.Topic(partyId=rs_header._dst_party_id, role=rs_header._dst_role),
+                            src=proxy_pb2.Topic(partyId=rs_header_inner._src_party_id, role=rs_header_inner._src_role),
+                            dst=proxy_pb2.Topic(partyId=rs_header_inner._dst_party_id, role=rs_header_inner._dst_role),
                             seq=seq,
-                            ext=rs_header.to_proto_string(),
+                            ext=rs_header_inner.to_proto_string(),
                             version=eggroll_version),
                     body=proxy_pb2.Data(value=bin_batch))
 
@@ -218,13 +218,13 @@ class RollSite(RollSiteBase):
         seq = 1     # seq starting from 1, not 0
         for bin_batch in bin_batch_iter:
             if prev_batch:
-                yield encode_packet()
+                yield encode_packet(rs_header)
                 seq += 1
             prev_batch = bin_batch
 
         rs_header._total_batches = seq
         rs_header._stage = "finish_partition"
-        yield encode_packet()
+        yield encode_packet(rs_header)
 
     @staticmethod
     def _generate_batch_streams(pair_iter, chunk_size, body_bytes):
@@ -291,6 +291,7 @@ class RollSite(RollSiteBase):
         try:
             # make sure rollpair already created
             polling_header_timeout = self.polling_timeout       # skips pickling self
+            print("getting status for tag", transfer_tag_prefix)
             header_response = self.ctx.rp_ctx.load(name=STATUS_TABLE_NAME, namespace=rp_namespace,
                                           options={'create_if_missing': True, 'total_partitions': 1}).with_stores(
                 lambda x: PutBatchTask(transfer_tag_prefix + "0").get_header(polling_header_timeout))

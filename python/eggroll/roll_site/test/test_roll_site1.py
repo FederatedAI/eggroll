@@ -90,7 +90,7 @@ class TestRollSiteBase(unittest.TestCase):
         cls.rs_context_get = get_debug_test_context(role='dst',
                                                     props_file=props_file_get)
         cls.rs_context_remote = get_debug_test_context(manager_port=4671,
-                                                       egg_port=20003,
+                                                       command_port=20003,
                                                        transfer_port=20004,
                                                        session_id='testing_guest',
                                                        role='src',
@@ -257,7 +257,7 @@ class TestRollSiteDebugRemote(TestRollSiteBase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.rs_context_remote = get_debug_test_context(manager_port=4671,
-                                                       egg_port=20003,
+                                                       command_port=20003,
                                                        transfer_port=20004,
                                                        session_id='testing_guest',
                                                        role='guest',

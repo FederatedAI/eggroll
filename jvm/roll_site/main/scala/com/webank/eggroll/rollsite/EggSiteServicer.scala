@@ -27,7 +27,7 @@ import com.webank.eggroll.core.ErSession
 import com.webank.eggroll.core.command.CommandClient
 import com.webank.eggroll.core.constant.{RollSiteConfKeys, SerdesTypes, SessionConfKeys, StringConstants}
 import com.webank.eggroll.core.meta.TransferModelPbMessageSerdes.ErRollSiteHeaderFromPbMessage
-import com.webank.eggroll.core.meta.{ErEndpoint, ErJob, ErRollSiteHeader, ErTask}
+import com.webank.eggroll.core.meta.{ErJob, ErRollSiteHeader, ErTask}
 import com.webank.eggroll.core.transfer.Transfer.RollSiteHeader
 import com.webank.eggroll.core.transfer.{GrpcClientUtils, Transfer, TransferServiceGrpc}
 import com.webank.eggroll.core.util._
@@ -251,7 +251,7 @@ class PutBatchSinkRequestStreamObserver(prevRespSO: StreamObserver[Proxy.Metadat
     rsKey = rollSiteHeader.getRsKey()
 
     val sessionId = String.join("_", rollSiteHeader.rollSiteSessionId, rollSiteHeader.dstRole, rollSiteHeader.dstPartyId)
-    val session = new ErSession(sessionId)
+    val session = new ErSession(sessionId, createIfNotExists = false)
 
     val namespace = rollSiteHeader.rollSiteSessionId
     val name = rsKey
@@ -312,7 +312,7 @@ class PutBatchSinkRequestStreamObserver(prevRespSO: StreamObserver[Proxy.Metadat
       } else {
         val tbHeader = transferHeaderBuilder.setId(metadata.getSeq.toInt)
           .setTag(brokerTag)
-          .setExt(encodedRollSiteHeader)
+          .setExt(request.getHeader.getExt)
           .setTotalSize(rollSiteHeader.options.getOrElse("stream_batch_count", "-1").toLong)
 
         val tbBatch = transferBatchBuilder.setHeader(tbHeader)
@@ -356,14 +356,13 @@ class PutBatchSinkRespSO(val reqHeader: Proxy.Metadata,
   private var transferHeader: Transfer.TransferHeader = _
   private var oneLineStringTransferHeader: String = _
 
-  private var rollSiteHeader: ErRollSiteHeader = _
   private var rsKey: String = _
 
   override def onNext(resp: Transfer.TransferBatch): Unit = {
     transferHeader = resp.getHeader
     oneLineStringTransferHeader = ToStringUtils.toOneLineString(transferHeader)
 
-    rollSiteHeader = RollSiteHeader.parseFrom(transferHeader.getExt).fromProto()
+    val rollSiteHeader = RollSiteHeader.parseFrom(transferHeader.getExt).fromProto()
     rsKey = rollSiteHeader.getRsKey()
 
     if (isLogTraceEnabled()) {
@@ -403,8 +402,6 @@ class ForwardReqSO(prevRespSO: StreamObserver[Proxy.Metadata])
 
   private var metadata: Proxy.Metadata = _
   private var oneLineStringMetadata: String = _
-  private var encodedRollSiteHeader: ByteString = _
-  private var rollSiteHeader: ErRollSiteHeader = _
   private var rsKey: String = _
 
   private val self = this
@@ -417,8 +414,7 @@ class ForwardReqSO(prevRespSO: StreamObserver[Proxy.Metadata])
     metadata = firstRequest.getHeader
     oneLineStringMetadata = ToStringUtils.toOneLineString(metadata)
 
-    encodedRollSiteHeader = metadata.getExt
-    rollSiteHeader = RollSiteHeader.parseFrom(encodedRollSiteHeader).fromProto()
+    val rollSiteHeader = RollSiteHeader.parseFrom(metadata.getExt).fromProto()
     rsKey = rollSiteHeader.getRsKey()
 
     logDebug(s"[FORWARD][SERVER] onInit. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
@@ -494,14 +490,13 @@ class ForwardRespSO(val prevRespSO: StreamObserver[Proxy.Metadata])
   private var metadata: Proxy.Metadata = _
   private var oneLineStringMetadata: String = _
 
-  private var rollSiteHeader: ErRollSiteHeader = _
   private var rsKey: String = _
 
   override def onNext(resp: Proxy.Metadata): Unit = {
     metadata = resp
     oneLineStringMetadata = ToStringUtils.toOneLineString(metadata)
 
-    rollSiteHeader = RollSiteHeader.parseFrom(metadata.getExt).fromProto()
+    val rollSiteHeader = RollSiteHeader.parseFrom(metadata.getExt).fromProto()
     rsKey = rollSiteHeader.getRsKey()
     if (isLogTraceEnabled()) {
       logTrace(s"[FORWARD][CLIENT] onNext. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
