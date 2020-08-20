@@ -13,7 +13,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import threading
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 
 from eggroll.core.pair_store.format import ArrayByteBuffer, PairBinReader
 from eggroll.core.transfer.transfer_service import TransferService
@@ -23,6 +23,8 @@ from eggroll.utils.log_utils import get_logger
 
 L = get_logger()
 FINISH_STATUS = "finish_partition"
+
+BSS = namedtuple('BSS', ['tag', 'is_finished', 'total_batches', 'batch_seq_to_pair_counter', 'stream_seq_to_pair_counter', 'stream_seq_to_batch_seq', 'total_pairs', 'data_type'])
 
 
 class _BatchStreamStatus:
@@ -34,9 +36,11 @@ class _BatchStreamStatus:
     def __init__(self, tag):
         self._tag = tag
         self._stage = "doing"
-        self.total_batches = -1
-        self.data_type = None
-        self.counter = defaultdict(int)
+        self._total_batches = -1
+        self._data_type = None
+        self._batch_seq_to_pair_counter = defaultdict(int)
+        self._stream_seq_to_pair_counter = defaultdict(int)
+        self._stream_seq_to_batch_seq = defaultdict(int)
         self._stream_finish_event = threading.Event()
         self._header_arrive_event = threading.Event()
         self._header = None
@@ -45,11 +49,11 @@ class _BatchStreamStatus:
 
     def _debug_string(self):
         return f"BatchStreams end normally, tag={self._tag} " \
-               f"total_batches={self.total_batches}:total_elems={sum(self.counter.values())}"
+               f"total_batches={self._total_batches}:total_elems={sum(self._batch_seq_to_pair_counter.values())}"
 
     def set_finish(self, total_batches):
-        self.total_batches = total_batches
-        if self.total_batches != len(self.counter):
+        self._total_batches = total_batches
+        if self._total_batches != len(self._batch_seq_to_pair_counter):
             L.debug(f"MarkEnd BatchStream ahead of all BatchStreams received, {self._debug_string()}")
         else:
             self._stage = "done"
@@ -58,12 +62,15 @@ class _BatchStreamStatus:
             L.trace(f"All BatchStreams finish normally, {self._debug_string()}")
 
     def count_batch(self, header: ErRollSiteHeader, batch_pairs):
-        batch_seq_id = header._seq
+        batch_seq_id = header._batch_seq
+        stream_seq_id = header._stream_seq
         if self._header is None:
             self._header = header
             self._header_arrive_event.set()
-        self.counter[batch_seq_id] = batch_pairs
-        if self._stage == "done" and self.total_batches == len(self.counter):
+        self._batch_seq_to_pair_counter[batch_seq_id] = batch_pairs
+        self._stream_seq_to_pair_counter[stream_seq_id] += batch_pairs
+        self._stream_seq_to_batch_seq[stream_seq_id] = batch_seq_id
+        if self._stage == "done" and self._total_batches == len(self._batch_seq_to_pair_counter):
             self._stream_finish_event.set()
             L.debug(f"All BatchStreams finish out-of-order, {self._debug_string()}")
 
@@ -80,17 +87,39 @@ class _BatchStreamStatus:
     def wait_finish(cls, tag, timeout):
         bss = cls.get_or_create(tag)
         bss._stream_finish_event.wait(timeout)
-        finished = bss._stage == "done" and bss.total_batches == len(bss.counter)
+        finished = bss._stage == "done" and bss._total_batches == len(bss._batch_seq_to_pair_counter)
         if finished:
             TransferService.remove_broker(tag)
             del cls._recorder[tag]
-        return finished, bss.total_batches, bss.counter, bss.data_type
+
+        return BSS(
+                tag=bss._tag,
+                is_finished=finished,
+                total_batches=bss._total_batches,
+                batch_seq_to_pair_counter=bss._batch_seq_to_pair_counter,
+                stream_seq_to_pair_counter=bss._stream_seq_to_pair_counter,
+                stream_seq_to_batch_seq=bss._stream_seq_to_batch_seq,
+                total_pairs=sum(bss._batch_seq_to_pair_counter.values()),
+                data_type=bss._data_type)
+        #return finished, bss._total_batches, bss._counter, sum(bss._counter.values()), bss._data_type
 
     @classmethod
     def wait_header(cls, tag, timeout):
         bss = cls.get_or_create(tag)
         bss._header_arrive_event.wait(timeout)
         return bss._header
+
+    def __repr__(self):
+        return f'<_BatchStreamStatus(tag={self._tag}, ' \
+               f'stage={self._stage}, ' \
+               f'total_batches={self._total_batches}, ' \
+               f'data_type={self._data_type}, ' \
+               f'batch_seq_to_pair_counter={self._batch_seq_to_pair_counter}, ' \
+               f'stream_seq_to_pair_counter={self._stream_seq_to_pair_counter}, ' \
+               f'stream_seq_to_batch_seq={self._stream_seq_to_batch_seq}, ' \
+               f'stream_finish_event={self._stream_finish_event.is_set()}, ' \
+               f'header_arrive_event={self._header_arrive_event.is_set()}, ' \
+               f'header={self._header}) at {hex(id(self))}>'
 
 
 class PutBatchTask:
@@ -117,14 +146,15 @@ class PutBatchTask:
                     for batch in broker:
                         rs_header = ErRollSiteHeader.from_proto_string(batch.header.ext)
                         batch_pairs = 0
-                        bin_data = ArrayByteBuffer(batch.data)
-                        reader = PairBinReader(pair_buffer=bin_data, data=batch.data)
-                        for k_bytes, v_bytes in reader.read_all():
-                            wb.put(k_bytes, v_bytes)
-                            batch_pairs += 1
+                        if batch.data:
+                            bin_data = ArrayByteBuffer(batch.data)
+                            reader = PairBinReader(pair_buffer=bin_data, data=batch.data)
+                            for k_bytes, v_bytes in reader.read_all():
+                                wb.put(k_bytes, v_bytes)
+                                batch_pairs += 1
                         bss.count_batch(rs_header, batch_pairs)
                         # TODO:0
-                        bss.data_type = rs_header._data_type
+                        bss._data_type = rs_header._data_type
                         if rs_header._stage == FINISH_STATUS:
                             bss.set_finish(rs_header._total_batches)  # starting from 0
 

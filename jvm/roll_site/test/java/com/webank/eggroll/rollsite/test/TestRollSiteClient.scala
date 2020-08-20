@@ -95,7 +95,8 @@ class TestRollSiteClient extends Logging {
         partitionId = 0,
         totalStreams = 3,
         totalBatches = 3,
-        seq = 0,
+        streamSeq = 0,
+        batchSeq = 0,
         stage = "")
       streamObserver.onNext(
         packetBuilder.setHeader(

@@ -113,7 +113,8 @@ class ErRollSiteHeader(RpcMessage):
             partition_id: int = -1,
             total_streams: int = -1,
             total_batches: int = -1,
-            seq: int = -1,
+            stream_seq: int = -1,
+            batch_seq: int = -1,
             stage: str = ''):
         if options is None:
             options = {}
@@ -131,7 +132,8 @@ class ErRollSiteHeader(RpcMessage):
         self._partition_id = partition_id
         self._total_streams = total_streams
         self._total_batches = total_batches
-        self._seq = seq
+        self._stream_seq = stream_seq
+        self._batch_seq = batch_seq
         self._stage = stage
 
     def to_proto(self):
@@ -149,7 +151,8 @@ class ErRollSiteHeader(RpcMessage):
                 partitionId=self._partition_id,
                 totalStreams=self._total_streams,
                 totalBatches=self._total_batches,
-                seq=self._seq,
+                streamSeq=self._stream_seq,
+                batchSeq=self._batch_seq,
                 stage=self._stage)
 
     def to_proto_string(self):
@@ -171,7 +174,8 @@ class ErRollSiteHeader(RpcMessage):
             partition_id=pb_message.partitionId,
             total_streams=pb_message.totalStreams,
             total_batches=pb_message.totalBatches,
-            seq=pb_message.seq,
+            stream_seq=pb_message.streamSeq,
+            batch_seq=pb_message.batchSeq,
             stage=pb_message.stage)
 
     @staticmethod
@@ -195,7 +199,8 @@ class ErRollSiteHeader(RpcMessage):
                f'partition_id={repr(self._partition_id)}, ' \
                f'total_streams={repr(self._total_streams)}, ' \
                f'total_batches={self._total_batches}, ' \
-               f'seq={self._seq}, ' \
+               f'stream_seq={self._stream_seq}, ' \
+               f'batch_seq={self._batch_seq}, ' \
                f'stage={self._stage}) ' \
                f'at {hex(id(self))}>'
 

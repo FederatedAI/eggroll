@@ -41,7 +41,7 @@ class DataTransferServicer extends DataTransferServiceGrpc.DataTransferServiceIm
   /**
    */
   override def push(responseObserver: StreamObserver[Proxy.Metadata]): StreamObserver[Proxy.Packet] = {
-    logInfo("[PUSH][SERVER] request received")
+    logDebug("[PUSH][SERVER] request received")
     new DelegateDispatchSO(responseObserver)
   }
 

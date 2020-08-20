@@ -37,7 +37,7 @@ object ExceptionTransferHelp {
 
   def checkPacketIsException(request: Proxy.Packet): Boolean = {
     val key = request.getBody.getKey
-    println("checkPacketIsException", key)
+    //println("checkPacketIsException", key)
     if (key.contains("[roll site transfer exception]") ) {
       return true
     }

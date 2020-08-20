@@ -116,6 +116,10 @@ class RollPairConfKeys(object):
 
 
 class RollSiteConfKeys(object):
+    EGGROLL_ROLLSITE_RECV_POLLING_MAX_RETRY = ErConfKey("eggroll.rollsite.recv.polling.max.retry", 3)
+    EGGROLL_ROLLSITE_RECV_POLLING_OVERALL_TIMEOUT_SEC = ErConfKey("eggroll.rollsite.recv.polling.overall.timeout.sec", 600)
+    EGGROLL_ROLLSITE_RECV_POLLING_HEADER_TIMEOUT_SEC = ErConfKey("eggroll.rollsite.recv.polling.header.timeout.sec", 600)
+    EGGROLL_ROLLSITE_SEND_BATCHES_PER_STREAM = ErConfKey("eggroll.rollsite.send.batches.per.stream", 10)
     EGGROLL_ROLLSITE_COORDINATOR = ErConfKey("eggroll.rollsite.coordinator")
     EGGROLL_ROLLSITE_DEPLOY_MODE = ErConfKey("eggroll.rollsite.deploy.mode", "cluster")
     EGGROLL_ROLLSITE_HOST = ErConfKey("eggroll.rollsite.host", "127.0.0.1")
