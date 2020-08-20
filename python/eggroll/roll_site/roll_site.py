@@ -257,15 +257,10 @@ class RollSite(RollSiteBase):
 
         rs_header._total_streams = -1
         rs_header._stream_seq = 1
-        prev_stream = None
 
         # if use stub.push.future here, retry mechanism is a problem to solve
         for batch_stream in bin_batch_streams:
-            #if prev_stream is not None:
             self.stub.push(bs_helper.generate_packet(batch_stream))
-            #prev_stream = batch_stream
-
-        #self.stub.push(bs_helper.generate_packet(prev_stream))
 
         L.debug(f"pushed object: rs_key={rs_key}, is_none={obj is None}, time_cost={time.time() - start_time}")
         self.ctx.pushing_latch.count_down()
@@ -302,15 +297,8 @@ class RollSite(RollSiteBase):
                                                                       body_bytes=body_bytes)
 
 
-                #prev_stream = None
                 for batch_stream in bin_batch_streams:
-                    #if prev_stream is not None:
                     stub.push(bs_helper.generate_packet(batch_stream))
-                    #prev_stream = batch_stream
-
-                # rs_header._total_streams = rs_header._stream_seq
-                # rs_header._stage = "finish_partition"
-                # stub.push(bs_helper.generate_packet(prev_stream, rs_header))
 
         rp.with_stores(_push_partition)
         if L.isEnabledFor(logging.DEBUG):
@@ -357,8 +345,6 @@ class RollSite(RollSiteBase):
                                                   options={'create_if_missing': False}).with_stores(get_all_status)
 
                 for part_id, part_status in all_status:
-                    #part_finished, part_batches, part_counter, part_sum, part_type = part_status
-                    #if not part_finished:
                     if not part_status.is_finished:
                         all_finished = False
                     pull_status[part_id] = part_status
@@ -369,11 +355,11 @@ class RollSite(RollSiteBase):
                     L.debug(f'getting status NOT finished for rs_key={rs_key}, cur_status={pull_status}')
                     if last_total_batches == total_batches:
                         raise IOError(f"roll site pull_waiting failed because there is no updated progress: rs_key={rs_key}, "
-                                    f"detail={all_status}")
+                                    f"detail={pull_status}, total_pairs={total_pairs}")
                 last_total_batches = total_batches
 
                 if all_finished:
-                    L.debug(f"getting status DO finished for rs_key={rs_key}, cur_status={pull_status}")
+                    L.debug(f"getting status DO finished for rs_key={rs_key}, cur_status={pull_status}, total_pairs={total_pairs}")
                     rp = self.ctx.rp_ctx.load(name=rp_name, namespace=rp_namespace)
                     if data_type == "object":
                         result = pickle.loads(b''.join(map(lambda t: t[1], sorted(rp.get_all(), key=lambda x: int.from_bytes(x[0], "big")))))
