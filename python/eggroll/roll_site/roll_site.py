@@ -30,7 +30,7 @@ from eggroll.core.serdes import eggroll_serdes
 from eggroll.core.transfer_model import ErRollSiteHeader
 from eggroll.roll_pair import create_adapter
 from eggroll.roll_pair.roll_pair import RollPair, RollPairContext
-from eggroll.roll_pair.task.storage import PutBatchTask
+from eggroll.roll_pair.task.storage import PutBatchTask, FINISH_STATUS
 from eggroll.roll_pair.transfer_pair import TransferPair
 from eggroll.utils import log_utils
 
@@ -155,6 +155,66 @@ class RollSiteLocalMock(RollSiteBase):
     pass
 
 
+class _BatchStreamHelper(object):
+    def __init__(self, rs_header: ErRollSiteHeader):
+        self._rs_header = rs_header
+        self._rs_header._batch_seq = 0
+        self._rs_header._stream_seq = 0
+        self._finish_partition = False
+
+    def generate_packet(self, bin_batch_iter):
+        def encode_packet(rs_header_inner, batch_inner):
+            header = proxy_pb2.Metadata(
+                    src=proxy_pb2.Topic(partyId=rs_header_inner._src_party_id, role=rs_header_inner._src_role),
+                    dst=proxy_pb2.Topic(partyId=rs_header_inner._dst_party_id, role=rs_header_inner._dst_role),
+                    seq=rs_header_inner._batch_seq,
+                    ext=rs_header_inner.to_proto_string(),
+                    version=eggroll_version)
+
+            if batch_inner:
+                result = proxy_pb2.Packet(header=header, body=proxy_pb2.Data(value=batch_inner))
+            else:
+                result = proxy_pb2.Packet(header=header)
+
+            return result
+
+        prev_batch = None
+        for bin_batch in bin_batch_iter:
+            if prev_batch:
+                self._rs_header._batch_seq += 1
+                yield encode_packet(self._rs_header, prev_batch)
+
+            prev_batch = bin_batch
+
+        self._rs_header._batch_seq += 1
+        if self._finish_partition:
+            self._rs_header._stage = FINISH_STATUS
+            self._rs_header._total_streams = self._rs_header._stream_seq
+            self._rs_header._total_batches = self._rs_header._batch_seq
+        yield encode_packet(self._rs_header, prev_batch)
+
+    def _generate_batch_streams(self, pair_iter, batches_per_stream, body_bytes):
+        batches = TransferPair.pair_to_bin_batch(pair_iter, sendbuf_size=body_bytes)
+
+        def chunk_batch_stream():
+            nonlocal self
+            prev_batch = None
+            try:
+                for i in range(batches_per_stream):
+                    next_batch = next(batches)
+                    if prev_batch is not None:
+                        yield prev_batch
+                    prev_batch = next_batch
+            except StopIteration as e:
+                self._finish_partition = True
+            finally:
+                yield prev_batch
+
+        while not self._finish_partition:
+            self._rs_header._stream_seq += 1
+            yield chunk_batch_stream()
+
+
 class RollSite(RollSiteBase):
     def __init__(self, name: str, tag: str, rs_ctx: RollSiteContext, options: dict = None):
         if options is None:
@@ -162,11 +222,12 @@ class RollSite(RollSiteBase):
         super().__init__(name, tag, rs_ctx)
         self.batch_body_bytes = int(RollSiteConfKeys.EGGROLL_ROLLSITE_ADAPTER_SENDBUF_SIZE.get_with(options))
         # TODO:0: configurable
-        self.stream_chunk_count = 10
-        self.polling_header_timeout = 10 * 60
-        self.polling_timeout = 10 * 60
-        self.polling_max_retry = 3
+        self.batches_per_stream = int(RollSiteConfKeys.EGGROLL_ROLLSITE_SEND_BATCHES_PER_STREAM.get_with(options))
+        self.polling_header_timeout = int(RollSiteConfKeys.EGGROLL_ROLLSITE_RECV_POLLING_HEADER_TIMEOUT_SEC.get_with(options))
+        self.polling_overall_timeout = int(RollSiteConfKeys.EGGROLL_ROLLSITE_RECV_POLLING_OVERALL_TIMEOUT_SEC.get_with(options))
+        self.polling_max_retry = int(RollSiteConfKeys.EGGROLL_ROLLSITE_RECV_POLLING_MAX_RETRY.get_with(options))
 
+    ################## push ##################
     def _push_bytes(self, obj, rs_header: ErRollSiteHeader):
         start_time = time.time()
 
@@ -184,61 +245,30 @@ class RollSite(RollSiteBase):
                 key_id += 1
                 cur_pos += body_bytes
 
-        bin_batch_streams = RollSite._generate_batch_streams(
+        bs_helper = _BatchStreamHelper(rs_header=rs_header)
+
+        bin_batch_streams = bs_helper._generate_batch_streams(
                 pair_iter=_generate_obj_bytes(obj, self.batch_body_bytes),
-                chunk_size=self.stream_chunk_count,
+                batches_per_stream=self.batches_per_stream,
                 body_bytes=self.batch_body_bytes)
 
         rs_header._total_partitions = 1
         rs_header._partition_id = 0
 
-        rs_header._total_streams = 0
+        rs_header._total_streams = -1
+        rs_header._stream_seq = 1
+        prev_stream = None
+
         # if use stub.push.future here, retry mechanism is a problem to solve
         for batch_stream in bin_batch_streams:
-            rs_header._total_streams += 1
-            self.stub.push(self.generate_packet(batch_stream, rs_header))
+            #if prev_stream is not None:
+            self.stub.push(bs_helper.generate_packet(batch_stream))
+            #prev_stream = batch_stream
+
+        #self.stub.push(bs_helper.generate_packet(prev_stream))
 
         L.debug(f"pushed object: rs_key={rs_key}, is_none={obj is None}, time_cost={time.time() - start_time}")
         self.ctx.pushing_latch.count_down()
-
-    @staticmethod
-    def generate_packet(bin_batch_iter, rs_header: ErRollSiteHeader):
-        def encode_packet(rs_header_inner):
-            rs_header_inner._seq = seq
-            return proxy_pb2.Packet(
-                    header=proxy_pb2.Metadata(
-                            src=proxy_pb2.Topic(partyId=rs_header_inner._src_party_id, role=rs_header_inner._src_role),
-                            dst=proxy_pb2.Topic(partyId=rs_header_inner._dst_party_id, role=rs_header_inner._dst_role),
-                            seq=seq,
-                            ext=rs_header_inner.to_proto_string(),
-                            version=eggroll_version),
-                    body=proxy_pb2.Data(value=bin_batch))
-
-        prev_batch = None
-        seq = 1     # seq starting from 1, not 0
-        for bin_batch in bin_batch_iter:
-            if prev_batch:
-                yield encode_packet(rs_header)
-                seq += 1
-            prev_batch = bin_batch
-
-        rs_header._total_batches = seq
-        rs_header._stage = "finish_partition"
-        yield encode_packet(rs_header)
-
-    @staticmethod
-    def _generate_batch_streams(pair_iter, chunk_size, body_bytes):
-        batches = TransferPair.pair_to_bin_batch(pair_iter, sendbuf_size=body_bytes)
-
-        def chunk_batch_stream():
-            try:
-                for i in range(chunk_size - 1):
-                    yield next(batches)
-            except StopIteration as e:
-                L.info("stop iteration in chunk_batch_stream")
-
-        for first in batches:
-             yield itertools.chain([first], chunk_batch_stream())
 
     def _push_rollpair(self, rp: RollPair, rs_header: ErRollSiteHeader):
         rs_key = rs_header.get_rs_key()
@@ -248,7 +278,7 @@ class RollSite(RollSiteBase):
 
         rs_header._total_partitions = rp.get_partitions()
 
-        chunk_size = self.stream_chunk_count
+        batches_per_stream = self.batches_per_stream
         body_bytes = self.batch_body_bytes
         endpoint = self.ctx.proxy_endpoint
 
@@ -266,19 +296,28 @@ class RollSite(RollSiteBase):
                 channel = grpc_channel_factory.create_channel(endpoint)
                 stub = proxy_pb2_grpc.DataTransferServiceStub(channel)
 
-                bin_batch_stream = RollSite._generate_batch_streams(pair_iter=rb,
-                                                                    chunk_size=chunk_size,
-                                                                    body_bytes=body_bytes)
+                bs_helper = _BatchStreamHelper(rs_header)
+                bin_batch_streams = bs_helper._generate_batch_streams(pair_iter=rb,
+                                                                      batches_per_stream=batches_per_stream,
+                                                                      body_bytes=body_bytes)
 
-                rs_header._total_streams = 0
-                for batch_stream in bin_batch_stream:
-                    rs_header._total_streams += 1
-                    stub.push(RollSite.generate_packet(batch_stream, rs_header))
+
+                #prev_stream = None
+                for batch_stream in bin_batch_streams:
+                    #if prev_stream is not None:
+                    stub.push(bs_helper.generate_packet(batch_stream))
+                    #prev_stream = batch_stream
+
+                # rs_header._total_streams = rs_header._stream_seq
+                # rs_header._stage = "finish_partition"
+                # stub.push(bs_helper.generate_packet(prev_stream, rs_header))
 
         rp.with_stores(_push_partition)
         if L.isEnabledFor(logging.DEBUG):
             L.debug(f"pushed object: rs_key={rs_key}, count={rp.count()}, time_cost={time.time() - start_time}")
         self.ctx.pushing_latch.count_down()
+
+    ################## pull ##################
 
     def _pull_one(self, rs_header: ErRollSiteHeader):
         start_time = time.time()
@@ -290,8 +329,9 @@ class RollSite(RollSiteBase):
         data_type = None
         try:
             # make sure rollpair already created
-            polling_header_timeout = self.polling_timeout       # skips pickling self
-            print("getting status for tag", transfer_tag_prefix)
+            polling_header_timeout = self.polling_header_timeout        # skips pickling self
+            polling_overall_timeout = self.polling_overall_timeout      # skips pickling self
+
             header_response = self.ctx.rp_ctx.load(name=STATUS_TABLE_NAME, namespace=rp_namespace,
                                           options={'create_if_missing': True, 'total_partitions': 1}).with_stores(
                 lambda x: PutBatchTask(transfer_tag_prefix + "0").get_header(polling_header_timeout))
@@ -302,25 +342,38 @@ class RollSite(RollSiteBase):
                 # TODO:0:  push bytes has only one partition, that means it has finished, need not get_status
                 data_type = header._data_type
                 L.debug(f"roll site pull_status ok: rs_key={rs_key}, header={header}")
+
+            def get_all_status(task):
+                put_batch_task = PutBatchTask(transfer_tag_prefix + str(task._inputs[0]._id), None)
+                return put_batch_task.get_status(polling_overall_timeout)
+
+            pull_status = {}
+            total_pairs = 0
             for i in range(self.polling_max_retry):
                 polling_attempts = i
-                polling_timeout = self.polling_timeout          # skips pickling self
                 total_batches = 0
                 all_finished = True
                 all_status = self.ctx.rp_ctx.load(name=rp_name, namespace=rp_namespace,
-                                                  options={'create_if_missing': False}).with_stores(
-                    lambda x: PutBatchTask(transfer_tag_prefix + str(x._inputs[0]._id), None).get_status(polling_timeout))
+                                                  options={'create_if_missing': False}).with_stores(get_all_status)
+
                 for part_id, part_status in all_status:
-                    part_finished, part_batches, part_counter, _ = part_status
-                    if not part_finished:
+                    #part_finished, part_batches, part_counter, part_sum, part_type = part_status
+                    #if not part_finished:
+                    if not part_status.is_finished:
                         all_finished = False
-                    total_batches += part_batches
-                if not all_finished and last_total_batches == total_batches:
-                    raise IOError(f"roll site pull_waiting failed because there is no updated progress: rs_key={rs_key}"
-                                  f"detail={all_status}")
+                    pull_status[part_id] = part_status
+                    total_batches += part_status.total_batches
+                    total_pairs += part_status.total_pairs
+
+                if not all_finished:
+                    L.debug(f'getting status NOT finished for rs_key={rs_key}, cur_status={pull_status}')
+                    if last_total_batches == total_batches:
+                        raise IOError(f"roll site pull_waiting failed because there is no updated progress: rs_key={rs_key}, "
+                                    f"detail={all_status}")
                 last_total_batches = total_batches
 
                 if all_finished:
+                    L.debug(f"getting status DO finished for rs_key={rs_key}, cur_status={pull_status}")
                     rp = self.ctx.rp_ctx.load(name=rp_name, namespace=rp_namespace)
                     if data_type == "object":
                         result = pickle.loads(b''.join(map(lambda t: t[1], sorted(rp.get_all(), key=lambda x: int.from_bytes(x[0], "big")))))

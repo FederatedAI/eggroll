@@ -192,10 +192,12 @@ class TestRollSiteBase(unittest.TestCase):
         futures = rs.pull(self.get_parties)
         for future in futures:
             obj = future.result()
+            last_key = row_limit - 1
             if isinstance(obj, RollPair):
-                key = "key-1"
+                key = f"key-{last_key}"
                 value = obj.get(key)
-                self.assertEqual(value, "value-1", f"got wrong value. expected: 'value-1', actual: {value}")
+                self.assertEqual(row_limit, obj.count(), f'got wrong count. expect: {row_limit}, actual: {obj.count()}')
+                self.assertEqual(value, f"value-{last_key}", f"got wrong value. expected: 'value-{last_key}', actual: {value}")
                 print("obj:", obj, ", value:", value, ", count:", obj.count())
             else:
                 raise TypeError(f'require getting a RollPair but obj found: {obj}')
@@ -224,12 +226,14 @@ class TestRollSiteBase(unittest.TestCase):
         futures = rs.pull(self.get_parties)
         for future in futures:
             obj = future.result()
+            last_key = row_limit - 1
             if isinstance(obj, RollPair):
-                key = "key-1"
+                key = f"key-{last_key}"
                 value = obj.get(key)
                 #self.assertEqual(value, "value-1", f"got wrong value. expected: 'value-1', actual: {value}")
-                self.assertEqual(value, "value-1", f"got wrong value. expected: 'value-1', actual: {value}")
                 self.assertEqual(obj.count(), row_limit, f"got wrong count value. expected: {row_limit}, actual: {obj.count()}")
+                self.assertEqual(value, f"value-{last_key}", f"got wrong value. expected: 'value-{last_key}', actual: {value}")
+
             else:
                 raise TypeError(f'require getting a RollPair but obj found: {obj}')
 

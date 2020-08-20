@@ -48,7 +48,8 @@ message RollSiteHeader {
   int32 partitionId = 16;
   int64 totalStreams = 17;
   int64 totalBatches = 18;
-  int64 seq = 20;
+  int64 streamSeq = 20;
+  int64 batchSeq = 21;
   string stage = 30;
 }
 
