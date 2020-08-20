@@ -32,7 +32,7 @@ props_file_remote = default_props_file + '.guest'
 
 
 row_limit = 10000
-obj_size = 2 << 20
+obj_size = 128 << 20
 
 
 def data_generator(limit):
