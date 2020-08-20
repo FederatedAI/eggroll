@@ -24,7 +24,7 @@ from eggroll.utils.log_utils import get_logger
 L = get_logger()
 FINISH_STATUS = "finish_partition"
 
-BSS = namedtuple('BSS', ['tag', 'is_finished', 'total_batches', 'batch_seq_to_pair_counter', 'stream_seq_to_pair_counter', 'stream_seq_to_batch_seq', 'total_pairs', 'data_type'])
+BSS = namedtuple('BSS', ['tag', 'is_finished', 'total_batches', 'batch_seq_to_pair_counter', 'total_streams', 'stream_seq_to_pair_counter', 'stream_seq_to_batch_seq', 'total_pairs', 'data_type'])
 
 
 class _BatchStreamStatus:
@@ -37,6 +37,7 @@ class _BatchStreamStatus:
         self._tag = tag
         self._stage = "doing"
         self._total_batches = -1
+        self._total_streams = -1
         self._data_type = None
         self._batch_seq_to_pair_counter = defaultdict(int)
         self._stream_seq_to_pair_counter = defaultdict(int)
@@ -51,8 +52,9 @@ class _BatchStreamStatus:
         return f"BatchStreams end normally, tag={self._tag} " \
                f"total_batches={self._total_batches}:total_elems={sum(self._batch_seq_to_pair_counter.values())}"
 
-    def set_finish(self, total_batches):
-        self._total_batches = total_batches
+    def set_finish(self, rs_header):
+        self._total_batches = rs_header._total_batches
+        self._total_streams = rs_header._total_streams
         if self._total_batches != len(self._batch_seq_to_pair_counter):
             L.debug(f"MarkEnd BatchStream ahead of all BatchStreams received, {self._debug_string()}")
         else:
@@ -97,6 +99,7 @@ class _BatchStreamStatus:
                 is_finished=finished,
                 total_batches=bss._total_batches,
                 batch_seq_to_pair_counter=bss._batch_seq_to_pair_counter,
+                total_streams=bss._total_streams,
                 stream_seq_to_pair_counter=bss._stream_seq_to_pair_counter,
                 stream_seq_to_batch_seq=bss._stream_seq_to_batch_seq,
                 total_pairs=sum(bss._batch_seq_to_pair_counter.values()),
@@ -156,7 +159,7 @@ class PutBatchTask:
                         # TODO:0
                         bss._data_type = rs_header._data_type
                         if rs_header._stage == FINISH_STATUS:
-                            bss.set_finish(rs_header._total_batches)  # starting from 0
+                            bss.set_finish(rs_header)  # starting from 0
 
                     # TransferService.remove_broker(tag) will be called in get_status phrase finished or exception got
             except Exception as e:
