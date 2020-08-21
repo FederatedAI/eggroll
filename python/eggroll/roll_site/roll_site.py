@@ -13,7 +13,6 @@
 #  limitations under the License.
 #
 #
-import itertools
 import logging
 import pickle
 import threading
@@ -102,7 +101,8 @@ class RollSiteContext:
 
         self.pushing_latch = CountDownLatch(0)
         self.rp_ctx.get_session().add_exit_task(self._wait_push_complete)
-        self._wait_push_exit_timeout = options["wait_push_exit_timeout"] if "wait_push_exit_timeout" in options else 10 * 60
+        self._wait_push_exit_timeout = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PUSH_OVERALL_TIMEOUT_SEC.get_with(options))
+
         L.info(f"inited RollSiteContext: {self.__dict__}")
 
     def _wait_push_complete(self):
@@ -196,19 +196,25 @@ class _BatchStreamHelper(object):
     def _generate_batch_streams(self, pair_iter, batches_per_stream, body_bytes):
         batches = TransferPair.pair_to_bin_batch(pair_iter, sendbuf_size=body_bytes)
 
+        try:
+            peek = next(batches)
+        except StopIteration as e:
+            self._finish_partition = True
+
         def chunk_batch_stream():
             nonlocal self
-            prev_batch = None
+            nonlocal peek
+            cur_batch = peek
             try:
-                for i in range(batches_per_stream):
+                for i in range(batches_per_stream - 1):
                     next_batch = next(batches)
-                    if prev_batch is not None:
-                        yield prev_batch
-                    prev_batch = next_batch
+                    yield cur_batch
+                    cur_batch = next_batch
+                peek = next(batches)
             except StopIteration as e:
                 self._finish_partition = True
             finally:
-                yield prev_batch
+                yield cur_batch
 
         while not self._finish_partition:
             self._rs_header._stream_seq += 1
@@ -222,10 +228,10 @@ class RollSite(RollSiteBase):
         super().__init__(name, tag, rs_ctx)
         self.batch_body_bytes = int(RollSiteConfKeys.EGGROLL_ROLLSITE_ADAPTER_SENDBUF_SIZE.get_with(options))
         # TODO:0: configurable
-        self.batches_per_stream = int(RollSiteConfKeys.EGGROLL_ROLLSITE_SEND_BATCHES_PER_STREAM.get_with(options))
-        self.polling_header_timeout = int(RollSiteConfKeys.EGGROLL_ROLLSITE_RECV_POLLING_HEADER_TIMEOUT_SEC.get_with(options))
-        self.polling_overall_timeout = int(RollSiteConfKeys.EGGROLL_ROLLSITE_RECV_POLLING_OVERALL_TIMEOUT_SEC.get_with(options))
-        self.polling_max_retry = int(RollSiteConfKeys.EGGROLL_ROLLSITE_RECV_POLLING_MAX_RETRY.get_with(options))
+        self.batches_per_stream = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PUSH_BATCHES_PER_STREAM.get_with(options))
+        self.polling_header_timeout = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PULL_HEADER_TIMEOUT_SEC.get_with(options))
+        self.polling_overall_timeout = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PULL_OVERALL_TIMEOUT_SEC.get_with(options))
+        self.polling_max_retry = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PULL_MAX_RETRY.get_with(options))
 
     ################## push ##################
     def _push_bytes(self, obj, rs_header: ErRollSiteHeader):
