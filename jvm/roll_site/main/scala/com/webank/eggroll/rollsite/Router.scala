@@ -14,12 +14,12 @@ object Router {
     routerTable = new JSONObject(str).get("route_table").asInstanceOf[JSONObject]
   }
 
-  def query(partyId: String): ErEndpoint = {
+  def query(partyId: String, role: String = "default"): ErEndpoint = {
     if (routerTable == null) {
       throw new Exception("The routing table is not initialized!")
     }
     val default: JSONObject = routerTable.get(partyId).asInstanceOf[JSONObject]
-      .get("default").asInstanceOf[JSONArray]
+      .get(role).asInstanceOf[JSONArray]
       .get(0).asInstanceOf[JSONObject]
     val host = default.get("ip").asInstanceOf[String]
     val port = default.get("port").asInstanceOf[Int]
