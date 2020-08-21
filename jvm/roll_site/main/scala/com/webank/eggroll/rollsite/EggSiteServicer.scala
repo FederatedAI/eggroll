@@ -61,27 +61,23 @@ class DataTransferServicer extends DataTransferServiceGrpc.DataTransferServiceIm
     val rsKey = rollSiteHeader.getRsKey()
 
     try {
-      val myPartyId = RollSiteConfKeys.EGGROLL_ROLLSITE_PARTY_ID.get()
       val dstPartyId = metadata.getDst.getPartyId
-
+      val dstRole = metadata.getDst.getRole
       val logMsg = s"[UNARYCALL][SERVER] unaryCall request received. rsKey=${rsKey}, metadata=${oneLineStringMetadata}"
 
-      val result = if (myPartyId.equals(dstPartyId)) {
-        logDebug(s"${logMsg}, hop=SINK")
-        request
-        //processCommand(request)
-      } else {
-        logDebug(s"${logMsg}, hop=FORWARD")
-
-        val endpoint = Router.query(myPartyId)
-        val channel = GrpcClientUtils.getChannel(endpoint)
-        val stub = DataTransferServiceGrpc.newBlockingStub(channel)
-
-        stub.unaryCall(request)
-      }
-
+      val endpoint = Router.query(dstPartyId, dstRole)
+      val channel = GrpcClientUtils.getChannel(endpoint)
+      val stub = DataTransferServiceGrpc.newBlockingStub(channel)
+      val result = stub.unaryCall(request)
       responseSO.onNext(result)
       responseSO.onCompleted()
+
+      if (endpoint.host == RollSiteConfKeys.EGGROLL_ROLLSITE_HOST.get()
+        && endpoint.port == RollSiteConfKeys.EGGROLL_ROLLSITE_PORT.get().toInt) {
+        logDebug(s"${logMsg}, hop=SINK")
+        processCommand(request)
+      }
+
     } catch {
       case t: Throwable =>
         logError(s"[UNARYCALL][SERVER] onError. rsKey=${rsKey}, metadata=${oneLineStringMetadata}", t)
@@ -97,28 +93,13 @@ class DataTransferServicer extends DataTransferServiceGrpc.DataTransferServiceIm
     val header = request.getHeader
     val operator = header.getOperator
 
-
-    if (operator.equals("init_job_session_pair")) doInitJobSessionPair(request)
-    else throw new UnsupportedOperationException(s"operation ${operator} not supported")
-  }
-
-  private def doInitJobSessionPair(request: Proxy.Packet): Proxy.Packet = {
-    val header = request.getHeader
-    val pairInfo = header.getTask.getModel
-
-    val jobId = pairInfo.getName
-    if (!DataTransferServicer.jobIdToSession.asMap().containsKey(jobId)) {
-      val erSessionId = pairInfo.getDataKey
-      val erSession = new ErSession(sessionId = erSessionId, createIfNotExists = false)
-
-      DataTransferServicer.jobIdToSession.put(jobId, erSession)
-    }
-
-    request.toBuilder
-      .setHeader(header.toBuilder.setAck(header.getSeq))
-      .build()
+    // 读写路由表  探针
+    //if (operator.equals("init_job_session_pair")) doInitJobSessionPair(request)
+    //else throw new UnsupportedOperationException(s"operation ${operator} not supported")
+    Proxy.Packet.newBuilder().build()
   }
 }
+
 
 object DataTransferServicer {
   val dataTransferServerExecutor: ThreadPoolExecutor =
