@@ -31,7 +31,7 @@ props_file_remote = default_props_file
 props_file_remote = default_props_file + '.guest'
 
 
-row_limit = 10000
+row_limit = 200000
 obj_size = 128 << 20
 
 
@@ -66,7 +66,7 @@ class TestRollSiteBase(unittest.TestCase):
 
     _obj_rs_name_big = "RsaIntersectTransferVariable.rsa_pubkey.big"
     _obj_rs_tag_big = "testing_rs_obj.big"
-    _obj_big = b'1' * obj_size
+    _obj_big = '1234567890' * (obj_size // 10)
 
     _rp_rs_name = "roll_pair_name.table"
     _rp_rs_tag = "roll_pair_tag"
@@ -197,7 +197,10 @@ class TestRollSiteBase(unittest.TestCase):
                 key = f"key-{last_key}"
                 value = obj.get(key)
                 self.assertEqual(row_limit, obj.count(), f'got wrong count. expect: {row_limit}, actual: {obj.count()}')
-                self.assertEqual(value, f"value-{last_key}", f"got wrong value. expected: 'value-{last_key}', actual: {value}")
+                if row_limit > 0:
+                    self.assertEqual(value, f"value-{last_key}", f"got wrong value. expected: 'value-{last_key}', actual: {value}")
+                else:
+                    self.assertEqual(value, None, f"got wrong value. expected: None, actual: {value}")
                 print("obj:", obj, ", value:", value, ", count:", obj.count())
             else:
                 raise TypeError(f'require getting a RollPair but obj found: {obj}')
