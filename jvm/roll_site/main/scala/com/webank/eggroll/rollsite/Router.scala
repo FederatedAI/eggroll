@@ -18,8 +18,20 @@ object Router {
     if (routerTable == null) {
       throw new Exception("The routing table is not initialized!")
     }
+
+    if (!routerTable.has(partyId)) {
+      throw new Exception(s"The routing table not have current party:${partyId}")
+    }
+
+    val rt = routerTable.get(partyId).asInstanceOf[JSONObject]
+
+    if (!rt.has(role) && !rt.has("default")) {
+      throw new Exception(s"The routing table not have current party:${partyId}")
+    }
+
+    val curRole = if (rt.has(role)) {role} else {"default"}
     val default: JSONObject = routerTable.get(partyId).asInstanceOf[JSONObject]
-      .get(role).asInstanceOf[JSONArray]
+      .get(curRole).asInstanceOf[JSONArray]
       .get(0).asInstanceOf[JSONObject]
     val host = default.get("ip").asInstanceOf[String]
     val port = default.get("port").asInstanceOf[Int]
@@ -28,7 +40,16 @@ object Router {
 
   def main(args: Array[String]): Unit = {
     Router.initOrUpdateRouterTable("conf\\route_table.json")
-    val ret = Router.query("10001")
+    var ret = Router.query("10001", "fate_flow")
+    println(ret.getHost, ret.getPort)
+
+    ret = Router.query("10001")
+    println(ret.getHost, ret.getPort)
+
+    ret = Router.query("10001", "acd")
+    println(ret.getHost, ret.getPort)
+
+    ret = Router.query("10003")
     println(ret.getHost, ret.getPort)
   }
 }
