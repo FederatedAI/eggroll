@@ -47,21 +47,19 @@ class _BatchStreamStatus:
         self._header = None
         # removes lock. otherwise it deadlocks
         self._recorder[self._tag] = self
+        self._is_in_order = True
 
     def _debug_string(self):
         return f"BatchStreams end normally, tag={self._tag} " \
                f"total_batches={self._total_batches}:total_elems={sum(self._batch_seq_to_pair_counter.values())}"
 
-    def set_finish(self, rs_header):
+    def set_done(self, rs_header):
         self._total_batches = rs_header._total_batches
         self._total_streams = rs_header._total_streams
+        self._stage = "done"
         if self._total_batches != len(self._batch_seq_to_pair_counter):
+            self._is_in_order = False
             L.debug(f"MarkEnd BatchStream ahead of all BatchStreams received, {self._debug_string()}")
-        else:
-            self._stage = "done"
-            #self.total_batches = total_batches
-            self._stream_finish_event.set()
-            L.trace(f"All BatchStreams finish normally, {self._debug_string()}")
 
     def count_batch(self, header: ErRollSiteHeader, batch_pairs):
         batch_seq_id = header._batch_seq
@@ -72,9 +70,14 @@ class _BatchStreamStatus:
         self._batch_seq_to_pair_counter[batch_seq_id] = batch_pairs
         self._stream_seq_to_pair_counter[stream_seq_id] += batch_pairs
         self._stream_seq_to_batch_seq[stream_seq_id] = batch_seq_id
+
+    def check_finish(self):
         if self._stage == "done" and self._total_batches == len(self._batch_seq_to_pair_counter):
+            L.debug(f"All BatchStreams finished, {self._debug_string()}. is_in_order={self._is_in_order}")
             self._stream_finish_event.set()
-            L.debug(f"All BatchStreams finish out-of-order, {self._debug_string()}")
+            return True
+        else:
+            return False
 
     @classmethod
     def get_or_create(cls, tag):
@@ -159,9 +162,10 @@ class PutBatchTask:
                         # TODO:0
                         bss._data_type = rs_header._data_type
                         if rs_header._stage == FINISH_STATUS:
-                            bss.set_finish(rs_header)  # starting from 0
+                            bss.set_done(rs_header)  # starting from 0
 
-                    # TransferService.remove_broker(tag) will be called in get_status phrase finished or exception got
+                bss.check_finish()
+                # TransferService.remove_broker(tag) will be called in get_status phrase finished or exception got
             except Exception as e:
                 L.exception(f'_run_put_batch error, tag={self.tag}')
                 raise e
