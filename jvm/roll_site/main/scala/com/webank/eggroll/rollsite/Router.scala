@@ -1,13 +1,16 @@
 package com.webank.eggroll.rollsite
 
-import com.webank.eggroll.core.meta.ErEndpoint
+import java.io.{File, FileInputStream, FileOutputStream, OutputStreamWriter}
+import java.nio.charset.StandardCharsets
 
-import scala.io.Source
+import com.webank.eggroll.core.meta.ErEndpoint
 import org.json.{JSONArray, JSONObject}
 
+import scala.io.Source
+
 object Router {
-  private var routerTable: JSONObject = _
-  private var defaultEnable: Boolean = true
+  @volatile private var routerTable: JSONObject = _
+  @volatile private var defaultEnable: Boolean = true
 
   def initOrUpdateRouterTable(path: String): Unit = {
     val source = Source.fromFile(path,"UTF-8")
@@ -61,6 +64,25 @@ object Router {
     ErEndpoint(host, port)
   }
 
+  def update(jsonString: String, path: String): Unit = {
+    val file = new File(path)
+    if (!file.getParentFile.exists) file.getParentFile.mkdirs
+    if (!file.exists) file.createNewFile
+    val write = new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8)
+    write.write(jsonString)
+    write.flush()
+    write.close()
+  }
+
+  def get(path: String): String = {
+    val jsonFile = new File(path)
+    val fileLength = jsonFile.length
+    val fileContent = new Array[Byte](fileLength.intValue)
+    val in = new FileInputStream(jsonFile)
+    in.read(fileContent)
+    new String(fileContent, StandardCharsets.UTF_8)
+  }
+
   def main(args: Array[String]): Unit = {
     Router.initOrUpdateRouterTable("conf\\route_table.json")
     var ret = Router.query("10001", "fate_flow")
@@ -74,5 +96,14 @@ object Router {
 
     ret = Router.query("10003")
     println(ret.getHost, ret.getPort)
+
+
+    val str = Router.get("conf\\route_table.json")
+    println(str)
+
+    Router.update("{testing}", "conf\\route_table.json")
+    println(Router.get("conf\\route_table.json"))
+
+    Router.update(str, "conf\\route_table.json")
   }
 }
