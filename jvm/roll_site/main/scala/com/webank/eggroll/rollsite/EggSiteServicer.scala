@@ -19,7 +19,6 @@
 package com.webank.eggroll.rollsite
 
 import java.util.concurrent.{Future, ThreadPoolExecutor, TimeUnit}
-
 import com.google.common.cache.{CacheBuilder, CacheLoader, LoadingCache}
 import com.google.protobuf.ByteString
 import com.webank.ai.eggroll.api.networking.proxy.{DataTransferServiceGrpc, Proxy}
@@ -33,8 +32,8 @@ import com.webank.eggroll.core.transfer.{GrpcClientUtils, Transfer, TransferServ
 import com.webank.eggroll.core.util._
 import com.webank.eggroll.rollpair.{RollPair, RollPairContext}
 import io.grpc.stub.StreamObserver
-
 import scala.collection.parallel.mutable
+
 
 class DataTransferServicer extends DataTransferServiceGrpc.DataTransferServiceImplBase with Logging {
 
@@ -63,20 +62,22 @@ class DataTransferServicer extends DataTransferServiceGrpc.DataTransferServiceIm
     try {
       val dstPartyId = metadata.getDst.getPartyId
       val dstRole = metadata.getDst.getRole
+      var result: Proxy.Packet = null
       val logMsg = s"[UNARYCALL][SERVER] unaryCall request received. rsKey=${rsKey}, metadata=${oneLineStringMetadata}"
 
       val endpoint = Router.query(dstPartyId, dstRole)
       val channel = GrpcClientUtils.getChannel(endpoint)
       val stub = DataTransferServiceGrpc.newBlockingStub(channel)
-      val result = stub.unaryCall(request)
-      responseSO.onNext(result)
-      responseSO.onCompleted()
+      result = stub.unaryCall(request)
 
       if (endpoint.host == RollSiteConfKeys.EGGROLL_ROLLSITE_HOST.get()
         && endpoint.port == RollSiteConfKeys.EGGROLL_ROLLSITE_PORT.get().toInt) {
         logDebug(s"${logMsg}, hop=SINK")
-        processCommand(request)
+        result = processCommand(request, result)
       }
+
+      responseSO.onNext(result)
+      responseSO.onCompleted()
 
     } catch {
       case t: Throwable =>
@@ -86,18 +87,40 @@ class DataTransferServicer extends DataTransferServiceGrpc.DataTransferServiceIm
     }
   }
 
-  // processes commands e.g. getStatus, pushObj, pullObj etc.
-  private def processCommand(request: Proxy.Packet): Proxy.Packet = {
+  private def processCommand(request: Proxy.Packet, preResult: Proxy.Packet = null): Proxy.Packet = {
     logInfo(s"packet to myself. response: ${ToStringUtils.toOneLineString(request)}")
 
     val header = request.getHeader
     val operator = header.getOperator
+    var result: Proxy.Packet = null
 
-    // 读写路由表  探针
-    //if (operator.equals("init_job_session_pair")) doInitJobSessionPair(request)
-    //else throw new UnsupportedOperationException(s"operation ${operator} not supported")
-    Proxy.Packet.newBuilder().build()
+    if ("get_route_table" == operator) {
+      result = getRouteTable
+    } else if ("set_route_table" == operator) {
+      result = setRouteTable(request)
+    } else {
+      result = preResult
+      // throw new UnsupportedOperationException(s"operation ${operator} not supported")
+    }
+    result
   }
+
+  private def setRouteTable(request: Proxy.Packet): Proxy.Packet = {
+    val jsonString = request.getBody.getValue.toStringUtf8
+    val routerFilePath = RollSiteConfKeys.EGGROLL_ROLLSITE_ROUTE_TABLE_PATH.get()
+    Router.update(jsonString, routerFilePath)
+    Router.initOrUpdateRouterTable(routerFilePath)
+    val data = Proxy.Data.newBuilder.setValue(ByteString.copyFromUtf8("setRouteTable finished")).build
+    Proxy.Packet.newBuilder().setBody(data).build
+  }
+
+  private def getRouteTable: Proxy.Packet = {
+    val routerFilePath = RollSiteConfKeys.EGGROLL_ROLLSITE_ROUTE_TABLE_PATH.get()
+    val jsonString = Router.get(routerFilePath)
+    val data = Proxy.Data.newBuilder.setValue(ByteString.copyFromUtf8(jsonString)).build
+    Proxy.Packet.newBuilder().setBody(data).build
+  }
+
 }
 
 
