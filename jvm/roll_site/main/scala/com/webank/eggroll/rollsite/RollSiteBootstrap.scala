@@ -24,12 +24,14 @@ import com.webank.eggroll.core.BootstrapBase
 import com.webank.eggroll.core.constant.{CoreConfKeys, RollSiteConfKeys}
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.transfer.GrpcServerUtils
-import com.webank.eggroll.core.util.{CommandArgsUtils, Logging}
+import com.webank.eggroll.core.util.{CommandArgsUtils, Logging, ThreadPoolUtils}
 
 class RollSiteBootstrap extends BootstrapBase with Logging {
   private var port = 0
   private var securePort = 0
   private var confPath = ""
+  private val pollingConcurrency = 3
+  private val pollingThreadPool = ThreadPoolUtils.newFixedThreadPool(pollingConcurrency, "polling-daemon")
 
   override def init(args: Array[String]): Unit = {
     val cmd = CommandArgsUtils.parseArgs(args = args)
@@ -42,6 +44,15 @@ class RollSiteBootstrap extends BootstrapBase with Logging {
     val routerFilePath = RollSiteConfKeys.EGGROLL_ROLLSITE_ROUTE_TABLE_PATH.get()
     logInfo(s"init router. path: $routerFilePath")
     Router.initOrUpdateRouterTable(routerFilePath)
+
+    if (RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_CLIENT_ENABLED.get().toBoolean) {
+      for (i <- 0 until (pollingConcurrency)) {
+        pollingThreadPool.execute(() => {
+          val dataTransferClient = new DataTransferClient
+          dataTransferClient.pullDaemon()
+        })
+      }
+    }
   }
 
   override def start(): Unit = {

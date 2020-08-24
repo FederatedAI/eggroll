@@ -32,28 +32,28 @@ object Router {
     }
 
     if (!routerTable.has(partyId) && !routerTable.has("default")) {
-      throw new Exception(s"The routing table not have current party:${partyId} and default party.")
+      throw new Exception(s"The routing table not have current party=${partyId} and default party.")
     }
 
     val curParty = if (routerTable.has(partyId)) {partyId} else {
       if (defaultEnable) {
         "default"
       } else {
-        throw new Exception(s"The routing table not have current party:${partyId} and disable default party.")
+        throw new Exception(s"The routing table not have current party=${partyId} and disable default party.")
       }
 
     }
     val rt = routerTable.get(curParty).asInstanceOf[JSONObject]
 
     if (!rt.has(role) && !rt.has("default")) {
-      throw new Exception(s"The routing table not have current role:${role}")
+      throw new Exception(s"The routing table not have current role=${role}")
     }
 
     val curRole = if (rt.has(role)) {role} else {
       if (defaultEnable) {
         "default"
       } else {
-        throw new Exception(s"The routing table not have current role:${role} and disable default role.")
+        throw new Exception(s"The routing table not have current role=${role} and disable default role.")
       }
     }
     val default: JSONObject = routerTable.get(curParty).asInstanceOf[JSONObject]
