@@ -240,6 +240,9 @@ class RollSite(RollSiteBase):
         rs_key = rs_header.get_rs_key()
         int_size = 4
 
+        if L.isEnabledFor(logging.DEBUG):
+            L.debug(f"pushing object: rs_key={rs_key}")
+
         def _generate_obj_bytes(py_obj, body_bytes):
             key_id = 0
             obj_bytes = pickle.dumps(py_obj)
@@ -274,7 +277,7 @@ class RollSite(RollSiteBase):
     def _push_rollpair(self, rp: RollPair, rs_header: ErRollSiteHeader):
         rs_key = rs_header.get_rs_key()
         if L.isEnabledFor(logging.DEBUG):
-            L.debug(f"pushing object: rs_key={rs_key}, count={rp.count()}")
+            L.debug(f"pushing rollpair: rs_key={rs_key}, count={rp.count()}")
         start_time = time.time()
 
         rs_header._total_partitions = rp.get_partitions()
@@ -286,7 +289,6 @@ class RollSite(RollSiteBase):
         def _push_partition(ertask):
             written_batched = 0
             written_pairs = 0
-            rs_key = rs_header.get_rs_key()
             rs_header._partition_id = ertask._inputs[0]._id
 
             from eggroll.core.grpc.factory import GrpcChannelFactory
@@ -302,13 +304,12 @@ class RollSite(RollSiteBase):
                                                                       batches_per_stream=batches_per_stream,
                                                                       body_bytes=body_bytes)
 
-
                 for batch_stream in bin_batch_streams:
                     stub.push(bs_helper.generate_packet(batch_stream))
 
         rp.with_stores(_push_partition)
         if L.isEnabledFor(logging.DEBUG):
-            L.debug(f"pushed object: rs_key={rs_key}, count={rp.count()}, time_cost={time.time() - start_time}")
+            L.debug(f"pushed rollpair: rs_key={rs_key}, count={rp.count()}, time_cost={time.time() - start_time}")
         self.ctx.pushing_latch.count_down()
 
     ################## pull ##################
@@ -350,6 +351,7 @@ class RollSite(RollSiteBase):
                 all_status = self.ctx.rp_ctx.load(name=rp_name, namespace=rp_namespace,
                                                   options={'create_if_missing': False}).with_stores(get_all_status)
 
+                total_pairs = 0
                 for part_id, part_status in all_status:
                     if not part_status.is_finished:
                         all_finished = False
@@ -359,7 +361,7 @@ class RollSite(RollSiteBase):
 
                 if not all_finished:
                     L.debug(f'getting status NOT finished for rs_key={rs_key}, cur_status={pull_status}')
-                    if last_total_batches == total_batches:
+                    if last_total_batches == total_batches and total_batches > 0:
                         raise IOError(f"roll site pull_waiting failed because there is no updated progress: rs_key={rs_key}, "
                                     f"detail={pull_status}, total_pairs={total_pairs}")
                 last_total_batches = total_batches
@@ -378,10 +380,10 @@ class RollSite(RollSiteBase):
                                     f"time_cost={time.time() - start_time}")
                     return result
                 else:
-                    L.debug(f"roll site pulling attempt: rs_key={rs_key}, attempt={polling_attempts}"
+                    L.debug(f"roll site pulling attempt: rs_key={rs_key}, attempt={polling_attempts}, "
                             f"time_cost={time.time() - start_time}")
             raise IOError(f"roll site polling failed because exceed max try: {self.polling_max_retry}, rs_key={rs_key}"
-                          f"detail={all_status}")
+                          f"detail={pull_status}")
         except Exception as ex:
             L.exception(f"fatal error: when pulling rs_key={rs_key}, attempt_count={polling_attempts}")
             raise ex

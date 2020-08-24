@@ -44,7 +44,7 @@ class _BatchStreamStatus:
         self._stream_seq_to_batch_seq = defaultdict(int)
         self._stream_finish_event = threading.Event()
         self._header_arrive_event = threading.Event()
-        self._header = None
+        self._rs_header = None
         # removes lock. otherwise it deadlocks
         self._recorder[self._tag] = self
         self._is_in_order = True
@@ -61,11 +61,11 @@ class _BatchStreamStatus:
             self._is_in_order = False
             L.debug(f"MarkEnd BatchStream ahead of all BatchStreams received, {self._debug_string()}")
 
-    def count_batch(self, header: ErRollSiteHeader, batch_pairs):
-        batch_seq_id = header._batch_seq
-        stream_seq_id = header._stream_seq
-        if self._header is None:
-            self._header = header
+    def count_batch(self, rs_header: ErRollSiteHeader, batch_pairs):
+        batch_seq_id = rs_header._batch_seq
+        stream_seq_id = rs_header._stream_seq
+        if self._rs_header is None:
+            self._rs_header = rs_header
             self._header_arrive_event.set()
         self._batch_seq_to_pair_counter[batch_seq_id] = batch_pairs
         self._stream_seq_to_pair_counter[stream_seq_id] += batch_pairs
@@ -91,8 +91,7 @@ class _BatchStreamStatus:
     @classmethod
     def wait_finish(cls, tag, timeout):
         bss = cls.get_or_create(tag)
-        bss._stream_finish_event.wait(timeout)
-        finished = bss._stage == "done" and bss._total_batches == len(bss._batch_seq_to_pair_counter)
+        finished = bss._stream_finish_event.wait(timeout)
         if finished:
             TransferService.remove_broker(tag)
             del cls._recorder[tag]
@@ -113,7 +112,7 @@ class _BatchStreamStatus:
     def wait_header(cls, tag, timeout):
         bss = cls.get_or_create(tag)
         bss._header_arrive_event.wait(timeout)
-        return bss._header
+        return bss._rs_header
 
     def __repr__(self):
         return f'<_BatchStreamStatus(tag={self._tag}, ' \
@@ -125,7 +124,7 @@ class _BatchStreamStatus:
                f'stream_seq_to_batch_seq={self._stream_seq_to_batch_seq}, ' \
                f'stream_finish_event={self._stream_finish_event.is_set()}, ' \
                f'header_arrive_event={self._header_arrive_event.is_set()}, ' \
-               f'header={self._header}) at {hex(id(self))}>'
+               f'rs_header={self._rs_header}) at {hex(id(self))}>'
 
 
 class PutBatchTask:
