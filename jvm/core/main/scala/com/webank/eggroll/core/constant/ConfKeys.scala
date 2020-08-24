@@ -170,6 +170,9 @@ object RollSiteConfKeys {
   val EGGROLL_ROLLSITE_PULL_OBJECT_TIMEOUT_SEC = ErConfKey("eggroll.rollsite.pull.object.timeout.sec", 1800)
   val EGGROLL_ROLLSITE_ROUTE_TABLE_WHITELIST = ErConfKey("eggroll.rollsite.route.table.whitelist")
   val EGGROLL_ROLLSITE_AUDIT_TOPICS = ErConfKey("eggroll.rollsite.audit.topics")
+  val EGGROLL_ROLLSITE_POLLING_SERVER_ENABLED = ErConfKey("eggroll.rollsite.polling.server.enabled", false)
+  val EGGROLL_ROLLSITE_POLLING_CLIENT_ENABLED = ErConfKey("eggroll.rollsite.polling.client.enabled", false)
+  val EGGROLL_ROLLSITE_POLLING_PULL_CONCURRENCY = ErConfKey("eggroll.rollsite.polling.pull.concurrency", 3)
 }
 
 object RollPairConfKeys {
