@@ -18,8 +18,7 @@
 
 package com.webank.eggroll.rollsite
 
-import java.util.concurrent.{Future, LinkedBlockingQueue, Semaphore, ThreadPoolExecutor, TimeUnit}
-
+import java.util.concurrent.{Future, LinkedBlockingQueue, Semaphore, TimeUnit}
 import com.google.common.cache.{CacheBuilder, CacheLoader, LoadingCache}
 import com.google.protobuf.ByteString
 import com.webank.ai.eggroll.api.networking.proxy.{DataTransferServiceGrpc, Proxy}
@@ -32,14 +31,14 @@ import com.webank.eggroll.core.transfer.Transfer.RollSiteHeader
 import com.webank.eggroll.core.transfer.{GrpcClientUtils, Transfer, TransferServiceGrpc}
 import com.webank.eggroll.core.util._
 import com.webank.eggroll.rollpair.{RollPair, RollPairContext}
-import com.webank.eggroll.rollsite.DataTransferClient.defaultPullReqMetadata
-import com.webank.eggroll.rollsite.DataTransferServicer.unaryCallSOs
+import com.webank.eggroll.rollsite.LongPollingClient.defaultPullReqMetadata
+import com.webank.eggroll.rollsite.EggSiteServicer.unaryCallSOs
 import io.grpc.stub.{ServerCallStreamObserver, StreamObserver}
+import scala.collection.parallel.mutable
 
-import scala.collection.parallel.{CHECK_RATE, mutable}
 
 
-class DataTransferServicer extends DataTransferServiceGrpc.DataTransferServiceImplBase with Logging {
+class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBase with Logging {
 
   /**
    */
@@ -52,7 +51,7 @@ class DataTransferServicer extends DataTransferServiceGrpc.DataTransferServiceIm
   /**
    */
   override def pull(request: Proxy.Metadata, responseObserver: StreamObserver[Proxy.Packet]): Unit = {
-    DataTransferServicer.pullSOs
+    EggSiteServicer.pullSOs
       .getUnchecked(request.getDst.getPartyId)
       .put(responseObserver.asInstanceOf[ServerCallStreamObserver[Proxy.Packet]])
   }
@@ -112,7 +111,7 @@ class DataTransferServicer extends DataTransferServiceGrpc.DataTransferServiceIm
     var result: Proxy.Packet = null
 
     if ("get_route_table" == operator) {
-      result = getRouteTable
+      result = getRouteTable(request)
     } else if ("set_route_table" == operator) {
       result = setRouteTable(request)
     } else {
@@ -122,27 +121,51 @@ class DataTransferServicer extends DataTransferServiceGrpc.DataTransferServiceIm
     result
   }
 
-  private def setRouteTable(request: Proxy.Packet): Proxy.Packet = {
-    val jsonString = request.getBody.getValue.toStringUtf8
-    val routerFilePath = RollSiteConfKeys.EGGROLL_ROLLSITE_ROUTE_TABLE_PATH.get()
-    Router.update(jsonString, routerFilePath)
-    Router.initOrUpdateRouterTable(routerFilePath)
-    val data = Proxy.Data.newBuilder.setValue(ByteString.copyFromUtf8("setRouteTable finished")).build
-    Proxy.Packet.newBuilder().setBody(data).build
+  private def tokenVerify(request: Proxy.Packet): Boolean = {
+    val data = request.getBody.getValue.toStringUtf8 // salt + json data
+    val routerKey = RollSiteConfKeys.EGGROLL_ROLLSITE_ROUTE_TABLE_KEY.get()
+    val md5Token = request.getBody.getKey
+    val checkMd5 = Util.hashMD5(data + routerKey)
+    println(data + routerKey)
+    logDebug(f"routerKey=${routerKey}, md5Token=${md5Token}, checkMd5=${checkMd5}")
+    md5Token == checkMd5
   }
 
-  private def getRouteTable: Proxy.Packet = {
-    val routerFilePath = RollSiteConfKeys.EGGROLL_ROLLSITE_ROUTE_TABLE_PATH.get()
-    val jsonString = Router.get(routerFilePath)
-    val data = Proxy.Data.newBuilder.setValue(ByteString.copyFromUtf8(jsonString)).build
-    Proxy.Packet.newBuilder().setBody(data).build
+  private def setRouteTable(request: Proxy.Packet): Proxy.Packet = {
+    if (tokenVerify(request)) {
+      val jsonString = request.getBody.getValue.substring(13).toStringUtf8
+      val routerFilePath = RollSiteConfKeys.EGGROLL_ROLLSITE_ROUTE_TABLE_PATH.get()
+      Router.update(jsonString, routerFilePath)
+      val data = Proxy.Data.newBuilder.setValue(ByteString.copyFromUtf8("setRouteTable finished")).build
+      Proxy.Packet.newBuilder().setBody(data).build
+    } else {
+      logWarning("setRouteTable failed. Token verification failed.")
+      val data = Proxy.Data.newBuilder.setValue(
+        ByteString.copyFromUtf8("setRouteTable failed. Token verification failed.")).build
+      Proxy.Packet.newBuilder().setBody(data).build
+    }
+  }
+
+  private def getRouteTable(request: Proxy.Packet): Proxy.Packet = {
+    if (tokenVerify(request)) {
+      val routerFilePath = RollSiteConfKeys.EGGROLL_ROLLSITE_ROUTE_TABLE_PATH.get()
+      val jsonString = Router.get(routerFilePath)
+      val data = Proxy.Data.newBuilder.setValue(ByteString.copyFromUtf8(jsonString)).build
+      Proxy.Packet.newBuilder().setBody(data).build
+    } else {
+      logWarning("getRouteTable failed. Token verification failed.")
+      val data = Proxy.Data.newBuilder.setValue(
+        ByteString.copyFromUtf8("getRouteTable failed. Token verification failed.")).build
+      Proxy.Packet.newBuilder().setBody(data).build
+    }
   }
 
 }
 
-class DataTransferClient extends Logging {
+
+class LongPollingClient extends Logging {
   def pullToPutBatch(): Unit = {
-    DataTransferClient.pollingConcurrencySemaphore.acquire()
+    LongPollingClient.pollingConcurrencySemaphore.acquire()
     val endpoint = Router.query("default")
     val channel = GrpcClientUtils.getChannel(endpoint)
     val stub = DataTransferServiceGrpc.newStub(channel)
@@ -157,12 +180,12 @@ class DataTransferClient extends Logging {
       override def onError(t: Throwable): Unit = {
         logError(s"[PULL][CLIENT] onError", t)
         Thread.sleep(1000)
-        DataTransferClient.pollingConcurrencySemaphore.release()
+        LongPollingClient.pollingConcurrencySemaphore.release()
       }
 
       override def onCompleted(): Unit = {
         logTrace(s"[PULL][CLIENT] onComplete")
-        DataTransferClient.pollingConcurrencySemaphore.release()
+        LongPollingClient.pollingConcurrencySemaphore.release()
       }
     })
 
@@ -176,7 +199,7 @@ class DataTransferClient extends Logging {
   }
 }
 
-object DataTransferClient {
+object LongPollingClient {
   val defaultPullReqMetadata = Proxy.Metadata.newBuilder()
     .setDst(
       Proxy.Topic.newBuilder()
@@ -187,22 +210,7 @@ object DataTransferClient {
 }
 
 
-object DataTransferServicer {
-  val dataTransferServerExecutor: ThreadPoolExecutor =
-    ThreadPoolUtils.newCachedThreadPool("data-transfer-server")
-  val dataTransferClientExecutor: ThreadPoolExecutor =
-    ThreadPoolUtils.newCachedThreadPool("data-transfer-client")
-
-  val jobIdToSession: LoadingCache[String, ErSession] = CacheBuilder.newBuilder
-    .maximumSize(100000)
-    .expireAfterAccess(60, TimeUnit.HOURS)
-    .concurrencyLevel(50)
-    .recordStats
-    .build(new CacheLoader[String, ErSession]() {
-      override def load(key: String): ErSession = {
-        throw new IllegalAccessException("this cache cannot be loaded")
-      }
-    })
+object EggSiteServicer {
 
   val pullSOs: LoadingCache[String, LinkedBlockingQueue[ServerCallStreamObserver[Proxy.Packet]]] = CacheBuilder.newBuilder
     .maximumSize(100000)
@@ -261,11 +269,11 @@ class DelegateDispatchSO(prevRespSO: StreamObserver[Proxy.Metadata]) extends Str
       new PutBatchSinkReqSO(prevRespSO)
     } else {
       // pull mode
-      if (RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_SERVER_ENABLED.get().toBoolean && DataTransferServicer.pullSOs.asMap().containsKey(dstPartyId)) {
+      if (RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_SERVER_ENABLED.get().toBoolean && EggSiteServicer.pullSOs.asMap().containsKey(dstPartyId)) {
         if (isLogTraceEnabled()) {
           logTrace(s"${logMsg}, hop=FORWARD, type=PUSH2PULL")
         }
-        val pullSOs = DataTransferServicer.pullSOs.getUnchecked(dstPartyId)
+        val pullSOs = EggSiteServicer.pullSOs.getUnchecked(dstPartyId)
 
         var pullSO: ServerCallStreamObserver[Proxy.Packet] = null
         while (pullSO == null || pullSO.isCancelled) {

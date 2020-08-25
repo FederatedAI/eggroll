@@ -2,15 +2,16 @@ package com.webank.eggroll.rollsite
 
 import java.io.{File, FileInputStream, FileOutputStream, OutputStreamWriter}
 import java.nio.charset.StandardCharsets
-
 import com.webank.eggroll.core.meta.ErEndpoint
+import com.webank.eggroll.core.util.Logging
 import org.json.{JSONArray, JSONObject}
-
 import scala.io.Source
 
-object Router {
+
+object Router extends Logging{
   @volatile private var routerTable: JSONObject = _
   @volatile private var defaultEnable: Boolean = true
+
 
   def initOrUpdateRouterTable(path: String): Unit = {
     val source = Source.fromFile(path,"UTF-8")
@@ -23,7 +24,6 @@ object Router {
     } catch {
       case _: Throwable => defaultEnable = true
     }
-
   }
 
   def query(partyId: String, role: String = "default"): ErEndpoint = {
@@ -64,23 +64,52 @@ object Router {
     ErEndpoint(host, port)
   }
 
+  private def jsonCheck(data: String): Boolean = {
+    try {
+      val js = new JSONObject(data)
+      js.has("route_table")
+    } catch {
+      case _: Throwable =>
+        logError("route table data check failed.")
+        false
+    }
+  }
+
   def update(jsonString: String, path: String): Unit = {
-    val file = new File(path)
-    if (!file.getParentFile.exists) file.getParentFile.mkdirs
-    if (!file.exists) file.createNewFile
-    val write = new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8)
-    write.write(jsonString)
-    write.flush()
-    write.close()
+    try {
+      if (jsonCheck(jsonString)) {
+        val file = new File(path)
+        if (!file.getParentFile.exists) file.getParentFile.mkdirs
+        if (!file.exists) file.createNewFile
+        val write = new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8)
+        write.write(jsonString)
+        write.flush()
+        write.close()
+      }
+    } catch {
+      case e: Throwable =>
+        logError("route table update failed.")
+        e.printStackTrace()
+        throw e
+    } finally {
+      initOrUpdateRouterTable(path)
+    }
   }
 
   def get(path: String): String = {
-    val jsonFile = new File(path)
-    val fileLength = jsonFile.length
-    val fileContent = new Array[Byte](fileLength.intValue)
-    val in = new FileInputStream(jsonFile)
-    in.read(fileContent)
-    new String(fileContent, StandardCharsets.UTF_8)
+    try {
+      val jsonFile = new File(path)
+      val fileLength = jsonFile.length
+      val fileContent = new Array[Byte](fileLength.intValue)
+      val in = new FileInputStream(jsonFile)
+      in.read(fileContent)
+      new String(fileContent, StandardCharsets.UTF_8)
+    } catch {
+      case e: Throwable =>
+        logError("route table get failed.")
+        e.printStackTrace()
+        throw e
+    }
   }
 
   def main(args: Array[String]): Unit = {

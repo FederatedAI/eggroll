@@ -173,6 +173,7 @@ object RollSiteConfKeys {
   val EGGROLL_ROLLSITE_POLLING_SERVER_ENABLED = ErConfKey("eggroll.rollsite.polling.server.enabled", false)
   val EGGROLL_ROLLSITE_POLLING_CLIENT_ENABLED = ErConfKey("eggroll.rollsite.polling.client.enabled", false)
   val EGGROLL_ROLLSITE_POLLING_PULL_CONCURRENCY = ErConfKey("eggroll.rollsite.polling.pull.concurrency", 3)
+  val EGGROLL_ROLLSITE_ROUTE_TABLE_KEY = ErConfKey("eggroll.rollsite.route.table.key", "123")
 }
 
 object RollPairConfKeys {
