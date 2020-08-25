@@ -93,11 +93,19 @@ message HeartbeatResponse {
     Operation operation = 2;
 }
 
+message PollingFrame {
+    string method = 1;
+    int64 seq = 2;
+    Metadata metadata = 10;
+    Packet packet = 20;
+}
+
 // data transfer service
 service DataTransferService {
     rpc push (stream Packet) returns (Metadata);
     rpc pull (Metadata) returns (stream Packet);
     rpc unaryCall (Packet) returns (Packet);
+    rpc polling (stream PollingFrame) returns (stream PollingFrame);
 }
 
 service RouteService {
