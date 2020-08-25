@@ -493,34 +493,48 @@ class TestRollSiteClusterGet(TestRollSiteBase):
         pass
 
 
+import hashlib
 class TestRollSiteRouteTable(unittest.TestCase):
+    def _get_salt(self):
+        import time
+        return str(int(time.time() * 1000))
+
     def test_get_route_table(self):
-        channel = grpc.insecure_channel('localhost:9370')
+        channel = grpc.insecure_channel('localhost:9470')
         stub = proxy_pb2_grpc.DataTransferServiceStub(channel)
-
-        topic_dst = proxy_pb2.Topic(partyId='10002')
+        salt = self._get_salt()
+        key = "shiqili"
+        md5hash = hashlib.md5((salt + key).encode("utf-8")).hexdigest()
+        topic_dst = proxy_pb2.Topic(partyId='10001')
         metadata = proxy_pb2.Metadata(dst=topic_dst, operator="get_route_table")
-        packet = proxy_pb2.Packet(header=metadata)
+        data = proxy_pb2.Data(key=md5hash, value=salt.encode('utf-8'))
+        packet = proxy_pb2.Packet(header=metadata, body=data)
         ret_packet = stub.unaryCall(packet)
-
+        print(ret_packet.body.value.decode('utf8'))
         return ret_packet.body.value.decode('utf8')
 
     def test_set_route_table(self):
-        route_table_path = '../conf/route_table_set.json'
+        route_table_path = 'route_table_test.json'
         with open(route_table_path, 'r') as fp:
             route_table_content = fp.read()
 
-        channel = grpc.insecure_channel('localhost:9370')
+        salt = self._get_salt()
+        route_table_content = salt + route_table_content
+        key = "shiqili"
+        md5hash = hashlib.md5((route_table_content + key).encode("utf-8")).hexdigest()
+
+        channel = grpc.insecure_channel('localhost:9470')
         stub = proxy_pb2_grpc.DataTransferServiceStub(channel)
 
-        topic_dst = proxy_pb2.Topic(partyId='10002')
+        topic_dst = proxy_pb2.Topic(partyId='10001')
         metadata = proxy_pb2.Metadata(dst=topic_dst, operator="set_route_table")
 
-        data = proxy_pb2.Data(value=route_table_content.encode('utf-8'))
+        data = proxy_pb2.Data(key=md5hash, value=route_table_content.encode('utf-8'))
         packet = proxy_pb2.Packet(header=metadata, body=data)
 
         ret_packet = stub.unaryCall(packet)
 
+        print(ret_packet.body.value.decode('utf8'))
         return ret_packet.body.value.decode('utf8')
 
 

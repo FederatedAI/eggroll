@@ -48,7 +48,7 @@ class RollSiteBootstrap extends BootstrapBase with Logging {
     if (RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_CLIENT_ENABLED.get().toBoolean) {
       for (i <- 0 until (pollingConcurrency)) {
         pollingThreadPool.execute(() => {
-          val dataTransferClient = new DataTransferClient
+          val dataTransferClient = new LongPollingClient
           dataTransferClient.pullDaemon()
         })
       }
@@ -56,7 +56,7 @@ class RollSiteBootstrap extends BootstrapBase with Logging {
   }
 
   override def start(): Unit = {
-    val plainServer = GrpcServerUtils.createServer(port = this.port, grpcServices = List(new DataTransferServicer))
+    val plainServer = GrpcServerUtils.createServer(port = this.port, grpcServices = List(new EggSiteServicer))
     plainServer.start()
     this.port = plainServer.getPort
 
