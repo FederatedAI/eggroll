@@ -104,7 +104,6 @@ class RocksdbAdapter(PairAdapter):
 
     def __del__(self):
         pass
-        #self.close()
 
     def get(self, key):
         ret = None
@@ -136,8 +135,6 @@ class RocksdbAdapter(PairAdapter):
                 del RocksdbAdapter.db_dict[self.path]
                 del RocksdbAdapter.count_dict[self.path]
                 del RocksdbAdapter.lock_dict[self.path]
-                del self.db
-                gc.collect()
                 self.is_closed = True
             else:
                 count -= 1
