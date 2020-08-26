@@ -336,12 +336,9 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
             applicationEventPublisher.publishEvent(event);
 
             long startTimestamp = System.currentTimeMillis();
-            long lastPacketTimestamp = startTimestamp;
             long loopEndTimestamp = System.currentTimeMillis();
-            while ((!hasReturnedBefore || !pipe.isDrained())
-                && !pipe.hasError()
-                && emptyRetryCount < 30_000
-                && !timeouts.isTimeout(overallTimeout, startTimestamp, loopEndTimestamp)) {
+            while (true) {
+                if (pipe.hasError() || timeouts.isTimeout(overallTimeout, startTimestamp, loopEndTimestamp)) break;
                 packet = (Proxy.Packet) pipe.read(1, TimeUnit.SECONDS);
 //            packet = request;
                 loopEndTimestamp = System.currentTimeMillis();
@@ -349,11 +346,9 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                     // LOGGER.info("server pull onNext()");
                     responseObserver.onNext(packet);
                     hasReturnedBefore = true;
-                    emptyRetryCount = 0;
                     break;
                 } else {
-                    long currentOverallWaitTime = loopEndTimestamp - lastPacketTimestamp;
-
+                    long currentOverallWaitTime = loopEndTimestamp - startTimestamp;
                     if (++emptyRetryCount % 60 == 0) {
                         LOGGER.info(
                             "[UNARYCALL][SERVER] unary call waiting. current overallWaitTime: {}, packetIntervalTimeout: {}, metadata: {}",
@@ -380,7 +375,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                             + overallTimeout
                             + ", metadata: " + oneLineStringInputMetadata
                             + ", overallTimeout: " + overallTimeout
-                            + ", lastPacketTimestamp: " + lastPacketTimestamp
+                            + ", lastPacketTimestamp: " + startTimestamp
                             + ", loopEndTimestamp: " + loopEndTimestamp;
                     LOGGER.error(errorMsg);
 
