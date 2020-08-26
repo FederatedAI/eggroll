@@ -31,8 +31,8 @@ import com.webank.eggroll.core.transfer.Transfer.RollSiteHeader
 import com.webank.eggroll.core.transfer.{GrpcClientUtils, Transfer, TransferServiceGrpc}
 import com.webank.eggroll.core.util._
 import com.webank.eggroll.rollpair.{RollPair, RollPairContext}
-import com.webank.eggroll.rollsite.LongPollingClient.defaultPullReqMetadata
 import com.webank.eggroll.rollsite.EggSiteServicer.unaryCallSOs
+import com.webank.eggroll.rollsite.LongPollingClient.defaultPullReqMetadata
 import io.grpc.stub.{ServerCallStreamObserver, StreamObserver}
 import scala.collection.parallel.mutable
 
@@ -121,7 +121,7 @@ class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBas
     result
   }
 
-  private def tokenVerify(request: Proxy.Packet): Boolean = {
+  private def verifyToken(request: Proxy.Packet): Boolean = {
     val data = request.getBody.getValue.toStringUtf8 // salt + json data
     val routerKey = RollSiteConfKeys.EGGROLL_ROLLSITE_ROUTE_TABLE_KEY.get()
     val md5Token = request.getBody.getKey
@@ -131,33 +131,53 @@ class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBas
     md5Token == checkMd5
   }
 
+  private def checkWhiteList(): Boolean = {
+    val srcIp = AddrAuthServerInterceptor.REMOTE_ADDR.get.asInstanceOf[String]
+    logDebug(s"scrIp=${srcIp}")
+    WhiteList.check(srcIp)
+  }
+
   private def setRouteTable(request: Proxy.Packet): Proxy.Packet = {
-    if (tokenVerify(request)) {
-      val jsonString = request.getBody.getValue.substring(13).toStringUtf8
-      val routerFilePath = RollSiteConfKeys.EGGROLL_ROLLSITE_ROUTE_TABLE_PATH.get()
-      Router.update(jsonString, routerFilePath)
-      val data = Proxy.Data.newBuilder.setValue(ByteString.copyFromUtf8("setRouteTable finished")).build
-      Proxy.Packet.newBuilder().setBody(data).build
-    } else {
+    if (!verifyToken(request)) {
       logWarning("setRouteTable failed. Token verification failed.")
       val data = Proxy.Data.newBuilder.setValue(
         ByteString.copyFromUtf8("setRouteTable failed. Token verification failed.")).build
-      Proxy.Packet.newBuilder().setBody(data).build
+      return Proxy.Packet.newBuilder().setBody(data).build
     }
+
+    if (!checkWhiteList()){
+      logWarning("setRouteTable failed, Src ip not included in whitelist.")
+      val data = Proxy.Data.newBuilder.setValue(
+        ByteString.copyFromUtf8("setRouteTable failed, Src ip not included in whitelist.")).build
+      return Proxy.Packet.newBuilder().setBody(data).build
+    }
+
+    val jsonString = request.getBody.getValue.substring(13).toStringUtf8
+    val routerFilePath = RollSiteConfKeys.EGGROLL_ROLLSITE_ROUTE_TABLE_PATH.get()
+    Router.update(jsonString, routerFilePath)
+    val data = Proxy.Data.newBuilder.setValue(ByteString.copyFromUtf8("setRouteTable finished")).build
+    Proxy.Packet.newBuilder().setBody(data).build
   }
 
   private def getRouteTable(request: Proxy.Packet): Proxy.Packet = {
-    if (tokenVerify(request)) {
-      val routerFilePath = RollSiteConfKeys.EGGROLL_ROLLSITE_ROUTE_TABLE_PATH.get()
-      val jsonString = Router.get(routerFilePath)
-      val data = Proxy.Data.newBuilder.setValue(ByteString.copyFromUtf8(jsonString)).build
-      Proxy.Packet.newBuilder().setBody(data).build
-    } else {
+    if (!verifyToken(request)) {
       logWarning("getRouteTable failed. Token verification failed.")
       val data = Proxy.Data.newBuilder.setValue(
         ByteString.copyFromUtf8("getRouteTable failed. Token verification failed.")).build
-      Proxy.Packet.newBuilder().setBody(data).build
+      return Proxy.Packet.newBuilder().setBody(data).build
     }
+
+    if (!checkWhiteList()){
+      logWarning("setRouteTable failed, Src ip not included in whitelist.")
+      val data = Proxy.Data.newBuilder.setValue(
+        ByteString.copyFromUtf8("setRouteTable failed, Src ip not included in whitelist.")).build
+      return Proxy.Packet.newBuilder().setBody(data).build
+    }
+
+    val routerFilePath = RollSiteConfKeys.EGGROLL_ROLLSITE_ROUTE_TABLE_PATH.get()
+    val jsonString = Router.get(routerFilePath)
+    val data = Proxy.Data.newBuilder.setValue(ByteString.copyFromUtf8(jsonString)).build
+    Proxy.Packet.newBuilder().setBody(data).build
   }
 
 }

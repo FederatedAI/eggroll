@@ -25,6 +25,7 @@ import com.webank.eggroll.core.constant.{CoreConfKeys, RollSiteConfKeys}
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.transfer.GrpcServerUtils
 import com.webank.eggroll.core.util.{CommandArgsUtils, Logging, ThreadPoolUtils}
+import io.grpc.ServerInterceptors
 
 class RollSiteBootstrap extends BootstrapBase with Logging {
   private var port = 0
@@ -44,6 +45,7 @@ class RollSiteBootstrap extends BootstrapBase with Logging {
     val routerFilePath = RollSiteConfKeys.EGGROLL_ROLLSITE_ROUTE_TABLE_PATH.get()
     logInfo(s"init router. path: $routerFilePath")
     Router.initOrUpdateRouterTable(routerFilePath)
+    WhiteList.init()
 
     if (RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_CLIENT_ENABLED.get().toBoolean) {
       for (i <- 0 until (pollingConcurrency)) {
@@ -56,7 +58,12 @@ class RollSiteBootstrap extends BootstrapBase with Logging {
   }
 
   override def start(): Unit = {
-    val plainServer = GrpcServerUtils.createServer(port = this.port, grpcServices = List(new EggSiteServicer))
+    val service = new EggSiteServicer
+    val remoteAddGetService = ServerInterceptors.intercept(service.bindService(), new AddrAuthServerInterceptor())
+    val plainServer = GrpcServerUtils.createServer(
+      port = this.port,
+      grpcServices = List(service),
+      bindServices = List(remoteAddGetService))
     plainServer.start()
     this.port = plainServer.getPort
 
