@@ -18,8 +18,6 @@
 
 package com.webank.eggroll.rollsite
 
-import java.util.concurrent.Semaphore
-
 import com.google.protobuf.ByteString
 import com.webank.ai.eggroll.api.networking.proxy.{DataTransferServiceGrpc, Proxy}
 import com.webank.eggroll.core.constant.RollSiteConfKeys
@@ -27,10 +25,8 @@ import com.webank.eggroll.core.meta.TransferModelPbMessageSerdes.ErRollSiteHeade
 import com.webank.eggroll.core.transfer.GrpcClientUtils
 import com.webank.eggroll.core.transfer.Transfer.RollSiteHeader
 import com.webank.eggroll.core.util._
-import io.grpc.stub.{ServerCallStreamObserver, StreamObserver}
+import io.grpc.stub.StreamObserver
 import org.apache.commons.codec.digest.DigestUtils
-
-import scala.collection.parallel.mutable
 
 
 class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBase with Logging {
