@@ -62,8 +62,6 @@ class LongPollingClient extends Logging {
     } catch {
       case _ =>
         Thread.sleep(1000)
-    } finally {
-
     }
   }
 
@@ -183,8 +181,8 @@ class DispatchPollingRespSO(finishLatch: CountDownLatch)
 
     // TODO:0: configurable
     // TODO:1: unify with client
-    LongPollingClient.pollingConcurrencySemaphore.release()
     Thread.sleep(1000)
+    LongPollingClient.pollingConcurrencySemaphore.release()
     finishLatch.countDown()
   }
 
@@ -194,7 +192,6 @@ class DispatchPollingRespSO(finishLatch: CountDownLatch)
     finishLatch.countDown()
   }
 }
-
 
 class PushPollingRespSO(pollingReqSO: StreamObserver[Proxy.PollingFrame])
   extends StreamObserver[Proxy.PollingFrame] with Logging {

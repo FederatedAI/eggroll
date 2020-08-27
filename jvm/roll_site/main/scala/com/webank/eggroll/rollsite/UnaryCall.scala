@@ -18,6 +18,6 @@
 
 package com.webank.eggroll.rollsite
 
-class UnaryCallStreamObserver {
+class UnaryCall {
 
 }
