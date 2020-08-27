@@ -8,7 +8,7 @@ import io.grpc.{Status, StatusRuntimeException}
 import org.apache.commons.lang3.exception.ExceptionUtils
 
 
-object ExceptionTransferHelp {
+object TransferExceptionUtils {
 
   private def genExceptionDescription(t: Throwable, topic: Topic = null): String = {
     val locMsg = t.getLocalizedMessage

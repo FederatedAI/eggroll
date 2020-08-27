@@ -24,10 +24,10 @@ import com.webank.ai.eggroll.api.networking.proxy.{DataTransferServiceGrpc, Prox
 import com.webank.eggroll.core.ErSession
 import com.webank.eggroll.core.command.CommandClient
 import com.webank.eggroll.core.constant.{RollSiteConfKeys, SerdesTypes, SessionConfKeys, StringConstants}
-import com.webank.eggroll.core.meta.{ErJob, ErTask}
 import com.webank.eggroll.core.meta.TransferModelPbMessageSerdes.ErRollSiteHeaderFromPbMessage
-import com.webank.eggroll.core.transfer.{GrpcClientUtils, Transfer, TransferServiceGrpc}
+import com.webank.eggroll.core.meta.{ErJob, ErTask}
 import com.webank.eggroll.core.transfer.Transfer.RollSiteHeader
+import com.webank.eggroll.core.transfer.{GrpcClientUtils, Transfer, TransferServiceGrpc}
 import com.webank.eggroll.core.util.{IdUtils, Logging, ToStringUtils}
 import com.webank.eggroll.rollpair.{RollPair, RollPairContext}
 import io.grpc.stub.{ServerCallStreamObserver, StreamObserver}
@@ -35,7 +35,7 @@ import io.grpc.stub.{ServerCallStreamObserver, StreamObserver}
 import scala.collection.parallel.mutable
 
 
-class DelegateDispatchSO(prevRespSO: StreamObserver[Proxy.Metadata]) extends StreamObserver[Proxy.Packet] with Logging {
+class DelegateDispatchPushReqSO(prevRespSO: StreamObserver[Proxy.Metadata]) extends StreamObserver[Proxy.Packet] with Logging {
   private var delegateSO: StreamObserver[Proxy.Packet] = _
   private var inited = false
 
@@ -61,30 +61,17 @@ class DelegateDispatchSO(prevRespSO: StreamObserver[Proxy.Metadata]) extends Str
       if (isLogTraceEnabled()) {
         logTrace(s"${logMsg}, hop=SINK")
       }
-      new PutBatchSinkReqSO(prevRespSO)
+      new PutBatchSinkPushReqSO(prevRespSO)
     } else {
-      // pull mode
-      if (false) { null
-/*      if (RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_SERVER_ENABLED.get().toBoolean && EggSiteServicer.pullSOs.asMap().containsKey(dstPartyId)) {
-        if (isLogTraceEnabled()) {
-          logTrace(s"${logMsg}, hop=FORWARD, type=PUSH2PULL")
-        }
-        val pullSOs = EggSiteServicer.pullSOs.getUnchecked(dstPartyId)
-
-        var pullSO: ServerCallStreamObserver[Proxy.Packet] = null
-        while (pullSO == null || pullSO.isCancelled) {
-          // TODO:0: configurable. python has a conf key with the same context
-          pullSO = pullSOs.poll(1, TimeUnit.HOURS)
-        }
-
-        new ForwardPushReqToPullRespSO(prevRespSO, pullSO)
-
- */
+      if (RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_SERVER_ENABLED.get().toBoolean
+        && PollingHelper.pollingSOs.asMap().containsKey(dstPartyId)) {
+      // polling mode
+        new ForwardPushToPollingReqSO(prevRespSO)
       } else {
         if (isLogTraceEnabled()) {
           logTrace(s"${logMsg}, hop=FORWARD, type=PUSH2PUSH")
         }
-        new ForwardReqSO(prevRespSO)
+        new ForwardPushReqSO(prevRespSO)
       }
     }
     inited = true
@@ -106,7 +93,7 @@ class DelegateDispatchSO(prevRespSO: StreamObserver[Proxy.Metadata]) extends Str
 }
 
 
-class PutBatchSinkReqSO(prevRespSO: StreamObserver[Proxy.Metadata])
+class PutBatchSinkPushReqSO(prevRespSO: StreamObserver[Proxy.Metadata])
   extends StreamObserver[Proxy.Packet] with Logging {
   private var inited = false
   //private var ctx: RollPairContext = _
@@ -178,12 +165,11 @@ class PutBatchSinkReqSO(prevRespSO: StreamObserver[Proxy.Metadata])
     val channel = GrpcClientUtils.getChannel(egg.transferEndpoint)
     val stub = TransferServiceGrpc.newStub(channel)
 
-    nextReqSO = stub.send(new PutBatchSinkRespSO(metadata, commandFuture, prevRespSO, nextReqSO))
+    nextReqSO = stub.send(new PutBatchSinkPushRespSO(metadata, commandFuture, prevRespSO, nextReqSO))
 
     logDebug(s"[SINK][SERVER] ensureInited. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
     inited = true
   }
-
 
   override def onNext(request: Proxy.Packet): Unit = {
     ensureInited(request)
@@ -192,7 +178,7 @@ class PutBatchSinkReqSO(prevRespSO: StreamObserver[Proxy.Metadata])
     }
 
     try {
-      if (ExceptionTransferHelp.checkPacketIsException(request)) {
+      if (TransferExceptionUtils.checkPacketIsException(request)) {
         val errStack = request.getBody.getValue.toStringUtf8
         logError(s"[SINK][SERVER] error received from prev. rsKey=${rsKey}, metadata=${oneLineStringMetadata}. ${errStack}")
         // todo:0: error handing
@@ -215,7 +201,7 @@ class PutBatchSinkReqSO(prevRespSO: StreamObserver[Proxy.Metadata])
   }
 
   override def onError(t: Throwable): Unit = {
-    val statusException = ExceptionTransferHelp.throwableToException(t)
+    val statusException = TransferExceptionUtils.throwableToException(t)
     logError(s"[SINK][SERVER] onError. rsKey=${rsKey}, metadata=${oneLineStringMetadata}", statusException)
     prevRespSO.onError(statusException)
 
@@ -233,10 +219,10 @@ class PutBatchSinkReqSO(prevRespSO: StreamObserver[Proxy.Metadata])
   }
 }
 
-class PutBatchSinkRespSO(val reqHeader: Proxy.Metadata,
-                         val commandFuture: Future[ErTask],
-                         val prevRespSO: StreamObserver[Proxy.Metadata],
-                         val nextReqSO: StreamObserver[Transfer.TransferBatch])
+class PutBatchSinkPushRespSO(val reqHeader: Proxy.Metadata,
+                             val commandFuture: Future[ErTask],
+                             val prevRespSO: StreamObserver[Proxy.Metadata],
+                             val nextReqSO: StreamObserver[Transfer.TransferBatch])
   extends StreamObserver[Transfer.TransferBatch] with Logging {
 
   private var transferHeader: Transfer.TransferHeader = _
@@ -262,7 +248,7 @@ class PutBatchSinkRespSO(val reqHeader: Proxy.Metadata,
   }
 
   override def onError(t: Throwable): Unit = {
-    val e = ExceptionTransferHelp.throwableToException(t)
+    val e = TransferExceptionUtils.throwableToException(t)
     logError(s"[SINK][CLIENT] onError. rsKey=${rsKey}, transferHeader=${oneLineStringTransferHeader}", e)
     prevRespSO.onError(e)
     //nextReqSO.onError(e)
@@ -281,7 +267,73 @@ class PutBatchSinkRespSO(val reqHeader: Proxy.Metadata,
   }
 }
 
-class ForwardReqSO(prevRespSO: StreamObserver[Proxy.Metadata])
+
+class ForwardPushToPollingReqSO(prevRespSO: StreamObserver[Proxy.Metadata])
+  extends StreamObserver[Proxy.Packet] with Logging {
+
+  private var inited = false
+
+  private var metadata: Proxy.Metadata = _
+  private var oneLineStringMetadata: String = _
+  private var rsKey: String = _
+
+  private val self = this
+  private var nextRespSO: ServerCallStreamObserver[Proxy.PollingFrame] = _
+  private var failRequest: mutable.ParHashSet[Proxy.Metadata] = new mutable.ParHashSet[Proxy.Metadata]()
+  private val pollingFrameBuilder = Proxy.PollingFrame.newBuilder()
+  private var pollingFrameSeq = 0
+
+  private def ensureInited(firstRequest: Proxy.Packet): Unit = {
+    if (inited) return
+
+    metadata = firstRequest.getHeader
+    oneLineStringMetadata = ToStringUtils.toOneLineString(metadata)
+
+    val rollSiteHeader = RollSiteHeader.parseFrom(metadata.getExt).fromProto()
+    rsKey = rollSiteHeader.getRsKey()
+
+    logDebug(s"[FORWARD][SERVER][PUSH2POLLING] onInit. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
+    val dstPartyId = rollSiteHeader.dstPartyId
+
+    while (nextRespSO == null) {
+      // TODO:0: configurable
+      nextRespSO = PollingHelper.pollingSOs.get(dstPartyId).poll(1, TimeUnit.HOURS)
+
+      if (nextRespSO.isCancelled) nextRespSO == null
+    }
+
+    pollingFrameBuilder.setMethod("push")
+
+    inited = true
+  }
+
+  override def onNext(req: Proxy.Packet): Unit = {
+    ensureInited(req)
+
+    pollingFrameSeq += 1
+    pollingFrameBuilder.setSeq(pollingFrameSeq).setPacket(req)
+    val nextFrame = pollingFrameBuilder.build()
+    nextRespSO.onNext(nextFrame)
+  }
+
+  override def onError(t: Throwable): Unit = {
+    logError(s"[FORWARD][SERVER][PUSH2POLLING] onError. rsKey=${rsKey}", t)
+    prevRespSO.onError(TransferExceptionUtils.throwableToException(t))
+    if (nextRespSO != null && nextRespSO.isReady) {
+      nextRespSO.onError(TransferExceptionUtils.throwableToException(t))
+    }
+  }
+
+  override def onCompleted(): Unit = {
+    nextRespSO.onCompleted()
+    prevRespSO.onNext(metadata)
+    prevRespSO.onCompleted()
+    logDebug(s"[FORWARD][PUSH2POLLING] onCompleted. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
+  }
+}
+
+
+class ForwardPushReqSO(prevRespSO: StreamObserver[Proxy.Metadata])
   extends StreamObserver[Proxy.Packet] with Logging {
   private var inited = false
 
@@ -307,7 +359,7 @@ class ForwardReqSO(prevRespSO: StreamObserver[Proxy.Metadata])
     val endpoint = Router.query(dstPartyId)
     val channel = GrpcClientUtils.getChannel(endpoint)
     val stub = DataTransferServiceGrpc.newStub(channel)
-    nextReqSO = stub.push(new ForwardRespSO(prevRespSO))
+    nextReqSO = stub.push(new ForwardPushRespSO(prevRespSO))
 
     inited = true
   }
@@ -319,8 +371,8 @@ class ForwardReqSO(prevRespSO: StreamObserver[Proxy.Metadata])
         logTrace(s"[FORWARD][SERVER] onNext. rsKey=${rsKey}, metadata=${metadata}")
       }
 
-      val nextReq = if (ExceptionTransferHelp.checkPacketIsException(request)) {
-        val packet = ExceptionTransferHelp.genExceptionToNextSite(request)
+      val nextReq = if (TransferExceptionUtils.checkPacketIsException(request)) {
+        val packet = TransferExceptionUtils.genExceptionToNextSite(request)
         val errStack = request.getBody.getValue.toStringUtf8
         logError(s"[FORWARD][SERVER] error received from prev. rsKey=${rsKey}, metadata=${oneLineStringMetadata}. ${errStack}")
         packet
@@ -337,9 +389,9 @@ class ForwardReqSO(prevRespSO: StreamObserver[Proxy.Metadata])
         if (!failRequest.contains(request.getHeader)) {
           failRequest += request.getHeader
 
-          val rsException = ExceptionTransferHelp.throwableToException(t)
+          val rsException = TransferExceptionUtils.throwableToException(t)
           logTrace(s"[FORWARD][SERVER] passing error to nextReqSO via onNext. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
-          nextReqSO.onNext(ExceptionTransferHelp.genExceptionToNextSite(request, t))
+          nextReqSO.onNext(TransferExceptionUtils.genExceptionToNextSite(request, t))
 
 
         }
@@ -351,7 +403,7 @@ class ForwardReqSO(prevRespSO: StreamObserver[Proxy.Metadata])
 
   override def onError(t: Throwable): Unit = {
     logError(s"[FORWARD][SERVER] onError. rsKey=${rsKey}, metadata=${oneLineStringMetadata}", t)
-    val e = ExceptionTransferHelp.throwableToException(t)
+    val e = TransferExceptionUtils.throwableToException(t)
     prevRespSO.onError(e)
   }
 
@@ -361,7 +413,7 @@ class ForwardReqSO(prevRespSO: StreamObserver[Proxy.Metadata])
   }
 }
 
-class ForwardRespSO(val prevRespSO: StreamObserver[Proxy.Metadata])
+class ForwardPushRespSO(val prevRespSO: StreamObserver[Proxy.Metadata])
   extends StreamObserver[Proxy.Metadata] with Logging {
 
   private var metadata: Proxy.Metadata = _
@@ -383,7 +435,7 @@ class ForwardRespSO(val prevRespSO: StreamObserver[Proxy.Metadata])
 
   override def onError(t: Throwable): Unit = {
     logError(s"[FORWARD][CLIENT] onError received. rsKey=${rsKey}, metadata=${oneLineStringMetadata}", t)
-    val e = ExceptionTransferHelp.throwableToException(t)
+    val e = TransferExceptionUtils.throwableToException(t)
     prevRespSO.onError(e)
     logError(s"[FORWARD][CLIENT] onError finished. rsKey=${rsKey}, metadata=${oneLineStringMetadata}", t)
   }
