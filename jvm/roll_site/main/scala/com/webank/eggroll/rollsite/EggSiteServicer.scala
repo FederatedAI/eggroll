@@ -39,14 +39,14 @@ class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBas
    */
   override def push(responseObserver: StreamObserver[Proxy.Metadata]): StreamObserver[Proxy.Packet] = {
     logDebug("[PUSH][SERVER] request received")
-    new DelegateDispatchSO(responseObserver)
+    new DelegateDispatchPushReqSO(responseObserver)
   }
-
 
   /**
    */
   override def polling(responseObserver: StreamObserver[Proxy.PollingFrame]): StreamObserver[Proxy.PollingFrame] = {
-    super.polling(responseObserver)
+    logDebug("[POLLING][SERVER] request received")
+    new PollingReqSO(responseObserver)
   }
 
   /**
@@ -91,7 +91,7 @@ class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBas
     } catch {
       case t: Throwable =>
         logError(s"[UNARYCALL][SERVER] onError. rsKey=${rsKey}, metadata=${oneLineStringMetadata}", t)
-        val wrapped = ExceptionTransferHelp.throwableToException(t)
+        val wrapped = TransferExceptionUtils.throwableToException(t)
         responseSO.onError(wrapped)
     }
   }
@@ -154,52 +154,6 @@ class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBas
 
 }
 
-object LongPollingClient {
-  val defaultPullReqMetadata: Proxy.Metadata = Proxy.Metadata.newBuilder()
-    .setDst(
-      Proxy.Topic.newBuilder()
-        .setPartyId(RollSiteConfKeys.EGGROLL_ROLLSITE_PARTY_ID.get()))
-    .build()
-
-  val pollingConcurrencySemaphore = new Semaphore(RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_PULL_CONCURRENCY.get().toInt)
-}
-
-class LongPollingClient extends Logging {
-  def pullToPutBatch(): Unit = {
-    LongPollingClient.pollingConcurrencySemaphore.acquire()
-    val endpoint = Router.query("default")
-    val channel = GrpcClientUtils.getChannel(endpoint)
-    val stub = DataTransferServiceGrpc.newStub(channel)
-
-    val putBatchSinkReqSO = new PutBatchSinkReqSO(new StreamObserver[Proxy.Metadata] {
-      override def onNext(value: Proxy.Metadata): Unit = {
-        if (isLogTraceEnabled()) {
-          logTrace(s"[PULL][CLIENT] onNext: ${ToStringUtils.toOneLineString(value)}")
-        }
-      }
-
-      override def onError(t: Throwable): Unit = {
-        logError(s"[PULL][CLIENT] onError", t)
-        Thread.sleep(1000)
-        LongPollingClient.pollingConcurrencySemaphore.release()
-      }
-
-      override def onCompleted(): Unit = {
-        logTrace(s"[PULL][CLIENT] onComplete")
-        LongPollingClient.pollingConcurrencySemaphore.release()
-      }
-    })
-
-    stub.pull(LongPollingClient.defaultPullReqMetadata, putBatchSinkReqSO)
-  }
-
-  def pullDaemon(): Unit = {
-    while (true) {
-      pullToPutBatch()
-    }
-  }
-}
-
 
 class ForwardPushReqToPullRespSO(prevPushRespSO: StreamObserver[Proxy.Metadata],
                                  nextPullRespSO: ServerCallStreamObserver[Proxy.Packet])
@@ -230,14 +184,13 @@ extends StreamObserver[Proxy.Packet] with Logging {
         // exception transfer of per packet only try once
         logError(s"[FORWARD][PUSH2PULL][SERVER] error occurred in onNext. rsKey=${rsKey}, metadata=${oneLineStringMetadata}", t)
 
-
         if (!failRequest.contains(req.getHeader)) {
           failRequest += req.getHeader
 
-          val rsException = ExceptionTransferHelp.throwableToException(t)
+          val rsException = TransferExceptionUtils.throwableToException(t)
           logTrace(s"[FORWARD][PUSH2PULL][SERVER] passing error to nextPullRespSO via onNext. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
           if (!nextPullRespSO.isCancelled()) {
-            nextPullRespSO.onNext(ExceptionTransferHelp.genExceptionToNextSite(req, rsException))
+            nextPullRespSO.onNext(TransferExceptionUtils.genExceptionToNextSite(req, rsException))
           } else {
             logTrace(s"[FORWARD][PUSH2PULL][SERVER] nextPullRespSO cancelled ignoring. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
           }
@@ -249,7 +202,7 @@ extends StreamObserver[Proxy.Packet] with Logging {
   }
 
   override def onError(t: Throwable): Unit = {
-    val statusException = ExceptionTransferHelp.throwableToException(t)
+    val statusException = TransferExceptionUtils.throwableToException(t)
     logError(s"[FORWARD][PUSH2PULL][SERVER] onError. rsKey=${rsKey}, metadata=${oneLineStringMetadata}", statusException)
     prevPushRespSO.onError(statusException)
 
