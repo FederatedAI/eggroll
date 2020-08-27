@@ -123,101 +123,53 @@ class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBas
     md5Token == checkMd5
   }
 
+  private def checkWhiteList(): Boolean = {
+    val srcIp = AddrAuthServerInterceptor.REMOTE_ADDR.get.asInstanceOf[String]
+    logDebug(s"scrIp=${srcIp}")
+    WhiteList.check(srcIp)
+  }
+
   private def setRouteTable(request: Proxy.Packet): Proxy.Packet = {
-    if (verifyToken(request)) {
-      val jsonString = request.getBody.getValue.substring(13).toStringUtf8
-      val routerFilePath = RollSiteConfKeys.EGGROLL_ROLLSITE_ROUTE_TABLE_PATH.get()
-      Router.update(jsonString, routerFilePath)
-      val data = Proxy.Data.newBuilder.setValue(ByteString.copyFromUtf8("setRouteTable finished")).build
-      Proxy.Packet.newBuilder().setBody(data).build
-    } else {
+    if (!verifyToken(request)) {
       logWarning("setRouteTable failed. Token verification failed.")
       val data = Proxy.Data.newBuilder.setValue(
         ByteString.copyFromUtf8("setRouteTable failed. Token verification failed.")).build
-      Proxy.Packet.newBuilder().setBody(data).build
+      return Proxy.Packet.newBuilder().setBody(data).build
     }
+
+    if (!checkWhiteList()){
+      logWarning("setRouteTable failed, Src ip not included in whitelist.")
+      val data = Proxy.Data.newBuilder.setValue(
+        ByteString.copyFromUtf8("setRouteTable failed, Src ip not included in whitelist.")).build
+      return Proxy.Packet.newBuilder().setBody(data).build
+    }
+
+    val jsonString = request.getBody.getValue.substring(13).toStringUtf8
+    val routerFilePath = RollSiteConfKeys.EGGROLL_ROLLSITE_ROUTE_TABLE_PATH.get()
+    Router.update(jsonString, routerFilePath)
+    val data = Proxy.Data.newBuilder.setValue(ByteString.copyFromUtf8("setRouteTable finished")).build
+    Proxy.Packet.newBuilder().setBody(data).build
   }
 
   private def getRouteTable(request: Proxy.Packet): Proxy.Packet = {
-    if (verifyToken(request)) {
-      val routerFilePath = RollSiteConfKeys.EGGROLL_ROLLSITE_ROUTE_TABLE_PATH.get()
-      val jsonString = Router.get(routerFilePath)
-      val data = Proxy.Data.newBuilder.setValue(ByteString.copyFromUtf8(jsonString)).build
-      Proxy.Packet.newBuilder().setBody(data).build
-    } else {
+    if (!verifyToken(request)) {
       logWarning("getRouteTable failed. Token verification failed.")
       val data = Proxy.Data.newBuilder.setValue(
         ByteString.copyFromUtf8("getRouteTable failed. Token verification failed.")).build
-      Proxy.Packet.newBuilder().setBody(data).build
-    }
-  }
-
-}
-
-
-class ForwardPushReqToPullRespSO(prevPushRespSO: StreamObserver[Proxy.Metadata],
-                                 nextPullRespSO: ServerCallStreamObserver[Proxy.Packet])
-extends StreamObserver[Proxy.Packet] with Logging {
-  private var inited = false
-  private var metadata: Proxy.Metadata = _
-  private var oneLineStringMetadata: String = _
-  private var rsKey: String = _
-  private var failRequest: mutable.ParHashSet[Proxy.Metadata] = new mutable.ParHashSet[Proxy.Metadata]()
-
-  private def ensureInited(firstRequest: Proxy.Packet): Unit = {
-    if (inited) return
-
-    metadata = firstRequest.getHeader
-    oneLineStringMetadata = ToStringUtils.toOneLineString(metadata)
-    val rollSiteHeader = RollSiteHeader.parseFrom(metadata.getExt).fromProto()
-    rsKey = rollSiteHeader.getRsKey()
-
-    inited = true
-  }
-
-  override def onNext(req: Proxy.Packet): Unit = {
-    try {
-      ensureInited(req)
-      nextPullRespSO.onNext(req)
-    } catch {
-      case t: Throwable =>
-        // exception transfer of per packet only try once
-        logError(s"[FORWARD][PUSH2PULL][SERVER] error occurred in onNext. rsKey=${rsKey}, metadata=${oneLineStringMetadata}", t)
-
-        if (!failRequest.contains(req.getHeader)) {
-          failRequest += req.getHeader
-
-          val rsException = TransferExceptionUtils.throwableToException(t)
-          logTrace(s"[FORWARD][PUSH2PULL][SERVER] passing error to nextPullRespSO via onNext. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
-          if (!nextPullRespSO.isCancelled()) {
-            nextPullRespSO.onNext(TransferExceptionUtils.genExceptionToNextSite(req, rsException))
-          } else {
-            logTrace(s"[FORWARD][PUSH2PULL][SERVER] nextPullRespSO cancelled ignoring. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
-          }
-        }
-        failRequest -= req.getHeader
-        // notifying prev via normal onError
-        onError(t)
-    }
-  }
-
-  override def onError(t: Throwable): Unit = {
-    val statusException = TransferExceptionUtils.throwableToException(t)
-    logError(s"[FORWARD][PUSH2PULL][SERVER] onError. rsKey=${rsKey}, metadata=${oneLineStringMetadata}", statusException)
-    prevPushRespSO.onError(statusException)
-
-    if (isLogTraceEnabled()) {
-      logError(s"[FORWARD][PUSH2PULL][SERVER] onError finished. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
-    }
-  }
-
-  override def onCompleted(): Unit = {
-    if (!nextPullRespSO.isCancelled) {
-      nextPullRespSO.onCompleted()
+      return Proxy.Packet.newBuilder().setBody(data).build
     }
 
-    prevPushRespSO.onNext(metadata)
-    prevPushRespSO.onCompleted()
-    logDebug(s"[FORWARD][PUSH2PULL][SERVER] onCompleted. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
+    if (!checkWhiteList()){
+      logWarning("setRouteTable failed, Src ip not included in whitelist.")
+      val data = Proxy.Data.newBuilder.setValue(
+        ByteString.copyFromUtf8("setRouteTable failed, Src ip not included in whitelist.")).build
+      return Proxy.Packet.newBuilder().setBody(data).build
+    }
+
+    val routerFilePath = RollSiteConfKeys.EGGROLL_ROLLSITE_ROUTE_TABLE_PATH.get()
+    val jsonString = Router.get(routerFilePath)
+    val data = Proxy.Data.newBuilder.setValue(ByteString.copyFromUtf8(jsonString)).build
+    Proxy.Packet.newBuilder().setBody(data).build
   }
+
 }
