@@ -13,12 +13,13 @@
 #  limitations under the License.
 #
 #
+import re
 import sys
 import json
 import time
+import socket
 import psutil
 import datetime
-import threading
 import argparse
 import subprocess
 from eggroll.core.session import ErSession
@@ -41,7 +42,7 @@ def str_generator(include_key=True, row_limit=10, key_suffix_size=0, value_suffi
             yield str(i) + "s"*value_suffix_size
 
 def round2(x):
-    return str(round(x / 1024 / 1024 / 1024, 2)) + 'G'
+    return str(round(x / 1024 / 1024 / 1024, 2))
 
 def print_red(str):
     print("\033[1;31;40m\t" + str + "\033[0m")
@@ -55,13 +56,17 @@ def print_yellow(str):
 def check_actual_max_threads():
     def getMemInfo(fn):
         def query_cmd(cmd):
-            result = True
             p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True).communicate()[0].decode().strip().split('\n')
-            print(p)
-            for i in p:
-                if int(i) < 65535:
-                    result = False
-            return result
+            return p[0]
+ 
+        def get_host_ip():
+            try:
+                s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                s.connect(('8.8.8.8', 80))
+                ip = s.getsockname()[0]
+            finally:
+                s.close()
+            return ip
 
         mem = psutil.virtual_memory()
         mem_total = round2(mem.total)
@@ -79,17 +84,18 @@ def check_actual_max_threads():
         disk_per = str(round(data_disk.percent)) + '%'
 
         mem_info = {}
+        mem_info["Ip"] = get_host_ip()
         mem_info["MemTotal"] = mem_total
         mem_info["MemUsed"] = mem_used
-        mem_info["MemUsedPer"] = mem_used_per
+        mem_info["MemUsedPCT"] = mem_used_per
 
         mem_info["SwapTotal"] = swap_total
         mem_info["SwapUsed"] = swap_used
-        mem_info["SwapUsePer"] = swap_use_per
+        mem_info["SwapUsePCT"] = swap_use_per
 
         mem_info["DiskTotal"] = disk_total
         mem_info["DiskUsed"] = disk_used
-        mem_info["DiskPer"] = disk_per
+        mem_info["DiskUsedPCT"] = disk_per
 
         mem_info["/proc/sys/kernel/threads-max"] = query_cmd("cat /proc/sys/kernel/threads-max")
         mem_info["/etc/sysctl.conf"] = query_cmd("grep kernel.pid_max /etc/sysctl.conf | awk -F= '{print $2}'")
@@ -101,6 +107,27 @@ def check_actual_max_threads():
         mem_info["/etc/sysctl.conf"] = query_cmd("grep fs.file-max  /etc/sysctl.conf | awk -F= '{print $2}'")
         mem_info["/proc/sys/fs/file-max"] = query_cmd("cat /proc/sys/fs/file-max")
 
+        mem_info["CurrentUseProcesses"] = query_cmd("pstree -p `ps -e |grep egg_pair |awk '{print $1}'` |wc -l")
+        mem_info["NodeProcessors"] = query_cmd("grep eggroll.session.processors.per.node ${EGGROLL_HOME}/conf/eggroll.properties | awk -F= '{print $2}'")
+        mem_info["PoolSize"] = query_cmd("grep eggroll.rollpair.eggpair.server.executor.pool.max.size ${EGGROLL_HOME}/conf/eggroll.properties | awk -F= '{print $2}'")
+
+        rollsite_pid = query_cmd("ps aux | grep ${EGGROLL_HOME} | grep com.webank.eggroll.rollsite.Proxy | grep -v grep | awk '{print $2}'")
+        if rollsite_pid:
+            rollsite_used_memory = psutil.Process(int(rollsite_pid)).memory_info().rss
+            myfile = open(sys.path[1] + '/../../../conf/eggroll.properties')
+            properties = myfile.read()
+            jvm_options = re.findall(r"(?<=MaxHeapSize=).*?(?=G)", properties)
+            if len(jvm_options):
+                rollsite_total_memory = int(jvm_options[0]) * 1024 * 1024 * 1024
+            else:
+                rollsite_total_memory = mem.total
+            myfile.close()
+
+            mem_info["RollsiteUsedPercent"] = '{:.2%}'.format(rollsite_used_memory / (rollsite_total_memory * 4))
+        else:
+            mem_info["RollsiteUsedPercent"] = 0
+
+
         return mem_info
 
     session = ErSession(options={"eggroll.session.processors.per.node": args.nodes})
@@ -111,16 +138,29 @@ def check_actual_max_threads():
         print_green(str(datetime.datetime.now()))
         #print(json.dumps(result, indent=1))
         for node in result:
-            print_green("==============This is node :" + str(node[0]) + "================")
-            print_yellow("[WARNING] MemTotal:" + node[1]["MemTotal"] + ", MemUsed:" + node[1]["MemUsed"] + ", MemUsedPer:" + node[1]["MemUsedPer"])
-            print_yellow("[WARNING] SwapTotal:" + node[1]["SwapTotal"] + ", SwapUsed:" + node[1]["SwapUsed"] + ", SwapUsePer:" + node[1]["SwapUsePer"])
-            print_yellow("[WARNING] DiskTotal:" + node[1]["DiskTotal"] + ", DiskUsed:" + node[1]["DiskUsed"] + ", DiskPer:" + node[1]["DiskPer"])
-            print_green("--------Max user processes and max file count--------")
+            print_green("==============This is node " + str(node[0]) + ":" + node[1]["Ip"] + "===========================================")
+            print_yellow("[WARNING] MemTotal:" + node[1]["MemTotal"] + "G, MemUsed:" + node[1]["MemUsed"] + "G, MemUsedPCT:" + node[1]["MemUsedPCT"])
+            if float(node[1]["SwapTotal"]) < 128:
+                print_red("[ERROR] The swap memory is:" + node[1]["SwapTotal"] + "G, no less than 128G.")
+            else:
+                print_yellow("[WARNING] SwapTotal:" + node[1]["SwapTotal"] + "G, SwapUsed:" + node[1]["SwapUsed"] + "G, SwapUsePCT:" + node[1]["SwapUsePCT"])
+            print_yellow("[WARNING] DiskTotal:" + node[1]["DiskTotal"] + "G, DiskUsed:" + node[1]["DiskUsed"] + "G, DiskUsedPCT:" + node[1]["DiskUsedPCT"])
+            print_green("--------------Max user processes and max file count----------------------------------------")
             for key in ["/proc/sys/kernel/threads-max", "/etc/sysctl.conf", "/proc/sys/kernel/pid_max", "/proc/sys/vm/max_map_count", "/etc/security/limits.conf", "/etc/security/limits.d/80-nofile.conf", "/etc/sysctl.conf", "/proc/sys/fs/file-max"]:
-                if node[1][key]:
-                    print_green("[OK] " + key + " is ok.")
+                if int(node[1][key]) > 65535:
+                    print_green("[OK] " + key + " = " + node[1][key])
                 else:
-                    print_red("[ERROR] please check " + key + ", no less than 65535.")
+                    print_red("[ERROR] please check " + key + " = " + node[1][key] + ", no less than 65535.")
+            print_green("--------------Thread count check-----------------------------------------------------------")
+            if len(node[1]["PoolSize"]) == 0:
+                node[1]["PoolSize"] = 500
+            if int(node[1]["CurrentUseProcesses"]) < int(node[1]["NodeProcessors"]) * int(node[1]["PoolSize"]):
+                print_green("[OK] The thread count = %s, the total processes = %s * %s = %i" % (node[1]["CurrentUseProcesses"], node[1]["NodeProcessors"] ,node[1]["PoolSize"], int(node[1]["NodeProcessors"]) * int(node[1]["PoolSize"])))
+            else:
+                print_red("[ERROR] The thread count = %s, the total processes = %s * %s = %i. eggroll.rollpair.eggpair.server.executor.pool.max.size is not enough, turn it up." % (node[1]["CurrentUseProcesses"], node[1]["NodeProcessors"] ,node[1]["PoolSize"], int(node[1]["NodeProcessors"]) * int(node[1]["PoolSize"])))
+            if node[1]["RollsiteUsedPercent"] != 0:
+                print_green("----------Rollsite memory use percent--------------------------------------------------")
+                print_yellow("[WARNING] rollsite memory use: " + node[1]["RollsiteUsedPercent"])
             print("\n")
     finally:
         session.kill()
