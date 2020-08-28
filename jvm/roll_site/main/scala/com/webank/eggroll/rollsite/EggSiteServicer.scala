@@ -18,6 +18,8 @@
 
 package com.webank.eggroll.rollsite
 
+import java.util.concurrent.TimeUnit
+
 import com.google.protobuf.ByteString
 import com.webank.ai.eggroll.api.networking.proxy.{DataTransferServiceGrpc, Proxy}
 import com.webank.eggroll.core.constant.RollSiteConfKeys
@@ -25,7 +27,7 @@ import com.webank.eggroll.core.meta.TransferModelPbMessageSerdes.ErRollSiteHeade
 import com.webank.eggroll.core.transfer.GrpcClientUtils
 import com.webank.eggroll.core.transfer.Transfer.RollSiteHeader
 import com.webank.eggroll.core.util._
-import io.grpc.stub.StreamObserver
+import io.grpc.stub.{ServerCallStreamObserver, StreamObserver}
 import org.apache.commons.codec.digest.DigestUtils
 
 
@@ -35,27 +37,27 @@ class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBas
    */
   override def push(responseObserver: StreamObserver[Proxy.Metadata]): StreamObserver[Proxy.Packet] = {
     logDebug("[PUSH][SERVER] request received")
-    new DelegateDispatchPushReqSO(responseObserver)
+    new DispatchPushReqSO(responseObserver)
   }
 
   /**
    */
-  override def polling(responseObserver: StreamObserver[Proxy.PollingFrame]): StreamObserver[Proxy.PollingFrame] = {
+  override def polling(respSO: StreamObserver[Proxy.PollingFrame]): StreamObserver[Proxy.PollingFrame] = {
     logDebug("[POLLING][SERVER] request received")
-    new PollingReqSO(responseObserver)
+    new DispatchPollingReqSO(respSO.asInstanceOf[ServerCallStreamObserver[Proxy.PollingFrame]])
   }
 
   /**
    */
-  override def unaryCall(request: Proxy.Packet,
-                         responseSO: StreamObserver[Proxy.Packet]): Unit = {
+  override def unaryCall(req: Proxy.Packet,
+                         respSO: StreamObserver[Proxy.Packet]): Unit = {
     /**
      * Check if dst is myself.
      *   - yes -> check command to see what the request wants.
      *   - no -> forwards it to the next hop synchronously.
      */
 
-    val metadata = request.getHeader
+    val metadata = req.getHeader
     val oneLineStringMetadata = ToStringUtils.toOneLineString(metadata)
     val rollSiteHeader = RollSiteHeader.parseFrom(metadata.getExt).fromProto()
     val rsKey = rollSiteHeader.getRsKey()
@@ -63,51 +65,68 @@ class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBas
     try {
       val dstPartyId = metadata.getDst.getPartyId
       val dstRole = metadata.getDst.getRole
-      var result: Proxy.Packet = null
       val logMsg = s"[UNARYCALL][SERVER] unaryCall request received. rsKey=${rsKey}, metadata=${oneLineStringMetadata}"
 
       val endpoint = Router.query(dstPartyId, dstRole)
-      val channel = GrpcClientUtils.getChannel(endpoint)
-      val stub = DataTransferServiceGrpc.newBlockingStub(channel)
-      result = if (endpoint.host == RollSiteConfKeys.EGGROLL_ROLLSITE_HOST.get()
+
+      if (endpoint.host == RollSiteConfKeys.EGGROLL_ROLLSITE_HOST.get()
         && endpoint.port == RollSiteConfKeys.EGGROLL_ROLLSITE_PORT.get().toInt) {
         logDebug(s"${logMsg}, hop=SINK")
-        processCommand(request, result)
+        processCommand(req, respSO)
       } else {
-        if (RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_SERVER_ENABLED.get().toBoolean && PollingHelper.pollingSOs.asMap().containsKey(dstPartyId)) {
-          null
+        if (RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_SERVER_ENABLED.get().toBoolean && PollingHelper.isPartyIdPollingUnaryCall(dstPartyId)) {
+          val pollingReqSO = PollingHelper.getUnaryCallPollingReqSO(dstPartyId, 1, TimeUnit.HOURS)
+          pollingReqSO.setPrevRespSO(respSO)
+
+          val nextRespSO = pollingReqSO.respSO
+
+          val reqPollingFrame = Proxy.PollingFrame.newBuilder()
+            .setMethod("unaryCall")
+            .setPacket(req)
+            .setSeq(1)
+            .build()
+
+          nextRespSO.onNext(reqPollingFrame)
+          nextRespSO.onCompleted()
         } else {
-          stub.unaryCall(request)
+          val channel = GrpcClientUtils.getChannel(endpoint)
+          val stub = DataTransferServiceGrpc.newBlockingStub(channel)
+          val result = stub.unaryCall(req)
+          respSO.onNext(result)
+          respSO.onCompleted()
         }
       }
-
-      responseSO.onNext(result)
-      responseSO.onCompleted()
-
     } catch {
       case t: Throwable =>
         logError(s"[UNARYCALL][SERVER] onError. rsKey=${rsKey}, metadata=${oneLineStringMetadata}", t)
         val wrapped = TransferExceptionUtils.throwableToException(t)
-        responseSO.onError(wrapped)
+        respSO.onError(wrapped)
     }
   }
 
-  private def processCommand(request: Proxy.Packet, preResult: Proxy.Packet = null): Proxy.Packet = {
-    logInfo(s"packet to myself. response: ${ToStringUtils.toOneLineString(request)}")
+  private def processCommand(request: Proxy.Packet, responseSO: StreamObserver[Proxy.Packet]): Unit = {
+    logDebug(s"packet to myself. request: ${ToStringUtils.toOneLineString(request)}")
 
-    val header = request.getHeader
-    val operator = header.getOperator
-    var result: Proxy.Packet = null
+    val operator = request.getHeader.getOperator
 
-    if ("get_route_table" == operator) {
-      result = getRouteTable(request)
-    } else if ("set_route_table" == operator) {
-      result = setRouteTable(request)
-    } else {
-      result = preResult
-      // throw new UnsupportedOperationException(s"operation ${operator} not supported")
+    val result: Proxy.Packet = operator match {
+      case "get_route_table" =>
+        getRouteTable(request)
+      case "set_route_table" =>
+        setRouteTable(request)
+      case "ping" =>
+        ping(request)
+      case _ =>
+        val e = new NotImplementedError(s"operation ${operator} notsupported")
+
+        // TODO:0: optimise log
+        logError(e)
+        responseSO.onError(TransferExceptionUtils.throwableToException(e))
+        return
     }
-    result
+
+    responseSO.onNext(result)
+    responseSO.onCompleted()
   }
 
   private def verifyToken(request: Proxy.Packet): Boolean = {
@@ -166,6 +185,12 @@ class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBas
     val jsonString = Router.get(routerFilePath)
     val data = Proxy.Data.newBuilder.setValue(ByteString.copyFromUtf8(jsonString)).build
     Proxy.Packet.newBuilder().setBody(data).build
+  }
+
+  private def ping(request: Proxy.Packet): Proxy.Packet = {
+    Thread.sleep(1000)
+    val header = Proxy.Metadata.newBuilder().setOperator("pong").build()
+    Proxy.Packet.newBuilder().setHeader(header).build()
   }
 
 }

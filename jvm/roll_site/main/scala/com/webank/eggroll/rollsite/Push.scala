@@ -35,7 +35,7 @@ import io.grpc.stub.{ServerCallStreamObserver, StreamObserver}
 import scala.collection.parallel.mutable
 
 
-class DelegateDispatchPushReqSO(prevRespSO: StreamObserver[Proxy.Metadata]) extends StreamObserver[Proxy.Packet] with Logging {
+class DispatchPushReqSO(prevRespSO: StreamObserver[Proxy.Metadata]) extends StreamObserver[Proxy.Packet] with Logging {
   private var delegateSO: StreamObserver[Proxy.Packet] = _
   private var inited = false
 
@@ -64,7 +64,7 @@ class DelegateDispatchPushReqSO(prevRespSO: StreamObserver[Proxy.Metadata]) exte
       new PutBatchSinkPushReqSO(prevRespSO)
     } else {
       if (RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_SERVER_ENABLED.get().toBoolean
-        && PollingHelper.pollingSOs.asMap().containsKey(dstPartyId)) {
+        && PollingHelper.isPartyIdPollingPush(dstPartyId)) {
       // polling mode
         new ForwardPushToPollingReqSO(prevRespSO)
       } else {
@@ -278,6 +278,7 @@ class ForwardPushToPollingReqSO(prevRespSO: StreamObserver[Proxy.Metadata])
   private var rsKey: String = _
 
   private val self = this
+  private var nextReqSO: PushPollingReqSO = _
   private var nextRespSO: ServerCallStreamObserver[Proxy.PollingFrame] = _
   private var failRequest: mutable.ParHashSet[Proxy.Metadata] = new mutable.ParHashSet[Proxy.Metadata]()
   private val pollingFrameBuilder = Proxy.PollingFrame.newBuilder()
@@ -295,13 +296,9 @@ class ForwardPushToPollingReqSO(prevRespSO: StreamObserver[Proxy.Metadata])
     logDebug(s"[FORWARD][SERVER][PUSH2POLLING] onInit. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
     val dstPartyId = rollSiteHeader.dstPartyId
 
-    while (nextRespSO == null) {
-      // TODO:0: configurable
-      nextRespSO = PollingHelper.pollingSOs.get(dstPartyId).poll(1, TimeUnit.HOURS)
-
-      if (nextRespSO.isCancelled) nextRespSO == null
-    }
-
+    nextReqSO = PollingHelper.getPushPollingReqSO(dstPartyId, 1, TimeUnit.HOURS)
+    nextReqSO.setPrevRespSO(prevRespSO)
+    nextRespSO = nextReqSO.respSO
     pollingFrameBuilder.setMethod("push")
 
     inited = true
@@ -326,8 +323,10 @@ class ForwardPushToPollingReqSO(prevRespSO: StreamObserver[Proxy.Metadata])
 
   override def onCompleted(): Unit = {
     nextRespSO.onCompleted()
-    prevRespSO.onNext(metadata)
-    prevRespSO.onCompleted()
+
+    // responde through here?
+//    prevRespSO.onNext(metadata)
+//    prevRespSO.onCompleted()
     logDebug(s"[FORWARD][PUSH2POLLING] onCompleted. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
   }
 }

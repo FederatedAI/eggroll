@@ -270,6 +270,14 @@ class TestRollSiteBase(unittest.TestCase):
         rp.put_all(data_generator(9), options=rp_options)
         print(f"count: {rp.count()}")
 
+    def test_ping(self):
+        stub = self.rs_context_remote.stub
+        req = proxy_pb2.Packet(header=proxy_pb2.Metadata(operator='ping', dst=proxy_pb2.Topic(partyId=self.rs_context_get.party_id)))
+
+        resp = stub.unaryCall(req)
+        print(resp.header.operator)
+        self.assertEqual('pong', resp.header.operator)
+
 
 class TestRollSiteDebugRemote(TestRollSiteBase):
     @classmethod

@@ -32,60 +32,122 @@ import io.grpc.stub.{ServerCallStreamObserver, StreamObserver}
 
 
 object LongPollingClient {
+  val dummyLatch = new CountDownLatch(1)
   private val defaultPollingReqMetadata: Proxy.Metadata = Proxy.Metadata.newBuilder()
     .setDst(
       Proxy.Topic.newBuilder()
         .setPartyId(RollSiteConfKeys.EGGROLL_ROLLSITE_PARTY_ID.get()))
     .build()
 
-  val initPollingFrame: Proxy.PollingFrame = Proxy.PollingFrame.newBuilder().setMetadata(defaultPollingReqMetadata).build()
+  val initPollingFrameBuilder: Proxy.PollingFrame.Builder = Proxy.PollingFrame.newBuilder().setMetadata(defaultPollingReqMetadata)
 
-  val pollingConcurrencySemaphore = new Semaphore(RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_PULL_CONCURRENCY.get().toInt)
+  private val pollingSemaphore = new Semaphore(RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_PUSH_CONCURRENCY.get().toInt + RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_UNARYCALL_CONCURRENCY.get().toInt)
+
+  def acquireSemaphore(method: String): Unit = {
+    LongPollingClient.pollingSemaphore.acquire()
+  }
+
+  def releaseSemaphore(method: String): Unit = {
+    LongPollingClient.pollingSemaphore.release()
+  }
 }
 
 class LongPollingClient extends Logging {
-  def polling(): Unit = {
-    LongPollingClient.pollingConcurrencySemaphore.acquire()
+  def polling(method: String): Unit = {
+    LongPollingClient.acquireSemaphore(method)
 
     try {
       val endpoint = Router.query("default")
       val channel = GrpcClientUtils.getChannel(endpoint)
       val stub = DataTransferServiceGrpc.newStub(channel)
-      val finishLatch = new CountDownLatch(1)
-      val dispatchPollingRespSO = new DispatchPollingRespSO(finishLatch)
+      val dispatchPollingRespSO = new DispatchPollingRespSO()
       val pollingReqSO = stub.polling(dispatchPollingRespSO)
+
       dispatchPollingRespSO.setPollingReqSo(pollingReqSO)
-      pollingReqSO.onNext(LongPollingClient.initPollingFrame)
+      pollingReqSO.onNext(
+        LongPollingClient.initPollingFrameBuilder
+          .setMethod(method).build())
 
       // TODO:0: configurable
-      //finishLatch.await(1, TimeUnit.HOURS)
     } catch {
-      case _ =>
+      case t: Throwable =>
+        logError("polling failed", t)
         Thread.sleep(1000)
     }
   }
 
-  def pollingDaemon(): Unit = {
+  def pollingForever(method: String): Unit = {
     while (true) {
-      polling()
+      polling(method)
     }
   }
 }
 
 object PollingHelper {
-  val pollingSOs: LoadingCache[String, LinkedBlockingQueue[ServerCallStreamObserver[Proxy.PollingFrame]]] = CacheBuilder.newBuilder
+  private val pushPollingSOs: LoadingCache[String, LinkedBlockingQueue[PushPollingReqSO]] = CacheBuilder.newBuilder
     .maximumSize(100000)
     // TODO:0: configurable
     .expireAfterAccess(1, TimeUnit.HOURS)
     .concurrencyLevel(50)
     .recordStats
-    .build(new CacheLoader[String, LinkedBlockingQueue[ServerCallStreamObserver[Proxy.PollingFrame]]]() {
-      override def load(key: String): LinkedBlockingQueue[ServerCallStreamObserver[Proxy.PollingFrame]] = {
-        new LinkedBlockingQueue[ServerCallStreamObserver[Proxy.PollingFrame]]()
+    .build(new CacheLoader[String, LinkedBlockingQueue[PushPollingReqSO]]() {
+      override def load(key: String): LinkedBlockingQueue[PushPollingReqSO] = {
+        new LinkedBlockingQueue[PushPollingReqSO]()
       }
     })
-}
 
+  private val unaryCallPollingSOs: LoadingCache[String, LinkedBlockingQueue[UnaryCallPollingReqSO]] = CacheBuilder.newBuilder
+    .maximumSize(100000)
+    // TODO:0: configurable
+    .expireAfterAccess(1, TimeUnit.HOURS)
+    .concurrencyLevel(50)
+    .recordStats
+    .build(new CacheLoader[String, LinkedBlockingQueue[UnaryCallPollingReqSO]]() {
+      override def load(key: String): LinkedBlockingQueue[UnaryCallPollingReqSO] = {
+        new LinkedBlockingQueue[UnaryCallPollingReqSO]()
+      }
+    })
+
+  def getPushPollingReqSO(partyId: String, timeout: Long, unit: TimeUnit): PushPollingReqSO = {
+    var result: PushPollingReqSO = null
+    while (result == null) {
+      // TODO:0: configurable
+      result = pushPollingSOs.get(partyId).poll(timeout, unit)
+
+      if (result.respSO.isCancelled) result == null
+    }
+
+    result
+  }
+
+  def getUnaryCallPollingReqSO(partyId: String, timeout: Long, unit: TimeUnit): UnaryCallPollingReqSO = {
+    var result: UnaryCallPollingReqSO = null
+    while (result == null) {
+      // TODO:0: configurable
+      result = unaryCallPollingSOs.get(partyId).poll(timeout, unit)
+
+      if (result.respSO.isCancelled) result == null
+    }
+
+    result
+  }
+
+  def putPushPollingReqSO(partyId: String, reqSO: PushPollingReqSO): Unit = {
+    pushPollingSOs.get(partyId).put(reqSO)
+  }
+
+  def putUnaryCallPollingReqSO(partyId: String, reqSO: UnaryCallPollingReqSO): Unit = {
+    unaryCallPollingSOs.get(partyId).put(reqSO)
+  }
+
+  def isPartyIdPollingPush(partyId: String): Boolean = {
+    pushPollingSOs.asMap().containsKey(partyId)
+  }
+
+  def isPartyIdPollingUnaryCall(partyId: String): Boolean = {
+    unaryCallPollingSOs.asMap().containsKey(partyId)
+  }
+}
 
 
 /***************** STREAM OBSERVERS *****************/
@@ -99,36 +161,108 @@ object PollingHelper {
  * 1. 1st packet: extracts dstPartyId, and puts it in PollingHelper.pullSOs
  * 2. 2nd packet and on: push / unaryCall response.
  *
- * @param nextRespSO
+ * @param respSO
  */
-class PollingReqSO(nextRespSO: StreamObserver[Proxy.PollingFrame])
+class DispatchPollingReqSO(respSO: ServerCallStreamObserver[Proxy.PollingFrame])
   extends StreamObserver[Proxy.PollingFrame] with Logging {
 
   private var inited = false
+  private var delegateSO: StreamObserver[Proxy.PollingFrame] = _
   private def ensureInited(req: Proxy.PollingFrame): Unit = {
     if (inited) return
 
     val dstPartyId = req.getMetadata.getDst.getPartyId
-    PollingHelper.pollingSOs.get(dstPartyId).put(nextRespSO.asInstanceOf[ServerCallStreamObserver[Proxy.PollingFrame]])
+    val method = req.getMethod
+
+    method match {
+      case "push" =>
+        delegateSO = new PushPollingReqSO(respSO)
+        PollingHelper.putPushPollingReqSO(dstPartyId, delegateSO.asInstanceOf[PushPollingReqSO])
+      case "unaryCall" =>
+        delegateSO = new UnaryCallPollingReqSO(respSO)
+        PollingHelper.putUnaryCallPollingReqSO(dstPartyId, delegateSO.asInstanceOf[UnaryCallPollingReqSO])
+      case _ =>
+        val e = new NotImplementedError(s"method ${method} not supported")
+        onError(e)
+    }
 
     inited = true
   }
 
   override def onNext(req: Proxy.PollingFrame): Unit = {
     ensureInited(req)
+    delegateSO.onNext(req)
   }
 
   override def onError(t: Throwable): Unit = {
     logError("DelegatePollingReqSO.onError", t)
-    nextRespSO.onError(TransferExceptionUtils.throwableToException(t))
+    delegateSO.onError(TransferExceptionUtils.throwableToException(t))
   }
 
   override def onCompleted(): Unit = {
+    delegateSO.onCompleted()
     logDebug("DelegatePollingReqSO.onComplete")
   }
 }
 
-class DispatchPollingRespSO(finishLatch: CountDownLatch)
+
+class UnaryCallPollingReqSO(val respSO: ServerCallStreamObserver[Proxy.PollingFrame])
+  extends StreamObserver[Proxy.PollingFrame] with Logging {
+
+  private var prevRespSO: StreamObserver[Proxy.Packet] = _
+
+  def setPrevRespSO(prevRespSO: StreamObserver[Proxy.Packet]): Unit = {
+    this.prevRespSO = prevRespSO
+  }
+
+  override def onNext(req: Proxy.PollingFrame): Unit = {
+    if (req.getSeq > 0) {
+      prevRespSO.onNext(req.getPacket)
+    }
+  }
+
+  override def onError(t: Throwable): Unit = {
+    logError("UnaryCallPollingReqSO.onError", t)
+    prevRespSO.onError(TransferExceptionUtils.throwableToException(t))
+  }
+
+  override def onCompleted(): Unit = {
+    logDebug("UnaryCallPollingReqSO.onComplete")
+    prevRespSO.onCompleted()
+  }
+}
+
+// server side. processes push polling req
+class PushPollingReqSO(val respSO: ServerCallStreamObserver[Proxy.PollingFrame])
+  extends StreamObserver[Proxy.PollingFrame] with Logging {
+
+  var prevRespSO: StreamObserver[Proxy.Metadata] = _
+
+  def setPrevRespSO(prevRespSO: StreamObserver[Proxy.Metadata]): Unit = {
+    this.prevRespSO = prevRespSO
+  }
+
+  override def onNext(req: Proxy.PollingFrame): Unit = {
+    if (req.getSeq > 0) {
+      prevRespSO.onNext(req.getMetadata)
+    }
+  }
+
+  override def onError(t: Throwable): Unit = {
+    logError("PushPollingReqSO.onError", t)
+    prevRespSO.onError(TransferExceptionUtils.throwableToException(t))
+  }
+
+  override def onCompleted(): Unit = {
+    logDebug("PushPollingReqSO.onComplete")
+    prevRespSO.onCompleted()
+  }
+}
+
+
+
+// polling client side
+class DispatchPollingRespSO()
   extends StreamObserver[Proxy.PollingFrame] with Logging {
 
   private var inited = false
@@ -143,7 +277,9 @@ class DispatchPollingRespSO(finishLatch: CountDownLatch)
 
   private var pollingReqSO: StreamObserver[Proxy.PollingFrame] = _
 
-  def setPollingReqSo(pollingReqSO: StreamObserver[Proxy.PollingFrame]): Unit = this.pollingReqSO = pollingReqSO
+  def setPollingReqSo(pollingReqSO: StreamObserver[Proxy.PollingFrame]): Unit = {
+    this.pollingReqSO = pollingReqSO
+  }
 
   private def ensureInit(req: Proxy.PollingFrame): Unit = {
     if (inited) return
@@ -156,6 +292,7 @@ class DispatchPollingRespSO(finishLatch: CountDownLatch)
         delegateSO = new PushPollingRespSO(pollingReqSO)
       case "unaryCall" =>
         metadata = req.getMetadata
+        delegateSO = new UnaryCallPollingRespSO(pollingReqSO)
       case _ =>
         val t = new NotImplementedError(s"operation ${method} not supported")
         onError(TransferExceptionUtils.throwableToException(t))
@@ -182,16 +319,16 @@ class DispatchPollingRespSO(finishLatch: CountDownLatch)
     // TODO:0: configurable
     // TODO:1: unify with client
     Thread.sleep(1000)
-    LongPollingClient.pollingConcurrencySemaphore.release()
-    finishLatch.countDown()
+    LongPollingClient.releaseSemaphore(method)
   }
 
   override def onCompleted(): Unit = {
     delegateSO.onCompleted()
-    LongPollingClient.pollingConcurrencySemaphore.release()
-    finishLatch.countDown()
+    LongPollingClient.dummyLatch.await()
+    LongPollingClient.releaseSemaphore(method)
   }
 }
+
 
 class PushPollingRespSO(pollingReqSO: StreamObserver[Proxy.PollingFrame])
   extends StreamObserver[Proxy.PollingFrame] with Logging {
@@ -232,7 +369,7 @@ class PushPollingRespSO(pollingReqSO: StreamObserver[Proxy.PollingFrame])
 
   override def onError(t: Throwable): Unit = {
     logError("PushPollingRespSO onError", t)
-    nextReqSO.onCompleted()
+    nextReqSO.onError(TransferExceptionUtils.throwableToException(t))
   }
 
   override def onCompleted(): Unit = {
@@ -242,13 +379,21 @@ class PushPollingRespSO(pollingReqSO: StreamObserver[Proxy.PollingFrame])
 }
 
 /**
- * Polling rs gets put batch resp and save
+ * Polling rs gets put batch resp and pass
  */
 class PollingPutBatchPushRespSO(pollingReqSO: StreamObserver[Proxy.PollingFrame])
   extends StreamObserver[Proxy.Metadata] with Logging {
 
+  private var pollingFrameSeq = 0
+
   override def onNext(resp: Proxy.Metadata): Unit = {
-    val respPollingFrame = Proxy.PollingFrame.newBuilder().setMethod("push").setMetadata(resp).build()
+    pollingFrameSeq += 1
+    val respPollingFrame = Proxy.PollingFrame.newBuilder()
+      .setMethod("push")
+      .setMetadata(resp)
+      .setSeq(pollingFrameSeq)
+      .build()
+
     pollingReqSO.onNext(respPollingFrame)
   }
 
@@ -260,16 +405,66 @@ class PollingPutBatchPushRespSO(pollingReqSO: StreamObserver[Proxy.PollingFrame]
   override def onCompleted(): Unit = {
     logDebug("ignoring PollingPutBatchPushRespSO.onCompleted")
     pollingReqSO.onCompleted()
+    LongPollingClient.dummyLatch.countDown()
   }
 }
 
-
-class PollingUnaryCallRespSO()
+// used by polling client
+class UnaryCallPollingRespSO(pollingReqSO: StreamObserver[Proxy.PollingFrame])
   extends StreamObserver[Proxy.PollingFrame] with Logging {
-  override def onNext(req: Proxy.PollingFrame): Unit = ???
 
-  override def onError(t: Throwable): Unit = ???
+  private var inited = false
 
-  override def onCompleted(): Unit = ???
+  private var metadata: Proxy.Metadata = _
+  private var oneLineStringMetadata: String = _
+  private var rsKey: String = _
+  private var method: String = _
+
+  private val self = this
+  private var stub: DataTransferServiceGrpc.DataTransferServiceBlockingStub = _
+
+  private var pollingFrameSeq = 0
+
+  private def ensureInit(req: Proxy.PollingFrame): Unit = {
+    if (inited) return
+
+    method = req.getMethod
+    metadata = req.getPacket.getHeader
+    oneLineStringMetadata = ToStringUtils.toOneLineString(metadata)
+
+    val rsHeader = RollSiteHeader.parseFrom(metadata.getExt).fromProto()
+    rsKey = rsHeader.getRsKey()
+
+    val endpoint = Router.query(rsHeader.dstPartyId, rsHeader.dstRole)
+    val channel = GrpcClientUtils.getChannel(endpoint)
+    stub = DataTransferServiceGrpc.newBlockingStub(channel)
+
+    inited = true
+  }
+
+  override def onNext(req: Proxy.PollingFrame): Unit = {
+    ensureInit(req)
+
+    val callResult = stub.unaryCall(req.getPacket)
+
+    pollingFrameSeq += 1
+    val response = Proxy.PollingFrame.newBuilder()
+      .setMethod("unaryCall")
+      .setPacket(callResult)
+      .setSeq(pollingFrameSeq)
+      .build()
+
+    pollingReqSO.onNext(response)
+  }
+
+  override def onError(t: Throwable): Unit = {
+    logError("UnaryCallPollingRespSO.onError", t)
+    pollingReqSO.onError(TransferExceptionUtils.throwableToException(t))
+  }
+
+  override def onCompleted(): Unit = {
+    logDebug("UnaryCallPollingRespSO.onComplete")
+    pollingReqSO.onCompleted()
+  }
 }
 
