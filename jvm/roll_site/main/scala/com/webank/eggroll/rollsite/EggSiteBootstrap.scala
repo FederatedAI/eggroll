@@ -19,6 +19,7 @@
 package com.webank.eggroll.rollsite
 
 import java.io.File
+import java.util.concurrent.ThreadPoolExecutor
 
 import com.webank.eggroll.core.BootstrapBase
 import com.webank.eggroll.core.constant.{CoreConfKeys, RollSiteConfKeys}
@@ -26,12 +27,17 @@ import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.transfer.GrpcServerUtils
 import com.webank.eggroll.core.util.{CommandArgsUtils, Logging, ThreadPoolUtils}
 
+import scala.collection.immutable.Range
+
 class EggSiteBootstrap extends BootstrapBase with Logging {
   private var port = 0
   private var securePort = 0
   private var confPath = ""
-  private val pollingConcurrency = 3
-  private val pollingThreadPool = ThreadPoolUtils.newFixedThreadPool(pollingConcurrency, "polling-daemon")
+  // todo:0: configurable
+  private val pollingPushConcurrency = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_PUSH_CONCURRENCY.get().toInt
+  private val pollingUnaryCallConcurrency = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_UNARYCALL_CONCURRENCY.get().toInt
+  private var pollingPushThreadPool: ThreadPoolExecutor = _
+  private var pollingUnaryCallThreadPool: ThreadPoolExecutor = _
 
   override def init(args: Array[String]): Unit = {
     val cmd = CommandArgsUtils.parseArgs(args = args)
@@ -46,11 +52,24 @@ class EggSiteBootstrap extends BootstrapBase with Logging {
     Router.initOrUpdateRouterTable(routerFilePath)
 
     if (RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_CLIENT_ENABLED.get().toBoolean) {
-      for (i <- 0 until (pollingConcurrency)) {
-        pollingThreadPool.execute(() => {
-          val dataTransferClient = new LongPollingClient
-          dataTransferClient.pollingDaemon()
-        })
+      if (pollingPushConcurrency > 0) {
+        pollingPushThreadPool = ThreadPoolUtils.newFixedThreadPool(pollingPushConcurrency, "polling-push")
+        for (i <- 0 until pollingPushConcurrency) {
+          pollingPushThreadPool.execute(() => {
+            val dataTransferClient = new LongPollingClient
+            dataTransferClient.pollingForever("push")
+          })
+        }
+      }
+
+      if (pollingUnaryCallConcurrency > 0) {
+        pollingUnaryCallThreadPool = ThreadPoolUtils.newFixedThreadPool(pollingUnaryCallConcurrency, "polling-unary-call")
+        for (i <- 0 until pollingUnaryCallConcurrency) {
+          pollingUnaryCallThreadPool.execute(() => {
+            val dataTransferClient = new LongPollingClient
+            dataTransferClient.pollingForever("unaryCall")
+          })
+        }
       }
     }
   }
@@ -62,7 +81,7 @@ class EggSiteBootstrap extends BootstrapBase with Logging {
 
     val msg = s"server started at $port"
     logInfo(msg)
-    print(msg)
+    println(msg)
   }
 }
 
