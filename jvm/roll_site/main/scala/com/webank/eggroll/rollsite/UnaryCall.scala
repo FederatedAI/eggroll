@@ -55,7 +55,7 @@ class ForwardUnaryCallToPollingReqSO(prevRespSO: StreamObserver[Proxy.Packet])
     val dstPartyId = rsHeader.dstPartyId
 
     nextReqSO = PollingHelper.getUnaryCallPollingReqSO(dstPartyId, 1, TimeUnit.HOURS)
-    nextRespSO = nextReqSO.respSO
+    nextRespSO = nextReqSO.pollingRespSO
     pollingFrameBuilder.setMethod("push")
 
     inited = true
