@@ -125,7 +125,7 @@ object PollingHelper {
       // TODO:0: configurable
       result = unaryCallPollingSOs.get(partyId).poll(timeout, unit)
 
-      if (result.respSO.isCancelled) result == null
+      if (result.pollingRespSO.isCancelled) result == null
     }
 
     result
@@ -160,9 +160,9 @@ object PollingHelper {
  * 1. 1st packet: extracts dstPartyId, and puts it in PollingHelper.pullSOs
  * 2. 2nd packet and on: push / unaryCall response.
  *
- * @param respSO
+ * @param pollingRespSO
  */
-class DispatchPollingReqSO(respSO: ServerCallStreamObserver[Proxy.PollingFrame])
+class DispatchPollingReqSO(pollingRespSO: ServerCallStreamObserver[Proxy.PollingFrame])
   extends StreamObserver[Proxy.PollingFrame] with Logging {
 
   private var inited = false
@@ -175,10 +175,10 @@ class DispatchPollingReqSO(respSO: ServerCallStreamObserver[Proxy.PollingFrame])
 
     method match {
       case "push" =>
-        delegateSO = new PushPollingReqSO(respSO)
+        delegateSO = new PushPollingReqSO(pollingRespSO)
         PollingHelper.putPushPollingReqSO(dstPartyId, delegateSO.asInstanceOf[PushPollingReqSO])
       case "unaryCall" =>
-        delegateSO = new UnaryCallPollingReqSO(respSO)
+        delegateSO = new UnaryCallPollingReqSO(pollingRespSO)
         PollingHelper.putUnaryCallPollingReqSO(dstPartyId, delegateSO.asInstanceOf[UnaryCallPollingReqSO])
       case _ =>
         val e = new NotImplementedError(s"method ${method} not supported")
@@ -205,7 +205,7 @@ class DispatchPollingReqSO(respSO: ServerCallStreamObserver[Proxy.PollingFrame])
 }
 
 
-class UnaryCallPollingReqSO(val respSO: ServerCallStreamObserver[Proxy.PollingFrame])
+class UnaryCallPollingReqSO(val pollingRespSO: ServerCallStreamObserver[Proxy.PollingFrame])
   extends StreamObserver[Proxy.PollingFrame] with Logging {
 
   private var unaryCallRespSO: StreamObserver[Proxy.Packet] = _
@@ -237,8 +237,8 @@ class PushPollingReqSO(val pushPollingRespSO: ServerCallStreamObserver[Proxy.Pol
 
   var pushRespSO: StreamObserver[Proxy.Metadata] = _
 
-  def setPushRespSO(prevRespSO: StreamObserver[Proxy.Metadata]): Unit = {
-    this.pushRespSO = prevRespSO
+  def setPushRespSO(pushRespSO: StreamObserver[Proxy.Metadata]): Unit = {
+    this.pushRespSO = pushRespSO
   }
 
   override def onNext(req: Proxy.PollingFrame): Unit = {
@@ -361,6 +361,7 @@ class PushPollingRespSO(pollingReqSO: StreamObserver[Proxy.PollingFrame])
   }
 
   override def onNext(req: Proxy.PollingFrame): Unit = {
+    logWarning(s"debug 2345 ${ToStringUtils.toOneLineString(req)}")
     ensureInit(req)
 
     nextReqSO.onNext(req.getPacket)
@@ -386,6 +387,7 @@ class PollingPutBatchPushRespSO(pollingReqSO: StreamObserver[Proxy.PollingFrame]
   private var pollingFrameSeq = 0
 
   override def onNext(resp: Proxy.Metadata): Unit = {
+    logWarning(s"debug PollingPutBatchPushRespSO, ${ToStringUtils.toOneLineString(resp)}")
     pollingFrameSeq += 1
     val respPollingFrame = Proxy.PollingFrame.newBuilder()
       .setMethod("push")

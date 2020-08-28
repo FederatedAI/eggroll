@@ -42,9 +42,9 @@ class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBas
 
   /**
    */
-  override def polling(respSO: StreamObserver[Proxy.PollingFrame]): StreamObserver[Proxy.PollingFrame] = {
+  override def polling(pollingRespSO: StreamObserver[Proxy.PollingFrame]): StreamObserver[Proxy.PollingFrame] = {
     logDebug("[POLLING][SERVER] request received")
-    new DispatchPollingReqSO(respSO.asInstanceOf[ServerCallStreamObserver[Proxy.PollingFrame]])
+    new DispatchPollingReqSO(pollingRespSO.asInstanceOf[ServerCallStreamObserver[Proxy.PollingFrame]])
   }
 
   /**
@@ -78,7 +78,7 @@ class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBas
           val pollingReqSO = PollingHelper.getUnaryCallPollingReqSO(dstPartyId, 1, TimeUnit.HOURS)
           pollingReqSO.setUnaryCallRespSO(respSO)
 
-          val nextRespSO = pollingReqSO.respSO
+          val nextRespSO = pollingReqSO.pollingRespSO
 
           val reqPollingFrame = Proxy.PollingFrame.newBuilder()
             .setMethod("unaryCall")
