@@ -34,8 +34,7 @@ class EggSiteBootstrap extends BootstrapBase with Logging {
   private var securePort = 0
   private var confPath = ""
   // todo:0: configurable
-  private val pollingPushConcurrency = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_PUSH_CONCURRENCY.get().toInt
-  private val pollingUnaryCallConcurrency = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_UNARYCALL_CONCURRENCY.get().toInt
+
   private var pollingPushThreadPool: ThreadPoolExecutor = _
   private var pollingUnaryCallThreadPool: ThreadPoolExecutor = _
 
@@ -52,6 +51,7 @@ class EggSiteBootstrap extends BootstrapBase with Logging {
     Router.initOrUpdateRouterTable(routerFilePath)
 
     if (RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_CLIENT_ENABLED.get().toBoolean) {
+      val pollingPushConcurrency = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_PUSH_CONCURRENCY.get().toInt
       if (pollingPushConcurrency > 0) {
         pollingPushThreadPool = ThreadPoolUtils.newFixedThreadPool(pollingPushConcurrency, "polling-push")
         for (i <- 0 until pollingPushConcurrency) {
@@ -62,6 +62,7 @@ class EggSiteBootstrap extends BootstrapBase with Logging {
         }
       }
 
+      val pollingUnaryCallConcurrency = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_UNARYCALL_CONCURRENCY.get().toInt
       if (pollingUnaryCallConcurrency > 0) {
         pollingUnaryCallThreadPool = ThreadPoolUtils.newFixedThreadPool(pollingUnaryCallConcurrency, "polling-unary-call")
         for (i <- 0 until pollingUnaryCallConcurrency) {

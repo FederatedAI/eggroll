@@ -76,7 +76,7 @@ class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBas
       } else {
         if (RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_SERVER_ENABLED.get().toBoolean && PollingHelper.isPartyIdPollingUnaryCall(dstPartyId)) {
           val pollingReqSO = PollingHelper.getUnaryCallPollingReqSO(dstPartyId, 1, TimeUnit.HOURS)
-          pollingReqSO.setPrevRespSO(respSO)
+          pollingReqSO.setUnaryCallRespSO(respSO)
 
           val nextRespSO = pollingReqSO.respSO
 

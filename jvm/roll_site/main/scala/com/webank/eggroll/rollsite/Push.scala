@@ -268,7 +268,7 @@ class PutBatchSinkPushRespSO(val reqHeader: Proxy.Metadata,
 }
 
 
-class ForwardPushToPollingReqSO(prevRespSO: StreamObserver[Proxy.Metadata])
+class ForwardPushToPollingReqSO(pushRespSO: StreamObserver[Proxy.Metadata])
   extends StreamObserver[Proxy.Packet] with Logging {
 
   private var inited = false
@@ -278,8 +278,8 @@ class ForwardPushToPollingReqSO(prevRespSO: StreamObserver[Proxy.Metadata])
   private var rsKey: String = _
 
   private val self = this
-  private var nextReqSO: PushPollingReqSO = _
-  private var nextRespSO: ServerCallStreamObserver[Proxy.PollingFrame] = _
+  private var pushPollingReqSO: PushPollingReqSO = _
+  private var pushPollingRespSO: ServerCallStreamObserver[Proxy.PollingFrame] = _
   private var failRequest: mutable.ParHashSet[Proxy.Metadata] = new mutable.ParHashSet[Proxy.Metadata]()
   private val pollingFrameBuilder = Proxy.PollingFrame.newBuilder()
   private var pollingFrameSeq = 0
@@ -296,9 +296,9 @@ class ForwardPushToPollingReqSO(prevRespSO: StreamObserver[Proxy.Metadata])
     logDebug(s"[FORWARD][SERVER][PUSH2POLLING] onInit. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
     val dstPartyId = rollSiteHeader.dstPartyId
 
-    nextReqSO = PollingHelper.getPushPollingReqSO(dstPartyId, 1, TimeUnit.HOURS)
-    nextReqSO.setPrevRespSO(prevRespSO)
-    nextRespSO = nextReqSO.respSO
+    pushPollingReqSO = PollingHelper.getPushPollingReqSO(dstPartyId, 1, TimeUnit.HOURS)
+    pushPollingReqSO.setPushRespSO(pushRespSO)
+    pushPollingRespSO = pushPollingReqSO.pushPollingRespSO
     pollingFrameBuilder.setMethod("push")
 
     inited = true
@@ -310,19 +310,19 @@ class ForwardPushToPollingReqSO(prevRespSO: StreamObserver[Proxy.Metadata])
     pollingFrameSeq += 1
     pollingFrameBuilder.setSeq(pollingFrameSeq).setPacket(req)
     val nextFrame = pollingFrameBuilder.build()
-    nextRespSO.onNext(nextFrame)
+    pushPollingRespSO.onNext(nextFrame)
   }
 
   override def onError(t: Throwable): Unit = {
     logError(s"[FORWARD][SERVER][PUSH2POLLING] onError. rsKey=${rsKey}", t)
-    prevRespSO.onError(TransferExceptionUtils.throwableToException(t))
-    if (nextRespSO != null && nextRespSO.isReady) {
-      nextRespSO.onError(TransferExceptionUtils.throwableToException(t))
+    pushRespSO.onError(TransferExceptionUtils.throwableToException(t))
+    if (pushPollingRespSO != null && pushPollingRespSO.isReady) {
+      pushPollingRespSO.onError(TransferExceptionUtils.throwableToException(t))
     }
   }
 
   override def onCompleted(): Unit = {
-    nextRespSO.onCompleted()
+    pushPollingRespSO.onCompleted()
 
     // responde through here?
 //    prevRespSO.onNext(metadata)

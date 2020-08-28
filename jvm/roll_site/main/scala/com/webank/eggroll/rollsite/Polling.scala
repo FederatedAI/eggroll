@@ -32,7 +32,6 @@ import io.grpc.stub.{ServerCallStreamObserver, StreamObserver}
 
 
 object LongPollingClient {
-  val dummyLatch = new CountDownLatch(1)
   private val defaultPollingReqMetadata: Proxy.Metadata = Proxy.Metadata.newBuilder()
     .setDst(
       Proxy.Topic.newBuilder()
@@ -114,7 +113,7 @@ object PollingHelper {
       // TODO:0: configurable
       result = pushPollingSOs.get(partyId).poll(timeout, unit)
 
-      if (result.respSO.isCancelled) result == null
+      if (result.pushPollingRespSO.isCancelled) result == null
     }
 
     result
@@ -209,53 +208,54 @@ class DispatchPollingReqSO(respSO: ServerCallStreamObserver[Proxy.PollingFrame])
 class UnaryCallPollingReqSO(val respSO: ServerCallStreamObserver[Proxy.PollingFrame])
   extends StreamObserver[Proxy.PollingFrame] with Logging {
 
-  private var prevRespSO: StreamObserver[Proxy.Packet] = _
+  private var unaryCallRespSO: StreamObserver[Proxy.Packet] = _
 
-  def setPrevRespSO(prevRespSO: StreamObserver[Proxy.Packet]): Unit = {
-    this.prevRespSO = prevRespSO
+  def setUnaryCallRespSO(prevRespSO: StreamObserver[Proxy.Packet]): Unit = {
+    this.unaryCallRespSO = prevRespSO
   }
 
   override def onNext(req: Proxy.PollingFrame): Unit = {
     if (req.getSeq > 0) {
-      prevRespSO.onNext(req.getPacket)
+      unaryCallRespSO.onNext(req.getPacket)
     }
   }
 
   override def onError(t: Throwable): Unit = {
     logError("UnaryCallPollingReqSO.onError", t)
-    prevRespSO.onError(TransferExceptionUtils.throwableToException(t))
+    unaryCallRespSO.onError(TransferExceptionUtils.throwableToException(t))
   }
 
   override def onCompleted(): Unit = {
     logDebug("UnaryCallPollingReqSO.onComplete")
-    prevRespSO.onCompleted()
+    unaryCallRespSO.onCompleted()
   }
 }
 
 // server side. processes push polling req
-class PushPollingReqSO(val respSO: ServerCallStreamObserver[Proxy.PollingFrame])
+class PushPollingReqSO(val pushPollingRespSO: ServerCallStreamObserver[Proxy.PollingFrame])
   extends StreamObserver[Proxy.PollingFrame] with Logging {
 
-  var prevRespSO: StreamObserver[Proxy.Metadata] = _
+  var pushRespSO: StreamObserver[Proxy.Metadata] = _
 
-  def setPrevRespSO(prevRespSO: StreamObserver[Proxy.Metadata]): Unit = {
-    this.prevRespSO = prevRespSO
+  def setPushRespSO(prevRespSO: StreamObserver[Proxy.Metadata]): Unit = {
+    this.pushRespSO = prevRespSO
   }
 
   override def onNext(req: Proxy.PollingFrame): Unit = {
+    logWarning("debug1234")
     if (req.getSeq > 0) {
-      prevRespSO.onNext(req.getMetadata)
+      pushRespSO.onNext(req.getMetadata)
     }
   }
 
   override def onError(t: Throwable): Unit = {
     logError("PushPollingReqSO.onError", t)
-    prevRespSO.onError(TransferExceptionUtils.throwableToException(t))
+    pushRespSO.onError(TransferExceptionUtils.throwableToException(t))
   }
 
   override def onCompleted(): Unit = {
     logDebug("PushPollingReqSO.onComplete")
-    prevRespSO.onCompleted()
+    pushRespSO.onCompleted()
   }
 }
 
@@ -324,7 +324,6 @@ class DispatchPollingRespSO()
 
   override def onCompleted(): Unit = {
     delegateSO.onCompleted()
-    LongPollingClient.dummyLatch.await()
     LongPollingClient.releaseSemaphore(method)
   }
 }
@@ -403,9 +402,8 @@ class PollingPutBatchPushRespSO(pollingReqSO: StreamObserver[Proxy.PollingFrame]
   }
 
   override def onCompleted(): Unit = {
-    logDebug("ignoring PollingPutBatchPushRespSO.onCompleted")
+    logDebug("PollingPutBatchPushRespSO.onCompleted")
     pollingReqSO.onCompleted()
-    LongPollingClient.dummyLatch.countDown()
   }
 }
 
