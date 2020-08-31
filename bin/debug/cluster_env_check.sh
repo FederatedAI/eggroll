@@ -17,10 +17,15 @@
 cwd=$(cd `dirname $0`; pwd)
 source ./check_iplist.sh
 
-for ip in ${iplist[@]};do 
-	if ! ssh -tt app@$ip test -e ${EGGROLL_HOME}/deploy/env_test.sh;then 
-		echo "env_test.sh in $ip:${EGGROLL_HOME}/deploy is not exist, scp env_test.sh to $ip:${EGGROLL_HOME}/deploy" 
-		scp ./env_test.sh $user@$ip:${EGGROLL_HOME}/deploy 
-	fi 
-	ssh app@$ip "sh ${EGGROLL_HOME}/deploy/env_test.sh" >> $ip
+for ip in ${iplist[@]};do
+	if [[ ! -d "${EGGROLL_HOME}/bin/debug" ]]; then
+		echo "${EGGROLL_HOME}/bin/debug in $ip is not exist, mkdir -p ${EGGROLL_HOME}/bin/debug."
+		mkdir -p ${EGGROLL_HOME}/bin/debug
+	fi
+
+	if ! ssh -tt app@$ip test -e ${EGGROLL_HOME}/bin/debug/env_check.sh;then
+		echo "env_check.sh in $ip:${EGGROLL_HOME}/bin/debug is not exist, scp env_check.sh to $ip:${EGGROLL_HOME}/bin/debug"
+		scp ./env_check.sh $user@$ip:${EGGROLL_HOME}/bin/debug
+	fi
+	ssh app@$ip "sh ${EGGROLL_HOME}/bin/debug/env_check.sh" >> $ip
 done
