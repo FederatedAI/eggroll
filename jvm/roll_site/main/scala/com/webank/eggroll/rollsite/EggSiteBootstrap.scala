@@ -26,9 +26,9 @@ import com.webank.eggroll.core.constant.{CoreConfKeys, RollSiteConfKeys}
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.transfer.GrpcServerUtils
 import com.webank.eggroll.core.util.{CommandArgsUtils, Logging, ThreadPoolUtils}
+import io.grpc.ServerInterceptors
 import org.apache.commons.lang3.StringUtils
 
-import scala.collection.immutable.Range
 
 class EggSiteBootstrap extends BootstrapBase with Logging {
   private var port = 0
@@ -51,6 +51,7 @@ class EggSiteBootstrap extends BootstrapBase with Logging {
     val routerFilePath = RollSiteConfKeys.EGGROLL_ROLLSITE_ROUTE_TABLE_PATH.get()
     logInfo(s"init router. path: $routerFilePath")
     Router.initOrUpdateRouterTable(routerFilePath)
+    WhiteList.init()
 
     if (RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_CLIENT_ENABLED.get().toBoolean) {
       val pollingPushConcurrency = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_PUSH_CONCURRENCY.get().toInt
@@ -79,9 +80,12 @@ class EggSiteBootstrap extends BootstrapBase with Logging {
 
   override def start(): Unit = {
     var option: Map[String, String] = Map({"eggroll.core.security.secure.cluster.enabled" ->"false"})
+    val tranferServicer = new EggSiteServicer
+    val ipGetService = ServerInterceptors.intercept(tranferServicer.bindService, new AddrAuthServerInterceptor)
     val plainServer = GrpcServerUtils.createServer(
       port = this.port,
-      grpcServices = List(new EggSiteServicer),
+      grpcServices = List(tranferServicer),
+      bindServices = List(ipGetService),
       options = option)
     plainServer.start()
     this.port = plainServer.getPort
@@ -93,9 +97,12 @@ class EggSiteBootstrap extends BootstrapBase with Logging {
     val serverKey = CoreConfKeys.CONFKEY_CORE_SECURITY_KEY_PATH.get()
     if (!StringUtils.isBlank(serverCrt) && !StringUtils.isBlank(serverKey)) {
       option = Map({"eggroll.core.security.secure.cluster.enabled" -> "true"})
+      val tranferServicerSecure = new EggSiteServicer
+      val ipGetServiceSecure = ServerInterceptors.intercept(tranferServicerSecure.bindService, new AddrAuthServerInterceptor)
       val plainServerSecure = GrpcServerUtils.createServer(
         port = this.securePort,
-        grpcServices = List(new EggSiteServicer),
+        grpcServices = List(tranferServicerSecure),
+        bindServices = List(ipGetServiceSecure),
         options = option)
       plainServerSecure.start()
       this.securePort = plainServerSecure.getPort
