@@ -30,7 +30,7 @@ import com.webank.eggroll.core.retry.factory.{AttemptOperations, RetryerBuilder,
 import com.webank.eggroll.core.util.{FileSystemUtils, Logging, ThreadPoolUtils}
 import io.grpc.netty.shaded.io.grpc.netty.{GrpcSslContexts, NegotiationType, NettyChannelBuilder, NettyServerBuilder}
 import io.grpc.netty.shaded.io.netty.handler.ssl.{ClientAuth, SslContext}
-import io.grpc.{BindableService, ManagedChannel, Server}
+import io.grpc.{BindableService, ManagedChannel, Server, ServerServiceDefinition}
 import org.apache.commons.lang3.StringUtils
 
 
@@ -40,6 +40,7 @@ object GrpcServerUtils extends Logging {
   def createServer(host: String = "0.0.0.0",
                    port: Int = 0,
                    grpcServices: List[BindableService] = List.empty,
+                   bindServices: List[ServerServiceDefinition] = List.empty,
                    options: Map[String, String] = Map.empty): Server = {
     if (port < 0) throw new IllegalArgumentException(s"${modulePrefix} cannot listen to port <= 0")
     if (grpcServices.isEmpty) throw new IllegalArgumentException("grpc services cannot be empty")
@@ -49,6 +50,7 @@ object GrpcServerUtils extends Logging {
     val nettyServerBuilder = NettyServerBuilder.forAddress(addr)
 
     grpcServices.foreach(s => nettyServerBuilder.addService(s))
+    bindServices.foreach(s => nettyServerBuilder.addService(s))
 
     Runtime.getRuntime.addShutdownHook(new Thread() {
       override def run(): Unit = { // Use stderr here since the logger may have been reset by its JVM shutdown hook.

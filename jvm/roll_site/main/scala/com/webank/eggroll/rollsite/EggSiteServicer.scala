@@ -69,14 +69,9 @@ class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBas
       val logMsg = s"[UNARYCALL][SERVER] unaryCall request received. rsKey=${rsKey}, metadata=${oneLineStringMetadata}"
 
       val endpoint = Router.query(dstPartyId, dstRole)
-
-      val caCrt = CoreConfKeys.CONFKEY_CORE_SECURITY_CA_CRT_PATH.get()
-      val isSecure = if (!StringUtils.isBlank(caCrt)
-        && req.getHeader.getDst.getPartyId == req.getHeader.getSrc.getPartyId) true else false
-
-      val channel = GrpcClientUtils.getChannel(endpoint, isSecure)
       if (endpoint.host == RollSiteConfKeys.EGGROLL_ROLLSITE_HOST.get()
-        && endpoint.port == RollSiteConfKeys.EGGROLL_ROLLSITE_PORT.get().toInt) {
+        && (endpoint.port == RollSiteConfKeys.EGGROLL_ROLLSITE_PORT.get().toInt
+        || endpoint.port == RollSiteConfKeys.EGGROLL_ROLLSITE_SECURE_PORT.get().toInt)) {
         logDebug(s"${logMsg}, hop=SINK")
         processCommand(req, respSO)
       } else {
@@ -95,7 +90,14 @@ class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBas
           nextRespSO.onNext(reqPollingFrame)
           nextRespSO.onCompleted()
         } else {
-          val channel = GrpcClientUtils.getChannel(endpoint)
+          val caCrt = CoreConfKeys.CONFKEY_CORE_SECURITY_CA_CRT_PATH.get()
+
+          // use secure channel conditions:
+          // 1 include crt file.
+          // 2 packet have diff src and dst party.
+          val isSecure = if (!StringUtils.isBlank(caCrt)
+            && req.getHeader.getDst.getPartyId != req.getHeader.getSrc.getPartyId) true else false
+          val channel = GrpcClientUtils.getChannel(endpoint, isSecure)
           val stub = DataTransferServiceGrpc.newBlockingStub(channel)
           val result = stub.unaryCall(req)
           respSO.onNext(result)
@@ -139,7 +141,7 @@ class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBas
     val data = request.getBody.getValue.toStringUtf8 // salt + json data
     val routerKey = RollSiteConfKeys.EGGROLL_ROLLSITE_ROUTE_TABLE_KEY.get()
     val md5Token = request.getBody.getKey
-    val checkMd5 = DigestUtils.md5(data + routerKey)
+    val checkMd5 = Util.hashMD5(data + routerKey)
     logDebug(f"routerKey=${routerKey}, md5Token=${md5Token}, checkMd5=${checkMd5}")
     md5Token == checkMd5
   }
