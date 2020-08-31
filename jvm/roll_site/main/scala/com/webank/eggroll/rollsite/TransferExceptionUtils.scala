@@ -30,6 +30,7 @@ object TransferExceptionUtils {
   }
 
   def throwableToException(t: Throwable, topic: Topic = null): StatusRuntimeException = {
+    if (t.isInstanceOf[StatusRuntimeException]) return t.asInstanceOf[StatusRuntimeException]
     val desc = genExceptionDescription(t, topic)
     val status = Status.fromThrowable(t).withDescription(desc)
     status.asRuntimeException()
