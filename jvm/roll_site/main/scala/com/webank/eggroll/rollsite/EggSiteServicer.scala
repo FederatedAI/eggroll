@@ -22,13 +22,14 @@ import java.util.concurrent.TimeUnit
 
 import com.google.protobuf.ByteString
 import com.webank.ai.eggroll.api.networking.proxy.{DataTransferServiceGrpc, Proxy}
-import com.webank.eggroll.core.constant.RollSiteConfKeys
+import com.webank.eggroll.core.constant.{CoreConfKeys, RollSiteConfKeys}
 import com.webank.eggroll.core.meta.TransferModelPbMessageSerdes.ErRollSiteHeaderFromPbMessage
 import com.webank.eggroll.core.transfer.GrpcClientUtils
 import com.webank.eggroll.core.transfer.Transfer.RollSiteHeader
 import com.webank.eggroll.core.util._
 import io.grpc.stub.{ServerCallStreamObserver, StreamObserver}
 import org.apache.commons.codec.digest.DigestUtils
+import org.apache.commons.lang3.StringUtils
 
 
 class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBase with Logging {
@@ -70,6 +71,14 @@ class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBas
       val endpoint = Router.query(dstPartyId, dstRole)
 
       if (endpoint.host == RollSiteConfKeys.EGGROLL_ROLLSITE_HOST.get()
+
+      val caCrt = CoreConfKeys.CONFKEY_CORE_SECURITY_CA_CRT_PATH.get()
+      val isSecure = if (!StringUtils.isBlank(caCrt)
+        && req.getHeader.getDst.getPartyId == req.getHeader.getSrc.getPartyId) true else false
+
+      val channel = GrpcClientUtils.getChannel(endpoint, isSecure)
+      val stub = DataTransferServiceGrpc.newBlockingStub(channel)
+      result = if (endpoint.host == RollSiteConfKeys.EGGROLL_ROLLSITE_HOST.get()
         && endpoint.port == RollSiteConfKeys.EGGROLL_ROLLSITE_PORT.get().toInt) {
         logDebug(s"${logMsg}, hop=SINK")
         processCommand(req, respSO)

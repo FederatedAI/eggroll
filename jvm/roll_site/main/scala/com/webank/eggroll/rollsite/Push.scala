@@ -23,7 +23,7 @@ import java.util.concurrent.{Future, TimeUnit}
 import com.webank.ai.eggroll.api.networking.proxy.{DataTransferServiceGrpc, Proxy}
 import com.webank.eggroll.core.ErSession
 import com.webank.eggroll.core.command.CommandClient
-import com.webank.eggroll.core.constant.{RollSiteConfKeys, SerdesTypes, SessionConfKeys, StringConstants}
+import com.webank.eggroll.core.constant._
 import com.webank.eggroll.core.meta.TransferModelPbMessageSerdes.ErRollSiteHeaderFromPbMessage
 import com.webank.eggroll.core.meta.{ErJob, ErTask}
 import com.webank.eggroll.core.transfer.Transfer.RollSiteHeader
@@ -31,6 +31,7 @@ import com.webank.eggroll.core.transfer.{GrpcClientUtils, Transfer, TransferServ
 import com.webank.eggroll.core.util.{IdUtils, Logging, ToStringUtils}
 import com.webank.eggroll.rollpair.{RollPair, RollPairContext}
 import io.grpc.stub.{ServerCallStreamObserver, StreamObserver}
+import org.apache.commons.lang3.StringUtils
 
 import scala.collection.parallel.mutable
 
@@ -356,7 +357,11 @@ class ForwardPushReqSO(prevRespSO: StreamObserver[Proxy.Metadata])
     logDebug(s"[FORWARD][SERVER] onInit. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
     val dstPartyId = rollSiteHeader.dstPartyId
     val endpoint = Router.query(dstPartyId)
-    val channel = GrpcClientUtils.getChannel(endpoint)
+
+    val caCrt = CoreConfKeys.CONFKEY_CORE_SECURITY_CA_CRT_PATH.get()
+    val isSecure = if (!StringUtils.isBlank(caCrt)
+      && firstRequest.getHeader.getDst.getPartyId != firstRequest.getHeader.getSrc.getPartyId) true else false
+    val channel = GrpcClientUtils.getChannel(endpoint, isSecure)
     val stub = DataTransferServiceGrpc.newStub(channel)
     nextReqSO = stub.push(new ForwardPushRespSO(prevRespSO))
 
