@@ -294,12 +294,12 @@ class ForwardPushToPollingReqSO(pushRespSO: StreamObserver[Proxy.Metadata])
     val rollSiteHeader = RollSiteHeader.parseFrom(metadata.getExt).fromProto()
     rsKey = rollSiteHeader.getRsKey()
 
-    logDebug(s"[FORWARD][SERVER][PUSH2POLLING] onInit. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
+    logDebug(s"[FORWARD][PUSH2POLLING] onInit. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
     val dstPartyId = rollSiteHeader.dstPartyId
 
-    pushPollingReqSO = PollingHelper.getPushPollingReqSO(dstPartyId, 1, TimeUnit.HOURS)
-    pushPollingReqSO.setPushRespSO(pushRespSO)
-    pushPollingRespSO = pushPollingReqSO.pushPollingRespSO
+//    pushPollingReqSO = PollingHelper.getPushPollingReqSO(dstPartyId, 1, TimeUnit.HOURS)
+//    pushPollingReqSO.setPushRespSO(pushRespSO)
+//    pushPollingRespSO = pushPollingReqSO.pushPollingRespSO
     pollingFrameBuilder.setMethod("push")
 
     inited = true
@@ -308,14 +308,17 @@ class ForwardPushToPollingReqSO(pushRespSO: StreamObserver[Proxy.Metadata])
   override def onNext(req: Proxy.Packet): Unit = {
     ensureInited(req)
 
+    logDebug(s"[FORWARD][PUSH2POLLING] onNext. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
     pollingFrameSeq += 1
     pollingFrameBuilder.setSeq(pollingFrameSeq).setPacket(req)
     val nextFrame = pollingFrameBuilder.build()
-    pushPollingRespSO.onNext(nextFrame)
+    //pushPollingRespSO.onNext(nextFrame)
+
+    PollingHelper.pollingRespQueue.put(nextFrame)
   }
 
   override def onError(t: Throwable): Unit = {
-    logError(s"[FORWARD][SERVER][PUSH2POLLING] onError. rsKey=${rsKey}", t)
+    logError(s"[FORWARD][PUSH2POLLING] onError. rsKey=${rsKey}", t)
     pushRespSO.onError(TransferExceptionUtils.throwableToException(t))
     if (pushPollingRespSO != null && pushPollingRespSO.isReady) {
       pushPollingRespSO.onError(TransferExceptionUtils.throwableToException(t))
@@ -324,10 +327,18 @@ class ForwardPushToPollingReqSO(pushRespSO: StreamObserver[Proxy.Metadata])
 
   override def onCompleted(): Unit = {
     pushPollingRespSO.onCompleted()
+    pollingFrameSeq += 1
+    pollingFrameBuilder.setSeq(pollingFrameSeq).setMethod("finish_polling_resp")
+    PollingHelper.pollingRespQueue.put(pollingFrameBuilder.build())
+
+    val pollingReq = PollingHelper.pollingReqQueue.take()
 
     // responde through here?
 //    prevRespSO.onNext(metadata)
 //    prevRespSO.onCompleted()
+    pushRespSO.onNext(pollingReq.getMetadata)
+    pushRespSO.onCompleted()
+
     logDebug(s"[FORWARD][PUSH2POLLING] onCompleted. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
   }
 }

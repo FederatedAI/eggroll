@@ -19,7 +19,7 @@
 package com.webank.eggroll.rollsite
 
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicReference}
-import java.util.concurrent.{CountDownLatch, LinkedBlockingQueue, Semaphore, TimeUnit}
+import java.util.concurrent.{CountDownLatch, LinkedBlockingQueue, Semaphore, SynchronousQueue, TimeUnit}
 
 import com.google.common.cache.{CacheBuilder, CacheLoader, LoadingCache}
 import com.webank.ai.eggroll.api.networking.proxy.{DataTransferServiceGrpc, Proxy}
@@ -64,13 +64,14 @@ class LongPollingClient extends Logging {
       val dispatchPollingRespSO = new DispatchPollingRespSO(pollingResults)
       val pollingReqSO = stub.polling(dispatchPollingRespSO)
 
-      pollingResults.put(
+      pollingReqSO.onNext(
         LongPollingClient.initPollingFrameBuilder
           .setMethod(method).build())
 
       try {
         for (req <- pollingResults) {
           if (req != null) {
+            logInfo(s"client onNext. req=${ToStringUtils.toOneLineString(req)}")
             pollingReqSO.onNext(req)
           }
         }
@@ -162,11 +163,14 @@ object PollingHelper {
   def isPartyIdPollingUnaryCall(partyId: String): Boolean = {
     unaryCallPollingSOs.asMap().containsKey(partyId)
   }
+
+  val pollingReqQueue = new SynchronousQueue[Proxy.PollingFrame]()
+  val pollingRespQueue = new SynchronousQueue[Proxy.PollingFrame]()
+
 }
 
 class PollingResults() extends Iterator[Proxy.PollingFrame] with Logging {
   private val q = new LinkedBlockingQueue[Proxy.PollingFrame]()
-  private val isFinished = new AtomicBoolean(false)
   private val error: AtomicReference[Throwable] = new AtomicReference[Throwable](null)
   private val finishLatch = new CountDownLatch(1)
 
@@ -174,11 +178,9 @@ class PollingResults() extends Iterator[Proxy.PollingFrame] with Logging {
     q.put(f)
   }
 
-  def raise(t: Throwable): Unit = this.error.compareAndSet(null, t)
+  def isFinished: Boolean = finishLatch.getCount == 0
 
-  def finish(): Unit = {
-    isFinished.compareAndSet(false, true)
-  }
+  def raise(t: Throwable): Unit = this.error.compareAndSet(null, t)
 
   def countdown(): Unit = finishLatch.countDown()
 
@@ -188,7 +190,7 @@ class PollingResults() extends Iterator[Proxy.PollingFrame] with Logging {
     val e = error.get()
     if (e != null) throw e
 
-    !(q.isEmpty && isFinished.get())
+    !(q.isEmpty && isFinished)
   }
 
   override def next(): Proxy.PollingFrame = {
@@ -233,7 +235,7 @@ class DispatchPollingReqSO(pollingRespSO: ServerCallStreamObserver[Proxy.Polling
     method match {
       case "push" =>
         delegateSO = new PushPollingReqSO(pollingRespSO)
-        PollingHelper.putPushPollingReqSO(dstPartyId, delegateSO.asInstanceOf[PushPollingReqSO])
+        //PollingHelper.putPushPollingReqSO(dstPartyId, delegateSO.asInstanceOf[PushPollingReqSO])
       case "unaryCall" =>
         delegateSO = new UnaryCallPollingReqSO(pollingRespSO)
         PollingHelper.putUnaryCallPollingReqSO(dstPartyId, delegateSO.asInstanceOf[UnaryCallPollingReqSO])
@@ -292,27 +294,39 @@ class UnaryCallPollingReqSO(val pollingRespSO: ServerCallStreamObserver[Proxy.Po
 class PushPollingReqSO(val pushPollingRespSO: ServerCallStreamObserver[Proxy.PollingFrame])
   extends StreamObserver[Proxy.PollingFrame] with Logging {
 
-  var pushRespSO: StreamObserver[Proxy.Metadata] = _
+/*  var pushRespSO: StreamObserver[Proxy.Metadata] = _
 
   def setPushRespSO(pushRespSO: StreamObserver[Proxy.Metadata]): Unit = {
     this.pushRespSO = pushRespSO
-  }
+  }*/
 
   override def onNext(req: Proxy.PollingFrame): Unit = {
     logWarning("debug1234")
+
     if (req.getSeq > 0) {
-      pushRespSO.onNext(req.getMetadata)
+      var shouldStop = false
+      while (!shouldStop) {
+        val batch = PollingHelper.pollingRespQueue.take()
+        if (batch.getMethod.equals("finish_push")) shouldStop = true
+        else pushPollingRespSO.onNext(req)
+      }
+
+      //pushRespSO.onNext(req.getMetadata)
+      PollingHelper.pollingReqQueue.put(req)
     }
+
   }
 
   override def onError(t: Throwable): Unit = {
     logError("PushPollingReqSO.onError", t)
-    pushRespSO.onError(TransferExceptionUtils.throwableToException(t))
+    pushPollingRespSO.onError(TransferExceptionUtils.throwableToException(t))
+
+    //pushRespSO.onError(TransferExceptionUtils.throwableToException(t))
   }
 
   override def onCompleted(): Unit = {
     logDebug("PushPollingReqSO.onComplete")
-    pushRespSO.onCompleted()
+    //pushRespSO.onCompleted()
   }
 }
 
@@ -452,11 +466,11 @@ class PollingPutBatchPushRespSO(pollingResults: PollingResults)
   override def onError(t: Throwable): Unit = {
     logError("PollingPutBatchPushRespSO.onError", t)
     pollingResults.raise(TransferExceptionUtils.throwableToException(t))
+    pollingResults.countdown()
   }
 
   override def onCompleted(): Unit = {
     logDebug("PollingPutBatchPushRespSO.onCompleted")
-    pollingResults.finish()
     pollingResults.countdown()
   }
 }
@@ -516,7 +530,7 @@ class UnaryCallPollingRespSO(pollingResults: PollingResults)
 
   override def onCompleted(): Unit = {
     logDebug("UnaryCallPollingRespSO.onComplete")
-    pollingResults.finish()
+    pollingResults.countdown()
   }
 }
 
