@@ -359,6 +359,10 @@ class ForwardPushReqSO(prevRespSO: StreamObserver[Proxy.Metadata])
     val endpoint = Router.query(dstPartyId)
 
     val caCrt = CoreConfKeys.CONFKEY_CORE_SECURITY_CA_CRT_PATH.get()
+
+    // use secure channel conditions:
+    // 1 include crt file.
+    // 2 packet have diff src and dst party.
     val isSecure = if (!StringUtils.isBlank(caCrt)
       && firstRequest.getHeader.getDst.getPartyId != firstRequest.getHeader.getSrc.getPartyId) true else false
     val channel = GrpcClientUtils.getChannel(endpoint, isSecure)
