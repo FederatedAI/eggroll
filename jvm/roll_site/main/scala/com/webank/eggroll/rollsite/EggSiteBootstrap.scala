@@ -26,6 +26,7 @@ import com.webank.eggroll.core.constant.{CoreConfKeys, RollSiteConfKeys}
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.transfer.GrpcServerUtils
 import com.webank.eggroll.core.util.{CommandArgsUtils, Logging, ThreadPoolUtils}
+import org.apache.commons.lang3.StringUtils
 
 import scala.collection.immutable.Range
 
@@ -46,6 +47,7 @@ class EggSiteBootstrap extends BootstrapBase with Logging {
     StaticErConf.addProperty(CoreConfKeys.STATIC_CONF_PATH, confFile.getAbsolutePath)
     logInfo(s"conf file: ${confFile.getAbsolutePath}")
     this.port = cmd.getOptionValue('p', RollSiteConfKeys.EGGROLL_ROLLSITE_PORT.get()).toInt
+    this.securePort = cmd.getOptionValue("sp", RollSiteConfKeys.EGGROLL_ROLLSITE_SECURE_PORT.get()).toInt
     val routerFilePath = RollSiteConfKeys.EGGROLL_ROLLSITE_ROUTE_TABLE_PATH.get()
     logInfo(s"init router. path: $routerFilePath")
     Router.initOrUpdateRouterTable(routerFilePath)
@@ -76,13 +78,31 @@ class EggSiteBootstrap extends BootstrapBase with Logging {
   }
 
   override def start(): Unit = {
-    val plainServer = GrpcServerUtils.createServer(port = this.port, grpcServices = List(new EggSiteServicer))
+    var option: Map[String, String] = Map({"eggroll.core.security.secure.cluster.enabled" ->"false"})
+    val plainServer = GrpcServerUtils.createServer(
+      port = this.port,
+      grpcServices = List(new EggSiteServicer),
+      options = option)
     plainServer.start()
     this.port = plainServer.getPort
 
     val msg = s"server started at $port"
     logInfo(msg)
-    println(msg)
+
+    val serverCrt = CoreConfKeys.CONFKEY_CORE_SECURITY_KEY_CRT_PATH.get()
+    val serverKey = CoreConfKeys.CONFKEY_CORE_SECURITY_KEY_PATH.get()
+    if (!StringUtils.isBlank(serverCrt) && !StringUtils.isBlank(serverKey)) {
+      option = Map({"eggroll.core.security.secure.cluster.enabled" -> "true"})
+      val plainServerSecure = GrpcServerUtils.createServer(
+        port = this.securePort,
+        grpcServices = List(new EggSiteServicer),
+        options = option)
+      plainServerSecure.start()
+      this.securePort = plainServerSecure.getPort
+
+      val msg2 = s"secure server started at $securePort"
+      logInfo(msg2)
+    }
   }
 }
 
