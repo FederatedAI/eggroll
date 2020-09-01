@@ -475,7 +475,7 @@ public class ConfFileBasedFdnRouter implements FdnRouter {
         Set<String> newRouteNeighbours = new HashSet<>();
         Set<BasicMeta.Endpoint> newIntranetEndpoints = new HashSet<>();
 
-        boolean isIntranet = false;
+        boolean isIntranet = true;
         // loop through coordinator
         for (Map.Entry<String, JsonElement> coordinatorEntry : confJson.entrySet()) {
             String coordinatorKey = coordinatorEntry.getKey();
@@ -487,10 +487,12 @@ public class ConfFileBasedFdnRouter implements FdnRouter {
                 newRouteTable.put(coordinatorKey, roleTable);
             }
 
+            /*
             if (coordinatorKey.equals(proxyServerConf.getCoordinator())
                     || coordinatorKey.equals(proxyServerConf.getPartyId())) {
                 isIntranet = true;
             }
+            */
 
             // loop through role in coordinator
             for (Map.Entry<String, JsonElement> roleEntry : coordinatorValue.entrySet()) {
@@ -527,8 +529,8 @@ public class ConfFileBasedFdnRouter implements FdnRouter {
 
                     if (endpointJson.has(SECURE)) {
                         String isSecure = endpointJson.get(SECURE).getAsString();
-                        if("false".equals(isSecure.toLowerCase()) || ("0".equals(isSecure))) {
-                            isIntranet = true;
+                        if("true".equals(isSecure.toLowerCase()) || ("1".equals(isSecure))) {
+                            isIntranet = false;
                         }
                     }
 
@@ -541,7 +543,7 @@ public class ConfFileBasedFdnRouter implements FdnRouter {
                 }
             }
             
-            isIntranet = false;
+            isIntranet = true;
         }
 
         routeTable = newRouteTable;
