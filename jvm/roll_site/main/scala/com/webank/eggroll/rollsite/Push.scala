@@ -304,9 +304,9 @@ class ForwardPushToPollingReqSO(pushRespSO: StreamObserver[Proxy.Metadata])
 
   override def onCompleted(): Unit = {
     logTrace(s"onCompleted calling. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
-    pushPollingRespSO.onCompleted()
+    //pushPollingRespSO.onCompleted()
     pollingFrameSeq += 1
-    pollingFrameBuilder.setSeq(pollingFrameSeq).setMethod("finish_polling_resp")
+    pollingFrameBuilder.setSeq(pollingFrameSeq).setMethod("finish_push")
     PollingHelper.pollingRespQueue.put(pollingFrameBuilder.build())
 
     val pollingReq = PollingHelper.pollingReqQueue.take()
