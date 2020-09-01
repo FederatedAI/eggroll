@@ -46,6 +46,7 @@ class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBas
   override def polling(pollingRespSO: StreamObserver[Proxy.PollingFrame]): StreamObserver[Proxy.PollingFrame] = {
     logDebug("[POLLING][SERVER] request received")
     new DispatchPollingReqSO(pollingRespSO.asInstanceOf[ServerCallStreamObserver[Proxy.PollingFrame]])
+    //new MockPollingReqSO(pollingRespSO.asInstanceOf[ServerCallStreamObserver[Proxy.PollingFrame]])
   }
 
   /**
