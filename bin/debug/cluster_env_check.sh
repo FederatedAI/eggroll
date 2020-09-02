@@ -23,9 +23,9 @@ for ip in ${iplist[@]};do
 		mkdir -p ${EGGROLL_HOME}/bin/debug
 	fi
 
-	if ! ssh -tt app@$ip test -e ${EGGROLL_HOME}/bin/debug/env_check.sh;then
-		echo "env_check.sh in $ip:${EGGROLL_HOME}/bin/debug is not exist, scp env_check.sh to $ip:${EGGROLL_HOME}/bin/debug"
-		scp ./env_check.sh $user@$ip:${EGGROLL_HOME}/bin/debug
+	if ! ssh -tt app@$ip test -e ${EGGROLL_HOME}/bin/debug/check_env.sh;then
+		echo "check_env.sh in $ip:${EGGROLL_HOME}/bin/debug is not exist, scp check_env.sh to $ip:${EGGROLL_HOME}/bin/debug"
+		scp ./check_env.sh $user@$ip:${EGGROLL_HOME}/bin/debug
 	fi
-	ssh app@$ip "sh ${EGGROLL_HOME}/bin/debug/env_check.sh" >> $ip
+	ssh app@$ip "sh ${EGGROLL_HOME}/bin/debug/check_env.sh" >> $ip
 done
