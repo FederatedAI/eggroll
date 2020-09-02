@@ -231,9 +231,10 @@ class UnaryCallPollingReqSO(val pollingRespSO: ServerCallStreamObserver[Proxy.Po
   override def onNext(req: Proxy.PollingFrame): Unit = {
     logTrace(s"onNext calling. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
 
+    var batch: Proxy.PollingFrame = null
     req.getSeq match {
       case 0L =>
-        val batch = PollingHelper.pollingRespQueue.take()
+        batch = PollingHelper.pollingRespQueue.take()
         ensureInited(batch)
 
         pollingRespSO.onNext(batch)
@@ -546,6 +547,8 @@ class UnaryCallPollingRespSO(pollingResults: PollingResults)
       .build()
 
     pollingResults.put(response)
+    pollingResults.countdown()
+
     logTrace(s"onNext called. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
   }
 

@@ -85,6 +85,11 @@ class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBas
 
           PollingHelper.pollingRespQueue.put(reqPollingFrame)
           val result = PollingHelper.pollingReqQueue.take()
+/*          val finishPollingFrame = Proxy.PollingFrame.newBuilder()
+            .setSeq(2)
+            .setMethod("finish_unary_call")
+            .build()
+          PollingHelper.pollingRespQueue.put(finishPollingFrame)*/
 
           respSO.onNext(result.getPacket)
           respSO.onCompleted()
