@@ -19,7 +19,7 @@
 package com.webank.eggroll.rollsite
 
 import java.util.concurrent._
-import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.atomic.{AtomicBoolean, AtomicReference}
 
 import com.google.common.cache.{CacheBuilder, CacheLoader, LoadingCache}
 import com.webank.ai.eggroll.api.networking.proxy.{DataTransferServiceGrpc, Proxy}
@@ -98,54 +98,44 @@ class LongPollingClient extends Logging {
 }
 
 object PollingHelper {
-  private val unaryCallPollingSOs: LoadingCache[String, LinkedBlockingQueue[UnaryCallPollingReqSO]] = CacheBuilder.newBuilder
-    .maximumSize(100000)
-    // TODO:0: configurable
-    .expireAfterAccess(1, TimeUnit.HOURS)
-    .concurrencyLevel(50)
-    .recordStats
-    .build(new CacheLoader[String, LinkedBlockingQueue[UnaryCallPollingReqSO]]() {
-      override def load(key: String): LinkedBlockingQueue[UnaryCallPollingReqSO] = {
-        new LinkedBlockingQueue[UnaryCallPollingReqSO]()
-      }
-    })
-
   val pollingReqQueue = new SynchronousQueue[Proxy.PollingFrame]()
   val pollingRespQueue = new SynchronousQueue[Proxy.PollingFrame]()
-
 }
 
 class PollingResults() extends Iterator[Proxy.PollingFrame] with Logging {
   private val q = new LinkedBlockingQueue[Proxy.PollingFrame]()
   private val error: AtomicReference[Throwable] = new AtomicReference[Throwable](null)
+  private val isFinished: AtomicBoolean = new AtomicBoolean(false)
+  private val poison = Proxy.PollingFrame.newBuilder().setMethod("posion").build()
   private val finishLatch = new CountDownLatch(1)
 
   def put(f: Proxy.PollingFrame): Unit = {
     q.put(f)
   }
 
-  def isFinished: Boolean = finishLatch.getCount == 0
-
   def raise(t: Throwable): Unit = this.error.compareAndSet(null, t)
 
-  def countdown(): Unit = finishLatch.countDown()
-
-  def await(): Unit = finishLatch.await()
+  def setFinish(): Unit = synchronized {
+    if (!isFinished.get()) {
+      isFinished.compareAndSet(false, true)
+      q.put(poison)
+    }
+  }
 
   override def hasNext: Boolean = {
     val e = error.get()
     if (e != null) throw e
 
-    !(q.isEmpty && isFinished)
+    !isFinished.get()
   }
 
   override def next(): Proxy.PollingFrame = {
     var result: Proxy.PollingFrame = null
     while (hasNext) {
-      result = q.poll(10, TimeUnit.MILLISECONDS)
+      result = q.poll(5, TimeUnit.MINUTES)
 
-      if (result != null) {
-        logWarning(s"polled result: ${ToStringUtils.toOneLineString(result)}")
+      if (result != null && !result.getMethod.equals("poison")) {
+        logTrace(s"polled result=${ToStringUtils.toOneLineString(result)}")
         return result
       }
     }
@@ -487,13 +477,13 @@ class PollingPutBatchPushRespSO(pollingResults: PollingResults)
   override def onError(t: Throwable): Unit = {
     logError(s"onError calling. rsKey=${rsKey}, metadata=${oneLineStringMetadata}", t)
     pollingResults.raise(TransferExceptionUtils.throwableToException(t))
-    pollingResults.countdown()
+    pollingResults.setFinish()
     logError(s"onError called. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
   }
 
   override def onCompleted(): Unit = {
     logTrace(s"onCompleted called. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
-    pollingResults.countdown()
+    pollingResults.setFinish()
     logTrace(s"onCompleted called. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
   }
 }
@@ -547,7 +537,7 @@ class UnaryCallPollingRespSO(pollingResults: PollingResults)
       .build()
 
     pollingResults.put(response)
-    pollingResults.countdown()
+    pollingResults.setFinish()
 
     logTrace(s"onNext called. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
   }
@@ -555,13 +545,13 @@ class UnaryCallPollingRespSO(pollingResults: PollingResults)
   override def onError(t: Throwable): Unit = {
     logError(s"onError calling. rsKey=${rsKey}, metadata=${oneLineStringMetadata}", t)
     pollingResults.raise(TransferExceptionUtils.throwableToException(t))
-    pollingResults.countdown()
+    pollingResults.setFinish()
     logError(s"onError called. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
   }
 
   override def onCompleted(): Unit = {
-    logTrace(s"onCompleted called. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
-    pollingResults.countdown()
+    logTrace(s"onCompleted calling. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
+    pollingResults.setFinish()
     logTrace(s"onCompleted called. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
   }
 }
