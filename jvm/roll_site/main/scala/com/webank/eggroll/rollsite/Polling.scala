@@ -81,8 +81,7 @@ class LongPollingClient extends Logging {
       }
 
       pollingReqSO.onCompleted()
-      pollingResults.await()
-
+      //pollingResults.await()
 
       // TODO:0: configurable
     } catch {

@@ -165,7 +165,7 @@ class PutBatchSinkPushReqSO(prevRespSO: StreamObserver[Proxy.Metadata])
     val channel = GrpcClientUtils.getChannel(egg.transferEndpoint)
     val stub = TransferServiceGrpc.newStub(channel)
 
-    nextReqSO = stub.send(new PutBatchSinkPushRespSO(metadata, commandFuture, prevRespSO, nextReqSO))
+    nextReqSO = stub.send(new PutBatchSinkPushRespSO(metadata, commandFuture, prevRespSO))
 
     inited = true
     logDebug(s"onInited called. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
@@ -215,8 +215,7 @@ class PutBatchSinkPushReqSO(prevRespSO: StreamObserver[Proxy.Metadata])
 
 class PutBatchSinkPushRespSO(val reqHeader: Proxy.Metadata,
                              val commandFuture: Future[ErTask],
-                             val prevRespSO: StreamObserver[Proxy.Metadata],
-                             val nextReqSO: StreamObserver[Transfer.TransferBatch])
+                             val prevRespSO: StreamObserver[Proxy.Metadata])
   extends StreamObserver[Transfer.TransferBatch] with Logging {
 
   private var transferHeader: Transfer.TransferHeader = _
