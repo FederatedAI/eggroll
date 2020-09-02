@@ -295,9 +295,6 @@ class ForwardPushToPollingReqSO(pushRespSO: StreamObserver[Proxy.Metadata])
   override def onError(t: Throwable): Unit = {
     logError(s"onError calling. rsKey=${rsKey}, metadata=${oneLineStringMetadata}", t)
     pushRespSO.onError(TransferExceptionUtils.throwableToException(t))
-    if (pushPollingRespSO != null && pushPollingRespSO.isReady) {
-      pushPollingRespSO.onError(TransferExceptionUtils.throwableToException(t))
-    }
     logError(s"onError called. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
   }
 
