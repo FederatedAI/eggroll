@@ -76,20 +76,18 @@ class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBas
         logDebug(s"${logMsg}, hop=SINK")
         processCommand(req, respSO)
       } else {
-        if (RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_SERVER_ENABLED.get().toBoolean && PollingHelper.isPartyIdPollingUnaryCall(dstPartyId)) {
-          val pollingReqSO = PollingHelper.getUnaryCallPollingReqSO(dstPartyId, 1, TimeUnit.HOURS)
-          pollingReqSO.setUnaryCallRespSO(respSO)
-
-          val nextRespSO = pollingReqSO.pollingRespSO
-
+        if (RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_SERVER_ENABLED.get().toBoolean) {
           val reqPollingFrame = Proxy.PollingFrame.newBuilder()
-            .setMethod("unaryCall")
+            .setMethod("unary_call")
             .setPacket(req)
             .setSeq(1)
             .build()
 
-          nextRespSO.onNext(reqPollingFrame)
-          nextRespSO.onCompleted()
+          PollingHelper.pollingRespQueue.put(reqPollingFrame)
+          val result = PollingHelper.pollingReqQueue.take()
+
+          respSO.onNext(result.getPacket)
+          respSO.onCompleted()
         } else {
           val caCrt = CoreConfKeys.CONFKEY_CORE_SECURITY_CA_CRT_PATH.get()
 

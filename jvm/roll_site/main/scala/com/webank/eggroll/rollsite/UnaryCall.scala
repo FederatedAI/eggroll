@@ -18,16 +18,14 @@
 
 package com.webank.eggroll.rollsite
 
-import java.util.concurrent.TimeUnit
-
-import io.grpc.stub.{ClientCallStreamObserver, ServerCallStreamObserver, StreamObserver}
-import com.webank.ai.eggroll.api.networking.proxy.{DataTransferServiceGrpc, Proxy}
+import com.webank.ai.eggroll.api.networking.proxy.Proxy
 import com.webank.eggroll.core.meta.TransferModelPbMessageSerdes.ErRollSiteHeaderFromPbMessage
 import com.webank.eggroll.core.transfer.Transfer.RollSiteHeader
 import com.webank.eggroll.core.util.{Logging, ToStringUtils}
+import io.grpc.stub.StreamObserver
 
 
-class ForwardUnaryCallToPollingReqSO(prevRespSO: StreamObserver[Proxy.Packet])
+class ForwardUnaryCallToPollingReqSO(unaryCallRespSO: StreamObserver[Proxy.Packet])
   extends StreamObserver[Proxy.Packet] with Logging {
   private var inited = false
 
@@ -36,51 +34,54 @@ class ForwardUnaryCallToPollingReqSO(prevRespSO: StreamObserver[Proxy.Packet])
   private var rsKey: String = _
   private var method: String = _
 
-  private var nextReqSO: UnaryCallPollingReqSO = _
-  private var nextRespSO: ServerCallStreamObserver[Proxy.PollingFrame] = _
-
   private val self = this
   private val pollingFrameBuilder = Proxy.PollingFrame.newBuilder()
   private var pollingFrameSeq = 0
 
-  private def ensureInit(req: Proxy.Packet): Unit = {
+  private def ensureInited(firstRequest: Proxy.Packet): Unit = {
+    logTrace(s"onInit calling. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
     if (inited) return
 
-    metadata = req.getHeader
+    metadata = firstRequest.getHeader
     oneLineStringMetadata = ToStringUtils.toOneLineString(metadata)
 
-    val rsHeader = RollSiteHeader.parseFrom(metadata.getExt).fromProto()
-    rsKey = rsHeader.getRsKey()
-
-    val dstPartyId = rsHeader.dstPartyId
-
-    nextReqSO = PollingHelper.getUnaryCallPollingReqSO(dstPartyId, 1, TimeUnit.HOURS)
-    nextRespSO = nextReqSO.pollingRespSO
-    pollingFrameBuilder.setMethod("push")
+    val rollSiteHeader = RollSiteHeader.parseFrom(metadata.getExt).fromProto()
+    rsKey = rollSiteHeader.getRsKey()
 
     inited = true
+    logDebug(s"onInit called. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
   }
 
   override def onNext(req: Proxy.Packet): Unit = {
-    ensureInit(req)
+    logTrace(s"onNext calling. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
+    ensureInited(req)
 
     pollingFrameSeq += 1
     pollingFrameBuilder.setSeq(pollingFrameSeq).setPacket(req)
-
     val nextFrame = pollingFrameBuilder.build()
-    nextRespSO.onNext(nextFrame)
+
+    PollingHelper.pollingRespQueue.put(nextFrame)
+    logTrace(s"onNext called. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
   }
 
   override def onError(t: Throwable): Unit = {
-    logError(s"[FORWARD][SERVER][UNARYCALL2POLLING] onError. rsKey=${rsKey}", t)
-    prevRespSO.onError(TransferExceptionUtils.throwableToException(t))
-    if (nextRespSO != null && nextRespSO.isReady) {
-      nextRespSO.onError(TransferExceptionUtils.throwableToException(t))
-    }
+    logError(s"onError calling. rsKey=${rsKey}, metadata=${oneLineStringMetadata}", t)
+    unaryCallRespSO.onError(TransferExceptionUtils.throwableToException(t))
+    logError(s"onError called. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
   }
 
   override def onCompleted(): Unit = {
-    nextRespSO.onCompleted()
-    logDebug(s"[FORWARD][UNARYCALL2POLLING] onCompleted. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
+    logTrace(s"onCompleted calling. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
+
+    pollingFrameSeq += 1
+    pollingFrameBuilder.setSeq(pollingFrameSeq).setMethod("finish_unary_call")
+    PollingHelper.pollingRespQueue.put(pollingFrameBuilder.build())
+
+    val pollingReq = PollingHelper.pollingReqQueue.take()
+
+    unaryCallRespSO.onNext(pollingReq.getPacket)
+    unaryCallRespSO.onCompleted()
+
+    logTrace(s"onCompleted called. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
   }
 }
