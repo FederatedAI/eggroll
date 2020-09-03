@@ -265,6 +265,7 @@ class ForwardPushToPollingReqSO(pushRespSO: StreamObserver[Proxy.Metadata])
   private var failRequest: mutable.ParHashSet[Proxy.Metadata] = new mutable.ParHashSet[Proxy.Metadata]()
   private val pollingFrameBuilder = Proxy.PollingFrame.newBuilder().setMethod("push")
   private var pollingFrameSeq = 0
+  private val pollingExchanger = PollingHelper.pollingExchangerQueue.take()
 
   private def ensureInited(firstRequest: Proxy.Packet): Unit = {
     logTrace(s"onInit calling. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
@@ -276,6 +277,7 @@ class ForwardPushToPollingReqSO(pushRespSO: StreamObserver[Proxy.Metadata])
     val rollSiteHeader = RollSiteHeader.parseFrom(metadata.getExt).fromProto()
     rsKey = rollSiteHeader.getRsKey()
 
+    pollingExchanger.setMethod(PollingMethods.PUSH)
     inited = true
     logDebug(s"onInit called. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
   }
@@ -288,7 +290,7 @@ class ForwardPushToPollingReqSO(pushRespSO: StreamObserver[Proxy.Metadata])
     pollingFrameBuilder.setSeq(pollingFrameSeq).setPacket(req)
     val nextFrame = pollingFrameBuilder.build()
 
-    PollingHelper.pollingRespQueue.put(nextFrame)
+    pollingExchanger.respQ.put(nextFrame)
     logTrace(s"onNext called. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
   }
 
@@ -303,9 +305,9 @@ class ForwardPushToPollingReqSO(pushRespSO: StreamObserver[Proxy.Metadata])
     //pushPollingRespSO.onCompleted()
     pollingFrameSeq += 1
     pollingFrameBuilder.setSeq(pollingFrameSeq).setMethod("finish_push")
-    PollingHelper.pollingRespQueue.put(pollingFrameBuilder.build())
+    pollingExchanger.respQ.put(pollingFrameBuilder.build())
 
-    val pollingReq = PollingHelper.pollingReqQueue.take()
+    val pollingReq = pollingExchanger.reqQ.take()
 
     pushRespSO.onNext(pollingReq.getMetadata)
     pushRespSO.onCompleted()

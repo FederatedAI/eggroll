@@ -78,18 +78,16 @@ class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBas
       } else {
         if (RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_SERVER_ENABLED.get().toBoolean) {
           val reqPollingFrame = Proxy.PollingFrame.newBuilder()
-            .setMethod("unary_call")
+            .setMethod(PollingMethods.UNARY_CALL)
             .setPacket(req)
             .setSeq(1)
             .build()
 
-          PollingHelper.pollingRespQueue.put(reqPollingFrame)
-          val result = PollingHelper.pollingReqQueue.take()
-/*          val finishPollingFrame = Proxy.PollingFrame.newBuilder()
-            .setSeq(2)
-            .setMethod("finish_unary_call")
-            .build()
-          PollingHelper.pollingRespQueue.put(finishPollingFrame)*/
+          val pollingExchanger = PollingHelper.pollingExchangerQueue.take()
+          pollingExchanger.setMethod(PollingMethods.UNARY_CALL)
+
+          pollingExchanger.respQ.put(reqPollingFrame)
+          val result = pollingExchanger.reqQ.take()
 
           respSO.onNext(result.getPacket)
           respSO.onCompleted()
@@ -129,7 +127,7 @@ class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBas
       case "ping" =>
         ping(request)
       case _ =>
-        val e = new NotImplementedError(s"operation ${operator} notsupported")
+        val e = new NotImplementedError(s"operation ${operator} not supported")
 
         // TODO:0: optimise log
         logError(e)
