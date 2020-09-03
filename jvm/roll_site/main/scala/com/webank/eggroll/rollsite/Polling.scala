@@ -27,6 +27,7 @@ import com.webank.eggroll.core.meta.TransferModelPbMessageSerdes.ErRollSiteHeade
 import com.webank.eggroll.core.transfer.GrpcClientUtils
 import com.webank.eggroll.core.transfer.Transfer.RollSiteHeader
 import com.webank.eggroll.core.util.{Logging, ToStringUtils}
+import com.webank.eggroll.rollsite.PollingResults.errorPoison
 import io.grpc.stub.{ServerCallStreamObserver, StreamObserver}
 import org.apache.commons.lang3.StringUtils
 
@@ -36,6 +37,9 @@ object PollingMethods {
   val FINISH_PUSH = "finish_push"
   val UNARY_CALL = "unary_call"
   val FINISH_UNARY_CALL = "finish_unary_call"
+  val COMPLETED_POISON = "completed_poison"
+  val NO_DATA_POISON = "no_data_poison"
+  val ERROR_POISON = "error_poison"
 }
 
 object LongPollingClient {
@@ -76,17 +80,30 @@ class LongPollingClient extends Logging {
           .build())
 
       try {
-        for (req <- pollingResults) {
-          if (req != null) {
-            pollingReqSO.onNext(req)
+        var finished = false
+        var req: Proxy.PollingFrame = null
+        while (!finished) {
+          req = pollingResults.next()
+
+          req.getMethod match {
+            case PollingMethods.PUSH | PollingMethods.UNARY_CALL =>
+              pollingReqSO.onNext(req)
+            case PollingMethods.COMPLETED_POISON =>
+              pollingReqSO.onCompleted()
+              finished = true
+            case PollingMethods.NO_DATA_POISON =>
+              throw new IllegalStateException("polling timeout with no data")
+            case PollingMethods.ERROR_POISON =>
+              throw pollingResults.getError()
+            case _ =>
+              throw new NotImplementedError(s"received unknown method: ${req.getMethod}")
           }
         }
       } catch {
         case t: Throwable =>
+          logError("polling with error", t)
           pollingReqSO.onError(TransferExceptionUtils.throwableToException(t))
       }
-
-      pollingReqSO.onCompleted()
       //pollingResults.await()
 
       // TODO:0: configurable
@@ -133,42 +150,38 @@ object PollingHelper {
 class PollingResults() extends Iterator[Proxy.PollingFrame] with Logging {
   private val q = new LinkedBlockingQueue[Proxy.PollingFrame]()
   private val error: AtomicReference[Throwable] = new AtomicReference[Throwable](null)
-  private val isFinished: AtomicBoolean = new AtomicBoolean(false)
-  private val poison = Proxy.PollingFrame.newBuilder().setMethod("posion").build()
 
   def put(f: Proxy.PollingFrame): Unit = {
     q.put(f)
   }
 
-  def raise(t: Throwable): Unit = this.error.compareAndSet(null, t)
+  def setFinish(): Unit = q.put(PollingResults.completedPoison)
 
-  def setFinish(): Unit = synchronized {
-    if (!isFinished.get()) {
-      isFinished.compareAndSet(false, true)
-      q.put(poison)
-    }
+  def setError(t: Throwable): Unit = {
+    this.error.compareAndSet(null, t)
+    q.put(errorPoison)
   }
 
-  override def hasNext: Boolean = {
-    val e = error.get()
-    if (e != null) throw e
+  def getError(): Throwable = this.error.get()
 
-    !isFinished.get()
-  }
+  override def hasNext: Boolean = true
 
   override def next(): Proxy.PollingFrame = {
-    var result: Proxy.PollingFrame = null
-    while (hasNext) {
-      result = q.poll(5, TimeUnit.MINUTES)
+    // TODO:0: Configurable
+    val result: Proxy.PollingFrame = q.poll(5, TimeUnit.MINUTES)
 
-      if (result != null && !result.getMethod.equals("poison")) {
-        logTrace(s"polled result=${ToStringUtils.toOneLineString(result)}")
-        return result
-      }
+    if (result == null) {
+      q.put(PollingResults.noDataPoison)
     }
 
     result
   }
+}
+
+object PollingResults {
+  val completedPoison: Proxy.PollingFrame = Proxy.PollingFrame.newBuilder().setMethod(PollingMethods.COMPLETED_POISON).build()
+  val noDataPoison: Proxy.PollingFrame = Proxy.PollingFrame.newBuilder().setMethod(PollingMethods.NO_DATA_POISON).build()
+  val errorPoison: Proxy.PollingFrame = Proxy.PollingFrame.newBuilder().setMethod(PollingMethods.ERROR_POISON).build()
 }
 
 /***************** STREAM OBSERVERS *****************/
@@ -511,8 +524,7 @@ class PollingPutBatchPushRespSO(pollingResults: PollingResults)
 
   override def onError(t: Throwable): Unit = {
     logError(s"onError calling. rsKey=${rsKey}, metadata=${oneLineStringMetadata}", t)
-    pollingResults.raise(TransferExceptionUtils.throwableToException(t))
-    pollingResults.setFinish()
+    pollingResults.setError(TransferExceptionUtils.throwableToException(t))
     logError(s"onError called. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
   }
 
@@ -579,8 +591,7 @@ class UnaryCallPollingRespSO(pollingResults: PollingResults)
 
   override def onError(t: Throwable): Unit = {
     logError(s"onError calling. rsKey=${rsKey}, metadata=${oneLineStringMetadata}", t)
-    pollingResults.raise(TransferExceptionUtils.throwableToException(t))
-    pollingResults.setFinish()
+    pollingResults.setError(TransferExceptionUtils.throwableToException(t))
     logError(s"onError called. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
   }
 
