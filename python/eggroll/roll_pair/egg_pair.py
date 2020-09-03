@@ -38,6 +38,7 @@ from eggroll.core.conf_keys import SessionConfKeys, \
 from eggroll.core.constants import ProcessorTypes, ProcessorStatus, SerdesTypes
 from eggroll.core.datastructure import create_executor_pool
 from eggroll.core.datastructure.broker import FifoBroker
+from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.meta_model import ErPair
 from eggroll.core.meta_model import ErTask, ErProcessor, ErEndpoint
 from eggroll.core.proto import command_pb2_grpc, transfer_pb2_grpc
@@ -838,6 +839,8 @@ def serve(args):
     if cluster_manager:
         myself._status = ProcessorStatus.STOPPED
         cluster_manager_client.heartbeat(myself)
+
+    GrpcChannelFactory.shutdown_all_now()
 
     L.info(f'closing RocksDB open dbs')
     #todo:1: move to RocksdbAdapter and provide a cleanup method

@@ -19,7 +19,9 @@ import grpc
 
 from eggroll.core.conf_keys import CoreConfKeys
 from eggroll.core.meta_model import ErEndpoint
+from eggroll.utils.log_utils import get_logger
 
+L = get_logger()
 
 def wrap_host_scheme(host):
     try:
@@ -49,3 +51,9 @@ class GrpcChannelFactory(object):
                           int(CoreConfKeys.EGGROLL_CORE_GRPC_CHANNEL_MAX_INBOUND_METADATA_SIZE.get()))])
                 self.pool[target] = result
             return self.pool[target]
+
+    @staticmethod
+    def shutdown_all_now():
+        for target, channel in GrpcChannelFactory.pool.items():
+            L.debug(f"start to shutdown channel={channel}, target={target}")
+            channel.close()

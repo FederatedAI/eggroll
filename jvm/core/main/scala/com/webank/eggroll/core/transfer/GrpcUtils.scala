@@ -265,4 +265,18 @@ object GrpcClientUtils extends Logging {
     }
     result
   }
+
+  def shutdownNow() = {
+    secureChannelCache.asMap().keySet().toArray().foreach(key => {
+      val managedChannel = insecureChannelCache.asMap().get(key)
+      logDebug(s"shutting down secure channel=${managedChannel}")
+      managedChannel.shutdownNow()
+    })
+
+    insecureChannelCache.asMap().keySet().toArray().foreach(key => {
+      val managedChannel = insecureChannelCache.asMap().get(key)
+      logDebug(s"shutting down insecure channel=${managedChannel}")
+      managedChannel.shutdownNow()
+    })
+  }
 }

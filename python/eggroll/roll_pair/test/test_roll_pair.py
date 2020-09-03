@@ -597,6 +597,7 @@ class TestRollPairMultiPartition(TestRollPairBase):
     @staticmethod
     def store_opts(**kwargs):
         opts = {'total_partitions': 3}
+        opts.update(create_if_missing=True)
         opts.update(kwargs)
         return opts
 
@@ -670,6 +671,7 @@ class TestRollPairClusterEverySession(TestRollPairBase):
     @staticmethod
     def store_opts(**kwargs):
         opts = {'total_partitions': 10}
+        opts.update(create_if_missing=True)
         opts.update(kwargs)
         return opts
 
@@ -708,6 +710,7 @@ class TestRollPairCluster(TestRollPairBase):
     @staticmethod
     def store_opts(**kwargs):
         opts = {'total_partitions': 10}
+        opts.update(create_if_missing=True)
         opts.update(kwargs)
         return opts
 
