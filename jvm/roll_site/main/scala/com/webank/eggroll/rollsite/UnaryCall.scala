@@ -25,6 +25,7 @@ import com.webank.eggroll.core.util.{Logging, ToStringUtils}
 import io.grpc.stub.StreamObserver
 
 
+/*
 class ForwardUnaryCallToPollingReqSO(unaryCallRespSO: StreamObserver[Proxy.Packet])
   extends StreamObserver[Proxy.Packet] with Logging {
   private var inited = false
@@ -37,6 +38,7 @@ class ForwardUnaryCallToPollingReqSO(unaryCallRespSO: StreamObserver[Proxy.Packe
   private val self = this
   private val pollingFrameBuilder = Proxy.PollingFrame.newBuilder()
   private var pollingFrameSeq = 0
+  private val pollingExchanger = PollingHelper.pollingExchangerQueue.take()
 
   private def ensureInited(firstRequest: Proxy.Packet): Unit = {
     logTrace(s"onInit calling. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
@@ -60,7 +62,7 @@ class ForwardUnaryCallToPollingReqSO(unaryCallRespSO: StreamObserver[Proxy.Packe
     pollingFrameBuilder.setSeq(pollingFrameSeq).setPacket(req)
     val nextFrame = pollingFrameBuilder.build()
 
-    PollingHelper.pollingRespQueue.put(nextFrame)
+    pollingExchanger.respQ.put(nextFrame)
     logTrace(s"onNext called. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
   }
 
@@ -75,9 +77,9 @@ class ForwardUnaryCallToPollingReqSO(unaryCallRespSO: StreamObserver[Proxy.Packe
 
     pollingFrameSeq += 1
     pollingFrameBuilder.setSeq(pollingFrameSeq).setMethod("finish_unary_call")
-    PollingHelper.pollingRespQueue.put(pollingFrameBuilder.build())
+    pollingExchanger.respQ.put(pollingFrameBuilder.build())
 
-    val pollingReq = PollingHelper.pollingReqQueue.take()
+    val pollingReq = pollingExchanger.reqQ.take()
 
     unaryCallRespSO.onNext(pollingReq.getPacket)
     unaryCallRespSO.onCompleted()
@@ -85,3 +87,4 @@ class ForwardUnaryCallToPollingReqSO(unaryCallRespSO: StreamObserver[Proxy.Packe
     logTrace(s"onCompleted called. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
   }
 }
+*/
