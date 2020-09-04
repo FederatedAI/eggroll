@@ -23,6 +23,9 @@ from eggroll.core.proto import proxy_pb2, proxy_pb2_grpc
 from eggroll.roll_pair.roll_pair import RollPair
 from eggroll.roll_site.test.roll_site_test_asset import get_debug_test_context, \
     get_cluster_context, get_standalone_context, default_props_file
+from eggroll.utils.log_utils import get_logger
+
+L = get_logger()
 
 props_file_get = default_props_file
 props_file_get = default_props_file + '.host'
@@ -31,7 +34,7 @@ props_file_remote = default_props_file
 props_file_remote = default_props_file + '.guest'
 
 
-row_limit = 200000
+row_limit = 100000
 obj_size = 128 << 20
 
 
@@ -274,8 +277,9 @@ class TestRollSiteBase(unittest.TestCase):
         stub = self.rs_context_remote.stub
         req = proxy_pb2.Packet(header=proxy_pb2.Metadata(operator='ping', dst=proxy_pb2.Topic(partyId=self.rs_context_get.party_id)))
 
+        L.info("starting ping")
         resp = stub.unaryCall(req)
-        print(resp.header.operator)
+        L.info(f"ping finished {resp.header.operator}")
         self.assertEqual('pong', resp.header.operator)
 
 
