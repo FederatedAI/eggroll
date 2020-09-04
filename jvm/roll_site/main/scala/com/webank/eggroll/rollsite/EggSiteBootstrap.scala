@@ -36,8 +36,7 @@ class EggSiteBootstrap extends BootstrapBase with Logging {
   private var confPath = ""
   // todo:0: configurable
 
-  private var pollingPushThreadPool: ThreadPoolExecutor = _
-  private var pollingUnaryCallThreadPool: ThreadPoolExecutor = _
+  private var pollingThreadPool: ThreadPoolExecutor = _
 
   override def init(args: Array[String]): Unit = {
     val cmd = CommandArgsUtils.parseArgs(args = args)
@@ -54,24 +53,13 @@ class EggSiteBootstrap extends BootstrapBase with Logging {
     WhiteList.init()
 
     if (RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_CLIENT_ENABLED.get().toBoolean) {
-      val pollingPushConcurrency = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_PUSH_CONCURRENCY.get().toInt
+      val pollingPushConcurrency = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_CONCURRENCY.get().toInt
       if (pollingPushConcurrency > 0) {
-        pollingPushThreadPool = ThreadPoolUtils.newFixedThreadPool(pollingPushConcurrency, "polling-push")
+        pollingThreadPool = ThreadPoolUtils.newFixedThreadPool(pollingPushConcurrency, "polling-client")
         for (i <- 0 until pollingPushConcurrency) {
-          pollingPushThreadPool.execute(() => {
+          pollingThreadPool.execute(() => {
             val dataTransferClient = new LongPollingClient
-            dataTransferClient.pollingForever("push")
-          })
-        }
-      }
-
-      val pollingUnaryCallConcurrency = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_UNARYCALL_CONCURRENCY.get().toInt
-      if (pollingUnaryCallConcurrency > 0) {
-        pollingUnaryCallThreadPool = ThreadPoolUtils.newFixedThreadPool(pollingUnaryCallConcurrency, "polling-unary-call")
-        for (i <- 0 until pollingUnaryCallConcurrency) {
-          pollingUnaryCallThreadPool.execute(() => {
-            val dataTransferClient = new LongPollingClient
-            dataTransferClient.pollingForever("unaryCall")
+            dataTransferClient.pollingForever()
           })
         }
       }

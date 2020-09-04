@@ -46,6 +46,7 @@ class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBas
   override def polling(pollingRespSO: StreamObserver[Proxy.PollingFrame]): StreamObserver[Proxy.PollingFrame] = {
     logDebug("[POLLING][SERVER] request received")
     new DispatchPollingReqSO(pollingRespSO.asInstanceOf[ServerCallStreamObserver[Proxy.PollingFrame]])
+    //new MockPollingReqSO(pollingRespSO.asInstanceOf[ServerCallStreamObserver[Proxy.PollingFrame]])
   }
 
   /**
@@ -75,20 +76,21 @@ class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBas
         logDebug(s"${logMsg}, hop=SINK")
         processCommand(req, respSO)
       } else {
-        if (RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_SERVER_ENABLED.get().toBoolean && PollingHelper.isPartyIdPollingUnaryCall(dstPartyId)) {
-          val pollingReqSO = PollingHelper.getUnaryCallPollingReqSO(dstPartyId, 1, TimeUnit.HOURS)
-          pollingReqSO.setUnaryCallRespSO(respSO)
-
-          val nextRespSO = pollingReqSO.pollingRespSO
-
+        if (RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_SERVER_ENABLED.get().toBoolean) {
           val reqPollingFrame = Proxy.PollingFrame.newBuilder()
-            .setMethod("unaryCall")
+            .setMethod(PollingMethods.UNARY_CALL)
             .setPacket(req)
             .setSeq(1)
             .build()
 
-          nextRespSO.onNext(reqPollingFrame)
-          nextRespSO.onCompleted()
+          val pollingExchanger = PollingHelper.pollingExchangerQueue.take()
+          pollingExchanger.setMethod(PollingMethods.UNARY_CALL)
+
+          pollingExchanger.respQ.put(reqPollingFrame)
+          val result = pollingExchanger.reqQ.take()
+
+          respSO.onNext(result.getPacket)
+          respSO.onCompleted()
         } else {
           val caCrt = CoreConfKeys.CONFKEY_CORE_SECURITY_CA_CRT_PATH.get()
 
@@ -125,7 +127,7 @@ class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBas
       case "ping" =>
         ping(request)
       case _ =>
-        val e = new NotImplementedError(s"operation ${operator} notsupported")
+        val e = new NotImplementedError(s"operation ${operator} not supported")
 
         // TODO:0: optimise log
         logError(e)
