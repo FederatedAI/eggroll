@@ -7,6 +7,7 @@ import com.webank.eggroll.core.util.Logging
 import org.json.{JSONArray, JSONObject}
 import scala.io.Source
 
+case class QueryResult(point: ErEndpoint, isSecure: Boolean)
 
 object Router extends Logging{
   @volatile private var routerTable: JSONObject = _
@@ -26,7 +27,7 @@ object Router extends Logging{
     }
   }
 
-  def query(partyId: String, role: String = "default"): ErEndpoint = {
+  def query(partyId: String, role: String = "default"): QueryResult = {
     if (routerTable == null) {
       throw new Exception("The routing table is not initialized!")
     }
@@ -61,7 +62,13 @@ object Router extends Logging{
       .get(0).asInstanceOf[JSONObject]
     val host = default.get("ip").asInstanceOf[String]
     val port = default.get("port").asInstanceOf[Int]
-    ErEndpoint(host, port)
+    var isSecure = false
+    if (default.has("is_secure")) {
+      if (default.get("is_secure").asInstanceOf[Boolean] || default.get("is_secure").asInstanceOf[Int] == 1) {
+        isSecure = true
+      }
+    }
+    QueryResult(ErEndpoint(host, port), isSecure)
   }
 
   private def jsonCheck(data: String): Boolean = {
