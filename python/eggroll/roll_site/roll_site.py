@@ -232,6 +232,7 @@ class RollSite(RollSiteBase):
         self.polling_header_timeout = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PULL_HEADER_TIMEOUT_SEC.get_with(options))
         self.polling_overall_timeout = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PULL_OVERALL_TIMEOUT_SEC.get_with(options))
         self.polling_max_retry = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PULL_MAX_RETRY.get_with(options))
+        L.debug(f"RollSite __init__: polling_header_timeout={self.polling_header_timeout}, polling_overall_timeout={self.polling_overall_timeout}")
 
     ################## push ##################
     def _push_bytes(self, obj, rs_header: ErRollSiteHeader):
@@ -269,7 +270,21 @@ class RollSite(RollSiteBase):
 
         # if use stub.push.future here, retry mechanism is a problem to solve
         for batch_stream in bin_batch_streams:
-            self.stub.push(bs_helper.generate_packet(batch_stream))
+            max_retry_cnt = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PUSH_CLIENT_MAX_RETRY.get())
+            cur_retry = 0
+            exception = None
+            while cur_retry < max_retry_cnt:
+                try:
+                    self.stub.push(bs_helper.generate_packet(batch_stream))
+                    exception = None
+                    break
+                except Exception as e:
+                    L.error(f"pull error:{e}")
+                    exception = e
+                finally:
+                    cur_retry += 1
+            if exception is not None:
+                raise exception
 
         L.debug(f"pushed object: rs_key={rs_key}, is_none={obj is None}, time_cost={time.time() - start_time}")
         self.ctx.pushing_latch.count_down()
@@ -287,8 +302,6 @@ class RollSite(RollSiteBase):
         endpoint = self.ctx.proxy_endpoint
 
         def _push_partition(ertask):
-            written_batched = 0
-            written_pairs = 0
             rs_header._partition_id = ertask._inputs[0]._id
 
             from eggroll.core.grpc.factory import GrpcChannelFactory
@@ -305,7 +318,21 @@ class RollSite(RollSiteBase):
                                                                       body_bytes=body_bytes)
 
                 for batch_stream in bin_batch_streams:
-                    stub.push(bs_helper.generate_packet(batch_stream))
+                    max_retry_cnt = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PUSH_CLIENT_MAX_RETRY.get())
+                    cur_retry = 0
+                    exception = None
+                    while cur_retry < max_retry_cnt:
+                        try:
+                            stub.push(bs_helper.generate_packet(batch_stream))
+                            exception = None
+                            break
+                        except Exception as e:
+                            L.error(f"pull error:{e}")
+                            exception = e
+                        finally:
+                            cur_retry += 1
+                    if exception is not None:
+                        raise exception
 
         rp.with_stores(_push_partition)
         if L.isEnabledFor(logging.DEBUG):

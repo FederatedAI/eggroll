@@ -67,7 +67,7 @@ class LongPollingClient extends Logging {
     LongPollingClient.acquireSemaphore()
 
     try {
-      val endpoint = Router.query("default")
+      val endpoint = Router.query("default").point
       val channel = GrpcClientUtils.getChannel(endpoint)
       val stub = DataTransferServiceGrpc.newStub(channel)
       val pollingResults = new PollingResults()
@@ -561,7 +561,7 @@ class UnaryCallPollingRespSO(pollingResults: PollingResults)
     val rsHeader = RollSiteHeader.parseFrom(metadata.getExt).fromProto()
     rsKey = rsHeader.getRsKey()
 
-    val endpoint = Router.query(metadata.getDst.getPartyId, metadata.getDst.getRole)
+    val endpoint = Router.query(metadata.getDst.getPartyId, metadata.getDst.getRole).point
     val channel = GrpcClientUtils.getChannel(endpoint)
     stub = DataTransferServiceGrpc.newBlockingStub(channel)
 

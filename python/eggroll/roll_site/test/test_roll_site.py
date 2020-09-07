@@ -34,7 +34,7 @@ props_file_remote = default_props_file
 props_file_remote = default_props_file + '.guest'
 
 
-row_limit = 100000
+row_limit = 20000
 obj_size = 128 << 20
 
 
@@ -511,13 +511,12 @@ class TestRollSiteRouteTable(unittest.TestCase):
         import time
         return str(int(time.time() * 1000))
 
-    def test_get_route_table(self):
-        channel = grpc.insecure_channel('localhost:9470')
+    def test_get_route_table(self, point='localhost:9470', party='10001', key="shiqili"):
+        channel = grpc.insecure_channel(point)
         stub = proxy_pb2_grpc.DataTransferServiceStub(channel)
         salt = self._get_salt()
-        key = "shiqili"
         md5hash = hashlib.md5((salt + key).encode("utf-8")).hexdigest()
-        topic_dst = proxy_pb2.Topic(partyId='10001')
+        topic_dst = proxy_pb2.Topic(partyId=party)
         metadata = proxy_pb2.Metadata(dst=topic_dst, operator="get_route_table")
         data = proxy_pb2.Data(key=md5hash, value=salt.encode('utf-8'))
         packet = proxy_pb2.Packet(header=metadata, body=data)
@@ -525,20 +524,21 @@ class TestRollSiteRouteTable(unittest.TestCase):
         print(ret_packet.body.value.decode('utf8'))
         return ret_packet.body.value.decode('utf8')
 
-    def test_set_route_table(self):
+
+    def test_set_route_table(self, point='localhost:9470', party='10001', key="shiqili"):
         route_table_path = 'route_table_test.json'
         with open(route_table_path, 'r') as fp:
             route_table_content = fp.read()
 
         salt = self._get_salt()
         route_table_content = salt + route_table_content
-        key = "shiqili"
+
         md5hash = hashlib.md5((route_table_content + key).encode("utf-8")).hexdigest()
 
-        channel = grpc.insecure_channel('localhost:9470')
+        channel = grpc.insecure_channel(point)
         stub = proxy_pb2_grpc.DataTransferServiceStub(channel)
 
-        topic_dst = proxy_pb2.Topic(partyId='10001')
+        topic_dst = proxy_pb2.Topic(partyId=party)
         metadata = proxy_pb2.Metadata(dst=topic_dst, operator="set_route_table")
 
         data = proxy_pb2.Data(key=md5hash, value=route_table_content.encode('utf-8'))
