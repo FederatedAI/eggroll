@@ -29,10 +29,9 @@ object WhiteList {
   }
 
   def main(args: Array[String]): Unit = {
-    init("127.0.0.1,127.0.0.1")
-    println(check("127.0.0.1"))
-    println(check("127.0.0.1"))
-    println(check("127.0.0.1"))
+    // init("127.0.0.1,127.0.0.2")
+    // println(check("127.0.0.1"))
+
   }
 }
 

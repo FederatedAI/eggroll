@@ -69,7 +69,7 @@ class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBas
       val dstRole = metadata.getDst.getRole
       val logMsg = s"[UNARYCALL][SERVER] unaryCall request received. rsKey=${rsKey}, metadata=${oneLineStringMetadata}"
 
-      val endpoint = Router.query(dstPartyId, dstRole)
+      val endpoint = Router.query(dstPartyId, dstRole).point
       if (endpoint.host == RollSiteConfKeys.EGGROLL_ROLLSITE_HOST.get()
         && (endpoint.port == RollSiteConfKeys.EGGROLL_ROLLSITE_PORT.get().toInt
         || endpoint.port == RollSiteConfKeys.EGGROLL_ROLLSITE_SECURE_PORT.get().toInt)) {
@@ -92,13 +92,15 @@ class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBas
           respSO.onNext(result.getPacket)
           respSO.onCompleted()
         } else {
-          val caCrt = CoreConfKeys.CONFKEY_CORE_SECURITY_CA_CRT_PATH.get()
+          var isSecure = Router.query(dstPartyId).isSecure
+          val caCrt = CoreConfKeys.CONFKEY_CORE_SECURITY_CLIENT_CA_CRT_PATH.get()
 
           // use secure channel conditions:
           // 1 include crt file.
           // 2 packet have diff src and dst party.
-          val isSecure = if (!StringUtils.isBlank(caCrt)
-            && req.getHeader.getDst.getPartyId != req.getHeader.getSrc.getPartyId) true else false
+          // 3 point is secure
+          isSecure = if (!StringUtils.isBlank(caCrt)
+            && req.getHeader.getDst.getPartyId != req.getHeader.getSrc.getPartyId) isSecure else false
           val channel = GrpcClientUtils.getChannel(endpoint, isSecure)
           val stub = DataTransferServiceGrpc.newBlockingStub(channel)
           val result = stub.unaryCall(req)
