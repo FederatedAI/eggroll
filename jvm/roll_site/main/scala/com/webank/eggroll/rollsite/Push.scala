@@ -338,17 +338,17 @@ class ForwardPushReqSO(eggSiteServicerPushRespSO: StreamObserver[Proxy.Metadata]
     val rollSiteHeader = RollSiteHeader.parseFrom(metadata.getExt).fromProto()
     rsKey = rollSiteHeader.getRsKey()
 
-
     val dstPartyId = rollSiteHeader.dstPartyId
-    val endpoint = Router.query(dstPartyId)
-
-    val caCrt = CoreConfKeys.CONFKEY_CORE_SECURITY_CA_CRT_PATH.get()
+    val endpoint = Router.query(dstPartyId).point
+    var isSecure = Router.query(dstPartyId).isSecure
+    val caCrt = CoreConfKeys.CONFKEY_CORE_SECURITY_CLIENT_CA_CRT_PATH.get()
 
     // use secure channel conditions:
     // 1 include crt file.
     // 2 packet have diff src and dst party.
-    val isSecure = if (!StringUtils.isBlank(caCrt)
-      && firstRequest.getHeader.getDst.getPartyId != firstRequest.getHeader.getSrc.getPartyId) true else false
+    // 3 point is secure
+    isSecure = if (!StringUtils.isBlank(caCrt)
+      && firstRequest.getHeader.getDst.getPartyId != firstRequest.getHeader.getSrc.getPartyId) isSecure else false
     val channel = GrpcClientUtils.getChannel(endpoint, isSecure)
     val stub = DataTransferServiceGrpc.newStub(channel)
     forwardPushReqSO = stub.push(new ForwardPushRespSO(eggSiteServicerPushRespSO))
