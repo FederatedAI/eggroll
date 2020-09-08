@@ -53,6 +53,7 @@ class EggSiteBootstrap extends BootstrapBase with Logging {
     WhiteList.init()
 
     if (RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_CLIENT_ENABLED.get().toBoolean) {
+      logInfo(s"start pooling client")
       val pollingPushConcurrency = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_CONCURRENCY.get().toInt
       if (pollingPushConcurrency > 0) {
         pollingThreadPool = ThreadPoolUtils.newFixedThreadPool(pollingPushConcurrency, "polling-client")
