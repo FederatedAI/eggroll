@@ -71,7 +71,7 @@ class TransferService(object):
             with TransferService.mutex as e:
                 result = TransferService.data_buffer.get(key, None)
             retry += 1
-            if retry > 600:
+            if retry > 100:
                 raise RuntimeError(f"cannot get broker={key}, result={result}, data_buffer={TransferService.data_buffer}")
         return result
 
