@@ -22,7 +22,7 @@ import java.util.concurrent._
 import java.util.concurrent.atomic.AtomicReference
 
 import com.webank.ai.eggroll.api.networking.proxy.{DataTransferServiceGrpc, Proxy}
-import com.webank.eggroll.core.constant.RollSiteConfKeys
+import com.webank.eggroll.core.constant.{CoreConfKeys, RollSiteConfKeys}
 import com.webank.eggroll.core.meta.TransferModelPbMessageSerdes.ErRollSiteHeaderFromPbMessage
 import com.webank.eggroll.core.transfer.GrpcClientUtils
 import com.webank.eggroll.core.transfer.Transfer.RollSiteHeader
@@ -68,7 +68,14 @@ class LongPollingClient extends Logging {
 
     try {
       val endpoint = Router.query("default").point
-      val channel = GrpcClientUtils.getChannel(endpoint)
+      var isSecure = Router.query("default").isSecure
+      val caCrt = CoreConfKeys.CONFKEY_CORE_SECURITY_CLIENT_CA_CRT_PATH.get()
+
+      // use secure channel conditions:
+      // 1 include crt file.
+      // 2 point is secure
+      isSecure = if (!StringUtils.isBlank(caCrt)) isSecure else false
+      val channel = GrpcClientUtils.getChannel(endpoint, isSecure)
       val stub = DataTransferServiceGrpc.newStub(channel)
       val pollingResults = new PollingResults()
       val dispatchPollingRespSO = new DispatchPollingRespSO(pollingResults)

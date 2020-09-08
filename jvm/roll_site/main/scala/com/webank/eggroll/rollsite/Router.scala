@@ -64,7 +64,7 @@ object Router extends Logging{
     val port = default.get("port").asInstanceOf[Int]
     var isSecure = false
     if (default.has("is_secure")) {
-      if (default.get("is_secure").asInstanceOf[Boolean] || default.get("is_secure").asInstanceOf[Int] == 1) {
+      if (default.get("is_secure").asInstanceOf[Boolean] || default.get("is_secure").toString == "1") {
         isSecure = true
       }
     }
@@ -121,16 +121,16 @@ object Router extends Logging{
 
   def main(args: Array[String]): Unit = {
     Router.initOrUpdateRouterTable("conf\\route_table.json")
-    var ret = Router.query("10001", "fate_flow")
+    var ret = Router.query("10001", "fate_flow").point
     println(ret.getHost, ret.getPort)
 
-    ret = Router.query("10001")
+    ret = Router.query("10001").point
     println(ret.getHost, ret.getPort)
 
-    ret = Router.query("10001", "acd")
+    ret = Router.query("10001", "acd").point
     println(ret.getHost, ret.getPort)
 
-    ret = Router.query("10003")
+    ret = Router.query("10003").point
     println(ret.getHost, ret.getPort)
 
 
