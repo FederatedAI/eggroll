@@ -25,11 +25,12 @@ message TransferHeader {
   string tag = 2;
   int64 totalSize = 3;
   string status = 4;
+  bytes ext = 5;
 }
 
 message TransferBatch {
   TransferHeader header = 1;
-  int32 batchSize = 2;
+  int64 batchSize = 2;
   bytes data = 3;
 }
 
@@ -43,6 +44,13 @@ message RollSiteHeader {
   string dstPartyId = 7;
   string dataType = 8;
   map<string, string> options = 10;
+  int32 totalPartitions = 15;
+  int32 partitionId = 16;
+  int64 totalStreams = 17;
+  int64 totalBatches = 18;
+  int64 streamSeq = 20;
+  int64 batchSeq = 21;
+  string stage = 30;
 }
 
 // TODO: use transfer lib

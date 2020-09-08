@@ -30,6 +30,11 @@ class DataTransferServiceStub(object):
         request_serializer=proxy__pb2.Packet.SerializeToString,
         response_deserializer=proxy__pb2.Packet.FromString,
         )
+    self.polling = channel.stream_stream(
+        '/com.webank.ai.eggroll.api.networking.proxy.DataTransferService/polling',
+        request_serializer=proxy__pb2.PollingFrame.SerializeToString,
+        response_deserializer=proxy__pb2.PollingFrame.FromString,
+        )
 
 
 class DataTransferServiceServicer(object):
@@ -57,6 +62,13 @@ class DataTransferServiceServicer(object):
     context.set_details('Method not implemented!')
     raise NotImplementedError('Method not implemented!')
 
+  def polling(self, request_iterator, context):
+    # missing associated documentation comment in .proto file
+    pass
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
 
 def add_DataTransferServiceServicer_to_server(servicer, server):
   rpc_method_handlers = {
@@ -74,6 +86,11 @@ def add_DataTransferServiceServicer_to_server(servicer, server):
           servicer.unaryCall,
           request_deserializer=proxy__pb2.Packet.FromString,
           response_serializer=proxy__pb2.Packet.SerializeToString,
+      ),
+      'polling': grpc.stream_stream_rpc_method_handler(
+          servicer.polling,
+          request_deserializer=proxy__pb2.PollingFrame.FromString,
+          response_serializer=proxy__pb2.PollingFrame.SerializeToString,
       ),
   }
   generic_handler = grpc.method_handlers_generic_handler(
