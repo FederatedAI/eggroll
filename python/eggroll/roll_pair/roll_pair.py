@@ -140,7 +140,7 @@ class RollPairContext(object):
         else:
             result = self.__session._cluster_manager_client.get_store(store)
             if len(result._partitions) == 0:
-                L.exception(f"store: namespace={namespace}, name={name} not exist, "
+                L.info(f"store: namespace={namespace}, name={name} not exist, "
                                  f"create_if_missing={create_if_missing}, create first")
                 return None
 
