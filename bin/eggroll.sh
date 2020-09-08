@@ -59,7 +59,7 @@ main() {
 			port=${property_value}
 			;;
 		rollsite)
-			main_class=com.webank.eggroll.rollsite.RollSiteBootstrap
+			main_class=com.webank.eggroll.rollsite.EggSiteBootstrap
 			get_property "eggroll.rollsite.port"
 			port=${property_value}
 			get_property "eggroll.rollsite.jvm.options"
