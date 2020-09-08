@@ -437,6 +437,10 @@ class EggPair(object):
                     k_right_raw = None
                     v_right = None
 
+                # left is None, output must be None
+                if k_left is None:
+                    return
+
                 try:
                     if k_left is None:
                         raise StopIteration()
