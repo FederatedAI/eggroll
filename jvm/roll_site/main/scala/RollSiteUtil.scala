@@ -37,7 +37,7 @@ class RollSiteUtil(val erSessionId: String,
   private val ctx = new RollPairContext(session)
   //private val nameStripped = name
   val namespace = rollSiteHeader.rollSiteSessionId
-  val name = rollSiteHeader.concat()
+  val name = rollSiteHeader.getRsKey()
 
   val rp: RollPair = ctx.load(namespace, name, options = rollSiteHeader.options)
 
@@ -57,16 +57,26 @@ class RollSiteUtil(val erSessionId: String,
         val broker = new LinkedBlockingBroker[ByteString]()
         broker.put(value)
         broker.signalWriteFinish()
-        rp.putBatch(broker, options = options)
+       // rp.putBatch(broker, options = options)
       } else {
-        logTrace(s"sending OBJECT from / to same party id, skipping. src=${srcPartyId}, dst=${dstPartyId}, tag=${rollSiteHeader.concat()}")
+        logTrace(s"sending OBJECT from / to same party id, skipping. src=${srcPartyId}, dst=${dstPartyId}, tag=${rollSiteHeader.getRsKey()}")
       }
 
-      JobStatus.increasePutBatchFinishedCount(name);
-      logDebug(s"put batch finished for namespace=${namespace}, name=${name}")
+      val partition = rollSiteHeader.options.get("partition_id")
+
+      partition match {
+        case Some(s) =>
+          val partitionId = partition.get.toInt
+          JobStatus.increasePutBatchFinishedCountPerPartition(name, partitionId)
+          logDebug(s"put batch finished for namespace=${namespace}, name=${name}, partitionId=${partitionId}")
+        case None =>
+          JobStatus.increasePutBatchFinishedCount(name)
+          logDebug(s"put batch finished for namespace=${namespace}, name=${name}, partitionId=UNKNOWN")
+      }
     } catch {
       case e: Exception => {
-        logError("put batch error for namespace=${namespace}, name=${name}", e)
+        JobStatus.addJobError(name, e)
+        logError(s"put batch error for namespace=${namespace}, name=${name}", e)
         throw new RuntimeException(e)
       }
     }

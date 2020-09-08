@@ -21,6 +21,7 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
+import com.webank.ai.eggroll.api.core.BasicMeta;
 import com.webank.ai.eggroll.api.networking.proxy.DataTransferServiceGrpc;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
 import com.webank.eggroll.core.constant.RollSiteConfKeys;
@@ -33,7 +34,6 @@ import com.webank.eggroll.core.util.ToStringUtils;
 import com.webank.eggroll.rollsite.RollSiteUtil;
 import com.webank.eggroll.rollsite.event.model.PipeHandleNotificationEvent;
 import com.webank.eggroll.rollsite.factory.AddrAuthServerInterceptor;
-import com.webank.eggroll.rollsite.factory.DefaultPipeFactory;
 import com.webank.eggroll.rollsite.factory.EventFactory;
 import com.webank.eggroll.rollsite.factory.PipeFactory;
 import com.webank.eggroll.rollsite.factory.ProxyGrpcStreamObserverFactory;
@@ -53,6 +53,7 @@ import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import org.apache.commons.lang3.StringUtils;
@@ -60,7 +61,6 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Scope;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
@@ -75,8 +75,6 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
     @Autowired
     private ApplicationEventPublisher applicationEventPublisher;
     @Autowired
-    private ApplicationContext applicationContext;
-    @Autowired
     private ThreadPoolTaskExecutor asyncThreadPool;
     @Autowired
     private ProxyGrpcStreamObserverFactory proxyGrpcStreamObserverFactory;
@@ -90,8 +88,6 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
     private ProxyGrpcStubFactory proxyGrpcStubFactory;
     private Pipe defaultPipe;
     private PipeFactory pipeFactory;
-    @Autowired
-    private DefaultPipeFactory defaultPipeFactory;
     @Autowired
     private FdnRouter fdnRouter;
 
@@ -223,59 +219,153 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
         //LOGGER.warn("pull last returned packet: {}", lastReturnedPacket);
     }
 
-    private void registerBroker(Proxy.Packet request, StreamObserver<Proxy.Packet> responseObserver) {
+    private void initJobSessionPair(Proxy.Packet request, StreamObserver<Proxy.Packet> responseObserver)
+        throws ExecutionException {
         Proxy.Packet packet = null;
 
+        Proxy.Metadata header = request.getHeader();
+
+        String jobId = header.getTask().getModel().getName();
+        String sessionId = header.getTask().getModel().getDataKey();
         Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
-        Proxy.Data data = Proxy.Data.newBuilder().setValue(ByteString.copyFromUtf8("hello"))
-                .build();
-        packet = packetBuilder.setHeader(request.getHeader())
-                .setBody(data)
-                .build();
+        packet = packetBuilder.setHeader(header).build();
+        // TODO:1: rename job_id to federation_session_id, session_id -> eggroll_session_id
+        LOGGER.debug("init_job_session_pair, job_id:{}, session_id:{}", jobId, sessionId);
+        JobStatus.putJobIdToSessionId(jobId, sessionId);
+
+        responseObserver.onNext(packet);
+        responseObserver.onCompleted();
+
+        RollSiteUtil.sessionCache().get(sessionId);
+    }
+
+
+    private void markEnd(Proxy.Packet request, StreamObserver<Proxy.Packet> responseObserver)
+        throws InvalidProtocolBufferException {
+        Proxy.Packet packet = null;
+        Proxy.Metadata header = request.getHeader();
+
+        Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
+        packet = packetBuilder.setHeader(header).build();
+
+        ErRollSiteHeader rollSiteHeader = restoreRollSiteHeader(
+                request.getHeader().getTask().getModel().getName());
+        String tagKey = genTagKey(rollSiteHeader);
+
+        LOGGER.debug("markEnd: rollsiteSessionId={}, tagKey={}, options={}",
+            rollSiteHeader.rollSiteSessionId(), tagKey, rollSiteHeader.options());  // obj or RollPair
+
+        if (!JobStatus.hasLatch(tagKey)) {
+            int totalPartitions = 1;
+
+            String tpString = "1";
+            Option<String> tpOption =
+                    rollSiteHeader.options().get(StringConstants.TOTAL_PARTITIONS_SNAKECASE());
+            if (tpOption instanceof Some) {
+                tpString = ((Some<String>) tpOption).get();
+            }
+
+            totalPartitions = Integer.parseInt(tpString);
+            JobStatus.createLatch(tagKey, totalPartitions);
+            JobStatus.createJobIdToMarkEnd(tagKey);
+        }
+        JobStatus.setType(tagKey, rollSiteHeader.dataType());
+
+        Option<String> piOption = rollSiteHeader.options().get(StringConstants.PARTITION_ID_SNAKECASE());
+        if (piOption instanceof Some) {
+            Integer partitionId = Integer.parseInt(((Some<String>) piOption).get());
+
+            JobStatus.addPutBatchRequiredCountPerPartition(tagKey, partitionId, header.getSeq());
+            JobStatus.setPartitionMarkedEnd(tagKey, partitionId);
+        } else {
+            JobStatus.countDownFinishLatch(tagKey);
+            JobStatus.addPutBatchRequiredCount(tagKey, header.getSeq());
+        }
+
         responseObserver.onNext(packet);
         responseObserver.onCompleted();
     }
 
-    private void initJobSessionPair(Proxy.Packet request, StreamObserver<Proxy.Packet> responseObserver) {
-        try {
-            Proxy.Packet packet = null;
+    private void getStatus(Proxy.Packet request, StreamObserver<Proxy.Packet> responseObserver) throws Throwable {
+        Proxy.Packet packet = null;
+        Proxy.Metadata header = request.getHeader();
+        String oneLineStringInputMetadata = ToStringUtils.toOneLineString(header);
+        LOGGER.debug("[UNARYCALL][SERVER] server getStatus request received. metadata={}", oneLineStringInputMetadata);
 
-            Proxy.Metadata header = request.getHeader();
+        Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
 
-            String jobId = header.getTask().getModel().getName();
-            String sessionId = header.getTask().getModel().getDataKey();
-            Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
-            packet = packetBuilder.setHeader(header).build();
-            // TODO:1: rename job_id to federation_session_id, session_id -> eggroll_session_id
-            LOGGER.debug("init_job_session_pair, job_id:{}, session_id:{}", jobId, sessionId);
-            JobStatus.putJobIdToSessionId(jobId, sessionId);
+        ErRollSiteHeader rollSiteHeader = restoreRollSiteHeader(
+                request.getHeader().getTask().getModel().getName());
+        String tagKey = genTagKey(rollSiteHeader);
 
-            responseObserver.onNext(packet);
-            responseObserver.onCompleted();
+        long timeout = 5;
+        TimeUnit unit = TimeUnit.MINUTES;
+        boolean jobFinished = JobStatus.waitUntilAllCountDown(tagKey, timeout, unit)
+                && JobStatus.waitUntilPutBatchFinished(tagKey, timeout, unit);
+        Proxy.Metadata resultHeader = request.getHeader();
+        String type = StringConstants.EMPTY();
+        if (jobFinished) {
+            LOGGER.debug("[getStatus] job finished. metadata={}", oneLineStringInputMetadata);
+            resultHeader = Proxy.Metadata.newBuilder().setAck(123)
+                    .setSrc(request.getHeader().getSrc())
+                    .setDst(request.getHeader().getDst())
+                    .build();
+            int retryCount = 300;
+            while (retryCount > 0) {
+                type = JobStatus.getType(tagKey);
+                if (!StringUtils.isBlank(type)) {
+                    break;
+                }
+                Thread.sleep(50);
+                --retryCount;
+            }
+            JobStatus.cleanupJobStatus(tagKey);
+        } else {
+            Throwable jobError = JobStatus.getJobError(tagKey);
+            LOGGER.debug("getStatus: job NOT finished: metadata={}. current missing markEnd count={}, "
+                            + "put batch required={}, put batch finished={}, "
+                            + "put batch required per partitions={}, put batch finished per partitions={}, "
+                            + "job error={}",
+                    oneLineStringInputMetadata,
+                    JobStatus.getFinishLatchCount(tagKey),
+                    JobStatus.getPutBatchRequiredCount(tagKey),
+                    JobStatus.getPutBatchFinishedCount(tagKey),
+                    JobStatus.getPutBatchRequiredCountAllPartitions(tagKey),
+                    JobStatus.getPutBatchFinishedCountAllPartitions(tagKey),
+                jobError);
 
-            RollSiteUtil.sessionCache().get(sessionId);
-        } catch (Exception e) {
-                LOGGER.error("Error occured in unary call: ", e);
-                responseObserver.onError(e);
+            if (jobError != null) {
+                throw jobError;
+            }
+
+            resultHeader = Proxy.Metadata.newBuilder().setAck(321).build();
         }
+        Proxy.Data body = Proxy.Data.newBuilder().setKey(tagKey)
+                .setValue(ByteString.copyFromUtf8(type)).build();
+        packet = packetBuilder.setHeader(resultHeader).setBody(body).build();
+        responseObserver.onNext(packet);
+        responseObserver.onCompleted();
     }
 
+    private void pushObj(Proxy.Packet request, StreamObserver<Proxy.Packet> responseObserver)
+        throws InvalidProtocolBufferException {
+        Proxy.Metadata header = request.getHeader();
 
-    private void markEnd(Proxy.Packet request, StreamObserver<Proxy.Packet> responseObserver) {
-        try {
-            Proxy.Packet packet = null;
-            Proxy.Metadata header = request.getHeader();
+        if (!proxyServerConf.getPartyId().equals(header.getDst().getPartyId())) {
+            Proxy.Topic dstTopic = header.getDst();
+            DataTransferServiceGrpc.DataTransferServiceBlockingStub blockstub = proxyGrpcStubFactory.getBlockingStub(dstTopic);
 
-            Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
-            packet = packetBuilder.setHeader(header).build();
-
+            Proxy.Packet ret_packet = blockstub.unaryCall(request);
+            //LOGGER.info("{}", ret_packet);
+            responseObserver.onNext(ret_packet);
+            responseObserver.onCompleted();
+        } else {
             ErRollSiteHeader rollSiteHeader = restoreRollSiteHeader(
                     request.getHeader().getTask().getModel().getName());
             String tagKey = genTagKey(rollSiteHeader);
-            JobStatus.addPutBatchRequiredCount(tagKey, header.getSeq());
+            JobStatus.addPutBatchRequiredCount(tagKey, 1);
 
-            LOGGER.debug("markEnd: rollsiteSessionId={}, tagKey={}", rollSiteHeader.rollSiteSessionId(),
-                    tagKey);  //obj or RollPair
+            LOGGER.debug("received obj, tagKey={}", tagKey);
 
             if (!JobStatus.hasLatch(tagKey)) {
                 int totalPartitions = 1;
@@ -293,115 +383,12 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
             JobStatus.countDownFinishLatch(tagKey);
             JobStatus.setType(tagKey, rollSiteHeader.dataType());
 
-            responseObserver.onNext(packet);
+            transferObjectCache.put(tagKey, request);
+
+            JobStatus.increasePutBatchFinishedCount(tagKey);
+
+            responseObserver.onNext(request);
             responseObserver.onCompleted();
-        } catch (Exception e) {
-            LOGGER.error("Error occured in unary call: ", e);
-            responseObserver.onError(e);
-        }
-    }
-
-    private void getStatus(Proxy.Packet request, StreamObserver<Proxy.Packet> responseObserver) {
-        Proxy.Packet packet = null;
-        Proxy.Metadata header = request.getHeader();
-        String oneLineStringInputMetadata = ToStringUtils.toOneLineString(header);
-        LOGGER.debug("[UNARYCALL][SERVER] server unary request received. metadata={}", oneLineStringInputMetadata);
-
-        Proxy.Packet.Builder packetBuilder = Proxy.Packet.newBuilder();
-
-        try {
-            ErRollSiteHeader rollSiteHeader = restoreRollSiteHeader(
-                    request.getHeader().getTask().getModel().getName());
-            String tagKey = genTagKey(rollSiteHeader);
-
-            long timeout = 5;
-            TimeUnit unit = TimeUnit.MINUTES;
-            boolean jobFinished = JobStatus.waitUntilAllCountDown(tagKey, timeout, unit)
-                    && JobStatus.waitUntilPutBatchFinished(tagKey, timeout, unit);
-            Proxy.Metadata resultHeader = request.getHeader();
-            String type = StringConstants.EMPTY();
-            if (jobFinished) {
-                LOGGER.debug("[getStatus] job finished. metadata={}", oneLineStringInputMetadata);
-                resultHeader = Proxy.Metadata.newBuilder().setAck(123)
-                        .setSrc(request.getHeader().getSrc())
-                        .setDst(request.getHeader().getDst())
-                        .build();
-                int retryCount = 300;
-                while (retryCount > 0) {
-                    type = JobStatus.getType(tagKey);
-                    if (!StringUtils.isBlank(type)) {
-                        break;
-                    }
-                    Thread.sleep(50);
-                    --retryCount;
-                }
-                JobStatus.cleanupJobStatus(tagKey);
-            } else {
-                LOGGER.debug("getStatus: job NOT finished: metadata={}. current latch count={}, "
-                                + "put batch required={}, put batch finished={}",
-                        oneLineStringInputMetadata,
-                        JobStatus.getFinishLatchCount(tagKey),
-                        JobStatus.getPutBatchRequiredCount(tagKey),
-                        JobStatus.getPutBatchFinishedCount(tagKey));
-                resultHeader = Proxy.Metadata.newBuilder().setAck(321).build();
-            }
-            Proxy.Data body = Proxy.Data.newBuilder().setKey(tagKey)
-                    .setValue(ByteString.copyFromUtf8(type)).build();
-            packet = packetBuilder.setHeader(resultHeader).setBody(body).build();
-            responseObserver.onNext(packet);
-            responseObserver.onCompleted();
-        } catch (Exception e) {
-            LOGGER.error("Error occured in unary call: ", e);
-            responseObserver.onError(e);
-        }
-    }
-
-    private void pushObj(Proxy.Packet request, StreamObserver<Proxy.Packet> responseObserver) {
-        try {
-            Proxy.Metadata header = request.getHeader();
-
-            if (!proxyServerConf.getPartyId().equals(header.getDst().getPartyId())) {
-                Proxy.Topic dstTopic = header.getDst();
-                DataTransferServiceGrpc.DataTransferServiceBlockingStub blockstub = proxyGrpcStubFactory.getBlockingStub(dstTopic);
-
-                Proxy.Packet ret_packet = blockstub.unaryCall(request);
-                //LOGGER.info("{}", ret_packet);
-                responseObserver.onNext(ret_packet);
-                responseObserver.onCompleted();
-            } else {
-                ErRollSiteHeader rollSiteHeader = restoreRollSiteHeader(
-                        request.getHeader().getTask().getModel().getName());
-                String tagKey = genTagKey(rollSiteHeader);
-                JobStatus.addPutBatchRequiredCount(tagKey, 1);
-
-                LOGGER.debug("received obj, tagKey={}", tagKey);
-
-                if (!JobStatus.hasLatch(tagKey)) {
-                    int totalPartitions = 1;
-
-                    String tpString = "1";
-                    Option<String> tpOption =
-                            rollSiteHeader.options().get(StringConstants.TOTAL_PARTITIONS_SNAKECASE());
-                    if (tpOption instanceof Some) {
-                        tpString = ((Some<String>) tpOption).get();
-                    }
-
-                    totalPartitions = Integer.parseInt(tpString);
-                    JobStatus.createLatch(tagKey, totalPartitions);
-                }
-                JobStatus.countDownFinishLatch(tagKey);
-                JobStatus.setType(tagKey, rollSiteHeader.dataType());
-
-                transferObjectCache.put(tagKey, request);
-
-                JobStatus.increasePutBatchFinishedCount(tagKey);
-
-                responseObserver.onNext(request);
-                responseObserver.onCompleted();
-            }
-        } catch (Exception e) {
-            LOGGER.error("Error occured in unary call: ", e);
-            responseObserver.onError(e);
         }
     }
 
@@ -445,7 +432,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
                     }
                 }
             }
-            if(jsonContent != null) {
+            if (jsonContent != null) {
                 Proxy.Data body = Proxy.Data.newBuilder().setValue(ByteString.copyFromUtf8(jsonContent)).build();
                 packet = packetBuilder.setBody(body).build();
             } else {
@@ -524,11 +511,6 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
         }
 
         try {
-            if (header.getOperator().equals("registerBroker")) {
-                registerBroker(request, responseObserver);
-                return;
-            }
-
             if (header.getOperator().equals("init_job_session_pair")) {
                 initJobSessionPair(request, responseObserver);
                 return;
@@ -643,9 +625,25 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
 
             LOGGER.debug("[UNARYCALL][SERVER] server unary call completed. hasReturnedBefore={}, hasError={}, metadata={}",
                 hasReturnedBefore, hasError, oneLineStringInputMetadata);
-        } catch (Exception e) {
-            LOGGER.error("[UNARYCALL][SERVER] Error occured in unary call: ", e);
-            responseObserver.onError(ErrorUtils.toGrpcRuntimeException(e));
+        } catch (Throwable e) {
+            BasicMeta.Endpoint next = proxyGrpcStubFactory.getAsyncEndpoint(request.getHeader().getDst());
+            StringBuilder builder = new StringBuilder();
+            builder.append("src: ")
+                .append(ToStringUtils.toOneLineString(request.getHeader().getSrc()))
+                .append(", dst: ")
+                .append(ToStringUtils.toOneLineString(request.getHeader().getDst()))
+                .append(", my hop: ")
+                .append(proxyServerConf.getPartyId())
+                .append(":")
+                .append(proxyServerConf.getPort())
+                .append(" -> next hop: ")
+                .append(next.getIp())
+                .append(":")
+                .append(next.getPort());
+
+            RuntimeException exceptionWithHop = new RuntimeException(builder.toString(), e);
+            LOGGER.error("[PUSH][OBSERVER][ONERROR] error in push obj. metadata={}", oneLineStringInputMetadata, e);
+            responseObserver.onError(ErrorUtils.toGrpcRuntimeException(exceptionWithHop));
         }
     }
 
@@ -657,7 +655,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
 
     private String genTagKey(ErRollSiteHeader rollSiteHeader) {
         return rollSiteHeader
-            .concat(StringConstants.HASH(), new String[]{"__federation__"});
+            .getRsKey(StringConstants.HASH(), new String[]{"__federation__"});
     }
 
     public void setDefaultPipe(Pipe defaultPipe) {
