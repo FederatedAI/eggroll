@@ -48,7 +48,7 @@ from eggroll.core.utils import _exception_logger
 from eggroll.core.utils import hash_code
 from eggroll.core.utils import set_static_er_conf, get_static_er_conf
 from eggroll.roll_pair import create_adapter, create_serdes, create_functor
-from eggroll.roll_pair.transfer_pair import TransferPair
+from eggroll.roll_pair.transfer_pair import TransferPair, BatchBroker
 from eggroll.roll_pair.utils.pair_utils import generator, partitioner, \
     set_data_dir
 from eggroll.utils.log_utils import get_logger
@@ -102,6 +102,7 @@ class EggPair(object):
                 scatter_future = None
             else:
                 shuffle_broker = FifoBroker()
+                write_bb = BatchBroker(shuffle_broker)
                 try:
                     scatter_future = shuffler.scatter(
                             input_broker=shuffle_broker,
@@ -109,9 +110,9 @@ class EggPair(object):
                             output_store=output_store)
                     with create_adapter(task._inputs[0]) as input_db, \
                         input_db.iteritems() as rb:
-                        func(rb, input_key_serdes, input_value_serdes, shuffle_broker)
+                        func(rb, input_key_serdes, input_value_serdes, write_bb)
                 finally:
-                    shuffle_broker.signal_write_finish()
+                    write_bb.signal_write_finish()
 
             if scatter_future:
                 scatter_results = scatter_future.result()
@@ -277,7 +278,6 @@ class EggPair(object):
         elif task._name == 'mapPartitions':
             reduce_op = create_functor(functors[1]._body)
             shuffle = create_functor(functors[2]._body)
-
             def map_partitions_wrapper(input_iterator, key_serdes, value_serdes, output_writebatch):
                 f = create_functor(functors[0]._body)
                 value = f(generator(key_serdes, value_serdes, input_iterator))
