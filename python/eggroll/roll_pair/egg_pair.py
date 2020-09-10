@@ -39,6 +39,7 @@ from eggroll.core.conf_keys import SessionConfKeys, \
 from eggroll.core.constants import ProcessorTypes, ProcessorStatus, SerdesTypes
 from eggroll.core.datastructure import create_executor_pool
 from eggroll.core.datastructure.broker import FifoBroker
+from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.meta_model import ErPair
 from eggroll.core.meta_model import ErTask, ErProcessor, ErEndpoint
 from eggroll.core.pair_store.format import ArrayByteBuffer, PairBinReader
@@ -181,6 +182,7 @@ class EggPair(object):
             er_pair = create_functor(functors[0]._body)
             input_store_head = task._job._inputs[0]
             key_serdes = create_serdes(input_store_head._store_locator._serdes)
+
             def generate_broker():
                 with create_adapter(task._inputs[0]) as db, db.iteritems() as rb:
                     limit = None if er_pair._key is None else key_serdes.deserialize(er_pair._key)
@@ -282,19 +284,19 @@ class EggPair(object):
         elif task._name == 'mapPartitions':
             reduce_op = create_functor(functors[1]._body)
             shuffle = create_functor(functors[2]._body)
+
             def map_partitions_wrapper(input_iterator, key_serdes, value_serdes, output_writebatch):
                 f = create_functor(functors[0]._body)
                 value = f(generator(key_serdes, value_serdes, input_iterator))
-                if input_iterator.last():
-                    if isinstance(value, Iterable):
-                        for k1, v1 in value:
-                            if shuffle:
-                                output_writebatch.put((key_serdes.serialize(k1), value_serdes.serialize(v1)))
-                            else:
-                                output_writebatch.put(key_serdes.serialize(k1), value_serdes.serialize(v1))
-                    else:
-                        key = input_iterator.key()
-                        output_writebatch.put((key, value_serdes.serialize(value)))
+                if isinstance(value, Iterable):
+                    for k1, v1 in value:
+                        if shuffle:
+                            output_writebatch.put((key_serdes.serialize(k1), value_serdes.serialize(v1)))
+                        else:
+                            output_writebatch.put(key_serdes.serialize(k1), value_serdes.serialize(v1))
+                else:
+                    key = input_iterator.key()
+                    output_writebatch.put((key, value_serdes.serialize(value)))
             self._run_unary(map_partitions_wrapper, task, shuffle=shuffle, reduce_op=reduce_op)
 
         elif task._name == 'collapsePartitions':
@@ -441,6 +443,10 @@ class EggPair(object):
                     is_left_stopped = False
                     k_right_raw = None
                     v_right = None
+
+                # left is None, output must be None
+                if k_left is None:
+                    return
 
                 try:
                     if k_left is None:
@@ -845,6 +851,8 @@ def serve(args):
     if cluster_manager:
         myself._status = ProcessorStatus.STOPPED
         cluster_manager_client.heartbeat(myself)
+
+    GrpcChannelFactory.shutdown_all_now()
 
     L.info(f'closing RocksDB open dbs')
     #todo:1: move to RocksdbAdapter and provide a cleanup method
