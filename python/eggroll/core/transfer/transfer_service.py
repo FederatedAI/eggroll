@@ -128,7 +128,7 @@ class GrpcTransferServicer(transfer_pb2_grpc.TransferServiceServicer):
                 broker = TransferService.get_broker(base_tag)
                 # response_header = request.header
                 # linux error:TypeError: Parameter to MergeFrom() must be instance of same class: expected TransferHeader got TransferHeader. for field TransferBatch.header
-                response_header = transfer_pb2.TransferHeader(tag=base_tag, id=request.header.id)
+                response_header = transfer_pb2.TransferHeader(tag=base_tag, id=request.header.id, ext=request.header.ext)
                 inited = True
 
             broker.put(request)

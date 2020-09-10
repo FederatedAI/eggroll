@@ -4,6 +4,7 @@ sub_cmd=$1
 exe=$2
 pname=$3
 
+SCRIPT_NAME=$(basename $0)
 SHELL_FOLDER=$(dirname "$0")
 BASH=`which bash`
 
@@ -23,6 +24,8 @@ echo "------ env ends -----"
 
 
 echo "------ script body ------"
+echo
+echo
 # TODO:2: check pid file and delete?
 if [[ $sub_cmd == "start" ]]; then
   ${BASH} ${exe} &
@@ -31,16 +34,16 @@ if [[ $sub_cmd == "start" ]]; then
   #echo $pid > $SHELL_FOLDER/pid/$pname.pid
 elif [[ $sub_cmd == "stop" ]]; then
   #pid=`cat $pid_file`
-  cmd="${exe} | awk '{print \$2}' | xargs kill"
+  cmd="${exe} | grep -v ${SCRIPT_NAME} | awk '{print \$2}' | xargs kill"
   #echo "stop: $cmd, pid $pid"
   echo "stop: $cmd"
   eval ${cmd}
-  echo "stop result: $?, 0 is success, 1 is fail"
+  echo "pid=$$, ppid=$PPID, eval pid=$!, stop result=$? (0 -> succeed, 1 -> failed)"
 elif [[ $sub_cmd == "kill" ]]; then
   #pid=`cat $pid_file`
-  cmd="${exe} | awk '{print \$2}' | xargs kill -9"
+  cmd="${exe} | grep -v ${SCRIPT_NAME} | awk '{print \$2}' | xargs kill -9"
   #echo "kill: $cmd, pid $pid"
   echo "kill: $cmd"
   eval ${cmd}
-  echo "kill result: $?, 0 is success, 1 is fail"
+  echo "pid=$$, ppid=$PPID, eval pid=$!, kill result=$? (0 -> succeed, 1 -> failed)"
 fi
