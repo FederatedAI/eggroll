@@ -354,9 +354,15 @@ class RollSite(RollSiteBase):
             polling_header_timeout = self.polling_header_timeout        # skips pickling self
             polling_overall_timeout = self.polling_overall_timeout      # skips pickling self
 
-            header_response = self.ctx.rp_ctx.load(name=STATUS_TABLE_NAME, namespace=rp_namespace,
-                                          options={'create_if_missing': True, 'total_partitions': 1}).with_stores(
-                lambda x: PutBatchTask(transfer_tag_prefix + "0").get_header(polling_header_timeout))
+            wait_time = 0
+            header_response = None
+            while wait_time < polling_header_timeout and header_response is None:
+                header_response = self.ctx.rp_ctx.load(name=STATUS_TABLE_NAME, namespace=rp_namespace,
+                                                       options={'create_if_missing': True, 'total_partitions': 1})\
+                    .with_stores(lambda x: PutBatchTask(transfer_tag_prefix + "0").get_header(10))
+                wait_time += 10
+                L.debug(f"roll site get header_response: wait_time={wait_time}")
+
             if not header_response or not isinstance(header_response[0][1], ErRollSiteHeader):
                 raise IOError(f"roll site pull_status failed: rs_key={rs_key}, timeout={self.polling_header_timeout}")
             else:
