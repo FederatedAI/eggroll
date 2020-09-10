@@ -38,7 +38,7 @@ class TestRollPairBase(unittest.TestCase):
 
     @staticmethod
     def store_opts(**kwargs):
-        opts = {'total_partitions': 1}
+        opts = {'total_partitions': 1, "create_if_missing": True}
         opts.update(create_if_missing=True)
         opts.update(kwargs)
         return opts
@@ -716,7 +716,7 @@ class TestRollPairCluster(TestRollPairBase):
 
     @staticmethod
     def store_opts(**kwargs):
-        opts = {'total_partitions': 10}
+        opts = {'total_partitions': 10, "create_if_missing": True}
         opts.update(kwargs)
         return opts
 
