@@ -49,7 +49,7 @@ class CompositeFuture(object):
 
 
 class BatchBroker(object):
-    def __init__(self, broker, batch_size=100):
+    def __init__(self, broker, batch_size=RollPairConfKeys.EGGROLL_ROLLPAIR_TRANSFERPAIR_BATCHBROKER_DEFAULT_SIZE.default_value):
         self.broker = broker
         self.batch = []
         self.batch_size = batch_size
