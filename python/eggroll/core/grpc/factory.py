@@ -48,7 +48,17 @@ class GrpcChannelFactory(object):
                          ('grpc.max_receive_message_length',
                           int(CoreConfKeys.EGGROLL_CORE_GRPC_CHANNEL_MAX_INBOUND_MESSAGE_SIZE.get())),
                          ('grpc.max_metadata_size',
-                          int(CoreConfKeys.EGGROLL_CORE_GRPC_CHANNEL_MAX_INBOUND_METADATA_SIZE.get()))])
+                          int(CoreConfKeys.EGGROLL_CORE_GRPC_CHANNEL_MAX_INBOUND_METADATA_SIZE.get())),
+                         ('grpc.keepalive_time_ms', CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_KEEPALIVE_TIME_MSEC.get()),
+                         ('grpc.keepalive_timeout_ms', CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_KEEPALIVE_TIMEOUT_SEC.get()),
+                         ('grpc.keepalive_permit_without_calls', CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_KEEPALIVE_WITHOUT_CALLS_ENABLED.get()),
+                         ('grpc.per_rpc_retry_buffer_size', CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_RETRY_BUFFER_SIZE.get()),
+                         ('grpc.enable_retries', 1),
+                         ('grpc.service_config',
+                          '{ "retryPolicy":{ '
+                          '"maxAttempts": 4, "initialBackoff": "0.1s", '
+                          '"maxBackoff": "1s", "backoffMutiplier": 2, '
+                          '"retryableStatusCodes": [ "UNAVAILABLE" ] } }')])
                 self.pool[target] = result
             return self.pool[target]
 
