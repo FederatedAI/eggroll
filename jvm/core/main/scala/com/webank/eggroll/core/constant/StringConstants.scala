@@ -103,6 +103,7 @@ object StringConstants {
   val NAME = "name"
   val TOTAL_PARTITIONS = "totalPartitions"
   val TOTAL_PARTITIONS_SNAKECASE = "total_partitions"
+  val PARTITION_ID_SNAKECASE = "partition_id"
   val PARTITIONER = "partitioner"
   val SERDES = "serdes"
   val TRANSFER_BROKER_NAME = "transfer_broker_name"

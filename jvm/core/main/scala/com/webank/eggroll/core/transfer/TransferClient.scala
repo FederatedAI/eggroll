@@ -20,9 +20,11 @@ package com.webank.eggroll.core.transfer
 
 import java.nio.{ByteBuffer, ByteOrder}
 import java.util
+import java.util.concurrent.{CountDownLatch, Future, ThreadPoolExecutor}
 import java.util.concurrent.atomic.AtomicInteger
 
 import com.google.protobuf.{ByteString, UnsafeByteOperations}
+import com.webank.ai.eggroll.api.networking.proxy.{DataTransferServiceGrpc, Proxy}
 import com.webank.eggroll.core.concurrent.AwaitSettableFuture
 import com.webank.eggroll.core.constant.{NetworkConstants, StringConstants, TransferStatus}
 import com.webank.eggroll.core.datastructure.Broker
@@ -30,8 +32,9 @@ import com.webank.eggroll.core.grpc.client.{GrpcClientContext, GrpcClientTemplat
 import com.webank.eggroll.core.grpc.observer.SameTypeCallerResponseStreamObserver
 import com.webank.eggroll.core.grpc.processor.BaseClientCallStreamProcessor
 import com.webank.eggroll.core.meta.TransferModelPbMessageSerdes._
-import com.webank.eggroll.core.meta.{ErProcessor, ErTransferBatch, ErTransferHeader}
-import com.webank.eggroll.core.util.GrpcUtils
+import com.webank.eggroll.core.meta.{ErEndpoint, ErProcessor, ErTransferBatch, ErTransferHeader}
+import com.webank.eggroll.core.transfer.Transfer.TransferBatch
+import com.webank.eggroll.core.util.{GrpcUtils, Logging, ThreadPoolUtils}
 import io.grpc.stub.{ClientCallStreamObserver, StreamObserver}
 
 class GrpcTransferClient {
@@ -264,6 +267,60 @@ class GrpcKvPackingTransferSendStreamProcessor(clientCallStreamObserver: ClientC
 
     super.onComplete()
   }
+}
+
+
+class InternalTransferClient(defaultEndpoint: ErEndpoint) extends Logging {
+  def send(requests: Iterator[Transfer.TransferBatch],
+           endpoint: ErEndpoint = defaultEndpoint,
+           options: Map[String, String] = Map.empty): Transfer.TransferBatch = {
+    val channel = GrpcClientUtils.getChannel(endpoint, false, options)
+    val stub = TransferServiceGrpc.newStub(channel)
+    var result: Transfer.TransferBatch = null
+    val finishLatch = new CountDownLatch(1)
+
+    val streamObserver = stub.send(new StreamObserver[Transfer.TransferBatch] {
+      // define what to do when server responds
+      override def onNext(v: Transfer.TransferBatch): Unit = {
+        result = v
+        logInfo(s"response metadata: ${result}")
+      }
+
+      // define what to do when server gives error - backward propagation
+      override def onError(throwable: Throwable): Unit = {
+        // process error here
+        finishLatch.countDown()
+      }
+
+      // define what to do when server finishes
+      override def onCompleted(): Unit = {
+        // process finish here
+        finishLatch.countDown()
+      }
+    })
+
+    for (request <- requests) {
+      streamObserver.onNext(request)
+    }
+
+    streamObserver.onCompleted()
+    finishLatch.await()
+
+    result
+  }
+
+  def sendAsync(requests: Iterator[Transfer.TransferBatch],
+                endpoint: ErEndpoint = defaultEndpoint,
+                options: Map[String, String] = Map.empty): Future[Transfer.TransferBatch] = {
+    InternalTransferClient.internalTransferClientExecutor.submit(() => {
+      send(requests, endpoint, options)
+    })
+  }
+}
+
+object InternalTransferClient {
+  val internalTransferClientExecutor: ThreadPoolExecutor =
+    ThreadPoolUtils.newCachedThreadPool("internal-transfer-client")
 }
 
 class TransferSendStreamProcessor(clientCallStreamObserver: ClientCallStreamObserver[Transfer.TransferBatch],

@@ -1,7 +1,7 @@
 from eggroll.core.constants import SerdesTypes
 from eggroll.core.meta_model import ErPartition
 from eggroll.core.pair_store import create_pair_adapter
-from eggroll.core.serdes import cloudpickle
+import cloudpickle
 from eggroll.core.serdes.eggroll_serdes import PickleSerdes, \
     CloudPickleSerdes, EmptySerdes, eggroll_pickle_loads
 from eggroll.roll_pair.utils.pair_utils import get_db_path

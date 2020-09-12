@@ -51,14 +51,8 @@ def get_debug_test_context(is_standalone=False, manager_port=4670, egg_port=2000
                       transfer_endpoint=ErEndpoint("127.0.0.1",
                                                    egg_transfer_ports[0]))
 
-    roll = ErProcessor(id=1,
-                       server_node_id=self_server_node_id,
-                       processor_type=ProcessorTypes.ROLL_PAIR_MASTER,
-                       status=ProcessorStatus.RUNNING,
-                       command_endpoint=ErEndpoint("127.0.0.1", manager_port))
-
     session = ErSession(session_id,
-                        processors=[egg, roll],
+                        processors=[egg],
                         options=options)
     context = RollPairContext(session)
     return context

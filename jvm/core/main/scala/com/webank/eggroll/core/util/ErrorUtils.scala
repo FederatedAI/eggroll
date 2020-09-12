@@ -27,6 +27,9 @@ object ErrorUtils {
       case e: StatusRuntimeException =>
         result = e
       case _ =>
+        val sb = new StringBuilder
+        // todo:0: add hop info
+
         result = Status.INTERNAL
           .withCause(throwable)
           .withDescription(RuntimeUtils.getMySiteLocalAddressAndPort() + ": " + getStackTraceString(throwable))

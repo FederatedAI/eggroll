@@ -118,6 +118,13 @@ class RollPairConfKeys(object):
 
 
 class RollSiteConfKeys(object):
+    EGGROLL_ROLLSITE_PULL_MAX_RETRY = ErConfKey("eggroll.rollsite.pull.polling.max.retry", 3)
+    EGGROLL_ROLLSITE_PULL_OVERALL_TIMEOUT_SEC = ErConfKey("eggroll.rollsite.pull.overall.timeout.sec", 600)
+    EGGROLL_ROLLSITE_PULL_HEADER_TIMEOUT_SEC = ErConfKey("eggroll.rollsite.pull.header.timeout.sec", 600)
+    EGGROLL_ROLLSITE_PUSH_BATCHES_PER_STREAM = ErConfKey("eggroll.rollsite.push.batches.per.stream", 10)
+    EGGROLL_ROLLSITE_PUSH_MAX_RETRY = ErConfKey("eggroll.rollsite.push.max.retry", 100)
+    EGGROLL_ROLLSITE_PUSH_OVERALL_TIMEOUT_SEC = ErConfKey("eggroll.rollsite.push.overall.timeout.sec", 600)
+
     EGGROLL_ROLLSITE_COORDINATOR = ErConfKey("eggroll.rollsite.coordinator")
     EGGROLL_ROLLSITE_DEPLOY_MODE = ErConfKey("eggroll.rollsite.deploy.mode", "cluster")
     EGGROLL_ROLLSITE_HOST = ErConfKey("eggroll.rollsite.host", "127.0.0.1")
@@ -134,7 +141,6 @@ class RollSiteConfKeys(object):
     EGGROLL_ROLLSITE_UNARYCALL_CLIENT_MAX_RETRY = ErConfKey("eggroll.rollsite.unarycall.client.max.retry", 100)
     EGGROLL_ROLLSITE_UNARYCALL_MAX_RETRY = ErConfKey("eggroll.rollsite.unarycall.max.retry", 30_000)
     EGGROLL_ROLLSITE_PUSH_CLIENT_MAX_RETRY = ErConfKey("eggroll.rollsite.push.client.max.retry", 10)
-    EGGROLL_ROLLSITE_PUSH_MAX_RETRY = ErConfKey("eggroll.rollsite.push.max.retry", 300)
     EGGROLL_ROLLSITE_PULL_CLIENT_MAX_RETRY = ErConfKey("eggroll.rollsite.pull.client.max.retry", 300)
     EGGROLL_ROLLSITE_OVERALL_TIMEOUT_SEC = ErConfKey("eggroll.rollsite.overall.timeout.sec", 172_800_000)
     EGGROLL_ROLLSITE_COMPLETION_WAIT_TIMEOUT_SEC = ErConfKey("eggroll.rollsite.completion.wait.timeout.sec", 3_600_000)

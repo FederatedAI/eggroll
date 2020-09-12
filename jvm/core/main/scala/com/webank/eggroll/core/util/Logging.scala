@@ -95,6 +95,14 @@ trait Logging {
     log_
   }
 
+  protected def isLogTraceEnabled(): Boolean = {
+    log.isTraceEnabled
+  }
+
+  protected def isLogDebugEnabled(): Boolean = {
+    log.isDebugEnabled
+  }
+
   protected def logInfo(msg: => String) {
     if (log.isInfoEnabled) log.info(s"${prefix}${msg}")
   }
