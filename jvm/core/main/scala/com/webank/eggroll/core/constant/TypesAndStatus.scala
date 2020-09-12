@@ -33,6 +33,7 @@ object SerdesTypes {
   val PICKLE = "PICKLE"
   val PROTOBUF = "PROTOBUF"
   val CLOUD_PICKLE = "CLOUD_PICKLE"
+  val EMPTY = "EMPTY"
 }
 
 object StoreStatus {
