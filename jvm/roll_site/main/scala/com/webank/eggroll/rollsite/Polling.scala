@@ -28,6 +28,7 @@ import com.webank.eggroll.core.transfer.GrpcClientUtils
 import com.webank.eggroll.core.transfer.Transfer.RollSiteHeader
 import com.webank.eggroll.core.util.{Logging, ToStringUtils}
 import com.webank.eggroll.rollsite.PollingResults.errorPoison
+import io.grpc.ConnectivityState
 import io.grpc.stub.{ServerCallStreamObserver, StreamObserver}
 import org.apache.commons.lang3.StringUtils
 
@@ -80,8 +81,19 @@ class LongPollingClient extends Logging {
       val pollingResults = new PollingResults()
       val dispatchPollingRespSO = new DispatchPollingRespSO(pollingResults)
       //val dispatchPollingRespSO = new MockPollingRespSO(pollingResults)
-      val pollingReqSO = stub.polling(dispatchPollingRespSO)
+      var pollingReqSO = stub.polling(dispatchPollingRespSO)
+      var connectStat = channel.getState(false)
 
+      // waiting for connection ready.
+      var timeOut = 300
+      while (connectStat != ConnectivityState.READY && timeOut > 0) {
+        connectStat = channel.getState(true)
+        logDebug(f"[POLLING][CLIENT] waiting for connection ready, connectStat is $connectStat")
+        Thread.sleep(1000)
+        timeOut -= 1
+      }
+
+      pollingReqSO = stub.polling(dispatchPollingRespSO)
       pollingReqSO.onNext(
         LongPollingClient.initPollingFrameBuilder
           .build())
@@ -91,7 +103,6 @@ class LongPollingClient extends Logging {
         var req: Proxy.PollingFrame = null
         while (!finished) {
           req = pollingResults.next()
-
           req.getMethod match {
             case PollingMethods.PUSH | PollingMethods.UNARY_CALL =>
               pollingReqSO.onNext(req)
@@ -273,19 +284,25 @@ class UnaryCallPollingReqSO(eggSiteServicerPollingRespSO: ServerCallStreamObserv
   override def onNext(req: Proxy.PollingFrame): Unit = {
     logTrace(s"UnaryCallPollingReqSO.onNext calling. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
 
-    var batch: Proxy.PollingFrame = null
-    req.getSeq match {
-      case 0L =>
-        batch = pollingExchanger.respQ.take()
-        ensureInited(batch)
+    try {
+      var batch: Proxy.PollingFrame = null
+      req.getSeq match {
+        case 0L =>
+          batch = pollingExchanger.respQ.take()
+          ensureInited(batch)
 
-        eggSiteServicerPollingRespSO.onNext(batch)
-      case 1L =>
-        pollingExchanger.reqQ.put(Proxy.PollingFrame.newBuilder().setPacket(req.getPacket).build())
-      case _ =>
-        val t: Throwable = new IllegalStateException(s"invalid seq=${req.getSeq} for rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
+          eggSiteServicerPollingRespSO.onNext(batch)
+        case 1L =>
+          pollingExchanger.reqQ.put(Proxy.PollingFrame.newBuilder().setPacket(req.getPacket).build())
+        case _ =>
+          val t: Throwable = new IllegalStateException(s"invalid seq=${req.getSeq} for rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
+          onError(t)
+      }
+    } catch {
+      case t:Throwable =>
         onError(t)
     }
+
     logTrace(s"UnaryCallPollingReqSO.onNext called. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
   }
 
@@ -329,24 +346,29 @@ class PushPollingReqSO(val eggSiteServicerPollingRespSO: ServerCallStreamObserve
   override def onNext(req: Proxy.PollingFrame): Unit = {
     logTrace(s"PushPollingReqSO.onNext calling. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
 
-    req.getSeq match {
-      case 0L =>
-        var shouldStop = false
-        var batch: Proxy.PollingFrame = null
+    try {
+      req.getSeq match {
+        case 0L =>
+          var shouldStop = false
+          var batch: Proxy.PollingFrame = null
 
-        while (!shouldStop) {
-          batch = pollingExchanger.respQ.take()
-          ensureInited(batch)
+          while (!shouldStop) {
+            batch = pollingExchanger.respQ.take()
+            ensureInited(batch)
 
-          if (batch.getMethod.equals(PollingMethods.FINISH_PUSH)) {
-            shouldStop = true
+            if (batch.getMethod.equals(PollingMethods.FINISH_PUSH)) {
+              shouldStop = true
+            }
+            eggSiteServicerPollingRespSO.onNext(batch)
           }
-          eggSiteServicerPollingRespSO.onNext(batch)
-        }
-      case 1L =>
-        pollingExchanger.reqQ.put(Proxy.PollingFrame.newBuilder().setMetadata(req.getMetadata).build())
-      case _ =>
-        val t: Throwable = new IllegalStateException(s"PushPollingReqSO.error: invalid seq=${req.getSeq} for rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
+        case 1L =>
+          pollingExchanger.reqQ.put(Proxy.PollingFrame.newBuilder().setMetadata(req.getMetadata).build())
+        case _ =>
+          val t: Throwable = new IllegalStateException(s"PushPollingReqSO.error: invalid seq=${req.getSeq} for rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
+          onError(t)
+      }
+    } catch {
+      case t:Throwable =>
         onError(t)
     }
     logTrace(s"PushPollingReqSO.onNext called. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
@@ -364,7 +386,6 @@ class PushPollingReqSO(val eggSiteServicerPollingRespSO: ServerCallStreamObserve
     logTrace(s"PushPollingReqSO.onCompleted called. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
   }
 }
-
 
 
 // polling client side
@@ -408,14 +429,18 @@ class DispatchPollingRespSO(pollingResults: PollingResults)
   }
 
   override def onNext(req: Proxy.PollingFrame): Unit = {
-    ensureInit(req)
-
-    delegateSO.onNext(req)
+    try {
+      ensureInit(req)
+      delegateSO.onNext(req)
+    } catch {
+      case t:Throwable =>
+        onError(t)
+    }
   }
 
   override def onError(t: Throwable): Unit = {
     if (delegateSO != null) {
-      delegateSO.onError(t)
+      delegateSO.onError(TransferExceptionUtils.throwableToException(t))
     }
     LongPollingClient.releaseSemaphore()
   }
@@ -462,13 +487,20 @@ class PushPollingRespSO(pollingResults: PollingResults)
 
   override def onNext(req: Proxy.PollingFrame): Unit = {
     logTrace(s"PushPollingRespSO.onNext calling. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
-    ensureInit(req)
 
-    if (req.getMethod != PollingMethods.FINISH_PUSH) {
-      putBatchSinkPushReqSO.onNext(req.getPacket)
-    } else {
-      putBatchSinkPushReqSO.onCompleted()
+    try {
+      ensureInit(req)
+
+      if (req.getMethod != PollingMethods.FINISH_PUSH) {
+        putBatchSinkPushReqSO.onNext(req.getPacket)
+      } else {
+        putBatchSinkPushReqSO.onCompleted()
+      }
+    } catch {
+      case t:Throwable =>
+        onError(t)
     }
+
     logTrace(s"PushPollingRespSO.onNext calling. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
   }
 
@@ -516,15 +548,22 @@ class PutBatchPollingPushRespSO(pollingResults: PollingResults)
 
   override def onNext(resp: Proxy.Metadata): Unit = {
     logTrace(s"PutBatchPollingPushRespSO.onNext calling. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
-    ensureInited(resp)
-    pollingFrameSeq += 1
-    val respPollingFrame = Proxy.PollingFrame.newBuilder()
-      .setMethod(PollingMethods.PUSH)
-      .setMetadata(resp)
-      .setSeq(pollingFrameSeq)
-      .build()
 
-    pollingResults.put(respPollingFrame)
+    try {
+      ensureInited(resp)
+      pollingFrameSeq += 1
+      val respPollingFrame = Proxy.PollingFrame.newBuilder()
+        .setMethod(PollingMethods.PUSH)
+        .setMetadata(resp)
+        .setSeq(pollingFrameSeq)
+        .build()
+
+      pollingResults.put(respPollingFrame)
+    } catch {
+      case t:Throwable =>
+        onError(t)
+    }
+
     logTrace(s"PutBatchPollingPushRespSO.onNext called. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
   }
 
@@ -578,19 +617,25 @@ class UnaryCallPollingRespSO(pollingResults: PollingResults)
 
   override def onNext(req: Proxy.PollingFrame): Unit = {
     logTrace(s"UnaryCallPollingRespSO.onNext calling. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
-    ensureInit(req)
 
-    val callResult = stub.unaryCall(req.getPacket)
+    try {
+      ensureInit(req)
 
-    pollingFrameSeq += 1
-    val response = Proxy.PollingFrame.newBuilder()
-      .setMethod(PollingMethods.UNARY_CALL)
-      .setPacket(callResult)
-      .setSeq(pollingFrameSeq)
-      .build()
+      val callResult = stub.unaryCall(req.getPacket)
 
-    pollingResults.put(response)
-    pollingResults.setFinish()
+      pollingFrameSeq += 1
+      val response = Proxy.PollingFrame.newBuilder()
+        .setMethod(PollingMethods.UNARY_CALL)
+        .setPacket(callResult)
+        .setSeq(pollingFrameSeq)
+        .build()
+
+      pollingResults.put(response)
+      pollingResults.setFinish()
+    } catch {
+      case t:Throwable =>
+        onError(t)
+    }
 
     logTrace(s"UnaryCallPollingRespSO.onNext called. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
   }
