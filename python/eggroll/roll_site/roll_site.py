@@ -356,7 +356,8 @@ class RollSite(RollSiteBase):
 
             wait_time = 0
             header_response = None
-            while wait_time < polling_header_timeout and header_response is None:
+            while wait_time < polling_header_timeout and \
+                    (header_response is None or not isinstance(header_response[0][1], ErRollSiteHeader)):
                 header_response = self.ctx.rp_ctx.load(name=STATUS_TABLE_NAME, namespace=rp_namespace,
                                                        options={'create_if_missing': True, 'total_partitions': 1})\
                     .with_stores(lambda x: PutBatchTask(transfer_tag_prefix + "0").get_header(10))
