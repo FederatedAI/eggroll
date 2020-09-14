@@ -81,8 +81,7 @@ class LongPollingClient extends Logging {
       val pollingResults = new PollingResults()
       val dispatchPollingRespSO = new DispatchPollingRespSO(pollingResults)
       //val dispatchPollingRespSO = new MockPollingRespSO(pollingResults)
-      var pollingReqSO = stub.polling(dispatchPollingRespSO)
-      var connectStat = channel.getState(false)
+      var connectStat = channel.getState(true)
 
       // waiting for connection ready.
       var timeOut = 300
@@ -93,7 +92,7 @@ class LongPollingClient extends Logging {
         timeOut -= 1
       }
 
-      pollingReqSO = stub.polling(dispatchPollingRespSO)
+      val pollingReqSO = stub.polling(dispatchPollingRespSO)
       pollingReqSO.onNext(
         LongPollingClient.initPollingFrameBuilder
           .build())
@@ -430,6 +429,12 @@ class DispatchPollingRespSO(pollingResults: PollingResults)
 
   override def onNext(req: Proxy.PollingFrame): Unit = {
     try {
+      if (TransferExceptionUtils.checkPacketIsException(req.getPacket)) {
+        val errStack = req.getPacket.getBody.getValue.toStringUtf8
+        logError(s"DispatchPollingRespSO get error from push or unarycall. ${errStack}")
+        onError(new Exception(f"DispatchPollingRespSO get error from push or unarycall, ${errStack}"))
+      }
+
       ensureInit(req)
       delegateSO.onNext(req)
     } catch {
