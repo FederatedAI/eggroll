@@ -15,7 +15,7 @@ object TransferExceptionUtils {
     val stackInfo = ExceptionUtils.getStackTrace(t)
     var desc = ""
     val host = RuntimeUtils.getMySiteLocalAddressAndPort()
-    if (locMsg.contains("[Roll Site Error TransInfo]")) {
+    if (locMsg != null && locMsg.contains("[Roll Site Error TransInfo]")) {
       desc = locMsg + f"--> $host"
     } else {
       desc = f"\n[Roll Site Error TransInfo] \n location msg:$locMsg \n stack info: $stackInfo \n"
