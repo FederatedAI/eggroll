@@ -25,6 +25,7 @@ import com.webank.eggroll.core.meta.ErStore
 import com.webank.eggroll.core.util.TimeUtils
 import com.webank.eggroll.util.Logging
 import com.webank.eggroll.format._
+import com.webank.eggroll.rollframe.test.MultiProcessorsTest
 import com.webank.eggroll.util.SchemaUtil
 import junit.framework.TestCase
 import org.junit.{Before, Ignore, Test}
@@ -34,14 +35,14 @@ import org.junit.{Before, Ignore, Test}
  */
 class RollFrameTests extends Logging {
   protected val ta: TestAssets.type = TestAssets
-  val fieldCount: Int = 100
+  val fieldCount: Int = 1000
   protected val rowCount = 10000 // total value count = rowCount * fbCount * fieldCount
   protected val fbCount = 1 // the num of batch
   protected val supportTorch = true
   protected var ctx: RollFrameContext = _
   protected var inputStore: ErStore = _
   protected var inputTensorStore: ErStore = _
-  protected val partitions_ = 3
+  protected val partitions_ = 4
 
   @Before
   def setup(): Unit = {
@@ -104,6 +105,7 @@ class RollFrameTests extends Logging {
    */
   @Test
   def testCreateDataStore(): Unit = {
+    RollFrameContext.printSession(ctx.session)
     inputStore.partitions.indices.foreach { i =>
       write(FrameStore(inputStore, i)) //    create file FrameBatch
       writeTensorFb(FrameStore(inputTensorStore, i)) //    create FrameBatch with one column
@@ -113,10 +115,10 @@ class RollFrameTests extends Logging {
   }
 
   @Test
-  def testRunPythonCodeMock(): Unit ={
+  def testRunPythonCodeMock(): Unit = {
     inputStore = ctx.createStore("test1", "a1", StringConstants.FILE, 1)
     val rf = ctx.load(inputStore)
-    val code:String =
+    val code: String =
       """
         |a = partition_id
         |b = 3
@@ -124,18 +126,13 @@ class RollFrameTests extends Logging {
         |state = 0
         |""".stripMargin
     rf.runPythonDistributedMock(code)
-
-    val stop = 1
-
   }
 
   @Test
-  def testRunPythonCode(): Unit ={
-    inputTensorStore = ctx.createStore("test1", "t1", StringConstants.FILE, 1)
-    val inputCacheStore = ctx.dumpCache(inputTensorStore)
-    val outputStore = ctx.forkStore(inputCacheStore,"test","out1")
+  def testRunPythonCode(): Unit = {
+    val inputCacheStore = ctx.combineDoubleFbs(ctx.dumpCache(inputTensorStore))
     val rf = ctx.load(inputCacheStore)
-    val code:String =
+    val code: String =
       """
         |import numpy as np
         |import torch
@@ -151,20 +148,24 @@ class RollFrameTests extends Logging {
         |_result = _result.astype(np.float64)
         |""".stripMargin
 
-    val parameters = Array(1.0,2.0)
-    rf.runPythonDistributed(code,fieldCount,parameters,outputStore)
-    val res = FrameStore(outputStore,0).readOne()
-    assert(res.readDouble(0,0) == 1.0)
-    println("结束")
+    val parameters = Array(1.0, 2.0)
+    (0 until 10).foreach { i =>
+      val outputStore = ctx.forkStore(inputCacheStore, "test" + i, "out1", StringConstants.CACHE)
+      rf.runPythonDistributed(code, fieldCount, parameters, nonCopy = true, output=outputStore)
+    }
+
+    //    val res = FrameStore(outputStore,0).readOne()
+    //    assert(res.readDouble(0,0) == 1.0)
   }
 
   @Test
   def testLoadRollFrame(): Unit = {
     val rf = ctx.load(ctx.dumpCache(inputStore))
+    val output = ctx.createStore("test","rrr1",StringConstants.FILE,1)
     rf.mapBatch(fb => {
       TestCase.assertNotNull(fb.isEmpty)
       fb
-    })
+    },output)
   }
 
   @Test
@@ -221,8 +222,8 @@ class RollFrameTests extends Logging {
   }
 
   @Test
-  def testGetAvailablePort(): Unit ={
-    TestCase.assertTrue(ctx.frameTransfer.Roll.getAvailablePort>=HttpUtil.ORIGIN_PORT)
+  def testGetAvailablePort(): Unit = {
+    TestCase.assertTrue(ctx.frameTransfer.Roll.getAvailablePort >= HttpUtil.ORIGIN_PORT)
   }
 
   /**
@@ -482,7 +483,7 @@ class RollFrameTests extends Logging {
     ctx.load(input).genData(_ => {
       val zeroValue = new FrameBatch(new FrameSchema(SchemaUtil.getDoubleSchema(10)), 1000)
       zeroValue.initZero()
-      zeroValue
+      Iterator(zeroValue)
     })
     val fb = FrameStore(input, 0).readOne()
     TestCase.assertEquals(fb.fieldCount, 10)

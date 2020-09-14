@@ -18,37 +18,59 @@
 
 package com.webank.eggroll.rollframe
 
+import java.nio.{ByteOrder, DoubleBuffer}
 import java.text.SimpleDateFormat
+import java.util
 import java.util.Date
 import java.util.concurrent.{Callable, CountDownLatch, Future}
 import java.util.concurrent.atomic.AtomicInteger
 import scala.collection.mutable.ListBuffer
 import scala.collection.immutable.Range.Inclusive
 import scala.util.Random
-import jep.NDArray
-
+import jep.{DirectNDArray, NDArray}
 import com.webank.eggroll.core.ErSession
 import com.webank.eggroll.core.constant.{SessionStatus, StringConstants}
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.serdes.DefaultScalaSerdes
 import com.webank.eggroll.core.util.TimeUtils
 import com.webank.eggroll.format._
-import com.webank.eggroll.rollframe.embpython.PyInterpreter
+import com.webank.eggroll.rollframe.embpython.{LocalThreadPythonInterp, PyInterpreter}
 import com.webank.eggroll.rollframe.pytorch.{Matrices, Script}
 import com.webank.eggroll.util.{Logging, SchemaUtil}
+import io.netty.util.internal.PlatformDependent
 
 // TODO: care about client task grpc whether closed and thread pool whether closed
 // TODO: always close in finally
 
 class RollFrameContext private[eggroll](val session: ErSession) extends Logging {
-  lazy val serverNodes: Array[ErProcessor] = session.processors
-  lazy val rollNodes: ErProcessor = session.processors(0)
+  lazy val eggProcessors: Array[ErProcessor] = session.processors
+  lazy val rollNodes: ErProcessor = eggProcessors.head
+  // get first processor from each serverNodes' processors
+  lazy val serverNodes: Array[ErProcessor] = {
+    var list = Array[ErProcessor]()
+    var tmpServerId: Long = -1
+    session.processors.foreach { p =>
+      if (tmpServerId != p.serverNodeId) {
+        list = list :+ p
+        tmpServerId = p.serverNodeId
+      }
+    }
+    list
+  }
+
 
   // TODO: set private
-  lazy val frameTransfer: NioFrameTransfer = new NioFrameTransfer(serverNodes)
+  lazy val frameTransfer: NioFrameTransfer = new NioFrameTransfer(eggProcessors)
 
   val defaultStoreType: String = StringConstants.FILE
 
+
+  /**
+   * Create new ErStore with cache type by using map op.
+   *
+   * @param store input ErStore with other store type, such as file.
+   * @return output ErStore with cache type.
+   */
   def dumpCache(store: ErStore): ErStore = {
     val cacheStore = forkStore(store, store.storeLocator.namespace, store.storeLocator.name, StringConstants.CACHE)
     load(store).mapBatch(f => f, cacheStore)
@@ -56,13 +78,30 @@ class RollFrameContext private[eggroll](val session: ErSession) extends Logging 
   }
 
 
-  def combineDoubleFbs(store: ErStore): ErStore = {
-    val partitions = if (store.partitions.length < serverNodes.length) {
-      store.partitions.length
+  /**
+   * Vertical stack all FrameBatch in each server node
+   *
+   * @param store : input ErStore
+   * @return output ErStore haven stacked
+   */
+  def combineDoubleFbs(store: ErStore, singleThread: Boolean = true): ErStore = {
+    val cacheStore = if (singleThread) {
+      // todo:add parameters check
+      val partitions = if (store.partitions.length < serverNodes.length) {
+        store.partitions.length
+      } else {
+        serverNodes.length
+      }
+      createStore(store.storeLocator.namespace, "all_" + store.storeLocator.name, StringConstants.CACHE, partitions)
     } else {
-      serverNodes.length
+      val partitions = if (store.partitions.length < eggProcessors.length) {
+        store.partitions.length
+      } else {
+        eggProcessors.length
+      }
+      createStore(store.storeLocator.namespace, "all_" + store.storeLocator.name, StringConstants.CACHE, partitions, singleThread = false)
     }
-    val cacheStore = createStore(store.storeLocator.namespace, "all_" + store.storeLocator.name, StringConstants.CACHE, partitions)
+
     // repartition
     val dir = FrameStore.getStoreDir(store)
     load(cacheStore).genData(_ => {
@@ -76,6 +115,7 @@ class RollFrameContext private[eggroll](val session: ErSession) extends Logging 
         var rowBatch = 0
         elements.foreach { i =>
           // serial
+          // todo: use copyMemory
           val fb = i._2.head
           (0 until fb.rowCount).foreach { r =>
             fbs.writeDouble(f, rowBatch + r, fb.readDouble(f, r))
@@ -87,7 +127,37 @@ class RollFrameContext private[eggroll](val session: ErSession) extends Logging 
       elements.foreach { i =>
         JvmFrameStore.remove(i._1)
       }
-      fbs
+      Iterator(fbs)
+    })
+    cacheStore
+  }
+
+  @deprecated
+  def combineDoubleFbsBatch(store: ErStore): ErStore = {
+    val partitions = if (checkRollMode(store)) {
+      1
+    } else {
+      if (store.partitions.length < eggProcessors.length) {
+        store.partitions.length
+      } else {
+        eggProcessors.length
+      }
+    }
+    val cacheStore = createStore(store.storeLocator.namespace, "all_" + store.storeLocator.name, StringConstants.CACHE, partitions)
+    // repartition
+    val dir = FrameStore.getStoreDir(store)
+    load(cacheStore).genData(_ => {
+      // get all FrameBatch
+      val elements = JvmFrameStore.getJvmFrameBatches(dir)
+      val totalRows = elements.foldLeft(0)((a, b) => {
+        a + b._2.head.rowCount
+      })
+      val fbs = new ListBuffer[FrameBatch]
+
+      elements.foreach { i =>
+        fbs.+=(i._2.head)
+      }
+      fbs.iterator
     })
     cacheStore
   }
@@ -117,6 +187,16 @@ class RollFrameContext private[eggroll](val session: ErSession) extends Logging 
     session.clusterManagerClient.stopSession(session.sessionMeta)
   }
 
+  def checkRollMode(store: ErStore): Boolean = {
+    val rollServerId = store.partitions(0).processor.serverNodeId
+    var res = true
+    store.partitions.foreach { i =>
+      if (rollServerId != i.processor.serverNodeId)
+        res = false
+    }
+    res
+  }
+
   /**
    * Provides two way to create/update or get Store by totalPartitions.
    * IF totalPartitions = 0, return store with partitions the same as processors.
@@ -130,7 +210,7 @@ class RollFrameContext private[eggroll](val session: ErSession) extends Logging 
    * @return ErStore
    */
   def createStore(namespace: String, name: String, storeType: String = defaultStoreType, totalPartitions: Int = 0,
-                  keep: Boolean = false): ErStore = {
+                  singleThread: Boolean = true): ErStore = {
     val storeLocator: ErStoreLocator = ErStoreLocator(
       namespace = namespace,
       name = name,
@@ -142,29 +222,25 @@ class RollFrameContext private[eggroll](val session: ErSession) extends Logging 
         // partitions num equal processors
         serverNodes.indices.map(i => ErPartition(id = i, storeLocator = storeLocator, processor = serverNodes(i))).toArray
       case _ =>
-        val _processors = assignProcessors(serverNodes, totalPartitions)
+        val _processors = if (singleThread) {
+          assignProcessors(serverNodes, totalPartitions)
+        } else {
+          assignProcessors(eggProcessors, totalPartitions)
+        }
         (0 until totalPartitions).map { i =>
           ErPartition(id = i, storeLocator = storeLocator, processor = _processors(i))
         }.toArray
     }
     val store = ErStore(storeLocator = storeLocator, partitions = partitions)
-    if (keep) {
-      session.clusterManagerClient.deleteStore(storeLocator)
-      session.clusterManagerClient.getOrCreateStore(store)
-    }
     store
   }
 
   def forkStore(oldStore: ErStore, namespace: String, name: String, storeType: String = defaultStoreType,
-                keep: Boolean = false): ErStore = {
+                roll: Boolean = false): ErStore = {
     val storeLocator: ErStoreLocator = oldStore.storeLocator.copy(namespace = namespace, name = name, storeType = storeType,
       totalPartitions = oldStore.storeLocator.totalPartitions)
     val partitions: Array[ErPartition] = oldStore.partitions.map(i => i.copy(storeLocator = storeLocator))
     val store = ErStore(storeLocator = storeLocator, partitions = partitions)
-    if (keep) {
-      session.clusterManagerClient.deleteStore(storeLocator)
-      session.clusterManagerClient.getOrCreateStore(store)
-    }
     store
   }
 
@@ -384,6 +460,7 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
    *
    * @param code Python code
    */
+  @deprecated
   def runPythonDistributedMock(code: String): Unit = {
     val jobType = RollFrame.embeddedPython
     val jobId = jobType + "_" + genJobId()
@@ -391,10 +468,10 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
       (ctx, task, input, output) =>
         try {
           // ignore data input
-          val interp = PyInterpreter()
+          val interp = LocalThreadPythonInterp.interpreterThreadLocal.get()
           // TODO: host and ip can be config.
-          ctx.serverNodes(0).transferEndpoint.host
-          interp.setValue("world_size", ctx.serverNodes.length)
+          ctx.eggProcessors(0).transferEndpoint.host
+          interp.setValue("world_size", ctx.eggProcessors.length)
           interp.setValue("rank", task.inputs.head.id)
           interp.exec(code)
           // can get a state variable
@@ -408,32 +485,70 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
     println("finished run pytorch distributed model")
   }
 
-  def runPythonDistributed(code: String, field: Int, parameters: Array[Double], output: ErStore = null): Unit = {
+  // TODO: set private mothod
+  /**
+   * Embedding python interpreter to run python code with data from.
+   *
+   * @param code       : python code includeing ddp code. It better to wrap into function.
+   *                   Tips:
+   *                   1. input data need to cast to float32 using "torch.from_numpy(_input_data.astype(np.float32)).to('cpu')"
+   *                      2. Must close process_group in python code, if want to reuse this interface.
+   * @param field      : data Store's fields which will transfer to python interpreter
+   * @param parameters : parameters given by user.
+   * @param nonCopy    : use the same memory and don't copy data from direct buffer to heap buffer
+   * @param output     : output ErStore
+   */
+  def runPythonDistributed(code: String,
+                           field: Int,
+                           parameters: Array[Double],
+                           nonCopy: Boolean = false,
+                           output: ErStore = null): Unit = {
     // to get available port
     val rollServerPort: Int = ctx.frameTransfer.Roll.getAvailablePort
     println(s"Roll Server available port: $rollServerPort")
     val jobType = RollFrame.embeddedPython
     val jobId = jobType + "_" + genJobId()
+    val inputPartitions = store.partitions.length
+
     val func: (EggFrameContext, ErTask, Iterator[FrameBatch], FrameStore) => ErPair = {
       (ctx, task, input, output) =>
         try {
+          //          println(Thread.currentThread().getName)
+          // todo: Whether to set the python variable to global is uncertain，because two plans all have some benefits.
           // input args of python interpreter: _world_size, _rank, _input_data, _parameters, _master_addr, _master_port
           // output args of python interpreter : _result, _state
-          val interp = PyInterpreter()
-          interp.setValue("_world_size", ctx.serverNodes.length)
-          interp.setValue("_rank", task.inputs.head.id)
+          val interp = LocalThreadPythonInterp.interpreterThreadLocal.get()
           // default is the first server
           val rollServerIp = ctx.rootServer.transferEndpoint.host
+          val start = System.currentTimeMillis()
+          interp.setValue("_world_size", inputPartitions)
+          ctx.logInfo(s"_world_size : $inputPartitions")
+          interp.setValue("_rank", task.inputs.head.id)
+          ctx.logInfo(s"_rank: ${task.inputs.head.id}")
           interp.setValue("_master_addr", rollServerIp)
           interp.setValue("_master_port", rollServerPort.toString)
+          ctx.logInfo(s"_master_addr: $rollServerIp ,_master_port: $rollServerPort")
 
-          ctx.logInfo(s"_master_port: $rollServerPort")
-          val data = FrameUtils.toFloatArray(input.next().rootVectors(0))
-          val inputData = new NDArray[Array[Float]](data, data.length / field, field)
           val inputParameters = new NDArray[Array[Float]](parameters.map(_.toFloat), parameters.length)
           interp.setValue("_parameters", inputParameters)
+          val inputData = if (nonCopy) {
+            val fb = input.next()
+            val data = fb.rootVectors(0).fieldVector.getDataBuffer.nioBuffer()
+            data.order(ByteOrder.LITTLE_ENDIAN)
+            val rows = fb.rowCount / field
+            ctx.logInfo(s"_input_data dim : = [$rows,$field]")
+            new DirectNDArray[DoubleBuffer](data.asDoubleBuffer(), rows, field)
+          } else {
+            val data = FrameUtils.toFloatArray(input.next().rootVectors(0))
+            val rows = data.length / field
+            ctx.logInfo(s"_input_data dim : = [$rows,$field]")
+            new NDArray[Array[Float]](data, rows, field)
+            new NDArray[Array[Float]](data)
+          }
           interp.setValue("_input_data", inputData)
+          println(s"set py value: ${System.currentTimeMillis() - start} ms")
           interp.exec(code)
+          println(s"py time: ${System.currentTimeMillis() - start} ms")
           // can get a state variable
           assert(interp.getValue("_state").asInstanceOf[Long] == 0, "Some error in python interpreter,because get error state")
           val result = interp.getValue("_result").asInstanceOf[NDArray[Double]]
@@ -445,7 +560,7 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
           output.close()
         }
         catch {
-          case e: Throwable => throw new RuntimeException(s"mapCommand task failed,task:$task", e)
+          case e: Throwable => throw new RuntimeException(s"runPythonDistributed task failed,task:$task", e)
         }
         null
     }
@@ -453,8 +568,7 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
     println("finished run pytorch distributed model.")
   }
 
-
-  def genData(f: FrameBatch => FrameBatch): RollFrame = {
+  def genData(f: FrameBatch => Iterator[FrameBatch]): RollFrame = {
     val jobType = RollFrame.genData
     val jobId = jobType + "_" + genJobId()
     // input store equal ouput store
@@ -463,7 +577,7 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
     val func: (EggFrameContext, ErTask, Iterator[FrameBatch], FrameStore) => ErPair = {
       (ctx, task, input, output) =>
         try {
-          output.append(f(input.next()))
+          output.writeAll(f(input.next()))
           output.close()
         } catch {
           case e: Throwable => throw new RuntimeException(s"genData task failed,task:$task", e)

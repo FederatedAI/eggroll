@@ -20,7 +20,7 @@ package com.webank.eggroll.format
 
 import java.io._
 import java.net.ConnectException
-import java.nio.ByteOrder
+import java.nio.{ByteBuffer, ByteOrder}
 import java.nio.channels.{Channels, ReadableByteChannel, WritableByteChannel}
 import java.util.concurrent.{BlockingQueue, LinkedBlockingQueue}
 
@@ -317,6 +317,28 @@ class NetworkFrameStore(path: String, host: String, port: Int) extends FrameStor
   override def close(): Unit = {
     // need to close ?
     client.clientChannel.close()
+  }
+}
+
+object ArtificialDirectBuffer{
+  private val cache: TrieMap[String,ByteBuffer] = new TrieMap[String,ByteBuffer]()
+  def putAndUpdate(path:String,buffer:ByteBuffer): Unit ={
+    cache.put(path,buffer)
+  }
+
+  def remove(path:String): Unit ={
+    if (cache.contains(path)){
+      PlatformDependent.freeDirectBuffer(cache(path))
+      cache.remove(path)
+    }
+  }
+
+  def get(path:String): ByteBuffer ={
+    cache(path)
+  }
+
+  def contain(path:String): Boolean ={
+    cache.contains(path)
   }
 }
 

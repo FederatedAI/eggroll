@@ -18,16 +18,20 @@
 
 package com.webank.eggroll.rollframe
 
-import java.nio.{ByteBuffer, ByteOrder}
+import java.nio.{ByteBuffer, ByteOrder, DoubleBuffer}
 import java.util.concurrent.{CountDownLatch, TimeUnit}
 
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.util.Logging
 import com.webank.eggroll.format._
+import com.webank.eggroll.rollframe.embpython.{LocalThreadPythonInterp, PyInterpreter}
 import com.webank.eggroll.util.SchemaUtil
 import io.netty.util.internal.PlatformDependent
+import jep.DirectNDArray
 import junit.framework.TestCase
-import org.apache.arrow.vector.BitVectorHelper
+import org.apache.arrow.memory.RootAllocator
+import org.apache.arrow.vector.types.pojo.Schema
+import org.apache.arrow.vector.{BitVectorHelper, Float8Vector, IntVector}
 import org.junit.{Before, Test}
 
 import scala.collection.immutable.Range.Inclusive
@@ -448,7 +452,7 @@ class FrameFormatTests extends Logging {
   def testOneFieldFb(): Unit = {
     System.setProperty("arrow.enable_unsafe_memory_access", "true")
     val cols = 1
-    val rows = 100000000
+    val rows = 122000
     val fb = new FrameBatch(new FrameSchema(SchemaUtil.getDoubleSchema(cols)), rows)
     var start = System.currentTimeMillis()
     (0 until cols).foreach(f =>
@@ -463,6 +467,43 @@ class FrameFormatTests extends Logging {
         sum += fb.readDouble(f, r)
       })
     println(s"read time = ${System.currentTimeMillis() - start} ms")
+  }
+
+  @Test
+  def testVf(): Unit = {
+    System.setProperty("arrow.enable_unsafe_memory_access", "true")
+    val allocator = new RootAllocator(Long.MaxValue)
+    val vector1 = new Float8Vector("double vector", allocator)
+    val size = 100*1000
+    vector1.allocateNew(size)
+    vector1.setValueCount(size)
+    for (i <- 0 until size) {
+      vector1.set(i, i + 10)
+    }
+
+    val vector2 = new Float8Vector("double vector", allocator)
+    vector2.allocateNew(size)
+    vector2.setValueCount(size)
+    for (i <- 0 until size) {
+      vector2.set(i, i + 100)
+    }
+    //    val y = PlatformDependent.allocateMemory(10000)
+//    val df = PlatformDependent.allocateDirectNoCleaner(size * 2 * 8)
+    val address = PlatformDependent.allocateMemory(size*2*8)
+    val df = PlatformDependent.directBuffer(address,size*2*8)
+    df.order(ByteOrder.LITTLE_ENDIAN)
+    val start = System.currentTimeMillis()
+    PlatformDependent.copyMemory(vector1.getDataBufferAddress, address, size * 8)
+    PlatformDependent.copyMemory(vector2.getDataBufferAddress, address + size * 8, size * 8)
+    println(s"time = ${System.currentTimeMillis() - start} ms")
+
+    val interp: PyInterpreter = LocalThreadPythonInterp.interpreterThreadLocal.get()
+    val dnd = new DirectNDArray[DoubleBuffer](df.asDoubleBuffer(), size*2)
+    interp.setValue("dnd",dnd)
+    interp.exec("dnd[0] = 20")
+    val res = interp.getValue("dnd").asInstanceOf[DirectNDArray[DoubleBuffer]]
+    assert(dnd.getData.get(0) == res.getData.get(0))
+    PlatformDependent.freeDirectNoCleaner(df)
   }
 
 

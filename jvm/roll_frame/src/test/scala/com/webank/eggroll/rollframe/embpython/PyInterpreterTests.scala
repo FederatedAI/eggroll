@@ -17,14 +17,16 @@
 
 package com.webank.eggroll.rollframe.embpython
 
+import java.nio.{ByteOrder, DoubleBuffer}
 import java.util
 
+import com.webank.eggroll.format.{FrameBatch, FrameSchema}
 import org.junit.Test
-import com.webank.eggroll.util.File
-import jep.NDArray
+import com.webank.eggroll.util.{File, SchemaUtil}
+import jep.{DirectNDArray, NDArray}
 
 class PyInterpreterTests {
-  val interp: PyInterpreter = PyInterpreter()
+  val interp: PyInterpreter = LocalThreadPythonInterp.interpreterThreadLocal.get()
 
   @Test
   def testTransferParameters(): Unit = {
@@ -49,6 +51,24 @@ class PyInterpreterTests {
     interp.exec("m = max_op(b)")
     val n = interp.getValue("m").asInstanceOf[Double]
     assert(n == 4.4)
+  }
+
+  @Test
+  def testDirectNDArray(): Unit = {
+    val fieldCount = 3
+    val rowCount = 4
+    val count = fieldCount * rowCount
+    val fb = new FrameBatch(new FrameSchema(SchemaUtil.oneFieldSchemaString), count)
+    for (i <- 0 until count){
+      fb.writeDouble(0, i, i)
+    }
+    val data = fb.rootVectors(0).fieldVector.getDataBuffer.nioBuffer()
+    data.order(ByteOrder.LITTLE_ENDIAN)
+    val dnd = new DirectNDArray[DoubleBuffer](data.asDoubleBuffer(),count)
+    interp.setValue("dnd",dnd)
+    interp.exec("dnd[1] = 20")
+    val res = interp.getValue("dnd").asInstanceOf[DirectNDArray[DoubleBuffer]]
+    assert(fb.readDouble(0,1)==res.getData.get(1))
   }
 
   @Test
@@ -81,4 +101,41 @@ class PyInterpreterTests {
     assert(d0(1) == 100)
     assert(d1(0) == 1)
   }
+
+  @Test
+  def testDirectBufferDiffThread(): Unit ={
+    // 主线程
+    println(s"Thread: ${Thread.currentThread().getName}")
+    val fieldCount = 3
+    val rowCount = 4
+    val count = fieldCount * rowCount
+    val fb = new FrameBatch(new FrameSchema(SchemaUtil.oneFieldSchemaString), count)
+    for (i <- 0 until count){
+      fb.writeDouble(0, i, i)
+    }
+    val data = fb.rootVectors(0).fieldVector.getDataBuffer.nioBuffer()
+    data.order(ByteOrder.LITTLE_ENDIAN)
+    val dnd = new DirectNDArray[DoubleBuffer](data.asDoubleBuffer(),count)
+    interp.setValue("dnd",dnd)
+    interp.exec("dnd[0] = 10")
+    println(fb.rootVectors(0).getDataBufferAddress)
+    // 副线程
+    new Thread() {
+      override def run(): Unit = {
+        try {
+          println(s"Thread: ${Thread.currentThread().getName}")
+          val interp: PyInterpreter = LocalThreadPythonInterp.interpreterThreadLocal.get()
+          val data1 = fb.rootVectors(0).fieldVector.getDataBuffer.nioBuffer()
+          data1.order(ByteOrder.LITTLE_ENDIAN)
+          val dnd1 = new DirectNDArray[DoubleBuffer](data1.asDoubleBuffer(),count)
+          interp.setValue("dnd1",dnd1)
+          interp.exec("dnd1[1] = 20")
+        } catch {
+          case e: Throwable => e.printStackTrace()
+        }
+      }
+    }.start()
+    Thread.sleep(2000)
+    assert(fb.readDouble(0,0) == 10.0)
+    assert(fb.readDouble(0,1) == 20.0)}
 }

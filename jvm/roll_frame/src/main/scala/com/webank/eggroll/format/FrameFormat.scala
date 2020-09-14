@@ -83,7 +83,7 @@ class FrameBatch(val rootSchema: FrameSchema,
     }
     rootSchema.arrowSchema.setRowCount(allocateNewRows)
   }
-  Integer.MAX_VALUE
+
   val fieldCount: Int = rootSchema.columnarVectors.length
 
   lazy val memorySize: Int = {
@@ -445,22 +445,22 @@ class FrameReader(val arrowReader: ArrowStreamReusableReader,
 
   def this(path: String) {
     this(new ArrowStreamReusableReader(
-      new FileInputStream(path), new RootAllocator(Integer.MAX_VALUE)))
+      new FileInputStream(path), new RootAllocator(Long.MaxValue)))
   }
 
   def this(adapter: BlockDeviceAdapter) {
     this(new ArrowStreamReusableReader(
-      adapter.getInputStream(), new RootAllocator(Integer.MAX_VALUE)))
+      adapter.getInputStream(), new RootAllocator(Long.MaxValue)))
   }
 
   def this(inputStream: InputStream) {
     this(new ArrowStreamReusableReader(
-      inputStream, new RootAllocator(Integer.MAX_VALUE)))
+      inputStream, new RootAllocator(Long.MaxValue)))
   }
 
   def this(in: ReadableByteChannel) {
     this(new ArrowStreamReusableReader(
-      in, new RootAllocator(Integer.MAX_VALUE)))
+      in, new RootAllocator(Long.MaxValue)))
   }
 
   def close(): Unit = arrowReader.close(true)
