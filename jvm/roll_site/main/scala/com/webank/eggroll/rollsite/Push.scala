@@ -284,13 +284,27 @@ class ForwardPushToPollingReqSO(eggSiteServicerPushRespSO: StreamObserver[Proxy.
 
   override def onNext(req: Proxy.Packet): Unit = {
     logTrace(s"ForwardPushToPollingReqSO.onNext calling. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
-    ensureInited(req)
 
-    pollingFrameSeq += 1
-    pollingFrameBuilder.setSeq(pollingFrameSeq).setPacket(req)
-    val nextFrame = pollingFrameBuilder.build()
+    try {
+      ensureInited(req)
 
-    pollingExchanger.respQ.put(nextFrame)
+      pollingFrameSeq += 1
+      pollingFrameBuilder.setSeq(pollingFrameSeq).setPacket(req)
+      val nextFrame = pollingFrameBuilder.build()
+
+      pollingExchanger.respQ.put(nextFrame)
+
+      // throw new Exception("testing")
+    } catch {
+      case t: Throwable =>
+        val errorPacket = TransferExceptionUtils.genExceptionToNextSite(req, t)
+        pollingFrameSeq += 1
+        pollingFrameBuilder.setSeq(pollingFrameSeq).setPacket(errorPacket)
+        val nextFrame = pollingFrameBuilder.build()
+        pollingExchanger.respQ.put(nextFrame)
+        onError(t)
+    }
+
     logTrace(s"ForwardPushToPollingReqSO.onNext called. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
   }
 
@@ -359,7 +373,7 @@ class ForwardPushReqSO(eggSiteServicerPushRespSO: StreamObserver[Proxy.Metadata]
 
   override def onNext(request: Proxy.Packet): Unit = {
     try {
-      logTrace(s"ForwardPushReqSO.onNext calling. rsKey=${rsKey}, metadata=${metadata}")
+      logTrace(s"ForwardPushReqSO.onNext calling. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
       ensureInited(request)
 
       val nextReq = if (TransferExceptionUtils.checkPacketIsException(request)) {
@@ -372,7 +386,7 @@ class ForwardPushReqSO(eggSiteServicerPushRespSO: StreamObserver[Proxy.Metadata]
       }
 
       forwardPushReqSO.onNext(nextReq)
-      logTrace(s"ForwardPushReqSO.onNext called. rsKey=${rsKey}, metadata=${metadata}")
+      logTrace(s"ForwardPushReqSO.onNext called. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
     } catch {
       case t: Throwable =>
         // exception transfer of per packet only try once
