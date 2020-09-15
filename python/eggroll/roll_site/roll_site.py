@@ -362,6 +362,7 @@ class RollSite(RollSiteBase):
         last_total_batches = None
         polling_attempts = 0
         data_type = None
+        L.debug(f'pulling rs_key={rs_key}')
         try:
             # make sure rollpair already created
             polling_header_timeout = self.polling_header_timeout        # skips pickling self
@@ -433,12 +434,12 @@ class RollSite(RollSiteBase):
                     rp = self.ctx.rp_ctx.load(name=rp_name, namespace=rp_namespace)
                     if data_type == "object":
                         result = pickle.loads(b''.join(map(lambda t: t[1], sorted(rp.get_all(), key=lambda x: int.from_bytes(x[0], "big")))))
-                        L.debug(f"roll site pulled object: rs_key={rs_key}, is_none={result is None}, "
+                        L.debug(f"pulled object: rs_key={rs_key}, is_none={result is None}, "
                                 f"time_cost={time.time() - start_time}")
                     else:
                         result = rp
                         if L.isEnabledFor(logging.DEBUG):
-                            L.debug(f"roll site pulled roll_pair: rs_key={rs_key}, count={rp.count()}, "
+                            L.debug(f"pulled roll_pair: rs_key={rs_key}, count={rp.count()}, "
                                     f"time_cost={time.time() - start_time}")
                     return result
                 else:

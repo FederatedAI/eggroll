@@ -45,6 +45,7 @@ class _BatchStreamStatus:
         self._stream_finish_event = threading.Event()
         self._header_arrive_event = threading.Event()
         self._rs_header = None
+        self._rs_key = None
         # removes lock. otherwise it deadlocks
         self._recorder[self._tag] = self
         self._is_in_order = True
@@ -54,6 +55,7 @@ class _BatchStreamStatus:
                f"total_batches={self._total_batches}:total_elems={sum(self._batch_seq_to_pair_counter.values())}"
 
     def set_done(self, rs_header):
+        L.trace(f'set done. rs_key={rs_header.get_rs_key()}')
         self._total_batches = rs_header._total_batches
         self._total_streams = rs_header._total_streams
         self._stage = "done"
@@ -67,6 +69,7 @@ class _BatchStreamStatus:
         stream_seq_id = rs_header._stream_seq
         if self._rs_header is None:
             self._rs_header = rs_header
+            self._rs_key = rs_header.get_rs_key()
             L.debug(f"header arrived. rs_key={rs_header.get_rs_key()}")
             self._header_arrive_event.set()
         self._batch_seq_to_pair_counter[batch_seq_id] = batch_pairs
@@ -74,8 +77,9 @@ class _BatchStreamStatus:
         self._stream_seq_to_batch_seq[stream_seq_id] = batch_seq_id
 
     def check_finish(self):
+        L.trace(f'checking finish. rs_key={self._rs_key}')
         if self._stage == "done" and self._total_batches == len(self._batch_seq_to_pair_counter):
-            L.debug(f"All BatchStreams finished, {self._debug_string()}. is_in_order={self._is_in_order}, rs_key={self._rs_header.get_rs_key()}")
+            L.debug(f"All BatchStreams finished, {self._debug_string()}. is_in_order={self._is_in_order}, rs_key={self._rs_key}")
             self._stream_finish_event.set()
             return True
         else:
@@ -96,7 +100,7 @@ class _BatchStreamStatus:
         finished = bss._stream_finish_event.wait(timeout)
         if finished:
             TransferService.remove_broker(tag)
-            del cls._recorder[tag]
+            #del cls._recorder[tag]
 
         return BSS(
                 tag=bss._tag,
