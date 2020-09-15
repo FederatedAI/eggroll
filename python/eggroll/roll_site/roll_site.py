@@ -178,11 +178,15 @@ class _BatchStreamHelper(object):
 
             return result
 
+        L.debug(f'debug 442: ready to gengerate packet for partition_id={self._rs_header._partition_id}, seq={self._rs_header._batch_seq}')
         prev_batch = None
         for bin_batch in bin_batch_iter:
             if prev_batch:
                 self._rs_header._batch_seq += 1
+                L.debug(f'debug 442: gengerating next packet for partition_id={self._rs_header._partition_id}, seq={self._rs_header._batch_seq}')
                 yield encode_packet(self._rs_header, prev_batch)
+            else:
+                L.debug(f'debug 442: gengerating first packet for partition_id={self._rs_header._partition_id}, seq={self._rs_header._batch_seq}')
 
             prev_batch = bin_batch
 
@@ -191,14 +195,17 @@ class _BatchStreamHelper(object):
             self._rs_header._stage = FINISH_STATUS
             self._rs_header._total_streams = self._rs_header._stream_seq
             self._rs_header._total_batches = self._rs_header._batch_seq
+        L.debug(f'debug 442: gengerating last packet for partition_id={self._rs_header._partition_id}, seq={self._rs_header._batch_seq}')
         yield encode_packet(self._rs_header, prev_batch)
+        L.debug(f'debug 442: gengerated last packet for partition_id={self._rs_header._partition_id}, seq={self._rs_header._batch_seq}')
 
     def _generate_batch_streams(self, pair_iter, batches_per_stream, body_bytes):
         batches = TransferPair.pair_to_bin_batch(pair_iter, sendbuf_size=body_bytes)
-
+        L.debug(f'debug 433: peeking first stream for partition_id={self._rs_header._partition_id}, stream_seq={self._rs_header._stream_seq}')
         try:
             peek = next(batches)
         except StopIteration as e:
+            L.debug(f'debug 433: peeking first stream and stop for partition_id={self._rs_header._partition_id}, stream_seq={self._rs_header._stream_seq}')
             self._finish_partition = True
 
         def chunk_batch_stream():
@@ -213,12 +220,15 @@ class _BatchStreamHelper(object):
                 peek = next(batches)
             except StopIteration as e:
                 self._finish_partition = True
+                L.debug(f'debug 433: yield stream and stop for partition_id={self._rs_header._partition_id}, stream_seq={self._rs_header._stream_seq}')
             finally:
                 yield cur_batch
 
         while not self._finish_partition:
             self._rs_header._stream_seq += 1
+            L.debug(f'debug 433: gengerating next stream for partition_id={self._rs_header._partition_id}, stream_seq={self._rs_header._stream_seq}')
             yield chunk_batch_stream()
+            L.debug(f'debug 433: gengerated next stream for partition_id={self._rs_header._partition_id}, stream_seq={self._rs_header._stream_seq}')
 
 
 class RollSite(RollSiteBase):
@@ -303,6 +313,7 @@ class RollSite(RollSiteBase):
 
         def _push_partition(ertask):
             rs_header._partition_id = ertask._inputs[0]._id
+            L.trace(f"pushing rollpair partition. partition_id={rs_header._partition_id}, rs_key={rs_key}")
 
             from eggroll.core.grpc.factory import GrpcChannelFactory
             from eggroll.core.proto import proxy_pb2_grpc
@@ -334,6 +345,8 @@ class RollSite(RollSiteBase):
                     if exception is not None:
                         raise exception
 
+            L.trace(f"pushed rollpair partition. partition_id={rs_header._partition_id}, rs_key={rs_key}")
+
         rp.with_stores(_push_partition)
         if L.isEnabledFor(logging.DEBUG):
             L.debug(f"pushed rollpair: rs_key={rs_key}, count={rp.count()}, time_cost={time.time() - start_time}")
@@ -354,6 +367,35 @@ class RollSite(RollSiteBase):
             polling_header_timeout = self.polling_header_timeout        # skips pickling self
             polling_overall_timeout = self.polling_overall_timeout      # skips pickling self
 
+            def get_all_status(task):
+                put_batch_task = PutBatchTask(transfer_tag_prefix + str(task._inputs[0]._id), None)
+                return put_batch_task.get_status(polling_overall_timeout)
+
+            # can be called only once
+            def stat_all_status(roll_site):
+                pull_status = {}
+                total_pairs = 0
+                total_batches = 0
+                all_finished = True
+
+                store = roll_site.ctx.rp_ctx.load(name=rp_name,
+                                                  namespace=rp_namespace,
+                                                  options={'create_if_missing': False})
+
+                if store is None:
+                    return None, None, -1, -1
+
+                all_status = store.with_stores(get_all_status)
+
+                for part_id, part_status in all_status:
+                    if not part_status.is_finished:
+                        all_finished = False
+                    pull_status[part_id] = part_status
+                    total_batches += part_status.total_batches
+                    total_pairs += part_status.total_pairs
+
+                return pull_status, all_finished, total_batches, total_pairs
+
             wait_time = 0
             header_response = None
             while wait_time < polling_header_timeout and \
@@ -362,9 +404,11 @@ class RollSite(RollSiteBase):
                                                        options={'create_if_missing': True, 'total_partitions': 1})\
                     .with_stores(lambda x: PutBatchTask(transfer_tag_prefix + "0").get_header(10))
                 wait_time += 10
-                L.debug(f"roll site get header_response: wait_time={wait_time}")
 
-            if not header_response or not isinstance(header_response[0][1], ErRollSiteHeader):
+                #pull_status, all_finished, total_batches, total_pairs = stat_all_status(self)
+                L.debug(f"roll site get header_response: rs_key={rs_key}, wait_time={wait_time}")
+
+            if header_response is None or not isinstance(header_response[0][1], ErRollSiteHeader):
                 raise IOError(f"roll site pull_status failed: rs_key={rs_key}, timeout={self.polling_header_timeout}")
             else:
                 header: ErRollSiteHeader = header_response[0][1]
@@ -372,26 +416,10 @@ class RollSite(RollSiteBase):
                 data_type = header._data_type
                 L.debug(f"roll site pull_status ok: rs_key={rs_key}, header={header}")
 
-            def get_all_status(task):
-                put_batch_task = PutBatchTask(transfer_tag_prefix + str(task._inputs[0]._id), None)
-                return put_batch_task.get_status(polling_overall_timeout)
-
             pull_status = {}
-            total_pairs = 0
             for i in range(self.polling_max_retry):
                 polling_attempts = i
-                total_batches = 0
-                all_finished = True
-                all_status = self.ctx.rp_ctx.load(name=rp_name, namespace=rp_namespace,
-                                                  options={'create_if_missing': False}).with_stores(get_all_status)
-
-                total_pairs = 0
-                for part_id, part_status in all_status:
-                    if not part_status.is_finished:
-                        all_finished = False
-                    pull_status[part_id] = part_status
-                    total_batches += part_status.total_batches
-                    total_pairs += part_status.total_pairs
+                pull_status, all_finished, total_batches, total_pairs = stat_all_status(self)
 
                 if not all_finished:
                     L.debug(f'getting status NOT finished for rs_key={rs_key}, cur_status={pull_status}')
@@ -416,7 +444,7 @@ class RollSite(RollSiteBase):
                 else:
                     L.debug(f"roll site pulling attempt: rs_key={rs_key}, attempt={polling_attempts}, "
                             f"time_cost={time.time() - start_time}")
-            raise IOError(f"roll site polling failed because exceed max try: {self.polling_max_retry}, rs_key={rs_key}"
+            raise IOError(f"roll site polling failed because exceed max try: {self.polling_max_retry}, rs_key={rs_key}, "
                           f"detail={pull_status}")
         except Exception as ex:
             L.exception(f"fatal error: when pulling rs_key={rs_key}, attempt_count={polling_attempts}")
