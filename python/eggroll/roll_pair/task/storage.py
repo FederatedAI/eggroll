@@ -59,13 +59,15 @@ class _BatchStreamStatus:
         self._stage = "done"
         if self._total_batches != len(self._batch_seq_to_pair_counter):
             self._is_in_order = False
-            L.debug(f"MarkEnd BatchStream ahead of all BatchStreams received, {self._debug_string()}")
+            L.debug(f"MarkEnd BatchStream ahead of all BatchStreams received, {self._debug_string()}, rs_key={self._rs_header.get_rs_key()}")
 
     def count_batch(self, rs_header: ErRollSiteHeader, batch_pairs):
+        L.trace(f'count batch. rs_key={rs_header.get_rs_key()}, rs_header={rs_header}, batch_pairs={batch_pairs}')
         batch_seq_id = rs_header._batch_seq
         stream_seq_id = rs_header._stream_seq
         if self._rs_header is None:
             self._rs_header = rs_header
+            L.debug(f"header arrived. rs_key={rs_header.get_rs_key()}")
             self._header_arrive_event.set()
         self._batch_seq_to_pair_counter[batch_seq_id] = batch_pairs
         self._stream_seq_to_pair_counter[stream_seq_id] += batch_pairs
@@ -73,7 +75,7 @@ class _BatchStreamStatus:
 
     def check_finish(self):
         if self._stage == "done" and self._total_batches == len(self._batch_seq_to_pair_counter):
-            L.debug(f"All BatchStreams finished, {self._debug_string()}. is_in_order={self._is_in_order}")
+            L.debug(f"All BatchStreams finished, {self._debug_string()}. is_in_order={self._is_in_order}, rs_key={self._rs_header.get_rs_key()}")
             self._stream_finish_event.set()
             return True
         else:
@@ -142,6 +144,7 @@ class PutBatchTask:
     def run(self):
         # batch stream must be executed serially, and reinit.
         # TODO:0:  remove lock to bss
+        rs_header = None
         with self._put_batch_lock:
             L.trace(f"do_store start for tag={self.tag}")
             bss = _BatchStreamStatus.get_or_create(self.tag)
@@ -166,7 +169,7 @@ class PutBatchTask:
                 bss.check_finish()
                 # TransferService.remove_broker(tag) will be called in get_status phrase finished or exception got
             except Exception as e:
-                L.exception(f'_run_put_batch error, tag={self.tag}')
+                L.exception(f'_run_put_batch error, tag={self.tag}, rs_key={rs_header.get_rs_key()}')
                 raise e
             finally:
                 TransferService.remove_broker(self.tag)

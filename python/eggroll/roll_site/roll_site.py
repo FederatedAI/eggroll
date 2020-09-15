@@ -371,7 +371,7 @@ class RollSite(RollSiteBase):
                 put_batch_task = PutBatchTask(transfer_tag_prefix + str(task._inputs[0]._id), None)
                 return put_batch_task.get_status(polling_overall_timeout)
 
-            # can be called only once
+            # can be 'succeeded' only once
             def stat_all_status(roll_site):
                 pull_status = {}
                 total_pairs = 0
