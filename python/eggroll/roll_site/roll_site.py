@@ -278,10 +278,13 @@ class RollSite(RollSiteBase):
         rs_header._total_streams = -1
         rs_header._stream_seq = 1
 
+        i = 0
+        cur_retry = 0
         # if use stub.push.future here, retry mechanism is a problem to solve
         for batch_stream in bin_batch_streams:
+            L.trace(f'pushing object stream. rs_key={rs_key}, count={i}, retry count={cur_retry}')
             max_retry_cnt = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PUSH_CLIENT_MAX_RETRY.get())
-            cur_retry = 0
+
             exception = None
             while cur_retry < max_retry_cnt:
                 try:
@@ -295,6 +298,7 @@ class RollSite(RollSiteBase):
                     cur_retry += 1
             if exception is not None:
                 raise exception
+            L.trace(f'pushed object stream. rs_key={rs_key}, count={i}, retry count={cur_retry}')
 
         L.debug(f"pushed object: rs_key={rs_key}, is_none={obj is None}, time_cost={time.time() - start_time}")
         self.ctx.pushing_latch.count_down()
@@ -313,7 +317,7 @@ class RollSite(RollSiteBase):
 
         def _push_partition(ertask):
             rs_header._partition_id = ertask._inputs[0]._id
-            L.trace(f"pushing rollpair partition. partition_id={rs_header._partition_id}, rs_key={rs_key}")
+            L.trace(f"pushing rollpair partition. rs_key={rs_key}, partition_id={rs_header._partition_id}")
 
             from eggroll.core.grpc.factory import GrpcChannelFactory
             from eggroll.core.proto import proxy_pb2_grpc
@@ -328,11 +332,13 @@ class RollSite(RollSiteBase):
                                                                       batches_per_stream=batches_per_stream,
                                                                       body_bytes=body_bytes)
 
+                i = 0
                 for batch_stream in bin_batch_streams:
                     max_retry_cnt = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PUSH_CLIENT_MAX_RETRY.get())
                     cur_retry = 0
                     exception = None
                     while cur_retry < max_retry_cnt:
+                        L.trace(f'pushing rollpair stream. rs_key={rs_key}, count={i}, retry count={cur_retry}')
                         try:
                             stub.push(bs_helper.generate_packet(batch_stream))
                             exception = None
@@ -344,6 +350,8 @@ class RollSite(RollSiteBase):
                             cur_retry += 1
                     if exception is not None:
                         raise exception
+                    L.trace(f'pushed rollpair stream. rs_key={rs_key}, count={i}, retry count={cur_retry}')
+                    i += 1
 
             L.trace(f"pushed rollpair partition. partition_id={rs_header._partition_id}, rs_key={rs_key}")
 
