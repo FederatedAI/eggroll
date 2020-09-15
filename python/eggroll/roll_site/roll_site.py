@@ -224,11 +224,14 @@ class _BatchStreamHelper(object):
             finally:
                 yield cur_batch
 
-        while not self._finish_partition:
-            self._rs_header._stream_seq += 1
-            L.debug(f'debug 433: gengerating next stream for partition_id={self._rs_header._partition_id}, stream_seq={self._rs_header._stream_seq}')
-            yield chunk_batch_stream()
-            L.debug(f'debug 433: gengerated next stream for partition_id={self._rs_header._partition_id}, stream_seq={self._rs_header._stream_seq}')
+        try:
+            while not self._finish_partition:
+                self._rs_header._stream_seq += 1
+                L.debug(f'debug 433: gengerating next stream for partition_id={self._rs_header._partition_id}, stream_seq={self._rs_header._stream_seq}')
+                yield chunk_batch_stream()
+                L.debug(f'debug 433: gengerated next stream for partition_id={self._rs_header._partition_id}, stream_seq={self._rs_header._stream_seq}')
+        except Exception as e:
+            L.exception(f'debug 433: error in generating stream, rs_key={self._rs_header.get_rs_key()}')
 
 
 class RollSite(RollSiteBase):

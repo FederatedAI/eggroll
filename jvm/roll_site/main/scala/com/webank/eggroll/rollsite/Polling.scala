@@ -264,10 +264,11 @@ class UnaryCallPollingReqSO(eggSiteServicerPollingRespSO: ServerCallStreamObserv
   private var oneLineStringMetadata: String = _
 
   private var rsKey: String = _
+  private var partitionId: Int = _
   private var inited = false
 
   private def ensureInited(req: Proxy.PollingFrame): Unit = {
-    logTrace(s"UnaryCallPollingReqSO.ensureInited calling. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
+    logTrace(s"UnaryCallPollingReqSO.ensureInited calling. rsKey=${rsKey}, partitionId=${partitionId}, metadata=${oneLineStringMetadata}")
     if (inited) return
 
     metadata = req.getPacket.getHeader
@@ -275,13 +276,14 @@ class UnaryCallPollingReqSO(eggSiteServicerPollingRespSO: ServerCallStreamObserv
 
     val rollSiteHeader = RollSiteHeader.parseFrom(metadata.getExt).fromProto()
     rsKey = rollSiteHeader.getRsKey()
+    partitionId = rollSiteHeader.partitionId
 
     inited = true
-    logDebug(s"UnaryCallPollingReqSO.ensureInited called. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
+    logDebug(s"UnaryCallPollingReqSO.ensureInited called. rsKey=${rsKey}, partitionId=${partitionId}, metadata=${oneLineStringMetadata}")
   }
 
   override def onNext(req: Proxy.PollingFrame): Unit = {
-    logTrace(s"UnaryCallPollingReqSO.onNext calling. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
+    logTrace(s"UnaryCallPollingReqSO.onNext calling. rsKey=${rsKey}, partitionId=${partitionId}, metadata=${oneLineStringMetadata}")
 
     try {
       var batch: Proxy.PollingFrame = null
@@ -294,7 +296,7 @@ class UnaryCallPollingReqSO(eggSiteServicerPollingRespSO: ServerCallStreamObserv
         case 1L =>
           pollingExchanger.reqQ.put(Proxy.PollingFrame.newBuilder().setPacket(req.getPacket).build())
         case _ =>
-          val t: Throwable = new IllegalStateException(s"invalid seq=${req.getSeq} for rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
+          val t: Throwable = new IllegalStateException(s"invalid seq=${req.getSeq} for rsKey=${rsKey}, partitionId=${partitionId}, metadata=${oneLineStringMetadata}")
           onError(t)
       }
     } catch {
@@ -302,19 +304,19 @@ class UnaryCallPollingReqSO(eggSiteServicerPollingRespSO: ServerCallStreamObserv
         onError(t)
     }
 
-    logTrace(s"UnaryCallPollingReqSO.onNext called. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
+    logTrace(s"UnaryCallPollingReqSO.onNext called. rsKey=${rsKey}, partitionId=${partitionId}, metadata=${oneLineStringMetadata}")
   }
 
   override def onError(t: Throwable): Unit = {
-    logError(s"UnaryCallPollingReqSO.onError calling. rsKey=${rsKey}, metadata=${oneLineStringMetadata}", t)
+    logError(s"UnaryCallPollingReqSO.onError calling. rsKey=${rsKey}, partitionId=${partitionId}, metadata=${oneLineStringMetadata}", t)
     eggSiteServicerPollingRespSO.onError(TransferExceptionUtils.throwableToException(t))
-    logError(s"UnaryCallPollingReqSO.onError called. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
+    logError(s"UnaryCallPollingReqSO.onError called. rsKey=${rsKey}, partitionId=${partitionId}, metadata=${oneLineStringMetadata}")
   }
 
   override def onCompleted(): Unit = {
-    logTrace(s"UnaryCallPollingReqSO.onCompleted calling. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
+    logTrace(s"UnaryCallPollingReqSO.onCompleted calling. rsKey=${rsKey}, partitionId=${partitionId}, metadata=${oneLineStringMetadata}")
     eggSiteServicerPollingRespSO.onCompleted()
-    logTrace(s"UnaryCallPollingReqSO.onCompleted called. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
+    logTrace(s"UnaryCallPollingReqSO.onCompleted called. rsKey=${rsKey}, partitionId=${partitionId}, metadata=${oneLineStringMetadata}")
   }
 }
 
@@ -326,10 +328,11 @@ class PushPollingReqSO(val eggSiteServicerPollingRespSO: ServerCallStreamObserve
   private var oneLineStringMetadata: String = _
 
   private var rsKey: String = _
+  private var partitionId: Int = _
   private var inited = false
 
   private def ensureInited(req: Proxy.PollingFrame): Unit = {
-    logTrace(s"PushPollingReqSO.ensureInited calling. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
+    logTrace(s"PushPollingReqSO.ensureInited calling. rsKey=${rsKey}, partitionId=${partitionId}, metadata=${oneLineStringMetadata}")
     if (inited) return
 
     metadata = req.getPacket.getHeader
@@ -337,13 +340,14 @@ class PushPollingReqSO(val eggSiteServicerPollingRespSO: ServerCallStreamObserve
 
     val rollSiteHeader = RollSiteHeader.parseFrom(metadata.getExt).fromProto()
     rsKey = rollSiteHeader.getRsKey()
+    partitionId = rollSiteHeader.partitionId
 
     inited = true
-    logDebug(s"PushPollingReqSO.ensureInited called. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
+    logDebug(s"PushPollingReqSO.ensureInited called. rsKey=${rsKey}, partitionId=${partitionId}, metadata=${oneLineStringMetadata}")
   }
 
   override def onNext(req: Proxy.PollingFrame): Unit = {
-    logTrace(s"PushPollingReqSO.onNext calling. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
+    logTrace(s"PushPollingReqSO.onNext calling. rsKey=${rsKey}, partitionId=${partitionId}, metadata=${oneLineStringMetadata}")
 
     try {
       req.getSeq match {
@@ -363,26 +367,26 @@ class PushPollingReqSO(val eggSiteServicerPollingRespSO: ServerCallStreamObserve
         case 1L =>
           pollingExchanger.reqQ.put(Proxy.PollingFrame.newBuilder().setMetadata(req.getMetadata).build())
         case _ =>
-          val t: Throwable = new IllegalStateException(s"PushPollingReqSO.error: invalid seq=${req.getSeq} for rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
+          val t: Throwable = new IllegalStateException(s"PushPollingReqSO.error: invalid seq=${req.getSeq} for rsKey=${rsKey}, partitionId=${partitionId}, metadata=${oneLineStringMetadata}")
           onError(t)
       }
     } catch {
       case t:Throwable =>
         onError(t)
     }
-    logTrace(s"PushPollingReqSO.onNext called. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
+    logTrace(s"PushPollingReqSO.onNext called. rsKey=${rsKey}, partitionId=${partitionId}, metadata=${oneLineStringMetadata}")
   }
 
   override def onError(t: Throwable): Unit = {
-    logError(s"PushPollingReqSO.onError calling. rsKey=${rsKey}, metadata=${oneLineStringMetadata}", t)
+    logError(s"PushPollingReqSO.onError calling. rsKey=${rsKey}, partitionId=${partitionId}, metadata=${oneLineStringMetadata}", t)
     eggSiteServicerPollingRespSO.onError(TransferExceptionUtils.throwableToException(t))
-    logError(s"PushPollingReqSO.onError called. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
+    logError(s"PushPollingReqSO.onError called. rsKey=${rsKey}, partitionId=${partitionId}, metadata=${oneLineStringMetadata}")
   }
 
   override def onCompleted(): Unit = {
-    logTrace(s"PushPollingReqSO.onCompleted calling. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
+    logTrace(s"PushPollingReqSO.onCompleted calling. rsKey=${rsKey}, partitionId=${partitionId}, metadata=${oneLineStringMetadata}")
     eggSiteServicerPollingRespSO.onCompleted()
-    logTrace(s"PushPollingReqSO.onCompleted called. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
+    logTrace(s"PushPollingReqSO.onCompleted called. rsKey=${rsKey}, partitionId=${partitionId}, metadata=${oneLineStringMetadata}")
   }
 }
 
@@ -465,6 +469,7 @@ class PushPollingRespSO(pollingResults: PollingResults)
   private var metadata: Proxy.Metadata = _
   private var oneLineStringMetadata: String = _
   private var rsKey: String = _
+  private var partitionId: Int = _
   private var method: String = _
 
   private var putBatchSinkPushReqSO: StreamObserver[Proxy.Packet] = _
@@ -473,7 +478,7 @@ class PushPollingRespSO(pollingResults: PollingResults)
   private val self = this
 
   private def ensureInit(req: Proxy.PollingFrame): Unit = {
-    logTrace(s"PushPollingRespSO.ensureInited calling. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
+    logTrace(s"PushPollingRespSO.ensureInited calling. rsKey=${rsKey}, partitionId=${partitionId}, metadata=${oneLineStringMetadata}")
     if (inited) return
 
     method = req.getMethod
@@ -482,16 +487,17 @@ class PushPollingRespSO(pollingResults: PollingResults)
 
     val rsHeader = RollSiteHeader.parseFrom(metadata.getExt).fromProto()
     rsKey = rsHeader.getRsKey()
+    partitionId = rsHeader.partitionId
 
     putBatchPollingPushRespSO = new PutBatchPollingPushRespSO(pollingResults)
     putBatchSinkPushReqSO = new PutBatchSinkPushReqSO(putBatchPollingPushRespSO)
 
     inited = true
-    logDebug(s"PushPollingRespSO.ensureInited called. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
+    logDebug(s"PushPollingRespSO.ensureInited called. rsKey=${rsKey}, partitionId=${partitionId}, metadata=${oneLineStringMetadata}")
   }
 
   override def onNext(req: Proxy.PollingFrame): Unit = {
-    logTrace(s"PushPollingRespSO.onNext calling. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
+    logTrace(s"PushPollingRespSO.onNext calling. rsKey=${rsKey}, partitionId=${partitionId}, metadata=${oneLineStringMetadata}")
 
     try {
       ensureInit(req)
@@ -506,19 +512,19 @@ class PushPollingRespSO(pollingResults: PollingResults)
         onError(t)
     }
 
-    logTrace(s"PushPollingRespSO.onNext end. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
+    logTrace(s"PushPollingRespSO.onNext end. rsKey=${rsKey}, partitionId=${partitionId}, metadata=${oneLineStringMetadata}")
   }
 
   override def onError(t: Throwable): Unit = {
-    logError(s"PushPollingRespSO.onError calling. rsKey=${rsKey}, metadata=${oneLineStringMetadata}", t)
+    logError(s"PushPollingRespSO.onError calling. rsKey=${rsKey}, partitionId=${partitionId}, metadata=${oneLineStringMetadata}", t)
     putBatchSinkPushReqSO.onError(TransferExceptionUtils.throwableToException(t))
-    logError(s"PushPollingRespSO.onError called. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
+    logError(s"PushPollingRespSO.onError called. rsKey=${rsKey}, partitionId=${partitionId}, metadata=${oneLineStringMetadata}")
   }
 
   override def onCompleted(): Unit = {
-    logTrace(s"PushPollingRespSO.onComplete calling. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
+    logTrace(s"PushPollingRespSO.onCompleted calling. rsKey=${rsKey}, partitionId=${partitionId}, metadata=${oneLineStringMetadata}")
 //    nextReqSO.onCompleted()
-    logTrace(s"PushPollingRespSO.onComplete called. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
+    logTrace(s"PushPollingRespSO.onCompleted called. rsKey=${rsKey}, partitionId=${partitionId}, metadata=${oneLineStringMetadata}")
   }
 }
 
@@ -533,12 +539,13 @@ class PutBatchPollingPushRespSO(pollingResults: PollingResults)
   private var metadata: Proxy.Metadata = _
   private var oneLineStringMetadata: String = _
   private var rsKey: String = _
+  private var partitionId: Int = _
   private var method: String = _
 
   private var pollingFrameSeq = 0
 
   private def ensureInited(req: Proxy.Metadata): Unit = {
-    logTrace(s"PutBatchPollingPushRespSO.ensureInited calling. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
+    logTrace(s"PutBatchPollingPushRespSO.ensureInited calling. rsKey=${rsKey}, partitionId=${partitionId}, metadata=${oneLineStringMetadata}")
     if (inited) return
 
     metadata = req
@@ -546,13 +553,14 @@ class PutBatchPollingPushRespSO(pollingResults: PollingResults)
 
     val rsHeader = RollSiteHeader.parseFrom(metadata.getExt).fromProto()
     rsKey = rsHeader.getRsKey()
+    partitionId = rsHeader.partitionId
 
     inited = true
-    logDebug(s"PutBatchPollingPushRespSO.ensureInited called. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
+    logDebug(s"PutBatchPollingPushRespSO.ensureInited called. rsKey=${rsKey}, partitionId=${partitionId}, metadata=${oneLineStringMetadata}")
   }
 
   override def onNext(resp: Proxy.Metadata): Unit = {
-    logTrace(s"PutBatchPollingPushRespSO.onNext calling. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
+    logTrace(s"PutBatchPollingPushRespSO.onNext calling. rsKey=${rsKey}, partitionId=${partitionId}, metadata=${oneLineStringMetadata}")
 
     try {
       ensureInited(resp)
@@ -569,19 +577,19 @@ class PutBatchPollingPushRespSO(pollingResults: PollingResults)
         onError(t)
     }
 
-    logTrace(s"PutBatchPollingPushRespSO.onNext called. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
+    logTrace(s"PutBatchPollingPushRespSO.onNext called. rsKey=${rsKey}, partitionId=${partitionId}, metadata=${oneLineStringMetadata}")
   }
 
   override def onError(t: Throwable): Unit = {
-    logError(s"PutBatchPollingPushRespSO.onError calling. rsKey=${rsKey}, metadata=${oneLineStringMetadata}", t)
+    logError(s"PutBatchPollingPushRespSO.onError calling. rsKey=${rsKey}, partitionId=${partitionId}, metadata=${oneLineStringMetadata}", t)
     pollingResults.setError(TransferExceptionUtils.throwableToException(t))
-    logError(s"PutBatchPollingPushRespSO.onError called. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
+    logError(s"PutBatchPollingPushRespSO.onError called. rsKey=${rsKey}, partitionId=${partitionId}, metadata=${oneLineStringMetadata}")
   }
 
   override def onCompleted(): Unit = {
-    logTrace(s"PutBatchPollingPushRespSO.onCompleted called. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
+    logTrace(s"PutBatchPollingPushRespSO.onCompleted called. rsKey=${rsKey}, partitionId=${partitionId}, metadata=${oneLineStringMetadata}")
     pollingResults.setFinish()
-    logTrace(s"PutBatchPollingPushRespSO.onCompleted called. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
+    logTrace(s"PutBatchPollingPushRespSO.onCompleted called. rsKey=${rsKey}, partitionId=${partitionId}, metadata=${oneLineStringMetadata}")
   }
 }
 
@@ -594,6 +602,7 @@ class UnaryCallPollingRespSO(pollingResults: PollingResults)
   private var metadata: Proxy.Metadata = _
   private var oneLineStringMetadata: String = _
   private var rsKey: String = _
+  private var partitionId: Int = _
   private var method: String = _
 
   private val self = this
@@ -602,7 +611,7 @@ class UnaryCallPollingRespSO(pollingResults: PollingResults)
   private var pollingFrameSeq = 0
 
   private def ensureInit(req: Proxy.PollingFrame): Unit = {
-    logTrace(s"UnaryCallPollingRespSO.ensureInited calling. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
+    logTrace(s"UnaryCallPollingRespSO.ensureInited calling. rsKey=${rsKey}, partitionId=${partitionId}, metadata=${oneLineStringMetadata}")
     if (inited) return
 
     method = req.getMethod
@@ -611,17 +620,18 @@ class UnaryCallPollingRespSO(pollingResults: PollingResults)
 
     val rsHeader = RollSiteHeader.parseFrom(metadata.getExt).fromProto()
     rsKey = rsHeader.getRsKey()
+    partitionId = rsHeader.partitionId
 
     val endpoint = Router.query(metadata.getDst.getPartyId, metadata.getDst.getRole).point
     val channel = GrpcClientUtils.getChannel(endpoint)
     stub = DataTransferServiceGrpc.newBlockingStub(channel)
 
     inited = true
-    logDebug(s"UnaryCallPollingRespSO.ensureInited called. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
+    logDebug(s"UnaryCallPollingRespSO.ensureInited called. rsKey=${rsKey}, partitionId=${partitionId}, metadata=${oneLineStringMetadata}")
   }
 
   override def onNext(req: Proxy.PollingFrame): Unit = {
-    logTrace(s"UnaryCallPollingRespSO.onNext calling. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
+    logTrace(s"UnaryCallPollingRespSO.onNext calling. rsKey=${rsKey}, partitionId=${partitionId}, metadata=${oneLineStringMetadata}")
 
     try {
       ensureInit(req)
@@ -642,19 +652,19 @@ class UnaryCallPollingRespSO(pollingResults: PollingResults)
         onError(t)
     }
 
-    logTrace(s"UnaryCallPollingRespSO.onNext called. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
+    logTrace(s"UnaryCallPollingRespSO.onNext called. rsKey=${rsKey}, partitionId=${partitionId}, metadata=${oneLineStringMetadata}")
   }
 
   override def onError(t: Throwable): Unit = {
-    logError(s"UnaryCallPollingRespSO.onError calling. rsKey=${rsKey}, metadata=${oneLineStringMetadata}", t)
+    logError(s"UnaryCallPollingRespSO.onError calling. rsKey=${rsKey}, partitionId=${partitionId}, metadata=${oneLineStringMetadata}", t)
     pollingResults.setError(TransferExceptionUtils.throwableToException(t))
-    logError(s"UnaryCallPollingRespSO.onError called. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
+    logError(s"UnaryCallPollingRespSO.onError called. rsKey=${rsKey}, partitionId=${partitionId}, metadata=${oneLineStringMetadata}")
   }
 
   override def onCompleted(): Unit = {
-    logTrace(s"UnaryCallPollingRespSO.onCompleted calling. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
+    logTrace(s"UnaryCallPollingRespSO.onCompleted calling. rsKey=${rsKey}, partitionId=${partitionId}, metadata=${oneLineStringMetadata}")
     pollingResults.setFinish()
-    logTrace(s"UnaryCallPollingRespSO.onCompleted called. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
+    logTrace(s"UnaryCallPollingRespSO.onCompleted called. rsKey=${rsKey}, partitionId=${partitionId}, metadata=${oneLineStringMetadata}")
   }
 }
 
