@@ -756,7 +756,12 @@ def serve(args):
                 ('grpc.max_send_message_length',
                  int(CoreConfKeys.EGGROLL_CORE_GRPC_SERVER_CHANNEL_MAX_INBOUND_MESSAGE_SIZE.get())),
                 ('grpc.max_receive_message_length',
-                 int(CoreConfKeys.EGGROLL_CORE_GRPC_SERVER_CHANNEL_MAX_INBOUND_MESSAGE_SIZE.get()))])
+                 int(CoreConfKeys.EGGROLL_CORE_GRPC_SERVER_CHANNEL_MAX_INBOUND_MESSAGE_SIZE.get())),
+                ('grpc.keepalive_time_ms', int(CoreConfKeys.CONFKEY_CORE_GRPC_SERVER_CHANNEL_KEEPALIVE_WITHOUT_CALLS_ENABLED.get()) * 1000),
+                ('grpc.keepalive_timeout_ms', int(CoreConfKeys.CONFKEY_CORE_GRPC_SERVER_CHANNEL_KEEPALIVE_TIMEOUT_SEC.get()) * 1000),
+                ('grpc.keepalive_permit_without_calls', int(CoreConfKeys.CONFKEY_CORE_GRPC_SERVER_CHANNEL_KEEPALIVE_WITHOUT_CALLS_ENABLED.get())),
+                ('grpc.per_rpc_retry_buffer_size', int(CoreConfKeys.CONFKEY_CORE_GRPC_SERVER_CHANNEL_RETRY_BUFFER_SIZE.get())),
+                ('grpc.so_reuseport', False)])
 
     command_servicer = CommandServicer()
     command_pb2_grpc.add_CommandServiceServicer_to_server(command_servicer,
@@ -787,6 +792,10 @@ def serve(args):
                      int(CoreConfKeys.EGGROLL_CORE_GRPC_SERVER_CHANNEL_MAX_INBOUND_MESSAGE_SIZE.get())),
                     ('grpc.max_receive_message_length',
                      int(CoreConfKeys.EGGROLL_CORE_GRPC_SERVER_CHANNEL_MAX_INBOUND_MESSAGE_SIZE.get())),
+                    ('grpc.keepalive_time_ms', int(CoreConfKeys.CONFKEY_CORE_GRPC_SERVER_CHANNEL_KEEPALIVE_WITHOUT_CALLS_ENABLED.get()) * 1000),
+                    ('grpc.keepalive_timeout_ms', int(CoreConfKeys.CONFKEY_CORE_GRPC_SERVER_CHANNEL_KEEPALIVE_TIMEOUT_SEC.get()) * 1000),
+                    ('grpc.keepalive_permit_without_calls', int(CoreConfKeys.CONFKEY_CORE_GRPC_SERVER_CHANNEL_KEEPALIVE_WITHOUT_CALLS_ENABLED.get())),
+                    ('grpc.per_rpc_retry_buffer_size', int(CoreConfKeys.CONFKEY_CORE_GRPC_SERVER_CHANNEL_RETRY_BUFFER_SIZE.get())),
                     ('grpc.so_reuseport', False)])
         transfer_port = transfer_server.add_insecure_port(f'[::]:{transfer_port}')
         transfer_pb2_grpc.add_TransferServiceServicer_to_server(transfer_servicer,

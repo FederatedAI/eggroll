@@ -29,8 +29,8 @@ class CoreConfKeys(object):
     CONFKEY_CORE_GRPC_CHANNEL_IDLE_TIMEOUT_SEC = ErConfKey("eggroll.core.grpc.channel.idle.timeout.sec", 3600)
 
 
-    CONFKEY_CORE_GRPC_CHANNEL_KEEPALIVE_TIME_MSEC = ErConfKey("eggroll.core.grpc.channel.keepalive.time.msec", 3600000)
-    CONFKEY_CORE_GRPC_CHANNEL_KEEPALIVE_TIMEOUT_SEC = ErConfKey("eggroll.core.grpc.channel.keepalive.timout.sec", 86400)
+    CONFKEY_CORE_GRPC_CHANNEL_KEEPALIVE_TIME_SEC = ErConfKey("eggroll.core.grpc.channel.keepalive.time.sec", 60)
+    CONFKEY_CORE_GRPC_CHANNEL_KEEPALIVE_TIMEOUT_SEC = ErConfKey("eggroll.core.grpc.channel.keepalive.timout.sec", 5)
     CONFKEY_CORE_GRPC_CHANNEL_KEEPALIVE_WITHOUT_CALLS_ENABLED = ErConfKey("eggroll.core.grpc.channel.keepalive.without.calls.enabled", True)
     CONFKEY_CORE_GRPC_CHANNEL_MAX_CONNECTION_AGE_GRACE_SEC = "eggroll.core.grpc.channel.max.connection.age.grace.sec"
     EGGROLL_CORE_GRPC_CHANNEL_MAX_INBOUND_METADATA_SIZE = ErConfKey("eggroll.core.grpc.channel.max.inbound.metadata.size", 128 << 20)
@@ -43,14 +43,15 @@ class CoreConfKeys(object):
     CONFKEY_CORE_GRPC_CHANNEL_TERMINATION_AWAIT_TIMEOUT_SEC = "eggroll.core.grpc.channel.termination.await.timeout.sec"
 
     CONFKEY_CORE_GRPC_SERVER_CHANNEL_FLOW_CONTROL_WINDOW = "eggroll.core.grpc.server.channel.flow.control.window"
-    CONFKEY_CORE_GRPC_SERVER_CHANNEL_KEEPALIVE_TIME_SEC = "eggroll.core.grpc.server.channel.keepalive.time.sec"
-    CONFKEY_CORE_GRPC_SERVER_CHANNEL_KEEPALIVE_TIMEOUT_SEC = "eggroll.core.grpc.server.channel.keepalive.timeout.sec"
-    CONFKEY_CORE_GRPC_SERVER_CHANNEL_KEEPALIVE_WITHOUT_CALLS_ENABLED = "eggroll.core.grpc.server.channel.keepalive.without.calls.enabled"
+    CONFKEY_CORE_GRPC_SERVER_CHANNEL_KEEPALIVE_TIME_SEC = ErConfKey("eggroll.core.grpc.server.channel.keepalive.time.sec", 120)
+    CONFKEY_CORE_GRPC_SERVER_CHANNEL_KEEPALIVE_TIMEOUT_SEC = ErConfKey("eggroll.core.grpc.server.channel.keepalive.timeout.sec", 5)
+    CONFKEY_CORE_GRPC_SERVER_CHANNEL_KEEPALIVE_WITHOUT_CALLS_ENABLED = ErConfKey("eggroll.core.grpc.server.channel.keepalive.without.calls.enabled", True)
     CONFKEY_CORE_GRPC_SERVER_CHANNEL_MAX_CONCURRENT_CALL_PER_CONNECTION = "eggroll.core.grpc.server.channel.max.concurrent.call.per.connection"
     CONFKEY_CORE_GRPC_SERVER_CHANNEL_MAX_CONNECTION_AGE_SEC = "eggroll.core.grpc.server.channel.max.connection.age.sec"
     CONFKEY_CORE_GRPC_SERVER_CHANNEL_MAX_CONNECTION_IDLE_SEC = "eggroll.core.grpc.server.channel.max.connection.idle.sec"
     EGGROLL_CORE_GRPC_SERVER_CHANNEL_MAX_INBOUND_MESSAGE_SIZE = ErConfKey("eggroll.core.grpc.server.channel.max.inbound.message.size", (2 << 30) - 1)
     EGGROLL_CORE_GRPC_SERVER_CHANNEL_MAX_INBOUND_METADATA_SIZE = ErConfKey("eggroll.core.grpc.server.channel.max.inbound.metadata.size", 128 << 20)
+    CONFKEY_CORE_GRPC_SERVER_CHANNEL_RETRY_BUFFER_SIZE = ErConfKey("eggroll.core.grpc.server.channel.retry.buffer.size", 16 << 20)
     CONFKEY_CORE_GRPC_SERVER_CHANNEL_PERMIT_KEEPALIVE_TIME_SEC = "eggroll.core.grpc.server.channel.permit.keepalive.time.sec"
     CONFKEY_CORE_GRPC_SERVER_CHANNEL_SSL_SESSION_CACHE_SIZE = "eggroll.core.grpc.server.channel.ssl.session.cache.size"
     CONFKEY_CORE_GRPC_SERVER_CHANNEL_SSL_SESSION_TIMEOUT_SEC = "eggroll.core.grpc.server.channel.ssl.session.timeout.sec"
