@@ -34,7 +34,7 @@ props_file_remote = default_props_file
 props_file_remote = default_props_file + '.guest'
 
 
-row_limit = 20000
+row_limit = 1000000
 obj_size = 1 << 20
 
 
