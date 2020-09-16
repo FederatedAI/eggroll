@@ -254,11 +254,13 @@ class RollSite(RollSiteBase):
         # TODO:0: configurable
         self.push_batches_per_stream = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PUSH_BATCHES_PER_STREAM.get_with(options))
         self.push_per_stream_timeout = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PUSH_PER_STREAM_TIMEOUT_SEC.get_with(options))
+        self.push_max_retry = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PUSH_CLIENT_MAX_RETRY.get_with(options))
         self.pull_header_timeout = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PULL_HEADER_TIMEOUT_SEC.get_with(options))
         self.pull_overall_timeout = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PULL_OVERALL_TIMEOUT_SEC.get_with(options))
         self.pull_max_retry = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PULL_MAX_RETRY.get_with(options))
         L.debug(f"RollSite __init__: push_batch_per_stream={self.push_batches_per_stream}, "
                 f"push_per_stream_timeout={self.push_per_stream_timeout}, "
+                f"push_max_retry={self.push_max_retry}, "
                 f"pull_header_timeout={self.pull_header_timeout}, "
                 f"pull_overall_timeout={self.pull_overall_timeout}, "
                 f"pull_max_retry={self.pull_max_retry}")
@@ -302,7 +304,7 @@ class RollSite(RollSiteBase):
         # if use stub.push.future here, retry mechanism is a problem to solve
         for batch_stream in bin_batch_streams:
             L.trace(f'pushing object stream. rs_key={rs_key}, rs_header={rs_header}, stream_cnt={stream_cnt}, retry count={cur_retry}')
-            max_retry_cnt = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PUSH_CLIENT_MAX_RETRY.get())
+            max_retry_cnt = self.push_max_retry
 
             batch_stream_data = list(batch_stream)
             exception = None
@@ -334,6 +336,7 @@ class RollSite(RollSiteBase):
         batches_per_stream = self.push_batches_per_stream
         body_bytes = self.batch_body_bytes
         endpoint = self.ctx.proxy_endpoint
+        max_retry_cnt = self.push_max_retry
 
         def _push_partition(ertask):
             rs_header._partition_id = ertask._inputs[0]._id
@@ -354,8 +357,6 @@ class RollSite(RollSiteBase):
 
                 stream_cnt = 0
                 for batch_stream in bin_batch_streams:
-                    max_retry_cnt = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PUSH_CLIENT_MAX_RETRY.get())
-
                     batch_stream_data = list(batch_stream)
                     cur_retry = 0
                     exception = None
@@ -453,13 +454,11 @@ class RollSite(RollSiteBase):
                 pull_status, all_finished, total_batches, total_pairs = stat_all_status(self)
 
                 if not all_finished:
-                    L.debug(f'getting status NOT finished for rs_key={rs_key}, rs_header={rs_header}, cur_status={pull_status}')
+                    L.debug(f'getting status NOT finished for rs_key={rs_key}, rs_header={rs_header}, cur_status={pull_status}, attempts={pull_attempts}, time_cost={time.time() - start_time}')
                     if last_total_batches == total_batches and total_batches > 0:
                         raise IOError(f"roll site pull_waiting failed because there is no updated progress: rs_key={rs_key}, "
                                     f"rs_header={rs_header}, pull_status={pull_status}, total_pairs={total_pairs}")
-                last_total_batches = total_batches
-
-                if all_finished:
+                else:
                     L.debug(f"getting status DO finished for rs_key={rs_key}, rs_header={rs_header}, pull_status={pull_status}, total_pairs={total_pairs}")
                     rp = self.ctx.rp_ctx.load(name=rp_name, namespace=rp_namespace)
                     if data_type == "object":
@@ -472,13 +471,11 @@ class RollSite(RollSiteBase):
                             L.debug(f"pulled roll_pair: rs_key={rs_key}, rs_header={rs_header}, rp.count={rp.count()}, "
                                     f"time_cost={time.time() - start_time}")
                     return result
-                else:
-                    L.debug(f"roll site pulling attempt: rs_key={rs_key}, rs_header={rs_header}, attempt={pull_attempts}, "
-                            f"time_cost={time.time() - start_time}")
+                last_total_batches = total_batches
             raise IOError(f"roll site pull failed. max try exceeded: {self.pull_max_retry}, rs_key={rs_key}, "
                           f"rs_header={rs_header}, pull_status={pull_status}")
         except Exception as e:
-            L.exception(f"fatal error: when pulling rs_key={rs_key}, rs_header={rs_header}, attempt_count={pull_attempts}", e)
+            L.exception(f"fatal error: when pulling rs_key={rs_key}, rs_header={rs_header}, attempts={pull_attempts}", e)
             raise e
 
     def push(self, obj, parties: list = None):
