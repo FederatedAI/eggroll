@@ -49,7 +49,7 @@ class RollPairContext(object):
 
     def __init__(self, session: ErSession):
         if session.get_session_meta()._status != SessionStatus.ACTIVE:
-            raise Exception(f"session:{session.get_session_id()} is not ACTIVE. current status={session.get_session_meta()._status}")
+            raise Exception(f"session_id={session.get_session_id()} is not ACTIVE. current status={session.get_session_meta()._status}")
         self.__session = session
         self.session_id = session.get_session_id()
         default_store_type_str = RollPairConfKeys.EGGROLL_ROLLPAIR_DEFAULT_STORE_TYPE.get_with(session.get_all_options())
