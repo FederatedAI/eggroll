@@ -32,7 +32,7 @@ from eggroll.core.session import ErSession
 from eggroll.core.utils import generate_job_id, generate_task_id
 from eggroll.core.utils import string_to_bytes, hash_code
 from eggroll.roll_pair import create_serdes
-from eggroll.roll_pair.transfer_pair import TransferPair
+from eggroll.roll_pair.transfer_pair import TransferPair, BatchBroker
 from eggroll.roll_pair.utils.gc_utils import GcRecorder
 from eggroll.roll_pair.utils.pair_utils import partitioner
 from eggroll.utils.log_utils import get_logger
@@ -594,22 +594,23 @@ class RollPair(object):
         th.start()
         populated_store = self.ctx.populate_processor(self.__store)
         shuffler = TransferPair(job_id)
-        broker = FifoBroker()
-        scatter_future = shuffler.scatter(broker, self.partitioner, populated_store)
+        fifo_broker = FifoBroker()
+        bb = BatchBroker(fifo_broker)
+        scatter_future = shuffler.scatter(fifo_broker, self.partitioner, populated_store)
 
         key_serdes = self.key_serdes
         value_serdes = self.value_serdes
         try:
             if include_key:
                 for k, v in items:
-                    broker.put(item=(key_serdes.serialize(k), value_serdes.serialize(v)))
+                    bb.put(item=(key_serdes.serialize(k), value_serdes.serialize(v)))
             else:
                 k = 0
                 for v in items:
-                    broker.put(item=(key_serdes.serialize(k), value_serdes.serialize(v)))
+                    bb.put(item=(key_serdes.serialize(k), value_serdes.serialize(v)))
                     k += 1
         finally:
-            broker.signal_write_finish()
+            bb.signal_write_finish()
 
         scatter_results = scatter_future.result()
         th.join()
