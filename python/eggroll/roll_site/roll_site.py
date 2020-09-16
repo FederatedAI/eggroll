@@ -305,12 +305,13 @@ class RollSite(RollSiteBase):
         for batch_stream in bin_batch_streams:
             L.trace(f'pushing object stream. rs_key={rs_key}, rs_header={rs_header}, stream_cnt={stream_cnt}, retry count={cur_retry}')
             max_retry_cnt = self.push_max_retry
+            per_stream_timeout = self.push_per_stream_timeout
 
             batch_stream_data = list(batch_stream)
             exception = None
             while cur_retry < max_retry_cnt:
                 try:
-                    self.stub.push(bs_helper.generate_packet(batch_stream_data, cur_retry), timeout=10)
+                    self.stub.push(bs_helper.generate_packet(batch_stream_data, cur_retry), timeout=per_stream_timeout)
                     exception = None
                     break
                 except Exception as e:
@@ -337,6 +338,7 @@ class RollSite(RollSiteBase):
         body_bytes = self.batch_body_bytes
         endpoint = self.ctx.proxy_endpoint
         max_retry_cnt = self.push_max_retry
+        per_stream_timeout = self.push_per_stream_timeout
 
         def _push_partition(ertask):
             rs_header._partition_id = ertask._inputs[0]._id
@@ -363,7 +365,7 @@ class RollSite(RollSiteBase):
                     while cur_retry < max_retry_cnt:
                         L.trace(f'pushing rollpair stream. rs_key={rs_key}, partition_id={rs_header._partition_id}, rs_header={rs_header}, stream_cnt={stream_cnt}, retry count={cur_retry}')
                         try:
-                            stub.push(bs_helper.generate_packet(batch_stream_data, cur_retry), timeout=10)
+                            stub.push(bs_helper.generate_packet(batch_stream_data, cur_retry), timeout=per_stream_timeout)
                             exception = None
                             break
                         except Exception as e:
