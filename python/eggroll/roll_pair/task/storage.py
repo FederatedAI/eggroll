@@ -63,7 +63,7 @@ class _BatchStreamStatus:
         self._stage = "done"
         if self._total_batches != len(self._batch_seq_to_pair_counter):
             self._is_in_order = False
-            L.debug(f"MarkEnd BatchStream ahead of all BatchStreams received, {self._debug_string()}, rs_key={self._rs_header.get_rs_key()}")
+            L.debug(f"MarkEnd BatchStream ahead of all BatchStreams received, {self._debug_string()}, rs_key={rs_header.get_rs_key()}, rs_header={rs_header}")
 
     def count_batch(self, rs_header: ErRollSiteHeader, batch_pairs):
         L.trace(f'count batch. rs_key={rs_header.get_rs_key()}, rs_header={rs_header}, batch_pairs={batch_pairs}')
