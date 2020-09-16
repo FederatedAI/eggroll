@@ -79,7 +79,7 @@ class LmdbAdapter(PairAdapter):
                                      lock=False)
                 self.sub_db = self.env.open_db(DEFAULT_DB)
                 try:
-                    L.trace(f"LmdbAdapter.init: env={self.path} data count={self.count()}")
+                    L.trace(f"LmdbAdapter.init: env={self.path}, data count={self.count()}")
                 except Exception as e:
                     L.debug(f"LmdbAdapter.init: fail to get data count of env={self.path}", e)
                 LmdbAdapter.count_dict[self.path] = 0
