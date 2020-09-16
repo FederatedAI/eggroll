@@ -18,8 +18,6 @@
 
 package com.webank.eggroll.rollsite
 
-import java.util.concurrent.TimeUnit
-
 import com.google.protobuf.ByteString
 import com.webank.ai.eggroll.api.networking.proxy.{DataTransferServiceGrpc, Proxy}
 import com.webank.eggroll.core.constant.{CoreConfKeys, RollSiteConfKeys}
@@ -28,7 +26,6 @@ import com.webank.eggroll.core.transfer.GrpcClientUtils
 import com.webank.eggroll.core.transfer.Transfer.RollSiteHeader
 import com.webank.eggroll.core.util._
 import io.grpc.stub.{ServerCallStreamObserver, StreamObserver}
-import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.lang3.StringUtils
 
 
@@ -58,7 +55,7 @@ class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBas
      *   - yes -> check command to see what the request wants.
      *   - no -> forwards it to the next hop synchronously.
      */
-
+    logTrace(f"[UNARYCALL][SERVER] EggSiteServicer.unaryCall calling")
     val metadata = req.getHeader
     val oneLineStringMetadata = ToStringUtils.toOneLineString(metadata)
     val rollSiteHeader = RollSiteHeader.parseFrom(metadata.getExt).fromProto()
@@ -70,13 +67,17 @@ class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBas
       val logMsg = s"[UNARYCALL][SERVER] unaryCall request received. rsKey=${rsKey}, metadata=${oneLineStringMetadata}"
 
       val endpoint = Router.query(dstPartyId, dstRole).point
+
+      logTrace(f"[UNARYCALL][SERVER] EggSiteServicer dst host is ${endpoint.host} port is ${endpoint.port}")
       if (endpoint.host == RollSiteConfKeys.EGGROLL_ROLLSITE_HOST.get()
         && (endpoint.port == RollSiteConfKeys.EGGROLL_ROLLSITE_PORT.get().toInt
         || endpoint.port == RollSiteConfKeys.EGGROLL_ROLLSITE_SECURE_PORT.get().toInt)) {
         logDebug(s"${logMsg}, hop=SINK")
         processCommand(req, respSO)
       } else {
-        if (RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_SERVER_ENABLED.get().toBoolean) {
+        if (RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_SERVER_ENABLED.get().toBoolean
+        && dstPartyId != RollSiteConfKeys.EGGROLL_ROLLSITE_PARTY_ID.get()) {
+          logTrace(f"[UNARYCALL][SERVER] EggSiteServicer do polling starting.")
           val reqPollingFrame = Proxy.PollingFrame.newBuilder()
             .setMethod(PollingMethods.UNARY_CALL)
             .setPacket(req)
@@ -91,6 +92,7 @@ class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBas
 
           respSO.onNext(result.getPacket)
           respSO.onCompleted()
+          logTrace(f"[UNARYCALL][SERVER] EggSiteServicer do polling finished.")
         } else {
           var isSecure = Router.query(dstPartyId).isSecure
           val caCrt = CoreConfKeys.CONFKEY_CORE_SECURITY_CLIENT_CA_CRT_PATH.get()
@@ -114,6 +116,7 @@ class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBas
         val wrapped = TransferExceptionUtils.throwableToException(t)
         respSO.onError(wrapped)
     }
+    logTrace(f"[UNARYCALL][SERVER] EggSiteServicer.unaryCall called")
   }
 
   private def processCommand(request: Proxy.Packet, responseSO: StreamObserver[Proxy.Packet]): Unit = {
