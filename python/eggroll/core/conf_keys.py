@@ -122,6 +122,7 @@ class RollSiteConfKeys(object):
     EGGROLL_ROLLSITE_PUSH_BATCHES_PER_STREAM = ErConfKey("eggroll.rollsite.push.batches.per.stream", 10)
     EGGROLL_ROLLSITE_PUSH_MAX_RETRY = ErConfKey("eggroll.rollsite.push.max.retry", 100)
     EGGROLL_ROLLSITE_PUSH_OVERALL_TIMEOUT_SEC = ErConfKey("eggroll.rollsite.push.overall.timeout.sec", 600)
+    EGGROLL_ROLLSITE_PUSH_PER_STREAM_TIMEOUT_SEC = ErConfKey("eggroll.rollsite.push.push.per.stream.timeout.sec", 300)
 
     EGGROLL_ROLLSITE_COORDINATOR = ErConfKey("eggroll.rollsite.coordinator")
     EGGROLL_ROLLSITE_DEPLOY_MODE = ErConfKey("eggroll.rollsite.deploy.mode", "cluster")

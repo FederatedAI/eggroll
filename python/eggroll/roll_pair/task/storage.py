@@ -12,6 +12,8 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+
+import logging
 import threading
 from collections import defaultdict, namedtuple
 
@@ -55,7 +57,7 @@ class _BatchStreamStatus:
                f"total_batches={self._total_batches}:total_elems={sum(self._batch_seq_to_pair_counter.values())}"
 
     def set_done(self, rs_header):
-        L.trace(f'set done. rs_key={rs_header.get_rs_key()}')
+        L.trace(f'set done. rs_key={rs_header.get_rs_key()}, rs_header={rs_header}')
         self._total_batches = rs_header._total_batches
         self._total_streams = rs_header._total_streams
         self._stage = "done"
@@ -77,7 +79,8 @@ class _BatchStreamStatus:
         self._stream_seq_to_batch_seq[stream_seq_id] = batch_seq_id
 
     def check_finish(self):
-        L.trace(f'checking finish. rs_key={self._rs_key}')
+        if L.isEnabledFor(logging.TRACE):
+            L.trace(f'checking finish. rs_key={self._rs_key}, stage={self._stage}, total_batches={self._total_batches}, len={len(self._batch_seq_to_pair_counter)}')
         if self._stage == "done" and self._total_batches == len(self._batch_seq_to_pair_counter):
             L.debug(f"All BatchStreams finished, {self._debug_string()}. is_in_order={self._is_in_order}, rs_key={self._rs_key}")
             self._stream_finish_event.set()
