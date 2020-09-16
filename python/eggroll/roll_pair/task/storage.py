@@ -80,9 +80,9 @@ class _BatchStreamStatus:
 
     def check_finish(self):
         if L.isEnabledFor(logging.TRACE):
-            L.trace(f'checking finish. rs_key={self._rs_key}, stage={self._stage}, total_batches={self._total_batches}, len={len(self._batch_seq_to_pair_counter)}')
+            L.trace(f'checking finish. rs_key={self._rs_key}, rs_header={self._rs_header}, stage={self._stage}, total_batches={self._total_batches}, len={len(self._batch_seq_to_pair_counter)}')
         if self._stage == "done" and self._total_batches == len(self._batch_seq_to_pair_counter):
-            L.debug(f"All BatchStreams finished, {self._debug_string()}. is_in_order={self._is_in_order}, rs_key={self._rs_key}")
+            L.debug(f"All BatchStreams finished, {self._debug_string()}. is_in_order={self._is_in_order}, rs_key={self._rs_key}, rs_header={self._rs_header}")
             self._stream_finish_event.set()
             return True
         else:
@@ -176,7 +176,7 @@ class PutBatchTask:
                 bss.check_finish()
                 # TransferService.remove_broker(tag) will be called in get_status phrase finished or exception got
             except Exception as e:
-                L.exception(f'_run_put_batch error, tag={self.tag}, rs_key={rs_header.get_rs_key()}')
+                L.exception(f'_run_put_batch error, tag={self.tag}, rs_key={rs_header.get_rs_key()}, rs_header={rs_header}')
                 raise e
             finally:
                 TransferService.remove_broker(self.tag)
