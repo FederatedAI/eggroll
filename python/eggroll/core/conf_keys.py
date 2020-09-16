@@ -119,7 +119,7 @@ class RollPairConfKeys(object):
 
 
 class RollSiteConfKeys(object):
-    EGGROLL_ROLLSITE_PULL_MAX_RETRY = ErConfKey("eggroll.rollsite.pull.polling.max.retry", 5)
+    EGGROLL_ROLLSITE_PULL_MAX_RETRY = ErConfKey("eggroll.rollsite.pull.max.retry", 5)
     EGGROLL_ROLLSITE_PULL_OVERALL_TIMEOUT_SEC = ErConfKey("eggroll.rollsite.pull.overall.timeout.sec", 600)
     EGGROLL_ROLLSITE_PULL_HEADER_TIMEOUT_SEC = ErConfKey("eggroll.rollsite.pull.header.timeout.sec", 600)
     EGGROLL_ROLLSITE_PUSH_BATCHES_PER_STREAM = ErConfKey("eggroll.rollsite.push.batches.per.stream", 10)
