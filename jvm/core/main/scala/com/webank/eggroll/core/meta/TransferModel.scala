@@ -56,6 +56,11 @@ case class ErRollSiteHeader(rollSiteSessionId: String,
     val finalArray = prefix ++ Array(rollSiteSessionId, name, tag, srcRole, srcPartyId, dstRole, dstPartyId)
     String.join(delim, finalArray: _*)
   }
+
+  override def toString: String = {
+    super.toString
+    s"""<ErRollSiteHeader(rollSiteSessionId=${rollSiteSessionId}, name=${name}, tag=${tag}, srcRole=${srcRole}, srcPartyId=${srcPartyId}, dstRole=${dstRole}, dstPartyId=${dstPartyId}, dataType=${dataType}, options=${options}, totalPartitions=${totalPartitions}, partitionId=${partitionId}, totalStreams=${totalStreams}, totalBatches=${totalBatches}, streamSeq=${streamSeq}, batchSeq=${batchSeq}, stage=${stage}) @ ${Integer.toHexString(hashCode())}>"""
+  }
 }
 
 object TransferModelPbMessageSerdes {

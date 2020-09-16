@@ -69,7 +69,7 @@ object CoreConfKeys {
   val CONFKEY_CORE_GRPC_CHANNEL_MAX_CONNECTION_AGE_GRACE_SEC = "eggroll.core.grpc.channel.max.connection.age.grace.sec"
   val CONFKEY_CORE_GRPC_CHANNEL_MAX_INBOUND_METADATA_SIZE = ErConfKey("eggroll.core.grpc.channel.max.inbound.metadata.size", 128 << 20)
   val CONFKEY_CORE_GRPC_CHANNEL_MAX_INBOUND_MESSAGE_SIZE = ErConfKey("eggroll.core.grpc.channel.max.inbound.message.size", (2 << 30) - 1)
-  val CONFKEY_CORE_GRPC_CHANNEL_MAX_RETRY_ATTEMPTS = ErConfKey("eggroll.grpc.channel.max.retry.attempts", 20)
+  val CONFKEY_CORE_GRPC_CHANNEL_MAX_RETRY_ATTEMPTS = ErConfKey("eggroll.grpc.channel.max.retry.attempts", 5)
   val CONFKEY_CORE_GRPC_CHANNEL_PER_RPC_BUFFER_LIMIT = ErConfKey("eggroll.core.grpc.channel.per.rpc.buffer.limit", 64 << 20)
   val CONFKEY_CORE_GRPC_CHANNEL_RETRY_BUFFER_SIZE = ErConfKey("eggroll.core.grpc.channel.retry.buffer.size", 16 << 20)
   val CONFKEY_CORE_GRPC_CHANNEL_SSL_SESSION_CACHE_SIZE = ErConfKey("eggroll.core.grpc.channel.ssl.session.cache.size", 65536)
