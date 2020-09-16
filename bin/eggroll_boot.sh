@@ -42,14 +42,14 @@ elif [[ $sub_cmd == "stop" ]]; then
   #echo "stop: $cmd, pid $pid"
   echo "stop: $cmd"
   eval ${cmd}
-  echo "pid=$$, ppid=$PPID, eval pid=$!, stop result=$? (0 -> successful, 1 -> failed)"
+  echo "pid=$$, ppid=$PPID, eval pid=$!, stop result=$? (0 -> successful, other -> failed)"
 elif [[ $sub_cmd == "kill" ]]; then
   #pid=`cat $pid_file`
   cmd="${exe} | grep -v ${SCRIPT_NAME} | awk '{print \$2}' | xargs kill -9"
   #echo "kill: $cmd, pid $pid"
   echo "kill: $cmd"
   eval ${cmd}
-  echo "pid=$$, ppid=$PPID, eval pid=$!, kill result=$? (0 -> successful, 1 -> failed)"
+  echo "pid=$$, ppid=$PPID, eval pid=$!, kill result=$? (0 -> successful, other -> failed)"
 fi
 
 echo "==================="
