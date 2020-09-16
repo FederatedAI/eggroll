@@ -12,11 +12,15 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+
+import logging
 import os
 import time
 import uuid
 from concurrent.futures import wait, FIRST_EXCEPTION
 from threading import Thread
+
+import cloudpickle
 
 from eggroll.core.aspects import _method_profile_logger
 from eggroll.core.client import CommandClient
@@ -27,7 +31,6 @@ from eggroll.core.constants import StoreTypes, SerdesTypes, PartitionerTypes, \
 from eggroll.core.datastructure.broker import FifoBroker
 from eggroll.core.meta_model import ErStoreLocator, ErJob, ErStore, ErFunctor, \
     ErTask, ErPair, ErPartition
-import cloudpickle
 from eggroll.core.session import ErSession
 from eggroll.core.utils import generate_job_id, generate_task_id
 from eggroll.core.utils import string_to_bytes, hash_code
@@ -357,49 +360,51 @@ class RollPair(object):
             L.debug(f"repartition start: self rp={self_name} partitions={self_partition}, "
                     f"other={other_name}: partitions={other_partition}, repartitioning")
 
-            if self_count <= other_count:
+            if self_count < other_count:
                 shuffle_rp = self
                 shuffle_rp_count = self_count
                 shuffle_rp_name = self_name
                 shuffle_total_partitions = self_partition
-                shuffle_rp_partitions = other.__store._partitions
+                shuffle_rp_partitions = self.__store._partitions
 
                 not_shuffle_rp = other
                 not_shuffle_rp_count = other_count
                 not_shuffle_rp_name = other_name
                 not_shuffle_total_partitions = other_partition
-                not_shuffle_rp_partitions = self.__store._partitions
+                not_shuffle_rp_partitions = other.__store._partitions
             else:
                 not_shuffle_rp = self
                 not_shuffle_rp_count = self_count
                 not_shuffle_rp_name = self_name
                 not_shuffle_total_partitions = self_partition
-                not_shuffle_rp_partitions = other.__store._partitions
+                not_shuffle_rp_partitions = self.__store._partitions
 
                 shuffle_rp = other
                 shuffle_rp_count = other_count
                 shuffle_rp_name = other_name
                 shuffle_total_partitions = other_partition
-                shuffle_rp_partitions = self.__store._partitions
+                shuffle_rp_partitions = other.__store._partitions
 
-            L.trace(f"repatition selection: rp={shuffle_rp_name} count={shuffle_rp_count} "
-                    f"<= rp={not_shuffle_rp_name} count={not_shuffle_rp_count}. "
+            L.trace(f"repartition selection: rp={shuffle_rp_name} count={shuffle_rp_count}, "
+                    f"rp={not_shuffle_rp_name} count={not_shuffle_rp_count}. "
                     f"repartitioning {shuffle_rp_name}")
             store = ErStore(store_locator=ErStoreLocator(store_type=shuffle_rp.get_store_type(),
                                                          namespace=shuffle_rp.get_namespace(),
                                                          name=str(uuid.uuid1()),
                                                          total_partitions=not_shuffle_total_partitions),
-                            partitions=shuffle_rp_partitions)
+                            partitions=not_shuffle_rp_partitions)
             res_rp = shuffle_rp.map(lambda k, v: (k, v), output=store)
             res_rp.disable_gc()
-            L.debug(f"repartition end: rp to shuffle={shuffle_rp_name}, "
-                    f"count={shuffle_rp_count}, partitions={shuffle_total_partitions}; "
-                    f"rp NOT shuffled={not_shuffle_rp_name}, "
-                    f"count={not_shuffle_rp_count}, partitions={not_shuffle_total_partitions}' "
-                    f"res rp={res_rp.get_name()}, "
-                    f"count={res_rp.count()}, partitions={res_rp.get_partitions()}")
+
+            if L.isEnabledFor(logging.DEBUG):
+                L.debug(f"repartition end: rp to shuffle={shuffle_rp_name}, "
+                        f"count={shuffle_rp_count}, partitions={shuffle_total_partitions}; "
+                        f"rp NOT shuffled={not_shuffle_rp_name}, "
+                        f"count={not_shuffle_rp_count}, partitions={not_shuffle_total_partitions}' "
+                        f"res rp={res_rp.get_name()}, "
+                        f"count={res_rp.count()}, partitions={res_rp.get_partitions()}")
             store_shuffle = res_rp.get_store()
-            return [store_shuffle, other.get_store()] if self_count <= other_count \
+            return [store_shuffle, other.get_store()] if self_count < other_count \
                 else [self.get_store(), store_shuffle]
         else:
             return [self.__store, other.__store]
