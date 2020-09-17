@@ -189,16 +189,11 @@ class _BatchStreamHelper(object):
 
             return result
 
-        L.debug(f'debug 442: ready to gengerate packet for partition_id={self._rs_header._partition_id}, seq={self._rs_header._batch_seq}')
         prev_batch = None
         for bin_batch in bin_batch_iter:
             if prev_batch:
                 self._rs_header._batch_seq += 1
-                L.debug(f'debug 442: gengerating next packet for partition_id={self._rs_header._partition_id}, seq={self._rs_header._batch_seq}')
                 yield encode_packet(self._rs_header, prev_batch)
-            else:
-                L.debug(f'debug 442: gengerating first packet for partition_id={self._rs_header._partition_id}, seq={self._rs_header._batch_seq}')
-
             prev_batch = bin_batch
 
         self._rs_header._batch_seq += 1
@@ -206,17 +201,13 @@ class _BatchStreamHelper(object):
             self._rs_header._stage = FINISH_STATUS
             self._rs_header._total_streams = self._rs_header._stream_seq
             self._rs_header._total_batches = self._rs_header._batch_seq
-        L.debug(f'debug 442: gengerating last packet for partition_id={self._rs_header._partition_id}, seq={self._rs_header._batch_seq}')
         yield encode_packet(self._rs_header, prev_batch)
-        L.debug(f'debug 442: gengerated last packet for partition_id={self._rs_header._partition_id}, seq={self._rs_header._batch_seq}')
 
     def _generate_batch_streams(self, pair_iter, batches_per_stream, body_bytes):
         batches = TransferPair.pair_to_bin_batch(pair_iter, sendbuf_size=body_bytes)
-        L.debug(f'debug 433: peeking first stream for partition_id={self._rs_header._partition_id}, stream_seq={self._rs_header._stream_seq}')
         try:
             peek = next(batches)
         except StopIteration as e:
-            L.debug(f'debug 433: peeking first stream and stop for partition_id={self._rs_header._partition_id}, stream_seq={self._rs_header._stream_seq}')
             self._finish_partition = True
 
         def chunk_batch_stream():
@@ -231,18 +222,15 @@ class _BatchStreamHelper(object):
                 peek = next(batches)
             except StopIteration as e:
                 self._finish_partition = True
-                L.debug(f'debug 433: yield stream and stop for partition_id={self._rs_header._partition_id}, stream_seq={self._rs_header._stream_seq}')
             finally:
                 yield cur_batch
 
         try:
             while not self._finish_partition:
                 self._rs_header._stream_seq += 1
-                L.debug(f'debug 433: gengerating next stream for partition_id={self._rs_header._partition_id}, stream_seq={self._rs_header._stream_seq}')
                 yield chunk_batch_stream()
-                L.debug(f'debug 433: gengerated next stream for partition_id={self._rs_header._partition_id}, stream_seq={self._rs_header._stream_seq}')
         except Exception as e:
-            L.exception(f'debug 433: error in generating stream, rs_key={self._rs_header.get_rs_key()}')
+            L.exception(f'error in generating stream, rs_key={self._rs_header.get_rs_key()}, rs_header={self._rs_header}')
 
 
 class RollSite(RollSiteBase):
@@ -254,7 +242,7 @@ class RollSite(RollSiteBase):
         # TODO:0: configurable
         self.push_batches_per_stream = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PUSH_BATCHES_PER_STREAM.get_with(options))
         self.push_per_stream_timeout = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PUSH_PER_STREAM_TIMEOUT_SEC.get_with(options))
-        self.push_max_retry = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PUSH_CLIENT_MAX_RETRY.get_with(options))
+        self.push_max_retry = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PUSH_MAX_RETRY.get_with(options))
         self.pull_header_timeout = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PULL_HEADER_TIMEOUT_SEC.get_with(options))
         self.pull_overall_timeout = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PULL_OVERALL_TIMEOUT_SEC.get_with(options))
         self.pull_max_retry = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PULL_MAX_RETRY.get_with(options))
@@ -401,12 +389,11 @@ class RollSite(RollSiteBase):
             pull_header_timeout = self.pull_header_timeout        # skips pickling self
             pull_overall_timeout = self.pull_overall_timeout      # skips pickling self
 
-            def get_all_status(task):
+            def get_partition_status(task):
                 put_batch_task = PutBatchTask(transfer_tag_prefix + str(task._inputs[0]._id), None)
                 return put_batch_task.get_status(pull_overall_timeout)
 
-            # can be 'succeeded' only once
-            def stat_all_status(roll_site):
+            def get_status(roll_site):
                 pull_status = {}
                 total_pairs = 0
                 total_batches = 0
@@ -417,9 +404,9 @@ class RollSite(RollSiteBase):
                                                   options={'create_if_missing': False})
 
                 if store is None:
-                    return None, None, -1, -1
+                    raise ValueError(f'illegal state for rp_name={rp_name}, rp_namespace={rp_namespace}')
 
-                all_status = store.with_stores(get_all_status)
+                all_status = store.with_stores(get_partition_status)
 
                 for part_id, part_status in all_status:
                     if not part_status.is_finished:
@@ -434,7 +421,8 @@ class RollSite(RollSiteBase):
             header_response = None
             while wait_time < pull_header_timeout and \
                     (header_response is None or not isinstance(header_response[0][1], ErRollSiteHeader)):
-                header_response = self.ctx.rp_ctx.load(name=STATUS_TABLE_NAME, namespace=rp_namespace,
+                header_response = self.ctx.rp_ctx.load(name=STATUS_TABLE_NAME,
+                                                       namespace=rp_namespace,
                                                        options={'create_if_missing': True, 'total_partitions': 1})\
                     .with_stores(lambda x: PutBatchTask(transfer_tag_prefix + "0").get_header(10))
                 wait_time += 10
@@ -453,7 +441,7 @@ class RollSite(RollSiteBase):
             pull_status = {}
             for i in range(self.pull_max_retry):
                 pull_attempts = i
-                pull_status, all_finished, total_batches, total_pairs = stat_all_status(self)
+                pull_status, all_finished, total_batches, total_pairs = get_status(self)
 
                 if not all_finished:
                     L.debug(f'getting status NOT finished for rs_key={rs_key}, rs_header={rs_header}, cur_status={pull_status}, attempts={pull_attempts}, time_cost={time.time() - start_time}')
