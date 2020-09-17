@@ -34,7 +34,7 @@ class RocksdbAdapter(PairAdapter):
     db_dict = dict()
     count_dict = dict()
     lock_dict = defaultdict(threading.Lock)
-    db_lock = threading.Lock
+    db_lock = threading.Lock()
 
     def __init__(self, options):
         """
