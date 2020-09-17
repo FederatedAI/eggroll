@@ -58,7 +58,7 @@ class DispatchPushReqSO(eggSiteServicerPushRespSO: StreamObserver[Proxy.Metadata
 
     val myPartyId = RollSiteConfKeys.EGGROLL_ROLLSITE_PARTY_ID.get()
     val dstPartyId = req.getHeader.getDst.getPartyId
-
+    val dstRole = req.getHeader.getDst.getRole
     val logMsg = s"DispatchPushReqSO.ensureInited. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}"
     delegateSO =  if (myPartyId.equals(dstPartyId)) {
       if (isLogTraceEnabled()) {
@@ -66,7 +66,8 @@ class DispatchPushReqSO(eggSiteServicerPushRespSO: StreamObserver[Proxy.Metadata
       }
       new PutBatchSinkPushReqSO(eggSiteServicerPushRespSO)
     } else {
-      if (RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_SERVER_ENABLED.get().toBoolean) {
+      val dstIsPolling = Router.query(dstPartyId, dstRole).isPolling
+      if (RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_SERVER_ENABLED.get().toBoolean && dstIsPolling) {
       // polling mode
         logTrace(s"${logMsg}, hop=FORWARD, type=PUSH2POLLING")
         new ForwardPushToPollingReqSO(eggSiteServicerPushRespSO)

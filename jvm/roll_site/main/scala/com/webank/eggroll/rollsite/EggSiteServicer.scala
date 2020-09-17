@@ -18,6 +18,8 @@
 
 package com.webank.eggroll.rollsite
 
+import java.util
+
 import com.google.protobuf.ByteString
 import com.webank.ai.eggroll.api.networking.proxy.{DataTransferServiceGrpc, Proxy}
 import com.webank.eggroll.core.constant.{CoreConfKeys, RollSiteConfKeys}
@@ -25,12 +27,14 @@ import com.webank.eggroll.core.meta.TransferModelPbMessageSerdes.ErRollSiteHeade
 import com.webank.eggroll.core.transfer.GrpcClientUtils
 import com.webank.eggroll.core.transfer.Transfer.RollSiteHeader
 import com.webank.eggroll.core.util._
+import com.webank.eggroll.rollsite.utils.ToAuditString
 import io.grpc.stub.{ServerCallStreamObserver, StreamObserver}
 import org.apache.commons.lang3.StringUtils
+import org.apache.logging.log4j.LogManager
 
 
 class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBase with Logging {
-
+  private val AUDIT = LogManager.getLogger("audit")
   /**
    */
   override def push(responseObserver: StreamObserver[Proxy.Metadata]): StreamObserver[Proxy.Packet] = {
@@ -68,6 +72,13 @@ class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBas
 
       val endpoint = Router.query(dstPartyId, dstRole).point
       val dstIsPolling = Router.query(dstPartyId, dstRole).isPolling
+
+      val auditTopics = RollSiteConfKeys.EGGROLL_ROLLSITE_AUDIT_TOPICS.get()
+      if (auditTopics != null
+        && (util.Arrays.asList(auditTopics).contains(req.getHeader.getSrc.getRole)
+        || util.Arrays.asList(auditTopics).contains(req.getHeader.getDst.getRole))) {
+        AUDIT.info(ToAuditString.toOneLineString(req.getHeader, "|"))
+      }
 
       logTrace(f"[UNARYCALL][SERVER] EggSiteServicer dst host is ${endpoint.host} port is ${endpoint.port}")
       if (endpoint.host == RollSiteConfKeys.EGGROLL_ROLLSITE_HOST.get()
