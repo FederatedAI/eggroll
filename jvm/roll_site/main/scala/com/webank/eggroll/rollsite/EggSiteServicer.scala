@@ -67,6 +67,7 @@ class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBas
       val logMsg = s"[UNARYCALL][SERVER] unaryCall request received. rsKey=${rsKey}, metadata=${oneLineStringMetadata}"
 
       val endpoint = Router.query(dstPartyId, dstRole).point
+      val dstIsPolling = Router.query(dstPartyId, dstRole).isPolling
 
       logTrace(f"[UNARYCALL][SERVER] EggSiteServicer dst host is ${endpoint.host} port is ${endpoint.port}")
       if (endpoint.host == RollSiteConfKeys.EGGROLL_ROLLSITE_HOST.get()
@@ -75,8 +76,7 @@ class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBas
         logDebug(s"${logMsg}, hop=SINK")
         processCommand(req, respSO)
       } else {
-        if (RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_SERVER_ENABLED.get().toBoolean
-        && dstPartyId != RollSiteConfKeys.EGGROLL_ROLLSITE_PARTY_ID.get()) {
+        if (RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_SERVER_ENABLED.get().toBoolean && dstIsPolling) {
           logTrace(f"[UNARYCALL][SERVER] EggSiteServicer do polling starting.")
           val reqPollingFrame = Proxy.PollingFrame.newBuilder()
             .setMethod(PollingMethods.UNARY_CALL)
