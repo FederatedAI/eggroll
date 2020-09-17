@@ -7,7 +7,7 @@ import com.webank.eggroll.core.util.Logging
 import org.json.{JSONArray, JSONObject}
 import scala.io.Source
 
-case class QueryResult(point: ErEndpoint, isSecure: Boolean)
+case class QueryResult(point: ErEndpoint, isSecure: Boolean, isPolling: Boolean)
 
 object Router extends Logging{
   @volatile private var routerTable: JSONObject = _
@@ -68,7 +68,15 @@ object Router extends Logging{
         isSecure = true
       }
     }
-    QueryResult(ErEndpoint(host, port), isSecure)
+
+    var isPolling = false
+    if (default.has("is_polling")) {
+      if (default.get("is_polling").asInstanceOf[Boolean] || default.get("is_polling").toString == "1") {
+        isPolling = true
+      }
+    }
+
+    QueryResult(ErEndpoint(host, port), isSecure, isPolling)
   }
 
   private def jsonCheck(data: String): Boolean = {
