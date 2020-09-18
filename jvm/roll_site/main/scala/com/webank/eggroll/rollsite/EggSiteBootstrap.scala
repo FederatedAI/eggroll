@@ -19,8 +19,7 @@
 package com.webank.eggroll.rollsite
 
 import java.io.File
-import java.util.concurrent.ThreadPoolExecutor
-
+import java.util.concurrent.{ScheduledThreadPoolExecutor, ThreadPoolExecutor, TimeUnit}
 import com.webank.eggroll.core.BootstrapBase
 import com.webank.eggroll.core.constant.{CoreConfKeys, RollSiteConfKeys}
 import com.webank.eggroll.core.session.StaticErConf
@@ -28,6 +27,7 @@ import com.webank.eggroll.core.transfer.GrpcServerUtils
 import com.webank.eggroll.core.util.{CommandArgsUtils, Logging, ThreadPoolUtils}
 import io.grpc.ServerInterceptors
 import org.apache.commons.lang3.StringUtils
+import org.apache.commons.lang3.concurrent.BasicThreadFactory
 
 
 class EggSiteBootstrap extends BootstrapBase with Logging {
@@ -65,6 +65,16 @@ class EggSiteBootstrap extends BootstrapBase with Logging {
         }
       }
     }
+
+    logInfo(s"start flush route table per min.")
+    val executorService = new ScheduledThreadPoolExecutor(1,
+      new BasicThreadFactory.Builder().namingPattern("example-schedule-pool-%d").build)
+    executorService.scheduleAtFixedRate(() => {
+      def foo(): Unit = {
+        Router.initOrUpdateRouterTable(routerFilePath)
+      }
+      foo()
+    }, 1, 1, TimeUnit.MINUTES)
   }
 
   override def start(): Unit = {
