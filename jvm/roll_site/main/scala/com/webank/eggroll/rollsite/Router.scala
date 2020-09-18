@@ -15,6 +15,7 @@ object Router extends Logging{
 
 
   def initOrUpdateRouterTable(path: String): Unit = {
+    logTrace("Router.initOrUpdateRouterTable")
     val source = Source.fromFile(path,"UTF-8")
     val str = source.mkString
     val js = new JSONObject(str)
