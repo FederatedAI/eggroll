@@ -33,6 +33,8 @@ import io.grpc.ConnectivityState
 import io.grpc.stub.{ServerCallStreamObserver, StreamObserver}
 import org.apache.commons.lang3.StringUtils
 
+import scala.concurrent.TimeoutException
+
 
 object PollingMethods {
   val PUSH = "push"
@@ -79,8 +81,9 @@ class LongPollingClient extends Logging {
       isSecure = if (!StringUtils.isBlank(caCrt)) isSecure else false
       val channel = GrpcClientUtils.getChannel(endpoint, isSecure)
       val stub = DataTransferServiceGrpc.newStub(channel)
+      val finishLatch = new CountDownLatch(1)
       val pollingResults = new PollingResults()
-      val dispatchPollingRespSO = new DispatchPollingRespSO(pollingResults)
+      val dispatchPollingRespSO = new DispatchPollingRespSO(pollingResults, finishLatch)
       //val dispatchPollingRespSO = new MockPollingRespSO(pollingResults)
       var connectStat = channel.getState(true)
 
@@ -108,6 +111,9 @@ class LongPollingClient extends Logging {
               pollingReqSO.onNext(req)
             case PollingMethods.COMPLETED_POISON =>
               pollingReqSO.onCompleted()
+              if (!finishLatch.await(60, TimeUnit.SECONDS)) {
+                throw new TimeoutException(s"longPollingClient.onCompleted latch timeout")
+              }
               finished = true
             case PollingMethods.NO_DATA_POISON =>
               throw new IllegalStateException("polling timeout with no data")
@@ -122,7 +128,6 @@ class LongPollingClient extends Logging {
           logError("polling with error", t)
           pollingReqSO.onError(TransferExceptionUtils.throwableToException(t))
       }
-      //pollingResults.await()
 
       // TODO:0: configurable
     } catch {
@@ -291,16 +296,21 @@ class UnaryCallPollingReqSO(eggSiteServicerPollingRespSO: ServerCallStreamObserv
       var batch: Proxy.PollingFrame = null
       req.getSeq match {
         case 0L =>
-          logTrace(s"UnaryCallPollingReqSO.onNext req.getSeq is 0L starting")
-          batch = pollingExchanger.respQ.take()
+          logTrace(s"UnaryCallPollingReqSO.onNext req.getSeq=0L starting")
+          var i = 0
+          while (batch == null) {
+            batch = pollingExchanger.respQ.poll(30, TimeUnit.SECONDS)
+            logTrace(s"UnaryCallPollingReqSO.onNext req.getSeq=0L, getting from pollingExchanger, i=${i}")
+            i += 1
+          }
           ensureInited(batch)
 
           eggSiteServicerPollingRespSO.onNext(batch)
-          logTrace(s"UnaryCallPollingReqSO.onNext.req.getSeq is 0L finished")
+          logTrace(s"UnaryCallPollingReqSO.onNext.req.getSeq=0L finished")
         case 1L =>
-          logTrace(s"UnaryCallPollingReqSO.onNext req.getSeq is 1L starting")
+          logTrace(s"UnaryCallPollingReqSO.onNext req.getSeq=1L starting")
           pollingExchanger.reqQ.put(Proxy.PollingFrame.newBuilder().setPacket(req.getPacket).build())
-          logTrace(s"UnaryCallPollingReqSO.onNext req.getSeq is 1L finished")
+          logTrace(s"UnaryCallPollingReqSO.onNext req.getSeq=1L finished")
         case _ =>
           val t: Throwable = new IllegalStateException(s"invalid seq=${req.getSeq} for rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
           onError(t)
@@ -357,11 +367,18 @@ class PushPollingReqSO(val eggSiteServicerPollingRespSO: ServerCallStreamObserve
     try {
       req.getSeq match {
         case 0L =>
+          logTrace(s"PushPollingReqSO.onNext req.getSeq=0L starting")
           var shouldStop = false
           var batch: Proxy.PollingFrame = null
 
           while (!shouldStop) {
-            batch = pollingExchanger.respQ.take()
+            var i = 0
+            batch = null
+            while (batch == null) {
+              batch = pollingExchanger.respQ.poll(30, TimeUnit.SECONDS)
+              logTrace(s"PushPollingReqSO.onNext req.getSeq=0L, getting from pollingExchanger, i=${i}")
+              i += 1
+            }
             ensureInited(batch)
 
             if (batch.getMethod.equals(PollingMethods.FINISH_PUSH)) {
@@ -369,8 +386,11 @@ class PushPollingReqSO(val eggSiteServicerPollingRespSO: ServerCallStreamObserve
             }
             eggSiteServicerPollingRespSO.onNext(batch)
           }
+          logTrace(s"PushPollingReqSO.onNext req.getSeq=0L finished")
         case 1L =>
+          logTrace(s"PushPollingReqSO.onNext req.getSeq=1L starting")
           pollingExchanger.reqQ.put(Proxy.PollingFrame.newBuilder().setMetadata(req.getMetadata).build())
+          logTrace(s"PushPollingReqSO.onNext req.getSeq=1L finished")
         case _ =>
           val t: Throwable = new IllegalStateException(s"PushPollingReqSO.error: invalid seq=${req.getSeq} for rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
           onError(t)
@@ -397,7 +417,8 @@ class PushPollingReqSO(val eggSiteServicerPollingRespSO: ServerCallStreamObserve
 
 
 // polling client side
-class DispatchPollingRespSO(pollingResults: PollingResults)
+class DispatchPollingRespSO(pollingResults: PollingResults,
+                            finishLatch: CountDownLatch)
   extends StreamObserver[Proxy.PollingFrame] with Logging {
 
   private var inited = false
@@ -405,13 +426,14 @@ class DispatchPollingRespSO(pollingResults: PollingResults)
   private var metadata: Proxy.Metadata = _
   private var oneLineStringMetadata: String = _
   private var rsKey: String = _
+  private var rsHeader: ErRollSiteHeader = _
   private var method: String = _
   private var delegateSO: StreamObserver[Proxy.PollingFrame] = _
 
   private val self = this
 
   private def ensureInit(req: Proxy.PollingFrame): Unit = {
-    logTrace(s"DispatchPollingRespSO.ensureInited calling. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
+    logTrace(s"DispatchPollingRespSO.ensureInited calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
     if (inited) return
 
     method = req.getMethod
@@ -431,15 +453,15 @@ class DispatchPollingRespSO(pollingResults: PollingResults)
     }
 
     oneLineStringMetadata = ToStringUtils.toOneLineString(metadata)
-    val rsHeader = RollSiteHeader.parseFrom(metadata.getExt).fromProto()
+    rsHeader = RollSiteHeader.parseFrom(metadata.getExt).fromProto()
     rsKey = rsHeader.getRsKey()
 
     inited = true
-    logTrace(s"DispatchPollingRespSO.ensureInited called. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
+    logTrace(s"DispatchPollingRespSO.ensureInited called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
   }
 
   override def onNext(req: Proxy.PollingFrame): Unit = {
-    logTrace(s"DispatchPollingRespSO.onNext calling. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
+    logTrace(s"DispatchPollingRespSO.onNext calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
     try {
       if (TransferExceptionUtils.checkPacketIsException(req.getPacket)) {
         val errStack = req.getPacket.getBody.getValue.toStringUtf8
@@ -453,20 +475,25 @@ class DispatchPollingRespSO(pollingResults: PollingResults)
       case t:Throwable =>
         onError(t)
     }
-    logTrace(s"DispatchPollingRespSO.onNext called. rsKey=${rsKey}, metadata=${oneLineStringMetadata}")
+    logTrace(s"DispatchPollingRespSO.onNext called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
   }
 
   override def onError(t: Throwable): Unit = {
-    logTrace(s"DispatchPollingRespSO.onError call.")
+    logTrace(s"DispatchPollingRespSO.onError calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
     if (delegateSO != null) {
       delegateSO.onError(TransferExceptionUtils.throwableToException(t))
     }
+    finishLatch.countDown()
     LongPollingClient.releaseSemaphore()
+    logTrace(s"DispatchPollingRespSO.onError called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
   }
 
   override def onCompleted(): Unit = {
+    logTrace(s"DispatchPollingRespSO.onCompleted calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
     delegateSO.onCompleted()
+    finishLatch.countDown()
     LongPollingClient.releaseSemaphore()
+    logTrace(s"DispatchPollingRespSO.onCompleted called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
   }
 }
 
