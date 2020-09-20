@@ -313,6 +313,7 @@ class RollSite(RollSiteBase):
                 finally:
                     cur_retry += 1
             if exception is not None:
+                L.error("push object failed. rs_key={rs_key}, partition_id={rs_header._partition_id}, rs_header={rs_header}", exception)
                 raise exception
             L.trace(f'pushed object stream. rs_key={rs_key}, rs_header={rs_header}, stream_cnt={stream_cnt}, retry count={cur_retry - 1}')
 
@@ -356,7 +357,7 @@ class RollSite(RollSiteBase):
                     cur_retry = 0
                     exception = None
                     while cur_retry < max_retry_cnt:
-                        L.trace(f'pushing partition rollpair stream. rs_key={rs_key}, partition_id={rs_header._partition_id}, rs_header={rs_header}, stream_cnt={stream_cnt}, retry count={cur_retry}')
+                        L.trace(f'pushing rollpair partition stream. rs_key={rs_key}, partition_id={rs_header._partition_id}, rs_header={rs_header}, stream_cnt={stream_cnt}, retry count={cur_retry}')
                         try:
                             stub.push(bs_helper.generate_packet(batch_stream_data, cur_retry), timeout=per_stream_timeout)
                             exception = None
@@ -372,8 +373,9 @@ class RollSite(RollSiteBase):
                         finally:
                             cur_retry += 1
                     if exception is not None:
+                        L.error("push partition failed. rs_key={rs_key}, partition_id={rs_header._partition_id}, rs_header={rs_header}", exception)
                         raise exception
-                    L.trace(f'pushed partition rollpair stream. rs_key={rs_key}, partition_id={rs_header._partition_id}, rs_header={rs_header}, count={stream_cnt}, retry count={cur_retry - 1}')
+                    L.trace(f'pushed rollpair partition stream. rs_key={rs_key}, partition_id={rs_header._partition_id}, rs_header={rs_header}, count={stream_cnt}, retry count={cur_retry - 1}')
                     stream_cnt += 1
 
             L.trace(f"pushed rollpair partition. rs_key={rs_key}, partition_id={rs_header._partition_id}, rs_header={rs_header}")
