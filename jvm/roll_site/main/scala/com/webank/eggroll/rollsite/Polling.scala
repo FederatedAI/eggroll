@@ -111,12 +111,12 @@ class LongPollingClient extends Logging {
               pollingReqSO.onNext(req)
             case PollingMethods.COMPLETED_POISON =>
               pollingReqSO.onCompleted()
-              if (!finishLatch.await(60, TimeUnit.SECONDS)) {
+              if (!finishLatch.await(RollSiteConfKeys.EGGROLL_ROLLSITE_ONCOMPLETED_WAIT_TIMEOUT.get().toLong, TimeUnit.SECONDS)) {
                 throw new TimeoutException(s"longPollingClient.onCompleted latch timeout")
               }
               finished = true
             case PollingMethods.NO_DATA_POISON =>
-              throw new IllegalStateException("polling timeout with no data")
+              logDebug("polling timeout with no data")
             case PollingMethods.ERROR_POISON =>
               throw pollingResults.getError()
             case _ =>
@@ -139,7 +139,12 @@ class LongPollingClient extends Logging {
 
   def pollingForever(): Unit = {
     while (true) {
-      polling()
+      try {
+        polling()
+      } catch {
+        case e: Throwable =>
+          logError("polling failed", e)
+      }
     }
   }
 }
@@ -188,10 +193,10 @@ class PollingResults() extends Iterator[Proxy.PollingFrame] with Logging {
 
   override def next(): Proxy.PollingFrame = {
     // TODO:0: Configurable
-    val result: Proxy.PollingFrame = q.poll(5, TimeUnit.MINUTES)
+    var result: Proxy.PollingFrame = q.poll(5, TimeUnit.MINUTES)
 
     if (result == null) {
-      q.put(PollingResults.noDataPoison)
+      result = PollingResults.noDataPoison
     }
 
     result
@@ -299,7 +304,7 @@ class UnaryCallPollingReqSO(eggSiteServicerPollingRespSO: ServerCallStreamObserv
           logTrace(s"UnaryCallPollingReqSO.onNext req.getSeq=0L starting")
           var i = 0
           while (batch == null) {
-            batch = pollingExchanger.respQ.poll(30, TimeUnit.SECONDS)
+            batch = pollingExchanger.respQ.poll(1, TimeUnit.SECONDS)
             logTrace(s"UnaryCallPollingReqSO.onNext req.getSeq=0L, getting from pollingExchanger, i=${i}")
             i += 1
           }
@@ -375,7 +380,7 @@ class PushPollingReqSO(val eggSiteServicerPollingRespSO: ServerCallStreamObserve
             var i = 0
             batch = null
             while (batch == null) {
-              batch = pollingExchanger.respQ.poll(30, TimeUnit.SECONDS)
+              batch = pollingExchanger.respQ.poll(1, TimeUnit.SECONDS)
               logTrace(s"PushPollingReqSO.onNext req.getSeq=0L, getting from pollingExchanger, i=${i}")
               i += 1
             }

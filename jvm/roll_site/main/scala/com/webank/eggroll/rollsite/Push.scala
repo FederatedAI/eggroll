@@ -216,7 +216,7 @@ class PutBatchSinkPushReqSO(eggSiteServicerPushRespSO_putBatchPollingPushRespSO:
     logTrace(s"PutBatchSinkPushReqSO.onCompleted calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
     putBatchSinkPushReqSO.onCompleted()
 
-    if (!finishLatch.await(60, TimeUnit.SECONDS)) {
+    if (!finishLatch.await(RollSiteConfKeys.EGGROLL_ROLLSITE_ONCOMPLETED_WAIT_TIMEOUT.get().toLong, TimeUnit.SECONDS)) {
       onError(new TimeoutException(s"PutBatchSinkPushReqSO.onCompleted latch timeout. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}"))
     }
     logTrace(s"PutBatchSinkPushReqSO.onCompleted called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
@@ -430,7 +430,7 @@ class ForwardPushReqSO(eggSiteServicerPushRespSO: StreamObserver[Proxy.Metadata]
   override def onCompleted(): Unit = {
     logTrace(s"ForwardPushReqSO.onCompleted calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
     forwardPushReqSO.onCompleted()
-    if (!finishLatch.await(60, TimeUnit.SECONDS)) {
+    if (!finishLatch.await(RollSiteConfKeys.EGGROLL_ROLLSITE_ONCOMPLETED_WAIT_TIMEOUT.get().toLong, TimeUnit.SECONDS)) {
       onError(new TimeoutException(s"ForwardPushReqSO.onCompleted latch timeout. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}"))
     }
     logTrace(s"ForwardPushReqSO.onCompleted called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
