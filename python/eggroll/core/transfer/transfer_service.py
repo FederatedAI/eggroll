@@ -14,7 +14,7 @@
 
 
 import queue
-from threading import Thread, Lock
+from threading import Thread, Lock, Event
 from time import sleep
 from typing import Iterable
 
@@ -39,6 +39,7 @@ TRANSFER_BROKER_NAME = 'transfer_broker_name'
 # TODO:0: thread safe?
 class TransferService(object):
     data_buffer = dict()
+    event_buffer = dict()
     _DEFAULT_QUEUE_SIZE = 10000
     mutex = Lock()
 
@@ -54,6 +55,10 @@ class TransferService(object):
                     final_size = maxsize if maxsize > 0 else TransferService._DEFAULT_QUEUE_SIZE
                     TransferService.data_buffer[key] = \
                         FifoBroker(maxsize=final_size, writers=write_signals, name=key)
+                if key not in TransferService.event_buffer:
+                    TransferService.event_buffer[key] = Event()
+                event = TransferService.event_buffer[key]
+                event.set()
 
         return TransferService.data_buffer[key]
 
@@ -61,16 +66,28 @@ class TransferService(object):
     def set_broker(key: str, broker):
         with TransferService.mutex as m:
             TransferService.data_buffer[key] = broker
+            if key not in TransferService.event_buffer:
+                TransferService.event_buffer[key] = Event()
+            event = TransferService.event_buffer[key]
+            event.set()
 
     @staticmethod
     def get_broker(key: str):
         result = TransferService.data_buffer.get(key, None)
         retry = 0
         while not result or key not in TransferService.data_buffer:
-            sleep(min(0.1 * retry, 30))
-            L.trace(f"waiting broker tag={key}, retry={retry}")
+            report_inverval = min(0.1 * retry, 30)
+            L.trace(f"waiting broker tag={key}, retry={retry}, report_interval={report_inverval}")
+            event = None
             with TransferService.mutex as e:
+                if key not in TransferService.event_buffer:
+                    TransferService.event_buffer[key] = Event()
+                event = TransferService.event_buffer[key]
+
+            event.wait(report_inverval)
+            if event.is_set():
                 result = TransferService.data_buffer.get(key, None)
+                break
             retry += 1
             if retry > 100:
                 raise RuntimeError(f"cannot get broker={key}, result={result}, data_buffer={TransferService.data_buffer}")
@@ -80,10 +97,18 @@ class TransferService(object):
     def remove_broker(key: str):
         result = False
         if key in TransferService.data_buffer:
+            data = None
+            event = None
             with TransferService.mutex as m:
                 if key in TransferService.data_buffer:
+                    data = TransferService.data_buffer[key]
                     del TransferService.data_buffer[key]
+                    event = TransferService.event_buffer[key]
+                    del TransferService.event_buffer[key]
                     result = True
+
+            if not event.is_set():
+                L.debug(f"removing event but it is not set: key={key}")
 
         return result
 
