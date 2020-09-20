@@ -168,7 +168,7 @@ object RollSiteConfKeys {
   val EGGROLL_ROLLSITE_PUSH_MAX_RETRY = ErConfKey("eggroll.rollsite.push.max.retry", 300)
   val EGGROLL_ROLLSITE_PULL_CLIENT_MAX_RETRY = ErConfKey("eggroll.rollsite.pull.client.max.retry", 300)
   val EGGROLL_ROLLSITE_OVERALL_TIMEOUT_SEC = ErConfKey("eggroll.rollsite.overall.timeout.sec", 172800000)
-  val EGGROLL_ROLLSITE_COMPLETION_WAIT_TIMEOUT = ErConfKey("eggroll.rollsite.completion.wait.timeout.sec", 3600000)
+  val EGGROLL_ROLLSITE_ONCOMPLETED_WAIT_TIMEOUT = ErConfKey("eggroll.rollsite.oncompleted.wait.timeout.sec", 600)
   val EGGROLL_ROLLSITE_PACKET_INTERVAL_TIMEOUT = ErConfKey("eggroll.rollsite.packet.interval.timeout.sec", 20000)
   val EGGROLL_ROLLSITE_PULL_OBJECT_TIMEOUT_SEC = ErConfKey("eggroll.rollsite.pull.object.timeout.sec", 1800)
   val EGGROLL_ROLLSITE_ROUTE_TABLE_WHITELIST = ErConfKey("eggroll.rollsite.route.table.whitelist")
