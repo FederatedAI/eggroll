@@ -32,6 +32,7 @@ from eggroll.roll_pair.roll_pair import RollPair, RollPairContext
 from eggroll.roll_pair.task.storage import PutBatchTask, FINISH_STATUS
 from eggroll.roll_pair.transfer_pair import TransferPair
 from eggroll.utils import log_utils
+from grpc import RpcError
 
 L = log_utils.get_logger()
 P = log_utils.get_logger('profile')
@@ -303,7 +304,11 @@ class RollSite(RollSiteBase):
                     exception = None
                     break
                 except Exception as e:
-                    L.error(f"pull error:{e}")
+                    L.warn(f"push object error. rs_key={rs_key}, partition_id={rs_header._partition_id}, rs_header={rs_header}", e)
+                    if isinstance(e, RpcError) and e.code().name == 'UNAVAILABLE':
+                        time.sleep(min(2 * cur_retry, 20))
+                        channel = GrpcChannelFactory.create_channel(self.ctx.proxy_endpoint, refresh=True)
+                        self.stub = proxy_pb2_grpc.DataTransferServiceStub(channel)
                     exception = e
                 finally:
                     cur_retry += 1
@@ -351,19 +356,24 @@ class RollSite(RollSiteBase):
                     cur_retry = 0
                     exception = None
                     while cur_retry < max_retry_cnt:
-                        L.trace(f'pushing rollpair stream. rs_key={rs_key}, partition_id={rs_header._partition_id}, rs_header={rs_header}, stream_cnt={stream_cnt}, retry count={cur_retry}')
+                        L.trace(f'pushing partition rollpair stream. rs_key={rs_key}, partition_id={rs_header._partition_id}, rs_header={rs_header}, stream_cnt={stream_cnt}, retry count={cur_retry}')
                         try:
                             stub.push(bs_helper.generate_packet(batch_stream_data, cur_retry), timeout=per_stream_timeout)
                             exception = None
                             break
                         except Exception as e:
-                            L.exception(f"pull error. rs_key={rs_key}, partition_id={rs_header._partition_id}, rs_header={rs_header}", e)
+                            L.warn(f"push partition error. rs_key={rs_key}, partition_id={rs_header._partition_id}, rs_header={rs_header}", e)
+                            if isinstance(e, RpcError) and e.code().name == 'UNAVAILABLE':
+                                time.sleep(min(2 * cur_retry, 20))
+                                channel = grpc_channel_factory.create_channel(endpoint, refresh=True)
+                                stub = proxy_pb2_grpc.DataTransferServiceStub(channel)
+
                             exception = e
                         finally:
                             cur_retry += 1
                     if exception is not None:
                         raise exception
-                    L.trace(f'pushed rollpair stream. rs_key={rs_key}, partition_id={rs_header._partition_id}, rs_header={rs_header}, count={stream_cnt}, retry count={cur_retry - 1}')
+                    L.trace(f'pushed partition rollpair stream. rs_key={rs_key}, partition_id={rs_header._partition_id}, rs_header={rs_header}, count={stream_cnt}, retry count={cur_retry - 1}')
                     stream_cnt += 1
 
             L.trace(f"pushed rollpair partition. rs_key={rs_key}, partition_id={rs_header._partition_id}, rs_header={rs_header}")
