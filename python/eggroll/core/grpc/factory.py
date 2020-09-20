@@ -39,9 +39,10 @@ class GrpcChannelFactory(object):
         target = f"{endpoint._host}:{endpoint._port}"
         with GrpcChannelFactory._pool_lock:
             result = GrpcChannelFactory.pool.get(target, None)
+            result_status = grpc._common.CYGRPC_CONNECTIVITY_STATE_TO_CHANNEL_CONNECTIVITY[result._channel.check_connectivity_state(True)] if result is not None else None
             if result is None \
                     or refresh \
-                    or grpc._common.CYGRPC_CONNECTIVITY_STATE_TO_CHANNEL_CONNECTIVITY[result._channel.check_connectivity_state(True)] == grpc.ChannelConnectivity.SHUTDOWN:
+                    or result_status == grpc.ChannelConnectivity.SHUTDOWN:
                 old_channel = result
                 result = grpc.insecure_channel(
                 target=target,
@@ -63,8 +64,9 @@ class GrpcChannelFactory(object):
                           '"retryableStatusCodes": [ "UNAVAILABLE" ] } }')])
                 GrpcChannelFactory.pool[target] = result
                 # TODO:1: to decide if the old channel should be closed.
-                # if old_channel is not None:
-                #     old_channel.close()
+                if old_channel is not None:
+                    L.debug(f"old channel to {target}'s status={result_status}")
+                    #     old_channel.close()
             return GrpcChannelFactory.pool[target]
 
     @staticmethod
