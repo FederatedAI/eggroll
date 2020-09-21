@@ -88,12 +88,12 @@ class LongPollingClient extends Logging {
       var connectStat = channel.getState(true)
 
       // waiting for connection ready.
-      var timeOut = 300
-      while (connectStat != ConnectivityState.READY && timeOut > 0) {
+      var timeout = 300
+      while (connectStat != ConnectivityState.READY && timeout > 0) {
         connectStat = channel.getState(true)
-        logDebug(f"[POLLING][CLIENT] waiting for connection ready, connectStat is $connectStat")
+        logTrace(f"[POLLING][CLIENT] waiting for connection ready, connectStat is $connectStat")
         Thread.sleep(1000)
-        timeOut -= 1
+        timeout -= 1
       }
 
       val pollingReqSO = stub.polling(dispatchPollingRespSO)
@@ -111,6 +111,7 @@ class LongPollingClient extends Logging {
               pollingReqSO.onNext(req)
             case PollingMethods.COMPLETED_POISON =>
               pollingReqSO.onCompleted()
+              // TODO:0: decide whether to remove this because there is no timeout / deadline in polling
               if (!finishLatch.await(RollSiteConfKeys.EGGROLL_ROLLSITE_ONCOMPLETED_WAIT_TIMEOUT.get().toLong, TimeUnit.SECONDS)) {
                 throw new TimeoutException(s"longPollingClient.onCompleted latch timeout")
               }
