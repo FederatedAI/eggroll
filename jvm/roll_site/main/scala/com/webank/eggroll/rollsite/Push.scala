@@ -20,6 +20,7 @@ package com.webank.eggroll.rollsite
 
 import java.util.concurrent.{CountDownLatch, Future, TimeUnit}
 
+import com.google.common.cache.{CacheBuilder, CacheLoader, LoadingCache}
 import com.webank.ai.eggroll.api.networking.proxy.{DataTransferServiceGrpc, Proxy}
 import com.webank.eggroll.core.ErSession
 import com.webank.eggroll.core.command.CommandClient
@@ -34,7 +35,6 @@ import io.grpc.stub.StreamObserver
 import org.apache.commons.lang3.StringUtils
 
 import scala.collection.parallel.mutable
-import scala.concurrent.TimeoutException
 
 
 class DispatchPushReqSO(eggSiteServicerPushRespSO: StreamObserver[Proxy.Metadata])
@@ -96,6 +96,21 @@ class DispatchPushReqSO(eggSiteServicerPushRespSO: StreamObserver[Proxy.Metadata
 }
 
 
+object PutBatchSinkUtils {
+  val sessionCache: LoadingCache[String, ErSession] = CacheBuilder.newBuilder
+    .maximumSize(2000)
+    .expireAfterWrite(10, TimeUnit.MINUTES)
+    .concurrencyLevel(100)
+    .recordStats
+    .softValues
+    .build(new CacheLoader[String, ErSession]() {
+      override def load(key: String): ErSession = {
+        new ErSession(sessionId = key, createIfNotExists = false)
+      }
+    })
+}
+
+
 class PutBatchSinkPushReqSO(eggSiteServicerPushRespSO_putBatchPollingPushRespSO: StreamObserver[Proxy.Metadata])
   extends StreamObserver[Proxy.Packet] with Logging {
   private var inited = false
@@ -130,7 +145,13 @@ class PutBatchSinkPushReqSO(eggSiteServicerPushRespSO_putBatchPollingPushRespSO:
     rsKey = rsHeader.getRsKey()
 
     val sessionId = String.join("_", rsHeader.rollSiteSessionId, rsHeader.dstRole, rsHeader.dstPartyId)
-    val session = new ErSession(sessionId, createIfNotExists = false)
+    val session = PutBatchSinkUtils.sessionCache.get(sessionId)
+
+    if (!SessionStatus.ACTIVE.equals(session.sessionMeta.status)) {
+      val error = new IllegalStateException(s"session=${sessionId} with illegal status. expected=${SessionStatus.ACTIVE}, actual=${session.sessionMeta.status}")
+      onError(error)
+      throw error
+    }
 
     val namespace = rsHeader.rollSiteSessionId
     val name = rsKey
@@ -216,9 +237,9 @@ class PutBatchSinkPushReqSO(eggSiteServicerPushRespSO_putBatchPollingPushRespSO:
     logTrace(s"PutBatchSinkPushReqSO.onCompleted calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
     putBatchSinkPushReqSO.onCompleted()
 
-    if (!finishLatch.await(RollSiteConfKeys.EGGROLL_ROLLSITE_ONCOMPLETED_WAIT_TIMEOUT.get().toLong, TimeUnit.SECONDS)) {
+/*    if (!finishLatch.await(RollSiteConfKeys.EGGROLL_ROLLSITE_ONCOMPLETED_WAIT_TIMEOUT.get().toLong, TimeUnit.SECONDS)) {
       onError(new TimeoutException(s"PutBatchSinkPushReqSO.onCompleted latch timeout. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}"))
-    }
+    }*/
     logTrace(s"PutBatchSinkPushReqSO.onCompleted called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
   }
 }
@@ -430,9 +451,9 @@ class ForwardPushReqSO(eggSiteServicerPushRespSO: StreamObserver[Proxy.Metadata]
   override def onCompleted(): Unit = {
     logTrace(s"ForwardPushReqSO.onCompleted calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
     forwardPushReqSO.onCompleted()
-    if (!finishLatch.await(RollSiteConfKeys.EGGROLL_ROLLSITE_ONCOMPLETED_WAIT_TIMEOUT.get().toLong, TimeUnit.SECONDS)) {
+/*    if (!finishLatch.await(RollSiteConfKeys.EGGROLL_ROLLSITE_ONCOMPLETED_WAIT_TIMEOUT.get().toLong, TimeUnit.SECONDS)) {
       onError(new TimeoutException(s"ForwardPushReqSO.onCompleted latch timeout. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}"))
-    }
+    }*/
     logTrace(s"ForwardPushReqSO.onCompleted called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
   }
 }
