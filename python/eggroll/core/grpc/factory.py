@@ -35,12 +35,15 @@ class GrpcChannelFactory(object):
     pool = {}
     _pool_lock = threading.Lock()
 
-    def create_channel(self, endpoint: ErEndpoint, is_secure_channel=False, force_create=False):
+    def create_channel(self, endpoint: ErEndpoint, is_secure_channel=False, refresh=False):
         target = f"{endpoint._host}:{endpoint._port}"
         with GrpcChannelFactory._pool_lock:
             result = GrpcChannelFactory.pool.get(target, None)
+            result_status = grpc._common.CYGRPC_CONNECTIVITY_STATE_TO_CHANNEL_CONNECTIVITY[result._channel.check_connectivity_state(True)] if result is not None else None
             if result is None \
-                    or grpc._common.CYGRPC_CONNECTIVITY_STATE_TO_CHANNEL_CONNECTIVITY[result._channel.check_connectivity_state(True)] == grpc.ChannelConnectivity.SHUTDOWN:
+                    or refresh \
+                    or result_status == grpc.ChannelConnectivity.SHUTDOWN:
+                old_channel = result
                 result = grpc.insecure_channel(
                 target=target,
                 options=[('grpc.max_send_message_length',
@@ -59,8 +62,12 @@ class GrpcChannelFactory(object):
                           '"maxAttempts": 4, "initialBackoff": "0.1s", '
                           '"maxBackoff": "1s", "backoffMutiplier": 2, '
                           '"retryableStatusCodes": [ "UNAVAILABLE" ] } }')])
-                self.pool[target] = result
-            return self.pool[target]
+                GrpcChannelFactory.pool[target] = result
+                # TODO:1: to decide if the old channel should be closed.
+                if old_channel is not None:
+                    L.debug(f"old channel to {target}'s status={result_status}")
+                    #     old_channel.close()
+            return GrpcChannelFactory.pool[target]
 
     @staticmethod
     def shutdown_all_now():
