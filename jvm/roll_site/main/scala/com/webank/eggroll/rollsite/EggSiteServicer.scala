@@ -202,7 +202,7 @@ class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBas
     }
 
     if (!checkWhiteList()){
-      logWarning("setRouteTable failed, Src ip not included in whitelist.")
+      logWarning("getRouteTable failed, Src ip not included in whitelist.")
       val data = Proxy.Data.newBuilder.setValue(
         ByteString.copyFromUtf8("setRouteTable failed, Src ip not included in whitelist.")).build
       return Proxy.Packet.newBuilder().setBody(data).build
