@@ -14,7 +14,7 @@
 
 
 import queue
-from threading import Thread, Lock
+from threading import Thread, Lock, Event
 from time import sleep
 from typing import Iterable
 
@@ -39,6 +39,7 @@ TRANSFER_BROKER_NAME = 'transfer_broker_name'
 # TODO:0: thread safe?
 class TransferService(object):
     data_buffer = dict()
+    event_buffer = dict()
     _DEFAULT_QUEUE_SIZE = 10000
     mutex = Lock()
 
@@ -54,6 +55,10 @@ class TransferService(object):
                     final_size = maxsize if maxsize > 0 else TransferService._DEFAULT_QUEUE_SIZE
                     TransferService.data_buffer[key] = \
                         FifoBroker(maxsize=final_size, writers=write_signals, name=key)
+                if key not in TransferService.event_buffer:
+                    TransferService.event_buffer[key] = Event()
+                event = TransferService.event_buffer[key]
+                event.set()
 
         return TransferService.data_buffer[key]
 
@@ -61,16 +66,28 @@ class TransferService(object):
     def set_broker(key: str, broker):
         with TransferService.mutex as m:
             TransferService.data_buffer[key] = broker
+            if key not in TransferService.event_buffer:
+                TransferService.event_buffer[key] = Event()
+            event = TransferService.event_buffer[key]
+            event.set()
 
     @staticmethod
     def get_broker(key: str):
         result = TransferService.data_buffer.get(key, None)
         retry = 0
         while not result or key not in TransferService.data_buffer:
-            sleep(min(0.1 * retry, 30))
-            L.trace(f"waiting broker tag={key}, retry={retry}")
+            report_inverval = min(0.1 * retry, 30)
+            L.trace(f"waiting broker tag={key}, retry={retry}, report_interval={report_inverval}")
+            event = None
             with TransferService.mutex as e:
+                if key not in TransferService.event_buffer:
+                    TransferService.event_buffer[key] = Event()
+                event = TransferService.event_buffer[key]
+
+            event.wait(report_inverval)
+            if event.is_set():
                 result = TransferService.data_buffer.get(key, None)
+                break
             retry += 1
             if retry > 100:
                 raise RuntimeError(f"cannot get broker={key}, result={result}, data_buffer={TransferService.data_buffer}")
@@ -80,10 +97,18 @@ class TransferService(object):
     def remove_broker(key: str):
         result = False
         if key in TransferService.data_buffer:
+            data = None
+            event = None
             with TransferService.mutex as m:
                 if key in TransferService.data_buffer:
+                    data = TransferService.data_buffer[key]
                     del TransferService.data_buffer[key]
+                    event = TransferService.event_buffer[key]
+                    del TransferService.event_buffer[key]
                     result = True
+
+            if not event.is_set():
+                L.debug(f"removing event but it is not set: key={key}")
 
         return result
 
@@ -215,33 +240,44 @@ class TransferClient(object):
 
     @_exception_logger
     def recv(self, endpoint: ErEndpoint, tag, broker):
-        try:
-            L.trace(f'TransferClient.recv for endpoint={endpoint}, tag={tag}')
-            @_exception_logger
-            def fill_broker(iterable: Iterable, broker):
-                try:
-                    iterator = iter(iterable)
-                    for e in iterator:
-                        broker.put(e)
-                    broker.signal_write_finish()
-                except Exception as e:
-                    L.exception(f'Fail to fill broker for tag: {tag}, endpoint: {endpoint}')
-                    raise e
+        exception = None
+        cur_retry = 0
+        for cur_retry in range(3):
+            try:
+                L.trace(f'TransferClient.recv for endpoint={endpoint}, tag={tag}')
+                @_exception_logger
+                def fill_broker(iterable: Iterable, broker):
+                    try:
+                        iterator = iter(iterable)
+                        for e in iterator:
+                            broker.put(e)
+                        broker.signal_write_finish()
+                    except Exception as e:
+                        L.exception(f'Fail to fill broker for tag: {tag}, endpoint: {endpoint}')
+                        raise e
 
-            channel = self.__grpc_channel_factory.create_channel(endpoint)
+                channel = self.__grpc_channel_factory.create_channel(endpoint)
 
-            stub = transfer_pb2_grpc.TransferServiceStub(channel)
-            request = transfer_pb2.TransferBatch(
-                    header=transfer_pb2.TransferHeader(id=1, tag=tag))
+                stub = transfer_pb2_grpc.TransferServiceStub(channel)
+                request = transfer_pb2.TransferBatch(
+                        header=transfer_pb2.TransferHeader(id=1, tag=tag))
 
-            response_iter = stub.recv(
-                    request, metadata=[(TRANSFER_BROKER_NAME, tag)])
-            if broker is None:
-                return response_iter
-            else:
-                t = Thread(target=fill_broker, args=[response_iter, broker])
-                t.start()
-            return broker
-        except Exception as e:
-            L.exception(f'Error calling to {endpoint} in TransferClient.recv')
-            raise e
+                response_iter = stub.recv(
+                        request, metadata=[(TRANSFER_BROKER_NAME, tag)])
+
+                if broker is None:
+                    return response_iter
+                else:
+                    t = Thread(target=fill_broker, args=[response_iter, broker])
+                    t.start()
+                return broker
+            except Exception as e:
+                L.warn(f'Error calling to {endpoint} in TransferClient.recv, cur_retry={cur_retry}', e)
+                exception = e
+                cur_retry += 1
+
+        if exception is not None:
+            L.error(f'fail to {endpoint} in TransferClient.recv, cur_retry={cur_retry}', e)
+            raise exception
+
+
