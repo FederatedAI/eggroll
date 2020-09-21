@@ -34,7 +34,7 @@ props_file_remote = default_props_file
 props_file_remote = default_props_file + '.guest'
 
 
-row_limit = 1000000
+row_limit = 100000
 obj_size = 1 << 20
 
 
@@ -274,11 +274,18 @@ class TestRollSiteBase(unittest.TestCase):
         print(f"count: {rp.count()}")
 
     def test_ping(self):
-        stub = self.rs_context_remote.stub
+        remote_stub = self.rs_context_remote.stub
+        get_stub = self.rs_context_get.stub
         req = proxy_pb2.Packet(header=proxy_pb2.Metadata(operator='ping', dst=proxy_pb2.Topic(partyId=self.rs_context_get.party_id)))
 
         L.info("starting ping")
-        resp = stub.unaryCall(req)
+        resp = remote_stub.unaryCall(req)
+        L.info(f"ping finished {resp.header.operator}")
+        self.assertEqual('pong', resp.header.operator)
+
+        L.info("starting ping reverse")
+        req = proxy_pb2.Packet(header=proxy_pb2.Metadata(operator='ping', dst=proxy_pb2.Topic(partyId=self.rs_context_remote.party_id)))
+        resp = get_stub.unaryCall(req)
         L.info(f"ping finished {resp.header.operator}")
         self.assertEqual('pong', resp.header.operator)
 
@@ -420,7 +427,7 @@ class TestRollSiteCluster(TestRollSiteBase):
 class TestRollSiteClusterRemote(TestRollSiteBase):
     @classmethod
     def setUpClass(cls) -> None:
-        opts = {"eggroll.session.processors.per.node": "3"}
+        opts = {"eggroll.session.processors.per.node": "16"}
         cls.rs_context_remote = get_cluster_context(role='src', options=opts, props_file=props_file_remote, party_id=cls.src_party_id, roll_site_session_id=cls.job_id)
 
     @classmethod
@@ -463,7 +470,7 @@ class TestRollSiteClusterRemote(TestRollSiteBase):
 class TestRollSiteClusterGet(TestRollSiteBase):
     @classmethod
     def setUpClass(cls) -> None:
-        opts = {"eggroll.session.processors.per.node": "3"}
+        opts = {"eggroll.session.processors.per.node": "16"}
         cls.rs_context_get = get_cluster_context(role='dst',
                                                  options=opts,
                                                  props_file=props_file_get,

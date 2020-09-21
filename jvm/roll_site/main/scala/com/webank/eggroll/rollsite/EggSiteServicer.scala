@@ -88,7 +88,7 @@ class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBas
         processCommand(req, respSO)
       } else {
         if (RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_SERVER_ENABLED.get().toBoolean && dstIsPolling) {
-          logTrace(f"[UNARYCALL][SERVER] EggSiteServicer do polling starting.")
+          logDebug(s"${logMsg}, hop=POLLING_SERVER")
           val reqPollingFrame = Proxy.PollingFrame.newBuilder()
             .setMethod(PollingMethods.UNARY_CALL)
             .setPacket(req)
@@ -105,6 +105,7 @@ class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBas
           respSO.onCompleted()
           logTrace(f"[UNARYCALL][SERVER] EggSiteServicer do polling finished.")
         } else {
+          logDebug(s"${logMsg}, hop=FORWARD")
           var isSecure = Router.query(dstPartyId).isSecure
           val caCrt = CoreConfKeys.CONFKEY_CORE_SECURITY_CLIENT_CA_CRT_PATH.get()
 
