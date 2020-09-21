@@ -18,8 +18,9 @@
 
 package com.webank.eggroll.rollsite
 
-import java.util.concurrent.Future
+import java.util.concurrent.{CountDownLatch, Future, TimeUnit}
 
+import com.google.common.cache.{CacheBuilder, CacheLoader, LoadingCache}
 import com.webank.ai.eggroll.api.networking.proxy.{DataTransferServiceGrpc, Proxy}
 import com.webank.eggroll.core.ErSession
 import com.webank.eggroll.core.command.CommandClient
@@ -58,7 +59,7 @@ class DispatchPushReqSO(eggSiteServicerPushRespSO: StreamObserver[Proxy.Metadata
 
     val myPartyId = RollSiteConfKeys.EGGROLL_ROLLSITE_PARTY_ID.get()
     val dstPartyId = req.getHeader.getDst.getPartyId
-
+    val dstRole = req.getHeader.getDst.getRole
     val logMsg = s"DispatchPushReqSO.ensureInited. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}"
     delegateSO =  if (myPartyId.equals(dstPartyId)) {
       if (isLogTraceEnabled()) {
@@ -66,7 +67,8 @@ class DispatchPushReqSO(eggSiteServicerPushRespSO: StreamObserver[Proxy.Metadata
       }
       new PutBatchSinkPushReqSO(eggSiteServicerPushRespSO)
     } else {
-      if (RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_SERVER_ENABLED.get().toBoolean) {
+      val dstIsPolling = Router.query(dstPartyId, dstRole).isPolling
+      if (RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_SERVER_ENABLED.get().toBoolean && dstIsPolling) {
       // polling mode
         logTrace(s"${logMsg}, hop=FORWARD, type=PUSH2POLLING")
         new ForwardPushToPollingReqSO(eggSiteServicerPushRespSO)
@@ -94,6 +96,21 @@ class DispatchPushReqSO(eggSiteServicerPushRespSO: StreamObserver[Proxy.Metadata
 }
 
 
+object PutBatchSinkUtils {
+  val sessionCache: LoadingCache[String, ErSession] = CacheBuilder.newBuilder
+    .maximumSize(2000)
+    .expireAfterWrite(10, TimeUnit.MINUTES)
+    .concurrencyLevel(100)
+    .recordStats
+    .softValues
+    .build(new CacheLoader[String, ErSession]() {
+      override def load(key: String): ErSession = {
+        new ErSession(sessionId = key, createIfNotExists = false)
+      }
+    })
+}
+
+
 class PutBatchSinkPushReqSO(eggSiteServicerPushRespSO_putBatchPollingPushRespSO: StreamObserver[Proxy.Metadata])
   extends StreamObserver[Proxy.Packet] with Logging {
   private var inited = false
@@ -105,6 +122,7 @@ class PutBatchSinkPushReqSO(eggSiteServicerPushRespSO_putBatchPollingPushRespSO:
   private var rsKey: String = _
   private var rsHeader: ErRollSiteHeader = _
 
+  val finishLatch = new CountDownLatch(1)
   private val self = this
   private var putBatchSinkPushReqSO: StreamObserver[Transfer.TransferBatch] = _
 
@@ -127,7 +145,13 @@ class PutBatchSinkPushReqSO(eggSiteServicerPushRespSO_putBatchPollingPushRespSO:
     rsKey = rsHeader.getRsKey()
 
     val sessionId = String.join("_", rsHeader.rollSiteSessionId, rsHeader.dstRole, rsHeader.dstPartyId)
-    val session = new ErSession(sessionId, createIfNotExists = false)
+    val session = PutBatchSinkUtils.sessionCache.get(sessionId)
+
+    if (!SessionStatus.ACTIVE.equals(session.sessionMeta.status)) {
+      val error = new IllegalStateException(s"session=${sessionId} with illegal status. expected=${SessionStatus.ACTIVE}, actual=${session.sessionMeta.status}")
+      onError(error)
+      throw error
+    }
 
     val namespace = rsHeader.rollSiteSessionId
     val name = rsKey
@@ -168,7 +192,7 @@ class PutBatchSinkPushReqSO(eggSiteServicerPushRespSO_putBatchPollingPushRespSO:
     val channel = GrpcClientUtils.getChannel(egg.transferEndpoint)
     val stub = TransferServiceGrpc.newStub(channel)
 
-    putBatchSinkPushReqSO = stub.send(new PutBatchSinkPushRespSO(metadata, commandFuture, eggSiteServicerPushRespSO_putBatchPollingPushRespSO))
+    putBatchSinkPushReqSO = stub.send(new PutBatchSinkPushRespSO(metadata, commandFuture, eggSiteServicerPushRespSO_putBatchPollingPushRespSO, finishLatch))
 
     inited = true
     logDebug(s"PutBatchSinkPushReqSO.ensureInited called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
@@ -212,13 +236,18 @@ class PutBatchSinkPushReqSO(eggSiteServicerPushRespSO_putBatchPollingPushRespSO:
   override def onCompleted(): Unit = {
     logTrace(s"PutBatchSinkPushReqSO.onCompleted calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
     putBatchSinkPushReqSO.onCompleted()
+
+/*    if (!finishLatch.await(RollSiteConfKeys.EGGROLL_ROLLSITE_ONCOMPLETED_WAIT_TIMEOUT.get().toLong, TimeUnit.SECONDS)) {
+      onError(new TimeoutException(s"PutBatchSinkPushReqSO.onCompleted latch timeout. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}"))
+    }*/
     logTrace(s"PutBatchSinkPushReqSO.onCompleted called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
   }
 }
 
 class PutBatchSinkPushRespSO(val reqHeader: Proxy.Metadata,
                              val commandFuture: Future[ErTask],
-                             val eggSiteServicerPushRespSO_putBatchPollingPushRespSO: StreamObserver[Proxy.Metadata])
+                             val eggSiteServicerPushRespSO_putBatchPollingPushRespSO: StreamObserver[Proxy.Metadata],
+                             val finishLatch: CountDownLatch)
   extends StreamObserver[Transfer.TransferBatch] with Logging {
 
   private var transferHeader: Transfer.TransferHeader = _
@@ -234,7 +263,6 @@ class PutBatchSinkPushRespSO(val reqHeader: Proxy.Metadata,
 
     rsHeader = RollSiteHeader.parseFrom(transferHeader.getExt).fromProto()
     rsKey = rsHeader.getRsKey()
-
     eggSiteServicerPushRespSO_putBatchPollingPushRespSO.onNext(reqHeader.toBuilder.setAck(resp.getHeader.getId).build())
     logDebug(s"PutBatchSinkPushRespSO.onNext called. rsKey=${rsKey}, rsHeader=${rsHeader}, transferHeader=${oneLineStringTransferHeader}")
   }
@@ -243,6 +271,7 @@ class PutBatchSinkPushRespSO(val reqHeader: Proxy.Metadata,
     logError(s"PutBatchSinkPushRespSO.onError calling. rsKey=${rsKey}, rsHeader=${rsHeader}, transferHeader=${oneLineStringTransferHeader}", t)
     val e = TransferExceptionUtils.throwableToException(t)
     eggSiteServicerPushRespSO_putBatchPollingPushRespSO.onError(e)
+    finishLatch.countDown()
     logError(s"PutBatchSinkPushRespSO.onError called. rsKey=${rsKey}, rsHeader=${rsHeader}, transferHeader=${oneLineStringTransferHeader}", t)
   }
 
@@ -250,6 +279,7 @@ class PutBatchSinkPushRespSO(val reqHeader: Proxy.Metadata,
     logTrace(s"PutBatchSinkPushRespSO.onCompleted calling. rsKey=${rsKey}, rsHeader=${rsHeader}, transferHeader=${oneLineStringTransferHeader}")
     commandFuture.get()
     eggSiteServicerPushRespSO_putBatchPollingPushRespSO.onCompleted()
+    finishLatch.countDown()
     logTrace(s"PutBatchSinkPushRespSO.onCompleted called. rsKey=${rsKey}, rsHeader=${rsHeader}, transferHeader=${oneLineStringTransferHeader}")
   }
 }
@@ -342,6 +372,7 @@ class ForwardPushReqSO(eggSiteServicerPushRespSO: StreamObserver[Proxy.Metadata]
   private var oneLineStringMetadata: String = _
   private var rsKey: String = _
   private var rsHeader: ErRollSiteHeader = _
+  private val finishLatch: CountDownLatch = new CountDownLatch(1)
 
   private val self = this
   private var forwardPushReqSO: StreamObserver[Proxy.Packet] = _
@@ -370,7 +401,7 @@ class ForwardPushReqSO(eggSiteServicerPushRespSO: StreamObserver[Proxy.Metadata]
       && firstRequest.getHeader.getDst.getPartyId != firstRequest.getHeader.getSrc.getPartyId) isSecure else false
     val channel = GrpcClientUtils.getChannel(endpoint, isSecure)
     val stub = DataTransferServiceGrpc.newStub(channel)
-    forwardPushReqSO = stub.push(new ForwardPushRespSO(eggSiteServicerPushRespSO))
+    forwardPushReqSO = stub.push(new ForwardPushRespSO(eggSiteServicerPushRespSO, finishLatch))
 
     inited = true
     logDebug(s"ForwardPushReqSO.ensureInited called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
@@ -420,12 +451,16 @@ class ForwardPushReqSO(eggSiteServicerPushRespSO: StreamObserver[Proxy.Metadata]
   override def onCompleted(): Unit = {
     logTrace(s"ForwardPushReqSO.onCompleted calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
     forwardPushReqSO.onCompleted()
+/*    if (!finishLatch.await(RollSiteConfKeys.EGGROLL_ROLLSITE_ONCOMPLETED_WAIT_TIMEOUT.get().toLong, TimeUnit.SECONDS)) {
+      onError(new TimeoutException(s"ForwardPushReqSO.onCompleted latch timeout. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}"))
+    }*/
     logTrace(s"ForwardPushReqSO.onCompleted called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
   }
 }
 
 
-class ForwardPushRespSO(val eggSiteServicerPushRespSO: StreamObserver[Proxy.Metadata])
+class ForwardPushRespSO(val eggSiteServicerPushRespSO: StreamObserver[Proxy.Metadata],
+                        val finishLatch: CountDownLatch)
   extends StreamObserver[Proxy.Metadata] with Logging {
 
   private var metadata: Proxy.Metadata = _
@@ -449,12 +484,14 @@ class ForwardPushRespSO(val eggSiteServicerPushRespSO: StreamObserver[Proxy.Meta
     logError(s"ForwardPushRespSO.onError calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}", t)
     val e = TransferExceptionUtils.throwableToException(t)
     eggSiteServicerPushRespSO.onError(e)
+    finishLatch.countDown()
     logError(s"ForwardPushRespSO.onError called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
   }
 
   override def onCompleted(): Unit = {
     logTrace(s"ForwardPushRespSO.onCompleted calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
     eggSiteServicerPushRespSO.onCompleted()
+    finishLatch.countDown()
     logTrace(s"ForwardPushRespSO.onCompleted called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
   }
 }
