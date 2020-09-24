@@ -146,30 +146,34 @@ class GrpcTransferServicer(transfer_pb2_grpc.TransferServiceServicer):
 
         broker = None
         base_tag = None
-        for request in request_iterator:
-            if not inited:
-                base_tag = request.header.tag
-                L.debug(f'GrpcTransferServicer send broker init. tag={base_tag}')
+        try:
+            for request in request_iterator:
+                if not inited:
+                    base_tag = request.header.tag
+                    L.debug(f'GrpcTransferServicer send broker init. tag={base_tag}')
+                    broker = TransferService.get_broker(base_tag)
+                    # response_header = request.header
+                    # linux error:TypeError: Parameter to MergeFrom() must be instance of same class: expected TransferHeader got TransferHeader. for field TransferBatch.header
+                    response_header = transfer_pb2.TransferHeader(tag=base_tag, id=request.header.id, ext=request.header.ext)
+                    inited = True
+
+                broker.put(request)
+            if inited:
+                L.trace(f'GrpcTransferServicer stream finished. tag={base_tag}, remaining write count={broker,broker.__dict__}, stream not empty')
+                result = transfer_pb2.TransferBatch(header=response_header)
+            else:
+                L.trace(f'broker is None. Getting tag from metadata')
+                metadata = dict(context.invocation_metadata())
+                base_tag = metadata[TRANSFER_BROKER_NAME]
                 broker = TransferService.get_broker(base_tag)
-                # response_header = request.header
-                # linux error:TypeError: Parameter to MergeFrom() must be instance of same class: expected TransferHeader got TransferHeader. for field TransferBatch.header
-                response_header = transfer_pb2.TransferHeader(tag=base_tag, id=request.header.id, ext=request.header.ext)
-                inited = True
+                L.trace(f'GrpcTransferServicer stream finished. tag={base_tag}, remaining write count={broker,broker.__dict__}, stream empty')
+                result = transfer_pb2.TransferBatch()
 
-            broker.put(request)
-        if inited:
-            L.trace(f'GrpcTransferServicer stream finished. tag={base_tag}, remaining write count={broker,broker.__dict__}, stream not empty')
-            result = transfer_pb2.TransferBatch(header=response_header)
-        else:
-            L.trace(f'broker is None. Getting tag from metadata')
-            metadata = dict(context.invocation_metadata())
-            base_tag = metadata[TRANSFER_BROKER_NAME]
-            broker = TransferService.get_broker(base_tag)
-            L.trace(f'GrpcTransferServicer stream finished. tag={base_tag}, remaining write count={broker,broker.__dict__}, stream empty')
-            result = transfer_pb2.TransferBatch()
-
-        broker.signal_write_finish()
-        return result
+            broker.signal_write_finish()
+            return result
+        except Exception as e:
+            TransferService.remove_broker(base_tag)
+            raise ValueError(f"error in processing {base_tag}", e)
 
     @_exception_logger
     def recv(self, request, context):

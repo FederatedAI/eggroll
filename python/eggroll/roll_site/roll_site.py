@@ -137,18 +137,18 @@ class RollSiteBase:
         self.local_role = self.ctx.role
         self.name = name
         self.tag = tag
-        self.stub = self.ctx.stub
+        #self.stub = self.ctx.stub
         if RollSiteBase._receive_executor_pool is None:
             receive_executor_pool_size = int(RollSiteConfKeys.EGGROLL_ROLLSITE_RECEIVE_EXECUTOR_POOL_MAX_SIZE.get_with(options))
             receive_executor_pool_type = CoreConfKeys.EGGROLL_CORE_DEFAULT_EXECUTOR_POOL.get_with(options)
             self._receive_executor_pool = create_executor_pool(
                 canonical_name=receive_executor_pool_type,
                 max_workers=receive_executor_pool_size,
-                thread_name_prefix="rollsite-pull-waiting")
+                thread_name_prefix="rollsite-")
         self._push_start_time = None
         self._pull_start_time = None
         self._is_standalone = self.ctx.is_standalone
-        L.debug(f'inited RollSite. my party id={self.ctx.party_id}. proxy endpoint={self.dst_host}:{self.dst_port}')
+        L.debug(f'inited RollSite. my party_id={self.ctx.party_id}. proxy endpoint={self.dst_host}:{self.dst_port}')
 
     def _run_thread(self, fn, *args, **kwargs):
         return self._receive_executor_pool.submit(fn, *args, **kwargs)
@@ -275,55 +275,57 @@ class RollSite(RollSiteBase):
                 key_id += 1
                 cur_pos += body_bytes
 
+        rs_header._partition_id = 0
+        rs_header._total_partitions = 1
+        # NOTICE: all modifications to rs_header are limited in bs_helper.
+        # rs_header is shared by bs_helper and here. any modification in bs_helper affects this header.
+        # Remind that python's object references are passed by value,
+        # meaning the 'pointer' is copied, while the contents are modificable
         bs_helper = _BatchStreamHelper(rs_header=rs_header)
-
         bin_batch_streams = bs_helper._generate_batch_streams(
                 pair_iter=_generate_obj_bytes(obj, self.batch_body_bytes),
                 batches_per_stream=self.push_batches_per_stream,
                 body_bytes=self.batch_body_bytes)
 
-        rs_header._total_partitions = 1
-        rs_header._partition_id = 0
+        grpc_channel_factory = GrpcChannelFactory()
+        channel = grpc_channel_factory.create_channel(self.ctx.proxy_endpoint)
+        stub = proxy_pb2_grpc.DataTransferServiceStub(channel)
 
-        rs_header._total_streams = -1
-        rs_header._stream_seq = 1
-
-        stream_cnt = 0
-        cur_retry = 0
         # if use stub.push.future here, retry mechanism is a problem to solve
         for batch_stream in bin_batch_streams:
-            L.trace(f'pushing object stream. rs_key={rs_key}, rs_header={rs_header}, stream_cnt={stream_cnt}, retry count={cur_retry}')
             max_retry_cnt = self.push_max_retry
+            cur_retry = 0
             per_stream_timeout = self.push_per_stream_timeout
 
             batch_stream_data = list(batch_stream)
             exception = None
             while cur_retry < max_retry_cnt:
+                L.trace(f'pushing object stream. rs_key={rs_key}, rs_header={rs_header}, cur_retry={cur_retry}')
                 try:
-                    self.stub.push(bs_helper.generate_packet(batch_stream_data, cur_retry), timeout=per_stream_timeout)
+                    stub.push(bs_helper.generate_packet(batch_stream_data, cur_retry), timeout=per_stream_timeout)
                     exception = None
                     break
                 except Exception as e:
-                    L.warn(f"push object error. rs_key={rs_key}, partition_id={rs_header._partition_id}, rs_header={rs_header}", e)
+                    L.warn(f"push object error. rs_key={rs_key}, partition_id={rs_header._partition_id}, rs_header={rs_header}, cur_retry={cur_retry}", e)
+                    time.sleep(min(2 * cur_retry, 20))
                     if isinstance(e, RpcError) and e.code().name == 'UNAVAILABLE':
-                        time.sleep(min(2 * cur_retry, 20))
-                        channel = GrpcChannelFactory.create_channel(self.ctx.proxy_endpoint, refresh=True)
-                        self.stub = proxy_pb2_grpc.DataTransferServiceStub(channel)
+                        channel = grpc_channel_factory.create_channel(self.ctx.proxy_endpoint, refresh=True)
+                        stub = proxy_pb2_grpc.DataTransferServiceStub(channel)
                     exception = e
                 finally:
                     cur_retry += 1
             if exception is not None:
-                L.error("push object failed. rs_key={rs_key}, partition_id={rs_header._partition_id}, rs_header={rs_header}", exception)
+                L.error(f"push object failed. rs_key={rs_key}, partition_id={rs_header._partition_id}, rs_header={rs_header}, cur_retry={cur_retry}", exception)
                 raise exception
-            L.trace(f'pushed object stream. rs_key={rs_key}, rs_header={rs_header}, stream_cnt={stream_cnt}, retry count={cur_retry - 1}')
+            L.trace(f'pushed object stream. rs_key={rs_key}, rs_header={rs_header}, cur_retry={cur_retry - 1}')
 
-        L.debug(f"pushed object: rs_key={rs_key}, rs_header={rs_header}, is_none={obj is None}, time_cost={time.time() - start_time}")
+        L.debug(f"pushed object: rs_key={rs_key}, rs_header={rs_header}, is_none={obj is None}, elapsed={time.time() - start_time}")
         self.ctx.pushing_latch.count_down()
 
     def _push_rollpair(self, rp: RollPair, rs_header: ErRollSiteHeader):
         rs_key = rs_header.get_rs_key()
         if L.isEnabledFor(logging.DEBUG):
-            L.debug(f"pushing rollpair: rs_key={rs_key}, rs_header={rs_header}, count={rp.count()}")
+            L.debug(f"pushing rollpair: rs_key={rs_key}, rs_header={rs_header}, rp.count={rp.count()}")
         start_time = time.time()
 
         rs_header._total_partitions = rp.get_partitions()
@@ -343,29 +345,31 @@ class RollSite(RollSiteBase):
             grpc_channel_factory = GrpcChannelFactory()
 
             with create_adapter(ertask._inputs[0]) as db, db.iteritems() as rb:
-                channel = grpc_channel_factory.create_channel(endpoint)
-                stub = proxy_pb2_grpc.DataTransferServiceStub(channel)
-
+                # NOTICE AGAIN: all modifications to rs_header are limited in bs_helper.
+                # rs_header is shared by bs_helper and here. any modification in bs_helper affects this header.
+                # Remind that python's object references are passed by value,
+                # meaning the 'pointer' is copied, while the contents are modificable
                 bs_helper = _BatchStreamHelper(rs_header)
                 bin_batch_streams = bs_helper._generate_batch_streams(pair_iter=rb,
                                                                       batches_per_stream=batches_per_stream,
                                                                       body_bytes=body_bytes)
 
-                stream_cnt = 0
+                channel = grpc_channel_factory.create_channel(endpoint)
+                stub = proxy_pb2_grpc.DataTransferServiceStub(channel)
                 for batch_stream in bin_batch_streams:
                     batch_stream_data = list(batch_stream)
                     cur_retry = 0
                     exception = None
                     while cur_retry < max_retry_cnt:
-                        L.trace(f'pushing rollpair partition stream. rs_key={rs_key}, partition_id={rs_header._partition_id}, rs_header={rs_header}, stream_cnt={stream_cnt}, retry count={cur_retry}')
+                        L.trace(f'pushing rollpair partition stream. rs_key={rs_key}, partition_id={rs_header._partition_id}, rs_header={rs_header}, cur_retry={cur_retry}')
                         try:
                             stub.push(bs_helper.generate_packet(batch_stream_data, cur_retry), timeout=per_stream_timeout)
                             exception = None
                             break
                         except Exception as e:
-                            L.warn(f"push partition error. rs_key={rs_key}, partition_id={rs_header._partition_id}, rs_header={rs_header}", e)
+                            L.warn(f"push partition error. rs_key={rs_key}, partition_id={rs_header._partition_id}, rs_header={rs_header}, cur_retry={cur_retry}", e)
+                            time.sleep(min(2 * cur_retry, 20))
                             if isinstance(e, RpcError) and e.code().name == 'UNAVAILABLE':
-                                time.sleep(min(2 * cur_retry, 20))
                                 channel = grpc_channel_factory.create_channel(endpoint, refresh=True)
                                 stub = proxy_pb2_grpc.DataTransferServiceStub(channel)
 
@@ -373,16 +377,15 @@ class RollSite(RollSiteBase):
                         finally:
                             cur_retry += 1
                     if exception is not None:
-                        L.error("push partition failed. rs_key={rs_key}, partition_id={rs_header._partition_id}, rs_header={rs_header}", exception)
+                        L.error(f"push partition failed. rs_key={rs_key}, partition_id={rs_header._partition_id}, rs_header={rs_header}, cur_retry={cur_retry}", exception)
                         raise exception
-                    L.trace(f'pushed rollpair partition stream. rs_key={rs_key}, partition_id={rs_header._partition_id}, rs_header={rs_header}, count={stream_cnt}, retry count={cur_retry - 1}')
-                    stream_cnt += 1
+                    L.trace(f'pushed rollpair partition stream. rs_key={rs_key}, partition_id={rs_header._partition_id}, rs_header={rs_header}, retry count={cur_retry - 1}')
 
             L.trace(f"pushed rollpair partition. rs_key={rs_key}, partition_id={rs_header._partition_id}, rs_header={rs_header}")
 
         rp.with_stores(_push_partition)
         if L.isEnabledFor(logging.DEBUG):
-            L.debug(f"pushed rollpair: rs_key={rs_key}, rs_header={rs_header}, count={rp.count()}, time_cost={time.time() - start_time}")
+            L.debug(f"pushed rollpair: rs_key={rs_key}, rs_header={rs_header}, count={rp.count()}, elapsed={time.time() - start_time}")
         self.ctx.pushing_latch.count_down()
 
     ################## pull ##################
@@ -443,22 +446,22 @@ class RollSite(RollSiteBase):
                 L.debug(f"roll site get header_response: rs_key={rs_key}, rs_header={rs_header}, wait_time={wait_time}")
 
             if header_response is None or not isinstance(header_response[0][1], ErRollSiteHeader):
-                raise IOError(f"roll site pull_status failed: rs_key={rs_key}, rs_header={rs_header}, timeout={self.pull_header_timeout}")
+                raise IOError(f"roll site pull header failed: rs_key={rs_key}, rs_header={rs_header}, timeout={self.pull_header_timeout}")
             else:
                 header: ErRollSiteHeader = header_response[0][1]
                 # TODO:0:  push bytes has only one partition, that means it has finished, need not get_status
                 data_type = header._data_type
-                L.debug(f"roll site pull_status ok: rs_key={rs_key}, rs_header={header}")
+                L.debug(f"roll site pull header successful: rs_key={rs_key}, rs_header={header}")
 
             pull_status = {}
-            for i in range(self.pull_max_retry):
-                pull_attempts = i
+            for cur_retry in range(self.pull_max_retry):
+                pull_attempts = cur_retry
                 pull_status, all_finished, total_batches, total_pairs = get_status(self)
 
                 if not all_finished:
                     L.debug(f'getting status NOT finished for rs_key={rs_key}, rs_header={rs_header}, cur_status={pull_status}, attempts={pull_attempts}, time_cost={time.time() - start_time}')
                     if last_total_batches == total_batches and total_batches > 0:
-                        raise IOError(f"roll site pull_waiting failed because there is no updated progress: rs_key={rs_key}, "
+                        raise IOError(f"roll site pull waiting failed because there is no updated progress: rs_key={rs_key}, "
                                     f"rs_header={rs_header}, pull_status={pull_status}, total_pairs={total_pairs}")
                 else:
                     L.debug(f"getting status DO finished for rs_key={rs_key}, rs_header={rs_header}, pull_status={pull_status}, total_pairs={total_pairs}")
@@ -466,12 +469,12 @@ class RollSite(RollSiteBase):
                     if data_type == "object":
                         result = pickle.loads(b''.join(map(lambda t: t[1], sorted(rp.get_all(), key=lambda x: int.from_bytes(x[0], "big")))))
                         L.debug(f"pulled object: rs_key={rs_key}, rs_header={rs_header}, is_none={result is None}, "
-                                f"time_cost={time.time() - start_time}")
+                                f"elapsed={time.time() - start_time}")
                     else:
                         result = rp
                         if L.isEnabledFor(logging.DEBUG):
                             L.debug(f"pulled roll_pair: rs_key={rs_key}, rs_header={rs_header}, rp.count={rp.count()}, "
-                                    f"time_cost={time.time() - start_time}")
+                                    f"elapsed={time.time() - start_time}")
                     return result
                 last_total_batches = total_batches
             raise IOError(f"roll site pull failed. max try exceeded: {self.pull_max_retry}, rs_key={rs_key}, "
