@@ -134,7 +134,6 @@ class LongPollingClient extends Logging {
     } catch {
       case t: Throwable =>
         logError("polling failed", t)
-        Thread.sleep(1000)
     }
   }
 
@@ -145,6 +144,9 @@ class LongPollingClient extends Logging {
       } catch {
         case e: Throwable =>
           logError("polling failed", e)
+      } finally {
+        logWarning("sleeping")
+        Thread.sleep(1211)
       }
     }
   }
@@ -181,7 +183,10 @@ class PollingResults() extends Iterator[Proxy.PollingFrame] with Logging {
     q.put(f)
   }
 
-  def setFinish(): Unit = q.put(PollingResults.completedPoison)
+  def setFinish(): Unit = {
+    q.put(PollingResults.completedPoison)
+    Thread.sleep(1211)
+  }
 
   def setError(t: Throwable): Unit = {
     this.error.compareAndSet(null, t)
@@ -514,9 +519,10 @@ class PushPollingRespSO(pollingResults: PollingResults)
   private var rsKey: String = _
   private var rsHeader: ErRollSiteHeader = _
   private var method: String = _
+  private val finishLatch = new CountDownLatch(1)
 
-  private var putBatchSinkPushReqSO: StreamObserver[Proxy.Packet] = _
-  private var putBatchPollingPushRespSO: StreamObserver[Proxy.Metadata] = _
+  private var pushReqSO: StreamObserver[Proxy.Packet] = _
+  private var forwardPollingToPushRespSO: StreamObserver[Proxy.Metadata] = _
 
   private val self = this
 
@@ -531,8 +537,10 @@ class PushPollingRespSO(pollingResults: PollingResults)
     rsHeader = RollSiteHeader.parseFrom(metadata.getExt).fromProto()
     rsKey = rsHeader.getRsKey()
 
-    putBatchPollingPushRespSO = new PutBatchPollingPushRespSO(pollingResults)
-    putBatchSinkPushReqSO = new PutBatchSinkPushReqSO(putBatchPollingPushRespSO)
+    forwardPollingToPushRespSO = new ForwardPushToPollingRespSO(pollingResults)
+      // new PutBatchPollingPushRespSO(pollingResults)
+    pushReqSO = new DispatchPushReqSO(forwardPollingToPushRespSO)
+      // new PutBatchSinkPushReqSO(putBatchPollingPushRespSO)
 
     inited = true
     logDebug(s"PushPollingRespSO.ensureInited called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
@@ -545,9 +553,9 @@ class PushPollingRespSO(pollingResults: PollingResults)
       ensureInit(req)
 
       if (req.getMethod != PollingMethods.FINISH_PUSH) {
-        putBatchSinkPushReqSO.onNext(req.getPacket)
+        pushReqSO.onNext(req.getPacket)
       } else {
-        putBatchSinkPushReqSO.onCompleted()
+        pushReqSO.onCompleted()
       }
     } catch {
       case t:Throwable =>
@@ -559,7 +567,7 @@ class PushPollingRespSO(pollingResults: PollingResults)
 
   override def onError(t: Throwable): Unit = {
     logError(s"PushPollingRespSO.onError calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}", t)
-    putBatchSinkPushReqSO.onError(TransferExceptionUtils.throwableToException(t))
+    pushReqSO.onError(TransferExceptionUtils.throwableToException(t))
     logError(s"PushPollingRespSO.onError called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
   }
 
@@ -571,9 +579,9 @@ class PushPollingRespSO(pollingResults: PollingResults)
 }
 
 /**
- * Polling rs gets put batch resp and pass
+ * Polling rs gets push resp and pass
  */
-class PutBatchPollingPushRespSO(pollingResults: PollingResults)
+class ForwardPushToPollingRespSO(pollingResults: PollingResults)
   extends StreamObserver[Proxy.Metadata] with Logging {
 
   private var inited = false
@@ -587,7 +595,7 @@ class PutBatchPollingPushRespSO(pollingResults: PollingResults)
   private var pollingFrameSeq = 0
 
   private def ensureInited(req: Proxy.Metadata): Unit = {
-    logTrace(s"PutBatchPollingPushRespSO.ensureInited calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
+    logTrace(s"ForwardPushToPollingRespSO.ensureInited calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
     if (inited) return
 
     metadata = req
@@ -597,11 +605,11 @@ class PutBatchPollingPushRespSO(pollingResults: PollingResults)
     rsKey = rsHeader.getRsKey()
 
     inited = true
-    logDebug(s"PutBatchPollingPushRespSO.ensureInited called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
+    logDebug(s"ForwardPushToPollingRespSO.ensureInited called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
   }
 
   override def onNext(resp: Proxy.Metadata): Unit = {
-    logTrace(s"PutBatchPollingPushRespSO.onNext calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
+    logTrace(s"ForwardPushToPollingRespSO.onNext calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
 
     try {
       ensureInited(resp)
@@ -618,19 +626,19 @@ class PutBatchPollingPushRespSO(pollingResults: PollingResults)
         onError(t)
     }
 
-    logTrace(s"PutBatchPollingPushRespSO.onNext called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
+    logTrace(s"ForwardPushToPollingRespSO.onNext called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
   }
 
   override def onError(t: Throwable): Unit = {
-    logError(s"PutBatchPollingPushRespSO.onError calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}", t)
+    logError(s"ForwardPushToPollingRespSO.onError calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}", t)
     pollingResults.setError(TransferExceptionUtils.throwableToException(t))
-    logError(s"PutBatchPollingPushRespSO.onError called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
+    logError(s"ForwardPushToPollingRespSO.onError called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
   }
 
   override def onCompleted(): Unit = {
-    logTrace(s"PutBatchPollingPushRespSO.onCompleted called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
+    logTrace(s"ForwardPollingToPushRespSO.onCompleted called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
     pollingResults.setFinish()
-    logTrace(s"PutBatchPollingPushRespSO.onCompleted called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
+    logTrace(s"ForwardPollingToPushRespSO.onCompleted called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
   }
 }
 
