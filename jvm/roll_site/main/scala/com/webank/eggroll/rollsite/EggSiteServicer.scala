@@ -100,7 +100,7 @@ class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBas
           var pollingExchanger: PollingExchanger = null
           var i = 0
           while (pollingExchanger == null) {
-            pollingExchanger = PollingHelper.pollingExchangerQueue.poll(
+            pollingExchanger = PollingExchanger.pollingExchangerQueue.poll(
               RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_Q_POLL_INTERVAL_SEC.get().toLong, TimeUnit.SECONDS)
             logTrace(s"unary call getting pollingExchanger from queue. i=${i}, isNull=${pollingExchanger == null}")
             i += 1
