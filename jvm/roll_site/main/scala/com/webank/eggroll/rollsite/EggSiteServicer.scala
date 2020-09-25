@@ -19,8 +19,10 @@
 package com.webank.eggroll.rollsite
 
 import java.util
+import java.util.concurrent.TimeUnit
 
 import com.google.protobuf.ByteString
+import com.webank.ai.eggroll.api.networking.proxy.Proxy.PollingFrame
 import com.webank.ai.eggroll.api.networking.proxy.{DataTransferServiceGrpc, Proxy}
 import com.webank.eggroll.core.constant.{CoreConfKeys, RollSiteConfKeys}
 import com.webank.eggroll.core.meta.TransferModelPbMessageSerdes.ErRollSiteHeaderFromPbMessage
@@ -95,11 +97,32 @@ class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBas
             .setSeq(1)
             .build()
 
-          val pollingExchanger = PollingHelper.pollingExchangerQueue.take()
+          var pollingExchanger: PollingExchanger = null
+          var i = 0
+          while (pollingExchanger == null) {
+            pollingExchanger = PollingHelper.pollingExchangerQueue.poll(
+              RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_Q_POLL_INTERVAL_SEC.get().toLong, TimeUnit.SECONDS)
+            logTrace(s"unary call getting pollingExchanger from queue. i=${i}, isNull=${pollingExchanger == null}")
+            i += 1
+          }
           pollingExchanger.setMethod(PollingMethods.UNARY_CALL)
 
-          pollingExchanger.respQ.put(reqPollingFrame)
-          val result = pollingExchanger.reqQ.take()
+          var done = false
+          i = 0
+          while (!done) {
+            done = pollingExchanger.respQ.offer(reqPollingFrame,
+              RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_Q_OFFER_INTERVAL_SEC.get().toLong, TimeUnit.SECONDS)
+            logTrace(s"unary call polling from respQ. i=${i}, done=${done}")
+            i += 1
+          }
+
+          var result: PollingFrame = null
+          i = 0
+          while (result == null) {
+            result = pollingExchanger.reqQ.poll(
+              RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_Q_POLL_INTERVAL_SEC.get().toLong, TimeUnit.SECONDS)
+            logTrace(s"unary call polling from reqQ, i=${i}, isNull=${result == null}")
+          }
 
           respSO.onNext(result.getPacket)
           respSO.onCompleted()

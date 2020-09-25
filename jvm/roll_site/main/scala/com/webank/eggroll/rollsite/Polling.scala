@@ -101,6 +101,8 @@ class LongPollingClient extends Logging {
         LongPollingClient.initPollingFrameBuilder
           .build())
 
+      //pollingReqSO.onError(new RuntimeException("mocking error"))
+
       try {
         var finished = false
         var req: Proxy.PollingFrame = null
@@ -238,8 +240,14 @@ class DispatchPollingReqSO(eggSiteServicerPollingRespSO: ServerCallStreamObserve
     if (inited) return
 
     pollingExchanger = new PollingExchanger()
-    PollingHelper.pollingExchangerQueue.put(pollingExchanger)
-
+    var done = false
+    var i = 0
+    while (!done) {
+      done = PollingHelper.pollingExchangerQueue.offer(pollingExchanger,
+        RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_Q_OFFER_INTERVAL_SEC.get().toLong, TimeUnit.SECONDS)
+      logTrace(s"DispatchPollingReqSO.ensureInited calling. i=${i}")
+      i += 1
+    }
     // synchronise point for incoming push / unary_call request
     val method = pollingExchanger.waitMethod()
 
@@ -252,6 +260,7 @@ class DispatchPollingReqSO(eggSiteServicerPollingRespSO: ServerCallStreamObserve
         val e = new NotImplementedError(s"method ${method} not supported")
         logError(e)
         onError(e)
+        //delegateSO = new MockPollingReqSO(eggSiteServicerPollingRespSO)
     }
 
     inited = true
@@ -264,11 +273,19 @@ class DispatchPollingReqSO(eggSiteServicerPollingRespSO: ServerCallStreamObserve
   }
 
   override def onError(t: Throwable): Unit = {
-    delegateSO.onError(t)
+    if (delegateSO != null) {
+      delegateSO.onError(t)
+    } else {
+      logError("DispatchPollingReqSO.onError before init", t)
+    }
   }
 
   override def onCompleted(): Unit = {
-    delegateSO.onCompleted()
+    if (delegateSO != null) {
+      delegateSO.onCompleted()
+    } else {
+      logWarning("DispatchPollingReqSO.onCompleted before init")
+    }
   }
 }
 
@@ -309,9 +326,10 @@ class UnaryCallPollingReqSO(eggSiteServicerPollingRespSO: ServerCallStreamObserv
             s"rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
           var i = 0
           while (batch == null) {
+            batch = pollingExchanger.respQ.poll(
+              RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_Q_POLL_INTERVAL_SEC.get().toLong, TimeUnit.SECONDS)
             logTrace(s"UnaryCallPollingReqSO.onNext req.getSeq=0L, getting from pollingExchanger, " +
-              s"i=${i}, rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
-            batch = pollingExchanger.respQ.poll(1, TimeUnit.MINUTES)
+              s"i=${i}, isNull=${batch == null}, rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
             i += 1
           }
           ensureInited(batch)
@@ -320,12 +338,14 @@ class UnaryCallPollingReqSO(eggSiteServicerPollingRespSO: ServerCallStreamObserv
           logTrace(s"UnaryCallPollingReqSO.onNext.req.getSeq=0L finished, rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
         case 1L =>
           logTrace(s"UnaryCallPollingReqSO.onNext req.getSeq=1L starting, rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
+          val pollingFrame = Proxy.PollingFrame.newBuilder().setPacket(req.getPacket).build()
           var i = 0
           var done = false
           while (!done) {
-            done = pollingExchanger.reqQ.offer(Proxy.PollingFrame.newBuilder().setPacket(req.getPacket).build(), 1, TimeUnit.MINUTES)
+            done = pollingExchanger.reqQ.offer(pollingFrame,
+              RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_Q_OFFER_INTERVAL_SEC.get().toLong, TimeUnit.SECONDS)
             logTrace(s"UnaryCallPollingReqSO.onNext req.getSeq=1L, putting to pollingExchanger.reqQ, " +
-              s"i=${i}, rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
+              s"i=${i}, done=${done}, rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
             i += 1
           }
           logTrace(s"UnaryCallPollingReqSO.onNext req.getSeq=1L finished, rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
@@ -393,8 +413,9 @@ class PushPollingReqSO(val eggSiteServicerPollingRespSO: ServerCallStreamObserve
             var i = 0
             batch = null
             while (batch == null) {
-              batch = pollingExchanger.respQ.poll(1, TimeUnit.MINUTES)
-              logTrace(s"PushPollingReqSO.onNext req.getSeq=0L, getting from pollingExchanger, i=${i}, rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
+              batch = pollingExchanger.respQ.poll(
+                RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_Q_POLL_INTERVAL_SEC.get().toLong, TimeUnit.SECONDS)
+              logTrace(s"PushPollingReqSO.onNext req.getSeq=0L, polling from pollingExchanger.respQ, i=${i}, isNull=${batch == null}, rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
               i += 1
             }
             ensureInited(batch)
@@ -408,11 +429,13 @@ class PushPollingReqSO(val eggSiteServicerPollingRespSO: ServerCallStreamObserve
         case 1L =>
           logTrace(s"PushPollingReqSO.onNext req.getSeq=1L starting, rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
 
+          val metadataFrame = Proxy.PollingFrame.newBuilder().setMetadata(req.getMetadata).build()
           var done = false
           var i = 0
           while (!done) {
-            done = pollingExchanger.reqQ.offer(Proxy.PollingFrame.newBuilder().setMetadata(req.getMetadata).build(), 1, TimeUnit.MINUTES)
-            logTrace(s"PushPollingReqSO.onNext req.getSeq=1L putting to pollingExchanger.reqQ, i=${i} rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
+            done = pollingExchanger.reqQ.offer(metadataFrame,
+              RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_Q_OFFER_INTERVAL_SEC.get().toLong, TimeUnit.SECONDS)
+            logTrace(s"PushPollingReqSO.onNext req.getSeq=1L offering to pollingExchanger.reqQ, i=${i}, done=${done}, rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
             i += 1
           }
 
