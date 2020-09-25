@@ -299,11 +299,17 @@ class ForwardPushToPollingReqSO(eggSiteServicerPushRespSO_forwardPollingToPushRe
   private var failRequest: mutable.ParHashSet[Proxy.Metadata] = new mutable.ParHashSet[Proxy.Metadata]()
   private val pollingFrameBuilder = Proxy.PollingFrame.newBuilder().setMethod("push")
   private var pollingFrameSeq = 0
-  private val pollingExchanger = PollingHelper.pollingExchangerQueue.take()
+  private var pollingExchanger: PollingExchanger = null
 
   private def ensureInited(firstRequest: Proxy.Packet): Unit = {
     logTrace(s"ForwardPushToPollingReqSO.ensureInited calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
     if (inited) return
+
+    while (pollingExchanger == null) {
+      pollingExchanger = PollingHelper.pollingExchangerQueue.poll(
+        RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_Q_POLL_INTERVAL_SEC.get().toLong, TimeUnit.SECONDS)
+      logTrace(s"ForwardPushToPollingReqSO.ensureInited, polling from pollingExchanger. isNull=${pollingExchanger == null}, rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
+    }
 
     metadata = firstRequest.getHeader
     oneLineStringMetadata = ToStringUtils.toOneLineString(metadata)
@@ -326,7 +332,15 @@ class ForwardPushToPollingReqSO(eggSiteServicerPushRespSO_forwardPollingToPushRe
       pollingFrameBuilder.setSeq(pollingFrameSeq).setPacket(req)
       val nextFrame = pollingFrameBuilder.build()
 
-      pollingExchanger.respQ.put(nextFrame)
+      var done = false
+
+      var i = 0
+      while (!done) {
+        done = pollingExchanger.respQ.offer(nextFrame,
+          RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_Q_OFFER_INTERVAL_SEC.get().toLong, TimeUnit.SECONDS)
+        logTrace(s"ForwardPushToPollingReqSO.onNext, offering frame to pollingExchanger.respQ, i=${i}, done=${done}, rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
+        i += 1
+      }
 
       // throw new Exception("testing")
     } catch {
@@ -335,7 +349,15 @@ class ForwardPushToPollingReqSO(eggSiteServicerPushRespSO_forwardPollingToPushRe
         pollingFrameSeq += 1
         pollingFrameBuilder.setSeq(pollingFrameSeq).setPacket(errorPacket)
         val nextFrame = pollingFrameBuilder.build()
-        pollingExchanger.respQ.put(nextFrame)
+
+        var done = false
+        var i = 0
+        while (!done) {
+          pollingExchanger.respQ.clear()
+          done = pollingExchanger.respQ.offer(nextFrame,
+            RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_Q_OFFER_INTERVAL_SEC.get().toLong, TimeUnit.SECONDS)
+          logTrace(s"ForwardPushToPollingReqSO.onNext, offering error to pollingExchanger.respQ, i=${i}, done=${done}, rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
+        }
         onError(t)
     }
 
@@ -352,9 +374,26 @@ class ForwardPushToPollingReqSO(eggSiteServicerPushRespSO_forwardPollingToPushRe
     logTrace(s"ForwardPushToPollingReqSO.onCompleted calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
     pollingFrameSeq += 1
     pollingFrameBuilder.setSeq(pollingFrameSeq).setMethod("finish_push")
-    pollingExchanger.respQ.put(pollingFrameBuilder.build())
+    val pollingFrame = pollingFrameBuilder.build()
 
-    val pollingReq = pollingExchanger.reqQ.take()
+    var done = false
+    var i = 0
+    while (!done) {
+      done = pollingExchanger.respQ.offer(pollingFrame,
+        RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_Q_OFFER_INTERVAL_SEC.get().toLong, TimeUnit.SECONDS)
+      logTrace(s"ForwardPushToPollingReqSO.onCompleted, offering to pollingExchanger.respQ. i=${i}, done=${done}, rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
+      i += 1
+    }
+
+    var pollingReq: Proxy.PollingFrame = null
+
+    i = 0
+    while (pollingReq == null) {
+      pollingReq = pollingExchanger.reqQ.poll(
+        RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_Q_POLL_INTERVAL_SEC.get().toLong, TimeUnit.SECONDS)
+      logTrace(s"ForwardPushToPollingReqSO.onCompleted, getting from pollingExchanger.reqQ. i=${i}, isNull=${pollingReq == null},rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
+      i += 1
+    }
 
     eggSiteServicerPushRespSO_forwardPollingToPushRespSO.onNext(pollingReq.getMetadata)
     eggSiteServicerPushRespSO_forwardPollingToPushRespSO.onCompleted()

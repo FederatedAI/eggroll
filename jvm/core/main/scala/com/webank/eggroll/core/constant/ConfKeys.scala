@@ -153,6 +153,8 @@ object DeployConfKeys {
 }
 
 object RollSiteConfKeys {
+  val EGGROLL_ROLLSITE_POLLING_Q_POLL_INTERVAL_SEC = ErConfKey("eggroll.rollsite.polling.q.poll.interval.sec", 60)
+  val EGGROLL_ROLLSITE_POLLING_Q_OFFER_INTERVAL_SEC = ErConfKey("eggroll.rollsite.polling.q.offer.interval.sec", 60)
   val EGGROLL_ROLLSITE_COORDINATOR = ErConfKey("eggroll.rollsite.coordinator")
   val EGGROLL_ROLLSITE_HOST = ErConfKey("eggroll.rollsite.host", "127.0.0.1")
   val EGGROLL_ROLLSITE_PORT = ErConfKey("eggroll.rollsite.port", "9370")
