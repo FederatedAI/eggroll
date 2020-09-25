@@ -27,7 +27,7 @@ import com.webank.eggroll.core.meta.ErRollSiteHeader
 import com.webank.eggroll.core.meta.TransferModelPbMessageSerdes.ErRollSiteHeaderFromPbMessage
 import com.webank.eggroll.core.transfer.GrpcClientUtils
 import com.webank.eggroll.core.transfer.Transfer.RollSiteHeader
-import com.webank.eggroll.core.util.{Logging, ToStringUtils}
+import com.webank.eggroll.core.util.{ErrorUtils, Logging, ToStringUtils}
 import com.webank.eggroll.rollsite.PollingResults.errorPoison
 import io.grpc.ConnectivityState
 import io.grpc.stub.{ServerCallStreamObserver, StreamObserver}
@@ -44,6 +44,7 @@ object PollingMethods {
   val COMPLETED_POISON = "completed_poison"
   val NO_DATA_POISON = "no_data_poison"
   val ERROR_POISON = "error_poison"
+  val MOCK = "mock"
 }
 
 object LongPollingClient {
@@ -101,9 +102,8 @@ class LongPollingClient extends Logging {
         LongPollingClient.initPollingFrameBuilder
           .build())
 
-      //pollingReqSO.onError(new RuntimeException("mocking error"))
-
       try {
+        //throw new RuntimeException("mocking error")
         var finished = false
         var req: Proxy.PollingFrame = null
         while (!finished) {
@@ -114,14 +114,13 @@ class LongPollingClient extends Logging {
             case PollingMethods.COMPLETED_POISON =>
               pollingReqSO.onCompleted()
               // TODO:0: decide whether to remove this because there is no timeout / deadline in polling
-              if (!finishLatch.await(RollSiteConfKeys.EGGROLL_ROLLSITE_ONCOMPLETED_WAIT_TIMEOUT.get().toLong, TimeUnit.SECONDS)) {
-                throw new TimeoutException(s"longPollingClient.onCompleted latch timeout")
-              }
               finished = true
             case PollingMethods.NO_DATA_POISON =>
               logDebug("polling timeout with no data")
             case PollingMethods.ERROR_POISON =>
               throw pollingResults.getError()
+            case PollingMethods.MOCK =>
+              logDebug(s"mocking response: ${ToStringUtils.toOneLineString(req)}")
             case _ =>
               throw new NotImplementedError(s"received unknown method: ${req.getMethod}")
           }
@@ -129,7 +128,15 @@ class LongPollingClient extends Logging {
       } catch {
         case t: Throwable =>
           logError("polling with error", t)
-          pollingReqSO.onError(TransferExceptionUtils.throwableToException(t))
+
+          pollingReqSO.onNext(TransferExceptionUtils.genExceptionPollingFrame(t))
+          pollingReqSO.onCompleted()
+          //pollingReqSO.onError(TransferExceptionUtils.throwableToException(t))
+      } finally {
+        if (!finishLatch.await(RollSiteConfKeys.EGGROLL_ROLLSITE_ONCOMPLETED_WAIT_TIMEOUT.get().toLong, TimeUnit.SECONDS)) {
+          throw new TimeoutException(s"longPollingClient.onCompleted latch timeout")
+        }
+        logTrace("polling finally run completed")
       }
 
       // TODO:0: configurable
@@ -171,7 +178,7 @@ class PollingExchanger() {
   }
 }
 
-object PollingHelper {
+object PollingExchanger {
   val pollingExchangerQueue = new LinkedBlockingQueue[PollingExchanger]()
 }
 
@@ -239,28 +246,32 @@ class DispatchPollingReqSO(eggSiteServicerPollingRespSO: ServerCallStreamObserve
     logTrace(s"DispatchPollingReqSO.ensureInited calling.")
     if (inited) return
 
-    pollingExchanger = new PollingExchanger()
+   pollingExchanger = new PollingExchanger()
     var done = false
     var i = 0
     while (!done) {
-      done = PollingHelper.pollingExchangerQueue.offer(pollingExchanger,
+      done = PollingExchanger.pollingExchangerQueue.offer(pollingExchanger,
         RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_Q_OFFER_INTERVAL_SEC.get().toLong, TimeUnit.SECONDS)
       logTrace(s"DispatchPollingReqSO.ensureInited calling. i=${i}")
       i += 1
     }
     // synchronise point for incoming push / unary_call request
     val method = pollingExchanger.waitMethod()
+    //val method = "mock"
 
     method match {
       case PollingMethods.PUSH =>
         delegateSO = new PushPollingReqSO(eggSiteServicerPollingRespSO, pollingExchanger)
       case PollingMethods.UNARY_CALL =>
         delegateSO = new UnaryCallPollingReqSO(eggSiteServicerPollingRespSO, pollingExchanger)
+      case PollingMethods.MOCK =>
+        delegateSO = new MockPollingReqSO(eggSiteServicerPollingRespSO)
       case _ =>
         val e = new NotImplementedError(s"method ${method} not supported")
         logError(e)
         onError(e)
-        //delegateSO = new MockPollingReqSO(eggSiteServicerPollingRespSO)
+/*        eggSiteServicerPollingRespSO.onNext(TransferExceptionUtils.genExceptionPollingFrame(e))
+        eggSiteServicerPollingRespSO.onCompleted()*/
     }
 
     inited = true
@@ -277,6 +288,7 @@ class DispatchPollingReqSO(eggSiteServicerPollingRespSO: ServerCallStreamObserve
       delegateSO.onError(t)
     } else {
       logError("DispatchPollingReqSO.onError before init", t)
+      eggSiteServicerPollingRespSO.onError(TransferExceptionUtils.throwableToException(t))
     }
   }
 
@@ -317,6 +329,20 @@ class UnaryCallPollingReqSO(eggSiteServicerPollingRespSO: ServerCallStreamObserv
 
   override def onNext(req: Proxy.PollingFrame): Unit = {
     logTrace(s"UnaryCallPollingReqSO.onNext calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
+
+    // TODO:1: eliminate duplicate codes
+    if (PollingMethods.ERROR_POISON.equals(req.getMethod))  {
+      logError(s"UnaryCallPollingReqSO.onNext receives an error from pollingClient: ${req.getDesc}, rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
+      var done = false
+      var i = 0
+      while (!done) {
+        done = pollingExchanger.reqQ.offer(req,
+          RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_Q_OFFER_INTERVAL_SEC.get().toLong, TimeUnit.SECONDS)
+        logTrace(s"UnaryCallPollingReqSO.onNext offering error to reqQ, i=${i}, rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
+        i += 1
+      }
+      return
+    }
 
     try {
       var batch: Proxy.PollingFrame = null
@@ -401,6 +427,19 @@ class PushPollingReqSO(val eggSiteServicerPollingRespSO: ServerCallStreamObserve
 
   override def onNext(req: Proxy.PollingFrame): Unit = {
     logTrace(s"PushPollingReqSO.onNext calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
+
+    if (PollingMethods.ERROR_POISON.equals(req.getMethod))  {
+      logError(s"PushPollingReqSO.onNext receives an error from pollingClient: ${req.getDesc}, rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
+      var done = false
+      var i = 0
+      while (!done) {
+        done = pollingExchanger.reqQ.offer(req,
+          RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_Q_OFFER_INTERVAL_SEC.get().toLong, TimeUnit.SECONDS)
+        logTrace(s"PushPollingReqSO.onNext offering error to reqQ, i=${i}, rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
+        i += 1
+      }
+      return
+    }
 
     try {
       req.getSeq match {
@@ -488,12 +527,15 @@ class DispatchPollingRespSO(pollingResults: PollingResults,
     method = req.getMethod
 
     method match {
-      case "push" =>
+      case PollingMethods.PUSH =>
         metadata = req.getPacket.getHeader
         delegateSO = new PushPollingRespSO(pollingResults)
-      case "unary_call" =>
+      case PollingMethods.UNARY_CALL =>
         metadata = req.getPacket.getHeader
         delegateSO = new UnaryCallPollingRespSO(pollingResults)
+      case PollingMethods.MOCK =>
+        metadata = req.getPacket.getHeader
+        delegateSO = new MockPollingRespSO(pollingResults)
       case _ =>
         val t = new NotImplementedError(s"operation ${method} not supported")
         logError("fail to dispatch response", t)
@@ -516,7 +558,7 @@ class DispatchPollingRespSO(pollingResults: PollingResults,
         val errStack = req.getPacket.getBody.getValue.toStringUtf8
         val errMsg = s"DispatchPollingRespSO get error from push or unarycall. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}, stack:\n ${errStack}"
         logError(errMsg)
-        onError(new RuntimeException(errMsg))
+        throw new RuntimeException(errMsg)
       }
 
       ensureInit(req)
@@ -791,7 +833,10 @@ class MockPollingReqSO(pollingRespSO: ServerCallStreamObserver[Proxy.PollingFram
 
   override def onNext(req: Proxy.PollingFrame): Unit = {
     logDebug(s"onNext.$req")
-    pollingRespSO.onNext(Proxy.PollingFrame.newBuilder().setMethod("push").setSeq(12399l).build())
+    if (PollingMethods.ERROR_POISON.equals(req.getMethod)) {
+      logError(req.getDesc)
+    }
+    pollingRespSO.onNext(Proxy.PollingFrame.newBuilder().setMethod("mock").setSeq(12399l).build())
 
     //    ensureInited(req)
     //    delegateSO.onNext(req)
@@ -812,10 +857,11 @@ class MockPollingReqSO(pollingRespSO: ServerCallStreamObserver[Proxy.PollingFram
 class MockPollingRespSO(pollingResults: PollingResults) extends StreamObserver[Proxy.PollingFrame] with Logging {
   override def onNext(v: Proxy.PollingFrame): Unit = {
     logInfo(s"onNext:$v")
-    pollingResults.put(v)
+    // pollingResults.put(v)
   }
 
   override def onError(throwable: Throwable): Unit = {
+    //pollingResults.setError(throwable)
     logError(throwable)
   }
 
