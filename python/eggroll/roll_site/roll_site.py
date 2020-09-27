@@ -142,9 +142,9 @@ class RollSiteBase:
             receive_executor_pool_size = int(RollSiteConfKeys.EGGROLL_ROLLSITE_RECEIVE_EXECUTOR_POOL_MAX_SIZE.get_with(options))
             receive_executor_pool_type = CoreConfKeys.EGGROLL_CORE_DEFAULT_EXECUTOR_POOL.get_with(options)
             self._receive_executor_pool = create_executor_pool(
-                canonical_name=receive_executor_pool_type,
-                max_workers=receive_executor_pool_size,
-                thread_name_prefix="rollsite-")
+                    canonical_name=receive_executor_pool_type,
+                    max_workers=receive_executor_pool_size,
+                    thread_name_prefix="rollsite-client")
         self._push_start_time = None
         self._pull_start_time = None
         self._is_standalone = self.ctx.is_standalone
@@ -383,7 +383,7 @@ class RollSite(RollSiteBase):
 
             L.trace(f"pushed rollpair partition. rs_key={rs_key}, partition_id={rs_header._partition_id}, rs_header={rs_header}")
 
-        rp.with_stores(_push_partition)
+        rp.with_stores(_push_partition, options={"__op": "push_partition"})
         if L.isEnabledFor(logging.DEBUG):
             L.debug(f"pushed rollpair: rs_key={rs_key}, rs_header={rs_header}, count={rp.count()}, elapsed={time.time() - start_time}")
         self.ctx.pushing_latch.count_down()
@@ -396,6 +396,7 @@ class RollSite(RollSiteBase):
         rp_namespace = self.roll_site_session_id
         transfer_tag_prefix = "putBatch-" + rs_header.get_rs_key() + "-"
         last_total_batches = None
+        last_cur_pairs = -1
         pull_attempts = 0
         data_type = None
         L.debug(f'pulling rs_key={rs_key}')
@@ -421,7 +422,7 @@ class RollSite(RollSiteBase):
                 if store is None:
                     raise ValueError(f'illegal state for rp_name={rp_name}, rp_namespace={rp_namespace}')
 
-                all_status = store.with_stores(get_partition_status)
+                all_status = store.with_stores(get_partition_status, options={"__op": "get_partition_status"})
 
                 for part_id, part_status in all_status:
                     if not part_status.is_finished:
@@ -438,8 +439,8 @@ class RollSite(RollSiteBase):
                     (header_response is None or not isinstance(header_response[0][1], ErRollSiteHeader)):
                 header_response = self.ctx.rp_ctx.load(name=STATUS_TABLE_NAME,
                                                        namespace=rp_namespace,
-                                                       options={'create_if_missing': True, 'total_partitions': 1})\
-                    .with_stores(lambda x: PutBatchTask(transfer_tag_prefix + "0").get_header(10))
+                                                       options={'create_if_missing': True, 'total_partitions': 1}) \
+                    .with_stores(lambda x: PutBatchTask(transfer_tag_prefix + "0").get_header(10), options={"__op": "pull_header"})
                 wait_time += 10
 
                 #pull_status, all_finished, total_batches, total_pairs = stat_all_status(self)
@@ -456,15 +457,23 @@ class RollSite(RollSiteBase):
             pull_status = {}
             for cur_retry in range(self.pull_max_retry):
                 pull_attempts = cur_retry
-                pull_status, all_finished, total_batches, total_pairs = get_status(self)
+                pull_status, all_finished, total_batches, cur_pairs = get_status(self)
 
                 if not all_finished:
-                    L.debug(f'getting status NOT finished for rs_key={rs_key}, rs_header={rs_header}, cur_status={pull_status}, attempts={pull_attempts}, time_cost={time.time() - start_time}')
-                    if last_total_batches == total_batches and total_batches > 0:
+                    L.debug(f'getting status NOT finished for rs_key={rs_key}, '
+                            f'rs_header={rs_header}, '
+                            f'cur_status={pull_status}, '
+                            f'attempts={pull_attempts}, '
+                            f'cur_pairs={cur_pairs}, '
+                            f'last_cur_pairs={last_cur_pairs}, '
+                            f'total_batches={total_batches}, '
+                            f'last_total_batches={last_total_batches}, '
+                            f'elapsed={time.time() - start_time}')
+                    if last_cur_pairs == cur_pairs and cur_pairs > 0:
                         raise IOError(f"roll site pull waiting failed because there is no updated progress: rs_key={rs_key}, "
-                                    f"rs_header={rs_header}, pull_status={pull_status}, total_pairs={total_pairs}")
+                                      f"rs_header={rs_header}, pull_status={pull_status}, last_cur_pairs={last_cur_pairs}, cur_pairs={cur_pairs}")
                 else:
-                    L.debug(f"getting status DO finished for rs_key={rs_key}, rs_header={rs_header}, pull_status={pull_status}, total_pairs={total_pairs}")
+                    L.debug(f"getting status DO finished for rs_key={rs_key}, rs_header={rs_header}, pull_status={pull_status}, cur_pairs={cur_pairs}, total_batches={total_batches}")
                     rp = self.ctx.rp_ctx.load(name=rp_name, namespace=rp_namespace)
                     if data_type == "object":
                         result = pickle.loads(b''.join(map(lambda t: t[1], sorted(rp.get_all(), key=lambda x: int.from_bytes(x[0], "big")))))
@@ -477,6 +486,7 @@ class RollSite(RollSiteBase):
                                     f"elapsed={time.time() - start_time}")
                     return result
                 last_total_batches = total_batches
+                last_cur_pairs = cur_pairs
             raise IOError(f"roll site pull failed. max try exceeded: {self.pull_max_retry}, rs_key={rs_key}, "
                           f"rs_header={rs_header}, pull_status={pull_status}")
         except Exception as e:
