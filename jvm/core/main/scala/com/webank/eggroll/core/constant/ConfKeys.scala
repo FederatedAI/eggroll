@@ -84,7 +84,7 @@ object CoreConfKeys {
   val CONFKEY_CORE_GRPC_SERVER_CORE_EXECUTOR_POOL_SIZE = ErConfKey("eggroll.core.grpc.server.core.executor.pool.size", "20")
   val CONFKEY_CORE_GRPC_SERVER_MAX_EXECUTOR_POOL_SIZE = ErConfKey("eggroll.core.grpc.server.max.executor.pool.size", "1500")
   val CONFKEY_CORE_GRPC_SERVER_EXECUTOR_POOL_QUEUE_SIZE = ErConfKey("eggroll.core.grpc.server.executor.pool.queue.size", "0")
-  val CONFKEY_CORE_GRPC_SERVER_CHANNEL_FLOW_CONTROL_WINDOW = ErConfKey("eggroll.core.grpc.server.channel.flow.control.window", 8 << 10)
+  val CONFKEY_CORE_GRPC_SERVER_CHANNEL_FLOW_CONTROL_WINDOW = ErConfKey("eggroll.core.grpc.server.channel.flow.control.window", 8 << 20)
   val CONFKEY_CORE_GRPC_SERVER_CHANNEL_KEEPALIVE_TIME_SEC = ErConfKey("eggroll.core.grpc.server.channel.keepalive.time.sec", 60)
   val CONFKEY_CORE_GRPC_SERVER_CHANNEL_KEEPALIVE_TIMEOUT_SEC = ErConfKey("eggroll.core.grpc.server.channel.keepalive.timeout.sec", 5)
   val CONFKEY_CORE_GRPC_SERVER_CHANNEL_KEEPALIVE_WITHOUT_CALLS_ENABLED = ErConfKey("eggroll.core.grpc.server.channel.keepalive.without.calls.enabled", true.toString)
@@ -155,6 +155,8 @@ object DeployConfKeys {
 object RollSiteConfKeys {
   val EGGROLL_ROLLSITE_POLLING_Q_POLL_INTERVAL_SEC = ErConfKey("eggroll.rollsite.polling.q.poll.interval.sec", 60)
   val EGGROLL_ROLLSITE_POLLING_Q_OFFER_INTERVAL_SEC = ErConfKey("eggroll.rollsite.polling.q.offer.interval.sec", 60)
+  val EGGROLL_ROLLSITE_POLLING_NO_DATA_TIMEOUT_SEC = ErConfKey("eggroll.rollsite.polling.no.data.timeout.sec", 300)
+  val EGGROLL_ROLLSITE_POLLING_EXCHANGER_DATA_OP_TIMEOUT_SEC = ErConfKey("eggroll.rollsite.polling.exchanger.data.op.timeout.sec", 360)
   val EGGROLL_ROLLSITE_COORDINATOR = ErConfKey("eggroll.rollsite.coordinator")
   val EGGROLL_ROLLSITE_HOST = ErConfKey("eggroll.rollsite.host", "127.0.0.1")
   val EGGROLL_ROLLSITE_PORT = ErConfKey("eggroll.rollsite.port", "9370")
