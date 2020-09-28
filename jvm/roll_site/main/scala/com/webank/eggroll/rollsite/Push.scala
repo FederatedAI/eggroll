@@ -332,17 +332,8 @@ class ForwardPushToPollingReqSO(eggSiteServicerPushRespSO_forwardPollingToPushRe
       pollingFrameBuilder.setSeq(pollingFrameSeq).setPacket(req)
       val nextFrame = pollingFrameBuilder.build()
 
-      var done = false
-
-      var i = 0
-      while (!done) {
-        done = pollingExchanger.respQ.offer(nextFrame,
-          RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_Q_OFFER_INTERVAL_SEC.get().toLong, TimeUnit.SECONDS)
-        logTrace(s"ForwardPushToPollingReqSO.onNext, offering frame to pollingExchanger.respQ, i=${i}, done=${done}, rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
-        i += 1
-      }
-
-      // throw new Exception("testing")
+      PollingExchanger.offer(nextFrame, pollingExchanger.respQ,
+        "ForwardPushToPollingReqSO.onNext, offering frame to pollingExchanger.respQ, ", rsHeader, oneLineStringMetadata)
     } catch {
       case t: Throwable =>
         val errorPacket = TransferExceptionUtils.genExceptionToNextSite(req, t)
@@ -350,15 +341,10 @@ class ForwardPushToPollingReqSO(eggSiteServicerPushRespSO_forwardPollingToPushRe
         pollingFrameBuilder.setSeq(pollingFrameSeq).setPacket(errorPacket)
         val nextFrame = pollingFrameBuilder.build()
 
-        var done = false
-        var i = 0
-        while (!done) {
-          pollingExchanger.respQ.clear()
-          done = pollingExchanger.respQ.offer(nextFrame,
-            RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_Q_OFFER_INTERVAL_SEC.get().toLong, TimeUnit.SECONDS)
-          logTrace(s"ForwardPushToPollingReqSO.onNext, offering error to pollingExchanger.respQ, i=${i}, done=${done}, rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
-          i += 1
-        }
+        pollingExchanger.respQ.clear()
+        PollingExchanger.offer(nextFrame, pollingExchanger.respQ,
+          "ForwardPushToPollingReqSO.onNext, offering error to pollingExchanger.respQ, ", rsHeader, oneLineStringMetadata)
+
         onError(t)
     }
 
@@ -374,36 +360,31 @@ class ForwardPushToPollingReqSO(eggSiteServicerPushRespSO_forwardPollingToPushRe
   override def onCompleted(): Unit = {
     logTrace(s"ForwardPushToPollingReqSO.onCompleted calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
     pollingFrameSeq += 1
-    pollingFrameBuilder.setSeq(pollingFrameSeq).setMethod("finish_push")
-    val pollingFrame = pollingFrameBuilder.build()
+    pollingFrameBuilder.setSeq(pollingFrameSeq).setMethod(PollingMethods.SUB_STREAM_FINISH)
+    val subStreamFinishFrame = pollingFrameBuilder.build()
 
-    var done = false
-    var i = 0
-    while (!done) {
-      done = pollingExchanger.respQ.offer(pollingFrame,
-        RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_Q_OFFER_INTERVAL_SEC.get().toLong, TimeUnit.SECONDS)
-      logTrace(s"ForwardPushToPollingReqSO.onCompleted, offering to pollingExchanger.respQ. i=${i}, done=${done}, rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
-      i += 1
+    try {
+      PollingExchanger.offer(subStreamFinishFrame, pollingExchanger.respQ,
+        "ForwardPushToPollingReqSO.onCompleted, offering to pollingExchanger.respQ, ", rsHeader, oneLineStringMetadata)
+
+      var pollingReq: Proxy.PollingFrame = null
+
+      pollingReq = PollingExchanger.poll(pollingExchanger.reqQ,
+        "ForwardPushToPollingReqSO.onCompleted, getting from pollingExchanger.reqQ", rsHeader, oneLineStringMetadata)
+
+      if (PollingMethods.ERROR_POISON.equals(pollingReq.getMethod)) {
+        val t = new RuntimeException(s"exception from polling: ${pollingReq.getDesc}")
+        onError(TransferExceptionUtils.throwableToException(t))
+        return
+      }
+
+      eggSiteServicerPushRespSO_forwardPollingToPushRespSO.onNext(pollingReq.getMetadata)
+      eggSiteServicerPushRespSO_forwardPollingToPushRespSO.onCompleted()
+    } catch {
+      case t: Throwable =>
+        logError("error in ForwardPushToPollingReqSO.onCompleted", t)
+        onError(t)
     }
-
-    var pollingReq: Proxy.PollingFrame = null
-
-    i = 0
-    while (pollingReq == null) {
-      pollingReq = pollingExchanger.reqQ.poll(
-        RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_Q_POLL_INTERVAL_SEC.get().toLong, TimeUnit.SECONDS)
-      logTrace(s"ForwardPushToPollingReqSO.onCompleted, getting from pollingExchanger.reqQ. i=${i}, isNull=${pollingReq == null},rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
-      i += 1
-    }
-
-    if (PollingMethods.ERROR_POISON.equals(pollingReq.getMethod)) {
-      val t = new RuntimeException(s"exception from polling: ${pollingReq.getDesc}")
-      onError(TransferExceptionUtils.throwableToException(t))
-      return
-    }
-
-    eggSiteServicerPushRespSO_forwardPollingToPushRespSO.onNext(pollingReq.getMetadata)
-    eggSiteServicerPushRespSO_forwardPollingToPushRespSO.onCompleted()
 
     logTrace(s"ForwardPushToPollingReqSO.onCompleted called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
   }

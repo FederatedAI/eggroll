@@ -51,6 +51,7 @@ class _BatchStreamStatus:
         # removes lock. otherwise it deadlocks
         self._recorder[self._tag] = self
         self._is_in_order = True
+        #self._last_updated_at = None
 
     def _debug_string(self):
         return f"BatchStreams end normally, tag={self._tag} " \
@@ -72,7 +73,7 @@ class _BatchStreamStatus:
         if self._rs_header is None:
             self._rs_header = rs_header
             self._rs_key = rs_header.get_rs_key()
-            L.debug(f"header arrived. rs_key={rs_header.get_rs_key()}")
+            L.debug(f"header arrived. rs_key={rs_header.get_rs_key()}, rs_header={rs_header}")
             self._header_arrive_event.set()
         self._batch_seq_to_pair_counter[batch_seq_id] = batch_pairs
         self._stream_seq_to_pair_counter[stream_seq_id] += batch_pairs

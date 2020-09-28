@@ -107,22 +107,10 @@ class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBas
           }
           pollingExchanger.setMethod(PollingMethods.UNARY_CALL)
 
-          var done = false
-          i = 0
-          while (!done) {
-            done = pollingExchanger.respQ.offer(reqPollingFrame,
-              RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_Q_OFFER_INTERVAL_SEC.get().toLong, TimeUnit.SECONDS)
-            logTrace(s"unary call polling from respQ. i=${i}, done=${done}")
-            i += 1
-          }
+          PollingExchanger.offer(reqPollingFrame, pollingExchanger.respQ, "EggSiteServicer.unaryCall offering to respQ, ")
 
-          var result: PollingFrame = null
-          i = 0
-          while (result == null) {
-            result = pollingExchanger.reqQ.poll(
-              RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_Q_POLL_INTERVAL_SEC.get().toLong, TimeUnit.SECONDS)
-            logTrace(s"unary call polling from reqQ, i=${i}, isNull=${result == null}")
-          }
+          var result: PollingFrame = PollingExchanger.poll(pollingExchanger.reqQ,
+            "EggSiteServicer.unaryCall polling from reqQ, ")
 
           respSO.onNext(result.getPacket)
           respSO.onCompleted()
