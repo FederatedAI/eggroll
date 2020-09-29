@@ -18,7 +18,7 @@
 
 package com.webank.eggroll.rollsite
 
-import java.util.concurrent.{CountDownLatch, Future, TimeUnit}
+import java.util.concurrent.{CountDownLatch, Future, TimeUnit, TimeoutException}
 
 import com.google.common.cache.{CacheBuilder, CacheLoader, LoadingCache}
 import com.webank.ai.eggroll.api.networking.proxy.{DataTransferServiceGrpc, Proxy}
@@ -236,10 +236,10 @@ class PutBatchSinkPushReqSO(eggSiteServicerPushRespSO_forwardPushToPollingRespSO
   override def onCompleted(): Unit = {
     logTrace(s"PutBatchSinkPushReqSO.onCompleted calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
     putBatchSinkPushReqSO.onCompleted()
-
-/*    if (!finishLatch.await(RollSiteConfKeys.EGGROLL_ROLLSITE_ONCOMPLETED_WAIT_TIMEOUT.get().toLong, TimeUnit.SECONDS)) {
+    if (!finishLatch.await(RollSiteConfKeys.EGGROLL_ROLLSITE_ONCOMPLETED_WAIT_TIMEOUT.get().toLong, TimeUnit.SECONDS)) {
       onError(new TimeoutException(s"PutBatchSinkPushReqSO.onCompleted latch timeout. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}"))
-    }*/
+    }
+
     logTrace(s"PutBatchSinkPushReqSO.onCompleted called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
   }
 }
@@ -477,9 +477,9 @@ class ForwardPushReqSO(eggSiteServicerPushRespSO_forwardPushToPollingRespSO: Str
   override def onCompleted(): Unit = {
     logTrace(s"ForwardPushReqSO.onCompleted calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
     forwardPushReqSO.onCompleted()
-/*    if (!finishLatch.await(RollSiteConfKeys.EGGROLL_ROLLSITE_ONCOMPLETED_WAIT_TIMEOUT.get().toLong, TimeUnit.SECONDS)) {
+    if (!finishLatch.await(RollSiteConfKeys.EGGROLL_ROLLSITE_ONCOMPLETED_WAIT_TIMEOUT.get().toLong, TimeUnit.SECONDS)) {
       onError(new TimeoutException(s"ForwardPushReqSO.onCompleted latch timeout. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}"))
-    }*/
+    }
     logTrace(s"ForwardPushReqSO.onCompleted called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
   }
 }

@@ -654,7 +654,7 @@ class PushPollingRespSO(pollingResults: PollingResults)
     rsHeader = RollSiteHeader.parseFrom(metadata.getExt).fromProto()
     rsKey = rsHeader.getRsKey()
 
-    forwardPollingToPushRespSO = new ForwardPushToPollingRespSO(pollingResults)
+    forwardPollingToPushRespSO = new ForwardPushToPollingRespSO(pollingResults, finishLatch)
       // new PutBatchPollingPushRespSO(pollingResults)
     pushReqSO = new DispatchPushReqSO(forwardPollingToPushRespSO)
       // new PutBatchSinkPushReqSO(putBatchPollingPushRespSO)
@@ -697,7 +697,9 @@ class PushPollingRespSO(pollingResults: PollingResults)
 
   override def onCompleted(): Unit = {
     logTrace(s"PushPollingRespSO.onCompleted calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
-//    nextReqSO.onCompleted()
+    if (!finishLatch.await(RollSiteConfKeys.EGGROLL_ROLLSITE_ONCOMPLETED_WAIT_TIMEOUT.get().toLong, TimeUnit.SECONDS)) {
+      onError(new TimeoutException(s"PushPollingRespSO.onCompleted latch timeout"))
+    }
     logTrace(s"PushPollingRespSO.onCompleted called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
   }
 }
@@ -705,7 +707,8 @@ class PushPollingRespSO(pollingResults: PollingResults)
 /**
  * Polling rs gets push resp and pass
  */
-class ForwardPushToPollingRespSO(pollingResults: PollingResults)
+class ForwardPushToPollingRespSO(pollingResults: PollingResults,
+                                 finishLatch: CountDownLatch)
   extends StreamObserver[Proxy.Metadata] with Logging {
 
   private var inited = false
@@ -755,12 +758,14 @@ class ForwardPushToPollingRespSO(pollingResults: PollingResults)
 
   override def onError(t: Throwable): Unit = {
     logError(s"ForwardPushToPollingRespSO.onError calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}", t)
+    finishLatch.countDown()
     pollingResults.setError(TransferExceptionUtils.throwableToException(t))
     logError(s"ForwardPushToPollingRespSO.onError called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
   }
 
   override def onCompleted(): Unit = {
     logTrace(s"ForwardPollingToPushRespSO.onCompleted called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
+    finishLatch.countDown()
     pollingResults.setFinish()
     logTrace(s"ForwardPollingToPushRespSO.onCompleted called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
   }
