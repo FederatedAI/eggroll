@@ -75,16 +75,16 @@ class TransferService(object):
     def get_broker(key: str):
         result = TransferService.data_buffer.get(key, None)
         retry = 0
-        while not result or key not in TransferService.data_buffer:
-            report_inverval = min(0.1 * retry, 30)
-            L.trace(f"waiting broker tag={key}, retry={retry}, report_interval={report_inverval}")
+        while not result:
+            report_interval = 60
+            L.trace(f"waiting broker tag={key}, retry={retry}, report_interval={report_interval}")
             event = None
             with TransferService.mutex as e:
                 if key not in TransferService.event_buffer:
                     TransferService.event_buffer[key] = Event()
                 event = TransferService.event_buffer[key]
 
-            event.wait(report_inverval)
+            event.wait(report_interval)
             if event.is_set():
                 result = TransferService.data_buffer.get(key, None)
                 break
