@@ -281,8 +281,8 @@ class DispatchPollingReqSO(eggSiteServicerPollingRespSO: ServerCallStreamObserve
   private var pollingExchanger: PollingExchanger = _
 
   private def ensureInited(req: Proxy.PollingFrame): Unit = {
-    logTrace(s"DispatchPollingReqSO.ensureInited calling.")
     if (inited) return
+    logTrace(s"DispatchPollingReqSO.ensureInited calling.")
 
    pollingExchanger = new PollingExchanger()
     var done = false
@@ -291,7 +291,7 @@ class DispatchPollingReqSO(eggSiteServicerPollingRespSO: ServerCallStreamObserve
     while (!done && System.currentTimeMillis() < exchangerDataOpTimeout) {
       done = PollingExchanger.pollingExchangerQueue.offer(pollingExchanger,
         RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_Q_OFFER_INTERVAL_SEC.get().toLong, TimeUnit.SECONDS)
-      logTrace(s"DispatchPollingReqSO.ensureInited calling. i=${i}")
+      logTrace(s"DispatchPollingReqSO.ensureInited calling, getting from pollingExchangerQueue. i=${i}")
       i += 1
     }
 
@@ -378,8 +378,8 @@ class UnaryCallPollingReqSO(eggSiteServicerPollingRespSO: ServerCallStreamObserv
   private var inited = false
 
   private def ensureInited(req: Proxy.PollingFrame): Unit = {
-    logTrace(s"UnaryCallPollingReqSO.ensureInited calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
     if (inited) return
+    logTrace(s"UnaryCallPollingReqSO.ensureInited calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
 
     metadata = req.getPacket.getHeader
     oneLineStringMetadata = ToStringUtils.toOneLineString(metadata)
@@ -461,8 +461,8 @@ class PushPollingReqSO(val eggSiteServicerPollingRespSO: ServerCallStreamObserve
   private var inited = false
 
   private def ensureInited(req: Proxy.PollingFrame): Unit = {
-    logTrace(s"PushPollingReqSO.ensureInited calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
     if (inited) return
+    logTrace(s"PushPollingReqSO.ensureInited calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
 
     metadata = req.getPacket.getHeader
     oneLineStringMetadata = ToStringUtils.toOneLineString(metadata)
@@ -555,8 +555,8 @@ class DispatchPollingRespSO(pollingResults: PollingResults,
   private val self = this
 
   private def ensureInit(req: Proxy.PollingFrame): Unit = {
-    logTrace(s"DispatchPollingRespSO.ensureInited calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
     if (inited) return
+    logTrace(s"DispatchPollingRespSO.ensureInited calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
 
     method = req.getMethod
 
@@ -644,8 +644,8 @@ class PushPollingRespSO(pollingResults: PollingResults)
   private val self = this
 
   private def ensureInit(req: Proxy.PollingFrame): Unit = {
-    logTrace(s"PushPollingRespSO.ensureInited calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
     if (inited) return
+    logTrace(s"PushPollingRespSO.ensureInited calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
 
     method = req.getMethod
     metadata = req.getPacket.getHeader
@@ -722,8 +722,8 @@ class ForwardPushToPollingRespSO(pollingResults: PollingResults,
   private var pollingFrameSeq = 0
 
   private def ensureInited(req: Proxy.Metadata): Unit = {
-    logTrace(s"ForwardPushToPollingRespSO.ensureInited calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
     if (inited) return
+    logTrace(s"ForwardPushToPollingRespSO.ensureInited calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
 
     metadata = req
     oneLineStringMetadata = ToStringUtils.toOneLineString(metadata)
@@ -789,8 +789,8 @@ class UnaryCallPollingRespSO(pollingResults: PollingResults)
   private var pollingFrameSeq = 0
 
   private def ensureInit(req: Proxy.PollingFrame): Unit = {
-    logTrace(s"UnaryCallPollingRespSO.ensureInited calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
     if (inited) return
+    logTrace(s"UnaryCallPollingRespSO.ensureInited calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
 
     method = req.getMethod
     metadata = req.getPacket.getHeader

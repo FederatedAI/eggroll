@@ -78,13 +78,14 @@ object GrpcServerUtils extends Logging {
       .maxInboundMessageSize(maxInboundMessageSize)
       .maxInboundMetadataSize(maxInboundMetadataSize)
       .flowControlWindow(flowControlWindow)
-      .keepAliveTime(channelKeepAliveTimeSec, TimeUnit.SECONDS)
-      .keepAliveTimeout(channelKeepAliveTimeoutSec, TimeUnit.SECONDS)
-      .permitKeepAliveTime(channelPermitKeepAliveTime, TimeUnit.SECONDS)
-      .permitKeepAliveWithoutCalls(channelKeepAliveWithoutCallsEnabled)
-      .maxConnectionIdle(maxConnectionIdle, TimeUnit.SECONDS)
-      .maxConnectionAge(maxConnectionAge, TimeUnit.SECONDS)
-      .maxConnectionAgeGrace(maxConnectionAgeGrace, TimeUnit.SECONDS)
+
+      if (channelKeepAliveTimeSec > 0) nettyServerBuilder.keepAliveTime(channelKeepAliveTimeSec, TimeUnit.SECONDS)
+      if (channelKeepAliveTimeoutSec > 0) nettyServerBuilder.keepAliveTimeout(channelKeepAliveTimeoutSec, TimeUnit.SECONDS)
+      if (channelPermitKeepAliveTime > 0) nettyServerBuilder.permitKeepAliveTime(channelPermitKeepAliveTime, TimeUnit.SECONDS)
+      if (channelKeepAliveWithoutCallsEnabled) nettyServerBuilder.permitKeepAliveWithoutCalls(channelKeepAliveWithoutCallsEnabled)
+      if (maxConnectionIdle > 0) nettyServerBuilder.maxConnectionIdle(maxConnectionIdle, TimeUnit.SECONDS)
+      if (maxConnectionAge > 0) nettyServerBuilder.maxConnectionAge(maxConnectionAge, TimeUnit.SECONDS)
+      if (maxConnectionAgeGrace > 0) nettyServerBuilder.maxConnectionAgeGrace(maxConnectionAgeGrace, TimeUnit.SECONDS)
 
     val secureClusterEnabled = CoreConfKeys.CONFKEY_CORE_SECURITY_SECURE_CLUSTER_ENABLED.getWith(options).toBoolean
     if (secureClusterEnabled) {
@@ -182,14 +183,15 @@ object GrpcClientUtils extends Logging {
     }
     val builder = NettyChannelBuilder
       .forAddress(endpoint.host, endpoint.port)
-      .keepAliveTime(channelKeepAliveTimeSec, TimeUnit.SECONDS)
-      .keepAliveTimeout(channelKeepAliveTimeoutSec, TimeUnit.SECONDS)
-      .keepAliveWithoutCalls(channelKeepAliveWithoutCallsEnabled)
-      .idleTimeout(channelIdleTimeoutSec, TimeUnit.SECONDS)
       .perRpcBufferLimit(channelPerRpcBufferLimit)
       .flowControlWindow(channelFlowControlWindow)
       .maxInboundMessageSize(channelMaxInboundMessageSize)
       .maxInboundMetadataSize(channelMaxInboundMetadataSize)
+
+    if (channelIdleTimeoutSec > 0) builder.idleTimeout(channelIdleTimeoutSec, TimeUnit.SECONDS)
+    if (channelKeepAliveTimeSec > 0) builder.keepAliveTime(channelKeepAliveTimeSec, TimeUnit.SECONDS)
+    if (channelKeepAliveTimeoutSec > 0) builder.keepAliveTimeout(channelKeepAliveTimeoutSec, TimeUnit.SECONDS)
+    if (channelKeepAliveWithoutCallsEnabled) builder.keepAliveWithoutCalls(channelKeepAliveWithoutCallsEnabled)
 
       if (channelMaxRetryAttempts > 0) {
         builder.enableRetry()

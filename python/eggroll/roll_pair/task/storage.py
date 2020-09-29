@@ -138,23 +138,25 @@ class _BatchStreamStatus:
 
 
 class PutBatchTask:
-    def __init__(self, tag, partition=None):
-        self.partition = partition
-        self.tag = tag
 
     """
     transfer a total roll_pair by several batch streams
     """
     # tag -> seq -> count
 
-    _put_batch_lock = threading.Lock()
+    _class_lock = threading.Lock()
+    _partition_lock = defaultdict(threading.Lock)
+
+    def __init__(self, tag, partition=None):
+        self.partition = partition
+        self.tag = tag
 
     def run(self):
         # batch stream must be executed serially, and reinit.
         # TODO:0:  remove lock to bss
         rs_header = None
-        with self._put_batch_lock:
-            L.trace(f"do_store start for tag={self.tag}")
+        with PutBatchTask._partition_lock[self.tag]:   # tag includes partition info in tag generation
+            L.trace(f"do_store start for tag={self.tag}, partition_id={self.partition._id}")
             bss = _BatchStreamStatus.get_or_create(self.tag)
             try:
                 broker = TransferService.get_or_create_broker(self.tag, write_signals=1)
