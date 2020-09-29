@@ -121,7 +121,7 @@ class FifoBroker(Broker):
 
     def put(self, item, block=True, timeout=None):
         if self.is_write_finished():
-            raise ValueError('Broker write finished')
+            raise ValueError(f'Broker write finished. id={hex(id(self))}')
 
         self.__queue.put(item=item, block=block, timeout=timeout)
 
