@@ -169,11 +169,12 @@ class GrpcTransferServicer(transfer_pb2_grpc.TransferServiceServicer):
                 L.trace(f'GrpcTransferServicer stream finished. tag={base_tag}, remaining write count={broker,broker.__dict__}, stream empty')
                 result = transfer_pb2.TransferBatch()
 
-            broker.signal_write_finish()
             return result
         except Exception as e:
             TransferService.remove_broker(base_tag)
             raise ValueError(f"error in processing {base_tag}", e)
+        finally:
+            broker.signal_write_finish()
 
     @_exception_logger
     def recv(self, request, context):

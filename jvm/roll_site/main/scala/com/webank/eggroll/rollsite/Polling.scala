@@ -684,7 +684,7 @@ class PushPollingRespSO(pollingResults: PollingResults)
         onError(t)
     }
 
-    logTrace(s"PushPollingRespSO.onNext end. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
+    logTrace(s"PushPollingRespSO.onNext called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
   }
 
   override def onError(t: Throwable): Unit = {
