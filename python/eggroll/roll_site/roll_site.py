@@ -404,6 +404,7 @@ class RollSite(RollSiteBase):
         L.debug(f'pulling rs_key={rs_key}')
         try:
             # make sure rollpair already created
+            pull_header_interval = self.pull_header_interval
             pull_header_timeout = self.pull_header_timeout        # skips pickling self
             pull_interval = self.pull_interval      # skips pickling self
 
@@ -442,8 +443,8 @@ class RollSite(RollSiteBase):
                 header_response = self.ctx.rp_ctx.load(name=STATUS_TABLE_NAME,
                                                        namespace=rp_namespace,
                                                        options={'create_if_missing': True, 'total_partitions': 1}) \
-                    .with_stores(lambda x: PutBatchTask(transfer_tag_prefix + "0").get_header(self.pull_header_interval), options={"__op": "pull_header"})
-                wait_time += self.pull_header_interval
+                    .with_stores(lambda x: PutBatchTask(transfer_tag_prefix + "0").get_header(pull_header_interval), options={"__op": "pull_header"})
+                wait_time += pull_header_interval
 
                 #pull_status, all_finished, total_batches, total_pairs = stat_all_status(self)
                 L.debug(f"roll site get header_response: rs_key={rs_key}, rs_header={rs_header}, wait_time={wait_time}")
