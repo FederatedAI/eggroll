@@ -14,9 +14,12 @@
 #  limitations under the License.
 
 import logging
+import queue
 import threading
 from collections import defaultdict, namedtuple
 
+from eggroll.core.conf_keys import CoreConfKeys
+from eggroll.core.datastructure.broker import BrokerClosed
 from eggroll.core.pair_store.format import ArrayByteBuffer, PairBinReader
 from eggroll.core.transfer.transfer_service import TransferService
 from eggroll.core.transfer_model import ErRollSiteHeader
@@ -51,6 +54,7 @@ class _BatchStreamStatus:
         # removes lock. otherwise it deadlocks
         self._recorder[self._tag] = self
         self._is_in_order = True
+        #self._last_updated_at = None
 
     def _debug_string(self):
         return f"BatchStreams end normally, tag={self._tag} " \
@@ -72,7 +76,7 @@ class _BatchStreamStatus:
         if self._rs_header is None:
             self._rs_header = rs_header
             self._rs_key = rs_header.get_rs_key()
-            L.debug(f"header arrived. rs_key={rs_header.get_rs_key()}")
+            L.debug(f"header arrived. rs_key={rs_header.get_rs_key()}, rs_header={rs_header}")
             self._header_arrive_event.set()
         self._batch_seq_to_pair_counter[batch_seq_id] = batch_pairs
         self._stream_seq_to_pair_counter[stream_seq_id] += batch_pairs
@@ -137,28 +141,49 @@ class _BatchStreamStatus:
 
 
 class PutBatchTask:
-    def __init__(self, tag, partition=None):
-        self.partition = partition
-        self.tag = tag
 
     """
     transfer a total roll_pair by several batch streams
     """
     # tag -> seq -> count
 
-    _put_batch_lock = threading.Lock()
+    _class_lock = threading.Lock()
+    _partition_lock = defaultdict(threading.Lock)
+
+    def __init__(self, tag, partition=None):
+        self.partition = partition
+        self.tag = tag
 
     def run(self):
         # batch stream must be executed serially, and reinit.
         # TODO:0:  remove lock to bss
         rs_header = None
-        with self._put_batch_lock:
-            L.trace(f"do_store start for tag={self.tag}")
+        with PutBatchTask._partition_lock[self.tag]:   # tag includes partition info in tag generation
+            L.trace(f"do_store start for tag={self.tag}, partition_id={self.partition._id}")
             bss = _BatchStreamStatus.get_or_create(self.tag)
             try:
                 broker = TransferService.get_or_create_broker(self.tag, write_signals=1)
+
+                iter_wait = 0
+                iter_timeout = int(CoreConfKeys.EGGROLL_CORE_FIFOBROKER_ITER_TIMEOUT_SEC.get())
+
+                batch = None
+                batch_get_interval = 0.1
                 with create_adapter(self.partition) as db, db.new_batch() as wb:
-                    for batch in broker:
+                    #for batch in broker:
+                    while not broker.is_closable():
+                        try:
+                            batch = broker.get(block=True, timeout=batch_get_interval)
+                        except queue.Empty as e:
+                            iter_wait += batch_get_interval
+                            if iter_wait > iter_timeout:
+                                raise TimeoutError(f'timeout in PutBatchTask.run. tag={self.tag}, iter_timeout={iter_timeout}, iter_wait={iter_wait}')
+                            else:
+                                continue
+                        except BrokerClosed as e:
+                            continue
+
+                        iter_wait = 0
                         rs_header = ErRollSiteHeader.from_proto_string(batch.header.ext)
                         batch_pairs = 0
                         if batch.data:
@@ -176,7 +201,8 @@ class PutBatchTask:
                 bss.check_finish()
                 # TransferService.remove_broker(tag) will be called in get_status phrase finished or exception got
             except Exception as e:
-                L.exception(f'_run_put_batch error, tag={self.tag}, rs_key={rs_header.get_rs_key()}, rs_header={rs_header}')
+                L.error(f'_run_put_batch error, tag={self.tag}, '
+                        f'rs_key={rs_header.get_rs_key() if rs_header is not None else None}, rs_header={rs_header}', e)
                 raise e
             finally:
                 TransferService.remove_broker(self.tag)
