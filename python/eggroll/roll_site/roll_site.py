@@ -244,14 +244,16 @@ class RollSite(RollSiteBase):
         self.push_batches_per_stream = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PUSH_BATCHES_PER_STREAM.get_with(options))
         self.push_per_stream_timeout = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PUSH_PER_STREAM_TIMEOUT_SEC.get_with(options))
         self.push_max_retry = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PUSH_MAX_RETRY.get_with(options))
+        self.pull_header_interval = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PULL_HEADER_INTERVAL_SEC.get())
         self.pull_header_timeout = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PULL_HEADER_TIMEOUT_SEC.get_with(options))
-        self.pull_overall_timeout = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PULL_OVERALL_TIMEOUT_SEC.get_with(options))
+        self.pull_interval = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PULL_INTERVAL_SEC.get_with(options))
         self.pull_max_retry = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PULL_MAX_RETRY.get_with(options))
         L.debug(f"RollSite __init__: push_batch_per_stream={self.push_batches_per_stream}, "
                 f"push_per_stream_timeout={self.push_per_stream_timeout}, "
                 f"push_max_retry={self.push_max_retry}, "
+                f"pull_header_interval={self.pull_header_interval}, "
                 f"pull_header_timeout={self.pull_header_timeout}, "
-                f"pull_overall_timeout={self.pull_overall_timeout}, "
+                f"pull_interval={self.pull_interval}, "
                 f"pull_max_retry={self.pull_max_retry}")
 
     ################## push ##################
@@ -403,11 +405,11 @@ class RollSite(RollSiteBase):
         try:
             # make sure rollpair already created
             pull_header_timeout = self.pull_header_timeout        # skips pickling self
-            pull_overall_timeout = self.pull_overall_timeout      # skips pickling self
+            pull_interval = self.pull_interval      # skips pickling self
 
             def get_partition_status(task):
                 put_batch_task = PutBatchTask(transfer_tag_prefix + str(task._inputs[0]._id), None)
-                return put_batch_task.get_status(pull_overall_timeout)
+                return put_batch_task.get_status(pull_interval)
 
             def get_status(roll_site):
                 pull_status = {}
@@ -440,8 +442,8 @@ class RollSite(RollSiteBase):
                 header_response = self.ctx.rp_ctx.load(name=STATUS_TABLE_NAME,
                                                        namespace=rp_namespace,
                                                        options={'create_if_missing': True, 'total_partitions': 1}) \
-                    .with_stores(lambda x: PutBatchTask(transfer_tag_prefix + "0").get_header(10), options={"__op": "pull_header"})
-                wait_time += 10
+                    .with_stores(lambda x: PutBatchTask(transfer_tag_prefix + "0").get_header(self.pull_header_interval), options={"__op": "pull_header"})
+                wait_time += self.pull_header_interval
 
                 #pull_status, all_finished, total_batches, total_pairs = stat_all_status(self)
                 L.debug(f"roll site get header_response: rs_key={rs_key}, rs_header={rs_header}, wait_time={wait_time}")
