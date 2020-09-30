@@ -48,17 +48,16 @@ class TransferService(object):
 
     @staticmethod
     def get_or_create_broker(key: str, maxsize: int = _DEFAULT_QUEUE_SIZE, write_signals=1):
-        if not TransferService.has_broker(key):
-            with TransferService.mutex as m:
-                if not TransferService.has_broker(key):
-                    L.trace(f'creating broker={key}, write signals={write_signals}')
-                    final_size = maxsize if maxsize > 0 else TransferService._DEFAULT_QUEUE_SIZE
-                    TransferService.data_buffer[key] = \
-                        FifoBroker(maxsize=final_size, writers=write_signals, name=key)
-                if key not in TransferService.event_buffer:
-                    TransferService.event_buffer[key] = Event()
-                event = TransferService.event_buffer[key]
-                event.set()
+        with TransferService.mutex:
+            if not TransferService.has_broker(key):
+                L.trace(f'creating broker={key}, write signals={write_signals}')
+                final_size = maxsize if maxsize > 0 else TransferService._DEFAULT_QUEUE_SIZE
+                TransferService.data_buffer[key] = \
+                    FifoBroker(maxsize=final_size, writers=write_signals, name=key)
+            if key not in TransferService.event_buffer:
+                TransferService.event_buffer[key] = Event()
+            event = TransferService.event_buffer[key]
+            event.set()
 
         return TransferService.data_buffer[key]
 
@@ -73,21 +72,23 @@ class TransferService(object):
 
     @staticmethod
     def get_broker(key: str):
-        result = TransferService.data_buffer.get(key, None)
+        result = None
         retry = 0
-        while not result:
+        while True:
             report_interval = 60
             L.trace(f"waiting broker tag={key}, retry={retry}, report_interval={report_interval}")
             event = None
-            with TransferService.mutex as e:
+            with TransferService.mutex:
                 if key not in TransferService.event_buffer:
                     TransferService.event_buffer[key] = Event()
                 event = TransferService.event_buffer[key]
 
             event.wait(report_interval)
-            if event.is_set():
-                result = TransferService.data_buffer.get(key, None)
-                break
+            with TransferService.mutex:
+                if event.is_set():
+                    result = TransferService.data_buffer.get(key)
+                    if result is not None:
+                        break
             retry += 1
             if retry > 100:
                 raise RuntimeError(f"cannot get broker={key}, result={result}, data_buffer={TransferService.data_buffer}")
@@ -96,18 +97,17 @@ class TransferService(object):
     @staticmethod
     def remove_broker(key: str):
         result = False
-        if key in TransferService.data_buffer:
-            data = None
-            event = None
-            with TransferService.mutex as m:
-                if key in TransferService.data_buffer:
-                    data = TransferService.data_buffer[key]
-                    del TransferService.data_buffer[key]
-                    event = TransferService.event_buffer[key]
-                    del TransferService.event_buffer[key]
-                    result = True
 
-            if not event.is_set():
+        event = None
+        with TransferService.mutex as m:
+            if key in TransferService.data_buffer:
+                data = TransferService.data_buffer[key]
+                del TransferService.data_buffer[key]
+                event = TransferService.event_buffer[key]
+                del TransferService.event_buffer[key]
+                result = True
+
+            if event is not None and not event.is_set():
                 L.debug(f"removing event but it is not set: key={key}")
 
         return result
@@ -162,19 +162,15 @@ class GrpcTransferServicer(transfer_pb2_grpc.TransferServiceServicer):
                 L.trace(f'GrpcTransferServicer stream finished. tag={base_tag}, remaining write count={broker,broker.__dict__}, stream not empty')
                 result = transfer_pb2.TransferBatch(header=response_header)
             else:
-                L.trace(f'broker is None. Getting tag from metadata')
-                metadata = dict(context.invocation_metadata())
-                base_tag = metadata[TRANSFER_BROKER_NAME]
-                broker = TransferService.get_broker(base_tag)
-                L.trace(f'GrpcTransferServicer stream finished. tag={base_tag}, remaining write count={broker,broker.__dict__}, stream empty')
-                result = transfer_pb2.TransferBatch()
+                raise ValueError('error in GrpcTransferServicer.send: empty request_iterator')
 
             return result
         except Exception as e:
             TransferService.remove_broker(base_tag)
             raise ValueError(f"error in processing {base_tag}", e)
         finally:
-            broker.signal_write_finish()
+            if broker is not None:
+                broker.signal_write_finish()
 
     @_exception_logger
     def recv(self, request, context):
