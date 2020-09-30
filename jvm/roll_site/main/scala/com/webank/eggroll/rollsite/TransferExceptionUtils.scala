@@ -2,8 +2,8 @@ package com.webank.eggroll.rollsite
 
 import com.google.protobuf.ByteString
 import com.webank.ai.eggroll.api.networking.proxy.Proxy
-import com.webank.ai.eggroll.api.networking.proxy.Proxy.Topic
-import com.webank.eggroll.core.util.RuntimeUtils
+import com.webank.ai.eggroll.api.networking.proxy.Proxy.{PollingFrame, Topic}
+import com.webank.eggroll.core.util.{ErrorUtils, RuntimeUtils}
 import io.grpc.{Status, StatusRuntimeException}
 import org.apache.commons.lang3.exception.ExceptionUtils
 
@@ -45,6 +45,10 @@ object TransferExceptionUtils {
     false
   }
 
+  def checkPollingFrameIsException(request: Proxy.PollingFrame): Boolean = {
+    PollingMethods.ERROR_POISON.equals(request.getMethod)
+  }
+
   def genExceptionToNextSite(request: Proxy.Packet, t: Throwable = null): Proxy.Packet = {
     // good data
     if (!checkPacketIsException(request) && t == null) return request
@@ -76,6 +80,14 @@ object TransferExceptionUtils {
       .setBody(Proxy.Data.newBuilder()
         .setKey("[roll site transfer exception]")
         .setValue(ByteString.copyFromUtf8(nextData)))
+      .build()
+  }
+
+  // TODO:0: add site info
+  def genExceptionPollingFrame(t: Throwable): PollingFrame = {
+    Proxy.PollingFrame.newBuilder()
+      .setMethod(PollingMethods.ERROR_POISON)
+      .setDesc(ErrorUtils.getStackTraceString(t))
       .build()
   }
 }

@@ -158,9 +158,10 @@ class TransferPair(object):
 
     @staticmethod
     @_exception_logger
-    def pair_to_bin_batch(input_iter, limit=None, sendbuf_size=RollPairConfKeys.EGGROLL_ROLLPAIR_TRANSFERPAIR_SENDBUF_SIZE.default_value):
+    def pair_to_bin_batch(input_iter, limit=None, sendbuf_size=-1):
         import os
-        sendbuf_size = int(RollPairConfKeys.EGGROLL_ROLLPAIR_TRANSFERPAIR_SENDBUF_SIZE.get())
+        if sendbuf_size <= 0:
+            sendbuf_size = int(RollPairConfKeys.EGGROLL_ROLLPAIR_TRANSFERPAIR_SENDBUF_SIZE.get())
 
         L.trace(f'pair_to_bin_batch start')
         pair_count = 0

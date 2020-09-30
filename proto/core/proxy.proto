@@ -98,6 +98,7 @@ message PollingFrame {
     int64 seq = 2;
     Metadata metadata = 10;
     Packet packet = 20;
+    string desc = 30;
 }
 
 // data transfer service
