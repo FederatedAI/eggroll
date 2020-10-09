@@ -56,10 +56,9 @@ class TransferService(object):
                     FifoBroker(maxsize=final_size, writers=write_signals, name=key)
             if key not in TransferService.event_buffer:
                 TransferService.event_buffer[key] = Event()
-            event = TransferService.event_buffer[key]
-            event.set()
+            TransferService.event_buffer[key].set()
 
-        return TransferService.data_buffer[key]
+            return TransferService.data_buffer[key]
 
     @staticmethod
     def set_broker(key: str, broker):
@@ -67,8 +66,7 @@ class TransferService(object):
             TransferService.data_buffer[key] = broker
             if key not in TransferService.event_buffer:
                 TransferService.event_buffer[key] = Event()
-            event = TransferService.event_buffer[key]
-            event.set()
+            TransferService.event_buffer[key].set()
 
     @staticmethod
     def get_broker(key: str):
@@ -81,26 +79,32 @@ class TransferService(object):
             with TransferService.mutex:
                 if key not in TransferService.event_buffer:
                     TransferService.event_buffer[key] = Event()
-                event = TransferService.event_buffer[key]
 
-            event.wait(report_interval)
+            TransferService.event_buffer[key].wait(report_interval)
             with TransferService.mutex:
-                if event.is_set():
+                if TransferService.event_buffer[key].is_set():
+                    L.trace(f'event is set. tag={key}')
                     result = TransferService.data_buffer.get(key)
-                    if result is not None:
-                        break
+                else:
+                    L.trace(f'event is not set. tag={key}')
+                if result is not None:
+                    break
+                else:
+                    L.trace(f'result is None. tag={key}')
             retry += 1
             if retry > 100:
-                raise RuntimeError(f"cannot get broker={key}, result={result}, data_buffer={TransferService.data_buffer}")
+                raise RuntimeError(f"cannot get broker={key}, result={result}, data_buffer={TransferService.data_buffer}, event_buffer={TransferService.event_buffer}")
         return result
 
     @staticmethod
     def remove_broker(key: str):
+        L.trace(f'trying to remove broker tag={key}')
         result = False
 
         event = None
         with TransferService.mutex as m:
             if key in TransferService.data_buffer:
+                L.trace(f'actual removing broker tag={key}')
                 data = TransferService.data_buffer[key]
                 del TransferService.data_buffer[key]
                 event = TransferService.event_buffer[key]

@@ -254,10 +254,11 @@ class TransferPair(object):
                                 wb.merge(merger, k, v)
                             done_cnt += 1
                     L.trace(f"do_store done for tag={tag} for partition={store_partition_inner}")
-                TransferService.remove_broker(tag)
             except Exception as e:
                 L.exception(f'Error in do_store for tag={tag}')
                 raise e
+            finally:
+                TransferService.remove_broker(tag)
             return done_cnt
         return self._executor_pool.submit(do_store, store_partition, is_shuffle, total_writers, reduce_op)
 
