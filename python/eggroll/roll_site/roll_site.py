@@ -480,6 +480,7 @@ class RollSite(RollSiteBase):
                     rp = self.ctx.rp_ctx.load(name=rp_name, namespace=rp_namespace)
                     if data_type == "object":
                         result = pickle.loads(b''.join(map(lambda t: t[1], sorted(rp.get_all(), key=lambda x: int.from_bytes(x[0], "big")))))
+                        rp.destroy()
                         L.debug(f"pulled object: rs_key={rs_key}, rs_header={rs_header}, is_none={result is None}, "
                                 f"elapsed={time.time() - start_time}")
                     else:
