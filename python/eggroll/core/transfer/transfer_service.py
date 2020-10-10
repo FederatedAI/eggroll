@@ -92,7 +92,7 @@ class TransferService(object):
                 else:
                     L.trace(f'result is None. tag={key}')
             retry += 1
-            if retry > 100:
+            if retry > 5:
                 raise RuntimeError(f"cannot get broker={key}, result={result}, data_buffer={TransferService.data_buffer}, event_buffer={TransferService.event_buffer}")
         return result
 
