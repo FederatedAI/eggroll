@@ -257,7 +257,7 @@ class RollSite(RollSiteBase):
                 f"pull_max_retry={self.pull_max_retry}")
 
     ################## push ##################
-    def _push_bytes(self, obj, rs_header: ErRollSiteHeader):
+    def _push_bytes(self, obj, rs_header: ErRollSiteHeader, options: dict):
         start_time = time.time()
 
         rs_key = rs_header.get_rs_key()
@@ -324,13 +324,16 @@ class RollSite(RollSiteBase):
         L.debug(f"pushed object: rs_key={rs_key}, rs_header={rs_header}, is_none={obj is None}, elapsed={time.time() - start_time}")
         self.ctx.pushing_latch.count_down()
 
-    def _push_rollpair(self, rp: RollPair, rs_header: ErRollSiteHeader):
+    def _push_rollpair(self, rp: RollPair, rs_header: ErRollSiteHeader, options: dict):
         rs_key = rs_header.get_rs_key()
         if L.isEnabledFor(logging.DEBUG):
             L.debug(f"pushing rollpair: rs_key={rs_key}, rs_header={rs_header}, rp.count={rp.count()}")
         start_time = time.time()
 
         rs_header._total_partitions = rp.get_partitions()
+        serdes = options.get('serdes', None)
+        if serdes is not None:
+            rs_header._options['serdes'] = serdes
 
         batches_per_stream = self.push_batches_per_stream
         body_bytes = self.batch_body_bytes
@@ -392,7 +395,7 @@ class RollSite(RollSiteBase):
 
     ################## pull ##################
 
-    def _pull_one(self, rs_header: ErRollSiteHeader):
+    def _pull_one(self, rs_header: ErRollSiteHeader, options: dict):
         start_time = time.time()
         rs_key = rp_name = rs_header.get_rs_key()
         rp_namespace = self.roll_site_session_id
@@ -418,9 +421,11 @@ class RollSite(RollSiteBase):
                 total_batches = 0
                 all_finished = True
 
+                final_options = options.copy()
+                final_options['create_if_missing'] = False
                 store = roll_site.ctx.rp_ctx.load(name=rp_name,
                                                   namespace=rp_namespace,
-                                                  options={'create_if_missing': False})
+                                                  options=final_options)
 
                 if store is None:
                     raise ValueError(f'illegal state for rp_name={rp_name}, rp_namespace={rp_namespace}')
@@ -440,9 +445,12 @@ class RollSite(RollSiteBase):
             header_response = None
             while wait_time < pull_header_timeout and \
                     (header_response is None or not isinstance(header_response[0][1], ErRollSiteHeader)):
+                final_options = options.copy()
+                final_options['create_if_missing'] = True
+                final_options['total_partitions'] = 1
                 header_response = self.ctx.rp_ctx.load(name=STATUS_TABLE_NAME,
                                                        namespace=rp_namespace,
-                                                       options={'create_if_missing': True, 'total_partitions': 1}) \
+                                                       options=final_options) \
                     .with_stores(lambda x: PutBatchTask(transfer_tag_prefix + "0").get_header(pull_header_interval), options={"__op": "pull_header"})
                 wait_time += pull_header_interval
 
@@ -497,7 +505,9 @@ class RollSite(RollSiteBase):
             L.exception(f"fatal error: when pulling rs_key={rs_key}, rs_header={rs_header}, attempts={pull_attempts}", e)
             raise e
 
-    def push(self, obj, parties: list = None):
+    def push(self, obj, parties: list = None, options: dict = None):
+        if options is None:
+            options = {}
         futures = []
         for role_party_id in parties:
             self.ctx.pushing_latch.count_up()
@@ -509,18 +519,20 @@ class RollSite(RollSiteBase):
                 src_role=self.local_role, src_party_id=self.party_id, dst_role=dst_role, dst_party_id=dst_party_id,
                 data_type=data_type)
             if isinstance(obj, RollPair):
-                future = self._run_thread(self._push_rollpair, obj, rs_header)
+                future = self._run_thread(self._push_rollpair, obj, rs_header, options)
             else:
-                future = self._run_thread(self._push_bytes, obj, rs_header)
+                future = self._run_thread(self._push_bytes, obj, rs_header, options)
             futures.append(future)
         return futures
 
-    def pull(self, parties: list = None):
+    def pull(self, parties: list = None, options: dict = None):
+        if options is None:
+            options = {}
         futures = []
         for src_role, src_party_id in parties:
             src_party_id = str(src_party_id)
             rs_header = ErRollSiteHeader(
                 roll_site_session_id=self.roll_site_session_id, name=self.name, tag=self.tag,
                 src_role=src_role, src_party_id=src_party_id, dst_role=self.local_role, dst_party_id=self.party_id)
-            futures.append(self._receive_executor_pool.submit(self._pull_one, rs_header))
+            futures.append(self._receive_executor_pool.submit(self._pull_one, rs_header, options))
         return futures
