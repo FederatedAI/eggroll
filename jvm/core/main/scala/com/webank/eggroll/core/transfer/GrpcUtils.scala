@@ -107,7 +107,7 @@ object GrpcServerUtils extends Logging {
       else sslContextBuilder.clientAuth(ClientAuth.OPTIONAL)
 
       nettyServerBuilder.sslContext(sslContextBuilder.build)
-      logInfo(s"gRPC server at ${port} starting in secure mode. " +
+      logInfo(s"gRPC server at port=${port} starting in secure mode. " +
         s"server private key path: ${key.getAbsolutePath}, " +
         s"key crt path: ${keyCrt.getAbsoluteFile}, " +
         s"ca crt path: ${caCrt.getAbsolutePath}")
@@ -128,27 +128,26 @@ object GrpcClientUtils extends Logging {
     .maximumSize(maximumSize)
     .expireAfterAccess(expireTimeout, TimeUnit.SECONDS)
     .recordStats()
-    .weakValues()
     .removalListener((notification: RemovalNotification[ErEndpoint, ManagedChannel]) => {
       val endpoint = notification.getKey
       val managedChannel = notification.getValue
       if (managedChannel != null) if (!managedChannel.isShutdown || !managedChannel.isTerminated) managedChannel.shutdown
 
-      logDebug(s"[CHANNEL][REMOVAL] removing for endpoint: ${endpoint}. reason: ${notification.getCause.name()}")
+      logDebug(s"[CHANNEL][REMOVAL] removing for endpoint=${endpoint}, id=${Integer.toHexString(endpoint.hashCode())}. reason=\"${notification.getCause.name()}\"")
     })
   private val insecureChannelCache: LoadingCache[ErEndpoint, ManagedChannel] = cacheBuilder
     .build(new CacheLoader[ErEndpoint, ManagedChannel]() {
-    override def load(endpoint: ErEndpoint): ManagedChannel = {
-      logDebug(s"[CHANNEL][INSECURE] creating for endpoint: ${endpoint}")
-      createChannel(endpoint, false)
-    }
-  })
+      override def load(endpoint: ErEndpoint): ManagedChannel = {
+        logDebug(s"[CHANNEL][INSECURE] creating for endpoint=${endpoint}, id=${Integer.toHexString(endpoint.hashCode())}")
+        createChannel(endpoint, isSecureChannel = false)
+      }
+    })
 
   private val secureChannelCache: LoadingCache[ErEndpoint, ManagedChannel] = cacheBuilder
     .build(new CacheLoader[ErEndpoint, ManagedChannel]() {
       override def load(endpoint: ErEndpoint): ManagedChannel = {
-        logDebug(s"[CHANNEL][SECURE] creating for endpoint: ${endpoint}")
-        createChannel(endpoint, true)
+        logDebug(s"[CHANNEL][SECURE] creating for endpoint=${endpoint}, id=${Integer.toHexString(endpoint.hashCode())}")
+        createChannel(endpoint, isSecureChannel = true)
       }
     })
 
