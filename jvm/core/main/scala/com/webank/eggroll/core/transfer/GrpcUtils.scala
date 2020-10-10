@@ -133,7 +133,7 @@ object GrpcClientUtils extends Logging {
       val managedChannel = notification.getValue
       if (managedChannel != null) if (!managedChannel.isShutdown || !managedChannel.isTerminated) managedChannel.shutdown
 
-      logDebug(s"[CHANNEL][REMOVAL] removing for endpoint=${endpoint}, id=${Integer.toHexString(endpoint.hashCode())}. reason: ${notification.getCause.name()}")
+      logDebug(s"[CHANNEL][REMOVAL] removing for endpoint=${endpoint}, id=${Integer.toHexString(endpoint.hashCode())}. reason=\"${notification.getCause.name()}\"")
     })
   private val insecureChannelCache: LoadingCache[ErEndpoint, ManagedChannel] = cacheBuilder
     .build(new CacheLoader[ErEndpoint, ManagedChannel]() {
