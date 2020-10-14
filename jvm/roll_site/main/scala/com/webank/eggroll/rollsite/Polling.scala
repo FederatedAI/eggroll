@@ -128,7 +128,7 @@ class LongPollingClient extends Logging {
         }
       } catch {
         case t: CancellationException =>
-          logInfo(t.getMessage)
+          logDebug(t.getMessage)
           //pollingReqSO.onNext(TransferExceptionUtils.genExceptionPollingFrame(t))
           pollingReqSO.onCompleted()
         case t: Throwable =>
@@ -199,7 +199,7 @@ object PollingExchanger extends Logging {
       curRetry += 1
     }
 
-    if (!done) throw new TimeoutException(s"${logPrefix} failed: timeout. current EGGROLL_ROLLSITE_POLLING_EXCHANGER_DATA_OP_TIMEOUT_SEC=${timeout}")
+    if (!done) throw new TimeoutException(s"${logPrefix} failed: timeout. current EGGROLL_ROLLSITE_POLLING_EXCHANGER_DATA_OP_TIMEOUT_SEC=${RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_EXCHANGER_DATA_OP_TIMEOUT_SEC.get()}")
     else done
   }
 
@@ -215,7 +215,7 @@ object PollingExchanger extends Logging {
       curRetry += 1
     }
 
-    if (result == null) throw new TimeoutException(s"${logPrefix} failed: timeout. current EGGROLL_ROLLSITE_POLLING_EXCHANGER_DATA_OP_TIMEOUT_SEC=${timeout}")
+    if (result == null) throw new TimeoutException(s"${logPrefix} failed: timeout. current EGGROLL_ROLLSITE_POLLING_EXCHANGER_DATA_OP_TIMEOUT_SEC=${RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_EXCHANGER_DATA_OP_TIMEOUT_SEC.get()}")
     else result
   }
 }
