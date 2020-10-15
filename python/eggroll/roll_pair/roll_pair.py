@@ -314,7 +314,7 @@ class RollPair(object):
                 or not hasattr(self, 'ctx'):
             return
         if not self.gc_enable:
-            L.debug('gc not enabled session={}'.format(self.__session_id))
+            L.debug('GC not enabled session={}'.format(self.__session_id))
             return
 
         if self.get_store_type() != StoreTypes.ROLLPAIR_IN_MEMORY:
@@ -483,6 +483,7 @@ class RollPair(object):
         partition_id = self.partitioner(k)
         egg = self.ctx.route_to_egg(self.__store._partitions[partition_id])
         inputs = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
+        outputs = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
         outputs = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
 
         job_id = generate_job_id(self.__session_id, RollPair.GET)

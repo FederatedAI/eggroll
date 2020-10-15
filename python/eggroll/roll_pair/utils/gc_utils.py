@@ -71,10 +71,11 @@ class GcRecorder(object):
     def decrease_ref_count(self, er_store):
         if er_store._store_locator._store_type != StoreTypes.ROLLPAIR_IN_MEMORY:
             return
-        ref_count = self.gc_recorder.get((er_store._store_locator._namespace, er_store._store_locator._name))
+        t_ns_n = (er_store._store_locator._namespace, er_store._store_locator._name)
+        ref_count = self.gc_recorder.get(t_ns_n)
         record_count = 0 if ref_count is None or ref_count == 0 else (ref_count - 1)
-        self.gc_recorder[(er_store._store_locator._namespace, er_store._store_locator._name)] = record_count
-        if record_count == 0 and er_store._store_locator._name in self.gc_recorder:
-            L.trace(f'GC put in queue. store_locator={er_store._store_locator._name}')
-            self.gc_queue.put((er_store._store_locator._namespace, er_store._store_locator._name))
-            self.gc_recorder.pop((er_store._store_locator._namespace, er_store._store_locator._name))
+        self.gc_recorder[t_ns_n] = record_count
+        if record_count == 0 and t_ns_n in self.gc_recorder:
+            L.trace(f'GC put in queue. namespace={t_ns_n[0]}, name={t_ns_n[1]}')
+            self.gc_queue.put(t_ns_n)
+            self.gc_recorder.pop(t_ns_n)
