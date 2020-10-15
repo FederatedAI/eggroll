@@ -20,20 +20,24 @@ class GcRecorder(object):
         self.leveldb_recorder = set()
         self.gc_queue = create_simple_queue()
         if "EGGROLL_GC_DISABLE" in os.environ and os.environ["EGGROLL_GC_DISABLE"] == '1':
-            L.info("global gc is disable, "
-                  "will not execute gc but only record temporary RollPair during the whole session")
+            L.info("global GC disabled, "
+                   "will not execute gc but only record temporary RollPair during the whole session")
         else:
+            L.info("global GC enabled. starting GC thread")
             self.gc_thread = Thread(target=self.run, daemon=True)
             self.gc_thread.start()
 
     def stop(self):
         self.should_stop = True
+        L.info("GC: gc_util.stop called")
 
     def run(self):
         if "EGGROLL_GC_DISABLE" in os.environ and os.environ["EGGROLL_GC_DISABLE"] == '1':
-            L.info("global gc switch is close, "
-                  "will not execute gc but only record temporary RollPair during the whole session")
+            L.info("global GC disabled, "
+                   "will not execute gc but only record temporary RollPair during the whole session")
             return
+        options = dict()
+        options['create_if_missing'] = True
         while not self.should_stop:
             try:
                 rp_namespace_name = self.gc_queue.get(block=True, timeout=0.5)
@@ -42,10 +46,10 @@ class GcRecorder(object):
             if not rp_namespace_name:
                 continue
             L.trace(f"GC thread destroying rp={rp_namespace_name}")
-            options = dict()
-            options['create_if_missing'] = True
             self.record_rpc.load(namespace=rp_namespace_name[0],
-                                     name=rp_namespace_name[1], options=options).destroy()
+                                 name=rp_namespace_name[1], options=options).destroy()
+
+        L.info(f"GC should_stop={self.should_stop}, stopping GC thread")
 
     def record(self, er_store: ErStore):
         store_type = er_store._store_locator._store_type
@@ -71,6 +75,6 @@ class GcRecorder(object):
         record_count = 0 if ref_count is None or ref_count == 0 else (ref_count - 1)
         self.gc_recorder[(er_store._store_locator._namespace, er_store._store_locator._name)] = record_count
         if record_count == 0 and er_store._store_locator._name in self.gc_recorder:
-            L.trace(f'GC put in queue:{er_store._store_locator._name}')
+            L.trace(f'GC put in queue. store_locator={er_store._store_locator._name}')
             self.gc_queue.put((er_store._store_locator._namespace, er_store._store_locator._name))
             self.gc_recorder.pop((er_store._store_locator._namespace, er_store._store_locator._name))
