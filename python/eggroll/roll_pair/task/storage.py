@@ -122,6 +122,14 @@ class _BatchStreamStatus:
         #return finished, bss._total_batches, bss._counter, sum(bss._counter.values()), bss._data_type
 
     @classmethod
+    def clear_status(cls, tag):
+        with cls._recorder_lock:
+            if tag in cls._recorder:
+                bss = cls._recorder[tag]
+                del cls._recorder[tag]
+                return bss._to_tuple()
+
+    @classmethod
     def wait_header(cls, tag, timeout):
         bss = cls.get_or_create(tag)
         bss._header_arrive_event.wait(timeout)
@@ -139,6 +147,17 @@ class _BatchStreamStatus:
                f'header_arrive_event={self._header_arrive_event.is_set()}, ' \
                f'rs_header={self._rs_header}) at {hex(id(self))}>'
 
+    def _to_tuple(self):
+        return BSS(
+                tag=self._tag,
+                is_finished=self._stream_finish_event.is_set(),
+                total_batches=self._total_batches,
+                batch_seq_to_pair_counter=self._batch_seq_to_pair_counter,
+                total_streams=self._total_streams,
+                stream_seq_to_pair_counter=self._stream_seq_to_pair_counter,
+                stream_seq_to_batch_seq=self._stream_seq_to_batch_seq,
+                total_pairs=sum(self._batch_seq_to_pair_counter.values()),
+                data_type=self._data_type)
 
 class PutBatchTask:
 
@@ -212,3 +231,6 @@ class PutBatchTask:
 
     def get_header(self, timeout):
         return _BatchStreamStatus.wait_header(self.tag, timeout)
+
+    def clear_status(self):
+        return _BatchStreamStatus.clear_status(self.tag)
