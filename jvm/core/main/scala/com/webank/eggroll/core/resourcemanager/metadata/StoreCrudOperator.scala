@@ -180,11 +180,14 @@ object StoreCrudOperator {
           createdAt = rs.getDate("created_at"),
           updatedAt = rs.getDate("updated_at"))
       ),
-      "select * from store_option where store_locator_id = ?", storeLocatorId).toList
+      "select * from store_option where store_locator_id = ?", storeLocatorId)
 
     val outputOptions = new ConcurrentHashMap[String, String]()
     if (inputOptions != null) {
       outputOptions.putAll(inputOptions)
+    }
+    if (storeOpts != null) {
+      storeOpts.foreach(r => outputOptions.put(r.name, r.data))
     }
 
     // process output partitions
