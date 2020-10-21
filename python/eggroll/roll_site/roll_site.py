@@ -279,6 +279,8 @@ class RollSite(RollSiteBase):
 
         rs_header._partition_id = 0
         rs_header._total_partitions = 1
+
+        rs_header._options.update(options)
         # NOTICE: all modifications to rs_header are limited in bs_helper.
         # rs_header is shared by bs_helper and here. any modification in bs_helper affects this header.
         # Remind that python's object references are passed by value,
@@ -331,9 +333,7 @@ class RollSite(RollSiteBase):
         start_time = time.time()
 
         rs_header._total_partitions = rp.get_partitions()
-        serdes = options.get('serdes', None)
-        if serdes is not None:
-            rs_header._options['serdes'] = serdes
+        rs_header._options.update(options)
 
         batches_per_stream = self.push_batches_per_stream
         body_bytes = self.batch_body_bytes
@@ -493,6 +493,7 @@ class RollSite(RollSiteBase):
                                 f"elapsed={time.time() - start_time}")
                     else:
                         result = rp
+
                         if L.isEnabledFor(logging.DEBUG):
                             L.debug(f"pulled roll_pair: rs_key={rs_key}, rs_header={rs_header}, rp.count={rp.count()}, "
                                     f"elapsed={time.time() - start_time}")
