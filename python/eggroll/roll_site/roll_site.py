@@ -308,7 +308,7 @@ class RollSite(RollSiteBase):
                     exception = None
                     break
                 except Exception as e:
-                    L.warn(f"push object error. rs_key={rs_key}, partition_id={rs_header._partition_id}, rs_header={rs_header}, cur_retry={cur_retry}", e)
+                    L.warn(f"push object error. rs_key={rs_key}, partition_id={rs_header._partition_id}, rs_header={rs_header}, cur_retry={cur_retry}", exc_info=e)
                     time.sleep(min(2 * cur_retry, 20))
                     if isinstance(e, RpcError) and e.code().name == 'UNAVAILABLE':
                         channel = grpc_channel_factory.create_channel(self.ctx.proxy_endpoint, refresh=True)
@@ -317,7 +317,7 @@ class RollSite(RollSiteBase):
                 finally:
                     cur_retry += 1
             if exception is not None:
-                L.error(f"push object failed. rs_key={rs_key}, partition_id={rs_header._partition_id}, rs_header={rs_header}, cur_retry={cur_retry}", exception)
+                L.exception(f"push object failed. rs_key={rs_key}, partition_id={rs_header._partition_id}, rs_header={rs_header}, cur_retry={cur_retry}", exc_info=e)
                 raise exception
             L.trace(f'pushed object stream. rs_key={rs_key}, rs_header={rs_header}, cur_retry={cur_retry - 1}')
 
@@ -369,7 +369,7 @@ class RollSite(RollSiteBase):
                             exception = None
                             break
                         except Exception as e:
-                            L.warn(f"push partition error. rs_key={rs_key}, partition_id={rs_header._partition_id}, rs_header={rs_header}, cur_retry={cur_retry}", e)
+                            L.warn(f"push partition error. rs_key={rs_key}, partition_id={rs_header._partition_id}, rs_header={rs_header}, cur_retry={cur_retry}", exc_info=e)
                             time.sleep(min(2 * cur_retry, 20))
                             if isinstance(e, RpcError) and e.code().name == 'UNAVAILABLE':
                                 channel = grpc_channel_factory.create_channel(endpoint, refresh=True)
@@ -379,7 +379,7 @@ class RollSite(RollSiteBase):
                         finally:
                             cur_retry += 1
                     if exception is not None:
-                        L.error(f"push partition failed. rs_key={rs_key}, partition_id={rs_header._partition_id}, rs_header={rs_header}, cur_retry={cur_retry}", exception)
+                        L.exception(f"push partition failed. rs_key={rs_key}, partition_id={rs_header._partition_id}, rs_header={rs_header}, cur_retry={cur_retry}", exc_info=e)
                         raise exception
                     L.trace(f'pushed rollpair partition stream. rs_key={rs_key}, partition_id={rs_header._partition_id}, rs_header={rs_header}, retry count={cur_retry - 1}')
 
@@ -494,7 +494,7 @@ class RollSite(RollSiteBase):
             raise IOError(f"roll site pull failed. max try exceeded: {self.pull_max_retry}, rs_key={rs_key}, "
                           f"rs_header={rs_header}, pull_status={pull_status}")
         except Exception as e:
-            L.exception(f"fatal error: when pulling rs_key={rs_key}, rs_header={rs_header}, attempts={pull_attempts}", e)
+            L.exception(f"fatal error: when pulling rs_key={rs_key}, rs_header={rs_header}, attempts={pull_attempts}")
             raise e
 
     def push(self, obj, parties: list = None):

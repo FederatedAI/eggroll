@@ -764,7 +764,7 @@ class ForwardPushToPollingRespSO(pollingResults: PollingResults,
   }
 
   override def onCompleted(): Unit = {
-    logTrace(s"ForwardPollingToPushRespSO.onCompleted called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
+    logTrace(s"ForwardPollingToPushRespSO.onCompleted calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
     finishLatch.countDown()
     pollingResults.setFinish()
     logTrace(s"ForwardPollingToPushRespSO.onCompleted called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
