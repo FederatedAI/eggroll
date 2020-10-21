@@ -280,7 +280,13 @@ class RollSite(RollSiteBase):
         rs_header._partition_id = 0
         rs_header._total_partitions = 1
 
-        rs_header._options.update(options)
+        serdes = options.get('serdes', None)
+        if serdes is not None:
+            rs_header._options['serdes'] = serdes
+
+        wrapee_cls = options.get('wrapee_cls', None)
+        if serdes is not None:
+            rs_header._options['wrapee_cls'] = wrapee_cls
         # NOTICE: all modifications to rs_header are limited in bs_helper.
         # rs_header is shared by bs_helper and here. any modification in bs_helper affects this header.
         # Remind that python's object references are passed by value,
@@ -333,7 +339,13 @@ class RollSite(RollSiteBase):
         start_time = time.time()
 
         rs_header._total_partitions = rp.get_partitions()
-        rs_header._options.update(options)
+        serdes = options.get('serdes', None)
+        if serdes is not None:
+            rs_header._options['serdes'] = serdes
+
+        wrapee_cls = options.get('wrapee_cls', None)
+        if serdes is not None:
+            rs_header._options['wrapee_cls'] = wrapee_cls
 
         batches_per_stream = self.push_batches_per_stream
         body_bytes = self.batch_body_bytes
@@ -441,6 +453,9 @@ class RollSite(RollSiteBase):
 
                 return pull_status, all_finished, total_batches, total_pairs
 
+            def clear_status(task):
+                return PutBatchTask(transfer_tag_prefix + str(task._inputs[0]._id)).clear_status()
+
             wait_time = 0
             header_response = None
             while wait_time < pull_header_timeout and \
@@ -486,6 +501,8 @@ class RollSite(RollSiteBase):
                 else:
                     L.debug(f"getting status DO finished for rs_key={rs_key}, rs_header={rs_header}, pull_status={pull_status}, cur_pairs={cur_pairs}, total_batches={total_batches}")
                     rp = self.ctx.rp_ctx.load(name=rp_name, namespace=rp_namespace)
+
+                    clear_future = self._receive_executor_pool.submit(rp.with_stores, clear_status, options={"__op": "clear_status"})
                     if data_type == "object":
                         result = pickle.loads(b''.join(map(lambda t: t[1], sorted(rp.get_all(), key=lambda x: int.from_bytes(x[0], "big")))))
                         rp.destroy()
@@ -497,6 +514,8 @@ class RollSite(RollSiteBase):
                         if L.isEnabledFor(logging.DEBUG):
                             L.debug(f"pulled roll_pair: rs_key={rs_key}, rs_header={rs_header}, rp.count={rp.count()}, "
                                     f"elapsed={time.time() - start_time}")
+
+                    clear_future.result()
                     return result
                 last_total_batches = total_batches
                 last_cur_pairs = cur_pairs
