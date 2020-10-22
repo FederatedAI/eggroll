@@ -1,13 +1,11 @@
 cachetools>=3.0.0
 cloudpickle>=0.6.1
-gmpy2==2.0.8
 grpcio==1.24.3
 grpcio-tools==1.24.3
 lmdb==0.98
 numba==0.40.1
 numpy>=1.17.0
 pandas>=1.0.4
-phe>=1.4.0
 protobuf==3.6.1
 psutil>=5.7.0
 pyarrow==0.17.1
