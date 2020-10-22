@@ -229,7 +229,7 @@ object StoreCrudOperator {
       ServerNodeCrudOperator.doGetServerNodes(
         input = ErServerNode(
           nodeType = ServerNodeTypes.NODE_MANAGER,
-          status = ServerNodeStatus.HEALTHY))
+          status = ServerNodeStatus.HEALTHY)).sortBy(n => n.id)
 
     val nodesCount = serverNodes.length
     val specifiedPartitions = input.partitions
