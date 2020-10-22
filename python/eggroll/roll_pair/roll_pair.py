@@ -484,7 +484,6 @@ class RollPair(object):
         egg = self.ctx.route_to_egg(self.__store._partitions[partition_id])
         inputs = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
         outputs = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
-        outputs = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
 
         job_id = generate_job_id(self.__session_id, RollPair.GET)
         job = ErJob(id=job_id,
