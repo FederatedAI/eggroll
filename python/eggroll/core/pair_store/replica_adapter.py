@@ -106,30 +106,27 @@ class ReplicaWriteAdapter(PairAdapter):
 class ReplicaWriteIterator(PairIterator):
     def __init__(self, adapter: LmdbAdapter):
         self.firstIterator = LmdbIterator(adapter)
-        self.adapter = self.firstIterator.adapter
-        self.txn_r = self.firstIterator.txn_r
         self.cursor = self.firstIterator.cursor
 
     #seek for key, if key not exits then seek to nearby key
     def seek(self, key):
-        return self.cursor.set_range(key)
+        return self.firstIterator.seek(key)
 
     # move cursor to the first key position
     # return True if success or False if db is empty
     def first(self):
-        return self.cursor.first()
+        return self.firstIterator.first()
 
     # same as first() but last key position
     def last(self):
-        return self.cursor.last()
+        return self.firstIterator.last()
 
     # return the current key
     def key(self):
-        return self.cursor.key()
+        return self.firstIterator.key()
 
     def close(self):
-        self.cursor.close()
-        self.txn_r.commit()
+        self.firstIterator.close()
 
     def __iter__(self):
         return self.cursor.__iter__()
@@ -138,8 +135,6 @@ class ReplicaWriteIterator(PairIterator):
 class ReplicaWriteBatch(PairWriteBatch):
     def __init__(self, adapter: LmdbAdapter, txn):
         self.firstWriteBatch = LmdbWriteBatch(adapter, txn)
-        self.adapter = self.firstWriteBatch.adapter
-        self.txn = self.firstWriteBatch.txn
 
     def get(self, k):
         return self.firstWriteBatch.get(k)
@@ -151,7 +146,7 @@ class ReplicaWriteBatch(PairWriteBatch):
         return self.firstWriteBatch.merge(merge_func, k, v)
 
     def delete(self, k):
-        self.txn.delete(k)
+        self.firstWriteBatch.delete(k)
 
     def write(self):
         pass
