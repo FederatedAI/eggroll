@@ -28,10 +28,10 @@ from eggroll.utils.log_utils import get_logger
 L = get_logger()
 
 props_file_get = default_props_file
-props_file_get = default_props_file + '.host'
+#props_file_get = default_props_file + '.host'
 
 props_file_remote = default_props_file
-props_file_remote = default_props_file + '.guest'
+#props_file_remote = default_props_file + '.guest'
 
 
 row_limit = 100000
@@ -558,8 +558,9 @@ class TestRollSiteRouteTable(unittest.TestCase):
 
 
 def option():
-    """examples:\n\tremote obj from 10002 to 10001:\n\t\tpython test_roll_site1.py -c TestRollSiteClusterRemote -f test_remote -s 10002 -d 10001
-    get obj from 10001:\n\t\tpython test_roll_site1.py -c TestRollSiteClusterGet -f test_get -s 10002 -d 10001
+    """examples:\n\tremote obj from 10002 to 10001:\n\t\tpython test_roll_site.py -c TestRollSiteClusterRemote -f test_remote -s 10002 -d 10001 -j test01
+    get obj from 10001 at 10002:\n\t\tpython test_roll_site.py -c TestRollSiteClusterGet -f test_get -s 10002 -d 10001 -j test01
+    -j should use the same value in get / remote site, and always use a new -j value in every test.
     """
     print(option.__doc__)
 

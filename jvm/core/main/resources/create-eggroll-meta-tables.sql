@@ -1,8 +1,8 @@
--- create database if not exists
-CREATE DATABASE IF NOT EXISTS `eggroll_meta`;
+-- create database if not exists, default database is eggroll_meta
+--CREATE DATABASE IF NOT EXISTS `eggroll_meta`;
 
 -- all operation under this database
-USE `eggroll_meta`;
+--USE `eggroll_meta`;
 
 -- store_locator
 CREATE TABLE IF NOT EXISTS `store_locator` (
@@ -22,8 +22,8 @@ CREATE TABLE IF NOT EXISTS `store_locator` (
 
 CREATE UNIQUE INDEX `idx_u_store_locator_ns_n` ON `store_locator` (`namespace`(120), `name`(640));
 CREATE INDEX `idx_store_locator_st` ON `store_locator` (`store_type`(255));
-CREATE INDEX `idx_store_locator_ns` ON `store_locator` (`namespace`(768));
-CREATE INDEX `idx_store_locator_n` ON `store_locator` (`name`(768));
+CREATE INDEX `idx_store_locator_ns` ON `store_locator` (`namespace`(767));
+CREATE INDEX `idx_store_locator_n` ON `store_locator` (`name`(767));
 CREATE INDEX `idx_store_locator_s` ON `store_locator` (`status`(255));
 CREATE INDEX `idx_store_locator_v` ON `store_locator` (`version`);
 
@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS `server_node` (
 ) DEFAULT CHARACTER SET latin1 COLLATE latin1_swedish_ci;
 
 CREATE INDEX `idx_server_node_h_p_nt` ON `server_node` (`host`, `port`, `node_type`);
-CREATE INDEX `idx_server_node_h` ON `server_node` (`host`(768));
+CREATE INDEX `idx_server_node_h` ON `server_node` (`host`(767));
 CREATE INDEX `idx_server_node_sci` ON `server_node` (`server_cluster_id`);
 CREATE INDEX `idx_server_node_nt` ON `server_node` (`node_type`(255));
 CREATE INDEX `idx_server_node_s` ON `server_node` (`status`(255));
