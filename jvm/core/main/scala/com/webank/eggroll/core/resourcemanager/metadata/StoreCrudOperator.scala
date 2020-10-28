@@ -108,11 +108,16 @@ object StoreCrudOperator {
     val storeLocatorId = store.id
 
     val queryStorePartition = "select * from store_partition " +
-      "where store_locator_id = ? order by store_partition_id asc"
+      "where store_locator_id = ? and status = ? order by store_partition_id asc"
+
+    var partitionStatus = PartitionStatus.PRIMARY
+    if (inputOptions.containsKey("status")){
+      partitionStatus = inputOptions.get("status")
+    }
 
     val storePartitionResult = dbc.query(rs => rs.map(_ => DbStorePartition(
       nodeId = rs.getLong("node_id"),
-      partitionId = rs.getInt("partition_id"))), queryStorePartition, storeLocatorId).toList
+      partitionId = rs.getInt("partition_id"))), queryStorePartition, storeLocatorId, partitionStatus).toList
 
     if (storePartitionResult.isEmpty) {
       throw new IllegalStateException("store locator found but no partition found")
@@ -250,8 +255,18 @@ object StoreCrudOperator {
         i,
         PartitionStatus.PRIMARY)
 
+      val nodeRecordBackUp = dbc.update(conn, sql,
+        newStoreLocator.get,
+        if (isPartitionsSpecified) input.partitions(i % specifiedPartitions.length).processor.serverNodeId else node.id,
+        (i+1) % newTotalPartitions,
+        PartitionStatus.BACKUP)
+
       if (nodeRecord.isEmpty) {
         throw new CrudException(s"Illegal rows affected when creating node: 0")
+      }
+
+      if (nodeRecordBackUp.isEmpty) {
+        throw new CrudException(s"Illegal rows affected when creating backup node: 0")
       }
 
       serverNodeIds += node.id
