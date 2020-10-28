@@ -27,11 +27,14 @@ def create_pair_adapter(options: dict):
         duplicate_options["store_type"] = getattr(StoreTypes, actual_store_type)
         ret = create_pair_adapter(options=duplicate_options)
     elif options["store_type"] == StoreTypes.ROLLPAIR_LMDB:
-      from eggroll.core.pair_store.lmdb import LmdbAdapter
-      ret = LmdbAdapter(options=options)
+        from eggroll.core.pair_store.lmdb import LmdbAdapter
+        ret = LmdbAdapter(options=options)
+    elif options["store_type"] == StoreTypes.ROLLPAIR_DOUBLE_WRITE:
+        from eggroll.core.pair_store.replica_adapter import ReplicaWriteAdapter
+        ret = ReplicaWriteAdapter(options=options)
     elif options["store_type"] == StoreTypes.ROLLPAIR_LEVELDB:
-      from eggroll.core.pair_store.rocksdb import RocksdbAdapter
-      ret = RocksdbAdapter(options=options)
+        from eggroll.core.pair_store.rocksdb import RocksdbAdapter
+        ret = RocksdbAdapter(options=options)
     elif options["store_type"] == StoreTypes.ROLLFRAME_FILE:
         ret = FileAdapter(options=options)
     elif options["store_type"] == StoreTypes.ROLLPAIR_MMAP:

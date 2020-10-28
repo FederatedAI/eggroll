@@ -123,7 +123,7 @@ class EggPair(object):
         else:       # no shuffle
             with create_adapter(task._inputs[0]) as input_db, \
                     input_db.iteritems() as rb, \
-                    create_adapter(task._outputs[0], options=task._job._options) as db, \
+                    create_adapter(task._outputs[0], options=task._job._options.update(task._job._outputs[0])) as db, \
                     db.new_batch() as wb:
                 func(rb, input_key_serdes, input_value_serdes, wb)
             L.trace(f"close_store_adatper:{task._inputs[0]}")
@@ -145,7 +145,7 @@ class EggPair(object):
 
         with create_adapter(task._inputs[0]) as left_adapter, \
                 create_adapter(task._inputs[1]) as right_adapter, \
-                create_adapter(task._outputs[0]) as output_adapter, \
+                create_adapter(task._outputs[0], options=task._job._outputs[0]) as output_adapter, \
                 left_adapter.iteritems() as left_iterator, \
                 right_adapter.iteritems() as right_iterator, \
                 output_adapter.new_batch() as output_writebatch:
