@@ -179,7 +179,7 @@ class EggPair(object):
                 L.trace(f"get: key: {self.functor_serdes.deserialize(f._key)}, path: {input_adapter.path}")
                 value = input_adapter.get(f._key)
                 result = ErPair(key=f._key, value=value)
-        elif task._name == 'getAll':
+        elif task._name == 'getAll' or task._name == 'getPartition':
             tag = f'{task._id}'
             er_pair = create_functor(functors[0]._body)
             input_store_head = task._job._inputs[0]

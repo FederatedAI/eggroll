@@ -636,6 +636,20 @@ class TestRollPairMultiPartition(TestRollPairBase):
         self.assertUnOrderListEqual(self.str_generator(include_key=True, row_limit=row_limit), rp.get_all())
         self.assertEqual(st_opts["total_partitions"], rp.get_partitions())
 
+    def test_get_partition(self):
+        total_paritions = 3
+        st_opts = self.store_opts(include_key=True, create_if_missing=True, total_partitions=total_paritions)
+        row_limit = 30
+        rp = self.ctx.parallelize(self.str_generator(row_limit=row_limit), options=st_opts)
+
+        correct_result = [('0', '0'), ('3', '3'), ('6', '6'), ('9', '9'),
+                          ('10', '10'), ('13', '13'), ('16', '16'), ('19', '19'),
+                          ('22', '22'), ('25', '25'), ('28', '28')]
+
+        partition_data = list(rp.get_partition(2))
+        print(partition_data)
+        self.assertUnOrderListEqual(correct_result, partition_data)
+
     def test_count(self):
         st_opts = self.store_opts(include_key=True)
         rp = self.ctx.load("test_roll_pair", "TestRollPairMultiPartition", options=self.store_opts())
