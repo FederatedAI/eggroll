@@ -24,6 +24,7 @@ import time
 
 import threading
 import platform
+from collections import defaultdict
 
 import grpc
 import numpy as np
@@ -38,8 +39,10 @@ from eggroll.core.conf_keys import SessionConfKeys, \
 from eggroll.core.constants import ProcessorTypes, ProcessorStatus, SerdesTypes
 from eggroll.core.datastructure import create_executor_pool
 from eggroll.core.datastructure.broker import FifoBroker
+from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.meta_model import ErPair
 from eggroll.core.meta_model import ErTask, ErProcessor, ErEndpoint
+from eggroll.core.pair_store.format import ArrayByteBuffer, PairBinReader
 from eggroll.core.proto import command_pb2_grpc, transfer_pb2_grpc
 from eggroll.core.transfer.transfer_service import GrpcTransferServicer, \
     TransferService
@@ -47,6 +50,7 @@ from eggroll.core.utils import _exception_logger
 from eggroll.core.utils import hash_code
 from eggroll.core.utils import set_static_er_conf, get_static_er_conf
 from eggroll.roll_pair import create_adapter, create_serdes, create_functor
+from eggroll.roll_pair.task.storage import PutBatchTask
 from eggroll.roll_pair.transfer_pair import TransferPair
 from eggroll.roll_pair.utils.pair_utils import generator, partitioner, \
     set_data_dir
@@ -178,6 +182,7 @@ class EggPair(object):
             er_pair = create_functor(functors[0]._body)
             input_store_head = task._job._inputs[0]
             key_serdes = create_serdes(input_store_head._store_locator._serdes)
+
             def generate_broker():
                 with create_adapter(task._inputs[0]) as db, db.iteritems() as rb:
                     limit = None if er_pair._key is None else key_serdes.deserialize(er_pair._key)
@@ -191,7 +196,11 @@ class EggPair(object):
                 result = ErPair(key=self.functor_serdes.serialize('result'),
                                 value=self.functor_serdes.serialize(input_adapter.count()))
 
-        # TODO:1: multiprocessor scenario
+        elif task._name == 'putBatch':
+            partition = task._outputs[0]
+            tag = f'{task._id}'
+            PutBatchTask(tag, partition).run()
+
         elif task._name == 'putAll':
             output_partition = task._outputs[0]
             tag = f'{task._id}'
@@ -200,13 +209,13 @@ class EggPair(object):
             store_broker_result = tf.store_broker(output_partition, False).result()
             # TODO:2: should wait complete?, command timeout?
 
-        if task._name == 'put':
+        elif task._name == 'put':
             f = create_functor(functors[0]._body)
             with create_adapter(task._inputs[0]) as input_adapter:
                 value = input_adapter.put(f._key, f._value)
                 #result = ErPair(key=f._key, value=bytes(value))
 
-        if task._name == 'destroy':
+        elif task._name == 'destroy':
             input_store_locator = task._inputs[0]._store_locator
             namespace = input_store_locator._namespace
             name = input_store_locator._name
@@ -239,13 +248,13 @@ class EggPair(object):
                 with create_adapter(task._inputs[0], options=options) as input_adapter:
                     input_adapter.destroy(options=options)
 
-        if task._name == 'delete':
+        elif task._name == 'delete':
             f = create_functor(functors[0]._body)
             with create_adapter(task._inputs[0]) as input_adapter:
                 if input_adapter.delete(f._key):
                     L.trace("delete k success")
 
-        if task._name == 'mapValues':
+        elif task._name == 'mapValues':
             f = create_functor(functors[0]._body)
 
             def map_values_wrapper(input_iterator, key_serdes, value_serdes, output_writebatch):
@@ -275,19 +284,19 @@ class EggPair(object):
         elif task._name == 'mapPartitions':
             reduce_op = create_functor(functors[1]._body)
             shuffle = create_functor(functors[2]._body)
+
             def map_partitions_wrapper(input_iterator, key_serdes, value_serdes, output_writebatch):
                 f = create_functor(functors[0]._body)
                 value = f(generator(key_serdes, value_serdes, input_iterator))
-                if input_iterator.last():
-                    if isinstance(value, Iterable):
-                        for k1, v1 in value:
-                            if shuffle:
-                                output_writebatch.put((key_serdes.serialize(k1), value_serdes.serialize(v1)))
-                            else:
-                                output_writebatch.put(key_serdes.serialize(k1), value_serdes.serialize(v1))
-                    else:
-                        key = input_iterator.key()
-                        output_writebatch.put((key, value_serdes.serialize(value)))
+                if isinstance(value, Iterable):
+                    for k1, v1 in value:
+                        if shuffle:
+                            output_writebatch.put((key_serdes.serialize(k1), value_serdes.serialize(v1)))
+                        else:
+                            output_writebatch.put(key_serdes.serialize(k1), value_serdes.serialize(v1))
+                else:
+                    key = input_iterator.key()
+                    output_writebatch.put((key, value_serdes.serialize(value)))
             self._run_unary(map_partitions_wrapper, task, shuffle=shuffle, reduce_op=reduce_op)
 
         elif task._name == 'collapsePartitions':
@@ -434,6 +443,10 @@ class EggPair(object):
                     is_left_stopped = False
                     k_right_raw = None
                     v_right = None
+
+                # left is None, output must be None
+                if k_left is None:
+                    return
 
                 try:
                     if k_left is None:
@@ -643,7 +656,7 @@ class EggPair(object):
         elif task._name == 'withStores':
             f = create_functor(functors[0]._body)
             result = ErPair(key=self.functor_serdes.serialize(task._inputs[0]._id),
-                            value=self.functor_serdes.serialize(f(task._inputs)))
+                            value=self.functor_serdes.serialize(f(task)))
 
         if L.isEnabledFor(logging.TRACE):
             L.trace(f'[RUNTASK] end. task_name={task._name}, inputs={task._inputs}, outputs={task._outputs}, task_id={task._id}')
@@ -838,6 +851,8 @@ def serve(args):
     if cluster_manager:
         myself._status = ProcessorStatus.STOPPED
         cluster_manager_client.heartbeat(myself)
+
+    GrpcChannelFactory.shutdown_all_now()
 
     L.info(f'closing RocksDB open dbs')
     #todo:1: move to RocksdbAdapter and provide a cleanup method

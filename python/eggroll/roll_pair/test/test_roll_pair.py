@@ -16,7 +16,7 @@
 import unittest
 
 from eggroll.core.conf_keys import CoreConfKeys
-from eggroll.core.constants import StoreTypes
+from eggroll.core.constants import StoreTypes, SerdesTypes
 from eggroll.core.datastructure import create_executor_pool
 from eggroll.core.utils import time_now
 from eggroll.roll_pair.test.roll_pair_test_assets import get_debug_test_context, \
@@ -86,6 +86,15 @@ class TestRollPairBase(unittest.TestCase):
         table.destroy()
         table = self.ctx.load(name='fate_flow_detect_table_name', namespace='fate_flow_detect_table_namespace',
                               options=self.store_opts(total_partitions=16))
+
+    def test_empty_serdes(self):
+        rp = self.ctx.load('empty_serdes1', 'empty_serdes_ns', options={'serdes': SerdesTypes.EMPTY, 'create_if_missing': True, 'total_partitions': 2})
+        rp.put(b'k1', b'v1')
+        rp.put(b'k2', b'v2')
+
+        print(rp.count())
+        elements = list(rp.get_all())
+        print(elements)
 
     def test_parallelize_map_values(self):
         rp = self.ctx.parallelize(self.str_generator(False), options=self.store_opts(include_key=False))
@@ -597,6 +606,7 @@ class TestRollPairMultiPartition(TestRollPairBase):
     @staticmethod
     def store_opts(**kwargs):
         opts = {'total_partitions': 3}
+        opts.update(create_if_missing=True)
         opts.update(kwargs)
         return opts
 
@@ -670,6 +680,7 @@ class TestRollPairClusterEverySession(TestRollPairBase):
     @staticmethod
     def store_opts(**kwargs):
         opts = {'total_partitions': 10}
+        opts.update(create_if_missing=True)
         opts.update(kwargs)
         return opts
 
@@ -708,6 +719,7 @@ class TestRollPairCluster(TestRollPairBase):
     @staticmethod
     def store_opts(**kwargs):
         opts = {'total_partitions': 10}
+        opts.update(create_if_missing=True)
         opts.update(kwargs)
         return opts
 
