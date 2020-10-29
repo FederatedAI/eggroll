@@ -59,7 +59,8 @@ class TransferService(object):
 
     @staticmethod
     def set_broker(key: str, broker):
-        TransferService.data_buffer[key] = broker
+        with TransferService.mutex as m:
+            TransferService.data_buffer[key] = broker
 
     @staticmethod
     def get_broker(key: str):
@@ -71,7 +72,7 @@ class TransferService(object):
             with TransferService.mutex as e:
                 result = TransferService.data_buffer.get(key, None)
             retry += 1
-            if retry > 600:
+            if retry > 100:
                 raise RuntimeError(f"cannot get broker={key}, result={result}, data_buffer={TransferService.data_buffer}")
         return result
 
@@ -156,7 +157,7 @@ class GrpcTransferServicer(transfer_pb2_grpc.TransferServiceServicer):
             for data in callee_messages_broker:
                 header = transfer_pb2.TransferHeader(id=i, tag=base_tag)
                 batch = transfer_pb2.TransferBatch(header=header, data=data)
-                i+=1
+                i += 1
                 yield batch
         else:
             return TransferService.transfer_batch_generator_from_broker(callee_messages_broker, base_tag)

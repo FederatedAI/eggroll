@@ -19,17 +19,19 @@ from eggroll.core.utils import _stringify_dict, _repr_bytes
 
 
 class ErTransferHeader(RpcMessage):
-    def __init__(self, id: int, tag: str = '', total_size=-1, status=''):
+    def __init__(self, id: int, tag: str = '', total_size=-1, status='', ext=b''):
         self._id = id
         self._tag = tag
         self._total_size = total_size
         self._status = status
+        self._ext = ext
 
     def to_proto(self):
         return transfer_pb2.TransferHeader(id=self._id,
                                            tag=self._tag,
                                            totalSize=self._total_size,
-                                           status=self._status)
+                                           status=self._status,
+                                           ext=self._ext)
 
     def to_proto_string(self):
         return self.to_proto().SerializeToString()
@@ -39,7 +41,8 @@ class ErTransferHeader(RpcMessage):
         return ErTransferHeader(id=pb_message.id,
                                 tag=pb_message.tag,
                                 total_size=pb_message.totalSize,
-                                status=pb_message.status)
+                                status=pb_message.status,
+                                ext=pb_message.ext)
 
     def __str__(self):
         return self.__repr__()
@@ -49,7 +52,8 @@ class ErTransferHeader(RpcMessage):
                f'id={repr(self._id)}, ' \
                f'tag={repr(self._tag)}, ' \
                f'size={repr(self._total_size)}, ' \
-               f'status={repr(self._status)}) ' \
+               f'status={repr(self._status)},' \
+               f'ext={repr(self._ext)[:300]}) ' \
                f'at {hex(id(self))}>'
 
 
@@ -92,6 +96,9 @@ class ErTransferBatch(RpcMessage):
 
 
 class ErRollSiteHeader(RpcMessage):
+    RS_KEY_DELIM = '#'
+    RS_KEY_PREFIX = '__rsk'
+
     def __init__(self,
             roll_site_session_id: str,
             name: str,
@@ -101,7 +108,17 @@ class ErRollSiteHeader(RpcMessage):
             dst_role: str,
             dst_party_id: str,
             data_type: str = '',
-            options: dict = {}):
+            options: dict = None,
+            total_partitions: int = -1,
+            partition_id: int = -1,
+            total_streams: int = -1,
+            total_batches: int = -1,
+            stream_seq: int = -1,
+            batch_seq: int = -1,
+            stage: str = ''):
+        if options is None:
+            options = {}
+
         self._roll_site_session_id = roll_site_session_id
         self._name = name
         self._tag = tag
@@ -111,6 +128,13 @@ class ErRollSiteHeader(RpcMessage):
         self._dst_party_id = dst_party_id
         self._data_type = data_type
         self._options = options.copy()
+        self._total_partitions = total_partitions
+        self._partition_id = partition_id
+        self._total_streams = total_streams
+        self._total_batches = total_batches
+        self._stream_seq = stream_seq
+        self._batch_seq = batch_seq
+        self._stage = stage
 
     def to_proto(self):
         return transfer_pb2.RollSiteHeader(
@@ -122,13 +146,20 @@ class ErRollSiteHeader(RpcMessage):
                 dstRole=self._dst_role,
                 dstPartyId=self._dst_party_id,
                 dataType=self._data_type,
-                options=_stringify_dict(self._options))
+                options=_stringify_dict(self._options),
+                totalPartitions=self._total_partitions,
+                partitionId=self._partition_id,
+                totalStreams=self._total_streams,
+                totalBatches=self._total_batches,
+                streamSeq=self._stream_seq,
+                batchSeq=self._batch_seq,
+                stage=self._stage)
 
     def to_proto_string(self):
         return self.to_proto().SerializeToString()
 
     @staticmethod
-    def from_proto(pb_message):
+    def from_proto(pb_message: transfer_pb2.RollSiteHeader):
         return ErRollSiteHeader(
             roll_site_session_id=pb_message.rollSiteSessionId,
             name=pb_message.name,
@@ -138,7 +169,14 @@ class ErRollSiteHeader(RpcMessage):
             dst_role=pb_message.dstRole,
             dst_party_id=pb_message.dstPartyId,
             data_type=pb_message.dataType,
-            options=dict(pb_message.options))
+            options=dict(pb_message.options),
+            total_partitions=pb_message.totalPartitions,
+            partition_id=pb_message.partitionId,
+            total_streams=pb_message.totalStreams,
+            total_batches=pb_message.totalBatches,
+            stream_seq=pb_message.streamSeq,
+            batch_seq=pb_message.batchSeq,
+            stage=pb_message.stage)
 
     @staticmethod
     def from_proto_string(pb_string):
@@ -148,7 +186,7 @@ class ErRollSiteHeader(RpcMessage):
 
     def __repr__(self):
         return f'<ErRollSiteHeader(' \
-               f'roll_site_session_id={repr(self._roll_site_session_id)}), ' \
+               f'roll_site_session_id={repr(self._roll_site_session_id)}, ' \
                f'name={repr(self._name)}, ' \
                f'tag={repr(self._tag)}, ' \
                f'src_role={repr(self._src_role)}, ' \
@@ -156,5 +194,23 @@ class ErRollSiteHeader(RpcMessage):
                f'dst_role={repr(self._dst_role)}, ' \
                f'dst_party_id={repr(self._dst_party_id)}, ' \
                f'data_type={repr(self._data_type)}, ' \
-               f'options=[{repr(self._options)}] ' \
+               f'options=[{repr(self._options)}], ' \
+               f'total_partitions={repr(self._total_partitions)}, ' \
+               f'partition_id={repr(self._partition_id)}, ' \
+               f'total_streams={repr(self._total_streams)}, ' \
+               f'total_batches={self._total_batches}, ' \
+               f'stream_seq={self._stream_seq}, ' \
+               f'batch_seq={self._batch_seq}, ' \
+               f'stage={self._stage}) ' \
                f'at {hex(id(self))}>'
+
+    def get_rs_key(self):
+        return ErRollSiteHeader.RS_KEY_DELIM.join([
+            ErRollSiteHeader.RS_KEY_PREFIX,
+            self._roll_site_session_id,
+            self._name,
+            self._tag,
+            self._src_role,
+            self._src_party_id,
+            self._dst_role,
+            self._dst_party_id])

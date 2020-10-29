@@ -59,7 +59,7 @@ main() {
 			port=${property_value}
 			;;
 		rollsite)
-			main_class=com.webank.eggroll.rollsite.Proxy
+			main_class=com.webank.eggroll.rollsite.EggSiteBootstrap
 			get_property "eggroll.rollsite.port"
 			port=${property_value}
 			get_property "eggroll.rollsite.jvm.options"
@@ -165,11 +165,8 @@ start() {
 	if [[ $? -eq 1 ]]; then
 		mklogsdir
 		export EGGROLL_LOG_FILE=${module}
-		if [ $module = rollsite ];then
-			cmd="java $jvm_options -Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.properties -Dprocessor_tag=${processor_tag} -cp ${EGGROLL_HOME}/lib/*:${EGGROLL_HOME}/conf/ com.webank.eggroll.rollsite.Proxy -c ${EGGROLL_HOME}/conf/eggroll.properties"
-		else
-			cmd="java -Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.properties -cp ${EGGROLL_HOME}/lib/*: com.webank.eggroll.core.Bootstrap --bootstraps ${main_class} -c ${EGGROLL_HOME}/conf/eggroll.properties -p $port -s ${processor_tag}"
-		fi
+		cmd="java -Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.properties -cp ${EGGROLL_HOME}/lib/*: com.webank.eggroll.core.Bootstrap --bootstraps ${main_class} -c ${EGGROLL_HOME}/conf/eggroll.properties -p $port -s ${processor_tag}"
+
 		echo $cmd
 		if [ $start_mode = 0 ];then
 			exec $cmd >> ${EGGROLL_HOME}/logs/eggroll/bootstrap.${module}.out 2>>${EGGROLL_HOME}/logs/eggroll/bootstrap.${module}.err

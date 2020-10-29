@@ -206,7 +206,7 @@ class SessionManagerService extends SessionManager with Logging {
     breakable {
       while (System.currentTimeMillis() <= startTimeout) {
         result = smDao.getSession(sessionMeta.id)
-        if (result != null && !result.status.equals(SessionStatus.NEW)) {
+        if (result != null && !result.status.equals(SessionStatus.NEW) && !StringUtils.isBlank(result.id)) {
           break()
         } else {
           Thread.sleep(100)

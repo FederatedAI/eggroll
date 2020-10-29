@@ -30,7 +30,7 @@ import com.webank.eggroll.core.retry.factory.{AttemptOperations, RetryerBuilder,
 import com.webank.eggroll.core.util.{FileSystemUtils, Logging, ThreadPoolUtils}
 import io.grpc.netty.shaded.io.grpc.netty.{GrpcSslContexts, NegotiationType, NettyChannelBuilder, NettyServerBuilder}
 import io.grpc.netty.shaded.io.netty.handler.ssl.{ClientAuth, SslContext}
-import io.grpc.{BindableService, ManagedChannel, Server}
+import io.grpc.{BindableService, ManagedChannel, Server, ServerServiceDefinition}
 import org.apache.commons.lang3.StringUtils
 
 
@@ -40,6 +40,7 @@ object GrpcServerUtils extends Logging {
   def createServer(host: String = "0.0.0.0",
                    port: Int = 0,
                    grpcServices: List[BindableService] = List.empty,
+                   bindServices: List[ServerServiceDefinition] = List.empty,
                    options: Map[String, String] = Map.empty): Server = {
     if (port < 0) throw new IllegalArgumentException(s"${modulePrefix} cannot listen to port <= 0")
     if (grpcServices.isEmpty) throw new IllegalArgumentException("grpc services cannot be empty")
@@ -49,6 +50,7 @@ object GrpcServerUtils extends Logging {
     val nettyServerBuilder = NettyServerBuilder.forAddress(addr)
 
     grpcServices.foreach(s => nettyServerBuilder.addService(s))
+    bindServices.foreach(s => nettyServerBuilder.addService(s))
 
     Runtime.getRuntime.addShutdownHook(new Thread() {
       override def run(): Unit = { // Use stderr here since the logger may have been reset by its JVM shutdown hook.
@@ -171,7 +173,7 @@ object GrpcClientUtils extends Logging {
     val channelRetryBufferSize = CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_RETRY_BUFFER_SIZE.getWith(options).toInt
     val channelMaxRetryAttempts = CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_MAX_RETRY_ATTEMPTS.getWith(options).toInt
     val channelExecutorPoolSize = CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_EXECUTOR_POOL_SIZE.getWith(options).toInt
-    val caCrtPath = CoreConfKeys.CONFKEY_CORE_SECURITY_CA_CRT_PATH.getWith(options)
+    val caCrtPath = CoreConfKeys.CONFKEY_CORE_SECURITY_CLIENT_CA_CRT_PATH.getWith(options)
     var caCrt: File = null
     if (isSecureChannel) {
       if (StringUtils.isBlank(caCrtPath)) throw new IllegalArgumentException("secure channel required but no ca crt conf found")
@@ -188,15 +190,21 @@ object GrpcClientUtils extends Logging {
       .flowControlWindow(channelFlowControlWindow)
       .maxInboundMessageSize(channelMaxInboundMessageSize)
       .maxInboundMetadataSize(channelMaxInboundMetadataSize)
-      .enableRetry.retryBufferSize(channelRetryBufferSize)
-      .maxRetryAttempts(channelMaxRetryAttempts)
+
+      if (channelMaxRetryAttempts > 0) {
+        builder.enableRetry()
+          .retryBufferSize(channelRetryBufferSize)
+          .maxRetryAttempts(channelMaxRetryAttempts)
+      } else {
+        builder.disableRetry()
+      }
 
     if (isSecureChannel) {
       var sslContext: SslContext = null
       val sslSessionTimeout = CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_SSL_SESSION_TIMEOUT_SEC.getWith(options).toLong
       val sslSessionCacheSize = CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_SSL_SESSION_CACHE_SIZE.getWith(options).toLong
-      val keyCrtPath = CoreConfKeys.CONFKEY_CORE_SECURITY_KEY_CRT_PATH.getWith(options)
-      val keyPath = CoreConfKeys.CONFKEY_CORE_SECURITY_KEY_PATH.getWith(options)
+      val keyCrtPath = CoreConfKeys.CONFKEY_CORE_SECURITY_CLIENT_KEY_CRT_PATH.getWith(options)
+      val keyPath = CoreConfKeys.CONFKEY_CORE_SECURITY_CLIENT_KEY_PATH.getWith(options)
       val sslContextBuilder = GrpcSslContexts
         .forClient
         .trustManager(caCrt)
@@ -225,7 +233,7 @@ object GrpcClientUtils extends Logging {
   private def getChannelInternal(endpoint: ErEndpoint, isSecureChannel: Boolean, options: Map[String, String] = Map.empty): ManagedChannel = {
     var result: ManagedChannel = null
     val cache = if (isSecureChannel) secureChannelCache else insecureChannelCache
-    result = cache.get(endpoint)
+    result = cache.getUnchecked(endpoint)
     if (result == null || result.isShutdown || result.isTerminated) {
       if (isSecureChannel)
         cache.invalidate(result)
@@ -264,5 +272,19 @@ object GrpcClientUtils extends Logging {
         throw e
     }
     result
+  }
+
+  def shutdownNow() = {
+    secureChannelCache.asMap().keySet().toArray().foreach(key => {
+      val managedChannel = insecureChannelCache.asMap().get(key)
+      logDebug(s"shutting down secure channel=${managedChannel}")
+      managedChannel.shutdownNow()
+    })
+
+    insecureChannelCache.asMap().keySet().toArray().foreach(key => {
+      val managedChannel = insecureChannelCache.asMap().get(key)
+      logDebug(s"shutting down insecure channel=${managedChannel}")
+      managedChannel.shutdownNow()
+    })
   }
 }

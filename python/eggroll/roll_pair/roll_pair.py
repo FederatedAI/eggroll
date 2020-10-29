@@ -27,7 +27,7 @@ from eggroll.core.constants import StoreTypes, SerdesTypes, PartitionerTypes, \
 from eggroll.core.datastructure.broker import FifoBroker
 from eggroll.core.meta_model import ErStoreLocator, ErJob, ErStore, ErFunctor, \
     ErTask, ErPair, ErPartition
-from eggroll.core.serdes import cloudpickle
+import cloudpickle
 from eggroll.core.session import ErSession
 from eggroll.core.utils import generate_job_id, generate_task_id
 from eggroll.core.utils import string_to_bytes, hash_code
@@ -140,7 +140,7 @@ class RollPairContext(object):
         else:
             result = self.__session._cluster_manager_client.get_store(store)
             if len(result._partitions) == 0:
-                L.exception(f"store: namespace={namespace}, name={name} not exist, "
+                L.info(f"store: namespace={namespace}, name={name} not exist, "
                                  f"create_if_missing={create_if_missing}, create first")
                 return None
 
