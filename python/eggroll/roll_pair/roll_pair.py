@@ -265,6 +265,7 @@ class RollPair(object):
     FLAT_MAP = 'flatMap'
     GET = "get"
     GET_ALL = "getAll"
+    GET_PARTITION = "getPartition"
     GLOM = 'glom'
     JOIN = 'join'
     MAP = 'map'
@@ -518,7 +519,7 @@ class RollPair(object):
         partition_id = self.partitioner(k)
         egg = self.ctx.route_to_egg(self.__store._partitions[partition_id])
         inputs = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
-        output = [ErPartition(id=0, store_locator=self.__store._store_locator)]
+        outputs = [ErPartition(id=0, store_locator=self.__store._store_locator)]
 
         job_id = generate_job_id(self.__session_id, RollPair.PUT)
         job = ErJob(id=job_id,
@@ -530,7 +531,7 @@ class RollPair(object):
         task = ErTask(id=generate_task_id(job_id, partition_id),
                       name=RollPair.PUT,
                       inputs=inputs,
-                      outputs=output,
+                      outputs=outputs,
                       job=job)
         job_resp = self.__command_client.simple_sync_send(
                 input=task,
@@ -576,6 +577,54 @@ class RollPair(object):
             done_cnt += 1
             yield self.key_serdes.deserialize(k), self.value_serdes.deserialize(v)
         L.trace(f"get_all: namespace={self.get_namespace()} name={self.get_name()}, count={done_cnt}")
+
+    @_method_profile_logger
+    def get_partition(self, partition_id, limit=None, options: dict = None):
+        if options is None:
+            options = {}
+
+        if limit is not None and not isinstance(limit, int) and limit <= 0:
+            raise ValueError(f"limit:{limit} must be positive int")
+
+        if partition_id > self.get_partitions():
+            raise ValueError(f"partition_id={partition_id} exceeds total_partition={self.get_partitions()}")
+
+        job_id = generate_job_id(self.__session_id, RollPair.GET_ALL)
+        er_pair = ErPair(key=create_serdes(self.__store._store_locator._serdes)
+                         .serialize(limit) if limit is not None else None,
+                         value=None)
+        task_id = generate_task_id(job_id, partition_id)
+        partition = self.__store._partitions[partition_id]
+        egg = self.ctx.route_to_egg(self.__store._partitions[partition_id])
+
+        def send_command():
+            job = ErJob(id=job_id,
+                        name=RollPair.GET_PARTITION,
+                        inputs=[self.__store],
+                        outputs=[self.__store],
+                        functors=[ErFunctor(name=RollPair.GET_PARTITION, body=cloudpickle.dumps(er_pair))])
+
+            task = ErTask(id=task_id,
+                          name=RollPair.GET_PARTITION,
+                          inputs=[self.__store._partitions[partition_id]],
+                          outputs=[self.__store._partitions[partition_id]],
+                          job=job)
+
+            self.__command_client.simple_sync_send(input=task,
+                                                   output_type=ErTask,
+                                                   endpoint=egg._command_endpoint,
+                                                   command_uri=CommandURI(f'{RollPair.EGG_PAIR_URI_PREFIX}/{RollPair.RUN_TASK}'))
+
+            return None
+
+        send_command()
+
+        transfer_pair = TransferPair(transfer_id=job_id)
+        done_cnt = 0
+        for k, v in transfer_pair.gather_partition(partition):
+            done_cnt += 1
+            yield self.key_serdes.deserialize(k), self.value_serdes.deserialize(v)
+        L.trace(f"get_partition: namespace={self.get_namespace()}, name={self.get_name()}, partition_id={partition_id}, count={done_cnt}")
 
     @_method_profile_logger
     def put_all(self, items, output=None, options: dict = None):

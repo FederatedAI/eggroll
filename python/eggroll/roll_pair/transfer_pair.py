@@ -263,7 +263,7 @@ class TransferPair(object):
         return self._executor_pool.submit(do_store, store_partition, is_shuffle, total_writers, reduce_op)
 
     def gather(self, store):
-        L.trace(f'gather start for transfer_id={self.__transfer_id}, store={store}')
+        L.trace(f'gather store start for transfer_id={self.__transfer_id}, store={store}')
         client = TransferClient()
         for partition in store._partitions:
             tag = self.__generate_tag(partition._id)
@@ -271,3 +271,11 @@ class TransferPair(object):
             target_endpoint = partition._processor._transfer_endpoint
             batches = (b.data for b in client.recv(endpoint=target_endpoint, tag=tag, broker=None))
             yield from TransferPair.bin_batch_to_pair(batches)
+
+    def gather_partition(self, partition):
+        L.trace(f'gather partition start for transfer_id={self.__transfer_id}, partition={partition}')
+        client = TransferClient()
+        tag = self.__generate_tag(partition._id)
+        target_endpoint = partition._processor._transfer_endpoint
+        batches = (b.data for b in client.recv(endpoint=target_endpoint, tag=tag, broker=None))
+        yield from TransferPair.bin_batch_to_pair(batches)
