@@ -58,18 +58,17 @@ object CoreConfKeys {
   val BOOTSTRAP_ROOT_SCRIPT = "eggroll.bootstrap.root.script"
   val BOOTSTRAP_SHELL = "eggroll.bootstrap.shell"
   val BOOTSTRAP_SHELL_ARGS = "eggroll.bootstrap.shell.args"
-  val CONFKEY_CORE_GRPC_CHANNEL_CACHE_EXPIRE_SEC = ErConfKey("eggroll.core.grpc.channel.cache.expire.sec", 7200)
-  val CONFKEY_CORE_GRPC_CHANNEL_CACHE_SIZE = ErConfKey("eggroll.core.grpc.channel.cache.size", 256)
+  val CONFKEY_CORE_GRPC_CHANNEL_CACHE_EXPIRE_SEC = ErConfKey("eggroll.core.grpc.channel.cache.expire.sec", 86400)
+  val CONFKEY_CORE_GRPC_CHANNEL_CACHE_SIZE = ErConfKey("eggroll.core.grpc.channel.cache.size", 5000)
   val CONFKEY_CORE_GRPC_CHANNEL_EXECUTOR_POOL_SIZE = ErConfKey("eggroll.core.grpc.channel.executor.pool.size", 128)
-  val CONFKEY_CORE_GRPC_CHANNEL_FLOW_CONTROL_WINDOW = ErConfKey("eggroll.core.grpc.channel.flow.control.window", 8 << 20)
-  val CONFKEY_CORE_GRPC_CHANNEL_IDLE_TIMEOUT_SEC = ErConfKey("eggroll.core.grpc.channel.idle.timeout.sec", 3600)
-  val CONFKEY_CORE_GRPC_CHANNEL_KEEPALIVE_TIME_SEC = ErConfKey("eggroll.core.grpc.channel.keepalive.time.sec", 60)
-  val CONFKEY_CORE_GRPC_CHANNEL_KEEPALIVE_TIMEOUT_SEC = ErConfKey("eggroll.core.grpc.channel.keepalive.timeout.sec", 5)
-  val CONFKEY_CORE_GRPC_CHANNEL_KEEPALIVE_WITHOUT_CALLS_ENABLED = ErConfKey("eggroll.core.grpc.channel.keepalive.without.calls.enabled", true)
-  val CONFKEY_CORE_GRPC_CHANNEL_MAX_CONNECTION_AGE_GRACE_SEC = "eggroll.core.grpc.channel.max.connection.age.grace.sec"
+  val CONFKEY_CORE_GRPC_CHANNEL_FLOW_CONTROL_WINDOW = ErConfKey("eggroll.core.grpc.channel.flow.control.window", 128 << 20)
+  val CONFKEY_CORE_GRPC_CHANNEL_IDLE_TIMEOUT_SEC = ErConfKey("eggroll.core.grpc.channel.idle.timeout.sec", 86400)
+  val CONFKEY_CORE_GRPC_CHANNEL_KEEPALIVE_TIME_SEC = ErConfKey("eggroll.core.grpc.channel.keepalive.time.sec", 7200)
+  val CONFKEY_CORE_GRPC_CHANNEL_KEEPALIVE_TIMEOUT_SEC = ErConfKey("eggroll.core.grpc.channel.keepalive.timeout.sec", 3600)
+  val CONFKEY_CORE_GRPC_CHANNEL_KEEPALIVE_WITHOUT_CALLS_ENABLED = ErConfKey("eggroll.core.grpc.channel.keepalive.without.calls.enabled", false)
   val CONFKEY_CORE_GRPC_CHANNEL_MAX_INBOUND_METADATA_SIZE = ErConfKey("eggroll.core.grpc.channel.max.inbound.metadata.size", 128 << 20)
   val CONFKEY_CORE_GRPC_CHANNEL_MAX_INBOUND_MESSAGE_SIZE = ErConfKey("eggroll.core.grpc.channel.max.inbound.message.size", (2 << 30) - 1)
-  val CONFKEY_CORE_GRPC_CHANNEL_MAX_RETRY_ATTEMPTS = ErConfKey("eggroll.grpc.channel.max.retry.attempts", 20)
+  val CONFKEY_CORE_GRPC_CHANNEL_MAX_RETRY_ATTEMPTS = ErConfKey("eggroll.grpc.channel.max.retry.attempts", 5)
   val CONFKEY_CORE_GRPC_CHANNEL_PER_RPC_BUFFER_LIMIT = ErConfKey("eggroll.core.grpc.channel.per.rpc.buffer.limit", 64 << 20)
   val CONFKEY_CORE_GRPC_CHANNEL_RETRY_BUFFER_SIZE = ErConfKey("eggroll.core.grpc.channel.retry.buffer.size", 16 << 20)
   val CONFKEY_CORE_GRPC_CHANNEL_SSL_SESSION_CACHE_SIZE = ErConfKey("eggroll.core.grpc.channel.ssl.session.cache.size", 65536)
@@ -81,25 +80,22 @@ object CoreConfKeys {
   val CONFKEY_CORE_GRPC_TRANSFER_SECURE_SERVER_ENABLED = "eggroll.core.grpc.transfer.secure.server.enabled"
 
 
-  val CONFKEY_CORE_GRPC_SERVER_CORE_EXECUTOR_POOL_SIZE = ErConfKey("eggroll.core.grpc.server.core.executor.pool.size", "20")
-  val CONFKEY_CORE_GRPC_SERVER_MAX_EXECUTOR_POOL_SIZE = ErConfKey("eggroll.core.grpc.server.max.executor.pool.size", "1500")
-  val CONFKEY_CORE_GRPC_SERVER_EXECUTOR_POOL_QUEUE_SIZE = ErConfKey("eggroll.core.grpc.server.executor.pool.queue.size", "0")
-  val CONFKEY_CORE_GRPC_SERVER_CHANNEL_FLOW_CONTROL_WINDOW = ErConfKey("eggroll.core.grpc.server.channel.flow.control.window", 8 << 10)
-  val CONFKEY_CORE_GRPC_SERVER_CHANNEL_KEEPALIVE_TIME_SEC = ErConfKey("eggroll.core.grpc.server.channel.keepalive.time.sec", 60)
-  val CONFKEY_CORE_GRPC_SERVER_CHANNEL_KEEPALIVE_TIMEOUT_SEC = ErConfKey("eggroll.core.grpc.server.channel.keepalive.timeout.sec", 5)
-  val CONFKEY_CORE_GRPC_SERVER_CHANNEL_KEEPALIVE_WITHOUT_CALLS_ENABLED = ErConfKey("eggroll.core.grpc.server.channel.keepalive.without.calls.enabled", true.toString)
+  val CONFKEY_CORE_GRPC_SERVER_CHANNEL_FLOW_CONTROL_WINDOW = ErConfKey("eggroll.core.grpc.server.channel.flow.control.window", 128 << 20)
+  val CONFKEY_CORE_GRPC_SERVER_CHANNEL_KEEPALIVE_TIME_SEC = ErConfKey("eggroll.core.grpc.server.channel.keepalive.time.sec", 7200)
+  val CONFKEY_CORE_GRPC_SERVER_CHANNEL_KEEPALIVE_TIMEOUT_SEC = ErConfKey("eggroll.core.grpc.server.channel.keepalive.timeout.sec", 3600)
+  val CONFKEY_CORE_GRPC_SERVER_CHANNEL_KEEPALIVE_WITHOUT_CALLS_ENABLED = ErConfKey("eggroll.core.grpc.server.channel.keepalive.without.calls.enabled", false)
   val CONFKEY_CORE_GRPC_SERVER_CHANNEL_MAX_CONCURRENT_CALL_PER_CONNECTION = ErConfKey("eggroll.core.grpc.server.channel.max.concurrent.call.per.connection", 1000)
   val CONFKEY_CORE_GRPC_SERVER_CHANNEL_MAX_CONNECTION_AGE_SEC = ErConfKey("eggroll.core.grpc.server.channel.max.connection.age.sec", 86400)
   val CONFKEY_CORE_GRPC_SERVER_CHANNEL_MAX_CONNECTION_AGE_GRACE_SEC = ErConfKey("eggroll.core.grpc.server.channel.max.connection.age.grace.sec", 86400)
   val CONFKEY_CORE_GRPC_SERVER_CHANNEL_MAX_CONNECTION_IDLE_SEC = ErConfKey("eggroll.core.grpc.server.channel.max.connection.idle.sec", 86400)
   val CONFKEY_CORE_GRPC_SERVER_CHANNEL_MAX_INBOUND_MESSAGE_SIZE = ErConfKey("eggroll.core.grpc.server.channel.max.inbound.message.size", (2 << 30) - 1)
   val CONFKEY_CORE_GRPC_SERVER_CHANNEL_MAX_INBOUND_METADATA_SIZE = ErConfKey("eggroll.core.grpc.server.channel.max.inbound.metadata.size", 128 << 20)
-  val CONFKEY_CORE_GRPC_SERVER_CHANNEL_PERMIT_KEEPALIVE_TIME_SEC = ErConfKey("eggroll.core.grpc.server.channel.permit.keepalive.time.sec", 10)
+  val CONFKEY_CORE_GRPC_SERVER_CHANNEL_PERMIT_KEEPALIVE_TIME_SEC = ErConfKey("eggroll.core.grpc.server.channel.permit.keepalive.time.sec", 120)
   val CONFKEY_CORE_GRPC_SERVER_CHANNEL_SSL_SESSION_CACHE_SIZE = ErConfKey("eggroll.core.grpc.server.channel.ssl.session.cache.size", 65536)
   val CONFKEY_CORE_GRPC_SERVER_CHANNEL_SSL_SESSION_TIMEOUT_SEC = ErConfKey("eggroll.core.grpc.server.channel.ssl.session.timeout.sec", 86400)
 
   val CONFKEY_CORE_RETRY_DEFAULT_ATTEMPT_TIMEOUT_MS = ErConfKey("eggroll.core.retry.default.attempt.timeout.ms", 30000)
-  val CONFKEY_CORE_RETRY_DEFAULT_MAX_ATTEMPTS = ErConfKey("eggroll.core.retry.default.max.attempts", 10)
+  val CONFKEY_CORE_RETRY_DEFAULT_MAX_ATTEMPTS = ErConfKey("eggroll.core.retry.default.max.attempts", 3)
   val CONFKEY_CORE_RETRY_DEFAULT_WAIT_TIME_MS = ErConfKey("eggroll.core.retry.default.wait.time.ms", 1000)
 
   val CONFKEY_CORE_SECURITY_CA_CRT_PATH = ErConfKey("eggroll.core.security.ca.crt.path")
@@ -153,6 +149,10 @@ object DeployConfKeys {
 }
 
 object RollSiteConfKeys {
+  val EGGROLL_ROLLSITE_POLLING_Q_POLL_INTERVAL_SEC = ErConfKey("eggroll.rollsite.polling.q.poll.interval.sec", 60)
+  val EGGROLL_ROLLSITE_POLLING_Q_OFFER_INTERVAL_SEC = ErConfKey("eggroll.rollsite.polling.q.offer.interval.sec", 60)
+  val EGGROLL_ROLLSITE_POLLING_NO_DATA_TIMEOUT_SEC = ErConfKey("eggroll.rollsite.polling.no.data.timeout.sec", 300)
+  val EGGROLL_ROLLSITE_POLLING_EXCHANGER_DATA_OP_TIMEOUT_SEC = ErConfKey("eggroll.rollsite.polling.exchanger.data.op.timeout.sec", 240) // should always be < no data timeout and python per stream deadline
   val EGGROLL_ROLLSITE_COORDINATOR = ErConfKey("eggroll.rollsite.coordinator")
   val EGGROLL_ROLLSITE_HOST = ErConfKey("eggroll.rollsite.host", "127.0.0.1")
   val EGGROLL_ROLLSITE_PORT = ErConfKey("eggroll.rollsite.port", "9370")
@@ -168,14 +168,14 @@ object RollSiteConfKeys {
   val EGGROLL_ROLLSITE_PUSH_MAX_RETRY = ErConfKey("eggroll.rollsite.push.max.retry", 300)
   val EGGROLL_ROLLSITE_PULL_CLIENT_MAX_RETRY = ErConfKey("eggroll.rollsite.pull.client.max.retry", 300)
   val EGGROLL_ROLLSITE_OVERALL_TIMEOUT_SEC = ErConfKey("eggroll.rollsite.overall.timeout.sec", 172800000)
-  val EGGROLL_ROLLSITE_COMPLETION_WAIT_TIMEOUT = ErConfKey("eggroll.rollsite.completion.wait.timeout.sec", 3600000)
+  val EGGROLL_ROLLSITE_ONCOMPLETED_WAIT_TIMEOUT = ErConfKey("eggroll.rollsite.oncompleted.wait.timeout.sec", 600)
   val EGGROLL_ROLLSITE_PACKET_INTERVAL_TIMEOUT = ErConfKey("eggroll.rollsite.packet.interval.timeout.sec", 20000)
   val EGGROLL_ROLLSITE_PULL_OBJECT_TIMEOUT_SEC = ErConfKey("eggroll.rollsite.pull.object.timeout.sec", 1800)
   val EGGROLL_ROLLSITE_ROUTE_TABLE_WHITELIST = ErConfKey("eggroll.rollsite.route.table.whitelist")
   val EGGROLL_ROLLSITE_AUDIT_TOPICS = ErConfKey("eggroll.rollsite.audit.topics")
   val EGGROLL_ROLLSITE_POLLING_SERVER_ENABLED = ErConfKey("eggroll.rollsite.polling.server.enabled", false)
   val EGGROLL_ROLLSITE_POLLING_CLIENT_ENABLED = ErConfKey("eggroll.rollsite.polling.client.enabled", false)
-  val EGGROLL_ROLLSITE_POLLING_CONCURRENCY = ErConfKey("eggroll.rollsite.polling.concurrency", 3)
+  val EGGROLL_ROLLSITE_POLLING_CONCURRENCY = ErConfKey("eggroll.rollsite.polling.concurrency", 50)
   val EGGROLL_ROLLSITE_ROUTE_TABLE_KEY = ErConfKey("eggroll.rollsite.route.table.key", "123")
 }
 

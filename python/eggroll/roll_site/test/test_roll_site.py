@@ -28,14 +28,14 @@ from eggroll.utils.log_utils import get_logger
 L = get_logger()
 
 props_file_get = default_props_file
-props_file_get = default_props_file + '.host'
+#props_file_get = default_props_file + '.host'
 
 props_file_remote = default_props_file
-props_file_remote = default_props_file + '.guest'
+#props_file_remote = default_props_file + '.guest'
 
 
-row_limit = 20000
-obj_size = 128 << 20
+row_limit = 100000
+obj_size = 1 << 20
 
 
 def data_generator(limit):
@@ -274,11 +274,18 @@ class TestRollSiteBase(unittest.TestCase):
         print(f"count: {rp.count()}")
 
     def test_ping(self):
-        stub = self.rs_context_remote.stub
+        remote_stub = self.rs_context_remote.stub
+        get_stub = self.rs_context_get.stub
         req = proxy_pb2.Packet(header=proxy_pb2.Metadata(operator='ping', dst=proxy_pb2.Topic(partyId=self.rs_context_get.party_id)))
 
         L.info("starting ping")
-        resp = stub.unaryCall(req)
+        resp = remote_stub.unaryCall(req)
+        L.info(f"ping finished {resp.header.operator}")
+        self.assertEqual('pong', resp.header.operator)
+
+        L.info("starting ping reverse")
+        req = proxy_pb2.Packet(header=proxy_pb2.Metadata(operator='ping', dst=proxy_pb2.Topic(partyId=self.rs_context_remote.party_id)))
+        resp = get_stub.unaryCall(req)
         L.info(f"ping finished {resp.header.operator}")
         self.assertEqual('pong', resp.header.operator)
 
@@ -420,7 +427,7 @@ class TestRollSiteCluster(TestRollSiteBase):
 class TestRollSiteClusterRemote(TestRollSiteBase):
     @classmethod
     def setUpClass(cls) -> None:
-        opts = {"eggroll.session.processors.per.node": "3"}
+        opts = {"eggroll.session.processors.per.node": "16"}
         cls.rs_context_remote = get_cluster_context(role='src', options=opts, props_file=props_file_remote, party_id=cls.src_party_id, roll_site_session_id=cls.job_id)
 
     @classmethod
@@ -463,7 +470,7 @@ class TestRollSiteClusterRemote(TestRollSiteBase):
 class TestRollSiteClusterGet(TestRollSiteBase):
     @classmethod
     def setUpClass(cls) -> None:
-        opts = {"eggroll.session.processors.per.node": "3"}
+        opts = {"eggroll.session.processors.per.node": "16"}
         cls.rs_context_get = get_cluster_context(role='dst',
                                                  options=opts,
                                                  props_file=props_file_get,
@@ -551,8 +558,9 @@ class TestRollSiteRouteTable(unittest.TestCase):
 
 
 def option():
-    """examples:\n\tremote obj from 10002 to 10001:\n\t\tpython test_roll_site1.py -c TestRollSiteClusterRemote -f test_remote -s 10002 -d 10001
-    get obj from 10001:\n\t\tpython test_roll_site1.py -c TestRollSiteClusterGet -f test_get -s 10002 -d 10001
+    """examples:\n\tremote obj from 10002 to 10001:\n\t\tpython test_roll_site.py -c TestRollSiteClusterRemote -f test_remote -s 10002 -d 10001 -j test01
+    get obj from 10001 at 10002:\n\t\tpython test_roll_site.py -c TestRollSiteClusterGet -f test_get -s 10002 -d 10001 -j test01
+    -j should use the same value in get / remote site, and always use a new -j value in every test.
     """
     print(option.__doc__)
 
