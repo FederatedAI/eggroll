@@ -48,6 +48,52 @@ class CompositeFuture(object):
         return list(f.result() for f in self._futures)
 
 
+class BatchBroker(object):
+    def __init__(self, broker, batch_size=RollPairConfKeys.EGGROLL_ROLLPAIR_TRANSFERPAIR_BATCHBROKER_DEFAULT_SIZE.default_value):
+        self.broker = broker
+        self.batch = []
+        self.batch_size = batch_size
+
+    def _commit(self, block=True, timeout=None):
+        if len(self.batch) == 0:
+            return
+        self.broker.put(self.batch, block, timeout)
+        self.batch = []
+
+    def put(self, item, block=True, timeout=None):
+        if len(self.batch) >= self.batch_size:
+            self._commit(block, timeout)
+        self.batch.append(item)
+
+    def signal_write_finish(self):
+        self._commit()
+        self.broker.signal_write_finish()
+
+    def is_closable(self):
+        return len(self.batch) == 0 and self.broker.is_closable()
+
+    def get(self, block=True, timeout=None):
+        if len(self.batch) == 0:
+            self.batch = self.broker.get(block, timeout)
+        if len(self.batch) == 0:
+            raise queue.Empty("empty")
+        return self.batch.pop(0)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        while not self.is_closable():
+            try:
+                return self.get(block=True, timeout=0.1)
+            except queue.Empty as e:
+                # retry
+                pass
+            except BrokerClosed as e:
+                raise StopIteration
+        raise StopIteration
+
+
 class TransferPair(object):
     _executor_pool = None
     _executor_pool_lock = threading.Lock()
@@ -75,16 +121,17 @@ class TransferPair(object):
         total_partitions = len(output_partitions)
         L.trace(f'scatter starts for transfer_id={self.__transfer_id}, total_partitions={total_partitions}, output_store={output_store}')
         partitioned_brokers = [FifoBroker() for i in range(total_partitions)]
+        partitioned_bb = [BatchBroker(v) for v in partitioned_brokers]
         futures = []
 
         @_exception_logger
         def do_partition():
             L.trace(f'do_partition start for transfer_id={self.__transfer_id}')
             done_count = 0
-            for k, v in input_broker:
-                partitioned_brokers[partition_function(k)].put((k, v))
+            for k, v in BatchBroker(input_broker):
+                partitioned_bb[partition_function(k)].put((k, v))
                 done_count += 1
-            for pb in partitioned_brokers:
+            for pb in partitioned_bb:
                 pb.signal_write_finish()
             L.trace(f"do_partition end for transfer id={self.__transfer_id}, "
                     f"total partitions={total_partitions}, "
@@ -101,7 +148,7 @@ class TransferPair(object):
                         f"active thread count={threading.active_count()}")
                 fut = client.send(
                         TransferPair.pair_to_bin_batch(
-                                partitioned_brokers[i]),
+                            BatchBroker(partitioned_brokers[i])),
                                 part._processor._transfer_endpoint, tag)
                 send_all_futs.append(fut)
             return CompositeFuture(send_all_futs).result()
@@ -111,9 +158,10 @@ class TransferPair(object):
 
     @staticmethod
     @_exception_logger
-    def pair_to_bin_batch(input_iter, limit=None, sendbuf_size=RollPairConfKeys.EGGROLL_ROLLPAIR_TRANSFERPAIR_SENDBUF_SIZE.default_value):
+    def pair_to_bin_batch(input_iter, limit=None, sendbuf_size=-1):
         import os
-        sendbuf_size = int(RollPairConfKeys.EGGROLL_ROLLPAIR_TRANSFERPAIR_SENDBUF_SIZE.get())
+        if sendbuf_size <= 0:
+            sendbuf_size = int(RollPairConfKeys.EGGROLL_ROLLPAIR_TRANSFERPAIR_SENDBUF_SIZE.get())
 
         L.trace(f'pair_to_bin_batch start')
         pair_count = 0
@@ -206,10 +254,11 @@ class TransferPair(object):
                                 wb.merge(merger, k, v)
                             done_cnt += 1
                     L.trace(f"do_store done for tag={tag} for partition={store_partition_inner}")
-                TransferService.remove_broker(tag)
             except Exception as e:
                 L.exception(f'Error in do_store for tag={tag}')
                 raise e
+            finally:
+                TransferService.remove_broker(tag)
             return done_cnt
         return self._executor_pool.submit(do_store, store_partition, is_shuffle, total_writers, reduce_op)
 

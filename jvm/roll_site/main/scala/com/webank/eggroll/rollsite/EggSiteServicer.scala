@@ -18,22 +18,25 @@
 
 package com.webank.eggroll.rollsite
 
+import java.util
 import java.util.concurrent.TimeUnit
 
 import com.google.protobuf.ByteString
+import com.webank.ai.eggroll.api.networking.proxy.Proxy.PollingFrame
 import com.webank.ai.eggroll.api.networking.proxy.{DataTransferServiceGrpc, Proxy}
 import com.webank.eggroll.core.constant.{CoreConfKeys, RollSiteConfKeys}
 import com.webank.eggroll.core.meta.TransferModelPbMessageSerdes.ErRollSiteHeaderFromPbMessage
 import com.webank.eggroll.core.transfer.GrpcClientUtils
 import com.webank.eggroll.core.transfer.Transfer.RollSiteHeader
 import com.webank.eggroll.core.util._
+import com.webank.eggroll.rollsite.utils.ToAuditString
 import io.grpc.stub.{ServerCallStreamObserver, StreamObserver}
-import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.lang3.StringUtils
+import org.apache.logging.log4j.LogManager
 
 
 class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBase with Logging {
-
+  private val AUDIT = LogManager.getLogger("audit")
   /**
    */
   override def push(responseObserver: StreamObserver[Proxy.Metadata]): StreamObserver[Proxy.Packet] = {
@@ -58,7 +61,7 @@ class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBas
      *   - yes -> check command to see what the request wants.
      *   - no -> forwards it to the next hop synchronously.
      */
-
+    logTrace(f"[UNARYCALL][SERVER] EggSiteServicer.unaryCall calling")
     val metadata = req.getHeader
     val oneLineStringMetadata = ToStringUtils.toOneLineString(metadata)
     val rollSiteHeader = RollSiteHeader.parseFrom(metadata.getExt).fromProto()
@@ -70,28 +73,50 @@ class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBas
       val logMsg = s"[UNARYCALL][SERVER] unaryCall request received. rsKey=${rsKey}, metadata=${oneLineStringMetadata}"
 
       val endpoint = Router.query(dstPartyId, dstRole).point
+      val dstIsPolling = Router.query(dstPartyId, dstRole).isPolling
+
+      val auditTopics = RollSiteConfKeys.EGGROLL_ROLLSITE_AUDIT_TOPICS.get()
+      if (auditTopics != null
+        && (util.Arrays.asList(auditTopics).contains(req.getHeader.getSrc.getRole)
+        || util.Arrays.asList(auditTopics).contains(req.getHeader.getDst.getRole))) {
+        AUDIT.info(ToAuditString.toOneLineString(req.getHeader, "|"))
+      }
+
+      logTrace(f"[UNARYCALL][SERVER] EggSiteServicer dst host is ${endpoint.host} port is ${endpoint.port}")
       if (endpoint.host == RollSiteConfKeys.EGGROLL_ROLLSITE_HOST.get()
         && (endpoint.port == RollSiteConfKeys.EGGROLL_ROLLSITE_PORT.get().toInt
         || endpoint.port == RollSiteConfKeys.EGGROLL_ROLLSITE_SECURE_PORT.get().toInt)) {
         logDebug(s"${logMsg}, hop=SINK")
         processCommand(req, respSO)
       } else {
-        if (RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_SERVER_ENABLED.get().toBoolean) {
+        if (RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_SERVER_ENABLED.get().toBoolean && dstIsPolling) {
+          logDebug(s"${logMsg}, hop=POLLING_SERVER")
           val reqPollingFrame = Proxy.PollingFrame.newBuilder()
             .setMethod(PollingMethods.UNARY_CALL)
             .setPacket(req)
             .setSeq(1)
             .build()
 
-          val pollingExchanger = PollingHelper.pollingExchangerQueue.take()
+          var pollingExchanger: PollingExchanger = null
+          var i = 0
+          while (pollingExchanger == null) {
+            pollingExchanger = PollingExchanger.pollingExchangerQueue.poll(
+              RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_Q_POLL_INTERVAL_SEC.get().toLong, TimeUnit.SECONDS)
+            logTrace(s"unary call getting pollingExchanger from queue. i=${i}, isNull=${pollingExchanger == null}")
+            i += 1
+          }
           pollingExchanger.setMethod(PollingMethods.UNARY_CALL)
 
-          pollingExchanger.respQ.put(reqPollingFrame)
-          val result = pollingExchanger.reqQ.take()
+          PollingExchanger.offer(reqPollingFrame, pollingExchanger.respQ, "EggSiteServicer.unaryCall offering to respQ, ")
+
+          var result: PollingFrame = PollingExchanger.poll(pollingExchanger.reqQ,
+            "EggSiteServicer.unaryCall polling from reqQ, ")
 
           respSO.onNext(result.getPacket)
           respSO.onCompleted()
+          logTrace(f"[UNARYCALL][SERVER] EggSiteServicer do polling finished.")
         } else {
+          logDebug(s"${logMsg}, hop=FORWARD")
           var isSecure = Router.query(dstPartyId).isSecure
           val caCrt = CoreConfKeys.CONFKEY_CORE_SECURITY_CLIENT_CA_CRT_PATH.get()
 
@@ -114,6 +139,7 @@ class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBas
         val wrapped = TransferExceptionUtils.throwableToException(t)
         respSO.onError(wrapped)
     }
+    logTrace(f"[UNARYCALL][SERVER] EggSiteServicer.unaryCall called")
   }
 
   private def processCommand(request: Proxy.Packet, responseSO: StreamObserver[Proxy.Packet]): Unit = {
@@ -187,9 +213,9 @@ class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBas
     }
 
     if (!checkWhiteList()){
-      logWarning("setRouteTable failed, Src ip not included in whitelist.")
+      logWarning("getRouteTable failed, Src ip not included in whitelist.")
       val data = Proxy.Data.newBuilder.setValue(
-        ByteString.copyFromUtf8("setRouteTable failed, Src ip not included in whitelist.")).build
+        ByteString.copyFromUtf8("getRouteTable failed, Src ip not included in whitelist.")).build
       return Proxy.Packet.newBuilder().setBody(data).build
     }
 

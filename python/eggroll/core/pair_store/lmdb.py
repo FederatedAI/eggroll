@@ -79,9 +79,9 @@ class LmdbAdapter(PairAdapter):
                                      lock=False)
                 self.sub_db = self.env.open_db(DEFAULT_DB)
                 try:
-                    L.trace(f"LmdbAdapter.init: env={self.path} data count={self.count()}")
+                    L.trace(f"LmdbAdapter.init: env={self.path}, data count={self.count()}")
                 except Exception as e:
-                    L.debug(f"LmdbAdapter.init: fail to get data count of env={self.path}", e)
+                    L.exception(f"LmdbAdapter.init: fail to get data count of env={self.path}")
                 LmdbAdapter.count_dict[self.path] = 0
                 LmdbAdapter.env_dict[self.path] = self.env
                 LmdbAdapter.sub_db_dict[self.path] = self.sub_db
@@ -131,7 +131,7 @@ class LmdbAdapter(PairAdapter):
                 try:
                     L.trace(f"LmdbAdapter.close: env={self.path} data count={self.__get_write_count()}")
                 except Exception as e:
-                    L.debug(f"LmdbAdapter.close: fail to get data count of env={self.path}", e)
+                    L.exception(f"LmdbAdapter.close: fail to get data count of env={self.path}")
                 self.txn_w.commit()
             if self.env:
                 count = LmdbAdapter.count_dict[self.path]
@@ -144,7 +144,7 @@ class LmdbAdapter(PairAdapter):
                             self.env.close()
                             L.debug(f"EGGROLL_LMDB_ENV_CLOSE_ENABLE is True, finish close lmdb env obj: {self.path}")
                         else:
-                            L.trace(f"lmdb env=:{self.path} not close while closing LmdbAdapter")
+                            L.trace(f"lmdb env={self.path} not close while closing LmdbAdapter")
                     except:
                         L.warning(f"txn commit or cursor, env={self.path} have closed before")
 

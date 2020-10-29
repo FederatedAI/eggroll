@@ -38,7 +38,7 @@ class TestRollPairBase(unittest.TestCase):
 
     @staticmethod
     def store_opts(**kwargs):
-        opts = {'total_partitions': 1}
+        opts = {'total_partitions': 1, "create_if_missing": True}
         opts.update(create_if_missing=True)
         opts.update(kwargs)
         return opts
@@ -95,6 +95,20 @@ class TestRollPairBase(unittest.TestCase):
         print(rp.count())
         elements = list(rp.get_all())
         print(elements)
+
+    def test_sc(self):
+        options_left = get_default_options()
+        options_right = get_default_options()
+        options_left['total_partitions'] = 10
+        options_right['total_partitions'] = 5
+        left_rp = self.ctx.load(namespace="ns1", name="testSubtractLeft_10p_8", options=options_left).put_all([('a', 1), ('b', 4), ('d', 6),
+                                                                                                               ('e', 0), ('f', 3),],
+                                                                                                              options={"include_key": True})
+        right_rp = self.ctx.load(namespace="ns1", name="testSubtractRight_5p_8", options=options_right).put_all([('a', 2), ('c', 4), ('d', 1), ('f', 0), ('g', 1)],
+                                                                                                                options={"include_key": True})
+        print(f'left:{get_value(left_rp)}, right:{get_value(right_rp)}')
+        print('111', get_value(left_rp.subtract_by_key(right_rp)))
+        print('222', left_rp.subtract_by_key(right_rp).get_partitions())
 
     def test_parallelize_map_values(self):
         rp = self.ctx.parallelize(self.str_generator(False), options=self.store_opts(include_key=False))
@@ -606,7 +620,6 @@ class TestRollPairMultiPartition(TestRollPairBase):
     @staticmethod
     def store_opts(**kwargs):
         opts = {'total_partitions': 3}
-        opts.update(create_if_missing=True)
         opts.update(kwargs)
         return opts
 
@@ -680,7 +693,6 @@ class TestRollPairClusterEverySession(TestRollPairBase):
     @staticmethod
     def store_opts(**kwargs):
         opts = {'total_partitions': 10}
-        opts.update(create_if_missing=True)
         opts.update(kwargs)
         return opts
 
@@ -718,8 +730,7 @@ class TestRollPairCluster(TestRollPairBase):
 
     @staticmethod
     def store_opts(**kwargs):
-        opts = {'total_partitions': 10}
-        opts.update(create_if_missing=True)
+        opts = {'total_partitions': 10, "create_if_missing": True}
         opts.update(kwargs)
         return opts
 
