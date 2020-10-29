@@ -36,8 +36,8 @@ object RdbConnectionPool {
     plainPassword
   } else {
     val splitted = passwordDecryptorInfo.split("#")
-    val decryptor = Class.forName(passwordDecryptorInfo).newInstance()
-    MethodUtils.invokeExactMethod(decryptor, splitted(0), passwordDecryptorArgs.split(passwordDecryptorArgsSpliter)).asInstanceOf[String]
+    val decryptor = Class.forName(splitted(0)).newInstance()
+    MethodUtils.invokeExactMethod(decryptor, splitted(1), passwordDecryptorArgs.split(passwordDecryptorArgsSpliter)).asInstanceOf[String]
   }
 
   dataSource.setDriverClassName(StaticErConf.getString(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_JDBC_DRIVER_CLASS_NAME, "com.mysql.cj.jdbc.Driver"))
