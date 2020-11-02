@@ -277,12 +277,12 @@ class TransferClient(object):
                     t.start()
                 return broker
             except Exception as e:
-                L.warn(f'Error calling to {endpoint} in TransferClient.recv, cur_retry={cur_retry}', e)
+                L.warn(f'Error calling to {endpoint} in TransferClient.recv, cur_retry={cur_retry}', exc_info=e)
                 exception = e
                 cur_retry += 1
 
         if exception is not None:
-            L.error(f'fail to {endpoint} in TransferClient.recv, cur_retry={cur_retry}', e)
+            L.exception(f'fail to {endpoint} in TransferClient.recv, cur_retry={cur_retry}', exc_info=e)
             raise exception
 
 
