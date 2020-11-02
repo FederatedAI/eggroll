@@ -220,8 +220,8 @@ class PutBatchTask:
                 bss.check_finish()
                 # TransferService.remove_broker(tag) will be called in get_status phrase finished or exception got
             except Exception as e:
-                L.error(f'_run_put_batch error, tag={self.tag}, '
-                        f'rs_key={rs_header.get_rs_key() if rs_header is not None else None}, rs_header={rs_header}', e)
+                L.exception(f'_run_put_batch error, tag={self.tag}, '
+                        f'rs_key={rs_header.get_rs_key() if rs_header is not None else None}, rs_header={rs_header}')
                 raise e
             finally:
                 TransferService.remove_broker(self.tag)

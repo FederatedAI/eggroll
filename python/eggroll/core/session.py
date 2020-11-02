@@ -349,8 +349,8 @@ class ErSession(object):
             else:
                 final_output_proposal = job._outputs[0]
 
-            refresh_nodes = job._options.get('refresh_nodes', False)
-            if refresh_nodes:
+            refresh_nodes = job._options.get('refresh_nodes')
+            if refresh_nodes is None or refresh_nodes:
                 final_output_proposal._partitions = []
             else:
                 if not final_output_proposal._partitions:
