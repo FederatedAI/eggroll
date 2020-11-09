@@ -25,6 +25,8 @@ object Router extends Logging{
         .get("default_allow").asInstanceOf[Boolean]
     } catch {
       case _: Throwable => defaultEnable = true
+    } finally {
+      source.close()
     }
   }
 
