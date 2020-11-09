@@ -16,7 +16,7 @@
 import unittest
 
 from eggroll.core.conf_keys import CoreConfKeys
-from eggroll.core.constants import StoreTypes
+from eggroll.core.constants import StoreTypes, SerdesTypes
 from eggroll.core.datastructure import create_executor_pool
 from eggroll.core.utils import time_now
 from eggroll.roll_pair.test.roll_pair_test_assets import get_debug_test_context, \
@@ -38,7 +38,7 @@ class TestRollPairBase(unittest.TestCase):
 
     @staticmethod
     def store_opts(**kwargs):
-        opts = {'total_partitions': 1}
+        opts = {'total_partitions': 1, "create_if_missing": True}
         opts.update(create_if_missing=True)
         opts.update(kwargs)
         return opts
@@ -86,6 +86,29 @@ class TestRollPairBase(unittest.TestCase):
         table.destroy()
         table = self.ctx.load(name='fate_flow_detect_table_name', namespace='fate_flow_detect_table_namespace',
                               options=self.store_opts(total_partitions=16))
+
+    def test_empty_serdes(self):
+        rp = self.ctx.load('empty_serdes1', 'empty_serdes_ns', options={'serdes': SerdesTypes.EMPTY, 'create_if_missing': True, 'total_partitions': 2})
+        rp.put(b'k1', b'v1')
+        rp.put(b'k2', b'v2')
+
+        print(rp.count())
+        elements = list(rp.get_all())
+        print(elements)
+
+    def test_sc(self):
+        options_left = get_default_options()
+        options_right = get_default_options()
+        options_left['total_partitions'] = 10
+        options_right['total_partitions'] = 5
+        left_rp = self.ctx.load(namespace="ns1", name="testSubtractLeft_10p_8", options=options_left).put_all([('a', 1), ('b', 4), ('d', 6),
+                                                                                                               ('e', 0), ('f', 3),],
+                                                                                                              options={"include_key": True})
+        right_rp = self.ctx.load(namespace="ns1", name="testSubtractRight_5p_8", options=options_right).put_all([('a', 2), ('c', 4), ('d', 1), ('f', 0), ('g', 1)],
+                                                                                                                options={"include_key": True})
+        print(f'left:{get_value(left_rp)}, right:{get_value(right_rp)}')
+        print('111', get_value(left_rp.subtract_by_key(right_rp)))
+        print('222', left_rp.subtract_by_key(right_rp).get_partitions())
 
     def test_parallelize_map_values(self):
         rp = self.ctx.parallelize(self.str_generator(False), options=self.store_opts(include_key=False))
@@ -707,7 +730,7 @@ class TestRollPairCluster(TestRollPairBase):
 
     @staticmethod
     def store_opts(**kwargs):
-        opts = {'total_partitions': 10}
+        opts = {'total_partitions': 10, "create_if_missing": True}
         opts.update(kwargs)
         return opts
 

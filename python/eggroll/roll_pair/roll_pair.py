@@ -12,11 +12,15 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+
+import logging
 import os
 import time
 import uuid
 from concurrent.futures import wait, FIRST_EXCEPTION
 from threading import Thread
+
+import cloudpickle
 
 from eggroll.core.aspects import _method_profile_logger
 from eggroll.core.client import CommandClient
@@ -27,12 +31,11 @@ from eggroll.core.constants import StoreTypes, SerdesTypes, PartitionerTypes, \
 from eggroll.core.datastructure.broker import FifoBroker
 from eggroll.core.meta_model import ErStoreLocator, ErJob, ErStore, ErFunctor, \
     ErTask, ErPair, ErPartition
-import cloudpickle
 from eggroll.core.session import ErSession
 from eggroll.core.utils import generate_job_id, generate_task_id
 from eggroll.core.utils import string_to_bytes, hash_code
 from eggroll.roll_pair import create_serdes
-from eggroll.roll_pair.transfer_pair import TransferPair
+from eggroll.roll_pair.transfer_pair import TransferPair, BatchBroker
 from eggroll.roll_pair.utils.gc_utils import GcRecorder
 from eggroll.roll_pair.utils.pair_utils import partitioner
 from eggroll.utils.log_utils import get_logger
@@ -49,7 +52,7 @@ class RollPairContext(object):
 
     def __init__(self, session: ErSession):
         if session.get_session_meta()._status != SessionStatus.ACTIVE:
-            raise Exception(f"session:{session.get_session_id()} is not ACTIVE. current status={session.get_session_meta()._status}")
+            raise Exception(f"session_id={session.get_session_id()} is not ACTIVE. current status={session.get_session_meta()._status}")
         self.__session = session
         self.session_id = session.get_session_id()
         default_store_type_str = RollPairConfKeys.EGGROLL_ROLLPAIR_DEFAULT_STORE_TYPE.get_with(session.get_all_options())
@@ -140,7 +143,7 @@ class RollPairContext(object):
         else:
             result = self.__session._cluster_manager_client.get_store(store)
             if len(result._partitions) == 0:
-                L.exception(f"store: namespace={namespace}, name={name} not exist, "
+                L.info(f"store: namespace={namespace}, name={name} not exist, "
                                  f"create_if_missing={create_if_missing}, create first")
                 return None
 
@@ -311,7 +314,7 @@ class RollPair(object):
                 or not hasattr(self, 'ctx'):
             return
         if not self.gc_enable:
-            L.debug('gc not enabled session={}'.format(self.__session_id))
+            L.debug('GC not enabled session={}'.format(self.__session_id))
             return
 
         if self.get_store_type() != StoreTypes.ROLLPAIR_IN_MEMORY:
@@ -357,49 +360,51 @@ class RollPair(object):
             L.debug(f"repartition start: self rp={self_name} partitions={self_partition}, "
                     f"other={other_name}: partitions={other_partition}, repartitioning")
 
-            if self_count <= other_count:
+            if self_count < other_count:
                 shuffle_rp = self
                 shuffle_rp_count = self_count
                 shuffle_rp_name = self_name
                 shuffle_total_partitions = self_partition
-                shuffle_rp_partitions = other.__store._partitions
+                shuffle_rp_partitions = self.__store._partitions
 
                 not_shuffle_rp = other
                 not_shuffle_rp_count = other_count
                 not_shuffle_rp_name = other_name
                 not_shuffle_total_partitions = other_partition
-                not_shuffle_rp_partitions = self.__store._partitions
+                not_shuffle_rp_partitions = other.__store._partitions
             else:
                 not_shuffle_rp = self
                 not_shuffle_rp_count = self_count
                 not_shuffle_rp_name = self_name
                 not_shuffle_total_partitions = self_partition
-                not_shuffle_rp_partitions = other.__store._partitions
+                not_shuffle_rp_partitions = self.__store._partitions
 
                 shuffle_rp = other
                 shuffle_rp_count = other_count
                 shuffle_rp_name = other_name
                 shuffle_total_partitions = other_partition
-                shuffle_rp_partitions = self.__store._partitions
+                shuffle_rp_partitions = other.__store._partitions
 
-            L.trace(f"repatition selection: rp={shuffle_rp_name} count={shuffle_rp_count} "
-                    f"<= rp={not_shuffle_rp_name} count={not_shuffle_rp_count}. "
+            L.trace(f"repartition selection: rp={shuffle_rp_name} count={shuffle_rp_count}, "
+                    f"rp={not_shuffle_rp_name} count={not_shuffle_rp_count}. "
                     f"repartitioning {shuffle_rp_name}")
             store = ErStore(store_locator=ErStoreLocator(store_type=shuffle_rp.get_store_type(),
                                                          namespace=shuffle_rp.get_namespace(),
                                                          name=str(uuid.uuid1()),
                                                          total_partitions=not_shuffle_total_partitions),
-                            partitions=shuffle_rp_partitions)
+                            partitions=not_shuffle_rp_partitions)
             res_rp = shuffle_rp.map(lambda k, v: (k, v), output=store)
             res_rp.disable_gc()
-            L.debug(f"repartition end: rp to shuffle={shuffle_rp_name}, "
-                    f"count={shuffle_rp_count}, partitions={shuffle_total_partitions}; "
-                    f"rp NOT shuffled={not_shuffle_rp_name}, "
-                    f"count={not_shuffle_rp_count}, partitions={not_shuffle_total_partitions}' "
-                    f"res rp={res_rp.get_name()}, "
-                    f"count={res_rp.count()}, partitions={res_rp.get_partitions()}")
+
+            if L.isEnabledFor(logging.DEBUG):
+                L.debug(f"repartition end: rp to shuffle={shuffle_rp_name}, "
+                        f"count={shuffle_rp_count}, partitions={shuffle_total_partitions}; "
+                        f"rp NOT shuffled={not_shuffle_rp_name}, "
+                        f"count={not_shuffle_rp_count}, partitions={not_shuffle_total_partitions}' "
+                        f"res rp={res_rp.get_name()}, "
+                        f"count={res_rp.count()}, partitions={res_rp.get_partitions()}")
             store_shuffle = res_rp.get_store()
-            return [store_shuffle, other.get_store()] if self_count <= other_count \
+            return [store_shuffle, other.get_store()] if self_count < other_count \
                 else [self.get_store(), store_shuffle]
         else:
             return [self.__store, other.__store]
@@ -594,22 +599,23 @@ class RollPair(object):
         th.start()
         populated_store = self.ctx.populate_processor(self.__store)
         shuffler = TransferPair(job_id)
-        broker = FifoBroker()
-        scatter_future = shuffler.scatter(broker, self.partitioner, populated_store)
+        fifo_broker = FifoBroker()
+        bb = BatchBroker(fifo_broker)
+        scatter_future = shuffler.scatter(fifo_broker, self.partitioner, populated_store)
 
         key_serdes = self.key_serdes
         value_serdes = self.value_serdes
         try:
             if include_key:
                 for k, v in items:
-                    broker.put(item=(key_serdes.serialize(k), value_serdes.serialize(v)))
+                    bb.put(item=(key_serdes.serialize(k), value_serdes.serialize(v)))
             else:
                 k = 0
                 for v in items:
-                    broker.put(item=(key_serdes.serialize(k), value_serdes.serialize(v)))
+                    bb.put(item=(key_serdes.serialize(k), value_serdes.serialize(v)))
                     k += 1
         finally:
-            broker.signal_write_finish()
+            bb.signal_write_finish()
 
         scatter_results = scatter_future.result()
         th.join()
@@ -728,9 +734,7 @@ class RollPair(object):
             options = {}
 
         store_type = options.get('store_type', self.ctx.default_store_type)
-        if 'refresh_nodes' not in options:
-            options['refresh_nodes'] = False
-        refresh_nodes = options['refresh_nodes']
+        refresh_nodes = options.get('refresh_nodes')
 
         saved_as_store = ErStore(store_locator=ErStoreLocator(
                 store_type=store_type,

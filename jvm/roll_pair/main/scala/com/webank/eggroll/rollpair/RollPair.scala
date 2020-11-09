@@ -18,19 +18,21 @@
 
 package com.webank.eggroll.rollpair
 
-import java.nio.{ByteBuffer, ByteOrder}
-import java.util.Base64
-import java.util.concurrent.TimeUnit
+import java.nio.charset.StandardCharsets
+import java.util.concurrent.{Callable, Future, ThreadPoolExecutor}
 
 import com.google.protobuf.ByteString
+import com.webank.ai.eggroll.api.networking.proxy.Proxy
 import com.webank.eggroll.core.ErSession
 import com.webank.eggroll.core.command.{CommandClient, CommandURI}
 import com.webank.eggroll.core.constant._
-import com.webank.eggroll.core.datastructure.{Broker, LinkedBlockingBroker}
+import com.webank.eggroll.core.datastructure.FifoBroker
 import com.webank.eggroll.core.error.DistributedRuntimeException
+import com.webank.eggroll.core.meta.TransferModelPbMessageSerdes.ErRollSiteHeaderFromPbMessage
 import com.webank.eggroll.core.meta._
-import com.webank.eggroll.core.transfer.GrpcTransferClient
-import com.webank.eggroll.core.util.{IdUtils, Logging}
+import com.webank.eggroll.core.transfer.Transfer.RollSiteHeader
+import com.webank.eggroll.core.transfer.{InternalTransferClient, Transfer}
+import com.webank.eggroll.core.util.{IdUtils, Logging, ThreadPoolUtils}
 import org.apache.commons.lang3.exception.ExceptionUtils
 class RollPairContext(val session: ErSession,
                       defaultStoreType: String = RollPairConfKeys.EGGROLL_ROLLPAIR_DEFAULT_STORE_TYPE.get(),
@@ -72,9 +74,94 @@ class RollPairContext(val session: ErSession,
   }
 }
 
-class RollPair(val store: ErStore, val ctx: RollPairContext, val options: Map[String,String] = Map()) extends Logging {
-  // todo: 1. consider recv-side shuffle; 2. pull up rowPairDb logic; 3. add partition calculation based on session logic;
-  def putBatch(broker: Broker[ByteString], options: Map[String, String] = Map[String, String]()): Unit = {
+object RollPairContext {
+  val executor: ThreadPoolExecutor = ThreadPoolUtils.newCachedThreadPool("rollpair-context")
+}
+
+class RollPair(val store: ErStore,
+               val ctx: RollPairContext,
+               val options: Map[String,String] = Map.empty) extends Logging {
+  def putBatch(packets: Iterator[Proxy.Packet],
+              options: Map[String, String] = Map.empty): Unit = {
+    val totalPartitions = store.storeLocator.totalPartitions
+    val brokers = new Array[FifoBroker[Transfer.TransferBatch]](totalPartitions)
+    val commandFutures = new Array[Future[ErTask]](totalPartitions)
+    val transferFutures = new Array[Future[Transfer.TransferBatch]](totalPartitions)
+    val error = new DistributedRuntimeException()
+
+    val jobId = IdUtils.generateJobId(sessionId = ctx.session.sessionId,
+    tag = options.getOrElse("job_id_tag", StringConstants.EMPTY))
+    val job = ErJob(id = jobId,
+      name = RollPair.PUT_ALL,
+      inputs = Array(store),
+      outputs = Array(store),
+      functors = Array.empty,
+      options = options ++ Map(SessionConfKeys.CONFKEY_SESSION_ID -> ctx.session.sessionId, "fed_transfer" -> "true"))
+
+    val transferBatchBuilder = Transfer.TransferBatch.newBuilder()
+    val transferHeaderBuilder = Transfer.TransferHeader.newBuilder()
+
+    for (packet <- packets) {
+      val rollSiteHeader = RollSiteHeader.parseFrom(
+          packet.getHeader.getTask.getModel.getName.getBytes(
+          StandardCharsets.ISO_8859_1)).fromProto()
+
+      val partitionId = rollSiteHeader.options("partition_id").toInt
+
+      val broker = if (transferFutures(partitionId) == null) {
+        val partition = store.partitions(partitionId)
+        val egg = ctx.session.routeToEgg(partition)
+        val task = ErTask(id = IdUtils.generateTaskId(job.id, partitionId, RollPair.PUT_BATCH),
+          name = RollPair.PUT_ALL,
+          inputs = Array(partition),
+          outputs = Array(partition),
+          job = job)
+
+        val commandFuture = RollPairContext.executor.submit(new Callable[ErTask] {
+          override def call(): ErTask = {
+            logTrace(s"thread started for put batch taskId=${task.id}")
+            val commandClient = new CommandClient(egg.commandEndpoint)
+            val result = commandClient.call[ErTask](RollPair.EGG_RUN_TASK_COMMAND, task)
+            logTrace(s"thread ended for put batch taskId=${task.id}")
+            result
+          }
+        })
+        commandFutures.update(partitionId, commandFuture)
+
+        val newBroker = new FifoBroker[Transfer.TransferBatch]()
+        brokers.update(partitionId, newBroker)
+
+        val internalTransferClient = new InternalTransferClient(egg.transferEndpoint)
+        transferFutures.update(partitionId, internalTransferClient.sendAsync(newBroker))
+
+        newBroker
+      } else {
+        brokers(partitionId)
+      }
+
+      val batch = transferBatchBuilder.setHeader(transferHeaderBuilder.setId(packet.getHeader.getSeq.toInt))
+        .setData(packet.getBody.getValue)
+        .build()
+
+      broker.broker.put(batch)
+    }
+
+    brokers.foreach(b => {
+      if (b != null) b.signalWriteFinish()
+    })
+
+    transferFutures.foreach(f => {
+      if (f != null) f.get()
+    })
+
+    commandFutures.foreach(f => {
+      if (f != null) f.get()
+    })
+  }
+
+
+ /* // todo: 1. consider recv-side shuffle; 2. pull up rowPairDb logic; 3. add partition calculation based on session logic;
+  def putBatch(broker: Broker[ByteString], options: Map[String, String] = Map.empty): Unit = {
     val totalPartitions = store.storeLocator.totalPartitions
     val brokers = new Array[Broker[ByteString]](totalPartitions)
     val transferClients = new Array[GrpcTransferClient](totalPartitions)
@@ -189,7 +276,7 @@ class RollPair(val store: ErStore, val ctx: RollPairContext, val options: Map[St
     })
 
     if (!error.checkEmpty()) error.raise()
-  }
+  }*/
 }
 
 object RollPair {

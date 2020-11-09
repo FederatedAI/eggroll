@@ -105,7 +105,6 @@ public class ClientUnaryCallResponseStreamObserver implements StreamObserver<Pro
             ByteString value = packet.getBody().getValue();
             streamStat.increment(value.size());
         }
-
         // LOGGER.info("[UNARYCALL][OBSERVER][ONNEXT] result: {}", packet.getBody().getValue().toStringUtf8());
     }
 

@@ -21,7 +21,7 @@ export EGGROLL_HOME=`pwd`
 
 export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION='python'
 cd ${EGGROLL_HOME}
-echo "EGGROLL_HOME:${EGGROLL_HOME}"
+echo "EGGROLL_HOME=${EGGROLL_HOME}"
 
 eval action=\$$#
 start_mode=1
@@ -44,7 +44,7 @@ processor_tag=${property_value}
 if [ -z "${processor_tag}" ];then
 	processor_tag=EGGROLL_DAEMON
 fi
-echo "processor_tag:$processor_tag"
+echo "processor_tag=$processor_tag"
 
 main() {
 	case "$module" in
@@ -52,14 +52,18 @@ main() {
 			main_class=com.webank.eggroll.core.resourcemanager.ClusterManagerBootstrap
 			get_property "eggroll.resourcemanager.clustermanager.port"
 			port=${property_value}
+			get_property "eggroll.resourcemanager.clustermanager.jvm.options"
+			jvm_options=${property_value}
 			;;
 		nodemanager)
 			main_class=com.webank.eggroll.core.resourcemanager.NodeManagerBootstrap
 			get_property "eggroll.resourcemanager.nodemanager.port"
 			port=${property_value}
+			get_property "eggroll.resourcemanager.nodemanager.jvm.options"
+			jvm_options=${property_value}
 			;;
 		rollsite)
-			main_class=com.webank.eggroll.rollsite.Proxy
+			main_class=com.webank.eggroll.rollsite.EggSiteBootstrap
 			get_property "eggroll.rollsite.port"
 			port=${property_value}
 			get_property "eggroll.rollsite.jvm.options"
@@ -103,7 +107,7 @@ all() {
 	for module in "${modules[@]}"; do
 		main
 		echo
-		echo "[INFO] $module:${main_class}"
+		echo "[INFO] $module=${main_class}"
 		echo "[INFO] processing: ${module} ${action}"
 		echo "=================="
 		action
@@ -130,11 +134,7 @@ multiple() {
 }
 
 getpid() {
-	if [ $module = rollsite ];then
-        pid=`ps aux | grep ${EGGROLL_HOME} | grep ${processor_tag} | grep ${main_class} | grep -v grep | awk '{print $2}'`
-    else
-        pid=`ps aux | grep ${port} | grep ${processor_tag} | grep ${main_class} | grep -v grep | awk '{print $2}'`
-    fi
+  pid=`ps aux | grep ${port} | grep ${processor_tag} | grep ${main_class} | grep -v grep | awk '{print $2}'`
 	if [[ -n ${pid} ]]; then
 		return 0
 	else
@@ -165,11 +165,8 @@ start() {
 	if [[ $? -eq 1 ]]; then
 		mklogsdir
 		export EGGROLL_LOG_FILE=${module}
-		if [ $module = rollsite ];then
-			cmd="java $jvm_options -Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.properties -Dprocessor_tag=${processor_tag} -cp ${EGGROLL_HOME}/lib/*:${EGGROLL_HOME}/conf/ com.webank.eggroll.rollsite.Proxy -c ${EGGROLL_HOME}/conf/eggroll.properties"
-		else
-			cmd="java -Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.properties -cp ${EGGROLL_HOME}/lib/*: com.webank.eggroll.core.Bootstrap --bootstraps ${main_class} -c ${EGGROLL_HOME}/conf/eggroll.properties -p $port -s ${processor_tag}"
-		fi
+		cmd="java ${jvm_options} -Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.properties -cp ${EGGROLL_HOME}/lib/*: com.webank.eggroll.core.Bootstrap --bootstraps ${main_class} -c ${EGGROLL_HOME}/conf/eggroll.properties -p $port -s ${processor_tag}"
+
 		echo $cmd
 		if [ $start_mode = 0 ];then
 			exec $cmd >> ${EGGROLL_HOME}/logs/eggroll/bootstrap.${module}.out 2>>${EGGROLL_HOME}/logs/eggroll/bootstrap.${module}.err
@@ -179,12 +176,12 @@ start() {
 
 		getpid
 		if [[ $? -eq 0 ]]; then
-			echo "service start sucessfully. pid: ${pid}"
+			echo "service start sucessfully. pid=${pid}"
 		else
 			echo "service start failed"
 		fi
 	else
-		echo "service already started. pid: ${pid}"
+		echo "service already started. pid=${pid}"
 	fi
 }
 

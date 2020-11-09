@@ -148,7 +148,7 @@ class SessionMetaDao {
   def getSessionMain(sessionId: String): ErSessionMeta = synchronized {
     dbc.query( rs => {
       if (!rs.next()) {
-        throw new NotExistError("session id not found:" + sessionId)
+        return ErSessionMeta()
       }
 
       ErSessionMeta(

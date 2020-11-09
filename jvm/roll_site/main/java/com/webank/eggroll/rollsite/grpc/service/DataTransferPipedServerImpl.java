@@ -34,7 +34,6 @@ import com.webank.eggroll.core.util.ToStringUtils;
 import com.webank.eggroll.rollsite.RollSiteUtil;
 import com.webank.eggroll.rollsite.event.model.PipeHandleNotificationEvent;
 import com.webank.eggroll.rollsite.factory.AddrAuthServerInterceptor;
-import com.webank.eggroll.rollsite.factory.DefaultPipeFactory;
 import com.webank.eggroll.rollsite.factory.EventFactory;
 import com.webank.eggroll.rollsite.factory.PipeFactory;
 import com.webank.eggroll.rollsite.factory.ProxyGrpcStreamObserverFactory;
@@ -62,12 +61,10 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Scope;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Component;
-import scala.Function0;
 import scala.Option;
 import scala.Some;
 
@@ -658,7 +655,7 @@ public class DataTransferPipedServerImpl extends DataTransferServiceGrpc.DataTra
 
     private String genTagKey(ErRollSiteHeader rollSiteHeader) {
         return rollSiteHeader
-            .concat(StringConstants.HASH(), new String[]{"__federation__"});
+            .getRsKey(StringConstants.HASH(), new String[]{"__federation__"});
     }
 
     public void setDefaultPipe(Pipe defaultPipe) {
