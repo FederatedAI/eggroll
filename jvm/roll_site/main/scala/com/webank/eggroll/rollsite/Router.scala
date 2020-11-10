@@ -24,7 +24,9 @@ object Router extends Logging{
       defaultEnable = js.get("permission").asInstanceOf[JSONObject]
         .get("default_allow").asInstanceOf[Boolean]
     } catch {
-      case _: Throwable => defaultEnable = true
+      case _: Throwable =>
+        logError("get default_allow from route table failed.")
+        defaultEnable = true
     } finally {
       source.close()
     }
