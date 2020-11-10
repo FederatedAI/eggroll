@@ -29,6 +29,7 @@ object Router extends Logging{
         defaultEnable = true
     } finally {
       source.close()
+      logDebug("close route table.")
     }
   }
 
