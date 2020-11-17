@@ -25,7 +25,7 @@ import org.apache.commons.lang3.StringUtils
 import org.apache.commons.lang3.reflect.MethodUtils
 
 object RdbConnectionPool {
-  val dataSource: BasicDataSource = new BasicDataSource()
+  val dataSource = new BasicDataSource()
 
   val plainPassword = StaticErConf.getString(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_JDBC_PASSWORD)
   val passwordDecryptorInfo = ClusterManagerConfKeys.EGGROLL_RESOURCEMANAGER_CLUSTERMANAGER_PASSWORD_DECRYPTOR.get()
@@ -37,7 +37,8 @@ object RdbConnectionPool {
   } else {
     val splitted = passwordDecryptorInfo.split("#")
     val decryptor = Class.forName(splitted(0)).newInstance()
-    MethodUtils.invokeExactMethod(decryptor, splitted(1), passwordDecryptorArgs.split(passwordDecryptorArgsSpliter)).asInstanceOf[String]
+
+    MethodUtils.invokeExactMethod(decryptor, splitted(1), passwordDecryptorArgs.split(passwordDecryptorArgsSpliter): _*).asInstanceOf[String]
   }
 
   dataSource.setDriverClassName(StaticErConf.getString(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_JDBC_DRIVER_CLASS_NAME, "com.mysql.cj.jdbc.Driver"))
