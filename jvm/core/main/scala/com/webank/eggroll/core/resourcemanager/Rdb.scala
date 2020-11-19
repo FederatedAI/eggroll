@@ -28,9 +28,9 @@ object RdbConnectionPool {
   val dataSource = new BasicDataSource()
 
   val plainPassword = StaticErConf.getString(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_JDBC_PASSWORD)
-  val passwordDecryptorInfo = ClusterManagerConfKeys.EGGROLL_RESOURCEMANAGER_CLUSTERMANAGER_PASSWORD_DECRYPTOR.get()
-  val passwordDecryptorArgs = ClusterManagerConfKeys.EGGROLL_RESOURCEMANAGER_CLUSTERMANAGER_PASSWORD_DECRYPTOR_ARGS.get()
-  val passwordDecryptorArgsSpliter = ClusterManagerConfKeys.EGGROLL_RESOURCEMANAGER_CLUSTERMANAGER_PASSWORD_DECRYPTOR_ARGS_SPLITER.get()
+  val passwordDecryptorInfo = ClusterManagerConfKeys.EGGROLL_RESOURCEMANAGER_CLUSTERMANAGER_JDBC_PASSWORD_DECRYPTOR.get()
+  val passwordDecryptorArgs = ClusterManagerConfKeys.EGGROLL_RESOURCEMANAGER_CLUSTERMANAGER_JDBC_PASSWORD_DECRYPTOR_ARGS.get()
+  val passwordDecryptorArgsSpliter = ClusterManagerConfKeys.EGGROLL_RESOURCEMANAGER_CLUSTERMANAGER_JDBC_PASSWORD_DECRYPTOR_ARGS_SPLITER.get()
 
   val realPassword: String = if (StringUtils.isBlank(passwordDecryptorInfo)) {
     plainPassword
