@@ -70,7 +70,7 @@ class JdbcTemplate(dataSource: () => Connection, autoClose: Boolean = true) exte
       ret
     } catch {
       case e: Exception =>
-        val errMsg = s"""error in withStatement. sql="${statement}", params=(${String.join(",", params.map(p => s"'${p.toString}'"): _*)})"""
+        val errMsg = s"""error in withStatement. sql="${statement}", params=(${String.join(",", params.map(p => s"'${p.toString.substring(0, 300)}'"): _*)})"""
         throw new SQLException(errMsg, e)
     }
   }
@@ -88,7 +88,7 @@ class JdbcTemplate(dataSource: () => Connection, autoClose: Boolean = true) exte
         stmt.executeUpdate
       } catch {
         case ex: Exception =>
-          val errMsg = s"""error in update. sql="${sql}", params=(${String.join(",", params.map(p => s"'${p.toString}'"): _*)})"""
+          val errMsg = s"""error in update. sql="${sql}", params=(${String.join(",", params.map(p => s"'${p.toString.substring(0, 300)}'"): _*)})"""
           throw new SQLException(errMsg, ex)
       }
       val resultSet = stmt.getGeneratedKeys
