@@ -3,6 +3,7 @@ package com.webank.eggroll.rollsite
 import com.google.protobuf.ByteString
 import com.webank.ai.eggroll.api.networking.proxy.Proxy
 import com.webank.ai.eggroll.api.networking.proxy.Proxy.{PollingFrame, Topic}
+import com.webank.eggroll.core.constant.RollSiteConfKeys
 import com.webank.eggroll.core.util.{ErrorUtils, RuntimeUtils}
 import io.grpc.{Status, StatusRuntimeException}
 import org.apache.commons.lang3.exception.ExceptionUtils
@@ -13,12 +14,13 @@ object TransferExceptionUtils {
   private def genExceptionDescription(t: Throwable, topic: Topic = null): String = {
     val locMsg = t.getLocalizedMessage
     val stackInfo = ExceptionUtils.getStackTrace(t)
-    var desc = ""
+    val myPartyId = RollSiteConfKeys.EGGROLL_ROLLSITE_PARTY_ID.get()
+    var desc = s"Error from partyId=${myPartyId}:\n-------------\n"
     val host = RuntimeUtils.getMySiteLocalAddressAndPort()
     if (locMsg != null && locMsg.contains("[Roll Site Error TransInfo]")) {
       desc = locMsg + f"--> $host"
     } else {
-      desc = f"\n[Roll Site Error TransInfo] \n location msg:$locMsg \n stack info: $stackInfo \n"
+      desc = f"\n[Roll Site Error TransInfo] \n location msg: $locMsg \n stack info: $stackInfo \n"
       if (topic != null) {
         val locationInfo = f"\nlocationInfo: topic.getName--${topic.getName} " +
           f"topic.getPartyId--${topic.getPartyId}"
@@ -54,9 +56,11 @@ object TransferExceptionUtils {
     if (!checkPacketIsException(request) && t == null) return request
 
     // gen exception info
-    var decsException = ""
+
+    val myPartyId = RollSiteConfKeys.EGGROLL_ROLLSITE_PARTY_ID.get()
+    var descException = s"Error from partyId=${myPartyId}:\n-------------\n"
     if (t != null) {
-      decsException = genExceptionDescription(t, request.getHeader.getDst)
+      descException = genExceptionDescription(t, request.getHeader.getDst)
     }
 
     // if packet is an exception from pre site, then get it error info
@@ -69,9 +73,9 @@ object TransferExceptionUtils {
     // merge all exceptions data
     if (checkPacketIsException(request)) {
       val host = RuntimeUtils.getMySiteLocalAddressAndPort()
-      nextData = nextData + f"--> $host" + "\n ==exception divider== \n" + decsException
+      nextData = nextData + f"--> $host" + "\n ==exception divider== \n" + descException
     } else {
-      nextData = decsException
+      nextData = descException
     }
 
     // gen a new packet to next site
@@ -85,9 +89,12 @@ object TransferExceptionUtils {
 
   // TODO:0: add site info
   def genExceptionPollingFrame(t: Throwable): PollingFrame = {
+    val myPartyId = RollSiteConfKeys.EGGROLL_ROLLSITE_PARTY_ID.get()
+    var desc = s"Error from partyId=${myPartyId}:\n-------------\n"
+
     Proxy.PollingFrame.newBuilder()
       .setMethod(PollingMethods.ERROR_POISON)
-      .setDesc(ErrorUtils.getStackTraceString(t))
+      .setDesc(desc + ErrorUtils.getStackTraceString(t))
       .build()
   }
 }
