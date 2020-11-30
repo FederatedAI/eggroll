@@ -1,8 +1,8 @@
 -- create database if not exists, default database is eggroll_meta
---CREATE DATABASE IF NOT EXISTS `eggroll_meta`;
+-- CREATE DATABASE IF NOT EXISTS `eggroll_meta`;
 
 -- all operation under this database
---USE `eggroll_meta`;
+-- USE `eggroll_meta`;
 
 -- store_locator
 CREATE TABLE IF NOT EXISTS `store_locator` (
