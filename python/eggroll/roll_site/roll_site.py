@@ -245,6 +245,7 @@ class RollSite(RollSiteBase):
         self.push_batches_per_stream = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PUSH_BATCHES_PER_STREAM.get_with(options))
         self.push_per_stream_timeout = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PUSH_PER_STREAM_TIMEOUT_SEC.get_with(options))
         self.push_max_retry = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PUSH_MAX_RETRY.get_with(options))
+        self.push_long_retry = max(int(RollSiteConfKeys.EGGROLL_ROLLSITE_PUSH_LONG_RETRY.get_with(options)), self.push_max_retry)
         self.pull_header_interval = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PULL_HEADER_INTERVAL_SEC.get())
         self.pull_header_timeout = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PULL_HEADER_TIMEOUT_SEC.get_with(options))
         self.pull_interval = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PULL_INTERVAL_SEC.get_with(options))
@@ -293,12 +294,13 @@ class RollSite(RollSiteBase):
         grpc_channel_factory = GrpcChannelFactory()
         channel = grpc_channel_factory.create_channel(self.ctx.proxy_endpoint)
         stub = proxy_pb2_grpc.DataTransferServiceStub(channel)
+        max_retry_cnt = self.push_max_retry
+        long_retry_cnt = self.push_long_retry
+        per_stream_timeout = self.push_per_stream_timeout
 
         # if use stub.push.future here, retry mechanism is a problem to solve
         for batch_stream in bin_batch_streams:
-            max_retry_cnt = self.push_max_retry
             cur_retry = 0
-            per_stream_timeout = self.push_per_stream_timeout
 
             batch_stream_data = list(batch_stream)
             exception = None
@@ -309,7 +311,7 @@ class RollSite(RollSiteBase):
                     exception = None
                     break
                 except Exception as e:
-                    if cur_retry < max_retry_cnt - 2:
+                    if cur_retry < max_retry_cnt - long_retry_cnt:
                         retry_interval = round(min(2 * cur_retry, 20) + random.random() * 10, 3)
                     else:
                         retry_interval = round(300 + random.random() * 10, 3)
@@ -341,6 +343,7 @@ class RollSite(RollSiteBase):
         body_bytes = self.batch_body_bytes
         endpoint = self.ctx.proxy_endpoint
         max_retry_cnt = self.push_max_retry
+        long_retry_cnt = self.push_long_retry
         per_stream_timeout = self.push_per_stream_timeout
 
         def _push_partition(ertask):
@@ -374,7 +377,7 @@ class RollSite(RollSiteBase):
                             exception = None
                             break
                         except Exception as e:
-                            if cur_retry < max_retry_cnt - 2:
+                            if cur_retry < max_retry_cnt - long_retry_cnt:
                                 retry_interval = round(min(2 * cur_retry, 20) + random.random() * 10, 3)
                             else:
                                 retry_interval = round(300 + random.random() * 10, 3)
