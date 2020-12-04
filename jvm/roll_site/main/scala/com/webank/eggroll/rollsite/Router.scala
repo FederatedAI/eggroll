@@ -14,7 +14,7 @@ object Router extends Logging{
   @volatile private var defaultEnable: Boolean = true
 
   def initOrUpdateRouterTable(path: String): Unit = {
-    logTrace("Router.initOrUpdateRouterTable")
+    logDebug(s"refreshing route table at path=${path}")
     val source = Source.fromFile(path, "UTF-8")
     val str = source.mkString
     val js = new JSONObject(str)
@@ -28,7 +28,7 @@ object Router extends Logging{
         defaultEnable = true
     } finally {
       source.close()
-      logDebug(s"close route table at path=${path}")
+      logTrace(s"close route table at path=${path}")
     }
   }
 

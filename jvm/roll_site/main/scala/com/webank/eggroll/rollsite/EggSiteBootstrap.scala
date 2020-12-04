@@ -48,7 +48,7 @@ class EggSiteBootstrap extends BootstrapBase with Logging {
     this.port = cmd.getOptionValue('p', RollSiteConfKeys.EGGROLL_ROLLSITE_PORT.get()).toInt
     this.securePort = cmd.getOptionValue("sp", RollSiteConfKeys.EGGROLL_ROLLSITE_SECURE_PORT.get()).toInt
     val routerFilePath = RollSiteConfKeys.EGGROLL_ROLLSITE_ROUTE_TABLE_PATH.get()
-    logInfo(s"init router. path: $routerFilePath")
+    logInfo(s"initing router at path=${routerFilePath}")
     Router.initOrUpdateRouterTable(routerFilePath)
     WhiteList.init()
 
@@ -66,15 +66,11 @@ class EggSiteBootstrap extends BootstrapBase with Logging {
       }
     }
 
-    logInfo(s"start flush route table per min.")
-    val executorService = new ScheduledThreadPoolExecutor(1,
-      new BasicThreadFactory.Builder().namingPattern("example-schedule-pool-%d").build)
-    executorService.scheduleAtFixedRate(() => {
-      def foo(): Unit = {
-        Router.initOrUpdateRouterTable(routerFilePath)
-      }
-      foo()
-    }, 1, 1, TimeUnit.MINUTES)
+    logInfo(s"start refreshing route table per min")
+    val routineExecutors = new ScheduledThreadPoolExecutor(1,
+      new BasicThreadFactory.Builder().namingPattern("routine-executor-%d").build)
+    routineExecutors.scheduleAtFixedRate(() =>
+      Router.initOrUpdateRouterTable(routerFilePath), 1, 1, TimeUnit.MINUTES)
   }
 
   override def start(): Unit = {
