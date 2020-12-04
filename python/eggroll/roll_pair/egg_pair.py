@@ -864,11 +864,14 @@ def serve(args):
 
     GrpcChannelFactory.shutdown_all_now()
 
-    L.info(f'closing RocksDB open dbs')
     #todo:1: move to RocksdbAdapter and provide a cleanup method
-    from eggroll.core.pair_store.rocksdb import RocksdbAdapter
-    for path, db in RocksdbAdapter.db_dict.items():
-        del db
+    try:
+        from eggroll.core.pair_store.rocksdb import RocksdbAdapter
+        for path, db in RocksdbAdapter.db_dict.items():
+            del db
+        L.info(f'closed RocksDB open dbs')
+    except ModuleNotFoundError:
+        L.info(f'python-rocksdb not installed')
 
     gc.collect()
 
