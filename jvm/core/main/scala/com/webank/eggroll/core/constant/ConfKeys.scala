@@ -109,6 +109,9 @@ object CoreConfKeys {
 
   val CONFKEY_CORE_COMMAND_DEFAULT_SERDES_TYPE = "eggroll.core.command.default.serdes.type"
   val CONFKEY_CORE_LOG_DIR = "eggroll.core.log.dir"
+
+  val EGGROLL_CORE_STATS_DIRECT_MEMORY_METRICS = ErConfKey("eggroll.core.stats.direct.memory.metrics", false)
+  val EGGROLL_CORE_STATS_DIRECT_MEMORY_METRICS_INTERVAL_SEC = ErConfKey("eggroll.core.stats.direct.memory.metrics.interval.sec", 60)
 }
 
 object ClusterManagerConfKeys {

@@ -19,15 +19,22 @@
 package com.webank.eggroll.rollsite
 
 import java.io.File
+import java.nio.ByteBuffer
+import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.{ScheduledThreadPoolExecutor, ThreadPoolExecutor, TimeUnit}
+
 import com.webank.eggroll.core.BootstrapBase
 import com.webank.eggroll.core.constant.{CoreConfKeys, RollSiteConfKeys}
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.transfer.GrpcServerUtils
-import com.webank.eggroll.core.util.{CommandArgsUtils, Logging, ThreadPoolUtils}
+import com.webank.eggroll.core.util.{CommandArgsUtils, Logging, RuntimeMetricUtils, ThreadPoolUtils}
 import io.grpc.ServerInterceptors
+import io.grpc.netty.shaded.io.netty.buffer.{PoolArenaMetric, PooledByteBufAllocator, UnpooledByteBufAllocator}
+import io.grpc.netty.shaded.io.netty.util.internal.PlatformDependent
 import org.apache.commons.lang3.StringUtils
 import org.apache.commons.lang3.concurrent.BasicThreadFactory
+
+import scala.collection.mutable
 
 
 class EggSiteBootstrap extends BootstrapBase with Logging {
@@ -67,14 +74,25 @@ class EggSiteBootstrap extends BootstrapBase with Logging {
     }
 
     logInfo(s"start refreshing route table per min")
-    val routineExecutors = new ScheduledThreadPoolExecutor(1,
+    val routineExecutors = new ScheduledThreadPoolExecutor(5,
       new BasicThreadFactory.Builder().namingPattern("routine-executor-%d").build)
     routineExecutors.scheduleAtFixedRate(() =>
       Router.initOrUpdateRouterTable(routerFilePath), 1, 1, TimeUnit.MINUTES)
+
+    val isDirectMemoryMetricStatsEnabled = CoreConfKeys.EGGROLL_CORE_STATS_DIRECT_MEMORY_METRICS.get().toBoolean
+    if (isDirectMemoryMetricStatsEnabled) {
+      logDebug(s"${RuntimeMetricUtils.getDefaultArenaInfo()}")
+      val interval = CoreConfKeys.EGGROLL_CORE_STATS_DIRECT_MEMORY_METRICS_INTERVAL_SEC.get().toLong
+      routineExecutors.scheduleAtFixedRate(() => {
+        logDebug(s"metrics - \n[METRICS] totalDirectMemorySize=${RuntimeMetricUtils.getDirectMemorySize().get()}, \n" +
+          s"[METRICS] GrpcByteBufAllocatorMetrics=${RuntimeMetricUtils.getGrpcByteBufAllocatorMetrics()}, \n" +
+          s"[METRICS] DefaultDirectUnpooledArenaMetrics=${RuntimeMetricUtils.getDefaultDirectUnpooledArenaMetrics()}")
+      }, 0, interval, TimeUnit.SECONDS)
+    }
   }
 
   override def start(): Unit = {
-    var option: Map[String, String] = Map({"eggroll.core.security.secure.cluster.enabled" ->"false"})
+    var option: Map[String, String] = Map({"eggroll.core.security.secure.cluster.enabled" -> "false"})
     val tranferServicer = new EggSiteServicer
     val ipGetService = ServerInterceptors.intercept(tranferServicer.bindService, new AddrAuthServerInterceptor)
     val plainServer = GrpcServerUtils.createServer(
@@ -115,3 +133,7 @@ object EggSiteBootstrap {
     rsBootstrap.start()
   }
 }
+
+
+
+
