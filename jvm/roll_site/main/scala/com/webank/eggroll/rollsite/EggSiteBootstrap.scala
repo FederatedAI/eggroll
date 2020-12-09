@@ -19,8 +19,6 @@
 package com.webank.eggroll.rollsite
 
 import java.io.File
-import java.nio.ByteBuffer
-import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.{ScheduledThreadPoolExecutor, ThreadPoolExecutor, TimeUnit}
 
 import com.webank.eggroll.core.BootstrapBase
@@ -29,12 +27,8 @@ import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.transfer.GrpcServerUtils
 import com.webank.eggroll.core.util.{CommandArgsUtils, Logging, RuntimeMetricUtils, ThreadPoolUtils}
 import io.grpc.ServerInterceptors
-import io.grpc.netty.shaded.io.netty.buffer.{PoolArenaMetric, PooledByteBufAllocator, UnpooledByteBufAllocator}
-import io.grpc.netty.shaded.io.netty.util.internal.PlatformDependent
 import org.apache.commons.lang3.StringUtils
 import org.apache.commons.lang3.concurrent.BasicThreadFactory
-
-import scala.collection.mutable
 
 
 class EggSiteBootstrap extends BootstrapBase with Logging {
@@ -133,7 +127,4 @@ object EggSiteBootstrap {
     rsBootstrap.start()
   }
 }
-
-
-
 
