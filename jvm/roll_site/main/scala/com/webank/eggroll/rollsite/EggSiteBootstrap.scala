@@ -78,7 +78,7 @@ class EggSiteBootstrap extends BootstrapBase with Logging {
   }
 
   override def start(): Unit = {
-    var option: Map[String, String] = Map({"eggroll.core.security.secure.cluster.enabled" ->"false"})
+    var option: Map[String, String] = Map({"eggroll.core.security.secure.cluster.enabled" -> "false"})
     val tranferServicer = new EggSiteServicer
     val ipGetService = ServerInterceptors.intercept(tranferServicer.bindService, new AddrAuthServerInterceptor)
     val plainServer = GrpcServerUtils.createServer(
