@@ -41,6 +41,11 @@ class RocksdbAdapter(PairAdapter):
     lock_dict = defaultdict(threading.Lock)
     db_lock = threading.Lock()
 
+    @staticmethod
+    def release_db_resource():
+        for path, db in RocksdbAdapter.db_dict.items():
+            del db
+
     def __init__(self, options):
         """
         :param options:
