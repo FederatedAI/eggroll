@@ -169,6 +169,7 @@ object RollSiteConfKeys {
   val EGGROLL_ROLLSITE_PROXY_COMPATIBLE_ENABLED = ErConfKey("eggroll.rollsite.proxy.compatible.enabled", "false")
   val EGGROLL_ROLLSITE_LAN_INSECURE_CHANNEL_ENABLED = ErConfKey("eggroll.rollsite.lan.insecure.channel.enabled")
   val EGGROLL_ROLLSITE_AUDIT_ENABLED = ErConfKey("eggroll.rollsite.audit.enabled")
+  val EGGROLL_ROLLSITE_AUDIT_TOPICS = ErConfKey("eggroll.rollsite.audit.topics")
 }
 
 object RollPairConfKeys {

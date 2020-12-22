@@ -39,5 +39,6 @@
     <task:scheduler id="routineScheduler" pool-size="5"/>
     <task:scheduled-tasks scheduler="routineScheduler">
         <task:scheduled ref="confFileBasedFdnRouter" method="init" fixed-rate="60000" initial-delay="60000"/>
+        <task:scheduled ref="toAuditString" method="refreshAuditTopics" fixed-rate="60000" initial-delay="60000"/>
     </task:scheduled-tasks>
 </beans>
