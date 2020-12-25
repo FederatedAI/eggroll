@@ -58,14 +58,15 @@ class RollPairMasterBootstrap extends Bootstrap with Logging {
       pid = pid,
       options = options,
       status = ProcessorStatus.RUNNING)
-    logInfo("ready to heartbeat")
-    clusterManagerClient.heartbeat(myself)
 
     StaticErConf.addProperty(SessionConfKeys.CONFKEY_SESSION_ID, sessionId)
 
     StaticErConf.addProperties(confPath)
     val confFile = new File(confPath)
     StaticErConf.addProperty(CoreConfKeys.STATIC_CONF_PATH, confFile.getAbsolutePath)
+
+    logInfo("ready to heartbeat")
+    clusterManagerClient.heartbeat(myself)
 
     Runtime.getRuntime.addShutdownHook(new Thread() {
       override def run(): Unit = { // Use stderr here since the logger may have been reset by its JVM shutdown hook.
