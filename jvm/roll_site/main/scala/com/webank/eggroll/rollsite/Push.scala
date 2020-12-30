@@ -158,7 +158,11 @@ class PutBatchSinkPushReqSO(eggSiteServicerPushRespSO_forwardPushToPollingRespSO
     val ctx = new RollPairContext(session)
 
     var rpOptions = rsHeader.options ++ Map(StringConstants.TOTAL_PARTITIONS_SNAKECASE -> rsHeader.totalPartitions.toString)
-    if (rsHeader.dataType.equals("object")) rpOptions ++= Map(StringConstants.SERDES -> SerdesTypes.EMPTY)
+    if (rsHeader.dataType.equals("object")) {
+      rpOptions ++= Map(StringConstants.SERDES -> SerdesTypes.EMPTY)
+    } else {
+      rpOptions ++= Map(StringConstants.SERDES -> rsHeader.options.getOrElse("serdes", SerdesTypes.PICKLE))
+    }
 
     // table creates here
     val rp = ctx.load(namespace, name, options = rpOptions)

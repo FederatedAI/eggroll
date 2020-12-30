@@ -34,6 +34,10 @@ import com.webank.eggroll.core.transfer.Transfer.RollSiteHeader
 import com.webank.eggroll.core.transfer.{InternalTransferClient, Transfer}
 import com.webank.eggroll.core.util.{IdUtils, Logging, ThreadPoolUtils}
 import org.apache.commons.lang3.exception.ExceptionUtils
+
+import scala.collection.JavaConverters._
+
+
 class RollPairContext(val session: ErSession,
                       defaultStoreType: String = RollPairConfKeys.EGGROLL_ROLLPAIR_DEFAULT_STORE_TYPE.get(),
                       defaultSerdesType: String = SerdesTypes.PICKLE) extends Logging {
@@ -55,7 +59,7 @@ class RollPairContext(val session: ErSession,
       totalPartitions = totalPartitions,
       partitioner = options.getOrElse(StringConstants.PARTITIONER, PartitionerTypes.BYTESTRING_HASH),
       serdes = options.getOrElse(StringConstants.SERDES, defaultSerdesType)
-    ))
+    ), options = options.asJava)
     val loaded = session.clusterManagerClient.getOrCreateStore(store)
     new RollPair(loaded, this)
   }
