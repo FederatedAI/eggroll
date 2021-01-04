@@ -30,6 +30,7 @@ import com.webank.eggroll.core.transfer.GrpcClientUtils
 import com.webank.eggroll.core.transfer.Transfer.RollSiteHeader
 import com.webank.eggroll.core.util._
 import com.webank.eggroll.rollsite.utils.ToAuditString
+import io.grpc.{Context, Deadline}
 import io.grpc.stub.{ServerCallStreamObserver, StreamObserver}
 import org.apache.commons.lang3.StringUtils
 import org.apache.logging.log4j.LogManager
@@ -66,11 +67,15 @@ class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBas
     val oneLineStringMetadata = ToStringUtils.toOneLineString(metadata)
     val rollSiteHeader = RollSiteHeader.parseFrom(metadata.getExt).fromProto()
     val rsKey = rollSiteHeader.getRsKey()
+    val context = Context.current()
+    val startDeadline = context.getDeadline
+    var endDeadline: Deadline = null
+    var isPolling = false
 
     try {
       val dstPartyId = metadata.getDst.getPartyId
       val dstRole = metadata.getDst.getRole
-      val logMsg = s"[UNARYCALL][SERVER] unaryCall request received. rsKey=${rsKey}, metadata=${oneLineStringMetadata}"
+      val logMsg = s"[UNARYCALL][SERVER] unaryCall request received. rsKey=${rsKey}, metadata=${oneLineStringMetadata}, deadline=${startDeadline}"
 
       val endpoint = Router.query(dstPartyId, dstRole).point
       val dstIsPolling = Router.query(dstPartyId, dstRole).isPolling
@@ -82,8 +87,8 @@ class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBas
         AUDIT.info(ToAuditString.toOneLineString(req.getHeader, "|"))
       }
 
-      logTrace(f"[UNARYCALL][SERVER] EggSiteServicer dst host is ${endpoint.host} port is ${endpoint.port}")
-      if (endpoint.host == RollSiteConfKeys.EGGROLL_ROLLSITE_HOST.get()
+      logTrace(f"[UNARYCALL][SERVER] EggSiteServicer dst host=${endpoint.host}, dst port=${endpoint.port}")
+      val result: Proxy.Packet = if (endpoint.host == RollSiteConfKeys.EGGROLL_ROLLSITE_HOST.get()
         && (endpoint.port == RollSiteConfKeys.EGGROLL_ROLLSITE_PORT.get().toInt
         || endpoint.port == RollSiteConfKeys.EGGROLL_ROLLSITE_SECURE_PORT.get().toInt)) {
         logDebug(s"${logMsg}, hop=SINK")
@@ -109,12 +114,12 @@ class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBas
 
           PollingExchanger.offer(reqPollingFrame, pollingExchanger.respQ, "EggSiteServicer.unaryCall offering to respQ, ")
 
-          var result: PollingFrame = PollingExchanger.poll(pollingExchanger.reqQ,
+          val pollingResult: PollingFrame = PollingExchanger.poll(pollingExchanger.reqQ,
             "EggSiteServicer.unaryCall polling from reqQ, ")
 
-          respSO.onNext(result.getPacket)
-          respSO.onCompleted()
           logTrace(f"[UNARYCALL][SERVER] EggSiteServicer do polling finished.")
+          isPolling = true
+          pollingResult.getPacket
         } else {
           logDebug(s"${logMsg}, hop=FORWARD")
           var isSecure = Router.query(dstPartyId).isSecure
@@ -128,21 +133,28 @@ class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBas
             && req.getHeader.getDst.getPartyId != req.getHeader.getSrc.getPartyId) isSecure else false
           val channel = GrpcClientUtils.getChannel(endpoint, isSecure)
           val stub = DataTransferServiceGrpc.newBlockingStub(channel)
-          val result = stub.unaryCall(req)
-          respSO.onNext(result)
-          respSO.onCompleted()
+          stub.unaryCall(req)
         }
+      }
+      respSO.onNext(result)
+      respSO.onCompleted()
+      endDeadline = context.getDeadline
+
+      if (!isPolling) {
+        logDebug(s"[UNARYCALL][SERVER] EggSiteServicer.unaryCall called. rsKey=${rsKey}, " +
+          s"isCancelled=${context.isCancelled}, " +
+          s"deadline=${if (endDeadline != null) endDeadline else null}, " +
+          s"isExpired=${if (endDeadline != null) endDeadline.isExpired else false}")
       }
     } catch {
       case t: Throwable =>
-        logError(s"[UNARYCALL][SERVER] onError. rsKey=${rsKey}, metadata=${oneLineStringMetadata}", t)
         val wrapped = TransferExceptionUtils.throwableToException(t)
+        logError(s"[UNARYCALL][SERVER] onError. rsKey=${rsKey}, metadata=${oneLineStringMetadata}", wrapped)
         respSO.onError(wrapped)
     }
-    logTrace(f"[UNARYCALL][SERVER] EggSiteServicer.unaryCall called")
   }
 
-  private def processCommand(request: Proxy.Packet, responseSO: StreamObserver[Proxy.Packet]): Unit = {
+  private def processCommand(request: Proxy.Packet, responseSO: StreamObserver[Proxy.Packet]): Proxy.Packet = {
     logDebug(s"packet to myself. request: ${ToStringUtils.toOneLineString(request)}")
 
     val operator = request.getHeader.getOperator
@@ -158,13 +170,10 @@ class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBas
         val e = new NotImplementedError(s"operation ${operator} not supported")
 
         // TODO:0: optimise log
-        logError(e)
-        responseSO.onError(TransferExceptionUtils.throwableToException(e))
-        return
+        throw e
     }
 
-    responseSO.onNext(result)
-    responseSO.onCompleted()
+    result
   }
 
   private def verifyToken(request: Proxy.Packet): Boolean = {
