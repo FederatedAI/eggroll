@@ -142,7 +142,7 @@ class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBas
 
       if (!isPolling) {
         logDebug(s"[UNARYCALL][SERVER] EggSiteServicer.unaryCall called. rsKey=${rsKey}, " +
-          s"metadata=${oneLineStringMetadata}, "
+          s"metadata=${oneLineStringMetadata}, " +
           s"isCancelled=${context.isCancelled}, " +
           s"deadline=${if (endDeadline != null) endDeadline else null}, " +
           s"isExpired=${if (endDeadline != null) endDeadline.isExpired else false}")
