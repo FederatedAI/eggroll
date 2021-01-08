@@ -245,7 +245,7 @@ class RollSite(RollSiteBase):
         self.push_batches_per_stream = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PUSH_BATCHES_PER_STREAM.get_with(options))
         self.push_per_stream_timeout = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PUSH_PER_STREAM_TIMEOUT_SEC.get_with(options))
         self.push_max_retry = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PUSH_MAX_RETRY.get_with(options))
-        self.push_long_retry = max(int(RollSiteConfKeys.EGGROLL_ROLLSITE_PUSH_LONG_RETRY.get_with(options)), self.push_max_retry)
+        self.push_long_retry = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PUSH_LONG_RETRY.get_with(options))
         self.pull_header_interval = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PULL_HEADER_INTERVAL_SEC.get())
         self.pull_header_timeout = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PULL_HEADER_TIMEOUT_SEC.get_with(options))
         self.pull_interval = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PULL_INTERVAL_SEC.get_with(options))
@@ -311,7 +311,7 @@ class RollSite(RollSiteBase):
                     exception = None
                     break
                 except Exception as e:
-                    if cur_retry < max_retry_cnt - long_retry_cnt:
+                    if cur_retry <= max_retry_cnt - long_retry_cnt:
                         retry_interval = round(min(2 * cur_retry, 20) + random.random() * 10, 3)
                     else:
                         retry_interval = round(300 + random.random() * 10, 3)
