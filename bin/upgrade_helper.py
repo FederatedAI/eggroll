@@ -41,7 +41,7 @@ def backup_eggroll_data(egg_home: str):
 def check_egg_home(egg_home: str):
     h = egg_home+'/python/eggroll/__init__.py'
     print(f'input eggroll home =={h}')
-    p1 = subprocess.Popen(['grep', '-w', '__version__',h],
+    p1 = subprocess.Popen(['grep', '-w', '__version__', h],
                           stdout=subprocess.PIPE)
     p2 = subprocess.Popen(["awk", '-F', '" "', '"{print $3}"'], stdin=p1.stdout, stdout=subprocess.PIPE)
     p1.stdout.close()
@@ -84,18 +84,19 @@ def get_db_upgrade_content(upgrade_sql_file: str):
 def backup_upgrade_db(mysql_home_path: str, host: str, port: int, database: str, username: str, passwd: str,
                       db_upgrade_sql: str):
     print(f"start backup db data ...")
+    ts = str(time.time())
     if os.path.exists("./dump_backup_eggroll_upgrade_" + host + "_" + datetime.now().strftime("%Y%m%d") + ".sql"):
         print(f"backup database data repetition.")
         return -1
     bak_cmd = mysql_home_path + "/bin/mysqldump" + " -h " + host + " -u " + username + " -p" + passwd + " -P" + str(
-        port) + " " + database + " -r " + "./dump_backup_eggroll_upgrade_" + host + "_" + datetime.now().strftime(
-        "%Y%m%d") + ".sql"
+        port) + " " + database + " -S " + mysql_home_path + "/run/mysql.sock" + " -r " + "./dump_backup_eggroll_upgrade_" + host + "_" + ts + ".sql"
     print(f'bak_cmd={bak_cmd}')
     os.popen("%s %s %s " % ('ssh', host, bak_cmd))
     print(f"end backup db data.")
     print(f'start upgrade db ...')
     sub_cmd = split_statements(get_db_upgrade_content(db_upgrade_sql))
-    up_cmd = "'"+mysql_home_path + "/bin/mysql" + " -u " + username + " -p" + passwd + " -P " + str(port) + " -h " + host + " -S " + mysql_home_path + "/run/mysql.sock" + " -Bse " +'"'+ sub_cmd+'"' +"'"
+    up_cmd = "'" + mysql_home_path + "/bin/mysql" + " -u " + username + " -p" + passwd + " -P " + str(
+        port) + " -h " + host + " -S " + mysql_home_path + "/run/mysql.sock" + " -Bse " + '"' + sub_cmd + '"' + "'"
     print(f'up_cmd={up_cmd}')
     os.popen("%s %s %s " % ('ssh', host, up_cmd))
     print(f'end upgrade db end.')
@@ -136,6 +137,8 @@ def upgrade_main(cm_file, rs_file, egg_home, mysql_home, mysql_host, mysql_port,
         if backup_upgrade_db(mysql_home, mysql_host, mysql_port, mysql_db, mysql_user, mysql_pwd, mysql_file) == -1:
             print(f"backup database data repetition.")
         for h in cm_node:
+            if h == '':
+                continue
             cluster_upgrade_sync('eggroll', egg_home, h)
     elif len(rs_node) > 0:
         if check_egg_home(egg_home) is False:
@@ -144,6 +147,8 @@ def upgrade_main(cm_file, rs_file, egg_home, mysql_home, mysql_host, mysql_port,
         if backup_eggroll_data(egg_home) == -1:
             print(f"backup eggroll data repetion.")
         for h in rs_node:
+            if h == '':
+                continue
             cluster_upgrade_sync('eggroll', egg_home, h)
     else:
         pass
@@ -209,16 +214,16 @@ def main(argv):
         if opt == '-h':
             print(
                 'upgrade_helper.py \n'
-                ' -c <input eggroll custermanager node ip sets>\n'
-                ' -r <rollsite node ip sets>\n'
-                ' -e <eggroll home path>\n'
-                ' -m <mysql home path>\n'
-                ' -t <mysql ip addr>\n'
-                ' -p <mysql port>\n'
-                ' -b <mysql database>\n'
-                ' -u <mysql username>\n'
-                ' -w <mysql passwd>\n'
-                ' -s <mysql upgrade content sql file sets>\n')
+                ' -c --cm_file <input eggroll custermanager node ip sets>\n'
+                ' -r --rs_file <rollsite node ip sets>\n'
+                ' -e --egg_home <eggroll home path>\n'
+                ' -m --mysql_home <mysql home path>\n'
+                ' -t --mysql_host <mysql ip addr>\n'
+                ' -p --mysql_port <mysql port>\n'
+                ' -b --mysql_db <mysql database>\n'
+                ' -u --mysql_user <mysql username>\n'
+                ' -w --mysql_pwd <mysql passwd>\n'
+                ' -s --mysql_file <mysql upgrade content sql file sets>\n')
             sys.exit()
         elif opt in ("-c", "--cm_file"):
             cm_file = arg
