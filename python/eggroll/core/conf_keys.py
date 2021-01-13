@@ -139,7 +139,7 @@ class RollSiteConfKeys(object):
     EGGROLL_ROLLSITE_PROXY_COMPATIBLE_ENABLED = ErConfKey("eggroll.rollsite.proxy.compatible.enabled", "false")
     EGGROLL_ROLLSITE_LAN_INSECURE_CHANNEL_ENABLED = ErConfKey("eggroll.rollsite.lan.insecure.channel.enabled")
     EGGROLL_ROLLSITE_AUDIT_ENABLED = ErConfKey("eggroll.rollsite.audit.enabled")
-    EGGROLL_ROLLSITE_ADAPTER_SENDBUF_SIZE = ErConfKey("eggroll.rollsite.adapter.sendbuf.size", 1 << 20)
+    EGGROLL_ROLLSITE_ADAPTER_SENDBUF_SIZE = ErConfKey("eggroll.rollsite.adapter.sendbuf.size", 100_000)
     EGGROLL_ROLLSITE_RECEIVE_EXECUTOR_POOL_MAX_SIZE = ErConfKey("eggroll.rollsite.receive.executor.pool.max.size", 5_000)
     EGGROLL_ROLLSITE_COMPLETE_EXECUTOR_POOL_MAX_SIZE = ErConfKey("eggroll.rollsite.complete.executor.pool.max.size", 50)
     EGGROLL_ROLLSITE_UNARYCALL_CLIENT_MAX_RETRY = ErConfKey("eggroll.rollsite.unarycall.client.max.retry", 100)
