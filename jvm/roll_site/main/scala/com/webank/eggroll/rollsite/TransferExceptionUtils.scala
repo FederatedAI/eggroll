@@ -3,6 +3,7 @@ package com.webank.eggroll.rollsite
 import com.google.protobuf.ByteString
 import com.webank.ai.eggroll.api.networking.proxy.Proxy
 import com.webank.ai.eggroll.api.networking.proxy.Proxy.{PollingFrame, Topic}
+import com.webank.eggroll.core.constant.RollSiteConfKeys
 import com.webank.eggroll.core.util.{ErrorUtils, RuntimeUtils}
 import io.grpc.{Status, StatusRuntimeException}
 import org.apache.commons.lang3.exception.ExceptionUtils
@@ -13,26 +14,32 @@ object TransferExceptionUtils {
   private def genExceptionDescription(t: Throwable, topic: Topic = null): String = {
     val locMsg = t.getLocalizedMessage
     val stackInfo = ExceptionUtils.getStackTrace(t)
-    var desc = ""
-    val host = RuntimeUtils.getMySiteLocalAddressAndPort()
+    val myPartyId = RollSiteConfKeys.EGGROLL_ROLLSITE_PARTY_ID.get()
+    var desc = s"Error from partyId=${myPartyId}:\n-------------\n"
+    val host = RollSiteConfKeys.EGGROLL_ROLLSITE_HOST.get()
     if (locMsg != null && locMsg.contains("[Roll Site Error TransInfo]")) {
-      desc = locMsg + f"--> $host"
+      desc = s"${locMsg} --> ${host}(${myPartyId})"
     } else {
-      desc = f"\n[Roll Site Error TransInfo] \n location msg:$locMsg \n stack info: $stackInfo \n"
+      desc = f"\n[Roll Site Error TransInfo] \n location msg=${locMsg} \n stack info=${stackInfo} \n"
       if (topic != null) {
-        val locationInfo = f"\nlocationInfo: topic.getName--${topic.getName} " +
-          f"topic.getPartyId--${topic.getPartyId}"
+        val locationInfo = f"\nlocationInfo: topic.getName=${topic.getName} " +
+          f"topic.getPartyId=${topic.getPartyId}"
         desc = desc + locationInfo
       }
-      desc = desc + f"\nexception trans path: $host"
+      desc = desc + f"\nexception trans path: ${host}(${myPartyId})"
     }
     desc
   }
 
   def throwableToException(t: Throwable, topic: Topic = null): StatusRuntimeException = {
-    if (t.isInstanceOf[StatusRuntimeException]) return t.asInstanceOf[StatusRuntimeException]
-    val desc = genExceptionDescription(t, topic)
-    val status = Status.fromThrowable(t).withDescription(desc)
+    //if (t.isInstanceOf[StatusRuntimeException]) return t.asInstanceOf[StatusRuntimeException]
+    val e = if (t != null) {
+      t
+    } else {
+      new IllegalStateException(s"t is null when throwing exception. myPartyId=${RollSiteConfKeys.EGGROLL_ROLLSITE_PARTY_ID.get()}")
+    }
+    val desc = genExceptionDescription(e, topic)
+    val status = Status.fromThrowable(e).withDescription(desc)
     status.asRuntimeException()
   }
 
@@ -54,9 +61,11 @@ object TransferExceptionUtils {
     if (!checkPacketIsException(request) && t == null) return request
 
     // gen exception info
-    var decsException = ""
+
+    val myPartyId = RollSiteConfKeys.EGGROLL_ROLLSITE_PARTY_ID.get()
+    var descException = s"Error from partyId=${myPartyId}:\n-------------\n"
     if (t != null) {
-      decsException = genExceptionDescription(t, request.getHeader.getDst)
+      descException = genExceptionDescription(t, request.getHeader.getDst)
     }
 
     // if packet is an exception from pre site, then get it error info
@@ -69,9 +78,10 @@ object TransferExceptionUtils {
     // merge all exceptions data
     if (checkPacketIsException(request)) {
       val host = RuntimeUtils.getMySiteLocalAddressAndPort()
-      nextData = nextData + f"--> $host" + "\n ==exception divider== \n" + decsException
+      nextData = s"${nextData} --> ${host} \n == exception divider == \n ${descException}"
+      //nextData = nextData + f"--> $host" + "\n ==exception divider== \n" + descException
     } else {
-      nextData = decsException
+      nextData = descException
     }
 
     // gen a new packet to next site
@@ -85,9 +95,12 @@ object TransferExceptionUtils {
 
   // TODO:0: add site info
   def genExceptionPollingFrame(t: Throwable): PollingFrame = {
+    val myPartyId = RollSiteConfKeys.EGGROLL_ROLLSITE_PARTY_ID.get()
+    var desc = s"Error from partyId=${myPartyId}:\n-------------\n"
+
     Proxy.PollingFrame.newBuilder()
       .setMethod(PollingMethods.ERROR_POISON)
-      .setDesc(ErrorUtils.getStackTraceString(t))
+      .setDesc(desc + ErrorUtils.getStackTraceString(t))
       .build()
   }
 }
