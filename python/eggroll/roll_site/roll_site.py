@@ -15,6 +15,7 @@
 #
 import logging
 import pickle
+import random
 import threading
 import time
 
@@ -324,6 +325,7 @@ class RollSiteGrpc(RollSiteImplBase):
         self.push_batches_per_stream = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PUSH_BATCHES_PER_STREAM.get_with(options))
         self.push_per_stream_timeout = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PUSH_PER_STREAM_TIMEOUT_SEC.get_with(options))
         self.push_max_retry = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PUSH_MAX_RETRY.get_with(options))
+        self.push_long_retry = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PUSH_LONG_RETRY.get_with(options))
         self.pull_header_interval = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PULL_HEADER_INTERVAL_SEC.get())
         self.pull_header_timeout = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PULL_HEADER_TIMEOUT_SEC.get_with(options))
         self.pull_interval = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PULL_INTERVAL_SEC.get_with(options))
@@ -382,12 +384,13 @@ class RollSiteGrpc(RollSiteImplBase):
         grpc_channel_factory = GrpcChannelFactory()
         channel = grpc_channel_factory.create_channel(self.ctx.proxy_endpoint)
         stub = proxy_pb2_grpc.DataTransferServiceStub(channel)
+        max_retry_cnt = self.push_max_retry
+        long_retry_cnt = self.push_long_retry
+        per_stream_timeout = self.push_per_stream_timeout
 
         # if use stub.push.future here, retry mechanism is a problem to solve
         for batch_stream in bin_batch_streams:
-            max_retry_cnt = self.push_max_retry
             cur_retry = 0
-            per_stream_timeout = self.push_per_stream_timeout
 
             batch_stream_data = list(batch_stream)
             exception = None
@@ -398,8 +401,12 @@ class RollSiteGrpc(RollSiteImplBase):
                     exception = None
                     break
                 except Exception as e:
-                    L.warn(f"push object error. rs_key={rs_key}, partition_id={rs_header._partition_id}, rs_header={rs_header}, cur_retry={cur_retry}", exc_info=e)
-                    time.sleep(min(2 * cur_retry, 20))
+                    if cur_retry <= max_retry_cnt - long_retry_cnt:
+                        retry_interval = round(min(2 * cur_retry, 20) + random.random() * 10, 3)
+                    else:
+                        retry_interval = round(300 + random.random() * 10, 3)
+                    L.warn(f"push object error. rs_key={rs_key}, partition_id={rs_header._partition_id}, rs_header={rs_header}, max_retry_cnt={max_retry_cnt}, cur_retry={cur_retry}, retry_interval={retry_interval}", exc_info=e)
+                    time.sleep(retry_interval)
                     if isinstance(e, RpcError) and e.code().name == 'UNAVAILABLE':
                         channel = grpc_channel_factory.create_channel(self.ctx.proxy_endpoint, refresh=True)
                         stub = proxy_pb2_grpc.DataTransferServiceStub(channel)
@@ -407,7 +414,7 @@ class RollSiteGrpc(RollSiteImplBase):
                 finally:
                     cur_retry += 1
             if exception is not None:
-                L.exception(f"push object failed. rs_key={rs_key}, partition_id={rs_header._partition_id}, rs_header={rs_header}, cur_retry={cur_retry}", exc_info=e)
+                L.exception(f"push object failed. rs_key={rs_key}, partition_id={rs_header._partition_id}, rs_header={rs_header}, cur_retry={cur_retry}", exc_info=exception)
                 raise exception
             L.trace(f'pushed object stream. rs_key={rs_key}, rs_header={rs_header}, cur_retry={cur_retry - 1}')
 
@@ -435,6 +442,7 @@ class RollSiteGrpc(RollSiteImplBase):
         body_bytes = self.batch_body_bytes
         endpoint = self.ctx.proxy_endpoint
         max_retry_cnt = self.push_max_retry
+        long_retry_cnt = self.push_long_retry
         per_stream_timeout = self.push_per_stream_timeout
 
         def _push_partition(ertask):
@@ -468,8 +476,12 @@ class RollSiteGrpc(RollSiteImplBase):
                             exception = None
                             break
                         except Exception as e:
-                            L.warn(f"push partition error. rs_key={rs_key}, partition_id={rs_header._partition_id}, rs_header={rs_header}, cur_retry={cur_retry}", exc_info=e)
-                            time.sleep(min(2 * cur_retry, 20))
+                            if cur_retry < max_retry_cnt - long_retry_cnt:
+                                retry_interval = round(min(2 * cur_retry, 20) + random.random() * 10, 3)
+                            else:
+                                retry_interval = round(300 + random.random() * 10, 3)
+                            L.warn(f"push rp partition error. rs_key={rs_key}, partition_id={rs_header._partition_id}, rs_header={rs_header}, max_retry_cnt={max_retry_cnt}, cur_retry={cur_retry}, retry_interval={retry_interval}", exc_info=e)
+                            time.sleep(retry_interval)
                             if isinstance(e, RpcError) and e.code().name == 'UNAVAILABLE':
                                 channel = grpc_channel_factory.create_channel(endpoint, refresh=True)
                                 stub = proxy_pb2_grpc.DataTransferServiceStub(channel)

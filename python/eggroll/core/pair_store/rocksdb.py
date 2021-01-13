@@ -18,7 +18,6 @@ import os
 import threading
 from collections import defaultdict
 
-import rocksdb
 import shutil
 from pathlib import Path
 import time
@@ -30,11 +29,22 @@ from eggroll.roll_pair.utils.pair_utils import get_data_dir
 
 L = get_logger()
 
+try:
+    import rocksdb
+except ModuleNotFoundError:
+    L.info(f'python-rocksdb not installed')
+
+
 class RocksdbAdapter(PairAdapter):
     db_dict = dict()
     count_dict = dict()
     lock_dict = defaultdict(threading.Lock)
     db_lock = threading.Lock()
+
+    @staticmethod
+    def release_db_resource():
+        for path, db in RocksdbAdapter.db_dict.items():
+            del db
 
     def __init__(self, options):
         """
