@@ -36,7 +36,7 @@ elif [ $action = restarting ];then
 fi
 
 get_property() {
-	property_value=`grep $1 ${EGGROLL_HOME}/conf/eggroll.properties | awk -F= '{print $2}'`
+	property_value=`grep $1 ${EGGROLL_HOME}/conf/eggroll.properties | cut -d= -f 2-`
 }
 
 get_property "eggroll.resourcemanager.process.tag"

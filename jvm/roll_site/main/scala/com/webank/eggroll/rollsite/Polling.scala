@@ -351,8 +351,9 @@ class DispatchPollingReqSO(eggSiteServicerPollingRespSO: ServerCallStreamObserve
     } else if (delegateSO != null) {
       delegateSO.onError(t)
     } else {
-      logError("DispatchPollingReqSO.onError before init", t)
-      eggSiteServicerPollingRespSO.onError(TransferExceptionUtils.throwableToException(t))
+      val wrapped = TransferExceptionUtils.throwableToException(t)
+      logError("DispatchPollingReqSO.onError before init", wrapped)
+      eggSiteServicerPollingRespSO.onError(wrapped)
     }
   }
 
@@ -437,8 +438,9 @@ class UnaryCallPollingReqSO(eggSiteServicerPollingRespSO: ServerCallStreamObserv
   }
 
   override def onError(t: Throwable): Unit = {
-    logError(s"UnaryCallPollingReqSO.onError calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}", t)
-    eggSiteServicerPollingRespSO.onError(TransferExceptionUtils.throwableToException(t))
+    val wrapped = TransferExceptionUtils.throwableToException(t)
+    logError(s"UnaryCallPollingReqSO.onError calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}", wrapped)
+    eggSiteServicerPollingRespSO.onError(wrapped)
     logError(s"UnaryCallPollingReqSO.onError called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
   }
 
@@ -525,8 +527,9 @@ class PushPollingReqSO(val eggSiteServicerPollingRespSO: ServerCallStreamObserve
   }
 
   override def onError(t: Throwable): Unit = {
-    logError(s"PushPollingReqSO.onError calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}", t)
-    eggSiteServicerPollingRespSO.onError(TransferExceptionUtils.throwableToException(t))
+    val wrapped = TransferExceptionUtils.throwableToException(t)
+    logError(s"PushPollingReqSO.onError calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}", wrapped)
+    eggSiteServicerPollingRespSO.onError(wrapped)
     logError(s"PushPollingReqSO.onError called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
   }
 
@@ -571,10 +574,10 @@ class DispatchPollingRespSO(pollingResults: PollingResults,
         metadata = req.getPacket.getHeader
         delegateSO = new MockPollingRespSO(pollingResults)
       case _ =>
-        val t = new NotImplementedError(s"operation ${method} not supported")
-        logError("fail to dispatch response", t)
-        onError(TransferExceptionUtils.throwableToException(t))
-        throw t
+        val wrapped = TransferExceptionUtils.throwableToException(new NotImplementedError(s"operation ${method} not supported"))
+        logError("fail to dispatch response", wrapped)
+        onError(wrapped)
+        throw wrapped
     }
 
     oneLineStringMetadata = ToStringUtils.toOneLineString(metadata)
@@ -605,9 +608,10 @@ class DispatchPollingRespSO(pollingResults: PollingResults,
   }
 
   override def onError(t: Throwable): Unit = {
-    logTrace(s"DispatchPollingRespSO.onError calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
+    val wrapped = TransferExceptionUtils.throwableToException(t)
+    logTrace(s"DispatchPollingRespSO.onError calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}", wrapped)
     if (delegateSO != null) {
-      delegateSO.onError(TransferExceptionUtils.throwableToException(t))
+      delegateSO.onError(wrapped)
     }
     finishLatch.countDown()
     LongPollingClient.releaseSemaphore()
@@ -688,10 +692,10 @@ class PushPollingRespSO(pollingResults: PollingResults)
   }
 
   override def onError(t: Throwable): Unit = {
-    logError(s"PushPollingRespSO.onError calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}", t)
-    val siteError = TransferExceptionUtils.throwableToException(t)
-    pollingResults.setError(siteError)
-    pushReqSO.onError(siteError)
+    val wrapped = TransferExceptionUtils.throwableToException(t)
+    logError(s"PushPollingRespSO.onError calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}", wrapped)
+    pollingResults.setError(wrapped)
+    pushReqSO.onError(wrapped)
     logError(s"PushPollingRespSO.onError called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
   }
 
@@ -757,9 +761,10 @@ class ForwardPushToPollingRespSO(pollingResults: PollingResults,
   }
 
   override def onError(t: Throwable): Unit = {
-    logError(s"ForwardPushToPollingRespSO.onError calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}", t)
+    val wrapped = TransferExceptionUtils.throwableToException(t)
+    logError(s"ForwardPushToPollingRespSO.onError calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}", wrapped)
     finishLatch.countDown()
-    pollingResults.setError(TransferExceptionUtils.throwableToException(t))
+    pollingResults.setError(wrapped)
     logError(s"ForwardPushToPollingRespSO.onError called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
   }
 
@@ -833,8 +838,9 @@ class UnaryCallPollingRespSO(pollingResults: PollingResults)
   }
 
   override def onError(t: Throwable): Unit = {
+    val wrapped = TransferExceptionUtils.throwableToException(t)
     logError(s"UnaryCallPollingRespSO.onError calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}", t)
-    pollingResults.setError(TransferExceptionUtils.throwableToException(t))
+    pollingResults.setError(wrapped)
     logError(s"UnaryCallPollingRespSO.onError called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
   }
 
