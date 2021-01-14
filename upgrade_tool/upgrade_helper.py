@@ -1,6 +1,5 @@
 import sys, os, getopt
 import subprocess
-from datetime import datetime
 import time
 
 
@@ -22,7 +21,6 @@ def read_ip_list(upgrade_ip):
 
 
 def backup_eggroll_data(egg_home: str):
-    try:
         ts = str(time.time())
         print(f"start backup eggroll data ...")
         subprocess.check_call(['mv', egg_home + '/bin/', egg_home + '/bin_' + ts + '_bak/'])
@@ -33,9 +31,7 @@ def backup_eggroll_data(egg_home: str):
             ['mv', egg_home + '/conf/eggroll.properties', egg_home + '/conf/eggroll.properties.bak'+ts])
         print(f"end backup eggroll data.")
         return 0
-    except subprocess.CalledProcessError as e:
-        print(f'back eggroll data error={e}')
-        return -1
+
 
 
 def check_egg_home(egg_home: str):
@@ -82,21 +78,18 @@ def get_db_upgrade_content(upgrade_sql_file: str):
 
 
 def backup_upgrade_db(mysql_home_path: str, host: str, port: int, database: str, username: str, passwd: str,
-                      db_upgrade_sql: str):
+                      mysql_sock,db_upgrade_sql: str):
     print(f"start backup db data ...")
     ts = str(time.time())
-    if os.path.exists("./dump_backup_eggroll_upgrade_" + host + "_" + datetime.now().strftime("%Y%m%d") + ".sql"):
-        print(f"backup database data repetition.")
-        return -1
     bak_cmd = mysql_home_path + "/bin/mysqldump" + " -h " + host + " -u " + username + " -p" + passwd + " -P" + str(
-        port) + " " + database + " -S " + mysql_home_path + "/run/mysql.sock" + " -r " + "./dump_backup_eggroll_upgrade_" + host + "_" + ts + ".sql"
+        port) + " -S " + mysql_sock + " " + database + " -r " + "./dump_backup_eggroll_upgrade_" + host + "_" + ts + ".sql"
     print(f'bak_cmd={bak_cmd}')
     os.popen("%s %s %s " % ('ssh', host, bak_cmd))
     print(f"end backup db data.")
     print(f'start upgrade db ...')
     sub_cmd = split_statements(get_db_upgrade_content(db_upgrade_sql))
     up_cmd = "'" + mysql_home_path + "/bin/mysql" + " -u " + username + " -p" + passwd + " -P " + str(
-        port) + " -h " + host + " -S " + mysql_home_path + "/run/mysql.sock" + " -Bse " + '"' + sub_cmd + '"' + "'"
+        port) + " -h " + host + " -S " + mysql_sock + " -Bse " + '"' + sub_cmd + '"' + "'"
     print(f'up_cmd={up_cmd}')
     os.popen("%s %s %s " % ('ssh', host, up_cmd))
     print(f'end upgrade db end.')
@@ -124,7 +117,7 @@ def cluster_upgrade_sync(src_path: str, dst_path: str, remote_host: str):
 
 
 def upgrade_main(cm_file, rs_file, egg_home, mysql_home, mysql_host, mysql_port, mysql_db, mysql_user, mysql_pwd,
-                 mysql_file):
+                 mysql_sock,mysql_file):
     print(f"into upgrade main ...")
     cm_node = read_ip_list(cm_file)
     rs_node = read_ip_list(rs_file)
@@ -132,10 +125,12 @@ def upgrade_main(cm_file, rs_file, egg_home, mysql_home, mysql_host, mysql_port,
         if check_egg_home(egg_home) is False:
             print(f'input param eggroll home path error={egg_home}')
             return
-        if backup_eggroll_data(egg_home) == -1:
-            print(f"backup eggroll data repetition.")
-        if backup_upgrade_db(mysql_home, mysql_host, mysql_port, mysql_db, mysql_user, mysql_pwd, mysql_file) == -1:
-            print(f"backup database data repetition.")
+        try:
+            backup_eggroll_data(egg_home)
+            backup_upgrade_db(mysql_home, mysql_host, mysql_port, mysql_db, mysql_user, mysql_pwd,mysql_sock, mysql_file)
+        except Exception as e:
+            print(f" upgrade error pleases checking.e={e}")
+            return
         for h in cm_node:
             if h == '':
                 continue
@@ -144,8 +139,12 @@ def upgrade_main(cm_file, rs_file, egg_home, mysql_home, mysql_host, mysql_port,
         if check_egg_home(egg_home) is False:
             print(f'input param eggroll home path error={egg_home}')
             return
-        if backup_eggroll_data(egg_home) == -1:
+        try:
+            backup_eggroll_data(egg_home)
             print(f"backup eggroll data repetion.")
+        except Exception as e:
+            print(f" upgrade error pleases checking.e={e}")
+            return
         for h in rs_node:
             if h == '':
                 continue
@@ -192,10 +191,11 @@ def main(argv):
     mysql_db = ''
     mysql_user = ''
     mysql_pwd = ''
+    mysql_sock = ''
     try:
-        opts, args = getopt.getopt(argv, "hc:r:e:m:t:p:b:u:w:s:",
+        opts, args = getopt.getopt(argv, "hc:r:e:m:t:p:b:u:w:s:S:",
                                    ["cm_file=", "rs_file=", "egg_home=", "mysql_home=", "mysql_host=", "mysql_port=",
-                                    "mysql_db=", "mysql_user=", "mysql_pwd=", "mysql_file="])
+                                    "mysql_db=", "mysql_user=", "mysql_pwd=", "mysql_file=","mysql_sock="])
     except getopt.GetoptError:
         print(
             'upgrade_helper.py \n'
@@ -208,6 +208,7 @@ def main(argv):
             ' -b <mysql database>\n'
             ' -u <mysql username>\n'
             ' -w <mysql passwd>\n'
+            ' -S <mysql sock file\n>'
             ' -s <mysql upgrade content sql file sets>\n')
         sys.exit(2)
     for opt, arg in opts:
@@ -223,6 +224,7 @@ def main(argv):
                 ' -b --mysql_db <mysql database>\n'
                 ' -u --mysql_user <mysql username>\n'
                 ' -w --mysql_pwd <mysql passwd>\n'
+                ' -S --mysql_sock <mysql sock file\n>'
                 ' -s --mysql_file <mysql upgrade content sql file sets>\n')
             sys.exit()
         elif opt in ("-c", "--cm_file"):
@@ -243,17 +245,19 @@ def main(argv):
             mysql_user = arg
         elif opt in ("-w", "--mysql_pwd"):
             mysql_pwd = arg
+        elif opt in ("-S", "--mysql_sock"):
+            mysql_sock = arg
         elif opt in ("-s", "--mysql_file"):
             mysql_file = arg
     print(
-        f'input params={cm_file, rs_file, egg_home, mysql_home, mysql_host, mysql_port, mysql_db, mysql_user, mysql_pwd, mysql_file}')
+        f'input params={cm_file, rs_file, egg_home, mysql_home, mysql_host, mysql_port, mysql_db, mysql_user, mysql_pwd,mysql_sock, mysql_file}')
 
-    if len(argv) < 9:
+    if len(opts) < 11:
         print(f'input param missing,please checing ...')
         return
     print(f'start ....')
     upgrade_main(cm_file, rs_file, egg_home, mysql_home, mysql_host, mysql_port,
-                 mysql_db, mysql_user, mysql_pwd, mysql_file)
+                 mysql_db, mysql_user, mysql_pwd,mysql_sock, mysql_file)
     print(f'end ....')
 
 
