@@ -231,9 +231,9 @@ class PutBatchSinkPushReqSO(eggSiteServicerPushRespSO_forwardPushToPollingRespSO
   }
 
   override def onError(t: Throwable): Unit = {
-    logError(s"PutBatchSinkPushReqSO.onError calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}", t)
-    val statusException = TransferExceptionUtils.throwableToException(t)
-    eggSiteServicerPushRespSO_forwardPushToPollingRespSO.onError(statusException)
+    val wrapped = TransferExceptionUtils.throwableToException(t)
+    logError(s"PutBatchSinkPushReqSO.onError calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}", wrapped)
+    eggSiteServicerPushRespSO_forwardPushToPollingRespSO.onError(wrapped)
     logError(s"PutBatchSinkPushReqSO.onError called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
   }
 
@@ -281,9 +281,9 @@ class PutBatchSinkPushRespSO(val reqHeader: Proxy.Metadata,
   }
 
   override def onError(t: Throwable): Unit = {
-    logError(s"PutBatchSinkPushRespSO.onError calling. rsKey=${rsKey}, rsHeader=${rsHeader}, transferHeader=${oneLineStringTransferHeader}", t)
-    val e = TransferExceptionUtils.throwableToException(t)
-    eggSiteServicerPushRespSO_putBatchPollingPushRespSO.onError(e)
+    val wrapped = TransferExceptionUtils.throwableToException(t)
+    logError(s"PutBatchSinkPushRespSO.onError calling. rsKey=${rsKey}, rsHeader=${rsHeader}, transferHeader=${oneLineStringTransferHeader}", wrapped)
+    eggSiteServicerPushRespSO_putBatchPollingPushRespSO.onError(wrapped)
     finishLatch.countDown()
     logError(s"PutBatchSinkPushRespSO.onError called. rsKey=${rsKey}, rsHeader=${rsHeader}, transferHeader=${oneLineStringTransferHeader}", t)
   }
@@ -363,8 +363,9 @@ class ForwardPushToPollingReqSO(eggSiteServicerPushRespSO_forwardPushToPollingRe
   }
 
   override def onError(t: Throwable): Unit = {
-    logError(s"ForwardPushToPollingReqSO.onError calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}", t)
-    eggSiteServicerPushRespSO_forwardPushToPollingRespSO.onError(TransferExceptionUtils.throwableToException(t))
+    val wrapped = TransferExceptionUtils.throwableToException(t)
+    logError(s"ForwardPushToPollingReqSO.onError calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}", wrapped)
+    eggSiteServicerPushRespSO_forwardPushToPollingRespSO.onError(wrapped)
     logError(s"ForwardPushToPollingReqSO.onError called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
   }
 
@@ -383,8 +384,8 @@ class ForwardPushToPollingReqSO(eggSiteServicerPushRespSO_forwardPushToPollingRe
         "ForwardPushToPollingReqSO.onCompleted, getting from pollingExchanger.reqQ", rsHeader, oneLineStringMetadata)
 
       if (PollingMethods.ERROR_POISON.equals(pollingReq.getMethod)) {
-        val t = new RuntimeException(s"exception from polling: ${pollingReq.getDesc}")
-        onError(TransferExceptionUtils.throwableToException(t))
+        val t = TransferExceptionUtils.throwableToException(new RuntimeException(s"exception from polling: ${pollingReq.getDesc}"))
+        onError(t)
         return
       }
 
@@ -392,7 +393,6 @@ class ForwardPushToPollingReqSO(eggSiteServicerPushRespSO_forwardPushToPollingRe
       eggSiteServicerPushRespSO_forwardPushToPollingRespSO.onCompleted()
     } catch {
       case t: Throwable =>
-        ""
         onError(t)
     }
 
@@ -470,7 +470,7 @@ class ForwardPushReqSO(eggSiteServicerPushRespSO_forwardPushToPollingRespSO: Str
 
           val rsException = TransferExceptionUtils.throwableToException(t)
           logTrace(s"ForwardPushReqSO.onNext passing error to nextReqSO via onNext. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
-          forwardPushReqSO.onNext(TransferExceptionUtils.genExceptionToNextSite(request, t))
+          forwardPushReqSO.onNext(TransferExceptionUtils.genExceptionToNextSite(request, rsException))
         }
         failRequest -= request.getHeader
         // notifying prev via normal onError
@@ -479,9 +479,9 @@ class ForwardPushReqSO(eggSiteServicerPushRespSO_forwardPushToPollingRespSO: Str
   }
 
   override def onError(t: Throwable): Unit = {
-    logError(s"ForwardPushReqSO.onError calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}", t)
-    val e = TransferExceptionUtils.throwableToException(t)
-    eggSiteServicerPushRespSO_forwardPushToPollingRespSO.onError(e)
+    val wrapped = TransferExceptionUtils.throwableToException(t)
+    logError(s"ForwardPushReqSO.onError calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}", wrapped)
+    eggSiteServicerPushRespSO_forwardPushToPollingRespSO.onError(wrapped)
     logError(s"ForwardPushReqSO.onError called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
   }
 
@@ -525,9 +525,9 @@ class ForwardPushRespSO(val eggSiteServicerPushRespSO_forwardPushToPollingRespSO
   }
 
   override def onError(t: Throwable): Unit = {
-    logError(s"ForwardPushRespSO.onError calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}", t)
-    val e = TransferExceptionUtils.throwableToException(t)
-    eggSiteServicerPushRespSO_forwardPushToPollingRespSO.onError(e)
+    val wrapped = TransferExceptionUtils.throwableToException(t)
+    logError(s"ForwardPushRespSO.onError calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}", wrapped)
+    eggSiteServicerPushRespSO_forwardPushToPollingRespSO.onError(wrapped)
     finishLatch.countDown()
     logError(s"ForwardPushRespSO.onError called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
   }
