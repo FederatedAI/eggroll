@@ -183,6 +183,13 @@ object RollSiteConfKeys {
   val EGGROLL_ROLLSITE_POLLING_CLIENT_ENABLED = ErConfKey("eggroll.rollsite.polling.client.enabled", false)
   val EGGROLL_ROLLSITE_POLLING_CONCURRENCY = ErConfKey("eggroll.rollsite.polling.concurrency", 50)
   val EGGROLL_ROLLSITE_ROUTE_TABLE_KEY = ErConfKey("eggroll.rollsite.route.table.key", "123")
+  val EGGROLL_ROLLSITE_POLLING_AHTHENTICATION_ENABLE = ErConfKey("eggroll.rollsite.polling.authentication.enable", false)
+  val EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_SECRECT_INFO_GENERATOR = ErConfKey("eggroll.rollsite.polling.authentication.secret.info.generator", "com.webank.ai.fate.cloud.sdk.sdk.Fatecloud#getSecretInfo")
+  val EGGROLL_ROLLSITE_POLLING_AUTHENTICATOR_INTERFACE = ErConfKey("eggroll.rollsite.polling.authenticator.interface", "com.webank.ai.fate.cloud.sdk.sdk.Fatecloud#checkPartyId")
+  val EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_APPKEY = ErConfKey("eggroll.rollsite.polling.authentication.appKey", "")
+  val EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_APPSERCRET = ErConfKey("eggroll.rollsite.polling.authentication.appSecret", "")
+  val EGGROLL_ROLLSITE_POLLING_SECRET_INFO_URL = ErConfKey("eggroll.rollsite.polling.secret_info_url", "")
+  val EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_URL = ErConfKey("eggroll.rollsite.polling.authentication.url", "")
 }
 
 object RollPairConfKeys {
