@@ -53,13 +53,13 @@ object PollingMethods {
 }
 
 object LongPollingClient extends Logging {
-  private val defaultPollingReqMetadata: Proxy.Metadata = Proxy.Metadata.newBuilder()
+  private var defaultPollingReqMetadata: Proxy.Metadata = Proxy.Metadata.newBuilder()
     .setDst(
       Proxy.Topic.newBuilder()
         .setPartyId(RollSiteConfKeys.EGGROLL_ROLLSITE_PARTY_ID.get()))
     .build()
 
-  val initPollingFrameBuilder: Proxy.PollingFrame.Builder = Proxy.PollingFrame.newBuilder().setMetadata(defaultPollingReqMetadata)
+  var initPollingFrameBuilder: Proxy.PollingFrame.Builder = Proxy.PollingFrame.newBuilder().setMetadata(defaultPollingReqMetadata)
 
   private val pollingSemaphore = new Semaphore(RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_CONCURRENCY.get().toInt)
 
@@ -132,16 +132,27 @@ class LongPollingClient extends Logging {
         logInfo("signature: " + signature)
 
         val authInfo: JSONObject = new JSONObject
-        authInfo.append("signature", signature)
-        authInfo.append("appKey", appKey)
-        authInfo.append("timestamp", time)
-        authInfo.append("nonce", nonce)
-        authInfo.append("role", role)
+        authInfo.put("signature", signature.toString)
+        authInfo.put("appKey", appKey.toString)
+        authInfo.put("timestamp", time.toString)
+        authInfo.put("nonce", nonce.toString)
+        authInfo.put("role", role.toString)
 
-        LongPollingClient.defaultPollingReqMetadata.toBuilder.setTask(
-          Proxy.Task.newBuilder()
+//        LongPollingClient.defaultPollingReqMetadata.toBuilder.setTask(
+//          Proxy.Task.newBuilder()
+//            .setModel(Proxy.Model.newBuilder()
+//              .setDataKey(authInfo.toString()))).build()
+        LongPollingClient.defaultPollingReqMetadata = Proxy.Metadata.newBuilder()
+          .setDst(
+            Proxy.Topic.newBuilder()
+              .setPartyId(LongPollingClient.defaultPollingReqMetadata.getDst.getPartyId))
+          .setTask(Proxy.Task.newBuilder()
             .setModel(Proxy.Model.newBuilder()
-              .setDataKey(authInfo.toString()))).build()
+              .setDataKey(authInfo.toString())))
+          .build()
+
+        LongPollingClient.initPollingFrameBuilder = Proxy.PollingFrame.newBuilder().setMetadata(LongPollingClient.defaultPollingReqMetadata)
+//        LongPollingClient.initPollingFrameBuilder.setMetadata(LongPollingClient.defaultPollingReqMetadata).build()
         logInfo(s"debug123:${LongPollingClient.defaultPollingReqMetadata.getTask.getModel.getDataKey}")
       } else {
         logDebug(s"polling Authentication disable")
