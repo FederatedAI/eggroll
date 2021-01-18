@@ -107,6 +107,8 @@ class LongPollingClient extends Logging {
           appKey = secretInfo.getJSONObject("data").getString("appKey")
           role = if (secretInfo.getJSONObject("data").getString("role") == "Guest") "1" else "2"
         } catch {
+          case e: NoSuchMethodException =>
+            throw new NoSuchMethodException(s"failed to execute reflection")
           case t: Throwable =>
             logInfo(s"failed to get secretInfo from fate cloud, please check if service ${secretInfoUrl} is available. " +
               "Now try to get secretInfo from eggroll.properties")
@@ -357,6 +359,9 @@ class DispatchPollingReqSO(eggSiteServicerPollingRespSO: ServerCallStreamObserve
       logInfo(s"debug123 signature is :${req.getMetadata.getTask.getModel.getDataKey}")
       val authUrl = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_URL.get().toString
       val authString = req.getMetadata.getTask.getModel.getDataKey
+      if (authString == "" || authString == null) {
+        throw new IllegalStateException(s"failed to get authentication info from header")
+      }
       val authInfo = new JSONObject(authString)
 
       val signature = authInfo.getString("signature")
@@ -391,6 +396,8 @@ class DispatchPollingReqSO(eggSiteServicerPollingRespSO: ServerCallStreamObserve
         logError(s"polling authentication of party: ${authPartyID} failed, please check polling client authentication info")
         throw new IllegalArgumentException(s"polling authentication of party: ${authPartyID} failed, please check polling client authentication info")
       }
+    } else {
+      logDebug("polling authentication disable")
     }
 
     pollingExchanger = new PollingExchanger()
