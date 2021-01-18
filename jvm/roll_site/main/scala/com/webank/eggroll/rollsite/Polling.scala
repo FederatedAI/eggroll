@@ -57,11 +57,7 @@ object LongPollingClient extends Logging {
     .setDst(
       Proxy.Topic.newBuilder()
         .setPartyId(RollSiteConfKeys.EGGROLL_ROLLSITE_PARTY_ID.get()))
-        .setTask(Proxy.Task.newBuilder()
-          .setModel(Proxy.Model.newBuilder()
-            .setDataKey("123123123")))
     .build()
-  logInfo(s"defaultPollingReqMetadata:${defaultPollingReqMetadata}")
 
   val initPollingFrameBuilder: Proxy.PollingFrame.Builder = Proxy.PollingFrame.newBuilder().setMetadata(defaultPollingReqMetadata)
 
@@ -101,6 +97,9 @@ class LongPollingClient extends Logging {
           val authenticator = Class.forName(splitted(0)).newInstance()
           val args = secretInfoUrl + "," + myPartyId
           val result = MethodUtils.invokeExactMethod(authenticator, splitted(1), args.split(","): _*).asInstanceOf[String]
+          if (result == null || result == "") {
+            throw new IllegalArgumentException(s"result of ${splitted(1)} is empty")
+          }
 //          val result = fateCloud.getSecretInfo(secretInfoUrl, myPartyId)
 
           val secretInfo = new JSONObject(result.mkString)
@@ -381,6 +380,9 @@ class DispatchPollingReqSO(eggSiteServicerPollingRespSO: ServerCallStreamObserve
       val splitted = authInterface.split("#")
       val authenticator = Class.forName(splitted(0)).newInstance()
       val result = MethodUtils.invokeExactMethod(authenticator, splitted(1), authUrl, heads, body).asInstanceOf[String]
+      if (result == null || result == "") {
+        throw new IllegalArgumentException(s"result of ${splitted(1)} is empty")
+      }
       val authResult = new JSONObject(result).getJSONObject("data").getBoolean("result")
 
       if (authResult) {
