@@ -19,6 +19,7 @@
 package com.webank.eggroll.rollsite
 
 import java.util
+import java.util.UUID
 import java.util.concurrent._
 import java.util.concurrent.atomic.AtomicReference
 
@@ -28,13 +29,16 @@ import com.webank.eggroll.core.meta.ErRollSiteHeader
 import com.webank.eggroll.core.meta.TransferModelPbMessageSerdes.ErRollSiteHeaderFromPbMessage
 import com.webank.eggroll.core.transfer.GrpcClientUtils
 import com.webank.eggroll.core.transfer.Transfer.RollSiteHeader
-import com.webank.eggroll.core.util.{ErrorUtils, Logging, ToStringUtils}
+import com.webank.eggroll.core.util.{ErrorUtils, Logging, ToStringUtils, authenticationUtils}
 import com.webank.eggroll.rollsite.PollingResults.errorPoison
 import io.grpc.ConnectivityState
 import io.grpc.stub.{ServerCallStreamObserver, StreamObserver}
 import org.apache.commons.lang3.StringUtils
+import org.apache.commons.lang3.reflect.MethodUtils
 
 import scala.concurrent.TimeoutException
+import com.webank.eggroll.core.session.StaticErConf
+import org.json.JSONObject
 
 
 object PollingMethods {
@@ -48,12 +52,16 @@ object PollingMethods {
   val MOCK = "mock"
 }
 
-object LongPollingClient {
+object LongPollingClient extends Logging {
   private val defaultPollingReqMetadata: Proxy.Metadata = Proxy.Metadata.newBuilder()
     .setDst(
       Proxy.Topic.newBuilder()
         .setPartyId(RollSiteConfKeys.EGGROLL_ROLLSITE_PARTY_ID.get()))
+        .setTask(Proxy.Task.newBuilder()
+          .setModel(Proxy.Model.newBuilder()
+            .setDataKey("123123123")))
     .build()
+  logInfo(s"defaultPollingReqMetadata:${defaultPollingReqMetadata}")
 
   val initPollingFrameBuilder: Proxy.PollingFrame.Builder = Proxy.PollingFrame.newBuilder().setMetadata(defaultPollingReqMetadata)
 
@@ -76,6 +84,66 @@ class LongPollingClient extends Logging {
       val endpoint = Router.query("default").point
       var isSecure = Router.query("default").isSecure
       val caCrt = CoreConfKeys.CONFKEY_CORE_SECURITY_CLIENT_CA_CRT_PATH.get()
+
+      val pollingAuthenticationEnable = StaticErConf.getBoolean(RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AHTHENTICATION_ENABLE.get(), false)
+      if (pollingAuthenticationEnable) {
+        //generate signature
+//        val fateCloud = new Fatecloud
+        val myPartyId = StaticErConf.getInt(RollSiteConfKeys.EGGROLL_ROLLSITE_PARTY_ID.get(), defaultValue = 9999)
+        val secretInfoUrl = StaticErConf.getString(RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_SECRET_INFO_URL.get())
+        var appSecret = ""
+        var appKey = ""
+        var role = ""
+
+        try {
+          val authInfoSecretGenerator = StaticErConf.getString(RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_SECRECT_INFO_GENERATOR.get())
+          val splitted = authInfoSecretGenerator.split("#")
+          val authenticator = Class.forName(splitted(0)).newInstance()
+          val result = MethodUtils.invokeExactMethod(authenticator, splitted(1), secretInfoUrl, myPartyId).asInstanceOf[String]
+//          val result = fateCloud.getSecretInfo(secretInfoUrl, myPartyId)
+
+          val secretInfo = new JSONObject(result.mkString)
+          appSecret = secretInfo.getJSONObject("data").getString("appSecret")
+          appKey = secretInfo.getJSONObject("data").getString("appKey")
+          role = if (secretInfo.getJSONObject("data").getString("role") == "Guest") "1" else "2"
+        } catch {
+          case t: Throwable =>
+            logInfo(s"failed to get secretInfo from fate cloud, please check if service ${secretInfoUrl} is available. " +
+              "Now try to get secretInfo from eggroll.properties")
+
+            appKey = StaticErConf.getString(RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_APPKEY.get())
+            appSecret = StaticErConf.getString(RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_APPSERCRET.get())
+            if (appKey == null || appSecret == null) {
+              throw new IllegalArgumentException(s"failed to get appKey or appSecret from eggroll.properties")
+            }
+
+            role = if (StaticErConf.getString(RollSiteConfKeys.EGGROLL_ROLLSITE_COORDINATOR.get()) == "Guest") "1" else "2"
+        }
+
+        val time = String.valueOf(System.currentTimeMillis)
+        val uuid = UUID.randomUUID.toString
+        val nonce = uuid.replaceAll("-", "")
+        val httpURI = "/fate-manager/api/site/secretinfo"
+        val body = ""
+        val signature = authenticationUtils.generateSignature(appSecret, String.valueOf(myPartyId), role,
+          appKey, time, nonce, httpURI, body)
+        logInfo("signature: " + signature)
+
+        val authInfo: JSONObject = new JSONObject
+        authInfo.append("signature", signature)
+        authInfo.append("appKey", appKey)
+        authInfo.append("timestamp", time)
+        authInfo.append("nonce", nonce)
+        authInfo.append("role", role)
+
+        LongPollingClient.defaultPollingReqMetadata.toBuilder.setTask(
+          Proxy.Task.newBuilder()
+            .setModel(Proxy.Model.newBuilder()
+              .setDataKey(authInfo.toString()))).build()
+        logInfo(s"debug123:${LongPollingClient.defaultPollingReqMetadata.getTask.getModel.getDataKey}")
+      } else {
+        logDebug(s"polling Authentication disable")
+      }
 
       // use secure channel conditions:
       // 1 include crt file.
@@ -284,7 +352,45 @@ class DispatchPollingReqSO(eggSiteServicerPollingRespSO: ServerCallStreamObserve
     if (inited) return
     logTrace(s"DispatchPollingReqSO.ensureInited calling.")
 
-   pollingExchanger = new PollingExchanger()
+    val pollingAuthenticationEnable = StaticErConf.getBoolean(RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AHTHENTICATION_ENABLE.get(), false)
+    if (pollingAuthenticationEnable) {
+      logInfo(s"debug123 signature is :${req.getMetadata.getTask.getModel.getDataKey}")
+      val authUrl = StaticErConf.getString(RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_URL.get())
+      val authString = req.getMetadata.getTask.getModel.getDataKey
+      val authInfo = new JSONObject(authString)
+
+      val signature = authInfo.getString("signature")
+      val appKey = authInfo.getString("appKey")
+      val timestamp = authInfo.getString("timestamp")
+      val nonce = authInfo.getString("nonce")
+      val role = authInfo.getString("role")
+      val authPartyID = req.getMetadata.getSrc.getPartyId
+
+      val heads = new util.HashMap[String, String]()
+      heads.put("TIMESTAMP", timestamp)
+      heads.put("PARTY_ID", authPartyID)
+      heads.put("NONCE", nonce)
+      heads.put("ROLE", role)
+      heads.put("APP_KEY", appKey)
+      heads.put("URI", "/cloud-manager/api/site/rollsite/checkPartyId")
+      heads.put("SIGNATURE", signature)
+      val body = ""
+
+      val authInterface = StaticErConf.getString(RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AUTHENTICATOR_INTERFACE.get())
+      val splitted = authInterface.split("#")
+      val authenticator = Class.forName(splitted(0)).newInstance()
+      val result = MethodUtils.invokeExactMethod(authenticator, splitted(1), authUrl, heads, body).asInstanceOf[String]
+      val authResult = new JSONObject(result).getJSONObject("data").getBoolean("result")
+
+      if (authResult) {
+        logDebug(s"polling authentication of party: ${authPartyID} passed")
+      } else {
+        logError(s"polling authentication of party: ${authPartyID} failed, please check polling client authentication info")
+        throw new IllegalArgumentException(s"polling authentication of party: ${authPartyID} failed, please check polling client authentication info")
+      }
+    }
+
+    pollingExchanger = new PollingExchanger()
     var done = false
     var i = 0
     val exchangerDataOpTimeout = System.currentTimeMillis() + RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_EXCHANGER_DATA_OP_TIMEOUT_SEC.get().toLong * 1000
