@@ -99,7 +99,8 @@ class LongPollingClient extends Logging {
           val authInfoSecretGenerator = StaticErConf.getString(RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_SECRECT_INFO_GENERATOR.get())
           val splitted = authInfoSecretGenerator.split("#")
           val authenticator = Class.forName(splitted(0)).newInstance()
-          val result = MethodUtils.invokeExactMethod(authenticator, splitted(1), secretInfoUrl, myPartyId).asInstanceOf[String]
+          val args = secretInfoUrl + "," + myPartyId
+          val result = MethodUtils.invokeExactMethod(authenticator, splitted(1), args.split(","): _*).asInstanceOf[String]
 //          val result = fateCloud.getSecretInfo(secretInfoUrl, myPartyId)
 
           val secretInfo = new JSONObject(result.mkString)
