@@ -37,7 +37,6 @@ import org.apache.commons.lang3.StringUtils
 import org.apache.commons.lang3.reflect.MethodUtils
 
 import scala.concurrent.TimeoutException
-import com.webank.eggroll.core.session.StaticErConf
 import org.json.JSONObject
 
 
