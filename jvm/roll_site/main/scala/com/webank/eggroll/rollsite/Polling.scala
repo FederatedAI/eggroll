@@ -81,18 +81,18 @@ class LongPollingClient extends Logging {
       var isSecure = Router.query("default").isSecure
       val caCrt = CoreConfKeys.CONFKEY_CORE_SECURITY_CLIENT_CA_CRT_PATH.get()
 
-      val pollingAuthenticationEnable = StaticErConf.getBoolean(RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AHTHENTICATION_ENABLE.get(), false)
+      val pollingAuthenticationEnable = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AHTHENTICATION_ENABLE.get().toBoolean
       if (pollingAuthenticationEnable) {
         //generate signature
 //        val fateCloud = new Fatecloud
-        val myPartyId = StaticErConf.getInt(RollSiteConfKeys.EGGROLL_ROLLSITE_PARTY_ID.get(), defaultValue = 9999)
-        val secretInfoUrl = StaticErConf.getString(RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_SECRET_INFO_URL.get())
+        val myPartyId = RollSiteConfKeys.EGGROLL_ROLLSITE_PARTY_ID.get().toInt
+        val secretInfoUrl = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_SECRET_INFO_URL.get().toString
         var appSecret = ""
         var appKey = ""
         var role = ""
 
         try {
-          val authInfoSecretGenerator = StaticErConf.getString(RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_SECRECT_INFO_GENERATOR.get())
+          val authInfoSecretGenerator = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_SECRECT_INFO_GENERATOR.get().toString
           val splitted = authInfoSecretGenerator.split("#")
           val authenticator = Class.forName(splitted(0)).newInstance()
           val args = secretInfoUrl + "," + myPartyId
@@ -111,13 +111,13 @@ class LongPollingClient extends Logging {
             logInfo(s"failed to get secretInfo from fate cloud, please check if service ${secretInfoUrl} is available. " +
               "Now try to get secretInfo from eggroll.properties")
 
-            appKey = StaticErConf.getString(RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_APPKEY.get())
-            appSecret = StaticErConf.getString(RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_APPSERCRET.get())
+            appKey = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_APPKEY.get().toString
+            appSecret = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_APPSERCRET.get().toString
             if (appKey == null || appSecret == null) {
               throw new IllegalArgumentException(s"failed to get appKey or appSecret from eggroll.properties")
             }
 
-            role = if (StaticErConf.getString(RollSiteConfKeys.EGGROLL_ROLLSITE_COORDINATOR.get()) == "Guest") "1" else "2"
+            role = if (RollSiteConfKeys.EGGROLL_ROLLSITE_COORDINATOR.get().toString == "Guest") "1" else "2"
         }
 
         val time = String.valueOf(System.currentTimeMillis)
@@ -352,10 +352,10 @@ class DispatchPollingReqSO(eggSiteServicerPollingRespSO: ServerCallStreamObserve
     if (inited) return
     logTrace(s"DispatchPollingReqSO.ensureInited calling.")
 
-    val pollingAuthenticationEnable = StaticErConf.getBoolean(RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AHTHENTICATION_ENABLE.get(), false)
+    val pollingAuthenticationEnable = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AHTHENTICATION_ENABLE.get().toBoolean
     if (pollingAuthenticationEnable) {
       logInfo(s"debug123 signature is :${req.getMetadata.getTask.getModel.getDataKey}")
-      val authUrl = StaticErConf.getString(RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_URL.get())
+      val authUrl = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_URL.get().toString
       val authString = req.getMetadata.getTask.getModel.getDataKey
       val authInfo = new JSONObject(authString)
 
@@ -376,7 +376,7 @@ class DispatchPollingReqSO(eggSiteServicerPollingRespSO: ServerCallStreamObserve
       heads.put("SIGNATURE", signature)
       val body = ""
 
-      val authInterface = StaticErConf.getString(RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AUTHENTICATOR_INTERFACE.get())
+      val authInterface = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AUTHENTICATOR_INTERFACE.get().toString
       val splitted = authInterface.split("#")
       val authenticator = Class.forName(splitted(0)).newInstance()
       val result = MethodUtils.invokeExactMethod(authenticator, splitted(1), authUrl, heads, body).asInstanceOf[String]
