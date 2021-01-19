@@ -1,6 +1,8 @@
 import sys, os, getopt
 import subprocess
-import time
+import socket
+from datetime import datetime
+import argparse
 
 
 def read_ip_list(upgrade_ip):
@@ -21,14 +23,13 @@ def read_ip_list(upgrade_ip):
 
 
 def backup_eggroll_data(egg_home: str):
-        ts = str(time.time())
         print(f"start backup eggroll data ...")
-        subprocess.check_call(['mv', egg_home + '/bin/', egg_home + '/bin_' + ts + '_bak/'])
-        subprocess.check_call(['mv', egg_home + '/lib/', egg_home + '/lib_' + ts + '_bak/'])
-        subprocess.check_call(['mv', egg_home + '/deploy/', egg_home + '/deploy_' + ts + '_bak/'])
-        subprocess.check_call(['mv', egg_home + '/python/', egg_home + '/python_' + ts + '_bak/'])
+        subprocess.check_call(['mv', egg_home + '/bin/', egg_home + '/bin_' + datetime.now().strftime("%Y%m%d") + '_bak/'])
+        subprocess.check_call(['mv', egg_home + '/lib/', egg_home + '/lib_' + datetime.now().strftime("%Y%m%d") + '_bak/'])
+        subprocess.check_call(['mv', egg_home + '/deploy/', egg_home + '/deploy_' + datetime.now().strftime("%Y%m%d") + '_bak/'])
+        subprocess.check_call(['mv', egg_home + '/python/', egg_home + '/python_' + datetime.now().strftime("%Y%m%d") + '_bak/'])
         subprocess.check_call(
-            ['mv', egg_home + '/conf/eggroll.properties', egg_home + '/conf/eggroll.properties.bak'+ts])
+            ['mv', egg_home + '/conf/eggroll.properties', egg_home + '/conf/eggroll.properties_'+datetime.now().strftime("%Y%m%d")+'_bak'])
         print(f"end backup eggroll data.")
         return 0
 
@@ -43,8 +44,9 @@ def check_egg_home(egg_home: str):
     p1.stdout.close()
     s = bytes.decode(p2.communicate()[0])
     if len(s) > 0:
-        print(f'check right current version={s}')
-        return True
+        if len(s.split('=')) == 3:
+            print(f'check right current version={s}')
+            return True
     else:
         print(f'please checking eggroll home path end ')
         return False
@@ -77,23 +79,39 @@ def get_db_upgrade_content(upgrade_sql_file: str):
     return open(upgrade_sql_file).read()
 
 
+def encap_upgrade_db(host:str,cmd:str):
+    ssh = subprocess.Popen(["ssh","%s"%host,cmd],shell = False,stdout = subprocess.PIPE,stderr = subprocess.PIPE)
+    ss = ssh.stderr.readlines()
+    result = []
+    for i in ss:
+        result.append(bytes.decode(i))
+    if len(ss) > 1:
+        print(f'dump or upgrade db error={" ".join(result)}')
+        sys.exit(-1)
+    else:
+        print(f'dump or upgrade db right={" ".join(result)}')
+
 def backup_upgrade_db(mysql_home_path: str, host: str, port: int, database: str, username: str, passwd: str,
                       mysql_sock,db_upgrade_sql: str):
     print(f"start backup db data ...")
-    ts = str(time.time())
+    dump_sql = "dump_backup_eggroll_upgrade_"+host+'_' + datetime.now().strftime("%Y%m%d") + ".sql"
     bak_cmd = mysql_home_path + "/bin/mysqldump" + " -h " + host + " -u " + username + " -p" + passwd + " -P" + str(
-        port) + " -S " + mysql_sock + " " + database + " -r " + "./dump_backup_eggroll_upgrade_" + host + "_" + ts + ".sql"
+        port) + " -S " + mysql_sock + " " + database + " -r " + dump_sql
     print(f'bak_cmd={bak_cmd}')
-    os.popen("%s %s %s " % ('ssh', host, bak_cmd))
+    encap_upgrade_db(host,bak_cmd)
     print(f"end backup db data.")
     print(f'start upgrade db ...')
     sub_cmd = split_statements(get_db_upgrade_content(db_upgrade_sql))
     up_cmd = "'" + mysql_home_path + "/bin/mysql" + " -u " + username + " -p" + passwd + " -P " + str(
         port) + " -h " + host + " -S " + mysql_sock + " -Bse " + '"' + sub_cmd + '"' + "'"
     print(f'up_cmd={up_cmd}')
-    os.popen("%s %s %s " % ('ssh', host, up_cmd))
-    print(f'end upgrade db end.')
-    return 0
+    sts = os.system("%s %s %s" %('ssh',host,up_cmd))
+    if sts != 0:
+        print(f'upgrade db error please checking mysql_file.sql.')
+        sys.exit(-1)
+    else:
+        print(f'end upgrade db end.')
+
 
 
 def cluster_upgrade_sync(src_path: str, dst_path: str, remote_host: str):
@@ -179,85 +197,99 @@ def check_upgrade_pkg_path(pkg_path: str):
         print(f'upgrade eggroll upgrade sql file not exists')
         return -1
 
+def remote_cluster_recover(eggroll_home_path: str):
+    upgrade_all = read_ip_list('cm_ip_list')
+    upgrade_rollsite_node = read_ip_list('rs_ip_list')
+    owner_ip = socket.gethostbyname(socket.gethostname()).strip()
+    if len(upgrade_all) > 0:
+        for remote_host in upgrade_all:
+            host = remote_host.strip()
+            # if host == owner_ip:
+            #     continue
+            if host == '':
+                continue
+            else:
+                cluster_upgrade_sync(eggroll_home_path, eggroll_home_path, remote_host)
+    elif len(upgrade_rollsite_node) > 0:
+        for remote_host in upgrade_rollsite_node:
+            host = remote_host.strip()
+            # if host == owner_ip:
+            #     continue
+            if host == '':
+                continue
+            else:
+                cluster_upgrade_sync(eggroll_home_path, eggroll_home_path, remote_host)
+    else:
+        pass
 
-def main(argv):
-    cm_file = ''
-    rs_file = ''
-    mysql_file = ''
-    egg_home = ''
-    mysql_home = ''
-    mysql_host = ''
-    mysql_port = 3306
-    mysql_db = ''
-    mysql_user = ''
-    mysql_pwd = ''
-    mysql_sock = ''
-    try:
-        opts, args = getopt.getopt(argv, "hc:r:e:m:t:p:b:u:w:s:S:",
-                                   ["cm_file=", "rs_file=", "egg_home=", "mysql_home=", "mysql_host=", "mysql_port=",
-                                    "mysql_db=", "mysql_user=", "mysql_pwd=", "mysql_file=","mysql_sock="])
-    except getopt.GetoptError:
-        print(
-            'upgrade_helper.py \n'
-            ' -c <input eggroll custermanager node ip sets>\n'
-            ' -r <rollsite node ip sets>\n'
-            ' -e <eggroll home path>\n'
-            ' -m <mysql home path>\n'
-            ' -t <mysql ip addr>\n'
-            ' -p <mysql port>\n'
-            ' -b <mysql database>\n'
-            ' -u <mysql username>\n'
-            ' -w <mysql passwd>\n'
-            ' -S <mysql sock file\n>'
-            ' -s <mysql upgrade content sql file sets>\n')
-        sys.exit(2)
-    for opt, arg in opts:
-        if opt == '-h':
-            print(
-                'upgrade_helper.py \n'
-                ' -c --cm_file <input eggroll custermanager node ip sets>\n'
-                ' -r --rs_file <rollsite node ip sets>\n'
-                ' -e --egg_home <eggroll home path>\n'
-                ' -m --mysql_home <mysql home path>\n'
-                ' -t --mysql_host <mysql ip addr>\n'
-                ' -p --mysql_port <mysql port>\n'
-                ' -b --mysql_db <mysql database>\n'
-                ' -u --mysql_user <mysql username>\n'
-                ' -w --mysql_pwd <mysql passwd>\n'
-                ' -S --mysql_sock <mysql sock file\n>'
-                ' -s --mysql_file <mysql upgrade content sql file sets>\n')
-            sys.exit()
-        elif opt in ("-c", "--cm_file"):
-            cm_file = arg
-        elif opt in ("-r", "--rs_file"):
-            rs_file = arg
-        elif opt in ("-e", "--egg_home"):
-            egg_home = arg
-        elif opt in ("-m", "--mysql_home"):
-            mysql_home = arg
-        elif opt in ("-t", "--mysql_host"):
-            mysql_host = arg
-        elif opt in ("-p", "--mysql_port"):
-            mysql_port = arg
-        elif opt in ("-b", "--mysql_db"):
-            mysql_db = arg
-        elif opt in ("-u", "--mysql_user"):
-            mysql_user = arg
-        elif opt in ("-w", "--mysql_pwd"):
-            mysql_pwd = arg
-        elif opt in ("-S", "--mysql_sock"):
-            mysql_sock = arg
-        elif opt in ("-s", "--mysql_file"):
-            mysql_file = arg
+
+
+def recover_eggroll_data(db_home_path, eggroll_home_path: str, host: str, port, database: str, username: str,
+                         passwd: str,db_sock:str):
+    print(f'start recover eggroll data ...')
+    if os.path.exists(eggroll_home_path + '/bin_' + datetime.now().strftime("%Y%m%d") + '_bak/'):
+        subprocess.check_call(['mv', eggroll_home_path + '/bin_' + datetime.now().strftime("%Y%m%d") + '_bak/', eggroll_home_path + '/bin/'])
+    if os.path.exists(eggroll_home_path + '/lib_' + datetime.now().strftime("%Y%m%d") + '_bak/'):
+        subprocess.check_call(['mv', eggroll_home_path + '/lib_' + datetime.now().strftime("%Y%m%d") + '_bak/', eggroll_home_path + '/lib/'])
+    if os.path.exists(eggroll_home_path + '/deploy_' + datetime.now().strftime("%Y%m%d") + '_bak/'):
+        subprocess.check_call(['mv', eggroll_home_path + '/deploy_' + datetime.now().strftime("%Y%m%d") + '_bak/', eggroll_home_path + '/deploy/'])
+    if os.path.exists(eggroll_home_path + '/python_' + datetime.now().strftime("%Y%m%d") + '_bak/'):
+        subprocess.check_call(['mv', eggroll_home_path + '/python_' + datetime.now().strftime("%Y%m%d") + '_bak/', eggroll_home_path + '/python/'])
+    if os.path.exists(eggroll_home_path + '/conf/eggroll.properties_' + datetime.now().strftime("%Y%m%d") + '_bak'):
+        subprocess.check_call(['mv', eggroll_home_path + '/conf/eggroll.properties_' + datetime.now().strftime("%Y%m%d") + '_bak', eggroll_home_path + '/conf/eggroll.properties'])
+    print(f'eggroll data recover finish.')
+    print(f'start recover eggroll db data...')
+
+    bak_sql_f = "~/dump_backup_eggroll_upgrade_"+host+'_' + datetime.now().strftime("%Y%m%d") + ".sql"
+    check_db_cmd = 'test -f '+bak_sql_f+" && echo 'yes' || echo 'no'"
+    ssh = subprocess.Popen(["ssh","%s"%host,check_db_cmd],shell = False,stdout = subprocess.PIPE,stderr = subprocess.PIPE)
+    ss = ssh.stdout.readline()
+    content = bytes.decode(ss)
+    if content.replace("\n","") == 'yes':
+        print('ok')
+        sub_cmd = db_home_path+"/bin/mysql -u "+username+"  -p"+passwd+" -h "+host+" -P "+port +"  --default-character-set=utf8 "+database+" < "+bak_sql_f
+        ssh2 = subprocess.Popen(["ssh","%s"%host,sub_cmd],shell = False,stdout = subprocess.PIPE,stderr = subprocess.PIPE)
+        ss2 = ssh2.stderr.readlines()
+        print(f'dump recover mysql result={ss2}')
+        if len(ss2) > 1:
+            print(f'please check mysql recover sql file')
+            sys.exit(-1)
+    elif content.replace("\n","") == "no":
+        print('not exists.please check back sql file')
+        sys.exit(-1)
+    ssh.stdout.close()
+    print(f'eggroll db data recover finish.')
+    print(f'start cluster recover ...')
+    remote_cluster_recover(eggroll_home_path)
+    print(f'cluster recover finish.')
+
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-c', '--cm_file', type = str,help="namenode node ip sets", default="",required = True)
+    parser.add_argument('-r', '--rs_file',type = str, help="rollsite node ip sets", default="",required = True)
+    parser.add_argument('-e', '--egg_home', type = str,help="eggroll home path", default="",required = True)
+    parser.add_argument('-m','--mysql_home',type = str, help="mysql home path", default="",required = True)
+    parser.add_argument('-t','--mysql_host', type = str,help="mysql host info ", default="",required = True)
+    parser.add_argument('-p', '--mysql_port',type = str, help="mysql port info ", default="",required = True)
+    parser.add_argument('-b','--mysql_db',type = str,help="eggroll mysql database info ", default="",required = True)
+    parser.add_argument('-u', '--mysql_user',type = str, help="mysql login user info", default="",required = True)
+    parser.add_argument('-w', '--mysql_pwd', type = str,help="mysql login user passwd", default="",required = True)
+    parser.add_argument('-S', '--mysql_sock',type = str, help="mysql login sock ", default="",required = True)
+    parser.add_argument('-s', '--mysql_file',type = str, help="mysql upgrade update sql file info ", default="",required = True)
+    parser.add_argument('-f', '--recover',type = int, help="recover 1 default 0 upgrade", default=0)
+    args = parser.parse_args()
     print(
-        f'input params={cm_file, rs_file, egg_home, mysql_home, mysql_host, mysql_port, mysql_db, mysql_user, mysql_pwd,mysql_sock, mysql_file}')
-
-    if len(opts) < 11:
-        print(f'input param missing,please checing ...')
-        return
+        f'input params={args.cm_file, args.rs_file, args.egg_home, args.mysql_home, args.mysql_host, args.mysql_port, args.mysql_db, args.mysql_user, args.mysql_pwd,args.mysql_sock, args.mysql_file,args.recover}')
     print(f'start ....')
-    upgrade_main(cm_file, rs_file, egg_home, mysql_home, mysql_host, mysql_port,
-                 mysql_db, mysql_user, mysql_pwd,mysql_sock, mysql_file)
+    if args.recover == 0:
+        print(f'upgrade main ... ...')
+        upgrade_main(args.cm_file, args.rs_file, args.egg_home, args.mysql_home, args.mysql_host, args.mysql_port,
+                     args.mysql_db, args.mysql_user, args.mysql_pwd,args.mysql_sock, args.mysql_file)
+    elif args.recover == 1:
+        print(f'recover main ... ...')
+        recover_eggroll_data(args.mysql_home, args.egg_home , args.mysql_host, args.mysql_port, args.mysql_db, args.mysql_user,args.mysql_pwd,args.mysql_sock)
     print(f'end ....')
 
 
@@ -266,6 +298,5 @@ if __name__ == '__main__':
     code = check_upgrade_pkg_path(pkg_path)
     if code == -1:
         sys.exit()
-    params = sys.argv[1:]
-    main(params)
+    main()
     sys.exit()
