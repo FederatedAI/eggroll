@@ -29,7 +29,7 @@ import com.webank.eggroll.core.meta.ErRollSiteHeader
 import com.webank.eggroll.core.meta.TransferModelPbMessageSerdes.ErRollSiteHeaderFromPbMessage
 import com.webank.eggroll.core.transfer.GrpcClientUtils
 import com.webank.eggroll.core.transfer.Transfer.RollSiteHeader
-import com.webank.eggroll.core.util.{ErrorUtils, Logging, ToStringUtils, authenticationUtils}
+import com.webank.eggroll.core.util.{ErrorUtils, Logging, ToStringUtils, AuthenticationUtils}
 import com.webank.eggroll.rollsite.PollingResults.errorPoison
 import io.grpc.ConnectivityState
 import io.grpc.stub.{ServerCallStreamObserver, StreamObserver}
@@ -133,7 +133,7 @@ class LongPollingClient extends Logging {
         val nonce = uuid.replaceAll("-", "")
         val httpURI = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_URI.get().toString
         val body = ""
-        val signature = authenticationUtils.generateSignature(appSecret, String.valueOf(myPartyId), role,
+        val signature = AuthenticationUtils.generateSignature(appSecret, String.valueOf(myPartyId), role,
           appKey, time, nonce, httpURI, body)
 
         val authInfo: JSONObject = new JSONObject
