@@ -154,7 +154,7 @@ class LongPollingClient extends Logging {
           .build()
 
         LongPollingClient.initPollingFrameBuilder = Proxy.PollingFrame.newBuilder().setMetadata(LongPollingClient.defaultPollingReqMetadata)
-        logInfo(s"authInfo to be sent:${LongPollingClient.defaultPollingReqMetadata.getTask.getModel.getDataKey}, partyID:${LongPollingClient.initPollingFrameBuilder.getMetadata.getDst.getPartyId}")
+        logTrace(s"authInfo to be sent:${LongPollingClient.defaultPollingReqMetadata.getTask.getModel.getDataKey}, partyID:${LongPollingClient.initPollingFrameBuilder.getMetadata.getDst.getPartyId}")
       } else {
         logDebug(s"polling Authentication disable")
       }
