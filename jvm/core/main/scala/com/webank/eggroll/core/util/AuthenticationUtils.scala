@@ -5,7 +5,7 @@ import java.util.Base64
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 
-object authenticationUtils extends Logging {
+object AuthenticationUtils extends Logging {
   private val UTF8 = "UTF-8"
   private val HMACSHA1 = "HmacSHA1"
 
@@ -26,8 +26,8 @@ object authenticationUtils extends Logging {
         if (i != 0) encryptText += "\n"
         encryptText += encryptParams(i)
       }
-      encryptText = new String(encryptText.getBytes, authenticationUtils.UTF8)
-      return Base64.getEncoder.encodeToString(authenticationUtils.HmacSHA1Encrypt(encryptText, appSecret))
+      encryptText = new String(encryptText.getBytes, AuthenticationUtils.UTF8)
+      return Base64.getEncoder.encodeToString(AuthenticationUtils.HmacSHA1Encrypt(encryptText, appSecret))
     } catch {
       case e: Exception =>
         e.printStackTrace()
