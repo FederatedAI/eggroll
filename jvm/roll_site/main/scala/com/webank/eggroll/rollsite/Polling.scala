@@ -154,7 +154,7 @@ class LongPollingClient extends Logging {
           .build()
 
         LongPollingClient.initPollingFrameBuilder = Proxy.PollingFrame.newBuilder().setMetadata(LongPollingClient.defaultPollingReqMetadata)
-        logTrace(s"authInfo to be sent:${LongPollingClient.defaultPollingReqMetadata.getTask.getModel.getDataKey}, partyID:${LongPollingClient.initPollingFrameBuilder.getMetadata.getDst.getPartyId}")
+        logTrace(s"authInfo to be sent=${LongPollingClient.defaultPollingReqMetadata.getTask.getModel.getDataKey}, partyID=${LongPollingClient.initPollingFrameBuilder.getMetadata.getDst.getPartyId}")
       } else {
         logDebug(s"polling Authentication disable")
       }
@@ -399,10 +399,10 @@ class DispatchPollingReqSO(eggSiteServicerPollingRespSO: ServerCallStreamObserve
       val authenticator = Class.forName(splitted(0)).newInstance()
       val result = MethodUtils.invokeExactMethod(authenticator, splitted(1), authUrl, heads, body).asInstanceOf[Boolean]
       if (result) {
-        logTrace(s"polling authentication of party: ${authPartyID} passed")
+        logTrace(s"polling authentication of party=${authPartyID} passed")
       } else {
-        logError(s"polling authentication of party: ${authPartyID} failed, please check polling client authentication info")
-        throw new IllegalArgumentException(s"polling authentication of party: ${authPartyID} failed, please check polling client authentication info")
+        logError(s"polling authentication of party=${authPartyID} failed, please check polling client authentication info")
+        throw new IllegalArgumentException(s"polling authentication of party=${authPartyID} failed, please check polling client authentication info")
       }
     } else {
       logDebug("polling authentication disable")
