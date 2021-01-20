@@ -5,7 +5,7 @@ import java.util.Base64
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 
-object authenticationUtils {
+object authenticationUtils extends Logging {
   private val UTF8 = "UTF-8"
   private val HMACSHA1 = "HmacSHA1"
 

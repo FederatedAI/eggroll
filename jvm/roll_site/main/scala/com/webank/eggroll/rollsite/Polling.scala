@@ -24,6 +24,7 @@ import java.util.concurrent._
 import java.util.concurrent.atomic.AtomicReference
 
 import com.webank.ai.eggroll.api.networking.proxy.{DataTransferServiceGrpc, Proxy}
+import com.webank.ai.fate.cloud.sdk.sdk.Fatecloud
 import com.webank.eggroll.core.constant.{CoreConfKeys, RollSiteConfKeys}
 import com.webank.eggroll.core.meta.ErRollSiteHeader
 import com.webank.eggroll.core.meta.TransferModelPbMessageSerdes.ErRollSiteHeaderFromPbMessage
@@ -89,9 +90,9 @@ class LongPollingClient extends Logging {
         var appSecret = ""
         var appKey = ""
         var role = ""
+        val authInfoSecretGenerator = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_SECRECT_INFO_GENERATOR.get().toString
 
         try {
-          val authInfoSecretGenerator = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_SECRECT_INFO_GENERATOR.get().toString
           val splitted = authInfoSecretGenerator.split("#")
           val authenticator = Class.forName(splitted(0)).newInstance()
           val args = secretInfoUrl + "," + myPartyId
@@ -102,14 +103,19 @@ class LongPollingClient extends Logging {
 //          val result = fateCloud.getSecretInfo(secretInfoUrl, myPartyId)
 
           val secretInfo = new JSONObject(result.mkString)
+          logDebug(s"secretInfo from fate-manager:${secretInfo}")
+          if (secretInfo.getJSONObject("data")== null) {
+            logDebug(s"partyID:${myPartyId} not registered")
+          }
           appSecret = secretInfo.getJSONObject("data").getString("appSecret")
           appKey = secretInfo.getJSONObject("data").getString("appKey")
+          logDebug(s"role of ${myPartyId} is ${secretInfo.getJSONObject("data").getString("role")}")
           role = if (secretInfo.getJSONObject("data").getString("role") == "Guest") "1" else "2"
         } catch {
           case e: NoSuchMethodException =>
             throw new NoSuchMethodException(s"failed to execute reflection")
           case t: Throwable =>
-            logInfo(s"failed to get secretInfo from fate cloud, please check if service ${secretInfoUrl} is available. " +
+            logInfo(s"failed to get secretInfo from ${authInfoSecretGenerator.split("#")(1)}, please check if service ${secretInfoUrl} is available. " +
               "Now try to get secretInfo from eggroll.properties")
 
             appKey = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_APPKEY.get().toString
@@ -124,11 +130,10 @@ class LongPollingClient extends Logging {
         val time = String.valueOf(System.currentTimeMillis)
         val uuid = UUID.randomUUID.toString
         val nonce = uuid.replaceAll("-", "")
-        val httpURI = "/fate-manager/api/site/secretinfo"
+        val httpURI = "/cloud-manager/api/site/rollsite/checkPartyId"
         val body = ""
         val signature = authenticationUtils.generateSignature(appSecret, String.valueOf(myPartyId), role,
           appKey, time, nonce, httpURI, body)
-        logInfo("signature: " + signature)
 
         val authInfo: JSONObject = new JSONObject
         authInfo.put("signature", signature.toString)
@@ -136,6 +141,7 @@ class LongPollingClient extends Logging {
         authInfo.put("timestamp", time.toString)
         authInfo.put("nonce", nonce.toString)
         authInfo.put("role", role.toString)
+        logDebug(s"authInfo to be sent:${authInfo}")
 
 //        LongPollingClient.defaultPollingReqMetadata.toBuilder.setTask(
 //          Proxy.Task.newBuilder()
@@ -152,7 +158,7 @@ class LongPollingClient extends Logging {
 
         LongPollingClient.initPollingFrameBuilder = Proxy.PollingFrame.newBuilder().setMetadata(LongPollingClient.defaultPollingReqMetadata)
 //        LongPollingClient.initPollingFrameBuilder.setMetadata(LongPollingClient.defaultPollingReqMetadata).build()
-        logInfo(s"debug123:${LongPollingClient.defaultPollingReqMetadata.getTask.getModel.getDataKey}")
+        logInfo(s"debug123:${LongPollingClient.defaultPollingReqMetadata.getTask.getModel.getDataKey}, partyID:${LongPollingClient.initPollingFrameBuilder.getMetadata.getDst.getPartyId}")
       } else {
         logDebug(s"polling Authentication disable")
       }
@@ -379,7 +385,7 @@ class DispatchPollingReqSO(eggSiteServicerPollingRespSO: ServerCallStreamObserve
       val timestamp = authInfo.getString("timestamp")
       val nonce = authInfo.getString("nonce")
       val role = authInfo.getString("role")
-      val authPartyID = req.getMetadata.getSrc.getPartyId
+      val authPartyID = req.getMetadata.getDst.getPartyId
 
       val heads = new util.HashMap[String, String]()
       heads.put("TIMESTAMP", timestamp)
@@ -390,17 +396,16 @@ class DispatchPollingReqSO(eggSiteServicerPollingRespSO: ServerCallStreamObserve
       heads.put("URI", "/cloud-manager/api/site/rollsite/checkPartyId")
       heads.put("SIGNATURE", signature)
       val body = ""
+      logDebug(s"heads:${heads.toString}")
 
       val authInterface = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AUTHENTICATOR_INTERFACE.get().toString
       val splitted = authInterface.split("#")
       val authenticator = Class.forName(splitted(0)).newInstance()
-      val result = MethodUtils.invokeExactMethod(authenticator, splitted(1), authUrl, heads, body).asInstanceOf[String]
-      if (result == null || result == "") {
-        throw new IllegalArgumentException(s"result of ${splitted(1)} is empty")
-      }
-      val authResult = new JSONObject(result).getJSONObject("data").getBoolean("result")
-
-      if (authResult) {
+      val result = MethodUtils.invokeExactMethod(authenticator, splitted(1), authUrl, heads, body).asInstanceOf[Boolean]
+//      val authResult = new JSONObject(result).getJSONObject("data").getBoolean("result")
+//      val fatecloud = new Fatecloud
+//      val result = fatecloud.checkPartyId("http://172.16.153.21:8999/cloud-manager/api/site/rollsite/checkPartyId", heads, body)
+      if (result) {
         logDebug(s"polling authentication of party: ${authPartyID} passed")
       } else {
         logError(s"polling authentication of party: ${authPartyID} failed, please check polling client authentication info")
