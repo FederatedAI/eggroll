@@ -1,5 +1,6 @@
 package com.webank.eggroll.rollsite
 
+import java.lang.reflect.Method
 import java.util
 import java.util.UUID
 
@@ -43,7 +44,7 @@ class PollingAuthentication extends Logging{
       val args = secretInfoUrl + "," + myPartyId
       logDebug(s"${splitted(1)} of ${splitted(0)} calling, args=${args}")
       val result = MethodUtils.invokeExactMethod(authenticator, splitted(1), args.split(","): _*).asInstanceOf[String]
-      logDebug(s"${splitted(1)} of ${splitted(0)} called, ")
+      logDebug(s"${splitted(1)} of ${splitted(0)} called")
       if (result == null || result == "") {
         throw new AuthenticationException(s"result of ${splitted(1)} is empty")
       }
@@ -71,8 +72,9 @@ class PollingAuthentication extends Logging{
     val signaterGenerator = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_SIGNATER_GENERATOR.get().toString
     splitted = signaterGenerator.split("#")
     val args = List(appSecret, String.valueOf(myPartyId), role, appKey, time, nonce, httpURI, body).mkString(",")
+
     logDebug(s"${splitted(1)} of ${splitted(0)} calling")
-    val signature = MethodUtils.invokeExactMethod(authenticator, splitted(1), args.split(","): _*).asInstanceOf[String]
+    val signature = MethodUtils.invokeMethod(authenticator, splitted(1), args.split(",", -1):_*).asInstanceOf[String]
     logDebug(s"${splitted(1)} of ${splitted(0)} called, signature=${signature}")
 
     val authInfo: JSONObject = new JSONObject
@@ -89,7 +91,7 @@ class PollingAuthentication extends Logging{
   def authenticate(req: Proxy.PollingFrame): Boolean = {
     val authUrl = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_URL.get().toString
     val authString = req.getMetadata.getTask.getModel.getDataKey
-    logDebug(s"debug123=${req.getMetadata.toString}")
+    logTrace(s"req metaData recv=${req.getMetadata.toString}")
     if (authString == "" || authString == null) {
       throw new AuthenticationException(s"failed to get authentication info from header=${req.getMetadata.toString}")
     }
@@ -119,8 +121,13 @@ class PollingAuthentication extends Logging{
     val authenticator = Class.forName(splitted(0)).newInstance()
 
     logDebug(s"${splitted(1)} of ${splitted(0)} calling")
-    val result = MethodUtils.invokeExactMethod(authenticator, splitted(1), authUrl, heads, body).asInstanceOf[Boolean]
-    logDebug(s"${splitted(1)} of ${splitted(0)} called")
-    result
+    try {
+      val result = MethodUtils.invokeExactMethod(authenticator, splitted(1), authUrl, heads, body).asInstanceOf[Boolean]
+      logDebug(s"${splitted(1)} of ${splitted(0)} called")
+      result
+    } catch {
+      case t: Throwable =>
+        throw new AuthenticationException(s"failed to authenticate")
+    }
   }
 }

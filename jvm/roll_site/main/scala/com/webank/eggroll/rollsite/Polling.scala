@@ -239,7 +239,7 @@ class LongPollingClient extends Logging {
   }
 
   def pollingForever(): Unit = {
-    while (LongPollingClient.pollingTerminate) {
+    while (!LongPollingClient.pollingTerminate) {
       try {
         polling()
       } catch {
