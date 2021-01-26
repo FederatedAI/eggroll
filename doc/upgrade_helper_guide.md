@@ -6,6 +6,7 @@
 ### 1.1 python3环境
 ### 1.2 执行脚本在的集群节点机器必须是nodemanager所在节点
 ### 1.3 需要app用户登录执行
+### 1.4 执行mysql备份等操作需要先确认是否允许ip操作权限
 
 ## 2. 参数说明
 ```
@@ -13,7 +14,7 @@
  -r --rs_file <必选:eggroll集群仅仅部署rollsite节点的ip集合,内容可以为空,文件不能为空>
  -e --egg_home <必选:eggroll家的目录>
  -k --pkg_base_path <必选:eggroll 升级版本文件的基路径,路径下同EGGROLL_HOME目录一样,见3.1.1
- -m --mysql_home <必选:mysql家的目录>
+ -m --mysql_home <必选:mysql home 目录>
  -t --mysql_host  <必选:mysql主机ip地址>
  -p --mysql_port <必选:mysql端口号>
  -b --mysql_db <必选:mysql eggroll元数据库名称>
@@ -149,8 +150,8 @@ python upgrade_helper.py
 (venv) [app@node1 eggroll]$cp -r python_bakbak python
 
 ### 手动dump mysql eggroll数据库
-
-$MYSQL_HOME_PATH/bin/mysqldump -h mysql-host -u username -p passwd -P port -S sock-file database > dump_bakbak.sql
+注意-p后面不能留空格
+$MYSQL_HOME_PATH/bin/mysqldump -h <mysql-host> -u <username> -p<passwd> -P <port> -S <sock-file> <database> > dump_bakbak.sql
 
 ###dump_bakbak.sql文件里面少了一句use eggroll_mata;回滚时需要手工在文件内容头部加上.
 
@@ -208,7 +209,7 @@ cat $EGGROLL_HOME/python/eggroll/__init__.py
 
 ### 5.2 登录mysql检查
 ```
-(venv) [app@node1 eggroll]$/data/projects/fate/common/mysql/mysql-8.0.13/bin/mysql -ufate -p -S ./data/projects/jiexiao/fate/common/mysql/mysql-8.0.13/run/mysql.sock -h 192.168.0.1 -P 3306
+(venv) [app@node1 eggroll]$/data/projects/fate/common/mysql/mysql-8.0.13/bin/mysql -ufate -p -S ./data/projects/fate/common/mysql/mysql-8.0.13/run/mysql.sock -h 192.168.0.1 -P 3306
 
 ```
 
