@@ -29,9 +29,6 @@ class PollingAuthentication extends Logging{
       if (appKey == null || appSecret == null) {
         throw new IllegalArgumentException(s"failed to get appKey or appSecret or party role from eggroll.properties")
       }
-//      role = if (RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_ROLE.get().toString.toLowerCase() == "guest") "1"
-//      else if (RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_ROLE.get().toString.toLowerCase() == "host") "2"
-//      else "3"
       role = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_ROLE.get().toString.toLowerCase match {
         case "guest" => "1"
         case "host" => "2"
@@ -66,8 +63,6 @@ class PollingAuthentication extends Logging{
     val nonce = uuid.replaceAll("-", "")
     val httpURI = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_URI.get().toString
     val body = ""
-//    val signature = AuthenticationUtils.generateSignature(appSecret, String.valueOf(myPartyId), role,
-//      appKey, time, nonce, httpURI, body)
     val signaterGenerator = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_SIGNATER_GENERATOR.get().toString
     splitted = signaterGenerator.split("#")
     val args = List(appSecret, String.valueOf(myPartyId), role, appKey, time, nonce, httpURI, body).mkString(",")
