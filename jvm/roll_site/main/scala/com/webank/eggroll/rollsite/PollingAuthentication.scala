@@ -122,7 +122,8 @@ class PollingAuthentication extends Logging{
     } catch {
       case e: java.lang.reflect.InvocationTargetException =>
         if (e.getTargetException.isInstanceOf[java.net.ConnectException]) {
-          throw new java.net.ConnectException(s"server authenticate failed to connect to ${authUrl}")
+          logError(s"server authenticate failed to connect to ${authUrl}")
+          throw new java.net.ConnectException(s"polling server authenticate failed to connect to authentication server")
         } else {
           throw new Exception(s"failed to authenticate, please check polling client authentication info=${authString}", e)
         }
