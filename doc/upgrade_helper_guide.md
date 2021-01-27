@@ -101,7 +101,7 @@ vim   rs_ip_list
 touch mysql_file.sql
 vim mysql_file.sql
 
-use eggroll_mata;
+use eggroll_meta;
 alter table store_option add store_option_id SERIAL PRIMARY KEY;
 alter table session_option add store_option_id SERIAL PRIMARY KEY;
 alter table session_main modify column session_id VARCHAR(767);
@@ -153,7 +153,7 @@ python upgrade_helper.py
 注意-p后面不能留空格
 $MYSQL_HOME_PATH/bin/mysqldump -h <mysql-host> -u <username> -p<passwd> -P <port> -S <sock-file> <database> > dump_bakbak.sql
 
-###dump_bakbak.sql文件里面少了一句use eggroll_mata;回滚时需要手工在文件内容头部加上.
+###dump_bakbak.sql文件里面少了一句use eggroll_meta;回滚时需要手工在文件内容头部加上.
 
 ```
 
