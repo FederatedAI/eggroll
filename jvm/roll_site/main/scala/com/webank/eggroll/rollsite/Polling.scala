@@ -320,7 +320,6 @@ class DispatchPollingReqSO(eggSiteServicerPollingRespSO: ServerCallStreamObserve
         val errorInfo = new AuthenticationException(s"polling authentication of party=${req.getMetadata.getDst.getPartyId} failed, " +
           s"please check polling client authentication info=${req.getMetadata.getTask.getModel.getDataKey}")
         logError(s"polling authentication of party=${req.getMetadata.getDst.getPartyId} failed, please check polling client authentication info")
-//        onError(errorInfo)
         throw new AuthenticationException(s"polling authentication of party=${req.getMetadata.getDst.getPartyId} failed, please check polling client authentication info")
       }
     } else {
