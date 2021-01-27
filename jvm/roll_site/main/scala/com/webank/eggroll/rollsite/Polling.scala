@@ -85,67 +85,6 @@ class LongPollingClient extends Logging {
 
       val pollingAuthenticationEnable = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AHTHENTICATION_ENABLED.get().toBoolean
       if (pollingAuthenticationEnable) {
-        //generate signature
-//        val myPartyId = RollSiteConfKeys.EGGROLL_ROLLSITE_PARTY_ID.get().toInt
-//        val secretInfoUrl = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_SECRET_INFO_URL.get().toString
-//        var appSecret = ""
-//        var appKey = ""
-//        var role = ""
-//        val authInfoSecretGenerator = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_SECRECT_INFO_GENERATOR.get().toString
-//
-//        try {
-//          val splitted = authInfoSecretGenerator.split("#")
-//          val authenticator = Class.forName(splitted(0)).newInstance()
-//          val args = secretInfoUrl + "," + myPartyId
-//          val result = MethodUtils.invokeExactMethod(authenticator, splitted(1), args.split(","): _*).asInstanceOf[String]
-//          if (result == null || result == "") {
-//            throw new IllegalArgumentException(s"result of ${splitted(1)} is empty")
-//          }
-//
-//          val secretInfo = new JSONObject(result.mkString)
-//          logTrace(s"secretInfo from ${splitted(0)}:${secretInfo}")
-//          if (secretInfo.getJSONObject("data")== null) {
-//            logInfo(s"partyID:${myPartyId} not registered")
-//          }
-//
-//          appSecret = secretInfo.getJSONObject("data").getString("appSecret")
-//          appKey = secretInfo.getJSONObject("data").getString("appKey")
-//          logTrace(s"role of ${myPartyId} is ${secretInfo.getJSONObject("data").getString("role")}")
-//          role = if (secretInfo.getJSONObject("data").getString("role").toLowerCase() == "guest") "1" else "2"
-//
-//        } catch {
-//          case e: NoSuchMethodException =>
-//            throw new NoSuchMethodException(s"failed to execute reflection")
-//          case t: Throwable =>
-//            logTrace(s"failed to get secretInfo from ${authInfoSecretGenerator.split("#")(1)}, please check if service ${secretInfoUrl} is available. " +
-//              "Now try to get secretInfo from eggroll.properties")
-//
-//            appKey = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_APPKEY.get().toString
-//            appSecret = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_APPSERCRET.get().toString
-//            role = if (RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_ROLE.get().toString.toLowerCase() == "guest") "1"
-//            else if (RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_ROLE.get().toString.toLowerCase() == "host") "2"
-//            else "3"
-//
-//            if (appKey == null || appSecret == null || role == "3") {
-//              throw new IllegalArgumentException(s"failed to get appKey or appSecret or party role from eggroll.properties")
-//            }
-//        }
-//
-//        val time = String.valueOf(System.currentTimeMillis)
-//        val uuid = UUID.randomUUID.toString
-//        val nonce = uuid.replaceAll("-", "")
-//        val httpURI = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_URI.get().toString
-//        val body = ""
-//        val signature = AuthenticationUtils.generateSignature(appSecret, String.valueOf(myPartyId), role,
-//          appKey, time, nonce, httpURI, body)
-//
-//        val authInfo: JSONObject = new JSONObject
-//        authInfo.put("signature", signature.toString)
-//        authInfo.put("appKey", appKey.toString)
-//        authInfo.put("timestamp", time.toString)
-//        authInfo.put("nonce", nonce.toString)
-//        authInfo.put("role", role.toString)
-//        authInfo.put("httpUri", httpURI)
         val pollingAuth = new PollingAuthentication
 
         LongPollingClient.defaultPollingReqMetadata = Proxy.Metadata.newBuilder()
@@ -381,7 +320,7 @@ class DispatchPollingReqSO(eggSiteServicerPollingRespSO: ServerCallStreamObserve
         val errorInfo = new AuthenticationException(s"polling authentication of party=${req.getMetadata.getDst.getPartyId} failed, " +
           s"please check polling client authentication info=${req.getMetadata.getTask.getModel.getDataKey}")
         logError(s"polling authentication of party=${req.getMetadata.getDst.getPartyId} failed, please check polling client authentication info")
-        onError(errorInfo)
+//        onError(errorInfo)
         throw new AuthenticationException(s"polling authentication of party=${req.getMetadata.getDst.getPartyId} failed, please check polling client authentication info")
       }
     } else {
@@ -710,12 +649,17 @@ class DispatchPollingRespSO(pollingResults: PollingResults,
 
   override def onError(t: Throwable): Unit = {
     logTrace(s"DispatchPollingRespSO.onError calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
+    val calledMsg = s"DispatchPollingRespSO.onError called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}"
+    logTrace(calledMsg)
     if (delegateSO != null) {
       delegateSO.onError(TransferExceptionUtils.throwableToException(t))
+      logTrace(calledMsg)
+    } else {
+      pollingResults.setError(t)
+      logError(s"${calledMsg}, delegateSO=null", t)
     }
     finishLatch.countDown()
     LongPollingClient.releaseSemaphore()
-    logTrace(s"DispatchPollingRespSO.onError called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
   }
 
   override def onCompleted(): Unit = {
