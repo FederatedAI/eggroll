@@ -18,8 +18,6 @@
 
 package com.webank.eggroll.rollsite
 
-import java.util
-import java.util.UUID
 import java.util.concurrent._
 import java.util.concurrent.atomic.AtomicReference
 
@@ -35,10 +33,8 @@ import io.grpc.ConnectivityState
 import io.grpc.stub.{ServerCallStreamObserver, StreamObserver}
 import javax.security.sasl.AuthenticationException
 import org.apache.commons.lang3.StringUtils
-import org.apache.commons.lang3.reflect.MethodUtils
 
 import scala.concurrent.TimeoutException
-import org.json.JSONObject
 
 
 object PollingMethods {
