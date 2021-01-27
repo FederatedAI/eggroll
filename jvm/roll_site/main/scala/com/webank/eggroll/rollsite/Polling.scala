@@ -161,6 +161,7 @@ class LongPollingClient extends Logging {
 
           pollingReqSO.onNext(TransferExceptionUtils.genExceptionPollingFrame(t))
           pollingReqSO.onCompleted()
+          LongPollingClient.pollingTerminate = true
           //pollingReqSO.onError(TransferExceptionUtils.throwableToException(t))
       } finally {
         if (!finishLatch.await(RollSiteConfKeys.EGGROLL_ROLLSITE_ONCOMPLETED_WAIT_TIMEOUT.get().toLong, TimeUnit.SECONDS)) {
@@ -172,7 +173,6 @@ class LongPollingClient extends Logging {
       // TODO:0: configurable
     } catch {
       case t: Throwable =>
-        LongPollingClient.pollingTerminate = true
         logError("polling failed", t)
     }
   }
@@ -187,6 +187,7 @@ class LongPollingClient extends Logging {
           Thread.sleep(1211)
       }
     }
+    logError("terminate polling")
   }
 }
 
