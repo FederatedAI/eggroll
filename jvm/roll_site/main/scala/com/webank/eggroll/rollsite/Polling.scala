@@ -29,7 +29,7 @@ import com.webank.eggroll.core.meta.ErRollSiteHeader
 import com.webank.eggroll.core.meta.TransferModelPbMessageSerdes.ErRollSiteHeaderFromPbMessage
 import com.webank.eggroll.core.transfer.GrpcClientUtils
 import com.webank.eggroll.core.transfer.Transfer.RollSiteHeader
-import com.webank.eggroll.core.util.{AuthenticationUtils, ErrorUtils, Logging, ToStringUtils}
+import com.webank.eggroll.core.util.{ErrorUtils, Logging, ToStringUtils}
 import com.webank.eggroll.rollsite.PollingResults.errorPoison
 import io.grpc.ConnectivityState
 import io.grpc.stub.{ServerCallStreamObserver, StreamObserver}
@@ -370,48 +370,6 @@ class DispatchPollingReqSO(eggSiteServicerPollingRespSO: ServerCallStreamObserve
   private def ensureInited(req: Proxy.PollingFrame): Unit = {
     if (inited) return
     logTrace(s"DispatchPollingReqSO.ensureInited calling.")
-
-//    val pollingAuthenticationEnable = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AHTHENTICATION_ENABLE.get().toBoolean
-//    if (pollingAuthenticationEnable) {
-//      val authUrl = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_URL.get().toString
-//      val authString = req.getMetadata.getTask.getModel.getDataKey
-//      if (authString == "" || authString == null) {
-//        throw new IllegalStateException(s"failed to get authentication info from header")
-//      }
-//      val authInfo = new JSONObject(authString)
-//
-//      val signature = authInfo.getString("signature")
-//      val appKey = authInfo.getString("appKey")
-//      val timestamp = authInfo.getString("timestamp")
-//      val nonce = authInfo.getString("nonce")
-//      val role = authInfo.getString("role")
-//      val httpUri = authInfo.getString("httpUri")
-//      val authPartyID = req.getMetadata.getDst.getPartyId
-//
-//      val heads = new util.HashMap[String, String]()
-//      heads.put("TIMESTAMP", timestamp)
-//      heads.put("PARTY_ID", authPartyID)
-//      heads.put("NONCE", nonce)
-//      heads.put("ROLE", role)
-//      heads.put("APP_KEY", appKey)
-//      heads.put("URI", httpUri)
-//      heads.put("SIGNATURE", signature)
-//      val body = ""
-//      logTrace(s"auth heads:${heads.toString}")
-//
-//      val authInterface = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AUTHENTICATOR_INTERFACE.get().toString
-//      val splitted = authInterface.split("#")
-//      val authenticator = Class.forName(splitted(0)).newInstance()
-//      val result = MethodUtils.invokeExactMethod(authenticator, splitted(1), authUrl, heads, body).asInstanceOf[Boolean]
-//      if (result) {
-//        logTrace(s"polling authentication of party=${authPartyID} passed")
-//      } else {
-//        logError(s"polling authentication of party=${authPartyID} failed, please check polling client authentication info")
-//        throw new IllegalArgumentException(s"polling authentication of party=${authPartyID} failed, please check polling client authentication info")
-//      }
-//    } else {
-//      logDebug("polling authentication disable")
-//    }
 
     val pollingAuthenticationEnable = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AHTHENTICATION_ENABLED.get().toBoolean
     if (pollingAuthenticationEnable) {

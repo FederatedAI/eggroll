@@ -1,12 +1,11 @@
 package com.webank.eggroll.rollsite
 
-import java.lang.reflect.Method
 import java.util
 import java.util.UUID
 
 import com.webank.ai.eggroll.api.networking.proxy.Proxy
 import com.webank.eggroll.core.constant.RollSiteConfKeys
-import com.webank.eggroll.core.util.{AuthenticationUtils, Logging}
+import com.webank.eggroll.core.util.Logging
 import org.apache.commons.lang3.reflect.MethodUtils
 import org.json.JSONObject
 import javax.security.sasl.AuthenticationException
@@ -127,7 +126,7 @@ class PollingAuthentication extends Logging{
       result
     } catch {
       case t: Throwable =>
-        throw new AuthenticationException(s"failed to authenticate")
+        throw new AuthenticationException(s"failed to authenticate", t)
     }
   }
 }
