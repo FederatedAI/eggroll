@@ -186,15 +186,12 @@ object RollSiteConfKeys {
   val EGGROLL_ROLLSITE_POLLING_AHTHENTICATION_ENABLED = ErConfKey("eggroll.rollsite.polling.authentication.enabled", false)
   val EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_USE_CONFIG = ErConfKey("eggroll.rollsite.polling.authentication.use.config", false)
   val EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_URI = ErConfKey("eggroll.rollsite.polling.authentication.uri", "")
-  val EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_SECRECT_INFO_GENERATOR = ErConfKey("eggroll.rollsite.polling.authentication.secret.info.generator")
-  val EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_SIGNATER_GENERATOR = ErConfKey("eggroll.rollsite.polling.authentication.signature.generator")
-  val EGGROLL_ROLLSITE_POLLING_AUTHENTICATOR_INTERFACE = ErConfKey("eggroll.rollsite.polling.authenticator.interface")
   val EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_APPKEY = ErConfKey("eggroll.rollsite.polling.authentication.appKey")
   val EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_APPSERCRET = ErConfKey("eggroll.rollsite.polling.authentication.appSecret")
   val EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_ROLE = ErConfKey("eggroll.rollsite.polling.authentication.role", "Guest")
   val EGGROLL_ROLLSITE_POLLING_SECRET_INFO_URL = ErConfKey("eggroll.rollsite.polling.secret.info.url")
   val EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_URL = ErConfKey("eggroll.rollsite.polling.authentication.url")
-  val EGGROLL_ROLLSITE_POLLING_AUTHENTICATOR_CLASS = ErConfKey("eggroll.rollsite.polling.authenticator.class", "com.webank.eggroll.rollsite.PollingAuthenticator")
+  val EGGROLL_ROLLSITE_POLLING_AUTHENTICATOR_CLASS = ErConfKey("eggroll.rollsite.polling.authenticator.class", "com.webank.eggroll.rollsite.FatePollingAuthenticator")
 }
 
 
