@@ -127,8 +127,10 @@ class PollingAuthentication extends Logging{
         } else {
           throw new Exception(s"failed to authenticate, please check polling client authentication info=${authString}", e)
         }
+      case a: AuthenticationException =>
+        throw new AuthenticationException(s"failed to authenticate, please check polling client authentication info=${authString}", a)
       case t: Throwable =>
-        throw new AuthenticationException(s"failed to authenticate, please check polling client authentication info=${authString}", t)
+        throw new Exception(s"failed to authenticate, please check polling client authentication info=${authString}", t)
     }
   }
 }
