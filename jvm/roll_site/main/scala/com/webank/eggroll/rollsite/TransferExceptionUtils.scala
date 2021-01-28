@@ -16,25 +16,30 @@ object TransferExceptionUtils {
     val stackInfo = ExceptionUtils.getStackTrace(t)
     val myPartyId = RollSiteConfKeys.EGGROLL_ROLLSITE_PARTY_ID.get()
     var desc = s"Error from partyId=${myPartyId}:\n-------------\n"
-    val host = RuntimeUtils.getMySiteLocalAddressAndPort()
+    val host = RollSiteConfKeys.EGGROLL_ROLLSITE_HOST.get()
     if (locMsg != null && locMsg.contains("[Roll Site Error TransInfo]")) {
-      desc = locMsg + f"--> $host"
+      desc = s"${locMsg} --> ${host}(${myPartyId})"
     } else {
-      desc = f"\n[Roll Site Error TransInfo] \n location msg: $locMsg \n stack info: $stackInfo \n"
+      desc = f"\n[Roll Site Error TransInfo] \n location msg=${locMsg} \n stack info=${stackInfo} \n"
       if (topic != null) {
-        val locationInfo = f"\nlocationInfo: topic.getName--${topic.getName} " +
-          f"topic.getPartyId--${topic.getPartyId}"
+        val locationInfo = f"\nlocationInfo: topic.getName=${topic.getName} " +
+          f"topic.getPartyId=${topic.getPartyId}"
         desc = desc + locationInfo
       }
-      desc = desc + f"\nexception trans path: $host"
+      desc = desc + f"\nexception trans path: ${host}(${myPartyId})"
     }
     desc
   }
 
   def throwableToException(t: Throwable, topic: Topic = null): StatusRuntimeException = {
-    if (t.isInstanceOf[StatusRuntimeException]) return t.asInstanceOf[StatusRuntimeException]
-    val desc = genExceptionDescription(t, topic)
-    val status = Status.fromThrowable(t).withDescription(desc)
+    //if (t.isInstanceOf[StatusRuntimeException]) return t.asInstanceOf[StatusRuntimeException]
+    val e = if (t != null) {
+      t
+    } else {
+      new IllegalStateException(s"t is null when throwing exception. myPartyId=${RollSiteConfKeys.EGGROLL_ROLLSITE_PARTY_ID.get()}")
+    }
+    val desc = genExceptionDescription(e, topic)
+    val status = Status.fromThrowable(e).withDescription(desc)
     status.asRuntimeException()
   }
 
@@ -73,7 +78,8 @@ object TransferExceptionUtils {
     // merge all exceptions data
     if (checkPacketIsException(request)) {
       val host = RuntimeUtils.getMySiteLocalAddressAndPort()
-      nextData = nextData + f"--> $host" + "\n ==exception divider== \n" + descException
+      nextData = s"${nextData} --> ${host} \n == exception divider == \n ${descException}"
+      //nextData = nextData + f"--> $host" + "\n ==exception divider== \n" + descException
     } else {
       nextData = descException
     }
