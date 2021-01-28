@@ -33,6 +33,7 @@ import io.grpc.ConnectivityState
 import io.grpc.stub.{ServerCallStreamObserver, StreamObserver}
 import javax.security.sasl.AuthenticationException
 import org.apache.commons.lang3.StringUtils
+import org.apache.commons.lang3.exception.ExceptionUtils
 
 import scala.concurrent.TimeoutException
 
@@ -157,7 +158,14 @@ class LongPollingClient extends Logging {
 
           pollingReqSO.onNext(TransferExceptionUtils.genExceptionPollingFrame(t))
           pollingReqSO.onCompleted()
-          LongPollingClient.pollingTerminate = true
+
+          // if exception contains AuthenticationException, it means anthInfo client sent did not pass server authentication
+          if (ExceptionUtils.getStackTrace(t).contains(classOf[AuthenticationException].getSimpleName)) {
+            logError(s"client authInfo=${LongPollingClient.initPollingFrameBuilder.getMetadata.getTask.getModel.getDataKey} " +
+              s"failed authentication, please recheck your authInfo and restart rollsite")
+            logDebug(s"start to terminate polling")
+            LongPollingClient.pollingTerminate = true
+          }
           //pollingReqSO.onError(TransferExceptionUtils.throwableToException(t))
       } finally {
         if (!finishLatch.await(RollSiteConfKeys.EGGROLL_ROLLSITE_ONCOMPLETED_WAIT_TIMEOUT.get().toLong, TimeUnit.SECONDS)) {
@@ -183,7 +191,7 @@ class LongPollingClient extends Logging {
           Thread.sleep(1211)
       }
     }
-    logError("terminate polling")
+    logError("polling terminated")
   }
 }
 
