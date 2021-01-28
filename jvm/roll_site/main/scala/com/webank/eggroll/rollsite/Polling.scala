@@ -657,10 +657,11 @@ class DispatchPollingRespSO(pollingResults: PollingResults,
   }
 
   override def onError(t: Throwable): Unit = {
-    logTrace(s"DispatchPollingRespSO.onError calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
+    val wrapped = TransferExceptionUtils.throwableToException(t)
+    logTrace(s"DispatchPollingRespSO.onError calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}", wrapped)
     val calledMsg = s"DispatchPollingRespSO.onError called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}"
     if (delegateSO != null) {
-      delegateSO.onError(TransferExceptionUtils.throwableToException(t))
+      delegateSO.onError(wrapped)
       finishLatch.countDown()
       LongPollingClient.releaseSemaphore()
       logTrace(calledMsg)
