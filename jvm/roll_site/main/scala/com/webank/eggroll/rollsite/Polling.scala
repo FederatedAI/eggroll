@@ -82,9 +82,8 @@ class LongPollingClient extends Logging {
       var isSecure = Router.query("default").isSecure
       val caCrt = CoreConfKeys.CONFKEY_CORE_SECURITY_CLIENT_CA_CRT_PATH.get()
 
-
       if (LongPollingClient.pollingAuthenticationEnabled) {
-        val pollingAuthenticator = Class.forName(RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AUTHENTICATOR_CLASS.get())
+        val pollingAuthenticator = Class.forName("com.webank.eggroll.rollsite.FatePollingAuthenticator")
           .newInstance().asInstanceOf[PollingAuthenticator]
 
         LongPollingClient.defaultPollingReqMetadata = Proxy.Metadata.newBuilder()
@@ -318,7 +317,6 @@ class DispatchPollingReqSO(eggSiteServicerPollingRespSO: ServerCallStreamObserve
 
     val pollingAuthenticationEnable = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AHTHENTICATION_ENABLED.get().toBoolean
     if (pollingAuthenticationEnable) {
-//      val pollingAuthentication = new PollingAuthentication
         val pollingAuthenticator = Class.forName(RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AUTHENTICATOR_CLASS.get())
           .newInstance().asInstanceOf[PollingAuthenticator]
 
@@ -661,13 +659,15 @@ class DispatchPollingRespSO(pollingResults: PollingResults,
     logTrace(calledMsg)
     if (delegateSO != null) {
       delegateSO.onError(TransferExceptionUtils.throwableToException(t))
+      finishLatch.countDown()
+      LongPollingClient.releaseSemaphore()
       logTrace(calledMsg)
     } else {
       pollingResults.setError(t)
+      finishLatch.countDown()
+      LongPollingClient.releaseSemaphore()
       logError(s"${calledMsg}, delegateSO=null", t)
     }
-    finishLatch.countDown()
-    LongPollingClient.releaseSemaphore()
   }
 
   override def onCompleted(): Unit = {
