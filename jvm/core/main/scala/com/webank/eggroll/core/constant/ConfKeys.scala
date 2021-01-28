@@ -191,7 +191,7 @@ object RollSiteConfKeys {
   val EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_ROLE = ErConfKey("eggroll.rollsite.polling.authentication.role", "Guest")
   val EGGROLL_ROLLSITE_POLLING_SECRET_INFO_URL = ErConfKey("eggroll.rollsite.polling.secret.info.url")
   val EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_URL = ErConfKey("eggroll.rollsite.polling.authentication.url")
-  val EGGROLL_ROLLSITE_POLLING_AUTHENTICATOR_CLASS = ErConfKey("eggroll.rollsite.polling.authenticator.class", "com.webank.eggroll.rollsite.FatePollingAuthenticator")
+  val EGGROLL_ROLLSITE_POLLING_AUTHENTICATOR_CLASS = ErConfKey("eggroll.rollsite.polling.authenticator.class")
 }
 
 

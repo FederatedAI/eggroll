@@ -27,9 +27,9 @@ class FatePollingAuthenticator extends PollingAuthenticator with Logging{
     // generate signature
     val myPartyId = RollSiteConfKeys.EGGROLL_ROLLSITE_PARTY_ID.get().toInt
     val secretInfoUrl = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_SECRET_INFO_URL.get().toString
-    var appSecret = ""
-    var appKey = ""
-    var role = ""
+    var appSecret: String = null
+    var appKey: String = null
+    var role: String = null
     if (RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_USE_CONFIG.get().toBoolean) {
       logDebug(s"manual configuration enabled, getting appKey, appSecret and party role from eggroll.properties")
       appKey = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_APPKEY.get().toString
@@ -45,7 +45,6 @@ class FatePollingAuthenticator extends PollingAuthenticator with Logging{
     } else {
       val args = secretInfoUrl + "," + myPartyId
       logDebug(s"getSecretInfo of fateCloud calling, args=${args}")
-//      val result = MethodUtils.invokeExactMethod(authenticator, splitted(1), args.split(","): _*).asInstanceOf[String]
       val result = FatePollingAuthenticator.fateCloud.getSecretInfo(secretInfoUrl, myPartyId.toString)
       logDebug(s"getSecretInfo of fateCloud called")
       if (result == null || result == "") {

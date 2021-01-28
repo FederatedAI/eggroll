@@ -191,7 +191,7 @@ class LongPollingClient extends Logging {
           Thread.sleep(1211)
       }
     }
-    logInfo("polling terminated")
+    logInfo("polling exit")
   }
 }
 
@@ -315,8 +315,8 @@ class DispatchPollingReqSO(eggSiteServicerPollingRespSO: ServerCallStreamObserve
     if (inited) return
     logTrace(s"DispatchPollingReqSO.ensureInited calling.")
 
-    val pollingAuthenticationEnable = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AHTHENTICATION_ENABLED.get().toBoolean
-    if (pollingAuthenticationEnable) {
+    val pollingAuthenticationEnabled = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AHTHENTICATION_ENABLED.get().toBoolean
+    if (pollingAuthenticationEnabled) {
         val pollingAuthenticator = Class.forName(RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AUTHENTICATOR_CLASS.get())
           .newInstance().asInstanceOf[PollingAuthenticator]
 
@@ -656,7 +656,6 @@ class DispatchPollingRespSO(pollingResults: PollingResults,
   override def onError(t: Throwable): Unit = {
     logTrace(s"DispatchPollingRespSO.onError calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
     val calledMsg = s"DispatchPollingRespSO.onError called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}"
-    logTrace(calledMsg)
     if (delegateSO != null) {
       delegateSO.onError(TransferExceptionUtils.throwableToException(t))
       finishLatch.countDown()
