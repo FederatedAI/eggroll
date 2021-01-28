@@ -58,9 +58,11 @@ object LongPollingClient extends Logging {
 
   var initPollingFrameBuilder: Proxy.PollingFrame.Builder = Proxy.PollingFrame.newBuilder().setMetadata(defaultPollingReqMetadata)
 
+  val pollingAuthenticationEnabled = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AHTHENTICATION_ENABLED.get().toBoolean
+
   private val pollingSemaphore = new Semaphore(RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_CONCURRENCY.get().toInt)
 
-  private var pollingTerminate: Boolean = false
+  private var shouldPollingContinue: Boolean = true
 
   def acquireSemaphore(): Unit = {
     LongPollingClient.pollingSemaphore.acquire()
@@ -80,9 +82,10 @@ class LongPollingClient extends Logging {
       var isSecure = Router.query("default").isSecure
       val caCrt = CoreConfKeys.CONFKEY_CORE_SECURITY_CLIENT_CA_CRT_PATH.get()
 
-      val pollingAuthenticationEnable = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AHTHENTICATION_ENABLED.get().toBoolean
-      if (pollingAuthenticationEnable) {
-        val pollingAuth = new PollingAuthentication
+
+      if (LongPollingClient.pollingAuthenticationEnabled) {
+        val pollingAuthenticator = Class.forName(RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AUTHENTICATOR_CLASS.get())
+          .newInstance().asInstanceOf[PollingAuthenticator]
 
         LongPollingClient.defaultPollingReqMetadata = Proxy.Metadata.newBuilder()
           .setDst(
@@ -90,13 +93,12 @@ class LongPollingClient extends Logging {
               .setPartyId(LongPollingClient.defaultPollingReqMetadata.getDst.getPartyId))
           .setTask(Proxy.Task.newBuilder()
             .setModel(Proxy.Model.newBuilder()
-              .setDataKey(pollingAuth.genSecretInfo())))
+              .setDataKey(pollingAuthenticator.sign())))
           .build()
 
         LongPollingClient.initPollingFrameBuilder = Proxy.PollingFrame.newBuilder().setMetadata(LongPollingClient.defaultPollingReqMetadata)
-        logTrace(s"authInfo to be sent=${LongPollingClient.defaultPollingReqMetadata.getTask.getModel.getDataKey}, partyID=${LongPollingClient.initPollingFrameBuilder.getMetadata.getDst.getPartyId}")
-      } else {
-        logDebug(s"polling Authentication disable")
+        logTrace(s"authInfo to be sent=${LongPollingClient.defaultPollingReqMetadata.getTask.getModel.getDataKey}, " +
+          s"partyID=${LongPollingClient.initPollingFrameBuilder.getMetadata.getDst.getPartyId}")
       }
 
       // use secure channel conditions:
@@ -161,10 +163,9 @@ class LongPollingClient extends Logging {
 
           // if exception contains AuthenticationException, it means anthInfo client sent did not pass server authentication
           if (ExceptionUtils.getStackTrace(t).contains(classOf[AuthenticationException].getSimpleName)) {
-            logError(s"client authInfo=${LongPollingClient.initPollingFrameBuilder.getMetadata.getTask.getModel.getDataKey} " +
-              s"failed authentication, please recheck your authInfo and restart rollsite")
-            logDebug(s"start to terminate polling")
-            LongPollingClient.pollingTerminate = true
+            logError(s"fail to authenticate authInfo=${LongPollingClient.initPollingFrameBuilder.getMetadata.getTask.getModel.getDataKey} " +
+              s", please recheck your authInfo and restart rollsite, start to terminate polling")
+            LongPollingClient.shouldPollingContinue = false
           }
           //pollingReqSO.onError(TransferExceptionUtils.throwableToException(t))
       } finally {
@@ -182,7 +183,7 @@ class LongPollingClient extends Logging {
   }
 
   def pollingForever(): Unit = {
-    while (!LongPollingClient.pollingTerminate) {
+    while (LongPollingClient.shouldPollingContinue) {
       try {
         polling()
       } catch {
@@ -191,7 +192,7 @@ class LongPollingClient extends Logging {
           Thread.sleep(1211)
       }
     }
-    logError("polling terminated")
+    logInfo("polling terminated")
   }
 }
 
@@ -317,10 +318,13 @@ class DispatchPollingReqSO(eggSiteServicerPollingRespSO: ServerCallStreamObserve
 
     val pollingAuthenticationEnable = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AHTHENTICATION_ENABLED.get().toBoolean
     if (pollingAuthenticationEnable) {
-      val pollingAuthentication = new PollingAuthentication
-      val authResult = pollingAuthentication.authenticate(req)
+//      val pollingAuthentication = new PollingAuthentication
+        val pollingAuthenticator = Class.forName(RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AUTHENTICATOR_CLASS.get())
+          .newInstance().asInstanceOf[PollingAuthenticator]
+
+      val authResult = pollingAuthenticator.authenticate(req)
       if (authResult) {
-        logTrace(s"polling authentication of party=${req.getMetadata.getDst.getPartyId} passed")
+        logTrace(s"polling authentication of party=${req.getMetadata.getDst.getPartyId} successful")
       } else {
         val errorInfo = new AuthenticationException(s"polling authentication of party=${req.getMetadata.getDst.getPartyId} failed, " +
           s"please check polling client authentication info=${req.getMetadata.getTask.getModel.getDataKey}")

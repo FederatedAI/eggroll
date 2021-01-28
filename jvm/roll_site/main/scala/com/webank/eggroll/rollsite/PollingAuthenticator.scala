@@ -6,12 +6,27 @@ import java.util.UUID
 import com.webank.ai.eggroll.api.networking.proxy.Proxy
 import com.webank.eggroll.core.constant.RollSiteConfKeys
 import com.webank.eggroll.core.util.Logging
+import com.webank.ai.fate.cloud.sdk.sdk.Fatecloud
 import org.apache.commons.lang3.reflect.MethodUtils
 import org.json.JSONObject
 import javax.security.sasl.AuthenticationException
 
-class PollingAuthentication extends Logging{
-  def genSecretInfo(): String = {
+trait PollingAuthenticator {
+  def getSecretInfo(): JSONObject
+
+  def sign(): String
+
+  def authenticate(req: Proxy.PollingFrame): Boolean
+}
+
+object FatePollingAuthentication extends Logging{
+  private val fateCloud = new Fatecloud
+}
+
+class FatePollingAuthentication extends PollingAuthenticator with Logging{
+
+
+  def getSecretInfo(): JSONObject = {
     // generate signature
     val myPartyId = RollSiteConfKeys.EGGROLL_ROLLSITE_PARTY_ID.get().toInt
     val secretInfoUrl = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_SECRET_INFO_URL.get().toString
@@ -22,7 +37,7 @@ class PollingAuthentication extends Logging{
     var splitted = authInfoSecretGenerator.split("#")
     val authenticator = Class.forName(splitted(0)).newInstance()
 
-    if (RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_USE_CONFIGURE.get().toBoolean) {
+    if (RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_USE_CONFIG.get().toBoolean) {
       logDebug(s"manual configuration enabled, getting appKey, appSecret and party role from eggroll.properties")
       appKey = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_APPKEY.get().toString
       appSecret = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_APPSERCRET.get().toString
@@ -35,11 +50,10 @@ class PollingAuthentication extends Logging{
         case x => throw new AuthenticationException(s"unsupported role=${x}")
       }
     } else {
-
-
       val args = secretInfoUrl + "," + myPartyId
       logDebug(s"${splitted(1)} of ${splitted(0)} calling, args=${args}")
-      val result = MethodUtils.invokeExactMethod(authenticator, splitted(1), args.split(","): _*).asInstanceOf[String]
+//      val result = MethodUtils.invokeExactMethod(authenticator, splitted(1), args.split(","): _*).asInstanceOf[String]
+      val result = FatePollingAuthentication.fateCloud.getSecretInfo(secretInfoUrl, myPartyId.toString)
       logDebug(s"${splitted(1)} of ${splitted(0)} called")
       if (result == null || result == "") {
         throw new AuthenticationException(s"result of ${splitted(1)} is empty")
@@ -56,19 +70,30 @@ class PollingAuthentication extends Logging{
       logTrace(s"role of ${myPartyId} is ${secretInfo.getJSONObject("data").getString("role")}")
       role = if (secretInfo.getJSONObject("data").getString("role").toLowerCase() == "guest") "1" else "2"
     }
+    val secretInfo: JSONObject = new JSONObject
+    secretInfo.put("appSecret", appSecret)
+    secretInfo.put("appKey", appKey)
+    secretInfo.put("role", role)
+    secretInfo
+  }
 
-
+  def sign(): String = {
+    val secretInfoGen = getSecretInfo()
+    val appSecret = secretInfoGen.get("appSecret").toString
+    val appKey = secretInfoGen.get("appKey").toString
+    val role = secretInfoGen.get("role").toString
+    val myPartyId = RollSiteConfKeys.EGGROLL_ROLLSITE_PARTY_ID.get().toInt
     val time = String.valueOf(System.currentTimeMillis)
     val uuid = UUID.randomUUID.toString
     val nonce = uuid.replaceAll("-", "")
     val httpURI = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_URI.get().toString
     val body = ""
     val signaterGenerator = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_SIGNATER_GENERATOR.get().toString
-    splitted = signaterGenerator.split("#")
-    val args = List(appSecret, String.valueOf(myPartyId), role, appKey, time, nonce, httpURI, body).mkString(",")
+    val splitted = signaterGenerator.split("#")
 
     logDebug(s"${splitted(1)} of ${splitted(0)} calling")
-    val signature = MethodUtils.invokeMethod(authenticator, splitted(1), args.split(",", -1):_*).asInstanceOf[String]
+    val signature = FatePollingAuthentication.fateCloud.generateSignature(appSecret, String.valueOf(myPartyId),
+      role, appKey, time, nonce, httpURI, body)
     logDebug(s"${splitted(1)} of ${splitted(0)} called, signature=${signature}")
 
     val authInfo: JSONObject = new JSONObject
@@ -116,7 +141,7 @@ class PollingAuthentication extends Logging{
 
     logDebug(s"${splitted(1)} of ${splitted(0)} calling")
     try {
-      val result = MethodUtils.invokeExactMethod(authenticator, splitted(1), authUrl, heads, body).asInstanceOf[Boolean]
+      val result = FatePollingAuthentication.fateCloud.checkPartyId(authUrl, heads, body)
       logDebug(s"${splitted(1)} of ${splitted(0)} called")
       result
     } catch {
