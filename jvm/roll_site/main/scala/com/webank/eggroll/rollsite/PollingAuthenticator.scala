@@ -53,7 +53,7 @@ class FatePollingAuthenticator extends PollingAuthenticator with Logging{
       }
 
       val secretInfo = new JSONObject(result.mkString)
-      if (secretInfo.getJSONObject("data") == null) {
+      if (secretInfo.get("data") == JSONObject.NULL) {
         logError(s"partyID:${myPartyId} not registered")
         throw new AuthenticationException(s"partyID:${myPartyId} not registered")
       }
