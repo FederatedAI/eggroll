@@ -12,7 +12,7 @@
 ```
  -c --nm_file <必选:eggroll集群cm或nm节点ip集合>
  -r --rs_file <必选:eggroll集群仅仅部署rollsite节点的ip集合,内容可以为空,文件不能为空>
- -e --egg_home <必选:eggroll家的目录>
+ -e --egg_home <必选:eggroll home目录>
  -k --pkg_base_path <必选:eggroll 升级版本文件的基路径,路径下同EGGROLL_HOME目录一样,见3.1.1
  -m --mysql_home <必选:mysql home 目录>
  -t --mysql_host  <必选:mysql主机ip地址>
@@ -40,7 +40,7 @@
 
 进入脚本文件所在目录
 ```
-(venv) [app@node1 ~]$ cd $EGGROLL_HOME/bin/
+(venv) [app@node1 ~]$ cd $EGGROLL_HOME/deploy/
 (venv) [app@node1 ~]$ python upgrade_helper.py --help
 ```
 
