@@ -38,10 +38,13 @@ class FatePollingAuthenticator extends PollingAuthenticator with Logging{
       if (appKey == null || appSecret == null) {
         throw new IllegalArgumentException(s"failed to get appKey or appSecret or party role from eggroll.properties")
       }
-      role = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_ROLE.get().toString.toLowerCase match {
-        case "guest" => "1"
-        case "host" => "2"
+      RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AUTHENTICATION_ROLE.get().toString.toLowerCase match {
+        case "guest" => role = "1"
+        case "host" => role = "2"
         case x => throw new AuthenticationException(s"unsupported role=${x}")
+      }
+      if (role == null) {
+        throw new AuthenticationException(s"role is null, please check if eggroll.rollsite.polling.authentication.role has been configured")
       }
     } else {
       val args = secretInfoUrl + "," + myPartyId
@@ -86,6 +89,11 @@ class FatePollingAuthenticator extends PollingAuthenticator with Logging{
     val signature = FatePollingAuthenticator.fateCloud.generateSignature(appSecret, String.valueOf(myPartyId),
       role, appKey, time, nonce, httpURI, body)
     logTrace(s"generateSignature of fateCloud called, signature=${signature}")
+
+    if (signature == null) {
+      throw new AuthenticationException(s"signature generated is null, please check args appSecret=${appSecret}, partyId=${myPartyId}, " +
+        s"role=${role}, appKey=${appKey}, time=${time}, nonce=${nonce}, httpURI=${httpURI}, body=${body}")
+    }
 
     val authInfo: JSONObject = new JSONObject
     authInfo.put("signature", signature.toString)
