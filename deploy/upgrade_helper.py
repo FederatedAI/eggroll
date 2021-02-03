@@ -77,41 +77,23 @@ def get_db_upgrade_content(upgrade_sql_file: str):
     return open(upgrade_sql_file).read()
 
 
-def encap_upgrade_db(host:str,cmd:str):
-    ssh = subprocess.Popen(["ssh","%s"%host,cmd],shell = False,stdout = subprocess.PIPE,stderr = subprocess.PIPE)
-    ss = ssh.stderr.readlines()
-    result = []
-    for i in ss:
-        result.append(bytes.decode(i))
-    if len(ss) > 1:
-        print(f'dump or upgrade db error={" ".join(result)}')
-        sys.exit(-1)
-    else:
-        print(f'dump or upgrade db right={" ".join(result)}')
 
 def backup_upgrade_db(mysql_home_path: str, host: str, port: int, database: str, username: str, passwd: str,
                       mysql_sock,db_upgrade_sql: str):
     print(f"start backup db data ...")
     # todo mysqldump result sql file lose 'use eggroll_meta' context switch
-    dump_sql = "dump_backup_eggroll_upgrade_"+host+'_' + datetime.now().strftime("%Y%m%d") + ".sql"
+    dump_sql = "~/dump_backup_eggroll_upgrade_"+host+'_' + datetime.now().strftime("%Y%m%d") + ".sql"
     bak_cmd = mysql_home_path + "/bin/mysqldump" + " -h " + host + " -u " + username + " -p" + passwd + " -P" + str(
         port) + " -S " + mysql_sock + " " + database + " -r " + dump_sql
+    os.system("%s" %(bak_cmd))
     print(f'bak_cmd={bak_cmd}')
-    encap_upgrade_db(host,bak_cmd)
     print(f"end backup db data.")
     print(f'start upgrade db ...')
     sub_cmd = split_statements(get_db_upgrade_content(db_upgrade_sql))
-    up_cmd = "'" + mysql_home_path + "/bin/mysql" + " -u " + username + " -p" + passwd + " -P " + str(
-        port) + " -h " + host + " -S " + mysql_sock + " -Bse " + '"' + sub_cmd + '"' + "'"
+    up_cmd =  mysql_home_path + "/bin/mysql" + " -u " + username + " -p" + passwd + " -P " + str(
+        port) + " -h " + host + " -S " + mysql_sock + " -Bse " + '"' + sub_cmd + '"'
     print(f'up_cmd={up_cmd}')
-    sts = os.system("%s %s %s" %('ssh',host,up_cmd))
-    if sts != 0:
-        print(f'upgrade db error please checking mysql_file.sql.')
-        sys.exit(-1)
-    else:
-        print(f'end upgrade db end.')
-
-
+    os.system("%s" %(up_cmd))
 
 def cluster_upgrade_sync(src_path: str, dst_path: str, remote_host: str):
     print(f'start upgrade eggroll 2.0.x -> 2.2.x ... src_path={src_path} dst_path={dst_path}')
@@ -138,13 +120,19 @@ def upgrade_main(ub_path,nm_file, rs_file, egg_home, mysql_home, mysql_host, mys
     print(f"into upgrade main ...")
     nm_node = read_ip_list(nm_file)
     rs_node = read_ip_list(rs_file)
+    print(f'nm len={len(nm_node)}')
+    print(f'rs len={len(rs_node)}')
     if len(nm_node) > 0:
         if check_egg_home(egg_home) is False:
             print(f'input param eggroll home path error={egg_home}')
             sys.exit(-1)
         try:
             backup_eggroll_data(egg_home)
-            backup_upgrade_db(mysql_home, mysql_host, mysql_port, mysql_db, mysql_user, mysql_pwd,mysql_sock, mysql_file)
+            if os.path.exists( mysql_home + "/bin/mysql"):
+                backup_upgrade_db(mysql_home, mysql_host, mysql_port, mysql_db, mysql_user, mysql_pwd,mysql_sock, mysql_file)
+            else:
+                print(f'current machine not install mysql .skip back {mysql_db} on mysql  and upgrade {mysql_db} on mysql \n')
+                print(f'Please login in to MySQL backup to upgrade {mysql_db}')
         except Exception as e:
             print(f" upgrade error pleases checking.e={e}")
             sys.exit(-1)
@@ -230,25 +218,14 @@ def recover_eggroll_data(nm_path,rs_path,db_home_path, eggroll_home_path: str, h
     print(f'eggroll data recover finish.')
     print(f'start recover eggroll db data...')
 
-    bak_sql_f = "~/dump_backup_eggroll_upgrade_"+host+'_' + datetime.now().strftime("%Y%m%d") + ".sql"
-    check_db_cmd = 'test -f '+bak_sql_f+" && echo 'yes' || echo 'no'"
-    ssh = subprocess.Popen(["ssh","%s"%host,check_db_cmd],shell = False,stdout = subprocess.PIPE,stderr = subprocess.PIPE)
-    ss = ssh.stdout.readline()
-    content = bytes.decode(ss)
-    if content.replace("\n","") == 'yes':
-        print('ok')
+    bak_sql_f = "/home/app/dump_backup_eggroll_upgrade_"+host+'_' + datetime.now().strftime("%Y%m%d") + ".sql"
+    if os.path.exists(bak_sql_f):
         sub_cmd = db_home_path+"/bin/mysql -u "+username+"  -p"+passwd+" -h "+host+" -P "+port +"  --default-character-set=utf8 "+database+" < "+bak_sql_f
-        ssh2 = subprocess.Popen(["ssh","%s"%host,sub_cmd],shell = False,stdout = subprocess.PIPE,stderr = subprocess.PIPE)
-        ss2 = ssh2.stderr.readlines()
-        print(f'dump recover mysql result={ss2}')
-        if len(ss2) > 1:
-            print(f'please check mysql recover sql file')
-            sys.exit(-1)
-    elif content.replace("\n","") == "no":
-        print('not exists.please check back sql file')
-        sys.exit(-1)
-    ssh.stdout.close()
-    print(f'eggroll db data recover finish.')
+        os.system("%s" %(sub_cmd)) 
+        print(f'eggroll db data recover finish.')
+    else:
+        print(f'current machine not install mysql .skip recover {database} \n')
+        print(f'Please login in to MySQL recover {database}')
     print(f'start cluster recover ...')
     remote_cluster_recover(nm_path,rs_path,eggroll_home_path)
     print(f'cluster recover finish.')
