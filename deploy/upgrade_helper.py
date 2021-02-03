@@ -227,7 +227,7 @@ def recover_eggroll_data(nm_path,rs_path,db_home_path, eggroll_home_path: str, h
         print(f'current machine not install mysql .skip recover {database} \n')
         print(f'Please login in to MySQL recover {database}')
     print(f'start cluster recover ...')
-    #remote_cluster_recover(nm_path,rs_path,eggroll_home_path)
+    remote_cluster_recover(nm_path,rs_path,eggroll_home_path)
     print(f'cluster recover finish.')
 
 def pv_pkg_info():
