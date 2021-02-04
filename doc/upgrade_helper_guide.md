@@ -234,7 +234,7 @@ cat $EGGROLL_HOME/python/eggroll/__init__.py
 ```
 
 
-## 5. 升级失败恢复集群所有升级节点
+## 5. 升级失败恢复EGGROLL集群所有的升级节点
 
 - 5.1 eggroll还原
 
@@ -251,7 +251,7 @@ cp -r python_bak python
 
 ```
 
-- 5.2 失败回滚
+- 5.2 回滚执行
 
 ```
 python ${your put script path}/upgrade_helper.py \
@@ -280,7 +280,7 @@ python ${your put script path}/upgrade_helper.py \
 ${MYSQL_HOME}/bin/mysql -ufate -p -S ${MYSQL_HOME}/run/mysql.sock -h 192.168.0.1 -P 3306 --default-character-set=utf8 eggroll_meta < dump_bakbak.sql
 ```
 
-- 5.4 重复#4.3 ~ 4.6步骤
+- 5.4 重复#4.3 ~ 4.5步骤
 
 
 
