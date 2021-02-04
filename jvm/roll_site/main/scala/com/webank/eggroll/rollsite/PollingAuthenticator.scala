@@ -2,12 +2,13 @@ package com.webank.eggroll.rollsite
 
 import java.util
 import java.util.UUID
-
 import com.webank.ai.eggroll.api.networking.proxy.Proxy
 import com.webank.eggroll.core.constant.RollSiteConfKeys
 import com.webank.eggroll.core.util.Logging
-import com.webank.ai.fate.cloud.sdk.sdk.Fatecloud
+import org.apache.commons.lang3.reflect.MethodUtils
 import org.json.JSONObject
+
+import java.lang.reflect.Method
 import javax.security.sasl.AuthenticationException
 
 
@@ -20,7 +21,13 @@ trait PollingAuthenticator {
 }
 
 object FatePollingAuthenticator extends Logging{
-  private val fateCloud = new Fatecloud
+  private val clazz: Class[_] = Class.forName("com.webank.ai.fate.cloud.sdk.sdk.Fatecloud")
+  private val fateCloud: PollingAuthenticator = clazz.newInstance().asInstanceOf[PollingAuthenticator]
+  private val getSecretInfoMethod = MethodUtils.getMatchingMethod(clazz, "getSecretInfo", classOf[String], classOf[String])
+  private val signMethod = MethodUtils.getMatchingMethod(clazz, "generateSignature",
+    classOf[String], classOf[String], classOf[String], classOf[String], classOf[String], classOf[String], classOf[String], classOf[String])
+  private val authenticateMethod: Method = MethodUtils.getMatchingMethod(clazz, "checkPartyId",
+    classOf[String], classOf[util.HashMap[String, String]], classOf[String])
 }
 
 class FatePollingAuthenticator extends PollingAuthenticator with Logging{
@@ -49,16 +56,16 @@ class FatePollingAuthenticator extends PollingAuthenticator with Logging{
     } else {
       val args = secretInfoUrl + "," + myPartyId
       logTrace(s"getSecretInfo of fateCloud calling, args=${args}")
-      val result = FatePollingAuthenticator.fateCloud.getSecretInfo(secretInfoUrl, myPartyId.toString)
+      val result = FatePollingAuthenticator.getSecretInfoMethod.invoke(secretInfoUrl, myPartyId.toString)
       logTrace(s"getSecretInfo of fateCloud called")
       if (result == null || result == "") {
         throw new AuthenticationException(s"result of getSecretInfo is empty")
       }
 
-      val secretInfo = new JSONObject(result.mkString)
+      val secretInfo = new JSONObject(result)
       if (secretInfo.get("data") == JSONObject.NULL) {
         logError(s"partyID:${myPartyId} not registered")
-        throw new AuthenticationException(s"partyID:${myPartyId} not registered")
+        throw new AuthenticationException(s"partyID=${myPartyId} is not registered")
       }
 
       appSecret = secretInfo.getJSONObject("data").getString("appSecret")
@@ -86,7 +93,7 @@ class FatePollingAuthenticator extends PollingAuthenticator with Logging{
     val body = ""
 
     logTrace(s"generateSignature of fateCloud calling")
-    val signature = FatePollingAuthenticator.fateCloud.generateSignature(appSecret, String.valueOf(myPartyId),
+    val signature = FatePollingAuthenticator.signMethod.invoke(appSecret, String.valueOf(myPartyId),
       role, appKey, time, nonce, httpURI, body)
     logTrace(s"generateSignature of fateCloud called, signature=${signature}")
 
@@ -136,7 +143,8 @@ class FatePollingAuthenticator extends PollingAuthenticator with Logging{
 
     logTrace(s"checkPartyId of fateCloud calling")
     try {
-      val result = FatePollingAuthenticator.fateCloud.checkPartyId(authUrl, heads, body)
+      // val result = FatePollingAuthenticator.fateCloud.checkPartyId(authUrl, heads, body)
+      val result = FatePollingAuthenticator.authenticateMethod.invoke(FatePollingAuthenticator.fateCloud, authUrl, heads, body).asInstanceOf[Boolean]
       logTrace(s"checkPartyId of fateCloud called")
       result
     } catch {
