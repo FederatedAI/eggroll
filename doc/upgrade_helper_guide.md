@@ -282,5 +282,16 @@ ${MYSQL_HOME}/bin/mysql -ufate -p -S ${MYSQL_HOME}/run/mysql.sock -h 192.168.0.1
 
 - 5.4 重复#4.3 ~ 4.5步骤
 
+## 6. 常见问题
+
+- 6.1
+
+> Q: 如果以前ssh不能直接登录到目标机器，需要指定端口，怎么办呢？
+> A: 在执行升级脚本前，执行以下语句，指定ssh端口：
+```
+export "RSYNC_RSH=ssh -p ${ssh_port}"
+echo $RSYNC_RSH
+```
+> 其中${ssh_port}为以前登录到目标机器时需要指定的端口。
 
 
