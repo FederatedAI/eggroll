@@ -11,6 +11,7 @@ import org.json.JSONObject
 import java.lang.reflect.Method
 
 import javax.security.sasl.AuthenticationException
+import org.apache.commons.lang3.StringUtils
 
 
 trait PollingAuthenticator {
@@ -59,7 +60,7 @@ class FatePollingAuthenticator extends PollingAuthenticator with Logging{
       logTrace(s"getSecretInfo of fateCloud calling, args=${args}")
       val result = FatePollingAuthenticator.getSecretInfoMethod.invoke(FatePollingAuthenticator.fateCloud, secretInfoUrl, myPartyId.toString)
       logTrace(s"getSecretInfo of fateCloud called")
-      if (result == null || result == "") {
+      if (StringUtils.isBlank(result.toString)) {
         throw new AuthenticationException(s"result of getSecretInfo is empty")
       }
 
