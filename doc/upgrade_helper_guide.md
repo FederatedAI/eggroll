@@ -97,13 +97,8 @@ python upgrade_helper.py --help
 
 > 获取升级包
 
-> 1、解压
+> 升级包目录结构
 
-```
-tar -xf eggroll-2.2.1.tar.gz
-```
-
-> 2、升级包目录结构
 ```
 ├─eggroll
       ├─bin 
@@ -113,34 +108,6 @@ tar -xf eggroll-2.2.1.tar.gz
       └─python 
    
 ```
-> 3、完善conf目录
-
-- 复制一份`eggroll.properties`配置文件到升级包conf目录下
-
-> ${PKG_BASE_PATH} 为最新升级的`base path`
-
-```
-export PKG_BASE_PATH=`Your own directory of upgrade packages`
-cp ${EGGROLL_HOME}/conf/eggroll.properties ${PKG_BASE_PATH}/eggroll/conf/
-```
-
-> 检查`eggroll.properties`配置文件根据如下升级版本号是否决定修改
-
-如果是eggroll_2.0.x -> 2.2.x 这个版本的升级,需要修改项如下:
-
-```
-
-vim ${PKG_BASE_PATH}/eggroll/conf/eggroll.properties
-
- #`eggroll.resourcemanager.bootstrap.roll_pair_master.exepath=bin/roll_pair/roll_pair_master_bootstrap.sh`
- #`eggroll.resourcemanager.bootstrap.roll_pair_master.javahome=`
- #`eggroll.resourcemanager.bootstrap.roll_pair_master.classpath=conf/:lib/*`
- #`eggroll.resourcemanager.bootstrap.roll_pair_master.mainclass=com.webank.eggroll.rollpair.RollPairMasterBootstrap`
- #`eggroll.resourcemanager.bootstrap.roll_pair_master.jvm.options=`
-
-```
-
-如果是eggroll_2.2.x -> 2.2.x 这个版本的升级,暂不需要修改
 
 
 #### 3.1.2 创建nm_ip_list文件
