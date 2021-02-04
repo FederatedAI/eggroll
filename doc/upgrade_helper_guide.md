@@ -4,7 +4,7 @@
 
 ## 1. 环境要求
 ### 1.1 python3环境
-### 1.2 执行脚本在的集群节点机器必须是nodemanager任意节点
+### 1.2.执行脚本的机器需要能免密登录Eggroll集群的所有节点。
 ### 1.3 需要app用户登录执行
 ### 1.4 执行mysql备份等操作需要先确认是否允许ip操作权限
 
@@ -55,17 +55,17 @@ sh service.sh fate-rollsite stop
 
 ```
 cd ${EGGROLL_HOME}
-mv bin bin_bakbak
-mv deploy deploy_bakbak
-mv lib lib_bakbak
-mv conf conf_bakbak
-mv python python_bakbak
+mv bin bin_bak
+mv deploy deploy_bak
+mv lib lib_bak
+mv conf conf_bak
+mv python python_bak
 
-cp -r bin_bakbak bin
-cp -r conf_bakbak conf
-cp -r deploy_bakbak deploy
-cp -r lib_bakbak lib
-cp -r python_bakbak python
+cp -r bin_bak bin
+cp -r conf_bak conf
+cp -r deploy_bak deploy
+cp -r lib_bak lib
+cp -r python_bak python
 
 ```
 
@@ -282,18 +282,6 @@ delete from eggroll_meta.store_locator;
 delete from eggroll_meta.store_option;
 delete from eggroll_meta.store_partition;   
 
-delete from fate_flow.componentsummary   ; 
-delete from fate_flow.t_engine_registry   ; 
-delete from fate_flow.t_job    ; 
-delete from fate_flow.t_machine_learning_model_info ; 
-delete from fate_flow.t_model_operation_log   ; 
-delete from fate_flow.t_model_tag        ; 
-delete from fate_flow.t_session_record   ; 
-delete from fate_flow.t_storage_table_meta    ; 
-delete from fate_flow.t_tags   ; 
-delete from fate_flow.t_task   ; 
-delete from fate_flow.trackingmetric     ; 
-delete from fate_flow.trackingoutputdatainfo        ;
 
 ```
 
@@ -304,9 +292,6 @@ delete from fate_flow.trackingoutputdatainfo        ;
 cd ${EGGROLL_HOME}
 sh bin/eggroll.sh all start
 
-启动fate_flow
-cd /data/projects/fate/python/fate_flow
-sh service.sh restart
 
 ```
 
@@ -319,11 +304,11 @@ sh service.sh restart
 ```
 cd ${EGGROLL_HOME}
 rm -rf bin deploy lib python conf
-cp -r bin_bakbak bin
-cp -r conf_bakbak conf
-cp -r deploy_bakbak deploy
-cp -r lib_bakbak lib
-cp -r python_bakbak python
+cp -r bin_bak bin
+cp -r conf_bak conf
+cp -r deploy_bak deploy
+cp -r lib_bak lib
+cp -r python_bak python
 
 ```
 
