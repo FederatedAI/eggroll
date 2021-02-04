@@ -90,7 +90,7 @@ python upgrade_helper.py --help
 > 1、解压
 
 ```
-tar -xf upgrade-eggroll-2.2.1.tar.gz
+tar -xf eggroll-2.2.1.tar.gz
 ```
 
 > 2、升级包目录结构
