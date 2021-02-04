@@ -4,7 +4,7 @@
 
 ## 1. 环境要求
 ### 1.1 python3环境
-### 1.2.执行脚本的机器需要能免密登录Eggroll集群的所有节点。
+### 1.2.执行脚本的机器需要能免密登录Eggroll集群的所有节点
 ### 1.3 需要app用户登录执行
 ### 1.4 执行mysql备份等操作需要先确认是否允许ip操作权限
 
@@ -233,34 +233,6 @@ cat $EGGROLL_HOME/python/eggroll/__init__.py
 
 ```
 
-- 4.6 登录EGGROLL元数据库
-
->1 登录MYSQL
-```
-${MYSQL_HOME}/bin/mysql -ufate -p -S ${MYSQL_HOME}/run/mysql.sock -h ${your install fate with mysql ip} -P ${your install fate with mysql port}
-
-```
->2 清空如下数据库表
-```
-delete from eggroll_meta.session_main;
-delete from eggroll_meta.session_option;
-delete from eggroll_meta.session_processor;
-delete from eggroll_meta.store_locator;
-delete from eggroll_meta.store_option;
-delete from eggroll_meta.store_partition;   
-
-
-```
-
->3 重启eggroll和fate服务
-
-```
-启动eggroll
-cd ${EGGROLL_HOME}
-sh bin/eggroll.sh all start
-
-
-```
 
 ## 5. 升级失败恢复集群所有升级节点
 
