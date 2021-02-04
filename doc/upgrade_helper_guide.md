@@ -30,15 +30,25 @@
 - 切换虚拟环境
 进入fate安装目录,找到环境变量shell
 ```
+eg:
 source /data/projects/fate/bin/init_env.sh
 ```
 
 - 停服务
 
 > 进入eggroll home目录
+
+- allinone 部署方式的停止服务方法
 ```
 cd ${EGGROLL_HOME}
-sh /data/projects/fate/eggroll/bin/eggroll.sh all stop
+sh bin/eggroll.sh all stop
+```
+- ansible 部署方式的停止服务方法
+```
+cd /data/projects/common/supervisord
+sh service.sh fate-clustermanager stop
+sh service.sh fate-nodemanager stop
+sh service.sh fate-rollsite stop
 ```
 
 - eggroll手动备份
