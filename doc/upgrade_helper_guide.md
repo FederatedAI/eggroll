@@ -46,9 +46,9 @@ sh bin/eggroll.sh all stop
 - ansible 部署方式的停止服务方法
 ```
 cd /data/projects/common/supervisord
-sh service.sh fate-clustermanager stop
-sh service.sh fate-nodemanager stop
-sh service.sh fate-rollsite stop
+sh service.sh stop fate-clustermanager
+sh service.sh stop fate-nodemanager
+sh service.sh stop fate-rollsite
 ```
 
 - eggroll手动备份
@@ -58,11 +58,9 @@ cd ${EGGROLL_HOME}
 mv bin bin_bak
 mv deploy deploy_bak
 mv lib lib_bak
-mv conf conf_bak
 mv python python_bak
 
 cp -r bin_bak bin
-cp -r conf_bak conf
 cp -r deploy_bak deploy
 cp -r lib_bak lib
 cp -r python_bak python
@@ -92,9 +90,10 @@ ${MYSQL_HOME_PATH}/bin/mysqldump -h <mysql-host> -u <username> -p<passwd> -P <po
 [升级脚本](https://github.com/WeBankFinTech/eggroll/blob/dev-2.2.1/deploy/upgrade_helper.py)
 
 ```
-python upgrade_helper.py --help
+export PKG_BASE_PATH={your upgrade eggroll version eggroll home dir}
+python ${PKG_BASE_PATH}/deploy/upgrade_helper.py --help
 ```
-
+__
 > 获取升级包
 
 > 升级包目录结构
@@ -102,7 +101,6 @@ python upgrade_helper.py --help
 ```
 ├─eggroll
       ├─bin 
-      ├─conf 
       ├─deploy 
       ├─lib  
       └─python 
@@ -173,7 +171,7 @@ alter table session_processor modify column session_id VARCHAR(767);
 - 4.1 使用-h 打印命令行帮助
 
 ```
-python ${your put script path}/upgrade_helper.py --help
+python ${PKG_BASE_PATH}/deploy/upgrade_helper.py --help
 python upgrade_helper.py 
  -c --nm_file <input eggroll upgrade  namenode node ip sets>
  -r --rs_file <input eggroll upgrade only rollsite node ip sets>
@@ -193,7 +191,7 @@ python upgrade_helper.py
 - 4.2 启动升级
 
 ```
-python ${your put script path}/upgrade_helper.py \
+python ${PKG_BASE_PATH}/deploy/upgrade_helper.py \
 -c ${your create nm_ip_list file path contains the file name} \
 -r ${your create rs_ip_list file path contains the file name} \
 -e ${EGGROLL_HOME} \
@@ -242,9 +240,8 @@ cat $EGGROLL_HOME/python/eggroll/__init__.py
 
 ```
 cd ${EGGROLL_HOME}
-rm -rf bin deploy lib python conf
+rm -rf bin deploy lib python
 cp -r bin_bak bin
-cp -r conf_bak conf
 cp -r deploy_bak deploy
 cp -r lib_bak lib
 cp -r python_bak python
@@ -254,7 +251,7 @@ cp -r python_bak python
 - 5.2 回滚执行
 
 ```
-python ${your put script path}/upgrade_helper.py \
+python ${PKG_BASE_PATH}/deploy/upgrade_helper.py \
 -c ${your create nm_ip_list file path contains the file name} \
 -r ${your create rs_ip_list file path contains the file name} \
 -e ${EGGROLL_HOME} \
