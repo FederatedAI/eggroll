@@ -28,8 +28,6 @@ def backup_eggroll_data(egg_home: str):
         subprocess.check_call(['mv', egg_home + '/lib/', egg_home + '/lib_' + datetime.now().strftime("%Y%m%d") + '_bak/'])
         subprocess.check_call(['mv', egg_home + '/deploy/', egg_home + '/deploy_' + datetime.now().strftime("%Y%m%d") + '_bak/'])
         subprocess.check_call(['mv', egg_home + '/python/', egg_home + '/python_' + datetime.now().strftime("%Y%m%d") + '_bak/'])
-        subprocess.check_call(
-            ['mv', egg_home + '/conf/eggroll.properties', egg_home + '/conf/eggroll.properties_'+datetime.now().strftime("%Y%m%d")+'_bak'])
         print(f"end backup eggroll data.")
 
 
@@ -81,7 +79,6 @@ def get_db_upgrade_content(upgrade_sql_file: str):
 def backup_upgrade_db(mysql_home_path: str, host: str, port: int, database: str, username: str, passwd: str,
                       mysql_sock,db_upgrade_sql: str):
     print(f"start backup db data ...")
-    # todo mysqldump result sql file lose 'use eggroll_meta' context switch
     dump_sql = "~/dump_backup_eggroll_upgrade_"+host+'_' + datetime.now().strftime("%Y%m%d") + ".sql"
     bak_cmd = mysql_home_path + "/bin/mysqldump" + " -h " + host + " -u " + username + " -p" + passwd + " -P" + str(
         port) + " -S " + mysql_sock + " " + database + " -r " + dump_sql
@@ -109,9 +106,6 @@ def cluster_upgrade_sync(src_path: str, dst_path: str, remote_host: str):
     subprocess.check_call(
         ["rsync", "-aEvrzhK", "--delete", "--progress", src_path + '/python/',
          "app@" + remote_host + ":" + dst_path + "/python/"])
-    subprocess.check_call(
-        ["rsync", "-aEvrzhK", "--delete", "--progress", src_path + '/conf/eggroll.properties',
-         "app@" + remote_host + ":" + dst_path + "/conf/eggroll.properties"])
     print(f'upgrade eggroll 2.0.x finish')
 
 
@@ -168,9 +162,6 @@ def check_upgrade_pkg_path(pkg_path: str):
     if not os.path.exists(pkg_path + '/eggroll/lib'):
         print(f'upgrade eggroll lib upload dir not exists')
         return -1
-    if not os.path.exists(pkg_path + '/eggroll/conf/eggroll.properties'):
-        print(f'upgrade eggroll.properties update file not exists')
-        return -1
     if not os.path.exists(pkg_path + '/eggroll/python'):
         print(f'upgrade eggroll python upload dir not exists')
         return -1
@@ -213,8 +204,6 @@ def recover_eggroll_data(nm_path,rs_path,db_home_path, eggroll_home_path: str, h
         subprocess.check_call(['mv', eggroll_home_path + '/deploy_' + datetime.now().strftime("%Y%m%d") + '_bak/', eggroll_home_path + '/deploy/'])
     if os.path.exists(eggroll_home_path + '/python_' + datetime.now().strftime("%Y%m%d") + '_bak/'):
         subprocess.check_call(['mv', eggroll_home_path + '/python_' + datetime.now().strftime("%Y%m%d") + '_bak/', eggroll_home_path + '/python/'])
-    if os.path.exists(eggroll_home_path + '/conf/eggroll.properties_' + datetime.now().strftime("%Y%m%d") + '_bak'):
-        subprocess.check_call(['mv', eggroll_home_path + '/conf/eggroll.properties_' + datetime.now().strftime("%Y%m%d") + '_bak', eggroll_home_path + '/conf/eggroll.properties'])
     print(f'eggroll data recover finish.')
     print(f'start recover eggroll db data...')
 
