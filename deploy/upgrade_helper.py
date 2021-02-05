@@ -134,22 +134,15 @@ def upgrade_main(ub_path,nm_file, rs_file, egg_home, mysql_home, mysql_host, mys
             if h == '':
                 continue
             cluster_upgrade_sync(ub_path+'/eggroll',egg_home,h)
-    elif len(rs_node) > 0:
+    if len(rs_node) > 0:
         if check_egg_home(egg_home) is False:
             print(f'input param eggroll home path error={egg_home}')
-            sys.exit(-1)
-        try:
-            backup_eggroll_data(egg_home)
-            print(f"backup eggroll data repetion.")
-        except Exception as e:
-            print(f" upgrade error pleases checking.e={e}")
             sys.exit(-1)
         for h in rs_node:
             if h == '':
                 continue
             cluster_upgrade_sync(ub_path+'/eggroll',egg_home,h)
-    else:
-        pass
+
 
 
 def check_upgrade_pkg_path(pkg_path: str):
@@ -181,7 +174,7 @@ def remote_cluster_recover(nm_path,rs_path,eggroll_home_path: str):
                 continue
             else:
                 cluster_upgrade_sync(eggroll_home_path, eggroll_home_path, remote_host)
-    elif len(upgrade_rollsite_node) > 0:
+    if len(upgrade_rollsite_node) > 0:
         for remote_host in upgrade_rollsite_node:
             host = remote_host.strip()
             if host == '':
