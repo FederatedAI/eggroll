@@ -1,12 +1,12 @@
 
 # eggroll升级工具文档说明
-此文档兼容eggroll2.0.x -> 2.2.1、2.2.2 ...
+此文档兼容eggroll2.0.x -> 2.2.1
 
 ## 1. 环境要求
-### 1.1 python3环境
-### 1.2 执行脚本在的集群节点机器必须是nodemanager任意节点
-### 1.3 需要app用户登录执行
-### 1.4 执行mysql备份等操作需要先确认是否允许ip操作权限
+### 1.1   python3环境
+### 1.2  执行脚本的机器需要能免密登录Eggroll集群的所有节点
+### 1.3  需要app用户登录执行
+### 1.4  执行mysql备份等操作需要先确认是否允许ip操作权限
 
 ## 2. 参数说明
 ```
@@ -55,17 +55,17 @@ sh service.sh fate-rollsite stop
 
 ```
 cd ${EGGROLL_HOME}
-mv bin bin_bakbak
-mv deploy deploy_bakbak
-mv lib lib_bakbak
-mv conf conf_bakbak
-mv python python_bakbak
+mv bin bin_bak
+mv deploy deploy_bak
+mv lib lib_bak
+mv conf conf_bak
+mv python python_bak
 
-cp -r bin_bakbak bin
-cp -r conf_bakbak conf
-cp -r deploy_bakbak deploy
-cp -r lib_bakbak lib
-cp -r python_bakbak python
+cp -r bin_bak bin
+cp -r conf_bak conf
+cp -r deploy_bak deploy
+cp -r lib_bak lib
+cp -r python_bak python
 
 ```
 
@@ -97,13 +97,8 @@ python upgrade_helper.py --help
 
 > 获取升级包
 
-> 1、解压
+> 升级包目录结构
 
-```
-tar -xf eggroll-2.2.1.tar.gz
-```
-
-> 2、升级包目录结构
 ```
 ├─eggroll
       ├─bin 
@@ -113,34 +108,6 @@ tar -xf eggroll-2.2.1.tar.gz
       └─python 
    
 ```
-> 3、完善conf目录
-
-- 复制一份`eggroll.properties`配置文件到升级包conf目录下
-
-> ${PKG_BASE_PATH} 为最新升级的`base path`
-
-```
-export PKG_BASE_PATH=`Your own directory of upgrade packages`
-cp ${EGGROLL_HOME}/conf/eggroll.properties ${PKG_BASE_PATH}/eggroll/conf/
-```
-
-> 检查`eggroll.properties`配置文件根据如下升级版本号是否决定修改
-
-如果是eggroll_2.0.x -> 2.2.x 这个版本的升级,需要修改项如下:
-
-```
-
-vim ${PKG_BASE_PATH}/eggroll/conf/eggroll.properties
-
- #`eggroll.resourcemanager.bootstrap.roll_pair_master.exepath=bin/roll_pair/roll_pair_master_bootstrap.sh`
- #`eggroll.resourcemanager.bootstrap.roll_pair_master.javahome=`
- #`eggroll.resourcemanager.bootstrap.roll_pair_master.classpath=conf/:lib/*`
- #`eggroll.resourcemanager.bootstrap.roll_pair_master.mainclass=com.webank.eggroll.rollpair.RollPairMasterBootstrap`
- #`eggroll.resourcemanager.bootstrap.roll_pair_master.jvm.options=`
-
-```
-
-如果是eggroll_2.2.x -> 2.2.x 这个版本的升级,暂不需要修改
 
 
 #### 3.1.2 创建nm_ip_list文件
@@ -266,51 +233,8 @@ cat $EGGROLL_HOME/python/eggroll/__init__.py
 
 ```
 
-- 4.6 登录EGGROLL元数据库
 
->1 登录MYSQL
-```
-${MYSQL_HOME}/bin/mysql -ufate -p -S ${MYSQL_HOME}/run/mysql.sock -h ${your install fate with mysql ip} -P ${your install fate with mysql port}
-
-```
->2 清空如下数据库表
-```
-delete from eggroll_meta.session_main;
-delete from eggroll_meta.session_option;
-delete from eggroll_meta.session_processor;
-delete from eggroll_meta.store_locator;
-delete from eggroll_meta.store_option;
-delete from eggroll_meta.store_partition;   
-
-delete from fate_flow.componentsummary   ; 
-delete from fate_flow.t_engine_registry   ; 
-delete from fate_flow.t_job    ; 
-delete from fate_flow.t_machine_learning_model_info ; 
-delete from fate_flow.t_model_operation_log   ; 
-delete from fate_flow.t_model_tag        ; 
-delete from fate_flow.t_session_record   ; 
-delete from fate_flow.t_storage_table_meta    ; 
-delete from fate_flow.t_tags   ; 
-delete from fate_flow.t_task   ; 
-delete from fate_flow.trackingmetric     ; 
-delete from fate_flow.trackingoutputdatainfo        ;
-
-```
-
->3 重启eggroll和fate服务
-
-```
-启动eggroll
-cd ${EGGROLL_HOME}
-sh bin/eggroll.sh all start
-
-启动fate_flow
-cd /data/projects/fate/python/fate_flow
-sh service.sh restart
-
-```
-
-## 5. 升级失败恢复集群所有升级节点
+## 5. 升级失败恢复EGGROLL集群所有的升级节点
 
 - 5.1 eggroll还原
 
@@ -319,15 +243,15 @@ sh service.sh restart
 ```
 cd ${EGGROLL_HOME}
 rm -rf bin deploy lib python conf
-cp -r bin_bakbak bin
-cp -r conf_bakbak conf
-cp -r deploy_bakbak deploy
-cp -r lib_bakbak lib
-cp -r python_bakbak python
+cp -r bin_bak bin
+cp -r conf_bak conf
+cp -r deploy_bak deploy
+cp -r lib_bak lib
+cp -r python_bak python
 
 ```
 
-- 5.2 失败回滚
+- 5.2 回滚执行
 
 ```
 python ${your put script path}/upgrade_helper.py \
@@ -356,7 +280,19 @@ python ${your put script path}/upgrade_helper.py \
 ${MYSQL_HOME}/bin/mysql -ufate -p -S ${MYSQL_HOME}/run/mysql.sock -h 192.168.0.1 -P 3306 --default-character-set=utf8 eggroll_meta < dump_bakbak.sql
 ```
 
-- 5.4 重复#4.3 ~ 4.6步骤
+- 5.4 重复#4.3 ~ 4.5步骤
 
+## 6. 常见问题
+
+- 6.1
+
+> **Q:** 如果以前ssh不能直接登录到目标机器，需要指定端口，怎么办呢？
+
+> **A:** 在执行升级脚本前，执行以下语句，指定ssh端口：
+```
+export "RSYNC_RSH=ssh -p ${ssh_port}"
+echo $RSYNC_RSH
+```
+> 其中${ssh_port}为以前登录到目标机器时需要指定的端口。
 
 
