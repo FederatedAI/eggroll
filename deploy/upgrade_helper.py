@@ -174,7 +174,7 @@ def remote_cluster_recover(nm_path,rs_path,eggroll_home_path: str):
                 continue
             else:
                 cluster_upgrade_sync(eggroll_home_path, eggroll_home_path, remote_host)
-    elif len(upgrade_rollsite_node) > 0:
+    if len(upgrade_rollsite_node) > 0:
         for remote_host in upgrade_rollsite_node:
             host = remote_host.strip()
             if host == '':
