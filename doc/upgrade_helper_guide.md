@@ -271,6 +271,7 @@ python ${PKG_BASE_PATH}/deploy/upgrade_helper.py \
 -s ${your create mysql_file sql file path contains the file name} \
 -f 1
 > recover.info
+```
 
 
 - 5.4 重复#4.3 ~ 4.5步骤
@@ -282,13 +283,19 @@ python ${PKG_BASE_PATH}/deploy/upgrade_helper.py \
 > **Q:** 如果以前ssh不能直接登录到目标机器，需要指定端口，怎么办呢？
 
 > **A:** 在执行升级脚本前，执行以下语句，指定ssh端口：
+
+
 ```
 export "RSYNC_RSH=ssh -p ${ssh_port}"
 echo $RSYNC_RSH
 ```
+
+
 > 其中${ssh_port}为以前登录到目标机器时需要指定的端口。
 
+
 - 6.2
+
 
 > **Q:** 如果我使用ansible模式部署fate，有什么要注意呢?
 
@@ -297,6 +304,5 @@ echo $RSYNC_RSH
 ```
 cp ${EGGROLL_HOME}/bin/eggroll.sh ${EGGROLL_HOME}/bin/fate-eggroll.sh
 sed -i '26 i source $cwd/../../bin/init_env.sh' ${EGGROLL_HOME}/bin/fate-eggroll.sh
-
 ```
 
