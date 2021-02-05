@@ -93,7 +93,7 @@ ${MYSQL_HOME_PATH}/bin/mysqldump -h <mysql-host> -u <username> -p<passwd> -P <po
 export PKG_BASE_PATH={your upgrade eggroll version eggroll home dir}
 python ${PKG_BASE_PATH}/deploy/upgrade_helper.py --help
 ```
-__
+
 > 获取升级包
 
 > 升级包目录结构
@@ -196,7 +196,7 @@ python ${PKG_BASE_PATH}/deploy/upgrade_helper.py \
 -r ${your create rs_ip_list file path contains the file name} \
 -e ${EGGROLL_HOME} \
 -k ${PKG_BASE_PATH} \
--m ${MYSQL_HOME} \
+-m ${mysql home path} \
 -t ${your install fate with mysql ip} \
 -p ${your install fate with mysql port} \
 -b eggroll_meta \
@@ -248,7 +248,12 @@ cp -r python_bak python
 
 ```
 
-- 5.2 回滚执行
+- 5.2 EGGROLL元数据库恢复
+
+```
+${MYSQL_HOME}/bin/mysql -ufate -p -S ${MYSQL_HOME}/run/mysql.sock -h 192.168.0.1 -P 3306 --default-character-set=utf8 eggroll_meta < dump_bakbak.sql
+```
+- 5.3 回滚执行
 
 ```
 python ${PKG_BASE_PATH}/deploy/upgrade_helper.py \
@@ -267,19 +272,10 @@ python ${PKG_BASE_PATH}/deploy/upgrade_helper.py \
 -f 1
 > recover.info
 
-```
-
-- 5.3 当前升级脚本所在机器没有安装MYSQL
-
-> 前往EGGROLL元数据库还原
-
-```
-${MYSQL_HOME}/bin/mysql -ufate -p -S ${MYSQL_HOME}/run/mysql.sock -h 192.168.0.1 -P 3306 --default-character-set=utf8 eggroll_meta < dump_bakbak.sql
-```
 
 - 5.4 重复#4.3 ~ 4.5步骤
 
-## 6. 常见问题
+## 6. 常见问题与注意事项
 
 - 6.1
 
@@ -292,4 +288,15 @@ echo $RSYNC_RSH
 ```
 > 其中${ssh_port}为以前登录到目标机器时需要指定的端口。
 
+- 6.2
+
+> **Q:** 如果我使用ansible模式部署fate，有什么要注意呢?
+
+> **A:** 使用ansible部署fate，需要在完成升级脚本后进行以下操作：
+
+```
+cp ${EGGROLL_HOME}/bin/eggroll.sh ${EGGROLL_HOME}/bin/fate-eggroll.sh
+sed -i '26 i source $cwd/../../bin/init_env.sh' ${EGGROLL_HOME}/bin/fate-eggroll.sh
+
+```
 
