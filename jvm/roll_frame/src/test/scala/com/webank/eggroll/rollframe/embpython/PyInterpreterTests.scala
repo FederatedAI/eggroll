@@ -104,7 +104,7 @@ class PyInterpreterTests {
 
   @Test
   def testDirectBufferDiffThread(): Unit ={
-    // 主线程
+    // main thread
     println(s"Thread: ${Thread.currentThread().getName}")
     val fieldCount = 3
     val rowCount = 4
@@ -119,7 +119,7 @@ class PyInterpreterTests {
     interp.setValue("dnd",dnd)
     interp.exec("dnd[0] = 10")
     println(fb.rootVectors(0).getDataBufferAddress)
-    // 副线程
+    // second thread
     new Thread() {
       override def run(): Unit = {
         try {

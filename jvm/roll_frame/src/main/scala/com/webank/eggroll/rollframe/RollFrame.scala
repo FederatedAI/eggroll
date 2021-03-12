@@ -704,9 +704,7 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
                           seqParallel: Int,
                           seqByZeroValue: Boolean = false,
                           combOp: (FrameBatch, FrameBatch) => FrameBatch = null,
-                          output: ErStore = null): RollFrame
-
-  = {
+                          output: ErStore = null): RollFrame = {
     val jobType = RollFrame.aggregate
     val jobId = jobType + "_" + genJobId()
     val driverZeroPath = "broadcast_" + jobId
