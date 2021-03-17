@@ -51,14 +51,8 @@ def get_debug_test_context(is_standalone=False, manager_port=4670, egg_port=2000
                       transfer_endpoint=ErEndpoint("127.0.0.1",
                                                    egg_transfer_ports[0]))
 
-    roll = ErProcessor(id=1,
-                       server_node_id=self_server_node_id,
-                       processor_type=ProcessorTypes.ROLL_PAIR_MASTER,
-                       status=ProcessorStatus.RUNNING,
-                       command_endpoint=ErEndpoint("127.0.0.1", manager_port))
-
     session = ErSession(session_id,
-                        processors=[egg, roll],
+                        processors=[egg],
                         options=options)
     context = RollPairContext(session)
     return context
@@ -94,4 +88,5 @@ def set_default_option(k, v):
     default_option[k] = v
 
 def get_default_options():
+    default_option['create_if_missing'] = True
     return default_option.copy()

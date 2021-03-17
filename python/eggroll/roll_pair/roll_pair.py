@@ -12,10 +12,15 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+
+import logging
 import os
+import time
 import uuid
 from concurrent.futures import wait, FIRST_EXCEPTION
 from threading import Thread
+
+import cloudpickle
 
 from eggroll.core.aspects import _method_profile_logger
 from eggroll.core.client import CommandClient
@@ -26,7 +31,6 @@ from eggroll.core.constants import StoreTypes, SerdesTypes, PartitionerTypes, \
 from eggroll.core.datastructure.broker import FifoBroker
 from eggroll.core.meta_model import ErStoreLocator, ErJob, ErStore, ErFunctor, \
     ErTask, ErPair, ErPartition
-from eggroll.core.serdes import cloudpickle
 from eggroll.core.session import ErSession
 from eggroll.core.utils import generate_job_id, generate_task_id
 from eggroll.core.utils import string_to_bytes, hash_code
@@ -48,7 +52,7 @@ class RollPairContext(object):
 
     def __init__(self, session: ErSession):
         if session.get_session_meta()._status != SessionStatus.ACTIVE:
-            raise Exception(f"session:{session.get_session_id()} is not ACTIVE. current status={session.get_session_meta()._status}")
+            raise Exception(f"session_id={session.get_session_id()} is not ACTIVE. current status={session.get_session_meta()._status}")
         self.__session = session
         self.session_id = session.get_session_id()
         default_store_type_str = RollPairConfKeys.EGGROLL_ROLLPAIR_DEFAULT_STORE_TYPE.get_with(session.get_all_options())
@@ -81,20 +85,20 @@ class RollPairContext(object):
     def get_roll(self):
         ret = self.__session._rolls[0]
         if not ret._command_endpoint._host or not ret._command_endpoint._port:
-            L.error(f"invalid roll processor:{ret}, session_meta:{self.__session_meta}")
-            raise ValueError(f"invalid roll endpoint:{ret}")
+            L.exception(f"invalid roll processor={ret}, session_meta={self.__session_meta}")
+            raise ValueError(f"invalid roll endpoint={ret}")
         return ret
 
     def context_gc(self):
         self.gc_recorder.stop()
         if self.gc_recorder.gc_recorder is None or len(self.gc_recorder.gc_recorder) == 0:
-            L.info("rp context gc_recorder is None or empty!")
             return
+        options = dict()
+        options['create_if_missing'] = True
         for k, v in (self.gc_recorder.gc_recorder.items()):
-            L.debug("before exit the task:{} cleaning item:{}".format(self.session_id, k))
             namespace = k[0]
             name = k[1]
-            rp = self.load(namespace=namespace, name=name)
+            rp = self.load(namespace=namespace, name=name, options=options)
             rp.destroy()
 
     def route_to_egg(self, partition: ErPartition):
@@ -103,9 +107,11 @@ class RollPairContext(object):
     def populate_processor(self, store: ErStore):
         return self.__session.populate_processor(store)
 
-    def load(self, namespace=None, name=None, options: dict = None):
+    def load(self, name=None, namespace=None, options: dict = None):
         if options is None:
             options = {}
+        if not namespace:
+            namespace = options.get('namespace', self.get_session().get_session_id())
         store_type = options.get('store_type', self.default_store_type)
         total_partitions = options.get('total_partitions', None)
         no_partitions_param = False
@@ -115,29 +121,13 @@ class RollPairContext(object):
 
         partitioner = options.get('partitioner', PartitionerTypes.BYTESTRING_HASH)
         store_serdes = options.get('serdes', self.default_store_serdes)
-        create_if_missing = options.get('create_if_missing', True)
+        create_if_missing = options.get('create_if_missing', False)
         # todo:1: add combine options to pass it through
         store_options = self.__session.get_all_options()
         store_options.update(options)
         final_options = store_options.copy()
 
-        # TODO:1: tostring in er model
-        if 'create_if_missing' in final_options:
-            del final_options['create_if_missing']
-        # TODO:1: remove these codes by adding to string logic in ErStore
-        if 'include_key' in final_options:
-            del final_options['include_key']
-        if 'total_partitions' in final_options:
-            del final_options['total_partitions']
-        if 'name' in final_options:
-            del final_options['name']
-        if 'namespace' in final_options:
-            del final_options['namespace']
-        # TODO:1: remove these codes by adding to string logic in ErStore
-        if 'keys_only' in final_options:
-            del final_options['keys_only']
         # TODO:0: add 'error_if_exist, persistent / default store type'
-        L.info("final_options:{}".format(final_options))
         store = ErStore(
                 store_locator=ErStoreLocator(
                         store_type=store_type,
@@ -152,11 +142,12 @@ class RollPairContext(object):
             result = self.__session._cluster_manager_client.get_or_create_store(store)
         else:
             result = self.__session._cluster_manager_client.get_store(store)
-            if result is None:
-                raise EnvironmentError(
-                        "result is None, please check whether the store:{} has been created before".format(store))
+            if len(result._partitions) == 0:
+                L.info(f"store: namespace={namespace}, name={name} not exist, "
+                                 f"create_if_missing={create_if_missing}, create first")
+                return None
 
-        if not no_partitions_param and result._store_locator._total_partitions != 0\
+        if False and not no_partitions_param and result._store_locator._total_partitions != 0\
                 and total_partitions != result._store_locator._total_partitions:
             raise ValueError(f"store:{result._store_locator._name} input total_partitions:{total_partitions}, "
                              f"output total_partitions:{result._store_locator._total_partitions}, must be the same")
@@ -170,7 +161,8 @@ class RollPairContext(object):
         namespace = options.get("namespace", None)
         name = options.get("name", None)
         options['store_type'] = options.get("store_type", StoreTypes.ROLLPAIR_IN_MEMORY)
-        create_if_missing = options.get("create_if_missing", True)
+        options['include_key '] = options.get('include_key', False)
+        options['create_if_missing'] = True
 
         if namespace is None:
             namespace = self.session_id
@@ -180,10 +172,10 @@ class RollPairContext(object):
         return rp.put_all(data, options=options)
 
     '''store name only supports full name and reg: *, *abc ,abc* and a*c'''
-    def cleanup(self, namespace, name, options: dict = None):
+    def cleanup(self, name, namespace, options: dict = None):
         if not namespace:
             raise ValueError('namespace cannot be blank')
-        L.info(f'cleaning up namespace={namespace}, name={name}')
+        L.debug(f'cleaning up namespace={namespace}, name={name}')
         if options is None:
             options = {}
         total_partitions = options.get('total_partitions', 1)
@@ -192,7 +184,7 @@ class RollPairContext(object):
 
         if name == '*':
             store_type = options.get('store_type', '*')
-            L.info(f'cleaning up whole store_type={store_type}, namespace={namespace}, name={name}')
+            L.debug(f'cleaning up whole store_type={store_type}, namespace={namespace}, name={name}')
             er_store = ErStore(store_locator=ErStoreLocator(namespace=namespace,
                                                             name=name,
                                                             store_type=store_type))
@@ -228,24 +220,6 @@ class RollPairContext(object):
             store_options.update(options)
             final_options = store_options.copy()
 
-            # TODO:1: tostring in er model
-            if 'create_if_missing' in final_options:
-                del final_options['create_if_missing']
-            # TODO:1: remove these codes by adding to string logic in ErStore
-            if 'include_key' in final_options:
-                del final_options['include_key']
-            if 'total_partitions' in final_options:
-                del final_options['total_partitions']
-            if 'name' in final_options:
-                del final_options['name']
-            if 'namespace' in final_options:
-                del final_options['namespace']
-            # TODO:1: remove these codes by adding to string logic in ErStore
-            if 'keys_only' in final_options:
-                del final_options['keys_only']
-            # TODO:0: add 'error_if_exist, persistent / default store type'
-            L.info("final_options:{}".format(final_options))
-
             store = ErStore(
                     store_locator=ErStoreLocator(
                             store_type=StoreTypes.ROLLPAIR_LMDB,
@@ -256,11 +230,11 @@ class RollPairContext(object):
                             serdes=store_serdes),
                     options=final_options)
             task_results = self.__session._cluster_manager_client.get_store_from_namespace(store)
-            L.debug('res:{}'.format(task_results._stores))
+            L.trace('res={}'.format(task_results._stores))
             if task_results._stores is not None:
-                L.debug("item count:{}".format(len(task_results._stores)))
+                L.trace("item count={}".format(len(task_results._stores)))
                 for item in task_results._stores:
-                    L.debug("item namespace:{} name:{}".format(item._store_locator._namespace,
+                    L.trace("item namespace={} name={}".format(item._store_locator._namespace,
                                                                item._store_locator._name))
                     rp = RollPair(er_store=item, rp_ctx=self)
                     rp.destroy()
@@ -334,13 +308,13 @@ class RollPair(object):
 
     def __del__(self):
         if "EGGROLL_GC_DISABLE" in os.environ and os.environ["EGGROLL_GC_DISABLE"] == '1':
-            L.debug("global RollPair gc is disable")
+            L.trace("global RollPair gc is disable")
             return
         if not hasattr(self, 'gc_enable') \
                 or not hasattr(self, 'ctx'):
             return
         if not self.gc_enable:
-            L.info('session:{} gc not enable'.format(self.__session_id))
+            L.debug('GC not enabled session={}'.format(self.__session_id))
             return
 
         if self.get_store_type() != StoreTypes.ROLLPAIR_IN_MEMORY:
@@ -349,9 +323,8 @@ class RollPair(object):
         if self.destroyed:
             return
         if self.ctx.get_session().is_stopped():
-            L.debug('session:{} has already been stopped'.format(self.__session_id))
+            L.trace('session={} has already been stopped'.format(self.__session_id))
             return
-        L.debug(f"del obj addr:{self} calling")
 
         self.ctx.gc_recorder.decrease_ref_count(self.__store)
 
@@ -384,52 +357,54 @@ class RollPair(object):
             other_name = other.get_name()
             other_count = other.count()
 
-            L.info(f"repartition start: partitions of rp: {self_name}: {self_partition}, "
-                   f"other: {other_name}: {other_partition}, repartitioning")
+            L.debug(f"repartition start: self rp={self_name} partitions={self_partition}, "
+                    f"other={other_name}: partitions={other_partition}, repartitioning")
 
-            if self_count <= other_count:
+            if self_count < other_count:
                 shuffle_rp = self
                 shuffle_rp_count = self_count
                 shuffle_rp_name = self_name
                 shuffle_total_partitions = self_partition
-                shuffle_rp_partitions = other.__store._partitions
+                shuffle_rp_partitions = self.__store._partitions
 
                 not_shuffle_rp = other
                 not_shuffle_rp_count = other_count
                 not_shuffle_rp_name = other_name
                 not_shuffle_total_partitions = other_partition
-                not_shuffle_rp_partitions = self.__store._partitions
+                not_shuffle_rp_partitions = other.__store._partitions
             else:
                 not_shuffle_rp = self
                 not_shuffle_rp_count = self_count
                 not_shuffle_rp_name = self_name
                 not_shuffle_total_partitions = self_partition
-                not_shuffle_rp_partitions = other.__store._partitions
+                not_shuffle_rp_partitions = self.__store._partitions
 
                 shuffle_rp = other
                 shuffle_rp_count = other_count
                 shuffle_rp_name = other_name
                 shuffle_total_partitions = other_partition
-                shuffle_rp_partitions = self.__store._partitions
+                shuffle_rp_partitions = other.__store._partitions
 
-            L.debug(f"repatition selection: rp: {shuffle_rp_name} count:{shuffle_rp_count} "
-                    f"<= rp: {not_shuffle_rp_name} count:{not_shuffle_rp_count}. "
+            L.trace(f"repartition selection: rp={shuffle_rp_name} count={shuffle_rp_count}, "
+                    f"rp={not_shuffle_rp_name} count={not_shuffle_rp_count}. "
                     f"repartitioning {shuffle_rp_name}")
             store = ErStore(store_locator=ErStoreLocator(store_type=shuffle_rp.get_store_type(),
                                                          namespace=shuffle_rp.get_namespace(),
                                                          name=str(uuid.uuid1()),
                                                          total_partitions=not_shuffle_total_partitions),
-                            partitions=shuffle_rp_partitions)
+                            partitions=not_shuffle_rp_partitions)
             res_rp = shuffle_rp.map(lambda k, v: (k, v), output=store)
             res_rp.disable_gc()
-            L.debug(f"repartition end: rp to shuffle: {shuffle_rp_name}, "
-                    f"count: {shuffle_rp_count}, partitions: {shuffle_total_partitions}; "
-                    f"rp NOT shuffle: {not_shuffle_rp_name}, "
-                    f"count: {not_shuffle_rp_count}, partitions: {not_shuffle_total_partitions}' "
-                    f"res rp: {res_rp.get_name()}, "
-                    f"count: {res_rp.count()}, partitions :{res_rp.get_partitions()}")
+
+            if L.isEnabledFor(logging.DEBUG):
+                L.debug(f"repartition end: rp to shuffle={shuffle_rp_name}, "
+                        f"count={shuffle_rp_count}, partitions={shuffle_total_partitions}; "
+                        f"rp NOT shuffled={not_shuffle_rp_name}, "
+                        f"count={not_shuffle_rp_count}, partitions={not_shuffle_total_partitions}' "
+                        f"res rp={res_rp.get_name()}, "
+                        f"count={res_rp.count()}, partitions={res_rp.get_partitions()}")
             store_shuffle = res_rp.get_store()
-            return [store_shuffle, other.get_store()] if self_count <= other_count \
+            return [store_shuffle, other.get_store()] if self_count < other_count \
                 else [self.get_store(), store_shuffle]
         else:
             return [self.__store, other.__store]
@@ -477,6 +452,9 @@ class RollPair(object):
             output_types: list = None,
             command_uri: CommandURI = RUN_TASK_URI,
             create_output_if_missing: bool = True):
+        from eggroll.core.utils import _map_and_listify
+        start = time.time()
+        L.debug(f"[RUNJOB] calling: job_id={job._id}, name={job._name}, inputs={_map_and_listify(lambda i: f'namespace={i._store_locator._namespace}, name={i._store_locator._name}, store_type={i._store_locator._store_type}, total_partitions={i._store_locator._total_partitions}', job._inputs)}")
         futures = self.ctx.get_session().submit_job(
                 job=job,
                 output_types=output_types,
@@ -486,7 +464,8 @@ class RollPair(object):
         results = list()
         for future in futures:
             results.append(future.result())
-
+        elapsed = time.time() - start
+        L.debug(f"[RUNJOB] called (elapsed={elapsed}): job_id={job._id}, name={job._name}, inputs={_map_and_listify(lambda i: f'namespace={i._store_locator._namespace}, name={i._store_locator._name}, store_type={i._store_locator._store_type}, total_partitions={i._store_locator._total_partitions}', job._inputs)}")
         return results
 
     def __get_output_from_result(self, results):
@@ -499,14 +478,10 @@ class RollPair(object):
     def get(self, k, options: dict = None):
         if options is None:
             options = {}
-        L.debug(f"get k: {k}")
         k = create_serdes(self.__store._store_locator._serdes).serialize(k)
         er_pair = ErPair(key=k, value=None)
-        outputs = []
-        value = None
         partition_id = self.partitioner(k)
         egg = self.ctx.route_to_egg(self.__store._partitions[partition_id])
-        L.info(f"partitions count: {self.__store._store_locator._total_partitions}, target partition: {partition_id}, endpoint: {egg._command_endpoint}")
         inputs = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
         outputs = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
 
@@ -515,7 +490,7 @@ class RollPair(object):
                     name=RollPair.GET,
                     inputs=[self.__store],
                     outputs=[self.__store],
-                    functors=[ErFunctor(body=cloudpickle.dumps(er_pair))])
+                    functors=[ErFunctor(name=RollPair.GET, body=cloudpickle.dumps(er_pair))])
 
         task = ErTask(id=generate_task_id(job_id, partition_id),
                       name=RollPair.GET,
@@ -550,14 +525,13 @@ class RollPair(object):
                     name=RollPair.PUT,
                     inputs=[self.__store],
                     outputs=outputs,
-                    functors=[ErFunctor(body=cloudpickle.dumps(er_pair))])
+                    functors=[ErFunctor(name=RollPair.PUT, body=cloudpickle.dumps(er_pair))])
 
         task = ErTask(id=generate_task_id(job_id, partition_id),
                       name=RollPair.PUT,
                       inputs=inputs,
                       outputs=output,
                       job=job)
-        L.info("start send req")
         job_resp = self.__command_client.simple_sync_send(
                 input=task,
                 output_type=ErPair,
@@ -565,28 +539,34 @@ class RollPair(object):
                 command_uri=CommandURI(f'{RollPair.EGG_PAIR_URI_PREFIX}/{RollPair.RUN_TASK}'),
                 serdes_type=self.__command_serdes
         )
-        L.info("get resp:{}".format((job_resp._value)))
         value = job_resp._value
         return value
 
     @_method_profile_logger
-    def get_all(self, options: dict = None):
+    def get_all(self, limit=None, options: dict = None):
         if options is None:
             options = {}
-        L.info('get all functor')
+
+        if limit is not None and not isinstance(limit, int) and limit <= 0:
+            raise ValueError(f"limit:{limit} must be positive int")
+
         job_id = generate_job_id(self.__session_id, RollPair.GET_ALL)
+        er_pair = ErPair(key=create_serdes(self.__store._store_locator._serdes)
+                         .serialize(limit) if limit is not None else None,
+                         value=None)
 
         def send_command():
             job = ErJob(id=job_id,
                         name=RollPair.GET_ALL,
                         inputs=[self.__store],
                         outputs=[self.__store],
-                        functors=[])
+                        functors=[ErFunctor(name=RollPair.GET_ALL, body=cloudpickle.dumps(er_pair))])
 
             task_results = self._run_job(job=job)
             er_store = self.__get_output_from_result(task_results)
 
             return er_store
+
         send_command()
 
         populated_store = self.ctx.populate_processor(self.__store)
@@ -595,7 +575,7 @@ class RollPair(object):
         for k, v in transfer_pair.gather(populated_store):
             done_cnt += 1
             yield self.key_serdes.deserialize(k), self.value_serdes.deserialize(v)
-        L.debug(f"get_all count:{done_cnt}")
+        L.trace(f"get_all: namespace={self.get_namespace()} name={self.get_name()}, count={done_cnt}")
 
     @_method_profile_logger
     def put_all(self, items, output=None, options: dict = None):
@@ -619,9 +599,9 @@ class RollPair(object):
         th.start()
         populated_store = self.ctx.populate_processor(self.__store)
         shuffler = TransferPair(job_id)
-        broker = FifoBroker()
-        bb = BatchBroker(broker)
-        scatter_future = shuffler.scatter(broker, self.partitioner, populated_store)
+        fifo_broker = FifoBroker()
+        bb = BatchBroker(fifo_broker)
+        scatter_future = shuffler.scatter(fifo_broker, self.partitioner, populated_store)
 
         key_serdes = self.key_serdes
         value_serdes = self.value_serdes
@@ -638,13 +618,11 @@ class RollPair(object):
             bb.signal_write_finish()
 
         scatter_results = scatter_future.result()
-        L.debug(f"scatter_results: {scatter_results}")
         th.join()
         return RollPair(populated_store, self.ctx)
 
     @_method_profile_logger
     def count(self):
-        # total_partitions = self.__store._store_locator._total_partitions
         job_id = generate_job_id(self.__session_id, tag=RollPair.COUNT)
 
         job = ErJob(id=job_id,
@@ -662,21 +640,24 @@ class RollPair(object):
 
     # todo:1: move to command channel to utilize batch command
     @_method_profile_logger
-    def destroy(self):
+    def destroy(self, options: dict = None):
         if len(self.ctx.get_session()._cluster_manager_client.get_store(self.get_store())._partitions) == 0:
-            L.info(f"store:{self.get_store()} has been destroyed before")
+            L.exception(f"store:{self.get_store()} has been destroyed before")
             raise ValueError(f"store:{self.get_store()} has been destroyed before")
-        total_partitions = self.__store._store_locator._total_partitions
+
+        if options is None:
+            options = {}
 
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.DESTROY),
                     name=RollPair.DESTROY,
                     inputs=[self.__store],
                     outputs=[self.__store],
-                    functors=[])
+                    functors=[],
+                    options=options)
 
         task_results = self._run_job(job=job, create_output_if_missing=False)
         self.ctx.get_session()._cluster_manager_client.delete_store(self.__store)
-        L.info(f'{RollPair.DESTROY}: {self.__store}')
+        L.debug(f'{RollPair.DESTROY}={self.__store}')
         self.destroyed = True
 
     @_method_profile_logger
@@ -688,17 +669,13 @@ class RollPair(object):
         value = None
         partition_id = self.partitioner(key)
         egg = self.ctx.route_to_egg(self.__store._partitions[partition_id])
-        L.info(egg._command_endpoint)
-        L.info(f"count: {self.__store._store_locator._total_partitions}")
-        inputs = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
-        output = [ErPartition(id=partition_id, store_locator=self.__store._store_locator)]
 
         job_id = generate_job_id(self.__session_id, RollPair.DELETE)
         job = ErJob(id=job_id,
                     name=RollPair.DELETE,
                     inputs=[self.__store],
                     outputs=[],
-                    functors=[ErFunctor(body=cloudpickle.dumps(er_pair))])
+                    functors=[ErFunctor(name=RollPair.DELETE, body=cloudpickle.dumps(er_pair))])
 
         task_results = self._run_job(job=job, create_output_if_missing=False)
 
@@ -712,7 +689,7 @@ class RollPair(object):
         keys_only = options.get("keys_only", False)
         ret = []
         count = 0
-        for item in self.get_all():
+        for item in self.get_all(limit=n):
             if keys_only:
                 if item:
                     ret.append(item[0])
@@ -757,9 +734,7 @@ class RollPair(object):
             options = {}
 
         store_type = options.get('store_type', self.ctx.default_store_type)
-        if 'refresh_nodes' not in options:
-            options['refresh_nodes'] = True
-        refresh_nodes = options['refresh_nodes']
+        refresh_nodes = options.get('refresh_nodes')
 
         saved_as_store = ErStore(store_locator=ErStoreLocator(
                 store_type=store_type,
@@ -836,7 +811,7 @@ class RollPair(object):
         functor = ErFunctor(name=RollPair.MAP_PARTITIONS, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
         reduce_functor = ErFunctor(name=RollPair.MAP_PARTITIONS, serdes=SerdesTypes.CLOUD_PICKLE,
                                    body=cloudpickle.dumps(reduce_op))
-        need_shuffle = ErFunctor(name=RollPair.FLAT_MAP, serdes=SerdesTypes.CLOUD_PICKLE,
+        need_shuffle = ErFunctor(name=RollPair.MAP_PARTITIONS, serdes=SerdesTypes.CLOUD_PICKLE,
                                  body=cloudpickle.dumps(shuffle))
 
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.MAP_PARTITIONS),

@@ -1,15 +1,15 @@
 package com.webank.eggroll.core.resourcemanager
 
 import java.io.File
-import org.apache.commons.lang3.StringUtils
 
+import org.apache.commons.lang3.StringUtils
 import com.webank.eggroll.core.BootstrapBase
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
 import com.webank.eggroll.core.constant.{ClusterManagerConfKeys, CoreConfKeys, MetadataCommands, SessionCommands}
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.resourcemanager.metadata.{ServerNodeCrudOperator, StoreCrudOperator}
 import com.webank.eggroll.core.session.StaticErConf
-import com.webank.eggroll.core.transfer.GrpcServerUtils
+import com.webank.eggroll.core.transfer.{GrpcClientUtils, GrpcServerUtils}
 import com.webank.eggroll.core.util.{CommandArgsUtils, Logging}
 
 class ClusterManagerBootstrap extends BootstrapBase with Logging {
@@ -112,7 +112,7 @@ class ClusterManagerBootstrap extends BootstrapBase with Logging {
 
     //this.sessionId = cmd.getOptionValue('s')
     val confPath = cmd.getOptionValue('c', "./conf/eggroll.properties")
-    standaloneTag = System.getProperty("eggroll.standalone.tag")
+    standaloneTag = System.getProperty("eggroll.standalone.tag", "")
 
     StaticErConf.addProperties(confPath)
     val confFile = new File(confPath)
@@ -124,8 +124,10 @@ class ClusterManagerBootstrap extends BootstrapBase with Logging {
     if(StringUtils.isBlank(standaloneTag)) {
       Runtime.getRuntime.addShutdownHook(new Thread(() => {
         logWarning("****** Shutting down Cluster Manager ******")
+        logInfo("Shutting down cluster manager. Force terminating all grpc channel")
+        GrpcClientUtils.shutdownNow()
+        logInfo("All grpc client channels are shut down")
         logInfo("Shutting down cluster manager. Force terminating NEW / ACTIVE sessions")
-
         val sessionManagerService = new SessionManagerService()
         sessionManagerService.killAllSessions(ErSessionMeta())
 

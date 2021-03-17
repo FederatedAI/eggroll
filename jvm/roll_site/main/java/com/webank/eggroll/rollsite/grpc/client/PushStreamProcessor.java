@@ -17,7 +17,9 @@
 package com.webank.eggroll.rollsite.grpc.client;
 
 import com.webank.ai.eggroll.api.networking.proxy.Proxy;
+import com.webank.ai.eggroll.api.networking.proxy.Proxy.Metadata;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy.Packet;
+import com.webank.eggroll.core.constant.RollSiteConfKeys;
 import com.webank.eggroll.core.grpc.processor.BaseClientCallStreamProcessor;
 import com.webank.eggroll.rollsite.infra.Pipe;
 import io.grpc.stub.ClientCallStreamObserver;
@@ -48,7 +50,7 @@ public class PushStreamProcessor extends BaseClientCallStreamProcessor<Proxy.Pac
     private Pipe transferBroker;
     //private ClusterComm.TransferMeta transferMeta;
     private String transferMetaString;
-    private int packetCount = 0;
+    private Proxy.Metadata metadata;
 
     private volatile boolean inited;
 
@@ -84,7 +86,7 @@ public class PushStreamProcessor extends BaseClientCallStreamProcessor<Proxy.Pac
         if (!inited) {
             init();
         }
-        LOGGER.info("PushStreamProcessor processing");
+        LOGGER.trace("PushStreamProcessor processing, tagKey={}", transferBroker.getTagKey());
 
         //super.process();
 
@@ -112,6 +114,7 @@ public class PushStreamProcessor extends BaseClientCallStreamProcessor<Proxy.Pac
         */
 
         int emptyRetryCount = 0;
+        long maxRetryCount = Long.parseLong(RollSiteConfKeys.EGGROLL_ROLLSITE_PUSH_MAX_RETRY().get());
         Proxy.Packet packet = null;
         do {
             //packet = (Proxy.Packet) pipe.read(1, TimeUnit.SECONDS);
@@ -130,11 +133,11 @@ public class PushStreamProcessor extends BaseClientCallStreamProcessor<Proxy.Pac
                 if (emptyRetryCount % 60 == 0) {
                     //LOGGER.info("[PUSH][CLIENT] push stub waiting. empty retry count: {}, metadata: {}",
                     //   emptyRetryCount, onelineStringMetadata);
-                    LOGGER.info("[PUSH][CLIENT] push stub waiting. empty retry count: {}",
-                           emptyRetryCount);
+                    LOGGER.debug("[PUSH][CLIENT] push stub waiting. tagKey={}, emptyRetryCount={}",
+                           this.transferBroker.getTagKey(), emptyRetryCount);
                 }
             }
-        } while ((packet != null || !transferBroker.isDrained()) && emptyRetryCount < 300 && !transferBroker.hasError());
+        } while ((packet != null || !transferBroker.isDrained()) && emptyRetryCount < maxRetryCount && !transferBroker.hasError());
 
     }
 

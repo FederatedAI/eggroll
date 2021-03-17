@@ -33,8 +33,6 @@
     </parent>
 
     <properties>
-        <junit.version>4.12</junit.version>
-        <grpc.version>1.22.2</grpc.version>
         <spring.version>5.1.14.RELEASE</spring.version>
     </properties>
 
@@ -109,12 +107,6 @@
             <artifactId>commons-text</artifactId>
             <version>1.4</version>
         </dependency>
-	
-        <dependency>
-            <groupId>org.rocksdb</groupId>
-            <artifactId>rocksdbjni</artifactId>
-            <version>6.2.2</version>
-        </dependency>
 
         <dependency>
             <groupId>org.json</groupId>
@@ -131,7 +123,7 @@
 
     <build>
         <plugins>
-            <plugin>
+           <!-- <plugin>
                 <groupId>org.xolstice.maven.plugins</groupId>
                 <artifactId>protobuf-maven-plugin</artifactId>
                 <version>${protobuf-maven-plugin.version}</version>
@@ -152,7 +144,7 @@
                         </goals>
                     </execution>
                 </executions>
-            </plugin>
+            </plugin>-->
 
         </plugins>
     </build>

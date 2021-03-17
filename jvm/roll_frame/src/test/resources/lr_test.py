@@ -23,24 +23,6 @@ import torch.nn.functional as F
 
 torch.manual_seed(2)
 
-#df = pd.read_csv("cs-training.csv")
-#df = df.dropna()
-#x = df[["RevolvingUtilizationOfUnsecuredLines","age","NumberOfTime30-59DaysPastDueNotWorse","DebtRatio","MonthlyIncome","NumberOfOpenCreditLinesAndLoans","NumberOfTimes90DaysLate","NumberRealEstateLoansOrLines","NumberOfTime60-89DaysPastDueNotWorse","NumberOfDependents"]]
-
-#x = np.hstack((x,x))
-#x = np.hstack((x,x))
-
-#x = np.vstack((x,x))
-
-#x = np.vstack((x,x))
-
-
-#print(x.shape)
-#y = df[["SeriousDlqin2yrs"]]
-
-#y = np.vstack((y,y))
-
-#y = np.vstack((y,y))
 
 x = np.random.randn(10000, 100)
 y = np.random.randint(2, size=(10000,1))

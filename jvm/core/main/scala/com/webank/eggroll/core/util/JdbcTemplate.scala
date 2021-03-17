@@ -21,6 +21,8 @@ package com.webank.eggroll.core.util
 import java.io.File
 import java.sql.{Connection, DriverManager, PreparedStatement, ResultSet, SQLException, Statement, Types}
 
+import org.apache.commons.lang3.StringUtils
+
 import scala.io.BufferedSource
 
 class JdbcTemplate(dataSource: () => Connection, autoClose: Boolean = true) extends Logging {
@@ -70,8 +72,9 @@ class JdbcTemplate(dataSource: () => Connection, autoClose: Boolean = true) exte
       ret
     } catch {
       case e: Exception =>
-        logError(s"error sql: ${statement}, params: ${String.join(",", params.toString())}")
-        throw e
+        val errMsg = s"""error in withStatement. sql="${statement}", params=(${String.join(",", params.map(p => s"'${StringUtils.substring(p.toString, 0, 300)}'"): _*)})"""
+        logError(errMsg)
+        throw new SQLException(errMsg, e)
     }
   }
 
@@ -87,7 +90,10 @@ class JdbcTemplate(dataSource: () => Connection, autoClose: Boolean = true) exte
       try{
         stmt.executeUpdate
       } catch {
-        case ex: SQLException => throw new SQLException(sql,ex)
+        case ex: Exception =>
+          val errMsg = s"""error in update. sql="${sql}", params=(${String.join(",", params.map(p => s"'${StringUtils.substring(p.toString, 0, 300)}'"): _*)})"""
+          logError(errMsg)
+          throw new SQLException(errMsg, ex)
       }
       val resultSet = stmt.getGeneratedKeys
       if (resultSet.next &&

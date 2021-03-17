@@ -14,17 +14,19 @@
 
 
 import time
-from concurrent.futures import ThreadPoolExecutor
+import threading
+
 
 from eggroll.core.base_model import RpcMessage
 from eggroll.core.command.command_model import CommandURI
 from eggroll.core.command.command_model import ErCommandRequest, \
     ErCommandResponse
-from eggroll.core.command.commands import MetadataCommands, NodeManagerCommands, \
-    SessionCommands
-from eggroll.core.conf_keys import ClusterManagerConfKeys, NodeManagerConfKeys, \
-    CoreConfKeys
+from eggroll.core.command.commands import MetadataCommands, \
+    NodeManagerCommands, SessionCommands
+from eggroll.core.conf_keys import ClusterManagerConfKeys, \
+    NodeManagerConfKeys, CoreConfKeys
 from eggroll.core.constants import SerdesTypes
+from eggroll.core.datastructure import create_executor_pool
 from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.meta_model import ErEndpoint, ErServerNode, ErServerCluster, \
     ErProcessor, ErStoreList
@@ -44,11 +46,22 @@ class CommandCallError(Exception):
 
 
 class CommandClient(object):
-    executor = ThreadPoolExecutor(
-            max_workers=int(CoreConfKeys.EGGROLL_CORE_CLIENT_COMMAND_EXECUTOR_POOL_MAX_SIZE.get()),
-            thread_name_prefix="command_client")
+    _executor_pool = None
+    _executor_pool_lock = threading.Lock()
+
     def __init__(self):
         self._channel_factory = GrpcChannelFactory()
+        if CommandClient._executor_pool is None:
+            with CommandClient._executor_pool_lock:
+                if CommandClient._executor_pool is None:
+                    _executor_pool_type = CoreConfKeys.EGGROLL_CORE_DEFAULT_EXECUTOR_POOL.get()
+                    _max_workers = int(CoreConfKeys
+                                       .EGGROLL_CORE_CLIENT_COMMAND_EXECUTOR_POOL_MAX_SIZE
+                                       .get())
+                    CommandClient._executor_pool = create_executor_pool(
+                            canonical_name=_executor_pool_type,
+                            max_workers=_max_workers,
+                            thread_name_prefix="command_client")
 
     def simple_sync_send(self, input: RpcMessage, output_type, endpoint: ErEndpoint, command_uri: CommandURI, serdes_type=SerdesTypes.PROTOBUF):
         results = self.sync_send(inputs=[input], output_types=[output_type], endpoint=endpoint, command_uri=command_uri, serdes_type=serdes_type)
@@ -65,13 +78,13 @@ class CommandClient(object):
                                        uri=command_uri._uri,
                                        args=_map_and_listify(_to_proto_string, inputs))
             start = time.time()
-            L.debug(f"[CC] calling: {endpoint} {command_uri} {request}")
+            L.trace(f"[CC] calling: {endpoint} {command_uri} {request}")
             _channel = self._channel_factory.create_channel(endpoint)
             _command_stub = command_pb2_grpc.CommandServiceStub(_channel)
             response = _command_stub.call(request.to_proto())
             er_response = ErCommandResponse.from_proto(response)
             elapsed = time.time() - start
-            L.debug(f"[CC] called (elapsed: {elapsed}): {endpoint}, {command_uri}, {request}, {er_response}")
+            L.trace(f"[CC] called (elapsed={elapsed}): {endpoint}, {command_uri}, {request}, {er_response}")
             byte_results = er_response._results
 
             if len(byte_results):
@@ -80,13 +93,13 @@ class CommandClient(object):
             else:
                 return []
         except Exception as e:
-            L.error(f'Error calling to {endpoint}, command_uri: {command_uri}, req:{request}', exc_info=e)
+            L.exception(f'Error calling to {endpoint}, command_uri: {command_uri}, req:{request}')
             raise CommandCallError(command_uri, endpoint, e)
 
     def async_call(self, args, output_types: list, command_uri: CommandURI, serdes_type=SerdesTypes.PROTOBUF, callback=None):
         futures = list()
         for inputs, endpoint in args:
-            f = self.executor.submit(self.sync_send, inputs=inputs, output_types=output_types, endpoint=endpoint, command_uri=command_uri, serdes_type=serdes_type)
+            f = self._executor_pool.submit(self.sync_send, inputs=inputs, output_types=output_types, endpoint=endpoint, command_uri=command_uri, serdes_type=serdes_type)
             if callback:
                 f.add_done_callback(callback)
             futures.append(f)

@@ -30,7 +30,6 @@ import io.netty.util.internal.PlatformDependent
 import jep.DirectNDArray
 import junit.framework.TestCase
 import org.apache.arrow.memory.RootAllocator
-import org.apache.arrow.vector.types.pojo.Schema
 import org.apache.arrow.vector.{BitVectorHelper, Float8Vector, IntVector}
 import org.junit.{Before, Test}
 
@@ -58,8 +57,8 @@ class FrameFormatTests extends Logging {
   }
 
   /**
-   * mul-thread to write data on FrameBatch faster than one thread
-   **/
+   * mul-thread to write data on FrameBatch by columns faster than one thread
+   * */
   @Test
   def testParallelFrameBatchByCol(): Unit = {
     //    System.setProperty("arrow.enable_unsafe_memory_access", "true")
@@ -72,7 +71,7 @@ class FrameFormatTests extends Logging {
          y <- 0 until rowCount} {
       zeroValue.writeDouble(x, y, 1)
     }
-    println(s"z time = ${System.currentTimeMillis() - start} ms")
+    println(s"big time = ${System.currentTimeMillis() - start} ms")
     val sliceFieldCount = 20
     val count = fieldCount / sliceFieldCount
 
@@ -97,7 +96,8 @@ class FrameFormatTests extends Logging {
       }.start()
     }
     latch.await(10, TimeUnit.SECONDS)
-    println(s"s time = ${System.currentTimeMillis() - start} ms")
+    println(s"part time1 = ${System.currentTimeMillis() - start} ms")
+
     start = System.currentTimeMillis()
     val latch1 = new CountDownLatch(count)
     sliceByColumn(zeroValue, count).foreach { inclusive: Inclusive =>
@@ -110,16 +110,18 @@ class FrameFormatTests extends Logging {
               }
             }
           }
-
           latch1.countDown()
         }
       }.start()
     }
     latch1.await()
-    println(s"s time = ${System.currentTimeMillis() - start} ms")
+    println(s"part time2 = ${System.currentTimeMillis() - start} ms")
     zeroValue.clear()
   }
 
+  /**
+   * mul-thread to write data on FrameBatch by rows has no significant improvement
+   * */
   @Test
   def testParallelFrameBatchByRow(): Unit = {
     // way 1: FrameStore with several FrameBatch
@@ -225,22 +227,27 @@ class FrameFormatTests extends Logging {
 
   @Test
   def testJvmFrameStore(): Unit = {
+    val cols = 200
+    val rows = 10000
     (0 until 5).foreach { i =>
       val begin = System.currentTimeMillis()
-      val fb = new FrameBatch(new FrameSchema(SchemaUtil.getDoubleSchema(200)), 1000000)
+      val fb = new FrameBatch(new FrameSchema(SchemaUtil.getDoubleSchema(cols)), rows)
       fb.initZero()
       println(s"create:${System.currentTimeMillis() - begin} ms")
       val begin1 = System.currentTimeMillis()
       fb.close()
       println(s"close:${System.currentTimeMillis() - begin1} ms")
     }
-    val fb1 = new FrameBatch(new FrameSchema(SchemaUtil.getDoubleSchema(200)), 1000000)
+    val fb1 = new FrameBatch(new FrameSchema(SchemaUtil.getDoubleSchema(cols)), rows)
+    fb1.initZero()
     //     write FrameBatch data to Jvm
     val jvmPath = "/tmp/unittests/RollFrameTests/jvm/test1/framedb_test"
     val jvmAdapter = FrameStore.cache(jvmPath)
     jvmAdapter.writeAll(Iterator(fb1))
-    //    // read FrameBatch data from Jvm
+    // read FrameBatch data from Jvm
     val fbFromJvm = jvmAdapter.readOne()
+    assert(fbFromJvm.rowCount == rows)
+    assert(fbFromJvm.fieldCount == cols)
   }
 
   @Test
@@ -376,7 +383,6 @@ class FrameFormatTests extends Logging {
     start = System.currentTimeMillis()
     val by = FrameUtils.toBytes(x)
     println(s"toBytes time:${System.currentTimeMillis() - start} ms")
-
   }
 
 
@@ -470,11 +476,11 @@ class FrameFormatTests extends Logging {
   }
 
   @Test
-  def testVf(): Unit = {
+  def testFloat8Vector(): Unit = {
     System.setProperty("arrow.enable_unsafe_memory_access", "true")
     val allocator = new RootAllocator(Long.MaxValue)
     val vector1 = new Float8Vector("double vector", allocator)
-    val size = 100*1000
+    val size = 100 * 1000
     vector1.allocateNew(size)
     vector1.setValueCount(size)
     for (i <- 0 until size) {
@@ -488,9 +494,9 @@ class FrameFormatTests extends Logging {
       vector2.set(i, i + 100)
     }
     //    val y = PlatformDependent.allocateMemory(10000)
-//    val df = PlatformDependent.allocateDirectNoCleaner(size * 2 * 8)
-    val address = PlatformDependent.allocateMemory(size*2*8)
-    val df = PlatformDependent.directBuffer(address,size*2*8)
+    //    val df = PlatformDependent.allocateDirectNoCleaner(size * 2 * 8)
+    val address = PlatformDependent.allocateMemory(size * 2 * 8)
+    val df = PlatformDependent.directBuffer(address, size * 2 * 8)
     df.order(ByteOrder.LITTLE_ENDIAN)
     val start = System.currentTimeMillis()
     PlatformDependent.copyMemory(vector1.getDataBufferAddress, address, size * 8)
@@ -498,14 +504,13 @@ class FrameFormatTests extends Logging {
     println(s"time = ${System.currentTimeMillis() - start} ms")
 
     val interp: PyInterpreter = LocalThreadPythonInterp.interpreterThreadLocal.get()
-    val dnd = new DirectNDArray[DoubleBuffer](df.asDoubleBuffer(), size*2)
-    interp.setValue("dnd",dnd)
+    val dnd = new DirectNDArray[DoubleBuffer](df.asDoubleBuffer(), size * 2)
+    interp.setValue("dnd", dnd)
     interp.exec("dnd[0] = 20")
     val res = interp.getValue("dnd").asInstanceOf[DirectNDArray[DoubleBuffer]]
     assert(dnd.getData.get(0) == res.getData.get(0))
     PlatformDependent.freeDirectNoCleaner(df)
   }
-
 
   @Test
   def testListVector(): Unit = {
@@ -531,11 +536,11 @@ class FrameFormatTests extends Logging {
 
     println(s"Time = ${System.currentTimeMillis() - start} ms")
     start = System.currentTimeMillis()
-    //    (0 until rowCount).foreach { i =>
-    //      val row = batch.getList(0, i)
-    //      (0 until perListLength).foreach(j => row.writeDouble(j * random.nextDouble().toInt, 0))
-    //    }
-    batch.initZero()
+    (0 until rowCount).foreach { i =>
+      val row = batch.getList(0, i)
+      (0 until perListLength).foreach(j => row.writeDouble(j * random.nextDouble().toInt, 0))
+    }
+    //    batch.initZero()
     println(s"Time = ${System.currentTimeMillis() - start} ms")
   }
 
@@ -555,15 +560,13 @@ class FrameFormatTests extends Logging {
 
     val batch = new FrameBatch(new FrameSchema(schema), 2)
     batch.initZero()
-    batch.close()
 
-    //    val r1 = batch.getArray(0, 0)
-    //    val r2 = batch.getArray(0, 1)
-    //
-    //    (0 until 20).foreach(i => r1.writeDouble(i, i))
-    //    (0 until 20).foreach(i => r2.writeDouble(i, i))
-    val stop = 0
-    Thread.sleep(3000)
+    val r1 = batch.getArray(0, 0)
+    val r2 = batch.getArray(0, 1)
+
+    (0 until 20).foreach(i => r1.writeDouble(i, i))
+    (0 until 20).foreach(i => r2.writeDouble(i, i))
+    batch.close()
   }
 
   @Test
@@ -656,7 +659,7 @@ class FrameFormatTests extends Logging {
   }
 
   @Test
-  def test(): Unit = {
+  def testMemoryCopy(): Unit = {
     // input frame
     val fieldCount = 1
     val rowCount = 5
@@ -668,7 +671,7 @@ class FrameFormatTests extends Logging {
     for (i <- 0 until rowCount) {
       println(fb.readDouble(0, i))
     }
-    // 堆外内存拷贝到堆外内存例子
+    // memory to heap
     val fb1 = new FrameBatch(new FrameSchema(schema), rowCount)
     val to = fb1.rootVectors(0).fieldVector
     PlatformDependent.copyMemory(fb.rootVectors(0).fieldVector.getDataBuffer.memoryAddress, to.getDataBuffer.memoryAddress, to.getDataBuffer.capacity())
@@ -681,9 +684,9 @@ class FrameFormatTests extends Logging {
     println
     // this method create vector which has new buffer
 
-    // FrameBatch默认为小端存储数据，与C++一致
+    // FrameBatch default little endian，the same as cpp
     val byteBuffer = fb.rootVectors(0).fieldVector.getDataBuffer.asNettyBuffer().nioBuffer()
-    byteBuffer.order(ByteOrder.LITTLE_ENDIAN) // 改变读取顺序为小端
+    byteBuffer.order(ByteOrder.LITTLE_ENDIAN)
     byteBuffer.asDoubleBuffer().put(Array(1.0, 1.0, 1.0, 1.0, 1.0))
     for (i <- 0 until rowCount) {
       println(byteBuffer.getDouble())
@@ -701,17 +704,16 @@ class FrameFormatTests extends Logging {
   @Test
   def testHeapToDirect(): Unit = {
     val fieldCount = 1
-    val rowCount = 50000000
+    val rowCount = 5000000
     val schema = SchemaUtil.getDoubleSchema(fieldCount)
     val fb = new FrameBatch(new FrameSchema(schema), rowCount)
 
     val value1 = Array.fill[Double](rowCount)(1)
     val value2 = Array.fill[Double](rowCount)(2)
-    val value3 = Array.fill[Double](rowCount)(3)
 
     var start = System.currentTimeMillis()
     val dataByteBuffer = fb.rootVectors(0).fieldVector.getDataBuffer.nioBuffer()
-    dataByteBuffer.order(ByteOrder.LITTLE_ENDIAN) // 改变读写顺序为小端,转为ByteBuffer后由小端变成大端，要人为修改回来。
+    dataByteBuffer.order(ByteOrder.LITTLE_ENDIAN)
     dataByteBuffer.asDoubleBuffer().put(value1)
 
 
@@ -739,8 +741,8 @@ class FrameFormatTests extends Logging {
 
   @Test
   def testDirectToHeap(): Unit = {
-    val rows = 50000000
-    val fb = new FrameBatch(new FrameSchema(SchemaUtil.oneFieldSchemaString), rows)
+    val rows = 5000000
+    val fb = new FrameBatch(new FrameSchema(SchemaUtil.oneDoubleFieldSchema), rows)
     fb.initZero()
     val start = System.currentTimeMillis()
     val res = FrameUtils.toDoubleArray(fb.rootVectors(0))
@@ -785,15 +787,14 @@ class FrameFormatTests extends Logging {
     val fb4 = FrameUtils.fork(fb)
     println(s"fork fb4 time = ${System.currentTimeMillis() - start} ms")
     start = System.currentTimeMillis()
-    val fb5 = FrameUtils.transfer(fb)
-    println(s"fork fb5 time = ${System.currentTimeMillis() - start} ms")
+    //    val fb5 = FrameUtils.transfer(fb)
+    //    println(s"fork fb5 time = ${System.currentTimeMillis() - start} ms")
 
 
     val ads = fb.rootSchema.arrowSchema.getVector(0).getDataBufferAddress
     val ads1 = fb1.rootSchema.arrowSchema.getVector(0).getDataBufferAddress
     val ads2 = fb2.rootSchema.arrowSchema.getVector(0).getDataBufferAddress
     val ads3 = fb3.rootSchema.arrowSchema.getVector(0).getDataBufferAddress
-    val ads4 = fb4.rootSchema.arrowSchema.getVector(0).getDataBufferAddress
 
     assert((ads != ads1) && (ads != ads2) && (ads != ads3))
     val delta = 0.00001
@@ -802,82 +803,6 @@ class FrameFormatTests extends Logging {
     assert(Math.abs(fb2.readDouble(3, 0) - 1) < delta)
     assert(Math.abs(fb3.readDouble(4, 0) - 1) < delta)
     assert(Math.abs(fb4.readDouble(5, 0) - 1) < delta)
-  }
-
-  @Test
-  @deprecated
-  def testColumnVectors(): Unit = {
-    val parts = 3
-    val columns = 10
-    val rows = 100
-    val columnVectors = new ColumnVectors(columns)
-    (0 until parts).foreach { i =>
-      val frame = new ColumnVector(rows, columns)
-      frame.writeDouble(0, 1)
-      columnVectors.addElement(frame)
-    }
-    assert(parts == columnVectors.parts)
-    assert(parts * rows * columns == columnVectors.rowCount)
-  }
-
-  @Test
-  @deprecated
-  def testFrameBatchToColumnVectors(): Unit = {
-    val fieldCount = 1000
-    val rowCount = 10000 // total value count = rowCount * fbCount * fieldCount
-    var start = System.currentTimeMillis()
-
-    println(s"create shema time = ${System.currentTimeMillis() - start} ms")
-    start = System.currentTimeMillis()
-    val fb = new FrameBatch(new FrameSchema(SchemaUtil.getDoubleSchema(fieldCount)), rowCount)
-
-    println(s"new FrameBatch time = ${System.currentTimeMillis() - start} ms")
-    start = System.currentTimeMillis()
-    for {x <- 0 until fieldCount
-         y <- 0 until rowCount} {
-      fb.writeDouble(x, y, 1)
-    }
-
-    println("value", fb.readDouble(3, 3))
-    var end = System.currentTimeMillis()
-    println(s"set time = ${end - start}")
-    start = System.currentTimeMillis()
-
-    start = System.currentTimeMillis()
-    val cv = fb.toColumnVectors
-    end = System.currentTimeMillis()
-    println(end - start)
-  }
-
-  @Test
-  @deprecated
-  def testColumnFrame(): Unit = {
-    val matrixRows = 10000
-    val matrixCols = 100
-    var start = System.currentTimeMillis()
-    val fb = new FrameBatch(new FrameSchema(FrameSchema.oneFieldSchema), matrixCols * matrixRows)
-    println(s"create fb time = ${System.currentTimeMillis() - start} ms")
-    start = System.currentTimeMillis()
-    val sf = new ColumnFrame(fb, matrixCols)
-    start = System.currentTimeMillis()
-    (0 until sf.matrixCols).foreach(i => (0 until sf.matrixRows).foreach { j =>
-      sf.write(i, j, i * j)
-    })
-    println(s"set cf time = ${System.currentTimeMillis() - start} ms")
-    (0 until sf.matrixCols).foreach(i => (0 until sf.matrixRows).foreach { j =>
-      TestCase.assertEquals(sf.read(i, j), i * j, TestAssets.DELTA)
-    })
-
-    println(sf.matrixCols)
-    println(sf.matrixRows)
-    println(sf.fb.rowCount)
-    println(sf.read(2, 9))
-    val adapter = FrameStore.cache("/tmp/unittests/RollFrameTests/file/test1/s1/0")
-    adapter.append(sf.fb)
-    start = System.currentTimeMillis()
-    val fbC = adapter.readOne()
-    val reCf = new ColumnFrame(fbC, matrixCols)
-    println(reCf.fb.rowCount)
   }
 
   def sliceByColumn(frameBatch: FrameBatch, parallel: Int): List[Inclusive] = {

@@ -28,6 +28,9 @@ public class ProxyServerConf {
     private String ip;
     private int port;
     private int securePort;
+    private long pushRetryCount;
+    private long unaryCallRetryCount;
+    private long pullTimeout;
     private String partyId;
     private String role;
 
@@ -37,6 +40,8 @@ public class ProxyServerConf {
     private String gatewayRole;
 
     private String routeTablePath;
+    private String[] whiteList;
+    private String[] auditTopics;
 
     private boolean isSecureServer;
     private String serverCrtPath;
@@ -163,6 +168,15 @@ public class ProxyServerConf {
         this.routeTablePath = routeTablePath;
     }
 
+    public String[] getWhiteList() {
+        return whiteList;
+    }
+
+    public void setWhiteList(String whiteList) {
+        String[] whiteListArray = whiteList.split("\\,");
+        this.whiteList = whiteListArray;
+    }
+
     public boolean isSecureServer() {
         return isSecureServer;
     }
@@ -241,6 +255,15 @@ public class ProxyServerConf {
 
     public void setAuditEnabled(boolean auditEnabled) {
         this.isAuditEnabled = auditEnabled;
+    }
+
+    public String[] getAuditTopics() {
+        return auditTopics;
+    }
+
+    public void setAuditTopics(String auditTopics) {
+        String[] auditTopicsArray = auditTopics.split("\\,");
+        this.auditTopics = auditTopicsArray;
     }
 
     public boolean isNeighbourInsecureChannelEnabled() {

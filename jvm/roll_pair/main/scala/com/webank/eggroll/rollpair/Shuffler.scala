@@ -255,7 +255,7 @@ class GrpcShuffleReceiver(shuffleId: String,
         val byteBuffer: ByteBuffer = binData.asReadOnlyByteBuffer()
         byteBuffer.order(ByteOrder.LITTLE_ENDIAN)
         val batchBuffer = ArrayBuffer[(Array[Byte], Array[Byte])]()
-        batchBuffer.sizeHint(transferBatch.getBatchSize)
+        batchBuffer.sizeHint(transferBatch.getBatchSize.toInt)
 
         val magicNumber = Array.fill[Byte](8)(0)
         val protocolVersion = Array.fill[Byte](4)(0)

@@ -553,7 +553,7 @@ class RollFrame private[eggroll](val store: ErStore, val ctx: RollFrameContext) 
           assert(interp.getValue("_state").asInstanceOf[Long] == 0, "Some error in python interpreter,because get error state")
           val result = interp.getValue("_result").asInstanceOf[NDArray[Double]]
           val resData = result.getData.asInstanceOf[Array[Double]]
-          val rootSchema = new FrameSchema(SchemaUtil.oneFieldSchemaString)
+          val rootSchema = new FrameSchema(SchemaUtil.oneDoubleFieldSchema)
           val outFb = new FrameBatch(rootSchema, resData.length)
           FrameUtils.copyMemory(outFb.rootVectors(0), resData)
           output.append(outFb)

@@ -14,6 +14,7 @@
 #  limitations under the License.
 import os
 import platform
+import sys
 import threading
 
 import lmdb
@@ -43,7 +44,12 @@ class LmdbAdapter(PairAdapter):
 
     def put(self, key, value):
         self._init_write()
-        return self.txn_w.put(key, value)
+        ret = None
+        try:
+            ret = self.txn_w.put(key, value)
+        except lmdb.BadValsizeError as e:
+            L.info(f"key={key}, value={value} raise lmdb.BadValsizeError")
+        return ret
 
     def __init__(self, options):
         self.env = None
@@ -60,7 +66,7 @@ class LmdbAdapter(PairAdapter):
             if self.path not in LmdbAdapter.env_dict:
                 if create_if_missing:
                     os.makedirs(self.path, exist_ok=True)
-                L.debug("lmdb init create env:{}".format(self.path))
+                L.debug("lmdb init create env={}".format(self.path))
                 writemap = False if platform.system() == 'Darwin' else True
                 if not os.path.exists(self.path):
                     os.makedirs(self.path, exist_ok=True)
@@ -73,31 +79,31 @@ class LmdbAdapter(PairAdapter):
                                      lock=False)
                 self.sub_db = self.env.open_db(DEFAULT_DB)
                 try:
-                    L.debug(f"LmdbAdapter.init: data count of env: {self.path}: {self.count()}")
+                    L.trace(f"LmdbAdapter.init: env={self.path}, data count={self.count()}")
                 except Exception as e:
-                    L.debug(f"LmdbAdapter.init: fail to get data count of env: {self.path}", e)
+                    L.exception(f"LmdbAdapter.init: fail to get data count of env={self.path}")
                 LmdbAdapter.count_dict[self.path] = 0
                 LmdbAdapter.env_dict[self.path] = self.env
                 LmdbAdapter.sub_db_dict[self.path] = self.sub_db
             else:
-                L.debug("lmdb init get env:{}".format(self.path))
+                L.trace("lmdb init get env={}".format(self.path))
                 self.env = LmdbAdapter.env_dict[self.path]
                 self.sub_db = LmdbAdapter.sub_db_dict[self.path]
             LmdbAdapter.count_dict[self.path] = LmdbAdapter.count_dict[self.path] + 1
-            L.info("lmdb inited:" + self.path)
+            L.trace(f"lmdb inited={self.path}")
 
     def _init_write(self):
         if self.txn_w:
             return
         # with LmdbAdapter.env_lock:
-        L.debug(f"lmdb init write: {self.path}, path in options: {self.options['path']}")
+        L.trace(f"lmdb init write={self.path}, path in options={self.options['path']}")
         self.txn_w = self.env.begin(db=self.sub_db, write=True)
 
     def _init_read(self):
         if self.txn_r:
             return
         # with LmdbAdapter.env_lock:
-        L.debug(f"lmdb init read: {self.path}, path in options: {self.options['path']}")
+        L.trace(f"lmdb init read={self.path}, path in options={self.options['path']}")
         self.txn_r = self.env.begin(db=self.sub_db, write=False)
         self.cursor = self.txn_r.cursor()
 
@@ -123,23 +129,24 @@ class LmdbAdapter(PairAdapter):
                 self.cursor.close()
             if self.txn_w:
                 try:
-                    L.debug(f"LmdbAdapter.close: data count of env: {self.path} :{self.__get_write_count()}")
+                    L.trace(f"LmdbAdapter.close: env={self.path} data count={self.__get_write_count()}")
                 except Exception as e:
-                    L.debug(f"LmdbAdapter.close: fail to get data count of env: {self.path}", e)
+                    L.exception(f"LmdbAdapter.close: fail to get data count of env={self.path}")
                 self.txn_w.commit()
             if self.env:
                 count = LmdbAdapter.count_dict[self.path]
                 if not count or count - 1 <= 0:
                     L.debug(f"LmdbAdapter: actually closing {self.path}")
                     try:
-                        if "EGGROLL_LMDB_ENV_CLOSE_DISABLE" in os.environ \
-                                and os.environ["EGGROLL_LMDB_ENV_CLOSE_DISABLE"] == '0':
+                        if "EGGROLL_LMDB_ENV_CLOSE_ENABLE" in os.environ \
+                                and os.environ["EGGROLL_LMDB_ENV_CLOSE_ENABLE"] == '1'\
+                                or sys.platform == 'win32':
                             self.env.close()
-                            L.debug(f"EGGROLL_LMDB_ENV_CLOSE_DISABLE is True, finish close lmdb env obj: {self.path}")
+                            L.debug(f"EGGROLL_LMDB_ENV_CLOSE_ENABLE is True, finish close lmdb env obj: {self.path}")
                         else:
-                            L.debug("lmdb env not close while closing LmdbAdapter")
+                            L.trace(f"lmdb env={self.path} not close while closing LmdbAdapter")
                     except:
-                        L.warning("txn commit or cursor, env have closed before")
+                        L.warning(f"txn commit or cursor, env={self.path} have closed before")
 
                     del LmdbAdapter.env_dict[self.path]
                     del LmdbAdapter.sub_db_dict[self.path]
@@ -163,18 +170,19 @@ class LmdbAdapter(PairAdapter):
         self._init_write()
         return self.txn_w.delete(k)
 
-    def destroy(self):
+    def destroy(self, options: dict = None):
         self.close()
         import shutil, os
         from pathlib import Path
-        shutil.rmtree(self.path)
-        path = Path(self.path)
+
         try:
+            shutil.rmtree(self.path)
+            path = Path(self.path)
             if not os.listdir(path.parent):
                 os.removedirs(path.parent)
-                L.debug("finish destroy, path:{}".format(self.path))
+                L.trace("finish destroy, path={}".format(self.path))
         except:
-            L.info("path :{} has destroyed".format(self.path))
+            L.debug("path={} has destroyed".format(self.path))
 
     def is_sorted(self):
         return True
@@ -182,12 +190,12 @@ class LmdbAdapter(PairAdapter):
 
 class LmdbIterator(PairIterator):
     def __init__(self, adapter: LmdbAdapter):
-        L.info(f"creating lmdb iterator for {adapter.path}")
+        L.trace(f"creating lmdb iterator of env={adapter.path}")
         self.adapter = adapter
         # with LmdbAdapter.env_lock:
         self.txn_r = adapter.env.begin(db=adapter.sub_db, write=False)
         self.cursor = self.txn_r.cursor()
-        L.info(f"created lmdb iterator for {adapter.path}")
+        L.trace(f"created lmdb iterator of env={adapter.path}")
 
     #seek for key, if key not exits then seek to nearby key
     def seek(self, key):
@@ -216,15 +224,29 @@ class LmdbIterator(PairIterator):
 
 class LmdbWriteBatch(PairWriteBatch):
     def __init__(self, adapter: LmdbAdapter, txn):
-        L.info(f'creating lmdb write batch for {adapter.path}')
+        L.trace(f'creating lmdb write batch of env={adapter.path}')
         self.adapter = adapter
         self.txn = txn
 
     def get(self, k):
-        return self.txn.get(k)
+        ret = None
+        try:
+            ret = self.txn.get(k)
+        except lmdb.BadValsizeError as e:
+            raise ValueError(f"get key={k} raise lmdb.BadValsizeError")
+        except:
+            raise ValueError(f"get key={k} raise Exception")
+        return ret
 
     def put(self, k, v):
-        self.txn.put(k, v)
+        ret = None
+        try:
+            ret = self.txn.put(k, v)
+        except lmdb.BadValsizeError as e:
+            raise ValueError(f"put key={k}, value={v} raise lmdb.BadValsizeError")
+        except:
+            raise ValueError(f"put key={k}, value={v} raise Exception")
+        return ret
 
     def merge(self, merge_func, k, v):
         old_value = self.txn.get(k)
@@ -233,7 +255,14 @@ class LmdbWriteBatch(PairWriteBatch):
         else:
             new_value = v
 
-        self.txn.put(k, new_value)
+        ret = None
+        try:
+            ret = self.txn.put(k, new_value)
+        except lmdb.BadValsizeError as e:
+            L.info(f"put key={k}, value={new_value} raise lmdb.BadValsizeError")
+        except:
+            L.info(f"put key={k}, value={new_value} raise Exception")
+        return ret
 
     def delete(self, k):
         self.txn.delete(k)

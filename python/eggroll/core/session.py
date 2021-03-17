@@ -25,6 +25,7 @@ from eggroll.core.command.command_model import CommandURI
 from eggroll.core.conf_keys import CoreConfKeys
 from eggroll.core.conf_keys import SessionConfKeys, ClusterManagerConfKeys
 from eggroll.core.constants import SessionStatus, ProcessorTypes, DeployModes
+from eggroll.core.datastructure.threadpool import ErThreadUnpooledExecutor
 from eggroll.core.meta_model import ErJob, ErTask
 from eggroll.core.meta_model import ErSessionMeta, ErPartition, ErStore
 from eggroll.core.utils import generate_task_id
@@ -36,12 +37,15 @@ from eggroll.utils.log_utils import get_logger
 L = get_logger()
 
 
-def session_init(session_id, options={"eggroll.session.deploy.mode": "standalone"}):
+def session_init(session_id, options: dict = None):
     er_session = ErSession(session_id=session_id, options=options)
     return er_session
 
 
 class ErSession(object):
+    executor = ErThreadUnpooledExecutor(
+        max_workers=int(CoreConfKeys.EGGROLL_CORE_CLIENT_COMMAND_EXECUTOR_POOL_MAX_SIZE.get()),
+        thread_name_prefix="session_server")
     def __init__(self,
             session_id=None,
             name='',
@@ -103,14 +107,21 @@ class ErSession(object):
                 L.info(f'start up returncode: {returncode}')
 
             def shutdown_standalone_manager(session_id, log_dir):
-                standalone_tag = f'-Deggroll.standalone.tag={random_value}'
+                standalone_tag = f'eggroll.standalone.tag={random_value}'
                 if os.name != 'nt':
                     shutdown_command = f"ps aux | grep eggroll | grep Bootstrap | grep '{standalone_tag}' | grep '{session_id}' | grep -v grep | awk '{{print $2}}' | xargs kill"
                 else:
                     pid_list = psutil.pids()
                     ret_pid = 0
+                    exception = None
                     for pid in pid_list:
-                        p = psutil.Process(pid)
+                        try:
+                            p = psutil.Process(pid)
+                            exception = None
+                        except Exception as e:
+                            exception = e
+                            continue
+
                         if "java.exe" not in p.name():
                             continue
                         # if it is a system process, call p.cmdline() will dump
@@ -120,6 +131,8 @@ class ErSession(object):
 
                         ret_pid = pid
                         break
+                    if exception:
+                        raise RuntimeError("can not find the bootstrap process")
 
                     shutdown_command = f"taskkill /pid {ret_pid} /f"
 
@@ -130,7 +143,7 @@ class ErSession(object):
                     L.info(f'shutdown returncode: {returncode}')
 
             file_name = f'{self.__eggroll_home}/logs/eggroll/bootstrap-standalone-manager.out'
-            max_retry_cnt = 10
+            max_retry_cnt = 100
             for i in range(max_retry_cnt):
                 msg = f"retry get port from bootstrap-standalone-manager.out: retry_cnt: {i},"
                 L.info(msg)
@@ -140,8 +153,8 @@ class ErSession(object):
                 time.sleep(min(0.1 * i, 100))
 
             try:
-                with open(file_name) as fp:
-                    for i in range(max_retry_cnt):
+                for i in range(max_retry_cnt):
+                    with open(file_name) as fp:
                         msg = f"retry get port of ClusterManager and NodeManager: retry_cnt: {i},"
                         L.info(msg)
 
@@ -155,7 +168,7 @@ class ErSession(object):
 
                         if port != 0:
                             break
-                        time.sleep(min(0.1 * i, 100))
+                    time.sleep(min(0.1 * i, 100))
             except IOError as e:
                 L.info(f"get port from {file_name} failed!")
                 raise e
@@ -336,8 +349,8 @@ class ErSession(object):
             else:
                 final_output_proposal = job._outputs[0]
 
-            refresh_nodes = job._options.get('refresh_nodes', False)
-            if refresh_nodes:
+            refresh_nodes = job._options.get('refresh_nodes')
+            if refresh_nodes is None or refresh_nodes:
                 final_output_proposal._partitions = []
             else:
                 if not final_output_proposal._partitions:
@@ -370,6 +383,14 @@ class ErSession(object):
         L.debug(f'killing session (forcefully), details: {self.__session_meta}')
         L.debug(f'killing (forcefully) for {self.__session_id} from: {get_stack()}')
         self.stopped = True
+
+        future = self.executor.submit(self.stop)
+        done = wait([future], timeout=1, return_when=FIRST_EXCEPTION).done
+        if done:
+            L.info(f'stopped successfully before kill session: {self.__session_id}')
+        else:
+            L.warn(f'stopped timeout before kill session: {self.__session_id}')
+
         return self._cluster_manager_client.kill_session(self.__session_meta)
 
     def get_session_id(self):

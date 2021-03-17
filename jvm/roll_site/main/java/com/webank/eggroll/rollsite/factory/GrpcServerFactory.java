@@ -29,6 +29,7 @@ import com.webank.eggroll.rollsite.manager.ServerConfManager;
 import com.webank.eggroll.rollsite.model.ProxyServerConf;
 import com.webank.eggroll.rollsite.service.FdnRouter;
 import io.grpc.Server;
+import io.grpc.ServerInterceptors;
 import io.grpc.netty.shaded.io.grpc.netty.GrpcSslContexts;
 import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder;
 import io.grpc.netty.shaded.io.netty.handler.ssl.ClientAuth;
@@ -89,7 +90,7 @@ public class GrpcServerFactory {
 
         NettyServerBuilder serverBuilder = null;
 
-        LOGGER.info("server build on port:{}", proxyServerConf.getPort());
+        LOGGER.info("server build on port={}", proxyServerConf.getPort());
         // LOGGER.warn("this may cause trouble in multiple network devices. you may want to consider binding to a ip");
         if (isSecureServer) {
             serverBuilder = NettyServerBuilder.forPort(proxyServerConf.getSecurePort());
@@ -120,7 +121,8 @@ public class GrpcServerFactory {
                     "com.webank.ai.eggroll.api.networking.proxy.DataTransferService",
                     "com.webank.ai.fate.api.networking.proxy.DataTransferService"))
                     .addService(accessRedirector.redirect(routeServer, "com.webank.ai.eggroll.api.networking.proxy.RouteService",
-                            "com.webank.ai.fate.api.networking.proxy.RouteService"));
+                            "com.webank.ai.fate.api.networking.proxy.RouteService"))
+                    .addService(ServerInterceptors.intercept(dataTransferPipedServer.bindService(), new AddrAuthServerInterceptor()));
         }
 
         if (isSecureServer) {
@@ -153,7 +155,7 @@ public class GrpcServerFactory {
             }
 
 
-            LOGGER.info("running in secure mode. server crt path: {}, server key path: {}, ca crt path: {}",
+            LOGGER.info("running in secure mode. server crt path={}, server key path={}, ca crt path={}",
                     serverCrtPath, serverKeyPath, caCrtPath);
         } else {
             LOGGER.info("running in insecure mode");
@@ -310,6 +312,16 @@ public class GrpcServerFactory {
                 proxyServerConf.setRouteTablePath(routeTablePath);
             }
 
+            String whiteList = RollSiteConfKeys.EGGROLL_ROLLSITE_ROUTE_TABLE_WHITELIST().get();
+            if (!StringUtils.isBlank(whiteList)) {
+                proxyServerConf.setWhiteList(whiteList);
+            }
+
+            String auditTopics = RollSiteConfKeys.EGGROLL_ROLLSITE_AUDIT_TOPICS().get();
+            if (!StringUtils.isBlank(auditTopics)) {
+                proxyServerConf.setAuditTopics(auditTopics);
+            }
+
             boolean needCompatibility = Boolean.valueOf(properties.getProperty(
                 RollSiteConfKeys.EGGROLL_ROLLSITE_PROXY_COMPATIBLE_ENABLED().key(), "false"));
             proxyServerConf.setCompatibleEnabled(needCompatibility);
@@ -346,9 +358,9 @@ public class GrpcServerFactory {
                         Configurator.initialize(null, configurationSource);
 
                         proxyServerConf.setLogPropertiesPath(logPropertiesPath);
-                        LOGGER.info("using log conf file: {}", logPropertiesPath);
+                        LOGGER.info("using log conf file={}", logPropertiesPath);
                     } catch (Exception e) {
-                        LOGGER.warn("failed to set log conf file at {}. using default conf", logPropertiesPath);
+                        LOGGER.warn("failed to set log conf file={}. using default conf", logPropertiesPath);
                     }
                 }
             }

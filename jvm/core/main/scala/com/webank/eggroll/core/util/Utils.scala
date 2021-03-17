@@ -18,6 +18,9 @@
 
 package com.webank.eggroll.core.util
 
+import java.util.concurrent.atomic.AtomicLong
+
+import io.grpc.netty.shaded.io.netty.buffer.{PooledByteBufAllocator, UnpooledByteBufAllocator}
 import org.apache.commons.cli.{CommandLine, DefaultParser, HelpFormatter, Option, Options, ParseException}
 import org.apache.commons.lang3.StringUtils
 
@@ -136,4 +139,93 @@ object IdUtils {
   def generateTaskId(jobId: String, partitionId: Int, tag: String = "", delim: String = "-"): String =
     if (StringUtils.isBlank(tag)) String.join(delim, jobId, task, partitionId.toString)
     else String.join(delim, jobId, tag, task, partitionId.toString)
+}
+
+
+object RuntimeMetricUtils {
+  private var directMemorySize: AtomicLong = null
+  private var defaultArenaInfo: Map[String, Int] = null
+  private var grpcByteBufAllocator: PooledByteBufAllocator = null
+
+
+  def getDirectMemorySize(): AtomicLong = {
+    if (directMemorySize == null) {
+      val clazz = Class.forName("io.grpc.netty.shaded.io.netty.util.internal.PlatformDependent")
+      val field = clazz
+        .getDeclaredField("DIRECT_MEMORY_COUNTER")
+      field.setAccessible(true)
+      directMemorySize = field.get(clazz).asInstanceOf[AtomicLong]
+    }
+    directMemorySize
+  }
+
+  def getDefaultArenaInfo(): Map[String, Int] = synchronized {
+    if (defaultArenaInfo == null) {
+      val clazz = classOf[PooledByteBufAllocator]
+      val defaultMaxCachedBufferCapacity = clazz.getDeclaredField("DEFAULT_MAX_CACHED_BUFFER_CAPACITY")
+      defaultMaxCachedBufferCapacity.setAccessible(true)
+
+      defaultArenaInfo = Map(("DEFAULT_NUM_HEAP_ARENA", PooledByteBufAllocator.defaultNumHeapArena()),
+        ("DEFAULT_NUM_DIRECT_ARENA", PooledByteBufAllocator.defaultNumDirectArena()),
+        ("DEFAULT_PAGE_SIZE", PooledByteBufAllocator.defaultPageSize()),
+        ("DEFAULT_MAX_ORDER", PooledByteBufAllocator.defaultMaxOrder()),
+        ("DEFAULT_TINY_CACHE_SIZE", PooledByteBufAllocator.defaultTinyCacheSize()),
+        ("DEFAULT_SMALL_CACHE_SIZE", PooledByteBufAllocator.defaultSmallCacheSize()),
+        ("DEFAULT_NORMAL_CACHE_SIZE", PooledByteBufAllocator.defaultNormalCacheSize()),
+        ("DEFAULT_MAX_CACHED_BUFFER_CAPACITY", defaultMaxCachedBufferCapacity.get(clazz).asInstanceOf[Int]),
+        ("DEFAULT_USE_CACHE_FOR_ALL_THREADS", if (PooledByteBufAllocator.defaultUseCacheForAllThreads()) 1 else 0))
+    }
+
+    defaultArenaInfo
+  }
+
+  def getDefaultPooledByteBufAllocator(): PooledByteBufAllocator = {
+    PooledByteBufAllocator.DEFAULT
+  }
+
+  def getDefaultPBBAStat(): String = {
+    PooledByteBufAllocator.DEFAULT.dumpStats()
+  }
+
+  def getDefaultPBBAMetric(): String = {
+    PooledByteBufAllocator.DEFAULT.metric().toString
+  }
+
+  def getDefaultDirectPooledArenaAllocations(): Map[String, Long] = {
+    val defaultArena = PooledByteBufAllocator.DEFAULT
+    val directArena = defaultArena.directArenas().get(0)
+    Map(("ARENA_NUM_ALLOCATIONS", directArena.numAllocations()),
+      ("ARENA_NUM_DEALLOCATIONS", directArena.numDeallocations()))
+  }
+
+  def getDefaultDirectPooledArenaMetrics(): String = {
+    val field = classOf[PooledByteBufAllocator].getDeclaredField("directArenas")
+    field.setAccessible(true)
+
+    val clazz = Class.forName("io.grpc.netty.shaded.io.netty.buffer.PoolArena")
+
+    var result = ""
+    val arenas = field.get(PooledByteBufAllocator.DEFAULT).asInstanceOf[Array[AnyRef]]
+    for (arena <- arenas) {
+      val a = clazz.cast(arena)
+      result += s", ${a}"
+    }
+
+    PooledByteBufAllocator.DEFAULT.dumpStats()
+  }
+
+  def getDefaultDirectUnpooledArenaMetrics(): String = {
+    UnpooledByteBufAllocator.DEFAULT.metric().toString
+  }
+
+  def getGrpcByteBufAllocatorMetrics(): String = synchronized {
+    if (grpcByteBufAllocator == null) {
+      val clazz = Class.forName("io.grpc.netty.shaded.io.grpc.netty.Utils")
+      val method = clazz.getMethod("getByteBufAllocator")
+      method.setAccessible(true)
+      grpcByteBufAllocator = method.invoke(clazz).asInstanceOf[PooledByteBufAllocator]
+    }
+
+    grpcByteBufAllocator.directArenas().toString
+  }
 }

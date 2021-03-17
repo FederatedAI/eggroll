@@ -66,59 +66,23 @@ public class CascadedCaller implements Runnable {
     @Override
     @Async
     public void run() {
-        LOGGER.info("cascaded calling of {}", ToStringUtils.toOneLineString(pipeHandlerInfo.getMetadata()));
+        LOGGER.trace("cascaded calling of metadata={}", ToStringUtils.toOneLineString(pipeHandlerInfo.getMetadata()));
         Preconditions.checkNotNull(pipeHandlerInfo);
         Pipe pipe = pipeHandlerInfo.getPipe();
 
         Proxy.Metadata metadata = pipeHandlerInfo.getMetadata();
 
-        int result = 0;
-        long fixedWaitTime = StaticErConf
-            .getLong(CoreConfKeys.CONFKEY_CORE_RETRY_DEFAULT_WAIT_TIME_MS().key(), 1000L);
-        int maxAttempts = StaticErConf
-            .getInt(CoreConfKeys.CONFKEY_CORE_RETRY_DEFAULT_MAX_ATTEMPTS().key(), 5);
-        long attemptTimeout = StaticErConf
-            .getLong(CoreConfKeys.CONFKEY_CORE_RETRY_DEFAULT_ATTEMPT_TIMEOUT_MS().key(), 300000L);
+        Type type = pipeHandlerInfo.getType();
 
-        // TODO:0: configurable
-        Retryer<Integer> retryer = RetryerBuilder.<Integer>newBuilder()
-            .withWaitTimeStrategy(WaitTimeStrategies.fixedWaitTime(fixedWaitTime))
-            .withStopStrategy(StopStrategies.stopAfterMaxAttempt(maxAttempts))
-            .withAttemptOperation(
-                AttemptOperations.<Integer>fixedTimeLimit(attemptTimeout, TimeUnit.MINUTES))
-            .retryIfAnyException()
-            .build();
-
-        final Callable<Integer> pushStreamRetry = () -> {
-            Type type = pipeHandlerInfo.getType();
-
-            if (PipeHandleNotificationEvent.Type.PUSH == type) {
-                client.initPush(metadata, pipe);
-                //client.push(metadata, pipe);
-                //if(metadata.getDst() == metadata.getSrc())
-                //    return;
-                client.doPush();
-                //pipe.onComplete();
-                client.completePush();
-            } else if (PipeHandleNotificationEvent.Type.PULL == type) {
-                client.pull(metadata, pipe);
-            } else {
-                client.unaryCall(pipeHandlerInfo.getPacket(), pipe);
-            }
-
-            if (!pipe.hasError()) {
-                pipe.onComplete();
-            }
-            return 0;
-        };
-
-        try {
-            result = retryer.call(pushStreamRetry);
-        } catch (ExecutionException e) {
-            Thread.currentThread().interrupt();
-            throw new RuntimeException(e);
-        } catch (RetryException e) {
-            LOGGER.error("Error getting ManagedChannel after retries");
+        if (PipeHandleNotificationEvent.Type.PUSH == type) {
+            client.initPush(metadata, pipe);
+            client.doPush();
+            client.completePush();
+        } else if (PipeHandleNotificationEvent.Type.PULL == type) {
+            client.pull(metadata, pipe);
+        } else {
+            client.unaryCall(pipeHandlerInfo.getPacket(), pipe);
         }
+
     }
 }

@@ -25,6 +25,7 @@ import com.webank.eggroll.util.SchemaUtil
 import junit.framework.TestCase
 import org.junit.{Before, Test}
 
+@deprecated
 class RollFramePytorchTest {
   protected val ta: TestAssets.type = TestAssets
   val fieldCount: Int = 300
@@ -69,7 +70,7 @@ class RollFramePytorchTest {
 
   def genTensorData(): Unit = {
     (0 until partitions_).foreach { i =>
-      val fb = new FrameBatch(new FrameSchema(SchemaUtil.oneFieldSchemaString), fieldCount * rowCount)
+      val fb = new FrameBatch(new FrameSchema(SchemaUtil.oneDoubleFieldSchema), fieldCount * rowCount)
       (0 until fieldCount * rowCount).foreach { i =>
         fb.writeDouble(0, i, 2)
       }

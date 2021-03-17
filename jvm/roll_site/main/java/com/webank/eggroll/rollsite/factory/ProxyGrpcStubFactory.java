@@ -63,14 +63,14 @@ public class ProxyGrpcStubFactory {
     public ProxyGrpcStubFactory() {
         channelCache = CacheBuilder.newBuilder()
                 .maximumSize(100)
-                .expireAfterWrite(180, TimeUnit.MINUTES)
+                .concurrencyLevel(50)
                 .recordStats()
                 .weakValues()
                 .removalListener(removalNotification -> {
                     BasicMeta.Endpoint endpoint = (BasicMeta.Endpoint) removalNotification.getKey();
                     ManagedChannel managedChannel = (ManagedChannel) removalNotification.getValue();
 
-                    LOGGER.info("Managed channel removed for ip: {}, port: {}, hostname: {}. reason: {}",
+                    LOGGER.trace("Managed channel removed for ip={}, port={}, hostname={}. reason={}",
                             endpoint.getIp(),
                             endpoint.getPort(),
                             endpoint.getHostname(),
@@ -85,12 +85,16 @@ public class ProxyGrpcStubFactory {
                            @Override
                            public ManagedChannel load(BasicMeta.Endpoint endpoint) throws Exception {
                                Preconditions.checkNotNull(endpoint);
-                               LOGGER.info("creating channel for endpoint: ip: {}, port: {}, hostname: {}",
+                               LOGGER.trace("creating channel for endpoint: ip={}, port={}, hostname={}",
                                        endpoint.getIp(), endpoint.getPort(), endpoint.getHostname());
                                return createChannel(endpoint);
                            }
                        }
                 );
+    }
+
+    public long getChannelCacheSize() {
+        return channelCache.size();
     }
 
     public DataTransferServiceGrpc.DataTransferServiceBlockingStub getBlockingStub(Proxy.Topic topic) {
@@ -131,8 +135,8 @@ public class ProxyGrpcStubFactory {
                     break;
                 }
             } catch (Exception e) {
-                LOGGER.warn("get channel failed. target: {}, \n {}",
-                        ToStringUtils.toOneLineString(endpoint), ExceptionUtils.getStackTrace(e));
+                LOGGER.debug("get channel failed. target={}",
+                        ToStringUtils.toOneLineString(endpoint), e);
                 try {
                     Thread.sleep(1000);
                 } catch (InterruptedException ignore) {
@@ -162,7 +166,7 @@ public class ProxyGrpcStubFactory {
         try {
             result = channelCache.get(endpoint);
             ConnectivityState state = result.getState(true);
-            LOGGER.info("Managed channel state: isShutdown: {}, isTerminated: {}, state: [}",
+            LOGGER.trace("Managed channel state: isShutdown: {}, isTerminated: {}, state: [}",
                     result.isShutdown(), result.isTerminated(), state.name());
 
             if (result.isShutdown() || result.isTerminated()) {
@@ -198,7 +202,6 @@ public class ProxyGrpcStubFactory {
                 .maxRetryAttempts(20);      // todo:1: configurable
 
         if (proxyServerConf.isCompatibleEnabled()) {
-            LOGGER.info("[PROXY] compatibility enabled");
             builder.intercept(new RedirectClientInterceptor("com.webank.ai.eggroll.api.rollstation.DataTransferService",
                     "com.webank.ai.fate.api.rollstation.DataTransferService"),
                     new RedirectClientInterceptor("com.webank.ai.eggroll.api.rollstation.RouteService",
@@ -215,7 +218,7 @@ public class ProxyGrpcStubFactory {
 
             SslContext sslContext = null;
             try {
-                LOGGER.info("use secure channel to {}", ToStringUtils.toOneLineString(endpoint));
+                LOGGER.trace("use secure channel to {}", ToStringUtils.toOneLineString(endpoint));
                 // sslContext = GrpcSslContexts.forClient().trustManager(trustManagerFactory).build();
                 sslContext = GrpcSslContexts.forClient()
                         .trustManager(caCrt)
@@ -228,14 +231,14 @@ public class ProxyGrpcStubFactory {
             }
             builder.sslContext(sslContext).useTransportSecurity().negotiationType(NegotiationType.TLS);
         } else {
-            LOGGER.info("use insecure channel to {}", ToStringUtils.toOneLineString(endpoint));
+            LOGGER.trace("use insecure channel to {}", ToStringUtils.toOneLineString(endpoint));
             builder.negotiationType(NegotiationType.PLAINTEXT);
         }
 
         ManagedChannel managedChannel = builder
                 .build();
 
-        LOGGER.info("created channel to {}", ToStringUtils.toOneLineString(endpoint));
+        LOGGER.trace("created channel to {}", ToStringUtils.toOneLineString(endpoint));
         return managedChannel;
     }
 

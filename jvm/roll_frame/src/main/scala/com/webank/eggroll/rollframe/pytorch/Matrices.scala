@@ -95,7 +95,7 @@ object Matrices {
 
     println(s"Core mm time = ${System.currentTimeMillis() - start}")
     start = System.currentTimeMillis()
-    val rootSchema = new FrameSchema(SchemaUtil.oneFieldSchemaString)
+    val rootSchema = new FrameSchema(SchemaUtil.oneDoubleFieldSchema)
     val fb = new FrameBatch(rootSchema, cf.matrixRows*cols)
     FrameUtils.copyMemory(fb.rootVectors(0),resData)
     println(s"package fb time = ${System.currentTimeMillis() - start}")

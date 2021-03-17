@@ -23,8 +23,10 @@ import com.webank.eggroll.rollsite.infra.Pipe;
 import com.webank.eggroll.rollsite.manager.StatsManager;
 import com.webank.eggroll.rollsite.model.ProxyServerConf;
 import com.webank.eggroll.rollsite.model.StreamStat;
+import com.webank.eggroll.rollsite.utils.ToAuditString;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
+import java.util.Arrays;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicLong;
 import javax.annotation.PostConstruct;
@@ -82,22 +84,27 @@ public class ClientUnaryCallResponseStreamObserver implements StreamObserver<Pro
             init();
         }
 
-        if (proxyServerConf.isDebugEnabled()) {
+/*        if (proxyServerConf.isDebugEnabled()) {
             DEBUGGING.info("[UNARYCALL][OBSERVER][ONNEXT]: {}", packet);
             DEBUGGING.info("-------------");
-        }
+        }*/
 
         if (proxyServerConf.isAuditEnabled()
                 && packet.getHeader().getSrc().getPartyId().equals(proxyServerConf.getCoordinator())) {
             AUDIT.info(ToStringUtils.toOneLineString(packet));
         }
 
+        String[] auditTopics = proxyServerConf.getAuditTopics();
+        if (auditTopics != null
+                && (Arrays.asList(auditTopics).contains(packet.getHeader().getSrc().getRole())
+                    || Arrays.asList(auditTopics).contains(packet.getHeader().getDst().getRole()))){
+            AUDIT.info(ToAuditString.toOneLineString(packet.getHeader(), "|"));
+        }
 
         if (packet.getBody() != null && packet.getBody().getValue() != null) {
             ByteString value = packet.getBody().getValue();
             streamStat.increment(value.size());
         }
-
         // LOGGER.info("[UNARYCALL][OBSERVER][ONNEXT] result: {}", packet.getBody().getValue().toStringUtf8());
     }
 
@@ -115,7 +122,7 @@ public class ClientUnaryCallResponseStreamObserver implements StreamObserver<Pro
 
     @Override
     public void onCompleted() {
-        LOGGER.info("[UNARYCALL][OBSERVER][ONCOMPLETE] Client unary call completed. metadata: {}",
+        LOGGER.trace("[UNARYCALL][OBSERVER][ONCOMPLETE] Client unary call completed. metadata: {}",
                 ToStringUtils.toOneLineString(metadata));
 
         pipe.onComplete();

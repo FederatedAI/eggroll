@@ -30,7 +30,7 @@ import com.webank.eggroll.core.retry.factory.{AttemptOperations, RetryerBuilder,
 import com.webank.eggroll.core.util.{FileSystemUtils, Logging, ThreadPoolUtils}
 import io.grpc.netty.shaded.io.grpc.netty.{GrpcSslContexts, NegotiationType, NettyChannelBuilder, NettyServerBuilder}
 import io.grpc.netty.shaded.io.netty.handler.ssl.{ClientAuth, SslContext}
-import io.grpc.{BindableService, ManagedChannel, Server}
+import io.grpc.{BindableService, ManagedChannel, Server, ServerServiceDefinition}
 import org.apache.commons.lang3.StringUtils
 
 
@@ -40,6 +40,7 @@ object GrpcServerUtils extends Logging {
   def createServer(host: String = "0.0.0.0",
                    port: Int = 0,
                    grpcServices: List[BindableService] = List.empty,
+                   bindServices: List[ServerServiceDefinition] = List.empty,
                    options: Map[String, String] = Map.empty): Server = {
     if (port < 0) throw new IllegalArgumentException(s"${modulePrefix} cannot listen to port <= 0")
     if (grpcServices.isEmpty) throw new IllegalArgumentException("grpc services cannot be empty")
@@ -49,6 +50,7 @@ object GrpcServerUtils extends Logging {
     val nettyServerBuilder = NettyServerBuilder.forAddress(addr)
 
     grpcServices.foreach(s => nettyServerBuilder.addService(s))
+    bindServices.foreach(s => nettyServerBuilder.addService(s))
 
     Runtime.getRuntime.addShutdownHook(new Thread() {
       override def run(): Unit = { // Use stderr here since the logger may have been reset by its JVM shutdown hook.
@@ -76,13 +78,14 @@ object GrpcServerUtils extends Logging {
       .maxInboundMessageSize(maxInboundMessageSize)
       .maxInboundMetadataSize(maxInboundMetadataSize)
       .flowControlWindow(flowControlWindow)
-      .keepAliveTime(channelKeepAliveTimeSec, TimeUnit.SECONDS)
-      .keepAliveTimeout(channelKeepAliveTimeoutSec, TimeUnit.SECONDS)
-      .permitKeepAliveTime(channelPermitKeepAliveTime, TimeUnit.SECONDS)
-      .permitKeepAliveWithoutCalls(channelKeepAliveWithoutCallsEnabled)
-      .maxConnectionIdle(maxConnectionIdle, TimeUnit.SECONDS)
-      .maxConnectionAge(maxConnectionAge, TimeUnit.SECONDS)
-      .maxConnectionAgeGrace(maxConnectionAgeGrace, TimeUnit.SECONDS)
+
+      if (channelKeepAliveTimeSec > 0) nettyServerBuilder.keepAliveTime(channelKeepAliveTimeSec, TimeUnit.SECONDS)
+      if (channelKeepAliveTimeoutSec > 0) nettyServerBuilder.keepAliveTimeout(channelKeepAliveTimeoutSec, TimeUnit.SECONDS)
+      if (channelPermitKeepAliveTime > 0) nettyServerBuilder.permitKeepAliveTime(channelPermitKeepAliveTime, TimeUnit.SECONDS)
+      if (channelKeepAliveWithoutCallsEnabled) nettyServerBuilder.permitKeepAliveWithoutCalls(channelKeepAliveWithoutCallsEnabled)
+      if (maxConnectionIdle > 0) nettyServerBuilder.maxConnectionIdle(maxConnectionIdle, TimeUnit.SECONDS)
+      if (maxConnectionAge > 0) nettyServerBuilder.maxConnectionAge(maxConnectionAge, TimeUnit.SECONDS)
+      if (maxConnectionAgeGrace > 0) nettyServerBuilder.maxConnectionAgeGrace(maxConnectionAgeGrace, TimeUnit.SECONDS)
 
     val secureClusterEnabled = CoreConfKeys.CONFKEY_CORE_SECURITY_SECURE_CLUSTER_ENABLED.getWith(options).toBoolean
     if (secureClusterEnabled) {
@@ -104,7 +107,7 @@ object GrpcServerUtils extends Logging {
       else sslContextBuilder.clientAuth(ClientAuth.OPTIONAL)
 
       nettyServerBuilder.sslContext(sslContextBuilder.build)
-      logInfo(s"gRPC server at ${port} starting in secure mode. " +
+      logInfo(s"gRPC server at port=${port} starting in secure mode. " +
         s"server private key path: ${key.getAbsolutePath}, " +
         s"key crt path: ${keyCrt.getAbsoluteFile}, " +
         s"ca crt path: ${caCrt.getAbsolutePath}")
@@ -125,25 +128,26 @@ object GrpcClientUtils extends Logging {
     .maximumSize(maximumSize)
     .expireAfterAccess(expireTimeout, TimeUnit.SECONDS)
     .recordStats()
-    .weakValues()
     .removalListener((notification: RemovalNotification[ErEndpoint, ManagedChannel]) => {
       val endpoint = notification.getKey
+      val managedChannel = notification.getValue
+      if (managedChannel != null) if (!managedChannel.isShutdown || !managedChannel.isTerminated) managedChannel.shutdown
 
-      logInfo(s"[CHANNEL][REMOVAL] removing for endpoint: ${endpoint}. reason: ${notification.getCause.name()}")
+      logDebug(s"[CHANNEL][REMOVAL] removing for endpoint=${endpoint}, id=${Integer.toHexString(endpoint.hashCode())}. reason=${notification.getCause.name()}")
     })
   private val insecureChannelCache: LoadingCache[ErEndpoint, ManagedChannel] = cacheBuilder
     .build(new CacheLoader[ErEndpoint, ManagedChannel]() {
-    override def load(endpoint: ErEndpoint): ManagedChannel = {
-      logDebug(s"[CHANNEL][INSECURE] creating for endpoint: ${endpoint}")
-      createChannel(endpoint, false)
-    }
-  })
+      override def load(endpoint: ErEndpoint): ManagedChannel = {
+        logDebug(s"[CHANNEL][INSECURE] creating for endpoint=${endpoint}, id=${Integer.toHexString(endpoint.hashCode())}")
+        createChannel(endpoint, isSecureChannel = false)
+      }
+    })
 
   private val secureChannelCache: LoadingCache[ErEndpoint, ManagedChannel] = cacheBuilder
     .build(new CacheLoader[ErEndpoint, ManagedChannel]() {
       override def load(endpoint: ErEndpoint): ManagedChannel = {
-        logDebug(s"[CHANNEL][SECURE] creating for endpoint: ${endpoint}")
-        createChannel(endpoint, true)
+        logDebug(s"[CHANNEL][SECURE] creating for endpoint=${endpoint}, id=${Integer.toHexString(endpoint.hashCode())}")
+        createChannel(endpoint, isSecureChannel = true)
       }
     })
 
@@ -152,6 +156,8 @@ object GrpcClientUtils extends Logging {
   private val createWithBuckets = "[CREATE]"
   private val prefix = ModuleConstants.CORE_WITH_BRACKETS + channelWithBuckets
 
+  def getChannelCacheSize(isSecure: Boolean): Long =
+    if (isSecure) secureChannelCache.size() else insecureChannelCache.size()
 
   private def createChannel(endpoint: ErEndpoint,
                             isSecureChannel: Boolean = false,
@@ -167,7 +173,7 @@ object GrpcClientUtils extends Logging {
     val channelRetryBufferSize = CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_RETRY_BUFFER_SIZE.getWith(options).toInt
     val channelMaxRetryAttempts = CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_MAX_RETRY_ATTEMPTS.getWith(options).toInt
     val channelExecutorPoolSize = CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_EXECUTOR_POOL_SIZE.getWith(options).toInt
-    val caCrtPath = CoreConfKeys.CONFKEY_CORE_SECURITY_CA_CRT_PATH.getWith(options)
+    val caCrtPath = CoreConfKeys.CONFKEY_CORE_SECURITY_CLIENT_CA_CRT_PATH.getWith(options)
     var caCrt: File = null
     if (isSecureChannel) {
       if (StringUtils.isBlank(caCrtPath)) throw new IllegalArgumentException("secure channel required but no ca crt conf found")
@@ -176,23 +182,30 @@ object GrpcClientUtils extends Logging {
     }
     val builder = NettyChannelBuilder
       .forAddress(endpoint.host, endpoint.port)
-      .keepAliveTime(channelKeepAliveTimeSec, TimeUnit.SECONDS)
-      .keepAliveTimeout(channelKeepAliveTimeoutSec, TimeUnit.SECONDS)
-      .keepAliveWithoutCalls(channelKeepAliveWithoutCallsEnabled)
-      .idleTimeout(channelIdleTimeoutSec, TimeUnit.SECONDS)
       .perRpcBufferLimit(channelPerRpcBufferLimit)
       .flowControlWindow(channelFlowControlWindow)
       .maxInboundMessageSize(channelMaxInboundMessageSize)
       .maxInboundMetadataSize(channelMaxInboundMetadataSize)
-      .enableRetry.retryBufferSize(channelRetryBufferSize)
-      .maxRetryAttempts(channelMaxRetryAttempts)
+
+    if (channelIdleTimeoutSec > 0) builder.idleTimeout(channelIdleTimeoutSec, TimeUnit.SECONDS)
+    if (channelKeepAliveTimeSec > 0) builder.keepAliveTime(channelKeepAliveTimeSec, TimeUnit.SECONDS)
+    if (channelKeepAliveTimeoutSec > 0) builder.keepAliveTimeout(channelKeepAliveTimeoutSec, TimeUnit.SECONDS)
+    if (channelKeepAliveWithoutCallsEnabled) builder.keepAliveWithoutCalls(channelKeepAliveWithoutCallsEnabled)
+
+      if (channelMaxRetryAttempts > 0) {
+        builder.enableRetry()
+          .retryBufferSize(channelRetryBufferSize)
+          .maxRetryAttempts(channelMaxRetryAttempts)
+      } else {
+        builder.disableRetry()
+      }
 
     if (isSecureChannel) {
       var sslContext: SslContext = null
       val sslSessionTimeout = CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_SSL_SESSION_TIMEOUT_SEC.getWith(options).toLong
       val sslSessionCacheSize = CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_SSL_SESSION_CACHE_SIZE.getWith(options).toLong
-      val keyCrtPath = CoreConfKeys.CONFKEY_CORE_SECURITY_KEY_CRT_PATH.getWith(options)
-      val keyPath = CoreConfKeys.CONFKEY_CORE_SECURITY_KEY_PATH.getWith(options)
+      val keyCrtPath = CoreConfKeys.CONFKEY_CORE_SECURITY_CLIENT_KEY_CRT_PATH.getWith(options)
+      val keyPath = CoreConfKeys.CONFKEY_CORE_SECURITY_CLIENT_KEY_PATH.getWith(options)
       val sslContextBuilder = GrpcSslContexts
         .forClient
         .trustManager(caCrt)
@@ -221,7 +234,7 @@ object GrpcClientUtils extends Logging {
   private def getChannelInternal(endpoint: ErEndpoint, isSecureChannel: Boolean, options: Map[String, String] = Map.empty): ManagedChannel = {
     var result: ManagedChannel = null
     val cache = if (isSecureChannel) secureChannelCache else insecureChannelCache
-    result = cache.get(endpoint)
+    result = cache.getUnchecked(endpoint)
     if (result == null || result.isShutdown || result.isTerminated) {
       if (isSecureChannel)
         cache.invalidate(result)
@@ -260,5 +273,19 @@ object GrpcClientUtils extends Logging {
         throw e
     }
     result
+  }
+
+  def shutdownNow() = {
+    secureChannelCache.asMap().keySet().toArray().foreach(key => {
+      val managedChannel = insecureChannelCache.asMap().get(key)
+      logDebug(s"shutting down secure channel=${managedChannel}")
+      managedChannel.shutdownNow()
+    })
+
+    insecureChannelCache.asMap().keySet().toArray().foreach(key => {
+      val managedChannel = insecureChannelCache.asMap().get(key)
+      logDebug(s"shutting down insecure channel=${managedChannel}")
+      managedChannel.shutdownNow()
+    })
   }
 }

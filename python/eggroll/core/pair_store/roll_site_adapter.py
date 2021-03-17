@@ -27,7 +27,7 @@ from eggroll.core.proto import proxy_pb2, proxy_pb2_grpc
 from eggroll.core.serdes import eggroll_serdes
 from eggroll.core.transfer_model import ErRollSiteHeader
 from eggroll.core.utils import get_static_er_conf
-from eggroll.core.utils import stringify_charset
+from eggroll.core.utils import stringify_charset, _stringify
 from eggroll.roll_site.utils.roll_site_utils import create_store_name
 from eggroll.utils.log_utils import get_logger
 
@@ -62,11 +62,18 @@ class RollSiteAdapter(PairAdapter):
         self.is_writable = False
         if self.roll_site_header_string:
             self.roll_site_header = ErRollSiteHeader.from_proto_string(self.roll_site_header_string.encode(stringify_charset))
+            self.roll_site_header._options['partition_id'] = self.partition_id
             self.proxy_endpoint = ErEndpoint.from_proto_string(options['proxy_endpoint'].encode(stringify_charset))
             self.obj_type = options['obj_type']
             self.is_writable = True
 
-            L.info(f"writable RollSiteAdapter: {self.namespace}, {self.partition_id}. proxy_endpoint: {self.proxy_endpoint}, partition: {self.partition}")
+            L.trace(f"writable RollSiteAdapter: {self.namespace}, partition_id={self.partition_id}. proxy_endpoint={self.proxy_endpoint}, partition={self.partition}")
+
+        self.unarycall_max_retry_cnt = int(RollSiteConfKeys.EGGROLL_ROLLSITE_UNARYCALL_CLIENT_MAX_RETRY.get_with(options))
+        self.push_max_retry_cnt = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PUSH_CLIENT_MAX_RETRY.get_with(options))
+        self.push_overall_timeout = int(RollSiteConfKeys.EGGROLL_ROLLSITE_OVERALL_TIMEOUT_SEC.get_with(options))
+        self.push_completion_wait_timeout = int(RollSiteConfKeys.EGGROLL_ROLLSITE_COMPLETION_WAIT_TIMEOUT_SEC.get_with(options))
+        self.push_packet_interval_timeout = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PACKET_INTERVAL_TIMEOUT_SEC.get_with(options))
 
     def close(self):
         pass
@@ -99,6 +106,12 @@ class RollSiteWriteBatch(PairWriteBatch):
         self.adapter = adapter
 
         self.roll_site_header: ErRollSiteHeader = adapter.roll_site_header
+        self.unarycall_max_retry_cnt = adapter.unarycall_max_retry_cnt
+        self.push_max_retry_cnt = adapter.push_max_retry_cnt
+        self.push_overall_timeout = adapter.push_overall_timeout
+        self.push_completion_wait_timeout = adapter.push_completion_wait_timeout
+        self.push_packet_interval_timeout = adapter.push_packet_interval_timeout
+
         self.namespace = adapter.namespace
         self.name = create_store_name(self.roll_site_header)
 
@@ -146,14 +159,13 @@ class RollSiteWriteBatch(PairWriteBatch):
     # TODO:0: configurable
     def push(self, obj):
         L.debug(f'pushing for task: {self.name}, partition id: {self.adapter.partition_id}, push cnt: {self.push_batch_cnt}')
-        task_info = proxy_pb2.Task(taskId=self.name, model=proxy_pb2.Model(name=self.adapter.roll_site_header_string, dataKey=self.namespace))
-
+        task_info = proxy_pb2.Task(taskId=self.name, model=proxy_pb2.Model(name=_stringify(self.roll_site_header), dataKey=self.namespace))
         command_test = proxy_pb2.Command()
 
         # TODO: conf test as config and use it
-        conf_test = proxy_pb2.Conf(overallTimeout=200000,
-                                   completionWaitTimeout=200000,
-                                   packetIntervalTimeout=200000,
+        push_conf = proxy_pb2.Conf(overallTimeout=self.push_overall_timeout,
+                                   completionWaitTimeout=self.push_completion_wait_timeout,
+                                   packetIntervalTimeout=self.push_packet_interval_timeout,
                                    maxRetries=10)
 
         metadata = proxy_pb2.Metadata(task=task_info,
@@ -161,11 +173,11 @@ class RollSiteWriteBatch(PairWriteBatch):
                                       dst=self.topic_dst,
                                       command=command_test,
                                       seq=0,
-                                      ack=0)
+                                      ack=0,
+                                      conf=push_conf)
 
-        max_retry_cnt = 100
         exception = None
-        for i in range(1, max_retry_cnt + 1):
+        for i in range(1, self.push_max_retry_cnt + 1):
             try:
                 self.stub.push(self.generate_message(obj, metadata))
                 exception = None
@@ -173,7 +185,7 @@ class RollSiteWriteBatch(PairWriteBatch):
                 break
             except Exception as e:
                 exception = e
-                L.info(f'caught exception in pushing {self.roll_site_header}, partition_id: {self.adapter.partition_id}: {e}. retrying. current retry count: {i}, max_retry_cnt: {max_retry_cnt}')
+                L.debug(f'caught exception in pushing {self.roll_site_header}, partition_id: {self.adapter.partition_id}: {e}. retrying. current retry count: {i}, max_retry_cnt: {self.push_max_retry_cnt}')
                 time.sleep(min(5 * i, 30))
 
         if exception:
@@ -185,14 +197,10 @@ class RollSiteWriteBatch(PairWriteBatch):
         self.buffer = ArrayByteBuffer(self.ba)
 
     def send_end(self):
-        L.info(f"RollSiteAdapter.send_end: tagged_key:{self.tagged_key}")
-        task_info = proxy_pb2.Task(taskId=self.name, model=proxy_pb2.Model(name=self.adapter.roll_site_header_string, dataKey=self.namespace))
+        L.debug(f"RollSiteAdapter.send_end: name={self.name}")
+        task_info = proxy_pb2.Task(taskId=self.name, model=proxy_pb2.Model(name=_stringify(self.roll_site_header), dataKey=self.namespace))
 
         command_test = proxy_pb2.Command(name="set_status")
-        conf_test = proxy_pb2.Conf(overallTimeout=20000,
-                                   completionWaitTimeout=20000,
-                                   packetIntervalTimeout=20000,
-                                   maxRetries=10)
 
         metadata = proxy_pb2.Metadata(task=task_info,
                                       src=self.topic_src,
@@ -204,16 +212,16 @@ class RollSiteWriteBatch(PairWriteBatch):
 
         packet = proxy_pb2.Packet(header=metadata)
 
-        max_retry_cnt = 100
+        #max_retry_cnt = 100
         exception = None
-        for i in range(1, max_retry_cnt + 1):
+        for i in range(1, self.unarycall_max_retry_cnt + 1):
             try:
                 # TODO:0: retry and sleep for all grpc call in RollSite
                 self.stub.unaryCall(packet)
                 exception = None
                 break
             except Exception as e:
-                L.info(f'caught exception in send_end for {self.name}, partition_id: {self.adapter.partition_id}: {e}. retrying. current retry count: {i}, max_retry_cnt: {max_retry_cnt}')
+                L.debug(f'caught exception in send_end for {self.name}, partition_id= {self.adapter.partition_id}: {e}. retrying. current retry count={i}, max_retry_cnt={self.unarycall_max_retry_cnt}')
                 exception = GrpcCallError('send_end', self.proxy_endpoint, e)
         if exception:
             raise exception
@@ -222,14 +230,13 @@ class RollSiteWriteBatch(PairWriteBatch):
         bin_batch = bytes(self.ba[0:self.buffer.get_offset()])
         self.push(bin_batch)
         self.send_end()
-        L.info(f'RollSiteWriteBatch.close: Closing for name: {self.name}, '
-               f'partition id: {self.adapter.partition_id}, '
-               f'total push batch count: {self.push_batch_cnt}, '
-               f'total push pair count: {self.push_pair_cnt}')
+        L.debug(f'RollSiteWriteBatch.close: Closing for name={self.name}, '
+               f'partition_id={self.adapter.partition_id}, '
+               f'total push_batch_cnt={self.push_batch_cnt}, '
+               f'total push_pair_cnt={self.push_pair_cnt}')
 
     def put(self, k, v):
         if self.obj_type == 'object':
-            L.debug(f"set tagged_key: {k}")
             self.tagged_key = _serdes.deserialize(k)
         try:
             self.writer.write(k, v)
@@ -244,7 +251,7 @@ class RollSiteWriteBatch(PairWriteBatch):
             self.writer.write(k, v)
             self.push_pair_cnt += 1
         except Exception as e:
-            L.error(f"Unexpected error when pushing to {self.roll_site_header}: {sys.exc_info()[0]}")
+            L.exception(f"Unexpected error when pushing to {self.roll_site_header}: {sys.exc_info()[0]}")
             raise e
 
 

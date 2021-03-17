@@ -84,19 +84,19 @@ class CommandRouter(object):
                 task_name = deserialized_task._name
             deserialized_args.append(deserialized_task)
 
-        L.info(f"[CS] calling: [{service_name}], task_name: {task_name}, request: {deserialized_args}, len: {len(args)}")
+        L.debug(f"[CS] calling: [{service_name}], task_name={task_name}, request={deserialized_args}, len={len(args)}")
 
         start = time.time()
         try:
             call_result = _method(_instance, *deserialized_args)
         except Exception as e:
-            L.error(f'Failed to dispatch to [{service_name}], task_name: {task_name}, request: {deserialized_args}')
+            L.exception(f'Failed to dispatch to [{service_name}], task_name: {task_name}, request: {deserialized_args}')
             raise e
         elapsed = time.time() - start
-        if L.isEnabledFor(logging.DEBUG):
-            L.info(f"[CS] called (elapsed: {elapsed}): [{service_name}]: task_name: {task_name}, request: {deserialized_args}, result: {call_result}")
+        if L.isEnabledFor(logging.TRACE):
+            L.trace(f"[CS] called (elapsed={elapsed}): [{service_name}]: task_name={task_name}, request={deserialized_args}, result={call_result}")
         else:
-            L.info(f"[CS] called (elapsed: {elapsed}): [{service_name}], task_name: {task_name}, request: {deserialized_args}")
+            L.debug(f"[CS] called (elapsed={elapsed}): [{service_name}], task_name={task_name}, request={deserialized_args}")
 
         # todo:2: defaulting to pb message. need changes when other types of result is present
         return [call_result.to_proto().SerializeToString()]

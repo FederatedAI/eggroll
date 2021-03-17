@@ -552,7 +552,7 @@ class FrameSchema(val arrowSchema: VectorSchemaRoot,
 
 object FrameSchema {
   val rootAllocator = new RootAllocator(Long.MaxValue)
-  val oneFieldSchema: Schema = Schema.fromJSON(SchemaUtil.oneFieldSchemaString)
+  val oneFieldSchema: Schema = Schema.fromJSON(SchemaUtil.oneDoubleFieldSchema)
 }
 
 object FrameUtils {

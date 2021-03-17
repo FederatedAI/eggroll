@@ -32,15 +32,13 @@ transfer_port_guest = 20004
 manager_port_host = 4670
 egg_port_host = 20001
 transfer_port_host = 20002
-remote_parties = [('host', '10001')]
-get_parties = [('guest', '10002')]
 
 EGGROLL_HOME = os.environ['EGGROLL_HOME']
 
 default_props_file = f"{EGGROLL_HOME}/conf/eggroll.properties"
 
 
-def get_option(role, conf_file=default_props_file, deploy_mode=DeployModes.CLUSTER):
+def get_option(role, self_party_id=None, conf_file=default_props_file, deploy_mode=DeployModes.CLUSTER):
     print(f'conf file: {conf_file}')
     configs = configparser.ConfigParser()
 
@@ -48,7 +46,12 @@ def get_option(role, conf_file=default_props_file, deploy_mode=DeployModes.CLUST
     eggroll_configs = configs['eggroll']
 
     options = {}
-    party_id = eggroll_configs[RollSiteConfKeys.EGGROLL_ROLLSITE_PARTY_ID.key]
+
+    if self_party_id is None:
+        party_id = eggroll_configs[RollSiteConfKeys.EGGROLL_ROLLSITE_PARTY_ID.key]
+    else:
+        party_id = self_party_id
+
     options['self_party_id'] = party_id
     options['self_role'] = role
 
@@ -81,28 +84,31 @@ ER_STORE1 = ErStore(
                                      name="name"))
 
 
-roll_site_session_id = f'atest'
+#roll_site_session_id = f'atest'
+
 
 def get_debug_test_context(is_standalone=False,
         manager_port=4670,
-        egg_port=20001,
+        command_port=20001,
         transfer_port=20002,
-        session_id='testing',
         role='host',
-        props_file=default_props_file):
+        self_party_id=None,
+        props_file=default_props_file,
+        roll_site_session_id=None):
     rp_context = rpta.get_debug_test_context(is_standalone=is_standalone,
                                              manager_port=manager_port,
-                                             egg_port=egg_port,
+                                             egg_port=command_port,
                                              transfer_port=transfer_port,
-                                             session_id=session_id)
+                                             session_id='_'.join([roll_site_session_id, role, str(self_party_id)]))
 
-    rs_context = RollSiteContext(roll_site_session_id, rp_ctx=rp_context,
-                                 options=get_option(role, props_file))
+    rs_context = RollSiteContext(roll_site_session_id=roll_site_session_id,
+                                 rp_ctx=rp_context,
+                                 options=get_option(role=role, self_party_id=self_party_id, conf_file=props_file))
 
     return rs_context
 
 
-def get_standalone_context(role, props_file=default_props_file):
+def get_standalone_context(role, self_party_id, props_file=default_props_file, roll_site_session_id=None):
     options = {}
     options[SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE] = DeployModes.STANDALONE
     options[CoreConfKeys.STATIC_CONF_PATH] = props_file
@@ -110,26 +116,29 @@ def get_standalone_context(role, props_file=default_props_file):
 
     rp_context = rpta.get_standalone_context(options=options)
 
-    rs_options = get_option(role, props_file, deploy_mode=DeployModes.STANDALONE)
+    rs_options = get_option(role, self_party_id, props_file, deploy_mode=DeployModes.STANDALONE)
     options.update(rs_options)
     rs_context = RollSiteContext(roll_site_session_id, rp_ctx=rp_context,
-                                 options=get_option(role, props_file, deploy_mode=DeployModes.STANDALONE))
+                                 options=get_option(role, self_party_id, props_file, deploy_mode=DeployModes.STANDALONE))
 
     return rs_context
 
 
-def get_cluster_context(role, options: dict = None, props_file=default_props_file, party_id=None, session_id=None):
+def get_cluster_context(role,
+        options: dict = None,
+        props_file=default_props_file,
+        party_id=None,
+        roll_site_session_id=None):
     if options is None:
         options = {}
-    if session_id:
-        options['session_id'] = session_id
+    options['session_id'] = '_'.join([roll_site_session_id, role, party_id])
+    print("session_id: ", options['session_id'])
+
     options[CoreConfKeys.STATIC_CONF_PATH] = props_file
     rp_context = rpta.get_cluster_context(options=options)
 
-    rs_options = get_option(role, props_file)
+    rs_options = get_option(role, self_party_id=party_id, conf_file=props_file)
 
-    if party_id:
-        rs_options['self_party_id'] = str(party_id)
     rs_context = RollSiteContext(roll_site_session_id, rp_ctx=rp_context,
                                  options=rs_options)
 

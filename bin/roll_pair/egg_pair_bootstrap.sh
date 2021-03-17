@@ -26,6 +26,9 @@ ONE_ARG_LIST=(
 
 get_property() {
   property_value=`grep $2 $1 | cut -d '=' -f 2-`
+  if [[ -z ${property_value} ]]; then
+    property_value=$3
+  fi
 }
 
 opts=$(getopt \
@@ -100,6 +103,13 @@ logs_dir=${property_value}
 get_property ${config} "eggroll.resourcemanager.clustermanager.host"
 cluster_manager_host=${property_value}
 
+get_property ${config} "eggroll.core.malloc.mmap.threshold"
+malloc_mmap_threshold=${property_value}
+
+get_property ${config} "eggroll.core.malloc.mmap.max"
+malloc_mmap_max=${property_value}
+
+
 if [[ ! -n ${EGGROLL_STANDALONE_PORT} ]]; then
     get_property ${config} "eggroll.resourcemanager.clustermanager.port"
     cluster_manager_port=${property_value}
@@ -144,9 +154,14 @@ else
   PYTHON=${venv}/bin/python
 fi
 
+
+export MALLOC_MMAP_THRESHOLD_=${malloc_mmap_threshold}
+echo "MALLOC_MMAP_THRESHOLD_=${MALLOC_MMAP_THRESHOLD_}"
+export MALLOC_MMAP_MAX_=${malloc_mmap_max}
+echo "MALLOC_MMAP_MAX_=${MALLOC_MMAP_MAX_}"
 export PYTHONPATH=${pythonpath}:${PYTHONPATH}
-echo "PYTHONPATH: ${PYTHONPATH}"
-echo "PYTHON: `which python`"
+echo "PYTHONPATH=${PYTHONPATH}"
+echo "PYTHON=`which python`"
 
 echo "------ python version starts ------"
 ${PYTHON} --version
@@ -165,4 +180,6 @@ export EGGROLL_LOGS_DIR=${EGGROLL_LOGS_DIR}/${EGGROLL_SESSION_ID}
 mkdir -p ${EGGROLL_LOGS_DIR}
 echo "${cmd}"
 ${cmd} >> ${EGGROLL_LOGS_DIR}/${EGGROLL_LOG_FILE}.out 2>${EGGROLL_LOGS_DIR}/${EGGROLL_LOG_FILE}.err &
-echo "egg_pair processor id:$processor_id, os process id:$!" >> ${EGGROLL_LOGS_DIR}/pid.txt
+egg_pair_pid=$!
+echo "egg_pair processor id:$processor_id, os process id:${egg_pair_pid}" >> ${EGGROLL_LOGS_DIR}/pid.txt
+strace -o ${EGGROLL_LOGS_DIR}/strace-${processor_id}.log -e trace=process -tt -p ${egg_pair_pid} &

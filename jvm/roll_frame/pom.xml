@@ -33,7 +33,7 @@
 
     <properties>
         <jackson.version>2.10.4</jackson.version>
-        <jep.version>3.9.0</jep.version>
+        <jep.version>3.9.1</jep.version>
     </properties>
 
     <dependencies>

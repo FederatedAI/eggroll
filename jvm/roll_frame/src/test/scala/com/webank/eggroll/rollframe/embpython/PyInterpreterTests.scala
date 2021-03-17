@@ -26,7 +26,7 @@ import com.webank.eggroll.util.{File, SchemaUtil}
 import jep.{DirectNDArray, NDArray}
 
 class PyInterpreterTests {
-  val interp: PyInterpreter = LocalThreadPythonInterp.interpreterThreadLocal.get()
+  val interp: PyInterpreter = LocalThreadPythonInterp.interpreterThreadLocal.get
 
   @Test
   def testTransferParameters(): Unit = {
@@ -38,12 +38,12 @@ class PyInterpreterTests {
         |
         |a = [1,2]
         |m = max_op(a)
-        |print(m)
         |""".stripMargin
 
     interp.exec(codes)
     val m = interp.getValue("m").asInstanceOf[Long]
     assert(m == 2)
+
     val b = new util.ArrayList[Any]()
     b.add(3.0)
     b.add(4.4)
@@ -58,17 +58,17 @@ class PyInterpreterTests {
     val fieldCount = 3
     val rowCount = 4
     val count = fieldCount * rowCount
-    val fb = new FrameBatch(new FrameSchema(SchemaUtil.oneFieldSchemaString), count)
-    for (i <- 0 until count){
+    val fb = new FrameBatch(new FrameSchema(SchemaUtil.oneDoubleFieldSchema), count)
+    for (i <- 0 until count) {
       fb.writeDouble(0, i, i)
     }
     val data = fb.rootVectors(0).fieldVector.getDataBuffer.nioBuffer()
     data.order(ByteOrder.LITTLE_ENDIAN)
-    val dnd = new DirectNDArray[DoubleBuffer](data.asDoubleBuffer(),count)
-    interp.setValue("dnd",dnd)
+    val dnd = new DirectNDArray[DoubleBuffer](data.asDoubleBuffer(), count)
+    interp.setValue("dnd", dnd)
     interp.exec("dnd[1] = 20")
     val res = interp.getValue("dnd").asInstanceOf[DirectNDArray[DoubleBuffer]]
-    assert(fb.readDouble(0,1)==res.getData.get(1))
+    assert(fb.readDouble(0, 1) == res.getData.get(1))
   }
 
   @Test
@@ -90,7 +90,7 @@ class PyInterpreterTests {
   @Test
   def testPyTorchLocal(): Unit = {
     // run lr model
-    val pyCodes = File.getStringFromFile("jvm/roll_frame/src/test/resources/lr_test.py")
+    val pyCodes = File.getStringFromFile(System.getProperty("user.dir")+"/jvm/roll_frame/src/test/resources/lr_test.py")
     // data generate in codes
     interp.exec(pyCodes)
     val w0 = interp.getValue("w0").asInstanceOf[NDArray[_]]
@@ -103,39 +103,41 @@ class PyInterpreterTests {
   }
 
   @Test
-  def testDirectBufferDiffThread(): Unit ={
+  def testDirectBufferDiffThread(): Unit = {
     // main thread
     println(s"Thread: ${Thread.currentThread().getName}")
     val fieldCount = 3
     val rowCount = 4
     val count = fieldCount * rowCount
-    val fb = new FrameBatch(new FrameSchema(SchemaUtil.oneFieldSchemaString), count)
-    for (i <- 0 until count){
+    val fb = new FrameBatch(new FrameSchema(SchemaUtil.oneDoubleFieldSchema), count)
+    for (i <- 0 until count) {
       fb.writeDouble(0, i, i)
     }
     val data = fb.rootVectors(0).fieldVector.getDataBuffer.nioBuffer()
     data.order(ByteOrder.LITTLE_ENDIAN)
-    val dnd = new DirectNDArray[DoubleBuffer](data.asDoubleBuffer(),count)
-    interp.setValue("dnd",dnd)
+    val dnd = new DirectNDArray[DoubleBuffer](data.asDoubleBuffer(), count)
+    interp.setValue("dnd", dnd)
     interp.exec("dnd[0] = 10")
     println(fb.rootVectors(0).getDataBufferAddress)
     // second thread
-    new Thread() {
+    val t = new Thread() {
       override def run(): Unit = {
         try {
           println(s"Thread: ${Thread.currentThread().getName}")
           val interp: PyInterpreter = LocalThreadPythonInterp.interpreterThreadLocal.get()
           val data1 = fb.rootVectors(0).fieldVector.getDataBuffer.nioBuffer()
           data1.order(ByteOrder.LITTLE_ENDIAN)
-          val dnd1 = new DirectNDArray[DoubleBuffer](data1.asDoubleBuffer(),count)
-          interp.setValue("dnd1",dnd1)
+          val dnd1 = new DirectNDArray[DoubleBuffer](data1.asDoubleBuffer(), count)
+          interp.setValue("dnd1", dnd1)
           interp.exec("dnd1[1] = 20")
         } catch {
           case e: Throwable => e.printStackTrace()
         }
       }
-    }.start()
-    Thread.sleep(2000)
-    assert(fb.readDouble(0,0) == 10.0)
-    assert(fb.readDouble(0,1) == 20.0)}
+    }
+    t.start()
+    t.join()
+    assert(fb.readDouble(0, 0) == 10.0)
+    assert(fb.readDouble(0, 1) == 20.0)
+  }
 }

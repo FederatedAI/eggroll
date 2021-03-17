@@ -42,6 +42,7 @@ class FrameTransferTests {
       }
     }.start()
 
+    Thread.sleep(1000)
     service.runClient(host, port)
     new Thread() {
       override def run(): Unit = {
@@ -68,7 +69,6 @@ class FrameTransferTests {
     println("recv time", System.currentTimeMillis() - start)
   }
 
-
   @Test
   def testSendNioMultiThreads(): Unit = {
     val path = "aa"
@@ -88,6 +88,7 @@ class FrameTransferTests {
         }
       }
     }.start()
+    Thread.sleep(1000)
     val start = System.currentTimeMillis()
     clients.foreach(_.runClient(host, port))
     (0 until batchCount).foreach { i =>
@@ -138,6 +139,7 @@ class FrameTransferTests {
         }
       }
     }.start()
+    Thread.sleep(1000)
     client.runClient(host, port)
     val start = System.currentTimeMillis()
     (0 until batchCount - 1).foreach { i =>
@@ -205,6 +207,7 @@ class FrameTransferTests {
         }
       }
     }.start()
+    Thread.sleep(1000)
     val client = new NioTransferEndpoint
     client.runClient(host, port)
 
@@ -216,7 +219,7 @@ class FrameTransferTests {
 
   @Test
   def testIsReachable(): Unit ={
-    println(HttpUtil.isReachable("127.0.0.1"))
+    assert(HttpUtil.isReachable("127.0.0.1"))
   }
 
   @Test

@@ -11,7 +11,7 @@ object Script {
     tensor.setSize(fb.rowCount)
     val ptr = Torch.getTorchScript(path)
     val partitionResult = Torch.run(ptr, Array(tensor), parameters)
-    val rootSchema = new FrameSchema(SchemaUtil.oneFieldSchemaString)
+    val rootSchema = new FrameSchema(SchemaUtil.oneDoubleFieldSchema)
     val outFb = new FrameBatch(rootSchema, partitionResult.size)
     FrameUtils.copyMemory(outFb.rootVectors(0), partitionResult)
     outFb
@@ -28,7 +28,7 @@ object Script {
 
     val ptr = Torch.getTorchScript(path)
     val partitionResult = Torch.run(ptr, tensors, parameters)
-    val rootSchema = new FrameSchema(SchemaUtil.oneFieldSchemaString)
+    val rootSchema = new FrameSchema(SchemaUtil.oneDoubleFieldSchema)
     val outFb = new FrameBatch(rootSchema, partitionResult.size)
     FrameUtils.copyMemory(outFb.rootVectors(0), partitionResult)
     outFb

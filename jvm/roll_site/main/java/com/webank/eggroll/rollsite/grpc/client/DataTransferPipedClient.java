@@ -80,7 +80,7 @@ public class DataTransferPipedClient {
         needSecureChannel = proxyServerConf.isSecureServer();
 
         //.setCallerStreamObserverClassAndInitArgs(SameTypeCallerResponseStreamObserver.class)
-        LOGGER.info("ip: {}, Port: {}", endpoint.getIp(), endpoint.getPort());
+        LOGGER.trace("ip={}, Port={}", endpoint.getIp(), endpoint.getPort());
         context.setStubClass(DataTransferServiceGrpc.DataTransferServiceStub.class)
             .setServerEndpoint(endpoint.getIp(), endpoint.getPort())
             .setSecureRequest(needSecureChannel)
@@ -111,17 +111,22 @@ public class DataTransferPipedClient {
         }
 
         while (!inited.get()) {
-            LOGGER.info("[DEBUG][CLUSTERCOMM] proxyClient not inited yet");
+            LOGGER.trace("[DEBUG][ROLLSITE] proxyClient not inited yet");
 
             try {
                 Thread.sleep(50);
             } catch (InterruptedException e) {
-                LOGGER.error("error in doPush: " + ExceptionUtils.getStackTrace(e));
+                LOGGER.error("error in doPush", e);
                 Thread.currentThread().interrupt();
             }
         }
-        LOGGER.info("[DEBUG][CLUSTERCOMM] doPush call processCallerStreamingRpc");
-        pushTemplate.processCallerStreamingRpc();
+        LOGGER.trace("[DEBUG][ROLLSITE] doPush call processCallerStreamingRpc");
+
+        if (pipe.hasError()) {
+            pushTemplate.errorCallerStreamingRpc(pipe.getError());
+        } else {
+            pushTemplate.processCallerStreamingRpc();
+        }
     }
 
     public synchronized void completePush() {
@@ -131,14 +136,12 @@ public class DataTransferPipedClient {
         }
         if (!pipe.hasError()) {
             pushTemplate.completeStreamingRpc();
-        } else {
-            pushTemplate.errorCallerStreamingRpc(pipe.getError());
         }
     }
 
     public void pull(Proxy.Metadata metadata, Pipe pipe) {
         String onelineStringMetadata = ToStringUtils.toOneLineString(metadata);
-        LOGGER.info("[PULL][CLIENT] client send pull to server: {}", onelineStringMetadata);
+        LOGGER.debug("[PULL][CLIENT] client send pull to server={}", onelineStringMetadata);
         DataTransferServiceGrpc.DataTransferServiceStub stub = getStub(metadata.getDst(), metadata.getSrc());
 
         final CountDownLatch finishLatch = new CountDownLatch(1);
@@ -147,13 +150,13 @@ public class DataTransferPipedClient {
                 proxyGrpcStreamObserverFactory.createClientPullResponseStreamObserver(pipe, finishLatch, metadata);
 
         stub.pull(metadata, responseObserver);
-        LOGGER.info("[PULL][CLIENT] pull stub: {}, metadata: {}",
+        LOGGER.trace("[PULL][CLIENT] pull stub={}, metadata={}",
                 stub.getChannel(), onelineStringMetadata);
 
         try {
             finishLatch.await(MAX_AWAIT_HOURS, TimeUnit.HOURS);
         } catch (InterruptedException e) {
-            LOGGER.error("[PULL][CLIENT] client pull: finishLatch.await() interrupted");
+            LOGGER.error("[PULL][CLIENT] client pull: finishLatch.await() interrupted. metadata={}", onelineStringMetadata);
             responseObserver.onError(ErrorUtils.toGrpcRuntimeException(e));
             pipe.onError(e);
             Thread.currentThread().interrupt();
@@ -200,8 +203,8 @@ public class DataTransferPipedClient {
     public void unaryCall(Proxy.Packet packet, Pipe pipe) {
         Preconditions.checkNotNull(packet);
         Proxy.Metadata header = packet.getHeader();
-        LOGGER.info("[UNARYCALL][CLIENT] client send unary call to server: {}", ToStringUtils.toOneLineString(header));
-        //LOGGER.info("[UNARYCALL][CLIENT] packet: {}", toStringUtils.toOneLineString(packet));
+        String oneLineStringMetadata = ToStringUtils.toOneLineString(header);
+        LOGGER.debug("[UNARYCALL][CLIENT] client send unary call to server. metadata={}", oneLineStringMetadata);
 
         DataTransferServiceGrpc.DataTransferServiceStub stub = getStub(
                 packet.getHeader().getSrc(), packet.getHeader().getDst());
@@ -210,9 +213,6 @@ public class DataTransferPipedClient {
         StreamObserver<Proxy.Packet> responseObserver = proxyGrpcStreamObserverFactory
                 .createClientUnaryCallResponseStreamObserver(pipe, finishLatch, packet.getHeader());
         stub.unaryCall(packet, responseObserver);
-
-        LOGGER.info("[UNARYCALL][CLIENT] unary call stub: {}, metadata: {}",
-                stub.getChannel(), ToStringUtils.toOneLineString(header));
 
         try {
             finishLatch.await(MAX_AWAIT_HOURS, TimeUnit.HOURS);
@@ -229,7 +229,8 @@ public class DataTransferPipedClient {
 
     public void unaryCall2(Proxy.Packet request, Pipe pipe, boolean initialize) {
         Proxy.Metadata header = request.getHeader();
-        LOGGER.info("[UNARYCALL][CLIENT] client send unary call to server: {}", header);
+        String oneLineStringMetadata = ToStringUtils.toOneLineString(header);
+        LOGGER.debug("[UNARYCALL][CLIENT] client send unary call to server. metadata={}", oneLineStringMetadata);
         GrpcClientContext<DataTransferServiceGrpc.DataTransferServiceStub, Proxy.Packet, Proxy.Packet> context
             = new GrpcClientContext<>();
 
@@ -243,8 +244,8 @@ public class DataTransferPipedClient {
                 .createClientUnaryCallResponseStreamObserver(pipe, finishLatch, request.getHeader());
         stub.unaryCall(request, responseObserver);
 
-        LOGGER.info("[UNARYCALL][CLIENT] unary call stub: {}, metadata: {}",
-                stub.getChannel(), metadata);
+        LOGGER.info("[UNARYCALL][CLIENT] unary call stub={}, metadata={}",
+                stub.getChannel(), oneLineStringMetadata);
 
         try {
             finishLatch.await(MAX_AWAIT_HOURS, TimeUnit.HOURS);
@@ -313,7 +314,7 @@ public class DataTransferPipedClient {
             stub = proxyGrpcStubFactory.getAsyncStub(endpoint);
         }
 
-        LOGGER.info("[ROUTE] route info: {} routed to {}", ToStringUtils.toOneLineString(to),
+        LOGGER.debug("[ROUTE] route info={} routed to endpoint={}", ToStringUtils.toOneLineString(to),
                 ToStringUtils.toOneLineString(fdnRouter.route(to)));
 
         fdnRouter.route(from);

@@ -54,7 +54,7 @@ if __name__ == '__main__':
         os.makedirs(os.path.join(eggroll_logs_dir, 'eggroll'))
 
     javahome = get_property(conf_file, "eggroll.resourcemanager.bootstrap.roll_pair_master.javahome")
-    classpath = os.path.join(eggroll_home, 'conf/') + ";" + os.path.join(eggroll_home, 'lib/*')
+    classpath = os.path.join(eggroll_home, 'jvm/core/target/lib/*') + ";" + os.path.join(eggroll_home, 'lib/*') + ";" + os.path.join(eggroll_home, 'jvm/roll_pair/target/lib/*')
 
     if platform.system() == "Windows":
         if javahome is None:

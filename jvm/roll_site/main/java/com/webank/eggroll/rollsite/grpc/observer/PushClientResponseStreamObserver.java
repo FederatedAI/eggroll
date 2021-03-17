@@ -20,6 +20,7 @@ import com.webank.ai.eggroll.api.networking.proxy.Proxy;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy.Metadata;
 import com.webank.ai.eggroll.api.networking.proxy.Proxy.Packet;
 import com.webank.eggroll.core.grpc.observer.BaseCallerResponseStreamObserver;
+import com.webank.eggroll.core.util.GrpcUtils;
 import com.webank.eggroll.core.util.ToStringUtils;
 import com.webank.eggroll.rollsite.infra.Pipe;
 import com.webank.eggroll.rollsite.infra.impl.PacketQueueSingleResultPipe;
@@ -36,6 +37,7 @@ public class PushClientResponseStreamObserver extends BaseCallerResponseStreamOb
     private Pipe transferBroker;
     // private DelayedResult<Metadata> delayedResult;
     private Proxy.Metadata metadata;
+    private String oneLineMetadata;
 
     public PushClientResponseStreamObserver(CountDownLatch finishLatch, Pipe pipe) {
         super(finishLatch);
@@ -45,30 +47,29 @@ public class PushClientResponseStreamObserver extends BaseCallerResponseStreamOb
     @Override
     public void onNext(Proxy.Metadata metadata) {
         //LOGGER.info("[PUSH][CLIENTOBSERVER][ONNEXT]SendClientResponseStreamObserver.onNext. metadata: {}", toStringUtils.toOneLineString(metadata));
-        LOGGER.info("[PUSH][CLIENTOBSERVER][ONNEXT]PushClientResponseStreamObserver.onNext");
+        this.metadata = metadata;
+        this.oneLineMetadata = ToStringUtils.toOneLineString(metadata);
+        LOGGER.trace("[PUSH][CLIENTOBSERVER][ONNEXT] PushClientResponseStreamObserver.onNext(), metadata: {}",
+            oneLineMetadata);
         //this.metadata = metadata;
         // this.delayedResult.setResult(metadata);
-        this.metadata = metadata;
+
         //resultCallback.setResult(metadata);
         PacketQueueSingleResultPipe convertedPipe = (PacketQueueSingleResultPipe) transferBroker;
         convertedPipe.setResult(metadata);
-
-        LOGGER.info("[PUSH][CLIENTOBSERVER][ONNEXT] PushClientResponseStreamObserver.onNext(), metadata: {}",
-            ToStringUtils.toOneLineString(metadata));
-
     }
 
     @Override
     public void onError(Throwable throwable) {
         //LOGGER.info("[PUSH][CLIENTOBSERVER][ONERROR]SendClientResponseStreamObserver.onError. metadata: {}", toStringUtils.toOneLineString(metadata));
-        LOGGER.info("[PUSH][CLIENTOBSERVER][ONERROR]SendClientResponseStreamObserver.onError.");
+        LOGGER.error("[PUSH][CLIENTOBSERVER][ONERROR]SendClientResponseStreamObserver.onError, metadata={}", oneLineMetadata);
         transferBroker.onError(throwable);
         super.onError(throwable);
     }
 
     @Override
     public void onCompleted() {
-        LOGGER.info("[PUSH][CLIENTOBSERVER][ONCOMPLETE]SendClientResponseStreamObserver.onComplete. metadata: {}", ToStringUtils.toOneLineString(metadata));
+        LOGGER.trace("[PUSH][CLIENTOBSERVER][ONCOMPLETE]SendClientResponseStreamObserver.onComplete. metadata={}", oneLineMetadata);
         super.onCompleted();
         transferBroker.onComplete();
     }

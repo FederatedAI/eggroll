@@ -36,7 +36,7 @@ def _method_profile_logger(func):
         try:
             outerframes = inspect.getouterframes(inspect.currentframe(), 2)
             real_caller = outerframes[1]
-            L.info(f'{{"metric_type": "func_profile", '
+            L.trace(f'{{"metric_type": "func_profile", '
                    f'"qualname": "{func.__qualname__}", '
                    f'"caller": "{real_caller.filename.rsplit("/", 1)[-1]}:{real_caller.lineno}", '
                    f'"cpu_time": {end_cpu_time - start_cpu_time}, '
@@ -44,7 +44,7 @@ def _method_profile_logger(func):
 
             return result
         except Exception as e:
-            L.info(f'{{"metric_type": "func_profile", '
+            L.trace(f'{{"metric_type": "func_profile", '
                    f'"qualname": "{func.__qualname__}", '
                    f'"caller": "unknown", '
                    f'"cpu_time": {end_cpu_time - start_cpu_time}, '

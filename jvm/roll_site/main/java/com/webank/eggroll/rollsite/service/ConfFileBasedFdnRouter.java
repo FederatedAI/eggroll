@@ -100,11 +100,11 @@ public class ConfFileBasedFdnRouter implements FdnRouter {
     @Override
     public synchronized void setRouteTable(String filename) {
         if (StringUtils.isBlank(routeTableFilename)) {
-            LOGGER.info("setting routeTable path to {}", filename);
+            LOGGER.debug("setting routeTable path={}", filename);
             this.routeTableFilename = filename;
             init();
         } else {
-            LOGGER.warn("trying to reset routeTable path. current path: {}, tried path: {}",
+            LOGGER.debug("trying to reset routeTable path. current path={}, new path={}",
                     routeTableFilename, filename);
         }
     }
@@ -258,74 +258,8 @@ public class ConfFileBasedFdnRouter implements FdnRouter {
 
 
     @Override
-    public void updateRouteTable(String fileName, String partyId, String ip, int port) {
-        String ws;
-        String jsonString;
-
-        System.out.println("filename:" + fileName);
-
-        try {
-            File jsonFile = new File(fileName);
-            FileReader fileReader = new FileReader(jsonFile);
-
-            Reader reader = new InputStreamReader(new FileInputStream(jsonFile), "utf-8");
-            int ch = 0;
-            StringBuffer data = new StringBuffer();
-            while ((ch = reader.read()) != -1) {
-                data.append((char) ch);
-            }
-
-            //System.out.println("data:" + data);
-            JSONObject seg0 = new JSONObject();
-            JSONObject seg1 = new JSONObject();
-            JSONObject seg2 = new JSONObject();
-
-            jsonString = data.toString();
-            JSONObject dataJson = new JSONObject(jsonString);
-            //JSONObject dataJson = new JSONObject(data);
-            //JSONArray item = dataJson.getJSONArray("route_table");
-
-            seg0.put("ip", ip);
-            seg0.put("port", port);
-
-            JSONArray jsonArray = new JSONArray();
-            jsonArray.put(0, seg0);
-
-            seg1.put("default", jsonArray);
-            //seg2.put(partId, seg1);
-
-            JSONObject addJson = dataJson.getJSONObject("route_table");
-            addJson.put(partyId, seg1);
-
-            dataJson.put("route_table", addJson);
-
-            ws = dataJson.toString();
-            //System.out.println(ws);
-
-            fileReader.close();
-            reader.close();
-
-            jsonString = format(ws);
-            File file = new File(fileName);
-            if (!file.getParentFile().exists()) {
-                file.getParentFile().mkdirs();
-            }
-            if (file.exists()) {
-                file.delete();
-            }
-            file.createNewFile();
-
-            Writer write = new OutputStreamWriter(new FileOutputStream(file), "UTF-8");
-            write.write(jsonString);
-            write.flush();
-            write.close();
-        } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+    public void updateRouteTable() {
+        init();
     }
 
     @Override
@@ -352,13 +286,14 @@ public class ConfFileBasedFdnRouter implements FdnRouter {
             jsonReader = new JsonReader(new FileReader(routeTableFilename.replaceAll("\\.\\./", "")));
             confJson = jsonParser.parse(jsonReader).getAsJsonObject();
         } catch (FileNotFoundException e) {
-            LOGGER.error("File not found: {}", routeTableFilename);
+            LOGGER.error("File not found. path={}", routeTableFilename);
             throw new RuntimeException(e);
         } finally {
             if (jsonReader != null) {
                 try {
                     jsonReader.close();
-                } catch (IOException ignore) {
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
                 }
             }
         }
@@ -366,13 +301,14 @@ public class ConfFileBasedFdnRouter implements FdnRouter {
         initRouteTable(confJson.getAsJsonObject("route_table"));
         initPermission(confJson.getAsJsonObject("permission"));
 
-        LOGGER.info("refreshed route table at: {}", routeTableFilename);
+        LOGGER.debug("refreshed route table at={}", routeTableFilename);
     }
 
     @Override
     public BasicMeta.Endpoint route(Proxy.Topic topic) {
         LOGGER.debug("route:" + ToStringUtils.toOneLineString(topic));
         Preconditions.checkNotNull(topic, "topic cannot be null");
+        LOGGER.trace("routing to topic={}", ToStringUtils.toOneLineString(topic));
 
         BasicMeta.Endpoint result = topicEndpointMapping.getOrDefault(topic, null);
 
@@ -447,15 +383,15 @@ public class ConfFileBasedFdnRouter implements FdnRouter {
 
             pos = pos % len;
 
-            LOGGER.info("route: hashcode: {}, len: {}, pos: {}", topic.hashCode(), len, pos);
+            LOGGER.trace("route: hashcode: {}, len: {}, pos: {}", topic.hashCode(), len, pos);
 
             result = endpoints.get(pos);
         }
 
-        topicEndpointMapping.put(topic, result);
+/*        topicEndpointMapping.put(topic, result);
         if (noCallbackTopic != null && !topicEndpointMapping.containsKey(noCallbackTopic)) {
             topicEndpointMapping.put(noCallbackTopic, result);
-        }
+        }*/
 
         return result;
     }
@@ -486,7 +422,8 @@ public class ConfFileBasedFdnRouter implements FdnRouter {
                 newRouteTable.put(coordinatorKey, roleTable);
             }
 
-            if (coordinatorKey.equals(proxyServerConf.getCoordinator())) {
+            if (coordinatorKey.equals(proxyServerConf.getCoordinator())
+                    || coordinatorKey.equals(proxyServerConf.getPartyId())) {
                 isIntranet = true;
             }
 
@@ -531,6 +468,7 @@ public class ConfFileBasedFdnRouter implements FdnRouter {
                     }
                 }
             }
+            isIntranet = false;
         }
 
         routeTable = newRouteTable;

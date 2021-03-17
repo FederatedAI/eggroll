@@ -16,9 +16,9 @@
 import functools
 import queue
 import threading
-from concurrent.futures import ThreadPoolExecutor
 
-from eggroll.core.conf_keys import RollPairConfKeys
+from eggroll.core.conf_keys import CoreConfKeys, RollPairConfKeys
+from eggroll.core.datastructure import create_executor_pool
 from eggroll.core.datastructure.broker import FifoBroker, BrokerClosed
 from eggroll.core.pair_store.format import PairBinReader, PairBinWriter, ArrayByteBuffer
 from eggroll.core.transfer.transfer_service import TransferClient, \
@@ -95,16 +95,22 @@ class BatchBroker(object):
 
 
 class TransferPair(object):
-    _max_workers = int(RollPairConfKeys.EGGROLL_ROLLPAIR_TRANSFERPAIR_EXECUTOR_POOL_MAX_SIZE.get())
-    _executor_pool = ThreadPoolExecutor(
-            max_workers=_max_workers,
-            thread_name_prefix="transferpair-pool")
-    L.info(f'_executor pool size: {_max_workers}')
+    _executor_pool = None
+    _executor_pool_lock = threading.Lock()
 
     def __init__(self, transfer_id: str):
         # params from __init__ params
         self.__transfer_id = transfer_id
-        # self._executor_pool = ThreadPoolExecutor(max_workers=5000, thread_name_prefix="TransferPair-pool")
+        if TransferPair._executor_pool is None:
+            with TransferPair._executor_pool_lock:
+                if TransferPair._executor_pool is None:
+                    _max_workers = int(RollPairConfKeys.EGGROLL_ROLLPAIR_TRANSFERPAIR_EXECUTOR_POOL_MAX_SIZE.get())
+                    _thread_pool_type = CoreConfKeys.EGGROLL_CORE_DEFAULT_EXECUTOR_POOL.get()
+                    TransferPair._executor_pool = create_executor_pool(
+                            canonical_name=_thread_pool_type,
+                            max_workers=_max_workers,
+                            thread_name_prefix="transferpair_pool")
+                    L.info(f'transfer pair _executor_pool max_workers={_max_workers}')
 
     def __generate_tag(self, partition_id):
         return generate_task_id(job_id=self.__transfer_id, partition_id=partition_id)
@@ -113,23 +119,23 @@ class TransferPair(object):
     def scatter(self, input_broker, partition_function, output_store):
         output_partitions = output_store._partitions
         total_partitions = len(output_partitions)
-        L.debug(f'scatter starts for {self.__transfer_id}, total partitions: {total_partitions}, output_store: {output_store}')
+        L.trace(f'scatter starts for transfer_id={self.__transfer_id}, total_partitions={total_partitions}, output_store={output_store}')
         partitioned_brokers = [FifoBroker() for i in range(total_partitions)]
         partitioned_bb = [BatchBroker(v) for v in partitioned_brokers]
         futures = []
 
         @_exception_logger
         def do_partition():
-            L.debug(f'do_partition start for {self.__transfer_id}')
+            L.trace(f'do_partition start for transfer_id={self.__transfer_id}')
             done_count = 0
             for k, v in BatchBroker(input_broker):
                 partitioned_bb[partition_function(k)].put((k, v))
                 done_count += 1
-            L.debug(f"do_partition end for transfer id: {self.__transfer_id}, "
-                    f"total partitions: {total_partitions}, "
-                    f"cur done partition count: {done_count}")
-            for broker in partitioned_bb:
-                broker.signal_write_finish()
+            for pb in partitioned_bb:
+                pb.signal_write_finish()
+            L.trace(f"do_partition end for transfer id={self.__transfer_id}, "
+                    f"total partitions={total_partitions}, "
+                    f"cur done partition count={done_count}")
             return done_count
         futures.append(self._executor_pool.submit(do_partition))
         client = TransferClient()
@@ -138,11 +144,11 @@ class TransferPair(object):
             send_all_futs = []
             for i, part in enumerate(output_partitions):
                 tag = self.__generate_tag(i)
-                L.debug(f"do_send_all for tag: {tag}, "
-                        f"active thread count: {threading.active_count()}")
+                L.trace(f"do_send_all for tag={tag}, "
+                        f"active thread count={threading.active_count()}")
                 fut = client.send(
                         TransferPair.pair_to_bin_batch(
-                                BatchBroker(partitioned_brokers[i])),
+                            BatchBroker(partitioned_brokers[i])),
                                 part._processor._transfer_endpoint, tag)
                 send_all_futs.append(fut)
             return CompositeFuture(send_all_futs).result()
@@ -152,11 +158,12 @@ class TransferPair(object):
 
     @staticmethod
     @_exception_logger
-    def pair_to_bin_batch(input_iter, sendbuf_size=RollPairConfKeys.EGGROLL_ROLLPAIR_TRANSFERPAIR_SENDBUF_SIZE.default_value):
+    def pair_to_bin_batch(input_iter, limit=None, sendbuf_size=-1):
         import os
-        sendbuf_size = int(os.environ.get(RollPairConfKeys.EGGROLL_ROLLPAIR_TRANSFERPAIR_SENDBUF_SIZE.key, sendbuf_size))
+        if sendbuf_size <= 0:
+            sendbuf_size = int(RollPairConfKeys.EGGROLL_ROLLPAIR_TRANSFERPAIR_SENDBUF_SIZE.get())
 
-        L.debug(f'pair_to_bin_batch start')
+        L.trace(f'pair_to_bin_batch start')
         pair_count = 0
         ba = None
         buffer = None
@@ -182,22 +189,24 @@ class TransferPair(object):
                 try:
                     writer.write(k, v)
                     pair_count += 1
+                    if limit is not None and pair_count >= limit:
+                        break
                 except IndexError as e:
                     # TODO:0: replace 1024 with constant
                     yield commit(max(sendbuf_size, len(k) + len(v) + 1024))
                     writer.write(k, v)
-            L.debug(f'pair_to_bin_batch final pair count: {pair_count}')
+            L.trace(f'pair_to_bin_batch final pair count={pair_count}')
             yield commit()
         except Exception as e:
             L.exception(f"bin_batch_generator error:{e}")
-        L.debug(f'generate_bin_batch end. pair count: {pair_count}')
+        L.trace(f'generate_bin_batch end. pair count={pair_count}')
 
     @staticmethod
     def bin_batch_to_pair(input_iter):
-        L.debug(f"bin_batch_to_pair start")
+        L.trace(f"bin_batch_to_pair start")
         write_count = 0
         for batch in input_iter:
-            L.debug(f"bin_batch_to_pair: cur batch size: {len(batch)}")
+            L.trace(f"bin_batch_to_pair: cur batch size={len(batch)}")
             try:
                 bin_data = ArrayByteBuffer(batch)
                 reader = PairBinReader(pair_buffer=bin_data, data=batch)
@@ -206,8 +215,8 @@ class TransferPair(object):
                     write_count += 1
             except IndexError as e:
                 L.exception(f"error bin bath format: {e}")
-            L.debug(f"bin_batch_to_pair batch ends. total write count: {write_count}")
-        L.debug(f"bin_batch_to_pair total_written count: {write_count}")
+            L.trace(f"bin_batch_to_pair batch ends. total write count={write_count}")
+        L.trace(f"bin_batch_to_pair total_written count={write_count}")
 
     def store_broker(self, store_partition, is_shuffle, total_writers=1, reduce_op=None):
         """
@@ -224,7 +233,7 @@ class TransferPair(object):
             tag = self.__generate_tag(store_partition_inner._id) if is_shuffle_inner else self.__transfer_id
             try:
                 broker = TransferService.get_or_create_broker(tag, write_signals=total_writers_inner)
-                L.debug(f"do_store start for tag: {tag}")
+                L.trace(f"do_store start for tag={tag}")
                 batches = TransferPair.bin_batch_to_pair(b.data for b in broker)
 
                 serdes = create_serdes(store_partition_inner._store_locator._serdes)
@@ -236,7 +245,7 @@ class TransferPair(object):
                     merger = None
 
                 with create_adapter(store_partition_inner) as db:
-                    L.debug(f"do_store create_db for tag: {tag} for partition: {store_partition_inner}")
+                    L.trace(f"do_store create_db for tag={tag} for partition={store_partition_inner}")
                     with db.new_batch() as wb:
                         for k, v in batches:
                             if reduce_op_inner is None:
@@ -244,20 +253,21 @@ class TransferPair(object):
                             else:
                                 wb.merge(merger, k, v)
                             done_cnt += 1
-                    L.debug(f"do_store done for tag: {tag} for partition: {store_partition_inner}")
-                TransferService.remove_broker(tag)
+                    L.trace(f"do_store done for tag={tag} for partition={store_partition_inner}")
             except Exception as e:
-                L.error(f'Error in do_store for tag {tag}')
+                L.exception(f'Error in do_store for tag={tag}')
                 raise e
+            finally:
+                TransferService.remove_broker(tag)
             return done_cnt
         return self._executor_pool.submit(do_store, store_partition, is_shuffle, total_writers, reduce_op)
 
     def gather(self, store):
-        L.debug(f'gather start for transfer id: {self.__transfer_id}, store: {store}')
+        L.trace(f'gather start for transfer_id={self.__transfer_id}, store={store}')
         client = TransferClient()
         for partition in store._partitions:
             tag = self.__generate_tag(partition._id)
-            L.debug(f'gather for tag: {tag}, partition: {partition}')
+            L.trace(f'gather for tag={tag}, partition={partition}')
             target_endpoint = partition._processor._transfer_endpoint
             batches = (b.data for b in client.recv(endpoint=target_endpoint, tag=tag, broker=None))
             yield from TransferPair.bin_batch_to_pair(batches)
