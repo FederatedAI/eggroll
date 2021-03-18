@@ -32,7 +32,7 @@
     <name>Eggroll RollFrame</name>
 
     <properties>
-        <jackson.version>2.10.4</jackson.version>
+        <jackson.version>2.12.1</jackson.version>
         <jep.version>3.9.1</jep.version>
     </properties>
 
@@ -149,6 +149,7 @@
                             <!--                            <excludeGroupIds>org.scala-lang,org.slf4j,junit,com.fasterxml.jackson.core</excludeGroupIds>-->
                             <!--                            <excludeArtifactIds>commons-lang3</excludeArtifactIds>-->
                             <!--                            <excludeScope>provided</excludeScope>-->
+                                <excludeGroupIds>org.apache.hadoop</excludeGroupIds>
                             <outputDirectory>${project.build.directory}/lib</outputDirectory>
                         </configuration>
                     </execution>
