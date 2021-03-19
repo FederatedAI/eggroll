@@ -40,6 +40,7 @@ class FrameFormat {
 /**
  * Store all data in a column
  */
+@deprecated
 class ColumnFrame(val fb: FrameBatch, val matrixCols: Int) {
   val matrixRows: Int = fb.rowCount / matrixCols
 
@@ -63,6 +64,7 @@ class ColumnFrame(val fb: FrameBatch, val matrixCols: Int) {
  * @param virtualRowStart begin index of virtual Row
  * @param virtualRowCount virtual rows count
  */
+
 class FrameBatch(val rootSchema: FrameSchema,
                  allocateNewRows: Int = -1,
                  virtualRowStart: Int = 0,
@@ -81,7 +83,7 @@ class FrameBatch(val rootSchema: FrameSchema,
     }
     rootSchema.arrowSchema.setRowCount(allocateNewRows)
   }
-  Integer.MAX_VALUE
+
   val fieldCount: Int = rootSchema.columnarVectors.length
 
   lazy val memorySize: Int = {
@@ -187,6 +189,7 @@ class FrameBatch(val rootSchema: FrameSchema,
   def getList(field: Int, row: Int, initialSize: Int = -1): FrameVector =
     rootVectors(field).getList(row, initialSize)
 
+  @deprecated
   private def getRowsList: List[Int] = {
     val realColumns = ColumnVectors.MAX_EACH_PART_SIZE / fieldCount
     if (realColumns > rowCount) {
@@ -282,20 +285,6 @@ object ColumnVectors {
   val MAX_EACH_PART_SIZE = 134217727 //134217728
 }
 
-
-class FrameVectorUnSafe(val fieldVector: FieldVector,
-                        val virtualRowStart: Int = 0,
-                        val virtualRowCount: Int = -1) extends FrameVector {
-  override def writeDouble(index: Int, item: Double): Unit =
-    fieldVector.asInstanceOf[Float8Vector].set(index + virtualRowStart, item)
-
-  override def writeLong(index: Int, item: Long): Unit =
-    fieldVector.asInstanceOf[BigIntVector].set(index + virtualRowStart, item)
-
-  override def writeInt(index: Int, item: Int): Unit =
-    fieldVector.asInstanceOf[IntVector].set(index + virtualRowStart, item)
-}
-
 trait FrameVector {
   val fieldVector: FieldVector
   val virtualRowStart: Int
@@ -368,17 +357,29 @@ object FrameVector {
   }
 }
 
+class FrameVectorUnSafe(val fieldVector: FieldVector,
+                        val virtualRowStart: Int = 0,
+                        val virtualRowCount: Int = -1) extends FrameVector {
+  override def writeDouble(index: Int, item: Double): Unit =
+    fieldVector.asInstanceOf[Float8Vector].set(index + virtualRowStart, item)
+
+  override def writeLong(index: Int, item: Long): Unit =
+    fieldVector.asInstanceOf[BigIntVector].set(index + virtualRowStart, item)
+
+  override def writeInt(index: Int, item: Int): Unit =
+    fieldVector.asInstanceOf[IntVector].set(index + virtualRowStart, item)
+}
 
 class FrameVectorSafe(val fieldVector: FieldVector,
                       val virtualRowStart: Int = 0,
                       val virtualRowCount: Int = -1) extends FrameVector {
-  def writeDouble(index: Int, item: Double): Unit =
+  override def writeDouble(index: Int, item: Double): Unit =
     fieldVector.asInstanceOf[Float8Vector].setSafe(index + virtualRowStart, item)
 
-  def writeLong(index: Int, item: Long): Unit =
+  override def writeLong(index: Int, item: Long): Unit =
     fieldVector.asInstanceOf[BigIntVector].setSafe(index + virtualRowStart, item)
 
-  def writeInt(index: Int, item: Int): Unit =
+  override def writeInt(index: Int, item: Int): Unit =
     fieldVector.asInstanceOf[IntVector].setSafe(index + virtualRowStart, item)
 }
 
@@ -444,22 +445,22 @@ class FrameReader(val arrowReader: ArrowStreamReusableReader,
 
   def this(path: String) {
     this(new ArrowStreamReusableReader(
-      new FileInputStream(path), new RootAllocator(Integer.MAX_VALUE)))
+      new FileInputStream(path), new RootAllocator(Long.MaxValue)))
   }
 
   def this(adapter: BlockDeviceAdapter) {
     this(new ArrowStreamReusableReader(
-      adapter.getInputStream(), new RootAllocator(Integer.MAX_VALUE)))
+      adapter.getInputStream(), new RootAllocator(Long.MaxValue)))
   }
 
   def this(inputStream: InputStream) {
     this(new ArrowStreamReusableReader(
-      inputStream, new RootAllocator(Integer.MAX_VALUE)))
+      inputStream, new RootAllocator(Long.MaxValue)))
   }
 
   def this(in: ReadableByteChannel) {
     this(new ArrowStreamReusableReader(
-      in, new RootAllocator(Integer.MAX_VALUE)))
+      in, new RootAllocator(Long.MaxValue)))
   }
 
   def close(): Unit = arrowReader.close(true)
@@ -551,7 +552,7 @@ class FrameSchema(val arrowSchema: VectorSchemaRoot,
 
 object FrameSchema {
   val rootAllocator = new RootAllocator(Long.MaxValue)
-  val oneFieldSchema: Schema = Schema.fromJSON(SchemaUtil.oneFieldSchemaString)
+  val oneFieldSchema: Schema = Schema.fromJSON(SchemaUtil.oneDoubleFieldSchema)
 }
 
 object FrameUtils {
@@ -649,15 +650,45 @@ object FrameUtils {
   }
 
   /**
-   * a fast way to copy data from heap memory to director memory
+   * a fast way to copy data from heap memory to direct memory
    */
-  def copyMemory(fv: FieldVector, value: Array[Double]): Unit = {
-    val dataByteBuffer = fv.getDataBuffer.nioBuffer()
-    dataByteBuffer.order(ByteOrder.LITTLE_ENDIAN) // 改变读写顺序为小端,转为ByteBuffer后由小端变成大端，要人为修改回来。
+  def copyMemory(fv: FrameVector, value: Array[Double]): Unit = {
+    val dataByteBuffer = fv.fieldVector.getDataBuffer.nioBuffer()
+    // Order changed form little endian to big little after converting to ByteBuffer.So needing to set manually
+    dataByteBuffer.order(ByteOrder.LITTLE_ENDIAN)
     dataByteBuffer.asDoubleBuffer().put(value)
 
-    val validityByteBuffer = fv.getValidityBuffer
+    val validityByteBuffer = fv.fieldVector.getValidityBuffer
     val validityBits = Array.fill[Byte](validityByteBuffer.capacity().toInt)(-1)
     validityByteBuffer.setBytes(0, validityBits)
+  }
+
+  /**
+   * convert direct memory to double array
+   */
+  def toDoubleArray(fv:FrameVector):Array[Double]= {
+    val count = fv.valueCount
+    val res = new Array[Double](count)
+    res.indices.foreach{i =>
+      res(i) = fv.readDouble(i)
+    }
+    res
+  }
+
+  /**
+   * convert direct memory double type to float array
+   */
+  def toFloatArray(fv:FrameVector):Array[Float] = {
+    val count = fv.valueCount
+    val res = new Array[Float](count)
+    res.indices.foreach{i =>
+      res(i) = fv.readDouble(i).toFloat
+    }
+    res
+  }
+
+  val mockEmptyBatch:FrameBatch = {
+    val schema = """{"fields": [{"name":"double0", "type": {"name" : "floatingpoint","precision" : "DOUBLE"}}]}"""
+    new FrameBatch(new FrameSchema(schema), 0)
   }
 }

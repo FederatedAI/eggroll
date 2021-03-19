@@ -79,6 +79,8 @@ JNIEXPORT jlong JNICALL Java_com_webank_eggroll_rollframe_pytorch_Torch_getTorch
  */
 JNIEXPORT jdoubleArray JNICALL Java_com_webank_eggroll_rollframe_pytorch_Torch_run
  (JNIEnv* env, jclass jcls, jlong jptr, jobjectArray jarray, jdoubleArray jparameters) {
+	//torch::set_num_threads(7);
+	std::cout << at::get_num_threads() << std::endl;
 	torch::jit::script::Module* ptr = reinterpret_cast<torch::jit::script::Module*>(jptr);
 	assert(ptr != nullptr);
 	std::vector<torch::jit::IValue> inputs;
@@ -101,21 +103,21 @@ JNIEXPORT jdoubleArray JNICALL Java_com_webank_eggroll_rollframe_pytorch_Torch_r
 		torch::Tensor tensor = torch::from_blob(tensor_ptr, { size }, TORCH_OPTION_DOUBLE);
 		inputs_element.emplace_back(tensor);
 	}
-	//std::cout << "finish tensor input" << std::endl;
+	std::cout << "finish tensor input" << std::endl;
 	jsize parameters_size = env->GetArrayLength(jparameters);
 	auto* parameters = env->GetPrimitiveArrayCritical(jparameters, NULL);
 	torch::Tensor parameters_tensor = torch::from_blob(parameters, { parameters_size }, TORCH_OPTION_DOUBLE);
 	inputs_element.emplace_back(parameters_tensor);
 	inputs.emplace_back(inputs_element);
-	//std::cout << "finish parameters input" << std::endl;
-
+	// std::cout << "finish parameters input" << std::endl;
+	// std::cout << parameters_tensor << std::endl;
 	torch::Tensor res = ptr->forward(inputs).toTensor();				// run model
-	//std::cout << "finish run model..." << std::endl;
+	std::cout << "finish run model..." << std::endl;
 	env->ReleasePrimitiveArrayCritical(jparameters, parameters, 0);		// release
 	jlong length = res.numel();
 	double* res_ptr = res.data_ptr<double>();
 	jdoubleArray out = env->NewDoubleArray(length);
 	env->SetDoubleArrayRegion(out, 0, length, res_ptr);
-	std::cout << "jni done" << std::endl;
+	std::cout << "run pytorch done" << std::endl;
 	return out;
 }

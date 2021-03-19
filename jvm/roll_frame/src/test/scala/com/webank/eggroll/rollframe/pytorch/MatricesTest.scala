@@ -6,12 +6,13 @@ import com.webank.eggroll.util.SchemaUtil
 import junit.framework.TestCase
 import org.junit.{Before, Test}
 
+@Deprecated
 class MatricesTest {
 
   @Before
   def loadLibrary(): Unit = {
     LibraryLoader.load
-    //    println(System.getProperty("java.library.path"))
+        println(System.getProperty("java.library.path"))
   }
 
   @Test

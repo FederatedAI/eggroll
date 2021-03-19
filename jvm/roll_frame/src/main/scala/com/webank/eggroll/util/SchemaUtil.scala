@@ -1,7 +1,7 @@
 package com.webank.eggroll.util
 
 object SchemaUtil {
-  val oneFieldSchemaString:String =
+  val oneDoubleFieldSchema:String =
     """{"fields": [{"name":"double0", "type": {"name" : "floatingpoint","precision" : "DOUBLE"}}]}"""
 
   def getDoubleSchema(fieldCount: Int): String = {
