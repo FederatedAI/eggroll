@@ -17,8 +17,8 @@
 
 package com.webank.eggroll.rollframe.pytorch;
 
-import java.util.ArrayList;
 
+@Deprecated
 public class Torch {
     /**
      * dot product between two array.

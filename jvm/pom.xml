@@ -214,7 +214,7 @@
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
     <!-- Dependencies -->
-    <arrow.version>0.16.0</arrow.version>
+    <arrow.version>0.17.1</arrow.version>
     <commons-beanutils.version>1.9.4</commons-beanutils.version>
     <commons-io.version>2.6</commons-io.version>
     <commons-lang3.version>3.8.1</commons-lang3.version>

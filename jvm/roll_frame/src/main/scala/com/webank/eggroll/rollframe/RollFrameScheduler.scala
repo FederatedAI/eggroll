@@ -73,7 +73,7 @@ class RollFrameScheduler(session: ErSession) {
 
       inputStores.foreach(inputStore => {
         inputPartitions.append(
-          ErPartition(id = i, storeLocator = inputStore.storeLocator, processor = session.routeToEgg(partitions(i))))
+          ErPartition(id = i, storeLocator = inputStore.storeLocator, processor = partitions(i).processor))
       })
 
       if (isAggregate) {
@@ -81,7 +81,7 @@ class RollFrameScheduler(session: ErSession) {
       } else {
         outputStores.foreach(outputStore => {
           outputPartitions.append(
-            ErPartition(id = i, storeLocator = outputStore.storeLocator, processor = session.routeToEgg(partitions(i))))
+            ErPartition(id = i, storeLocator = outputStore.storeLocator, processor = partitions(i).processor))
         })
       }
 

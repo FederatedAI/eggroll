@@ -20,13 +20,13 @@ package com.webank.eggroll.format
 
 import java.io._
 import java.net.ConnectException
-import java.nio.ByteOrder
+import java.nio.{ByteBuffer, ByteOrder}
 import java.nio.channels.{Channels, ReadableByteChannel, WritableByteChannel}
 import java.util.concurrent.{BlockingQueue, LinkedBlockingQueue}
 
 import com.webank.eggroll.core.constant.StringConstants
 import com.webank.eggroll.core.io.util.IoUtils
-import com.webank.eggroll.core.meta.{ErPartition, ErStore}
+import com.webank.eggroll.core.meta.{ErPartition, ErStore, ErStoreLocator}
 import com.webank.eggroll.rollframe.{HttpUtil, NioTransferEndpoint}
 import io.netty.util.internal.PlatformDependent
 import org.apache.arrow.flatbuf.MessageHeader
@@ -40,6 +40,7 @@ import org.apache.commons.lang3.StringUtils
 
 import scala.collection.JavaConverters._
 import scala.collection.concurrent.TrieMap
+import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.collection.mutable.{Set => mutableSet}
 
@@ -74,7 +75,7 @@ object FrameStore {
 
   def getPartitionsMeta(store: ErStore): Seq[Map[String, String]] = {
     val storeDir = getStoreDir(store)
-    store.partitions.indices.map(i => Map("path" -> s"$storeDir/$i",
+    store.partitions.indices.map(i => Map("path" -> s"$storeDir$i",
       "host" -> store.partitions(i).processor.transferEndpoint.host,
       "port" -> store.partitions(i).processor.transferEndpoint.port.toString))
   }
@@ -82,17 +83,25 @@ object FrameStore {
   def getStoreDir(store: ErStore): String = {
     val path = store.storeLocator.path
     if (StringUtils.isBlank(path))
-      s"$ROOT_PATH/${store.storeLocator.toPath()}"
+      s"$ROOT_PATH/${store.storeLocator.toPath()}/"
+    else
+      path
+  }
+
+  def getStoreDir(erStoreLocator: ErStoreLocator): String = {
+    val path = erStoreLocator.path
+    if (StringUtils.isBlank(path))
+      s"$ROOT_PATH/${erStoreLocator.toPath()}/"
     else
       path
   }
 
   def getStoreDir(namespace: String, name: String, storeType: String = StringConstants.CACHE): String = {
-    s"$ROOT_PATH/${String.join(StringConstants.SLASH, storeType, namespace, name)}"
+    s"$ROOT_PATH/${String.join(StringConstants.SLASH, storeType, namespace, name)}/"
   }
 
   def getStorePath(store: ErStore, partitionId: Int): String = {
-    s"${getStoreDir(store)}/$partitionId"
+    s"${getStoreDir(store)}$partitionId"
   }
 
   def getStorePath(partition: ErPartition): String = {
@@ -290,6 +299,7 @@ class NetworkFrameStore(path: String, host: String, port: Int) extends FrameStor
       }
       if (loop >= FrameStore.NETWORK_CONNECT_NUM) {
         println(s"loop = $loop")
+
         throw new RuntimeException(s"Error to connect to EggRoll servers, Please try run again.", error)
       }
     }
@@ -307,7 +317,28 @@ class NetworkFrameStore(path: String, host: String, port: Int) extends FrameStor
   override def close(): Unit = {
     // need to close ?
     client.clientChannel.close()
-    println(s"close client,host:$host,port:$port")
+  }
+}
+
+object ArtificialDirectBuffer{
+  private val cache: TrieMap[String,ByteBuffer] = new TrieMap[String,ByteBuffer]()
+  def putAndUpdate(path:String,buffer:ByteBuffer): Unit ={
+    cache.put(path,buffer)
+  }
+
+  def remove(path:String): Unit ={
+    if (cache.contains(path)){
+      PlatformDependent.freeDirectBuffer(cache(path))
+      cache.remove(path)
+    }
+  }
+
+  def get(path:String): ByteBuffer ={
+    cache(path)
+  }
+
+  def contain(path:String): Boolean ={
+    cache.contains(path)
   }
 }
 
@@ -315,10 +346,22 @@ object JvmFrameStore {
   private val caches: TrieMap[String, ListBuffer[FrameBatch]] = new TrieMap[String, ListBuffer[FrameBatch]]()
   private val persistence: mutableSet[String] = mutableSet[String]()
 
-  def printJvmFrameStore(): Unit ={
+  def remove(path: String): Unit = {
+    val fb = caches(path).head
+    fb.clear()
+    caches.-=(path)
+    println(s"clear:$path")
+    assert(fb.isEmpty)
+  }
+
+  def printJvmFrameStore(): Unit = {
     println("-----------------------")
     caches.foreach(i => println(i._1))
     println("-----------------------")
+  }
+
+  def getJvmFrameBatches(dir: String): collection.Map[String, ListBuffer[FrameBatch]] = {
+    JvmFrameStore.caches.filterKeys(_.toLowerCase.startsWith(dir.toLowerCase))
   }
 
   def checkFrameBatch(path: String): Boolean = {
@@ -338,21 +381,26 @@ object JvmFrameStore {
   }
 
   def release(): Unit = {
-    // TODO： deal with exception in a new thread
     new Thread() {
       override def run(): Unit = {
         try {
           if (persistence.nonEmpty) {
+            println("persistence:")
+            persistence.foreach(i => println(i))
             for (element <- caches) {
+              var isClean = true
               for (path <- persistence) {
-                if (!element._1.toLowerCase.startsWith(path.toLowerCase)) {
-                  println(s"clear:${element._1}")
-                  element._2.foreach { i =>
-                    i.clear()
-                    assert(i.isEmpty)
-                  }
-                  caches.-=(element._1)
+                if (element._1.toLowerCase.startsWith(path.toLowerCase)) {
+                  isClean = false
                 }
+              }
+              if (isClean) {
+                println(s"clear:${element._1}")
+                element._2.foreach { i =>
+                  i.clear()
+                  assert(i.isEmpty)
+                }
+                caches.-=(element._1)
               }
             }
           } else {
