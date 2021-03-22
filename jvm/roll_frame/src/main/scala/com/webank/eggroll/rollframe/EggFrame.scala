@@ -32,18 +32,19 @@ import scala.collection.immutable.Range.Inclusive
 class EggFrameContext extends Logging {
   val serdes: MonadSerDes = DefaultScalaSerdes()
   val executorPool: ThreadPoolExecutor = ThreadPoolUtils.defaultThreadPool
-  lazy val serverNodes: Array[ErProcessor] = EggFrame.session.processors
-  lazy val frameTransfer: FrameTransfer = new NioFrameTransfer(serverNodes)
-  lazy val rootServer: ErProcessor = serverNodes.head
+  lazy val eggProcessors: Array[ErProcessor] = EggFrame.session.processors
+  lazy val frameTransfer: FrameTransfer = new NioFrameTransfer(eggProcessors)
+  lazy val rootServer: ErProcessor = eggProcessors.head
 
   override def logInfo(msg: => String): Unit = super.logInfo(msg)
 
+  @deprecated("eggProcessors before are serverNodes,and didn't check")
   def sliceByColumn(frameBatch: FrameBatch): List[(ErProcessor, Inclusive)] = {
     val columns = frameBatch.rootVectors.length
-    val servers = serverNodes.length
+    val servers = eggProcessors.length
     val partSize = (servers + columns - 1) / servers
     (0 until servers).map { sid =>
-      (serverNodes(sid), new Inclusive(sid * partSize, Math.min((sid + 1) * partSize, columns), 1))
+      (eggProcessors(sid), new Inclusive(sid * partSize, Math.min((sid + 1) * partSize, columns), 1))
     }.toList
   }
 
