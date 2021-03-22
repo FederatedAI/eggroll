@@ -22,50 +22,39 @@ import java.util.concurrent.{Callable, Executors}
 
 import com.webank.eggroll.core.constant.StringConstants
 import com.webank.eggroll.core.meta.ErStore
-import com.webank.eggroll.core.util.Logging
+import com.webank.eggroll.core.util.TimeUtils
+import com.webank.eggroll.util.Logging
 import com.webank.eggroll.format._
-import com.webank.eggroll.rollframe.pytorch.{LibraryLoader, Matrices}
 import com.webank.eggroll.util.SchemaUtil
 import junit.framework.TestCase
-import org.junit.{Before, Test}
+import org.junit.{Before, Ignore, Test}
 
 /**
  * all unit test run on local mode
  */
 class RollFrameTests extends Logging {
   protected val ta: TestAssets.type = TestAssets
-  val fieldCount: Int = 1000
+  val fieldCount: Int = 10
   protected val rowCount = 10000 // total value count = rowCount * fbCount * fieldCount
   protected val fbCount = 1 // the num of batch
-  protected val supportTorch = false
+  protected val supportTorch = true
   protected var ctx: RollFrameContext = _
   protected var inputStore: ErStore = _
   protected var inputTensorStore: ErStore = _
-  protected val partitions_ = 3
+  protected val partitions_ = 2
 
   @Before
   def setup(): Unit = {
     ctx = ta.getRfContext()
-    logInfo(s"get RfContext property unsafe:${System.getProperty("arrow.enable_unsafe_memory_access")}")
+    info(s"get RfContext property unsafe:${System.getProperty("arrow.enable_unsafe_memory_access")}")
     inputStore = ctx.createStore("test1", "a1", StringConstants.FILE, partitions_)
     inputTensorStore = ctx.createStore("test1", "t1", StringConstants.FILE, partitions_)
-
-    // use torchScript or not
-    if (supportTorch) {
-      try {
-        LibraryLoader.load
-      } catch {
-        case _: Throwable => println("error when loading jni")
-      }
-    }
     printContextMessage()
-
-    ctx.frameTransfer
   }
 
   private def writeTensorFb(adapter: FrameStore): Unit = {
     val randomObj = new Random()
-    val fb = new FrameBatch(new FrameSchema(SchemaUtil.oneFieldSchemaString), fieldCount * rowCount)
+    val fb = new FrameBatch(new FrameSchema(SchemaUtil.oneDoubleFieldSchema), fieldCount * rowCount)
     (0 until fieldCount * rowCount).foreach { i =>
       fb.writeDouble(0, i, randomObj.nextDouble())
     }
@@ -111,12 +100,13 @@ class RollFrameTests extends Logging {
   }
 
   /**
-   * the other test methods depend on these frameBatches, and make sure of configuration of HDFS correctly.
+   * the other test methods depend on these frameBatches
    */
   @Test
   def testCreateDataStore(): Unit = {
+    RollFrameContext.printSession(ctx.session)
     inputStore.partitions.indices.foreach { i =>
-      write(FrameStore(inputStore, i))    //    create file FrameBatch
+      write(FrameStore(inputStore, i)) //    create file FrameBatch
       writeTensorFb(FrameStore(inputTensorStore, i)) //    create FrameBatch with one column
     }
     //    read(FrameStore.file("/tmp/unittests/RollFrameTests/file/test1/a1/0"))
@@ -124,12 +114,52 @@ class RollFrameTests extends Logging {
   }
 
   @Test
+  def testRunPythonCode(): Unit = {
+    val inputCacheStore = ctx.combineDoubleFbs(ctx.dumpCache(inputTensorStore))
+    val rf = ctx.load(inputCacheStore)
+    val code: String =
+      """
+        |import numpy as np
+        |import torch
+        |data = torch.from_numpy(_input_data)
+        |print(data.type())
+        |a = _world_size
+        |b = _rank
+        |print(_parameters)
+        |print(_parameters.dtype)
+        |
+        |_state = 0
+        |_result = torch.ones(3).numpy()
+        |_result = _result.astype(np.float64)
+        |""".stripMargin
+
+    val parameters = Array(1.0, 2.0)
+    (0 until 10).foreach { i =>
+      val outputStore = ctx.forkStore(inputCacheStore, "test" + i, "out1", StringConstants.CACHE)
+      rf.runPythonDistributed(code, fieldCount, parameters, nonCopy = true, output = outputStore)
+      val res = FrameStore(outputStore, 0).readOne()
+      assert(res.readDouble(0, 0) == 1.0)
+    }
+  }
+
+  @Test
   def testLoadRollFrame(): Unit = {
     val rf = ctx.load(ctx.dumpCache(inputStore))
+    val output = ctx.createStore("test", "rrr1", StringConstants.FILE, 1)
     rf.mapBatch(fb => {
       TestCase.assertNotNull(fb.isEmpty)
       fb
-    })
+    }, output)
+  }
+
+  @Test
+  def testCheckStoreExists(): Unit = {
+    val cacheStore = ctx.dumpCache(inputStore)
+    val res = ctx.frameTransfer.Roll.checkStoreExists(cacheStore.storeLocator)
+    TestCase.assertEquals(res, true)
+    val cacheStore1 = ctx.createStore("test1", "aa1", StringConstants.CACHE, partitions_)
+    val res1 = ctx.frameTransfer.Roll.checkStoreExists(cacheStore1.storeLocator)
+    TestCase.assertEquals(res1, false)
   }
 
   @Test
@@ -137,7 +167,7 @@ class RollFrameTests extends Logging {
     // 1.write to network and continue write to file
     val fieldCount = 1000
     val rowCount = 10000
-    val networkStore = ctx.createStore("test1", "a1", StringConstants.NETWORK, 10)
+    val networkStore = ctx.createStore("test1", "a1", StringConstants.NETWORK, partitions_)
     val fb = new FrameBatch(new FrameSchema(SchemaUtil.getDoubleSchema(fieldCount)), rowCount)
     networkStore.partitions.indices.foreach { i =>
       new Thread() {
@@ -146,6 +176,7 @@ class RollFrameTests extends Logging {
         }
       }.start()
     }
+    Thread.sleep(2000)
     val start = System.currentTimeMillis()
     val cacheStore = ctx.dumpCache(networkStore)
     println(s"run time = ${System.currentTimeMillis() - start}")
@@ -167,10 +198,16 @@ class RollFrameTests extends Logging {
   @Test
   def testPull(): Unit = {
     val cacheStore = ctx.dumpCache(inputStore)
+    cacheStore.partitions.foreach(println)
     val path = FrameStore.getStorePath(cacheStore.partitions(0))
     println(path)
-    val fb = ctx.frameTransfer.Roll.pull(path)
+    val fb = ctx.frameTransfer.Roll.pull(path).next()
     TestCase.assertNotNull(fb.isEmpty)
+  }
+
+  @Test
+  def testGetAvailablePort(): Unit = {
+    TestCase.assertTrue(ctx.frameTransfer.Roll.getAvailablePort >= HttpUtil.ORIGIN_PORT)
   }
 
   /**
@@ -305,7 +342,6 @@ class RollFrameTests extends Logging {
       a
     }, output = outStore)
     println(System.currentTimeMillis() - start)
-
     val resultFb = FrameStore(outStore, 0).readOne()
     TestCase.assertEquals(resultFb.readDouble(0, 0), inStore.partitions.length * rowCount, TestAssets.DELTA)
   }
@@ -313,7 +349,9 @@ class RollFrameTests extends Logging {
   @Test
   def testReduceBatch(): Unit = {
     val input = ctx.dumpCache(inputStore)
-    val output = ctx.createStore("test1", "a1_reduce", StringConstants.CACHE, 1)
+    val fb = FrameStore(input, 0).readOne()
+    println(fb.rootVectors.head.getDataBufferAddress)
+    val output = ctx.createStore("test1", "a1_reduce", StringConstants.FILE, 1)
     val start = System.currentTimeMillis()
     ctx.load(input).reduce({ (x, y) =>
       try {
@@ -328,57 +366,30 @@ class RollFrameTests extends Logging {
       x
     }, output = output)
     println(s"Time = ${System.currentTimeMillis() - start} ms")
-    val fb = FrameStore(input, 0).readOne()
+    val origin_fb = FrameStore(input, 0).readOne()
     val fb1 = FrameStore(output, 0).readOne()
-    TestCase.assertEquals(fb.fieldCount, fb1.fieldCount)
-    TestCase.assertEquals(fb.rowCount, fb1.rowCount)
+    // todo: bug,address change
+    print(origin_fb.rootVectors.head.getDataBufferAddress)
+    TestCase.assertEquals(origin_fb.fieldCount, fb1.fieldCount)
+    TestCase.assertEquals(origin_fb.rowCount, fb1.rowCount)
   }
-
-  //  @Test
-  //  def testMapAndReduceOne(): Unit = {
-  //    val input = ctx.dumpCache(inputStore)
-  //    val output = ctx.createStore("test1", "a1_reduce", StringConstants.CACHE, 1)
-  //    val start = System.currentTimeMillis()
-  //    ctx.load(input).reduce(f = {
-  //      (x, y) =>
-  //        try {
-  //          for (i <- 0 until x.fieldCount) {
-  //            for (j <- 0 until x.rowCount) {
-  //              x.writeDouble(i, j, x.readDouble(i, j) + y.readDouble(i, j))
-  //            }
-  //          }
-  //        } catch {
-  //          case t: Throwable => t.printStackTrace()
-  //        }
-  //        x
-  //    }, mf = { fb => {
-  //      val zeroValue = new FrameBatch(new FrameSchema(SchemaUtil.getDoubleSchema(100)), 10000)
-  //      (0 until zeroValue.fieldCount).foreach { f =>
-  //        (0 until zeroValue.rowCount).foreach { r =>
-  //          zeroValue.writeDouble(f, r, fb.readDouble(f, r))
-  //        }
-  //      }
-  //      zeroValue
-  //    }
-  //    }, output = output)
-  //    logInfo(s"time = ${System.currentTimeMillis() - start} ms")
-  //  }
 
   @Test
   def testMapAndReduce(): Unit = {
     val input = ctx.dumpCache(inputStore)
     val output = ctx.createStore("test1", "a1_reduce", StringConstants.CACHE, 1)
     val start = System.currentTimeMillis()
+    val cols = fieldCount
+    val rows = rowCount
     val mapTmp = ctx.load(input).mapBatch(fb => {
-      val zeroValue = new FrameBatch(new FrameSchema(SchemaUtil.getDoubleSchema(100)), 10000)
+      val zeroValue = new FrameBatch(new FrameSchema(SchemaUtil.getDoubleSchema(cols)), rows)
       (0 until zeroValue.fieldCount).foreach { f =>
         (0 until zeroValue.rowCount).foreach { r =>
           zeroValue.writeDouble(f, r, fb.readDouble(f, r))
         }
       }
       zeroValue
-    })
-    mapTmp.reduce({ (x, y) =>
+    }).reduce({ (x, y) =>
       try {
         for (i <- 0 until x.fieldCount) {
           for (j <- 0 until x.rowCount) {
@@ -390,7 +401,9 @@ class RollFrameTests extends Logging {
       }
       x
     }, output = output)
-    logInfo(s"time = ${System.currentTimeMillis() - start} ms")
+    val f = FrameStore(output, 0).readOne()
+    print(f.rowCount, f.fieldCount)
+    println(s"time = ${System.currentTimeMillis() - start} ms")
   }
 
   /**
@@ -417,9 +430,59 @@ class RollFrameTests extends Logging {
   }
 
   @Test
+  def testCombineDoubleFbs(): Unit = {
+    val input = ctx.dumpCache(inputStore)
+    val output = ctx.combineDoubleFbs(input)
+    val fb_i = FrameStore(inputStore, 0).readOne()
+    val fb_o = FrameStore(output, 0).readOne()
+    assert(fb_i.rowCount * partitions_ == fb_o.rowCount)
+  }
+
+  @Test
+  def testDenJvmData(): Unit = {
+    val input = ctx.createStore("test1", "a1", StringConstants.CACHE, 4)
+    ctx.load(input).genData(_ => {
+      val zeroValue = new FrameBatch(new FrameSchema(SchemaUtil.getDoubleSchema(10)), 1000)
+      zeroValue.initZero()
+      Iterator(zeroValue)
+    })
+    val fb = FrameStore(input, 0).readOne()
+    TestCase.assertEquals(fb.fieldCount, 10)
+    TestCase.assertEquals(fb.rowCount, 1000)
+  }
+
+  @Test
+  def testMapCommand(): Unit = {
+    val input = ctx.dumpCache(inputStore)
+    val start = System.currentTimeMillis()
+    ctx.load(input).mapCommand(f =>
+      println(f.rowCount)
+    )
+    println(s"time:${System.currentTimeMillis() - start} ms")
+  }
+
+  @Test
+  @Ignore("Only suit for one partition with one process's data store.")
+  def testAllReduce(): Unit = {
+    val input = ctx.dumpCache(inputStore)
+    val output = ctx.forkStore(input, input.storeLocator.namespace, "all_reduce", StringConstants.CACHE)
+    val start = System.currentTimeMillis()
+    ctx.load(input).allReduce((a, b) => {
+      (0 until a.fieldCount).foreach { f =>
+        (0 until a.rowCount).foreach { r =>
+          a.writeDouble(f, r, a.readDouble(f, r) + b.readDouble(f, r))
+        }
+      }
+      a
+    }, output)
+    println(s"time:${System.currentTimeMillis() - start} ms")
+    val stop = 0
+  }
+
+  @Test
   def testRelease(): Unit = {
     val store1 = ctx.createStore("test1", "a1", StringConstants.CACHE, 3)
-    val store2 = ctx.createStore("test1", "b1", StringConstants.CACHE, 4)
+    val store2 = ctx.createStore("test1", "a11", StringConstants.CACHE, 4)
     store1.partitions.indices.foreach { i =>
       val fb = new FrameBatch(new FrameSchema(SchemaUtil.getDoubleSchema(1000)), 50000)
       fb.initZero()
@@ -432,9 +495,9 @@ class RollFrameTests extends Logging {
     }
     JvmFrameStore.printJvmFrameStore()
     ctx.frameTransfer.addExcludeStore("test1", "a1")
-//    Thread.sleep(2000)
-//    ctx.frameTransfer.deleteExcludeStore(store1)
-//    ctx.frameTransfer.addExcludeStore(store1)
+    //    Thread.sleep(2000)
+    //    ctx.frameTransfer.deleteExcludeStore(store1)
+    //    ctx.frameTransfer.addExcludeStore(store1)
     ctx.frameTransfer.releaseStore()
     Thread.sleep(2000)
   }
@@ -455,9 +518,7 @@ class RollFrameTests extends Logging {
     Thread.sleep(2000)
     ctx.frameTransfer.releaseStore()
     Thread.sleep(2000)
-    val stop = 0
   }
-
 
   @Test
   def testParallelAggregateByData(): Unit = {
@@ -466,9 +527,9 @@ class RollFrameTests extends Logging {
     val cols = 1000
     val rows = 1000
     val zeroValue = new FrameBatch(new FrameSchema(SchemaUtil.getDoubleSchema(cols)), rows)
-    (0 until zeroValue.fieldCount).foreach{ f =>
-      (0 until zeroValue.rowCount).foreach{ r =>
-        zeroValue.writeDouble(f,r,1)
+    (0 until zeroValue.fieldCount).foreach { f =>
+      (0 until zeroValue.rowCount).foreach { r =>
+        zeroValue.writeDouble(f, r, 1)
       }
     }
     val out = ctx.load(input).aggregate(zeroValue, combOp = { (a, b) =>
@@ -481,20 +542,19 @@ class RollFrameTests extends Logging {
         (0 until cb.fieldCount).foreach(i =>
           if (cb.rootVectors(i) != null) {
             for (j <- 0 until zero.rowCount) {
-              zero.writeDouble(i, j, 1+zero.readDouble(i,j))
+              zero.writeDouble(i, j, 1 + zero.readDouble(i, j))
             }
           })
       }, broadcastZeroValue = true, output = output)
 
-    val stop = 0
   }
 
   @Test
   def TestParallelAggregateByZero(): Unit = {
     val input = ctx.dumpCache(inputStore)
     val output = ctx.createStore("test1", "r1", StringConstants.CACHE, 1)
-    val cols = 1000
-    val rows = 10000
+    val cols = fieldCount
+    val rows = rowCount
     var start = System.currentTimeMillis()
     val zeroValue = new FrameBatch(new FrameSchema(SchemaUtil.getDoubleSchema(cols)), rows)
     zeroValue.initZero()
@@ -584,92 +644,5 @@ class RollFrameTests extends Logging {
     })
     val result2 = future2.get()
     println(System.currentTimeMillis() - start, result1, result2)
-  }
-
-  @Test
-  def testTorchScriptMap(): Unit = {
-    val input = ta.loadCache(inputTensorStore)
-    val output = ctx.forkStore(input, "test1", "a1TorchMap", StringConstants.FILE)
-    val rf = ctx.load(input)
-    val newMatrixCols = 2
-    val parameters: Array[Double] = Array(fieldCount.toDouble) ++ Array(newMatrixCols.toDouble) ++ Array.fill[Double](fieldCount * newMatrixCols)(0.5);
-
-    rf.torchMap("jvm/roll_frame/src/test/resources/torch_model_map.pt", parameters, output)
-    TestCase.assertEquals(FrameStore(output, 0).readOne().rowCount, rowCount * newMatrixCols)
-  }
-
-  @Test
-  def testTorchScriptMerge(): Unit = {
-    val input = ta.loadCache(ctx.forkStore(inputTensorStore, "test1", "a1TorchMap", StringConstants.FILE))
-    val output = ctx.createStore("test1", "a1TorchMerge", StringConstants.CACHE, totalPartitions = 1)
-    val rf = ctx.load(input)
-    rf.torchMerge(path = "jvm/roll_frame/src/test/resources/torch_model_merge.pt", output = output)
-    val path = FrameStore.getStorePath(output.partitions(0))
-    val result = ctx.frameTransfer.Roll.pull(path).next()
-    println(s"sum = ${result.readDouble(0, 0)},size = ${result.rowCount}")
-  }
-
-  @Test
-  @deprecated
-  def testMatMul(): Unit = {
-    val input = ta.loadCache(ta.getRollFrameStore("c1", "test1", StringConstants.FILE))
-    val output = ta.getRollFrameStore("c1Matrix1", "test1", StringConstants.CACHE)
-    val rf = ctx.load(input)
-    val matrixRows = fieldCount
-    val matrixCols = 1
-    val matrix = Array.fill[Double](matrixRows * matrixCols)(1.0)
-    val start = System.currentTimeMillis()
-    rf.matMul(matrix, matrixRows, matrixCols, output)
-    println(s"matMul time= ${System.currentTimeMillis() - start}")
-
-    output.partitions.indices.foreach { i =>
-      val resCF = new ColumnFrame(FrameStore(output, i).readOne(), matrixCols)
-      TestCase.assertEquals(resCF.fb.rowCount, rowCount * matrixCols)
-      println(s"partition $i, value = ${resCF.read(0, 0)}")
-    }
-  }
-
-  /**
-   * a demo realizing matrix multiplication by using map function, but cost time
-   */
-  @Test
-  @deprecated
-  def testMatMulV1ByMapBatch(): Unit = {
-    val input = ta.loadCache(inputStore)
-    val output = ctx.forkStore(input, "a1Matrix", "test1", StringConstants.CACHE)
-    val rf = ctx.load(input)
-    val start = System.currentTimeMillis()
-    val matrixCols = 1
-    rf.mapBatch({ cb =>
-      val matrix = Array.fill[Double](cb.fieldCount * matrixCols)(1.0)
-      Matrices.matMulToFbV1(cb.toColumnVectors, matrix, cb.fieldCount, matrixCols)
-    }, output)
-    println(s"matMul time= ${System.currentTimeMillis() - start}")
-    ctx.load(output).mapBatch { fb =>
-      TestCase.assertEquals(fb.fieldCount, matrixCols)
-      fb
-    }
-  }
-
-  /**
-   * a demo realizing matrix multiplication using ColumnVectors, but cost time
-   */
-  @Test
-  @deprecated
-  def testMatMulV1(): Unit = {
-    val input = ta.loadCache(inputStore)
-    val output = ctx.forkStore(input, "test1", "a1Matrix1", StringConstants.CACHE)
-    val rf = ctx.load(input)
-    val matrixRows = fieldCount
-    val matrixCols = 1
-    val matrix = Array.fill[Double](matrixRows * matrixCols)(1.0)
-    val start = System.currentTimeMillis()
-    rf.matMulV1(matrix, matrixRows, matrixCols, output)
-    println(s"matMul time= ${System.currentTimeMillis() - start}")
-    ctx.load(output)
-      .mapBatch { fb =>
-        TestCase.assertEquals(fb.fieldCount, matrixCols)
-        fb
-      }
   }
 }

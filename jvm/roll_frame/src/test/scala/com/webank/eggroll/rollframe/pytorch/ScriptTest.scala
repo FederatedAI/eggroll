@@ -3,6 +3,7 @@ package com.webank.eggroll.rollframe.pytorch
 import com.webank.eggroll.format.{FrameBatch, FrameSchema, FrameUtils}
 import org.junit.{Before, Test}
 
+@Deprecated
 class ScriptTest {
   @Before
   def loadLibrary(): Unit = {
@@ -48,5 +49,4 @@ class ScriptTest {
     println(res.length)
     println(res(0))
   }
-
 }

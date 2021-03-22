@@ -124,7 +124,8 @@ class RollSiteContext:
     def load(self, name: str, tag: str, options: dict = None):
         if options is None:
             options = {}
-        final_options = self._options.copy().update(options)
+        final_options = self._options.copy()
+        final_options.update(options)
         return RollSite(name, tag, self, options=final_options)
 
     def register_comm_type(self, name, clazz):
