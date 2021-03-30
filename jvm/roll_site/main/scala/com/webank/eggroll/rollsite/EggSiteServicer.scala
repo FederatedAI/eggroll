@@ -19,7 +19,7 @@
 package com.webank.eggroll.rollsite
 
 import java.util
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.{LinkedBlockingQueue, TimeUnit}
 
 import com.google.protobuf.ByteString
 import com.webank.ai.eggroll.api.networking.proxy.Proxy.PollingFrame
@@ -104,8 +104,14 @@ class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBas
 
           var pollingExchanger: PollingExchanger = null
           var i = 0
+          val partyId = dstPartyId
+          logTrace(s"pollingExchanger.pollingExchangerQueueMap partyId=${partyId}")
           while (pollingExchanger == null) {
-            pollingExchanger = PollingExchanger.pollingExchangerQueue.poll(
+            if (!PollingExchanger.pollingExchangerQueueMap.containsKey(partyId)) {
+              val pollingExchangerQueue = new LinkedBlockingQueue[PollingExchanger]()
+              PollingExchanger.pollingExchangerQueueMap.put(partyId, pollingExchangerQueue)
+            }
+            pollingExchanger = PollingExchanger.pollingExchangerQueueMap.get(partyId).poll(
               RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_Q_POLL_INTERVAL_SEC.get().toLong, TimeUnit.SECONDS)
             logTrace(s"unary call getting pollingExchanger from queue. i=${i}, isNull=${pollingExchanger == null}")
             i += 1
