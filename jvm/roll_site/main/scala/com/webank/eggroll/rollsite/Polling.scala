@@ -18,7 +18,6 @@
 
 package com.webank.eggroll.rollsite
 
-import java.util
 import java.util.concurrent._
 import java.util.concurrent.atomic.AtomicReference
 
