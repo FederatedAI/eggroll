@@ -217,7 +217,6 @@ class PollingExchanger() {
 }
 
 object PollingExchanger extends Logging {
-//  val pollingExchangerQueue = new LinkedBlockingQueue[PollingExchanger]()
   val pollingExchangerQueueMap = new java.util.concurrent.ConcurrentHashMap[String, LinkedBlockingQueue[PollingExchanger]]()
 
   def offer(data: Proxy.PollingFrame, q: SynchronousQueue[Proxy.PollingFrame], logPrefix: String, rsHeader: ErRollSiteHeader = null, metadataString: String = null): Boolean = {
