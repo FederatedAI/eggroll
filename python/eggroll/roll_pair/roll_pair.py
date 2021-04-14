@@ -34,7 +34,7 @@ from eggroll.core.meta_model import ErStoreLocator, ErJob, ErStore, ErFunctor, \
 from eggroll.core.session import ErSession
 from eggroll.core.utils import generate_job_id, generate_task_id
 from eggroll.core.utils import string_to_bytes, hash_code
-from eggroll.roll_pair import create_serdes
+from eggroll.roll_pair import create_serdes, create_adapter
 from eggroll.roll_pair.transfer_pair import TransferPair, BatchBroker
 from eggroll.roll_pair.utils.gc_utils import GcRecorder
 from eggroll.roll_pair.utils.pair_utils import partitioner
@@ -66,6 +66,20 @@ class RollPairContext(object):
         self.rpc_gc_enable = True
         self.gc_recorder = GcRecorder(self)
         self.__command_client = CommandClient()
+
+        self.session_default_rp = self.load(name=self.session_id,
+                                            namespace=f'er_session_meta',
+                                            options={'total_partitions': session.get_eggs_count(),
+                                                     'store_type': StoreTypes.ROLLPAIR_CACHE,
+                                                     'create_if_missing': True})
+        eggs = session.get_eggs()
+
+        def _broadcast_eggs(task: ErTask):
+            _input = task._inputs[0]
+            with create_adapter(_input) as input_adapter:
+                input_adapter.put('eggs', eggs)
+
+        self.session_default_rp.with_stores(func=_broadcast_eggs)
 
     def set_store_type(self, store_type: str):
         self.default_store_type = store_type
@@ -272,6 +286,7 @@ class RollPair(object):
     MAP_VALUES = 'mapValues'
     PUT = "put"
     PUT_ALL = "putAll"
+    PUT_BATCH = "putBatch"
     REDUCE = 'reduce'
     SAMPLE = 'sample'
     SUBTRACT_BY_KEY = 'subtractByKey'
@@ -1109,7 +1124,7 @@ class RollPair(object):
         total_partitions = self.get_partitions()
         for other in others:
             if other.get_partitions() != total_partitions:
-                raise ValueError(f"diff partitions: expected:{total_partitions}, actual:{other.get_partitions()}")
+                raise ValueError(f"diff partitions: expected={total_partitions}, actual={other.get_partitions()}")
         job_id = generate_job_id(self.__session_id, tag=tag)
         job = ErJob(id=job_id,
                     name=tag,

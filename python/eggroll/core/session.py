@@ -420,6 +420,11 @@ class ErSession(object):
     def is_stopped(self):
         return self.stopped
 
+    def get_eggs(self):
+        return self._eggs.copy()
+
+    def get_eggs_count(self):
+        return len(self._eggs)
 
 class JobRunner(object):
     def __init__(self, session: ErSession):

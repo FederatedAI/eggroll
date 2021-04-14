@@ -19,6 +19,7 @@ from eggroll.core.conf_keys import CoreConfKeys
 from eggroll.core.constants import StoreTypes, SerdesTypes
 from eggroll.core.datastructure import create_executor_pool
 from eggroll.core.utils import time_now
+from eggroll.roll_pair import create_adapter
 from eggroll.roll_pair.test.roll_pair_test_assets import get_debug_test_context, \
     get_cluster_context, get_standalone_context, get_default_options
 
@@ -70,6 +71,16 @@ class TestRollPairBase(unittest.TestCase):
         rp = self.ctx.load('test_ns', 'test_name16', options=self.store_opts(total_partitions=16))
         rp.destroy()
         rp = self.ctx.load('test_ns', 'test_name16', self.store_opts(total_partitions=16))
+
+    def test_session_meta(self):
+        table = self.ctx.load(self.ctx.session_id, 'er_session_meta', options={'store_type': StoreTypes.ROLLPAIR_CACHE})
+        def get_eggs(task):
+            _input = task._inputs[0]
+            with create_adapter(_input) as input_adapter:
+                eggs = input_adapter.get('eggs')
+                return eggs
+
+        print(table.with_stores(get_eggs))
 
     def test_ldl(self):
         from eggroll.core.session import session_init

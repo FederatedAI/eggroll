@@ -46,7 +46,7 @@ from eggroll.core.pair_store.format import ArrayByteBuffer, PairBinReader
 from eggroll.core.proto import command_pb2_grpc, transfer_pb2_grpc
 from eggroll.core.transfer.transfer_service import GrpcTransferServicer, \
     TransferService
-from eggroll.core.utils import _exception_logger
+from eggroll.core.utils import _exception_logger, add_static_er_conf
 from eggroll.core.utils import hash_code
 from eggroll.core.utils import set_static_er_conf, get_static_er_conf
 from eggroll.roll_pair import create_adapter, create_serdes, create_functor
@@ -837,6 +837,7 @@ def serve(args):
             ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT: cluster_manager_port
         })
         cluster_manager_client.heartbeat(myself)
+        add_static_er_conf('session_id', session_id)
 
         if platform.system() == "Windows":
             t1 = threading.Thread(target=stop_processor, args=[cluster_manager_client, myself])
@@ -901,6 +902,7 @@ if __name__ == '__main__':
 
     configs.read(conf_file)
     set_static_er_conf(configs['eggroll'])
+
     if configs:
         if not args.data_dir:
             args.data_dir = configs['eggroll']['eggroll.data.dir']
