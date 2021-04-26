@@ -216,7 +216,7 @@
     <!-- Dependencies -->
     <arrow.version>0.16.0</arrow.version>
     <commons-beanutils.version>1.9.3</commons-beanutils.version>
-    <commons-io.version>2.6</commons-io.version>
+    <commons-io.version>2.7</commons-io.version>
     <commons-lang3.version>3.8.1</commons-lang3.version>
     <guava.version>29.0-jre</guava.version>
     <grpc.version>1.27.2</grpc.version>
