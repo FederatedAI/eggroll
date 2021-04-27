@@ -17,7 +17,6 @@ from threading import Thread
 
 from eggroll.core.client import CommandClient
 from eggroll.core.conf_keys import RollPairConfKeys
-from eggroll.core.datastructure.broker import FifoBroker
 from eggroll.core.meta_model import ErTask, ErJob, ErEndpoint
 from eggroll.core.pair_store.adapter import PairIterator, PairWriteBatch, \
     PairAdapter
@@ -38,11 +37,12 @@ class RemoteRollPairAdapter(PairAdapter):
         self._cm_client = CommandClient()
         self._er_partition = options['er_partition']
         store_locator = self._er_partition._store_locator
-        self._replicate_number = options['replicate_number']
+        self._replica_number = options['replica_number']
+        self._replica_processor = options['replica_processor']
         self._partition_id = self._er_partition._id
         self._total_partitions = self._er_partition._store_locator._total_partitions
         self._replicate_job_id = f"{'/'.join([store_locator._store_type, store_locator._namespace, store_locator._name])}" \
-                                 f"-replicate-{self._replicate_number}"
+                                 f"-replicate-{self._replica_number}-processor_id-{self._replica_processor._id}"
         self.remote_cmd_endpoint = remote_cmd_endpoint
         self.remote_transfer_endpoint = remote_transfer_endpoint
 

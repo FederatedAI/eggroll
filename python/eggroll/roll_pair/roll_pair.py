@@ -75,9 +75,9 @@ class RollPairContext(object):
         eggs = session.get_eggs()
 
         def _broadcast_eggs(task: ErTask):
+            from eggroll.core.utils import add_runtime_storage
             _input = task._inputs[0]
-            with create_adapter(_input) as input_adapter:
-                input_adapter.put('eggs', eggs)
+            add_runtime_storage("__eggs", eggs)
 
         self.session_default_rp.with_stores(func=_broadcast_eggs)
 

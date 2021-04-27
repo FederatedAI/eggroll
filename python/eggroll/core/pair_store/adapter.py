@@ -15,12 +15,9 @@ import mmap
 import os
 from collections import OrderedDict
 
-from eggroll.core.conf_keys import RollPairConfKeys
 from eggroll.core.datastructure.broker import Broker
-from eggroll.core.meta_model import ErPartition
 from eggroll.core.pair_store.format import PairBinReader, PairBinWriter, \
-    FileByteBuffer
-from eggroll.core.pair_store.remote_adapter import RemoteRollPairAdapter
+    FileByteBuffer, ArrayByteBuffer
 from eggroll.utils.log_utils import get_logger
 
 L = get_logger()
@@ -336,85 +333,6 @@ class BrokerWriteBatch(PairWriteBatch):
         self.__broker.signal_write_finish()
 
 
-class HaAdapter(PairAdapter):
-
-    def __init__(self, options: dict = None):
-        super().__init__(options)
-        if options is None:
-            options = {}
-        self.replica_count = min(int(RollPairConfKeys.EGGROLL_ROLLPAIR_STORAGE_REPLICA_COUNT.get(options)), 1)
-
-        from eggroll.roll_pair.utils.pair_utils import get_db_path_expanded
-        from eggroll.roll_pair.utils.pair_utils import get_data_dir
-        from eggroll.core.utils import get_static_er_conf
-
-        static_er_conf = get_static_er_conf()
-        my_session_id = static_er_conf['session_id']
-        self.er_partition = options['er_partition']
-        self.partition_id = self.er_partition._id
-        self.total_partitions = self.er_partition._store_locator._total_partitions
-
-        cache_options = dict()
-        cache_options['path'] = get_db_path_expanded(data_dir=get_data_dir(),
-                                                     store_type=StoreTypes.ROLLPAIR_CACHE,
-                                                     namespace='er_session_meta',
-                                                     name=my_session_id,
-                                                     partition_id=self.partition_id)
-
-        self.session_meta_adapter = CacheAdapter(cache_options)
-        self.eggs = self.session_meta_adapter.get('eggs')
-
-        self.adapters = list()
-
-        self.main_adapter = create_pair_adapter(RollPairConfKeys.EGGROLL_ROLLPAIR_DEFAULT_STORE_TYPE.get_with(options))
-        self.adapters.append(self.main_adapter)
-
-        for i in range(1, self.replica_count):
-            replica_egg_id = (self.partition_id + i) % self.total_partitions
-            replica_egg = self.eggs[replica_egg_id]
-            replica_adapter = RemoteRollPairAdapter(remote_cmd_endpoint=replica_egg._command_endpoint,
-                                                    remote_transfer_endpoint=replica_egg._transfer_endpoint,
-                                                    options=options)
-            self.adapters.append(replica_adapter)
-
-
-    def __del__(self):
-        super().__del__()
-
-    def close(self):
-        pass
-
-    def iteritems(self):
-        pass
-
-    def new_batch(self):
-        pass
-
-    def get(self, key):
-        pass
-
-    def put(self, key, value):
-        pass
-
-    def is_sorted(self):
-        pass
-
-    def destroy(self):
-        pass
-
-    def __enter__(self):
-        return super().__enter__()
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        super().__exit__(exc_type, exc_val, exc_tb)
-
-
-class HaIterator(PairIterator):
-    pass
-
-
-class HaWriteBatch(PairWriteBatch):
-    pass
 
 
 if __name__ == "__main__":
