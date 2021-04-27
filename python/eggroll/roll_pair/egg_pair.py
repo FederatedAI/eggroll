@@ -18,18 +18,15 @@ import configparser
 import gc
 import logging
 import os
+import platform
 import shutil
 import signal
-import time
-
 import threading
-import platform
-from collections import defaultdict
+import time
+from collections.abc import Iterable
 
 import grpc
 import numpy as np
-
-from collections.abc import Iterable
 
 from eggroll.core.client import ClusterManagerClient
 from eggroll.core.command.command_router import CommandRouter
@@ -42,16 +39,15 @@ from eggroll.core.datastructure.broker import FifoBroker
 from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.meta_model import ErPair
 from eggroll.core.meta_model import ErTask, ErProcessor, ErEndpoint
-from eggroll.core.pair_store.format import ArrayByteBuffer, PairBinReader
 from eggroll.core.proto import command_pb2_grpc, transfer_pb2_grpc
 from eggroll.core.transfer.transfer_service import GrpcTransferServicer, \
     TransferService
-from eggroll.core.utils import _exception_logger, add_static_er_conf
+from eggroll.core.utils import _exception_logger, add_runtime_storage
 from eggroll.core.utils import hash_code
 from eggroll.core.utils import set_static_er_conf, get_static_er_conf
 from eggroll.roll_pair import create_adapter, create_serdes, create_functor
-from eggroll.roll_pair.transfer_pair import TransferPair, BatchBroker
 from eggroll.roll_pair.task.storage import PutBatchTask
+from eggroll.roll_pair.transfer_pair import BatchBroker
 from eggroll.roll_pair.transfer_pair import TransferPair
 from eggroll.roll_pair.utils.pair_utils import generator, partitioner, \
     set_data_dir
@@ -837,7 +833,7 @@ def serve(args):
             ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT: cluster_manager_port
         })
         cluster_manager_client.heartbeat(myself)
-        add_static_er_conf('session_id', session_id)
+        add_runtime_storage('er_session_id', session_id)
 
         if platform.system() == "Windows":
             t1 = threading.Thread(target=stop_processor, args=[cluster_manager_client, myself])
