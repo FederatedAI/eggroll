@@ -107,11 +107,13 @@ class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBas
           val partyId = dstPartyId
           logTrace(s"pollingExchanger.pollingExchangerQueueMap partyId=${partyId}")
           while (pollingExchanger == null) {
-            if (!PollingExchanger.pollingExchangerQueueMap.containsKey(partyId)) {
-              val pollingExchangerQueue = new LinkedBlockingQueue[PollingExchanger]()
-              PollingExchanger.pollingExchangerQueueMap.put(partyId, pollingExchangerQueue)
-            }
-            pollingExchanger = PollingExchanger.pollingExchangerQueueMap.get(partyId).poll(
+
+            // should be synchronized, when two threads exec code below would cause race condition
+//            if (!PollingExchanger.pollingExchangerQueueMap.containsKey(partyId)) {
+//              val pollingExchangerQueue = new LinkedBlockingQueue[PollingExchanger]()
+//              PollingExchanger.pollingExchangerQueueMap.put(partyId, pollingExchangerQueue)
+//            }
+            pollingExchanger = PollingExchanger.getPollingExchangerQueue(partyId).poll(
               RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_Q_POLL_INTERVAL_SEC.get().toLong, TimeUnit.SECONDS)
             logTrace(s"unary call getting pollingExchanger from queue. i=${i}, isNull=${pollingExchanger == null}")
             i += 1
