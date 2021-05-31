@@ -224,6 +224,7 @@ object PollingExchanger extends Logging {
         if (!pollingExchangerQueueMap.containsKey(partyId)) {
           val pollingExchangerQueue = new LinkedBlockingQueue[PollingExchanger]()
           pollingExchangerQueueMap.put(partyId, pollingExchangerQueue)
+          logDebug(s"created pollingExchangerQueue for party=${partyId}")
         }
       }
     }
@@ -235,8 +236,6 @@ object PollingExchanger extends Logging {
     var curRetry = 0
     val interval = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_Q_OFFER_INTERVAL_SEC.get().toLong
     val timeout = System.currentTimeMillis() + RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_EXCHANGER_DATA_OP_TIMEOUT_SEC.get().toLong * 1000
-
-    logTrace(s"pollingExchanger.pollingExchangerQueueMap partyId=${data.getMetadata.getDst.getPartyId}")
 
     while (!done && System.currentTimeMillis() <= timeout) {
       done = q.offer(data, interval, TimeUnit.SECONDS)
@@ -351,17 +350,16 @@ class DispatchPollingReqSO(eggSiteServicerPollingRespSO: ServerCallStreamObserve
     var done = false
     var i = 0
     val partyId = req.getMetadata.getDst.getPartyId
-    logTrace(s"pollingExchanger.pollingExchangerQueueMap partyId=${partyId}")
     val exchangerDataOpTimeout = System.currentTimeMillis() + RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_EXCHANGER_DATA_OP_TIMEOUT_SEC.get().toLong * 1000
     while (!done && System.currentTimeMillis() < exchangerDataOpTimeout) {
       done = PollingExchanger.getPollingExchangerQueue(partyId).offer(pollingExchanger,
         RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_Q_OFFER_INTERVAL_SEC.get().toLong, TimeUnit.SECONDS)
-      logTrace(s"DispatchPollingReqSO.ensureInited calling, getting from pollingExchangerQueue. i=${i}")
+      logTrace(s"DispatchPollingReqSO.ensureInited calling, getting from pollingExchangerQueue. partyId=${partyId} i=${i}")
       i += 1
     }
 
     if (!done) {
-      onError(new TimeoutException("timeout when offering pollingExchanger to queue"))
+      onError(new TimeoutException(s"timeout when offering pollingExchanger to queue, partyId=${partyId}"))
       PollingExchanger.getPollingExchangerQueue(partyId).remove(pollingExchanger)
       return
     }
@@ -386,7 +384,7 @@ class DispatchPollingReqSO(eggSiteServicerPollingRespSO: ServerCallStreamObserve
         delegateSO = new MockPollingReqSO(eggSiteServicerPollingRespSO)
       case null =>
         PollingExchanger.getPollingExchangerQueue(partyId).remove(pollingExchanger)
-        throw new CancellationException("timeout in waiting polling method")
+        throw new CancellationException(s"timeout in waiting polling method, partyId=${partyId}")
       case _ =>
         val e = new NotImplementedError(s"method ${method} not supported")
         logError(e)

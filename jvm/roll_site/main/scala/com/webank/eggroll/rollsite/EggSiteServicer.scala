@@ -105,12 +105,11 @@ class EggSiteServicer extends DataTransferServiceGrpc.DataTransferServiceImplBas
           var pollingExchanger: PollingExchanger = null
           var i = 0
           val partyId = dstPartyId
-          logTrace(s"pollingExchanger.pollingExchangerQueueMap partyId=${partyId}")
           while (pollingExchanger == null) {
 
             pollingExchanger = PollingExchanger.getPollingExchangerQueue(partyId).poll(
               RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_Q_POLL_INTERVAL_SEC.get().toLong, TimeUnit.SECONDS)
-            logTrace(s"unary call getting pollingExchanger from queue. i=${i}, isNull=${pollingExchanger == null}")
+            logTrace(s"unary call getting pollingExchanger from queue. partyId=${partyId} i=${i}, isNull=${pollingExchanger == null}")
             i += 1
           }
           pollingExchanger.setMethod(PollingMethods.UNARY_CALL)
