@@ -417,10 +417,6 @@ class RollPair(object):
     def disable_gc(self):
         self.gc_enable = False
 
-    def set_rpc(self, rpc: RollPairContext):
-        if rpc is not None:
-            self.ctx = rpc
-
     def get_store_serdes(self):
         return create_serdes(self.__store._store_locator._serdes)
 
