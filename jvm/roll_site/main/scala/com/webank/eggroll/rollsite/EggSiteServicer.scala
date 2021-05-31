@@ -19,7 +19,7 @@
 package com.webank.eggroll.rollsite
 
 import java.util
-import java.util.concurrent.{LinkedBlockingQueue, TimeUnit}
+import java.util.concurrent.TimeUnit
 
 import com.google.protobuf.ByteString
 import com.webank.ai.eggroll.api.networking.proxy.Proxy.PollingFrame
