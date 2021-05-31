@@ -113,7 +113,7 @@ class RollPairContext(object):
         if not namespace:
             namespace = options.get('namespace', self.get_session().get_session_id())
         if not name:
-            raise ValueError(f"name is required, cannot be None")
+            raise ValueError(f"name is required, cannot be blank")
         store_type = options.get('store_type', self.default_store_type)
         total_partitions = options.get('total_partitions', None)
         no_partitions_param = False
