@@ -357,11 +357,6 @@ class DispatchPollingReqSO(eggSiteServicerPollingRespSO: ServerCallStreamObserve
     logTrace(s"pollingExchanger.pollingExchangerQueueMap partyId=${partyId}")
     val exchangerDataOpTimeout = System.currentTimeMillis() + RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_EXCHANGER_DATA_OP_TIMEOUT_SEC.get().toLong * 1000
     while (!done && System.currentTimeMillis() < exchangerDataOpTimeout) {
-//      if (!PollingExchanger.pollingExchangerQueueMap.containsKey(partyId)) {
-//        val pollingExchangerQueue = new LinkedBlockingQueue[PollingExchanger]()
-//        PollingExchanger.pollingExchangerQueueMap.put(partyId, pollingExchangerQueue)
-//      }
-//
       done = PollingExchanger.getPollingExchangerQueue(partyId).offer(pollingExchanger,
         RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_Q_OFFER_INTERVAL_SEC.get().toLong, TimeUnit.SECONDS)
       logTrace(s"DispatchPollingReqSO.ensureInited calling, getting from pollingExchangerQueue. i=${i}")
@@ -370,10 +365,6 @@ class DispatchPollingReqSO(eggSiteServicerPollingRespSO: ServerCallStreamObserve
 
     if (!done) {
       onError(new TimeoutException("timeout when offering pollingExchanger to queue"))
-//      if (!PollingExchanger.pollingExchangerQueueMap.containsKey(partyId)) {
-//        val pollingExchangerQueue = new LinkedBlockingQueue[PollingExchanger]()
-//        PollingExchanger.pollingExchangerQueueMap.put(partyId, pollingExchangerQueue)
-//      }
       PollingExchanger.getPollingExchangerQueue(partyId).remove(pollingExchanger)
       return
     }
@@ -397,10 +388,6 @@ class DispatchPollingReqSO(eggSiteServicerPollingRespSO: ServerCallStreamObserve
       case PollingMethods.MOCK =>
         delegateSO = new MockPollingReqSO(eggSiteServicerPollingRespSO)
       case null =>
-//        if (!PollingExchanger.pollingExchangerQueueMap.containsKey(partyId)) {
-//          val pollingExchangerQueue = new LinkedBlockingQueue[PollingExchanger]()
-//          PollingExchanger.pollingExchangerQueueMap.put(partyId, pollingExchangerQueue)
-//        }
         PollingExchanger.getPollingExchangerQueue(partyId).remove(pollingExchanger)
         throw new CancellationException("timeout in waiting polling method")
       case _ =>
