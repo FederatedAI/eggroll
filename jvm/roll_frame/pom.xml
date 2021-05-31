@@ -32,7 +32,8 @@
     <name>Eggroll RollFrame</name>
 
     <properties>
-        <jackson.version>2.10.4</jackson.version>
+        <jackson.version>2.12.2</jackson.version>
+        <jep.version>3.9.1</jep.version>
     </properties>
 
     <dependencies>
@@ -48,27 +49,11 @@
             <version>${spark.version}</version>
             <scope>provided</scope>
         </dependency>
-
         <dependency>
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-mllib_2.11</artifactId>
             <version>${spark.version}</version>
             <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.arrow</groupId>
-            <artifactId>arrow-memory</artifactId>
-            <version>${arrow.version}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>io.netty</groupId>
-                    <artifactId>netty-buffer</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>io.netty</groupId>
-                    <artifactId>netty-common</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
@@ -112,6 +97,14 @@
                     <groupId>com.fasterxml.jackson.core</groupId>
                     <artifactId>jackson-annotations</artifactId>
                 </exclusion>
+                <exclusion>
+                    <groupId>io.netty</groupId>
+                    <artifactId>netty-buffer</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>io.netty</groupId>
+                    <artifactId>netty-common</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
         <dependency>
@@ -119,6 +112,13 @@
             <artifactId>netty-all</artifactId>
             <version>${netty.version}</version>
         </dependency>
+        <!-- https://mvnrepository.com/artifact/black.ninia/jep -->
+        <dependency>
+            <groupId>black.ninia</groupId>
+            <artifactId>jep</artifactId>
+            <version>${jep.version}</version>
+        </dependency>
+
         <dependency>
             <artifactId>eggroll-core</artifactId>
             <groupId>com.webank.eggroll</groupId>
@@ -139,9 +139,11 @@
                             <goal>copy-dependencies</goal>
                         </goals>
                         <configuration>
-<!--                            <excludeGroupIds>org.scala-lang,org.slf4j,junit,com.fasterxml.jackson.core</excludeGroupIds>-->
-<!--                            <excludeArtifactIds>commons-lang3</excludeArtifactIds>-->
-<!--                            <excludeScope>provided</excludeScope>-->
+                            <!--    <excludeGroupIds>org.apache.hadoop, org.codehaus.jackson,org.scala-lang,org.slf4j,junit,com.fasterxml.jackson.core,com.fasterxml.jackson.module</excludeGroupIds>-->
+                            <!--    <excludeArtifactIds>netty,commons-lang3</excludeArtifactIds>-->
+                            <!--    <excludeScope>provided</excludeScope> -->
+                            <excludeArtifactIds>netty</excludeArtifactIds>
+                            <excludeGroupIds>org.apache.hadoop,org.codehaus.jackson</excludeGroupIds>
                             <outputDirectory>${project.build.directory}/lib</outputDirectory>
                         </configuration>
                     </execution>

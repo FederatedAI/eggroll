@@ -16,6 +16,9 @@
 
 package com.webank.eggroll.rollframe
 
+import java.net.InetSocketAddress
+import java.nio.channels.ServerSocketChannel
+
 import com.webank.eggroll.format._
 import org.junit.Test
 
@@ -26,7 +29,7 @@ class FrameTransferTests {
     val path = "aa"
     val fb = new FrameBatch(new FrameSchema(TestAssets.getSchema(1000)), 100 * 20)
     val service = new NioTransferEndpoint
-    val port = 8818
+    val port = 8817
     val host = "127.0.0.1"
     val batchCount = 10
     new Thread() {
@@ -39,6 +42,7 @@ class FrameTransferTests {
       }
     }.start()
 
+    Thread.sleep(1000)
     service.runClient(host, port)
     new Thread() {
       override def run(): Unit = {
@@ -65,7 +69,6 @@ class FrameTransferTests {
     println("recv time", System.currentTimeMillis() - start)
   }
 
-
   @Test
   def testSendNioMultiThreads(): Unit = {
     val path = "aa"
@@ -85,6 +88,7 @@ class FrameTransferTests {
         }
       }
     }.start()
+    Thread.sleep(1000)
     val start = System.currentTimeMillis()
     clients.foreach(_.runClient(host, port))
     (0 until batchCount).foreach { i =>
@@ -121,7 +125,7 @@ class FrameTransferTests {
     val path = "aa"
     val service = new NioTransferEndpoint
     val host = "127.0.0.1"
-    val port = 8818
+    val port = 8819
     val batchCount = 10
     val fbs = new FrameBatch(new FrameSchema(TestAssets.getSchema(1000)), 100 * 20)
     val client = new NioTransferEndpoint
@@ -135,6 +139,7 @@ class FrameTransferTests {
         }
       }
     }.start()
+    Thread.sleep(1000)
     client.runClient(host, port)
     val start = System.currentTimeMillis()
     (0 until batchCount - 1).foreach { i =>
@@ -191,7 +196,7 @@ class FrameTransferTests {
     FrameStore.queue(path, 1).append(fb)
     FrameStore.cache(path).append(fb)
     val service = new NioTransferEndpoint
-    val port = 8818
+    val port = 8820
     val host = "127.0.0.1"
     new Thread() {
       override def run(): Unit = {
@@ -202,6 +207,7 @@ class FrameTransferTests {
         }
       }
     }.start()
+    Thread.sleep(1000)
     val client = new NioTransferEndpoint
     client.runClient(host, port)
 
@@ -213,6 +219,29 @@ class FrameTransferTests {
 
   @Test
   def testIsReachable(): Unit ={
-    println(HttpUtil.isReachable("127.0.0.1"))
+    assert(HttpUtil.isReachable("127.0.0.1"))
+  }
+
+  @Test
+  def testCheckAvailablePort(): Unit ={
+    val host = "127.0.0.1"
+    val port = 8821
+    val serverSocketChannel = ServerSocketChannel.open
+    serverSocketChannel.bind(new InetSocketAddress(host, port))
+    assert(!HttpUtil.checkAvailablePort(host,port))
+    serverSocketChannel.close()
+    assert(HttpUtil.checkAvailablePort(host,port))
+    assert(HttpUtil.checkAvailablePort(host,port))
+  }
+
+  @Test
+  def testGetAvailablePort(): Unit ={
+    val host = "127.0.0.1"
+    val originPort = HttpUtil.ORIGIN_PORT
+    val serverSocketChannel = ServerSocketChannel.open
+    serverSocketChannel.bind(new InetSocketAddress(host, originPort))
+    val availablePort = HttpUtil.getAvailablePort(host)
+    serverSocketChannel.close()
+    assert(originPort<=availablePort)
   }
 }

@@ -13,10 +13,9 @@ object Router extends Logging{
   @volatile private var routerTable: JSONObject = _
   @volatile private var defaultEnable: Boolean = true
 
-
   def initOrUpdateRouterTable(path: String): Unit = {
-    logTrace("Router.initOrUpdateRouterTable")
-    val source = Source.fromFile(path,"UTF-8")
+    logDebug(s"refreshing route table at path=${path}")
+    val source = Source.fromFile(path, "UTF-8")
     val str = source.mkString
     val js = new JSONObject(str)
     routerTable = js.get("route_table").asInstanceOf[JSONObject]
@@ -24,24 +23,29 @@ object Router extends Logging{
       defaultEnable = js.get("permission").asInstanceOf[JSONObject]
         .get("default_allow").asInstanceOf[Boolean]
     } catch {
-      case _: Throwable => defaultEnable = true
+      case t: Throwable =>
+        logError("get default_allow from route table failed. setting defaultEnable=true", t)
+        defaultEnable = true
+    } finally {
+      source.close()
+      logTrace(s"close route table at path=${path}")
     }
   }
 
   def query(partyId: String, role: String = "default"): QueryResult = {
     if (routerTable == null) {
-      throw new Exception("The routing table is not initialized!")
+      throw new Exception("The route table is not initialized")
     }
 
     if (!routerTable.has(partyId) && !routerTable.has("default")) {
-      throw new Exception(s"The routing table not have current party=${partyId} and default party.")
+      throw new Exception(s"The routing table not have current party=${partyId} and default party")
     }
 
     val curParty = if (routerTable.has(partyId)) {partyId} else {
       if (defaultEnable) {
         "default"
       } else {
-        throw new Exception(s"The routing table not have current party=${partyId} and disable default party.")
+        throw new Exception(s"The routing table not have current party=${partyId} and disable default party")
       }
 
     }
@@ -55,25 +59,31 @@ object Router extends Logging{
       if (defaultEnable) {
         "default"
       } else {
-        throw new Exception(s"The routing table not have current role=${role} and disable default role.")
+        throw new Exception(s"The routing table not have current role=${role} and disable default role")
       }
     }
     val default: JSONObject = routerTable.get(curParty).asInstanceOf[JSONObject]
       .get(curRole).asInstanceOf[JSONArray]
       .get(0).asInstanceOf[JSONObject]
-    val host = default.get("ip").asInstanceOf[String]
-    val port = default.get("port").asInstanceOf[Int]
-    var isSecure = false
-    if (default.has("is_secure")) {
-      if (default.get("is_secure").asInstanceOf[Boolean] || default.get("is_secure").toString == "1") {
-        isSecure = true
-      }
-    }
 
     var isPolling = false
     if (default.has("is_polling")) {
       if (default.get("is_polling").asInstanceOf[Boolean] || default.get("is_polling").toString == "1") {
         isPolling = true
+      }
+    }
+
+    var host = ""
+    var port = -1
+    if (!isPolling) {
+      host = default.get("ip").asInstanceOf[String]
+      port = default.get("port").asInstanceOf[Int]
+    }
+
+    var isSecure = false
+    if (default.has("is_secure")) {
+      if (default.get("is_secure").asInstanceOf[Boolean] || default.get("is_secure").toString == "1") {
+        isSecure = true
       }
     }
 
@@ -85,8 +95,8 @@ object Router extends Logging{
       val js = new JSONObject(data)
       js.has("route_table")
     } catch {
-      case _: Throwable =>
-        logError("route table data check failed.")
+      case t: Throwable =>
+        logError("route table data check failed", t)
         false
     }
   }
@@ -104,8 +114,7 @@ object Router extends Logging{
       }
     } catch {
       case e: Throwable =>
-        logError("route table update failed.")
-        e.printStackTrace()
+        logError("route table update failed", e)
         throw e
     } finally {
       initOrUpdateRouterTable(path)
@@ -122,8 +131,7 @@ object Router extends Logging{
       new String(fileContent, StandardCharsets.UTF_8)
     } catch {
       case e: Throwable =>
-        logError("route table get failed.")
-        e.printStackTrace()
+        logError("route table get failed", e)
         throw e
     }
   }
