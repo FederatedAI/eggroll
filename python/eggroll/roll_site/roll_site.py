@@ -96,8 +96,6 @@ class RollSiteContext:
         def stop_push_session():
             self._push_session.stop()
 
-        self.rp_ctx.get_session().add_exit_task(stop_push_session)
-
         self.role = options["self_role"]
         self.party_id = str(options["self_party_id"])
         self._options = options
@@ -120,6 +118,7 @@ class RollSiteContext:
         self.pushing_latch = CountDownLatch(0)
         self.rp_ctx.get_session().add_exit_task(self._wait_push_complete)
         self._wait_push_exit_timeout = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PUSH_OVERALL_TIMEOUT_SEC.get_with(options))
+        self.rp_ctx.get_session().add_exit_task(stop_push_session)
 
         L.info(f"inited RollSiteContext: {self.__dict__}")
 
