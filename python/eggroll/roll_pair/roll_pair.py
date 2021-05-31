@@ -439,19 +439,6 @@ class RollPair(object):
     def get_store_type(self):
         return self.__store._store_locator._store_type
 
-    def kv_to_bytes(self, **kwargs):
-        use_serialize = kwargs.get("use_serialize", True)
-        # can not use is None
-        if "k" in kwargs and "v" in kwargs:
-            k, v = kwargs["k"], kwargs["v"]
-            return (self.value_serdes.serialize(k), self.value_serdes.serialize(v)) if use_serialize \
-                else (string_to_bytes(k), string_to_bytes(v))
-        elif "k" in kwargs:
-            k = kwargs["k"]
-            return self.value_serdes.serialize(k) if use_serialize else string_to_bytes(k)
-        elif "v" in kwargs:
-            v = kwargs["v"]
-            return self.value_serdes.serialize(v) if use_serialize else string_to_bytes(v)
 
     def _run_job(self,
             job: ErJob,
