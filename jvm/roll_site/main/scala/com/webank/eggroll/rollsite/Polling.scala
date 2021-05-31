@@ -238,9 +238,6 @@ object PollingExchanger extends Logging {
 
     logTrace(s"pollingExchanger.pollingExchangerQueueMap partyId=${data.getMetadata.getDst.getPartyId}")
 
-    // should delete, because queue of partyID has created and put in map before here
-//    pollingExchangerQueueMap.put(data.getMetadata.getDst.getPartyId, new LinkedBlockingQueue[PollingExchanger]())
-
     while (!done && System.currentTimeMillis() <= timeout) {
       done = q.offer(data, interval, TimeUnit.SECONDS)
       logTrace(s"${logPrefix} offering data, done=${done}, curRetry=${curRetry}, rsKey=${if (rsHeader != null) rsHeader.getRsKey() else "null"}, rsHeader=${rsHeader}, metadata=${metadataString}")
