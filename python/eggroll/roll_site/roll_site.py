@@ -160,9 +160,9 @@ class RollSiteBase:
             receive_executor_pool_size = int(RollSiteConfKeys.EGGROLL_ROLLSITE_RECEIVE_EXECUTOR_POOL_MAX_SIZE.get_with(options))
             receive_executor_pool_type = CoreConfKeys.EGGROLL_CORE_DEFAULT_EXECUTOR_POOL.get_with(options)
             self._receive_executor_pool = create_executor_pool(
-                canonical_name=receive_executor_pool_type,
-                max_workers=receive_executor_pool_size,
-                thread_name_prefix="rollsite-client")
+                    canonical_name=receive_executor_pool_type,
+                    max_workers=receive_executor_pool_size,
+                    thread_name_prefix="rollsite-client")
         self._push_start_time = None
         self._pull_start_time = None
         self._is_standalone = self.ctx.is_standalone
@@ -195,11 +195,11 @@ class _BatchStreamHelper(object):
 
         def encode_packet(rs_header_inner, batch_inner):
             header = proxy_pb2.Metadata(
-                src=proxy_pb2.Topic(partyId=rs_header_inner._src_party_id, role=rs_header_inner._src_role),
-                dst=proxy_pb2.Topic(partyId=rs_header_inner._dst_party_id, role=rs_header_inner._dst_role),
-                seq=rs_header_inner._batch_seq,
-                ext=rs_header_inner.to_proto_string(),
-                version=eggroll_version)
+                    src=proxy_pb2.Topic(partyId=rs_header_inner._src_party_id, role=rs_header_inner._src_role),
+                    dst=proxy_pb2.Topic(partyId=rs_header_inner._dst_party_id, role=rs_header_inner._dst_role),
+                    seq=rs_header_inner._batch_seq,
+                    ext=rs_header_inner.to_proto_string(),
+                    version=eggroll_version)
 
             if batch_inner:
                 result = proxy_pb2.Packet(header=header, body=proxy_pb2.Data(value=batch_inner))
@@ -304,9 +304,9 @@ class RollSite(RollSiteBase):
         # meaning the 'pointer' is copied, while the contents are modificable
         bs_helper = _BatchStreamHelper(rs_header=rs_header)
         bin_batch_streams = bs_helper._generate_batch_streams(
-            pair_iter=_generate_obj_bytes(obj, self.batch_body_bytes),
-            batches_per_stream=self.push_batches_per_stream,
-            body_bytes=self.batch_body_bytes)
+                pair_iter=_generate_obj_bytes(obj, self.batch_body_bytes),
+                batches_per_stream=self.push_batches_per_stream,
+                body_bytes=self.batch_body_bytes)
 
         grpc_channel_factory = GrpcChannelFactory()
         channel = grpc_channel_factory.create_channel(self.ctx.proxy_endpoint)
