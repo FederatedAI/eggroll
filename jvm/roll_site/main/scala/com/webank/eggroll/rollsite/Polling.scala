@@ -18,7 +18,6 @@
 
 package com.webank.eggroll.rollsite
 
-import java.util
 import java.util.concurrent._
 import java.util.concurrent.atomic.AtomicReference
 
@@ -32,7 +31,9 @@ import com.webank.eggroll.core.util.{ErrorUtils, Logging, ToStringUtils}
 import com.webank.eggroll.rollsite.PollingResults.errorPoison
 import io.grpc.ConnectivityState
 import io.grpc.stub.{ServerCallStreamObserver, StreamObserver}
+import javax.security.sasl.AuthenticationException
 import org.apache.commons.lang3.StringUtils
+import org.apache.commons.lang3.exception.ExceptionUtils
 
 import scala.concurrent.TimeoutException
 
@@ -48,16 +49,20 @@ object PollingMethods {
   val MOCK = "mock"
 }
 
-object LongPollingClient {
-  private val defaultPollingReqMetadata: Proxy.Metadata = Proxy.Metadata.newBuilder()
+object LongPollingClient extends Logging {
+  private var defaultPollingReqMetadata: Proxy.Metadata = Proxy.Metadata.newBuilder()
     .setDst(
       Proxy.Topic.newBuilder()
         .setPartyId(RollSiteConfKeys.EGGROLL_ROLLSITE_PARTY_ID.get()))
     .build()
 
-  val initPollingFrameBuilder: Proxy.PollingFrame.Builder = Proxy.PollingFrame.newBuilder().setMetadata(defaultPollingReqMetadata)
+  var initPollingFrameBuilder: Proxy.PollingFrame.Builder = Proxy.PollingFrame.newBuilder().setMetadata(defaultPollingReqMetadata)
+
+  val pollingAuthenticationEnabled = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AHTHENTICATION_ENABLED.get().toBoolean
 
   private val pollingSemaphore = new Semaphore(RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_CONCURRENCY.get().toInt)
+
+  private var shouldPollingContinue: Boolean = true
 
   def acquireSemaphore(): Unit = {
     LongPollingClient.pollingSemaphore.acquire()
@@ -76,6 +81,24 @@ class LongPollingClient extends Logging {
       val endpoint = Router.query("default").point
       var isSecure = Router.query("default").isSecure
       val caCrt = CoreConfKeys.CONFKEY_CORE_SECURITY_CLIENT_CA_CRT_PATH.get()
+
+      if (LongPollingClient.pollingAuthenticationEnabled) {
+        val pollingAuthenticator = Class.forName("com.webank.eggroll.rollsite.FatePollingAuthenticator")
+          .newInstance().asInstanceOf[PollingAuthenticator]
+
+        LongPollingClient.defaultPollingReqMetadata = Proxy.Metadata.newBuilder()
+          .setDst(
+            Proxy.Topic.newBuilder()
+              .setPartyId(LongPollingClient.defaultPollingReqMetadata.getDst.getPartyId))
+          .setTask(Proxy.Task.newBuilder()
+            .setModel(Proxy.Model.newBuilder()
+              .setDataKey(pollingAuthenticator.sign())))
+          .build()
+
+        LongPollingClient.initPollingFrameBuilder = Proxy.PollingFrame.newBuilder().setMetadata(LongPollingClient.defaultPollingReqMetadata)
+        logTrace(s"authInfo to be sent=${LongPollingClient.defaultPollingReqMetadata.getTask.getModel.getDataKey}, " +
+          s"partyID=${LongPollingClient.initPollingFrameBuilder.getMetadata.getDst.getPartyId}")
+      }
 
       // use secure channel conditions:
       // 1 include crt file.
@@ -136,6 +159,13 @@ class LongPollingClient extends Logging {
 
           pollingReqSO.onNext(TransferExceptionUtils.genExceptionPollingFrame(t))
           pollingReqSO.onCompleted()
+
+          // if exception contains AuthenticationException, it means anthInfo client sent did not pass server authentication
+          if (ExceptionUtils.getStackTrace(t).contains(classOf[AuthenticationException].getSimpleName)) {
+            logError(s"fail to authenticate authInfo=${LongPollingClient.initPollingFrameBuilder.getMetadata.getTask.getModel.getDataKey} " +
+              s", please recheck your authInfo and restart rollsite, start to terminate polling")
+            LongPollingClient.shouldPollingContinue = false
+          }
           //pollingReqSO.onError(TransferExceptionUtils.throwableToException(t))
       } finally {
         if (!finishLatch.await(RollSiteConfKeys.EGGROLL_ROLLSITE_ONCOMPLETED_WAIT_TIMEOUT.get().toLong, TimeUnit.SECONDS)) {
@@ -152,7 +182,7 @@ class LongPollingClient extends Logging {
   }
 
   def pollingForever(): Unit = {
-    while (true) {
+    while (LongPollingClient.shouldPollingContinue) {
       try {
         polling()
       } catch {
@@ -161,6 +191,7 @@ class LongPollingClient extends Logging {
           Thread.sleep(1211)
       }
     }
+    logInfo("polling exit")
   }
 }
 
@@ -284,7 +315,25 @@ class DispatchPollingReqSO(eggSiteServicerPollingRespSO: ServerCallStreamObserve
     if (inited) return
     logTrace(s"DispatchPollingReqSO.ensureInited calling.")
 
-   pollingExchanger = new PollingExchanger()
+    val pollingAuthenticationEnabled = RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AHTHENTICATION_ENABLED.get().toBoolean
+    if (pollingAuthenticationEnabled) {
+        val pollingAuthenticator = Class.forName(RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_AUTHENTICATOR_CLASS.get())
+          .newInstance().asInstanceOf[PollingAuthenticator]
+
+      val authResult = pollingAuthenticator.authenticate(req)
+      if (authResult) {
+        logTrace(s"polling authentication of party=${req.getMetadata.getDst.getPartyId} successful")
+      } else {
+        val errorInfo = new AuthenticationException(s"polling authentication of party=${req.getMetadata.getDst.getPartyId} failed, " +
+          s"please check polling client authentication info=${req.getMetadata.getTask.getModel.getDataKey}")
+        logError(s"polling authentication of party=${req.getMetadata.getDst.getPartyId} failed, please check polling client authentication info")
+        throw new AuthenticationException(s"polling authentication of party=${req.getMetadata.getDst.getPartyId} failed, please check polling client authentication info")
+      }
+    } else {
+      logDebug("polling authentication disabled")
+    }
+
+    pollingExchanger = new PollingExchanger()
     var done = false
     var i = 0
     val exchangerDataOpTimeout = System.currentTimeMillis() + RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_EXCHANGER_DATA_OP_TIMEOUT_SEC.get().toLong * 1000
@@ -351,8 +400,9 @@ class DispatchPollingReqSO(eggSiteServicerPollingRespSO: ServerCallStreamObserve
     } else if (delegateSO != null) {
       delegateSO.onError(t)
     } else {
-      logError("DispatchPollingReqSO.onError before init", t)
-      eggSiteServicerPollingRespSO.onError(TransferExceptionUtils.throwableToException(t))
+      val wrapped = TransferExceptionUtils.throwableToException(t)
+      logError("DispatchPollingReqSO.onError before init", wrapped)
+      eggSiteServicerPollingRespSO.onError(wrapped)
     }
   }
 
@@ -437,8 +487,9 @@ class UnaryCallPollingReqSO(eggSiteServicerPollingRespSO: ServerCallStreamObserv
   }
 
   override def onError(t: Throwable): Unit = {
-    logError(s"UnaryCallPollingReqSO.onError calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}", t)
-    eggSiteServicerPollingRespSO.onError(TransferExceptionUtils.throwableToException(t))
+    val wrapped = TransferExceptionUtils.throwableToException(t)
+    logError(s"UnaryCallPollingReqSO.onError calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}", wrapped)
+    eggSiteServicerPollingRespSO.onError(wrapped)
     logError(s"UnaryCallPollingReqSO.onError called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
   }
 
@@ -525,8 +576,9 @@ class PushPollingReqSO(val eggSiteServicerPollingRespSO: ServerCallStreamObserve
   }
 
   override def onError(t: Throwable): Unit = {
-    logError(s"PushPollingReqSO.onError calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}", t)
-    eggSiteServicerPollingRespSO.onError(TransferExceptionUtils.throwableToException(t))
+    val wrapped = TransferExceptionUtils.throwableToException(t)
+    logError(s"PushPollingReqSO.onError calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}", wrapped)
+    eggSiteServicerPollingRespSO.onError(wrapped)
     logError(s"PushPollingReqSO.onError called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
   }
 
@@ -571,10 +623,10 @@ class DispatchPollingRespSO(pollingResults: PollingResults,
         metadata = req.getPacket.getHeader
         delegateSO = new MockPollingRespSO(pollingResults)
       case _ =>
-        val t = new NotImplementedError(s"operation ${method} not supported")
-        logError("fail to dispatch response", t)
-        onError(TransferExceptionUtils.throwableToException(t))
-        throw t
+        val wrapped = TransferExceptionUtils.throwableToException(new NotImplementedError(s"operation ${method} not supported"))
+        logError("fail to dispatch response", wrapped)
+        onError(wrapped)
+        throw wrapped
     }
 
     oneLineStringMetadata = ToStringUtils.toOneLineString(metadata)
@@ -605,13 +657,20 @@ class DispatchPollingRespSO(pollingResults: PollingResults,
   }
 
   override def onError(t: Throwable): Unit = {
-    logTrace(s"DispatchPollingRespSO.onError calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
+    val wrapped = TransferExceptionUtils.throwableToException(t)
+    logTrace(s"DispatchPollingRespSO.onError calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}", wrapped)
+    val calledMsg = s"DispatchPollingRespSO.onError called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}"
     if (delegateSO != null) {
-      delegateSO.onError(TransferExceptionUtils.throwableToException(t))
+      delegateSO.onError(wrapped)
+      finishLatch.countDown()
+      LongPollingClient.releaseSemaphore()
+      logTrace(calledMsg)
+    } else {
+      pollingResults.setError(t)
+      finishLatch.countDown()
+      LongPollingClient.releaseSemaphore()
+      logError(s"${calledMsg}, delegateSO=null", t)
     }
-    finishLatch.countDown()
-    LongPollingClient.releaseSemaphore()
-    logTrace(s"DispatchPollingRespSO.onError called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
   }
 
   override def onCompleted(): Unit = {
@@ -688,10 +747,10 @@ class PushPollingRespSO(pollingResults: PollingResults)
   }
 
   override def onError(t: Throwable): Unit = {
-    logError(s"PushPollingRespSO.onError calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}", t)
-    val siteError = TransferExceptionUtils.throwableToException(t)
-    pollingResults.setError(siteError)
-    pushReqSO.onError(siteError)
+    val wrapped = TransferExceptionUtils.throwableToException(t)
+    logError(s"PushPollingRespSO.onError calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}", wrapped)
+    pollingResults.setError(wrapped)
+    pushReqSO.onError(wrapped)
     logError(s"PushPollingRespSO.onError called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
   }
 
@@ -757,9 +816,10 @@ class ForwardPushToPollingRespSO(pollingResults: PollingResults,
   }
 
   override def onError(t: Throwable): Unit = {
-    logError(s"ForwardPushToPollingRespSO.onError calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}", t)
+    val wrapped = TransferExceptionUtils.throwableToException(t)
+    logError(s"ForwardPushToPollingRespSO.onError calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}", wrapped)
     finishLatch.countDown()
-    pollingResults.setError(TransferExceptionUtils.throwableToException(t))
+    pollingResults.setError(wrapped)
     logError(s"ForwardPushToPollingRespSO.onError called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
   }
 
@@ -833,8 +893,9 @@ class UnaryCallPollingRespSO(pollingResults: PollingResults)
   }
 
   override def onError(t: Throwable): Unit = {
+    val wrapped = TransferExceptionUtils.throwableToException(t)
     logError(s"UnaryCallPollingRespSO.onError calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}", t)
-    pollingResults.setError(TransferExceptionUtils.throwableToException(t))
+    pollingResults.setError(wrapped)
     logError(s"UnaryCallPollingRespSO.onError called. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
   }
 
