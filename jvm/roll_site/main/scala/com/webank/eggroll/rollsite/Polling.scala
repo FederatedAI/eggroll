@@ -354,7 +354,7 @@ class DispatchPollingReqSO(eggSiteServicerPollingRespSO: ServerCallStreamObserve
     while (!done && System.currentTimeMillis() < exchangerDataOpTimeout) {
       done = PollingExchanger.getPollingExchangerQueue(partyId).offer(pollingExchanger,
         RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_Q_OFFER_INTERVAL_SEC.get().toLong, TimeUnit.SECONDS)
-      logTrace(s"DispatchPollingReqSO.ensureInited calling, getting from pollingExchangerQueue. partyId=${partyId} i=${i}")
+      logTrace(s"DispatchPollingReqSO.ensureInited calling, getting from pollingExchangerQueue. partyId=${partyId}, i=${i}")
       i += 1
     }
 
