@@ -19,7 +19,6 @@
 package com.webank.eggroll.rollsite.test
 
 import java.util.concurrent.CountDownLatch
-
 import com.google.protobuf.ByteString
 import com.webank.ai.eggroll.api.networking.proxy.Proxy.{Model, Task}
 import com.webank.ai.eggroll.api.networking.proxy.{DataTransferServiceGrpc, Proxy}
@@ -27,8 +26,13 @@ import com.webank.eggroll.core.meta.TransferModelPbMessageSerdes.ErRollSiteHeade
 import com.webank.eggroll.core.meta.{ErEndpoint, ErRollSiteHeader}
 import com.webank.eggroll.core.transfer.GrpcClientUtils
 import com.webank.eggroll.core.util.{Logging, ToStringUtils}
+import com.webank.eggroll.rollsite.Util
 import io.grpc.stub.StreamObserver
+import org.json.JSONObject
 import org.junit.Test
+
+import java.util.Date
+import scala.io.Source
 
 class TestRollSiteClient extends Logging {
   private val headerBuilder = Proxy.Metadata.newBuilder()
@@ -42,6 +46,45 @@ class TestRollSiteClient extends Logging {
 
   private val endpoint10002 = new ErEndpoint("localhost", 9470)
   private val topic10002 = topicBuilder.setPartyId("10002").build()
+
+  @Test
+  def testGetRouteTable(): Unit = {
+    val channel = GrpcClientUtils.getChannel(endpoint10001)
+    val stub = DataTransferServiceGrpc.newBlockingStub(channel)
+
+    val salt = BigInt(new Date().getTime).toByteArray
+    val key = "eggroll"
+    val md5HashKey = Util.hashMD5(ByteString.copyFrom(salt).toStringUtf8 + key)
+
+    val data = Proxy.Data.newBuilder().setKey(md5HashKey).setValue(ByteString.copyFrom(salt))
+    val packet = packetBuilder.setHeader(Proxy.Metadata.newBuilder()
+      .setDst(Proxy.Topic.newBuilder().setPartyId("10002")).setOperator("get_route_table")).setBody(data).build()
+
+    val ret_packet = stub.unaryCall(packet)
+    println(s"result=${ret_packet}")
+  }
+
+  @Test
+  def testSetRouteTable(): Unit = {
+    val source = Source.fromFile("/Users/bryce/projects/eggroll_guest/conf/route_table_test.json")
+    val str = source.mkString
+    val js = new JSONObject(str)
+
+    val channel = GrpcClientUtils.getChannel(endpoint10001)
+    val stub = DataTransferServiceGrpc.newBlockingStub(channel)
+
+    val salt = BigInt(new Date().getTime).toByteArray
+    val key = "eggroll"
+    val md5HashKey = Util.hashMD5(ByteString.copyFrom(salt).toStringUtf8 + str + key)
+    val data = Proxy.Data.newBuilder().setKey(md5HashKey).setValue(ByteString.copyFromUtf8(ByteString.copyFrom(salt).toStringUtf8 + str))
+
+    val packet = packetBuilder.setHeader(Proxy.Metadata.newBuilder().setDst(Proxy.Topic.newBuilder().setPartyId("10002")).setOperator("set_route_table"))
+      .setBody(data).build()
+
+    val ret_packet = stub.unaryCall(packet)
+    println(s"${ret_packet}")
+    source.close()
+  }
 
   @Test
   def testUnaryCall(): Unit = {
