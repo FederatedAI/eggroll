@@ -19,7 +19,6 @@
 package com.webank.eggroll.rollsite.test
 
 import java.util.concurrent.CountDownLatch
-
 import com.google.protobuf.ByteString
 import com.webank.ai.eggroll.api.networking.proxy.Proxy.{Model, Task}
 import com.webank.ai.eggroll.api.networking.proxy.{DataTransferServiceGrpc, Proxy}
@@ -84,6 +83,7 @@ class TestRollSiteClient extends Logging {
 
     val ret_packet = stub.unaryCall(packet)
     println(s"${ret_packet}")
+    source.close()
   }
 
   @Test
