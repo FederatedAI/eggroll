@@ -61,7 +61,7 @@ class TestRollSiteClient extends Logging {
       .setDst(Proxy.Topic.newBuilder().setPartyId("10002")).setOperator("get_route_table")).setBody(data).build()
 
     val ret_packet = stub.unaryCall(packet)
-    println(s"result=${ret_packet}")
+    println(s"result=${ret_packet.getBody.getValue.toStringUtf8}")
   }
 
   @Test
