@@ -87,11 +87,14 @@ def add_runtime_storage(k, v, overwrite=True):
         runtime_storage[k] = v
 
 
-def get_runtime_storage(k, default_value=None):
+def get_runtime_storage(k=None, default_value=None):
     global runtime_storage
     global runtime_storage_lock
     with runtime_storage_lock:
-        return runtime_storage.get(k, default_value)
+        if k:
+            return runtime_storage.get(k, default_value)
+        else:
+            return runtime_storage
 
 
 def contains_runtime_storage(k):

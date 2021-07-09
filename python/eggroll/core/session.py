@@ -424,7 +424,11 @@ class ErSession(object):
         return self._eggs.copy()
 
     def get_eggs_count(self):
-        return len(self._eggs)
+        node_count = len(self._eggs)
+        egg_count = 0
+        for k, v in self._eggs.items():
+            egg_count += len(v)
+        return egg_count
 
 class JobRunner(object):
     def __init__(self, session: ErSession):
