@@ -32,7 +32,7 @@ from eggroll.core.datastructure.broker import FifoBroker
 from eggroll.core.meta_model import ErStoreLocator, ErJob, ErStore, ErFunctor, \
     ErTask, ErPair, ErPartition
 from eggroll.core.session import ErSession
-from eggroll.core.utils import generate_job_id, generate_task_id
+from eggroll.core.utils import generate_job_id, generate_task_id, get_runtime_storage
 from eggroll.core.utils import string_to_bytes, hash_code
 from eggroll.roll_pair import create_serdes, create_adapter
 from eggroll.roll_pair.transfer_pair import TransferPair, BatchBroker
@@ -73,11 +73,11 @@ class RollPairContext(object):
                                                      'store_type': StoreTypes.ROLLPAIR_CACHE,
                                                      'create_if_missing': True})
         eggs = session.get_eggs()
-
         def _broadcast_eggs(task: ErTask):
             from eggroll.core.utils import add_runtime_storage
             _input = task._inputs[0]
             add_runtime_storage("__eggs", eggs)
+            L.debug(f"runtime_storage={get_runtime_storage('__eggs')}")
 
         self.session_default_rp.with_stores(func=_broadcast_eggs)
 
@@ -313,7 +313,9 @@ class RollPair(object):
         self.functor_serdes =create_serdes(SerdesTypes.CLOUD_PICKLE)
         self.value_serdes = self.get_store_serdes()
         self.key_serdes = self.get_store_serdes()
-        self.partitioner = partitioner(hash_code, self.__store._store_locator._total_partitions)
+        # self.partitioner = partitioner(hash_code, self.__store._store_locator._total_partitions)
+        import mmh3
+        self.partitioner = partitioner(mmh3.hash, self.__store._store_locator._total_partitions)
         self.egg_router = default_egg_router
         self.__session_id = self.ctx.session_id
         self.gc_enable = rp_ctx.rpc_gc_enable
