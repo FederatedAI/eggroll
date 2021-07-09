@@ -24,6 +24,7 @@ from eggroll.core.transfer.transfer_service import TransferClient
 from eggroll.roll_pair.roll_pair import RollPair
 from eggroll.roll_pair.transfer_pair import TransferPair
 from eggroll.utils.log_utils import get_logger
+from eggroll.core.command.command_model import CommandURI
 
 L = get_logger()
 
@@ -56,6 +57,7 @@ class RemoteRollPairAdapter(PairAdapter):
         return RemoteRollPairIterator(self)
 
     def new_batch(self):
+        L.info(f"RemoteRollPairAdapter new_batch calling")
         return RemoteRollPairWriteBatch(self)
 
     def get(self, key):
@@ -101,6 +103,7 @@ class RemoteRollPairWriteBatch(PairWriteBatch):
         self.manual_merger = dict()
         self.has_write_op = False
         self.write_count = 0
+        L.info(f"RemoteRollPairWriteBatch inited")
 
     def get(self, k):
         raise NotImplementedError()
@@ -121,11 +124,14 @@ class RemoteRollPairWriteBatch(PairWriteBatch):
         #     self.write()
 
     def write(self):
+        L.info("RemoteRollPairWriteBatch write calling")
         if len(self.manual_merger) == 0:
+            L.info(f"self.manual_merger={self.manual_merger}")
             return
         self.has_write_op = True
         batches = TransferPair.pair_to_bin_batch(sorted(self.manual_merger.items(), key=lambda kv: kv[0]))
         task_id = f"{self.adapter._replicate_job_id}-partition-{self.adapter._partition_id}"
+        L.info(f"task_id={task_id}")
 
         tasks = [ErTask(id=task_id,
                         name=RollPair.PUT_BATCH,
@@ -139,8 +145,9 @@ class RemoteRollPairWriteBatch(PairWriteBatch):
             return cmd_client.sync_send(inputs=tasks,
                                         output_types=[ErTask],
                                         endpoint=remote_cmd_endpoint,
-                                        command_uri=RollPair.RUN_TASK)
+                                        command_uri=CommandURI(f'v1/egg-pair/runTask'))
 
+        L.info(f"start to send cmd")
         t = Thread(target=send_command, name=task_id, args=[tasks, self.adapter.remote_cmd_endpoint])
         t.start()
 
@@ -151,6 +158,7 @@ class RemoteRollPairWriteBatch(PairWriteBatch):
         t.join()
 
         self.manual_merger.clear()
+        L.info("RemoteRollPairWriteBatch write called")
 
     def close(self):
         self.write()

@@ -31,6 +31,7 @@ class HaAdapter(PairAdapter):
 
     def __init__(self, options: dict = None):
         super().__init__(options)
+        L.info(f"HaAdapter init calling")
         if options is None:
             options = {}
         self.options = options
@@ -45,6 +46,7 @@ class HaAdapter(PairAdapter):
         main_adapter_options = options.copy()
         main_adapter_options[RollPairConfKeys.EGGROLL_ROLLPAIR_STORAGE_REPLICATE_ENABLED.key] = False
         self.main_adapter = create_pair_adapter(main_adapter_options)
+        L.info(f"main_adapter={self.main_adapter}")
         self.concrete_adapters.append(self.main_adapter)
 
         self.init_ha_egg_order(self.er_partition._processor._server_node_id)
@@ -57,7 +59,9 @@ class HaAdapter(PairAdapter):
                 if replica_egg_id == self.partition_id:
                     L.debug(f"replica_egg_id equals to self.partition_id={self.partition_id}. skipping replication from i={i}")
                     break
+                L.info(f"replica_egg_id={replica_egg_id}")
                 replica_egg_tuple = ha_egg_list[i % self.total_partitions]
+                L.info(f"replica_egg_tuple={replica_egg_tuple}")
                 if replica_egg_tuple[0] == self.er_partition._processor._server_node_id:
                     L.debug(f"replica_egg's processor._server_node_id equals to my processor._id={replica_egg_tuple[0]}. skipping replication from i={i}")
                     break
@@ -65,6 +69,8 @@ class HaAdapter(PairAdapter):
                 rank_in_node = calculate_rank_in_node(
                         self.partition_id, len(eggs), len(replica_egg_tuple[1]))
                 replica_processor = replica_egg_tuple[1][rank_in_node]
+                L.info(f"origin processor={self.er_partition._processor}")
+                L.info(f"replica processor={replica_processor}")
 
                 replica_adapter_options = options.copy()
                 replica_adapter_options['replica_number'] = i
@@ -73,10 +79,12 @@ class HaAdapter(PairAdapter):
                                                         remote_transfer_endpoint=replica_processor._transfer_endpoint,
                                                         options=replica_adapter_options)
                 self.concrete_adapters.append(replica_adapter)
+                L.info(f"concrete_adapters len={len(self.concrete_adapters) } {self.concrete_adapters}")
 
     def init_ha_egg_order(self, origin_server_node_id):
         if HaAdapter.is_ha_eggs_inited:
             return
+        L.info(f"origin_server_node_id={origin_server_node_id}, get_runtime_storage={get_runtime_storage()}")
         eggs_dict = get_runtime_storage("__eggs")
         eggs_list = sorted(list(eggs_dict.items()), key=lambda e: e[0])
         ha_eggs_list = None
@@ -84,6 +92,7 @@ class HaAdapter(PairAdapter):
             if eggs_list[i][0] == origin_server_node_id:
                 ha_eggs_list = eggs_list[i:] + eggs_list[:i]
         add_runtime_storage("__ha_eggs_list", ha_eggs_list)
+        L.info(f"__ha_eggs_list={get_runtime_storage('__ha_eggs_list')}")
         HaAdapter.is_ha_eggs_inited = True
 
     def __del__(self):
@@ -92,6 +101,9 @@ class HaAdapter(PairAdapter):
     def close(self):
         for adapter in self.concrete_adapters:
             adapter.close()
+
+    def count(self):
+        return self.main_adapter.count()
 
     def iteritems(self):
         return HaIterator(self)
@@ -104,7 +116,7 @@ class HaAdapter(PairAdapter):
 
     def put(self, key, value):
         for adapter in self.concrete_adapters:
-            adapter.put()
+            adapter.put(key, value)
 
     def is_sorted(self):
         return self.main_adapter.is_sorted()
@@ -120,7 +132,9 @@ class HaAdapter(PairAdapter):
                 result = adapter.__enter__()
             else:
                 adapter.__enter__()
-        return result
+        L.info(f"return result={result}")
+        # return result
+        return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         super().__exit__(exc_type, exc_val, exc_tb)
@@ -152,18 +166,21 @@ class HaWriteBatch(PairWriteBatch):
         if options is None:
             options = {}
         self.adapter = adapter
-        self.main_adapter = self.concrete_adapters[0]
+        self.main_adapter = self.adapter.main_adapter
         self.concrete_adapters = self.adapter.concrete_adapters
         self.concrete_adapters_count = len(self.concrete_adapters)
         self.concrete_write_batches = []
+        # L.info(f"self.concrete_adapters={self.concrete_adapters} len={len(self.concrete_adapters)}")
         for adapter in self.concrete_adapters:
-            self.concrete_adapters.append(adapter.new_batch())
+            # L.info(f"iterate adapter={adapter}")
+            self.concrete_write_batches.append(adapter.new_batch())
 
         self.options = options
+        L.info(f"HaWriteBatch inited")
 
     def get(self, k):
         exceptions = {}
-        for i in self.concrete_adapters_count:
+        for i in range(self.concrete_adapters_count):
             try:
                 return self.concrete_write_batches[i].get(k)
             except Exception as e:
@@ -174,6 +191,7 @@ class HaWriteBatch(PairWriteBatch):
                     continue
 
     def put(self, k, v):
+        L.info(f"HaWriteBatch put calling")
         for wb in self.concrete_write_batches:
             wb.put(k, v)
 
@@ -196,9 +214,10 @@ class HaWriteBatch(PairWriteBatch):
                 result = wb.__enter__()
             else:
                 wb.__enter__()
-        return result
+        # return result
+        return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        for i in self.concrete_adapters_count:
+        for i in range(self.concrete_adapters_count):
             wb = self.concrete_write_batches[self.concrete_adapters_count - 1 - i]
             wb.__exit__(exc_type, exc_val, exc_tb)
