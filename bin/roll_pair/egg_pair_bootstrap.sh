@@ -25,7 +25,7 @@ ONE_ARG_LIST=(
 )
 
 get_property() {
-  property_value=`grep $2 $1 | cut -d '=' -f 2-`
+  property_value=`grep $2 $1 | awk -F '=' '{if($2!~/^#/) print $2}'`
   if [[ -z ${property_value} ]]; then
     property_value=$3
   fi
