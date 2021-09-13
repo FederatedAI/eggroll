@@ -148,6 +148,7 @@ object SessionConfKeys {
   val CONFKEY_SESSION_PROCESSORS_PER_NODE = "eggroll.session.processors.per.node"
   val EGGROLL_SESSION_START_TIMEOUT_MS = ErConfKey("eggroll.session.start.timeout.ms", 20000)
   val EGGROLL_SESSION_STOP_TIMEOUT_MS = ErConfKey("eggroll.session.stop.timeout.ms", 20000)
+  val EGGROLL_SESSION_PYTHON_PATH = "python.path"
 }
 
 object DeployConfKeys {

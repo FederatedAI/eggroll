@@ -44,13 +44,14 @@ class Container(conf: RuntimeErConf, moduleName: String, processorId: Long = 0) 
   private val boot = conf.getString(CoreConfKeys.BOOTSTRAP_ROOT_SCRIPT, s"bin/eggroll_boot.${if(isWindows) "py" else "sh"}")
   private val logsDir = s"${CoreConfKeys.EGGROLL_LOGS_DIR.get()}"
   private val cmPort = conf.getString(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT)
+  private val pythonPath = conf.getString(SessionConfKeys.EGGROLL_SESSION_PYTHON_PATH)
 
   if (StringUtils.isBlank(sessionId)) {
     throw new IllegalArgumentException("session Id is blank when creating processor")
   }
 
   def start(): Boolean = {
-    val startCmd = s"""${exeCmd} ${boot} start "${exePath} --config ${conf.getString(CoreConfKeys.STATIC_CONF_PATH)} --session-id ${sessionId} --server-node-id ${myServerNodeId} --processor-id ${processorId}" ${moduleName}-${processorId} &"""
+    val startCmd = s"""${exeCmd} ${boot} start "${exePath} --config ${conf.getString(CoreConfKeys.STATIC_CONF_PATH)} --python-path ${pythonPath} --session-id ${sessionId} --server-node-id ${myServerNodeId} --processor-id ${processorId}" ${moduleName}-${processorId} &"""
     val standaloneTag = System.getProperty("eggroll.standalone.tag", StringConstants.EMPTY)
     logInfo(s"${standaloneTag} ${startCmd}")
 
