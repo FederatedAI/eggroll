@@ -22,6 +22,7 @@ ONE_ARG_LIST=(
   "processor-id"
   "port"
   "transfer-port"
+  "python-path"
 )
 
 get_property() {
@@ -62,6 +63,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --server-node-id)
       server_node_id=$2
+      shift 2
+      ;;
+    --python-path)
+      python_path=$2
       shift 2
       ;;
     *)
@@ -159,7 +164,8 @@ export MALLOC_MMAP_THRESHOLD_=${malloc_mmap_threshold}
 echo "MALLOC_MMAP_THRESHOLD_=${MALLOC_MMAP_THRESHOLD_}"
 export MALLOC_MMAP_MAX_=${malloc_mmap_max}
 echo "MALLOC_MMAP_MAX_=${MALLOC_MMAP_MAX_}"
-export PYTHONPATH=${pythonpath}:${PYTHONPATH}
+export PYTHONPATH=${python_path}:${pythonpath}:${PYTHONPATH}
+echo "python_path=${python_path}"
 echo "PYTHONPATH=${PYTHONPATH}"
 echo "PYTHON=`which python`"
 
