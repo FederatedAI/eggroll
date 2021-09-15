@@ -121,9 +121,9 @@ class HaAdapter(PairAdapter):
     def is_sorted(self):
         return self.main_adapter.is_sorted()
 
-    def destroy(self):
+    def destroy(self, options: dict = None):
         for adapter in self.concrete_adapters:
-            adapter.destroy()
+            adapter.destroy(options)
 
     def __enter__(self):
         result = None
