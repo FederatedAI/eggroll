@@ -152,10 +152,10 @@ class HaIterator(PairIterator):
         self.main_iterator.close()
 
     def __iter__(self):
-        return self.main_iterator.__iter__()
+        return self.main_iterator
 
     def __enter__(self):
-        return self.main_iterator.__iter__()
+        return self.main_iterator
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.main_iterator.__exit__(exc_type, exc_val, exc_tb)
