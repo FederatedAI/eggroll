@@ -51,7 +51,13 @@ class Container(conf: RuntimeErConf, moduleName: String, processorId: Long = 0) 
   }
 
   def start(): Boolean = {
-    val startCmd = s"""${exeCmd} ${boot} start "${exePath} --config ${conf.getString(CoreConfKeys.STATIC_CONF_PATH)} --python-path ${pythonPath} --session-id ${sessionId} --server-node-id ${myServerNodeId} --processor-id ${processorId}" ${moduleName}-${processorId} &"""
+    var startCmd = ""
+    if (pythonPath.isEmpty) {
+      startCmd = s"""${exeCmd} ${boot} start "${exePath} --config ${conf.getString(CoreConfKeys.STATIC_CONF_PATH)} --session-id ${sessionId} --server-node-id ${myServerNodeId} --processor-id ${processorId}" ${moduleName}-${processorId} &"""
+    } else {
+      startCmd = s"""${exeCmd} ${boot} start "${exePath} --config ${conf.getString(CoreConfKeys.STATIC_CONF_PATH)} --python-path ${pythonPath} --session-id ${sessionId} --server-node-id ${myServerNodeId} --processor-id ${processorId}" ${moduleName}-${processorId} &"""
+    }
+
     val standaloneTag = System.getProperty("eggroll.standalone.tag", StringConstants.EMPTY)
     logInfo(s"${standaloneTag} ${startCmd}")
 
