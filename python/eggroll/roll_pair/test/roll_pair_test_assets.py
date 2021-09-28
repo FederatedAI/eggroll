@@ -69,6 +69,7 @@ def get_standalone_context(options=None):
 
     return context
 
+
 def get_cluster_context(options=None):
     if options is None:
         options = {}
