@@ -23,6 +23,7 @@ import shutil
 import signal
 import threading
 import time
+import mmh3
 from collections.abc import Iterable
 
 import grpc
@@ -53,6 +54,7 @@ from eggroll.roll_pair.utils.pair_utils import generator, partitioner, \
     set_data_dir
 from eggroll.utils.log_utils import get_logger
 from eggroll.utils.profile import get_system_metric
+
 
 L = get_logger()
 
@@ -106,7 +108,7 @@ class EggPair(object):
                 try:
                     scatter_future = shuffler.scatter(
                             input_broker=shuffle_broker,
-                            partition_function=partitioner(hash_func=hash_code, total_partitions=output_total_partitions),
+                            partition_function=partitioner(hash_func=mmh3.hash, total_partitions=output_total_partitions),
                             output_store=output_store)
                     with create_adapter(task._inputs[0]) as input_db, \
                         input_db.iteritems() as rb:
