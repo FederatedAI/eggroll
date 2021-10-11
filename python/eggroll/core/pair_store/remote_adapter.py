@@ -69,7 +69,7 @@ class RemoteRollPairAdapter(PairAdapter):
     def is_sorted(self):
         return True
 
-    def destroy(self):
+    def destroy(self, options: dict=None):
         tasks = [ErTask(id=f"{self._replicate_job_id}-partition-{self._partition_id}",
                         name=RollPair.DESTROY,
                         inputs=[self._er_partition],
