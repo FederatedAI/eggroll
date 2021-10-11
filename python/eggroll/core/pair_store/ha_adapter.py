@@ -46,6 +46,7 @@ class HaAdapter(PairAdapter):
         main_adapter_options = options.copy()
         main_adapter_options[RollPairConfKeys.EGGROLL_ROLLPAIR_STORAGE_REPLICATE_ENABLED.key] = False
         self.main_adapter = create_pair_adapter(main_adapter_options)
+        self.path = self.main_adapter.path
         L.info(f"main_adapter={self.main_adapter}")
         self.concrete_adapters.append(self.main_adapter)
 
@@ -112,7 +113,7 @@ class HaAdapter(PairAdapter):
         return HaWriteBatch(self, self.options)
 
     def get(self, key):
-        return self.main_adapter.get()
+        return self.main_adapter.get(key)
 
     def put(self, key, value):
         for adapter in self.concrete_adapters:
