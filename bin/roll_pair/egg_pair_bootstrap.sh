@@ -95,7 +95,6 @@ if [[ ${transfer_port} -eq 0 ]] && [[ ${port} -ne 0 ]]; then
 fi
 
 if [ ! $venv ]; then
-  echo "is NULL"
   get_property ${config} "eggroll.resourcemanager.bootstrap.egg_pair.venv"
   venv=${property_value}
 else
