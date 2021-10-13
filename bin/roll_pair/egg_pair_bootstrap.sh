@@ -69,6 +69,10 @@ while [[ $# -gt 0 ]]; do
       python_path=$2
       shift 2
       ;;
+    --python-venv)
+      venv=$2
+      shift 2
+      ;;
     *)
       break
       ;;
@@ -90,8 +94,13 @@ if [[ ${transfer_port} -eq 0 ]] && [[ ${port} -ne 0 ]]; then
   transfer_port=${port}
 fi
 
-get_property ${config} "eggroll.resourcemanager.bootstrap.egg_pair.venv"
-venv=${property_value}
+if [ ! $venv ]; then
+  echo "is NULL"
+  get_property ${config} "eggroll.resourcemanager.bootstrap.egg_pair.venv"
+  venv=${property_value}
+else
+  echo "venv defined=${venv}"
+fi
 
 get_property ${config} "eggroll.resourcemanager.bootstrap.egg_pair.pythonpath"
 pythonpath=${property_value}
@@ -154,7 +163,9 @@ export EGGROLL_LOG_FILE="egg_pair-${processor_id}"
 
 if [[ -z ${venv} ]]; then
   PYTHON=`which python`
+  echo "this branch 123123"
 else
+  echo "this branch 456456:${venv}"
   source ${venv}/bin/activate
   PYTHON=${venv}/bin/python
 fi
