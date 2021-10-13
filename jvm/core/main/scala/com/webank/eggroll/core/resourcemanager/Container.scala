@@ -45,6 +45,7 @@ class Container(conf: RuntimeErConf, moduleName: String, processorId: Long = 0) 
   private val logsDir = s"${CoreConfKeys.EGGROLL_LOGS_DIR.get()}"
   private val cmPort = conf.getString(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT)
   private val pythonPath = conf.getString(SessionConfKeys.EGGROLL_SESSION_PYTHON_PATH)
+  private val pythonVenv = conf.getString(SessionConfKeys.EGGROLL_SESSION_PYTHON_VENV)
 
   if (StringUtils.isBlank(sessionId)) {
     throw new IllegalArgumentException("session Id is blank when creating processor")
@@ -52,11 +53,24 @@ class Container(conf: RuntimeErConf, moduleName: String, processorId: Long = 0) 
 
   def start(): Boolean = {
     var startCmd = ""
-    if (pythonPath.isEmpty) {
-      startCmd = s"""${exeCmd} ${boot} start "${exePath} --config ${conf.getString(CoreConfKeys.STATIC_CONF_PATH)} --session-id ${sessionId} --server-node-id ${myServerNodeId} --processor-id ${processorId}" ${moduleName}-${processorId} &"""
-    } else {
-      startCmd = s"""${exeCmd} ${boot} start "${exePath} --config ${conf.getString(CoreConfKeys.STATIC_CONF_PATH)} --python-path ${pythonPath} --session-id ${sessionId} --server-node-id ${myServerNodeId} --processor-id ${processorId}" ${moduleName}-${processorId} &"""
+    var pythonPathArgs = ""
+    var pythonVenvArgs = ""
+
+    if (pythonPath.nonEmpty) {
+      pythonPathArgs = s"--python-path ${pythonPath}"
     }
+
+    if (pythonVenv.nonEmpty) {
+      pythonVenvArgs = s"--python-venv ${pythonVenv}"
+    }
+
+    startCmd = s"""${exeCmd} ${boot} start "${exePath} --config ${conf.getString(CoreConfKeys.STATIC_CONF_PATH)} ${pythonPathArgs} ${pythonVenvArgs} --session-id ${sessionId} --server-node-id ${myServerNodeId} --processor-id ${processorId}" ${moduleName}-${processorId} &"""
+
+//    if (pythonPath.isEmpty) {
+//      startCmd = s"""${exeCmd} ${boot} start "${exePath} --config ${conf.getString(CoreConfKeys.STATIC_CONF_PATH)} --session-id ${sessionId} --server-node-id ${myServerNodeId} --processor-id ${processorId}" ${moduleName}-${processorId} &"""
+//    } else {
+//      startCmd = s"""${exeCmd} ${boot} start "${exePath} --config ${conf.getString(CoreConfKeys.STATIC_CONF_PATH)} --python-path ${pythonPath} --session-id ${sessionId} --server-node-id ${myServerNodeId} --processor-id ${processorId}" ${moduleName}-${processorId} &"""
+//    }
 
     val standaloneTag = System.getProperty("eggroll.standalone.tag", StringConstants.EMPTY)
     logInfo(s"${standaloneTag} ${startCmd}")
