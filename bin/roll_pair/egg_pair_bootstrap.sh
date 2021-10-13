@@ -162,9 +162,7 @@ export EGGROLL_LOG_FILE="egg_pair-${processor_id}"
 
 if [[ -z ${venv} ]]; then
   PYTHON=`which python`
-  echo "this branch 123123"
 else
-  echo "this branch 456456:${venv}"
   source ${venv}/bin/activate
   PYTHON=${venv}/bin/python
 fi
