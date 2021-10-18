@@ -153,3 +153,5 @@ class RollSiteConfKeys(object):
     EGGROLL_ROLLSITE_OVERALL_TIMEOUT_SEC = ErConfKey("eggroll.rollsite.overall.timeout.sec", 172_800_000)
     EGGROLL_ROLLSITE_COMPLETION_WAIT_TIMEOUT_SEC = ErConfKey("eggroll.rollsite.completion.wait.timeout.sec", 3_600_000)
     EGGROLL_ROLLSITE_PACKET_INTERVAL_TIMEOUT_SEC = ErConfKey("eggroll.rollsite.packet.interval.timeout.sec", 20_000)
+
+    EGGROLL_ROLLSITE_PUSH_SESSION_ENABLED =  ErConfKey("eggroll.rollsite.push.session.enabled", False)
