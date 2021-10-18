@@ -317,9 +317,10 @@ class ForwardPushToPollingReqSO(eggSiteServicerPushRespSO_forwardPushToPollingRe
     logTrace(s"ForwardPushToPollingReqSO.ensureInited calling. rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
 
     while (pollingExchanger == null) {
-      pollingExchanger = PollingExchanger.pollingExchangerQueue.poll(
+      val partyId = firstRequest.getHeader.getDst.getPartyId
+      pollingExchanger = PollingExchanger.getPollingExchangerQueue(partyId).poll(
         RollSiteConfKeys.EGGROLL_ROLLSITE_POLLING_Q_POLL_INTERVAL_SEC.get().toLong, TimeUnit.SECONDS)
-      logTrace(s"ForwardPushToPollingReqSO.ensureInited, polling from pollingExchanger. isNull=${pollingExchanger == null}, rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
+      logTrace(s"ForwardPushToPollingReqSO.ensureInited, polling from pollingExchanger. partyId=${partyId}, isNull=${pollingExchanger == null}, rsKey=${rsKey}, rsHeader=${rsHeader}, metadata=${oneLineStringMetadata}")
     }
 
     metadata = firstRequest.getHeader
