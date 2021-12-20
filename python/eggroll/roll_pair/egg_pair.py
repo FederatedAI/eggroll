@@ -244,7 +244,7 @@ class EggPair(object):
                                 or not realpath.startswith(real_data_dir):
                             raise ValueError(f'trying to delete a dangerous path: {realpath}')
                         else:
-                            shutil.rmtree(path)
+                            shutil.rmtree(path, ignore_errors=True)
             else:
                 options = task._job._options
                 with create_adapter(task._inputs[0], options=options) as input_adapter:
