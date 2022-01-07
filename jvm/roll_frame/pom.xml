@@ -112,6 +112,14 @@
                     <groupId>com.fasterxml.jackson.core</groupId>
                     <artifactId>jackson-annotations</artifactId>
                 </exclusion>
+                <exclusion>
+                    <groupId>io.netty</groupId>
+                    <artifactId>netty-buffer</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>io.netty</groupId>
+                    <artifactId>netty-common</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
         <dependency>
@@ -146,10 +154,11 @@
                             <goal>copy-dependencies</goal>
                         </goals>
                         <configuration>
-                            <!--                            <excludeGroupIds>org.scala-lang,org.slf4j,junit,com.fasterxml.jackson.core</excludeGroupIds>-->
-                            <!--                            <excludeArtifactIds>commons-lang3</excludeArtifactIds>-->
-                            <!--                            <excludeScope>provided</excludeScope>-->
-                                <excludeGroupIds>org.apache.hadoop</excludeGroupIds>
+                            <!--    <excludeGroupIds>org.apache.hadoop, org.codehaus.jackson,org.scala-lang,org.slf4j,junit,com.fasterxml.jackson.core,com.fasterxml.jackson.module</excludeGroupIds>-->
+                            <!--    <excludeArtifactIds>netty,commons-lang3</excludeArtifactIds>-->
+                            <!--    <excludeScope>provided</excludeScope> -->
+                            <excludeArtifactIds>netty</excludeArtifactIds>
+                            <excludeGroupIds>org.apache.hadoop,org.codehaus.jackson</excludeGroupIds>
                             <outputDirectory>${project.build.directory}/lib</outputDirectory>
                         </configuration>
                     </execution>
