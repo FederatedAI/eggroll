@@ -25,6 +25,11 @@ def get_db_path(partition: ErPartition):
          str(partition._id)])
 
 
+def get_db_path_expanded(data_dir, store_type, namespace, name, partition_id):
+    return "/".join(
+            [data_dir, store_type, namespace, name, str(partition_id)])
+
+
 def generator(key_serde, value_serde, iterator):
     for k, v in iterator:
         yield key_serde.deserialize(k), value_serde.deserialize(v)
