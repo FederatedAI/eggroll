@@ -22,6 +22,7 @@ ONE_ARG_LIST=(
   "processor-id"
   "port"
   "transfer-port"
+  "python-path"
 )
 
 get_property() {
@@ -64,6 +65,14 @@ while [[ $# -gt 0 ]]; do
       server_node_id=$2
       shift 2
       ;;
+    --python-path)
+      python_path=$2
+      shift 2
+      ;;
+    --python-venv)
+      venv=$2
+      shift 2
+      ;;
     *)
       break
       ;;
@@ -85,8 +94,12 @@ if [[ ${transfer_port} -eq 0 ]] && [[ ${port} -ne 0 ]]; then
   transfer_port=${port}
 fi
 
-get_property ${config} "eggroll.resourcemanager.bootstrap.egg_pair.venv"
-venv=${property_value}
+if [ ! $venv ]; then
+  get_property ${config} "eggroll.resourcemanager.bootstrap.egg_pair.venv"
+  venv=${property_value}
+else
+  echo "venv defined=${venv}"
+fi
 
 get_property ${config} "eggroll.resourcemanager.bootstrap.egg_pair.pythonpath"
 pythonpath=${property_value}
@@ -159,7 +172,8 @@ export MALLOC_MMAP_THRESHOLD_=${malloc_mmap_threshold}
 echo "MALLOC_MMAP_THRESHOLD_=${MALLOC_MMAP_THRESHOLD_}"
 export MALLOC_MMAP_MAX_=${malloc_mmap_max}
 echo "MALLOC_MMAP_MAX_=${MALLOC_MMAP_MAX_}"
-export PYTHONPATH=${pythonpath}:${PYTHONPATH}
+export PYTHONPATH=${python_path}:${pythonpath}:${PYTHONPATH}
+echo "python_path=${python_path}"
 echo "PYTHONPATH=${PYTHONPATH}"
 echo "PYTHON=`which python`"
 

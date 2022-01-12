@@ -18,18 +18,16 @@ import configparser
 import gc
 import logging
 import os
+import platform
 import shutil
 import signal
-import time
-
 import threading
-import platform
-from collections import defaultdict
+import time
+import mmh3
+from collections.abc import Iterable
 
 import grpc
 import numpy as np
-
-from collections.abc import Iterable
 
 from eggroll.core.client import ClusterManagerClient
 from eggroll.core.command.command_router import CommandRouter
@@ -42,21 +40,21 @@ from eggroll.core.datastructure.broker import FifoBroker
 from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.meta_model import ErPair
 from eggroll.core.meta_model import ErTask, ErProcessor, ErEndpoint
-from eggroll.core.pair_store.format import ArrayByteBuffer, PairBinReader
 from eggroll.core.proto import command_pb2_grpc, transfer_pb2_grpc
 from eggroll.core.transfer.transfer_service import GrpcTransferServicer, \
     TransferService
-from eggroll.core.utils import _exception_logger
+from eggroll.core.utils import _exception_logger, add_runtime_storage
 from eggroll.core.utils import hash_code
 from eggroll.core.utils import set_static_er_conf, get_static_er_conf
 from eggroll.roll_pair import create_adapter, create_serdes, create_functor
-from eggroll.roll_pair.transfer_pair import TransferPair, BatchBroker
 from eggroll.roll_pair.task.storage import PutBatchTask
+from eggroll.roll_pair.transfer_pair import BatchBroker
 from eggroll.roll_pair.transfer_pair import TransferPair
 from eggroll.roll_pair.utils.pair_utils import generator, partitioner, \
     set_data_dir
 from eggroll.utils.log_utils import get_logger
 from eggroll.utils.profile import get_system_metric
+
 
 L = get_logger()
 
@@ -110,7 +108,7 @@ class EggPair(object):
                 try:
                     scatter_future = shuffler.scatter(
                             input_broker=shuffle_broker,
-                            partition_function=partitioner(hash_func=hash_code, total_partitions=output_total_partitions),
+                            partition_function=partitioner(hash_func=mmh3.hash, total_partitions=output_total_partitions),
                             output_store=output_store)
                     with create_adapter(task._inputs[0]) as input_db, \
                         input_db.iteritems() as rb:
@@ -837,6 +835,7 @@ def serve(args):
             ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT: cluster_manager_port
         })
         cluster_manager_client.heartbeat(myself)
+        add_runtime_storage('er_session_id', session_id)
 
         if platform.system() == "Windows":
             t1 = threading.Thread(target=stop_processor, args=[cluster_manager_client, myself])
@@ -901,6 +900,7 @@ if __name__ == '__main__':
 
     configs.read(conf_file)
     set_static_er_conf(configs['eggroll'])
+
     if configs:
         if not args.data_dir:
             args.data_dir = configs['eggroll']['eggroll.data.dir']

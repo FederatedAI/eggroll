@@ -18,6 +18,7 @@ import os
 import time
 import traceback
 from datetime import datetime
+from threading import RLock
 
 import numba
 from google.protobuf.text_format import MessageToString
@@ -25,6 +26,9 @@ from google.protobuf.text_format import MessageToString
 static_er_conf = {}
 stringify_charset = 'iso-8859-1'
 M = 2**31
+
+runtime_storage = {}
+runtime_storage_lock = RLock()
 
 
 class ErConfKey(object):
@@ -39,6 +43,17 @@ class ErConfKey(object):
         result = options.get(self.key,
                              get_static_er_conf().get(self.key, self.default_value))
         return result
+
+
+def add_static_er_conf(key, value):
+    global static_er_conf
+
+    if not static_er_conf:
+        raise RuntimeError('static_er_conf is not initialized yet')
+
+    if key in static_er_conf:
+        raise RuntimeError(f'key={key} already exists in static_er_conf with value={static_er_conf.get(key)}')
+
 
 def set_static_er_conf(a_dict):
     global static_er_conf
@@ -61,6 +76,32 @@ def get_static_er_conf(options: dict = None):
         set_static_er_conf(configs['eggroll'])
         static_er_conf = get_static_er_conf()
     return static_er_conf
+
+
+def add_runtime_storage(k, v, overwrite=True):
+    global runtime_storage
+    global runtime_storage_lock
+    with runtime_storage_lock:
+        if not overwrite and k in runtime_storage:
+            raise RuntimeError(f"failed to add runtime storage: {k} already exists")
+        runtime_storage[k] = v
+
+
+def get_runtime_storage(k=None, default_value=None):
+    global runtime_storage
+    global runtime_storage_lock
+    with runtime_storage_lock:
+        if k:
+            return runtime_storage.get(k, default_value)
+        else:
+            return runtime_storage
+
+
+def contains_runtime_storage(k):
+    global runtime_storage
+    global runtime_storage_lock
+    with runtime_storage_lock:
+        return k in runtime_storage
 
 
 def _to_proto(rpc_message):
@@ -244,3 +285,7 @@ def get_eggroll_bin_truncate_limit():
             _eggroll_bin_truncate_limit = 300
 
     return _eggroll_bin_truncate_limit
+
+
+def calculate_rank_in_node(partition_id, cluster_node_count, processor_count_of_node):
+    return (partition_id // cluster_node_count) % processor_count_of_node

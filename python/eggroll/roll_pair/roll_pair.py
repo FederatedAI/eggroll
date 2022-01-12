@@ -32,9 +32,9 @@ from eggroll.core.datastructure.broker import FifoBroker
 from eggroll.core.meta_model import ErStoreLocator, ErJob, ErStore, ErFunctor, \
     ErTask, ErPair, ErPartition
 from eggroll.core.session import ErSession
-from eggroll.core.utils import generate_job_id, generate_task_id
+from eggroll.core.utils import generate_job_id, generate_task_id, get_runtime_storage
 from eggroll.core.utils import string_to_bytes, hash_code
-from eggroll.roll_pair import create_serdes
+from eggroll.roll_pair import create_serdes, create_adapter
 from eggroll.roll_pair.transfer_pair import TransferPair, BatchBroker
 from eggroll.roll_pair.utils.gc_utils import GcRecorder
 from eggroll.roll_pair.utils.pair_utils import partitioner
@@ -66,6 +66,20 @@ class RollPairContext(object):
         self.rpc_gc_enable = True
         self.gc_recorder = GcRecorder(self)
         self.__command_client = CommandClient()
+
+        self.session_default_rp = self.load(name=self.session_id,
+                                            namespace=f'er_session_meta',
+                                            options={'total_partitions': session.get_eggs_count(),
+                                                     'store_type': StoreTypes.ROLLPAIR_CACHE,
+                                                     'create_if_missing': True})
+        eggs = session.get_eggs()
+        def _broadcast_eggs(task: ErTask):
+            from eggroll.core.utils import add_runtime_storage
+            _input = task._inputs[0]
+            add_runtime_storage("__eggs", eggs)
+            L.debug(f"runtime_storage={get_runtime_storage('__eggs')}")
+
+        self.session_default_rp.with_stores(func=_broadcast_eggs)
 
     def set_store_type(self, store_type: str):
         self.default_store_type = store_type
@@ -112,6 +126,8 @@ class RollPairContext(object):
             options = {}
         if not namespace:
             namespace = options.get('namespace', self.get_session().get_session_id())
+        if not name:
+            raise ValueError(f"name is required, cannot be blank")
         store_type = options.get('store_type', self.default_store_type)
         total_partitions = options.get('total_partitions', None)
         no_partitions_param = False
@@ -272,6 +288,7 @@ class RollPair(object):
     MAP_VALUES = 'mapValues'
     PUT = "put"
     PUT_ALL = "putAll"
+    PUT_BATCH = "putBatch"
     REDUCE = 'reduce'
     SAMPLE = 'sample'
     SUBTRACT_BY_KEY = 'subtractByKey'
@@ -298,7 +315,9 @@ class RollPair(object):
         self.functor_serdes =create_serdes(SerdesTypes.CLOUD_PICKLE)
         self.value_serdes = self.get_store_serdes()
         self.key_serdes = self.get_store_serdes()
-        self.partitioner = partitioner(hash_code, self.__store._store_locator._total_partitions)
+        # self.partitioner = partitioner(hash_code, self.__store._store_locator._total_partitions)
+        import mmh3
+        self.partitioner = partitioner(mmh3.hash, self.__store._store_locator._total_partitions)
         self.egg_router = default_egg_router
         self.__session_id = self.ctx.session_id
         self.gc_enable = rp_ctx.rpc_gc_enable
@@ -433,19 +452,6 @@ class RollPair(object):
     def get_store_type(self):
         return self.__store._store_locator._store_type
 
-    def kv_to_bytes(self, **kwargs):
-        use_serialize = kwargs.get("use_serialize", True)
-        # can not use is None
-        if "k" in kwargs and "v" in kwargs:
-            k, v = kwargs["k"], kwargs["v"]
-            return (self.value_serdes.serialize(k), self.value_serdes.serialize(v)) if use_serialize \
-                else (string_to_bytes(k), string_to_bytes(v))
-        elif "k" in kwargs:
-            k = kwargs["k"]
-            return self.value_serdes.serialize(k) if use_serialize else string_to_bytes(k)
-        elif "v" in kwargs:
-            v = kwargs["v"]
-            return self.value_serdes.serialize(v) if use_serialize else string_to_bytes(v)
 
     def _run_job(self,
             job: ErJob,
@@ -1109,7 +1115,7 @@ class RollPair(object):
         total_partitions = self.get_partitions()
         for other in others:
             if other.get_partitions() != total_partitions:
-                raise ValueError(f"diff partitions: expected:{total_partitions}, actual:{other.get_partitions()}")
+                raise ValueError(f"diff partitions: expected={total_partitions}, actual={other.get_partitions()}")
         job_id = generate_job_id(self.__session_id, tag=tag)
         job = ErJob(id=job_id,
                     name=tag,
