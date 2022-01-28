@@ -116,6 +116,10 @@ class RollPairConfKeys(object):
     EGGROLL_ROLLPAIR_TRANSFERPAIR_EXECUTOR_POOL_MAX_SIZE = ErConfKey("eggroll.rollpair.transferpair.executor.pool.max.size", 5_000)
     EGGROLL_ROLLPAIR_DEFAULT_STORE_TYPE = ErConfKey("eggroll.rollpair.default.store.type", "ROLLPAIR_LMDB")
     EGGROLL_ROLLPAIR_ROCKSDB_WRITEBATCH_SIZE = ErConfKey("eggroll.rollpair.rocksdb.writebatch.size", 500)
+    EGGROLL_ROLLPAIR_REMOTE_WRITEBATCH_SIZE = ErConfKey("eggroll.rollpair.remote.writebatch.size", 1_000_000)
+    EGGROLL_ROLLPAIR_STORAGE_REPLICA_COUNT = ErConfKey("eggroll.rollpair.storage.replica.count", 1)
+    EGGROLL_ROLLPAIR_STORAGE_REPLICATE_ENABLED = ErConfKey("eggroll.rollpair.storage.replicate.enabled", False)
+    EGGROLL_ROLLPAIR_STORAGE_REPLICATE_TEMP_FILES = ErConfKey("eggroll.rollpair.storage.replicate.temp.files", False)
 
 
 class RollSiteConfKeys(object):
@@ -149,3 +153,5 @@ class RollSiteConfKeys(object):
     EGGROLL_ROLLSITE_OVERALL_TIMEOUT_SEC = ErConfKey("eggroll.rollsite.overall.timeout.sec", 172_800_000)
     EGGROLL_ROLLSITE_COMPLETION_WAIT_TIMEOUT_SEC = ErConfKey("eggroll.rollsite.completion.wait.timeout.sec", 3_600_000)
     EGGROLL_ROLLSITE_PACKET_INTERVAL_TIMEOUT_SEC = ErConfKey("eggroll.rollsite.packet.interval.timeout.sec", 20_000)
+
+    EGGROLL_ROLLSITE_PUSH_SESSION_ENABLED =  ErConfKey("eggroll.rollsite.push.session.enabled", False)

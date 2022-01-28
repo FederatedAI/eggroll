@@ -27,6 +27,7 @@ from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.meta_model import ErEndpoint
 from eggroll.core.proto import proxy_pb2, proxy_pb2_grpc
 from eggroll.core.serdes import eggroll_serdes
+from eggroll.core.session import ErSession
 from eggroll.core.transfer_model import ErRollSiteHeader
 from eggroll.roll_pair import create_adapter
 from eggroll.roll_pair.roll_pair import RollPair, RollPairContext
@@ -83,6 +84,20 @@ class RollSiteContext:
         self.roll_site_session_id = roll_site_session_id
         self.rp_ctx = rp_ctx
 
+        self.push_session_enabled = RollSiteConfKeys.EGGROLL_ROLLSITE_PUSH_SESSION_ENABLED.get_with(options)
+        if self.push_session_enabled:
+            # create session for push roll_pair and object
+            self._push_session = ErSession(session_id=roll_site_session_id + "_push",
+                                           options=rp_ctx.get_session().get_all_options())
+            self._push_rp_ctx = RollPairContext(session=self._push_session)
+            L.info(f"push_session={self._push_session.get_session_id()} enabled")
+
+            def stop_push_session():
+                self._push_session.stop()
+        else:
+            self._push_session = None
+            self._push_rp_ctx = None
+
         self.role = options["self_role"]
         self.party_id = str(options["self_party_id"])
         self._options = options
@@ -108,6 +123,8 @@ class RollSiteContext:
 
         self.pushing_latch = CountDownLatch(0)
         self.rp_ctx.get_session().add_exit_task(self._wait_push_complete)
+        if self.push_session_enabled:
+            self.rp_ctx.get_session().add_exit_task(stop_push_session)
         self._wait_push_exit_timeout = int(RollSiteConfKeys.EGGROLL_ROLLSITE_PUSH_OVERALL_TIMEOUT_SEC.get_with(options))
 
         L.info(f"inited RollSiteContext: {self.__dict__}")
@@ -497,7 +514,11 @@ class RollSiteGrpc(RollSiteImplBase):
 
             L.trace(f"pushed rollpair partition. rs_key={rs_key}, partition_id={rs_header._partition_id}, rs_header={rs_header}")
 
-        rp.with_stores(_push_partition, options={"__op": "push_partition"})
+        if self.ctx.push_session_enabled:
+            rp_to_push = self.ctx._push_rp_ctx.load(name=rp.get_name(), namespace=rp.get_namespace())
+            rp_to_push.with_stores(_push_partition, options={"__op": "push_partition"})
+        else:
+            rp.with_stores(_push_partition, options={"__op": "push_partition"})
         if L.isEnabledFor(logging.DEBUG):
             L.debug(f"pushed rollpair: rs_key={rs_key}, rs_header={rs_header}, count={rp.count()}, elapsed={time.time() - start_time}")
         self.ctx.pushing_latch.count_down()

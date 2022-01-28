@@ -17,7 +17,7 @@ from collections import OrderedDict
 
 from eggroll.core.datastructure.broker import Broker
 from eggroll.core.pair_store.format import PairBinReader, PairBinWriter, \
-    FileByteBuffer
+    FileByteBuffer, ArrayByteBuffer
 from eggroll.utils.log_utils import get_logger
 
 L = get_logger()
@@ -331,6 +331,9 @@ class BrokerWriteBatch(PairWriteBatch):
 
     def close(self):
         self.__broker.signal_write_finish()
+
+
+
 
 if __name__ == "__main__":
     import sys,pickle

@@ -201,7 +201,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <properties>
-    <eggroll.version>2.3.1</eggroll.version>
+    <eggroll.version>2.4.3</eggroll.version>
 
     <!-- Languages -->
     <code.cache.size>512m</code.cache.size>
@@ -216,7 +216,7 @@
     <!-- Dependencies -->
     <arrow.version>0.17.1</arrow.version>
     <commons-beanutils.version>1.9.4</commons-beanutils.version>
-    <commons-io.version>2.6</commons-io.version>
+    <commons-io.version>2.11.0</commons-io.version>
     <commons-lang3.version>3.8.1</commons-lang3.version>
     <guava.version>30.1.1-jre</guava.version>
     <grpc.version>1.27.2</grpc.version>
@@ -224,9 +224,9 @@
     <junit4.version>4.13.2</junit4.version>
     <junit.jupiter.version>5.5.1</junit.jupiter.version>
     <junit.platform.version>1.5.1</junit.platform.version>
-    <log4j2.version>2.13.3</log4j2.version>
+    <log4j2.version>2.17.1</log4j2.version>
     <netty.version>4.1.63.Final</netty.version>
-    <protobuf.version>3.6.1</protobuf.version>
+    <protobuf.version>3.16.1</protobuf.version>
     <rocksdb.version>6.8.1</rocksdb.version>
     <scalatest.version>3.0.8</scalatest.version>
     <spark.version>2.4.3</spark.version>

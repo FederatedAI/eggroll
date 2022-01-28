@@ -12,13 +12,14 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import configparser
-import os, stat, re
-import psutil
+import os
 import random
+import time
 from concurrent.futures import wait, FIRST_EXCEPTION
 from copy import deepcopy
 
-import time
+import psutil
+
 from eggroll.core.client import ClusterManagerClient
 from eggroll.core.client import CommandClient
 from eggroll.core.command.command_model import CommandURI
@@ -28,10 +29,10 @@ from eggroll.core.constants import SessionStatus, ProcessorTypes, DeployModes
 from eggroll.core.datastructure.threadpool import ErThreadUnpooledExecutor
 from eggroll.core.meta_model import ErJob, ErTask
 from eggroll.core.meta_model import ErSessionMeta, ErPartition, ErStore
-from eggroll.core.utils import generate_task_id
+from eggroll.core.utils import generate_task_id, calculate_rank_in_node
 from eggroll.core.utils import get_self_ip, time_now, DEFAULT_DATETIME_FORMAT
 from eggroll.core.utils import get_stack
-from eggroll.core.utils import get_static_er_conf, set_static_er_conf
+from eggroll.core.utils import set_static_er_conf
 from eggroll.utils.log_utils import get_logger
 
 L = get_logger()
@@ -74,7 +75,6 @@ class ErSession(object):
         configs = configparser.ConfigParser()
         configs.read(conf_path)
         set_static_er_conf(configs['eggroll'])
-        static_er_conf = get_static_er_conf()
 
         self.__options = options.copy()
         self.__options[SessionConfKeys.CONFKEY_SESSION_ID] = self.__session_id
@@ -228,8 +228,8 @@ class ErSession(object):
 
     def get_rank_in_node(self, partition_id, server_node_id):
         processor_count_of_node = len(self._eggs[server_node_id])
-        node_count = len(self._eggs)
-        rank_in_node = (partition_id // node_count) % processor_count_of_node
+        cluster_node_count = len(self._eggs)
+        rank_in_node = calculate_rank_in_node(partition_id, cluster_node_count, processor_count_of_node)
 
         return rank_in_node
 
@@ -420,6 +420,15 @@ class ErSession(object):
     def is_stopped(self):
         return self.stopped
 
+    def get_eggs(self):
+        return self._eggs.copy()
+
+    def get_eggs_count(self):
+        node_count = len(self._eggs)
+        egg_count = 0
+        for k, v in self._eggs.items():
+            egg_count += len(v)
+        return egg_count
 
 class JobRunner(object):
     def __init__(self, session: ErSession):
