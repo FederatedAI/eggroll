@@ -201,7 +201,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <properties>
-    <eggroll.version>2.2.2</eggroll.version>
+    <eggroll.version>2.2.3</eggroll.version>
 
     <!-- Languages -->
     <code.cache.size>512m</code.cache.size>
@@ -224,9 +224,9 @@
     <junit4.version>4.12</junit4.version>
     <junit.jupiter.version>5.5.1</junit.jupiter.version>
     <junit.platform.version>1.5.1</junit.platform.version>
-    <log4j2.version>2.13.3</log4j2.version>
+    <log4j2.version>2.17.2</log4j2.version>
     <netty.version>4.1.27.Final</netty.version>
-    <protobuf.version>3.6.1</protobuf.version>
+    <protobuf.version>3.16.1</protobuf.version>
     <rocksdb.version>6.8.1</rocksdb.version>
     <scalatest.version>3.0.8</scalatest.version>
     <spark.version>2.4.3</spark.version>
