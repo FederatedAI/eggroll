@@ -55,7 +55,6 @@ from eggroll.roll_pair.utils.pair_utils import generator, partitioner, \
 from eggroll.utils.log_utils import get_logger
 from eggroll.utils.profile import get_system_metric
 
-
 L = get_logger()
 
 
@@ -93,10 +92,10 @@ class EggPair(object):
                 store_future = None
             else:
                 store_future = shuffler.store_broker(
-                        store_partition=task._outputs[0],
-                        is_shuffle=True,
-                        total_writers=input_total_partitions,
-                        reduce_op=reduce_op)
+                    store_partition=task._outputs[0],
+                    is_shuffle=True,
+                    total_writers=input_total_partitions,
+                    reduce_op=reduce_op)
 
             if not task._inputs or \
                     (my_server_node_id is not None
@@ -107,11 +106,11 @@ class EggPair(object):
                 write_bb = BatchBroker(shuffle_broker)
                 try:
                     scatter_future = shuffler.scatter(
-                            input_broker=shuffle_broker,
-                            partition_function=partitioner(hash_func=mmh3.hash, total_partitions=output_total_partitions),
-                            output_store=output_store)
+                        input_broker=shuffle_broker,
+                        partition_function=partitioner(hash_func=mmh3.hash, total_partitions=output_total_partitions),
+                        output_store=output_store)
                     with create_adapter(task._inputs[0]) as input_db, \
-                        input_db.iteritems() as rb:
+                            input_db.iteritems() as rb:
                         func(rb, input_key_serdes, input_value_serdes, write_bb)
                 finally:
                     write_bb.signal_write_finish()
@@ -124,7 +123,7 @@ class EggPair(object):
                 store_results = store_future.result()
             else:
                 store_results = 'no store for this partition'
-        else:       # no shuffle
+        else:  # no shuffle
             with create_adapter(task._inputs[0]) as input_db, \
                     input_db.iteritems() as rb, \
                     create_adapter(task._outputs[0], options=task._job._options) as db, \
@@ -160,15 +159,17 @@ class EggPair(object):
             except Exception as e:
                 raise EnvironmentError("exec task:{} error".format(task), e)
 
-
     @_exception_logger
     def run_task(self, task: ErTask):
         if L.isEnabledFor(logging.TRACE):
-            L.trace(f'[RUNTASK] start. task_name={task._name}, inputs={task._inputs}, outputs={task._outputs}, task_id={task._id}')
+            L.trace(
+                f'[RUNTASK] start. task_name={task._name}, inputs={task._inputs}, outputs={task._outputs}, task_id={task._id}')
         else:
             L.debug(f'[RUNTASK] start. task_name={task._name}, task_id={task._id}')
         functors = task._job._functors
         result = task
+
+        partition_id = task._inputs[0]._id
 
         if task._name == 'get':
             # TODO:1: move to create_serdes
@@ -190,6 +191,7 @@ class EggPair(object):
                         yield from TransferPair.pair_to_bin_batch(rb, limit=limit)
                     finally:
                         TransferService.remove_broker(tag)
+
             TransferService.set_broker(tag, generate_broker())
         elif task._name == 'count':
             with create_adapter(task._inputs[0]) as input_adapter:
@@ -213,7 +215,7 @@ class EggPair(object):
             f = create_functor(functors[0]._body)
             with create_adapter(task._inputs[0]) as input_adapter:
                 value = input_adapter.put(f._key, f._value)
-                #result = ErPair(key=f._key, value=bytes(value))
+                # result = ErPair(key=f._key, value=bytes(value))
 
         elif task._name == 'destroy':
             input_store_locator = task._inputs[0]._store_locator
@@ -261,6 +263,7 @@ class EggPair(object):
                 for k_bytes, v_bytes in input_iterator:
                     v = value_serdes.deserialize(v_bytes)
                     output_writebatch.put(k_bytes, value_serdes.serialize(f(v)))
+
             self._run_unary(map_values_wrapper, task)
         elif task._name == 'map':
             f = create_functor(functors[0]._body)
@@ -269,6 +272,7 @@ class EggPair(object):
                 for k_bytes, v_bytes in input_iterator:
                     k1, v1 = f(key_serdes.deserialize(k_bytes), value_serdes.deserialize(v_bytes))
                     shuffle_broker.put((key_serdes.serialize(k1), value_serdes.serialize(v1)))
+
             self._run_unary(map_wrapper, task, shuffle=True)
 
         elif task._name == 'reduce':
@@ -284,6 +288,7 @@ class EggPair(object):
         elif task._name == 'mapPartitions':
             reduce_op = create_functor(functors[1]._body)
             shuffle = create_functor(functors[2]._body)
+
             def map_partitions_wrapper(input_iterator, key_serdes, value_serdes, output_writebatch):
                 f = create_functor(functors[0]._body)
                 value = f(generator(key_serdes, value_serdes, input_iterator))
@@ -296,6 +301,7 @@ class EggPair(object):
                 else:
                     key = input_iterator.key()
                     output_writebatch.put((key, value_serdes.serialize(value)))
+
             self._run_unary(map_partitions_wrapper, task, shuffle=shuffle, reduce_op=reduce_op)
 
         elif task._name == 'collapsePartitions':
@@ -305,7 +311,26 @@ class EggPair(object):
                 if input_iterator.last():
                     key = input_iterator.key()
                     output_writebatch.put(key, value_serdes.serialize(value))
+
             self._run_unary(collapse_partitions_wrapper, task)
+
+        elif task._name == 'mapPartitionsWithIndex':
+            shuffle = create_functor(functors[1]._body)
+
+            def map_partitions_with_index_wrapper(input_iterator, key_serdes, value_serdes, output_writebatch):
+                f = create_functor(functors[0]._body)
+                value = f(partition_id, generator(key_serdes, value_serdes, input_iterator))
+                if isinstance(value, Iterable):
+                    for k1, v1 in value:
+                        if shuffle:
+                            output_writebatch.put((key_serdes.serialize(k1), value_serdes.serialize(v1)))
+                        else:
+                            output_writebatch.put(key_serdes.serialize(k1), value_serdes.serialize(v1))
+                else:
+                    key = input_iterator.key()
+                    output_writebatch.put((key, value_serdes.serialize(value)))
+
+            self._run_unary(map_partitions_with_index_wrapper, task, shuffle=shuffle)
 
         elif task._name == 'flatMap':
             shuffle = create_functor(functors[1]._body)
@@ -318,6 +343,7 @@ class EggPair(object):
                             output_writebatch.put((key_serdes.serialize(k2), value_serdes.serialize(v2)))
                         else:
                             output_writebatch.put(key_serdes.serialize(k2), value_serdes.serialize(v2))
+
             self._run_unary(flat_map_wraaper, task, shuffle=shuffle)
 
         elif task._name == 'glom':
@@ -329,6 +355,7 @@ class EggPair(object):
                     k_tmp = k
                 if k_tmp is not None:
                     output_writebatch.put(k_tmp, value_serdes.serialize(v_list))
+
             self._run_unary(glom_wrapper, task)
 
         elif task._name == 'sample':
@@ -340,20 +367,22 @@ class EggPair(object):
                 for k, v in input_iterator:
                     if random_state.rand() < fraction:
                         output_writebatch.put(k, v)
+
             self._run_unary(sample_wrapper, task)
 
         elif task._name == 'filter':
             def filter_wrapper(input_iterator, key_serdes, value_serdes, output_writebatch):
                 f = create_functor(functors[0]._body)
-                for k ,v in input_iterator:
+                for k, v in input_iterator:
                     if f(key_serdes.deserialize(k), value_serdes.deserialize(v)):
                         output_writebatch.put(k, v)
+
             self._run_unary(filter_wrapper, task)
 
         elif task._name == 'join':
             def merge_join_wrapper(left_iterator, left_key_serdes, left_value_serdes,
-                    right_iterator, right_key_serdes, right_value_serdes,
-                    output_writebatch):
+                                   right_iterator, right_key_serdes, right_value_serdes,
+                                   output_writebatch):
                 if not left_iterator.adapter.is_sorted() or not right_iterator.adapter.is_sorted():
                     raise RuntimeError(f"merge join cannot be applied: not both store types support sorting. "
                                        f"left type: {type(left_iterator.adapter)}, is_sorted: {left_iterator.adapter.is_sorted()}; "
@@ -386,16 +415,16 @@ class EggPair(object):
                         if k_left == k_right:
                             output_writebatch.put(k_left,
                                                   left_value_serdes.serialize(
-                                                          f(left_value_serdes.deserialize(v_left_bytes),
-                                                            right_value_serdes.deserialize(v_right_bytes))))
+                                                      f(left_value_serdes.deserialize(v_left_bytes),
+                                                        right_value_serdes.deserialize(v_right_bytes))))
                             k_left, v_left_bytes = next(l_iter)
                             # skips next(r_iter) to avoid duplicate codes for the 3rd time
                 except StopIteration as e:
                     return
 
             def hash_join_wrapper(left_iterator, left_key_serdes, left_value_serdes,
-                    right_iterator, right_key_serdes, right_value_serdes,
-                    output_writebatch):
+                                  right_iterator, right_key_serdes, right_value_serdes,
+                                  output_writebatch):
                 f = create_functor(functors[0]._body)
                 is_diff_serdes = type(left_key_serdes) != type(right_key_serdes)
                 for k_left, l_v_bytes in left_iterator:
@@ -405,8 +434,8 @@ class EggPair(object):
                     if r_v_bytes:
                         output_writebatch.put(k_left,
                                               left_value_serdes.serialize(
-                                                      f(left_value_serdes.deserialize(l_v_bytes),
-                                                        right_value_serdes.deserialize(r_v_bytes))))
+                                                  f(left_value_serdes.deserialize(l_v_bytes),
+                                                    right_value_serdes.deserialize(r_v_bytes))))
 
             join_type = task._job._options.get('join_type', 'merge')
 
@@ -420,9 +449,10 @@ class EggPair(object):
                                               right_iterator, right_key_serdes, right_value_serdes,
                                               output_writebatch):
                 if not left_iterator.adapter.is_sorted() or not right_iterator.adapter.is_sorted():
-                    raise RuntimeError(f"merge subtract_by_key cannot be applied: not both store types support sorting. "
-                                       f"left type: {type(left_iterator.adapter)}, is_sorted: {left_iterator.adapter.is_sorted()}; "
-                                       f"right type: {type(right_iterator.adapter)}, is_sorted: {right_iterator.adapter.is_sorted()}")
+                    raise RuntimeError(
+                        f"merge subtract_by_key cannot be applied: not both store types support sorting. "
+                        f"left type: {type(left_iterator.adapter)}, is_sorted: {left_iterator.adapter.is_sorted()}; "
+                        f"right type: {type(right_iterator.adapter)}, is_sorted: {right_iterator.adapter.is_sorted()}")
 
                 is_same_serdes = left_key_serdes == right_key_serdes
                 l_iter = iter(left_iterator)
@@ -493,8 +523,8 @@ class EggPair(object):
                 return
 
             def hash_subtract_by_key_wrapper(left_iterator, left_key_serdes, left_value_serdes,
-                    right_iterator, right_key_serdes, right_value_serdes,
-                    output_writebatch):
+                                             right_iterator, right_key_serdes, right_value_serdes,
+                                             output_writebatch):
                 is_diff_serdes = type(left_key_serdes) != type(right_key_serdes)
                 for k_left, v_left in left_iterator:
                     if is_diff_serdes:
@@ -511,8 +541,8 @@ class EggPair(object):
 
         elif task._name == 'union':
             def merge_union_wrapper(left_iterator, left_key_serdes, left_value_serdes,
-                right_iterator, right_key_serdes, right_value_serdes,
-                    output_writebatch):
+                                    right_iterator, right_key_serdes, right_value_serdes,
+                                    output_writebatch):
                 if not left_iterator.adapter.is_sorted() or not right_iterator.adapter.is_sorted():
                     raise RuntimeError(f"merge union cannot be applied: not both store types support sorting. "
                                        f"left type: {type(left_iterator.adapter)}, is_sorted: {left_iterator.adapter.is_sorted()}; "
@@ -554,7 +584,8 @@ class EggPair(object):
                             if is_same_serdes:
                                 output_writebatch.put(k_right, v_right_bytes)
                             else:
-                                output_writebatch.put(k_right, left_value_serdes.serialize(right_value_serdes.deserialize(v_right_bytes)))
+                                output_writebatch.put(k_right, left_value_serdes.serialize(
+                                    right_value_serdes.deserialize(v_right_bytes)))
 
                             k_right_raw, v_right_bytes = next(r_iter)
 
@@ -572,8 +603,8 @@ class EggPair(object):
                             is_equal = True
                             output_writebatch.put(k_left,
                                                   left_value_serdes.serialize(
-                                                          f(left_value_serdes.deserialize(v_left_bytes),
-                                                            right_value_serdes.deserialize(v_right_bytes))))
+                                                      f(left_value_serdes.deserialize(v_left_bytes),
+                                                        right_value_serdes.deserialize(v_right_bytes))))
                             is_left_stopped = True
                             k_left, v_left_bytes = next(l_iter)
 
@@ -602,15 +633,17 @@ class EggPair(object):
                             if is_same_serdes:
                                 output_writebatch.put(k_right_raw, v_right_bytes)
                             else:
-                                output_writebatch.put(left_key_serdes.serialize(right_key_serdes.deserialize(k_right_raw)),
-                                                      left_value_serdes.serialize(right_value_serdes.deserialize(v_right_bytes)))
+                                output_writebatch.put(
+                                    left_key_serdes.serialize(right_key_serdes.deserialize(k_right_raw)),
+                                    left_value_serdes.serialize(right_value_serdes.deserialize(v_right_bytes)))
                         while True:
                             k_right_raw, v_right_bytes = next(r_iter)
                             if is_same_serdes:
                                 output_writebatch.put(k_right_raw, v_right_bytes)
                             else:
-                                output_writebatch.put(left_key_serdes.serialize(right_key_serdes.deserialize(k_right_raw)),
-                                                      left_value_serdes.serialize(right_value_serdes.deserialize(v_right_bytes)))
+                                output_writebatch.put(
+                                    left_key_serdes.serialize(right_key_serdes.deserialize(k_right_raw)),
+                                    left_value_serdes.serialize(right_value_serdes.deserialize(v_right_bytes)))
                     except StopIteration as e:
                         pass
 
@@ -618,8 +651,8 @@ class EggPair(object):
                     return
 
             def hash_union_wrapper(left_iterator, left_key_serdes, left_value_serdes,
-                    right_iterator, right_key_serdes, right_value_serdes,
-                    output_writebatch):
+                                   right_iterator, right_key_serdes, right_value_serdes,
+                                   output_writebatch):
                 f = create_functor(functors[0]._body)
 
                 is_diff_serdes = type(left_key_serdes) != type(right_key_serdes)
@@ -658,7 +691,8 @@ class EggPair(object):
                             value=self.functor_serdes.serialize(f(task)))
 
         if L.isEnabledFor(logging.TRACE):
-            L.trace(f'[RUNTASK] end. task_name={task._name}, inputs={task._inputs}, outputs={task._outputs}, task_id={task._id}')
+            L.trace(
+                f'[RUNTASK] end. task_name={task._name}, inputs={task._inputs}, outputs={task._outputs}, task_id={task._id}')
         else:
             L.debug(f'[RUNTASK] end. task_name={task._name}, task_id={task._id}')
 
@@ -681,7 +715,7 @@ class EggPair(object):
         input_value_serdes = input_key_serdes
 
         with create_adapter(input_partition) as input_adapter, \
-            input_adapter.iteritems() as input_iter:
+                input_adapter.iteritems() as input_iter:
             for k_bytes, v_bytes in input_iter:
                 v = input_value_serdes.deserialize(v_bytes)
                 if is_reduce and first:
@@ -737,29 +771,32 @@ def serve(args):
     set_data_dir(args.data_dir)
 
     CommandRouter.get_instance().register(
-            service_name=f"{prefix}/runTask",
-            route_to_module_name="eggroll.roll_pair.egg_pair",
-            route_to_class_name="EggPair",
-            route_to_method_name="run_task")
+        service_name=f"{prefix}/runTask",
+        route_to_module_name="eggroll.roll_pair.egg_pair",
+        route_to_class_name="EggPair",
+        route_to_method_name="run_task")
 
     max_workers = int(RollPairConfKeys.EGGROLL_ROLLPAIR_EGGPAIR_SERVER_EXECUTOR_POOL_MAX_SIZE.get())
     executor_pool_type = CoreConfKeys.EGGROLL_CORE_DEFAULT_EXECUTOR_POOL.get()
     command_server = grpc.server(create_executor_pool(
-            canonical_name=executor_pool_type,
-            max_workers=max_workers,
-            thread_name_prefix="eggpair-command-server"),
-            options=[
-                ("grpc.max_metadata_size",
-                 int(CoreConfKeys.EGGROLL_CORE_GRPC_SERVER_CHANNEL_MAX_INBOUND_METADATA_SIZE.get())),
-                ('grpc.max_send_message_length',
-                 int(CoreConfKeys.EGGROLL_CORE_GRPC_SERVER_CHANNEL_MAX_INBOUND_MESSAGE_SIZE.get())),
-                ('grpc.max_receive_message_length',
-                 int(CoreConfKeys.EGGROLL_CORE_GRPC_SERVER_CHANNEL_MAX_INBOUND_MESSAGE_SIZE.get())),
-                ('grpc.keepalive_time_ms', int(CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_KEEPALIVE_TIME_SEC.get()) * 1000),
-                ('grpc.keepalive_timeout_ms', int(CoreConfKeys.CONFKEY_CORE_GRPC_SERVER_CHANNEL_KEEPALIVE_TIMEOUT_SEC.get()) * 1000),
-                ('grpc.keepalive_permit_without_calls', int(CoreConfKeys.CONFKEY_CORE_GRPC_SERVER_CHANNEL_KEEPALIVE_WITHOUT_CALLS_ENABLED.get())),
-                ('grpc.per_rpc_retry_buffer_size', int(CoreConfKeys.CONFKEY_CORE_GRPC_SERVER_CHANNEL_RETRY_BUFFER_SIZE.get())),
-                ('grpc.so_reuseport', False)])
+        canonical_name=executor_pool_type,
+        max_workers=max_workers,
+        thread_name_prefix="eggpair-command-server"),
+        options=[
+            ("grpc.max_metadata_size",
+             int(CoreConfKeys.EGGROLL_CORE_GRPC_SERVER_CHANNEL_MAX_INBOUND_METADATA_SIZE.get())),
+            ('grpc.max_send_message_length',
+             int(CoreConfKeys.EGGROLL_CORE_GRPC_SERVER_CHANNEL_MAX_INBOUND_MESSAGE_SIZE.get())),
+            ('grpc.max_receive_message_length',
+             int(CoreConfKeys.EGGROLL_CORE_GRPC_SERVER_CHANNEL_MAX_INBOUND_MESSAGE_SIZE.get())),
+            ('grpc.keepalive_time_ms', int(CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_KEEPALIVE_TIME_SEC.get()) * 1000),
+            ('grpc.keepalive_timeout_ms',
+             int(CoreConfKeys.CONFKEY_CORE_GRPC_SERVER_CHANNEL_KEEPALIVE_TIMEOUT_SEC.get()) * 1000),
+            ('grpc.keepalive_permit_without_calls',
+             int(CoreConfKeys.CONFKEY_CORE_GRPC_SERVER_CHANNEL_KEEPALIVE_WITHOUT_CALLS_ENABLED.get())),
+            ('grpc.per_rpc_retry_buffer_size',
+             int(CoreConfKeys.CONFKEY_CORE_GRPC_SERVER_CHANNEL_RETRY_BUFFER_SIZE.get())),
+            ('grpc.so_reuseport', False)])
 
     command_servicer = CommandServicer()
     command_pb2_grpc.add_CommandServiceServicer_to_server(command_servicer,
@@ -778,23 +815,27 @@ def serve(args):
         transfer_pb2_grpc.add_TransferServiceServicer_to_server(transfer_servicer,
                                                                 transfer_server)
     else:
-        transfer_server_max_workers = int(RollPairConfKeys.EGGROLL_ROLLPAIR_EGGPAIR_DATA_SERVER_EXECUTOR_POOL_MAX_SIZE.get())
+        transfer_server_max_workers = int(
+            RollPairConfKeys.EGGROLL_ROLLPAIR_EGGPAIR_DATA_SERVER_EXECUTOR_POOL_MAX_SIZE.get())
         transfer_server = grpc.server(create_executor_pool(
-                canonical_name=executor_pool_type,
-                max_workers=transfer_server_max_workers,
-                thread_name_prefix="transfer_server"),
-                options=[
-                    ('grpc.max_metadata_size',
-                     int(CoreConfKeys.EGGROLL_CORE_GRPC_SERVER_CHANNEL_MAX_INBOUND_METADATA_SIZE.get())),
-                    ('grpc.max_send_message_length',
-                     int(CoreConfKeys.EGGROLL_CORE_GRPC_SERVER_CHANNEL_MAX_INBOUND_MESSAGE_SIZE.get())),
-                    ('grpc.max_receive_message_length',
-                     int(CoreConfKeys.EGGROLL_CORE_GRPC_SERVER_CHANNEL_MAX_INBOUND_MESSAGE_SIZE.get())),
-                    ('grpc.keepalive_time_ms', int(CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_KEEPALIVE_TIME_SEC.get()) * 1000),
-                    ('grpc.keepalive_timeout_ms', int(CoreConfKeys.CONFKEY_CORE_GRPC_SERVER_CHANNEL_KEEPALIVE_TIMEOUT_SEC.get()) * 1000),
-                    ('grpc.keepalive_permit_without_calls', int(CoreConfKeys.CONFKEY_CORE_GRPC_SERVER_CHANNEL_KEEPALIVE_WITHOUT_CALLS_ENABLED.get())),
-                    ('grpc.per_rpc_retry_buffer_size', int(CoreConfKeys.CONFKEY_CORE_GRPC_SERVER_CHANNEL_RETRY_BUFFER_SIZE.get())),
-                    ('grpc.so_reuseport', False)])
+            canonical_name=executor_pool_type,
+            max_workers=transfer_server_max_workers,
+            thread_name_prefix="transfer_server"),
+            options=[
+                ('grpc.max_metadata_size',
+                 int(CoreConfKeys.EGGROLL_CORE_GRPC_SERVER_CHANNEL_MAX_INBOUND_METADATA_SIZE.get())),
+                ('grpc.max_send_message_length',
+                 int(CoreConfKeys.EGGROLL_CORE_GRPC_SERVER_CHANNEL_MAX_INBOUND_MESSAGE_SIZE.get())),
+                ('grpc.max_receive_message_length',
+                 int(CoreConfKeys.EGGROLL_CORE_GRPC_SERVER_CHANNEL_MAX_INBOUND_MESSAGE_SIZE.get())),
+                ('grpc.keepalive_time_ms', int(CoreConfKeys.CONFKEY_CORE_GRPC_CHANNEL_KEEPALIVE_TIME_SEC.get()) * 1000),
+                ('grpc.keepalive_timeout_ms',
+                 int(CoreConfKeys.CONFKEY_CORE_GRPC_SERVER_CHANNEL_KEEPALIVE_TIMEOUT_SEC.get()) * 1000),
+                ('grpc.keepalive_permit_without_calls',
+                 int(CoreConfKeys.CONFKEY_CORE_GRPC_SERVER_CHANNEL_KEEPALIVE_WITHOUT_CALLS_ENABLED.get())),
+                ('grpc.per_rpc_retry_buffer_size',
+                 int(CoreConfKeys.CONFKEY_CORE_GRPC_SERVER_CHANNEL_RETRY_BUFFER_SIZE.get())),
+                ('grpc.so_reuseport', False)])
         transfer_port = transfer_server.add_insecure_port(f'[::]:{transfer_port}')
         transfer_pb2_grpc.add_TransferServiceServicer_to_server(transfer_servicer,
                                                                 transfer_server)
@@ -848,7 +889,8 @@ def serve(args):
     def exit_gracefully(signum, frame):
         nonlocal run
         run = False
-        L.info(f'egg_pair {args.processor_id} at port={port}, transfer_port={transfer_port}, pid={pid} receives signum={signal.getsignal(signum)}, stopping gracefully.')
+        L.info(
+            f'egg_pair {args.processor_id} at port={port}, transfer_port={transfer_port}, pid={pid} receives signum={signal.getsignal(signum)}, stopping gracefully.')
 
     signal.signal(signal.SIGTERM, exit_gracefully)
     signal.signal(signal.SIGINT, exit_gracefully)
@@ -863,7 +905,7 @@ def serve(args):
 
     GrpcChannelFactory.shutdown_all_now()
 
-    #todo:1: move to RocksdbAdapter and provide a cleanup method
+    # todo:1: move to RocksdbAdapter and provide a cleanup method
     from eggroll.core.pair_store.rocksdb import RocksdbAdapter
     RocksdbAdapter.release_db_resource()
     L.info(f'closed RocksDB open dbs')

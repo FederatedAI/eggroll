@@ -285,6 +285,7 @@ class RollPair(object):
     JOIN = 'join'
     MAP = 'map'
     MAP_PARTITIONS = 'mapPartitions'
+    MAP_PARTITIONS_WITH_INDEX = 'mapPartitionsWithIndex'
     MAP_VALUES = 'mapValues'
     PUT = "put"
     PUT_ALL = "putAll"
@@ -850,6 +851,33 @@ class RollPair(object):
         task_results = self._run_job(job=job)
         er_store = self.__get_output_from_result(task_results)
 
+        return RollPair(er_store, self.ctx)
+
+    @_method_profile_logger
+    def map_partitions_with_index(self, func, output=None, options: dict = None):
+        if options is None:
+            options = {}
+
+        outputs = []
+        if output:
+            RollPair.__check_partition(self.get_partitions(), output._store_locator._total_partitions)
+            outputs.append(output)
+
+        shuffle = options.get('shuffle', True)
+
+        functor = ErFunctor(name=RollPair.MAP_PARTITIONS_WITH_INDEX, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
+
+        need_shuffle = ErFunctor(name=RollPair.MAP_PARTITIONS_WITH_INDEX, serdes=SerdesTypes.CLOUD_PICKLE,
+                                 body=cloudpickle.dumps(shuffle))
+
+        job = ErJob(id=generate_job_id(self.__session_id, RollPair.MAP_PARTITIONS_WITH_INDEX),
+                    name=RollPair.MAP_PARTITIONS_WITH_INDEX,
+                    inputs=[self.__store],
+                    outputs=outputs,
+                    functors=[functor, need_shuffle])
+
+        task_future = self._run_job(job=job)
+        er_store = self.__get_output_from_result(task_future)
         return RollPair(er_store, self.ctx)
 
     @_method_profile_logger
