@@ -871,10 +871,7 @@ class RollPair(object):
         if options is None:
             options = {}
 
-        outputs = []
-        if output:
-            RollPair.__check_partition(self.get_partitions(), output._store_locator._total_partitions)
-            outputs.append(output)
+        outputs = self._maybe_set_output(output)
 
         shuffle = options.get('shuffle', True)
 
