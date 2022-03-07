@@ -52,15 +52,20 @@ class RollPairContext(object):
 
     def __init__(self, session: ErSession):
         if session.get_session_meta()._status != SessionStatus.ACTIVE:
-            raise Exception(f"session_id={session.get_session_id()} is not ACTIVE. current status={session.get_session_meta()._status}")
+            raise Exception(
+                f"session_id={session.get_session_id()} is not ACTIVE. current status={session.get_session_meta()._status}")
         self.__session = session
         self.session_id = session.get_session_id()
-        default_store_type_str = RollPairConfKeys.EGGROLL_ROLLPAIR_DEFAULT_STORE_TYPE.get_with(session.get_all_options())
+        default_store_type_str = RollPairConfKeys.EGGROLL_ROLLPAIR_DEFAULT_STORE_TYPE.get_with(
+            session.get_all_options())
         self.default_store_type = getattr(StoreTypes, default_store_type_str, None)
         if not self.default_store_type:
             raise ValueError(f'store type "{default_store_type_str}" not found for roll pair')
+        self.in_memory_output = RollPairConfKeys.EGGROLL_ROLLPAIR_IN_MEMORY_OUTPUT.get_with(session.get_all_options())
+        if not self.default_store_type:
+            raise ValueError(f'in_memory_output "{self.in_memory_output}" not found for roll pair')
+
         self.default_store_serdes = SerdesTypes.PICKLE
-        self.deploy_mode = session.get_option(SessionConfKeys.CONFKEY_SESSION_DEPLOY_MODE)
         self.__session_meta = session.get_session_meta()
         self.__session.add_exit_task(self.context_gc)
         self.rpc_gc_enable = True
@@ -73,6 +78,7 @@ class RollPairContext(object):
                                                      'store_type': StoreTypes.ROLLPAIR_CACHE,
                                                      'create_if_missing': True})
         eggs = session.get_eggs()
+
         def _broadcast_eggs(task: ErTask):
             from eggroll.core.utils import add_runtime_storage
             _input = task._inputs[0]
@@ -121,7 +127,7 @@ class RollPairContext(object):
     def populate_processor(self, store: ErStore):
         return self.__session.populate_processor(store)
 
-    def load(self, name=None, namespace=None, options: dict = None):
+    def load_store(self, name=None, namespace=None, options: dict = None):
         if options is None:
             options = {}
         if not namespace:
@@ -129,11 +135,7 @@ class RollPairContext(object):
         if not name:
             raise ValueError(f"name is required, cannot be blank")
         store_type = options.get('store_type', self.default_store_type)
-        total_partitions = options.get('total_partitions', None)
-        no_partitions_param = False
-        if total_partitions is None:
-            no_partitions_param = True
-            total_partitions = 1
+        total_partitions = options.get('total_partitions', 1)
 
         partitioner = options.get('partitioner', PartitionerTypes.BYTESTRING_HASH)
         store_serdes = options.get('serdes', self.default_store_serdes)
@@ -145,14 +147,14 @@ class RollPairContext(object):
 
         # TODO:0: add 'error_if_exist, persistent / default store type'
         store = ErStore(
-                store_locator=ErStoreLocator(
-                        store_type=store_type,
-                        namespace=namespace,
-                        name=name,
-                        total_partitions=total_partitions,
-                        partitioner=partitioner,
-                        serdes=store_serdes),
-                options=final_options)
+            store_locator=ErStoreLocator(
+                store_type=store_type,
+                namespace=namespace,
+                name=name,
+                total_partitions=total_partitions,
+                partitioner=partitioner,
+                serdes=store_serdes),
+            options=final_options)
 
         if create_if_missing:
             result = self.__session._cluster_manager_client.get_or_create_store(store)
@@ -160,15 +162,14 @@ class RollPairContext(object):
             result = self.__session._cluster_manager_client.get_store(store)
             if len(result._partitions) == 0:
                 L.info(f"store: namespace={namespace}, name={name} not exist, "
-                                 f"create_if_missing={create_if_missing}, create first")
+                       f"create_if_missing={create_if_missing}, create first")
                 return None
 
-        if False and not no_partitions_param and result._store_locator._total_partitions != 0\
-                and total_partitions != result._store_locator._total_partitions:
-            raise ValueError(f"store:{result._store_locator._name} input total_partitions:{total_partitions}, "
-                             f"output total_partitions:{result._store_locator._total_partitions}, must be the same")
+        return self.populate_processor(result)
 
-        return RollPair(self.populate_processor(result), self)
+    def load(self, name=None, namespace=None, options: dict = None):
+        store = self.load_store(name=name, namespace=namespace, options=options)
+        return RollPair(store, self)
 
     # TODO:1: separates load parameters and put all parameters
     def parallelize(self, data, options: dict = None):
@@ -188,6 +189,7 @@ class RollPairContext(object):
         return rp.put_all(data, options=options)
 
     '''store name only supports full name and reg: *, *abc ,abc* and a*c'''
+
     def cleanup(self, name, namespace, options: dict = None):
         if not namespace:
             raise ValueError('namespace cannot be blank')
@@ -222,9 +224,9 @@ class RollPairContext(object):
                 args.append(([task], egg._command_endpoint))
 
             futures = self.__command_client.async_call(
-                    args=args,
-                    output_types=[ErTask],
-                    command_uri=CommandURI(f'{RollPair.EGG_PAIR_URI_PREFIX}/{RollPair.RUN_TASK}'))
+                args=args,
+                output_types=[ErTask],
+                command_uri=CommandURI(f'{RollPair.EGG_PAIR_URI_PREFIX}/{RollPair.RUN_TASK}'))
 
             for future in futures:
                 result = future.result()
@@ -237,14 +239,14 @@ class RollPairContext(object):
             final_options = store_options.copy()
 
             store = ErStore(
-                    store_locator=ErStoreLocator(
-                            store_type=StoreTypes.ROLLPAIR_LMDB,
-                            namespace=namespace,
-                            name=name,
-                            total_partitions=total_partitions,
-                            partitioner=partitioner,
-                            serdes=store_serdes),
-                    options=final_options)
+                store_locator=ErStoreLocator(
+                    store_type=StoreTypes.ROLLPAIR_LMDB,
+                    namespace=namespace,
+                    name=name,
+                    total_partitions=total_partitions,
+                    partitioner=partitioner,
+                    serdes=store_serdes),
+                options=final_options)
             task_results = self.__session._cluster_manager_client.get_store_from_namespace(store)
             L.trace('res={}'.format(task_results._stores))
             if task_results._stores is not None:
@@ -310,9 +312,9 @@ class RollPair(object):
         self.__store = er_store
         self.ctx = rp_ctx
         self.__command_serdes = SerdesTypes.PROTOBUF
-        #self.__roll_pair_master = self.ctx.get_roll()
+        # self.__roll_pair_master = self.ctx.get_roll()
         self.__command_client = CommandClient()
-        self.functor_serdes =create_serdes(SerdesTypes.CLOUD_PICKLE)
+        self.functor_serdes = create_serdes(SerdesTypes.CLOUD_PICKLE)
         self.value_serdes = self.get_store_serdes()
         self.key_serdes = self.get_store_serdes()
         # self.partitioner = partitioner(hash_code, self.__store._store_locator._total_partitions)
@@ -452,26 +454,27 @@ class RollPair(object):
     def get_store_type(self):
         return self.__store._store_locator._store_type
 
-
     def _run_job(self,
-            job: ErJob,
-            output_types: list = None,
-            command_uri: CommandURI = RUN_TASK_URI,
-            create_output_if_missing: bool = True):
+                 job: ErJob,
+                 output_types: list = None,
+                 command_uri: CommandURI = RUN_TASK_URI,
+                 create_output_if_missing: bool = True):
         from eggroll.core.utils import _map_and_listify
         start = time.time()
-        L.debug(f"[RUNJOB] calling: job_id={job._id}, name={job._name}, inputs={_map_and_listify(lambda i: f'namespace={i._store_locator._namespace}, name={i._store_locator._name}, store_type={i._store_locator._store_type}, total_partitions={i._store_locator._total_partitions}', job._inputs)}")
+        L.debug(
+            f"[RUNJOB] calling: job_id={job._id}, name={job._name}, inputs={_map_and_listify(lambda i: f'namespace={i._store_locator._namespace}, name={i._store_locator._name}, store_type={i._store_locator._store_type}, total_partitions={i._store_locator._total_partitions}', job._inputs)}")
         futures = self.ctx.get_session().submit_job(
-                job=job,
-                output_types=output_types,
-                command_uri=command_uri,
-                create_output_if_missing=create_output_if_missing)
+            job=job,
+            output_types=output_types,
+            command_uri=command_uri,
+            create_output_if_missing=create_output_if_missing)
 
         results = list()
         for future in futures:
             results.append(future.result())
         elapsed = time.time() - start
-        L.debug(f"[RUNJOB] called (elapsed={elapsed}): job_id={job._id}, name={job._name}, inputs={_map_and_listify(lambda i: f'namespace={i._store_locator._namespace}, name={i._store_locator._name}, store_type={i._store_locator._store_type}, total_partitions={i._store_locator._total_partitions}', job._inputs)}")
+        L.debug(
+            f"[RUNJOB] called (elapsed={elapsed}): job_id={job._id}, name={job._name}, inputs={_map_and_listify(lambda i: f'namespace={i._store_locator._namespace}, name={i._store_locator._name}, store_type={i._store_locator._store_type}, total_partitions={i._store_locator._total_partitions}', job._inputs)}")
         return results
 
     def __get_output_from_result(self, results):
@@ -480,6 +483,7 @@ class RollPair(object):
     """
       storage api
     """
+
     @_method_profile_logger
     def get(self, k, options: dict = None):
         if options is None:
@@ -504,11 +508,11 @@ class RollPair(object):
                       outputs=outputs,
                       job=job)
         job_resp = self.__command_client.simple_sync_send(
-                input=task,
-                output_type=ErPair,
-                endpoint=egg._command_endpoint,
-                command_uri=self.RUN_TASK_URI,
-                serdes_type=self.__command_serdes
+            input=task,
+            output_type=ErPair,
+            endpoint=egg._command_endpoint,
+            command_uri=self.RUN_TASK_URI,
+            serdes_type=self.__command_serdes
         )
 
         return self.value_serdes.deserialize(job_resp._value) if job_resp._value != b'' else None
@@ -539,11 +543,11 @@ class RollPair(object):
                       outputs=output,
                       job=job)
         job_resp = self.__command_client.simple_sync_send(
-                input=task,
-                output_type=ErPair,
-                endpoint=egg._command_endpoint,
-                command_uri=CommandURI(f'{RollPair.EGG_PAIR_URI_PREFIX}/{RollPair.RUN_TASK}'),
-                serdes_type=self.__command_serdes
+            input=task,
+            output_type=ErPair,
+            endpoint=egg._command_endpoint,
+            command_uri=CommandURI(f'{RollPair.EGG_PAIR_URI_PREFIX}/{RollPair.RUN_TASK}'),
+            serdes_type=self.__command_serdes
         )
         value = job_resp._value
         return value
@@ -601,6 +605,7 @@ class RollPair(object):
             task_results = self._run_job(job)
 
             return self.__get_output_from_result(task_results)
+
         th = Thread(target=send_command, name=f'roll_pair-send_command-{job_id}')
         th.start()
         populated_store = self.ctx.populate_processor(self.__store)
@@ -743,10 +748,10 @@ class RollPair(object):
         refresh_nodes = options.get('refresh_nodes')
 
         saved_as_store = ErStore(store_locator=ErStoreLocator(
-                store_type=store_type,
-                namespace=namespace,
-                name=name,
-                total_partitions=partition))
+            store_type=store_type,
+            namespace=namespace,
+            name=name,
+            total_partitions=partition))
 
         if partition == self.get_partitions() and not refresh_nodes:
             return self.map_values(lambda v: v, output=saved_as_store, options=options)
@@ -756,15 +761,26 @@ class RollPair(object):
     """
         computing api
     """
+
+    def _maybe_set_output(self, output):
+        outputs = []
+        if output:
+            RollPair.__check_partition(self.get_partitions(), output._store_locator._total_partitions)
+            outputs.append(output)
+        elif self.get_store_type() != StoreTypes.ROLLPAIR_IN_MEMORY and self.ctx.in_memory_output:
+            store = self.ctx.load_store(name=str(uuid.uuid1()),
+                                        options={"store_type": StoreTypes.ROLLPAIR_IN_MEMORY,
+                                                 "total_partitions": self.get_partitions(),
+                                                 "create_if_missing": True})
+            outputs.append(store)
+        return outputs
+
     @_method_profile_logger
     def map_values(self, func, output=None, options: dict = None):
         if options is None:
             options = {}
 
-        outputs = []
-        if output:
-            RollPair.__check_partition(self.get_partitions(), output._store_locator._total_partitions)
-            outputs.append(output)
+        outputs = self._maybe_set_output(output)
 
         functor = ErFunctor(name=RollPair.MAP_VALUES, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
         # todo:1: options issues. refer to line 77
@@ -787,12 +803,14 @@ class RollPair(object):
     def map(self, func, output=None, options: dict = None):
         if options is None:
             options = {}
+
+        outputs = self._maybe_set_output(output)
         functor = ErFunctor(name=RollPair.MAP, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
 
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.MAP),
                     name=RollPair.MAP,
                     inputs=[self.__store],
-                    outputs=[output],
+                    outputs=outputs,
                     functors=[functor],
                     options=options)
 
@@ -806,10 +824,7 @@ class RollPair(object):
         if options is None:
             options = {}
 
-        outputs = []
-        if output:
-            RollPair.__check_partition(self.get_partitions(), output._store_locator._total_partitions)
-            outputs.append(output)
+        outputs = self._maybe_set_output(output)
 
         shuffle = options.get('shuffle', True)
         if not shuffle and reduce_op:
@@ -835,12 +850,10 @@ class RollPair(object):
         if options is None:
             options = {}
 
-        outputs = []
-        if output:
-            RollPair.__check_partition(self.get_partitions(), output._store_locator._total_partitions)
-            outputs.append(output)
+        outputs = self._maybe_set_output(output)
 
-        functor = ErFunctor(name=RollPair.COLLAPSE_PARTITIONS, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
+        functor = ErFunctor(name=RollPair.COLLAPSE_PARTITIONS, serdes=SerdesTypes.CLOUD_PICKLE,
+                            body=cloudpickle.dumps(func))
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.COLLAPSE_PARTITIONS),
                     name=RollPair.COLLAPSE_PARTITIONS,
                     inputs=[self.__store],
@@ -857,14 +870,12 @@ class RollPair(object):
         if options is None:
             options = {}
 
-        outputs = []
-        if output:
-            RollPair.__check_partition(self.get_partitions(), output._store_locator._total_partitions)
-            outputs.append(output)
+        outputs = self._maybe_set_output(output)
 
         shuffle = options.get('shuffle', True)
         functor = ErFunctor(name=RollPair.FLAT_MAP, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
-        need_shuffle = ErFunctor(name=RollPair.FLAT_MAP, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(shuffle))
+        need_shuffle = ErFunctor(name=RollPair.FLAT_MAP, serdes=SerdesTypes.CLOUD_PICKLE,
+                                 body=cloudpickle.dumps(shuffle))
 
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.FLAT_MAP),
                     name=RollPair.FLAT_MAP,
@@ -897,9 +908,9 @@ class RollPair(object):
             args.append(([task], partition_input._processor._command_endpoint))
 
         futures = self.__command_client.async_call(
-                args=args,
-                output_types=[ErPair],
-                command_uri=CommandURI(f'{RollPair.EGG_PAIR_URI_PREFIX}/{RollPair.RUN_TASK}'))
+            args=args,
+            output_types=[ErPair],
+            command_uri=CommandURI(f'{RollPair.EGG_PAIR_URI_PREFIX}/{RollPair.RUN_TASK}'))
 
         done = wait(futures, return_when=FIRST_EXCEPTION).done
 
@@ -922,8 +933,10 @@ class RollPair(object):
         total_partitions = self.__store._store_locator._total_partitions
         job_id = generate_job_id(self.__session_id, tag=RollPair.AGGREGATE)
 
-        serialized_zero_value = ErFunctor(name=RollPair.AGGREGATE, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(zero_value))
-        serialized_seq_op = ErFunctor(name=RollPair.AGGREGATE, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(seq_op))
+        serialized_zero_value = ErFunctor(name=RollPair.AGGREGATE, serdes=SerdesTypes.CLOUD_PICKLE,
+                                          body=cloudpickle.dumps(zero_value))
+        serialized_seq_op = ErFunctor(name=RollPair.AGGREGATE, serdes=SerdesTypes.CLOUD_PICKLE,
+                                      body=cloudpickle.dumps(seq_op))
         job = ErJob(id=job_id,
                     name=RollPair.AGGREGATE,
                     inputs=[self.ctx.populate_processor(self.__store)],
@@ -938,9 +951,9 @@ class RollPair(object):
             args.append(([task], partition_input._processor._command_endpoint))
 
         futures = self.__command_client.async_call(
-                args=args,
-                output_types=[ErPair],
-                command_uri=CommandURI(f'{RollPair.EGG_PAIR_URI_PREFIX}/{RollPair.RUN_TASK}'))
+            args=args,
+            output_types=[ErPair],
+            command_uri=CommandURI(f'{RollPair.EGG_PAIR_URI_PREFIX}/{RollPair.RUN_TASK}'))
 
         done = wait(futures, return_when=FIRST_EXCEPTION).done
 
@@ -962,11 +975,7 @@ class RollPair(object):
         if options is None:
             options = {}
 
-        outputs = []
-        if output:
-            RollPair.__check_partition(self.get_partitions(), output._store_locator._total_partitions)
-            outputs.append(output)
-
+        outputs = self._maybe_set_output(output)
         functor = ErFunctor(name=RollPair.GLOM, serdes=SerdesTypes.CLOUD_PICKLE)
 
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.GLOM),
@@ -985,13 +994,9 @@ class RollPair(object):
         if options is None:
             options = {}
 
-        outputs = []
-        if output:
-            RollPair.__check_partition(self.get_partitions(), output._store_locator._total_partitions)
-            outputs.append(output)
-
+        outputs = self._maybe_set_output()
         er_fraction = ErFunctor(name=RollPair.REDUCE, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(fraction))
-        er_seed  = ErFunctor(name=RollPair.REDUCE, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(seed))
+        er_seed = ErFunctor(name=RollPair.REDUCE, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(seed))
 
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.SAMPLE),
                     name=RollPair.SAMPLE,
@@ -1009,11 +1014,7 @@ class RollPair(object):
         if options is None:
             options = {}
 
-        outputs = []
-        if output:
-            RollPair.__check_partition(self.get_partitions(), output._store_locator._total_partitions)
-            outputs.append(output)
-
+        outputs = self._maybe_set_output(output)
         functor = ErFunctor(name=RollPair.FILTER, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
 
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.FILTER),
@@ -1034,12 +1035,7 @@ class RollPair(object):
 
         inputs = self.__repartition_with(other)
 
-        outputs = []
-        if output:
-            RollPair.__check_partition(inputs[0]._store_locator._total_partitions,
-                                        output._store_locator._total_partitions)
-            outputs.append(output)
-
+        outputs = self._maybe_set_output(output)
         functor = ErFunctor(name=RollPair.SUBTRACT_BY_KEY, serdes=SerdesTypes.CLOUD_PICKLE)
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.SUBTRACT_BY_KEY),
                     name=RollPair.SUBTRACT_BY_KEY,
@@ -1058,12 +1054,7 @@ class RollPair(object):
 
         inputs = self.__repartition_with(other)
 
-        outputs = []
-        if output:
-            RollPair.__check_partition(inputs[0]._store_locator._total_partitions,
-                                        output._store_locator._total_partitions)
-            outputs.append(output)
-
+        outputs = self._maybe_set_output(output)
         functor = ErFunctor(name=RollPair.UNION, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
         job = ErJob(id=generate_job_id(self.__session_id, RollPair.UNION),
                     name=RollPair.UNION,
@@ -1082,12 +1073,7 @@ class RollPair(object):
 
         inputs = self.__repartition_with(other)
 
-        outputs = []
-        if output:
-            RollPair.__check_partition(inputs[0]._store_locator._total_partitions,
-                                        output._store_locator._total_partitions)
-            outputs.append(output)
-
+        outputs = self._maybe_set_output(output)
         functor = ErFunctor(name=RollPair.JOIN, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(func))
 
         final_options = {}
@@ -1132,9 +1118,9 @@ class RollPair(object):
             args.append(([task], partition_self._processor._command_endpoint))
 
         futures = self.__command_client.async_call(
-                args=args,
-                output_types=[ErPair],
-                command_uri=CommandURI(f'{RollPair.EGG_PAIR_URI_PREFIX}/{RollPair.RUN_TASK}'))
+            args=args,
+            output_types=[ErPair],
+            command_uri=CommandURI(f'{RollPair.EGG_PAIR_URI_PREFIX}/{RollPair.RUN_TASK}'))
 
         result = list()
         for future in futures:
