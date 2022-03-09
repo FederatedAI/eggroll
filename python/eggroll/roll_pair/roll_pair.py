@@ -1019,7 +1019,7 @@ class RollPair(object):
         if options is None:
             options = {}
 
-        outputs = self._maybe_set_output()
+        outputs = self._maybe_set_output(output)
         er_fraction = ErFunctor(name=RollPair.REDUCE, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(fraction))
         er_seed = ErFunctor(name=RollPair.REDUCE, serdes=SerdesTypes.CLOUD_PICKLE, body=cloudpickle.dumps(seed))
 
