@@ -169,8 +169,6 @@ class EggPair(object):
         functors = task._job._functors
         result = task
 
-        partition_id = task._inputs[0]._id
-
         if task._name == 'get':
             # TODO:1: move to create_serdes
             f = create_functor(functors[0]._body)
@@ -214,7 +212,7 @@ class EggPair(object):
         elif task._name == 'put':
             f = create_functor(functors[0]._body)
             with create_adapter(task._inputs[0]) as input_adapter:
-                value = input_adapter.put(f._key, f._value)
+                input_adapter.put(f._key, f._value)
                 # result = ErPair(key=f._key, value=bytes(value))
 
         elif task._name == 'destroy':
@@ -315,6 +313,7 @@ class EggPair(object):
             self._run_unary(collapse_partitions_wrapper, task)
 
         elif task._name == 'mapPartitionsWithIndex':
+            partition_id = task._inputs[0]._id
             shuffle = create_functor(functors[1]._body)
 
             def map_partitions_with_index_wrapper(input_iterator, key_serdes, value_serdes, output_writebatch):
