@@ -792,7 +792,7 @@ def serve(args):
             ('grpc.keepalive_timeout_ms',
              int(CoreConfKeys.CONFKEY_CORE_GRPC_SERVER_CHANNEL_KEEPALIVE_TIMEOUT_SEC.get()) * 1000),
             ('grpc.keepalive_permit_without_calls',
-             int(CoreConfKeys.CONFKEY_CORE_GRPC_SERVER_CHANNEL_KEEPALIVE_WITHOUT_CALLS_ENABLED.get())),
+             1 if bool(CoreConfKeys.CONFKEY_CORE_GRPC_SERVER_CHANNEL_KEEPALIVE_WITHOUT_CALLS_ENABLED.get()) else 0),
             ('grpc.per_rpc_retry_buffer_size',
              int(CoreConfKeys.CONFKEY_CORE_GRPC_SERVER_CHANNEL_RETRY_BUFFER_SIZE.get())),
             ('grpc.so_reuseport', False)])
@@ -831,7 +831,7 @@ def serve(args):
                 ('grpc.keepalive_timeout_ms',
                  int(CoreConfKeys.CONFKEY_CORE_GRPC_SERVER_CHANNEL_KEEPALIVE_TIMEOUT_SEC.get()) * 1000),
                 ('grpc.keepalive_permit_without_calls',
-                 int(CoreConfKeys.CONFKEY_CORE_GRPC_SERVER_CHANNEL_KEEPALIVE_WITHOUT_CALLS_ENABLED.get())),
+                 1 if bool(CoreConfKeys.CONFKEY_CORE_GRPC_SERVER_CHANNEL_KEEPALIVE_WITHOUT_CALLS_ENABLED.get()) else 0),
                 ('grpc.per_rpc_retry_buffer_size',
                  int(CoreConfKeys.CONFKEY_CORE_GRPC_SERVER_CHANNEL_RETRY_BUFFER_SIZE.get())),
                 ('grpc.so_reuseport', False)])
