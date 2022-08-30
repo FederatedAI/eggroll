@@ -32,7 +32,7 @@
     <name>Eggroll RollFrame</name>
 
     <properties>
-        <jackson.version>2.13.2</jackson.version>
+        <jackson.version>2.13.3</jackson.version>
         <jep.version>3.9.1</jep.version>
     </properties>
 
