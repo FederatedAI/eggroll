@@ -7,7 +7,7 @@ numba==0.53.0
 llvmlite==0.36.0
 numpy>=1.17.0
 pandas>=1.0.4
-protobuf==3.19.4
+protobuf==3.19.5
 psutil>=5.7.0
 pyarrow==6.0.1
 python-rocksdb==0.7.0
