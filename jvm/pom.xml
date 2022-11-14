@@ -201,7 +201,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <properties>
-    <eggroll.version>2.4.5</eggroll.version>
+    <eggroll.version>2.4.6</eggroll.version>
 
     <!-- Languages -->
     <code.cache.size>512m</code.cache.size>
@@ -227,7 +227,7 @@
     <log4j2.version>2.17.1</log4j2.version>
     <netty.version>4.1.63.Final</netty.version>
 <!--    <protobuf.version>3.16.1</protobuf.version>-->
-    <protobuf.version>3.21.5</protobuf.version>
+    <protobuf.version>3.21.7</protobuf.version>
     <rocksdb.version>6.8.1</rocksdb.version>
     <scalatest.version>3.0.8</scalatest.version>
     <spark.version>2.4.8</spark.version>
