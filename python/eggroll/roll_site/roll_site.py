@@ -38,7 +38,7 @@ from grpc import RpcError
 
 L = log_utils.get_logger()
 P = log_utils.get_logger('profile')
-_serdes = eggroll_serdes.PickleSerdes
+_serdes = eggroll_serdes.WhitelistPickleSerdes
 RS_KEY_DELIM = "#"
 STATUS_TABLE_NAME = "__rs_status"
 
@@ -625,7 +625,7 @@ class RollSiteGrpc(RollSiteImplBase):
 
                     clear_future = self._receive_executor_pool.submit(rp.with_stores, clear_status, options={"__op": "clear_status"})
                     if data_type == "object":
-                        result = pickle.loads(b''.join(map(lambda t: t[1], sorted(rp.get_all(), key=lambda x: int.from_bytes(x[0], "big")))))
+                        result = _serdes.deserialize(b''.join(map(lambda t: t[1], sorted(rp.get_all(), key=lambda x: int.from_bytes(x[0], "big")))))
                         rp.destroy()
                         L.debug(f"pulled object: rs_key={rs_key}, rs_header={rs_header}, is_none={result is None}, "
                                 f"elapsed={time.time() - start_time}")
