@@ -93,7 +93,62 @@ class EmptySerdes(ABCSerdes):
         return _bytes
 
 
-deserialize_blacklist = [b'eval', b'execfile', b'compile', b'system', b'popen',
+class WhitelistPickleSerdes(ABCSerdes):
+    @staticmethod
+    def serialize(_obj):
+        return p_dumps(_obj)
+
+    @staticmethod
+    def deserialize(_bytes):
+        bytes_security_check(_bytes)
+        return RestrictedUnpickler(io.BytesIO(_bytes)).load()
+
+class _DeserializeWhitelist:
+    loaded = False
+    deserialize_whitelist = {}
+
+    @classmethod
+    def get_whitelist(cls):
+        if not cls.loaded:
+            cls.load_deserialize_whitelist()
+        return cls.deserialize_whitelist
+
+    @classmethod
+    def get_whitelist_path(cls):
+        import os.path
+
+        return os.path.abspath(
+            os.path.join(
+                __file__,
+                os.path.pardir,
+                os.path.pardir,
+                os.path.pardir,
+                os.path.pardir,
+                os.path.pardir,
+                "conf",
+                "whitelist.json",
+            )
+        )
+
+    @classmethod
+    def load_deserialize_whitelist(cls):
+        import json
+        with open(cls.get_whitelist_path()) as f:
+            for k, v in json.load(f).items():
+                cls.deserialize_whitelist[k] = set(v)
+        cls.loaded = True
+
+class RestrictedUnpickler(pickle.Unpickler):
+
+    def find_class(self, module, name):
+        if name in _DeserializeWhitelist.get_whitelist().get(module, set()):
+            try:
+                return super().find_class(module, name)
+            except:
+                return getattr(importlib.import_module(module), name)
+        raise pickle.UnpicklingError(f"forbidden unpickle class {module} {name}")
+
+deserialize_blacklist = {b'eval', b'execfile', b'compile', b'system', b'popen',
                          b'popen2', b'popen3',
                          b'popen4', b'fdopen', b'tmpfile', b'fchmod', b'fchown',
                          b'openpty',
@@ -116,7 +171,8 @@ deserialize_blacklist = [b'eval', b'execfile', b'compile', b'system', b'popen',
                          b'listdir', b'opendir', b'timeit', b'repeat',
                          b'call_tracing', b'interact', b'compile_command',
                          b'spawn',
-                         b'fileopen']
+                         b'fileopen',
+                         b'getattr'}
 
 future_blacklist = [b'read', b'dup', b'fork', b'walk', b'file', b'move',
                     b'link', b'kill', b'open', b'pipe']
@@ -140,7 +196,7 @@ def is_in_blacklist(_bytes):
     return None
 
 
-def bytes_security_check(_bytes, need_check=False):
+def bytes_security_check(_bytes, need_check=True):
     if not need_check:
         return
     blacklisted = is_in_blacklist(_bytes)
