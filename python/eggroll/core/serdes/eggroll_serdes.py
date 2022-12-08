@@ -93,7 +93,81 @@ class EmptySerdes(ABCSerdes):
         return _bytes
 
 
-deserialize_blacklist = [b'eval', b'execfile', b'compile', b'system', b'popen',
+class WhitelistPickleSerdes(ABCSerdes):
+    @staticmethod
+    def serialize(_obj):
+        return p_dumps(_obj)
+
+    @staticmethod
+    def deserialize(_bytes):
+        bytes_security_check(_bytes)
+        return RestrictedUnpickler(io.BytesIO(_bytes)).load()
+
+class _DeserializeWhitelist:
+    loaded = False
+    deserialize_whitelist = {}
+    deserialize_glob_whitelist = set()
+
+
+    @classmethod
+    def get_whitelist_glob(cls):
+        if not cls.loaded:
+            cls.load_deserialize_whitelist()
+        return cls.deserialize_glob_whitelist
+
+    @classmethod
+    def get_whitelist(cls):
+        if not cls.loaded:
+            cls.load_deserialize_whitelist()
+        return cls.deserialize_whitelist
+
+    @classmethod
+    def get_whitelist_path(cls):
+        import os.path
+
+        return os.path.abspath(
+            os.path.join(
+                __file__,
+                os.path.pardir,
+                os.path.pardir,
+                os.path.pardir,
+                os.path.pardir,
+                os.path.pardir,
+                "conf",
+                "whitelist.json",
+            )
+        )
+
+    @classmethod
+    def load_deserialize_whitelist(cls):
+        import json
+        with open(cls.get_whitelist_path()) as f:
+            for k, v in json.load(f).items():
+                if k.endswith("*"):
+                    cls.deserialize_glob_whitelist.add(k[:-1])
+                else:
+                    cls.deserialize_whitelist[k] = set(v)
+        cls.loaded = True
+
+class RestrictedUnpickler(pickle.Unpickler):
+
+    def _load(self, module, name):
+        try:
+            return super().find_class(module, name)
+        except:
+            return getattr(importlib.import_module(module), name)
+
+
+    def find_class(self, module, name):
+        if name in _DeserializeWhitelist.get_whitelist().get(module, set()):
+            return self._load(module, name)
+        else:
+            for m in _DeserializeWhitelist.get_whitelist_glob():
+                if module.startswith(m):
+                    return self._load(module, name)
+        raise pickle.UnpicklingError(f"forbidden unpickle class {module} {name}")
+
+deserialize_blacklist = {b'eval', b'execfile', b'compile', b'system', b'popen',
                          b'popen2', b'popen3',
                          b'popen4', b'fdopen', b'tmpfile', b'fchmod', b'fchown',
                          b'openpty',
@@ -116,7 +190,8 @@ deserialize_blacklist = [b'eval', b'execfile', b'compile', b'system', b'popen',
                          b'listdir', b'opendir', b'timeit', b'repeat',
                          b'call_tracing', b'interact', b'compile_command',
                          b'spawn',
-                         b'fileopen']
+                         b'fileopen',
+                         b'getattr'}
 
 future_blacklist = [b'read', b'dup', b'fork', b'walk', b'file', b'move',
                     b'link', b'kill', b'open', b'pipe']
