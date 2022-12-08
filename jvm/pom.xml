@@ -201,7 +201,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <properties>
-    <eggroll.version>2.4.6</eggroll.version>
+    <eggroll.version>2.4.7</eggroll.version>
 
     <!-- Languages -->
     <code.cache.size>512m</code.cache.size>
