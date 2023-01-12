@@ -136,5 +136,47 @@
     "ipcl_python.ipcl_python": [
         "PaillierPublicKey",
         "PaillierEncryptedNumber"
+    ],
+    "torch": [
+        "Size"
+    ],
+    "fate.arch.tensor.storage.local.device.cpu.plain": [
+        "_TorchStorage"
+    ],
+    "fate.arch.tensor.types._dtype": [
+        "dtype"
+    ],
+    "fate.arch.tensor.types._shape": [
+        "DAxis",
+        "Shape"
+    ],
+    "fate.arch.tensor.storage.local.device.cpu.paillier": [
+        "_RustPaillierStorage"
+    ],
+    "fate.arch.tensor.storage.local.device.cpu.multithread_cpu_paillier_block": [
+        "PaillierBlock"
+    ],
+    "rust_paillier.par": [
+        "Cipherblock"
+    ],
+    "pandas.core.frame": [
+        "DataFrame"
+    ],
+    "pandas.core.internals.managers": [
+        "BlockManager"
+    ],
+    "pandas.core.indexes.base": [
+        "Index",
+        "_new_Index"
+    ],
+    "pandas.core.indexes.range": [
+        "RangeIndex"
+    ],
+    "pandas.core.series": [
+        "Series"
+    ],
+    "pandas.core.internals.managers": [
+        "BlockManager",
+        "SingleBlockManager"
     ]
 }
