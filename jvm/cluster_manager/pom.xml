@@ -5,7 +5,7 @@
     <parent>
         <artifactId>eggroll-all</artifactId>
         <groupId>com.webank.eggroll</groupId>
-        <version>2.5.1</version>
+        <version>3.0</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
@@ -42,7 +42,7 @@
         <dependency>
             <groupId>com.webank.eggroll</groupId>
             <artifactId>eggroll-core</artifactId>
-            <version>2.5.1</version>
+            <version>3.0</version>
             <scope>compile</scope>
         </dependency>
 
