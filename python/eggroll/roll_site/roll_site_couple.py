@@ -25,7 +25,6 @@ from eggroll.core.datastructure import create_executor_pool
 from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.meta_model import ErEndpoint
 from eggroll.core.proto import proxy_pb2, proxy_pb2_grpc
-from eggroll.core.serdes import eggroll_serdes
 from eggroll.core.transfer_model import ErRollSiteHeader
 from eggroll.roll_pair import create_adapter
 from eggroll.roll_pair.roll_pair import RollPair, RollPairContext
@@ -36,7 +35,6 @@ from grpc import RpcError
 
 L = log_utils.get_logger()
 P = log_utils.get_logger('profile')
-_serdes = eggroll_serdes.PickleSerdes
 RS_KEY_DELIM = "#"
 STATUS_TABLE_NAME = "__rs_status"
 

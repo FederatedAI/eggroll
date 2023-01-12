@@ -33,7 +33,7 @@ from eggroll.utils.log_utils import get_logger
 
 L = get_logger()
 
-_serdes = eggroll_serdes.PickleSerdes
+_serdes = eggroll_serdes.WhitelistPickleSerdes
 
 
 class RollSiteAdapter(PairAdapter):
