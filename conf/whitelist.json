@@ -127,9 +127,6 @@
     "torch._utils": [
         "_rebuild_tensor_v2"
     ],
-    "torch.storage": [
-        "_load_from_bytes"
-    ],
     "ipcl_python.bindings.ipcl_bindings": [
         "ipclPublicKey"
     ],
