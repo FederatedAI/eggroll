@@ -136,3 +136,18 @@ message SessionMeta {
   repeated Processor processors = 5;
   map<string, string> options = 6;
 }
+
+message JobMeta {
+  string id = 1;
+  string name = 2;
+  string job_type = 3;
+  uint32 world_size = 4;
+  repeated string command_arguments = 5;
+  map<string, string> environment_variables = 6;
+  map<string, bytes> files = 7;
+  map<string, bytes> zipped_files = 8;
+  map<string, string> options = 9;
+  string status = 10;
+  repeated Processor processors = 11;
+}
+

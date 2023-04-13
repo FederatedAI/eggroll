@@ -20,7 +20,7 @@ package com.webank.eggroll.core.client
 
 import com.webank.eggroll.core.command.CommandClient
 import com.webank.eggroll.core.constant.{NodeManagerCommands, NodeManagerConfKeys}
-import com.webank.eggroll.core.meta.{ErEndpoint, ErProcessor, ErSessionMeta}
+import com.webank.eggroll.core.meta.{ErEndpoint, ErProcessor, ErSessionMeta, ErJobMeta}
 import com.webank.eggroll.core.session.StaticErConf
 
 
@@ -45,9 +45,20 @@ class NodeManagerClient(var nodeManagerEndpoint: ErEndpoint) {
   def startContainers(sessionMeta: ErSessionMeta): ErSessionMeta =
     commandClient.call[ErSessionMeta](NodeManagerCommands.startContainers, sessionMeta)
 
+
   def stopContainers(sessionMeta: ErSessionMeta): ErSessionMeta =
     commandClient.call[ErSessionMeta](NodeManagerCommands.stopContainers, sessionMeta)
 
   def killContainers(sessionMeta: ErSessionMeta): ErSessionMeta =
     commandClient.call[ErSessionMeta](NodeManagerCommands.killContainers, sessionMeta)
+
+
+  def startJobContainers(sessionMeta: ErJobMeta): ErJobMeta =
+    commandClient.call[ErJobMeta](NodeManagerCommands.startJobContainers, sessionMeta)
+
+  def stopJobContainers(sessionMeta: ErJobMeta): ErJobMeta =
+    commandClient.call[ErJobMeta](NodeManagerCommands.stopJobContainers, sessionMeta)
+
+  def killJobContainers(sessionMeta: ErJobMeta): ErJobMeta =
+    commandClient.call[ErJobMeta](NodeManagerCommands.killJobContainers, sessionMeta)
 }
