@@ -96,7 +96,7 @@ case class ErStore(storeLocator: ErStoreLocator,
 }
 
 case class ErStoreList(stores: Array[ErStore] = Array.empty,
-                   options: java.util.Map[String, String] = new ConcurrentHashMap[String, String]())
+                       options: java.util.Map[String, String] = new ConcurrentHashMap[String, String]())
   extends MetaRpcMessage
 
 case class ErJob(id: String,
@@ -136,6 +136,19 @@ case class ErSessionMeta(id: String = StringConstants.EMPTY,
                          options: Map[String, String] = Map()) extends MetaRpcMessage {
 }
 
+case class ErJobMeta(id: String = StringConstants.EMPTY,
+                     name: String = StringConstants.EMPTY,
+                     jobType: String = StringConstants.EMPTY,
+                     worldSize: Int = 0,
+                     commandArguments: Array[String] = Array(),
+                     environmentVariables: Map[String, String] = Map(),
+                     files: Map[String, Array[Byte]] = Map.empty,
+                     zippedFiles: Map[String, Array[Byte]] = Map.empty,
+                     options: Map[String, String] = Map(),
+                     status: String = StringConstants.EMPTY,
+                     processors: Array[ErProcessor] = Array()) extends MetaRpcMessage {
+}
+
 object MetaModelPbMessageSerdes {
 
   // serializers
@@ -161,6 +174,7 @@ object MetaModelPbMessageSerdes {
 
       builder.build()
     }
+
     override def toBytes(baseSerializable: BaseSerializable): Array[Byte] =
       baseSerializable.asInstanceOf[ErPair].toBytes()
   }
@@ -212,7 +226,7 @@ object MetaModelPbMessageSerdes {
   implicit class ErStoreListToPbMessage(src: ErStoreList) extends PbMessageSerializer {
     override def toProto[T >: PbMessage](): Meta.StoreList = {
       val builder = Meta.StoreList.newBuilder()
-          .addAllStores(src.stores.toList.map(_.toProto()).asJava)
+        .addAllStores(src.stores.toList.map(_.toProto()).asJava)
       builder.build()
     }
 
@@ -283,6 +297,28 @@ object MetaModelPbMessageSerdes {
 
     override def toBytes(baseSerializable: BaseSerializable): Array[Byte] =
       baseSerializable.asInstanceOf[ErSessionMeta].toBytes()
+  }
+
+  implicit class ErJobMetaToPbMessage(src: ErJobMeta) extends PbMessageSerializer {
+    override def toProto[T >: PbMessage](): Meta.JobMeta = {
+      val builder = Meta.JobMeta.newBuilder()
+        .setId(src.id)
+        .setName(src.name)
+        .setJobType(src.jobType)
+        .setWorldSize(src.worldSize)
+        .addAllCommandArguments(src.commandArguments.toList.asJava)
+        .putAllEnvironmentVariables(src.environmentVariables.asJava)
+        .putAllFiles(src.files.mapValues(ByteString.copyFrom).asJava)
+        .putAllZippedFiles(src.zippedFiles.mapValues(ByteString.copyFrom).asJava)
+        .putAllOptions(src.options.asJava)
+        .setStatus(src.status)
+        .addAllProcessors(src.processors.toList.map(_.toProto()).asJava)
+
+      builder.build()
+    }
+
+    override def toBytes(baseSerializable: BaseSerializable): Array[Byte] =
+      baseSerializable.asInstanceOf[ErJobMeta].toBytes()
   }
 
   // deserializers
@@ -398,6 +434,28 @@ object MetaModelPbMessageSerdes {
 
     override def fromBytes(bytes: Array[Byte]): ErSessionMeta = {
       Meta.SessionMeta.parseFrom(bytes).fromProto()
+    }
+  }
+
+  implicit class ErJobMetaFromPbMessage(src: Meta.JobMeta) extends PbMessageDeserializer {
+    override def fromProto[T >: RpcMessage](): ErJobMeta = {
+      ErJobMeta(
+        id = src.getId,
+        name = src.getName,
+        jobType = src.getJobType,
+        worldSize = src.getWorldSize,
+        commandArguments = src.getCommandArgumentsList.asScala.toArray,
+        environmentVariables = src.getEnvironmentVariablesMap.asScala.toMap,
+        files = src.getFilesMap.asScala.toMap.mapValues(_.toByteArray),
+        zippedFiles = src.getZippedFilesMap.asScala.toMap.mapValues(_.toByteArray),
+        options = src.getOptionsMap.asScala.toMap,
+        status = src.getStatus,
+        processors = src.getProcessorsList.asScala.map(_.fromProto()).toArray
+      )
+    }
+
+    override def fromBytes(bytes: Array[Byte]): ErJobMeta = {
+      Meta.JobMeta.parseFrom(bytes).fromProto()
     }
   }
 }
