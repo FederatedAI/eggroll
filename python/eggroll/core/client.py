@@ -16,20 +16,19 @@
 import time
 import threading
 
-
 from eggroll.core.base_model import RpcMessage
 from eggroll.core.command.command_model import CommandURI
 from eggroll.core.command.command_model import ErCommandRequest, \
     ErCommandResponse
 from eggroll.core.command.commands import MetadataCommands, \
-    NodeManagerCommands, SessionCommands
+    NodeManagerCommands, SessionCommands, JobCommands
 from eggroll.core.conf_keys import ClusterManagerConfKeys, \
     NodeManagerConfKeys, CoreConfKeys
 from eggroll.core.constants import SerdesTypes
 from eggroll.core.datastructure import create_executor_pool
 from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.meta_model import ErEndpoint, ErServerNode, ErServerCluster, \
-    ErProcessor, ErStoreList
+    ErProcessor, ErStoreList, ErJobMeta
 from eggroll.core.meta_model import ErStore, ErSessionMeta
 from eggroll.core.proto import command_pb2_grpc
 from eggroll.core.utils import _to_proto_string, _map_and_listify
@@ -187,6 +186,12 @@ class ClusterManagerClient(object):
                                                 output_type=ErSessionMeta,
                                                 command_uri=SessionCommands.GET_OR_CREATE_SESSION,
                                                 serdes_type=self.__serdes_type))
+
+    def submit_job(self, input: ErJobMeta):
+        return self.__do_sync_request_internal(input=input,
+                                               output_type=ErJobMeta,
+                                               command_uri=JobCommands.SUBMIT_JOB,
+                                               serdes_type=self.__serdes_type)
 
     def register_session(self, session_meta: ErSessionMeta):
         return self.__check_processors(

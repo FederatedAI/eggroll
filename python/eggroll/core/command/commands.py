@@ -125,3 +125,10 @@ class SessionCommands(object):
 class RollPairCommands(object):
     roll_prefix = 'v1/roll-pair'
     egg_prefix = 'v1/egg-pair'
+
+
+class JobCommands:
+    prefix = 'v1/cluster-manager/job'
+    submit = 'submitJob'
+    job_submit_service_name = _to_service_name(prefix, submit)
+    SUBMIT_JOB = CommandURI(job_submit_service_name)

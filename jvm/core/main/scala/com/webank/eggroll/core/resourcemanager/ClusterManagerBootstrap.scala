@@ -1,12 +1,12 @@
 package com.webank.eggroll.core.resourcemanager
 
 import java.io.File
-
 import org.apache.commons.lang3.StringUtils
 import com.webank.eggroll.core.BootstrapBase
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
-import com.webank.eggroll.core.constant.{ClusterManagerConfKeys, CoreConfKeys, MetadataCommands, SessionCommands}
+import com.webank.eggroll.core.constant.{ClusterManagerConfKeys, CoreConfKeys, JobCommands, MetadataCommands, SessionCommands}
 import com.webank.eggroll.core.meta._
+import com.webank.eggroll.core.resourcemanager.job.ClusterManagerJobService
 import com.webank.eggroll.core.resourcemanager.metadata.{ServerNodeCrudOperator, StoreCrudOperator}
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.transfer.{GrpcClientUtils, GrpcServerUtils}
@@ -107,6 +107,13 @@ class ClusterManagerBootstrap extends BootstrapBase with Logging {
       serviceResultTypes = Array(classOf[ErProcessor]),
       routeToClass = classOf[SessionManagerService],
       routeToMethodName = SessionCommands.heartbeat.getName())
+
+    // submit job
+    CommandRouter.register(serviceName = JobCommands.submitJob.uriString,
+      serviceParamTypes = Array(classOf[ErJobMeta]),
+      serviceResultTypes = Array(classOf[ErJobMeta]),
+      routeToClass = classOf[ClusterManagerJobService],
+      routeToMethodName = JobCommands.submitJob.getName())
 
     val cmd = CommandArgsUtils.parseArgs(args = args)
 

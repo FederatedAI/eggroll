@@ -72,6 +72,13 @@ object SessionCommands {
   val killAllSessions = new CommandURI(prefix = prefix, name = "killAllSessions")
 }
 
+object JobCommands {
+  val prefix = "v1/cluster-manager/job"
+  val submitJob = new CommandURI(prefix = prefix, name = "submitJob")
+  val stopJob = new CommandURI(prefix = prefix, name = "stopJob")
+  val killJob = new CommandURI(prefix = prefix, name = "killJob")
+}
+
 object NodeManagerCommands {
   val prefix = "v1/node-manager/processor"
 
@@ -79,4 +86,8 @@ object NodeManagerCommands {
   val startContainers = new CommandURI(prefix = prefix, name = "startContainers")
   val stopContainers = new CommandURI(prefix = prefix, name = "stopContainers")
   val killContainers = new CommandURI(prefix = prefix, name = "killContainers")
+
+  val startJobContainers = new CommandURI(prefix = prefix, name = "startJobContainers")
+  val stopJobContainers = new CommandURI(prefix = prefix, name = "stopJobContainers")
+  val killJobContainers = new CommandURI(prefix = prefix, name = "killJobContainers")
 }
