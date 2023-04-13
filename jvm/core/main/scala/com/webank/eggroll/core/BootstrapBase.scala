@@ -6,14 +6,17 @@ import java.util.concurrent.atomic.AtomicBoolean
 import com.webank.eggroll.core.util.Logging
 
 import scala.collection.mutable.ArrayBuffer
-@deprecated
 trait BootstrapBase {
   def init(args: Array[String]): Unit
   def start():Unit
+
+  def shutdown(): Unit = {
+
+  }
 }
-@deprecated
 object Bootstrap extends Logging {
-  val stopped = new AtomicBoolean(false)
+  private val stopped = new AtomicBoolean(false)
+  private val bootstraps = ArrayBuffer[BootstrapBase]()
   def main(args: Array[String]): Unit =  this.synchronized {
     logInfo("main started")
     var bs = Array[String]()
@@ -39,6 +42,7 @@ object Bootstrap extends Logging {
     i = 0
     for(b <- bs) {
       val obj = Class.forName(b).newInstance().asInstanceOf[BootstrapBase]
+      bootstraps += obj
       obj.init(newArgs.toArray)
       try {
         obj.start()
@@ -52,6 +56,15 @@ object Bootstrap extends Logging {
             } else{
               throw be
             }
+      }
+    }
+
+    sys.addShutdownHook {
+      logInfo("Shutting down gracefully")
+      bootstraps.foreach(_.shutdown())
+      stopped.set(true)
+      this.synchronized {
+        this.notifyAll()
       }
     }
 
