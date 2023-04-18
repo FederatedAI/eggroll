@@ -26,9 +26,13 @@ class PythonContainer(
                        scriptArgs: Seq[String] = Seq.empty,
                        extraEnv: Map[String, String] = Map.empty,
                        stdErrFile: Option[File] = None,
-                       stdOutFile: Option[File] = None)
+                       stdOutFile: Option[File] = None,
+                       cwd: Option[File] = None,
+                       workingDirectoryPreparer: Option[WorkingDirectoryPreparer] = None)
   extends ProcessContainer(
     command = Seq(pythonExec, "-u", scriptPath) ++ scriptArgs,
     extraEnv = extraEnv,
     stdOutFile = stdOutFile,
-    stdErrFile = stdErrFile)
+    stdErrFile = stdErrFile,
+    cwd = cwd,
+    workingDirectoryPreparer = workingDirectoryPreparer)
