@@ -53,7 +53,13 @@ class NodeManagerJobService(implicit ec: ExecutionContext) {
                   if (localRank == -1 || globalRank == -1) {
                     throw new IllegalArgumentException(s"localRank or globalRank not set: ${p.options}")
                   }
-                  new DeepSpeedContainer(runtimeConf, localRank, globalRank, p.id)
+                  new DeepSpeedContainer(
+                    conf = runtimeConf,
+                    localRank = localRank,
+                    globalRank = globalRank,
+                    processorId = p.id,
+                    files = submitJobMeta.files,
+                    zippedFiles = submitJobMeta.zippedFiles)
               }
               containersManager.addContainer(containerId, container)
               containersManager.startContainer(containerId)
