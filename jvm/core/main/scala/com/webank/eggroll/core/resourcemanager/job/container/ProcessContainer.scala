@@ -7,31 +7,39 @@ class ProcessContainer(
                         extraEnv: Map[String, String] = Map.empty,
                         stdOutFile: Option[File] = None,
                         stdErrFile: Option[File] = None,
-                        cwd: Option[File] = None) extends ContainerTrait {
+                        cwd: Option[File] = None,
+                        workingDirectoryPreparer: Option[WorkingDirectoryPreparer] = None
+                      ) extends ContainerTrait {
 
   private var process: java.lang.Process = _
 
-  // TODO: add container preparation logic such as downloading files
+  // set working dir for workingDirectoryPreparer
+  workingDirectoryPreparer.foreach(wdp => cwd.foreach(f => wdp.setWorkingDir(f.toPath)))
 
   def start(): Boolean = {
-    val javaProcessBuilder = new java.lang.ProcessBuilder(command: _*)
-    stdOutFile.foreach { f =>
-      f.getParentFile.mkdirs()
-      javaProcessBuilder.redirectOutput(f)
+    workingDirectoryPreparer.foreach(_.prepare())
+    try {
+      val javaProcessBuilder = new java.lang.ProcessBuilder(command: _*)
+      stdOutFile.foreach { f =>
+        f.getParentFile.mkdirs()
+        javaProcessBuilder.redirectOutput(f)
+      }
+      stdErrFile.foreach { f =>
+        f.getParentFile.mkdirs()
+        javaProcessBuilder.redirectError(f)
+      }
+      val environment = javaProcessBuilder.environment()
+      extraEnv.foreach { case (k, v) =>
+        environment.put(k, v)
+      }
+      cwd.foreach { f =>
+        javaProcessBuilder.directory(f)
+      }
+      process = javaProcessBuilder.start()
+      process.isAlive
+    } finally {
+      workingDirectoryPreparer.foreach(_.cleanup())
     }
-    stdErrFile.foreach { f =>
-      f.getParentFile.mkdirs()
-      javaProcessBuilder.redirectError(f)
-    }
-    val environment = javaProcessBuilder.environment()
-    extraEnv.foreach { case (k, v) =>
-      environment.put(k, v)
-    }
-    cwd.foreach { f =>
-      javaProcessBuilder.directory(f)
-    }
-    process = javaProcessBuilder.start()
-    process.isAlive
   }
 
   def waitForCompletion(): Int = {
