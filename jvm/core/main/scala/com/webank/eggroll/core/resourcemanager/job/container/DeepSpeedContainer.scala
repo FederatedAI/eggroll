@@ -22,7 +22,13 @@ import com.webank.eggroll.core.session.RuntimeErConf
 
 import java.nio.file.Paths
 
-case class DeepSpeedConfig(conf: RuntimeErConf, localRank: Int, globalRank: Int, processorId: Long = 0) {
+case class DeepSpeedConfig(conf: RuntimeErConf,
+                           localRank: Int,
+                           globalRank: Int,
+                           processorId: Long = 0,
+                           files: Map[String, Array[Byte]] = Map.empty,
+                           zippedFiles: Map[String, Array[Byte]] = Map.empty
+                          ) {
   val pythonExec = conf.getString("deepspeed.python.exec")
   val scriptPath = conf.getString("deepspeed.script.path")
   val scriptArgs = conf.getString("deepspeed.script.args").split(",")
@@ -31,8 +37,14 @@ case class DeepSpeedConfig(conf: RuntimeErConf, localRank: Int, globalRank: Int,
     "global_rank" -> globalRank.toString
   )
   private val logDir = Paths.get(conf.getString("deepspeed.logdir", "/tmp"))
+  private val workingDir = Paths.get(conf.getString("deepspeed.cwd", s"/tmp/${processorId}"))
   val stdErrFile = Some(logDir.resolve(s"deepspeed-stderr-$processorId.log").toFile)
   val stdOutFile = Some(logDir.resolve(s"deepspeed-stdout-$processorId.log").toFile)
+  val cwd = Some(workingDir.toFile)
+  val workingDirectoryPreparer = Some(new WorkingDirectoryPreparer(
+    files = files,
+    zippedFiles = zippedFiles,
+    workingDir = workingDir))
 }
 
 class DeepSpeedContainer(config: DeepSpeedConfig)
@@ -42,10 +54,12 @@ class DeepSpeedContainer(config: DeepSpeedConfig)
     scriptArgs = config.scriptArgs,
     extraEnv = config.extraEnv,
     stdErrFile = config.stdErrFile,
-    stdOutFile = config.stdOutFile
+    stdOutFile = config.stdOutFile,
+    cwd = config.cwd,
+    workingDirectoryPreparer = config.workingDirectoryPreparer
   ) {
-  def this(conf: RuntimeErConf, localRank: Int, globalRank: Int, processor_id: Long = 0) {
-    this(DeepSpeedConfig(conf, localRank, globalRank, processor_id))
+  def this(conf: RuntimeErConf, localRank: Int, globalRank: Int, processorId: Long = 0, files: Map[String, Array[Byte]] = Map.empty, zippedFiles: Map[String, Array[Byte]] = Map.empty) {
+    this(DeepSpeedConfig(conf, localRank, globalRank, processorId, files, zippedFiles))
   }
 }
 
