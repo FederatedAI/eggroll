@@ -66,8 +66,18 @@ object ServerNodeTypes {
   val NODE_MANAGER = "NODE_MANAGER"
 }
 
+object ResourceTypes{
+    var MEMORY = "MEMORY"
+    var CPU = "CPU"
+    var GPU =  "GPU"
+
+}
+
 object ServerNodeStatus {
   val HEALTHY = "HEALTHY"
+  val INIT = "INIT"
+  var LOSS = "LOSS"
+
 }
 
 object ProcessorStatus {
