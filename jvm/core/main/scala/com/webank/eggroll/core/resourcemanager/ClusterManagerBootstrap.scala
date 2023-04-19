@@ -166,5 +166,6 @@ class ClusterManagerBootstrap extends BootstrapBase with Logging {
     StaticErConf.setPort(port)
     logInfo(s"${standaloneTag} server started at port ${port}")
     println(s"${standaloneTag} server started at port ${port}")
+    ClusterManagerService.start()
   }
 }
