@@ -15,7 +15,7 @@ import scala.collection.mutable
 object NodeManagerMeta{
   var status=INIT
   var serverNodeId = -1:Long;
-  var clusterId = "";
+  var clusterId = -1:Long;
 }
 
 trait NodeManager {
@@ -26,17 +26,12 @@ trait NodeManager {
 }
 
 class NodeManagerService extends NodeManager with Logging {
-
   var status =  HEALTHY
-
   var host = StaticErConf.getString(
     ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST)
   var port  = StaticErConf.getString(
     ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT)
-
-
   var  client = new  ClusterManagerClient()
-
   override def startContainers(sessionMeta: ErSessionMeta): ErSessionMeta = {
     operateContainers(sessionMeta, "start")
   }
@@ -83,7 +78,7 @@ object  NodeResourceManager extends  Logging {
   private  var client = new  ClusterManagerClient()
   //StaticErConf.getString(CoreConfKeys.CONFKEY_CORE_COMMAND_DEFAULT_SERDES_TYPE, SerdesTypes.PROTOBUF)
   private  var resourceMap = mutable.Map(ResourceTypes.CPU->ErResource(resourceType=ResourceTypes.CPU,
-    total=StaticErConf.getLong(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_CPU_VCORES.key,-1)),
+    total=StaticErConf.getLong(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_CPU_VCORES.key,NodeManagerConfKeys.CONFKEY_NODE_MANAGER_CPU_VCORES.defaultValue.toInt)),
     ResourceTypes.MEMORY->ErResource(resourceType=ResourceTypes.MEMORY),
     ResourceTypes.GPU->ErResource(resourceType=ResourceTypes.GPU,total=StaticErConf.getLong(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_GPU_VCORES.key,-1))
   )
@@ -116,9 +111,8 @@ object  NodeResourceManager extends  Logging {
   }
 
   def  registerResource(erServerNode: ErServerNode):ErServerNode = {
-
-      var  param = erServerNode.copy(id= NodeManagerMeta.serverNodeId,resources = resourceMap.values.toArray)
-
+      var  param = erServerNode.copy(id= NodeManagerMeta.serverNodeId,resources = resourceMap.values.toArray.filter(r=>{r.total != -1}))
+      logInfo(s"NodeManger registerResource ${param}")
       client.registerResource(param)
 
   }
@@ -129,7 +123,6 @@ object  NodeResourceManager extends  Logging {
       var  notOver : Boolean = true
       while(notOver){
         try {
-
           var serverNode = client.nodeHeartbeat(ErServerNode(id = StaticErConf.getLong(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_ID, -1),
             nodeType = ServerNodeTypes.NODE_MANAGER,
             endpoint = ErEndpoint(host = StaticErConf.getString(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HOST, NetUtils.getLocalHost),
@@ -143,6 +136,7 @@ object  NodeResourceManager extends  Logging {
           if (NodeManagerMeta.status.equals(INIT)) {
               NodeManagerMeta.status =  HEALTHY;
               NodeManagerMeta.serverNodeId = serverNode.id;
+              NodeManagerMeta.clusterId = serverNode.clusterId
               //   上报资源
               registerResource(serverNode)
 
@@ -156,7 +150,7 @@ object  NodeResourceManager extends  Logging {
             t.printStackTrace()
             logError("register node error ")
         }
-        Thread.sleep(StaticErConf.getInt(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL,10000))
+        Thread.sleep(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL.get().toInt)
       }
     }
   }

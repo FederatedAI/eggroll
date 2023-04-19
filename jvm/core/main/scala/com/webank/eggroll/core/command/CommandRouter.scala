@@ -147,6 +147,7 @@ object CommandRouter extends Logging {
 
     val realArgs = args.zip(servicer.serviceParamDeserializers).map {
       case (arg, deserializer) => {
+        println()
         deserializer.fromBytes(arg.asInstanceOf[ByteString].toByteArray).asInstanceOf[Object]
       }
     }
