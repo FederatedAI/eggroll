@@ -20,12 +20,12 @@ package com.webank.eggroll.core.resourcemanager.metadata
 
 import java.util
 import java.util.Date
-
 import com.webank.eggroll.core.constant.{ServerNodeStatus, ServerNodeTypes}
 import com.webank.eggroll.core.error.CrudException
 import com.webank.eggroll.core.meta.{ErEndpoint, ErResource, ErServerCluster, ErServerNode}
 import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator.dbc
-import com.webank.eggroll.core.resourcemanager.{BaseDao}
+import com.webank.eggroll.core.resourcemanager.BaseDao
+import com.webank.eggroll.core.resourcemanager.BaseDao.NotExistError
 import com.webank.eggroll.core.util.JdbcTemplate.ResultSetIterator
 import com.webank.eggroll.core.util.Logging
 import org.apache.commons.lang3.StringUtils
@@ -261,7 +261,9 @@ object ServerNodeCrudOperator extends Logging {
         clusterId = rs.getLong("server_cluster_id"),
         endpoint = ErEndpoint(host = rs.getString("host"), port = rs.getInt("port")),
         nodeType = rs.getString("node_type"),
-        status = rs.getString("status"))), sql, params: _*)
+        status = rs.getString("status"),
+        lastHeartBeat = rs.getTimestamp("last_heartbeat_at")
+      )), sql, params: _*)
 
     nodeResult.toArray
 
@@ -354,17 +356,25 @@ object ServerNodeCrudOperator extends Logging {
         if(deleteData!=null&&deleteData.length>0){
             deleteNodeResource(serverNodeId,deleteData)
         }
-
     })
 
   }
 
   def insertNodeResource(serverNodeId:Long,resources: Array[ErResource])= synchronized{
     require(resources.length > 0)
+    logInfo(s"insertNodeResource======== ${serverNodeId} ,size ${resources}")
     dbc.withTransaction(conn => {
       resources.foreach(erResource => {
-        dbc.update("insert node_resource ( server_node_id,resource_type,total,used,status) values (?,?,?,?,?)", serverNodeId, erResource.resourceType,
-                    erResource.total, erResource.used, erResource.status)
+
+        try {
+          dbc.update(conn,"insert node_resource ( server_node_id,resource_type,total,used,status) values (?,?,?,?,?)", serverNodeId, erResource.resourceType,
+            erResource.total, erResource.used, erResource.status)
+        } catch {
+          case e: Exception =>
+
+            println("got it:" + e.getMessage)
+        }
+
       })
     })
   }
@@ -372,7 +382,7 @@ object ServerNodeCrudOperator extends Logging {
 
     dbc.withTransaction(conn => {
       resources.foreach(erResource => {
-          dbc.update("update node_resource set total = ? , used = ? where server_node_id = ? ,resource_type = ? ",
+          dbc.update(conn ,"update node_resource set total = ? , used = ? where server_node_id = ? and resource_type = ? ",
             erResource.total, erResource.used, serverNodeId, erResource.resourceType)
       })
     })
@@ -382,7 +392,7 @@ object ServerNodeCrudOperator extends Logging {
 
     dbc.withTransaction(conn => {
       resources.foreach(erResource => {
-        dbc.update("delete from node_resource  where server_node_id = ? ,resource_type = ? ",
+        dbc.update(conn ,"delete from node_resource  where server_node_id = ? ,resource_type = ? ",
           serverNodeId, erResource.resourceType)
       })
     })
