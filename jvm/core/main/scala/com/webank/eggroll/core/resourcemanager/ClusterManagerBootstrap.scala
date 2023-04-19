@@ -4,7 +4,7 @@ import java.io.File
 import org.apache.commons.lang3.StringUtils
 import com.webank.eggroll.core.BootstrapBase
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
-import com.webank.eggroll.core.constant.{ClusterManagerConfKeys, CoreConfKeys, JobCommands, MetadataCommands, SessionCommands}
+import com.webank.eggroll.core.constant.{ClusterManagerConfKeys, CoreConfKeys, JobCommands, ManagerCommands, MetadataCommands, SessionCommands}
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.resourcemanager.job.ClusterManagerJobService
 import com.webank.eggroll.core.resourcemanager.metadata.{ServerNodeCrudOperator, StoreCrudOperator}
@@ -107,6 +107,19 @@ class ClusterManagerBootstrap extends BootstrapBase with Logging {
       serviceResultTypes = Array(classOf[ErProcessor]),
       routeToClass = classOf[SessionManagerService],
       routeToMethodName = SessionCommands.heartbeat.getName())
+
+        CommandRouter.register(serviceName = ManagerCommands.nodeHeartbeat.uriString,
+      serviceParamTypes = Array(classOf[ErServerNode]),
+      serviceResultTypes = Array(classOf[ErServerNode]),
+      routeToClass = classOf[ClusterManagerService],
+      routeToMethodName = ManagerCommands.nodeHeartbeat.getName())
+
+    CommandRouter.register(serviceName = ManagerCommands.registerResource.uriString,
+      serviceParamTypes = Array(classOf[ErServerNode]),
+      serviceResultTypes = Array(classOf[ErServerNode]),
+      routeToClass = classOf[ClusterManagerService],
+      routeToMethodName = ManagerCommands.registerResource.getName())
+
 
     // submit job
     CommandRouter.register(serviceName = JobCommands.submitJob.uriString,

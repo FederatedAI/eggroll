@@ -2,7 +2,7 @@ package com.webank.eggroll.core.resourcemanager
 
 import com.webank.eggroll.core.constant.{ProcessorStatus, SessionConfKeys, SessionStatus}
 import com.webank.eggroll.core.meta._
-import com.webank.eggroll.core.resourcemanager.ResourceDao.NotExistError
+import com.webank.eggroll.core.resourcemanager.BaseDao.NotExistError
 import com.webank.eggroll.core.util.JdbcTemplate
 import com.webank.eggroll.core.util.JdbcTemplate.ResultSetIterator
 import org.apache.commons.lang3.StringUtils
@@ -10,7 +10,7 @@ import org.apache.commons.lang3.StringUtils
 import scala.collection.mutable.ArrayBuffer
 
 class ServerMetaDao {
-  private lazy val dbc = ResourceDao.dbc
+  private lazy val dbc = BaseDao.dbc
   def getServerCluster(clusterId:Long = 0): ErServerCluster = synchronized {
     val nodes = dbc.query(rs =>
       rs.map(_ => ErServerNode(
@@ -29,7 +29,7 @@ class StoreMetaDao {
 class SessionMetaDao {
 
 
-  private lazy val dbc = ResourceDao.dbc
+  private lazy val dbc = BaseDao.dbc
   def register(sessionMeta: ErSessionMeta, replace: Boolean = true): Unit = synchronized {
     require(sessionMeta.activeProcCount == sessionMeta.processors.count(_.status == ProcessorStatus.RUNNING),
       "conflict active proc count:" + sessionMeta)
@@ -278,7 +278,7 @@ class SessionMetaDao {
   }
 }
 
-object ResourceDao {
+object BaseDao {
   class NotExistError(msg: String) extends Exception(msg)
   val dbc: JdbcTemplate = new JdbcTemplate(RdbConnectionPool.dataSource.getConnection)
 }

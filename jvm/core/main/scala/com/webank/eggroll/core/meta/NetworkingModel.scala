@@ -47,6 +47,18 @@ object ErEndpoint {
   }
 }
 
+case class ErResource(
+                      resourceId :Long = -1,
+                      resourceType : String = StringConstants.EMPTY,
+                      serverNodeId : Long = -1,
+                      total: Long = -1,
+                      used: Long = -1,
+                      status: String = StringConstants.EMPTY) extends NetworkingRpcMessage{
+  override def  toString:String ={
+    s"<ErResource(resourceType=${resourceType}, total=${total}, used=${used})>"}
+}
+
+
 case class ErProcessor(id: Long = -1,
                        serverNodeId: Long = -1,
                        name: String = StringConstants.EMPTY,
@@ -72,7 +84,30 @@ case class ErServerNode(id: Long = -1,
                         clusterId: Long = 0,
                         endpoint: ErEndpoint = ErEndpoint(host = StringConstants.EMPTY, port = -1),
                         nodeType: String = StringConstants.EMPTY,
-                        status: String = StringConstants.EMPTY) extends NetworkingRpcMessage
+                        status: String = StringConstants.EMPTY,
+			resources : Array[ErResource]= Array()) extends NetworkingRpcMessage{
+	  override  def  toString: String = {
+    val sb = new StringBuilder
+//    sb.append("total number of exception(s) occured: ")
+//      .append(causes.length)
+//      .append(StringConstants.LF)
+
+    if(resources!=null) {
+          var sb = new StringBuilder
+          resources.flatMap(n=>n.toString)
+    }
+
+   // s"ErServerNode[id=${id} , clusterId=${clusterId}, endpoint=${endpoint}, nodeType=${nodeType}, status=${status}, resources = ${rString}]"
+    resources.foreach(n=>{
+      sb.append(n.toString)
+    })
+
+
+
+    s"<ErServerNode(id=${id},name = ${name},clusterId = ${clusterId},endpoint = ${endpoint},nodeType = ${nodeType},status = ${status} ,resources = ${sb.toString()})>"
+  }
+
+}
 
 case class ErServerCluster(id: Long = -1,
                            name: String = StringConstants.EMPTY,
@@ -129,6 +164,18 @@ object NetworkingModelPbMessageSerdes {
 
     override def toBytes(baseSerializable: BaseSerializable): Array[Byte] =
       baseSerializable.asInstanceOf[ErProcessorBatch].toBytes()
+  }
+    implicit class ErResourceToPbMessage(src: ErResource) extends PbMessageSerializer {
+    override def toProto[T >: PbMessage](): Meta.Resource = {
+     var builder =  Meta.Resource.newBuilder()
+        .setType(src.resourceType)
+        .setTotal(src.total)
+        .setUsed(src.used)
+     builder.build()
+    }
+
+    override def toBytes(baseSerializable: BaseSerializable): Array[Byte] =
+      baseSerializable.asInstanceOf[ErResource].toBytes()
   }
 
   implicit class ErServerNodeToPbMessage(src: ErServerNode) extends PbMessageSerializer {
