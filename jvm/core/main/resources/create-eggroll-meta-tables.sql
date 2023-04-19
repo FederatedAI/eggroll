@@ -123,3 +123,39 @@ CREATE TABLE IF NOT EXISTS `session_processor` (
 ) DEFAULT CHARACTER SET latin1 COLLATE latin1_swedish_ci;
 
 CREATE INDEX `idx_session_processor_si` ON `session_processor` (`session_id`(767));
+
+
+CREATE TABLE IF NOT EXISTS `processor_resource` (
+  `id`  SERIAL PRIMARY KEY,
+  `processor_id` BIGINT NOT NULL,
+  `session_id` VARCHAR(767),
+  `server_node_id` INT NOT NULL,
+  `resource_type`  VARCHAR(255),
+  `used`   INT NOT NULL default 0,
+  `status` VARCHAR(255),
+  `pid` INT NOT NULL DEFAULT -1,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) DEFAULT CHARACTER SET latin1 COLLATE latin1_swedish_ci;
+
+
+
+CREATE TABLE IF NOT EXISTS `node_resource` (
+  `resource_id`  SERIAL PRIMARY KEY,
+  `server_node_id` BIGINT NOT NULL,
+  `resource_type`  VARCHAR(255),
+  `total`   INT NOT NULL default 0,
+  `used`    INT NOT NULL default 0,
+  `status` VARCHAR(255),
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) DEFAULT CHARACTER SET latin1 COLLATE latin1_swedish_ci;
+CREATE UNIQUE INDEX `idx_u_node_resource` ON `node_resource` (`server_node_id`, `resource_type`);
+
+
+
+
+
+
+
+
