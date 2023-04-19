@@ -89,6 +89,8 @@ class JdbcTemplate(dataSource: () => Connection, autoClose: Boolean = true) exte
     stmt => {
       try{
         stmt.executeUpdate
+        val errMsg = s""" sql="${sql}", params=(${String.join(",", params.map(p => s"'${StringUtils.substring(p.toString, 0, 300)}'"): _*)})"""
+        logInfo(errMsg)
       } catch {
         case ex: Exception =>
           val errMsg = s"""error in update. sql="${sql}", params=(${String.join(",", params.map(p => s"'${StringUtils.substring(p.toString, 0, 300)}'"): _*)})"""
