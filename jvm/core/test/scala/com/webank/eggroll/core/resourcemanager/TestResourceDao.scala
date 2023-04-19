@@ -4,7 +4,7 @@ import java.io.File
 
 import com.webank.eggroll.core.constant.ProcessorStatus
 import com.webank.eggroll.core.meta.{ErProcessor, ErSessionMeta}
-import com.webank.eggroll.core.resourcemanager.ResourceDao.NotExistError
+import com.webank.eggroll.core.resourcemanager.BaseDao.NotExistError
 import com.webank.eggroll.core.session.StaticErConf
 import org.junit.Assert._
 import org.junit.Test

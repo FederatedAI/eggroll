@@ -29,11 +29,11 @@ from collections.abc import Iterable
 import grpc
 import numpy as np
 
-from eggroll.core.client import ClusterManagerClient
+from eggroll.core.client import ClusterManagerClient, NodeManagerClient
 from eggroll.core.command.command_router import CommandRouter
 from eggroll.core.command.command_service import CommandServicer
 from eggroll.core.conf_keys import SessionConfKeys, \
-    ClusterManagerConfKeys, RollPairConfKeys, CoreConfKeys
+    ClusterManagerConfKeys, RollPairConfKeys, CoreConfKeys, NodeManagerConfKeys
 from eggroll.core.constants import ProcessorTypes, ProcessorStatus, SerdesTypes
 from eggroll.core.datastructure import create_executor_pool
 from eggroll.core.datastructure.broker import FifoBroker
@@ -726,7 +726,7 @@ class EggPair(object):
         return seq_op_result
 
 
-def stop_processor(cluster_manager_client: ClusterManagerClient, myself: ErProcessor):
+def stop_processor(node_manager_client: NodeManagerClient, myself: ErProcessor):
     import win32file
     import win32pipe
     L.info(f"stop_processor pid:{os.getpid()}, ppid:{os.getppid()}")
@@ -752,7 +752,7 @@ def stop_processor(cluster_manager_client: ClusterManagerClient, myself: ErProce
                     cmd_str = data[1].decode('utf-8')
                     if 'stop' in cmd_str and str(os.getpid()) in cmd_str:
                         myself._status = ProcessorStatus.STOPPED
-                        cluster_manager_client.heartbeat(myself)
+                        node_manager_client.heartbeat(myself)
 
                 except BaseException as e:
                     print("exception:", e)
@@ -845,8 +845,10 @@ def serve(args):
     command_server.start()
 
     cluster_manager = args.cluster_manager
+    node_manager = args.node_manager
     myself = None
-    cluster_manager_client = None
+    # cluster_manager_client = None
+    node_manager_client = None
     if cluster_manager:
         session_id = args.session_id
         server_node_id = int(args.server_node_id)
@@ -870,15 +872,24 @@ def serve(args):
         cluster_manager_host, cluster_manager_port = cluster_manager.strip().split(':')
 
         L.info(f'egg_pair cluster_manager: {cluster_manager}')
-        cluster_manager_client = ClusterManagerClient(options={
-            ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST: cluster_manager_host,
-            ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT: cluster_manager_port
+        # cluster_manager_client = ClusterManagerClient(options={
+        #     ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST: cluster_manager_host,
+        #     ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT: cluster_manager_port
+        # })
+
+
+
+        node_manager_client = NodeManagerClient(options={
+            NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HOST: "localhost",
+            NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT: node_manager
         })
-        cluster_manager_client.heartbeat(myself)
+
+        # cluster_manager_client.heartbeat(myself)
+        node_manager_client.heartbeat(myself)
         add_runtime_storage('er_session_id', session_id)
 
         if platform.system() == "Windows":
-            t1 = threading.Thread(target=stop_processor, args=[cluster_manager_client, myself])
+            t1 = threading.Thread(target=stop_processor, args=[node_manager_client, myself])
             t1.start()
 
     L.info(f'egg_pair started at port={port}, transfer_port={transfer_port}')
@@ -900,7 +911,7 @@ def serve(args):
     L.info(f'sending exit heartbeat to cm')
     if cluster_manager:
         myself._status = ProcessorStatus.STOPPED
-        cluster_manager_client.heartbeat(myself)
+        node_manager_client.heartbeat(myself)
 
     GrpcChannelFactory.shutdown_all_now()
 

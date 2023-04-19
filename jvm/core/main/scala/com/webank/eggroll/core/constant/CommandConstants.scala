@@ -56,6 +56,11 @@ object MetadataCommands {
   val getStoreFromNamespaceServiceName = CommandUtils.toServiceName(prefix, getStoreFromNamespace)
   val GET_STORE_FROM_NAMESPACE = new CommandURI(getStoreFromNamespaceServiceName)
 }
+object ManagerCommands{
+  var  prefix = "v1/cluster-manager/manager"
+  var  nodeHeartbeat =  new CommandURI(prefix = prefix,name = "nodeHeartbeat")
+  var  registerResource = new  CommandURI(prefix = prefix,name = "registerResource")
+}
 
 object SessionCommands {
   val prefix = "v1/cluster-manager/session"
