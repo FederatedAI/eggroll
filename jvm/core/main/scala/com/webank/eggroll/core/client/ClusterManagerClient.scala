@@ -21,7 +21,7 @@ package com.webank.eggroll.core.client
 import java.util.concurrent.ConcurrentHashMap
 
 import com.webank.eggroll.core.command.CommandClient
-import com.webank.eggroll.core.constant.{ClusterManagerConfKeys, MetadataCommands, SessionCommands}
+import com.webank.eggroll.core.constant.{ClusterManagerConfKeys, ManagerCommands, MetadataCommands, SessionCommands}
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.session.StaticErConf
 
@@ -107,4 +107,10 @@ class ClusterManagerClient(val endpoint: ErEndpoint) {
   // todo:0: heartbeat with process pid
   def heartbeat(processor: ErProcessor): ErProcessor =
     cc.call[ErProcessor](SessionCommands.heartbeat, processor)
+
+  def nodeHeartbeat(node: ErServerNode): ErServerNode =
+    cc.call[ErServerNode](ManagerCommands.nodeHeartbeat,node)
+
+  def registerResource(node: ErServerNode): ErServerNode =
+    cc.call[ErServerNode](ManagerCommands.registerResource,node)
 }

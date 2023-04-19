@@ -3,6 +3,7 @@ package com.webank.eggroll.core.resourcemanager
 import java.io.File
 import com.webank.eggroll.core.BootstrapBase
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
+import com.webank.eggroll.core.constant.NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HOST
 import com.webank.eggroll.core.constant.{CoreConfKeys, NodeManagerCommands, NodeManagerConfKeys, ResourceManagerConfKeys}
 import com.webank.eggroll.core.meta.{ErProcessor, ErSessionMeta, ErJobMeta}
 import com.webank.eggroll.core.resourcemanager.job.NodeManagerJobService
@@ -28,15 +29,7 @@ class NodeManagerBootstrap extends BootstrapBase with Logging {
 
     // val sessionId = cmd.getOptionValue('s')
     StaticErConf.addProperties(confPath)
-    val confFile = new File(confPath)
-    StaticErConf.addProperty(CoreConfKeys.STATIC_CONF_PATH, confFile.getAbsolutePath)
-    logInfo(s"conf file: ${confFile.getAbsolutePath}")
-    this.port = cmd.getOptionValue('p', StaticErConf.getProperty(
-      NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT, "9394")).toInt
-    // StaticErConf.addProperty(SessionConfKeys.CONFKEY_SESSION_ID, sessionId)
-
-    // TODO:0: get from cluster manager
-    StaticErConf.addProperty(ResourceManagerConfKeys.SERVER_NODE_ID, "2")
+ 
 
     // register services
     // To support parameters to NodeManagerService,
@@ -76,20 +69,31 @@ class NodeManagerBootstrap extends BootstrapBase with Logging {
       routeToMethodName = NodeManagerCommands.startJobContainers.getName(),
       routeToCallBasedClassInstance = nodeManagerJobService
     )
+        val confFile = new File(confPath)
+    StaticErConf.addProperty(CoreConfKeys.STATIC_CONF_PATH, confFile.getAbsolutePath)
+    logInfo(s"conf file: ${confFile.getAbsolutePath}")
+    this.port = cmd.getOptionValue('p', StaticErConf.getProperty(
+      NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT,"9394")).toInt
+    // StaticErConf.addProperty(SessionConfKeys.CONFKEY_SESSION_ID, sessionId)
+    logInfo(s"kaideng port : ${port}")
+    // TODO:0: get from cluster manager
+    StaticErConf.addProperty(ResourceManagerConfKeys.SERVER_NODE_ID, "2")
   }
 
   override def start(): Unit = {
     if (this.port < 0) {
       this.port = 0
     }
+    StaticErConf.addProperty(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT, this.port.toString)
 
     server = GrpcServerUtils.createServer(
       port = this.port, grpcServices = List(new CommandService))
 
     server.start()
     this.port = server.getPort
-    StaticErConf.addProperty(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT, this.port.toString)
-
+     
+    NodeResourceManager.start();
+		
     // TODO:0: why ?
     //    StaticErConf.setPort(this.port)
     val msg = s"server started at ${this.port}"
