@@ -8,7 +8,8 @@ import com.webank.eggroll.core.constant.ServerNodeStatus.{HEALTHY, INIT}
 import com.webank.eggroll.core.constant.{ClusterManagerConfKeys, CoreConfKeys, NodeManagerConfKeys, ResourceManagerConfKeys, ResourceTypes, ServerNodeTypes}
 import com.webank.eggroll.core.meta.{ErEndpoint, ErProcessor, ErResource, ErServerNode, ErSessionMeta}
 import com.webank.eggroll.core.session.{RuntimeErConf, StaticErConf}
-import com.webank.eggroll.core.util.{Logging, NetUtils}
+import com.webank.eggroll.core.sys.{Shell, SysInfoLinux}
+import com.webank.eggroll.core.util.{GetSystemInfo, Logging, NetUtils}
 
 import scala.collection.mutable
 
@@ -75,27 +76,68 @@ class NodeManagerService extends NodeManager with Logging {
 
 object  NodeResourceManager extends  Logging {
 
-  private  var client = new  ClusterManagerClient()
+  private  var sysInfo= if(Shell.LINUX)new  SysInfoLinux else null
+  private  var client = new  ClusterManagerClient
+
+  var  physicalMemorySize = getPhysicalMemorySize
+  var heartBeatThread= new HeartBeatThread()
+  var resourceCountThread = new ResourceCountThread()
+
   //StaticErConf.getString(CoreConfKeys.CONFKEY_CORE_COMMAND_DEFAULT_SERDES_TYPE, SerdesTypes.PROTOBUF)
-  private  var resourceMap = mutable.Map(ResourceTypes.CPU->ErResource(resourceType=ResourceTypes.CPU,
-    total=StaticErConf.getLong(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_CPU_VCORES.key,NodeManagerConfKeys.CONFKEY_NODE_MANAGER_CPU_VCORES.defaultValue.toInt)),
-    ResourceTypes.MEMORY->ErResource(resourceType=ResourceTypes.MEMORY),
-    ResourceTypes.GPU->ErResource(resourceType=ResourceTypes.GPU,total=StaticErConf.getLong(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_GPU_VCORES.key,-1))
+  private  var resourceMap = mutable.Map(ResourceTypes.VCPU_CORE->ErResource(resourceType=ResourceTypes.VCPU_CORE,
+    total=StaticErConf.getLong(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_CPU_VCORES.key,getAvailableProcessors)),
+    ResourceTypes.PHYSICAL_MEMORY->ErResource(resourceType=ResourceTypes.PHYSICAL_MEMORY,total = getPhysicalMemorySize ),
+    ResourceTypes.VGPU_CORE->ErResource(resourceType=ResourceTypes.VGPU_CORE,total=StaticErConf.getLong(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_GPU_VCORES.key,0))
   )
 
-
-
-
   def  start() :Unit={
-    val heartBeatThread = new HeartBeatThread()
     heartBeatThread.start()
+    resourceCountThread.start()
+  }
+  def getPhysicalMemorySize(): Long ={
+    if(Shell.LINUX){
+      sysInfo.getPhysicalMemorySize
+    }else{
+      GetSystemInfo.getTotalMemorySize
+    }
+  }
+  def getAvailablePhysicalMemorySize():Long ={
+    if(Shell.LINUX){
+      sysInfo.getAvailablePhysicalMemorySize
+    }else{
+      GetSystemInfo.getFreePhysicalMemorySize
+    }
+  }
+  def getAvailableProcessors():Int={
+    if(Shell.LINUX){
+      sysInfo.getNumCores
+    }else{
+      GetSystemInfo.getAvailableProcessors
+    }
   }
 
-  def countMemoryResource():ErResource={
-    null
-  }
-  def countCpuResource():ErResource = {
-    null
+
+  def countMemoryResource():Unit={
+    if(Shell.LINUX){
+      var  total = sysInfo.getPhysicalMemorySize;
+      var  available = sysInfo.getAvailablePhysicalMemorySize
+      resourceMap.put(ResourceTypes.PHYSICAL_MEMORY,resourceMap(ResourceTypes.PHYSICAL_MEMORY).copy(used = physicalMemorySize-available));
+
+    }else{
+      var  available =GetSystemInfo.getFreePhysicalMemorySize
+      resourceMap.put(ResourceTypes.PHYSICAL_MEMORY,resourceMap(ResourceTypes.PHYSICAL_MEMORY).copy(used = physicalMemorySize-available));
+    }
+      }
+  def countCpuResource():Unit = {
+    if(Shell.LINUX){
+      var coreUsed = sysInfo.getNumVCoresUsed;
+      resourceMap.put(ResourceTypes.VCPU_CORE,resourceMap(ResourceTypes.VCPU_CORE).copy(used = coreUsed.toInt));
+    }else {
+      resourceMap.put(ResourceTypes.VCPU_CORE,resourceMap(ResourceTypes.VCPU_CORE).copy(used =  GetSystemInfo.getProcessCpuLoad.toInt));
+
+    }
+
+
   }
 
   def countGpuResource():ErResource = {
@@ -105,9 +147,22 @@ object  NodeResourceManager extends  Logging {
 
   class ResourceCountThread  extends  Thread{
       override  def  run(): Unit = {
+        while(true){
+          try{
+            countCpuResource();
+            countMemoryResource();
+            countGpuResource();
 
+            logInfo(s"resource ==========${resourceMap}")
+          }
+          catch {
+            case t: Throwable =>
+              t.printStackTrace()
+              logError("register node error ")
+          }
+          Thread.sleep(10000)
+        }
       }
-
   }
 
   def  registerResource(erServerNode: ErServerNode):ErServerNode = {
