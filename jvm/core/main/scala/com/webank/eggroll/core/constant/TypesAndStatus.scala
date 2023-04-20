@@ -67,10 +67,9 @@ object ServerNodeTypes {
 }
 
 object ResourceTypes{
-    var MEMORY = "MEMORY"
-    var CPU = "CPU"
-    var GPU =  "GPU"
-
+    var PHYSICAL_MEMORY = "PHYSICAL_MEMORY"
+    var VCPU_CORE = "VCPU_CORE"
+    var VGPU_CORE =  "VGPU_CORE"
 }
 
 object ServerNodeStatus {
