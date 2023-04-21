@@ -1,5 +1,5 @@
 
-package com.webank.eggroll.core.sys;
+package com.webank.eggroll.core.env;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -17,8 +17,6 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.WeakHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
-
-import com.google.common.annotations.VisibleForTesting;
 
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
