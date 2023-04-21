@@ -54,6 +54,7 @@ case class ErResource(
                       serverNodeId : Long = -1,
                       total: Long = -1,
                       used: Long = -1,
+                      allocated: Long = -1,
                       status: String = StringConstants.EMPTY) extends NetworkingRpcMessage{
   override def  toString:String ={
     s"<ErResource(resourceType=${resourceType}, total=${total}, used=${used})>"}
