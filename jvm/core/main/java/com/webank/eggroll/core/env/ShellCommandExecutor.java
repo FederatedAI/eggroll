@@ -1,4 +1,4 @@
-package com.webank.eggroll.core.sys;
+package com.webank.eggroll.core.env;
 
 import org.apache.commons.lang3.StringUtils;
 

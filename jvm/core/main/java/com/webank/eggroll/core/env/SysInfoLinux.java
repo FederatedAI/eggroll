@@ -1,6 +1,6 @@
 
 
-package com.webank.eggroll.core.sys;
+package com.webank.eggroll.core.env;
 
 import java.io.BufferedReader;
 import java.io.FileInputStream;
