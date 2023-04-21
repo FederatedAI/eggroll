@@ -1,16 +1,16 @@
 package com.webank.eggroll.core.resourcemanager
 
-import com.webank.eggroll.core.constant.ResourceManagerConfKeys
+import com.webank.eggroll.core.constant.{ClusterManagerConfKeys, CoreConfKeys, NodeManagerConfKeys, ResourceManagerConfKeys, ResourceTypes, ServerNodeTypes, StringConstants}
 import com.webank.eggroll.core.meta.{ErProcessor, ErSessionMeta}
 import com.webank.eggroll.core.session.RuntimeErConf
 import com.webank.eggroll.core.client.ClusterManagerClient
 import com.webank.eggroll.core.constant.ServerNodeStatus.{HEALTHY, INIT}
-import com.webank.eggroll.core.constant.{ClusterManagerConfKeys, CoreConfKeys, NodeManagerConfKeys, ResourceManagerConfKeys, ResourceTypes, ServerNodeTypes}
 import com.webank.eggroll.core.meta.{ErEndpoint, ErProcessor, ErResource, ErServerNode, ErSessionMeta}
 import com.webank.eggroll.core.session.{RuntimeErConf, StaticErConf}
-import com.webank.eggroll.core.sys.{Shell, SysInfoLinux}
+import com.webank.eggroll.core.env.{Shell, SysInfoLinux}
 import com.webank.eggroll.core.util.{GetSystemInfo, Logging, NetUtils}
 
+import java.util.concurrent.atomic.AtomicLong
 import scala.collection.mutable
 
 object NodeManagerMeta{
@@ -79,16 +79,37 @@ object  NodeResourceManager extends  Logging {
   private  var sysInfo= if(Shell.LINUX)new  SysInfoLinux else null
   private  var client = new  ClusterManagerClient
 
-  var  physicalMemorySize = getPhysicalMemorySize
-  var heartBeatThread= new HeartBeatThread()
-  var resourceCountThread = new ResourceCountThread()
+  private var physicalMemorySize = getPhysicalMemorySize
+  private var heartBeatThread= new HeartBeatThread()
+  private var resourceCountThread = new ResourceCountThread()
+  private var resourceMap = mutable.Map[String,ResourceWrapper](
+      ResourceTypes.VCPU_CORE-> ResourceWrapper(resourceType=ResourceTypes.VCPU_CORE, total=
+          new AtomicLong(StaticErConf.getLong(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_CPU_VCORES.key,getAvailableProcessors))),
+       ResourceTypes.PHYSICAL_MEMORY ->  ResourceWrapper(resourceType = ResourceTypes.PHYSICAL_MEMORY, total = new AtomicLong(getPhysicalMemorySize)),
+      ResourceTypes.VGPU_CORE-> ResourceWrapper(resourceType=ResourceTypes.VGPU_CORE,total= new AtomicLong(StaticErConf.getLong(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_GPU_VCORES.key,0))
+  ));
 
-  //StaticErConf.getString(CoreConfKeys.CONFKEY_CORE_COMMAND_DEFAULT_SERDES_TYPE, SerdesTypes.PROTOBUF)
-  private  var resourceMap = mutable.Map(ResourceTypes.VCPU_CORE->ErResource(resourceType=ResourceTypes.VCPU_CORE,
-    total=StaticErConf.getLong(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_CPU_VCORES.key,getAvailableProcessors)),
-    ResourceTypes.PHYSICAL_MEMORY->ErResource(resourceType=ResourceTypes.PHYSICAL_MEMORY,total = getPhysicalMemorySize ),
-    ResourceTypes.VGPU_CORE->ErResource(resourceType=ResourceTypes.VGPU_CORE,total=StaticErConf.getLong(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_GPU_VCORES.key,0))
-  )
+
+  def getResourceWrapper(rType:String ):Option[ResourceWrapper]={
+    resourceMap.get(rType)
+  }
+
+   def checkResourceIsEnough(rtype:String ,count :Long ): Boolean ={
+    var resourceWrapper =  getResourceWrapper(rtype)
+    if(resourceWrapper!=None){
+      var  left = resourceWrapper.get.total.get() - resourceWrapper.get.allocated.get()
+      if(count>= left)
+        return true;
+    }
+    false
+  }
+    def  allocateResource(rtype:String ,count:Long):Long ={
+    require(count>0)
+    var resourceWrapper = getResourceWrapper(rtype)
+    resourceWrapper.get.allocated.addAndGet(count);
+  }
+
+
 
   def  start() :Unit={
     heartBeatThread.start()
@@ -121,23 +142,20 @@ object  NodeResourceManager extends  Logging {
     if(Shell.LINUX){
       var  total = sysInfo.getPhysicalMemorySize;
       var  available = sysInfo.getAvailablePhysicalMemorySize
-      resourceMap.put(ResourceTypes.PHYSICAL_MEMORY,resourceMap(ResourceTypes.PHYSICAL_MEMORY).copy(used = physicalMemorySize-available));
-
+      resourceMap.get(ResourceTypes.PHYSICAL_MEMORY).get.used.set(physicalMemorySize-available)
     }else{
       var  available =GetSystemInfo.getFreePhysicalMemorySize
-      resourceMap.put(ResourceTypes.PHYSICAL_MEMORY,resourceMap(ResourceTypes.PHYSICAL_MEMORY).copy(used = physicalMemorySize-available));
+      resourceMap.get(ResourceTypes.PHYSICAL_MEMORY).get.used.set(physicalMemorySize-available)
+
     }
       }
   def countCpuResource():Unit = {
     if(Shell.LINUX){
       var coreUsed = sysInfo.getNumVCoresUsed;
-      resourceMap.put(ResourceTypes.VCPU_CORE,resourceMap(ResourceTypes.VCPU_CORE).copy(used = coreUsed.toInt));
+      resourceMap.get(ResourceTypes.VCPU_CORE).get.used.set( coreUsed.toInt);
     }else {
-      resourceMap.put(ResourceTypes.VCPU_CORE,resourceMap(ResourceTypes.VCPU_CORE).copy(used =  GetSystemInfo.getProcessCpuLoad.toInt));
-
+      resourceMap.get(ResourceTypes.VCPU_CORE).get.used.set(GetSystemInfo.getProcessCpuLoad.toInt);
     }
-
-
   }
 
   def countGpuResource():ErResource = {
@@ -166,11 +184,13 @@ object  NodeResourceManager extends  Logging {
   }
 
   def  registerResource(erServerNode: ErServerNode):ErServerNode = {
-      var  param = erServerNode.copy(id= NodeManagerMeta.serverNodeId,resources = resourceMap.values.toArray.filter(r=>{r.total != -1}))
+      var  param = erServerNode.copy(id= NodeManagerMeta.serverNodeId,resources = resourceMap.values.toArray.filter(r=>{r.total != -1})
+                    .map(r=>{ErResource(resourceType = r.resourceType,total = r.total.get())}))
       logInfo(s"NodeManger registerResource ${param}")
       client.registerResource(param)
 
   }
+
 
 
   class HeartBeatThread extends Thread{
