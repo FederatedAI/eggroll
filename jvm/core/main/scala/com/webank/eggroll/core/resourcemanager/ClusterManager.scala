@@ -22,7 +22,7 @@ trait ClusterManager {
         var gpuResourceMap =  new ConcurrentHashMap[Long,ResourceWrapper]();
         var memoryResourceMap = new ConcurrentHashMap[Long,ResourceWrapper]();
         }
-        case class  ResourceWrapper(var resourceType:String,var totol:Long,var used : Long)
+ 
 
 object ClusterManagerService extends Logging {
   val  nodeHeartbeatChecker =  new Thread(()=>{
