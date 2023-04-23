@@ -10,8 +10,11 @@ import com.webank.eggroll.core.session.{RuntimeErConf, StaticErConf}
 import com.webank.eggroll.core.env.{Shell, SysInfoLinux}
 import com.webank.eggroll.core.util.{GetSystemInfo, Logging, NetUtils}
 
+import java.util
+import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.atomic.AtomicLong
 import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
 
 object NodeManagerMeta{
   var status=INIT
@@ -24,6 +27,8 @@ trait NodeManager {
   def stopContainers(sessionMeta: ErSessionMeta): ErSessionMeta
   def killContainers(sessionMeta: ErSessionMeta): ErSessionMeta
   def heartbeat(processor: ErProcessor): ErProcessor
+//  def allocateResource():
+
 }
 
 class NodeManagerService extends NodeManager with Logging {
@@ -70,14 +75,18 @@ class NodeManagerService extends NodeManager with Logging {
     logInfo(s"nodeManager receive heartbeat ${processor}")
     client.heartbeat(processor);
   }
+
+
+
 }
 
-
+case class ResourceEvent( resourceType:String, count:Long)
 
 object  NodeResourceManager extends  Logging {
 
   private  var sysInfo= if(Shell.LINUX)new  SysInfoLinux else null
   private  var client = new  ClusterManagerClient
+  private  var resourceEventQueue=  new ArrayBlockingQueue[ResourceEvent](100);
 
   private var physicalMemorySize = getPhysicalMemorySize
   private var heartBeatThread= new HeartBeatThread()
@@ -103,12 +112,22 @@ object  NodeResourceManager extends  Logging {
     }
     false
   }
-    def  allocateResource(rtype:String ,count:Long):Long ={
+
+  def  fireResourceChangeEvent(event:ResourceEvent):Unit={
+    resourceEventQueue.put(event);
+  }
+
+
+  def  freeResource(rtype:String,count:Long):Long = {
+    require(count>0)
+    var resourceWrapper = getResourceWrapper(rtype)
+    resourceWrapper.get.allocated.addAndGet(-count)
+  }
+  def  allocateResource(rtype:String ,count:Long):Long ={
     require(count>0)
     var resourceWrapper = getResourceWrapper(rtype)
     resourceWrapper.get.allocated.addAndGet(count);
   }
-
 
 
   def  start() :Unit={
@@ -185,13 +204,28 @@ object  NodeResourceManager extends  Logging {
 
   def  registerResource(erServerNode: ErServerNode):ErServerNode = {
       var  param = erServerNode.copy(id= NodeManagerMeta.serverNodeId,resources = resourceMap.values.toArray.filter(r=>{r.total != -1})
-                    .map(r=>{ErResource(resourceType = r.resourceType,total = r.total.get())}))
+                    .map(r=>{ErResource(resourceType = r.resourceType,
+                                      total = r.total.get(),
+                      used=r.used.get(),
+                      allocated = r.allocated.get())}))
       logInfo(s"NodeManger registerResource ${param}")
       client.registerResource(param)
 
   }
 
+  class ResourceReportThread extends Thread{
+      override   def  run(): Unit ={
+        while (true){
+          try {
+            resourceEventQueue.poll()
+            registerResource(ErServerNode(id=NodeManagerMeta.serverNodeId,clusterId = NodeManagerMeta.clusterId))
+          }catch{
+            case t: Throwable =>
+          }
 
+        }
+      }
+  }
 
   class HeartBeatThread extends Thread{
     override def run(){
