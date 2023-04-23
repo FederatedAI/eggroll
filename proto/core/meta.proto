@@ -138,10 +138,18 @@ message SessionMeta {
   map<string, string> options = 6;
 }
 
+message ResourceAllocation{
+   int64 serverNodeId = 1;
+   string status = 2;
+   repeated Resource resources = 3;
+
+}
+
 message Resource{
   string type = 1;
   int64  total = 2;
   int64  used = 3;
+  int64  allocated = 4;
 }
 
 message JobMeta {
