@@ -52,13 +52,13 @@ object ClusterManagerService extends Logging {
   }
 
 
+
+
+
 }
 class ClusterManagerService extends   ClusterManager with Logging{
 
     lazy val serverNodeCrudOperator = new ServerNodeCrudOperator()
-
-
-
 
     override def registerResource(data: ErServerNode):ErServerNode = {
         logInfo(s"==========registerResource ${data}")
