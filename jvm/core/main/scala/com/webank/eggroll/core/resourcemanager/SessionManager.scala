@@ -65,6 +65,7 @@ class SessionManagerService extends SessionManager with Logging {
    * @return session main and options and processors
    */
   def getOrCreateSession(sessionMeta: ErSessionMeta): ErSessionMeta = {
+    logInfo(s"getOrCreateSession ${sessionMeta}")
     val sessionId = sessionMeta.id
     if (smDao.existSession(sessionId)) {
       var result = smDao.getSession(sessionId)
