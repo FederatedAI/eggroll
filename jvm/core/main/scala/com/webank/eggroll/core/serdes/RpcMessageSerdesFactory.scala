@@ -60,10 +60,12 @@ object RpcMessageSerdesFactory extends SerdesFactory with Logging {
     }
 
     // create and put to cache otherwise
+
     val endsWithDollarSign = javaClassCanonicalName.endsWith(StringConstants.DOLLAR)
     val strippedJavaClassName = StringUtils.strip(javaClassCanonicalName, StringConstants.DOLLAR)
-
+    println("============"+ javaClassCanonicalName+ " "+endsWithDollarSign)
     if (endsWithDollarSign) {
+      println("kaideng:"+strippedJavaClassName)
       finalJavaClass = Class.forName(strippedJavaClassName)
     }
 

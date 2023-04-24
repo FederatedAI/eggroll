@@ -92,6 +92,7 @@ class CommandClient(defaultEndpoint: ErEndpoint = null,
         .setUri(commandUri.uri.toString)
         .addAllArgs(argBytes.asJava)
         .build)
+      println("xxxxxxxxxxx"+tag.runtimeClass);
       SerdesUtils.rpcMessageFromBytes(resp.getResults(0).toByteArray,
         tag.runtimeClass, SerdesTypes.PROTOBUF).asInstanceOf[T]
     } catch {
