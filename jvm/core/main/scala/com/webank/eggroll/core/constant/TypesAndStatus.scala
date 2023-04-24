@@ -72,6 +72,17 @@ object ResourceTypes{
     var VGPU_CORE =  "VGPU_CORE"
 }
 
+object ResourceOperationType{
+    var CHECK = "CHECK"
+    var ALLOCATE = "ALLOCATE"
+    var FREE  =  "FREE"
+}
+object  ResourceOperationStauts{
+    var  SUCCESS  = "SUCCESS"
+    var  FAILED =  "FAILED"
+}
+
+
 object ServerNodeStatus {
   val HEALTHY = "HEALTHY"
   val INIT = "INIT"

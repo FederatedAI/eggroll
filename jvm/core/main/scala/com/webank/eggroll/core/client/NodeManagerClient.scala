@@ -19,8 +19,8 @@
 package com.webank.eggroll.core.client
 
 import com.webank.eggroll.core.command.CommandClient
-import com.webank.eggroll.core.constant.{NodeManagerCommands, NodeManagerConfKeys}
-import com.webank.eggroll.core.meta.{ErEndpoint, ErProcessor, ErSessionMeta, ErJobMeta}
+import com.webank.eggroll.core.constant.{NodeManagerCommands, NodeManagerConfKeys, ResouceCommands}
+import com.webank.eggroll.core.meta.{ErEndpoint, ErJobMeta, ErProcessor, ErResourceAllocation, ErSessionMeta}
 import com.webank.eggroll.core.session.StaticErConf
 
 
@@ -61,4 +61,7 @@ class NodeManagerClient(var nodeManagerEndpoint: ErEndpoint) {
 
   def killJobContainers(sessionMeta: ErJobMeta): ErJobMeta =
     commandClient.call[ErJobMeta](NodeManagerCommands.killJobContainers, sessionMeta)
+
+  def allocateResource(srcAllocate: ErResourceAllocation): ErResourceAllocation =
+    commandClient.call(ResouceCommands.resourceAllocation,srcAllocate)
 }
