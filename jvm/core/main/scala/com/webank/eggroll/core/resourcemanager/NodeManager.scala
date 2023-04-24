@@ -1,11 +1,10 @@
 package com.webank.eggroll.core.resourcemanager
 
-import com.webank.eggroll.core.constant.{ClusterManagerConfKeys, CoreConfKeys, NodeManagerConfKeys, ResourceManagerConfKeys, ResourceTypes, ServerNodeTypes, StringConstants}
-import com.webank.eggroll.core.meta.{ErProcessor, ErSessionMeta}
+import com.webank.eggroll.core.constant.{ClusterManagerConfKeys, CoreConfKeys, NodeManagerConfKeys, ResourceManagerConfKeys, ResourceOperationStauts, ResourceOperationType, ResourceTypes, ServerNodeTypes, StringConstants}
+import com.webank.eggroll.core.meta.{ErEndpoint, ErProcessor, ErResource, ErResourceAllocation, ErServerNode, ErSessionMeta}
 import com.webank.eggroll.core.session.RuntimeErConf
 import com.webank.eggroll.core.client.ClusterManagerClient
 import com.webank.eggroll.core.constant.ServerNodeStatus.{HEALTHY, INIT}
-import com.webank.eggroll.core.meta.{ErEndpoint, ErProcessor, ErResource, ErServerNode, ErSessionMeta}
 import com.webank.eggroll.core.session.{RuntimeErConf, StaticErConf}
 import com.webank.eggroll.core.env.{Shell, SysInfoLinux}
 import com.webank.eggroll.core.util.{GetSystemInfo, Logging, NetUtils}
@@ -27,7 +26,7 @@ trait NodeManager {
   def stopContainers(sessionMeta: ErSessionMeta): ErSessionMeta
   def killContainers(sessionMeta: ErSessionMeta): ErSessionMeta
   def heartbeat(processor: ErProcessor): ErProcessor
-//  def allocateResource():
+  def allocateResource(erResourceAllocation: ErResourceAllocation):ErResourceAllocation
 
 }
 
@@ -76,8 +75,39 @@ class NodeManagerService extends NodeManager with Logging {
     client.heartbeat(processor);
   }
 
+  override def allocateResource(erResourceAllocation: ErResourceAllocation): ErResourceAllocation = {
+    logInfo(s"receive allocateResource request ${erResourceAllocation}")
+    erResourceAllocation.operateType match {
+      case "CHECK"=>{
+        var enough = true
+        erResourceAllocation.resources.foreach(r=>{
+          enough = enough&  NodeResourceManager.checkResourceIsEnough(r.resourceType,r.total)
+        })
+        if(enough)
+           erResourceAllocation.copy(status = ResourceOperationStauts.SUCCESS )
+        else
+           erResourceAllocation.copy(status = ResourceOperationStauts.FAILED)
+      }
+      case "ALLOCATE" =>{
+        var success = true
+        erResourceAllocation.resources.foreach(r=>{
+            NodeResourceManager.allocateResource(r.resourceType,r.total)
+        })
+        erResourceAllocation.copy(status = ResourceOperationStauts.SUCCESS )
+      }
+      case "FREE" =>{
+        var success = true
+        erResourceAllocation.resources.foreach(r=>{
+          NodeResourceManager.freeResource(r.resourceType,r.total)
+        })
+        erResourceAllocation.copy(status = ResourceOperationStauts.SUCCESS )
+      }
+
+    }
 
 
+
+  }
 }
 
 case class ResourceEvent( resourceType:String, count:Long)
