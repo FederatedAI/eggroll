@@ -145,12 +145,12 @@ case class ErSessionMeta(id: String = StringConstants.EMPTY,
 //repeated Resource resources = 5;
 //
 //}
-case class ErResourceLocaction(serverNodeId: Long,
-                               status:String,
-                               sessionId: String ,
-                               operateType:String ,
-                               resources: Array[ErResource] =  Array()
-                              )   extends MetaRpcMessage
+//case class ErResourceAllocaction(serverNodeId: Long,
+//                               status:String,
+//                               sessionId: String ,
+//                               operateType:String ,
+//                               resources: Array[ErResource] =  Array()
+//                              )   extends MetaRpcMessage
 
 
 case class ErJobMeta(id: String = StringConstants.EMPTY,
