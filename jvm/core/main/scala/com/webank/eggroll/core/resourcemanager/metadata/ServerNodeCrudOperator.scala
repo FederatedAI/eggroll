@@ -392,7 +392,7 @@ object ServerNodeCrudOperator extends Logging {
 
     dbc.withTransaction(conn => {
       resources.foreach(erResource => {
-        dbc.update(conn ,"delete from node_resource  where server_node_id = ? ,resource_type = ? ",
+        dbc.update(conn ,"delete from node_resource  where server_node_id = ? and resource_type = ? ",
           serverNodeId, erResource.resourceType)
       })
     })
