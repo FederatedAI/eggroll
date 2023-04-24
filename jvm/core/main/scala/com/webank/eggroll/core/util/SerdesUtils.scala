@@ -48,7 +48,7 @@ object SerdesUtils {
     assert(bytes != null)
 
     val javaClassName = targetType.getCanonicalName
-
+    println("uuuuuuuuu"+javaClassName)
     if (!deserializerCache.contains(javaClassName)) {
       val newDeserializer = RpcMessageSerdesFactory.newDeserializer(targetType, serdesTypes)
       deserializerCache.putIfAbsent(javaClassName, newDeserializer)
