@@ -4,8 +4,8 @@ import java.io.File
 import com.webank.eggroll.core.BootstrapBase
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
 import com.webank.eggroll.core.constant.NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HOST
-import com.webank.eggroll.core.constant.{CoreConfKeys, NodeManagerCommands, NodeManagerConfKeys, ResourceManagerConfKeys}
-import com.webank.eggroll.core.meta.{ErProcessor, ErSessionMeta, ErJobMeta}
+import com.webank.eggroll.core.constant.{CoreConfKeys, NodeManagerCommands, NodeManagerConfKeys, ResouceCommands, ResourceManagerConfKeys}
+import com.webank.eggroll.core.meta.{ErJobMeta, ErProcessor, ErResourceAllocation, ErSessionMeta}
 import com.webank.eggroll.core.resourcemanager.job.NodeManagerJobService
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.transfer.GrpcServerUtils
@@ -69,6 +69,14 @@ class NodeManagerBootstrap extends BootstrapBase with Logging {
       routeToMethodName = NodeManagerCommands.startJobContainers.getName(),
       routeToCallBasedClassInstance = nodeManagerJobService
     )
+    CommandRouter.register(serviceName = ResouceCommands.resourceAllocation.uriString,
+      serviceParamTypes = Array(classOf[ErResourceAllocation]),
+      serviceResultTypes = Array(classOf[ErResourceAllocation]),
+      routeToClass = classOf[NodeManagerService],
+      routeToMethodName = ResouceCommands.resourceAllocation.getName()
+    )
+
+
         val confFile = new File(confPath)
     StaticErConf.addProperty(CoreConfKeys.STATIC_CONF_PATH, confFile.getAbsolutePath)
     logInfo(s"conf file: ${confFile.getAbsolutePath}")

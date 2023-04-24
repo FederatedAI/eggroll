@@ -60,6 +60,7 @@ object ManagerCommands{
   var  prefix = "v1/cluster-manager/manager"
   var  nodeHeartbeat =  new CommandURI(prefix = prefix,name = "nodeHeartbeat")
   var  registerResource = new  CommandURI(prefix = prefix,name = "registerResource")
+
 }
 
 object SessionCommands {
@@ -75,6 +76,11 @@ object SessionCommands {
   val stopSession = new CommandURI(prefix = prefix, name = "stopSession")
   val killSession = new CommandURI(prefix = prefix, name = "killSession")
   val killAllSessions = new CommandURI(prefix = prefix, name = "killAllSessions")
+}
+
+object ResouceCommands {
+  val prefix = "v1/node-manager/resouce"
+  var  resourceAllocation = new  CommandURI(prefix= prefix, name = "allocateResource")
 }
 
 object JobCommands {
@@ -95,4 +101,5 @@ object NodeManagerCommands {
   val startJobContainers = new CommandURI(prefix = prefix, name = "startJobContainers")
   val stopJobContainers = new CommandURI(prefix = prefix, name = "stopJobContainers")
   val killJobContainers = new CommandURI(prefix = prefix, name = "killJobContainers")
+
 }

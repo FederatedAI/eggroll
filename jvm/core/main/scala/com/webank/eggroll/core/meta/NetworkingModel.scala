@@ -59,6 +59,16 @@ case class ErResource(
   override def  toString:String ={
     s"<ErResource(resourceType=${resourceType}, total=${total}, used=${used})>"}
 }
+//int64 serverNodeId = 1;
+//string status = 2;
+//repeated Resource resources = 3;
+
+case class ErResourceAllocation(serverNodeId:Long ,
+                                operateType:String = StringConstants.EMPTY,
+                                status:String = StringConstants.EMPTY,
+                                resources: Array[ErResource]
+                               ) extends  NetworkingRpcMessage
+
 
 
 case class ErProcessor(id: Long = -1,
@@ -70,7 +80,9 @@ case class ErProcessor(id: Long = -1,
                        transferEndpoint: ErEndpoint = null,
                        pid: Int = -1,
                        options: java.util.Map[String, String] = new ConcurrentHashMap[String, String](),
-                       tag: String = StringConstants.EMPTY) extends NetworkingRpcMessage {
+                       tag: String = StringConstants.EMPTY,
+                       resouces: Array[ErResource]= Array()
+                      ) extends NetworkingRpcMessage {
   override def toString: String = {
     s"<ErProcessor(id=${id}, serverNodeId=${serverNodeId}, name=${name}, processorType=${processorType}, status=${status}, commandEndpoint=${commandEndpoint}, transferEndpoint=${transferEndpoint}, pid=${pid}, options=${options}, tag=${tag}) at ${hashCode().toHexString}>"
   }
@@ -160,13 +172,44 @@ object NetworkingModelPbMessageSerdes {
         .setName(src.name)
         .addAllProcessors(src.processors.toList.map(_.toProto()).asJava)
         .setTag(src.tag)
-
       builder.build()
     }
 
     override def toBytes(baseSerializable: BaseSerializable): Array[Byte] =
       baseSerializable.asInstanceOf[ErProcessorBatch].toBytes()
   }
+
+  implicit class ErResourceLocationFromPbMessage(src:Meta.ResourceAllocation =null)  extends  PbMessageDeserializer{
+    override def fromProto[T >: RpcMessage](): ErResourceLocaction = {
+      ErResourceLocaction(serverNodeId = src.getServerNodeId,
+                          status = src.getStatus,
+                          sessionId = src.getSessionId,
+                          operateType = src.getOperateType,
+                          resources=src.getResourcesList.asScala.map(_.fromProto()).toArray)
+    }
+
+    override def fromBytes(bytes: Array[Byte]):  ErResourceLocaction=
+      Meta.ResourceAllocation.parseFrom(bytes).fromProto()
+
+  }
+
+  implicit class ErResourceLocationToPbMessage(src: ErResourceLocaction=null)  extends  PbMessageSerializer{
+    override def toProto[T >: PbMessage](): Meta.ResourceAllocation = {
+      val builder = Meta.ResourceAllocation.newBuilder()
+        .setServerNodeId(src.serverNodeId)
+        .setSessionId(src.sessionId)
+        .setOperateType(src.operateType)
+        .setStatus(src.status)
+        .addAllResources(src.resources.toList.map(_.toProto()).asJava)
+      builder.build()
+    }
+    override def toBytes(baseSerializable: BaseSerializable): Array[Byte] =
+      baseSerializable.asInstanceOf[ErResourceLocaction].toBytes()
+  }
+
+
+
+
 
   implicit class ErResourceFromPbMessage(src: Meta.Resource = null) extends PbMessageDeserializer {
     override def fromProto[T >: RpcMessage](): ErResource = {
@@ -177,13 +220,6 @@ object NetworkingModelPbMessageSerdes {
       Meta.Resource.parseFrom(bytes).fromProto()
   }
     implicit class ErResourceToPbMessage(src: ErResource) extends PbMessageSerializer {
-
-//      override def fromProto[T >: RpcMessage](): ErResource = {
-//        ErEndpoint(host = src.getHost, port = src.getPort)
-//      }
-//
-//      override def fromBytes(bytes: Array[Byte]): ErResource =
-//        Meta.Endpoint.parseFrom(bytes).fromProto()
 
     override def toProto[T >: PbMessage](): Meta.Resource = {
 
