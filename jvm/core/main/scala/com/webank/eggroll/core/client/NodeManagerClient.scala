@@ -63,5 +63,5 @@ class NodeManagerClient(var nodeManagerEndpoint: ErEndpoint) {
     commandClient.call[ErJobMeta](NodeManagerCommands.killJobContainers, sessionMeta)
 
   def allocateResource(srcAllocate: ErResourceAllocation): ErResourceAllocation =
-    commandClient.call(ResouceCommands.resourceAllocation,srcAllocate)
+    commandClient.call[ErResourceAllocation](ResouceCommands.resourceAllocation,srcAllocate)
 }
