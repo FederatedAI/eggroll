@@ -64,6 +64,7 @@ case class ErResource(
 //repeated Resource resources = 3;
 
 case class ErResourceAllocation(serverNodeId:Long ,
+                                sessionId:String = StringConstants.EMPTY,
                                 operateType:String = StringConstants.EMPTY,
                                 status:String = StringConstants.EMPTY,
                                 resources: Array[ErResource]
@@ -179,21 +180,21 @@ object NetworkingModelPbMessageSerdes {
       baseSerializable.asInstanceOf[ErProcessorBatch].toBytes()
   }
 
-  implicit class ErResourceLocationFromPbMessage(src:Meta.ResourceAllocation =null)  extends  PbMessageDeserializer{
-    override def fromProto[T >: RpcMessage](): ErResourceLocaction = {
-      ErResourceLocaction(serverNodeId = src.getServerNodeId,
+  implicit class ErResourceAllocationFromPbMessage(src:Meta.ResourceAllocation =null)  extends  PbMessageDeserializer{
+    override def fromProto[T >: RpcMessage](): ErResourceAllocation = {
+      ErResourceAllocation(serverNodeId = src.getServerNodeId,
                           status = src.getStatus,
                           sessionId = src.getSessionId,
                           operateType = src.getOperateType,
                           resources=src.getResourcesList.asScala.map(_.fromProto()).toArray)
     }
 
-    override def fromBytes(bytes: Array[Byte]):  ErResourceLocaction=
+    override def fromBytes(bytes: Array[Byte]):  ErResourceAllocation=
       Meta.ResourceAllocation.parseFrom(bytes).fromProto()
 
   }
 
-  implicit class ErResourceLocationToPbMessage(src: ErResourceLocaction=null)  extends  PbMessageSerializer{
+  implicit class ErResourceAllocationToPbMessage(src: ErResourceAllocation=null)  extends  PbMessageSerializer{
     override def toProto[T >: PbMessage](): Meta.ResourceAllocation = {
       val builder = Meta.ResourceAllocation.newBuilder()
         .setServerNodeId(src.serverNodeId)
@@ -204,9 +205,8 @@ object NetworkingModelPbMessageSerdes {
       builder.build()
     }
     override def toBytes(baseSerializable: BaseSerializable): Array[Byte] =
-      baseSerializable.asInstanceOf[ErResourceLocaction].toBytes()
+      baseSerializable.asInstanceOf[ErResourceAllocation].toBytes()
   }
-
 
 
 
