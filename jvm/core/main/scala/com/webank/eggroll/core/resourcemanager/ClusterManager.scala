@@ -17,11 +17,11 @@ trait ClusterManager {
         def registerResource(data: ErServerNode): ErServerNode
         def nodeHeartbeat(data : ErServerNode): ErServerNode
         }
-        object ClusterResourceManager{
-        var cpuResourceMap =  new ConcurrentHashMap[Long, ResourceWrapper]()
-        var gpuResourceMap =  new ConcurrentHashMap[Long,ResourceWrapper]();
-        var memoryResourceMap = new ConcurrentHashMap[Long,ResourceWrapper]();
-        }
+//        object ClusterResourceRegister{
+//        var cpuResourceMap =  new ConcurrentHashMap[Long, ResourceWrapper]()
+//        var gpuResourceMap =  new ConcurrentHashMap[Long,ResourceWrapper]();
+//        var memoryResourceMap = new ConcurrentHashMap[Long,ResourceWrapper]();
+//        }
  
 
 object ClusterManagerService extends Logging {
@@ -59,6 +59,9 @@ object ClusterManagerService extends Logging {
 class ClusterManagerService extends   ClusterManager with Logging{
 
     lazy val serverNodeCrudOperator = new ServerNodeCrudOperator()
+
+
+
 
     override def registerResource(data: ErServerNode):ErServerNode = {
         logInfo(s"==========registerResource ${data}")

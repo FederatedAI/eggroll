@@ -139,9 +139,11 @@ message SessionMeta {
 }
 
 message ResourceAllocation{
-   int64 serverNodeId = 1;
+   int64  serverNodeId = 1;
    string status = 2;
-   repeated Resource resources = 3;
+   string sessionId = 3;
+   string operateType = 4;
+   repeated Resource resources = 5;
 
 }
 
