@@ -3,7 +3,7 @@ package com.webank.eggroll.core.resourcemanager
 import com.webank.eggroll.core.client.NodeManagerClient
 import com.webank.eggroll.core.constant._
 import com.webank.eggroll.core.error.ErSessionException
-import com.webank.eggroll.core.meta.{ErEndpoint, ErProcessor, ErServerNode, ErSessionMeta}
+import com.webank.eggroll.core.meta.{ErEndpoint, ErProcessor, ErResource, ErServerNode, ErSessionMeta}
 import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.util.Logging
@@ -102,7 +102,8 @@ class SessionManagerService extends SessionManager with Logging {
             (0 until eggsPerNode).map(_ => ErProcessor(
               serverNodeId = n.id,
               processorType = pType,
-              status = ProcessorStatus.NEW)
+              status = ProcessorStatus.NEW,
+              resouces = Array(ErResource(resourceType = ResourceTypes.VCPU_CORE,total = 1)))
             )
           )
         }
@@ -111,8 +112,12 @@ class SessionManagerService extends SessionManager with Logging {
           serverNodeId = n.id,
           processorType = ProcessorTypes.EGG_PAIR,
           commandEndpoint = ErEndpoint(serverNodesToHost(n.id), 0),
-          status = ProcessorStatus.NEW)))
+          status = ProcessorStatus.NEW,
+          resouces = Array(ErResource(resourceType = ResourceTypes.VCPU_CORE,total = 1)))))
       }
+
+    ClusterResourceManager.checkResource(processorPlan);
+
 
     val expectedProcessorsCount = processorPlan.length
     val sessionMetaWithProcessors = sessionMeta.copy(
@@ -124,6 +129,9 @@ class SessionManagerService extends SessionManager with Logging {
     smDao.register(sessionMetaWithProcessors)
     // TODO:0: record session failure in database if session start is not successful, and returns error session
     val registeredSessionMeta = smDao.getSession(sessionMeta.id)
+
+
+
 
     serverNodes.par.foreach(n => {
       // TODO:1: add new params?
