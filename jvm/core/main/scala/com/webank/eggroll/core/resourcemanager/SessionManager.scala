@@ -117,7 +117,9 @@ class SessionManagerService extends SessionManager with Logging {
           resouces = Array(ErResource(resourceType = ResourceTypes.VCPU_CORE,total = 1)))))
       }
 
-    ClusterResourceManager.checkResource(processorPlan);
+    if(ClusterResourceManager.checkResource(processorPlan)){
+          ClusterResourceManager.allocateResource(sessionId,processorPlan)
+    }
 
 
     val expectedProcessorsCount = processorPlan.length
