@@ -1,39 +1,39 @@
 package com.webank.eggroll.core.resourcemanager.job.container
 
 import java.io._
-
+import java.nio.file.Path
 class ProcessContainer(
                         command: Seq[String],
+                        cwd: Path,
                         extraEnv: Map[String, String] = Map.empty,
-                        stdOutFile: Option[File] = None,
-                        stdErrFile: Option[File] = None,
-                        cwd: Option[File] = None,
+                        stdOutFile: Option[Path] = None,
+                        stdErrFile: Option[Path] = None,
                         workingDirectoryPreparer: Option[WorkingDirectoryPreparer] = None
                       ) extends ContainerTrait {
 
   private var process: java.lang.Process = _
 
   // set working dir for workingDirectoryPreparer
-  workingDirectoryPreparer.foreach(wdp => cwd.foreach(f => wdp.setWorkingDir(f.toPath)))
+  workingDirectoryPreparer.foreach(wdp => wdp.setWorkingDir(cwd))
 
   def start(): Boolean = {
     workingDirectoryPreparer.foreach(_.prepare())
     try {
       val javaProcessBuilder = new java.lang.ProcessBuilder(command: _*)
+        .directory(cwd.toFile)
       stdOutFile.foreach { f =>
-        f.getParentFile.mkdirs()
-        javaProcessBuilder.redirectOutput(f)
+        val p = cwd.resolve(f).toFile
+        p.getParentFile.mkdirs()
+        javaProcessBuilder.redirectOutput(p)
       }
       stdErrFile.foreach { f =>
-        f.getParentFile.mkdirs()
-        javaProcessBuilder.redirectError(f)
+        val p = cwd.resolve(f).toFile
+        p.getParentFile.mkdirs()
+        javaProcessBuilder.redirectError(p)
       }
       val environment = javaProcessBuilder.environment()
       extraEnv.foreach { case (k, v) =>
         environment.put(k, v)
-      }
-      cwd.foreach { f =>
-        javaProcessBuilder.directory(f)
       }
       process = javaProcessBuilder.start()
       process.isAlive
@@ -55,5 +55,9 @@ class ProcessContainer(
   def kill(): Boolean = {
     process.destroyForcibly()
     process.isAlive
+  }
+
+  override def toString: String = {
+    s"ProcessContainer(command=$command, cwd=$cwd, extraEnv=$extraEnv, stdOutFile=$stdOutFile, stdErrFile=$stdErrFile, workingDirectoryPreparer=$workingDirectoryPreparer)"
   }
 }
