@@ -59,8 +59,9 @@ class MetadataCommands(object):
 
     get_store_from_namespace = 'getStoreFromNamespace'
     get_store_from_namespace_service_name = _to_service_name(prefix,
-                                                        get_store_from_namespace)
+                                                             get_store_from_namespace)
     GET_STORE_FROM_NAMESPACE = CommandURI(get_store_from_namespace_service_name)
+
 
 class NodeManagerCommands(object):
     prefix = 'v1/node-manager/processor'
@@ -132,3 +133,19 @@ class JobCommands:
     submit = 'submitJob'
     job_submit_service_name = _to_service_name(prefix, submit)
     SUBMIT_JOB = CommandURI(job_submit_service_name)
+
+
+class RendezvousStoreCommands:
+    prefix = 'v1/cluster-manager/job/rendezvous'
+
+    set = 'set'
+    set_service_name = _to_service_name(prefix, set)
+    SET = CommandURI(set_service_name)
+
+    get = 'get'
+    get_service_name = _to_service_name(prefix, get)
+    GET = CommandURI(get_service_name)
+
+    add = 'add'
+    add_service_name = _to_service_name(prefix, add)
+    ADD = CommandURI(add_service_name)

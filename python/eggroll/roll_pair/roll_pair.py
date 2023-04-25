@@ -115,7 +115,7 @@ class RollPairContext(object):
             return
         options = dict()
         options['create_if_missing'] = True
-        for k, v in (self.gc_recorder.gc_recorder.items()):
+        for k, v in dict(self.gc_recorder.gc_recorder.items()):
             namespace = k[0]
             name = k[1]
             rp = self.load(namespace=namespace, name=name, options=options)

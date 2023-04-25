@@ -4,9 +4,9 @@ import java.io.File
 import org.apache.commons.lang3.StringUtils
 import com.webank.eggroll.core.BootstrapBase
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
-import com.webank.eggroll.core.constant.{ClusterManagerConfKeys, CoreConfKeys, JobCommands, ManagerCommands, MetadataCommands, SessionCommands}
+import com.webank.eggroll.core.constant.{ClusterManagerConfKeys, CoreConfKeys, JobCommands, MetadataCommands, RendezvousStoreCommands, SessionCommands}
 import com.webank.eggroll.core.meta._
-import com.webank.eggroll.core.resourcemanager.job.ClusterManagerJobService
+import com.webank.eggroll.core.resourcemanager.job.{ClusterManagerJobService, RendezvousStoreService}
 import com.webank.eggroll.core.resourcemanager.metadata.{ServerNodeCrudOperator, StoreCrudOperator}
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.transfer.{GrpcClientUtils, GrpcServerUtils}
@@ -15,6 +15,7 @@ import com.webank.eggroll.core.util.{CommandArgsUtils, Logging}
 class ClusterManagerBootstrap extends BootstrapBase with Logging {
   private var port = 0
   private var standaloneTag = "0"
+
   //private var sessionId = "er_session_null"
   override def init(args: Array[String]): Unit = {
 
@@ -73,10 +74,10 @@ class ClusterManagerBootstrap extends BootstrapBase with Logging {
       routeToMethodName = SessionCommands.getSession.getName())
 
     CommandRouter.register(serviceName = SessionCommands.getOrCreateSession.uriString,
-        serviceParamTypes = Array(classOf[ErSessionMeta]),
-        serviceResultTypes = Array(classOf[ErSessionMeta]),
-        routeToClass = classOf[SessionManagerService],
-        routeToMethodName = SessionCommands.getOrCreateSession.getName())
+      serviceParamTypes = Array(classOf[ErSessionMeta]),
+      serviceResultTypes = Array(classOf[ErSessionMeta]),
+      routeToClass = classOf[SessionManagerService],
+      routeToMethodName = SessionCommands.getOrCreateSession.getName())
 
     CommandRouter.register(serviceName = SessionCommands.stopSession.uriString,
       serviceParamTypes = Array(classOf[ErSessionMeta]),
@@ -108,19 +109,6 @@ class ClusterManagerBootstrap extends BootstrapBase with Logging {
       routeToClass = classOf[SessionManagerService],
       routeToMethodName = SessionCommands.heartbeat.getName())
 
-        CommandRouter.register(serviceName = ManagerCommands.nodeHeartbeat.uriString,
-      serviceParamTypes = Array(classOf[ErServerNode]),
-      serviceResultTypes = Array(classOf[ErServerNode]),
-      routeToClass = classOf[ClusterManagerService],
-      routeToMethodName = ManagerCommands.nodeHeartbeat.getName())
-
-    CommandRouter.register(serviceName = ManagerCommands.registerResource.uriString,
-      serviceParamTypes = Array(classOf[ErServerNode]),
-      serviceResultTypes = Array(classOf[ErServerNode]),
-      routeToClass = classOf[ClusterManagerService],
-      routeToMethodName = ManagerCommands.registerResource.getName())
-
-
     // submit job
     CommandRouter.register(serviceName = JobCommands.submitJob.uriString,
       serviceParamTypes = Array(classOf[ErJobMeta]),
@@ -128,6 +116,31 @@ class ClusterManagerBootstrap extends BootstrapBase with Logging {
       routeToClass = classOf[ClusterManagerJobService],
       routeToMethodName = JobCommands.submitJob.getName())
 
+    val rendezvousStoreService = new RendezvousStoreService()
+
+    CommandRouter.register(serviceName = RendezvousStoreCommands.set.uriString,
+      serviceParamTypes = Array(classOf[RendezvousStoreSetRequest]),
+      serviceResultTypes = Array(classOf[RendezvousStoreSetResponse]),
+      routeToClass = classOf[RendezvousStoreService],
+      routeToMethodName = RendezvousStoreCommands.set.getName(),
+      routeToCallBasedClassInstance = rendezvousStoreService
+    )
+
+    CommandRouter.register(serviceName = RendezvousStoreCommands.get.uriString,
+      serviceParamTypes = Array(classOf[RendezvousStoreGetRequest]),
+      serviceResultTypes = Array(classOf[RendezvousStoreGetResponse]),
+      routeToClass = classOf[RendezvousStoreService],
+      routeToMethodName = RendezvousStoreCommands.get.getName(),
+      routeToCallBasedClassInstance = rendezvousStoreService
+    )
+
+    CommandRouter.register(serviceName = RendezvousStoreCommands.add.uriString,
+      serviceParamTypes = Array(classOf[RendezvousStoreAddRequest]),
+      serviceResultTypes = Array(classOf[RendezvousStoreAddResponse]),
+      routeToClass = classOf[RendezvousStoreService],
+      routeToMethodName = RendezvousStoreCommands.add.getName(),
+      routeToCallBasedClassInstance = rendezvousStoreService
+    )
     val cmd = CommandArgsUtils.parseArgs(args = args)
 
     //this.sessionId = cmd.getOptionValue('s')
@@ -139,9 +152,9 @@ class ClusterManagerBootstrap extends BootstrapBase with Logging {
     StaticErConf.addProperty(CoreConfKeys.STATIC_CONF_PATH, confFile.getAbsolutePath)
     logInfo(s"conf file: ${confFile.getAbsolutePath}")
     this.port = cmd.getOptionValue('p', cmd.getOptionValue('p', StaticErConf.getProperty(
-      ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT,"4670"))).toInt
+      ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, "4670"))).toInt
 
-    if(StringUtils.isBlank(standaloneTag)) {
+    if (StringUtils.isBlank(standaloneTag)) {
       Runtime.getRuntime.addShutdownHook(new Thread(() => {
         logWarning("****** Shutting down Cluster Manager ******")
         logInfo("Shutting down cluster manager. Force terminating all grpc channel")
@@ -166,6 +179,5 @@ class ClusterManagerBootstrap extends BootstrapBase with Logging {
     StaticErConf.setPort(port)
     logInfo(s"${standaloneTag} server started at port ${port}")
     println(s"${standaloneTag} server started at port ${port}")
-    ClusterManagerService.start()
   }
 }
