@@ -77,16 +77,17 @@ class NodeManagerService extends NodeManager with Logging {
 
   override def allocateResource(erResourceAllocation: ErResourceAllocation): ErResourceAllocation = {
     logInfo(s"receive allocateResource request ${erResourceAllocation}")
-    erResourceAllocation.operateType match {
+    var  result =erResourceAllocation.operateType match {
       case "CHECK"=>{
         var enough = true
         erResourceAllocation.resources.foreach(r=>{
           enough = enough&  NodeResourceManager.checkResourceIsEnough(r.resourceType,r.total)
         })
+        var  result:ErResourceAllocation = null
         if(enough)
-           erResourceAllocation.copy(status = ResourceOperationStauts.SUCCESS )
+         erResourceAllocation.copy(status = ResourceOperationStauts.SUCCESS )
         else
-           erResourceAllocation.copy(status = ResourceOperationStauts.FAILED)
+          erResourceAllocation.copy(status = ResourceOperationStauts.FAILED)
       }
       case "ALLOCATE" =>{
         var success = true
@@ -104,9 +105,8 @@ class NodeManagerService extends NodeManager with Logging {
       }
 
     }
-
-
-
+    logInfo(s"allocateResource result ${result}")
+    return result
   }
 }
 
@@ -132,12 +132,13 @@ object  NodeResourceManager extends  Logging {
   def getResourceWrapper(rType:String ):Option[ResourceWrapper]={
     resourceMap.get(rType)
   }
-
-   def checkResourceIsEnough(rtype:String ,count :Long ): Boolean ={
+   def checkResourceIsEnough(rtype:String ,required :Long ): Boolean ={
     var resourceWrapper =  getResourceWrapper(rtype)
+     logInfo(s"checkResourceIsEnough ${rtype} ${required}")
     if(resourceWrapper!=None){
       var  left = resourceWrapper.get.total.get() - resourceWrapper.get.allocated.get()
-      if(count>= left)
+      logInfo(s"request ${required} left ${left}")
+      if(required<= left)
         return true;
     }
     false
@@ -220,7 +221,7 @@ object  NodeResourceManager extends  Logging {
             countMemoryResource();
             countGpuResource();
 
-            logInfo(s"resource ==========${resourceMap}")
+            //logInfo(s"resource ==========${resourceMap}")
           }
           catch {
             case t: Throwable =>
@@ -269,8 +270,8 @@ object  NodeResourceManager extends  Logging {
             status = NodeManagerMeta.status
           ))
 
-          logInfo(s"cluster manager return ${serverNode}")
-          logInfo(s"======node manager status ${NodeManagerMeta.status}")
+//          logInfo(s"cluster manager return ${serverNode}")
+//          logInfo(s"======node manager status ${NodeManagerMeta.status}")
           if (serverNode != null) {
           if (NodeManagerMeta.status.equals(INIT)) {
               NodeManagerMeta.status =  HEALTHY;
