@@ -23,7 +23,6 @@ import com.google.protobuf.{Message => PbMessage}
 import com.webank.eggroll.core.constant.StringConstants
 import com.webank.eggroll.core.datastructure.RpcMessage
 import com.webank.eggroll.core.serdes.{BaseSerializable, PbMessageDeserializer, PbMessageSerializer}
-import jdk.nashorn.internal.ir.annotations.Immutable
 import org.apache.commons.lang3.StringUtils
 
 import java.sql.Timestamp
@@ -35,7 +34,6 @@ trait NetworkingRpcMessage extends RpcMessage {
   override def rpcMessageType(): String = "Networking"
 }
 
-@Immutable
 case class ErEndpoint(@BeanProperty host: String, @BeanProperty port: Int = -1) extends NetworkingRpcMessage {
   override def toString: String = s"$host:$port"
 
