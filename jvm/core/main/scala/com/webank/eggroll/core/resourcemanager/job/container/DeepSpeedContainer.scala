@@ -20,46 +20,63 @@ package com.webank.eggroll.core.resourcemanager.job.container
 
 import com.webank.eggroll.core.session.RuntimeErConf
 
-import java.nio.file.Paths
+import java.nio.file.{Path, Paths}
 
-case class DeepSpeedConfig(conf: RuntimeErConf,
-                           localRank: Int,
-                           globalRank: Int,
-                           processorId: Long = 0,
-                           files: Map[String, Array[Byte]] = Map.empty,
-                           zippedFiles: Map[String, Array[Byte]] = Map.empty
+case class DeepSpeedConfig(
+                            conf: RuntimeErConf,
+                            localRank: Int,
+                            globalRank: Int,
+                            commandArguments: Seq[String] = Seq.empty,
+                            environmentVariables: Map[String, String] = Map.empty,
+                            processorId: Long = 0,
+                            files: Map[String, Array[Byte]] = Map.empty,
+                            zippedFiles: Map[String, Array[Byte]] = Map.empty
                           ) {
-  val pythonExec = conf.getString("deepspeed.python.exec")
-  val scriptPath = conf.getString("deepspeed.script.path")
-  val scriptArgs = conf.getString("deepspeed.script.args").split(",")
-  val extraEnv = Map(
+
+  // working dir
+  val workingDir: Path =
+    Paths.get(conf.getString("eggroll.container.cwd", "/tmp/"))
+      .resolve(processorId.toString)
+      .toAbsolutePath.normalize()
+  val workingDirectoryPreparer: Some[WorkingDirectoryPreparer] =
+    Some(new WorkingDirectoryPreparer(
+      files = files,
+      zippedFiles = zippedFiles,
+      workingDir = workingDir))
+
+  val pythonExec: String = conf.getString("eggroll.container.python.exec")
+  val scriptPath: String = conf.getString("eggroll.container.script.path")
+  val extraEnv: Map[String, String] = environmentVariables ++ Map(
     "local_rank" -> localRank.toString,
     "global_rank" -> globalRank.toString
   )
-  private val logDir = Paths.get(conf.getString("deepspeed.logdir", "/tmp"))
-  private val workingDir = Paths.get(conf.getString("deepspeed.cwd", s"/tmp/${processorId}"))
-  val stdErrFile = Some(logDir.resolve(s"deepspeed-stderr-$processorId.log").toFile)
-  val stdOutFile = Some(logDir.resolve(s"deepspeed-stdout-$processorId.log").toFile)
-  val cwd = Some(workingDir.toFile)
-  val workingDirectoryPreparer = Some(new WorkingDirectoryPreparer(
-    files = files,
-    zippedFiles = zippedFiles,
-    workingDir = workingDir))
+  private val logDir = workingDir.resolve(
+    Paths.get(conf.getString("eggroll.container.logs", "logs")))
+  val stdErrFile: Some[Path] = Some(logDir.resolve(s"stderr.log"))
+  val stdOutFile: Some[Path] = Some(logDir.resolve(s"stdout.log"))
 }
 
 class DeepSpeedContainer(config: DeepSpeedConfig)
   extends PythonContainer(
     pythonExec = config.pythonExec,
     scriptPath = config.scriptPath,
-    scriptArgs = config.scriptArgs,
+    scriptArgs = config.commandArguments,
     extraEnv = config.extraEnv,
     stdErrFile = config.stdErrFile,
     stdOutFile = config.stdOutFile,
-    cwd = config.cwd,
+    cwd = config.workingDir,
     workingDirectoryPreparer = config.workingDirectoryPreparer
   ) {
-  def this(conf: RuntimeErConf, localRank: Int, globalRank: Int, processorId: Long = 0, files: Map[String, Array[Byte]] = Map.empty, zippedFiles: Map[String, Array[Byte]] = Map.empty) {
-    this(DeepSpeedConfig(conf, localRank, globalRank, processorId, files, zippedFiles))
+  def this(
+            processorId: Long,
+            conf: RuntimeErConf,
+            localRank: Int,
+            globalRank: Int,
+            commandArguments: Seq[String] = Seq.empty,
+            environmentVariables: Map[String, String] = Map.empty,
+            files: Map[String, Array[Byte]] = Map.empty,
+            zippedFiles: Map[String, Array[Byte]] = Map.empty) {
+    this(DeepSpeedConfig(conf, localRank, globalRank, commandArguments, environmentVariables, processorId, files, zippedFiles))
   }
 }
 
