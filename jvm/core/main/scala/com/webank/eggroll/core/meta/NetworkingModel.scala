@@ -68,9 +68,17 @@ case class ErResourceAllocation(serverNodeId:Long ,
                                 operateType:String = StringConstants.EMPTY,
                                 status:String = StringConstants.EMPTY,
                                 resources: Array[ErResource]
-                               ) extends  NetworkingRpcMessage
-
-
+                               ) extends  NetworkingRpcMessage{
+  override def toString: String = {
+    var  sb  = new StringBuilder
+    resources.foreach(r=>{
+      sb.append("[")
+      sb.append(r.toString)
+      sb.append("]")
+    })
+    s"<ErResourceAllocation(serverNodeId =${serverNodeId}, sessionId=${sessionId}, operateType=${operateType}, status=${status},  resources=${sb.toString()},}>"
+    }
+  }
 
 case class ErProcessor(id: Long = -1,
                        serverNodeId: Long = -1,
