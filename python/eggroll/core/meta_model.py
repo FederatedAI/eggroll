@@ -733,13 +733,13 @@ class ErJobMeta(RpcMessage):
                  name: str = '',
                  job_type: str = '',
                  world_size: int = 0,
-                 command_arguments: list = None,
-                 environment_variables: dict = None,
-                 files: typing.Optional[typing.Mapping[str, bytes]] = None,
-                 zipped_files: typing.Optional[typing.Mapping[str, bytes]] = None,
-                 options: dict = None,
+                 command_arguments: typing.Optional[typing.List[str]] = None,
+                 environment_variables: typing.Optional[typing.Dict[str, str]] = None,
+                 files: typing.Optional[typing.Dict[str, bytes]] = None,
+                 zipped_files: typing.Optional[typing.Dict[str, bytes]] = None,
+                 options: typing.Optional[typing.Dict] = None,
                  status: str = '',
-                 processors: list = None):
+                 processors: typing.Optional[list] = None):
         if command_arguments is None:
             command_arguments = []
         if environment_variables is None:
