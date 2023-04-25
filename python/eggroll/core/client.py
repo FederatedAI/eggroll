@@ -21,7 +21,7 @@ from eggroll.core.command.command_model import CommandURI
 from eggroll.core.command.command_model import ErCommandRequest, \
     ErCommandResponse
 from eggroll.core.command.commands import MetadataCommands, \
-    NodeManagerCommands, SessionCommands, JobCommands
+    NodeManagerCommands, SessionCommands, JobCommands, RendezvousStoreCommands
 from eggroll.core.conf_keys import ClusterManagerConfKeys, \
     NodeManagerConfKeys, CoreConfKeys
 from eggroll.core.constants import SerdesTypes
@@ -35,6 +35,8 @@ from eggroll.core.utils import _to_proto_string, _map_and_listify
 from eggroll.core.utils import get_static_er_conf
 from eggroll.core.utils import time_now_ns
 from eggroll.utils.log_utils import get_logger
+from eggroll.core.deepspeed.store_model import RendezvousStoreSetRequest, RendezvousStoreSetResponse, \
+    RendezvousStoreGetRequest, RendezvousStoreGetResponse, RendezvousStoreAddRequest, RendezvousStoreAddResponse
 
 L = get_logger()
 
@@ -58,19 +60,22 @@ class CommandClient(object):
                                        .EGGROLL_CORE_CLIENT_COMMAND_EXECUTOR_POOL_MAX_SIZE
                                        .get())
                     CommandClient._executor_pool = create_executor_pool(
-                            canonical_name=_executor_pool_type,
-                            max_workers=_max_workers,
-                            thread_name_prefix="command_client")
+                        canonical_name=_executor_pool_type,
+                        max_workers=_max_workers,
+                        thread_name_prefix="command_client")
 
-    def simple_sync_send(self, input: RpcMessage, output_type, endpoint: ErEndpoint, command_uri: CommandURI, serdes_type=SerdesTypes.PROTOBUF):
-        results = self.sync_send(inputs=[input], output_types=[output_type], endpoint=endpoint, command_uri=command_uri, serdes_type=serdes_type)
+    def simple_sync_send(self, input: RpcMessage, output_type, endpoint: ErEndpoint, command_uri: CommandURI,
+                         serdes_type=SerdesTypes.PROTOBUF):
+        results = self.sync_send(inputs=[input], output_types=[output_type], endpoint=endpoint, command_uri=command_uri,
+                                 serdes_type=serdes_type)
 
         if len(results):
             return results[0]
         else:
             return None
 
-    def sync_send(self, inputs: list, output_types: list, endpoint: ErEndpoint, command_uri: CommandURI, serdes_type=SerdesTypes.PROTOBUF):
+    def sync_send(self, inputs: list, output_types: list, endpoint: ErEndpoint, command_uri: CommandURI,
+                  serdes_type=SerdesTypes.PROTOBUF):
         request = None
         try:
             request = ErCommandRequest(id=time_now_ns(),
@@ -95,10 +100,12 @@ class CommandClient(object):
             L.exception(f'Error calling to {endpoint}, command_uri: {command_uri}, req:{request}')
             raise CommandCallError(command_uri, endpoint, e)
 
-    def async_call(self, args, output_types: list, command_uri: CommandURI, serdes_type=SerdesTypes.PROTOBUF, callback=None):
+    def async_call(self, args, output_types: list, command_uri: CommandURI, serdes_type=SerdesTypes.PROTOBUF,
+                   callback=None):
         futures = list()
         for inputs, endpoint in args:
-            f = self._executor_pool.submit(self.sync_send, inputs=inputs, output_types=output_types, endpoint=endpoint, command_uri=command_uri, serdes_type=serdes_type)
+            f = self._executor_pool.submit(self.sync_send, inputs=inputs, output_types=output_types, endpoint=endpoint,
+                                           command_uri=command_uri, serdes_type=serdes_type)
             if callback:
                 f.add_done_callback(callback)
             futures.append(f)
@@ -111,11 +118,14 @@ class ClusterManagerClient(object):
         if options is None:
             options = {}
         static_er_conf = get_static_er_conf()
-        host = options.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST, static_er_conf.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST, None))
-        port = options.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, static_er_conf.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, None))
+        host = options.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST,
+                           static_er_conf.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST, None))
+        port = options.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT,
+                           static_er_conf.get(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, None))
 
         if not host or not port:
-            raise ValueError(f'failed to load host or port in creating cluster manager client. host: {host}, port: {port}')
+            raise ValueError(
+                f'failed to load host or port in creating cluster manager client. host: {host}, port: {port}')
 
         self.__endpoint = ErEndpoint(host, int(port))
         if 'serdes_type' in options:
@@ -126,52 +136,52 @@ class ClusterManagerClient(object):
 
     def get_server_node(self, input: ErServerNode):
         return self.__do_sync_request_internal(
-                input=input,
-                output_type=ErServerNode,
-                command_uri=MetadataCommands.GET_SERVER_NODE,
-                serdes_type=self.__serdes_type)
+            input=input,
+            output_type=ErServerNode,
+            command_uri=MetadataCommands.GET_SERVER_NODE,
+            serdes_type=self.__serdes_type)
 
     def get_server_nodes(self, input: ErServerNode):
         return self.__do_sync_request_internal(
-                input=input,
-                output_type=ErServerCluster,
-                command_uri=MetadataCommands.GET_SERVER_NODES,
-                serdes_type=self.__serdes_type)
+            input=input,
+            output_type=ErServerCluster,
+            command_uri=MetadataCommands.GET_SERVER_NODES,
+            serdes_type=self.__serdes_type)
 
     def get_or_create_server_node(self, input: ErServerNode):
         return self.__do_sync_request_internal(
-                input=input,
-                output_type=ErServerNode,
-                command_uri=MetadataCommands.GET_OR_CREATE_SERVER_NODE,
-                serdes_type=self.__serdes_type)
+            input=input,
+            output_type=ErServerNode,
+            command_uri=MetadataCommands.GET_OR_CREATE_SERVER_NODE,
+            serdes_type=self.__serdes_type)
 
     def create_or_update_server_node(self, input: ErServerNode):
         return self.__do_sync_request_internal(
-                input=input,
-                output_type=ErServerNode,
-                command_uri=MetadataCommands.CREATE_OR_UPDATE_SERVER_NODE,
-                serdes_type=self.__serdes_type)
+            input=input,
+            output_type=ErServerNode,
+            command_uri=MetadataCommands.CREATE_OR_UPDATE_SERVER_NODE,
+            serdes_type=self.__serdes_type)
 
     def get_store(self, input: ErStore):
         return self.__do_sync_request_internal(
-                input=input,
-                output_type=ErStore,
-                command_uri=MetadataCommands.GET_STORE,
-                serdes_type=self.__serdes_type)
+            input=input,
+            output_type=ErStore,
+            command_uri=MetadataCommands.GET_STORE,
+            serdes_type=self.__serdes_type)
 
     def get_or_create_store(self, input: ErStore):
         return self.__do_sync_request_internal(
-                input=input,
-                output_type=ErStore,
-                command_uri=MetadataCommands.GET_OR_CREATE_STORE,
-                serdes_type=self.__serdes_type)
+            input=input,
+            output_type=ErStore,
+            command_uri=MetadataCommands.GET_OR_CREATE_STORE,
+            serdes_type=self.__serdes_type)
 
     def delete_store(self, input: ErStore):
         return self.__do_sync_request_internal(
-                input=input,
-                output_type=ErStore,
-                command_uri=MetadataCommands.DELETE_STORE,
-                serdes_type=self.__serdes_type)
+            input=input,
+            output_type=ErStore,
+            command_uri=MetadataCommands.DELETE_STORE,
+            serdes_type=self.__serdes_type)
 
     def get_store_from_namespace(self, input):
         return self.__do_sync_request_internal(
@@ -182,10 +192,10 @@ class ClusterManagerClient(object):
 
     def get_or_create_session(self, input: ErSessionMeta):
         return self.__check_processors(
-                self.__do_sync_request_internal(input=input,
-                                                output_type=ErSessionMeta,
-                                                command_uri=SessionCommands.GET_OR_CREATE_SESSION,
-                                                serdes_type=self.__serdes_type))
+            self.__do_sync_request_internal(input=input,
+                                            output_type=ErSessionMeta,
+                                            command_uri=SessionCommands.GET_OR_CREATE_SESSION,
+                                            serdes_type=self.__serdes_type))
 
     def submit_job(self, input: ErJobMeta):
         return self.__do_sync_request_internal(input=input,
@@ -193,48 +203,66 @@ class ClusterManagerClient(object):
                                                command_uri=JobCommands.SUBMIT_JOB,
                                                serdes_type=self.__serdes_type)
 
+    def rendezvous_store_set(self, input: RendezvousStoreSetRequest):
+        return self.__do_sync_request_internal(input=input,
+                                               output_type=RendezvousStoreSetResponse,
+                                               command_uri=RendezvousStoreCommands.SET,
+                                               serdes_type=self.__serdes_type)
+
+    def rendezvous_store_get(self, input: RendezvousStoreGetRequest):
+        return self.__do_sync_request_internal(input=input,
+                                               output_type=RendezvousStoreGetResponse,
+                                               command_uri=RendezvousStoreCommands.GET,
+                                               serdes_type=self.__serdes_type)
+
+    def rendezvous_store_add(self, input: RendezvousStoreAddRequest):
+        return self.__do_sync_request_internal(input=input,
+                                               output_type=RendezvousStoreAddResponse,
+                                               command_uri=RendezvousStoreCommands.ADD,
+                                               serdes_type=self.__serdes_type)
+
     def register_session(self, session_meta: ErSessionMeta):
         return self.__check_processors(
-                self.__command_client.sync_send(inputs=[session_meta],
-                                                output_types=[ErSessionMeta],
-                                                endpoint=self.__endpoint,
-                                                command_uri=SessionCommands.REGISTER_SESSION,
-                                                serdes_type=self.__serdes_type)[0])
+            self.__command_client.sync_send(inputs=[session_meta],
+                                            output_types=[ErSessionMeta],
+                                            endpoint=self.__endpoint,
+                                            command_uri=SessionCommands.REGISTER_SESSION,
+                                            serdes_type=self.__serdes_type)[0])
 
     def get_session_server_nodes(self, input: ErSessionMeta):
         return self.__do_sync_request_internal(
-                input=input,
-                output_type=ErServerCluster,
-                command_uri=SessionCommands.GET_SESSION_SERVER_NODES,
-                serdes_type=self.__serdes_type)
+            input=input,
+            output_type=ErServerCluster,
+            command_uri=SessionCommands.GET_SESSION_SERVER_NODES,
+            serdes_type=self.__serdes_type)
 
     def heartbeat(self, input: ErProcessor):
         return self.__do_sync_request_internal(
-                input=input,
-                output_type=ErProcessor,
-                command_uri=SessionCommands.HEARTBEAT,
-                serdes_type=self.__serdes_type)
+            input=input,
+            output_type=ErProcessor,
+            command_uri=SessionCommands.HEARTBEAT,
+            serdes_type=self.__serdes_type)
 
     def stop_session(self, input: ErSessionMeta):
         return self.__do_sync_request_internal(
-                input=input,
-                output_type=ErSessionMeta,
-                command_uri=SessionCommands.STOP_SESSION,
-                serdes_type=self.__serdes_type)
+            input=input,
+            output_type=ErSessionMeta,
+            command_uri=SessionCommands.STOP_SESSION,
+            serdes_type=self.__serdes_type)
 
     def kill_session(self, input: ErSessionMeta):
         return self.__do_sync_request_internal(
-                input=input,
-                output_type=ErSessionMeta,
-                command_uri=SessionCommands.KILL_SESSION,
-                serdes_type=self.__serdes_type)
+            input=input,
+            output_type=ErSessionMeta,
+            command_uri=SessionCommands.KILL_SESSION,
+            serdes_type=self.__serdes_type)
 
     def kill_all_sessions(self):
         return self.__do_sync_request_internal(
-                input=ErSessionMeta(),
-                output_type=ErSessionMeta,
-                command_uri=SessionCommands.KILL_ALL_SESSIONS,
-                serdes_type=self.__serdes_type)
+            input=ErSessionMeta(),
+            output_type=ErSessionMeta,
+            command_uri=SessionCommands.KILL_ALL_SESSIONS,
+            serdes_type=self.__serdes_type)
 
     def __do_sync_request_internal(self, input, output_type, command_uri, serdes_type):
         return self.__command_client.simple_sync_send(input=input,
@@ -253,12 +281,14 @@ class NodeManagerClient(object):
     def __init__(self, options: dict = None):
         if options is None:
             options = {}
-        self.__endpoint = ErEndpoint(options[NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HOST], int(options[NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT]))
+        self.__endpoint = ErEndpoint(options[NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HOST],
+                                     int(options[NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT]))
         if 'serdes_type' in options:
             self.__serdes_type = options['serdes_type']
         else:
             self.__serdes_type = SerdesTypes.PROTOBUF
         self.__command_client = CommandClient()
+
     """
     def get_or_create_servicer(self, session_meta: ErSessionMeta):
         result = self.__do_sync_request_internal(
@@ -278,10 +308,10 @@ class NodeManagerClient(object):
 
     def heartbeat(self, processor: ErProcessor):
         return self.__do_sync_request_internal(
-                input=processor,
-                output_type=ErProcessor,
-                command_uri=NodeManagerCommands.HEARTBEAT,
-                serdes_type=self.__serdes_type)
+            input=processor,
+            output_type=ErProcessor,
+            command_uri=NodeManagerCommands.HEARTBEAT,
+            serdes_type=self.__serdes_type)
 
     def __do_sync_request_internal(self, input, output_type, command_uri, serdes_type):
         return self.__command_client.simple_sync_send(input=input,
