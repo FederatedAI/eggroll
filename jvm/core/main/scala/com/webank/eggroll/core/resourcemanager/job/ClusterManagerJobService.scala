@@ -82,7 +82,7 @@ class ClusterManagerJobService extends Logging {
         smDao.updateSessionMain(ErSessionMeta(
           status = SessionStatus.ACTIVE, activeProcCount = worldSize))
         submitJobMeta.copy(status = SessionStatus.ACTIVE)
-      case None =>
+      case _ =>
         throw new IllegalArgumentException(s"unsupported job type: ${submitJobMeta.jobType}")
     }
   }

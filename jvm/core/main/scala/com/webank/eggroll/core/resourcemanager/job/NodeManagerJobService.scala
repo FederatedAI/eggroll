@@ -2,7 +2,7 @@ package com.webank.eggroll.core.resourcemanager.job
 
 import com.webank.eggroll.core.constant.{ProcessorTypes, ResourceManagerConfKeys}
 import com.webank.eggroll.core.meta.ErJobMeta
-import com.webank.eggroll.core.resourcemanager.job.container.{ContainersManager, DeepSpeedContainer, EggPairContainer}
+import com.webank.eggroll.core.resourcemanager.job.container.{ContainersManager, DeepSpeedContainer}
 import com.webank.eggroll.core.session.RuntimeErConf
 
 import scala.concurrent.ExecutionContext
@@ -54,12 +54,15 @@ class NodeManagerJobService(implicit ec: ExecutionContext) {
                     throw new IllegalArgumentException(s"localRank or globalRank not set: ${p.options}")
                   }
                   new DeepSpeedContainer(
+                    processorId = p.id,
                     conf = runtimeConf,
                     localRank = localRank,
                     globalRank = globalRank,
-                    processorId = p.id,
+                    commandArguments = submitJobMeta.commandArguments,
+                    environmentVariables = submitJobMeta.environmentVariables,
                     files = submitJobMeta.files,
-                    zippedFiles = submitJobMeta.zippedFiles)
+                    zippedFiles = submitJobMeta.zippedFiles
+                  )
               }
               containersManager.addContainer(containerId, container)
               containersManager.startContainer(containerId)
