@@ -49,13 +49,17 @@ object ErEndpoint {
 case class ErResource(
                       resourceId :Long = -1,
                       resourceType : String = StringConstants.EMPTY,
-                      serverNodeId : Long = -1,
-                      total: Long = -1,
-                      used: Long = -1,
-                      allocated: Long = -1,
+                      serverNodeId : Long = 0,
+                      total: Long = 0,
+                      used: Long = 0,
+                      allocated: Long = 0,
                       status: String = StringConstants.EMPTY) extends NetworkingRpcMessage{
   override def  toString:String ={
     s"<ErResource(resourceType=${resourceType}, total=${total}, used=${used})>"}
+
+  def   getUnAllocatedResource():Long={
+    total-allocated
+  }
 }
 //int64 serverNodeId = 1;
 //string status = 2;
@@ -88,7 +92,7 @@ case class ErProcessor(id: Long = -1,
                        pid: Int = -1,
                        options: java.util.Map[String, String] = new ConcurrentHashMap[String, String](),
                        tag: String = StringConstants.EMPTY,
-                       resouces: Array[ErResource]= Array()
+                       resources: Array[ErResource]= Array()
                       ) extends NetworkingRpcMessage {
   override def toString: String = {
     s"<ErProcessor(id=${id}, serverNodeId=${serverNodeId}, name=${name}, processorType=${processorType}, status=${status}, commandEndpoint=${commandEndpoint}, transferEndpoint=${transferEndpoint}, pid=${pid}, options=${options}, tag=${tag}) at ${hashCode().toHexString}>"

@@ -56,7 +56,7 @@ case class DeepSpeedConfig(
   val stdOutFile: Some[Path] = Some(logDir.resolve(s"stdout.log"))
 }
 
-class DeepSpeedContainer(config: DeepSpeedConfig)
+class DeepSpeedContainer( containerId : String,config: DeepSpeedConfig)
   extends PythonContainer(
     pythonExec = config.pythonExec,
     scriptPath = config.scriptPath,
@@ -65,7 +65,9 @@ class DeepSpeedContainer(config: DeepSpeedConfig)
     stdErrFile = config.stdErrFile,
     stdOutFile = config.stdOutFile,
     cwd = config.workingDir,
-    workingDirectoryPreparer = config.workingDirectoryPreparer
+    workingDirectoryPreparer = config.workingDirectoryPreparer,
+    containerId = containerId,
+    processorId = config.processorId
   ) {
   def this(
             processorId: Long,
@@ -75,8 +77,10 @@ class DeepSpeedContainer(config: DeepSpeedConfig)
             commandArguments: Seq[String] = Seq.empty,
             environmentVariables: Map[String, String] = Map.empty,
             files: Map[String, Array[Byte]] = Map.empty,
-            zippedFiles: Map[String, Array[Byte]] = Map.empty) {
-    this(DeepSpeedConfig(conf, localRank, globalRank, commandArguments, environmentVariables, processorId, files, zippedFiles))
+            zippedFiles: Map[String, Array[Byte]] = Map.empty,
+            containerId:String
+          ) {
+    this(containerId,DeepSpeedConfig(conf, localRank, globalRank, commandArguments, environmentVariables, processorId, files, zippedFiles))
   }
 }
 
