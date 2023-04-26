@@ -60,6 +60,8 @@ class SessionMetaDao {
                    "insert into session_processor(session_id, server_node_id, processor_type, status, " +
                    "tag, command_endpoint, transfer_endpoint) values " + valueSql,
                    params:_*)
+
+
       }
     }
   }
