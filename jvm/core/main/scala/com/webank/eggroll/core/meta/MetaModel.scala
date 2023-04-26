@@ -136,23 +136,6 @@ case class ErSessionMeta(id: String = StringConstants.EMPTY,
                          options: Map[String, String] = Map()) extends MetaRpcMessage {
 }
 
-
-//message ResourceAllocation{
-//int64  serverNodeId = 1;
-//string status = 2;
-//string sessionId = 3;
-//string operateType = 4;
-//repeated Resource resources = 5;
-//
-//}
-//case class ErResourceAllocaction(serverNodeId: Long,
-//                               status:String,
-//                               sessionId: String ,
-//                               operateType:String ,
-//                               resources: Array[ErResource] =  Array()
-//                              )   extends MetaRpcMessage
-
-
 case class ErJobMeta(id: String = StringConstants.EMPTY,
                      name: String = StringConstants.EMPTY,
                      jobType: String = StringConstants.EMPTY,

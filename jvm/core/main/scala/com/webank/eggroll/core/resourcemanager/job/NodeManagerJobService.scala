@@ -1,7 +1,9 @@
 package com.webank.eggroll.core.resourcemanager.job
 
-import com.webank.eggroll.core.constant.{ProcessorTypes, ResourceManagerConfKeys}
-import com.webank.eggroll.core.meta.ErJobMeta
+import com.webank.eggroll.core.client.ClusterManagerClient
+import com.webank.eggroll.core.constant.{ProcessorStatus, ProcessorTypes, ResourceManagerConfKeys}
+import com.webank.eggroll.core.meta.{ErJobMeta, ErProcessor}
+import com.webank.eggroll.core.resourcemanager.NodeManagerMeta
 import com.webank.eggroll.core.resourcemanager.job.container.{ContainersManager, DeepSpeedContainer}
 import com.webank.eggroll.core.session.RuntimeErConf
 
@@ -9,19 +11,37 @@ import scala.concurrent.ExecutionContext
 
 
 class NodeManagerJobService(implicit ec: ExecutionContext) {
+
+  var  client = new  ClusterManagerClient()
   private val containersManager = ContainersManager.builder()
     // TODO: status callbacks here
     .withStartedCallback((container) => {
+//      object ProcessorStatus {
+//        val NEW = "NEW"
+//        val RUNNING = "RUNNING"
+//        val STOPPED = "STOPPED"
+//        val KILLED = "KILLED"
+//        val ERROR = "ERROR"
+//      }
+
+
       println(s"container started: ${container}")
+
+      client.heartbeat(ErProcessor(id=container.getProcessorId(),serverNodeId = NodeManagerMeta.serverNodeId,status =ProcessorStatus.RUNNING ));
+
     })
     .withSuccessCallback((container) => {
       println(s"container success: ${container}")
+      client.heartbeat(ErProcessor(id=container.getProcessorId(),serverNodeId = NodeManagerMeta.serverNodeId,status =ProcessorStatus.STOPPED ));
+
     })
     .withFailedCallback((container) => {
       println(s"container failed: ${container}")
+      client.heartbeat(ErProcessor(id=container.getProcessorId(),serverNodeId = NodeManagerMeta.serverNodeId,status =ProcessorStatus.ERROR ));
     })
     .withExceptionCallback((container, e) => {
       println(s"container exception: ${container}, ${e}")
+      client.heartbeat(ErProcessor(id=container.getProcessorId(),serverNodeId = NodeManagerMeta.serverNodeId,status =ProcessorStatus.KILLED ));
     })
     .build
 
@@ -61,7 +81,8 @@ class NodeManagerJobService(implicit ec: ExecutionContext) {
                     commandArguments = submitJobMeta.commandArguments,
                     environmentVariables = submitJobMeta.environmentVariables,
                     files = submitJobMeta.files,
-                    zippedFiles = submitJobMeta.zippedFiles
+                    zippedFiles = submitJobMeta.zippedFiles,
+                    containerId = containerId.toString
                   )
               }
               containersManager.addContainer(containerId, container)
