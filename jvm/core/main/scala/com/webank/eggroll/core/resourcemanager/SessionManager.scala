@@ -53,6 +53,8 @@ class SessionManagerService extends SessionManager with Logging {
   private val smDao = new SessionMetaDao
   def heartbeat(proc: ErProcessor): ErProcessor = {
     smDao.updateProcessor(proc)
+
+    //ClusterResourceManager.freeResource()
     proc
   }
 
@@ -104,7 +106,7 @@ class SessionManagerService extends SessionManager with Logging {
               serverNodeId = n.id,
               processorType = pType,
               status = ProcessorStatus.NEW,
-              resouces = Array(ErResource(resourceType = ResourceTypes.VCPU_CORE,total = 1)))
+              resources = Array(ErResource(resourceType = ResourceTypes.VCPU_CORE,total = 1)))
             )
           )
         }
@@ -114,12 +116,8 @@ class SessionManagerService extends SessionManager with Logging {
           processorType = ProcessorTypes.EGG_PAIR,
           commandEndpoint = ErEndpoint(serverNodesToHost(n.id), 0),
           status = ProcessorStatus.NEW,
-          resouces = Array(ErResource(resourceType = ResourceTypes.VCPU_CORE,total = 1)))))
+          resources = Array(ErResource(resourceType = ResourceTypes.VCPU_CORE,total = 1)))))
       }
-
-    if(ClusterResourceManager.checkResource(processorPlan)){
-          ClusterResourceManager.allocateResource(sessionId,processorPlan)
-    }
 
 
     val expectedProcessorsCount = processorPlan.length
@@ -134,7 +132,16 @@ class SessionManagerService extends SessionManager with Logging {
     val registeredSessionMeta = smDao.getSession(sessionMeta.id)
 
 
-
+//    dispatchedProcessors = dispatchedProcessors.zip(registeredSessionMeta.processors).map {
+//      case ((processor, node), registeredProcessor) =>
+//        (processor.copy(id = registeredProcessor.id), node)
+//    }
+    var processorWithResource= processorPlan.zip(registeredSessionMeta.processors).map{
+      case (processor1,processor2)=> {
+        processor1.copy(id = processor2.id)
+      }
+    }
+    ClusterResourceManager.allocateResource(processorWithResource)
 
     serverNodes.par.foreach(n => {
       // TODO:1: add new params?
