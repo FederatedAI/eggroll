@@ -3,7 +3,7 @@ package com.webank.eggroll.core.resourcemanager.job
 import com.webank.eggroll.core.client.NodeManagerClient
 import com.webank.eggroll.core.constant._
 import com.webank.eggroll.core.meta._
-import com.webank.eggroll.core.resourcemanager.SessionMetaDao
+import com.webank.eggroll.core.resourcemanager.{ClusterResourceManager, SessionMetaDao}
 import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator
 import com.webank.eggroll.core.util.Logging
 
@@ -16,9 +16,11 @@ class ClusterManagerJobService extends Logging {
 
   private def dispatchDeepSpeed(worldSize: Int): Array[(ErProcessor, ErServerNode)] = {
     // cluster nodes
-    val serverNodes = new ServerNodeCrudOperator().getServerNodes(
+    val serverNodes = new ServerNodeCrudOperator().getServerNodesWithResource(
       ErServerNode(status = ServerNodeStatus.HEALTHY, nodeType = ServerNodeTypes.NODE_MANAGER)
-    ).serverNodes
+    )
+
+
 
     val shuffledNodes = Random.shuffle(serverNodes.toSeq)
     // dispatch processors
@@ -56,7 +58,7 @@ class ClusterManagerJobService extends Logging {
     JobProcessorTypes.fromString(submitJobMeta.jobType) match {
       case Some(JobProcessorTypes.DeepSpeed) =>
         val worldSize = submitJobMeta.worldSize
-        var dispatchedProcessors = dispatchDeepSpeed(worldSize)
+        var dispatchedProcessors = ClusterResourceManager.dispatchDeepSpeed(worldSize)
 
         // FIXME: just retrieve updated processors' id
         smDao.register(ErSessionMeta(
@@ -75,6 +77,7 @@ class ClusterManagerJobService extends Logging {
         dispatchedProcessors.groupBy(_._2).par.foreach { case (node, nodeAndProcessors) =>
           val processors = nodeAndProcessors.map(_._1)
           val nodeManagerClient = new NodeManagerClient(node.endpoint)
+          ClusterResourceManager.allocateResource(processors)
           nodeManagerClient.startJobContainers(submitJobMeta.copy(processors = processors))
         }
 

@@ -22,8 +22,8 @@ import java.util
 import java.util.Date
 import com.webank.eggroll.core.constant.{ServerNodeStatus, ServerNodeTypes}
 import com.webank.eggroll.core.error.CrudException
-import com.webank.eggroll.core.meta.{ErEndpoint, ErResource, ErServerCluster, ErServerNode}
-import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator.dbc
+import com.webank.eggroll.core.meta.{ErEndpoint, ErProcessor, ErResource, ErServerCluster, ErServerNode}
+import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator.{dbc, doGetServerNodesWithResource}
 import com.webank.eggroll.core.resourcemanager.BaseDao
 import com.webank.eggroll.core.resourcemanager.BaseDao.NotExistError
 import com.webank.eggroll.core.util.JdbcTemplate.ResultSetIterator
@@ -50,6 +50,8 @@ class ServerNodeCrudOperator extends CrudOperator with Logging {
     }
   }
 
+
+
   def getOrCreateServerNode(input: ErServerNode): ErServerNode = synchronized {
     ServerNodeCrudOperator.doGetOrCreateServerNode(input)
   }
@@ -62,6 +64,10 @@ class ServerNodeCrudOperator extends CrudOperator with Logging {
     samFunctor(input)
   }
 
+  def getServerNodesWithResource(input : ErServerNode):Array[ErServerNode] = {
+    doGetServerNodesWithResource(input)
+  }
+
   def getServerNodes(input: ErServerNode): ErServerCluster = synchronized {
     val serverNodes = ServerNodeCrudOperator.doGetServerNodes(input)
 
@@ -71,6 +77,11 @@ class ServerNodeCrudOperator extends CrudOperator with Logging {
       null
     }
   }
+
+
+
+
+
 
   def getServerClusterByHosts(input: util.List[String]): ErServerCluster = synchronized {
     ServerNodeCrudOperator.doGetServerClusterByHosts(input)
@@ -83,6 +94,13 @@ class ServerNodeCrudOperator extends CrudOperator with Logging {
   }
   def insertNodeResource(serverNodeId:Long,resources: Array[ErResource]) = synchronized{
     ServerNodeCrudOperator.insertNodeResource(serverNodeId,resources)
+  }
+  def insertProcessorResource(processors:Array[ErProcessor]) = synchronized{
+    ServerNodeCrudOperator.insertProcessorResource(processors)
+  }
+
+  def allocateNodeResource(serverNodeId:Long,resources: Array[ErResource]):Unit = synchronized{
+    ServerNodeCrudOperator.allocateNodeResource(serverNodeId,resources)
   }
 }
 
@@ -212,6 +230,15 @@ object ServerNodeCrudOperator extends Logging {
     nodeResult.toArray
   }
 
+  def doGetServerNodesWithResource(input: ErServerNode): Array[ErServerNode] = {
+    var  serverNodes =  doGetServerNodes(input)
+    serverNodes.map(node=>{
+      node.copy(resources = doQueryResources(node.id))
+    })
+  }
+
+
+
   def doGetServerNodes(input: ErServerNode): Array[ErServerNode] = {
 
     var sql = "select * from server_node where 1=? "
@@ -305,6 +332,7 @@ object ServerNodeCrudOperator extends Logging {
         resourceType = rs.getString("resource_type"),
         total = rs.getLong("total"),
         used = rs.getLong("used"),
+        allocated =  rs.getLong("allocated"),
         status = rs.getString("status"))),
       sql, params: _*)
     resourceResult.toArray
@@ -382,11 +410,37 @@ object ServerNodeCrudOperator extends Logging {
 
     dbc.withTransaction(conn => {
       resources.foreach(erResource => {
-          dbc.update(conn ,"update node_resource set total = ? , used = ? where server_node_id = ? and resource_type = ? ",
-            erResource.total, erResource.used, serverNodeId, erResource.resourceType)
+          dbc.update(conn ,"update node_resource set total = ? ,allocated = ?, used = ? where server_node_id = ? and resource_type = ? ",
+            erResource.total,erResource.allocated, erResource.used, serverNodeId, erResource.resourceType)
       })
     })
   }
+  def  allocateNodeResource(serverNodeId:Long,resources: Array[ErResource]): Unit = synchronized {
+    dbc.withTransaction(conn => {
+      resources.foreach(erResource => {
+        dbc.update(conn ,"update node_resource set allocated = allocated - ? where server_node_id = ? and resource_type = ? ",
+          erResource.total, serverNodeId, erResource.resourceType)
+      })
+    })
+  }
+
+
+
+  def  insertProcessorResource(processors:Array[ErProcessor]) :Unit = synchronized{
+    dbc.withTransaction(conn => {
+      processors.foreach(erProcessor => {
+        erProcessor.resources.foreach(resource=>{
+          dbc.update(conn ,"insert into  processor_resource (processor_id,server_node_id,resource_type,allocated)  values (?, ?, ?, ?)",
+            erProcessor.id, erProcessor.serverNodeId,resource.resourceType,resource.total)
+        })
+
+      })
+    })
+
+
+  }
+
+
 
   def deleteNodeResource(serverNodeId: Long, resources: Array[ErResource]) = synchronized {
 
