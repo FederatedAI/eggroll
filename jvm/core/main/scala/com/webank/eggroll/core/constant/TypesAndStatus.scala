@@ -71,6 +71,11 @@ object ResourceTypes{
     var VCPU_CORE = "VCPU_CORE"
     var VGPU_CORE =  "VGPU_CORE"
 }
+object ResourceStatus{
+  var AVAILABLE = "available"
+  var RETURN = "return"
+}
+
 
 object ResourceOperationType{
     var CHECK = "CHECK"
