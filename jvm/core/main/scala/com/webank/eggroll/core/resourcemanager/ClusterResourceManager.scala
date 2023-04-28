@@ -2,22 +2,22 @@ package com.webank.eggroll.core.resourcemanager
 
 import com.webank.eggroll.core.ErSession
 import com.webank.eggroll.core.client.NodeManagerClient
-import com.webank.eggroll.core.constant.{NodeManagerConfKeys, ProcessorStatus, ResourceOperationStauts, ResourceOperationType, ResourceTypes, ServerNodeStatus, ServerNodeTypes}
+import com.webank.eggroll.core.constant.{NodeManagerConfKeys, ProcessorStatus, ResourceOperationStauts, ResourceOperationType, ResourceStatus, ResourceTypes, ServerNodeStatus, ServerNodeTypes}
 import com.webank.eggroll.core.meta.{ErEndpoint, ErProcessor, ErResource, ErResourceAllocation, ErServerNode}
+import com.webank.eggroll.core.resourcemanager.ClusterResourceManager.serverNodeCrudOperator
 import com.webank.eggroll.core.resourcemanager.job.JobProcessorTypes
 import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator
 import com.webank.eggroll.core.session.StaticErConf
+import com.webank.eggroll.core.util.Logging
 
 import scala.collection.JavaConverters.mapAsJavaMapConverter
 import scala.collection.mutable
 import scala.math.Numeric.LongIsIntegral
 import scala.util.Random
 
-object ClusterResourceManager {
+object ClusterResourceManager extends Logging{
 
     lazy val serverNodeCrudOperator = new ServerNodeCrudOperator()
-
-
 
     def  clusterAllocateResource(sessionId :String,processors :Array[ErProcessor] ) : Unit={
       var   resourceMap = flatResources(processors)
@@ -32,15 +32,35 @@ object ClusterResourceManager {
       })
     }
 
-  def  allocateResource(processors: Array[ErProcessor] ) : Unit={
-
-    flatResources(processors).foreach(e=>{
-      serverNodeCrudOperator.allocateNodeResource(e._1,e._2)
+  def  allocateResource(processors: Array[ErProcessor] ) : Unit=synchronized{
+    var flatedResource = flatResources(processors)
+    ServerNodeCrudOperator.dbc.withTransaction(conn=> {
+      flatedResource.foreach(e => {
+        e._2.foreach(resource=>{
+          logInfo(s"allocate resource to node  ${e._1} ${resource}")
+        })
+        serverNodeCrudOperator.allocateNodeResource(conn,e._1, e._2)
+      })
+      serverNodeCrudOperator.insertProcessorResource(conn,processors);
     })
-    serverNodeCrudOperator.insertProcessorResource(processors);
-
   }
 
+
+
+
+  def  returnResource(processors: Array[ErProcessor] ):  Unit=synchronized{
+    ServerNodeCrudOperator.dbc.withTransaction(conn=>{
+    processors.foreach(p=>{
+        var  resourceInDb = serverNodeCrudOperator.queryProcessorResource(conn,p)
+        logInfo(s"return resource ${resourceInDb}")
+        if(resourceInDb.length>0) {
+          serverNodeCrudOperator.updateProcessorResource(conn, p.copy(resources = resourceInDb.map(_.copy(status = ResourceStatus.RETURN))))
+          serverNodeCrudOperator.returnNodeResource(conn, p.serverNodeId, resourceInDb)
+        }
+      })
+    })
+
+  }
 
     private def  flatResources(processors: Array[ErProcessor]): Map[Long, Array[ErResource]] ={
       processors.groupBy(_.serverNodeId).mapValues(
@@ -113,15 +133,10 @@ object ClusterResourceManager {
 
     }
 
-    def  freeResource(erProcessor: ErProcessor): Unit={
-        erProcessor.serverNodeId
 
-
-
-    }
-    def  reduceResource(nodeId:Long,resources:Array[ ErResource]): Unit ={
-      serverNodeCrudOperator.allocateNodeResource(nodeId,resources)
-    }
+//    def  reduceResource(nodeId:Long,resources:Array[ ErResource]): Unit ={
+//      serverNodeCrudOperator.allocateNodeResource(nodeId,resources)
+//    }
 
 
 //    def  main(args: Array[String]) :Unit = {
