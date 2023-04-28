@@ -9,14 +9,17 @@ import java.io.InputStreamReader;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.google.common.annotations.VisibleForTesting;
 
 
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -146,6 +149,30 @@ public class SysInfoLinux extends SysInfo {
     }
     return -1;
   }
+
+
+  public int  getGpuNumber() throws IOException {
+    String gpus = null;
+    int result = 0;
+    try{
+    ShellCommandExecutor shellExecutorClk = new ShellCommandExecutor(
+            new String[]{"nvidia-smi --query-gpu=name --format=csv, noheader"});
+//    name
+//    NVIDIA Tesla V100-SXM2-32GB
+//    NVIDIA Tesla V100-SXM2-32GB
+//    NVIDIA Tesla V100-SXM2-32GB
+//    NVIDIA Tesla V100-SXM2-32GB
+    shellExecutorClk.execute();
+    String cmdReturnString = shellExecutorClk.getOutput();
+    if (StringUtils.isNotEmpty(cmdReturnString))
+      result = cmdReturnString.split("\n").length;
+  }catch(Exception ignore){}
+    return result;
+  }
+
+
+
+
 
   /**
    * Get current time.
@@ -280,6 +307,10 @@ public class SysInfoLinux extends SysInfo {
 
     readMemInfoFile = true;
   }
+
+
+
+
 
   /**
    * Read /proc/cpuinfo, parse and calculate CPU information.

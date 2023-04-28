@@ -125,9 +125,8 @@ object  NodeResourceManager extends  Logging {
       ResourceTypes.VCPU_CORE-> ResourceWrapper(resourceType=ResourceTypes.VCPU_CORE, total=
           new AtomicLong(StaticErConf.getLong(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_CPU_VCORES.key,getAvailableProcessors))),
        ResourceTypes.PHYSICAL_MEMORY ->  ResourceWrapper(resourceType = ResourceTypes.PHYSICAL_MEMORY, total = new AtomicLong(getPhysicalMemorySize)),
-      ResourceTypes.VGPU_CORE-> ResourceWrapper(resourceType=ResourceTypes.VGPU_CORE,total= new AtomicLong(StaticErConf.getLong(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_GPU_VCORES.key,0))
+      ResourceTypes.VGPU_CORE-> ResourceWrapper(resourceType=ResourceTypes.VGPU_CORE,total= new AtomicLong(StaticErConf.getLong(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_GPU_VCORES.key,getGpuSize()))
   ));
-
 
   def getResourceWrapper(rType:String ):Option[ResourceWrapper]={
     resourceMap.get(rType)
@@ -172,6 +171,16 @@ object  NodeResourceManager extends  Logging {
       GetSystemInfo.getTotalMemorySize
     }
   }
+
+  def getGpuSize():Long = {
+    if(Shell.LINUX){
+      sysInfo.getGpuNumber
+    }else{
+      0
+    }
+  }
+
+
   def getAvailablePhysicalMemorySize():Long ={
     if(Shell.LINUX){
       sysInfo.getAvailablePhysicalMemorySize
