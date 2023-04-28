@@ -53,8 +53,13 @@ class SessionManagerService extends SessionManager with Logging {
   private val smDao = new SessionMetaDao
   def heartbeat(proc: ErProcessor): ErProcessor = {
     smDao.updateProcessor(proc)
-
-    //ClusterResourceManager.freeResource()
+    if(proc.status==ProcessorStatus.STOPPED||
+      proc.status==ProcessorStatus.KILLED||
+      proc.status==ProcessorStatus.ERROR
+    ) {
+      logInfo(s"heart beat return resource ${proc}")
+      ClusterResourceManager.returnResource(Array(proc))
+    }
     proc
   }
 
@@ -106,7 +111,7 @@ class SessionManagerService extends SessionManager with Logging {
               serverNodeId = n.id,
               processorType = pType,
               status = ProcessorStatus.NEW,
-              resources = Array(ErResource(resourceType = ResourceTypes.VCPU_CORE,total = 1)))
+              resources = Array(ErResource(resourceType = ResourceTypes.VCPU_CORE,allocated = 1)))
             )
           )
         }
@@ -116,7 +121,7 @@ class SessionManagerService extends SessionManager with Logging {
           processorType = ProcessorTypes.EGG_PAIR,
           commandEndpoint = ErEndpoint(serverNodesToHost(n.id), 0),
           status = ProcessorStatus.NEW,
-          resources = Array(ErResource(resourceType = ResourceTypes.VCPU_CORE,total = 1)))))
+          resources = Array(ErResource(resourceType = ResourceTypes.VCPU_CORE,allocated = 1,status = ResourceStatus.AVAILABLE)))))
       }
 
 
@@ -138,7 +143,7 @@ class SessionManagerService extends SessionManager with Logging {
 //    }
     var processorWithResource= processorPlan.zip(registeredSessionMeta.processors).map{
       case (processor1,processor2)=> {
-        processor1.copy(id = processor2.id)
+        processor1.copy(sessionId = sessionId,id = processor2.id)
       }
     }
     ClusterResourceManager.allocateResource(processorWithResource)
@@ -304,6 +309,9 @@ class SessionManagerService extends SessionManager with Logging {
     // todo:1: update selective
     val stoppedSessionMain = dbSessionMeta.copy(activeProcCount = 0, status = SessionStatus.CLOSED)
     smDao.updateSessionMain(stoppedSessionMain)
+
+    //由心跳来释放
+    //ClusterResourceManager.returnResource(dbSessionMeta.processors)
     stoppedSessionMain
   }
 
@@ -316,15 +324,11 @@ class SessionManagerService extends SessionManager with Logging {
     if (!smDao.existSession(sessionId)) {
       return null
     }
-
     val dbSessionMeta = smDao.getSession(sessionId)
-
     if (StringUtils.equalsAny(dbSessionMeta.status, SessionStatus.KILLED, SessionStatus.CLOSED, SessionStatus.ERROR)) {
       return dbSessionMeta
     }
-
     val sessionHosts = dbSessionMeta.processors.map(p => p.commandEndpoint.host).toSet
-
     val serverNodeCrudOperator = new ServerNodeCrudOperator()
     val sessionServerNodes = serverNodeCrudOperator.getServerClusterByHosts(sessionHosts.toList.asJava).serverNodes
 
@@ -340,7 +344,9 @@ class SessionManagerService extends SessionManager with Logging {
 
     // todo:1: update selective
     smDao.updateSessionMain(dbSessionMeta.copy(activeProcCount = 0, status = afterState))
-    getSession(dbSessionMeta)
+     var  resultSession = getSession(dbSessionMeta)
+    ClusterResourceManager.returnResource(dbSessionMeta.processors)
+    resultSession
   }
 
   // todo:1: return value

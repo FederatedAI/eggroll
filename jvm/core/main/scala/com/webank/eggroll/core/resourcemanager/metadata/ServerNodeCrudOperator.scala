@@ -20,7 +20,7 @@ package com.webank.eggroll.core.resourcemanager.metadata
 
 import java.util
 import java.util.Date
-import com.webank.eggroll.core.constant.{ServerNodeStatus, ServerNodeTypes}
+import com.webank.eggroll.core.constant.{ResourceStatus, ServerNodeStatus, ServerNodeTypes}
 import com.webank.eggroll.core.error.CrudException
 import com.webank.eggroll.core.meta.{ErEndpoint, ErProcessor, ErResource, ErServerCluster, ErServerNode}
 import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator.{dbc, doGetServerNodesWithResource}
@@ -30,6 +30,7 @@ import com.webank.eggroll.core.util.JdbcTemplate.ResultSetIterator
 import com.webank.eggroll.core.util.Logging
 import org.apache.commons.lang3.StringUtils
 
+import java.sql.Connection
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 
@@ -79,29 +80,38 @@ class ServerNodeCrudOperator extends CrudOperator with Logging {
   }
 
 
-
-
-
-
   def getServerClusterByHosts(input: util.List[String]): ErServerCluster = synchronized {
     ServerNodeCrudOperator.doGetServerClusterByHosts(input)
   }
   def getNodeResources(serverNodeId: Long,rType:String): Array[ErResource] = synchronized {
-    ServerNodeCrudOperator.doQueryResources(serverNodeId,rType)
+    ServerNodeCrudOperator.doQueryNodeResources(serverNodeId,rType)
   }
-  def updateNodeResource(serverNodeId:Long,resources: Array[ErResource]) = synchronized {
-    ServerNodeCrudOperator.updateNodeResource(serverNodeId,resources)
+  def updateNodeResource(connection: Connection,serverNodeId:Long,resources: Array[ErResource]) = synchronized {
+    ServerNodeCrudOperator.doUpdateNodeResource(connection,serverNodeId,resources)
   }
-  def insertNodeResource(serverNodeId:Long,resources: Array[ErResource]) = synchronized{
-    ServerNodeCrudOperator.insertNodeResource(serverNodeId,resources)
+  def insertNodeResource(connection: Connection,serverNodeId:Long,resources: Array[ErResource]) = synchronized{
+    ServerNodeCrudOperator.doInsertNodeResource(connection,serverNodeId,resources)
   }
-  def insertProcessorResource(processors:Array[ErProcessor]) = synchronized{
-    ServerNodeCrudOperator.insertProcessorResource(processors)
+  def insertProcessorResource(connection: Connection,processors:Array[ErProcessor]) = synchronized{
+    ServerNodeCrudOperator.doInsertProcessorResource(connection,processors)
+  }
+  def queryProcessorResource(connection: Connection,processor:ErProcessor) = synchronized{
+    ServerNodeCrudOperator.doQueryProcessorResources(connection,processor.id)
+  }
+  def updateProcessorResource(connection: Connection,processor:ErProcessor):Unit = {
+    ServerNodeCrudOperator.doUpdateProcessorResource(connection,processor);
   }
 
-  def allocateNodeResource(serverNodeId:Long,resources: Array[ErResource]):Unit = synchronized{
-    ServerNodeCrudOperator.allocateNodeResource(serverNodeId,resources)
+  def allocateNodeResource(connection: Connection,serverNodeId:Long,resources: Array[ErResource]):Unit = synchronized{
+    ServerNodeCrudOperator.doAllocateNodeResource(connection,serverNodeId,resources)
   }
+
+  def returnNodeResource(connection: Connection,serverNodeId:Long,resources: Array[ErResource]):Unit = synchronized{
+    ServerNodeCrudOperator.doReturnNodeResource(connection,serverNodeId,resources)
+  }
+
+
+
 }
 
 object ServerNodeCrudOperator extends Logging {
@@ -233,7 +243,7 @@ object ServerNodeCrudOperator extends Logging {
   def doGetServerNodesWithResource(input: ErServerNode): Array[ErServerNode] = {
     var  serverNodes =  doGetServerNodes(input)
     serverNodes.map(node=>{
-      node.copy(resources = doQueryResources(node.id))
+      node.copy(resources = doQueryNodeResources(node.id))
     })
   }
 
@@ -280,7 +290,7 @@ object ServerNodeCrudOperator extends Logging {
     }
 
     sql += "order by server_node_id asc"
-    logInfo(s"doGetServerNodes sql : ${sql}");
+   // logInfo(s"doGetServerNodes sql : ${sql}");
     val nodeResult = dbc.query(rs => rs.map(_ =>
       ErServerNode(
         id = rs.getLong("server_node_id"),
@@ -306,7 +316,27 @@ object ServerNodeCrudOperator extends Logging {
     }
   }
 
-  def doQueryResources(serverNodeId:Long,rType:String=""): Array[ErResource]= {
+  def doQueryProcessorResources(connection: Connection,processId:Long,status :String =ResourceStatus.AVAILABLE):Array[ErResource]= {
+    var sql = "select * from processor_resource where status= ?"
+    var params = List(status)
+    if (processId!= -1) {
+      params = params:+processId.toString
+      sql+= s" and processor_id=? "
+    }
+    val resourceResult =  dbc.query(connection,rs => rs.map(_ =>
+      ErResource(
+       // resourceId = rs.getLong("resource_id"),
+        resourceType = rs.getString("resource_type"),
+//        total = rs.getLong("total"),
+//        used = rs.getLong("used"),
+        allocated =  rs.getLong("allocated"),
+        status = rs.getString("status"))),
+      sql, params: _*)
+    resourceResult.toArray
+
+  }
+
+  def doQueryNodeResources(serverNodeId:Long,rType:String=""): Array[ErResource]= {
 
     var sql = "select * from node_resource where 1=? "
     var params = List("1")
@@ -376,22 +406,22 @@ object ServerNodeCrudOperator extends Logging {
   def  registerResource(serverNodeId:Long ,insertData:Array[ErResource],updateData:Array[ErResource],deleteData:Array[ErResource]): Unit = {
     dbc.withTransaction(conn => {
         if(insertData!=null&&insertData.length>0){
-            insertNodeResource(serverNodeId,insertData)
+            doInsertNodeResource(conn,serverNodeId,insertData)
         }
         if(updateData!=null&&updateData.length>0){
-            updateNodeResource(serverNodeId,updateData)
+            doUpdateNodeResource(conn,serverNodeId,updateData)
         }
         if(deleteData!=null&&deleteData.length>0){
-            deleteNodeResource(serverNodeId,deleteData)
+            doDeleteNodeResource(conn,serverNodeId,deleteData)
         }
     })
 
   }
 
-  def insertNodeResource(serverNodeId:Long,resources: Array[ErResource])= synchronized{
+  def doInsertNodeResource(conn: Connection,serverNodeId:Long,resources: Array[ErResource])= synchronized{
     require(resources.length > 0)
     logInfo(s"insertNodeResource======== ${serverNodeId} ,size ${resources}")
-    dbc.withTransaction(conn => {
+   // dbc.withTransaction(conn => {
       resources.foreach(erResource => {
 
         try {
@@ -403,53 +433,69 @@ object ServerNodeCrudOperator extends Logging {
             println("got it:" + e.getMessage)
         }
 
-      })
+//      })
     })
   }
-  def updateNodeResource(serverNodeId:Long,resources: Array[ErResource]) = synchronized {
+  def doUpdateNodeResource(conn:Connection,serverNodeId:Long,resources: Array[ErResource]) = synchronized {
 
-    dbc.withTransaction(conn => {
+   // dbc.withTransaction(conn => {
       resources.foreach(erResource => {
           dbc.update(conn ,"update node_resource set total = ? ,allocated = ?, used = ? where server_node_id = ? and resource_type = ? ",
             erResource.total,erResource.allocated, erResource.used, serverNodeId, erResource.resourceType)
       })
-    })
+   // })
   }
-  def  allocateNodeResource(serverNodeId:Long,resources: Array[ErResource]): Unit = synchronized {
-    dbc.withTransaction(conn => {
+  def  doAllocateNodeResource(conn:Connection,serverNodeId:Long,resources: Array[ErResource]): Unit = synchronized {
+    //dbc.withTransaction(conn => {
+      resources.foreach(erResource => {
+        dbc.update(conn ,"update node_resource set allocated = allocated + ? where server_node_id = ? and resource_type = ? ",
+          erResource.allocated, serverNodeId, erResource.resourceType)
+      })
+    //})
+  }
+  def  doReturnNodeResource(conn:Connection,serverNodeId:Long,resources: Array[ErResource]): Unit = synchronized {
+   // dbc.withTransaction(conn => {
       resources.foreach(erResource => {
         dbc.update(conn ,"update node_resource set allocated = allocated - ? where server_node_id = ? and resource_type = ? ",
-          erResource.total, serverNodeId, erResource.resourceType)
+          erResource.allocated, serverNodeId, erResource.resourceType)
       })
-    })
+   // })
   }
 
 
 
-  def  insertProcessorResource(processors:Array[ErProcessor]) :Unit = synchronized{
-    dbc.withTransaction(conn => {
-      processors.foreach(erProcessor => {
-        erProcessor.resources.foreach(resource=>{
-          dbc.update(conn ,"insert into  processor_resource (processor_id,server_node_id,resource_type,allocated)  values (?, ?, ?, ?)",
-            erProcessor.id, erProcessor.serverNodeId,resource.resourceType,resource.total)
+  def  doUpdateProcessorResource(connection: Connection ,processor: ErProcessor):Unit = {
+     // dbc.withTransaction(conn=>{
+        processor.resources.foreach(r=>{
+          var sql = "update processor_resource set " +
+            " status = ?, allocated = ?  where processor_id = ? and resource_type = ? "
+          var params = List(r.status,r.allocated,processor.id,r.resourceType)
+          dbc.update(connection, sql, params:_*)
         })
-
-      })
-    })
+   //   })
 
 
   }
 
 
+  def  doInsertProcessorResource(connection: Connection,processors:Array[ErProcessor]) :Unit = synchronized {
+    //dbc.withTransaction(conn => {
+      processors.foreach(erProcessor => {
+        erProcessor.resources.foreach(resource => {
+          dbc.update(connection, "insert into  processor_resource (processor_id,session_id,server_node_id,resource_type,allocated,status)  values (?, ?,?, ?, ?,?)",
+            erProcessor.id, erProcessor.sessionId, erProcessor.serverNodeId, resource.resourceType, resource.allocated,resource.status)
+        })
+     // })
+    })
+  }
+  def doDeleteNodeResource(connection: Connection,serverNodeId: Long, resources: Array[ErResource]) = synchronized {
 
-  def deleteNodeResource(serverNodeId: Long, resources: Array[ErResource]) = synchronized {
-
-    dbc.withTransaction(conn => {
+ //   dbc.withTransaction(conn => {
       resources.foreach(erResource => {
-        dbc.update(conn ,"delete from node_resource  where server_node_id = ? and resource_type = ? ",
+        dbc.update(connection ,"delete from node_resource  where server_node_id = ? and resource_type = ? ",
           serverNodeId, erResource.resourceType)
       })
-    })
+   // })
   }
 
 
