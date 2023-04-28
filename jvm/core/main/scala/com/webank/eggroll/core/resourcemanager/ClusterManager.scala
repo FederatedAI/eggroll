@@ -33,7 +33,7 @@ object ClusterManagerService extends Logging {
         var nodes = ServerNodeCrudOperator.doGetServerNodes(ErServerNode(status = ServerNodeStatus.HEALTHY))
         nodes.foreach(n=>{
           var interval = now - (if(n.lastHeartBeat != null) n.lastHeartBeat.getTime else 0)
-          logInfo(s"interval : ${n.lastHeartBeat} ${interval}  ${now} ${n.lastHeartBeat.getTime}")
+         // logInfo(s"interval : ${n.lastHeartBeat} ${interval}  ${now} ${if(n.lastHeartBeat!=null)n.lastHeartBeat.getTime}")
            if(  interval>expire){
               logInfo(s"server node ${n} change status to LOSS")
               ServerNodeCrudOperator.doUpdateServerNode(n.copy(status = ServerNodeStatus.LOSS))
@@ -91,7 +91,7 @@ class ClusterManagerService extends   ClusterManager with Logging{
     }
 
     override def nodeHeartbeat(data: ErServerNode): ErServerNode = {
-        logInfo(s" ${data}")
+      //  logInfo(s" ${data}")
         ServerNodeCrudOperator.doCreateOrUpdateServerNode(input = data, true )
     }
 
