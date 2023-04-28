@@ -20,7 +20,7 @@ package com.webank.eggroll.core.meta
 
 import java.util.concurrent.ConcurrentHashMap
 import com.google.protobuf.{Message => PbMessage}
-import com.webank.eggroll.core.constant.StringConstants
+import com.webank.eggroll.core.constant.{ResourceStatus, StringConstants}
 import com.webank.eggroll.core.datastructure.RpcMessage
 import com.webank.eggroll.core.serdes.{BaseSerializable, PbMessageDeserializer, PbMessageSerializer}
 import org.apache.commons.lang3.StringUtils
@@ -53,9 +53,9 @@ case class ErResource(
                       total: Long = 0,
                       used: Long = 0,
                       allocated: Long = 0,
-                      status: String = StringConstants.EMPTY) extends NetworkingRpcMessage{
+                      status: String = ResourceStatus.AVAILABLE) extends NetworkingRpcMessage{
   override def  toString:String ={
-    s"<ErResource(resourceType=${resourceType}, total=${total}, used=${used})>"}
+    s"<ErResource(resourceType=${resourceType}, total=${total}, used=${used} ,allocated=${allocated})>"}
 
   def   getUnAllocatedResource():Long={
     total-allocated
@@ -83,6 +83,7 @@ case class ErResourceAllocation(serverNodeId:Long ,
   }
 
 case class ErProcessor(id: Long = -1,
+                       sessionId : String = StringConstants.EMPTY,
                        serverNodeId: Long = -1,
                        name: String = StringConstants.EMPTY,
                        processorType: String = StringConstants.EMPTY,
