@@ -90,7 +90,7 @@ class JdbcTemplate(dataSource: () => Connection, autoClose: Boolean = true) exte
       try{
         stmt.executeUpdate
         val errMsg = s""" sql="${sql}", params=(${String.join(",", params.map(p => s"'${StringUtils.substring(p.toString, 0, 300)}'"): _*)})"""
-        logInfo(errMsg)
+ //       logInfo(errMsg)
       } catch {
         case ex: Exception =>
           val errMsg = s"""error in update. sql="${sql}", params=(${String.join(",", params.map(p => s"'${StringUtils.substring(p.toString, 0, 300)}'"): _*)})"""
@@ -117,6 +117,18 @@ class JdbcTemplate(dataSource: () => Connection, autoClose: Boolean = true) exte
     },
     sql,
     params: _*)
+
+  def query[T](connection: Connection,func: ResultSet => T, sql: String, params: Any*): T = withStatement(
+    connection,
+    stmt => {
+      val resultSet = stmt.executeQuery
+      val ret = func(resultSet)
+      resultSet.close()
+      ret
+    },
+    sql,
+    params: _*)
+
 
   def queryInt(sql: String, params: Any*): Option[Int] = query(
     rs => if (rs.next) Some(rs.getInt(1)) else None, sql, params: _*)
