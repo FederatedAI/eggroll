@@ -50,9 +50,9 @@ case class ErResource(
                       resourceId :Long = -1,
                       resourceType : String = StringConstants.EMPTY,
                       serverNodeId : Long = 0,
-                      total: Long = 0,
-                      used: Long = 0,
-                      allocated: Long = 0,
+                      total: Long = -1,
+                      used: Long = -1,
+                      allocated: Long = -1,
                       status: String = ResourceStatus.AVAILABLE) extends NetworkingRpcMessage{
   override def  toString:String ={
     s"<ErResource(resourceType=${resourceType}, total=${total}, used=${used} ,allocated=${allocated})>"}
@@ -96,7 +96,22 @@ case class ErProcessor(id: Long = -1,
                        resources: Array[ErResource]= Array()
                       ) extends NetworkingRpcMessage {
   override def toString: String = {
-    s"<ErProcessor(id=${id}, serverNodeId=${serverNodeId}, name=${name}, processorType=${processorType}, status=${status}, commandEndpoint=${commandEndpoint}, transferEndpoint=${transferEndpoint}, pid=${pid}, options=${options}, tag=${tag}) at ${hashCode().toHexString}>"
+    val sb = new StringBuilder
+    //    sb.append("total number of exception(s) occured: ")
+    //      .append(causes.length)
+    //      .append(StringConstants.LF)
+
+    if (resources != null) {
+      var sb = new StringBuilder
+      resources.flatMap(n => n.toString)
+    }
+
+    // s"ErServerNode[id=${id} , clusterId=${clusterId}, endpoint=${endpoint}, nodeType=${nodeType}, status=${status}, resources = ${rString}]"
+    resources.foreach(n => {
+      sb.append(n.toString)
+    })
+
+    s"<ErProcessor(id=${id}, serverNodeId=${serverNodeId}, name=${name}, processorType=${processorType}, status=${status}, commandEndpoint=${commandEndpoint}, transferEndpoint=${transferEndpoint}, pid=${pid}, options=${options}, tag=${tag}) at ${hashCode().toHexString} resoures ${sb.toString()}>"
   }
 }
 

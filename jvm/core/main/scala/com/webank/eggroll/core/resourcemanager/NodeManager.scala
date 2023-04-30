@@ -1,5 +1,6 @@
 package com.webank.eggroll.core.resourcemanager
 
+import com.google.gson.Gson
 import com.webank.eggroll.core.constant.{ClusterManagerConfKeys, CoreConfKeys, NodeManagerConfKeys, ResourceManagerConfKeys, ResourceOperationStauts, ResourceOperationType, ResourceTypes, ServerNodeTypes, StringConstants}
 import com.webank.eggroll.core.meta.{ErEndpoint, ErProcessor, ErResource, ErResourceAllocation, ErServerNode, ErSessionMeta}
 import com.webank.eggroll.core.session.RuntimeErConf
@@ -7,19 +8,41 @@ import com.webank.eggroll.core.client.ClusterManagerClient
 import com.webank.eggroll.core.constant.ServerNodeStatus.{HEALTHY, INIT}
 import com.webank.eggroll.core.session.{RuntimeErConf, StaticErConf}
 import com.webank.eggroll.core.env.{Shell, SysInfoLinux}
-import com.webank.eggroll.core.util.{GetSystemInfo, Logging, NetUtils}
+import com.webank.eggroll.core.util.{FileSystemUtils, GetSystemInfo, Logging, NetUtils}
 
+import java.io.File
 import java.util
 import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.atomic.AtomicLong
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
+import scala.util.parsing.json.JSONObject
+
 
 object NodeManagerMeta{
   var status=INIT
   var serverNodeId = -1:Long;
   var clusterId = -1:Long;
+   def refreshServerNodeMetaIntoFile(): Unit = {
+     var filePath = System.getenv("EGGROLL_HOME")+StringConstants.SLASH  +CoreConfKeys.EGGROLL_DATA_DIR.get()+ StringConstants.SLASH+"NodeManagerMeta";
+     var  gson= new Gson()
+      FileSystemUtils.fileWriter(filePath, gson.toJson(NodeManagerMeta))
+  }
+  def loadNodeManagerMetaFromFile():Unit = {
+    var filePath = System.getenv("EGGROLL_HOME") + StringConstants.SLASH + CoreConfKeys.EGGROLL_DATA_DIR.get() + StringConstants.SLASH + "NodeManagerMeta";
+    if(new File(filePath).exists()){
+      var gson = new Gson()
+      var content = FileSystemUtils.fileReader(filePath)
+      var  contentMap = gson.fromJson(content,classOf[NodeManagerMeta]);
+      println(s"================contentMap ============${content}  ${contentMap}")
+      NodeManagerMeta.serverNodeId = contentMap.serverNodeId
+      NodeManagerMeta.clusterId = contentMap.clusterId
+    }
+  }
 }
+case  class  NodeManagerMeta(status :String,
+ serverNodeId : Long,
+ clusterId : Long)
 
 trait NodeManager {
   def startContainers(sessionMeta: ErSessionMeta): ErSessionMeta
@@ -27,6 +50,7 @@ trait NodeManager {
   def killContainers(sessionMeta: ErSessionMeta): ErSessionMeta
   def heartbeat(processor: ErProcessor): ErProcessor
   def allocateResource(erResourceAllocation: ErResourceAllocation):ErResourceAllocation
+  def queryNodeResource(erServerNode: ErServerNode):ErServerNode
 
 }
 
@@ -108,6 +132,10 @@ class NodeManagerService extends NodeManager with Logging {
     logInfo(s"allocateResource result ${result}")
     return result
   }
+
+  override def queryNodeResource(erServerNode: ErServerNode): ErServerNode = {
+    NodeResourceManager.queryNodeResource(erServerNode)
+  }
 }
 
 case class ResourceEvent( resourceType:String, count:Long)
@@ -161,6 +189,7 @@ object  NodeResourceManager extends  Logging {
 
 
   def  start() :Unit={
+    NodeManagerMeta.loadNodeManagerMetaFromFile()
     heartBeatThread.start()
     resourceCountThread.start()
   }
@@ -242,52 +271,63 @@ object  NodeResourceManager extends  Logging {
       }
   }
 
-  def  registerResource(erServerNode: ErServerNode):ErServerNode = {
-      var  param = erServerNode.copy(id= NodeManagerMeta.serverNodeId,resources = resourceMap.values.toArray.filter(r=>{r.total != -1})
+
+
+
+  def  queryNodeResource(erServerNode: ErServerNode):ErServerNode = {
+
+     erServerNode.copy(id= NodeManagerMeta.serverNodeId,resources = resourceMap.values.toArray.filter(r=>{r.total != -1})
                     .map(r=>{ErResource(resourceType = r.resourceType,
                                       total = r.total.get(),
                       used=r.used.get(),
                       allocated = r.allocated.get())}))
-      logInfo(s"NodeManger registerResource ${param}")
-      client.registerResource(param)
+
+
+//      logInfo(s"NodeManger registerResource ${param}")
+//      client.registerResource(param)
 
   }
 
-  class ResourceReportThread extends Thread{
-      override   def  run(): Unit ={
-        while (true){
-          try {
-            resourceEventQueue.poll()
-            registerResource(ErServerNode(id=NodeManagerMeta.serverNodeId,clusterId = NodeManagerMeta.clusterId))
-          }catch{
-            case t: Throwable =>
-          }
-
-        }
-      }
-  }
+//  class ResourceReportThread extends Thread{
+//      override   def  run(): Unit ={
+//        while (true){
+//          try {
+//            resourceEventQueue.poll()
+//            registerResource(ErServerNode(id=NodeManagerMeta.serverNodeId,clusterId = NodeManagerMeta.clusterId))
+//          }catch{
+//            case t: Throwable =>
+//          }
+//
+//        }
+//      }
+//  }
 
   class HeartBeatThread extends Thread{
     override def run(){
       var  notOver : Boolean = true
       while(notOver){
         try {
-          var serverNode = client.nodeHeartbeat(ErServerNode(id = StaticErConf.getLong(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_ID, -1),
+          var serverNode = client.nodeHeartbeat(ErServerNode(id = NodeManagerMeta.serverNodeId,
             nodeType = ServerNodeTypes.NODE_MANAGER,
             endpoint = ErEndpoint(host = StaticErConf.getString(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HOST, NetUtils.getLocalHost),
               port = StaticErConf.getString(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT).toInt),
             status = NodeManagerMeta.status
           ))
+          logInfo(s"node heart beat return ${serverNode}")
 
 //          logInfo(s"cluster manager return ${serverNode}")
 //          logInfo(s"======node manager status ${NodeManagerMeta.status}")
           if (serverNode != null) {
           if (NodeManagerMeta.status.equals(INIT)) {
-              NodeManagerMeta.status =  HEALTHY;
+              NodeManagerMeta.status =  HEALTHY
+
               NodeManagerMeta.serverNodeId = serverNode.id;
               NodeManagerMeta.clusterId = serverNode.clusterId
+            logInfo(s"==============================${NodeManagerMeta.serverNodeId}")
+              NodeManagerMeta.refreshServerNodeMetaIntoFile()
+
               //   上报资源
-              registerResource(serverNode)
+              //registerResource(serverNode)
 
           }
         }

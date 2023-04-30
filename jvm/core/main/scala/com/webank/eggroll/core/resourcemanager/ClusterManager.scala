@@ -1,5 +1,6 @@
 package com.webank.eggroll.core.resourcemanager
 
+import com.webank.eggroll.core.client.NodeManagerClient
 import com.webank.eggroll.core.constant.ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_NODE_HEARTBEAT_EXPIRED_COUNT
 import com.webank.eggroll.core.constant.NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL
 import com.webank.eggroll.core.constant.{ServerNodeStatus, ServerNodeTypes}
@@ -74,7 +75,7 @@ class ClusterManagerService extends   ClusterManager with Logging{
          * 删掉多余资源，插入新增资源，修改已有资源
          */
         existResources.foreach(e=>{
-                var  needUpdate = registedResources.filter(r=>{r.resourceType==e.resourceType})
+                var  needUpdate = registedResources.filter(r=>{r.resourceType==e.resourceType}).map(_.copy(allocated = -1))
         if(needUpdate.length>0){
             updateResources++=needUpdate
         }else{
@@ -91,8 +92,41 @@ class ClusterManagerService extends   ClusterManager with Logging{
     }
 
     override def nodeHeartbeat(data: ErServerNode): ErServerNode = {
-      //  logInfo(s" ${data}")
-        ServerNodeCrudOperator.doCreateOrUpdateServerNode(input = data, true )
+        logInfo(s" nodeHeartbeat ${data}")
+
+      var result : ErServerNode=null
+      val existing = ServerNodeCrudOperator.doGetServerNodes(ErServerNode(id = data.id,clusterId = data.clusterId,endpoint = data.endpoint))
+      if (existing.nonEmpty) {
+        var existNode = existing(0)
+        var param = data.copy(id = existNode.id)
+        ServerNodeCrudOperator.doUpdateServerNode(param, true)
+        if(ServerNodeCrudOperator.doQueryNodeResources(data.id).length==0){
+          var nodeManagerClient = new NodeManagerClient(data.endpoint)
+          var node = nodeManagerClient.queryNodeResource(param)
+        //  logInfo(s"1111111111111111111111111111 ${node}");
+          result= registerResource(node.copy(id = existNode.id))
+        }else{
+          result= param
+        }
+      } else {
+       var  resultErServerNode=  ServerNodeCrudOperator.doCreateServerNode(data)
+        var  nodeManagerClient = new  NodeManagerClient(data.endpoint)
+        var  node = nodeManagerClient.queryNodeResource(resultErServerNode)
+      //  logInfo(s"22222222222222222222222 ${node}");
+        result = registerResource(node.copy(id=resultErServerNode.id))
+      }
+    //  logInfo(s"=======result ${result}");
+     result
+
+//        ServerNodeCrudOperator.doCreateOrUpdateServerNode(input = data, true )
+//
+//
+//        var nodeResouces = ServerNodeCrudOperator.doQueryNodeResources(data.id)
+//        if(nodeResouces.length==0){
+//
+//        }
+
+
     }
 
 

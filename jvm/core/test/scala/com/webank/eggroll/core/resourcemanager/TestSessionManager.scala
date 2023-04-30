@@ -7,7 +7,9 @@ class TestSessionManager {
 
   @Test
   def testGetOrCreate():Unit = {
-    val clusterManagerClient = new ClusterManagerClient()
+
+    val numbers = List(1,2,3,4).map(n=>(n,""))(collection.breakOut)
+    val clusterManagerClient = new ClusterManagerClient("localhost",4670)
     val result = clusterManagerClient.getOrCreateSession(sessionMeta = TestAssets.getOrCreateSessionMeta)
     println(result)
   }
