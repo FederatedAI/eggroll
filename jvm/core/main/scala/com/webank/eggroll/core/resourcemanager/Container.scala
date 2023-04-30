@@ -72,6 +72,10 @@ class Container(conf: RuntimeErConf, moduleName: String, processorId: Long = 0) 
 //      startCmd = s"""${exeCmd} ${boot} start "${exePath} --config ${conf.getString(CoreConfKeys.STATIC_CONF_PATH)} --python-path ${pythonPath} --session-id ${sessionId} --server-node-id ${myServerNodeId} --processor-id ${processorId}" ${moduleName}-${processorId} &"""
 //    }
 
+    // /bin/bash /home/app/work/code/myeggroll/eggroll/bin/eggroll_boot.sh start "bin/roll_pair/egg_pair_bootstrap.sh --config /home/app/work/code/myeggroll/eggroll/conf/eggroll.properties   --session-id testing_reg1682758600047 --server-node-id 7 --processor-id 4906" egg_pair-4906 &
+
+
+
     val standaloneTag = System.getProperty("eggroll.standalone.tag", StringConstants.EMPTY)
     logInfo(s"${standaloneTag} ${startCmd}")
 
@@ -79,7 +83,7 @@ class Container(conf: RuntimeErConf, moduleName: String, processorId: Long = 0) 
 
     thread.start()
     thread.join()
-    logInfo(s"start: ready to return: ${myServerNodeId}")
+   // logInfo(s"start: ready to return: ${myServerNodeId}")
     thread.isAlive
   }
 
