@@ -95,8 +95,8 @@ class ServerNodeCrudOperator extends CrudOperator with Logging {
   def insertProcessorResource(connection: Connection,processors:Array[ErProcessor]) = synchronized{
     ServerNodeCrudOperator.doInsertProcessorResource(connection,processors)
   }
-  def queryProcessorResource(connection: Connection,processor:ErProcessor) = synchronized{
-    ServerNodeCrudOperator.doQueryProcessorResources(connection,processor.id)
+  def queryProcessorResource(connection: Connection,processor:ErProcessor,status:String ) = synchronized{
+    ServerNodeCrudOperator.doQueryProcessorResources(connection,processor.id,status)
   }
   def updateProcessorResource(connection: Connection,processor:ErProcessor):Unit = {
     ServerNodeCrudOperator.doUpdateProcessorResource(connection,processor);
@@ -108,6 +108,13 @@ class ServerNodeCrudOperator extends CrudOperator with Logging {
 
   def returnNodeResource(connection: Connection,serverNodeId:Long,resources: Array[ErResource]):Unit = synchronized{
     ServerNodeCrudOperator.doReturnNodeResource(connection,serverNodeId,resources)
+  }
+
+
+  def countNodeResource(connection:Connection,serverNodeId:Long ):Array[ErResource]= synchronized{
+
+    ServerNodeCrudOperator.doCountNodeResource(connection,serverNodeId)
+
   }
 
 
@@ -130,7 +137,7 @@ object ServerNodeCrudOperator extends Logging {
     ErServerCluster(serverNodes = nodeResult.toArray)
   }
 
-  private[metadata] def doCreateServerNode(input: ErServerNode): ErServerNode = {
+def doCreateServerNode(input: ErServerNode): ErServerNode = {
     val nodeRecord = dbc.withTransaction(conn => {
       val sql = "insert into server_node (name, server_cluster_id, host, port, node_type, status)" +
         " values (?, ?, ?, ?, ?, ?)"
@@ -316,9 +323,14 @@ object ServerNodeCrudOperator extends Logging {
     }
   }
 
-  def doQueryProcessorResources(connection: Connection,processId:Long,status :String =ResourceStatus.AVAILABLE):Array[ErResource]= {
-    var sql = "select * from processor_resource where status= ?"
-    var params = List(status)
+  def doQueryProcessorResources(connection: Connection,processId:Long,status :String ):Array[ErResource]= {
+    var sql = "select * from processor_resource where 1=1 "
+    var params = List[String]()
+    if(StringUtils.isNotEmpty(status)){
+      params = params:+ status
+      sql+= " and status =? "
+    }
+
     if (processId!= -1) {
       params = params:+processId.toString
       sql+= s" and processor_id=? "
@@ -440,8 +452,53 @@ object ServerNodeCrudOperator extends Logging {
 
    // dbc.withTransaction(conn => {
       resources.foreach(erResource => {
-          dbc.update(conn ,"update node_resource set total = ? ,allocated = ?, used = ? where server_node_id = ? and resource_type = ? ",
-            erResource.total,erResource.allocated, erResource.used, serverNodeId, erResource.resourceType)
+        //update node_resource node_resource set    allocated = -1 where  1= 1 and resource_type=6  and server_node_id = -1", params=('-1','6','-1','1','VCPU_CORE')
+      //  update node_resource  set    allocated = -1 where  1= 1 and resource_type=8  and server_node_id = -1", params=('-1','8','-1','1','VCPU_CORE')
+
+        var sql = "update node_resource  set  "
+        var  first = false;
+        var params = List[String]()
+        if (erResource.total >= 0) {
+          params = (params :+ erResource.total.toString)
+          sql += "  total = ?"
+          first = true;
+        }
+        if (erResource.allocated>= 0) {
+          params = (params :+ erResource.allocated.toString)
+
+          if(first){
+            sql += " , "
+          }
+          sql += "  allocated = ?"
+
+        }
+
+        if (erResource.used >= 0) {
+          params = (params :+ erResource.used.toString)
+
+          if (first) {
+            sql += " , "
+          }
+          sql += "  used = ?"
+
+        }
+
+        sql+= " where  1= 1"
+
+
+        if (!StringUtils.isBlank(erResource.resourceType)) {
+          params = params :+ erResource.resourceType
+
+          sql += " and resource_type=? "
+        }
+        if (serverNodeId >= 0) {
+          params = (params :+ serverNodeId.toString)
+          sql += s" and server_node_id = ?"
+        }
+
+
+          dbc.update(conn ,sql,
+            params:_*)
       })
    // })
   }
@@ -460,6 +517,37 @@ object ServerNodeCrudOperator extends Logging {
           erResource.allocated, serverNodeId, erResource.resourceType)
       })
    // })
+  }
+
+  def doCountNodeResource(conn:Connection,serverNodeId: Long ):Array[ErResource]= synchronized {
+    var params = List(serverNodeId)
+    var  sql = "select server_node_id, resource_type, status, sum(allocated) as allocated from processor_resource where server_node_id = ? and status != 'return' group by resource_type, status"
+
+
+//    val resourceResult = dbc.query(conn, rs => rs.map(_ =>
+//      ErResource(
+//        // resourceId = rs.getLong("resource_id"),
+//        resourceType = rs.getString("resource_type"),
+//        //        total = rs.getLong("total"),
+//        //        used = rs.getLong("used"),
+//        allocated = rs.getLong("allocated"),
+//        status = rs.getString("status"))),
+//      sql, params: _*)
+
+
+    val resourceResult = dbc.query(conn,rs => rs.map(_=>
+      ErResource(
+     // resourceId = rs.getLong("resource_id"),
+      resourceType = rs.getString("resource_type"),
+      //total = rs.getLong("total"),
+      //used = rs.getLong("used"),
+      serverNodeId = rs.getLong("server_node_id"),
+      allocated = rs.getLong("allocated"),
+      status = rs.getString("status"))),
+      sql,params:_*).toArray
+
+    resourceResult
+
   }
 
 

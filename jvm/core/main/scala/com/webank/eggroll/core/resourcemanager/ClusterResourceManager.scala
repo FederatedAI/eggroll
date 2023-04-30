@@ -33,17 +33,58 @@ object ClusterResourceManager extends Logging{
     }
 
   def  allocateResource(processors: Array[ErProcessor] ) : Unit=synchronized{
-    var flatedResource = flatResources(processors)
     ServerNodeCrudOperator.dbc.withTransaction(conn=> {
+      processors.map(p => {
+        logInfo(s"=================== ${p}")
+        p.copy(resources = serverNodeCrudOperator.queryProcessorResource(conn,p,ResourceStatus.PRE_ALLOCATED).map(_.copy(status=ResourceStatus.ALLOCATED)))
+      })
+      var flatedResource = flatResources(processors)
+      logInfo(s"flated resource ${flatedResource}")
+      processors.foreach(p=> {
+        serverNodeCrudOperator.updateProcessorResource(conn, p);
+      })
+
       flatedResource.foreach(e => {
         e._2.foreach(resource=>{
           logInfo(s"allocate resource to node  ${e._1} ${resource}")
         })
-        serverNodeCrudOperator.allocateNodeResource(conn,e._1, e._2)
+
+       // serverNodeCrudOperator.allocateNodeResource(conn,e._1, e._2)
+       var  erResources =  serverNodeCrudOperator.countNodeResource(conn,e._1)
+        serverNodeCrudOperator.updateNodeResource(conn,e._1,erResources)
       })
-      serverNodeCrudOperator.insertProcessorResource(conn,processors);
+
+
+
+
+
+
     })
   }
+
+  def preAllocateResource(processors: Array[ErProcessor]): Unit = synchronized {
+
+//    processors.foreach(p => {
+//      logInfo(s"=================== ${p}")
+//    })
+    //var flatedResource = flatResources(processors)
+    //logInfo(s"flated resource ${flatedResource}")
+    ServerNodeCrudOperator.dbc.withTransaction(conn => {
+//      flatedResource.foreach(e => {
+//        e._2.foreach(resource => {
+//          logInfo(s"allocate resource to node  ${e._1} ${resource}")
+//        })
+//        serverNodeCrudOperator.allocateNodeResource(conn, e._1, e._2)
+//      })
+      serverNodeCrudOperator.insertProcessorResource(conn, processors);
+
+      serverNodeCrudOperator
+    })
+  }
+
+
+
+
 
 
 
@@ -51,8 +92,11 @@ object ClusterResourceManager extends Logging{
   def  returnResource(processors: Array[ErProcessor] ):  Unit=synchronized{
     ServerNodeCrudOperator.dbc.withTransaction(conn=>{
     processors.foreach(p=>{
-        var  resourceInDb = serverNodeCrudOperator.queryProcessorResource(conn,p)
-        logInfo(s"return resource ${resourceInDb}")
+        var  resourceInDb = serverNodeCrudOperator.queryProcessorResource(conn,p,ResourceStatus.ALLOCATED)
+        resourceInDb.foreach(r =>{
+          logInfo(s"return resource ${r}")
+        })
+
         if(resourceInDb.length>0) {
           serverNodeCrudOperator.updateProcessorResource(conn, p.copy(resources = resourceInDb.map(_.copy(status = ResourceStatus.RETURN))))
           serverNodeCrudOperator.returnNodeResource(conn, p.serverNodeId, resourceInDb)
@@ -65,7 +109,7 @@ object ClusterResourceManager extends Logging{
     private def  flatResources(processors: Array[ErProcessor]): Map[Long, Array[ErResource]] ={
       processors.groupBy(_.serverNodeId).mapValues(
         _.flatMap(_.resources).groupBy(_.resourceType).mapValues(_.reduce((x,y)=>{
-          x.copy(total=x.total+y.total)
+          x.copy(allocated=x.allocated+y.allocated)
         })).values.toArray
       )
     }
