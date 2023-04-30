@@ -53,13 +53,21 @@ class SessionManagerService extends SessionManager with Logging {
   private val smDao = new SessionMetaDao
   def heartbeat(proc: ErProcessor): ErProcessor = {
     smDao.updateProcessor(proc)
-    if(proc.status==ProcessorStatus.STOPPED||
-      proc.status==ProcessorStatus.KILLED||
-      proc.status==ProcessorStatus.ERROR
-    ) {
-      logInfo(s"heart beat return resource ${proc}")
-      ClusterResourceManager.returnResource(Array(proc))
+      proc.status match {
+
+      case status if(status==ProcessorStatus.STOPPED||status==ProcessorStatus.KILLED||status==ProcessorStatus.ERROR)=>    ClusterResourceManager.returnResource(Array(proc))
+
+      case ProcessorStatus.RUNNING =>
+          logInfo("receive heartbeat running ,pre")
+          ClusterResourceManager.allocateResource(Array(proc))
     }
+//    if(proc.status==ProcessorStatus.STOPPED||
+//      proc.status==ProcessorStatus.KILLED||
+//      proc.status==ProcessorStatus.ERROR
+//    ) {
+//      logInfo(s"heart beat return resource ${proc}")
+//      ClusterResourceManager.returnResource(Array(proc))
+//    }
     proc
   }
 
@@ -111,7 +119,7 @@ class SessionManagerService extends SessionManager with Logging {
               serverNodeId = n.id,
               processorType = pType,
               status = ProcessorStatus.NEW,
-              resources = Array(ErResource(resourceType = ResourceTypes.VCPU_CORE,allocated = 1)))
+              resources = Array(ErResource(resourceType = ResourceTypes.VCPU_CORE,allocated = 1,status=ResourceStatus.PRE_ALLOCATED)))
             )
           )
         }
@@ -121,7 +129,7 @@ class SessionManagerService extends SessionManager with Logging {
           processorType = ProcessorTypes.EGG_PAIR,
           commandEndpoint = ErEndpoint(serverNodesToHost(n.id), 0),
           status = ProcessorStatus.NEW,
-          resources = Array(ErResource(resourceType = ResourceTypes.VCPU_CORE,allocated = 1,status = ResourceStatus.AVAILABLE)))))
+          resources = Array(ErResource(resourceType = ResourceTypes.VCPU_CORE,allocated = 1,status = ResourceStatus.PRE_ALLOCATED)))))
       }
 
 
@@ -146,7 +154,7 @@ class SessionManagerService extends SessionManager with Logging {
         processor1.copy(sessionId = sessionId,id = processor2.id)
       }
     }
-    ClusterResourceManager.allocateResource(processorWithResource)
+    ClusterResourceManager.preAllocateResource(processorWithResource)
 
     serverNodes.par.foreach(n => {
       // TODO:1: add new params?
@@ -345,7 +353,7 @@ class SessionManagerService extends SessionManager with Logging {
     // todo:1: update selective
     smDao.updateSessionMain(dbSessionMeta.copy(activeProcCount = 0, status = afterState))
      var  resultSession = getSession(dbSessionMeta)
-    ClusterResourceManager.returnResource(dbSessionMeta.processors)
+    //ClusterResourceManager.returnResource(dbSessionMeta.processors)
     resultSession
   }
 

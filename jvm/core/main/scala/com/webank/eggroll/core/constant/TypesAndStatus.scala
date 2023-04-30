@@ -72,6 +72,9 @@ object ResourceTypes{
     var VGPU_CORE =  "VGPU_CORE"
 }
 object ResourceStatus{
+  var PRE_ALLOCATED = "pre_allocated"
+  var ALLOCATED = "allocated"
+  var ALLOCATE_FAILED = "allocate_failed"
   var AVAILABLE = "available"
   var RETURN = "return"
 }
