@@ -5,7 +5,7 @@ import com.webank.eggroll.core.BootstrapBase
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
 import com.webank.eggroll.core.constant.NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HOST
 import com.webank.eggroll.core.constant.{CoreConfKeys, NodeManagerCommands, NodeManagerConfKeys, ResouceCommands, ResourceManagerConfKeys}
-import com.webank.eggroll.core.meta.{ErJobMeta, ErProcessor, ErResourceAllocation, ErSessionMeta}
+import com.webank.eggroll.core.meta.{ErJobMeta, ErProcessor, ErResourceAllocation, ErServerNode, ErSessionMeta}
 import com.webank.eggroll.core.resourcemanager.job.NodeManagerJobService
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.transfer.GrpcServerUtils
@@ -75,6 +75,14 @@ class NodeManagerBootstrap extends BootstrapBase with Logging {
       routeToClass = classOf[NodeManagerService],
       routeToMethodName = ResouceCommands.resourceAllocation.getName()
     )
+
+    CommandRouter.register(serviceName = ResouceCommands.queryNodeResource.uriString,
+      serviceParamTypes = Array(classOf[ErServerNode]),
+      serviceResultTypes = Array(classOf[ErServerNode]),
+      routeToClass = classOf[NodeManagerService],
+      routeToMethodName = ResouceCommands.queryNodeResource.getName()
+    )
+
 
 
         val confFile = new File(confPath)
