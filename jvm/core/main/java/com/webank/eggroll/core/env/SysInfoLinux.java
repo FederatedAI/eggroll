@@ -155,8 +155,9 @@ public class SysInfoLinux extends SysInfo {
     String gpus = null;
     int result = 0;
     try{
-    ShellCommandExecutor shellExecutorClk = new ShellCommandExecutor(
-            new String[]{"nvidia-smi --query-gpu=name --format=csv, noheader"});
+
+      String[] cmd = new String[] { "/bin/sh", "-c", "nvidia-smi --query-gpu=name --format=csv, noheader" };
+      ShellCommandExecutor shellExecutorClk = new ShellCommandExecutor(cmd);
 //    name
 //    NVIDIA Tesla V100-SXM2-32GB
 //    NVIDIA Tesla V100-SXM2-32GB
@@ -168,6 +169,29 @@ public class SysInfoLinux extends SysInfo {
       result = cmdReturnString.split("\n").length;
   }catch(Exception ignore){}
     return result;
+  }
+
+
+  public int  getProcess(int  pid) {
+
+
+    try{
+
+      String[] cmd = new String[] { "/bin/sh", "-c", "ps" };
+      ShellCommandExecutor shellExecutorClk = new ShellCommandExecutor(
+              cmd);
+//    name
+//    NVIDIA Tesla V100-SXM2-32GB
+//    NVIDIA Tesla V100-SXM2-32GB
+//    NVIDIA Tesla V100-SXM2-32GB
+//    NVIDIA Tesla V100-SXM2-32GB
+      shellExecutorClk.execute();
+      String cmdReturnString = shellExecutorClk.getOutput();
+
+     // if (StringUtils.isNotEmpty(cmdReturnString))
+    //    result = cmdReturnString.split("\n").length;
+    }catch(Exception ignore){}
+    return  0;
   }
 
 
@@ -707,33 +731,35 @@ public class SysInfoLinux extends SysInfo {
    */
   public static void main(String[] args) {
     SysInfoLinux plugin = new SysInfoLinux();
-    System.out.println("Physical memory Size (bytes) : "
-        + plugin.getPhysicalMemorySize());
-    System.out.println("Total Virtual memory Size (bytes) : "
-        + plugin.getVirtualMemorySize());
-    System.out.println("Available Physical memory Size (bytes) : "
-        + plugin.getAvailablePhysicalMemorySize());
-    System.out.println("Total Available Virtual memory Size (bytes) : "
-        + plugin.getAvailableVirtualMemorySize());
-    System.out.println("Number of Processors : " + plugin.getNumProcessors());
-    System.out.println("CPU frequency (kHz) : " + plugin.getCpuFrequency());
-    System.out.println("Cumulative CPU time (ms) : " +
-            plugin.getCumulativeCpuTime());
-    System.out.println("Total network read (bytes) : "
-            + plugin.getNetworkBytesRead());
-    System.out.println("Total network written (bytes) : "
-            + plugin.getNetworkBytesWritten());
-    System.out.println("Total storage read (bytes) : "
-            + plugin.getStorageBytesRead());
-    System.out.println("Total storage written (bytes) : "
-            + plugin.getStorageBytesWritten());
-    try {
-      // Sleep so we can compute the CPU usage
-      Thread.sleep(500L);
-    } catch (InterruptedException e) {
-      // do nothing
-    }
-    System.out.println("CPU usage % : " + plugin.getCpuUsagePercentage());
+//    System.out.println("Physical memory Size (bytes) : "
+//        + plugin.getPhysicalMemorySize());
+//    System.out.println("Total Virtual memory Size (bytes) : "
+//        + plugin.getVirtualMemorySize());
+//    System.out.println("Available Physical memory Size (bytes) : "
+//        + plugin.getAvailablePhysicalMemorySize());
+//    System.out.println("Total Available Virtual memory Size (bytes) : "
+//        + plugin.getAvailableVirtualMemorySize());
+//    System.out.println("Number of Processors : " + plugin.getNumProcessors());
+//    System.out.println("CPU frequency (kHz) : " + plugin.getCpuFrequency());
+//    System.out.println("Cumulative CPU time (ms) : " +
+//            plugin.getCumulativeCpuTime());
+//    System.out.println("Total network read (bytes) : "
+//            + plugin.getNetworkBytesRead());
+//    System.out.println("Total network written (bytes) : "
+//            + plugin.getNetworkBytesWritten());
+//    System.out.println("Total storage read (bytes) : "
+//            + plugin.getStorageBytesRead());
+//    System.out.println("Total storage written (bytes) : "
+//            + plugin.getStorageBytesWritten());
+//    try {
+//      // Sleep so we can compute the CPU usage
+//      Thread.sleep(500L);
+//    } catch (InterruptedException e) {
+//      // do nothing
+//    }
+//    System.out.println("CPU usage % : " + plugin.getCpuUsagePercentage());
+
+    plugin.getProcess(1000);
   }
 
   @VisibleForTesting
