@@ -83,7 +83,7 @@ object CommandRouter extends Logging {
       finalRouteToClass, finalRouteToMethodName, serviceParamTypes: _*)
 
     if (routeToMethod == null) {
-      throw new NoSuchMethodException(s"accessible method not found for ${finalServiceName}")
+      throw new NoSuchMethodException(s"accessible method ${routeToMethod} not found for ${finalServiceName}")
     }
 
     val finaleServiceParamTypes = routeToMethod.getParameterTypes

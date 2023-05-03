@@ -16,6 +16,7 @@
 
 package com.webank.eggroll.core.util;
 
+import com.sun.jna.Platform;
 import com.sun.management.OperatingSystemMXBean;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -303,6 +304,9 @@ public class GetSystemInfo {
 
 
     }
+
+
+
 
 
     public  static  void main(String[] args){

@@ -58,7 +58,7 @@ class SessionManagerService extends SessionManager with Logging {
       case status if(status==ProcessorStatus.STOPPED||status==ProcessorStatus.KILLED||status==ProcessorStatus.ERROR)=>    ClusterResourceManager.returnResource(Array(proc))
 
       case ProcessorStatus.RUNNING =>
-          logInfo("receive heartbeat running ,pre")
+          logInfo("receive heartbeat running ,")
           ClusterResourceManager.allocateResource(Array(proc))
     }
 //    if(proc.status==ProcessorStatus.STOPPED||
