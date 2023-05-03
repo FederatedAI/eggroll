@@ -82,6 +82,7 @@ object ResouceCommands {
   val prefix = "v1/node-manager/resouce"
   var  resourceAllocation = new  CommandURI(prefix= prefix, name = "allocateResource")
   var  queryNodeResource =  new  CommandURI(prefix= prefix ,name = "queryNodeResource")
+  var  checkNodeProcess =  new CommandURI(prefix= prefix,name = "checkNodeProcess")
 
 }
 

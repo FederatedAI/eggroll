@@ -10,6 +10,7 @@ import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.util.Logging
 
+import java.sql.Connection
 import scala.collection.JavaConverters.mapAsJavaMapConverter
 import scala.collection.mutable
 import scala.math.Numeric.LongIsIntegral
@@ -34,13 +35,13 @@ object ClusterResourceManager extends Logging{
 
   def  allocateResource(processors: Array[ErProcessor] ) : Unit=synchronized{
     ServerNodeCrudOperator.dbc.withTransaction(conn=> {
-      processors.map(p => {
+      var allocateResourceProcessor = processors.map(p => {
         logInfo(s"=================== ${p}")
         p.copy(resources = serverNodeCrudOperator.queryProcessorResource(conn,p,ResourceStatus.PRE_ALLOCATED).map(_.copy(status=ResourceStatus.ALLOCATED)))
       })
-      var flatedResource = flatResources(processors)
+      var flatedResource = flatResources(allocateResourceProcessor)
       logInfo(s"flated resource ${flatedResource}")
-      processors.foreach(p=> {
+      allocateResourceProcessor.foreach(p=> {
         serverNodeCrudOperator.updateProcessorResource(conn, p);
       })
 
@@ -54,31 +55,13 @@ object ClusterResourceManager extends Logging{
         serverNodeCrudOperator.updateNodeResource(conn,e._1,erResources)
       })
 
-
-
-
-
-
     })
   }
 
   def preAllocateResource(processors: Array[ErProcessor]): Unit = synchronized {
 
-//    processors.foreach(p => {
-//      logInfo(s"=================== ${p}")
-//    })
-    //var flatedResource = flatResources(processors)
-    //logInfo(s"flated resource ${flatedResource}")
     ServerNodeCrudOperator.dbc.withTransaction(conn => {
-//      flatedResource.foreach(e => {
-//        e._2.foreach(resource => {
-//          logInfo(s"allocate resource to node  ${e._1} ${resource}")
-//        })
-//        serverNodeCrudOperator.allocateNodeResource(conn, e._1, e._2)
-//      })
       serverNodeCrudOperator.insertProcessorResource(conn, processors);
-
-      serverNodeCrudOperator
     })
   }
 
@@ -89,19 +72,32 @@ object ClusterResourceManager extends Logging{
 
 
 
-  def  returnResource(processors: Array[ErProcessor] ):  Unit=synchronized{
-    ServerNodeCrudOperator.dbc.withTransaction(conn=>{
-    processors.foreach(p=>{
-        var  resourceInDb = serverNodeCrudOperator.queryProcessorResource(conn,p,ResourceStatus.ALLOCATED)
-        resourceInDb.foreach(r =>{
-          logInfo(s"return resource ${r}")
+  def  returnResource(processors: Array[ErProcessor],f:(Connection)=>Unit =null ):  Unit=synchronized{
+    logInfo("===================================returnResource {}")
+    ServerNodeCrudOperator.dbc.withTransaction(conn=> {
+      try {
+        if (f != null) {
+          f(conn)
+        }
+
+      processors.foreach(p => {
+        var resourceInDb = serverNodeCrudOperator.queryProcessorResource(conn, p, ResourceStatus.ALLOCATED)
+        resourceInDb.foreach(r => {
+          logInfo(s"processor ${p.id} return resource ${r}")
         })
 
-        if(resourceInDb.length>0) {
+        if (resourceInDb.length > 0) {
           serverNodeCrudOperator.updateProcessorResource(conn, p.copy(resources = resourceInDb.map(_.copy(status = ResourceStatus.RETURN))))
           serverNodeCrudOperator.returnNodeResource(conn, p.serverNodeId, resourceInDb)
         }
       })
+    }catch{
+      case e :Exception =>{
+        e.printStackTrace()
+      }
+
+
+    }
     })
 
   }
@@ -120,9 +116,11 @@ object ClusterResourceManager extends Logging{
     val serverNodes = serverNodeCrudOperator.getServerNodesWithResource(
       ErServerNode(status = ServerNodeStatus.HEALTHY, nodeType = ServerNodeTypes.NODE_MANAGER)
     )
+    logInfo(s"lllllllllllllllllllll ${serverNodes}");
+
    //  var nodeResourceTupes = serverNodes.map(n=>(n,n.resources.filter(r=>r.resourceType==ResourceTypes.VGPU_CORE).map(r=>{r.total-r.allocated}).apply(0))).sortWith(_._2>_._2).toBuffer
      var nodeResourceTupes = serverNodes.map(n=>(n,n.resources.filter(r=>r.resourceType==ResourceTypes.VGPU_CORE).map(_.getUnAllocatedResource).apply(0))).sortWith(_._2>_._2).toBuffer
-
+    logInfo(s"kkkkkkkkkkkkkkkkkkkkk ${nodeResourceTupes}")
      //    // FIXME: evenly distribute processors to nodes for now
     val nodeToProcessors = mutable.Map[ErServerNode, Seq[ErProcessor]]()
 //
@@ -146,7 +144,7 @@ object ClusterResourceManager extends Logging{
           "globalRank" -> globalRank.toString,
           "localRank" -> localRank.toString
         ).asJava,
-        resources=Array(ErResource(resourceType = ResourceTypes.VGPU_CORE,total = 1))
+        resources=Array(ErResource(resourceType = ResourceTypes.VGPU_CORE,allocated = 1))
       )
 
       if (nodeToProcessors.contains(node)) {

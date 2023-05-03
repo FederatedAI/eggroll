@@ -1,10 +1,11 @@
 package com.webank.eggroll.core.resourcemanager
 
+import com.webank.eggroll.core.ErSession
 import com.webank.eggroll.core.client.NodeManagerClient
 import com.webank.eggroll.core.constant.ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_NODE_HEARTBEAT_EXPIRED_COUNT
 import com.webank.eggroll.core.constant.NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL
-import com.webank.eggroll.core.constant.{ServerNodeStatus, ServerNodeTypes}
-import com.webank.eggroll.core.meta.{ErProcessor, ErResource, ErServerNode}
+import com.webank.eggroll.core.constant.{ProcessorStatus, ServerNodeStatus, ServerNodeTypes}
+import com.webank.eggroll.core.meta.{ErProcessor, ErResource, ErServerNode, ErSessionMeta}
 import com.webank.eggroll.core.resourcemanager.ClusterManagerService.nodeHeartbeatChecker
 import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator
 
@@ -26,10 +27,58 @@ trait ClusterManager {
  
 
 object ClusterManagerService extends Logging {
+  var  nodeProcessChecker = new  Thread(()=>{
+    var  serverNodeCrudOperator = new ServerNodeCrudOperator
+    while(true) {
+      try {
+        var now = System.currentTimeMillis();
+        var erProcessors = serverNodeCrudOperator.queryProcessor(null,ErProcessor(status = ProcessorStatus.RUNNING));
+//        erProcessors.foreach(t=>{
+//          logInfo(s"node process checker running processor  ${t}")
+//        })
+
+
+        var  grouped =erProcessors.groupBy(x=>{
+          x.serverNodeId})
+          //mapValues(_.filter(now - _.updatedAt.getTime > 10000))
+        grouped .par.
+          foreach(e => {
+            var serverNode = serverNodeCrudOperator.getServerNode(ErServerNode(id = e._1))
+            var nodeManagerClient = new NodeManagerClient(serverNode.endpoint)
+            e._2.par.foreach(processor => {
+              var result = nodeManagerClient.checkNodeProcess(processor)
+              logDebug(s"check ${processor.id} node process ${processor.pid} return ${result.status}")
+              if (result.status == ProcessorStatus.KILLED) {
+                var processors = Array(processor.copy(status = ProcessorStatus.KILLED))
+                ClusterResourceManager.returnResource(processors, (conn) => {
+                  serverNodeCrudOperator.updateNodeProcessor(conn, processors)
+                  var activeCount = serverNodeCrudOperator.queryProcessor(conn,processor.copy(status = ProcessorStatus.RUNNING)).length
+                  serverNodeCrudOperator.updateSessionProcessCount(connection = conn, ErSessionMeta(id = processor.sessionId, activeProcCount = activeCount))
+                })
+
+
+              }
+            })
+          })
+    }
+    catch
+    {
+      case e: Exception =>
+        e.printStackTrace()
+    }
+      Thread.sleep(CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL.get().toInt)
+    }
+
+  }
+    
+    )
+
+
   val  nodeHeartbeatChecker =  new Thread(()=>{
     var expire = CONFKEY_CLUSTER_MANAGER_NODE_HEARTBEAT_EXPIRED_COUNT.get().toInt*CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL.get().toInt
     while(true){
       try {
+        //logInfo("node heart beat checker running")
         var  now  = System.currentTimeMillis();
         var nodes = ServerNodeCrudOperator.doGetServerNodes(ErServerNode(status = ServerNodeStatus.HEALTHY))
         nodes.foreach(n=>{
@@ -50,6 +99,7 @@ object ClusterManagerService extends Logging {
 
   def  start():Unit={
     nodeHeartbeatChecker.start()
+    nodeProcessChecker.start()
   }
 
 
@@ -109,13 +159,12 @@ class ClusterManagerService extends   ClusterManager with Logging{
           result= param
         }
       } else {
+        //new  node register
        var  resultErServerNode=  ServerNodeCrudOperator.doCreateServerNode(data)
         var  nodeManagerClient = new  NodeManagerClient(data.endpoint)
         var  node = nodeManagerClient.queryNodeResource(resultErServerNode)
-      //  logInfo(s"22222222222222222222222 ${node}");
         result = registerResource(node.copy(id=resultErServerNode.id))
       }
-    //  logInfo(s"=======result ${result}");
      result
 
 //        ServerNodeCrudOperator.doCreateOrUpdateServerNode(input = data, true )

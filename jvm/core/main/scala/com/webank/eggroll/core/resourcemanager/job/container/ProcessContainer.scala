@@ -70,4 +70,10 @@ class ProcessContainer(
      processorId
   }
 
+  override def getPid(): Int = {
+    val pidField = process.getClass.getDeclaredField("pid")
+    pidField.setAccessible(true)
+    pidField.getInt(process)
+  }
+
 }
