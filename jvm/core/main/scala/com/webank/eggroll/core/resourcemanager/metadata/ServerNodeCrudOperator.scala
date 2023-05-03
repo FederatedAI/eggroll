@@ -18,11 +18,13 @@
 
 package com.webank.eggroll.core.resourcemanager.metadata
 
+import com.webank.eggroll.core.ErSession
+
 import java.util
 import java.util.Date
 import com.webank.eggroll.core.constant.{ResourceStatus, ServerNodeStatus, ServerNodeTypes}
 import com.webank.eggroll.core.error.CrudException
-import com.webank.eggroll.core.meta.{ErEndpoint, ErProcessor, ErResource, ErServerCluster, ErServerNode}
+import com.webank.eggroll.core.meta.{ErEndpoint, ErProcessor, ErResource, ErServerCluster, ErServerNode, ErSessionMeta}
 import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator.{dbc, doGetServerNodesWithResource}
 import com.webank.eggroll.core.resourcemanager.BaseDao
 import com.webank.eggroll.core.resourcemanager.BaseDao.NotExistError
@@ -30,7 +32,7 @@ import com.webank.eggroll.core.util.JdbcTemplate.ResultSetIterator
 import com.webank.eggroll.core.util.Logging
 import org.apache.commons.lang3.StringUtils
 
-import java.sql.Connection
+import java.sql.{Connection, ResultSet}
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 
@@ -89,6 +91,17 @@ class ServerNodeCrudOperator extends CrudOperator with Logging {
   def updateNodeResource(connection: Connection,serverNodeId:Long,resources: Array[ErResource]) = synchronized {
     ServerNodeCrudOperator.doUpdateNodeResource(connection,serverNodeId,resources)
   }
+
+  def updateNodeProcessor(connection: Connection, processors:Array[ErProcessor]) = synchronized {
+    ServerNodeCrudOperator.doUpdateNodeProcessor(connection, processors)
+  }
+
+
+  def updateSessionProcessCount(connection: Connection,session:ErSessionMeta): Unit= synchronized{
+
+    ServerNodeCrudOperator.doUpdateSession(conn =  connection,session)
+  }
+
   def insertNodeResource(connection: Connection,serverNodeId:Long,resources: Array[ErResource]) = synchronized{
     ServerNodeCrudOperator.doInsertNodeResource(connection,serverNodeId,resources)
   }
@@ -100,6 +113,10 @@ class ServerNodeCrudOperator extends CrudOperator with Logging {
   }
   def updateProcessorResource(connection: Connection,processor:ErProcessor):Unit = {
     ServerNodeCrudOperator.doUpdateProcessorResource(connection,processor);
+  }
+
+  def queryProcessor(connection: Connection,processor:ErProcessor):Array[ErProcessor]={
+    ServerNodeCrudOperator.doQueryProcessor(connection,processor)
   }
 
   def allocateNodeResource(connection: Connection,serverNodeId:Long,resources: Array[ErResource]):Unit = synchronized{
@@ -335,6 +352,9 @@ def doCreateServerNode(input: ErServerNode): ErServerNode = {
       params = params:+processId.toString
       sql+= s" and processor_id=? "
     }
+
+
+    logDebug(s"sql: ${sql} param: ${params}")
     val resourceResult =  dbc.query(connection,rs => rs.map(_ =>
       ErResource(
        // resourceId = rs.getLong("resource_id"),
@@ -347,6 +367,46 @@ def doCreateServerNode(input: ErServerNode): ErServerNode = {
     resourceResult.toArray
 
   }
+
+  def doQueryProcessor(connection: Connection,erProcessor: ErProcessor) :Array[ErProcessor]={
+    var sql = "select * from session_processor where 1=1 "
+    var params = List[String]()
+    if (StringUtils.isNotEmpty(erProcessor.status)) {
+      params = params :+ erProcessor.status
+      sql += " and status =? "
+    }
+    if (StringUtils.isNotEmpty(erProcessor.sessionId)) {
+      params = params :+ erProcessor.sessionId
+      sql += " and session_id =? "
+    }
+
+
+
+//    if (processId != -1) {
+//      params = params :+ processId.toString
+//      sql += s" and processor_id=? "
+//    }
+
+    var func: ResultSet => Iterable[ErProcessor]=rs
+    => rs.map(_ =>
+      ErProcessor(id = rs.getLong("processor_id"),
+        serverNodeId = rs.getInt("server_node_id"),
+        processorType = rs.getString("processor_type"), status = rs.getString("status"),
+        commandEndpoint = if (StringUtils.isBlank(rs.getString("command_endpoint"))) null
+        else ErEndpoint(rs.getString("command_endpoint")),
+        transferEndpoint = if (StringUtils.isBlank(rs.getString("transfer_endpoint"))) null
+        else ErEndpoint(rs.getString("transfer_endpoint")),
+        pid = rs.getInt("pid"),
+        createdAt = rs.getTimestamp("created_at"),
+        updatedAt = rs.getTimestamp("updated_at")))
+   val resourceResult :Iterable[ErProcessor]= null
+    if(connection!=null){
+     dbc.query(connection, func, sql, params: _*).toArray
+    }else{
+     dbc.query(func, sql, params: _*).toArray
+    }
+  }
+
 
   def doQueryNodeResources(serverNodeId:Long,rType:String=""): Array[ErResource]= {
 
@@ -448,6 +508,46 @@ def doCreateServerNode(input: ErServerNode): ErServerNode = {
 //      })
     })
   }
+
+
+  def doUpdateNodeProcessor(conn:Connection,processors :Array[ErProcessor]): Unit = synchronized{
+    processors.foreach(erProcessor=>{
+      var sql = "update session_processor  set  "
+      var first = false;
+      var params = List[String]()
+      if (StringUtils.isNotEmpty(erProcessor.status)) {
+        params = (params :+ erProcessor.status)
+        sql += "  status = ?"
+        first = true;
+      }
+      sql += " where  processor_id= ?"
+      params = params:+erProcessor.id.toString
+      dbc.update(conn, sql,
+        params: _*)
+    })
+  }
+
+  def  doUpdateSession(conn:Connection,sessionMeta:ErSessionMeta) :Unit = synchronized{
+
+    var sql = "update session_main  set  "
+    var first = false;
+    var params = List[String]()
+    if (sessionMeta.activeProcCount != -1) {
+      params = (params :+ sessionMeta.activeProcCount.toString)
+      sql += "  active_proc_count = ?"
+      first = true;
+    }
+    sql += " where  session_id= ?"
+    params = params :+sessionMeta.id.toString
+    dbc.update(conn, sql,
+      params: _*)
+
+
+
+  }
+
+
+
   def doUpdateNodeResource(conn:Connection,serverNodeId:Long,resources: Array[ErResource]) = synchronized {
 
    // dbc.withTransaction(conn => {
@@ -558,6 +658,8 @@ def doCreateServerNode(input: ErServerNode): ErServerNode = {
           var sql = "update processor_resource set " +
             " status = ?, allocated = ?  where processor_id = ? and resource_type = ? "
           var params = List(r.status,r.allocated,processor.id,r.resourceType)
+
+          logDebug(s"sql : ${sql} , params ${params}")
           dbc.update(connection, sql, params:_*)
         })
    //   })

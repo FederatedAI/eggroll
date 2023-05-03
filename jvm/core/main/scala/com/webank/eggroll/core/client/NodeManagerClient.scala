@@ -67,4 +67,7 @@ class NodeManagerClient(var nodeManagerEndpoint: ErEndpoint) {
 
   def queryNodeResource(erServerNode: ErServerNode): ErServerNode =
     commandClient.call[ErServerNode](ResouceCommands.queryNodeResource, erServerNode)
+
+  def checkNodeProcess(processor: ErProcessor): ErProcessor =
+    commandClient.call[ErProcessor](ResouceCommands.checkNodeProcess, processor)
 }

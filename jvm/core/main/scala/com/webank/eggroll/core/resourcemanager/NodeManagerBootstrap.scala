@@ -82,10 +82,15 @@ class NodeManagerBootstrap extends BootstrapBase with Logging {
       routeToClass = classOf[NodeManagerService],
       routeToMethodName = ResouceCommands.queryNodeResource.getName()
     )
+    CommandRouter.register(serviceName = ResouceCommands.checkNodeProcess.uriString,
+      serviceParamTypes = Array(classOf[ErProcessor]),
+      serviceResultTypes = Array(classOf[ErProcessor]),
+      routeToClass = classOf[NodeManagerService],
+      routeToMethodName = ResouceCommands.checkNodeProcess.getName()
+    )
 
 
-
-        val confFile = new File(confPath)
+    val confFile = new File(confPath)
     StaticErConf.addProperty(CoreConfKeys.STATIC_CONF_PATH, confFile.getAbsolutePath)
     logInfo(s"conf file: ${confFile.getAbsolutePath}")
     this.port = cmd.getOptionValue('p', StaticErConf.getProperty(
