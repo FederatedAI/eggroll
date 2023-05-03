@@ -61,10 +61,11 @@ class ContainerLifecycleHandler(container: ContainerTrait,
     if (isCompleted) {
       throw new IllegalStateException("Container already completed")
     }
-    setStatus(ContainerStatus.Started)
+
     watcher = Future {
       try {
         container.start()
+        setStatus(ContainerStatus.Started)
         val exitCode = container.waitForCompletion()
         if (exitCode != 0) {
           setStatus(ContainerStatus.Failed)
