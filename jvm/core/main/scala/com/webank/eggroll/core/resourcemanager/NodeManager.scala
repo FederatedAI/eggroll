@@ -1,14 +1,14 @@
 package com.webank.eggroll.core.resourcemanager
 
 import com.google.gson.Gson
-import com.webank.eggroll.core.constant.{ClusterManagerConfKeys, CoreConfKeys, NodeManagerConfKeys, ResourceManagerConfKeys, ResourceOperationStauts, ResourceOperationType, ResourceTypes, ServerNodeTypes, StringConstants}
+import com.webank.eggroll.core.constant.{ClusterManagerConfKeys, CoreConfKeys, NodeManagerConfKeys, ProcessorStatus, ResourceManagerConfKeys, ResourceOperationStauts, ResourceOperationType, ResourceTypes, ServerNodeTypes, StringConstants}
 import com.webank.eggroll.core.meta.{ErEndpoint, ErProcessor, ErResource, ErResourceAllocation, ErServerNode, ErSessionMeta}
 import com.webank.eggroll.core.session.RuntimeErConf
 import com.webank.eggroll.core.client.ClusterManagerClient
 import com.webank.eggroll.core.constant.ServerNodeStatus.{HEALTHY, INIT}
 import com.webank.eggroll.core.session.{RuntimeErConf, StaticErConf}
 import com.webank.eggroll.core.env.{Shell, SysInfoLinux}
-import com.webank.eggroll.core.util.{FileSystemUtils, GetSystemInfo, Logging, NetUtils}
+import com.webank.eggroll.core.util.{FileSystemUtils, GetSystemInfo, Logging, NetUtils, ProcessUtils}
 
 import java.io.File
 import java.util
@@ -51,6 +51,7 @@ trait NodeManager {
   def heartbeat(processor: ErProcessor): ErProcessor
   def allocateResource(erResourceAllocation: ErResourceAllocation):ErResourceAllocation
   def queryNodeResource(erServerNode: ErServerNode):ErServerNode
+  def checkNodeProcess (processor: ErProcessor) : ErProcessor
 
 }
 
@@ -127,7 +128,6 @@ class NodeManagerService extends NodeManager with Logging {
         })
         erResourceAllocation.copy(status = ResourceOperationStauts.SUCCESS )
       }
-
     }
     logInfo(s"allocateResource result ${result}")
     return result
@@ -135,6 +135,17 @@ class NodeManagerService extends NodeManager with Logging {
 
   override def queryNodeResource(erServerNode: ErServerNode): ErServerNode = {
     NodeResourceManager.queryNodeResource(erServerNode)
+  }
+
+  override def checkNodeProcess(processor: ErProcessor): ErProcessor = {
+     var  result:ErProcessor= null
+     if(ProcessUtils.checkProcess(processor.pid.toString)){
+       result= processor.copy(status=ProcessorStatus.RUNNING)
+     }else{
+       result= processor.copy(status=ProcessorStatus.KILLED)
+     }
+    logInfo(s"check processor pid ${processor.pid} return  ${result.status} ");
+    result
   }
 }
 
@@ -313,7 +324,7 @@ object  NodeResourceManager extends  Logging {
               port = StaticErConf.getString(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT).toInt),
             status = NodeManagerMeta.status
           ))
-          logInfo(s"node heart beat return ${serverNode}")
+          logDebug(s"node heart beat return ${serverNode}")
 
 //          logInfo(s"cluster manager return ${serverNode}")
 //          logInfo(s"======node manager status ${NodeManagerMeta.status}")

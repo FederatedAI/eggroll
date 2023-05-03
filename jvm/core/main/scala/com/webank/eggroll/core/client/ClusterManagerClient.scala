@@ -19,9 +19,8 @@
 package com.webank.eggroll.core.client
 
 import java.util.concurrent.ConcurrentHashMap
-
 import com.webank.eggroll.core.command.CommandClient
-import com.webank.eggroll.core.constant.{ClusterManagerConfKeys, ManagerCommands, MetadataCommands, SessionCommands}
+import com.webank.eggroll.core.constant.{ClusterManagerConfKeys, JobCommands, ManagerCommands, MetadataCommands, SessionCommands}
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.session.StaticErConf
 
@@ -113,4 +112,6 @@ class ClusterManagerClient(val endpoint: ErEndpoint) {
 
   def registerResource(node: ErServerNode): ErServerNode =
     cc.call[ErServerNode](ManagerCommands.registerResource,node)
+  def submitJob(job:ErJobMeta) :ErJobMeta =
+      cc.call[ErJobMeta](JobCommands.submitJob,job)
 }

@@ -93,7 +93,9 @@ case class ErProcessor(id: Long = -1,
                        pid: Int = -1,
                        options: java.util.Map[String, String] = new ConcurrentHashMap[String, String](),
                        tag: String = StringConstants.EMPTY,
-                       resources: Array[ErResource]= Array()
+                       resources: Array[ErResource]= Array(),
+                       createdAt:Timestamp= null,
+                       updatedAt:Timestamp=null
                       ) extends NetworkingRpcMessage {
   override def toString: String = {
     val sb = new StringBuilder
