@@ -4,6 +4,8 @@ import com.webank.eggroll.core.util.Logging
 
 trait ContainerTrait extends Logging {
 
+  def getPid():Int
+
   def getContainerId(): String
 
   def getProcessorId(): Long
