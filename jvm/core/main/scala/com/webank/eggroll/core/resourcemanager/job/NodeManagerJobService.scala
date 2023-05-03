@@ -25,9 +25,10 @@ class NodeManagerJobService(implicit ec: ExecutionContext) {
 //      }
 
 
-      println(s"container started: ${container}")
+      println(s"container started: ${container} ${container.getPid()} ")
 
-      client.heartbeat(ErProcessor(id=container.getProcessorId(),serverNodeId = NodeManagerMeta.serverNodeId,status =ProcessorStatus.RUNNING ));
+      client.heartbeat(ErProcessor(id=container.getProcessorId(),pid=container.getPid(),
+        serverNodeId = NodeManagerMeta.serverNodeId,status =ProcessorStatus.RUNNING ));
 
     })
     .withSuccessCallback((container) => {
