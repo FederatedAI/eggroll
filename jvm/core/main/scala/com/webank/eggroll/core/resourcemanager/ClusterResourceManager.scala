@@ -4,7 +4,7 @@ import com.webank.eggroll.core.ErSession
 import com.webank.eggroll.core.client.NodeManagerClient
 import com.webank.eggroll.core.constant.{NodeManagerConfKeys, ProcessorStatus, ResourceOperationStauts, ResourceOperationType, ResourceStatus, ResourceTypes, ServerNodeStatus, ServerNodeTypes}
 import com.webank.eggroll.core.meta.{ErEndpoint, ErProcessor, ErResource, ErResourceAllocation, ErServerNode}
-import com.webank.eggroll.core.resourcemanager.ClusterResourceManager.serverNodeCrudOperator
+import com.webank.eggroll.core.resourcemanager.ClusterResourceManager.{dispatchDeepSpeedInner, serverNodeCrudOperator}
 import com.webank.eggroll.core.resourcemanager.job.JobProcessorTypes
 import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator
 import com.webank.eggroll.core.session.StaticErConf
@@ -36,7 +36,6 @@ object ClusterResourceManager extends Logging{
   def  allocateResource(processors: Array[ErProcessor] ) : Unit=synchronized{
     ServerNodeCrudOperator.dbc.withTransaction(conn=> {
       var allocateResourceProcessor = processors.map(p => {
-        logInfo(s"=================== ${p}")
         p.copy(resources = serverNodeCrudOperator.queryProcessorResource(conn,p,ResourceStatus.PRE_ALLOCATED).map(_.copy(status=ResourceStatus.ALLOCATED)))
       })
       var flatedResource = flatResources(allocateResourceProcessor)
@@ -65,15 +64,8 @@ object ClusterResourceManager extends Logging{
     })
   }
 
-
-
-
-
-
-
-
   def  returnResource(processors: Array[ErProcessor],f:(Connection)=>Unit =null ):  Unit=synchronized{
-    logInfo("===================================returnResource {}")
+    logInfo(s"return resource ${processors.mkString("<",",",">")}")
     ServerNodeCrudOperator.dbc.withTransaction(conn=> {
       try {
         if (f != null) {
@@ -110,31 +102,25 @@ object ClusterResourceManager extends Logging{
       )
     }
 
+   def  dispatchDeepSpeedInner(worldSize:Int,serverNodes:Array[ErServerNode]):  Array[(ErProcessor, ErServerNode)]  ={
 
-   def dispatchDeepSpeed(worldSize:Int): Array[(ErProcessor, ErServerNode)] =synchronized {
-    // cluster nodes
-    val serverNodes = serverNodeCrudOperator.getServerNodesWithResource(
-      ErServerNode(status = ServerNodeStatus.HEALTHY, nodeType = ServerNodeTypes.NODE_MANAGER)
-    )
-//    logInfo(s"lllllllllllllllllllll ${serverNodes}");
+//    val serverNodes = serverNodeCrudOperator.getServerNodesWithResource(
+//      ErServerNode(status = ServerNodeStatus.HEALTHY, nodeType = ServerNodeTypes.NODE_MANAGER)
+//    )
+    var nodeResourceTupes = serverNodes.map(n=>(n,n.resources.filter(_.resourceType==ResourceTypes.VGPU_CORE).map(_.getUnAllocatedResource).apply(0)))
+      .sortWith(_._2>_._2).toBuffer
 
-   //  var nodeResourceTupes = serverNodes.map(n=>(n,n.resources.filter(r=>r.resourceType==ResourceTypes.VGPU_CORE).map(r=>{r.total-r.allocated}).apply(0))).sortWith(_._2>_._2).toBuffer
-     var nodeResourceTupes = serverNodes.map(n=>(n,n.resources.filter(_.resourceType==ResourceTypes.VGPU_CORE).map(_.getUnAllocatedResource).apply(0))).sortWith(_._2>_._2).toBuffer
-//    logInfo(s"kkkkkkkkkkkkkkkkkkkkk ${nodeResourceTupes}")
-     //    // FIXME: evenly distribute processors to nodes for now
+    //    // FIXME: evenly distribute processors to nodes for now
     val nodeToProcessors = mutable.Map[ErServerNode, Seq[ErProcessor]]()
-//
+    //
     for (index <- 0 until worldSize) {
-    //  val node = shuffledNodes(index % shuffledNodes.size)
-      var  nodeTupe = nodeResourceTupes.remove(0)
+      System.err.println(nodeResourceTupes.map(_._2))
+      var  nodeTupe = nodeResourceTupes.head
       var  node =  nodeTupe._1
-      nodeResourceTupes+= nodeTupe.copy(_2=nodeTupe._2-1)
-      nodeResourceTupes =nodeResourceTupes.sortWith(_._2>_._2)
-
+      nodeResourceTupes = (nodeResourceTupes.tail+=nodeTupe.copy(_2=nodeTupe._2-1)).sortWith(_._2>_._2)
       val host = node.endpoint.host
       val globalRank = index
       val localRank = nodeToProcessors.getOrElse(node, Seq()).size
-
       val processor = ErProcessor(
         serverNodeId = node.id,
         processorType = JobProcessorTypes.DeepSpeed.toString,
@@ -158,6 +144,14 @@ object ClusterResourceManager extends Logging{
     }(collection.breakOut)
   }
 
+   def dispatchDeepSpeed(worldSize:Int): Array[(ErProcessor, ErServerNode)] =synchronized {
+    // cluster nodes
+    val serverNodes = serverNodeCrudOperator.getServerNodesWithResource(
+      ErServerNode(status = ServerNodeStatus.HEALTHY, nodeType = ServerNodeTypes.NODE_MANAGER)
+    )
+     dispatchDeepSpeedInner(worldSize, serverNodes)
+  }
+
     def  checkResource(processors :Array[ErProcessor]): Boolean={
        var   resourceMap = flatResources(processors)
       var  result = true
@@ -177,13 +171,15 @@ object ClusterResourceManager extends Logging{
 
 
 
-//    def  main(args: Array[String]) :Unit = {
-//        var   temp =  Array(ErServerNode(id = 1,resources = Array(ErResource(resourceType = ResourceTypes.VGPU_CORE,total = 5)))
-//        ,
-//          ErServerNode(id = 2,resources = Array(ErResource(resourceType = ResourceTypes.VCPU_CORE,total = 1),ErResource(resourceType = ResourceTypes.VCPU_CORE,total = 3),ErResource(resourceType = ResourceTypes.VGPU_CORE,total = 3)))
-//        )
-//        dispatchDeepSpeed(temp)
-//
-//    }
+    def  main(args: Array[String]) :Unit = {
+        var   temp =  Array(ErServerNode(id = 1,resources = Array(ErResource(resourceType = ResourceTypes.VGPU_CORE,total = 5))),
+          ErServerNode(id = 3,resources = Array(ErResource(resourceType = ResourceTypes.VGPU_CORE,total = 9)))
+        ,
+          ErServerNode(id = 2,resources = Array(ErResource(resourceType = ResourceTypes.VCPU_CORE,total = 1),ErResource(resourceType = ResourceTypes.VCPU_CORE,total = 3),
+            ErResource(resourceType = ResourceTypes.VGPU_CORE,total = 3)))
+        )
+        System.err.println(dispatchDeepSpeedInner(7,temp).mkString)
+
+    }
 
 }
