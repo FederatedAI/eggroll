@@ -24,11 +24,11 @@ class NodeManagerJobService(implicit ec: ExecutionContext) {
 //        val ERROR = "ERROR"
 //      }
 
-
       println(s"container started: ${container} ${container.getPid()} ")
-
-      client.heartbeat(ErProcessor(id=container.getProcessorId(),pid=container.getPid(),
-        serverNodeId = NodeManagerMeta.serverNodeId,status =ProcessorStatus.RUNNING ));
+      var pid=container.getPid()
+      var status =  if(pid>0) ProcessorStatus.RUNNING else ProcessorStatus.ERROR
+      client.heartbeat(ErProcessor(id=container.getProcessorId(),pid= pid,
+        serverNodeId = NodeManagerMeta.serverNodeId,status =status));
 
     })
     .withSuccessCallback((container) => {
