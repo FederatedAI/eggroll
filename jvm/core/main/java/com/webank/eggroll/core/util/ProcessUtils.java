@@ -16,14 +16,14 @@ public class ProcessUtils {
         try {
             if (Platform.isWindows()) {
                 command ="cmd /c tasklist  /FI \"PID eq " + processId + "\"";
-            } else if (Platform.isLinux() || Platform.isAIX()) {
+            } else if (Platform.isLinux() || Platform.isAIX()||Platform.isMac()) {
                 command = "ps aux "
                         +
                         "| awk '{print $2}'"
                     +
                        "| grep -w  " + processId;
             }
-
+            System.err.println(command);
             String[] cmd = new String[] { "/bin/sh", "-c", command };
 
              process = Runtime.getRuntime().exec(cmd);
@@ -53,7 +53,7 @@ public class ProcessUtils {
 
 
     public  static  void main(String[] args){
-       System.err.println( ProcessUtils.checkProcess("13155"));
+       System.err.println( ProcessUtils.checkProcess("95609"));
     }
 
 }
