@@ -116,11 +116,11 @@ object ClusterResourceManager extends Logging{
     val serverNodes = serverNodeCrudOperator.getServerNodesWithResource(
       ErServerNode(status = ServerNodeStatus.HEALTHY, nodeType = ServerNodeTypes.NODE_MANAGER)
     )
-    logInfo(s"lllllllllllllllllllll ${serverNodes}");
+//    logInfo(s"lllllllllllllllllllll ${serverNodes}");
 
    //  var nodeResourceTupes = serverNodes.map(n=>(n,n.resources.filter(r=>r.resourceType==ResourceTypes.VGPU_CORE).map(r=>{r.total-r.allocated}).apply(0))).sortWith(_._2>_._2).toBuffer
-     var nodeResourceTupes = serverNodes.map(n=>(n,n.resources.filter(r=>r.resourceType==ResourceTypes.VGPU_CORE).map(_.getUnAllocatedResource).apply(0))).sortWith(_._2>_._2).toBuffer
-    logInfo(s"kkkkkkkkkkkkkkkkkkkkk ${nodeResourceTupes}")
+     var nodeResourceTupes = serverNodes.map(n=>(n,n.resources.filter(_.resourceType==ResourceTypes.VGPU_CORE).map(_.getUnAllocatedResource).apply(0))).sortWith(_._2>_._2).toBuffer
+//    logInfo(s"kkkkkkkkkkkkkkkkkkkkk ${nodeResourceTupes}")
      //    // FIXME: evenly distribute processors to nodes for now
     val nodeToProcessors = mutable.Map[ErServerNode, Seq[ErProcessor]]()
 //
@@ -144,7 +144,7 @@ object ClusterResourceManager extends Logging{
           "globalRank" -> globalRank.toString,
           "localRank" -> localRank.toString
         ).asJava,
-        resources=Array(ErResource(resourceType = ResourceTypes.VGPU_CORE,allocated = 1))
+        resources=Array(ErResource(resourceType = ResourceTypes.VGPU_CORE,allocated = 1,status= ResourceStatus.PRE_ALLOCATED))
       )
 
       if (nodeToProcessors.contains(node)) {
@@ -175,10 +175,6 @@ object ClusterResourceManager extends Logging{
 
     }
 
-
-//    def  reduceResource(nodeId:Long,resources:Array[ ErResource]): Unit ={
-//      serverNodeCrudOperator.allocateNodeResource(nodeId,resources)
-//    }
 
 
 //    def  main(args: Array[String]) :Unit = {
