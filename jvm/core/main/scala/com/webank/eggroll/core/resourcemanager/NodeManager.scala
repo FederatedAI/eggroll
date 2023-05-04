@@ -16,7 +16,7 @@ import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.atomic.AtomicLong
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
-import scala.util.parsing.json.JSONObject
+
 
 
 object NodeManagerMeta{
