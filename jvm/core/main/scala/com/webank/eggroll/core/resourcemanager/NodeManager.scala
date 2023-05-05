@@ -324,7 +324,7 @@ object  NodeResourceManager extends  Logging {
               port = StaticErConf.getString(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT).toInt),
             status = NodeManagerMeta.status
           ))
-          logDebug(s"node heart beat return ${serverNode}")
+  //        logDebug(s"node heart beat return ${serverNode}")
 
 //          logInfo(s"cluster manager return ${serverNode}")
 //          logInfo(s"======node manager status ${NodeManagerMeta.status}")
