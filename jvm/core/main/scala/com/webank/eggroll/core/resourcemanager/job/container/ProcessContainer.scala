@@ -21,6 +21,7 @@ class ProcessContainer(
   def start(): Boolean = {
     workingDirectoryPreparer.foreach(_.prepare())
     try {
+
       val javaProcessBuilder = new java.lang.ProcessBuilder(command: _*)
         .directory(cwd.toFile)
       stdOutFile.foreach { f =>
