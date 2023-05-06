@@ -122,6 +122,11 @@ case class ErProcessorBatch(id: Long = -1,
                             processors: Array[ErProcessor] = Array(),
                             tag: String = StringConstants.EMPTY) extends NetworkingRpcMessage
 
+
+case class ErNodeHeartbeat(id: Long ,
+                           node:ErServerNode = null
+                          ) extends NetworkingRpcMessage
+
 case class ErServerNode(id: Long = -1,
                         name: String = StringConstants.EMPTY,
                         clusterId: Long = 0,
@@ -133,21 +138,21 @@ case class ErServerNode(id: Long = -1,
 
                        ) extends NetworkingRpcMessage{
 	  override  def  toString: String = {
-    val sb = new StringBuilder
-//    sb.append("total number of exception(s) occured: ")
-//      .append(causes.length)
-//      .append(StringConstants.LF)
-
-    if(resources!=null) {
-          var sb = new StringBuilder
-          resources.flatMap(n=>n.toString)
-    }
-
-   // s"ErServerNode[id=${id} , clusterId=${clusterId}, endpoint=${endpoint}, nodeType=${nodeType}, status=${status}, resources = ${rString}]"
-    resources.foreach(n=>{
-      sb.append(n.toString)
-    })
-    s"<ErServerNode(id=${id},name = ${name},clusterId = ${clusterId},endpoint = ${endpoint},nodeType = ${nodeType},status = ${status} ,resources = ${sb.toString()})>"
+//    val sb = new StringBuilder
+////    sb.append("total number of exception(s) occured: ")
+////      .append(causes.length)
+////      .append(StringConstants.LF)
+//
+//    if(resources!=null) {
+//          var sb = new StringBuilder
+//          resources.flatMap(n=>n.toString)
+//    }
+//
+//   // s"ErServerNode[id=${id} , clusterId=${clusterId}, endpoint=${endpoint}, nodeType=${nodeType}, status=${status}, resources = ${rString}]"
+//    resources.foreach(n=>{
+//      sb.append(n.toString)
+//    })
+    s"<ErServerNode(id=${id},name = ${name},clusterId = ${clusterId},endpoint = ${endpoint},nodeType = ${nodeType},status = ${status} ,resources = ${resources.mkString})>"
   }
 
 }
@@ -236,6 +241,26 @@ object NetworkingModelPbMessageSerdes {
       baseSerializable.asInstanceOf[ErResourceAllocation].toBytes()
   }
 
+  implicit class ErNodeHeartbeatFromPbMessage(src: Meta.NodeHeartbeat = null) extends PbMessageDeserializer {
+    override def fromProto[T >: RpcMessage](): ErNodeHeartbeat = {
+      ErNodeHeartbeat(id = src.getId, node = src.getNode.fromProto())
+    }
+
+    override def fromBytes(bytes: Array[Byte]): ErNodeHeartbeat =
+      Meta.NodeHeartbeat.parseFrom(bytes).fromProto()
+  }
+  implicit class ErNodeHeartbeatToPbMessage(src: ErNodeHeartbeat) extends PbMessageSerializer {
+
+    override def toProto[T >: PbMessage](): Meta.NodeHeartbeat = {
+      var builder =  Meta.NodeHeartbeat.newBuilder()
+        .setId(src.id)
+        .setNode(src.node.toProto())
+      builder.build()
+    }
+    override def toBytes(baseSerializable: BaseSerializable): Array[Byte] = {
+      baseSerializable.asInstanceOf[ErNodeHeartbeat].toBytes()
+    }
+  }
 
 
 
@@ -250,7 +275,6 @@ object NetworkingModelPbMessageSerdes {
     implicit class ErResourceToPbMessage(src: ErResource) extends PbMessageSerializer {
 
     override def toProto[T >: PbMessage](): Meta.Resource = {
-
      var builder =  Meta.Resource.newBuilder()
         .setType(src.resourceType)
         .setTotal(src.total)
