@@ -4,58 +4,54 @@ import com.webank.eggroll.core.client.NodeManagerClient
 import com.webank.eggroll.core.constant._
 import com.webank.eggroll.core.error.ErSessionException
 import com.webank.eggroll.core.meta._
-import com.webank.eggroll.core.resourcemanager.{ClusterResourceManager, SessionMetaDao}
+import com.webank.eggroll.core.resourcemanager.job.ClusterManagerJobService.smDao
+import com.webank.eggroll.core.resourcemanager.{ClusterManagerService, ClusterResourceManager, ProcessorEvent, ProcessorEventCallback, SessionMetaDao}
 import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator
+import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.util.Logging
+import org.apache.commons.lang3.StringUtils
 
-import scala.collection.JavaConverters.mapAsJavaMapConverter
+import scala.collection.JavaConverters.seqAsJavaListConverter
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.util.Random
 import scala.util.control.Breaks.{break, breakable}
 
-class ClusterManagerJobService extends Logging {
+
+object ClusterManagerJobService{
   private val smDao = new SessionMetaDao
-
-  private def dispatchDeepSpeed(worldSize: Int): Array[(ErProcessor, ErServerNode)] = {
-    // cluster nodes
-    val serverNodes = new ServerNodeCrudOperator().getServerNodesWithResource(
-      ErServerNode(status = ServerNodeStatus.HEALTHY, nodeType = ServerNodeTypes.NODE_MANAGER)
-    )
-
-
-
-    val shuffledNodes = Random.shuffle(serverNodes.toSeq)
-    // dispatch processors
-    // FIXME: evenly distribute processors to nodes for now
-    val nodeToProcessors = mutable.Map[ErServerNode, Seq[ErProcessor]]()
-
-    for (index <- 0 until worldSize) {
-      val node = shuffledNodes(index % shuffledNodes.size)
-      val host = node.endpoint.host
-      val globalRank = index
-      val localRank = nodeToProcessors.getOrElse(node, Seq()).size
-
-      val processor = ErProcessor(
-        serverNodeId = node.id,
-        processorType = JobProcessorTypes.DeepSpeed.toString,
-        commandEndpoint = ErEndpoint(host, 0),
-        status = ProcessorStatus.NEW,
-        options = Map(
-          "globalRank" -> globalRank.toString,
-          "localRank" -> localRank.toString
-        ).asJava
-      )
-      if (nodeToProcessors.contains(node)) {
-        nodeToProcessors(node) :+= processor
-      } else {
-        nodeToProcessors(node) = Seq(processor)
-      }
+  def killJob(sessionId :String):Unit ={
+    if (!smDao.existSession(sessionId)) {
+      return null
     }
-    nodeToProcessors.flatMap { case (node, processors) =>
-      processors.map(p => (p, node))
-    }(collection.breakOut)
+    val serverNodeCrudOperator = new ServerNodeCrudOperator()
+    val dbSessionMeta = smDao.getSession(sessionId)
+    if (StringUtils.equalsAny(dbSessionMeta.status, SessionStatus.KILLED, SessionStatus.CLOSED, SessionStatus.ERROR)) {
+      return dbSessionMeta
+    }
+    val nodeProcessorMap  = dbSessionMeta.processors.groupBy(p=>p.serverNodeId)
+      .map(e=>(serverNodeCrudOperator.getServerNode(ErServerNode(id=e._1)),e._2))
+    nodeProcessorMap.par.foreach(n=>{
+      try {
+        val nodeManagerClient = new NodeManagerClient(ErEndpoint(host = n._1.endpoint.host, port = n._1.endpoint.port))
+          nodeManagerClient.killJobContainers(ErJobMeta(id = sessionId, processors = n._2))
+      }catch {
+        case e :Exception =>  e.printStackTrace()
+      }
+    })
+
   }
+  ClusterManagerService.registerProcessorCallback(ProcessorEventType.PROCESSOR_LOSS,new ProcessorEventCallback {
+    override def callback(event: ProcessorEvent): Unit = {
+      new Thread(()=>{
+        killJob(event.erProcessor.sessionId)
+      }).start()
+    }
+  })
+}
+
+class ClusterManagerJobService extends Logging {
+
 
   def submitJob(submitJobMeta: ErJobMeta): ErJobMeta = {
     JobProcessorTypes.fromString(submitJobMeta.jobType) match {

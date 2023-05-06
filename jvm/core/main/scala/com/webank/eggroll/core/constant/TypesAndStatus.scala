@@ -86,8 +86,13 @@ object ResourceOperationType{
     var FREE  =  "FREE"
 }
 object  ResourceOperationStauts{
-    var  SUCCESS  = "SUCCESS"
-    var  FAILED =  "FAILED"
+    val  SUCCESS  = "SUCCESS"
+    val  FAILED =  "FAILED"
+}
+
+object  ProcessorEventType{
+   val   PROCESSOR_LOSS = "PROCESSOR_LOSS"
+
 }
 
 
