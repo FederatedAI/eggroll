@@ -4,7 +4,7 @@ import java.io.File
 import org.apache.commons.lang3.StringUtils
 import com.webank.eggroll.core.BootstrapBase
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
-import com.webank.eggroll.core.constant.{ClusterManagerConfKeys, CoreConfKeys, JobCommands, MetadataCommands, RendezvousStoreCommands, SessionCommands}
+import com.webank.eggroll.core.constant.{ClusterManagerConfKeys, CoreConfKeys, JobCommands, MetadataCommands, ManagerCommands, RendezvousStoreCommands, SessionCommands}
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.resourcemanager.job.{ClusterManagerJobService, RendezvousStoreService}
 import com.webank.eggroll.core.resourcemanager.metadata.{ServerNodeCrudOperator, StoreCrudOperator}
@@ -109,6 +109,19 @@ class ClusterManagerBootstrap extends BootstrapBase with Logging {
       routeToClass = classOf[SessionManagerService],
       routeToMethodName = SessionCommands.heartbeat.getName())
 
+        CommandRouter.register(serviceName = ManagerCommands.nodeHeartbeat.uriString,
+      serviceParamTypes = Array(classOf[ErNodeHeartbeat]),
+      serviceResultTypes = Array(classOf[ErNodeHeartbeat]),
+      routeToClass = classOf[ClusterManagerService],
+      routeToMethodName = ManagerCommands.nodeHeartbeat.getName())
+
+    CommandRouter.register(serviceName = ManagerCommands.registerResource.uriString,
+      serviceParamTypes = Array(classOf[ErServerNode]),
+      serviceResultTypes = Array(classOf[ErServerNode]),
+      routeToClass = classOf[ClusterManagerService],
+      routeToMethodName = ManagerCommands.registerResource.getName())
+
+
     // submit job
     CommandRouter.register(serviceName = JobCommands.submitJob.uriString,
       serviceParamTypes = Array(classOf[ErJobMeta]),
@@ -179,5 +192,6 @@ class ClusterManagerBootstrap extends BootstrapBase with Logging {
     StaticErConf.setPort(port)
     logInfo(s"${standaloneTag} server started at port ${port}")
     println(s"${standaloneTag} server started at port ${port}")
+    ClusterManagerService.start()
   }
 }

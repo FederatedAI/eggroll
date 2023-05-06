@@ -167,4 +167,10 @@ message JobMeta {
   string status = 10;
   repeated Processor processors = 11;
 }
+message NodeHeartbeat{
+  uint64 id = 1;
+  ServerNode node = 2;
+  string code = 3;
+  string msg = 4;
 
+}

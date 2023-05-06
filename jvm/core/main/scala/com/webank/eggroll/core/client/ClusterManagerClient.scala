@@ -107,8 +107,8 @@ class ClusterManagerClient(val endpoint: ErEndpoint) {
   def heartbeat(processor: ErProcessor): ErProcessor =
     cc.call[ErProcessor](SessionCommands.heartbeat, processor)
 
-  def nodeHeartbeat(node: ErServerNode): ErServerNode =
-    cc.call[ErServerNode](ManagerCommands.nodeHeartbeat,node)
+  def nodeHeartbeat(node: ErNodeHeartbeat): ErNodeHeartbeat =
+    cc.call[ErNodeHeartbeat](ManagerCommands.nodeHeartbeat,node)
 
   def registerResource(node: ErServerNode): ErServerNode =
     cc.call[ErServerNode](ManagerCommands.registerResource,node)

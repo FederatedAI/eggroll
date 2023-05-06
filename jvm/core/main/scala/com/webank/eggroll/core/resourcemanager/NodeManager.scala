@@ -2,7 +2,7 @@ package com.webank.eggroll.core.resourcemanager
 
 import com.google.gson.Gson
 import com.webank.eggroll.core.constant.{ClusterManagerConfKeys, CoreConfKeys, NodeManagerConfKeys, ProcessorStatus, ResourceManagerConfKeys, ResourceOperationStauts, ResourceOperationType, ResourceTypes, ServerNodeTypes, StringConstants}
-import com.webank.eggroll.core.meta.{ErEndpoint, ErProcessor, ErResource, ErResourceAllocation, ErServerNode, ErSessionMeta}
+import com.webank.eggroll.core.meta.{ErEndpoint, ErNodeHeartbeat, ErProcessor, ErResource, ErResourceAllocation, ErServerNode, ErSessionMeta}
 import com.webank.eggroll.core.session.RuntimeErConf
 import com.webank.eggroll.core.client.ClusterManagerClient
 import com.webank.eggroll.core.constant.ServerNodeStatus.{HEALTHY, INIT}
@@ -12,6 +12,7 @@ import com.webank.eggroll.core.util.{FileSystemUtils, GetSystemInfo, Logging, Ne
 
 import java.io.File
 import java.util
+import java.util.UUID
 import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.atomic.AtomicLong
 import scala.collection.mutable
@@ -34,7 +35,6 @@ object NodeManagerMeta{
       var gson = new Gson()
       var content = FileSystemUtils.fileReader(filePath)
       var  contentMap = gson.fromJson(content,classOf[NodeManagerMeta]);
-      println(s"================contentMap ============${content}  ${contentMap}")
       NodeManagerMeta.serverNodeId = contentMap.serverNodeId
       NodeManagerMeta.clusterId = contentMap.clusterId
     }
@@ -55,8 +55,13 @@ trait NodeManager {
 
 }
 
+object NodeManagerService extends Logging {
+    val uuid :String  =  UUID.randomUUID().toString
+}
+
+
 class NodeManagerService extends NodeManager with Logging {
-  var status =  HEALTHY
+  //var status =  HEALTHY
   var host = StaticErConf.getString(
     ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST)
   var port  = StaticErConf.getString(
@@ -269,8 +274,6 @@ object  NodeResourceManager extends  Logging {
             countCpuResource();
             countMemoryResource();
             countGpuResource();
-
-            //logInfo(s"resource ==========${resourceMap}")
           }
           catch {
             case t: Throwable =>
@@ -293,47 +296,34 @@ object  NodeResourceManager extends  Logging {
                       used=r.used.get(),
                       allocated = r.allocated.get())}))
 
-
-//      logInfo(s"NodeManger registerResource ${param}")
-//      client.registerResource(param)
-
   }
 
-//  class ResourceReportThread extends Thread{
-//      override   def  run(): Unit ={
-//        while (true){
-//          try {
-//            resourceEventQueue.poll()
-//            registerResource(ErServerNode(id=NodeManagerMeta.serverNodeId,clusterId = NodeManagerMeta.clusterId))
-//          }catch{
-//            case t: Throwable =>
-//          }
-//
-//        }
-//      }
-//  }
+
 
   class HeartBeatThread extends Thread{
     override def run(){
       var  notOver : Boolean = true
+      var  seq :Long = 0
+
       while(notOver){
         try {
-          var serverNode = client.nodeHeartbeat(ErServerNode(id = NodeManagerMeta.serverNodeId,
+          seq +=1
+          var nodeHeartBeat = client.nodeHeartbeat(ErNodeHeartbeat (id= seq ,node =queryNodeResource(ErServerNode(id = NodeManagerMeta.serverNodeId,
             nodeType = ServerNodeTypes.NODE_MANAGER,
             endpoint = ErEndpoint(host = StaticErConf.getString(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HOST, NetUtils.getLocalHost),
               port = StaticErConf.getString(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT).toInt),
-            status = NodeManagerMeta.status
+            status = NodeManagerMeta.status)
           ))
+          )
   //        logDebug(s"node heart beat return ${serverNode}")
 
 //          logInfo(s"cluster manager return ${serverNode}")
 //          logInfo(s"======node manager status ${NodeManagerMeta.status}")
-          if (serverNode != null) {
+          if (nodeHeartBeat != null&&nodeHeartBeat.node!=null) {
           if (NodeManagerMeta.status.equals(INIT)) {
               NodeManagerMeta.status =  HEALTHY
-
-              NodeManagerMeta.serverNodeId = serverNode.id;
-              NodeManagerMeta.clusterId = serverNode.clusterId
+              NodeManagerMeta.serverNodeId = nodeHeartBeat.node.id
+              NodeManagerMeta.clusterId = nodeHeartBeat.node.clusterId
             logInfo(s"==============================${NodeManagerMeta.serverNodeId}")
               NodeManagerMeta.refreshServerNodeMetaIntoFile()
 
