@@ -110,8 +110,8 @@ class ClusterManagerBootstrap extends BootstrapBase with Logging {
       routeToMethodName = SessionCommands.heartbeat.getName())
 
         CommandRouter.register(serviceName = ManagerCommands.nodeHeartbeat.uriString,
-      serviceParamTypes = Array(classOf[ErServerNode]),
-      serviceResultTypes = Array(classOf[ErServerNode]),
+      serviceParamTypes = Array(classOf[ErNodeHeartbeat]),
+      serviceResultTypes = Array(classOf[ErNodeHeartbeat]),
       routeToClass = classOf[ClusterManagerService],
       routeToMethodName = ManagerCommands.nodeHeartbeat.getName())
 
