@@ -25,7 +25,7 @@ import java.util.Date
 import com.webank.eggroll.core.constant.{ResourceStatus, ServerNodeStatus, ServerNodeTypes}
 import com.webank.eggroll.core.error.CrudException
 import com.webank.eggroll.core.meta.{ErEndpoint, ErProcessor, ErResource, ErServerCluster, ErServerNode, ErSessionMeta}
-import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator.{dbc, doGetServerNodesWithResource}
+import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator.{dbc, doGetServerNodesWithResource, doUpdateServerNodeById}
 import com.webank.eggroll.core.resourcemanager.BaseDao
 import com.webank.eggroll.core.resourcemanager.BaseDao.NotExistError
 import com.webank.eggroll.core.util.JdbcTemplate.ResultSetIterator
@@ -51,6 +51,14 @@ class ServerNodeCrudOperator extends CrudOperator with Logging {
     } else {
       null
     }
+  }
+
+  def  createServerNode(input:ErServerNode) :ErServerNode = {
+    ServerNodeCrudOperator.doCreateServerNode(input)
+  }
+
+  def updateServerNodeById(input: ErServerNode, isHeartbeat: Boolean = false): ErServerNode = {
+    doUpdateServerNodeById(input,isHeartbeat)
   }
 
 
@@ -182,7 +190,7 @@ def doCreateServerNode(input: ErServerNode): ErServerNode = {
     dbc.queryOne("select * from session_main where session_id = ?", sessionId).nonEmpty
   }
 
-  def doUpdateServerNode(input: ErServerNode, isHeartbeat: Boolean = false): ErServerNode = {
+  private def doUpdateServerNodeById(input: ErServerNode, isHeartbeat: Boolean = false): ErServerNode = {
     val nodeRecord = dbc.withTransaction(conn => {
       var sql = "update server_node set " +
         " host = ?, port = ?,  status = ? "
@@ -445,7 +453,7 @@ def doCreateServerNode(input: ErServerNode): ErServerNode = {
     if (existing.nonEmpty) {
       var  existNode = existing(0)
       var param = input.copy(id= existNode.id)
-      doUpdateServerNode(param, isHeartbeat)
+      doUpdateServerNodeById(param, isHeartbeat)
     } else {
       doCreateServerNode(input)
     }
