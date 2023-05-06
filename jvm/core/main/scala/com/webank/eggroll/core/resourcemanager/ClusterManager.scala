@@ -4,6 +4,7 @@ import com.webank.eggroll.core.ErSession
 import com.webank.eggroll.core.client.NodeManagerClient
 import com.webank.eggroll.core.constant.ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_NODE_HEARTBEAT_EXPIRED_COUNT
 import com.webank.eggroll.core.constant.NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL
+
 import com.webank.eggroll.core.constant.{ProcessorStatus, ServerNodeStatus, ServerNodeTypes}
 import com.webank.eggroll.core.meta.{ErProcessor, ErResource, ErServerNode, ErSessionMeta}
 import com.webank.eggroll.core.resourcemanager.ClusterManagerService.nodeHeartbeatChecker
@@ -19,28 +20,23 @@ trait ClusterManager {
         def registerResource(data: ErServerNode): ErServerNode
         def nodeHeartbeat(data : ErServerNode): ErServerNode
         }
-//        object ClusterResourceRegister{
-//        var cpuResourceMap =  new ConcurrentHashMap[Long, ResourceWrapper]()
-//        var gpuResourceMap =  new ConcurrentHashMap[Long,ResourceWrapper]();
-//        var memoryResourceMap = new ConcurrentHashMap[Long,ResourceWrapper]();
-//        }
- 
 
 object ClusterManagerService extends Logging {
+
+  var  processorEventCallbackRegister = mutable.Map[String,ProcessorEventCallback]()
+
+  def  registerProcessorCallback(processType:String,sessionEventCallback: ProcessorEventCallback):Unit={
+    processorEventCallbackRegister.put(processType,sessionEventCallback)
+  }
+
   var  nodeProcessChecker = new  Thread(()=>{
     var  serverNodeCrudOperator = new ServerNodeCrudOperator
     while(true) {
       try {
         var now = System.currentTimeMillis();
         var erProcessors = serverNodeCrudOperator.queryProcessor(null,ErProcessor(status = ProcessorStatus.RUNNING));
-//        erProcessors.foreach(t=>{
-//          logInfo(s"node process checker running processor  ${t}")
-//        })
-
-
         var  grouped =erProcessors.groupBy(x=>{
           x.serverNodeId})
-          //mapValues(_.filter(now - _.updatedAt.getTime > 10000))
         grouped .par.
           foreach(e => {
             var serverNode = serverNodeCrudOperator.getServerNode(ErServerNode(id = e._1))
@@ -55,7 +51,11 @@ object ClusterManagerService extends Logging {
                   var activeCount = serverNodeCrudOperator.queryProcessor(conn,processor.copy(status = ProcessorStatus.RUNNING)).length
                   serverNodeCrudOperator.updateSessionProcessCount(connection = conn, ErSessionMeta(id = processor.sessionId, activeProcCount = activeCount))
                 })
-
+                processorEventCallbackRegister.get(processor.processorType).getOrElse(new ProcessorEventCallback{
+                  override def callback(event: ProcessorEvent): Unit = {
+                    logInfo(s"processor type ${processor.processorType} can not find callback")
+                  }
+                }).callback(ProcessorEvent(eventType = PROCESSOR_LOSS,erProcessor=processor))
 
               }
             })
@@ -110,6 +110,8 @@ object ClusterManagerService extends Logging {
 class ClusterManagerService extends   ClusterManager with Logging{
 
     lazy val serverNodeCrudOperator = new ServerNodeCrudOperator()
+
+
 
 
 

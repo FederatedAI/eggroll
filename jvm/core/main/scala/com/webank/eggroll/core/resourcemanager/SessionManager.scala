@@ -1,9 +1,11 @@
 package com.webank.eggroll.core.resourcemanager
 
+import com.webank.eggroll.core.Bootstrap.logDebug
 import com.webank.eggroll.core.client.NodeManagerClient
 import com.webank.eggroll.core.constant._
 import com.webank.eggroll.core.error.ErSessionException
 import com.webank.eggroll.core.meta.{ErEndpoint, ErProcessor, ErResource, ErServerNode, ErSessionMeta}
+import com.webank.eggroll.core.resourcemanager.SessionManagerService.smDao
 import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.util.Logging
@@ -48,9 +50,89 @@ trait SessionManager {
 
   def killAllSessions(sessionMeta: ErSessionMeta): ErSessionMeta
 }
+object SessionManagerService{
+
+  private val smDao = new SessionMetaDao
+   ClusterManagerService.registerProcessorCallback(ProcessorTypes.EGG_PAIR, new ProcessorEventCallback() {
+     override def callback(event: ProcessorEvent): Unit = {
+        event.eventType match{
+          case  ProcessorEventType.PROCESSOR_LOSS =>
+              new Thread(()=>{
+                logDebug(s"fire PROCESSOR_LOSS event, prepare to kill session ${event.erProcessor.sessionId}")
+                var  erSessionMeta = getSessionMain(event.erProcessor.sessionId)
+                killSession(erSessionMeta)
+              }).start()
+        }
+     }
+   })
+
+  /**
+   * get session detail
+   * @param sessionMeta contains session id
+   * @return session main and options and processors
+   */
+  def getSession(sessionMeta: ErSessionMeta): ErSessionMeta = {
+    logDebug(s"SESSION getSession: ${sessionMeta}")
+    var result: ErSessionMeta = null
+    val startTimeout = System.currentTimeMillis() + SessionConfKeys.EGGROLL_SESSION_START_TIMEOUT_MS.get().toLong
+    // todo:1: use retry framework
+    breakable {
+      while (System.currentTimeMillis() <= startTimeout) {
+        result = smDao.getSession(sessionMeta.id)
+        if (result != null && !result.status.equals(SessionStatus.NEW) && !StringUtils.isBlank(result.id)) {
+          break()
+        } else {
+          Thread.sleep(100)
+        }
+      }
+    }
+
+    result
+  }
+
+  def getSessionMain(sessionId: String): ErSessionMeta = {
+    smDao.getSessionMain(sessionId)
+  }
+
+   def killSession(sessionMeta: ErSessionMeta): ErSessionMeta = {
+    killSession(sessionMeta, SessionStatus.KILLED)
+  }
+
+   def killSession(sessionMeta: ErSessionMeta, afterState: String): ErSessionMeta = {
+    val sessionId = sessionMeta.id
+    if (!smDao.existSession(sessionId)) {
+      return null
+    }
+    val dbSessionMeta = smDao.getSession(sessionId)
+    if (StringUtils.equalsAny(dbSessionMeta.status, SessionStatus.KILLED, SessionStatus.CLOSED, SessionStatus.ERROR)) {
+      return dbSessionMeta
+    }
+    val sessionHosts = dbSessionMeta.processors.map(p => p.commandEndpoint.host).toSet
+    val serverNodeCrudOperator = new ServerNodeCrudOperator()
+    val sessionServerNodes = serverNodeCrudOperator.getServerClusterByHosts(sessionHosts.toList.asJava).serverNodes
+
+    sessionServerNodes.par.foreach(n => {
+      // TODO:1: add new params?
+      val newSessionMeta = dbSessionMeta.copy(
+        options = dbSessionMeta.options ++ Map(ResourceManagerConfKeys.SERVER_NODE_ID -> n.id.toString))
+      val nodeManagerClient = new NodeManagerClient(
+        ErEndpoint(host = n.endpoint.host,
+          port = StaticErConf.getInt(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT, -1)))
+      nodeManagerClient.killContainers(newSessionMeta)
+    })
+
+    // todo:1: update selective
+    smDao.updateSessionMain(dbSessionMeta.copy(activeProcCount = 0, status = afterState))
+    var  resultSession = getSession(dbSessionMeta)
+    //ClusterResourceManager.returnResource(dbSessionMeta.processors)
+    resultSession
+  }
+
+}
+
 
 class SessionManagerService extends SessionManager with Logging {
-  private val smDao = new SessionMetaDao
+
   def heartbeat(proc: ErProcessor): ErProcessor = {
     smDao.updateProcessor(proc)
       proc.status match {
@@ -71,9 +153,7 @@ class SessionManagerService extends SessionManager with Logging {
     proc
   }
 
-  def getSessionMain(sessionId: String): ErSessionMeta = {
-    smDao.getSessionMain(sessionId)
-  }
+
   /**
    * get or create session
    * @param sessionMeta session main and options
@@ -84,7 +164,6 @@ class SessionManagerService extends SessionManager with Logging {
     val sessionId = sessionMeta.id
     if (smDao.existSession(sessionId)) {
       var result = smDao.getSession(sessionId)
-
       if (result != null) {
         if (result.status.equals(SessionStatus.ACTIVE)) {
           return result
@@ -224,29 +303,7 @@ class SessionManagerService extends SessionManager with Logging {
     getSession(sessionMeta)
   }
 
-  /**
-   * get session detail
-   * @param sessionMeta contains session id
-   * @return session main and options and processors
-   */
-  def getSession(sessionMeta: ErSessionMeta): ErSessionMeta = {
-    logDebug(s"SESSION getSession: ${sessionMeta}")
-    var result: ErSessionMeta = null
-    val startTimeout = System.currentTimeMillis() + SessionConfKeys.EGGROLL_SESSION_START_TIMEOUT_MS.get().toLong
-    // todo:1: use retry framework
-    breakable {
-      while (System.currentTimeMillis() <= startTimeout) {
-        result = smDao.getSession(sessionMeta.id)
-        if (result != null && !result.status.equals(SessionStatus.NEW) && !StringUtils.isBlank(result.id)) {
-          break()
-        } else {
-          Thread.sleep(100)
-        }
-      }
-    }
 
-    result
-  }
 
   /**
    * register session without boot processors
@@ -323,39 +380,6 @@ class SessionManagerService extends SessionManager with Logging {
     stoppedSessionMain
   }
 
-  override def killSession(sessionMeta: ErSessionMeta): ErSessionMeta = {
-    killSession(sessionMeta, SessionStatus.KILLED)
-  }
-
-  override def killSession(sessionMeta: ErSessionMeta, afterState: String): ErSessionMeta = {
-    val sessionId = sessionMeta.id
-    if (!smDao.existSession(sessionId)) {
-      return null
-    }
-    val dbSessionMeta = smDao.getSession(sessionId)
-    if (StringUtils.equalsAny(dbSessionMeta.status, SessionStatus.KILLED, SessionStatus.CLOSED, SessionStatus.ERROR)) {
-      return dbSessionMeta
-    }
-    val sessionHosts = dbSessionMeta.processors.map(p => p.commandEndpoint.host).toSet
-    val serverNodeCrudOperator = new ServerNodeCrudOperator()
-    val sessionServerNodes = serverNodeCrudOperator.getServerClusterByHosts(sessionHosts.toList.asJava).serverNodes
-
-    sessionServerNodes.par.foreach(n => {
-      // TODO:1: add new params?
-      val newSessionMeta = dbSessionMeta.copy(
-        options = dbSessionMeta.options ++ Map(ResourceManagerConfKeys.SERVER_NODE_ID -> n.id.toString))
-      val nodeManagerClient = new NodeManagerClient(
-        ErEndpoint(host = n.endpoint.host,
-          port = StaticErConf.getInt(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT, -1)))
-      nodeManagerClient.killContainers(newSessionMeta)
-    })
-
-    // todo:1: update selective
-    smDao.updateSessionMain(dbSessionMeta.copy(activeProcCount = 0, status = afterState))
-     var  resultSession = getSession(dbSessionMeta)
-    //ClusterResourceManager.returnResource(dbSessionMeta.processors)
-    resultSession
-  }
 
   // todo:1: return value
   override def killAllSessions(sessionMeta: ErSessionMeta): ErSessionMeta = {
@@ -366,4 +390,20 @@ class SessionManagerService extends SessionManager with Logging {
 
     ErSessionMeta()
   }
+
+  override def getSessionMain(sessionId: String): ErSessionMeta = {
+    SessionManagerService.getSessionMain(sessionId)
+  }
+
+  /**
+   * get session detail
+   *
+   * @param sessionMeta contains session id
+   * @return session main and options and processors
+   */
+  override def getSession(sessionMeta: ErSessionMeta): ErSessionMeta = SessionManagerService.getSession(sessionMeta)
+
+  override def killSession(sessionMeta: ErSessionMeta): ErSessionMeta = SessionManagerService.killSession(sessionMeta)
+
+  override def killSession(sessionMeta: ErSessionMeta, afterState: String): ErSessionMeta = SessionManagerService.killSession(sessionMeta,afterState)
 }
