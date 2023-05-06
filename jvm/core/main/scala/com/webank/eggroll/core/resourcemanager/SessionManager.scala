@@ -50,7 +50,7 @@ trait SessionManager {
 
   def killAllSessions(sessionMeta: ErSessionMeta): ErSessionMeta
 }
-object SessionManagerService{
+object SessionManagerService extends Logging {
 
   private val smDao = new SessionMetaDao
    ClusterManagerService.registerProcessorCallback(ProcessorTypes.EGG_PAIR, new ProcessorEventCallback() {
