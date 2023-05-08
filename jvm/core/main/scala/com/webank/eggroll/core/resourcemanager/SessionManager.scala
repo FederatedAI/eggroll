@@ -5,12 +5,13 @@ import com.webank.eggroll.core.client.NodeManagerClient
 import com.webank.eggroll.core.constant._
 import com.webank.eggroll.core.error.ErSessionException
 import com.webank.eggroll.core.meta.{ErEndpoint, ErProcessor, ErResource, ErServerNode, ErSessionMeta}
-import com.webank.eggroll.core.resourcemanager.SessionManagerService.smDao
+import com.webank.eggroll.core.resourcemanager.SessionManagerService.{beforeCall, serverNodeCrudOperator, smDao}
 import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.util.Logging
 import org.apache.commons.lang3.StringUtils
 
+import java.sql.Connection
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
@@ -53,6 +54,14 @@ trait SessionManager {
 object SessionManagerService extends Logging {
 
   private val smDao = new SessionMetaDao
+  private val serverNodeCrudOperator = new  ServerNodeCrudOperator()
+
+  val beforeCall:(Connection,ErProcessor)=>Unit =((conn,proc)=>{
+    smDao.updateProcessor(conn, proc)
+  })
+
+
+
    ClusterManagerService.registerProcessorCallback(ProcessorTypes.EGG_PAIR, new ProcessorEventCallback() {
      override def callback(event: ProcessorEvent): Unit = {
         event.eventType match{
@@ -133,15 +142,23 @@ object SessionManagerService extends Logging {
 
 class SessionManagerService extends SessionManager with Logging {
 
+
+
+
   def heartbeat(proc: ErProcessor): ErProcessor = {
-    smDao.updateProcessor(proc)
+   // smDao.updateProcessor(proc)
+
+    logInfo(s"receive heartbeat processor ${proc.id}  ${proc.status} ")
       proc.status match {
 
-      case status if(status==ProcessorStatus.STOPPED||status==ProcessorStatus.KILLED||status==ProcessorStatus.ERROR)=>    ClusterResourceManager.returnResource(Array(proc))
+      case status if(status==ProcessorStatus.STOPPED||status==ProcessorStatus.KILLED||status==ProcessorStatus.ERROR)=>
+          logInfo(s"processor ${proc.id}    prepare to return resource")
+           ClusterResourceManager.returnResource(beforeCall= beforeCall,processors =Array(proc))
+
 
       case ProcessorStatus.RUNNING =>
           logInfo("receive heartbeat running ,")
-          ClusterResourceManager.allocateResource(Array(proc))
+          ClusterResourceManager.allocateResource(Array(proc),beforeCall= beforeCall)
     }
 //    if(proc.status==ProcessorStatus.STOPPED||
 //      proc.status==ProcessorStatus.KILLED||
