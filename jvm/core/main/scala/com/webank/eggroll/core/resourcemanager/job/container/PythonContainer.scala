@@ -18,7 +18,6 @@
 
 package com.webank.eggroll.core.resourcemanager.job.container
 
-import java.io._
 import java.nio.file.Path
 
 class PythonContainer(
@@ -29,18 +28,11 @@ class PythonContainer(
                        extraEnv: Map[String, String] = Map.empty,
                        stdErrFile: Option[Path] = None,
                        stdOutFile: Option[Path] = None,
-                       workingDirectoryPreparer: Option[WorkingDirectoryPreparer] = None,
-                       containerId: String,
-                       processorId: Long
-                     )
-
+                       workingDirectoryPreparer: Option[WorkingDirectoryPreparer] = None)
   extends ProcessContainer(
     command = Seq(pythonExec, "-u", scriptPath) ++ scriptArgs,
     extraEnv = extraEnv,
     stdOutFile = stdOutFile,
     stdErrFile = stdErrFile,
     cwd = cwd,
-    workingDirectoryPreparer = workingDirectoryPreparer,
-    containerId = containerId,
-    processorId =  processorId
-  )
+    workingDirectoryPreparer = workingDirectoryPreparer)
