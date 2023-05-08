@@ -143,15 +143,22 @@ object ClusterResourceManager extends Logging{
 
 
 
-  def  allocateResource(processors: Array[ErProcessor] ) : Unit=synchronized{
+  def  allocateResource(processors: Array[ErProcessor] ,beforeCall:(Connection,ErProcessor)=>Unit =null,afterCall:(Connection,ErProcessor)=>Unit =null) : Unit=synchronized{
     ServerNodeCrudOperator.dbc.withTransaction(conn=> {
+
+
+
       var allocateResourceProcessor = processors.map(p => {
         p.copy(resources = serverNodeCrudOperator.queryProcessorResource(conn,p,ResourceStatus.PRE_ALLOCATED).map(_.copy(status=ResourceStatus.ALLOCATED)))
       })
       var flatedResource = flatResources(allocateResourceProcessor)
       logInfo(s"flated resource ${flatedResource}")
       allocateResourceProcessor.foreach(p=> {
+        if(beforeCall!=null)
+            beforeCall(conn,p)
         serverNodeCrudOperator.updateProcessorResource(conn, p);
+        if(afterCall!=null)
+            afterCall(conn,p)
       })
 
       flatedResource.foreach(e => {
@@ -174,33 +181,42 @@ object ClusterResourceManager extends Logging{
     })
   }
 
-  def  returnResource(processors: Array[ErProcessor],f:(Connection)=>Unit =null ):  Unit=synchronized{
+  def  returnResource(processors: Array[ErProcessor],beforeCall:(Connection,ErProcessor)=>Unit =null,afterCall:(Connection,ErProcessor)=>Unit =null):  Unit=synchronized{
     logInfo(s"return resource ${processors.mkString("<",",",">")}")
     ServerNodeCrudOperator.dbc.withTransaction(conn=> {
       try {
-        if (f != null) {
-          f(conn)
-        }
 
       processors.foreach(p => {
+
+        if (beforeCall != null) {
+          beforeCall(conn,p)
+        }
         var resourceInDb = serverNodeCrudOperator.queryProcessorResource(conn, p, ResourceStatus.ALLOCATED)
         resourceInDb.foreach(r => {
           logInfo(s"processor ${p.id} return resource ${r}")
         })
-
         if (resourceInDb.length > 0) {
           serverNodeCrudOperator.updateProcessorResource(conn, p.copy(resources = resourceInDb.map(_.copy(status = ResourceStatus.RETURN))))
           serverNodeCrudOperator.returnNodeResource(conn, p.serverNodeId, resourceInDb)
         }
+        if  (afterCall!=null){
+          afterCall(conn,p)
+        }
+
       })
+
     }catch{
       case e :Exception =>{
         e.printStackTrace()
       }
-
-
     }
-    })
+    }
+
+
+
+    )
+
+    logInfo("==============over========")
 
   }
 
@@ -279,6 +295,7 @@ object ClusterResourceManager extends Logging{
 
     def  checkResource(erServerNodes:Array[ErServerNode],processors :Array[ErProcessor],allowExhauted:Boolean): Boolean={
        var  result = true
+      require(erServerNodes.length>0)
      var  erServerNode = erServerNodes.reduce((x,y)=>{
         var  newResource = (x.resources.toBuffer++y.resources).toArray
         x.copy(resources =newResource)
