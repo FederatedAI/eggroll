@@ -18,10 +18,16 @@ class ProcessContainer(
   // set working dir for workingDirectoryPreparer
   workingDirectoryPreparer.foreach(wdp => wdp.setWorkingDir(cwd))
 
+  def preStart(): Unit = {}
+
+  def postStart(): Unit = {}
+
   def start(): Boolean = {
+    preStart()
     workingDirectoryPreparer.foreach(_.prepare())
     try {
 
+    val output = try {
       val javaProcessBuilder = new java.lang.ProcessBuilder(command: _*)
         .directory(cwd.toFile)
       stdOutFile.foreach { f =>
@@ -43,6 +49,8 @@ class ProcessContainer(
     } finally {
       workingDirectoryPreparer.foreach(_.cleanup())
     }
+    postStart()
+    output
   }
 
   def waitForCompletion(): Int = {
