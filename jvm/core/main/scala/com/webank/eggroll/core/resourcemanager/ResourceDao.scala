@@ -3,10 +3,12 @@ package com.webank.eggroll.core.resourcemanager
 import com.webank.eggroll.core.constant.{ProcessorStatus, SessionConfKeys, SessionStatus}
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.resourcemanager.BaseDao.NotExistError
+import com.webank.eggroll.core.resourcemanager.SessionManagerService.{serverNodeCrudOperator, smDao}
 import com.webank.eggroll.core.util.JdbcTemplate
 import com.webank.eggroll.core.util.JdbcTemplate.ResultSetIterator
 import org.apache.commons.lang3.StringUtils
 
+import java.sql.Connection
 import scala.collection.mutable.ArrayBuffer
 
 class ServerMetaDao {
@@ -104,6 +106,51 @@ class SessionMetaDao {
     proc
   }
 
+
+  def updateProcessor(conn :Connection,proc: ErProcessor): Unit = synchronized {
+    val (session_id: String, oldStatus: String) = dbc.query(conn, rs => {
+      if (!rs.next()) {
+        throw new NotExistError("processor not exits:" + proc)
+      }
+      (rs.getString("session_id"), rs.getString("status"))
+    }, "select session_id, status from session_processor where processor_id=?", proc.id)
+
+
+      var sql = "update session_processor set status = ?"
+      var params = List(proc.status)
+      var host = dbc.query(rs => {
+        if (!rs.next()) throw new NotExistError(s"host of server_node_id ${proc.serverNodeId} not exists")
+        rs.getString("host")
+      }, "select host from server_node where server_node_id = ?", proc.serverNodeId)
+
+      if (!StringUtils.isBlank(proc.tag)) {
+        sql += ", tag = ?"
+        params ++= Array(proc.tag)
+      }
+      if (proc.commandEndpoint != null) {
+        sql += ", command_endpoint = ?"
+        params ++= Array(s"${host}:${proc.commandEndpoint.port}")
+      }
+      if (proc.transferEndpoint != null) {
+        sql += ", transfer_endpoint = ?"
+        params ++= Array(s"${host}:${proc.transferEndpoint.port}")
+      }
+      if (proc.pid > 0) {
+        sql += ", pid = ?"
+        params ++= Array(proc.pid.toString)
+      }
+
+      sql += " where processor_id = ?"
+      params ++= Array(proc.id.toString)
+      dbc.update(conn, sql, params:_*)
+      if (oldStatus == ProcessorStatus.RUNNING && proc.status != ProcessorStatus.RUNNING)  {
+        dbc.update(conn, "update session_main set active_proc_count = active_proc_count - 1 where session_id = ?", session_id)
+      } else if (oldStatus != ProcessorStatus.RUNNING && proc.status == ProcessorStatus.RUNNING) {
+        dbc.update(conn, "update session_main set active_proc_count = active_proc_count + 1 where session_id = ?", session_id)
+      }
+
+  }
+
   def updateProcessor(proc: ErProcessor): Unit = synchronized {
     val (session_id: String, oldStatus: String) = dbc.query( rs => {
       if (!rs.next()) {
@@ -111,6 +158,7 @@ class SessionMetaDao {
       }
       (rs.getString("session_id"), rs.getString("status"))
     }, "select session_id, status from session_processor where processor_id=?", proc.id)
+
     dbc.withTransaction { conn =>
       var sql = "update session_processor set status = ?"
       var params = List(proc.status)

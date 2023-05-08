@@ -378,6 +378,7 @@ def doCreateServerNode(input: ErServerNode): ErServerNode = {
 
   def doQueryProcessor(connection: Connection,erProcessor: ErProcessor) :Array[ErProcessor]={
     var sql = "select * from session_processor where 1=1 "
+
     var params = List[String]()
     if (StringUtils.isNotEmpty(erProcessor.status)) {
       params = params :+ erProcessor.status
@@ -388,12 +389,10 @@ def doCreateServerNode(input: ErServerNode): ErServerNode = {
       sql += " and session_id =? "
     }
 
-
-
-//    if (processId != -1) {
-//      params = params :+ processId.toString
-//      sql += s" and processor_id=? "
-//    }
+    if (erProcessor.id != -1) {
+      params = params :+ erProcessor.id.toString
+      sql += s" and processor_id=? "
+    }
 
     var func: ResultSet => Iterable[ErProcessor]=rs
     => rs.map(_ =>
@@ -520,13 +519,15 @@ def doCreateServerNode(input: ErServerNode): ErServerNode = {
 
   def doUpdateNodeProcessor(conn:Connection,processors :Array[ErProcessor]): Unit = synchronized{
     processors.foreach(erProcessor=>{
-      var sql = "update session_processor  set  "
+      var sql = "update session_processor  set status = ? "
       var first = false;
       var params = List[String]()
-      if (StringUtils.isNotEmpty(erProcessor.status)) {
-        params = (params :+ erProcessor.status)
-        sql += "  status = ?"
-        first = true;
+      params = (params :+ erProcessor.status)
+
+      if (erProcessor.pid != -1) {
+        params = (params :+ erProcessor.pid.toString)
+        sql += " , pid = ?"
+
       }
       sql += " where  processor_id= ?"
       params = params:+erProcessor.id.toString
