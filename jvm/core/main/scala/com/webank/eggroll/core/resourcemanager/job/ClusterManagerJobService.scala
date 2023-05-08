@@ -4,6 +4,7 @@ import com.webank.eggroll.core.client.NodeManagerClient
 import com.webank.eggroll.core.constant._
 import com.webank.eggroll.core.error.ErSessionException
 import com.webank.eggroll.core.meta._
+import com.webank.eggroll.core.resourcemanager.ClusterResourceManager.ResourceApplication
 import com.webank.eggroll.core.resourcemanager.job.ClusterManagerJobService.smDao
 import com.webank.eggroll.core.resourcemanager.{ClusterManagerService, ClusterResourceManager, ProcessorEvent, ProcessorEventCallback, SessionMetaDao}
 import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator
@@ -11,9 +12,10 @@ import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.util.Logging
 import org.apache.commons.lang3.StringUtils
 
+import java.util.concurrent.CountDownLatch
 import scala.collection.JavaConverters.seqAsJavaListConverter
 import scala.collection.mutable
-import scala.collection.mutable.ListBuffer
+import scala.collection.mutable.{ArrayBuffer, ListBuffer}
 import scala.util.Random
 import scala.util.control.Breaks.{break, breakable}
 
@@ -57,7 +59,28 @@ class ClusterManagerJobService extends Logging {
     JobProcessorTypes.fromString(submitJobMeta.jobType) match {
       case Some(JobProcessorTypes.DeepSpeed) =>
         val worldSize = submitJobMeta.worldSize
-        var dispatchedProcessors = ClusterResourceManager.dispatchDeepSpeed(worldSize)
+
+         //ClusterResourceManager.dispatchDeepSpeed(worldSize)
+        var prepareProcessors : ArrayBuffer[ErProcessor]  = ArrayBuffer()
+        for (index <- 0 until worldSize) {
+          prepareProcessors+= ErProcessor(
+//            serverNodeId = node.id,
+            processorType = JobProcessorTypes.DeepSpeed.toString,
+//            commandEndpoint = ErEndpoint(host, 0),
+            status = ProcessorStatus.NEW,
+//            options = Map(
+//              "globalRank" -> globalRank.toString,
+//              "localRank" -> localRank.toString
+//            ).asJava,
+            resources=Array(ErResource(resourceType = ResourceTypes.VGPU_CORE,allocated = 1,status= ResourceStatus.PRE_ALLOCATED))
+          )
+        }
+
+        var resourceApplication = new ResourceApplication(processors = prepareProcessors.toArray,
+          needDispatch = true,countDownLatch = new CountDownLatch(1))
+        ClusterResourceManager.submitResourceRequest(resourceApplication)
+        var dispatchedProcessors  =  resourceApplication.getResult()
+        logInfo(s"dispatchedProcessors =========== ${dispatchedProcessors}")
 
         // FIXME: just retrieve updated processors' id
         smDao.register(ErSessionMeta(
