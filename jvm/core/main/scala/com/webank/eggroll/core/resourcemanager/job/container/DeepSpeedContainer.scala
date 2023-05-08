@@ -154,7 +154,7 @@ object DeepSpeedRunPy {
 }
 
 
-class DeepSpeedContainer( containerId : String, config: DeepSpeedConfig)
+class DeepSpeedContainer(containerId: String, config: DeepSpeedConfig)
   extends PythonContainer(
     pythonExec = config.pythonExec,
     scriptPath = DeepSpeedRunPy.runPyName,
@@ -163,11 +163,12 @@ class DeepSpeedContainer( containerId : String, config: DeepSpeedConfig)
     stdErrFile = config.stdErrFile,
     stdOutFile = config.stdOutFile,
     cwd = config.workingDir,
-    workingDirectoryPreparer = config.workingDirectoryPreparer
+    workingDirectoryPreparer = config.workingDirectoryPreparer,
     containerId = containerId,
     processorId = config.processorId
   ) {
   def this(
+            containerId: String,
             jobId: String,
             processorId: Long,
             conf: RuntimeErConf,
@@ -180,7 +181,7 @@ class DeepSpeedContainer( containerId : String, config: DeepSpeedConfig)
             environmentVariables: Map[String, String] = Map.empty,
             files: Map[String, Array[Byte]] = Map.empty,
             zippedFiles: Map[String, Array[Byte]] = Map.empty) {
-    this(DeepSpeedConfig(jobId, new PythonContainerRuntimeConfig(conf), localRank, globalRank, worldSize, storeHost, storePort, commandArguments, environmentVariables, processorId, files, zippedFiles))
+    this(containerId, DeepSpeedConfig(jobId, new PythonContainerRuntimeConfig(conf), localRank, globalRank, worldSize, storeHost, storePort, commandArguments, environmentVariables, processorId, files, zippedFiles))
   }
 
   override def preStart(): Unit = {
