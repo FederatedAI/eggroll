@@ -2,15 +2,14 @@ package com.webank.eggroll.core.resourcemanager.job.container
 
 import java.io._
 import java.nio.file.Path
+
 class ProcessContainer(
                         command: Seq[String],
                         cwd: Path,
                         extraEnv: Map[String, String] = Map.empty,
                         stdOutFile: Option[Path] = None,
                         stdErrFile: Option[Path] = None,
-                        workingDirectoryPreparer: Option[WorkingDirectoryPreparer] = None,
-                        containerId: String,
-                        processorId: Long
+                        workingDirectoryPreparer: Option[WorkingDirectoryPreparer] = None
                       ) extends ContainerTrait {
 
   private var process: java.lang.Process = _
@@ -18,10 +17,14 @@ class ProcessContainer(
   // set working dir for workingDirectoryPreparer
   workingDirectoryPreparer.foreach(wdp => wdp.setWorkingDir(cwd))
 
-  def start(): Boolean = {
-    workingDirectoryPreparer.foreach(_.prepare())
-    try {
+  def preStart(): Unit = {}
 
+  def postStart(): Unit = {}
+
+  def start(): Boolean = {
+    preStart()
+    workingDirectoryPreparer.foreach(_.prepare())
+    val output = try {
       val javaProcessBuilder = new java.lang.ProcessBuilder(command: _*)
         .directory(cwd.toFile)
       stdOutFile.foreach { f =>
@@ -43,6 +46,8 @@ class ProcessContainer(
     } finally {
       workingDirectoryPreparer.foreach(_.cleanup())
     }
+    postStart()
+    output
   }
 
   def waitForCompletion(): Int = {
@@ -63,18 +68,4 @@ class ProcessContainer(
   override def toString: String = {
     s"ProcessContainer(command=$command, cwd=$cwd, extraEnv=$extraEnv, stdOutFile=$stdOutFile, stdErrFile=$stdErrFile, workingDirectoryPreparer=$workingDirectoryPreparer)"
   }
-
-  override def getContainerId(): String = {
-      containerId
-  }
-  override def getProcessorId(): Long = {
-     processorId
-  }
-
-  override def getPid(): Int = {
-    val pidField = process.getClass.getDeclaredField("pid")
-    pidField.setAccessible(true)
-    pidField.getInt(process)
-  }
-
 }
