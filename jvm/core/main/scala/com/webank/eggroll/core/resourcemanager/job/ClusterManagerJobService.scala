@@ -20,9 +20,11 @@ import scala.util.Random
 import scala.util.control.Breaks.{break, breakable}
 
 
-object ClusterManagerJobService{
+object ClusterManagerJobService extends Logging {
   private val smDao = new SessionMetaDao
   def killJob(sessionId :String):Unit ={
+    logInfo(s"receive killJob ${sessionId}");
+
     if (!smDao.existSession(sessionId)) {
       return null
     }
