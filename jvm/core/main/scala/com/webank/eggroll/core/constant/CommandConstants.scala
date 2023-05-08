@@ -79,6 +79,13 @@ object JobCommands {
   val killJob = new CommandURI(prefix = prefix, name = "killJob")
 }
 
+object RendezvousStoreCommands {
+  val prefix = "v1/cluster-manager/job/rendezvous"
+  val set = new CommandURI(prefix = prefix, name = "set")
+  val get = new CommandURI(prefix = prefix, name = "get")
+  val add = new CommandURI(prefix = prefix, name = "add")
+}
+
 object NodeManagerCommands {
   val prefix = "v1/node-manager/processor"
 

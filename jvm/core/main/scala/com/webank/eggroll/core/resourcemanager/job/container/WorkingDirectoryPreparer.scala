@@ -19,7 +19,7 @@ class WorkingDirectoryPreparer(
     this.need_cleanup = need_cleanup
   }
 
-  private def getWorkingDir(): Path = {
+  private def getWorkingDir: Path = {
     if (workingDir != null) {
       workingDir
     } else {
@@ -28,9 +28,9 @@ class WorkingDirectoryPreparer(
   }
 
   def prepare(): Unit = {
-    getWorkingDir().toFile.mkdirs()
+    getWorkingDir.toFile.mkdirs()
     files.foreach { case (fileName, content) =>
-      val file = getWorkingDir().resolve(fileName).toFile
+      val file = getWorkingDir.resolve(fileName).toFile
       val fos = new FileOutputStream(file)
       fos.write(content)
       fos.close()
@@ -58,7 +58,7 @@ class WorkingDirectoryPreparer(
       Iterator.continually(zipInputStream.getNextEntry)
         .takeWhile(_ != null)
         .foreach(entry => {
-          val outputPath = getWorkingDir().resolve(dirname).resolve(entry.getName)
+          val outputPath = getWorkingDir.resolve(dirname).resolve(entry.getName)
           if (!entry.isDirectory) {
             extractEntry(entry, zipInputStream, outputPath)
           }
