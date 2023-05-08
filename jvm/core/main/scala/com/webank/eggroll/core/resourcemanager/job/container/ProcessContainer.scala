@@ -2,6 +2,7 @@ package com.webank.eggroll.core.resourcemanager.job.container
 
 import java.io._
 import java.nio.file.Path
+
 class ProcessContainer(
                         command: Seq[String],
                         cwd: Path,
@@ -25,8 +26,6 @@ class ProcessContainer(
   def start(): Boolean = {
     preStart()
     workingDirectoryPreparer.foreach(_.prepare())
-    try {
-
     val output = try {
       val javaProcessBuilder = new java.lang.ProcessBuilder(command: _*)
         .directory(cwd.toFile)
@@ -73,10 +72,11 @@ class ProcessContainer(
   }
 
   override def getContainerId(): String = {
-      containerId
+    containerId
   }
+
   override def getProcessorId(): Long = {
-     processorId
+    processorId
   }
 
   override def getPid(): Int = {
