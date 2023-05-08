@@ -2,6 +2,7 @@ package com.webank.eggroll.core.resourcemanager.job.container
 
 import java.io._
 import java.nio.file.Path
+
 class ProcessContainer(
                         command: Seq[String],
                         cwd: Path,
@@ -18,10 +19,14 @@ class ProcessContainer(
   // set working dir for workingDirectoryPreparer
   workingDirectoryPreparer.foreach(wdp => wdp.setWorkingDir(cwd))
 
-  def start(): Boolean = {
-    workingDirectoryPreparer.foreach(_.prepare())
-    try {
+  def preStart(): Unit = {}
 
+  def postStart(): Unit = {}
+
+  def start(): Boolean = {
+    preStart()
+    workingDirectoryPreparer.foreach(_.prepare())
+    val output = try {
       val javaProcessBuilder = new java.lang.ProcessBuilder(command: _*)
         .directory(cwd.toFile)
       stdOutFile.foreach { f =>
@@ -43,6 +48,8 @@ class ProcessContainer(
     } finally {
       workingDirectoryPreparer.foreach(_.cleanup())
     }
+    postStart()
+    output
   }
 
   def waitForCompletion(): Int = {
@@ -65,10 +72,11 @@ class ProcessContainer(
   }
 
   override def getContainerId(): String = {
-      containerId
+    containerId
   }
+
   override def getProcessorId(): Long = {
-     processorId
+    processorId
   }
 
   override def getPid(): Int = {
