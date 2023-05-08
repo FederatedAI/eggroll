@@ -95,6 +95,11 @@ object  ProcessorEventType{
 
 }
 
+object DispatchStrategy{
+   val REMAIN_MOST_FIRST  = "remain_most_first"
+   val RANDOM = "random"
+}
+
 
 object ServerNodeStatus {
   val HEALTHY = "HEALTHY"
