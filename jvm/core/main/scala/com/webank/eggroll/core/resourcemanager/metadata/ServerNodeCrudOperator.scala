@@ -398,6 +398,7 @@ def doCreateServerNode(input: ErServerNode): ErServerNode = {
     => rs.map(_ =>
       ErProcessor(id = rs.getLong("processor_id"),
         serverNodeId = rs.getInt("server_node_id"),
+        sessionId = rs.getString("session_id"),
         processorType = rs.getString("processor_type"), status = rs.getString("status"),
         commandEndpoint = if (StringUtils.isBlank(rs.getString("command_endpoint"))) null
         else ErEndpoint(rs.getString("command_endpoint")),
