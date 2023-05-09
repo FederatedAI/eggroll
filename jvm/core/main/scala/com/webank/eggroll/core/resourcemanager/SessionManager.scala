@@ -67,7 +67,7 @@ object SessionManagerService extends Logging {
         event.eventType match{
           case  ProcessorEventType.PROCESSOR_LOSS =>
               new Thread(()=>{
-                logDebug(s"fire PROCESSOR_LOSS event, prepare to kill session ${event.erProcessor.sessionId}")
+                logDebug(s"fire PROCESSOR_LOSS event, prepare to kill session ${event.erProcessor}")
                 var  erSessionMeta = getSessionMain(event.erProcessor.sessionId)
                 killSession(erSessionMeta)
               }).start()
