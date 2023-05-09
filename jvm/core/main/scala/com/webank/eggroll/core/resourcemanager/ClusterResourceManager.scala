@@ -211,9 +211,6 @@ object ClusterResourceManager extends Logging{
       }
     }
     }
-
-
-
     )
 
     logInfo("==============over========")
