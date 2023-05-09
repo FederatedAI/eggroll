@@ -10,7 +10,9 @@ package object container {
 
     val DEEPSPEED_PYTHON_EXEC = "eggroll.container.deepspeed.python.exec"
     val DEEPSPEED_SCRIPT_PATH = "eggroll.container.deepspeed.script.path"
-    val DEEPSPEED_TORCH_DISTRIBUTED_BACKEND = "eggroll.container.deepspeed.distributed_backend"
+    val DEEPSPEED_TORCH_DISTRIBUTED_BACKEND = "eggroll.container.deepspeed.distributed.backend"
+    val DEEPSPEED_TORCH_DISTRIBUTED_STORE_HOST = "eggroll.container.deepspeed.distributed.store.host"
+    val DEEPSPEED_TORCH_DISTRIBUTED_STORE_PORT = "eggroll.container.deepspeed.distributed.store.port"
   }
 
   type ContainerStatusCallback = (ContainerStatus.Value) => (ContainerTrait, Option[Exception]) => Unit
