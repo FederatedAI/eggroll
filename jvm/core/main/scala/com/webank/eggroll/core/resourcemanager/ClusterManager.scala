@@ -7,7 +7,7 @@ import com.webank.eggroll.core.constant.NodeManagerConfKeys.CONFKEY_NODE_MANAGER
 import com.webank.eggroll.core.constant.ProcessorEventType.PROCESSOR_LOSS
 import com.webank.eggroll.core.constant.{ProcessorStatus, ServerNodeStatus, ServerNodeTypes}
 import com.webank.eggroll.core.meta.{ErNodeHeartbeat, ErProcessor, ErResource, ErServerNode, ErSessionMeta}
-import com.webank.eggroll.core.resourcemanager.ClusterManagerService.{createNewNode, nodeHeartbeatChecker, nodeHeartbeatMap, queryNode, serverNodeCrudOperator, updateNode}
+import com.webank.eggroll.core.resourcemanager.ClusterManagerService.{createNewNode, logInfo, nodeHeartbeatChecker, nodeHeartbeatMap, queryNodeByEndPoint, queryNodeById, registerResource, serverNodeCrudOperator, updateNode}
 import com.webank.eggroll.core.resourcemanager.ClusterResourceManager.serverNodeCrudOperator
 import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator
 
@@ -97,7 +97,7 @@ object ClusterManagerService extends Logging {
          // logInfo(s"interval : ${n.lastHeartBeat} ${interval}  ${now} ${if(n.lastHeartBeat!=null)n.lastHeartBeat.getTime}")
            if(  interval>expire){
               logInfo(s"server node ${n} change status to LOSS")
-              updateNode(n.copy(status = ServerNodeStatus.LOSS),false,false)
+                  updateNode(n.copy(status = ServerNodeStatus.LOSS),false,false)
            }
         })
       }catch {
@@ -119,8 +119,12 @@ object ClusterManagerService extends Logging {
         registerResource(serverNode)
     serverNode
   }
-  def  queryNode (serverNode : ErServerNode): ErServerNode ={
-   serverNodeCrudOperator.getServerNode(serverNode)
+  def  queryNodeById (serverNode : ErServerNode): ErServerNode ={
+   serverNodeCrudOperator.getServerNode(ErServerNode(id = serverNode.id))
+  }
+
+  def  queryNodeByEndPoint(serverNode: ErServerNode) : ErServerNode={
+    serverNodeCrudOperator.getServerNode(ErServerNode(endpoint=serverNode.endpoint))
   }
 
 
@@ -153,33 +157,47 @@ object ClusterManagerService extends Logging {
   }
 
   def createNewNode(serverNode : ErServerNode):ErServerNode=synchronized{
-    var  existNode =  serverNodeCrudOperator.getServerNode(serverNode.copy(status = ""))
-    if(existNode==null){
-      existNode =serverNodeCrudOperator.createServerNode(serverNode);
-    }
+//    var  existNode =  serverNodeCrudOperator.getServerNode(serverNode.copy(status = ""))
+//    if(existNode==null){
+//      logInfo(s"create new node ${serverNode}")
+    var existNode = serverNodeCrudOperator.createServerNode(serverNode);
+
     registerResource(serverNode.copy(id=existNode.id))
-    existNode
+//    }else{
+//      logInfo(s"node already exist ${existNode}")
+//    }
+
+
   }
 }
 class ClusterManagerService extends   ClusterManager with Logging{
 
-    override def nodeHeartbeat(nodeHeartbeat: ErNodeHeartbeat): ErNodeHeartbeat = {
+    override def nodeHeartbeat(nodeHeartbeat: ErNodeHeartbeat): ErNodeHeartbeat = synchronized{
       logInfo(s" nodeHeartbeat ${nodeHeartbeat}")
       var  serverNode = nodeHeartbeat.node
       if(serverNode.id == -1){
-        serverNode = createNewNode(serverNode)
+        var  existNode =  queryNodeByEndPoint(serverNode)
+        if(existNode==null){
+          logInfo(s"create new node ${serverNode}")
+          createNewNode(serverNode)
+        }else{
+          logInfo(s"node already exist ${existNode}")
+          serverNode = serverNode.copy(id= existNode.id)
+          updateNode(serverNode,true,true)
+        }
+
       }else{
         if(nodeHeartbeatMap.contains(serverNode.id)&&(nodeHeartbeatMap(serverNode.id).id < nodeHeartbeat.id)){
-          updateNode(serverNode,false,true)
+          //正常心跳
+            updateNode(serverNode,false,true)
         }else{
-        //  var  existNode =  serverNodeCrudOperator.getServerNode(serverNode.copy(status = ""))
-          var existNode = queryNode(serverNode.copy(status = ""))
+          //nodemanger重启过
+          var existNode = queryNodeById(serverNode)
           if(existNode==null){
-            serverNode = createNewNode(serverNode)
+                serverNode = createNewNode(serverNode)
           }else{
             updateNode(serverNode,true,true)
           }
-
         }
       }
       nodeHeartbeatMap.put(serverNode.id,nodeHeartbeat);
