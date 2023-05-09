@@ -18,7 +18,8 @@
 
 package com.webank.eggroll.core.resourcemanager.job.container
 
-import com.webank.eggroll.core.session.RuntimeErConf
+import com.webank.eggroll.core.constant.ClusterManagerConfKeys
+import com.webank.eggroll.core.session.{RuntimeErConf, StaticErConf}
 
 import java.nio.file.{Path, Paths}
 
@@ -28,8 +29,6 @@ case class DeepSpeedConfig(
                             localRank: Int,
                             globalRank: Int,
                             worldSize: Int,
-                            storeHost: String,
-                            storePort: Int,
                             commandArguments: Seq[String] = Seq.empty,
                             environmentVariables: Map[String, String] = Map.empty,
                             processorId: Long = 0,
@@ -45,6 +44,14 @@ case class DeepSpeedConfig(
       .toAbsolutePath.normalize()
 
   // create boosting script to hook deepspeed initialization logic before user script
+  val storeHost = conf.getString(
+    ContainerKey.DEEPSPEED_TORCH_DISTRIBUTED_STORE_HOST,
+    StaticErConf.getString(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_HOST))
+  require(storeHost.nonEmpty)
+  val storePort = conf.getInt(
+    ContainerKey.DEEPSPEED_TORCH_DISTRIBUTED_STORE_PORT,
+    StaticErConf.getInt(ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, -1))
+  require(storePort > 0)
   private val runScript = DeepSpeedRunPy.runPy(
     sessionId = jobId,
     scriptPath = conf.getString(ContainerKey.DEEPSPEED_SCRIPT_PATH),
@@ -175,13 +182,11 @@ class DeepSpeedContainer(containerId: String, config: DeepSpeedConfig)
             localRank: Int,
             globalRank: Int,
             worldSize: Int,
-            storeHost: String,
-            storePort: Int,
             commandArguments: Seq[String] = Seq.empty,
             environmentVariables: Map[String, String] = Map.empty,
             files: Map[String, Array[Byte]] = Map.empty,
             zippedFiles: Map[String, Array[Byte]] = Map.empty) {
-    this(containerId, DeepSpeedConfig(jobId, new PythonContainerRuntimeConfig(conf), localRank, globalRank, worldSize, storeHost, storePort, commandArguments, environmentVariables, processorId, files, zippedFiles))
+    this(containerId, DeepSpeedConfig(jobId, new PythonContainerRuntimeConfig(conf), localRank, globalRank, worldSize, commandArguments, environmentVariables, processorId, files, zippedFiles))
   }
 
   override def preStart(): Unit = {
