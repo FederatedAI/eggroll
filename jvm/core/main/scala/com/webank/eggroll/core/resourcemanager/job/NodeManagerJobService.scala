@@ -71,8 +71,6 @@ class NodeManagerJobService(implicit ec: ExecutionContext) {
                 case JobProcessorTypes.DeepSpeed =>
                   val localRank = p.options.getOrDefault("localRank", "-1").toInt
                   val globalRank = p.options.getOrDefault("globalRank", "-1").toInt
-                  val storeHost = "localhost"
-                  val storePort = 4670
                   if (localRank == -1 || globalRank == -1) {
                     throw new IllegalArgumentException(s"localRank or globalRank not set: ${p.options}")
                   }
@@ -83,8 +81,6 @@ class NodeManagerJobService(implicit ec: ExecutionContext) {
                     localRank = localRank,
                     globalRank = globalRank,
                     worldSize = submitJobMeta.worldSize,
-                    storeHost = storeHost,
-                    storePort = storePort,
                     commandArguments = submitJobMeta.commandArguments,
                     environmentVariables = submitJobMeta.environmentVariables,
                     files = submitJobMeta.files,
