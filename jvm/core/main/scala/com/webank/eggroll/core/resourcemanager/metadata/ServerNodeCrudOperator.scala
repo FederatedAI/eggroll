@@ -212,11 +212,12 @@ def doCreateServerNode(input: ErServerNode): ErServerNode = {
         input.endpoint.host, input.endpoint.port, input.status)
 
       if (isHeartbeat) {
-        sql += ", last_heartbeat_at = ?"
-        params ++= Array(new Date())
+        sql += ", last_heartbeat_at = ? "
+        params ++= Array(new Date(System.currentTimeMillis()))
       }
       sql+="where server_node_id = ?"
       params ++= Array(input.id)
+      //logInfo(s"doUpdateServerNodeById  ${sql} : ${params} ")
       dbc.update(conn, sql, params:_*)
     })
 
