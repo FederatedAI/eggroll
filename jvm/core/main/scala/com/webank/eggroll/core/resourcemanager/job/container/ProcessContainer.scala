@@ -58,12 +58,16 @@ class ProcessContainer(
   }
 
   def stop(): Boolean = {
-    process.destroy()
+    if (process.isAlive) {
+      process.destroy()
+    }
     process.isAlive
   }
 
   def kill(): Boolean = {
-    process.destroyForcibly()
+    if (process.isAlive) {
+      process.destroyForcibly()
+    }
     process.isAlive
   }
 
