@@ -126,26 +126,3 @@ class SessionCommands(object):
 class RollPairCommands(object):
     roll_prefix = 'v1/roll-pair'
     egg_prefix = 'v1/egg-pair'
-
-
-class JobCommands:
-    prefix = 'v1/cluster-manager/job'
-    submit = 'submitJob'
-    job_submit_service_name = _to_service_name(prefix, submit)
-    SUBMIT_JOB = CommandURI(job_submit_service_name)
-
-
-class RendezvousStoreCommands:
-    prefix = 'v1/cluster-manager/job/rendezvous'
-
-    set = 'set'
-    set_service_name = _to_service_name(prefix, set)
-    SET = CommandURI(set_service_name)
-
-    get = 'get'
-    get_service_name = _to_service_name(prefix, get)
-    GET = CommandURI(get_service_name)
-
-    add = 'add'
-    add_service_name = _to_service_name(prefix, add)
-    ADD = CommandURI(add_service_name)
