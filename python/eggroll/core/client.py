@@ -35,8 +35,6 @@ from eggroll.core.utils import _to_proto_string, _map_and_listify
 from eggroll.core.utils import get_static_er_conf
 from eggroll.core.utils import time_now_ns
 from eggroll.utils.log_utils import get_logger
-from eggroll.deepspeed.store.model import RendezvousStoreSetRequest, RendezvousStoreSetResponse, \
-    RendezvousStoreGetRequest, RendezvousStoreGetResponse, RendezvousStoreAddRequest, RendezvousStoreAddResponse
 
 L = get_logger()
 
