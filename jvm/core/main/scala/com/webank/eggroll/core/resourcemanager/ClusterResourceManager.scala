@@ -136,7 +136,7 @@ object ClusterResourceManager extends Logging{
          case  DispatchStrategy.RANDOM =>  randomDispatch(serverNodes,resultResourceApplication);
        }
      }
-     preAllocateResource(resultResourceApplication.processors)
+    // preAllocateResource(resultResourceApplication.processors)
      resultResourceApplication.countDownLatch.countDown()
      resultResourceApplication
     }
@@ -175,7 +175,7 @@ object ClusterResourceManager extends Logging{
   }
 
   def preAllocateResource(processors: Array[ErProcessor]): Unit = synchronized {
-
+    logInfo(s"============== preAllocateResource ============${processors.mkString}")
     ServerNodeCrudOperator.dbc.withTransaction(conn => {
       serverNodeCrudOperator.insertProcessorResource(conn, processors);
     })
