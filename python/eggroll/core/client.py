@@ -21,21 +21,21 @@ from eggroll.core.command.command_model import CommandURI
 from eggroll.core.command.command_model import ErCommandRequest, \
     ErCommandResponse
 from eggroll.core.command.commands import MetadataCommands, \
-    NodeManagerCommands, SessionCommands, JobCommands, RendezvousStoreCommands
+    NodeManagerCommands, SessionCommands
 from eggroll.core.conf_keys import ClusterManagerConfKeys, \
     NodeManagerConfKeys, CoreConfKeys
 from eggroll.core.constants import SerdesTypes
 from eggroll.core.datastructure import create_executor_pool
 from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.meta_model import ErEndpoint, ErServerNode, ErServerCluster, \
-    ErProcessor, ErStoreList, ErJobMeta
+    ErProcessor, ErStoreList
 from eggroll.core.meta_model import ErStore, ErSessionMeta
 from eggroll.core.proto import command_pb2_grpc
 from eggroll.core.utils import _to_proto_string, _map_and_listify
 from eggroll.core.utils import get_static_er_conf
 from eggroll.core.utils import time_now_ns
 from eggroll.utils.log_utils import get_logger
-from eggroll.core.deepspeed.store_model import RendezvousStoreSetRequest, RendezvousStoreSetResponse, \
+from eggroll.deepspeed.store.model import RendezvousStoreSetRequest, RendezvousStoreSetResponse, \
     RendezvousStoreGetRequest, RendezvousStoreGetResponse, RendezvousStoreAddRequest, RendezvousStoreAddResponse
 
 L = get_logger()
@@ -196,30 +196,6 @@ class ClusterManagerClient(object):
                                             output_type=ErSessionMeta,
                                             command_uri=SessionCommands.GET_OR_CREATE_SESSION,
                                             serdes_type=self.__serdes_type))
-
-    def submit_job(self, input: ErJobMeta):
-        return self.__do_sync_request_internal(input=input,
-                                               output_type=ErJobMeta,
-                                               command_uri=JobCommands.SUBMIT_JOB,
-                                               serdes_type=self.__serdes_type)
-
-    def rendezvous_store_set(self, input: RendezvousStoreSetRequest):
-        return self.__do_sync_request_internal(input=input,
-                                               output_type=RendezvousStoreSetResponse,
-                                               command_uri=RendezvousStoreCommands.SET,
-                                               serdes_type=self.__serdes_type)
-
-    def rendezvous_store_get(self, input: RendezvousStoreGetRequest):
-        return self.__do_sync_request_internal(input=input,
-                                               output_type=RendezvousStoreGetResponse,
-                                               command_uri=RendezvousStoreCommands.GET,
-                                               serdes_type=self.__serdes_type)
-
-    def rendezvous_store_add(self, input: RendezvousStoreAddRequest):
-        return self.__do_sync_request_internal(input=input,
-                                               output_type=RendezvousStoreAddResponse,
-                                               command_uri=RendezvousStoreCommands.ADD,
-                                               serdes_type=self.__serdes_type)
 
     def register_session(self, session_meta: ErSessionMeta):
         return self.__check_processors(
