@@ -3,7 +3,6 @@ package com.webank.eggroll.core.resourcemanager
 import java.io.File
 import com.webank.eggroll.core.BootstrapBase
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
-import com.webank.eggroll.core.constant.NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HOST
 import com.webank.eggroll.core.constant.{CoreConfKeys, NodeManagerCommands, NodeManagerConfKeys, ResouceCommands, ResourceManagerConfKeys}
 import com.webank.eggroll.core.meta.{ErJobMeta, ErProcessor, ErResourceAllocation, ErServerNode, ErSessionMeta}
 import com.webank.eggroll.core.resourcemanager.job.NodeManagerJobService
@@ -67,6 +66,20 @@ class NodeManagerBootstrap extends BootstrapBase with Logging {
       serviceResultTypes = Array(classOf[ErJobMeta]),
       routeToClass = classOf[NodeManagerJobService],
       routeToMethodName = NodeManagerCommands.startJobContainers.getName(),
+      routeToCallBasedClassInstance = nodeManagerJobService
+    )
+    CommandRouter.register(serviceName = NodeManagerCommands.killJobContainers.uriString,
+      serviceParamTypes = Array(classOf[ErJobMeta]),
+      serviceResultTypes = Array(classOf[ErJobMeta]),
+      routeToClass = classOf[NodeManagerJobService],
+      routeToMethodName = NodeManagerCommands.killJobContainers.getName(),
+      routeToCallBasedClassInstance = nodeManagerJobService
+    )
+    CommandRouter.register(serviceName = NodeManagerCommands.stopJobContainers.uriString,
+      serviceParamTypes = Array(classOf[ErJobMeta]),
+      serviceResultTypes = Array(classOf[ErJobMeta]),
+      routeToClass = classOf[NodeManagerJobService],
+      routeToMethodName = NodeManagerCommands.stopJobContainers.getName(),
       routeToCallBasedClassInstance = nodeManagerJobService
     )
     CommandRouter.register(serviceName = ResouceCommands.resourceAllocation.uriString,

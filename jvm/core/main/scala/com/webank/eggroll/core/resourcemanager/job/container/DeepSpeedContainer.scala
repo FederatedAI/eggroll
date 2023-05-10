@@ -55,7 +55,6 @@ case class DeepSpeedConfig(
   private val runScript = DeepSpeedRunPy.runPy(
     sessionId = jobId,
     scriptPath = conf.getString(ContainerKey.DEEPSPEED_SCRIPT_PATH),
-    eggrollHome = conf.getString("eggroll.home"),
     storeHost = storeHost,
     storePort = storePort,
     worldSize = worldSize,
@@ -68,9 +67,12 @@ case class DeepSpeedConfig(
       zippedFiles = zippedFiles,
       workingDir = workingDir))
 
+  val eggrollHome = conf.getString("eggroll.home") // TODO: this should removed in someday
   val extraEnv: Map[String, String] = environmentVariables ++ Map(
     "LOCAL_RANK" -> localRank.toString,
-    "GLOBAL_RANK" -> globalRank.toString
+    "GLOBAL_RANK" -> globalRank.toString,
+    "EGGROLL_HOME" -> eggrollHome,
+    "PYTHONPATH" -> s"$eggrollHome/python"  //TODO: append to existing PYTHONPATH?
   )
   private val logDir = workingDir.resolve(
     Paths.get(conf.getString(ContainerKey.LOGS_DIR, "logs")))
@@ -81,7 +83,6 @@ case class DeepSpeedConfig(
 object DeepSpeedRunPy {
   def runPy(sessionId: String,
             scriptPath: String,
-            eggrollHome: String,
             storeHost: String,
             storePort: Int,
             worldSize: Int,
@@ -89,8 +90,9 @@ object DeepSpeedRunPy {
             backend: String): Array[Byte] = {
 
     f"""
-       |def main(session_id, script_path, eggroll_home, store_host, store_port, world_size, rank, backend):
-       |    from eggroll.deepspeed.store import EggrollStore
+       |def main(session_id, script_path, store_host, store_port, world_size, rank, backend):
+       |    import runpy
+       |    from eggroll.deepspeed.store.client import EggrollStore
        |    from torch import distributed
        |
        |    store = EggrollStore(store_host, store_port, session_id)
@@ -102,12 +104,11 @@ object DeepSpeedRunPy {
        |    main(
        |        session_id="${sessionId}",
        |        script_path="${scriptPath}",
-       |        eggroll_home="${eggrollHome}",
        |        store_host="${storeHost}",
        |        store_port="${storePort}",
        |        world_size=${worldSize},
-       |        rank =${rank},
-       |        backend = "${backend}"
+       |        rank=${rank},
+       |        backend="${backend}"
        |    )
        |
        |""".stripMargin.getBytes
