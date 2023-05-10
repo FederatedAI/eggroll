@@ -166,7 +166,7 @@ public class SysInfoLinux extends SysInfo {
     shellExecutorClk.execute();
     String cmdReturnString = shellExecutorClk.getOutput();
     if (StringUtils.isNotEmpty(cmdReturnString))
-      result = cmdReturnString.split("\n").length;
+      result = cmdReturnString.split("\n").length-1;
   }catch(Exception ignore){}
     return result;
   }
