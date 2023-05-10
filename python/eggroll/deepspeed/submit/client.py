@@ -1,15 +1,16 @@
 import os
 import time
 
-from eggroll.core.client import ClusterManagerClient
 from eggroll.core.conf_keys import SessionConfKeys
 from eggroll.core.constants import SessionStatus
-from eggroll.core.meta_model import ErJobMeta
 
 from typing import Dict, List, Optional
+from eggroll.deepspeed.submit.model import DeepspeedJobMeta
+from ..client import BaseClient
+from .commands import JobCommands
 
 
-class ErJob:
+class DeepspeedJob:
     def __init__(
             self,
             session_id,
@@ -20,7 +21,6 @@ class ErJob:
             files: Optional[Dict[str, str]] = None,
             zipped_files: Optional[Dict[str, str]] = None,
             options: Optional[Dict] = None,
-            rendezvous_provider="client",
     ):
         if options is None:
             options = {}
@@ -28,20 +28,6 @@ class ErJob:
         self._name = name
         if not self._name:
             self._name = f"session_{self._session_id}"
-
-        # self.__eggroll_home = os.getenv('EGGROLL_HOME', None)
-        # if not self.__eggroll_home:
-        #     raise EnvironmentError('EGGROLL_HOME is not set')
-        #
-        # if "EGGROLL_DEBUG" not in os.environ:
-        #     os.environ['EGGROLL_DEBUG'] = "0"
-        #
-        # conf_path = options.get(CoreConfKeys.STATIC_CONF_PATH, f"{self.__eggroll_home}/conf/eggroll.properties")
-        #
-        # L.info(f"static conf path: {conf_path}")
-        # configs = configparser.ConfigParser()
-        # configs.read(conf_path)
-        # set_static_er_conf(configs['eggroll'])
 
         self._options = options.copy()
         self._options[SessionConfKeys.CONFKEY_SESSION_ID] = self._session_id
@@ -51,13 +37,6 @@ class ErJob:
         self._files = {} if files is None else files
         self._zipped_files = {} if zipped_files is None else zipped_files
         self._world_size = world_size
-
-        if rendezvous_provider == "client":
-            from torch.distributed import TCPStore
-
-            store = TCPStore("127.0.0.1", 0, is_master=True)
-            self._environment_variables["MASTER_IP"] = store.host
-            self._environment_variables["MASTER_PORT"] = store.port
 
     def add_file(self, conf_path, name=None, zipped=False):
         file_path = os.path.abspath(conf_path)
@@ -78,11 +57,11 @@ class ErJob:
         return self
 
     def submit(self, timeout):
-        cluster_manager_client = ClusterManagerClient(options=self._options)
+        base_client = BaseClient()
         files = {name: open(path, "rb").read() for name, path in self._files.items()}
         zipped_files = {name: open(path, "rb").read() for name, path in self._zipped_files.items()}
 
-        submit_job_meta = ErJobMeta(
+        submit_job_meta = DeepspeedJobMeta(
             id=self._session_id,
             name=self._name,
             job_type="deepspeed",
@@ -99,7 +78,9 @@ class ErJob:
 
         while True:
             try:
-                session_meta = cluster_manager_client.submit_job(submit_job_meta)
+                session_meta = base_client.do_sync_request_internal(submit_job_meta,
+                                                                    output_type=DeepspeedJobMeta,
+                                                                    command_uri=JobCommands.SUBMIT_JOB)
                 break
             except Exception as e:
                 print(e)
@@ -108,5 +89,3 @@ class ErJob:
                 else:
                     raise
         print(session_meta)
-
-
