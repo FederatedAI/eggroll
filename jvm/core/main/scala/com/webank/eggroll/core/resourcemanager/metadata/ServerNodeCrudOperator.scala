@@ -33,7 +33,9 @@ import com.webank.eggroll.core.util.Logging
 import org.apache.commons.lang3.StringUtils
 
 import java.sql.{Connection, ResultSet}
+import scala.+:
 import scala.collection.JavaConverters._
+import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 trait CrudOperator
@@ -164,10 +166,22 @@ object ServerNodeCrudOperator extends Logging {
 
 def doCreateServerNode(input: ErServerNode): ErServerNode = {
     val nodeRecord = dbc.withTransaction(conn => {
-      val sql = "insert into server_node (name, server_cluster_id, host, port, node_type, status)" +
-        " values (?, ?, ?, ?, ?, ?)"
-      val id = dbc.update(conn, sql, input.name, input.clusterId,
-        input.endpoint.host, input.endpoint.port, input.nodeType,input.status)
+      var id_name:String = if(input.id>0) "server_node_id , " else ""
+      var id_param:String = if(input.id>0) " ? ," else ""
+      val sql = "insert into server_node ("+id_name+" name, server_cluster_id, host, port, node_type, status)"+
+        " values ("+  id_param+ "?, ?, ?, ?, ?, ?)"
+      var params =List[Any]()
+      var tempParams = mutable.ListBuffer(input.name, input.clusterId,
+        input.endpoint.host, input.endpoint.port,input.nodeType, input.status)
+      if(input.id>0) {
+           params ++= Array(input.id)
+      }
+      params++= tempParams
+
+      println(input.id+"========="+params)
+      val id = dbc.update(conn, sql,params.toList:_*)
+//        input.name, input.clusterId,
+//        input.endpoint.host, input.endpoint.port, input.nodeType,input.status)
 
       id
     })
@@ -198,11 +212,12 @@ def doCreateServerNode(input: ErServerNode): ErServerNode = {
         input.endpoint.host, input.endpoint.port, input.status)
 
       if (isHeartbeat) {
-        sql += ", last_heartbeat_at = ?"
-        params ++= Array(new Date())
+        sql += ", last_heartbeat_at = ? "
+        params ++= Array(new Date(System.currentTimeMillis()))
       }
       sql+="where server_node_id = ?"
       params ++= Array(input.id)
+      //logInfo(s"doUpdateServerNodeById  ${sql} : ${params} ")
       dbc.update(conn, sql, params:_*)
     })
 
@@ -322,7 +337,7 @@ def doCreateServerNode(input: ErServerNode): ErServerNode = {
     }
 
     sql += "order by server_node_id asc"
-   // logInfo(s"doGetServerNodes sql : ${sql}");
+    logInfo(s"doGetServerNodes sql : ${sql}  param ${params}");
     val nodeResult = dbc.query(rs => rs.map(_ =>
       ErServerNode(
         id = rs.getLong("server_node_id"),

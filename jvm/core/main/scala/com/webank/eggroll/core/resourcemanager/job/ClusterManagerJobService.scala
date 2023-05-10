@@ -126,7 +126,7 @@ class ClusterManagerJobService extends Logging {
             dispatchedProcessors.groupBy(_._2).par.foreach { case (node, nodeAndProcessors) =>
               val processors = nodeAndProcessors.map(_._1.copy(sessionId = submitJobMeta.id))
               val nodeManagerClient = new NodeManagerClient(node.endpoint)
-              ClusterResourceManager.preAllocateResource(processors)
+              //ClusterResourceManager.preAllocateResource(processors)
               nodeManagerClient.killJobContainers(submitJobMeta.copy(processors = processors))
             }
 
