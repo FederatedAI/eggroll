@@ -258,7 +258,7 @@ class SessionManagerService extends SessionManager with Logging {
         options = registeredSessionMeta.options ++ Map(ResourceManagerConfKeys.SERVER_NODE_ID -> n.id.toString))
       val nodeManagerClient = new NodeManagerClient(
         ErEndpoint(host = n.endpoint.host,
-          port = StaticErConf.getInt(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT, -1)))
+          port = n.endpoint.port))
       nodeManagerClient.startContainers(newSessionMeta)
     })
 
