@@ -20,17 +20,19 @@ import scala.collection.mutable.ListBuffer
 
 
 
-object NodeManagerMeta{
+object NodeManagerMeta extends Logging {
   var status=INIT
   var serverNodeId = -1:Long;
   var clusterId = -1:Long;
    def refreshServerNodeMetaIntoFile(): Unit = {
-     var filePath = System.getenv("EGGROLL_HOME")+StringConstants.SLASH  +CoreConfKeys.EGGROLL_DATA_DIR.get()+ StringConstants.SLASH+"NodeManagerMeta";
+     //var filePath = System.getenv("EGGROLL_HOME")+StringConstants.SLASH  +
+     var filePath =  CoreConfKeys.EGGROLL_DATA_DIR.get()+ StringConstants.SLASH+"NodeManagerMeta";
      var  gson= new Gson()
+      logInfo(s"write node meta info to ${filePath}")
       FileSystemUtils.fileWriter(filePath, gson.toJson(NodeManagerMeta))
   }
   def loadNodeManagerMetaFromFile():Unit = {
-    var filePath = System.getenv("EGGROLL_HOME") + StringConstants.SLASH + CoreConfKeys.EGGROLL_DATA_DIR.get() + StringConstants.SLASH + "NodeManagerMeta";
+    var filePath =  CoreConfKeys.EGGROLL_DATA_DIR.get() + StringConstants.SLASH + "NodeManagerMeta";
     if(new File(filePath).exists()){
       var gson = new Gson()
       var content = FileSystemUtils.fileReader(filePath)
@@ -338,7 +340,7 @@ object  NodeResourceManager extends  Logging {
         }catch {
           case t: Throwable =>
             t.printStackTrace()
-            logError("register node error ")
+            logError("register node error "+t.getMessage)
         }
         Thread.sleep(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL.get().toInt)
       }
