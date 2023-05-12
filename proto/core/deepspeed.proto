@@ -4,7 +4,6 @@ package com.webank.eggroll.core.meta;
 
 import "google/protobuf/duration.proto";
 import "meta.proto";
-import "containers.proto";
 
 service DeepspeedRendezvousStore {
   rpc Set (StoreSetRequest) returns (StoreSetResponse) {}
@@ -33,7 +32,6 @@ message StoreGetRequest {
 
 message StoreGetResponse {
   bytes value = 1;
-  bool is_timeout = 2;
 }
 
 message StoreAddRequest {
@@ -67,7 +65,7 @@ message StoreNumKeysRequest {
   string prefix = 1;
 }
 message StoreNumKeysResponse {
-  int64 num_keys = 1;
+  int64 numKeys = 1;
 }
 
 message StoreDeleteKeyRequest {
@@ -79,16 +77,8 @@ message StoreDeleteKeyResponse {
   bool success = 1;
 }
 
-message StoreDestroyRequest {
-  string prefix = 1;
-}
-
-message StoreDestroyResponse {
-  bool success = 1;
-}
-
 message SubmitJobRequest {
-  string session_id = 1;
+  string id = 1;
   string name = 2;
   string job_type = 3;
   uint32 world_size = 4;
@@ -96,68 +86,11 @@ message SubmitJobRequest {
   map<string, string> environment_variables = 6;
   map<string, bytes> files = 7;
   map<string, bytes> zipped_files = 8;
-
-  // concrete options
-  ResourceOptions resource_options = 9;
-
-  // extra options
-  map<string, string> options = 19;
-}
-
-message ResourceOptions {
-  uint32 timeout_seconds = 1;
-  string resource_exhausted_strategy = 2; // "ignore", "waiting", "throw_error"
+  map<string, string> options = 9;
+  string status = 10;
+  repeated Processor processors = 11;
 }
 
 message SubmitJobResponse {
-  string session_id = 1;
-  repeated Processor processors = 2;
-}
 
-message KillJobRequest {
-  string session_id = 1;
-}
-
-message KillJobResponse {
-  string session_id = 1;
-}
-
-message StopJobRequest {
-  string session_id = 1;
-}
-
-message StopJobResponse {
-  string session_id = 1;
-}
-message QueryJobRequest {
-  string session_id = 1;
-}
-
-message QueryJobResponse {
-  string session_id = 1;
-  string job_type = 2;
-  string status = 3;
-  repeated Processor processors = 5;
-}
-
-message QueryJobStatusRequest {
-  string session_id = 1;
-}
-
-message QueryJobStatusResponse {
-  string session_id = 1;
-  string status = 2;
-}
-
-message DownloadJobRequest {
-  string session_id = 1;
-  repeated int32 ranks = 2;
-  string compress_method = 3;
-  int32 compress_level = 4;
-  ContentType content_type = 5;
-}
-
-message DownloadJobResponse {
-  string session_id = 1;
-  repeated ContainerContent container_content = 2;
 }

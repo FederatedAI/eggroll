@@ -1,15 +1,15 @@
-package com.webank.eggroll.core.resourcemanager.job
+package com.webank.eggroll.core.deepspeed.store
 
-import com.webank.eggroll.core.meta.{RendezvousStoreAddRequest, RendezvousStoreAddResponse, RendezvousStoreGetRequest, RendezvousStoreGetResponse, RendezvousStoreSetRequest, RendezvousStoreSetResponse}
+import com.webank.eggroll.core.deepspeed.meta.store._
 import com.webank.eggroll.core.util.Logging
 
-import scala.concurrent.{Await, Promise}
-import scala.concurrent.duration.Duration
-import scala.util.Try
 import java.util.concurrent.ConcurrentHashMap
+import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, Promise}
+import scala.util.Try
 
-class WaitableStore{
-  private val store = new ConcurrentHashMap[K , V]()
+class WaitableStore {
+  private val store = new ConcurrentHashMap[K, V]()
   private val promiseMap = new ConcurrentHashMap[K, Promise[V]]()
 
   def set(key: K, value: V): Unit = {

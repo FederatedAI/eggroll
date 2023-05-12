@@ -1,4 +1,4 @@
-package com.webank.eggroll.core.resourcemanager.job
+package com.webank.eggroll.core.containers
 
 object JobProcessorTypes extends Enumeration {
   val DeepSpeed = Value
