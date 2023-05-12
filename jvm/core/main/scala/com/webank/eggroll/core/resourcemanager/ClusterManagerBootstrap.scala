@@ -1,16 +1,18 @@
 package com.webank.eggroll.core.resourcemanager
 
-import java.io.File
-import org.apache.commons.lang3.StringUtils
 import com.webank.eggroll.core.BootstrapBase
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
-import com.webank.eggroll.core.constant.{ClusterManagerConfKeys, CoreConfKeys, JobCommands, MetadataCommands, ManagerCommands, RendezvousStoreCommands, SessionCommands}
+import com.webank.eggroll.core.constant._
+import com.webank.eggroll.core.deepspeed.DeepspeedJobServiceHandler
+import com.webank.eggroll.core.deepspeed.store.RendezvousStoreService
 import com.webank.eggroll.core.meta._
-import com.webank.eggroll.core.resourcemanager.job.{ClusterManagerJobService, RendezvousStoreService}
 import com.webank.eggroll.core.resourcemanager.metadata.{ServerNodeCrudOperator, StoreCrudOperator}
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.transfer.{GrpcClientUtils, GrpcServerUtils}
 import com.webank.eggroll.core.util.{CommandArgsUtils, Logging}
+import org.apache.commons.lang3.StringUtils
+
+import java.io.File
 
 class ClusterManagerBootstrap extends BootstrapBase with Logging {
   private var port = 0
@@ -109,7 +111,7 @@ class ClusterManagerBootstrap extends BootstrapBase with Logging {
       routeToClass = classOf[SessionManagerService],
       routeToMethodName = SessionCommands.heartbeat.getName())
 
-        CommandRouter.register(serviceName = ManagerCommands.nodeHeartbeat.uriString,
+    CommandRouter.register(serviceName = ManagerCommands.nodeHeartbeat.uriString,
       serviceParamTypes = Array(classOf[ErNodeHeartbeat]),
       serviceResultTypes = Array(classOf[ErNodeHeartbeat]),
       routeToClass = classOf[ClusterManagerService],
@@ -123,37 +125,30 @@ class ClusterManagerBootstrap extends BootstrapBase with Logging {
 
 
     // submit job
-    CommandRouter.register(serviceName = JobCommands.submitJob.uriString,
-      serviceParamTypes = Array(classOf[ErJobMeta]),
-      serviceResultTypes = Array(classOf[ErJobMeta]),
-      routeToClass = classOf[ClusterManagerJobService],
-      routeToMethodName = JobCommands.submitJob.getName())
+    CommandRouter.register_handler(serviceName = JobCommands.submitJob.uriString,
+      args => DeepspeedJobServiceHandler.handleSubmit(args(0))
+    )
+    CommandRouter.register_handler(serviceName = JobCommands.queryJob.uriString,
+      args => DeepspeedJobServiceHandler.handleJobQuery(args(0))
+    )
+    CommandRouter.register_handler(serviceName = JobCommands.killJob.uriString,
+      args => DeepspeedJobServiceHandler.handleJobKill(args(0))
+    )
+    CommandRouter.register_handler(serviceName = JobCommands.stopJob.uriString,
+      args => DeepspeedJobServiceHandler.handleJobStop(args(0))
+    )
 
     val rendezvousStoreService = new RendezvousStoreService()
-
-    CommandRouter.register(serviceName = RendezvousStoreCommands.set.uriString,
-      serviceParamTypes = Array(classOf[RendezvousStoreSetRequest]),
-      serviceResultTypes = Array(classOf[RendezvousStoreSetResponse]),
-      routeToClass = classOf[RendezvousStoreService],
-      routeToMethodName = RendezvousStoreCommands.set.getName(),
-      routeToCallBasedClassInstance = rendezvousStoreService
+    CommandRouter.register_handler(serviceName = RendezvousStoreCommands.set.uriString,
+      args => rendezvousStoreService.set(args(0))
+    )
+    CommandRouter.register_handler(serviceName = RendezvousStoreCommands.get.uriString,
+      args => rendezvousStoreService.get(args(0))
+    )
+    CommandRouter.register_handler(serviceName = RendezvousStoreCommands.add.uriString,
+      args => rendezvousStoreService.add(args(0))
     )
 
-    CommandRouter.register(serviceName = RendezvousStoreCommands.get.uriString,
-      serviceParamTypes = Array(classOf[RendezvousStoreGetRequest]),
-      serviceResultTypes = Array(classOf[RendezvousStoreGetResponse]),
-      routeToClass = classOf[RendezvousStoreService],
-      routeToMethodName = RendezvousStoreCommands.get.getName(),
-      routeToCallBasedClassInstance = rendezvousStoreService
-    )
-
-    CommandRouter.register(serviceName = RendezvousStoreCommands.add.uriString,
-      serviceParamTypes = Array(classOf[RendezvousStoreAddRequest]),
-      serviceResultTypes = Array(classOf[RendezvousStoreAddResponse]),
-      routeToClass = classOf[RendezvousStoreService],
-      routeToMethodName = RendezvousStoreCommands.add.getName(),
-      routeToCallBasedClassInstance = rendezvousStoreService
-    )
     val cmd = CommandArgsUtils.parseArgs(args = args)
 
     //this.sessionId = cmd.getOptionValue('s')

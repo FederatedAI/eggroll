@@ -20,7 +20,8 @@ package com.webank.eggroll.core.client
 
 import com.webank.eggroll.core.command.CommandClient
 import com.webank.eggroll.core.constant.{NodeManagerCommands, NodeManagerConfKeys, ResouceCommands}
-import com.webank.eggroll.core.meta.{ErEndpoint, ErJobMeta, ErProcessor, ErResourceAllocation, ErServerNode, ErSessionMeta}
+import com.webank.eggroll.core.containers.meta._
+import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.session.StaticErConf
 
 
@@ -53,17 +54,19 @@ class NodeManagerClient(var nodeManagerEndpoint: ErEndpoint) {
     commandClient.call[ErSessionMeta](NodeManagerCommands.killContainers, sessionMeta)
 
 
-  def startJobContainers(sessionMeta: ErJobMeta): ErJobMeta =
-    commandClient.call[ErJobMeta](NodeManagerCommands.startJobContainers, sessionMeta)
+  def startJobContainers(startContainersRequest: StartContainersRequest): StartContainersResponse = {
+    commandClient.call(NodeManagerCommands.startJobContainers, startContainersRequest)
+  }
 
-  def stopJobContainers(sessionMeta: ErJobMeta): ErJobMeta =
-    commandClient.call[ErJobMeta](NodeManagerCommands.stopJobContainers, sessionMeta)
+  def stopJobContainers(stopContainersRequest: StopContainersRequest): StopContainersResponse = {
+    commandClient.call(NodeManagerCommands.stopJobContainers, stopContainersRequest)
+  }
 
-  def killJobContainers(sessionMeta: ErJobMeta): ErJobMeta =
-    commandClient.call[ErJobMeta](NodeManagerCommands.killJobContainers, sessionMeta)
+  def killJobContainers(killContainersRequest: KillContainersRequest): KillContainersResponse =
+    commandClient.call(NodeManagerCommands.killJobContainers, killContainersRequest)
 
   def allocateResource(srcAllocate: ErResourceAllocation): ErResourceAllocation =
-    commandClient.call[ErResourceAllocation](ResouceCommands.resourceAllocation,srcAllocate)
+    commandClient.call[ErResourceAllocation](ResouceCommands.resourceAllocation, srcAllocate)
 
   def queryNodeResource(erServerNode: ErServerNode): ErServerNode =
     commandClient.call[ErServerNode](ResouceCommands.queryNodeResource, erServerNode)

@@ -1,22 +1,17 @@
 package com.webank.eggroll.core.resourcemanager
 
-import com.webank.eggroll.core.ErSession
-import com.webank.eggroll.core.client.NodeManagerClient
-import com.webank.eggroll.core.constant.{DispatchStrategy, NodeManagerConfKeys, ProcessorStatus, ResourceOperationStauts, ResourceOperationType, ResourceStatus, ResourceTypes, ServerNodeStatus, ServerNodeTypes}
+import com.webank.eggroll.core.constant._
+import com.webank.eggroll.core.containers.JobProcessorTypes
 import com.webank.eggroll.core.datastructure.FifoBroker
-import com.webank.eggroll.core.meta.{ErEndpoint, ErProcessor, ErResource, ErResourceAllocation, ErServerNode}
-import com.webank.eggroll.core.resourcemanager.ClusterResourceManager.{ResourceApplication, dispatchDeepSpeedInner, serverNodeCrudOperator}
-import com.webank.eggroll.core.resourcemanager.job.JobProcessorTypes
+import com.webank.eggroll.core.meta.{ErEndpoint, ErProcessor, ErResource, ErServerNode}
 import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator
-import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.util.Logging
 
 import java.sql.Connection
-import java.util.concurrent.{ArrayBlockingQueue, CountDownLatch}
+import java.util.concurrent.CountDownLatch
 import scala.collection.JavaConverters.mapAsJavaMapConverter
+import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
-import scala.collection.{breakOut, mutable}
-import scala.math.Numeric.LongIsIntegral
 import scala.util.Random
 import scala.util.control.Breaks.{break, breakable}
 
