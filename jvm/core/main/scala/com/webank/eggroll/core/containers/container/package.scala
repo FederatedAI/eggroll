@@ -1,6 +1,6 @@
-package com.webank.eggroll.core.resourcemanager.job
+package com.webank.eggroll.core.containers
 
-import com.webank.eggroll.core.session.RuntimeErConf
+import com.webank.eggroll.core.session.RuntimeErConf;
 
 package object container {
   object ContainerKey {
@@ -19,7 +19,7 @@ package object container {
 
   class PythonContainerRuntimeConfig(runtimeErConf: RuntimeErConf) extends RuntimeErConf {
 
-    runtimeErConf.getAll.foreach{ case (key, value) =>
+    runtimeErConf.getAll.foreach { case (key, value) =>
       this.conf.put(key, value)
     }
 
