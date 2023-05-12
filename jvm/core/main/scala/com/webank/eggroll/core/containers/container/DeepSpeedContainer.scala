@@ -16,7 +16,7 @@
  *
  */
 
-package com.webank.eggroll.core.resourcemanager.job.container
+package com.webank.eggroll.core.containers.container
 
 import com.webank.eggroll.core.constant.ClusterManagerConfKeys
 import com.webank.eggroll.core.session.{RuntimeErConf, StaticErConf}

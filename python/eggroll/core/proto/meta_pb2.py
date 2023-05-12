@@ -14,7 +14,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\nmeta.proto\x12\x1c\x63om.webank.eggroll.core.meta\"&\n\x08\x45ndpoint\x12\x0c\n\x04host\x18\x01 \x01(\t\x12\x0c\n\x04port\x18\x02 \x01(\x05\"\xd0\x01\n\nServerNode\x12\n\n\x02id\x18\x01 \x01(\x03\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x11\n\tclusterId\x18\x03 \x01(\x03\x12\x38\n\x08\x65ndpoint\x18\x04 \x01(\x0b\x32&.com.webank.eggroll.core.meta.Endpoint\x12\x10\n\x08nodeType\x18\x05 \x01(\t\x12\x0e\n\x06status\x18\x06 \x01(\t\x12\x39\n\tresources\x18\x07 \x03(\x0b\x32&.com.webank.eggroll.core.meta.Resource\"u\n\rServerCluster\x12\n\n\x02id\x18\x01 \x01(\x03\x12\x0c\n\x04name\x18\x02 \x01(\t\x12=\n\x0bserverNodes\x18\x03 \x03(\x0b\x32(.com.webank.eggroll.core.meta.ServerNode\x12\x0b\n\x03tag\x18\x04 \x01(\t\"\xf6\x02\n\tProcessor\x12\n\n\x02id\x18\x01 \x01(\x03\x12\x14\n\x0cserverNodeId\x18\x02 \x01(\x03\x12\x0c\n\x04name\x18\x03 \x01(\t\x12\x15\n\rprocessorType\x18\x04 \x01(\t\x12\x0e\n\x06status\x18\x05 \x01(\t\x12?\n\x0f\x63ommandEndpoint\x18\x06 \x01(\x0b\x32&.com.webank.eggroll.core.meta.Endpoint\x12@\n\x10transferEndpoint\x18\x07 \x01(\x0b\x32&.com.webank.eggroll.core.meta.Endpoint\x12\x0b\n\x03pid\x18\t \x01(\x05\x12\x45\n\x07options\x18\x08 \x03(\x0b\x32\x34.com.webank.eggroll.core.meta.Processor.OptionsEntry\x12\x0b\n\x03tag\x18\n \x01(\t\x1a.\n\x0cOptionsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"t\n\x0eProcessorBatch\x12\n\n\x02id\x18\x01 \x01(\x03\x12\x0c\n\x04name\x18\x02 \x01(\t\x12;\n\nprocessors\x18\x03 \x03(\x0b\x32\'.com.webank.eggroll.core.meta.Processor\x12\x0b\n\x03tag\x18\x04 \x01(\t\"\xaa\x01\n\x07\x46unctor\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0e\n\x06serdes\x18\x02 \x01(\t\x12\x0c\n\x04\x62ody\x18\x03 \x01(\x0c\x12\x43\n\x07options\x18\x04 \x03(\x0b\x32\x32.com.webank.eggroll.core.meta.Functor.OptionsEntry\x1a.\n\x0cOptionsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\"\n\x04Pair\x12\x0b\n\x03key\x18\x01 \x01(\x0c\x12\r\n\x05value\x18\x02 \x01(\x0c\">\n\tPairBatch\x12\x31\n\x05pairs\x18\x01 \x03(\x0b\x32\".com.webank.eggroll.core.meta.Pair\"\x9a\x01\n\x0cStoreLocator\x12\n\n\x02id\x18\x01 \x01(\x03\x12\x11\n\tstoreType\x18\x02 \x01(\t\x12\x11\n\tnamespace\x18\x03 \x01(\t\x12\x0c\n\x04name\x18\x04 \x01(\t\x12\x0c\n\x04path\x18\x05 \x01(\t\x12\x17\n\x0ftotalPartitions\x18\x06 \x01(\x05\x12\x13\n\x0bpartitioner\x18\x07 \x01(\t\x12\x0e\n\x06serdes\x18\x08 \x01(\t\"\xf9\x01\n\x05Store\x12@\n\x0cstoreLocator\x18\x01 \x01(\x0b\x32*.com.webank.eggroll.core.meta.StoreLocator\x12;\n\npartitions\x18\x02 \x03(\x0b\x32\'.com.webank.eggroll.core.meta.Partition\x12\x41\n\x07options\x18\x03 \x03(\x0b\x32\x30.com.webank.eggroll.core.meta.Store.OptionsEntry\x1a.\n\x0cOptionsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"@\n\tStoreList\x12\x33\n\x06stores\x18\x01 \x03(\x0b\x32#.com.webank.eggroll.core.meta.Store\"\xbf\x01\n\tPartition\x12\n\n\x02id\x18\x01 \x01(\x05\x12@\n\x0cstoreLocator\x18\x02 \x01(\x0b\x32*.com.webank.eggroll.core.meta.StoreLocator\x12:\n\tprocessor\x18\x03 \x01(\x0b\x32\'.com.webank.eggroll.core.meta.Processor\x12\x14\n\x0cserverNodeId\x18\x04 \x01(\x03\x12\x12\n\nrankInNode\x18\x05 \x01(\x05\"\x1b\n\x08\x43\x61llInfo\x12\x0f\n\x07\x63\x61llSeq\x18\x01 \x01(\t\"\xb4\x02\n\x03Job\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x33\n\x06inputs\x18\x03 \x03(\x0b\x32#.com.webank.eggroll.core.meta.Store\x12\x34\n\x07outputs\x18\x04 \x03(\x0b\x32#.com.webank.eggroll.core.meta.Store\x12\x37\n\x08\x66unctors\x18\x05 \x03(\x0b\x32%.com.webank.eggroll.core.meta.Functor\x12?\n\x07options\x18\x06 \x03(\x0b\x32..com.webank.eggroll.core.meta.Job.OptionsEntry\x1a.\n\x0cOptionsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\xc3\x01\n\x04Task\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x37\n\x06inputs\x18\x03 \x03(\x0b\x32\'.com.webank.eggroll.core.meta.Partition\x12\x38\n\x07outputs\x18\x04 \x03(\x0b\x32\'.com.webank.eggroll.core.meta.Partition\x12.\n\x03job\x18\x05 \x01(\x0b\x32!.com.webank.eggroll.core.meta.Job\"\xfa\x01\n\x0bSessionMeta\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x0e\n\x06status\x18\x03 \x01(\t\x12\x0b\n\x03tag\x18\x04 \x01(\t\x12;\n\nprocessors\x18\x05 \x03(\x0b\x32\'.com.webank.eggroll.core.meta.Processor\x12G\n\x07options\x18\x06 \x03(\x0b\x32\x36.com.webank.eggroll.core.meta.SessionMeta.OptionsEntry\x1a.\n\x0cOptionsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\x9d\x01\n\x12ResourceAllocation\x12\x14\n\x0cserverNodeId\x18\x01 \x01(\x03\x12\x0e\n\x06status\x18\x02 \x01(\t\x12\x11\n\tsessionId\x18\x03 \x01(\t\x12\x13\n\x0boperateType\x18\x04 \x01(\t\x12\x39\n\tresources\x18\x05 \x03(\x0b\x32&.com.webank.eggroll.core.meta.Resource\"H\n\x08Resource\x12\x0c\n\x04type\x18\x01 \x01(\t\x12\r\n\x05total\x18\x02 \x01(\x03\x12\x0c\n\x04used\x18\x03 \x01(\x03\x12\x11\n\tallocated\x18\x04 \x01(\x03\"\xb4\x05\n\x07JobMeta\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x10\n\x08job_type\x18\x03 \x01(\t\x12\x12\n\nworld_size\x18\x04 \x01(\r\x12\x19\n\x11\x63ommand_arguments\x18\x05 \x03(\t\x12^\n\x15\x65nvironment_variables\x18\x06 \x03(\x0b\x32?.com.webank.eggroll.core.meta.JobMeta.EnvironmentVariablesEntry\x12?\n\x05\x66iles\x18\x07 \x03(\x0b\x32\x30.com.webank.eggroll.core.meta.JobMeta.FilesEntry\x12L\n\x0czipped_files\x18\x08 \x03(\x0b\x32\x36.com.webank.eggroll.core.meta.JobMeta.ZippedFilesEntry\x12\x43\n\x07options\x18\t \x03(\x0b\x32\x32.com.webank.eggroll.core.meta.JobMeta.OptionsEntry\x12\x0e\n\x06status\x18\n \x01(\t\x12;\n\nprocessors\x18\x0b \x03(\x0b\x32\'.com.webank.eggroll.core.meta.Processor\x1a;\n\x19\x45nvironmentVariablesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\x1a,\n\nFilesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x0c:\x02\x38\x01\x1a\x32\n\x10ZippedFilesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x0c:\x02\x38\x01\x1a.\n\x0cOptionsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"n\n\rNodeHeartbeat\x12\n\n\x02id\x18\x01 \x01(\x04\x12\x36\n\x04node\x18\x02 \x01(\x0b\x32(.com.webank.eggroll.core.meta.ServerNode\x12\x0c\n\x04\x63ode\x18\x03 \x01(\t\x12\x0b\n\x03msg\x18\x04 \x01(\tb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\nmeta.proto\x12\x1c\x63om.webank.eggroll.core.meta\"&\n\x08\x45ndpoint\x12\x0c\n\x04host\x18\x01 \x01(\t\x12\x0c\n\x04port\x18\x02 \x01(\x05\"\xd0\x01\n\nServerNode\x12\n\n\x02id\x18\x01 \x01(\x03\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x11\n\tclusterId\x18\x03 \x01(\x03\x12\x38\n\x08\x65ndpoint\x18\x04 \x01(\x0b\x32&.com.webank.eggroll.core.meta.Endpoint\x12\x10\n\x08nodeType\x18\x05 \x01(\t\x12\x0e\n\x06status\x18\x06 \x01(\t\x12\x39\n\tresources\x18\x07 \x03(\x0b\x32&.com.webank.eggroll.core.meta.Resource\"u\n\rServerCluster\x12\n\n\x02id\x18\x01 \x01(\x03\x12\x0c\n\x04name\x18\x02 \x01(\t\x12=\n\x0bserverNodes\x18\x03 \x03(\x0b\x32(.com.webank.eggroll.core.meta.ServerNode\x12\x0b\n\x03tag\x18\x04 \x01(\t\"\xf6\x02\n\tProcessor\x12\n\n\x02id\x18\x01 \x01(\x03\x12\x14\n\x0cserverNodeId\x18\x02 \x01(\x03\x12\x0c\n\x04name\x18\x03 \x01(\t\x12\x15\n\rprocessorType\x18\x04 \x01(\t\x12\x0e\n\x06status\x18\x05 \x01(\t\x12?\n\x0f\x63ommandEndpoint\x18\x06 \x01(\x0b\x32&.com.webank.eggroll.core.meta.Endpoint\x12@\n\x10transferEndpoint\x18\x07 \x01(\x0b\x32&.com.webank.eggroll.core.meta.Endpoint\x12\x0b\n\x03pid\x18\t \x01(\x05\x12\x45\n\x07options\x18\x08 \x03(\x0b\x32\x34.com.webank.eggroll.core.meta.Processor.OptionsEntry\x12\x0b\n\x03tag\x18\n \x01(\t\x1a.\n\x0cOptionsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"t\n\x0eProcessorBatch\x12\n\n\x02id\x18\x01 \x01(\x03\x12\x0c\n\x04name\x18\x02 \x01(\t\x12;\n\nprocessors\x18\x03 \x03(\x0b\x32\'.com.webank.eggroll.core.meta.Processor\x12\x0b\n\x03tag\x18\x04 \x01(\t\"\xaa\x01\n\x07\x46unctor\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0e\n\x06serdes\x18\x02 \x01(\t\x12\x0c\n\x04\x62ody\x18\x03 \x01(\x0c\x12\x43\n\x07options\x18\x04 \x03(\x0b\x32\x32.com.webank.eggroll.core.meta.Functor.OptionsEntry\x1a.\n\x0cOptionsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\"\n\x04Pair\x12\x0b\n\x03key\x18\x01 \x01(\x0c\x12\r\n\x05value\x18\x02 \x01(\x0c\">\n\tPairBatch\x12\x31\n\x05pairs\x18\x01 \x03(\x0b\x32\".com.webank.eggroll.core.meta.Pair\"\x9a\x01\n\x0cStoreLocator\x12\n\n\x02id\x18\x01 \x01(\x03\x12\x11\n\tstoreType\x18\x02 \x01(\t\x12\x11\n\tnamespace\x18\x03 \x01(\t\x12\x0c\n\x04name\x18\x04 \x01(\t\x12\x0c\n\x04path\x18\x05 \x01(\t\x12\x17\n\x0ftotalPartitions\x18\x06 \x01(\x05\x12\x13\n\x0bpartitioner\x18\x07 \x01(\t\x12\x0e\n\x06serdes\x18\x08 \x01(\t\"\xf9\x01\n\x05Store\x12@\n\x0cstoreLocator\x18\x01 \x01(\x0b\x32*.com.webank.eggroll.core.meta.StoreLocator\x12;\n\npartitions\x18\x02 \x03(\x0b\x32\'.com.webank.eggroll.core.meta.Partition\x12\x41\n\x07options\x18\x03 \x03(\x0b\x32\x30.com.webank.eggroll.core.meta.Store.OptionsEntry\x1a.\n\x0cOptionsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"@\n\tStoreList\x12\x33\n\x06stores\x18\x01 \x03(\x0b\x32#.com.webank.eggroll.core.meta.Store\"\xbf\x01\n\tPartition\x12\n\n\x02id\x18\x01 \x01(\x05\x12@\n\x0cstoreLocator\x18\x02 \x01(\x0b\x32*.com.webank.eggroll.core.meta.StoreLocator\x12:\n\tprocessor\x18\x03 \x01(\x0b\x32\'.com.webank.eggroll.core.meta.Processor\x12\x14\n\x0cserverNodeId\x18\x04 \x01(\x03\x12\x12\n\nrankInNode\x18\x05 \x01(\x05\"\x1b\n\x08\x43\x61llInfo\x12\x0f\n\x07\x63\x61llSeq\x18\x01 \x01(\t\"\xb4\x02\n\x03Job\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x33\n\x06inputs\x18\x03 \x03(\x0b\x32#.com.webank.eggroll.core.meta.Store\x12\x34\n\x07outputs\x18\x04 \x03(\x0b\x32#.com.webank.eggroll.core.meta.Store\x12\x37\n\x08\x66unctors\x18\x05 \x03(\x0b\x32%.com.webank.eggroll.core.meta.Functor\x12?\n\x07options\x18\x06 \x03(\x0b\x32..com.webank.eggroll.core.meta.Job.OptionsEntry\x1a.\n\x0cOptionsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\xc3\x01\n\x04Task\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x37\n\x06inputs\x18\x03 \x03(\x0b\x32\'.com.webank.eggroll.core.meta.Partition\x12\x38\n\x07outputs\x18\x04 \x03(\x0b\x32\'.com.webank.eggroll.core.meta.Partition\x12.\n\x03job\x18\x05 \x01(\x0b\x32!.com.webank.eggroll.core.meta.Job\"\xfa\x01\n\x0bSessionMeta\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x0e\n\x06status\x18\x03 \x01(\t\x12\x0b\n\x03tag\x18\x04 \x01(\t\x12;\n\nprocessors\x18\x05 \x03(\x0b\x32\'.com.webank.eggroll.core.meta.Processor\x12G\n\x07options\x18\x06 \x03(\x0b\x32\x36.com.webank.eggroll.core.meta.SessionMeta.OptionsEntry\x1a.\n\x0cOptionsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\x9d\x01\n\x12ResourceAllocation\x12\x14\n\x0cserverNodeId\x18\x01 \x01(\x03\x12\x0e\n\x06status\x18\x02 \x01(\t\x12\x11\n\tsessionId\x18\x03 \x01(\t\x12\x13\n\x0boperateType\x18\x04 \x01(\t\x12\x39\n\tresources\x18\x05 \x03(\x0b\x32&.com.webank.eggroll.core.meta.Resource\"H\n\x08Resource\x12\x0c\n\x04type\x18\x01 \x01(\t\x12\r\n\x05total\x18\x02 \x01(\x03\x12\x0c\n\x04used\x18\x03 \x01(\x03\x12\x11\n\tallocated\x18\x04 \x01(\x03\"n\n\rNodeHeartbeat\x12\n\n\x02id\x18\x01 \x01(\x04\x12\x36\n\x04node\x18\x02 \x01(\x0b\x32(.com.webank.eggroll.core.meta.ServerNode\x12\x0c\n\x04\x63ode\x18\x03 \x01(\t\x12\x0b\n\x03msg\x18\x04 \x01(\tb\x06proto3')
 
 
 
@@ -41,11 +41,6 @@ _SESSIONMETA = DESCRIPTOR.message_types_by_name['SessionMeta']
 _SESSIONMETA_OPTIONSENTRY = _SESSIONMETA.nested_types_by_name['OptionsEntry']
 _RESOURCEALLOCATION = DESCRIPTOR.message_types_by_name['ResourceAllocation']
 _RESOURCE = DESCRIPTOR.message_types_by_name['Resource']
-_JOBMETA = DESCRIPTOR.message_types_by_name['JobMeta']
-_JOBMETA_ENVIRONMENTVARIABLESENTRY = _JOBMETA.nested_types_by_name['EnvironmentVariablesEntry']
-_JOBMETA_FILESENTRY = _JOBMETA.nested_types_by_name['FilesEntry']
-_JOBMETA_ZIPPEDFILESENTRY = _JOBMETA.nested_types_by_name['ZippedFilesEntry']
-_JOBMETA_OPTIONSENTRY = _JOBMETA.nested_types_by_name['OptionsEntry']
 _NODEHEARTBEAT = DESCRIPTOR.message_types_by_name['NodeHeartbeat']
 Endpoint = _reflection.GeneratedProtocolMessageType('Endpoint', (_message.Message,), {
   'DESCRIPTOR' : _ENDPOINT,
@@ -213,45 +208,6 @@ Resource = _reflection.GeneratedProtocolMessageType('Resource', (_message.Messag
   })
 _sym_db.RegisterMessage(Resource)
 
-JobMeta = _reflection.GeneratedProtocolMessageType('JobMeta', (_message.Message,), {
-
-  'EnvironmentVariablesEntry' : _reflection.GeneratedProtocolMessageType('EnvironmentVariablesEntry', (_message.Message,), {
-    'DESCRIPTOR' : _JOBMETA_ENVIRONMENTVARIABLESENTRY,
-    '__module__' : 'meta_pb2'
-    # @@protoc_insertion_point(class_scope:com.webank.eggroll.core.meta.JobMeta.EnvironmentVariablesEntry)
-    })
-  ,
-
-  'FilesEntry' : _reflection.GeneratedProtocolMessageType('FilesEntry', (_message.Message,), {
-    'DESCRIPTOR' : _JOBMETA_FILESENTRY,
-    '__module__' : 'meta_pb2'
-    # @@protoc_insertion_point(class_scope:com.webank.eggroll.core.meta.JobMeta.FilesEntry)
-    })
-  ,
-
-  'ZippedFilesEntry' : _reflection.GeneratedProtocolMessageType('ZippedFilesEntry', (_message.Message,), {
-    'DESCRIPTOR' : _JOBMETA_ZIPPEDFILESENTRY,
-    '__module__' : 'meta_pb2'
-    # @@protoc_insertion_point(class_scope:com.webank.eggroll.core.meta.JobMeta.ZippedFilesEntry)
-    })
-  ,
-
-  'OptionsEntry' : _reflection.GeneratedProtocolMessageType('OptionsEntry', (_message.Message,), {
-    'DESCRIPTOR' : _JOBMETA_OPTIONSENTRY,
-    '__module__' : 'meta_pb2'
-    # @@protoc_insertion_point(class_scope:com.webank.eggroll.core.meta.JobMeta.OptionsEntry)
-    })
-  ,
-  'DESCRIPTOR' : _JOBMETA,
-  '__module__' : 'meta_pb2'
-  # @@protoc_insertion_point(class_scope:com.webank.eggroll.core.meta.JobMeta)
-  })
-_sym_db.RegisterMessage(JobMeta)
-_sym_db.RegisterMessage(JobMeta.EnvironmentVariablesEntry)
-_sym_db.RegisterMessage(JobMeta.FilesEntry)
-_sym_db.RegisterMessage(JobMeta.ZippedFilesEntry)
-_sym_db.RegisterMessage(JobMeta.OptionsEntry)
-
 NodeHeartbeat = _reflection.GeneratedProtocolMessageType('NodeHeartbeat', (_message.Message,), {
   'DESCRIPTOR' : _NODEHEARTBEAT,
   '__module__' : 'meta_pb2'
@@ -272,14 +228,6 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   _JOB_OPTIONSENTRY._serialized_options = b'8\001'
   _SESSIONMETA_OPTIONSENTRY._options = None
   _SESSIONMETA_OPTIONSENTRY._serialized_options = b'8\001'
-  _JOBMETA_ENVIRONMENTVARIABLESENTRY._options = None
-  _JOBMETA_ENVIRONMENTVARIABLESENTRY._serialized_options = b'8\001'
-  _JOBMETA_FILESENTRY._options = None
-  _JOBMETA_FILESENTRY._serialized_options = b'8\001'
-  _JOBMETA_ZIPPEDFILESENTRY._options = None
-  _JOBMETA_ZIPPEDFILESENTRY._serialized_options = b'8\001'
-  _JOBMETA_OPTIONSENTRY._options = None
-  _JOBMETA_OPTIONSENTRY._serialized_options = b'8\001'
   _ENDPOINT._serialized_start=44
   _ENDPOINT._serialized_end=82
   _SERVERNODE._serialized_start=85
@@ -326,16 +274,6 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   _RESOURCEALLOCATION._serialized_end=2800
   _RESOURCE._serialized_start=2802
   _RESOURCE._serialized_end=2874
-  _JOBMETA._serialized_start=2877
-  _JOBMETA._serialized_end=3569
-  _JOBMETA_ENVIRONMENTVARIABLESENTRY._serialized_start=3364
-  _JOBMETA_ENVIRONMENTVARIABLESENTRY._serialized_end=3423
-  _JOBMETA_FILESENTRY._serialized_start=3425
-  _JOBMETA_FILESENTRY._serialized_end=3469
-  _JOBMETA_ZIPPEDFILESENTRY._serialized_start=3471
-  _JOBMETA_ZIPPEDFILESENTRY._serialized_end=3521
-  _JOBMETA_OPTIONSENTRY._serialized_start=743
-  _JOBMETA_OPTIONSENTRY._serialized_end=789
-  _NODEHEARTBEAT._serialized_start=3571
-  _NODEHEARTBEAT._serialized_end=3681
+  _NODEHEARTBEAT._serialized_start=2876
+  _NODEHEARTBEAT._serialized_end=2986
 # @@protoc_insertion_point(module_scope)

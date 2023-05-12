@@ -31,5 +31,6 @@ for file in `ls ${PROTO_PATH}`; do
   python3 -m grpc_tools.protoc -I${PROTO_PATH} \
     --python_out=${OUTPUT_PATH} \
     --grpc_python_out=${OUTPUT_PATH} \
-    --mypy_out=${OUTPUT_PATH} ${PROTO_PATH}/${file}
+    --mypy_out=${OUTPUT_PATH} \
+    ${PROTO_PATH}/${file}
 done
