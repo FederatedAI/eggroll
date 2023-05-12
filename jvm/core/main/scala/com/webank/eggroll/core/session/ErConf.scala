@@ -18,12 +18,13 @@
 
 package com.webank.eggroll.core.session
 
-import java.io.{BufferedInputStream, File, FileInputStream}
-import java.util.Properties
 import com.webank.eggroll.core.constant.{SessionConfKeys, StringConstants}
-import com.webank.eggroll.core.meta.{ErSessionMeta, ErJobMeta}
+import com.webank.eggroll.core.containers.meta.StartContainersRequest
+import com.webank.eggroll.core.meta.ErSessionMeta
 import org.apache.commons.beanutils.BeanUtils
 
+import java.io.{BufferedInputStream, File, FileInputStream}
+import java.util.Properties
 import scala.collection.mutable
 
 abstract class ErConf {
@@ -135,11 +136,11 @@ case class RuntimeErConf(prop: Properties = new Properties()) extends ErConf {
     conf.put(SessionConfKeys.CONFKEY_SESSION_NAME, sessionMeta.name)
   }
 
-  def this(submitJobMeta: ErJobMeta) {
+  def this(startContainersRequest: StartContainersRequest) {
     this(new Properties())
-    submitJobMeta.options.foreach(t => conf.put(t._1, t._2))
-    conf.put(SessionConfKeys.CONFKEY_SESSION_ID, submitJobMeta.id)
-    conf.put(SessionConfKeys.CONFKEY_SESSION_NAME, submitJobMeta.name)
+    startContainersRequest.options.foreach(t => conf.put(t._1, t._2))
+    conf.put(SessionConfKeys.CONFKEY_SESSION_ID, startContainersRequest.id)
+    conf.put(SessionConfKeys.CONFKEY_SESSION_NAME, startContainersRequest.name)
   }
 
   def this(conf: java.util.Map[String, String]) {

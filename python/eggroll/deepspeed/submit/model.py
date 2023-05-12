@@ -14,7 +14,7 @@
 #  limitations under the License.
 
 from eggroll.core.base_model import RpcMessage
-from eggroll.core.proto import meta_pb2
+from eggroll.core.proto import deepspeed_pb2
 from eggroll.core.utils import _map_and_listify, _elements_to_proto, _stringify_dict
 import typing
 from eggroll.core.meta_model import ErProcessor
@@ -59,18 +59,18 @@ class DeepspeedJobMeta(RpcMessage):
         self._processors = processors
 
     def to_proto(self):
-        return meta_pb2.JobMeta(id=self._id,
-                                name=self._name,
-                                job_type=self._job_type,
-                                world_size=self._world_size,
-                                command_arguments=self._command_arguments,
-                                environment_variables=self._environment_variables,
-                                files=self._files,
-                                zipped_files=self._zipped_files,
-                                options=_stringify_dict(self._options),
-                                status=self._status,
-                                processors=_elements_to_proto(self._processors),
-                                )
+        return deepspeed_pb2.SubmitJobRequest(id=self._id,
+                                              name=self._name,
+                                              job_type=self._job_type,
+                                              world_size=self._world_size,
+                                              command_arguments=self._command_arguments,
+                                              environment_variables=self._environment_variables,
+                                              files=self._files,
+                                              zipped_files=self._zipped_files,
+                                              options=_stringify_dict(self._options),
+                                              status=self._status,
+                                              processors=_elements_to_proto(self._processors),
+                                              )
 
     def to_proto_string(self):
         return self.to_proto().SerializeToString()
@@ -93,7 +93,7 @@ class DeepspeedJobMeta(RpcMessage):
 
     @staticmethod
     def from_proto_string(pb_string):
-        pb_message = meta_pb2.JobMeta()
+        pb_message = deepspeed_pb2.SubmitJobRequest()
         pb_message.ParseFromString(pb_string)
         return DeepspeedJobMeta.from_proto(pb_message)
 

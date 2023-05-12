@@ -2,30 +2,21 @@ syntax = "proto3";
 
 package com.webank.eggroll.core.meta;
 
+import "google/protobuf/duration.proto";
+import "meta.proto";
+
 message StartContainersRequest {
   string session_id = 1;
   string name = 2;
   string job_type = 3;
-  repeated string command_arguments = 4;
-  map<string, string> environment_variables = 5;
-  map<string, bytes> files = 6;
-  map<string, bytes> zipped_files = 7;
-  map<uint64, bytes> typed_extra_configs = 8;
+  uint32 world_size = 4;
+  repeated string command_arguments = 5;
+  map<string, string> environment_variables = 6;
+  map<string, bytes> files = 7;
+  map<string, bytes> zipped_files = 8;
   map<string, string> options = 9;
-}
-
-message DeepspeedContainerConfig {
-  repeated uint32 cuda_visible_devices = 2;
-  uint32 world_size = 3;
-  uint32 cross_rank = 4;
-  uint32 cross_size = 5;
-  uint32 local_size = 6;
-  uint32 local_rank = 7;
-  uint32 rank = 8;
-  string store_host = 9;
-  int32 store_port = 10;
-  string store_prefix = 11;
-  string backend = 12;
+  string status = 10;
+  repeated Processor processors = 11;
 }
 
 message StartContainersResponse {
@@ -34,43 +25,14 @@ message StartContainersResponse {
 
 message StopContainersRequest {
   string session_id = 1;
-  repeated int64 container_ids = 2;
 }
 
 message StopContainersResponse {
-  string session_id = 1;
 }
 
 message KillContainersRequest {
   string session_id = 1;
-  repeated int64 container_ids = 2;
 }
 
 message KillContainersResponse {
-  string session_id = 1;
-}
-
-message DownloadContainersRequest {
-  string session_id = 1;
-  repeated int64 container_ids = 2;
-  string compress_method = 3;
-  int32 compress_level = 4;
-  ContentType content_type = 5;
-}
-
-enum ContentType {
-  ALL = 0;
-  MODELS = 1;
-  LOGS = 2;
-}
-
-message DownloadContainersResponse {
-  string session_id = 1;
-  repeated ContainerContent container_content = 2;
-}
-
-message ContainerContent {
-  int64 container_id = 1;
-  bytes content = 2;
-  string compress_method = 3;
 }
