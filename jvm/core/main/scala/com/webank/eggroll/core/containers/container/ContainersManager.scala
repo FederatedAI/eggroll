@@ -1,4 +1,4 @@
-package com.webank.eggroll.core.resourcemanager.job.container
+package com.webank.eggroll.core.containers.container
 
 import java.util.concurrent.{Executors, TimeUnit}
 import scala.collection.concurrent.TrieMap
