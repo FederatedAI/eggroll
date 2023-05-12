@@ -16,9 +16,8 @@
  *
  */
 
-package com.webank.eggroll.core.resourcemanager.job.container
+package com.webank.eggroll.core.containers.container
 
-import java.io._
 import java.nio.file.Path
 
 class PythonContainer(
