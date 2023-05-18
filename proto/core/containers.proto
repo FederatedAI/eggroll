@@ -2,7 +2,6 @@ syntax = "proto3";
 
 package com.webank.eggroll.core.meta;
 
-import "google/protobuf/duration.proto";
 import "meta.proto";
 
 message StartContainersRequest {
