@@ -20,8 +20,9 @@ def _create_command_uri(prefix, method_name):
 
 
 class JobCommands:
-    prefix = 'v1/cluster-manager/job'
+    prefix = "v1/cluster-manager/job"
 
-    SUBMIT_JOB = _create_command_uri(prefix, 'submitJob')
-    QUERY_JOB = _create_command_uri(prefix, 'queryJob')
-    KILL_JOB = _create_command_uri(prefix, 'killJob')
+    SUBMIT_JOB = _create_command_uri(prefix, "submitJob")
+    QUERY_JOB_STATUS = _create_command_uri(prefix, "queryJobStatus")
+    QUERY_JOB = _create_command_uri(prefix, "queryJob")
+    KILL_JOB = _create_command_uri(prefix, "killJob")

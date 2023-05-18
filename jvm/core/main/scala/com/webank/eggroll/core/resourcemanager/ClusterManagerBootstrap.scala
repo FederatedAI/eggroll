@@ -3,7 +3,7 @@ package com.webank.eggroll.core.resourcemanager
 import com.webank.eggroll.core.BootstrapBase
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
 import com.webank.eggroll.core.constant._
-import com.webank.eggroll.core.deepspeed.DeepspeedJobServiceHandler
+import com.webank.eggroll.core.deepspeed.job.JobServiceHandler
 import com.webank.eggroll.core.deepspeed.store.RendezvousStoreService
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.resourcemanager.metadata.{ServerNodeCrudOperator, StoreCrudOperator}
@@ -125,17 +125,21 @@ class ClusterManagerBootstrap extends BootstrapBase with Logging {
 
 
     // submit job
+    JobServiceHandler.startSessionWatcher()
     CommandRouter.register_handler(serviceName = JobCommands.submitJob.uriString,
-      args => DeepspeedJobServiceHandler.handleSubmit(args(0))
+      args => JobServiceHandler.handleSubmit(args(0))
+    )
+    CommandRouter.register_handler(serviceName = JobCommands.queryJobStatus.uriString,
+      args => JobServiceHandler.handleJobStatusQuery(args(0))
     )
     CommandRouter.register_handler(serviceName = JobCommands.queryJob.uriString,
-      args => DeepspeedJobServiceHandler.handleJobQuery(args(0))
+      args => JobServiceHandler.handleJobQuery(args(0))
     )
     CommandRouter.register_handler(serviceName = JobCommands.killJob.uriString,
-      args => DeepspeedJobServiceHandler.handleJobKill(args(0))
+      args => JobServiceHandler.handleJobKill(args(0))
     )
     CommandRouter.register_handler(serviceName = JobCommands.stopJob.uriString,
-      args => DeepspeedJobServiceHandler.handleJobStop(args(0))
+      args => JobServiceHandler.handleJobStop(args(0))
     )
 
     val rendezvousStoreService = new RendezvousStoreService()
