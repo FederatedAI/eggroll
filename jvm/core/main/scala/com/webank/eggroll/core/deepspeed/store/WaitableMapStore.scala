@@ -1,14 +1,11 @@
 package com.webank.eggroll.core.deepspeed.store
 
-import com.webank.eggroll.core.deepspeed.meta.store._
-import com.webank.eggroll.core.util.Logging
-
 import java.util.concurrent.ConcurrentHashMap
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Promise}
 import scala.util.Try
 
-class WaitableStore {
+class WaitableMapStore {
   private val store = new ConcurrentHashMap[K, V]()
   private val promiseMap = new ConcurrentHashMap[K, Promise[V]]()
 
@@ -54,43 +51,5 @@ class WaitableStore {
   def destroy(): Unit = {
     store.clear()
     promiseMap.clear()
-  }
-}
-
-class RendezvousStoreService extends Logging {
-
-  val stores = new ConcurrentHashMap[String, WaitableStore]()
-
-  private def getStore(prefix: String): WaitableStore = {
-    stores.computeIfAbsent(prefix, _ => new WaitableStore)
-  }
-
-  def destroyStore(prefix: String): Unit = {
-    val store = stores.remove(prefix)
-    if (store != null) {
-      store.destroy()
-    }
-  }
-
-  def set(request: RendezvousStoreSetRequest): RendezvousStoreSetResponse = {
-    val store = getStore(request.prefix)
-    store.set(request.key, request.value)
-    RendezvousStoreSetResponse()
-  }
-
-  def get(request: RendezvousStoreGetRequest): RendezvousStoreGetResponse = {
-    val store = getStore(request.prefix)
-    val value = store.get(request.key, request.timeout)
-    if (value.isDefined) {
-      RendezvousStoreGetResponse(value.get)
-    } else {
-      throw new Exception(s"key ${request.key} not found")
-    }
-  }
-
-  def add(request: RendezvousStoreAddRequest): RendezvousStoreAddResponse = {
-    val store = getStore(request.prefix)
-    val amount = store.add(request.key, request.amount)
-    RendezvousStoreAddResponse(amount)
   }
 }
