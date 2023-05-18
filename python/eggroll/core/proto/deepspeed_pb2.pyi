@@ -4,7 +4,6 @@ isort:skip_file
 """
 import builtins
 import collections.abc
-import containers_pb2
 import google.protobuf.descriptor
 import google.protobuf.duration_pb2
 import google.protobuf.internal.containers
@@ -78,16 +77,13 @@ class StoreGetResponse(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     VALUE_FIELD_NUMBER: builtins.int
-    IS_TIMEOUT_FIELD_NUMBER: builtins.int
     value: builtins.bytes
-    is_timeout: builtins.bool
     def __init__(
         self,
         *,
         value: builtins.bytes = ...,
-        is_timeout: builtins.bool = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["is_timeout", b"is_timeout", "value", b"value"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["value", b"value"]) -> None: ...
 
 global___StoreGetResponse = StoreGetResponse
 
@@ -258,36 +254,6 @@ class StoreDeleteKeyResponse(google.protobuf.message.Message):
 global___StoreDeleteKeyResponse = StoreDeleteKeyResponse
 
 @typing_extensions.final
-class StoreDestroyRequest(google.protobuf.message.Message):
-    DESCRIPTOR: google.protobuf.descriptor.Descriptor
-
-    PREFIX_FIELD_NUMBER: builtins.int
-    prefix: builtins.str
-    def __init__(
-        self,
-        *,
-        prefix: builtins.str = ...,
-    ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["prefix", b"prefix"]) -> None: ...
-
-global___StoreDestroyRequest = StoreDestroyRequest
-
-@typing_extensions.final
-class StoreDestroyResponse(google.protobuf.message.Message):
-    DESCRIPTOR: google.protobuf.descriptor.Descriptor
-
-    SUCCESS_FIELD_NUMBER: builtins.int
-    success: builtins.bool
-    def __init__(
-        self,
-        *,
-        success: builtins.bool = ...,
-    ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["success", b"success"]) -> None: ...
-
-global___StoreDestroyResponse = StoreDestroyResponse
-
-@typing_extensions.final
 class SubmitJobRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -363,8 +329,9 @@ class SubmitJobRequest(google.protobuf.message.Message):
     ENVIRONMENT_VARIABLES_FIELD_NUMBER: builtins.int
     FILES_FIELD_NUMBER: builtins.int
     ZIPPED_FILES_FIELD_NUMBER: builtins.int
-    RESOURCE_OPTIONS_FIELD_NUMBER: builtins.int
     OPTIONS_FIELD_NUMBER: builtins.int
+    STATUS_FIELD_NUMBER: builtins.int
+    PROCESSORS_FIELD_NUMBER: builtins.int
     session_id: builtins.str
     name: builtins.str
     job_type: builtins.str
@@ -378,11 +345,10 @@ class SubmitJobRequest(google.protobuf.message.Message):
     @property
     def zipped_files(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.bytes]: ...
     @property
-    def resource_options(self) -> global___ResourceOptions:
-        """concrete options"""
+    def options(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]: ...
+    status: builtins.str
     @property
-    def options(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
-        """extra options"""
+    def processors(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[meta_pb2.Processor]: ...
     def __init__(
         self,
         *,
@@ -394,32 +360,13 @@ class SubmitJobRequest(google.protobuf.message.Message):
         environment_variables: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
         files: collections.abc.Mapping[builtins.str, builtins.bytes] | None = ...,
         zipped_files: collections.abc.Mapping[builtins.str, builtins.bytes] | None = ...,
-        resource_options: global___ResourceOptions | None = ...,
         options: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
+        status: builtins.str = ...,
+        processors: collections.abc.Iterable[meta_pb2.Processor] | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["resource_options", b"resource_options"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["command_arguments", b"command_arguments", "environment_variables", b"environment_variables", "files", b"files", "job_type", b"job_type", "name", b"name", "options", b"options", "resource_options", b"resource_options", "session_id", b"session_id", "world_size", b"world_size", "zipped_files", b"zipped_files"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["command_arguments", b"command_arguments", "environment_variables", b"environment_variables", "files", b"files", "job_type", b"job_type", "name", b"name", "options", b"options", "processors", b"processors", "session_id", b"session_id", "status", b"status", "world_size", b"world_size", "zipped_files", b"zipped_files"]) -> None: ...
 
 global___SubmitJobRequest = SubmitJobRequest
-
-@typing_extensions.final
-class ResourceOptions(google.protobuf.message.Message):
-    DESCRIPTOR: google.protobuf.descriptor.Descriptor
-
-    TIMEOUT_SECONDS_FIELD_NUMBER: builtins.int
-    RESOURCE_EXHAUSTED_STRATEGY_FIELD_NUMBER: builtins.int
-    timeout_seconds: builtins.int
-    resource_exhausted_strategy: builtins.str
-    """"ignore", "waiting", "throw_error" """
-    def __init__(
-        self,
-        *,
-        timeout_seconds: builtins.int = ...,
-        resource_exhausted_strategy: builtins.str = ...,
-    ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["resource_exhausted_strategy", b"resource_exhausted_strategy", "timeout_seconds", b"timeout_seconds"]) -> None: ...
-
-global___ResourceOptions = ResourceOptions
 
 @typing_extensions.final
 class SubmitJobResponse(google.protobuf.message.Message):
@@ -572,50 +519,3 @@ class QueryJobStatusResponse(google.protobuf.message.Message):
     def ClearField(self, field_name: typing_extensions.Literal["session_id", b"session_id", "status", b"status"]) -> None: ...
 
 global___QueryJobStatusResponse = QueryJobStatusResponse
-
-@typing_extensions.final
-class DownloadJobRequest(google.protobuf.message.Message):
-    DESCRIPTOR: google.protobuf.descriptor.Descriptor
-
-    SESSION_ID_FIELD_NUMBER: builtins.int
-    RANKS_FIELD_NUMBER: builtins.int
-    COMPRESS_METHOD_FIELD_NUMBER: builtins.int
-    COMPRESS_LEVEL_FIELD_NUMBER: builtins.int
-    CONTENT_TYPE_FIELD_NUMBER: builtins.int
-    session_id: builtins.str
-    @property
-    def ranks(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.int]: ...
-    compress_method: builtins.str
-    compress_level: builtins.int
-    content_type: containers_pb2.ContentType.ValueType
-    def __init__(
-        self,
-        *,
-        session_id: builtins.str = ...,
-        ranks: collections.abc.Iterable[builtins.int] | None = ...,
-        compress_method: builtins.str = ...,
-        compress_level: builtins.int = ...,
-        content_type: containers_pb2.ContentType.ValueType = ...,
-    ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["compress_level", b"compress_level", "compress_method", b"compress_method", "content_type", b"content_type", "ranks", b"ranks", "session_id", b"session_id"]) -> None: ...
-
-global___DownloadJobRequest = DownloadJobRequest
-
-@typing_extensions.final
-class DownloadJobResponse(google.protobuf.message.Message):
-    DESCRIPTOR: google.protobuf.descriptor.Descriptor
-
-    SESSION_ID_FIELD_NUMBER: builtins.int
-    CONTAINER_CONTENT_FIELD_NUMBER: builtins.int
-    session_id: builtins.str
-    @property
-    def container_content(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[containers_pb2.ContainerContent]: ...
-    def __init__(
-        self,
-        *,
-        session_id: builtins.str = ...,
-        container_content: collections.abc.Iterable[containers_pb2.ContainerContent] | None = ...,
-    ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["container_content", b"container_content", "session_id", b"session_id"]) -> None: ...
-
-global___DownloadJobResponse = DownloadJobResponse
