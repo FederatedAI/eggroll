@@ -1,4 +1,4 @@
-package com.webank.eggroll.core.deepspeed.meta.store
+package com.webank.eggroll.core.deepspeed.store.meta
 
 import com.google.protobuf.ByteString
 import com.webank.eggroll.core.meta.Deepspeed
