@@ -13,13 +13,14 @@ import scala.collection.mutable.ArrayBuffer
 
 class ServerMetaDao {
   private lazy val dbc = BaseDao.dbc
-  def getServerCluster(clusterId:Long = 0): ErServerCluster = synchronized {
+
+  def getServerCluster(clusterId: Long = 0): ErServerCluster = synchronized {
     val nodes = dbc.query(rs =>
       rs.map(_ => ErServerNode(
-        id = rs.getLong("server_id"), clusterId=clusterId, name = rs.getString("name"),
-        endpoint = ErEndpoint(host=rs.getString("host"), port = rs.getInt("port")),
+        id = rs.getLong("server_id"), clusterId = clusterId, name = rs.getString("name"),
+        endpoint = ErEndpoint(host = rs.getString("host"), port = rs.getInt("port")),
         nodeType = rs.getString("node_type"), status = rs.getString("status")))
-    ,"select * from server_node where server_cluster_id=?", clusterId)
+      , "select * from server_node where server_cluster_id=?", clusterId)
     ErServerCluster(id = clusterId, serverNodes = nodes.toArray)
   }
 }
@@ -32,11 +33,12 @@ class SessionMetaDao {
 
 
   private lazy val dbc = BaseDao.dbc
+
   def register(sessionMeta: ErSessionMeta, replace: Boolean = true): Unit = synchronized {
     require(sessionMeta.activeProcCount == sessionMeta.processors.count(_.status == ProcessorStatus.RUNNING),
       "conflict active proc count:" + sessionMeta)
     val sid = sessionMeta.id
-    dbc.withTransaction{ conn =>
+    dbc.withTransaction { conn =>
       if (replace) {
         dbc.update(conn, "delete from session_main where session_id=?", sid)
         dbc.update(conn, "delete from session_option where session_id=?", sid)
@@ -48,8 +50,8 @@ class SessionMetaDao {
       val opts = sessionMeta.options
       if (opts.nonEmpty) {
         val valueSql = ("(?, ?, ?) ," * opts.size).stripSuffix(",")
-        val params = opts.flatMap{case (k,v) => Seq(sid, k, v)}.toSeq
-        dbc.update(conn, "insert into session_option(session_id, name, data) values " + valueSql, params:_*)
+        val params = opts.flatMap { case (k, v) => Seq(sid, k, v) }.toSeq
+        dbc.update(conn, "insert into session_option(session_id, name, data) values " + valueSql, params: _*)
       }
       val procs = sessionMeta.processors
       if (procs.nonEmpty) {
@@ -59,9 +61,9 @@ class SessionMetaDao {
           if (proc.commandEndpoint != null) proc.commandEndpoint.toString else "",
           if (proc.transferEndpoint != null) proc.transferEndpoint.toString else ""))
         dbc.update(conn,
-                   "insert into session_processor(session_id, server_node_id, processor_type, status, " +
-                   "tag, command_endpoint, transfer_endpoint) values " + valueSql,
-                   params:_*)
+          "insert into session_processor(session_id, server_node_id, processor_type, status, " +
+            "tag, command_endpoint, transfer_endpoint) values " + valueSql,
+          params: _*)
 
 
       }
@@ -70,20 +72,20 @@ class SessionMetaDao {
 
   def getSession(sessionId: String): ErSessionMeta = synchronized {
     val opts = dbc.query(
-          rs => rs.map(
-            _ => (rs.getString("name"), rs.getString("data"))
-          ).toMap,
+      rs => rs.map(
+        _ => (rs.getString("name"), rs.getString("data"))
+      ).toMap,
       "select * from session_option where session_id = ?", sessionId)
-    val procs = dbc.query( rs => rs.map(_ =>
+    val procs = dbc.query(rs => rs.map(_ =>
       ErProcessor(id = rs.getLong("processor_id"),
-          serverNodeId = rs.getInt("server_node_id"),
-          processorType = rs.getString("processor_type"), status = rs.getString("status"),
-          commandEndpoint = if(StringUtils.isBlank(rs.getString("command_endpoint"))) null
-                            else ErEndpoint(rs.getString("command_endpoint")),
-          transferEndpoint = if(StringUtils.isBlank(rs.getString("transfer_endpoint"))) null
-                              else ErEndpoint(rs.getString("transfer_endpoint")),
-          pid = rs.getInt("pid"))
-        ),
+        serverNodeId = rs.getInt("server_node_id"),
+        processorType = rs.getString("processor_type"), status = rs.getString("status"),
+        commandEndpoint = if (StringUtils.isBlank(rs.getString("command_endpoint"))) null
+        else ErEndpoint(rs.getString("command_endpoint")),
+        transferEndpoint = if (StringUtils.isBlank(rs.getString("transfer_endpoint"))) null
+        else ErEndpoint(rs.getString("transfer_endpoint")),
+        pid = rs.getInt("pid"))
+    ),
       "select * from session_processor where session_id = ?", sessionId)
     getSessionMain(sessionId).copy(options = opts, processors = procs.toArray)
   }
@@ -107,7 +109,7 @@ class SessionMetaDao {
   }
 
 
-  def updateProcessor(conn :Connection,proc: ErProcessor): Unit = synchronized {
+  def updateProcessor(conn: Connection, proc: ErProcessor): Unit = synchronized {
     val (session_id: String, oldStatus: String) = dbc.query(conn, rs => {
       if (!rs.next()) {
         throw new NotExistError("processor not exits:" + proc)
@@ -116,43 +118,43 @@ class SessionMetaDao {
     }, "select session_id, status from session_processor where processor_id=?", proc.id)
 
 
-      var sql = "update session_processor set status = ?"
-      var params = List(proc.status)
-      var host = dbc.query(rs => {
-        if (!rs.next()) throw new NotExistError(s"host of server_node_id ${proc.serverNodeId} not exists")
-        rs.getString("host")
-      }, "select host from server_node where server_node_id = ?", proc.serverNodeId)
+    var sql = "update session_processor set status = ?"
+    var params = List(proc.status)
+    var host = dbc.query(rs => {
+      if (!rs.next()) throw new NotExistError(s"host of server_node_id ${proc.serverNodeId} not exists")
+      rs.getString("host")
+    }, "select host from server_node where server_node_id = ?", proc.serverNodeId)
 
-      if (!StringUtils.isBlank(proc.tag)) {
-        sql += ", tag = ?"
-        params ++= Array(proc.tag)
-      }
-      if (proc.commandEndpoint != null) {
-        sql += ", command_endpoint = ?"
-        params ++= Array(s"${host}:${proc.commandEndpoint.port}")
-      }
-      if (proc.transferEndpoint != null) {
-        sql += ", transfer_endpoint = ?"
-        params ++= Array(s"${host}:${proc.transferEndpoint.port}")
-      }
-      if (proc.pid > 0) {
-        sql += ", pid = ?"
-        params ++= Array(proc.pid.toString)
-      }
+    if (!StringUtils.isBlank(proc.tag)) {
+      sql += ", tag = ?"
+      params ++= Array(proc.tag)
+    }
+    if (proc.commandEndpoint != null) {
+      sql += ", command_endpoint = ?"
+      params ++= Array(s"${host}:${proc.commandEndpoint.port}")
+    }
+    if (proc.transferEndpoint != null) {
+      sql += ", transfer_endpoint = ?"
+      params ++= Array(s"${host}:${proc.transferEndpoint.port}")
+    }
+    if (proc.pid > 0) {
+      sql += ", pid = ?"
+      params ++= Array(proc.pid.toString)
+    }
 
-      sql += " where processor_id = ?"
-      params ++= Array(proc.id.toString)
-      dbc.update(conn, sql, params:_*)
-      if (oldStatus == ProcessorStatus.RUNNING && proc.status != ProcessorStatus.RUNNING)  {
-        dbc.update(conn, "update session_main set active_proc_count = active_proc_count - 1 where session_id = ?", session_id)
-      } else if (oldStatus != ProcessorStatus.RUNNING && proc.status == ProcessorStatus.RUNNING) {
-        dbc.update(conn, "update session_main set active_proc_count = active_proc_count + 1 where session_id = ?", session_id)
-      }
+    sql += " where processor_id = ?"
+    params ++= Array(proc.id.toString)
+    dbc.update(conn, sql, params: _*)
+    if (oldStatus == ProcessorStatus.RUNNING && proc.status != ProcessorStatus.RUNNING) {
+      dbc.update(conn, "update session_main set active_proc_count = active_proc_count - 1 where session_id = ?", session_id)
+    } else if (oldStatus != ProcessorStatus.RUNNING && proc.status == ProcessorStatus.RUNNING) {
+      dbc.update(conn, "update session_main set active_proc_count = active_proc_count + 1 where session_id = ?", session_id)
+    }
 
   }
 
   def updateProcessor(proc: ErProcessor): Unit = synchronized {
-    val (session_id: String, oldStatus: String) = dbc.query( rs => {
+    val (session_id: String, oldStatus: String) = dbc.query(rs => {
       if (!rs.next()) {
         throw new NotExistError("processor not exits:" + proc)
       }
@@ -186,8 +188,8 @@ class SessionMetaDao {
 
       sql += " where processor_id = ?"
       params ++= Array(proc.id.toString)
-      dbc.update(conn, sql, params:_*)
-      if (oldStatus == ProcessorStatus.RUNNING && proc.status != ProcessorStatus.RUNNING)  {
+      dbc.update(conn, sql, params: _*)
+      if (oldStatus == ProcessorStatus.RUNNING && proc.status != ProcessorStatus.RUNNING) {
         dbc.update(conn, "update session_main set active_proc_count = active_proc_count - 1 where session_id = ?", session_id)
       } else if (oldStatus != ProcessorStatus.RUNNING && proc.status == ProcessorStatus.RUNNING) {
         dbc.update(conn, "update session_main set active_proc_count = active_proc_count + 1 where session_id = ?", session_id)
@@ -196,7 +198,7 @@ class SessionMetaDao {
   }
 
   def getSessionMain(sessionId: String): ErSessionMeta = synchronized {
-    dbc.query( rs => {
+    dbc.query(rs => {
       if (!rs.next()) {
         return ErSessionMeta()
       }
@@ -207,7 +209,7 @@ class SessionMetaDao {
         activeProcCount = rs.getInt("active_proc_count"),
         status = rs.getString("status"),
         tag = rs.getString("tag"))
-    },"select * from session_main where session_id = ?", sessionId)
+    }, "select * from session_main where session_id = ?", sessionId)
   }
 
   def getSessionMains(sessionMeta: ErSessionMeta): Array[ErSessionMeta] = synchronized {
@@ -301,6 +303,21 @@ class SessionMetaDao {
     }
   }
 
+  def updateSessionStatus(sessionId: String, status: String, required_old_status: Option[String] = None): Unit = synchronized {
+    required_old_status match {
+      case Some(old_status) =>
+        dbc.withTransaction { conn =>
+          dbc.update(conn, "update session_main set status =?  where session_id = ? and status = ?",
+            status, sessionId, old_status)
+        }
+      case None =>
+        dbc.withTransaction { conn =>
+          dbc.update(conn, "update session_main set status =?  where session_id = ?",
+            status, sessionId)
+        }
+    }
+  }
+
   // status and tag only
   def batchUpdateSessionProcessor(sessionMeta: ErSessionMeta): Unit = synchronized {
     dbc.withTransaction { conn =>
@@ -330,5 +347,6 @@ class SessionMetaDao {
 
 object BaseDao {
   class NotExistError(msg: String) extends Exception(msg)
+
   val dbc: JdbcTemplate = new JdbcTemplate(RdbConnectionPool.dataSource.getConnection)
 }
