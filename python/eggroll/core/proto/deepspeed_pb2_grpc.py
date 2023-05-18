@@ -2,10 +2,10 @@
 """Client and server classes corresponding to protobuf-defined services."""
 import grpc
 
-import store_pb2 as store__pb2
+import deepspeed_pb2 as deepspeed__pb2
 
 
-class RendezvousStoreStub(object):
+class DeepspeedRendezvousStoreStub(object):
     """Missing associated documentation comment in .proto file."""
 
     def __init__(self, channel):
@@ -15,43 +15,43 @@ class RendezvousStoreStub(object):
             channel: A grpc.Channel.
         """
         self.Set = channel.unary_unary(
-                '/com.webank.eggroll.core.meta.RendezvousStore/Set',
-                request_serializer=store__pb2.SetRequest.SerializeToString,
-                response_deserializer=store__pb2.SetResponse.FromString,
+                '/com.webank.eggroll.core.meta.DeepspeedRendezvousStore/Set',
+                request_serializer=deepspeed__pb2.StoreSetRequest.SerializeToString,
+                response_deserializer=deepspeed__pb2.StoreSetResponse.FromString,
                 )
         self.Get = channel.unary_unary(
-                '/com.webank.eggroll.core.meta.RendezvousStore/Get',
-                request_serializer=store__pb2.GetRequest.SerializeToString,
-                response_deserializer=store__pb2.GetResponse.FromString,
+                '/com.webank.eggroll.core.meta.DeepspeedRendezvousStore/Get',
+                request_serializer=deepspeed__pb2.StoreGetRequest.SerializeToString,
+                response_deserializer=deepspeed__pb2.StoreGetResponse.FromString,
                 )
         self.Add = channel.unary_unary(
-                '/com.webank.eggroll.core.meta.RendezvousStore/Add',
-                request_serializer=store__pb2.AddRequest.SerializeToString,
-                response_deserializer=store__pb2.AddResponse.FromString,
+                '/com.webank.eggroll.core.meta.DeepspeedRendezvousStore/Add',
+                request_serializer=deepspeed__pb2.StoreAddRequest.SerializeToString,
+                response_deserializer=deepspeed__pb2.StoreAddResponse.FromString,
                 )
         self.CompareAndSet = channel.unary_unary(
-                '/com.webank.eggroll.core.meta.RendezvousStore/CompareAndSet',
-                request_serializer=store__pb2.CompareAndSetRequest.SerializeToString,
-                response_deserializer=store__pb2.CompareAndSetResponse.FromString,
+                '/com.webank.eggroll.core.meta.DeepspeedRendezvousStore/CompareAndSet',
+                request_serializer=deepspeed__pb2.StoreCompareAndSetRequest.SerializeToString,
+                response_deserializer=deepspeed__pb2.StoreCompareAndSetResponse.FromString,
                 )
         self.Wait = channel.unary_unary(
-                '/com.webank.eggroll.core.meta.RendezvousStore/Wait',
-                request_serializer=store__pb2.WaitRequest.SerializeToString,
-                response_deserializer=store__pb2.WaitResponse.FromString,
+                '/com.webank.eggroll.core.meta.DeepspeedRendezvousStore/Wait',
+                request_serializer=deepspeed__pb2.StoreWaitRequest.SerializeToString,
+                response_deserializer=deepspeed__pb2.StoreWaitResponse.FromString,
                 )
         self.NumKeys = channel.unary_unary(
-                '/com.webank.eggroll.core.meta.RendezvousStore/NumKeys',
-                request_serializer=store__pb2.NumKeysRequest.SerializeToString,
-                response_deserializer=store__pb2.NumKeysResponse.FromString,
+                '/com.webank.eggroll.core.meta.DeepspeedRendezvousStore/NumKeys',
+                request_serializer=deepspeed__pb2.StoreNumKeysRequest.SerializeToString,
+                response_deserializer=deepspeed__pb2.StoreNumKeysResponse.FromString,
                 )
         self.DeleteKey = channel.unary_unary(
-                '/com.webank.eggroll.core.meta.RendezvousStore/DeleteKey',
-                request_serializer=store__pb2.DeleteKeyRequest.SerializeToString,
-                response_deserializer=store__pb2.DeleteKeyResponse.FromString,
+                '/com.webank.eggroll.core.meta.DeepspeedRendezvousStore/DeleteKey',
+                request_serializer=deepspeed__pb2.StoreDeleteKeyRequest.SerializeToString,
+                response_deserializer=deepspeed__pb2.StoreDeleteKeyResponse.FromString,
                 )
 
 
-class RendezvousStoreServicer(object):
+class DeepspeedRendezvousStoreServicer(object):
     """Missing associated documentation comment in .proto file."""
 
     def Set(self, request, context):
@@ -97,51 +97,51 @@ class RendezvousStoreServicer(object):
         raise NotImplementedError('Method not implemented!')
 
 
-def add_RendezvousStoreServicer_to_server(servicer, server):
+def add_DeepspeedRendezvousStoreServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'Set': grpc.unary_unary_rpc_method_handler(
                     servicer.Set,
-                    request_deserializer=store__pb2.SetRequest.FromString,
-                    response_serializer=store__pb2.SetResponse.SerializeToString,
+                    request_deserializer=deepspeed__pb2.StoreSetRequest.FromString,
+                    response_serializer=deepspeed__pb2.StoreSetResponse.SerializeToString,
             ),
             'Get': grpc.unary_unary_rpc_method_handler(
                     servicer.Get,
-                    request_deserializer=store__pb2.GetRequest.FromString,
-                    response_serializer=store__pb2.GetResponse.SerializeToString,
+                    request_deserializer=deepspeed__pb2.StoreGetRequest.FromString,
+                    response_serializer=deepspeed__pb2.StoreGetResponse.SerializeToString,
             ),
             'Add': grpc.unary_unary_rpc_method_handler(
                     servicer.Add,
-                    request_deserializer=store__pb2.AddRequest.FromString,
-                    response_serializer=store__pb2.AddResponse.SerializeToString,
+                    request_deserializer=deepspeed__pb2.StoreAddRequest.FromString,
+                    response_serializer=deepspeed__pb2.StoreAddResponse.SerializeToString,
             ),
             'CompareAndSet': grpc.unary_unary_rpc_method_handler(
                     servicer.CompareAndSet,
-                    request_deserializer=store__pb2.CompareAndSetRequest.FromString,
-                    response_serializer=store__pb2.CompareAndSetResponse.SerializeToString,
+                    request_deserializer=deepspeed__pb2.StoreCompareAndSetRequest.FromString,
+                    response_serializer=deepspeed__pb2.StoreCompareAndSetResponse.SerializeToString,
             ),
             'Wait': grpc.unary_unary_rpc_method_handler(
                     servicer.Wait,
-                    request_deserializer=store__pb2.WaitRequest.FromString,
-                    response_serializer=store__pb2.WaitResponse.SerializeToString,
+                    request_deserializer=deepspeed__pb2.StoreWaitRequest.FromString,
+                    response_serializer=deepspeed__pb2.StoreWaitResponse.SerializeToString,
             ),
             'NumKeys': grpc.unary_unary_rpc_method_handler(
                     servicer.NumKeys,
-                    request_deserializer=store__pb2.NumKeysRequest.FromString,
-                    response_serializer=store__pb2.NumKeysResponse.SerializeToString,
+                    request_deserializer=deepspeed__pb2.StoreNumKeysRequest.FromString,
+                    response_serializer=deepspeed__pb2.StoreNumKeysResponse.SerializeToString,
             ),
             'DeleteKey': grpc.unary_unary_rpc_method_handler(
                     servicer.DeleteKey,
-                    request_deserializer=store__pb2.DeleteKeyRequest.FromString,
-                    response_serializer=store__pb2.DeleteKeyResponse.SerializeToString,
+                    request_deserializer=deepspeed__pb2.StoreDeleteKeyRequest.FromString,
+                    response_serializer=deepspeed__pb2.StoreDeleteKeyResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'com.webank.eggroll.core.meta.RendezvousStore', rpc_method_handlers)
+            'com.webank.eggroll.core.meta.DeepspeedRendezvousStore', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
 
 
  # This class is part of an EXPERIMENTAL API.
-class RendezvousStore(object):
+class DeepspeedRendezvousStore(object):
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
@@ -155,9 +155,9 @@ class RendezvousStore(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/com.webank.eggroll.core.meta.RendezvousStore/Set',
-            store__pb2.SetRequest.SerializeToString,
-            store__pb2.SetResponse.FromString,
+        return grpc.experimental.unary_unary(request, target, '/com.webank.eggroll.core.meta.DeepspeedRendezvousStore/Set',
+            deepspeed__pb2.StoreSetRequest.SerializeToString,
+            deepspeed__pb2.StoreSetResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -172,9 +172,9 @@ class RendezvousStore(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/com.webank.eggroll.core.meta.RendezvousStore/Get',
-            store__pb2.GetRequest.SerializeToString,
-            store__pb2.GetResponse.FromString,
+        return grpc.experimental.unary_unary(request, target, '/com.webank.eggroll.core.meta.DeepspeedRendezvousStore/Get',
+            deepspeed__pb2.StoreGetRequest.SerializeToString,
+            deepspeed__pb2.StoreGetResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -189,9 +189,9 @@ class RendezvousStore(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/com.webank.eggroll.core.meta.RendezvousStore/Add',
-            store__pb2.AddRequest.SerializeToString,
-            store__pb2.AddResponse.FromString,
+        return grpc.experimental.unary_unary(request, target, '/com.webank.eggroll.core.meta.DeepspeedRendezvousStore/Add',
+            deepspeed__pb2.StoreAddRequest.SerializeToString,
+            deepspeed__pb2.StoreAddResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -206,9 +206,9 @@ class RendezvousStore(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/com.webank.eggroll.core.meta.RendezvousStore/CompareAndSet',
-            store__pb2.CompareAndSetRequest.SerializeToString,
-            store__pb2.CompareAndSetResponse.FromString,
+        return grpc.experimental.unary_unary(request, target, '/com.webank.eggroll.core.meta.DeepspeedRendezvousStore/CompareAndSet',
+            deepspeed__pb2.StoreCompareAndSetRequest.SerializeToString,
+            deepspeed__pb2.StoreCompareAndSetResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -223,9 +223,9 @@ class RendezvousStore(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/com.webank.eggroll.core.meta.RendezvousStore/Wait',
-            store__pb2.WaitRequest.SerializeToString,
-            store__pb2.WaitResponse.FromString,
+        return grpc.experimental.unary_unary(request, target, '/com.webank.eggroll.core.meta.DeepspeedRendezvousStore/Wait',
+            deepspeed__pb2.StoreWaitRequest.SerializeToString,
+            deepspeed__pb2.StoreWaitResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -240,9 +240,9 @@ class RendezvousStore(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/com.webank.eggroll.core.meta.RendezvousStore/NumKeys',
-            store__pb2.NumKeysRequest.SerializeToString,
-            store__pb2.NumKeysResponse.FromString,
+        return grpc.experimental.unary_unary(request, target, '/com.webank.eggroll.core.meta.DeepspeedRendezvousStore/NumKeys',
+            deepspeed__pb2.StoreNumKeysRequest.SerializeToString,
+            deepspeed__pb2.StoreNumKeysResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -257,8 +257,8 @@ class RendezvousStore(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/com.webank.eggroll.core.meta.RendezvousStore/DeleteKey',
-            store__pb2.DeleteKeyRequest.SerializeToString,
-            store__pb2.DeleteKeyResponse.FromString,
+        return grpc.experimental.unary_unary(request, target, '/com.webank.eggroll.core.meta.DeepspeedRendezvousStore/DeleteKey',
+            deepspeed__pb2.StoreDeleteKeyRequest.SerializeToString,
+            deepspeed__pb2.StoreDeleteKeyResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
