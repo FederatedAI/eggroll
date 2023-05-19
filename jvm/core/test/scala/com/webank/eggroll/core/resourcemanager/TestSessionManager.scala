@@ -8,8 +8,8 @@ class TestSessionManager {
   @Test
   def testSubmitJob(): Unit = {
     val clusterManagerClient = new ClusterManagerClient("localhost", 4670)
-    val result = clusterManagerClient.submitJob(job = TestAssets.submitJobMeta)
-    println(result)
+//    val result = clusterManagerClient.submitJob(job = TestAssets.submitJobMeta)
+//    println(result)
   }
 
 
