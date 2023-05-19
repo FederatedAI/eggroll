@@ -4,6 +4,7 @@ package com.webank.eggroll.core.meta;
 
 import "google/protobuf/duration.proto";
 import "meta.proto";
+import "containers.proto";
 
 service DeepspeedRendezvousStore {
   rpc Set (StoreSetRequest) returns (StoreSetResponse) {}
@@ -129,4 +130,15 @@ message QueryJobStatusRequest {
 message QueryJobStatusResponse {
   string session_id = 1;
   string status = 2;
+}
+
+message DownloadJobRequest {
+  string session_id = 1;
+  repeated int32 ranks = 2;
+  string compress_method = 3;
+}
+
+message DownloadJobResponse {
+  string session_id = 1;
+  repeated ContainerContent container_content = 2;
 }

@@ -3,7 +3,6 @@ package com.webank.eggroll.core.resourcemanager
 import com.webank.eggroll.core.constant.{ProcessorStatus, SessionConfKeys, SessionStatus}
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.resourcemanager.BaseDao.NotExistError
-import com.webank.eggroll.core.resourcemanager.SessionManagerService.{serverNodeCrudOperator, smDao}
 import com.webank.eggroll.core.util.JdbcTemplate
 import com.webank.eggroll.core.util.JdbcTemplate.ResultSetIterator
 import org.apache.commons.lang3.StringUtils
@@ -64,10 +63,32 @@ class SessionMetaDao {
           "insert into session_processor(session_id, server_node_id, processor_type, status, " +
             "tag, command_endpoint, transfer_endpoint) values " + valueSql,
           params: _*)
-
-
       }
     }
+  }
+
+  def registerRanks(sessionId: String, containerIds: Array[Long], nodeIds: Array[Long], localRanks: Array[Int], globalRanks: Array[Int]): Unit = {
+    require(
+      containerIds.length == nodeIds.length &&
+        containerIds.length == globalRanks.length &&
+        containerIds.length == localRanks.length)
+
+    dbc.withTransaction { conn =>
+      val valueSql = Array.fill(containerIds.length)("(?, ?, ?, ?, ?)").mkString(",")
+      val params = containerIds.zip(nodeIds).zip(globalRanks).zip(localRanks).flatMap { case (((containerId, nodeId), globalRank), localRank) =>
+        Seq(sessionId, containerId, nodeId, globalRank, localRank)
+      }
+      dbc.update(conn, "insert into session_ranks(session_id, container_id, server_node_id, global_rank, local_rank) values " + valueSql, params: _*)
+    }
+  }
+
+  def getRanks(sessionId: String): Array[(Long, Long, Int, Int)] = synchronized {
+    dbc.query(rs => rs.map(_ => (
+      rs.getLong("container_id"),
+      rs.getLong("server_node_id"),
+      rs.getInt("global_rank"),
+      rs.getInt("local_rank")
+    )), "select * from session_ranks where session_id = ?", sessionId).toArray
   }
 
   def getSession(sessionId: String): ErSessionMeta = synchronized {

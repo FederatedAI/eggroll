@@ -62,18 +62,23 @@ class NodeManagerBootstrap extends BootstrapBase with Logging {
       routeToMethodName = NodeManagerCommands.heartbeat.getName())
 
     CommandRouter.register_handler(
-      NodeManagerCommands.startJobContainers.uriString,
+      ContainerCommands.startJobContainers.uriString,
       args => nodeManagerJobService.startJobContainers(args(0))
     )
 
     CommandRouter.register_handler(
-      NodeManagerCommands.killJobContainers.uriString,
+      ContainerCommands.killJobContainers.uriString,
       args => nodeManagerJobService.killJobContainers(args(0))
     )
 
     CommandRouter.register_handler(
-      NodeManagerCommands.stopJobContainers.uriString,
+      ContainerCommands.stopJobContainers.uriString,
       args => nodeManagerJobService.stopJobContainers(args(0))
+    )
+
+    CommandRouter.register_handler(
+      ContainerCommands.downloadContainers.uriString,
+      args => nodeManagerJobService.downloadContainers(args(0))
     )
 
     CommandRouter.register(serviceName = ResouceCommands.resourceAllocation.uriString,
