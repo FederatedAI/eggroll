@@ -2,19 +2,21 @@ package com.webank.eggroll.core.resourcemanager
 
 import com.webank.eggroll.core.ErSession
 import com.webank.eggroll.core.client.NodeManagerClient
-import com.webank.eggroll.core.constant.{DispatchStrategy, NodeManagerConfKeys, ProcessorStatus, ResourceOperationStauts, ResourceOperationType, ResourceStatus, ResourceTypes, ServerNodeStatus, ServerNodeTypes}
+import com.webank.eggroll.core.constant.{DispatchStrategy, NodeManagerConfKeys, ProcessorStatus, ResourceEventType, ResourceExhaustedStrategy, ResourceOperationStauts, ResourceOperationType, ResourceStatus, ResourceTypes, ServerNodeStatus, ServerNodeTypes, SessionStatus}
 import com.webank.eggroll.core.datastructure.FifoBroker
-import com.webank.eggroll.core.meta.{ErEndpoint, ErProcessor, ErResource, ErResourceAllocation, ErServerNode}
+import com.webank.eggroll.core.meta.{ErEndpoint, ErProcessor, ErResource, ErResourceAllocation, ErServerNode, ErSessionMeta}
 import com.webank.eggroll.core.resourcemanager.ClusterResourceManager.{ResourceApplication, dispatchDeepSpeedInner, serverNodeCrudOperator}
+import com.webank.eggroll.core.resourcemanager.job.ClusterManagerJobService.smDao
 import com.webank.eggroll.core.resourcemanager.job.JobProcessorTypes
 import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.util.Logging
 
 import java.sql.Connection
-import java.util.concurrent.{ArrayBlockingQueue, CountDownLatch}
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.{ArrayBlockingQueue, ConcurrentLinkedQueue, CountDownLatch, TimeUnit}
 import scala.collection.JavaConverters.mapAsJavaMapConverter
-import scala.collection.mutable.ArrayBuffer
+import scala.collection.mutable.{ArrayBuffer, ListBuffer}
 import scala.collection.{breakOut, mutable}
 import scala.math.Numeric.LongIsIntegral
 import scala.util.Random
@@ -22,22 +24,135 @@ import scala.util.control.Breaks.{break, breakable}
 
 object ClusterResourceManager extends Logging{
 
-    val   applicationQueue =  new FifoBroker[ResourceApplication]
-
+    val   applicationQueue   =   new FifoBroker[ResourceApplication]
+    var   resourceEventQueue = new FifoBroker[ResourceEvent]
     lazy val serverNodeCrudOperator = new ServerNodeCrudOperator()
-
+    private val smDao = new SessionMetaDao
     var  dispatchThread = new  Thread(()=>{
-      println("dispatch thread start")
+
       while(true){
+
+        var resourceApplication = applicationQueue.broker.peek()
+        println("dispatch thread peek====")
         try{
-         var  resourceApplication = applicationQueue.next()
-          handleResourceApplication(resourceApplication)
+          breakable {
+            if(resourceApplication!=null) {
+              var now = System.currentTimeMillis()
+              if (resourceApplication.needDispatch) {
+                if (resourceApplication.waitingCount.get() == 0
+                ) {
+                  //过期资源申请
+                  applicationQueue.next();
+                  break()
+                }
+                var serverNodes = getServerNodeWithResource();
+                var enough = checkResource(serverNodes, resourceApplication.processors, resourceApplication.allowExhausted)
+                if (!enough) {
+                  resourceApplication.resourceExhaustedStrategy match {
+                    case ResourceExhaustedStrategy.IGNORE => ;
+                    case ResourceExhaustedStrategy.WAITING =>
+                      Thread.sleep(1000)
+                      break()
+                    case ResourceExhaustedStrategy.THROW_ERROR =>
+                      resourceApplication.status.set(1)
+                      resourceApplication.resourceLatch.countDown()
+                      break()
+                  }
+                }
+                resourceApplication.dispatchStrategy match {
+                  case DispatchStrategy.REMAIN_MOST_FIRST => remainMostFirstDispatch(serverNodes, resourceApplication);
+                  case DispatchStrategy.RANDOM => randomDispatch(serverNodes, resourceApplication);
+                }
+              }
+              logInfo(s"========================${resourceApplication.processors.mkString}")
+
+              var dispatchedProcessors = resourceApplication.resourceDispatch
+                //.toArray.map(_._1)
+
+              smDao.register(ErSessionMeta(
+                id = resourceApplication.sessionId,
+                processors = dispatchedProcessors.toArray.map(_._1),
+                totalProcCount = dispatchedProcessors.length,
+                status = SessionStatus.NEW)
+              )
+
+              val registeredSessionMeta = smDao.getSession(resourceApplication.sessionId)
+              dispatchedProcessors = dispatchedProcessors.zip(registeredSessionMeta.processors).map {
+                case ((processor, node), registeredProcessor) =>
+                  (processor.copy(id = registeredProcessor.id), node)
+              }
+              resourceApplication.resourceDispatch.clear()
+              resourceApplication.resourceDispatch.appendAll(dispatchedProcessors)
+              //ProcessorStateMachine.
+              preAllocateResource(dispatchedProcessors.toArray.map(_._1))
+              resourceApplication.resourceLatch.countDown()
+            }
+            applicationQueue.next()
+          }
         }catch {
-          case  e:Exception =>  e.printStackTrace()
+          case  e:Exception =>  {
+            e.printStackTrace();
+            if(resourceApplication!=null){
+                  resourceApplication.status.set(2)
+                  resourceApplication.resourceLatch.countDown()
+            }
+          }
+        }finally {
+
         }
       }
     })
+
+//    var waitingQueueDispatchThread =  new Thread(()=>{
+//      while(true){
+//        var  resourceApplication : ResourceApplication = null
+//        try {
+//            resourceApplication = waitingQueue.poll()
+//            applicationQueue.broker.put(resourceApplication)
+//            Thread.sleep(1000)
+//        }catch {
+//          case e: Exception => e.printStackTrace()
+//        }
+//      }
+//    })
+//    waitingQueueDispatchThread.start()
     dispatchThread.start()
+
+   var  resourceEventQueueHandleThread = new  Thread(()=>{
+        println("waitingQueueDispatchThread start")
+        while(true){
+            try{
+            var resourceEvent  =   resourceEventQueue.next()
+         //     handleResourceChangeEvent(resourceEvent)
+            }
+        }
+   })
+  resourceEventQueueHandleThread.start()
+
+
+//  def  handleResourceChangeEvent(resourceEvent: ResourceEvent): Unit ={
+//    resourceEvent.resoureceEventType match {
+//      case ResourceEventType.RESOURCE_RETURN => {
+//         val dataBuffer = new java.util.LinkedList[ResourceApplication]()
+//          waitingQueue.broker.drainTo(dataBuffer)
+//        dataBuffer.forEach()
+//
+//
+//
+//      }
+//    }
+//  }
+
+
+  private def  notifyWaitingDispatch(): Unit ={
+
+
+
+  }
+
+
+
+
    private def  randomDispatch(serverNodes:Array[ErServerNode] ,resourceApplication: ResourceApplication): ResourceApplication ={
 
      var requiredProcessors = resourceApplication.processors;
@@ -52,12 +167,7 @@ object ClusterResourceManager extends Logging{
      for (index <- 0 until requiredProcessors.length) {
        //System.err.println(nodeResourceTupes.map(_._2))
        var requiredProcessor = requiredProcessors(index)
-
-
        var node = shuffledNodes.head
-//       nodeResourceTupes = (nodeResourceTupes.tail += nodeTupe.copy(_2 = nodeTupe._2 - 1)).sortWith(_._2 > _._2)
-     //  checkResource()
-
        val host = node.endpoint.host
        val globalRank = index
        val localRank = nodeToProcessors.getOrElse(node, Seq()).size
@@ -126,27 +236,42 @@ object ClusterResourceManager extends Logging{
     resourceApplication
    }
 
-   private def  handleResourceApplication(resourceApplication: ResourceApplication): ResourceApplication = {
-     var  resultResourceApplication :ResourceApplication = resourceApplication
-     if(resourceApplication.needDispatch){
-       var serverNodes = getServerNodeWithResource();
-       checkResource(serverNodes,resourceApplication.processors,resourceApplication.allowExhausted);
-       resultResourceApplication = resourceApplication.dispatchStrategy match {
-         case  DispatchStrategy.REMAIN_MOST_FIRST => remainMostFirstDispatch(serverNodes,resourceApplication);
-         case  DispatchStrategy.RANDOM =>  randomDispatch(serverNodes,resultResourceApplication);
-       }
-     }
-    // preAllocateResource(resultResourceApplication.processors)
-     resultResourceApplication.countDownLatch.countDown()
-     resultResourceApplication
-    }
+//   private def  handleResourceApplication(resourceApplication: ResourceApplication): ResourceApplication = synchronized{
+//     var  resultResourceApplication :ResourceApplication = resourceApplication
+//     var now  = System.currentTimeMillis()
+//     if(resourceApplication.needDispatch){
+//       if(resourceApplication.timeout>0&&
+//         resourceApplication.submitTimeStamp+resourceApplication.timeout>now&&
+//         resourceApplication.waitingCount.get()==0
+//       ){
+//         //过期资源申请
+//       }
+//
+//       var serverNodes = getServerNodeWithResource();
+//
+//       var enough = checkResource(serverNodes,resourceApplication.processors,resourceApplication.allowExhausted)
+//       if(!enough) {
+//         resourceApplication.resourceExhaustedStrategy match {
+//           case ResourceExhaustedStrategy.IGNORE => ;
+//           case ResourceExhaustedStrategy.WAITING =>
+//           case ResourceExhaustedStrategy.THROW_ERROR => throw Exception
+//         }
+//       }
+//
+//       resultResourceApplication = resourceApplication.dispatchStrategy match {
+//         case  DispatchStrategy.REMAIN_MOST_FIRST => remainMostFirstDispatch(serverNodes,resourceApplication);
+//         case  DispatchStrategy.RANDOM =>  randomDispatch(serverNodes,resultResourceApplication);
+//       }
+//     }
+//    // preAllocateResource(resultResourceApplication.processors)
+//     resultResourceApplication.resourceLatch.countDown()
+//     resultResourceApplication
+//    }
 
 
-
+  //废弃
   def  allocateResource(processors: Array[ErProcessor] ,beforeCall:(Connection,ErProcessor)=>Unit =null,afterCall:(Connection,ErProcessor)=>Unit =null) : Unit=synchronized{
     ServerNodeCrudOperator.dbc.withTransaction(conn=> {
-
-
 
       var allocateResourceProcessor = processors.map(p => {
         p.copy(resources = serverNodeCrudOperator.queryProcessorResource(conn,p,ResourceStatus.PRE_ALLOCATED).map(_.copy(status=ResourceStatus.ALLOCATED)))
@@ -167,17 +292,23 @@ object ClusterResourceManager extends Logging{
         })
 
        // serverNodeCrudOperator.allocateNodeResource(conn,e._1, e._2)
-       var  erResources =  serverNodeCrudOperator.countNodeResource(conn,e._1)
-        serverNodeCrudOperator.updateNodeResource(conn,e._1,erResources)
+       var  nodeResources =  serverNodeCrudOperator.countNodeResource(conn,e._1)
+        serverNodeCrudOperator.updateNodeResource(conn,e._1,nodeResources)
       })
 
     })
   }
-
+  //废弃
   def preAllocateResource(processors: Array[ErProcessor]): Unit = synchronized {
     logInfo(s"============== preAllocateResource ============${processors.mkString}")
     ServerNodeCrudOperator.dbc.withTransaction(conn => {
       serverNodeCrudOperator.insertProcessorResource(conn, processors);
+      processors.foreach(p=>{
+        var  nodeResources =  serverNodeCrudOperator.countNodeResource(conn,p.serverNodeId)
+        var  needUpdateResources = nodeResources.map(r=>r.copy(preAllocated = r.allocated,allocated = -1))
+        serverNodeCrudOperator.updateNodeResource(conn,p.serverNodeId,needUpdateResources)
+      })
+
     })
   }
 
@@ -212,9 +343,6 @@ object ClusterResourceManager extends Logging{
     }
     }
     )
-
-    logInfo("==============over========")
-
   }
 
     private def  flatResources(processors: Array[ErProcessor]): Map[Long, Array[ErResource]] ={
@@ -226,10 +354,8 @@ object ClusterResourceManager extends Logging{
     }
 
    def  dispatchDeepSpeedInner(worldSize:Int,serverNodes:Array[ErServerNode]):  Array[(ErProcessor, ErServerNode)]  ={
-
     var nodeResourceTupes = serverNodes.map(n=>(n,n.resources.filter(_.resourceType==ResourceTypes.VGPU_CORE).map(_.getUnAllocatedResource).apply(0)))
       .sortWith(_._2>_._2).toBuffer
-
     //    // FIXME: evenly distribute processors to nodes for now
     val nodeToProcessors = mutable.Map[ErServerNode, Seq[ErProcessor]]()
     //
@@ -273,17 +399,35 @@ object ClusterResourceManager extends Logging{
   }
 
 
-    case class ResourceApplication(processors : Array[ErProcessor],
+     case class ResourceApplication(
+                                    sessionId : String,
+                                    processors : Array[ErProcessor],
                                   sortByResourceType: String =ResourceTypes.VCPU_CORE,
                                   needDispatch: Boolean= false,
                                   dispatchStrategy:String = DispatchStrategy.REMAIN_MOST_FIRST,
+                                   resourceExhaustedStrategy:String =  ResourceExhaustedStrategy.WAITING,
                                   allowExhausted:Boolean = true,
                                   resourceDispatch:ArrayBuffer[(ErProcessor, ErServerNode)]=ArrayBuffer(),
-                                  countDownLatch: CountDownLatch){
+                                   resourceLatch: CountDownLatch,
+                                   timeout: Int = 0,
+                                    submitTimeStamp:Long = 0,
+                                    waitingCount :AtomicInteger = new AtomicInteger(1),
+                                    status:AtomicInteger =new AtomicInteger(0)
+
+                                  ){
       def  getResult(): Array[(ErProcessor, ErServerNode)] ={
-        countDownLatch.await()
-        resourceDispatch.toArray
+
+        try{
+          if(timeout>0)
+            resourceLatch.await(timeout, TimeUnit.MILLISECONDS)
+          else
+            resourceLatch.await()
+          resourceDispatch.toArray
+        }finally {
+          waitingCount.decrementAndGet()
+        }
       }
+
     }
 
     def  submitResourceRequest(resourceRequest: ResourceApplication):Unit={
