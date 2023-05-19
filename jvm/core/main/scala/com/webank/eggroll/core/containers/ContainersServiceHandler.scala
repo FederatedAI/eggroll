@@ -1,18 +1,33 @@
 package com.webank.eggroll.core.containers
 
 import com.webank.eggroll.core.client.ClusterManagerClient
-import com.webank.eggroll.core.constant.ProcessorStatus
+import com.webank.eggroll.core.constant.{NodeManagerConfKeys, ProcessorStatus}
+import com.webank.eggroll.core.containers.ContainersServiceHandler.{CompressMethod, zip}
 import com.webank.eggroll.core.containers.container.{ContainersManager, DeepSpeedContainer}
 import com.webank.eggroll.core.containers.meta._
 import com.webank.eggroll.core.meta.ErProcessor
 import com.webank.eggroll.core.resourcemanager.NodeManagerMeta
-import com.webank.eggroll.core.session.RuntimeErConf
+import com.webank.eggroll.core.session.{RuntimeErConf, StaticErConf}
 
+import java.io.{ByteArrayOutputStream, FileInputStream}
+import java.nio.file.Files
+import java.util.zip.{ZipEntry, ZipOutputStream}
 import scala.concurrent.ExecutionContext
+import scala.reflect.io.Path
 
 
 class ContainersServiceHandler(implicit ec: ExecutionContext) {
-
+  private lazy val containersDataDir: Path = {
+    val pathStr = StaticErConf.getString(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_CONTAINERS_DATA_DIR)
+    if (pathStr == null || pathStr.isEmpty) {
+      throw new IllegalArgumentException("container data dir not set")
+    }
+    val path = Path(pathStr)
+    if (!path.exists) {
+      path.createDirectory()
+    }
+    path
+  }
   var client = new ClusterManagerClient()
   private val containersManager = ContainersManager.builder()
     // TODO: status callbacks here
@@ -92,5 +107,56 @@ class ContainersServiceHandler(implicit ec: ExecutionContext) {
   def killJobContainers(killContainersRequest: KillContainersRequest): KillContainersResponse = {
     containersManager.killContainer(0)
     KillContainersResponse()
+  }
+
+  def downloadContainers(downloadContainersRequest: DownloadContainersRequest): DownloadContainersResponse = {
+    val contents = downloadContainersRequest.containerIds.map { id =>
+      val workspace = getContainerWorkspace(id)
+      downloadContainersRequest.compressMethod match {
+        case CompressMethod.ZIP =>
+          if (workspace.exists)
+            ContainerContent(id, zip(workspace), CompressMethod.ZIP)
+          else
+            ContainerContent(id, Array[Byte](), CompressMethod.ZIP)
+        case _ =>
+          throw new IllegalArgumentException(s"compress method not supported: ${downloadContainersRequest.compressMethod}")
+      }
+    }
+    DownloadContainersResponse(sessionId = downloadContainersRequest.sessionId, containerContents = contents)
+  }
+
+  private def getContainerWorkspace(containerId: Long): Path = {
+    containersDataDir / containerId.toString
+  }
+}
+
+object ContainersServiceHandler {
+
+  object CompressMethod {
+    val ZIP = "zip"
+  }
+
+  def zip(path: Path): Array[Byte] = {
+    val byteStream = new ByteArrayOutputStream()
+    val zipOutput = new ZipOutputStream(byteStream)
+    try {
+      path.walk.foreach(subPath => {
+        if (Files.isRegularFile(subPath.jfile.toPath)) {
+          val name = path.relativize(subPath).toString
+          zipOutput.putNextEntry(new ZipEntry(name))
+          val in = new FileInputStream(subPath.jfile)
+          var bytesRead = in.read()
+          while (bytesRead != -1) {
+            zipOutput.write(bytesRead)
+            bytesRead = in.read()
+          }
+          in.close()
+          zipOutput.closeEntry()
+        }
+      })
+    } finally {
+      zipOutput.close()
+    }
+    byteStream.toByteArray
   }
 }
