@@ -53,9 +53,10 @@ case class ErResource(
                       total: Long = -1,
                       used: Long = -1,
                       allocated: Long = -1,
+                      preAllocated:Long = -1,
                       status: String = ResourceStatus.AVAILABLE) extends NetworkingRpcMessage{
   override def  toString:String ={
-    s"<ErResource(resourceType=${resourceType}, total=${total}, used=${used} ,allocated=${allocated})>"}
+    s"<ErResource(resourceType=${resourceType},status=${status}, total=${total}, used=${used} ,allocated=${allocated})>"}
 
   def   getUnAllocatedResource():Long={
     total-allocated

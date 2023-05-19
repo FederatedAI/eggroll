@@ -6,7 +6,7 @@ import com.webank.eggroll.core.constant.ClusterManagerConfKeys.CONFKEY_CLUSTER_M
 import com.webank.eggroll.core.constant.NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL
 import com.webank.eggroll.core.constant.ProcessorEventType.PROCESSOR_LOSS
 import com.webank.eggroll.core.constant.{ProcessorStatus, ServerNodeStatus, ServerNodeTypes}
-import com.webank.eggroll.core.meta.{ErNodeHeartbeat, ErProcessor, ErResource, ErServerNode, ErSessionMeta}
+import com.webank.eggroll.core.meta.{ErEndpoint, ErNodeHeartbeat, ErProcessor, ErResource, ErServerNode, ErSessionMeta}
 import com.webank.eggroll.core.resourcemanager.ClusterManagerService.{createNewNode, logInfo, nodeHeartbeatChecker, nodeHeartbeatMap, queryNodeByEndPoint, queryNodeById, registerResource, serverNodeCrudOperator, updateNode}
 import com.webank.eggroll.core.resourcemanager.ClusterResourceManager.serverNodeCrudOperator
 import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator
@@ -29,6 +29,19 @@ object ClusterManagerService extends Logging {
   def  registerProcessorCallback(processType:String,sessionEventCallback: ProcessorEventCallback):Unit={
     processorEventCallbackRegister.put(processType,sessionEventCallback)
   }
+
+  private def checkNodeProcess(nodeManagerEndpoint: ErEndpoint, processor: ErProcessor): ErProcessor = {
+    var result: ErProcessor = null
+    try {
+      var nodeManagerClient = new NodeManagerClient(nodeManagerEndpoint)
+      result = nodeManagerClient.checkNodeProcess(processor)
+    }catch{
+      case e: Exception =>
+        e.printStackTrace()
+    }
+    result
+
+  }
   var  nodeProcessChecker = new  Thread(()=>{
     var  serverNodeCrudOperator = new ServerNodeCrudOperator
     while(true) {
@@ -44,23 +57,21 @@ object ClusterManagerService extends Logging {
             e._2.par.foreach(processor => {
               try {
                 var result = nodeManagerClient.checkNodeProcess(processor)
-                logDebug(s"check ${processor.id} node process ${processor.pid} return ${result.status}")
-                if (result.status == ProcessorStatus.KILLED) {
+                if (result==null||result.status == ProcessorStatus.KILLED) {
                   Thread.sleep(10000)
                   var processorInDb = serverNodeCrudOperator.queryProcessor(null,ErProcessor(id=processor.id))
                   if(processorInDb.length >0){
                     if(processorInDb.apply(0).status==ProcessorStatus.RUNNING){
                       var result = nodeManagerClient.checkNodeProcess(processor)
-                      logDebug(s"check ${processor.id} node process ${processor.pid} return ${result.status}")
-                      var processors = Array(processor.copy(status = ProcessorStatus.KILLED))
-                      ClusterResourceManager.returnResource(processors=processors, beforeCall=SessionManagerService.beforeCall)
-                      logInfo(s"==================${processorEventCallbackRegister}  ==============${processor.processorType}")
-                      processorEventCallbackRegister.get(processor.processorType).getOrElse(new ProcessorEventCallback {
-                        override def callback(event: ProcessorEvent): Unit = {
-                          logInfo(s"processor type ${processor.processorType} can not find callback")
-                        }
-                      }).callback(ProcessorEvent(eventType = PROCESSOR_LOSS, erProcessor = processor))
-
+                      if (result==null||result.status == ProcessorStatus.KILLED) {
+                        var processors = Array(processor.copy(status = ProcessorStatus.KILLED))
+                        ClusterResourceManager.returnResource(processors = processors, beforeCall = SessionManagerService.beforeCall)
+                        processorEventCallbackRegister.get(processor.processorType).getOrElse(new ProcessorEventCallback {
+                          override def callback(event: ProcessorEvent): Unit = {
+                            logInfo(s"processor type ${processor.processorType} can not find callback")
+                          }
+                        }).callback(ProcessorEvent(eventType = PROCESSOR_LOSS, erProcessor = processor))
+                      }
                     }
                   }
 
@@ -173,7 +184,7 @@ object ClusterManagerService extends Logging {
 class ClusterManagerService extends   ClusterManager with Logging{
 
     override def nodeHeartbeat(nodeHeartbeat: ErNodeHeartbeat): ErNodeHeartbeat = synchronized{
-      logInfo(s" nodeHeartbeat ${nodeHeartbeat}")
+      //logInfo(s" nodeHeartbeat ${nodeHeartbeat}")
       var  serverNode = nodeHeartbeat.node
       if(serverNode.id == -1){
         var  existNode =  queryNodeByEndPoint(serverNode)
