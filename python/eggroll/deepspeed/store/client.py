@@ -24,8 +24,9 @@ class EggrollStore(Store):
         seconds = int(timeout.total_seconds())
         nanos = int((timeout - timedelta(seconds=seconds)).microseconds * 1000)
         response = self._client.do_sync_request(
-            input=deepspeed_pb2.StoreGetRequest(prefix=self._prefix, key=key,
-                                                timeout=Duration(seconds=seconds, nanos=nanos)),
+            input=deepspeed_pb2.StoreGetRequest(
+                prefix=self._prefix, key=key, timeout=Duration(seconds=seconds, nanos=nanos)
+            ),
             output_type=deepspeed_pb2.StoreGetResponse,
             command_uri=RendezvousStoreCommands.GET,
         )
