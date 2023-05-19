@@ -196,3 +196,65 @@ class KillContainersResponse(google.protobuf.message.Message):
     ) -> None: ...
 
 global___KillContainersResponse = KillContainersResponse
+
+@typing_extensions.final
+class DownloadContainersRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    SESSION_ID_FIELD_NUMBER: builtins.int
+    CONTAINER_IDS_FIELD_NUMBER: builtins.int
+    COMPRESS_METHOD_FIELD_NUMBER: builtins.int
+    session_id: builtins.str
+    @property
+    def container_ids(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.int]: ...
+    compress_method: builtins.str
+    def __init__(
+        self,
+        *,
+        session_id: builtins.str = ...,
+        container_ids: collections.abc.Iterable[builtins.int] | None = ...,
+        compress_method: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["compress_method", b"compress_method", "container_ids", b"container_ids", "session_id", b"session_id"]) -> None: ...
+
+global___DownloadContainersRequest = DownloadContainersRequest
+
+@typing_extensions.final
+class DownloadContainersResponse(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    SESSION_ID_FIELD_NUMBER: builtins.int
+    CONTAINER_CONTENT_FIELD_NUMBER: builtins.int
+    session_id: builtins.str
+    @property
+    def container_content(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___ContainerContent]: ...
+    def __init__(
+        self,
+        *,
+        session_id: builtins.str = ...,
+        container_content: collections.abc.Iterable[global___ContainerContent] | None = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["container_content", b"container_content", "session_id", b"session_id"]) -> None: ...
+
+global___DownloadContainersResponse = DownloadContainersResponse
+
+@typing_extensions.final
+class ContainerContent(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    CONTAINER_ID_FIELD_NUMBER: builtins.int
+    CONTENT_FIELD_NUMBER: builtins.int
+    COMPRESS_METHOD_FIELD_NUMBER: builtins.int
+    container_id: builtins.int
+    content: builtins.bytes
+    compress_method: builtins.str
+    def __init__(
+        self,
+        *,
+        container_id: builtins.int = ...,
+        content: builtins.bytes = ...,
+        compress_method: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["compress_method", b"compress_method", "container_id", b"container_id", "content", b"content"]) -> None: ...
+
+global___ContainerContent = ContainerContent
