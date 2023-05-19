@@ -140,7 +140,8 @@ object JobServiceHandler extends Logging {
         val resourceApplication = ResourceApplication(
           processors = prepareProcessors,
           needDispatch = true,
-          countDownLatch = new CountDownLatch(1))
+          resourceLatch = new CountDownLatch(1),
+          sessionId=sessionId)
         ClusterResourceManager.submitResourceRequest(resourceApplication)
         var dispatchedProcessors = resourceApplication.getResult()
         logInfo(s"dispatchedProcessor: ${dispatchedProcessors.mkString("Array(", ", ", ")")}")
