@@ -1,16 +1,16 @@
 package com.webank.eggroll.core.resourcemanager
 
-import java.io.File
 import com.webank.eggroll.core.BootstrapBase
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
-import com.webank.eggroll.core.constant.{CoreConfKeys, NodeManagerCommands, NodeManagerConfKeys, ResouceCommands, ResourceManagerConfKeys}
-import com.webank.eggroll.core.meta.{ErJobMeta, ErProcessor, ErResourceAllocation, ErServerNode, ErSessionMeta}
-import com.webank.eggroll.core.resourcemanager.job.NodeManagerJobService
+import com.webank.eggroll.core.constant._
+import com.webank.eggroll.core.containers.ContainersServiceHandler
+import com.webank.eggroll.core.meta.{ErProcessor, ErResourceAllocation, ErServerNode, ErSessionMeta}
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.transfer.GrpcServerUtils
 import com.webank.eggroll.core.util.{CommandArgsUtils, Logging}
 import io.grpc.Server
 
+import java.io.File
 import java.util.concurrent.TimeUnit
 import scala.concurrent.ExecutionContext
 import scala.concurrent.forkjoin.ForkJoinPool
@@ -28,14 +28,14 @@ class NodeManagerBootstrap extends BootstrapBase with Logging {
 
     // val sessionId = cmd.getOptionValue('s')
     StaticErConf.addProperties(confPath)
- 
+
 
     // register services
     // To support parameters to NodeManagerService,
     // we instantiate a NodeManagerService instance here
     forkJoinPool = new ForkJoinPool()
     val executionContext = ExecutionContext.fromExecutorService(forkJoinPool)
-    val nodeManagerJobService = new NodeManagerJobService()(executionContext)
+    val nodeManagerJobService = new ContainersServiceHandler()(executionContext)
 
     CommandRouter.register(serviceName = NodeManagerCommands.startContainers.uriString,
       serviceParamTypes = Array(classOf[ErSessionMeta]),
@@ -61,27 +61,21 @@ class NodeManagerBootstrap extends BootstrapBase with Logging {
       routeToClass = classOf[NodeManagerService],
       routeToMethodName = NodeManagerCommands.heartbeat.getName())
 
-    CommandRouter.register(serviceName = NodeManagerCommands.startJobContainers.uriString,
-      serviceParamTypes = Array(classOf[ErJobMeta]),
-      serviceResultTypes = Array(classOf[ErJobMeta]),
-      routeToClass = classOf[NodeManagerJobService],
-      routeToMethodName = NodeManagerCommands.startJobContainers.getName(),
-      routeToCallBasedClassInstance = nodeManagerJobService
+    CommandRouter.register_handler(
+      NodeManagerCommands.startJobContainers.uriString,
+      args => nodeManagerJobService.startJobContainers(args(0))
     )
-    CommandRouter.register(serviceName = NodeManagerCommands.killJobContainers.uriString,
-      serviceParamTypes = Array(classOf[ErJobMeta]),
-      serviceResultTypes = Array(classOf[ErJobMeta]),
-      routeToClass = classOf[NodeManagerJobService],
-      routeToMethodName = NodeManagerCommands.killJobContainers.getName(),
-      routeToCallBasedClassInstance = nodeManagerJobService
+
+    CommandRouter.register_handler(
+      NodeManagerCommands.killJobContainers.uriString,
+      args => nodeManagerJobService.killJobContainers(args(0))
     )
-    CommandRouter.register(serviceName = NodeManagerCommands.stopJobContainers.uriString,
-      serviceParamTypes = Array(classOf[ErJobMeta]),
-      serviceResultTypes = Array(classOf[ErJobMeta]),
-      routeToClass = classOf[NodeManagerJobService],
-      routeToMethodName = NodeManagerCommands.stopJobContainers.getName(),
-      routeToCallBasedClassInstance = nodeManagerJobService
+
+    CommandRouter.register_handler(
+      NodeManagerCommands.stopJobContainers.uriString,
+      args => nodeManagerJobService.stopJobContainers(args(0))
     )
+
     CommandRouter.register(serviceName = ResouceCommands.resourceAllocation.uriString,
       serviceParamTypes = Array(classOf[ErResourceAllocation]),
       serviceResultTypes = Array(classOf[ErResourceAllocation]),
@@ -107,7 +101,7 @@ class NodeManagerBootstrap extends BootstrapBase with Logging {
     StaticErConf.addProperty(CoreConfKeys.STATIC_CONF_PATH, confFile.getAbsolutePath)
     logInfo(s"conf file: ${confFile.getAbsolutePath}")
     this.port = cmd.getOptionValue('p', StaticErConf.getProperty(
-      NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT,"9394")).toInt
+      NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT, "9394")).toInt
     // StaticErConf.addProperty(SessionConfKeys.CONFKEY_SESSION_ID, sessionId)
     logInfo(s"kaideng port : ${port}")
     // TODO:0: get from cluster manager
@@ -125,15 +119,16 @@ class NodeManagerBootstrap extends BootstrapBase with Logging {
 
     server.start()
     this.port = server.getPort
-     
+
     NodeResourceManager.start();
-		
+
     // TODO:0: why ?
     //    StaticErConf.setPort(this.port)
     val msg = s"server started at ${this.port}"
     println(msg)
     logInfo(msg)
   }
+
   override def shutdown(): Unit = {
     println("shutting down")
     // Gracefully shut down the ForkJoinPool
