@@ -22,10 +22,10 @@ object TestAssets {
 //  val pythonExec: String = conf.getString("eggroll.container.python.exec")
 //  val scriptPath: String = conf.getString("eggroll.container.script.path")
 
-  var submitJobMeta= ErJobMeta(id="test_deepspeed"+System.currentTimeMillis(),
-    jobType = JobProcessorTypes.DeepSpeed.toString,
-    worldSize=2,options = Map("eggroll.container.python.exec"->"python",
-      "eggroll.container.script.path"->"/data/projects/myeggroll/python/eggroll/mock.py"))
+//  var submitJobMeta= ErJobMeta(id="test_deepspeed"+System.currentTimeMillis(),
+//    jobType = JobProcessorTypes.DeepSpeed.toString,
+//    worldSize=2,options = Map("eggroll.container.python.exec"->"python",
+//      "eggroll.container.script.path"->"/data/projects/myeggroll/python/eggroll/mock.py"))
 
   def initConf(): Unit = {
     val confFile = new File("../../conf/eggroll.properties.local")
