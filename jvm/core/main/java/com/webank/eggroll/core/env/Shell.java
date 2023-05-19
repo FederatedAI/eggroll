@@ -22,108 +22,41 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * A base class for running a Shell command.
- *
- * <code>Shell</code> can be used to run shell commands like <code>du</code> or
- * <code>df</code>. It also offers facilities to gate commands by
- * time-intervals.
- */
+
 public abstract class Shell {
   private static final Map<Shell, Object> CHILD_SHELLS =
       Collections.synchronizedMap(new WeakHashMap<Shell, Object>());
   public static final Logger LOG = LoggerFactory.getLogger(Shell.class);
 
-  /**
-   * Text to include when there are windows-specific problems.
-   * {@value}
-   */
-  private static final String WINDOWS_PROBLEMS =
-      "https://wiki.apache.org/hadoop/WindowsProblems";
-
-  /**
-   * Name of the windows utils binary: {@value}.
-   */
   static final String WINUTILS_EXE = "winutils.exe";
 
-  /**
-   * System property for the Hadoop home directory: {@value}.
-   */
   public static final String SYSPROP_HADOOP_HOME_DIR = "hadoop.home.dir";
 
-  /**
-   * Environment variable for Hadoop's home dir: {@value}.
-   */
+
   public static final String ENV_HADOOP_HOME = "HADOOP_HOME";
 
-  /**
-   * query to see if system is Java 7 or later.
-   * Now that Hadoop requires Java 7 or later, this always returns true.
-   * @deprecated This call isn't needed any more: please remove uses of it.
-   * @return true, always.
-   */
+
   @Deprecated
   public static boolean isJava7OrAbove() {
     return true;
   }
 
-  // "1.8"->8, "9"->9, "10"->10
+
   private static final int JAVA_SPEC_VER = Math.max(8, Integer.parseInt(
       System.getProperty("java.specification.version").split("\\.")[0]));
 
-  /**
-   * Query to see if major version of Java specification of the system
-   * is equal or greater than the parameter.
-   *
-   * @param version 8, 9, 10 etc.
-   * @return comparison with system property, always true for 8
-   */
+
   public static boolean isJavaVersionAtLeast(int version) {
     return JAVA_SPEC_VER >= version;
   }
 
-  /**
-   * Maximum command line length in Windows
-   * KB830473 documents this as 8191
-   */
   public static final int WINDOWS_MAX_SHELL_LENGTH = 8191;
 
-  /**
-   * mis-spelling of {@link #WINDOWS_MAX_SHELL_LENGTH}.
-   * @deprecated use the correctly spelled constant.
-   */
-  @Deprecated
-  public static final int WINDOWS_MAX_SHELL_LENGHT = WINDOWS_MAX_SHELL_LENGTH;
 
-  /**
-   * Checks if a given command (String[]) fits in the Windows maximum command
-   * line length Note that the input is expected to already include space
-   * delimiters, no extra count will be added for delimiters.
-   *
-   * @param commands command parts, including any space delimiters
-   */
-  public static void checkWindowsCommandLineLength(String...commands)
-      throws IOException {
-    int len = 0;
-    for (String s: commands) {
-      len += s.length();
-    }
-    if (len > WINDOWS_MAX_SHELL_LENGTH) {
-      throw new IOException(String.format(
-        "The command line has a length of %d exceeds maximum allowed length" +
-            " of %d. Command starts with: %s",
-        len, WINDOWS_MAX_SHELL_LENGTH,
-        StringUtils.join("", commands).substring(0, 100)));
-    }
-  }
 
-  /**
-   * Quote the given arg so that bash will interpret it as a single value.
-   * Note that this quotes it for one level of bash, if you are passing it
-   * into a badly written shell script, you need to fix your shell script.
-   * @param arg the argument to quote
-   * @return the quoted string
-   */
+
+
+
   static String bashQuote(String arg) {
     StringBuilder buffer = new StringBuilder(arg.length() + 2);
     buffer.append('\'');
@@ -190,12 +123,7 @@ public abstract class Shell {
                     : new String[]{"groups"};
   }
 
-  /**
-   * A command to get a given user's groups list.
-   * If the OS is not WINDOWS, the command will get the user's primary group
-   * first and finally get the groups list which includes the primary group.
-   * i.e. the user's primary group will be included twice.
-   */
+
   public static String[] getGroupsForUserCommand(final String user) {
     //'groups username' command return is inconsistent across different unixes
     if (WINDOWS) {
@@ -207,13 +135,7 @@ public abstract class Shell {
     }
   }
 
-  /**
-   * A command to get a given user's group id list.
-   * The command will get the user's primary group
-   * first and finally get the groups list which includes the primary group.
-   * i.e. the user's primary group will be included twice.
-   * This command does not support Windows and will only return group names.
-   */
+
   public static String[] getGroupsIDForUserCommand(final String user) {
     //'groups username' command return is inconsistent across different unixes
     if (WINDOWS) {
@@ -288,16 +210,12 @@ public abstract class Shell {
         : new String[] { "readlink", link };
   }
 
-  /**
-   * Return a command for determining if process with specified pid is alive.
-   * @param pid process ID
-   * @return a <code>kill -0</code> command or equivalent
-   */
+
   public static String[] getCheckProcessIsAliveCommand(String pid) {
     return getSignalKillCommand(0, pid);
   }
 
-  /** Return a command to send a signal to a given pid. */
+
   public static String[] getSignalKillCommand(int code, String pid) {
     // Code == 0 means check alive
 //    if (Shell.WINDOWS) {
@@ -331,39 +249,17 @@ public abstract class Shell {
         : "\\$(" + ENV_NAME_REGEX + ")";
   }
 
-  /**
-   * Returns a File referencing a script with the given basename, inside the
-   * given parent directory.  The file extension is inferred by platform:
-   * <code>".cmd"</code> on Windows, or <code>".sh"</code> otherwise.
-   *
-   * @param parent File parent directory
-   * @param basename String script file basename
-   * @return File referencing the script in the directory
-   */
+
   public static File appendScriptExtension(File parent, String basename) {
     return new File(parent, appendScriptExtension(basename));
   }
 
-  /**
-   * Returns a script file name with the given basename.
-   *
-   * The file extension is inferred by platform:
-   * <code>".cmd"</code> on Windows, or <code>".sh"</code> otherwise.
-   *
-   * @param basename String script file basename
-   * @return String script file name
-   */
+
   public static String appendScriptExtension(String basename) {
     return basename + (WINDOWS ? ".cmd" : ".sh");
   }
 
-  /**
-   * Returns a command to run the given script.  The script interpreter is
-   * inferred by platform: cmd on Windows or bash otherwise.
-   *
-   * @param script File script to run
-   * @return String[] command to run the script
-   */
+
   public static String[] getRunScriptCommand(File script) {
     String absolutePath = script.getAbsolutePath();
     return WINDOWS ?
@@ -406,54 +302,6 @@ public abstract class Shell {
   static final String E_HADOOP_PROPS_EMPTY = ENV_HADOOP_HOME + " or "
       + SYSPROP_HADOOP_HOME_DIR + " set to an empty string";
   static final String E_NOT_A_WINDOWS_SYSTEM = "Not a Windows system";
-
-
-
-
-
-
-
-  /**
-   * Optionally extend an error message with some OS-specific text.
-   * @param message core error message
-   * @return error message, possibly with some extra text
-   */
-  private static String addOsText(String message) {
-    return WINDOWS ? (message + " -see " + WINDOWS_PROBLEMS) : message;
-  }
-
-  /**
-   * Create a {@code FileNotFoundException} with the inner nested cause set
-   * to the given exception. Compensates for the fact that FNFE doesn't
-   * have an initializer that takes an exception.
-   * @param text error text
-   * @param ex inner exception
-   * @return a new exception to throw.
-   */
-  private static FileNotFoundException fileNotFoundException(String text,
-      Exception ex) {
-    return (FileNotFoundException) new FileNotFoundException(text)
-        .initCause(ex);
-  }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
   public static boolean checkIsBashSupported() throws InterruptedIOException {
     if (Shell.WINDOWS) {
@@ -883,9 +731,7 @@ public abstract class Shell {
     return execCommand(env, cmd, 0L);
   }
 
-  /**
-   * Timer which is used to timeout scripts spawned off by shell.
-   */
+
   private static class ShellTimeoutTimerTask extends TimerTask {
 
     private final Shell shell;
@@ -911,11 +757,8 @@ public abstract class Shell {
     }
   }
 
-  /**
-   * Static method to destroy all running <code>Shell</code> processes.
-   * Iterates through a map of all currently running <code>Shell</code>
-   * processes and destroys them one by one. This method is thread safe
-   */
+
+
   public static void destroyAllShellProcesses() {
     synchronized (CHILD_SHELLS) {
       for (Shell shell : CHILD_SHELLS.keySet()) {
@@ -943,9 +786,7 @@ public abstract class Shell {
    */
   public static Long getMemlockLimit(Long ulimit) {
     if (WINDOWS) {
-      // HDFS-13560: if ulimit is too large on Windows, Windows will complain
-      // "1450: Insufficient system resources exist to complete the requested
-      // service". Thus, cap Windows memory lock limit at Integer.MAX_VALUE.
+
       return Math.min(Integer.MAX_VALUE, ulimit);
     }
     return ulimit;

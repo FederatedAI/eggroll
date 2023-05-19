@@ -153,12 +153,15 @@ class SessionManagerService extends SessionManager with Logging {
 
       case status if(status==ProcessorStatus.STOPPED||status==ProcessorStatus.KILLED||status==ProcessorStatus.ERROR)=>
           logInfo(s"processor ${proc.id}    prepare to return resource")
-           ClusterResourceManager.returnResource(beforeCall= beforeCall,processors =Array(proc))
+           ProcessorStateMachine.changeStatus(proc,desStateParam=status)
+
+          // ClusterResourceManager.returnResource(beforeCall= beforeCall,processors =Array(proc))
 
 
-      case ProcessorStatus.RUNNING =>
+      case status if (status==ProcessorStatus.RUNNING )=>
           logInfo("receive heartbeat running ,")
-          ClusterResourceManager.allocateResource(Array(proc),beforeCall= beforeCall)
+        ProcessorStateMachine.changeStatus(proc,desStateParam=status)
+     //     ClusterResourceManager.allocateResource(Array(proc),beforeCall= beforeCall)
     }
 //    if(proc.status==ProcessorStatus.STOPPED||
 //      proc.status==ProcessorStatus.KILLED||

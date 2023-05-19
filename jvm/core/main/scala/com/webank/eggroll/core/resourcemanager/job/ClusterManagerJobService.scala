@@ -78,30 +78,30 @@ class ClusterManagerJobService extends Logging {
           )
         }
 
-        var resourceApplication = new ResourceApplication(processors = prepareProcessors.toArray,
-          needDispatch = true,countDownLatch = new CountDownLatch(1))
+        var resourceApplication = new ResourceApplication(sessionId=submitJobMeta.id,processors = prepareProcessors.toArray,
+          needDispatch = true,resourceLatch = new CountDownLatch(1))
         ClusterResourceManager.submitResourceRequest(resourceApplication)
         var dispatchedProcessors  =  resourceApplication.getResult()
         logInfo(s"dispatchedProcessors =========== ${dispatchedProcessors}")
 
         // FIXME: just retrieve updated processors' id
-        smDao.register(ErSessionMeta(
-          id = submitJobMeta.id,
-          processors = dispatchedProcessors.map(_._1),
-          totalProcCount = worldSize,
-          status = SessionStatus.NEW)
-        )
-        val registeredSessionMeta = smDao.getSession(submitJobMeta.id)
-        dispatchedProcessors = dispatchedProcessors.zip(registeredSessionMeta.processors).map {
-          case ((processor, node), registeredProcessor) =>
-            (processor.copy(id = registeredProcessor.id), node)
-        }
+//        smDao.register(ErSessionMeta(
+//          id = submitJobMeta.id,
+//          processors = dispatchedProcessors.map(_._1),
+//          totalProcCount = worldSize,
+//          status = SessionStatus.NEW)
+//        )
+//        val registeredSessionMeta = smDao.getSession(submitJobMeta.id)
+//        dispatchedProcessors = dispatchedProcessors.zip(registeredSessionMeta.processors).map {
+//          case ((processor, node), registeredProcessor) =>
+//            (processor.copy(id = registeredProcessor.id), node)
+//        }
 
         // start containers
         dispatchedProcessors.groupBy(_._2).par.foreach { case (node, nodeAndProcessors) =>
           val processors = nodeAndProcessors.map(_._1.copy(sessionId = submitJobMeta.id))
           val nodeManagerClient = new NodeManagerClient(node.endpoint)
-          ClusterResourceManager.preAllocateResource(processors)
+          //ClusterResourceManager.preAllocateResource(processors)
           nodeManagerClient.startJobContainers(submitJobMeta.copy(processors = processors))
         }
 
