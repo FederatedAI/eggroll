@@ -19,6 +19,11 @@ class CommandServiceStub(object):
                 request_serializer=command__pb2.CommandRequest.SerializeToString,
                 response_deserializer=command__pb2.CommandResponse.FromString,
                 )
+        self.callStream = channel.stream_stream(
+                '/com.webank.eggroll.core.command.CommandService/callStream',
+                request_serializer=command__pb2.CommandRequest.SerializeToString,
+                response_deserializer=command__pb2.CommandResponse.FromString,
+                )
 
 
 class CommandServiceServicer(object):
@@ -30,11 +35,22 @@ class CommandServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def callStream(self, request_iterator, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_CommandServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'call': grpc.unary_unary_rpc_method_handler(
                     servicer.call,
+                    request_deserializer=command__pb2.CommandRequest.FromString,
+                    response_serializer=command__pb2.CommandResponse.SerializeToString,
+            ),
+            'callStream': grpc.stream_stream_rpc_method_handler(
+                    servicer.callStream,
                     request_deserializer=command__pb2.CommandRequest.FromString,
                     response_serializer=command__pb2.CommandResponse.SerializeToString,
             ),
@@ -60,6 +76,23 @@ class CommandService(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/com.webank.eggroll.core.command.CommandService/call',
+            command__pb2.CommandRequest.SerializeToString,
+            command__pb2.CommandResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def callStream(request_iterator,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.stream_stream(request_iterator, target, '/com.webank.eggroll.core.command.CommandService/callStream',
             command__pb2.CommandRequest.SerializeToString,
             command__pb2.CommandResponse.FromString,
             options, channel_credentials,

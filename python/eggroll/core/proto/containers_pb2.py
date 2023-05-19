@@ -15,7 +15,7 @@ _sym_db = _symbol_database.Default()
 import meta_pb2 as meta__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x10\x63ontainers.proto\x12\x1c\x63om.webank.eggroll.core.meta\x1a\nmeta.proto\"\x87\x06\n\x16StartContainersRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x10\n\x08job_type\x18\x03 \x01(\t\x12\x12\n\nworld_size\x18\x04 \x01(\r\x12\x19\n\x11\x63ommand_arguments\x18\x05 \x03(\t\x12m\n\x15\x65nvironment_variables\x18\x06 \x03(\x0b\x32N.com.webank.eggroll.core.meta.StartContainersRequest.EnvironmentVariablesEntry\x12N\n\x05\x66iles\x18\x07 \x03(\x0b\x32?.com.webank.eggroll.core.meta.StartContainersRequest.FilesEntry\x12[\n\x0czipped_files\x18\x08 \x03(\x0b\x32\x45.com.webank.eggroll.core.meta.StartContainersRequest.ZippedFilesEntry\x12R\n\x07options\x18\t \x03(\x0b\x32\x41.com.webank.eggroll.core.meta.StartContainersRequest.OptionsEntry\x12\x0e\n\x06status\x18\n \x01(\t\x12;\n\nprocessors\x18\x0b \x03(\x0b\x32\'.com.webank.eggroll.core.meta.Processor\x1a;\n\x19\x45nvironmentVariablesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\x1a,\n\nFilesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x0c:\x02\x38\x01\x1a\x32\n\x10ZippedFilesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x0c:\x02\x38\x01\x1a.\n\x0cOptionsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"-\n\x17StartContainersResponse\x12\x12\n\nsession_id\x18\x01 \x01(\t\"+\n\x15StopContainersRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\"\x18\n\x16StopContainersResponse\"+\n\x15KillContainersRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\"\x18\n\x16KillContainersResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x10\x63ontainers.proto\x12\x1c\x63om.webank.eggroll.core.meta\x1a\nmeta.proto\"\x87\x06\n\x16StartContainersRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x10\n\x08job_type\x18\x03 \x01(\t\x12\x12\n\nworld_size\x18\x04 \x01(\r\x12\x19\n\x11\x63ommand_arguments\x18\x05 \x03(\t\x12m\n\x15\x65nvironment_variables\x18\x06 \x03(\x0b\x32N.com.webank.eggroll.core.meta.StartContainersRequest.EnvironmentVariablesEntry\x12N\n\x05\x66iles\x18\x07 \x03(\x0b\x32?.com.webank.eggroll.core.meta.StartContainersRequest.FilesEntry\x12[\n\x0czipped_files\x18\x08 \x03(\x0b\x32\x45.com.webank.eggroll.core.meta.StartContainersRequest.ZippedFilesEntry\x12R\n\x07options\x18\t \x03(\x0b\x32\x41.com.webank.eggroll.core.meta.StartContainersRequest.OptionsEntry\x12\x0e\n\x06status\x18\n \x01(\t\x12;\n\nprocessors\x18\x0b \x03(\x0b\x32\'.com.webank.eggroll.core.meta.Processor\x1a;\n\x19\x45nvironmentVariablesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\x1a,\n\nFilesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x0c:\x02\x38\x01\x1a\x32\n\x10ZippedFilesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x0c:\x02\x38\x01\x1a.\n\x0cOptionsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"-\n\x17StartContainersResponse\x12\x12\n\nsession_id\x18\x01 \x01(\t\"+\n\x15StopContainersRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\"\x18\n\x16StopContainersResponse\"+\n\x15KillContainersRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\"\x18\n\x16KillContainersResponse\"_\n\x19\x44ownloadContainersRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12\x15\n\rcontainer_ids\x18\x02 \x03(\x03\x12\x17\n\x0f\x63ompress_method\x18\x03 \x01(\t\"{\n\x1a\x44ownloadContainersResponse\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12I\n\x11\x63ontainer_content\x18\x02 \x03(\x0b\x32..com.webank.eggroll.core.meta.ContainerContent\"R\n\x10\x43ontainerContent\x12\x14\n\x0c\x63ontainer_id\x18\x01 \x01(\x03\x12\x0f\n\x07\x63ontent\x18\x02 \x01(\x0c\x12\x17\n\x0f\x63ompress_method\x18\x03 \x01(\tb\x06proto3')
 
 
 
@@ -29,6 +29,9 @@ _STOPCONTAINERSREQUEST = DESCRIPTOR.message_types_by_name['StopContainersRequest
 _STOPCONTAINERSRESPONSE = DESCRIPTOR.message_types_by_name['StopContainersResponse']
 _KILLCONTAINERSREQUEST = DESCRIPTOR.message_types_by_name['KillContainersRequest']
 _KILLCONTAINERSRESPONSE = DESCRIPTOR.message_types_by_name['KillContainersResponse']
+_DOWNLOADCONTAINERSREQUEST = DESCRIPTOR.message_types_by_name['DownloadContainersRequest']
+_DOWNLOADCONTAINERSRESPONSE = DESCRIPTOR.message_types_by_name['DownloadContainersResponse']
+_CONTAINERCONTENT = DESCRIPTOR.message_types_by_name['ContainerContent']
 StartContainersRequest = _reflection.GeneratedProtocolMessageType('StartContainersRequest', (_message.Message,), {
 
   'EnvironmentVariablesEntry' : _reflection.GeneratedProtocolMessageType('EnvironmentVariablesEntry', (_message.Message,), {
@@ -103,6 +106,27 @@ KillContainersResponse = _reflection.GeneratedProtocolMessageType('KillContainer
   })
 _sym_db.RegisterMessage(KillContainersResponse)
 
+DownloadContainersRequest = _reflection.GeneratedProtocolMessageType('DownloadContainersRequest', (_message.Message,), {
+  'DESCRIPTOR' : _DOWNLOADCONTAINERSREQUEST,
+  '__module__' : 'containers_pb2'
+  # @@protoc_insertion_point(class_scope:com.webank.eggroll.core.meta.DownloadContainersRequest)
+  })
+_sym_db.RegisterMessage(DownloadContainersRequest)
+
+DownloadContainersResponse = _reflection.GeneratedProtocolMessageType('DownloadContainersResponse', (_message.Message,), {
+  'DESCRIPTOR' : _DOWNLOADCONTAINERSRESPONSE,
+  '__module__' : 'containers_pb2'
+  # @@protoc_insertion_point(class_scope:com.webank.eggroll.core.meta.DownloadContainersResponse)
+  })
+_sym_db.RegisterMessage(DownloadContainersResponse)
+
+ContainerContent = _reflection.GeneratedProtocolMessageType('ContainerContent', (_message.Message,), {
+  'DESCRIPTOR' : _CONTAINERCONTENT,
+  '__module__' : 'containers_pb2'
+  # @@protoc_insertion_point(class_scope:com.webank.eggroll.core.meta.ContainerContent)
+  })
+_sym_db.RegisterMessage(ContainerContent)
+
 if _descriptor._USE_C_DESCRIPTORS == False:
 
   DESCRIPTOR._options = None
@@ -134,4 +158,10 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   _KILLCONTAINERSREQUEST._serialized_end=1001
   _KILLCONTAINERSRESPONSE._serialized_start=1003
   _KILLCONTAINERSRESPONSE._serialized_end=1027
+  _DOWNLOADCONTAINERSREQUEST._serialized_start=1029
+  _DOWNLOADCONTAINERSREQUEST._serialized_end=1124
+  _DOWNLOADCONTAINERSRESPONSE._serialized_start=1126
+  _DOWNLOADCONTAINERSRESPONSE._serialized_end=1249
+  _CONTAINERCONTENT._serialized_start=1251
+  _CONTAINERCONTENT._serialized_end=1333
 # @@protoc_insertion_point(module_scope)

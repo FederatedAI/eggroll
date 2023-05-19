@@ -1,18 +1,14 @@
 package com.webank.eggroll.core.resourcemanager
 
-import com.webank.eggroll.core.ErSession
 import com.webank.eggroll.core.client.NodeManagerClient
 import com.webank.eggroll.core.constant.ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_NODE_HEARTBEAT_EXPIRED_COUNT
 import com.webank.eggroll.core.constant.NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL
 import com.webank.eggroll.core.constant.ProcessorEventType.PROCESSOR_LOSS
-import com.webank.eggroll.core.constant.{ProcessorStatus, ServerNodeStatus, ServerNodeTypes}
-import com.webank.eggroll.core.meta.{ErEndpoint, ErNodeHeartbeat, ErProcessor, ErResource, ErServerNode, ErSessionMeta}
-import com.webank.eggroll.core.resourcemanager.ClusterManagerService.{createNewNode, logInfo, nodeHeartbeatChecker, nodeHeartbeatMap, queryNodeByEndPoint, queryNodeById, registerResource, serverNodeCrudOperator, updateNode}
-import com.webank.eggroll.core.resourcemanager.ClusterResourceManager.serverNodeCrudOperator
+import com.webank.eggroll.core.constant.{ProcessorStatus, ServerNodeStatus}
+import com.webank.eggroll.core.meta.{ErEndpoint, ErNodeHeartbeat, ErProcessor, ErResource, ErServerNode}
+import com.webank.eggroll.core.resourcemanager.ClusterManagerService.{createNewNode, nodeHeartbeatMap, queryNodeByEndPoint, queryNodeById, updateNode}
 import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator
-
-import java.util.concurrent.ConcurrentHashMap
-import com.webank.eggroll.core.util.{Logging, ToStringUtils}
+import com.webank.eggroll.core.util.Logging
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
