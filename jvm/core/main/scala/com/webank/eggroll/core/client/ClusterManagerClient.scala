@@ -18,12 +18,13 @@
 
 package com.webank.eggroll.core.client
 
-import java.util.concurrent.ConcurrentHashMap
 import com.webank.eggroll.core.command.CommandClient
-import com.webank.eggroll.core.constant.{ClusterManagerConfKeys, JobCommands, ManagerCommands, MetadataCommands, SessionCommands}
+import com.webank.eggroll.core.constant._
+import com.webank.eggroll.core.deepspeed.job.meta.{SubmitJobRequest, SubmitJobResponse}
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.session.StaticErConf
 
+import java.util.concurrent.ConcurrentHashMap
 import scala.collection.JavaConverters._
 
 class ClusterManagerClient(val endpoint: ErEndpoint) {
@@ -55,17 +56,17 @@ class ClusterManagerClient(val endpoint: ErEndpoint) {
         ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_PORT, -1))
   }
 
-  def getServerNode(input:ErServerNode):ErServerNode = cc.call[ErServerNode](MetadataCommands.GET_SERVER_NODE, input)
+  def getServerNode(input: ErServerNode): ErServerNode = cc.call[ErServerNode](MetadataCommands.GET_SERVER_NODE, input)
 
-  def getServerNodes(input:ErServerNode):ErServerCluster = cc.call[ErServerCluster](MetadataCommands.GET_SERVER_NODES, input)
+  def getServerNodes(input: ErServerNode): ErServerCluster = cc.call[ErServerCluster](MetadataCommands.GET_SERVER_NODES, input)
 
-  def getOrCreateServerNode(input:ErServerNode):ErServerNode =
+  def getOrCreateServerNode(input: ErServerNode): ErServerNode =
     cc.call[ErServerNode](MetadataCommands.GET_OR_CREATE_SERVER_NODE, input)
 
-  def createOrUpdateServerNode(input: ErServerNode):ErServerNode =
+  def createOrUpdateServerNode(input: ErServerNode): ErServerNode =
     cc.call[ErServerNode](MetadataCommands.CREATE_OR_UPDATE_SERVER_NODE, input)
 
-  def getStore(input:ErStoreLocator):ErStore =
+  def getStore(input: ErStoreLocator): ErStore =
     getStore(ErStore(input, EMPTY_PARTITION_ARRAY, Map[String, String]().asJava))
 
   def getStore(input: ErStore): ErStore = cc.call[ErStore](MetadataCommands.GET_STORE, input)
@@ -85,6 +86,7 @@ class ClusterManagerClient(val endpoint: ErEndpoint) {
   def getStoreFromNamespace(input: ErStoreLocator): ErStoreList = {
     getStoreFromNamespace(new ErStore(input, EMPTY_PARTITION_ARRAY, new ConcurrentHashMap[String, String]))
   }
+
   def getOrCreateSession(sessionMeta: ErSessionMeta): ErSessionMeta =
     cc.call[ErSessionMeta](SessionCommands.getOrCreateSession, sessionMeta)
 
@@ -108,10 +110,11 @@ class ClusterManagerClient(val endpoint: ErEndpoint) {
     cc.call[ErProcessor](SessionCommands.heartbeat, processor)
 
   def nodeHeartbeat(node: ErNodeHeartbeat): ErNodeHeartbeat =
-    cc.call[ErNodeHeartbeat](ManagerCommands.nodeHeartbeat,node)
+    cc.call[ErNodeHeartbeat](ManagerCommands.nodeHeartbeat, node)
 
   def registerResource(node: ErServerNode): ErServerNode =
-    cc.call[ErServerNode](ManagerCommands.registerResource,node)
-  def submitJob(job:ErJobMeta) :ErJobMeta =
-      cc.call[ErJobMeta](JobCommands.submitJob,job)
+    cc.call[ErServerNode](ManagerCommands.registerResource, node)
+
+  def submitJob(job: SubmitJobRequest): SubmitJobResponse =
+    cc.call(JobCommands.submitJob, job)
 }

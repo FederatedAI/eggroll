@@ -89,6 +89,8 @@ object ResouceCommands {
 object JobCommands {
   val prefix = "v1/cluster-manager/job"
   val submitJob = new CommandURI(prefix = prefix, name = "submitJob")
+  val queryJobStatus = new CommandURI(prefix = prefix, name = "queryJobStatus")
+  val queryJob = new CommandURI(prefix = prefix, name = "queryJob")
   val stopJob = new CommandURI(prefix = prefix, name = "stopJob")
   val killJob = new CommandURI(prefix = prefix, name = "killJob")
 }

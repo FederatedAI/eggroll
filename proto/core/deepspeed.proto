@@ -1,0 +1,132 @@
+syntax = "proto3";
+
+package com.webank.eggroll.core.meta;
+
+import "google/protobuf/duration.proto";
+import "meta.proto";
+
+service DeepspeedRendezvousStore {
+  rpc Set (StoreSetRequest) returns (StoreSetResponse) {}
+  rpc Get (StoreGetRequest) returns (StoreGetResponse) {}
+  rpc Add (StoreAddRequest) returns (StoreAddResponse) {}
+  rpc CompareAndSet (StoreCompareAndSetRequest) returns (StoreCompareAndSetResponse) {}
+  rpc Wait (StoreWaitRequest) returns (StoreWaitResponse) {}
+  rpc NumKeys (StoreNumKeysRequest) returns (StoreNumKeysResponse) {}
+  rpc DeleteKey (StoreDeleteKeyRequest) returns (StoreDeleteKeyResponse) {}
+}
+
+
+message StoreSetRequest {
+  string prefix = 1;
+  bytes key = 2;
+  bytes value = 3;
+}
+
+message StoreSetResponse {}
+
+message StoreGetRequest {
+  string prefix = 1;
+  bytes key = 2;
+  google.protobuf.Duration timeout = 3;
+}
+
+message StoreGetResponse {
+  bytes value = 1;
+}
+
+message StoreAddRequest {
+  string prefix = 1;
+  bytes key = 2;
+  int64 amount = 3;
+}
+
+message StoreAddResponse {
+  int64 amount = 1;
+}
+
+message StoreCompareAndSetRequest {
+  string prefix = 1;
+  string key = 2;
+  string expect = 3;
+  string update = 4;
+}
+
+message StoreCompareAndSetResponse {}
+
+message StoreWaitRequest {
+  string prefix = 1;
+  string key = 2;
+  google.protobuf.Duration timeout = 3;
+}
+
+message StoreWaitResponse {}
+
+message StoreNumKeysRequest {
+  string prefix = 1;
+}
+message StoreNumKeysResponse {
+  int64 num_keys = 1;
+}
+
+message StoreDeleteKeyRequest {
+  string prefix = 1;
+  string key = 2;
+}
+
+message StoreDeleteKeyResponse {
+  bool success = 1;
+}
+
+message SubmitJobRequest {
+  string session_id = 1;
+  string name = 2;
+  string job_type = 3;
+  uint32 world_size = 4;
+  repeated string command_arguments = 5;
+  map<string, string> environment_variables = 6;
+  map<string, bytes> files = 7;
+  map<string, bytes> zipped_files = 8;
+  map<string, string> options = 9;
+  string status = 10;
+  repeated Processor processors = 11;
+}
+
+message SubmitJobResponse {
+  string session_id = 1;
+  repeated Processor processors = 2;
+}
+
+message KillJobRequest {
+  string session_id = 1;
+}
+
+message KillJobResponse {
+  string session_id = 1;
+}
+
+message StopJobRequest {
+  string session_id = 1;
+}
+
+message StopJobResponse {
+  string session_id = 1;
+}
+message QueryJobRequest {
+  string session_id = 1;
+}
+
+message QueryJobResponse {
+  string session_id = 1;
+  string job_type = 2;
+  string status = 3;
+  repeated Processor processors = 5;
+}
+
+message QueryJobStatusRequest {
+  string session_id = 1;
+}
+
+message QueryJobStatusResponse {
+  string session_id = 1;
+  string status = 2;
+}
