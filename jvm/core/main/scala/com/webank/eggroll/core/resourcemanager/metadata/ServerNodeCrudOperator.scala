@@ -133,6 +133,11 @@ class ServerNodeCrudOperator extends CrudOperator with Logging {
     ServerNodeCrudOperator.doAllocateNodeResource(connection,serverNodeId,resources)
   }
 
+  def preAllocateNodeResource(connection: Connection,serverNodeId:Long,resources: Array[ErResource]):Unit = synchronized{
+    ServerNodeCrudOperator.doPreAllocateNodeResource(connection,serverNodeId,resources)
+  }
+
+
   def returnNodeResource(connection: Connection,serverNodeId:Long,resources: Array[ErResource]):Unit = synchronized{
     ServerNodeCrudOperator.doReturnNodeResource(connection,serverNodeId,resources)
   }
@@ -408,7 +413,7 @@ def doCreateServerNode(input: ErServerNode): ErServerNode = {
       params = params :+ erProcessor.id.toString
       sql += s" and processor_id=? "
     }
-
+      logInfo(s" =========${sql}=========${params}")
     var func: ResultSet => Iterable[ErProcessor]=rs
     => rs.map(_ =>
       ErProcessor(id = rs.getLong("processor_id"),
@@ -583,32 +588,35 @@ def doCreateServerNode(input: ErServerNode): ErServerNode = {
         var sql = "update node_resource  set  "
         var  first = false;
         var params = List[String]()
+        var sqlParams = List[String]()
         if (erResource.total >= 0) {
           params = (params :+ erResource.total.toString)
-          sql += "  total = ?"
+          sqlParams=sqlParams:+ "  total = ?"
+
           first = true;
         }
         if (erResource.allocated>= 0) {
           params = (params :+ erResource.allocated.toString)
 
-          if(first){
-            sql += " , "
-          }
-          sql += "  allocated = ?"
+          sqlParams=sqlParams :+ "  allocated = ?"
 
         }
+
+        if(erResource.preAllocated>=0){
+          params = (params :+ erResource.preAllocated.toString)
+
+          sqlParams=sqlParams :+ "  pre_allocated = ?"
+        }
+
+
 
         if (erResource.used >= 0) {
           params = (params :+ erResource.used.toString)
 
-          if (first) {
-            sql += " , "
-          }
-          sql += "  used = ?"
-
+          sqlParams=sqlParams :+ "  used = ?"
         }
 
-        sql+= " where  1= 1"
+        sql+=    sqlParams.mkString(" , ")+ " where  1= 1"
 
 
         if (!StringUtils.isBlank(erResource.resourceType)) {
@@ -620,7 +628,7 @@ def doCreateServerNode(input: ErServerNode): ErServerNode = {
           params = (params :+ serverNodeId.toString)
           sql += s" and server_node_id = ?"
         }
-
+          logInfo(s"========sql=======${sql}==== param ${params}")
 
           dbc.update(conn ,sql,
             params:_*)
@@ -630,11 +638,25 @@ def doCreateServerNode(input: ErServerNode): ErServerNode = {
   def  doAllocateNodeResource(conn:Connection,serverNodeId:Long,resources: Array[ErResource]): Unit = synchronized {
     //dbc.withTransaction(conn => {
       resources.foreach(erResource => {
-        dbc.update(conn ,"update node_resource set allocated = allocated + ? where server_node_id = ? and resource_type = ? ",
-          erResource.allocated, serverNodeId, erResource.resourceType)
+        dbc.update(conn ,"update node_resource set allocated = allocated + ? , pre_allocated = pre_allocated - ?   where server_node_id = ? and resource_type = ? ",
+          erResource.allocated,erResource.allocated, serverNodeId, erResource.resourceType)
       })
     //})
   }
+
+
+  def  doPreAllocateNodeResource(conn:Connection,serverNodeId:Long,resources: Array[ErResource]): Unit = synchronized {
+    //dbc.withTransaction(conn => {
+    resources.foreach(erResource => {
+      dbc.update(conn ,"update node_resource set pre_allocated = pre_allocated + ? where server_node_id = ? and resource_type = ? ",
+        erResource.allocated, serverNodeId, erResource.resourceType)
+    })
+    //})
+  }
+
+
+
+
   def  doReturnNodeResource(conn:Connection,serverNodeId:Long,resources: Array[ErResource]): Unit = synchronized {
    // dbc.withTransaction(conn => {
       resources.foreach(erResource => {
@@ -644,9 +666,9 @@ def doCreateServerNode(input: ErServerNode): ErServerNode = {
    // })
   }
 
-  def doCountNodeResource(conn:Connection,serverNodeId: Long ):Array[ErResource]= synchronized {
+  def doCountNodeResource(conn:Connection,serverNodeId: Long  ):Array[ErResource]= synchronized {
     var params = List(serverNodeId)
-    var  sql = "select server_node_id, resource_type, status, sum(allocated) as allocated from processor_resource where server_node_id = ? and status != 'return' group by resource_type, status"
+    var  sql = "select server_node_id, resource_type, status, sum(allocated) as allocated from processor_resource where server_node_id = ? group by resource_type,status"
 
 
 //    val resourceResult = dbc.query(conn, rs => rs.map(_ =>

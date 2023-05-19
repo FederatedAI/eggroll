@@ -72,11 +72,12 @@ object ResourceTypes{
     var VGPU_CORE =  "VGPU_CORE"
 }
 object ResourceStatus{
-  var PRE_ALLOCATED = "pre_allocated"
-  var ALLOCATED = "allocated"
-  var ALLOCATE_FAILED = "allocate_failed"
-  var AVAILABLE = "available"
-  var RETURN = "return"
+  val INIT = "init"
+  val PRE_ALLOCATED = "pre_allocated"
+  val ALLOCATED = "allocated"
+  val ALLOCATE_FAILED = "allocate_failed"
+  val AVAILABLE = "available"
+  val RETURN = "return"
 }
 
 
@@ -99,12 +100,24 @@ object DispatchStrategy{
    val REMAIN_MOST_FIRST  = "remain_most_first"
    val RANDOM = "random"
 }
+object  ResourceEventType{
+   val  RESOURCE_RETURN = "resource_return"
+   val  RESOURCE_ALLOCATED = "resource_allocated"
+}
+
+
+object ResourceExhaustedStrategy{
+   val IGNORE  = "ignore"
+   val WAITING = "waiting"
+   val THROW_ERROR = "throw_error"
+}
 
 
 object ServerNodeStatus {
   val HEALTHY = "HEALTHY"
   val INIT = "INIT"
   var LOSS = "LOSS"
+
 
 }
 
