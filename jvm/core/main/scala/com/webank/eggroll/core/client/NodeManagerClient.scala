@@ -19,7 +19,7 @@
 package com.webank.eggroll.core.client
 
 import com.webank.eggroll.core.command.CommandClient
-import com.webank.eggroll.core.constant.{NodeManagerCommands, NodeManagerConfKeys, ResouceCommands}
+import com.webank.eggroll.core.constant.{ContainerCommands, NodeManagerCommands, NodeManagerConfKeys, ResouceCommands}
 import com.webank.eggroll.core.containers.meta._
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.session.StaticErConf
@@ -55,21 +55,24 @@ class NodeManagerClient(var nodeManagerEndpoint: ErEndpoint) {
 
 
   def startJobContainers(startContainersRequest: StartContainersRequest): StartContainersResponse = {
-    commandClient.call(NodeManagerCommands.startJobContainers, startContainersRequest)
+    commandClient.call(ContainerCommands.startJobContainers, startContainersRequest)
   }
 
   def stopJobContainers(stopContainersRequest: StopContainersRequest): StopContainersResponse = {
-    commandClient.call(NodeManagerCommands.stopJobContainers, stopContainersRequest)
+    commandClient.call(ContainerCommands.stopJobContainers, stopContainersRequest)
   }
 
   def killJobContainers(killContainersRequest: KillContainersRequest): KillContainersResponse =
-    commandClient.call(NodeManagerCommands.killJobContainers, killContainersRequest)
+    commandClient.call(ContainerCommands.killJobContainers, killContainersRequest)
 
   def allocateResource(srcAllocate: ErResourceAllocation): ErResourceAllocation =
     commandClient.call[ErResourceAllocation](ResouceCommands.resourceAllocation, srcAllocate)
 
   def queryNodeResource(erServerNode: ErServerNode): ErServerNode =
     commandClient.call[ErServerNode](ResouceCommands.queryNodeResource, erServerNode)
+
+  def downloadContainers(downloadContainersRequest: DownloadContainersRequest): DownloadContainersResponse =
+    commandClient.call(ContainerCommands.downloadContainers, downloadContainersRequest)
 
   def checkNodeProcess(processor: ErProcessor): ErProcessor =
     commandClient.call[ErProcessor](ResouceCommands.checkNodeProcess, processor)

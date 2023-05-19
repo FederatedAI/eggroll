@@ -3,7 +3,7 @@ package com.webank.eggroll.core.deepspeed.job
 import com.webank.eggroll.core.client.NodeManagerClient
 import com.webank.eggroll.core.constant._
 import com.webank.eggroll.core.containers.JobProcessorTypes
-import com.webank.eggroll.core.containers.meta.{KillContainersRequest, StartContainersRequest}
+import com.webank.eggroll.core.containers.meta.{ContainerContent, DownloadContainersRequest, KillContainersRequest, StartContainersRequest}
 import com.webank.eggroll.core.deepspeed.job.meta._
 import com.webank.eggroll.core.error.ErSessionException
 import com.webank.eggroll.core.meta._
@@ -42,6 +42,14 @@ object JobServiceHandler extends Logging {
             val sessionProcessors = smDao.getSession(session.id).processors
             if (sessionProcessors.forall(_.processorType == JobProcessorTypes.DeepSpeed.toString)) {
               if (sessionProcessors.exists(_.status == ProcessorStatus.ERROR)) {
+                if (sessionProcessors.exists(p => p.status == ProcessorStatus.RUNNING || p.status == ProcessorStatus.NEW)) {
+                  try {
+                    killJob(session.id, isTimeout = false)
+                  } catch {
+                    case e: ErSessionException =>
+                      logError(s"failed to kill session ${session.id}", e)
+                  }
+                }
                 smDao.updateSessionMain(session.copy(status = SessionStatus.ERROR))
                 logDebug(s"found error processor belongs to session ${session.id}: " +
                   s"${sessionProcessors.filter(_.status == ProcessorStatus.ERROR).mkString("Array(", ", ", ")")}, " +
@@ -82,6 +90,40 @@ object JobServiceHandler extends Logging {
     val sessionId = queryJobStatusRequest.sessionId
     val status = smDao.getSessionMain(sessionId).status
     QueryJobStatusResponse(sessionId = sessionId, status = status)
+  }
+
+  def handleJobDownload(downloadJobRequest: DownloadJobRequest): DownloadJobResponse = {
+    val sessionId = downloadJobRequest.sessionId
+    val serverNodeCrudOperator = new ServerNodeCrudOperator()
+    val containerContents = smDao.getRanks(sessionId).flatMap { case (containerId, nodeId, globalRank, localRank) =>
+      val index = if (downloadJobRequest.ranks.isEmpty) globalRank else downloadJobRequest.ranks.indexOf(globalRank)
+      if (index >= 0) {
+        Some((nodeId, containerId, globalRank, localRank, index))
+      } else {
+        None
+      }
+    }.groupBy(_._1).par.flatMap { case (nodeId, ranks) =>
+      val node = serverNodeCrudOperator.getServerNode(ErServerNode(id = nodeId))
+      val indexes = ranks.map(_._5)
+      indexes.zip(
+        try {
+          new NodeManagerClient(node.endpoint).downloadContainers(
+            DownloadContainersRequest(
+              sessionId = sessionId,
+              containerIds = ranks.map(_._2),
+              compressMethod = downloadJobRequest.compressMethod
+            )).containerContents
+        } catch {
+          case e: Exception =>
+            e.printStackTrace()
+            ranks.map(r => ContainerContent(
+              containerId = r._2,
+              content = Array.empty,
+              compressMethod = downloadJobRequest.compressMethod))
+        }
+      )
+    }.toArray.sortBy(_._1).map(_._2)
+    DownloadJobResponse(sessionId = sessionId, containerContents = containerContents)
   }
 
   private def waitSubmittedContainers(sessionId: String, expectedWorldSize: Int, timeout: Long): Array[ErProcessor] = {
@@ -145,6 +187,7 @@ object JobServiceHandler extends Logging {
         ClusterResourceManager.submitResourceRequest(resourceApplication)
         var dispatchedProcessors = resourceApplication.getResult()
         logInfo(s"dispatchedProcessor: ${dispatchedProcessors.mkString("Array(", ", ", ")")}")
+
         smDao.register(ErSessionMeta(
           id = sessionId,
           processors = dispatchedProcessors.map(_._1),
@@ -157,6 +200,11 @@ object JobServiceHandler extends Logging {
             case ((processor, node), registeredProcessor) =>
               (processor.copy(id = registeredProcessor.id), node)
           }
+          // register ranks
+          val ranks = dispatchedProcessors.map { case (processor, node) =>
+            (processor.id, node.id, processor.options.get("localRank").toInt, processor.options.get("globalRank").toInt)
+          }
+          smDao.registerRanks(sessionId, ranks.map(_._1), ranks.map(_._2), ranks.map(_._3), ranks.map(_._4))
 
           // start containers
           dispatchedProcessors.groupBy(_._2).par.foreach { case (node, nodeAndProcessors) =>
@@ -181,6 +229,15 @@ object JobServiceHandler extends Logging {
           // wait for containers to start, throw exception if timeout
           val startTimeout = System.currentTimeMillis() + SessionConfKeys.EGGROLL_SESSION_START_TIMEOUT_MS.get().toLong
           val activeProcessors = waitSubmittedContainers(sessionId, worldSize, startTimeout)
+
+          // update options since some options are loss in db
+          val idToOptions = dispatchedProcessors.map { case (processor, _) =>
+            (processor.id, processor.options)
+          }.toMap
+          for (processor <- activeProcessors) {
+            val options = idToOptions(processor.id)
+            processor.options.putAll(options)
+          }
 
           // active
           smDao.updateSessionStatus(sessionId = sessionId,
