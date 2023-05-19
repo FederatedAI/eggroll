@@ -4,6 +4,7 @@ isort:skip_file
 """
 import builtins
 import collections.abc
+import containers_pb2
 import google.protobuf.descriptor
 import google.protobuf.duration_pb2
 import google.protobuf.internal.containers
@@ -519,3 +520,44 @@ class QueryJobStatusResponse(google.protobuf.message.Message):
     def ClearField(self, field_name: typing_extensions.Literal["session_id", b"session_id", "status", b"status"]) -> None: ...
 
 global___QueryJobStatusResponse = QueryJobStatusResponse
+
+@typing_extensions.final
+class DownloadJobRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    SESSION_ID_FIELD_NUMBER: builtins.int
+    RANKS_FIELD_NUMBER: builtins.int
+    COMPRESS_METHOD_FIELD_NUMBER: builtins.int
+    session_id: builtins.str
+    @property
+    def ranks(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.int]: ...
+    compress_method: builtins.str
+    def __init__(
+        self,
+        *,
+        session_id: builtins.str = ...,
+        ranks: collections.abc.Iterable[builtins.int] | None = ...,
+        compress_method: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["compress_method", b"compress_method", "ranks", b"ranks", "session_id", b"session_id"]) -> None: ...
+
+global___DownloadJobRequest = DownloadJobRequest
+
+@typing_extensions.final
+class DownloadJobResponse(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    SESSION_ID_FIELD_NUMBER: builtins.int
+    CONTAINER_CONTENT_FIELD_NUMBER: builtins.int
+    session_id: builtins.str
+    @property
+    def container_content(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[containers_pb2.ContainerContent]: ...
+    def __init__(
+        self,
+        *,
+        session_id: builtins.str = ...,
+        container_content: collections.abc.Iterable[containers_pb2.ContainerContent] | None = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["container_content", b"container_content", "session_id", b"session_id"]) -> None: ...
+
+global___DownloadJobResponse = DownloadJobResponse

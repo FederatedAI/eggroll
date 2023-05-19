@@ -93,6 +93,7 @@ object JobCommands {
   val queryJob = new CommandURI(prefix = prefix, name = "queryJob")
   val stopJob = new CommandURI(prefix = prefix, name = "stopJob")
   val killJob = new CommandURI(prefix = prefix, name = "killJob")
+  val downloadJob = new CommandURI(prefix = prefix, name = "downloadJob")
 }
 
 object RendezvousStoreCommands {
@@ -109,9 +110,15 @@ object NodeManagerCommands {
   val startContainers = new CommandURI(prefix = prefix, name = "startContainers")
   val stopContainers = new CommandURI(prefix = prefix, name = "stopContainers")
   val killContainers = new CommandURI(prefix = prefix, name = "killContainers")
+}
+
+object ContainerCommands {
+  val prefix = "v1/node-manager/container"
 
   val startJobContainers = new CommandURI(prefix = prefix, name = "startJobContainers")
   val stopJobContainers = new CommandURI(prefix = prefix, name = "stopJobContainers")
   val killJobContainers = new CommandURI(prefix = prefix, name = "killJobContainers")
+
+  val downloadContainers = new CommandURI(prefix = prefix, name = "downloadContainers")
 
 }

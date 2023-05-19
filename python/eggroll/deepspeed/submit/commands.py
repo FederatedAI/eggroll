@@ -26,3 +26,9 @@ class JobCommands:
     QUERY_JOB_STATUS = _create_command_uri(prefix, "queryJobStatus")
     QUERY_JOB = _create_command_uri(prefix, "queryJob")
     KILL_JOB = _create_command_uri(prefix, "killJob")
+    DOWNLOAD_JOB = _create_command_uri(prefix, "downloadJob")
+
+
+class ContainerCommands:
+    prefix = "v1/node-manager/container"
+    DOWNLOAD_CONTAINERS = _create_command_uri(prefix, "downloadContainers")
