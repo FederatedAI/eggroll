@@ -20,15 +20,15 @@ import scala.collection.mutable.ListBuffer
 
 
 
-object NodeManagerMeta extends Logging {
+object NodeManagerMeta  {
   var status=INIT
   var serverNodeId = -1:Long;
   var clusterId = -1:Long;
    def refreshServerNodeMetaIntoFile(): Unit = {
-     //var filePath = System.getenv("EGGROLL_HOME")+StringConstants.SLASH  +
+
      var filePath =  CoreConfKeys.EGGROLL_DATA_DIR.get()+ StringConstants.SLASH+"NodeManagerMeta";
      var  gson= new Gson()
-      logInfo(s"write node meta info to ${filePath}")
+
       FileSystemUtils.fileWriter(filePath, gson.toJson(NodeManagerMeta))
   }
   def loadNodeManagerMetaFromFile():Unit = {
@@ -156,7 +156,7 @@ class NodeManagerService extends NodeManager with Logging {
   }
 }
 
-case class ResourceEvent( resourceType:String, count:Long)
+
 
 object  NodeResourceManager extends  Logging {
 
@@ -189,9 +189,9 @@ object  NodeResourceManager extends  Logging {
     false
   }
 
-  def  fireResourceChangeEvent(event:ResourceEvent):Unit={
-    resourceEventQueue.put(event);
-  }
+//  def  fireResourceChangeEvent(event:ResourceEvent):Unit={
+//    resourceEventQueue.put(event);
+//  }
 
 
   def  freeResource(rtype:String,count:Long):Long = {
@@ -286,10 +286,6 @@ object  NodeResourceManager extends  Logging {
         }
       }
   }
-
-
-
-
   def  queryNodeResource(erServerNode: ErServerNode):ErServerNode = {
 
      erServerNode.copy(id= NodeManagerMeta.serverNodeId,resources = resourceMap.values.toArray.filter(r=>{r.total != -1})
@@ -297,16 +293,12 @@ object  NodeResourceManager extends  Logging {
                                       total = r.total.get(),
                       used=r.used.get(),
                       allocated = r.allocated.get())}))
-
   }
-
-
 
   class HeartBeatThread extends Thread{
     override def run(){
       var  notOver : Boolean = true
       var  seq :Long = 0
-
       while(notOver){
         try {
           seq +=1
@@ -317,30 +309,19 @@ object  NodeResourceManager extends  Logging {
             status = NodeManagerMeta.status)
           ))
           )
-  //        logDebug(s"node heart beat return ${serverNode}")
-
-//          logInfo(s"cluster manager return ${serverNode}")
-//          logInfo(s"======node manager status ${NodeManagerMeta.status}")
           if (nodeHeartBeat != null&&nodeHeartBeat.node!=null) {
           if (NodeManagerMeta.status.equals(INIT)) {
-              NodeManagerMeta.status =  HEALTHY
               NodeManagerMeta.serverNodeId = nodeHeartBeat.node.id
               NodeManagerMeta.clusterId = nodeHeartBeat.node.clusterId
-            logInfo(s"==============================${NodeManagerMeta.serverNodeId}")
+              logInfo(s"get node id ${NodeManagerMeta.serverNodeId} from cluster-manager")
               NodeManagerMeta.refreshServerNodeMetaIntoFile()
-
-              //   上报资源
-              //registerResource(serverNode)
-
+              NodeManagerMeta.status =  HEALTHY
           }
         }
-//          if (serverNode != null) {
-//            notOver = false
-//          }
         }catch {
           case t: Throwable =>
-            t.printStackTrace()
-            logError("register node error "+t.getMessage)
+//            t.printStackTrace()
+            logError("node heart beat error "+t.getMessage)
         }
         Thread.sleep(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL.get().toInt)
       }
