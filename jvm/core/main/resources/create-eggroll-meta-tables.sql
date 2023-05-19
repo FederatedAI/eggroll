@@ -146,6 +146,7 @@ CREATE TABLE IF NOT EXISTS `node_resource` (
   `resource_type`  VARCHAR(255),
   `total`   BIGINT NOT NULL default 0,
   `used`    BIGINT NOT NULL default 0,
+  `pre_allocated` BIGINT NOT NULL default 0,
   `allocated` BIGINT NOT NULL DEFAULT 0,
   `status` VARCHAR(255),
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
