@@ -8,8 +8,7 @@ import com.webank.eggroll.core.constant.{DispatchStrategy, NodeManagerConfKeys, 
 import com.webank.eggroll.core.datastructure.FifoBroker
 import com.webank.eggroll.core.meta.{ErEndpoint, ErProcessor, ErResource, ErResourceAllocation, ErServerNode, ErSessionMeta}
 import com.webank.eggroll.core.resourcemanager.ClusterResourceManager.{ResourceApplication, dispatchDeepSpeedInner, serverNodeCrudOperator}
-import com.webank.eggroll.core.resourcemanager.job.ClusterManagerJobService.smDao
-import com.webank.eggroll.core.resourcemanager.job.JobProcessorTypes
+
 import com.webank.eggroll.core.meta.{ErEndpoint, ErProcessor, ErResource, ErServerNode}
 import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator
 import com.webank.eggroll.core.util.Logging
