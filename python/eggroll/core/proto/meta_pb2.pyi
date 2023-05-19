@@ -58,6 +58,7 @@ class ServerNode(google.protobuf.message.Message):
     ENDPOINT_FIELD_NUMBER: builtins.int
     NODETYPE_FIELD_NUMBER: builtins.int
     STATUS_FIELD_NUMBER: builtins.int
+    RESOURCES_FIELD_NUMBER: builtins.int
     id: builtins.int
     name: builtins.str
     clusterId: builtins.int
@@ -65,6 +66,8 @@ class ServerNode(google.protobuf.message.Message):
     def endpoint(self) -> global___Endpoint: ...
     nodeType: builtins.str
     status: builtins.str
+    @property
+    def resources(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___Resource]: ...
     def __init__(
         self,
         *,
@@ -74,9 +77,10 @@ class ServerNode(google.protobuf.message.Message):
         endpoint: global___Endpoint | None = ...,
         nodeType: builtins.str = ...,
         status: builtins.str = ...,
+        resources: collections.abc.Iterable[global___Resource] | None = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["endpoint", b"endpoint"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["clusterId", b"clusterId", "endpoint", b"endpoint", "id", b"id", "name", b"name", "nodeType", b"nodeType", "status", b"status"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["clusterId", b"clusterId", "endpoint", b"endpoint", "id", b"id", "name", b"name", "nodeType", b"nodeType", "resources", b"resources", "status", b"status"]) -> None: ...
 
 global___ServerNode = ServerNode
 
@@ -537,116 +541,79 @@ class SessionMeta(google.protobuf.message.Message):
 global___SessionMeta = SessionMeta
 
 @typing_extensions.final
-class JobMeta(google.protobuf.message.Message):
+class ResourceAllocation(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
-    @typing_extensions.final
-    class EnvironmentVariablesEntry(google.protobuf.message.Message):
-        DESCRIPTOR: google.protobuf.descriptor.Descriptor
-
-        KEY_FIELD_NUMBER: builtins.int
-        VALUE_FIELD_NUMBER: builtins.int
-        key: builtins.str
-        value: builtins.str
-        def __init__(
-            self,
-            *,
-            key: builtins.str = ...,
-            value: builtins.str = ...,
-        ) -> None: ...
-        def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
-
-    @typing_extensions.final
-    class FilesEntry(google.protobuf.message.Message):
-        DESCRIPTOR: google.protobuf.descriptor.Descriptor
-
-        KEY_FIELD_NUMBER: builtins.int
-        VALUE_FIELD_NUMBER: builtins.int
-        key: builtins.str
-        value: builtins.bytes
-        def __init__(
-            self,
-            *,
-            key: builtins.str = ...,
-            value: builtins.bytes = ...,
-        ) -> None: ...
-        def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
-
-    @typing_extensions.final
-    class ZippedFilesEntry(google.protobuf.message.Message):
-        DESCRIPTOR: google.protobuf.descriptor.Descriptor
-
-        KEY_FIELD_NUMBER: builtins.int
-        VALUE_FIELD_NUMBER: builtins.int
-        key: builtins.str
-        value: builtins.bytes
-        def __init__(
-            self,
-            *,
-            key: builtins.str = ...,
-            value: builtins.bytes = ...,
-        ) -> None: ...
-        def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
-
-    @typing_extensions.final
-    class OptionsEntry(google.protobuf.message.Message):
-        DESCRIPTOR: google.protobuf.descriptor.Descriptor
-
-        KEY_FIELD_NUMBER: builtins.int
-        VALUE_FIELD_NUMBER: builtins.int
-        key: builtins.str
-        value: builtins.str
-        def __init__(
-            self,
-            *,
-            key: builtins.str = ...,
-            value: builtins.str = ...,
-        ) -> None: ...
-        def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
-
-    ID_FIELD_NUMBER: builtins.int
-    NAME_FIELD_NUMBER: builtins.int
-    JOB_TYPE_FIELD_NUMBER: builtins.int
-    WORLD_SIZE_FIELD_NUMBER: builtins.int
-    COMMAND_ARGUMENTS_FIELD_NUMBER: builtins.int
-    ENVIRONMENT_VARIABLES_FIELD_NUMBER: builtins.int
-    FILES_FIELD_NUMBER: builtins.int
-    ZIPPED_FILES_FIELD_NUMBER: builtins.int
-    OPTIONS_FIELD_NUMBER: builtins.int
+    SERVERNODEID_FIELD_NUMBER: builtins.int
     STATUS_FIELD_NUMBER: builtins.int
-    PROCESSORS_FIELD_NUMBER: builtins.int
-    id: builtins.str
-    name: builtins.str
-    job_type: builtins.str
-    world_size: builtins.int
-    @property
-    def command_arguments(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
-    @property
-    def environment_variables(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]: ...
-    @property
-    def files(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.bytes]: ...
-    @property
-    def zipped_files(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.bytes]: ...
-    @property
-    def options(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]: ...
+    SESSIONID_FIELD_NUMBER: builtins.int
+    OPERATETYPE_FIELD_NUMBER: builtins.int
+    RESOURCES_FIELD_NUMBER: builtins.int
+    serverNodeId: builtins.int
     status: builtins.str
+    sessionId: builtins.str
+    operateType: builtins.str
     @property
-    def processors(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___Processor]: ...
+    def resources(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___Resource]: ...
     def __init__(
         self,
         *,
-        id: builtins.str = ...,
-        name: builtins.str = ...,
-        job_type: builtins.str = ...,
-        world_size: builtins.int = ...,
-        command_arguments: collections.abc.Iterable[builtins.str] | None = ...,
-        environment_variables: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
-        files: collections.abc.Mapping[builtins.str, builtins.bytes] | None = ...,
-        zipped_files: collections.abc.Mapping[builtins.str, builtins.bytes] | None = ...,
-        options: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
+        serverNodeId: builtins.int = ...,
         status: builtins.str = ...,
-        processors: collections.abc.Iterable[global___Processor] | None = ...,
+        sessionId: builtins.str = ...,
+        operateType: builtins.str = ...,
+        resources: collections.abc.Iterable[global___Resource] | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["command_arguments", b"command_arguments", "environment_variables", b"environment_variables", "files", b"files", "id", b"id", "job_type", b"job_type", "name", b"name", "options", b"options", "processors", b"processors", "status", b"status", "world_size", b"world_size", "zipped_files", b"zipped_files"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["operateType", b"operateType", "resources", b"resources", "serverNodeId", b"serverNodeId", "sessionId", b"sessionId", "status", b"status"]) -> None: ...
 
-global___JobMeta = JobMeta
+global___ResourceAllocation = ResourceAllocation
+
+@typing_extensions.final
+class Resource(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    TYPE_FIELD_NUMBER: builtins.int
+    TOTAL_FIELD_NUMBER: builtins.int
+    USED_FIELD_NUMBER: builtins.int
+    ALLOCATED_FIELD_NUMBER: builtins.int
+    type: builtins.str
+    total: builtins.int
+    used: builtins.int
+    allocated: builtins.int
+    def __init__(
+        self,
+        *,
+        type: builtins.str = ...,
+        total: builtins.int = ...,
+        used: builtins.int = ...,
+        allocated: builtins.int = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["allocated", b"allocated", "total", b"total", "type", b"type", "used", b"used"]) -> None: ...
+
+global___Resource = Resource
+
+@typing_extensions.final
+class NodeHeartbeat(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    ID_FIELD_NUMBER: builtins.int
+    NODE_FIELD_NUMBER: builtins.int
+    CODE_FIELD_NUMBER: builtins.int
+    MSG_FIELD_NUMBER: builtins.int
+    id: builtins.int
+    @property
+    def node(self) -> global___ServerNode: ...
+    code: builtins.str
+    msg: builtins.str
+    def __init__(
+        self,
+        *,
+        id: builtins.int = ...,
+        node: global___ServerNode | None = ...,
+        code: builtins.str = ...,
+        msg: builtins.str = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["node", b"node"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["code", b"code", "id", b"id", "msg", b"msg", "node", b"node"]) -> None: ...
+
+global___NodeHeartbeat = NodeHeartbeat

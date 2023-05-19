@@ -18,10 +18,6 @@
 
 package com.webank.eggroll.core.command
 
-import java.lang.reflect.{InvocationHandler, Method, Proxy}
-import java.util.concurrent.CountDownLatch
-import java.util.function.Supplier
-
 import com.google.protobuf.{ByteString, UnsafeByteOperations}
 import com.webank.eggroll.core.command.Command.CommandResponse
 import com.webank.eggroll.core.command.CommandModelPbMessageSerdes._
@@ -38,6 +34,9 @@ import com.webank.eggroll.core.util.{Logging, SerdesUtils, TimeUtils}
 import io.grpc.stub.StreamObserver
 import io.grpc.{ManagedChannel, ManagedChannelBuilder}
 
+import java.lang.reflect.{InvocationHandler, Method, Proxy}
+import java.util.concurrent.CountDownLatch
+import java.util.function.Supplier
 import scala.collection.JavaConverters._
 import scala.collection.concurrent.TrieMap
 import scala.reflect.ClassTag
@@ -101,7 +100,24 @@ class CommandClient(defaultEndpoint: ErEndpoint = null,
     }
   }
 
-  def call[T](commandUri: CommandURI, args: Array[(Array[RpcMessage], ErEndpoint)])(implicit tag:ClassTag[T]): Array[T] = {
+  def call(commandUri: CommandURI, args: Array[Byte]*): ByteString = {
+    logDebug(s"[CommandClient.call, single endpoint] commandUri: ${commandUri.uriString}, endpoint: ${defaultEndpoint}")
+    try {
+      val stub = CommandServiceGrpc.newBlockingStub(GrpcClientUtils.getChannel(defaultEndpoint))
+      val resp = stub.call(Command.CommandRequest.newBuilder
+        .setId(System.currentTimeMillis + "")
+        .setUri(commandUri.uri.toString)
+        .addAllArgs(args.map(ByteString.copyFrom).asJava)
+        .build)
+      resp.getResults(0)
+    } catch {
+      case t: Throwable =>
+        logError(s"[COMMAND] error calling to ${defaultEndpoint}, message: ${args(0)}. commandUri: ${commandUri.uriString}", t)
+        throw new CommandCallException(commandUri, defaultEndpoint, t)
+    }
+  }
+
+  def call[T](commandUri: CommandURI, args: Array[(Array[RpcMessage], ErEndpoint)])(implicit tag: ClassTag[T]): Array[T] = {
     logDebug(s"[CommandClient.call] commandUri: ${commandUri.uriString}, endpoint: ${defaultEndpoint}")
     val futures = args.map {
       case (rpcMessages, endpoint) =>

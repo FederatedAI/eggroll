@@ -127,14 +127,17 @@ object ProcessorStatus {
   val STOPPED = "STOPPED"
   val KILLED = "KILLED"
   val ERROR = "ERROR"
+  val FINISHED = "FINISHED"
 }
 
 object SessionStatus {
   val NEW = "NEW"
+  val NEW_TIMEOUT = "NEW_TIMEOUT"
   val ACTIVE = "ACTIVE"
   val CLOSED = "CLOSED"
   val KILLED = "KILLED"
   val ERROR = "ERROR"
+  val FINISHED = "FINISHED"
 }
 
 object BindingStrategies {

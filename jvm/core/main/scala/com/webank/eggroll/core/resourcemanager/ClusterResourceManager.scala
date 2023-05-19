@@ -1,5 +1,7 @@
 package com.webank.eggroll.core.resourcemanager
 
+import com.webank.eggroll.core.constant._
+import com.webank.eggroll.core.containers.JobProcessorTypes
 import com.webank.eggroll.core.ErSession
 import com.webank.eggroll.core.client.NodeManagerClient
 import com.webank.eggroll.core.constant.{DispatchStrategy, NodeManagerConfKeys, ProcessorStatus, ResourceEventType, ResourceExhaustedStrategy, ResourceOperationStauts, ResourceOperationType, ResourceStatus, ResourceTypes, ServerNodeStatus, ServerNodeTypes, SessionStatus}
@@ -8,17 +10,20 @@ import com.webank.eggroll.core.meta.{ErEndpoint, ErProcessor, ErResource, ErReso
 import com.webank.eggroll.core.resourcemanager.ClusterResourceManager.{ResourceApplication, dispatchDeepSpeedInner, serverNodeCrudOperator}
 import com.webank.eggroll.core.resourcemanager.job.ClusterManagerJobService.smDao
 import com.webank.eggroll.core.resourcemanager.job.JobProcessorTypes
+import com.webank.eggroll.core.meta.{ErEndpoint, ErProcessor, ErResource, ErServerNode}
 import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator
-import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.util.Logging
 
 import java.sql.Connection
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.{ArrayBlockingQueue, ConcurrentLinkedQueue, CountDownLatch, TimeUnit}
 import scala.collection.JavaConverters.mapAsJavaMapConverter
 import scala.collection.mutable.{ArrayBuffer, ListBuffer}
 import scala.collection.{breakOut, mutable}
 import scala.math.Numeric.LongIsIntegral
+import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 import scala.util.Random
 import scala.util.control.Breaks.{break, breakable}
 
@@ -90,69 +95,11 @@ object ClusterResourceManager extends Logging{
             applicationQueue.next()
           }
         }catch {
-          case  e:Exception =>  {
-            e.printStackTrace();
-            if(resourceApplication!=null){
-                  resourceApplication.status.set(2)
-                  resourceApplication.resourceLatch.countDown()
-            }
-          }
-        }finally {
-
+          case  e:Exception =>  e.printStackTrace()
         }
       }
     })
-
-//    var waitingQueueDispatchThread =  new Thread(()=>{
-//      while(true){
-//        var  resourceApplication : ResourceApplication = null
-//        try {
-//            resourceApplication = waitingQueue.poll()
-//            applicationQueue.broker.put(resourceApplication)
-//            Thread.sleep(1000)
-//        }catch {
-//          case e: Exception => e.printStackTrace()
-//        }
-//      }
-//    })
-//    waitingQueueDispatchThread.start()
     dispatchThread.start()
-
-   var  resourceEventQueueHandleThread = new  Thread(()=>{
-        println("waitingQueueDispatchThread start")
-        while(true){
-            try{
-            var resourceEvent  =   resourceEventQueue.next()
-         //     handleResourceChangeEvent(resourceEvent)
-            }
-        }
-   })
-  resourceEventQueueHandleThread.start()
-
-
-//  def  handleResourceChangeEvent(resourceEvent: ResourceEvent): Unit ={
-//    resourceEvent.resoureceEventType match {
-//      case ResourceEventType.RESOURCE_RETURN => {
-//         val dataBuffer = new java.util.LinkedList[ResourceApplication]()
-//          waitingQueue.broker.drainTo(dataBuffer)
-//        dataBuffer.forEach()
-//
-//
-//
-//      }
-//    }
-//  }
-
-
-  private def  notifyWaitingDispatch(): Unit ={
-
-
-
-  }
-
-
-
-
    private def  randomDispatch(serverNodes:Array[ErServerNode] ,resourceApplication: ResourceApplication): ResourceApplication ={
 
      var requiredProcessors = resourceApplication.processors;
@@ -273,6 +220,8 @@ object ClusterResourceManager extends Logging{
   def  allocateResource(processors: Array[ErProcessor] ,beforeCall:(Connection,ErProcessor)=>Unit =null,afterCall:(Connection,ErProcessor)=>Unit =null) : Unit=synchronized{
     ServerNodeCrudOperator.dbc.withTransaction(conn=> {
 
+
+
       var allocateResourceProcessor = processors.map(p => {
         p.copy(resources = serverNodeCrudOperator.queryProcessorResource(conn,p,ResourceStatus.PRE_ALLOCATED).map(_.copy(status=ResourceStatus.ALLOCATED)))
       })
@@ -292,8 +241,8 @@ object ClusterResourceManager extends Logging{
         })
 
        // serverNodeCrudOperator.allocateNodeResource(conn,e._1, e._2)
-       var  nodeResources =  serverNodeCrudOperator.countNodeResource(conn,e._1)
-        serverNodeCrudOperator.updateNodeResource(conn,e._1,nodeResources)
+       var  erResources =  serverNodeCrudOperator.countNodeResource(conn,e._1)
+        serverNodeCrudOperator.updateNodeResource(conn,e._1,erResources)
       })
 
     })
@@ -343,6 +292,9 @@ object ClusterResourceManager extends Logging{
     }
     }
     )
+
+    logInfo("==============over========")
+
   }
 
     private def  flatResources(processors: Array[ErProcessor]): Map[Long, Array[ErResource]] ={
