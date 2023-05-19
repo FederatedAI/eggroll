@@ -145,7 +145,7 @@ object NodeManagerConfKeys {
   val CONFKEY_NODE_MANAGER_CPU_VCORES =  ErConfKey(  "eggroll.resourcemanager.nodemanager.cpu.vcores",16)
   val CONFKEY_NODE_MANAGER_GPU_VCORES =  ErConfKey(  "eggroll.resourcemanager.nodemanager.gpu.vcores",16)
 
-
+  val CONFKEY_NODE_MANAGER_CONTAINERS_DATA_DIR = "eggroll.resourcemanager.nodemanager.containers.data.dir"
 
 
 }
