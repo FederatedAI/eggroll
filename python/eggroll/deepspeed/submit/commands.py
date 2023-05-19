@@ -15,8 +15,14 @@
 from eggroll.core.command.commands import CommandURI, _to_service_name
 
 
+def _create_command_uri(prefix, method_name):
+    return CommandURI(_to_service_name(prefix, method_name))
+
+
 class JobCommands:
-    prefix = 'v1/cluster-manager/job'
-    submit = 'submitJob'
-    job_submit_service_name = _to_service_name(prefix, submit)
-    SUBMIT_JOB = CommandURI(job_submit_service_name)
+    prefix = "v1/cluster-manager/job"
+
+    SUBMIT_JOB = _create_command_uri(prefix, "submitJob")
+    QUERY_JOB_STATUS = _create_command_uri(prefix, "queryJobStatus")
+    QUERY_JOB = _create_command_uri(prefix, "queryJob")
+    KILL_JOB = _create_command_uri(prefix, "killJob")
