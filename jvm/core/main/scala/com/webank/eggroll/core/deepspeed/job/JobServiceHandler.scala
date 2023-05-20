@@ -188,12 +188,12 @@ object JobServiceHandler extends Logging {
         var dispatchedProcessors = resourceApplication.getResult()
         logInfo(s"dispatchedProcessor: ${dispatchedProcessors.mkString("Array(", ", ", ")")}")
 
-        smDao.register(ErSessionMeta(
-          id = sessionId,
-          processors = dispatchedProcessors.map(_._1),
-          totalProcCount = worldSize,
-          status = SessionStatus.NEW)
-        )
+//        smDao.register(ErSessionMeta(
+//          id = sessionId,
+//          processors = dispatchedProcessors.map(_._1),
+//          totalProcCount = worldSize,
+//          status = SessionStatus.NEW)
+//        )
         try {
           val registeredSessionMeta = smDao.getSession(submitJobMeta.sessionId)
           dispatchedProcessors = dispatchedProcessors.zip(registeredSessionMeta.processors).map {
@@ -210,7 +210,7 @@ object JobServiceHandler extends Logging {
           dispatchedProcessors.groupBy(_._2).par.foreach { case (node, nodeAndProcessors) =>
             val processors = nodeAndProcessors.map(_._1.copy(sessionId = submitJobMeta.sessionId))
             val nodeManagerClient = new NodeManagerClient(node.endpoint)
-            ClusterResourceManager.preAllocateResource(processors)
+           // ClusterResourceManager.preAllocateResource(processors)
             nodeManagerClient.startJobContainers(
               StartContainersRequest(
                 id = submitJobMeta.sessionId,

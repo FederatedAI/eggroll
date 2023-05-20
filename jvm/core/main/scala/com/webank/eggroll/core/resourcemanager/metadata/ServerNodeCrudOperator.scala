@@ -342,7 +342,7 @@ def doCreateServerNode(input: ErServerNode): ErServerNode = {
     }
 
     sql += "order by server_node_id asc"
-    logInfo(s"doGetServerNodes sql : ${sql}  param ${params}");
+   // logInfo(s"doGetServerNodes sql : ${sql}  param ${params}");
     val nodeResult = dbc.query(rs => rs.map(_ =>
       ErServerNode(
         id = rs.getLong("server_node_id"),
@@ -413,7 +413,7 @@ def doCreateServerNode(input: ErServerNode): ErServerNode = {
       params = params :+ erProcessor.id.toString
       sql += s" and processor_id=? "
     }
-      logInfo(s" =========${sql}=========${params}")
+     // logInfo(s" =========${sql}=========${params}")
     var func: ResultSet => Iterable[ErProcessor]=rs
     => rs.map(_ =>
       ErProcessor(id = rs.getLong("processor_id"),
@@ -628,7 +628,7 @@ def doCreateServerNode(input: ErServerNode): ErServerNode = {
           params = (params :+ serverNodeId.toString)
           sql += s" and server_node_id = ?"
         }
-          logInfo(s"========sql=======${sql}==== param ${params}")
+         // logInfo(s"========sql=======${sql}==== param ${params}")
 
           dbc.update(conn ,sql,
             params:_*)
