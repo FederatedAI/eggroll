@@ -103,7 +103,7 @@ class NodeManagerBootstrap extends BootstrapBase with Logging {
     this.port = cmd.getOptionValue('p', StaticErConf.getProperty(
       NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT, "9394")).toInt
     // StaticErConf.addProperty(SessionConfKeys.CONFKEY_SESSION_ID, sessionId)
-    logInfo(s"kaideng port : ${port}")
+
     // TODO:0: get from cluster manager
     StaticErConf.addProperty(ResourceManagerConfKeys.SERVER_NODE_ID, "2")
   }
