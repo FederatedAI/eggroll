@@ -96,7 +96,7 @@ object ClusterManagerService extends Logging {
     var expire = CONFKEY_CLUSTER_MANAGER_NODE_HEARTBEAT_EXPIRED_COUNT.get().toInt*CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL.get().toInt
     while(true){
       try {
-        logInfo("node heart beat checker running")
+       // logInfo("node heart beat checker running")
         var  now  = System.currentTimeMillis();
         var nodes = ServerNodeCrudOperator.doGetServerNodes(ErServerNode(status = ServerNodeStatus.HEALTHY))
         nodes.foreach(n=>{
