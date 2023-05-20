@@ -33,4 +33,5 @@ message CommandResponse {
 
 service CommandService {
   rpc call (CommandRequest) returns (CommandResponse);
+  rpc callStream (stream CommandRequest) returns (stream CommandResponse);
 }

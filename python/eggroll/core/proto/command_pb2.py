@@ -14,7 +14,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\rcommand.proto\x12\x1f\x63om.webank.eggroll.core.command\"\xb3\x01\n\x0e\x43ommandRequest\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0b\n\x03uri\x18\x02 \x01(\t\x12\x0c\n\x04\x61rgs\x18\x03 \x03(\x0c\x12K\n\x06kwargs\x18\x04 \x03(\x0b\x32;.com.webank.eggroll.core.command.CommandRequest.KwargsEntry\x1a-\n\x0bKwargsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x0c:\x02\x38\x01\"p\n\x0f\x43ommandResponse\x12\n\n\x02id\x18\x01 \x01(\t\x12@\n\x07request\x18\x02 \x01(\x0b\x32/.com.webank.eggroll.core.command.CommandRequest\x12\x0f\n\x07results\x18\x03 \x03(\x0c\x32{\n\x0e\x43ommandService\x12i\n\x04\x63\x61ll\x12/.com.webank.eggroll.core.command.CommandRequest\x1a\x30.com.webank.eggroll.core.command.CommandResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\rcommand.proto\x12\x1f\x63om.webank.eggroll.core.command\"\xb3\x01\n\x0e\x43ommandRequest\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0b\n\x03uri\x18\x02 \x01(\t\x12\x0c\n\x04\x61rgs\x18\x03 \x03(\x0c\x12K\n\x06kwargs\x18\x04 \x03(\x0b\x32;.com.webank.eggroll.core.command.CommandRequest.KwargsEntry\x1a-\n\x0bKwargsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x0c:\x02\x38\x01\"p\n\x0f\x43ommandResponse\x12\n\n\x02id\x18\x01 \x01(\t\x12@\n\x07request\x18\x02 \x01(\x0b\x32/.com.webank.eggroll.core.command.CommandRequest\x12\x0f\n\x07results\x18\x03 \x03(\x0c\x32\xf0\x01\n\x0e\x43ommandService\x12i\n\x04\x63\x61ll\x12/.com.webank.eggroll.core.command.CommandRequest\x1a\x30.com.webank.eggroll.core.command.CommandResponse\x12s\n\ncallStream\x12/.com.webank.eggroll.core.command.CommandRequest\x1a\x30.com.webank.eggroll.core.command.CommandResponse(\x01\x30\x01\x62\x06proto3')
 
 
 
@@ -55,6 +55,6 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   _COMMANDREQUEST_KWARGSENTRY._serialized_end=230
   _COMMANDRESPONSE._serialized_start=232
   _COMMANDRESPONSE._serialized_end=344
-  _COMMANDSERVICE._serialized_start=346
-  _COMMANDSERVICE._serialized_end=469
+  _COMMANDSERVICE._serialized_start=347
+  _COMMANDSERVICE._serialized_end=587
 # @@protoc_insertion_point(module_scope)
