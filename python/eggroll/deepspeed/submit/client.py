@@ -1,4 +1,7 @@
+import datetime
+import os
 import time
+import typing
 from contextlib import ExitStack
 from typing import Dict, List, Optional
 
@@ -11,18 +14,21 @@ from .commands import JobCommands
 
 
 class DeepspeedJob:
-    def __init__(self, session_id):
+    def __init__(self, session_id: Optional[str] = None):
+        if session_id is None:
+            session_id = f"deepspeed_session_{datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f')}"
         self._session_id = session_id
+        self._rank_to_processor = {}
 
     def submit(
-            self,
-            name="",
-            world_size=1,
-            command_arguments: Optional[List[str]] = None,
-            environment_variables: Optional[Dict[str, str]] = None,
-            files: Optional[Dict[str, str]] = None,
-            zipped_files: Optional[Dict[str, str]] = None,
-            options: Optional[Dict] = None,
+        self,
+        name="",
+        world_size=1,
+        command_arguments: Optional[List[str]] = None,
+        environment_variables: Optional[Dict[str, str]] = None,
+        files: Optional[Dict[str, str]] = None,
+        zipped_files: Optional[Dict[str, str]] = None,
+        options: Optional[Dict] = None,
     ):
         if options is None:
             options = {}
@@ -55,13 +61,17 @@ class DeepspeedJob:
         submit_response = BaseClient().do_sync_request(
             submit_request, output_type=deepspeed_pb2.SubmitJobResponse, command_uri=JobCommands.SUBMIT_JOB
         )
+        for processor in submit_response.processors:
+            rank = int(processor.options.get("globalRank"))
+            self._rank_to_processor[rank] = processor
         return submit_response
 
     def query_status(self):
         query_job_status_request = deepspeed_pb2.QueryJobStatusRequest(session_id=self._session_id)
         return BaseClient().do_sync_request(
-            query_job_status_request, output_type=deepspeed_pb2.QueryJobStatusResponse,
-            command_uri=JobCommands.QUERY_JOB_STATUS
+            query_job_status_request,
+            output_type=deepspeed_pb2.QueryJobStatusResponse,
+            command_uri=JobCommands.QUERY_JOB_STATUS,
         )
 
     def query_session(self):
@@ -87,3 +97,30 @@ class DeepspeedJob:
             query_response = self.query_status()
             time.sleep(poll_interval)
         return query_response.status
+
+    def download_job(self, ranks: Optional[List[int]] = None):
+        if ranks is None:
+            ranks = []
+        download_job_request = deepspeed_pb2.DownloadJobRequest(
+            session_id=self._session_id,
+            ranks=ranks,
+            compress_method="zip",
+        )
+        download_job_response = BaseClient().do_sync_request(
+            download_job_request, output_type=deepspeed_pb2.DownloadJobResponse, command_uri=JobCommands.DOWNLOAD_JOB
+        )
+        return download_job_response
+
+    def download_job_to(
+        self,
+        ranks: Optional[List[int]] = None,
+        rank_to_path: typing.Callable[[int], str] = lambda rank: f"rank_{rank}.zip",
+    ):
+        download_job_response = self.download_job(ranks)
+        if ranks is None:
+            ranks = range(len(download_job_response.container_content))
+        for rank, content in zip(ranks, download_job_response.container_content):
+            path = rank_to_path(rank)
+            print(os.getcwd())
+            with open(path, "wb") as f:
+                f.write(content.content)

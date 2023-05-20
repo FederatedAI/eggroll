@@ -35,3 +35,20 @@ message KillContainersRequest {
 
 message KillContainersResponse {
 }
+
+message DownloadContainersRequest {
+  string session_id = 1;
+  repeated int64 container_ids = 2;
+  string compress_method = 3;
+}
+
+message DownloadContainersResponse {
+  string session_id = 1;
+  repeated ContainerContent container_content = 2;
+}
+
+message ContainerContent {
+  int64 container_id = 1;
+  bytes content = 2;
+  string compress_method = 3;
+}
