@@ -33,7 +33,6 @@ object ClusterResourceManager extends Logging{
     lazy val serverNodeCrudOperator = new ServerNodeCrudOperator()
     private val smDao = new SessionMetaDao
     var  dispatchThread = new  Thread(()=>{
-
       while(true){
         var resourceApplication:ResourceApplication =null
         if(applicationQueue.broker.size()>0)
