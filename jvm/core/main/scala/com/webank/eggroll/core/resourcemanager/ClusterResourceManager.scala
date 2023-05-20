@@ -35,9 +35,13 @@ object ClusterResourceManager extends Logging{
     var  dispatchThread = new  Thread(()=>{
 
       while(true){
-
-        var resourceApplication = applicationQueue.broker.peek()
-        println("dispatch thread peek====")
+        var resourceApplication:ResourceApplication =null
+        if(applicationQueue.broker.size()>0)
+            resourceApplication = applicationQueue.broker.peek()
+        else {
+         // println(s"dispatch thread peek====${resourceApplication}")
+          Thread.sleep(500)
+        }
         try{
           breakable {
             if(resourceApplication!=null) {
@@ -46,20 +50,25 @@ object ClusterResourceManager extends Logging{
                 if (resourceApplication.waitingCount.get() == 0
                 ) {
                   //过期资源申请
-                  applicationQueue.next();
+                  logError("expired resource request  !!!!!!!!!!!!!")
+                  applicationQueue.broker.poll()
                   break()
                 }
                 var serverNodes = getServerNodeWithResource();
                 var enough = checkResource(serverNodes, resourceApplication.processors, resourceApplication.allowExhausted)
+                logInfo(s"resource is enough ? ${enough}")
                 if (!enough) {
                   resourceApplication.resourceExhaustedStrategy match {
                     case ResourceExhaustedStrategy.IGNORE => ;
+
                     case ResourceExhaustedStrategy.WAITING =>
                       Thread.sleep(1000)
+                      logInfo("resource is not enough , waiting next loop")
                       break()
                     case ResourceExhaustedStrategy.THROW_ERROR =>
                       resourceApplication.status.set(1)
-                      resourceApplication.resourceLatch.countDown()
+                      resourceApplication.countDown()
+                      applicationQueue.broker.remove()
                       break()
                   }
                 }
@@ -79,6 +88,7 @@ object ClusterResourceManager extends Logging{
                 totalProcCount = dispatchedProcessors.length,
                 status = SessionStatus.NEW)
               )
+              logInfo("register session  over")
 
               val registeredSessionMeta = smDao.getSession(resourceApplication.sessionId)
               dispatchedProcessors = dispatchedProcessors.zip(registeredSessionMeta.processors).map {
@@ -89,14 +99,23 @@ object ClusterResourceManager extends Logging{
               resourceApplication.resourceDispatch.appendAll(dispatchedProcessors)
               //ProcessorStateMachine.
               preAllocateResource(dispatchedProcessors.toArray.map(_._1))
-              resourceApplication.resourceLatch.countDown()
+              resourceApplication.countDown()
+              applicationQueue.broker.remove()
+
             }
-            applicationQueue.next()
+
           }
         }catch {
-          case  e:Exception =>  e.printStackTrace()
+          case  e:Exception => {
+            e.printStackTrace()
+
+          }
+
         }
+
       }
+      logInfo("!!!!!!!!!!!!!!!!!!!dispatch thread quit!!!!!!!!!!!!!!!!")
+
     })
     dispatchThread.start()
    private def  randomDispatch(serverNodes:Array[ErServerNode] ,resourceApplication: ResourceApplication): ResourceApplication ={
@@ -367,7 +386,6 @@ object ClusterResourceManager extends Logging{
 
                                   ){
       def  getResult(): Array[(ErProcessor, ErServerNode)] ={
-
         try{
           if(timeout>0)
             resourceLatch.await(timeout, TimeUnit.MILLISECONDS)
@@ -378,6 +396,11 @@ object ClusterResourceManager extends Logging{
           waitingCount.decrementAndGet()
         }
       }
+      def  countDown():Unit={
+        logInfo("=============countDown==============")
+        resourceLatch.countDown()
+      }
+
 
     }
 
