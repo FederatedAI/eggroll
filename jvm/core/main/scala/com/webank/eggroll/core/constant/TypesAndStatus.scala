@@ -99,6 +99,8 @@ object  ProcessorEventType{
 object DispatchStrategy{
    val REMAIN_MOST_FIRST  = "remain_most_first"
    val RANDOM = "random"
+   val FIX = "fix"
+
 }
 object  ResourceEventType{
    val  RESOURCE_RETURN = "resource_return"
