@@ -27,12 +27,14 @@ object TestAssets {
 //    jobType = JobProcessorTypes.DeepSpeed.toString,
 //    worldSize=2,options = Map("eggroll.container.python.exec"->"python",
 //      "eggroll.container.script.path"->"/data/projects/myeggroll/python/eggroll/mock.py"))
-
+//val DEEPSPEED_PYTHON_EXEC = "eggroll.container.deepspeed.python.exec"
+//  val DEEPSPEED_SCRIPT_PATH = "eggroll.container.deepspeed.script.path"
   var submitJobMeta= SubmitJobRequest(sessionId="test_deepspeed"+System.currentTimeMillis(),
     jobType = JobProcessorTypes.DeepSpeed.toString,
     worldSize=2,
-    options = Map("eggroll.container.python.exec"->"python",
-      "eggroll.container.script.path"->"/data/projects/myeggroll/python/eggroll/mock.py"))
+
+    options = Map("eggroll.container.deepspeed.python.exec"->"python",
+      "eggroll.container.deepspeed.script.path"->"/data/projects/myeggroll/python/eggroll/mock.py"))
 
 
   def initConf(): Unit = {
