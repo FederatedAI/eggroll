@@ -63,6 +63,7 @@ class ContainersServiceHandler(implicit ec: ExecutionContext) {
     .build
 
   def startJobContainers(submitJobMeta: StartContainersRequest): StartContainersResponse = {
+    println (s"=================startJobContainers ${submitJobMeta}")
     JobProcessorTypes.fromString(submitJobMeta.jobType) match {
       case Some(jobType) =>
         val runtimeConf = new RuntimeErConf(submitJobMeta)

@@ -59,7 +59,13 @@ case class ErResource(
     s"<ErResource(resourceType=${resourceType},status=${status}, total=${total}, used=${used} ,allocated=${allocated})>"}
 
   def   getUnAllocatedResource():Long={
-    total-allocated
+    var remain :Long = total;
+    if(allocated>0)
+      remain= remain-allocated
+    if(preAllocated>0) {
+      remain = remain - preAllocated
+    }
+    remain
   }
 }
 //int64 serverNodeId = 1;

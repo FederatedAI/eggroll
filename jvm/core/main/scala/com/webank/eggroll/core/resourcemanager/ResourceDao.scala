@@ -313,14 +313,22 @@ class SessionMetaDao {
     dbc.queryOne("select 1 from session_main where session_id = ?", sessionId).nonEmpty
   }
 
-  def updateSessionMain(sessionMeta: ErSessionMeta): Unit = synchronized {
+  def updateSessionMain(sessionMeta: ErSessionMeta ,afterCall:(Connection,ErSessionMeta)=>Unit=null): Unit = synchronized {
     dbc.withTransaction { conn =>
       dbc.update(conn, "update session_main set name = ? , status = ? , tag = ? , active_proc_count = ? where session_id = ?",
         sessionMeta.name, sessionMeta.status, sessionMeta.tag, sessionMeta.activeProcCount, sessionMeta.id)
 
-      if (SessionStatus.KILLED.equals(sessionMeta.status)) {
-        batchUpdateSessionProcessor(sessionMeta)
+//      if (SessionStatus.KILLED.equals(sessionMeta.status)) {
+//        batchUpdateSessionProcessor(sessionMeta)
+////        ProcessorStateMachine.changeStatus()
+//
+//
+//      }
+      if(afterCall!=null){
+        afterCall(conn,sessionMeta)
       }
+
+
     }
   }
 
