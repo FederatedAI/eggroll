@@ -24,10 +24,10 @@ object ProcessorStateMachine extends Logging{
   private var serverNodeCrudOperator = new  ServerNodeCrudOperator;
 
   def  changeStatus(  erProcessor: ErProcessor,
-                      preStateParam:String=null,desStateParam:String ):Unit ={
+                      preStateParam:String=null,desStateParam:String,connection: Connection=null ):Unit ={
         var  preState=preStateParam
         if(preState==null){
-        var processorsInDb =   serverNodeCrudOperator.queryProcessor(null,erProcessor.copy(status=null))
+        var processorsInDb =   serverNodeCrudOperator.queryProcessor(connection,erProcessor.copy(status=null))
           if(processorsInDb.length==0){
             throw  new Exception
           }else{
@@ -38,28 +38,39 @@ object ProcessorStateMachine extends Logging{
         var statusLine =  preState+"_"+desStateParam;
         logInfo(s"==========statusLine================${statusLine}")
         statusLine match {
-          case "NEW_RUNNING"=>updateState(erProcessor,afterCall = (conn,erProcessor)=>{
+          case "NEW_RUNNING"=>updateState(erProcessor,connection= connection,afterCall = (conn,erProcessor)=>{
             ResourceStateMachine.changeState(conn,Array(erProcessor),ResourceStatus.PRE_ALLOCATED,ResourceStatus.ALLOCATED)
           })
-          case "NEW_ERROR" =>updateState(erProcessor,afterCall = (conn,erProcessor)=>{
+          case "NEW_ERROR" =>updateState(erProcessor,connection= connection,afterCall = (conn,erProcessor)=>{
             ResourceStateMachine.changeState(conn,Array(erProcessor),ResourceStatus.PRE_ALLOCATED,ResourceStatus.ALLOCATE_FAILED)
           })
           case statusLine if(statusLine=="RUNNING_STOPPED"||statusLine=="RUNNING_KILLED"||statusLine=="RUNNING_ERROR")=>
-            updateState(erProcessor,afterCall = (conn,erProcessor)=>{
+            updateState(erProcessor,connection= connection,afterCall = (conn,erProcessor)=>{
               ResourceStateMachine.changeState(conn,Array(erProcessor),ResourceStatus.ALLOCATED,ResourceStatus.RETURN)
             })
           case _=> println("============error status=============");
         }
     }
 
-  private def  updateState(erProcessor: ErProcessor,beforeCall:(Connection,ErProcessor)=>Unit =null,afterCall:(Connection,ErProcessor)=>Unit): Unit ={
-    BaseDao.dbc.withTransaction(conn=> {
-      if(beforeCall!=null)
+  private def  updateState(erProcessor: ErProcessor,connection: Connection,beforeCall:(Connection,ErProcessor)=>Unit =null,afterCall:(Connection,ErProcessor)=>Unit): Unit ={
+
+
+
+    if(connection==null){
+      BaseDao.dbc.withTransaction(conn=> {
+        if(beforeCall!=null)
           beforeCall(conn,erProcessor)
-      smDao.updateProcessor(conn,erProcessor)
-      if(afterCall!=null)
+        smDao.updateProcessor(conn,erProcessor)
+        if(afterCall!=null)
           afterCall(conn,erProcessor)
-    })
+      })
+    }else{
+      if(beforeCall!=null)
+        beforeCall(connection,erProcessor)
+      smDao.updateProcessor(connection,erProcessor)
+      if(afterCall!=null)
+        afterCall(connection,erProcessor)
+    }
 
   }
 
