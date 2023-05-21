@@ -4,13 +4,14 @@ import com.webank.eggroll.core.constant._
 import com.webank.eggroll.core.containers.JobProcessorTypes
 import com.webank.eggroll.core.ErSession
 import com.webank.eggroll.core.client.NodeManagerClient
+import com.webank.eggroll.core.constant.SessionConfKeys.CONFKEY_SESSION_PROCESSORS_PER_NODE
 import com.webank.eggroll.core.constant.{DispatchStrategy, NodeManagerConfKeys, ProcessorStatus, ResourceEventType, ResourceExhaustedStrategy, ResourceOperationStauts, ResourceOperationType, ResourceStatus, ResourceTypes, ServerNodeStatus, ServerNodeTypes, SessionStatus}
 import com.webank.eggroll.core.datastructure.FifoBroker
 import com.webank.eggroll.core.meta.{ErEndpoint, ErProcessor, ErResource, ErResourceAllocation, ErServerNode, ErSessionMeta}
 import com.webank.eggroll.core.resourcemanager.ClusterResourceManager.{ResourceApplication, dispatchDeepSpeedInner, serverNodeCrudOperator}
-
 import com.webank.eggroll.core.meta.{ErEndpoint, ErProcessor, ErResource, ErServerNode}
 import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator
+import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.util.Logging
 
 import java.sql.Connection
@@ -54,7 +55,8 @@ object ClusterResourceManager extends Logging{
                   break()
                 }
                 var serverNodes = getServerNodeWithResource();
-                var enough = checkResource(serverNodes, resourceApplication.processors, resourceApplication.allowExhausted)
+
+                var enough = checkResourceEnough(serverNodes, resourceApplication)
                 logInfo(s"resource is enough ? ${enough}")
                 if (!enough) {
                   resourceApplication.resourceExhaustedStrategy match {
@@ -74,9 +76,10 @@ object ClusterResourceManager extends Logging{
                 resourceApplication.dispatchStrategy match {
                   case DispatchStrategy.REMAIN_MOST_FIRST => remainMostFirstDispatch(serverNodes, resourceApplication);
                   case DispatchStrategy.RANDOM => randomDispatch(serverNodes, resourceApplication);
+                  case DispatchStrategy.FIX => fixDispatch(serverNodes,resourceApplication)
                 }
               }
-              logInfo(s"========================${resourceApplication.processors.mkString}")
+              logInfo(s"===========dispatch result=============${resourceApplication.processors.mkString}")
 
               var dispatchedProcessors = resourceApplication.resourceDispatch
                 //.toArray.map(_._1)
@@ -117,6 +120,37 @@ object ClusterResourceManager extends Logging{
 
     })
     dispatchThread.start()
+
+
+   private def fixDispatch(serverNodes:Array[ErServerNode] ,resourceApplication: ResourceApplication):ResourceApplication={
+    println(" ============fixDispatch==============")
+     val eggsPerNode = resourceApplication.options.getOrElse(SessionConfKeys.CONFKEY_SESSION_PROCESSORS_PER_NODE, StaticErConf.getString(SessionConfKeys.CONFKEY_SESSION_PROCESSORS_PER_NODE, "1")).toInt
+     var resourceType= resourceApplication.options.getOrElse("resourceType",ResourceTypes.VCPU_CORE)
+     val nodeToProcessors = mutable.Map[ErServerNode, Seq[ErProcessor]]()
+     for (elem <- resourceApplication.processorTypes) {
+       serverNodes.flatMap(n => (0 until eggsPerNode).map(_ => {
+
+         var requiredProcessor = ErProcessor(
+           serverNodeId = n.id,
+           processorType = elem,
+           commandEndpoint = ErEndpoint(n.endpoint.host, 0),
+           status = ProcessorStatus.NEW,
+           resources = Array(ErResource(resourceType = resourceType, allocated = 1, status = ResourceStatus.PRE_ALLOCATED)))
+         if (nodeToProcessors.contains(n)) {
+           nodeToProcessors(n) :+= requiredProcessor
+         } else {
+           nodeToProcessors(n) = Seq(requiredProcessor)
+         }
+
+       }))
+     }
+     var result = nodeToProcessors.flatMap { case (node, processors) =>
+       processors.map(p => (p, node))
+     }(collection.breakOut)
+     resourceApplication.resourceDispatch.appendAll(result)
+     resourceApplication
+   }
+
    private def  randomDispatch(serverNodes:Array[ErServerNode] ,resourceApplication: ResourceApplication): ResourceApplication ={
 
      var requiredProcessors = resourceApplication.processors;
@@ -370,19 +404,20 @@ object ClusterResourceManager extends Logging{
 
      case class ResourceApplication(
                                     sessionId : String,
-                                    processors : Array[ErProcessor],
-                                  sortByResourceType: String =ResourceTypes.VCPU_CORE,
-                                  needDispatch: Boolean= false,
-                                  dispatchStrategy:String = DispatchStrategy.REMAIN_MOST_FIRST,
+                                    processors : Array[ErProcessor]=Array[ErProcessor](),
+                                   sortByResourceType: String =ResourceTypes.VCPU_CORE,
+                                   needDispatch: Boolean= true,
+                                   dispatchStrategy:String = DispatchStrategy.REMAIN_MOST_FIRST,
                                    resourceExhaustedStrategy:String =  ResourceExhaustedStrategy.WAITING,
-                                  allowExhausted:Boolean = true,
-                                  resourceDispatch:ArrayBuffer[(ErProcessor, ErServerNode)]=ArrayBuffer(),
-                                   resourceLatch: CountDownLatch,
+                                   allowExhausted:Boolean = false,
+                                   resourceDispatch:ArrayBuffer[(ErProcessor, ErServerNode)]=ArrayBuffer(),
+                                   resourceLatch: CountDownLatch = new  CountDownLatch(1),
                                    timeout: Int = 0,
                                     submitTimeStamp:Long = 0,
                                     waitingCount :AtomicInteger = new AtomicInteger(1),
-                                    status:AtomicInteger =new AtomicInteger(0)
-
+                                    status:AtomicInteger =new AtomicInteger(0),
+                                    processorTypes: Array[String]=Array[String](),
+                                    options:mutable.Map[String,String]  = mutable.Map[String,String]()
                                   ){
       def  getResult(): Array[(ErProcessor, ErServerNode)] ={
         try{
@@ -407,48 +442,101 @@ object ClusterResourceManager extends Logging{
       applicationQueue.broker.put(resourceRequest)
     }
 
-    def  checkResource(erServerNodes:Array[ErServerNode],processors :Array[ErProcessor],allowExhauted:Boolean): Boolean={
+    def  checkResourceEnough(erServerNodes:Array[ErServerNode],resourceApplication: ResourceApplication): Boolean={
        var  result = true
-      require(erServerNodes.length>0)
-     var  erServerNode = erServerNodes.reduce((x,y)=>{
-        var  newResource = (x.resources.toBuffer++y.resources).toArray
-        x.copy(resources =newResource)
-      })
-      var   requestResourceMap  = processors.reduce((x,y)=>{
-        var  newResource = (x.resources.toBuffer++y.resources).toArray
-        x.copy(resources = newResource)
-      }).resources.groupBy(_.resourceType).mapValues(_.reduce((x,y)=>{
-        x.copy(allocated=x.allocated+y.allocated)
-      }).allocated)
+      var globalRemainResourceMap: mutable.Map[String,Long] = mutable.Map[String,Long]()
+      var nodeRemainResourceMap: mutable.Map[Long,mutable.Map[String,Long]] = mutable.Map[Long,mutable.Map[String,Long]]()
 
+      erServerNodes.foreach(n=>{
+        var  nodeMap = nodeRemainResourceMap.getOrElse(n.id, mutable.Map[String,Long]())
+        n.resources.foreach(r=>{
+          // println(nodeMap.getOrElse(r.resourceType,0))
+          var  remain :Long = nodeMap.getOrElse(r.resourceType,0)
+          var  unAllocated:Long = r.getUnAllocatedResource()
 
-//       var   requestResourceMap = unnionProcessor.resources.groupBy(_.resourceType).mapValues(_.reduce((x,y)=>{
-//         x.copy(allocated=x.allocated+y.allocated)
-//       }).allocated)
-
-      println("=========="+requestResourceMap)
-
-      var nodeResourceMap:Map[String,Long] =  erServerNode.resources.groupBy(_.resourceType).mapValues(_.reduce((x,y)=>{
-        x.copy(allocated=x.allocated+y.allocated)
-      }).getUnAllocatedResource())
-      breakable {
-        requestResourceMap.foreach((r) => {
-          var nodeResourceRemain:Long = nodeResourceMap.getOrElse(r._1,-1)
-          //println(nodeResourceRemain)
-          if (nodeResourceRemain.intValue() > -1) {
-            println(s"check resource ${r._1}  request ${r._2} remain ${nodeResourceRemain}")
-            logInfo(s"check resource ${r._1}  request ${r._2} remain ${nodeResourceRemain}")
-
-            if (!allowExhauted && r._2 > nodeResourceRemain) {
-              result= false
-              break()
-            }
-          } else {
-              result= false
-              break()
-          }
+          nodeMap(r.resourceType)=remain+ unAllocated
         })
+        nodeRemainResourceMap(n.id)=nodeMap
+
+      })
+      println("========node remain==="+nodeRemainResourceMap)
+      // globalRemainResourceMap
+
+      nodeRemainResourceMap.foreach(e=>{
+        e._2.foreach(r=>{
+          var count :Long =  globalRemainResourceMap.getOrElse(r._1,0)
+          globalRemainResourceMap(r._1)= count+r._2
+        })
+      })
+      println("========== globle remain====="+globalRemainResourceMap)
+
+      if(!resourceApplication.allowExhausted) {
+        require(erServerNodes.length>0)
+        resourceApplication.dispatchStrategy match {
+          case DispatchStrategy.FIX => {
+//            var nodeResourceMap: Map[String, Long] = erServerNode.resources.groupBy(_.resourceType).mapValues(_.reduce((x, y) => {
+//              x.copy(allocated = x.allocated + y.allocated)
+//            }).getUnAllocatedResource())
+            val eggsPerNode = resourceApplication.options.getOrElse(SessionConfKeys.CONFKEY_SESSION_PROCESSORS_PER_NODE, StaticErConf.getString(SessionConfKeys.CONFKEY_SESSION_PROCESSORS_PER_NODE, "1")).toInt
+            var resourceType= resourceApplication.options.getOrElse("resourceType",ResourceTypes.VCPU_CORE)
+            var types = resourceApplication.processorTypes.length
+            result=nodeRemainResourceMap.forall(n=>{
+              var exist:Long =  n._2.getOrElse(resourceType,0)
+              exist>=eggsPerNode*types
+            })
+          }
+          case _ => {
+            var processors = resourceApplication.processors
+
+
+
+
+
+
+            var erServerNode = erServerNodes.reduce((x, y) => {
+              var newResource = (x.resources.toBuffer ++ y.resources).toArray
+              x.copy(resources = newResource)
+            })
+            var requestResourceMap = processors.reduce((x, y) => {
+              var newResource = (x.resources.toBuffer ++ y.resources).toArray
+              x.copy(resources = newResource)
+            }).resources.groupBy(_.resourceType).mapValues(_.reduce((x, y) => {
+              x.copy(allocated = x.allocated + y.allocated)
+            }).allocated)
+
+
+            //       var   requestResourceMap = unnionProcessor.resources.groupBy(_.resourceType).mapValues(_.reduce((x,y)=>{
+            //         x.copy(allocated=x.allocated+y.allocated)
+            //       }).allocated)
+
+            println("==========requestResourceMap " + requestResourceMap)
+
+//            var nodeResourceMap: Map[String, Long] = erServerNode.resources.groupBy(_.resourceType).mapValues(_.reduce((x, y) => {
+//              x.copy(allocated = x.allocated + y.allocated)
+//            }).getUnAllocatedResource())
+            breakable {
+              requestResourceMap.foreach((r) => {
+                var globalResourceRemain: Long = globalRemainResourceMap.getOrElse(r._1, -1)
+                //println(nodeResourceRemain)
+                if (globalResourceRemain.intValue() > -1) {
+                  println(s"check resource ${r._1}  request ${r._2} remain ${globalResourceRemain}")
+                  logInfo(s"check resource ${r._1}  request ${r._2} remain ${globalResourceRemain}")
+
+                  if ( r._2 > globalResourceRemain) {
+                    result = false
+                    break()
+                  }
+                } else {
+                  result = false
+                  break()
+                }
+              })
+            }
+          }
+        }
       }
+
+
       result
     }
     def  checkResouce():Unit={
@@ -466,13 +554,19 @@ object ClusterResourceManager extends Logging{
 //        )
 //        System.err.println(dispatchDeepSpeedInner(7,temp).mkString)
 
+     var processors :Array[ErProcessor]=        Array(ErProcessor(resources = Array(ErResource(resourceType = ResourceTypes.VCPU_CORE,allocated = 1),ErResource(resourceType = ResourceTypes.VGPU_CORE,allocated = 3))),
+       ErProcessor(resources = Array(ErResource(resourceType = ResourceTypes.VCPU_CORE,allocated = 1),ErResource(resourceType = ResourceTypes.VGPU_CORE,allocated = 2))))
 
+     var resourceApplication: ResourceApplication =  ResourceApplication(sessionId="test",processors=processors,dispatchStrategy=DispatchStrategy.FIX
+       ,options = mutable.Map(SessionConfKeys.CONFKEY_SESSION_PROCESSORS_PER_NODE->"1","resourceType"->ResourceTypes.VCPU_CORE))
 
-     println( checkResource(Array(ErServerNode(resources = Array(ErResource(resourceType = ResourceTypes.VCPU_CORE,total=2,allocated = 0),
-       ErResource(resourceType = ResourceTypes.VGPU_CORE,total=2,allocated = 0)))) ,
-       Array(ErProcessor(resources = Array(ErResource(resourceType = ResourceTypes.VCPU_CORE,allocated = 1),ErResource(resourceType = ResourceTypes.VGPU_CORE,allocated = 3))),
-         ErProcessor(resources = Array(ErResource(resourceType = ResourceTypes.VCPU_CORE,allocated = 1),ErResource(resourceType = ResourceTypes.VGPU_CORE,allocated = 2)))),
-       true))
+     println( checkResourceEnough(Array(ErServerNode(id=1,resources = Array(ErResource(resourceType = ResourceTypes.VCPU_CORE,total=2,allocated = 0,preAllocated = 1),
+       ErResource(resourceType = ResourceTypes.VGPU_CORE,total=2,allocated = 0)))
+      ,ErServerNode(id=2,resources = Array(ErResource(resourceType = ResourceTypes.VCPU_CORE,total=2,allocated = 0),
+         ErResource(resourceType = ResourceTypes.VGPU_CORE,total=2,allocated = 0)))
+
+     ) ,resourceApplication
+       ))
 
     }
 
