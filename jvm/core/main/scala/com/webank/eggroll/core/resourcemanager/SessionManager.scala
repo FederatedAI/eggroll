@@ -5,6 +5,7 @@ import com.webank.eggroll.core.client.NodeManagerClient
 import com.webank.eggroll.core.constant._
 import com.webank.eggroll.core.error.ErSessionException
 import com.webank.eggroll.core.meta.{ErEndpoint, ErProcessor, ErResource, ErServerNode, ErSessionMeta}
+import com.webank.eggroll.core.resourcemanager.ClusterResourceManager.ResourceApplication
 import com.webank.eggroll.core.resourcemanager.SessionManagerService.{beforeCall, serverNodeCrudOperator, smDao}
 import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator
 import com.webank.eggroll.core.session.StaticErConf
@@ -14,7 +15,7 @@ import org.apache.commons.lang3.StringUtils
 import java.sql.Connection
 import scala.collection.JavaConverters._
 import scala.collection.mutable
-import scala.collection.mutable.ListBuffer
+import scala.collection.mutable.{ArrayBuffer, ListBuffer}
 import scala.util.control.Breaks._
 
 // RollObjects talk to SessionManager only.
@@ -131,8 +132,15 @@ object SessionManagerService extends Logging {
     })
 
     // todo:1: update selective
-    smDao.updateSessionMain(dbSessionMeta.copy(activeProcCount = 0, status = afterState))
+    smDao.updateSessionMain(dbSessionMeta.copy(activeProcCount = 0, status = afterState),afterCall=(conn,sessionMeta)=>{
+        sessionMeta.processors.foreach(p=>{
+          ProcessorStateMachine.changeStatus(p,desStateParam =afterState,connection = conn )
+        })
+
+    })
     var  resultSession = getSession(dbSessionMeta)
+    //ProcessorStateMachine.changeStatus()
+
     //ClusterResourceManager.returnResource(dbSessionMeta.processors)
     resultSession
   }
@@ -200,70 +208,110 @@ class SessionManagerService extends SessionManager with Logging {
     val serverNodeCrudOperator = new ServerNodeCrudOperator()
 
     val healthyCluster = serverNodeCrudOperator.getServerNodes(healthyNodeExample)
-
     val serverNodes = healthyCluster.serverNodes
-    val serverNodesToHost = mutable.Map[Long, String]()
-    serverNodes.foreach(n => serverNodesToHost += (n.id -> n.endpoint.host))
-
+//    val serverNodesToHost = mutable.Map[Long, String]()
+//    serverNodes.foreach(n => serverNodesToHost += (n.id -> n.endpoint.host))
+//
     val eggsPerNode = sessionMeta.options.getOrElse(SessionConfKeys.CONFKEY_SESSION_PROCESSORS_PER_NODE, StaticErConf.getString(SessionConfKeys.CONFKEY_SESSION_PROCESSORS_PER_NODE, "1")).toInt
-    // TODO:1: use constants instead of processor_types,processor_plan,uniform
+//    // TODO:1: use constants instead of processor_types,processor_plan,uniform
+
+    val processor_types = ArrayBuffer[String]()
+
     val processorPlan =
       if(sessionMeta.options.contains("processor_types")) {
-        val processor_types = sessionMeta.options("processor_types").split(",")
-        processor_types.flatMap { pType =>
+        val processor_types_in_session = sessionMeta.options("processor_types").split(",")
+        processor_types_in_session.foreach( { pType =>
           val planStrategy = sessionMeta.options("processor_plan." + pType)
           require(planStrategy == "uniform", s"unsupported:${planStrategy}")
-          serverNodes.flatMap(n =>
-            (0 until eggsPerNode).map(_ => ErProcessor(
-              serverNodeId = n.id,
-              processorType = pType,
-              status = ProcessorStatus.NEW,
-              resources = Array(ErResource(resourceType = ResourceTypes.VCPU_CORE,allocated = 1,status=ResourceStatus.PRE_ALLOCATED)))
-            )
-          )
-        }
+        })
+        processor_types.appendAll(processor_types_in_session)
+
+
+
+//        processor_types.flatMap { pType =>
+//          val planStrategy = sessionMeta.options("processor_plan." + pType)
+//          require(planStrategy == "uniform", s"unsupported:${planStrategy}")
+//          serverNodes.flatMap(n =>
+//            (0 until eggsPerNode).map(_ => ErProcessor(
+//              serverNodeId = n.id,
+//              processorType = pType,
+//              status = ProcessorStatus.NEW,
+//              resources = Array(ErResource(resourceType = ResourceTypes.VCPU_CORE,allocated = 1,status=ResourceStatus.PRE_ALLOCATED)))
+//            )
+//          )
+//        }
       } else {
-        serverNodes.flatMap(n => (0 until eggsPerNode).map(_ => ErProcessor(
-          serverNodeId = n.id,
-          processorType = ProcessorTypes.EGG_PAIR,
-          commandEndpoint = ErEndpoint(serverNodesToHost(n.id), 0),
-          status = ProcessorStatus.NEW,
-          resources = Array(ErResource(resourceType = ResourceTypes.VCPU_CORE,allocated = 1,status = ResourceStatus.PRE_ALLOCATED)))))
+        processor_types.append(ProcessorTypes.EGG_PAIR)
+//        serverNodes.flatMap(n => (0 until eggsPerNode).map(_ => ErProcessor(
+//          serverNodeId = n.id,
+//          processorType = ProcessorTypes.EGG_PAIR,
+//          commandEndpoint = ErEndpoint(serverNodesToHost(n.id), 0),
+//          status = ProcessorStatus.NEW,
+//          resources = Array(ErResource(resourceType = ResourceTypes.VCPU_CORE,allocated = 1,status = ResourceStatus.PRE_ALLOCATED)))))
+
       }
+    var resourceApplication: ResourceApplication =  ResourceApplication(
+      sessionId=sessionId,
+      dispatchStrategy=DispatchStrategy.FIX,
+      processorTypes=processor_types.toArray
+      ,options = mutable.Map(SessionConfKeys.CONFKEY_SESSION_PROCESSORS_PER_NODE->eggsPerNode.toString,"resourceType"->ResourceTypes.VCPU_CORE))
+    ClusterResourceManager.submitResourceRequest(resourceApplication)
+    var dispatchResult=resourceApplication.getResult()
 
-
-    val expectedProcessorsCount = processorPlan.length
-    val sessionMetaWithProcessors = sessionMeta.copy(
-      processors = processorPlan,
-      totalProcCount = expectedProcessorsCount,
-      activeProcCount = 0,
-      status = SessionStatus.NEW)
-
-    smDao.register(sessionMetaWithProcessors)
-    // TODO:0: record session failure in database if session start is not successful, and returns error session
+    val expectedProcessorsCount = dispatchResult.length
     val registeredSessionMeta = smDao.getSession(sessionMeta.id)
+    dispatchResult.groupBy(_._2).par.map(e=>{
+      try {
+        val newSessionMeta = registeredSessionMeta.copy(
+          options = registeredSessionMeta.options ++ Map(ResourceManagerConfKeys.SERVER_NODE_ID -> e._1.id.toString))
+        val nodeManagerClient = new NodeManagerClient(
+          ErEndpoint(host = e._1.endpoint.host,
+            port = e._1.endpoint.port))
+        nodeManagerClient.startContainers(newSessionMeta)
+      }catch{
+        case  exception: Exception=> exception.printStackTrace()
+      }
+    })
+
+
+
+//    val expectedProcessorsCount = processorPlan.length
+//    val sessionMetaWithProcessors = sessionMeta.copy(
+//      processors = processorPlan,
+//      totalProcCount = expectedProcessorsCount,
+//      activeProcCount = 0,
+//      status = SessionStatus.NEW)
+//
+//    smDao.register(sessionMetaWithProcessors)
+    // TODO:0: record session failure in database if session start is not successful, and returns error session
+   // val registeredSessionMeta = smDao.getSession(sessionMeta.id)
 
 
 //    dispatchedProcessors = dispatchedProcessors.zip(registeredSessionMeta.processors).map {
 //      case ((processor, node), registeredProcessor) =>
 //        (processor.copy(id = registeredProcessor.id), node)
 //    }
-    var processorWithResource= processorPlan.zip(registeredSessionMeta.processors).map{
-      case (processor1,processor2)=> {
-        processor1.copy(sessionId = sessionId,id = processor2.id)
-      }
-    }
-    ClusterResourceManager.preAllocateResource(processorWithResource)
+//    var processorWithResource= processorPlan.zip(registeredSessionMeta.processors).map{
+//      case (processor1,processor2)=> {
+//        processor1.copy(sessionId = sessionId,id = processor2.id)
+//      }
+//    }
+//    ClusterResourceManager.preAllocateResource(processorWithResource)
 
-    serverNodes.par.foreach(n => {
-      // TODO:1: add new params?
-      val newSessionMeta = registeredSessionMeta.copy(
-        options = registeredSessionMeta.options ++ Map(ResourceManagerConfKeys.SERVER_NODE_ID -> n.id.toString))
-      val nodeManagerClient = new NodeManagerClient(
-        ErEndpoint(host = n.endpoint.host,
-          port = n.endpoint.port))
-      nodeManagerClient.startContainers(newSessionMeta)
-    })
+
+
+
+
+
+//    serverNodes.par.foreach(n => {
+//      // TODO:1: add new params?
+//      val newSessionMeta = registeredSessionMeta.copy(
+//        options = registeredSessionMeta.options ++ Map(ResourceManagerConfKeys.SERVER_NODE_ID -> n.id.toString))
+//      val nodeManagerClient = new NodeManagerClient(
+//        ErEndpoint(host = n.endpoint.host,
+//          port = n.endpoint.port))
+//      nodeManagerClient.startContainers(newSessionMeta)
+//    })
 
     val startTimeout = System.currentTimeMillis() + SessionConfKeys.EGGROLL_SESSION_START_TIMEOUT_MS.get().toLong
     var isStarted = false
@@ -297,7 +345,7 @@ class SessionManagerService extends SessionManager with Logging {
             activesPerNode(p.commandEndpoint.host) += 1
           } else {
             inactives += p.id
-            inactivesToNode += (p.id -> serverNodesToHost(p.serverNodeId))
+         //   inactivesToNode += (p.id -> serverNodesToHost(p.serverNodeId))
           }
         })
 
@@ -319,7 +367,7 @@ class SessionManagerService extends SessionManager with Logging {
 
     // todo:1: update selective
     smDao.updateSessionMain(registeredSessionMeta.copy(
-      status = SessionStatus.ACTIVE, activeProcCount = expectedProcessorsCount))
+      status = SessionStatus.ACTIVE, activeProcCount = expectedProcessorsCount),afterCall = null)
     getSession(sessionMeta)
   }
 
@@ -393,7 +441,7 @@ class SessionManagerService extends SessionManager with Logging {
 
     // todo:1: update selective
     val stoppedSessionMain = dbSessionMeta.copy(activeProcCount = 0, status = SessionStatus.CLOSED)
-    smDao.updateSessionMain(stoppedSessionMain)
+    smDao.updateSessionMain(stoppedSessionMain,null)
 
     //由心跳来释放
     //ClusterResourceManager.returnResource(dbSessionMeta.processors)

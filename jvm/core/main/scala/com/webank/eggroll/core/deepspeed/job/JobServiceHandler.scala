@@ -50,7 +50,7 @@ object JobServiceHandler extends Logging {
                       logError(s"failed to kill session ${session.id}", e)
                   }
                 }
-                smDao.updateSessionMain(session.copy(status = SessionStatus.ERROR))
+                smDao.updateSessionMain(session.copy(status = SessionStatus.ERROR) )
                 logDebug(s"found error processor belongs to session ${session.id}: " +
                   s"${sessionProcessors.filter(_.status == ProcessorStatus.ERROR).mkString("Array(", ", ", ")")}, " +
                   s"update session status to `Error`")

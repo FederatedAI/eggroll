@@ -26,6 +26,7 @@ class ProcessContainer(
     preStart()
     workingDirectoryPreparer.foreach(_.prepare())
     val output = try {
+      println(s"============== command ${command} ")
       val javaProcessBuilder = new java.lang.ProcessBuilder(command: _*)
         .directory(cwd.toFile)
       stdOutFile.foreach { f =>

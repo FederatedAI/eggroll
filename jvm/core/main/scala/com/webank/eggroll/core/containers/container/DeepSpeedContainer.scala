@@ -115,12 +115,14 @@ object DeepSpeedRunPy {
   }
 
   val runPyName: String = "_run.py"
+
 }
 
 
 class DeepSpeedContainer(containerId: String, config: DeepSpeedConfig)
   extends PythonContainer(
     pythonExec = config.pythonExec,
+
     scriptPath = DeepSpeedRunPy.runPyName,
     scriptArgs = config.commandArguments,
     extraEnv = config.extraEnv,
