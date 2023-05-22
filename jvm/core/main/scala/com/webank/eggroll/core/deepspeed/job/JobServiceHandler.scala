@@ -38,7 +38,7 @@ object JobServiceHandler extends Logging {
         while (true) {
           val sessions = smDao.getSessionMains(ErSessionMeta(status = SessionStatus.ACTIVE))
           sessions.foreach { session =>
-            logDebug(s"watch active session: ${session.id}")
+           // logDebug(s"watch active session: ${session.id}")
             val sessionProcessors = smDao.getSession(session.id).processors
             if (sessionProcessors.forall(_.processorType == JobProcessorTypes.DeepSpeed.toString)) {
               if (sessionProcessors.exists(_.status == ProcessorStatus.ERROR)) {
