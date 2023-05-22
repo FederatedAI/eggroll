@@ -63,18 +63,18 @@ object SessionManagerService extends Logging {
 
 
 
-   ClusterManagerService.registerProcessorCallback(ProcessorTypes.EGG_PAIR, new ProcessorEventCallback() {
-     override def callback(event: ProcessorEvent): Unit = {
-        event.eventType match{
-          case  ProcessorEventType.PROCESSOR_LOSS =>
-              new Thread(()=>{
-                logDebug(s"fire PROCESSOR_LOSS event, prepare to kill session ${event.erProcessor}")
-                var  erSessionMeta = getSessionMain(event.erProcessor.sessionId)
-                killSession(erSessionMeta)
-              }).start()
-        }
-     }
-   })
+//   ClusterManagerService.registerProcessorCallback(ProcessorTypes.EGG_PAIR, new ProcessorEventCallback() {
+//     override def callback(event: ProcessorEvent): Unit = {
+//        event.eventType match{
+//          case  ProcessorEventType.PROCESSOR_LOSS =>
+//              new Thread(()=>{
+//                logDebug(s"fire PROCESSOR_LOSS event, prepare to kill session ${event.erProcessor}")
+//                var  erSessionMeta = getSessionMain(event.erProcessor.sessionId)
+//                killSession(erSessionMeta)
+//              }).start()
+//        }
+//     }
+//   })
 
   /**
    * get session detail
@@ -137,7 +137,8 @@ object SessionManagerService extends Logging {
           ProcessorStateMachine.changeStatus(p,desStateParam =afterState,connection = conn )
         })
 
-    })
+    }
+    )
     var  resultSession = getSession(dbSessionMeta)
     //ProcessorStateMachine.changeStatus()
 
