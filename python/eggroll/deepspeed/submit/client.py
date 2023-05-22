@@ -21,15 +21,18 @@ class DeepspeedJob:
         self._rank_to_processor = {}
 
     def submit(
-        self,
-        name="",
-        world_size=1,
-        command_arguments: Optional[List[str]] = None,
-        environment_variables: Optional[Dict[str, str]] = None,
-        files: Optional[Dict[str, str]] = None,
-        zipped_files: Optional[Dict[str, str]] = None,
-        options: Optional[Dict] = None,
+            self,
+            name="",
+            world_size=1,
+            command_arguments: Optional[List[str]] = None,
+            environment_variables: Optional[Dict[str, str]] = None,
+            files: Optional[Dict[str, str]] = None,
+            zipped_files: Optional[Dict[str, str]] = None,
+            resource_options: Optional[Dict] = None,
+            options: Optional[Dict] = None,
     ):
+        if resource_options is None:
+            resource_options = {}
         if options is None:
             options = {}
         if not name:
@@ -54,8 +57,11 @@ class DeepspeedJob:
             environment_variables={str(k): str(v) for k, v in environment_variables.items()},
             files=files,
             zipped_files=zipped_files,
-            options=options,
-            status=SessionStatus.NEW,
+            resource_options=deepspeed_pb2.ResourceOptions(
+                timeout_seconds=int(resource_options.get("timeout_seconds", 300)),
+                resource_exhausted_strategy=resource_options.get("resource_exhausted_strategy", "waiting")
+            ),
+            options=options
         )
 
         submit_response = BaseClient().do_sync_request(
@@ -112,9 +118,9 @@ class DeepspeedJob:
         return download_job_response
 
     def download_job_to(
-        self,
-        ranks: Optional[List[int]] = None,
-        rank_to_path: typing.Callable[[int], str] = lambda rank: f"rank_{rank}.zip",
+            self,
+            ranks: Optional[List[int]] = None,
+            rank_to_path: typing.Callable[[int], str] = lambda rank: f"rank_{rank}.zip",
     ):
         download_job_response = self.download_job(ranks)
         if ranks is None:
