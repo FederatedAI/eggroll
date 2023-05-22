@@ -2,11 +2,15 @@ package com.webank.eggroll.core.deepspeed.job.meta
 
 import com.google.protobuf.ByteString
 import com.webank.eggroll.core.constant.StringConstants
-import com.webank.eggroll.core.meta.NetworkingModelPbMessageSerdes.{ErProcessorFromPbMessage, ErProcessorToPbMessage}
-import com.webank.eggroll.core.meta.{Deepspeed, ErProcessor}
+import com.webank.eggroll.core.meta.Deepspeed
 
 import scala.collection.JavaConverters._
 import scala.language.implicitConversions
+
+case class ResourceOptions(
+                            timeoutSeconds: Int = 0,
+                            resourceExhaustedStrategy: String
+                          )
 
 case class SubmitJobRequest(sessionId: String = StringConstants.EMPTY,
                             name: String = StringConstants.EMPTY,
@@ -16,10 +20,9 @@ case class SubmitJobRequest(sessionId: String = StringConstants.EMPTY,
                             environmentVariables: Map[String, String] = Map(),
                             files: Map[String, Array[Byte]] = Map.empty,
                             zippedFiles: Map[String, Array[Byte]] = Map.empty,
-                            options: Map[String, String] = Map(),
-                            status: String = StringConstants.EMPTY,
-                            processors: Array[ErProcessor] = Array()) {
-}
+                            resourceOptions: ResourceOptions,
+                            options: Map[String, String] = Map()
+                           )
 
 object SubmitJobRequest {
   implicit def serialize(src: SubmitJobRequest): Array[Byte] = {
@@ -32,9 +35,12 @@ object SubmitJobRequest {
       .putAllEnvironmentVariables(src.environmentVariables.asJava)
       .putAllFiles(src.files.mapValues(ByteString.copyFrom).asJava)
       .putAllZippedFiles(src.zippedFiles.mapValues(ByteString.copyFrom).asJava)
+      .setResourceOptions(
+        Deepspeed.ResourceOptions.newBuilder()
+          .setTimeoutSeconds(src.resourceOptions.timeoutSeconds)
+          .setResourceExhaustedStrategy(src.resourceOptions.resourceExhaustedStrategy)
+          .build())
       .putAllOptions(src.options.asJava)
-      .setStatus(src.status)
-      .addAllProcessors(src.processors.toList.map(_.toProto()).asJava)
     builder.build().toByteArray
   }
 
@@ -49,9 +55,11 @@ object SubmitJobRequest {
       environmentVariables = proto.getEnvironmentVariablesMap.asScala.toMap,
       files = proto.getFilesMap.asScala.mapValues(_.toByteArray).toMap,
       zippedFiles = proto.getZippedFilesMap.asScala.mapValues(_.toByteArray).toMap,
-      options = proto.getOptionsMap.asScala.toMap,
-      status = proto.getStatus,
-      processors = proto.getProcessorsList.asScala.map(_.fromProto()).toArray
+      resourceOptions = ResourceOptions(
+        timeoutSeconds = proto.getResourceOptions.getTimeoutSeconds,
+        resourceExhaustedStrategy = proto.getResourceOptions.getResourceExhaustedStrategy
+      ),
+      options = proto.getOptionsMap.asScala.toMap
     )
   }
 }

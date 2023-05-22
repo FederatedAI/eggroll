@@ -330,9 +330,8 @@ class SubmitJobRequest(google.protobuf.message.Message):
     ENVIRONMENT_VARIABLES_FIELD_NUMBER: builtins.int
     FILES_FIELD_NUMBER: builtins.int
     ZIPPED_FILES_FIELD_NUMBER: builtins.int
+    RESOURCE_OPTIONS_FIELD_NUMBER: builtins.int
     OPTIONS_FIELD_NUMBER: builtins.int
-    STATUS_FIELD_NUMBER: builtins.int
-    PROCESSORS_FIELD_NUMBER: builtins.int
     session_id: builtins.str
     name: builtins.str
     job_type: builtins.str
@@ -346,10 +345,11 @@ class SubmitJobRequest(google.protobuf.message.Message):
     @property
     def zipped_files(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.bytes]: ...
     @property
-    def options(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]: ...
-    status: builtins.str
+    def resource_options(self) -> global___ResourceOptions:
+        """concrete options"""
     @property
-    def processors(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[meta_pb2.Processor]: ...
+    def options(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
+        """extra options"""
     def __init__(
         self,
         *,
@@ -361,13 +361,32 @@ class SubmitJobRequest(google.protobuf.message.Message):
         environment_variables: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
         files: collections.abc.Mapping[builtins.str, builtins.bytes] | None = ...,
         zipped_files: collections.abc.Mapping[builtins.str, builtins.bytes] | None = ...,
+        resource_options: global___ResourceOptions | None = ...,
         options: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
-        status: builtins.str = ...,
-        processors: collections.abc.Iterable[meta_pb2.Processor] | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["command_arguments", b"command_arguments", "environment_variables", b"environment_variables", "files", b"files", "job_type", b"job_type", "name", b"name", "options", b"options", "processors", b"processors", "session_id", b"session_id", "status", b"status", "world_size", b"world_size", "zipped_files", b"zipped_files"]) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["resource_options", b"resource_options"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["command_arguments", b"command_arguments", "environment_variables", b"environment_variables", "files", b"files", "job_type", b"job_type", "name", b"name", "options", b"options", "resource_options", b"resource_options", "session_id", b"session_id", "world_size", b"world_size", "zipped_files", b"zipped_files"]) -> None: ...
 
 global___SubmitJobRequest = SubmitJobRequest
+
+@typing_extensions.final
+class ResourceOptions(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    TIMEOUT_SECONDS_FIELD_NUMBER: builtins.int
+    RESOURCE_EXHAUSTED_STRATEGY_FIELD_NUMBER: builtins.int
+    timeout_seconds: builtins.int
+    resource_exhausted_strategy: builtins.str
+    """"ignore", "waiting", "throw_error" """
+    def __init__(
+        self,
+        *,
+        timeout_seconds: builtins.int = ...,
+        resource_exhausted_strategy: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["resource_exhausted_strategy", b"resource_exhausted_strategy", "timeout_seconds", b"timeout_seconds"]) -> None: ...
+
+global___ResourceOptions = ResourceOptions
 
 @typing_extensions.final
 class SubmitJobResponse(google.protobuf.message.Message):
