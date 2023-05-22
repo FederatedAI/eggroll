@@ -17,7 +17,6 @@ case class StartContainersRequest(id: String = StringConstants.EMPTY,
                                   files: Map[String, Array[Byte]] = Map.empty,
                                   zippedFiles: Map[String, Array[Byte]] = Map.empty,
                                   options: Map[String, String] = Map(),
-                                  status: String = StringConstants.EMPTY,
                                   processors: Array[ErProcessor] = Array()) {
 }
 
@@ -34,7 +33,6 @@ object StartContainersRequest {
       files = src.getFilesMap.asScala.toMap.mapValues(_.toByteArray),
       zippedFiles = src.getZippedFilesMap.asScala.toMap.mapValues(_.toByteArray),
       options = src.getOptionsMap.asScala.toMap,
-      status = src.getStatus,
       processors = src.getProcessorsList.asScala.map(_.fromProto()).toArray
     )
   }
@@ -50,7 +48,6 @@ object StartContainersRequest {
       .putAllFiles(src.files.mapValues(ByteString.copyFrom).asJava)
       .putAllZippedFiles(src.zippedFiles.mapValues(ByteString.copyFrom).asJava)
       .putAllOptions(src.options.asJava)
-      .setStatus(src.status)
       .addAllProcessors(src.processors.toList.map(_.toProto()).asJava)
     builder.build().toByteArray
   }
