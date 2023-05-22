@@ -17,7 +17,7 @@ import meta_pb2 as meta__pb2
 import containers_pb2 as containers__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0f\x64\x65\x65pspeed.proto\x12\x1c\x63om.webank.eggroll.core.meta\x1a\x1egoogle/protobuf/duration.proto\x1a\nmeta.proto\x1a\x10\x63ontainers.proto\"=\n\x0fStoreSetRequest\x12\x0e\n\x06prefix\x18\x01 \x01(\t\x12\x0b\n\x03key\x18\x02 \x01(\x0c\x12\r\n\x05value\x18\x03 \x01(\x0c\"\x12\n\x10StoreSetResponse\"Z\n\x0fStoreGetRequest\x12\x0e\n\x06prefix\x18\x01 \x01(\t\x12\x0b\n\x03key\x18\x02 \x01(\x0c\x12*\n\x07timeout\x18\x03 \x01(\x0b\x32\x19.google.protobuf.Duration\"!\n\x10StoreGetResponse\x12\r\n\x05value\x18\x01 \x01(\x0c\">\n\x0fStoreAddRequest\x12\x0e\n\x06prefix\x18\x01 \x01(\t\x12\x0b\n\x03key\x18\x02 \x01(\x0c\x12\x0e\n\x06\x61mount\x18\x03 \x01(\x03\"\"\n\x10StoreAddResponse\x12\x0e\n\x06\x61mount\x18\x01 \x01(\x03\"X\n\x19StoreCompareAndSetRequest\x12\x0e\n\x06prefix\x18\x01 \x01(\t\x12\x0b\n\x03key\x18\x02 \x01(\t\x12\x0e\n\x06\x65xpect\x18\x03 \x01(\t\x12\x0e\n\x06update\x18\x04 \x01(\t\"\x1c\n\x1aStoreCompareAndSetResponse\"[\n\x10StoreWaitRequest\x12\x0e\n\x06prefix\x18\x01 \x01(\t\x12\x0b\n\x03key\x18\x02 \x01(\t\x12*\n\x07timeout\x18\x03 \x01(\x0b\x32\x19.google.protobuf.Duration\"\x13\n\x11StoreWaitResponse\"%\n\x13StoreNumKeysRequest\x12\x0e\n\x06prefix\x18\x01 \x01(\t\"(\n\x14StoreNumKeysResponse\x12\x10\n\x08num_keys\x18\x01 \x01(\x03\"4\n\x15StoreDeleteKeyRequest\x12\x0e\n\x06prefix\x18\x01 \x01(\t\x12\x0b\n\x03key\x18\x02 \x01(\t\")\n\x16StoreDeleteKeyResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\"\xe9\x05\n\x10SubmitJobRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x10\n\x08job_type\x18\x03 \x01(\t\x12\x12\n\nworld_size\x18\x04 \x01(\r\x12\x19\n\x11\x63ommand_arguments\x18\x05 \x03(\t\x12g\n\x15\x65nvironment_variables\x18\x06 \x03(\x0b\x32H.com.webank.eggroll.core.meta.SubmitJobRequest.EnvironmentVariablesEntry\x12H\n\x05\x66iles\x18\x07 \x03(\x0b\x32\x39.com.webank.eggroll.core.meta.SubmitJobRequest.FilesEntry\x12U\n\x0czipped_files\x18\x08 \x03(\x0b\x32?.com.webank.eggroll.core.meta.SubmitJobRequest.ZippedFilesEntry\x12L\n\x07options\x18\t \x03(\x0b\x32;.com.webank.eggroll.core.meta.SubmitJobRequest.OptionsEntry\x12\x0e\n\x06status\x18\n \x01(\t\x12;\n\nprocessors\x18\x0b \x03(\x0b\x32\'.com.webank.eggroll.core.meta.Processor\x1a;\n\x19\x45nvironmentVariablesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\x1a,\n\nFilesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x0c:\x02\x38\x01\x1a\x32\n\x10ZippedFilesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x0c:\x02\x38\x01\x1a.\n\x0cOptionsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"d\n\x11SubmitJobResponse\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12;\n\nprocessors\x18\x02 \x03(\x0b\x32\'.com.webank.eggroll.core.meta.Processor\"$\n\x0eKillJobRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\"%\n\x0fKillJobResponse\x12\x12\n\nsession_id\x18\x01 \x01(\t\"$\n\x0eStopJobRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\"%\n\x0fStopJobResponse\x12\x12\n\nsession_id\x18\x01 \x01(\t\"%\n\x0fQueryJobRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\"\x85\x01\n\x10QueryJobResponse\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12\x10\n\x08job_type\x18\x02 \x01(\t\x12\x0e\n\x06status\x18\x03 \x01(\t\x12;\n\nprocessors\x18\x05 \x03(\x0b\x32\'.com.webank.eggroll.core.meta.Processor\"+\n\x15QueryJobStatusRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\"<\n\x16QueryJobStatusResponse\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12\x0e\n\x06status\x18\x02 \x01(\t\"P\n\x12\x44ownloadJobRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12\r\n\x05ranks\x18\x02 \x03(\x05\x12\x17\n\x0f\x63ompress_method\x18\x03 \x01(\t\"t\n\x13\x44ownloadJobResponse\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12I\n\x11\x63ontainer_content\x18\x02 \x03(\x0b\x32..com.webank.eggroll.core.meta.ContainerContent2\xb2\x06\n\x18\x44\x65\x65pspeedRendezvousStore\x12\x66\n\x03Set\x12-.com.webank.eggroll.core.meta.StoreSetRequest\x1a..com.webank.eggroll.core.meta.StoreSetResponse\"\x00\x12\x66\n\x03Get\x12-.com.webank.eggroll.core.meta.StoreGetRequest\x1a..com.webank.eggroll.core.meta.StoreGetResponse\"\x00\x12\x66\n\x03\x41\x64\x64\x12-.com.webank.eggroll.core.meta.StoreAddRequest\x1a..com.webank.eggroll.core.meta.StoreAddResponse\"\x00\x12\x84\x01\n\rCompareAndSet\x12\x37.com.webank.eggroll.core.meta.StoreCompareAndSetRequest\x1a\x38.com.webank.eggroll.core.meta.StoreCompareAndSetResponse\"\x00\x12i\n\x04Wait\x12..com.webank.eggroll.core.meta.StoreWaitRequest\x1a/.com.webank.eggroll.core.meta.StoreWaitResponse\"\x00\x12r\n\x07NumKeys\x12\x31.com.webank.eggroll.core.meta.StoreNumKeysRequest\x1a\x32.com.webank.eggroll.core.meta.StoreNumKeysResponse\"\x00\x12x\n\tDeleteKey\x12\x33.com.webank.eggroll.core.meta.StoreDeleteKeyRequest\x1a\x34.com.webank.eggroll.core.meta.StoreDeleteKeyResponse\"\x00\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0f\x64\x65\x65pspeed.proto\x12\x1c\x63om.webank.eggroll.core.meta\x1a\x1egoogle/protobuf/duration.proto\x1a\nmeta.proto\x1a\x10\x63ontainers.proto\"=\n\x0fStoreSetRequest\x12\x0e\n\x06prefix\x18\x01 \x01(\t\x12\x0b\n\x03key\x18\x02 \x01(\x0c\x12\r\n\x05value\x18\x03 \x01(\x0c\"\x12\n\x10StoreSetResponse\"Z\n\x0fStoreGetRequest\x12\x0e\n\x06prefix\x18\x01 \x01(\t\x12\x0b\n\x03key\x18\x02 \x01(\x0c\x12*\n\x07timeout\x18\x03 \x01(\x0b\x32\x19.google.protobuf.Duration\"!\n\x10StoreGetResponse\x12\r\n\x05value\x18\x01 \x01(\x0c\">\n\x0fStoreAddRequest\x12\x0e\n\x06prefix\x18\x01 \x01(\t\x12\x0b\n\x03key\x18\x02 \x01(\x0c\x12\x0e\n\x06\x61mount\x18\x03 \x01(\x03\"\"\n\x10StoreAddResponse\x12\x0e\n\x06\x61mount\x18\x01 \x01(\x03\"X\n\x19StoreCompareAndSetRequest\x12\x0e\n\x06prefix\x18\x01 \x01(\t\x12\x0b\n\x03key\x18\x02 \x01(\t\x12\x0e\n\x06\x65xpect\x18\x03 \x01(\t\x12\x0e\n\x06update\x18\x04 \x01(\t\"\x1c\n\x1aStoreCompareAndSetResponse\"[\n\x10StoreWaitRequest\x12\x0e\n\x06prefix\x18\x01 \x01(\t\x12\x0b\n\x03key\x18\x02 \x01(\t\x12*\n\x07timeout\x18\x03 \x01(\x0b\x32\x19.google.protobuf.Duration\"\x13\n\x11StoreWaitResponse\"%\n\x13StoreNumKeysRequest\x12\x0e\n\x06prefix\x18\x01 \x01(\t\"(\n\x14StoreNumKeysResponse\x12\x10\n\x08num_keys\x18\x01 \x01(\x03\"4\n\x15StoreDeleteKeyRequest\x12\x0e\n\x06prefix\x18\x01 \x01(\t\x12\x0b\n\x03key\x18\x02 \x01(\t\")\n\x16StoreDeleteKeyResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\"\xe5\x05\n\x10SubmitJobRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x10\n\x08job_type\x18\x03 \x01(\t\x12\x12\n\nworld_size\x18\x04 \x01(\r\x12\x19\n\x11\x63ommand_arguments\x18\x05 \x03(\t\x12g\n\x15\x65nvironment_variables\x18\x06 \x03(\x0b\x32H.com.webank.eggroll.core.meta.SubmitJobRequest.EnvironmentVariablesEntry\x12H\n\x05\x66iles\x18\x07 \x03(\x0b\x32\x39.com.webank.eggroll.core.meta.SubmitJobRequest.FilesEntry\x12U\n\x0czipped_files\x18\x08 \x03(\x0b\x32?.com.webank.eggroll.core.meta.SubmitJobRequest.ZippedFilesEntry\x12G\n\x10resource_options\x18\t \x01(\x0b\x32-.com.webank.eggroll.core.meta.ResourceOptions\x12L\n\x07options\x18\x13 \x03(\x0b\x32;.com.webank.eggroll.core.meta.SubmitJobRequest.OptionsEntry\x1a;\n\x19\x45nvironmentVariablesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\x1a,\n\nFilesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x0c:\x02\x38\x01\x1a\x32\n\x10ZippedFilesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x0c:\x02\x38\x01\x1a.\n\x0cOptionsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"O\n\x0fResourceOptions\x12\x17\n\x0ftimeout_seconds\x18\x01 \x01(\r\x12#\n\x1bresource_exhausted_strategy\x18\x02 \x01(\t\"d\n\x11SubmitJobResponse\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12;\n\nprocessors\x18\x02 \x03(\x0b\x32\'.com.webank.eggroll.core.meta.Processor\"$\n\x0eKillJobRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\"%\n\x0fKillJobResponse\x12\x12\n\nsession_id\x18\x01 \x01(\t\"$\n\x0eStopJobRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\"%\n\x0fStopJobResponse\x12\x12\n\nsession_id\x18\x01 \x01(\t\"%\n\x0fQueryJobRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\"\x85\x01\n\x10QueryJobResponse\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12\x10\n\x08job_type\x18\x02 \x01(\t\x12\x0e\n\x06status\x18\x03 \x01(\t\x12;\n\nprocessors\x18\x05 \x03(\x0b\x32\'.com.webank.eggroll.core.meta.Processor\"+\n\x15QueryJobStatusRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\"<\n\x16QueryJobStatusResponse\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12\x0e\n\x06status\x18\x02 \x01(\t\"P\n\x12\x44ownloadJobRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12\r\n\x05ranks\x18\x02 \x03(\x05\x12\x17\n\x0f\x63ompress_method\x18\x03 \x01(\t\"t\n\x13\x44ownloadJobResponse\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12I\n\x11\x63ontainer_content\x18\x02 \x03(\x0b\x32..com.webank.eggroll.core.meta.ContainerContent2\xb2\x06\n\x18\x44\x65\x65pspeedRendezvousStore\x12\x66\n\x03Set\x12-.com.webank.eggroll.core.meta.StoreSetRequest\x1a..com.webank.eggroll.core.meta.StoreSetResponse\"\x00\x12\x66\n\x03Get\x12-.com.webank.eggroll.core.meta.StoreGetRequest\x1a..com.webank.eggroll.core.meta.StoreGetResponse\"\x00\x12\x66\n\x03\x41\x64\x64\x12-.com.webank.eggroll.core.meta.StoreAddRequest\x1a..com.webank.eggroll.core.meta.StoreAddResponse\"\x00\x12\x84\x01\n\rCompareAndSet\x12\x37.com.webank.eggroll.core.meta.StoreCompareAndSetRequest\x1a\x38.com.webank.eggroll.core.meta.StoreCompareAndSetResponse\"\x00\x12i\n\x04Wait\x12..com.webank.eggroll.core.meta.StoreWaitRequest\x1a/.com.webank.eggroll.core.meta.StoreWaitResponse\"\x00\x12r\n\x07NumKeys\x12\x31.com.webank.eggroll.core.meta.StoreNumKeysRequest\x1a\x32.com.webank.eggroll.core.meta.StoreNumKeysResponse\"\x00\x12x\n\tDeleteKey\x12\x33.com.webank.eggroll.core.meta.StoreDeleteKeyRequest\x1a\x34.com.webank.eggroll.core.meta.StoreDeleteKeyResponse\"\x00\x62\x06proto3')
 
 
 
@@ -40,6 +40,7 @@ _SUBMITJOBREQUEST_ENVIRONMENTVARIABLESENTRY = _SUBMITJOBREQUEST.nested_types_by_
 _SUBMITJOBREQUEST_FILESENTRY = _SUBMITJOBREQUEST.nested_types_by_name['FilesEntry']
 _SUBMITJOBREQUEST_ZIPPEDFILESENTRY = _SUBMITJOBREQUEST.nested_types_by_name['ZippedFilesEntry']
 _SUBMITJOBREQUEST_OPTIONSENTRY = _SUBMITJOBREQUEST.nested_types_by_name['OptionsEntry']
+_RESOURCEOPTIONS = DESCRIPTOR.message_types_by_name['ResourceOptions']
 _SUBMITJOBRESPONSE = DESCRIPTOR.message_types_by_name['SubmitJobResponse']
 _KILLJOBREQUEST = DESCRIPTOR.message_types_by_name['KillJobRequest']
 _KILLJOBRESPONSE = DESCRIPTOR.message_types_by_name['KillJobResponse']
@@ -188,6 +189,13 @@ _sym_db.RegisterMessage(SubmitJobRequest.FilesEntry)
 _sym_db.RegisterMessage(SubmitJobRequest.ZippedFilesEntry)
 _sym_db.RegisterMessage(SubmitJobRequest.OptionsEntry)
 
+ResourceOptions = _reflection.GeneratedProtocolMessageType('ResourceOptions', (_message.Message,), {
+  'DESCRIPTOR' : _RESOURCEOPTIONS,
+  '__module__' : 'deepspeed_pb2'
+  # @@protoc_insertion_point(class_scope:com.webank.eggroll.core.meta.ResourceOptions)
+  })
+_sym_db.RegisterMessage(ResourceOptions)
+
 SubmitJobResponse = _reflection.GeneratedProtocolMessageType('SubmitJobResponse', (_message.Message,), {
   'DESCRIPTOR' : _SUBMITJOBRESPONSE,
   '__module__' : 'deepspeed_pb2'
@@ -306,37 +314,39 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   _STOREDELETEKEYRESPONSE._serialized_start=790
   _STOREDELETEKEYRESPONSE._serialized_end=831
   _SUBMITJOBREQUEST._serialized_start=834
-  _SUBMITJOBREQUEST._serialized_end=1579
-  _SUBMITJOBREQUEST_ENVIRONMENTVARIABLESENTRY._serialized_start=1374
-  _SUBMITJOBREQUEST_ENVIRONMENTVARIABLESENTRY._serialized_end=1433
-  _SUBMITJOBREQUEST_FILESENTRY._serialized_start=1435
-  _SUBMITJOBREQUEST_FILESENTRY._serialized_end=1479
-  _SUBMITJOBREQUEST_ZIPPEDFILESENTRY._serialized_start=1481
-  _SUBMITJOBREQUEST_ZIPPEDFILESENTRY._serialized_end=1531
-  _SUBMITJOBREQUEST_OPTIONSENTRY._serialized_start=1533
-  _SUBMITJOBREQUEST_OPTIONSENTRY._serialized_end=1579
-  _SUBMITJOBRESPONSE._serialized_start=1581
-  _SUBMITJOBRESPONSE._serialized_end=1681
-  _KILLJOBREQUEST._serialized_start=1683
-  _KILLJOBREQUEST._serialized_end=1719
-  _KILLJOBRESPONSE._serialized_start=1721
-  _KILLJOBRESPONSE._serialized_end=1758
-  _STOPJOBREQUEST._serialized_start=1760
-  _STOPJOBREQUEST._serialized_end=1796
-  _STOPJOBRESPONSE._serialized_start=1798
-  _STOPJOBRESPONSE._serialized_end=1835
-  _QUERYJOBREQUEST._serialized_start=1837
-  _QUERYJOBREQUEST._serialized_end=1874
-  _QUERYJOBRESPONSE._serialized_start=1877
-  _QUERYJOBRESPONSE._serialized_end=2010
-  _QUERYJOBSTATUSREQUEST._serialized_start=2012
-  _QUERYJOBSTATUSREQUEST._serialized_end=2055
-  _QUERYJOBSTATUSRESPONSE._serialized_start=2057
-  _QUERYJOBSTATUSRESPONSE._serialized_end=2117
-  _DOWNLOADJOBREQUEST._serialized_start=2119
-  _DOWNLOADJOBREQUEST._serialized_end=2199
-  _DOWNLOADJOBRESPONSE._serialized_start=2201
-  _DOWNLOADJOBRESPONSE._serialized_end=2317
-  _DEEPSPEEDRENDEZVOUSSTORE._serialized_start=2320
-  _DEEPSPEEDRENDEZVOUSSTORE._serialized_end=3138
+  _SUBMITJOBREQUEST._serialized_end=1575
+  _SUBMITJOBREQUEST_ENVIRONMENTVARIABLESENTRY._serialized_start=1370
+  _SUBMITJOBREQUEST_ENVIRONMENTVARIABLESENTRY._serialized_end=1429
+  _SUBMITJOBREQUEST_FILESENTRY._serialized_start=1431
+  _SUBMITJOBREQUEST_FILESENTRY._serialized_end=1475
+  _SUBMITJOBREQUEST_ZIPPEDFILESENTRY._serialized_start=1477
+  _SUBMITJOBREQUEST_ZIPPEDFILESENTRY._serialized_end=1527
+  _SUBMITJOBREQUEST_OPTIONSENTRY._serialized_start=1529
+  _SUBMITJOBREQUEST_OPTIONSENTRY._serialized_end=1575
+  _RESOURCEOPTIONS._serialized_start=1577
+  _RESOURCEOPTIONS._serialized_end=1656
+  _SUBMITJOBRESPONSE._serialized_start=1658
+  _SUBMITJOBRESPONSE._serialized_end=1758
+  _KILLJOBREQUEST._serialized_start=1760
+  _KILLJOBREQUEST._serialized_end=1796
+  _KILLJOBRESPONSE._serialized_start=1798
+  _KILLJOBRESPONSE._serialized_end=1835
+  _STOPJOBREQUEST._serialized_start=1837
+  _STOPJOBREQUEST._serialized_end=1873
+  _STOPJOBRESPONSE._serialized_start=1875
+  _STOPJOBRESPONSE._serialized_end=1912
+  _QUERYJOBREQUEST._serialized_start=1914
+  _QUERYJOBREQUEST._serialized_end=1951
+  _QUERYJOBRESPONSE._serialized_start=1954
+  _QUERYJOBRESPONSE._serialized_end=2087
+  _QUERYJOBSTATUSREQUEST._serialized_start=2089
+  _QUERYJOBSTATUSREQUEST._serialized_end=2132
+  _QUERYJOBSTATUSRESPONSE._serialized_start=2134
+  _QUERYJOBSTATUSRESPONSE._serialized_end=2194
+  _DOWNLOADJOBREQUEST._serialized_start=2196
+  _DOWNLOADJOBREQUEST._serialized_end=2276
+  _DOWNLOADJOBRESPONSE._serialized_start=2278
+  _DOWNLOADJOBRESPONSE._serialized_end=2394
+  _DEEPSPEEDRENDEZVOUSSTORE._serialized_start=2397
+  _DEEPSPEEDRENDEZVOUSSTORE._serialized_end=3215
 # @@protoc_insertion_point(module_scope)
