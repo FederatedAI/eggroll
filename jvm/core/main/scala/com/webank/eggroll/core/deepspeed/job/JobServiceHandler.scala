@@ -38,7 +38,7 @@ object JobServiceHandler extends Logging {
         while (true) {
           val sessions = smDao.getSessionMains(ErSessionMeta(status = SessionStatus.ACTIVE))
           sessions.foreach { session =>
-           // logDebug(s"watch active session: ${session.id}")
+            // logDebug(s"watch active session: ${session.id}")
             val sessionProcessors = smDao.getSession(session.id).processors
             if (sessionProcessors.forall(_.processorType == JobProcessorTypes.DeepSpeed.toString)) {
               if (sessionProcessors.exists(_.status == ProcessorStatus.ERROR)) {
@@ -50,7 +50,7 @@ object JobServiceHandler extends Logging {
                       logError(s"failed to kill session ${session.id}", e)
                   }
                 }
-                smDao.updateSessionMain(session.copy(status = SessionStatus.ERROR) )
+                smDao.updateSessionMain(session.copy(status = SessionStatus.ERROR))
                 logDebug(s"found error processor belongs to session ${session.id}: " +
                   s"${sessionProcessors.filter(_.status == ProcessorStatus.ERROR).mkString("Array(", ", ", ")")}, " +
                   s"update session status to `Error`")
@@ -164,95 +164,100 @@ object JobServiceHandler extends Logging {
   }
 
   def handleSubmit(submitJobMeta: SubmitJobRequest): SubmitJobResponse = {
-    val sessionId = submitJobMeta.sessionId
-
     JobProcessorTypes.fromString(submitJobMeta.jobType) match {
       case Some(JobProcessorTypes.DeepSpeed) =>
-        val worldSize = submitJobMeta.worldSize
-
-        // prepare processors
-        val prepareProcessors = Array.fill(worldSize)(ErProcessor(
-          processorType = JobProcessorTypes.DeepSpeed.toString,
-          status = ProcessorStatus.NEW,
-          resources = Array(ErResource(
-            resourceType = ResourceTypes.VGPU_CORE,
-            allocated = 1,
-            status = ResourceStatus.PRE_ALLOCATED))
-        ))
-        val resourceApplication = ResourceApplication(
-          processors = prepareProcessors,
-          needDispatch = true,
-          resourceLatch = new CountDownLatch(1),
-          sessionId=sessionId)
-        ClusterResourceManager.submitResourceRequest(resourceApplication)
-        var dispatchedProcessors = resourceApplication.getResult()
-        logInfo(s"dispatchedProcessor: ${dispatchedProcessors.mkString("Array(", ", ", ")")}")
-
-//        smDao.register(ErSessionMeta(
-//          id = sessionId,
-//          processors = dispatchedProcessors.map(_._1),
-//          totalProcCount = worldSize,
-//          status = SessionStatus.NEW)
-//        )
-        try {
-          val registeredSessionMeta = smDao.getSession(submitJobMeta.sessionId)
-          dispatchedProcessors = dispatchedProcessors.zip(registeredSessionMeta.processors).map {
-            case ((processor, node), registeredProcessor) =>
-              (processor.copy(id = registeredProcessor.id), node)
-          }
-          // register ranks
-          val ranks = dispatchedProcessors.map { case (processor, node) =>
-            (processor.id, node.id, processor.options.get("localRank").toInt, processor.options.get("globalRank").toInt)
-          }
-          smDao.registerRanks(sessionId, ranks.map(_._1), ranks.map(_._2), ranks.map(_._3), ranks.map(_._4))
-
-          // start containers
-          dispatchedProcessors.groupBy(_._2).par.foreach { case (node, nodeAndProcessors) =>
-            val processors = nodeAndProcessors.map(_._1.copy(sessionId = submitJobMeta.sessionId))
-            val nodeManagerClient = new NodeManagerClient(node.endpoint)
-           // ClusterResourceManager.preAllocateResource(processors)
-            nodeManagerClient.startJobContainers(
-              StartContainersRequest(
-                id = submitJobMeta.sessionId,
-                name = submitJobMeta.name,
-                jobType = submitJobMeta.jobType,
-                worldSize = submitJobMeta.worldSize,
-                commandArguments = submitJobMeta.commandArguments,
-                environmentVariables = submitJobMeta.environmentVariables,
-                files = submitJobMeta.files,
-                zippedFiles = submitJobMeta.zippedFiles,
-                options = submitJobMeta.options,
-                status = submitJobMeta.status,
-                processors = processors))
-          }
-
-          // wait for containers to start, throw exception if timeout
-          val startTimeout = System.currentTimeMillis() + SessionConfKeys.EGGROLL_SESSION_START_TIMEOUT_MS.get().toLong
-          val activeProcessors = waitSubmittedContainers(sessionId, worldSize, startTimeout)
-
-          // update options since some options are loss in db
-          val idToOptions = dispatchedProcessors.map { case (processor, _) =>
-            (processor.id, processor.options)
-          }.toMap
-          for (processor <- activeProcessors) {
-            val options = idToOptions(processor.id)
-            processor.options.putAll(options)
-          }
-
-          // active
-          smDao.updateSessionStatus(sessionId = sessionId,
-            status = SessionStatus.ACTIVE,
-            required_old_status = Some(SessionStatus.NEW))
-          SubmitJobResponse(sessionId, activeProcessors)
-
-        }
-        catch {
-          case e: Exception =>
-            smDao.updateSessionStatus(sessionId, SessionStatus.ERROR)
-            throw e
-        }
+        handleDeepspeedSubmit(submitJobMeta)
       case _ =>
         throw new IllegalArgumentException(s"unsupported job type: ${submitJobMeta.jobType}")
+    }
+  }
+
+  private def handleDeepspeedSubmit(submitJobRequest: SubmitJobRequest): SubmitJobResponse = {
+    val sessionId = submitJobRequest.sessionId
+
+    val worldSize = submitJobRequest.worldSize
+
+    // prepare processors
+    val prepareProcessors = Array.fill(worldSize)(ErProcessor(
+      processorType = JobProcessorTypes.DeepSpeed.toString,
+      status = ProcessorStatus.NEW,
+      resources = Array(ErResource(
+        resourceType = ResourceTypes.VGPU_CORE,
+        allocated = 1,
+        status = ResourceStatus.PRE_ALLOCATED))
+    ))
+    val resourceApplication = ResourceApplication(
+      processors = prepareProcessors,
+      needDispatch = true,
+      resourceExhaustedStrategy = ResourceExhaustedStrategy.WAITING,
+      timeout = submitJobRequest.resourceOptions.timeoutSeconds,
+      resourceLatch = new CountDownLatch(1),
+      sessionId = sessionId)
+    ClusterResourceManager.submitResourceRequest(resourceApplication)
+    var dispatchedProcessors = resourceApplication.getResult()
+    logInfo(s"dispatchedProcessor: ${dispatchedProcessors.mkString("Array(", ", ", ")")}")
+
+    //        smDao.register(ErSessionMeta(
+    //          id = sessionId,
+    //          processors = dispatchedProcessors.map(_._1),
+    //          totalProcCount = worldSize,
+    //          status = SessionStatus.NEW)
+    //        )
+    try {
+      val registeredSessionMeta = smDao.getSession(submitJobRequest.sessionId)
+      dispatchedProcessors = dispatchedProcessors.zip(registeredSessionMeta.processors).map {
+        case ((processor, node), registeredProcessor) =>
+          (processor.copy(id = registeredProcessor.id), node)
+      }
+      // register ranks
+      val ranks = dispatchedProcessors.map { case (processor, node) =>
+        (processor.id, node.id, processor.options.get("localRank").toInt, processor.options.get("globalRank").toInt)
+      }
+      smDao.registerRanks(sessionId, ranks.map(_._1), ranks.map(_._2), ranks.map(_._3), ranks.map(_._4))
+
+      // start containers
+      dispatchedProcessors.groupBy(_._2).par.foreach { case (node, nodeAndProcessors) =>
+        val processors = nodeAndProcessors.map(_._1.copy(sessionId = submitJobRequest.sessionId))
+        val nodeManagerClient = new NodeManagerClient(node.endpoint)
+        // ClusterResourceManager.preAllocateResource(processors)
+        nodeManagerClient.startJobContainers(
+          StartContainersRequest(
+            id = submitJobRequest.sessionId,
+            name = submitJobRequest.name,
+            jobType = submitJobRequest.jobType,
+            worldSize = submitJobRequest.worldSize,
+            commandArguments = submitJobRequest.commandArguments,
+            environmentVariables = submitJobRequest.environmentVariables,
+            files = submitJobRequest.files,
+            zippedFiles = submitJobRequest.zippedFiles,
+            options = submitJobRequest.options,
+            processors = processors))
+      }
+
+      // wait for containers to start, throw exception if timeout
+      val startTimeout = System.currentTimeMillis() + SessionConfKeys.EGGROLL_SESSION_START_TIMEOUT_MS.get().toLong
+      val activeProcessors = waitSubmittedContainers(sessionId, worldSize, startTimeout)
+
+      // update options since some options are loss in db
+      val idToOptions = dispatchedProcessors.map { case (processor, _) =>
+        (processor.id, processor.options)
+      }.toMap
+      for (processor <- activeProcessors) {
+        val options = idToOptions(processor.id)
+        processor.options.putAll(options)
+      }
+
+      // active
+      smDao.updateSessionStatus(sessionId = sessionId,
+        status = SessionStatus.ACTIVE,
+        required_old_status = Some(SessionStatus.NEW))
+      SubmitJobResponse(sessionId, activeProcessors)
+
+    }
+    catch {
+      case e: Exception =>
+        smDao.updateSessionStatus(sessionId, SessionStatus.ERROR)
+        throw e
     }
   }
 
