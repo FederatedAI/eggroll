@@ -1,7 +1,7 @@
 package com.webank.eggroll.core.resourcemanager
 
-import com.webank.eggroll.core.constant.ResourceStatus
-import com.webank.eggroll.core.meta.ErProcessor
+import com.webank.eggroll.core.constant.{ResourceStatus, SessionStatus}
+import com.webank.eggroll.core.meta.{ErProcessor, ErSessionMeta}
 import com.webank.eggroll.core.resourcemanager.SessionManagerService.smDao
 import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator
 import com.webank.eggroll.core.util.Logging
@@ -37,15 +37,17 @@ object ProcessorStateMachine extends Logging{
 
         var statusLine =  preState+"_"+desStateParam;
         logInfo(s"==========statusLine================${statusLine}")
+        var desErProcessor = erProcessor.copy(status = desStateParam)
+
         statusLine match {
-          case "NEW_RUNNING"=>updateState(erProcessor,connection= connection,afterCall = (conn,erProcessor)=>{
+          case "NEW_RUNNING"=>updateState(desErProcessor,connection= connection,afterCall = (conn,erProcessor)=>{
             ResourceStateMachine.changeState(conn,Array(erProcessor),ResourceStatus.PRE_ALLOCATED,ResourceStatus.ALLOCATED)
           })
-          case "NEW_ERROR" =>updateState(erProcessor,connection= connection,afterCall = (conn,erProcessor)=>{
+          case "NEW_ERROR" =>updateState(desErProcessor,connection= connection,afterCall = (conn,erProcessor)=>{
             ResourceStateMachine.changeState(conn,Array(erProcessor),ResourceStatus.PRE_ALLOCATED,ResourceStatus.ALLOCATE_FAILED)
           })
           case statusLine if(statusLine=="RUNNING_STOPPED"||statusLine=="RUNNING_KILLED"||statusLine=="RUNNING_ERROR")=>
-            updateState(erProcessor,connection= connection,afterCall = (conn,erProcessor)=>{
+            updateState(desErProcessor,connection= connection,afterCall = (conn,erProcessor)=>{
               ResourceStateMachine.changeState(conn,Array(erProcessor),ResourceStatus.ALLOCATED,ResourceStatus.RETURN)
             })
           case _=> println("============error status=============");
@@ -79,7 +81,6 @@ object ProcessorStateMachine extends Logging{
     ClusterResourceManager.returnResource(beforeCall=  (conn,proc) =>smDao.updateProcessor(conn, proc),processors =Array(proc))
   }
 
-
   def  updateAndUpdateResource(proc: ErProcessor): Unit = {
   //  ClusterResourceManager.
   }
@@ -87,6 +88,17 @@ object ProcessorStateMachine extends Logging{
   def  updateAndAllocateResource(proc:ErProcessor): Unit ={
     ClusterResourceManager.allocateResource(beforeCall=  (conn,proc) =>smDao.updateProcessor(conn, proc),processors =Array(proc))
   }
+
+
+
+ def  defaultSessionCallback  (conn:Connection ,erSessionMeta: ErSessionMeta  ):Unit={
+   erSessionMeta.processors.foreach(p=>{
+     ProcessorStateMachine.changeStatus(p,desStateParam =erSessionMeta.status,connection = conn )
+   })
+
+ }
+
+
 
 
 
