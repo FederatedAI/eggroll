@@ -8,8 +8,9 @@ import com.webank.eggroll.core.deepspeed.job.meta._
 import com.webank.eggroll.core.error.ErSessionException
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.resourcemanager.ClusterResourceManager.ResourceApplication
+import com.webank.eggroll.core.resourcemanager.ProcessorStateMachine.defaultSessionCallback
 import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator
-import com.webank.eggroll.core.resourcemanager.{ClusterManagerService, ClusterResourceManager, ProcessorEvent, SessionMetaDao}
+import com.webank.eggroll.core.resourcemanager.{ClusterManagerService, ClusterResourceManager, ProcessorEvent, ProcessorStateMachine, SessionMetaDao}
 import com.webank.eggroll.core.util.Logging
 import org.apache.commons.lang3.StringUtils
 
@@ -50,7 +51,7 @@ object JobServiceHandler extends Logging {
                       logError(s"failed to kill session ${session.id}", e)
                   }
                 }
-                smDao.updateSessionMain(session.copy(status = SessionStatus.ERROR) )
+                smDao.updateSessionMain(session.copy(status = SessionStatus.ERROR) ,afterCall=defaultSessionCallback)
                 logDebug(s"found error processor belongs to session ${session.id}: " +
                   s"${sessionProcessors.filter(_.status == ProcessorStatus.ERROR).mkString("Array(", ", ", ")")}, " +
                   s"update session status to `Error`")
