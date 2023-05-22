@@ -4,9 +4,10 @@ import com.webank.eggroll.core.client.NodeManagerClient
 import com.webank.eggroll.core.constant.ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_NODE_HEARTBEAT_EXPIRED_COUNT
 import com.webank.eggroll.core.constant.NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL
 import com.webank.eggroll.core.constant.ProcessorEventType.PROCESSOR_LOSS
-import com.webank.eggroll.core.constant.{ProcessorStatus, ServerNodeStatus}
+import com.webank.eggroll.core.constant.{ProcessorEventType, ProcessorStatus, ProcessorTypes, ServerNodeStatus}
 import com.webank.eggroll.core.meta.{ErEndpoint, ErNodeHeartbeat, ErProcessor, ErResource, ErServerNode}
 import com.webank.eggroll.core.resourcemanager.ClusterManagerService.{createNewNode, nodeHeartbeatMap, queryNodeByEndPoint, queryNodeById, updateNode}
+import com.webank.eggroll.core.resourcemanager.SessionManagerService.{getSessionMain, killSession, logDebug}
 import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator
 import com.webank.eggroll.core.util.Logging
 
@@ -22,6 +23,22 @@ object ClusterManagerService extends Logging {
   var  processorEventCallbackRegister = mutable.Map[String,ProcessorEventCallback]()
   var  nodeHeartbeatMap = mutable.Map[Long,ErNodeHeartbeat]()
   lazy val serverNodeCrudOperator = new ServerNodeCrudOperator()
+
+  registerProcessorCallback(ProcessorTypes.EGG_PAIR, new ProcessorEventCallback() {
+    override def callback(event: ProcessorEvent): Unit = {
+      event.eventType match{
+        case  ProcessorEventType.PROCESSOR_LOSS =>
+          new Thread(()=>{
+            logDebug(s"fire PROCESSOR_LOSS event, prepare to kill session ${event.erProcessor}")
+            var  erSessionMeta = getSessionMain(event.erProcessor.sessionId)
+            killSession(erSessionMeta)
+          }).start()
+      }
+    }
+  })
+
+
+
   def  registerProcessorCallback(processType:String,sessionEventCallback: ProcessorEventCallback):Unit={
     processorEventCallbackRegister.put(processType,sessionEventCallback)
   }
@@ -60,8 +77,10 @@ object ClusterManagerService extends Logging {
                     if(processorInDb.apply(0).status==ProcessorStatus.RUNNING){
                       var result = nodeManagerClient.checkNodeProcess(processor)
                       if (result==null||result.status == ProcessorStatus.KILLED) {
-                        var processors = Array(processor.copy(status = ProcessorStatus.KILLED))
-                        ClusterResourceManager.returnResource(processors = processors, beforeCall = SessionManagerService.beforeCall)
+                      //  var processors = Array(processor.copy(status = ProcessorStatus.KILLED))
+                        //ClusterResourceManager.returnResource(processors = processors, beforeCall = SessionManagerService.beforeCall)
+
+                        ProcessorStateMachine.changeStatus(processor,desStateParam = ProcessorStatus.KILLED)
                         processorEventCallbackRegister.get(processor.processorType).getOrElse(new ProcessorEventCallback {
                           override def callback(event: ProcessorEvent): Unit = {
                             logInfo(s"processor type ${processor.processorType} can not find callback")
@@ -70,9 +89,6 @@ object ClusterManagerService extends Logging {
                       }
                     }
                   }
-
-
-
                 }
               }catch{
                 case e: Exception =>
