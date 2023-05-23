@@ -22,7 +22,7 @@ import com.webank.eggroll.core.constant.ClusterManagerConfKeys
 import com.webank.eggroll.core.containers.meta.DeepspeedContainerConfig
 import com.webank.eggroll.core.session.StaticErConf
 
-import java.nio.file.{Path, Paths}
+import java.nio.file.Path
 import scala.collection.mutable
 
 
@@ -158,8 +158,7 @@ case class DeepspeedContainerBuildConfig(
       zippedFiles = zippedFiles,
       workingDir = workingDir))
   val (stdErrFile, stdOutFile) = {
-    val logDir = workingDir.resolve(
-      Paths.get(conf.getString(ContainerKey.LOGS_DIR, "logs")))
+    val logDir = workingDir.resolve("logs")
     (Some(logDir.resolve(s"stderr.log")), Some(logDir.resolve(s"stdout.log")))
   }
 
