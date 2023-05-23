@@ -170,6 +170,8 @@ case class DeepspeedContainerBuildConfig(
       deepspeedContainerConfig.getEggrollCustomizedEnvironments) {
       mutableEnv += (k -> v)
     }
+    // add container dir
+    mutableEnv += ("EGGROLL_DEEPSPEED_CONTAINER_DIR" -> workingDir.toAbsolutePath.toString)
     // read `EGGROLL_HOME` and `PYTHONPATH` from system env since this is node level env
     sys.env.get("EGGROLL_HOME") match {
       case Some(home) =>
