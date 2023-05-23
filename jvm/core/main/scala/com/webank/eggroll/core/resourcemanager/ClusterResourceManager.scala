@@ -7,6 +7,7 @@ import com.webank.eggroll.core.client.NodeManagerClient
 import com.webank.eggroll.core.constant.SessionConfKeys.CONFKEY_SESSION_PROCESSORS_PER_NODE
 import com.webank.eggroll.core.constant.{DispatchStrategy, NodeManagerConfKeys, ProcessorStatus, ResourceEventType, ResourceExhaustedStrategy, ResourceOperationStauts, ResourceOperationType, ResourceStatus, ResourceTypes, ServerNodeStatus, ServerNodeTypes, SessionStatus}
 import com.webank.eggroll.core.datastructure.FifoBroker
+import com.webank.eggroll.core.error.ErSessionException
 import com.webank.eggroll.core.meta.{ErEndpoint, ErProcessor, ErResource, ErResourceAllocation, ErServerNode, ErSessionMeta}
 import com.webank.eggroll.core.resourcemanager.ClusterResourceManager.{ResourceApplication, dispatchDeepSpeedInner, serverNodeCrudOperator}
 import com.webank.eggroll.core.meta.{ErEndpoint, ErProcessor, ErResource, ErServerNode}
@@ -86,6 +87,7 @@ object ClusterResourceManager extends Logging{
 
               smDao.register(ErSessionMeta(
                 id = resourceApplication.sessionId,
+                name=resourceApplication.sessionName,
                 processors = dispatchedProcessors.toArray.map(_._1),
                 totalProcCount = dispatchedProcessors.length,
                 status = SessionStatus.NEW)
@@ -193,12 +195,25 @@ object ClusterResourceManager extends Logging{
 
   }
 
+  private def getNextGpuIndex(size:Int,alreadyAllocated :Array[String]): Int ={
+    var  result:Int = -1
+    breakable {
+      for (index <- 0 until size) {
+        if (!alreadyAllocated.contains(index.toString)) {
+          result = index
+          break()
+        }
+      }
+    }
+    result
+  }
+
   private def  remainMostFirstDispatch(serverNodes:Array[ErServerNode],resourceApplication: ResourceApplication): ResourceApplication = {
      logInfo("=============remainMostFirstDispatch")
      var requiredProcessors = resourceApplication.processors;
      var nodeResourceTupes = serverNodes.map(n => (n, n.resources.filter(_.resourceType == resourceApplication.sortByResourceType).map(_.getUnAllocatedResource).apply(0)))
        .sortWith(_._2 > _._2).toBuffer
-
+    var allocatedGpuIndex :ArrayBuffer[String]= ArrayBuffer()
      //    // FIXME: evenly distribute processors to nodes for now
      val nodeToProcessors = mutable.Map[ErServerNode, Seq[ErProcessor]]()
      //
@@ -209,14 +224,36 @@ object ClusterResourceManager extends Logging{
        var nodeTupe = nodeResourceTupes.head
        var node = nodeTupe._1
 
+       //gpu 需要编号
+       var  nextGpuIndex:Int = -1
+       var  newResources :ArrayBuffer[ErResource] = new  ArrayBuffer[ErResource]()
+       requiredProcessor.resources.foreach(r=>{
+         var  changedResource : ErResource = r
+          if(r.resourceType==ResourceTypes.VGPU_CORE){
+            var  gpuResourcesInNodeArray =  node.resources.filter(_.resourceType==ResourceTypes.VGPU_CORE)
+            if(gpuResourcesInNodeArray.length>0){
+              var gpuResourcesInNode = gpuResourcesInNodeArray.apply(0)
+              gpuResourcesInNode.extentionCache.appendAll(gpuResourcesInNode.extention.split(","))
+              nextGpuIndex = getNextGpuIndex(gpuResourcesInNode.total.toInt,gpuResourcesInNode.extentionCache.toArray)
+              gpuResourcesInNode.extentionCache.append(nextGpuIndex.toString)
+              changedResource = changedResource.copy(extention = nextGpuIndex.toString)
+            }
+          }
+         newResources.append(changedResource)
+       })
+
+
+
        nodeResourceTupes = (nodeResourceTupes.tail += nodeTupe.copy(_2 = nodeTupe._2 - 1)).sortWith(_._2 > _._2)
        val host = node.endpoint.host
        val globalRank = index
        val localRank = nodeToProcessors.getOrElse(node, Seq()).size
-       requiredProcessor = requiredProcessor.copy(serverNodeId = node.id,commandEndpoint = ErEndpoint(host, 0),
+
+       requiredProcessor = requiredProcessor.copy(serverNodeId = node.id,commandEndpoint = ErEndpoint(host, 0),resources=newResources.toArray,
                      options = Map(
                        "globalRank" -> globalRank.toString,
-                       "localRank" -> localRank.toString
+                       "localRank" -> localRank.toString,
+                       "CUDA_VISIBLE_DEVICE" -> nextGpuIndex.toString
                      ).asJava)
 
        if (nodeToProcessors.contains(node)) {
@@ -404,6 +441,7 @@ object ClusterResourceManager extends Logging{
 
      case class ResourceApplication(
                                     sessionId : String,
+                                    sessionName: String =StringConstants.EMPTY,
                                     processors : Array[ErProcessor]=Array[ErProcessor](),
                                    sortByResourceType: String =ResourceTypes.VCPU_CORE,
                                    needDispatch: Boolean= true,
@@ -421,8 +459,12 @@ object ClusterResourceManager extends Logging{
                                   ){
       def  getResult(): Array[(ErProcessor, ErServerNode)] ={
         try{
-          if(timeout>0)
-            resourceLatch.await(timeout, TimeUnit.MILLISECONDS)
+          if(timeout>0){
+            var alreadyGet =  resourceLatch.await(timeout, TimeUnit.MILLISECONDS)
+            if(!alreadyGet){
+              throw new ErSessionException("dispatch resource timeout")
+            }
+          }
           else
             resourceLatch.await()
           resourceDispatch.toArray
