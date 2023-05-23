@@ -7,6 +7,7 @@ import com.webank.eggroll.core.containers.meta._
 import com.webank.eggroll.core.deepspeed.job.meta._
 import com.webank.eggroll.core.error.ErSessionException
 import com.webank.eggroll.core.meta._
+import com.webank.eggroll.core.resourcemanager.ClusterManagerService.smDao
 import com.webank.eggroll.core.resourcemanager.ClusterResourceManager.ResourceApplication
 import com.webank.eggroll.core.resourcemanager.ProcessorStateMachine.defaultSessionCallback
 import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator
@@ -149,7 +150,8 @@ object JobServiceHandler extends Logging {
       }
     }
     if (!isStarted) {
-      val activeCount = smDao.getSessionMain(sessionId).activeProcCount
+      var session = smDao.getSessionMain(sessionId)
+      val activeCount = session.activeProcCount
       if (activeCount < expectedWorldSize) {
         try {
           killJob(sessionId, isTimeout = true)
@@ -157,12 +159,15 @@ object JobServiceHandler extends Logging {
           case e: Exception =>
             logError(s"failed to kill job $sessionId", e)
         }
+
         throw new ErSessionException(
           s"unable to start all processors for session '$sessionId', " +
             s"expected world size: $expectedWorldSize, " +
             s"active world size: $activeCount")
       }
     }
+
+
     smDao.getSession(sessionId).processors
   }
 
@@ -303,10 +308,12 @@ object JobServiceHandler extends Logging {
           e.printStackTrace()
       }
     }
-    if (isTimeout) {
-      smDao.updateSessionStatus(sessionId = sessionId, status = SessionStatus.NEW_TIMEOUT)
-    } else {
-      smDao.updateSessionStatus(sessionId = sessionId, status = SessionStatus.KILLED)
-    }
+//    if (isTimeout) {
+//      smDao.updateSessionStatus(sessionId = sessionId, status = SessionStatus.NEW_TIMEOUT)
+//    } else {
+//      smDao.updateSessionStatus(sessionId = sessionId, status = SessionStatus.KILLED)
+//    }
+
+    smDao.updateSessionMain(sessionMeta.copy(status = SessionStatus.ERROR) ,afterCall=defaultSessionCallback)
   }
 }
