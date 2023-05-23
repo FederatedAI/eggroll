@@ -6,6 +6,7 @@ import com.webank.eggroll.core.constant._
 import com.webank.eggroll.core.deepspeed.job.JobServiceHandler
 import com.webank.eggroll.core.deepspeed.store.RendezvousStoreService
 import com.webank.eggroll.core.meta._
+import com.webank.eggroll.core.resourcemanager.ClusterManagerService.startSessionWatcher
 import com.webank.eggroll.core.resourcemanager.metadata.{ServerNodeCrudOperator, StoreCrudOperator}
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.transfer.{GrpcClientUtils, GrpcServerUtils}
@@ -125,7 +126,8 @@ class ClusterManagerBootstrap extends BootstrapBase with Logging {
 
 
     // submit job
-    JobServiceHandler.startSessionWatcher()
+    //JobServiceHandler.startSessionWatcher()
+    startSessionWatcher()
     CommandRouter.register_handler(serviceName = JobCommands.submitJob.uriString,
       args => JobServiceHandler.handleSubmit(args(0))
     )
