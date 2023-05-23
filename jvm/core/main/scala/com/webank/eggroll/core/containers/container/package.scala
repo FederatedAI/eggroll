@@ -1,6 +1,6 @@
 package com.webank.eggroll.core.containers
 
-import com.webank.eggroll.core.session.RuntimeErConf;
+import com.webank.eggroll.core.session.{ErConf, StaticErConf};
 
 package object container {
   object ContainerKey {
@@ -17,11 +17,19 @@ package object container {
 
   type ContainerStatusCallback = (ContainerStatus.Value) => (ContainerTrait, Option[Exception]) => Unit
 
-  class PythonContainerRuntimeConfig(runtimeErConf: RuntimeErConf) extends RuntimeErConf {
+  class PythonContainerRuntimeConfig(options: Map[String, String] = Map()) extends ErConf {
 
-    runtimeErConf.getAll.foreach { case (key, value) =>
+    StaticErConf.getAll.foreach { case (key, value) =>
       this.conf.put(key, value)
     }
+
+    options.foreach { case (key, value) =>
+      this.conf.put(key, value)
+    }
+
+    override def getModuleName(): String = "PythonContainerRuntimeConfig"
+
+    override def getPort(): Int = ???
 
     def getPythonExec(key: String = ""): String = {
       val fallbacks = Seq(

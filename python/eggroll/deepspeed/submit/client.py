@@ -127,6 +127,5 @@ class DeepspeedJob:
             ranks = range(len(download_job_response.container_content))
         for rank, content in zip(ranks, download_job_response.container_content):
             path = rank_to_path(rank)
-            print(os.getcwd())
             with open(path, "wb") as f:
                 f.write(content.content)

@@ -29,7 +29,6 @@ class PythonContainer(
                        stdErrFile: Option[Path] = None,
                        stdOutFile: Option[Path] = None,
                        workingDirectoryPreparer: Option[WorkingDirectoryPreparer] = None,
-                       containerId: String,
                        processorId: Long
                      )
 
@@ -40,6 +39,5 @@ class PythonContainer(
     stdErrFile = stdErrFile,
     cwd = cwd,
     workingDirectoryPreparer = workingDirectoryPreparer,
-    containerId = containerId,
     processorId =  processorId
   )
