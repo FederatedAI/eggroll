@@ -177,10 +177,7 @@ object ClusterManagerService extends Logging {
         while (true) {
           val sessions = smDao.getSessionMainsByStatus(Array(SessionStatus.ACTIVE,SessionStatus.NEW))
           sessions.foreach { session =>
-
-
             val sessionProcessors = smDao.getSession(session.id).processors
-
             session.name match {
               case "DeepSpeed" =>
                 session.status match {
