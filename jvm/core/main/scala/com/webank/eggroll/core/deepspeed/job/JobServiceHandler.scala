@@ -20,55 +20,17 @@ import scala.util.control.Breaks.{break, breakable}
 object JobServiceHandler extends Logging {
   private val smDao = new SessionMetaDao
 
-  ClusterManagerService.registerProcessorCallback(JobProcessorTypes.DeepSpeed.toString, (event: ProcessorEvent) => {
-    new Thread(() => {
-      event match {
-        case ProcessorEvent(eventType, processor) if eventType == ProcessorEventType.PROCESSOR_LOSS =>
-          logDebug(s"processor ${processor.id} lost, kill job ${processor.sessionId}")
-          killJob(processor.sessionId, isTimeout = false)
-      }
-    }).start()
-  })
+//  ClusterManagerService.registerProcessorCallback(JobProcessorTypes.DeepSpeed.toString, (event: ProcessorEvent) => {
+//    new Thread(() => {
+//      event match {
+//        case ProcessorEvent(eventType, processor) if eventType == ProcessorEventType.PROCESSOR_LOSS =>
+//          logDebug(s"processor ${processor.id} lost, kill job ${processor.sessionId}")
+//          killJob(processor.sessionId, isTimeout = false)
+//      }
+//    }).start()
+//  })
 
-  def startSessionWatcher(): Unit = {
-    /*
-    update session status according to processor status
-     */
-    new Thread(
-      () => {
-        while (true) {
-          val sessions = smDao.getSessionMains(ErSessionMeta(status = SessionStatus.ACTIVE))
-          sessions.foreach { session =>
-            // logDebug(s"watch active session: ${session.id}")
-            val sessionProcessors = smDao.getSession(session.id).processors
-            if (sessionProcessors.forall(_.processorType == JobProcessorTypes.DeepSpeed.toString)) {
-              if (sessionProcessors.exists(_.status == ProcessorStatus.ERROR)) {
-                if (sessionProcessors.exists(p => p.status == ProcessorStatus.RUNNING || p.status == ProcessorStatus.NEW)) {
-                  try {
-                    killJob(session.id, isTimeout = false)
-                  } catch {
-                    case e: ErSessionException =>
-                      logError(s"failed to kill session ${session.id}", e)
-                  }
-                }
 
-                smDao.updateSessionMain(session.copy(status = SessionStatus.ERROR) ,afterCall=defaultSessionCallback)
-
-                logDebug(s"found error processor belongs to session ${session.id}: " +
-                  s"${sessionProcessors.filter(_.status == ProcessorStatus.ERROR).mkString("Array(", ", ", ")")}, " +
-                  s"update session status to `Error`")
-              } else if (sessionProcessors.forall(_.status == ProcessorStatus.FINISHED)) {
-                smDao.updateSessionMain(session.copy(status = SessionStatus.FINISHED),afterCall=defaultSessionCallback)
-                logDebug(s"found all processor belongs to session ${session.id} finished, " +
-                  s"update session status to `Finished`")
-              }
-            }
-          }
-          Thread.sleep(1000)
-        }
-      }
-    ).start()
-  }
 
   def handleJobKill(killJobRequest: KillJobRequest): KillJobResponse = {
     val sessionId = killJobRequest.sessionId
@@ -190,12 +152,14 @@ object JobServiceHandler extends Logging {
         status = ResourceStatus.PRE_ALLOCATED))
     ))
     val resourceApplication = ResourceApplication(
+
       processors = prepareProcessors,
       needDispatch = true,
       resourceExhaustedStrategy = ResourceExhaustedStrategy.WAITING,
       timeout = submitJobRequest.resourceOptions.timeoutSeconds,
-      resourceLatch = new CountDownLatch(1),
-      sessionId = sessionId)
+      sessionId = sessionId,
+      sessionName = JobProcessorTypes.DeepSpeed.toString
+    )
     ClusterResourceManager.submitResourceRequest(resourceApplication)
     var dispatchedProcessors = resourceApplication.getResult()
     logInfo(s"dispatchedProcessor: ${dispatchedProcessors.mkString("Array(", ", ", ")")}")
@@ -264,7 +228,7 @@ object JobServiceHandler extends Logging {
     }
   }
 
-  private def killJob(sessionId: String, isTimeout: Boolean): Unit = {
+  def killJob(sessionId: String, isTimeout: Boolean): Unit = {
     logInfo(s"killJob $sessionId")
     if (!smDao.existSession(sessionId)) {
       return

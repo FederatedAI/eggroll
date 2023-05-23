@@ -4,9 +4,13 @@ import com.webank.eggroll.core.client.NodeManagerClient
 import com.webank.eggroll.core.constant.ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_NODE_HEARTBEAT_EXPIRED_COUNT
 import com.webank.eggroll.core.constant.NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL
 import com.webank.eggroll.core.constant.ProcessorEventType.PROCESSOR_LOSS
-import com.webank.eggroll.core.constant.{ProcessorEventType, ProcessorStatus, ProcessorTypes, ServerNodeStatus}
-import com.webank.eggroll.core.meta.{ErEndpoint, ErNodeHeartbeat, ErProcessor, ErResource, ErServerNode}
+import com.webank.eggroll.core.constant.{ProcessorEventType, ProcessorStatus, ProcessorTypes, ServerNodeStatus, SessionConfKeys, SessionStatus}
+import com.webank.eggroll.core.containers.JobProcessorTypes
+import com.webank.eggroll.core.deepspeed.job.JobServiceHandler.{killJob, logDebug, logError, smDao}
+import com.webank.eggroll.core.error.ErSessionException
+import com.webank.eggroll.core.meta.{ErEndpoint, ErNodeHeartbeat, ErProcessor, ErResource, ErServerNode, ErSessionMeta}
 import com.webank.eggroll.core.resourcemanager.ClusterManagerService.{createNewNode, nodeHeartbeatMap, queryNodeByEndPoint, queryNodeById, updateNode}
+import com.webank.eggroll.core.resourcemanager.ProcessorStateMachine.defaultSessionCallback
 import com.webank.eggroll.core.resourcemanager.SessionManagerService.{getSessionMain, killSession, logDebug}
 import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator
 import com.webank.eggroll.core.util.Logging
@@ -20,28 +24,29 @@ trait ClusterManager {
         }
 
 object ClusterManagerService extends Logging {
-  var  processorEventCallbackRegister = mutable.Map[String,ProcessorEventCallback]()
+  //var  processorEventCallbackRegister = mutable.Map[String,ProcessorEventCallback]()
   var  nodeHeartbeatMap = mutable.Map[Long,ErNodeHeartbeat]()
   lazy val serverNodeCrudOperator = new ServerNodeCrudOperator()
+  private val smDao = new SessionMetaDao
 
-  registerProcessorCallback(ProcessorTypes.EGG_PAIR, new ProcessorEventCallback() {
-    override def callback(event: ProcessorEvent): Unit = {
-      event.eventType match{
-        case  ProcessorEventType.PROCESSOR_LOSS =>
-          new Thread(()=>{
-            logDebug(s"fire PROCESSOR_LOSS event, prepare to kill session ${event.erProcessor}")
-            var  erSessionMeta = getSessionMain(event.erProcessor.sessionId)
-            killSession(erSessionMeta)
-          }).start()
-      }
-    }
-  })
+//  registerProcessorCallback(ProcessorTypes.EGG_PAIR, new ProcessorEventCallback() {
+//    override def callback(event: ProcessorEvent): Unit = {
+//      event.eventType match{
+//        case  ProcessorEventType.PROCESSOR_LOSS =>
+//          new Thread(()=>{
+//            logDebug(s"fire PROCESSOR_LOSS event, prepare to kill session ${event.erProcessor}")
+//            var  erSessionMeta = getSessionMain(event.erProcessor.sessionId)
+//            killSession(erSessionMeta)
+//          }).start()
+//      }
+//    }
+//  })
 
 
 
-  def  registerProcessorCallback(processType:String,sessionEventCallback: ProcessorEventCallback):Unit={
-    processorEventCallbackRegister.put(processType,sessionEventCallback)
-  }
+//  def  registerProcessorCallback(processType:String,sessionEventCallback: ProcessorEventCallback):Unit={
+//    processorEventCallbackRegister.put(processType,sessionEventCallback)
+//  }
 
   private def checkNodeProcess(nodeManagerEndpoint: ErEndpoint, processor: ErProcessor): ErProcessor = {
     var result: ErProcessor = null
@@ -69,6 +74,7 @@ object ClusterManagerService extends Logging {
             var nodeManagerClient = new NodeManagerClient(serverNode.endpoint)
             e._2.par.foreach(processor => {
               try {
+
                 var result = nodeManagerClient.checkNodeProcess(processor)
                 if (result==null||result.status == ProcessorStatus.KILLED) {
                   Thread.sleep(10000)
@@ -80,12 +86,12 @@ object ClusterManagerService extends Logging {
                       //  var processors = Array(processor.copy(status = ProcessorStatus.KILLED))
                         //ClusterResourceManager.returnResource(processors = processors, beforeCall = SessionManagerService.beforeCall)
 
-                        ProcessorStateMachine.changeStatus(processor,desStateParam = ProcessorStatus.KILLED)
-                        processorEventCallbackRegister.get(processor.processorType).getOrElse(new ProcessorEventCallback {
-                          override def callback(event: ProcessorEvent): Unit = {
-                            logInfo(s"processor type ${processor.processorType} can not find callback")
-                          }
-                        }).callback(ProcessorEvent(eventType = PROCESSOR_LOSS, erProcessor = processor))
+                        ProcessorStateMachine.changeStatus(processor,desStateParam = ProcessorStatus.ERROR)
+//                        processorEventCallbackRegister.get(processor.processorType).getOrElse(new ProcessorEventCallback {
+//                          override def callback(event: ProcessorEvent): Unit = {
+//                            logInfo(s"processor type ${processor.processorType} can not find callback")
+//                          }
+//                        }).callback(ProcessorEvent(eventType = PROCESSOR_LOSS, erProcessor = processor))
                       }
                     }
                   }
@@ -106,6 +112,127 @@ object ClusterManagerService extends Logging {
     }
   }
     )
+
+  def startSessionTimeOutWatcher():Unit = {
+    new Thread(
+      () => {
+        while (true) {
+
+          var current = System.currentTimeMillis()
+          val sessions = smDao.getSessionMains(ErSessionMeta(status = SessionStatus.NEW))
+          sessions.filter(s=>{s.createTime.getTime < current-2*SessionConfKeys.EGGROLL_SESSION_START_TIMEOUT_MS.get().toLong}).foreach(
+            session=>  {
+              val sessionProcessors = smDao.getSession(session.id).processors
+              if (sessionProcessors.forall(_.processorType == JobProcessorTypes.DeepSpeed.toString)) {
+                try {
+                  killJob(session.id, isTimeout = false)
+                } catch {
+                  case e: ErSessionException =>
+                    logError(s"failed to kill session ${session.id}", e)
+                }
+              }else{
+                try {
+                  SessionManagerService.killSession(session)
+                } catch {
+                  case e: ErSessionException =>
+                    logError(s"failed to kill session ${session.id}", e)
+                }
+              }
+            }
+          )
+          Thread.sleep(1000)
+        }
+      }
+    ).start()
+  }
+
+
+  private  def checkAndHandleDeepspeedOutTimeSession(session: ErSessionMeta,sessionProcessors:  Array[ErProcessor] ): Unit={
+    var current = System.currentTimeMillis()
+    if(session.createTime.getTime < current-2*SessionConfKeys.EGGROLL_SESSION_START_TIMEOUT_MS.get().toLong){
+      killJob(session.id, isTimeout = true)
+    }
+  }
+
+  private  def checkAndHandleEggpairOutTimeSession(session: ErSessionMeta,sessionProcessors:  Array[ErProcessor] ): Unit={
+    var current = System.currentTimeMillis()
+    if(session.createTime.getTime < current-2*SessionConfKeys.EGGROLL_SESSION_START_TIMEOUT_MS.get().toLong){
+      //sessionMeta: ErSessionMeta, afterState: String
+      killSession(session,SessionStatus.KILLED)
+    }
+  }
+
+
+  private  def checkAndHandleEggpairActiveSession (session: ErSessionMeta,sessionProcessors:  Array[ErProcessor] ): Unit={
+
+    if (sessionProcessors.exists(p=>{p.status == ProcessorStatus.ERROR||p.status == ProcessorStatus.KILLED})) {
+      logInfo(s"session watcher kill session ${session}");
+      SessionManagerService.killSession(session)
+    }
+  }
+
+
+  private  def checkAndHandleDeepspeedActiveSession(session: ErSessionMeta,sessionProcessors:  Array[ErProcessor] ): Unit ={
+
+        if (sessionProcessors.exists(_.status == ProcessorStatus.ERROR)) {
+          if (sessionProcessors.exists(p => p.status == ProcessorStatus.RUNNING || p.status == ProcessorStatus.NEW)) {
+            try {
+              killJob(session.id, isTimeout = false)
+            } catch {
+              case e: ErSessionException =>
+                logError(s"failed to kill session ${session.id}", e)
+            }
+          }
+
+          smDao.updateSessionMain(session.copy(status = SessionStatus.ERROR) ,afterCall=defaultSessionCallback)
+          logDebug(s"found error processor belongs to session ${session.id}: " +
+            s"${sessionProcessors.filter(_.status == ProcessorStatus.ERROR).mkString("Array(", ", ", ")")}, " +
+            s"update session status to `Error`")
+        } else if (sessionProcessors.forall(_.status == ProcessorStatus.FINISHED)) {
+          smDao.updateSessionMain(session.copy(status = SessionStatus.FINISHED),afterCall=defaultSessionCallback)
+          logDebug(s"found all processor belongs to session ${session.id} finished, " +
+            s"update session status to `Finished`")
+        }
+  }
+
+  def startSessionWatcher(): Unit = {
+    /*
+    update session status according to processor status
+     */
+    new Thread(
+      () => {
+        while (true) {
+          val sessions = smDao.getSessionMainsByStatus(Array(SessionStatus.ACTIVE,SessionStatus.NEW))
+          sessions.foreach { session =>
+
+             logDebug(s"watch active session: ${session.id}")
+            val sessionProcessors = smDao.getSession(session.id).processors
+
+            session.name match {
+              case "DeepSpeed" =>
+                session.status match {
+                  case SessionStatus.ACTIVE =>
+                    checkAndHandleDeepspeedActiveSession(session,sessionProcessors)
+                  case SessionStatus.NEW =>
+                    checkAndHandleDeepspeedOutTimeSession(session,sessionProcessors)
+                  case _ =>
+                }
+              case _ =>
+                session.status match {
+                  case SessionStatus.ACTIVE =>
+                    checkAndHandleEggpairActiveSession(session,sessionProcessors)
+                  case SessionStatus.NEW =>
+                    checkAndHandleEggpairOutTimeSession(session,sessionProcessors)
+                  case _ =>
+                }
+            }
+          }
+          Thread.sleep(1000)
+        }
+      }
+    ).start()
+  }
+
 
 
   val  nodeHeartbeatChecker =  new Thread(()=>{
