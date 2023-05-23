@@ -3,14 +3,14 @@ package com.webank.eggroll.core.deepspeed.job
 import com.webank.eggroll.core.client.NodeManagerClient
 import com.webank.eggroll.core.constant._
 import com.webank.eggroll.core.containers.JobProcessorTypes
-import com.webank.eggroll.core.containers.meta.{ContainerContent, DownloadContainersRequest, KillContainersRequest, StartContainersRequest}
+import com.webank.eggroll.core.containers.meta._
 import com.webank.eggroll.core.deepspeed.job.meta._
 import com.webank.eggroll.core.error.ErSessionException
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.resourcemanager.ClusterResourceManager.ResourceApplication
 import com.webank.eggroll.core.resourcemanager.ProcessorStateMachine.defaultSessionCallback
 import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator
-import com.webank.eggroll.core.resourcemanager.{ClusterManagerService, ClusterResourceManager, ProcessorEvent, ProcessorStateMachine, SessionMetaDao}
+import com.webank.eggroll.core.resourcemanager.{ClusterManagerService, ClusterResourceManager, ProcessorEvent, SessionMetaDao}
 import com.webank.eggroll.core.util.Logging
 import org.apache.commons.lang3.StringUtils
 
@@ -183,22 +183,36 @@ object JobServiceHandler extends Logging {
       smDao.registerRanks(sessionId, ranks.map(_._1), ranks.map(_._2), ranks.map(_._3), ranks.map(_._4))
 
       // start containers
-      dispatchedProcessors.groupBy(_._2).par.foreach { case (node, nodeAndProcessors) =>
+      val groupedProcessors = dispatchedProcessors.groupBy(_._2)
+      val crossSize = groupedProcessors.size
+
+      groupedProcessors.zipWithIndex.par.foreach { case ((node, nodeAndProcessors), crossRank) =>
         val processors = nodeAndProcessors.map(_._1.copy(sessionId = submitJobRequest.sessionId))
         val nodeManagerClient = new NodeManagerClient(node.endpoint)
         // ClusterResourceManager.preAllocateResource(processors)
+
+        val localSize = processors.length
         nodeManagerClient.startJobContainers(
-          StartContainersRequest(
-            id = submitJobRequest.sessionId,
+          StartDeepspeedContainerRequest(
+            sessionId = sessionId,
             name = submitJobRequest.name,
-            jobType = submitJobRequest.jobType,
-            worldSize = submitJobRequest.worldSize,
             commandArguments = submitJobRequest.commandArguments,
             environmentVariables = submitJobRequest.environmentVariables,
             files = submitJobRequest.files,
             zippedFiles = submitJobRequest.zippedFiles,
-            options = submitJobRequest.options,
-            processors = processors))
+            deepspeedConfigs = processors.map { p =>
+              p.id -> DeepspeedContainerConfig(
+                cudaVisibleDevices = p.options.getOrDefault("cudaVisibleDevices", "0,1").split(",").map(_.toInt),
+                worldSize = worldSize,
+                crossRank = crossRank,
+                crossSize = crossSize,
+                localSize = localSize,
+                localRank = p.options.get("localRank").toInt,
+                rank = p.options.get("globalRank").toInt,
+                storePrefix = sessionId
+              )
+            }(collection.breakOut),
+            options = submitJobRequest.options))
       }
 
       // wait for containers to start, throw exception if timeout
@@ -228,7 +242,7 @@ object JobServiceHandler extends Logging {
     }
   }
 
-  def killJob(sessionId: String, isTimeout: Boolean): Unit = {
+  private def killJob(sessionId: String, isTimeout: Boolean): Unit = {
     logInfo(s"killJob $sessionId")
     if (!smDao.existSession(sessionId)) {
       return

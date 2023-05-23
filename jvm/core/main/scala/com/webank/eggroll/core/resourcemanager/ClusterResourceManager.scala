@@ -253,7 +253,7 @@ object ClusterResourceManager extends Logging{
                      options = Map(
                        "globalRank" -> globalRank.toString,
                        "localRank" -> localRank.toString,
-                       "CUDA_VISIBLE_DEVICE" -> nextGpuIndex.toString
+                       "cudaVisibleDevices" -> nextGpuIndex.toString
                      ).asJava)
 
        if (nodeToProcessors.contains(node)) {

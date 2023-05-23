@@ -3,11 +3,11 @@ package com.webank.eggroll.core.containers
 import com.webank.eggroll.core.client.ClusterManagerClient
 import com.webank.eggroll.core.constant.{NodeManagerConfKeys, ProcessorStatus}
 import com.webank.eggroll.core.containers.ContainersServiceHandler.{CompressMethod, zip}
-import com.webank.eggroll.core.containers.container.{ContainersManager, DeepSpeedContainer}
+import com.webank.eggroll.core.containers.container.{ContainersManager, DeepSpeedContainer, WrapedDeepspeedContainerConfig}
 import com.webank.eggroll.core.containers.meta._
 import com.webank.eggroll.core.meta.ErProcessor
 import com.webank.eggroll.core.resourcemanager.NodeManagerMeta
-import com.webank.eggroll.core.session.{RuntimeErConf, StaticErConf}
+import com.webank.eggroll.core.session.StaticErConf
 
 import java.io.{ByteArrayOutputStream, FileInputStream}
 import java.nio.file.Files
@@ -16,18 +16,33 @@ import scala.concurrent.ExecutionContext
 import scala.reflect.io.Path
 
 
-class ContainersServiceHandler(implicit ec: ExecutionContext) {
+class ContainersServiceHandler(implicit ec: ExecutionContext,
+                               providedContainersDataDir: Option[Path] = None) {
+
+  // containersDataDir is essential for containers to work
+  // we assume that all basic data related to containers are stored in this dir, including:
+  // 1. container `binaries`
+  // 2. container logs
+  // 3. container generated data and models
+  // 4. others that are not listed here (TODO: add them here)
+  // we expose this dir as parameter of this class for testing purpose,
+  // but in production, we should always use the default value from config
   private lazy val containersDataDir: Path = {
-    val pathStr = StaticErConf.getString(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_CONTAINERS_DATA_DIR)
-    if (pathStr == null || pathStr.isEmpty) {
-      throw new IllegalArgumentException("container data dir not set")
+    providedContainersDataDir.getOrElse {
+      var pathStr = StaticErConf.getString(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_CONTAINERS_DATA_DIR)
+
+      if (pathStr == null || pathStr.isEmpty) {
+        throw new IllegalArgumentException("container data dir not set")
+      }
+      val path = Path(pathStr)
+      if (!path.exists) {
+        path.createDirectory()
+      }
+      path
     }
-    val path = Path(pathStr)
-    if (!path.exists) {
-      path.createDirectory()
-    }
-    path
   }
+
+
   var client = new ClusterManagerClient()
   private val containersManager = ContainersManager.builder()
     // TODO: status callbacks here
@@ -62,41 +77,33 @@ class ContainersServiceHandler(implicit ec: ExecutionContext) {
     })
     .build
 
-  def startJobContainers(submitJobMeta: StartContainersRequest): StartContainersResponse = {
-    println (s"=================startJobContainers ${submitJobMeta}")
-    JobProcessorTypes.fromString(submitJobMeta.jobType) match {
-      case Some(jobType) =>
-        val runtimeConf = new RuntimeErConf(submitJobMeta)
-        submitJobMeta.processors.par.foreach { p =>
-          val containerId = (p.processorType, p.id, p.serverNodeId).hashCode()
-          val container = jobType match {
-            case JobProcessorTypes.DeepSpeed =>
-              val localRank = p.options.getOrDefault("localRank", "-1").toInt
-              val globalRank = p.options.getOrDefault("globalRank", "-1").toInt
-              if (localRank == -1 || globalRank == -1) {
-                throw new IllegalArgumentException(s"localRank or globalRank not set: ${p.options}")
-              }
-              new DeepSpeedContainer(
-                jobId = submitJobMeta.id,
-                processorId = p.id,
-                conf = runtimeConf,
-                localRank = localRank,
-                globalRank = globalRank,
-                worldSize = submitJobMeta.worldSize,
-                commandArguments = submitJobMeta.commandArguments,
-                environmentVariables = submitJobMeta.environmentVariables,
-                files = submitJobMeta.files,
-                zippedFiles = submitJobMeta.zippedFiles,
-                containerId = containerId.toString
-              )
-          }
-          containersManager.addContainer(containerId, container)
-          containersManager.startContainer(containerId)
-        }
-        StartContainersResponse()
-      case None =>
-        throw new IllegalArgumentException(s"jobType not supported: '${submitJobMeta.jobType}'")
+  def startJobContainers(startContainersRequest: StartContainersRequest): StartContainersResponse = {
+    startContainersRequest.jobType match {
+      case Some(JobProcessorTypes.DeepSpeed) => startDeepspeedContainers(startContainersRequest)
+      case _ => throw new IllegalArgumentException(s"unsupported job type: ${startContainersRequest.jobType}")
     }
+  }
+
+  private def startDeepspeedContainers(startDeepspeedContainerRequest: StartDeepspeedContainerRequest): StartContainersResponse = {
+    val sessionId = startDeepspeedContainerRequest.sessionId
+    startDeepspeedContainerRequest.deepspeedConfigs.par.foreach { case (containerId, deepspeedConfig) =>
+      val container = {
+        new DeepSpeedContainer(
+          sessionId = sessionId,
+          processorId = containerId,
+          deepspeedContainerConfig = new WrapedDeepspeedContainerConfig(deepspeedConfig),
+          containerWorkspace = getContainerWorkspace(containerId),
+          commandArguments = startDeepspeedContainerRequest.commandArguments,
+          environmentVariables = startDeepspeedContainerRequest.environmentVariables,
+          files = startDeepspeedContainerRequest.files,
+          zippedFiles = startDeepspeedContainerRequest.zippedFiles,
+          options = startDeepspeedContainerRequest.options
+        )
+      }
+      containersManager.addContainer(containerId, container)
+      containersManager.startContainer(containerId)
+    }
+    StartContainersResponse()
   }
 
 
