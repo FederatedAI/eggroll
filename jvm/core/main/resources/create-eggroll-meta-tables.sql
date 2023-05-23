@@ -147,6 +147,7 @@ CREATE TABLE IF NOT EXISTS `processor_resource`
     `server_node_id` INT      NOT NULL,
     `resource_type`  VARCHAR(255),
     `allocated`      BIGINT   NOT NULL default 0,
+    `extention`      VARCHAR(512),
     `status`         VARCHAR(255),
     `pid`            INT      NOT NULL DEFAULT -1,
     `created_at`     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -166,6 +167,7 @@ CREATE TABLE IF NOT EXISTS `node_resource`
     `used`           BIGINT   NOT NULL default 0,
     `pre_allocated`  BIGINT   NOT NULL default 0,
     `allocated`      BIGINT   NOT NULL DEFAULT 0,
+    `extention`      VARCHAR(512),
     `status`         VARCHAR(255),
     `created_at`     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at`     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP

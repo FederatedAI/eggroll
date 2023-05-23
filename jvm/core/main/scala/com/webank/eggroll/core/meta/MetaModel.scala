@@ -26,6 +26,7 @@ import com.webank.eggroll.core.serdes.{BaseSerializable, PbMessageDeserializer, 
 import com.webank.eggroll.core.util.TimeUtils
 import org.apache.commons.lang3.StringUtils
 
+import java.sql.Timestamp
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import scala.collection.JavaConverters._
@@ -133,6 +134,7 @@ case class ErSessionMeta(id: String = StringConstants.EMPTY,
                          activeProcCount: Int = 0,
                          tag: String = StringConstants.EMPTY,
                          processors: Array[ErProcessor] = Array(),
+                         createTime:Timestamp = null,
                          options: Map[String, String] = Map()) extends MetaRpcMessage {
 }
 

@@ -1,9 +1,9 @@
 package com.webank.eggroll.core.resourcemanager
 
 import com.webank.eggroll.core.command.CommandClient
-import com.webank.eggroll.core.constant.{CoreConfKeys, ProcessorStatus, SessionConfKeys}
+import com.webank.eggroll.core.constant.{CoreConfKeys, ProcessorStatus, ResourceExhaustedStrategy, SessionConfKeys}
 import com.webank.eggroll.core.containers.JobProcessorTypes
-import com.webank.eggroll.core.deepspeed.job.meta.SubmitJobRequest
+import com.webank.eggroll.core.deepspeed.job.meta.{ResourceOptions, SubmitJobRequest}
 import com.webank.eggroll.core.meta.{ErEndpoint, ErProcessor, ErSessionMeta}
 import com.webank.eggroll.core.session.StaticErConf
 
@@ -32,7 +32,7 @@ object TestAssets {
   var submitJobMeta= SubmitJobRequest(sessionId="test_deepspeed"+System.currentTimeMillis(),
     jobType = JobProcessorTypes.DeepSpeed.toString,
     worldSize=2,
-
+  resourceOptions  = ResourceOptions(timeoutSeconds=3000,resourceExhaustedStrategy=ResourceExhaustedStrategy.WAITING),
     options = Map("eggroll.container.deepspeed.python.exec"->"python",
       "eggroll.container.deepspeed.script.path"->"/data/projects/myeggroll/python/eggroll/mock.py"))
 
