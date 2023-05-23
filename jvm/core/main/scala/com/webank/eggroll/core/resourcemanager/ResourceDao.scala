@@ -233,6 +233,31 @@ class SessionMetaDao {
     }, "select * from session_main where session_id = ?", sessionId)
   }
 
+
+  def getSessionMainsByStatus(status :Array[String]) : Array[ErSessionMeta] = {
+    var sql = "select * from session_main where  status in "
+    val whereFragments = ArrayBuffer[String]()
+    val args = ArrayBuffer[String]()
+    var  statusString = status.mkString("('","','","')")
+
+    sql += statusString
+
+    dbc.query(rs => {
+      val result = ArrayBuffer[ErSessionMeta]()
+      while (rs.next()) {
+        result += ErSessionMeta(
+          id = rs.getString("session_id"),
+          name = rs.getString("name"),
+          totalProcCount = rs.getInt("total_proc_count"),
+          activeProcCount = rs.getInt("active_proc_count"),
+          status = rs.getString("status"),
+          createTime= rs.getTimestamp("created_at"),
+          tag = rs.getString("tag"))
+      }
+      result.toArray
+    }, sql, args: _*)
+  }
+
   def getSessionMains(sessionMeta: ErSessionMeta): Array[ErSessionMeta] = synchronized {
     var sql = "select * from session_main where "
     val whereFragments = ArrayBuffer[String]()
@@ -258,6 +283,7 @@ class SessionMetaDao {
           totalProcCount = rs.getInt("total_proc_count"),
           activeProcCount = rs.getInt("active_proc_count"),
           status = rs.getString("status"),
+          createTime= rs.getTimestamp("created_at"),
           tag = rs.getString("tag"))
       }
       result.toArray

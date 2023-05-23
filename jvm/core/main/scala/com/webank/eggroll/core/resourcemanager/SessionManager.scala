@@ -132,13 +132,7 @@ object SessionManagerService extends Logging {
     })
 
     // todo:1: update selective
-    smDao.updateSessionMain(dbSessionMeta.copy(activeProcCount = 0, status = afterState),afterCall=(conn,sessionMeta)=>{
-        sessionMeta.processors.foreach(p=>{
-          ProcessorStateMachine.changeStatus(p,desStateParam =afterState,connection = conn )
-        })
-
-    }
-    )
+    smDao.updateSessionMain(dbSessionMeta.copy(activeProcCount = 0, status = afterState),afterCall=ProcessorStateMachine.defaultSessionCallback)
     var  resultSession = getSession(dbSessionMeta)
     //ProcessorStateMachine.changeStatus()
 
