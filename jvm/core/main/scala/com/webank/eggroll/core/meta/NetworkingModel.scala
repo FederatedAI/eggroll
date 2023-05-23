@@ -29,6 +29,7 @@ import java.sql.Timestamp
 import java.util.Date
 import scala.beans.BeanProperty
 import scala.collection.JavaConverters._
+import scala.collection.mutable.ArrayBuffer
 
 trait NetworkingRpcMessage extends RpcMessage {
   override def rpcMessageType(): String = "Networking"
@@ -54,9 +55,12 @@ case class ErResource(
                       used: Long = -1,
                       allocated: Long = -1,
                       preAllocated:Long = -1,
-                      status: String = ResourceStatus.AVAILABLE) extends NetworkingRpcMessage{
+                      extention:String =  StringConstants.EMPTY,
+                      status: String = ResourceStatus.AVAILABLE,
+                      extentionCache:ArrayBuffer[String] = new ArrayBuffer[String]()
+                     ) extends NetworkingRpcMessage{
   override def  toString:String ={
-    s"<ErResource(resourceType=${resourceType},status=${status}, total=${total}, used=${used} ,allocated=${allocated})>"}
+    s"<ErResource(resourceType=${resourceType},status=${status}, total=${total}, used=${used} ,allocated=${allocated} ,extention= ${extention})>"}
 
   def   getUnAllocatedResource():Long={
     var remain :Long = total;
