@@ -151,14 +151,9 @@ class SessionManagerService extends SessionManager with Logging {
 
     logInfo(s"receive heartbeat processor ${proc.id}  ${proc.status} ")
       proc.status match {
-
       case status if(status==ProcessorStatus.STOPPED||status==ProcessorStatus.KILLED||status==ProcessorStatus.ERROR)=>
           logInfo(s"processor ${proc.id}    prepare to return resource")
            ProcessorStateMachine.changeStatus(proc,desStateParam=status)
-
-          // ClusterResourceManager.returnResource(beforeCall= beforeCall,processors =Array(proc))
-
-
       case status if (status==ProcessorStatus.RUNNING )=>
           logInfo("receive heartbeat running ,")
         ProcessorStateMachine.changeStatus(proc,desStateParam=status)
@@ -175,7 +170,7 @@ class SessionManagerService extends SessionManager with Logging {
   }
 
 
-  def getOrCreateSessionWithResourceDipatch(sessionMeta: ErSessionMeta): ErSessionMeta ={
+  def getOrCreateSessionWithResourceDispatch(sessionMeta: ErSessionMeta): ErSessionMeta ={
     logInfo(s"getOrCreateSession ${sessionMeta}")
     val sessionId = sessionMeta.id
     if (smDao.existSession(sessionId)) {
@@ -367,7 +362,7 @@ class SessionManagerService extends SessionManager with Logging {
    */
   def getOrCreateSession(sessionMeta: ErSessionMeta): ErSessionMeta = {
     EGGROLL_SESSION_USE_RESOURCE_DISPATCH.get() match {
-      case  "true" => getOrCreateSessionWithResourceDipatch(sessionMeta)
+      case  "true" => getOrCreateSessionWithResourceDispatch(sessionMeta)
       case  "false" => getOrCreateSessionOld(sessionMeta)
       case  _ => null
     }
