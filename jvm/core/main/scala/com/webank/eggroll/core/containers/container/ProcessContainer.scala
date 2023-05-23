@@ -9,7 +9,6 @@ class ProcessContainer(
                         stdOutFile: Option[Path] = None,
                         stdErrFile: Option[Path] = None,
                         workingDirectoryPreparer: Option[WorkingDirectoryPreparer] = None,
-                        containerId: String,
                         processorId: Long
                       ) extends ContainerTrait {
 
@@ -73,10 +72,6 @@ class ProcessContainer(
 
   override def toString: String = {
     s"ProcessContainer(command=$command, cwd=$cwd, extraEnv=$extraEnv, stdOutFile=$stdOutFile, stdErrFile=$stdErrFile, workingDirectoryPreparer=$workingDirectoryPreparer)"
-  }
-
-  override def getContainerId(): String = {
-    containerId
   }
 
   override def getProcessorId(): Long = {
