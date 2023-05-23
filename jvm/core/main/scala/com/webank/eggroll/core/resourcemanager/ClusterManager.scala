@@ -6,6 +6,7 @@ import com.webank.eggroll.core.constant.NodeManagerConfKeys.CONFKEY_NODE_MANAGER
 import com.webank.eggroll.core.constant.ProcessorEventType.PROCESSOR_LOSS
 import com.webank.eggroll.core.constant.{ProcessorEventType, ProcessorStatus, ProcessorTypes, ServerNodeStatus, SessionConfKeys, SessionStatus}
 import com.webank.eggroll.core.containers.JobProcessorTypes
+import com.webank.eggroll.core.deepspeed.job.JobServiceHandler
 import com.webank.eggroll.core.deepspeed.job.JobServiceHandler.{killJob, logDebug, logError, smDao}
 import com.webank.eggroll.core.error.ErSessionException
 import com.webank.eggroll.core.meta.{ErEndpoint, ErNodeHeartbeat, ErProcessor, ErResource, ErServerNode, ErSessionMeta}
@@ -113,44 +114,16 @@ object ClusterManagerService extends Logging {
   }
     )
 
-  def startSessionTimeOutWatcher():Unit = {
-    new Thread(
-      () => {
-        while (true) {
 
-          var current = System.currentTimeMillis()
-          val sessions = smDao.getSessionMains(ErSessionMeta(status = SessionStatus.NEW))
-          sessions.filter(s=>{s.createTime.getTime < current-2*SessionConfKeys.EGGROLL_SESSION_START_TIMEOUT_MS.get().toLong}).foreach(
-            session=>  {
-              val sessionProcessors = smDao.getSession(session.id).processors
-              if (sessionProcessors.forall(_.processorType == JobProcessorTypes.DeepSpeed.toString)) {
-                try {
-                  killJob(session.id, isTimeout = false)
-                } catch {
-                  case e: ErSessionException =>
-                    logError(s"failed to kill session ${session.id}", e)
-                }
-              }else{
-                try {
-                  SessionManagerService.killSession(session)
-                } catch {
-                  case e: ErSessionException =>
-                    logError(s"failed to kill session ${session.id}", e)
-                }
-              }
-            }
-          )
-          Thread.sleep(1000)
-        }
-      }
-    ).start()
-  }
 
 
   private  def checkAndHandleDeepspeedOutTimeSession(session: ErSessionMeta,sessionProcessors:  Array[ErProcessor] ): Unit={
     var current = System.currentTimeMillis()
-    if(session.createTime.getTime < current-2*SessionConfKeys.EGGROLL_SESSION_START_TIMEOUT_MS.get().toLong){
-      killJob(session.id, isTimeout = true)
+    var  maxInterval = 2*SessionConfKeys.EGGROLL_SESSION_START_TIMEOUT_MS.get().toLong
+    var  interval = current-session.createTime.getTime
+    logDebug(s"watch deepspeed new session: ${session.id} ${interval}  ${maxInterval}")
+    if(interval>maxInterval){
+      JobServiceHandler.killJob(session.id, isTimeout = true)
     }
   }
 
@@ -158,7 +131,7 @@ object ClusterManagerService extends Logging {
     var current = System.currentTimeMillis()
     if(session.createTime.getTime < current-2*SessionConfKeys.EGGROLL_SESSION_START_TIMEOUT_MS.get().toLong){
       //sessionMeta: ErSessionMeta, afterState: String
-      killSession(session,SessionStatus.KILLED)
+      SessionManagerService.killSession(session,SessionStatus.KILLED)
     }
   }
 
@@ -184,14 +157,14 @@ object ClusterManagerService extends Logging {
             }
           }
 
-          smDao.updateSessionMain(session.copy(status = SessionStatus.ERROR) ,afterCall=defaultSessionCallback)
-          logDebug(s"found error processor belongs to session ${session.id}: " +
-            s"${sessionProcessors.filter(_.status == ProcessorStatus.ERROR).mkString("Array(", ", ", ")")}, " +
-            s"update session status to `Error`")
-        } else if (sessionProcessors.forall(_.status == ProcessorStatus.FINISHED)) {
-          smDao.updateSessionMain(session.copy(status = SessionStatus.FINISHED),afterCall=defaultSessionCallback)
-          logDebug(s"found all processor belongs to session ${session.id} finished, " +
-            s"update session status to `Finished`")
+//          smDao.updateSessionMain(session.copy(status = SessionStatus.ERROR) ,afterCall=defaultSessionCallback)
+//          logDebug(s"found error processor belongs to session ${session.id}: " +
+//            s"${sessionProcessors.filter(_.status == ProcessorStatus.ERROR).mkString("Array(", ", ", ")")}, " +
+//            s"update session status to `Error`")
+//        } else if (sessionProcessors.forall(_.status == ProcessorStatus.FINISHED)) {
+//          smDao.updateSessionMain(session.copy(status = SessionStatus.FINISHED),afterCall=defaultSessionCallback)
+//          logDebug(s"found all processor belongs to session ${session.id} finished, " +
+//            s"update session status to `Finished`")
         }
   }
 
@@ -205,7 +178,7 @@ object ClusterManagerService extends Logging {
           val sessions = smDao.getSessionMainsByStatus(Array(SessionStatus.ACTIVE,SessionStatus.NEW))
           sessions.foreach { session =>
 
-             logDebug(s"watch active session: ${session.id}")
+
             val sessionProcessors = smDao.getSession(session.id).processors
 
             session.name match {
