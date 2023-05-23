@@ -90,15 +90,9 @@ object ProcessorStateMachine extends Logging{
     ClusterResourceManager.returnResource(beforeCall=  (conn,proc) =>smDao.updateProcessor(conn, proc),processors =Array(proc))
   }
 
-  def  updateAndUpdateResource(proc: ErProcessor): Unit = {
-  //  ClusterResourceManager.
-  }
-
   def  updateAndAllocateResource(proc:ErProcessor): Unit ={
     ClusterResourceManager.allocateResource(beforeCall=  (conn,proc) =>smDao.updateProcessor(conn, proc),processors =Array(proc))
   }
-
-
 
  def  defaultSessionCallback  (conn:Connection ,erSessionMeta: ErSessionMeta  ):Unit={
    if(EGGROLL_SESSION_USE_RESOURCE_DISPATCH.get()=="true"||erSessionMeta.name=="DeepSpeed") {
