@@ -25,29 +25,11 @@ trait ClusterManager {
         }
 
 object ClusterManagerService extends Logging {
-  //var  processorEventCallbackRegister = mutable.Map[String,ProcessorEventCallback]()
+
   var  nodeHeartbeatMap = mutable.Map[Long,ErNodeHeartbeat]()
   lazy val serverNodeCrudOperator = new ServerNodeCrudOperator()
   private val smDao = new SessionMetaDao
 
-//  registerProcessorCallback(ProcessorTypes.EGG_PAIR, new ProcessorEventCallback() {
-//    override def callback(event: ProcessorEvent): Unit = {
-//      event.eventType match{
-//        case  ProcessorEventType.PROCESSOR_LOSS =>
-//          new Thread(()=>{
-//            logDebug(s"fire PROCESSOR_LOSS event, prepare to kill session ${event.erProcessor}")
-//            var  erSessionMeta = getSessionMain(event.erProcessor.sessionId)
-//            killSession(erSessionMeta)
-//          }).start()
-//      }
-//    }
-//  })
-
-
-
-//  def  registerProcessorCallback(processType:String,sessionEventCallback: ProcessorEventCallback):Unit={
-//    processorEventCallbackRegister.put(processType,sessionEventCallback)
-//  }
 
   private def checkNodeProcess(nodeManagerEndpoint: ErEndpoint, processor: ErProcessor): ErProcessor = {
     var result: ErProcessor = null
