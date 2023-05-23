@@ -278,7 +278,7 @@ object JobServiceHandler extends Logging {
     }
   }
 
-  private def killJob(sessionId: String, isTimeout: Boolean): Unit = {
+  def killJob(sessionId: String, isTimeout: Boolean): Unit = {
     logInfo(s"killJob $sessionId")
     if (!smDao.existSession(sessionId)) {
       return
