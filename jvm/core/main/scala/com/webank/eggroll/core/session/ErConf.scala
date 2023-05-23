@@ -139,7 +139,7 @@ case class RuntimeErConf(prop: Properties = new Properties()) extends ErConf {
   def this(startContainersRequest: StartContainersRequest) {
     this(new Properties())
     startContainersRequest.options.foreach(t => conf.put(t._1, t._2))
-    conf.put(SessionConfKeys.CONFKEY_SESSION_ID, startContainersRequest.id)
+    conf.put(SessionConfKeys.CONFKEY_SESSION_ID, startContainersRequest.sessionId)
     conf.put(SessionConfKeys.CONFKEY_SESSION_NAME, startContainersRequest.name)
   }
 

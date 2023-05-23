@@ -12,10 +12,9 @@ from google.protobuf import symbol_database as _symbol_database
 _sym_db = _symbol_database.Default()
 
 
-import meta_pb2 as meta__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x10\x63ontainers.proto\x12\x1c\x63om.webank.eggroll.core.meta\x1a\nmeta.proto\"\x87\x06\n\x16StartContainersRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x10\n\x08job_type\x18\x03 \x01(\t\x12\x12\n\nworld_size\x18\x04 \x01(\r\x12\x19\n\x11\x63ommand_arguments\x18\x05 \x03(\t\x12m\n\x15\x65nvironment_variables\x18\x06 \x03(\x0b\x32N.com.webank.eggroll.core.meta.StartContainersRequest.EnvironmentVariablesEntry\x12N\n\x05\x66iles\x18\x07 \x03(\x0b\x32?.com.webank.eggroll.core.meta.StartContainersRequest.FilesEntry\x12[\n\x0czipped_files\x18\x08 \x03(\x0b\x32\x45.com.webank.eggroll.core.meta.StartContainersRequest.ZippedFilesEntry\x12R\n\x07options\x18\t \x03(\x0b\x32\x41.com.webank.eggroll.core.meta.StartContainersRequest.OptionsEntry\x12\x0e\n\x06status\x18\n \x01(\t\x12;\n\nprocessors\x18\x0b \x03(\x0b\x32\'.com.webank.eggroll.core.meta.Processor\x1a;\n\x19\x45nvironmentVariablesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\x1a,\n\nFilesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x0c:\x02\x38\x01\x1a\x32\n\x10ZippedFilesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x0c:\x02\x38\x01\x1a.\n\x0cOptionsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"-\n\x17StartContainersResponse\x12\x12\n\nsession_id\x18\x01 \x01(\t\"+\n\x15StopContainersRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\"\x18\n\x16StopContainersResponse\"+\n\x15KillContainersRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\"\x18\n\x16KillContainersResponse\"_\n\x19\x44ownloadContainersRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12\x15\n\rcontainer_ids\x18\x02 \x03(\x03\x12\x17\n\x0f\x63ompress_method\x18\x03 \x01(\t\"{\n\x1a\x44ownloadContainersResponse\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12I\n\x11\x63ontainer_content\x18\x02 \x03(\x0b\x32..com.webank.eggroll.core.meta.ContainerContent\"R\n\x10\x43ontainerContent\x12\x14\n\x0c\x63ontainer_id\x18\x01 \x01(\x03\x12\x0f\n\x07\x63ontent\x18\x02 \x01(\x0c\x12\x17\n\x0f\x63ompress_method\x18\x03 \x01(\tb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x10\x63ontainers.proto\x12\x1c\x63om.webank.eggroll.core.meta\"\xca\x06\n\x16StartContainersRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x10\n\x08job_type\x18\x03 \x01(\t\x12\x19\n\x11\x63ommand_arguments\x18\x04 \x03(\t\x12m\n\x15\x65nvironment_variables\x18\x05 \x03(\x0b\x32N.com.webank.eggroll.core.meta.StartContainersRequest.EnvironmentVariablesEntry\x12N\n\x05\x66iles\x18\x06 \x03(\x0b\x32?.com.webank.eggroll.core.meta.StartContainersRequest.FilesEntry\x12[\n\x0czipped_files\x18\x07 \x03(\x0b\x32\x45.com.webank.eggroll.core.meta.StartContainersRequest.ZippedFilesEntry\x12h\n\x13typed_extra_configs\x18\x08 \x03(\x0b\x32K.com.webank.eggroll.core.meta.StartContainersRequest.TypedExtraConfigsEntry\x12R\n\x07options\x18\t \x03(\x0b\x32\x41.com.webank.eggroll.core.meta.StartContainersRequest.OptionsEntry\x1a;\n\x19\x45nvironmentVariablesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\x1a,\n\nFilesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x0c:\x02\x38\x01\x1a\x32\n\x10ZippedFilesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x0c:\x02\x38\x01\x1a\x38\n\x16TypedExtraConfigsEntry\x12\x0b\n\x03key\x18\x01 \x01(\x04\x12\r\n\x05value\x18\x02 \x01(\x0c:\x02\x38\x01\x1a.\n\x0cOptionsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\xf9\x01\n\x18\x44\x65\x65pspeedContainerConfig\x12\x1c\n\x14\x63uda_visible_devices\x18\x02 \x03(\r\x12\x12\n\nworld_size\x18\x03 \x01(\r\x12\x12\n\ncross_rank\x18\x04 \x01(\r\x12\x12\n\ncross_size\x18\x05 \x01(\r\x12\x12\n\nlocal_size\x18\x06 \x01(\r\x12\x12\n\nlocal_rank\x18\x07 \x01(\r\x12\x0c\n\x04rank\x18\x08 \x01(\r\x12\x12\n\nstore_host\x18\t \x01(\t\x12\x12\n\nstore_port\x18\n \x01(\x05\x12\x14\n\x0cstore_prefix\x18\x0b \x01(\t\x12\x0f\n\x07\x62\x61\x63kend\x18\x0c \x01(\t\"-\n\x17StartContainersResponse\x12\x12\n\nsession_id\x18\x01 \x01(\t\"+\n\x15StopContainersRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\"\x18\n\x16StopContainersResponse\"+\n\x15KillContainersRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\"\x18\n\x16KillContainersResponse\"_\n\x19\x44ownloadContainersRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12\x15\n\rcontainer_ids\x18\x02 \x03(\x03\x12\x17\n\x0f\x63ompress_method\x18\x03 \x01(\t\"{\n\x1a\x44ownloadContainersResponse\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12I\n\x11\x63ontainer_content\x18\x02 \x03(\x0b\x32..com.webank.eggroll.core.meta.ContainerContent\"R\n\x10\x43ontainerContent\x12\x14\n\x0c\x63ontainer_id\x18\x01 \x01(\x03\x12\x0f\n\x07\x63ontent\x18\x02 \x01(\x0c\x12\x17\n\x0f\x63ompress_method\x18\x03 \x01(\tb\x06proto3')
 
 
 
@@ -23,7 +22,9 @@ _STARTCONTAINERSREQUEST = DESCRIPTOR.message_types_by_name['StartContainersReque
 _STARTCONTAINERSREQUEST_ENVIRONMENTVARIABLESENTRY = _STARTCONTAINERSREQUEST.nested_types_by_name['EnvironmentVariablesEntry']
 _STARTCONTAINERSREQUEST_FILESENTRY = _STARTCONTAINERSREQUEST.nested_types_by_name['FilesEntry']
 _STARTCONTAINERSREQUEST_ZIPPEDFILESENTRY = _STARTCONTAINERSREQUEST.nested_types_by_name['ZippedFilesEntry']
+_STARTCONTAINERSREQUEST_TYPEDEXTRACONFIGSENTRY = _STARTCONTAINERSREQUEST.nested_types_by_name['TypedExtraConfigsEntry']
 _STARTCONTAINERSREQUEST_OPTIONSENTRY = _STARTCONTAINERSREQUEST.nested_types_by_name['OptionsEntry']
+_DEEPSPEEDCONTAINERCONFIG = DESCRIPTOR.message_types_by_name['DeepspeedContainerConfig']
 _STARTCONTAINERSRESPONSE = DESCRIPTOR.message_types_by_name['StartContainersResponse']
 _STOPCONTAINERSREQUEST = DESCRIPTOR.message_types_by_name['StopContainersRequest']
 _STOPCONTAINERSRESPONSE = DESCRIPTOR.message_types_by_name['StopContainersResponse']
@@ -55,6 +56,13 @@ StartContainersRequest = _reflection.GeneratedProtocolMessageType('StartContaine
     })
   ,
 
+  'TypedExtraConfigsEntry' : _reflection.GeneratedProtocolMessageType('TypedExtraConfigsEntry', (_message.Message,), {
+    'DESCRIPTOR' : _STARTCONTAINERSREQUEST_TYPEDEXTRACONFIGSENTRY,
+    '__module__' : 'containers_pb2'
+    # @@protoc_insertion_point(class_scope:com.webank.eggroll.core.meta.StartContainersRequest.TypedExtraConfigsEntry)
+    })
+  ,
+
   'OptionsEntry' : _reflection.GeneratedProtocolMessageType('OptionsEntry', (_message.Message,), {
     'DESCRIPTOR' : _STARTCONTAINERSREQUEST_OPTIONSENTRY,
     '__module__' : 'containers_pb2'
@@ -69,7 +77,15 @@ _sym_db.RegisterMessage(StartContainersRequest)
 _sym_db.RegisterMessage(StartContainersRequest.EnvironmentVariablesEntry)
 _sym_db.RegisterMessage(StartContainersRequest.FilesEntry)
 _sym_db.RegisterMessage(StartContainersRequest.ZippedFilesEntry)
+_sym_db.RegisterMessage(StartContainersRequest.TypedExtraConfigsEntry)
 _sym_db.RegisterMessage(StartContainersRequest.OptionsEntry)
+
+DeepspeedContainerConfig = _reflection.GeneratedProtocolMessageType('DeepspeedContainerConfig', (_message.Message,), {
+  'DESCRIPTOR' : _DEEPSPEEDCONTAINERCONFIG,
+  '__module__' : 'containers_pb2'
+  # @@protoc_insertion_point(class_scope:com.webank.eggroll.core.meta.DeepspeedContainerConfig)
+  })
+_sym_db.RegisterMessage(DeepspeedContainerConfig)
 
 StartContainersResponse = _reflection.GeneratedProtocolMessageType('StartContainersResponse', (_message.Message,), {
   'DESCRIPTOR' : _STARTCONTAINERSRESPONSE,
@@ -136,32 +152,38 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   _STARTCONTAINERSREQUEST_FILESENTRY._serialized_options = b'8\001'
   _STARTCONTAINERSREQUEST_ZIPPEDFILESENTRY._options = None
   _STARTCONTAINERSREQUEST_ZIPPEDFILESENTRY._serialized_options = b'8\001'
+  _STARTCONTAINERSREQUEST_TYPEDEXTRACONFIGSENTRY._options = None
+  _STARTCONTAINERSREQUEST_TYPEDEXTRACONFIGSENTRY._serialized_options = b'8\001'
   _STARTCONTAINERSREQUEST_OPTIONSENTRY._options = None
   _STARTCONTAINERSREQUEST_OPTIONSENTRY._serialized_options = b'8\001'
-  _STARTCONTAINERSREQUEST._serialized_start=63
-  _STARTCONTAINERSREQUEST._serialized_end=838
-  _STARTCONTAINERSREQUEST_ENVIRONMENTVARIABLESENTRY._serialized_start=633
-  _STARTCONTAINERSREQUEST_ENVIRONMENTVARIABLESENTRY._serialized_end=692
-  _STARTCONTAINERSREQUEST_FILESENTRY._serialized_start=694
-  _STARTCONTAINERSREQUEST_FILESENTRY._serialized_end=738
-  _STARTCONTAINERSREQUEST_ZIPPEDFILESENTRY._serialized_start=740
-  _STARTCONTAINERSREQUEST_ZIPPEDFILESENTRY._serialized_end=790
-  _STARTCONTAINERSREQUEST_OPTIONSENTRY._serialized_start=792
-  _STARTCONTAINERSREQUEST_OPTIONSENTRY._serialized_end=838
-  _STARTCONTAINERSRESPONSE._serialized_start=840
-  _STARTCONTAINERSRESPONSE._serialized_end=885
-  _STOPCONTAINERSREQUEST._serialized_start=887
-  _STOPCONTAINERSREQUEST._serialized_end=930
-  _STOPCONTAINERSRESPONSE._serialized_start=932
-  _STOPCONTAINERSRESPONSE._serialized_end=956
-  _KILLCONTAINERSREQUEST._serialized_start=958
-  _KILLCONTAINERSREQUEST._serialized_end=1001
-  _KILLCONTAINERSRESPONSE._serialized_start=1003
-  _KILLCONTAINERSRESPONSE._serialized_end=1027
-  _DOWNLOADCONTAINERSREQUEST._serialized_start=1029
-  _DOWNLOADCONTAINERSREQUEST._serialized_end=1124
-  _DOWNLOADCONTAINERSRESPONSE._serialized_start=1126
-  _DOWNLOADCONTAINERSRESPONSE._serialized_end=1249
-  _CONTAINERCONTENT._serialized_start=1251
-  _CONTAINERCONTENT._serialized_end=1333
+  _STARTCONTAINERSREQUEST._serialized_start=51
+  _STARTCONTAINERSREQUEST._serialized_end=893
+  _STARTCONTAINERSREQUEST_ENVIRONMENTVARIABLESENTRY._serialized_start=630
+  _STARTCONTAINERSREQUEST_ENVIRONMENTVARIABLESENTRY._serialized_end=689
+  _STARTCONTAINERSREQUEST_FILESENTRY._serialized_start=691
+  _STARTCONTAINERSREQUEST_FILESENTRY._serialized_end=735
+  _STARTCONTAINERSREQUEST_ZIPPEDFILESENTRY._serialized_start=737
+  _STARTCONTAINERSREQUEST_ZIPPEDFILESENTRY._serialized_end=787
+  _STARTCONTAINERSREQUEST_TYPEDEXTRACONFIGSENTRY._serialized_start=789
+  _STARTCONTAINERSREQUEST_TYPEDEXTRACONFIGSENTRY._serialized_end=845
+  _STARTCONTAINERSREQUEST_OPTIONSENTRY._serialized_start=847
+  _STARTCONTAINERSREQUEST_OPTIONSENTRY._serialized_end=893
+  _DEEPSPEEDCONTAINERCONFIG._serialized_start=896
+  _DEEPSPEEDCONTAINERCONFIG._serialized_end=1145
+  _STARTCONTAINERSRESPONSE._serialized_start=1147
+  _STARTCONTAINERSRESPONSE._serialized_end=1192
+  _STOPCONTAINERSREQUEST._serialized_start=1194
+  _STOPCONTAINERSREQUEST._serialized_end=1237
+  _STOPCONTAINERSRESPONSE._serialized_start=1239
+  _STOPCONTAINERSRESPONSE._serialized_end=1263
+  _KILLCONTAINERSREQUEST._serialized_start=1265
+  _KILLCONTAINERSREQUEST._serialized_end=1308
+  _KILLCONTAINERSRESPONSE._serialized_start=1310
+  _KILLCONTAINERSRESPONSE._serialized_end=1334
+  _DOWNLOADCONTAINERSREQUEST._serialized_start=1336
+  _DOWNLOADCONTAINERSREQUEST._serialized_end=1431
+  _DOWNLOADCONTAINERSRESPONSE._serialized_start=1433
+  _DOWNLOADCONTAINERSRESPONSE._serialized_end=1556
+  _CONTAINERCONTENT._serialized_start=1558
+  _CONTAINERCONTENT._serialized_end=1640
 # @@protoc_insertion_point(module_scope)

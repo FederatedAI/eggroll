@@ -6,8 +6,6 @@ trait ContainerTrait extends Logging {
 
   def getPid(): Int
 
-  def getContainerId(): String
-
   def getProcessorId(): Long
 
   def start(): Boolean
