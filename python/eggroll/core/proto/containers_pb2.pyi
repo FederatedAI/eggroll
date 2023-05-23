@@ -7,7 +7,6 @@ import collections.abc
 import google.protobuf.descriptor
 import google.protobuf.internal.containers
 import google.protobuf.message
-import meta_pb2
 import sys
 
 if sys.version_info >= (3, 8):
@@ -70,6 +69,22 @@ class StartContainersRequest(google.protobuf.message.Message):
         def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
 
     @typing_extensions.final
+    class TypedExtraConfigsEntry(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        KEY_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        key: builtins.int
+        value: builtins.bytes
+        def __init__(
+            self,
+            *,
+            key: builtins.int = ...,
+            value: builtins.bytes = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
+
+    @typing_extensions.final
     class OptionsEntry(google.protobuf.message.Message):
         DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -88,18 +103,15 @@ class StartContainersRequest(google.protobuf.message.Message):
     SESSION_ID_FIELD_NUMBER: builtins.int
     NAME_FIELD_NUMBER: builtins.int
     JOB_TYPE_FIELD_NUMBER: builtins.int
-    WORLD_SIZE_FIELD_NUMBER: builtins.int
     COMMAND_ARGUMENTS_FIELD_NUMBER: builtins.int
     ENVIRONMENT_VARIABLES_FIELD_NUMBER: builtins.int
     FILES_FIELD_NUMBER: builtins.int
     ZIPPED_FILES_FIELD_NUMBER: builtins.int
+    TYPED_EXTRA_CONFIGS_FIELD_NUMBER: builtins.int
     OPTIONS_FIELD_NUMBER: builtins.int
-    STATUS_FIELD_NUMBER: builtins.int
-    PROCESSORS_FIELD_NUMBER: builtins.int
     session_id: builtins.str
     name: builtins.str
     job_type: builtins.str
-    world_size: builtins.int
     @property
     def command_arguments(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
     @property
@@ -109,28 +121,71 @@ class StartContainersRequest(google.protobuf.message.Message):
     @property
     def zipped_files(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.bytes]: ...
     @property
-    def options(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]: ...
-    status: builtins.str
+    def typed_extra_configs(self) -> google.protobuf.internal.containers.ScalarMap[builtins.int, builtins.bytes]: ...
     @property
-    def processors(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[meta_pb2.Processor]: ...
+    def options(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]: ...
     def __init__(
         self,
         *,
         session_id: builtins.str = ...,
         name: builtins.str = ...,
         job_type: builtins.str = ...,
-        world_size: builtins.int = ...,
         command_arguments: collections.abc.Iterable[builtins.str] | None = ...,
         environment_variables: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
         files: collections.abc.Mapping[builtins.str, builtins.bytes] | None = ...,
         zipped_files: collections.abc.Mapping[builtins.str, builtins.bytes] | None = ...,
+        typed_extra_configs: collections.abc.Mapping[builtins.int, builtins.bytes] | None = ...,
         options: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
-        status: builtins.str = ...,
-        processors: collections.abc.Iterable[meta_pb2.Processor] | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["command_arguments", b"command_arguments", "environment_variables", b"environment_variables", "files", b"files", "job_type", b"job_type", "name", b"name", "options", b"options", "processors", b"processors", "session_id", b"session_id", "status", b"status", "world_size", b"world_size", "zipped_files", b"zipped_files"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["command_arguments", b"command_arguments", "environment_variables", b"environment_variables", "files", b"files", "job_type", b"job_type", "name", b"name", "options", b"options", "session_id", b"session_id", "typed_extra_configs", b"typed_extra_configs", "zipped_files", b"zipped_files"]) -> None: ...
 
 global___StartContainersRequest = StartContainersRequest
+
+@typing_extensions.final
+class DeepspeedContainerConfig(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    CUDA_VISIBLE_DEVICES_FIELD_NUMBER: builtins.int
+    WORLD_SIZE_FIELD_NUMBER: builtins.int
+    CROSS_RANK_FIELD_NUMBER: builtins.int
+    CROSS_SIZE_FIELD_NUMBER: builtins.int
+    LOCAL_SIZE_FIELD_NUMBER: builtins.int
+    LOCAL_RANK_FIELD_NUMBER: builtins.int
+    RANK_FIELD_NUMBER: builtins.int
+    STORE_HOST_FIELD_NUMBER: builtins.int
+    STORE_PORT_FIELD_NUMBER: builtins.int
+    STORE_PREFIX_FIELD_NUMBER: builtins.int
+    BACKEND_FIELD_NUMBER: builtins.int
+    @property
+    def cuda_visible_devices(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.int]: ...
+    world_size: builtins.int
+    cross_rank: builtins.int
+    cross_size: builtins.int
+    local_size: builtins.int
+    local_rank: builtins.int
+    rank: builtins.int
+    store_host: builtins.str
+    store_port: builtins.int
+    store_prefix: builtins.str
+    backend: builtins.str
+    def __init__(
+        self,
+        *,
+        cuda_visible_devices: collections.abc.Iterable[builtins.int] | None = ...,
+        world_size: builtins.int = ...,
+        cross_rank: builtins.int = ...,
+        cross_size: builtins.int = ...,
+        local_size: builtins.int = ...,
+        local_rank: builtins.int = ...,
+        rank: builtins.int = ...,
+        store_host: builtins.str = ...,
+        store_port: builtins.int = ...,
+        store_prefix: builtins.str = ...,
+        backend: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["backend", b"backend", "cross_rank", b"cross_rank", "cross_size", b"cross_size", "cuda_visible_devices", b"cuda_visible_devices", "local_rank", b"local_rank", "local_size", b"local_size", "rank", b"rank", "store_host", b"store_host", "store_port", b"store_port", "store_prefix", b"store_prefix", "world_size", b"world_size"]) -> None: ...
+
+global___DeepspeedContainerConfig = DeepspeedContainerConfig
 
 @typing_extensions.final
 class StartContainersResponse(google.protobuf.message.Message):

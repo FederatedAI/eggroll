@@ -3,14 +3,14 @@ package com.webank.eggroll.core.deepspeed.job
 import com.webank.eggroll.core.client.NodeManagerClient
 import com.webank.eggroll.core.constant._
 import com.webank.eggroll.core.containers.JobProcessorTypes
-import com.webank.eggroll.core.containers.meta.{ContainerContent, DownloadContainersRequest, KillContainersRequest, StartContainersRequest}
+import com.webank.eggroll.core.containers.meta._
 import com.webank.eggroll.core.deepspeed.job.meta._
 import com.webank.eggroll.core.error.ErSessionException
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.resourcemanager.ClusterResourceManager.ResourceApplication
 import com.webank.eggroll.core.resourcemanager.ProcessorStateMachine.defaultSessionCallback
 import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator
-import com.webank.eggroll.core.resourcemanager.{ClusterManagerService, ClusterResourceManager, ProcessorEvent, ProcessorStateMachine, SessionMetaDao}
+import com.webank.eggroll.core.resourcemanager.{ClusterManagerService, ClusterResourceManager, ProcessorEvent, SessionMetaDao}
 import com.webank.eggroll.core.util.Logging
 import org.apache.commons.lang3.StringUtils
 
@@ -20,17 +20,55 @@ import scala.util.control.Breaks.{break, breakable}
 object JobServiceHandler extends Logging {
   private val smDao = new SessionMetaDao
 
-//  ClusterManagerService.registerProcessorCallback(JobProcessorTypes.DeepSpeed.toString, (event: ProcessorEvent) => {
-//    new Thread(() => {
-//      event match {
-//        case ProcessorEvent(eventType, processor) if eventType == ProcessorEventType.PROCESSOR_LOSS =>
-//          logDebug(s"processor ${processor.id} lost, kill job ${processor.sessionId}")
-//          killJob(processor.sessionId, isTimeout = false)
-//      }
-//    }).start()
-//  })
+  ClusterManagerService.registerProcessorCallback(JobProcessorTypes.DeepSpeed.toString, (event: ProcessorEvent) => {
+    new Thread(() => {
+      event match {
+        case ProcessorEvent(eventType, processor) if eventType == ProcessorEventType.PROCESSOR_LOSS =>
+          logDebug(s"processor ${processor.id} lost, kill job ${processor.sessionId}")
+          killJob(processor.sessionId, isTimeout = false)
+      }
+    }).start()
+  })
 
+  def startSessionWatcher(): Unit = {
+    /*
+    update session status according to processor status
+     */
+    new Thread(
+      () => {
+        while (true) {
+          val sessions = smDao.getSessionMains(ErSessionMeta(status = SessionStatus.ACTIVE))
+          sessions.foreach { session =>
+            // logDebug(s"watch active session: ${session.id}")
+            val sessionProcessors = smDao.getSession(session.id).processors
+            if (sessionProcessors.forall(_.processorType == JobProcessorTypes.DeepSpeed.toString)) {
+              if (sessionProcessors.exists(_.status == ProcessorStatus.ERROR)) {
+                if (sessionProcessors.exists(p => p.status == ProcessorStatus.RUNNING || p.status == ProcessorStatus.NEW)) {
+                  try {
+                    killJob(session.id, isTimeout = false)
+                  } catch {
+                    case e: ErSessionException =>
+                      logError(s"failed to kill session ${session.id}", e)
+                  }
+                }
 
+                smDao.updateSessionMain(session.copy(status = SessionStatus.ERROR), afterCall = defaultSessionCallback)
+
+                logDebug(s"found error processor belongs to session ${session.id}: " +
+                  s"${sessionProcessors.filter(_.status == ProcessorStatus.ERROR).mkString("Array(", ", ", ")")}, " +
+                  s"update session status to `Error`")
+              } else if (sessionProcessors.forall(_.status == ProcessorStatus.FINISHED)) {
+                smDao.updateSessionMain(session.copy(status = SessionStatus.FINISHED), afterCall = defaultSessionCallback)
+                logDebug(s"found all processor belongs to session ${session.id} finished, " +
+                  s"update session status to `Finished`")
+              }
+            }
+          }
+          Thread.sleep(1000)
+        }
+      }
+    ).start()
+  }
 
   def handleJobKill(killJobRequest: KillJobRequest): KillJobResponse = {
     val sessionId = killJobRequest.sessionId
@@ -152,14 +190,12 @@ object JobServiceHandler extends Logging {
         status = ResourceStatus.PRE_ALLOCATED))
     ))
     val resourceApplication = ResourceApplication(
-
       processors = prepareProcessors,
       needDispatch = true,
       resourceExhaustedStrategy = ResourceExhaustedStrategy.WAITING,
-      timeout = submitJobRequest.resourceOptions.timeoutSeconds,
-      sessionId = sessionId,
-      sessionName = JobProcessorTypes.DeepSpeed.toString
-    )
+      timeout = submitJobRequest.resourceOptions.timeoutSeconds * 1000,
+      resourceLatch = new CountDownLatch(1),
+      sessionId = sessionId)
     ClusterResourceManager.submitResourceRequest(resourceApplication)
     var dispatchedProcessors = resourceApplication.getResult()
     logInfo(s"dispatchedProcessor: ${dispatchedProcessors.mkString("Array(", ", ", ")")}")
@@ -183,22 +219,36 @@ object JobServiceHandler extends Logging {
       smDao.registerRanks(sessionId, ranks.map(_._1), ranks.map(_._2), ranks.map(_._3), ranks.map(_._4))
 
       // start containers
-      dispatchedProcessors.groupBy(_._2).par.foreach { case (node, nodeAndProcessors) =>
+      val groupedProcessors = dispatchedProcessors.groupBy(_._2)
+      val crossSize = groupedProcessors.size
+
+      groupedProcessors.zipWithIndex.par.foreach { case ((node, nodeAndProcessors), crossRank) =>
         val processors = nodeAndProcessors.map(_._1.copy(sessionId = submitJobRequest.sessionId))
         val nodeManagerClient = new NodeManagerClient(node.endpoint)
         // ClusterResourceManager.preAllocateResource(processors)
+
+        val localSize = processors.length
         nodeManagerClient.startJobContainers(
-          StartContainersRequest(
-            id = submitJobRequest.sessionId,
+          StartDeepspeedContainerRequest(
+            sessionId = sessionId,
             name = submitJobRequest.name,
-            jobType = submitJobRequest.jobType,
-            worldSize = submitJobRequest.worldSize,
             commandArguments = submitJobRequest.commandArguments,
             environmentVariables = submitJobRequest.environmentVariables,
             files = submitJobRequest.files,
             zippedFiles = submitJobRequest.zippedFiles,
-            options = submitJobRequest.options,
-            processors = processors))
+            deepspeedConfigs = processors.map { p =>
+              p.id -> DeepspeedContainerConfig(
+                cudaVisibleDevices = p.options.getOrDefault("cudaVisibleDevices", "0,1").split(",").map(_.toInt),
+                worldSize = worldSize,
+                crossRank = crossRank,
+                crossSize = crossSize,
+                localSize = localSize,
+                localRank = p.options.get("localRank").toInt,
+                rank = p.options.get("globalRank").toInt,
+                storePrefix = sessionId
+              )
+            }(collection.breakOut),
+            options = submitJobRequest.options))
       }
 
       // wait for containers to start, throw exception if timeout
@@ -228,7 +278,7 @@ object JobServiceHandler extends Logging {
     }
   }
 
-  def killJob(sessionId: String, isTimeout: Boolean): Unit = {
+  private def killJob(sessionId: String, isTimeout: Boolean): Unit = {
     logInfo(s"killJob $sessionId")
     if (!smDao.existSession(sessionId)) {
       return
