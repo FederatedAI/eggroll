@@ -1,5 +1,6 @@
 package com.webank.eggroll.core.resourcemanager
 
+import com.webank.eggroll.core.constant.SessionConfKeys.EGGROLL_SESSION_USE_RESOURCE_DISPATCH
 import com.webank.eggroll.core.constant.{ResourceStatus, SessionStatus}
 import com.webank.eggroll.core.meta.{ErProcessor, ErSessionMeta}
 import com.webank.eggroll.core.resourcemanager.SessionManagerService.smDao
@@ -92,9 +93,20 @@ object ProcessorStateMachine extends Logging{
 
 
  def  defaultSessionCallback  (conn:Connection ,erSessionMeta: ErSessionMeta  ):Unit={
-   erSessionMeta.processors.foreach(p=>{
-     ProcessorStateMachine.changeStatus(p,desStateParam =erSessionMeta.status,connection = conn )
-   })
+
+   erSessionMeta.name match {
+     case "DeepSpeed" =>  erSessionMeta.processors.foreach(p=>{
+       ProcessorStateMachine.changeStatus(p,desStateParam =erSessionMeta.status,connection = conn )
+     })
+     case _ =>
+       EGGROLL_SESSION_USE_RESOURCE_DISPATCH.get() match {
+         case  "true" =>    erSessionMeta.processors.foreach(p=>{
+           ProcessorStateMachine.changeStatus(p,desStateParam =erSessionMeta.status,connection = conn )
+         })
+         case  _ =>
+       }
+   }
+
 
  }
 
