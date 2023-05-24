@@ -18,22 +18,21 @@ object ResourceStateMachine extends Logging{
 
         stateLine match {
           case "init_pre_allocated" =>  preAllocateResource(connection,processors)
-          case "pre_allocated_allocated" =>  updateResource(connection,processors,beforeState,afterState,afterCall = (conn,p)=>{
-                countAndUpdateNodeResource(conn,p.serverNodeId)
-
-          })
-          case "pre_allocated_allocate_failed" => updateResource(connection,processors,beforeState,afterState,afterCall = (conn,p)=>{
-              countAndUpdateNodeResource(conn,p.serverNodeId)
-          })
-          case "allocated_return"=> updateResource(connection,processors,beforeState,afterState,beforeCall=(conn,p)=>{
-            var allocatedCount =  serverNodeCrudOperator.countNodeResource(conn,p.serverNodeId)
-            logInfo(s"before======allocatedCount===========${allocatedCount.mkString}")
-          },
-            afterCall = (conn,p)=>{
-              countAndUpdateNodeResource(conn,p.serverNodeId)
-
-          })
-          case _ => println("=================resource======error====status======="+stateLine)
+          case statusLine if(statusLine=="pre_allocated_allocated"||statusLine=="pre_allocated_allocate_failed"||statusLine=="allocated_return") =>
+                  updateResource(connection,processors,beforeState,afterState,afterCall = (conn,p)=>{
+                  countAndUpdateNodeResource(conn,p.serverNodeId)
+                })
+//          case "pre_allocated_allocated" =>  updateResource(connection,processors,beforeState,afterState,afterCall = (conn,p)=>{
+//                countAndUpdateNodeResource(conn,p.serverNodeId)
+//          })
+//          case "pre_allocated_allocate_failed" => updateResource(connection,processors,beforeState,afterState,afterCall = (conn,p)=>{
+//              countAndUpdateNodeResource(conn,p.serverNodeId)
+//          })
+//          case "allocated_return"=> updateResource(connection,processors,beforeState,afterState,
+//            afterCall = (conn,p)=>{
+//              countAndUpdateNodeResource(conn,p.serverNodeId)
+//          })
+          case _ => logError(s"error resource status ${stateLine}")
 
 
         }
