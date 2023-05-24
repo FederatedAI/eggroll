@@ -3,6 +3,7 @@ package com.webank.eggroll.core.containers
 import com.webank.eggroll.core.session.{ErConf, StaticErConf};
 
 package object container {
+
   object ContainerKey {
     val PYTHON_EXEC = "eggroll.container.python.exec"
 

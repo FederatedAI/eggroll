@@ -1,4 +1,5 @@
 import datetime
+import enum
 import os
 import time
 import typing
@@ -7,10 +8,25 @@ from typing import Dict, List, Optional
 
 from eggroll.core.conf_keys import SessionConfKeys
 from eggroll.core.constants import SessionStatus
-from eggroll.core.proto import deepspeed_pb2
+from eggroll.core.proto import containers_pb2, deepspeed_pb2
 
 from ..client import BaseClient
 from .commands import JobCommands
+
+
+class ContentType(enum.Enum):
+    ALL = 0
+    MODELS = 1
+    LOGS = 2
+
+    def to_proto(self):
+        if self == ContentType.ALL:
+            return containers_pb2.ALL
+        if self == ContentType.MODELS:
+            return containers_pb2.MODELS
+        if self == ContentType.LOGS:
+            return containers_pb2.LOGS
+        raise NotImplementedError(f"{self}")
 
 
 class DeepspeedJob:
@@ -21,15 +37,15 @@ class DeepspeedJob:
         self._rank_to_processor = {}
 
     def submit(
-            self,
-            name="",
-            world_size=1,
-            command_arguments: Optional[List[str]] = None,
-            environment_variables: Optional[Dict[str, str]] = None,
-            files: Optional[Dict[str, str]] = None,
-            zipped_files: Optional[Dict[str, str]] = None,
-            resource_options: Optional[Dict] = None,
-            options: Optional[Dict] = None,
+        self,
+        name="",
+        world_size=1,
+        command_arguments: Optional[List[str]] = None,
+        environment_variables: Optional[Dict[str, str]] = None,
+        files: Optional[Dict[str, str]] = None,
+        zipped_files: Optional[Dict[str, str]] = None,
+        resource_options: Optional[Dict] = None,
+        options: Optional[Dict] = None,
     ):
         if resource_options is None:
             resource_options = {}
@@ -59,9 +75,9 @@ class DeepspeedJob:
             zipped_files=zipped_files,
             resource_options=deepspeed_pb2.ResourceOptions(
                 timeout_seconds=int(resource_options.get("timeout_seconds", 300)),
-                resource_exhausted_strategy=resource_options.get("resource_exhausted_strategy", "waiting")
+                resource_exhausted_strategy=resource_options.get("resource_exhausted_strategy", "waiting"),
             ),
-            options=options
+            options=options,
         )
 
         submit_response = BaseClient().do_sync_request(
@@ -104,13 +120,14 @@ class DeepspeedJob:
             time.sleep(poll_interval)
         return query_response.status
 
-    def download_job(self, ranks: Optional[List[int]] = None):
+    def download_job(self, ranks: Optional[List[int]] = None, content_type: ContentType = ContentType.ALL):
         if ranks is None:
             ranks = []
         download_job_request = deepspeed_pb2.DownloadJobRequest(
             session_id=self._session_id,
             ranks=ranks,
             compress_method="zip",
+            content_type=content_type.to_proto(),
         )
         download_job_response = BaseClient().do_sync_request(
             download_job_request, output_type=deepspeed_pb2.DownloadJobResponse, command_uri=JobCommands.DOWNLOAD_JOB
@@ -118,9 +135,9 @@ class DeepspeedJob:
         return download_job_response
 
     def download_job_to(
-            self,
-            ranks: Optional[List[int]] = None,
-            rank_to_path: typing.Callable[[int], str] = lambda rank: f"rank_{rank}.zip",
+        self,
+        ranks: Optional[List[int]] = None,
+        rank_to_path: typing.Callable[[int], str] = lambda rank: f"rank_{rank}.zip",
     ):
         download_job_response = self.download_job(ranks)
         if ranks is None:
