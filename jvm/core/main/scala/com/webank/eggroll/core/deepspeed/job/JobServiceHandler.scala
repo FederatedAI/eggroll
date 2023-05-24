@@ -57,6 +57,9 @@ object JobServiceHandler extends Logging {
 
   def handleJobDownload(downloadJobRequest: DownloadJobRequest): DownloadJobResponse = {
     val sessionId = downloadJobRequest.sessionId
+    val contentType = downloadJobRequest.contentType
+    val compressMethod = downloadJobRequest.compressMethod
+
     val serverNodeCrudOperator = new ServerNodeCrudOperator()
     val containerContents = smDao.getRanks(sessionId).flatMap { case (containerId, nodeId, globalRank, localRank) =>
       val index = if (downloadJobRequest.ranks.isEmpty) globalRank else downloadJobRequest.ranks.indexOf(globalRank)
@@ -74,7 +77,8 @@ object JobServiceHandler extends Logging {
             DownloadContainersRequest(
               sessionId = sessionId,
               containerIds = ranks.map(_._2),
-              compressMethod = downloadJobRequest.compressMethod
+              compressMethod = compressMethod,
+              contentType = contentType
             )).containerContents
         } catch {
           case e: Exception =>
@@ -109,7 +113,7 @@ object JobServiceHandler extends Logging {
       }
     }
     if (!isStarted) {
-      var session = smDao.getSessionMain(sessionId)
+      val session = smDao.getSessionMain(sessionId)
       val activeCount = session.activeProcCount
       if (activeCount < expectedWorldSize) {
         try {
@@ -156,7 +160,6 @@ object JobServiceHandler extends Logging {
     val resourceApplication = ResourceApplication(
 
       processors = prepareProcessors,
-      needDispatch = true,
       resourceExhaustedStrategy = ResourceExhaustedStrategy.WAITING,
       timeout = submitJobRequest.resourceOptions.timeoutSeconds,
       sessionId = sessionId,
