@@ -151,12 +151,15 @@ case class DeepspeedContainerBuildConfig(
   val scriptPath = "_boost.py"
 
   // working dir
-  val workingDir: Path = containerWorkspace.jfile.toPath
-  val workingDirectoryPreparer: Some[WorkingDirectoryPreparer] =
-    Some(new WorkingDirectoryPreparer(
+  val workingDir: Path = containerWorkspace.jfile.toPath.toAbsolutePath
+  val (workingDirectoryPreparer, containerEnvs) = {
+    val _wdp = new WorkingDirectoryPreparer(
       files = files ++ Map(scriptPath -> runScript),
       zippedFiles = zippedFiles,
-      workingDir = workingDir))
+      workingDir = workingDir)
+    val _env = _wdp.getContainerDirEnv
+    (Some(_wdp), _env)
+  }
   val (stdErrFile, stdOutFile) = {
     val logDir = workingDir.resolve("logs")
     (Some(logDir.resolve(s"stderr.log")), Some(logDir.resolve(s"stdout.log")))
@@ -171,7 +174,8 @@ case class DeepspeedContainerBuildConfig(
       mutableEnv += (k -> v)
     }
     // add container dir
-    mutableEnv += ("EGGROLL_DEEPSPEED_CONTAINER_DIR" -> workingDir.toAbsolutePath.toString)
+    mutableEnv ++= containerEnvs
+
     // read `EGGROLL_HOME` and `PYTHONPATH` from system env since this is node level env
     sys.env.get("EGGROLL_HOME") match {
       case Some(home) =>
