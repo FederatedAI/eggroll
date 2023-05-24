@@ -1,6 +1,7 @@
 package com.webank.eggroll.core.resourcemanager
 
-import com.webank.eggroll.core.constant.{ResourceStatus, SessionStatus}
+import com.webank.eggroll.core.constant.SessionConfKeys.EGGROLL_SESSION_USE_RESOURCE_DISPATCH
+import com.webank.eggroll.core.constant.{ProcessorTypes, ResourceStatus, SessionStatus}
 import com.webank.eggroll.core.meta.{ErProcessor, ErSessionMeta}
 import com.webank.eggroll.core.resourcemanager.SessionManagerService.smDao
 import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator
@@ -26,14 +27,17 @@ object ProcessorStateMachine extends Logging{
   def  changeStatus(  erProcessor: ErProcessor,
                       preStateParam:String=null,desStateParam:String,connection: Connection=null ):Unit ={
         var  preState=preStateParam
+        var  processorType = erProcessor.processorType
         if(preState==null){
         var processorsInDb =   serverNodeCrudOperator.queryProcessor(connection,erProcessor.copy(status=null))
           if(processorsInDb.length==0){
             throw  new Exception
           }else{
             preState = processorsInDb.apply(0).status
+            processorType = erProcessor.processorType
           }
         }
+
 
         var statusLine =  preState+"_"+desStateParam;
         logInfo(s"==========statusLine================${statusLine}")
@@ -41,14 +45,19 @@ object ProcessorStateMachine extends Logging{
 
         statusLine match {
           case "NEW_RUNNING"=>updateState(desErProcessor,connection= connection,afterCall = (conn,erProcessor)=>{
-            ResourceStateMachine.changeState(conn,Array(erProcessor),ResourceStatus.PRE_ALLOCATED,ResourceStatus.ALLOCATED)
+
+            if(EGGROLL_SESSION_USE_RESOURCE_DISPATCH.get()=="true"||processorType=="DeepSpeed")
+              ResourceStateMachine.changeState(conn, Array(erProcessor), ResourceStatus.PRE_ALLOCATED, ResourceStatus.ALLOCATED)
+
           })
           case "NEW_ERROR" =>updateState(desErProcessor,connection= connection,afterCall = (conn,erProcessor)=>{
-            ResourceStateMachine.changeState(conn,Array(erProcessor),ResourceStatus.PRE_ALLOCATED,ResourceStatus.ALLOCATE_FAILED)
+            if(EGGROLL_SESSION_USE_RESOURCE_DISPATCH.get()=="true"||processorType=="DeepSpeed")
+                ResourceStateMachine.changeState(conn,Array(erProcessor),ResourceStatus.PRE_ALLOCATED,ResourceStatus.ALLOCATE_FAILED)
           })
           case statusLine if(statusLine=="RUNNING_STOPPED"||statusLine=="RUNNING_KILLED"||statusLine=="RUNNING_ERROR")=>
             updateState(desErProcessor,connection= connection,afterCall = (conn,erProcessor)=>{
-              ResourceStateMachine.changeState(conn,Array(erProcessor),ResourceStatus.ALLOCATED,ResourceStatus.RETURN)
+              if(EGGROLL_SESSION_USE_RESOURCE_DISPATCH.get()=="true"||processorType=="DeepSpeed")
+                  ResourceStateMachine.changeState(conn,Array(erProcessor),ResourceStatus.ALLOCATED,ResourceStatus.RETURN)
             })
           case _=> println("============error status=============");
         }
@@ -81,21 +90,16 @@ object ProcessorStateMachine extends Logging{
     ClusterResourceManager.returnResource(beforeCall=  (conn,proc) =>smDao.updateProcessor(conn, proc),processors =Array(proc))
   }
 
-  def  updateAndUpdateResource(proc: ErProcessor): Unit = {
-  //  ClusterResourceManager.
-  }
-
   def  updateAndAllocateResource(proc:ErProcessor): Unit ={
     ClusterResourceManager.allocateResource(beforeCall=  (conn,proc) =>smDao.updateProcessor(conn, proc),processors =Array(proc))
   }
 
-
-
  def  defaultSessionCallback  (conn:Connection ,erSessionMeta: ErSessionMeta  ):Unit={
-   erSessionMeta.processors.foreach(p=>{
-     ProcessorStateMachine.changeStatus(p,desStateParam =erSessionMeta.status,connection = conn )
-   })
-
+   if(EGGROLL_SESSION_USE_RESOURCE_DISPATCH.get()=="true"||erSessionMeta.name=="DeepSpeed") {
+     erSessionMeta.processors.foreach(p=>{
+        ProcessorStateMachine.changeStatus(p,desStateParam =erSessionMeta.status,connection = conn )
+     })
+   }
  }
 
 

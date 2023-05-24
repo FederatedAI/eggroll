@@ -2,6 +2,7 @@ package com.webank.eggroll.core.resourcemanager
 
 import com.webank.eggroll.core.Bootstrap.logDebug
 import com.webank.eggroll.core.client.NodeManagerClient
+import com.webank.eggroll.core.constant.SessionConfKeys.EGGROLL_SESSION_USE_RESOURCE_DISPATCH
 import com.webank.eggroll.core.constant._
 import com.webank.eggroll.core.error.ErSessionException
 import com.webank.eggroll.core.meta.{ErEndpoint, ErProcessor, ErResource, ErServerNode, ErSessionMeta}
@@ -134,9 +135,6 @@ object SessionManagerService extends Logging {
     // todo:1: update selective
     smDao.updateSessionMain(dbSessionMeta.copy(activeProcCount = 0, status = afterState),afterCall=ProcessorStateMachine.defaultSessionCallback)
     var  resultSession = getSession(dbSessionMeta)
-    //ProcessorStateMachine.changeStatus()
-
-    //ClusterResourceManager.returnResource(dbSessionMeta.processors)
     resultSession
   }
 
@@ -153,14 +151,9 @@ class SessionManagerService extends SessionManager with Logging {
 
     logInfo(s"receive heartbeat processor ${proc.id}  ${proc.status} ")
       proc.status match {
-
       case status if(status==ProcessorStatus.STOPPED||status==ProcessorStatus.KILLED||status==ProcessorStatus.ERROR)=>
           logInfo(s"processor ${proc.id}    prepare to return resource")
            ProcessorStateMachine.changeStatus(proc,desStateParam=status)
-
-          // ClusterResourceManager.returnResource(beforeCall= beforeCall,processors =Array(proc))
-
-
       case status if (status==ProcessorStatus.RUNNING )=>
           logInfo("receive heartbeat running ,")
         ProcessorStateMachine.changeStatus(proc,desStateParam=status)
@@ -177,12 +170,7 @@ class SessionManagerService extends SessionManager with Logging {
   }
 
 
-  /**
-   * get or create session
-   * @param sessionMeta session main and options
-   * @return session main and options and processors
-   */
-  def getOrCreateSession(sessionMeta: ErSessionMeta): ErSessionMeta = {
+  def getOrCreateSessionWithResourceDispatch(sessionMeta: ErSessionMeta): ErSessionMeta ={
     logInfo(s"getOrCreateSession ${sessionMeta}")
     val sessionId = sessionMeta.id
     if (smDao.existSession(sessionId)) {
@@ -204,11 +192,11 @@ class SessionManagerService extends SessionManager with Logging {
 
     val healthyCluster = serverNodeCrudOperator.getServerNodes(healthyNodeExample)
     val serverNodes = healthyCluster.serverNodes
-//    val serverNodesToHost = mutable.Map[Long, String]()
-//    serverNodes.foreach(n => serverNodesToHost += (n.id -> n.endpoint.host))
-//
+    //    val serverNodesToHost = mutable.Map[Long, String]()
+    //    serverNodes.foreach(n => serverNodesToHost += (n.id -> n.endpoint.host))
+    //
     val eggsPerNode = sessionMeta.options.getOrElse(SessionConfKeys.CONFKEY_SESSION_PROCESSORS_PER_NODE, StaticErConf.getString(SessionConfKeys.CONFKEY_SESSION_PROCESSORS_PER_NODE, "1")).toInt
-//    // TODO:1: use constants instead of processor_types,processor_plan,uniform
+    //    // TODO:1: use constants instead of processor_types,processor_plan,uniform
 
     val processor_types = ArrayBuffer[String]()
 
@@ -223,26 +211,26 @@ class SessionManagerService extends SessionManager with Logging {
 
 
 
-//        processor_types.flatMap { pType =>
-//          val planStrategy = sessionMeta.options("processor_plan." + pType)
-//          require(planStrategy == "uniform", s"unsupported:${planStrategy}")
-//          serverNodes.flatMap(n =>
-//            (0 until eggsPerNode).map(_ => ErProcessor(
-//              serverNodeId = n.id,
-//              processorType = pType,
-//              status = ProcessorStatus.NEW,
-//              resources = Array(ErResource(resourceType = ResourceTypes.VCPU_CORE,allocated = 1,status=ResourceStatus.PRE_ALLOCATED)))
-//            )
-//          )
-//        }
+        //        processor_types.flatMap { pType =>
+        //          val planStrategy = sessionMeta.options("processor_plan." + pType)
+        //          require(planStrategy == "uniform", s"unsupported:${planStrategy}")
+        //          serverNodes.flatMap(n =>
+        //            (0 until eggsPerNode).map(_ => ErProcessor(
+        //              serverNodeId = n.id,
+        //              processorType = pType,
+        //              status = ProcessorStatus.NEW,
+        //              resources = Array(ErResource(resourceType = ResourceTypes.VCPU_CORE,allocated = 1,status=ResourceStatus.PRE_ALLOCATED)))
+        //            )
+        //          )
+        //        }
       } else {
         processor_types.append(ProcessorTypes.EGG_PAIR)
-//        serverNodes.flatMap(n => (0 until eggsPerNode).map(_ => ErProcessor(
-//          serverNodeId = n.id,
-//          processorType = ProcessorTypes.EGG_PAIR,
-//          commandEndpoint = ErEndpoint(serverNodesToHost(n.id), 0),
-//          status = ProcessorStatus.NEW,
-//          resources = Array(ErResource(resourceType = ResourceTypes.VCPU_CORE,allocated = 1,status = ResourceStatus.PRE_ALLOCATED)))))
+        //        serverNodes.flatMap(n => (0 until eggsPerNode).map(_ => ErProcessor(
+        //          serverNodeId = n.id,
+        //          processorType = ProcessorTypes.EGG_PAIR,
+        //          commandEndpoint = ErEndpoint(serverNodesToHost(n.id), 0),
+        //          status = ProcessorStatus.NEW,
+        //          resources = Array(ErResource(resourceType = ResourceTypes.VCPU_CORE,allocated = 1,status = ResourceStatus.PRE_ALLOCATED)))))
 
       }
     var resourceApplication: ResourceApplication =  ResourceApplication(
@@ -270,43 +258,43 @@ class SessionManagerService extends SessionManager with Logging {
 
 
 
-//    val expectedProcessorsCount = processorPlan.length
-//    val sessionMetaWithProcessors = sessionMeta.copy(
-//      processors = processorPlan,
-//      totalProcCount = expectedProcessorsCount,
-//      activeProcCount = 0,
-//      status = SessionStatus.NEW)
-//
-//    smDao.register(sessionMetaWithProcessors)
+    //    val expectedProcessorsCount = processorPlan.length
+    //    val sessionMetaWithProcessors = sessionMeta.copy(
+    //      processors = processorPlan,
+    //      totalProcCount = expectedProcessorsCount,
+    //      activeProcCount = 0,
+    //      status = SessionStatus.NEW)
+    //
+    //    smDao.register(sessionMetaWithProcessors)
     // TODO:0: record session failure in database if session start is not successful, and returns error session
-   // val registeredSessionMeta = smDao.getSession(sessionMeta.id)
+    // val registeredSessionMeta = smDao.getSession(sessionMeta.id)
 
 
-//    dispatchedProcessors = dispatchedProcessors.zip(registeredSessionMeta.processors).map {
-//      case ((processor, node), registeredProcessor) =>
-//        (processor.copy(id = registeredProcessor.id), node)
-//    }
-//    var processorWithResource= processorPlan.zip(registeredSessionMeta.processors).map{
-//      case (processor1,processor2)=> {
-//        processor1.copy(sessionId = sessionId,id = processor2.id)
-//      }
-//    }
-//    ClusterResourceManager.preAllocateResource(processorWithResource)
-
-
-
+    //    dispatchedProcessors = dispatchedProcessors.zip(registeredSessionMeta.processors).map {
+    //      case ((processor, node), registeredProcessor) =>
+    //        (processor.copy(id = registeredProcessor.id), node)
+    //    }
+    //    var processorWithResource= processorPlan.zip(registeredSessionMeta.processors).map{
+    //      case (processor1,processor2)=> {
+    //        processor1.copy(sessionId = sessionId,id = processor2.id)
+    //      }
+    //    }
+    //    ClusterResourceManager.preAllocateResource(processorWithResource)
 
 
 
-//    serverNodes.par.foreach(n => {
-//      // TODO:1: add new params?
-//      val newSessionMeta = registeredSessionMeta.copy(
-//        options = registeredSessionMeta.options ++ Map(ResourceManagerConfKeys.SERVER_NODE_ID -> n.id.toString))
-//      val nodeManagerClient = new NodeManagerClient(
-//        ErEndpoint(host = n.endpoint.host,
-//          port = n.endpoint.port))
-//      nodeManagerClient.startContainers(newSessionMeta)
-//    })
+
+
+
+    //    serverNodes.par.foreach(n => {
+    //      // TODO:1: add new params?
+    //      val newSessionMeta = registeredSessionMeta.copy(
+    //        options = registeredSessionMeta.options ++ Map(ResourceManagerConfKeys.SERVER_NODE_ID -> n.id.toString))
+    //      val nodeManagerClient = new NodeManagerClient(
+    //        ErEndpoint(host = n.endpoint.host,
+    //          port = n.endpoint.port))
+    //      nodeManagerClient.startContainers(newSessionMeta)
+    //    })
 
     val startTimeout = System.currentTimeMillis() + SessionConfKeys.EGGROLL_SESSION_START_TIMEOUT_MS.get().toLong
     var isStarted = false
@@ -340,7 +328,7 @@ class SessionManagerService extends SessionManager with Logging {
             activesPerNode(p.commandEndpoint.host) += 1
           } else {
             inactives += p.id
-         //   inactivesToNode += (p.id -> serverNodesToHost(p.serverNodeId))
+            //   inactivesToNode += (p.id -> serverNodesToHost(p.serverNodeId))
           }
         })
 
@@ -363,6 +351,153 @@ class SessionManagerService extends SessionManager with Logging {
     // todo:1: update selective
     smDao.updateSessionMain(registeredSessionMeta.copy(
       status = SessionStatus.ACTIVE, activeProcCount = expectedProcessorsCount),afterCall = null)
+    getSession(sessionMeta)
+  }
+
+
+  /**
+   * get or create session
+   * @param sessionMeta session main and options
+   * @return session main and options and processors
+   */
+  def getOrCreateSession(sessionMeta: ErSessionMeta): ErSessionMeta = {
+    EGGROLL_SESSION_USE_RESOURCE_DISPATCH.get() match {
+      case  "true" => getOrCreateSessionWithResourceDispatch(sessionMeta)
+      case  "false" => getOrCreateSessionOld(sessionMeta)
+      case  _ => null
+    }
+  }
+
+  def  getOrCreateSessionOld(sessionMeta:ErSessionMeta): ErSessionMeta ={
+    val sessionId = sessionMeta.id
+    if (smDao.existSession(sessionId)) {
+      var result = smDao.getSession(sessionId)
+
+      if (result != null) {
+        if (result.status.equals(SessionStatus.ACTIVE)) {
+          return result
+        } else {
+          return this.getSession(sessionMeta)
+        }
+      }
+    }
+    // 0. generate a simple processors -> server plan, and fill sessionMeta.processors
+    // 1. class NodeManager.startContainers
+    // 2. query session_main's active_proc_count , wait all processor heart beats.
+
+    val healthyNodeExample = ErServerNode(status = ServerNodeStatus.HEALTHY, nodeType = ServerNodeTypes.NODE_MANAGER)
+    val serverNodeCrudOperator = new ServerNodeCrudOperator()
+
+    val healthyCluster = serverNodeCrudOperator.getServerNodes(healthyNodeExample)
+
+    val serverNodes = healthyCluster.serverNodes
+    val serverNodesToHost = mutable.Map[Long, String]()
+    serverNodes.foreach(n => serverNodesToHost += (n.id -> n.endpoint.host))
+
+    val eggsPerNode = sessionMeta.options.getOrElse(SessionConfKeys.CONFKEY_SESSION_PROCESSORS_PER_NODE, StaticErConf.getString(SessionConfKeys.CONFKEY_SESSION_PROCESSORS_PER_NODE, "1")).toInt
+    // TODO:1: use constants instead of processor_types,processor_plan,uniform
+    val processorPlan =
+      if(sessionMeta.options.contains("processor_types")) {
+        val processor_types = sessionMeta.options("processor_types").split(",")
+        processor_types.flatMap { pType =>
+          val planStrategy = sessionMeta.options("processor_plan." + pType)
+          require(planStrategy == "uniform", s"unsupported:${planStrategy}")
+          serverNodes.flatMap(n =>
+            (0 until eggsPerNode).map(_ => ErProcessor(
+              serverNodeId = n.id,
+              processorType = pType,
+              status = ProcessorStatus.NEW)
+            )
+          )
+        }
+      } else {
+        serverNodes.flatMap(n => (0 until eggsPerNode).map(_ => ErProcessor(
+          serverNodeId = n.id,
+          processorType = ProcessorTypes.EGG_PAIR,
+          commandEndpoint = ErEndpoint(serverNodesToHost(n.id), 0),
+          status = ProcessorStatus.NEW)))
+      }
+
+    val expectedProcessorsCount = processorPlan.length
+    val sessionMetaWithProcessors = sessionMeta.copy(
+      processors = processorPlan,
+      totalProcCount = expectedProcessorsCount,
+      activeProcCount = 0,
+      status = SessionStatus.NEW)
+
+    smDao.register(sessionMetaWithProcessors)
+    // TODO:0: record session failure in database if session start is not successful, and returns error session
+    val registeredSessionMeta = smDao.getSession(sessionMeta.id)
+
+    serverNodes.par.foreach(n => {
+      // TODO:1: add new params?
+      val newSessionMeta = registeredSessionMeta.copy(
+        options = registeredSessionMeta.options ++ Map(ResourceManagerConfKeys.SERVER_NODE_ID -> n.id.toString))
+      val nodeManagerClient = new NodeManagerClient(
+        ErEndpoint(host = n.endpoint.host,
+          port = n.endpoint.port))
+      nodeManagerClient.startContainers(newSessionMeta)
+    })
+
+    val startTimeout = System.currentTimeMillis() + SessionConfKeys.EGGROLL_SESSION_START_TIMEOUT_MS.get().toLong
+    var isStarted = false
+    breakable {
+      while (System.currentTimeMillis() <= startTimeout) {
+        val cur = getSessionMain(sessionId)
+        if (cur.activeProcCount < expectedProcessorsCount) {
+          Thread.sleep(100)
+        } else {
+          isStarted = true
+          break
+        }
+      }
+    }
+
+    if (!isStarted) {
+      val curDetails = smDao.getSession(sessionId)
+
+      // last chance to check
+      if (curDetails.activeProcCount < expectedProcessorsCount) {
+        val actives = ListBuffer[Long]()
+        val inactives = ListBuffer[Long]()
+        val activesPerNode = mutable.Map[String, Int]()
+        val inactivesToNode = mutable.Map[Long, String]()
+
+        serverNodes.foreach(n => activesPerNode += (n.endpoint.host -> 0))
+
+        curDetails.processors.foreach(p => {
+          if (p.status.equals(ProcessorStatus.RUNNING)) {
+            actives += p.id
+            activesPerNode(p.commandEndpoint.host) += 1
+          } else {
+            inactives += p.id
+            inactivesToNode += (p.id -> serverNodesToHost(p.serverNodeId))
+          }
+        })
+
+        killSession(sessionMeta = curDetails, afterState = SessionStatus.ERROR)
+
+        val builder = new mutable.StringBuilder()
+        builder.append(s"unable to start all processors for session id: '${sessionId}'. ")
+          .append(s"Please check corresponding bootstrap logs at '${CoreConfKeys.EGGROLL_LOGS_DIR.get()}/${sessionId}' to check the reasons. Details:\n")
+          .append("=================\n")
+          .append(s"total processors: ${curDetails.totalProcCount}, \n")
+          .append(s"started count: ${curDetails.activeProcCount}, \n")
+          .append(s"not started count: ${curDetails.totalProcCount - curDetails.activeProcCount}, \n")
+          .append(s"current active processors per node: ${activesPerNode}, \n")
+          .append(s"not started processors and their nodes: ${inactivesToNode}")
+        val exception = new ErSessionException(builder.toString())
+        throw exception
+      }
+    }
+
+    // todo:1: update selective
+    smDao.updateSessionMain(registeredSessionMeta.copy(
+      status = SessionStatus.ACTIVE, activeProcCount = expectedProcessorsCount),afterCall = (connection,sessionMeta)=>{
+      if (SessionStatus.KILLED.equals(sessionMeta.status)) {
+            smDao.batchUpdateSessionProcessor(sessionMeta)
+      }
+    })
     getSession(sessionMeta)
   }
 
