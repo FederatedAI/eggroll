@@ -51,8 +51,6 @@ object ProcessorStateMachine extends Logging{
             else{
               logInfo(s"processor ${erProcessor.id}  without resource change")
             }
-
-
           })
           case statusLine if(statusLine=="NEW_STOPPED"||statusLine=="NEW_KILLED"||statusLine=="NEW_ERROR") =>updateState(desErProcessor,connection= connection,afterCall = (conn,erProcessor)=>{
             if(EGGROLL_SESSION_USE_RESOURCE_DISPATCH.get()=="true"||processorType=="DeepSpeed")
