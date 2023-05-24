@@ -54,7 +54,7 @@ class ContainersServiceHandler(implicit ec: ExecutionContext,
       logInfo(s"(${container.getProcessorId()})container started: $container ${container.getPid()}, $status")
     })
     .withSuccessCallback(container => {
-      client.heartbeat(ErProcessor(id = container.getProcessorId(), serverNodeId = NodeManagerMeta.serverNodeId, status = ProcessorStatus.STOPPED))
+      client.heartbeat(ErProcessor(id = container.getProcessorId(), serverNodeId = NodeManagerMeta.serverNodeId, status = ProcessorStatus.FINISHED))
       logInfo(s"${container.getProcessorId()})container success: $container ${container.getPid()}")
     })
     .withFailedCallback(container => {

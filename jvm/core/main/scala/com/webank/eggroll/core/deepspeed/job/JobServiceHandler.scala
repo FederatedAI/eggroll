@@ -254,7 +254,8 @@ object JobServiceHandler extends Logging {
     }
     catch {
       case e: Exception =>
-        smDao.updateSessionStatus(sessionId, SessionStatus.ERROR)
+        //smDao.updateSessionStatus(sessionId, SessionStatus.ERROR)
+        killJob(sessionId,false)
         throw e
     }
   }
