@@ -50,7 +50,7 @@ object ProcessorStateMachine extends Logging{
               ResourceStateMachine.changeState(conn, Array(erProcessor), ResourceStatus.PRE_ALLOCATED, ResourceStatus.ALLOCATED)
 
           })
-          case "NEW_ERROR" =>updateState(desErProcessor,connection= connection,afterCall = (conn,erProcessor)=>{
+          case statusLine if(statusLine=="NEW_STOPPED"||statusLine=="NEW_KILLED"||statusLine=="NEW_ERROR") =>updateState(desErProcessor,connection= connection,afterCall = (conn,erProcessor)=>{
             if(EGGROLL_SESSION_USE_RESOURCE_DISPATCH.get()=="true"||processorType=="DeepSpeed")
                 ResourceStateMachine.changeState(conn,Array(erProcessor),ResourceStatus.PRE_ALLOCATED,ResourceStatus.ALLOCATE_FAILED)
           })
@@ -90,16 +90,17 @@ object ProcessorStateMachine extends Logging{
     ClusterResourceManager.returnResource(beforeCall=  (conn,proc) =>smDao.updateProcessor(conn, proc),processors =Array(proc))
   }
 
+
   def  updateAndAllocateResource(proc:ErProcessor): Unit ={
     ClusterResourceManager.allocateResource(beforeCall=  (conn,proc) =>smDao.updateProcessor(conn, proc),processors =Array(proc))
   }
 
  def  defaultSessionCallback  (conn:Connection ,erSessionMeta: ErSessionMeta  ):Unit={
-   if(EGGROLL_SESSION_USE_RESOURCE_DISPATCH.get()=="true"||erSessionMeta.name=="DeepSpeed") {
+   //if(EGGROLL_SESSION_USE_RESOURCE_DISPATCH.get()=="true"||erSessionMeta.name=="DeepSpeed") {
      erSessionMeta.processors.foreach(p=>{
         ProcessorStateMachine.changeStatus(p,desStateParam =erSessionMeta.status,connection = conn )
      })
-   }
+   //}
  }
 
 
