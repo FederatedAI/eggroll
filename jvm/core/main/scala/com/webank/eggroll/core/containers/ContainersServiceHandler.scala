@@ -8,6 +8,7 @@ import com.webank.eggroll.core.containers.meta._
 import com.webank.eggroll.core.meta.ErProcessor
 import com.webank.eggroll.core.resourcemanager.NodeManagerMeta
 import com.webank.eggroll.core.session.StaticErConf
+import com.webank.eggroll.core.util.Logging
 
 import java.io.{ByteArrayOutputStream, FileInputStream}
 import java.nio.file.Files
@@ -17,7 +18,7 @@ import scala.reflect.io.Path
 
 
 class ContainersServiceHandler(implicit ec: ExecutionContext,
-                               providedContainersDataDir: Option[Path] = None) {
+                               providedContainersDataDir: Option[Path] = None) extends Logging {
 
   // containersDataDir is essential for containers to work
   // we assume that all basic data related to containers are stored in this dir, including:
@@ -45,35 +46,24 @@ class ContainersServiceHandler(implicit ec: ExecutionContext,
 
   var client = new ClusterManagerClient()
   private val containersManager = ContainersManager.builder()
-    // TODO: status callbacks here
     .withStartedCallback((container) => {
-      //      object ProcessorStatus {
-      //        val NEW = "NEW"
-      //        val RUNNING = "RUNNING"
-      //        val STOPPED = "STOPPED"
-      //        val KILLED = "KILLED"
-      //        val ERROR = "ERROR"
-      //      }
-
-      println(s"container started: ${container} ${container.getPid()} ")
-      var pid = container.getPid()
-      var status = if (pid > 0) ProcessorStatus.RUNNING else ProcessorStatus.ERROR
+      val pid = container.getPid()
+      val status = if (pid > 0) ProcessorStatus.RUNNING else ProcessorStatus.ERROR
       client.heartbeat(ErProcessor(id = container.getProcessorId(), pid = pid,
         serverNodeId = NodeManagerMeta.serverNodeId, status = status));
-
+      logInfo(s"(${container.getProcessorId()})container started: ${container} ${container.getPid()}, ${status}")
     })
     .withSuccessCallback((container) => {
-      println(s"container success: ${container}")
       client.heartbeat(ErProcessor(id = container.getProcessorId(), serverNodeId = NodeManagerMeta.serverNodeId, status = ProcessorStatus.STOPPED));
-
+      logInfo(s"${container.getProcessorId()})container success: ${container} ${container.getPid()}")
     })
     .withFailedCallback((container) => {
-      println(s"container failed: ${container}")
       client.heartbeat(ErProcessor(id = container.getProcessorId(), serverNodeId = NodeManagerMeta.serverNodeId, status = ProcessorStatus.ERROR));
+      logInfo(s"(${container.getProcessorId()})container failed: ${container} ${container.getPid()}")
     })
     .withExceptionCallback((container, e) => {
-      println(s"container exception: ${container}, ${e}")
       client.heartbeat(ErProcessor(id = container.getProcessorId(), serverNodeId = NodeManagerMeta.serverNodeId, status = ProcessorStatus.KILLED));
+      logInfo(s"(${container.getProcessorId()})container exception: ${container} ${container.getPid()}, ${e}")
     })
     .build
 
@@ -86,34 +76,43 @@ class ContainersServiceHandler(implicit ec: ExecutionContext,
 
   private def startDeepspeedContainers(startDeepspeedContainerRequest: StartDeepspeedContainerRequest): StartContainersResponse = {
     val sessionId = startDeepspeedContainerRequest.sessionId
+    logInfo(s"(sessionId=$sessionId) starting deepspeed containers")
     startDeepspeedContainerRequest.deepspeedConfigs.par.foreach { case (containerId, deepspeedConfig) =>
-      val container = {
-        new DeepSpeedContainer(
-          sessionId = sessionId,
-          processorId = containerId,
-          deepspeedContainerConfig = new WrapedDeepspeedContainerConfig(deepspeedConfig),
-          containerWorkspace = getContainerWorkspace(containerId),
-          commandArguments = startDeepspeedContainerRequest.commandArguments,
-          environmentVariables = startDeepspeedContainerRequest.environmentVariables,
-          files = startDeepspeedContainerRequest.files,
-          zippedFiles = startDeepspeedContainerRequest.zippedFiles,
-          options = startDeepspeedContainerRequest.options
-        )
-      }
+      val container = new DeepSpeedContainer(
+        sessionId = sessionId,
+        processorId = containerId,
+        deepspeedContainerConfig = new WrapedDeepspeedContainerConfig(deepspeedConfig),
+        containerWorkspace = getContainerWorkspace(containerId),
+        commandArguments = startDeepspeedContainerRequest.commandArguments,
+        environmentVariables = startDeepspeedContainerRequest.environmentVariables,
+        files = startDeepspeedContainerRequest.files,
+        zippedFiles = startDeepspeedContainerRequest.zippedFiles,
+        options = startDeepspeedContainerRequest.options
+      )
       containersManager.addContainer(containerId, container)
       containersManager.startContainer(containerId)
+      logInfo(s"(sessionId=$sessionId) deepspeed container started: ${containerId}")
     }
+    logInfo(s"(sessionId=$sessionId) deepspeed containers started")
     StartContainersResponse()
   }
 
 
   def stopJobContainers(stopContainersRequest: StopContainersRequest): StopContainersResponse = {
-    containersManager.stopContainer(0)
-    StopContainersResponse()
+    null
+    //    logInfo(s"(sessionId=${stopContainersRequest.id})stopping containers")
+    //    stopContainersRequest.containerIds.foreach { id =>
+    //      containersManager.stopContainer(id)
+    //    }
+    //    containersManager.stopContainer(0)
+    //    StopContainersResponse()
   }
 
   def killJobContainers(killContainersRequest: KillContainersRequest): KillContainersResponse = {
-    containersManager.killContainer(0)
+    logInfo(s"(sessionId=${killContainersRequest.sessionId})killing containers")
+    killContainersRequest.processors.foreach { p =>
+      containersManager.killContainer(p.id)
+    }
     KillContainersResponse()
   }
 
