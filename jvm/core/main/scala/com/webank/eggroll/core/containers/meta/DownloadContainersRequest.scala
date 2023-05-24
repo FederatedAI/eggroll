@@ -1,17 +1,18 @@
 package com.webank.eggroll.core.containers.meta
 
 import com.google.protobuf.ByteString
-import com.webank.eggroll.core.constant.StringConstants
 import com.webank.eggroll.core.meta.Containers
 
 import scala.collection.JavaConverters._
 import scala.language.implicitConversions
 
 case class DownloadContainersRequest(
-                                      sessionId: String = StringConstants.EMPTY,
-                                      containerIds: Array[Long] = Array(),
-                                      compressMethod: String = "zip"
+                                      sessionId: String,
+                                      containerIds: Array[Long],
+                                      compressMethod: String = "zip",
+                                      contentType: ContentType.ContentType
                                     )
+
 
 object DownloadContainersRequest {
   implicit def deserialize(byteString: ByteString): DownloadContainersRequest = {
@@ -19,7 +20,8 @@ object DownloadContainersRequest {
     DownloadContainersRequest(
       sessionId = src.getSessionId,
       containerIds = src.getContainerIdsList.asScala.map(_.toLong).toArray,
-      compressMethod = src.getCompressMethod
+      compressMethod = src.getCompressMethod,
+      contentType = src.getContentType
     )
   }
 
@@ -28,6 +30,7 @@ object DownloadContainersRequest {
       .setSessionId(src.sessionId)
       .addAllContainerIds(src.containerIds.map(_.asInstanceOf[java.lang.Long]).toList.asJava)
       .setCompressMethod(src.compressMethod)
+      .setContentType(src.contentType)
     builder.build().toByteArray
   }
 }
