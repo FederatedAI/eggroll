@@ -117,14 +117,24 @@ class ContainersServiceHandler(implicit ec: ExecutionContext,
   }
 
   def downloadContainers(downloadContainersRequest: DownloadContainersRequest): DownloadContainersResponse = {
-    val contents = downloadContainersRequest.containerIds.map { id =>
-      val workspace = getContainerWorkspace(id)
+    val sessionId = downloadContainersRequest.sessionId
+    val containerContentType = downloadContainersRequest.contentType
+    val containerIds = downloadContainersRequest.containerIds
+    logInfo(s"(sessionId=$sessionId)downloading containers: ${containerIds.mkString(",")}")
+
+    val contents = containerIds.map { containerId =>
+      val targetDir = containerContentType match {
+        case ContentType.ALL => getContainerWorkspace(containerId)
+        case ContentType.MODELS => getContainerModelsDir(containerId)
+        case ContentType.LOGS => getContainerLogsDir(containerId)
+        case _ => throw new IllegalArgumentException(s"unsupported container content type: $containerContentType")
+      }
       downloadContainersRequest.compressMethod match {
         case CompressMethod.ZIP =>
-          if (workspace.exists)
-            ContainerContent(id, zip(workspace), CompressMethod.ZIP)
+          if (targetDir.exists)
+            ContainerContent(containerId, zip(targetDir), CompressMethod.ZIP)
           else
-            ContainerContent(id, Array[Byte](), CompressMethod.ZIP)
+            ContainerContent(containerId, Array[Byte](), CompressMethod.ZIP)
         case _ =>
           throw new IllegalArgumentException(s"compress method not supported: ${downloadContainersRequest.compressMethod}")
       }
@@ -134,6 +144,14 @@ class ContainersServiceHandler(implicit ec: ExecutionContext,
 
   private def getContainerWorkspace(containerId: Long): Path = {
     containersDataDir / containerId.toString
+  }
+
+  private def getContainerModelsDir(containerId: Long): Path = {
+    getContainerWorkspace(containerId) / MODELS
+  }
+
+  private def getContainerLogsDir(containerId: Long): Path = {
+    getContainerWorkspace(containerId) / LOGS
   }
 }
 
