@@ -11,7 +11,7 @@ import scala.collection.mutable.ArrayBuffer
 
 object ResourceStateMachine extends Logging{
 
-  def  changeState(connection: Connection,processors: Array[ErProcessor],beforeState:String,afterState:String ): Unit ={
+  def  changeState(connection: Connection,processors: Array[ErProcessor],beforeState:String,afterState:String ): Unit =synchronized{
           var  stateLine =  beforeState+"_"+afterState
 
         logInfo(s"=======resource====stateLine==========${stateLine}")
