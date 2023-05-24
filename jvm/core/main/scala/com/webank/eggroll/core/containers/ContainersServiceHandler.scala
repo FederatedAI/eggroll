@@ -30,7 +30,7 @@ class ContainersServiceHandler(implicit ec: ExecutionContext,
   // but in production, we should always use the default value from config
   private lazy val containersDataDir: Path = {
     providedContainersDataDir.getOrElse {
-      var pathStr = StaticErConf.getString(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_CONTAINERS_DATA_DIR)
+      val pathStr = StaticErConf.getString(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_CONTAINERS_DATA_DIR)
 
       if (pathStr == null || pathStr.isEmpty) {
         throw new IllegalArgumentException("container data dir not set")
@@ -46,24 +46,24 @@ class ContainersServiceHandler(implicit ec: ExecutionContext,
 
   var client = new ClusterManagerClient()
   private val containersManager = ContainersManager.builder()
-    .withStartedCallback((container) => {
+    .withStartedCallback(container => {
       val pid = container.getPid()
       val status = if (pid > 0) ProcessorStatus.RUNNING else ProcessorStatus.ERROR
       client.heartbeat(ErProcessor(id = container.getProcessorId(), pid = pid,
-        serverNodeId = NodeManagerMeta.serverNodeId, status = status));
-      logInfo(s"(${container.getProcessorId()})container started: ${container} ${container.getPid()}, ${status}")
+        serverNodeId = NodeManagerMeta.serverNodeId, status = status))
+      logInfo(s"(${container.getProcessorId()})container started: $container ${container.getPid()}, $status")
     })
-    .withSuccessCallback((container) => {
-      client.heartbeat(ErProcessor(id = container.getProcessorId(), serverNodeId = NodeManagerMeta.serverNodeId, status = ProcessorStatus.STOPPED));
-      logInfo(s"${container.getProcessorId()})container success: ${container} ${container.getPid()}")
+    .withSuccessCallback(container => {
+      client.heartbeat(ErProcessor(id = container.getProcessorId(), serverNodeId = NodeManagerMeta.serverNodeId, status = ProcessorStatus.STOPPED))
+      logInfo(s"${container.getProcessorId()})container success: $container ${container.getPid()}")
     })
-    .withFailedCallback((container) => {
-      client.heartbeat(ErProcessor(id = container.getProcessorId(), serverNodeId = NodeManagerMeta.serverNodeId, status = ProcessorStatus.ERROR));
-      logInfo(s"(${container.getProcessorId()})container failed: ${container} ${container.getPid()}")
+    .withFailedCallback(container => {
+      client.heartbeat(ErProcessor(id = container.getProcessorId(), serverNodeId = NodeManagerMeta.serverNodeId, status = ProcessorStatus.ERROR))
+      logInfo(s"(${container.getProcessorId()})container failed: $container ${container.getPid()}")
     })
     .withExceptionCallback((container, e) => {
-      client.heartbeat(ErProcessor(id = container.getProcessorId(), serverNodeId = NodeManagerMeta.serverNodeId, status = ProcessorStatus.KILLED));
-      logInfo(s"(${container.getProcessorId()})container exception: ${container} ${container.getPid()}, ${e}")
+      client.heartbeat(ErProcessor(id = container.getProcessorId(), serverNodeId = NodeManagerMeta.serverNodeId, status = ProcessorStatus.KILLED))
+      logInfo(s"(${container.getProcessorId()})container exception: $container ${container.getPid()}, $e")
     })
     .build
 
@@ -91,29 +91,29 @@ class ContainersServiceHandler(implicit ec: ExecutionContext,
       )
       containersManager.addContainer(containerId, container)
       containersManager.startContainer(containerId)
-      logInfo(s"(sessionId=$sessionId) deepspeed container started: ${containerId}")
+      logInfo(s"(sessionId=$sessionId) deepspeed container started: $containerId")
     }
     logInfo(s"(sessionId=$sessionId) deepspeed containers started")
-    StartContainersResponse()
+    StartContainersResponse(sessionId)
   }
 
 
   def stopJobContainers(stopContainersRequest: StopContainersRequest): StopContainersResponse = {
-    null
-    //    logInfo(s"(sessionId=${stopContainersRequest.id})stopping containers")
-    //    stopContainersRequest.containerIds.foreach { id =>
-    //      containersManager.stopContainer(id)
-    //    }
-    //    containersManager.stopContainer(0)
-    //    StopContainersResponse()
+    val sessionId = stopContainersRequest.sessionId
+    logInfo(s"(sessionId=${stopContainersRequest.sessionId})stopping containers")
+    stopContainersRequest.containers.foreach { containerId =>
+      containersManager.stopContainer(containerId)
+    }
+    StopContainersResponse(sessionId)
   }
 
   def killJobContainers(killContainersRequest: KillContainersRequest): KillContainersResponse = {
-    logInfo(s"(sessionId=${killContainersRequest.sessionId})killing containers")
-    killContainersRequest.processors.foreach { p =>
-      containersManager.killContainer(p.id)
+    val sessionId = killContainersRequest.sessionId
+    logInfo(s"(sessionId=$sessionId)killing containers")
+    killContainersRequest.containers.foreach { containerId =>
+      containersManager.killContainer(containerId)
     }
-    KillContainersResponse()
+    KillContainersResponse(sessionId)
   }
 
   def downloadContainers(downloadContainersRequest: DownloadContainersRequest): DownloadContainersResponse = {
