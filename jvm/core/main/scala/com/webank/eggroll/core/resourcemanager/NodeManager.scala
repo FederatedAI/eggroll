@@ -8,6 +8,7 @@ import com.webank.eggroll.core.client.ClusterManagerClient
 import com.webank.eggroll.core.constant.ServerNodeStatus.{HEALTHY, INIT}
 import com.webank.eggroll.core.session.{RuntimeErConf, StaticErConf}
 import com.webank.eggroll.core.env.{Shell, SysInfoLinux}
+import com.webank.eggroll.core.resourcemanager.NodeResourceManager.logInfo
 import com.webank.eggroll.core.util.{FileSystemUtils, GetSystemInfo, Logging, NetUtils, ProcessUtils}
 
 import java.io.File
@@ -308,14 +309,18 @@ object  NodeResourceManager extends  Logging {
               port = StaticErConf.getString(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT).toInt),
             status = NodeManagerMeta.status)
           ))
+
           )
           if (nodeHeartBeat != null&&nodeHeartBeat.node!=null) {
           if (NodeManagerMeta.status.equals(INIT)) {
-              NodeManagerMeta.serverNodeId = nodeHeartBeat.node.id
-              NodeManagerMeta.clusterId = nodeHeartBeat.node.clusterId
-              logInfo(s"get node id ${NodeManagerMeta.serverNodeId} from cluster-manager")
-              NodeManagerMeta.refreshServerNodeMetaIntoFile()
-              NodeManagerMeta.status =  HEALTHY
+              if(nodeHeartBeat.node.id != -1) {
+                NodeManagerMeta.serverNodeId = nodeHeartBeat.node.id
+                NodeManagerMeta.clusterId = nodeHeartBeat.node.clusterId
+                logInfo(s"get node id ${NodeManagerMeta.serverNodeId} from cluster-manager ")
+                NodeManagerMeta.refreshServerNodeMetaIntoFile()
+                NodeManagerMeta.status = HEALTHY
+              }
+            logInfo(s"get node id ${NodeManagerMeta.serverNodeId} from cluster-manager ")
           }
         }
         }catch {
