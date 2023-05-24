@@ -26,7 +26,7 @@ object ProcessorStateMachine extends Logging{
   private var serverNodeCrudOperator = new  ServerNodeCrudOperator;
 
   def  changeStatus(  erProcessor: ErProcessor,
-                      preStateParam:String=null,desStateParam:String,connection: Connection=null ):Unit ={
+                      preStateParam:String=null,desStateParam:String,connection: Connection=null ):Unit =synchronized{
         var  preState=preStateParam
         var  processorType = erProcessor.processorType
         if(preState==null){
