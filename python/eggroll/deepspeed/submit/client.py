@@ -30,11 +30,18 @@ class ContentType(enum.Enum):
 
 
 class DeepspeedJob:
-    def __init__(self, session_id: Optional[str] = None):
+    def __init__(self, session_id: Optional[str] = None,
+                 host: Optional[str] = None,
+                 port: Optional[int] = None):
         if session_id is None:
             session_id = f"deepspeed_session_{datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f')}"
         self._session_id = session_id
         self._rank_to_processor = {}
+        self._host = host
+        self._port = port
+
+    def _get_client(self):
+        return BaseClient(self._host, self._port)
 
     def submit(
         self,
@@ -80,7 +87,7 @@ class DeepspeedJob:
             options=options,
         )
 
-        submit_response = BaseClient().do_sync_request(
+        submit_response = self._get_client().do_sync_request(
             submit_request, output_type=deepspeed_pb2.SubmitJobResponse, command_uri=JobCommands.SUBMIT_JOB
         )
         for processor in submit_response.processors:
@@ -90,7 +97,7 @@ class DeepspeedJob:
 
     def query_status(self):
         query_job_status_request = deepspeed_pb2.QueryJobStatusRequest(session_id=self._session_id)
-        return BaseClient().do_sync_request(
+        return self._get_client().do_sync_request(
             query_job_status_request,
             output_type=deepspeed_pb2.QueryJobStatusResponse,
             command_uri=JobCommands.QUERY_JOB_STATUS,
@@ -98,14 +105,14 @@ class DeepspeedJob:
 
     def query_session(self):
         query_job_request = deepspeed_pb2.QueryJobRequest(session_id=self._session_id)
-        query_response = BaseClient().do_sync_request(
+        query_response = self._get_client().do_sync_request(
             query_job_request, output_type=deepspeed_pb2.QueryJobResponse, command_uri=JobCommands.QUERY_JOB
         )
         return query_response
 
     def kill(self):
         kill_job_request = deepspeed_pb2.KillJobRequest(session_id=self._session_id)
-        kill_response = BaseClient().do_sync_request(
+        kill_response = self._get_client().do_sync_request(
             kill_job_request, output_type=deepspeed_pb2.KillJobResponse, command_uri=JobCommands.KILL_JOB
         )
         return kill_response
@@ -129,7 +136,7 @@ class DeepspeedJob:
             compress_method="zip",
             content_type=content_type.to_proto(),
         )
-        download_job_response = BaseClient().do_sync_request(
+        download_job_response = self._get_client().do_sync_request(
             download_job_request, output_type=deepspeed_pb2.DownloadJobResponse, command_uri=JobCommands.DOWNLOAD_JOB
         )
         return download_job_response
@@ -137,9 +144,10 @@ class DeepspeedJob:
     def download_job_to(
         self,
         ranks: Optional[List[int]] = None,
+        content_type: ContentType = ContentType.ALL,
         rank_to_path: typing.Callable[[int], str] = lambda rank: f"rank_{rank}.zip",
     ):
-        download_job_response = self.download_job(ranks)
+        download_job_response = self.download_job(ranks, content_type)
         if ranks is None:
             ranks = range(len(download_job_response.container_content))
         for rank, content in zip(ranks, download_job_response.container_content):
