@@ -623,25 +623,30 @@ def doCreateServerNode(input: ErServerNode): ErServerNode = {
         }
 
 
-
         if (erResource.used >= 0) {
           params = (params :+ erResource.used.toString)
 
           sqlParams=sqlParams :+ "  used = ?"
         }
 
+        params = (params :+ erResource.extention)
+
+        sqlParams=sqlParams :+ "  extention = ?"
+
+
         sql+=    sqlParams.mkString(" , ")+ " where  1= 1"
 
 
         if (!StringUtils.isBlank(erResource.resourceType)) {
           params = params :+ erResource.resourceType
-
           sql += " and resource_type=? "
         }
         if (serverNodeId >= 0) {
           params = (params :+ serverNodeId.toString)
           sql += s" and server_node_id = ?"
         }
+
+
          // logInfo(s"========sql=======${sql}==== param ${params}")
 
           dbc.update(conn ,sql,

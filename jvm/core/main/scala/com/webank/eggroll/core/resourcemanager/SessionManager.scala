@@ -150,15 +150,17 @@ class SessionManagerService extends SessionManager with Logging {
    // smDao.updateProcessor(proc)
 
     logInfo(s"receive heartbeat processor ${proc.id}  ${proc.status} ")
-      proc.status match {
-      case status if(status==ProcessorStatus.STOPPED||status==ProcessorStatus.KILLED||status==ProcessorStatus.ERROR)=>
-          logInfo(s"processor ${proc.id}    prepare to return resource")
-           ProcessorStateMachine.changeStatus(proc,desStateParam=status)
-      case status if (status==ProcessorStatus.RUNNING )=>
-          logInfo("receive heartbeat running ,")
-        ProcessorStateMachine.changeStatus(proc,desStateParam=status)
-     //     ClusterResourceManager.allocateResource(Array(proc),beforeCall= beforeCall)
-    }
+
+    ProcessorStateMachine.changeStatus(proc,desStateParam=proc.status)
+//      proc.status match {
+//      case status if(status==ProcessorStatus.STOPPED||status==ProcessorStatus.KILLED||status==ProcessorStatus.ERROR)=>
+//          logInfo(s"processor ${proc.id}    prepare to return resource")
+//           ProcessorStateMachine.changeStatus(proc,desStateParam=status)
+//      case status if (status==ProcessorStatus.RUNNING )=>
+//          logInfo("receive heartbeat running ,")
+//        ProcessorStateMachine.changeStatus(proc,desStateParam=status)
+//     //     ClusterResourceManager.allocateResource(Array(proc),beforeCall= beforeCall)
+//    }
 //    if(proc.status==ProcessorStatus.STOPPED||
 //      proc.status==ProcessorStatus.KILLED||
 //      proc.status==ProcessorStatus.ERROR
