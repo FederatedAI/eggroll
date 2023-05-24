@@ -196,7 +196,7 @@ object ClusterManagerService extends Logging {
         var nodes = ServerNodeCrudOperator.doGetServerNodes(ErServerNode(status = ServerNodeStatus.HEALTHY))
         nodes.foreach(n=>{
           var interval = now - (if(n.lastHeartBeat != null) n.lastHeartBeat.getTime else 0)
-          logInfo(s"interval : ${n.lastHeartBeat} ${interval}  ${now} ${if(n.lastHeartBeat!=null)n.lastHeartBeat.getTime}")
+         // logInfo(s"interval : ${n.lastHeartBeat} ${interval}  ${now} ${if(n.lastHeartBeat!=null)n.lastHeartBeat.getTime}")
            if(  interval>expire){
               logInfo(s"server node ${n} change status to LOSS")
                   updateNode(n.copy(status = ServerNodeStatus.LOSS),false,false)
