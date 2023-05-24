@@ -4,15 +4,15 @@ import com.webank.eggroll.core.session.{ErConf, StaticErConf};
 
 package object container {
   object ContainerKey {
-    val WORKING_DIR = "eggroll.container.dir"
     val PYTHON_EXEC = "eggroll.container.python.exec"
-    val LOGS_DIR = "eggroll.container.logs"
 
     val DEEPSPEED_PYTHON_EXEC = "eggroll.container.deepspeed.python.exec"
     val DEEPSPEED_SCRIPT_PATH = "eggroll.container.deepspeed.script.path"
     val DEEPSPEED_TORCH_DISTRIBUTED_BACKEND = "eggroll.container.deepspeed.distributed.backend"
     val DEEPSPEED_TORCH_DISTRIBUTED_STORE_HOST = "eggroll.container.deepspeed.distributed.store.host"
     val DEEPSPEED_TORCH_DISTRIBUTED_STORE_PORT = "eggroll.container.deepspeed.distributed.store.port"
+
+    val EGGPAIR_VENV = "eggroll.resourcemanager.bootstrap.egg_pair.venv"
   }
 
   type ContainerStatusCallback = (ContainerStatus.Value) => (ContainerTrait, Option[Exception]) => Unit
@@ -34,7 +34,8 @@ package object container {
     def getPythonExec(key: String = ""): String = {
       val fallbacks = Seq(
         () => Option(key).filter(_.nonEmpty).map(k => getString(k)).getOrElse(""),
-        () => getString(ContainerKey.PYTHON_EXEC)
+        () => getString(ContainerKey.PYTHON_EXEC),
+        () => Option(getString(ContainerKey.EGGPAIR_VENV)).filter(_.nonEmpty).map(v => s"${v}/bin/python").getOrElse("")
       )
       for (f <- fallbacks) {
         val value = f()
