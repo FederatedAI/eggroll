@@ -33,8 +33,6 @@ object ResourceStateMachine extends Logging{
 //              countAndUpdateNodeResource(conn,p.serverNodeId)
 //          })
           case _ => logError(s"error resource status ${stateLine}")
-
-
         }
   }
 
