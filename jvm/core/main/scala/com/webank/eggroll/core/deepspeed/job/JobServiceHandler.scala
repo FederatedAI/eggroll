@@ -275,7 +275,7 @@ object JobServiceHandler extends Logging {
     nodeAndProcessors.par.foreach { case (node, processors) =>
       try {
         new NodeManagerClient(node.endpoint)
-          .killJobContainers(KillContainersRequest(sessionId = sessionId, processors = processors))
+          .killJobContainers(KillContainersRequest(sessionId = sessionId, containers = processors.map(_.id)))
       } catch {
         case e: Exception =>
           e.printStackTrace()

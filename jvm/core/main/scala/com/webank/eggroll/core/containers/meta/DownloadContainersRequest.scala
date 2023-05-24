@@ -1,15 +1,14 @@
 package com.webank.eggroll.core.containers.meta
 
 import com.google.protobuf.ByteString
-import com.webank.eggroll.core.constant.StringConstants
 import com.webank.eggroll.core.meta.Containers
 
 import scala.collection.JavaConverters._
 import scala.language.implicitConversions
 
 case class DownloadContainersRequest(
-                                      sessionId: String = StringConstants.EMPTY,
-                                      containerIds: Array[Long] = Array(),
+                                      sessionId: String,
+                                      containerIds: Array[Long],
                                       compressMethod: String = "zip"
                                     )
 

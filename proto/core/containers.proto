@@ -34,16 +34,20 @@ message StartContainersResponse {
 
 message StopContainersRequest {
   string session_id = 1;
+  repeated int64 container_ids = 2;
 }
 
 message StopContainersResponse {
+  string session_id = 1;
 }
 
 message KillContainersRequest {
   string session_id = 1;
+  repeated int64 container_ids = 2;
 }
 
 message KillContainersResponse {
+  string session_id = 1;
 }
 
 message DownloadContainersRequest {
