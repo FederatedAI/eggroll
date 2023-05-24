@@ -1,12 +1,13 @@
 package com.webank.eggroll.core.deepspeed.job.meta
 
 import com.google.protobuf.ByteString
+import com.webank.eggroll.core.containers.meta.ContentType
 import com.webank.eggroll.core.meta.Deepspeed
 
 import scala.collection.JavaConverters._
 import scala.language.implicitConversions
 
-case class DownloadJobRequest(sessionId: String, ranks: Array[Int], compressMethod: String)
+case class DownloadJobRequest(sessionId: String, ranks: Array[Int], compressMethod: String, contentType: ContentType.ContentType)
 
 object DownloadJobRequest {
   implicit def serialize(src: DownloadJobRequest): Array[Byte] = {
@@ -23,7 +24,8 @@ object DownloadJobRequest {
     DownloadJobRequest(
       sessionId = proto.getSessionId,
       ranks = proto.getRanksList.asScala.toArray.map(_.toInt),
-      compressMethod = proto.getCompressMethod
+      compressMethod = proto.getCompressMethod,
+      contentType = proto.getContentType
     )
   }
 }
