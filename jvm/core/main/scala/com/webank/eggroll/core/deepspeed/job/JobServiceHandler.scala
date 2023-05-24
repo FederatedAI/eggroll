@@ -7,15 +7,13 @@ import com.webank.eggroll.core.containers.meta._
 import com.webank.eggroll.core.deepspeed.job.meta._
 import com.webank.eggroll.core.error.ErSessionException
 import com.webank.eggroll.core.meta._
-import com.webank.eggroll.core.resourcemanager.ClusterManagerService.smDao
 import com.webank.eggroll.core.resourcemanager.ClusterResourceManager.ResourceApplication
 import com.webank.eggroll.core.resourcemanager.ProcessorStateMachine.defaultSessionCallback
 import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator
-import com.webank.eggroll.core.resourcemanager.{ClusterManagerService, ClusterResourceManager, ProcessorEvent, SessionMetaDao}
+import com.webank.eggroll.core.resourcemanager.{ClusterResourceManager, SessionMetaDao}
 import com.webank.eggroll.core.util.Logging
 import org.apache.commons.lang3.StringUtils
 
-import java.util.concurrent.CountDownLatch
 import scala.util.control.Breaks.{break, breakable}
 
 object JobServiceHandler extends Logging {
@@ -284,7 +282,7 @@ object JobServiceHandler extends Logging {
   }
 
   def killJob(sessionId: String, isTimeout: Boolean): Unit = {
-    logInfo(s"killJob $sessionId")
+    logInfo(s"killing job $sessionId")
     if (!smDao.existSession(sessionId)) {
       return
     }
