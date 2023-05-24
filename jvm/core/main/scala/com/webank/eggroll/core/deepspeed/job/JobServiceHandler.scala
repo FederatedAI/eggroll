@@ -7,30 +7,27 @@ import com.webank.eggroll.core.containers.meta._
 import com.webank.eggroll.core.deepspeed.job.meta._
 import com.webank.eggroll.core.error.ErSessionException
 import com.webank.eggroll.core.meta._
-import com.webank.eggroll.core.resourcemanager.ClusterManagerService.smDao
 import com.webank.eggroll.core.resourcemanager.ClusterResourceManager.ResourceApplication
 import com.webank.eggroll.core.resourcemanager.ProcessorStateMachine.defaultSessionCallback
 import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator
-import com.webank.eggroll.core.resourcemanager.{ClusterManagerService, ClusterResourceManager, ProcessorEvent, SessionMetaDao}
+import com.webank.eggroll.core.resourcemanager.{ClusterResourceManager, SessionMetaDao}
 import com.webank.eggroll.core.util.Logging
 import org.apache.commons.lang3.StringUtils
 
-import java.util.concurrent.CountDownLatch
 import scala.util.control.Breaks.{break, breakable}
 
 object JobServiceHandler extends Logging {
   private val smDao = new SessionMetaDao
 
-//  ClusterManagerService.registerProcessorCallback(JobProcessorTypes.DeepSpeed.toString, (event: ProcessorEvent) => {
-//    new Thread(() => {
-//      event match {
-//        case ProcessorEvent(eventType, processor) if eventType == ProcessorEventType.PROCESSOR_LOSS =>
-//          logDebug(s"processor ${processor.id} lost, kill job ${processor.sessionId}")
-//          killJob(processor.sessionId, isTimeout = false)
-//      }
-//    }).start()
-//  })
-
+  //  ClusterManagerService.registerProcessorCallback(JobProcessorTypes.DeepSpeed.toString, (event: ProcessorEvent) => {
+  //    new Thread(() => {
+  //      event match {
+  //        case ProcessorEvent(eventType, processor) if eventType == ProcessorEventType.PROCESSOR_LOSS =>
+  //          logDebug(s"processor ${processor.id} lost, kill job ${processor.sessionId}")
+  //          killJob(processor.sessionId, isTimeout = false)
+  //      }
+  //    }).start()
+  //  })
 
 
   def handleJobKill(killJobRequest: KillJobRequest): KillJobResponse = {
@@ -206,14 +203,26 @@ object JobServiceHandler extends Logging {
             files = submitJobRequest.files,
             zippedFiles = submitJobRequest.zippedFiles,
             deepspeedConfigs = processors.map { p =>
+              val cudaVisibleDevices = p.options.getOrDefault("cudaVisibleDevices", "-1").split(",").map(_.toInt)
+              if (cudaVisibleDevices.length < 1 || cudaVisibleDevices.exists(_ < 0)) {
+                throw new IllegalArgumentException(s"cudaVisibleDevices is not set or invalid: ${p.options.get("cudaVisibleDevices")}")
+              }
+              val localRank = p.options.getOrDefault("localRank", "-1").toInt
+              if (localRank < 0) {
+                throw new IllegalArgumentException(s"localRank is not set or invalid: ${p.options.get("localRank")}")
+              }
+              val rank = p.options.getOrDefault("globalRank", "-1").toInt
+              if (rank < 0) {
+                throw new IllegalArgumentException(s"globalRank is not set or invalid: ${p.options.get("globalRank")}")
+              }
               p.id -> DeepspeedContainerConfig(
-                cudaVisibleDevices = p.options.getOrDefault("cudaVisibleDevices", "0,1").split(",").map(_.toInt),
+                cudaVisibleDevices = cudaVisibleDevices,
                 worldSize = worldSize,
                 crossRank = crossRank,
                 crossSize = crossSize,
                 localSize = localSize,
-                localRank = p.options.get("localRank").toInt,
-                rank = p.options.get("globalRank").toInt,
+                localRank = localRank,
+                rank = rank,
                 storePrefix = sessionId
               )
             }(collection.breakOut),
@@ -248,7 +257,7 @@ object JobServiceHandler extends Logging {
   }
 
   def killJob(sessionId: String, isTimeout: Boolean): Unit = {
-    logInfo(s"killJob $sessionId")
+    logInfo(s"killing job $sessionId")
     if (!smDao.existSession(sessionId)) {
       return
     }
@@ -272,12 +281,12 @@ object JobServiceHandler extends Logging {
           e.printStackTrace()
       }
     }
-//    if (isTimeout) {
-//      smDao.updateSessionStatus(sessionId = sessionId, status = SessionStatus.NEW_TIMEOUT)
-//    } else {
-//      smDao.updateSessionStatus(sessionId = sessionId, status = SessionStatus.KILLED)
-//    }
+    //    if (isTimeout) {
+    //      smDao.updateSessionStatus(sessionId = sessionId, status = SessionStatus.NEW_TIMEOUT)
+    //    } else {
+    //      smDao.updateSessionStatus(sessionId = sessionId, status = SessionStatus.KILLED)
+    //    }
 
-    smDao.updateSessionMain(sessionMeta.copy(status = SessionStatus.ERROR) ,afterCall=defaultSessionCallback)
+    smDao.updateSessionMain(sessionMeta.copy(status = SessionStatus.ERROR), afterCall = defaultSessionCallback)
   }
 }
