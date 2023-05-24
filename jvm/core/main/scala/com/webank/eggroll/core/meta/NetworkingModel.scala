@@ -149,20 +149,6 @@ case class ErServerNode(id: Long = -1,
 
                        ) extends NetworkingRpcMessage{
 	  override  def  toString: String = {
-//    val sb = new StringBuilder
-////    sb.append("total number of exception(s) occured: ")
-////      .append(causes.length)
-////      .append(StringConstants.LF)
-//
-//    if(resources!=null) {
-//          var sb = new StringBuilder
-//          resources.flatMap(n=>n.toString)
-//    }
-//
-//   // s"ErServerNode[id=${id} , clusterId=${clusterId}, endpoint=${endpoint}, nodeType=${nodeType}, status=${status}, resources = ${rString}]"
-//    resources.foreach(n=>{
-//      sb.append(n.toString)
-//    })
     s"<ErServerNode(id=${id},name = ${name},clusterId = ${clusterId},endpoint = ${endpoint},nodeType = ${nodeType},status = ${status} ,resources = ${resources.mkString})>"
   }
 
