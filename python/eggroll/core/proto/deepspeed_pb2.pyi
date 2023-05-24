@@ -547,18 +547,21 @@ class DownloadJobRequest(google.protobuf.message.Message):
     SESSION_ID_FIELD_NUMBER: builtins.int
     RANKS_FIELD_NUMBER: builtins.int
     COMPRESS_METHOD_FIELD_NUMBER: builtins.int
+    CONTENT_TYPE_FIELD_NUMBER: builtins.int
     session_id: builtins.str
     @property
     def ranks(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.int]: ...
     compress_method: builtins.str
+    content_type: containers_pb2.ContentType.ValueType
     def __init__(
         self,
         *,
         session_id: builtins.str = ...,
         ranks: collections.abc.Iterable[builtins.int] | None = ...,
         compress_method: builtins.str = ...,
+        content_type: containers_pb2.ContentType.ValueType = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["compress_method", b"compress_method", "ranks", b"ranks", "session_id", b"session_id"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["compress_method", b"compress_method", "content_type", b"content_type", "ranks", b"ranks", "session_id", b"session_id"]) -> None: ...
 
 global___DownloadJobRequest = DownloadJobRequest
 

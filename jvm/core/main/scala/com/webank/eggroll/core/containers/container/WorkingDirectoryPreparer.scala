@@ -1,5 +1,7 @@
 package com.webank.eggroll.core.containers.container
 
+import com.webank.eggroll.core.containers.{LOGS, MODELS}
+
 import java.io.{ByteArrayInputStream, FileOutputStream, InputStream}
 import java.nio.file.Path
 import java.util.zip.{ZipEntry, ZipInputStream}
@@ -21,14 +23,33 @@ class WorkingDirectoryPreparer(
 
   private def getWorkingDir: Path = {
     if (workingDir != null) {
-      workingDir
+      workingDir.toAbsolutePath
     } else {
       throw new Exception("workingDir is not set")
     }
   }
 
+  private def getModelsDir: Path = {
+    getWorkingDir.resolve(MODELS)
+  }
+
+  private def getLogsDir: Path = {
+    getWorkingDir.resolve(LOGS)
+  }
+
+  def getContainerDirEnv: Map[String, String] = {
+    Map(
+      "EGGROLL_CONTAINER_DIR" -> getWorkingDir.toString,
+      "EGGROLL_CONTAINER_MODELS_DIR" -> getModelsDir.toString,
+      "EGGROLL_CONTAINER_LOGS_DIR" -> getLogsDir.toString
+    )
+  }
+
   def prepare(): Unit = {
     getWorkingDir.toFile.mkdirs()
+    getModelsDir.toFile.mkdirs()
+    getLogsDir.toFile.mkdirs()
+
     files.foreach { case (fileName, content) =>
       val file = getWorkingDir.resolve(fileName).toFile
       val fos = new FileOutputStream(file)
