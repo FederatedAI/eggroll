@@ -89,6 +89,7 @@ class ContainerLifecycleHandler(container: ContainerTrait,
   }
 
   def killContainer(): Boolean = {
+    logInfo(s"Killing container ${container}")
     if (isStarted) {
       container.kill()
     } else {
