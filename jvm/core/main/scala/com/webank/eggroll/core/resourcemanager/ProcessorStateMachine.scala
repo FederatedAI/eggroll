@@ -2,6 +2,7 @@ package com.webank.eggroll.core.resourcemanager
 
 import com.webank.eggroll.core.constant.SessionConfKeys.EGGROLL_SESSION_USE_RESOURCE_DISPATCH
 import com.webank.eggroll.core.constant.{ProcessorTypes, ResourceStatus, SessionStatus}
+import com.webank.eggroll.core.error.{ErProcessorException, ErSessionException}
 import com.webank.eggroll.core.meta.{ErProcessor, ErSessionMeta}
 import com.webank.eggroll.core.resourcemanager.SessionManagerService.smDao
 import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator
@@ -31,16 +32,15 @@ object ProcessorStateMachine extends Logging{
         if(preState==null){
         var processorsInDb =   serverNodeCrudOperator.queryProcessor(connection,erProcessor.copy(status=null))
           if(processorsInDb.length==0){
-            throw  new Exception
+              logError(s"can not found processor , ${erProcessor}")
+              throw new ErProcessorException(s"can not found processor id ${erProcessor.id}")
           }else{
             preState = processorsInDb.apply(0).status
-            processorType = erProcessor.processorType
+            processorType = processorsInDb.apply(0).processorType
           }
         }
-
-
         var statusLine =  preState+"_"+desStateParam;
-        logInfo(s"==========statusLine================${statusLine}")
+        logInfo(s"==========statusLine================${statusLine} === =========${erProcessor}")
         var desErProcessor = erProcessor.copy(status = desStateParam)
 
         statusLine match {
@@ -48,16 +48,26 @@ object ProcessorStateMachine extends Logging{
 
             if(EGGROLL_SESSION_USE_RESOURCE_DISPATCH.get()=="true"||processorType=="DeepSpeed")
               ResourceStateMachine.changeState(conn, Array(erProcessor), ResourceStatus.PRE_ALLOCATED, ResourceStatus.ALLOCATED)
+            else{
+              logInfo(s"processor ${erProcessor.id}  without resource change")
+            }
+
 
           })
           case statusLine if(statusLine=="NEW_STOPPED"||statusLine=="NEW_KILLED"||statusLine=="NEW_ERROR") =>updateState(desErProcessor,connection= connection,afterCall = (conn,erProcessor)=>{
             if(EGGROLL_SESSION_USE_RESOURCE_DISPATCH.get()=="true"||processorType=="DeepSpeed")
                 ResourceStateMachine.changeState(conn,Array(erProcessor),ResourceStatus.PRE_ALLOCATED,ResourceStatus.ALLOCATE_FAILED)
+            else{
+              logInfo(s"processor ${erProcessor.id} without resource change")
+            }
           })
-          case statusLine if(statusLine=="RUNNING_STOPPED"||statusLine=="RUNNING_KILLED"||statusLine=="RUNNING_ERROR")=>
+          case statusLine if(statusLine=="RUNNING_FINISHED"||statusLine=="RUNNING_STOPPED"||statusLine=="RUNNING_KILLED"||statusLine=="RUNNING_ERROR")=>
             updateState(desErProcessor,connection= connection,afterCall = (conn,erProcessor)=>{
               if(EGGROLL_SESSION_USE_RESOURCE_DISPATCH.get()=="true"||processorType=="DeepSpeed")
                   ResourceStateMachine.changeState(conn,Array(erProcessor),ResourceStatus.ALLOCATED,ResourceStatus.RETURN)
+              else{
+                logInfo(s"processor ${erProcessor.id} without resource change")
+              }
             })
           case _=> println("============error status=============");
         }
