@@ -27,6 +27,7 @@ object ProcessorStateMachine extends Logging{
 
   def  changeStatus(  erProcessor: ErProcessor,
                       preStateParam:String=null,desStateParam:String,connection: Connection=null ):Unit =synchronized{
+        var  beginTimeStamp = System.currentTimeMillis()
         var  preState=preStateParam
         var  processorType = erProcessor.processorType
         if(preState==null){
@@ -69,6 +70,7 @@ object ProcessorStateMachine extends Logging{
             })
           case _=> println("============error status=============");
         }
+        logInfo(s"processor change status cost time ${System.currentTimeMillis()-beginTimeStamp}")
     }
 
   private def  updateState(erProcessor: ErProcessor,connection: Connection,beforeCall:(Connection,ErProcessor)=>Unit =null,afterCall:(Connection,ErProcessor)=>Unit): Unit ={
