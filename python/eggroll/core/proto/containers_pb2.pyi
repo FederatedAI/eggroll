@@ -6,15 +6,34 @@ import builtins
 import collections.abc
 import google.protobuf.descriptor
 import google.protobuf.internal.containers
+import google.protobuf.internal.enum_type_wrapper
 import google.protobuf.message
 import sys
+import typing
 
-if sys.version_info >= (3, 8):
+if sys.version_info >= (3, 10):
     import typing as typing_extensions
 else:
     import typing_extensions
 
 DESCRIPTOR: google.protobuf.descriptor.FileDescriptor
+
+class _ContentType:
+    ValueType = typing.NewType("ValueType", builtins.int)
+    V: typing_extensions.TypeAlias = ValueType
+
+class _ContentTypeEnumTypeWrapper(google.protobuf.internal.enum_type_wrapper._EnumTypeWrapper[_ContentType.ValueType], builtins.type):
+    DESCRIPTOR: google.protobuf.descriptor.EnumDescriptor
+    ALL: _ContentType.ValueType  # 0
+    MODELS: _ContentType.ValueType  # 1
+    LOGS: _ContentType.ValueType  # 2
+
+class ContentType(_ContentType, metaclass=_ContentTypeEnumTypeWrapper): ...
+
+ALL: ContentType.ValueType  # 0
+MODELS: ContentType.ValueType  # 1
+LOGS: ContentType.ValueType  # 2
+global___ContentType = ContentType
 
 @typing_extensions.final
 class StartContainersRequest(google.protobuf.message.Message):
@@ -207,28 +226,22 @@ class StopContainersRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     SESSION_ID_FIELD_NUMBER: builtins.int
+    CONTAINER_IDS_FIELD_NUMBER: builtins.int
     session_id: builtins.str
+    @property
+    def container_ids(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.int]: ...
     def __init__(
         self,
         *,
         session_id: builtins.str = ...,
+        container_ids: collections.abc.Iterable[builtins.int] | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["session_id", b"session_id"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["container_ids", b"container_ids", "session_id", b"session_id"]) -> None: ...
 
 global___StopContainersRequest = StopContainersRequest
 
 @typing_extensions.final
 class StopContainersResponse(google.protobuf.message.Message):
-    DESCRIPTOR: google.protobuf.descriptor.Descriptor
-
-    def __init__(
-        self,
-    ) -> None: ...
-
-global___StopContainersResponse = StopContainersResponse
-
-@typing_extensions.final
-class KillContainersRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     SESSION_ID_FIELD_NUMBER: builtins.int
@@ -240,15 +253,39 @@ class KillContainersRequest(google.protobuf.message.Message):
     ) -> None: ...
     def ClearField(self, field_name: typing_extensions.Literal["session_id", b"session_id"]) -> None: ...
 
+global___StopContainersResponse = StopContainersResponse
+
+@typing_extensions.final
+class KillContainersRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    SESSION_ID_FIELD_NUMBER: builtins.int
+    CONTAINER_IDS_FIELD_NUMBER: builtins.int
+    session_id: builtins.str
+    @property
+    def container_ids(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.int]: ...
+    def __init__(
+        self,
+        *,
+        session_id: builtins.str = ...,
+        container_ids: collections.abc.Iterable[builtins.int] | None = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["container_ids", b"container_ids", "session_id", b"session_id"]) -> None: ...
+
 global___KillContainersRequest = KillContainersRequest
 
 @typing_extensions.final
 class KillContainersResponse(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
+    SESSION_ID_FIELD_NUMBER: builtins.int
+    session_id: builtins.str
     def __init__(
         self,
+        *,
+        session_id: builtins.str = ...,
     ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["session_id", b"session_id"]) -> None: ...
 
 global___KillContainersResponse = KillContainersResponse
 
@@ -259,18 +296,21 @@ class DownloadContainersRequest(google.protobuf.message.Message):
     SESSION_ID_FIELD_NUMBER: builtins.int
     CONTAINER_IDS_FIELD_NUMBER: builtins.int
     COMPRESS_METHOD_FIELD_NUMBER: builtins.int
+    CONTENT_TYPE_FIELD_NUMBER: builtins.int
     session_id: builtins.str
     @property
     def container_ids(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.int]: ...
     compress_method: builtins.str
+    content_type: global___ContentType.ValueType
     def __init__(
         self,
         *,
         session_id: builtins.str = ...,
         container_ids: collections.abc.Iterable[builtins.int] | None = ...,
         compress_method: builtins.str = ...,
+        content_type: global___ContentType.ValueType = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["compress_method", b"compress_method", "container_ids", b"container_ids", "session_id", b"session_id"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["compress_method", b"compress_method", "container_ids", b"container_ids", "content_type", b"content_type", "session_id", b"session_id"]) -> None: ...
 
 global___DownloadContainersRequest = DownloadContainersRequest
 

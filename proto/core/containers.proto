@@ -54,6 +54,13 @@ message DownloadContainersRequest {
   string session_id = 1;
   repeated int64 container_ids = 2;
   string compress_method = 3;
+  ContentType content_type = 4;
+}
+
+enum ContentType {
+  ALL = 0;
+  MODELS = 1;
+  LOGS = 2;
 }
 
 message DownloadContainersResponse {
