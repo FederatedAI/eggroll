@@ -55,7 +55,17 @@ object ClusterResourceManager extends Logging{
                   applicationQueue.broker.poll()
                   break()
                 }
-                var serverNodes = getServerNodeWithResource();
+                var serverNodes  :Array[ErServerNode]= null
+                var tryCount: Int =0
+                do{
+                  serverNodes = getServerNodeWithResource();
+                  tryCount+=1
+                  if(serverNodes==null||serverNodes.length==0)
+                      Thread.sleep(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL.get().toLong)
+                }while((serverNodes==null||serverNodes.length==0)&&tryCount<2)
+
+
+
 
                 var enough = checkResourceEnough(serverNodes, resourceApplication)
                 logInfo(s"resource is enough ? ${enough}")
@@ -197,6 +207,7 @@ object ClusterResourceManager extends Logging{
 
   private def getNextGpuIndex(size:Int,alreadyAllocated :Array[String]): Int ={
     var  result:Int = -1
+
     breakable {
       for (index <- 0 until size) {
         if (!alreadyAllocated.contains(index.toString)) {
@@ -205,6 +216,7 @@ object ClusterResourceManager extends Logging{
         }
       }
     }
+    logInfo(s"==========getNextGpuIndex  size ${size}  alreadyAllocated ${alreadyAllocated.mkString} return ${result}")
     result
   }
 
@@ -233,7 +245,8 @@ object ClusterResourceManager extends Logging{
             var  gpuResourcesInNodeArray =  node.resources.filter(_.resourceType==ResourceTypes.VGPU_CORE)
             if(gpuResourcesInNodeArray.length>0){
               var gpuResourcesInNode = gpuResourcesInNodeArray.apply(0)
-              gpuResourcesInNode.extentionCache.appendAll(gpuResourcesInNode.extention.split(","))
+              logInfo(s"=======gpuResourcesInNode====${gpuResourcesInNode.extention}")
+              gpuResourcesInNode.extentionCache.appendAll(if(gpuResourcesInNode.extention!=null) gpuResourcesInNode.extention.split(",")else Array(""))
               nextGpuIndex = getNextGpuIndex(gpuResourcesInNode.total.toInt,gpuResourcesInNode.extentionCache.toArray)
               gpuResourcesInNode.extentionCache.append(nextGpuIndex.toString)
               changedResource = changedResource.copy(extention = nextGpuIndex.toString)

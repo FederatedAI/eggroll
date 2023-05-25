@@ -55,7 +55,7 @@ case class ErResource(
                       used: Long = -1,
                       allocated: Long = -1,
                       preAllocated:Long = -1,
-                      extention:String =  StringConstants.EMPTY,
+                      extention:String =  null,
                       status: String = ResourceStatus.AVAILABLE,
                       extentionCache:ArrayBuffer[String] = new ArrayBuffer[String]()
                      ) extends NetworkingRpcMessage{
