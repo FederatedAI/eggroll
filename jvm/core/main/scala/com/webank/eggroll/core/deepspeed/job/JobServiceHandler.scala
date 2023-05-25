@@ -197,6 +197,38 @@ object JobServiceHandler extends Logging {
         // ClusterResourceManager.preAllocateResource(processors)
 
         val localSize = processors.length
+        val ranksAndDevices = processors.map { p =>
+          val cudaVisibleDevices = p.options.getOrDefault("cudaVisibleDevices", "-1").split(",").map(_.toInt)
+          if (cudaVisibleDevices.length < 1 || cudaVisibleDevices.exists(_ < 0)) {
+            throw new IllegalArgumentException(s"cudaVisibleDevices is not set or invalid: ${p.options.get("cudaVisibleDevices")}")
+          }
+          val localRank = p.options.getOrDefault("localRank", "-1").toInt
+          if (localRank < 0) {
+            throw new IllegalArgumentException(s"localRank is not set or invalid: ${p.options.get("localRank")}")
+          }
+          val rank = p.options.getOrDefault("globalRank", "-1").toInt
+          if (rank < 0) {
+            throw new IllegalArgumentException(s"globalRank is not set or invalid: ${p.options.get("globalRank")}")
+          }
+          (p.id, rank, localRank, cudaVisibleDevices)
+        }
+        // deepspeed use LOCAL_SIZE to determine the cuda device to set,
+        // so we need to expose the all cuda devices dispatched to same node to deepspeed container.
+        val cudaVisibleDevices = ranksAndDevices.sortBy(_._3).flatMap(_._4)
+        val deepspeedConfigs: Map[Long, DeepspeedContainerConfig] =
+          ranksAndDevices.map { case (containerId, rank, localRank, _) =>
+            containerId -> DeepspeedContainerConfig(
+              cudaVisibleDevices = cudaVisibleDevices,
+              worldSize = worldSize,
+              crossRank = crossRank,
+              crossSize = crossSize,
+              localSize = localSize,
+              localRank = localRank,
+              rank = rank,
+              storePrefix = sessionId
+            )
+          }(collection.breakOut)
+
         nodeManagerClient.startJobContainers(
           StartDeepspeedContainerRequest(
             sessionId = sessionId,
@@ -205,30 +237,7 @@ object JobServiceHandler extends Logging {
             environmentVariables = submitJobRequest.environmentVariables,
             files = submitJobRequest.files,
             zippedFiles = submitJobRequest.zippedFiles,
-            deepspeedConfigs = processors.map { p =>
-              val cudaVisibleDevices = p.options.getOrDefault("cudaVisibleDevices", "-1").split(",").map(_.toInt)
-              if (cudaVisibleDevices.length < 1 || cudaVisibleDevices.exists(_ < 0)) {
-                throw new IllegalArgumentException(s"cudaVisibleDevices is not set or invalid: ${p.options.get("cudaVisibleDevices")}")
-              }
-              val localRank = p.options.getOrDefault("localRank", "-1").toInt
-              if (localRank < 0) {
-                throw new IllegalArgumentException(s"localRank is not set or invalid: ${p.options.get("localRank")}")
-              }
-              val rank = p.options.getOrDefault("globalRank", "-1").toInt
-              if (rank < 0) {
-                throw new IllegalArgumentException(s"globalRank is not set or invalid: ${p.options.get("globalRank")}")
-              }
-              p.id -> DeepspeedContainerConfig(
-                cudaVisibleDevices = cudaVisibleDevices,
-                worldSize = worldSize,
-                crossRank = crossRank,
-                crossSize = crossSize,
-                localSize = localSize,
-                localRank = localRank,
-                rank = rank,
-                storePrefix = sessionId
-              )
-            }(collection.breakOut),
+            deepspeedConfigs = deepspeedConfigs,
             options = submitJobRequest.options))
       }
 
@@ -255,7 +264,7 @@ object JobServiceHandler extends Logging {
     catch {
       case e: Exception =>
         //smDao.updateSessionStatus(sessionId, SessionStatus.ERROR)
-        killJob(sessionId,false)
+        killJob(sessionId, false)
         throw e
     }
   }
