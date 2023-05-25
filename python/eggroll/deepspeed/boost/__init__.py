@@ -1,5 +1,7 @@
 import os
 
+import torch.cuda
+
 
 def init_deepspeed():
     import torch.distributed as distributed
@@ -27,5 +29,8 @@ def init_deepspeed():
     if "RANK" not in os.environ:
         raise RuntimeError("RANK is not set")
     rank = int(os.environ["RANK"])
+
+    if "LOCAL_RANK" not in os.environ:
+        raise RuntimeError("LOCAL_RANK is not set")
 
     distributed.init_process_group(backend=backend, store=store, world_size=world_size, rank=rank)
