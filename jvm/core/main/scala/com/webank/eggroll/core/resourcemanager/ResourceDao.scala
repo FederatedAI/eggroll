@@ -1,13 +1,16 @@
 package com.webank.eggroll.core.resourcemanager
 
+import com.webank.eggroll.core.constant.SessionConfKeys.EGGROLL_SESSION_USE_RESOURCE_DISPATCH
 import com.webank.eggroll.core.constant.{ProcessorStatus, SessionConfKeys, SessionStatus}
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.resourcemanager.BaseDao.NotExistError
+import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.util.JdbcTemplate
 import com.webank.eggroll.core.util.JdbcTemplate.ResultSetIterator
 import org.apache.commons.lang3.StringUtils
 
 import java.sql.Connection
+import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
 class ServerMetaDao {
@@ -30,8 +33,7 @@ class StoreMetaDao {
 
 class SessionMetaDao {
 
-
-  private lazy val dbc = BaseDao.dbc
+  private  val dbc = BaseDao.dbc
 
   def register(sessionMeta: ErSessionMeta, replace: Boolean = true): Unit = synchronized {
     require(sessionMeta.activeProcCount == sessionMeta.processors.count(_.status == ProcessorStatus.RUNNING),
@@ -54,15 +56,22 @@ class SessionMetaDao {
       }
       val procs = sessionMeta.processors
       if (procs.nonEmpty) {
-        val valueSql = ("(?, ?, ?, ?, ?, ?, ?)," * procs.length).stripSuffix(",")
-        val params = procs.flatMap(proc => Seq(
-          sid, proc.serverNodeId, proc.processorType, proc.status, proc.tag,
-          if (proc.commandEndpoint != null) proc.commandEndpoint.toString else "",
-          if (proc.transferEndpoint != null) proc.transferEndpoint.toString else ""))
-        dbc.update(conn,
-          "insert into session_processor(session_id, server_node_id, processor_type, status, " +
-            "tag, command_endpoint, transfer_endpoint) values " + valueSql,
-          params: _*)
+//        val valueSql = ("(?, ?, ?, ?, ?, ?, ?)," * procs.length).stripSuffix(",")
+//        val params = procs.flatMap(proc => Seq(
+//          sid, proc.serverNodeId, proc.processorType, proc.status, proc.tag,
+//          if (proc.commandEndpoint != null) proc.commandEndpoint.toString else "",
+//          if (proc.transferEndpoint != null) proc.transferEndpoint.toString else ""))
+//        dbc.update(conn,
+//          "insert into session_processor(session_id, server_node_id, processor_type, status, " +
+//            "tag, command_endpoint, transfer_endpoint) values " + valueSql,
+//          params: _*)
+          procs.foreach(proc=>{
+
+            ProcessorStateMachine.changeStatus(erProcessor = proc.copy(sessionId = sid),preStateParam="",desStateParam=ProcessorStatus.NEW,connection = conn)
+
+          })
+
+
       }
     }
   }
@@ -120,15 +129,16 @@ class SessionMetaDao {
     register(sessionMeta)
   }
 
-  def createProcessor(proc: ErProcessor): ErProcessor = synchronized {
-    dbc.withTransaction(conn => {
+  def createProcessor(conn: Connection,proc: ErProcessor): ErProcessor = {
+
       val sql = "insert into session_processor " +
         "(session_id, server_node_id, processor_type, status, tag, command_endpoint, transfer_endpoint) values " +
         "(?, ?, ?, ?, ?, ?, ?)"
-      val sessionId = proc.options.getOrDefault(SessionConfKeys.CONFKEY_SESSION_ID, "UNKNOWN")
-      val result = dbc.update(conn, sql, sessionId, proc.serverNodeId, proc.processorType, ProcessorStatus.NEW, proc.tag, proc.commandEndpoint, proc.transferEndpoint)
-    })
-    proc
+
+      val result = dbc.update(conn, sql, proc.sessionId, proc.serverNodeId, proc.processorType, ProcessorStatus.NEW, proc.tag,if (proc.commandEndpoint != null) proc.commandEndpoint.toString else "",
+        if (proc.transferEndpoint != null) proc.transferEndpoint.toString else "")
+
+      proc.copy(id=result.get.toLong)
   }
 
 
