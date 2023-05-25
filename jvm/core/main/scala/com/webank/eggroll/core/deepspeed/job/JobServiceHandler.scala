@@ -158,7 +158,7 @@ object JobServiceHandler extends Logging {
         status = ResourceStatus.PRE_ALLOCATED))
     ))
     val resourceApplication = ResourceApplication(
-
+      sortByResourceType =ResourceTypes.VGPU_CORE,
       processors = prepareProcessors,
       resourceExhaustedStrategy = ResourceExhaustedStrategy.WAITING,
       timeout = submitJobRequest.resourceOptions.timeoutSeconds,
