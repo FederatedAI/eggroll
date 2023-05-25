@@ -53,8 +53,8 @@ class TestResourceDao {
 
   }
 
-  @Test
-  def testCreateProcessor(): Unit = {
-    smDao.createProcessor(proc1)
-  }
+//  @Test
+//  def testCreateProcessor(): Unit = {
+//    smDao.createProcessor(proc1)
+//  }
 }

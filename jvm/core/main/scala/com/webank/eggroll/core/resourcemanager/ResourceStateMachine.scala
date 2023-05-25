@@ -3,6 +3,7 @@ package com.webank.eggroll.core.resourcemanager
 import com.webank.eggroll.core.constant.{ResourceStatus, ResourceTypes, StringConstants}
 import com.webank.eggroll.core.meta.{ErProcessor, ErResource}
 import com.webank.eggroll.core.resourcemanager.ClusterResourceManager.{logInfo, serverNodeCrudOperator}
+import com.webank.eggroll.core.resourcemanager.ProcessorStateMachine.smDao
 import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator
 import com.webank.eggroll.core.util.Logging
 
@@ -12,15 +13,26 @@ import scala.collection.mutable.ArrayBuffer
 object ResourceStateMachine extends Logging{
 
   def  changeState(connection: Connection,processors: Array[ErProcessor],beforeState:String,afterState:String ): Unit =synchronized{
-        var  stateLine =  beforeState+"_"+afterState
-        stateLine match {
-          case "init_pre_allocated" =>  preAllocateResource(connection,processors)
-          case statusLine if(statusLine=="pre_allocated_allocated"||statusLine=="pre_allocated_allocate_failed"||statusLine=="allocated_return") =>
-                  updateResource(connection,processors,beforeState,afterState,afterCall = (conn,p)=>{
-                  countAndUpdateNodeResource(conn,p.serverNodeId)
-                })
-          case _ => logError(s"there is no need do something with resource status ${stateLine}")
-        }
+    if(connection==null){
+      BaseDao.dbc.withTransaction(conn=> {
+        changeStateInner(conn,processors,beforeState,afterState)
+      })
+    }else{
+      changeStateInner(connection,processors,beforeState,afterState)
+    }
+  }
+
+
+  private def   changeStateInner(connection: Connection,processors: Array[ErProcessor],beforeState:String,afterState:String ): Unit ={
+    var  stateLine =  beforeState+"_"+afterState
+    stateLine match {
+      case "init_pre_allocated" =>  preAllocateResource(connection,processors)
+      case statusLine if(statusLine=="pre_allocated_allocated"||statusLine=="pre_allocated_allocate_failed"||statusLine=="allocated_return") =>
+        updateResource(connection,processors,beforeState,afterState,afterCall = (conn,p)=>{
+          countAndUpdateNodeResource(conn,p.serverNodeId)
+        })
+      case _ => logError(s"there is no need do something with resource status ${stateLine}")
+    }
   }
 
   private def  countAndUpdateNodeResource(conn: Connection,serverNodeId: Long): Unit ={
