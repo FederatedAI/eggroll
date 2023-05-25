@@ -12,25 +12,14 @@ import scala.collection.mutable.ArrayBuffer
 object ResourceStateMachine extends Logging{
 
   def  changeState(connection: Connection,processors: Array[ErProcessor],beforeState:String,afterState:String ): Unit =synchronized{
-          var  stateLine =  beforeState+"_"+afterState
-        logInfo(s"=======resource====stateLine==========${stateLine}")
+        var  stateLine =  beforeState+"_"+afterState
         stateLine match {
           case "init_pre_allocated" =>  preAllocateResource(connection,processors)
           case statusLine if(statusLine=="pre_allocated_allocated"||statusLine=="pre_allocated_allocate_failed"||statusLine=="allocated_return") =>
                   updateResource(connection,processors,beforeState,afterState,afterCall = (conn,p)=>{
                   countAndUpdateNodeResource(conn,p.serverNodeId)
                 })
-//          case "pre_allocated_allocated" =>  updateResource(connection,processors,beforeState,afterState,afterCall = (conn,p)=>{
-//                countAndUpdateNodeResource(conn,p.serverNodeId)
-//          })
-//          case "pre_allocated_allocate_failed" => updateResource(connection,processors,beforeState,afterState,afterCall = (conn,p)=>{
-//              countAndUpdateNodeResource(conn,p.serverNodeId)
-//          })
-//          case "allocated_return"=> updateResource(connection,processors,beforeState,afterState,
-//            afterCall = (conn,p)=>{
-//              countAndUpdateNodeResource(conn,p.serverNodeId)
-//          })
-          case _ => logError(s"error resource status ${stateLine}")
+          case _ => logError(s"there is no need do something with resource status ${stateLine}")
         }
   }
 
@@ -66,7 +55,6 @@ object ResourceStateMachine extends Logging{
         resourceType = ResourceTypes.VCPU_CORE, preAllocated = 0, allocated = 0, extention = ""))
     }
 
-    logInfo(s"updateNodeResource  ======== nodeId ${serverNodeId}======  ${paramResources.toArray.mkString}")
     serverNodeCrudOperator.updateNodeResource(conn, serverNodeId, paramResources.toArray)
 
   }
