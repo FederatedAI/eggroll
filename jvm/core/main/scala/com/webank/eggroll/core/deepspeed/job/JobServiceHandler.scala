@@ -162,7 +162,7 @@ object JobServiceHandler extends Logging {
       sortByResourceType = ResourceTypes.VGPU_CORE,
       processors = prepareProcessors,
       resourceExhaustedStrategy = ResourceExhaustedStrategy.WAITING,
-      timeout = submitJobRequest.resourceOptions.timeoutSeconds,
+      timeout = submitJobRequest.resourceOptions.timeoutSeconds * 1000,
       sessionId = sessionId,
       sessionName = JobProcessorTypes.DeepSpeed.toString
     )
