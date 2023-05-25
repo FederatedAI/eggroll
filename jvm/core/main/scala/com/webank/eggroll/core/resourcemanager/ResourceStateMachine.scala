@@ -13,9 +13,7 @@ object ResourceStateMachine extends Logging{
 
   def  changeState(connection: Connection,processors: Array[ErProcessor],beforeState:String,afterState:String ): Unit =synchronized{
           var  stateLine =  beforeState+"_"+afterState
-
         logInfo(s"=======resource====stateLine==========${stateLine}")
-
         stateLine match {
           case "init_pre_allocated" =>  preAllocateResource(connection,processors)
           case statusLine if(statusLine=="pre_allocated_allocated"||statusLine=="pre_allocated_allocate_failed"||statusLine=="allocated_return") =>
@@ -95,39 +93,25 @@ object ResourceStateMachine extends Logging{
                       afterState:String,
                       beforeCall:(Connection,ErProcessor)=>Unit =null,
                       afterCall:(Connection,ErProcessor)=>Unit =null):  Unit=synchronized{
-   // logInfo(s"return resource ${processors.mkString("<",",",">")}")
-  //  ServerNodeCrudOperator.dbc.withTransaction(conn=> {
       try {
-
         processors.foreach(p => {
-
           if (beforeCall != null) {
             beforeCall(conn,p)
           }
           var resourceInDb = serverNodeCrudOperator.queryProcessorResource(conn, p, beforeState)
-//          resourceInDb.foreach(r => {
-//            logInfo(s"processor ${p.id} return resource ${r}")
-//          })
           if (resourceInDb.length > 0) {
             serverNodeCrudOperator.updateProcessorResource(conn, p.copy(resources = resourceInDb.map(_.copy(status = afterState))))
-//            serverNodeCrudOperator.countNodeResource(conn,p.serverNodeId,beforeState)
-//            serverNodeCrudOperator.countNodeResource(conn,p.serverNodeId,afterState)
-
- //           serverNodeCrudOperator.updateNodeResource(conn, p.serverNodeId, resourceInDb)
           }
           if  (afterCall!=null){
             afterCall(conn,p)
           }
-
         })
-
       }catch{
         case e :Exception =>{
           e.printStackTrace()
         }
       }
-   // }
- //   )
+
   }
 
 

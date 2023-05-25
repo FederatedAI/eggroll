@@ -49,14 +49,14 @@ object ProcessorStateMachine extends Logging{
             if(EGGROLL_SESSION_USE_RESOURCE_DISPATCH.get()=="true"||processorType=="DeepSpeed")
               ResourceStateMachine.changeState(conn, Array(erProcessor), ResourceStatus.PRE_ALLOCATED, ResourceStatus.ALLOCATED)
             else{
-              logInfo(s"processor ${erProcessor.id}  without resource change")
+              logInfo(s"resource dispatch config is ${EGGROLL_SESSION_USE_RESOURCE_DISPATCH.get()}, processor ${erProcessor.id}  without resource change, ")
             }
           })
           case statusLine if(statusLine=="NEW_STOPPED"||statusLine=="NEW_KILLED"||statusLine=="NEW_ERROR") =>updateState(desErProcessor,connection= connection,afterCall = (conn,erProcessor)=>{
             if(EGGROLL_SESSION_USE_RESOURCE_DISPATCH.get()=="true"||processorType=="DeepSpeed")
                 ResourceStateMachine.changeState(conn,Array(erProcessor),ResourceStatus.PRE_ALLOCATED,ResourceStatus.ALLOCATE_FAILED)
             else{
-              logInfo(s"processor ${erProcessor.id} without resource change")
+              logInfo(s"resource dispatch config is ${EGGROLL_SESSION_USE_RESOURCE_DISPATCH.get()}, processor ${erProcessor.id}  without resource change, ")
             }
           })
           case statusLine if(statusLine=="RUNNING_FINISHED"||statusLine=="RUNNING_STOPPED"||statusLine=="RUNNING_KILLED"||statusLine=="RUNNING_ERROR")=>
@@ -64,7 +64,7 @@ object ProcessorStateMachine extends Logging{
               if(EGGROLL_SESSION_USE_RESOURCE_DISPATCH.get()=="true"||processorType=="DeepSpeed")
                   ResourceStateMachine.changeState(conn,Array(erProcessor),ResourceStatus.ALLOCATED,ResourceStatus.RETURN)
               else{
-                logInfo(s"processor ${erProcessor.id} without resource change")
+                logInfo(s"resource dispatch config is ${EGGROLL_SESSION_USE_RESOURCE_DISPATCH.get()}, processor ${erProcessor.id}  without resource change, ")
               }
             })
           case _=> println("============error status=============");

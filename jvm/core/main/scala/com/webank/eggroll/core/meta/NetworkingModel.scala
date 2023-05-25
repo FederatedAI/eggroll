@@ -124,7 +124,10 @@ case class ErProcessor(id: Long = -1,
       sb.append(n.toString)
     })
 
-    s"<ErProcessor(id=${id}, sessionId = ${sessionId}, serverNodeId=${serverNodeId}, name=${name}, processorType=${processorType}, status=${status}, commandEndpoint=${commandEndpoint}, transferEndpoint=${transferEndpoint}, pid=${pid}, options=${options}, tag=${tag}) at ${hashCode().toHexString} resoures ${sb.toString()}>"
+    s"<ErProcessor(id=${id}, sessionId = ${sessionId}, " +
+      s"serverNodeId=${serverNodeId}, name=${name}, processorType=${processorType}, " +
+      s"status=${status}, commandEndpoint=${commandEndpoint}, transferEndpoint=${transferEndpoint},createAt = ${createdAt} updateAt=${updatedAt} " +
+      s"pid=${pid}, options=${options}, tag=${tag}) at ${hashCode().toHexString} resoures ${sb.toString()} >"
   }
 }
 
