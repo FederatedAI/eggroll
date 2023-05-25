@@ -767,6 +767,4 @@ def doCreateServerNode(input: ErServerNode): ErServerNode = {
           serverNodeId, erResource.resourceType)
       })
   }
-
-
 }
