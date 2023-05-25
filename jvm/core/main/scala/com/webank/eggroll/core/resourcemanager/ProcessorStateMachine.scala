@@ -33,7 +33,7 @@ object ProcessorStateMachine extends Logging{
           }
         }
         var statusLine =  preState+"_"+desStateParam;
-        logInfo(s"==========statusLine================${statusLine} === =========${erProcessor}")
+
         var desErProcessor = erProcessor.copy(status = desStateParam)
         var dispatchConfig =StaticErConf.getProperty(EGGROLL_SESSION_USE_RESOURCE_DISPATCH, "false")
         statusLine match {
@@ -50,12 +50,12 @@ object ProcessorStateMachine extends Logging{
               if(dispatchConfig=="true"||processorType=="DeepSpeed")
                   ResourceStateMachine.changeState(conn,Array(erProcessor),ResourceStatus.ALLOCATED,ResourceStatus.RETURN)
             })
-          case _=> logInfo(s"============error status============= ${statusLine}");
+          case _=> logInfo(s"there is no need to do something with ${erProcessor.id} state ${statusLine}");
         }
     if( dispatchConfig=="false"&&processorType != "DeepSpeed"){
       logInfo(s"resource dispatch config is ${dispatchConfig}, processor ${erProcessor.id}  without resource change, ")
     }
-    logInfo(s"processor ${erProcessor.id} change status cost time ${System.currentTimeMillis()-beginTimeStamp}")
+    logInfo(s"processor ${erProcessor.id} change status ${statusLine} cost time ${System.currentTimeMillis()-beginTimeStamp}")
     }
 
   private def  updateState(erProcessor: ErProcessor,connection: Connection,beforeCall:(Connection,ErProcessor)=>Unit =null,afterCall:(Connection,ErProcessor)=>Unit): Unit ={
