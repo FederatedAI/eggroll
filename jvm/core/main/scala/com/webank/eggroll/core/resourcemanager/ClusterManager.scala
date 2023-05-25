@@ -4,6 +4,7 @@ import com.webank.eggroll.core.client.NodeManagerClient
 import com.webank.eggroll.core.constant.ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_NODE_HEARTBEAT_EXPIRED_COUNT
 import com.webank.eggroll.core.constant.NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL
 import com.webank.eggroll.core.constant.ProcessorEventType.PROCESSOR_LOSS
+import com.webank.eggroll.core.constant.SessionConfKeys.EGGROLL_SESSION_STOP_TIMEOUT_MS
 import com.webank.eggroll.core.constant.{ProcessorEventType, ProcessorStatus, ProcessorTypes, ServerNodeStatus, SessionConfKeys, SessionStatus}
 import com.webank.eggroll.core.containers.JobProcessorTypes
 import com.webank.eggroll.core.deepspeed.job.JobServiceHandler
@@ -120,10 +121,21 @@ object ClusterManagerService extends Logging {
 
   private  def checkAndHandleEggpairActiveSession (session: ErSessionMeta,sessionProcessors:  Array[ErProcessor] ): Unit={
 
-    if (sessionProcessors.exists(p=>{p.status == ProcessorStatus.ERROR||p.status == ProcessorStatus.KILLED})) {
-      logInfo(s"session watcher kill session ${session}");
-      SessionManagerService.killSession(session)
+    var invalidProcessor = sessionProcessors.filter(p=>{p.status == ProcessorStatus.ERROR||
+                                                        p.status == ProcessorStatus.KILLED||
+                                                        p.status == ProcessorStatus.STOPPED})
+    if(invalidProcessor.length>0){
+      var now = System.currentTimeMillis()
+      var needKillSession:Boolean =false
+
+      needKillSession= invalidProcessor.exists(p=>p.updatedAt.getTime < now-EGGROLL_SESSION_STOP_TIMEOUT_MS.get().toLong)
+      if(needKillSession) {
+        logInfo(s"invalid processors ${invalidProcessor},session watcher kill eggpair session ${session} ");
+        SessionManagerService.killSession(session)
+      }
+
     }
+
   }
 
 
@@ -232,7 +244,7 @@ object ClusterManagerService extends Logging {
 
 
    def registerResource(data: ErServerNode):ErServerNode = synchronized{
-    logInfo(s"==========registerResource ${data}")
+    logInfo(s"node ${data.id} register resource ${data.resources.mkString}")
     var existResources = serverNodeCrudOperator.getNodeResources(data.id,"")
     var  registedResources = data.resources;
     var  updateResources = ArrayBuffer[ErResource]()
