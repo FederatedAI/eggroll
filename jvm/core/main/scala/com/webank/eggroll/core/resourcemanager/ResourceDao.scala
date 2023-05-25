@@ -105,7 +105,9 @@ class SessionMetaDao {
         else ErEndpoint(rs.getString("command_endpoint")),
         transferEndpoint = if (StringUtils.isBlank(rs.getString("transfer_endpoint"))) null
         else ErEndpoint(rs.getString("transfer_endpoint")),
-        pid = rs.getInt("pid"))
+        pid = rs.getInt("pid"),
+        updatedAt = rs.getTimestamp("updated_at"),
+        createdAt = rs.getTimestamp("created_at"))
     ),
       "select * from session_processor where session_id = ?", sessionId)
     getSessionMain(sessionId).copy(options = opts, processors = procs.toArray)
