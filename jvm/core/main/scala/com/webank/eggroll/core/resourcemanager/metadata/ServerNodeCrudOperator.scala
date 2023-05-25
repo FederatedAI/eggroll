@@ -309,7 +309,10 @@ def doCreateServerNode(input: ErServerNode): ErServerNode = {
   def doGetServerNodesWithResource(input: ErServerNode): Array[ErServerNode] = {
     var  serverNodes =  doGetServerNodes(input)
     serverNodes.map(node=>{
-      node.copy(resources = doQueryNodeResources(node.id))
+      var resouces =  doQueryNodeResources(node.id)
+
+      node.copy(resources = resouces)
+
     })
   }
 
@@ -470,14 +473,15 @@ def doCreateServerNode(input: ErServerNode): ErServerNode = {
 //      sql.toString(), inputListBuffer: _*)
 
 
-    val resourceResult =  dbc.query(rs => rs.map(_ =>
+    val resourceResult =  dbc.query(rs => rs.map(_ =>{
       ErResource(
         resourceId = rs.getLong("resource_id"),
         resourceType = rs.getString("resource_type"),
         total = rs.getLong("total"),
         used = rs.getLong("used"),
         allocated =  rs.getLong("allocated"),
-        status = rs.getString("status"))),
+        extention = rs.getString("extention"),
+        status = rs.getString("status"))}),
       sql, params: _*)
     resourceResult.toArray
   }
@@ -628,10 +632,10 @@ def doCreateServerNode(input: ErServerNode): ErServerNode = {
 
           sqlParams=sqlParams :+ "  used = ?"
         }
-
-        params = (params :+ erResource.extention)
-
-        sqlParams=sqlParams :+ "  extention = ?"
+        if(erResource.extention!=null) {
+          params = (params :+ erResource.extention)
+          sqlParams = sqlParams :+ "  extention = ?"
+        }
 
 
         sql+=    sqlParams.mkString(" , ")+ " where  1= 1"
