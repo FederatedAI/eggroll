@@ -79,7 +79,11 @@ abstract class ErConf {
 
   def addProperties(prop: Properties): ErConf = {
     val cur = this.conf
-    prop.forEach((k, v) => cur.put(k, v))
+    prop.forEach((k, v) =>{
+      cur.put(k, v)
+      println(s"config key ${k}=${v}")
+    }
+      )
     this
   }
 
@@ -88,6 +92,7 @@ abstract class ErConf {
 
     val current = new File(".")
     println(s"current dir: ${current.getAbsolutePath}")
+    println(s"read config file : ${path}")
 
     val fis = new BufferedInputStream(new FileInputStream(path))
     prop.load(fis)
