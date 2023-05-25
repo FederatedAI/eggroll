@@ -49,7 +49,7 @@ case class StoreConfig(
   }
 }
 
-case class WrapedDeepspeedContainerConfig(
+case class WarpedDeepspeedContainerConfig(
                                            cudaVisibleDevices: Array[Int],
                                            worldSize: Int,
                                            crossRank: Int,
@@ -112,7 +112,7 @@ case class DeepspeedContainerBuildConfig(
                                           sessionId: String,
                                           processorId: Long,
                                           containerWorkspace: scala.reflect.io.Path,
-                                          deepspeedContainerConfig: WrapedDeepspeedContainerConfig,
+                                          deepspeedContainerConfig: WarpedDeepspeedContainerConfig,
                                           commandArguments: Seq[String] = Seq.empty,
                                           environmentVariables: Map[String, String] = Map.empty,
                                           files: Map[String, Array[Byte]] = Map.empty,
@@ -208,7 +208,7 @@ class DeepSpeedContainer(config: DeepspeedContainerBuildConfig)
   def this(
             sessionId: String,
             processorId: Long,
-            deepspeedContainerConfig: WrapedDeepspeedContainerConfig,
+            deepspeedContainerConfig: WarpedDeepspeedContainerConfig,
             containerWorkspace: scala.reflect.io.Path,
             commandArguments: Seq[String] = Seq.empty,
             environmentVariables: Map[String, String] = Map.empty,
