@@ -87,7 +87,8 @@ object ClusterResourceManager extends Logging{
                 resourceApplication.dispatchStrategy match {
                   case DispatchStrategy.REMAIN_MOST_FIRST => remainMostFirstDispatch(serverNodes, resourceApplication);
                   case DispatchStrategy.RANDOM => randomDispatch(serverNodes, resourceApplication);
-                  case DispatchStrategy.FIX => fixDispatch(serverNodes,resourceApplication)
+                  case DispatchStrategy.FIX => fixDispatch(serverNodes,resourceApplication);
+                  case DispatchStrategy.SINGLE_NODE_FIRST=> singleNodeFirstDispatch(serverNodes,resourceApplication)
                 }
               }
               logInfo(s"===========dispatch result=============${resourceApplication.processors.mkString}")
@@ -216,12 +217,80 @@ object ClusterResourceManager extends Logging{
         }
       }
     }
-    logInfo(s"==========getNextGpuIndex  size ${size}  alreadyAllocated ${alreadyAllocated.mkString} return ${result}")
+   // logInfo(s"==========getNextGpuIndex  size ${size}  alreadyAllocated ${alreadyAllocated.mkString} return ${result}")
     result
   }
 
+  private def  singleNodeFirstDispatch(serverNodes:Array[ErServerNode],resourceApplication: ResourceApplication): ResourceApplication = {
+    var requiredProcessors = resourceApplication.processors;
+    var nodeResourceTupes = serverNodes.map(n => (n, n.resources.filter(_.resourceType == resourceApplication.sortByResourceType).map(_.getUnAllocatedResource).apply(0)))
+      .sortWith(_._2 > _._2).toBuffer
+
+    //    // FIXME: evenly distribute processors to nodes for now
+    val nodeToProcessors = mutable.Map[ErServerNode, Seq[ErProcessor]]()
+    var nodeList = ArrayBuffer[ErServerNode]()
+    nodeResourceTupes.foreach(t=>{
+      for (index <- 0 until t._2)
+        nodeList.append(t._1)
+    })
+
+
+    for (index <- 0 until requiredProcessors.length) {
+
+      var requiredProcessor = requiredProcessors(index)
+
+
+//      var nodeTupe = nodeResourceTupes.head
+//      var node = nodeTupe._1
+//      var nodeResourceLeft = nodeTupe._2
+      var node = nodeList.apply(index)
+
+      //gpu 需要编号
+      var  nextGpuIndex:Int = -1
+      var  newResources :ArrayBuffer[ErResource] = new  ArrayBuffer[ErResource]()
+      requiredProcessor.resources.foreach(r=>{
+        var  changedResource : ErResource = r
+        if(r.resourceType==ResourceTypes.VGPU_CORE){
+          var  gpuResourcesInNodeArray =  node.resources.filter(_.resourceType==ResourceTypes.VGPU_CORE)
+          if(gpuResourcesInNodeArray.length>0){
+            var gpuResourcesInNode = gpuResourcesInNodeArray.apply(0)
+            logInfo(s"=======gpuResourcesInNode====${gpuResourcesInNode.extention}")
+            gpuResourcesInNode.extentionCache.appendAll(if(gpuResourcesInNode.extention!=null) gpuResourcesInNode.extention.split(",")else Array(""))
+            nextGpuIndex = getNextGpuIndex(gpuResourcesInNode.total.toInt,gpuResourcesInNode.extentionCache.toArray)
+            gpuResourcesInNode.extentionCache.append(nextGpuIndex.toString)
+            changedResource = changedResource.copy(extention = nextGpuIndex.toString)
+          }
+        }
+        newResources.append(changedResource)
+      })
+      val host = node.endpoint.host
+      requiredProcessor = requiredProcessor.copy(serverNodeId = node.id,commandEndpoint = ErEndpoint(host, 0),resources=newResources.toArray,
+        options = Map(
+          "cudaVisibleDevices" -> nextGpuIndex.toString
+        ).asJava)
+
+      if (nodeToProcessors.contains(node)) {
+        nodeToProcessors(node) :+= requiredProcessor
+      } else {
+        nodeToProcessors(node) = Seq(requiredProcessor)
+      }
+    }
+    var result = nodeToProcessors.flatMap { case (node, processors) =>
+      processors.map(p => (p, node))
+    }(collection.breakOut)
+
+    logInfo(s"========dispatch result ${result}")
+    resourceApplication.resourceDispatch.appendAll(result)
+    resourceApplication
+
+
+
+
+  }
+
+
   private def  remainMostFirstDispatch(serverNodes:Array[ErServerNode],resourceApplication: ResourceApplication): ResourceApplication = {
-     logInfo("=============remainMostFirstDispatch")
+
      var requiredProcessors = resourceApplication.processors;
      var nodeResourceTupes = serverNodes.map(n => (n, n.resources.filter(_.resourceType == resourceApplication.sortByResourceType).map(_.getUnAllocatedResource).apply(0)))
        .sortWith(_._2 > _._2).toBuffer
