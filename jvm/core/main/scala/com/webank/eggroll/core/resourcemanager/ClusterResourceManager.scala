@@ -37,7 +37,7 @@ object ClusterResourceManager extends Logging{
           breakable {
             if(resourceApplication!=null) {
               var now = System.currentTimeMillis()
-              if (resourceApplication.needDispatch) {
+
                 if (resourceApplication.waitingCount.get() == 0
                 ) {
                   //过期资源申请
@@ -80,8 +80,8 @@ object ClusterResourceManager extends Logging{
                   case DispatchStrategy.FIX => fixDispatch(serverNodes,resourceApplication);
                   case DispatchStrategy.SINGLE_NODE_FIRST=> singleNodeFirstDispatch(serverNodes,resourceApplication)
                 }
-              }
-              logInfo(s"===========dispatch result=============${resourceApplication.processors.mkString}")
+
+              //logInfo(s"===========dispatch result=============${resourceApplication.processors.mkString}")
 
               var dispatchedProcessors = resourceApplication.resourceDispatch
                 //.toArray.map(_._1)
@@ -96,26 +96,26 @@ object ClusterResourceManager extends Logging{
               logInfo("register session  over")
 
               val registeredSessionMeta = smDao.getSession(resourceApplication.sessionId)
-              dispatchedProcessors = dispatchedProcessors.zip(registeredSessionMeta.processors).map {
-                case ((processor, node), registeredProcessor) =>
-                  (processor.copy(id = registeredProcessor.id), node)
-              }
+              var serverNodeMap = serverNodes.groupBy(_.id).mapValues(_.apply(0))
+              var  result = registeredSessionMeta.processors.map(p=>{(p,serverNodeMap.get(p.serverNodeId).get)})
+
+
+              //这里的zip是不靠谱的
+//              dispatchedProcessors = dispatchedProcessors.zip(registeredSessionMeta.processors).map {
+//                case ((processor, node), registeredProcessor) =>
+//                  (processor.copy(id = registeredProcessor.id), node)
+//              }
               resourceApplication.resourceDispatch.clear()
-              resourceApplication.resourceDispatch.appendAll(dispatchedProcessors)
-              //ProcessorStateMachine.
-              preAllocateResource(dispatchedProcessors.toArray.map(_._1))
+              resourceApplication.resourceDispatch.appendAll(result)
+
               resourceApplication.countDown()
               applicationQueue.broker.remove()
-
             }
-
           }
         }catch {
           case  e:Exception => {
             e.printStackTrace()
-
           }
-
         }
 
       }
@@ -126,7 +126,6 @@ object ClusterResourceManager extends Logging{
 
 
    private def fixDispatch(serverNodes:Array[ErServerNode] ,resourceApplication: ResourceApplication):ResourceApplication={
-    println(" ============fixDispatch==============")
      val eggsPerNode = resourceApplication.options.getOrElse(SessionConfKeys.CONFKEY_SESSION_PROCESSORS_PER_NODE, StaticErConf.getString(SessionConfKeys.CONFKEY_SESSION_PROCESSORS_PER_NODE, "1")).toInt
      var resourceType= resourceApplication.options.getOrElse("resourceType",ResourceTypes.VCPU_CORE)
      val nodeToProcessors = mutable.Map[ErServerNode, Seq[ErProcessor]]()
@@ -220,7 +219,7 @@ object ClusterResourceManager extends Logging{
     val nodeToProcessors = mutable.Map[ErServerNode, Seq[ErProcessor]]()
     var nodeList = ArrayBuffer[ErServerNode]()
     nodeResourceTupes.foreach(t=>{
-      for (index <- 0 until t._2)
+      for (index <- 0 until t._2.toInt)
         nodeList.append(t._1)
     })
 
@@ -228,13 +227,7 @@ object ClusterResourceManager extends Logging{
     for (index <- 0 until requiredProcessors.length) {
 
       var requiredProcessor = requiredProcessors(index)
-
-
-//      var nodeTupe = nodeResourceTupes.head
-//      var node = nodeTupe._1
-//      var nodeResourceLeft = nodeTupe._2
       var node = nodeList.apply(index)
-
       //gpu 需要编号
       var  nextGpuIndex:Int = -1
       var  newResources :ArrayBuffer[ErResource] = new  ArrayBuffer[ErResource]()
@@ -377,49 +370,49 @@ object ClusterResourceManager extends Logging{
 
 
   //废弃
-  def  allocateResource(processors: Array[ErProcessor] ,beforeCall:(Connection,ErProcessor)=>Unit =null,afterCall:(Connection,ErProcessor)=>Unit =null) : Unit=synchronized{
-    ServerNodeCrudOperator.dbc.withTransaction(conn=> {
-
-
-
-      var allocateResourceProcessor = processors.map(p => {
-        p.copy(resources = serverNodeCrudOperator.queryProcessorResource(conn,p,ResourceStatus.PRE_ALLOCATED).map(_.copy(status=ResourceStatus.ALLOCATED)))
-      })
-      var flatedResource = flatResources(allocateResourceProcessor)
-      logInfo(s"flated resource ${flatedResource}")
-      allocateResourceProcessor.foreach(p=> {
-        if(beforeCall!=null)
-            beforeCall(conn,p)
-        serverNodeCrudOperator.updateProcessorResource(conn, p);
-        if(afterCall!=null)
-            afterCall(conn,p)
-      })
-
-      flatedResource.foreach(e => {
-        e._2.foreach(resource=>{
-          logInfo(s"allocate resource to node  ${e._1} ${resource}")
-        })
-
-       // serverNodeCrudOperator.allocateNodeResource(conn,e._1, e._2)
-       var  erResources =  serverNodeCrudOperator.countNodeResource(conn,e._1)
-        serverNodeCrudOperator.updateNodeResource(conn,e._1,erResources)
-      })
-
-    })
-  }
+//  def  allocateResource(processors: Array[ErProcessor] ,beforeCall:(Connection,ErProcessor)=>Unit =null,afterCall:(Connection,ErProcessor)=>Unit =null) : Unit=synchronized{
+//    ServerNodeCrudOperator.dbc.withTransaction(conn=> {
+//
+//
+//
+//      var allocateResourceProcessor = processors.map(p => {
+//        p.copy(resources = serverNodeCrudOperator.queryProcessorResource(conn,p,ResourceStatus.PRE_ALLOCATED).map(_.copy(status=ResourceStatus.ALLOCATED)))
+//      })
+//      var flatedResource = flatResources(allocateResourceProcessor)
+//      logInfo(s"flated resource ${flatedResource}")
+//      allocateResourceProcessor.foreach(p=> {
+//        if(beforeCall!=null)
+//            beforeCall(conn,p)
+//        serverNodeCrudOperator.updateProcessorResource(conn, p);
+//        if(afterCall!=null)
+//            afterCall(conn,p)
+//      })
+//
+//      flatedResource.foreach(e => {
+//        e._2.foreach(resource=>{
+//          logInfo(s"allocate resource to node  ${e._1} ${resource}")
+//        })
+//
+//       // serverNodeCrudOperator.allocateNodeResource(conn,e._1, e._2)
+//       var  erResources =  serverNodeCrudOperator.countNodeResource(conn,e._1)
+//        serverNodeCrudOperator.updateNodeResource(conn,e._1,erResources)
+//      })
+//
+//    })
+//  }
   //废弃
-  def preAllocateResource(processors: Array[ErProcessor]): Unit = synchronized {
-    logInfo(s"============== preAllocateResource ============${processors.mkString}")
-    ServerNodeCrudOperator.dbc.withTransaction(conn => {
-      serverNodeCrudOperator.insertProcessorResource(conn, processors);
-      processors.foreach(p=>{
-        var  nodeResources =  serverNodeCrudOperator.countNodeResource(conn,p.serverNodeId)
-        var  needUpdateResources = nodeResources.map(r=>r.copy(preAllocated = r.allocated,allocated = -1))
-        serverNodeCrudOperator.updateNodeResource(conn,p.serverNodeId,needUpdateResources)
-      })
-
-    })
-  }
+//  def preAllocateResource(processors: Array[ErProcessor]): Unit = synchronized {
+//    logInfo(s"============== preAllocateResource ============${processors.mkString}")
+//    ServerNodeCrudOperator.dbc.withTransaction(conn => {
+//      serverNodeCrudOperator.insertProcessorResource(conn, processors);
+//      processors.foreach(p=>{
+//        var  nodeResources =  serverNodeCrudOperator.countNodeResource(conn,p.serverNodeId)
+//        var  needUpdateResources = nodeResources.map(r=>r.copy(preAllocated = r.allocated,allocated = -1))
+//        serverNodeCrudOperator.updateNodeResource(conn,p.serverNodeId,needUpdateResources)
+//      })
+//
+//    })
+//  }
 
   def  returnResource(processors: Array[ErProcessor],beforeCall:(Connection,ErProcessor)=>Unit =null,afterCall:(Connection,ErProcessor)=>Unit =null):  Unit=synchronized{
     logInfo(s"return resource ${processors.mkString("<",",",">")}")
@@ -517,7 +510,7 @@ object ClusterResourceManager extends Logging{
                                     processors : Array[ErProcessor]=Array[ErProcessor](),
                                    sortByResourceType: String =ResourceTypes.VCPU_CORE,
                                    needDispatch: Boolean= true,
-                                   dispatchStrategy:String = DispatchStrategy.REMAIN_MOST_FIRST,
+                                   dispatchStrategy:String = DispatchStrategy.SINGLE_NODE_FIRST,
                                    resourceExhaustedStrategy:String =  ResourceExhaustedStrategy.WAITING,
                                    allowExhausted:Boolean = false,
                                    resourceDispatch:ArrayBuffer[(ErProcessor, ErServerNode)]=ArrayBuffer(),
