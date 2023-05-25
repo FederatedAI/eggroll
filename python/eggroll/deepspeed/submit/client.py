@@ -36,7 +36,6 @@ class DeepspeedJob:
         if session_id is None:
             session_id = f"deepspeed_session_{datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f')}"
         self._session_id = session_id
-        self._rank_to_processor = {}
         self._host = host
         self._port = port
 
@@ -90,9 +89,6 @@ class DeepspeedJob:
         submit_response = self._get_client().do_sync_request(
             submit_request, output_type=deepspeed_pb2.SubmitJobResponse, command_uri=JobCommands.SUBMIT_JOB
         )
-        for processor in submit_response.processors:
-            rank = int(processor.options.get("globalRank"))
-            self._rank_to_processor[rank] = processor
         return submit_response
 
     def query_status(self):

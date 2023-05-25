@@ -2,27 +2,17 @@ package com.webank.eggroll.core.resourcemanager
 
 import com.webank.eggroll.core.constant._
 import com.webank.eggroll.core.containers.JobProcessorTypes
-import com.webank.eggroll.core.ErSession
-import com.webank.eggroll.core.client.NodeManagerClient
-import com.webank.eggroll.core.constant.SessionConfKeys.CONFKEY_SESSION_PROCESSORS_PER_NODE
-import com.webank.eggroll.core.constant.{DispatchStrategy, NodeManagerConfKeys, ProcessorStatus, ResourceEventType, ResourceExhaustedStrategy, ResourceOperationStauts, ResourceOperationType, ResourceStatus, ResourceTypes, ServerNodeStatus, ServerNodeTypes, SessionStatus}
 import com.webank.eggroll.core.datastructure.FifoBroker
 import com.webank.eggroll.core.error.ErSessionException
-import com.webank.eggroll.core.meta.{ErEndpoint, ErProcessor, ErResource, ErResourceAllocation, ErServerNode, ErSessionMeta}
-import com.webank.eggroll.core.resourcemanager.ClusterResourceManager.{ResourceApplication, dispatchDeepSpeedInner, serverNodeCrudOperator}
-import com.webank.eggroll.core.meta.{ErEndpoint, ErProcessor, ErResource, ErServerNode}
+import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.util.Logging
 
 import java.sql.Connection
-import java.util.concurrent.CountDownLatch
+import java.util.concurrent.{CountDownLatch, TimeUnit}
 import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.{ArrayBlockingQueue, ConcurrentLinkedQueue, CountDownLatch, TimeUnit}
 import scala.collection.JavaConverters.mapAsJavaMapConverter
-import scala.collection.mutable.{ArrayBuffer, ListBuffer}
-import scala.collection.{breakOut, mutable}
-import scala.math.Numeric.LongIsIntegral
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.util.Random
@@ -264,8 +254,8 @@ object ClusterResourceManager extends Logging{
 
        requiredProcessor = requiredProcessor.copy(serverNodeId = node.id,commandEndpoint = ErEndpoint(host, 0),resources=newResources.toArray,
                      options = Map(
-                       "globalRank" -> globalRank.toString,
-                       "localRank" -> localRank.toString,
+                       //                       "globalRank" -> globalRank.toString,
+                       //                       "localRank" -> localRank.toString,
                        "cudaVisibleDevices" -> nextGpuIndex.toString
                      ).asJava)
 
