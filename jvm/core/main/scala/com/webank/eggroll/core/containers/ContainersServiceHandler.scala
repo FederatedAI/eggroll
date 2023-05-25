@@ -3,7 +3,7 @@ package com.webank.eggroll.core.containers
 import com.webank.eggroll.core.client.ClusterManagerClient
 import com.webank.eggroll.core.constant.{NodeManagerConfKeys, ProcessorStatus}
 import com.webank.eggroll.core.containers.ContainersServiceHandler.{CompressMethod, zip}
-import com.webank.eggroll.core.containers.container.{ContainersManager, DeepSpeedContainer, WrapedDeepspeedContainerConfig}
+import com.webank.eggroll.core.containers.container.{ContainersManager, DeepSpeedContainer, WarpedDeepspeedContainerConfig}
 import com.webank.eggroll.core.containers.meta._
 import com.webank.eggroll.core.meta.ErProcessor
 import com.webank.eggroll.core.resourcemanager.NodeManagerMeta
@@ -81,7 +81,7 @@ class ContainersServiceHandler(implicit ec: ExecutionContext,
       val container = new DeepSpeedContainer(
         sessionId = sessionId,
         processorId = containerId,
-        deepspeedContainerConfig = new WrapedDeepspeedContainerConfig(deepspeedConfig),
+        deepspeedContainerConfig = new WarpedDeepspeedContainerConfig(deepspeedConfig),
         containerWorkspace = getContainerWorkspace(containerId),
         commandArguments = startDeepspeedContainerRequest.commandArguments,
         environmentVariables = startDeepspeedContainerRequest.environmentVariables,
