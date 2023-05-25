@@ -9,7 +9,6 @@ import com.webank.eggroll.core.deepspeed.job.JobServiceHandler
 import com.webank.eggroll.core.deepspeed.job.JobServiceHandler.killJob
 import com.webank.eggroll.core.error.ErSessionException
 import com.webank.eggroll.core.meta._
-import com.webank.eggroll.core.resourcemanager.ClusterManagerService._
 import com.webank.eggroll.core.resourcemanager.ProcessorStateMachine.defaultSessionCallback
 import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator
 import com.webank.eggroll.core.util.Logging
@@ -288,6 +287,8 @@ object ClusterManagerService extends Logging {
 }
 
 class ClusterManagerService extends ClusterManager with Logging {
+
+  import com.webank.eggroll.core.resourcemanager.ClusterManagerService._
 
   override def nodeHeartbeat(nodeHeartbeat: ErNodeHeartbeat): ErNodeHeartbeat = synchronized {
     //logInfo(s" nodeHeartbeat ${nodeHeartbeat}")
