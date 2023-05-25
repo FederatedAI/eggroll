@@ -17,8 +17,9 @@ object ProcessorStateMachine extends Logging{
 
   private var serverNodeCrudOperator = new  ServerNodeCrudOperator;
 
-  def  changeStatus(  erProcessor: ErProcessor,
+  def  changeStatus(  paramProcessor: ErProcessor,
                       preStateParam:String=null,desStateParam:String,connection: Connection=null ):Unit =synchronized{
+        var  erProcessor = paramProcessor
         var  beginTimeStamp = System.currentTimeMillis()
         var  preState=preStateParam
         var  processorType = erProcessor.processorType
@@ -37,6 +38,13 @@ object ProcessorStateMachine extends Logging{
         var desErProcessor = erProcessor.copy(status = desStateParam)
         var dispatchConfig =StaticErConf.getProperty(EGGROLL_SESSION_USE_RESOURCE_DISPATCH, "false")
         statusLine match {
+          case "_NEW" =>
+
+            erProcessor = createNewProcessor(desErProcessor,connection= connection,afterCall = (conn,erProcessor)=>{
+            if( dispatchConfig=="true"||processorType=="DeepSpeed")
+              ResourceStateMachine.changeState(conn, Array(erProcessor), ResourceStatus.INIT, ResourceStatus.PRE_ALLOCATED)
+          })
+
           case "NEW_RUNNING"=>updateState(desErProcessor,connection= connection,afterCall = (conn,erProcessor)=>{
             if( dispatchConfig=="true"||processorType=="DeepSpeed")
               ResourceStateMachine.changeState(conn, Array(erProcessor), ResourceStatus.PRE_ALLOCATED, ResourceStatus.ALLOCATED)
@@ -57,6 +65,31 @@ object ProcessorStateMachine extends Logging{
     }
     logInfo(s"processor ${erProcessor.id} change status ${statusLine} cost time ${System.currentTimeMillis()-beginTimeStamp}")
     }
+
+
+  private def  createNewProcessor(erProcessor: ErProcessor,connection: Connection,beforeCall:(Connection,ErProcessor)=>Unit =null,afterCall:(Connection,ErProcessor)=>Unit): ErProcessor ={
+    if(connection==null){
+      BaseDao.dbc.withTransaction(conn=> {
+        if(beforeCall!=null)
+          beforeCall(conn,erProcessor)
+        var  newProcessor = smDao.createProcessor(conn,erProcessor)
+        if(afterCall!=null)
+          afterCall(conn,newProcessor)
+        newProcessor
+      })
+    }else{
+      if(beforeCall!=null)
+        beforeCall(connection,erProcessor)
+      var  newProcessor = smDao.createProcessor(connection,erProcessor)
+      if(afterCall!=null)
+        afterCall(connection,newProcessor)
+
+      newProcessor
+    }
+  }
+
+
+
 
   private def  updateState(erProcessor: ErProcessor,connection: Connection,beforeCall:(Connection,ErProcessor)=>Unit =null,afterCall:(Connection,ErProcessor)=>Unit): Unit ={
 
