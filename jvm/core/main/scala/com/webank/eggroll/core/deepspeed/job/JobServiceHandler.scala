@@ -14,6 +14,7 @@ import com.webank.eggroll.core.resourcemanager.{ClusterResourceManager, SessionM
 import com.webank.eggroll.core.util.Logging
 import org.apache.commons.lang3.StringUtils
 
+import scala.collection.mutable.ArrayBuffer
 import scala.util.control.Breaks.{break, breakable}
 
 object JobServiceHandler extends Logging {
@@ -158,7 +159,7 @@ object JobServiceHandler extends Logging {
         status = ResourceStatus.PRE_ALLOCATED))
     ))
     val resourceApplication = ResourceApplication(
-      sortByResourceType =ResourceTypes.VGPU_CORE,
+      sortByResourceType = ResourceTypes.VGPU_CORE,
       processors = prepareProcessors,
       resourceExhaustedStrategy = ResourceExhaustedStrategy.WAITING,
       timeout = submitJobRequest.resourceOptions.timeoutSeconds,
@@ -181,54 +182,54 @@ object JobServiceHandler extends Logging {
         case ((processor, node), registeredProcessor) =>
           (processor.copy(id = registeredProcessor.id), node)
       }
-      // register ranks
-      val ranks = dispatchedProcessors.map { case (processor, node) =>
-        (processor.id, node.id, processor.options.get("localRank").toInt, processor.options.get("globalRank").toInt)
-      }
-      smDao.registerRanks(sessionId, ranks.map(_._1), ranks.map(_._2), ranks.map(_._3), ranks.map(_._4))
 
-      // start containers
-      val groupedProcessors = dispatchedProcessors.groupBy(_._2)
-      val crossSize = groupedProcessors.size
-
-      groupedProcessors.zipWithIndex.par.foreach { case ((node, nodeAndProcessors), crossRank) =>
-        val processors = nodeAndProcessors.map(_._1.copy(sessionId = submitJobRequest.sessionId))
-        val nodeManagerClient = new NodeManagerClient(node.endpoint)
-        // ClusterResourceManager.preAllocateResource(processors)
-
-        val localSize = processors.length
-        val ranksAndDevices = processors.map { p =>
-          val cudaVisibleDevices = p.options.getOrDefault("cudaVisibleDevices", "-1").split(",").map(_.toInt)
-          if (cudaVisibleDevices.length < 1 || cudaVisibleDevices.exists(_ < 0)) {
-            throw new IllegalArgumentException(s"cudaVisibleDevices is not set or invalid: ${p.options.get("cudaVisibleDevices")}")
+      val deepspeedConfigsWithNode = {
+        var globalRank = 0 // increment by 1 for each processor
+        var crossSize = 0 // number of nodes
+        var crossRank = 0 // increment by 1 for each node
+        val configs = ArrayBuffer[(Long, ErServerNode, DeepspeedContainerConfig)]()
+        dispatchedProcessors.groupBy(_._2).foreach { case (node, processorAndNodeArray) =>
+          crossSize += 1
+          val localSize = processorAndNodeArray.length
+          val cudaVisibleDevices = processorAndNodeArray.map { case (p, _) =>
+            val devicesForProcessor = p.options.getOrDefault("cudaVisibleDevices", "-1").split(",").map(_.toInt)
+            if (devicesForProcessor.length < 1 || devicesForProcessor.exists(_ < 0)) {
+              throw new IllegalArgumentException(s"cudaVisibleDevices is not set or invalid: ${p.options.get("cudaVisibleDevices")}")
+            }
+            devicesForProcessor
+          }.reduce(_ ++ _)
+          if (cudaVisibleDevices.length != cudaVisibleDevices.distinct.length) {
+            throw new IllegalArgumentException(s"duplicate cudaVisibleDevices: ${cudaVisibleDevices.mkString(",")}")
           }
-          val localRank = p.options.getOrDefault("localRank", "-1").toInt
-          if (localRank < 0) {
-            throw new IllegalArgumentException(s"localRank is not set or invalid: ${p.options.get("localRank")}")
-          }
-          val rank = p.options.getOrDefault("globalRank", "-1").toInt
-          if (rank < 0) {
-            throw new IllegalArgumentException(s"globalRank is not set or invalid: ${p.options.get("globalRank")}")
-          }
-          (p.id, rank, localRank, cudaVisibleDevices)
-        }
-        // deepspeed use LOCAL_SIZE to determine the cuda device to set,
-        // so we need to expose the all cuda devices dispatched to same node to deepspeed container.
-        val cudaVisibleDevices = ranksAndDevices.sortBy(_._3).flatMap(_._4)
-        val deepspeedConfigs: Map[Long, DeepspeedContainerConfig] =
-          ranksAndDevices.map { case (containerId, rank, localRank, _) =>
-            containerId -> DeepspeedContainerConfig(
+          var localRank = 0
+          processorAndNodeArray.foreach { case (p, _) =>
+            configs.append((p.id, node, DeepspeedContainerConfig(
               cudaVisibleDevices = cudaVisibleDevices,
               worldSize = worldSize,
               crossRank = crossRank,
               crossSize = crossSize,
               localSize = localSize,
               localRank = localRank,
-              rank = rank,
+              rank = globalRank,
               storePrefix = sessionId
-            )
-          }(collection.breakOut)
+            )))
+            localRank += 1
+            globalRank += 1
+          }
+          crossRank += 1
+        }
+        configs.toArray
+      }
 
+      // register ranks
+      val ranks = deepspeedConfigsWithNode.map { case (processorId, node, config) =>
+        (processorId, node.id, config.localRank, config.rank)
+      }
+      smDao.registerRanks(sessionId, ranks.map(_._1), ranks.map(_._2), ranks.map(_._3), ranks.map(_._4))
+
+      // start containers
+      deepspeedConfigsWithNode.groupBy(_._2).par.foreach { case (node, nodeAndConfigs) =>
+        val nodeManagerClient = new NodeManagerClient(node.endpoint)
         nodeManagerClient.startJobContainers(
           StartDeepspeedContainerRequest(
             sessionId = sessionId,
@@ -237,7 +238,7 @@ object JobServiceHandler extends Logging {
             environmentVariables = submitJobRequest.environmentVariables,
             files = submitJobRequest.files,
             zippedFiles = submitJobRequest.zippedFiles,
-            deepspeedConfigs = deepspeedConfigs,
+            deepspeedConfigs = nodeAndConfigs.map { case (containerId, _, config) => containerId -> config }(collection.breakOut),
             options = submitJobRequest.options))
       }
 
@@ -261,10 +262,11 @@ object JobServiceHandler extends Logging {
       SubmitJobResponse(sessionId, activeProcessors)
 
     }
+
     catch {
       case e: Exception =>
         //smDao.updateSessionStatus(sessionId, SessionStatus.ERROR)
-        killJob(sessionId, false)
+        killJob(sessionId, isTimeout = false)
         throw e
     }
   }
