@@ -399,7 +399,7 @@ def doCreateServerNode(input: ErServerNode): ErServerNode = {
     }
 
 
-    logDebug(s"sql: ${sql} param: ${params}")
+//    logDebug(s"sql: ${sql} param: ${params}")
     val resourceResult =  dbc.query(connection,rs => rs.map(_ =>
       ErResource(
        // resourceId = rs.getLong("resource_id"),
@@ -740,47 +740,32 @@ def doCreateServerNode(input: ErServerNode): ErServerNode = {
       allocated = rs.getLong("allocated"),
       status = rs.getString("status"))),
       sql,params:_*).toArray
-
     resourceResult
-
   }
 
-
-
   def  doUpdateProcessorResource(connection: Connection ,processor: ErProcessor):Unit = {
-     // dbc.withTransaction(conn=>{
         processor.resources.foreach(r=>{
           var sql = "update processor_resource set " +
             " status = ?, allocated = ?  where processor_id = ? and resource_type = ? "
           var params = List(r.status,r.allocated,processor.id,r.resourceType)
-
-          logDebug(s"sql : ${sql} , params ${params}")
           dbc.update(connection, sql, params:_*)
         })
-   //   })
-
-
   }
 
 
   def  doInsertProcessorResource(connection: Connection,processors:Array[ErProcessor]) :Unit = synchronized {
-    //dbc.withTransaction(conn => {
       processors.foreach(erProcessor => {
         erProcessor.resources.foreach(resource => {
           dbc.update(connection, "insert into  processor_resource (processor_id,session_id,server_node_id,resource_type,allocated,status,extention)  values (?, ?,?, ?, ?,?,?)",
             erProcessor.id, erProcessor.sessionId, erProcessor.serverNodeId, resource.resourceType, resource.allocated,resource.status,resource.extention)
         })
-     // })
     })
   }
   def doDeleteNodeResource(connection: Connection,serverNodeId: Long, resources: Array[ErResource]) = synchronized {
-
- //   dbc.withTransaction(conn => {
       resources.foreach(erResource => {
         dbc.update(connection ,"delete from node_resource  where server_node_id = ? and resource_type = ? ",
           serverNodeId, erResource.resourceType)
       })
-   // })
   }
 
 
