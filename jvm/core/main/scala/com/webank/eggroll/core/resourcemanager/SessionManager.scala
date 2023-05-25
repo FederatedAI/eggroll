@@ -4,8 +4,9 @@ import com.webank.eggroll.core.Bootstrap.logDebug
 import com.webank.eggroll.core.client.NodeManagerClient
 import com.webank.eggroll.core.constant.SessionConfKeys.EGGROLL_SESSION_USE_RESOURCE_DISPATCH
 import com.webank.eggroll.core.constant._
+import com.webank.eggroll.core.containers.JobProcessorTypes
 import com.webank.eggroll.core.error.ErSessionException
-import com.webank.eggroll.core.meta.{ErEndpoint, ErProcessor, ErResource, ErServerNode, ErSessionMeta}
+import com.webank.eggroll.core.meta.{ErEndpoint, ErProcessor, ErResource, ErServerCluster, ErServerNode, ErSessionMeta}
 import com.webank.eggroll.core.resourcemanager.ClusterResourceManager.ResourceApplication
 import com.webank.eggroll.core.resourcemanager.SessionManagerService.{beforeCall, serverNodeCrudOperator, smDao}
 import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator
@@ -13,6 +14,7 @@ import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.util.Logging
 import org.apache.commons.lang3.StringUtils
 
+import java.lang.Thread.sleep
 import java.sql.Connection
 import scala.collection.JavaConverters._
 import scala.collection.mutable
@@ -143,9 +145,6 @@ object SessionManagerService extends Logging {
 
 class SessionManagerService extends SessionManager with Logging {
 
-
-
-
   def heartbeat(proc: ErProcessor): ErProcessor = {
    // smDao.updateProcessor(proc)
 
@@ -192,7 +191,20 @@ class SessionManagerService extends SessionManager with Logging {
     val healthyNodeExample = ErServerNode(status = ServerNodeStatus.HEALTHY, nodeType = ServerNodeTypes.NODE_MANAGER)
     val serverNodeCrudOperator = new ServerNodeCrudOperator()
 
-    val healthyCluster = serverNodeCrudOperator.getServerNodes(healthyNodeExample)
+    var healthyCluster :ErServerCluster = null
+    var tryCount = 0;
+    do{
+      healthyCluster  = serverNodeCrudOperator.getServerNodes(healthyNodeExample);
+      tryCount+=1
+      if(healthyCluster==null){
+        logInfo("cluster is not ready,waitting next try")
+        sleep(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL.get().toLong)
+      }
+    }
+    while(healthyCluster==null&&tryCount < 2)
+    if(healthyCluster==null){
+      throw new ErSessionException("cluster is not ready")
+    }
     val serverNodes = healthyCluster.serverNodes
     //    val serverNodesToHost = mutable.Map[Long, String]()
     //    serverNodes.foreach(n => serverNodesToHost += (n.id -> n.endpoint.host))
@@ -201,8 +213,6 @@ class SessionManagerService extends SessionManager with Logging {
     //    // TODO:1: use constants instead of processor_types,processor_plan,uniform
 
     val processor_types = ArrayBuffer[String]()
-
-    val processorPlan =
       if(sessionMeta.options.contains("processor_types")) {
         val processor_types_in_session = sessionMeta.options("processor_types").split(",")
         processor_types_in_session.foreach( { pType =>
@@ -217,10 +227,27 @@ class SessionManagerService extends SessionManager with Logging {
       sessionId=sessionId,
       dispatchStrategy=DispatchStrategy.FIX,
       processorTypes=processor_types.toArray
-      ,options = mutable.Map(SessionConfKeys.CONFKEY_SESSION_PROCESSORS_PER_NODE->eggsPerNode.toString,"resourceType"->ResourceTypes.VCPU_CORE))
+      ,options = mutable.Map(SessionConfKeys.CONFKEY_SESSION_PROCESSORS_PER_NODE->eggsPerNode.toString,
+        "resourceType"->ResourceTypes.VCPU_CORE))
+
+//          // for  test
+//          var  prepareProcessors :ArrayBuffer[ErProcessor] = new  ArrayBuffer[ErProcessor]()
+//          for( i<-0 until eggsPerNode){
+//            prepareProcessors.append(new ErProcessor(sessionId = sessionId,processorType=ProcessorTypes.EGG_PAIR,
+//              status=ProcessorStatus.NEW,resources = Array(ErResource(resourceType=ResourceTypes.VGPU_CORE,
+//                allocated = 1,status = ResourceStatus.PRE_ALLOCATED))))
+//          }
+//
+//          val resourceApplication = ResourceApplication(
+//            sortByResourceType =ResourceTypes.VGPU_CORE,
+//            processors = prepareProcessors.toArray,
+//            resourceExhaustedStrategy = ResourceExhaustedStrategy.WAITING,
+//            timeout = 3000,
+//            sessionId = sessionId
+//           // sessionName = JobProcessorTypes.DeepSpeed.toString
+//          )
+
     ClusterResourceManager.submitResourceRequest(resourceApplication)
-
-
     var dispatchResult=resourceApplication.getResult()
     val expectedProcessorsCount = dispatchResult.length
     val registeredSessionMeta = smDao.getSession(sessionMeta.id)
@@ -326,11 +353,22 @@ class SessionManagerService extends SessionManager with Logging {
 
     val healthyNodeExample = ErServerNode(status = ServerNodeStatus.HEALTHY, nodeType = ServerNodeTypes.NODE_MANAGER)
     val serverNodeCrudOperator = new ServerNodeCrudOperator()
+    var healthyCluster :ErServerCluster = null
 
-    val healthyCluster = serverNodeCrudOperator.getServerNodes(healthyNodeExample)
-    if(healthyCluster==null){
-
+    var tryCount = 0;
+    do{
+      healthyCluster  = serverNodeCrudOperator.getServerNodes(healthyNodeExample);
+      tryCount+=1
+      if(healthyCluster==null){
+        logInfo("cluster is not ready,waitting next try")
+        sleep(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL.get().toLong)
+      }
     }
+    while(healthyCluster==null&&tryCount < 2)
+    if(healthyCluster==null){
+         throw new ErSessionException("cluster is not ready")
+    }
+
     val serverNodes = healthyCluster.serverNodes
     val serverNodesToHost = mutable.Map[Long, String]()
     serverNodes.foreach(n => serverNodesToHost += (n.id -> n.endpoint.host))
