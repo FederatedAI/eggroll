@@ -83,7 +83,6 @@ object ResourceStateMachine extends Logging{
   )
 
 
-
   }
 
 
