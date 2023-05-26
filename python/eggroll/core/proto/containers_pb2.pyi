@@ -296,11 +296,13 @@ class DownloadContainersRequest(google.protobuf.message.Message):
     SESSION_ID_FIELD_NUMBER: builtins.int
     CONTAINER_IDS_FIELD_NUMBER: builtins.int
     COMPRESS_METHOD_FIELD_NUMBER: builtins.int
+    COMPRESS_LEVEL_FIELD_NUMBER: builtins.int
     CONTENT_TYPE_FIELD_NUMBER: builtins.int
     session_id: builtins.str
     @property
     def container_ids(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.int]: ...
     compress_method: builtins.str
+    compress_level: builtins.int
     content_type: global___ContentType.ValueType
     def __init__(
         self,
@@ -308,9 +310,10 @@ class DownloadContainersRequest(google.protobuf.message.Message):
         session_id: builtins.str = ...,
         container_ids: collections.abc.Iterable[builtins.int] | None = ...,
         compress_method: builtins.str = ...,
+        compress_level: builtins.int = ...,
         content_type: global___ContentType.ValueType = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["compress_method", b"compress_method", "container_ids", b"container_ids", "content_type", b"content_type", "session_id", b"session_id"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["compress_level", b"compress_level", "compress_method", b"compress_method", "container_ids", b"container_ids", "content_type", b"content_type", "session_id", b"session_id"]) -> None: ...
 
 global___DownloadContainersRequest = DownloadContainersRequest
 
