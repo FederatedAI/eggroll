@@ -370,36 +370,36 @@ object ClusterResourceManager extends Logging{
 
 
   //废弃
-//  def  allocateResource(processors: Array[ErProcessor] ,beforeCall:(Connection,ErProcessor)=>Unit =null,afterCall:(Connection,ErProcessor)=>Unit =null) : Unit=synchronized{
-//    ServerNodeCrudOperator.dbc.withTransaction(conn=> {
-//
-//
-//
-//      var allocateResourceProcessor = processors.map(p => {
-//        p.copy(resources = serverNodeCrudOperator.queryProcessorResource(conn,p,ResourceStatus.PRE_ALLOCATED).map(_.copy(status=ResourceStatus.ALLOCATED)))
-//      })
-//      var flatedResource = flatResources(allocateResourceProcessor)
-//      logInfo(s"flated resource ${flatedResource}")
-//      allocateResourceProcessor.foreach(p=> {
-//        if(beforeCall!=null)
-//            beforeCall(conn,p)
-//        serverNodeCrudOperator.updateProcessorResource(conn, p);
-//        if(afterCall!=null)
-//            afterCall(conn,p)
-//      })
-//
-//      flatedResource.foreach(e => {
-//        e._2.foreach(resource=>{
-//          logInfo(s"allocate resource to node  ${e._1} ${resource}")
-//        })
-//
-//       // serverNodeCrudOperator.allocateNodeResource(conn,e._1, e._2)
-//       var  erResources =  serverNodeCrudOperator.countNodeResource(conn,e._1)
-//        serverNodeCrudOperator.updateNodeResource(conn,e._1,erResources)
-//      })
-//
-//    })
-//  }
+  def  allocateResource(processors: Array[ErProcessor] ,beforeCall:(Connection,ErProcessor)=>Unit =null,afterCall:(Connection,ErProcessor)=>Unit =null) : Unit=synchronized{
+    ServerNodeCrudOperator.dbc.withTransaction(conn=> {
+
+
+
+      var allocateResourceProcessor = processors.map(p => {
+        p.copy(resources = serverNodeCrudOperator.queryProcessorResource(conn,p,ResourceStatus.PRE_ALLOCATED).map(_.copy(status=ResourceStatus.ALLOCATED)))
+      })
+      var flatedResource = flatResources(allocateResourceProcessor)
+      logInfo(s"flated resource ${flatedResource}")
+      allocateResourceProcessor.foreach(p=> {
+        if(beforeCall!=null)
+            beforeCall(conn,p)
+        serverNodeCrudOperator.updateProcessorResource(conn, p);
+        if(afterCall!=null)
+            afterCall(conn,p)
+      })
+
+      flatedResource.foreach(e => {
+        e._2.foreach(resource=>{
+          logInfo(s"allocate resource to node  ${e._1} ${resource}")
+        })
+
+       // serverNodeCrudOperator.allocateNodeResource(conn,e._1, e._2)
+       var  erResources =  serverNodeCrudOperator.countNodeResource(conn,e._1)
+        serverNodeCrudOperator.updateNodeResource(conn,e._1,erResources)
+      })
+
+    })
+  }
   //废弃
 //  def preAllocateResource(processors: Array[ErProcessor]): Unit = synchronized {
 //    logInfo(s"============== preAllocateResource ============${processors.mkString}")
