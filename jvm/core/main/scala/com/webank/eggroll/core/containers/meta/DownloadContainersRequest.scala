@@ -10,6 +10,7 @@ case class DownloadContainersRequest(
                                       sessionId: String,
                                       containerIds: Array[Long],
                                       compressMethod: String = "zip",
+                                      compressLevel: Int = 1,
                                       contentType: ContentType.ContentType
                                     )
 
@@ -21,6 +22,7 @@ object DownloadContainersRequest {
       sessionId = src.getSessionId,
       containerIds = src.getContainerIdsList.asScala.map(_.toLong).toArray,
       compressMethod = src.getCompressMethod,
+      compressLevel = src.getCompressLevel,
       contentType = src.getContentType
     )
   }
@@ -30,6 +32,7 @@ object DownloadContainersRequest {
       .setSessionId(src.sessionId)
       .addAllContainerIds(src.containerIds.map(_.asInstanceOf[java.lang.Long]).toList.asJava)
       .setCompressMethod(src.compressMethod)
+      .setCompressLevel(src.compressLevel)
       .setContentType(src.contentType)
     builder.build().toByteArray
   }
