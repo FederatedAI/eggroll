@@ -130,6 +130,7 @@ CREATE TABLE IF NOT EXISTS `session_processor`
     `tag`               VARCHAR(255),
     `command_endpoint`  VARCHAR(255),
     `transfer_endpoint` VARCHAR(255),
+    `processor_option`  VARCHAR(512),
     `pid`               INT          NOT NULL DEFAULT -1,
     `created_at`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
