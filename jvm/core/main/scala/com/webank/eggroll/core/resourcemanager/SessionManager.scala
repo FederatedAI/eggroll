@@ -223,29 +223,31 @@ class SessionManagerService extends SessionManager with Logging {
       } else {
         processor_types.append(ProcessorTypes.EGG_PAIR)
       }
-    var resourceApplication: ResourceApplication =  ResourceApplication(
-      sessionId=sessionId,
-      dispatchStrategy=DispatchStrategy.FIX,
-      processorTypes=processor_types.toArray
-      ,options = mutable.Map(SessionConfKeys.CONFKEY_SESSION_PROCESSORS_PER_NODE->eggsPerNode.toString,
-        "resourceType"->ResourceTypes.VCPU_CORE))
+//    var resourceApplication: ResourceApplication =  ResourceApplication(
+//      sessionId=sessionId,
+//      dispatchStrategy=DispatchStrategy.FIX,
+//      processorTypes=processor_types.toArray
+//      ,options = mutable.Map(SessionConfKeys.CONFKEY_SESSION_PROCESSORS_PER_NODE->eggsPerNode.toString,
+//        "resourceType"->ResourceTypes.VCPU_CORE))
 
-//          // for  test
-//          var  prepareProcessors :ArrayBuffer[ErProcessor] = new  ArrayBuffer[ErProcessor]()
-//          for( i<-0 until eggsPerNode){
-//            prepareProcessors.append(new ErProcessor(sessionId = sessionId,processorType=ProcessorTypes.EGG_PAIR,
-//              status=ProcessorStatus.NEW,resources = Array(ErResource(resourceType=ResourceTypes.VGPU_CORE,
-//                allocated = 1,status = ResourceStatus.PRE_ALLOCATED))))
-//          }
-//
-//          val resourceApplication = ResourceApplication(
-//            sortByResourceType =ResourceTypes.VGPU_CORE,
-//            processors = prepareProcessors.toArray,
-//            resourceExhaustedStrategy = ResourceExhaustedStrategy.WAITING,
-//            timeout = 3000,
-//            sessionId = sessionId
-//           // sessionName = JobProcessorTypes.DeepSpeed.toString
-//          )
+          // for  test
+          var  prepareProcessors :ArrayBuffer[ErProcessor] = new  ArrayBuffer[ErProcessor]()
+          for( i<-0 until eggsPerNode){
+            prepareProcessors.append(new ErProcessor(sessionId = sessionId,processorType=ProcessorTypes.EGG_PAIR,
+              status=ProcessorStatus.NEW,resources = Array(ErResource(resourceType=ResourceTypes.VGPU_CORE,
+                allocated = 1,status = ResourceStatus.PRE_ALLOCATED))))
+          }
+
+          val resourceApplication = ResourceApplication(
+            sortByResourceType =ResourceTypes.VGPU_CORE,
+            dispatchStrategy = DispatchStrategy.SINGLE_NODE_FIRST,
+            processors = prepareProcessors.toArray,
+            resourceExhaustedStrategy = ResourceExhaustedStrategy.WAITING,
+            timeout = 3000,
+            sessionId = sessionId
+           // sessionName = JobProcessorTypes.DeepSpeed.toString
+          )
+        //for  test
 
     ClusterResourceManager.submitResourceRequest(resourceApplication)
     var dispatchResult=resourceApplication.getResult()
