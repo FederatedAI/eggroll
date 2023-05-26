@@ -155,13 +155,14 @@ class ContainersServiceHandler(implicit ec: ExecutionContext,
   }
 }
 
-object ContainersServiceHandler {
+object ContainersServiceHandler extends Logging {
 
   object CompressMethod {
     val ZIP = "zip"
   }
 
   def zip(path: Path): Array[Byte] = {
+    logInfo(s"zipping path: $path")
     val byteStream = new ByteArrayOutputStream()
     val zipOutput = new ZipOutputStream(byteStream)
     try {
@@ -182,6 +183,7 @@ object ContainersServiceHandler {
     } finally {
       zipOutput.close()
     }
+    logInfo(s"zipped path: $path")
     byteStream.toByteArray
   }
 }
