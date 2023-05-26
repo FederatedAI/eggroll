@@ -30,14 +30,16 @@ class ContentType(enum.Enum):
 
 
 class DeepspeedJob:
-    def __init__(self, session_id: Optional[str] = None,
-                 host: Optional[str] = None,
-                 port: Optional[int] = None):
+    def __init__(self, session_id: Optional[str] = None, host: Optional[str] = None, port: Optional[int] = None):
         if session_id is None:
             session_id = f"deepspeed_session_{datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f')}"
         self._session_id = session_id
         self._host = host
         self._port = port
+
+    @property
+    def session_id(self):
+        return self._session_id
 
     def _get_client(self):
         return BaseClient(self._host, self._port)
