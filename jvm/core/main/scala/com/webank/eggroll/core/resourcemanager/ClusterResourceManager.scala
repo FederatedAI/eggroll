@@ -98,7 +98,7 @@ object ClusterResourceManager extends Logging{
               val registeredSessionMeta = smDao.getSession(resourceApplication.sessionId)
               var serverNodeMap = serverNodes.groupBy(_.id).mapValues(_.apply(0))
               var  result = registeredSessionMeta.processors.map(p=>{(p,serverNodeMap.get(p.serverNodeId).get)})
-
+              //logInfo(s"==============!!!===result ========${result.mkString}");
 
               //这里的zip是不靠谱的
 //              dispatchedProcessors = dispatchedProcessors.zip(registeredSessionMeta.processors).map {
@@ -206,7 +206,7 @@ object ClusterResourceManager extends Logging{
         }
       }
     }
-   // logInfo(s"==========getNextGpuIndex  size ${size}  alreadyAllocated ${alreadyAllocated.mkString} return ${result}")
+    logInfo(s"==========getNextGpuIndex  size ${size}  alreadyAllocated ${alreadyAllocated.mkString} return ${result}")
     result
   }
 
@@ -297,7 +297,7 @@ object ClusterResourceManager extends Logging{
             var  gpuResourcesInNodeArray =  node.resources.filter(_.resourceType==ResourceTypes.VGPU_CORE)
             if(gpuResourcesInNodeArray.length>0){
               var gpuResourcesInNode = gpuResourcesInNodeArray.apply(0)
-              logInfo(s"=======gpuResourcesInNode====${gpuResourcesInNode.extention}")
+              //logInfo(s"=======gpuResourcesInNode====${gpuResourcesInNode.extention}")
               gpuResourcesInNode.extentionCache.appendAll(if(gpuResourcesInNode.extention!=null) gpuResourcesInNode.extention.split(",")else Array(""))
               nextGpuIndex = getNextGpuIndex(gpuResourcesInNode.total.toInt,gpuResourcesInNode.extentionCache.toArray)
               gpuResourcesInNode.extentionCache.append(nextGpuIndex.toString)
