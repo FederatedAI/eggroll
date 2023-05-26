@@ -1,5 +1,6 @@
 package com.webank.eggroll.core.resourcemanager
 
+import com.google.gson.Gson
 import com.webank.eggroll.core.constant.SessionConfKeys.EGGROLL_SESSION_USE_RESOURCE_DISPATCH
 import com.webank.eggroll.core.constant.{ProcessorStatus, SessionConfKeys, SessionStatus}
 import com.webank.eggroll.core.meta._
@@ -10,6 +11,7 @@ import com.webank.eggroll.core.util.JdbcTemplate.ResultSetIterator
 import org.apache.commons.lang3.StringUtils
 
 import java.sql.Connection
+import java.util.concurrent.ConcurrentHashMap
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
@@ -66,9 +68,7 @@ class SessionMetaDao {
 //            "tag, command_endpoint, transfer_endpoint) values " + valueSql,
 //          params: _*)
           procs.foreach(proc=>{
-
             ProcessorStateMachine.changeStatus(paramProcessor = proc.copy(sessionId = sid),preStateParam="",desStateParam=ProcessorStatus.NEW,connection = conn)
-
           })
 
 
@@ -101,12 +101,19 @@ class SessionMetaDao {
   }
 
   def getSession(sessionId: String): ErSessionMeta = synchronized {
+
     val opts = dbc.query(
       rs => rs.map(
         _ => (rs.getString("name"), rs.getString("data"))
       ).toMap,
       "select * from session_option where session_id = ?", sessionId)
-    val procs = dbc.query(rs => rs.map(_ =>
+    val procs = dbc.query(rs => rs.map(_ => {
+      var  options:java.util.Map[String,String] = new ConcurrentHashMap[String,String]()
+      if (rs.getString("processor_option") != null) {
+        var  gson =  new Gson()
+        options.putAll(gson.fromJson(rs.getString("processor_option"),classOf[java.util.Map[String,String]]))
+      }
+
       ErProcessor(id = rs.getLong("processor_id"),
         serverNodeId = rs.getInt("server_node_id"),
         processorType = rs.getString("processor_type"), status = rs.getString("status"),
@@ -116,7 +123,10 @@ class SessionMetaDao {
         else ErEndpoint(rs.getString("transfer_endpoint")),
         pid = rs.getInt("pid"),
         updatedAt = rs.getTimestamp("updated_at"),
-        createdAt = rs.getTimestamp("created_at"))
+        createdAt = rs.getTimestamp("created_at"),
+        options = options
+      )
+    }
     ),
       "select * from session_processor where session_id = ?", sessionId)
     getSessionMain(sessionId).copy(options = opts, processors = procs.toArray)
@@ -130,13 +140,13 @@ class SessionMetaDao {
   }
 
   def createProcessor(conn: Connection,proc: ErProcessor): ErProcessor = {
-
+      var  gson =  new Gson()
       val sql = "insert into session_processor " +
-        "(session_id, server_node_id, processor_type, status, tag, command_endpoint, transfer_endpoint) values " +
-        "(?, ?, ?, ?, ?, ?, ?)"
+        "(session_id, server_node_id, processor_type, status, tag, command_endpoint, transfer_endpoint,processor_option) values " +
+        "(?, ?, ?, ?, ?, ?, ?,?)"
 
       val result = dbc.update(conn, sql, proc.sessionId, proc.serverNodeId, proc.processorType, ProcessorStatus.NEW, proc.tag,if (proc.commandEndpoint != null) proc.commandEndpoint.toString else "",
-        if (proc.transferEndpoint != null) proc.transferEndpoint.toString else "")
+        if (proc.transferEndpoint != null) proc.transferEndpoint.toString else "",if(proc.options!=null) gson.toJson(proc.options) else "")
 
       proc.copy(id=result.get.toLong)
   }
