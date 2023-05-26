@@ -33,6 +33,7 @@ message StoreGetRequest {
 
 message StoreGetResponse {
   bytes value = 1;
+  bool is_timeout = 2;
 }
 
 message StoreAddRequest {
