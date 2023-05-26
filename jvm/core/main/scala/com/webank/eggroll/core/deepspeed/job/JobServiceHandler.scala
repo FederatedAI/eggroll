@@ -81,6 +81,7 @@ object JobServiceHandler extends Logging {
               sessionId = sessionId,
               containerIds = ranks.map(_._2),
               compressMethod = compressMethod,
+              compressLevel = downloadJobRequest.compressLevel,
               contentType = contentType
             )).containerContents
         } catch {
