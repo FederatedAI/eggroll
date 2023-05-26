@@ -125,13 +125,25 @@ class DeepspeedJob:
             time.sleep(poll_interval)
         return query_response.status
 
-    def download_job(self, ranks: Optional[List[int]] = None, content_type: ContentType = ContentType.ALL):
+    def download_job(
+        self,
+        ranks: Optional[List[int]] = None,
+        content_type: ContentType = ContentType.ALL,
+        compress_method: str = "zip",
+        compress_level: int = 1,
+    ):
+        if compress_level < 0 or compress_level > 9:
+            raise ValueError(f"compress_level must be in [0, 9], got {compress_level}")
+        if compress_method not in {"zip"}:
+            raise ValueError(f"compress_method must be in ['zip'], got {compress_method}")
+
         if ranks is None:
             ranks = []
         download_job_request = deepspeed_pb2.DownloadJobRequest(
             session_id=self._session_id,
             ranks=ranks,
-            compress_method="zip",
+            compress_method=compress_method,
+            compress_level=compress_level,
             content_type=content_type.to_proto(),
         )
         download_job_response = self._get_client().do_sync_request(
@@ -144,8 +156,10 @@ class DeepspeedJob:
         ranks: Optional[List[int]] = None,
         content_type: ContentType = ContentType.ALL,
         rank_to_path: typing.Callable[[int], str] = lambda rank: f"rank_{rank}.zip",
+        compress_method: str = "zip",
+        compress_level: int = 1,
     ):
-        download_job_response = self.download_job(ranks, content_type)
+        download_job_response = self.download_job(ranks, content_type, compress_method, compress_level)
         if ranks is None:
             ranks = range(len(download_job_response.container_content))
         for rank, content in zip(ranks, download_job_response.container_content):
