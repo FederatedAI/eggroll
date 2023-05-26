@@ -132,7 +132,7 @@ class ContainersServiceHandler(implicit ec: ExecutionContext,
       downloadContainersRequest.compressMethod match {
         case CompressMethod.ZIP =>
           if (targetDir.exists)
-            ContainerContent(containerId, zip(targetDir), CompressMethod.ZIP)
+            ContainerContent(containerId, zip(targetDir, downloadContainersRequest.compressLevel), CompressMethod.ZIP)
           else
             ContainerContent(containerId, Array[Byte](), CompressMethod.ZIP)
         case _ =>
@@ -161,20 +161,22 @@ object ContainersServiceHandler extends Logging {
     val ZIP = "zip"
   }
 
-  def zip(path: Path): Array[Byte] = {
+  def zip(path: Path, level: Int): Array[Byte] = {
     logInfo(s"zipping path: $path")
     val byteStream = new ByteArrayOutputStream()
     val zipOutput = new ZipOutputStream(byteStream)
+    zipOutput.setLevel(level)
     try {
       path.walk.foreach(subPath => {
         if (Files.isRegularFile(subPath.jfile.toPath)) {
           val name = path.relativize(subPath).toString
           zipOutput.putNextEntry(new ZipEntry(name))
           val in = new FileInputStream(subPath.jfile)
-          var bytesRead = in.read()
+          val buffer = new Array[Byte](1024)
+          var bytesRead = in.read(buffer)
           while (bytesRead != -1) {
-            zipOutput.write(bytesRead)
-            bytesRead = in.read()
+            zipOutput.write(buffer, 0, bytesRead)
+            bytesRead = in.read(buffer)
           }
           in.close()
           zipOutput.closeEntry()
