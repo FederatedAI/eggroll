@@ -54,7 +54,8 @@ message DownloadContainersRequest {
   string session_id = 1;
   repeated int64 container_ids = 2;
   string compress_method = 3;
-  ContentType content_type = 4;
+  int32 compress_level = 4;
+  ContentType content_type = 5;
 }
 
 enum ContentType {
