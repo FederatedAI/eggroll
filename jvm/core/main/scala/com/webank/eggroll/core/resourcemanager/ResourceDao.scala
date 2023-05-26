@@ -67,7 +67,7 @@ class SessionMetaDao {
 //          params: _*)
           procs.foreach(proc=>{
 
-            ProcessorStateMachine.changeStatus(erProcessor = proc.copy(sessionId = sid),preStateParam="",desStateParam=ProcessorStatus.NEW,connection = conn)
+            ProcessorStateMachine.changeStatus(paramProcessor = proc.copy(sessionId = sid),preStateParam="",desStateParam=ProcessorStatus.NEW,connection = conn)
 
           })
 
