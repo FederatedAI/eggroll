@@ -30,9 +30,9 @@ class RendezvousStoreService extends Logging {
     val store = getStore(request.prefix)
     val value = store.get(request.key, request.timeout)
     if (value.isDefined) {
-      RendezvousStoreGetResponse(value.get)
+      RendezvousStoreGetResponse(value.get, isTimeout = false)
     } else {
-      throw new Exception(s"key ${request.key} not found")
+      RendezvousStoreGetResponse(Vector.empty, isTimeout = true)
     }
   }
 

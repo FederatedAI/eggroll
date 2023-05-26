@@ -30,6 +30,8 @@ class EggrollStore(Store):
             output_type=deepspeed_pb2.StoreGetResponse,
             command_uri=RendezvousStoreCommands.GET,
         )
+        if response.is_timeout:
+            raise RuntimeError("Socket Timeout")
         return response.value
 
     def set(self, key, value):
