@@ -58,6 +58,7 @@ object JobServiceHandler extends Logging {
 
   def handleJobDownload(downloadJobRequest: DownloadJobRequest): DownloadJobResponse = {
     val sessionId = downloadJobRequest.sessionId
+    logInfo(f"download job request, sessionId: ${sessionId}")
     val contentType = downloadJobRequest.contentType
     val compressMethod = downloadJobRequest.compressMethod
 
@@ -72,7 +73,8 @@ object JobServiceHandler extends Logging {
     }.groupBy(_._1).par.flatMap { case (nodeId, ranks) =>
       val node = serverNodeCrudOperator.getServerNode(ErServerNode(id = nodeId))
       val indexes = ranks.map(_._5)
-      indexes.zip(
+      logInfo(f"download from node, sessionId: ${sessionId}, node: ${node}, indexes: ${indexes.mkString(",")}")
+      val containerContents = {
         try {
           new NodeManagerClient(node.endpoint).downloadContainers(
             DownloadContainersRequest(
@@ -89,8 +91,11 @@ object JobServiceHandler extends Logging {
               content = Array.empty,
               compressMethod = downloadJobRequest.compressMethod))
         }
-      )
+      }
+      logInfo(f"download from node done, sessionId: ${sessionId}, node: ${node}, indexes: ${indexes.mkString(",")}")
+      indexes.zip(containerContents)
     }.toArray.sortBy(_._1).map(_._2)
+    logInfo(f"download job request done, sessionId: ${sessionId}")
     DownloadJobResponse(sessionId = sessionId, containerContents = containerContents)
   }
 
@@ -166,8 +171,10 @@ object JobServiceHandler extends Logging {
       sessionId = sessionId,
       sessionName = JobProcessorTypes.DeepSpeed.toString
     )
+    logInfo(s"submitting resource request: ${resourceApplication}, ${resourceApplication.hashCode()}")
     ClusterResourceManager.submitResourceRequest(resourceApplication)
     var dispatchedProcessors = resourceApplication.getResult()
+    logInfo(s"submitted resource request: ${resourceApplication}, ${resourceApplication.hashCode()}")
     logInfo(s"dispatchedProcessor: ${dispatchedProcessors.mkString("Array(", ", ", ")")}")
 
     //        smDao.register(ErSessionMeta(
