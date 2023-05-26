@@ -9,7 +9,7 @@ from .commands import RendezvousStoreCommands
 
 
 class EggrollStore(Store):
-    def __init__(self, host, port, prefix, timeout: timedelta = timedelta(seconds=300)):
+    def __init__(self, host, port, prefix, timeout: timedelta = timedelta(hours=24)):
         self._prefix = prefix
         self._timeout = timeout
         super().__init__()
