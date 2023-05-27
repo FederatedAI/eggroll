@@ -479,6 +479,7 @@ def doCreateServerNode(input: ErServerNode): ErServerNode = {
         resourceType = rs.getString("resource_type"),
         total = rs.getLong("total"),
         used = rs.getLong("used"),
+        preAllocated = rs.getLong("pre_allocated"),
         allocated =  rs.getLong("allocated"),
         extention = rs.getString("extention"),
         status = rs.getString("status"))}),
@@ -651,7 +652,7 @@ def doCreateServerNode(input: ErServerNode): ErServerNode = {
         }
 
 
-         // logInfo(s"========sql=======${sql}==== param ${params}")
+          logInfo(s"===node_resource=====sql=======${sql}==== param ${params}")
 
           dbc.update(conn ,sql,
             params:_*)
@@ -756,6 +757,7 @@ def doCreateServerNode(input: ErServerNode): ErServerNode = {
   def  doInsertProcessorResource(connection: Connection,processors:Array[ErProcessor]) :Unit = synchronized {
       processors.foreach(erProcessor => {
         erProcessor.resources.foreach(resource => {
+          logInfo(s"insert  resource ${resource}")
           dbc.update(connection, "insert into  processor_resource (processor_id,session_id,server_node_id,resource_type,allocated,status,extention)  values (?, ?,?, ?, ?,?,?)",
             erProcessor.id, erProcessor.sessionId, erProcessor.serverNodeId, resource.resourceType, resource.allocated,resource.status,resource.extention)
         })

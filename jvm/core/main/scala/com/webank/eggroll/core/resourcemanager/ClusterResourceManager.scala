@@ -27,10 +27,13 @@ object ClusterResourceManager extends Logging{
     var  dispatchThread = new  Thread(()=>{
       while(true){
         var resourceApplication:ResourceApplication =null
-        if(applicationQueue.broker.size()>0)
-            resourceApplication = applicationQueue.broker.peek()
+        if(applicationQueue.broker.size()>0) {
+          resourceApplication = applicationQueue.broker.peek()
+
+          logInfo(s"dispatch thread peek====${resourceApplication}")
+        }
         else {
-         // println(s"dispatch thread peek====${resourceApplication}")
+         //println(s"dispatch thread peek====${resourceApplication}")
           Thread.sleep(500)
         }
         try{
@@ -49,6 +52,7 @@ object ClusterResourceManager extends Logging{
                 var tryCount: Int =0
                 do{
                   serverNodes = getServerNodeWithResource();
+                  logInfo(s"server resources ====== ${serverNodes.apply(0).resources.mkString}")
                   tryCount+=1
                   if(serverNodes==null||serverNodes.length==0)
                       Thread.sleep(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL.get().toLong)
@@ -86,7 +90,7 @@ object ClusterResourceManager extends Logging{
               var dispatchedProcessors = resourceApplication.resourceDispatch
                 //.toArray.map(_._1)
 
-              smDao.register(ErSessionMeta(
+              smDao.registerWithResource(ErSessionMeta(
                 id = resourceApplication.sessionId,
                 name=resourceApplication.sessionName,
                 processors = dispatchedProcessors.toArray.map(_._1),
@@ -566,6 +570,7 @@ object ClusterResourceManager extends Logging{
         nodeRemainResourceMap(n.id)=nodeMap
 
       })
+
       println("========node remain==="+nodeRemainResourceMap)
       // globalRemainResourceMap
 

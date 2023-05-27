@@ -6,7 +6,7 @@ import com.webank.eggroll.core.constant.{ProcessorStatus, SessionConfKeys, Sessi
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.resourcemanager.BaseDao.NotExistError
 import com.webank.eggroll.core.session.StaticErConf
-import com.webank.eggroll.core.util.JdbcTemplate
+import com.webank.eggroll.core.util.{JdbcTemplate, Logging}
 import com.webank.eggroll.core.util.JdbcTemplate.ResultSetIterator
 import org.apache.commons.lang3.StringUtils
 
@@ -33,9 +33,51 @@ class StoreMetaDao {
 
 }
 
-class SessionMetaDao {
+class SessionMetaDao extends Logging{
 
   private  val dbc = BaseDao.dbc
+
+
+
+  def registerWithResource(sessionMeta: ErSessionMeta, replace: Boolean = true): Unit = synchronized {
+    require(sessionMeta.activeProcCount == sessionMeta.processors.count(_.status == ProcessorStatus.RUNNING),
+      "conflict active proc count:" + sessionMeta)
+    val sid = sessionMeta.id
+    dbc.withTransaction { conn =>
+      if (replace) {
+        dbc.update(conn, "delete from session_main where session_id=?", sid)
+        dbc.update(conn, "delete from session_option where session_id=?", sid)
+        dbc.update(conn, "delete from session_processor where session_id=?", sid)
+//        println(s"=================delete ${deletedProcessorsInfo.get}")
+      }
+      dbc.update(conn,
+        "insert into session_main(session_id, name, status, tag, total_proc_count, active_proc_count) values(?, ?, ?, ?, ?, 0)",
+        sid, sessionMeta.name, sessionMeta.status, sessionMeta.tag, sessionMeta.totalProcCount)
+      val opts = sessionMeta.options
+      if (opts.nonEmpty) {
+        val valueSql = ("(?, ?, ?) ," * opts.size).stripSuffix(",")
+        val params = opts.flatMap { case (k, v) => Seq(sid, k, v) }.toSeq
+        dbc.update(conn, "insert into session_option(session_id, name, data) values " + valueSql, params: _*)
+      }
+      val procs = sessionMeta.processors
+      if (procs.nonEmpty) {
+        //        val valueSql = ("(?, ?, ?, ?, ?, ?, ?)," * procs.length).stripSuffix(",")
+        //        val params = procs.flatMap(proc => Seq(
+        //          sid, proc.serverNodeId, proc.processorType, proc.status, proc.tag,
+        //          if (proc.commandEndpoint != null) proc.commandEndpoint.toString else "",
+        //          if (proc.transferEndpoint != null) proc.transferEndpoint.toString else ""))
+        //        dbc.update(conn,
+        //          "insert into session_processor(session_id, server_node_id, processor_type, status, " +
+        //            "tag, command_endpoint, transfer_endpoint) values " + valueSql,
+        //          params: _*)
+        procs.foreach(proc=>{
+          ProcessorStateMachine.changeStatus(paramProcessor = proc.copy(sessionId = sid),preStateParam="",desStateParam=ProcessorStatus.NEW,connection = conn)
+        })
+
+
+      }
+    }
+  }
 
   def register(sessionMeta: ErSessionMeta, replace: Boolean = true): Unit = synchronized {
     require(sessionMeta.activeProcCount == sessionMeta.processors.count(_.status == ProcessorStatus.RUNNING),
@@ -58,19 +100,15 @@ class SessionMetaDao {
       }
       val procs = sessionMeta.processors
       if (procs.nonEmpty) {
-//        val valueSql = ("(?, ?, ?, ?, ?, ?, ?)," * procs.length).stripSuffix(",")
-//        val params = procs.flatMap(proc => Seq(
-//          sid, proc.serverNodeId, proc.processorType, proc.status, proc.tag,
-//          if (proc.commandEndpoint != null) proc.commandEndpoint.toString else "",
-//          if (proc.transferEndpoint != null) proc.transferEndpoint.toString else ""))
-//        dbc.update(conn,
-//          "insert into session_processor(session_id, server_node_id, processor_type, status, " +
-//            "tag, command_endpoint, transfer_endpoint) values " + valueSql,
-//          params: _*)
-          procs.foreach(proc=>{
-            ProcessorStateMachine.changeStatus(paramProcessor = proc.copy(sessionId = sid),preStateParam="",desStateParam=ProcessorStatus.NEW,connection = conn)
-          })
-
+        val valueSql = ("(?, ?, ?, ?, ?, ?, ?)," * procs.length).stripSuffix(",")
+        val params = procs.flatMap(proc => Seq(
+          sid, proc.serverNodeId, proc.processorType, proc.status, proc.tag,
+          if (proc.commandEndpoint != null) proc.commandEndpoint.toString else "",
+          if (proc.transferEndpoint != null) proc.transferEndpoint.toString else ""))
+        dbc.update(conn,
+          "insert into session_processor(session_id, server_node_id, processor_type, status, " +
+            "tag, command_endpoint, transfer_endpoint) values " + valueSql,
+          params: _*)
 
       }
     }
@@ -139,7 +177,7 @@ class SessionMetaDao {
     register(sessionMeta)
   }
 
-  def createProcessor(conn: Connection,proc: ErProcessor): ErProcessor = {
+  def createProcessor(conn: Connection,proc: ErProcessor): ErProcessor = synchronized{
       var  gson =  new Gson()
       val sql = "insert into session_processor " +
         "(session_id, server_node_id, processor_type, status, tag, command_endpoint, transfer_endpoint,processor_option) values " +

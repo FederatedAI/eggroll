@@ -81,6 +81,7 @@ object ProcessorStateMachine extends Logging{
       if(beforeCall!=null)
         beforeCall(connection,erProcessor)
       var  newProcessor = smDao.createProcessor(connection,erProcessor)
+      logInfo(s"create new processor =========${newProcessor}");
       if(afterCall!=null)
         afterCall(connection,newProcessor)
 
