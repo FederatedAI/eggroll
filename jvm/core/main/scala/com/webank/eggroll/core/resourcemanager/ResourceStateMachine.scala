@@ -51,7 +51,11 @@ object ResourceStateMachine extends Logging{
               if (r.resourceType == ResourceTypes.VGPU_CORE && r.extention != StringConstants.EMPTY) {
                 extensions.append(r.extention)
               }
-            case ResourceStatus.PRE_ALLOCATED => preAllocated += r.allocated
+            case ResourceStatus.PRE_ALLOCATED =>
+              preAllocated += r.allocated
+              if (r.resourceType == ResourceTypes.VGPU_CORE && r.extention != StringConstants.EMPTY) {
+                extensions.append(r.extention)
+              }
             case _ =>
           }
         })
@@ -76,6 +80,7 @@ object ResourceStateMachine extends Logging{
   private def preAllocateResource(conn : Connection,processors: Array[ErProcessor]): Unit = synchronized {
 
     //ServerNodeCrudOperator.dbc.withTransaction(conn => {
+
       serverNodeCrudOperator.insertProcessorResource(conn, processors);
     processors.groupBy(_.serverNodeId).foreach(e=>{
       countAndUpdateNodeResource(conn,e._1)

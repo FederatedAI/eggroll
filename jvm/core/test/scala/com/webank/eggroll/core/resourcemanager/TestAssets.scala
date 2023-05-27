@@ -18,7 +18,11 @@ object TestAssets {
   val cc1: CommandClient = new CommandClient(ErEndpoint("localhost:4670"))
   val sm1: SessionManager = cc1.proxy[SessionManager]
 
-  val getOrCreateSessionMeta = ErSessionMeta(id = "testing_reg"+System.currentTimeMillis(), options = Map(SessionConfKeys.CONFKEY_SESSION_PROCESSORS_PER_NODE -> "2"))
+  def createNewGetOrCreateSessionMeta():ErSessionMeta={
+    ErSessionMeta(id = "testing_reg"+System.currentTimeMillis()+"_"+scala.util.Random.nextInt(100).toString, options = Map(SessionConfKeys.CONFKEY_SESSION_PROCESSORS_PER_NODE -> "2"))
+
+  }
+  val getOrCreateSessionMeta = ErSessionMeta(id = "testing_reg"+System.currentTimeMillis()+"_"+scala.util.Random.nextInt(100).toString, options = Map(SessionConfKeys.CONFKEY_SESSION_PROCESSORS_PER_NODE -> "2"))
 
 //  val pythonExec: String = conf.getString("eggroll.container.python.exec")
 //  val scriptPath: String = conf.getString("eggroll.container.script.path")
