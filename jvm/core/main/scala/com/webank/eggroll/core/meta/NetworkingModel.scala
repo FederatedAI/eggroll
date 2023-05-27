@@ -60,7 +60,7 @@ case class ErResource(
                       extentionCache:ArrayBuffer[String] = new ArrayBuffer[String]()
                      ) extends NetworkingRpcMessage{
   override def  toString:String ={
-    s"<ErResource(resourceType=${resourceType},status=${status}, total=${total}, used=${used} ,allocated=${allocated} ,extention= ${extention})>"}
+    s"<ErResource(resourceType=${resourceType},status=${status}, total=${total}, used=${used} ,allocated=${allocated} ,preAllocated =${preAllocated},extention= ${extention})>"}
 
   def   getUnAllocatedResource():Long={
     var remain :Long = total;

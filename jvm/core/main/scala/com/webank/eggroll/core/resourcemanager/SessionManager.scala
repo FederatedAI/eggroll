@@ -8,7 +8,7 @@ import com.webank.eggroll.core.containers.JobProcessorTypes
 import com.webank.eggroll.core.error.ErSessionException
 import com.webank.eggroll.core.meta.{ErEndpoint, ErProcessor, ErResource, ErServerCluster, ErServerNode, ErSessionMeta}
 import com.webank.eggroll.core.resourcemanager.ClusterResourceManager.ResourceApplication
-import com.webank.eggroll.core.resourcemanager.SessionManagerService.{beforeCall, serverNodeCrudOperator, smDao}
+import com.webank.eggroll.core.resourcemanager.SessionManagerService.{beforeCall, serverNodeCrudOperator, sessionLockMap, smDao}
 import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.util.Logging
@@ -16,6 +16,8 @@ import org.apache.commons.lang3.StringUtils
 
 import java.lang.Thread.sleep
 import java.sql.Connection
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.locks.ReentrantLock
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.collection.mutable.{ArrayBuffer, ListBuffer}
@@ -59,6 +61,7 @@ object SessionManagerService extends Logging {
 
   private val smDao = new SessionMetaDao
   private val serverNodeCrudOperator = new  ServerNodeCrudOperator()
+  private val sessionLockMap = new  ConcurrentHashMap[String ,ReentrantLock]()
 
   val beforeCall:(Connection,ErProcessor)=>Unit =((conn,proc)=>{
     smDao.updateProcessor(conn, proc)
@@ -337,21 +340,7 @@ class SessionManagerService extends SessionManager with Logging {
   }
 
   def  getOrCreateSessionOld(sessionMeta:ErSessionMeta): ErSessionMeta ={
-    val sessionId = sessionMeta.id
-    if (smDao.existSession(sessionId)) {
-      var result = smDao.getSession(sessionId)
 
-      if (result != null) {
-        if (result.status.equals(SessionStatus.ACTIVE)) {
-          return result
-        } else {
-          return this.getSession(sessionMeta)
-        }
-      }
-    }
-    // 0. generate a simple processors -> server plan, and fill sessionMeta.processors
-    // 1. class NodeManager.startContainers
-    // 2. query session_main's active_proc_count , wait all processor heart beats.
 
     val healthyNodeExample = ErServerNode(status = ServerNodeStatus.HEALTHY, nodeType = ServerNodeTypes.NODE_MANAGER)
     val serverNodeCrudOperator = new ServerNodeCrudOperator()
@@ -368,11 +357,37 @@ class SessionManagerService extends SessionManager with Logging {
     }
     while(healthyCluster==null&&tryCount < 2)
     if(healthyCluster==null){
-         throw new ErSessionException("cluster is not ready")
+      throw new ErSessionException("cluster is not ready")
     }
-
     val serverNodes = healthyCluster.serverNodes
+    val sessionId = sessionMeta.id
+    if(sessionLockMap.get(sessionId)==null){
+      sessionLockMap.putIfAbsent(sessionId,new ReentrantLock())
+    }
+    var lock = sessionLockMap.get(sessionId)
+    var expectedProcessorsCount:Int =0
     val serverNodesToHost = mutable.Map[Long, String]()
+    try{
+      lock.lock()
+    if (smDao.existSession(sessionId)) {
+      var result = smDao.getSession(sessionId)
+
+      if (result != null) {
+        if (result.status.equals(SessionStatus.ACTIVE)) {
+          return result
+        } else {
+          return this.getSession(sessionMeta)
+        }
+      }
+    }
+    // 0. generate a simple processors -> server plan, and fill sessionMeta.processors
+    // 1. class NodeManager.startContainers
+    // 2. query session_main's active_proc_count , wait all processor heart beats.
+
+
+
+
+
     serverNodes.foreach(n => serverNodesToHost += (n.id -> n.endpoint.host))
 
     val eggsPerNode = sessionMeta.options.getOrElse(SessionConfKeys.CONFKEY_SESSION_PROCESSORS_PER_NODE, StaticErConf.getString(SessionConfKeys.CONFKEY_SESSION_PROCESSORS_PER_NODE, "1")).toInt
@@ -398,8 +413,7 @@ class SessionManagerService extends SessionManager with Logging {
           commandEndpoint = ErEndpoint(serverNodesToHost(n.id), 0),
           status = ProcessorStatus.NEW)))
       }
-
-    val expectedProcessorsCount = processorPlan.length
+      expectedProcessorsCount = processorPlan.length
     val sessionMetaWithProcessors = sessionMeta.copy(
       processors = processorPlan,
       totalProcCount = expectedProcessorsCount,
@@ -407,6 +421,10 @@ class SessionManagerService extends SessionManager with Logging {
       status = SessionStatus.NEW)
 
     smDao.register(sessionMetaWithProcessors)
+    }finally {
+      lock.unlock()
+      sessionLockMap.remove(sessionId)
+    }
     // TODO:0: record session failure in database if session start is not successful, and returns error session
     val registeredSessionMeta = smDao.getSession(sessionMeta.id)
 
