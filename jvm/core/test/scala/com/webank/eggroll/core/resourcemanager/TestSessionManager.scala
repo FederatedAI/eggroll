@@ -15,9 +15,18 @@ class TestSessionManager {
 
   @Test
   def testGetOrCreate():Unit = {
-    val clusterManagerClient = new ClusterManagerClient("localhost",4670)
-    val result = clusterManagerClient.getOrCreateSession(sessionMeta = TestAssets.getOrCreateSessionMeta)
+
+
+      new Thread(()=>{
+        val clusterManagerClient = new ClusterManagerClient("localhost", 4670)
+        val result = clusterManagerClient.getOrCreateSession(sessionMeta = TestAssets.createNewGetOrCreateSessionMeta)
+        println(result)
+      }).start()
+
+    val clusterManagerClient = new ClusterManagerClient("localhost", 4670)
+    val result = clusterManagerClient.getOrCreateSession(sessionMeta = TestAssets.createNewGetOrCreateSessionMeta)
     println(result)
+
   }
 
   @Test

@@ -69,7 +69,7 @@ class StoreCrudOperator extends CrudOperator with Logging {
   }
 }
 
-object StoreCrudOperator {
+object StoreCrudOperator extends Logging {
   private lazy val dbc = BaseDao.dbc
   private val nodeIdToNode = new ConcurrentHashMap[java.lang.Long, DbServerNode]()
   private[metadata] def doGetStore(input: ErStore): ErStore = {
@@ -154,7 +154,8 @@ object StoreCrudOperator {
         missingNodeId:_*).toList
 
       if (nodeResult.isEmpty) {
-        throw new IllegalStateException(s"No valid node for this store: ${inputStoreLocator}")
+        logError(s"No valid node for this store: ${inputStoreLocator}} sql : ${queryServerNode.toString()} missingId ${missingNodeId}")
+        throw new IllegalStateException(s"No valid node for this store: ${inputStoreLocator}}")
       }
 
       for (i <- 0 until nodeResult.length){
