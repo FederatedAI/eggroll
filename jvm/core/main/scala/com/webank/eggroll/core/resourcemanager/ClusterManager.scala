@@ -201,11 +201,10 @@ object ClusterManagerService extends Logging {
     var expire = CONFKEY_CLUSTER_MANAGER_NODE_HEARTBEAT_EXPIRED_COUNT.get().toInt * CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL.get().toInt
     while (true) {
       try {
-        // logInfo("node heart beat checker running")
         var now = System.currentTimeMillis();
         var nodes = ServerNodeCrudOperator.doGetServerNodes(ErServerNode(status = ServerNodeStatus.HEALTHY))
         nodes.foreach(n => {
-          var interval = now - (if (n.lastHeartBeat != null) n.lastHeartBeat.getTime else 0)
+          var interval = now - (if (n.lastHeartBeat != null) n.lastHeartBeat.getTime else now)
           // logInfo(s"interval : ${n.lastHeartBeat} ${interval}  ${now} ${if(n.lastHeartBeat!=null)n.lastHeartBeat.getTime}")
           if (interval > expire) {
             logInfo(s"server node ${n} change status to LOSS")
@@ -319,8 +318,6 @@ class ClusterManagerService extends ClusterManager with Logging {
       }
     }
     nodeHeartbeatMap.put(serverNode.id, nodeHeartbeat);
-
-
     nodeHeartbeat.copy(node = serverNode)
   }
 
