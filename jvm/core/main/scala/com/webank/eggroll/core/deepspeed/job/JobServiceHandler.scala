@@ -236,44 +236,49 @@ object JobServiceHandler extends Logging {
       smDao.registerRanks(sessionId, ranks.map(_._1), ranks.map(_._2), ranks.map(_._3), ranks.map(_._4))
 
       // start containers
-      deepspeedConfigsWithNode.groupBy(_._2).par.foreach { case (node, nodeAndConfigs) =>
-        val nodeManagerClient = new NodeManagerClient(node.endpoint)
-        nodeManagerClient.startJobContainers(
-          StartDeepspeedContainerRequest(
-            sessionId = sessionId,
-            name = submitJobRequest.name,
-            commandArguments = submitJobRequest.commandArguments,
-            environmentVariables = submitJobRequest.environmentVariables,
-            files = submitJobRequest.files,
-            zippedFiles = submitJobRequest.zippedFiles,
-            deepspeedConfigs = nodeAndConfigs.map { case (containerId, _, config) => containerId -> config }(collection.breakOut),
-            options = submitJobRequest.options))
+      if(!ClusterResourceManager.killJobMap.contains(sessionId)) {
+
+        deepspeedConfigsWithNode.groupBy(_._2).par.foreach { case (node, nodeAndConfigs) =>
+          val nodeManagerClient = new NodeManagerClient(node.endpoint)
+          nodeManagerClient.startJobContainers(
+            StartDeepspeedContainerRequest(
+              sessionId = sessionId,
+              name = submitJobRequest.name,
+              commandArguments = submitJobRequest.commandArguments,
+              environmentVariables = submitJobRequest.environmentVariables,
+              files = submitJobRequest.files,
+              zippedFiles = submitJobRequest.zippedFiles,
+              deepspeedConfigs = nodeAndConfigs.map { case (containerId, _, config) => containerId -> config }(collection.breakOut),
+              options = submitJobRequest.options))
+        }
+
+        // wait for containers to start, throw exception if timeout
+        val startTimeout = System.currentTimeMillis() + SessionConfKeys.EGGROLL_SESSION_START_TIMEOUT_MS.get().toLong
+        val activeProcessors = waitSubmittedContainers(sessionId, worldSize, startTimeout)
+
+        // update options since some options are loss in db
+        val idToOptions = dispatchedProcessors.map { case (processor, _) =>
+          (processor.id, processor.options)
+        }.toMap
+        for (processor <- activeProcessors) {
+          val options = idToOptions(processor.id)
+          processor.options.putAll(options)
+        }
+
+        // active
+        smDao.updateSessionStatus(sessionId = sessionId,
+          status = SessionStatus.ACTIVE,
+          required_old_status = Some(SessionStatus.NEW))
+        SubmitJobResponse(sessionId, activeProcessors)
+      }else{
+        logError(s"kill session ${sessionId} request was found")
+          throw new ErSessionException(s"kill session ${sessionId} request was found")
       }
-
-      // wait for containers to start, throw exception if timeout
-      val startTimeout = System.currentTimeMillis() + SessionConfKeys.EGGROLL_SESSION_START_TIMEOUT_MS.get().toLong
-      val activeProcessors = waitSubmittedContainers(sessionId, worldSize, startTimeout)
-
-      // update options since some options are loss in db
-      val idToOptions = dispatchedProcessors.map { case (processor, _) =>
-        (processor.id, processor.options)
-      }.toMap
-      for (processor <- activeProcessors) {
-        val options = idToOptions(processor.id)
-        processor.options.putAll(options)
-      }
-
-      // active
-      smDao.updateSessionStatus(sessionId = sessionId,
-        status = SessionStatus.ACTIVE,
-        required_old_status = Some(SessionStatus.NEW))
-      SubmitJobResponse(sessionId, activeProcessors)
 
     }
 
     catch {
       case e: Exception =>
-        //smDao.updateSessionStatus(sessionId, SessionStatus.ERROR)
         killJob(sessionId, isTimeout = false)
         throw e
     }
@@ -281,29 +286,27 @@ object JobServiceHandler extends Logging {
 
   def killJob(sessionId: String, isTimeout: Boolean): Unit = {
     logInfo(s"killing job $sessionId")
-    val nodeAndProcessors : Array[(ErServerNode,Array[ErProcessor])] =null
+
     try {
       ClusterResourceManager.resourceLock.lock()
       if (!smDao.existSession(sessionId)) {
         ClusterResourceManager.killJobMap.put(sessionId,System.currentTimeMillis())
         return
       }
-      val sessionMeta = smDao.getSession(sessionId)
-      if (StringUtils.equalsAny(sessionMeta.status, SessionStatus.KILLED, SessionStatus.CLOSED, SessionStatus.ERROR)) {
-        return
-      }
-      val serverNodeCrudOperator = new ServerNodeCrudOperator()
-      val nodeAndProcessors = sessionMeta.processors
-        .groupBy(p => p.serverNodeId)
-        .map { case (nodeId, processors) =>
-          (serverNodeCrudOperator.getServerNode(ErServerNode(id = nodeId)), processors)
-        }
-      smDao.updateSessionMain(sessionMeta.copy(status = SessionStatus.ERROR), afterCall = defaultSessionCallback)
-
     }finally {
       ClusterResourceManager.resourceLock.unlock()
     }
-    if(nodeAndProcessors!=null){
+
+    val sessionMeta = smDao.getSession(sessionId)
+    if (StringUtils.equalsAny(sessionMeta.status, SessionStatus.KILLED, SessionStatus.CLOSED, SessionStatus.ERROR)) {
+      return
+    }
+    val serverNodeCrudOperator = new ServerNodeCrudOperator()
+     var nodeAndProcessors = sessionMeta.processors
+      .groupBy(p => p.serverNodeId)
+      .map { case (nodeId, processors) =>
+        (serverNodeCrudOperator.getServerNode(ErServerNode(id = nodeId)), processors)
+      }
       nodeAndProcessors.par.foreach { case (node, processors) =>
         try {
           new NodeManagerClient(node.endpoint)
@@ -313,14 +316,7 @@ object JobServiceHandler extends Logging {
             e.printStackTrace()
         }
       }
-    }
 
-    //    if (isTimeout) {
-    //      smDao.updateSessionStatus(sessionId = sessionId, status = SessionStatus.NEW_TIMEOUT)
-    //    } else {
-    //      smDao.updateSessionStatus(sessionId = sessionId, status = SessionStatus.KILLED)
-    //    }
-
-
+    smDao.updateSessionMain(sessionMeta.copy(status = SessionStatus.ERROR), afterCall = defaultSessionCallback)
   }
 }
