@@ -77,8 +77,6 @@ object ClusterResourceManager extends Logging{
                 }
 
               var dispatchedProcessors = resourceApplication.resourceDispatch
-                //.toArray.map(_._1)
-
               smDao.registerWithResource(ErSessionMeta(
                 id = resourceApplication.sessionId,
                 name=resourceApplication.sessionName,
@@ -103,7 +101,7 @@ object ClusterResourceManager extends Logging{
         }
 
       }
-      logInfo("!!!!!!!!!!!!!!!!!!!dispatch thread quit!!!!!!!!!!!!!!!!")
+      logError("!!!!!!!!!!!!!!!!!!!resource dispatch thread quit!!!!!!!!!!!!!!!!")
 
     })
     dispatchThread.start()
@@ -140,16 +138,9 @@ object ClusterResourceManager extends Logging{
    private def  randomDispatch(serverNodes:Array[ErServerNode] ,resourceApplication: ResourceApplication): ResourceApplication ={
 
      var requiredProcessors = resourceApplication.processors;
-
-//     var nodeResourceTupes = serverNodes.map(n => (n, n.resources.filter(_.resourceType == resourceApplication.sortByResourceType).map(_.getUnAllocatedResource).apply(0)))
-//       .sortWith(_._2 > _._2).toBuffer
-
      val shuffledNodes = Random.shuffle(serverNodes.toSeq)
-
      val nodeToProcessors = mutable.Map[ErServerNode, Seq[ErProcessor]]()
-     //
      for (index <- 0 until requiredProcessors.length) {
-       //System.err.println(nodeResourceTupes.map(_._2))
        var requiredProcessor = requiredProcessors(index)
        var node = shuffledNodes.head
        val host = node.endpoint.host
@@ -166,8 +157,6 @@ object ClusterResourceManager extends Logging{
      var result = nodeToProcessors.flatMap { case (node, processors) =>
        processors.map(p => (p, node))
      }(collection.breakOut)
-     //resourceApplication.resourceDispatch+=result
-     //resourceApplication.copy(resourceDispatch = result.toArray)
      resourceApplication.resourceDispatch.appendAll(result)
      resourceApplication
    }
@@ -190,7 +179,7 @@ object ClusterResourceManager extends Logging{
         }
       }
     }
-    logInfo(s"==========getNextGpuIndex  size ${size}  alreadyAllocated ${alreadyAllocated.mkString} return ${result}")
+    logInfo(s"get next gpu index , size ${size}  alreadyAllocated ${alreadyAllocated.mkString} return ${result}")
     result
   }
 
@@ -221,7 +210,6 @@ object ClusterResourceManager extends Logging{
           var  gpuResourcesInNodeArray =  node.resources.filter(_.resourceType==ResourceTypes.VGPU_CORE)
           if(gpuResourcesInNodeArray.length>0){
             var gpuResourcesInNode = gpuResourcesInNodeArray.apply(0)
-            logInfo(s"=======gpuResourcesInNode====${gpuResourcesInNode.extention}")
             gpuResourcesInNode.extentionCache.appendAll(if(gpuResourcesInNode.extention!=null) gpuResourcesInNode.extention.split(",")else Array(""))
             nextGpuIndex = getNextGpuIndex(gpuResourcesInNode.total.toInt,gpuResourcesInNode.extentionCache.toArray)
             gpuResourcesInNode.extentionCache.append(nextGpuIndex.toString)
@@ -246,7 +234,7 @@ object ClusterResourceManager extends Logging{
       processors.map(p => (p, node))
     }(collection.breakOut)
 
-    logInfo(s"========dispatch result ${result}")
+    logInfo(s"dispatch result ${result}")
     resourceApplication.resourceDispatch.appendAll(result)
     resourceApplication
 
