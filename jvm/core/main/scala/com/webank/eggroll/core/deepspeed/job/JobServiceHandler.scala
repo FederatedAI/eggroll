@@ -281,41 +281,46 @@ object JobServiceHandler extends Logging {
 
   def killJob(sessionId: String, isTimeout: Boolean): Unit = {
     logInfo(s"killing job $sessionId")
+    val nodeAndProcessors : Array[(ErServerNode,Array[ErProcessor])] =null
     try {
       ClusterResourceManager.resourceLock.lock()
       if (!smDao.existSession(sessionId)) {
         ClusterResourceManager.killJobMap.put(sessionId,System.currentTimeMillis())
         return
       }
+      val sessionMeta = smDao.getSession(sessionId)
+      if (StringUtils.equalsAny(sessionMeta.status, SessionStatus.KILLED, SessionStatus.CLOSED, SessionStatus.ERROR)) {
+        return
+      }
+      val serverNodeCrudOperator = new ServerNodeCrudOperator()
+      val nodeAndProcessors = sessionMeta.processors
+        .groupBy(p => p.serverNodeId)
+        .map { case (nodeId, processors) =>
+          (serverNodeCrudOperator.getServerNode(ErServerNode(id = nodeId)), processors)
+        }
+      smDao.updateSessionMain(sessionMeta.copy(status = SessionStatus.ERROR), afterCall = defaultSessionCallback)
+
     }finally {
       ClusterResourceManager.resourceLock.unlock()
     }
-    val sessionMeta = smDao.getSession(sessionId)
-    if (StringUtils.equalsAny(sessionMeta.status, SessionStatus.KILLED, SessionStatus.CLOSED, SessionStatus.ERROR)) {
-      return
-    }
-    val serverNodeCrudOperator = new ServerNodeCrudOperator()
-    val nodeAndProcessors = sessionMeta.processors
-      .groupBy(p => p.serverNodeId)
-      .map { case (nodeId, processors) =>
-        (serverNodeCrudOperator.getServerNode(ErServerNode(id = nodeId)), processors)
+    if(nodeAndProcessors!=null){
+      nodeAndProcessors.par.foreach { case (node, processors) =>
+        try {
+          new NodeManagerClient(node.endpoint)
+            .killJobContainers(KillContainersRequest(sessionId = sessionId, containers = processors.map(_.id)))
+        } catch {
+          case e: Exception =>
+            e.printStackTrace()
+        }
       }
+    }
 
-    nodeAndProcessors.par.foreach { case (node, processors) =>
-      try {
-        new NodeManagerClient(node.endpoint)
-          .killJobContainers(KillContainersRequest(sessionId = sessionId, containers = processors.map(_.id)))
-      } catch {
-        case e: Exception =>
-          e.printStackTrace()
-      }
-    }
     //    if (isTimeout) {
     //      smDao.updateSessionStatus(sessionId = sessionId, status = SessionStatus.NEW_TIMEOUT)
     //    } else {
     //      smDao.updateSessionStatus(sessionId = sessionId, status = SessionStatus.KILLED)
     //    }
 
-    smDao.updateSessionMain(sessionMeta.copy(status = SessionStatus.ERROR), afterCall = defaultSessionCallback)
+
   }
 }

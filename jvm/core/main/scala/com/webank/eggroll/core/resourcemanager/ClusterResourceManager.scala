@@ -42,8 +42,9 @@ object ClusterResourceManager extends Logging{
                 if (resourceApplication.waitingCount.get() == 0
                 ) {
                   //过期资源申请
-                  logError(s"expired resource request : ${resourceApplication} !!!!!!!!!!!!!")
-                  applicationQueue.broker.poll()
+                  logError(s"expired resource request : ${resourceApplication} !!!")
+                  killJobMap.remove(resourceApplication.sessionId)
+                  applicationQueue.broker.remove()
                   break()
                 }
                 var serverNodes  :Array[ErServerNode]= null
