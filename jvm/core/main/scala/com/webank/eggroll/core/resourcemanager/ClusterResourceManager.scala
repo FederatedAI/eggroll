@@ -29,22 +29,18 @@ object ClusterResourceManager extends Logging{
         var resourceApplication:ResourceApplication =null
         if(applicationQueue.broker.size()>0) {
           resourceApplication = applicationQueue.broker.peek()
-
-          logInfo(s"dispatch thread peek====${resourceApplication}")
         }
         else {
-         //println(s"dispatch thread peek====${resourceApplication}")
           Thread.sleep(500)
         }
         try{
           breakable {
             if(resourceApplication!=null) {
               var now = System.currentTimeMillis()
-
                 if (resourceApplication.waitingCount.get() == 0
                 ) {
                   //过期资源申请
-                  logError("expired resource request  !!!!!!!!!!!!!")
+                  logError(s"expired resource request : ${resourceApplication} !!!!!!!!!!!!!")
                   applicationQueue.broker.poll()
                   break()
                 }
@@ -52,17 +48,12 @@ object ClusterResourceManager extends Logging{
                 var tryCount: Int =0
                 do{
                   serverNodes = getServerNodeWithResource();
-                  logInfo(s"server resources ====== ${serverNodes.apply(0).resources.mkString}")
                   tryCount+=1
                   if(serverNodes==null||serverNodes.length==0)
                       Thread.sleep(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL.get().toLong)
                 }while((serverNodes==null||serverNodes.length==0)&&tryCount<2)
-
-
-
-
                 var enough = checkResourceEnough(serverNodes, resourceApplication)
-                logInfo(s"resource is enough ? ${enough}")
+                logInfo(s"check resource is enough ? ${enough}")
                 if (!enough) {
                   resourceApplication.resourceExhaustedStrategy match {
                     case ResourceExhaustedStrategy.IGNORE => ;
@@ -85,8 +76,6 @@ object ClusterResourceManager extends Logging{
                   case DispatchStrategy.SINGLE_NODE_FIRST=> singleNodeFirstDispatch(serverNodes,resourceApplication)
                 }
 
-              //logInfo(s"===========dispatch result=============${resourceApplication.processors.mkString}")
-
               var dispatchedProcessors = resourceApplication.resourceDispatch
                 //.toArray.map(_._1)
 
@@ -97,27 +86,18 @@ object ClusterResourceManager extends Logging{
                 totalProcCount = dispatchedProcessors.length,
                 status = SessionStatus.NEW)
               )
-              logInfo("register session  over")
-
               val registeredSessionMeta = smDao.getSession(resourceApplication.sessionId)
               var serverNodeMap = serverNodes.groupBy(_.id).mapValues(_.apply(0))
               var  result = registeredSessionMeta.processors.map(p=>{(p,serverNodeMap.get(p.serverNodeId).get)})
-              //logInfo(s"==============!!!===result ========${result.mkString}");
-
-              //这里的zip是不靠谱的
-//              dispatchedProcessors = dispatchedProcessors.zip(registeredSessionMeta.processors).map {
-//                case ((processor, node), registeredProcessor) =>
-//                  (processor.copy(id = registeredProcessor.id), node)
-//              }
               resourceApplication.resourceDispatch.clear()
               resourceApplication.resourceDispatch.appendAll(result)
-
               resourceApplication.countDown()
               applicationQueue.broker.remove()
             }
           }
         }catch {
           case  e:Exception => {
+            logError("dispatch resource error: "+e.getMessage)
             e.printStackTrace()
           }
         }
@@ -422,9 +402,7 @@ object ClusterResourceManager extends Logging{
     logInfo(s"return resource ${processors.mkString("<",",",">")}")
     ServerNodeCrudOperator.dbc.withTransaction(conn=> {
       try {
-
       processors.foreach(p => {
-
         if (beforeCall != null) {
           beforeCall(conn,p)
         }
@@ -439,19 +417,15 @@ object ClusterResourceManager extends Logging{
         if  (afterCall!=null){
           afterCall(conn,p)
         }
-
       })
-
     }catch{
       case e :Exception =>{
+        logError("return resource error: "+e.getMessage)
         e.printStackTrace()
       }
     }
     }
     )
-
-    logInfo("==============over========")
-
   }
 
     private def  flatResources(processors: Array[ErProcessor]): Map[Long, Array[ErResource]] ={
@@ -542,11 +516,8 @@ object ClusterResourceManager extends Logging{
         }
       }
       def  countDown():Unit={
-        logInfo("=============countDown==============")
         resourceLatch.countDown()
       }
-
-
     }
 
     def  submitResourceRequest(resourceRequest: ResourceApplication):Unit={
@@ -561,18 +532,14 @@ object ClusterResourceManager extends Logging{
       erServerNodes.foreach(n=>{
         var  nodeMap = nodeRemainResourceMap.getOrElse(n.id, mutable.Map[String,Long]())
         n.resources.foreach(r=>{
-          // println(nodeMap.getOrElse(r.resourceType,0))
           var  remain :Long = nodeMap.getOrElse(r.resourceType,0)
           var  unAllocated:Long = r.getUnAllocatedResource()
-
           nodeMap(r.resourceType)=remain+ unAllocated
         })
         nodeRemainResourceMap(n.id)=nodeMap
 
       })
 
-      println("========node remain==="+nodeRemainResourceMap)
-      // globalRemainResourceMap
 
       nodeRemainResourceMap.foreach(e=>{
         e._2.foreach(r=>{
@@ -580,15 +547,11 @@ object ClusterResourceManager extends Logging{
           globalRemainResourceMap(r._1)= count+r._2
         })
       })
-      println("========== globle remain====="+globalRemainResourceMap)
 
       if(!resourceApplication.allowExhausted) {
         require(erServerNodes.length>0)
         resourceApplication.dispatchStrategy match {
           case DispatchStrategy.FIX => {
-//            var nodeResourceMap: Map[String, Long] = erServerNode.resources.groupBy(_.resourceType).mapValues(_.reduce((x, y) => {
-//              x.copy(allocated = x.allocated + y.allocated)
-//            }).getUnAllocatedResource())
             val eggsPerNode = resourceApplication.options.getOrElse(SessionConfKeys.CONFKEY_SESSION_PROCESSORS_PER_NODE, StaticErConf.getString(SessionConfKeys.CONFKEY_SESSION_PROCESSORS_PER_NODE, "1")).toInt
             var resourceType= resourceApplication.options.getOrElse("resourceType",ResourceTypes.VCPU_CORE)
             var types = resourceApplication.processorTypes.length
@@ -599,12 +562,6 @@ object ClusterResourceManager extends Logging{
           }
           case _ => {
             var processors = resourceApplication.processors
-
-
-
-
-
-
             var erServerNode = erServerNodes.reduce((x, y) => {
               var newResource = (x.resources.toBuffer ++ y.resources).toArray
               x.copy(resources = newResource)
@@ -616,24 +573,11 @@ object ClusterResourceManager extends Logging{
               x.copy(allocated = x.allocated + y.allocated)
             }).allocated)
 
-
-            //       var   requestResourceMap = unnionProcessor.resources.groupBy(_.resourceType).mapValues(_.reduce((x,y)=>{
-            //         x.copy(allocated=x.allocated+y.allocated)
-            //       }).allocated)
-
-            println("==========requestResourceMap " + requestResourceMap)
-
-//            var nodeResourceMap: Map[String, Long] = erServerNode.resources.groupBy(_.resourceType).mapValues(_.reduce((x, y) => {
-//              x.copy(allocated = x.allocated + y.allocated)
-//            }).getUnAllocatedResource())
             breakable {
               requestResourceMap.foreach((r) => {
                 var globalResourceRemain: Long = globalRemainResourceMap.getOrElse(r._1, -1)
-                //println(nodeResourceRemain)
                 if (globalResourceRemain.intValue() > -1) {
-                  println(s"check resource ${r._1}  request ${r._2} remain ${globalResourceRemain}")
                   logInfo(s"check resource ${r._1}  request ${r._2} remain ${globalResourceRemain}")
-
                   if ( r._2 > globalResourceRemain) {
                     result = false
                     break()
@@ -647,15 +591,8 @@ object ClusterResourceManager extends Logging{
           }
         }
       }
-
-
       result
     }
-    def  checkResouce():Unit={
-
-    }
-
-
 
     def  main(args: Array[String]) :Unit = {
 //        var   temp =  Array(ErServerNode(id = 1,resources = Array(ErResource(resourceType = ResourceTypes.VGPU_CORE,total = 5))),
