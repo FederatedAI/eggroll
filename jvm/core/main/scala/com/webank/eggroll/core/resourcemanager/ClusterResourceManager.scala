@@ -10,8 +10,9 @@ import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.util.Logging
 
 import java.sql.Connection
-import java.util.concurrent.{CountDownLatch, TimeUnit}
+import java.util.concurrent.{ConcurrentHashMap, CountDownLatch, TimeUnit}
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.locks.ReentrantLock
 import scala.collection.JavaConverters.mapAsJavaMapConverter
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
@@ -19,7 +20,8 @@ import scala.util.Random
 import scala.util.control.Breaks.{break, breakable}
 
 object ClusterResourceManager extends Logging{
-
+    val   resourceLock =  new ReentrantLock()
+    var   killJobMap = new ConcurrentHashMap[String,Long]()
     val   applicationQueue   =   new FifoBroker[ResourceApplication]
     var   resourceEventQueue = new FifoBroker[ResourceEvent]
     lazy val serverNodeCrudOperator = new ServerNodeCrudOperator()
@@ -77,13 +79,24 @@ object ClusterResourceManager extends Logging{
                 }
 
               var dispatchedProcessors = resourceApplication.resourceDispatch
-              smDao.registerWithResource(ErSessionMeta(
-                id = resourceApplication.sessionId,
-                name=resourceApplication.sessionName,
-                processors = dispatchedProcessors.toArray.map(_._1),
-                totalProcCount = dispatchedProcessors.length,
-                status = SessionStatus.NEW)
-              )
+              try {
+                resourceLock.lock()
+                if(killJobMap.get(resourceApplication.sessionId)!=null){
+                  logError(s"session ${resourceApplication.sessionId} is already canceled , drop it")
+                  killJobMap.remove(resourceApplication.sessionId)
+                  applicationQueue.broker.remove()
+                  break()
+                }
+                smDao.registerWithResource(ErSessionMeta(
+                  id = resourceApplication.sessionId,
+                  name = resourceApplication.sessionName,
+                  processors = dispatchedProcessors.toArray.map(_._1),
+                  totalProcCount = dispatchedProcessors.length,
+                  status = SessionStatus.NEW)
+                )
+              }finally {
+                resourceLock.unlock()
+              }
               val registeredSessionMeta = smDao.getSession(resourceApplication.sessionId)
               var serverNodeMap = serverNodes.groupBy(_.id).mapValues(_.apply(0))
               var  result = registeredSessionMeta.processors.map(p=>{(p,serverNodeMap.get(p.serverNodeId).get)})
