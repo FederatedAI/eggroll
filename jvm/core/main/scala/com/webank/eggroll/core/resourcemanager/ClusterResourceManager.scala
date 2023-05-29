@@ -99,6 +99,7 @@ object ClusterResourceManager extends Logging{
                 resourceLock.unlock()
               }
               val registeredSessionMeta = smDao.getSession(resourceApplication.sessionId)
+
               var serverNodeMap = serverNodes.groupBy(_.id).mapValues(_.apply(0))
               var  result = registeredSessionMeta.processors.map(p=>{(p,serverNodeMap.get(p.serverNodeId).get)})
               resourceApplication.resourceDispatch.clear()
