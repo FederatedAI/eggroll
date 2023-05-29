@@ -97,6 +97,7 @@ class JdbcTemplate(dataSource: () => Connection, autoClose: Boolean = true) exte
           logError(errMsg)
           throw new SQLException(errMsg, ex)
       }
+
       val resultSet = stmt.getGeneratedKeys
       if (resultSet.next &&
          (resultSet.getMetaData.getColumnType(1) == Types.BIGINT ||
