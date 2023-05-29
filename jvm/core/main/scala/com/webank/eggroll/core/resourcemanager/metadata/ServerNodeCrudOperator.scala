@@ -237,8 +237,10 @@ def doCreateServerNode(input: ErServerNode): ErServerNode = {
       sql+="where server_node_id = ?"
       params ++= Array(input.id)
       //logInfo(s"doUpdateServerNodeById  ${sql} : ${params} ")
-      dbc.update(conn, sql, params:_*)
+      var  result = dbc.update(conn, sql, params:_*)
     })
+
+
 
 //    if (nodeRecord.isEmpty) {
 //      throw new CrudException(s"Illegal rows affected when creating node: ${nodeRecord}")
