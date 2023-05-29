@@ -281,8 +281,14 @@ object JobServiceHandler extends Logging {
 
   def killJob(sessionId: String, isTimeout: Boolean): Unit = {
     logInfo(s"killing job $sessionId")
-    if (!smDao.existSession(sessionId)) {
-      return
+    try {
+      ClusterResourceManager.resourceLock.lock()
+      if (!smDao.existSession(sessionId)) {
+        ClusterResourceManager.killJobMap.put(sessionId,System.currentTimeMillis())
+        return
+      }
+    }finally {
+      ClusterResourceManager.resourceLock.unlock()
     }
     val sessionMeta = smDao.getSession(sessionId)
     if (StringUtils.equalsAny(sessionMeta.status, SessionStatus.KILLED, SessionStatus.CLOSED, SessionStatus.ERROR)) {
