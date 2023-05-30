@@ -258,6 +258,36 @@ class StoreDeleteKeyResponse(google.protobuf.message.Message):
 global___StoreDeleteKeyResponse = StoreDeleteKeyResponse
 
 @typing_extensions.final
+class StoreDestroyRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    PREFIX_FIELD_NUMBER: builtins.int
+    prefix: builtins.str
+    def __init__(
+        self,
+        *,
+        prefix: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["prefix", b"prefix"]) -> None: ...
+
+global___StoreDestroyRequest = StoreDestroyRequest
+
+@typing_extensions.final
+class StoreDestroyResponse(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    SUCCESS_FIELD_NUMBER: builtins.int
+    success: builtins.bool
+    def __init__(
+        self,
+        *,
+        success: builtins.bool = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["success", b"success"]) -> None: ...
+
+global___StoreDestroyResponse = StoreDestroyResponse
+
+@typing_extensions.final
 class SubmitJobRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 

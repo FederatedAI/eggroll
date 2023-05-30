@@ -47,11 +47,21 @@ class RendezvousStoreService extends Logging {
     store
   }
 
-  def destroyStore(prefix: String): Unit = {
+  private def destroyStore(prefix: String): Boolean = {
     val store = stores.remove(prefix)
     if (store != null) {
       store.destroy()
+      true
+    } else {
+      false
     }
+  }
+
+  def destroy(rendezvousStoreDestroyRequest: RendezvousStoreDestroyRequest): RendezvousStoreDestroyResponse = {
+    logDebug(s"destroy: $rendezvousStoreDestroyRequest")
+    val success = destroyStore(rendezvousStoreDestroyRequest.prefix)
+    logDebug(s"destroy: $rendezvousStoreDestroyRequest done, success: $success")
+    RendezvousStoreDestroyResponse(success = success)
   }
 
   def set(request: RendezvousStoreSetRequest): RendezvousStoreSetResponse = {

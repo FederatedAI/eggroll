@@ -12,6 +12,7 @@ from eggroll.core.proto import containers_pb2, deepspeed_pb2
 
 from ..client import BaseClient
 from .commands import JobCommands
+from ..store.client import destroy
 
 
 class ContentType(enum.Enum):
@@ -45,15 +46,15 @@ class DeepspeedJob:
         return BaseClient(self._host, self._port)
 
     def submit(
-        self,
-        name="",
-        world_size=1,
-        command_arguments: Optional[List[str]] = None,
-        environment_variables: Optional[Dict[str, str]] = None,
-        files: Optional[Dict[str, str]] = None,
-        zipped_files: Optional[Dict[str, str]] = None,
-        resource_options: Optional[Dict] = None,
-        options: Optional[Dict] = None,
+            self,
+            name="",
+            world_size=1,
+            command_arguments: Optional[List[str]] = None,
+            environment_variables: Optional[Dict[str, str]] = None,
+            files: Optional[Dict[str, str]] = None,
+            zipped_files: Optional[Dict[str, str]] = None,
+            resource_options: Optional[Dict] = None,
+            options: Optional[Dict] = None,
     ):
         if resource_options is None:
             resource_options = {}
@@ -126,11 +127,11 @@ class DeepspeedJob:
         return query_response.status
 
     def download_job(
-        self,
-        ranks: Optional[List[int]] = None,
-        content_type: ContentType = ContentType.ALL,
-        compress_method: str = "zip",
-        compress_level: int = 1,
+            self,
+            ranks: Optional[List[int]] = None,
+            content_type: ContentType = ContentType.ALL,
+            compress_method: str = "zip",
+            compress_level: int = 1,
     ):
         if compress_level < 0 or compress_level > 9:
             raise ValueError(f"compress_level must be in [0, 9], got {compress_level}")
@@ -152,12 +153,12 @@ class DeepspeedJob:
         return download_job_response
 
     def download_job_to(
-        self,
-        ranks: Optional[List[int]] = None,
-        content_type: ContentType = ContentType.ALL,
-        rank_to_path: typing.Callable[[int], str] = lambda rank: f"rank_{rank}.zip",
-        compress_method: str = "zip",
-        compress_level: int = 1,
+            self,
+            ranks: Optional[List[int]] = None,
+            content_type: ContentType = ContentType.ALL,
+            rank_to_path: typing.Callable[[int], str] = lambda rank: f"rank_{rank}.zip",
+            compress_method: str = "zip",
+            compress_level: int = 1,
     ):
         download_job_response = self.download_job(ranks, content_type, compress_method, compress_level)
         if ranks is None:
@@ -166,3 +167,9 @@ class DeepspeedJob:
             path = rank_to_path(rank)
             with open(path, "wb") as f:
                 f.write(content.content)
+
+    def cleanup(self):
+        try:
+            destroy(self._get_client(), self._session_id)
+        except Exception as e:
+            pass
