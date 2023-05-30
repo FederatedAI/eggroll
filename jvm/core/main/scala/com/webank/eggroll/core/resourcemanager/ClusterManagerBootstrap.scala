@@ -157,6 +157,9 @@ class ClusterManagerBootstrap extends BootstrapBase with Logging {
     CommandRouter.register_handler(serviceName = RendezvousStoreCommands.add.uriString,
       args => rendezvousStoreService.add(args(0))
     )
+    CommandRouter.register_handler(serviceName = RendezvousStoreCommands.destroy.uriString,
+      args => rendezvousStoreService.destroy(args(0))
+    )
 
     val cmd = CommandArgsUtils.parseArgs(args = args)
 
@@ -194,8 +197,8 @@ class ClusterManagerBootstrap extends BootstrapBase with Logging {
     this.port = server.getPort
 
     StaticErConf.setPort(port)
-    logInfo(s"${standaloneTag} server started at port ${port}")
-    println(s"${standaloneTag} server started at port ${port}")
+    logInfo(s"$standaloneTag server started at port $port")
+    println(s"$standaloneTag server started at port $port")
     ClusterManagerService.start()
   }
 }
