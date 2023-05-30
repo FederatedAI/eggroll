@@ -141,10 +141,6 @@ object ClusterManagerService extends Logging {
           logError(s"failed to kill session ${session.id}", e)
       }
 
-      //          smDao.updateSessionMain(session.copy(status = SessionStatus.ERROR) ,afterCall=defaultSessionCallback)
-      //          logDebug(s"found error processor belongs to session ${session.id}: " +
-      //            s"${sessionProcessors.filter(_.status == ProcessorStatus.ERROR).mkString("Array(", ", ", ")")}, " +
-      //            s"update session status to `Error`")
     } else if (sessionProcessors.forall(_.status == ProcessorStatus.FINISHED)) {
       smDao.updateSessionMain(session.copy(status = SessionStatus.FINISHED), afterCall = defaultSessionCallback)
       logDebug(s"found all processor belongs to session ${session.id} finished, " +
