@@ -129,6 +129,8 @@ object ProcessorStateMachine extends Logging{
      erSessionMeta.processors.foreach(p=>{
         ProcessorStateMachine.changeStatus(p,desStateParam =erSessionMeta.status,connection = conn )
      })
+
+
    //}
  }
 

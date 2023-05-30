@@ -34,9 +34,10 @@ object ClusterResourceManager extends Logging{
         var resourceApplication:ResourceApplication =null
         if(applicationQueue.broker.size()>0) {
           resourceApplication = applicationQueue.broker.peek()
+          logInfo(s"resource application queue size ${applicationQueue.broker.size()}")
         }
         else {
-          Thread.sleep(500)
+          Thread.sleep(EGGROLL_RESOURCE_DISPATCH_INTERVAL.get().toInt)
         }
         try{
           breakable {
