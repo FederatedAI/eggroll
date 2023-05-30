@@ -155,7 +155,10 @@ CREATE TABLE IF NOT EXISTS `processor_resource`
     `updated_at`     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) DEFAULT CHARACTER SET latin1
   COLLATE latin1_swedish_ci;
-
+CREATE  INDEX `idx_processor_id_processor_resource` ON `processor_resource` (`processor_id`);
+CREATE  INDEX `idx_node_id_processor_resource` ON `processor_resource` (`server_node_id`);
+CREATE  INDEX `idx_session_id_processor_resource` ON `processor_resource` (`session_id`);
+CREATE  INDEX `idx_node_status_processor_resource` ON `processor_resource` (`server_node_id`,`resource_type`,`status`);
 
 
 
@@ -174,6 +177,8 @@ CREATE TABLE IF NOT EXISTS `node_resource`
     `updated_at`     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) DEFAULT CHARACTER SET latin1
   COLLATE latin1_swedish_ci;
+CREATE  INDEX `idx_node_id_node_resource` ON `node_resource` (`server_node_id`);
+CREATE  INDEX `idx_node_status_node_resource` ON `node_resource` (`server_node_id`,`status`);
 CREATE UNIQUE INDEX `idx_u_node_resource` ON `node_resource` (`server_node_id`, `resource_type`);
 
 
@@ -186,6 +191,8 @@ CREATE TABLE IF NOT EXISTS `session_ranks`
     `local_rank`     INT UNSIGNED NOT NULL
 ) DEFAULT CHARACTER SET latin1
   COLLATE latin1_swedish_ci;
+
+  CREATE  INDEX `idx_session_id_session_ranks` ON `session_ranks` (`session_id`);
 
 
 
