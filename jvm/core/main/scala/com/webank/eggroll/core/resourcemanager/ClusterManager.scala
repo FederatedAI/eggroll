@@ -65,15 +65,7 @@ object ClusterManagerService extends Logging {
                     if (processorInDb.apply(0).status == ProcessorStatus.RUNNING) {
                       var result = nodeManagerClient.checkNodeProcess(processor)
                       if (result == null || result.status == ProcessorStatus.KILLED) {
-                        //  var processors = Array(processor.copy(status = ProcessorStatus.KILLED))
-                        //ClusterResourceManager.returnResource(processors = processors, beforeCall = SessionManagerService.beforeCall)
-
                         ProcessorStateMachine.changeStatus(processor, desStateParam = ProcessorStatus.ERROR)
-                        //                        processorEventCallbackRegister.get(processor.processorType).getOrElse(new ProcessorEventCallback {
-                        //                          override def callback(event: ProcessorEvent): Unit = {
-                        //                            logInfo(s"processor type ${processor.processorType} can not find callback")
-                        //                          }
-                        //                        }).callback(ProcessorEvent(eventType = PROCESSOR_LOSS, erProcessor = processor))
                       }
                     }
                   }
