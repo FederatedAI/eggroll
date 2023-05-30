@@ -654,8 +654,6 @@ def doCreateServerNode(input: ErServerNode): ErServerNode = {
         }
 
 
-          logInfo(s"===node_resource=====sql=======${sql}==== param ${params}")
-
           dbc.update(conn ,sql,
             params:_*)
       })
