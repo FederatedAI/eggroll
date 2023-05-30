@@ -13,9 +13,9 @@ import java.sql.Connection
 
 object ProcessorStateMachine extends Logging{
 
-  private val smDao = new SessionMetaDao
+  private lazy val smDao = new SessionMetaDao
 
-  private var serverNodeCrudOperator = new  ServerNodeCrudOperator;
+  private lazy val serverNodeCrudOperator = new  ServerNodeCrudOperator;
 
   def  changeStatus(  paramProcessor: ErProcessor,
                       preStateParam:String=null,desStateParam:String,connection: Connection=null ):Unit =synchronized{
