@@ -15,3 +15,7 @@ class RendezvousStoreCommands:
     add = "add"
     add_service_name = _to_service_name(prefix, add)
     ADD = CommandURI(add_service_name)
+
+    destroy = "destroy"
+    destroy_service_name = _to_service_name(prefix, destroy)
+    DESTROY = CommandURI(destroy_service_name)
