@@ -59,8 +59,8 @@ trait SessionManager {
 }
 object SessionManagerService extends Logging {
 
-  private val smDao = new SessionMetaDao
-  private val serverNodeCrudOperator = new  ServerNodeCrudOperator()
+  private lazy val smDao = new SessionMetaDao
+  private lazy val serverNodeCrudOperator = new  ServerNodeCrudOperator()
   private val sessionLockMap = new  ConcurrentHashMap[String ,ReentrantLock]()
 
   val beforeCall:(Connection,ErProcessor)=>Unit =((conn,proc)=>{
@@ -501,20 +501,20 @@ class SessionManagerService extends SessionManager with Logging {
   }
 
 
-
-  /**
-   * register session without boot processors
-   * @param sessionMeta contains session main and options and processors
-   * @return
-   */
-  def registerSession(sessionMeta: ErSessionMeta): ErSessionMeta = {
-    // TODO:0: + active processor count and expected ones; session status 'active' from client
-    smDao.register(sessionMeta.copy(status = SessionStatus.ACTIVE,
-      totalProcCount = sessionMeta.processors.length,
-      activeProcCount = sessionMeta.processors.length))
-    // generated id
-    smDao.getSession(sessionMeta.id)
-  }
+//
+//  /**
+//   * register session without boot processors
+//   * @param sessionMeta contains session main and options and processors
+//   * @return
+//   */
+//  def registerSession(sessionMeta: ErSessionMeta): ErSessionMeta = {
+//    // TODO:0: + active processor count and expected ones; session status 'active' from client
+//    smDao.register(sessionMeta.copy(status = SessionStatus.ACTIVE,
+//      totalProcCount = sessionMeta.processors.length,
+//      activeProcCount = sessionMeta.processors.length))
+//    // generated id
+//    smDao.getSession(sessionMeta.id)
+//  }
 
   override def stopSession(sessionMeta: ErSessionMeta): ErSessionMeta = {
     val sessionId = sessionMeta.id

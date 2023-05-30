@@ -127,7 +127,6 @@ class ClusterManagerBootstrap extends BootstrapBase with Logging {
 
     // submit job
     //JobServiceHandler.startSessionWatcher()
-    startSessionWatcher()
     CommandRouter.register_handler(serviceName = JobCommands.submitJob.uriString,
       args => JobServiceHandler.handleSubmit(args(0))
     )

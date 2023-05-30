@@ -25,7 +25,7 @@ object ClusterManagerService extends Logging {
 
   var nodeHeartbeatMap = mutable.Map[Long, ErNodeHeartbeat]()
   lazy val serverNodeCrudOperator = new ServerNodeCrudOperator()
-  private val smDao = new SessionMetaDao
+  private lazy val smDao = new SessionMetaDao()
 
 
   private def checkNodeProcess(nodeManagerEndpoint: ErEndpoint, processor: ErProcessor): ErProcessor = {
@@ -41,7 +41,7 @@ object ClusterManagerService extends Logging {
 
   }
 
-  var nodeProcessChecker = new Thread(() => {
+  private val nodeProcessChecker = new Thread(() => {
     var serverNodeCrudOperator = new ServerNodeCrudOperator
     while (true) {
       try {
@@ -148,7 +148,7 @@ object ClusterManagerService extends Logging {
     }
   }
 
-  def startSessionWatcher(): Unit = {
+  private val sessionWatcher = {
     /*
     update session status according to processor status
      */
@@ -181,11 +181,11 @@ object ClusterManagerService extends Logging {
           Thread.sleep(1000)
         }
       }
-    ).start()
+    )
   }
 
 
-  val nodeHeartbeatChecker = new Thread(() => {
+  private val nodeHeartbeatChecker = new Thread(() => {
     var expire = CONFKEY_CLUSTER_MANAGER_NODE_HEARTBEAT_EXPIRED_COUNT.get().toInt * CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL.get().toInt
     while (true) {
       try {
@@ -208,6 +208,7 @@ object ClusterManagerService extends Logging {
   });
 
   def start(): Unit = {
+    sessionWatcher.start()
     nodeHeartbeatChecker.start()
     nodeProcessChecker.start()
   }

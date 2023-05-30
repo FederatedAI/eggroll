@@ -28,7 +28,7 @@ object ClusterResourceManager extends Logging{
     val   applicationQueue   =   new FifoBroker[ResourceApplication]
     var   resourceEventQueue = new FifoBroker[ResourceEvent]
     lazy val serverNodeCrudOperator = new ServerNodeCrudOperator()
-    private val smDao = new SessionMetaDao
+    private lazy val smDao = new SessionMetaDao
     var  dispatchThread = new  Thread(()=>{
       logInfo("resource dispatch thread start !!!")
       while(true){

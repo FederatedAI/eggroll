@@ -18,7 +18,7 @@ import scala.collection.mutable.ArrayBuffer
 import scala.util.control.Breaks.{break, breakable}
 
 object JobServiceHandler extends Logging {
-  private val smDao = new SessionMetaDao
+  private lazy val smDao = new SessionMetaDao
 
   //  ClusterManagerService.registerProcessorCallback(JobProcessorTypes.DeepSpeed.toString, (event: ProcessorEvent) => {
   //    new Thread(() => {
