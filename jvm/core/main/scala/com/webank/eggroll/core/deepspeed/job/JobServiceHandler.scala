@@ -178,13 +178,11 @@ object JobServiceHandler extends Logging {
     logInfo(s"submitted resource request: ${resourceApplication}, ${resourceApplication.hashCode()}")
     logInfo(s"dispatchedProcessor: ${dispatchedProcessors.mkString("Array(", ", ", ")")}")
 
-    //        smDao.register(ErSessionMeta(
-    //          id = sessionId,
-    //          processors = dispatchedProcessors.map(_._1),
-    //          totalProcCount = worldSize,
-    //          status = SessionStatus.NEW)
-    //        )
+
     try {
+      //锁不能移到分配资源之前，会造成死锁
+      ClusterResourceManager.lockSession(sessionId)
+      if(!ClusterResourceManager.killJobMap.contains(sessionId)) {
       val registeredSessionMeta = smDao.getSession(submitJobRequest.sessionId)
       dispatchedProcessors = dispatchedProcessors.zip(registeredSessionMeta.processors).map {
         case ((processor, node), registeredProcessor) =>
@@ -236,7 +234,7 @@ object JobServiceHandler extends Logging {
       smDao.registerRanks(sessionId, ranks.map(_._1), ranks.map(_._2), ranks.map(_._3), ranks.map(_._4))
 
       // start containers
-      if(!ClusterResourceManager.killJobMap.contains(sessionId)) {
+
 
         deepspeedConfigsWithNode.groupBy(_._2).par.foreach { case (node, nodeAndConfigs) =>
           val nodeManagerClient = new NodeManagerClient(node.endpoint)
@@ -274,29 +272,24 @@ object JobServiceHandler extends Logging {
         logError(s"kill session ${sessionId} request was found")
           throw new ErSessionException(s"kill session ${sessionId} request was found")
       }
-
     }
-
     catch {
       case e: Exception =>
         killJob(sessionId, isTimeout = false)
         throw e
+    }finally {
+       ClusterResourceManager.unlockSession(sessionId)
     }
   }
 
   def killJob(sessionId: String, isTimeout: Boolean): Unit = {
     logInfo(s"killing job $sessionId")
-
     try {
-      ClusterResourceManager.resourceLock.lock()
+      ClusterResourceManager.lockSession(sessionId)
+      ClusterResourceManager.killJobMap.put(sessionId,System.currentTimeMillis())
       if (!smDao.existSession(sessionId)) {
-        ClusterResourceManager.killJobMap.put(sessionId,System.currentTimeMillis())
         return
       }
-    }finally {
-      ClusterResourceManager.resourceLock.unlock()
-    }
-
     val sessionMeta = smDao.getSession(sessionId)
     if (StringUtils.equalsAny(sessionMeta.status, SessionStatus.KILLED, SessionStatus.CLOSED, SessionStatus.ERROR)) {
       return
@@ -316,7 +309,9 @@ object JobServiceHandler extends Logging {
             e.printStackTrace()
         }
       }
-
     smDao.updateSessionMain(sessionMeta.copy(status = SessionStatus.ERROR), afterCall = defaultSessionCallback)
+    }finally {
+      ClusterResourceManager.unlockSession(sessionId)
+    }
   }
 }
