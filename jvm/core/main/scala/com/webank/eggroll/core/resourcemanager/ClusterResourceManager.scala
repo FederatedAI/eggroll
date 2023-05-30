@@ -1,6 +1,6 @@
 package com.webank.eggroll.core.resourcemanager
 
-import com.webank.eggroll.core.constant.SessionConfKeys.EGGROLL_RESOURCE_DISPATCH_INTERVAL
+import com.webank.eggroll.core.constant.SessionConfKeys.{EGGROLL_RESOURCE_DISPATCH_INTERVAL, EGGROLL_RESOURCE_LOCK_EXPIRE_INTERVAL}
 import com.webank.eggroll.core.constant._
 import com.webank.eggroll.core.containers.JobProcessorTypes
 import com.webank.eggroll.core.datastructure.FifoBroker
@@ -30,6 +30,7 @@ object ClusterResourceManager extends Logging{
     lazy val serverNodeCrudOperator = new ServerNodeCrudOperator()
     private val smDao = new SessionMetaDao
     var  dispatchThread = new  Thread(()=>{
+      logInfo("resource dispatch thread start !!!")
       while(true){
         var resourceApplication:ResourceApplication =null
         if(applicationQueue.broker.size()>0) {
@@ -128,6 +129,35 @@ object ClusterResourceManager extends Logging{
     })
     dispatchThread.start()
 
+  var  lockCleanThread =  new  Thread(()=> {
+    while (true) {
+      logInfo("lock clean thread , prepare to run")
+      var  now = System.currentTimeMillis()
+      sessionLockMap.forEach((k, v) => {
+        try {
+          var es:ErSessionMeta  =   smDao.getSessionMain(k)
+          if(es.updateTime!=null){
+            var updateTime = es.updateTime.getTime
+            if(now -updateTime>EGGROLL_RESOURCE_LOCK_EXPIRE_INTERVAL.get().toInt&& (es.status== SessionStatus.KILLED||
+              es.status==SessionStatus.ERROR||
+              es.status== SessionStatus.CLOSED||
+              es.status== SessionStatus.FINISHED)){
+              sessionLockMap.remove(es.id)
+              killJobMap.remove(es.id)
+            }
+          }
+
+        }catch {
+          case e:Exception  =>
+           // e.printStackTrace()
+        }
+      })
+      Thread.sleep(EGGROLL_RESOURCE_LOCK_EXPIRE_INTERVAL.get().toInt)
+    }
+  })
+  lockCleanThread.start()
+
+
 
   def  lockSession(sessionId:String): Unit={
      var lock =  sessionLockMap.get(sessionId)
@@ -203,8 +233,6 @@ object ClusterResourceManager extends Logging{
   private def getServerNodeWithResource():Array[ErServerNode]={
     serverNodeCrudOperator.getServerNodesWithResource(
       ErServerNode(status = ServerNodeStatus.HEALTHY, nodeType = ServerNodeTypes.NODE_MANAGER))
-
-
   }
 
   private def getNextGpuIndex(size:Int,alreadyAllocated :Array[String]): Int ={
@@ -353,7 +381,7 @@ object ClusterResourceManager extends Logging{
     val nodeToProcessors = mutable.Map[ErServerNode, Seq[ErProcessor]]()
     //
     for (index <- 0 until worldSize) {
-      System.err.println(nodeResourceTupes.map(_._2))
+
       var  nodeTupe = nodeResourceTupes.head
       var  node =  nodeTupe._1
       nodeResourceTupes = (nodeResourceTupes.tail+=nodeTupe.copy(_2=nodeTupe._2-1)).sortWith(_._2>_._2)
@@ -504,6 +532,10 @@ object ClusterResourceManager extends Logging{
       result
     }
 
+
+
+
+
     def  main(args: Array[String]) :Unit = {
 //        var   temp =  Array(ErServerNode(id = 1,resources = Array(ErResource(resourceType = ResourceTypes.VGPU_CORE,total = 5))),
 //          ErServerNode(id = 3,resources = Array(ErResource(resourceType = ResourceTypes.VGPU_CORE,total = 9)))
@@ -528,5 +560,10 @@ object ClusterResourceManager extends Logging{
        ))
 
     }
+
+
+
+
+
 
 }

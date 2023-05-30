@@ -283,13 +283,14 @@ class SessionMetaDao extends Logging{
       if (!rs.next()) {
         return ErSessionMeta()
       }
-
       ErSessionMeta(
         id = sessionId, name = rs.getString("name"),
         totalProcCount = rs.getInt("total_proc_count"),
         activeProcCount = rs.getInt("active_proc_count"),
         status = rs.getString("status"),
-        tag = rs.getString("tag"))
+        tag = rs.getString("tag"),
+        createTime = rs.getTimestamp("created_at"),
+        updateTime = rs.getTimestamp("updated_at"))
     }, "select * from session_main where session_id = ?", sessionId)
   }
 
