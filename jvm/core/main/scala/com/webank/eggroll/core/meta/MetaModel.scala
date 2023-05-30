@@ -135,6 +135,7 @@ case class ErSessionMeta(id: String = StringConstants.EMPTY,
                          tag: String = StringConstants.EMPTY,
                          processors: Array[ErProcessor] = Array(),
                          createTime:Timestamp = null,
+                         updateTime:Timestamp = null,
                          options: Map[String, String] = Map()) extends MetaRpcMessage {
 }
 
