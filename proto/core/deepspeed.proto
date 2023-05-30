@@ -79,6 +79,14 @@ message StoreDeleteKeyResponse {
   bool success = 1;
 }
 
+message StoreDestroyRequest {
+  string prefix = 1;
+}
+
+message StoreDestroyResponse {
+  bool success = 1;
+}
+
 message SubmitJobRequest {
   string session_id = 1;
   string name = 2;

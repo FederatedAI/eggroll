@@ -52,3 +52,14 @@ class EggrollStore(Store):
             command_uri=RendezvousStoreCommands.ADD,
         )
         return response.amount
+
+    def destroy(self):
+        return destroy(self._client, self._prefix)
+
+
+def destroy(client, prefix):
+    return client.do_sync_request(
+        deepspeed_pb2.StoreDestroyRequest(prefix=prefix),
+        output_type=deepspeed_pb2.StoreDestroyResponse,
+        command_uri=RendezvousStoreCommands.DESTROY,
+    )
