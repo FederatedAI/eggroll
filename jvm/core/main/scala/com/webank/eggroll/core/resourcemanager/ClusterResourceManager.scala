@@ -22,6 +22,12 @@ import scala.util.control.Breaks.{break, breakable}
 
 object ClusterResourceManager extends Logging{
 
+
+    def  start():Unit={
+      dispatchThread.start()
+      lockCleanThread.start()
+    }
+
     var   sessionLockMap = new  ConcurrentHashMap[String,ReentrantLock]()
 
     var   killJobMap = new ConcurrentHashMap[String,Long]()
@@ -127,7 +133,7 @@ object ClusterResourceManager extends Logging{
       logError("!!!!!!!!!!!!!!!!!!!resource dispatch thread quit!!!!!!!!!!!!!!!!")
 
     })
-    dispatchThread.start()
+
 
   var  lockCleanThread =  new  Thread(()=> {
     while (true) {
@@ -155,7 +161,7 @@ object ClusterResourceManager extends Logging{
       Thread.sleep(EGGROLL_RESOURCE_LOCK_EXPIRE_INTERVAL.get().toInt)
     }
   })
-  lockCleanThread.start()
+
 
 
 
