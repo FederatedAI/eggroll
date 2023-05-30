@@ -603,4 +603,12 @@ class SessionManagerService extends SessionManager with Logging {
   override def killSession(sessionMeta: ErSessionMeta): ErSessionMeta = SessionManagerService.killSession(sessionMeta)
 
   override def killSession(sessionMeta: ErSessionMeta, afterState: String): ErSessionMeta = SessionManagerService.killSession(sessionMeta,afterState)
+
+  /**
+   * register session without boot processors
+   *
+   * @param sessionMeta contains session main and options and processors
+   * @return
+   */
+  override def registerSession(sessionMeta: ErSessionMeta): ErSessionMeta = ???
 }
