@@ -101,6 +101,7 @@ object RendezvousStoreCommands {
   val set = new CommandURI(prefix = prefix, name = "set")
   val get = new CommandURI(prefix = prefix, name = "get")
   val add = new CommandURI(prefix = prefix, name = "add")
+  val destroy = new CommandURI(prefix = prefix, name = "destroy")
 }
 
 object NodeManagerCommands {
