@@ -164,6 +164,7 @@ object SessionConfKeys {
   val EGGROLL_SESSION_PYTHON_PATH = "python.path"
   val EGGROLL_SESSION_PYTHON_VENV = "python.venv"
   var EGGROLL_SESSION_USE_RESOURCE_DISPATCH = "eggroll.session.use.resource.dispatch"
+  val EGGROLL_RESOURCE_DISPATCH_INTERVAL = ErConfKey("eggroll.session.resource.dispatch.interval", 3000)
   //, false
 }
 

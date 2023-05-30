@@ -1,5 +1,6 @@
 package com.webank.eggroll.core.resourcemanager
 
+import com.webank.eggroll.core.constant.SessionConfKeys.EGGROLL_RESOURCE_DISPATCH_INTERVAL
 import com.webank.eggroll.core.constant._
 import com.webank.eggroll.core.containers.JobProcessorTypes
 import com.webank.eggroll.core.datastructure.FifoBroker
@@ -21,6 +22,8 @@ import scala.util.control.Breaks.{break, breakable}
 
 object ClusterResourceManager extends Logging{
     val   resourceLock =  new ReentrantLock()
+    var   sessionLockMap = new  ConcurrentHashMap[String,ReentrantLock]()
+
     var   killJobMap = new ConcurrentHashMap[String,Long]()
     val   applicationQueue   =   new FifoBroker[ResourceApplication]
     var   resourceEventQueue = new FifoBroker[ResourceEvent]
@@ -39,15 +42,24 @@ object ClusterResourceManager extends Logging{
           breakable {
             if(resourceApplication!=null) {
               var now = System.currentTimeMillis()
+              var serverNodes  :Array[ErServerNode]= null
+              try {
+                lockSession(resourceApplication.sessionId)
+                if(killJobMap.get(resourceApplication.sessionId)!=null){
+                  logError(s"session ${resourceApplication.sessionId} is already canceled , drop it")
+
+                  applicationQueue.broker.remove()
+                  break()
+                }
+
                 if (resourceApplication.waitingCount.get() == 0
                 ) {
                   //过期资源申请
                   logError(s"expired resource request : ${resourceApplication} !!!")
-                  killJobMap.remove(resourceApplication.sessionId)
                   applicationQueue.broker.remove()
                   break()
                 }
-                var serverNodes  :Array[ErServerNode]= null
+
                 var tryCount: Int =0
                 do{
                   serverNodes = getServerNodeWithResource();
@@ -62,7 +74,7 @@ object ClusterResourceManager extends Logging{
                     case ResourceExhaustedStrategy.IGNORE => ;
 
                     case ResourceExhaustedStrategy.WAITING =>
-                      Thread.sleep(1000)
+                      Thread.sleep(EGGROLL_RESOURCE_DISPATCH_INTERVAL.get().toInt)
                       logInfo("resource is not enough , waiting next loop")
                       break()
                     case ResourceExhaustedStrategy.THROW_ERROR =>
@@ -80,14 +92,8 @@ object ClusterResourceManager extends Logging{
                 }
 
               var dispatchedProcessors = resourceApplication.resourceDispatch
-              try {
-                resourceLock.lock()
-                if(killJobMap.get(resourceApplication.sessionId)!=null){
-                  logError(s"session ${resourceApplication.sessionId} is already canceled , drop it")
-                  killJobMap.remove(resourceApplication.sessionId)
-                  applicationQueue.broker.remove()
-                  break()
-                }
+
+
                 smDao.registerWithResource(ErSessionMeta(
                   id = resourceApplication.sessionId,
                   name = resourceApplication.sessionName,
@@ -96,7 +102,7 @@ object ClusterResourceManager extends Logging{
                   status = SessionStatus.NEW)
                 )
               }finally {
-                resourceLock.unlock()
+                unlockSession(resourceApplication.sessionId)
               }
               val registeredSessionMeta = smDao.getSession(resourceApplication.sessionId)
 
@@ -121,6 +127,23 @@ object ClusterResourceManager extends Logging{
     })
     dispatchThread.start()
 
+
+  def  lockSession(sessionId:String): Unit={
+     var lock =  sessionLockMap.get(sessionId)
+     if(lock==null){
+        sessionLockMap.putIfAbsent(sessionId,new  ReentrantLock())
+        lock =  sessionLockMap.get(sessionId)
+     }
+    logInfo(s"lock session ${sessionId}")
+    lock.lock()
+  }
+  def  unlockSession(sessionId:String): Unit={
+    var lock =  sessionLockMap.get(sessionId)
+    if(lock!=null){
+      logInfo(s"unlock session ${sessionId}")
+      lock.unlock()
+    }
+  }
 
    private def fixDispatch(serverNodes:Array[ErServerNode] ,resourceApplication: ResourceApplication):ResourceApplication={
      val eggsPerNode = resourceApplication.options.getOrElse(SessionConfKeys.CONFKEY_SESSION_PROCESSORS_PER_NODE, StaticErConf.getString(SessionConfKeys.CONFKEY_SESSION_PROCESSORS_PER_NODE, "1")).toInt
