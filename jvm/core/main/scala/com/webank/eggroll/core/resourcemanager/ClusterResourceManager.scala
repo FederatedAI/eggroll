@@ -21,7 +21,7 @@ import scala.util.Random
 import scala.util.control.Breaks.{break, breakable}
 
 object ClusterResourceManager extends Logging{
-    val   resourceLock =  new ReentrantLock()
+
     var   sessionLockMap = new  ConcurrentHashMap[String,ReentrantLock]()
 
     var   killJobMap = new ConcurrentHashMap[String,Long]()
@@ -308,7 +308,7 @@ object ClusterResourceManager extends Logging{
             var  gpuResourcesInNodeArray =  node.resources.filter(_.resourceType==ResourceTypes.VGPU_CORE)
             if(gpuResourcesInNodeArray.length>0){
               var gpuResourcesInNode = gpuResourcesInNodeArray.apply(0)
-              //logInfo(s"=======gpuResourcesInNode====${gpuResourcesInNode.extention}")
+
               gpuResourcesInNode.extentionCache.appendAll(if(gpuResourcesInNode.extention!=null) gpuResourcesInNode.extention.split(",")else Array(""))
               nextGpuIndex = getNextGpuIndex(gpuResourcesInNode.total.toInt,gpuResourcesInNode.extentionCache.toArray)
               gpuResourcesInNode.extentionCache.append(nextGpuIndex.toString)
@@ -342,126 +342,9 @@ object ClusterResourceManager extends Logging{
        processors.map(p => (p, node))
      }(collection.breakOut)
 
-    logInfo(s"========dispatch result ${result}")
      resourceApplication.resourceDispatch.appendAll(result)
     resourceApplication
    }
-
-//   private def  handleResourceApplication(resourceApplication: ResourceApplication): ResourceApplication = synchronized{
-//     var  resultResourceApplication :ResourceApplication = resourceApplication
-//     var now  = System.currentTimeMillis()
-//     if(resourceApplication.needDispatch){
-//       if(resourceApplication.timeout>0&&
-//         resourceApplication.submitTimeStamp+resourceApplication.timeout>now&&
-//         resourceApplication.waitingCount.get()==0
-//       ){
-//         //过期资源申请
-//       }
-//
-//       var serverNodes = getServerNodeWithResource();
-//
-//       var enough = checkResource(serverNodes,resourceApplication.processors,resourceApplication.allowExhausted)
-//       if(!enough) {
-//         resourceApplication.resourceExhaustedStrategy match {
-//           case ResourceExhaustedStrategy.IGNORE => ;
-//           case ResourceExhaustedStrategy.WAITING =>
-//           case ResourceExhaustedStrategy.THROW_ERROR => throw Exception
-//         }
-//       }
-//
-//       resultResourceApplication = resourceApplication.dispatchStrategy match {
-//         case  DispatchStrategy.REMAIN_MOST_FIRST => remainMostFirstDispatch(serverNodes,resourceApplication);
-//         case  DispatchStrategy.RANDOM =>  randomDispatch(serverNodes,resultResourceApplication);
-//       }
-//     }
-//    // preAllocateResource(resultResourceApplication.processors)
-//     resultResourceApplication.resourceLatch.countDown()
-//     resultResourceApplication
-//    }
-
-
-  //废弃
-  def  allocateResource(processors: Array[ErProcessor] ,beforeCall:(Connection,ErProcessor)=>Unit =null,afterCall:(Connection,ErProcessor)=>Unit =null) : Unit=synchronized{
-    ServerNodeCrudOperator.dbc.withTransaction(conn=> {
-
-
-
-      var allocateResourceProcessor = processors.map(p => {
-        p.copy(resources = serverNodeCrudOperator.queryProcessorResource(conn,p,ResourceStatus.PRE_ALLOCATED).map(_.copy(status=ResourceStatus.ALLOCATED)))
-      })
-      var flatedResource = flatResources(allocateResourceProcessor)
-      logInfo(s"flated resource ${flatedResource}")
-      allocateResourceProcessor.foreach(p=> {
-        if(beforeCall!=null)
-            beforeCall(conn,p)
-        serverNodeCrudOperator.updateProcessorResource(conn, p);
-        if(afterCall!=null)
-            afterCall(conn,p)
-      })
-
-      flatedResource.foreach(e => {
-        e._2.foreach(resource=>{
-          logInfo(s"allocate resource to node  ${e._1} ${resource}")
-        })
-
-       // serverNodeCrudOperator.allocateNodeResource(conn,e._1, e._2)
-       var  erResources =  serverNodeCrudOperator.countNodeResource(conn,e._1)
-        serverNodeCrudOperator.updateNodeResource(conn,e._1,erResources)
-      })
-
-    })
-  }
-  //废弃
-//  def preAllocateResource(processors: Array[ErProcessor]): Unit = synchronized {
-//    logInfo(s"============== preAllocateResource ============${processors.mkString}")
-//    ServerNodeCrudOperator.dbc.withTransaction(conn => {
-//      serverNodeCrudOperator.insertProcessorResource(conn, processors);
-//      processors.foreach(p=>{
-//        var  nodeResources =  serverNodeCrudOperator.countNodeResource(conn,p.serverNodeId)
-//        var  needUpdateResources = nodeResources.map(r=>r.copy(preAllocated = r.allocated,allocated = -1))
-//        serverNodeCrudOperator.updateNodeResource(conn,p.serverNodeId,needUpdateResources)
-//      })
-//
-//    })
-//  }
-
-  def  returnResource(processors: Array[ErProcessor],beforeCall:(Connection,ErProcessor)=>Unit =null,afterCall:(Connection,ErProcessor)=>Unit =null):  Unit=synchronized{
-    logInfo(s"return resource ${processors.mkString("<",",",">")}")
-    ServerNodeCrudOperator.dbc.withTransaction(conn=> {
-      try {
-      processors.foreach(p => {
-        if (beforeCall != null) {
-          beforeCall(conn,p)
-        }
-        var resourceInDb = serverNodeCrudOperator.queryProcessorResource(conn, p, ResourceStatus.ALLOCATED)
-        resourceInDb.foreach(r => {
-          logInfo(s"processor ${p.id} return resource ${r}")
-        })
-        if (resourceInDb.length > 0) {
-          serverNodeCrudOperator.updateProcessorResource(conn, p.copy(resources = resourceInDb.map(_.copy(status = ResourceStatus.RETURN))))
-          serverNodeCrudOperator.returnNodeResource(conn, p.serverNodeId, resourceInDb)
-        }
-        if  (afterCall!=null){
-          afterCall(conn,p)
-        }
-      })
-    }catch{
-      case e :Exception =>{
-        logError("return resource error: "+e.getMessage)
-        e.printStackTrace()
-      }
-    }
-    }
-    )
-  }
-
-    private def  flatResources(processors: Array[ErProcessor]): Map[Long, Array[ErResource]] ={
-      processors.groupBy(_.serverNodeId).mapValues(
-        _.flatMap(_.resources).groupBy(_.resourceType).mapValues(_.reduce((x,y)=>{
-          x.copy(allocated=x.allocated+y.allocated)
-        })).values.toArray
-      )
-    }
 
    def  dispatchDeepSpeedInner(worldSize:Int,serverNodes:Array[ErServerNode]):  Array[(ErProcessor, ErServerNode)]  ={
     var nodeResourceTupes = serverNodes.map(n=>(n,n.resources.filter(_.resourceType==ResourceTypes.VGPU_CORE).map(_.getUnAllocatedResource).apply(0)))
