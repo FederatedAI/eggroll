@@ -81,7 +81,7 @@ object ProcessorStateMachine extends Logging{
       if(beforeCall!=null)
         beforeCall(connection,erProcessor)
       var  newProcessor = smDao.createProcessor(connection,erProcessor)
-      logInfo(s"create new processor =========${newProcessor}");
+
       if(afterCall!=null)
         afterCall(connection,newProcessor)
 
@@ -115,14 +115,14 @@ object ProcessorStateMachine extends Logging{
   }
 
 
-  def  updateAndReturnResource(proc: ErProcessor): Unit ={
-    ClusterResourceManager.returnResource(beforeCall=  (conn,proc) =>smDao.updateProcessor(conn, proc),processors =Array(proc))
-  }
+//  def  updateAndReturnResource(proc: ErProcessor): Unit ={
+//    ClusterResourceManager.returnResource(beforeCall=  (conn,proc) =>smDao.updateProcessor(conn, proc),processors =Array(proc))
+//  }
 
 
-  def  updateAndAllocateResource(proc:ErProcessor): Unit ={
-    ClusterResourceManager.allocateResource(beforeCall=  (conn,proc) =>smDao.updateProcessor(conn, proc),processors =Array(proc))
-  }
+//  def  updateAndAllocateResource(proc:ErProcessor): Unit ={
+//    ClusterResourceManager.allocateResource(beforeCall=  (conn,proc) =>smDao.updateProcessor(conn, proc),processors =Array(proc))
+//  }
 
  def  defaultSessionCallback  (conn:Connection ,erSessionMeta: ErSessionMeta  ):Unit={
    //if(EGGROLL_SESSION_USE_RESOURCE_DISPATCH.get()=="true"||erSessionMeta.name=="DeepSpeed") {
