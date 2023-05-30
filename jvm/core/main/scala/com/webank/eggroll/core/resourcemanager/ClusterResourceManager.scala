@@ -47,7 +47,7 @@ object ClusterResourceManager extends Logging{
               var serverNodes  :Array[ErServerNode]= null
               try {
                 lockSession(resourceApplication.sessionId)
-                if(killJobMap.get(resourceApplication.sessionId)!=null){
+                if(killJobMap.contains(resourceApplication.sessionId)){
                   logError(s"session ${resourceApplication.sessionId} is already canceled , drop it")
 
                   applicationQueue.broker.remove()
