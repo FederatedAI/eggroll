@@ -1,19 +1,42 @@
 package com.webank.eggroll.core.resourcemanager
 
-import java.io.File
-
 import com.webank.eggroll.core.BootstrapBase
 import com.webank.eggroll.core.command.{CommandRouter, CommandService}
-import com.webank.eggroll.core.constant.{CoreConfKeys, NodeManagerCommands, NodeManagerConfKeys, ResourceManagerConfKeys}
-import com.webank.eggroll.core.meta.{ErProcessor, ErSessionMeta}
+import com.webank.eggroll.core.constant._
+import com.webank.eggroll.core.containers.ContainersServiceHandler
+import com.webank.eggroll.core.meta.{ErProcessor, ErResourceAllocation, ErServerNode, ErSessionMeta}
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.transfer.GrpcServerUtils
 import com.webank.eggroll.core.util.{CommandArgsUtils, Logging}
+import io.grpc.Server
+
+import java.io.File
+import java.util.concurrent.TimeUnit
+import scala.concurrent.ExecutionContext
+import scala.concurrent.forkjoin.ForkJoinPool
 
 class NodeManagerBootstrap extends BootstrapBase with Logging {
   private var port = 0
   private var confPath = ""
+  private var forkJoinPool: ForkJoinPool = _
+  private var server: Server = _
+
   override def init(args: Array[String]): Unit = {
+    val cmd = CommandArgsUtils.parseArgs(args = args)
+
+    this.confPath = cmd.getOptionValue('c', "./conf/eggroll.properties")
+
+    // val sessionId = cmd.getOptionValue('s')
+    StaticErConf.addProperties(confPath)
+
+
+    // register services
+    // To support parameters to NodeManagerService,
+    // we instantiate a NodeManagerService instance here
+    forkJoinPool = new ForkJoinPool()
+    val executionContext = ExecutionContext.fromExecutorService(forkJoinPool)
+    val nodeManagerJobService = new ContainersServiceHandler()(executionContext)
+
     CommandRouter.register(serviceName = NodeManagerCommands.startContainers.uriString,
       serviceParamTypes = Array(classOf[ErSessionMeta]),
       serviceResultTypes = Array(classOf[ErSessionMeta]),
@@ -38,17 +61,52 @@ class NodeManagerBootstrap extends BootstrapBase with Logging {
       routeToClass = classOf[NodeManagerService],
       routeToMethodName = NodeManagerCommands.heartbeat.getName())
 
-    val cmd = CommandArgsUtils.parseArgs(args = args)
+    CommandRouter.register_handler(
+      ContainerCommands.startJobContainers.uriString,
+      args => nodeManagerJobService.startJobContainers(args(0))
+    )
 
-    this.confPath = cmd.getOptionValue('c', "./jvm/core/main/resources/cluster-manager.properties")
+    CommandRouter.register_handler(
+      ContainerCommands.killJobContainers.uriString,
+      args => nodeManagerJobService.killJobContainers(args(0))
+    )
 
-    // val sessionId = cmd.getOptionValue('s')
-    StaticErConf.addProperties(confPath)
+    CommandRouter.register_handler(
+      ContainerCommands.stopJobContainers.uriString,
+      args => nodeManagerJobService.stopJobContainers(args(0))
+    )
+
+    CommandRouter.register_handler(
+      ContainerCommands.downloadContainers.uriString,
+      args => nodeManagerJobService.downloadContainers(args(0))
+    )
+
+    CommandRouter.register(serviceName = ResouceCommands.resourceAllocation.uriString,
+      serviceParamTypes = Array(classOf[ErResourceAllocation]),
+      serviceResultTypes = Array(classOf[ErResourceAllocation]),
+      routeToClass = classOf[NodeManagerService],
+      routeToMethodName = ResouceCommands.resourceAllocation.getName()
+    )
+
+    CommandRouter.register(serviceName = ResouceCommands.queryNodeResource.uriString,
+      serviceParamTypes = Array(classOf[ErServerNode]),
+      serviceResultTypes = Array(classOf[ErServerNode]),
+      routeToClass = classOf[NodeManagerService],
+      routeToMethodName = ResouceCommands.queryNodeResource.getName()
+    )
+    CommandRouter.register(serviceName = ResouceCommands.checkNodeProcess.uriString,
+      serviceParamTypes = Array(classOf[ErProcessor]),
+      serviceResultTypes = Array(classOf[ErProcessor]),
+      routeToClass = classOf[NodeManagerService],
+      routeToMethodName = ResouceCommands.checkNodeProcess.getName()
+    )
+
+
     val confFile = new File(confPath)
     StaticErConf.addProperty(CoreConfKeys.STATIC_CONF_PATH, confFile.getAbsolutePath)
     logInfo(s"conf file: ${confFile.getAbsolutePath}")
     this.port = cmd.getOptionValue('p', StaticErConf.getProperty(
-      NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT,"9394")).toInt
+      NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT, "9394")).toInt
     // StaticErConf.addProperty(SessionConfKeys.CONFKEY_SESSION_ID, sessionId)
 
     // TODO:0: get from cluster manager
@@ -56,22 +114,47 @@ class NodeManagerBootstrap extends BootstrapBase with Logging {
   }
 
   override def start(): Unit = {
-    var port = StaticErConf.getPort()
-    if (port < 0) {
-      port = 0
+    if (this.port < 0) {
+      this.port = 0
     }
+    StaticErConf.addProperty(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT, this.port.toString)
 
-    StaticErConf.addProperty(NodeManagerConfKeys.CONFKEY_NODE_MANAGER_PORT, port.toString)
-    val server = GrpcServerUtils.createServer(
+    server = GrpcServerUtils.createServer(
       port = this.port, grpcServices = List(new CommandService))
 
     server.start()
     this.port = server.getPort
 
+    NodeResourceManager.start();
+
     // TODO:0: why ?
-//    StaticErConf.setPort(this.port)
-    val msg = s"server started at ${port}"
+    //    StaticErConf.setPort(this.port)
+    val msg = s"server started at ${this.port}"
     println(msg)
     logInfo(msg)
+  }
+
+  override def shutdown(): Unit = {
+    println("shutting down")
+    // Gracefully shut down the ForkJoinPool
+    if (forkJoinPool != null) {
+      forkJoinPool.shutdown()
+      try {
+        if (!forkJoinPool.awaitTermination(5, TimeUnit.SECONDS)) {
+          logWarning("ForkJoinPool did not terminate in 30 seconds. Forcing shutdown.")
+          forkJoinPool.shutdownNow()
+        }
+      } catch {
+        case ex: InterruptedException =>
+          logWarning("ForkJoinPool shutdown was interrupted. Forcing shutdown.")
+          forkJoinPool.shutdownNow()
+      }
+    }
+    if (server != null) {
+      println("shutting down server")
+      server.shutdown()
+      println("server shutdown done")
+    }
+    println("shutting down done")
   }
 }

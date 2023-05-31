@@ -46,9 +46,7 @@ object SerdesUtils {
 
   def rpcMessageFromBytes[T >: RpcMessage](bytes: Array[Byte], targetType: Class[_], serdesTypes: String = SerdesTypes.PROTOBUF): T = {
     assert(bytes != null)
-
     val javaClassName = targetType.getCanonicalName
-
     if (!deserializerCache.contains(javaClassName)) {
       val newDeserializer = RpcMessageSerdesFactory.newDeserializer(targetType, serdesTypes)
       deserializerCache.putIfAbsent(javaClassName, newDeserializer)

@@ -62,35 +62,59 @@
     <dependency>
       <groupId>mysql</groupId>
       <artifactId>mysql-connector-java</artifactId>
-      <version>${mysql-connector-java.version}</version>
+        <version>${mysql-connector-java.version}</version>
     </dependency>
-    <!-- https://mvnrepository.com/artifact/com.h2database/h2 -->
-    <dependency>
-      <groupId>com.h2database</groupId>
-      <artifactId>h2</artifactId>
-      <version>2.1.210</version>
-    </dependency>
-
-    <dependency>
-      <groupId>net.java.dev.jna</groupId>
-      <artifactId>jna-platform</artifactId>
-      <version>${jna.platform.version}</version>
-    </dependency>
+      <dependency>
+          <groupId>net.java.dev.jna</groupId>
+          <artifactId>jna-platform</artifactId>
+          <version>${jna.platform.version}</version>
+      </dependency>
 
 
   </dependencies>
 
-  <build>
-    <resources>
-      <resource>
-        <directory>main/java</directory>
-        <includes>
-          <include>**/*.xml</include>
-          <include>**/*.properties</include>
-        </includes>
-        <filtering>false</filtering>
-      </resource>
-    </resources>
+    <profiles>
+        <profile>
+            <id>include-h2</id>
+            <activation>
+                <property>
+                    <name>h2</name>
+                    <value>include</value>
+                </property>
+            </activation>
+            <dependencies>
+                <!-- https://mvnrepository.com/artifact/com.h2database/h2 -->
+                <dependency>
+                    <groupId>com.h2database</groupId>
+                    <artifactId>h2</artifactId>
+                    <version>2.1.214</version>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
+            <id>exclude-h2</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+                <property>
+                    <name>h2</name>
+                    <value>exclude</value>
+                </property>
+            </activation>
+        </profile>
+    </profiles>
+
+
+    <build>
+        <resources>
+            <resource>
+                <directory>main/java</directory>
+                <includes>
+                    <include>**/*.xml</include>
+                    <include>**/*.properties</include>
+                </includes>
+                <filtering>false</filtering>
+            </resource>
+        </resources>
     <plugins>
       <plugin>
         <groupId>org.xolstice.maven.plugins</groupId>

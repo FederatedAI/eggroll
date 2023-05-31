@@ -59,8 +59,9 @@ class MetadataCommands(object):
 
     get_store_from_namespace = 'getStoreFromNamespace'
     get_store_from_namespace_service_name = _to_service_name(prefix,
-                                                        get_store_from_namespace)
+                                                             get_store_from_namespace)
     GET_STORE_FROM_NAMESPACE = CommandURI(get_store_from_namespace_service_name)
+
 
 class NodeManagerCommands(object):
     prefix = 'v1/node-manager/processor'

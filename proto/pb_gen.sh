@@ -28,5 +28,9 @@ mkdir -p ${OUTPUT_PATH}
 
 for file in `ls ${PROTO_PATH}`; do
   echo "file: ${file}"
-  python -m grpc_tools.protoc -I${PROTO_PATH} --python_out=${OUTPUT_PATH} --grpc_python_out=${OUTPUT_PATH} ${PROTO_PATH}/${file}
+  python3 -m grpc_tools.protoc -I${PROTO_PATH} \
+    --python_out=${OUTPUT_PATH} \
+    --grpc_python_out=${OUTPUT_PATH} \
+    --mypy_out=${OUTPUT_PATH} \
+    ${PROTO_PATH}/${file}
 done

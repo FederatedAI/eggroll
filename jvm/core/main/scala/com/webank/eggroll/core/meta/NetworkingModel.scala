@@ -19,22 +19,22 @@
 package com.webank.eggroll.core.meta
 
 import java.util.concurrent.ConcurrentHashMap
-
 import com.google.protobuf.{Message => PbMessage}
-import com.webank.eggroll.core.constant.StringConstants
+import com.webank.eggroll.core.constant.{ResourceStatus, StringConstants}
 import com.webank.eggroll.core.datastructure.RpcMessage
 import com.webank.eggroll.core.serdes.{BaseSerializable, PbMessageDeserializer, PbMessageSerializer}
-import jdk.nashorn.internal.ir.annotations.Immutable
 import org.apache.commons.lang3.StringUtils
 
+import java.sql.Timestamp
+import java.util.Date
 import scala.beans.BeanProperty
 import scala.collection.JavaConverters._
+import scala.collection.mutable.ArrayBuffer
 
 trait NetworkingRpcMessage extends RpcMessage {
   override def rpcMessageType(): String = "Networking"
 }
 
-@Immutable
 case class ErEndpoint(@BeanProperty host: String, @BeanProperty port: Int = -1) extends NetworkingRpcMessage {
   override def toString: String = s"$host:$port"
 
@@ -47,7 +47,54 @@ object ErEndpoint {
   }
 }
 
+case class ErResource(
+                      resourceId :Long = -1,
+                      resourceType : String = StringConstants.EMPTY,
+                      serverNodeId : Long = 0,
+                      total: Long = -1,
+                      used: Long = -1,
+                      allocated: Long = -1,
+                      preAllocated:Long = -1,
+                      extention:String =  null,
+                      status: String = ResourceStatus.AVAILABLE,
+                      extentionCache:ArrayBuffer[String] = new ArrayBuffer[String]()
+                     ) extends NetworkingRpcMessage{
+  override def  toString:String ={
+    s"<ErResource(resourceType=${resourceType},status=${status}, total=${total}, used=${used} ,allocated=${allocated} ,preAllocated =${preAllocated},extention= ${extention})>"}
+
+  def   getUnAllocatedResource():Long={
+    var remain :Long = total;
+    if(allocated>0)
+      remain= remain-allocated
+    if(preAllocated>0) {
+      remain = remain - preAllocated
+    }
+    remain
+  }
+}
+//int64 serverNodeId = 1;
+//string status = 2;
+//repeated Resource resources = 3;
+
+case class ErResourceAllocation(serverNodeId:Long ,
+                                sessionId:String = StringConstants.EMPTY,
+                                operateType:String = StringConstants.EMPTY,
+                                status:String = StringConstants.EMPTY,
+                                resources: Array[ErResource]
+                               ) extends  NetworkingRpcMessage{
+  override def toString: String = {
+    var  sb  = new StringBuilder
+    resources.foreach(r=>{
+      sb.append("[")
+      sb.append(r.toString)
+      sb.append("]")
+    })
+    s"<ErResourceAllocation(serverNodeId =${serverNodeId}, sessionId=${sessionId}, operateType=${operateType}, status=${status},  resources=${sb.toString()},}>"
+    }
+  }
+
 case class ErProcessor(id: Long = -1,
+                       sessionId : String = StringConstants.EMPTY,
                        serverNodeId: Long = -1,
                        name: String = StringConstants.EMPTY,
                        processorType: String = StringConstants.EMPTY,
@@ -56,9 +103,31 @@ case class ErProcessor(id: Long = -1,
                        transferEndpoint: ErEndpoint = null,
                        pid: Int = -1,
                        options: java.util.Map[String, String] = new ConcurrentHashMap[String, String](),
-                       tag: String = StringConstants.EMPTY) extends NetworkingRpcMessage {
+                       tag: String = StringConstants.EMPTY,
+                       resources: Array[ErResource]= Array(),
+                       createdAt:Timestamp= null,
+                       updatedAt:Timestamp=null
+                      ) extends NetworkingRpcMessage {
   override def toString: String = {
-    s"<ErProcessor(id=${id}, serverNodeId=${serverNodeId}, name=${name}, processorType=${processorType}, status=${status}, commandEndpoint=${commandEndpoint}, transferEndpoint=${transferEndpoint}, pid=${pid}, options=${options}, tag=${tag}) at ${hashCode().toHexString}>"
+    val sb = new StringBuilder
+    //    sb.append("total number of exception(s) occured: ")
+    //      .append(causes.length)
+    //      .append(StringConstants.LF)
+
+    if (resources != null) {
+      var sb = new StringBuilder
+      resources.flatMap(n => n.toString)
+    }
+
+    // s"ErServerNode[id=${id} , clusterId=${clusterId}, endpoint=${endpoint}, nodeType=${nodeType}, status=${status}, resources = ${rString}]"
+    resources.foreach(n => {
+      sb.append(n.toString)
+    })
+
+    s"<ErProcessor(id=${id}, sessionId = ${sessionId}, " +
+      s"serverNodeId=${serverNodeId}, name=${name}, processorType=${processorType}, " +
+      s"status=${status}, commandEndpoint=${commandEndpoint}, transferEndpoint=${transferEndpoint},createAt = ${createdAt} updateAt=${updatedAt} " +
+      s"pid=${pid}, options=${options}, tag=${tag}) at ${hashCode().toHexString} resoures ${sb.toString()} >"
   }
 }
 
@@ -67,12 +136,26 @@ case class ErProcessorBatch(id: Long = -1,
                             processors: Array[ErProcessor] = Array(),
                             tag: String = StringConstants.EMPTY) extends NetworkingRpcMessage
 
+
+case class ErNodeHeartbeat(id: Long ,
+                           node:ErServerNode = null
+                          ) extends NetworkingRpcMessage
+
 case class ErServerNode(id: Long = -1,
                         name: String = StringConstants.EMPTY,
                         clusterId: Long = 0,
                         endpoint: ErEndpoint = ErEndpoint(host = StringConstants.EMPTY, port = -1),
                         nodeType: String = StringConstants.EMPTY,
-                        status: String = StringConstants.EMPTY) extends NetworkingRpcMessage
+                        status: String = StringConstants.EMPTY,
+                        lastHeartBeat:Timestamp = null,
+			resources : Array[ErResource]= Array()
+
+                       ) extends NetworkingRpcMessage{
+	  override  def  toString: String = {
+    s"<ErServerNode(id=${id},name = ${name},clusterId = ${clusterId},endpoint = ${endpoint},nodeType = ${nodeType},status = ${status} ,resources = ${resources.mkString})>"
+  }
+
+}
 
 case class ErServerCluster(id: Long = -1,
                            name: String = StringConstants.EMPTY,
@@ -123,13 +206,85 @@ object NetworkingModelPbMessageSerdes {
         .setName(src.name)
         .addAllProcessors(src.processors.toList.map(_.toProto()).asJava)
         .setTag(src.tag)
-
       builder.build()
     }
 
     override def toBytes(baseSerializable: BaseSerializable): Array[Byte] =
       baseSerializable.asInstanceOf[ErProcessorBatch].toBytes()
   }
+
+  implicit class ErResourceAllocationFromPbMessage(src:Meta.ResourceAllocation =null)  extends  PbMessageDeserializer{
+    override def fromProto[T >: RpcMessage](): ErResourceAllocation = {
+      ErResourceAllocation(serverNodeId = src.getServerNodeId,
+                          status = src.getStatus,
+                          sessionId = src.getSessionId,
+                          operateType = src.getOperateType,
+                          resources=src.getResourcesList.asScala.map(_.fromProto()).toArray)
+    }
+
+    override def fromBytes(bytes: Array[Byte]):  ErResourceAllocation=
+      Meta.ResourceAllocation.parseFrom(bytes).fromProto()
+
+  }
+
+  implicit class ErResourceAllocationToPbMessage(src: ErResourceAllocation=null)  extends  PbMessageSerializer{
+    override def toProto[T >: PbMessage](): Meta.ResourceAllocation = {
+      val builder = Meta.ResourceAllocation.newBuilder()
+        .setServerNodeId(src.serverNodeId)
+        .setSessionId(src.sessionId)
+        .setOperateType(src.operateType)
+        .setStatus(src.status)
+        .addAllResources(src.resources.toList.map(_.toProto()).asJava)
+      builder.build()
+    }
+    override def toBytes(baseSerializable: BaseSerializable): Array[Byte] =
+      baseSerializable.asInstanceOf[ErResourceAllocation].toBytes()
+  }
+
+  implicit class ErNodeHeartbeatFromPbMessage(src: Meta.NodeHeartbeat = null) extends PbMessageDeserializer {
+    override def fromProto[T >: RpcMessage](): ErNodeHeartbeat = {
+      ErNodeHeartbeat(id = src.getId, node = src.getNode.fromProto())
+    }
+
+    override def fromBytes(bytes: Array[Byte]): ErNodeHeartbeat =
+      Meta.NodeHeartbeat.parseFrom(bytes).fromProto()
+  }
+  implicit class ErNodeHeartbeatToPbMessage(src: ErNodeHeartbeat) extends PbMessageSerializer {
+
+    override def toProto[T >: PbMessage](): Meta.NodeHeartbeat = {
+      var builder =  Meta.NodeHeartbeat.newBuilder()
+        .setId(src.id)
+        .setNode(src.node.toProto())
+      builder.build()
+    }
+    override def toBytes(baseSerializable: BaseSerializable): Array[Byte] = {
+      baseSerializable.asInstanceOf[ErNodeHeartbeat].toBytes()
+    }
+  }
+
+
+
+  implicit class ErResourceFromPbMessage(src: Meta.Resource = null) extends PbMessageDeserializer {
+    override def fromProto[T >: RpcMessage](): ErResource = {
+      ErResource(resourceType = src.getType, total = src.getTotal,used = src.getUsed)
+    }
+
+    override def fromBytes(bytes: Array[Byte]): ErResource =
+      Meta.Resource.parseFrom(bytes).fromProto()
+  }
+    implicit class ErResourceToPbMessage(src: ErResource) extends PbMessageSerializer {
+
+    override def toProto[T >: PbMessage](): Meta.Resource = {
+     var builder =  Meta.Resource.newBuilder()
+        .setType(src.resourceType)
+        .setTotal(src.total)
+        .setUsed(src.used)
+     builder.build()
+    }
+    override def toBytes(baseSerializable: BaseSerializable): Array[Byte] = {
+      baseSerializable.asInstanceOf[ErResource].toBytes()
+    }
+    }
 
   implicit class ErServerNodeToPbMessage(src: ErServerNode) extends PbMessageSerializer {
     override def toProto[T >: PbMessage](): Meta.ServerNode = {
@@ -140,7 +295,7 @@ object NetworkingModelPbMessageSerdes {
         .setEndpoint(src.endpoint.toProto())
         .setNodeType(src.nodeType)
         .setStatus(src.status)
-
+        .addAllResources(src.resources.toList.map(_.toProto()).asJava)
       builder.build()
     }
 
@@ -212,7 +367,8 @@ object NetworkingModelPbMessageSerdes {
         clusterId = src.getClusterId,
         endpoint = src.getEndpoint.fromProto(),
         nodeType = src.getNodeType,
-        status = src.getStatus)
+        status = src.getStatus,
+        resources =  src.getResourcesList.asScala.map(_.fromProto()).toArray)
     }
 
     override def fromBytes(bytes: Array[Byte]): ErServerNode =

@@ -127,14 +127,27 @@ object ClusterManagerConfKeys {
   val CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_DEFAULT_AUTO_COMMIT = "eggroll.resourcemanager.clustermanager.datasource.db.default.auto.commit"
   val CONFKEY_CLUSTER_MANAGER_HOST = "eggroll.resourcemanager.clustermanager.host"
   val CONFKEY_CLUSTER_MANAGER_PORT = "eggroll.resourcemanager.clustermanager.port"
+  var CONFKEY_CLUSTER_MANAGER_NODE_HEARTBEAT_EXPIRED_COUNT = ErConfKey("eggroll.resourcemanager.clustermanager.node.heartbeat.expire.count",2)
   val EGGROLL_RESOURCEMANAGER_CLUSTERMANAGER_JDBC_PASSWORD_DECRYPTOR = ErConfKey("eggroll.resourcemanager.clustermanager.jdbc.password.decryptor")
   val EGGROLL_RESOURCEMANAGER_CLUSTERMANAGER_JDBC_PASSWORD_DECRYPTOR_ARGS = ErConfKey("eggroll.resourcemanager.clustermanager.jdbc.password.decryptor.args")
   val EGGROLL_RESOURCEMANAGER_CLUSTERMANAGER_JDBC_PASSWORD_DECRYPTOR_ARGS_SPLITER = ErConfKey("eggroll.resourcemanager.clustermanager.jdbc.password.decryptor.args.spliter", ",")
+  var EGGROLL_RESOURCEMANAGER_SCHEDULE_MINIMUM_ALLOCATION_VCORES = ErConfKey(  "eggroll.resourcemanager.schedule.minimum-allocation-vcores",1)
+
+
+
 }
 
 object NodeManagerConfKeys {
   val CONFKEY_NODE_MANAGER_HOST = "eggroll.resourcemanager.nodemanager.host"
   val CONFKEY_NODE_MANAGER_PORT = "eggroll.resourcemanager.nodemanager.port"
+  var CONFKEY_NODE_MANAGER_ID = "eggroll.resourcemanager.nodemanager.id"
+  var CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL = ErConfKey("eggroll.resourcemanager.nodemanager.heartbeat.interval",10000)
+  val CONFKEY_NODE_MANAGER_CPU_VCORES =  ErConfKey(  "eggroll.resourcemanager.nodemanager.cpu.vcores",16)
+  val CONFKEY_NODE_MANAGER_GPU_VCORES =  ErConfKey(  "eggroll.resourcemanager.nodemanager.gpu.vcores",16)
+
+  val CONFKEY_NODE_MANAGER_CONTAINERS_DATA_DIR = "eggroll.resourcemanager.nodemanager.containers.data.dir"
+
+
 }
 
 object ResourceManagerConfKeys {
@@ -150,6 +163,11 @@ object SessionConfKeys {
   val EGGROLL_SESSION_STOP_TIMEOUT_MS = ErConfKey("eggroll.session.stop.timeout.ms", 20000)
   val EGGROLL_SESSION_PYTHON_PATH = "python.path"
   val EGGROLL_SESSION_PYTHON_VENV = "python.venv"
+  var EGGROLL_SESSION_USE_RESOURCE_DISPATCH = "eggroll.session.use.resource.dispatch"
+  val EGGROLL_RESOURCE_DISPATCH_INTERVAL = ErConfKey("eggroll.session.resource.dispatch.interval", 3000)
+  val EGGROLL_RESOURCE_LOCK_EXPIRE_INTERVAL = ErConfKey("eggroll.resource.lock.expire.interval", 3600000)
+
+  //, false
 }
 
 object DeployConfKeys {
