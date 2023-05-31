@@ -18,15 +18,15 @@
 
 package com.webank.eggroll.core.serdes
 
-import java.lang.reflect.Constructor
-import java.util.concurrent.ConcurrentHashMap
-
 import com.webank.eggroll.core.command.CommandRpcMessage
 import com.webank.eggroll.core.constant.{SerdesTypes, StringConstants}
 import com.webank.eggroll.core.datastructure.SerdesFactory
 import com.webank.eggroll.core.meta.{MetaRpcMessage, NetworkingRpcMessage, TransferRpcMessage}
 import com.webank.eggroll.core.util.Logging
 import org.apache.commons.lang3.StringUtils
+
+import java.lang.reflect.Constructor
+import java.util.concurrent.ConcurrentHashMap
 
 object RpcMessageSerdesFactory extends SerdesFactory with Logging {
   private val serdesTypeToNames = Map((SerdesTypes.PROTOBUF -> "PbMessage"))
@@ -60,9 +60,9 @@ object RpcMessageSerdesFactory extends SerdesFactory with Logging {
     }
 
     // create and put to cache otherwise
+
     val endsWithDollarSign = javaClassCanonicalName.endsWith(StringConstants.DOLLAR)
     val strippedJavaClassName = StringUtils.strip(javaClassCanonicalName, StringConstants.DOLLAR)
-
     if (endsWithDollarSign) {
       finalJavaClass = Class.forName(strippedJavaClassName)
     }
@@ -76,6 +76,8 @@ object RpcMessageSerdesFactory extends SerdesFactory with Logging {
       rpcMessageType = "Transfer"
     } else if (classOf[NetworkingRpcMessage].isAssignableFrom(finalJavaClass)) {
       rpcMessageType = "Networking"
+    } else {
+      throw new IllegalArgumentException(s"unsupported rpc message type: ${finalJavaClass}")
     }
 
     val serdesName = serdesTypeToNames(serdesType)

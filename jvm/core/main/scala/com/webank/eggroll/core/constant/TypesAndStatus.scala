@@ -66,8 +66,62 @@ object ServerNodeTypes {
   val NODE_MANAGER = "NODE_MANAGER"
 }
 
+object ResourceTypes{
+    var PHYSICAL_MEMORY = "PHYSICAL_MEMORY"
+    var VCPU_CORE = "VCPU_CORE"
+    var VGPU_CORE =  "VGPU_CORE"
+}
+object ResourceStatus{
+  val INIT = "init"
+  val PRE_ALLOCATED = "pre_allocated"
+  val ALLOCATED = "allocated"
+  val ALLOCATE_FAILED = "allocate_failed"
+  val AVAILABLE = "available"
+  val RETURN = "return"
+}
+
+
+object ResourceOperationType{
+    var CHECK = "CHECK"
+    var ALLOCATE = "ALLOCATE"
+    var FREE  =  "FREE"
+}
+object  ResourceOperationStauts{
+    val  SUCCESS  = "SUCCESS"
+    val  FAILED =  "FAILED"
+}
+
+object  ProcessorEventType{
+   val   PROCESSOR_LOSS = "PROCESSOR_LOSS"
+
+}
+
+object DispatchStrategy{
+   val REMAIN_MOST_FIRST  = "remain_most_first"
+   val RANDOM = "random"
+   val FIX = "fix"
+   val SINGLE_NODE_FIRST = "single_node_first"
+
+}
+object  ResourceEventType{
+   val  RESOURCE_RETURN = "resource_return"
+   val  RESOURCE_ALLOCATED = "resource_allocated"
+}
+
+
+object ResourceExhaustedStrategy{
+   val IGNORE  = "ignore"
+   val WAITING = "waiting"
+   val THROW_ERROR = "throw_error"
+}
+
+
 object ServerNodeStatus {
   val HEALTHY = "HEALTHY"
+  val INIT = "INIT"
+  var LOSS = "LOSS"
+
+
 }
 
 object ProcessorStatus {
@@ -76,14 +130,17 @@ object ProcessorStatus {
   val STOPPED = "STOPPED"
   val KILLED = "KILLED"
   val ERROR = "ERROR"
+  val FINISHED = "FINISHED"
 }
 
 object SessionStatus {
   val NEW = "NEW"
+  val NEW_TIMEOUT = "NEW_TIMEOUT"
   val ACTIVE = "ACTIVE"
   val CLOSED = "CLOSED"
   val KILLED = "KILLED"
   val ERROR = "ERROR"
+  val FINISHED = "FINISHED"
 }
 
 object BindingStrategies {

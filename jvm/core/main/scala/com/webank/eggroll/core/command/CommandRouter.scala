@@ -18,8 +18,6 @@
 
 package com.webank.eggroll.core.command
 
-import java.lang.reflect.Method
-
 import com.google.protobuf.ByteString
 import com.webank.eggroll.core.constant.{CoreConfKeys, SerdesTypes, StringConstants}
 import com.webank.eggroll.core.error.CommandRoutingException
@@ -42,9 +40,9 @@ object Scope {
 }
 
 object CommandRouter extends Logging {
-  private val serviceRouteTable = TrieMap[String, ErService]()
-  private val messageParserMethodCache = mutable.Map[Class[_], Method]()
   private val defaultSerdesType = StaticErConf.getString(CoreConfKeys.CONFKEY_CORE_COMMAND_DEFAULT_SERDES_TYPE, SerdesTypes.PROTOBUF)
+
+  private val handlers = TrieMap[String, (Array[ByteString] => Array[Byte])]()
 
   // todo:2: consider different scope of target instance such as 'singleton', 'proto', 'session' etc.
   //  This can be implemented as an annotation reader
@@ -57,18 +55,13 @@ object CommandRouter extends Logging {
                routeToMethodName: String = null,
                routeToCallBasedClassInstance: Any = null,
                callBasedClassInstanceInitArgs: Array[AnyRef] = null): Unit = this.synchronized {
-    if (serviceRouteTable.contains(serviceName)) {
-      throw new IllegalStateException(s"Service ${serviceName} has been registered at: ${serviceRouteTable(serviceName)}")
-    }
-
-    val finalServiceName = if(serviceName.startsWith("/v2/")){
-      val toks = serviceName.replaceFirst("/v2/","com/webank/").split("/")
+    val finalServiceName = if (serviceName.startsWith("/v2/")) {
+      val toks = serviceName.replaceFirst("/v2/", "com/webank/").split("/")
       toks(toks.length - 2) += "Service"
       toks.mkString(".")
     } else {
       serviceName
     }
-
     val finalRouteToMethodName =
       if (routeToMethodName != null) routeToMethodName
       else StringUtils.substringAfterLast(finalServiceName, StringConstants.DOT)
@@ -77,13 +70,13 @@ object CommandRouter extends Logging {
       if (routeToClass != null) routeToClass
       else Class.forName(StringUtils.substringBeforeLast(finalServiceName, StringConstants.DOT))
 
-    val routeToMethod = if(serviceParamTypes == null)
+    val routeToMethod = if (serviceParamTypes == null)
       finalRouteToClass.getMethods.find(_.getName == finalRouteToMethodName).get
-     else MethodUtils.getAccessibleMethod(
+    else MethodUtils.getAccessibleMethod(
       finalRouteToClass, finalRouteToMethodName, serviceParamTypes: _*)
 
     if (routeToMethod == null) {
-      throw new NoSuchMethodException(s"accessible method not found for ${finalServiceName}")
+      throw new NoSuchMethodException(s"accessible method ${routeToMethod} not found for ${finalServiceName}")
     }
 
     val finaleServiceParamTypes = routeToMethod.getParameterTypes
@@ -128,52 +121,43 @@ object CommandRouter extends Logging {
       callBasedInstance = finalCallBasedInstance,
       routeToMethod = routeToMethod)
 
-    serviceRouteTable.put(serviceName, command)
-    logInfo(s"[COMMAND] registered ${serviceName}")
+    register_handler(serviceName, (args: Array[ByteString]) => {
+      val realArgs = args.zip(command.serviceParamDeserializers).map {
+        case (arg, deserializer) => {
+          deserializer.fromBytes(arg.asInstanceOf[ByteString].toByteArray).asInstanceOf[Object]
+        }
+      }
+      val callResult = command.routeToMethod.invoke(command.callBasedInstance, realArgs: _*) // method.invoke(instance, args)
+
+      val bytesCallResult = if (callResult != null) command.serviceResultSerializers(0).toBytes(callResult.asInstanceOf[BaseSerializable]) else Array.emptyByteArray
+
+      bytesCallResult
+    })
   }
 
   def dispatch(serviceName: String, args: Array[_ <: AnyRef], kwargs: mutable.Map[String, _ <: AnyRef]): Array[Array[Byte]] = {
-    val servicer = query(serviceName)
-    if (servicer == null) {
-      throw new IllegalStateException(s"service ${serviceName} has not been registered")
-    }
-
-    val method = servicer.routeToMethod
-    val paramTypes = method.getParameterTypes
-    var paramTypeName = "unknown"
-
-    // todo:2: separate to SerDes
-    // deserialization
-
-    val realArgs = args.zip(servicer.serviceParamDeserializers).map {
-      case (arg, deserializer) => {
-        deserializer.fromBytes(arg.asInstanceOf[ByteString].toByteArray).asInstanceOf[Object]
-      }
-    }
-
-    // actual call
-    val callResult = method.invoke(servicer.callBasedInstance, realArgs: _*) // method.invoke(instance, args)
-
-    val bytesCallResult = if (callResult != null) servicer.serviceResultSerializers(0).toBytes(callResult.asInstanceOf[BaseSerializable]) else Array.emptyByteArray
-
-    val finalResult = Array[Array[Byte]](bytesCallResult)
-
-    // serialization to response
-
-    finalResult
+    Array(query(serviceName)(args.map(_.asInstanceOf[ByteString])))
   }
 
-  def query(serviceName: String): ErService = {
-
+  private def query(serviceName: String) = {
     try {
       // v2: auto register
-      if(!serviceRouteTable.contains(serviceName) && serviceName.startsWith("/v2/")) {
+      if (!handlers.contains(serviceName) && serviceName.startsWith("/v2/")) {
         register(serviceName, null)
       }
-      serviceRouteTable(serviceName)
+      handlers(serviceName)
     } catch {
       case e: Exception =>
         throw new CommandRoutingException(serviceName, e)
     }
+  }
+
+
+  def register_handler(serviceName: String, handler: (Array[ByteString]) => Array[Byte]): Unit = {
+    if (handlers.contains(serviceName)) {
+      throw new IllegalStateException(s"Service ${serviceName} has been registered")
+    }
+    handlers.put(serviceName, handler)
+    logInfo(s"[COMMAND] registered ${serviceName}")
   }
 }

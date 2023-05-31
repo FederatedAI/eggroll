@@ -23,7 +23,7 @@ import java.util.concurrent.ConcurrentHashMap
 import com.webank.eggroll.core.constant._
 import com.webank.eggroll.core.error.CrudException
 import com.webank.eggroll.core.meta._
-import com.webank.eggroll.core.resourcemanager.ResourceDao
+import com.webank.eggroll.core.resourcemanager.{BaseDao}
 import com.webank.eggroll.core.util.JdbcTemplate.ResultSetIterator
 import com.webank.eggroll.core.util.{Logging, TimeUtils}
 import org.apache.commons.lang3.StringUtils
@@ -69,8 +69,8 @@ class StoreCrudOperator extends CrudOperator with Logging {
   }
 }
 
-object StoreCrudOperator {
-  private lazy val dbc = ResourceDao.dbc
+object StoreCrudOperator extends Logging {
+  private lazy val dbc = BaseDao.dbc
   private val nodeIdToNode = new ConcurrentHashMap[java.lang.Long, DbServerNode]()
   private[metadata] def doGetStore(input: ErStore): ErStore = {
     val inputOptions = input.options
@@ -154,7 +154,8 @@ object StoreCrudOperator {
         missingNodeId:_*).toList
 
       if (nodeResult.isEmpty) {
-        throw new IllegalStateException(s"No valid node for this store: ${inputStoreLocator}")
+        logError(s"No valid node for this store: ${inputStoreLocator}} sql : ${queryServerNode.toString()} missingId ${missingNodeId}")
+        throw new IllegalStateException(s"No valid node for this store: ${inputStoreLocator}}")
       }
 
       for (i <- 0 until nodeResult.length){
