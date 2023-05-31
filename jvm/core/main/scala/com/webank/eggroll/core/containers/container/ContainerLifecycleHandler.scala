@@ -43,6 +43,13 @@ class ContainerLifecycleHandler(container: ContainerTrait,
     }
   }
 
+  def isPoisoned: Boolean = {
+    status match {
+      case ContainerStatus.Poison => true
+      case _ => false
+    }
+  }
+
   private def setStatus(status: ContainerStatus.Value, e: Option[Exception] = None): Unit = {
     if (!isCompleted && this.status != status) {
       this.status = status
@@ -93,7 +100,8 @@ class ContainerLifecycleHandler(container: ContainerTrait,
     if (isStarted) {
       container.kill()
     } else {
-      logError(s"Container ${container} not started, cannot kill")
+      logError(s"Container ${container} not started, cannot kill immediately, poison instead")
+      status = ContainerStatus.Poison
       false
     }
   }

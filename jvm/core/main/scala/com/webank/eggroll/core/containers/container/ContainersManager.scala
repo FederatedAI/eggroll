@@ -10,7 +10,15 @@ class ContainersManager(ec: ExecutionContext,
   private val handlers = TrieMap[Long, ContainerLifecycleHandler]()
   private val executor = Executors.newSingleThreadScheduledExecutor()
   executor.scheduleAtFixedRate(
-    () => handlers.retain((_, handler) => !handler.isCompleted), 0, 1, TimeUnit.MINUTES)
+    () => {
+      handlers.foreach {
+        case (_, handler) =>
+          if (handler.isPoisoned) {
+            handler.killContainer()
+          }
+      }
+      handlers.retain((_, handler) => !handler.isCompleted)
+    }, 0, 1, TimeUnit.MINUTES)
 
   def addContainer(containerId: Long, container: ContainerTrait): Unit = {
     val lifecycleHandler = ContainerLifecycleHandler
