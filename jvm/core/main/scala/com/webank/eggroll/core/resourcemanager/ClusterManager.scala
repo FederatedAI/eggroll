@@ -155,30 +155,36 @@ object ClusterManagerService extends Logging {
     new Thread(
       () => {
         while (true) {
-          val sessions = smDao.getSessionMainsByStatus(Array(SessionStatus.ACTIVE, SessionStatus.NEW))
-          sessions.foreach { session =>
-            val sessionProcessors = smDao.getSession(session.id).processors
-            session.name match {
-              case "DeepSpeed" =>
-                logDebug(s"watch deepspeed session: ${session.id} ${session.status}")
-                session.status match {
-                  case SessionStatus.ACTIVE =>
-                    checkAndHandleDeepspeedActiveSession(session, sessionProcessors)
-                  case SessionStatus.NEW =>
-                    checkAndHandleDeepspeedOutTimeSession(session, sessionProcessors)
-                  case _ =>
-                }
-              case _ =>
-                session.status match {
-                  case SessionStatus.ACTIVE =>
-                    checkAndHandleEggpairActiveSession(session, sessionProcessors)
-                  case SessionStatus.NEW =>
-                    checkAndHandleEggpairOutTimeSession(session, sessionProcessors)
-                  case _ =>
-                }
+          try {
+            val sessions = smDao.getSessionMainsByStatus(Array(SessionStatus.ACTIVE, SessionStatus.NEW))
+            sessions.foreach { session =>
+              val sessionProcessors = smDao.getSession(session.id).processors
+              session.name match {
+                case "DeepSpeed" =>
+                  logDebug(s"watch deepspeed session: ${session.id} ${session.status}")
+                  session.status match {
+                    case SessionStatus.ACTIVE =>
+                      checkAndHandleDeepspeedActiveSession(session, sessionProcessors)
+                    case SessionStatus.NEW =>
+                      checkAndHandleDeepspeedOutTimeSession(session, sessionProcessors)
+                    case _ =>
+                  }
+                case _ =>
+                  session.status match {
+                    case SessionStatus.ACTIVE =>
+                      checkAndHandleEggpairActiveSession(session, sessionProcessors)
+                    case SessionStatus.NEW =>
+                      checkAndHandleEggpairOutTimeSession(session, sessionProcessors)
+                    case _ =>
+                  }
+              }
             }
+            Thread.sleep(1000)
+          }catch {
+            case e: Exception=>
+                  logError(s"session watcher handle error ${e.getMessage}")
+                 e.printStackTrace()
           }
-          Thread.sleep(1000)
         }
       }
     )
