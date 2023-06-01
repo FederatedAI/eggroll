@@ -123,7 +123,7 @@ object ClusterResourceManager extends Logging{
             }
           }
         }catch {
-          case  e:Exception => {
+          case  e:Throwable => {
             logError("dispatch resource error: "+e.getMessage)
             e.printStackTrace()
           }
@@ -132,7 +132,7 @@ object ClusterResourceManager extends Logging{
       }
       logError("!!!!!!!!!!!!!!!!!!!resource dispatch thread quit!!!!!!!!!!!!!!!!")
 
-    })
+    },"RESOURCE_DISPATCH_THREAD")
 
 
   var  lockCleanThread =  new  Thread(()=> {
@@ -154,13 +154,14 @@ object ClusterResourceManager extends Logging{
           }
 
         }catch {
-          case e:Exception  =>
+          case e:Throwable  =>
+              logError(s"lock clean error ${e.getMessage}")
            // e.printStackTrace()
         }
       })
       Thread.sleep(EGGROLL_RESOURCE_LOCK_EXPIRE_INTERVAL.get().toInt)
     }
-  })
+  },"LOCK-CLEAN-THREAD")
 
 
 
