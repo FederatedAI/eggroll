@@ -71,20 +71,20 @@ object ClusterManagerService extends Logging {
                   }
                 }
               } catch {
-                case e: Exception =>
+                case e: Throwable =>
                   e.printStackTrace()
               }
             })
           })
       }
       catch {
-        case e: Exception =>
+        case e: Throwable =>
           e.printStackTrace()
       }
       Thread.sleep(CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL.get().toInt)
     }
   }
-  )
+  ,"NODE_PROCESS_CHECK_THREAD")
 
 
   private def checkAndHandleDeepspeedOutTimeSession(session: ErSessionMeta, sessionProcessors: Array[ErProcessor]): Unit = {
@@ -158,36 +158,43 @@ object ClusterManagerService extends Logging {
           try {
             val sessions = smDao.getSessionMainsByStatus(Array(SessionStatus.ACTIVE, SessionStatus.NEW))
             sessions.foreach { session =>
-              val sessionProcessors = smDao.getSession(session.id).processors
-              session.name match {
-                case "DeepSpeed" =>
-                  logDebug(s"watch deepspeed session: ${session.id} ${session.status}")
-                  session.status match {
-                    case SessionStatus.ACTIVE =>
-                      checkAndHandleDeepspeedActiveSession(session, sessionProcessors)
-                    case SessionStatus.NEW =>
-                      checkAndHandleDeepspeedOutTimeSession(session, sessionProcessors)
-                    case _ =>
-                  }
-                case _ =>
-                  session.status match {
-                    case SessionStatus.ACTIVE =>
-                      checkAndHandleEggpairActiveSession(session, sessionProcessors)
-                    case SessionStatus.NEW =>
-                      checkAndHandleEggpairOutTimeSession(session, sessionProcessors)
-                    case _ =>
-                  }
+              try {
+                val sessionProcessors = smDao.getSession(session.id).processors
+                session.name match {
+                  case "DeepSpeed" =>
+                    logDebug(s"watch deepspeed session: ${session.id} ${session.status}")
+                    session.status match {
+                      case SessionStatus.ACTIVE =>
+                        checkAndHandleDeepspeedActiveSession(session, sessionProcessors)
+                      case SessionStatus.NEW =>
+                        checkAndHandleDeepspeedOutTimeSession(session, sessionProcessors)
+                      case _ =>
+                    }
+                  case _ =>
+                    session.status match {
+                      case SessionStatus.ACTIVE =>
+                        checkAndHandleEggpairActiveSession(session, sessionProcessors)
+                      case SessionStatus.NEW =>
+                        checkAndHandleEggpairOutTimeSession(session, sessionProcessors)
+                      case _ =>
+                    }
+                }
               }
+                catch {
+                  case e: Throwable=>
+                  logError(s"session watcher handle session ${session.id} error ${e.getMessage}")
+                  e.printStackTrace()}
+
             }
             Thread.sleep(1000)
           }catch {
-            case e: Exception=>
+            case e: Throwable=>
                   logError(s"session watcher handle error ${e.getMessage}")
                  e.printStackTrace()
           }
         }
       }
-    )
+    ,"SESSION_WATCHER_THREAD")
   }
 
 
@@ -206,12 +213,13 @@ object ClusterManagerService extends Logging {
           }
         })
       } catch {
-        case e: Exception =>
+        case e: Throwable =>
+          logError(s"handle node heart beat error ${e.getMessage}")
           e.printStackTrace()
       }
       Thread.sleep(expire + 1000)
     }
-  });
+  },"NODE_HEART_BEAT_CHECK_THREAD");
 
   def start(): Unit = {
     sessionWatcher.start()
