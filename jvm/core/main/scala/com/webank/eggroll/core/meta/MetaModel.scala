@@ -18,9 +18,6 @@
 
 package com.webank.eggroll.core.meta
 
-import java.util.UUID
-import java.util.concurrent.ConcurrentHashMap
-
 import com.google.protobuf.{ByteString, Message => PbMessage}
 import com.webank.eggroll.core.constant.StringConstants
 import com.webank.eggroll.core.datastructure.RpcMessage
@@ -29,6 +26,9 @@ import com.webank.eggroll.core.serdes.{BaseSerializable, PbMessageDeserializer, 
 import com.webank.eggroll.core.util.TimeUtils
 import org.apache.commons.lang3.StringUtils
 
+import java.sql.Timestamp
+import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 import scala.collection.JavaConverters._
 
 trait MetaRpcMessage extends RpcMessage {
@@ -58,6 +58,7 @@ case class ErStoreLocator(id: Long = -1L,
       String.join(delim, storeType, namespace, name)
     }
   }
+
   // TODO:0: replace uuid with simpler human friendly solution
   def fork(postfix: String = StringConstants.EMPTY, delimiter: String = StringConstants.UNDERLINE): ErStoreLocator = {
     val delimiterPos = StringUtils.lastOrdinalIndexOf(this.name, delimiter, 2)
@@ -96,7 +97,7 @@ case class ErStore(storeLocator: ErStoreLocator,
 }
 
 case class ErStoreList(stores: Array[ErStore] = Array.empty,
-                   options: java.util.Map[String, String] = new ConcurrentHashMap[String, String]())
+                       options: java.util.Map[String, String] = new ConcurrentHashMap[String, String]())
   extends MetaRpcMessage
 
 case class ErJob(id: String,
@@ -133,8 +134,11 @@ case class ErSessionMeta(id: String = StringConstants.EMPTY,
                          activeProcCount: Int = 0,
                          tag: String = StringConstants.EMPTY,
                          processors: Array[ErProcessor] = Array(),
+                         createTime:Timestamp = null,
+                         updateTime:Timestamp = null,
                          options: Map[String, String] = Map()) extends MetaRpcMessage {
 }
+
 
 object MetaModelPbMessageSerdes {
 
@@ -161,6 +165,7 @@ object MetaModelPbMessageSerdes {
 
       builder.build()
     }
+
     override def toBytes(baseSerializable: BaseSerializable): Array[Byte] =
       baseSerializable.asInstanceOf[ErPair].toBytes()
   }
@@ -212,7 +217,7 @@ object MetaModelPbMessageSerdes {
   implicit class ErStoreListToPbMessage(src: ErStoreList) extends PbMessageSerializer {
     override def toProto[T >: PbMessage](): Meta.StoreList = {
       val builder = Meta.StoreList.newBuilder()
-          .addAllStores(src.stores.toList.map(_.toProto()).asJava)
+        .addAllStores(src.stores.toList.map(_.toProto()).asJava)
       builder.build()
     }
 

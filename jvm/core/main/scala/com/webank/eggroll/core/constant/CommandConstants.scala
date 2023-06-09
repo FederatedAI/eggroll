@@ -56,6 +56,12 @@ object MetadataCommands {
   val getStoreFromNamespaceServiceName = CommandUtils.toServiceName(prefix, getStoreFromNamespace)
   val GET_STORE_FROM_NAMESPACE = new CommandURI(getStoreFromNamespaceServiceName)
 }
+object ManagerCommands{
+  var  prefix = "v1/cluster-manager/manager"
+  var  nodeHeartbeat =  new CommandURI(prefix = prefix,name = "nodeHeartbeat")
+  var  registerResource = new  CommandURI(prefix = prefix,name = "registerResource")
+
+}
 
 object SessionCommands {
   val prefix = "v1/cluster-manager/session"
@@ -72,6 +78,32 @@ object SessionCommands {
   val killAllSessions = new CommandURI(prefix = prefix, name = "killAllSessions")
 }
 
+object ResouceCommands {
+  val prefix = "v1/node-manager/resouce"
+  var  resourceAllocation = new  CommandURI(prefix= prefix, name = "allocateResource")
+  var  queryNodeResource =  new  CommandURI(prefix= prefix ,name = "queryNodeResource")
+  var  checkNodeProcess =  new CommandURI(prefix= prefix,name = "checkNodeProcess")
+
+}
+
+object JobCommands {
+  val prefix = "v1/cluster-manager/job"
+  val submitJob = new CommandURI(prefix = prefix, name = "submitJob")
+  val queryJobStatus = new CommandURI(prefix = prefix, name = "queryJobStatus")
+  val queryJob = new CommandURI(prefix = prefix, name = "queryJob")
+  val stopJob = new CommandURI(prefix = prefix, name = "stopJob")
+  val killJob = new CommandURI(prefix = prefix, name = "killJob")
+  val downloadJob = new CommandURI(prefix = prefix, name = "downloadJob")
+}
+
+object RendezvousStoreCommands {
+  val prefix = "v1/cluster-manager/job/rendezvous"
+  val set = new CommandURI(prefix = prefix, name = "set")
+  val get = new CommandURI(prefix = prefix, name = "get")
+  val add = new CommandURI(prefix = prefix, name = "add")
+  val destroy = new CommandURI(prefix = prefix, name = "destroy")
+}
+
 object NodeManagerCommands {
   val prefix = "v1/node-manager/processor"
 
@@ -79,4 +111,15 @@ object NodeManagerCommands {
   val startContainers = new CommandURI(prefix = prefix, name = "startContainers")
   val stopContainers = new CommandURI(prefix = prefix, name = "stopContainers")
   val killContainers = new CommandURI(prefix = prefix, name = "killContainers")
+}
+
+object ContainerCommands {
+  val prefix = "v1/node-manager/container"
+
+  val startJobContainers = new CommandURI(prefix = prefix, name = "startJobContainers")
+  val stopJobContainers = new CommandURI(prefix = prefix, name = "stopJobContainers")
+  val killJobContainers = new CommandURI(prefix = prefix, name = "killJobContainers")
+
+  val downloadContainers = new CommandURI(prefix = prefix, name = "downloadContainers")
+
 }

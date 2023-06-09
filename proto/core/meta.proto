@@ -32,6 +32,7 @@ message ServerNode {
   Endpoint endpoint = 4;
   string nodeType = 5;
   string status = 6;
+  repeated Resource resources = 7;  
 }
 
 message ServerCluster {
@@ -135,4 +136,28 @@ message SessionMeta {
   string tag = 4;
   repeated Processor processors = 5;
   map<string, string> options = 6;
+}
+
+message ResourceAllocation{
+   int64  serverNodeId = 1;
+   string status = 2;
+   string sessionId = 3;
+   string operateType = 4;
+   repeated Resource resources = 5;
+
+}
+
+message Resource{
+  string type = 1;
+  int64  total = 2;
+  int64  used = 3;
+  int64  allocated = 4;
+}
+
+message NodeHeartbeat{
+  uint64 id = 1;
+  ServerNode node = 2;
+  string code = 3;
+  string msg = 4;
+
 }

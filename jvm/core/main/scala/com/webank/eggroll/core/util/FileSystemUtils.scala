@@ -21,6 +21,9 @@ package com.webank.eggroll.core.util
 import com.google.common.base.Preconditions
 import com.webank.eggroll.core.constant.StringConstants
 
+import java.io.{File, PrintWriter}
+import scala.io.Source
+
 object FileSystemUtils {
   val parentDirRegex = "\\.\\."
 
@@ -28,4 +31,19 @@ object FileSystemUtils {
     Preconditions.checkNotNull(path)
     path.replaceAll(parentDirRegex, StringConstants.EMPTY)
   }
+  def fileWriter(fileName: String, content: String): Unit = {
+    val writer = new PrintWriter(new File(fileName))
+    writer.write(content)
+    writer.close()
+  }
+
+  def  fileReader(fileName:String):String = {
+       Source.fromFile(fileName).mkString;  //using mkString method
+
+  }
+
+
+
+
+
 }

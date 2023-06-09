@@ -55,4 +55,33 @@ class CommandService extends CommandServiceGrpc.CommandServiceImplBase with Logg
       responseObserver.onCompleted()
     })
   }
+
+  override def callStream(responseObserver: StreamObserver[Command.CommandResponse]): StreamObserver[Command.CommandRequest] = {
+    new StreamObserver[Command.CommandRequest] {
+      override def onNext(value: Command.CommandRequest): Unit = {
+        logInfo(s"${ModuleConstants.COMMAND_WITH_BRACKETS} received ${value.getUri}")
+        //logInfo(s"${ModuleConstants.COMMAND_WITH_BRACKETS} received: ${ToStringUtils.toOneLineString(value)}")
+        val command: ErCommandRequest = value.fromProto()
+        val commandUri = new CommandURI(command)
+
+        val result: Array[Array[Byte]] = CommandRouter.dispatch(
+          serviceName = commandUri.getRoute(),
+          args = value.getArgsList.toArray(),
+          kwargs = value.getKwargsMap.asScala)
+
+        val response: ErCommandResponse = ErCommandResponse(id = value.getId,
+          results = result)
+        responseObserver.onNext(response.toProto())
+      }
+
+      override def onError(t: Throwable): Unit = {
+        logError(s"${ModuleConstants.COMMAND_WITH_BRACKETS} error: ${t.getMessage}", t)
+        responseObserver.onError(t)
+      }
+
+      override def onCompleted(): Unit = {
+        responseObserver.onCompleted()
+      }
+    }
+  }
 }
