@@ -59,8 +59,8 @@ class Container(conf: RuntimeErConf, moduleName: String, processorId: Long = 0) 
     if (pythonPath.nonEmpty) {
       pythonPathArgs = s"--python-path ${pythonPath}"
     }
-
-    if (pythonVenv.nonEmpty) {
+    logInfo(s"kaideng===========pythonVenv ${pythonVenv}")
+    if (pythonVenv.nonEmpty&&pythonVenv!="None") {
       pythonVenvArgs = s"--python-venv ${pythonVenv}"
     }
 

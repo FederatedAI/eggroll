@@ -39,6 +39,33 @@ class SessionMetaDao extends Logging{
 
 
 
+  def registerWithResourceV2(sessionMeta: ErSessionMeta): Unit ={
+
+    val sid = sessionMeta.id
+    dbc.withTransaction { conn =>
+      dbc.update(conn,
+        "insert into session_main(session_id, name, status, tag, total_proc_count, active_proc_count) values(?, ?, ?, ?, ?, 0)",
+        sid, sessionMeta.name, sessionMeta.status, sessionMeta.tag, sessionMeta.totalProcCount)
+      val opts = sessionMeta.options
+      if (opts.nonEmpty) {
+        val valueSql = ("(?, ?, ?) ," * opts.size).stripSuffix(",")
+        val params = opts.flatMap { case (k, v) => Seq(sid, k, v) }.toSeq
+        dbc.update(conn, "insert into session_option(session_id, name, data) values " + valueSql, params: _*)
+      }
+      val procs = sessionMeta.processors
+      if (procs.nonEmpty) {
+        procs.foreach(proc=>{
+          ProcessorStateMachine.changeStatus(paramProcessor = proc.copy(sessionId = sid),preStateParam="",desStateParam=ProcessorStatus.NEW,connection = conn)
+        })
+      }
+    }
+
+
+
+  }
+
+
+
   def registerWithResource(sessionMeta: ErSessionMeta, replace: Boolean = true): Unit = synchronized {
     require(sessionMeta.activeProcCount == sessionMeta.processors.count(_.status == ProcessorStatus.RUNNING),
       "conflict active proc count:" + sessionMeta)
@@ -61,15 +88,6 @@ class SessionMetaDao extends Logging{
       }
       val procs = sessionMeta.processors
       if (procs.nonEmpty) {
-        //        val valueSql = ("(?, ?, ?, ?, ?, ?, ?)," * procs.length).stripSuffix(",")
-        //        val params = procs.flatMap(proc => Seq(
-        //          sid, proc.serverNodeId, proc.processorType, proc.status, proc.tag,
-        //          if (proc.commandEndpoint != null) proc.commandEndpoint.toString else "",
-        //          if (proc.transferEndpoint != null) proc.transferEndpoint.toString else ""))
-        //        dbc.update(conn,
-        //          "insert into session_processor(session_id, server_node_id, processor_type, status, " +
-        //            "tag, command_endpoint, transfer_endpoint) values " + valueSql,
-        //          params: _*)
         procs.foreach(proc=>{
           ProcessorStateMachine.changeStatus(paramProcessor = proc.copy(sessionId = sid),preStateParam="",desStateParam=ProcessorStatus.NEW,connection = conn)
         })
@@ -409,6 +427,17 @@ class SessionMetaDao extends Logging{
       }
     }
   }
+//  def updateSessionMainV2(sessionMeta: ErSessionMeta ,afterCall:(Connection,ErSessionMeta)=>Unit=null): Unit = synchronized {
+//    dbc.withTransaction { conn =>
+//      dbc.update(conn, "update session_main set name = ? , status = ? , tag = ? , active_proc_count = ? where session_id = ?",
+//        sessionMeta.name, sessionMeta.status, sessionMeta.tag, sessionMeta.activeProcCount, sessionMeta.id)
+//      if(afterCall!=null){
+//        afterCall(conn,sessionMeta)
+//      }
+//    }
+//  }
+
+
 
   def updateSessionStatus(sessionId: String, status: String, required_old_status: Option[String] = None): Unit = synchronized {
     required_old_status match {
