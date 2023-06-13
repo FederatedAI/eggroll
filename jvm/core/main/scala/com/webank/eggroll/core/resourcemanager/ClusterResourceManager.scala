@@ -102,13 +102,22 @@ object ClusterResourceManager extends Logging{
               var dispatchedProcessors = resourceApplication.resourceDispatch
 
 
-                smDao.registerWithResource(ErSessionMeta(
+                SessionStateMechine.changeStatus(ErSessionMeta(
                   id = resourceApplication.sessionId,
                   name = resourceApplication.sessionName,
                   processors = dispatchedProcessors.toArray.map(_._1),
                   totalProcCount = dispatchedProcessors.length,
-                  status = SessionStatus.NEW)
-                )
+                  status = SessionStatus.NEW),desStateParam= SessionStatus.NEW,
+                  preCheck = SessionStateMechine.checkSessionIdNotExistInDb)
+
+
+//                smDao.registerWithResource(ErSessionMeta(
+//                  id = resourceApplication.sessionId,
+//                  name = resourceApplication.sessionName,
+//                  processors = dispatchedProcessors.toArray.map(_._1),
+//                  totalProcCount = dispatchedProcessors.length,
+//                  status = SessionStatus.NEW)
+//                )
               }finally {
                 unlockSession(resourceApplication.sessionId)
               }

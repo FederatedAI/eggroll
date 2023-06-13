@@ -149,27 +149,8 @@ object SessionManagerService extends Logging {
 class SessionManagerService extends SessionManager with Logging {
 
   def heartbeat(proc: ErProcessor): ErProcessor = {
-   // smDao.updateProcessor(proc)
-
     logInfo(s"receive heartbeat processor ${proc.id}  ${proc.status} ")
-
     ProcessorStateMachine.changeStatus(proc,desStateParam=proc.status)
-//      proc.status match {
-//      case status if(status==ProcessorStatus.STOPPED||status==ProcessorStatus.KILLED||status==ProcessorStatus.ERROR)=>
-//          logInfo(s"processor ${proc.id}    prepare to return resource")
-//           ProcessorStateMachine.changeStatus(proc,desStateParam=status)
-//      case status if (status==ProcessorStatus.RUNNING )=>
-//          logInfo("receive heartbeat running ,")
-//        ProcessorStateMachine.changeStatus(proc,desStateParam=status)
-//     //     ClusterResourceManager.allocateResource(Array(proc),beforeCall= beforeCall)
-//    }
-//    if(proc.status==ProcessorStatus.STOPPED||
-//      proc.status==ProcessorStatus.KILLED||
-//      proc.status==ProcessorStatus.ERROR
-//    ) {
-//      logInfo(s"heart beat return resource ${proc}")
-//      ClusterResourceManager.returnResource(Array(proc))
-//    }
     proc
   }
 
@@ -187,9 +168,6 @@ class SessionManagerService extends SessionManager with Logging {
         }
       }
     }
-    // 0. generate a simple processors -> server plan, and fill sessionMeta.processors
-    // 1. class NodeManager.startContainers
-    // 2. query session_main's active_proc_count , wait all processor heart beats.
 
     val healthyNodeExample = ErServerNode(status = ServerNodeStatus.HEALTHY, nodeType = ServerNodeTypes.NODE_MANAGER)
     val serverNodeCrudOperator = new ServerNodeCrudOperator()

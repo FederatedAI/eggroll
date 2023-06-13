@@ -68,13 +68,15 @@ class JdbcTemplate(dataSource: () => Connection, autoClose: Boolean = true) exte
         })
       )
       val ret = func(statement)
-      statement.close()
+
       ret
     } catch {
       case e: Exception =>
         val errMsg = s"""error in withStatement. sql="${statement}", params=(${String.join(",", params.map(p => s"'${StringUtils.substring(p.toString, 0, 300)}'"): _*)})"""
         logError(errMsg)
         throw new SQLException(errMsg, e)
+    }finally {
+      statement.close()
     }
   }
 

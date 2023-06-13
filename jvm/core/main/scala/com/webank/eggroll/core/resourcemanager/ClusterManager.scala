@@ -3,7 +3,7 @@ package com.webank.eggroll.core.resourcemanager
 import com.webank.eggroll.core.client.NodeManagerClient
 import com.webank.eggroll.core.constant.ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_NODE_HEARTBEAT_EXPIRED_COUNT
 import com.webank.eggroll.core.constant.NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL
-import com.webank.eggroll.core.constant.SessionConfKeys.EGGROLL_SESSION_STOP_TIMEOUT_MS
+import com.webank.eggroll.core.constant.SessionConfKeys.{EGGROLL_SESSION_MAX_LIVE_TIME, EGGROLL_SESSION_STOP_TIMEOUT_MS}
 import com.webank.eggroll.core.constant.{ProcessorStatus, ServerNodeStatus, SessionConfKeys, SessionStatus}
 import com.webank.eggroll.core.deepspeed.job.JobServiceHandler
 import com.webank.eggroll.core.deepspeed.job.JobServiceHandler.killJob
@@ -41,7 +41,69 @@ object ClusterManagerService extends Logging {
 
   }
 
-  private val nodeProcessChecker = new Thread(() => {
+  private val stoppedNodeProcessChecker = new Thread(() => {
+    var serverNodeCrudOperator = new ServerNodeCrudOperator
+    while (true) {
+      try {
+        var now = System.currentTimeMillis();
+        var erProcessors = serverNodeCrudOperator.queryProcessor(null, null,extention = ()=>{
+         var  result =   List[(String,String)]()
+
+
+
+          result.put("and status in ( ?",ProcessorStatus)
+
+          var sql = " and status in ( ?, ?) "
+          params = params :+ ProcessorStatus.STOPPED
+
+          params.add
+
+
+
+        });
+        var grouped = erProcessors.groupBy(x => {
+          x.serverNodeId
+        })
+        grouped.par.
+          foreach(e => {
+            var serverNode = serverNodeCrudOperator.getServerNode(ErServerNode(id = e._1))
+            var nodeManagerClient = new NodeManagerClient(serverNode.endpoint)
+            e._2.par.foreach(processor => {
+              try {
+
+                var result = nodeManagerClient.checkNodeProcess(processor)
+                if (result == null || result.status == ProcessorStatus.KILLED) {
+                  Thread.sleep(10000)
+                  var processorInDb = serverNodeCrudOperator.queryProcessor(null, ErProcessor(id = processor.id))
+                  if (processorInDb.length > 0) {
+                    if (processorInDb.apply(0).status == ProcessorStatus.RUNNING) {
+                      var result = nodeManagerClient.checkNodeProcess(processor)
+                      if (result == null || result.status == ProcessorStatus.KILLED) {
+                        ProcessorStateMachine.changeStatus(processor, desStateParam = ProcessorStatus.ERROR)
+                      }
+                    }
+                  }
+                }
+              } catch {
+                case e: Throwable =>
+                  e.printStackTrace()
+              }
+            })
+          })
+      }
+      catch {
+        case e: Throwable =>
+          e.printStackTrace()
+      }
+      Thread.sleep(CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL.get().toInt)
+    }
+  }
+    ,"NODE_PROCESS_CHECK_THREAD")
+
+
+
+
+  private val runningNodeProcessChecker = new Thread(() => {
     var serverNodeCrudOperator = new ServerNodeCrudOperator
     while (true) {
       try {
@@ -107,24 +169,26 @@ object ClusterManagerService extends Logging {
 
 
   private def checkAndHandleEggpairActiveSession(session: ErSessionMeta, sessionProcessors: Array[ErProcessor]): Unit = {
-
-    var invalidProcessor = sessionProcessors.filter(p => {
-      p.status == ProcessorStatus.ERROR ||
-        p.status == ProcessorStatus.KILLED ||
-        p.status == ProcessorStatus.STOPPED
-    })
-    if (invalidProcessor.length > 0) {
-      var now = System.currentTimeMillis()
-      var needKillSession: Boolean = false
-
-      needKillSession = invalidProcessor.exists(p => p.updatedAt.getTime < now - EGGROLL_SESSION_STOP_TIMEOUT_MS.get().toLong)
-      if (needKillSession) {
-        logInfo(s"invalid processors ${invalidProcessor},session watcher kill eggpair session ${session} ");
-        SessionManagerService.killSession(session)
+    var  now = System.currentTimeMillis()
+    if(now - session.createTime.getTime>EGGROLL_SESSION_MAX_LIVE_TIME){
+      logInfo(s"session timeout ${session.id} ,live time ${now - session.createTime.getTime}, prepare to kill" )
+      SessionManagerService.killSession(session)
+    }else{
+      var invalidProcessor = sessionProcessors.filter(p => {
+        p.status == ProcessorStatus.ERROR ||
+          p.status == ProcessorStatus.KILLED ||
+          p.status == ProcessorStatus.STOPPED
+      })
+      if (invalidProcessor.length > 0) {
+        var now = System.currentTimeMillis()
+        var needKillSession: Boolean = false
+        needKillSession = invalidProcessor.exists(p => p.updatedAt.getTime < now - EGGROLL_SESSION_STOP_TIMEOUT_MS.get().toLong)
+        if (needKillSession) {
+          logInfo(s"invalid processors ${invalidProcessor},session watcher kill eggpair session ${session} ");
+          SessionManagerService.killSession(session)
+        }
       }
-
     }
-
   }
 
 
@@ -147,6 +211,9 @@ object ClusterManagerService extends Logging {
         s"update session status to `Finished`")
     }
   }
+
+
+
 
   private val sessionWatcher = {
     /*
