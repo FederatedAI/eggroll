@@ -128,16 +128,30 @@ case class ErTask(id: String,
 }
 
 case class ErSessionMeta(id: String = StringConstants.EMPTY,
+                          name: String = StringConstants.EMPTY,
+                          status: String = StringConstants.EMPTY,
+                          totalProcCount: Int = 0,
+                          activeProcCount: Int = 0,
+                          tag: String = StringConstants.EMPTY,
+                          processors: Array[ErProcessor] = Array(),
+                          createTime:Timestamp = null,
+                          updateTime:Timestamp = null,
+                          options: Map[String, String] = Map()) extends MetaRpcMessage {
+}
+
+case class ErSessionMetaTest(id: String = StringConstants.EMPTY,
                          name: String = StringConstants.EMPTY,
                          status: String = StringConstants.EMPTY,
                          totalProcCount: Int = 0,
                          activeProcCount: Int = 0,
                          tag: String = StringConstants.EMPTY,
-                         processors: Array[ErProcessor] = Array(),
+//                         processors: Array[ErProcessor] = Array(),
                          createTime:Timestamp = null,
                          updateTime:Timestamp = null,
-                         options: Map[String, String] = Map()) extends MetaRpcMessage {
+                         options: Map[String, String] = Map())
+    extends MetaRpcMessage {
 }
+
 
 
 object MetaModelPbMessageSerdes {
