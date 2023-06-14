@@ -71,6 +71,19 @@
       </dependency>
 
 
+      <dependency>
+          <groupId>com.typesafe.slick</groupId>
+          <artifactId>slick_2.11</artifactId>
+          <version>3.2.1</version>
+      </dependency>
+
+      <dependency>
+          <groupId>com.typesafe.slick</groupId>
+          <artifactId>slick-hikaricp_2.11</artifactId>
+          <version>3.2.1</version>
+      </dependency>
+
+
   </dependencies>
 
     <profiles>
