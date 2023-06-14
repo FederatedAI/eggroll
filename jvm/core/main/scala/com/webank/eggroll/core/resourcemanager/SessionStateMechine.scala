@@ -1,6 +1,7 @@
 package com.webank.eggroll.core.resourcemanager
 import com.webank.eggroll.core.ErSession
 import com.webank.eggroll.core.constant.SessionStatus
+import com.webank.eggroll.core.dao.SessionDao
 import com.webank.eggroll.core.error.ErSessionException
 import com.webank.eggroll.core.meta.ErSessionMeta
 import com.webank.eggroll.core.resourcemanager.ClusterResourceManager.smDao
@@ -12,6 +13,8 @@ import java.util.concurrent.locks.ReentrantLock
 object SessionStateMechine extends Logging{
 
   private lazy val smDao = new SessionMetaDao
+  private lazy val sessionDao =  SessionDao
+
   private val  processorStateMachine =   ProcessorStateMachine
   private var  sessionLockMap = new ConcurrentHashMap[String,ReentrantLock]()
 
@@ -36,11 +39,16 @@ object SessionStateMechine extends Logging{
 
 
   def  checkSessionIdNotExistInDb(paramErSession: ErSessionMeta):Boolean ={
-      smDao.existSession(paramErSession.id)
+      if(sessionDao.selectOne(paramErSession.id)!=null){
+        false
+      }else{
+        true
+      }
+
   }
 
   def checkSesssionStatusEquals(paramErSession: ErSessionMeta):Boolean ={
-       var sessionInDb = smDao.getSession(paramErSession.id)
+       var sessionInDb = sessionDao.selectOne(paramErSession.id)
       if(ErSessionMeta==null){
           false
       }else{
