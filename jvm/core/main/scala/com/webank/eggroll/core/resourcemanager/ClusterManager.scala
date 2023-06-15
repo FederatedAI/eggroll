@@ -41,64 +41,64 @@ object ClusterManagerService extends Logging {
 
   }
 
-  private val stoppedNodeProcessChecker = new Thread(() => {
-    var serverNodeCrudOperator = new ServerNodeCrudOperator
-    while (true) {
-      try {
-        var now = System.currentTimeMillis();
-        var erProcessors = serverNodeCrudOperator.queryProcessor(null, null,extention = ()=>{
-         var  result =   List[(String,String)]()
-
-
-
-          result.put("and status in ( ?",ProcessorStatus)
-
-          var sql = " and status in ( ?, ?) "
-          params = params :+ ProcessorStatus.STOPPED
-
-          params.add
-
-
-
-        });
-        var grouped = erProcessors.groupBy(x => {
-          x.serverNodeId
-        })
-        grouped.par.
-          foreach(e => {
-            var serverNode = serverNodeCrudOperator.getServerNode(ErServerNode(id = e._1))
-            var nodeManagerClient = new NodeManagerClient(serverNode.endpoint)
-            e._2.par.foreach(processor => {
-              try {
-
-                var result = nodeManagerClient.checkNodeProcess(processor)
-                if (result == null || result.status == ProcessorStatus.KILLED) {
-                  Thread.sleep(10000)
-                  var processorInDb = serverNodeCrudOperator.queryProcessor(null, ErProcessor(id = processor.id))
-                  if (processorInDb.length > 0) {
-                    if (processorInDb.apply(0).status == ProcessorStatus.RUNNING) {
-                      var result = nodeManagerClient.checkNodeProcess(processor)
-                      if (result == null || result.status == ProcessorStatus.KILLED) {
-                        ProcessorStateMachine.changeStatus(processor, desStateParam = ProcessorStatus.ERROR)
-                      }
-                    }
-                  }
-                }
-              } catch {
-                case e: Throwable =>
-                  e.printStackTrace()
-              }
-            })
-          })
-      }
-      catch {
-        case e: Throwable =>
-          e.printStackTrace()
-      }
-      Thread.sleep(CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL.get().toInt)
-    }
-  }
-    ,"NODE_PROCESS_CHECK_THREAD")
+//  private val stoppedNodeProcessChecker = new Thread(() => {
+//    var serverNodeCrudOperator = new ServerNodeCrudOperator
+//    while (true) {
+//      try {
+//        var now = System.currentTimeMillis();
+//        var erProcessors = serverNodeCrudOperator.queryProcessor(null, null,extention = ()=>{
+//         var  result =   List[(String,String)]()
+//
+//
+//
+//          result.put("and status in ( ?",ProcessorStatus)
+//
+//          var sql = " and status in ( ?, ?) "
+//          params = params :+ ProcessorStatus.STOPPED
+//
+//          params.add
+//
+//
+//
+//        });
+//        var grouped = erProcessors.groupBy(x => {
+//          x.serverNodeId
+//        })
+//        grouped.par.
+//          foreach(e => {
+//            var serverNode = serverNodeCrudOperator.getServerNode(ErServerNode(id = e._1))
+//            var nodeManagerClient = new NodeManagerClient(serverNode.endpoint)
+//            e._2.par.foreach(processor => {
+//              try {
+//
+//                var result = nodeManagerClient.checkNodeProcess(processor)
+//                if (result == null || result.status == ProcessorStatus.KILLED) {
+//                  Thread.sleep(10000)
+//                  var processorInDb = serverNodeCrudOperator.queryProcessor(null, ErProcessor(id = processor.id))
+//                  if (processorInDb.length > 0) {
+//                    if (processorInDb.apply(0).status == ProcessorStatus.RUNNING) {
+//                      var result = nodeManagerClient.checkNodeProcess(processor)
+//                      if (result == null || result.status == ProcessorStatus.KILLED) {
+//                        ProcessorStateMachine.changeStatus(processor, desStateParam = ProcessorStatus.ERROR)
+//                      }
+//                    }
+//                  }
+//                }
+//              } catch {
+//                case e: Throwable =>
+//                  e.printStackTrace()
+//              }
+//            })
+//          })
+//      }
+//      catch {
+//        case e: Throwable =>
+//          e.printStackTrace()
+//      }
+//      Thread.sleep(CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL.get().toInt)
+//    }
+//  }
+//    ,"NODE_PROCESS_CHECK_THREAD")
 
 
 
@@ -170,7 +170,7 @@ object ClusterManagerService extends Logging {
 
   private def checkAndHandleEggpairActiveSession(session: ErSessionMeta, sessionProcessors: Array[ErProcessor]): Unit = {
     var  now = System.currentTimeMillis()
-    if(now - session.createTime.getTime>EGGROLL_SESSION_MAX_LIVE_TIME){
+    if(now - session.createTime.getTime>EGGROLL_SESSION_MAX_LIVE_TIME.get().toInt){
       logInfo(s"session timeout ${session.id} ,live time ${now - session.createTime.getTime}, prepare to kill" )
       SessionManagerService.killSession(session)
     }else{
@@ -291,7 +291,7 @@ object ClusterManagerService extends Logging {
   def start(): Unit = {
     sessionWatcher.start()
     nodeHeartbeatChecker.start()
-    nodeProcessChecker.start()
+    //nodeProcessChecker.start()
   }
 
   def updateNode(serverNode: ErServerNode, needUpdateResource: Boolean, isHeartbeat: Boolean): ErServerNode = synchronized {

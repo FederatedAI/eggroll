@@ -394,6 +394,7 @@
     <module>roll_pair</module>
     <module>roll_frame</module>
     <module>roll_site</module>
+      <module>cluster_manager</module>
   </modules>
   
 </project>

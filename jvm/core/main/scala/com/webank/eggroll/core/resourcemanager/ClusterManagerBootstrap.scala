@@ -11,6 +11,8 @@ import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.transfer.{GrpcClientUtils, GrpcServerUtils}
 import com.webank.eggroll.core.util.{CommandArgsUtils, Logging}
 import org.apache.commons.lang3.StringUtils
+import org.springframework.context.ApplicationContext
+import org.springframework.context.support.ClassPathXmlApplicationContext
 
 import java.io.File
 
@@ -199,5 +201,6 @@ class ClusterManagerBootstrap extends BootstrapBase with Logging {
     println(s"$standaloneTag server started at port $port")
     ClusterResourceManager.start()
     ClusterManagerService.start()
+
   }
 }

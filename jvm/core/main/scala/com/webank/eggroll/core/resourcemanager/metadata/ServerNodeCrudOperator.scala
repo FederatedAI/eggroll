@@ -136,9 +136,9 @@ class ServerNodeCrudOperator extends CrudOperator with Logging {
     ServerNodeCrudOperator.doQueryProcessor(connection,processor,extention)
   }
 
-  def queryProcessor(connection: Connection,status:List[String] ,beginTime:Long,endTime:Long):Array[ErProcessor]={
-    ServerNodeCrudOperator.doQueryProcessor(connection,processor,extention)
-  }
+//  def queryProcessor(connection: Connection,status:List[String] ,beginTime:Long,endTime:Long):Array[ErProcessor]={
+//    ServerNodeCrudOperator.doQueryProcessor(connection,processor,extention)
+//  }
 
 
 
@@ -423,70 +423,70 @@ def doCreateServerNode(input: ErServerNode): ErServerNode = {
 
   }
 
-  def doQueryProcessorExtention(connection: Connection,states:List[String],beginTime:Long=0,endTime:Long =0,extention: ()=>Map[String,String]=null) :Array[ErProcessor]={
-    var sql = "select * from session_processor where 1=1 "
-    var params = List[String]()
-    if(states.nonEmpty){
-      sql += " and status in "
-      sql += states.mkString("(",",",")")
-      params= params.:::(states)
-    }
-
-    if(beginTime>0){
-
-    }
-    if(endTime>0){
-
-
-    }
-
-
-
-    //var params = List[String]()
-    if(erProcessor!=null) {
-      if (StringUtils.isNotEmpty(erProcessor.status)) {
-        params = params :+ erProcessor.status
-        sql += " and status =? "
-      }
-      if (StringUtils.isNotEmpty(erProcessor.sessionId)) {
-        params = params :+ erProcessor.sessionId
-        sql += " and session_id =? "
-      }
-
-      if (erProcessor.id != -1) {
-        params = params :+ erProcessor.id.toString
-        sql += s" and processor_id=? "
-      }
-    }
-
-    if(extention!=null) {
-      extention().map(d=>{
-        sql+= d._1
-        params= params :+ d._2})
-
-    }
-
-    // logInfo(s" =========${sql}=========${params}")
-    var func: ResultSet => Iterable[ErProcessor]=rs
-    => rs.map(_ =>
-        ErProcessor(id = rs.getLong("processor_id"),
-          serverNodeId = rs.getInt("server_node_id"),
-          sessionId = rs.getString("session_id"),
-          processorType = rs.getString("processor_type"), status = rs.getString("status"),
-          commandEndpoint = if (StringUtils.isBlank(rs.getString("command_endpoint"))) null
-          else ErEndpoint(rs.getString("command_endpoint")),
-          transferEndpoint = if (StringUtils.isBlank(rs.getString("transfer_endpoint"))) null
-          else ErEndpoint(rs.getString("transfer_endpoint")),
-          pid = rs.getInt("pid"),
-          createdAt = rs.getTimestamp("created_at"),
-          updatedAt = rs.getTimestamp("updated_at")))
-    val resourceResult :Iterable[ErProcessor]= null
-    if(connection!=null){
-      dbc.query(connection, func, sql, params: _*).toArray
-    }else{
-      dbc.query(func, sql, params: _*).toArray
-    }
-  }
+//  def doQueryProcessorExtention(connection: Connection,states:List[String],beginTime:Long=0,endTime:Long =0,extention: ()=>Map[String,String]=null) :Array[ErProcessor]={
+//    var sql = "select * from session_processor where 1=1 "
+//    var params = List[String]()
+//    if(states.nonEmpty){
+//      sql += " and status in "
+//      sql += states.mkString("(",",",")")
+//      params= params.:::(states)
+//    }
+//
+//    if(beginTime>0){
+//
+//    }
+//    if(endTime>0){
+//
+//
+//    }
+//
+//
+//
+//    //var params = List[String]()
+//    if(erProcessor!=null) {
+//      if (StringUtils.isNotEmpty(erProcessor.status)) {
+//        params = params :+ erProcessor.status
+//        sql += " and status =? "
+//      }
+//      if (StringUtils.isNotEmpty(erProcessor.sessionId)) {
+//        params = params :+ erProcessor.sessionId
+//        sql += " and session_id =? "
+//      }
+//
+//      if (erProcessor.id != -1) {
+//        params = params :+ erProcessor.id.toString
+//        sql += s" and processor_id=? "
+//      }
+//    }
+//
+//    if(extention!=null) {
+//      extention().map(d=>{
+//        sql+= d._1
+//        params= params :+ d._2})
+//
+//    }
+//
+//    // logInfo(s" =========${sql}=========${params}")
+//    var func: ResultSet => Iterable[ErProcessor]=rs
+//    => rs.map(_ =>
+//        ErProcessor(id = rs.getLong("processor_id"),
+//          serverNodeId = rs.getInt("server_node_id"),
+//          sessionId = rs.getString("session_id"),
+//          processorType = rs.getString("processor_type"), status = rs.getString("status"),
+//          commandEndpoint = if (StringUtils.isBlank(rs.getString("command_endpoint"))) null
+//          else ErEndpoint(rs.getString("command_endpoint")),
+//          transferEndpoint = if (StringUtils.isBlank(rs.getString("transfer_endpoint"))) null
+//          else ErEndpoint(rs.getString("transfer_endpoint")),
+//          pid = rs.getInt("pid"),
+//          createdAt = rs.getTimestamp("created_at"),
+//          updatedAt = rs.getTimestamp("updated_at")))
+//    val resourceResult :Iterable[ErProcessor]= null
+//    if(connection!=null){
+//      dbc.query(connection, func, sql, params: _*).toArray
+//    }else{
+//      dbc.query(func, sql, params: _*).toArray
+//    }
+//  }
 
 
 

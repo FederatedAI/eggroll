@@ -39,10 +39,10 @@ object SessionStateMechine extends Logging{
 
 
   def  checkSessionIdNotExistInDb(paramErSession: ErSessionMeta):Boolean ={
-      if(sessionDao.selectOne(paramErSession.id)!=null){
-        false
-      }else{
+      if(sessionDao.selectOne(paramErSession.id).isEmpty){
         true
+      }else{
+        false
       }
 
   }
@@ -52,7 +52,7 @@ object SessionStateMechine extends Logging{
       if(ErSessionMeta==null){
           false
       }else{
-        if(sessionInDb.status==paramErSession.status)
+        if(!sessionInDb.isEmpty&&sessionInDb.get.status==paramErSession.status)
              true
         else
             false

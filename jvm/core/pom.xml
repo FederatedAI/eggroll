@@ -37,6 +37,8 @@
     <mysql-connector-java.version>8.0.28</mysql-connector-java.version>
     <mybatis.generator.config.basedir>${project.basedir}/main</mybatis.generator.config.basedir>
     <jna.platform.version>5.0.0</jna.platform.version>
+    <spring.version>5.3.27</spring.version>
+
   </properties>
   <dependencies>
     <dependency>
@@ -44,6 +46,10 @@
       <artifactId>commons-cli</artifactId>
       <version>${commons-cli.version}</version>
     </dependency>
+
+
+
+
     <dependency>
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-dbcp2</artifactId>
@@ -81,6 +87,34 @@
           <groupId>com.typesafe.slick</groupId>
           <artifactId>slick-hikaricp_2.11</artifactId>
           <version>3.2.1</version>
+      </dependency>
+
+
+
+      <dependency>
+          <groupId>org.springframework</groupId>
+          <artifactId>spring-core</artifactId>
+          <version>${spring.version}</version>
+      </dependency>
+      <dependency>
+          <groupId>org.springframework</groupId>
+          <artifactId>spring-beans</artifactId>
+          <version>${spring.version}</version>
+      </dependency>
+      <dependency>
+          <groupId>org.springframework</groupId>
+          <artifactId>spring-context</artifactId>
+          <version>${spring.version}</version>
+      </dependency>
+      <dependency>
+          <groupId>org.springframework</groupId>
+          <artifactId>spring-tx</artifactId>
+          <version>${spring.version}</version>
+      </dependency>
+      <dependency>
+          <groupId>org.springframework</groupId>
+          <artifactId>spring-jdbc</artifactId>
+          <version>${spring.version}</version>
       </dependency>
 
 
