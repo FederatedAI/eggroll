@@ -7,6 +7,7 @@ import com.webank.eggroll.core.resourcemanager.ClusterManagerBootstrap;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.context.ApplicationContext;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
@@ -14,10 +15,12 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableScheduling
 public class Application {
 
+    static ApplicationContext context  ;
+
     public static void main(String[] args) {
 
         ClusterManagerBootstrap  clusterManagerBootstrap = new ClusterManagerBootstrap();
-        new SpringApplicationBuilder(Application.class).run(args);
+        context=  new SpringApplicationBuilder(Application.class).run(args);
         Runtime.getRuntime().addShutdownHook(new Thread(() ->{
 
         }));
