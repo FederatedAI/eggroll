@@ -215,13 +215,13 @@ class SessionManagerService extends SessionManager with Logging {
           var  prepareProcessors :ArrayBuffer[ErProcessor] = new  ArrayBuffer[ErProcessor]()
           for( i<-0 until eggsPerNode){
             prepareProcessors.append(new ErProcessor(sessionId = sessionId,processorType=ProcessorTypes.EGG_PAIR,
-              status=ProcessorStatus.NEW,resources = Array(ErResource(resourceType=ResourceTypes.VGPU_CORE,
+              status=ProcessorStatus.NEW,resources = Array(ErResource(resourceType=ResourceTypes.VCPU_CORE,
                 allocated = 1,status = ResourceStatus.PRE_ALLOCATED))))
           }
 
           val resourceApplication = ResourceApplication(
             sortByResourceType =ResourceTypes.VGPU_CORE,
-            dispatchStrategy = DispatchStrategy.SINGLE_NODE_FIRST,
+            dispatchStrategy = DispatchStrategy.FIX,
             processors = prepareProcessors.toArray,
             resourceExhaustedStrategy = ResourceExhaustedStrategy.WAITING,
             timeout = 3000,
