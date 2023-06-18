@@ -9,6 +9,7 @@ import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.util.Logging
+import org.springframework.stereotype.Service
 
 import java.sql.Connection
 import java.util.concurrent.{ConcurrentHashMap, CountDownLatch, TimeUnit}
@@ -20,7 +21,7 @@ import scala.collection.mutable.ArrayBuffer
 import scala.util.Random
 import scala.util.control.Breaks.{break, breakable}
 
-object ClusterResourceManager extends Logging{
+object ClusterResourceManager extends Logging {
 
 
     def  start():Unit={

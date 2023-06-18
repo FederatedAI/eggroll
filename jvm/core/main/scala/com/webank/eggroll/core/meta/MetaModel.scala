@@ -137,6 +137,18 @@ case class ErSessionMeta(id: String = StringConstants.EMPTY,
                           createTime:Timestamp = null,
                           updateTime:Timestamp = null,
                           options: Map[String, String] = Map()) extends MetaRpcMessage {
+
+//  def toPath(delim: String = StringConstants.SLASH): String = {
+//    if (!StringUtils.isBlank(path)) {
+//      path
+//    } else {
+//      String.join(delim, storeType, namespace, name)
+//    }
+//  }
+    def   getJavaOptions(): java.util.Map[String,String] = {
+
+      options.asJava
+    }
 }
 
 case class ErSessionMetaTest(id: String = StringConstants.EMPTY,
