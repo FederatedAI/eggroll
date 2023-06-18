@@ -12,6 +12,7 @@ import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.resourcemanager.ProcessorStateMachine.defaultSessionCallback
 import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator
 import com.webank.eggroll.core.util.Logging
+import org.springframework.context.ApplicationContext
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
@@ -22,6 +23,8 @@ trait ClusterManager {
 }
 
 object ClusterManagerService extends Logging {
+
+  var  context : ApplicationContext= null;
 
   var nodeHeartbeatMap = mutable.Map[Long, ErNodeHeartbeat]()
   lazy val serverNodeCrudOperator = new ServerNodeCrudOperator()

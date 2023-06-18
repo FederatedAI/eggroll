@@ -81,7 +81,7 @@ abstract class ErConf {
     val cur = this.conf
     prop.forEach((k, v) =>{
       cur.put(k, v)
-      println(s"config key ${k}=${v}")
+     // println(s"config key ${k}=${v}")
     }
       )
     this
