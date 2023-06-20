@@ -60,7 +60,7 @@ class Container(conf: RuntimeErConf, moduleName: String, processorId: Long = 0) 
       pythonPathArgs = s"--python-path ${pythonPath}"
     }
 
-    if (pythonVenv.nonEmpty) {
+    if (pythonVenv.nonEmpty&&pythonVenv!= "None") {
       pythonVenvArgs = s"--python-venv ${pythonVenv}"
     }
 

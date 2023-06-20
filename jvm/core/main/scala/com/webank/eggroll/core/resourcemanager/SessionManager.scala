@@ -148,28 +148,17 @@ object SessionManagerService extends Logging {
 
 class SessionManagerService extends SessionManager with Logging {
 
+  var heartBeatMap = new  ConcurrentHashMap[Long,ErProcessor]()
   def heartbeat(proc: ErProcessor): ErProcessor = {
-   // smDao.updateProcessor(proc)
-
     logInfo(s"receive heartbeat processor ${proc.id}  ${proc.status} ")
-
-    ProcessorStateMachine.changeStatus(proc,desStateParam=proc.status)
-//      proc.status match {
-//      case status if(status==ProcessorStatus.STOPPED||status==ProcessorStatus.KILLED||status==ProcessorStatus.ERROR)=>
-//          logInfo(s"processor ${proc.id}    prepare to return resource")
-//           ProcessorStateMachine.changeStatus(proc,desStateParam=status)
-//      case status if (status==ProcessorStatus.RUNNING )=>
-//          logInfo("receive heartbeat running ,")
-//        ProcessorStateMachine.changeStatus(proc,desStateParam=status)
-//     //     ClusterResourceManager.allocateResource(Array(proc),beforeCall= beforeCall)
-//    }
-//    if(proc.status==ProcessorStatus.STOPPED||
-//      proc.status==ProcessorStatus.KILLED||
-//      proc.status==ProcessorStatus.ERROR
-//    ) {
-//      logInfo(s"heart beat return resource ${proc}")
-//      ClusterResourceManager.returnResource(Array(proc))
-//    }
+    var previousHeartbeat = heartBeatMap.put(proc.id,proc)
+    if(previousHeartbeat==null){
+        ProcessorStateMachine.changeStatus(proc,desStateParam=proc.status)
+    }else{
+      if(previousHeartbeat.status!=proc.status){
+        ProcessorStateMachine.changeStatus(proc,desStateParam=proc.status)
+      }
+    }
     proc
   }
 

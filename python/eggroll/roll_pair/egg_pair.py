@@ -885,7 +885,7 @@ def serve(args):
         })
 
         # cluster_manager_client.heartbeat(myself)
-        node_manager_client.heartbeat(myself)
+         #node_manager_client.heartbeat(myself)
         add_runtime_storage('er_session_id', session_id)
 
         if platform.system() == "Windows":
@@ -895,6 +895,8 @@ def serve(args):
     L.info(f'egg_pair started at port={port}, transfer_port={transfer_port}')
 
     run = True
+
+
 
     def exit_gracefully(signum, frame):
         nonlocal run
@@ -906,7 +908,8 @@ def serve(args):
     signal.signal(signal.SIGINT, exit_gracefully)
 
     while run:
-        time.sleep(1)
+        time.sleep(10)
+        node_manager_client.heartbeat(myself)
 
     L.info(f'sending exit heartbeat to cm')
     if cluster_manager:
@@ -924,6 +927,13 @@ def serve(args):
 
     L.info(f'system metric at exit: {get_system_metric(1)}')
     L.info(f'egg_pair {args.processor_id} at port={port}, transfer_port={transfer_port}, pid={pid} stopped gracefully')
+
+
+
+
+
+
+
 
 
 if __name__ == '__main__':

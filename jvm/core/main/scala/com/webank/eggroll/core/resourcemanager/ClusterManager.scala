@@ -4,15 +4,17 @@ import com.webank.eggroll.core.client.NodeManagerClient
 import com.webank.eggroll.core.constant.ClusterManagerConfKeys.CONFKEY_CLUSTER_MANAGER_NODE_HEARTBEAT_EXPIRED_COUNT
 import com.webank.eggroll.core.constant.NodeManagerConfKeys.CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL
 import com.webank.eggroll.core.constant.SessionConfKeys.EGGROLL_SESSION_STOP_TIMEOUT_MS
-import com.webank.eggroll.core.constant.{ProcessorStatus, ServerNodeStatus, SessionConfKeys, SessionStatus}
+import com.webank.eggroll.core.constant.{ProcessorStatus, ProcessorTypes, ServerNodeStatus, SessionConfKeys, SessionStatus}
 import com.webank.eggroll.core.deepspeed.job.JobServiceHandler
 import com.webank.eggroll.core.deepspeed.job.JobServiceHandler.killJob
 import com.webank.eggroll.core.error.ErSessionException
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.resourcemanager.ProcessorStateMachine.defaultSessionCallback
+import com.webank.eggroll.core.resourcemanager.SessionManagerService.smDao
 import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator
 import com.webank.eggroll.core.util.Logging
 
+import java.util.concurrent.ConcurrentHashMap
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
@@ -24,6 +26,8 @@ trait ClusterManager {
 object ClusterManagerService extends Logging {
 
   var nodeHeartbeatMap = mutable.Map[Long, ErNodeHeartbeat]()
+  var processorHeartbeatMap = new  ConcurrentHashMap[Long,ErProcessor]()
+
   lazy val serverNodeCrudOperator = new ServerNodeCrudOperator()
   private lazy val smDao = new SessionMetaDao()
 
@@ -148,6 +152,73 @@ object ClusterManagerService extends Logging {
     }
   }
 
+  private val processorHeartbeatWatcher= {
+      new Thread(()=>{
+        while(true){
+          try{
+
+
+
+            processorHeartbeatMap.forEach((k,processor)=>{
+              var now = System.currentTimeMillis()
+              processor.status match {
+                  case processorStatus  if (processorStatus==ProcessorStatus.STOPPED||
+                    processorStatus==ProcessorStatus.KILLED||processorStatus==ProcessorStatus.ERROR||processorStatus==ProcessorStatus.FINISHED)=>
+
+                    var serverNode = serverNodeCrudOperator.getServerNode(ErServerNode(id = processor.serverNodeId))
+                    var nodeManagerClient = new NodeManagerClient(serverNode.endpoint)
+                    var erProcessors = serverNodeCrudOperator.queryProcessor(null, ErProcessor(id=processor.id));
+                    erProcessors.map(inner=>{
+                      var result = nodeManagerClient.checkNodeProcess(inner)
+                      if (result == null || result.status == ProcessorStatus.KILLED) {
+                        logInfo(s"processor id ${processor.id} is already stopped ")
+                        processorHeartbeatMap.remove(k)
+                      }else{
+                        if(now-processor.lastHeartbeat>30000){
+                         // logInfo()
+
+                          processor.processorType match{
+                            case  ProcessorTypes.EGG_PAIR =>
+                              val dbSessionMeta = smDao.getSession(processor.sessionId)
+                              nodeManagerClient.killContainers(dbSessionMeta);
+
+                            case  "deepspeed" =>
+                            case  ProcessorTypes.DEEPSPEED_DOWNLOAD =>
+
+                          }
+
+                        }
+
+
+                      }
+                    })
+
+              }
+
+              if(v.status==ProcessorStatus.)
+
+
+            })
+
+
+
+          } catch {
+            case e: Throwable=>
+              logError(s"processor heartbeat watcher handle procssorId ${session.id} error ${e.getMessage}")
+              e.printStackTrace()
+
+          }
+
+
+        }
+      },"PROCESSOR_HEARBEAT_WATCHER_THREAD")
+
+
+
+  }
+
+
+
   private val sessionWatcher = {
     /*
     update session status according to processor status
@@ -186,7 +257,7 @@ object ClusterManagerService extends Logging {
                   e.printStackTrace()}
 
             }
-            Thread.sleep(1000)
+            Thread.sleep(5000)
           }catch {
             case e: Throwable=>
                   logError(s"session watcher handle error ${e.getMessage}")
