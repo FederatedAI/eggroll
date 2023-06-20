@@ -59,6 +59,7 @@ object ProcessorTypes {
 
   val ROLL_PAIR_MASTER = "roll_pair_master"
   val EGG_PAIR = "egg_pair"
+  val DEEPSPEED_DOWNLOAD = "deepspeed_download"
 }
 
 object ServerNodeTypes {
