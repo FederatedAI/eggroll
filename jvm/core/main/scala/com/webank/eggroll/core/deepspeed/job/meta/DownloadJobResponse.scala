@@ -16,7 +16,7 @@ object DownloadJobResponse {
     DownloadJobResponse(
       sessionId = proto.getSessionId,
       containerContents = proto.getContainerContentList.asScala.map(v =>
-        ContainerContent(v.getContainerId, v.getContent.toByteArray, v.getCompressMethod)).toArray)
+        ContainerContent(v.getRank, v.getContent.toByteArray, v.getCompressMethod)).toArray)
   }
 
   implicit def serialize(src: DownloadJobResponse): Array[Byte] = {

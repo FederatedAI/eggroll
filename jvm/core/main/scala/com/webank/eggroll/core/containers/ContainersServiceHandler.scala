@@ -82,7 +82,7 @@ class ContainersServiceHandler(implicit ec: ExecutionContext,
         sessionId = sessionId,
         processorId = containerId,
         deepspeedContainerConfig = new WarpedDeepspeedContainerConfig(deepspeedConfig),
-        containerWorkspace = getContainerWorkspace(sessionId, containerId),
+        containerWorkspace = getContainerWorkspace(sessionId, deepspeedConfig.rank),
         commandArguments = startDeepspeedContainerRequest.commandArguments,
         environmentVariables = startDeepspeedContainerRequest.environmentVariables,
         files = startDeepspeedContainerRequest.files,
@@ -119,22 +119,22 @@ class ContainersServiceHandler(implicit ec: ExecutionContext,
   def downloadContainers(downloadContainersRequest: DownloadContainersRequest): DownloadContainersResponse = {
     val sessionId = downloadContainersRequest.sessionId
     val containerContentType = downloadContainersRequest.contentType
-    val containerIds = downloadContainersRequest.containerIds
-    logInfo(s"(sessionId=$sessionId)downloading containers: ${containerIds.mkString(",")}")
+    val ranks = downloadContainersRequest.ranks
+    logInfo(s"(sessionId=$sessionId)downloading containers: ${ranks.mkString(",")}")
 
-    val contents = containerIds.map { containerId =>
+    val contents = ranks.map { rank =>
       val targetDir = containerContentType match {
-        case ContentType.ALL => getContainerWorkspace(sessionId, containerId)
-        case ContentType.MODELS => getContainerModelsDir(sessionId, containerId)
-        case ContentType.LOGS => getContainerLogsDir(sessionId, containerId)
+        case ContentType.ALL => getContainerWorkspace(sessionId, rank)
+        case ContentType.MODELS => getContainerModelsDir(sessionId, rank)
+        case ContentType.LOGS => getContainerLogsDir(sessionId, rank)
         case _ => throw new IllegalArgumentException(s"unsupported container content type: $containerContentType")
       }
       downloadContainersRequest.compressMethod match {
         case CompressMethod.ZIP =>
           if (targetDir.exists)
-            ContainerContent(containerId, zip(targetDir, downloadContainersRequest.compressLevel), CompressMethod.ZIP)
+            ContainerContent(rank, zip(targetDir, downloadContainersRequest.compressLevel), CompressMethod.ZIP)
           else
-            ContainerContent(containerId, Array[Byte](), CompressMethod.ZIP)
+            ContainerContent(rank, Array[Byte](), CompressMethod.ZIP)
         case _ =>
           throw new IllegalArgumentException(s"compress method not supported: ${downloadContainersRequest.compressMethod}")
       }
@@ -142,16 +142,16 @@ class ContainersServiceHandler(implicit ec: ExecutionContext,
     DownloadContainersResponse(sessionId = downloadContainersRequest.sessionId, containerContents = contents)
   }
 
-  private def getContainerWorkspace(sessionId: String, containerId: Long): Path = {
-    containersDataDir / sessionId / containerId.toString
+  private def getContainerWorkspace(sessionId: String, rank: Long): Path = {
+    containersDataDir / sessionId / rank.toString
   }
 
-  private def getContainerModelsDir(sessionId: String, containerId: Long): Path = {
-    getContainerWorkspace(sessionId, containerId) / MODELS
+  private def getContainerModelsDir(sessionId: String, rank: Long): Path = {
+    getContainerWorkspace(sessionId, rank) / MODELS
   }
 
-  private def getContainerLogsDir(sessionId: String, containerId: Long): Path = {
-    getContainerWorkspace(sessionId, containerId) / LOGS
+  private def getContainerLogsDir(sessionId: String, rank: Long): Path = {
+    getContainerWorkspace(sessionId, rank) / LOGS
   }
 }
 
