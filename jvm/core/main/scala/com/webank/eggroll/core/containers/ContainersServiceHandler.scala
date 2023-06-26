@@ -82,7 +82,7 @@ class ContainersServiceHandler(implicit ec: ExecutionContext,
         sessionId = sessionId,
         processorId = containerId,
         deepspeedContainerConfig = new WarpedDeepspeedContainerConfig(deepspeedConfig),
-        containerWorkspace = getContainerWorkspace(containerId),
+        containerWorkspace = getContainerWorkspace(sessionId, containerId),
         commandArguments = startDeepspeedContainerRequest.commandArguments,
         environmentVariables = startDeepspeedContainerRequest.environmentVariables,
         files = startDeepspeedContainerRequest.files,
@@ -124,9 +124,9 @@ class ContainersServiceHandler(implicit ec: ExecutionContext,
 
     val contents = containerIds.map { containerId =>
       val targetDir = containerContentType match {
-        case ContentType.ALL => getContainerWorkspace(containerId)
-        case ContentType.MODELS => getContainerModelsDir(containerId)
-        case ContentType.LOGS => getContainerLogsDir(containerId)
+        case ContentType.ALL => getContainerWorkspace(sessionId, containerId)
+        case ContentType.MODELS => getContainerModelsDir(sessionId, containerId)
+        case ContentType.LOGS => getContainerLogsDir(sessionId, containerId)
         case _ => throw new IllegalArgumentException(s"unsupported container content type: $containerContentType")
       }
       downloadContainersRequest.compressMethod match {
@@ -142,16 +142,16 @@ class ContainersServiceHandler(implicit ec: ExecutionContext,
     DownloadContainersResponse(sessionId = downloadContainersRequest.sessionId, containerContents = contents)
   }
 
-  private def getContainerWorkspace(containerId: Long): Path = {
-    containersDataDir / containerId.toString
+  private def getContainerWorkspace(sessionId: String, containerId: Long): Path = {
+    containersDataDir / sessionId / containerId.toString
   }
 
-  private def getContainerModelsDir(containerId: Long): Path = {
-    getContainerWorkspace(containerId) / MODELS
+  private def getContainerModelsDir(sessionId: String, containerId: Long): Path = {
+    getContainerWorkspace(sessionId, containerId) / MODELS
   }
 
-  private def getContainerLogsDir(containerId: Long): Path = {
-    getContainerWorkspace(containerId) / LOGS
+  private def getContainerLogsDir(sessionId: String, containerId: Long): Path = {
+    getContainerWorkspace(sessionId, containerId) / LOGS
   }
 }
 
