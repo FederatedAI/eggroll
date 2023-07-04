@@ -72,6 +72,7 @@ class StoreCrudOperator extends CrudOperator with Logging {
 object StoreCrudOperator extends Logging {
   private lazy val dbc = BaseDao.dbc
   private val nodeIdToNode = new ConcurrentHashMap[java.lang.Long, DbServerNode]()
+  //doing    StoreLocatorServiceNew.doGetStore
   private[metadata] def doGetStore(input: ErStore): ErStore = {
     val inputOptions = input.options
 
@@ -293,7 +294,7 @@ object StoreCrudOperator extends Logging {
     val outputStoreLocator = if (inputStoreLocator.name.equals("*")) {
       val result = dbc.withTransaction(conn => {
         var sql = "update store_locator set name = concat(name, ?), status = ? where namespace = ? and status = ? "
-        val storeType = inputStoreLocator.storeType
+        val storeType =
         if (storeType.equals("*")) {
           dbc.update(conn, sql,
             s".${TimeUtils.getNowMs()}", StoreStatus.DELETED, inputStoreLocator.namespace, StoreStatus.NORMAL)

@@ -1,7 +1,6 @@
 package com.webank.eggroll.clustermanager.statemechine;
 
-import com.webank.eggroll.clustermanager.dao.impl.SessionDaoNew;
-import com.webank.eggroll.clustermanager.dao.mapper.SessionMainMapper;
+import com.webank.eggroll.clustermanager.dao.impl.SessionServiceNew;
 import com.webank.eggroll.core.error.ErSessionException;
 import com.webank.eggroll.core.meta.ErSessionMeta;
 import org.slf4j.Logger;
@@ -18,7 +17,7 @@ public class SessionStateMechine {
 
 
     @Autowired
-    SessionDaoNew  sessionDaoNew;
+    SessionServiceNew sessionServiceNew;
 
 
 
@@ -67,7 +66,7 @@ public class SessionStateMechine {
 
             switch(statusLine){
                 case  "_NEW" :
-                    sessionDaoNew.registerSession(paramErSession);
+                    sessionServiceNew.registerSession(paramErSession);
 
 
 

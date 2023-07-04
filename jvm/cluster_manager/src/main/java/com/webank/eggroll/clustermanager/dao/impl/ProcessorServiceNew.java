@@ -10,9 +10,9 @@ import org.springframework.stereotype.Service;
 import java.util.Date;
 
 @Service
-public class ProcessorDaoNew {
+public class ProcessorServiceNew {
 
-    Gson  gson = new Gson();1
+    Gson  gson = new Gson();
 
     @Autowired
     SessionProcessorMapper  sessionProcessorMapper;

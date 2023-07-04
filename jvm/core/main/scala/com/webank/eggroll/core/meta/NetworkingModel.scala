@@ -108,6 +108,11 @@ case class ErProcessor(id: Long = -1,
                        createdAt:Timestamp= null,
                        updatedAt:Timestamp=null
                       ) extends NetworkingRpcMessage {
+  def this(id: Long, serverNodeId: Long) =
+    this(id = id, serverNodeId = serverNodeId)
+
+  def this(id: Long,serverNodeId: Long, tag: String) =
+    this(id = id, serverNodeId = serverNodeId,tag = tag)
   override def toString: String = {
     val sb = new StringBuilder
     //    sb.append("total number of exception(s) occured: ")
@@ -151,6 +156,9 @@ case class ErServerNode(id: Long = -1,
 			resources : Array[ErResource]= Array()
 
                        ) extends NetworkingRpcMessage{
+
+  def this(nodeType: String, status: String) =
+    this(nodeType = i_nodeType, status = i_status)
 	  override  def  toString: String = {
     s"<ErServerNode(id=${id},name = ${name},clusterId = ${clusterId},endpoint = ${endpoint},nodeType = ${nodeType},status = ${status} ,resources = ${resources.mkString})>"
   }
