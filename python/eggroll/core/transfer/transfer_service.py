@@ -11,12 +11,14 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
-
+import io
+import os
 import queue
+import zipfile
 from threading import Thread, Lock, Event
 from time import sleep
 from typing import Iterable
+from zipfile import ZIP_DEFLATED, ZIP_STORED
 
 import grpc
 from grpc._cython import cygrpc
@@ -26,8 +28,10 @@ from eggroll.core.datastructure import create_executor_pool
 from eggroll.core.datastructure.broker import FifoBroker, BrokerClosed
 from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.meta_model import ErEndpoint
-from eggroll.core.proto import transfer_pb2_grpc, transfer_pb2
-from eggroll.core.utils import _exception_logger
+from eggroll.core.proto import transfer_pb2_grpc, transfer_pb2, deepspeed_download_pb2_grpc ,deepspeed_download_pb2
+from eggroll.core.proto.containers_pb2 import ContentType, ContainerContent
+
+from eggroll.core.utils import _exception_logger, get_static_er_conf
 from eggroll.utils.log_utils import get_logger
 
 L = get_logger()
@@ -141,6 +145,63 @@ class TransferService(object):
                 #todo:1: remove print here
                 print(e)
 
+class GrpcDsDownloadServicer(deepspeed_download_pb2_grpc.DsDownloadServiceServicer):
+
+
+    def  get_container_workspace(self,container_id):
+        L.info(f"get_container_workspace ========={container_id}")
+        data_dir = get_static_er_conf().get("eggroll.resourcemanager.nodemanager.containers.data.dir",None)
+        return data_dir+"/"+container_id
+    def  get_container_models_dir(self,container_id):
+        self.get_container_workspace(container_id)+"/"+"models"
+
+    def  get_container_logs_dir(self,container_id):
+        self.get_container_workspace(container_id)+"/"+"logs"
+    def  get_container_path(self,content_type,container_id):
+        # case ContentType.ALL => getContainerWorkspace(containerId)
+        # case ContentType.MODELS => getContainerModelsDir(containerId)
+        # case ContentType.LOGS => getContainerLogsDir(containerId)
+        #
+
+        if content_type == ContentType.ALL:
+                return self.get_container_workspace(container_id)
+        elif  content_type ==ContentType.MODELS:
+                return self.get_container_models_dir(container_id)
+        elif  content_type ==ContentType.LOGS:
+                return self.get_container_logs_dir(container_id)
+        else:
+                L.info("xxxxxxxxxxxxxxx")
+                raise RuntimeError(f"download content type {content_type} is not support ")
+
+
+
+    @_exception_logger
+    def download(self, request: deepspeed_download_pb2.DsDownloadRequest, context):
+        L.info(f"kaideng download ======111= {request}")
+        result = []
+        try:
+            for  container_id in  request.container_ids:
+                L.info(f"prepare to download container_id {container_id}")
+                path = self.get_container_path(request.content_type,str(container_id))
+                L.info(f"prepare to download path {path}")
+                content = zip2bytes(startdir=path)
+                L.info(f"download container_id {container_id} content size {len(content)}")
+                compress_content = ContainerContent(container_id=container_id,content=content)
+                # message ContainerContent
+                # {
+                #     int64 container_id = 1;
+                #     bytes content = 2;
+                #     string compress_method = 3;
+                # }
+                result.append(compress_content)
+        except Exception as e:
+            L.info("eeeeeeeeeeeeeeeeeeeee1111")
+            L.exception("download error==========")
+
+            raise  e
+        return deepspeed_download_pb2.DsDownloadResponse(session_id=request.session_id,container_content=result)
+
+
 
 class GrpcTransferServicer(transfer_pb2_grpc.TransferServiceServicer):
     @_exception_logger
@@ -178,6 +239,7 @@ class GrpcTransferServicer(transfer_pb2_grpc.TransferServiceServicer):
 
     @_exception_logger
     def recv(self, request, context):
+
         base_tag = request.header.tag
         L.debug(f'GrpcTransferServicer recv broker tag={base_tag}')
         callee_messages_broker = TransferService.get_broker(base_tag)
@@ -285,4 +347,23 @@ class TransferClient(object):
             L.exception(f'fail to {endpoint} in TransferClient.recv, cur_retry={cur_retry}', exc_info=e)
             raise exception
 
+def zip2bytes(startdir,compression=ZIP_DEFLATED,compresslevel=1, **kwargs) -> bytes:
+    L.info(f"download start dir {startdir}")
+    if compression == ZIP_STORED:
+        compresslevel = None
+        # kwargs["compression"] = compression
+        # kwargs["compresslevel"] = compresslevel
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", compression=compression,compresslevel=compresslevel) as z:
+        for dirpath, dirnames, filenames in os.walk(startdir):
+            for filename in filenames:
+                subpath = os.path.join(dirpath, filename)
+                subfile = open(subpath, encoding="utf-8")
+                z.writestr(filename, subfile.read())
+    buffer.seek(0)
+    return buffer.read()
 
+if __name__ == '__main__':
+   # f = zipfile.ZipFile('/Users/kaideng/work/test2/mytest.zip','w',zipfile.ZIP_DEFLATED)
+    startdir = "/data/projects/fate/eggroll/deepspeed/1"
+    print(zip2bytes(startdir))

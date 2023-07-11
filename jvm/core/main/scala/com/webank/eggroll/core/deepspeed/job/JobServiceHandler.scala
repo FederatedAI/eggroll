@@ -1,5 +1,6 @@
 package com.webank.eggroll.core.deepspeed.job
 
+import com.google.gson.Gson
 import com.webank.eggroll.core.client.NodeManagerClient
 import com.webank.eggroll.core.constant._
 import com.webank.eggroll.core.containers.JobProcessorTypes
@@ -14,11 +15,15 @@ import com.webank.eggroll.core.resourcemanager.{ClusterResourceManager, SessionM
 import com.webank.eggroll.core.util.Logging
 import org.apache.commons.lang3.StringUtils
 
+import java.util
+import scala.collection.JavaConverters.asJavaIterableConverter
 import scala.collection.mutable.ArrayBuffer
+import scala.util.Random
 import scala.util.control.Breaks.{break, breakable}
 
 object JobServiceHandler extends Logging {
   private lazy val smDao = new SessionMetaDao
+  private lazy val nodeDao = new  ServerNodeCrudOperator;
 
   //  ClusterManagerService.registerProcessorCallback(JobProcessorTypes.DeepSpeed.toString, (event: ProcessorEvent) => {
   //    new Thread(() => {
@@ -55,6 +60,81 @@ object JobServiceHandler extends Logging {
     val status = smDao.getSessionMain(sessionId).status
     QueryJobStatusResponse(sessionId = sessionId, status = status)
   }
+
+  def prepareJobDownload (prepareRequest: PrepareJobDownloadRequest):PrepareJobDownloadResponse = {
+    val sessionId = prepareRequest.sessionId
+    logInfo(f"download job request, sessionId: ${sessionId}")
+    val contentType = prepareRequest.contentType
+    val compressMethod = prepareRequest.compressMethod
+    var contentMap =  new util.HashMap[Any,Any]()
+    var processors =  ArrayBuffer[ErProcessor]()
+
+    val nodeIdMeta = smDao.getRanks(sessionId).flatMap { case (containerId, nodeId, globalRank, localRank) =>
+      val index = if (prepareRequest.ranks.isEmpty) globalRank else prepareRequest.ranks.indexOf(globalRank)
+      if (index >= 0) {
+        Some(nodeId, containerId, globalRank, localRank, index)
+      } else {
+        None
+      }
+    }.groupBy(_._1)
+
+
+    nodeIdMeta .map(t=>{
+      var options = new  util.HashMap[String,String]()
+      var serverNodeIndb = nodeDao.getServerNode(ErServerNode(id = t._1))
+      if(serverNodeIndb != null) {
+        options.put("ip",serverNodeIndb.endpoint.host)
+        options.put("port",serverNodeIndb.endpoint.port.toString)
+           contentMap.put(serverNodeIndb.id.toString,t._2.map(e=>{Array(e._1,e._2,e._3,e._4,e._5)}))
+
+           processors.append(ErProcessor(sessionId = prepareRequest.sessionId,
+             serverNodeId = t._1,
+             processorType = ProcessorTypes.EGG_PAIR,
+             name = "DS-DOWNLOAD",
+             status = ProcessorStatus.NEW,
+             options =  options
+
+           ))
+        logInfo("===================append processor ")
+      }
+    })
+
+
+
+    logInfo(s"========processor size = ${processors.length}")
+    if(processors.length==0){
+      throw  new ErSessionException(s"can not find download rank info for session ${sessionId} ")
+    }
+
+    var  newSession = ClusterResourceManager.submitJodDownload(ResourceApplication(sessionId = "DS-DOWNLOAD-"+System.currentTimeMillis()+"-"+scala.util.Random.nextInt(100).toString,
+      processors=processors.toArray
+    ))
+
+    if(newSession.status!=SessionStatus.ACTIVE){
+      throw  new  ErSessionException("session status is "+newSession.status)
+    }
+    logInfo(s"===========xxxxx ${contentMap} ")
+    newSession.processors.map(p=>{
+      logInfo(s"ppppppppppppp  ${p}")
+      if(contentMap.containsKey(p.serverNodeId.toString)){
+        logInfo(s"iiiiiiiiiiiiiiiiii")
+        contentMap.put(     p.transferEndpoint.toString,contentMap.get(p.serverNodeId.toString))
+        logInfo(s"hhhhhhhhhhhhhhhhh ${contentMap}")
+        contentMap.remove(p.serverNodeId.toString)
+      }else{
+        logInfo(s"================= cannot found ${p.serverNodeId}")
+      }
+    })
+
+
+    var  gson= new Gson()
+    logInfo(s"============${gson.toJson(contentMap)}");
+    PrepareJobDownloadResponse(sessionId = newSession.id, content = gson.toJson(contentMap))
+  }
+
+
+
+
 
   def handleJobDownload(downloadJobRequest: DownloadJobRequest): DownloadJobResponse = {
     val sessionId = downloadJobRequest.sessionId

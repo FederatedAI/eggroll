@@ -83,6 +83,7 @@ class NodeManagerService extends NodeManager with Logging {
   }
 
   private def operateContainers(sessionMeta: ErSessionMeta, opType: String): ErSessionMeta = {
+    logInfo(s"operateContainers  ${sessionMeta}  ===== ${opType}")
     val processorPlan = sessionMeta.processors
 
     val runtimeConf = new RuntimeErConf(sessionMeta)
@@ -97,6 +98,8 @@ class NodeManagerService extends NodeManager with Logging {
           case "kill" => container.kill()
           case _ => throw new IllegalArgumentException(s"op not supported: '${opType}'")
         }
+      }else{
+        logInfo("xxxxxxxxxxxxxxxx")
       }
     })
 

@@ -1,11 +1,13 @@
 package com.webank.eggroll.core.resourcemanager
 
+import com.webank.eggroll.core.client.NodeManagerClient
 import com.webank.eggroll.core.constant.SessionConfKeys.{EGGROLL_RESOURCE_DISPATCH_INTERVAL, EGGROLL_RESOURCE_LOCK_EXPIRE_INTERVAL}
 import com.webank.eggroll.core.constant._
 import com.webank.eggroll.core.containers.JobProcessorTypes
 import com.webank.eggroll.core.datastructure.FifoBroker
 import com.webank.eggroll.core.error.ErSessionException
 import com.webank.eggroll.core.meta._
+import com.webank.eggroll.core.resourcemanager.SessionManagerService.smDao
 import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.util.Logging
@@ -443,6 +445,7 @@ object ClusterResourceManager extends Logging{
                                     waitingCount :AtomicInteger = new AtomicInteger(1),
                                     status:AtomicInteger =new AtomicInteger(0),
                                     processorTypes: Array[String]=Array[String](),
+
                                     options:mutable.Map[String,String]  = mutable.Map[String,String]()
                                   ){
       def  getResult(): Array[(ErProcessor, ErServerNode)] ={
@@ -537,6 +540,77 @@ object ClusterResourceManager extends Logging{
         }
       }
       result
+    }
+
+    // download is not use resource dispatch temporarily
+    def submitJodDownload(resourceApplication :ResourceApplication  ): ErSessionMeta ={
+      try {
+        lockSession(resourceApplication.sessionId)
+        var  exist = smDao.existSession(resourceApplication.sessionId)
+        if(!exist){
+          smDao.register(ErSessionMeta(
+            id = resourceApplication.sessionId,
+            name = resourceApplication.sessionName,
+            processors = resourceApplication.processors,
+            totalProcCount = resourceApplication.processors.length,
+            status = SessionStatus.NEW)
+          )
+          logInfo("register session over")
+        }else{
+          throw  new  ErSessionException("session is already created")
+        }
+      var erSessionInDb =  smDao.getSession(resourceApplication.sessionId)
+
+//        if(erSessionInDb.status!= SessionStatus.NEW) {
+//          logError("")
+//            return  erSessionInDb
+//        }
+
+
+        resourceApplication.processors.par.foreach(processor => {
+          try {
+            // TODO:1: add new params?
+
+            val newSessionMeta = erSessionInDb.copy(
+              options = erSessionInDb.options ++ Map(ResourceManagerConfKeys.SERVER_NODE_ID -> processor.serverNodeId.toString))
+            val nodeManagerClient = new NodeManagerClient(
+              ErEndpoint(host = processor.options.get("ip"),
+                port = Integer.parseInt(processor.options.get("port"))))
+            nodeManagerClient.startContainers(newSessionMeta)
+          }catch {
+            case e: Exception =>
+              logError(" start container error for ")
+          }
+        })
+        val startTimeout = System.currentTimeMillis() + SessionConfKeys.EGGROLL_SESSION_START_TIMEOUT_MS.get().toLong
+        var isStarted = false
+        breakable {
+          while (System.currentTimeMillis() <= startTimeout) {
+            val cur = smDao.getSession(resourceApplication.sessionId)
+            if (cur.activeProcCount < resourceApplication.processors.length) {
+              Thread.sleep(100)
+            } else {
+              isStarted = true
+              break
+            }
+          }
+        }
+        if(!isStarted){
+          SessionManagerService.killSession(erSessionInDb,SessionStatus.ERROR)
+          val builder = new mutable.StringBuilder()
+          val exception = new ErSessionException("create download session failed")
+          throw exception
+        }
+        smDao.updateSessionMain(erSessionInDb.copy(
+          status = SessionStatus.ACTIVE, activeProcCount = resourceApplication.processors.length),afterCall = (connection,sessionMeta)=>{
+          if (SessionStatus.KILLED.equals(sessionMeta.status)) {
+            smDao.batchUpdateSessionProcessor(sessionMeta)
+          }
+        })
+        smDao.getSession(sessionId = resourceApplication.sessionId)
+      }finally {
+        unlockSession(resourceApplication.sessionId)
+      }
     }
 
 

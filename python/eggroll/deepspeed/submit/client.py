@@ -1,18 +1,23 @@
 import datetime
 import enum
+import json
 import os
+import threading
 import time
 import typing
 from contextlib import ExitStack
 from typing import Dict, List, Optional
 
+from multiprocessing.dummy import Pool as ThreadPool
+
 from eggroll.core.conf_keys import SessionConfKeys
 from eggroll.core.constants import SessionStatus
-from eggroll.core.proto import containers_pb2, deepspeed_pb2
+from eggroll.core.proto import containers_pb2, deepspeed_pb2, deepspeed_download_pb2, meta_pb2
 
 from ..client import BaseClient
 from .commands import JobCommands
 from ..store.client import destroy
+from ...core.command.commands import SessionCommands
 
 
 class ContentType(enum.Enum):
@@ -44,6 +49,9 @@ class DeepspeedJob:
 
     def _get_client(self):
         return BaseClient(self._host, self._port)
+
+    def _get_clientv2(self, host,port):
+        return BaseClient(host,port)
 
     def submit(
             self,
@@ -126,6 +134,85 @@ class DeepspeedJob:
             time.sleep(poll_interval)
         return query_response.status
 
+    def download_jobv2(self,ranks: Optional[List[int]] = None,
+            content_type: ContentType = ContentType.ALL,
+            compress_method: str = "zip",
+            compress_level: int = 1,):
+        if compress_level < 0 or compress_level > 9:
+            raise ValueError(f"compress_level must be in [0, 9], got {compress_level}")
+        if compress_method not in {"zip"}:
+            raise ValueError(f"compress_method must be in ['zip'], got {compress_method}")
+
+        if ranks is None:
+            ranks = []
+        download_job_request = deepspeed_download_pb2.PrepareDownloadRequest(
+            session_id=self._session_id,
+            ranks=ranks,
+            compress_method=compress_method,
+            compress_level=compress_level,
+            content_type=content_type.to_proto(),
+        )
+        prepare_download_job_response = self._get_client().do_sync_request(
+            download_job_request, output_type=deepspeed_download_pb2.PrepareDownloadResponse, command_uri=JobCommands.PREPARE_DOWNLOAD_JOB
+        )
+
+
+        # print(prepare_download_job_response)
+        download_session_id = prepare_download_job_response.session_id
+        download_meta:dict =  json.loads(prepare_download_job_response.content)
+        zipped_container_content = []
+        pool = ThreadPool()
+        # pool.map(process, items)
+        lock = threading.Lock()
+
+        # print( download_meta)
+        try:
+            # for address in download_meta :
+
+                # element_data = download_meta[address]
+            def  inner_handle_download(address):
+                    element_data = download_meta[address]
+                    container_ids = list(map(lambda d:d[1],element_data))
+                    indexes = list(map(lambda d: d[4], element_data))
+                    ipport = address.split(":")
+                    eggpair_client = self._get_clientv2(ipport[0],int(ipport[1]))
+                    request = deepspeed_download_pb2.DsDownloadRequest(compress_level=compress_level,compress_method=compress_method,
+                                                             container_ids = container_ids,content_type= content_type.to_proto(),
+                                                             session_id= self.session_id)
+                    response = eggpair_client.do_download(request)
+                    if(response != None):
+                        temp_ziped = list(zip(indexes,response.container_content))
+                        try:
+                            lock.acquire()
+                            zipped_container_content.extend(temp_ziped)
+                        finally:
+                            lock.release()
+
+                    else:
+                        raise RuntimeError(f"download return None from {address}")
+
+            pool.map(inner_handle_download, download_meta)
+            pool.close()
+            pool.join()
+
+            zipped_container_content.sort(key=lambda  x:x[0])
+            print(zipped_container_content)
+            final_content= list(map(lambda d:d[1],zipped_container_content))
+
+            return deepspeed_pb2.DownloadJobResponse(session_id=self._session_id,container_content=final_content)
+            # print(final_content)
+        finally:
+            self.close_session(session_id=download_session_id)
+            print("over")
+    def close_session(self,session_id):
+        if(session_id!=None):
+            session = meta_pb2.SessionMeta(id=session_id)
+            download_job_response = self._get_client().do_sync_request(
+                session, output_type=meta_pb2.SessionMeta, command_uri=SessionCommands.STOP_SESSION
+            )
+        print("close")
+
+
     def download_job(
             self,
             ranks: Optional[List[int]] = None,
@@ -160,14 +247,19 @@ class DeepspeedJob:
             compress_method: str = "zip",
             compress_level: int = 1,
     ):
-        download_job_response = self.download_job(ranks, content_type, compress_method, compress_level)
-        if ranks is None:
-            ranks = range(len(download_job_response.container_content))
-        for rank, content in zip(ranks, download_job_response.container_content):
-            path = rank_to_path(rank)
+        # download_job_response = self.download_job(ranks, content_type, compress_method, compress_level)
+        download_job_response = self.download_jobv2(ranks, content_type, compress_method, compress_level)
+        # if ranks is None:
+        #     ranks = range(len(download_job_response.container_content))
+        # for rank, content in zip(ranks, download_job_response.container_content):
+        #     path = rank_to_path(rank)
+        #     with open(path, "wb") as f:
+        #         f.write(content.content)
+
+        for content in  download_job_response.container_content:
+            path =  rank_to_path(content.container_id)
             with open(path, "wb") as f:
                 f.write(content.content)
-
     def cleanup(self):
         try:
             destroy(self._get_client(), self._session_id)
