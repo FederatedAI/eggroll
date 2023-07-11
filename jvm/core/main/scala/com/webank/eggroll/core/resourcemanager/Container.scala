@@ -52,6 +52,7 @@ class Container(conf: RuntimeErConf, moduleName: String, processorId: Long = 0) 
   }
 
   def start(): Boolean = {
+
     var startCmd = ""
     var pythonPathArgs = ""
     var pythonVenvArgs = ""
@@ -83,7 +84,7 @@ class Container(conf: RuntimeErConf, moduleName: String, processorId: Long = 0) 
 
     thread.start()
     thread.join()
-   // logInfo(s"start: ready to return: ${myServerNodeId}")
+    logInfo(s"start: ready to return: ${myServerNodeId}")
     thread.isAlive
   }
 

@@ -145,6 +145,14 @@ class ClusterManagerBootstrap extends BootstrapBase with Logging {
       args => JobServiceHandler.handleJobDownload(args(0))
     )
 
+    CommandRouter.register_handler(serviceName = JobCommands.prepareJobDownload.uriString,
+      args => JobServiceHandler.prepareJobDownload(args(0))
+    )
+
+
+
+
+
     val rendezvousStoreService = new RendezvousStoreService()
     CommandRouter.register_handler(serviceName = RendezvousStoreCommands.set.uriString,
       args => rendezvousStoreService.set(args(0))

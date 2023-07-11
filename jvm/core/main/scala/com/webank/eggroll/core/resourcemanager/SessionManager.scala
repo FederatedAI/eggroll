@@ -123,19 +123,24 @@ object SessionManagerService extends Logging {
     if (StringUtils.equalsAny(dbSessionMeta.status, SessionStatus.KILLED, SessionStatus.CLOSED, SessionStatus.ERROR)) {
       return dbSessionMeta
     }
-    val sessionHosts = dbSessionMeta.processors.map(p => p.commandEndpoint.host).toSet
-    val serverNodeCrudOperator = new ServerNodeCrudOperator()
-    val sessionServerNodes = serverNodeCrudOperator.getServerClusterByHosts(sessionHosts.toList.asJava).serverNodes
+    if(dbSessionMeta.processors.length>0) {
+      val sessionHosts = dbSessionMeta.processors.filter(p=>p.commandEndpoint!=null&&StringUtils.isNotEmpty(p.commandEndpoint.host))
+        .map(p => p.commandEndpoint.host).toSet
+      if(!sessionHosts.isEmpty) {
+        val serverNodeCrudOperator = new ServerNodeCrudOperator()
+        val sessionServerNodes = serverNodeCrudOperator.getServerClusterByHosts(sessionHosts.toList.asJava).serverNodes
 
-    sessionServerNodes.par.foreach(n => {
-      // TODO:1: add new params?
-      val newSessionMeta = dbSessionMeta.copy(
-        options = dbSessionMeta.options ++ Map(ResourceManagerConfKeys.SERVER_NODE_ID -> n.id.toString))
-      val nodeManagerClient = new NodeManagerClient(
-        ErEndpoint(host = n.endpoint.host,
-          port = n.endpoint.port))
-      nodeManagerClient.killContainers(newSessionMeta)
-    })
+        sessionServerNodes.par.foreach(n => {
+          // TODO:1: add new params?
+          val newSessionMeta = dbSessionMeta.copy(
+            options = dbSessionMeta.options ++ Map(ResourceManagerConfKeys.SERVER_NODE_ID -> n.id.toString))
+          val nodeManagerClient = new NodeManagerClient(
+            ErEndpoint(host = n.endpoint.host,
+              port = n.endpoint.port))
+          nodeManagerClient.killContainers(newSessionMeta)
+        })
+      }
+    }
 
     // todo:1: update selective
     smDao.updateSessionMain(dbSessionMeta.copy(activeProcCount = 0, status = afterState),afterCall=ProcessorStateMachine.defaultSessionCallback)

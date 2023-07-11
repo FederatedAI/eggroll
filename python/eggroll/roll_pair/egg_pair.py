@@ -40,9 +40,9 @@ from eggroll.core.datastructure.broker import FifoBroker
 from eggroll.core.grpc.factory import GrpcChannelFactory
 from eggroll.core.meta_model import ErPair
 from eggroll.core.meta_model import ErTask, ErProcessor, ErEndpoint
-from eggroll.core.proto import command_pb2_grpc, transfer_pb2_grpc
+from eggroll.core.proto import command_pb2_grpc, transfer_pb2_grpc, deepspeed_download_pb2_grpc
 from eggroll.core.transfer.transfer_service import GrpcTransferServicer, \
-    TransferService
+    TransferService, GrpcDsDownloadServicer
 from eggroll.core.utils import _exception_logger, add_runtime_storage
 from eggroll.core.utils import hash_code
 from eggroll.core.utils import set_static_er_conf, get_static_er_conf
@@ -802,6 +802,7 @@ def serve(args):
                                                           command_server)
 
     transfer_servicer = GrpcTransferServicer()
+    ds_download_servicer =  GrpcDsDownloadServicer()
 
     port = args.port
     transfer_port = args.transfer_port
@@ -813,6 +814,7 @@ def serve(args):
         transfer_port = port
         transfer_pb2_grpc.add_TransferServiceServicer_to_server(transfer_servicer,
                                                                 transfer_server)
+        deepspeed_download_pb2_grpc.add_DsDownloadServiceServicer_to_server(ds_download_servicer, transfer_server)
     else:
         transfer_server_max_workers = int(
             RollPairConfKeys.EGGROLL_ROLLPAIR_EGGPAIR_DATA_SERVER_EXECUTOR_POOL_MAX_SIZE.get())
@@ -838,6 +840,8 @@ def serve(args):
         transfer_port = transfer_server.add_insecure_port(f'[::]:{transfer_port}')
         transfer_pb2_grpc.add_TransferServiceServicer_to_server(transfer_servicer,
                                                                 transfer_server)
+
+        deepspeed_download_pb2_grpc.add_DsDownloadServiceServicer_to_server(ds_download_servicer,transfer_server)
         transfer_server.start()
     pid = os.getpid()
 
