@@ -7,8 +7,6 @@ import typing
 from contextlib import ExitStack
 from typing import Dict, List, Optional
 
-from multiprocessing.dummy import Pool as ThreadPool
-
 from eggroll.core.conf_keys import SessionConfKeys
 from eggroll.core.constants import SessionStatus
 from eggroll.core.proto import containers_pb2, deepspeed_pb2, deepspeed_download_pb2, meta_pb2, \
