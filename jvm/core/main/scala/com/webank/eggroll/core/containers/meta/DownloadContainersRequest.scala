@@ -8,7 +8,7 @@ import scala.language.implicitConversions
 
 case class DownloadContainersRequest(
                                       sessionId: String,
-                                      containerIds: Array[Long],
+                                      ranks: Array[Int],
                                       compressMethod: String = "zip",
                                       compressLevel: Int = 1,
                                       contentType: ContentType.ContentType
@@ -20,7 +20,7 @@ object DownloadContainersRequest {
     val src = Containers.DownloadContainersRequest.parseFrom(byteString)
     DownloadContainersRequest(
       sessionId = src.getSessionId,
-      containerIds = src.getContainerIdsList.asScala.map(_.toLong).toArray,
+      ranks = src.getRanksList.asScala.map(_.toInt).toArray,
       compressMethod = src.getCompressMethod,
       compressLevel = src.getCompressLevel,
       contentType = src.getContentType
@@ -30,7 +30,7 @@ object DownloadContainersRequest {
   implicit def serialize(src: DownloadContainersRequest): Array[Byte] = {
     val builder = Containers.DownloadContainersRequest.newBuilder()
       .setSessionId(src.sessionId)
-      .addAllContainerIds(src.containerIds.map(_.asInstanceOf[java.lang.Long]).toList.asJava)
+      .addAllRanks(src.ranks.map(_.asInstanceOf[java.lang.Integer]).toList.asJava)
       .setCompressMethod(src.compressMethod)
       .setCompressLevel(src.compressLevel)
       .setContentType(src.contentType)
