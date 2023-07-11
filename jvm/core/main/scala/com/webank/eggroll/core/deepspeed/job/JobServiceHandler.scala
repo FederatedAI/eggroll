@@ -159,7 +159,7 @@ object JobServiceHandler extends Logging {
           new NodeManagerClient(node.endpoint).downloadContainers(
             DownloadContainersRequest(
               sessionId = sessionId,
-              containerIds = ranks.map(_._2),
+              ranks = ranks.map(_._3),
               compressMethod = compressMethod,
               compressLevel = downloadJobRequest.compressLevel,
               contentType = contentType
@@ -168,7 +168,7 @@ object JobServiceHandler extends Logging {
           case e: Exception =>
             e.printStackTrace()
             ranks.map(r => ContainerContent(
-              containerId = r._2,
+              rank = r._3,
               content = Array.empty,
               compressMethod = downloadJobRequest.compressMethod))
         }

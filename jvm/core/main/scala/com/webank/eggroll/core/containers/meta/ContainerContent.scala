@@ -9,7 +9,7 @@ object ContainerContent {
   implicit def deserialize(byteString: ByteString): ContainerContent = {
     val src = Containers.ContainerContent.parseFrom(byteString)
     ContainerContent(
-      containerId = src.getContainerId,
+      rank = src.getRank,
       content = src.getContent.toByteArray,
       compressMethod = src.getCompressMethod
     )
@@ -17,7 +17,7 @@ object ContainerContent {
 
   implicit def toProto(src: ContainerContent): Containers.ContainerContent = {
     val builder = Containers.ContainerContent.newBuilder()
-      .setContainerId(src.containerId)
+      .setRank(src.rank)
       .setContent(ByteString.copyFrom(src.content))
       .setCompressMethod(src.compressMethod)
     builder.build()
@@ -28,4 +28,4 @@ object ContainerContent {
   }
 }
 
-case class ContainerContent(containerId: Long, content: Array[Byte], compressMethod: String)
+case class ContainerContent(rank: Int, content: Array[Byte], compressMethod: String)
