@@ -1,5 +1,6 @@
 package com.webank.eggroll.core.resourcemanager
 
+import com.google.common.cache.{Cache, CacheBuilder, CacheLoader, LoadingCache}
 import com.webank.eggroll.core.Bootstrap.logDebug
 import com.webank.eggroll.core.client.NodeManagerClient
 import com.webank.eggroll.core.constant.SessionConfKeys.EGGROLL_SESSION_USE_RESOURCE_DISPATCH
@@ -11,12 +12,12 @@ import com.webank.eggroll.core.resourcemanager.ClusterResourceManager.ResourceAp
 import com.webank.eggroll.core.resourcemanager.SessionManagerService.{beforeCall, serverNodeCrudOperator, sessionLockMap, smDao}
 import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator
 import com.webank.eggroll.core.session.StaticErConf
-import com.webank.eggroll.core.util.Logging
+import com.webank.eggroll.core.util.{CacheUtil, Logging}
 import org.apache.commons.lang3.StringUtils
 
 import java.lang.Thread.sleep
 import java.sql.Connection
-import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
 import java.util.concurrent.locks.ReentrantLock
 import scala.collection.JavaConverters._
 import scala.collection.mutable
@@ -154,17 +155,23 @@ object SessionManagerService extends Logging {
 class SessionManagerService extends SessionManager with Logging {
 
   var heartBeatMap = new  ConcurrentHashMap[Long,ErProcessor]()
+  var processorHeartBeat:Cache[String,ErProcessor] = CacheUtil.buildErProcessorCache(1000,10,TimeUnit.MINUTES)
+
+
   def heartbeat(proc: ErProcessor): ErProcessor = {
-    logInfo(s"receive heartbeat processor ${proc.id}  ${proc.status} ")
-    var previousHeartbeat = heartBeatMap.put(proc.id,proc)
-    if(previousHeartbeat==null){
-        ProcessorStateMachine.changeStatus(proc,desStateParam=proc.status)
-    }else{
-      if(previousHeartbeat.status!=proc.status){
-        ProcessorStateMachine.changeStatus(proc,desStateParam=proc.status)
+      logInfo(s"receive heartbeat processor ${proc.id}  ${proc.status} ")
+      var previousHeartbeat = processorHeartBeat.asMap.get(proc.id.toString)
+      if(previousHeartbeat==null){
+          processorHeartBeat.asMap.put(proc.id.toString,proc)
+          ProcessorStateMachine.changeStatus(proc,desStateParam=proc.status)
+      }else{
+          if(previousHeartbeat.status!=proc.status) {
+            processorHeartBeat.asMap.put(proc.id.toString,proc)
+            ProcessorStateMachine.changeStatus(proc,desStateParam=proc.status)
+          }
+          // if status is same as the  cached processor, do nothing
       }
-    }
-    proc
+      proc
   }
 
 
@@ -522,6 +529,9 @@ class SessionManagerService extends SessionManager with Logging {
     if (dbSessionMeta.status.equals(SessionStatus.CLOSED)) {
       return dbSessionMeta
     }
+
+
+    val beforeDestorySession = dbSessionMeta.copy(activeProcCount = 0, status = SessionStatus.BEFORE_DESTORY)
 
     val sessionHosts = mutable.Set[String]()
     dbSessionMeta.processors.foreach(p => {

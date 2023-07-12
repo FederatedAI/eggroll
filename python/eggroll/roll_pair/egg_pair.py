@@ -752,7 +752,7 @@ def stop_processor(node_manager_client: NodeManagerClient, myself: ErProcessor):
                     cmd_str = data[1].decode('utf-8')
                     if 'stop' in cmd_str and str(os.getpid()) in cmd_str:
                         myself._status = ProcessorStatus.STOPPED
-                        node_manager_client.heartbeat(myself)
+                        send_heartbeat(node_manager_client,myself)
 
                 except BaseException as e:
                     print("exception:", e)
@@ -912,13 +912,13 @@ def serve(args):
     signal.signal(signal.SIGINT, exit_gracefully)
 
     while run:
-        time.sleep(10)
-        node_manager_client.heartbeat(myself)
+        time.sleep(int(RollPairConfKeys.EGGROLL_ROLLPAIR_EGGPAIR_SERVER_HEARTBEAT_INTERVAL.get()))
+        send_heartbeat(node_manager_client,myself)
 
     L.info(f'sending exit heartbeat to cm')
     if cluster_manager:
         myself._status = ProcessorStatus.STOPPED
-        node_manager_client.heartbeat(myself)
+        send_heartbeat(node_manager_client,myself)
 
     GrpcChannelFactory.shutdown_all_now()
 
@@ -932,7 +932,11 @@ def serve(args):
     L.info(f'system metric at exit: {get_system_metric(1)}')
     L.info(f'egg_pair {args.processor_id} at port={port}, transfer_port={transfer_port}, pid={pid} stopped gracefully')
 
-
+def send_heartbeat(node_manager_client:NodeManagerClient, myself:ErProcessor):
+    try:
+       node_manager_client.heartbeat(myself)
+    except Exception as e:
+        L.exception(f"eggpair send heartbeat to nodemanager error")
 
 
 

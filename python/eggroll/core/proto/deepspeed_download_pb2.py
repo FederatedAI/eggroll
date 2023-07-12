@@ -13,7 +13,7 @@ _sym_db = _symbol_database.Default()
 
 from google.protobuf import duration_pb2 as google_dot_protobuf_dot_duration__pb2
 import meta_pb2 as meta__pb2
-import containers_pb2 as containers__pb2
+from eggroll.core.proto import containers_pb2 as containers__pb2
 
 
 DESCRIPTOR = _descriptor.FileDescriptor(
@@ -22,7 +22,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto3',
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x18\x64\x65\x65pspeed_download.proto\x12\x1c\x63om.webank.eggroll.core.meta\x1a\x1egoogle/protobuf/duration.proto\x1a\nmeta.proto\x1a\x10\x63ontainers.proto\"\xad\x01\n\x16PrepareDownloadRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12\r\n\x05ranks\x18\x02 \x03(\x05\x12\x17\n\x0f\x63ompress_method\x18\x03 \x01(\t\x12\x16\n\x0e\x63ompress_level\x18\x04 \x01(\x05\x12?\n\x0c\x63ontent_type\x18\x05 \x01(\x0e\x32).com.webank.eggroll.core.meta.ContentType\">\n\x17PrepareDownloadResponse\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12\x0f\n\x07\x63ontent\x18\x02 \x01(\t\"\xb0\x01\n\x11\x44sDownloadRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12\x15\n\rcontainer_ids\x18\x02 \x03(\x05\x12\x17\n\x0f\x63ompress_method\x18\x03 \x01(\t\x12\x16\n\x0e\x63ompress_level\x18\x04 \x01(\x05\x12?\n\x0c\x63ontent_type\x18\x05 \x01(\x0e\x32).com.webank.eggroll.core.meta.ContentType\"s\n\x12\x44sDownloadResponse\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12I\n\x11\x63ontainer_content\x18\x02 \x03(\x0b\x32..com.webank.eggroll.core.meta.ContainerContent2\x84\x01\n\x11\x44sDownloadService\x12o\n\x08\x64ownload\x12/.com.webank.eggroll.core.meta.DsDownloadRequest\x1a\x30.com.webank.eggroll.core.meta.DsDownloadResponse\"\x00\x62\x06proto3'
+  serialized_pb=b'\n\x18\x64\x65\x65pspeed_download.proto\x12\x1c\x63om.webank.eggroll.core.meta\x1a\x1egoogle/protobuf/duration.proto\x1a\nmeta.proto\x1a\x10\x63ontainers.proto\"\xad\x01\n\x16PrepareDownloadRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12\r\n\x05ranks\x18\x02 \x03(\x05\x12\x17\n\x0f\x63ompress_method\x18\x03 \x01(\t\x12\x16\n\x0e\x63ompress_level\x18\x04 \x01(\x05\x12?\n\x0c\x63ontent_type\x18\x05 \x01(\x0e\x32).com.webank.eggroll.core.meta.ContentType\">\n\x17PrepareDownloadResponse\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12\x0f\n\x07\x63ontent\x18\x02 \x01(\t\"\xa8\x01\n\x11\x44sDownloadRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12\r\n\x05ranks\x18\x02 \x03(\x05\x12\x17\n\x0f\x63ompress_method\x18\x03 \x01(\t\x12\x16\n\x0e\x63ompress_level\x18\x04 \x01(\x05\x12?\n\x0c\x63ontent_type\x18\x05 \x01(\x0e\x32).com.webank.eggroll.core.meta.ContentType\"s\n\x12\x44sDownloadResponse\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12I\n\x11\x63ontainer_content\x18\x02 \x03(\x0b\x32..com.webank.eggroll.core.meta.ContainerContent2\x84\x01\n\x11\x44sDownloadService\x12o\n\x08\x64ownload\x12/.com.webank.eggroll.core.meta.DsDownloadRequest\x1a\x30.com.webank.eggroll.core.meta.DsDownloadResponse\"\x00\x62\x06proto3'
   ,
   dependencies=[google_dot_protobuf_dot_duration__pb2.DESCRIPTOR,meta__pb2.DESCRIPTOR,containers__pb2.DESCRIPTOR,])
 
@@ -144,7 +144,7 @@ _DSDOWNLOADREQUEST = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='container_ids', full_name='com.webank.eggroll.core.meta.DsDownloadRequest.container_ids', index=1,
+      name='ranks', full_name='com.webank.eggroll.core.meta.DsDownloadRequest.ranks', index=1,
       number=2, type=5, cpp_type=1, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
@@ -184,7 +184,7 @@ _DSDOWNLOADREQUEST = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=361,
-  serialized_end=537,
+  serialized_end=529,
 )
 
 
@@ -222,8 +222,8 @@ _DSDOWNLOADRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=539,
-  serialized_end=654,
+  serialized_start=531,
+  serialized_end=646,
 )
 
 _PREPAREDOWNLOADREQUEST.fields_by_name['content_type'].enum_type = containers__pb2._CONTENTTYPE
@@ -272,8 +272,8 @@ _DSDOWNLOADSERVICE = _descriptor.ServiceDescriptor(
   index=0,
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_start=657,
-  serialized_end=789,
+  serialized_start=649,
+  serialized_end=781,
   methods=[
   _descriptor.MethodDescriptor(
     name='download',

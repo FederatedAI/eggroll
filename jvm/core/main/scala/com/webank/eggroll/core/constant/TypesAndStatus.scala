@@ -136,6 +136,7 @@ object ProcessorStatus {
 
 object SessionStatus {
   val NEW = "NEW"
+  var BEFORE_DESTORY = "BEFORE_DESTORY"
   val NEW_TIMEOUT = "NEW_TIMEOUT"
   val ACTIVE = "ACTIVE"
   val CLOSED = "CLOSED"

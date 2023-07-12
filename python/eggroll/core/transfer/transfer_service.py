@@ -148,27 +148,27 @@ class TransferService(object):
 class GrpcDsDownloadServicer(deepspeed_download_pb2_grpc.DsDownloadServiceServicer):
 
 
-    def  get_container_workspace(self,container_id):
-        L.info(f"get_container_workspace ========={container_id}")
-        data_dir = get_static_er_conf().get("eggroll.resourcemanager.nodemanager.containers.data.dir",None)
-        return data_dir+"/"+container_id
-    def  get_container_models_dir(self,container_id):
-        self.get_container_workspace(container_id)+"/"+"models"
+    def  get_container_workspace(self,session_id,rank):
 
-    def  get_container_logs_dir(self,container_id):
-        self.get_container_workspace(container_id)+"/"+"logs"
-    def  get_container_path(self,content_type,container_id):
+        data_dir = get_static_er_conf().get("eggroll.resourcemanager.nodemanager.containers.data.dir",None)
+        return data_dir+"/"+session_id+"/"+rank
+    def  get_container_models_dir(self,session_id,rank):
+        self.get_container_workspace(session_id,rank)+"/"+"models"
+
+    def  get_container_logs_dir(self,session_id,rank):
+        self.get_container_workspace(session_id,rank)+"/"+"logs"
+    def  get_container_path(self,content_type,session_id,rank):
         # case ContentType.ALL => getContainerWorkspace(containerId)
         # case ContentType.MODELS => getContainerModelsDir(containerId)
         # case ContentType.LOGS => getContainerLogsDir(containerId)
         #
 
         if content_type == ContentType.ALL:
-                return self.get_container_workspace(container_id)
+                return self.get_container_workspace(session_id,rank)
         elif  content_type ==ContentType.MODELS:
-                return self.get_container_models_dir(container_id)
+                return self.get_container_models_dir(session_id,rank)
         elif  content_type ==ContentType.LOGS:
-                return self.get_container_logs_dir(container_id)
+                return self.get_container_logs_dir(session_id,rank)
         else:
                 L.info("xxxxxxxxxxxxxxx")
                 raise RuntimeError(f"download content type {content_type} is not support ")
@@ -180,13 +180,13 @@ class GrpcDsDownloadServicer(deepspeed_download_pb2_grpc.DsDownloadServiceServic
         L.info(f"kaideng download ======111= {request}")
         result = []
         try:
-            for  container_id in  request.container_ids:
-                L.info(f"prepare to download container_id {container_id}")
-                path = self.get_container_path(request.content_type,str(container_id))
+            for  rank in  request.ranks:
+                L.info(f"prepare to download container_id {rank}")
+                path = self.get_container_path(request.content_type,request.session_id,str(rank))
                 L.info(f"prepare to download path {path}")
                 content = zip2bytes(startdir=path)
-                L.info(f"download container_id {container_id} content size {len(content)}")
-                compress_content = ContainerContent(container_id=container_id,content=content)
+
+                compress_content = ContainerContent(rank=rank,content=content)
                 # message ContainerContent
                 # {
                 #     int64 container_id = 1;
