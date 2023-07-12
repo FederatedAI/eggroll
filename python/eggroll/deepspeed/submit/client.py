@@ -172,12 +172,12 @@ class DeepspeedJob:
                 # element_data = download_meta[address]
             def  inner_handle_download(address):
                     element_data = download_meta[address]
-                    container_ids = list(map(lambda d:d[1],element_data))
+                    ranks = list(map(lambda d:d[2],element_data))
                     indexes = list(map(lambda d: d[4], element_data))
                     ipport = address.split(":")
                     eggpair_client = self._get_clientv2(ipport[0],int(ipport[1]))
                     request = deepspeed_download_pb2.DsDownloadRequest(compress_level=compress_level,compress_method=compress_method,
-                                                             container_ids = container_ids,content_type= content_type.to_proto(),
+                                                             ranks = ranks,content_type= content_type.to_proto(),
                                                              session_id= self.session_id)
                     response = eggpair_client.do_download(request)
                     if(response != None):
@@ -257,7 +257,7 @@ class DeepspeedJob:
         #         f.write(content.content)
 
         for content in  download_job_response.container_content:
-            path =  rank_to_path(content.container_id)
+            path =  rank_to_path(content.rank)
             with open(path, "wb") as f:
                 f.write(content.content)
     def cleanup(self):

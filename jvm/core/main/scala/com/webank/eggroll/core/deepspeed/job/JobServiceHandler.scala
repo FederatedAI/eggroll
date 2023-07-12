@@ -95,40 +95,33 @@ object JobServiceHandler extends Logging {
              options =  options
 
            ))
-        logInfo("===================append processor ")
       }
     })
 
-
-
-    logInfo(s"========processor size = ${processors.length}")
     if(processors.length==0){
       throw  new ErSessionException(s"can not find download rank info for session ${sessionId} ")
     }
-
     var  newSession = ClusterResourceManager.submitJodDownload(ResourceApplication(sessionId = "DS-DOWNLOAD-"+System.currentTimeMillis()+"-"+scala.util.Random.nextInt(100).toString,
       processors=processors.toArray
     ))
-
     if(newSession.status!=SessionStatus.ACTIVE){
       throw  new  ErSessionException("session status is "+newSession.status)
     }
-    logInfo(s"===========xxxxx ${contentMap} ")
     newSession.processors.map(p=>{
-      logInfo(s"ppppppppppppp  ${p}")
+
       if(contentMap.containsKey(p.serverNodeId.toString)){
-        logInfo(s"iiiiiiiiiiiiiiiiii")
+
         contentMap.put(     p.transferEndpoint.toString,contentMap.get(p.serverNodeId.toString))
-        logInfo(s"hhhhhhhhhhhhhhhhh ${contentMap}")
+
         contentMap.remove(p.serverNodeId.toString)
-      }else{
+      } else{
         logInfo(s"================= cannot found ${p.serverNodeId}")
       }
     })
 
 
     var  gson= new Gson()
-    logInfo(s"============${gson.toJson(contentMap)}");
+
     PrepareJobDownloadResponse(sessionId = newSession.id, content = gson.toJson(contentMap))
   }
 

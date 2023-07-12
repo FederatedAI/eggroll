@@ -27,7 +27,7 @@ message PrepareDownloadResponse {
 
 message DsDownloadRequest {
   string session_id = 1;
-  repeated int32 container_ids = 2;
+  repeated int32 ranks = 2;
   string compress_method = 3;
   int32 compress_level = 4;
   ContentType content_type = 5;	
