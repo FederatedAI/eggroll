@@ -36,4 +36,9 @@ public class ErEndpoint_JAVA implements NetworkingRpcMessage_JAVA {
 
         return builder.build();
     }
+
+    public static ErEndpoint_JAVA apply(String url){
+        String[] toks = url.split(":");
+       return new ErEndpoint_JAVA(toks[0],Integer.parseInt(toks[1]));
+    }
 }

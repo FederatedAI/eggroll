@@ -6,10 +6,9 @@ import com.webank.eggroll.clustermanager.entity.SessionMain;
 import com.webank.eggroll.clustermanager.entity.SessionOption;
 import com.webank.eggroll.clustermanager.entity.scala.ErProcessor_JAVA;
 import com.webank.eggroll.clustermanager.entity.scala.ErSessionMeta_JAVA;
-import com.webank.eggroll.core.meta.ErProcessor;
+import com.webank.eggroll.core.constant.ProcessorStatus;
 import com.webank.eggroll.core.resourcemanager.ProcessorStateMachine;
 import com.webank.eggroll.core.util.Logging;
-import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +25,9 @@ public class SessionMetaDaoNew_2 implements Logging {
 
     @Autowired
     SessionOptionService sessionOptionService;
+
+    @Autowired
+    ProcessorStateMachine_JAVA processorStateMachine_java;
     
     @Transactional
     public void registerWithResourceV2(ErSessionMeta_JAVA sessionMeta){
@@ -53,8 +55,8 @@ public class SessionMetaDaoNew_2 implements Logging {
         List<ErProcessor_JAVA> procs = sessionMeta.getProcessors();
         if(!procs.isEmpty()){
             for (ErProcessor_JAVA proc : procs) {
-                proc.
-                ProcessorStateMachine.changeStatus();
+                proc.setSessionId(sid);
+                processorStateMachine_java.changeStatus(proc,"", ProcessorStatus.NEW());
             }
         }
 
