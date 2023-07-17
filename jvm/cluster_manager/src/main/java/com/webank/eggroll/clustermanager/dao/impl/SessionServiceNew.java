@@ -15,7 +15,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Service
-public class SessionServiceNew {
+public class SessionServiceNew{
 
     @Autowired
     SessionMainMapper  sessionMainMapper;

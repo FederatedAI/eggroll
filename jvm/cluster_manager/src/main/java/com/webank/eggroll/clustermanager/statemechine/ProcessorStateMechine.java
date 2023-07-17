@@ -2,21 +2,19 @@ package com.webank.eggroll.clustermanager.statemechine;
 
 import com.webank.eggroll.core.meta.ErProcessor;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.ReentrantLock;
 @Service
 public class ProcessorStateMechine {
 
     ConcurrentHashMap<String, ReentrantLock>   sessionLockMap = new ConcurrentHashMap<String,ReentrantLock>();
 
-    @Autowired
-    ProcessorDao
+//    @Autowired
+//    ProcessorDao
 
-    public  void   changeStatus(ErProcessor  paramProcessor,String preStateParam,String desStateParam){
+    public  void   changeStatus(ErProcessor paramProcessor, String preStateParam, String desStateParam){
 
         String  sessionId =  paramProcessor.sessionId();
 

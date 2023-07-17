@@ -1,0 +1,23 @@
+package com.webank.eggroll.clustermanager.dao.impl;
+
+import com.baomidou.mybatisplus.core.conditions.Wrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+
+import java.util.List;
+
+public class EggRollBaseServiceImpl<M extends BaseMapper<T>, T> extends ServiceImpl<M, T> {
+    List<T> list(T entity) {
+        return this.list(new QueryWrapper<>(entity));
+    }
+
+    <E extends IPage<T>> E page(E page, T entity) {
+        return this.page(page, new QueryWrapper<>(entity));
+    }
+
+    T get(T entity) {
+        return this.getOne(new QueryWrapper<>(entity));
+    }
+}

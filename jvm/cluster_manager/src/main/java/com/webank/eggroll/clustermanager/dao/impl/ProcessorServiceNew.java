@@ -7,17 +7,15 @@ import com.webank.eggroll.core.meta.ErProcessor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.Date;
-
 @Service
-public class ProcessorServiceNew {
+public class ProcessorServiceNew extends EggRollBaseServiceImpl<SessionProcessorMapper,SessionProcessor>{
 
     Gson  gson = new Gson();
 
     @Autowired
     SessionProcessorMapper  sessionProcessorMapper;
 
-    public void  createProcessor(ErProcessor  erProcessor){
+    public void  createProcessor(ErProcessor erProcessor){
 //        (Long processorId, String sessionId, Integer serverNodeId, String processorType, String status, String tag, String commandEndpoint, String transferEndpoint, String processorOption, Integer pid, Date
 //        createdAt, Date updatedAt) {
 
