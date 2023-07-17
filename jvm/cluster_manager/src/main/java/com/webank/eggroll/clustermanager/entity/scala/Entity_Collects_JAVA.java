@@ -5,13 +5,9 @@ import com.webank.eggroll.core.constant.ResourceStatus;
 import com.webank.eggroll.core.constant.StringConstants;
 import com.webank.eggroll.core.meta.Meta;
 import com.webank.eggroll.core.meta.NetworkingRpcMessage;
-import com.webank.eggroll.core.serdes.BaseSerializable;
-import com.webank.eggroll.core.serdes.PbMessageSerializer;
 import lombok.Data;
 import org.apache.commons.lang3.StringUtils;
 
-import java.io.ByteArrayOutputStream;
-import java.io.ObjectOutputStream;
 import java.security.Timestamp;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -20,7 +16,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-public class NetworkingRpcMessageNew {
+public class Entity_Collects_JAVA {
 
 
 
