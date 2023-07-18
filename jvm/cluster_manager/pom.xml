@@ -25,12 +25,6 @@
         </dependency>
 
         <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-            <version>2.14.1</version>
-        </dependency>
-
-        <dependency>
             <groupId>com.webank.eggroll</groupId>
             <artifactId>eggroll-core</artifactId>
             <version>3.0</version>

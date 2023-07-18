@@ -5,22 +5,23 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
+@SuppressWarnings("unused")
 public abstract class ErConf_JAVA {
-    protected Properties conf = new Properties();
-    private Map<String, String> confRepository = new HashMap<>();
+    private static final Properties conf = new Properties();
+    private static final Map<String, String> confRepository = new HashMap<>();
 
-    public Properties getProperties() {
+    public static Properties getProperties() {
         Properties duplicateConf = new Properties();
         duplicateConf.putAll(getConf());
         return duplicateConf;
     }
 
-    public String getProperty(String key, Object defaultValue) {
+    public static String getProperty(String key, Object defaultValue) {
         return getProperty(key,defaultValue,false);
     }
 
-    public String getProperty(String key, Object defaultValue, boolean forceReload) {
-        String result = null;
+    public static String getProperty(String key, Object defaultValue, boolean forceReload) {
+        String result;
         String value = confRepository.get(key);
 
         if (forceReload || value == null) {
@@ -39,19 +40,19 @@ public abstract class ErConf_JAVA {
         return result;
     }
 
-    public long getLong(String key, long defaultValue) {
+    public static long getLong(String key, long defaultValue) {
         return Long.parseLong(getProperty(key, defaultValue));
     }
 
-    public int getInt(String key, int defaultValue) {
+    public static int getInt(String key, int defaultValue) {
         return Integer.parseInt(getProperty(key, defaultValue));
     }
 
-    public boolean getBoolean(String key, boolean defaultValue) {
+    public static boolean getBoolean(String key, boolean defaultValue) {
         return Boolean.parseBoolean(getProperty(key, defaultValue));
     }
 
-    public String getString(String key, String defaultValue) {
+    public static String getString(String key, String defaultValue) {
         return getProperty(key, defaultValue);
     }
 
@@ -63,11 +64,11 @@ public abstract class ErConf_JAVA {
         return null;
     }
 
-    public void addProperties(Properties prop) {
-        conf.putAll(prop);
+    public static void addProperties(Properties prop) {
+        getConf().putAll(prop);
     }
 
-    public void addProperties(String path) throws IOException {
+    public static void addProperties(String path) throws IOException {
         Properties prop = new Properties();
 
         File current = new File(".");
@@ -83,7 +84,7 @@ public abstract class ErConf_JAVA {
     }
 
     public void addProperty(String key, String value) {
-        conf.setProperty(key, value);
+        getConf().setProperty(key, value);
     }
 
     public <T> T get(String key, T defaultValue) {
@@ -106,8 +107,8 @@ public abstract class ErConf_JAVA {
 
         return result;
     }
-
-    protected Properties getConf() {
+    
+    public static Properties getConf(){
         return conf;
     }
 }

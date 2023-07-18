@@ -1,13 +1,11 @@
 package com.webank.eggroll.clustermanager.dao.impl.dao;
 
 
-import com.webank.eggroll.clustermanager.config.ErConf_JAVA;
-import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
 import com.webank.eggroll.clustermanager.dao.impl.SessionProcessorService;
 import com.webank.eggroll.clustermanager.entity.scala.ErProcessor_JAVA;
 import com.webank.eggroll.clustermanager.entity.scala.StaticErConf_JAVA;
-import com.webank.eggroll.clustermanager.exception.ErProcessorException_JAVA;
-import com.webank.eggroll.core.error.ErProcessorException;
+import com.webank.eggroll.core.exceptions.ErProcessorException_JAVA;
+import com.webank.eggroll.core.constant.SessionConfKeys;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +39,7 @@ public class ProcessorStateMachine_JAVA {
             ErProcessor_JAVA desErProcessor = new ErProcessor_JAVA();
             BeanUtils.copyProperties(erProcessor,desErProcessor);
             desErProcessor.setStatus(desStateParam);
+            String dispatchConfig = StaticErConf_JAVA.getProperty(SessionConfKeys.EGGROLL_SESSION_USE_RESOURCE_DISPATCH(), "false");
 
         }
     }
