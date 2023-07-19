@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.webank.eggroll.clustermanager.utils;
+package com.webank.eggroll.core.util;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.type.TypeReference;
