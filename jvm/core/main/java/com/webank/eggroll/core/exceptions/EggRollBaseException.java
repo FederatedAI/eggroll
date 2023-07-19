@@ -1,4 +1,4 @@
-package com.webank.eggroll.clustermanager.exception;
+package com.webank.eggroll.core.exceptions;
 
 public class EggRollBaseException extends RuntimeException{
     private final Integer code;
