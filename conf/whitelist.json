@@ -2,7 +2,8 @@
     "builtins": [
         "int",
         "list",
-        "set"
+        "set",
+        "slice"
     ],
     "collections": [
         "defaultdict",
@@ -127,11 +128,82 @@
     "torch._utils": [
         "_rebuild_tensor_v2"
     ],
+    "torch.storage": [
+        "_load_from_bytes"
+    ],
     "ipcl_python.bindings.ipcl_bindings": [
         "ipclPublicKey"
     ],
     "ipcl_python.ipcl_python": [
         "PaillierPublicKey",
         "PaillierEncryptedNumber"
-    ]
+    ],
+    "torch": [
+        "Size"
+    ],
+    "fate.arch.tensor.storage.local.device.cpu.plain": [
+        "_TorchStorage"
+    ],
+    "fate.arch.tensor.types._dtype": [
+        "dtype"
+    ],
+    "fate.arch.tensor.types._shape": [
+        "DAxis",
+        "Shape"
+    ],
+    "fate.arch.tensor.storage.local.device.cpu.paillier": [
+        "_RustPaillierStorage"
+    ],
+    "fate.arch.tensor.storage.local.device.cpu.multithread_cpu_paillier_block": [
+        "PaillierBlock"
+    ],
+    "rust_paillier.par": [
+        "Cipherblock"
+    ],
+    "pandas.core.frame": [
+        "DataFrame"
+    ],
+    "pandas.core.indexes.base": [
+        "Index",
+        "_new_Index"
+    ],
+    "pandas.core.indexes.range": [
+        "RangeIndex"
+    ],
+    "pandas.core.series": [
+        "Series"
+    ],
+    "pandas.core.internals.managers": [
+        "BlockManager",
+        "SingleBlockManager"
+    ],
+	"fate.arch.dataframe.manager.data_manager": [
+		"DataManager"
+	],
+    "fate.arch.dataframe.manager.schema_manager": [
+		"SchemaManager",
+                 "Schema"
+	],
+     "fate.arch.dataframe.manager.block_manager":[
+  		"BlockManager",
+		"IndexBlock",
+		"BlockType",
+		"Int64Block",
+		"Float32Block",
+		"Float64Block",
+		"Int32Block",
+		"BoolBlock",
+		"NPObjectBlock"
+             ],
+    "fate.arch.tensor.paillier._tensor":[
+		"PaillierTensor"
+	],
+	"fate_utils.tensor":[
+		"Cipherblock"
+	],
+	"torch":[
+	"float32",
+    "float64",
+	"Size"
+	]   
 }
