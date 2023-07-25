@@ -61,6 +61,9 @@ object JobServiceHandler extends Logging {
     QueryJobStatusResponse(sessionId = sessionId, status = status)
   }
 
+
+
+
   def prepareJobDownload (prepareRequest: PrepareJobDownloadRequest):PrepareJobDownloadResponse = {
     val sessionId = prepareRequest.sessionId
     logInfo(f"download job request, sessionId: ${sessionId}")

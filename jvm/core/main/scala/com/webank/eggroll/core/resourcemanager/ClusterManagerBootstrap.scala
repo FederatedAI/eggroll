@@ -5,6 +5,7 @@ import com.webank.eggroll.core.command.{CommandRouter, CommandService}
 import com.webank.eggroll.core.constant._
 import com.webank.eggroll.core.deepspeed.job.JobServiceHandler
 import com.webank.eggroll.core.deepspeed.store.RendezvousStoreService
+import com.webank.eggroll.core.ex.grpc.ClusterManagerExtendTransferService
 import com.webank.eggroll.core.meta._
 import com.webank.eggroll.core.resourcemanager.metadata.{ServerNodeCrudOperator, StoreCrudOperator}
 import com.webank.eggroll.core.session.StaticErConf
@@ -198,7 +199,7 @@ class ClusterManagerBootstrap extends BootstrapBase with Logging {
 
   override def start(): Unit = {
     // TODO:0: use user's config
-    val server = GrpcServerUtils.createServer(port = this.port, grpcServices = List(new CommandService))
+    val server = GrpcServerUtils.createServer(port = this.port, grpcServices = List(new CommandService,new ClusterManagerExtendTransferService))
     server.start()
     this.port = server.getPort
 

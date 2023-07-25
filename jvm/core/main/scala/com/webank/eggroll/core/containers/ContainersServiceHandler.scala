@@ -2,19 +2,27 @@ package com.webank.eggroll.core.containers
 
 import com.webank.eggroll.core.client.ClusterManagerClient
 import com.webank.eggroll.core.constant.{NodeManagerConfKeys, ProcessorStatus}
-import com.webank.eggroll.core.containers.ContainersServiceHandler.{CompressMethod, zip}
+import com.webank.eggroll.core.containers.ContainersServiceHandler.{CompressMethod, LogStreamHolder, logError, zip}
 import com.webank.eggroll.core.containers.container.{ContainersManager, DeepSpeedContainer, WarpedDeepspeedContainerConfig}
 import com.webank.eggroll.core.containers.meta._
 import com.webank.eggroll.core.meta.ErProcessor
 import com.webank.eggroll.core.resourcemanager.NodeManagerMeta
 import com.webank.eggroll.core.session.StaticErConf
-import com.webank.eggroll.core.util.Logging
+import com.webank.eggroll.core.transfer.Extend
+import com.webank.eggroll.core.util.{Logging, ProcessUtils}
+import io.grpc.stub.StreamObserver
 
-import java.io.{ByteArrayOutputStream, FileInputStream}
+import java.io.{BufferedReader, ByteArrayOutputStream, FileInputStream, InputStreamReader}
 import java.nio.file.Files
+import java.util
+import java.util.concurrent.{ConcurrentHashMap, ConcurrentMap}
 import java.util.zip.{ZipEntry, ZipOutputStream}
+import scala.collection.JavaConverters.asJavaIterableConverter
+import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.ExecutionContext
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.reflect.io.Path
+import scala.util.control.Breaks.{break, breakable}
 
 
 class ContainersServiceHandler(implicit ec: ExecutionContext,
@@ -153,9 +161,143 @@ class ContainersServiceHandler(implicit ec: ExecutionContext,
   private def getContainerLogsDir(sessionId: String, rank: Long): Path = {
     getContainerWorkspace(sessionId, rank) / LOGS
   }
+
+
+
+
+  def  startLogStream(request: Extend.GetLogRequest, responseObserver: StreamObserver[Extend.GetLogResponse]): LogStreamHolder =synchronized{
+//    tail -n 1000：显示最后1000行
+//    tail -n +1000：从1000行开始显示，显示1000行以后的
+//    head -n 1000：显示前面1000行
+//
+    try {
+      var sessionId = request.getSessionId
+      var rank = request.getRank
+      var path: Path = getContainerLogsDir(sessionId, rank.toLong)
+      path = path / request.getLogType + ".log"
+
+      for (a <- 1 until 60) {
+        if (!path.exists) {
+          Thread.sleep(1000)
+          logError(s"can not found file ${path} , try next time ")
+        }
+      }
+      if (!path.exists) {
+
+        throw new RuntimeException(s"can not found file ${path}")
+      }
+
+      //    if(logStreamMap.get(path)==null) {
+      //          logStreamMap.putIfAbsent(sessionId+"_"+rank,new util.ArrayList[LogStreamHolder]())
+      //      }
+
+      var logStreamHolder = new LogStreamHolder(System.currentTimeMillis(), "tail -F -n +0 " + path, responseObserver, "running")
+      //    logStreamMap.get(path).add(logStreamHolder)
+      logStreamHolder.run()
+      logStreamHolder
+    }catch{
+      case t: Throwable => responseObserver.onError(t)
+
+    }
+    null
+
+  }
+
+
+
+
 }
 
 object ContainersServiceHandler extends Logging {
+
+  var  singleton : ContainersServiceHandler=null
+
+  def  getOrCreate(executionContext: ExecutionContext):ContainersServiceHandler = synchronized{
+    if(singleton!=null){
+       singleton
+    }else{
+      singleton =  new ContainersServiceHandler()(executionContext)
+      singleton
+    }
+  }
+
+  def get(): ContainersServiceHandler ={
+     singleton;
+  }
+
+
+
+
+  class LogStreamHolder(createTimestamp:Long,
+                         command:String,
+                        streamObserver: StreamObserver[Extend.GetLogResponse],
+                        var status: String){
+
+//    var  createTimestamp:Long
+//    var  streamObserver: StreamObserver[Extend.GetLogResponse]
+ //   var  process : Process
+      def  stop():Unit={
+        this.status = "stop"
+      }
+
+      def  run(): Unit ={
+        new Thread(()=>{
+          var  bufferReader:BufferedReader= null
+          var process:Process=null;
+          try {
+           // var  command =  "tail -F -n +0 "+  path
+            process = ProcessUtils.createProcess(command)
+            bufferReader= new BufferedReader(new InputStreamReader(process.getInputStream()))
+            var batchSize = 10;
+            breakable {
+              while (true) {
+                if(status=="stop"){
+                  break;
+                }
+                var logBuffer = new ArrayBuffer[String]()
+                breakable {
+                  for (a <- 1 until batchSize) {
+
+                    var line: String = bufferReader.readLine()
+                    if (line != null) {
+                      logBuffer.append(line)
+                    } else {
+                      break
+                    }
+                  }
+                }
+                if (logBuffer.size > 0) {
+                  var response: Extend.GetLogResponse = Extend.GetLogResponse.newBuilder().addAllDatas(logBuffer.toList.asJava).build()
+                  streamObserver.onNext(response)
+                } else {
+                  Thread.sleep(1000)
+                }
+              }
+            }
+          }catch{
+            case t: Throwable => logError("start log stream error",t)
+          }
+          finally {
+            if(bufferReader!=null){
+              bufferReader.close()
+            }
+            if(process!=null)
+              process.destroyForcibly()
+            if(streamObserver!=null) {
+              try{
+                streamObserver.onCompleted()
+              }catch{
+                case t: Throwable =>
+                  logError("send onCmpleted error")
+              }
+            }
+          }
+
+        }).start()
+      }
+
+  }
+
 
   object CompressMethod {
     val ZIP = "zip"
