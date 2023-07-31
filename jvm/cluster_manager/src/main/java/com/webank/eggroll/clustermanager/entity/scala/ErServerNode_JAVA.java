@@ -1,7 +1,6 @@
 package com.webank.eggroll.clustermanager.entity.scala;
 
 import com.webank.eggroll.core.constant.StringConstants;
-import com.webank.eggroll.core.meta.NetworkingRpcMessage;
 import lombok.Data;
 
 import java.security.Timestamp;
@@ -10,7 +9,7 @@ import java.util.Arrays;
 import java.util.List;
 
 @Data
-public class ErServerNode_JAVA implements NetworkingRpcMessage {
+public class ErServerNode_JAVA implements NetworkingRpcMessage_JAVA {
     private long id;
     private String name;
     private long clusterId;

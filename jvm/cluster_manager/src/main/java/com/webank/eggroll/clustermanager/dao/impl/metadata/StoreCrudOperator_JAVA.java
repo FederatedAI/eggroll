@@ -10,14 +10,13 @@ import com.webank.eggroll.clustermanager.entity.ServerNode;
 import com.webank.eggroll.clustermanager.entity.StoreLocator;
 import com.webank.eggroll.clustermanager.entity.StoreOption;
 import com.webank.eggroll.clustermanager.entity.StorePartition;
+import com.webank.eggroll.clustermanager.entity.scala.*;
+import com.webank.eggroll.core.exceptions.CrudException_JAVA;
 import com.webank.eggroll.core.util.JsonUtil;
 import com.webank.eggroll.core.constant.PartitionStatus;
 import com.webank.eggroll.core.constant.ServerNodeStatus;
 import com.webank.eggroll.core.constant.ServerNodeTypes;
 import com.webank.eggroll.core.constant.StoreStatus;
-import com.webank.eggroll.core.error.CrudException;
-import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator;
-import com.webank.eggroll.core.util.TimeUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -30,7 +29,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Service
-public class StoreCrudOperatorNew_1 {
+public class StoreCrudOperator_JAVA {
 
     @Autowired
     StoreLocatorService storeLocatorService;
@@ -42,21 +41,21 @@ public class StoreCrudOperatorNew_1 {
     StoreOptionService storeOptionService;
 
     private final Map<Long, Object> nodeIdToNode = new ConcurrentHashMap<>();
-    private static final Logger LOGGER = LogManager.getLogger(StoreCrudOperatorNew_1.class);
+    private static final Logger LOGGER = LogManager.getLogger(StoreCrudOperator_JAVA.class);
 
-    private synchronized ErStore doGetStore(ErStore input) {
-        Map<String, String> inputOptions = input.options();
+    private synchronized ErStore_JAVA doGetStore(ErStore_JAVA input) {
+        Map<String, String> inputOptions = input.getOptions();
 
         // getting input locator
-        ErStoreLocator inputStoreLocator = input.storeLocator();
+        ErStoreLocator_JAVA inputStoreLocator = input.getStoreLocator();
 
         StoreLocator params = new StoreLocator();
-        params.setNamespace(inputStoreLocator.namespace());
-        params.setName(inputStoreLocator.name());
+        params.setNamespace(inputStoreLocator.getNamespace());
+        params.setName(inputStoreLocator.getName());
         params.setStatus(StoreStatus.NORMAL());
 
-        if (!StringUtils.isBlank(inputStoreLocator.storeType())) {
-            params.setStoreType(inputStoreLocator.storeType());
+        if (!StringUtils.isBlank(inputStoreLocator.getStoreType())) {
+            params.setStoreType(inputStoreLocator.getStoreType());
         }
         List<StoreLocator> storeLocatorResult = storeLocatorService.list(new QueryWrapper<>(params));
         if (storeLocatorResult.isEmpty()) {
@@ -98,7 +97,7 @@ public class StoreCrudOperatorNew_1 {
             }
         }
 
-        ErStoreLocator outputStoreLocator = new ErStoreLocator(store.getStoreLocatorId()
+        ErStoreLocator_JAVA outputStoreLocator = new ErStoreLocator_JAVA(store.getStoreLocatorId()
                 , store.getStoreType()
                 , store.getNamespace()
                 , store.getName()
@@ -118,64 +117,72 @@ public class StoreCrudOperatorNew_1 {
         }
 
         // process output partitions
-        List<ErPartition> outputPartitions = new ArrayList<>();
+        List<ErPartition_JAVA> outputPartitions = new ArrayList<>();
         for (StorePartition p : storePartitionResult) {
-            outputPartitions.add(new ErPartition(p.getPartitionId()
+
+            ErProcessor_JAVA erProcessor = new ErProcessor_JAVA();
+            erProcessor.setId(p.getPartitionId());
+            erProcessor.setServerNodeId(p.getNodeId());
+
+            outputPartitions.add(new ErPartition_JAVA(p.getPartitionId()
                     , outputStoreLocator
-                    , new ErProcessor(p.getPartitionId(), p.getNodeId())
+                    , erProcessor
                     , -1
             ));
         }
-        ErPartition[] outputPartitionsArray = outputPartitions.toArray(new ErPartition[0]);
-        return new ErStore(outputStoreLocator, outputPartitionsArray, outputOptions);
+        return new ErStore_JAVA(outputStoreLocator, outputPartitions, outputOptions);
     }
 
-    private ErStore doCreateStore(ErStore input) {
-        Map<String, String> inputOptions = input.options();
-        ErStoreLocator inputStoreLocator = input.storeLocator();
+    private ErStore_JAVA doCreateStore(ErStore_JAVA input) {
+        Map<String, String> inputOptions = input.getOptions();
+        ErStoreLocator_JAVA inputStoreLocator = input.getStoreLocator();
 
         StoreLocator newStoreLocator = new StoreLocator();
-        newStoreLocator.setStoreType(inputStoreLocator.storeType());
-        newStoreLocator.setNamespace(inputStoreLocator.namespace());
-        newStoreLocator.setName(inputStoreLocator.name());
-        newStoreLocator.setPath(inputStoreLocator.path());
-        newStoreLocator.setTotalPartitions(inputStoreLocator.totalPartitions());
-        newStoreLocator.setPartitioner(inputStoreLocator.partitioner());
-        newStoreLocator.setSerdes(inputStoreLocator.serdes());
+        newStoreLocator.setStoreType(inputStoreLocator.getStoreType());
+        newStoreLocator.setNamespace(inputStoreLocator.getNamespace());
+        newStoreLocator.setName(inputStoreLocator.getName());
+        newStoreLocator.setPath(inputStoreLocator.getPath());
+        newStoreLocator.setTotalPartitions(inputStoreLocator.getTotalPartitions());
+        newStoreLocator.setPartitioner(inputStoreLocator.getPartitioner());
+        newStoreLocator.setSerdes(inputStoreLocator.getSerdes());
         newStoreLocator.setStatus(StoreStatus.NORMAL());
         boolean addStoreLocatorFlag = storeLocatorService.save(newStoreLocator);
         if (!addStoreLocatorFlag) {
-            throw new CrudException("Illegal rows affected returned when creating store locator: 0");
+            throw new CrudException_JAVA("Illegal rows affected returned when creating store locator: 0");
         }
 
-        int newTotalPartitions = inputStoreLocator.totalPartitions();
-        List<ErPartition> newPartitions = new ArrayList<>();
-        List<ErServerNode> serverNodes = Arrays.stream(ServerNodeCrudOperator.doGetServerNodes(
-                new ErServerNode(
+        int newTotalPartitions = inputStoreLocator.getTotalPartitions();
+        List<ErPartition_JAVA> newPartitions = new ArrayList<>();
+        List<ErServerNode_JAVA> serverNodes = Arrays.stream(ServerNodeCrudOperator.doGetServerNodes(
+                new ErServerNode_JAVA(
                         ServerNodeTypes.NODE_MANAGER()
-                        , ServerNodeStatus.HEALTHY()))).sorted(Comparator.comparingLong(ErServerNode::id)).collect(Collectors.toList());
+                        , ServerNodeStatus.HEALTHY()))).sorted(Comparator.comparingLong(ErServerNode_JAVA::id)).collect(Collectors.toList());
         int nodesCount = serverNodes.size();
-        ErPartition[] specifiedPartitions = input.partitions();
-        boolean isPartitionsSpecified = specifiedPartitions.length > 0;
+        List<ErPartition_JAVA> specifiedPartitions = input.getPartitions();
+        boolean isPartitionsSpecified = specifiedPartitions.size() > 0;
         if (newTotalPartitions <= 0) newTotalPartitions = nodesCount << 2;
         ArrayList<Long> serverNodeIds = new ArrayList<>();
         for (int i = 0; i < newTotalPartitions; i++) {
-            ErServerNode node = serverNodes.get(i % nodesCount);
+            ErServerNode_JAVA node = serverNodes.get(i % nodesCount);
             StorePartition nodeRecord = new StorePartition();
             nodeRecord.setStoreLocatorId(newStoreLocator.getStoreLocatorId());
-            nodeRecord.setNodeId(isPartitionsSpecified ? input.partitions()[i % specifiedPartitions.length].processor().serverNodeId() : node.id());
+            nodeRecord.setNodeId(isPartitionsSpecified ? input.getPartitions().get(i % specifiedPartitions.size()).getProcessor().getServerNodeId() : node.getId());
             nodeRecord.setPartitionId(i);
             nodeRecord.setStatus(PartitionStatus.PRIMARY());
             boolean addNodeRecordFlag = storePartitionService.save(nodeRecord);
             if (!addNodeRecordFlag) {
-                throw new CrudException("Illegal rows affected when creating node: 0");
+                throw new CrudException_JAVA("Illegal rows affected when creating node: 0");
             }
-            serverNodeIds.add(node.id());
-            newPartitions.add(new ErPartition(i
+            serverNodeIds.add(node.getId());
+
+            ErProcessor_JAVA binding = new ErProcessor_JAVA();
+            binding.setId(i);
+            binding.setServerNodeId(isPartitionsSpecified ? input.getPartitions().get(i % specifiedPartitions.size()).getProcessor().getServerNodeId() : node.getId());
+            binding.setTag("binding");
+
+            newPartitions.add(new ErPartition_JAVA(i
                     , inputStoreLocator
-                    , new ErProcessor(i
-                    , isPartitionsSpecified ? input.partitions()[i % specifiedPartitions.length].processor().serverNodeId() : node.id()
-                    , "binding")
+                    ,binding
                     , -1));
         }
         ConcurrentHashMap<String, String> newOptions = new ConcurrentHashMap<>();
@@ -187,57 +194,57 @@ public class StoreCrudOperatorNew_1 {
             newStoreOption.setData(entry.getValue());
             storeOptionService.save(newStoreOption);
         }
-        return new ErStore(inputStoreLocator, newPartitions.toArray(new ErPartition[0]), newOptions);
+        return new ErStore_JAVA(inputStoreLocator, newPartitions, newOptions);
     }
 
     @Transactional
-    private ErStore doDeleteStore(ErStore input) {
-        ErStoreLocator inputStoreLocator = input.storeLocator();
-        ErStoreLocator outputStoreLocator = null;
-        if ("*".equals(inputStoreLocator.name())) {
+    private ErStore_JAVA doDeleteStore(ErStore_JAVA input) {
+        ErStoreLocator_JAVA inputStoreLocator = input.getStoreLocator();
+        ErStoreLocator_JAVA outputStoreLocator = null;
+        if ("*" .equals(inputStoreLocator.getName())) {
             UpdateWrapper<StoreLocator> updateWrapper = new UpdateWrapper<>();
-            updateWrapper.lambda().setSql("name = concat(name, " + TimeUtils.getNowMs(null) + ")")
+            updateWrapper.lambda().setSql("name = concat(name, " + System.currentTimeMillis() + ")")
                     .set(StoreLocator::getStatus, StoreStatus.DELETED())
-                    .eq(StoreLocator::getNamespace, inputStoreLocator.namespace())
+                    .eq(StoreLocator::getNamespace, inputStoreLocator.getNamespace())
                     .eq(StoreLocator::getStatus, StoreStatus.NORMAL())
-                    .eq("*".equals(inputStoreLocator.storeType()), StoreLocator::getStoreType, inputStoreLocator.storeType());
+                    .eq("*" .equals(inputStoreLocator.getStoreType()), StoreLocator::getStoreType, inputStoreLocator.getStoreType());
             storeLocatorService.update(updateWrapper);
             outputStoreLocator = inputStoreLocator;
         } else {
             QueryWrapper<StoreLocator> queryWrapper = new QueryWrapper<>();
-            queryWrapper.lambda().eq(StoreLocator::getStoreType, inputStoreLocator.storeType())
-                    .eq(StoreLocator::getNamespace, inputStoreLocator.namespace())
-                    .eq(StoreLocator::getName, inputStoreLocator.name())
+            queryWrapper.lambda().eq(StoreLocator::getStoreType, inputStoreLocator.getStoreType())
+                    .eq(StoreLocator::getNamespace, inputStoreLocator.getNamespace())
+                    .eq(StoreLocator::getName, inputStoreLocator.getName())
                     .eq(StoreLocator::getStatus, StoreStatus.NORMAL());
             List<StoreLocator> nodeResult = storeLocatorService.list(queryWrapper);
             if (nodeResult.isEmpty()) {
                 return null;
             }
             StoreLocator nodeRecord = nodeResult.get(0);
-            String nameNow = nodeRecord.getName() + "." + TimeUtils.getNowMs(null);
+            String nameNow = nodeRecord.getName() + "." + System.currentTimeMillis();
             UpdateWrapper<StoreLocator> updateWrapper = new UpdateWrapper<>();
             updateWrapper.lambda().set(StoreLocator::getName, nameNow)
                     .set(StoreLocator::getStatus, StoreStatus.DELETED())
                     .eq(StoreLocator::getStoreLocatorId, nodeRecord.getStoreLocatorId());
             storeLocatorService.update(updateWrapper);
-            inputStoreLocator = inputStoreLocator.setName(nameNow);
+            inputStoreLocator.setName(nameNow);
             outputStoreLocator = inputStoreLocator;
         }
-        return new ErStore(outputStoreLocator, new ErPartition[0], new ConcurrentHashMap<>());
+        return new ErStore_JAVA(outputStoreLocator, new ArrayList<>(), new ConcurrentHashMap<>());
     }
 
-    public ErStoreList getStoreLocators(ErStore input) {
+    public ErStoreList_JAVA getStoreLocators(ErStore_JAVA input) {
         QueryWrapper<StoreLocator> queryWrapper = new QueryWrapper<>();
-        ErStoreLocator storeLocator = input.storeLocator();
-        String storeName = storeLocator.name();
-        String storeNamespace = storeLocator.namespace();
+        ErStoreLocator_JAVA storeLocator = input.getStoreLocator();
+        String storeName = storeLocator.getName();
+        String storeNamespace = storeLocator.getNamespace();
         queryWrapper.apply(!StringUtils.isBlank(storeName), " and name like " + storeName.replace('*', '%'))
                 .lambda().eq(!StringUtils.isBlank(storeNamespace), StoreLocator::getNamespace, storeNamespace);
         List<StoreLocator> storeList = storeLocatorService.list(queryWrapper);
-        ErStore[] erStoreArr = new ErStore[storeList.size()];
+        List<ErStore_JAVA> erStoreArr = new ArrayList<>();
         for (int i = 0; i < storeList.size(); i++) {
             StoreLocator store = storeList.get(i);
-            ErStoreLocator erStoreLocator = new ErStoreLocator(store.getStoreLocatorId()
+            ErStoreLocator_JAVA erStoreLocator = new ErStoreLocator_JAVA(store.getStoreLocatorId()
                     , store.getStoreType()
                     , store.getNamespace()
                     , store.getName()
@@ -245,9 +252,9 @@ public class StoreCrudOperatorNew_1 {
                     , store.getTotalPartitions()
                     , store.getPartitioner()
                     , store.getSerdes());
-            erStoreArr[i] = new ErStore(erStoreLocator, new ErPartition[0], new ConcurrentHashMap<>());
+            erStoreArr.add(new ErStore_JAVA(erStoreLocator, new ArrayList<>(), new ConcurrentHashMap<>()));
         }
-        return new ErStoreList(erStoreArr,new ConcurrentHashMap<>());
+        return new ErStoreList_JAVA(erStoreArr, new ConcurrentHashMap<>());
     }
 
 }
