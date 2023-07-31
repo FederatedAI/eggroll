@@ -3,8 +3,9 @@ package com.webank.eggroll.clustermanager.entity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.eggroll.core.pojo.ErSessionMeta;
 
-import java.util.Date;
+import java.sql.Date;
 @TableName(value = "session_main", autoResultMap = true)
 public class SessionMain {
     @TableId(type = IdType.INPUT)
@@ -101,5 +102,19 @@ public class SessionMain {
 
     public void setUpdatedAt(Date updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public ErSessionMeta  toErSessionMeta(){
+        ErSessionMeta  result = new ErSessionMeta();
+        result.setId(this.sessionId);
+        result.setName(this.name);
+        result.setTag(this.tag);
+        result.setCreateTime(createdAt);
+        result.setUpdateTime(updatedAt);
+        result.setStatus(status);
+        result.setTotalProcCount(totalProcCount);
+        result.setActiveProcCount(activeProcCount);
+        return  result;
+
     }
 }

@@ -11,6 +11,8 @@ import java.util.Map;
 
 @Data
 public class ErSessionMeta  {
+
+
     private String id = StringConstants.EMPTY;
     private String name = StringConstants.EMPTY;
     private String status = StringConstants.EMPTY;
