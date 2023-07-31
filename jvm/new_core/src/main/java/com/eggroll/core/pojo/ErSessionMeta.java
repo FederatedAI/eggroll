@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 @Data
-public class ErSessionMeta_JAVA  {
+public class ErSessionMeta  {
     private String id = StringConstants.EMPTY;
     private String name = StringConstants.EMPTY;
     private String status = StringConstants.EMPTY;
