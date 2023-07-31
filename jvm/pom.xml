@@ -395,6 +395,7 @@
     <module>roll_frame</module>
     <module>roll_site</module>
       <module>cluster_manager</module>
+      <module>new_core</module>
   </modules>
   
 </project>

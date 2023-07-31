@@ -15,7 +15,6 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @MapperScan("com.webank.eggroll.clustermanager.dao.mapper")
 @SpringBootApplication
 @ConfigurationProperties
-//@PropertySource(value = "classpath:eggroll.properties1", ignoreResourceNotFound = false)
 @EnableScheduling
 public class Application {
     static Logger logger = LoggerFactory.getLogger(Application.class);
