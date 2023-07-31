@@ -123,6 +123,47 @@ public class MetaInfo {
     public static Integer CONFKEY_CORE_GRPC_SERVER_CHANNEL_SSL_SESSION_TIMEOUT_SEC =86400;
 
 
+    @Config(confKey = "eggroll.core.retry.default.attempt.timeout.ms", pattern = Dict.POSITIVE_INTEGER_PATTERN)
+    public static Integer CONFKEY_CORE_RETRY_DEFAULT_ATTEMPT_TIMEOUT_MS =30000;
+    @Config(confKey = "eggroll.core.retry.default.max.attempts", pattern = Dict.POSITIVE_INTEGER_PATTERN)
+    public static Integer CONFKEY_CORE_RETRY_DEFAULT_MAX_ATTEMPTS =3;
+    @Config(confKey = "eggroll.core.retry.default.wait.time.ms", pattern = Dict.POSITIVE_INTEGER_PATTERN)
+    public static Integer CONFKEY_CORE_RETRY_DEFAULT_WAIT_TIME_MS =1000;
+
+    @Config(confKey = "eggroll.core.security.ca.crt.path")
+    public static String CONFKEY_CORE_SECURITY_CA_CRT_PATH ;
+
+    @Config(confKey = "eggroll.core.security.crt.path")
+    public static String CONFKEY_CORE_SECURITY_KEY_CRT_PATH ;
+    @Config(confKey = "eggroll.core.security.key.path")
+    public static String CONFKEY_CORE_SECURITY_KEY_PATH ;
+
+
+    @Config(confKey = "eggroll.core.security.client.ca.crt.path")
+    public static String CONFKEY_CORE_SECURITY_CLIENT_CA_CRT_PATH ;
+    @Config(confKey = "eggroll.core.security.client.crt.path")
+    public static String CONFKEY_CORE_SECURITY_CLIENT_KEY_CRT_PATH ;
+    @Config(confKey = "eggroll.core.security.client.key.path")
+    public static String CONFKEY_CORE_SECURITY_CLIENT_KEY_PATH ;
+
+    @Config(confKey = "eggroll.core.security.secure.cluster.enabled", pattern = Dict.BOOLEAN_PATTERN)
+    public static Boolean CONFKEY_CORE_SECURITY_SECURE_CLUSTER_ENABLED =false;
+    @Config(confKey = "eggroll.core.security.secure.client.auth.enabled", pattern = Dict.BOOLEAN_PATTERN)
+    public static Boolean CONFKEY_CORE_SECURITY_CLIENT_AUTH_ENABLED =false;
+
+
+    @Config(confKey = "eggroll.core.command.default.serdes.type")
+    public static String CONFKEY_CORE_COMMAND_DEFAULT_SERDES_TYPE ;
+    @Config(confKey = "eggroll.core.log.dir")
+    public static String CONFKEY_CORE_LOG_DIR ;
+
+    @Config(confKey = "eggroll.core.stats.direct.memory.metrics", pattern = Dict.BOOLEAN_PATTERN)
+    public static Boolean EGGROLL_CORE_STATS_DIRECT_MEMORY_METRICS =false;
+    @Config(confKey = "eggroll.core.stats.direct.memory.metrics.interval.sec", pattern = Dict.POSITIVE_INTEGER_PATTERN)
+    public static Integer EGGROLL_CORE_STATS_DIRECT_MEMORY_METRICS_INTERVAL_SEC = 60;
+
+
+
     public static boolean checkPattern(String pattern, String value) {
         Pattern p = Pattern.compile(pattern);
         Matcher m = p.matcher(value);
