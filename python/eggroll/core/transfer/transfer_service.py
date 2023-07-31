@@ -358,7 +358,7 @@ def zip2bytes(startdir,compression=ZIP_DEFLATED,compresslevel=1, **kwargs) -> by
         for dirpath, dirnames, filenames in os.walk(startdir):
             for filename in filenames:
                 subpath = os.path.join(dirpath, filename)
-                subfile = open(subpath, encoding="utf-8")
+                subfile = open(subpath)
                 z.writestr(filename, subfile.read())
     buffer.seek(0)
     return buffer.read()

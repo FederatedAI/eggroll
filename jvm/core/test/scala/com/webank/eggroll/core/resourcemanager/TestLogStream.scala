@@ -18,8 +18,9 @@ class TestLogStream {
     var latch :CountDownLatch = new CountDownLatch(1)
     val extendTransferClient = new ExtendTransferClient(ErEndpoint(host = "localhost", port = 4670))
     var requestSb =extendTransferClient.fetchLog(new StreamObserver[Extend.GetLogResponse] {
+
       override def onNext(v: Extend.GetLogResponse): Unit = {
-        System.err.println("receive log "+v.getDatasList)
+        System.err.println("receive log "+v)
       }
 
       override def onError(throwable: Throwable): Unit = {
@@ -31,9 +32,13 @@ class TestLogStream {
         System.err.println("receive log onCompleted ")
       }
     })
-    var request : Extend.GetLogRequest = Extend.GetLogRequest.newBuilder().setSessionId("deepspeed_session_20230705-175508-766715").setRank("0").setLogType("INFO").build();
+    var request : Extend.GetLogRequest = Extend.GetLogRequest.newBuilder().setSessionId("deepspeed_session_20230705-175508-766715").setLogType("INFO").build();
     requestSb.onNext(request)
+    Thread.sleep(10000)
+    //requestSb.onCompleted()
+
     latch.await()
+
 
 
   }

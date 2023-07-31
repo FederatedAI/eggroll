@@ -99,7 +99,7 @@ class NodeManagerService extends NodeManager with Logging {
           case _ => throw new IllegalArgumentException(s"op not supported: '${opType}'")
         }
       }else{
-        logInfo("xxxxxxxxxxxxxxxx")
+    
       }
     })
 

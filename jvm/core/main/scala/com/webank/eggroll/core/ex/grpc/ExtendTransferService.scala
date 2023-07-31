@@ -5,7 +5,9 @@ import com.webank.eggroll.core.client.NodeManagerClient
 import com.webank.eggroll.core.containers.ContainersServiceHandler
 import com.webank.eggroll.core.containers.ContainersServiceHandler.LogStreamHolder
 import com.webank.eggroll.core.deepspeed.job.JobServiceHandler.smDao
+import com.webank.eggroll.core.error.{ErSessionException, PathNotExistException, RankNotExistException}
 import com.webank.eggroll.core.meta.{ErEndpoint, ErServerNode}
+import com.webank.eggroll.core.resourcemanager.BaseDao.NotExistError
 import com.webank.eggroll.core.resourcemanager.SessionMetaDao
 import com.webank.eggroll.core.resourcemanager.metadata.ServerNodeCrudOperator
 import com.webank.eggroll.core.transfer.{Extend, ExtendTransferServerGrpc}
@@ -25,18 +27,33 @@ import org.apache.commons.lang3.StringUtils
 
         override def onNext(request: Extend.GetLogRequest): Unit = {
           if(status=="init"){
-            logInfo(s"receive get log request ${request}");
-            logStreamHolder = containersServiceHandler.startLogStream(request,responseObserver)
-            status="running"
+            try {
+              logInfo(s"receive get log request ${request}");
+              logStreamHolder = containersServiceHandler.createLogStream(request, responseObserver)
+              status = "running"
+              logStreamHolder.run()
+            }catch {
+              case e:PathNotExistException =>
+                  responseObserver.onNext(Extend.GetLogResponse.newBuilder().setCode("110").setMsg(e.getMessage).build())
+                  responseObserver.onCompleted()
+            }
           }
         }
 
         override def onError(throwable: Throwable): Unit = {
-          logStreamHolder.stop()
+          System.err.println("receive on error")
+          status = "error"
+          if(logStreamHolder!=null) {
+               logStreamHolder.stop()
+          }
         }
 
         override def onCompleted(): Unit = {
-          logStreamHolder.stop()
+          System.err.println("receive on stop")
+          status = "stop"
+          if(logStreamHolder!=null){
+            logStreamHolder.stop()
+          }
         }
       }
 
@@ -58,26 +75,45 @@ class ClusterManagerExtendTransferService  extends   ExtendTransferServerGrpc.Ex
       var  requestSb :StreamObserver[Extend.GetLogRequest] =null
 
       override def onNext(request: Extend.GetLogRequest): Unit = {
-        if(status=="init"){
-          logInfo(s"receive get log request ${request}");
-          var  index = 0
-          if(StringUtils.isNotEmpty(request.getRank)&& request.getRank.toInt>0){
-            index = request.getRank.toInt
+        var  index = 0
+        try {
+          if (status == "init") {
+            logInfo(s"receive get log request ${request}");
+            if (StringUtils.isNotEmpty(request.getRank) && request.getRank.toInt > 0) {
+              index = request.getRank.toInt
+            }
+            var rankInfos = smDao.getRanks(request.getSessionId)
+            if (rankInfos == null || rankInfos.size == 0) {
+              logError(s"can not found rank info for session ${request.getSessionId}")
+              throw new RankNotExistException(s"can not found rank info for session ${request.getSessionId}")
+            }
+            val nodeIdMeta = rankInfos.filter(_._4 == index)
+            if (nodeIdMeta == null || nodeIdMeta.size == 0) {
+              logError(s"can not found rank info for session ${request.getSessionId} rank ${index}")
+              throw new RankNotExistException(s"can not found rank info for session ${request.getSessionId} rank ${index}")
+            }
+            var rankInfo = nodeIdMeta.apply(0)
+            logInfo(s"rank info ${rankInfo}")
+            val erServerNode = nodeDao.getServerNode(ErServerNode(id = rankInfo._2))
+            logInfo(s"prepare to send log request1 to  ${erServerNode.endpoint.host}  ${erServerNode.endpoint.port}");
+            val extendTransferClient = new ExtendTransferClient(ErEndpoint(host = erServerNode.endpoint.host, port = erServerNode.endpoint.port))
+            requestSb = extendTransferClient.fetchLog(responseObserver)
+            status = "running"
           }
-          val nodeIdMeta = smDao.getRanks(request.getSessionId).filter(_._4==index)
-          var rankInfo = nodeIdMeta.apply(0)
-          logInfo(s"rank info ${rankInfo}")
-          val erServerNode = nodeDao.getServerNode( ErServerNode(id=rankInfo._2))
-          logInfo(s"prepare to send log request1 to  ${erServerNode.endpoint.host}  ${erServerNode.endpoint.port}");
-          val extendTransferClient = new ExtendTransferClient(ErEndpoint(host = erServerNode.endpoint.host, port = erServerNode.endpoint.port))
-          requestSb =extendTransferClient.fetchLog(responseObserver)
+        }catch{
+          case e: RankNotExistException =>{
+            status ="error"
+            responseObserver.onNext(Extend.GetLogResponse.newBuilder().setCode("111").setMsg(e.getMessage).build())
+            responseObserver.onCompleted()
+          }
+        }
 
 
-          status="running"
-        }
-        if(status =="running"&&requestSb!=null){
-          requestSb.onNext(request)
-        }
+          if (status == "running" && requestSb != null) {
+
+            requestSb.onNext(request.toBuilder.setRank(index.toString).build())
+          }
+
 
       }
 

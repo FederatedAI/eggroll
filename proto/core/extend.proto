@@ -29,7 +29,9 @@ message GetLogRequest {
 }
 
 message GetLogResponse {
+  string code =1;
   repeated string datas = 2;
+  string msg = 3;
 }
 
 

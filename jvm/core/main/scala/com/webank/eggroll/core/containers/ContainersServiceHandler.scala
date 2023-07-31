@@ -5,12 +5,15 @@ import com.webank.eggroll.core.constant.{NodeManagerConfKeys, ProcessorStatus}
 import com.webank.eggroll.core.containers.ContainersServiceHandler.{CompressMethod, LogStreamHolder, logError, zip}
 import com.webank.eggroll.core.containers.container.{ContainersManager, DeepSpeedContainer, WarpedDeepspeedContainerConfig}
 import com.webank.eggroll.core.containers.meta._
+import com.webank.eggroll.core.error.PathNotExistException
 import com.webank.eggroll.core.meta.ErProcessor
 import com.webank.eggroll.core.resourcemanager.NodeManagerMeta
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.transfer.Extend
 import com.webank.eggroll.core.util.{Logging, ProcessUtils}
+import io.grpc.Status
 import io.grpc.stub.StreamObserver
+import org.apache.commons.lang3.StringUtils
 
 import java.io.{BufferedReader, ByteArrayOutputStream, FileInputStream, InputStreamReader}
 import java.nio.file.Files
@@ -165,41 +168,31 @@ class ContainersServiceHandler(implicit ec: ExecutionContext,
 
 
 
-  def  startLogStream(request: Extend.GetLogRequest, responseObserver: StreamObserver[Extend.GetLogResponse]): LogStreamHolder =synchronized{
+  def  createLogStream(request: Extend.GetLogRequest, responseObserver: StreamObserver[Extend.GetLogResponse]): LogStreamHolder =synchronized{
 //    tail -n 1000：显示最后1000行
 //    tail -n +1000：从1000行开始显示，显示1000行以后的
 //    head -n 1000：显示前面1000行
 //
-    try {
+
       var sessionId = request.getSessionId
+      var line =  if(request.getStartLine>0) request.getStartLine else "+0"
+
       var rank = request.getRank
       var path: Path = getContainerLogsDir(sessionId, rank.toLong)
-      path = path / request.getLogType + ".log"
+      path = path / (if(StringUtils.isNotEmpty(request.getLogType))request.getLogType else "INFO" ) + ".log"
 
-      for (a <- 1 until 60) {
-        if (!path.exists) {
-          Thread.sleep(1000)
-          logError(s"can not found file ${path} , try next time ")
-        }
-      }
       if (!path.exists) {
 
-        throw new RuntimeException(s"can not found file ${path}")
+        throw new PathNotExistException(s"can not found file ${path}")
+       // throw Status.INTERNAL.withDescription(s"can not found file ${path}").asRuntimeException()
+
       }
 
-      //    if(logStreamMap.get(path)==null) {
-      //          logStreamMap.putIfAbsent(sessionId+"_"+rank,new util.ArrayList[LogStreamHolder]())
-      //      }
+      var command ="tail -F -n  "+line +" "+ path
+      var logStreamHolder = new LogStreamHolder(System.currentTimeMillis(), "tail -F -n  "+line +" "+ path, responseObserver, "running")
+      return logStreamHolder
 
-      var logStreamHolder = new LogStreamHolder(System.currentTimeMillis(), "tail -F -n +0 " + path, responseObserver, "running")
-      //    logStreamMap.get(path).add(logStreamHolder)
-      logStreamHolder.run()
-      logStreamHolder
-    }catch{
-      case t: Throwable => responseObserver.onError(t)
 
-    }
-    null
 
   }
 
@@ -233,41 +226,40 @@ object ContainersServiceHandler extends Logging {
                         streamObserver: StreamObserver[Extend.GetLogResponse],
                         var status: String){
 
-//    var  createTimestamp:Long
-//    var  streamObserver: StreamObserver[Extend.GetLogResponse]
- //   var  process : Process
+    var thread:Thread = null;
+    var  bufferReader:BufferedReader= null
+    var process:Process=null;
       def  stop():Unit={
+        logInfo("receive stop log stream command")
         this.status = "stop"
+        thread.interrupt()
+        process.destroyForcibly()
+        bufferReader.close()
+
       }
 
       def  run(): Unit ={
-        new Thread(()=>{
-          var  bufferReader:BufferedReader= null
-          var process:Process=null;
+        thread = new Thread(()=>{
+
+
           try {
-           // var  command =  "tail -F -n +0 "+  path
+            logInfo(s"begin ${command}")
             process = ProcessUtils.createProcess(command)
             bufferReader= new BufferedReader(new InputStreamReader(process.getInputStream()))
             var batchSize = 10;
             breakable {
-              while (true) {
+              while (true&& !Thread.interrupted()) {
                 if(status=="stop"){
                   break;
                 }
                 var logBuffer = new ArrayBuffer[String]()
-                breakable {
-                  for (a <- 1 until batchSize) {
-
-                    var line: String = bufferReader.readLine()
-                    if (line != null) {
-                      logBuffer.append(line)
-                    } else {
-                      break
-                    }
-                  }
+                var line: String = bufferReader.readLine()
+                if(line!=null){
+                  logBuffer.append(line)
                 }
+
                 if (logBuffer.size > 0) {
-                  var response: Extend.GetLogResponse = Extend.GetLogResponse.newBuilder().addAllDatas(logBuffer.toList.asJava).build()
+                  var response: Extend.GetLogResponse = Extend.GetLogResponse.newBuilder().setCode("0").addAllDatas(logBuffer.toList.asJava).build()
                   streamObserver.onNext(response)
                 } else {
                   Thread.sleep(1000)
@@ -275,11 +267,13 @@ object ContainersServiceHandler extends Logging {
               }
             }
           }catch{
+            case t: InterruptedException =>
             case t: Throwable => logError("start log stream error",t)
           }
           finally {
             if(bufferReader!=null){
               bufferReader.close()
+
             }
             if(process!=null)
               process.destroyForcibly()
@@ -291,9 +285,11 @@ object ContainersServiceHandler extends Logging {
                   logError("send onCmpleted error")
               }
             }
+            logInfo("===========log stream destroy over")
           }
 
-        }).start()
+        })
+        thread .start()
       }
 
   }
