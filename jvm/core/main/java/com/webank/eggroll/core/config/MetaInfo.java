@@ -50,6 +50,10 @@ public class MetaInfo {
     public static String BOOTSTRAP_SHELL = "";
     @Config(confKey = "eggroll.bootstrap.shell.args")
     public static String BOOTSTRAP_SHELL_ARGS = "";
+    @Config(confKey = "eggroll.core.grpc.transfer.server.host")
+    public static String CONFKEY_CORE_GRPC_TRANSFER_SERVER_HOST = "0.0.0.0";
+    @Config(confKey = "eggroll.core.grpc.transfer.server.port")
+    public static String CONFKEY_CORE_GRPC_TRANSFER_SERVER_PORT = "0";
 
 
 
@@ -89,8 +93,34 @@ public class MetaInfo {
 
     @Config(confKey = "eggroll.core.grpc.channel.keepalive.without.calls.enabled", pattern = Dict.BOOLEAN_PATTERN)
     public static Boolean CONFKEY_CORE_GRPC_CHANNEL_KEEPALIVE_WITHOUT_CALLS_ENABLED = false;
+    @Config(confKey = "eggroll.core.grpc.server.channel.keepalive.without.calls.enabled", pattern = Dict.BOOLEAN_PATTERN)
+    public static Boolean CONFKEY_CORE_GRPC_SERVER_CHANNEL_KEEPALIVE_WITHOUT_CALLS_ENABLED =false;
 
 
+    @Config(confKey = "eggroll.core.grpc.server.channel.flow.control.window", pattern = Dict.POSITIVE_INTEGER_PATTERN)
+    public static Integer CONFKEY_CORE_GRPC_SERVER_CHANNEL_FLOW_CONTROL_WINDOW =128 << 20;
+    @Config(confKey = "eggroll.core.grpc.server.channel.keepalive.time.sec", pattern = Dict.POSITIVE_INTEGER_PATTERN)
+    public static Integer CONFKEY_CORE_GRPC_SERVER_CHANNEL_KEEPALIVE_TIME_SEC =7200;
+    @Config(confKey = "eggroll.core.grpc.server.channel.keepalive.timeout.sec", pattern = Dict.POSITIVE_INTEGER_PATTERN)
+    public static Integer CONFKEY_CORE_GRPC_SERVER_CHANNEL_KEEPALIVE_TIMEOUT_SEC =3600;
+    @Config(confKey = "eggroll.core.grpc.server.channel.max.concurrent.call.per.connection", pattern = Dict.POSITIVE_INTEGER_PATTERN)
+    public static Integer CONFKEY_CORE_GRPC_SERVER_CHANNEL_MAX_CONCURRENT_CALL_PER_CONNECTION =1000;
+    @Config(confKey = "eggroll.core.grpc.server.channel.max.connection.age.sec", pattern = Dict.POSITIVE_INTEGER_PATTERN)
+    public static Integer CONFKEY_CORE_GRPC_SERVER_CHANNEL_MAX_CONNECTION_AGE_SEC =86400;
+    @Config(confKey = "eggroll.core.grpc.server.channel.max.connection.age.grace.sec", pattern = Dict.POSITIVE_INTEGER_PATTERN)
+    public static Integer CONFKEY_CORE_GRPC_SERVER_CHANNEL_MAX_CONNECTION_AGE_GRACE_SEC =86400;
+    @Config(confKey = "eggroll.core.grpc.server.channel.max.connection.idle.sec", pattern = Dict.POSITIVE_INTEGER_PATTERN)
+    public static Integer CONFKEY_CORE_GRPC_SERVER_CHANNEL_MAX_CONNECTION_IDLE_SEC =86400;
+    @Config(confKey = "eggroll.core.grpc.server.channel.max.inbound.message.size", pattern = Dict.POSITIVE_INTEGER_PATTERN)
+    public static Integer CONFKEY_CORE_GRPC_SERVER_CHANNEL_MAX_INBOUND_MESSAGE_SIZE =(2 << 30) - 1;
+    @Config(confKey = "eggroll.core.grpc.server.channel.max.inbound.metadata.size", pattern = Dict.POSITIVE_INTEGER_PATTERN)
+    public static Integer CONFKEY_CORE_GRPC_SERVER_CHANNEL_MAX_INBOUND_METADATA_SIZE =128 << 20;
+    @Config(confKey = "eggroll.core.grpc.server.channel.permit.keepalive.time.sec", pattern = Dict.POSITIVE_INTEGER_PATTERN)
+    public static Integer CONFKEY_CORE_GRPC_SERVER_CHANNEL_PERMIT_KEEPALIVE_TIME_SEC =120;
+    @Config(confKey = "eggroll.core.grpc.server.channel.ssl.session.cache.size", pattern = Dict.POSITIVE_INTEGER_PATTERN)
+    public static Integer CONFKEY_CORE_GRPC_SERVER_CHANNEL_SSL_SESSION_CACHE_SIZE =65536;
+    @Config(confKey = "eggroll.core.grpc.server.channel.ssl.session.timeout.sec", pattern = Dict.POSITIVE_INTEGER_PATTERN)
+    public static Integer CONFKEY_CORE_GRPC_SERVER_CHANNEL_SSL_SESSION_TIMEOUT_SEC =86400;
 
 
     public static boolean checkPattern(String pattern, String value) {
