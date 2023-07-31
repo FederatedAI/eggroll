@@ -123,6 +123,120 @@ public class MetaInfo {
     public static Integer CONFKEY_CORE_GRPC_SERVER_CHANNEL_SSL_SESSION_TIMEOUT_SEC =86400;
 
 
+    @Config(confKey = "eggroll.core.retry.default.attempt.timeout.ms", pattern = Dict.POSITIVE_INTEGER_PATTERN)
+    public static Integer CONFKEY_CORE_RETRY_DEFAULT_ATTEMPT_TIMEOUT_MS =30000;
+    @Config(confKey = "eggroll.core.retry.default.max.attempts", pattern = Dict.POSITIVE_INTEGER_PATTERN)
+    public static Integer CONFKEY_CORE_RETRY_DEFAULT_MAX_ATTEMPTS =3;
+    @Config(confKey = "eggroll.core.retry.default.wait.time.ms", pattern = Dict.POSITIVE_INTEGER_PATTERN)
+    public static Integer CONFKEY_CORE_RETRY_DEFAULT_WAIT_TIME_MS =1000;
+
+    @Config(confKey = "eggroll.core.security.ca.crt.path")
+    public static String CONFKEY_CORE_SECURITY_CA_CRT_PATH ;
+
+    @Config(confKey = "eggroll.core.security.crt.path")
+    public static String CONFKEY_CORE_SECURITY_KEY_CRT_PATH ;
+    @Config(confKey = "eggroll.core.security.key.path")
+    public static String CONFKEY_CORE_SECURITY_KEY_PATH ;
+
+
+    @Config(confKey = "eggroll.core.security.client.ca.crt.path")
+    public static String CONFKEY_CORE_SECURITY_CLIENT_CA_CRT_PATH ;
+    @Config(confKey = "eggroll.core.security.client.crt.path")
+    public static String CONFKEY_CORE_SECURITY_CLIENT_KEY_CRT_PATH ;
+    @Config(confKey = "eggroll.core.security.client.key.path")
+    public static String CONFKEY_CORE_SECURITY_CLIENT_KEY_PATH ;
+
+    @Config(confKey = "eggroll.core.security.secure.cluster.enabled", pattern = Dict.BOOLEAN_PATTERN)
+    public static Boolean CONFKEY_CORE_SECURITY_SECURE_CLUSTER_ENABLED =false;
+    @Config(confKey = "eggroll.core.security.secure.client.auth.enabled", pattern = Dict.BOOLEAN_PATTERN)
+    public static Boolean CONFKEY_CORE_SECURITY_CLIENT_AUTH_ENABLED =false;
+
+
+    @Config(confKey = "eggroll.core.command.default.serdes.type")
+    public static String CONFKEY_CORE_COMMAND_DEFAULT_SERDES_TYPE ;
+    @Config(confKey = "eggroll.core.log.dir")
+    public static String CONFKEY_CORE_LOG_DIR ;
+
+    @Config(confKey = "eggroll.core.stats.direct.memory.metrics", pattern = Dict.BOOLEAN_PATTERN)
+    public static Boolean EGGROLL_CORE_STATS_DIRECT_MEMORY_METRICS =false;
+    @Config(confKey = "eggroll.core.stats.direct.memory.metrics.interval.sec", pattern = Dict.POSITIVE_INTEGER_PATTERN)
+    public static Integer EGGROLL_CORE_STATS_DIRECT_MEMORY_METRICS_INTERVAL_SEC = 60;
+
+    //ClusterManagerConfKeys
+    @Config(confKey = "eggroll.resourcemanager.clustermanager.jdbc.driver.class.name")
+    public static String CONFKEY_CLUSTER_MANAGER_JDBC_DRIVER_CLASS_NAME ;
+    @Config(confKey = "eggroll.resourcemanager.clustermanager.jdbc.url")
+    public static String CONFKEY_CLUSTER_MANAGER_JDBC_URL ;
+    @Config(confKey = "eggroll.resourcemanager.clustermanager.jdbc.username")
+    public static String CONFKEY_CLUSTER_MANAGER_JDBC_USERNAME ;
+    @Config(confKey = "eggroll.resourcemanager.clustermanager.jdbc.password")
+    public static String CONFKEY_CLUSTER_MANAGER_JDBC_PASSWORD ;
+    @Config(confKey = "eggroll.resourcemanager.clustermanager.host",pattern = Dict.POSITIVE_INTEGER_PATTERN)
+    public static String CONFKEY_CLUSTER_MANAGER_HOST ;
+    @Config(confKey = "eggroll.resourcemanager.clustermanager.jdbc.password.decryptor")
+    public static String EGGROLL_RESOURCEMANAGER_CLUSTERMANAGER_JDBC_PASSWORD_DECRYPTOR ;
+    @Config(confKey = "eggroll.resourcemanager.clustermanager.jdbc.password.decryptor")
+    public static String EGGROLL_RESOURCEMANAGER_CLUSTERMANAGER_JDBC_PASSWORD_DECRYPTOR_ARGS ;
+    @Config(confKey = "eggroll.resourcemanager.clustermanager.jdbc.password.decryptor.args.spliter")
+    public static String EGGROLL_RESOURCEMANAGER_CLUSTERMANAGER_JDBC_PASSWORD_DECRYPTOR_ARGS_SPLITER =",";
+
+    @Config(confKey = "eggroll.resourcemanager.clustermanager.datasource.db.max.idle", pattern = Dict.POSITIVE_INTEGER_PATTERN)
+    public static Integer CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_MAX_IDLE ;
+    @Config(confKey = "eggroll.resourcemanager.clustermanager.datasource.db.max.total", pattern = Dict.POSITIVE_INTEGER_PATTERN)
+    public static Integer CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_MAX_TOTAL ;
+    @Config(confKey = "eggroll.resourcemanager.clustermanager.datasource.db.max.wait.ms",pattern = Dict.POSITIVE_INTEGER_PATTERN)
+    public static Integer CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_MAX_WAIT_MS ;
+    @Config(confKey = "eggroll.resourcemanager.clustermanager.datasource.db.time.between.eviction.runs.ms",pattern = Dict.POSITIVE_INTEGER_PATTERN)
+    public static Integer CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_TIME_BETWEEN_EVICTION_RUNS_MS ;
+    @Config(confKey = "eggroll.resourcemanager.clustermanager.datasource.db.min.evictable.idle.time.ms",pattern = Dict.POSITIVE_INTEGER_PATTERN)
+    public static Integer CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_MIN_EVICTABLE_IDLE_TIME_MS ;
+    @Config(confKey = "eggroll.resourcemanager.clustermanager.datasource.db.default.auto.commit",pattern = Dict.POSITIVE_INTEGER_PATTERN)
+    public static Integer CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_DEFAULT_AUTO_COMMIT ;
+    @Config(confKey = "eggroll.resourcemanager.clustermanager.port")
+    public static Integer CONFKEY_CLUSTER_MANAGER_PORT ;
+    @Config(confKey = "eggroll.resourcemanager.clustermanager.node.heartbeat.expire.count",pattern = Dict.POSITIVE_INTEGER_PATTERN)
+    public static Integer CONFKEY_CLUSTER_MANAGER_NODE_HEARTBEAT_EXPIRED_COUNT = 2;
+    @Config(confKey = "eggroll.resourcemanager.schedule.minimum-allocation-vcores",pattern = Dict.POSITIVE_INTEGER_PATTERN)
+    public static Integer EGGROLL_RESOURCEMANAGER_SCHEDULE_MINIMUM_ALLOCATION_VCORES =1;
+
+    //NodeManagerConfKeys
+    @Config(confKey = "eggroll.resourcemanager.nodemanager.host")
+    public static String CONFKEY_NODE_MANAGER_HOST ;
+    @Config(confKey = "eggroll.resourcemanager.nodemanager.containers.data.dir")
+    public static String CONFKEY_NODE_MANAGER_CONTAINERS_DATA_DIR ;
+
+    @Config(confKey = "eggroll.resourcemanager.nodemanager.port",pattern = Dict.POSITIVE_INTEGER_PATTERN)
+    public static Integer CONFKEY_NODE_MANAGER_PORT ;
+    @Config(confKey = "eggroll.resourcemanager.nodemanager.id",pattern = Dict.POSITIVE_INTEGER_PATTERN)
+    public static Integer CONFKEY_NODE_MANAGER_ID ;
+    @Config(confKey = "eggroll.resourcemanager.nodemanager.heartbeat.interval",pattern = Dict.POSITIVE_INTEGER_PATTERN)
+    public static Integer CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL = 10000;
+    @Config(confKey = "eggroll.resourcemanager.nodemanager.cpu.vcores",pattern = Dict.POSITIVE_INTEGER_PATTERN)
+    public static Integer CONFKEY_NODE_MANAGER_CPU_VCORES = 16 ;
+    @Config(confKey = "eggroll.resourcemanager.nodemanager.gpu.vcores",pattern = Dict.POSITIVE_INTEGER_PATTERN)
+    public static Integer CONFKEY_NODE_MANAGER_GPU_VCORES =16;
+
+    //ResourceManagerConfKeys
+    @Config(confKey = "eggroll.resourcemanager.server.node.id",pattern = Dict.POSITIVE_INTEGER_PATTERN)
+    public static Integer SERVER_NODE_ID ;
+
+    //SessionConfKeys
+    @Config(confKey = "eggroll.session.name")
+    public static String CONFKEY_SESSION_NAME ;
+    @Config(confKey = "python.path")
+    public static String EGGROLL_SESSION_PYTHON_PATH ;
+    @Config(confKey = "python.venv")
+    public static String EGGROLL_SESSION_PYTHON_VENV ;
+    @Config(confKey = "eggroll.session.use.resource.dispatch")
+    public static String EGGROLL_SESSION_USE_RESOURCE_DISPATCH ;
+
+    @Config(confKey = "eggroll.session.context.rollpair.count",pattern = Dict.POSITIVE_INTEGER_PATTERN)
+    public static Integer CONFKEY_SESSION_CONTEXT_ROLLPAIR_COUNT ;
+    @Config(confKey = "eggroll.session.id",pattern = Dict.POSITIVE_INTEGER_PATTERN)
+    public static Integer CONFKEY_SESSION_ID ;
+
+
+
     public static boolean checkPattern(String pattern, String value) {
         Pattern p = Pattern.compile(pattern);
         Matcher m = p.matcher(value);

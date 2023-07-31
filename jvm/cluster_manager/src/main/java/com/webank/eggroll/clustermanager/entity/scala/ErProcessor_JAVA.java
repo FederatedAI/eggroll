@@ -23,6 +23,7 @@ public class ErProcessor_JAVA implements NetworkingRpcMessage_JAVA {
     private Date createdAt = null;
     private Date updatedAt = null;
 
+
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
