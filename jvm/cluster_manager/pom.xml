@@ -32,6 +32,14 @@
         </dependency>
 
         <dependency>
+            <groupId>com.webank.eggroll</groupId>
+            <artifactId>new_core</artifactId>
+            <version>3.0</version>
+            <scope>compile</scope>
+        </dependency>
+
+
+        <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <version>1.18.28</version>

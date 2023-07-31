@@ -1,8 +1,14 @@
 package com.webank.eggroll.clustermanager.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.eggroll.core.pojo.ErEndpoint;
+import com.eggroll.core.pojo.ErProcessor;
+import com.webank.eggroll.core.util.JsonUtil;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.Date;
+import java.util.Map;
+
 @TableName(value = "session_processor", autoResultMap = true)
 public class SessionProcessor {
     private Long processorId;
@@ -142,5 +148,45 @@ public class SessionProcessor {
 
     public void setUpdatedAt(Date updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public ErProcessor toErProcessor(){
+
+//        this.processorId = processorId;
+//        this.sessionId = sessionId;
+//        this.serverNodeId = serverNodeId;
+//        this.processorType = processorType;
+//        this.status = status;
+//        this.tag = tag;
+//        this.commandEndpoint = commandEndpoint;
+//        this.transferEndpoint = transferEndpoint;
+//        this.processorOption = processorOption;
+//        this.pid = pid;
+//        this.createdAt = createdAt;
+//        this.updatedAt = updatedAt;
+        ErProcessor  result = new ErProcessor();
+        result.setId(this.processorId);
+        result.setSessionId(this.sessionId);
+        result.setServerNodeId(this.serverNodeId);
+        result.setProcessorType(this.processorType);
+        result.setStatus(this.status);
+        result.setTag(this.tag);
+
+        if(StringUtils.isNotEmpty(this.commandEndpoint)){
+            ErEndpoint  ep = new ErEndpoint(this.commandEndpoint);
+            result.setCommandEndpoint(ep);
+        }
+
+        if(StringUtils.isNotEmpty(this.transferEndpoint)){
+            ErEndpoint  ep = new ErEndpoint(this.transferEndpoint);
+            result.setTransferEndpoint(ep);
+        }
+        if(StringUtils.isNotEmpty(this.processorOption)){
+            result.setOptions( JsonUtil.json2Object(this.processorOption, Map.class));
+        }
+        result.setPid(this.pid);
+        result.setCreatedAt(this.createdAt);
+        result.setUpdatedAt(this.updatedAt);
+        return result;
     }
 }

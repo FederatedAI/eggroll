@@ -16,29 +16,29 @@ public interface SessionManager {
      * @param sessionMeta session main and options
      * @return session main and options and processors
      */
-    def getOrCreateSession(sessionMeta: ErSessionMeta): ErSessionMeta
+    ErSessionMeta getOrCreateSession(ErSessionMeta sessionMeta );
 
     /**
      * get session detail
      * @param sessionMeta contains session id
      * @return session main and options and processors
      */
-    def getSession(sessionMeta: ErSessionMeta): ErSessionMeta
+    ErSessionMeta getSession(ErSessionMeta sessionMeta );
 
     /**
      * register session without boot processors
      * @param sessionMeta contains session main and options and processors
      * @return
      */
-    def registerSession(sessionMeta: ErSessionMeta): ErSessionMeta
+    ErSessionMeta registerSession(ErSessionMeta sessionMeta);
 
-    def stopSession(sessionMeta: ErSessionMeta): ErSessionMeta
+    ErSessionMeta stopSession(ErSessionMeta sessionMeta );
 
-    def killSession(sessionMeta: ErSessionMeta): ErSessionMeta
+    ErSessionMeta  killSession( ErSessionMeta sessionMeta);
 
-    def killSession(sessionMeta: ErSessionMeta, afterState: String): ErSessionMeta
+    ErSessionMeta killSession(ErSessionMeta sessionMeta ,String afterState );
 
-    def killAllSessions(sessionMeta: ErSessionMeta): ErSessionMeta
-}
+    ErSessionMeta killAllSessions( ErSessionMeta sessionMeta);
+
 
 }
