@@ -12,6 +12,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 @Slf4j
 @Service
@@ -37,10 +39,39 @@ public class ProcessorStateMachine_JAVA {
             }
             String statusLine = preState + "_" + desStateParam;
             ErProcessor_JAVA desErProcessor = new ErProcessor_JAVA();
-            BeanUtils.copyProperties(erProcessor,desErProcessor);
+            BeanUtils.copyProperties(erProcessor, desErProcessor);
             desErProcessor.setStatus(desStateParam);
             String dispatchConfig = StaticErConf_JAVA.getProperty(SessionConfKeys.EGGROLL_SESSION_USE_RESOURCE_DISPATCH(), "false");
+            switch (statusLine) {
+                case "_NEW":
 
+                    break;
+                case "NEW_RUNNING":
+                    break;
+                case "NEW_STOPPED":
+                case "NEW_KILLED":
+                case "NEW_ERROR":
+                    break;
+                case "RUNNING_FINISHED":
+                case "RUNNING_STOPPED":
+                case "RUNNING_KILLED":
+                case "RUNNING_ERROR":
+                    break;
+                default:
+                    log.info("there is no need to do something with {} state {}", erProcessor.getId(), statusLine);
+                    break;
+            }
         }
     }
+
+    private ErProcessor_JAVA createNewProcessor(ErProcessor_JAVA erProcessor, Consumer<ErProcessor_JAVA> beforeCall,
+                                                Consumer<ErProcessor_JAVA> afterCall) {
+            if (beforeCall != null)
+                beforeCall.accept(erProcessor);
+        ErProcessor_JAVA newProcessor = smDao.createProcessor(conn, erProcessor);
+            if (afterCall != null)
+                afterCall.accept(conn, newProcessor);
+            return newProcessor;
+    }
 }
+
