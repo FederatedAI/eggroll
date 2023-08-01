@@ -235,7 +235,7 @@ public class StoreCrudOperator_JAVA {
         return new ErStore(outputStoreLocator, new ArrayList<>(), new ConcurrentHashMap<>());
     }
 
-    public ErStoreList_ getStoreLocators(ErStore input) {
+    public ErStoreList getStoreLocators(ErStore input) {
         QueryWrapper<StoreLocator> queryWrapper = new QueryWrapper<>();
         ErStoreLocator storeLocator = input.getStoreLocator();
         String storeName = storeLocator.getName();
@@ -256,7 +256,7 @@ public class StoreCrudOperator_JAVA {
                     , store.getSerdes());
             erStoreArr.add(new ErStore(erStoreLocator, new ArrayList<>(), new ConcurrentHashMap<>()));
         }
-        return new ErStoreList_(erStoreArr, new ConcurrentHashMap<>());
+        return new ErStoreList(erStoreArr, new ConcurrentHashMap<>());
     }
 
 }
