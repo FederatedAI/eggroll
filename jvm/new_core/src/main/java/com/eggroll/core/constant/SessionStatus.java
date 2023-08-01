@@ -14,7 +14,7 @@ package com.eggroll.core.constant;
 public enum SessionStatus {
 
 
-    NEW(false),NEW_TIMEOUT(true),ACTIVE(false),CLOSED(true),KILLED(true),ERROR(true),FINISHED(true);
+    PREPARE(false), NEW(false),NEW_TIMEOUT(true),ACTIVE(false),CLOSED(true),KILLED(true),ERROR(true),FINISHED(true);
     private SessionStatus(boolean isOver){
         this.isOver = isOver;
     }
