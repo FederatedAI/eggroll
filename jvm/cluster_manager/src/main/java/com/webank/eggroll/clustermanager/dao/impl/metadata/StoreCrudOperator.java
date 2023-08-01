@@ -2,7 +2,9 @@ package com.webank.eggroll.clustermanager.dao.impl.metadata;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
+import com.eggroll.core.config.Dict;
 import com.eggroll.core.pojo.*;
+import com.eggroll.core.utils.JsonUtil;
 import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
 import com.webank.eggroll.clustermanager.dao.impl.StoreLocatorService;
 import com.webank.eggroll.clustermanager.dao.impl.StoreOptionService;
@@ -11,12 +13,7 @@ import com.webank.eggroll.clustermanager.entity.ServerNode;
 import com.webank.eggroll.clustermanager.entity.StoreLocator;
 import com.webank.eggroll.clustermanager.entity.StoreOption;
 import com.webank.eggroll.clustermanager.entity.StorePartition;
-import com.webank.eggroll.core.constant.PartitionStatus;
-import com.webank.eggroll.core.constant.ServerNodeStatus;
-import com.webank.eggroll.core.constant.ServerNodeTypes;
-import com.webank.eggroll.core.constant.StoreStatus;
 import com.webank.eggroll.core.exceptions.CrudException_JAVA;
-import com.webank.eggroll.core.util.JsonUtil;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -55,7 +52,7 @@ public class StoreCrudOperator {
         StoreLocator params = new StoreLocator();
         params.setNamespace(inputStoreLocator.getNamespace());
         params.setName(inputStoreLocator.getName());
-        params.setStatus(StoreStatus.NORMAL());
+        params.setStatus(Dict.NORMAL);
 
         if (!StringUtils.isBlank(inputStoreLocator.getStoreType())) {
             params.setStoreType(inputStoreLocator.getStoreType());
@@ -85,8 +82,8 @@ public class StoreCrudOperator {
         }
         if (!missingNodeId.isEmpty()) {
             QueryWrapper<ServerNode> queryServerNode = new QueryWrapper<>();
-            queryServerNode.lambda().eq(ServerNode::getStatus, ServerNodeStatus.HEALTHY())
-                    .eq(ServerNode::getNodeType, ServerNodeTypes.NODE_MANAGER())
+            queryServerNode.lambda().eq(ServerNode::getStatus, Dict.HEALTHY)
+                    .eq(ServerNode::getNodeType, Dict.NODE_MANAGER)
                     .in(ServerNode::getServerNodeId, missingNodeId);
             List<ServerNode> nodeResult = serverNodeService.list(queryServerNode);
             if (nodeResult.isEmpty()) {
@@ -148,7 +145,7 @@ public class StoreCrudOperator {
         newStoreLocator.setTotalPartitions(inputStoreLocator.getTotalPartitions());
         newStoreLocator.setPartitioner(inputStoreLocator.getPartitioner());
         newStoreLocator.setSerdes(inputStoreLocator.getSerdes());
-        newStoreLocator.setStatus(StoreStatus.NORMAL());
+        newStoreLocator.setStatus(Dict.NORMAL);
         boolean addStoreLocatorFlag = storeLocatorService.save(newStoreLocator);
         if (!addStoreLocatorFlag) {
             throw new CrudException_JAVA("Illegal rows affected returned when creating store locator: 0");
@@ -158,8 +155,8 @@ public class StoreCrudOperator {
         List<ErPartition> newPartitions = new ArrayList<>();
         List<ErServerNode> serverNodes = serverNodeService.doGetServerNodes(
                 new ErServerNode(
-                        ServerNodeTypes.NODE_MANAGER()
-                        , ServerNodeStatus.HEALTHY())).stream().sorted(Comparator.comparingLong(ErServerNode::getId)).collect(Collectors.toList());
+                        Dict.NODE_MANAGER
+                        , Dict.HEALTHY)).stream().sorted(Comparator.comparingLong(ErServerNode::getId)).collect(Collectors.toList());
         int nodesCount = serverNodes.size();
         List<ErPartition> specifiedPartitions = input.getPartitions();
         boolean isPartitionsSpecified = specifiedPartitions.size() > 0;
@@ -171,7 +168,7 @@ public class StoreCrudOperator {
             nodeRecord.setStoreLocatorId(newStoreLocator.getStoreLocatorId());
             nodeRecord.setNodeId(isPartitionsSpecified ? input.getPartitions().get(i % specifiedPartitions.size()).getProcessor().getServerNodeId() : node.getId());
             nodeRecord.setPartitionId(i);
-            nodeRecord.setStatus(PartitionStatus.PRIMARY());
+            nodeRecord.setStatus(Dict.PRIMARY);
             boolean addNodeRecordFlag = storePartitionService.save(nodeRecord);
             if (!addNodeRecordFlag) {
                 throw new CrudException_JAVA("Illegal rows affected when creating node: 0");
@@ -207,9 +204,9 @@ public class StoreCrudOperator {
         if ("*" .equals(inputStoreLocator.getName())) {
             UpdateWrapper<StoreLocator> updateWrapper = new UpdateWrapper<>();
             updateWrapper.lambda().setSql("name = concat(name, " + System.currentTimeMillis() + ")")
-                    .set(StoreLocator::getStatus, StoreStatus.DELETED())
+                    .set(StoreLocator::getStatus, Dict.DELETED)
                     .eq(StoreLocator::getNamespace, inputStoreLocator.getNamespace())
-                    .eq(StoreLocator::getStatus, StoreStatus.NORMAL())
+                    .eq(StoreLocator::getStatus, Dict.NORMAL)
                     .eq("*" .equals(inputStoreLocator.getStoreType()), StoreLocator::getStoreType, inputStoreLocator.getStoreType());
             storeLocatorService.update(updateWrapper);
             outputStoreLocator = inputStoreLocator;
@@ -218,7 +215,7 @@ public class StoreCrudOperator {
             queryWrapper.lambda().eq(StoreLocator::getStoreType, inputStoreLocator.getStoreType())
                     .eq(StoreLocator::getNamespace, inputStoreLocator.getNamespace())
                     .eq(StoreLocator::getName, inputStoreLocator.getName())
-                    .eq(StoreLocator::getStatus, StoreStatus.NORMAL());
+                    .eq(StoreLocator::getStatus, Dict.NORMAL);
             List<StoreLocator> nodeResult = storeLocatorService.list(queryWrapper);
             if (nodeResult.isEmpty()) {
                 return null;
@@ -227,7 +224,7 @@ public class StoreCrudOperator {
             String nameNow = nodeRecord.getName() + "." + System.currentTimeMillis();
             UpdateWrapper<StoreLocator> updateWrapper = new UpdateWrapper<>();
             updateWrapper.lambda().set(StoreLocator::getName, nameNow)
-                    .set(StoreLocator::getStatus, StoreStatus.DELETED())
+                    .set(StoreLocator::getStatus, Dict.DELETED)
                     .eq(StoreLocator::getStoreLocatorId, nodeRecord.getStoreLocatorId());
             storeLocatorService.update(updateWrapper);
             inputStoreLocator.setName(nameNow);
