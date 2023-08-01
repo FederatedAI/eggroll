@@ -3,7 +3,6 @@ package com.webank.eggroll.clustermanager.dao.impl.metadata;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.eggroll.core.pojo.*;
-import com.eggroll.core.pojo.scala.*;
 import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
 import com.webank.eggroll.clustermanager.dao.impl.StoreLocatorService;
 import com.webank.eggroll.clustermanager.dao.impl.StoreOptionService;
@@ -12,13 +11,12 @@ import com.webank.eggroll.clustermanager.entity.ServerNode;
 import com.webank.eggroll.clustermanager.entity.StoreLocator;
 import com.webank.eggroll.clustermanager.entity.StoreOption;
 import com.webank.eggroll.clustermanager.entity.StorePartition;
-import com.webank.eggroll.clustermanager.entity.scala.*;
-import com.webank.eggroll.core.exceptions.CrudException_JAVA;
-import com.webank.eggroll.core.util.JsonUtil;
 import com.webank.eggroll.core.constant.PartitionStatus;
 import com.webank.eggroll.core.constant.ServerNodeStatus;
 import com.webank.eggroll.core.constant.ServerNodeTypes;
 import com.webank.eggroll.core.constant.StoreStatus;
+import com.webank.eggroll.core.exceptions.CrudException_JAVA;
+import com.webank.eggroll.core.util.JsonUtil;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -26,12 +24,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Service
-public class StoreCrudOperator_JAVA {
+public class StoreCrudOperator {
 
     @Autowired
     StoreLocatorService storeLocatorService;
@@ -43,7 +44,7 @@ public class StoreCrudOperator_JAVA {
     StoreOptionService storeOptionService;
 
     private final Map<Long, Object> nodeIdToNode = new ConcurrentHashMap<>();
-    private static final Logger LOGGER = LogManager.getLogger(StoreCrudOperator_JAVA.class);
+    private static final Logger LOGGER = LogManager.getLogger(StoreCrudOperator.class);
 
     private synchronized ErStore doGetStore(ErStore input) {
         Map<String, String> inputOptions = input.getOptions();
@@ -155,10 +156,10 @@ public class StoreCrudOperator_JAVA {
 
         int newTotalPartitions = inputStoreLocator.getTotalPartitions();
         List<ErPartition> newPartitions = new ArrayList<>();
-        List<ErServerNode> serverNodes = Arrays.stream(ServerNodeCrudOperator.doGetServerNodes(
+        List<ErServerNode> serverNodes = serverNodeService.doGetServerNodes(
                 new ErServerNode(
                         ServerNodeTypes.NODE_MANAGER()
-                        , ServerNodeStatus.HEALTHY()))).sorted(Comparator.comparingLong(ErServerNode::id)).collect(Collectors.toList());
+                        , ServerNodeStatus.HEALTHY())).stream().sorted(Comparator.comparingLong(ErServerNode::getId)).collect(Collectors.toList());
         int nodesCount = serverNodes.size();
         List<ErPartition> specifiedPartitions = input.getPartitions();
         boolean isPartitionsSpecified = specifiedPartitions.size() > 0;
