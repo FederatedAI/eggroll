@@ -3,8 +3,8 @@ package com.webank.eggroll.clustermanager.dao.impl;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.webank.eggroll.clustermanager.dao.mapper.SessionProcessorMapper;
 import com.webank.eggroll.clustermanager.entity.SessionProcessor;
-import com.webank.eggroll.clustermanager.entity.scala.ErEndpoint_JAVA;
-import com.webank.eggroll.clustermanager.entity.scala.ErProcessor_JAVA;
+import com.eggroll.core.pojo.ErEndpoint;
+import com.eggroll.core.pojo.ErProcessor;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
@@ -15,11 +15,11 @@ import java.util.Map;
 @Service
 public class SessionProcessorService extends EggRollBaseServiceImpl<SessionProcessorMapper, SessionProcessor> {
 
-    public List<ErProcessor_JAVA> doQueryProcessor(ErProcessor_JAVA erProcessor) {
+    public List<ErProcessor> doQueryProcessor(ErProcessor erProcessor) {
         return doQueryProcessor(erProcessor, null);
     }
 
-    public List<ErProcessor_JAVA> doQueryProcessor(ErProcessor_JAVA erProcessor, Map<String, String> extention) {
+    public List<ErProcessor> doQueryProcessor(ErProcessor erProcessor, Map<String, String> extention) {
         QueryWrapper<SessionProcessor> queryWrapper = new QueryWrapper<>();
         if (erProcessor != null) {
             queryWrapper.lambda().eq(StringUtils.isNotEmpty(erProcessor.getStatus()), SessionProcessor::getStatus, erProcessor.getStatus())
@@ -30,20 +30,20 @@ public class SessionProcessorService extends EggRollBaseServiceImpl<SessionProce
             extention.forEach(queryWrapper::apply);
         }
         List<SessionProcessor> processorList = this.list(queryWrapper);
-        List<ErProcessor_JAVA> erProcessors = new ArrayList<>();
+        List<ErProcessor> erProcessors = new ArrayList<>();
         for (SessionProcessor rs : processorList) {
-            ErEndpoint_JAVA commandEndpoint = null;
+            ErEndpoint commandEndpoint = null;
             if (StringUtils.isNotBlank(rs.getCommandEndpoint())) {
-                commandEndpoint = ErEndpoint_JAVA.apply(rs.getCommandEndpoint());
+                commandEndpoint = ErEndpoint.apply(rs.getCommandEndpoint());
             }
 
-            ErEndpoint_JAVA transferEndpoint = null;
+            ErEndpoint transferEndpoint = null;
             if (StringUtils.isNotBlank(rs.getTransferEndpoint())) {
-                transferEndpoint = ErEndpoint_JAVA.apply(rs.getTransferEndpoint());
+                transferEndpoint = ErEndpoint.apply(rs.getTransferEndpoint());
             }
 
 
-            ErProcessor_JAVA erProcessorNode = new ErProcessor_JAVA();
+            ErProcessor erProcessorNode = new ErProcessor();
             erProcessorNode.setId(rs.getProcessorId());
             erProcessorNode.setSessionId(rs.getSessionId());
             erProcessorNode.setServerNodeId(rs.getServerNodeId());

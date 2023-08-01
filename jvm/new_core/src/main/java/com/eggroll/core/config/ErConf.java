@@ -1,4 +1,4 @@
-package com.webank.eggroll.clustermanager.config;
+package com.eggroll.core.config;
 
 import java.io.*;
 import java.util.HashMap;
@@ -6,7 +6,7 @@ import java.util.Map;
 import java.util.Properties;
 
 @SuppressWarnings("unused")
-public abstract class ErConf_JAVA {
+public abstract class ErConf {
     private static final Properties conf = new Properties();
     private static final Map<String, String> confRepository = new HashMap<>();
 

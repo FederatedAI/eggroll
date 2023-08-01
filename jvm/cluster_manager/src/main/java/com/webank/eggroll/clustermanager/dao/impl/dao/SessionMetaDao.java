@@ -1,14 +1,12 @@
 package com.webank.eggroll.clustermanager.dao.impl.dao;
 
+import com.eggroll.core.config.Dict;
 import com.webank.eggroll.clustermanager.dao.impl.SessionMainService;
 import com.webank.eggroll.clustermanager.dao.impl.SessionOptionService;
 import com.webank.eggroll.clustermanager.entity.SessionMain;
 import com.webank.eggroll.clustermanager.entity.SessionOption;
-import com.webank.eggroll.clustermanager.entity.scala.ErProcessor_JAVA;
-import com.webank.eggroll.clustermanager.entity.scala.ErSessionMeta_JAVA;
-import com.webank.eggroll.core.constant.ProcessorStatus;
-import com.webank.eggroll.core.resourcemanager.ProcessorStateMachine;
-import com.webank.eggroll.core.util.Logging;
+import com.eggroll.core.pojo.ErProcessor;
+import com.eggroll.core.pojo.ErSessionMeta;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,7 +16,7 @@ import java.util.List;
 import java.util.Map;
 
 @Service
-public class SessionMetaDaoNew_2 {
+public class SessionMetaDao {
 
     @Autowired
     SessionMainService sessionMainService;
@@ -27,15 +25,15 @@ public class SessionMetaDaoNew_2 {
     SessionOptionService sessionOptionService;
 
     @Autowired
-    ProcessorStateMachine_JAVA processorStateMachine_java;
+    ProcessorStateMachine processorStateMachine_;
     
     @Transactional
-    public void registerWithResourceV2(ErSessionMeta_JAVA sessionMeta){
+    public void registerWithResourceV2(ErSessionMeta sessionMeta){
         String sid = sessionMeta.getId();
         SessionMain sessionMain = new SessionMain();
         sessionMain.setSessionId(sid);
         sessionMain.setName(sessionMeta.getName());
-        sessionMain.setStatus(sessionMeta.getStatus());
+        sessionMain.setStatus(sessionMeta.getStatus().name());
         sessionMain.setTag(sessionMeta.getTag());
         sessionMain.setTotalProcCount(sessionMeta.getTotalProcCount());
         sessionMain.setActiveProcCount(sessionMeta.getActiveProcCount());
@@ -52,11 +50,11 @@ public class SessionMetaDaoNew_2 {
             });
         }
         sessionOptionService.saveBatch(optsList);
-        List<ErProcessor_JAVA> procs = sessionMeta.getProcessors();
+        List<ErProcessor> procs = sessionMeta.getProcessors();
         if(!procs.isEmpty()){
-            for (ErProcessor_JAVA proc : procs) {
+            for (ErProcessor proc : procs) {
                 proc.setSessionId(sid);
-                processorStateMachine_java.changeStatus(proc,"", ProcessorStatus.NEW());
+                processorStateMachine_.changeStatus(proc,"", Dict.NEW);
             }
         }
 

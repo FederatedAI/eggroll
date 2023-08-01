@@ -1,12 +1,10 @@
-package com.webank.eggroll.clustermanager.entity.scala;
+package com.eggroll.core.pojo;
 
 
-
-
-public class ErPartition_JAVA implements MetaRpcMessage_JAVA {
+public class ErPartition implements MetaRpcMessage {
     private int id;
-    private ErStoreLocator_JAVA storeLocator;
-    private ErProcessor_JAVA processor;
+    private ErStoreLocator storeLocator;
+    private ErProcessor processor;
     private int rankInNode;
 
     public int getId() {
@@ -17,19 +15,19 @@ public class ErPartition_JAVA implements MetaRpcMessage_JAVA {
         this.id = id;
     }
 
-    public ErStoreLocator_JAVA getStoreLocator() {
+    public ErStoreLocator getStoreLocator() {
         return storeLocator;
     }
 
-    public void setStoreLocator(ErStoreLocator_JAVA storeLocator) {
+    public void setStoreLocator(ErStoreLocator storeLocator) {
         this.storeLocator = storeLocator;
     }
 
-    public ErProcessor_JAVA getProcessor() {
+    public ErProcessor getProcessor() {
         return processor;
     }
 
-    public void setProcessor(ErProcessor_JAVA processor) {
+    public void setProcessor(ErProcessor processor) {
         this.processor = processor;
     }
 
@@ -41,14 +39,14 @@ public class ErPartition_JAVA implements MetaRpcMessage_JAVA {
         this.rankInNode = rankInNode;
     }
 
-    public ErPartition_JAVA(int id, ErStoreLocator_JAVA storeLocator, ErProcessor_JAVA processor, int rankInNode) {
+    public ErPartition(int id, ErStoreLocator storeLocator, ErProcessor processor, int rankInNode) {
         this.id = id;
         this.storeLocator = storeLocator;
         this.processor = processor;
         this.rankInNode = rankInNode;
     }
 
-    public ErPartition_JAVA(int id) {
+    public ErPartition(int id) {
         this(id, null, null, -1);
     }
 
