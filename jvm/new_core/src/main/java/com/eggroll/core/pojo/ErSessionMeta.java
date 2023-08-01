@@ -1,5 +1,6 @@
 package com.eggroll.core.pojo;
 
+import com.eggroll.core.constant.SessionStatus;
 import com.eggroll.core.constant.StringConstants;
 import lombok.Data;
 
@@ -15,7 +16,7 @@ public class ErSessionMeta  {
 
     private String id = StringConstants.EMPTY;
     private String name = StringConstants.EMPTY;
-    private String status = StringConstants.EMPTY;
+    private SessionStatus status = null;
     private Integer totalProcCount = 0;
     private Integer activeProcCount = 0;
     private String tag = StringConstants.EMPTY;
@@ -23,5 +24,7 @@ public class ErSessionMeta  {
     private Date createTime = null;
     private Date updateTime = null;
     private Map<String, String> options = new HashMap<>();
+
+
 
 }

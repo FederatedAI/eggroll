@@ -19,22 +19,21 @@ public class SessionMainService extends EggRollBaseServiceImpl<SessionMainMapper
     @Autowired
     ProcessorService   processorService;
 
-
-    public ErSessionMeta getSession(String sessionId){
+    public ErSessionMeta getSession(String sessionId,boolean  recursion){
         ErSessionMeta  erSessionMeta = null;
-
         SessionMain  sessionMain = this.baseMapper.selectById(sessionId);
         if(sessionMain!=null) {
             erSessionMeta = sessionMain.toErSessionMeta();
-            erSessionMeta.setProcessors(processorService.getProcessorBySession(sessionId));
-            List<SessionOption> result = sessionOptionService.getSessionOptions(sessionId);
-            Map<String,String> optionMap = Maps.newHashMap();
-            result.forEach(sessionOption -> {
-                optionMap.put(sessionOption.getName(),sessionOption.getData());
-            });
-            erSessionMeta.setOptions(optionMap);
+            if(recursion) {
+                erSessionMeta.setProcessors(processorService.getProcessorBySession(sessionId));
+                List<SessionOption> result = sessionOptionService.getSessionOptions(sessionId);
+                Map<String, String> optionMap = Maps.newHashMap();
+                result.forEach(sessionOption -> {
+                    optionMap.put(sessionOption.getName(), sessionOption.getData());
+                });
+                erSessionMeta.setOptions(optionMap);
+            }
         }
         return  erSessionMeta;
-
     }
 }

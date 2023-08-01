@@ -31,6 +31,13 @@
             <scope>compile</scope>
         </dependency>
 
+
+        <dependency>
+            <groupId>com.alibaba.cola</groupId>
+            <artifactId>cola-component-statemachine</artifactId>
+            <version>4.3.1</version>
+        </dependency>
+
         <dependency>
             <groupId>com.webank.eggroll</groupId>
             <artifactId>new_core</artifactId>

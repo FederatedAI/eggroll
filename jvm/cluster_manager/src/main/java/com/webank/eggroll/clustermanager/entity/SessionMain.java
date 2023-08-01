@@ -3,7 +3,9 @@ package com.webank.eggroll.clustermanager.entity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.eggroll.core.constant.SessionStatus;
 import com.eggroll.core.pojo.ErSessionMeta;
+import org.apache.commons.lang3.StringUtils;
 
 import java.sql.Date;
 @TableName(value = "session_main", autoResultMap = true)
@@ -111,7 +113,8 @@ public class SessionMain {
         result.setTag(this.tag);
         result.setCreateTime(createdAt);
         result.setUpdateTime(updatedAt);
-        result.setStatus(status);
+        if(StringUtils.isNotEmpty(status))
+            result.setStatus(SessionStatus.valueOf(status));
         result.setTotalProcCount(totalProcCount);
         result.setActiveProcCount(activeProcCount);
         return  result;
