@@ -1,6 +1,6 @@
-package com.webank.eggroll.clustermanager.entity.scala;
+package com.eggroll.core.pojo;
 
-enum JobProcessorTypes_JAVA {
+enum JobProcessorTypes {
     deepSpeed;
 
 //    public static Optional<JobProcessorTypes> fromString(String type) {

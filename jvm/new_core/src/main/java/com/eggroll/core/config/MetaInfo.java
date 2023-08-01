@@ -14,12 +14,11 @@
  * limitations under the License.
  */
 
-package com.webank.eggroll.core.config;
+package com.eggroll.core.config;
 
+import com.eggroll.core.exceptions.ConfigErrorException;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.webank.eggroll.core.constant.Dict;
-import com.webank.eggroll.core.exceptions.ConfigErrorException;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

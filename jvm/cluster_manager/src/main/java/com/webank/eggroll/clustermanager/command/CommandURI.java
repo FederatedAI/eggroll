@@ -39,13 +39,13 @@ public class CommandURI {
         }
     }
 
-    public CommandURI(ErCommandRequest src) {
-        this(src.getUri());
-    }
-
-    public CommandURI(String prefix, String name) {
-        this(prefix + "/" + name);
-    }
+//    public CommandURI(ErCommandRequest src) {
+//        this(src.getUri());
+//    }
+//
+//    public CommandURI(String prefix, String name) {
+//        this(prefix + "/" + name);
+//    }
 
     public String getName() {
         return StringUtils.substringAfterLast(uri.getPath(), "/");

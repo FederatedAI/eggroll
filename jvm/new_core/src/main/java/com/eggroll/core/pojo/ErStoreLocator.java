@@ -1,13 +1,13 @@
-package com.webank.eggroll.clustermanager.entity.scala;
+package com.eggroll.core.pojo;
 
-import com.webank.eggroll.core.constant.StringConstants;
-
+import com.eggroll.core.config.Dict;
+import com.eggroll.core.constant.StringConstants;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.UUID;
 
 
-public class ErStoreLocator_JAVA implements MetaRpcMessage_JAVA {
+public class ErStoreLocator implements MetaRpcMessage {
     private Long id;
     private String storeType;
     private String namespace;
@@ -82,7 +82,7 @@ public class ErStoreLocator_JAVA implements MetaRpcMessage_JAVA {
     private String partitioner;
     private String serdes;
 
-    public ErStoreLocator_JAVA(long id, String storeType, String namespace, String name, String path, int totalPartitions, String partitioner, String serdes) {
+    public ErStoreLocator(long id, String storeType, String namespace, String name, String path, int totalPartitions, String partitioner, String serdes) {
         this.id = id;
         this.storeType = storeType;
         this.namespace = namespace;
@@ -93,7 +93,7 @@ public class ErStoreLocator_JAVA implements MetaRpcMessage_JAVA {
         this.serdes = serdes;
     }
 
-    public ErStoreLocator_JAVA(String storeType, String namespace, String name) {
+    public ErStoreLocator(String storeType, String namespace, String name) {
         this(-1L, storeType, namespace, name, "", 0, "", "");
     }
 
@@ -105,11 +105,11 @@ public class ErStoreLocator_JAVA implements MetaRpcMessage_JAVA {
         }
     }
 
-    public ErStoreLocator_JAVA fork(){
-        return fork(StringConstants.EMPTY(),StringConstants.UNDERLINE());
+    public ErStoreLocator fork(){
+        return fork(Dict.EMPTY,StringConstants.UNDERLINE);
     }
 
-    public ErStoreLocator_JAVA fork(String postfix, String delimiter) {
+    public ErStoreLocator fork(String postfix, String delimiter) {
         int delimiterPos = StringUtils.lastIndexOf(this.name, delimiter, StringUtils.lastIndexOf(this.name, delimiter) - 1);
 
         String newPostfix = StringUtils.isBlank(postfix) ? String.join(delimiter, String.valueOf(System.currentTimeMillis()), UUID.randomUUID().toString()) : postfix;
@@ -120,7 +120,7 @@ public class ErStoreLocator_JAVA implements MetaRpcMessage_JAVA {
             newName = this.name + delimiter + newPostfix;
         }
 
-        return new ErStoreLocator_JAVA(this.id, this.storeType, this.namespace, newName, this.path, this.totalPartitions, this.partitioner, this.serdes);
+        return new ErStoreLocator(this.id, this.storeType, this.namespace, newName, this.path, this.totalPartitions, this.partitioner, this.serdes);
     }
 
 

@@ -25,13 +25,6 @@
             <version>3.5.2</version>
         </dependency>
 
-        <dependency>
-            <groupId>com.webank.eggroll</groupId>
-            <artifactId>eggroll-core</artifactId>
-            <version>3.0</version>
-            <scope>compile</scope>
-        </dependency>
-
 
         <dependency>
             <groupId>com.alibaba.cola</groupId>
@@ -44,7 +37,6 @@
             <groupId>com.webank.eggroll</groupId>
             <artifactId>new_core</artifactId>
             <version>3.0</version>
-
         </dependency>
 
 

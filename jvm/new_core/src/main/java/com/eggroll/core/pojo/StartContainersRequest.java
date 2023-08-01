@@ -1,15 +1,16 @@
-package com.webank.eggroll.clustermanager.entity.scala;
+package com.eggroll.core.pojo;
 
+import com.eggroll.core.config.Dict;
+import com.eggroll.core.constant.StringConstants;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
-import com.webank.eggroll.core.constant.StringConstants;
 import com.webank.eggroll.core.meta.Containers;
 
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-public class StartContainersRequest_JAVA {
+public class StartContainersRequest {
     public String sessionId;
     public String name;
     public String jobType;
@@ -20,9 +21,9 @@ public class StartContainersRequest_JAVA {
     public Map<Long, byte[]> typedExtraConfigs;
     public Map<String, String> options;
 
-    public StartContainersRequest_JAVA() {
-        this.sessionId = StringConstants.EMPTY();
-        this.name = StringConstants.EMPTY();
+    public StartContainersRequest() {
+        this.sessionId = Dict.EMPTY;
+        this.name = Dict.EMPTY;
         this.jobType = null;
         this.commandArguments = new String[0];
         this.environmentVariables = new HashMap<>();
@@ -32,9 +33,9 @@ public class StartContainersRequest_JAVA {
         this.options = new HashMap<>();
     }
 
-    public static StartContainersRequest_JAVA deserialize(ByteString byteString) throws InvalidProtocolBufferException {
+    public static StartContainersRequest deserialize(ByteString byteString) throws InvalidProtocolBufferException {
         Containers.StartContainersRequest src = Containers.StartContainersRequest.parseFrom(byteString);
-        StartContainersRequest_JAVA dst = new StartContainersRequest_JAVA();
+        StartContainersRequest dst = new StartContainersRequest();
         dst.sessionId = src.getSessionId();
         dst.name = src.getName();
         dst.jobType = src.getJobType();
@@ -59,7 +60,7 @@ public class StartContainersRequest_JAVA {
         return dst;
     }
 
-    public static ByteString serialize(StartContainersRequest_JAVA src) {
+    public static ByteString serialize(StartContainersRequest src) {
         Containers.StartContainersRequest.Builder builder = Containers.StartContainersRequest.newBuilder()
                 .setSessionId(src.sessionId)
                 .setName(src.name)
