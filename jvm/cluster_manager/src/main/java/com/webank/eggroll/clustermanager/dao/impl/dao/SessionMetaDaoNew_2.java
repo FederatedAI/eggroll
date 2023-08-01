@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.Map;
 
 @Service
-public class SessionMetaDaoNew_2 implements Logging {
+public class SessionMetaDaoNew_2 {
 
     @Autowired
     SessionMainService sessionMainService;

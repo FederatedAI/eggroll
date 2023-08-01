@@ -22,8 +22,9 @@ public class DefaultSessionManager implements SessionManager{
 
 
 
+
     @Override
-    public ErProcessor heartbeat(ErProcessor proc) {
+    public com.eggroll.core.pojo.ErProcessor heartbeat(com.eggroll.core.pojo.ErProcessor proc) {
         return null;
     }
 
@@ -35,10 +36,7 @@ public class DefaultSessionManager implements SessionManager{
     @Override
     public ErSessionMeta getOrCreateSession(ErSessionMeta sessionMeta) {
 
-
-
-
-
+            return  null;
 
     }
 

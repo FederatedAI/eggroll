@@ -2,11 +2,11 @@ package com.webank.eggroll.clustermanager.entity.scala;
 
 import com.webank.eggroll.core.constant.StringConstants;
 import com.webank.eggroll.core.meta.Meta;
-import lombok.Data;
+
 
 import java.util.*;
 
-@Data
+
 public class ErProcessor_JAVA implements NetworkingRpcMessage_JAVA {
     private long id = -1;
     private String sessionId = StringConstants.EMPTY();
@@ -23,6 +23,117 @@ public class ErProcessor_JAVA implements NetworkingRpcMessage_JAVA {
     private Date createdAt = null;
     private Date updatedAt = null;
 
+    public long getId() {
+        return id;
+    }
+
+    public void setId(long id) {
+        this.id = id;
+    }
+
+    public String getSessionId() {
+        return sessionId;
+    }
+
+    public void setSessionId(String sessionId) {
+        this.sessionId = sessionId;
+    }
+
+    public long getServerNodeId() {
+        return serverNodeId;
+    }
+
+    public void setServerNodeId(long serverNodeId) {
+        this.serverNodeId = serverNodeId;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getProcessorType() {
+        return processorType;
+    }
+
+    public void setProcessorType(String processorType) {
+        this.processorType = processorType;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public ErEndpoint_JAVA getCommandEndpoint() {
+        return commandEndpoint;
+    }
+
+    public void setCommandEndpoint(ErEndpoint_JAVA commandEndpoint) {
+        this.commandEndpoint = commandEndpoint;
+    }
+
+    public ErEndpoint_JAVA getTransferEndpoint() {
+        return transferEndpoint;
+    }
+
+    public void setTransferEndpoint(ErEndpoint_JAVA transferEndpoint) {
+        this.transferEndpoint = transferEndpoint;
+    }
+
+    public int getPid() {
+        return pid;
+    }
+
+    public void setPid(int pid) {
+        this.pid = pid;
+    }
+
+    public Map<String, String> getOptions() {
+        return options;
+    }
+
+    public void setOptions(Map<String, String> options) {
+        this.options = options;
+    }
+
+    public String getTag() {
+        return tag;
+    }
+
+    public void setTag(String tag) {
+        this.tag = tag;
+    }
+
+    public List<ErResource_JAVA> getResources() {
+        return resources;
+    }
+
+    public void setResources(List<ErResource_JAVA> resources) {
+        this.resources = resources;
+    }
+
+    public Date getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(Date createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public Date getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(Date updatedAt) {
+        this.updatedAt = updatedAt;
+    }
 
     @Override
     public String toString() {

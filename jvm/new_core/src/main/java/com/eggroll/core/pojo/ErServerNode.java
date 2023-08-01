@@ -1,10 +1,10 @@
 package com.eggroll.core.pojo;
 import com.eggroll.core.constant.StringConstants;
-import lombok.Data;
+
 
 import  java.sql.Timestamp;
 import java.util.Arrays;
-@Data
+
 public class ErServerNode {
         private long id;
         private String name;
@@ -13,7 +13,72 @@ public class ErServerNode {
         private String nodeType;
         private String status;
         private Timestamp lastHeartBeat;
-        private ErResource[] resources;
+
+    public long getId() {
+        return id;
+    }
+
+    public void setId(long id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public long getClusterId() {
+        return clusterId;
+    }
+
+    public void setClusterId(long clusterId) {
+        this.clusterId = clusterId;
+    }
+
+    public ErEndpoint getEndpoint() {
+        return endpoint;
+    }
+
+    public void setEndpoint(ErEndpoint endpoint) {
+        this.endpoint = endpoint;
+    }
+
+    public String getNodeType() {
+        return nodeType;
+    }
+
+    public void setNodeType(String nodeType) {
+        this.nodeType = nodeType;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public Timestamp getLastHeartBeat() {
+        return lastHeartBeat;
+    }
+
+    public void setLastHeartBeat(Timestamp lastHeartBeat) {
+        this.lastHeartBeat = lastHeartBeat;
+    }
+
+    public ErResource[] getResources() {
+        return resources;
+    }
+
+    public void setResources(ErResource[] resources) {
+        this.resources = resources;
+    }
+
+    private ErResource[] resources;
 
         public ErServerNode() {
             this.id = -1;

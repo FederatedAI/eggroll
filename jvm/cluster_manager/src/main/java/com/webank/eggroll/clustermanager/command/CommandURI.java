@@ -15,7 +15,7 @@ public class CommandURI {
     private String queryString;
     private Map<String, String> queryPairs;
 
-    public CommandURI(String uriString) throws UnsupportedEncodingException {
+    public CommandURI(String uriString)  {
         this.uriString = uriString;
         this.uri = URI.create(uriString);
         this.queryString = uri.getQuery();
@@ -26,9 +26,15 @@ public class CommandURI {
         } else {
             for (String pair : queryString.split("&")) {
                 int idx = pair.indexOf("=");
-                String key = (idx > 0) ? URLDecoder.decode(pair.substring(0, idx), StandardCharsets.UTF_8.name()) : pair;
+                String key = null;
+                try {
+                    key = (idx > 0) ? URLDecoder.decode(pair.substring(0, idx), StandardCharsets.UTF_8.name()) : pair;
+
                 String value = (idx > 0 && pair.length() > idx + 1) ? URLDecoder.decode(pair.substring(idx + 1), StandardCharsets.UTF_8.name()) : "";
                 queryPairs.put(key, value);
+                } catch (UnsupportedEncodingException e) {
+                    e.printStackTrace();
+                }
             }
         }
     }

@@ -2,18 +2,50 @@ package com.webank.eggroll.clustermanager.entity.scala;
 
 import com.webank.eggroll.core.constant.StringConstants;
 import com.webank.eggroll.core.meta.Meta;
-import lombok.Data;
+
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-@Data
+
 public class ErProcessorBatch_JAVA implements NetworkingRpcMessage_JAVA {
     private Long id;
     private String name;
     private List<ErProcessor_JAVA> processors;
     private String tag;
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public List<ErProcessor_JAVA> getProcessors() {
+        return processors;
+    }
+
+    public void setProcessors(List<ErProcessor_JAVA> processors) {
+        this.processors = processors;
+    }
+
+    public String getTag() {
+        return tag;
+    }
+
+    public void setTag(String tag) {
+        this.tag = tag;
+    }
 
     public ErProcessorBatch_JAVA() {
         this.id = -1L;

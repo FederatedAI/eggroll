@@ -1,14 +1,13 @@
 package com.webank.eggroll.clustermanager.entity.scala;
 
 import com.webank.eggroll.core.constant.StringConstants;
-import lombok.Data;
 
 import java.security.Timestamp;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-@Data
+
 public class ErServerNode_JAVA implements NetworkingRpcMessage_JAVA {
     private long id;
     private String name;
@@ -18,6 +17,70 @@ public class ErServerNode_JAVA implements NetworkingRpcMessage_JAVA {
     private String status;
     private Timestamp lastHeartBeat;
     private List<ErResource_JAVA> resources;
+
+    public long getId() {
+        return id;
+    }
+
+    public void setId(long id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public long getClusterId() {
+        return clusterId;
+    }
+
+    public void setClusterId(long clusterId) {
+        this.clusterId = clusterId;
+    }
+
+    public Entity_Collects_JAVA.ErEndpoint getEndpoint() {
+        return endpoint;
+    }
+
+    public void setEndpoint(Entity_Collects_JAVA.ErEndpoint endpoint) {
+        this.endpoint = endpoint;
+    }
+
+    public String getNodeType() {
+        return nodeType;
+    }
+
+    public void setNodeType(String nodeType) {
+        this.nodeType = nodeType;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public Timestamp getLastHeartBeat() {
+        return lastHeartBeat;
+    }
+
+    public void setLastHeartBeat(Timestamp lastHeartBeat) {
+        this.lastHeartBeat = lastHeartBeat;
+    }
+
+    public List<ErResource_JAVA> getResources() {
+        return resources;
+    }
+
+    public void setResources(List<ErResource_JAVA> resources) {
+        this.resources = resources;
+    }
 
     public ErServerNode_JAVA() {
         this.id = -1;

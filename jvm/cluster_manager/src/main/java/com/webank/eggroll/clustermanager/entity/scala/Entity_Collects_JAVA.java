@@ -5,7 +5,7 @@ import com.webank.eggroll.core.constant.ResourceStatus;
 import com.webank.eggroll.core.constant.StringConstants;
 import com.webank.eggroll.core.meta.Meta;
 import com.webank.eggroll.core.meta.NetworkingRpcMessage;
-import lombok.Data;
+
 import org.apache.commons.lang3.StringUtils;
 
 import java.security.Timestamp;
@@ -20,8 +20,8 @@ public class Entity_Collects_JAVA {
 
 
 
-    @Data
-    public static class ErEndpoint implements NetworkingRpcMessage {
+
+    public static class ErEndpoint   {
         private String host;
         private int port;
 
@@ -54,8 +54,8 @@ public class Entity_Collects_JAVA {
         }
     }
 
-    @Data
-    public class ErResource implements NetworkingRpcMessage {
+
+    public class ErResource  {
         private long resourceId;
         private String resourceType;
         private long serverNodeId;
@@ -92,13 +92,53 @@ public class Entity_Collects_JAVA {
         }
     }
 
-    @Data
-    public class ErResourceAllocation implements NetworkingRpcMessage {
+
+    public class ErResourceAllocation   {
         private long serverNodeId;
         private String sessionId;
         private String operateType;
         private String status;
         private ErResource[] resources;
+
+        public long getServerNodeId() {
+            return serverNodeId;
+        }
+
+        public void setServerNodeId(long serverNodeId) {
+            this.serverNodeId = serverNodeId;
+        }
+
+        public String getSessionId() {
+            return sessionId;
+        }
+
+        public void setSessionId(String sessionId) {
+            this.sessionId = sessionId;
+        }
+
+        public String getOperateType() {
+            return operateType;
+        }
+
+        public void setOperateType(String operateType) {
+            this.operateType = operateType;
+        }
+
+        public String getStatus() {
+            return status;
+        }
+
+        public void setStatus(String status) {
+            this.status = status;
+        }
+
+        public ErResource[] getResources() {
+            return resources;
+        }
+
+        public void setResources(ErResource[] resources) {
+            this.resources = resources;
+        }
 
         public ErResourceAllocation(long serverNodeId, String sessionId, String operateType, String status, ErResource[] resources) {
             this.serverNodeId = serverNodeId;
@@ -121,8 +161,8 @@ public class Entity_Collects_JAVA {
         }
     }
 
-    @Data
-    public class ErProcessor implements NetworkingRpcMessage {
+
+    public class ErProcessor {
         private long id;
         private String sessionId;
         private long serverNodeId;
@@ -137,6 +177,118 @@ public class Entity_Collects_JAVA {
         private ErResource[] resources;
         private Timestamp createdAt;
         private Timestamp updatedAt;
+
+        public long getId() {
+            return id;
+        }
+
+        public void setId(long id) {
+            this.id = id;
+        }
+
+        public String getSessionId() {
+            return sessionId;
+        }
+
+        public void setSessionId(String sessionId) {
+            this.sessionId = sessionId;
+        }
+
+        public long getServerNodeId() {
+            return serverNodeId;
+        }
+
+        public void setServerNodeId(long serverNodeId) {
+            this.serverNodeId = serverNodeId;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public String getProcessorType() {
+            return processorType;
+        }
+
+        public void setProcessorType(String processorType) {
+            this.processorType = processorType;
+        }
+
+        public String getStatus() {
+            return status;
+        }
+
+        public void setStatus(String status) {
+            this.status = status;
+        }
+
+        public ErEndpoint getCommandEndpoint() {
+            return commandEndpoint;
+        }
+
+        public void setCommandEndpoint(ErEndpoint commandEndpoint) {
+            this.commandEndpoint = commandEndpoint;
+        }
+
+        public ErEndpoint getTransferEndpoint() {
+            return transferEndpoint;
+        }
+
+        public void setTransferEndpoint(ErEndpoint transferEndpoint) {
+            this.transferEndpoint = transferEndpoint;
+        }
+
+        public int getPid() {
+            return pid;
+        }
+
+        public void setPid(int pid) {
+            this.pid = pid;
+        }
+
+        public Map<String, String> getOptions() {
+            return options;
+        }
+
+        public void setOptions(Map<String, String> options) {
+            this.options = options;
+        }
+
+        public String getTag() {
+            return tag;
+        }
+
+        public void setTag(String tag) {
+            this.tag = tag;
+        }
+
+        public ErResource[] getResources() {
+            return resources;
+        }
+
+        public void setResources(ErResource[] resources) {
+            this.resources = resources;
+        }
+
+        public Timestamp getCreatedAt() {
+            return createdAt;
+        }
+
+        public void setCreatedAt(Timestamp createdAt) {
+            this.createdAt = createdAt;
+        }
+
+        public Timestamp getUpdatedAt() {
+            return updatedAt;
+        }
+
+        public void setUpdatedAt(Timestamp updatedAt) {
+            this.updatedAt = updatedAt;
+        }
 
         public ErProcessor() {
             this.id = -1;
@@ -193,12 +345,44 @@ public class Entity_Collects_JAVA {
     }
 
 
-    @Data
-    public class ErProcessorBatch implements NetworkingRpcMessage {
+
+    public class ErProcessorBatch  {
         private long id;
         private String name;
         private ErProcessor[] processors;
         private String tag;
+
+        public long getId() {
+            return id;
+        }
+
+        public void setId(long id) {
+            this.id = id;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public ErProcessor[] getProcessors() {
+            return processors;
+        }
+
+        public void setProcessors(ErProcessor[] processors) {
+            this.processors = processors;
+        }
+
+        public String getTag() {
+            return tag;
+        }
+
+        public void setTag(String tag) {
+            this.tag = tag;
+        }
 
         public ErProcessorBatch() {
             this.id = -1;
@@ -231,7 +415,7 @@ public class Entity_Collects_JAVA {
         }
     }
 
-    public class ErNodeHeartbeat implements NetworkingRpcMessage {
+    public class ErNodeHeartbeat {
         private long id;
         private ErServerNode node;
 
@@ -252,8 +436,8 @@ public class Entity_Collects_JAVA {
         }
     }
 
-    @Data
-    public class ErServerNode implements NetworkingRpcMessage {
+
+    public class ErServerNode {
         private long id;
         private String name;
         private long clusterId;
@@ -262,6 +446,70 @@ public class Entity_Collects_JAVA {
         private String status;
         private Timestamp lastHeartBeat;
         private ErResource[] resources;
+
+        public long getId() {
+            return id;
+        }
+
+        public void setId(long id) {
+            this.id = id;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public long getClusterId() {
+            return clusterId;
+        }
+
+        public void setClusterId(long clusterId) {
+            this.clusterId = clusterId;
+        }
+
+        public ErEndpoint getEndpoint() {
+            return endpoint;
+        }
+
+        public void setEndpoint(ErEndpoint endpoint) {
+            this.endpoint = endpoint;
+        }
+
+        public String getNodeType() {
+            return nodeType;
+        }
+
+        public void setNodeType(String nodeType) {
+            this.nodeType = nodeType;
+        }
+
+        public String getStatus() {
+            return status;
+        }
+
+        public void setStatus(String status) {
+            this.status = status;
+        }
+
+        public Timestamp getLastHeartBeat() {
+            return lastHeartBeat;
+        }
+
+        public void setLastHeartBeat(Timestamp lastHeartBeat) {
+            this.lastHeartBeat = lastHeartBeat;
+        }
+
+        public ErResource[] getResources() {
+            return resources;
+        }
+
+        public void setResources(ErResource[] resources) {
+            this.resources = resources;
+        }
 
         public ErServerNode() {
             this.id = -1;
@@ -309,12 +557,44 @@ public class Entity_Collects_JAVA {
         }
     }
 
-    @Data
-    public class ErServerCluster implements NetworkingRpcMessage {
+
+    public class ErServerCluster {
         private long id;
         private String name;
         private ErServerNode[] serverNodes;
         private String tag;
+
+        public long getId() {
+            return id;
+        }
+
+        public void setId(long id) {
+            this.id = id;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public ErServerNode[] getServerNodes() {
+            return serverNodes;
+        }
+
+        public void setServerNodes(ErServerNode[] serverNodes) {
+            this.serverNodes = serverNodes;
+        }
+
+        public String getTag() {
+            return tag;
+        }
+
+        public void setTag(String tag) {
+            this.tag = tag;
+        }
 
         public ErServerCluster() {
             this.id = -1;

@@ -3,11 +3,11 @@ package com.webank.eggroll.clustermanager.config;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.webank.eggroll.core.meta.Containers;
-import lombok.Data;
+
 
 import java.util.List;
 
-@Data
+
 public class DeepspeedContainerConfig_JAVA {
     private List<Integer> cudaVisibleDevices;
     private int worldSize;
@@ -21,8 +21,96 @@ public class DeepspeedContainerConfig_JAVA {
     private Integer storePort;
     private String backend;
 
+    public List<Integer> getCudaVisibleDevices() {
+        return cudaVisibleDevices;
+    }
+
+    public void setCudaVisibleDevices(List<Integer> cudaVisibleDevices) {
+        this.cudaVisibleDevices = cudaVisibleDevices;
+    }
+
+    public int getWorldSize() {
+        return worldSize;
+    }
+
+    public void setWorldSize(int worldSize) {
+        this.worldSize = worldSize;
+    }
+
+    public int getCrossRank() {
+        return crossRank;
+    }
+
+    public void setCrossRank(int crossRank) {
+        this.crossRank = crossRank;
+    }
+
+    public int getCrossSize() {
+        return crossSize;
+    }
+
+    public void setCrossSize(int crossSize) {
+        this.crossSize = crossSize;
+    }
+
+    public int getLocalSize() {
+        return localSize;
+    }
+
+    public void setLocalSize(int localSize) {
+        this.localSize = localSize;
+    }
+
+    public int getLocalRank() {
+        return localRank;
+    }
+
+    public void setLocalRank(int localRank) {
+        this.localRank = localRank;
+    }
+
+    public int getRank() {
+        return rank;
+    }
+
+    public void setRank(int rank) {
+        this.rank = rank;
+    }
+
+    public String getStorePrefix() {
+        return storePrefix;
+    }
+
+    public void setStorePrefix(String storePrefix) {
+        this.storePrefix = storePrefix;
+    }
+
+    public String getStoreHost() {
+        return storeHost;
+    }
+
+    public void setStoreHost(String storeHost) {
+        this.storeHost = storeHost;
+    }
+
+    public Integer getStorePort() {
+        return storePort;
+    }
+
+    public void setStorePort(Integer storePort) {
+        this.storePort = storePort;
+    }
+
+    public String getBackend() {
+        return backend;
+    }
+
+    public void setBackend(String backend) {
+        this.backend = backend;
+    }
+
     public DeepspeedContainerConfig_JAVA(List<Integer> cudaVisibleDevices, int worldSize, int crossRank, int crossSize,
-                                    int localSize, int localRank, int rank, String storePrefix) {
+                                         int localSize, int localRank, int rank, String storePrefix) {
         this.cudaVisibleDevices = cudaVisibleDevices;
         this.worldSize = worldSize;
         this.crossRank = crossRank;
