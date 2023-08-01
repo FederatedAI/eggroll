@@ -1,6 +1,5 @@
 package com.webank.eggroll.clustermanager.statemechine;
 
-import com.webank.eggroll.clustermanager.dao.impl.SessionServiceNew;
 import com.webank.eggroll.core.error.ErSessionException;
 import com.webank.eggroll.core.meta.ErSessionMeta;
 import org.slf4j.Logger;
@@ -16,8 +15,8 @@ import java.util.concurrent.locks.ReentrantLock;
 public class SessionStateMechine {
 
 
-    @Autowired
-    SessionServiceNew sessionServiceNew;
+//    @Autowired
+//    SessionServiceNew sessionServiceNew;
 
 
 
@@ -66,7 +65,7 @@ public class SessionStateMechine {
 
             switch(statusLine){
                 case  "_NEW" :
-                    sessionServiceNew.registerSession(paramErSession);
+                   // sessionServiceNew.registerSession(paramErSession);
 
 
 

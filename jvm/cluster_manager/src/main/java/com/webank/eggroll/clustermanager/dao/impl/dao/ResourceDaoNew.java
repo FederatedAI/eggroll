@@ -18,20 +18,20 @@ public class ResourceDaoNew {
     @Autowired
     ServerNodeService serverNodeService;
 
-    public synchronized ErServerCluster getServerCluster() {
-        return getServerCluster(0L);
-    }
+//    public synchronized ErServerCluster getServerCluster() {
+//        return getServerCluster(0L);
+//    }
 
-    public synchronized ErServerCluster getServerCluster(Long clusterId) {
-        List<ServerNode> nodes = serverNodeService.listByIds(Lists.newArrayList(clusterId));
-        ErServerNode[] erServerNodes = new ErServerNode[nodes.size()];
-        for (int i = 0; i < nodes.size(); i++) {
-            ServerNode node = nodes.get(i);
-            ErServerNode erServerNode = new ErServerNode(node.getServerNodeId(), node.getName(), clusterId
-                    , new ErEndpoint(node.getHost(), node.getPort()), node.getNodeType(), node.getStatus(), null, new ErResource[0]);
-            erServerNodes[i] = erServerNode;
-        }
-        return new ErServerCluster(clusterId, erServerNodes);
-    }
+//    public synchronized ErServerCluster getServerCluster(Long clusterId) {
+//        List<ServerNode> nodes = serverNodeService.listByIds(Lists.newArrayList(clusterId));
+//        ErServerNode[] erServerNodes = new ErServerNode[nodes.size()];
+//        for (int i = 0; i < nodes.size(); i++) {
+//            ServerNode node = nodes.get(i);
+//            ErServerNode erServerNode = new ErServerNode(node.getServerNodeId(), node.getName(), clusterId
+//                    , new ErEndpoint(node.getHost(), node.getPort()), node.getNodeType(), node.getStatus(), null, new ErResource[0]);
+//            erServerNodes[i] = erServerNode;
+//        }
+//        return new ErServerCluster(clusterId, erServerNodes);
+//    }
 
 }

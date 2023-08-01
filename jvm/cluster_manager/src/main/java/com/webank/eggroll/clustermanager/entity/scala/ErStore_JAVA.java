@@ -1,17 +1,41 @@
 package com.webank.eggroll.clustermanager.entity.scala;
 
-import lombok.Data;
+
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-@Data
+
 public class ErStore_JAVA implements MetaRpcMessage_JAVA {
     private ErStoreLocator_JAVA storeLocator;
     private List<ErPartition_JAVA> partitions;
     private Map<String, String> options;
+
+    public ErStoreLocator_JAVA getStoreLocator() {
+        return storeLocator;
+    }
+
+    public void setStoreLocator(ErStoreLocator_JAVA storeLocator) {
+        this.storeLocator = storeLocator;
+    }
+
+    public List<ErPartition_JAVA> getPartitions() {
+        return partitions;
+    }
+
+    public void setPartitions(List<ErPartition_JAVA> partitions) {
+        this.partitions = partitions;
+    }
+
+    public Map<String, String> getOptions() {
+        return options;
+    }
+
+    public void setOptions(Map<String, String> options) {
+        this.options = options;
+    }
 
     public ErStore_JAVA(ErStoreLocator_JAVA storeLocator, List<ErPartition_JAVA> partitions, Map<String, String> options) {
         this.storeLocator = storeLocator;

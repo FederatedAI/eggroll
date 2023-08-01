@@ -6,7 +6,7 @@ import com.webank.eggroll.core.constant._
 import com.webank.eggroll.core.deepspeed.job.JobServiceHandler
 import com.webank.eggroll.core.deepspeed.store.RendezvousStoreService
 import com.webank.eggroll.core.meta._
-import com.webank.eggroll.core.resourcemanager.metadata.{ServerNodeCrudOperator, StoreCrudOperator}
+import com.webank.eggroll.core.resourcemanager.metadata.{ServerNodeCrudOperator}
 import com.webank.eggroll.core.session.StaticErConf
 import com.webank.eggroll.core.transfer.{GrpcClientUtils, GrpcServerUtils}
 import com.webank.eggroll.core.util.{CommandArgsUtils, Logging}
@@ -23,53 +23,53 @@ class ClusterManagerBootstrap extends BootstrapBase with Logging {
   //private var sessionId = "er_session_null"
   override def init(args: Array[String]): Unit = {
 
-    CommandRouter.register(serviceName = MetadataCommands.getServerNodeServiceName,
-      serviceParamTypes = Array(classOf[ErServerNode]),
-      serviceResultTypes = Array(classOf[ErServerNode]),
-      routeToClass = classOf[ServerNodeCrudOperator],
-      routeToMethodName = MetadataCommands.getServerNode)
-
-    CommandRouter.register(serviceName = MetadataCommands.getServerNodesServiceName,
-      serviceParamTypes = Array(classOf[ErServerNode]),
-      serviceResultTypes = Array(classOf[ErServerCluster]),
-      routeToClass = classOf[ServerNodeCrudOperator],
-      routeToMethodName = MetadataCommands.getServerNodes)
-
-    CommandRouter.register(serviceName = MetadataCommands.getOrCreateServerNodeServiceName,
-      serviceParamTypes = Array(classOf[ErServerNode]),
-      serviceResultTypes = Array(classOf[ErServerNode]),
-      routeToClass = classOf[ServerNodeCrudOperator],
-      routeToMethodName = MetadataCommands.getOrCreateServerNode)
-
-    CommandRouter.register(serviceName = MetadataCommands.createOrUpdateServerNodeServiceName,
-      serviceParamTypes = Array(classOf[ErServerNode]),
-      serviceResultTypes = Array(classOf[ErServerNode]),
-      routeToClass = classOf[ServerNodeCrudOperator],
-      routeToMethodName = MetadataCommands.createOrUpdateServerNode)
-
-    CommandRouter.register(serviceName = MetadataCommands.getStoreServiceName,
-      serviceParamTypes = Array(classOf[ErStore]),
-      serviceResultTypes = Array(classOf[ErStore]),
-      routeToClass = classOf[StoreCrudOperator],
-      routeToMethodName = MetadataCommands.getStore)
-
-    CommandRouter.register(serviceName = MetadataCommands.getOrCreateStoreServiceName,
-      serviceParamTypes = Array(classOf[ErStore]),
-      serviceResultTypes = Array(classOf[ErStore]),
-      routeToClass = classOf[StoreCrudOperator],
-      routeToMethodName = MetadataCommands.getOrCreateStore)
-
-    CommandRouter.register(serviceName = MetadataCommands.deleteStoreServiceName,
-      serviceParamTypes = Array(classOf[ErStore]),
-      serviceResultTypes = Array(classOf[ErStore]),
-      routeToClass = classOf[StoreCrudOperator],
-      routeToMethodName = MetadataCommands.deleteStore)
-
-    CommandRouter.register(serviceName = MetadataCommands.getStoreFromNamespaceServiceName,
-      serviceParamTypes = Array(classOf[ErStore]),
-      serviceResultTypes = Array(classOf[ErStoreList]),
-      routeToClass = classOf[StoreCrudOperator],
-      routeToMethodName = MetadataCommands.getStoreFromNamespace)
+//    CommandRouter.register(serviceName = MetadataCommands.getServerNodeServiceName,
+//      serviceParamTypes = Array(classOf[ErServerNode]),
+//      serviceResultTypes = Array(classOf[ErServerNode]),
+//      routeToClass = classOf[ServerNodeCrudOperator],
+//      routeToMethodName = MetadataCommands.getServerNode)
+//
+//    CommandRouter.register(serviceName = MetadataCommands.getServerNodesServiceName,
+//      serviceParamTypes = Array(classOf[ErServerNode]),
+//      serviceResultTypes = Array(classOf[ErServerCluster]),
+//      routeToClass = classOf[ServerNodeCrudOperator],
+//      routeToMethodName = MetadataCommands.getServerNodes)
+//
+//    CommandRouter.register(serviceName = MetadataCommands.getOrCreateServerNodeServiceName,
+//      serviceParamTypes = Array(classOf[ErServerNode]),
+//      serviceResultTypes = Array(classOf[ErServerNode]),
+//      routeToClass = classOf[ServerNodeCrudOperator],
+//      routeToMethodName = MetadataCommands.getOrCreateServerNode)
+//
+//    CommandRouter.register(serviceName = MetadataCommands.createOrUpdateServerNodeServiceName,
+//      serviceParamTypes = Array(classOf[ErServerNode]),
+//      serviceResultTypes = Array(classOf[ErServerNode]),
+//      routeToClass = classOf[ServerNodeCrudOperator],
+//      routeToMethodName = MetadataCommands.createOrUpdateServerNode)
+//
+//    CommandRouter.register(serviceName = MetadataCommands.getStoreServiceName,
+//      serviceParamTypes = Array(classOf[ErStore]),
+//      serviceResultTypes = Array(classOf[ErStore]),
+//      routeToClass = classOf[StoreCrudOperator],
+//      routeToMethodName = MetadataCommands.getStore)
+//
+//    CommandRouter.register(serviceName = MetadataCommands.getOrCreateStoreServiceName,
+//      serviceParamTypes = Array(classOf[ErStore]),
+//      serviceResultTypes = Array(classOf[ErStore]),
+//      routeToClass = classOf[StoreCrudOperator],
+//      routeToMethodName = MetadataCommands.getOrCreateStore)
+//
+//    CommandRouter.register(serviceName = MetadataCommands.deleteStoreServiceName,
+//      serviceParamTypes = Array(classOf[ErStore]),
+//      serviceResultTypes = Array(classOf[ErStore]),
+//      routeToClass = classOf[StoreCrudOperator],
+//      routeToMethodName = MetadataCommands.deleteStore)
+//
+//    CommandRouter.register(serviceName = MetadataCommands.getStoreFromNamespaceServiceName,
+//      serviceParamTypes = Array(classOf[ErStore]),
+//      serviceResultTypes = Array(classOf[ErStoreList]),
+//      routeToClass = classOf[StoreCrudOperator],
+//      routeToMethodName = MetadataCommands.getStoreFromNamespace)
 
     CommandRouter.register(serviceName = SessionCommands.getSession.uriString,
       serviceParamTypes = Array(classOf[ErSessionMeta]),

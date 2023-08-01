@@ -2,17 +2,49 @@ package com.webank.eggroll.clustermanager.entity.scala;
 
 import com.webank.eggroll.core.constant.StringConstants;
 import com.webank.eggroll.core.meta.NetworkingRpcMessage;
-import lombok.Data;
+
 
 import java.util.ArrayList;
 import java.util.List;
 
-@Data
-public class ErServerCluster_JAVA implements NetworkingRpcMessage {
+
+public class ErServerCluster_JAVA {
     private long id;
     private String name;
     private List<ErServerNode_JAVA> serverNodes;
     private String tag;
+
+    public long getId() {
+        return id;
+    }
+
+    public void setId(long id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public List<ErServerNode_JAVA> getServerNodes() {
+        return serverNodes;
+    }
+
+    public void setServerNodes(List<ErServerNode_JAVA> serverNodes) {
+        this.serverNodes = serverNodes;
+    }
+
+    public String getTag() {
+        return tag;
+    }
+
+    public void setTag(String tag) {
+        this.tag = tag;
+    }
 
     public ErServerCluster_JAVA() {
         this.id = -1;

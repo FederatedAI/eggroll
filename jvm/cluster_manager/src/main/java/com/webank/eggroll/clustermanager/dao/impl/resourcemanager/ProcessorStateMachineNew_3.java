@@ -5,7 +5,7 @@ import com.webank.eggroll.core.util.Logging;
 import org.springframework.stereotype.Service;
 
 @Service
-public class ProcessorStateMachineNew_3 implements Logging {
+public class ProcessorStateMachineNew_3 {
 
     public void changeStatus(ErProcessor paramProcessor, String preStateParam ,String desStateParam){
         ErProcessor erProcessor = paramProcessor;

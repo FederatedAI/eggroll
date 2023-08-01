@@ -2,11 +2,12 @@ package com.eggroll.core.pojo;
 
 import com.eggroll.core.constant.StringConstants;
 
-import lombok.Data;
+import com.webank.eggroll.core.meta.Meta;
+
 
 import java.util.*;
 
-@Data
+
 public class ErProcessor {
     private long id = -1;
     private String sessionId = StringConstants.EMPTY;
@@ -22,6 +23,118 @@ public class ErProcessor {
     private List<ErResource> resources = new ArrayList<>();
     private Date createdAt = null;
     private Date updatedAt = null;
+
+    public long getId() {
+        return id;
+    }
+
+    public void setId(long id) {
+        this.id = id;
+    }
+
+    public String getSessionId() {
+        return sessionId;
+    }
+
+    public void setSessionId(String sessionId) {
+        this.sessionId = sessionId;
+    }
+
+    public long getServerNodeId() {
+        return serverNodeId;
+    }
+
+    public void setServerNodeId(long serverNodeId) {
+        this.serverNodeId = serverNodeId;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getProcessorType() {
+        return processorType;
+    }
+
+    public void setProcessorType(String processorType) {
+        this.processorType = processorType;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public ErEndpoint getCommandEndpoint() {
+        return commandEndpoint;
+    }
+
+    public void setCommandEndpoint(ErEndpoint commandEndpoint) {
+        this.commandEndpoint = commandEndpoint;
+    }
+
+    public ErEndpoint getTransferEndpoint() {
+        return transferEndpoint;
+    }
+
+    public void setTransferEndpoint(ErEndpoint transferEndpoint) {
+        this.transferEndpoint = transferEndpoint;
+    }
+
+    public int getPid() {
+        return pid;
+    }
+
+    public void setPid(int pid) {
+        this.pid = pid;
+    }
+
+    public Map<String, String> getOptions() {
+        return options;
+    }
+
+    public void setOptions(Map<String, String> options) {
+        this.options = options;
+    }
+
+    public String getTag() {
+        return tag;
+    }
+
+    public void setTag(String tag) {
+        this.tag = tag;
+    }
+
+    public List<ErResource> getResources() {
+        return resources;
+    }
+
+    public void setResources(List<ErResource> resources) {
+        this.resources = resources;
+    }
+
+    public Date getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(Date createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public Date getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(Date updatedAt) {
+        this.updatedAt = updatedAt;
+    }
 
     @Override
     public String toString() {

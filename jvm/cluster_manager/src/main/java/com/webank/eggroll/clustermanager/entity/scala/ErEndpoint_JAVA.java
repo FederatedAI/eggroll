@@ -1,13 +1,30 @@
 package com.webank.eggroll.clustermanager.entity.scala;
 
 import com.webank.eggroll.core.meta.Meta;
-import lombok.Data;
+
 import org.apache.commons.lang3.StringUtils;
 
-@Data
+
 public class ErEndpoint_JAVA implements NetworkingRpcMessage_JAVA {
     private String host;
     private int port;
+
+
+    public String getHost() {
+        return host;
+    }
+
+    public void setHost(String host) {
+        this.host = host;
+    }
+
+    public int getPort() {
+        return port;
+    }
+
+    public void setPort(int port) {
+        this.port = port;
+    }
 
     public ErEndpoint_JAVA(String url) {
         String[] toks = url.split(":");

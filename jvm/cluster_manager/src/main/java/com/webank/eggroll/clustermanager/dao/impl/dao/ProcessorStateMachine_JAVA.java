@@ -6,7 +6,7 @@ import com.webank.eggroll.clustermanager.entity.scala.ErProcessor_JAVA;
 import com.webank.eggroll.clustermanager.entity.scala.StaticErConf_JAVA;
 import com.webank.eggroll.core.exceptions.ErProcessorException_JAVA;
 import com.webank.eggroll.core.constant.SessionConfKeys;
-import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
-@Slf4j
+
 @Service
 public class ProcessorStateMachine_JAVA {
 
@@ -31,7 +31,7 @@ public class ProcessorStateMachine_JAVA {
             erProcessor.setStatus(null);
             List<ErProcessor_JAVA> processorsInDb = sessionProcessorService.doQueryProcessor(erProcessor);
             if (processorsInDb.size() == 0) {
-                log.error("can not found processor , {}", erProcessor);
+                //log.error("can not found processor , {}", erProcessor);
                 throw new ErProcessorException_JAVA("can not found processor id " + erProcessor.getId());
             } else {
                 preState = processorsInDb.get(0).getStatus();
@@ -58,7 +58,7 @@ public class ProcessorStateMachine_JAVA {
                 case "RUNNING_ERROR":
                     break;
                 default:
-                    log.info("there is no need to do something with {} state {}", erProcessor.getId(), statusLine);
+                   // log.info("there is no need to do something with {} state {}", erProcessor.getId(), statusLine);
                     break;
             }
         }
@@ -66,12 +66,13 @@ public class ProcessorStateMachine_JAVA {
 
     private ErProcessor_JAVA createNewProcessor(ErProcessor_JAVA erProcessor, Consumer<ErProcessor_JAVA> beforeCall,
                                                 Consumer<ErProcessor_JAVA> afterCall) {
-            if (beforeCall != null)
+/*            if (beforeCall != null)
                 beforeCall.accept(erProcessor);
         ErProcessor_JAVA newProcessor = smDao.createProcessor(conn, erProcessor);
             if (afterCall != null)
                 afterCall.accept(conn, newProcessor);
-            return newProcessor;
+            return newProcessor;*/
+        return null;
     }
 }
 

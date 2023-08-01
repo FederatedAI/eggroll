@@ -1,11 +1,27 @@
 package com.webank.eggroll.clustermanager.entity.scala;
 
-import lombok.Data;
 
-@Data
+
+
 public class ErNodeHeartbeat_JAVA implements NetworkingRpcMessage_JAVA {
     private long id;
     private ErServerNode_JAVA node;
+
+    public long getId() {
+        return id;
+    }
+
+    public void setId(long id) {
+        this.id = id;
+    }
+
+    public ErServerNode_JAVA getNode() {
+        return node;
+    }
+
+    public void setNode(ErServerNode_JAVA node) {
+        this.node = node;
+    }
 
     public ErNodeHeartbeat_JAVA() {
         this.id = -1;
