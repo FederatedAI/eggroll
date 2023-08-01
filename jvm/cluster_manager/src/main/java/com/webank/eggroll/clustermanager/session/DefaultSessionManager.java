@@ -5,6 +5,7 @@ import com.eggroll.core.pojo.ErSessionMeta;
 import com.webank.eggroll.clustermanager.dao.impl.SessionMainService;
 
 
+import com.webank.eggroll.clustermanager.statemechine.StateMachine;
 import com.webank.eggroll.core.meta.ErProcessor;
 
 import org.apache.commons.lang3.StringUtils;
@@ -19,6 +20,11 @@ public class DefaultSessionManager implements SessionManager{
     Logger logger = LoggerFactory.getLogger(DefaultSessionManager.class);
     @Autowired
     SessionMainService sessionService;
+
+
+
+    StateMachine  sessionStateMachine;
+
 
 
 
