@@ -1,19 +1,15 @@
-package com.webank.eggroll.clustermanager.dao.impl.metadata;
+package com.webank.eggroll.clustermanager.dao.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.eggroll.core.config.Dict;
+import com.eggroll.core.exceptions.CrudException;
 import com.eggroll.core.pojo.*;
 import com.eggroll.core.utils.JsonUtil;
-import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
-import com.webank.eggroll.clustermanager.dao.impl.StoreLocatorService;
-import com.webank.eggroll.clustermanager.dao.impl.StoreOptionService;
-import com.webank.eggroll.clustermanager.dao.impl.StorePartitionService;
 import com.webank.eggroll.clustermanager.entity.ServerNode;
 import com.webank.eggroll.clustermanager.entity.StoreLocator;
 import com.webank.eggroll.clustermanager.entity.StoreOption;
 import com.webank.eggroll.clustermanager.entity.StorePartition;
-import com.webank.eggroll.core.exceptions.CrudException_JAVA;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -148,7 +144,7 @@ public class StoreCrudOperator {
         newStoreLocator.setStatus(Dict.NORMAL);
         boolean addStoreLocatorFlag = storeLocatorService.save(newStoreLocator);
         if (!addStoreLocatorFlag) {
-            throw new CrudException_JAVA("Illegal rows affected returned when creating store locator: 0");
+            throw new CrudException("Illegal rows affected returned when creating store locator: 0");
         }
 
         int newTotalPartitions = inputStoreLocator.getTotalPartitions();
@@ -171,7 +167,7 @@ public class StoreCrudOperator {
             nodeRecord.setStatus(Dict.PRIMARY);
             boolean addNodeRecordFlag = storePartitionService.save(nodeRecord);
             if (!addNodeRecordFlag) {
-                throw new CrudException_JAVA("Illegal rows affected when creating node: 0");
+                throw new CrudException("Illegal rows affected when creating node: 0");
             }
             serverNodeIds.add(node.getId());
 
