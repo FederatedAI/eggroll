@@ -6,7 +6,7 @@ import com.eggroll.core.config.Dict;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ErResource   {
+public class ErResource   implements RpcMessage{
     private long resourceId= -1;
     private String resourceType= Dict.EMPTY;
     private long serverNodeId= 0;

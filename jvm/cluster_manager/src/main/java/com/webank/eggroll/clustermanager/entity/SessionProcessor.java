@@ -3,10 +3,6 @@ package com.webank.eggroll.clustermanager.entity;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.eggroll.core.pojo.ErEndpoint;
 import com.eggroll.core.pojo.ErProcessor;
-<<<<<<< HEAD
-
-=======
->>>>>>> 66cbb1bbb5c08ab92a4973fa34c3353c4827af4a
 import com.eggroll.core.utils.JsonUtil;
 import org.apache.commons.lang3.StringUtils;
 
@@ -46,15 +42,11 @@ public class SessionProcessor {
         this.processorType = erProcessor.getProcessorType();
         this.status = erProcessor.getStatus();
         this.tag = erProcessor.getTag();
-<<<<<<< HEAD
-        this.commandEndpoint = erProcessor.getCommandEndpoint()!=null?erProcessor.getCommandEndpoint().toString():null;
-        this.transferEndpoint = erProcessor.getTransferEndpoint()!=null?erProcessor.getTransferEndpoint().toString():null;
-        this.processorOption = erProcessor.getOptions()!=null? JsonUtil.object2Json(erProcessor.getOptions()):null;
-=======
+
         this.commandEndpoint = erProcessor.getCommandEndpoint() != null ? erProcessor.getCommandEndpoint().toString() : null;
         this.transferEndpoint = erProcessor.getTransferEndpoint() != null ? erProcessor.getTransferEndpoint().toString() : null;
         this.processorOption = erProcessor.getOptions() != null ? JsonUtil.object2Json(erProcessor.getOptions()) : null;
->>>>>>> 66cbb1bbb5c08ab92a4973fa34c3353c4827af4a
+
         this.pid = erProcessor.getPid();
         this.createdAt = erProcessor.getCreatedAt();
         this.updatedAt = erProcessor.getUpdatedAt();
