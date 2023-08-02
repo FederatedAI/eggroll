@@ -109,4 +109,14 @@ public class ErResource   {
         }
         return remain;
     }
+
+    @Override
+    public byte[] serialize() {
+        return new byte[0];
+    }
+
+    @Override
+    public void deserialize(byte[] data) {
+
+    }
 }

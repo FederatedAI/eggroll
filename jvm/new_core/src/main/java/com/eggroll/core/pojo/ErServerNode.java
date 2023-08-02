@@ -6,6 +6,7 @@ import com.webank.eggroll.core.meta.Meta;
 
 import  java.sql.Timestamp;
 import java.util.Arrays;
+import java.util.Date;
 
 public class ErServerNode implements  RpcMessage{
         private long id;
@@ -14,7 +15,7 @@ public class ErServerNode implements  RpcMessage{
         private ErEndpoint endpoint;
         private String nodeType;
         private String status;
-        private Timestamp lastHeartBeat;
+        private Date lastHeartBeat;
 
     public long getId() {
         return id;
@@ -64,11 +65,11 @@ public class ErServerNode implements  RpcMessage{
         this.status = status;
     }
 
-    public Timestamp getLastHeartBeat() {
+    public Date getLastHeartBeat() {
         return lastHeartBeat;
     }
 
-    public void setLastHeartBeat(Timestamp lastHeartBeat) {
+    public void setLastHeartBeat(Date lastHeartBeat) {
         this.lastHeartBeat = lastHeartBeat;
     }
 
@@ -94,7 +95,7 @@ public class ErServerNode implements  RpcMessage{
         }
 
         public ErServerNode(long id, String name, long clusterId, ErEndpoint endpoint,
-                            String nodeType, String status, Timestamp lastHeartBeat,
+                            String nodeType, String status, Date lastHeartBeat,
                             ErResource[] resources) {
             this.id = id;
             this.name = name;
