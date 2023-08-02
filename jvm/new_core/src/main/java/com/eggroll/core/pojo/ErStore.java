@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class ErStore implements MetaRpcMessage {
+public class ErStore implements RpcMessage {
     private ErStoreLocator storeLocator;
     private List<ErPartition> partitions;
     private Map<String, String> options;
@@ -62,5 +62,15 @@ public class ErStore implements MetaRpcMessage {
     public ErStore fork(String postfix, String delimiter) {
         ErStoreLocator newStoreLocator = storeLocator.fork(postfix, delimiter);
         return fork(newStoreLocator);
+    }
+
+    @Override
+    public byte[] serialize() {
+        return new byte[0];
+    }
+
+    @Override
+    public void deserialize(byte[] data) {
+
     }
 }
