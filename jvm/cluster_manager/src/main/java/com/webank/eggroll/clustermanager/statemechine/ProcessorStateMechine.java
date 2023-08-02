@@ -1,6 +1,6 @@
 package com.webank.eggroll.clustermanager.statemechine;
 
-import com.webank.eggroll.core.meta.ErProcessor;
+import com.eggroll.core.pojo.ErProcessor;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
@@ -16,7 +16,7 @@ public class ProcessorStateMechine {
 
     public  void   changeStatus(ErProcessor paramProcessor, String preStateParam, String desStateParam){
 
-        String  sessionId =  paramProcessor.sessionId();
+        String  sessionId =  paramProcessor.getSessionId();
 
         try{
             tryLock(sessionId);
