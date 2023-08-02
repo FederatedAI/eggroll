@@ -114,7 +114,7 @@ public class SessionMain {
         result.setCreateTime(createdAt);
         result.setUpdateTime(updatedAt);
         if(StringUtils.isNotEmpty(status))
-            result.setStatus(SessionStatus.valueOf(status));
+            result.setStatus(status);
         result.setTotalProcCount(totalProcCount);
         result.setActiveProcCount(activeProcCount);
         return  result;

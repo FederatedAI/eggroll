@@ -2,13 +2,14 @@ package com.eggroll.core.pojo;
 
 import com.eggroll.core.constant.StringConstants;
 
+import com.google.protobuf.InvalidProtocolBufferException;
 import com.webank.eggroll.core.meta.Meta;
 
 
 import java.util.*;
 
 
-public class ErProcessor {
+public class ErProcessor implements  RpcMessage {
     private long id = -1;
     private String sessionId = StringConstants.EMPTY;
     private long serverNodeId = -1;
@@ -168,5 +169,35 @@ public class ErProcessor {
                 .setTag(this.getTag());
 
         return builder.build();
+    }
+
+    @Override
+    public byte[] serialize() {
+       return  this.toProto().toByteArray();
+    }
+
+    @Override
+    public void deserialize(byte[] data) {
+        try {
+            Meta.Processor  processor =  Meta.Processor.parseFrom(data);
+            this.id = processor.getId();
+            this.serverNodeId = processor.getServerNodeId();
+            this.name = processor.getName();
+            this.processorType = processor.getProcessorType();
+            this.status = processor.getStatus();
+            if(processor.getCommandEndpoint()!=null){
+                this.commandEndpoint=new ErEndpoint(processor.getCommandEndpoint().getHost(),processor.getCommandEndpoint().getPort());
+            }
+            if(processor.getTransferEndpoint()!=null){
+                this.transferEndpoint=new ErEndpoint(processor.getTransferEndpoint().getHost(),processor.getTransferEndpoint().getPort());
+            }
+
+            this.options =   processor.getOptionsMap();
+
+
+
+        } catch (InvalidProtocolBufferException e) {
+            e.printStackTrace();
+        }
     }
 }

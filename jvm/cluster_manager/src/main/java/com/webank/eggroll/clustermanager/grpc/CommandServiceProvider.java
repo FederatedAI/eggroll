@@ -1,14 +1,19 @@
 package com.webank.eggroll.clustermanager.grpc;
 
-import com.eggroll.core.pojo.ErServerCluster;
-import com.eggroll.core.pojo.ErServerNode;
-import com.eggroll.core.pojo.ErStore;
-import com.eggroll.core.pojo.RpcMessage;
+import com.eggroll.core.invoke.InvokeInfo;
+import com.eggroll.core.pojo.*;
+import com.google.common.collect.Lists;
+import com.google.protobuf.ByteString;
+import com.webank.eggroll.clustermanager.session.DefaultSessionManager;
 import com.webank.eggroll.core.command.Command;
 import com.webank.eggroll.core.command.CommandServiceGrpc;
 import io.grpc.stub.StreamObserver;
 import org.apache.ibatis.annotations.Param;
+import org.checkerframework.checker.units.qual.A;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.stereotype.Service;
 
@@ -19,36 +24,43 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 public class CommandServiceProvider  extends CommandServiceGrpc.CommandServiceImplBase implements InitializingBean {
 
-    static  class  InvokeInfo{
-        Object   object;
-        Method   method;
-        Class    paramClass;
-    }
+    Logger logger = LoggerFactory.getLogger(CommandServiceProvider.class);
+
+    @Autowired
+    DefaultSessionManager  defaultSessionManager;
+
+
 
      public void call(Command.CommandRequest request,
                       StreamObserver<Command.CommandResponse> responseObserver){
-//
-        //responseObserver.onNext();
+        String  uri = request.getUri();
+        byte[]  resultBytes = dispatch(uri,request.getArgsList().get(0).toByteArray());
+        Command.CommandResponse.Builder  responseBuilder = Command.CommandResponse.newBuilder();
+        responseBuilder.setId(request.getId());
+        responseBuilder.addResults(ByteString.copyFrom(resultBytes));
+        responseObserver.onNext(responseBuilder.build());
         responseObserver.onCompleted();
     }
 
 
+    private ConcurrentHashMap<String , InvokeInfo>   uriMap = new ConcurrentHashMap();
 
-
-    private ConcurrentHashMap<String ,InvokeInfo>   uriMap = new ConcurrentHashMap();
-
-    public  Object  dispatch(String uri ,byte[] data){
+    public  byte[]  dispatch(String uri ,byte[] data){
         InvokeInfo invokeInfo =  uriMap.get(uri);
+        logger.info("request {} invoke {}",uri,invokeInfo);
+        if(invokeInfo ==null){
+            throw new  RuntimeException("invalid request : "+uri);
+        }
         try {
-            RpcMessage  rpcMessage = (RpcMessage)invokeInfo.paramClass.newInstance();
+            RpcMessage  rpcMessage = (RpcMessage)invokeInfo.getParamClass().newInstance();
             rpcMessage.deserialize(data);
-            return invokeInfo.method.invoke(invokeInfo.object,rpcMessage);
+            RpcMessage response =  (RpcMessage)invokeInfo.getMethod().invoke(invokeInfo.getObject(),rpcMessage);
+            return response.serialize();
 
         } catch (InstantiationException e) {
             e.printStackTrace();
         } catch (IllegalAccessException e) {
             e.printStackTrace();
-
         } catch (InvocationTargetException e) {
             e.printStackTrace();
         }
@@ -77,7 +89,6 @@ public class CommandServiceProvider  extends CommandServiceGrpc.CommandServiceIm
     public  ErStore  getStore(ErStore erStore){
         return null;
     }
-
     @URI(value="v1/cluster-manager/metadata/getOrCreateStore")
     public  ErStore  getOrCreateStore(ErStore  erStore){
         return null;
@@ -90,6 +101,34 @@ public class CommandServiceProvider  extends CommandServiceGrpc.CommandServiceIm
     public ErStore getStoreFromNamespace(ErStore  erStore){
         return null;
     }
+    @URI(value="v1/cluster-manager/session/getOrCreateSession")
+    public ErSessionMeta  getOrCreateSession(ErSessionMeta sessionMeta){
+        return defaultSessionManager.getOrCreateSession(sessionMeta);
+    }
+    @URI(value="v1/cluster-manager/session/getSession")
+    public ErSessionMeta  getSession(ErSessionMeta sessionMeta){
+        return defaultSessionManager.getSession(sessionMeta);
+    }
+
+    @URI(value="v1/cluster-manager/session/heartbeat")
+    public ErProcessor heartbeat(ErProcessor erProcessor){
+        return defaultSessionManager.heartbeat(erProcessor);
+    }
+
+    @URI(value="v1/cluster-manager/session/stopSession")
+    public ErSessionMeta stopSession(ErSessionMeta erSessionMeta){
+        return defaultSessionManager.stopSession(erSessionMeta);
+    }
+
+    @URI(value="v1/cluster-manager/session/killSession")
+    public ErSessionMeta killSession(ErSessionMeta erSessionMeta){
+        return defaultSessionManager.killSession(erSessionMeta);
+    }
+    @URI(value="v1/cluster-manager/session/killAllSessions")
+    public ErSessionMeta killAllSession(ErSessionMeta erSessionMeta){
+        return defaultSessionManager.killAllSessions(erSessionMeta);
+    }
+
 
 
 
@@ -99,16 +138,18 @@ public class CommandServiceProvider  extends CommandServiceGrpc.CommandServiceIm
 
     @Override
     public void afterPropertiesSet() throws Exception {
-
+        register(this);
         System.err.println("command  service provider afterPropertiesSet");
 
     }
 
     private void doRegister(String uri,Object  service,Method  method,Class  paramClass){
-
+        InvokeInfo  invokeInfo = new InvokeInfo(uri,service,method,paramClass);
+        logger.info("register uri {}",invokeInfo);
+        this.uriMap.put(uri,invokeInfo);
     }
 
-    private void prepareRegister(Object service) {
+    private void register(Object service) {
         Method[] methods;
         if (service instanceof Class) {
             methods = ((Class) service).getMethods();
@@ -116,14 +157,18 @@ public class CommandServiceProvider  extends CommandServiceGrpc.CommandServiceIm
             methods = service.getClass().getMethods();
         }
         for (Method method : methods) {
-            URI uri = method.getAnnotation(URI.class);
+
+            URI uri = method.getDeclaredAnnotation(URI.class);
+
             if(uri!=null){
                 Class[] types = method.getParameterTypes();
                 if(types.length>0){
                    Class  paramClass = types[0];
-
-                   if(paramClass.isAssignableFrom(RpcMessage.class)){
+                    System.err.println("paramClass "+paramClass);
+                   if(RpcMessage.class.isAssignableFrom(paramClass)){
                        doRegister(uri.value(),service,method,paramClass);
+                   }else{
+//                       System.err.println("false "+paramClass);
                    }
                 }
 
