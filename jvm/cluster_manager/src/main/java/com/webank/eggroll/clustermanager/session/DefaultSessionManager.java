@@ -5,7 +5,8 @@ import com.eggroll.core.pojo.ErSessionMeta;
 import com.webank.eggroll.clustermanager.dao.impl.SessionMainService;
 
 
-import com.webank.eggroll.core.meta.ErProcessor;
+import com.webank.eggroll.clustermanager.statemechine.SessionStateMachine;
+
 
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -19,7 +20,8 @@ public class DefaultSessionManager implements SessionManager{
     Logger logger = LoggerFactory.getLogger(DefaultSessionManager.class);
     @Autowired
     SessionMainService sessionService;
-
+    @Autowired
+    SessionStateMachine  sessionStateMachine;
 
 
 
