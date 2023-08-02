@@ -33,7 +33,7 @@ public class SessionMetaDao {
         SessionMain sessionMain = new SessionMain();
         sessionMain.setSessionId(sid);
         sessionMain.setName(sessionMeta.getName());
-        sessionMain.setStatus(sessionMeta.getStatus().name());
+        sessionMain.setStatus(sessionMeta.getStatus());
         sessionMain.setTag(sessionMeta.getTag());
         sessionMain.setTotalProcCount(sessionMeta.getTotalProcCount());
         sessionMain.setActiveProcCount(sessionMeta.getActiveProcCount());

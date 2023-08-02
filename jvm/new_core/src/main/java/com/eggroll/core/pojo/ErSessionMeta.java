@@ -2,6 +2,8 @@ package com.eggroll.core.pojo;
 
 import com.eggroll.core.constant.SessionStatus;
 import com.eggroll.core.constant.StringConstants;
+import com.google.protobuf.InvalidProtocolBufferException;
+import com.webank.eggroll.core.meta.Meta;
 
 
 import java.sql.Date;
@@ -10,12 +12,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class ErSessionMeta  {
+public class ErSessionMeta implements RpcMessage {
 
 
     private String id = StringConstants.EMPTY;
     private String name = StringConstants.EMPTY;
-    private SessionStatus status = null;
+    private String  status = null;
     private Integer totalProcCount = 0;
     private Integer activeProcCount = 0;
     private String tag = StringConstants.EMPTY;
@@ -39,11 +41,11 @@ public class ErSessionMeta  {
         this.name = name;
     }
 
-    public SessionStatus getStatus() {
+    public String getStatus() {
         return status;
     }
 
-    public void setStatus(SessionStatus status) {
+    public void setStatus(String status) {
         this.status = status;
     }
 
@@ -106,5 +108,30 @@ public class ErSessionMeta  {
     private Map<String, String> options = new HashMap<>();
 
 
+    @Override
+    public byte[] serialize() {
+        Meta.SessionMeta.Builder  builder = Meta.SessionMeta.newBuilder();
+        builder.setId(this.id);
+        builder.setName(this.name);
+        if(status!=null){
+            builder.setStatus(status);
+        }
+        for(ErProcessor erProcessor:processors){
+            builder.addProcessors(erProcessor.toProto());
+        }
+        builder.setTag(this.tag);
+        return builder.build().toByteArray();
 
+    }
+
+    @Override
+    public void deserialize(byte[] data) {
+        try {
+            Meta.SessionMeta  sessionMeta =  Meta.SessionMeta.parseFrom(data);
+            this.status = sessionMeta.getStatus();
+        } catch (InvalidProtocolBufferException e) {
+            e.printStackTrace();
+        }
+
+    }
 }

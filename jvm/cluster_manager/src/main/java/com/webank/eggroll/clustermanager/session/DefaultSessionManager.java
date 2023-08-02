@@ -37,8 +37,8 @@ public class DefaultSessionManager implements SessionManager{
 
     @Override
     public ErSessionMeta getOrCreateSession(ErSessionMeta sessionMeta) {
-
-            return  null;
+        System.err.println("getOrCreateSession =====");
+            return  sessionMeta;
 
     }
 
