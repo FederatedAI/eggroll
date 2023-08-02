@@ -35,6 +35,21 @@ public class SessionProcessor {
 
     private Date updatedAt;
 
+    public SessionProcessor(ErProcessor  erProcessor){
+        this.processorId = erProcessor.getId();
+        this.sessionId = erProcessor.getSessionId() ;
+        this.serverNodeId = (int)erProcessor.getServerNodeId() ;
+        this.processorType = erProcessor.getProcessorType()  ;
+        this.status = erProcessor.getStatus();
+        this.tag = erProcessor.getTag();
+        this.commandEndpoint = erProcessor.getCommandEndpoint()!=null?erProcessor.getCommandEndpoint().toString():null;
+        this.transferEndpoint = erProcessor.getTransferEndpoint()!=null?erProcessor.getTransferEndpoint().toString():null;
+        this.processorOption = erProcessor.getOptions()!=null?JsonUtil.object2Json(erProcessor.getOptions()):null;
+        this.pid = erProcessor.getPid();
+        this.createdAt = erProcessor.getCreatedAt();
+        this.updatedAt = erProcessor.getUpdatedAt();
+    }
+
     public SessionProcessor(Long processorId, String sessionId, Integer serverNodeId, String processorType, String status, String tag, String commandEndpoint, String transferEndpoint, String processorOption, Integer pid, Date createdAt, Date updatedAt) {
         this.processorId = processorId;
         this.sessionId = sessionId;

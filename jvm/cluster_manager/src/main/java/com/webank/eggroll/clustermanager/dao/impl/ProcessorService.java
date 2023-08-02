@@ -8,6 +8,7 @@ import com.webank.eggroll.clustermanager.entity.SessionOption;
 import com.webank.eggroll.clustermanager.entity.SessionProcessor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -25,6 +26,8 @@ public class ProcessorService extends EggRollBaseServiceImpl<SessionProcessorMap
                  .stream().map((x)->{ return x.toErProcessor();}).collect(Collectors.toList());
 
     }
+
+
 
 
 
