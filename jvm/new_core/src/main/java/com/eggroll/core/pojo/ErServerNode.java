@@ -1,11 +1,13 @@
 package com.eggroll.core.pojo;
 import com.eggroll.core.constant.StringConstants;
+import com.google.protobuf.InvalidProtocolBufferException;
+import com.webank.eggroll.core.meta.Meta;
 
 
 import  java.sql.Timestamp;
 import java.util.Arrays;
 
-public class ErServerNode {
+public class ErServerNode implements  RpcMessage{
         private long id;
         private String name;
         private long clusterId;
@@ -124,4 +126,29 @@ public class ErServerNode {
                     ", resources=" + Arrays.toString(resources) +
                     ") at " + Integer.toHexString(hashCode()) + ">";
         }
+
+    @Override
+    public byte[] serialize() {
+        Meta.ServerNode.Builder  builder = Meta.ServerNode.newBuilder();
+        builder.setId(this.id).setName(this.name).setClusterId(this.clusterId)
+                .setNodeType(this.nodeType).setStatus(this.status);
+        if(this.endpoint!=null){
+            builder.setEndpoint(endpoint.toProto());
+        }
+        return builder.build().toByteArray();
     }
+
+    @Override
+    public void deserialize(byte[] data) {
+        try {
+            Meta.ServerNode serverNode =  Meta.ServerNode.parseFrom(data);
+            this.id =  serverNode.getId();
+            this.clusterId = serverNode.getClusterId();
+            this.name = serverNode.getName();
+            this.nodeType = serverNode.getNodeType();
+            this.status = serverNode.getStatus();
+        } catch (InvalidProtocolBufferException e) {
+                e.printStackTrace();
+        }
+    }
+}
