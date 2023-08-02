@@ -6,7 +6,7 @@ import com.eggroll.core.config.Dict;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ErServerCluster implements NetworkingRpcMessage {
+public class ErServerCluster implements  RpcMessage {
     private long id;
     private String name;
     private List<ErServerNode> serverNodes;
@@ -63,5 +63,15 @@ public class ErServerCluster implements NetworkingRpcMessage {
         return "<ErServerCluster(id=" + id + ", name=" + name +
                 ", serverNodes=" + serverNodes.toString() + ", tag=" + tag +
                 ") at " + Integer.toHexString(hashCode()) + ">";
+    }
+
+    @Override
+    public byte[] serialize() {
+        return new byte[0];
+    }
+
+    @Override
+    public void deserialize(byte[] data) {
+
     }
 }

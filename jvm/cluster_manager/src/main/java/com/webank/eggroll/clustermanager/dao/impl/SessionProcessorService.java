@@ -34,12 +34,12 @@ public class SessionProcessorService extends EggRollBaseServiceImpl<SessionProce
         for (SessionProcessor rs : processorList) {
             ErEndpoint commandEndpoint = null;
             if (StringUtils.isNotBlank(rs.getCommandEndpoint())) {
-                commandEndpoint = ErEndpoint.apply(rs.getCommandEndpoint());
+                commandEndpoint = new ErEndpoint(rs.getCommandEndpoint());
             }
 
             ErEndpoint transferEndpoint = null;
             if (StringUtils.isNotBlank(rs.getTransferEndpoint())) {
-                transferEndpoint = ErEndpoint.apply(rs.getTransferEndpoint());
+                transferEndpoint = new ErEndpoint(rs.getTransferEndpoint());
             }
 
 
