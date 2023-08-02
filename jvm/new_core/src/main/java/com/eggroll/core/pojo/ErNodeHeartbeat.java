@@ -36,4 +36,14 @@ public class ErNodeHeartbeat implements NetworkingRpcMessage {
         return "<ErNodeHeartbeat(id=" + id + ", node=" + node +
                 ") at " + Integer.toHexString(hashCode()) + ">";
     }
+
+    @Override
+    public byte[] serialize() {
+        return new byte[0];
+    }
+
+    @Override
+    public void deserialize(byte[] data) {
+
+    }
 }

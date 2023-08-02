@@ -3,7 +3,7 @@ package com.webank.eggroll.clustermanager.entity;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.eggroll.core.pojo.ErEndpoint;
 import com.eggroll.core.pojo.ErProcessor;
-import com.webank.eggroll.core.util.JsonUtil;
+import com.eggroll.core.utils.JsonUtil;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.Date;
@@ -21,13 +21,13 @@ public class SessionProcessor {
 
     private String status;
 
-    private String tag="";
+    private String tag = "";
 
-    private String commandEndpoint="";
+    private String commandEndpoint = "";
 
-    private String transferEndpoint="";
+    private String transferEndpoint = "";
 
-    private String processorOption="";
+    private String processorOption = "";
 
     private Integer pid;
 
@@ -35,16 +35,16 @@ public class SessionProcessor {
 
     private Date updatedAt;
 
-    public SessionProcessor(ErProcessor  erProcessor){
+    public SessionProcessor(ErProcessor erProcessor) {
         this.processorId = erProcessor.getId();
-        this.sessionId = erProcessor.getSessionId() ;
-        this.serverNodeId = (int)erProcessor.getServerNodeId() ;
-        this.processorType = erProcessor.getProcessorType()  ;
+        this.sessionId = erProcessor.getSessionId();
+        this.serverNodeId = (int) erProcessor.getServerNodeId();
+        this.processorType = erProcessor.getProcessorType();
         this.status = erProcessor.getStatus();
         this.tag = erProcessor.getTag();
-        this.commandEndpoint = erProcessor.getCommandEndpoint()!=null?erProcessor.getCommandEndpoint().toString():null;
-        this.transferEndpoint = erProcessor.getTransferEndpoint()!=null?erProcessor.getTransferEndpoint().toString():null;
-        this.processorOption = erProcessor.getOptions()!=null?JsonUtil.object2Json(erProcessor.getOptions()):null;
+        this.commandEndpoint = erProcessor.getCommandEndpoint() != null ? erProcessor.getCommandEndpoint().toString() : null;
+        this.transferEndpoint = erProcessor.getTransferEndpoint() != null ? erProcessor.getTransferEndpoint().toString() : null;
+        this.processorOption = erProcessor.getOptions() != null ? JsonUtil.object2Json(erProcessor.getOptions()) : null;
         this.pid = erProcessor.getPid();
         this.createdAt = erProcessor.getCreatedAt();
         this.updatedAt = erProcessor.getUpdatedAt();
@@ -165,7 +165,7 @@ public class SessionProcessor {
         this.updatedAt = updatedAt;
     }
 
-    public ErProcessor toErProcessor(){
+    public ErProcessor toErProcessor() {
 
 //        this.processorId = processorId;
 //        this.sessionId = sessionId;
@@ -179,7 +179,7 @@ public class SessionProcessor {
 //        this.pid = pid;
 //        this.createdAt = createdAt;
 //        this.updatedAt = updatedAt;
-        ErProcessor  result = new ErProcessor();
+        ErProcessor result = new ErProcessor();
         result.setId(this.processorId);
         result.setSessionId(this.sessionId);
         result.setServerNodeId(this.serverNodeId);
@@ -187,17 +187,17 @@ public class SessionProcessor {
         result.setStatus(this.status);
         result.setTag(this.tag);
 
-        if(StringUtils.isNotEmpty(this.commandEndpoint)){
-            ErEndpoint  ep = new ErEndpoint(this.commandEndpoint);
+        if (StringUtils.isNotEmpty(this.commandEndpoint)) {
+            ErEndpoint ep = new ErEndpoint(this.commandEndpoint);
             result.setCommandEndpoint(ep);
         }
 
-        if(StringUtils.isNotEmpty(this.transferEndpoint)){
-            ErEndpoint  ep = new ErEndpoint(this.transferEndpoint);
+        if (StringUtils.isNotEmpty(this.transferEndpoint)) {
+            ErEndpoint ep = new ErEndpoint(this.transferEndpoint);
             result.setTransferEndpoint(ep);
         }
-        if(StringUtils.isNotEmpty(this.processorOption)){
-            result.setOptions( JsonUtil.json2Object(this.processorOption, Map.class));
+        if (StringUtils.isNotEmpty(this.processorOption)) {
+            result.setOptions(JsonUtil.json2Object(this.processorOption, Map.class));
         }
         result.setPid(this.pid);
         result.setCreatedAt(this.createdAt);
