@@ -1,7 +1,7 @@
 package com.webank.eggroll.clustermanager.statemechine;
 
-import com.webank.eggroll.core.error.ErSessionException;
-import com.webank.eggroll.core.meta.ErSessionMeta;
+import com.eggroll.core.exceptions.ErSessionException;
+import com.eggroll.core.pojo.ErSessionMeta;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -51,10 +51,10 @@ public class SessionStateMechine {
             ){
         Long  beginTimeStamp = System.currentTimeMillis();
         try {
-            tryLock(paramErSession.id());
+            tryLock(paramErSession.getId());
             if(preCheck!=null){
                 if(!preCheck.check(paramErSession)){
-                    throw  new ErSessionException("",null);
+                    throw  new ErSessionException("");
                 }
             }
             String preState = preStateParam;
@@ -101,7 +101,7 @@ public class SessionStateMechine {
 //                case _ => logInfo(s"there is no need to do something with ${paramErSession.id} state ${statusLine}");
 //            }
         }finally {
-            unLock(paramErSession.id());
+            unLock(paramErSession.getId());
         }
     }
     @Transactional
