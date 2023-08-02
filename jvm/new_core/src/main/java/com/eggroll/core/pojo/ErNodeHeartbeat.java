@@ -1,7 +1,7 @@
 package com.eggroll.core.pojo;
 
 
-public class ErNodeHeartbeat implements NetworkingRpcMessage {
+public class ErNodeHeartbeat implements RpcMessage {
     private long id;
     private ErServerNode node;
 
@@ -35,5 +35,15 @@ public class ErNodeHeartbeat implements NetworkingRpcMessage {
     public String toString() {
         return "<ErNodeHeartbeat(id=" + id + ", node=" + node +
                 ") at " + Integer.toHexString(hashCode()) + ">";
+    }
+
+    @Override
+    public byte[] serialize() {
+        return new byte[0];
+    }
+
+    @Override
+    public void deserialize(byte[] data) {
+
     }
 }

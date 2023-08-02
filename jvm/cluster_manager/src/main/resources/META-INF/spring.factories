@@ -1,1 +1,1 @@
-org.springframework.boot.env.EnvironmentPostProcessor=com.webank.eggroll.clustermanager.config.ExtendConfigPostProcessor
+org.springframework.boot.env.EnvironmentPostProcessor=com.webank.eggroll.clustermanager.conf.ExtendConfigPostProcessor

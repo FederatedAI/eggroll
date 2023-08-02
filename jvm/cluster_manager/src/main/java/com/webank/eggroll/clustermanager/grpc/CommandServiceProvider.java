@@ -4,16 +4,20 @@ import com.eggroll.core.pojo.ErServerCluster;
 import com.eggroll.core.pojo.ErServerNode;
 import com.eggroll.core.pojo.ErStore;
 import com.eggroll.core.pojo.RpcMessage;
+import com.webank.eggroll.core.command.Command;
+import com.webank.eggroll.core.command.CommandServiceGrpc;
+import io.grpc.stub.StreamObserver;
 import org.apache.ibatis.annotations.Param;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.stereotype.Service;
 
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
-public class CommandServiceProvider  implements InitializingBean {
+public class CommandServiceProvider  extends CommandServiceGrpc.CommandServiceImplBase implements InitializingBean {
 
     static  class  InvokeInfo{
         Object   object;
@@ -21,10 +25,34 @@ public class CommandServiceProvider  implements InitializingBean {
         Class    paramClass;
     }
 
+     public void call(Command.CommandRequest request,
+                      StreamObserver<Command.CommandResponse> responseObserver){
+//
+        //responseObserver.onNext();
+        responseObserver.onCompleted();
+    }
+
+
+
+
     private ConcurrentHashMap<String ,InvokeInfo>   uriMap = new ConcurrentHashMap();
 
-    public  void  dispath(){
+    public  Object  dispatch(String uri ,byte[] data){
+        InvokeInfo invokeInfo =  uriMap.get(uri);
+        try {
+            RpcMessage  rpcMessage = (RpcMessage)invokeInfo.paramClass.newInstance();
+            rpcMessage.deserialize(data);
+            return invokeInfo.method.invoke(invokeInfo.object,rpcMessage);
 
+        } catch (InstantiationException e) {
+            e.printStackTrace();
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+
+        } catch (InvocationTargetException e) {
+            e.printStackTrace();
+        }
+        return null;
 
     }
 
@@ -66,9 +94,14 @@ public class CommandServiceProvider  implements InitializingBean {
 
 
 
+
+
+
     @Override
     public void afterPropertiesSet() throws Exception {
-        this.getClass().getMethods();
+
+        System.err.println("command  service provider afterPropertiesSet");
+
     }
 
     private void doRegister(String uri,Object  service,Method  method,Class  paramClass){
@@ -82,18 +115,15 @@ public class CommandServiceProvider  implements InitializingBean {
         } else {
             methods = service.getClass().getMethods();
         }
-
         for (Method method : methods) {
-
             URI uri = method.getAnnotation(URI.class);
-
             if(uri!=null){
                 Class[] types = method.getParameterTypes();
                 if(types.length>0){
                    Class  paramClass = types[0];
 
                    if(paramClass.isAssignableFrom(RpcMessage.class)){
-                       doRegister(method);
+                       doRegister(uri.value(),service,method,paramClass);
                    }
                 }
 
@@ -104,149 +134,5 @@ public class CommandServiceProvider  implements InitializingBean {
     }
 
 
-//     CommandRouter.register(serviceName = MetadataCommands.getServerNodeServiceName,
-//    serviceParamTypes = Array(classOf[ErServerNode]),
-//    serviceResultTypes = Array(classOf[ErServerNode]),
-//    routeToClass = classOf[ServerNodeCrudOperator],
-//    routeToMethodName = MetadataCommands.getServerNode)
-//
-//            CommandRouter.register(serviceName = MetadataCommands.getServerNodesServiceName,
-//    serviceParamTypes = Array(classOf[ErServerNode]),
-//    serviceResultTypes = Array(classOf[ErServerCluster]),
-//    routeToClass = classOf[ServerNodeCrudOperator],
-//    routeToMethodName = MetadataCommands.getServerNodes)
-//
-//            CommandRouter.register(serviceName = MetadataCommands.getOrCreateServerNodeServiceName,
-//    serviceParamTypes = Array(classOf[ErServerNode]),
-//    serviceResultTypes = Array(classOf[ErServerNode]),
-//    routeToClass = classOf[ServerNodeCrudOperator],
-//    routeToMethodName = MetadataCommands.getOrCreateServerNode)
-//
-//            CommandRouter.register(serviceName = MetadataCommands.createOrUpdateServerNodeServiceName,
-//    serviceParamTypes = Array(classOf[ErServerNode]),
-//    serviceResultTypes = Array(classOf[ErServerNode]),
-//    routeToClass = classOf[ServerNodeCrudOperator],
-//    routeToMethodName = MetadataCommands.createOrUpdateServerNode)
-//
-//            CommandRouter.register(serviceName = MetadataCommands.getStoreServiceName,
-//    serviceParamTypes = Array(classOf[ErStore]),
-//    serviceResultTypes = Array(classOf[ErStore]),
-//    routeToClass = classOf[StoreCrudOperator],
-//    routeToMethodName = MetadataCommands.getStore)
-//
-//            CommandRouter.register(serviceName = MetadataCommands.getOrCreateStoreServiceName,
-//    serviceParamTypes = Array(classOf[ErStore]),
-//    serviceResultTypes = Array(classOf[ErStore]),
-//    routeToClass = classOf[StoreCrudOperator],
-//    routeToMethodName = MetadataCommands.getOrCreateStore)
-//
-//            CommandRouter.register(serviceName = MetadataCommands.deleteStoreServiceName,
-//    serviceParamTypes = Array(classOf[ErStore]),
-//    serviceResultTypes = Array(classOf[ErStore]),
-//    routeToClass = classOf[StoreCrudOperator],
-//    routeToMethodName = MetadataCommands.deleteStore)
-//
-//            CommandRouter.register(serviceName = MetadataCommands.getStoreFromNamespaceServiceName,
-//    serviceParamTypes = Array(classOf[ErStore]),
-//    serviceResultTypes = Array(classOf[ErStoreList]),
-//    routeToClass = classOf[StoreCrudOperator],
-//    routeToMethodName = MetadataCommands.getStoreFromNamespace)
-//
-//            CommandRouter.register(serviceName = SessionCommands.getSession.uriString,
-//    serviceParamTypes = Array(classOf[ErSessionMeta]),
-//    serviceResultTypes = Array(classOf[ErSessionMeta]),
-//    routeToClass = classOf[SessionManagerService],
-//    routeToMethodName = SessionCommands.getSession.getName())
-//
-//            CommandRouter.register(serviceName = SessionCommands.getOrCreateSession.uriString,
-//    serviceParamTypes = Array(classOf[ErSessionMeta]),
-//    serviceResultTypes = Array(classOf[ErSessionMeta]),
-//    routeToClass = classOf[SessionManagerService],
-//    routeToMethodName = SessionCommands.getOrCreateSession.getName())
-//
-//            CommandRouter.register(serviceName = SessionCommands.stopSession.uriString,
-//    serviceParamTypes = Array(classOf[ErSessionMeta]),
-//    serviceResultTypes = Array(classOf[ErSessionMeta]),
-//    routeToClass = classOf[SessionManagerService],
-//    routeToMethodName = SessionCommands.stopSession.getName())
-//
-//            CommandRouter.register(serviceName = SessionCommands.killSession.uriString,
-//    serviceParamTypes = Array(classOf[ErSessionMeta]),
-//    serviceResultTypes = Array(classOf[ErSessionMeta]),
-//    routeToClass = classOf[SessionManagerService],
-//    routeToMethodName = SessionCommands.killSession.getName())
-//
-//            CommandRouter.register(serviceName = SessionCommands.killAllSessions.uriString,
-//    serviceParamTypes = Array(classOf[ErSessionMeta]),
-//    serviceResultTypes = Array(classOf[ErSessionMeta]),
-//    routeToClass = classOf[SessionManagerService],
-//    routeToMethodName = SessionCommands.killAllSessions.getName())
-//
-//            CommandRouter.register(serviceName = SessionCommands.registerSession.uriString,
-//    serviceParamTypes = Array(classOf[ErSessionMeta]),
-//    serviceResultTypes = Array(classOf[ErSessionMeta]),
-//    routeToClass = classOf[SessionManagerService],
-//    routeToMethodName = SessionCommands.registerSession.getName())
-//
-//            CommandRouter.register(serviceName = SessionCommands.heartbeat.uriString,
-//    serviceParamTypes = Array(classOf[ErProcessor]),
-//    serviceResultTypes = Array(classOf[ErProcessor]),
-//    routeToClass = classOf[SessionManagerService],
-//    routeToMethodName = SessionCommands.heartbeat.getName())
-//
-//            CommandRouter.register(serviceName = ManagerCommands.nodeHeartbeat.uriString,
-//    serviceParamTypes = Array(classOf[ErNodeHeartbeat]),
-//    serviceResultTypes = Array(classOf[ErNodeHeartbeat]),
-//    routeToClass = classOf[ClusterManagerService],
-//    routeToMethodName = ManagerCommands.nodeHeartbeat.getName())
-//
-//            CommandRouter.register(serviceName = ManagerCommands.registerResource.uriString,
-//    serviceParamTypes = Array(classOf[ErServerNode]),
-//    serviceResultTypes = Array(classOf[ErServerNode]),
-//    routeToClass = classOf[ClusterManagerService],
-//    routeToMethodName = ManagerCommands.registerResource.getName())
-//
-//
-//            // submit job
-//            //JobServiceHandler.startSessionWatcher()
-//            CommandRouter.register_handler(serviceName = JobCommands.submitJob.uriString,
-//    args => JobServiceHandler.handleSubmit(args(0))
-//            )
-//            CommandRouter.register_handler(serviceName = JobCommands.queryJobStatus.uriString,
-//    args => JobServiceHandler.handleJobStatusQuery(args(0))
-//            )
-//            CommandRouter.register_handler(serviceName = JobCommands.queryJob.uriString,
-//    args => JobServiceHandler.handleJobQuery(args(0))
-//            )
-//            CommandRouter.register_handler(serviceName = JobCommands.killJob.uriString,
-//    args => JobServiceHandler.handleJobKill(args(0))
-//            )
-//            CommandRouter.register_handler(serviceName = JobCommands.stopJob.uriString,
-//    args => JobServiceHandler.handleJobStop(args(0))
-//            )
-//            CommandRouter.register_handler(serviceName = JobCommands.downloadJob.uriString,
-//    args => JobServiceHandler.handleJobDownload(args(0))
-//            )
-//
-//            CommandRouter.register_handler(serviceName = JobCommands.prepareJobDownload.uriString,
-//    args => JobServiceHandler.prepareJobDownload(args(0))
-//            )
-//
-//
-//
-//
-//
-//    val rendezvousStoreService = new RendezvousStoreService()
-//    CommandRouter.register_handler(serviceName = RendezvousStoreCommands.set.uriString,
-//    args => rendezvousStoreService.set(args(0))
-//            )
-//            CommandRouter.register_handler(serviceName = RendezvousStoreCommands.get.uriString,
-//    args => rendezvousStoreService.get(args(0))
-//            )
-//            CommandRouter.register_handler(serviceName = RendezvousStoreCommands.add.uriString,
-//    args => rendezvousStoreService.add(args(0))
-//            )
-//            CommandRouter.register_handler(serviceName = RendezvousStoreCommands.destroy.uriString,
-//    args => rendezvousStoreService.destroy(args(0))
-//            )
+
 }

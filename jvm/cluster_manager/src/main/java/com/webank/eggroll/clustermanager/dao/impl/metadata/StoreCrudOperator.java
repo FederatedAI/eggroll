@@ -13,7 +13,7 @@ import com.webank.eggroll.clustermanager.entity.ServerNode;
 import com.webank.eggroll.clustermanager.entity.StoreLocator;
 import com.webank.eggroll.clustermanager.entity.StoreOption;
 import com.webank.eggroll.clustermanager.entity.StorePartition;
-import com.webank.eggroll.core.exceptions.CrudException_JAVA;
+
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -148,7 +148,7 @@ public class StoreCrudOperator {
         newStoreLocator.setStatus(Dict.NORMAL);
         boolean addStoreLocatorFlag = storeLocatorService.save(newStoreLocator);
         if (!addStoreLocatorFlag) {
-            throw new CrudException_JAVA("Illegal rows affected returned when creating store locator: 0");
+            throw new RuntimeException("Illegal rows affected returned when creating store locator: 0");
         }
 
         int newTotalPartitions = inputStoreLocator.getTotalPartitions();
@@ -171,7 +171,7 @@ public class StoreCrudOperator {
             nodeRecord.setStatus(Dict.PRIMARY);
             boolean addNodeRecordFlag = storePartitionService.save(nodeRecord);
             if (!addNodeRecordFlag) {
-                throw new CrudException_JAVA("Illegal rows affected when creating node: 0");
+                throw new RuntimeException("Illegal rows affected when creating node: 0");
             }
             serverNodeIds.add(node.getId());
 
@@ -233,28 +233,28 @@ public class StoreCrudOperator {
         return new ErStore(outputStoreLocator, new ArrayList<>(), new ConcurrentHashMap<>());
     }
 
-    public ErStoreList getStoreLocators(ErStore input) {
-        QueryWrapper<StoreLocator> queryWrapper = new QueryWrapper<>();
-        ErStoreLocator storeLocator = input.getStoreLocator();
-        String storeName = storeLocator.getName();
-        String storeNamespace = storeLocator.getNamespace();
-        queryWrapper.apply(!StringUtils.isBlank(storeName), " and name like " + storeName.replace('*', '%'))
-                .lambda().eq(!StringUtils.isBlank(storeNamespace), StoreLocator::getNamespace, storeNamespace);
-        List<StoreLocator> storeList = storeLocatorService.list(queryWrapper);
-        List<ErStore> erStoreArr = new ArrayList<>();
-        for (int i = 0; i < storeList.size(); i++) {
-            StoreLocator store = storeList.get(i);
-            ErStoreLocator erStoreLocator = new ErStoreLocator(store.getStoreLocatorId()
-                    , store.getStoreType()
-                    , store.getNamespace()
-                    , store.getName()
-                    , store.getPath()
-                    , store.getTotalPartitions()
-                    , store.getPartitioner()
-                    , store.getSerdes());
-            erStoreArr.add(new ErStore(erStoreLocator, new ArrayList<>(), new ConcurrentHashMap<>()));
-        }
-        return new ErStoreList(erStoreArr, new ConcurrentHashMap<>());
-    }
+//    public ErStoreList getStoreLocators(ErStore input) {
+//        QueryWrapper<StoreLocator> queryWrapper = new QueryWrapper<>();
+//        ErStoreLocator storeLocator = input.getStoreLocator();
+//        String storeName = storeLocator.getName();
+//        String storeNamespace = storeLocator.getNamespace();
+//        queryWrapper.apply(!StringUtils.isBlank(storeName), " and name like " + storeName.replace('*', '%'))
+//                .lambda().eq(!StringUtils.isBlank(storeNamespace), StoreLocator::getNamespace, storeNamespace);
+//        List<StoreLocator> storeList = storeLocatorService.list(queryWrapper);
+//        List<ErStore> erStoreArr = new ArrayList<>();
+//        for (int i = 0; i < storeList.size(); i++) {
+//            StoreLocator store = storeList.get(i);
+//            ErStoreLocator erStoreLocator = new ErStoreLocator(store.getStoreLocatorId()
+//                    , store.getStoreType()
+//                    , store.getNamespace()
+//                    , store.getName()
+//                    , store.getPath()
+//                    , store.getTotalPartitions()
+//                    , store.getPartitioner()
+//                    , store.getSerdes());
+//            erStoreArr.add(new ErStore(erStoreLocator, new ArrayList<>(), new ConcurrentHashMap<>()));
+//        }
+//        return new ErStoreList(erStoreArr, new ConcurrentHashMap<>());
+//    }
 
 }

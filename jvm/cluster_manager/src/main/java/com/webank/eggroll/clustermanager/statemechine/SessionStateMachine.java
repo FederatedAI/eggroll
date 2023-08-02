@@ -5,10 +5,11 @@ import com.eggroll.core.constant.SessionStatus;
 import com.eggroll.core.pojo.ErSessionMeta;
 
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.stereotype.Service;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
-
+@Service
 public class SessionStateMachine extends AbstractStateMachine<ErSessionMeta>{
 
     @Override

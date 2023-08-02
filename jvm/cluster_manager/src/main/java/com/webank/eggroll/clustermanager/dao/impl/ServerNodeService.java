@@ -39,7 +39,7 @@ public class ServerNodeService extends EggRollBaseServiceImpl<ServerNodeMapper, 
             erServerNode.setEndpoint(erEndpoint);
             erServerNode.setNodeType(serverNode.getNodeType());
             erServerNode.setStatus(serverNode.getStatus());
-            erServerNode.setLastHeartBeat(serverNode.getLastHeartbeatAt());
+//            erServerNode.setLastHeartBeat(serverNode.getLastHeartbeatAt());
             result.add(erServerNode);
         }
         return result;

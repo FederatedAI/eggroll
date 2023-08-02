@@ -3,7 +3,8 @@ package com.webank.eggroll.clustermanager.entity;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.eggroll.core.pojo.ErEndpoint;
 import com.eggroll.core.pojo.ErProcessor;
-import com.webank.eggroll.core.util.JsonUtil;
+
+import com.eggroll.core.utils.JsonUtil;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.Date;
@@ -44,7 +45,7 @@ public class SessionProcessor {
         this.tag = erProcessor.getTag();
         this.commandEndpoint = erProcessor.getCommandEndpoint()!=null?erProcessor.getCommandEndpoint().toString():null;
         this.transferEndpoint = erProcessor.getTransferEndpoint()!=null?erProcessor.getTransferEndpoint().toString():null;
-        this.processorOption = erProcessor.getOptions()!=null?JsonUtil.object2Json(erProcessor.getOptions()):null;
+        this.processorOption = erProcessor.getOptions()!=null? JsonUtil.object2Json(erProcessor.getOptions()):null;
         this.pid = erProcessor.getPid();
         this.createdAt = erProcessor.getCreatedAt();
         this.updatedAt = erProcessor.getUpdatedAt();
