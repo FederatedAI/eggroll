@@ -64,4 +64,14 @@ public class ErServerCluster implements NetworkingRpcMessage {
                 ", serverNodes=" + serverNodes.toString() + ", tag=" + tag +
                 ") at " + Integer.toHexString(hashCode()) + ">";
     }
+
+    @Override
+    public byte[] serialize() {
+        return new byte[0];
+    }
+
+    @Override
+    public void deserialize(byte[] data) {
+
+    }
 }

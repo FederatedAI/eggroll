@@ -1,7 +1,7 @@
 package com.eggroll.core.pojo;
 
 import com.webank.eggroll.core.meta.Meta;
-
+import org.apache.commons.lang3.StringUtils;
 
 
 public  class ErEndpoint {
@@ -25,6 +25,9 @@ public  class ErEndpoint {
         this.port = port;
     }
 
+    public ErEndpoint(){
+
+    }
     public ErEndpoint(String url) {
         String[] toks = url.split(":");
         this.host = toks[0];
@@ -51,5 +54,17 @@ public  class ErEndpoint {
                 .setPort(port);
 
         return builder.build();
+    }
+    
+    public static ErEndpoint apply(String url){
+        ErEndpoint erEndpoint = new ErEndpoint();
+        if(StringUtils.isNotBlank(url)){
+            String[] split = url.split(":");
+            if(split.length >=2){
+                erEndpoint.setHost(split[0]);
+                erEndpoint.setPort(Integer.parseInt(split[1]));
+            }
+        }
+        return erEndpoint;
     }
 }
