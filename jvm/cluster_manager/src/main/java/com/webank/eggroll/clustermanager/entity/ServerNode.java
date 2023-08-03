@@ -1,10 +1,14 @@
 package com.webank.eggroll.clustermanager.entity;
 
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 
 import java.util.Date;
 @TableName(value = "server_node", autoResultMap = true)
 public class ServerNode {
+
+    @TableId(type = IdType.AUTO)
     private Long serverNodeId;
 
     private String name;
