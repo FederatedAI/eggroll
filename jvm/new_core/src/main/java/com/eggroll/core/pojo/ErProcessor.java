@@ -1,18 +1,16 @@
 package com.eggroll.core.pojo;
 
 import com.eggroll.core.constant.StringConstants;
-
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.webank.eggroll.core.meta.Meta;
-
 
 import java.util.*;
 
 
 public class ErProcessor implements  RpcMessage {
-    private long id = -1;
+    private Long id = -1L;
     private String sessionId = StringConstants.EMPTY;
-    private long serverNodeId = -1;
+    private Long serverNodeId = -1L;
     private String name = StringConstants.EMPTY;
     private String processorType = StringConstants.EMPTY;
     private String status = StringConstants.EMPTY;
@@ -25,11 +23,11 @@ public class ErProcessor implements  RpcMessage {
     private Date createdAt = null;
     private Date updatedAt = null;
 
-    public long getId() {
+    public Long getId() {
         return id;
     }
 
-    public void setId(long id) {
+    public void setId(Long id) {
         this.id = id;
     }
 
@@ -41,11 +39,11 @@ public class ErProcessor implements  RpcMessage {
         this.sessionId = sessionId;
     }
 
-    public long getServerNodeId() {
+    public Long getServerNodeId() {
         return serverNodeId;
     }
 
-    public void setServerNodeId(long serverNodeId) {
+    public void setServerNodeId(Long serverNodeId) {
         this.serverNodeId = serverNodeId;
     }
 
@@ -200,4 +198,5 @@ public class ErProcessor implements  RpcMessage {
             e.printStackTrace();
         }
     }
+
 }

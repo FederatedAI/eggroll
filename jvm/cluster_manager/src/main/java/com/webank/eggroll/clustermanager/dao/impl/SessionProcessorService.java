@@ -41,20 +41,7 @@ public class SessionProcessorService extends EggRollBaseServiceImpl<SessionProce
             if (StringUtils.isNotBlank(rs.getTransferEndpoint())) {
                 transferEndpoint = new ErEndpoint(rs.getTransferEndpoint());
             }
-
-
-            ErProcessor erProcessorNode = new ErProcessor();
-            erProcessorNode.setId(rs.getProcessorId());
-            erProcessorNode.setSessionId(rs.getSessionId());
-            erProcessorNode.setServerNodeId(rs.getServerNodeId());
-            erProcessorNode.setProcessorType(rs.getProcessorType());
-            erProcessorNode.setStatus(rs.getStatus());
-            erProcessorNode.setCommandEndpoint(commandEndpoint);
-            erProcessorNode.setTransferEndpoint(transferEndpoint);
-            erProcessorNode.setPid(rs.getPid());
-            erProcessorNode.setCreatedAt(rs.getCreatedAt());
-            erProcessorNode.setUpdatedAt(rs.getUpdatedAt());
-            erProcessors.add(erProcessorNode);
+            erProcessors.add(rs.toErProcessor());
         }
         return erProcessors;
     }
