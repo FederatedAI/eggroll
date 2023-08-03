@@ -151,7 +151,7 @@ public class StoreCrudOperator {
 
         int newTotalPartitions = inputStoreLocator.getTotalPartitions();
         List<ErPartition> newPartitions = new ArrayList<>();
-        List<ErServerNode> serverNodes = serverNodeService.doGetServerNodes(
+        List<ErServerNode> serverNodes = serverNodeService.getListByErServerNode(
                 new ErServerNode(
                         Dict.NODE_MANAGER
                         , Dict.HEALTHY)).stream().sorted(Comparator.comparingLong(ErServerNode::getId)).collect(Collectors.toList());

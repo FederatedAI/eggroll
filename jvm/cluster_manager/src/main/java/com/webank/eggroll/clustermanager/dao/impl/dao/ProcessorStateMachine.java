@@ -36,7 +36,7 @@ public class ProcessorStateMachine {
             ErProcessor desErProcessor = new ErProcessor();
             BeanUtils.copyProperties(erProcessor, desErProcessor);
             desErProcessor.setStatus(desStateParam);
-            String dispatchConfig = MetaInfo.EGGROLL_SESSION_USE_RESOURCE_DISPATCH;
+            boolean dispatchConfig = MetaInfo.EGGROLL_SESSION_USE_RESOURCE_DISPATCH;
             switch (statusLine) {
                 case "_NEW":
 

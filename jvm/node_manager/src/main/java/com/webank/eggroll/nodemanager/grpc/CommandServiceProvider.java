@@ -8,7 +8,7 @@ import com.webank.eggroll.core.command.Command;
 import com.webank.eggroll.core.command.CommandServiceGrpc;
 import com.webank.eggroll.nodemanager.processor.DefaultProcessorManager;
 import io.grpc.stub.StreamObserver;
-import org.apache.ibatis.annotations.Param;
+
 import org.checkerframework.checker.units.qual.A;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,7 +26,7 @@ import static com.eggroll.core.grpc.CommandUri.*;
 @Service
 public class CommandServiceProvider extends CommandServiceGrpc.CommandServiceImplBase implements InitializingBean {
 
-    Logger logger = LoggerFactory.getLogger(com.webank.eggroll.clustermanager.grpc.CommandServiceProvider.class);
+    Logger logger = LoggerFactory.getLogger(CommandServiceProvider.class);
 
     @Autowired
     DefaultProcessorManager defaultProcessorManager;

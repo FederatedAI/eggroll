@@ -14,10 +14,7 @@ public class ResourceStateMechine extends AbstractStateMachine<ErProcessor>{
         return Long.toString(processor.getServerNodeId());
     }
 
-    @Override
-    public ErProcessor doChangeStatus(Context context , ErProcessor erProcessor, String preStateParam, String desStateParam) {
-            return null;
-    }
+
 
     @Override
     public ErProcessor prepare(ErProcessor erProcessor) {

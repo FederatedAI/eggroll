@@ -5,13 +5,14 @@ import com.eggroll.core.config.MetaInfo;
 import com.eggroll.core.utils.CommandArgsUtils;
 import com.eggroll.core.utils.PropertiesUtil;
 import com.webank.eggroll.nodemanager.grpc.GrpcServer;
+import org.apache.commons.cli.CommandLine;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.slf4j.Logger;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.ApplicationContext;
-import sun.tools.jar.CommandLine;
+
 
 import java.util.Properties;
 
@@ -32,7 +33,7 @@ public class Application {
 
         context=  new SpringApplicationBuilder(Application.class).run(args);
 
-        GrpcServer grpcServer = context.getBean("grpcServer");
+        GrpcServer grpcServer = (GrpcServer)context.getBean("grpcServer");
         try {
             grpcServer.start();
         } catch (Exception e) {

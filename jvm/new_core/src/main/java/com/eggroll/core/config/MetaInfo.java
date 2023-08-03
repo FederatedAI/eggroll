@@ -201,13 +201,10 @@ public class MetaInfo {
     public static Integer EGGROLL_RESOURCEMANAGER_SCHEDULE_MINIMUM_ALLOCATION_VCORES =1;
 
     //NodeManagerConfKeys
-    @Config(confKey = "eggroll.resourcemanager.nodemanager.host")
-    public static String CONFKEY_NODE_MANAGER_HOST ;
+
     @Config(confKey = "eggroll.resourcemanager.nodemanager.containers.data.dir")
     public static String CONFKEY_NODE_MANAGER_CONTAINERS_DATA_DIR ;
 
-    @Config(confKey = "eggroll.resourcemanager.nodemanager.port",pattern = Dict.POSITIVE_INTEGER_PATTERN)
-    public static Integer CONFKEY_NODE_MANAGER_PORT ;
     @Config(confKey = "eggroll.resourcemanager.nodemanager.id",pattern = Dict.POSITIVE_INTEGER_PATTERN)
     public static Integer CONFKEY_NODE_MANAGER_ID ;
     @Config(confKey = "eggroll.resourcemanager.nodemanager.heartbeat.interval",pattern = Dict.POSITIVE_INTEGER_PATTERN)
