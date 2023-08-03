@@ -118,7 +118,7 @@ public class StoreCrudOperator {
         for (StorePartition p : storePartitionResult) {
 
             ErProcessor erProcessor = new ErProcessor();
-            erProcessor.setId(p.getPartitionId());
+            erProcessor.setId(p.getPartitionId().longValue());
             erProcessor.setServerNodeId(p.getNodeId());
 
             outputPartitions.add(new ErPartition(p.getPartitionId()
@@ -175,7 +175,7 @@ public class StoreCrudOperator {
             serverNodeIds.add(node.getId());
 
             ErProcessor binding = new ErProcessor();
-            binding.setId(i);
+            binding.setId((long)i);
             binding.setServerNodeId(isPartitionsSpecified ? input.getPartitions().get(i % specifiedPartitions.size()).getProcessor().getServerNodeId() : node.getId());
             binding.setTag("binding");
 

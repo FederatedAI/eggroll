@@ -40,7 +40,7 @@ public class SessionProcessor {
     public SessionProcessor(ErProcessor erProcessor) {
         this.processorId = erProcessor.getId();
         this.sessionId = erProcessor.getSessionId();
-        this.serverNodeId = (int) erProcessor.getServerNodeId();
+        this.serverNodeId =  erProcessor.getServerNodeId().intValue();
         this.processorType = erProcessor.getProcessorType();
         this.status = erProcessor.getStatus();
         this.tag = erProcessor.getTag();
@@ -186,7 +186,7 @@ public class SessionProcessor {
         ErProcessor result = new ErProcessor();
         result.setId(this.processorId);
         result.setSessionId(this.sessionId);
-        result.setServerNodeId(this.serverNodeId);
+        result.setServerNodeId(this.serverNodeId.longValue());
         result.setProcessorType(this.processorType);
         result.setStatus(this.status);
         result.setTag(this.tag);
