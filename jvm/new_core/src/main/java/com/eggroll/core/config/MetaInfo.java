@@ -256,6 +256,9 @@ public class MetaInfo {
     @Config(confKey = "eggroll.session.id",pattern = Dict.POSITIVE_INTEGER_PATTERN)
     public static Integer CONFKEY_SESSION_ID ;
 
+    @Config(confKey = "eggroll.session.start.timeout.ms",pattern = Dict.POSITIVE_INTEGER_PATTERN)
+    public  static Integer  EGGROLL_SESSION_START_TIMEOUT_MS   = 20000;
+
 
 
     public static boolean checkPattern(String pattern, String value) {
