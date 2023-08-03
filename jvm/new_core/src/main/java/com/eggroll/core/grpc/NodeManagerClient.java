@@ -26,7 +26,7 @@ import com.eggroll.core.pojo.ErSessionMeta;
 
 
 
-class NodeManagerClient {
+public class NodeManagerClient {
   CommandClient  commandClient;
   ErEndpoint nodeManagerEndpoint;
   public  NodeManagerClient(ErEndpoint nodeManagerEndpoint){
@@ -43,24 +43,48 @@ class NodeManagerClient {
     return response;
   }
 
+  public ErSessionMeta  startContainers(ErSessionMeta sessionMeta) {
+    byte[] responseData = commandClient.call(nodeManagerEndpoint, null,sessionMeta.serialize());
+    ErSessionMeta response = new ErSessionMeta();
+    response.deserialize(responseData);
+    return response;
+  }
+
+  public ErSessionMeta  stopContainers(ErSessionMeta sessionMeta) {
+    byte[] responseData = commandClient.call(nodeManagerEndpoint, null,sessionMeta.serialize());
+    ErSessionMeta response = new ErSessionMeta();
+    response.deserialize(responseData);
+    return response;
+  }
+
+
+  public ErSessionMeta  killContainers(ErSessionMeta sessionMeta) {
+    byte[] responseData = commandClient.call(nodeManagerEndpoint, null,sessionMeta.serialize());
+    ErSessionMeta response = new ErSessionMeta();
+    response.deserialize(responseData);
+    return response;
+  }
+
+  public ErProcessor checkNodeProcess( ErProcessor processor){
+    byte[] responseData = commandClient.call(nodeManagerEndpoint, null,processor.serialize());
+    ErProcessor response = new ErProcessor();
+    response.deserialize(responseData);
+    return response;
+  }
+
+  //  def checkNodeProcess(processor: ErProcessor): ErProcessor =
+//  commandClient.call[ErProcessor](ResouceCommands.checkNodeProcess, processor)
 
 
 
 
 
-//  def heartbeat(processor: ErProcessor): ErProcessor =
-//  commandClient.call[ErProcessor](NodeManagerCommands.heartbeat, processor)
-//
-//  def startContainers(sessionMeta: ErSessionMeta): ErSessionMeta =
-//  commandClient.call[ErSessionMeta](NodeManagerCommands.startContainers, sessionMeta)
-//
-//
-//  def stopContainers(sessionMeta: ErSessionMeta): ErSessionMeta =
-//  commandClient.call[ErSessionMeta](NodeManagerCommands.stopContainers, sessionMeta)
-//
-//  def killContainers(sessionMeta: ErSessionMeta): ErSessionMeta =
-//  commandClient.call[ErSessionMeta](NodeManagerCommands.killContainers, sessionMeta)
-//
+
+
+
+
+
+
 //
 //  def startJobContainers(startContainersRequest: StartContainersRequest): StartContainersResponse = {
 //    commandClient.call(ContainerCommands.startJobContainers, startContainersRequest)

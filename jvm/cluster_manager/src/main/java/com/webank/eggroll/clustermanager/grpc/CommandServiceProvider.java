@@ -111,18 +111,15 @@ public class CommandServiceProvider  extends CommandServiceGrpc.CommandServiceIm
     public ErSessionMeta  getSession(ErSessionMeta sessionMeta){
         return defaultSessionManager.getSession(null,sessionMeta);
     }
-
     @URI(value=heartbeat)
     public ErProcessor heartbeat(ErProcessor erProcessor){
 
         return defaultSessionManager.heartbeat(null,erProcessor);
     }
-
     @URI(value=stopSession)
     public ErSessionMeta stopSession(ErSessionMeta erSessionMeta){
         return defaultSessionManager.stopSession(null,erSessionMeta);
     }
-
     @URI(value=killSession)
     public ErSessionMeta killSession(ErSessionMeta erSessionMeta){
         return defaultSessionManager.killSession(null,erSessionMeta);
@@ -131,12 +128,6 @@ public class CommandServiceProvider  extends CommandServiceGrpc.CommandServiceIm
     public ErSessionMeta killAllSession(ErSessionMeta erSessionMeta){
         return defaultSessionManager.killAllSessions(null,erSessionMeta);
     }
-
-
-
-
-
-
 
 
     @Override
