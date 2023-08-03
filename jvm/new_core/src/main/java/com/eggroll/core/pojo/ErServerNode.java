@@ -1,27 +1,28 @@
 package com.eggroll.core.pojo;
+
 import com.eggroll.core.constant.StringConstants;
+import com.eggroll.core.utils.JsonUtil;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.webank.eggroll.core.meta.Meta;
 
-
-import  java.sql.Timestamp;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 public class ErServerNode implements  RpcMessage{
-        private long id;
+        private Long id;
         private String name;
-        private long clusterId;
+        private Long clusterId;
         private ErEndpoint endpoint;
         private String nodeType;
         private String status;
         private Date lastHeartBeat;
 
-    public long getId() {
+    public Long getId() {
         return id;
     }
 
-    public void setId(long id) {
+    public void setId(Long id) {
         this.id = id;
     }
 
@@ -33,11 +34,11 @@ public class ErServerNode implements  RpcMessage{
         this.name = name;
     }
 
-    public long getClusterId() {
+    public Long getClusterId() {
         return clusterId;
     }
 
-    public void setClusterId(long clusterId) {
+    public void setClusterId(Long clusterId) {
         this.clusterId = clusterId;
     }
 
@@ -73,30 +74,30 @@ public class ErServerNode implements  RpcMessage{
         this.lastHeartBeat = lastHeartBeat;
     }
 
-    public ErResource[] getResources() {
+    public List<ErResource> getResources() {
         return resources;
     }
 
-    public void setResources(ErResource[] resources) {
+    public void setResources(List<ErResource> resources) {
         this.resources = resources;
     }
 
-    private ErResource[] resources;
+    private List<ErResource> resources;
 
         public ErServerNode() {
-            this.id = -1;
+            this.id = -1L;
             this.name = StringConstants.EMPTY;
-            this.clusterId = 0;
+            this.clusterId = 0L;
             this.endpoint = new ErEndpoint(StringConstants.EMPTY, -1);
             this.nodeType = StringConstants.EMPTY;
             this.status = StringConstants.EMPTY;
             this.lastHeartBeat = null;
-            this.resources = new ErResource[0];
+            this.resources = new ArrayList<>();
         }
 
-        public ErServerNode(long id, String name, long clusterId, ErEndpoint endpoint,
+        public ErServerNode(Long id, String name, Long clusterId, ErEndpoint endpoint,
                             String nodeType, String status, Date lastHeartBeat,
-                            ErResource[] resources) {
+                            List<ErResource> resources) {
             this.id = id;
             this.name = name;
             this.clusterId = clusterId;
@@ -108,14 +109,14 @@ public class ErServerNode implements  RpcMessage{
         }
 
         public ErServerNode(String nodeType, String status) {
-            this.id = -1;
+            this.id = -1L;
             this.name = StringConstants.EMPTY;
-            this.clusterId = 0;
+            this.clusterId = 0L;
             this.endpoint = new ErEndpoint(StringConstants.EMPTY, -1);
             this.nodeType = nodeType;
             this.status = status;
             this.lastHeartBeat = null;
-            this.resources = new ErResource[0];
+            this.resources = new ArrayList<>();
         }
 
         @Override
@@ -124,7 +125,7 @@ public class ErServerNode implements  RpcMessage{
                     ", clusterId=" + clusterId + ", endpoint=" + endpoint +
                     ", nodeType=" + nodeType + ", status=" + status +
                     ", lastHeartBeat=" + lastHeartBeat +
-                    ", resources=" + Arrays.toString(resources) +
+                    ", resources=" + JsonUtil.object2Json(resources) +
                     ") at " + Integer.toHexString(hashCode()) + ">";
         }
 
