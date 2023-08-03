@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 
 @Service
+@Deprecated
 public class ProcessorStateMachine {
 
     @Autowired
@@ -36,7 +37,7 @@ public class ProcessorStateMachine {
             ErProcessor desErProcessor = new ErProcessor();
             BeanUtils.copyProperties(erProcessor, desErProcessor);
             desErProcessor.setStatus(desStateParam);
-            String dispatchConfig = MetaInfo.EGGROLL_SESSION_USE_RESOURCE_DISPATCH;
+//            String dispatchConfig = MetaInfo.EGGROLL_SESSION_USE_RESOURCE_DISPATCH;
             switch (statusLine) {
                 case "_NEW":
 

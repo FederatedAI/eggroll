@@ -216,8 +216,8 @@ public class MetaInfo {
     public static Integer CONFKEY_NODE_MANAGER_GPU_VCORES =16;
 
     //ResourceManagerConfKeys
-    @Config(confKey = "eggroll.resourcemanager.server.node.id",pattern = Dict.POSITIVE_INTEGER_PATTERN)
-    public static Integer SERVER_NODE_ID ;
+    @Config(confKey = "eggroll.resourcemanager.server.node.id")
+    public static String SERVER_NODE_ID ;
 
     //SessionConfKeys
     @Config(confKey = "eggroll.session.name")

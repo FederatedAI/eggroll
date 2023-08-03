@@ -8,15 +8,15 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import java.util.List;
 
 public class EggRollBaseServiceImpl<M extends BaseMapper<T>, T> extends ServiceImpl<M, T> {
-    List<T> list(T entity) {
+    public List<T> list(T entity) {
         return this.list(new QueryWrapper<>(entity));
     }
 
-    <E extends IPage<T>> E page(E page, T entity) {
+    public <E extends IPage<T>> E page(E page, T entity) {
         return this.page(page, new QueryWrapper<>(entity));
     }
 
-    T get(T entity) {
+    public T get(T entity) {
         return this.getOne(new QueryWrapper<>(entity));
     }
 }
