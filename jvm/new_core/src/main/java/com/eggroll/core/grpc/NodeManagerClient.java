@@ -23,9 +23,6 @@ import com.eggroll.core.pojo.ErProcessor;
 import com.eggroll.core.pojo.ErSessionMeta;
 
 
-
-
-
 public class NodeManagerClient {
   CommandClient  commandClient;
   ErEndpoint nodeManagerEndpoint;

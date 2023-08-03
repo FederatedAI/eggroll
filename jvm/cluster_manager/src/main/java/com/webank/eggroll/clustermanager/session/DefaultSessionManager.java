@@ -111,7 +111,6 @@ public class DefaultSessionManager implements SessionManager{
     }
 
 
-    private  void  killSession()
 
     private List<ErServerNode> getHealthServerNode(){
 
@@ -121,7 +120,7 @@ public class DefaultSessionManager implements SessionManager{
 
         int tryCount = 0;
         do{
-            List<ErServerNode> healthyServerNodes= serverNodeService.doGetServerNodes(serverNodeExample);
+            List<ErServerNode> healthyServerNodes= serverNodeService.getListByErServerNode(serverNodeExample);
             tryCount+=1;
             if(healthyServerNodes.size()==0){
                 logger.info("cluster is not ready,waitting next try");
@@ -179,57 +178,10 @@ public class DefaultSessionManager implements SessionManager{
     }
 
     @Override
-    public ErSessionMeta killSession(ErSessionMeta sessionMeta, String afterState) {
-
-        ErSessionMeta erSessionMeta = sessionService.getSession(sessionMeta.getId(),true);
-        if(erSessionMeta==null){
-            return null;
-        }
-
-
-
-
-
-
-//        def killSession(sessionMeta: ErSessionMeta, afterState: String): ErSessionMeta = {
-//                val sessionId = sessionMeta.id
-//        if (!smDao.existSession(sessionId)) {
-//            return null
-//        }
-//        val dbSessionMeta = smDao.getSession(sessionId)
-//        if (StringUtils.equalsAny(dbSessionMeta.status, SessionStatus.KILLED, SessionStatus.CLOSED, SessionStatus.ERROR)) {
-//            return dbSessionMeta
-//        }
-//        if(dbSessionMeta.processors.length>0) {
-//            val sessionHosts = dbSessionMeta.processors.filter(p=>p.commandEndpoint!=null&&StringUtils.isNotEmpty(p.commandEndpoint.host))
-//        .map(p => p.commandEndpoint.host).toSet
-//            if(!sessionHosts.isEmpty) {
-//                val serverNodeCrudOperator = new ServerNodeCrudOperator()
-//                val sessionServerNodes = serverNodeCrudOperator.getServerClusterByHosts(sessionHosts.toList.asJava).serverNodes
-//
-//                sessionServerNodes.par.foreach(n => {
-//                        // TODO:1: add new params?
-//                        val newSessionMeta = dbSessionMeta.copy(
-//                        options = dbSessionMeta.options ++ Map(ResourceManagerConfKeys.SERVER_NODE_ID -> n.id.toString))
-//                val nodeManagerClient = new NodeManagerClient(
-//                        ErEndpoint(host = n.endpoint.host,
-//                                port = n.endpoint.port))
-//                nodeManagerClient.killContainers(newSessionMeta)
-//        })
-//            }
-//        }
-//
-//        // todo:1: update selective
-//        smDao.updateSessionMain(dbSessionMeta.copy(activeProcCount = 0, status = afterState),afterCall=ProcessorStateMachine.defaultSessionCallback)
-//        var  resultSession = getSession(dbSessionMeta)
-//        resultSession
-//    }
-
-
-
-
+    public ErSessionMeta killSession(Context context, ErSessionMeta sessionMeta, String afterState) {
         return null;
     }
+
 
     @Override
     public ErSessionMeta killAllSessions(Context context,ErSessionMeta sessionMeta) {

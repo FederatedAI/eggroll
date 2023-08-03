@@ -40,35 +40,33 @@ public class SessionStateMachine extends AbstractStateMachine<ErSessionMeta>{
 
 
 
-    @Override
-    @Transactional
-    protected ErSessionMeta doChangeStatus(Context context, ErSessionMeta erSessionMeta, String preStateParam, String desStateParam) {
-        String statusLine = buildStateChangeLine(preStateParam,desStateParam);
-        ErSessionMeta result = null;
-        switch ( statusLine){
+//    @Override
+//    @Transactional
+//    protected ErSessionMeta doChangeStatus(Context context, ErSessionMeta erSessionMeta, String preStateParam, String desStateParam) {
+//        String statusLine = buildStateChangeLine(preStateParam,desStateParam);
+//        ErSessionMeta result = null;
+//        switch ( statusLine){
+//
+//            //PREPARE(false), NEW(false),NEW_TIMEOUT(true),ACTIVE(false),CLOSED(true),KILLED(true),ERROR(true),FINISHED(true);
+//            case "_NEW":result = createSession(context,erSessionMeta,preStateParam,desStateParam) ;break;
+//            case "NEW_ACTIVE" :  updateStatus(context,erSessionMeta,preStateParam,desStateParam);break;
+//            case "NEW_KILLED" : ;
+//            case "NEW_ERROR" : handleFailedStatus(context,erSessionMeta,preStateParam,desStateParam );break;
+//            case "NEW_FINISHED" : ;break;
+//            case "NEW_CLOSED" : ;break;
+//            default:
+//                throw  new RuntimeException();
+//        }
+//        statueChangeHandlerMap.put("",this.handleFailedStatus());
+//
+//        return  result;
+//    }
 
-            //PREPARE(false), NEW(false),NEW_TIMEOUT(true),ACTIVE(false),CLOSED(true),KILLED(true),ERROR(true),FINISHED(true);
-            case "_NEW":result = createSession(context,erSessionMeta,preStateParam,desStateParam) ;break;
-            case "NEW_ACTIVE" :  updateStatus(context,erSessionMeta,preStateParam,desStateParam);break;
-            case "NEW_KILLED" : ;
-            case "NEW_ERROR" : handleFailedStatus(context,erSessionMeta,preStateParam,desStateParam );break;
-            case "NEW_FINISHED" : ;break;
-            case "NEW_CLOSED" : ;break;
-            default:
-                throw  new RuntimeException();
-        }
-        statueChangeHandlerMap.put("",this.handleFailedStatus());
-
-        return  result;
-    }
-
-
-    handleError =
-
+    @State(value = {"NEW_KILLED","NEW_ERROR"})
     private  void handleFailedStatus(Context context, ErSessionMeta erSessionMeta, String preStateParam, String desStateParam){
         updateStatus(context,erSessionMeta,preStateParam,desStateParam);
         erSessionMeta.getProcessors().forEach(processor ->{
-            this.processorStateMechine.doChangeStatus(context,processor,null,desStateParam );
+            this.processorStateMechine.changeStatus(context,processor,null,desStateParam );
         });
     }
 
@@ -86,11 +84,7 @@ public class SessionStateMachine extends AbstractStateMachine<ErSessionMeta>{
         return erSessionMeta;
     }
 
-    public void  updateStatus(){
-
-
-    }
-
+    @State(value={"_NEW"})
     private ErSessionMeta  createSession(Context context,ErSessionMeta  erSessionMeta,String preStateParam,String desStateParam){
 
         ErSessionMeta   sessionInDb =  sessionMainService.getSession(erSessionMeta.getId(),true);
@@ -126,7 +120,7 @@ public class SessionStateMachine extends AbstractStateMachine<ErSessionMeta>{
                 erSessionMeta.getTag(),erSessionMeta.getTotalProcCount(),erSessionMeta.getActiveProcCount(),null,null);
         sessionMainService.save(sessionMain);
         erSessionMeta.getProcessors().forEach(p->{
-            processorStateMechine.doChangeStatus(context,p,null,ProcessorStatus.NEW.name());
+            processorStateMechine.changeStatus(context,p,null,ProcessorStatus.NEW.name());
         });
 
 

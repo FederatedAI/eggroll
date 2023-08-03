@@ -55,47 +55,47 @@ public class ProcessorStateMechine extends  AbstractStateMachine<ErProcessor>{
 
 
 
-    @Override
-    protected ErProcessor doChangeStatus(Context context , ErProcessor erProcessor, String preStateParam, String desStateParam) {
-        String statusLine = buildStateChangeLine(preStateParam,desStateParam);
-        erProcessor.setStatus(desStateParam);
-
-        switch ( statusLine){
-
-            //PREPARE(false), NEW(false),NEW_TIMEOUT(true),ACTIVE(false),CLOSED(true),KILLED(true),ERROR(true),FINISHED(true);
-            case "_NEW":  createNewProcessor(context,erProcessor);break;
-            case "NEW_RUNNING" :
-
-                updateProcessorState(erProcessor,(ep)->{
-                    if(checkNeedChangeResource(ep)){
-                        resourceStateMechine.changeStatus(context,ep, ResourceStatus.PRE_ALLOCATED.getValue(), ResourceStatus.ALLOCATED.getValue());
-                    }
-                });break;
-            case "NEW_STOPPED" : ;
-            case "NEW_KILLED" : ;
-            case "NEW_ERROR" :
-                updateProcessorState(erProcessor,(ep)->{
-                    if(checkNeedChangeResource(ep)){
-                        resourceStateMechine.changeStatus(context ,ep, ResourceStatus.ALLOCATED.getValue(), ResourceStatus.ALLOCATE_FAILED.getValue());
-                    }
-                });break;
-
-            case "RUNNING_FINISHED" : ;
-            case "RUNNING_STOPPED" : ;
-            case "RUNNING_KILLED" : ;
-            case "RUNNING_ERROR" :
-                updateProcessorState(erProcessor,(ep)->{
-                    if(checkNeedChangeResource(ep)){
-                        resourceStateMechine.changeStatus(context,ep, ResourceStatus.ALLOCATED.getValue(), ResourceStatus.RETURN.getValue());
-                    }
-                });break;
-
-            default:
-
-        }
-        return null;
-
-    }
+//    @Override
+//    protected ErProcessor doChangeStatus(Context context , ErProcessor erProcessor, String preStateParam, String desStateParam) {
+//        String statusLine = buildStateChangeLine(preStateParam,desStateParam);
+//        erProcessor.setStatus(desStateParam);
+//
+//        switch ( statusLine){
+//
+//            //PREPARE(false), NEW(false),NEW_TIMEOUT(true),ACTIVE(false),CLOSED(true),KILLED(true),ERROR(true),FINISHED(true);
+//            case "_NEW":  createNewProcessor(context,erProcessor);break;
+//            case "NEW_RUNNING" :
+//
+//                updateProcessorState(erProcessor,(ep)->{
+//                    if(checkNeedChangeResource(ep)){
+//                        resourceStateMechine.changeStatus(context,ep, ResourceStatus.PRE_ALLOCATED.getValue(), ResourceStatus.ALLOCATED.getValue());
+//                    }
+//                });break;
+//            case "NEW_STOPPED" : ;
+//            case "NEW_KILLED" : ;
+//            case "NEW_ERROR" :
+//                updateProcessorState(erProcessor,(ep)->{
+//                    if(checkNeedChangeResource(ep)){
+//                        resourceStateMechine.changeStatus(context ,ep, ResourceStatus.ALLOCATED.getValue(), ResourceStatus.ALLOCATE_FAILED.getValue());
+//                    }
+//                });break;
+//
+//            case "RUNNING_FINISHED" : ;
+//            case "RUNNING_STOPPED" : ;
+//            case "RUNNING_KILLED" : ;
+//            case "RUNNING_ERROR" :
+//                updateProcessorState(erProcessor,(ep)->{
+//                    if(checkNeedChangeResource(ep)){
+//                        resourceStateMechine.changeStatus(context,ep, ResourceStatus.ALLOCATED.getValue(), ResourceStatus.RETURN.getValue());
+//                    }
+//                });break;
+//
+//            default:
+//
+//        }
+//        return null;
+//
+//    }
 
     @Override
     public ErProcessor prepare(ErProcessor erProcessor) {
