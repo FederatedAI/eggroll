@@ -86,9 +86,9 @@ public class DefaultSessionManager implements SessionManager{
         });
         long startTimeout = System.currentTimeMillis() + MetaInfo.EGGROLL_SESSION_START_TIMEOUT_MS;
         boolean isStarted = false;
-
+        ErSessionMeta cur = null;
             while (System.currentTimeMillis() <= startTimeout) {
-                 ErSessionMeta cur = this.sessionService.getSession(sessionId,false);
+                cur = this.sessionService.getSession(sessionId,false);
                 if (cur.getActiveProcCount() < cur.getTotalProcCount()) {
                     try {
                         Thread.sleep(100);
@@ -100,13 +100,18 @@ public class DefaultSessionManager implements SessionManager{
                     break;
                 }
             }
-
-
-
+        if(isStarted){
+            sessionStateMachine.changeStatus(context,newSession,SessionStatus.NEW.name(),SessionStatus.ACTIVE.name());
+        }else{
+            sessionStateMachine.changeStatus(context,newSession,SessionStatus.NEW.name(),SessionStatus.ERROR.name());
+        }
 
         return  null;
 
     }
+
+
+    private  void  killSession()
 
     private List<ErServerNode> getHealthServerNode(){
 
