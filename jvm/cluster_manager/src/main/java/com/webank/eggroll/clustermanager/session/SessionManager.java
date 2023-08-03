@@ -1,6 +1,7 @@
 package com.webank.eggroll.clustermanager.session;
 
 
+import com.eggroll.core.context.Context;
 import com.eggroll.core.pojo.ErProcessor;
 import com.eggroll.core.pojo.ErSessionMeta;
 import org.springframework.stereotype.Service;
@@ -9,7 +10,7 @@ import org.springframework.stereotype.Service;
 public interface SessionManager {
 
 
-    ErProcessor heartbeat(ErProcessor proc);
+    ErProcessor heartbeat(Context context, ErProcessor proc);
 
     ErSessionMeta getSessionMain(String sessionId);
     /**
@@ -17,29 +18,29 @@ public interface SessionManager {
      * @param sessionMeta session main and options
      * @return session main and options and processors
      */
-    ErSessionMeta getOrCreateSession(ErSessionMeta sessionMeta );
+    ErSessionMeta getOrCreateSession(Context context,ErSessionMeta sessionMeta );
 
     /**
      * get session detail
      * @param sessionMeta contains session id
      * @return session main and options and processors
      */
-    ErSessionMeta getSession(ErSessionMeta sessionMeta );
+    ErSessionMeta getSession(Context context,ErSessionMeta sessionMeta );
 
     /**
      * register session without boot processors
      * @param sessionMeta contains session main and options and processors
      * @return
      */
-    ErSessionMeta registerSession(ErSessionMeta sessionMeta);
+    ErSessionMeta registerSession(Context context,ErSessionMeta sessionMeta);
 
-    ErSessionMeta stopSession(ErSessionMeta sessionMeta );
+    ErSessionMeta stopSession(Context context,ErSessionMeta sessionMeta );
 
-    ErSessionMeta  killSession( ErSessionMeta sessionMeta);
+    ErSessionMeta  killSession(Context context, ErSessionMeta sessionMeta);
 
-    ErSessionMeta killSession(ErSessionMeta sessionMeta ,String afterState );
+    ErSessionMeta killSession(Context context,ErSessionMeta sessionMeta ,String afterState );
 
-    ErSessionMeta killAllSessions( ErSessionMeta sessionMeta);
+    ErSessionMeta killAllSessions(Context context, ErSessionMeta sessionMeta);
 
 
 }
