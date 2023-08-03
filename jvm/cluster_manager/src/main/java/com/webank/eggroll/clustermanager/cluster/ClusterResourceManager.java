@@ -21,6 +21,7 @@ public class ClusterResourceManager {
     Logger log = LoggerFactory.getLogger(ClusterResourceManager.class);
 
     Map<String, ReentrantLock> sessionLockMap = new ConcurrentHashMap<>();
+    Map<String, Long> killJobMap = new ConcurrentHashMap<>();
 
     @Autowired
     SessionMainService sessionMainService;
@@ -29,22 +30,22 @@ public class ClusterResourceManager {
         while (true) {
             log.info("lock clean thread , prepare to run");
             long now = System.currentTimeMillis();
-            sessionLockMap.forEach((k,v)->{
+            sessionLockMap.forEach((k, v) -> {
                 try {
                     ErSessionMeta es = sessionMainService.getSessionMain(k);
                     if (es.getUpdateTime() != null) {
                         long updateTime = es.getUpdateTime().getTime();
                         if (now - updateTime > MetaInfo.EGGROLL_RESOURCE_LOCK_EXPIRE_INTERVAL
-                                && (SessionStatus.KILLED == es.getStatus()
-                                || es.status == SessionStatus.ERROR
-                                || es.status == SessionStatus.CLOSED
-                                || es.status == SessionStatus.FINISHED)) {
+                                && (SessionStatus.KILLED.name().equals(es.getStatus())
+                                || SessionStatus.ERROR.name().equals(es.getStatus())
+                                || SessionStatus.CLOSED.name().equals(es.getStatus())
+                                || SessionStatus.FINISHED.name().equals(es.getStatus()))) {
                             sessionLockMap.remove(es.getId());
                             killJobMap.remove(es.getId());
                         }
                     }
                 } catch (Throwable e) {
-                    logError("lock clean error: " + e.getMessage());
+                    log.error("lock clean error: " + e.getMessage());
                     // e.printStackTrace();
                 }
             });
@@ -56,7 +57,7 @@ public class ClusterResourceManager {
         }
     }, "LOCK-CLEAN-THREAD");
 
-    public void lockSession(String sessionId){
+    public void lockSession(String sessionId) {
 
     }
 }
