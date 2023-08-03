@@ -18,4 +18,9 @@ public class CommandUri {
 
     public static   final String  killSession= "v1/cluster-manager/session/killSession";
     public static   final String  killAllSessions = "v1/cluster-manager/session/killAllSessions";
+
+    public static final String startContainers = "v1/node_manager/processor/startContainers";
+    public static final String stopContainers = "v1/node_manager/processor/stopContainers";
+    public static final String killContainers = "v1/node_manager/processor/killContainers";
+    public static final String nodeHeartbeat = "v1/node_manager/processor/heartbeat";
 }

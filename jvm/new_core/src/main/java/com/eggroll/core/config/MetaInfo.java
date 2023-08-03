@@ -193,6 +193,8 @@ public class MetaInfo {
     public static Integer CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_DEFAULT_AUTO_COMMIT ;
     @Config(confKey = "eggroll.resourcemanager.clustermanager.port")
     public static Integer CONFKEY_CLUSTER_MANAGER_PORT = 4670;
+    @Config(confKey = "eggroll.resourcemanager.nodemanager.port")
+    public static Integer CONFKEY_NODE_MANAGER_PORT = 4671;
     @Config(confKey = "eggroll.resourcemanager.clustermanager.node.heartbeat.expire.count",pattern = Dict.POSITIVE_INTEGER_PATTERN)
     public static Integer CONFKEY_CLUSTER_MANAGER_NODE_HEARTBEAT_EXPIRED_COUNT = 2;
     @Config(confKey = "eggroll.resourcemanager.schedule.minimum-allocation-vcores",pattern = Dict.POSITIVE_INTEGER_PATTERN)
