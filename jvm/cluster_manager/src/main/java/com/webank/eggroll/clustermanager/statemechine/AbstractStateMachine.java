@@ -3,6 +3,7 @@ package com.webank.eggroll.clustermanager.statemechine;
 
 
 import com.eggroll.core.context.Context;
+import com.eggroll.core.pojo.ErSessionMeta;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -11,6 +12,9 @@ import java.util.concurrent.locks.ReentrantLock;
 public abstract class AbstractStateMachine<T> {
 
     ConcurrentHashMap<String,ReentrantLock>  lockMap = new ConcurrentHashMap<String,ReentrantLock>();
+    ConcurrentHashMap<String,StateHandler>  statueChangeHandlerMap = new ConcurrentHashMap<>();
+
+
 
     protected String  buildStateChangeLine(String preStateParam,String  desStateParam){
         if(preStateParam==null)

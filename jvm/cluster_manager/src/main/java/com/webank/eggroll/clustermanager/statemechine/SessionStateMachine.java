@@ -37,35 +37,66 @@ public class SessionStateMachine extends AbstractStateMachine<ErSessionMeta>{
         return erSessionMeta.getId();
     }
 
+
+
+
     @Override
+    @Transactional
     protected ErSessionMeta doChangeStatus(Context context, ErSessionMeta erSessionMeta, String preStateParam, String desStateParam) {
         String statusLine = buildStateChangeLine(preStateParam,desStateParam);
         ErSessionMeta result = null;
         switch ( statusLine){
 
             //PREPARE(false), NEW(false),NEW_TIMEOUT(true),ACTIVE(false),CLOSED(true),KILLED(true),ERROR(true),FINISHED(true);
-            case "_NEW":result = createSession(context,erSessionMeta) ;break;
-            case "NEW_ACTIVE" : ;break;
-            case "NEW_KILLED" : ;break;
-            case "NEW_ERROR" : ;break;
+            case "_NEW":result = createSession(context,erSessionMeta,preStateParam,desStateParam) ;break;
+            case "NEW_ACTIVE" :  updateStatus(context,erSessionMeta,preStateParam,desStateParam);break;
+            case "NEW_KILLED" : ;
+            case "NEW_ERROR" : handleFailedStatus(context,erSessionMeta,preStateParam,desStateParam );break;
             case "NEW_FINISHED" : ;break;
             case "NEW_CLOSED" : ;break;
             default:
                 throw  new RuntimeException();
         }
+        statueChangeHandlerMap.put("",this.handleFailedStatus());
+
         return  result;
     }
+
+
+    handleError =
+
+    private  void handleFailedStatus(Context context, ErSessionMeta erSessionMeta, String preStateParam, String desStateParam){
+        updateStatus(context,erSessionMeta,preStateParam,desStateParam);
+        erSessionMeta.getProcessors().forEach(processor ->{
+            this.processorStateMechine.doChangeStatus(context,processor,null,desStateParam );
+        });
+    }
+
+
+    private  void  updateStatus(Context context, ErSessionMeta erSessionMeta, String preStateParam, String desStateParam){
+        SessionMain   sessionMain =   new SessionMain();
+        sessionMain.setSessionId(erSessionMeta.getId());
+        sessionMain.setStatus(erSessionMeta.getStatus());
+        sessionMainService.updateById(sessionMain);
+    }
+
 
     @Override
     public ErSessionMeta prepare(ErSessionMeta erSessionMeta) {
         return erSessionMeta;
     }
 
-    private ErSessionMeta  createSession(Context context,ErSessionMeta  erSessionMeta){
+    public void  updateStatus(){
+
+
+    }
+
+    private ErSessionMeta  createSession(Context context,ErSessionMeta  erSessionMeta,String preStateParam,String desStateParam){
 
         ErSessionMeta   sessionInDb =  sessionMainService.getSession(erSessionMeta.getId(),true);
         if(sessionInDb!=null)
             return  sessionInDb;
+        // TODO: 2023/8/3
         List<ErServerNode> serverNodeList =(List<ErServerNode>)  context.getData("");
         if(CollectionUtils.isEmpty(serverNodeList)){
             throw  new RuntimeException("xxxx");
