@@ -3,6 +3,8 @@ package com.webank.eggroll.clustermanager.entity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.eggroll.core.pojo.ErEndpoint;
+import com.eggroll.core.pojo.ErServerNode;
 
 import java.util.Date;
 @TableName(value = "server_node", autoResultMap = true)
@@ -124,5 +126,17 @@ public class ServerNode {
 
     public void setUpdatedAt(Date updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public ErServerNode toErServerNode(){
+        ErServerNode erServerNode = new ErServerNode();
+        erServerNode.setId(this.serverNodeId);
+        erServerNode.setName(this.name);
+        erServerNode.setClusterId(this.serverClusterId);
+        erServerNode.setEndpoint(new ErEndpoint(this.host,this.port));
+        erServerNode.setNodeType(this.nodeType);
+        erServerNode.setStatus(this.status);
+        erServerNode.setLastHeartBeat(this.lastHeartbeatAt);
+        return erServerNode;
     }
 }
