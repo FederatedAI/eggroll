@@ -1,5 +1,6 @@
 package com.webank.eggroll.clustermanager.entity;
 
+import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.eggroll.core.pojo.ErEndpoint;
 import com.eggroll.core.pojo.ErProcessor;
@@ -11,6 +12,7 @@ import java.util.Map;
 
 @TableName(value = "session_processor", autoResultMap = true)
 public class SessionProcessor {
+    @TableId
     private Long processorId;
 
     private String sessionId;

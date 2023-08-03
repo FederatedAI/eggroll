@@ -179,7 +179,7 @@ public class DefaultSessionManager implements SessionManager{
     }
 
     @Override
-    public ErSessionMeta killSession(Context context,ErSessionMeta sessionMeta, String afterState) {
+    public ErSessionMeta killSession(ErSessionMeta sessionMeta, String afterState) {
 
         ErSessionMeta erSessionMeta = sessionService.getSession(sessionMeta.getId(),true);
         if(erSessionMeta==null){

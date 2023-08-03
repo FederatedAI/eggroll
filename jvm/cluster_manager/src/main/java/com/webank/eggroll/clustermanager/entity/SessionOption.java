@@ -1,10 +1,12 @@
 package com.webank.eggroll.clustermanager.entity;
 
+import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 
 import java.util.Date;
 @TableName(value = "session_option", autoResultMap = true)
 public class SessionOption {
+    @TableId
     private Long sessionOptionId;
 
     private String sessionId;
