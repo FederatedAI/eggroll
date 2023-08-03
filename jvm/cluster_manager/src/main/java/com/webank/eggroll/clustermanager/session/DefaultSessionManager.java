@@ -5,6 +5,7 @@ import com.eggroll.core.constant.ServerNodeStatus;
 import com.eggroll.core.constant.ServerNodeTypes;
 import com.eggroll.core.constant.SessionStatus;
 import com.eggroll.core.context.Context;
+import com.eggroll.core.grpc.NodeManagerClient;
 import com.eggroll.core.pojo.ErServerNode;
 import com.eggroll.core.pojo.ErSessionMeta;
 import com.google.common.collect.Lists;
@@ -58,34 +59,50 @@ public class DefaultSessionManager implements SessionManager{
             getOrCreateSessionWithoutResourceDispath(context,sessionMeta);
         }
 
-
-
-
         return  sessionMeta;
 
     }
 
     private   ErSessionMeta  getOrCreateSessionWithoutResourceDispath(Context context,ErSessionMeta  sessionMeta){
-
+      String sessionId = sessionMeta.getId();
       List<ErServerNode>   serverNodes =  getHealthServerNode();
       if(serverNodes.size()==0){
           throw  new RuntimeException("");
       }
       sessionStateMachine.changeStatus(context,sessionMeta,null,SessionStatus.NEW.name());
       ErSessionMeta  newSession =   sessionService.getSession(sessionMeta.getId(),true);
-        serverNodes.parallelStream().forEach(node->{
+      serverNodes.parallelStream().forEach(node->{
             ErSessionMeta  sendSession =new ErSessionMeta();
             try {
                 BeanUtils.copyProperties(newSession, sendSession);
+                NodeManagerClient nodeManagerClient = new  NodeManagerClient(node.getEndpoint());
+                sendSession.getOptions().put("eggroll.resourcemanager.server.node.id",Long.toString(node.getId()));
+                nodeManagerClient.startContainers(sendSession);
             } catch (IllegalAccessException e) {
                 e.printStackTrace();
             } catch (InvocationTargetException e) {
                 e.printStackTrace();
             }
-
-
-
         });
+        long startTimeout = System.currentTimeMillis() + MetaInfo.EGGROLL_SESSION_START_TIMEOUT_MS;
+        boolean isStarted = false;
+
+            while (System.currentTimeMillis() <= startTimeout) {
+                 ErSessionMeta cur = this.sessionService.getSession(sessionId,false);
+                if (cur.getActiveProcCount() < cur.getTotalProcCount()) {
+                    try {
+                        Thread.sleep(100);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                } else {
+                    isStarted = true;
+                    break;
+                }
+            }
+
+
+
 
         return  null;
 
