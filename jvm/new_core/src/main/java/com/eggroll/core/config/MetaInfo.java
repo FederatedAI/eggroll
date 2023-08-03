@@ -193,6 +193,8 @@ public class MetaInfo {
     public static Integer CONFKEY_CLUSTER_MANAGER_DATASOURCE_DB_DEFAULT_AUTO_COMMIT ;
     @Config(confKey = "eggroll.resourcemanager.clustermanager.port")
     public static Integer CONFKEY_CLUSTER_MANAGER_PORT = 4670;
+    @Config(confKey = "eggroll.resourcemanager.nodemanager.port")
+    public static Integer CONFKEY_NODE_MANAGER_PORT = 4671;
     @Config(confKey = "eggroll.resourcemanager.clustermanager.node.heartbeat.expire.count",pattern = Dict.POSITIVE_INTEGER_PATTERN)
     public static Integer CONFKEY_CLUSTER_MANAGER_NODE_HEARTBEAT_EXPIRED_COUNT = 2;
     @Config(confKey = "eggroll.resourcemanager.schedule.minimum-allocation-vcores",pattern = Dict.POSITIVE_INTEGER_PATTERN)
@@ -227,7 +229,29 @@ public class MetaInfo {
     @Config(confKey = "python.venv")
     public static String EGGROLL_SESSION_PYTHON_VENV ;
     @Config(confKey = "eggroll.session.use.resource.dispatch")
-    public static String EGGROLL_SESSION_USE_RESOURCE_DISPATCH ="false";
+    public static Boolean EGGROLL_SESSION_USE_RESOURCE_DISPATCH =false;
+    @Config(confKey = "eggroll.session.processors.per.node")
+    public static Integer CONFKEY_SESSION_PROCESSORS_PER_NODE =1;
+
+
+    @Config(confKey = "grpc.client.max.inbound.message.size", pattern = Dict.POSITIVE_INTEGER_PATTERN)
+    public static int PROPERTY_GRPC_CLIENT_MAX_INBOUND_MESSAGE_SIZE = (2 << 30) - 1;
+    @Config(confKey = "grpc.client.flow.control.window", pattern = Dict.POSITIVE_INTEGER_PATTERN)
+    public static int PROPERTY_GRPC_CLIENT_FLOW_CONTROL_WINDOW = 128 << 20;
+    @Config(confKey = "grpc.client.keepalive.time", pattern = Dict.POSITIVE_INTEGER_PATTERN)
+    public static int PROPERTY_GRPC_CLIENT_KEEPALIVE_TIME_SEC = 7200;
+    @Config(confKey = "grpc.client.keepalive.timeout", pattern = Dict.POSITIVE_INTEGER_PATTERN)
+    public static int PROPERTY_GRPC_CLIENT_KEEPALIVE_TIMEOUT_SEC = 3600;
+    @Config(confKey = "grpc.client.keepalive.without.calls.enabled", pattern = Dict.BOOLEAN_PATTERN)
+    public static boolean PROPERTY_GRPC_CLIENT_KEEPALIVE_WITHOUT_CALLS_ENABLED = true;
+    @Config(confKey = "grpc.client.max.connection.idle", pattern = Dict.POSITIVE_INTEGER_PATTERN)
+    public static int PROPERTY_GRPC_CLIENT_MAX_CONNECTION_IDLE_SEC = 86400;
+    @Config(confKey = "grpc.client.per.rpc.buffer.limit", pattern = Dict.POSITIVE_INTEGER_PATTERN)
+    public static int PROPERTY_GRPC_CLIENT_PER_RPC_BUFFER_LIMIT =  (2 << 30) - 1;
+
+    @Config(confKey = "grpc.client.retry.buffer.size", pattern = Dict.POSITIVE_INTEGER_PATTERN)
+    public static int PROPERTY_GRPC_CLIENT_RETRY_BUFFER_SIZE = 86400;
+
 
     @Config(confKey = "eggroll.session.context.rollpair.count",pattern = Dict.POSITIVE_INTEGER_PATTERN)
     public static Integer CONFKEY_SESSION_CONTEXT_ROLLPAIR_COUNT ;

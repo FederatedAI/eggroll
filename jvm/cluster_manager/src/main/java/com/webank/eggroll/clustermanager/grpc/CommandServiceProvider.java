@@ -21,6 +21,8 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static com.eggroll.core.grpc.CommandUri.*;
+
 @Service
 public class CommandServiceProvider  extends CommandServiceGrpc.CommandServiceImplBase implements InitializingBean {
 
@@ -68,65 +70,66 @@ public class CommandServiceProvider  extends CommandServiceGrpc.CommandServiceIm
 
     }
 
-    @URI(value="v1/cluster-manager/metadata/getServerNode")
+    @URI(value=getServerNode)
     public ErServerNode getServerNodeServiceName(ErServerNode  erServerNode){
         return  null;
     }
-    @URI(value="v1/cluster-manager/metadata/getServerNodes")
+    @URI(value=getServerNodes)
     public ErServerCluster getServerNodesServiceName(ErServerNode  erServerNode){
         return  null;
     }
-    @URI(value="v1/cluster-manager/metadata/getOrCreateServerNode")
+    @URI(value=getOrCreateServerNode)
     public ErServerNode  getOrCreateServerNode(ErServerNode  erServerNode){
         return null;
     }
-    @URI(value="v1/cluster-manager/metadata/createOrUpdateServerNode")
+    @URI(value=createOrUpdateServerNode)
     public  ErServerNode createOrUpdateServerNode (ErServerNode  erServerNode){
         return null;
     }
 
-    @URI(value="v1/cluster-manager/metadata/getStore")
+    @URI(value=getStore)
     public  ErStore  getStore(ErStore erStore){
         return null;
     }
-    @URI(value="v1/cluster-manager/metadata/getOrCreateStore")
+    @URI(value=getOrCreateStore)
     public  ErStore  getOrCreateStore(ErStore  erStore){
         return null;
     }
-    @URI(value="v1/cluster-manager/metadata/deleteStore")
+    @URI(value=deleteStore)
     public ErStore deleteStore(ErStore erStore){
         return  null;
     }
-    @URI(value="v1/cluster-manager/metadata/getStoreFromNamespace")
+    @URI(value=getStoreFromNamespace)
     public ErStore getStoreFromNamespace(ErStore  erStore){
         return null;
     }
-    @URI(value="v1/cluster-manager/session/getOrCreateSession")
+    @URI(value=getOrCreateSession)
     public ErSessionMeta  getOrCreateSession(ErSessionMeta sessionMeta){
-        return defaultSessionManager.getOrCreateSession(sessionMeta);
+        return defaultSessionManager.getOrCreateSession(null,sessionMeta);
     }
-    @URI(value="v1/cluster-manager/session/getSession")
+    @URI(value=getSession)
     public ErSessionMeta  getSession(ErSessionMeta sessionMeta){
-        return defaultSessionManager.getSession(sessionMeta);
+        return defaultSessionManager.getSession(null,sessionMeta);
     }
 
-    @URI(value="v1/cluster-manager/session/heartbeat")
+    @URI(value=heartbeat)
     public ErProcessor heartbeat(ErProcessor erProcessor){
-        return defaultSessionManager.heartbeat(erProcessor);
+
+        return defaultSessionManager.heartbeat(null,erProcessor);
     }
 
-    @URI(value="v1/cluster-manager/session/stopSession")
+    @URI(value=stopSession)
     public ErSessionMeta stopSession(ErSessionMeta erSessionMeta){
-        return defaultSessionManager.stopSession(erSessionMeta);
+        return defaultSessionManager.stopSession(null,erSessionMeta);
     }
 
-    @URI(value="v1/cluster-manager/session/killSession")
+    @URI(value=killSession)
     public ErSessionMeta killSession(ErSessionMeta erSessionMeta){
-        return defaultSessionManager.killSession(erSessionMeta);
+        return defaultSessionManager.killSession(null,erSessionMeta);
     }
-    @URI(value="v1/cluster-manager/session/killAllSessions")
+    @URI(value=killAllSessions)
     public ErSessionMeta killAllSession(ErSessionMeta erSessionMeta){
-        return defaultSessionManager.killAllSessions(erSessionMeta);
+        return defaultSessionManager.killAllSessions(null,erSessionMeta);
     }
 
 
