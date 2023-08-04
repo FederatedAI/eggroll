@@ -68,19 +68,7 @@ public class ServerNodeService extends EggRollBaseServiceImpl<ServerNodeMapper, 
         List<ServerNode> ServerNodeList = list(queryWrapper);
         List<ErServerNode> result = new ArrayList<>();
         for (ServerNode serverNode : ServerNodeList) {
-            ErServerNode erServerNode = new ErServerNode();
-
-            erServerNode.setId(serverNode.getServerNodeId());
-            erServerNode.setName(serverNode.getName());
-            erServerNode.setClusterId(serverNode.getServerClusterId());
-
-            ErEndpoint erEndpoint = new ErEndpoint(serverNode.getHost(), serverNode.getPort());
-
-            erServerNode.setEndpoint(erEndpoint);
-            erServerNode.setNodeType(serverNode.getNodeType());
-            erServerNode.setStatus(serverNode.getStatus());
-//            erServerNode.setLastHeartBeat(serverNode.getLastHeartbeatAt());
-            result.add(erServerNode);
+            result.add(serverNode.toErServerNode());
         }
         return result;
     }

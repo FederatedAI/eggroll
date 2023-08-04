@@ -87,6 +87,7 @@ public class Dict {
     public static final String KILLED = "KILLED";
 
     public static final String ROUND_ROBIN = "ROUND_ROBIN";
+    public static final String CONFKEY_SESSION_PROCESSORS_PER_NODE = "eggroll.session.processors.per.node";
 
     public static void main(String[] args) {
         System.out.println("tttttttttttttttttttt");
