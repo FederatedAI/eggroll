@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.webank.eggroll.clustermanager.utils;
+package com.eggroll.core.utils;
 
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
