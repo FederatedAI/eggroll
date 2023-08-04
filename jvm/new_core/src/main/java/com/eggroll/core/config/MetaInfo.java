@@ -32,6 +32,14 @@ public class MetaInfo {
 
     static Logger logger = LoggerFactory.getLogger(MetaInfo.class);
 
+    @Config(confKey = "eggroll.zookeeper.register.host")
+    public static String ZOOKEEPER_HOST = "";
+    @Config(confKey = "eggroll.zookeeper.register.version")
+    public static String ZOOKEEPER_VERSION = "";
+    @Config(confKey = "eggroll.zookeeper.register.port", pattern = Dict.POSITIVE_INTEGER_PATTERN)
+    public static Integer ZOOKEEPER_PORT = 0  ;
+    @Config(confKey = "eggroll.zookeeper.register.enable", pattern = Dict.BOOLEAN_PATTERN)
+    public static Boolean ZOOKEEPER_ENABLED;
 
     @Config(confKey = "grpc.server.max.concurrent.call.per.connection", pattern = Dict.POSITIVE_INTEGER_PATTERN)
     public static int PROPERTY_GRPC_SERVER_MAX_CONCURRENT_CALL_PER_CONNECTION = 1000;
