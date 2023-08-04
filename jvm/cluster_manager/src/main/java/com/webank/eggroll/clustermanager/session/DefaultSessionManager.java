@@ -34,11 +34,8 @@ public class DefaultSessionManager implements SessionManager{
     SessionMainService sessionService;
     @Autowired
     SessionStateMachine  sessionStateMachine;
-
     @Autowired
     ServerNodeService  serverNodeService;
-
-
 
     @Override
     public com.eggroll.core.pojo.ErProcessor heartbeat(Context context, com.eggroll.core.pojo.ErProcessor proc) {
@@ -58,7 +55,6 @@ public class DefaultSessionManager implements SessionManager{
         }else{
             getOrCreateSessionWithoutResourceDispath(context,sessionMeta);
         }
-
         return  sessionMeta;
 
     }
@@ -105,7 +101,6 @@ public class DefaultSessionManager implements SessionManager{
         }else{
             sessionStateMachine.changeStatus(context,newSession,SessionStatus.NEW.name(),SessionStatus.ERROR.name());
         }
-
         return  null;
 
     }
@@ -169,12 +164,23 @@ public class DefaultSessionManager implements SessionManager{
 
     @Override
     public ErSessionMeta stopSession(Context context,ErSessionMeta sessionMeta) {
-        return null;
+
     }
 
     @Override
     public ErSessionMeta killSession(Context context,ErSessionMeta sessionMeta) {
-        return null;
+          ErSessionMeta  sessionInDb = this.sessionService.getSession(sessionMeta.getId(),false);
+          if(sessionInDb==null){
+              throw  new RuntimeException("xxxx");
+          }
+          if(sessionInDb.isOverState()){
+              return  sessionInDb;
+          }
+          String preStatus = sessionInDb.getStatus();
+          sessionInDb.setActiveProcCount(0);
+          sessionInDb.setStatus(SessionStatus.KILLED.name());
+          sessionStateMachine.changeStatus(context,sessionInDb,preStatus,SessionStatus.KILLED.name());
+
     }
 
     @Override

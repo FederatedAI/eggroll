@@ -14,6 +14,7 @@ public class CommandUri {
     public  static  final String     getOrCreateSession = "v1/cluster-manager/session/getOrCreateSession";
     public  static  final String    getSession = "v1/cluster-manager/session/getSession";
     public  static  final String    heartbeat = "v1/cluster-manager/session/heartbeat";
+    public  static  final String  nodeHeartbeat = "v1/cluster-manager/manager/nodeHeartbeat";
     public static   final String  stopSession = "v1/cluster-manager/session/stopSession";
 
     public static   final String  killSession= "v1/cluster-manager/session/killSession";
@@ -22,5 +23,5 @@ public class CommandUri {
     public static final String startContainers = "v1/node_manager/processor/startContainers";
     public static final String stopContainers = "v1/node_manager/processor/stopContainers";
     public static final String killContainers = "v1/node_manager/processor/killContainers";
-    public static final String nodeHeartbeat = "v1/node_manager/processor/heartbeat";
+    public static final String eggpairHeartbeat = "v1/node_manager/processor/heartbeat";
 }

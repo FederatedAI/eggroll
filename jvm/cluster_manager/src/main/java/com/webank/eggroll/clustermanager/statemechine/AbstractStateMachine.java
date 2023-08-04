@@ -11,7 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.*;
 import java.util.concurrent.locks.ReentrantLock;
 
 public abstract class AbstractStateMachine<T> {
@@ -19,26 +19,33 @@ public abstract class AbstractStateMachine<T> {
     Logger logger = LoggerFactory.getLogger(AbstractStateMachine.class);
 
     ConcurrentHashMap<String,ReentrantLock>  lockMap = new ConcurrentHashMap<String,ReentrantLock>();
-    ConcurrentHashMap<String,Method>  statueChangeHandlerMap = new ConcurrentHashMap<>();
+    ConcurrentHashMap<String,StateHandler>  statueChangeHandlerMap = new ConcurrentHashMap<>();
+
+    ThreadPoolExecutor   asynThreadPool =   new ThreadPoolExecutor(5,5,1, TimeUnit.SECONDS,new LinkedBlockingDeque<>(10));
 
     public AbstractStateMachine(){
-        registeStateHander();
+
     }
-    protected  void registeStateHander(){
+    protected  void registeStateHander(String  statusLine,StateHandler handler){
 
-        Method[]  methods =  this.getClass().getMethods();
-        for (Method method : methods) {
-            State state = method.getDeclaredAnnotation(State.class);
-            if(state!=null){
-               for(String  s: state.value()) {
-                   if(statueChangeHandlerMap.contains(s)){
-                       throw  new RuntimeException("duplicate state handler "+s);
-                   }
-
-                   statueChangeHandlerMap.put(s,method);
-               }
-            }
+        if(statueChangeHandlerMap.contains(statusLine)){
+            throw  new RuntimeException("duplicate state handler "+statusLine);
         }
+        statueChangeHandlerMap.put(statusLine,handler);
+
+//        Method[]  methods =  this.getClass().getMethods();
+//        for (Method method : methods) {
+//            State state = method.getDeclaredAnnotation(State.class);
+//            if(state!=null){
+//               for(String  s: state.value()) {
+//                   if(statueChangeHandlerMap.contains(s)){
+//                       throw  new RuntimeException("duplicate state handler "+s);
+//                   }
+//
+//                   statueChangeHandlerMap.put(s,method);
+//               }
+//            }
+//        }
 
     }
 
@@ -72,26 +79,35 @@ public abstract class AbstractStateMachine<T> {
 
     abstract  public String  getLockKey(T t);
     //abstract  protected T  doChangeStatus(Context context ,T t, String preStateParam, String desStateParam);
-    abstract  public T prepare(T t);
+//    abstract  public T prepare(T t);
     @Transactional
     public  T   changeStatus(Context context , T t, String preStateParam, String desStateParam){
         String statusLine = buildStateChangeLine(preStateParam,desStateParam);
-        Method handleMethod =  statueChangeHandlerMap.get(statusLine);
-        if(handleMethod==null){
+//        t = prepare(t);
+        StateHandler<T> handler =  statueChangeHandlerMap.get(statusLine);
+        if(handler==null){
             throw new RuntimeException("nonono");
         }
         String  lockKey =  getLockKey(t);
         try{
             tryLock(lockKey);
-            return   (T)handleMethod.invoke(this,context,t,preStateParam,desStateParam);
+            T t1 = handler.prepare(context,t,preStateParam,desStateParam);
+            T result = handler.handle(context,t1,preStateParam,desStateParam);
+            if(handler.needAsynPostHandle()){
+                asynThreadPool.submit(new Runnable() {
+                    @Override
+                    public void run() {
+                        handler.asynPostHandle(context,result,preStateParam,desStateParam);
+                    }
+                });
+            }
+            return  result;
+
         } catch (Exception e) {
-            e.printStackTrace();
+           throw  new RuntimeException(e);
         } finally {
             unLock(lockKey);
         }
-
-        return null;
-
     }
 
 }
