@@ -22,6 +22,8 @@ import com.eggroll.core.pojo.ErEndpoint;
 import com.eggroll.core.pojo.ErProcessor;
 import com.eggroll.core.pojo.ErSessionMeta;
 
+import static com.eggroll.core.grpc.CommandUri.*;
+
 
 public class NodeManagerClient {
   CommandClient  commandClient;
@@ -33,22 +35,28 @@ public class NodeManagerClient {
     commandClient= new CommandClient();
   }
 
-  public ErProcessor heartbeat(ErProcessor processor){
-    byte[] responseData = commandClient.call(nodeManagerEndpoint, null,processor.serialize());
-    ErProcessor response = new ErProcessor();
-    response.deserialize(responseData);
-    return response;
-  }
+
+//  public static final String startContainers = "v1/node_manager/processor/startContainers";
+//  public static final String stopContainers = "v1/node_manager/processor/stopContainers";
+//  public static final String killContainers = "v1/node_manager/processor/killContainers";
+//  public static final String nodeHeartbeat = "v1/node_manager/processor/heartbeat";
+
+//  public ErProcessor heartbeat(ErProcessor processor){
+//    byte[] responseData = commandClient.call(nodeManagerEndpoint, null,processor.serialize());
+//    ErProcessor response = new ErProcessor();
+//    response.deserialize(responseData);
+//    return response;
+//  }
 
   public ErSessionMeta  startContainers(ErSessionMeta sessionMeta) {
-    byte[] responseData = commandClient.call(nodeManagerEndpoint, null,sessionMeta.serialize());
+    byte[] responseData = commandClient.call(nodeManagerEndpoint, startContainers,sessionMeta.serialize());
     ErSessionMeta response = new ErSessionMeta();
     response.deserialize(responseData);
     return response;
   }
 
   public ErSessionMeta  stopContainers(ErSessionMeta sessionMeta) {
-    byte[] responseData = commandClient.call(nodeManagerEndpoint, null,sessionMeta.serialize());
+    byte[] responseData = commandClient.call(nodeManagerEndpoint, stopContainers,sessionMeta.serialize());
     ErSessionMeta response = new ErSessionMeta();
     response.deserialize(responseData);
     return response;
@@ -56,14 +64,14 @@ public class NodeManagerClient {
 
 
   public ErSessionMeta  killContainers(ErSessionMeta sessionMeta) {
-    byte[] responseData = commandClient.call(nodeManagerEndpoint, null,sessionMeta.serialize());
+    byte[] responseData = commandClient.call(nodeManagerEndpoint, killContainers,sessionMeta.serialize());
     ErSessionMeta response = new ErSessionMeta();
     response.deserialize(responseData);
     return response;
   }
 
   public ErProcessor checkNodeProcess( ErProcessor processor){
-    byte[] responseData = commandClient.call(nodeManagerEndpoint, null,processor.serialize());
+    byte[] responseData = commandClient.call(nodeManagerEndpoint, eggpairHeartbeat,processor.serialize());
     ErProcessor response = new ErProcessor();
     response.deserialize(responseData);
     return response;

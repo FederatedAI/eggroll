@@ -4,6 +4,7 @@ import com.eggroll.core.constant.SessionStatus;
 import com.eggroll.core.constant.StringConstants;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.webank.eggroll.core.meta.Meta;
+import org.apache.commons.lang3.StringUtils;
 
 
 import java.sql.Date;
@@ -18,8 +19,8 @@ public class ErSessionMeta implements RpcMessage {
     private String id = StringConstants.EMPTY;
     private String name = StringConstants.EMPTY;
     private String  status = null;
-    private Integer totalProcCount = 0;
-    private Integer activeProcCount = 0;
+    private Integer totalProcCount = null;
+    private Integer activeProcCount = null;
     private String tag = StringConstants.EMPTY;
     private List<ErProcessor> processors = new ArrayList<>();
     private Date createTime = null;
@@ -132,6 +133,16 @@ public class ErSessionMeta implements RpcMessage {
         } catch (InvalidProtocolBufferException e) {
             e.printStackTrace();
         }
+    }
+
+    public   boolean isOverState(){
+        if (StringUtils.equalsAny(this.status, SessionStatus.KILLED.name(), SessionStatus.CLOSED.name(), SessionStatus.ERROR.name())){
+            return true;
+        }else
+        {
+            return false;
+        }
 
     }
+
 }
