@@ -2,7 +2,7 @@ package com.webank.eggroll.clustermanager.register;
 
 import com.eggroll.core.config.MetaInfo;
 import com.eggroll.core.utils.JsonUtil;
-import com.webank.eggroll.clustermanager.utils.NetUtils;
+import com.eggroll.core.utils.NetUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
