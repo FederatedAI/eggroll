@@ -87,10 +87,43 @@ public class Dict {
     public static final String CLOSED = "CLOSED";
     public static final String KILLED = "KILLED";
 
-    public static final String ROUND_ROBIN = "ROUND_ROBIN";
 
-    public static void main(String[] args) {
-        System.out.println("tttttttttttttttttttt");
-    }
+    public static final String ROUND_ROBIN = "ROUND_ROBIN";
+    public static final String CONFKEY_SESSION_PROCESSORS_PER_NODE = "eggroll.session.processors.per.node";
+
+    public static final String NODE_CMD_START = "start";
+    public static final String NODE_CMD_STOP = "stop";
+    public static final String NODE_CMD_KILL = "kill";
+
+
+    // CoreConfKeys
+    public static final String EGGROLL_LOGS_DIR = "eggroll.logs.dir";
+    public static final String EGGROLL_DATA_DIR = "eggroll.data.dir";
+    public static final String STATIC_CONF_PATH = "eggroll.static.conf.path";
+    public static final String BOOTSTRAP_ROOT_SCRIPT = "eggroll.bootstrap.root.script";
+    public static final String BOOTSTRAP_SHELL = "eggroll.bootstrap.shell";
+    public static final String BOOTSTRAP_SHELL_ARGS = "eggroll.bootstrap.shell.args";
+    public static final String EGGROLL_RESOURCEMANAGER_BOOTSTRAP = "eggroll.bootstrap.shell.args";
+
+
+    // NodeManagerConfKeys
+    public static final String CONFKEY_NODE_MANAGER_HOST = "eggroll.resourcemanager.nodemanager.host";
+    public static final String CONFKEY_NODE_MANAGER_PORT = "eggroll.resourcemanager.nodemanager.port";
+
+    // ClusterManagerConfKeys
+    public static final String CONFKEY_CLUSTER_MANAGER_HOST = "eggroll.resourcemanager.clustermanager.host";
+    public static final String CONFKEY_CLUSTER_MANAGER_PORT = "eggroll.resourcemanager.clustermanager.port";
+
+
+    // ResourceManagerConfKeys
+    public static final String SERVER_NODE_ID = "eggroll.resourcemanager.server.node.id";
+
+    // SessionConfKeys
+    public static final String CONFKEY_SESSION_ID = "eggroll.session.id";
+    public static final String EGGROLL_SESSION_PYTHON_PATH = "python.path";
+    public static final String EGGROLL_SESSION_PYTHON_VENV = "python.venv";
+
+
+
 
 }

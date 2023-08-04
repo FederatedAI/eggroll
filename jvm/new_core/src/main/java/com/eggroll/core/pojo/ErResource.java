@@ -7,23 +7,23 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ErResource   implements RpcMessage{
-    private long resourceId= -1;
+    private Long resourceId= -1L;
     private String resourceType= Dict.EMPTY;
-    private long serverNodeId= 0;
-    private long total= -1;
-    private long used= -1;
-    private long allocated= -1;
-    private long preAllocated= -1;
+    private Long serverNodeId= 0L;
+    private Long total= -1L;
+    private Long used= -1L;
+    private Long allocated= -1L;
+    private Long preAllocated= -1L;
     private String extention = null;
     private String status = Dict.AVAILABLE;
     private List<String> extentionCache = new ArrayList<>();
 
 
-    public long getResourceId() {
+    public Long getResourceId() {
         return resourceId;
     }
 
-    public void setResourceId(long resourceId) {
+    public void setResourceId(Long resourceId) {
         this.resourceId = resourceId;
     }
 
@@ -35,43 +35,43 @@ public class ErResource   implements RpcMessage{
         this.resourceType = resourceType;
     }
 
-    public long getServerNodeId() {
+    public Long getServerNodeId() {
         return serverNodeId;
     }
 
-    public void setServerNodeId(long serverNodeId) {
+    public void setServerNodeId(Long serverNodeId) {
         this.serverNodeId = serverNodeId;
     }
 
-    public long getTotal() {
+    public Long getTotal() {
         return total;
     }
 
-    public void setTotal(long total) {
+    public void setTotal(Long total) {
         this.total = total;
     }
 
-    public long getUsed() {
+    public Long getUsed() {
         return used;
     }
 
-    public void setUsed(long used) {
+    public void setUsed(Long used) {
         this.used = used;
     }
 
-    public long getAllocated() {
+    public Long getAllocated() {
         return allocated;
     }
 
-    public void setAllocated(long allocated) {
+    public void setAllocated(Long allocated) {
         this.allocated = allocated;
     }
 
-    public long getPreAllocated() {
+    public Long getPreAllocated() {
         return preAllocated;
     }
 
-    public void setPreAllocated(long preAllocated) {
+    public void setPreAllocated(Long preAllocated) {
         this.preAllocated = preAllocated;
     }
 
@@ -99,8 +99,8 @@ public class ErResource   implements RpcMessage{
         this.extentionCache = extentionCache;
     }
 
-    public long getUnAllocatedResource() {
-        long remain = total;
+    public Long getUnAllocatedResource() {
+        Long remain = total;
         if (allocated > 0) {
             remain = remain - allocated;
         }
