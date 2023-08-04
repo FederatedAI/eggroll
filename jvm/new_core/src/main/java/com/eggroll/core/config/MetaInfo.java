@@ -32,6 +32,14 @@ public class MetaInfo {
 
     static Logger logger = LoggerFactory.getLogger(MetaInfo.class);
 
+    @Config(confKey = "eggroll.zookeeper.register.host")
+    public static String ZOOKEEPER_HOST = "";
+    @Config(confKey = "eggroll.zookeeper.register.version")
+    public static String ZOOKEEPER_VERSION = "";
+    @Config(confKey = "eggroll.zookeeper.register.port", pattern = Dict.POSITIVE_INTEGER_PATTERN)
+    public static Integer ZOOKEEPER_PORT = 0  ;
+    @Config(confKey = "eggroll.zookeeper.register.enable", pattern = Dict.BOOLEAN_PATTERN)
+    public static Boolean ZOOKEEPER_ENABLED;
 
     @Config(confKey = "grpc.server.max.concurrent.call.per.connection", pattern = Dict.POSITIVE_INTEGER_PATTERN)
     public static int PROPERTY_GRPC_SERVER_MAX_CONCURRENT_CALL_PER_CONNECTION = 1000;
@@ -207,7 +215,7 @@ public class MetaInfo {
     @Config(confKey = "eggroll.resourcemanager.nodemanager.id", pattern = Dict.POSITIVE_INTEGER_PATTERN)
     public static Integer CONFKEY_NODE_MANAGER_ID;
     @Config(confKey = "eggroll.resourcemanager.nodemanager.heartbeat.interval", pattern = Dict.POSITIVE_INTEGER_PATTERN)
-    public static Integer CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL = 10000;
+    public static Long CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL = 10000L;
     @Config(confKey = "eggroll.resourcemanager.nodemanager.cpu.vcores", pattern = Dict.POSITIVE_INTEGER_PATTERN)
     public static Integer CONFKEY_NODE_MANAGER_CPU_VCORES = 16;
     @Config(confKey = "eggroll.resourcemanager.nodemanager.gpu.vcores", pattern = Dict.POSITIVE_INTEGER_PATTERN)
@@ -227,7 +235,7 @@ public class MetaInfo {
     @Config(confKey = "eggroll.session.use.resource.dispatch")
     public static Boolean EGGROLL_SESSION_USE_RESOURCE_DISPATCH = false;
     @Config(confKey = "eggroll.session.processors.per.node")
-    public static Integer CONFKEY_SESSION_PROCESSORS_PER_NODE = 1;
+    public static String CONFKEY_SESSION_PROCESSORS_PER_NODE = "1";
 
 
     @Config(confKey = "grpc.client.max.inbound.message.size", pattern = Dict.POSITIVE_INTEGER_PATTERN)

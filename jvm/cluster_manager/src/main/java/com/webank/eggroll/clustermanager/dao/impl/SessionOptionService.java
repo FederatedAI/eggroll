@@ -25,9 +25,6 @@ public class SessionOptionService extends EggRollBaseServiceImpl<SessionOptionMa
     @Autowired
     SessionProcessorService sessionProcessorService;
 
-    @Autowired
-    SessionMainService sessionMainService;
-
     public List<SessionOption> getSessionOptions(String sessionId) {
         return this.baseMapper.selectList(new LambdaQueryWrapper<SessionOption>()
                 .eq(SessionOption::getSessionId, sessionId));
