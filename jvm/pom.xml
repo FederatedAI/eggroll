@@ -390,10 +390,7 @@
   </dependencies>
 
   <modules>
-    <module>core</module>
-    <module>roll_pair</module>
-    <module>roll_frame</module>
-    <module>roll_site</module>
+
       <module>cluster_manager</module>
       <module>new_core</module>
       <module>node_manager</module>
