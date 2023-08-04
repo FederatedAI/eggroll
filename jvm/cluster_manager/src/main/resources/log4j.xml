@@ -16,9 +16,9 @@
   -->
 <Configuration status="ERROR" monitorInterval="60">
     <Properties>
-        <Property name="logdir">logs/broker</Property>
-        <Property name="project">fate</Property>
-        <Property name="module">broker</Property>
+        <Property name="logdir">logs/eggroll</Property>
+        <Property name="project">eggroll</Property>
+        <Property name="module">cluster-manager</Property>
     </Properties>
     <Appenders>
         <Console name="console" target="SYSTEM_OUT">
