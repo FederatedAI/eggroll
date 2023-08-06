@@ -1,5 +1,6 @@
 package com.webank.eggroll.clustermanager.grpc;
 
+import com.eggroll.core.grpc.URI;
 import com.eggroll.core.invoke.InvokeInfo;
 import com.eggroll.core.pojo.*;
 import com.google.common.collect.Lists;
