@@ -79,8 +79,13 @@ public abstract class AbstractStateMachine<T> {
     abstract  public String  getLockKey(T t);
     //abstract  protected T  doChangeStatus(Context context ,T t, String preStateParam, String desStateParam);
 //    abstract  public T prepare(T t);
-    @Transactional
+
     public  T   changeStatus(Context context , T t, String preStateParam, String desStateParam){
+        return    changeStatus( context ,  t,  preStateParam,  desStateParam ,null);
+    }
+
+    @Transactional
+    public  T   changeStatus(Context context , T t, String preStateParam, String desStateParam ,Callback<T> callback){
         String statusLine = buildStateChangeLine(context,t,preStateParam,desStateParam);
 //        t = prepare(t);
         StateHandler<T> handler =  statueChangeHandlerMap.get(statusLine);
@@ -94,6 +99,7 @@ public abstract class AbstractStateMachine<T> {
             String  newPreState = preStateParam;
             if(!handler.isBreak(context)) {
                 result = handler.handle(context, result, newPreState, desStateParam);
+                callback.callback(context,result);
                 if(!handler.isBreak(context)) {
                     if (handler.needAsynPostHandle(context)) {
                         T finalResult = result;
