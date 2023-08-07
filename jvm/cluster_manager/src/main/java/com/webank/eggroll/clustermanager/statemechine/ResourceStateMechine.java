@@ -10,14 +10,14 @@ import java.util.List;
 @Service
 public class ResourceStateMechine extends AbstractStateMachine<ErProcessor>{
     @Override
+    String buildStateChangeLine(Context context, ErProcessor erProcessor, String preStateParam, String desStateParam) {
+        return null;
+    }
+
+    @Override
     public String getLockKey(ErProcessor processor) {
         return Long.toString(processor.getServerNodeId());
     }
 
 
-
-    @Override
-    public ErProcessor prepare(ErProcessor erProcessor) {
-        return erProcessor;
-    }
 }

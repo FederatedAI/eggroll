@@ -217,7 +217,7 @@ public class ClusterManagerService {
                 if (r.getResourceType().equals(e.getResourceType())) {
                     ErResource updatedResource = new ErResource();
                     BeanUtils.copyProperties(r, updatedResource);
-                    updatedResource.setAllocated(-1);
+                    updatedResource.setAllocated(-1L);
                     needUpdate = true;
                     updateResources.add(updatedResource);
                 }

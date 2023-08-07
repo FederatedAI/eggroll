@@ -2,6 +2,10 @@ package com.eggroll.core.config;
 
 public class Dict {
     public static final String SERVER_NODES = "SERVER_NODES";
+    public static final String SESSION_IN_DB = "SESSION_IN_DB";
+    public static final String PROCESSOR_IN_DB = "PROCESSOR_IN_DB";
+    public static final String OPEN_ASYN_POST_HANDLE = "OPEN_ASYN_POST_HANDLE" ;
+    public static final String IS_BREAK = "IS_BREAK";
     public static final String  SERVER_NODE_ID = "eggroll.resourcemanager.server.node.id";
     public static final String POSITIVE_INTEGER_PATTERN = "^[1-9]\\d*$";
     public static final String BOOLEAN_PATTERN = "^(true)|(false)$";
@@ -116,7 +120,7 @@ public class Dict {
 
 
     // ResourceManagerConfKeys
-    public static final String SERVER_NODE_ID = "eggroll.resourcemanager.server.node.id";
+
 
     // SessionConfKeys
     public static final String CONFKEY_SESSION_ID = "eggroll.session.id";
