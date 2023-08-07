@@ -5,6 +5,7 @@ import com.eggroll.core.config.MetaInfo;
 import com.eggroll.core.pojo.ErProcessor;
 import com.eggroll.core.pojo.ErSessionMeta;
 import com.eggroll.core.pojo.RuntimeErConf;
+import com.webank.eggroll.nodemanager.pojo.ContainerParam;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -21,41 +22,6 @@ public class ContainerService {
 
     Logger logger = LoggerFactory.getLogger(ContainerService.class);
 
-    private String confPrefix;
-    private boolean isWindows;
-    private String bootStrapShell;
-    private String exeCmd;
-    private String bootStrapShellArgs;
-    private String exePath;
-    private String sessionId;
-    private String myServerNodeId;
-    private String boot;
-    private String logsDir;
-    private String cmPort;
-    private String pythonPath;
-    private String pythonVenv;
-    private Long processorId;
-    private String moduleName;
-
-
-    public void initParam(RuntimeErConf conf, String moduleName, Long processorId) {
-        confPrefix = Dict.EGGROLL_RESOURCEMANAGER_BOOTSTRAP + "." + moduleName;
-        isWindows = System.getProperty("os.name").toLowerCase().indexOf("windows") >= 0;
-        bootStrapShell = conf.get(Dict.BOOTSTRAP_SHELL, isWindows ? "C:\\Windows\\System32\\cmd.exe" : "/bin/bash");
-        exeCmd = isWindows ? "start /b python" : bootStrapShell;
-        bootStrapShellArgs = conf.getString(Dict.BOOTSTRAP_SHELL_ARGS, isWindows ? "/c" : "-c");
-        exePath = conf.get(confPrefix + ".exepath", "");
-        sessionId = conf.getString(Dict.CONFKEY_SESSION_ID, "");
-        myServerNodeId = conf.get(Dict.SERVER_NODE_ID, "2");
-        boot = conf.get(Dict.BOOTSTRAP_ROOT_SCRIPT, "bin/eggroll_boot." + (isWindows ? "py" : "sh"));
-        logsDir = MetaInfo.EGGROLL_LOGS_DIR;
-        cmPort = conf.get(Dict.CONFKEY_CLUSTER_MANAGER_PORT, "4670");
-        pythonPath = conf.getString(Dict.EGGROLL_SESSION_PYTHON_PATH, "");
-        pythonVenv = conf.getString(Dict.EGGROLL_SESSION_PYTHON_VENV, "");
-        this.processorId = processorId;
-        this.moduleName = moduleName;
-    }
-
     public ErSessionMeta operateContainers(ErSessionMeta sessionMeta, String opType) {
         List<ErProcessor> processors = sessionMeta.getProcessors();
         RuntimeErConf runtimeErConf = new RuntimeErConf(sessionMeta);
@@ -64,15 +30,16 @@ public class ContainerService {
             if (p.getServerNodeId() != myServerNodeId) {
                 continue;
             }
+            ContainerParam param = new ContainerParam(runtimeErConf,p.getProcessorType(),p.getId());
             switch (opType) {
                 case Dict.NODE_CMD_START:
-                    start();
+                    start(param);
                     break;
                 case Dict.NODE_CMD_STOP:
-                    stop();
+                    stop(param);
                     break;
                 case Dict.NODE_CMD_KILL:
-                    kill();
+                    kill(param);
                     break;
                 default:
                     logger.error("option not support: {}", opType);
@@ -83,71 +50,94 @@ public class ContainerService {
     }
 
 
-    private boolean start() {
-        String startCmd = "";
+    private boolean start(ContainerParam param) {
         String pythonPathArgs = "";
         String pythonVenvArgs = "";
         String staticConfigPath = MetaInfo.STATIC_CONF_PATH;
-        if (StringUtils.hasText(pythonPath)) {
-            pythonPathArgs = "--python-path " + pythonPath;
+        if (StringUtils.hasText(param.getPythonPath())) {
+            pythonPathArgs = "--python-path " + param.getPythonPath();
         }
-        if (StringUtils.hasText(pythonVenv)) {
-            pythonVenvArgs = "--python-venv " + pythonVenv;
+        if (StringUtils.hasText(param.getPythonVenv())) {
+            pythonVenvArgs = "--python-venv " + param.getPythonVenv();
         }
 
         StringJoiner joiner = new StringJoiner(" ");
-        joiner.add(exeCmd)
-                .add(boot)
+        joiner.add(param.getExeCmd())
+                .add(param.getBoot())
                 .add("start")
-                .add(exePath)
+                .add("\"" + param.getExePath())
                 .add("--config")
                 .add(staticConfigPath)
                 .add(pythonPathArgs)
                 .add(pythonVenvArgs)
                 .add("--session-id")
-                .add(sessionId)
-                .add(myServerNodeId)
+                .add(param.getSessionId())
+                .add("--server-node-id")
+                .add(param.getServerNodeId())
                 .add("--processor-id")
-                .add(String.valueOf(processorId))
-                .add(moduleName + "-" + processorId)
+                .add(param.getProcessorId() +  "\"")
+                .add(param.getModuleName() + "-" + param.getProcessorId())
                 .add("&");
 
-        startCmd = joiner.toString();
+        param.setStartCmd(joiner.toString());
         String standaloneTag = System.getProperty("eggroll.standalone.tag", "");
         logger.info(standaloneTag + joiner);
 
-        Thread thread = runCommand(startCmd);
+        Thread thread = runCommand(param);
         thread.start();
         try {
             thread.join();
         } catch (InterruptedException e) {
-            logger.error("InterruptedException: ", e.getMessage());
+            logger.error("InterruptedException: {}", e.getMessage());
         }
         return thread.isAlive();
     }
 
-    private boolean stop() {
-        return true;
+    private boolean stop(ContainerParam param) {
+        return doStop(param,false);
     }
 
-    private boolean kill() {
-        return true;
+    private boolean kill(ContainerParam param) {
+        return doStop(param,true);
     }
 
-    private Thread runCommand(String startCmd) {
+    private boolean doStop(ContainerParam param,boolean force) {
+        String option = force ? "kill" : "stop";
+        String linuxSubCmd = String.format("ps aux | grep 'session-id %s' | grep 'server-node-id %s' | grep 'processor-id %s", param.getSessionId(), param.getServerNodeId(), param.getProcessorId());
+        String subCmd = param.isWindows() ? "None" : linuxSubCmd;
+        String doStopCmd = new StringJoiner(" ")
+                .add(param.getExeCmd())
+                .add(param.getBoot())
+                .add(option)
+                .add(String.format("\"%s\"",subCmd))
+                .add(String.format("%s-%s",param.getModuleName(),param.getProcessorId()))
+                .toString();
+        logger.info("doStopCmd : {}", doStopCmd);
+        param.setExeCmd(doStopCmd);
+        Thread thread = runCommand(param);
+        thread.start();
+        try {
+            thread.join();
+        } catch (InterruptedException e) {
+            logger.error("InterruptedException: {}", e.getMessage());
+        }
+        return thread.isAlive();
+    }
+
+    private Thread runCommand(ContainerParam param) {
         return new Thread(() -> {
-            ProcessBuilder processorBuilder = new ProcessBuilder(bootStrapShell, bootStrapShellArgs, startCmd);
+            ProcessBuilder processorBuilder = new ProcessBuilder(param.getBootStrapShell(), param.getBootStrapShellArgs(), param.getStartCmd());
             Map<String, String> builderEnv = processorBuilder.environment();
             if (StringUtils.hasText(System.getProperty("eggroll.standalone.tag"))) {
-                logger.info("set EGGROLL_STANDALONE_PORT :", cmPort);
-                builderEnv.put("EGGROLL_STANDALONE_PORT", cmPort);
+                logger.info("set EGGROLL_STANDALONE_PORT :", param.getCmPort());
+                builderEnv.put("EGGROLL_STANDALONE_PORT", param.getCmPort());
             }
-            File logPath = new File(logsDir + File.separator + sessionId + File.separator);
+            File logPath = new File(param.getLogsDir() + File.separator + param.getSessionId() + File.separator);
             if (!logPath.exists()) {
                 logPath.mkdirs();
             }
-            processorBuilder.redirectOutput(ProcessBuilder.Redirect.appendTo(new File(logPath, "bootstrap-" + moduleName + "-" + processorId + ".out")));
-            processorBuilder.redirectError(ProcessBuilder.Redirect.appendTo(new File(logPath, "bootstrap-" + moduleName + "-" + processorId + ".err")));
+            processorBuilder.redirectOutput(ProcessBuilder.Redirect.appendTo(new File(logPath, "bootstrap-" + param.getModuleName() + "-" + param.getProcessorId() + ".out")));
+            processorBuilder.redirectError(ProcessBuilder.Redirect.appendTo(new File(logPath, "bootstrap-" + param.getModuleName() + "-" + param.getProcessorId() + ".err")));
             try {
                 Process process = processorBuilder.start();
                 process.waitFor();
