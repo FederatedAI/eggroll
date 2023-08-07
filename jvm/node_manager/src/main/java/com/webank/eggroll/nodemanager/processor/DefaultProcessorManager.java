@@ -4,9 +4,11 @@ import com.eggroll.core.config.Dict;
 import com.eggroll.core.context.Context;
 import com.eggroll.core.pojo.ErSessionMeta;
 import com.webank.eggroll.nodemanager.service.ContainerService;
+import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
 
+@Service
 public class DefaultProcessorManager implements ProcessorManager{
 
     @Resource

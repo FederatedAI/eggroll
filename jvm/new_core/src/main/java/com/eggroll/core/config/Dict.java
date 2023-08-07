@@ -107,7 +107,7 @@ public class Dict {
     public static final String BOOTSTRAP_ROOT_SCRIPT = "eggroll.bootstrap.root.script";
     public static final String BOOTSTRAP_SHELL = "eggroll.bootstrap.shell";
     public static final String BOOTSTRAP_SHELL_ARGS = "eggroll.bootstrap.shell.args";
-    public static final String EGGROLL_RESOURCEMANAGER_BOOTSTRAP = "eggroll.bootstrap.shell.args";
+    public static final String EGGROLL_RESOURCEMANAGER_BOOTSTRAP = "eggroll.resourcemanager.bootstrap";
 
 
     // NodeManagerConfKeys
@@ -122,6 +122,7 @@ public class Dict {
 
     // SessionConfKeys
     public static final String CONFKEY_SESSION_ID = "eggroll.session.id";
+    public static final String CONFKEY_SESSION_NAME = "eggroll.session.name";
     public static final String EGGROLL_SESSION_PYTHON_PATH = "python.path";
     public static final String EGGROLL_SESSION_PYTHON_VENV = "python.venv";
 
