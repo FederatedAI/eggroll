@@ -53,7 +53,6 @@ public class ContainerService {
     private boolean start(ContainerParam param) {
         String pythonPathArgs = "";
         String pythonVenvArgs = "";
-        String staticConfigPath = MetaInfo.STATIC_CONF_PATH;
         if (StringUtils.hasText(param.getPythonPath())) {
             pythonPathArgs = "--python-path " + param.getPythonPath();
         }
@@ -67,7 +66,7 @@ public class ContainerService {
                 .add("start")
                 .add("\"" + param.getExePath())
                 .add("--config")
-                .add(staticConfigPath)
+                .add(param.getStaticConfPath())
                 .add(pythonPathArgs)
                 .add(pythonVenvArgs)
                 .add("--session-id")

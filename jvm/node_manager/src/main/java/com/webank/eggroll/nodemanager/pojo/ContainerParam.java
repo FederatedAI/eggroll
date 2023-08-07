@@ -23,6 +23,7 @@ public class ContainerParam {
     private Long processorId;
     private String moduleName;
     private String startCmd;
+    private String staticConfPath;
 
     public ContainerParam(RuntimeErConf conf,String moduleName, Long processorId) {
         confPrefix = Dict.EGGROLL_RESOURCEMANAGER_BOOTSTRAP + "." + moduleName;
@@ -38,6 +39,7 @@ public class ContainerParam {
         cmPort = conf.get(Dict.CONFKEY_CLUSTER_MANAGER_PORT, "4670");
         pythonPath = conf.getString(Dict.EGGROLL_SESSION_PYTHON_PATH, "");
         pythonVenv = conf.getString(Dict.EGGROLL_SESSION_PYTHON_VENV, "");
+        staticConfPath = conf.getString(Dict.STATIC_CONF_PATH,MetaInfo.STATIC_CONF_PATH);
         this.processorId = processorId;
         this.moduleName = moduleName;
     }
