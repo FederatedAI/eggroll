@@ -8,6 +8,7 @@ import java.util.List;
 
 public class ErResource   implements RpcMessage{
     private Long resourceId= -1L;
+
     private String resourceType= Dict.EMPTY;
     private Long serverNodeId= 0L;
     private Long total= -1L;

@@ -28,6 +28,7 @@ public abstract class AbstractSessionStateHandler implements   StateHandler<ErSe
         erSessionMeta.getProcessors().forEach(p->{
             processorStateMechine.changeStatus(context,p,null, ProcessorStatus.NEW.name());
         });
+
     }
 
 
