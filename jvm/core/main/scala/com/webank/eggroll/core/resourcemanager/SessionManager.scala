@@ -560,9 +560,7 @@ class SessionManagerService extends SessionManager with Logging {
             port = n.endpoint.port))
         nodeManagerClient.stopContainers(newSessionMeta)
       }catch{
-        case throwable: Throwable=>{
           case  exception: Throwable=> logError(s"send commmand kill container to ${n.endpoint.toString} failed : ${exception.getMessage}")
-        }
       }
     })
 
