@@ -6,6 +6,7 @@ import com.eggroll.core.constant.ServerNodeStatus;
 import com.eggroll.core.constant.ServerNodeTypes;
 import com.eggroll.core.constant.SessionStatus;
 import com.eggroll.core.pojo.*;
+import com.eggroll.core.utils.JsonUtil;
 import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
 import com.webank.eggroll.clustermanager.dao.impl.SessionMainService;
 import com.webank.eggroll.clustermanager.entity.ServerNode;
@@ -144,18 +145,18 @@ public class ClusterResourceManager {
 //                                    singleNodeFirstDispatch(serverNodes, resourceApplication);
 //                                    break;
 //                            }
-//                            ErSessionMeta[] dispatchedProcessors = resourceApplication.resourceDispatch;
+//                            List<Map<ErProcessor, ErServerNode>> dispatchedProcessors = resourceApplication.getResourceDispatch();
 //                            smDao.registerWithResource(new ErSessionMeta(
-//                                    resourceApplication.sessionId,
-//                                    resourceApplication.sessionName,
+//                                    resourceApplication.getSessionId(),
+//                                    resourceApplication.getSessionName(),
 //                                    Arrays.stream(dispatchedProcessors).map(p -> p._1).toArray(ErProcessor[]::new),
-//                                    dispatchedProcessors.length,
+//                                    dispatchedProcessors.size(),
 //                                    SessionStatus.NEW
 //                            ));
 //                        } catch (InterruptedException e) {
 //                            e.printStackTrace();
 //                        } finally {
-//                            unlockSession(resourceApplication.sessionId);
+//                            unlockSession(resourceApplication.getSessionId());
 //                        }
 //                        ErSessionMeta registeredSessionMeta = smDao.getSession(resourceApplication.sessionId);
 //                        Map<String, ErServerNode> serverNodeMap = Arrays.stream(serverNodes)
@@ -255,6 +256,131 @@ public class ClusterResourceManager {
         }
         return result;
     }
+
+    public ResourceApplication remainMostFirstDispatch(List<ErServerNode> serverNodes, ResourceApplication resourceApplication) {
+        List<ErProcessor> requiredProcessors = resourceApplication.getProcessors();
+        List<ErServerNode> sortedNodes = serverNodes.stream().sorted(Comparator.comparingLong(node -> getFirstUnAllocatedResource(node, resourceApplication))).collect(Collectors.toList());
+        Map<ErServerNode, Long> sortMap = new HashMap<>();
+        for (ErServerNode node : sortedNodes) {
+            sortMap.put(node, getFirstUnAllocatedResource(node, resourceApplication));
+        }
+        List<String> allocatedGpuIndex = new ArrayList<>();
+
+        Map<ErServerNode, List<ErProcessor>> nodeToProcessors = new HashMap<>();
+
+        for (int index = 0; index < requiredProcessors.size(); index++) {
+            ErProcessor requiredProcessor = requiredProcessors.get(index);
+            ErServerNode node = sortedNodes.get(index);
+
+            int nextGpuIndex = -1;
+            List<ErResource> newResources = new ArrayList<>();
+            for (ErResource r : requiredProcessor.getResources()) {
+                ErResource changedResource = r;
+                if (Dict.VGPU_CORE.equals(r.getResourceType())) {
+                    List<ErResource> gpuResourcesInNodeArray = node.getResources().stream()
+                            .filter(res -> Dict.VGPU_CORE.equals(res.getResourceType()))
+                            .collect(Collectors.toList());
+                    if (!gpuResourcesInNodeArray.isEmpty()) {
+                        ErResource gpuResourcesInNode = gpuResourcesInNodeArray.get(0);
+
+                        List<String> extentionCache = Arrays.asList(gpuResourcesInNode.getExtention().split(","));
+                        nextGpuIndex = getNextGpuIndex(gpuResourcesInNode.getTotal(), extentionCache);
+                        extentionCache.add(String.valueOf(nextGpuIndex));
+                        changedResource.setExtention(String.valueOf(nextGpuIndex));
+                    }
+                }
+                newResources.add(changedResource);
+            }
+            String host = node.getEndpoint().getHost();
+            requiredProcessor.setServerNodeId(node.getId());
+            requiredProcessor.setCommandEndpoint(new ErEndpoint(host, 0));
+            requiredProcessor.setResources(newResources);
+            Map<String, String> optionsMap = new HashMap<>();
+            optionsMap.put("cudaVisibleDevices", nextGpuIndex + "");
+            requiredProcessor.setOptions(optionsMap);
+            nodeToProcessors.computeIfAbsent(node, k -> new ArrayList<>()).add(requiredProcessor);
+        }
+
+        Map<ErProcessor, ErServerNode> result = new HashMap<>();
+        nodeToProcessors.forEach((node, processors) -> {
+            for (ErProcessor processor : processors) {
+                result.put(processor, node);
+            }
+        });
+
+        resourceApplication.getResourceDispatch().add(result);
+        return resourceApplication;
+
+    }
+
+    private Long getFirstUnAllocatedResource(ErServerNode serverNode, ResourceApplication resourceApplication) {
+        for (ErResource resource : serverNode.getResources()) {
+            if (resource.getResourceType().equals(resourceApplication.getSortByResourceType())) {
+                return resource.getUnAllocatedResource();
+            }
+        }
+        return 0L;
+    }
+
+    private int getNextGpuIndex(Long size, List<String> alreadyAllocated) {
+        int result = -1;
+
+        for (int index = 0; index < size; index++) {
+            boolean isAllocated = false;
+            for (String allocated : alreadyAllocated) {
+                if (allocated.equals(String.valueOf(index))) {
+                    isAllocated = true;
+                    break;
+                }
+            }
+            if (!isAllocated) {
+                result = index;
+                break;
+            }
+        }
+
+        log.info("get next gpu index, size: " + size + " alreadyAllocated: " + JsonUtil.object2Json(alreadyAllocated) + " return: " + result);
+        return result;
+    }
+
+    private static ResourceApplication randomDispatch(List<ErServerNode> serverNodes, ResourceApplication resourceApplication) {
+        List<ErProcessor> requiredProcessors = resourceApplication.getProcessors();
+        List<ErServerNode> shuffledNodes = new ArrayList<>(serverNodes);
+        Collections.shuffle(shuffledNodes);
+        Map<ErServerNode, List<ErProcessor>> nodeToProcessors = new HashMap<>();
+
+        for (int index = 0; index < requiredProcessors.size(); index++) {
+            ErProcessor requiredProcessor = resourceApplication.getProcessors().get(index);
+            ErServerNode node = shuffledNodes.get(0);
+
+            String host = node.getEndpoint().getHost();
+            int globalRank = index;
+            int localRank = nodeToProcessors.getOrDefault(node, new ArrayList<>()).size();
+            requiredProcessor.setServerNodeId(node.getId());
+            requiredProcessor.setCommandEndpoint(new ErEndpoint(host, 0));
+            if (nodeToProcessors.containsKey(node)) {
+                nodeToProcessors.get(node).add(requiredProcessor);
+            } else {
+                nodeToProcessors.put(node, new ArrayList<>(Collections.singletonList(requiredProcessor)));
+            }
+
+            shuffledNodes.remove(0);
+        }
+
+        Map<ErProcessor, ErServerNode> result = new HashMap<>();
+        for (Map.Entry<ErServerNode, List<ErProcessor>> entry : nodeToProcessors.entrySet()) {
+            ErServerNode node = entry.getKey();
+            List<ErProcessor> processors = entry.getValue();
+
+            for (ErProcessor processor : processors) {
+                result.put(processor, node);
+            }
+        }
+
+        resourceApplication.getResourceDispatch().add(result);
+        return resourceApplication;
+    }
+
 
     public void lockSession(String sessionId) {
 
