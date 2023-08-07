@@ -119,8 +119,6 @@ public class Dict {
     public static final String CONFKEY_CLUSTER_MANAGER_PORT = "eggroll.resourcemanager.clustermanager.port";
 
 
-    // ResourceManagerConfKeys
-
 
     // SessionConfKeys
     public static final String CONFKEY_SESSION_ID = "eggroll.session.id";

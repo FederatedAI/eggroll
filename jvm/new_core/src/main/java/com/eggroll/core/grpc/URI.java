@@ -1,4 +1,4 @@
-package com.webank.eggroll.clustermanager.grpc;
+package com.eggroll.core.grpc;
 
 import java.lang.annotation.Inherited;
 import java.lang.annotation.Retention;

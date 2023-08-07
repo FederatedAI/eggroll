@@ -2,19 +2,17 @@ package com.webank.eggroll.nodemanager.grpc;
 
 import com.eggroll.core.invoke.InvokeInfo;
 import com.eggroll.core.pojo.*;
-import com.google.common.collect.Lists;
+import com.eggroll.core.grpc.URI;
 import com.google.protobuf.ByteString;
 import com.webank.eggroll.core.command.Command;
 import com.webank.eggroll.core.command.CommandServiceGrpc;
 import com.webank.eggroll.nodemanager.processor.DefaultProcessorManager;
 import io.grpc.stub.StreamObserver;
 
-import org.checkerframework.checker.units.qual.A;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.stereotype.Service;
 
 import java.lang.reflect.InvocationTargetException;
@@ -70,22 +68,22 @@ public class CommandServiceProvider extends CommandServiceGrpc.CommandServiceImp
     }
 
     @URI(value = startContainers)
-    public ErServerNode startContainers(ErServerNode erServerNode) {
-        return null;
+    public ErSessionMeta startContainers(ErSessionMeta sessionMeta) {
+        return defaultProcessorManager.startContainers(null,sessionMeta);
     }
 
     @URI(value = stopContainers)
-    public ErServerNode stopContainers(ErServerNode erServerNode) {
-        return null;
+    public ErSessionMeta stopContainers(ErSessionMeta sessionMeta) {
+        return defaultProcessorManager.stopContainers(null,sessionMeta);
     }
 
     @URI(value = killContainers)
-    public ErServerNode killContainers(ErServerNode erServerNode) {
-        return null;
+    public ErSessionMeta killContainers(ErSessionMeta sessionMeta) {
+        return defaultProcessorManager.killContainers(null,sessionMeta);
     }
 
     @URI(value = nodeHeartbeat)
-    public ErServerNode nodeHeartbeat(ErServerNode erServerNode) {
+    public ErProcessor nodeHeartbeat(ErProcessor processor) {
         return null;
     }
 
