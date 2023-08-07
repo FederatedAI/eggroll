@@ -133,12 +133,16 @@ object SessionManagerService extends Logging {
 
         sessionServerNodes.par.foreach(n => {
           // TODO:1: add new params?
-          val newSessionMeta = dbSessionMeta.copy(
-            options = dbSessionMeta.options ++ Map(ResourceManagerConfKeys.SERVER_NODE_ID -> n.id.toString))
-          val nodeManagerClient = new NodeManagerClient(
-            ErEndpoint(host = n.endpoint.host,
-              port = n.endpoint.port))
-          nodeManagerClient.killContainers(newSessionMeta)
+          try {
+            val newSessionMeta = dbSessionMeta.copy(
+              options = dbSessionMeta.options ++ Map(ResourceManagerConfKeys.SERVER_NODE_ID -> n.id.toString))
+            val nodeManagerClient = new NodeManagerClient(
+              ErEndpoint(host = n.endpoint.host,
+                port = n.endpoint.port))
+            nodeManagerClient.killContainers(newSessionMeta)
+          }catch {
+            case  exception: Throwable=> logError(s"send commmand kill container to ${n.endpoint.toString} failed : ${exception.getMessage}")
+          }
         })
       }
     }
@@ -548,12 +552,18 @@ class SessionManagerService extends SessionManager with Logging {
     }
     sessionServerNodes.foreach(n => {
       // TODO:1: add new params?
-      val newSessionMeta = dbSessionMeta.copy(
-        options = dbSessionMeta.options ++ Map(ResourceManagerConfKeys.SERVER_NODE_ID -> n.id.toString))
-      val nodeManagerClient = new NodeManagerClient(
-        ErEndpoint(host = n.endpoint.host,
-          port = n.endpoint.port))
-      nodeManagerClient.stopContainers(newSessionMeta)
+      try {
+        val newSessionMeta = dbSessionMeta.copy(
+          options = dbSessionMeta.options ++ Map(ResourceManagerConfKeys.SERVER_NODE_ID -> n.id.toString))
+        val nodeManagerClient = new NodeManagerClient(
+          ErEndpoint(host = n.endpoint.host,
+            port = n.endpoint.port))
+        nodeManagerClient.stopContainers(newSessionMeta)
+      }catch{
+        case throwable: Throwable=>{
+          case  exception: Throwable=> logError(s"send commmand kill container to ${n.endpoint.toString} failed : ${exception.getMessage}")
+        }
+      }
     })
 
     val stopTimeout = System.currentTimeMillis() + SessionConfKeys.EGGROLL_SESSION_STOP_TIMEOUT_MS.get().toLong
