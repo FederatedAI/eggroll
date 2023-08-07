@@ -19,12 +19,12 @@ public class DefaultProcessorManager implements ProcessorManager{
 
     @Override
     public ErSessionMeta stopContainers(Context context, ErSessionMeta sessionMeta) {
-        return null;
+        return containerService.operateContainers(sessionMeta,Dict.NODE_CMD_STOP);
     }
 
     @Override
     public ErSessionMeta killContainers(Context context, ErSessionMeta sessionMeta) {
-        return null;
+        return containerService.operateContainers(sessionMeta,Dict.NODE_CMD_KILL);
     }
 
     @Override
