@@ -170,14 +170,13 @@ class GrpcDsDownloadServicer(deepspeed_download_pb2_grpc.DsDownloadServiceServic
         elif  content_type ==ContentType.LOGS:
                 return self.get_container_logs_dir(session_id,rank)
         else:
-                L.info("xxxxxxxxxxxxxxx")
                 raise RuntimeError(f"download content type {content_type} is not support ")
 
 
 
     @_exception_logger
     def download(self, request: deepspeed_download_pb2.DsDownloadRequest, context):
-        L.info(f"kaideng download ======111= {request}")
+        L.info(f"receive download request  {request}")
         result = []
         try:
             for  rank in  request.ranks:
@@ -195,9 +194,7 @@ class GrpcDsDownloadServicer(deepspeed_download_pb2_grpc.DsDownloadServiceServic
                 # }
                 result.append(compress_content)
         except Exception as e:
-            L.info("eeeeeeeeeeeeeeeeeeeee1111")
-            L.exception("download error==========")
-
+            L.exception(f"download error request  {request}")
             raise  e
         return deepspeed_download_pb2.DsDownloadResponse(session_id=request.session_id,container_content=result)
 

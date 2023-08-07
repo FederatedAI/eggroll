@@ -83,7 +83,6 @@ class NodeManagerService extends NodeManager with Logging {
   }
 
   private def operateContainers(sessionMeta: ErSessionMeta, opType: String): ErSessionMeta = {
-    logInfo(s"operateContainers  ${sessionMeta}  ===== ${opType}")
     val processorPlan = sessionMeta.processors
 
     val runtimeConf = new RuntimeErConf(sessionMeta)

@@ -41,7 +41,6 @@ import org.apache.commons.lang3.StringUtils
         }
 
         override def onError(throwable: Throwable): Unit = {
-          System.err.println("receive on error")
           status = "error"
           if(logStreamHolder!=null) {
                logStreamHolder.stop()
@@ -49,15 +48,12 @@ import org.apache.commons.lang3.StringUtils
         }
 
         override def onCompleted(): Unit = {
-          System.err.println("receive on stop")
           status = "stop"
           if(logStreamHolder!=null){
             logStreamHolder.stop()
           }
         }
       }
-
-
     }
 
 }
@@ -95,7 +91,7 @@ class ClusterManagerExtendTransferService  extends   ExtendTransferServerGrpc.Ex
             var rankInfo = nodeIdMeta.apply(0)
             logInfo(s"rank info ${rankInfo}")
             val erServerNode = nodeDao.getServerNode(ErServerNode(id = rankInfo._2))
-            logInfo(s"prepare to send log request1 to  ${erServerNode.endpoint.host}  ${erServerNode.endpoint.port}");
+            logInfo(s"prepare to send log request to  ${erServerNode.endpoint.host}  ${erServerNode.endpoint.port}");
             val extendTransferClient = new ExtendTransferClient(ErEndpoint(host = erServerNode.endpoint.host, port = erServerNode.endpoint.port))
             requestSb = extendTransferClient.fetchLog(responseObserver)
             status = "running"
@@ -107,14 +103,10 @@ class ClusterManagerExtendTransferService  extends   ExtendTransferServerGrpc.Ex
             responseObserver.onCompleted()
           }
         }
-
-
           if (status == "running" && requestSb != null) {
 
             requestSb.onNext(request.toBuilder.setRank(index.toString).build())
           }
-
-
       }
 
       override def onError(throwable: Throwable): Unit = {
