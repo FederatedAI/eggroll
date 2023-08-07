@@ -30,7 +30,6 @@ class NodeManagerBootstrap extends BootstrapBase with Logging {
     // val sessionId = cmd.getOptionValue('s')
     StaticErConf.addProperties(confPath)
 
-
     // register services
     // To support parameters to NodeManagerService,
     // we instantiate a NodeManagerService instance here
