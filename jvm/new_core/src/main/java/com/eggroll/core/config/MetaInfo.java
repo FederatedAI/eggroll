@@ -235,7 +235,7 @@ public class MetaInfo {
     @Config(confKey = "eggroll.session.use.resource.dispatch")
     public static Boolean EGGROLL_SESSION_USE_RESOURCE_DISPATCH = false;
     @Config(confKey = "eggroll.session.processors.per.node")
-    public static String CONFKEY_SESSION_PROCESSORS_PER_NODE = "1";
+    public static Integer CONFKEY_SESSION_PROCESSORS_PER_NODE = 1;
 
 
     @Config(confKey = "grpc.client.max.inbound.message.size", pattern = Dict.POSITIVE_INTEGER_PATTERN)

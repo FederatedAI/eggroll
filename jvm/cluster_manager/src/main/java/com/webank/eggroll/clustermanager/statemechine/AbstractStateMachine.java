@@ -4,6 +4,7 @@ package com.webank.eggroll.clustermanager.statemechine;
 
 import com.eggroll.core.context.Context;
 import com.eggroll.core.pojo.ErSessionMeta;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.transaction.annotation.Transactional;
@@ -50,11 +51,9 @@ public abstract class AbstractStateMachine<T> {
     }
 
 
-    protected String  buildStateChangeLine(String preStateParam,String  desStateParam){
-        if(preStateParam==null)
-            preStateParam ="";
-        return preStateParam+"_"+desStateParam;
-    }
+    abstract String  buildStateChangeLine(Context context , T t, String preStateParam, String desStateParam);
+
+
 
 
     public void  tryLock( String key ){
@@ -82,7 +81,7 @@ public abstract class AbstractStateMachine<T> {
 //    abstract  public T prepare(T t);
     @Transactional
     public  T   changeStatus(Context context , T t, String preStateParam, String desStateParam){
-        String statusLine = buildStateChangeLine(preStateParam,desStateParam);
+        String statusLine = buildStateChangeLine(context,t,preStateParam,desStateParam);
 //        t = prepare(t);
         StateHandler<T> handler =  statueChangeHandlerMap.get(statusLine);
         if(handler==null){
@@ -91,18 +90,23 @@ public abstract class AbstractStateMachine<T> {
         String  lockKey =  getLockKey(t);
         try{
             tryLock(lockKey);
-            T t1 = handler.prepare(context,t,preStateParam,desStateParam);
-            T result = handler.handle(context,t1,preStateParam,desStateParam);
-            if(handler.needAsynPostHandle()){
-                asynThreadPool.submit(new Runnable() {
-                    @Override
-                    public void run() {
-                        handler.asynPostHandle(context,result,preStateParam,desStateParam);
+            T result= handler.prepare(context,t,preStateParam,desStateParam);
+            String  newPreState = preStateParam;
+            if(!handler.isBreak(context)) {
+                result = handler.handle(context, result, newPreState, desStateParam);
+                if(!handler.isBreak(context)) {
+                    if (handler.needAsynPostHandle(context)) {
+                        T finalResult = result;
+                        asynThreadPool.submit(new Runnable() {
+                            @Override
+                            public void run() {
+                                handler.asynPostHandle(context, finalResult, preStateParam, desStateParam);
+                            }
+                        });
                     }
-                });
+                }
             }
-            return  result;
-
+            return result;
         } catch (Exception e) {
            throw  new RuntimeException(e);
         } finally {

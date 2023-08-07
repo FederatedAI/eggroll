@@ -67,112 +67,112 @@ public class ClusterResourceManager {
         }
     }, "LOCK-CLEAN-THREAD");
 
-    private Thread dispatchThread = new Thread(() -> {
-        log.info("resource dispatch thread start !!!");
-        while (true) {
-            ResourceApplication resourceApplication = null;
-            if (applicationQueue.getBroker().size() > 0) {
-                resourceApplication = applicationQueue.getBroker().peek();
-                log.info("resource application queue size {}", applicationQueue.getBroker().size());
-            } else {
-                try {
-                    Thread.sleep(MetaInfo.EGGROLL_RESOURCE_DISPATCH_INTERVAL)
-                } catch (Exception e) {
-                    log.error("Thread.sleep error");
-                }
-            }
-
-            try {
-                outerloop:
-                {
-                    if (resourceApplication != null) {
-                        long now = System.currentTimeMillis();
-                        List<ErServerNode> serverNodes;
-                        try {
-                            lockSession(resourceApplication.getSessionId());
-                            if (killJobMap.containsKey(resourceApplication.getSessionId())) {
-                                log.error("session " + resourceApplication.getSessionId() + " is already canceled, drop it");
-                                applicationQueue.getBroker().remove();
-                                break outerloop;
-                            }
-                            if (resourceApplication.getWaitingCount().get() == 0) {
-                                //过期资源申请
-                                log.error("expired resource request: " + resourceApplication + " !!!");
-                                applicationQueue.getBroker().remove();
-                                break outerloop;
-                            }
-                            int tryCount = 0;
-                            do {
-                                serverNodes = getServerNodeWithResource();
-                                tryCount += 1;
-                                if (serverNodes == null || serverNodes.size() == 0) {
-                                    try {
-                                        Thread.sleep(MetaInfo.CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL);
-                                    } catch (InterruptedException e) {
-                                        e.printStackTrace();
-                                    }
-                                }
-                            } while ((serverNodes == null || serverNodes.size() == 0) && tryCount < 2);
-                            boolean enough = checkResourceEnough(serverNodes, resourceApplication);
-                            log.info("check resource is enough ? " + enough);
-                            if (!enough) {
-                                switch (resourceApplication.getResourceExhaustedStrategy()) {
-                                    case Dict.IGNORE:
-                                        break;
-                                    case Dict.WAITING:
-                                        Thread.sleep(MetaInfo.EGGROLL_RESOURCE_DISPATCH_INTERVAL);
-                                        log.info("resource is not enough, waiting next loop");
-                                        break outerloop;
-                                    case Dict.THROW_ERROR:
-                                        resourceApplication.getStatus().set(1);
-                                        resourceApplication.countDown();
-                                        applicationQueue.getBroker().remove();
-                                        break outerloop;
-                                }
-                            }
-                            switch (resourceApplication.getResourceExhaustedStrategy()) {
-                                case Dict.REMAIN_MOST_FIRST:
-                                    remainMostFirstDispatch(serverNodes, resourceApplication);
-                                    break;
-                                case Dict.RANDOM:
-                                    randomDispatch(serverNodes, resourceApplication);
-                                    break;
-                                case Dict.FIX:
-                                    fixDispatch(serverNodes, resourceApplication);
-                                    break;
-                                case Dict.SINGLE_NODE_FIRST:
-                                    singleNodeFirstDispatch(serverNodes, resourceApplication);
-                                    break;
-                            }
-                            ErSessionMeta[] dispatchedProcessors = resourceApplication.resourceDispatch;
-                            smDao.registerWithResource(new ErSessionMeta(
-                                    resourceApplication.sessionId,
-                                    resourceApplication.sessionName,
-                                    Arrays.stream(dispatchedProcessors).map(p -> p._1).toArray(ErProcessor[]::new),
-                                    dispatchedProcessors.length,
-                                    SessionStatus.NEW
-                            ));
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        } finally {
-                            unlockSession(resourceApplication.sessionId);
-                        }
-                        ErSessionMeta registeredSessionMeta = smDao.getSession(resourceApplication.sessionId);
-                        Map<String, ErServerNode> serverNodeMap = Arrays.stream(serverNodes)
-                                .collect(Collectors.toMap(ErServerNode::getId, Function.identity()));
-                        Tuple2<ErProcessor, ErServerNode>[] result = Arrays.stream(registeredSessionMeta.getProcessors())
-                                .map(p -> new Tuple2<>(p, serverNodeMap.get(p.getServerNodeId())))
-                                .toArray(Tuple2[]::new);
-                        resourceApplication.resourceDispatch.clear();
-                        Collections.addAll(resourceApplication.resourceDispatch, result);
-                        resourceApplication.countDown();
-                        applicationQueue.broker.remove();
-                    }
-                }
-            }
-
-        }
-    }, "RESOURCE_DISPATCH_THREAD");
+//    private Thread dispatchThread = new Thread(() -> {
+//        log.info("resource dispatch thread start !!!");
+//        while (true) {
+//            ResourceApplication resourceApplication = null;
+//            if (applicationQueue.getBroker().size() > 0) {
+//                resourceApplication = applicationQueue.getBroker().peek();
+//                log.info("resource application queue size {}", applicationQueue.getBroker().size());
+//            } else {
+//                try {
+//                    Thread.sleep(MetaInfo.EGGROLL_RESOURCE_DISPATCH_INTERVAL);
+//                } catch (Exception e) {
+//                    log.error("Thread.sleep error");
+//                }
+//            }
+//
+//            try {
+//                outerloop:
+//                {
+//                    if (resourceApplication != null) {
+//                        long now = System.currentTimeMillis();
+//                        List<ErServerNode> serverNodes;
+//                        try {
+//                            lockSession(resourceApplication.getSessionId());
+//                            if (killJobMap.containsKey(resourceApplication.getSessionId())) {
+//                                log.error("session " + resourceApplication.getSessionId() + " is already canceled, drop it");
+//                                applicationQueue.getBroker().remove();
+//                                break outerloop;
+//                            }
+//                            if (resourceApplication.getWaitingCount().get() == 0) {
+//                                //过期资源申请
+//                                log.error("expired resource request: " + resourceApplication + " !!!");
+//                                applicationQueue.getBroker().remove();
+//                                break outerloop;
+//                            }
+//                            int tryCount = 0;
+//                            do {
+//                                serverNodes = getServerNodeWithResource();
+//                                tryCount += 1;
+//                                if (serverNodes == null || serverNodes.size() == 0) {
+//                                    try {
+//                                        Thread.sleep(MetaInfo.CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL);
+//                                    } catch (InterruptedException e) {
+//                                        e.printStackTrace();
+//                                    }
+//                                }
+//                            } while ((serverNodes == null || serverNodes.size() == 0) && tryCount < 2);
+//                            boolean enough = checkResourceEnough(serverNodes, resourceApplication);
+//                            log.info("check resource is enough ? " + enough);
+//                            if (!enough) {
+//                                switch (resourceApplication.getResourceExhaustedStrategy()) {
+//                                    case Dict.IGNORE:
+//                                        break;
+//                                    case Dict.WAITING:
+//                                        Thread.sleep(MetaInfo.EGGROLL_RESOURCE_DISPATCH_INTERVAL);
+//                                        log.info("resource is not enough, waiting next loop");
+//                                        break outerloop;
+//                                    case Dict.THROW_ERROR:
+//                                        resourceApplication.getStatus().set(1);
+//                                        resourceApplication.countDown();
+//                                        applicationQueue.getBroker().remove();
+//                                        break outerloop;
+//                                }
+//                            }
+//                            switch (resourceApplication.getResourceExhaustedStrategy()) {
+//                                case Dict.REMAIN_MOST_FIRST:
+//                                    remainMostFirstDispatch(serverNodes, resourceApplication);
+//                                    break;
+//                                case Dict.RANDOM:
+//                                    randomDispatch(serverNodes, resourceApplication);
+//                                    break;
+//                                case Dict.FIX:
+//                                    fixDispatch(serverNodes, resourceApplication);
+//                                    break;
+//                                case Dict.SINGLE_NODE_FIRST:
+//                                    singleNodeFirstDispatch(serverNodes, resourceApplication);
+//                                    break;
+//                            }
+//                            ErSessionMeta[] dispatchedProcessors = resourceApplication.resourceDispatch;
+//                            smDao.registerWithResource(new ErSessionMeta(
+//                                    resourceApplication.sessionId,
+//                                    resourceApplication.sessionName,
+//                                    Arrays.stream(dispatchedProcessors).map(p -> p._1).toArray(ErProcessor[]::new),
+//                                    dispatchedProcessors.length,
+//                                    SessionStatus.NEW
+//                            ));
+//                        } catch (InterruptedException e) {
+//                            e.printStackTrace();
+//                        } finally {
+//                            unlockSession(resourceApplication.sessionId);
+//                        }
+//                        ErSessionMeta registeredSessionMeta = smDao.getSession(resourceApplication.sessionId);
+//                        Map<String, ErServerNode> serverNodeMap = Arrays.stream(serverNodes)
+//                                .collect(Collectors.toMap(ErServerNode::getId, Function.identity()));
+//                        Tuple2<ErProcessor, ErServerNode>[] result = Arrays.stream(registeredSessionMeta.getProcessors())
+//                                .map(p -> new Tuple2<>(p, serverNodeMap.get(p.getServerNodeId())))
+//                                .toArray(Tuple2[]::new);
+//                        resourceApplication.resourceDispatch.clear();
+//                        Collections.addAll(resourceApplication.resourceDispatch, result);
+//                        resourceApplication.countDown();
+//                        applicationQueue.broker.remove();
+//                    }
+//                }
+//            }
+//
+//        }
+//    }, "RESOURCE_DISPATCH_THREAD");
 
     private List<ErServerNode> getServerNodeWithResource() {
         ErServerNode erServerNode = new ErServerNode();
@@ -205,7 +205,7 @@ public class ClusterResourceManager {
             assert erServerNodes.size() > 0;
             if (Dict.FIX.equals(resourceApplication.getDispatchStrategy())) {
                 int eggsPerNode = Integer.parseInt(resourceApplication.getOptions()
-                        .getOrDefault(Dict.CONFKEY_SESSION_PROCESSORS_PER_NODE, MetaInfo.CONFKEY_SESSION_PROCESSORS_PER_NODE));
+                        .getOrDefault(Dict.CONFKEY_SESSION_PROCESSORS_PER_NODE, MetaInfo.CONFKEY_SESSION_PROCESSORS_PER_NODE.toString()));
                 String resourceType = resourceApplication.getOptions().getOrDefault("resourceType", Dict.VCPU_CORE);
                 int types = resourceApplication.getProcessorTypes().size();
                 result = nodeRemainResourceMap.entrySet().stream().allMatch(n -> {

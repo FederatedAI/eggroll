@@ -49,7 +49,7 @@ public class DefaultSessionManager implements SessionManager{
 
     @Override
     public ErSessionMeta getOrCreateSession(Context context,ErSessionMeta sessionMeta) {
-        System.err.println("getOrCreateSession =====");
+
         if(MetaInfo.EGGROLL_SESSION_USE_RESOURCE_DISPATCH){
 
         }else{
@@ -60,59 +60,47 @@ public class DefaultSessionManager implements SessionManager{
     }
 
     private   ErSessionMeta  getOrCreateSessionWithoutResourceDispath(Context context,ErSessionMeta  sessionMeta){
-      String sessionId = sessionMeta.getId();
-      List<ErServerNode>   serverNodes =  getHealthServerNode();
-      if(serverNodes.size()==0){
-          throw  new RuntimeException("");
-      }
-      sessionStateMachine.changeStatus(context,sessionMeta,null,SessionStatus.NEW.name());
-      ErSessionMeta  newSession =   sessionService.getSession(sessionMeta.getId(),true);
-      serverNodes.parallelStream().forEach(node->{
-            ErSessionMeta  sendSession =new ErSessionMeta();
-            try {
-                BeanUtils.copyProperties(newSession, sendSession);
-                NodeManagerClient nodeManagerClient = new  NodeManagerClient(node.getEndpoint());
-                sendSession.getOptions().put("eggroll.resourcemanager.server.node.id",Long.toString(node.getId()));
-                nodeManagerClient.startContainers(sendSession);
-            } catch (IllegalAccessException e) {
-                e.printStackTrace();
-            } catch (InvocationTargetException e) {
-                e.printStackTrace();
-            }
-        });
-        long startTimeout = System.currentTimeMillis() + MetaInfo.EGGROLL_SESSION_START_TIMEOUT_MS;
-        boolean isStarted = false;
-        ErSessionMeta cur = null;
-            while (System.currentTimeMillis() <= startTimeout) {
-                cur = this.sessionService.getSession(sessionId,false);
-                if (cur.getActiveProcCount() < cur.getTotalProcCount()) {
-                    try {
-                        Thread.sleep(100);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                } else {
-                    isStarted = true;
-                    break;
-                }
-            }
-        if(isStarted){
-            sessionStateMachine.changeStatus(context,newSession,SessionStatus.NEW.name(),SessionStatus.ACTIVE.name());
-        }else{
-            sessionStateMachine.changeStatus(context,newSession,SessionStatus.NEW.name(),SessionStatus.ERROR.name());
+        ErSessionMeta  newSession = sessionStateMachine.changeStatus(context,sessionMeta,null,SessionStatus.NEW.name());
+        if(!SessionStatus.NEW.name().equals(newSession.getStatus())){
+            return  newSession;
         }
-        return  null;
+        if(checkSessionRpcReady(newSession)){
+          return   sessionStateMachine.changeStatus(context,newSession,SessionStatus.NEW.name(),SessionStatus.ACTIVE.name());
+        }else{
+          return   sessionStateMachine.changeStatus(context,newSession,SessionStatus.NEW.name(),SessionStatus.ERROR.name());
+        }
 
     }
 
+    private  boolean checkSessionRpcReady(ErSessionMeta  session){
 
+        long startTimeout = System.currentTimeMillis() + MetaInfo.EGGROLL_SESSION_START_TIMEOUT_MS;
+        boolean isStarted = false;
+        ErSessionMeta cur = null;
+        while (System.currentTimeMillis() <= startTimeout) {
+            cur = this.sessionService.getSession(session.getId(),false);
+            if(cur.isOverState()||SessionStatus.ACTIVE.name().equals(cur.getStatus()))
+                return  true;
+            if (SessionStatus.NEW.name().equals(cur.getStatus())&&cur.getActiveProcCount() < cur.getTotalProcCount()) {
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            } else {
+                isStarted = true;
+                break;
+            }
+        }
+        return  isStarted;
+
+
+    }
 
     private List<ErServerNode> getHealthServerNode(){
-
         ErServerNode  serverNodeExample = new ErServerNode();
         serverNodeExample.setNodeType(ServerNodeTypes.NODE_MANAGER.name());
         serverNodeExample.setStatus(ServerNodeStatus.HEALTHY.name());
-
         int tryCount = 0;
         do{
             List<ErServerNode> healthyServerNodes= serverNodeService.getListByErServerNode(serverNodeExample);
@@ -129,32 +117,14 @@ public class DefaultSessionManager implements SessionManager{
             }
         }
         while(tryCount < 2);
-
         return Lists.newArrayList();
     }
 
 
     @Override
     public ErSessionMeta getSession(Context context,ErSessionMeta sessionMeta) {
-
-        //logDebug(s"SESSION getSession: ${sessionMeta}")
-        ErSessionMeta result =null;
-        //val startTimeout = System.currentTimeMillis() + SessionConfKeys.EGGROLL_SESSION_START_TIMEOUT_MS.get().toLong
-        long  startTimeout = System.currentTimeMillis()+ 20000;
-        while (System.currentTimeMillis() <= startTimeout) {
-           result = sessionService.getSession(sessionMeta.getId(),true);
-                if (result != null && !result.getStatus().equals(SessionStatus.NEW.name()) && !StringUtils.isBlank(result.getId())) {
-                    break;
-                } else {
-                    try {
-                        Thread.sleep(100);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                }
-            }
-
-        return  result;
+        checkSessionRpcReady(sessionMeta);
+        return  sessionService.getSession(sessionMeta.getId(),true);
     }
 
     @Override
@@ -164,22 +134,13 @@ public class DefaultSessionManager implements SessionManager{
 
     @Override
     public ErSessionMeta stopSession(Context context,ErSessionMeta sessionMeta) {
-
+        return  sessionStateMachine.changeStatus(context,sessionMeta,null,SessionStatus.CLOSED.name());
     }
 
     @Override
     public ErSessionMeta killSession(Context context,ErSessionMeta sessionMeta) {
-          ErSessionMeta  sessionInDb = this.sessionService.getSession(sessionMeta.getId(),false);
-          if(sessionInDb==null){
-              throw  new RuntimeException("xxxx");
-          }
-          if(sessionInDb.isOverState()){
-              return  sessionInDb;
-          }
-          String preStatus = sessionInDb.getStatus();
-          sessionInDb.setActiveProcCount(0);
-          sessionInDb.setStatus(SessionStatus.KILLED.name());
-          sessionStateMachine.changeStatus(context,sessionInDb,preStatus,SessionStatus.KILLED.name());
+
+         return  sessionStateMachine.changeStatus(context,sessionMeta,null,SessionStatus.KILLED.name());
 
     }
 

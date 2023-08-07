@@ -19,7 +19,7 @@ public class JobServiceHandler {
         log.info("killing job {}",sessionId);
 
         try {
-            clusterResourceManager.lockSession();
+            clusterResourceManager.lockSession(sessionId);
         }catch (Exception e ){
 
         }
