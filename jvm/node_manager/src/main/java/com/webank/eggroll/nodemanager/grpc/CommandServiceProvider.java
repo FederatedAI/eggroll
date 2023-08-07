@@ -68,22 +68,22 @@ public class CommandServiceProvider extends CommandServiceGrpc.CommandServiceImp
     }
 
     @URI(value = startContainers)
-    public ErServerNode startContainers(ErServerNode erServerNode) {
-        return null;
+    public ErSessionMeta startContainers(ErSessionMeta sessionMeta) {
+        return defaultProcessorManager.startContainers(null,sessionMeta);
     }
 
     @URI(value = stopContainers)
-    public ErServerNode stopContainers(ErServerNode erServerNode) {
-        return null;
+    public ErSessionMeta stopContainers(ErSessionMeta sessionMeta) {
+        return defaultProcessorManager.stopContainers(null,sessionMeta);
     }
 
     @URI(value = killContainers)
-    public ErServerNode killContainers(ErServerNode erServerNode) {
-        return null;
+    public ErSessionMeta killContainers(ErSessionMeta sessionMeta) {
+        return defaultProcessorManager.killContainers(null,sessionMeta);
     }
 
     @URI(value = nodeHeartbeat)
-    public ErServerNode nodeHeartbeat(ErServerNode erServerNode) {
+    public ErProcessor nodeHeartbeat(ErProcessor processor) {
         return null;
     }
 
