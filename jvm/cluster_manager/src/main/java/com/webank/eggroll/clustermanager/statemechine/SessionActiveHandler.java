@@ -8,10 +8,10 @@ import com.eggroll.core.context.Context;
 import com.eggroll.core.pojo.ErProcessor;
 import com.eggroll.core.pojo.ErSessionMeta;
 import com.webank.eggroll.clustermanager.entity.SessionMain;
+import org.springframework.stereotype.Service;
 
+@Service
 public class SessionActiveHandler extends AbstractSessionStateHandler{
-
-
 
     @Override
     public ErSessionMeta prepare(Context context, ErSessionMeta data, String preStateParam, String desStateParam) {

@@ -92,7 +92,7 @@
                         <configuration>
                             <sources>
                                 <source>${pom.basedir}/main/java</source>
-                                <source>${pom.basedir}/main/scala</source>
+<!--                                <source>${pom.basedir}/main/scala</source>-->
                             </sources>
                         </configuration>
                     </execution>
@@ -105,69 +105,14 @@
                         <configuration>
                             <sources>
                                 <source>${pom.basedir}/test/java</source>
-                                <source>${pom.basedir}/test/scala</source>
+
                             </sources>
                         </configuration>
                     </execution>
                 </executions>
             </plugin>
 
-            <plugin>
-                <groupId>net.alchim31.maven</groupId>
-                <artifactId>scala-maven-plugin</artifactId>
-                <version>${scala-maven-plugin.version}</version>
-                <configuration>
-                    <scalaVersion>${scala.version}</scalaVersion>
-                    <checkMultipleScalaVersions>true</checkMultipleScalaVersions>
-                    <failOnMultipleScalaVersions>true</failOnMultipleScalaVersions>
-                    <recompileMode>incremental</recompileMode>
-                    <!-- <useZincServer>true</useZincServer>-->
-                    <args>
-                        <!--            <arg>-unchecked</arg>
-                                    <arg>-deprecation</arg>
-                                    <arg>-feature</arg>
-                                    <arg>-explaintypes</arg>
-                                    <arg>-Yno-adapted-args</arg>
-                                    <arg>-target:jvm-1.8</arg>-->
-                        <arg>-Xexperimental</arg>
-                    </args>
-                    <jvmArgs>
-                        <jvmArg>-Xms1024m</jvmArg>
-                        <jvmArg>-Xmx1024m</jvmArg>
-                        <jvmArg>-XX:ReservedCodeCacheSize=${code.cache.size}</jvmArg>
-                    </jvmArgs>
-                    <javacArgs>
-                        <!--            <javacArg>-source</javacArg>
-                                    <javacArg>${java.version}</javacArg>
-                                    <javacArg>-target</javacArg>
-                                    <javacArg>${java.version}</javacArg>
-                                    <javacArg>-Xlint:all,-serial,-path,-try</javacArg>-->
-                    </javacArgs>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>scala-compile-first</id>
-                        <phase>process-sources</phase>
-                        <goals>
-                            <goal>compile</goal>
-                        </goals>
-                    </execution>
-                    <execution>
-                        <id>scala-test-compile-first</id>
-                        <phase>process-test-sources</phase>
-                        <goals>
-                            <goal>testCompile</goal>
-                        </goals>
-                    </execution>
-                    <execution>
-                        <id>attach-scaladocs</id>
-                        <phase>verify</phase>
-                        <goals>
-                            <goal>doc-jar</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
+
 
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -307,24 +252,11 @@
             <version>${junit4.version}</version>
         </dependency>
 
-        <dependency>
-            <groupId>org.scala-lang</groupId>
-            <artifactId>scala-library</artifactId>
-            <version>${scala.version}</version>
-        </dependency>
 
-        <dependency>
-            <groupId>org.scala-lang</groupId>
-            <artifactId>scala-reflect</artifactId>
-            <version>${scala.version}</version>
-        </dependency>
 
-        <dependency>
-            <groupId>org.scalatest</groupId>
-            <artifactId>scalatest_${scala.binary.version}</artifactId>
-            <version>${scalatest.version}</version>
-            <scope>test</scope>
-        </dependency>
+
+
+
 
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
