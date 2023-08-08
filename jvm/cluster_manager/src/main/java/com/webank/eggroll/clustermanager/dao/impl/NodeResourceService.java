@@ -3,6 +3,7 @@ package com.webank.eggroll.clustermanager.dao.impl;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.eggroll.core.pojo.ErResource;
+import com.google.common.collect.Lists;
 import com.webank.eggroll.clustermanager.dao.mapper.NodeResourceMapper;
 import com.webank.eggroll.clustermanager.entity.NodeResource;
 import org.apache.commons.lang3.StringUtils;
@@ -34,18 +35,20 @@ public class NodeResourceService extends EggRollBaseServiceImpl<NodeResourceMapp
 
     public void doInsertNodeResource(Long serverNodeId, @NotNull List<ErResource> resources) {
         log.info("insertNodeResource======== {} ,size {}", serverNodeId, resources.size());
+
+        List<NodeResource>  nodeResourceList = Lists.newArrayList();
         for (ErResource erResource : resources) {
-            try {
+
                 NodeResource nodeResource = new NodeResource();
                 nodeResource.setServerNodeId(serverNodeId);
                 nodeResource.setResourceType(erResource.getResourceType());
                 nodeResource.setTotal(erResource.getTotal());
                 nodeResource.setUsed(erResource.getUsed());
                 nodeResource.setStatus(erResource.getStatus());
-                this.save(nodeResource);
-            } catch (Exception e) {
-                log.error("doInsertNodeResource Exception : {}" + e.getMessage());
-            }
+                nodeResourceList.add(nodeResource);
+
+
+            this.saveBatch(nodeResourceList);
         }
     }
 

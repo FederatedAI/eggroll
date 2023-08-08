@@ -9,7 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
-public class ProcessorStatusNewHandler  extends  AbstractProcessorStateHandler {
+public class ProcessorStatusRunningStopHandler  extends  AbstractProcessorStateHandler {
     @Autowired
     ResourceStateMechine  resourceStateMachine ;
     @Autowired
@@ -29,6 +29,8 @@ public class ProcessorStatusNewHandler  extends  AbstractProcessorStateHandler {
                 if(this.checkNeedChangeResource(data)) {
                     resourceStateMachine.changeStatus(context, data, ResourceStatus.PRE_ALLOCATED.getValue(), ResourceStatus.ALLOCATED.getValue());
                 }
+
+
                 break;
             case "NEW_STOPPED":
             case "NEW_KILLED":
@@ -46,12 +48,12 @@ public class ProcessorStatusNewHandler  extends  AbstractProcessorStateHandler {
         return result.toErProcessor();
     }
 
-    void   updateState(ErProcessor  erProcessor,String desStateParam){
-        SessionProcessor  sessionProcessor =  new SessionProcessor();
-        sessionProcessor.setStatus(desStateParam);
-        sessionProcessor.setProcessorId(erProcessor.getId());
-        this.processorService.updateById(sessionProcessor);
-    }
+//    void   updateState(ErProcessor  erProcessor,String desStateParam){
+//        SessionProcessor  sessionProcessor =  new SessionProcessor();
+//        sessionProcessor.setStatus(desStateParam);
+//        sessionProcessor.setProcessorId(erProcessor.getId());
+//        this.processorService.updateById(sessionProcessor);
+//    }
 
 
 }

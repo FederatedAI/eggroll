@@ -34,7 +34,7 @@ public class SessionKillHandler extends  AbstractSessionStateHandler{
 
     @Override
     public ErSessionMeta prepare(Context context, ErSessionMeta data , String preStateParam, String desStateParam) {
-        ErSessionMeta  erSessionMeta =sessionMainService.getSession(data.getId(),true);
+        ErSessionMeta  erSessionMeta =sessionMainService.getSession(data.getId(),true,false,false);
         if(erSessionMeta==null){
             throw new RuntimeException("");
         }
@@ -52,6 +52,6 @@ public class SessionKillHandler extends  AbstractSessionStateHandler{
         erSessionMeta.getProcessors().forEach(processor ->{
             processorStateMechine.changeStatus(context,processor,null,desStateParam );
         });
-        return sessionMainService.getSession(erSessionMeta.getId(),true);
+        return sessionMainService.getSession(erSessionMeta.getId(),true,false,false);
     }
 }
