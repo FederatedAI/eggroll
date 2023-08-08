@@ -13,6 +13,8 @@ public abstract class AbstractSessionStateHandler implements   StateHandler<ErSe
     @Autowired
     ProcessorStateMechine processorStateMechine;
 
+
+
     void  updateStatus(Context context, ErSessionMeta erSessionMeta, String preStateParam, String desStateParam){
         SessionMain sessionMain =  new SessionMain();
         sessionMain.setSessionId(erSessionMeta.getId());

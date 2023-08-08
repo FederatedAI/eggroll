@@ -15,6 +15,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 public class ProcessorStateMechine extends  AbstractStateMachine<ErProcessor>  implements InitializingBean {
     Logger logger = LoggerFactory.getLogger(ProcessorStateMechine.class);
@@ -25,7 +27,17 @@ public class ProcessorStateMechine extends  AbstractStateMachine<ErProcessor>  i
     @Autowired
     ProcessorStateRunningHandler     processorStateRunningHandler;
     @Autowired
-    ProcessorStatusNewHandler     processorStatusNewHandler;
+    ProcessorStatusRunningStopHandler       processorStatusRunningStopHandler  ;
+    @Autowired
+    ProcessorStateNewStopHandler   processorStateNewStopHandler;
+
+    @Autowired
+    ProcessorCreateHandler   processorCreateHandler;
+
+
+//    public List<ErProcessor>  getProcessorBySessionId(String sessionId){
+//        return processorService.getProcessorBySession(sessionId);
+//    }
 
 
     @Override
@@ -54,91 +66,19 @@ public class ProcessorStateMechine extends  AbstractStateMachine<ErProcessor>  i
 
 
 
-
-
-
-
-//    private  ErProcessor   createNewProcessor(Context context ,ErProcessor erProcessor){
-//        processorService.save(new SessionProcessor(erProcessor));
-//        if(checkNeedChangeResource(erProcessor)) {
-//            resourceStateMechine.changeStatus(context ,erProcessor, ResourceStatus.INIT.getValue(), ResourceStatus.PRE_ALLOCATED.getValue());
-//        }
-//        return  erProcessor;
-//
-//    }
-
-
-//    private void  updateProcessorState(ErProcessor erProcessor ,Callback<ErProcessor>  callback ){
-//        SessionProcessor  sessionProcessor = new SessionProcessor(erProcessor);
-//        processorService.updateById(sessionProcessor);
-//        if(callback!=null){
-//            callback.callback(erProcessor);
-//        }
-//
-//    }
-
-
-
-//    @Override
-//    protected ErProcessor doChangeStatus(Context context , ErProcessor erProcessor, String preStateParam, String desStateParam) {
-//        String statusLine = buildStateChangeLine(preStateParam,desStateParam);
-//        erProcessor.setStatus(desStateParam);
-//
-//        switch ( statusLine){
-//
-//            //PREPARE(false), NEW(false),NEW_TIMEOUT(true),ACTIVE(false),CLOSED(true),KILLED(true),ERROR(true),FINISHED(true);
-//            case "_NEW":  createNewProcessor(context,erProcessor);break;
-//            case "NEW_RUNNING" :
-//
-//                updateProcessorState(erProcessor,(ep)->{
-//                    if(checkNeedChangeResource(ep)){
-//                        resourceStateMechine.changeStatus(context,ep, ResourceStatus.PRE_ALLOCATED.getValue(), ResourceStatus.ALLOCATED.getValue());
-//                    }
-//                });break;
-//            case "NEW_STOPPED" : ;
-//            case "NEW_KILLED" : ;
-//            case "NEW_ERROR" :
-//                updateProcessorState(erProcessor,(ep)->{
-//                    if(checkNeedChangeResource(ep)){
-//                        resourceStateMechine.changeStatus(context ,ep, ResourceStatus.ALLOCATED.getValue(), ResourceStatus.ALLOCATE_FAILED.getValue());
-//                    }
-//                });break;
-//
-//            case "RUNNING_FINISHED" : ;
-//            case "RUNNING_STOPPED" : ;
-//            case "RUNNING_KILLED" : ;
-//            case "RUNNING_ERROR" :
-//                updateProcessorState(erProcessor,(ep)->{
-//                    if(checkNeedChangeResource(ep)){
-//                        resourceStateMechine.changeStatus(context,ep, ResourceStatus.ALLOCATED.getValue(), ResourceStatus.RETURN.getValue());
-//                    }
-//                });break;
-//
-//            default:
-//
-//        }
-//        return null;
-//
-//    }
-
-//    @Override
-//    public ErProcessor prepare(Context  context ,ErProcessor erProcessor) {
-//
-//        if(StringUtils.isEmpty(erProcessor.getStatus())){
-//            SessionProcessor sessionProcessor = processorService.getById(erProcessor.getId());
-//            if(sessionProcessor!=null)
-//                return sessionProcessor.toErProcessor();
-//            else
-//                throw new RuntimeException("");
-//        }else{
-//            return  erProcessor;
-//        }
-//
-//    }
-
     @Override
     public void afterPropertiesSet() throws Exception {
-      //  this.registeStateHander("_NEW",new);
+        this.registeStateHander( "_NEW",processorCreateHandler);
+        this.registeStateHander( "NEW_RUNNING",processorCreateHandler);
+        this.registeStateHander("RUNNING_FINISHED",processorStatusRunningStopHandler);
+        this.registeStateHander("RUNNING_STOPPED",processorStatusRunningStopHandler);
+        this.registeStateHander("RUNNING_KILLED",processorStatusRunningStopHandler);
+        this.registeStateHander("RUNNING_ERROR",processorStatusRunningStopHandler);
+        this.registeStateHander("NEW_FINISHED",processorStateNewStopHandler);
+        this.registeStateHander("NEW_STOPPED",processorStateNewStopHandler);
+        this.registeStateHander("NEW_KILLED",processorStateNewStopHandler);
+        this.registeStateHander("NEW_ERROR",processorStateNewStopHandler);
+
     }
 }
 
