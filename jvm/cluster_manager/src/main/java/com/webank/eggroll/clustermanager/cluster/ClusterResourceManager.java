@@ -1,30 +1,38 @@
 package com.webank.eggroll.clustermanager.cluster;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.eggroll.core.config.Dict;
 import com.eggroll.core.config.MetaInfo;
-import com.eggroll.core.constant.ServerNodeStatus;
-import com.eggroll.core.constant.ServerNodeTypes;
-import com.eggroll.core.constant.SessionStatus;
+import com.eggroll.core.constant.*;
 import com.eggroll.core.pojo.*;
 import com.eggroll.core.utils.JsonUtil;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.webank.eggroll.clustermanager.dao.impl.NodeResourceService;
+import com.webank.eggroll.clustermanager.dao.impl.ProcessorResourceService;
 import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
 import com.webank.eggroll.clustermanager.dao.impl.SessionMainService;
+import com.webank.eggroll.clustermanager.entity.ProcessorResource;
 import com.webank.eggroll.clustermanager.entity.ServerNode;
 import org.checkerframework.checker.units.qual.K;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.ApplicationListener;
 import org.springframework.stereotype.Service;
 import scala.Tuple2;
 
 import java.util.*;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Service
-public class ClusterResourceManager {
+public class ClusterResourceManager  implements ApplicationListener<ApplicationReadyEvent> {
 
     Logger log = LoggerFactory.getLogger(ClusterResourceManager.class);
 
@@ -36,6 +44,91 @@ public class ClusterResourceManager {
     SessionMainService sessionMainService;
     @Autowired
     ServerNodeService serverNodeService;
+
+    @Autowired
+    NodeResourceService  nodeResourceService;
+    @Autowired
+    ProcessorResourceService  processorResourceService;
+
+
+    BlockingQueue<Long> nodeResourceUpdateQueue =   new ArrayBlockingQueue(100);
+
+    public  void countAndUpdateNodeResource(Long  serverNodeId){
+        this.nodeResourceUpdateQueue.add(serverNodeId);
+    }
+
+    private  void   countAndUpdateNodeResourceInner(Long serverNodeId){
+
+        List<ProcessorResource> resourceList = this.processorResourceService.list( new LambdaQueryWrapper<ProcessorResource>()
+                .eq(ProcessorResource::getServerNodeId, serverNodeId).in(ProcessorResource::getResourceType, Lists.newArrayList(ResourceStatus.ALLOCATED.getValue() ,ResourceStatus.PRE_ALLOCATED.getValue())));
+        List<ErResource>  prepareUpdateResource = Lists.newArrayList();
+        if(resourceList!=null){
+            Map<String,ErResource> resourceMap = Maps.newHashMap();
+            resourceList.forEach(processorResource->{
+                String status = processorResource.getStatus();
+                ErResource nodeResource = resourceMap.get(processorResource.getResourceType());
+                if(nodeResource==null){
+                    resourceMap.put(processorResource.getResourceType(),new ErResource());
+                    nodeResource = resourceMap.get(processorResource.getResourceType());
+                }
+                if(status.equals(ResourceStatus.ALLOCATED.getValue())){
+                    if(nodeResource.getAllocated()!=null)
+                        nodeResource.setAllocated(nodeResource.getAllocated()+processorResource.getAllocated());
+                    else
+                        nodeResource.setAllocated(processorResource.getAllocated());
+
+                }else{
+                    if(nodeResource.getPreAllocated()!=null)
+                        nodeResource.setPreAllocated(nodeResource.getPreAllocated()+processorResource.getAllocated());
+                    else
+                        nodeResource.setPreAllocated(processorResource.getAllocated());
+                }
+            });
+            prepareUpdateResource.addAll(resourceMap.values());
+        }else{
+            ErResource gpuResource = new ErResource();
+            gpuResource.setServerNodeId(serverNodeId);
+            gpuResource.setResourceType(ResourceType.VGPU_CORE.name());
+            gpuResource.setAllocated(0L);
+            gpuResource.setPreAllocated(0L);
+            ErResource  cpuResource = new ErResource();
+            cpuResource.setServerNodeId(serverNodeId);
+            cpuResource.setResourceType(ResourceType.VCPU_CORE.name());
+            cpuResource.setAllocated(0L);
+            cpuResource.setPreAllocated(0L);
+            prepareUpdateResource.add(gpuResource);
+            prepareUpdateResource.add(cpuResource);
+        }
+        nodeResourceService.doUpdateNodeResource(serverNodeId,prepareUpdateResource);
+    }
+
+
+    private Thread  countNodeResourceThread =  new  Thread(()->{
+        while(true){
+            try{
+                List<Long>   nodeList = Lists.newArrayList();
+                nodeResourceUpdateQueue.drainTo(nodeList);
+                Set<Long>  nodeSet = new HashSet<>();
+                nodeSet.addAll(nodeList);
+                for(Long nodeId: nodeSet){
+                    countAndUpdateNodeResourceInner(nodeId);
+                }
+            }catch (Exception e){
+                e.printStackTrace();
+            }
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+    },"RESOURCE-COUNT-THREAD");
+
+
+
+
+
+
 
     private Thread lockCleanThread = new Thread(() -> {
         while (true) {
@@ -383,6 +476,11 @@ public class ClusterResourceManager {
 
 
     public void lockSession(String sessionId) {
+
+    }
+
+    @Override
+    public void onApplicationEvent(ApplicationReadyEvent event) {
 
     }
 }

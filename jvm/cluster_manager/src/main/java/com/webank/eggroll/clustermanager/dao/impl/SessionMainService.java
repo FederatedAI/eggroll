@@ -44,13 +44,21 @@ public class SessionMainService extends EggRollBaseServiceImpl<SessionMainMapper
         return session;
     }
 
-    public ErSessionMeta getSession(String sessionId,boolean  recursion){
+
+
+
+
+
+
+    public ErSessionMeta getSession(String sessionId,boolean  withProcessor,boolean withOption,boolean  withResource){
         ErSessionMeta  erSessionMeta = null;
         SessionMain  sessionMain = this.baseMapper.selectById(sessionId);
         if(sessionMain!=null) {
             erSessionMeta = sessionMain.toErSessionMeta();
-            if(recursion) {
-                erSessionMeta.setProcessors(processorService.getProcessorBySession(sessionId));
+            if(withProcessor) {
+                erSessionMeta.setProcessors(processorService.getProcessorBySession(sessionId,withResource));
+            }
+            if(withOption) {
                 List<SessionOption> result = sessionOptionService.getSessionOptions(sessionId);
                 Map<String, String> optionMap = Maps.newHashMap();
                 result.forEach(sessionOption -> {

@@ -78,7 +78,7 @@ public class DefaultSessionManager implements SessionManager{
         boolean isStarted = false;
         ErSessionMeta cur = null;
         while (System.currentTimeMillis() <= startTimeout) {
-            cur = this.sessionService.getSession(session.getId(),false);
+            cur = this.sessionService.getSession(session.getId(),false,false,false);
             if(cur.isOverState()||SessionStatus.ACTIVE.name().equals(cur.getStatus()))
                 return  true;
             if (SessionStatus.NEW.name().equals(cur.getStatus())&&cur.getActiveProcCount() < cur.getTotalProcCount()) {
@@ -124,7 +124,7 @@ public class DefaultSessionManager implements SessionManager{
     @Override
     public ErSessionMeta getSession(Context context,ErSessionMeta sessionMeta) {
         checkSessionRpcReady(sessionMeta);
-        return  sessionService.getSession(sessionMeta.getId(),true);
+        return  sessionService.getSession(sessionMeta.getId(),true,false,false);
     }
 
     @Override

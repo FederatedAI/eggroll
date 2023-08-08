@@ -10,6 +10,7 @@ import com.eggroll.core.pojo.ErProcessor;
 import com.eggroll.core.pojo.ErResource;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.webank.eggroll.clustermanager.cluster.ClusterResourceManager;
 import com.webank.eggroll.clustermanager.dao.impl.NodeResourceService;
 import com.webank.eggroll.clustermanager.dao.impl.ProcessorResourceService;
 import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
@@ -33,7 +34,8 @@ public   class ResourceStateHandler implements  StateHandler<ErProcessor>{
         @Autowired
         NodeResourceService  nodeResourceService;
 
-
+        @Autowired
+        ClusterResourceManager    clusterResourceManager;
 
         @Override
         public ErProcessor prepare(Context context, ErProcessor data, String preStateParam, String desStateParam) {
@@ -53,6 +55,7 @@ public   class ResourceStateHandler implements  StateHandler<ErProcessor>{
                     updateResource(data,desStateParam);
                     break;
                 }
+            this.openAsynPostHandle(context);
             return  data;
         }
 
@@ -63,8 +66,13 @@ public   class ResourceStateHandler implements  StateHandler<ErProcessor>{
 
     private void preAllocateResource(ErProcessor erProcessor) {
             this.processorResourceService.insertProcessorResource(erProcessor);
-
     }
+
+
+      public void asynPostHandle(Context context, ErProcessor data, String preStateParam, String desStateParam){
+            this.clusterResourceManager.countAndUpdateNodeResource(data.getServerNodeId());
+      };
+
 
 
 
