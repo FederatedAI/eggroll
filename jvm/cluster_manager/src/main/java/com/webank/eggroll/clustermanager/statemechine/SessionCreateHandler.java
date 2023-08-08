@@ -26,7 +26,7 @@ public class SessionCreateHandler  extends AbstractSessionStateHandler{
 
     @Override
     public ErSessionMeta handle(Context context, ErSessionMeta erSessionMeta, String preStateParam, String desStateParam) {
-        ErSessionMeta   sessionInDb =  sessionMainService.getSession(erSessionMeta.getId(),true);
+        ErSessionMeta   sessionInDb =  sessionMainService.getSession(erSessionMeta.getId(),true,true,false);
         if(sessionInDb!=null)
             return  sessionInDb;
         // TODO: 2023/8/3

@@ -45,7 +45,7 @@ public class SessionStateMachine extends AbstractStateMachine<ErSessionMeta> imp
     @Override
     String buildStateChangeLine(Context context, ErSessionMeta erSessionMeta, String preStateParam, String desStateParam) {
         String  line= "";
-        ErSessionMeta  sessionInDb = sessionMainService.getSession(erSessionMeta.getId(),false);
+        ErSessionMeta  sessionInDb = sessionMainService.getSession(erSessionMeta.getId(),true,false,false);
         if(sessionInDb!=null){
             context.putData(Dict.SESSION_IN_DB,sessionInDb);
         }

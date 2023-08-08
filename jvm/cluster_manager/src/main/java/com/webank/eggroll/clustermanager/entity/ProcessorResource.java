@@ -3,10 +3,12 @@ package com.webank.eggroll.clustermanager.entity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.eggroll.core.pojo.ErResource;
 
 import java.util.Date;
 @TableName(value = "processor_resource", autoResultMap = true)
 public class ProcessorResource {
+
     @TableId(type = IdType.AUTO)
     private Long id;
 
@@ -42,6 +44,19 @@ public class ProcessorResource {
         this.pid = pid;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+    }
+
+    public ErResource  toErResource(){
+        ErResource  erResource = new ErResource();
+        erResource.setResourceId(this.id);
+        erResource.setProcessorId(this.processorId);
+        erResource.setAllocated(this.allocated);
+        erResource.setServerNodeId(this.serverNodeId.longValue());
+        erResource.setSessionId(this.sessionId);
+        erResource.setExtention(this.extention);
+        erResource.setStatus(this.status);
+        erResource.setResourceType(this.resourceType);
+        return  erResource;
     }
 
     public ProcessorResource() {

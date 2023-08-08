@@ -127,7 +127,7 @@ public class GrpcServer {
 //                    s"key crt path: ${keyCrt.getAbsoluteFile}, " +
 //                    s"ca crt path: ${caCrt.getAbsolutePath}")
         } else {
-            logger.info("gRPC server at ${port} starting in insecure mode");
+            logger.info("gRPC server at {} starting in insecure mode" ,port);
         }
         return nettyServerBuilder.build();
     }

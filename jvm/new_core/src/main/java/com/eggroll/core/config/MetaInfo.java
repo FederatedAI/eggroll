@@ -39,7 +39,7 @@ public class MetaInfo {
     @Config(confKey = "eggroll.zookeeper.register.port", pattern = Dict.POSITIVE_INTEGER_PATTERN)
     public static Integer ZOOKEEPER_PORT = 0  ;
     @Config(confKey = "eggroll.zookeeper.register.enable", pattern = Dict.BOOLEAN_PATTERN)
-    public static Boolean ZOOKEEPER_ENABLED;
+    public static Boolean ZOOKEEPER_ENABLED= false;
 
     @Config(confKey = "grpc.server.max.concurrent.call.per.connection", pattern = Dict.POSITIVE_INTEGER_PATTERN)
     public static int PROPERTY_GRPC_SERVER_MAX_CONCURRENT_CALL_PER_CONNECTION = 1000;
