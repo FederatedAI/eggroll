@@ -16,6 +16,8 @@ import io.grpc.stub.ServerCalls.asyncUnimplementedUnaryCall
 import io.grpc.stub.StreamObserver
 import org.apache.commons.lang3.StringUtils
 
+import scala.util.control.Breaks.{break, breakable}
+
  class  NodeManagerExtendTransferService extends ExtendTransferServerGrpc.ExtendTransferServerImplBase with Logging{
 
     override def getLog(responseObserver: StreamObserver[Extend.GetLogResponse]): StreamObserver[Extend.GetLogRequest] = {
@@ -27,19 +29,32 @@ import org.apache.commons.lang3.StringUtils
 
         override    def onNext(request: Extend.GetLogRequest): Unit = synchronized{
 
-          if(status=="init"){
-            try {
-              logInfo(s"receive get log request for ${request}");
-              logStreamHolder = containersServiceHandler.createLogStream(request, responseObserver)
-              status = "running"
-              logStreamHolder.run()
-            }catch {
-              case e:PathNotExistException =>
-                  logInfo(s"path not found for ${e.getMessage}")
-                  responseObserver.onNext(Extend.GetLogResponse.newBuilder().setCode("110").setMsg(e.getMessage).build())
-                  responseObserver.onCompleted()
+
+            breakable {
+              var  tryCount = 0
+              while(tryCount<20&&status=="init") {
+                tryCount=tryCount+1;
+                try {
+                  logInfo(s"receive get log request for ${request}");
+                  logStreamHolder = containersServiceHandler.createLogStream(request, responseObserver)
+                  if(status=="init"){
+                    logStreamHolder.run()
+                    status = "running"
+                  }else{
+                    responseObserver.onCompleted()
+                  }
+                  break()
+                } catch {
+                  case e: PathNotExistException =>
+                    Thread.sleep(5000)
+                    logInfo(s"path not found for ${e.getMessage}")
+                }
+              }
             }
-          }
+            if(logStreamHolder==null){
+              responseObserver.onNext(Extend.GetLogResponse.newBuilder().setCode("110").setMsg("log file is not found").build())
+              responseObserver.onCompleted()
+            }
         }
 
         override def onError(throwable: Throwable): Unit = {

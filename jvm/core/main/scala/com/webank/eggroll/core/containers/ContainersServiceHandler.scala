@@ -180,17 +180,7 @@ class ContainersServiceHandler(implicit ec: ExecutionContext,
       var rank = request.getRank
       var path: Path = getContainerLogsDir(sessionId, rank.toLong)
       path = path / (if(StringUtils.isNotEmpty(request.getLogType))request.getLogType else "INFO" ) + ".log"
-      var tryCount:Int = 0
-        breakable {
-          while (tryCount < 100) {
-            tryCount=tryCount+1
-            if(!path.exists){
-              Thread.sleep(1000)
-            }else{
-              break()
-            }
-          }
-        }
+
       if (!path.exists) {
         throw new PathNotExistException(s"can not found file ${path}")
       }
