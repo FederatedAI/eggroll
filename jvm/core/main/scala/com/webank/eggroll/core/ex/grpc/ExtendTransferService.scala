@@ -25,15 +25,17 @@ import org.apache.commons.lang3.StringUtils
         var  status :String = "init"
         var  logStreamHolder: LogStreamHolder = null
 
-        override def onNext(request: Extend.GetLogRequest): Unit = {
+        override    def onNext(request: Extend.GetLogRequest): Unit = synchronized{
+
           if(status=="init"){
             try {
-              logInfo(s"receive get log request ${request}");
+              logInfo(s"receive get log request for ${request}");
               logStreamHolder = containersServiceHandler.createLogStream(request, responseObserver)
               status = "running"
               logStreamHolder.run()
             }catch {
               case e:PathNotExistException =>
+                  logInfo(s"path not found for ${e.getMessage}")
                   responseObserver.onNext(Extend.GetLogResponse.newBuilder().setCode("110").setMsg(e.getMessage).build())
                   responseObserver.onCompleted()
             }

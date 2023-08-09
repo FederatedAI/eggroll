@@ -180,19 +180,23 @@ class ContainersServiceHandler(implicit ec: ExecutionContext,
       var rank = request.getRank
       var path: Path = getContainerLogsDir(sessionId, rank.toLong)
       path = path / (if(StringUtils.isNotEmpty(request.getLogType))request.getLogType else "INFO" ) + ".log"
-
+      var tryCount:Int = 0
+        breakable {
+          while (tryCount < 100) {
+            tryCount=tryCount+1
+            if(!path.exists){
+              Thread.sleep(1000)
+            }else{
+              break()
+            }
+          }
+        }
       if (!path.exists) {
-
         throw new PathNotExistException(s"can not found file ${path}")
-       // throw Status.INTERNAL.withDescription(s"can not found file ${path}").asRuntimeException()
-
       }
-
       var command ="tail -F -n  "+line +" "+ path
       var logStreamHolder = new LogStreamHolder(System.currentTimeMillis(), "tail -F -n  "+line +" "+ path, responseObserver, "running")
       return logStreamHolder
-
-
 
   }
 
@@ -239,11 +243,10 @@ object ContainersServiceHandler extends Logging {
       }
 
       def  run(): Unit ={
+        logInfo(s"log begin to run")
         thread = new Thread(()=>{
-
-
           try {
-            logInfo(s"begin ${command}")
+            logInfo(s"log stream begin ${command}")
             process = ProcessUtils.createProcess(command)
             bufferReader= new BufferedReader(new InputStreamReader(process.getInputStream()))
             var batchSize = 10;
@@ -285,7 +288,7 @@ object ContainersServiceHandler extends Logging {
                   logError("send onCmpleted error")
               }
             }
-            logInfo("===========log stream destroy over")
+            logInfo("log stream destroy over")
           }
 
         })
