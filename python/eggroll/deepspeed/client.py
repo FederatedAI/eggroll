@@ -53,15 +53,20 @@ class BaseClient:
             L.exception(f"Error calling to {self._endpoint}, command_uri: {command_uri}, req:{request}")
             raise Exception(f"failed to call {command_uri} to {self._endpoint}: {e}")
 
-
-    def  do_download(self,input: DsDownloadRequest)->DsDownloadResponse :
+    def do_download(self, input: DsDownloadRequest) -> DsDownloadResponse:
         try:
-            start = time.time()
             _channel = self._channel_factory.create_channel(self._endpoint)
-            _deepspped_stub = deepspeed_download_pb2_grpc.DsDownloadServiceStub(_channel)
-            response = _deepspped_stub.download(input)
-            return  response
+            _deepspeed_stub = deepspeed_download_pb2_grpc.DsDownloadServiceStub(_channel)
+            response = _deepspeed_stub.download(input)
+            return response
         except Exception as e:
-
             L.exception(f"Error calling to {self._endpoint}, download deepspeed , req:{input}")
             raise e
+
+    @property
+    def channel_factory(self):
+        return self._channel_factory
+
+    @property
+    def endpoint(self):
+        return self._endpoint
