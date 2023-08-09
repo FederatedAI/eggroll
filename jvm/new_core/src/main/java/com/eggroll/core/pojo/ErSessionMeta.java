@@ -135,7 +135,15 @@ public class ErSessionMeta implements RpcMessage {
     public void deserialize(byte[] data) {
         try {
             Meta.SessionMeta  sessionMeta =  Meta.SessionMeta.parseFrom(data);
+            List<Meta.Processor> processorsList = sessionMeta.getProcessorsList();
+            for (Meta.Processor meataProcessor:processorsList) {
+                ErProcessor erProcessor = new ErProcessor();
+                erProcessor.deserialize(meataProcessor.toByteArray());
+                this.processors.add(erProcessor);
+            }
             this.status = sessionMeta.getStatus();
+            this.setName(sessionMeta.getName());
+            this.setId(sessionMeta.getId());
         } catch (InvalidProtocolBufferException e) {
             e.printStackTrace();
         }
