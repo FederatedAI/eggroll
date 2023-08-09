@@ -2,7 +2,9 @@ package com.webank.eggroll.clustermanager.cluster;
 
 import com.eggroll.core.config.MetaInfo;
 import com.eggroll.core.constant.ProcessorStatus;
+import com.eggroll.core.constant.SessionStatus;
 import com.eggroll.core.context.Context;
+import com.eggroll.core.exceptions.ErSessionException;
 import com.eggroll.core.grpc.NodeManagerClient;
 import com.eggroll.core.pojo.*;
 import com.eggroll.core.utils.JsonUtil;
@@ -13,18 +15,23 @@ import com.webank.eggroll.clustermanager.dao.impl.SessionProcessorService;
 import com.webank.eggroll.clustermanager.entity.NodeResource;
 import com.webank.eggroll.clustermanager.entity.ServerNode;
 import com.webank.eggroll.clustermanager.entity.SessionProcessor;
+import com.webank.eggroll.clustermanager.job.JobServiceHandler;
+import com.webank.eggroll.clustermanager.session.SessionManager;
 import com.webank.eggroll.clustermanager.statemechine.ProcessorStateMechine;
+import com.webank.eggroll.clustermanager.statemechine.SessionStateMachine;
+import org.apache.commons.collections.map.HashedMap;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 
 @Service
@@ -40,6 +47,12 @@ public class ClusterManagerService {
     ProcessorStateMechine processorStateMechine;
     @Autowired
     SessionMainService sessionMainService;
+    @Autowired
+    JobServiceHandler jobServiceHandler;
+    @Autowired
+    SessionManager sessionManager;
+    @Autowired
+    ClusterResourceManager clusterResourceManager;
 
     Logger log = LoggerFactory.getLogger(ClusterManagerService.class);
 
@@ -104,7 +117,7 @@ public class ClusterManagerService {
         nodeManagerClient.killContainers(erSessionMeta);
     }
 
-    private Thread residualProcessorChecker = new Thread(new Runnable() {
+    Thread residualProcessorChecker = new Thread(new Runnable() {
         @Override
         public void run() {
             while (true) {
@@ -130,7 +143,7 @@ public class ClusterManagerService {
         }
     }, "REDIDUAL_PROCESS_CHECK_THREAD");
 
-    private Thread nodeProcessChecker = new Thread(new Runnable() {
+    Thread nodeProcessChecker = new Thread(new Runnable() {
         @Override
         public void run() {
             while (true) {
@@ -148,10 +161,97 @@ public class ClusterManagerService {
         Integer maxInterval = MetaInfo.EGGROLL_SESSION_START_TIMEOUT_MS * 2;
         long interval = current - session.getCreateTime().getTime();
         log.debug("watch deepspeed new session: {} {}  {}", session.getId(), interval, maxInterval);
-        if(interval > maxInterval){
-
+        if (interval > maxInterval) {
+            jobServiceHandler.killJob(session.getId());
         }
     }
+
+    public void checkAndHandleEggpairOutTimeSession(ErSessionMeta session, List<ErProcessor> sessionProcessors) {
+        long current = System.currentTimeMillis();
+        if (session.getCreateTime().getTime() < current - MetaInfo.EGGROLL_SESSION_STATUS_NEW_TIMEOUT_MS) {
+            //session: ErSessionMeta, afterState: String
+            log.info("session " + session + " status stay at " + session.getStatus() + " too long, prepare to kill");
+            sessionManager.killSession(null, session.getId());
+        }
+    }
+
+    public void checkAndHandleEggpairActiveSession(ErSessionMeta session, List<ErProcessor> sessionProcessors) {
+        long now = System.currentTimeMillis();
+        long liveTime = MetaInfo.EGGROLL_SESSION_MAX_LIVE_MS;
+        if (session.getCreateTime().getTime() < now - liveTime) {
+            log.error("session " + session.getId() + " is timeout, live time is " + liveTime + ", max live time in config is " + MetaInfo.EGGROLL_SESSION_MAX_LIVE_MS);
+            sessionManager.killSession(null, session);
+        } else {
+            List<ErProcessor> invalidProcessor = sessionProcessors.stream().filter(p -> StringUtils.equalsAny(p.getStatus(),
+                    ProcessorStatus.ERROR.name(), ProcessorStatus.KILLED.name(), ProcessorStatus.STOPPED.name())).collect(Collectors.toList());
+            if (invalidProcessor.size() > 0) {
+                boolean needKillSession = invalidProcessor.stream().anyMatch(p -> p.getUpdatedAt().getTime() < now - MetaInfo.EGGROLL_SESSION_STOP_TIMEOUT_MS);
+                if (needKillSession) {
+                    log.info("invalid processors " + JsonUtil.object2Json(invalidProcessor) + ", session watcher kill eggpair session " + session);
+                    sessionManager.killSession(null, session);
+                }
+            }
+        }
+    }
+
+    public void checkAndHandleDeepspeedActiveSession(ErSessionMeta session, List<ErProcessor> sessionProcessors) {
+        log.info("checkAndHandleDeepspeedActiveSession " + session.getId() + " " + JsonUtil.object2Json(sessionProcessors));
+
+        if (sessionProcessors.stream().anyMatch(p -> ProcessorStatus.ERROR.name().equals(p.getStatus()))) {
+            log.info("session watcher kill session " + session);
+            try {
+                jobServiceHandler.killJob(session.getId());
+            } catch (ErSessionException e) {
+                log.error("failed to kill session " + session.getId(), e);
+            }
+        } else if (sessionProcessors.stream().anyMatch(p -> ProcessorStatus.FINISHED.name().equals(p.getStatus()))) {
+            session.setStatus(SessionStatus.FINISHED.name());
+            sessionMainService.updateSessionMain(session, erSessionMeta -> erSessionMeta.getProcessors().forEach(processor -> processorStateMechine.changeStatus(new Context(), processor, null, erSessionMeta.getStatus())));
+        }
+        log.debug("found all processor belongs to session " + session.getId() + " finished, update session status to `Finished`");
+    }
+
+//    private void killJob(String sessionId, boolean isTimeout) {
+//        log.info("killing job " + sessionId);
+//        try {
+//            clusterResourceManager.lockSession(sessionId);
+//            clusterResourceManager.getKillJobMap().put(sessionId, System.currentTimeMillis());
+//            if (sessionMainService.getById(sessionId) == null) {
+//                return;
+//            }
+//            ErSessionMeta sessionMeta = sessionMainService.getSession(sessionId);
+//            if (StringUtils.equalsAny(sessionMeta.getStatus(), SessionStatus.KILLED.name(), SessionStatus.CLOSED.name(), SessionStatus.ERROR.name())) {
+//                return;
+//            }
+//            Map<Long, List<ErProcessor>> serverIdErProcessorsMap = sessionMeta.getProcessors()
+//                    .stream().collect(Collectors.groupingBy(ErProcessor::getServerNodeId));
+//
+//            Map<ErServerNode,List<ErProcessor>> nodeAndProcessors = new HashMap<>();
+//            serverIdErProcessorsMap.forEach((nodeId, processors) -> {
+//                ServerNode serverNode = serverNodeService.getById(nodeId);
+//                if(serverNode!=null){
+//                    nodeAndProcessors.put(serverNode.toErServerNode(),processors);
+//                }
+//            });
+//            nodeAndProcessors.forEach((node, processors)->{
+//                KillContainersRequest killContainersRequest = new KillContainersRequest();
+//                killContainersRequest.setSessionId(sessionId);
+//                List<Long> processorIdList = new ArrayList<>();
+//                for (ErProcessor processor : processors) {
+//                    processorIdList.add(processor.getId());
+//                }
+//                try {
+//                    killContainersRequest.setContainers(processorIdList);
+//                    new NodeManagerClient(node.getEndpoint()).killJobContainers(killContainersRequest);
+//                } catch (Exception e) {
+//                    log.error("killContainers error : ", e);
+//                }
+//            });
+//            smDao.updateSessionMain(sessionMeta.copy(status = SessionStatus.ERROR), defaultSessionCallback);
+//        } finally {
+//            ClusterResourceManager.unlockSession(sessionId);
+//        }
+//    }
 
 
     public ErNodeHeartbeat nodeHeartbeat(ErNodeHeartbeat nodeHeartbeat) {

@@ -27,6 +27,8 @@ public abstract class AbstractStateMachine<T> {
     public AbstractStateMachine(){
 
     }
+    abstract String  buildStateChangeLine(Context context , T t, String preStateParam, String desStateParam);
+
     protected  void registeStateHander(String  statusLine,StateHandler handler){
 
         if(statueChangeHandlerMap.contains(statusLine)){
@@ -50,8 +52,6 @@ public abstract class AbstractStateMachine<T> {
 
     }
 
-
-    abstract String  buildStateChangeLine(Context context , T t, String preStateParam, String desStateParam);
 
 
 

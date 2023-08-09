@@ -2,6 +2,7 @@ package com.eggroll.core.pojo;
 
 import com.eggroll.core.constant.SessionStatus;
 import com.eggroll.core.constant.StringConstants;
+import com.eggroll.core.utils.JsonUtil;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.webank.eggroll.core.meta.Meta;
 import org.apache.commons.lang3.StringUtils;
@@ -123,6 +124,11 @@ public class ErSessionMeta implements RpcMessage {
         builder.setTag(this.tag);
         return builder.build().toByteArray();
 
+    }
+
+    @Override
+    public String toString() {
+        return JsonUtil.object2Json(this);
     }
 
     @Override

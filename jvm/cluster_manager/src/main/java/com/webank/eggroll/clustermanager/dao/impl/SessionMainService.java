@@ -1,5 +1,6 @@
 package com.webank.eggroll.clustermanager.dao.impl;
 
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.eggroll.core.pojo.ErProcessor;
 import com.eggroll.core.pojo.ErSessionMeta;
 import com.google.common.collect.Maps;
@@ -9,10 +10,13 @@ import com.webank.eggroll.clustermanager.entity.SessionOption;
 import com.webank.eggroll.clustermanager.entity.SessionProcessor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 @Service
@@ -44,12 +48,6 @@ public class SessionMainService extends EggRollBaseServiceImpl<SessionMainMapper
         return session;
     }
 
-
-
-
-
-
-
     public ErSessionMeta getSession(String sessionId,boolean  withProcessor,boolean withOption,boolean  withResource){
         ErSessionMeta  erSessionMeta = null;
         SessionMain  sessionMain = this.baseMapper.selectById(sessionId);
@@ -74,4 +72,19 @@ public class SessionMainService extends EggRollBaseServiceImpl<SessionMainMapper
         SessionMain sessionMain = this.getById(sessionId);
         return sessionMain.toErSessionMeta();
     }
+
+    @Transactional
+    public void updateSessionMain(ErSessionMeta sessionMeta, Consumer<ErSessionMeta> afterCall) {
+        UpdateWrapper<SessionMain> updateWrapper = new UpdateWrapper<>();
+        updateWrapper.lambda().set(SessionMain::getName,sessionMeta.getName())
+                .set(SessionMain::getStatus,sessionMeta.getStatus())
+                .set(SessionMain::getTag,sessionMeta.getTag())
+                .set(SessionMain::getActiveProcCount,sessionMeta.getActiveProcCount())
+                .eq(SessionMain::getSessionId,sessionMeta.getId());
+        this.update(updateWrapper);
+        if(afterCall!=null){
+            afterCall.accept(sessionMeta);
+        }
+    }
+
 }

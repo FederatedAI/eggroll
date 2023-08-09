@@ -18,9 +18,7 @@
 
 package com.eggroll.core.grpc;
 
-import com.eggroll.core.pojo.ErEndpoint;
-import com.eggroll.core.pojo.ErProcessor;
-import com.eggroll.core.pojo.ErSessionMeta;
+import com.eggroll.core.pojo.*;
 
 import static com.eggroll.core.grpc.CommandUri.*;
 
@@ -66,6 +64,13 @@ public class NodeManagerClient {
   public ErSessionMeta  killContainers(ErSessionMeta sessionMeta) {
     byte[] responseData = commandClient.call(nodeManagerEndpoint, killContainers,sessionMeta.serialize());
     ErSessionMeta response = new ErSessionMeta();
+    response.deserialize(responseData);
+    return response;
+  }
+
+  public KillContainersResponse killJobContainers(KillContainersRequest killContainersRequest){
+    byte[] responseData = commandClient.call(nodeManagerEndpoint, killContainers, killContainersRequest.serialize());
+    KillContainersResponse response = new KillContainersResponse();
     response.deserialize(responseData);
     return response;
   }

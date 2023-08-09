@@ -14,6 +14,7 @@ import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
 import com.webank.eggroll.clustermanager.dao.impl.SessionMainService;
 import com.webank.eggroll.clustermanager.dao.impl.dao.SessionMetaDao;
 import com.webank.eggroll.clustermanager.entity.ProcessorResource;
+import lombok.Data;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,13 +31,14 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 @Service
+@Data
 public class ClusterResourceManager implements ApplicationListener<ApplicationReadyEvent> {
 
     Logger log = LoggerFactory.getLogger(ClusterResourceManager.class);
 
-    Map<String, ReentrantLock> sessionLockMap = new ConcurrentHashMap<>();
-    Map<String, Long> killJobMap = new ConcurrentHashMap<>();
-    FifoBroker<ResourceApplication> applicationQueue = new FifoBroker<>();
+    private Map<String, ReentrantLock> sessionLockMap = new ConcurrentHashMap<>();
+    private Map<String, Long> killJobMap = new ConcurrentHashMap<>();
+    private FifoBroker<ResourceApplication> applicationQueue = new FifoBroker<>();
 
     @Autowired
     SessionMainService sessionMainService;
