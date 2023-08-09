@@ -1,7 +1,6 @@
 import datetime
 import enum
 import json
-import os
 import threading
 import time
 import typing
@@ -12,8 +11,8 @@ from multiprocessing.dummy import Pool as ThreadPool
 
 from eggroll.core.conf_keys import SessionConfKeys
 from eggroll.core.constants import SessionStatus
-from eggroll.core.proto import containers_pb2, deepspeed_pb2, deepspeed_download_pb2, meta_pb2
-
+from eggroll.core.proto import containers_pb2, deepspeed_pb2, deepspeed_download_pb2, meta_pb2, \
+    extend_pb2_grpc, extend_pb2
 from ..client import BaseClient
 from .commands import JobCommands
 from ..store.client import destroy
@@ -204,8 +203,9 @@ class DeepspeedJob:
         finally:
             self.close_session(session_id=download_session_id)
             print("over")
+
     def close_session(self,session_id):
-        if(session_id!=None):
+        if session_id is not None:
             session = meta_pb2.SessionMeta(id=session_id)
             download_job_response = self._get_client().do_sync_request(
                 session, output_type=meta_pb2.SessionMeta, command_uri=SessionCommands.STOP_SESSION
@@ -256,12 +256,51 @@ class DeepspeedJob:
         #     with open(path, "wb") as f:
         #         f.write(content.content)
 
-        for content in  download_job_response.container_content:
-            path =  rank_to_path(content.rank)
+        for content in download_job_response.container_content:
+            path = rank_to_path(content.rank)
             with open(path, "wb") as f:
                 f.write(content.content)
+
     def cleanup(self):
         try:
             destroy(self._get_client(), self._session_id)
         except Exception as e:
             pass
+
+    @staticmethod
+    def generator_yields(build):
+        while True:
+            yield build
+
+    @staticmethod
+    def writer(stream, logging=None):
+        if not logging:
+            logging = print
+        try:
+            for res in stream:
+                if str(res.code) == "0":
+                    for info in res.datas:
+                        logging(info)
+                else:
+                    # logging(f"get log return code {res.code}")
+                    pass
+        except Exception as e:
+            logging(e)
+
+    def cancel_stream(self, stream):
+        self.await_finished()
+        time.sleep(5)
+        stream.cancel()
+
+    def write_logs_to(self, rank: str = "0", start_line: int = 0, log_type: str = "INFO", logging: object = None):
+        builds = self.generator_yields(extend_pb2.GetLogRequest(
+            sessionId=self.session_id, rank=rank, startLine=start_line, logType=log_type)
+        )
+        channel = self._get_client().channel_factory
+        stub = extend_pb2_grpc.ExtendTransferServerStub(channel.create_channel(self._get_client().endpoint))
+        stream = stub.getLog(builds)
+        _writer = threading.Thread(target=self.writer, args=(stream, logging))
+        _cancel = threading.Thread(target=self.cancel_stream, args=stream)
+        _writer.start()
+        _cancel.start()
+        return _writer, _cancel
