@@ -1,5 +1,6 @@
 package com.webank.eggroll.clustermanager.dao.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.eggroll.core.pojo.ErProcessor;
 import com.eggroll.core.pojo.ErSessionMeta;
@@ -85,6 +86,17 @@ public class SessionMainService extends EggRollBaseServiceImpl<SessionMainMapper
         if(afterCall!=null){
             afterCall.accept(sessionMeta);
         }
+    }
+
+    public List<ErSessionMeta> getSessionMainsByStatus(List<String> status){
+        QueryWrapper<SessionMain> queryWrapper = new QueryWrapper<>();
+        queryWrapper.lambda().in(SessionMain::getStatus,status);
+        List<SessionMain> essionMainList = this.list(queryWrapper);
+        List<ErSessionMeta> result = new ArrayList<>();
+        for (SessionMain sessionMain : essionMainList) {
+            result.add(sessionMain.toErSessionMeta());
+        }
+        return result;
     }
 
 }

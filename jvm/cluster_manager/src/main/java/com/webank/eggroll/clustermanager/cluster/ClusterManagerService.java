@@ -2,6 +2,7 @@ package com.webank.eggroll.clustermanager.cluster;
 
 import com.eggroll.core.config.MetaInfo;
 import com.eggroll.core.constant.ProcessorStatus;
+import com.eggroll.core.constant.ServerNodeStatus;
 import com.eggroll.core.constant.SessionStatus;
 import com.eggroll.core.context.Context;
 import com.eggroll.core.exceptions.ErSessionException;
@@ -18,24 +19,26 @@ import com.webank.eggroll.clustermanager.entity.SessionProcessor;
 import com.webank.eggroll.clustermanager.job.JobServiceHandler;
 import com.webank.eggroll.clustermanager.session.SessionManager;
 import com.webank.eggroll.clustermanager.statemechine.ProcessorStateMechine;
-import com.webank.eggroll.clustermanager.statemechine.SessionStateMachine;
-import org.apache.commons.collections.map.HashedMap;
 import org.apache.commons.lang3.StringUtils;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEvent;
+import org.springframework.context.ApplicationListener;
 import org.springframework.stereotype.Service;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 
 @Service
-public class ClusterManagerService {
+public class ClusterManagerService implements ApplicationListener {
 
     @Autowired
     ServerNodeService serverNodeService;
@@ -117,28 +120,25 @@ public class ClusterManagerService {
         nodeManagerClient.killContainers(erSessionMeta);
     }
 
-    Thread residualProcessorChecker = new Thread(new Runnable() {
-        @Override
-        public void run() {
-            while (true) {
-                try {
-                    residualHeartbeatMap.forEach((k, v) -> {
-                        try {
-                            killResidualProcessor(v);
-                            residualHeartbeatMap.remove(k);
-                        } catch (Throwable e) {
-                            e.printStackTrace();
-                            log.error("kill residual processor error: " + e.getMessage());
-                        }
-                    });
-                } catch (Throwable e) {
-                    e.printStackTrace();
-                }
-                try {
-                    Thread.sleep(MetaInfo.CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
+    Thread redidualProcessorChecker = new Thread(() -> {
+        while (true) {
+            try {
+                residualHeartbeatMap.forEach((k, v) -> {
+                    try {
+                        killResidualProcessor(v);
+                        residualHeartbeatMap.remove(k);
+                    } catch (Throwable e) {
+                        e.printStackTrace();
+                        log.error("kill residual processor error: " + e.getMessage());
+                    }
+                });
+            } catch (Throwable e) {
+                e.printStackTrace();
+            }
+            try {
+                Thread.sleep(MetaInfo.CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
         }
     }, "REDIDUAL_PROCESS_CHECK_THREAD");
@@ -210,6 +210,80 @@ public class ClusterManagerService {
         }
         log.debug("found all processor belongs to session " + session.getId() + " finished, update session status to `Finished`");
     }
+
+    private final Thread sessionWatcher = new Thread(() -> {
+        while (true) {
+            try {
+                List<ErSessionMeta> sessions = sessionMainService.getSessionMainsByStatus(Arrays.asList(SessionStatus.ACTIVE.name(), SessionStatus.NEW.name()));
+
+                for (ErSessionMeta session : sessions) {
+                    try {
+                        List<ErProcessor> sessionProcessors = sessionMainService.getSession(session.getId()).getProcessors();
+                        String ACTIVE = SessionStatus.ACTIVE.name();
+                        String NEW = SessionStatus.NEW.name();
+
+                        switch (session.getName()) {
+                            case "DeepSpeed":
+                                log.debug("watch deepspeed session: " + session.getId() + " " + session.getStatus());
+                                if (SessionStatus.ACTIVE.name().equals(session.getStatus())) {
+                                    checkAndHandleDeepspeedActiveSession(session, sessionProcessors);
+                                } else if (SessionStatus.NEW.name().equals(session.getStatus())) {
+                                    checkAndHandleDeepspeedOutTimeSession(session, sessionProcessors);
+                                }
+                                break;
+                            default:
+                                if (SessionStatus.ACTIVE.name().equals(session.getStatus())) {
+                                    checkAndHandleEggpairActiveSession(session, sessionProcessors);
+                                } else if (SessionStatus.NEW.name().equals(session.getStatus())) {
+                                    checkAndHandleEggpairOutTimeSession(session, sessionProcessors);
+                                }
+                                break;
+                        }
+                    } catch (Throwable e) {
+                        log.error("session watcher handle session " + session.getId() + " error " + e.getMessage());
+                        e.printStackTrace();
+                    }
+                }
+
+                Thread.sleep(MetaInfo.EGGROLL_SESSION_STATUS_CHECK_INTERVAL_MS);
+            } catch (Throwable e) {
+                log.error("session watcher handle error ", e);
+            }
+        }
+    }, "SESSION_WATCHER_THREAD");
+
+    private final Thread nodeHeartbeatChecker = new Thread(() -> {
+        long expire = MetaInfo.CONFKEY_CLUSTER_MANAGER_NODE_HEARTBEAT_EXPIRED_COUNT *
+                MetaInfo.CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL;
+
+        while (true) {
+            try {
+                long now = System.currentTimeMillis();
+                ErServerNode erServerNode = new ErServerNode();
+                erServerNode.setStatus(ServerNodeStatus.HEALTHY.name());
+                List<ErServerNode> nodes = serverNodeService.getListByErServerNode(erServerNode);
+
+                for (ErServerNode node : nodes) {
+                    long interval = now - (node.getLastHeartBeat() != null ?
+                            node.getLastHeartBeat().getTime() : now);
+                    if (interval > expire) {
+                        log.info("server node " + node + " change status to LOSS");
+                        node.setStatus(ServerNodeStatus.LOSS.name());
+                        updateNode(node, false, false);
+                    }
+                }
+            } catch (Throwable e) {
+                log.error("handle node heart beat error: ", e);
+            }
+
+            try {
+                Thread.sleep(expire + 1000);
+            } catch (InterruptedException e) {
+                log.error("node heartbeat checker thread interrupted: ", e);
+                Thread.currentThread().interrupt();
+            }
+        }
+    }, "NODE_HEART_BEAT_CHECK_THREAD");
 
 //    private void killJob(String sessionId, boolean isTimeout) {
 //        log.info("killing job " + sessionId);
@@ -341,5 +415,13 @@ public class ClusterManagerService {
         ServerNode existNode = serverNodeService.createByErNode(serverNode);
         serverNode.setId(existNode.getServerNodeId());
         return registerResource(serverNode);
+    }
+
+    @Override
+    public void onApplicationEvent(@NotNull ApplicationEvent event) {
+        sessionWatcher.start();
+        nodeHeartbeatChecker.start();
+        nodeProcessChecker.start();
+        redidualProcessorChecker.start();
     }
 }
