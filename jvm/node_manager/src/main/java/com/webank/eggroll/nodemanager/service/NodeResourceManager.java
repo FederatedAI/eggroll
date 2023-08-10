@@ -5,23 +5,21 @@ import com.eggroll.core.config.MetaInfo;
 import com.eggroll.core.grpc.ClusterManagerClient;
 import com.eggroll.core.pojo.ErEndpoint;
 import com.eggroll.core.pojo.ErNodeHeartbeat;
+import com.eggroll.core.pojo.ErResource;
 import com.eggroll.core.pojo.ErServerNode;
 import com.eggroll.core.utils.NetUtils;
 import com.webank.eggroll.nodemanager.env.Shell;
 import com.webank.eggroll.nodemanager.env.SysInfoLinux;
 import com.webank.eggroll.nodemanager.meta.NodeManagerMeta;
 import com.webank.eggroll.nodemanager.pojo.ResourceWrapper;
-import com.webank.eggroll.nodemanager.processor.DefaultProcessorManager;
 import com.webank.eggroll.nodemanager.utils.GetSystemInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class NodeResourceManager {
 
@@ -31,10 +29,28 @@ public class NodeResourceManager {
 
     ClusterManagerClient client;
 
-    //todo
-    Long physicalMemorySize = 0L;
+    Long physicalMemorySize;
+    HeartBeatThread heartBeatThread;
+    ResourceCountThread resourceCountThread;
 
-    Map<String, ResourceWrapper> resourceMap = new HashMap<>();
+    Map<String, ResourceWrapper> resourceMap;
+
+    public NodeResourceManager() {
+        int cpus = MetaInfo.CONFKEY_NODE_MANAGER_CPU_VCORES == null ? getAvailableProcessors() : MetaInfo.CONFKEY_NODE_MANAGER_CPU_VCORES;
+        int gpus = MetaInfo.CONFKEY_NODE_MANAGER_GPU_VCORES == null ? getGpuSize() : MetaInfo.CONFKEY_NODE_MANAGER_GPU_VCORES;
+        ResourceWrapper cpuCore = new ResourceWrapper(Dict.VCPU_CORE, new AtomicLong(cpus));
+        ResourceWrapper physicalMemory = new ResourceWrapper(Dict.PHYSICAL_MEMORY, new AtomicLong(getPhysicalMemorySize()));
+        ResourceWrapper gpuCore = new ResourceWrapper(Dict.VGPU_CORE, new AtomicLong(gpus));
+        resourceMap = new HashMap<>();
+        resourceMap.put(Dict.VCPU_CORE, cpuCore);
+        resourceMap.put(Dict.PHYSICAL_MEMORY, physicalMemory);
+        resourceMap.put(Dict.VGPU_CORE, gpuCore);
+
+
+        physicalMemorySize = getPhysicalMemorySize();
+        heartBeatThread = new HeartBeatThread();
+        resourceCountThread = new ResourceCountThread();
+    }
 
     public ResourceWrapper getResourceWrapper(String rType) {
         return resourceMap.get(rType);
@@ -70,9 +86,10 @@ public class NodeResourceManager {
         return resourceWrapper.getAllocated().getAndAdd(-count);
     }
 
-    // todo
     public void start() {
-
+        NodeManagerMeta.loadNodeManagerMetaFromFile();
+        heartBeatThread.start();
+        resourceCountThread.start();
     }
 
     public Long getPhysicalMemorySize() {
@@ -83,11 +100,11 @@ public class NodeResourceManager {
         }
     }
 
-    public Long getGpuSize() {
-        Long defaultSize = 0L;
+    public Integer getGpuSize() {
+        Integer defaultSize = 0;
         if (Shell.LINUX) {
             try {
-                defaultSize = Long.valueOf(sysInfo.getGpuNumber());
+                defaultSize = sysInfo.getGpuNumber();
             } catch (IOException e) {
                 logger.error("get gpuSize failed: {}", e.getMessage());
             }
@@ -111,7 +128,6 @@ public class NodeResourceManager {
         }
     }
 
-    // todo  physicalMemorySize--->init
     public void countMemoryResource() {
         Long available = 0L;
         if (Shell.LINUX) {
@@ -137,12 +153,24 @@ public class NodeResourceManager {
 
     }
 
-    //todo
     public ErServerNode queryNodeResource(ErServerNode erServerNode) {
         ErServerNode newErServerNode = new ErServerNode();
         BeanUtils.copyProperties(erServerNode, newErServerNode);
         newErServerNode.setId(NodeManagerMeta.serverNodeId);
-
+        Iterator<ResourceWrapper> iterator = resourceMap.values().iterator();
+        List<ErResource> resources = new ArrayList<>();
+        while (iterator.hasNext()) {
+            ResourceWrapper wrapper = iterator.next();
+            if (wrapper.getTotal().get() != -1) {
+                ErResource erResource = new ErResource();
+                erResource.setResourceType(wrapper.getResourceType());
+                erResource.setTotal(wrapper.getTotal().get());
+                erResource.setUsed(wrapper.getUsed().get());
+                erResource.setAllocated(wrapper.getAllocated().get());
+                resources.add(erResource);
+            }
+        }
+        newErServerNode.setResources(resources);
         return newErServerNode;
     }
 
@@ -167,16 +195,44 @@ public class NodeResourceManager {
         }
     }
 
-    //todo
     class HeartBeatThread extends Thread {
-
+        public ErNodeHeartbeat generateNodeBeat(Long seq) {
+            String nodeHost = MetaInfo.CONFKEY_NODE_MANAGER_HOST == null ? NetUtils.getLocalHost() : MetaInfo.CONFKEY_NODE_MANAGER_HOST;
+            int nodePort = MetaInfo.CONFKEY_NODE_MANAGER_PORT;
+            ErEndpoint endpoint = new ErEndpoint(nodeHost, nodePort);
+            ErServerNode erServerNode = new ErServerNode(NodeManagerMeta.serverNodeId, Dict.NODE_MANAGER, endpoint, NodeManagerMeta.status);
+            ErNodeHeartbeat nodeHeartbeat = new ErNodeHeartbeat(seq, queryNodeResource(erServerNode));
+            return nodeHeartbeat;
+        }
 
         @Override
         public void run() {
             Boolean notOver = true;
             Long seq = 0L;
             while (notOver) {
-
+                try {
+                    seq += 1;
+                    ErNodeHeartbeat nodeHeartBeat = client.nodeHeartbeat(generateNodeBeat(seq));
+                    if (nodeHeartBeat != null && nodeHeartBeat.getNode() != null) {
+                        if (NodeManagerMeta.status.equals(Dict.INIT)) {
+                            if (nodeHeartBeat.getNode().getId() != -1) {
+                                NodeManagerMeta.serverNodeId = nodeHeartBeat.getNode().getId();
+                                NodeManagerMeta.clusterId = nodeHeartBeat.getNode().getClusterId();
+                                logger.info("get node id {} from cluster-manager", NodeManagerMeta.serverNodeId);
+                                NodeManagerMeta.refreshServerNodeMetaIntoFile();
+                                NodeManagerMeta.status = Dict.HEALTHY;
+                            }
+                            logger.info("get node id {} from cluster-manager", NodeManagerMeta.serverNodeId);
+                        }
+                    }
+                } catch (Exception e) {
+                    logger.error("node heart beat error {}", e.getMessage());
+                }
+                try {
+                    Thread.sleep(MetaInfo.CONFKEY_NODE_MANAGER_HEARTBEAT_INTERVAL);
+                } catch (InterruptedException e) {
+                    logger.error("node heart beat error {}", e.getMessage());
+                }
             }
         }
     }

@@ -10,4 +10,9 @@ public class ResourceWrapper {
     AtomicLong total = new AtomicLong(0);
     AtomicLong used = new AtomicLong(0);
     AtomicLong allocated = new AtomicLong(0);
+
+    public ResourceWrapper(String resourceType, AtomicLong total) {
+        this.resourceType = resourceType;
+        this.total = total;
+    }
 }

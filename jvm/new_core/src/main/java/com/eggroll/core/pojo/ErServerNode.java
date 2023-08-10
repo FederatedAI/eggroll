@@ -56,6 +56,13 @@ public class ErServerNode implements RpcMessage {
         this.resources = new ArrayList<>();
     }
 
+    public ErServerNode(Long id,String nodeType,ErEndpoint endpoint,String status) {
+        this.id = id;
+        this.endpoint = endpoint;
+        this.nodeType = nodeType;
+        this.status = status;
+    }
+
     @Override
     public String toString() {
         return "<ErServerNode(id=" + id + ", name=" + name +
