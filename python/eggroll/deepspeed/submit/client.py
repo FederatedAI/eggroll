@@ -268,9 +268,10 @@ class DeepspeedJob:
             pass
 
     @staticmethod
-    def generator_yields(build):
-        while True:
+    def generator_yields(build, flag):
+        while len(flag):
             yield build
+            time.sleep(10)
 
     @staticmethod
     def writer(stream, logging=None):
@@ -285,22 +286,29 @@ class DeepspeedJob:
                     # logging(f"get log return code {res.code}")
                     pass
         except Exception as e:
-            logging(e)
+            pass
 
-    def cancel_stream(self, stream):
+    def cancel_stream(self, stream, flag):
         self.await_finished()
         time.sleep(5)
         stream.cancel()
+        try:
+            # control stream end
+            flag.pop()
+        except:
+            pass
 
     def write_logs_to(self, rank: str = "0", start_line: int = 0, log_type: str = "INFO", logging: object = None):
+        flag = [0]
         builds = self.generator_yields(extend_pb2.GetLogRequest(
-            sessionId=self.session_id, rank=rank, startLine=start_line, logType=log_type)
+            sessionId=self.session_id, rank=rank, startLine=start_line, logType=log_type),
+            flag
         )
         channel = self._get_client().channel_factory
         stub = extend_pb2_grpc.ExtendTransferServerStub(channel.create_channel(self._get_client().endpoint))
         stream = stub.getLog(builds)
         _writer = threading.Thread(target=self.writer, args=(stream, logging))
-        _cancel = threading.Thread(target=self.cancel_stream, args=stream)
+        _cancel = threading.Thread(target=self.cancel_stream, args=(stream, flag))
         _writer.start()
         _cancel.start()
         return _writer, _cancel
