@@ -1,38 +1,18 @@
 package com.eggroll.core.pojo;
 
+import com.webank.eggroll.core.meta.Meta;
+import lombok.Data;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+@Data
 public class ErStore implements RpcMessage {
     private ErStoreLocator storeLocator;
     private List<ErPartition> partitions;
     private Map<String, String> options;
-
-    public ErStoreLocator getStoreLocator() {
-        return storeLocator;
-    }
-
-    public void setStoreLocator(ErStoreLocator storeLocator) {
-        this.storeLocator = storeLocator;
-    }
-
-    public List<ErPartition> getPartitions() {
-        return partitions;
-    }
-
-    public void setPartitions(List<ErPartition> partitions) {
-        this.partitions = partitions;
-    }
-
-    public Map<String, String> getOptions() {
-        return options;
-    }
-
-    public void setOptions(Map<String, String> options) {
-        this.options = options;
-    }
 
     public ErStore(ErStoreLocator storeLocator, List<ErPartition> partitions, Map<String, String> options) {
         this.storeLocator = storeLocator;
@@ -66,6 +46,10 @@ public class ErStore implements RpcMessage {
 
     @Override
     public byte[] serialize() {
+//        Meta.Store.Builder builder = Meta.Store.newBuilder();
+//        builder.setStoreLocator()
+//        builder.setPartitions()
+//        builder.op
         return new byte[0];
     }
 

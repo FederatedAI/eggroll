@@ -2,11 +2,13 @@ package com.eggroll.core.pojo;
 
 import com.eggroll.core.config.Dict;
 import com.eggroll.core.constant.StringConstants;
+import lombok.Data;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.UUID;
 
 
+@Data
 public class ErStoreLocator implements MetaRpcMessage {
     private Long id;
     private String storeType;
@@ -14,69 +16,6 @@ public class ErStoreLocator implements MetaRpcMessage {
     private String name;
     private String path;
 
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getStoreType() {
-        return storeType;
-    }
-
-    public void setStoreType(String storeType) {
-        this.storeType = storeType;
-    }
-
-    public String getNamespace() {
-        return namespace;
-    }
-
-    public void setNamespace(String namespace) {
-        this.namespace = namespace;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getPath() {
-        return path;
-    }
-
-    public void setPath(String path) {
-        this.path = path;
-    }
-
-    public Integer getTotalPartitions() {
-        return totalPartitions;
-    }
-
-    public void setTotalPartitions(Integer totalPartitions) {
-        this.totalPartitions = totalPartitions;
-    }
-
-    public String getPartitioner() {
-        return partitioner;
-    }
-
-    public void setPartitioner(String partitioner) {
-        this.partitioner = partitioner;
-    }
-
-    public String getSerdes() {
-        return serdes;
-    }
-
-    public void setSerdes(String serdes) {
-        this.serdes = serdes;
-    }
 
     private Integer totalPartitions;
     private String partitioner;
