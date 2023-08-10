@@ -3,9 +3,11 @@ package com.webank.eggroll.clustermanager.entity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import lombok.Data;
 
 import java.util.Date;
 @TableName(value = "store_locator", autoResultMap = true)
+@Data
 public class StoreLocator {
     @TableId(type = IdType.AUTO)
     private Long storeLocatorId;
@@ -48,102 +50,6 @@ public class StoreLocator {
     }
 
     public StoreLocator() {
-        super();
     }
 
-    public Long getStoreLocatorId() {
-        return storeLocatorId;
-    }
-
-    public void setStoreLocatorId(Long storeLocatorId) {
-        this.storeLocatorId = storeLocatorId;
-    }
-
-    public String getStoreType() {
-        return storeType;
-    }
-
-    public void setStoreType(String storeType) {
-        this.storeType = storeType == null ? null : storeType.trim();
-    }
-
-    public String getNamespace() {
-        return namespace;
-    }
-
-    public void setNamespace(String namespace) {
-        this.namespace = namespace == null ? null : namespace.trim();
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name == null ? null : name.trim();
-    }
-
-    public String getPath() {
-        return path;
-    }
-
-    public void setPath(String path) {
-        this.path = path == null ? null : path.trim();
-    }
-
-    public Integer getTotalPartitions() {
-        return totalPartitions;
-    }
-
-    public void setTotalPartitions(Integer totalPartitions) {
-        this.totalPartitions = totalPartitions;
-    }
-
-    public String getPartitioner() {
-        return partitioner;
-    }
-
-    public void setPartitioner(String partitioner) {
-        this.partitioner = partitioner == null ? null : partitioner.trim();
-    }
-
-    public String getSerdes() {
-        return serdes;
-    }
-
-    public void setSerdes(String serdes) {
-        this.serdes = serdes == null ? null : serdes.trim();
-    }
-
-    public Integer getVersion() {
-        return version;
-    }
-
-    public void setVersion(Integer version) {
-        this.version = version;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status == null ? null : status.trim();
-    }
-
-    public Date getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(Date createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public Date getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(Date updatedAt) {
-        this.updatedAt = updatedAt;
-    }
 }
