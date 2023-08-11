@@ -66,4 +66,32 @@ public class JobServiceHandler {
             clusterResourceManager.unlockSession(sessionId);
         }
     }
+
+//    public SubmitJobResponse handleSubmit(SubmitJobRequest submitJobMeta) {
+//        JobProcessorTypes jobType = JobProcessorTypes.fromString(submitJobMeta.getJobType());
+//        if (jobType == JobProcessorTypes.DeepSpeed) {
+//            return handleDeepspeedSubmit(submitJobMeta);
+//        } else {
+//            throw new IllegalArgumentException("unsupported job type: " + submitJobMeta.getJobType());
+//        }
+//    }
+//
+//
+//    public QueryJobStatusResponse handleJobStatusQuery(QueryJobStatusRequest queryJobStatusRequest) {
+//        String sessionId = queryJobStatusRequest.getSessionId();
+//        String status = smDao.getSessionMain(sessionId).getStatus();
+//        return new QueryJobStatusResponse(sessionId, status);
+//    }
+//
+//    public KillJobResponse handleJobKill(KillJobRequest killJobRequest) {
+//        String sessionId = killJobRequest.getSessionId();
+//        killJob(sessionId, false);
+//        return new KillJobResponse(sessionId);
+//    }
+//
+//    public StopJobResponse handleJobStop(StopJobRequest stopJobRequest) {
+//        String sessionId = stopJobRequest.getSessionId();
+//        killJob(sessionId, false);
+//        return new StopJobResponse(sessionId);
+//    }
 }
