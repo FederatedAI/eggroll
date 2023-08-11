@@ -1,7 +1,14 @@
 package com.eggroll.core.pojo;
 
 
+import com.webank.eggroll.core.meta.Meta;
+import lombok.Data;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+@Data
 public class ErNodeHeartbeat implements RpcMessage {
+    Logger log = LoggerFactory.getLogger(ErNodeHeartbeat.class);
     private long id;
     private ErServerNode node;
 
@@ -15,21 +22,6 @@ public class ErNodeHeartbeat implements RpcMessage {
         this.node = node;
     }
 
-    public long getId() {
-        return id;
-    }
-
-    public void setId(long id) {
-        this.id = id;
-    }
-
-    public ErServerNode getNode() {
-        return node;
-    }
-
-    public void setNode(ErServerNode node) {
-        this.node = node;
-    }
 
     @Override
     public String toString() {
@@ -37,13 +29,34 @@ public class ErNodeHeartbeat implements RpcMessage {
                 ") at " + Integer.toHexString(hashCode()) + ">";
     }
 
+    public Meta.NodeHeartbeat toProto() {
+        Meta.NodeHeartbeat.Builder builder = Meta.NodeHeartbeat.newBuilder();
+        builder.setId(this.id)
+                .setNode(this.node.toProto());
+        return builder.build();
+    }
+
+    public static ErNodeHeartbeat fromProto( Meta.NodeHeartbeat nodeHeartbeat){
+        ErNodeHeartbeat erNodeHeartbeat = new ErNodeHeartbeat();
+        erNodeHeartbeat.deserialize(nodeHeartbeat.toByteArray());
+        return erNodeHeartbeat;
+    }
+
     @Override
     public byte[] serialize() {
-        return new byte[0];
+        return toProto().toByteArray();
     }
 
     @Override
     public void deserialize(byte[] data) {
-
+        try {
+            Meta.NodeHeartbeat nodeHeartbeat = Meta.NodeHeartbeat.parseFrom(data);
+            this.id = nodeHeartbeat.getId();
+            ErServerNode erServerNode = new ErServerNode();
+            erServerNode.deserialize(nodeHeartbeat.getNode().toByteArray());
+            this.node = erServerNode;
+        } catch (Exception e) {
+            log.error("deserialize error : ", e);
+        }
     }
 }
