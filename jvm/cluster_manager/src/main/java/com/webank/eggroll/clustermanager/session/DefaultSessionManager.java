@@ -13,6 +13,7 @@ import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
 import com.webank.eggroll.clustermanager.dao.impl.SessionMainService;
 
 
+import com.webank.eggroll.clustermanager.statemechine.ProcessorStateMechine;
 import com.webank.eggroll.clustermanager.statemechine.SessionStateMachine;
 
 
@@ -37,10 +38,7 @@ public class DefaultSessionManager implements SessionManager{
     @Autowired
     ServerNodeService  serverNodeService;
 
-    @Override
-    public com.eggroll.core.pojo.ErProcessor heartbeat(Context context, com.eggroll.core.pojo.ErProcessor proc) {
-        return null;
-    }
+
 
     @Override
     public ErSessionMeta getSessionMain(String sessionId) {
