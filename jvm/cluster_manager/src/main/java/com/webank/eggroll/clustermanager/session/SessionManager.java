@@ -10,7 +10,7 @@ import org.springframework.stereotype.Service;
 public interface SessionManager {
 
 
-    ErProcessor heartbeat(Context context, ErProcessor proc);
+
 
     ErSessionMeta getSessionMain(String sessionId);
     /**
