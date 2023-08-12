@@ -2,85 +2,32 @@ package com.eggroll.core.pojo;
 
 import com.eggroll.core.config.Dict;
 import com.eggroll.core.constant.StringConstants;
+import com.google.protobuf.InvalidProtocolBufferException;
+import com.webank.eggroll.core.meta.Meta;
+import lombok.Data;
 import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.UUID;
 
 
-public class ErStoreLocator implements MetaRpcMessage {
+@Data
+public class ErStoreLocator implements RpcMessage {
+    Logger log = LoggerFactory.getLogger(ErStoreLocator.class);
+
     private Long id;
     private String storeType;
     private String namespace;
     private String name;
     private String path;
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getStoreType() {
-        return storeType;
-    }
-
-    public void setStoreType(String storeType) {
-        this.storeType = storeType;
-    }
-
-    public String getNamespace() {
-        return namespace;
-    }
-
-    public void setNamespace(String namespace) {
-        this.namespace = namespace;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getPath() {
-        return path;
-    }
-
-    public void setPath(String path) {
-        this.path = path;
-    }
-
-    public Integer getTotalPartitions() {
-        return totalPartitions;
-    }
-
-    public void setTotalPartitions(Integer totalPartitions) {
-        this.totalPartitions = totalPartitions;
-    }
-
-    public String getPartitioner() {
-        return partitioner;
-    }
-
-    public void setPartitioner(String partitioner) {
-        this.partitioner = partitioner;
-    }
-
-    public String getSerdes() {
-        return serdes;
-    }
-
-    public void setSerdes(String serdes) {
-        this.serdes = serdes;
-    }
-
     private Integer totalPartitions;
     private String partitioner;
     private String serdes;
+
+    public ErStoreLocator(){
+
+    }
 
     public ErStoreLocator(long id, String storeType, String namespace, String name, String path, int totalPartitions, String partitioner, String serdes) {
         this.id = id;
@@ -123,5 +70,44 @@ public class ErStoreLocator implements MetaRpcMessage {
         return new ErStoreLocator(this.id, this.storeType, this.namespace, newName, this.path, this.totalPartitions, this.partitioner, this.serdes);
     }
 
+    public Meta.StoreLocator toProto(){
+        Meta.StoreLocator.Builder builder = Meta.StoreLocator.newBuilder();
+        builder.setId(this.id)
+                .setStoreType(this.storeType)
+                .setNamespace(this.namespace)
+                .setName(this.name)
+                .setPath(this.path)
+                .setTotalPartitions(this.totalPartitions)
+                .setPartitioner(this.partitioner)
+                .setSerdes(this.serdes);
+        return builder.build();
+    }
 
+    public static ErStoreLocator fromProto(Meta.StoreLocator storeLocator){
+        ErStoreLocator erStoreLocator = new ErStoreLocator();
+        erStoreLocator.deserialize(storeLocator.toByteArray());
+        return erStoreLocator;
+    }
+
+    @Override
+    public byte[] serialize() {
+        return toProto().toByteArray();
+    }
+
+    @Override
+    public void deserialize(byte[] data) {
+        try {
+            Meta.StoreLocator storeLocator = Meta.StoreLocator.parseFrom(data);
+           this.id=storeLocator.getId();
+           this.storeType=storeLocator.getStoreType();
+           this.namespace=storeLocator.getNamespace();
+           this.name=storeLocator.getName();
+           this.path=storeLocator.getPath();
+           this.totalPartitions=storeLocator.getTotalPartitions();
+           this.partitioner=storeLocator.getPartitioner();
+           this.serdes=storeLocator.getSerdes();
+            } catch (Exception e) {
+                log.error("deserialize error : ", e);
+            }
+    }
 }

@@ -36,6 +36,8 @@ public interface SessionManager {
 
     ErSessionMeta stopSession(Context context,ErSessionMeta sessionMeta );
 
+    ErSessionMeta killSession(Context context, String sessionId);
+
     ErSessionMeta  killSession(Context context, ErSessionMeta sessionMeta);
 
     ErSessionMeta killSession(Context context,ErSessionMeta sessionMeta ,String afterState );

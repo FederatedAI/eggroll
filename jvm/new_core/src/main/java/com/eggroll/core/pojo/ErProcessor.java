@@ -4,11 +4,14 @@ import com.eggroll.core.constant.StringConstants;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.webank.eggroll.core.meta.Meta;
 import lombok.Data;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
 @Data
-public class ErProcessor implements  RpcMessage {
+public class ErProcessor implements RpcMessage {
+    Logger log = LoggerFactory.getLogger(ErProcessor.class);
     private Long id = -1L;
     private String sessionId = StringConstants.EMPTY;
     private Long serverNodeId = -1L;
@@ -23,7 +26,6 @@ public class ErProcessor implements  RpcMessage {
     private List<ErResource> resources = new ArrayList<>();
     private Date createdAt = null;
     private Date updatedAt = null;
-
 
 
     @Override
@@ -60,33 +62,35 @@ public class ErProcessor implements  RpcMessage {
         return builder.build();
     }
 
+    public static ErProcessor fromProto(Meta.Processor processor) {
+        ErProcessor erProcessor = new ErProcessor();
+        erProcessor.deserialize(processor.toByteArray());
+        return erProcessor;
+    }
+
     @Override
     public byte[] serialize() {
-       return  this.toProto().toByteArray();
+        return this.toProto().toByteArray();
     }
 
     @Override
     public void deserialize(byte[] data) {
         try {
-            Meta.Processor  processor =  Meta.Processor.parseFrom(data);
+            Meta.Processor processor = Meta.Processor.parseFrom(data);
             this.id = processor.getId();
             this.serverNodeId = processor.getServerNodeId();
             this.name = processor.getName();
             this.processorType = processor.getProcessorType();
             this.status = processor.getStatus();
-            if(processor.getCommandEndpoint()!=null){
-                this.commandEndpoint=new ErEndpoint(processor.getCommandEndpoint().getHost(),processor.getCommandEndpoint().getPort());
+            if (processor.getCommandEndpoint() != null) {
+                this.commandEndpoint = ErEndpoint.fromProto(processor.getCommandEndpoint());
             }
-            if(processor.getTransferEndpoint()!=null){
-                this.transferEndpoint=new ErEndpoint(processor.getTransferEndpoint().getHost(),processor.getTransferEndpoint().getPort());
+            if (processor.getTransferEndpoint() != null) {
+                this.transferEndpoint = ErEndpoint.fromProto(processor.getTransferEndpoint());
             }
-
-            this.options =   processor.getOptionsMap();
-
-
-
+            this.options = processor.getOptionsMap();
         } catch (InvalidProtocolBufferException e) {
-            e.printStackTrace();
+            log.error("deserialize error : ", e);
         }
     }
 

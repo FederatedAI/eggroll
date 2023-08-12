@@ -1,6 +1,8 @@
 package com.webank.eggroll.nodemanager;
 
 //import com.webank.eggroll.clustermanager.grpc.GrpcServer;
+import com.eggroll.core.config.Dict;
+import com.eggroll.core.config.ErConf;
 import com.eggroll.core.config.MetaInfo;
 import com.eggroll.core.utils.CommandArgsUtils;
 import com.eggroll.core.utils.PropertiesUtil;
@@ -14,6 +16,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.ApplicationContext;
 
 
+import java.io.File;
+import java.io.IOException;
 import java.util.Properties;
 
 @SpringBootApplication
@@ -29,6 +33,14 @@ public class Application {
         CommandLine cmd = CommandArgsUtils.parseArgs(args);
         String confPath = cmd.getOptionValue('c', "./conf/eggroll.properties");
         Properties environment = PropertiesUtil.getProperties(confPath);
+        try {
+            ErConf.addProperties(confPath);
+            File confFile = new File(confPath);
+            ErConf.getConf().put(Dict.STATIC_CONF_PATH,confFile.getAbsolutePath());
+        }catch (IOException e) {
+            logger.error("init erconf failed",e.getMessage());
+        }
+
         MetaInfo.init(environment);
 
         context=  new SpringApplicationBuilder(Application.class).run(args);
