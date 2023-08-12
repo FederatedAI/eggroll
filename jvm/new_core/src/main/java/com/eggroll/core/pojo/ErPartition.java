@@ -1,42 +1,23 @@
 package com.eggroll.core.pojo;
 
 
-public class ErPartition implements MetaRpcMessage {
-    private int id;
+import com.google.protobuf.InvalidProtocolBufferException;
+import com.webank.eggroll.core.meta.Meta;
+import lombok.Data;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+@Data
+public class ErPartition implements RpcMessage {
+    Logger log = LoggerFactory.getLogger(ErPartition.class);
+    private int id =-1;
     private ErStoreLocator storeLocator;
     private ErProcessor processor;
-    private int rankInNode;
+    private int rankInNode = -1;
 
-    public int getId() {
-        return id;
-    }
 
-    public void setId(int id) {
-        this.id = id;
-    }
+    public ErPartition(){
 
-    public ErStoreLocator getStoreLocator() {
-        return storeLocator;
-    }
-
-    public void setStoreLocator(ErStoreLocator storeLocator) {
-        this.storeLocator = storeLocator;
-    }
-
-    public ErProcessor getProcessor() {
-        return processor;
-    }
-
-    public void setProcessor(ErProcessor processor) {
-        this.processor = processor;
-    }
-
-    public int getRankInNode() {
-        return rankInNode;
-    }
-
-    public void setRankInNode(int rankInNode) {
-        this.rankInNode = rankInNode;
     }
 
     public ErPartition(int id, ErStoreLocator storeLocator, ErProcessor processor, int rankInNode) {
@@ -53,5 +34,38 @@ public class ErPartition implements MetaRpcMessage {
     public String toPath(String delim) {
         String storeLocatorPath = storeLocator != null ? storeLocator.toPath(delim) : "";
         return String.join(delim, storeLocatorPath, String.valueOf(id));
+    }
+
+    public Meta.Partition toProto(){
+        Meta.Partition.Builder builder = Meta.Partition.newBuilder();
+        builder.setId(this.id)
+                .setStoreLocator(this.storeLocator.toProto())
+                .setProcessor(this.processor.toProto())
+                .setRankInNode(this.rankInNode);
+        return builder.build();
+    }
+
+    public static ErPartition fromProto(Meta.Partition partition){
+        ErPartition erPartition = new ErPartition();
+        erPartition.deserialize(partition.toByteArray());
+        return erPartition;
+    }
+
+    @Override
+    public byte[] serialize() {
+        return toProto().toByteArray();
+    }
+
+    @Override
+    public void deserialize(byte[] data) {
+        try {
+            Meta.Partition partition = Meta.Partition.parseFrom(data);
+            this.id = partition.getId();
+            this.storeLocator = ErStoreLocator.fromProto(partition.getStoreLocator());
+            this.processor = ErProcessor.fromProto(partition.getProcessor());
+            this.rankInNode = partition.getRankInNode();
+        } catch (InvalidProtocolBufferException e) {
+            log.error("deserialize error : ",e);
+        }
     }
 }

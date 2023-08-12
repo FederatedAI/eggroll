@@ -80,6 +80,7 @@ public class ProcessorStateMechine extends  AbstractStateMachine<ErProcessor>  i
         this.registeStateHander("NEW_ERROR",processorStateNewStopHandler);
 
     }
+
 }
 
 

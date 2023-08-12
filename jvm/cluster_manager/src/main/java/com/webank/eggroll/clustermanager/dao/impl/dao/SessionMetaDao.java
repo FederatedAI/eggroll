@@ -25,10 +25,10 @@ public class SessionMetaDao {
     SessionOptionService sessionOptionService;
 
     @Autowired
-    ProcessorStateMachine processorStateMachine_;
+    ProcessorStateMachine processorStateMachine;
     
     @Transactional
-    public void registerWithResourceV2(ErSessionMeta sessionMeta){
+    public void registerWithResource(ErSessionMeta sessionMeta){
         String sid = sessionMeta.getId();
         SessionMain sessionMain = new SessionMain();
         sessionMain.setSessionId(sid);
@@ -54,7 +54,7 @@ public class SessionMetaDao {
         if(!procs.isEmpty()){
             for (ErProcessor proc : procs) {
                 proc.setSessionId(sid);
-                processorStateMachine_.changeStatus(proc,"", Dict.NEW);
+                processorStateMachine.changeStatus(proc,"", Dict.NEW);
             }
         }
 

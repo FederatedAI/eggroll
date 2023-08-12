@@ -2,78 +2,77 @@ package com.eggroll.core.pojo;
 
 
 import com.eggroll.core.constant.StringConstants;
+import com.eggroll.core.utils.JsonUtil;
 import com.webank.eggroll.core.meta.Meta;
+import lombok.Data;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.stream.Collectors;
 
+@Data
+public class ErProcessorBatch implements RpcMessage {
+    Logger log = LoggerFactory.getLogger(ErProcessorBatch.class);
+    private long id;
+    private String name;
+    private List<ErProcessor> processors;
+    private String tag;
 
-public class ErProcessorBatch {
-        private long id;
-        private String name;
-        private ErProcessor[] processors;
-        private String tag;
 
-    public long getId() {
-        return id;
+    public ErProcessorBatch() {
+        this.id = -1;
+        this.name = StringConstants.EMPTY;
+        this.processors = new ArrayList<>();
+        this.tag = StringConstants.EMPTY;
     }
 
-    public void setId(long id) {
+    public ErProcessorBatch(long id, String name, List<ErProcessor> processors, String tag) {
         this.id = id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
         this.name = name;
-    }
-
-    public ErProcessor[] getProcessors() {
-        return processors;
-    }
-
-    public void setProcessors(ErProcessor[] processors) {
         this.processors = processors;
-    }
-
-    public String getTag() {
-        return tag;
-    }
-
-    public void setTag(String tag) {
         this.tag = tag;
     }
 
-    public ErProcessorBatch() {
-            this.id = -1;
-            this.name = StringConstants.EMPTY;
-            this.processors = new ErProcessor[0];
-            this.tag = StringConstants.EMPTY;
-        }
+    @Override
+    public String toString() {
+        return "<ErProcessorBatch(id=" + id + ", name=" + name +
+                ", processors=" + JsonUtil.object2Json(processors) + ", tag=" + tag +
+                ") at " + Integer.toHexString(hashCode()) + ">";
+    }
 
-        public ErProcessorBatch(long id, String name, ErProcessor[] processors, String tag) {
-            this.id = id;
-            this.name = name;
-            this.processors = processors;
-            this.tag = tag;
-        }
+    public Meta.ProcessorBatch toProto() {
+        Meta.ProcessorBatch.Builder builder = Meta.ProcessorBatch.newBuilder();
+        builder.setId(this.getId())
+                .setName(this.getName())
+                .addAllProcessors(this.getProcessors().stream().map(ErProcessor::toProto).collect(Collectors.toList()))
+                .setTag(this.getTag());
+        return builder.build();
+    }
 
-        @Override
-        public String toString() {
-            return "<ErProcessorBatch(id=" + id + ", name=" + name +
-                    ", processors=" + Arrays.toString(processors) + ", tag=" + tag +
-                    ") at " + Integer.toHexString(hashCode()) + ">";
-        }
+    public static ErProcessorBatch fromProto(Meta.ProcessorBatch processorBatch){
+        ErProcessorBatch erProcessorBatch = new ErProcessorBatch();
+        erProcessorBatch.deserialize(processorBatch.toByteArray());
+        return erProcessorBatch;
+    }
 
-        public Meta.ProcessorBatch toProto() {
-            Meta.ProcessorBatch.Builder builder = Meta.ProcessorBatch.newBuilder();
-            builder.setId(this.getId())
-                    .setName(this.getName())
-                    .addAllProcessors(Arrays.stream(this.getProcessors()).map(ErProcessor::toProto).collect(Collectors.toList()))
-                    .setTag(this.getTag());
-            return builder.build();
+    @Override
+    public byte[] serialize() {
+        return toProto().toByteArray();
+    }
+
+    @Override
+    public void deserialize(byte[] data) {
+        try {
+            Meta.ProcessorBatch processorBatch = Meta.ProcessorBatch.parseFrom(data);
+            this.id = processorBatch.getId();
+            this.name = processorBatch.getName();
+            this.processors = processorBatch.getProcessorsList().stream().map(ErProcessor::fromProto).collect(Collectors.toList());
+            this.tag = processorBatch.getTag();
+        } catch (Exception e) {
+            log.error("deserialize error : ", e);
         }
     }
+}

@@ -82,6 +82,16 @@ public class CommandServiceProvider extends CommandServiceGrpc.CommandServiceImp
         return defaultProcessorManager.killContainers(null,sessionMeta);
     }
 
+    @URI(value = heartbeat)
+    public ErProcessor heartbeat(ErProcessor processor) {
+        return defaultProcessorManager.heartbeat(null,processor);
+    }
+
+    @URI(value = checkNodeProcess)
+    public ErProcessor checkNodeProcess(ErProcessor processor) {
+        return defaultProcessorManager.checkNodeProcess(null,processor);
+    }
+
     @URI(value = nodeHeartbeat)
     public ErProcessor nodeHeartbeat(ErProcessor processor) {
         return null;

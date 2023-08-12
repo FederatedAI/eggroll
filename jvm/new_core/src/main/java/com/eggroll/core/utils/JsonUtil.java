@@ -116,10 +116,10 @@ public class JsonUtil {
         return json2Object(json, clazz);
     }
 
-//    public static <T> T object2Objcet(Object source, TypeReference<T> tr) {
-//        String json = object2Json(source);
-//        return json2Object(json, tr);
-//    }
+    public static <T> T object2Objcet(Object source, TypeReference<T> tr) {
+        String json = object2Json(source);
+        return json2Object(json, tr);
+    }
 
     public static String formatJson(String jsonStr) {
         return formatJson(jsonStr, "\t");
