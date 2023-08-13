@@ -81,7 +81,7 @@ public class GrpcConnectionFactory {
 
     public static synchronized ManagedChannel createManagedChannel(ErEndpoint endpoint, GrpcChannelInfo channelInfo) {
         try {
-
+            logger.info("===========create channel {}",endpoint);
             NettyChannelBuilder channelBuilder = NettyChannelBuilder
                     .forAddress(endpoint.getHost(), endpoint.getPort())
                     .keepAliveTime(channelInfo.getKeepAliveTime(), TimeUnit.MINUTES)

@@ -4,6 +4,7 @@ import com.eggroll.core.constant.StringConstants;
 import com.eggroll.core.utils.JsonUtil;
 import com.webank.eggroll.core.meta.Meta;
 import lombok.Data;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -77,11 +78,16 @@ public class ErServerNode implements RpcMessage {
 
     public Meta.ServerNode toProto(){
         Meta.ServerNode.Builder builder = Meta.ServerNode.newBuilder();
-        builder.setId(this.id).setName(this.name).setClusterId(this.clusterId)
-                .setNodeType(this.nodeType).setStatus(this.status);
-        if (this.endpoint != null) {
+        if(this.name!=null)
+            builder.setName(this.name);
+        if(this.clusterId!=null)
+            builder.setClusterId(this.clusterId);
+        if(this.nodeType!=null)
+            builder.setNodeType(this.nodeType);
+        if(this.status!=null)
+            builder.setStatus(this.status);
+        if (this.endpoint != null)
             builder.setEndpoint(endpoint.toProto());
-        }
         return builder.build();
     }
 

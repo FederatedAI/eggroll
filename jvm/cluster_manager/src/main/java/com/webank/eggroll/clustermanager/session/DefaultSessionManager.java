@@ -5,7 +5,6 @@ import com.eggroll.core.constant.ServerNodeStatus;
 import com.eggroll.core.constant.ServerNodeTypes;
 import com.eggroll.core.constant.SessionStatus;
 import com.eggroll.core.context.Context;
-import com.eggroll.core.grpc.NodeManagerClient;
 import com.eggroll.core.pojo.ErServerNode;
 import com.eggroll.core.pojo.ErSessionMeta;
 import com.google.common.collect.Lists;
@@ -13,18 +12,14 @@ import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
 import com.webank.eggroll.clustermanager.dao.impl.SessionMainService;
 
 
-import com.webank.eggroll.clustermanager.statemechine.ProcessorStateMechine;
-import com.webank.eggroll.clustermanager.statemechine.SessionStateMachine;
+import com.webank.eggroll.clustermanager.statemachine.SessionStateMachine;
 
 
-import org.apache.commons.beanutils.BeanUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 
 @Service
@@ -39,8 +34,6 @@ public class DefaultSessionManager implements SessionManager {
     ServerNodeService serverNodeService;
     @Autowired
     SessionMainService sessionMainService;
-
-
 
     @Override
     public ErSessionMeta getSessionMain(String sessionId) {

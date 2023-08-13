@@ -5,7 +5,7 @@ import com.eggroll.core.pojo.ErProcessor;
 import com.eggroll.core.utils.CacheUtil;
 import com.google.common.cache.Cache;
 
-import com.webank.eggroll.clustermanager.statemechine.ProcessorStateMechine;
+import com.webank.eggroll.clustermanager.statemachine.ProcessorStateMachine;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -15,7 +15,7 @@ import java.util.concurrent.TimeUnit;
 @Service
 public class DefaultProcessorManager {
     @Autowired
-    ProcessorStateMechine processorStateMechine;
+    ProcessorStateMachine processorStateMachine;
 
     ConcurrentHashMap heartBeatMap = new ConcurrentHashMap<Long,ErProcessor>();
 
@@ -25,11 +25,11 @@ public class DefaultProcessorManager {
         ErProcessor previousHeartbeat = processorHeartBeat.asMap().get(proc.getId());
         if(previousHeartbeat==null){
             processorHeartBeat.asMap().put(proc.getId(),proc);
-            processorStateMechine.changeStatus(context ,proc,null,proc.getStatus());
+            processorStateMachine.changeStatus(context ,proc,null,proc.getStatus());
         }else{
             if(!previousHeartbeat.getStatus().equals(proc.getStatus())) {
                 processorHeartBeat.asMap().put(proc.getId(),proc);
-                processorStateMechine.changeStatus(context,proc,null,proc.getStatus());
+                processorStateMachine.changeStatus(context,proc,null,proc.getStatus());
             }
         }
         return   proc;

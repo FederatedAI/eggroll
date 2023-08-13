@@ -1,15 +1,8 @@
-package com.webank.eggroll.clustermanager.statemechine;
+package com.webank.eggroll.clustermanager.statemachine;
 
-import com.eggroll.core.config.Dict;
 import com.eggroll.core.context.Context;
 import com.eggroll.core.pojo.ErProcessor;
-import com.eggroll.core.pojo.ErResource;
-import com.eggroll.core.pojo.ErSessionMeta;
-import com.webank.eggroll.clustermanager.entity.SessionProcessor;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
-
-import java.util.List;
 
 @Service
 public class ResourceStateMechine extends AbstractStateMachine<ErProcessor>{

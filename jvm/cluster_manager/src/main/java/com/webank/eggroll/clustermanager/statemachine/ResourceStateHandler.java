@@ -1,28 +1,16 @@
-package com.webank.eggroll.clustermanager.statemechine;
+package com.webank.eggroll.clustermanager.statemachine;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
-import com.eggroll.core.constant.ResourceStatus;
-import com.eggroll.core.constant.ResourceType;
 import com.eggroll.core.context.Context;
 import com.eggroll.core.pojo.ErProcessor;
-import com.eggroll.core.pojo.ErResource;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import com.webank.eggroll.clustermanager.cluster.ClusterResourceManager;
 import com.webank.eggroll.clustermanager.dao.impl.NodeResourceService;
 import com.webank.eggroll.clustermanager.dao.impl.ProcessorResourceService;
 import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
-import com.webank.eggroll.clustermanager.entity.NodeResource;
 import com.webank.eggroll.clustermanager.entity.ProcessorResource;
-import com.webank.eggroll.clustermanager.entity.SessionOption;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
-import java.util.List;
-import java.util.Map;
 
 @Service
 public   class ResourceStateHandler implements  StateHandler<ErProcessor>{
