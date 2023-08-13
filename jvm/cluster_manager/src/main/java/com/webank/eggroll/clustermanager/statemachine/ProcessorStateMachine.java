@@ -1,10 +1,8 @@
-package com.webank.eggroll.clustermanager.statemechine;
+package com.webank.eggroll.clustermanager.statemachine;
 
 import com.eggroll.core.config.Dict;
-import com.eggroll.core.constant.ResourceStatus;
 import com.eggroll.core.context.Context;
 import com.eggroll.core.pojo.ErProcessor;
-import com.eggroll.core.pojo.ErSessionMeta;
 import com.webank.eggroll.clustermanager.dao.impl.ProcessorService;
 import com.webank.eggroll.clustermanager.entity.SessionProcessor;
 import org.apache.commons.lang3.StringUtils;
@@ -13,13 +11,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
-public class ProcessorStateMechine extends  AbstractStateMachine<ErProcessor>  implements InitializingBean {
-    Logger logger = LoggerFactory.getLogger(ProcessorStateMechine.class);
+public class ProcessorStateMachine extends  AbstractStateMachine<ErProcessor>  implements InitializingBean {
+    Logger logger = LoggerFactory.getLogger(ProcessorStateMachine.class);
     @Autowired
     ProcessorService  processorService;
     @Autowired

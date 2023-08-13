@@ -1,4 +1,4 @@
-package com.webank.eggroll.clustermanager.statemechine;
+package com.webank.eggroll.clustermanager.statemachine;
 
 import com.eggroll.core.constant.ProcessorStatus;
 import com.eggroll.core.context.Context;
@@ -11,7 +11,7 @@ public abstract class AbstractSessionStateHandler implements   StateHandler<ErSe
     @Autowired
     SessionMainService  sessionMainService;
     @Autowired
-    ProcessorStateMechine processorStateMechine;
+    ProcessorStateMachine processorStateMachine;
 
 
 
@@ -28,7 +28,7 @@ public abstract class AbstractSessionStateHandler implements   StateHandler<ErSe
                 erSessionMeta.getTag(),erSessionMeta.getTotalProcCount(),erSessionMeta.getActiveProcCount(),null,null);
         sessionMainService.save(sessionMain);
         erSessionMeta.getProcessors().forEach(p->{
-            processorStateMechine.changeStatus(context,p,null, ProcessorStatus.NEW.name());
+            processorStateMachine.changeStatus(context,p,null, ProcessorStatus.NEW.name());
         });
 
     }

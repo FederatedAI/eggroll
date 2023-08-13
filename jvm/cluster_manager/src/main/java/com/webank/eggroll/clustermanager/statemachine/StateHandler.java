@@ -1,4 +1,4 @@
-package com.webank.eggroll.clustermanager.statemechine;
+package com.webank.eggroll.clustermanager.statemachine;
 
 import com.eggroll.core.config.Dict;
 import com.eggroll.core.context.Context;

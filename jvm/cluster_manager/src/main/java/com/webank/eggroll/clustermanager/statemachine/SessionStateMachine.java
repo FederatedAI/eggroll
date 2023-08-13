@@ -1,38 +1,21 @@
-package com.webank.eggroll.clustermanager.statemechine;
+package com.webank.eggroll.clustermanager.statemachine;
 
 import com.eggroll.core.config.Dict;
-import com.eggroll.core.config.MetaInfo;
-import com.eggroll.core.constant.ProcessorStatus;
-import com.eggroll.core.constant.ProcessorType;
-import com.eggroll.core.constant.SessionEvents;
-import com.eggroll.core.constant.SessionStatus;
 import com.eggroll.core.context.Context;
-import com.eggroll.core.grpc.NodeManagerClient;
-import com.eggroll.core.pojo.ErEndpoint;
-import com.eggroll.core.pojo.ErProcessor;
-import com.eggroll.core.pojo.ErServerNode;
 import com.eggroll.core.pojo.ErSessionMeta;
 
-import com.google.common.collect.Lists;
 import com.webank.eggroll.clustermanager.dao.impl.SessionMainService;
-import com.webank.eggroll.clustermanager.entity.SessionMain;
-import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.sql.Date;
-import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.locks.ReentrantLock;
 @Service
 public class SessionStateMachine extends AbstractStateMachine<ErSessionMeta> implements InitializingBean {
     @Autowired
     SessionMainService   sessionMainService;
     @Autowired
-    ProcessorStateMechine  processorStateMechine;
+    ProcessorStateMachine processorStateMachine;
     @Autowired
     SessionKillHandler  sessionKillHandler;
     @Autowired

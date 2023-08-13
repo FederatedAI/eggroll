@@ -1,11 +1,14 @@
 package com.webank.eggroll.clustermanager.grpc;
 
+import com.eggroll.core.context.Context;
 import com.eggroll.core.grpc.URI;
 import com.eggroll.core.invoke.InvokeInfo;
 import com.eggroll.core.pojo.*;
 import com.google.protobuf.ByteString;
+import com.webank.eggroll.clustermanager.cluster.ClusterManagerService;
 import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
 import com.webank.eggroll.clustermanager.dao.impl.StoreCrudOperator;
+import com.webank.eggroll.clustermanager.processor.DefaultProcessorManager;
 import com.webank.eggroll.clustermanager.session.DefaultSessionManager;
 import com.webank.eggroll.core.command.Command;
 import com.webank.eggroll.core.command.CommandServiceGrpc;
@@ -31,15 +34,20 @@ public class CommandServiceProvider extends CommandServiceGrpc.CommandServiceImp
     @Autowired
     DefaultSessionManager defaultSessionManager;
     @Autowired
+    DefaultProcessorManager defaultProcessorManager;
+    @Autowired
     ServerNodeService serverNodeService;
     @Autowired
     StoreCrudOperator storeCrudOperator;
+    @Autowired
+    ClusterManagerService  clusterManagerService;
 
 
     public void call(Command.CommandRequest request,
                      StreamObserver<Command.CommandResponse> responseObserver) {
         String uri = request.getUri();
         byte[] resultBytes = dispatch(uri, request.getArgsList().get(0).toByteArray());
+
         Command.CommandResponse.Builder responseBuilder = Command.CommandResponse.newBuilder();
         responseBuilder.setId(request.getId());
         responseBuilder.addResults(ByteString.copyFrom(resultBytes));
@@ -62,15 +70,18 @@ public class CommandServiceProvider extends CommandServiceGrpc.CommandServiceImp
             RpcMessage response = (RpcMessage) invokeInfo.getMethod().invoke(invokeInfo.getObject(), rpcMessage);
             return response.serialize();
 
-        } catch (InstantiationException e) {
+        } catch (RuntimeException e){
             e.printStackTrace();
-        } catch (IllegalAccessException e) {
+            throw  e;
+        }catch (Exception e){
             e.printStackTrace();
-        } catch (InvocationTargetException e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
-        return null;
 
+    }
+    @URI(value= nodeHeartbeat)
+    public  ErNodeHeartbeat nodeHeartbeat(ErNodeHeartbeat  erNodeHeartbeat){
+       return  clusterManagerService.nodeHeartbeat(erNodeHeartbeat);
     }
 
     @URI(value = getServerNode)
@@ -116,33 +127,39 @@ public class CommandServiceProvider extends CommandServiceGrpc.CommandServiceImp
 
     @URI(value = getOrCreateSession)
     public ErSessionMeta getOrCreateSession(ErSessionMeta sessionMeta) {
-        return defaultSessionManager.getOrCreateSession(null, sessionMeta);
+
+        Context  context  = new Context();
+        return defaultSessionManager.getOrCreateSession(context, sessionMeta);
     }
 
     @URI(value = getSession)
     public ErSessionMeta getSession(ErSessionMeta sessionMeta) {
-        return defaultSessionManager.getSession(null, sessionMeta);
+        Context  context  = new Context();
+        return defaultSessionManager.getSession(context, sessionMeta);
     }
 
     @URI(value = heartbeat)
     public ErProcessor heartbeat(ErProcessor erProcessor) {
-
-        return defaultSessionManager.heartbeat(null, erProcessor);
+        Context  context  = new Context();
+        return defaultProcessorManager.heartbeat(context, erProcessor);
     }
 
     @URI(value = stopSession)
     public ErSessionMeta stopSession(ErSessionMeta erSessionMeta) {
-        return defaultSessionManager.stopSession(null, erSessionMeta);
+        Context  context  = new Context();
+        return defaultSessionManager.stopSession(context, erSessionMeta);
     }
 
     @URI(value = killSession)
     public ErSessionMeta killSession(ErSessionMeta erSessionMeta) {
-        return defaultSessionManager.killSession(null, erSessionMeta);
+        Context  context  = new Context();
+        return defaultSessionManager.killSession(context, erSessionMeta);
     }
 
     @URI(value = killAllSessions)
     public ErSessionMeta killAllSession(ErSessionMeta erSessionMeta) {
-        return defaultSessionManager.killAllSessions(null, erSessionMeta);
+        Context  context  = new Context();
+        return defaultSessionManager.killAllSessions(context, erSessionMeta);
     }
 
 
