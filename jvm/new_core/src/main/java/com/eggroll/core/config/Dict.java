@@ -1,6 +1,10 @@
 package com.eggroll.core.config;
 
 public class Dict {
+
+    public static final String KEY_SERVER_NODE_ID= "serverNodeId";
+    public static final String KEY_CLUSTER_ID= "clusterId";
+
     public static final String SERVER_NODES = "SERVER_NODES";
     public static final String SESSION_IN_DB = "SESSION_IN_DB";
     public static final String PROCESSOR_IN_DB = "PROCESSOR_IN_DB";
@@ -117,7 +121,6 @@ public class Dict {
     // ClusterManagerConfKeys
     public static final String CONFKEY_CLUSTER_MANAGER_HOST = "eggroll.resourcemanager.clustermanager.host";
     public static final String CONFKEY_CLUSTER_MANAGER_PORT = "eggroll.resourcemanager.clustermanager.port";
-
 
 
     // SessionConfKeys
