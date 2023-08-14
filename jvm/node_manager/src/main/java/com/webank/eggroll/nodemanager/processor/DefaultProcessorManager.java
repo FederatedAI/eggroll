@@ -59,17 +59,4 @@ public class DefaultProcessorManager implements ProcessorManager{
         return result;
     }
 
-//    public ErProcessor checkNodeProcess(ErProcessor processor) {
-//        ErProcessor result = new ErProcessor();
-//        BeanUtils.copyProperties(processor, result);
-//        if (ProcessUtils.checkProcess(Integer.toString(processor.getPid()))) {
-//            result.setStatus(ProcessorStatus.RUNNING.name());
-//        } else {
-//            result.setStatus(ProcessorStatus.KILLED.name());
-//        }
-//        logger.info("check processor pid " + processor.getPid() + " return " + result.getStatus());
-//        return result;
-//    }
-
-
 }
