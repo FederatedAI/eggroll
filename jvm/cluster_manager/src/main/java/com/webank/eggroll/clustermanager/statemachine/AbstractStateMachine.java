@@ -94,7 +94,9 @@ public abstract class AbstractStateMachine<T> {
             String  newPreState = preStateParam;
             if(!handler.isBreak(context)) {
                 result = handler.handle(context, result, newPreState, desStateParam);
-                callback.callback(context,result);
+                if(callback!=null) {
+                    callback.callback(context, result);
+                }
                 if(!handler.isBreak(context)) {
                     if (handler.needAsynPostHandle(context)) {
                         T finalResult = result;

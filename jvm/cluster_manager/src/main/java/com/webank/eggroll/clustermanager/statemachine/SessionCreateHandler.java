@@ -4,6 +4,8 @@ import com.eggroll.core.config.Dict;
 import com.eggroll.core.config.MetaInfo;
 import com.eggroll.core.constant.ProcessorStatus;
 import com.eggroll.core.constant.ProcessorType;
+import com.eggroll.core.constant.ServerNodeStatus;
+import com.eggroll.core.constant.ServerNodeTypes;
 import com.eggroll.core.context.Context;
 import com.eggroll.core.grpc.NodeManagerClient;
 import com.eggroll.core.pojo.ErEndpoint;
@@ -11,6 +13,7 @@ import com.eggroll.core.pojo.ErProcessor;
 import com.eggroll.core.pojo.ErServerNode;
 import com.eggroll.core.pojo.ErSessionMeta;
 import com.google.common.collect.Lists;
+import com.webank.eggroll.clustermanager.entity.ServerNode;
 import org.apache.commons.collections.CollectionUtils;
 import org.springframework.stereotype.Service;
 
@@ -19,6 +22,12 @@ import java.util.List;
 public class SessionCreateHandler  extends AbstractSessionStateHandler{
     @Override
     public ErSessionMeta prepare(Context context, ErSessionMeta data , String preStateParam, String desStateParam) {
+        ErServerNode   serverNode = new  ErServerNode();
+        serverNode.setStatus(ServerNodeStatus.HEALTHY.name());
+        serverNode.setNodeType(ServerNodeTypes.NODE_MANAGER.name());
+        List<ErServerNode>  serverNodes = serverNodeService.getListByErServerNode(serverNode);
+        System.err.println("xxxxxxxxxxx"+serverNodes);
+        context.putData(Dict.SERVER_NODES,serverNodes);
         return data;
     }
 
