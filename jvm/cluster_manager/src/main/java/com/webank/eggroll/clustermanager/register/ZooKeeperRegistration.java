@@ -10,7 +10,7 @@ import org.apache.curator.retry.RetryNTimes;
 import org.apache.zookeeper.CreateMode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.ApplicationEvent;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.ApplicationListener;
 import org.springframework.stereotype.Service;
 
@@ -26,7 +26,7 @@ import java.util.Map;
  */
 
 @Service
-public class ZooKeeperRegistration implements ApplicationListener {
+public class ZooKeeperRegistration implements ApplicationListener<ApplicationReadyEvent> {
     private static final Logger logger = LoggerFactory.getLogger(ZooKeeperRegistration.class);
     private CuratorFramework client;
 
@@ -102,7 +102,7 @@ public class ZooKeeperRegistration implements ApplicationListener {
 
 
     @Override
-    public void onApplicationEvent(ApplicationEvent event) {
+    public void onApplicationEvent(ApplicationReadyEvent event) {
         register();
     }
 }
