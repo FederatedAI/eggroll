@@ -4,12 +4,13 @@ import com.eggroll.core.config.Dict;
 import com.eggroll.core.constant.StringConstants;
 import com.eggroll.core.utils.FileSystemUtils;
 import com.eggroll.core.utils.JsonUtil;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.google.gson.Gson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 public class NodeManagerMeta {
 
@@ -19,11 +20,11 @@ public class NodeManagerMeta {
     public static Long clusterId = -1L;
 
     public static void refreshServerNodeMetaIntoFile() {
-        List<Long> list = new ArrayList<>();
-        list.add(serverNodeId);
-        list.add(clusterId);
+        Map<String,Object> map = new HashMap<>();
+        map.put(Dict.KEY_SERVER_NODE_ID,serverNodeId);
+        map.put(Dict.KEY_CLUSTER_ID,clusterId);
         Gson gson = new Gson();
-        String content = gson.toJson(list);
+        String content = gson.toJson(map);
         try {
             FileSystemUtils.fileWriter(getFilePath(),content);
         } catch (IOException e) {
@@ -35,11 +36,11 @@ public class NodeManagerMeta {
     public static void loadNodeManagerMetaFromFile() {
         try {
             String content = FileSystemUtils.fileReader(getFilePath());
-            Gson gson = new Gson();
             logger.info("load node manager meta {}",content);
-            List<Integer> list = JsonUtil.json2Object(content, List.class);
-            serverNodeId = list.get(0).longValue();
-            clusterId = list.get(1).longValue();
+            Map<String,Object> map = JsonUtil.json2Object(content, new TypeReference<Map<String, Object>>() {
+            });
+            serverNodeId = (Long)map.get(Dict.KEY_SERVER_NODE_ID);
+            clusterId = (Long)map.get(Dict.KEY_CLUSTER_ID);
         } catch (IOException e) {
             logger.error("loadNodeManagerMetaFromFile failed: {}", e.getMessage());
         }
