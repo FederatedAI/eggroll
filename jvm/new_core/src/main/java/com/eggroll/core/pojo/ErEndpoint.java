@@ -64,8 +64,6 @@ public class ErEndpoint implements RpcMessage {
         return erEndpoint;
     }
 
-
-
     @Override
     public byte[] serialize() {
         return toProto().toByteArray();

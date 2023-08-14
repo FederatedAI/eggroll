@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 @Service
@@ -49,7 +50,7 @@ public class ServerNodeService extends EggRollBaseServiceImpl<ServerNodeMapper, 
         serverNode.setPort(input.getEndpoint().getPort());
         serverNode.setStatus(input.getStatus());
         if (isHeartbeat) {
-            serverNode.setLastHeartbeatAt(input.getLastHeartBeat());
+            serverNode.setLastHeartbeatAt(new Date());
         }
         this.updateById(serverNode);
     }
