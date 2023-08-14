@@ -1,9 +1,11 @@
-package com.webank.eggroll.clustermanager.statemechine;
+package com.webank.eggroll.clustermanager.statemachine;
 
 import com.eggroll.core.config.Dict;
 import com.eggroll.core.config.MetaInfo;
 import com.eggroll.core.constant.ProcessorStatus;
 import com.eggroll.core.constant.ProcessorType;
+import com.eggroll.core.constant.ServerNodeStatus;
+import com.eggroll.core.constant.ServerNodeTypes;
 import com.eggroll.core.context.Context;
 import com.eggroll.core.grpc.NodeManagerClient;
 import com.eggroll.core.pojo.ErEndpoint;
@@ -11,16 +13,21 @@ import com.eggroll.core.pojo.ErProcessor;
 import com.eggroll.core.pojo.ErServerNode;
 import com.eggroll.core.pojo.ErSessionMeta;
 import com.google.common.collect.Lists;
-import org.apache.commons.beanutils.BeanUtils;
+import com.webank.eggroll.clustermanager.entity.ServerNode;
 import org.apache.commons.collections.CollectionUtils;
 import org.springframework.stereotype.Service;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 @Service
 public class SessionCreateHandler  extends AbstractSessionStateHandler{
     @Override
     public ErSessionMeta prepare(Context context, ErSessionMeta data , String preStateParam, String desStateParam) {
+        ErServerNode   serverNode = new  ErServerNode();
+        serverNode.setStatus(ServerNodeStatus.HEALTHY.name());
+        serverNode.setNodeType(ServerNodeTypes.NODE_MANAGER.name());
+        List<ErServerNode>  serverNodes = serverNodeService.getListByErServerNode(serverNode);
+        System.err.println("xxxxxxxxxxx"+serverNodes);
+        context.putData(Dict.SERVER_NODES,serverNodes);
         return data;
     }
 
@@ -32,7 +39,7 @@ public class SessionCreateHandler  extends AbstractSessionStateHandler{
         // TODO: 2023/8/3
         List<ErServerNode> serverNodeList =(List<ErServerNode>)  context.getData(Dict.SERVER_NODES);
         if(CollectionUtils.isEmpty(serverNodeList)){
-            throw  new RuntimeException("xxxx");
+            throw  new RuntimeException("no health server node");
         }
         List<ErProcessor>  processors = Lists.newArrayList();
         Integer eggsPerNode = MetaInfo.CONFKEY_SESSION_PROCESSORS_PER_NODE;

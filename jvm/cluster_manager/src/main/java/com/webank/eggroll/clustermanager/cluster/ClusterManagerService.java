@@ -18,13 +18,14 @@ import com.webank.eggroll.clustermanager.entity.ServerNode;
 import com.webank.eggroll.clustermanager.entity.SessionProcessor;
 import com.webank.eggroll.clustermanager.job.JobServiceHandler;
 import com.webank.eggroll.clustermanager.session.SessionManager;
-import com.webank.eggroll.clustermanager.statemechine.ProcessorStateMechine;
+import com.webank.eggroll.clustermanager.statemachine.ProcessorStateMachine;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ApplicationListener;
 import org.springframework.stereotype.Service;
@@ -38,7 +39,9 @@ import java.util.stream.Collectors;
 
 
 @Service
-public class ClusterManagerService implements ApplicationListener {
+public class ClusterManagerService implements ApplicationListener<ApplicationReadyEvent> {
+
+    Logger  logger = LoggerFactory.getLogger(ClusterManagerService.class);
 
     @Autowired
     ServerNodeService serverNodeService;
@@ -47,7 +50,7 @@ public class ClusterManagerService implements ApplicationListener {
     @Autowired
     SessionProcessorService sessionProcessorService;
     @Autowired
-    ProcessorStateMechine processorStateMechine;
+    ProcessorStateMachine processorStateMachine;
     @Autowired
     SessionMainService sessionMainService;
     @Autowired
@@ -98,7 +101,7 @@ public class ClusterManagerService implements ApplicationListener {
                             if (ProcessorStatus.RUNNING.name().equals(processorInDb.getStatus())) {
                                 ErProcessor checkNodeProcessResult = nodeManagerClient.checkNodeProcess(processor);
                                 if (checkNodeProcessResult == null || ProcessorStatus.KILLED.name().equals(checkNodeProcessResult.getStatus())) {
-                                    processorStateMechine.changeStatus(new Context(), processor, null, ProcessorStatus.ERROR.name());
+                                    processorStateMachine.changeStatus(new Context(), processor, null, ProcessorStatus.ERROR.name());
                                 }
                             }
 
@@ -206,7 +209,7 @@ public class ClusterManagerService implements ApplicationListener {
             }
         } else if (sessionProcessors.stream().anyMatch(p -> ProcessorStatus.FINISHED.name().equals(p.getStatus()))) {
             session.setStatus(SessionStatus.FINISHED.name());
-            sessionMainService.updateSessionMain(session, erSessionMeta -> erSessionMeta.getProcessors().forEach(processor -> processorStateMechine.changeStatus(new Context(), processor, null, erSessionMeta.getStatus())));
+            sessionMainService.updateSessionMain(session, erSessionMeta -> erSessionMeta.getProcessors().forEach(processor -> processorStateMachine.changeStatus(new Context(), processor, null, erSessionMeta.getStatus())));
         }
         log.debug("found all processor belongs to session " + session.getId() + " finished, update session status to `Finished`");
     }
@@ -248,6 +251,12 @@ public class ClusterManagerService implements ApplicationListener {
                 Thread.sleep(MetaInfo.EGGROLL_SESSION_STATUS_CHECK_INTERVAL_MS);
             } catch (Throwable e) {
                 log.error("session watcher handle error ", e);
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException ex) {
+                    ex.printStackTrace();
+                }
+
             }
         }
     }, "SESSION_WATCHER_THREAD");
@@ -329,6 +338,7 @@ public class ClusterManagerService implements ApplicationListener {
 
 
     public ErNodeHeartbeat nodeHeartbeat(ErNodeHeartbeat nodeHeartbeat) {
+        logger.info("node heart beat {}",nodeHeartbeat);
         ErServerNode serverNode = nodeHeartbeat.getNode();
         synchronized (serverNode.getId().toString().intern()) {
             if (serverNode.getId() == -1) {
@@ -417,8 +427,8 @@ public class ClusterManagerService implements ApplicationListener {
         return registerResource(serverNode);
     }
 
-    @Override
-    public void onApplicationEvent(@NotNull ApplicationEvent event) {
+
+    public void onApplicationEvent(@NotNull ApplicationReadyEvent   event) {
         sessionWatcher.start();
         nodeHeartbeatChecker.start();
         nodeProcessChecker.start();

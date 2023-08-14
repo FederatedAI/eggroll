@@ -1,4 +1,4 @@
-package com.webank.eggroll.clustermanager.statemechine;
+package com.webank.eggroll.clustermanager.statemachine;
 
 import com.eggroll.core.config.Dict;
 import com.eggroll.core.context.Context;
@@ -50,7 +50,7 @@ public class SessionKillHandler extends  AbstractSessionStateHandler{
     public ErSessionMeta handle(Context context, ErSessionMeta erSessionMeta, String preStateParam, String desStateParam) {
         updateStatus(context,erSessionMeta,preStateParam,desStateParam);
         erSessionMeta.getProcessors().forEach(processor ->{
-            processorStateMechine.changeStatus(context,processor,null,desStateParam );
+            processorStateMachine.changeStatus(context,processor,null,desStateParam );
         });
         return sessionMainService.getSession(erSessionMeta.getId(),true,false,false);
     }

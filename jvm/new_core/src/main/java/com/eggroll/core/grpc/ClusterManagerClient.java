@@ -19,14 +19,23 @@ public class ClusterManagerClient {
         cc = new CommandClient();
     }
 
+
+
     public ErProcessor hearbeat(ErProcessor processor) {
         byte[] responseData = cc.call(endpoint, heartbeat,processor.serialize());
         ErProcessor response = new ErProcessor();
         response.deserialize(responseData);
-
         return response;
-
     }
+
+    public   ErSessionMeta   getOrCreateSession(ErSessionMeta  erSessionMeta){
+        byte[] responseData = cc.call(endpoint, getOrCreateSession,erSessionMeta.serialize());
+        ErSessionMeta response = new ErSessionMeta();
+        response.deserialize(responseData);
+        return  response;
+    }
+
+
 
 //    def nodeHeartbeat(node: ErNodeHeartbeat): ErNodeHeartbeat =
 //    cc.call[ErNodeHeartbeat](ManagerCommands.nodeHeartbeat, node)

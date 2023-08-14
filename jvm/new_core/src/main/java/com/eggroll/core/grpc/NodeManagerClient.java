@@ -19,14 +19,19 @@
 package com.eggroll.core.grpc;
 
 import com.eggroll.core.pojo.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static com.eggroll.core.grpc.CommandUri.*;
 
 
 public class NodeManagerClient {
+  Logger logger = LoggerFactory.getLogger(NodeManagerClient.class);
+
   CommandClient  commandClient;
   ErEndpoint nodeManagerEndpoint;
   public  NodeManagerClient(ErEndpoint nodeManagerEndpoint){
+    logger.info("create new  nodemanager client {}",nodeManagerEndpoint);
     if (nodeManagerEndpoint == null )
       throw new IllegalArgumentException("failed to create NodeManagerClient for endpoint: " + nodeManagerEndpoint);
     this.nodeManagerEndpoint = nodeManagerEndpoint;
