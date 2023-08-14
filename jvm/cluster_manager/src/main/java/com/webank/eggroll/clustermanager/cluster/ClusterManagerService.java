@@ -41,6 +41,8 @@ import java.util.stream.Collectors;
 @Service
 public class ClusterManagerService implements ApplicationListener<ApplicationReadyEvent> {
 
+    Logger  logger = LoggerFactory.getLogger(ClusterManagerService.class);
+
     @Autowired
     ServerNodeService serverNodeService;
     @Autowired
@@ -336,6 +338,7 @@ public class ClusterManagerService implements ApplicationListener<ApplicationRea
 
 
     public ErNodeHeartbeat nodeHeartbeat(ErNodeHeartbeat nodeHeartbeat) {
+        logger.info("node heart beat {}",nodeHeartbeat);
         ErServerNode serverNode = nodeHeartbeat.getNode();
         synchronized (serverNode.getId().toString().intern()) {
             if (serverNode.getId() == -1) {
