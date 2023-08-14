@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
+
 @Service
 public class NodeResourceManager implements ApplicationListener<ApplicationReadyEvent> {
 
@@ -50,7 +51,7 @@ public class NodeResourceManager implements ApplicationListener<ApplicationReady
         resourceMap.put(Dict.VCPU_CORE, cpuCore);
         resourceMap.put(Dict.PHYSICAL_MEMORY, physicalMemory);
         resourceMap.put(Dict.VGPU_CORE, gpuCore);
-        client = new      ClusterManagerClient (new ErEndpoint(MetaInfo.CONFKEY_CLUSTER_MANAGER_HOST,MetaInfo.CONFKEY_CLUSTER_MANAGER_PORT));
+        client = new ClusterManagerClient (new ErEndpoint(MetaInfo.CONFKEY_CLUSTER_MANAGER_HOST,MetaInfo.CONFKEY_CLUSTER_MANAGER_PORT));
         physicalMemorySize = getPhysicalMemorySize();
         heartBeatThread = new HeartBeatThread();
         resourceCountThread = new ResourceCountThread();
@@ -87,7 +88,7 @@ public class NodeResourceManager implements ApplicationListener<ApplicationReady
             return 0L;
         }
         ResourceWrapper resourceWrapper = getResourceWrapper(rType);
-        return resourceWrapper.getAllocated().getAndAdd(-count);
+        return resourceWrapper.getAllocated().getAndAdd(count);
     }
 
     public void start() {
@@ -137,7 +138,7 @@ public class NodeResourceManager implements ApplicationListener<ApplicationReady
         if (Shell.LINUX) {
             available = sysInfo.getAvailablePhysicalMemorySize();
         } else {
-            resourceMap.get(Dict.PHYSICAL_MEMORY).getUsed().set(physicalMemorySize - available);
+            available = GetSystemInfo.getFreePhysicalMemorySize();
         }
         resourceMap.get(Dict.PHYSICAL_MEMORY).getUsed().set(physicalMemorySize - available);
     }
