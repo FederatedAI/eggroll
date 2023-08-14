@@ -3,6 +3,7 @@ package com.webank.eggroll.nodemanager.meta;
 import com.eggroll.core.config.Dict;
 import com.eggroll.core.constant.StringConstants;
 import com.eggroll.core.utils.FileSystemUtils;
+import com.eggroll.core.utils.JsonUtil;
 import com.google.gson.Gson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,9 +36,10 @@ public class NodeManagerMeta {
         try {
             String content = FileSystemUtils.fileReader(getFilePath());
             Gson gson = new Gson();
-            List<Long> list = gson.fromJson(content, List.class);
-            serverNodeId = list.get(0);
-            clusterId = list.get(1);
+            logger.info("load node manager meta {}",content);
+            List<Integer> list = JsonUtil.json2Object(content, List.class);
+            serverNodeId = list.get(0).longValue();
+            clusterId = list.get(1).longValue();
         } catch (IOException e) {
             logger.error("loadNodeManagerMetaFromFile failed: {}", e.getMessage());
         }

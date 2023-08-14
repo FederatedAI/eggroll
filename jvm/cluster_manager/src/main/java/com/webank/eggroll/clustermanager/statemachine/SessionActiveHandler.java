@@ -1,9 +1,8 @@
-package com.webank.eggroll.clustermanager.statemechine;
+package com.webank.eggroll.clustermanager.statemachine;
 
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.eggroll.core.config.Dict;
 import com.eggroll.core.constant.ProcessorStatus;
-import com.eggroll.core.constant.SessionStatus;
 import com.eggroll.core.context.Context;
 import com.eggroll.core.pojo.ErProcessor;
 import com.eggroll.core.pojo.ErSessionMeta;

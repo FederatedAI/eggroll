@@ -1,13 +1,9 @@
-package com.webank.eggroll.clustermanager.statemechine;
+package com.webank.eggroll.clustermanager.statemachine;
 
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.eggroll.core.config.Dict;
 import com.eggroll.core.constant.ResourceStatus;
 import com.eggroll.core.context.Context;
 import com.eggroll.core.pojo.ErProcessor;
-import com.webank.eggroll.clustermanager.dao.impl.ProcessorService;
-import com.webank.eggroll.clustermanager.entity.SessionProcessor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service

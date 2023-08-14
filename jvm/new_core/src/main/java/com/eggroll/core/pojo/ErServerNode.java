@@ -2,9 +2,11 @@ package com.eggroll.core.pojo;
 
 import com.eggroll.core.constant.StringConstants;
 import com.eggroll.core.utils.JsonUtil;
-import com.google.protobuf.InvalidProtocolBufferException;
 import com.webank.eggroll.core.meta.Meta;
 import lombok.Data;
+import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -12,6 +14,7 @@ import java.util.List;
 
 @Data
 public class ErServerNode implements RpcMessage {
+    Logger log = LoggerFactory.getLogger(ErServerNode.class);
     private Long id;
     private String name;
     private Long clusterId;
@@ -73,15 +76,30 @@ public class ErServerNode implements RpcMessage {
                 ") at " + Integer.toHexString(hashCode()) + ">";
     }
 
+    public Meta.ServerNode toProto(){
+        Meta.ServerNode.Builder builder = Meta.ServerNode.newBuilder();
+        if(this.name!=null)
+            builder.setName(this.name);
+        if(this.clusterId!=null)
+            builder.setClusterId(this.clusterId);
+        if(this.nodeType!=null)
+            builder.setNodeType(this.nodeType);
+        if(this.status!=null)
+            builder.setStatus(this.status);
+        if (this.endpoint != null)
+            builder.setEndpoint(endpoint.toProto());
+        return builder.build();
+    }
+
+    public static ErServerNode fromProto(Meta.ServerNode serverNode){
+        ErServerNode erServerNode = new ErServerNode();
+        erServerNode.deserialize(serverNode.toByteArray());
+        return erServerNode;
+    }
+
     @Override
     public byte[] serialize() {
-        Meta.ServerNode.Builder builder = Meta.ServerNode.newBuilder();
-        builder.setId(this.id).setName(this.name).setClusterId(this.clusterId)
-                .setNodeType(this.nodeType).setStatus(this.status);
-        if (this.endpoint != null) {
-            builder.setEndpoint(endpoint.toProto());
-        }
-        return builder.build().toByteArray();
+        return toProto().toByteArray();
     }
 
     @Override
@@ -93,8 +111,8 @@ public class ErServerNode implements RpcMessage {
             this.name = serverNode.getName();
             this.nodeType = serverNode.getNodeType();
             this.status = serverNode.getStatus();
-        } catch (InvalidProtocolBufferException e) {
-            e.printStackTrace();
-        }
+            } catch (Exception e) {
+                log.error("deserialize error : ", e);
+            }
     }
 }

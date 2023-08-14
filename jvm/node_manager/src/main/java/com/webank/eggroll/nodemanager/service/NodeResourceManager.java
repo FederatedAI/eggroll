@@ -17,11 +17,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.ApplicationListener;
+import org.springframework.stereotype.Service;
+
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
-
-public class NodeResourceManager {
+@Service
+public class NodeResourceManager implements ApplicationListener<ApplicationReadyEvent> {
 
     Logger logger = LoggerFactory.getLogger(NodeResourceManager.class);
     @Autowired
@@ -36,6 +40,7 @@ public class NodeResourceManager {
     Map<String, ResourceWrapper> resourceMap;
 
     public NodeResourceManager() {
+
         int cpus = MetaInfo.CONFKEY_NODE_MANAGER_CPU_VCORES == null ? getAvailableProcessors() : MetaInfo.CONFKEY_NODE_MANAGER_CPU_VCORES;
         int gpus = MetaInfo.CONFKEY_NODE_MANAGER_GPU_VCORES == null ? getGpuSize() : MetaInfo.CONFKEY_NODE_MANAGER_GPU_VCORES;
         ResourceWrapper cpuCore = new ResourceWrapper(Dict.VCPU_CORE, new AtomicLong(cpus));
@@ -45,8 +50,7 @@ public class NodeResourceManager {
         resourceMap.put(Dict.VCPU_CORE, cpuCore);
         resourceMap.put(Dict.PHYSICAL_MEMORY, physicalMemory);
         resourceMap.put(Dict.VGPU_CORE, gpuCore);
-
-
+        client = new      ClusterManagerClient (new ErEndpoint(MetaInfo.CONFKEY_CLUSTER_MANAGER_HOST,MetaInfo.CONFKEY_CLUSTER_MANAGER_PORT));
         physicalMemorySize = getPhysicalMemorySize();
         heartBeatThread = new HeartBeatThread();
         resourceCountThread = new ResourceCountThread();
@@ -174,6 +178,11 @@ public class NodeResourceManager {
         return newErServerNode;
     }
 
+    @Override
+    public void onApplicationEvent(ApplicationReadyEvent event) {
+        this.start();
+    }
+
     class ResourceCountThread extends Thread {
         @Override
         public void run() {
@@ -226,6 +235,7 @@ public class NodeResourceManager {
                         }
                     }
                 } catch (Exception e) {
+                    e.printStackTrace();
                     logger.error("node heart beat error {}", e.getMessage());
                 }
                 try {

@@ -12,7 +12,7 @@ import com.webank.eggroll.clustermanager.dao.impl.NodeResourceService;
 import com.webank.eggroll.clustermanager.dao.impl.ProcessorResourceService;
 import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
 import com.webank.eggroll.clustermanager.dao.impl.SessionMainService;
-import com.webank.eggroll.clustermanager.dao.impl.dao.SessionMetaDao;
+//import com.webank.eggroll.clustermanager.dao.impl.dao.SessionMetaDao;
 import com.webank.eggroll.clustermanager.entity.ProcessorResource;
 import lombok.Data;
 import org.jetbrains.annotations.NotNull;
@@ -44,8 +44,8 @@ public class ClusterResourceManager implements ApplicationListener<ApplicationRe
     SessionMainService sessionMainService;
     @Autowired
     ServerNodeService serverNodeService;
-    @Autowired
-    SessionMetaDao sessionMetaDao;
+//    @Autowired
+//    SessionMetaDao sessionMetaDao;
 
     @Autowired
     NodeResourceService nodeResourceService;
@@ -249,7 +249,9 @@ public class ClusterResourceManager implements ApplicationListener<ApplicationRe
                         erSessionMeta.setProcessors(processorList);
                         erSessionMeta.setTotalProcCount(dispatchedProcessors.size());
                         erSessionMeta.setStatus(SessionStatus.NEW.name());
-                        sessionMetaDao.registerWithResource(erSessionMeta);
+
+                        // TODO: 2023/8/13  暂时屏蔽
+                     //   sessionMetaDao.registerWithResource(erSessionMeta);
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     } finally {

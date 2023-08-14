@@ -1,8 +1,9 @@
-package com.webank.eggroll.clustermanager.statemechine;
+package com.webank.eggroll.clustermanager.statemachine;
 
 import com.eggroll.core.constant.ProcessorStatus;
 import com.eggroll.core.context.Context;
 import com.eggroll.core.pojo.ErSessionMeta;
+import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
 import com.webank.eggroll.clustermanager.dao.impl.SessionMainService;
 import com.webank.eggroll.clustermanager.entity.SessionMain;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,7 +12,9 @@ public abstract class AbstractSessionStateHandler implements   StateHandler<ErSe
     @Autowired
     SessionMainService  sessionMainService;
     @Autowired
-    ProcessorStateMechine processorStateMechine;
+    ProcessorStateMachine processorStateMachine;
+    @Autowired
+    ServerNodeService   serverNodeService;
 
 
 
@@ -28,7 +31,7 @@ public abstract class AbstractSessionStateHandler implements   StateHandler<ErSe
                 erSessionMeta.getTag(),erSessionMeta.getTotalProcCount(),erSessionMeta.getActiveProcCount(),null,null);
         sessionMainService.save(sessionMain);
         erSessionMeta.getProcessors().forEach(p->{
-            processorStateMechine.changeStatus(context,p,null, ProcessorStatus.NEW.name());
+            processorStateMachine.changeStatus(context,p,null, ProcessorStatus.NEW.name());
         });
 
     }

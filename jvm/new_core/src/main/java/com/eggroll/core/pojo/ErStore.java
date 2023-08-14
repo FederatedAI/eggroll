@@ -2,17 +2,28 @@ package com.eggroll.core.pojo;
 
 import com.webank.eggroll.core.meta.Meta;
 import lombok.Data;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 @Data
 public class ErStore implements RpcMessage {
+    Logger log = LoggerFactory.getLogger(ErStore.class);
     private ErStoreLocator storeLocator;
     private List<ErPartition> partitions;
     private Map<String, String> options;
+
+    public ErStore(){
+        this.storeLocator = null;
+        this.partitions = new ArrayList<>();
+        this.options = new HashMap<>();
+    }
 
     public ErStore(ErStoreLocator storeLocator, List<ErPartition> partitions, Map<String, String> options) {
         this.storeLocator = storeLocator;
@@ -44,17 +55,34 @@ public class ErStore implements RpcMessage {
         return fork(newStoreLocator);
     }
 
+    public Meta.Store toProto() {
+        Meta.Store.Builder builder = Meta.Store.newBuilder();
+        builder.setStoreLocator(this.storeLocator.toProto())
+                .addAllPartitions(this.partitions.stream().map(ErPartition::toProto).collect(Collectors.toList()))
+                .putAllOptions(this.options);
+        return builder.build();
+    }
+
+    public static ErStore fromProto(Meta.Store store){
+        ErStore erStore = new ErStore();
+        erStore.deserialize(store.toByteArray());
+        return erStore;
+    }
+
     @Override
     public byte[] serialize() {
-//        Meta.Store.Builder builder = Meta.Store.newBuilder();
-//        builder.setStoreLocator()
-//        builder.setPartitions()
-//        builder.op
-        return new byte[0];
+        return toProto().toByteArray();
     }
 
     @Override
     public void deserialize(byte[] data) {
-
+        try {
+            Meta.Store store = Meta.Store.parseFrom(data);
+            this.storeLocator = ErStoreLocator.fromProto(store.getStoreLocator());
+            this.partitions = store.getPartitionsList().stream().map(ErPartition::fromProto).collect(Collectors.toList());
+            this.options.putAll(store.getOptionsMap());
+        } catch (Exception e) {
+            log.error("deserialize error : ", e);
+        }
     }
 }

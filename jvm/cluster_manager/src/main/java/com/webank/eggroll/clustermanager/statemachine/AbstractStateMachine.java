@@ -1,17 +1,12 @@
-package com.webank.eggroll.clustermanager.statemechine;
+package com.webank.eggroll.clustermanager.statemachine;
 
 
 
 import com.eggroll.core.context.Context;
-import com.eggroll.core.pojo.ErSessionMeta;
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -99,7 +94,9 @@ public abstract class AbstractStateMachine<T> {
             String  newPreState = preStateParam;
             if(!handler.isBreak(context)) {
                 result = handler.handle(context, result, newPreState, desStateParam);
-                callback.callback(context,result);
+                if(callback!=null) {
+                    callback.callback(context, result);
+                }
                 if(!handler.isBreak(context)) {
                     if (handler.needAsynPostHandle(context)) {
                         T finalResult = result;
