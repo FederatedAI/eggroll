@@ -223,12 +223,12 @@ public class NodeResourceManager implements ApplicationListener<ApplicationReady
                 try {
                     seq += 1;
                     ErNodeHeartbeat nodeHeartBeat = client.nodeHeartbeat(generateNodeBeat(seq));
+                    logger.info("send node heart beat to cluster-manager");
                     if (nodeHeartBeat != null && nodeHeartBeat.getNode() != null) {
                         if (NodeManagerMeta.status.equals(Dict.INIT)) {
                             if (nodeHeartBeat.getNode().getId() != -1) {
                                 NodeManagerMeta.serverNodeId = nodeHeartBeat.getNode().getId();
                                 NodeManagerMeta.clusterId = nodeHeartBeat.getNode().getClusterId();
-                                logger.info("get node id {} from cluster-manager", NodeManagerMeta.serverNodeId);
                                 NodeManagerMeta.refreshServerNodeMetaIntoFile();
                                 NodeManagerMeta.status = Dict.HEALTHY;
                             }
