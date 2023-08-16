@@ -111,6 +111,7 @@ public class ErServerNode implements RpcMessage {
             this.name = serverNode.getName();
             this.nodeType = serverNode.getNodeType();
             this.status = serverNode.getStatus();
+            this.endpoint = ErEndpoint.fromProto(serverNode.getEndpoint());
             } catch (Exception e) {
                 log.error("deserialize error : ", e);
             }
