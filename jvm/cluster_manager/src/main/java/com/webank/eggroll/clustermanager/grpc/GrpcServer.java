@@ -12,12 +12,12 @@ import io.grpc.netty.shaded.io.grpc.netty.GrpcSslContexts;
 import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder;
 import io.grpc.netty.shaded.io.netty.handler.ssl.ClientAuth;
 import io.grpc.netty.shaded.io.netty.handler.ssl.SslContextBuilder;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.ApplicationListener;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Service;
 
 import javax.net.ssl.SSLException;
@@ -29,7 +29,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 @Service
-public class GrpcServer {
+public class GrpcServer implements ApplicationRunner  {
 
     Logger logger = LoggerFactory.getLogger(GrpcServer.class);
 
@@ -37,7 +37,7 @@ public class GrpcServer {
     CommandServiceProvider  commandServiceProvider;
 
     public void start() throws Exception{
-        Server  server =  createServer("0.0.0.0",MetaInfo.CONFKEY_CLUSTER_MANAGER_PORT, Lists.newArrayList(commandServiceProvider),Lists.newArrayList(), Maps.newHashMap());
+        Server  server =  createServer("127.0.0.1",MetaInfo.CONFKEY_CLUSTER_MANAGER_PORT, Lists.newArrayList(commandServiceProvider),Lists.newArrayList(), Maps.newHashMap());
         server.start();
     }
 
@@ -129,6 +129,9 @@ public class GrpcServer {
        return nettyServerBuilder.build();
     }
 
-
-
+    @Override
+    public void run(ApplicationArguments args) throws Exception {
+        start();
+        logger.info("{} run() end !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",this.getClass().getSimpleName());
+    }
 }
