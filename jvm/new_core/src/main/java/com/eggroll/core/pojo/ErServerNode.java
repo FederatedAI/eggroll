@@ -59,7 +59,7 @@ public class ErServerNode implements RpcMessage {
         this.resources = new ArrayList<>();
     }
 
-    public ErServerNode(Long id,String nodeType,ErEndpoint endpoint,String status) {
+    public ErServerNode(Long id, String nodeType, ErEndpoint endpoint, String status) {
         this.id = id;
         this.endpoint = endpoint;
         this.nodeType = nodeType;
@@ -76,22 +76,24 @@ public class ErServerNode implements RpcMessage {
                 ") at " + Integer.toHexString(hashCode()) + ">";
     }
 
-    public Meta.ServerNode toProto(){
+    public Meta.ServerNode toProto() {
         Meta.ServerNode.Builder builder = Meta.ServerNode.newBuilder();
-        if(this.name!=null)
+        if (this.id != null)
+            builder.setId(this.id);
+        if (this.name != null)
             builder.setName(this.name);
-        if(this.clusterId!=null)
+        if (this.clusterId != null)
             builder.setClusterId(this.clusterId);
-        if(this.nodeType!=null)
+        if (this.nodeType != null)
             builder.setNodeType(this.nodeType);
-        if(this.status!=null)
+        if (this.status != null)
             builder.setStatus(this.status);
         if (this.endpoint != null)
             builder.setEndpoint(endpoint.toProto());
         return builder.build();
     }
 
-    public static ErServerNode fromProto(Meta.ServerNode serverNode){
+    public static ErServerNode fromProto(Meta.ServerNode serverNode) {
         ErServerNode erServerNode = new ErServerNode();
         erServerNode.deserialize(serverNode.toByteArray());
         return erServerNode;
@@ -112,8 +114,8 @@ public class ErServerNode implements RpcMessage {
             this.nodeType = serverNode.getNodeType();
             this.status = serverNode.getStatus();
             this.endpoint = ErEndpoint.fromProto(serverNode.getEndpoint());
-            } catch (Exception e) {
-                log.error("deserialize error : ", e);
-            }
+        } catch (Exception e) {
+            log.error("deserialize error : ", e);
+        }
     }
 }
