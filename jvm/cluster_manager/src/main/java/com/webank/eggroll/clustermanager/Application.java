@@ -3,11 +3,8 @@ package com.webank.eggroll.clustermanager;
 
 import com.eggroll.core.config.MetaInfo;
 import com.eggroll.core.utils.CommandArgsUtils;
-
 import com.eggroll.core.utils.PropertiesUtil;
-import com.webank.eggroll.clustermanager.grpc.GrpcServer;
 import org.apache.commons.cli.CommandLine;
-
 import org.mybatis.spring.annotation.MapperScan;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,35 +23,28 @@ import java.util.Properties;
 public class Application {
     static Logger logger = LoggerFactory.getLogger(Application.class);
 
-    public static ApplicationContext context  ;
+    public static ApplicationContext context;
 
     public static void main(String[] args) {
-        System.setProperty("spring.config.name","eggroll");
+        System.setProperty("spring.config.name", "eggroll");
 //        ClusterManagerBootstrap clusterManagerBootstrap = new ClusterManagerBootstrap();
-        CommandLine cmd = CommandArgsUtils.parseArgs(args );
+        CommandLine cmd = CommandArgsUtils.parseArgs(args);
 
         //this.sessionId = cmd.getOptionValue('s')
         String confPath = cmd.getOptionValue('c', "./conf/eggroll.properties");
         Properties environment = PropertiesUtil.getProperties(confPath);
         MetaInfo.init(environment);
 
-        context=  new SpringApplicationBuilder(Application.class).run(args);
-
-        GrpcServer  grpcServer = (GrpcServer)context.getBean("grpcServer");
-        try {
-            grpcServer.start();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        Runtime.getRuntime().addShutdownHook(new Thread(() ->{
-
+        context = new SpringApplicationBuilder(Application.class).run(args);
+        logger.debug("spring started !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
         }));
 
 
 //        ContextHolder.context_$eq(context);
 //        clusterManagerBootstrap.init(args);
 //        clusterManagerBootstrap.start();
-        synchronized(context) {
+        synchronized (context) {
             try {
                 context.wait();
             } catch (InterruptedException e) {

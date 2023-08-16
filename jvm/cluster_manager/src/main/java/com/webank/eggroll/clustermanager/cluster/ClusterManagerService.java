@@ -20,14 +20,12 @@ import com.webank.eggroll.clustermanager.job.JobServiceHandler;
 import com.webank.eggroll.clustermanager.session.SessionManager;
 import com.webank.eggroll.clustermanager.statemachine.ProcessorStateMachine;
 import org.apache.commons.lang3.StringUtils;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.ApplicationEvent;
-import org.springframework.context.ApplicationListener;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -39,9 +37,9 @@ import java.util.stream.Collectors;
 
 
 @Service
-public class ClusterManagerService implements ApplicationListener<ApplicationReadyEvent> {
+public class ClusterManagerService implements ApplicationRunner {
 
-    Logger  logger = LoggerFactory.getLogger(ClusterManagerService.class);
+    Logger logger = LoggerFactory.getLogger(ClusterManagerService.class);
 
     @Autowired
     ServerNodeService serverNodeService;
@@ -338,7 +336,7 @@ public class ClusterManagerService implements ApplicationListener<ApplicationRea
 
 
     public ErNodeHeartbeat nodeHeartbeat(ErNodeHeartbeat nodeHeartbeat) {
-        logger.info("node heart beat {}",nodeHeartbeat);
+        logger.info("node heart beat {}", nodeHeartbeat);
         ErServerNode serverNode = nodeHeartbeat.getNode();
         synchronized (serverNode.getId().toString().intern()) {
             if (serverNode.getId() == -1) {
@@ -427,11 +425,12 @@ public class ClusterManagerService implements ApplicationListener<ApplicationRea
         return registerResource(serverNode);
     }
 
-
-    public void onApplicationEvent(@NotNull ApplicationReadyEvent   event) {
+    @Override
+    public void run(ApplicationArguments args){
         sessionWatcher.start();
         nodeHeartbeatChecker.start();
         nodeProcessChecker.start();
         redidualProcessorChecker.start();
+        log.info("{} run() end !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",this.getClass().getSimpleName());
     }
 }

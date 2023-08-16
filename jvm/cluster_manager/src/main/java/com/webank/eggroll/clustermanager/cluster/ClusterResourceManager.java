@@ -12,15 +12,13 @@ import com.webank.eggroll.clustermanager.dao.impl.NodeResourceService;
 import com.webank.eggroll.clustermanager.dao.impl.ProcessorResourceService;
 import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
 import com.webank.eggroll.clustermanager.dao.impl.SessionMainService;
-//import com.webank.eggroll.clustermanager.dao.impl.dao.SessionMetaDao;
 import com.webank.eggroll.clustermanager.entity.ProcessorResource;
 import lombok.Data;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.ApplicationListener;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -32,7 +30,7 @@ import java.util.stream.Collectors;
 
 @Service
 @Data
-public class ClusterResourceManager implements ApplicationListener<ApplicationReadyEvent> {
+public class ClusterResourceManager implements ApplicationRunner {
 
     Logger log = LoggerFactory.getLogger(ClusterResourceManager.class);
 
@@ -251,7 +249,7 @@ public class ClusterResourceManager implements ApplicationListener<ApplicationRe
                         erSessionMeta.setStatus(SessionStatus.NEW.name());
 
                         // TODO: 2023/8/13  暂时屏蔽
-                     //   sessionMetaDao.registerWithResource(erSessionMeta);
+                        //   sessionMetaDao.registerWithResource(erSessionMeta);
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     } finally {
@@ -548,10 +546,9 @@ public class ClusterResourceManager implements ApplicationListener<ApplicationRe
     }
 
     @Override
-    public void onApplicationEvent(@NotNull ApplicationReadyEvent event) {
+    public void run(ApplicationArguments args) throws Exception {
         dispatchThread.start();
         lockCleanThread.start();
+        log.info("{} run() end !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",this.getClass().getSimpleName());
     }
-
-
 }

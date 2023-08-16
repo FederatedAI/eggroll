@@ -35,7 +35,7 @@ public class ZooKeeperRegistration implements ApplicationListener<ApplicationRea
     private final static String DEFAULT_COMPONENT_ROOT = "FATE-COMPONENTS";
     private static final String project = "eggroll";
     private static final int PORT = MetaInfo.ZOOKEEPER_PORT;
-    private static final int timeout = 60000;
+    private static final int timeout = 5000;
     private String TIMESTAMP_KEY = "timestamp";
     private static final String INSTANCE_ID = "instance_id";
     private static final String VERSION = "version";
@@ -104,5 +104,6 @@ public class ZooKeeperRegistration implements ApplicationListener<ApplicationRea
     @Override
     public void onApplicationEvent(ApplicationReadyEvent event) {
         register();
+        logger.info("{} onApplicationEvent() end !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",this.getClass().getSimpleName());
     }
 }
