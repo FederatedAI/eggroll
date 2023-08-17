@@ -1,14 +1,18 @@
 package com.eggroll.core.pojo;
 
-enum JobProcessorTypes {
-    deepSpeed;
+import java.util.Enumeration;
+import java.util.Optional;
 
-//    public static Optional<JobProcessorTypes> fromString(String type) {
-//        switch (type.toLowerCase()) {
-//            case "deepspeed":
-//                return Optional.of(DeepSpeed);
-//            default:
-//                return Optional.empty();
-//        }
-//    }
+public enum JobProcessorTypes {
+    DeepSpeed;
+
+    public static Optional<JobProcessorTypes> fromString(String type) {
+        switch (type.toLowerCase()) {
+            case "deepspeed":
+                return Optional.of(DeepSpeed);
+            default:
+                return Optional.empty();
+        }
+    }
+
 }
