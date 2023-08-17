@@ -6,7 +6,8 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import com.eggroll.core.pojo.ErSessionMeta;
 import lombok.Data;
 import org.apache.commons.lang3.StringUtils;
-import java.sql.Date;
+
+import java.util.Date;
 
 @TableName(value = "session_main", autoResultMap = true)
 @Data

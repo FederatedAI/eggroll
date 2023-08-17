@@ -37,7 +37,7 @@ public class TestSessionManager {
     @Test
     public void testGetSession() {
         ErSessionMeta getOrCreateSessionMeta = new ErSessionMeta();
-        getOrCreateSessionMeta.setId("testx_1692259321436");
+        getOrCreateSessionMeta.setId("testx_1692263572251");
         Map<String,String> options = new HashMap<>();
         options.put(Dict.CONFKEY_SESSION_PROCESSORS_PER_NODE ,"2");
         getOrCreateSessionMeta.setOptions(options);
@@ -49,7 +49,7 @@ public class TestSessionManager {
     @Test
     public void testKillSession() {
         ErSessionMeta getOrCreateSessionMeta = new ErSessionMeta();
-        getOrCreateSessionMeta.setId("testx_1692259321436");
+        getOrCreateSessionMeta.setId("testx_1692263572251");
         Map<String,String> options = new HashMap<>();
         options.put(Dict.CONFKEY_SESSION_PROCESSORS_PER_NODE ,"2");
         getOrCreateSessionMeta.setOptions(options);
@@ -61,7 +61,7 @@ public class TestSessionManager {
     @Test
     public void testKillAllSession() {
         ErSessionMeta getOrCreateSessionMeta = new ErSessionMeta();
-        getOrCreateSessionMeta.setId("testx_1692259321436");
+        getOrCreateSessionMeta.setId("testx_1692263572251");
         Map<String,String> options = new HashMap<>();
         options.put(Dict.CONFKEY_SESSION_PROCESSORS_PER_NODE ,"2");
         getOrCreateSessionMeta.setOptions(options);
