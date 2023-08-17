@@ -222,8 +222,18 @@ public class NodeResourceManager implements ApplicationListener<ApplicationReady
             while (notOver) {
                 try {
                     seq += 1;
-                    ErNodeHeartbeat nodeHeartBeat = client.nodeHeartbeat(generateNodeBeat(seq));
-                    logger.info("send node heart beat to cluster-manager");
+                    ErNodeHeartbeat erNodeHeartbeat = generateNodeBeat(seq);
+                    logger.info("before send nodeHearBeat info to cluster-manager: nodeHost:{}, nodePort:{}, nodeId: {}",
+                            erNodeHeartbeat.getNode().getEndpoint().getHost(),
+                            erNodeHeartbeat.getNode().getEndpoint().getPort(),
+                            erNodeHeartbeat.getNode().getId()
+                    );
+                    ErNodeHeartbeat nodeHeartBeat = client.nodeHeartbeat(erNodeHeartbeat);
+                    logger.info("recive nodeHearBeat info from cluster-manager: nodeHost:{}, nodePort:{}, nodeId: {}",
+                            nodeHeartBeat.getNode().getEndpoint().getHost(),
+                            nodeHeartBeat.getNode().getEndpoint().getPort(),
+                            nodeHeartBeat.getNode().getId()
+                    );
                     if (nodeHeartBeat != null && nodeHeartBeat.getNode() != null) {
                         if (NodeManagerMeta.status.equals(Dict.INIT)) {
                             if (nodeHeartBeat.getNode().getId() != -1) {
@@ -249,4 +259,3 @@ public class NodeResourceManager implements ApplicationListener<ApplicationReady
     }
 
 }
-
