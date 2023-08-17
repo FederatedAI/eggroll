@@ -28,8 +28,45 @@ public class TestSessionManager {
         Map<String,String> options = new HashMap<>();
         options.put(Dict.CONFKEY_SESSION_PROCESSORS_PER_NODE ,"2");
         getOrCreateSessionMeta.setOptions(options);
+        getOrCreateSessionMeta.setName("Test1");
         ClusterManagerClient clusterManagerClient = new ClusterManagerClient(endpoint);
         ErSessionMeta result = clusterManagerClient.getOrCreateSession(getOrCreateSessionMeta);
         System.err.println(result);
+    }
+
+    @Test
+    public void testGetSession() {
+        ErSessionMeta getOrCreateSessionMeta = new ErSessionMeta();
+        getOrCreateSessionMeta.setId("testx_1692259321436");
+        Map<String,String> options = new HashMap<>();
+        options.put(Dict.CONFKEY_SESSION_PROCESSORS_PER_NODE ,"2");
+        getOrCreateSessionMeta.setOptions(options);
+        ClusterManagerClient clusterManagerClient = new ClusterManagerClient(endpoint);
+        ErSessionMeta result = clusterManagerClient.getSession(getOrCreateSessionMeta);
+        System.out.println("testGetSession result = " + result);
+    }
+
+    @Test
+    public void testKillSession() {
+        ErSessionMeta getOrCreateSessionMeta = new ErSessionMeta();
+        getOrCreateSessionMeta.setId("testx_1692259321436");
+        Map<String,String> options = new HashMap<>();
+        options.put(Dict.CONFKEY_SESSION_PROCESSORS_PER_NODE ,"2");
+        getOrCreateSessionMeta.setOptions(options);
+        ClusterManagerClient clusterManagerClient = new ClusterManagerClient(endpoint);
+        ErSessionMeta result = clusterManagerClient.killSession(getOrCreateSessionMeta);
+        System.out.println("testGetSession result = " + result);
+    }
+
+    @Test
+    public void testKillAllSession() {
+        ErSessionMeta getOrCreateSessionMeta = new ErSessionMeta();
+        getOrCreateSessionMeta.setId("testx_1692259321436");
+        Map<String,String> options = new HashMap<>();
+        options.put(Dict.CONFKEY_SESSION_PROCESSORS_PER_NODE ,"2");
+        getOrCreateSessionMeta.setOptions(options);
+        ClusterManagerClient clusterManagerClient = new ClusterManagerClient(endpoint);
+        ErSessionMeta result = clusterManagerClient.killAllSession();
+        System.out.println("testGetSession result = " + result);
     }
 }

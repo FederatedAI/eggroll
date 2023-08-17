@@ -27,7 +27,7 @@ public abstract class AbstractSessionStateHandler implements   StateHandler<ErSe
     }
 
     void  doInserSession(Context context ,ErSessionMeta erSessionMeta){
-        SessionMain  sessionMain = new  SessionMain(erSessionMeta.getId(),erSessionMeta.getName(),erSessionMeta.getStatus(),
+        SessionMain  sessionMain = new  SessionMain(erSessionMeta.getId(),erSessionMeta.getName(),ProcessorStatus.NEW.name(),
                 erSessionMeta.getTag(),erSessionMeta.getTotalProcCount(),erSessionMeta.getActiveProcCount(),null,null);
         sessionMainService.save(sessionMain);
         erSessionMeta.getProcessors().forEach(p->{

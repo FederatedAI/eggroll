@@ -71,6 +71,9 @@ public class DefaultSessionManager implements SessionManager {
         ErSessionMeta cur = null;
         while (System.currentTimeMillis() <= startTimeout) {
             cur = this.sessionService.getSession(session.getId(), false, false, false);
+            if(cur == null){
+                return false;
+            }
             if (cur.isOverState() || SessionStatus.ACTIVE.name().equals(cur.getStatus()))
                 return true;
             if (SessionStatus.NEW.name().equals(cur.getStatus()) && cur.getActiveProcCount() < cur.getTotalProcCount()) {

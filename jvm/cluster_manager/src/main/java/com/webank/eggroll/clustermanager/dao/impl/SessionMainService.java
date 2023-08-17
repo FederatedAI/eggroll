@@ -50,7 +50,7 @@ public class SessionMainService extends EggRollBaseServiceImpl<SessionMainMapper
 
     public ErSessionMeta getSession(String sessionId,boolean  withProcessor,boolean withOption,boolean  withResource){
         ErSessionMeta  erSessionMeta = null;
-        SessionMain  sessionMain = this.baseMapper.selectById(sessionId);
+        SessionMain  sessionMain = this.getById(sessionId);
         if(sessionMain!=null) {
             erSessionMeta = sessionMain.toErSessionMeta();
             if(withProcessor) {
