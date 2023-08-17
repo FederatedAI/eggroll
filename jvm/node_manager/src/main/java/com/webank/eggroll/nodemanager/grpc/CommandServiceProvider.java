@@ -6,6 +6,7 @@ import com.eggroll.core.grpc.URI;
 import com.google.protobuf.ByteString;
 import com.webank.eggroll.core.command.Command;
 import com.webank.eggroll.core.command.CommandServiceGrpc;
+import com.webank.eggroll.core.meta.Containers;
 import com.webank.eggroll.nodemanager.processor.DefaultProcessorManager;
 import io.grpc.stub.StreamObserver;
 
@@ -82,7 +83,7 @@ public class CommandServiceProvider extends CommandServiceGrpc.CommandServiceImp
         return defaultProcessorManager.killContainers(null,sessionMeta);
     }
 
-    @URI(value = heartbeat)
+    @URI(value = eggpairHeartbeat)
     public ErProcessor heartbeat(ErProcessor processor) {
         return defaultProcessorManager.heartbeat(null,processor);
     }
@@ -91,6 +92,12 @@ public class CommandServiceProvider extends CommandServiceGrpc.CommandServiceImp
     public ErProcessor checkNodeProcess(ErProcessor processor) {
         return defaultProcessorManager.checkNodeProcess(null,processor);
     }
+
+    @URI(value = startJobContainers)
+    public Containers.StartContainersResponse startJobContainers(StartContainersRequest startContainersRequest) {
+        return defaultProcessorManager.startJobContainers(startContainersRequest);
+    }
+
 
     @URI(value = nodeHeartbeat)
     public ErProcessor nodeHeartbeat(ErProcessor processor) {
