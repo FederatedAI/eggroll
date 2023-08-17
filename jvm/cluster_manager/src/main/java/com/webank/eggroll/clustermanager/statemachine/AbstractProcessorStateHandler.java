@@ -21,8 +21,8 @@ public abstract class  AbstractProcessorStateHandler  implements   StateHandler<
         if( context.getData(Dict.PROCESSOR_IN_DB)!=null){
             return (ErProcessor) context.getData(Dict.PROCESSOR_IN_DB);
         }else{
-            SessionProcessor  sessionProcessor =   (SessionProcessor) this.processorService.getById(data.getId());
-            if(sessionProcessor==null){
+            SessionProcessor  sessionProcessor = this.processorService.getById(data.getId());
+            if(sessionProcessor!=null){
                 return sessionProcessor.toErProcessor();
             }else
             {

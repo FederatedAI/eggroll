@@ -26,7 +26,7 @@ public class SessionCreateHandler  extends AbstractSessionStateHandler{
         serverNode.setStatus(ServerNodeStatus.HEALTHY.name());
         serverNode.setNodeType(ServerNodeTypes.NODE_MANAGER.name());
         List<ErServerNode>  serverNodes = serverNodeService.getListByErServerNode(serverNode);
-        System.err.println("xxxxxxxxxxx"+serverNodes);
+//        System.err.println("xxxxxxxxxxx"+serverNodes);
         context.putData(Dict.SERVER_NODES,serverNodes);
         return data;
     }
@@ -56,6 +56,7 @@ public class SessionCreateHandler  extends AbstractSessionStateHandler{
                 processor.setCommandEndpoint(new ErEndpoint(erServerNode.getEndpoint().getHost(),0));
                 processors.add(processor);
             }
+            erSessionMeta.setProcessors(processors);
         };
         doInserSession(context,erSessionMeta);
 

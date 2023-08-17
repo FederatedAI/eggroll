@@ -29,7 +29,10 @@ public class ProcessorCreateHandler extends  AbstractProcessorStateHandler {
     }
 
     private  ErProcessor createNewProcessor(Context context ,ErProcessor erProcessor){
-        processorService.save(new SessionProcessor(erProcessor));
+        erProcessor.setId(erProcessor.getId() == -1 ? null : erProcessor.getId());
+        SessionProcessor sessionProcessor = new SessionProcessor(erProcessor);
+        processorService.save(sessionProcessor);
+        erProcessor.setId(sessionProcessor.getProcessorId());
         if(checkNeedChangeResource(erProcessor)) {
             resourceStateMechine.changeStatus(context ,erProcessor, ResourceStatus.INIT.getValue(), ResourceStatus.PRE_ALLOCATED.getValue());
         }

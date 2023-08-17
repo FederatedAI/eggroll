@@ -2,10 +2,16 @@ package com.webank.eggroll.clustermanager.statemachine;
 
 import com.eggroll.core.context.Context;
 import com.eggroll.core.pojo.ErProcessor;
+import org.springframework.beans.factory.InitializingBean;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
-public class ResourceStateMechine extends AbstractStateMachine<ErProcessor>{
+public class ResourceStateMechine extends AbstractStateMachine<ErProcessor> implements InitializingBean {
+
+    @Autowired
+    ResourceStateHandler resourceStateHandler;
+
     @Override
     String buildStateChangeLine(Context context, ErProcessor erProcessor, String preStateParam, String desStateParam) {
         String  stateLine =  preStateParam+"_"+desStateParam;
@@ -19,7 +25,11 @@ public class ResourceStateMechine extends AbstractStateMachine<ErProcessor>{
     }
 
 
-
-
-
+    @Override
+    public void afterPropertiesSet() throws Exception {
+        this.registeStateHander("init_pre_allocated",resourceStateHandler);
+        this.registeStateHander("pre_allocated_allocated",resourceStateHandler);
+        this.registeStateHander("pre_allocated_allocate_failed",resourceStateHandler);
+        this.registeStateHander("allocated_return",resourceStateHandler);
+    }
 }
