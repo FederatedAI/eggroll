@@ -42,11 +42,10 @@ public class DefaultSessionManager implements SessionManager {
 
     @Override
     public ErSessionMeta getOrCreateSession(Context context, ErSessionMeta sessionMeta) {
-
         if (MetaInfo.EGGROLL_SESSION_USE_RESOURCE_DISPATCH) {
-
-        } else {
             getOrCreateSessionWithoutResourceDispath(context, sessionMeta);
+        }else{
+//            getOrCreateSessionOld(sessionMeta);
         }
         return sessionMeta;
 

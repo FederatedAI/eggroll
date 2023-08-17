@@ -127,7 +127,6 @@ public class CommandServiceProvider extends CommandServiceGrpc.CommandServiceImp
 
     @URI(value = getOrCreateSession)
     public ErSessionMeta getOrCreateSession(ErSessionMeta sessionMeta) {
-
         Context  context  = new Context();
         return defaultSessionManager.getOrCreateSession(context, sessionMeta);
     }
