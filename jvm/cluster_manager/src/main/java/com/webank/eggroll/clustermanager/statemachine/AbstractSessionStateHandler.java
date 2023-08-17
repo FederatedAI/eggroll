@@ -8,6 +8,8 @@ import com.webank.eggroll.clustermanager.dao.impl.SessionMainService;
 import com.webank.eggroll.clustermanager.entity.SessionMain;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import java.util.Date;
+
 public abstract class AbstractSessionStateHandler implements   StateHandler<ErSessionMeta>{
     @Autowired
     SessionMainService  sessionMainService;
@@ -28,7 +30,7 @@ public abstract class AbstractSessionStateHandler implements   StateHandler<ErSe
 
     void  doInserSession(Context context ,ErSessionMeta erSessionMeta){
         SessionMain  sessionMain = new  SessionMain(erSessionMeta.getId(),erSessionMeta.getName(),ProcessorStatus.NEW.name(),
-                erSessionMeta.getTag(),erSessionMeta.getTotalProcCount(),erSessionMeta.getActiveProcCount(),null,null);
+                erSessionMeta.getTag(),erSessionMeta.getTotalProcCount(),erSessionMeta.getActiveProcCount(),new Date(),new Date());
         sessionMainService.save(sessionMain);
         erSessionMeta.getProcessors().forEach(p->{
             processorStateMachine.changeStatus(context,p,null, ProcessorStatus.NEW.name());

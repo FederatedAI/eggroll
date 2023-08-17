@@ -172,7 +172,7 @@ public class ClusterManagerService implements ApplicationRunner {
         if (session.getCreateTime().getTime() < current - MetaInfo.EGGROLL_SESSION_STATUS_NEW_TIMEOUT_MS) {
             //session: ErSessionMeta, afterState: String
             log.info("session " + session + " status stay at " + session.getStatus() + " too long, prepare to kill");
-            sessionManager.killSession(null, session.getId());
+            sessionManager.killSession(new Context(), session.getId());
         }
     }
 
@@ -189,7 +189,7 @@ public class ClusterManagerService implements ApplicationRunner {
                 boolean needKillSession = invalidProcessor.stream().anyMatch(p -> p.getUpdatedAt().getTime() < now - MetaInfo.EGGROLL_SESSION_STOP_TIMEOUT_MS);
                 if (needKillSession) {
                     log.info("invalid processors " + JsonUtil.object2Json(invalidProcessor) + ", session watcher kill eggpair session " + session);
-                    sessionManager.killSession(null, session);
+                    sessionManager.killSession(new Context(), session);
                 }
             }
         }
