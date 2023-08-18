@@ -56,11 +56,11 @@ public abstract class ErConf {
         return getProperty(key, defaultValue);
     }
 
-    public static int getPort() {
+    public int getPort() {
         return 0;
     }
 
-    public static String getModuleName() {
+    public String getModuleName() {
         return null;
     }
 
