@@ -4,7 +4,10 @@ import com.eggroll.core.config.Dict;
 import com.eggroll.core.grpc.ClusterManagerClient;
 import com.eggroll.core.pojo.ErEndpoint;
 import com.eggroll.core.pojo.ErSessionMeta;
+import com.webank.eggroll.clustermanager.grpc.GrpcServer;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -13,6 +16,7 @@ import java.util.Map;
 //@RunWith(SpringJUnit4ClassRunner.class)
 public class TestSessionManager {
 
+    Logger logger = LoggerFactory.getLogger(TestSessionManager.class);
 
     ErEndpoint endpoint = new ErEndpoint("10.35.27.23:4670");
 
@@ -29,33 +33,39 @@ public class TestSessionManager {
         options.put(Dict.CONFKEY_SESSION_PROCESSORS_PER_NODE ,"2");
         getOrCreateSessionMeta.setOptions(options);
         getOrCreateSessionMeta.setName("Test1");
+        getOrCreateSessionMeta.setActiveProcCount(1);
+        getOrCreateSessionMeta.setTotalProcCount(4);
         ClusterManagerClient clusterManagerClient = new ClusterManagerClient(endpoint);
         ErSessionMeta result = clusterManagerClient.getOrCreateSession(getOrCreateSessionMeta);
-        System.err.println(result);
+        logger.info("====================>result.id = {} , result.status = {}" ,result.getId(),result.getStatus());
     }
 
     @Test
     public void testGetSession() {
         ErSessionMeta getOrCreateSessionMeta = new ErSessionMeta();
-        getOrCreateSessionMeta.setId("testx_1692263572251");
+        getOrCreateSessionMeta.setId("testx_1692327334950");
         Map<String,String> options = new HashMap<>();
         options.put(Dict.CONFKEY_SESSION_PROCESSORS_PER_NODE ,"2");
         getOrCreateSessionMeta.setOptions(options);
+        getOrCreateSessionMeta.setActiveProcCount(1);
+        getOrCreateSessionMeta.setTotalProcCount(4);
         ClusterManagerClient clusterManagerClient = new ClusterManagerClient(endpoint);
         ErSessionMeta result = clusterManagerClient.getSession(getOrCreateSessionMeta);
-        System.out.println("testGetSession result = " + result);
+        logger.info("====================>result.id = {} , result.status = {}" ,result.getId(),result.getStatus());
     }
 
     @Test
     public void testKillSession() {
         ErSessionMeta getOrCreateSessionMeta = new ErSessionMeta();
-        getOrCreateSessionMeta.setId("testx_1692263572251");
+        getOrCreateSessionMeta.setId("testx_1692342316761");
         Map<String,String> options = new HashMap<>();
         options.put(Dict.CONFKEY_SESSION_PROCESSORS_PER_NODE ,"2");
         getOrCreateSessionMeta.setOptions(options);
+        getOrCreateSessionMeta.setActiveProcCount(1);
+        getOrCreateSessionMeta.setTotalProcCount(4);
         ClusterManagerClient clusterManagerClient = new ClusterManagerClient(endpoint);
         ErSessionMeta result = clusterManagerClient.killSession(getOrCreateSessionMeta);
-        System.out.println("testGetSession result = " + result);
+        logger.info("====================>result.id = {} , result.status = {}" ,result.getId(),result.getStatus());
     }
 
     @Test
@@ -65,8 +75,10 @@ public class TestSessionManager {
         Map<String,String> options = new HashMap<>();
         options.put(Dict.CONFKEY_SESSION_PROCESSORS_PER_NODE ,"2");
         getOrCreateSessionMeta.setOptions(options);
+        getOrCreateSessionMeta.setActiveProcCount(1);
+        getOrCreateSessionMeta.setTotalProcCount(4);
         ClusterManagerClient clusterManagerClient = new ClusterManagerClient(endpoint);
-        ErSessionMeta result = clusterManagerClient.killAllSession();
-        System.out.println("testGetSession result = " + result);
+        ErSessionMeta result = clusterManagerClient.killAllSession(getOrCreateSessionMeta);
+        logger.info("====================>result.id = {} , result.status = {}" ,result.getId(),result.getStatus());
     }
 }

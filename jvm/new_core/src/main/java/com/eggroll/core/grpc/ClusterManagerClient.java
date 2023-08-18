@@ -49,8 +49,8 @@ public class ClusterManagerClient {
         return response;
     }
 
-    public ErSessionMeta killAllSession() {
-        byte[] responseData = cc.call(endpoint, killAllSessions, null);
+    public ErSessionMeta killAllSession(ErSessionMeta erSessionMeta) {
+        byte[] responseData = cc.call(endpoint, killAllSessions, erSessionMeta.serialize());
         ErSessionMeta response = new ErSessionMeta();
         response.deserialize(responseData);
         return response;

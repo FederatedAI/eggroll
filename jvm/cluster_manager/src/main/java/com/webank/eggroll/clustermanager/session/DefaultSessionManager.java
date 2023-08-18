@@ -1,5 +1,6 @@
 package com.webank.eggroll.clustermanager.session;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.eggroll.core.config.MetaInfo;
 import com.eggroll.core.constant.ServerNodeStatus;
 import com.eggroll.core.constant.ServerNodeTypes;
@@ -10,16 +11,14 @@ import com.eggroll.core.pojo.ErSessionMeta;
 import com.google.common.collect.Lists;
 import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
 import com.webank.eggroll.clustermanager.dao.impl.SessionMainService;
-
-
+import com.webank.eggroll.clustermanager.entity.SessionMain;
 import com.webank.eggroll.clustermanager.statemachine.SessionStateMachine;
-
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.Arrays;
 import java.util.List;
 
 @Service
@@ -44,7 +43,7 @@ public class DefaultSessionManager implements SessionManager {
     public ErSessionMeta getOrCreateSession(Context context, ErSessionMeta sessionMeta) {
         if (MetaInfo.EGGROLL_SESSION_USE_RESOURCE_DISPATCH) {
             getOrCreateSessionWithoutResourceDispath(context, sessionMeta);
-        }else{
+        } else {
 //            getOrCreateSessionOld(sessionMeta);
         }
         return sessionMeta;
@@ -71,12 +70,12 @@ public class DefaultSessionManager implements SessionManager {
         ErSessionMeta cur = null;
         while (System.currentTimeMillis() <= startTimeout) {
             cur = this.sessionService.getSession(session.getId(), false, false, false);
-            if(cur == null){
+            if (cur == null) {
                 return false;
             }
             if (cur.isOverState() || SessionStatus.ACTIVE.name().equals(cur.getStatus()))
                 return true;
-            if (SessionStatus.NEW.name().equals(cur.getStatus()) && cur.getActiveProcCount() < cur.getTotalProcCount()) {
+            if (SessionStatus.NEW.name().equals(cur.getStatus()) && (cur.getActiveProcCount() < cur.getTotalProcCount())) {
                 try {
                     Thread.sleep(100);
                 } catch (InterruptedException e) {
@@ -118,7 +117,7 @@ public class DefaultSessionManager implements SessionManager {
 
     @Override
     public ErSessionMeta getSession(Context context, ErSessionMeta sessionMeta) {
-        checkSessionRpcReady(sessionMeta);
+//        checkSessionRpcReady(sessionMeta);
         return sessionService.getSession(sessionMeta.getId(), true, false, false);
     }
 
@@ -152,7 +151,18 @@ public class DefaultSessionManager implements SessionManager {
 
     @Override
     public ErSessionMeta killAllSessions(Context context, ErSessionMeta sessionMeta) {
-        return null;
+        QueryWrapper<SessionMain> queryWrapper = new QueryWrapper<>();
+        queryWrapper.lambda().in(SessionMain::getStatus, Arrays.asList(SessionStatus.NEW.name(), SessionStatus.ACTIVE.name()));
+        List<SessionMain> killList = sessionMainService.list(queryWrapper);
+        for (SessionMain sessionMain : killList) {
+            ErSessionMeta erSessionMeta = sessionMain.toErSessionMeta();
+            try {
+                sessionStateMachine.changeStatus(context, erSessionMeta, null, SessionStatus.KILLED.name());
+            }catch (Exception e) {
+                logger.error("kill session failed , sessionId = {}",erSessionMeta);
+            }
+        }
+        return new ErSessionMeta();
     }
 
 

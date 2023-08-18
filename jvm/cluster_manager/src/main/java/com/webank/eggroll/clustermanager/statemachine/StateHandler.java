@@ -2,10 +2,12 @@ package com.webank.eggroll.clustermanager.statemachine;
 
 import com.eggroll.core.config.Dict;
 import com.eggroll.core.context.Context;
+import org.springframework.transaction.annotation.Transactional;
 
 interface  StateHandler<T>{
 
          T  prepare(Context context, T data , String preStateParam, String desStateParam);
+         @Transactional
          T  handle(Context context, T data , String preStateParam, String desStateParam);
          default  boolean needAsynPostHandle(Context  context){
              return   context.getData(Dict.OPEN_ASYN_POST_HANDLE)!=null?(Boolean)context.getData(Dict.OPEN_ASYN_POST_HANDLE):false;

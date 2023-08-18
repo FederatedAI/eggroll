@@ -83,7 +83,7 @@ public abstract class AbstractStateMachine<T> {
 //        t = prepare(t);
         StateHandler<T> handler =  statueChangeHandlerMap.get(statusLine);
         if(handler==null){
-            throw new RuntimeException("nonono");
+            throw new RuntimeException("statusLine's handler not found ");
         }
         String  lockKey =  getLockKey(t);
         try{
