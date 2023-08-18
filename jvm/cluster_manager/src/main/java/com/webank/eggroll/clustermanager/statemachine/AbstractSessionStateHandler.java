@@ -1,6 +1,6 @@
 package com.webank.eggroll.clustermanager.statemachine;
 
-import com.eggroll.core.constant.ProcessorStatus;
+import com.eggroll.core.constant.SessionStatus;
 import com.eggroll.core.context.Context;
 import com.eggroll.core.pojo.ErSessionMeta;
 import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
@@ -29,11 +29,11 @@ public abstract class AbstractSessionStateHandler implements   StateHandler<ErSe
     }
 
     void  doInserSession(Context context ,ErSessionMeta erSessionMeta){
-        SessionMain  sessionMain = new  SessionMain(erSessionMeta.getId(),erSessionMeta.getName(),ProcessorStatus.NEW.name(),
+        SessionMain  sessionMain = new  SessionMain(erSessionMeta.getId(),erSessionMeta.getName(), SessionStatus.NEW.name(),
                 erSessionMeta.getTag(),erSessionMeta.getTotalProcCount(),erSessionMeta.getActiveProcCount(),new Date(),new Date());
         sessionMainService.save(sessionMain);
         erSessionMeta.getProcessors().forEach(p->{
-            processorStateMachine.changeStatus(context,p,null, ProcessorStatus.NEW.name());
+            processorStateMachine.changeStatus(context,p,null, SessionStatus.NEW.name());
         });
 
     }

@@ -20,7 +20,7 @@ public class ErProcessor implements RpcMessage {
     private String status = StringConstants.EMPTY;
     private ErEndpoint commandEndpoint = null;
     private ErEndpoint transferEndpoint = null;
-    private int pid = -1;
+    private Integer pid = -1;
     private Map<String, String> options = new HashMap<>();
     private String tag = StringConstants.EMPTY;
     private List<ErResource> resources = new ArrayList<>();
