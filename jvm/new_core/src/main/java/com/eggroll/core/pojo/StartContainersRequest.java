@@ -5,16 +5,16 @@ import com.eggroll.core.constant.StringConstants;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.webank.eggroll.core.meta.Containers;
+import lombok.Data;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
+@Data
 public class StartContainersRequest {
     public String sessionId;
     public String name;
     public String jobType;
-    public String[] commandArguments;
+    public List<String> commandArguments;
     public Map<String, String> environmentVariables;
     public Map<String, byte[]> files;
     public Map<String, byte[]> zippedFiles;
@@ -25,7 +25,7 @@ public class StartContainersRequest {
         this.sessionId = Dict.EMPTY;
         this.name = Dict.EMPTY;
         this.jobType = null;
-        this.commandArguments = new String[0];
+        this.commandArguments = new ArrayList<>();
         this.environmentVariables = new HashMap<>();
         this.files = new HashMap<>();
         this.zippedFiles = new HashMap<>();
@@ -40,7 +40,7 @@ public class StartContainersRequest {
         dst.name = src.getName();
         dst.jobType = src.getJobType();
 
-        dst.commandArguments = src.getCommandArgumentsList().toArray(new String[0]);
+        dst.commandArguments = src.getCommandArgumentsList();
         dst.environmentVariables = new HashMap<>(src.getEnvironmentVariablesMap());
         dst.files = new HashMap<>();
         for (Map.Entry<String, ByteString> entry : src.getFilesMap().entrySet()) {
@@ -64,7 +64,7 @@ public class StartContainersRequest {
         Containers.StartContainersRequest.Builder builder = Containers.StartContainersRequest.newBuilder()
                 .setSessionId(src.sessionId)
                 .setName(src.name)
-                .addAllCommandArguments(Arrays.asList(src.commandArguments))
+                .addAllCommandArguments(src.commandArguments)
                 .putAllEnvironmentVariables(src.environmentVariables)
                 .putAllFiles(convertToByteStringMap(src.files))
                 .putAllZippedFiles(convertToByteStringMap(src.zippedFiles))
@@ -91,4 +91,6 @@ public class StartContainersRequest {
         }
         return byteStringMap;
     }
+
+
 }

@@ -2,10 +2,13 @@ package com.webank.eggroll.nodemanager.processor;
 
 import com.eggroll.core.config.Dict;
 import com.eggroll.core.constant.ProcessorStatus;
+import com.eggroll.core.containers.ContainersServiceHandler;
 import com.eggroll.core.context.Context;
 import com.eggroll.core.grpc.ClusterManagerClient;
 import com.eggroll.core.pojo.ErProcessor;
 import com.eggroll.core.pojo.ErSessionMeta;
+import com.eggroll.core.pojo.StartContainersRequest;
+import com.webank.eggroll.core.meta.Containers;
 import com.webank.eggroll.nodemanager.service.ContainerService;
 import org.springframework.stereotype.Service;
 import com.webank.eggroll.nodemanager.utils.ProcessUtils;
@@ -24,6 +27,8 @@ public class DefaultProcessorManager implements ProcessorManager{
 
     @Resource
     private ContainerService containerService;
+    @Resource
+    private ContainersServiceHandler containersServiceHandler;
 
     @Override
     public ErSessionMeta startContainers(Context context, ErSessionMeta sessionMeta) {
@@ -57,6 +62,11 @@ public class DefaultProcessorManager implements ProcessorManager{
         }
         logger.info("check processor pid " + processor.getPid() + " return " + result.getStatus());
         return result;
+    }
+
+    @Override
+    public Containers.StartContainersResponse startJobContainers(StartContainersRequest startContainersRequest) {
+        return containersServiceHandler.startJobContainers(startContainersRequest);
     }
 
 }

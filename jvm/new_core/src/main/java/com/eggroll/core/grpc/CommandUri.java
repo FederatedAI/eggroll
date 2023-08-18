@@ -26,4 +26,8 @@ public class CommandUri {
     public static final String eggpairHeartbeat = "v1/node_manager/processor/heartbeat";
 
     public static final String checkNodeProcess = "v1/node_manager/resouce/checkNodeProcess";
+
+    public static final String startJobContainers = "v1/node_manager/container/startJobContainers";
+    public static final String stopJobContainers = "v1/node_manager/container/stopJobContainers";
+    public static final String killJobContainers = "v1/node_manager/container/killJobContainers";
 }
