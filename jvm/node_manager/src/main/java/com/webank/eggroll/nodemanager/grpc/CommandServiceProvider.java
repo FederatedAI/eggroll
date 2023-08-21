@@ -1,12 +1,14 @@
 package com.webank.eggroll.nodemanager.grpc;
 
+import com.eggroll.core.containers.meta.KillContainersResponse;
+import com.eggroll.core.containers.meta.StartContainersResponse;
+import com.eggroll.core.containers.meta.StopContainersResponse;
 import com.eggroll.core.invoke.InvokeInfo;
 import com.eggroll.core.pojo.*;
 import com.eggroll.core.grpc.URI;
 import com.google.protobuf.ByteString;
 import com.webank.eggroll.core.command.Command;
 import com.webank.eggroll.core.command.CommandServiceGrpc;
-import com.webank.eggroll.core.meta.Containers;
 import com.webank.eggroll.nodemanager.processor.DefaultProcessorManager;
 import io.grpc.stub.StreamObserver;
 
@@ -94,8 +96,18 @@ public class CommandServiceProvider extends CommandServiceGrpc.CommandServiceImp
     }
 
     @URI(value = startJobContainers)
-    public Containers.StartContainersResponse startJobContainers(StartContainersRequest startContainersRequest) {
+    public StartContainersResponse startJobContainers(StartContainersRequest startContainersRequest) {
         return defaultProcessorManager.startJobContainers(startContainersRequest);
+    }
+
+    @URI(value = stopJobContainers)
+    public StopContainersResponse stopJobContainers(StopContainersRequest stopContainersRequest) {
+        return defaultProcessorManager.stopJobContainers(stopContainersRequest);
+    }
+
+    @URI(value = killJobContainers)
+    public KillContainersResponse killJobContainers(KillContainersRequest killContainersRequest) {
+        return defaultProcessorManager.killJobContainers(killContainersRequest);
     }
 
 

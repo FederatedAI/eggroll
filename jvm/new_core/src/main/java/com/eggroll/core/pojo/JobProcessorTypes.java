@@ -6,13 +6,12 @@ import java.util.Optional;
 public enum JobProcessorTypes {
     DeepSpeed;
 
-    public static Optional<JobProcessorTypes> fromString(String type) {
-        switch (type.toLowerCase()) {
+    public static String fromString(String color) {
+        switch (color.toLowerCase()) {
             case "deepspeed":
-                return Optional.of(DeepSpeed);
+                return DeepSpeed.name();
             default:
-                return Optional.empty();
+                throw new IllegalArgumentException("unsupported job processor type: " + color);
         }
     }
-
 }
