@@ -1,9 +1,7 @@
-package com.eggroll.core.pojo;
+package com.eggroll.core.containers.meta;
 
-import com.google.protobuf.ByteString;
 import com.webank.eggroll.core.meta.Containers;
 import lombok.Data;
-import lombok.val;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
