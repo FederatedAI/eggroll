@@ -1,31 +1,24 @@
-package com.eggroll.core.containers;
+package com.webank.eggroll.nodemanager.containers;
 
 
 import com.eggroll.core.config.MetaInfo;
 import com.eggroll.core.containers.container.ContainersManager;
 import com.eggroll.core.containers.container.DeepSpeedContainer;
 import com.eggroll.core.containers.container.WarpedDeepspeedContainerConfig;
-import com.eggroll.core.pojo.JobProcessorTypes;
-import com.eggroll.core.pojo.StartContainersRequest;
-import com.eggroll.core.pojo.StartDeepspeedContainerRequest;
-import com.eggroll.core.pojo.StaticErConf;
-import com.webank.eggroll.core.meta.Containers;
-import lombok.val;
-import org.checkerframework.checker.units.qual.A;
+import com.eggroll.core.containers.meta.KillContainersResponse;
+import com.eggroll.core.containers.meta.StartContainersResponse;
+import com.eggroll.core.containers.meta.StopContainersResponse;
+import com.eggroll.core.pojo.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
-import org.springframework.stereotype.Service;
 
-@Service
+
 public class ContainersServiceHandler {
 
     Logger logger = LoggerFactory.getLogger(ContainersServiceHandler.class);
@@ -66,23 +59,27 @@ public class ContainersServiceHandler {
     }
 
 
-    public ContainersServiceHandler(ExecutorService executor, Path providedContainersDataDir) {
-        this.executor = executor;
+    public ContainersServiceHandler(ExecutorService executorService, Path providedContainersDataDir) {
+        this.executor = executorService;
         this.providedContainersDataDir = providedContainersDataDir;
     }
 
-    public Containers.StartContainersResponse startJobContainers(StartContainersRequest startContainersRequest) {
-        if (startContainersRequest.getJobType().equals(JobProcessorTypes.DeepSpeed)) {
-            StartDeepspeedContainerRequest startDeepspeedContainerRequest =
-                    StartDeepspeedContainerRequest.fromStartContainersRequest(startContainersRequest);
-            return startDeepspeedContainers(startDeepspeedContainerRequest);
+
+    public StartContainersResponse startJobContainers(StartContainersRequest startContainersRequest) {
+        if (startContainersRequest.getJobType() != null) {
+            if (startContainersRequest.getJobType().equals(JobProcessorTypes.DeepSpeed.name())) {
+                StartDeepspeedContainerRequest startDeepspeedContainerRequest =
+                        StartDeepspeedContainerRequest.fromStartContainersRequest(startContainersRequest);
+                return startDeepspeedContainers(startDeepspeedContainerRequest);
+            } else {
+                throw new IllegalArgumentException("unsupported job type: " + startContainersRequest.getJobType().toString());
+            }
         } else {
-            throw new IllegalArgumentException("Unsupported job type: " + startContainersRequest.getJobType());
+            throw new IllegalArgumentException("job type is missing");
         }
     }
 
-
-    private Containers.StartContainersResponse startDeepspeedContainers(
+    private StartContainersResponse startDeepspeedContainers(
             StartDeepspeedContainerRequest startDeepspeedContainerRequest) {
         String sessionId = startDeepspeedContainerRequest.getSessionId();
         logger.info("(sessionId=" + sessionId + ") starting deepspeed containers");
@@ -113,15 +110,34 @@ public class ContainersServiceHandler {
         });
 
         logger.info("(sessionId=" + sessionId + ") deepspeed co started");
-        Containers.StartContainersResponse.Builder builder = Containers.StartContainersResponse.newBuilder();
-        builder.setSessionId(sessionId);
-        Containers.StartContainersResponse response = builder.build();
-        return response;
+        return new StartContainersResponse(sessionId);
+    }
+
+
+    public StopContainersResponse stopJobContainers(StopContainersRequest stopContainersRequest) {
+        String sessionId = stopContainersRequest.getSessionId();
+        logger.info("(sessionId=" + stopContainersRequest.getSessionId() + ")stopping containers");
+        for (Long containerId : stopContainersRequest.getContainers()) {
+            containersManager.stopContainer(containerId);
+        }
+        return new StopContainersResponse(sessionId);
+    }
+
+    public KillContainersResponse killJobContainers(KillContainersRequest killContainersRequest) {
+        String sessionId = killContainersRequest.getSessionId();
+        logger.info("(sessionId=" + sessionId + ") killing containers");
+        for (Long containerId : killContainersRequest.getContainers()) {
+            containersManager.killContainer(containerId);
+        }
+        KillContainersResponse killContainersResponse = new KillContainersResponse();
+        killContainersResponse.setSessionId(sessionId);
+        return killContainersResponse;
     }
 
     private Path getContainerWorkspace(String sessionId, long rank) {
         return containersDataDir.resolve(sessionId).resolve(Long.toString(rank));
     }
+
 
 }
 

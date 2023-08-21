@@ -18,6 +18,7 @@
 
 package com.eggroll.core.grpc;
 
+import com.eggroll.core.containers.meta.KillContainersResponse;
 import com.eggroll.core.pojo.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

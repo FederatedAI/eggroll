@@ -2,19 +2,19 @@ package com.webank.eggroll.nodemanager.processor;
 
 import com.eggroll.core.config.Dict;
 import com.eggroll.core.constant.ProcessorStatus;
-import com.eggroll.core.containers.ContainersServiceHandler;
+import com.eggroll.core.containers.meta.KillContainersResponse;
+import com.eggroll.core.containers.meta.StartContainersResponse;
+import com.eggroll.core.containers.meta.StopContainersResponse;
 import com.eggroll.core.context.Context;
 import com.eggroll.core.grpc.ClusterManagerClient;
-import com.eggroll.core.pojo.ErProcessor;
-import com.eggroll.core.pojo.ErSessionMeta;
-import com.eggroll.core.pojo.StartContainersRequest;
-import com.webank.eggroll.core.meta.Containers;
+import com.eggroll.core.pojo.*;
+import com.webank.eggroll.nodemanager.containers.ContainersServiceHandler;
 import com.webank.eggroll.nodemanager.service.ContainerService;
-import org.springframework.stereotype.Service;
 import com.webank.eggroll.nodemanager.utils.ProcessUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
+import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
 
@@ -27,7 +27,8 @@ public class DefaultProcessorManager implements ProcessorManager{
 
     @Resource
     private ContainerService containerService;
-    @Resource
+
+
     private ContainersServiceHandler containersServiceHandler;
 
     @Override
@@ -65,8 +66,20 @@ public class DefaultProcessorManager implements ProcessorManager{
     }
 
     @Override
-    public Containers.StartContainersResponse startJobContainers(StartContainersRequest startContainersRequest) {
+    public StartContainersResponse startJobContainers(StartContainersRequest startContainersRequest) {
         return containersServiceHandler.startJobContainers(startContainersRequest);
     }
+
+
+    @Override
+    public StopContainersResponse stopJobContainers(StopContainersRequest stopContainersRequest) {
+        return containersServiceHandler.stopJobContainers(stopContainersRequest);
+    }
+
+    @Override
+    public KillContainersResponse killJobContainers(KillContainersRequest killContainersRequest) {
+        return containersServiceHandler.killJobContainers(killContainersRequest);
+    }
+
 
 }
