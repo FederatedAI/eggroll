@@ -21,7 +21,7 @@ public class ExtendConfigPostProcessor implements EnvironmentPostProcessor {
 
   public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
     try {
-
+        System.err.println("xxxxxxxxxxxxxx");
 //        eggroll.resourcemanager.clustermanager.jdbc.driver.class.name=com.mysql.cj.jdbc.Driver
 //#eggroll.resourcemanager.clustermanager.jdbc.url=jdbc:h2:./data/meta_h2/eggroll_meta.h2;AUTO_SERVER=TRUE;MODE=MySQL;DATABASE_TO_LOWER=TRUE;SCHEMA=eggroll_meta;
 //        eggroll.resourcemanager.clustermanager.jdbc.url=jdbc:mysql://localhost:3306/eggroll_meta?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf8&allowPublicKeyRetrieval=true

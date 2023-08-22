@@ -151,7 +151,13 @@ public class ClusterManagerService implements ApplicationRunner {
                 try {
                     checkDbRunningProcessor();
                 } catch (Exception e) {
+
                     log.error("", e);
+                }
+                try {
+                    Thread.sleep(10000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
                 }
             }
         }

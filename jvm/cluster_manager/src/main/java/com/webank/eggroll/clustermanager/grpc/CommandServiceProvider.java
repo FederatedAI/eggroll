@@ -1,6 +1,7 @@
 package com.webank.eggroll.clustermanager.grpc;
 
 import com.eggroll.core.context.Context;
+import com.eggroll.core.flow.FlowLogUtil;
 import com.eggroll.core.grpc.URI;
 import com.eggroll.core.invoke.InvokeInfo;
 import com.eggroll.core.pojo.*;
@@ -55,109 +56,114 @@ public class CommandServiceProvider extends CommandServiceGrpc.CommandServiceImp
         responseObserver.onCompleted();
     }
 
-
     private ConcurrentHashMap<String, InvokeInfo> uriMap = new ConcurrentHashMap();
 
     public byte[] dispatch(String uri, byte[] data) {
-        InvokeInfo invokeInfo = uriMap.get(uri);
-        logger.info("request {} invoke {}", uri, invokeInfo);
-        if (invokeInfo == null) {
-            throw new RuntimeException("invalid request : " + uri);
-        }
+        Context context  =new Context();
+        context.setActionType(uri);
         try {
-            RpcMessage rpcMessage = (RpcMessage) invokeInfo.getParamClass().newInstance();
-            rpcMessage.deserialize(data);
-            RpcMessage response = (RpcMessage) invokeInfo.getMethod().invoke(invokeInfo.getObject(), rpcMessage);
-            return response.serialize();
+            InvokeInfo invokeInfo = uriMap.get(uri);
+            logger.info("request {} invoke {}", uri, invokeInfo);
+            if (invokeInfo == null) {
+                throw new RuntimeException("invalid request : " + uri);
+            }
+            try {
+                RpcMessage rpcMessage = (RpcMessage) invokeInfo.getParamClass().newInstance();
+                rpcMessage.deserialize(data);
+                RpcMessage response = (RpcMessage) invokeInfo.getMethod().invoke(invokeInfo.getObject(), context, rpcMessage);
+                return response.serialize();
 
-        } catch (RuntimeException e){
-            e.printStackTrace();
-            throw  e;
-        }catch (Exception e){
-            e.printStackTrace();
-            throw new RuntimeException(e);
+            } catch (RuntimeException e) {
+                e.printStackTrace();
+                throw e;
+            } catch (Exception e) {
+                e.printStackTrace();
+                throw new RuntimeException(e);
+            }
+        }finally {
+            FlowLogUtil.printFlowLog(context);
         }
 
     }
     @URI(value= nodeHeartbeat)
-    public  ErNodeHeartbeat nodeHeartbeat(ErNodeHeartbeat  erNodeHeartbeat){
+    public  ErNodeHeartbeat nodeHeartbeat(Context context ,ErNodeHeartbeat  erNodeHeartbeat){
        return  clusterManagerService.nodeHeartbeat(erNodeHeartbeat);
     }
 
     @URI(value = getServerNode)
-    public ErServerNode getServerNodeServiceName(ErServerNode erServerNode) {
+    public ErServerNode getServerNodeServiceName(Context context ,ErServerNode erServerNode) {
         List<ErServerNode> nodeList = serverNodeService.getListByErServerNode(erServerNode);
         return nodeList.size() > 0 ? nodeList.get(0) : null;
     }
 
     @URI(value = getServerNodes)
-    public ErServerCluster getServerNodesServiceName(ErServerNode erServerNode) {
+    public ErServerCluster getServerNodesServiceName(Context context ,ErServerNode erServerNode) {
         return null;
     }
 
     @URI(value = getOrCreateServerNode)
-    public ErServerNode getOrCreateServerNode(ErServerNode erServerNode) {
+    public ErServerNode getOrCreateServerNode(Context context ,ErServerNode erServerNode) {
         return null;
     }
 
     @URI(value = createOrUpdateServerNode)
-    public ErServerNode createOrUpdateServerNode(ErServerNode erServerNode) {
+    public ErServerNode createOrUpdateServerNode(Context context ,ErServerNode erServerNode) {
         return null;
     }
 
     @URI(value = getStore)
-    public ErStore getStore(ErStore erStore) {
+    public ErStore getStore(Context context ,ErStore erStore) {
         return storeCrudOperator.doGetStore(erStore);
     }
 
     @URI(value = getOrCreateStore)
-    public ErStore getOrCreateStore(ErStore erStore) {
+    public ErStore getOrCreateStore(Context context ,ErStore erStore) {
         return storeCrudOperator.doGetOrCreateStore(erStore);
     }
 
     @URI(value = deleteStore)
-    public ErStore deleteStore(ErStore erStore) {
+    public ErStore deleteStore(Context context ,ErStore erStore) {
         return storeCrudOperator.doDeleteStore(erStore);
     }
 
     @URI(value = getStoreFromNamespace)
-    public ErStoreList getStoreFromNamespace(ErStore erStore) {
+    public ErStoreList getStoreFromNamespace(Context context ,ErStore erStore) {
         return storeCrudOperator.getStoreFromNamespace(erStore);
     }
 
     @URI(value = getOrCreateSession)
-    public ErSessionMeta getOrCreateSession(ErSessionMeta sessionMeta) {
-        Context  context  = new Context();
+    public ErSessionMeta getOrCreateSession(Context context ,ErSessionMeta sessionMeta) {
+
         return defaultSessionManager.getOrCreateSession(context, sessionMeta);
     }
 
     @URI(value = getSession)
-    public ErSessionMeta getSession(ErSessionMeta sessionMeta) {
-        Context  context  = new Context();
+    public ErSessionMeta getSession(Context context ,ErSessionMeta sessionMeta) {
+
         return defaultSessionManager.getSession(context, sessionMeta);
     }
 
     @URI(value = heartbeat)
-    public ErProcessor heartbeat(ErProcessor erProcessor) {
-        Context  context  = new Context();
+    public ErProcessor heartbeat(Context context ,ErProcessor erProcessor) {
+
         return defaultProcessorManager.heartbeat(context, erProcessor);
     }
 
     @URI(value = stopSession)
-    public ErSessionMeta stopSession(ErSessionMeta erSessionMeta) {
-        Context  context  = new Context();
+    public ErSessionMeta stopSession(Context context ,ErSessionMeta erSessionMeta) {
+
         return defaultSessionManager.stopSession(context, erSessionMeta);
     }
 
     @URI(value = killSession)
-    public ErSessionMeta killSession(ErSessionMeta erSessionMeta) {
-        Context  context  = new Context();
+    public ErSessionMeta killSession(Context context ,ErSessionMeta erSessionMeta) {
+
         return defaultSessionManager.killSession(context, erSessionMeta);
     }
 
     @URI(value = killAllSessions)
-    public ErSessionMeta killAllSession(ErSessionMeta erSessionMeta) {
-        Context  context  = new Context();
+    public ErSessionMeta killAllSession(Context context ,ErSessionMeta erSessionMeta) {
+
         return defaultSessionManager.killAllSessions(context, erSessionMeta);
     }
 
@@ -189,7 +195,7 @@ public class CommandServiceProvider extends CommandServiceGrpc.CommandServiceImp
             if (uri != null) {
                 Class[] types = method.getParameterTypes();
                 if (types.length > 0) {
-                    Class paramClass = types[0];
+                    Class paramClass = types[1];
                     System.err.println("paramClass " + paramClass);
                     if (RpcMessage.class.isAssignableFrom(paramClass)) {
                         doRegister(uri.value(), service, method, paramClass);
