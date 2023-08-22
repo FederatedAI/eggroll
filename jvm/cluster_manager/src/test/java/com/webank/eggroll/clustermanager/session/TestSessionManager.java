@@ -18,7 +18,7 @@ public class TestSessionManager {
 
     Logger logger = LoggerFactory.getLogger(TestSessionManager.class);
 
-    ErEndpoint endpoint = new ErEndpoint("10.35.27.23:4670");
+    ErEndpoint endpoint = new ErEndpoint("localhost:4670");
 
     @Test
     public void  testCreateSession(){
