@@ -1,5 +1,6 @@
 package com.eggroll.core.context;
 
+import com.eggroll.core.utils.JsonUtil;
 import lombok.Data;
 import org.apache.commons.lang3.StringUtils;
 
@@ -23,6 +24,10 @@ public class Context {
     String returnCode;
 
     String returnMsg;
+
+    Map<String, String> options;
+
+
 
     Map dataMap = new HashMap<String,Object>();
 
@@ -48,6 +53,9 @@ public class Context {
         }
         if(StringUtils.isNotEmpty(nodeId)){
             stringBuffer.append("nodeId:").append(nodeId).append(SPLIT);
+        }
+        if(options!=null){
+            stringBuffer.append("option:").append(JsonUtil.object2Json(options)).append(SPLIT);
         }
         if (this.getReturnCode() != null) {
             stringBuffer.append("code:").append(this.getReturnCode()).append(SPLIT);
