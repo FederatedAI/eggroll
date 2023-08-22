@@ -341,9 +341,9 @@ public class ClusterManagerService implements ApplicationRunner {
 //    }
 
 
-    public ErNodeHeartbeat nodeHeartbeat(ErNodeHeartbeat nodeHeartbeat) {
-        logger.info("node heart beat {}", nodeHeartbeat);
+    public ErNodeHeartbeat nodeHeartbeat(Context  context ,ErNodeHeartbeat nodeHeartbeat) {
         ErServerNode serverNode = nodeHeartbeat.getNode();
+        context.setNodeId(serverNode.getId().toString());
         synchronized (serverNode.getId().toString().intern()) {
             if (serverNode.getId() == -1) {
                 ServerNode existNode = serverNodeService.getByEndPoint(serverNode.getEndpoint());

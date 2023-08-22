@@ -87,7 +87,7 @@ public class CommandServiceProvider extends CommandServiceGrpc.CommandServiceImp
     }
     @URI(value= nodeHeartbeat)
     public  ErNodeHeartbeat nodeHeartbeat(Context context ,ErNodeHeartbeat  erNodeHeartbeat){
-       return  clusterManagerService.nodeHeartbeat(erNodeHeartbeat);
+       return  clusterManagerService.nodeHeartbeat(context,erNodeHeartbeat);
     }
 
     @URI(value = getServerNode)
