@@ -8,6 +8,12 @@ import java.util.Map;
 @Data
 public class Context {
 
+    String processorId;
+
+    String sessionId;
+
+    String nodeId;
+
     String  actionType;
 
     long startTimestamp =  System.currentTimeMillis();
@@ -33,6 +39,15 @@ public class Context {
 
         if (this.getActionType() != null) {
             stringBuffer.append(this.getActionType()).append(SPLIT);
+        }
+        if(StringUtils.isNotEmpty(sessionId)){
+            stringBuffer.append("session:").append(sessionId).append(SPLIT);
+        }
+        if(StringUtils.isNotEmpty(processorId)){
+            stringBuffer.append("processorId:").append(processorId).append(SPLIT);
+        }
+        if(StringUtils.isNotEmpty(nodeId)){
+            stringBuffer.append("nodeId:").append(nodeId).append(SPLIT);
         }
         if (this.getReturnCode() != null) {
             stringBuffer.append("code:").append(this.getReturnCode()).append(SPLIT);
