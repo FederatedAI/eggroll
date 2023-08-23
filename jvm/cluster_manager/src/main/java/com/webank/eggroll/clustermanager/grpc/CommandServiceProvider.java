@@ -63,7 +63,7 @@ public class CommandServiceProvider extends CommandServiceGrpc.CommandServiceImp
         context.setActionType(uri);
         try {
             InvokeInfo invokeInfo = uriMap.get(uri);
-            logger.info("request {} invoke {}", uri, invokeInfo);
+//            logger.info("request {} invoke {}", uri, invokeInfo);
             if (invokeInfo == null) {
                 throw new RuntimeException("invalid request : " + uri);
             }
@@ -87,6 +87,7 @@ public class CommandServiceProvider extends CommandServiceGrpc.CommandServiceImp
     }
     @URI(value= nodeHeartbeat)
     public  ErNodeHeartbeat nodeHeartbeat(Context context ,ErNodeHeartbeat  erNodeHeartbeat){
+        context.setNodeId(erNodeHeartbeat.getNode().getId().toString());
        return  clusterManagerService.nodeHeartbeat(context,erNodeHeartbeat);
     }
 
@@ -128,6 +129,7 @@ public class CommandServiceProvider extends CommandServiceGrpc.CommandServiceImp
 
     @URI(value = getStoreFromNamespace)
     public ErStoreList getStoreFromNamespace(Context context ,ErStore erStore) {
+
         return storeCrudOperator.getStoreFromNamespace(erStore);
     }
 
@@ -145,25 +147,26 @@ public class CommandServiceProvider extends CommandServiceGrpc.CommandServiceImp
 
     @URI(value = heartbeat)
     public ErProcessor heartbeat(Context context ,ErProcessor erProcessor) {
-
+        context.setSessionId(erProcessor.getSessionId());
+        context.setProcessorId(erProcessor.getId().toString());
         return defaultProcessorManager.heartbeat(context, erProcessor);
     }
 
     @URI(value = stopSession)
     public ErSessionMeta stopSession(Context context ,ErSessionMeta erSessionMeta) {
-
+        context.setSessionId(erSessionMeta.getId());
         return defaultSessionManager.stopSession(context, erSessionMeta);
     }
 
     @URI(value = killSession)
     public ErSessionMeta killSession(Context context ,ErSessionMeta erSessionMeta) {
-
+        context.setSessionId(erSessionMeta.getId());
         return defaultSessionManager.killSession(context, erSessionMeta);
     }
 
     @URI(value = killAllSessions)
     public ErSessionMeta killAllSession(Context context ,ErSessionMeta erSessionMeta) {
-
+        context.setSessionId(erSessionMeta.getId());
         return defaultSessionManager.killAllSessions(context, erSessionMeta);
     }
 
@@ -171,8 +174,6 @@ public class CommandServiceProvider extends CommandServiceGrpc.CommandServiceImp
     @Override
     public void afterPropertiesSet() throws Exception {
         register(this);
-        System.err.println("command  service provider afterPropertiesSet");
-
     }
 
     private void doRegister(String uri, Object service, Method method, Class paramClass) {
