@@ -5,7 +5,7 @@ public class CrudException extends EggRollBaseException{
         super(message);
     }
 
-    public CrudException(int exCode, String message) {
+    public CrudException(String exCode, String message) {
         super(exCode, message);
     }
 }

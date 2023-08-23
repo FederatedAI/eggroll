@@ -1,6 +1,9 @@
 package com.webank.eggroll.clustermanager.grpc;
 
 import com.eggroll.core.context.Context;
+import com.eggroll.core.exceptions.EggRollBaseException;
+import com.eggroll.core.exceptions.ErrorMessageUtil;
+import com.eggroll.core.exceptions.ExceptionInfo;
 import com.eggroll.core.flow.FlowLogUtil;
 import com.eggroll.core.grpc.URI;
 import com.eggroll.core.invoke.InvokeInfo;
@@ -72,13 +75,17 @@ public class CommandServiceProvider extends CommandServiceGrpc.CommandServiceImp
                 rpcMessage.deserialize(data);
                 RpcMessage response = (RpcMessage) invokeInfo.getMethod().invoke(invokeInfo.getObject(), context, rpcMessage);
                 return response.serialize();
-
-            } catch (RuntimeException e) {
-                e.printStackTrace();
-                throw e;
             } catch (Exception e) {
-                e.printStackTrace();
-                throw new RuntimeException(e);
+//                e.printStackTrace();
+//                throw new RuntimeException(e);
+                ExceptionInfo exceptionInfo = ErrorMessageUtil.handleExceptionExceptionInfo(context, e);
+                context.setReturnCode(exceptionInfo.getCode());
+                context.setReturnMsg(exceptionInfo.getMessage());
+                if(e instanceof  EggRollBaseException){
+                    throw (EggRollBaseException)e;
+                }else{
+                    throw new RuntimeException(e);
+                }
             }
         }finally {
             FlowLogUtil.printFlowLog(context);
@@ -197,7 +204,7 @@ public class CommandServiceProvider extends CommandServiceGrpc.CommandServiceImp
                 Class[] types = method.getParameterTypes();
                 if (types.length > 0) {
                     Class paramClass = types[1];
-                    System.err.println("paramClass " + paramClass);
+
                     if (RpcMessage.class.isAssignableFrom(paramClass)) {
                         doRegister(uri.value(), service, method, paramClass);
                     } else {
