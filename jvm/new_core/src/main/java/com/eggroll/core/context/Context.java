@@ -1,5 +1,6 @@
 package com.eggroll.core.context;
 
+import com.eggroll.core.utils.JsonUtil;
 import lombok.Data;
 import org.apache.commons.lang3.StringUtils;
 
@@ -7,6 +8,12 @@ import java.util.HashMap;
 import java.util.Map;
 @Data
 public class Context {
+
+    String processorId;
+
+    String sessionId;
+
+    String nodeId;
 
     String  actionType;
 
@@ -17,6 +24,10 @@ public class Context {
     String returnCode;
 
     String returnMsg;
+
+    Map<String, String> options;
+
+
 
     Map dataMap = new HashMap<String,Object>();
 
@@ -33,6 +44,18 @@ public class Context {
 
         if (this.getActionType() != null) {
             stringBuffer.append(this.getActionType()).append(SPLIT);
+        }
+        if(StringUtils.isNotEmpty(sessionId)){
+            stringBuffer.append("session:").append(sessionId).append(SPLIT);
+        }
+        if(StringUtils.isNotEmpty(processorId)){
+            stringBuffer.append("processorId:").append(processorId).append(SPLIT);
+        }
+        if(StringUtils.isNotEmpty(nodeId)){
+            stringBuffer.append("nodeId:").append(nodeId).append(SPLIT);
+        }
+        if(options!=null){
+            stringBuffer.append("option:").append(JsonUtil.object2Json(options)).append(SPLIT);
         }
         if (this.getReturnCode() != null) {
             stringBuffer.append("code:").append(this.getReturnCode()).append(SPLIT);
