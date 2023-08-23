@@ -17,6 +17,7 @@ import com.webank.eggroll.clustermanager.entity.NodeResource;
 import com.webank.eggroll.clustermanager.entity.ServerNode;
 import com.webank.eggroll.clustermanager.entity.SessionProcessor;
 import com.webank.eggroll.clustermanager.job.JobServiceHandler;
+import com.webank.eggroll.clustermanager.schedule.ClusterManagerTask;
 import com.webank.eggroll.clustermanager.session.SessionManager;
 import com.webank.eggroll.clustermanager.statemachine.ProcessorStateMachine;
 import org.apache.commons.lang3.StringUtils;
@@ -433,10 +434,10 @@ public class ClusterManagerService implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args){
-        sessionWatcher.start();
-        nodeHeartbeatChecker.start();
-        nodeProcessChecker.start();
-        redidualProcessorChecker.start();
+        ClusterManagerTask.runTask(sessionWatcher);
+        ClusterManagerTask.runTask(nodeHeartbeatChecker);
+        ClusterManagerTask.runTask(nodeProcessChecker);
+        ClusterManagerTask.runTask(redidualProcessorChecker);
         log.info("{} run() end !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",this.getClass().getSimpleName());
     }
 }

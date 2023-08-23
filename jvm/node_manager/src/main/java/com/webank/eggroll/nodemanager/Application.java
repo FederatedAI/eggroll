@@ -1,6 +1,7 @@
 package com.webank.eggroll.nodemanager;
 
 //import com.webank.eggroll.clustermanager.grpc.GrpcServer;
+
 import com.eggroll.core.config.Dict;
 import com.eggroll.core.config.ErConf;
 import com.eggroll.core.config.MetaInfo;
@@ -27,33 +28,24 @@ public class Application {
 
     static Logger logger = LoggerFactory.getLogger(Application.class);
 
-    public static ApplicationContext context  ;
+    public static ApplicationContext context;
 
     public static void main(String[] args) {
-        System.setProperty("spring.config.name","eggroll");
+        System.setProperty("spring.config.name", "eggroll");
         CommandLine cmd = CommandArgsUtils.parseArgs(args);
         String confPath = cmd.getOptionValue('c', "./conf/eggroll.properties");
         Properties environment = PropertiesUtil.getProperties(confPath);
-        try {
-            ErConf.addProperties(confPath);
-            File confFile = new File(confPath);
-            ErConf.getConf().put(Dict.STATIC_CONF_PATH,confFile.getAbsolutePath());
-        }catch (IOException e) {
-            logger.error("init erconf failed",e.getMessage());
-        }
-
         MetaInfo.init(environment);
-
-        context=  new SpringApplicationBuilder(Application.class).run(args);
-
-        GrpcServer grpcServer = (GrpcServer)context.getBean("grpcServer");
+        context = new SpringApplicationBuilder(Application.class).run(args);
+        logger.info("============= node manager spring context is start");
+        GrpcServer grpcServer = (GrpcServer) context.getBean("grpcServer");
         try {
             grpcServer.start();
+            logger.info("============= node manager grpcServer is start");
         } catch (Exception e) {
             e.printStackTrace();
         }
-
-        synchronized(context) {
+        synchronized (context) {
             try {
                 context.wait();
             } catch (InterruptedException e) {

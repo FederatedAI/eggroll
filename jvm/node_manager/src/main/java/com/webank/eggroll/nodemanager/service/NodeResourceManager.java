@@ -12,6 +12,7 @@ import com.webank.eggroll.nodemanager.env.Shell;
 import com.webank.eggroll.nodemanager.env.SysInfoLinux;
 import com.webank.eggroll.nodemanager.meta.NodeManagerMeta;
 import com.webank.eggroll.nodemanager.pojo.ResourceWrapper;
+import com.webank.eggroll.nodemanager.schedule.NodeManagerTask;
 import com.webank.eggroll.nodemanager.utils.GetSystemInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -93,8 +94,8 @@ public class NodeResourceManager implements ApplicationListener<ApplicationReady
 
     public void start() {
         NodeManagerMeta.loadNodeManagerMetaFromFile();
-        heartBeatThread.start();
-        resourceCountThread.start();
+        NodeManagerTask.runTask(heartBeatThread);
+        NodeManagerTask.runTask(resourceCountThread);
     }
 
     public Long getPhysicalMemorySize() {
