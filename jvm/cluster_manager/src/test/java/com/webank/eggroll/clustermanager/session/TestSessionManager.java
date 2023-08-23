@@ -57,7 +57,7 @@ public class TestSessionManager {
     @Test
     public void testKillSession() {
         ErSessionMeta getOrCreateSessionMeta = new ErSessionMeta();
-        getOrCreateSessionMeta.setId("testx_1692342316761");
+        getOrCreateSessionMeta.setId("testx_1692342357633");
         Map<String,String> options = new HashMap<>();
         options.put(Dict.CONFKEY_SESSION_PROCESSORS_PER_NODE ,"2");
         getOrCreateSessionMeta.setOptions(options);

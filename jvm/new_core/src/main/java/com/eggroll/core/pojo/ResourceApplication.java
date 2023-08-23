@@ -51,7 +51,7 @@ public class ResourceApplication {
         this.options = new HashMap<>();
     }
 
-    public ResourceApplication getResult() throws InterruptedException, ErSessionException {
+    public List<Map<ErProcessor, ErServerNode>> getResult() throws InterruptedException, ErSessionException {
         try {
             if (timeout > 0) {
                 boolean alreadyGet = resourceLatch.await(timeout, TimeUnit.MILLISECONDS);
@@ -61,7 +61,7 @@ public class ResourceApplication {
             } else {
                 resourceLatch.await();
             }
-            return this;
+            return resourceDispatch;
         } finally {
             waitingCount.decrementAndGet();
         }
