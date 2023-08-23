@@ -2,6 +2,7 @@ package com.webank.eggroll.clustermanager.cluster;
 
 import com.eggroll.core.constant.ServerNodeStatus;
 import com.eggroll.core.constant.ServerNodeTypes;
+import com.eggroll.core.context.Context;
 import com.eggroll.core.pojo.ErEndpoint;
 import com.eggroll.core.pojo.ErNodeHeartbeat;
 import com.eggroll.core.pojo.ErServerNode;
@@ -31,7 +32,8 @@ public class TestClusterManagerService {
         erServerNode.setStatus(ServerNodeStatus.HEALTHY.name());
         erServerNode.setNodeType(ServerNodeTypes.NODE_MANAGER.name());
         erNodeHeartbeat.setNode(erServerNode);
-        erNodeHeartbeat = clusterManagerService.nodeHeartbeat(erNodeHeartbeat);
+        Context context = new  Context();
+        erNodeHeartbeat = clusterManagerService.nodeHeartbeat(context,erNodeHeartbeat);
         System.out.println("erNodeHeartbeat = " + erNodeHeartbeat);
 
     }

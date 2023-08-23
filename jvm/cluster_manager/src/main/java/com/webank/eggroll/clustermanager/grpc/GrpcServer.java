@@ -37,7 +37,7 @@ public class GrpcServer implements ApplicationRunner  {
     CommandServiceProvider  commandServiceProvider;
 
     public void start() throws Exception{
-        Server  server =  createServer("10.35.27.23",MetaInfo.CONFKEY_CLUSTER_MANAGER_PORT, Lists.newArrayList(commandServiceProvider),Lists.newArrayList(), Maps.newHashMap());
+        Server  server =  createServer("0.0.0.0",MetaInfo.CONFKEY_CLUSTER_MANAGER_PORT, Lists.newArrayList(commandServiceProvider),Lists.newArrayList(), Maps.newHashMap());
         server.start();
     }
 

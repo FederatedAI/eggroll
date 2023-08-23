@@ -41,6 +41,8 @@ public class DefaultSessionManager implements SessionManager {
 
     @Override
     public ErSessionMeta getOrCreateSession(Context context, ErSessionMeta sessionMeta) {
+        context.setSessionId(sessionMeta.getId());
+        context.setOptions(sessionMeta.getOptions());
         if (MetaInfo.EGGROLL_SESSION_USE_RESOURCE_DISPATCH) {
             getOrCreateSessionWithoutResourceDispath(context, sessionMeta);
         } else {
