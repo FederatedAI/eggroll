@@ -13,6 +13,7 @@ import com.webank.eggroll.clustermanager.dao.impl.ProcessorResourceService;
 import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
 import com.webank.eggroll.clustermanager.dao.impl.SessionMainService;
 import com.webank.eggroll.clustermanager.entity.ProcessorResource;
+import com.webank.eggroll.clustermanager.schedule.ClusterManagerTask;
 import lombok.Data;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -547,8 +548,9 @@ public class ClusterResourceManager implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) throws Exception {
-        dispatchThread.start();
-        lockCleanThread.start();
-        log.info("{} run() end !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",this.getClass().getSimpleName());
+        ClusterManagerTask.runTask(dispatchThread);
+        ClusterManagerTask.runTask(lockCleanThread);
+
+        log.info("{} run() end !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", this.getClass().getSimpleName());
     }
 }
