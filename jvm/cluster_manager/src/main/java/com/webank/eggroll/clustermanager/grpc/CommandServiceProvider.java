@@ -1,6 +1,9 @@
 package com.webank.eggroll.clustermanager.grpc;
 
 import com.eggroll.core.context.Context;
+import com.eggroll.core.exceptions.EggRollBaseException;
+import com.eggroll.core.exceptions.ErrorMessageUtil;
+import com.eggroll.core.exceptions.ExceptionInfo;
 import com.eggroll.core.flow.FlowLogUtil;
 import com.eggroll.core.grpc.URI;
 import com.eggroll.core.invoke.InvokeInfo;
@@ -63,7 +66,7 @@ public class CommandServiceProvider extends CommandServiceGrpc.CommandServiceImp
         context.setActionType(uri);
         try {
             InvokeInfo invokeInfo = uriMap.get(uri);
-            logger.info("request {} invoke {}", uri, invokeInfo);
+//            logger.info("request {} invoke {}", uri, invokeInfo);
             if (invokeInfo == null) {
                 throw new RuntimeException("invalid request : " + uri);
             }
@@ -72,13 +75,17 @@ public class CommandServiceProvider extends CommandServiceGrpc.CommandServiceImp
                 rpcMessage.deserialize(data);
                 RpcMessage response = (RpcMessage) invokeInfo.getMethod().invoke(invokeInfo.getObject(), context, rpcMessage);
                 return response.serialize();
-
-            } catch (RuntimeException e) {
-                e.printStackTrace();
-                throw e;
             } catch (Exception e) {
-                e.printStackTrace();
-                throw new RuntimeException(e);
+//                e.printStackTrace();
+//                throw new RuntimeException(e);
+                ExceptionInfo exceptionInfo = ErrorMessageUtil.handleExceptionExceptionInfo(context, e);
+                context.setReturnCode(exceptionInfo.getCode());
+                context.setReturnMsg(exceptionInfo.getMessage());
+                if(e instanceof  EggRollBaseException){
+                    throw (EggRollBaseException)e;
+                }else{
+                    throw new RuntimeException(e);
+                }
             }
         }finally {
             FlowLogUtil.printFlowLog(context);
@@ -87,6 +94,7 @@ public class CommandServiceProvider extends CommandServiceGrpc.CommandServiceImp
     }
     @URI(value= nodeHeartbeat)
     public  ErNodeHeartbeat nodeHeartbeat(Context context ,ErNodeHeartbeat  erNodeHeartbeat){
+        context.setNodeId(erNodeHeartbeat.getNode().getId().toString());
        return  clusterManagerService.nodeHeartbeat(context,erNodeHeartbeat);
     }
 
@@ -128,6 +136,7 @@ public class CommandServiceProvider extends CommandServiceGrpc.CommandServiceImp
 
     @URI(value = getStoreFromNamespace)
     public ErStoreList getStoreFromNamespace(Context context ,ErStore erStore) {
+
         return storeCrudOperator.getStoreFromNamespace(erStore);
     }
 
@@ -145,25 +154,26 @@ public class CommandServiceProvider extends CommandServiceGrpc.CommandServiceImp
 
     @URI(value = heartbeat)
     public ErProcessor heartbeat(Context context ,ErProcessor erProcessor) {
-
+        context.setSessionId(erProcessor.getSessionId());
+        context.setProcessorId(erProcessor.getId().toString());
         return defaultProcessorManager.heartbeat(context, erProcessor);
     }
 
     @URI(value = stopSession)
     public ErSessionMeta stopSession(Context context ,ErSessionMeta erSessionMeta) {
-
+        context.setSessionId(erSessionMeta.getId());
         return defaultSessionManager.stopSession(context, erSessionMeta);
     }
 
     @URI(value = killSession)
     public ErSessionMeta killSession(Context context ,ErSessionMeta erSessionMeta) {
-
+        context.setSessionId(erSessionMeta.getId());
         return defaultSessionManager.killSession(context, erSessionMeta);
     }
 
     @URI(value = killAllSessions)
     public ErSessionMeta killAllSession(Context context ,ErSessionMeta erSessionMeta) {
-
+        context.setSessionId(erSessionMeta.getId());
         return defaultSessionManager.killAllSessions(context, erSessionMeta);
     }
 
@@ -171,8 +181,6 @@ public class CommandServiceProvider extends CommandServiceGrpc.CommandServiceImp
     @Override
     public void afterPropertiesSet() throws Exception {
         register(this);
-        System.err.println("command  service provider afterPropertiesSet");
-
     }
 
     private void doRegister(String uri, Object service, Method method, Class paramClass) {
@@ -196,7 +204,7 @@ public class CommandServiceProvider extends CommandServiceGrpc.CommandServiceImp
                 Class[] types = method.getParameterTypes();
                 if (types.length > 0) {
                     Class paramClass = types[1];
-                    System.err.println("paramClass " + paramClass);
+
                     if (RpcMessage.class.isAssignableFrom(paramClass)) {
                         doRegister(uri.value(), service, method, paramClass);
                     } else {

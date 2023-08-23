@@ -6,7 +6,7 @@ public class ErProcessorException extends EggRollBaseException{
         super(message);
     }
 
-    public ErProcessorException(int exCode, String message) {
+    public ErProcessorException(String exCode, String message) {
         super(exCode, message);
     }
 }
