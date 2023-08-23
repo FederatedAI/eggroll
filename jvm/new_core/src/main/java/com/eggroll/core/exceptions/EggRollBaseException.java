@@ -1,14 +1,16 @@
 package com.eggroll.core.exceptions;
 
-public class EggRollBaseException extends RuntimeException{
-    private final Integer code;
+import lombok.Data;
 
+@Data
+public class EggRollBaseException extends RuntimeException{
+    private  String code;
     public EggRollBaseException(String message){
         super(message);
-        this.code = 500;
+
     }
 
-    public EggRollBaseException(int exCode, String message) {
+    public EggRollBaseException(String exCode, String message) {
         super(message);
         this.code = exCode;
     }
