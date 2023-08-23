@@ -6,7 +6,7 @@ public class ConfigErrorException extends EggRollBaseException{
         super(message);
     }
 
-    public ConfigErrorException(int exCode, String message) {
+    public ConfigErrorException(String exCode, String message) {
         super(exCode, message);
     }
 }

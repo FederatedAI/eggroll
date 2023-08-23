@@ -6,7 +6,7 @@ public class ErSessionException extends EggRollBaseException{
         super(message);
     }
 
-    public ErSessionException(int exCode, String message) {
+    public ErSessionException(String exCode, String message) {
         super(exCode, message);
     }
 }
