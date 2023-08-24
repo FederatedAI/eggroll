@@ -1,6 +1,5 @@
 package com.eggroll.core.pojo;
 
-import com.google.protobuf.InvalidProtocolBufferException;
 import com.webank.eggroll.core.meta.Meta;
 import lombok.Data;
 import org.apache.commons.lang3.StringUtils;

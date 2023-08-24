@@ -1,26 +1,21 @@
 package com.webank.eggroll.clustermanager.job;
 
-import com.eggroll.core.config.Dict;
-import com.eggroll.core.constant.ProcessorStatus;
-import com.eggroll.core.constant.ResourceStatus;
 import com.eggroll.core.constant.SessionStatus;
-import com.eggroll.core.exceptions.ErSessionException;
 import com.eggroll.core.grpc.NodeManagerClient;
 import com.eggroll.core.pojo.*;
-import com.eggroll.core.utils.JsonUtil;
 import com.webank.eggroll.clustermanager.cluster.ClusterResourceManager;
 import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
 import com.webank.eggroll.clustermanager.dao.impl.SessionMainService;
-import javafx.util.Pair;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.tuple.Triple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 
@@ -76,26 +71,33 @@ public class JobServiceHandler {
 //            throw new IllegalArgumentException("unsupported job type: " + submitJobMeta.getJobType());
 //        }
 //    }
-//
-//
-//    public QueryJobStatusResponse handleJobStatusQuery(QueryJobStatusRequest queryJobStatusRequest) {
-//        String sessionId = queryJobStatusRequest.getSessionId();
-//        String status = smDao.getSessionMain(sessionId).getStatus();
-//        return new QueryJobStatusResponse(sessionId, status);
-//    }
-//
-//    public KillJobResponse handleJobKill(KillJobRequest killJobRequest) {
-//        String sessionId = killJobRequest.getSessionId();
-//        killJob(sessionId, false);
-//        return new KillJobResponse(sessionId);
-//    }
-//
-//    public StopJobResponse handleJobStop(StopJobRequest stopJobRequest) {
-//        String sessionId = stopJobRequest.getSessionId();
-//        killJob(sessionId, false);
-//        return new StopJobResponse(sessionId);
-//    }
-//
+
+
+    public QueryJobStatusResponse handleJobStatusQuery(QueryJobStatusRequest queryJobStatusRequest) {
+        String sessionId = queryJobStatusRequest.getSessionId();
+        ErSessionMeta sessionMain = sessionMainService.getSessionMain(sessionId);
+        QueryJobStatusResponse queryJobStatusResponse = new QueryJobStatusResponse();
+        queryJobStatusResponse.setSessionId(sessionId);
+        queryJobStatusResponse.setStatus(sessionMain==null?null:sessionMain.getStatus());
+        return queryJobStatusResponse;
+    }
+
+    public KillJobResponse handleJobKill(KillJobRequest killJobRequest) {
+        String sessionId = killJobRequest.getSessionId();
+        killJob(sessionId);
+        KillJobResponse response = new KillJobResponse();
+        response.setSessionId(sessionId);
+        return response;
+    }
+
+    public StopJobResponse handleJobStop(StopJobRequest stopJobRequest) {
+        String sessionId = stopJobRequest.getSessionId();
+        killJob(sessionId);
+        StopJobResponse response = new StopJobResponse();
+        response.setSessionId(sessionId);
+        return response;
+    }
+
 //    private SubmitJobResponse handleDeepspeedSubmit(SubmitJobRequest submitJobRequest) throws InterruptedException {
 //        String sessionId = submitJobRequest.getSessionId();
 //        int worldSize = submitJobRequest.getWorldSize();
