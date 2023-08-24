@@ -19,6 +19,7 @@
 package com.eggroll.core.grpc;
 
 import com.eggroll.core.containers.meta.KillContainersResponse;
+import com.eggroll.core.containers.meta.StartContainersResponse;
 import com.eggroll.core.pojo.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,6 +63,14 @@ public class NodeManagerClient {
   public ErSessionMeta  stopContainers(ErSessionMeta sessionMeta) {
     byte[] responseData = commandClient.call(nodeManagerEndpoint, stopContainers,sessionMeta.serialize());
     ErSessionMeta response = new ErSessionMeta();
+    response.deserialize(responseData);
+    return response;
+  }
+
+
+  public StartContainersResponse startJobContainers(StartContainersRequest startContainersRequest) {
+    byte[] responseData = commandClient.call(nodeManagerEndpoint, startJobContainers,startContainersRequest.serialize());
+    StartContainersResponse response = new StartContainersResponse();
     response.deserialize(responseData);
     return response;
   }
