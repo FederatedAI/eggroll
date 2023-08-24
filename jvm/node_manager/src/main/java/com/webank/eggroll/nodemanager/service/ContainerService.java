@@ -129,7 +129,7 @@ public class ContainerService {
             Map<String, String> builderEnv = processorBuilder.environment();
             if (StringUtils.hasText(System.getProperty("eggroll.standalone.tag"))) {
                 logger.info("set EGGROLL_STANDALONE_PORT :", param.getCmPort());
-                builderEnv.put("EGGROLL_STANDALONE_PORT", param.getCmPort());
+                builderEnv.put("EGGROLL_STANDALONE_PORT", String.valueOf(param.getCmPort()));
             }
             File logPath = new File(param.getLogsDir() + File.separator + param.getSessionId() + File.separator);
             if (!logPath.exists()) {

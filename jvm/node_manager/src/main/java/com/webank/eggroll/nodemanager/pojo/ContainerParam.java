@@ -17,7 +17,7 @@ public class ContainerParam {
     private String serverNodeId;
     private String boot;
     private String logsDir;
-    private String cmPort;
+    private Integer cmPort;
     private String pythonPath;
     private String pythonVenv;
     private Long processorId;
@@ -34,9 +34,9 @@ public class ContainerParam {
         exePath = conf.get(confPrefix + ".exepath", "");
         sessionId = conf.getString(Dict.CONFKEY_SESSION_ID, "");
         serverNodeId = conf.get(Dict.SERVER_NODE_ID, "2");
-        boot = conf.get(Dict.BOOTSTRAP_ROOT_SCRIPT, "bin/eggroll_boot." + (isWindows ? "py" : "sh"));
+        boot = MetaInfo.BOOTSTRAP_ROOT_SCRIPT == null ? "bin/eggroll_boot." + (isWindows ? "py" : "sh") : MetaInfo.BOOTSTRAP_ROOT_SCRIPT;
         logsDir = MetaInfo.EGGROLL_LOGS_DIR;
-        cmPort = conf.get(Dict.CONFKEY_CLUSTER_MANAGER_PORT, "4670");
+        cmPort =  MetaInfo.CONFKEY_CLUSTER_MANAGER_PORT;
         pythonPath = conf.getString(Dict.EGGROLL_SESSION_PYTHON_PATH, "");
         pythonVenv = conf.getString(Dict.EGGROLL_SESSION_PYTHON_VENV, "");
         staticConfPath = conf.getString(Dict.STATIC_CONF_PATH,MetaInfo.STATIC_CONF_PATH);
