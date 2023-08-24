@@ -1,6 +1,5 @@
 package com.eggroll.core.containers.container;
 
-import com.eggroll.core.config.DeepspeedContainerConfig;
 import com.eggroll.core.pojo.StaticErConf;
 
 import java.util.*;

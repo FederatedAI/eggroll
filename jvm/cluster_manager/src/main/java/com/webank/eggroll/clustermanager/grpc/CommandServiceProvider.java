@@ -59,7 +59,7 @@ public class CommandServiceProvider extends CommandServiceGrpc.CommandServiceImp
         responseObserver.onCompleted();
     }
 
-    private ConcurrentHashMap<String, InvokeInfo> uriMap = new ConcurrentHashMap();
+    ConcurrentHashMap<String, InvokeInfo> uriMap = new ConcurrentHashMap();
 
     public byte[] dispatch(String uri, byte[] data) {
         Context context  =new Context();

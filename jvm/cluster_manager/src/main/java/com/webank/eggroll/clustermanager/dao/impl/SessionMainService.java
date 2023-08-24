@@ -2,13 +2,13 @@ package com.webank.eggroll.clustermanager.dao.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
-import com.eggroll.core.pojo.ErProcessor;
-import com.eggroll.core.pojo.ErSessionMeta;
+import com.eggroll.core.pojo.*;
 import com.google.common.collect.Maps;
 import com.webank.eggroll.clustermanager.dao.mapper.SessionMainMapper;
 import com.webank.eggroll.clustermanager.entity.SessionMain;
 import com.webank.eggroll.clustermanager.entity.SessionOption;
 import com.webank.eggroll.clustermanager.entity.SessionProcessor;
+import com.webank.eggroll.clustermanager.entity.SessionRanks;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +28,8 @@ public class SessionMainService extends EggRollBaseServiceImpl<SessionMainMapper
     ProcessorService   processorService;
     @Autowired
     SessionProcessorService sessionProcessorService;
+    @Autowired
+    SessionRanksService sessionRanksService;
 
     public ErSessionMeta getSession(String sessionId) {
         SessionOption sessionOption = new SessionOption();
@@ -96,6 +98,19 @@ public class SessionMainService extends EggRollBaseServiceImpl<SessionMainMapper
             result.add(sessionMain.toErSessionMeta());
         }
         return result;
+    }
+
+    @Transactional
+    public void registerRanks(List<Tuple<Long, ErServerNode, DeepspeedContainerConfig>> configs,String sesssionId){
+        for (Tuple<Long, ErServerNode, DeepspeedContainerConfig> config : configs) {
+            SessionRanks sessionRanks = new SessionRanks();
+            sessionRanks.setSessionId(sesssionId);
+            sessionRanks.setContainerId(config.getFirst());
+            sessionRanks.setServerNodeId(config.getSecond().getId());
+            sessionRanks.setGlobalRank(config.getThird().getRank());
+            sessionRanks.setLocalRank(config.getThird().getLocalRank());
+            sessionRanksService.save(sessionRanks);
+        }
     }
 
 }
