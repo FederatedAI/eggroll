@@ -49,24 +49,17 @@ echo "processor_tag=$processor_tag"
 main() {
 	case "$module" in
 		clustermanager)
-			main_class=com.webank.eggroll.core.resourcemanager.ClusterManagerBootstrap
+			main_class=com.webank.eggroll.clustermanager.Application
 			get_property "eggroll.resourcemanager.clustermanager.port"
 			port=${property_value}
 			get_property "eggroll.resourcemanager.clustermanager.jvm.options"
 			jvm_options=${property_value}
 			;;
 		nodemanager)
-			main_class=com.webank.eggroll.core.resourcemanager.NodeManagerBootstrap
+			main_class=com.webank.eggroll.nodemanager.Application
 			get_property "eggroll.resourcemanager.nodemanager.port"
 			port=${property_value}
 			get_property "eggroll.resourcemanager.nodemanager.jvm.options"
-			jvm_options=${property_value}
-			;;
-		rollsite)
-			main_class=com.webank.eggroll.rollsite.EggSiteBootstrap
-			get_property "eggroll.rollsite.port"
-			port=${property_value}
-			get_property "eggroll.rollsite.jvm.options"
 			jvm_options=${property_value}
 			;;
 		*)
@@ -165,7 +158,7 @@ start() {
 	if [[ $? -eq 1 ]]; then
 		mklogsdir
 		export EGGROLL_LOG_FILE=${module}
-		cmd="java ${jvm_options} -Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.properties -cp ${EGGROLL_HOME}/lib/*: com.webank.eggroll.core.Bootstrap --bootstraps ${main_class} -c ${EGGROLL_HOME}/conf/eggroll.properties -p $port -s ${processor_tag}"
+		cmd="java -server ${jvm_options} -Dlog4j.configurationFile=${EGGROLL_HOME}/conf/log4j2.properties -Dspring.config.location=file:${EGGROLL_HOME}/conf/eggroll.properties -cp ${EGGROLL_HOME}/lib/*: ${main_class}  -p $port -s ${processor_tag}"
 
 		echo $cmd
 		if [ $start_mode = 0 ];then
