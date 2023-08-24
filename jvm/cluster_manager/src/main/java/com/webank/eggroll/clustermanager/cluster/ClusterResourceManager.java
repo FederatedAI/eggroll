@@ -515,6 +515,10 @@ public class ClusterResourceManager implements ApplicationRunner {
         return resourceApplication;
     }
 
+    public void submitResourceRequest(ResourceApplication resourceRequest) throws InterruptedException {
+        applicationQueue.getBroker().put(resourceRequest);
+    }
+
 //    private ResourceApplication singleNodeFirstDispatch(List<ErServerNode> serverNodes, ResourceApplication resourceApplication) {
 //        List<ErProcessor> requiredProcessors = resourceApplication.getProcessors();
 //        List<ErServerNode> nodeList = serverNodes.stream().sorted(Comparator.comparingLong(node -> getFirstUnAllocatedResource(node, resourceApplication))).collect(Collectors.toList());
