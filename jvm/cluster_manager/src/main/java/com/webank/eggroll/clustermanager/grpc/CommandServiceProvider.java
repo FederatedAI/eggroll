@@ -59,7 +59,7 @@ public class CommandServiceProvider extends CommandServiceGrpc.CommandServiceImp
         responseObserver.onCompleted();
     }
 
-    private ConcurrentHashMap<String, InvokeInfo> uriMap = new ConcurrentHashMap();
+    ConcurrentHashMap<String, InvokeInfo> uriMap = new ConcurrentHashMap();
 
     public byte[] dispatch(String uri, byte[] data) {
         Context context  =new Context();
@@ -176,6 +176,7 @@ public class CommandServiceProvider extends CommandServiceGrpc.CommandServiceImp
         context.setSessionId(erSessionMeta.getId());
         return defaultSessionManager.killAllSessions(context, erSessionMeta);
     }
+
 
 
     @Override

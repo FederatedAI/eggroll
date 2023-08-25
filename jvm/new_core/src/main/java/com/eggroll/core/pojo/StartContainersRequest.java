@@ -1,16 +1,20 @@
 package com.eggroll.core.pojo;
 
 import com.eggroll.core.config.Dict;
-import com.eggroll.core.constant.StringConstants;
 import com.google.protobuf.ByteString;
-import com.google.protobuf.InvalidProtocolBufferException;
 import com.webank.eggroll.core.meta.Containers;
 import lombok.Data;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Data
-public class StartContainersRequest {
+public class StartContainersRequest implements RpcMessage {
+    Logger log = LoggerFactory.getLogger(StartContainersRequest.class);
     public String sessionId;
     public String name;
     public String jobType;
@@ -33,47 +37,49 @@ public class StartContainersRequest {
         this.options = new HashMap<>();
     }
 
-    public static StartContainersRequest deserialize(ByteString byteString) throws InvalidProtocolBufferException {
-        Containers.StartContainersRequest src = Containers.StartContainersRequest.parseFrom(byteString);
-        StartContainersRequest dst = new StartContainersRequest();
-        dst.sessionId = src.getSessionId();
-        dst.name = src.getName();
-        dst.jobType = src.getJobType();
+    @Override
+    public byte[] serialize() {
+        Containers.StartContainersRequest.Builder builder = Containers.StartContainersRequest.newBuilder()
+                .setSessionId(this.sessionId)
+                .setName(this.name)
+                .addAllCommandArguments(this.commandArguments)
+                .putAllEnvironmentVariables(this.environmentVariables)
+                .putAllFiles(convertToByteStringMap(this.files))
+                .putAllZippedFiles(convertToByteStringMap(this.zippedFiles))
+                .putAllTypedExtraConfigs(convertToByteStringMapWithLongKeys(this.typedExtraConfigs))
+                .putAllOptions(this.options);
 
-        dst.commandArguments = src.getCommandArgumentsList();
-        dst.environmentVariables = new HashMap<>(src.getEnvironmentVariablesMap());
-        dst.files = new HashMap<>();
-        for (Map.Entry<String, ByteString> entry : src.getFilesMap().entrySet()) {
-            dst.files.put(entry.getKey(), entry.getValue().toByteArray());
-        }
+        builder.setJobType(this.jobType);
 
-        dst.zippedFiles = new HashMap<>();
-        for (Map.Entry<String, ByteString> entry : src.getZippedFilesMap().entrySet()) {
-            dst.zippedFiles.put(entry.getKey(), entry.getValue().toByteArray());
-        }
-
-        dst.typedExtraConfigs = new HashMap<>();
-        src.getTypedExtraConfigsMap().forEach((key, value) -> {
-            dst.typedExtraConfigs.put(key, value.toByteArray());
-        });
-        dst.options = new HashMap<>(src.getOptionsMap());
-        return dst;
+        return builder.build().toByteArray();
     }
 
-    public static ByteString serialize(StartContainersRequest src) {
-        Containers.StartContainersRequest.Builder builder = Containers.StartContainersRequest.newBuilder()
-                .setSessionId(src.sessionId)
-                .setName(src.name)
-                .addAllCommandArguments(src.commandArguments)
-                .putAllEnvironmentVariables(src.environmentVariables)
-                .putAllFiles(convertToByteStringMap(src.files))
-                .putAllZippedFiles(convertToByteStringMap(src.zippedFiles))
-                .putAllTypedExtraConfigs(convertToByteStringMapWithLongKeys(src.typedExtraConfigs))
-                .putAllOptions(src.options);
+    @Override
+    public void deserialize(byte[] data) {
+        try {
+            Containers.StartContainersRequest src = Containers.StartContainersRequest.parseFrom(data);
+            this.sessionId = src.getSessionId();
+            this.name = src.getName();
+            this.jobType = src.getJobType();
 
-        builder.setJobType(src.jobType);
+            this.commandArguments = src.getCommandArgumentsList();
+            this.environmentVariables = new HashMap<>(src.getEnvironmentVariablesMap());
+            this.files = new HashMap<>();
+            for (Map.Entry<String, ByteString> entry : src.getFilesMap().entrySet()) {
+                this.files.put(entry.getKey(), entry.getValue().toByteArray());
+            }
 
-        return builder.build().toByteString();
+            this.zippedFiles = new HashMap<>();
+            for (Map.Entry<String, ByteString> entry : src.getZippedFilesMap().entrySet()) {
+                this.zippedFiles.put(entry.getKey(), entry.getValue().toByteArray());
+            }
+
+            this.typedExtraConfigs = new HashMap<>();
+            src.getTypedExtraConfigsMap().forEach((key, value) -> this.typedExtraConfigs.put(key, value.toByteArray()));
+            this.options = new HashMap<>(src.getOptionsMap());
+        } catch (Exception e) {
+            log.error("deserialize error : ", e);
+        }
     }
 
     private static Map<String, ByteString> convertToByteStringMap(Map<String, byte[]> map) {

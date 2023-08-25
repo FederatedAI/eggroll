@@ -4,6 +4,7 @@ package com.eggroll.core.pojo;
 import com.eggroll.core.config.Dict;
 import com.eggroll.core.constant.StringConstants;
 import com.eggroll.core.exceptions.ErSessionException;
+import javafx.util.Pair;
 import lombok.Data;
 
 import java.util.ArrayList;
@@ -24,7 +25,7 @@ public class ResourceApplication {
     private String dispatchStrategy;
     private String resourceExhaustedStrategy;
     private boolean allowExhausted;
-    private List<Map<ErProcessor, ErServerNode>> resourceDispatch;
+    private List<Pair<ErProcessor, ErServerNode>> resourceDispatch;
     private CountDownLatch resourceLatch;
     private Integer timeout;
     private Long submitTimeStamp;
@@ -51,7 +52,7 @@ public class ResourceApplication {
         this.options = new HashMap<>();
     }
 
-    public List<Map<ErProcessor, ErServerNode>> getResult() throws InterruptedException, ErSessionException {
+    public List<Pair<ErProcessor, ErServerNode>> getResult() throws InterruptedException, ErSessionException {
         try {
             if (timeout > 0) {
                 boolean alreadyGet = resourceLatch.await(timeout, TimeUnit.MILLISECONDS);
