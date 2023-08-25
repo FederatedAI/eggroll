@@ -110,7 +110,9 @@ public class ContainersServiceHandler {
         });
 
         logger.info("(sessionId=" + sessionId + ") deepspeed co started");
-        return new StartContainersResponse(sessionId);
+        StartContainersResponse startContainersResponse = new StartContainersResponse();
+        startContainersResponse.setSessionId(sessionId);
+        return startContainersResponse;
     }
 
 

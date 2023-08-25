@@ -1,8 +1,6 @@
 package com.eggroll.core.pojo;
 
-import com.eggroll.core.config.DeepspeedContainerConfig;
 import com.eggroll.core.config.Dict;
-import com.eggroll.core.constant.StringConstants;
 import com.google.protobuf.ByteString;
 import lombok.Data;
 
@@ -10,6 +8,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 @Data
 public class StartDeepspeedContainerRequest {
     public String sessionId;
@@ -44,8 +43,10 @@ public class StartDeepspeedContainerRequest {
         dst.zippedFiles = new HashMap<>(src.zippedFiles);
         dst.options = new HashMap<>(src.options);
         dst.deepspeedConfigs = new HashMap<>();
-        src.typedExtraConfigs.forEach((k,v)->{
-            dst.deepspeedConfigs.put(k, DeepspeedContainerConfig.deserialize(ByteString.copyFrom(v)));
+        src.typedExtraConfigs.forEach((k, v) -> {
+            DeepspeedContainerConfig deepspeedContainerConfig = new DeepspeedContainerConfig();
+            deepspeedContainerConfig.deserialize(v);
+            dst.deepspeedConfigs.put(k, deepspeedContainerConfig);
         });
 
         return dst;
@@ -66,7 +67,8 @@ public class StartDeepspeedContainerRequest {
         for (Map.Entry<Long, DeepspeedContainerConfig> entry : src.deepspeedConfigs.entrySet()) {
             Long key = entry.getKey();
             DeepspeedContainerConfig value = entry.getValue();
-            dst.typedExtraConfigs.put(key, DeepspeedContainerConfig.serialize(value));
+
+            dst.typedExtraConfigs.put(key, value.serialize());
         }
         return dst;
     }
