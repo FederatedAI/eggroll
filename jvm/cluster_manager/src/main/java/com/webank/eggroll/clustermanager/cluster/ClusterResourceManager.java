@@ -14,6 +14,7 @@ import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
 import com.webank.eggroll.clustermanager.dao.impl.SessionMainService;
 import com.webank.eggroll.clustermanager.entity.ProcessorResource;
 import com.webank.eggroll.clustermanager.schedule.ClusterManagerTask;
+import javafx.util.Pair;
 import lombok.Data;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -237,13 +238,13 @@ public class ClusterResourceManager implements ApplicationRunner {
                                 remainMostFirstDispatch(serverNodes, resourceApplication);
                                 break;
                         }
-                        List<Map<ErProcessor, ErServerNode>> dispatchedProcessors = resourceApplication.getResourceDispatch();
+                        List<Pair<ErProcessor, ErServerNode>> dispatchedProcessors = resourceApplication.getResourceDispatch();
                         ErSessionMeta erSessionMeta = new ErSessionMeta();
                         erSessionMeta.setId(resourceApplication.getSessionId());
                         erSessionMeta.setName(resourceApplication.getSessionName());
                         List<ErProcessor> processorList = new ArrayList<>();
-                        for (Map<ErProcessor, ErServerNode> dispatchedProcessor : dispatchedProcessors) {
-                            processorList.addAll(dispatchedProcessor.keySet());
+                        for (Pair<ErProcessor, ErServerNode> dispatchedProcessor : dispatchedProcessors) {
+                            processorList.add(dispatchedProcessor.getKey());
                         }
                         erSessionMeta.setProcessors(processorList);
                         erSessionMeta.setTotalProcCount(dispatchedProcessors.size());
@@ -258,12 +259,10 @@ public class ClusterResourceManager implements ApplicationRunner {
                     }
                     ErSessionMeta registeredSessionMeta = sessionMainService.getSession(resourceApplication.getSessionId());
                     Map<Long, List<ErServerNode>> serverNodeMap = serverNodes.stream().collect(Collectors.groupingBy(ErServerNode::getId));
-                    Map<ErProcessor, ErServerNode> result = new HashMap<>();
-                    for (ErProcessor processor : registeredSessionMeta.getProcessors()) {
-                        result.put(processor, serverNodeMap.get(processor.getServerNodeId()).get(0));
-                    }
                     resourceApplication.getResourceDispatch().clear();
-                    resourceApplication.getResourceDispatch().add(result);
+                    for (ErProcessor processor : registeredSessionMeta.getProcessors()) {
+                        resourceApplication.getResourceDispatch().add(new Pair<>(processor, serverNodeMap.get(processor.getServerNodeId()).get(0)));
+                    }
                     resourceApplication.countDown();
                     applicationQueue.getBroker().remove();
 
@@ -398,14 +397,12 @@ public class ClusterResourceManager implements ApplicationRunner {
             nodeToProcessors.computeIfAbsent(node, k -> new ArrayList<>()).add(requiredProcessor);
         }
 
-        Map<ErProcessor, ErServerNode> result = new HashMap<>();
         nodeToProcessors.forEach((node, processors) -> {
             for (ErProcessor processor : processors) {
-                result.put(processor, node);
+                resourceApplication.getResourceDispatch().add(new Pair<>(processor, node));
             }
         });
 
-        resourceApplication.getResourceDispatch().add(result);
         return resourceApplication;
 
     }
@@ -464,13 +461,11 @@ public class ClusterResourceManager implements ApplicationRunner {
             shuffledNodes.remove(0);
         }
 
-        Map<ErProcessor, ErServerNode> result = new HashMap<>();
         nodeToProcessors.forEach((node, processors) -> {
             for (ErProcessor processor : processors) {
-                result.put(processor, node);
+                resourceApplication.getResourceDispatch().add(new Pair<>(processor, node));
             }
         });
-        resourceApplication.getResourceDispatch().add(result);
         return resourceApplication;
     }
 
@@ -502,16 +497,12 @@ public class ClusterResourceManager implements ApplicationRunner {
             }
         }
 
-        List<Map<ErProcessor, ErServerNode>> result = new ArrayList<>();
         nodeToProcessors.forEach((node, processors) -> {
             for (ErProcessor processor : processors) {
-                Map<ErProcessor, ErServerNode> tempMap = new HashMap<>();
-                tempMap.put(processor, node);
-                result.add(tempMap);
+                resourceApplication.getResourceDispatch().add(new Pair<>(processor, node));
             }
         });
 
-        resourceApplication.getResourceDispatch().addAll(result);
         return resourceApplication;
     }
 
