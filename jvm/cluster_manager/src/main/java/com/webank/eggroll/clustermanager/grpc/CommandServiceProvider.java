@@ -178,6 +178,7 @@ public class CommandServiceProvider extends CommandServiceGrpc.CommandServiceImp
     }
 
 
+
     @Override
     public void afterPropertiesSet() throws Exception {
         register(this);
