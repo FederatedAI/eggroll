@@ -198,12 +198,42 @@
     "fate.arch.tensor.paillier._tensor":[
 		"PaillierTensor"
 	],
+     "fate.arch.tensor.inside._op_quantile":[
+		"GKSummary"
+        ],
+      "fate.arch.tensor.inside._op_hist":[
+		"Hist"
+         ],
+      "fate.arch.protocol.phe.paillier":[
+               "Coder",
+                "SK",
+                "PK",
+                "evaluator"
+         ],
+      "fate.arch.tensor.phe._tensor":[
+              "PHETensorEncoded", "PHETensor"
+          ],
 	"fate_utils.tensor":[
 		"Cipherblock"
 	],
+        "fate_utils.quantile":[
+	"QuantileSummaryStream"
+        ],
+        "fate_utils.paillier":[
+		"Coders", "FixedpointVector", "PK", "FixedpointPaillierVector"
+          ],
+       "fate.arch.unify._infra_def":[
+		"device"
+         ],
+        "fate.arch.histogram.histogram":[
+		"HistogramSplits", "HistogramPlainValues", "HistogramEncryptedValues"
+           ],
 	"torch":[
 	"float32",
-    "float64",
+        "int64",
+        "int32",
+        "device",
+	"float64",
 	"Size"
 	]   
 }
