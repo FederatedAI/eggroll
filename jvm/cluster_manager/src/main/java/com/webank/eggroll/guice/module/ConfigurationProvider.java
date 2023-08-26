@@ -1,0 +1,192 @@
+//
+// Source code recreated from a .class file by IntelliJ IDEA
+// (powered by FernFlower decompiler)
+//
+
+package com.webank.eggroll.guice.module;
+
+import com.baomidou.mybatisplus.core.MybatisConfiguration;
+import com.baomidou.mybatisplus.extension.MybatisMapWrapperFactory;
+import com.google.inject.Inject;
+import com.google.inject.ProvisionException;
+
+import com.webank.eggroll.clustermanager.dao.mapper.ServerNodeMapper;
+import edu.umd.cs.findbugs.annotations.Nullable;
+
+import org.apache.ibatis.executor.ErrorContext;
+import org.apache.ibatis.logging.stdout.StdOutImpl;
+import org.apache.ibatis.mapping.DatabaseIdProvider;
+import org.apache.ibatis.mapping.Environment;
+import org.apache.ibatis.session.AutoMappingBehavior;
+import org.apache.ibatis.session.Configuration;
+import org.apache.ibatis.session.ExecutorType;
+import org.mybatis.guice.configuration.ConfigurationSettingListener;
+import org.mybatis.guice.configuration.settings.ConfigurationSetting;
+import org.mybatis.guice.configuration.settings.MapperConfigurationSetting;
+
+import javax.inject.Named;
+import javax.inject.Provider;
+import javax.inject.Singleton;
+import javax.sql.DataSource;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Set;
+
+@Singleton
+public class ConfigurationProvider implements Provider<Configuration>, ConfigurationSettingListener {
+    private final Environment environment;
+    @Inject(
+        optional = true
+    )
+    @Named("mybatis.configuration.lazyLoadingEnabled")
+    private boolean lazyLoadingEnabled = false;
+    @Inject(
+        optional = true
+    )
+    @Named("mybatis.configuration.aggressiveLazyLoading")
+    private boolean aggressiveLazyLoading = true;
+    @Inject(
+        optional = true
+    )
+    @Named("mybatis.configuration.multipleResultSetsEnabled")
+    private boolean multipleResultSetsEnabled = true;
+    @Inject(
+        optional = true
+    )
+    @Named("mybatis.configuration.useGeneratedKeys")
+    private boolean useGeneratedKeys = false;
+    @Inject(
+        optional = true
+    )
+    @Named("mybatis.configuration.useColumnLabel")
+    private boolean useColumnLabel = true;
+    @Inject(
+        optional = true
+    )
+    @Named("mybatis.configuration.cacheEnabled")
+    private boolean cacheEnabled = true;
+    @Inject(
+        optional = true
+    )
+    @Named("mybatis.configuration.defaultExecutorType")
+    private ExecutorType defaultExecutorType;
+    @Inject(
+        optional = true
+    )
+    @Named("mybatis.configuration.autoMappingBehavior")
+    private AutoMappingBehavior autoMappingBehavior;
+    @Inject(
+        optional = true
+    )
+    @Named("mybatis.configuration.callSettersOnNulls")
+    private boolean callSettersOnNulls;
+    @Inject(
+        optional = true
+    )
+    @Named("mybatis.configuration.defaultStatementTimeout")
+    @Nullable
+    private Integer defaultStatementTimeout;
+    @Inject(
+        optional = true
+    )
+    @Named("mybatis.configuration.mapUnderscoreToCamelCase")
+    private boolean mapUnderscoreToCamelCase;
+    @Inject(
+        optional = true
+    )
+    @Named("mybatis.configuration.failFast")
+    private boolean failFast;
+    @Inject(
+        optional = true
+    )
+    private DatabaseIdProvider databaseIdProvider;
+    @Inject
+    private DataSource dataSource;
+    private Set<ConfigurationSetting> configurationSettings;
+    private Set<MapperConfigurationSetting> mapperConfigurationSettings;
+
+    @Inject
+    public ConfigurationProvider(Environment environment) {
+        this.defaultExecutorType = ExecutorType.SIMPLE;
+        this.autoMappingBehavior = AutoMappingBehavior.PARTIAL;
+        this.callSettersOnNulls = false;
+        this.mapUnderscoreToCamelCase = false;
+        this.failFast = false;
+        this.configurationSettings = new HashSet();
+        this.mapperConfigurationSettings = new HashSet();
+        this.environment = environment;
+    }
+
+    /** @deprecated */
+    @Deprecated
+    public void setEnvironment(Environment environment) {
+    }
+
+    public void setFailFast(boolean failFast) {
+        this.failFast = failFast;
+    }
+
+    public void addConfigurationSetting(ConfigurationSetting configurationSetting) {
+        this.configurationSettings.add(configurationSetting);
+    }
+
+    public void addMapperConfigurationSetting(MapperConfigurationSetting mapperConfigurationSetting) {
+        this.mapperConfigurationSettings.add(mapperConfigurationSetting);
+    }
+
+    protected MybatisConfiguration newConfiguration(Environment environment) {
+        return new MybatisConfiguration(environment);
+    }
+
+    public Configuration get() {
+        MybatisConfiguration configuration = this.newConfiguration(this.environment);
+        configuration.setLazyLoadingEnabled(this.lazyLoadingEnabled);
+        configuration.setAggressiveLazyLoading(this.aggressiveLazyLoading);
+        configuration.setMultipleResultSetsEnabled(this.multipleResultSetsEnabled);
+        configuration.setUseGeneratedKeys(this.useGeneratedKeys);
+        configuration.setUseColumnLabel(this.useColumnLabel);
+        configuration.setCacheEnabled(this.cacheEnabled);
+        configuration.setDefaultExecutorType(this.defaultExecutorType);
+        configuration.setAutoMappingBehavior(this.autoMappingBehavior);
+        configuration.setCallSettersOnNulls(this.callSettersOnNulls);
+        configuration.setDefaultStatementTimeout(this.defaultStatementTimeout);
+        configuration.setMapUnderscoreToCamelCase(this.mapUnderscoreToCamelCase);
+
+        configuration.setMapUnderscoreToCamelCase(true);
+
+        configuration.setObjectWrapperFactory(new MybatisMapWrapperFactory());
+
+        System.err.println("==============================="+configuration.isMapUnderscoreToCamelCase());
+        configuration.setLogImpl(StdOutImpl.class);
+        configuration.addMapper(ServerNodeMapper.class);
+        Iterator var2 = this.configurationSettings.iterator();
+
+        while(var2.hasNext()) {
+            ConfigurationSetting setting = (ConfigurationSetting)var2.next();
+            setting.applyConfigurationSetting(configuration);
+        }
+
+        try {
+            if (this.databaseIdProvider != null) {
+                configuration.setDatabaseId(this.databaseIdProvider.getDatabaseId(this.dataSource));
+            }
+
+            var2 = this.mapperConfigurationSettings.iterator();
+
+            while(var2.hasNext()) {
+                MapperConfigurationSetting setting = (MapperConfigurationSetting)var2.next();
+                setting.applyConfigurationSetting(configuration);
+            }
+
+            if (this.failFast) {
+                configuration.getMappedStatementNames();
+            }
+        } catch (Throwable var7) {
+            throw new ProvisionException("An error occurred while building the org.apache.ibatis.session.Configuration", var7);
+        } finally {
+            ErrorContext.instance().reset();
+        }
+
+        return configuration;
+    }
+}
