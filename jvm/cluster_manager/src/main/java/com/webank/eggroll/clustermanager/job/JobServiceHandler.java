@@ -14,8 +14,9 @@ import com.webank.eggroll.clustermanager.cluster.ClusterResourceManager;
 import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
 import com.webank.eggroll.clustermanager.dao.impl.SessionMainService;
 import com.webank.eggroll.clustermanager.entity.SessionMain;
-import javafx.util.Pair;
+
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

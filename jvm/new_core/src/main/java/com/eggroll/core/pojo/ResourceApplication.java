@@ -4,8 +4,9 @@ package com.eggroll.core.pojo;
 import com.eggroll.core.config.Dict;
 import com.eggroll.core.constant.StringConstants;
 import com.eggroll.core.exceptions.ErSessionException;
-import javafx.util.Pair;
+
 import lombok.Data;
+import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.ArrayList;
 import java.util.HashMap;
