@@ -4,9 +4,11 @@ import com.eggroll.core.config.Dict;
 import com.eggroll.core.constant.ResourceStatus;
 import com.eggroll.core.context.Context;
 import com.eggroll.core.pojo.ErProcessor;
+import com.google.inject.Singleton;
 import org.springframework.stereotype.Service;
 
 @Service
+@Singleton
 public class ProcessorStateRunningHandler   extends  AbstractProcessorStateHandler {
 
     @Override

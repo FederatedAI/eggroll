@@ -10,6 +10,8 @@ import com.eggroll.core.exceptions.ErSessionException;
 import com.eggroll.core.grpc.NodeManagerClient;
 import com.eggroll.core.pojo.*;
 import com.eggroll.core.utils.JsonUtil;
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import com.webank.eggroll.clustermanager.cluster.ClusterResourceManager;
 import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
 import com.webank.eggroll.clustermanager.dao.impl.SessionMainService;
@@ -31,14 +33,18 @@ import java.util.stream.Collectors;
 
 
 @Service
+@Singleton
 public class JobServiceHandler {
     Logger log = LoggerFactory.getLogger(JobServiceHandler.class);
 
     @Autowired
+    @Inject
     ClusterResourceManager clusterResourceManager;
     @Autowired
+    @Inject
     SessionMainService sessionMainService;
     @Autowired
+    @Inject
     ServerNodeService serverNodeService;
 
     public void killJob(String sessionId) {

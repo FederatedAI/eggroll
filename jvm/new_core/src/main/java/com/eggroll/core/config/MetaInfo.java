@@ -279,6 +279,8 @@ public class MetaInfo {
     public static Integer EGGROLL_RESOURCE_DISPATCH_INTERVAL = 3000;
     @Config(confKey = "eggroll.resource.lock.expire.interval", pattern = Dict.POSITIVE_INTEGER_PATTERN)
     public static Integer EGGROLL_RESOURCE_LOCK_EXPIRE_INTERVAL = 3600000;
+    @Config(confKey="eggroll.mybatis.mapper.package")
+    public static String  EGGROLL_MYBATIS_MAPPER_PACKAGE="com.webank.eggroll.clustermanager.dao.mapper";
 
     public static boolean checkPattern(String pattern, String value) {
         Pattern p = Pattern.compile(pattern);

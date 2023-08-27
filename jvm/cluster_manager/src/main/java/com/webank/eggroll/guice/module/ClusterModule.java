@@ -1,5 +1,7 @@
 package com.webank.eggroll.guice.module;
 
+import com.eggroll.core.config.Config;
+import com.eggroll.core.config.MetaInfo;
 import com.google.inject.AbstractModule;
 import com.google.inject.name.Names;
  import org.apache.ibatis.transaction.jdbc.JdbcTransactionFactory;
@@ -10,12 +12,13 @@ import java.util.HashMap;
 import java.util.Map;
 
 
+
 public class ClusterModule extends AbstractModule {
 
 
     protected void configure() {
         //PropertyUtil.loadFile(file, getClass())
-        System.err.println("cluster module configure begin");
+
 
         Map<String,String> conf=new HashMap<>();
 
@@ -38,10 +41,13 @@ public class ClusterModule extends AbstractModule {
 //        jdbc.removeAbandoned=true
 //        jdbc.removeAbandonedTimeout=1800
 //        jdbc.logAbandoned=true
-        conf.put("jdbc.driverClassName","com.mysql.jdbc.Driver");
-        conf.put("JDBC.url","jdbc:mysql://localhost:3306/eggroll_meta?useUnicode=true&characterEncoding=UTF-8&autoReconnect=true&failOverReadOnly=true&zeroDateTimeBehavior=convertToNull");
-        conf.put("JDBC.username","fate");
-        conf.put("JDBC.password","fate_dev");
+
+
+
+        conf.put("jdbc.driverClassName",MetaInfo.CONFKEY_CLUSTER_MANAGER_JDBC_DRIVER_CLASS_NAME);
+        conf.put("JDBC.url",MetaInfo.CONFKEY_CLUSTER_MANAGER_JDBC_URL);
+        conf.put("JDBC.username",MetaInfo.CONFKEY_CLUSTER_MANAGER_JDBC_USERNAME);
+        conf.put("JDBC.password",MetaInfo.CONFKEY_CLUSTER_MANAGER_JDBC_PASSWORD);
         conf.put("mybatis.environment.id","cluster-manager-mybatis");
 
         Names.bindProperties(binder(), conf);
@@ -50,13 +56,13 @@ public class ClusterModule extends AbstractModule {
             @Override
             protected void initialize() {
                 //绑定我们自定义的数据源provider，也可以使用guice已经编写好的
-                useConfigurationProvider(ConfigurationProvider.class);
+                useConfigurationProvider(MybatisPlusConfigurationProvider.class);
                 useSqlSessionFactoryProvider(MybatisPlusSqlSessionProvider.class);
                 bindDataSourceProviderType(HikariCPProvider.class);
                 bindTransactionFactoryType(JdbcTransactionFactory.class);
                 //添加我们的mapper接口，可以按类注入（即通过类名注入），也可以指定整个包的路径
 //                addMapperClass(ExtraScoreInfoMapper.class);
-                addMapperClasses("com.webank.eggroll.clustermanager.dao.mapper");
+                addMapperClasses(MetaInfo.EGGROLL_MYBATIS_MAPPER_PACKAGE);
             }
         });
     }

@@ -1,6 +1,7 @@
 package com.webank.eggroll.clustermanager.dao.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.google.inject.Singleton;
 import com.webank.eggroll.clustermanager.dao.mapper.SessionProcessorMapper;
 import com.webank.eggroll.clustermanager.entity.SessionProcessor;
 import com.eggroll.core.pojo.ErEndpoint;
@@ -13,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 
 @Service
+@Singleton
 public class SessionProcessorService extends EggRollBaseServiceImpl<SessionProcessorMapper, SessionProcessor> {
 
     public List<ErProcessor> doQueryProcessor(ErProcessor erProcessor) {
