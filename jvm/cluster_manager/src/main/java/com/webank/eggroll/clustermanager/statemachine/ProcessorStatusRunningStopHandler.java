@@ -3,16 +3,21 @@ package com.webank.eggroll.clustermanager.statemachine;
 import com.eggroll.core.constant.ResourceStatus;
 import com.eggroll.core.context.Context;
 import com.eggroll.core.pojo.ErProcessor;
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import com.webank.eggroll.clustermanager.dao.impl.ProcessorService;
 import com.webank.eggroll.clustermanager.entity.SessionProcessor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
+@Singleton
 public class ProcessorStatusRunningStopHandler  extends  AbstractProcessorStateHandler {
     @Autowired
+    @Inject
     ResourceStateMechine  resourceStateMachine ;
     @Autowired
+    @Inject
     ProcessorService processorService;
 
     @Override

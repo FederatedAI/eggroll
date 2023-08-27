@@ -7,6 +7,7 @@ package com.webank.eggroll.guice.module;
 
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.extension.MybatisMapWrapperFactory;
+import com.eggroll.core.config.MetaInfo;
 import com.google.inject.Inject;
 import com.google.inject.ProvisionException;
 
@@ -14,15 +15,19 @@ import com.webank.eggroll.clustermanager.dao.mapper.ServerNodeMapper;
 import edu.umd.cs.findbugs.annotations.Nullable;
 
 import org.apache.ibatis.executor.ErrorContext;
+import org.apache.ibatis.io.ResolverUtil;
 import org.apache.ibatis.logging.stdout.StdOutImpl;
 import org.apache.ibatis.mapping.DatabaseIdProvider;
 import org.apache.ibatis.mapping.Environment;
 import org.apache.ibatis.session.AutoMappingBehavior;
 import org.apache.ibatis.session.Configuration;
 import org.apache.ibatis.session.ExecutorType;
+;
 import org.mybatis.guice.configuration.ConfigurationSettingListener;
 import org.mybatis.guice.configuration.settings.ConfigurationSetting;
 import org.mybatis.guice.configuration.settings.MapperConfigurationSetting;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 
 import javax.inject.Named;
 import javax.inject.Provider;
@@ -33,7 +38,10 @@ import java.util.Iterator;
 import java.util.Set;
 
 @Singleton
-public class ConfigurationProvider implements Provider<Configuration>, ConfigurationSettingListener {
+public class MybatisPlusConfigurationProvider implements Provider<Configuration>, ConfigurationSettingListener {
+
+    Logger  logger = LoggerFactory.getLogger(MybatisPlusConfigurationProvider.class);
+
     private final Environment environment;
     @Inject(
         optional = true
@@ -106,7 +114,7 @@ public class ConfigurationProvider implements Provider<Configuration>, Configura
     private Set<MapperConfigurationSetting> mapperConfigurationSettings;
 
     @Inject
-    public ConfigurationProvider(Environment environment) {
+    public MybatisPlusConfigurationProvider(Environment environment) {
         this.defaultExecutorType = ExecutorType.SIMPLE;
         this.autoMappingBehavior = AutoMappingBehavior.PARTIAL;
         this.callSettersOnNulls = false;
@@ -138,6 +146,16 @@ public class ConfigurationProvider implements Provider<Configuration>, Configura
         return new MybatisConfiguration(environment);
     }
 
+
+    private static Set<Class<?>> getClasses(String packageName) {
+        return getClasses(new ResolverUtil.IsA(Object.class), packageName);
+    }
+
+    private static Set<Class<?>> getClasses(ResolverUtil.Test test, String packageName) {
+        return (new ResolverUtil()).find(test, packageName).getClasses();
+    }
+
+
     public Configuration get() {
         MybatisConfiguration configuration = this.newConfiguration(this.environment);
         configuration.setLazyLoadingEnabled(this.lazyLoadingEnabled);
@@ -156,9 +174,21 @@ public class ConfigurationProvider implements Provider<Configuration>, Configura
 
         configuration.setObjectWrapperFactory(new MybatisMapWrapperFactory());
 
-        System.err.println("==============================="+configuration.isMapUnderscoreToCamelCase());
+
         configuration.setLogImpl(StdOutImpl.class);
-        configuration.addMapper(ServerNodeMapper.class);
+
+        Set<Class<?>> classes  =getClasses(MetaInfo.EGGROLL_MYBATIS_MAPPER_PACKAGE);
+
+        for(Class<?> clazz:classes){
+            try {
+
+                configuration.addMapper(clazz);
+                logger.info("mybatis plus add class {}",clazz);
+            }catch(Exception e){
+                e.printStackTrace();
+            }
+        }
+
         Iterator var2 = this.configurationSettings.iterator();
 
         while(var2.hasNext()) {

@@ -1,5 +1,6 @@
 package com.eggroll.core.utils;
  
+import com.google.common.base.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,6 +57,7 @@ public final class PropertiesUtil
     private static InputStream getInputStream(String conf)
     {
         File file = new File(conf);
+        Preconditions.checkArgument(   file.exists(),"file "+conf+" is not exist");
         InputStream is = null;
         try {
             is = new BufferedInputStream(new FileInputStream(file));

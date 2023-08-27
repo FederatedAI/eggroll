@@ -9,6 +9,8 @@ import com.eggroll.core.context.Context;
 import com.eggroll.core.pojo.ErServerNode;
 import com.eggroll.core.pojo.ErSessionMeta;
 import com.google.common.collect.Lists;
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
 import com.webank.eggroll.clustermanager.dao.impl.SessionMainService;
 import com.webank.eggroll.clustermanager.entity.SessionMain;
@@ -22,16 +24,21 @@ import java.util.Arrays;
 import java.util.List;
 
 @Service
+@Singleton
 public class DefaultSessionManager implements SessionManager {
 
     Logger logger = LoggerFactory.getLogger(DefaultSessionManager.class);
     @Autowired
+    @Inject
     SessionMainService sessionService;
     @Autowired
+    @Inject
     SessionStateMachine sessionStateMachine;
     @Autowired
+    @Inject
     ServerNodeService serverNodeService;
     @Autowired
+    @Inject
     SessionMainService sessionMainService;
 
     @Override

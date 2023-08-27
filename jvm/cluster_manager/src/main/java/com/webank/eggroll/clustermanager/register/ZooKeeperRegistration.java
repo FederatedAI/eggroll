@@ -3,6 +3,7 @@ package com.webank.eggroll.clustermanager.register;
 import com.eggroll.core.config.MetaInfo;
 import com.eggroll.core.utils.JsonUtil;
 import com.eggroll.core.utils.NetUtils;
+import com.google.inject.Singleton;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
@@ -26,6 +27,7 @@ import java.util.Map;
  */
 
 @Service
+@Singleton
 public class ZooKeeperRegistration implements ApplicationListener<ApplicationReadyEvent> {
     private static final Logger logger = LoggerFactory.getLogger(ZooKeeperRegistration.class);
     private CuratorFramework client;

@@ -5,6 +5,8 @@ import com.eggroll.core.utils.FileSystemUtils;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import io.grpc.BindableService;
 import io.grpc.Server;
 import io.grpc.ServerServiceDefinition;
@@ -29,14 +31,17 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 @Service
+@Singleton
 public class GrpcServer implements ApplicationRunner  {
 
     Logger logger = LoggerFactory.getLogger(GrpcServer.class);
 
     @Autowired
+    @Inject
     CommandServiceProvider  commandServiceProvider;
 
     public void start() throws Exception{
+        this.commandServiceProvider.register(this.commandServiceProvider);
         Server  server =  createServer("0.0.0.0",MetaInfo.CONFKEY_CLUSTER_MANAGER_PORT, Lists.newArrayList(commandServiceProvider),Lists.newArrayList(), Maps.newHashMap());
         server.start();
     }
@@ -131,6 +136,7 @@ public class GrpcServer implements ApplicationRunner  {
 
     @Override
     public void run(ApplicationArguments args) throws Exception {
+
         start();
         logger.info("{} run() end !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",this.getClass().getSimpleName());
     }
