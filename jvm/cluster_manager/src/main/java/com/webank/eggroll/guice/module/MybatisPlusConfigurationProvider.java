@@ -16,6 +16,7 @@ import edu.umd.cs.findbugs.annotations.Nullable;
 
 import org.apache.ibatis.executor.ErrorContext;
 import org.apache.ibatis.io.ResolverUtil;
+import org.apache.ibatis.logging.log4j2.Log4j2Impl;
 import org.apache.ibatis.logging.stdout.StdOutImpl;
 import org.apache.ibatis.mapping.DatabaseIdProvider;
 import org.apache.ibatis.mapping.Environment;
@@ -175,7 +176,7 @@ public class MybatisPlusConfigurationProvider implements Provider<Configuration>
         configuration.setObjectWrapperFactory(new MybatisMapWrapperFactory());
 
 
-        configuration.setLogImpl(StdOutImpl.class);
+        configuration.setLogImpl(Log4j2Impl.class);
 
         Set<Class<?>> classes  =getClasses(MetaInfo.EGGROLL_MYBATIS_MAPPER_PACKAGE);
 

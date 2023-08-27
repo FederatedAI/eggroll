@@ -15,9 +15,9 @@ import com.webank.eggroll.clustermanager.grpc.GrpcServer;
 
 import java.util.Properties;
 
-public class GuiceTest {
+public class Bootstrap {
 
-    static  Logger  logger = LoggerFactory.getLogger(GuiceTest.class);
+    static  Logger  logger = LoggerFactory.getLogger(Bootstrap.class);
 
     public static  void main(String[] args){
 
@@ -35,14 +35,13 @@ public class GuiceTest {
         // Bootstrap the application by creating an instance of the server then
         // start the server to handle incoming requests.
 //      ServerNodeMapper  nodeMapper =  injector.getInstance(ServerNodeMapper.class);
-//        logger.info("{}",nodeMapper.selectById(1));
+////        logger.info("{}",nodeMapper.selectById(1));
         GrpcServer  grpcServer = injector.getInstance(GrpcServer.class);
         try {
             grpcServer.start();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-
 
         synchronized (injector) {
             try {
