@@ -89,10 +89,18 @@
         </AsyncLogger>
         -->
 
-        <AsyncRoot level="info" includeLocation="true">
-            <AppenderRef ref="console" level="info"/>
+
+        <AsyncLogger name="com.ibatis" additivity="true" level="info">
+
+
+
+        </AsyncLogger>
+
+        <AsyncRoot level="debug" includeLocation="true">
+            <AppenderRef ref="console" level="debug"/>
             <AppenderRef ref="info" level="info"/>
             <AppenderRef ref="error" level="error"/>
+            <AppenderRef ref="debug" level="debug"/>
         </AsyncRoot>
     </Loggers>
 </Configuration>
