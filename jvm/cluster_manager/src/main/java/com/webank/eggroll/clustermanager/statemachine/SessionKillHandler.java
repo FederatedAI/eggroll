@@ -5,6 +5,8 @@ import com.eggroll.core.context.Context;
 import com.eggroll.core.grpc.NodeManagerClient;
 import com.eggroll.core.pojo.ErServerNode;
 import com.eggroll.core.pojo.ErSessionMeta;
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import com.webank.eggroll.clustermanager.dao.impl.SessionMainService;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -14,9 +16,11 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 @Service
+@Singleton
 public class SessionKillHandler extends  AbstractSessionStateHandler{
     Logger logger = LoggerFactory.getLogger(SessionKillHandler.class);
     @Autowired
+    @Inject
     SessionMainService  sessionMainService;
 
     @Override

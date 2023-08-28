@@ -3,6 +3,8 @@ package com.webank.eggroll.clustermanager.statemachine;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.eggroll.core.context.Context;
 import com.eggroll.core.pojo.ErProcessor;
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import com.webank.eggroll.clustermanager.cluster.ClusterResourceManager;
 import com.webank.eggroll.clustermanager.dao.impl.NodeResourceService;
 import com.webank.eggroll.clustermanager.dao.impl.ProcessorResourceService;
@@ -13,16 +15,21 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
+@Singleton
 public   class ResourceStateHandler implements  StateHandler<ErProcessor>{
 
         @Autowired
+        @Inject
         ServerNodeService  serverNodeService;
         @Autowired
+        @Inject
         ProcessorResourceService  processorResourceService;
         @Autowired
+        @Inject
         NodeResourceService  nodeResourceService;
 
         @Autowired
+        @Inject
         ClusterResourceManager    clusterResourceManager;
 
         @Override

@@ -8,6 +8,8 @@ import com.eggroll.core.flow.FlowLogUtil;
 import com.eggroll.core.grpc.URI;
 import com.eggroll.core.invoke.InvokeInfo;
 import com.eggroll.core.pojo.*;
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import com.google.protobuf.ByteString;
 import com.webank.eggroll.clustermanager.cluster.ClusterManagerService;
 import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
@@ -33,19 +35,25 @@ import java.util.concurrent.ConcurrentHashMap;
 import static com.eggroll.core.grpc.CommandUri.*;
 
 @Service
+@Singleton
 public class CommandServiceProvider extends CommandServiceGrpc.CommandServiceImplBase implements InitializingBean {
 
     Logger logger = LoggerFactory.getLogger(CommandServiceProvider.class);
 
     @Autowired
+    @Inject
     DefaultSessionManager defaultSessionManager;
     @Autowired
+    @Inject
     DefaultProcessorManager defaultProcessorManager;
     @Autowired
+    @Inject
     ServerNodeService serverNodeService;
     @Autowired
+    @Inject
     StoreCrudOperator storeCrudOperator;
     @Autowired
+    @Inject
     ClusterManagerService  clusterManagerService;
     @Autowired
     JobServiceHandler jobServiceHandler;
@@ -215,8 +223,9 @@ public class CommandServiceProvider extends CommandServiceGrpc.CommandServiceImp
         this.uriMap.put(uri, invokeInfo);
     }
 
-    private void register(Object service) {
+    public  void register(Object service) {
         Method[] methods;
+
         if (service instanceof Class) {
             methods = ((Class) service).getMethods();
         } else {
