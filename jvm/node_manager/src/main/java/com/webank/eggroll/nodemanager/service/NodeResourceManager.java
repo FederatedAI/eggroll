@@ -207,6 +207,7 @@ public class NodeResourceManager implements ApplicationListener<ApplicationReady
     }
 
     class HeartBeatThread extends Thread {
+        Thread currentGrpcThread = null;
         public ErNodeHeartbeat generateNodeBeat(Long seq) {
             String nodeHost = MetaInfo.CONFKEY_NODE_MANAGER_HOST == null ? NetUtils.getLocalHost() : MetaInfo.CONFKEY_NODE_MANAGER_HOST;
             int nodePort = MetaInfo.CONFKEY_NODE_MANAGER_PORT;
@@ -224,30 +225,38 @@ public class NodeResourceManager implements ApplicationListener<ApplicationReady
                 try {
                     seq += 1;
                     ErNodeHeartbeat erNodeHeartbeat = generateNodeBeat(seq);
-                    logger.info("before send nodeHearBeat info to cluster-manager: nodeHost:{}, nodePort:{}, nodeId: {}",
-                            erNodeHeartbeat.getNode().getEndpoint().getHost(),
-                            erNodeHeartbeat.getNode().getEndpoint().getPort(),
-                            erNodeHeartbeat.getNode().getId()
-                    );
-                    ErNodeHeartbeat nodeHeartBeat = client.nodeHeartbeat(erNodeHeartbeat);
-                    logger.info("recive nodeHearBeat info from cluster-manager: nodeHost:{}, nodePort:{}, nodeId: {}",
-                            nodeHeartBeat.getNode().getEndpoint().getHost(),
-                            nodeHeartBeat.getNode().getEndpoint().getPort(),
-                            nodeHeartBeat.getNode().getId()
-                    );
-                    if (nodeHeartBeat != null && nodeHeartBeat.getNode() != null) {
-                        if (NodeManagerMeta.status.equals(Dict.INIT)) {
-                            if (nodeHeartBeat.getNode().getId() != -1) {
-                                NodeManagerMeta.serverNodeId = nodeHeartBeat.getNode().getId();
-                                NodeManagerMeta.clusterId = nodeHeartBeat.getNode().getClusterId();
-                                NodeManagerMeta.refreshServerNodeMetaIntoFile();
-                                NodeManagerMeta.status = Dict.HEALTHY;
-                            }
-                            logger.info("get node id {} from cluster-manager", NodeManagerMeta.serverNodeId);
-                        }
+                    if(currentGrpcThread != null && currentGrpcThread.isAlive()) {
+                        currentGrpcThread.interrupt();
                     }
+                    currentGrpcThread = new Thread(new Runnable() {
+                        @Override
+                        public void run() {
+                            logger.info("before send nodeHearBeat info to cluster-manager: nodeHost:{}, nodePort:{}, nodeId: {}",
+                                    erNodeHeartbeat.getNode().getEndpoint().getHost(),
+                                    erNodeHeartbeat.getNode().getEndpoint().getPort(),
+                                    erNodeHeartbeat.getNode().getId()
+                            );
+                            ErNodeHeartbeat nodeHeartBeat = client.nodeHeartbeat(erNodeHeartbeat);
+                            logger.info("recive nodeHearBeat info from cluster-manager: nodeHost:{}, nodePort:{}, nodeId: {}",
+                                    nodeHeartBeat.getNode().getEndpoint().getHost(),
+                                    nodeHeartBeat.getNode().getEndpoint().getPort(),
+                                    nodeHeartBeat.getNode().getId()
+                            );
+                            if (nodeHeartBeat != null && nodeHeartBeat.getNode() != null) {
+                                if (NodeManagerMeta.status.equals(Dict.INIT)) {
+                                    if (nodeHeartBeat.getNode().getId() != -1) {
+                                        NodeManagerMeta.serverNodeId = nodeHeartBeat.getNode().getId();
+                                        NodeManagerMeta.clusterId = nodeHeartBeat.getNode().getClusterId();
+                                        NodeManagerMeta.refreshServerNodeMetaIntoFile();
+                                        NodeManagerMeta.status = Dict.HEALTHY;
+                                    }
+                                }
+                                logger.info("get node id {} from cluster-manager", NodeManagerMeta.serverNodeId);
+                            }
+                        }
+                    });
+                    currentGrpcThread.start();
                 } catch (Exception e) {
-                    e.printStackTrace();
                     logger.error("node heart beat error {}", e.getMessage());
                 }
                 try {

@@ -2,14 +2,18 @@ package com.webank.eggroll.clustermanager.statemachine;
 
 import com.eggroll.core.context.Context;
 import com.eggroll.core.pojo.ErProcessor;
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
+@Singleton
 public class ResourceStateMechine extends AbstractStateMachine<ErProcessor> implements InitializingBean {
 
     @Autowired
+    @Inject
     ResourceStateHandler resourceStateHandler;
 
     @Override

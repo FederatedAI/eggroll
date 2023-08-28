@@ -4,6 +4,8 @@ import com.eggroll.core.config.Dict;
 import com.eggroll.core.context.Context;
 import com.eggroll.core.pojo.ErSessionMeta;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import com.webank.eggroll.clustermanager.dao.impl.SessionMainService;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.InitializingBean;
@@ -11,18 +13,25 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
+@Singleton
 public class SessionStateMachine extends AbstractStateMachine<ErSessionMeta> implements InitializingBean {
     @Autowired
+    @Inject
     SessionMainService   sessionMainService;
     @Autowired
+    @Inject
     ProcessorStateMachine processorStateMachine;
     @Autowired
+    @Inject
     SessionKillHandler  sessionKillHandler;
     @Autowired
+    @Inject
     SessionStopHandler  sessionStopHandler;
     @Autowired
+    @Inject
     SessionActiveHandler  sessionActiveHandler;
     @Autowired
+    @Inject
     SessionCreateHandler  sessionCreateHandler;
 
     @Override

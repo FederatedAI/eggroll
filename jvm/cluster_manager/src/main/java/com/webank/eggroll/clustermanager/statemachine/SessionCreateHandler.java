@@ -13,12 +13,14 @@ import com.eggroll.core.pojo.ErProcessor;
 import com.eggroll.core.pojo.ErServerNode;
 import com.eggroll.core.pojo.ErSessionMeta;
 import com.google.common.collect.Lists;
+import com.google.inject.Singleton;
 import com.webank.eggroll.clustermanager.entity.ServerNode;
 import org.apache.commons.collections.CollectionUtils;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 @Service
+@Singleton
 public class SessionCreateHandler  extends AbstractSessionStateHandler{
     @Override
     public ErSessionMeta prepare(Context context, ErSessionMeta data , String preStateParam, String desStateParam) {

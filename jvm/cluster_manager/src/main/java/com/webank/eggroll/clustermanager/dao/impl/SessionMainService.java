@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.eggroll.core.pojo.*;
 import com.google.common.collect.Maps;
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import com.webank.eggroll.clustermanager.dao.mapper.SessionMainMapper;
 import com.webank.eggroll.clustermanager.entity.SessionMain;
 import com.webank.eggroll.clustermanager.entity.SessionOption;
@@ -20,15 +22,20 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 @Service
+@Singleton
 public class SessionMainService extends EggRollBaseServiceImpl<SessionMainMapper, SessionMain>{
 
     @Autowired
+    @Inject
     SessionOptionService  sessionOptionService;
     @Autowired
+    @Inject
     ProcessorService   processorService;
     @Autowired
+    @Inject
     SessionProcessorService sessionProcessorService;
     @Autowired
+    @Inject
     SessionRanksService sessionRanksService;
 
     public ErSessionMeta getSession(String sessionId) {
