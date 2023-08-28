@@ -16,10 +16,8 @@ import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
 import com.webank.eggroll.clustermanager.dao.impl.SessionMainService;
 import com.webank.eggroll.clustermanager.entity.ProcessorResource;
 import com.webank.eggroll.clustermanager.schedule.ClusterManagerTask;
-
+import javafx.util.Pair;
 import lombok.Data;
-import org.apache.commons.lang3.tuple.MutablePair;
-import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -259,7 +257,7 @@ public class ClusterResourceManager {
                     Map<Long, List<ErServerNode>> serverNodeMap = serverNodes.stream().collect(Collectors.groupingBy(ErServerNode::getId));
                     resourceApplication.getResourceDispatch().clear();
                     for (ErProcessor processor : registeredSessionMeta.getProcessors()) {
-                        resourceApplication.getResourceDispatch().add(new MutablePair<>(processor, serverNodeMap.get(processor.getServerNodeId()).get(0)));
+                        resourceApplication.getResourceDispatch().add(new Pair<>(processor, serverNodeMap.get(processor.getServerNodeId()).get(0)));
                     }
                     resourceApplication.countDown();
                     applicationQueue.getBroker().remove();
@@ -397,7 +395,7 @@ public class ClusterResourceManager {
 
         nodeToProcessors.forEach((node, processors) -> {
             for (ErProcessor processor : processors) {
-                resourceApplication.getResourceDispatch().add(new MutablePair<>(processor, node));
+                resourceApplication.getResourceDispatch().add(new Pair<>(processor, node));
             }
         });
 
@@ -461,7 +459,7 @@ public class ClusterResourceManager {
 
         nodeToProcessors.forEach((node, processors) -> {
             for (ErProcessor processor : processors) {
-                resourceApplication.getResourceDispatch().add(new MutablePair<>(processor, node));
+                resourceApplication.getResourceDispatch().add(new Pair<>(processor, node));
             }
         });
         return resourceApplication;
@@ -497,7 +495,7 @@ public class ClusterResourceManager {
 
         nodeToProcessors.forEach((node, processors) -> {
             for (ErProcessor processor : processors) {
-                resourceApplication.getResourceDispatch().add(new MutablePair<>(processor, node));
+                resourceApplication.getResourceDispatch().add(new Pair<>(processor, node));
             }
         });
 

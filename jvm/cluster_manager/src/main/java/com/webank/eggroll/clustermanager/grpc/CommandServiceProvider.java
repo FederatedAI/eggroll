@@ -22,33 +22,26 @@ import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
-import java.lang.reflect.InvocationTargetException;
+import javax.annotation.PostConstruct;
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static com.eggroll.core.grpc.CommandUri.*;
 
-
 @Singleton
-public class CommandServiceProvider extends CommandServiceGrpc.CommandServiceImplBase  {
+public class CommandServiceProvider extends CommandServiceGrpc.CommandServiceImplBase{
 
     Logger logger = LoggerFactory.getLogger(CommandServiceProvider.class);
 
-
     @Inject
     DefaultSessionManager defaultSessionManager;
-
     @Inject
     DefaultProcessorManager defaultProcessorManager;
-
     @Inject
     ServerNodeService serverNodeService;
-
     @Inject
     StoreCrudOperator storeCrudOperator;
-
     @Inject
     ClusterManagerService  clusterManagerService;
 
@@ -183,6 +176,12 @@ public class CommandServiceProvider extends CommandServiceGrpc.CommandServiceImp
         return defaultSessionManager.killAllSessions(context, erSessionMeta);
     }
 
+
+
+    @PostConstruct
+    public void afterPropertiesSet() throws Exception {
+        register(this);
+    }
 
     private void doRegister(String uri, Object service, Method method, Class paramClass) {
         InvokeInfo invokeInfo = new InvokeInfo(uri, service, method, paramClass);
