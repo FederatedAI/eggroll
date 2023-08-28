@@ -16,12 +16,10 @@ import com.webank.eggroll.clustermanager.cluster.ClusterResourceManager;
 import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
 import com.webank.eggroll.clustermanager.dao.impl.SessionMainService;
 import com.webank.eggroll.clustermanager.entity.SessionMain;
-
+import javafx.util.Pair;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -31,18 +29,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 
-
 @Singleton
 public class JobServiceHandler {
     Logger log = LoggerFactory.getLogger(JobServiceHandler.class);
 
-
     @Inject
     ClusterResourceManager clusterResourceManager;
-
     @Inject
     SessionMainService sessionMainService;
-
     @Inject
     ServerNodeService serverNodeService;
 
@@ -80,13 +74,13 @@ public class JobServiceHandler {
         }
     }
 
-//    public SubmitJobResponse handleSubmit(SubmitJobRequest submitJobMeta) {
-//        if (JobProcessorTypes.DeepSpeed.name().equals(submitJobMeta.getJobType())) {
-//            return handleDeepspeedSubmit(submitJobMeta);
-//        } else {
-//            throw new IllegalArgumentException("unsupported job type: " + submitJobMeta.getJobType());
-//        }
-//    }
+    public SubmitJobResponse handleSubmit(SubmitJobRequest submitJobMeta) throws InterruptedException {
+        if (JobProcessorTypes.DeepSpeed.name().equals(submitJobMeta.getJobType())) {
+            return handleDeepspeedSubmit(submitJobMeta);
+        } else {
+            throw new IllegalArgumentException("unsupported job type: " + submitJobMeta.getJobType());
+        }
+    }
 
 
     public QueryJobStatusResponse handleJobStatusQuery(QueryJobStatusRequest queryJobStatusRequest) {
@@ -97,6 +91,20 @@ public class JobServiceHandler {
         queryJobStatusResponse.setStatus(sessionMain == null ? null : sessionMain.getStatus());
         return queryJobStatusResponse;
     }
+
+    public QueryJobResponse handleJobQuery(QueryJobRequest queryJobRequest){
+        SessionMain sessionMain = sessionMainService.getById(queryJobRequest.getSessionId());
+        QueryJobResponse queryJobResponse = new QueryJobResponse();
+        if(sessionMain != null){
+            queryJobResponse.setStatus(sessionMain.getStatus());
+        }
+        ErSessionMeta erSession = sessionMainService.getSession(queryJobRequest.getSessionId());
+        if(erSession != null){
+            queryJobResponse.setProcessors(erSession.getProcessors());
+        }
+        return queryJobResponse;
+    }
+
 
     public KillJobResponse handleJobKill(KillJobRequest killJobRequest) {
         String sessionId = killJobRequest.getSessionId();
@@ -114,7 +122,7 @@ public class JobServiceHandler {
         return response;
     }
 
-    private SubmitJobResponse handleDeepspeedSubmit(SubmitJobRequest submitJobRequest) throws InterruptedException {
+    public SubmitJobResponse handleDeepspeedSubmit(SubmitJobRequest submitJobRequest) throws InterruptedException {
         String sessionId = submitJobRequest.getSessionId();
         int worldSize = submitJobRequest.getWorldSize();
 
@@ -264,7 +272,7 @@ public class JobServiceHandler {
         }
     }
 
-    private List<ErProcessor> waitSubmittedContainers(String sessionId, int expectedWorldSize, long timeout) throws ErSessionException {
+    public List<ErProcessor> waitSubmittedContainers(String sessionId, int expectedWorldSize, long timeout) throws ErSessionException {
         boolean isStarted = false;
 
         while (System.currentTimeMillis() <= timeout) {

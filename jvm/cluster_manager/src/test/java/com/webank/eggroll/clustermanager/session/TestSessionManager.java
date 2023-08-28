@@ -37,6 +37,14 @@ public class TestSessionManager {
         getOrCreateSessionMeta.setTotalProcCount(4);
         ClusterManagerClient clusterManagerClient = new ClusterManagerClient(endpoint);
         ErSessionMeta result = clusterManagerClient.getOrCreateSession(getOrCreateSessionMeta);
+        getOrCreateSessionMeta.setId("testx_"+System.currentTimeMillis());
+        clusterManagerClient.getOrCreateSession(getOrCreateSessionMeta);
+        getOrCreateSessionMeta.setId("testx_"+System.currentTimeMillis());
+        clusterManagerClient.getOrCreateSession(getOrCreateSessionMeta);
+        getOrCreateSessionMeta.setId("testx_"+System.currentTimeMillis());
+        clusterManagerClient.getOrCreateSession(getOrCreateSessionMeta);
+        getOrCreateSessionMeta.setId("testx_"+System.currentTimeMillis());
+        clusterManagerClient.getOrCreateSession(getOrCreateSessionMeta);
         logger.info("====================>result.id = {} , result.status = {}" ,result.getId(),result.getStatus());
     }
 
