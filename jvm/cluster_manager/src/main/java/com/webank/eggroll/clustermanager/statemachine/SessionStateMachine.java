@@ -8,29 +8,27 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.webank.eggroll.clustermanager.dao.impl.SessionMainService;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.beans.factory.InitializingBean;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
 
-@Service
+
+
 @Singleton
-public class SessionStateMachine extends AbstractStateMachine<ErSessionMeta> implements InitializingBean {
-    @Autowired
+public class SessionStateMachine extends AbstractStateMachine<ErSessionMeta>   {
+
     @Inject
     SessionMainService   sessionMainService;
-    @Autowired
+
     @Inject
     ProcessorStateMachine processorStateMachine;
-    @Autowired
+
     @Inject
     SessionKillHandler  sessionKillHandler;
-    @Autowired
+
     @Inject
     SessionStopHandler  sessionStopHandler;
-    @Autowired
+
     @Inject
     SessionActiveHandler  sessionActiveHandler;
-    @Autowired
+
     @Inject
     SessionCreateHandler  sessionCreateHandler;
 
@@ -58,7 +56,7 @@ public class SessionStateMachine extends AbstractStateMachine<ErSessionMeta> imp
         return erSessionMeta.getId();
     }
 
-    @Override
+
     public void afterPropertiesSet() throws Exception {
         this.registeStateHander("_NEW",sessionCreateHandler);
         this.registeStateHander("NEW_ACTIVE",sessionActiveHandler);

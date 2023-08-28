@@ -1,9 +1,10 @@
 package com.webank.eggroll.clustermanager.dao.impl;
 
+import com.google.inject.Singleton;
 import com.webank.eggroll.clustermanager.dao.mapper.StoreLocatorMapper;
 import com.webank.eggroll.clustermanager.entity.StoreLocator;
-import org.springframework.stereotype.Service;
 
-@Service
+
+@Singleton
 public class StoreLocatorService extends EggRollBaseServiceImpl<StoreLocatorMapper, StoreLocator> {
 }

@@ -11,15 +11,14 @@ import com.webank.eggroll.clustermanager.dao.impl.SessionMainService;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
+
 
 import java.util.List;
-@Service
+
 @Singleton
 public class SessionKillHandler extends  AbstractSessionStateHandler{
     Logger logger = LoggerFactory.getLogger(SessionKillHandler.class);
-    @Autowired
+
     @Inject
     SessionMainService  sessionMainService;
 

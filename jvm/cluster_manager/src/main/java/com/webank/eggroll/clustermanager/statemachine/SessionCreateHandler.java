@@ -16,10 +16,10 @@ import com.google.common.collect.Lists;
 import com.google.inject.Singleton;
 import com.webank.eggroll.clustermanager.entity.ServerNode;
 import org.apache.commons.collections.CollectionUtils;
-import org.springframework.stereotype.Service;
+
 
 import java.util.List;
-@Service
+
 @Singleton
 public class SessionCreateHandler  extends AbstractSessionStateHandler{
     @Override

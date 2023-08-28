@@ -9,6 +9,7 @@ import com.eggroll.core.containers.meta.KillContainersResponse;
 import com.eggroll.core.containers.meta.StartContainersResponse;
 import com.eggroll.core.containers.meta.StopContainersResponse;
 import com.eggroll.core.pojo.*;
+import com.google.inject.Singleton;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,7 +19,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.concurrent.ExecutorService;
 
-
+@Singleton
 public class ContainersServiceHandler {
 
     Logger logger = LoggerFactory.getLogger(ContainersServiceHandler.class);
@@ -26,6 +27,7 @@ public class ContainersServiceHandler {
     private ExecutorService executor;
 
     private ContainersManager containersManager = ContainersManager.builder().build(executor);
+
     private StartDeepspeedContainerRequest startDeepspeedContainerRequest;
 
 
@@ -58,6 +60,9 @@ public class ContainersServiceHandler {
         return containersDataDir;
     }
 
+    public ContainersServiceHandler() {
+
+    }
 
     public ContainersServiceHandler(ExecutorService executorService, Path providedContainersDataDir) {
         this.executor = executorService;

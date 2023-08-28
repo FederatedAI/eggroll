@@ -21,9 +21,7 @@ import com.webank.eggroll.core.command.CommandServiceGrpc;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.InitializingBean;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
+
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -32,25 +30,25 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static com.eggroll.core.grpc.CommandUri.*;
 
-@Service
+
 @Singleton
-public class CommandServiceProvider extends CommandServiceGrpc.CommandServiceImplBase implements InitializingBean {
+public class CommandServiceProvider extends CommandServiceGrpc.CommandServiceImplBase  {
 
     Logger logger = LoggerFactory.getLogger(CommandServiceProvider.class);
 
-    @Autowired
+
     @Inject
     DefaultSessionManager defaultSessionManager;
-    @Autowired
+
     @Inject
     DefaultProcessorManager defaultProcessorManager;
-    @Autowired
+
     @Inject
     ServerNodeService serverNodeService;
-    @Autowired
+
     @Inject
     StoreCrudOperator storeCrudOperator;
-    @Autowired
+
     @Inject
     ClusterManagerService  clusterManagerService;
 
@@ -185,12 +183,6 @@ public class CommandServiceProvider extends CommandServiceGrpc.CommandServiceImp
         return defaultSessionManager.killAllSessions(context, erSessionMeta);
     }
 
-
-
-    @Override
-    public void afterPropertiesSet() throws Exception {
-        register(this);
-    }
 
     private void doRegister(String uri, Object service, Method method, Class paramClass) {
         InvokeInfo invokeInfo = new InvokeInfo(uri, service, method, paramClass);

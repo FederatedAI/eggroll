@@ -11,24 +11,23 @@ import com.webank.eggroll.clustermanager.dao.impl.ProcessorResourceService;
 import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
 import com.webank.eggroll.clustermanager.entity.ProcessorResource;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
 
-@Service
+
+
 @Singleton
 public   class ResourceStateHandler implements  StateHandler<ErProcessor>{
 
-        @Autowired
+
         @Inject
         ServerNodeService  serverNodeService;
-        @Autowired
+
         @Inject
         ProcessorResourceService  processorResourceService;
-        @Autowired
+
         @Inject
         NodeResourceService  nodeResourceService;
 
-        @Autowired
+
         @Inject
         ClusterResourceManager    clusterResourceManager;
 

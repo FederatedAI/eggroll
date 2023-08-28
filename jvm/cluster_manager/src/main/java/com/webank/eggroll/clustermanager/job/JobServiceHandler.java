@@ -21,8 +21,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
+
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -32,18 +31,18 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 
-@Service
+
 @Singleton
 public class JobServiceHandler {
     Logger log = LoggerFactory.getLogger(JobServiceHandler.class);
 
-    @Autowired
+
     @Inject
     ClusterResourceManager clusterResourceManager;
-    @Autowired
+
     @Inject
     SessionMainService sessionMainService;
-    @Autowired
+
     @Inject
     ServerNodeService serverNodeService;
 

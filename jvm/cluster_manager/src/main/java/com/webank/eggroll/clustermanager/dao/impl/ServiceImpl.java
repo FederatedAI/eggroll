@@ -21,6 +21,7 @@ import java.io.Serializable;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -145,6 +146,11 @@ public class ServiceImpl<M extends BaseMapper<T>, T> implements IService<T> {
 
     public T getOne(Wrapper<T> queryWrapper, boolean throwEx) {
         return throwEx ? this.baseMapper.selectOne(queryWrapper) : SqlHelper.getObject(this.log, this.baseMapper.selectList(queryWrapper));
+    }
+
+    @Override
+    public Optional<T> getOneOpt(Wrapper<T> queryWrapper, boolean throwEx) {
+        return Optional.empty();
     }
 
     public Map<String, Object> getMap(Wrapper<T> queryWrapper) {
