@@ -1,11 +1,10 @@
 package com.webank.eggroll.clustermanager.job;
 
 
-import com.eggroll.core.pojo.JobProcessorTypes;
-import com.eggroll.core.pojo.ResourceOptions;
-import com.eggroll.core.pojo.SubmitJobRequest;
-import com.eggroll.core.pojo.SubmitJobResponse;
+import com.eggroll.core.grpc.CommandClient;
+import com.eggroll.core.pojo.*;
 import com.eggroll.core.utils.JsonUtil;
+import com.eggroll.core.utils.NetUtils;
 import com.google.inject.Inject;
 import org.junit.Test;
 
@@ -14,8 +13,15 @@ import java.util.HashMap;
 
 public class TestJobServiceHandler {
 
+    ErEndpoint endpoint = new ErEndpoint(NetUtils.getLocalHost(),4670);
+
     @Inject
     JobServiceHandler jobServiceHandler;
+
+    public byte[] sendGrpc(ErEndpoint endpoint , String uri ,RpcMessage message){
+        byte[] response = new CommandClient().call(endpoint, uri, message.serialize());
+        return response;
+    }
 
     @Test
     public void testSubmitJob() throws InterruptedException {
@@ -34,7 +40,8 @@ public class TestJobServiceHandler {
         request.setResourceOptions(resourceOptions);
 
         request.setOptions(new HashMap<>());
-        SubmitJobResponse submitJobResponse = jobServiceHandler.handleSubmit(request);
-        System.err.println("=============== => " + JsonUtil.object2Json(submitJobResponse));
+//        sendGrpc(endpoint,)
+//        SubmitJobResponse submitJobResponse = jobServiceHandler.handleSubmit(request);
+//        System.err.println("=============== => " + JsonUtil.object2Json(submitJobResponse));
     }
 }

@@ -52,7 +52,7 @@ public class ProcessorStateMachine extends  AbstractStateMachine<ErProcessor> {
 
 
 
-
+    @Inject
     public void afterPropertiesSet() throws Exception {
         this.registeStateHander( "_NEW",processorCreateHandler);
         this.registeStateHander( "NEW_RUNNING",processorCreateHandler);

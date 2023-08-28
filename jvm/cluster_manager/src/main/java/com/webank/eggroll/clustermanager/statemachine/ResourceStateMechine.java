@@ -27,7 +27,7 @@ public class ResourceStateMechine extends AbstractStateMachine<ErProcessor> {
     }
 
 
-
+    @Inject
     public void afterPropertiesSet() throws Exception {
         this.registeStateHander("init_pre_allocated",resourceStateHandler);
         this.registeStateHander("pre_allocated_allocated",resourceStateHandler);
