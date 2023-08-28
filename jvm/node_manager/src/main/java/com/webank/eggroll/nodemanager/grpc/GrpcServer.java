@@ -5,22 +5,17 @@ import com.eggroll.core.utils.FileSystemUtils;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import io.grpc.BindableService;
 import io.grpc.Server;
 import io.grpc.ServerServiceDefinition;
 import io.grpc.netty.shaded.io.grpc.netty.GrpcSslContexts;
-import io.grpc.netty.shaded.io.grpc.netty.InternalNettyServerBuilder;
 import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder;
 import io.grpc.netty.shaded.io.netty.handler.ssl.ClientAuth;
 import io.grpc.netty.shaded.io.netty.handler.ssl.SslContextBuilder;
-//import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.ApplicationListener;
-import org.springframework.stereotype.Service;
-
 import javax.net.ssl.SSLException;
 import java.io.File;
 import java.net.InetSocketAddress;
@@ -30,12 +25,12 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
-@Service
+@Singleton
 public class GrpcServer {
 
     Logger logger = LoggerFactory.getLogger(GrpcServer.class);
 
-    @Autowired
+    @Inject
     CommandServiceProvider commandServiceProvider;
 
     public void start() throws Exception {
@@ -127,7 +122,7 @@ public class GrpcServer {
 //                    s"key crt path: ${keyCrt.getAbsoluteFile}, " +
 //                    s"ca crt path: ${caCrt.getAbsolutePath}")
         } else {
-            logger.info("gRPC server at {} starting in insecure mode" ,port);
+            logger.info("gRPC server at {} starting in insecure mode", port);
         }
         return nettyServerBuilder.build();
     }

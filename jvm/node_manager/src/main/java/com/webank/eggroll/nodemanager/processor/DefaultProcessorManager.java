@@ -8,27 +8,29 @@ import com.eggroll.core.containers.meta.StopContainersResponse;
 import com.eggroll.core.context.Context;
 import com.eggroll.core.grpc.ClusterManagerClient;
 import com.eggroll.core.pojo.*;
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import com.webank.eggroll.nodemanager.containers.ContainersServiceHandler;
 import com.webank.eggroll.nodemanager.service.ContainerService;
 import com.webank.eggroll.nodemanager.utils.ProcessUtils;
+import org.apache.commons.beanutils.BeanUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.BeanUtils;
-import org.springframework.stereotype.Service;
 
-import javax.annotation.Resource;
+import java.lang.reflect.InvocationTargetException;
 
-@Service
+
+@Singleton
 public class DefaultProcessorManager implements ProcessorManager{
 
 
     Logger logger = LoggerFactory.getLogger(DefaultProcessorManager.class);
     private ClusterManagerClient client;
 
-    @Resource
+    @Inject
     private ContainerService containerService;
 
-
+    @Inject
     private ContainersServiceHandler containersServiceHandler;
 
     @Override
@@ -53,9 +55,14 @@ public class DefaultProcessorManager implements ProcessorManager{
     }
 
     @Override
-    public ErProcessor checkNodeProcess(Context context, ErProcessor processor) {
+    public ErProcessor checkNodeProcess(Context context, ErProcessor processor){
         ErProcessor result = new ErProcessor();
-        BeanUtils.copyProperties(processor, result);
+        try {
+            BeanUtils.copyProperties(processor,result);
+        }catch (InvocationTargetException | IllegalAccessException e ) {
+            logger.error("copyProperties error: {}",e.getMessage());
+        }
+
         if (ProcessUtils.checkProcess(Integer.toString(processor.getPid()))) {
             result.setStatus(ProcessorStatus.RUNNING.name());
         } else {

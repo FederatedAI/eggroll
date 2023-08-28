@@ -6,6 +6,8 @@ import com.eggroll.core.containers.meta.StopContainersResponse;
 import com.eggroll.core.invoke.InvokeInfo;
 import com.eggroll.core.pojo.*;
 import com.eggroll.core.grpc.URI;
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import com.google.protobuf.ByteString;
 import com.webank.eggroll.core.command.Command;
 import com.webank.eggroll.core.command.CommandServiceGrpc;
@@ -14,22 +16,18 @@ import io.grpc.stub.StreamObserver;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.InitializingBean;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static com.eggroll.core.grpc.CommandUri.*;
 
-@Service
-public class CommandServiceProvider extends CommandServiceGrpc.CommandServiceImplBase implements InitializingBean {
+@Singleton
+public class CommandServiceProvider extends CommandServiceGrpc.CommandServiceImplBase  {
 
     Logger logger = LoggerFactory.getLogger(CommandServiceProvider.class);
 
-    @Autowired
+    @Inject
     DefaultProcessorManager defaultProcessorManager;
 
 
@@ -72,27 +70,27 @@ public class CommandServiceProvider extends CommandServiceGrpc.CommandServiceImp
 
     @URI(value = startContainers)
     public ErSessionMeta startContainers(ErSessionMeta sessionMeta) {
-        return defaultProcessorManager.startContainers(null,sessionMeta);
+        return defaultProcessorManager.startContainers(null, sessionMeta);
     }
 
     @URI(value = stopContainers)
     public ErSessionMeta stopContainers(ErSessionMeta sessionMeta) {
-        return defaultProcessorManager.stopContainers(null,sessionMeta);
+        return defaultProcessorManager.stopContainers(null, sessionMeta);
     }
 
     @URI(value = killContainers)
     public ErSessionMeta killContainers(ErSessionMeta sessionMeta) {
-        return defaultProcessorManager.killContainers(null,sessionMeta);
+        return defaultProcessorManager.killContainers(null, sessionMeta);
     }
 
     @URI(value = eggpairHeartbeat)
     public ErProcessor heartbeat(ErProcessor processor) {
-        return defaultProcessorManager.heartbeat(null,processor);
+        return defaultProcessorManager.heartbeat(null, processor);
     }
 
     @URI(value = checkNodeProcess)
     public ErProcessor checkNodeProcess(ErProcessor processor) {
-        return defaultProcessorManager.checkNodeProcess(null,processor);
+        return defaultProcessorManager.checkNodeProcess(null, processor);
     }
 
     @URI(value = startJobContainers)
@@ -117,20 +115,13 @@ public class CommandServiceProvider extends CommandServiceGrpc.CommandServiceImp
     }
 
 
-    @Override
-    public void afterPropertiesSet() throws Exception {
-        register(this);
-
-
-    }
-
     private void doRegister(String uri, Object service, Method method, Class paramClass) {
         InvokeInfo invokeInfo = new InvokeInfo(uri, service, method, paramClass);
         logger.info("register uri {}", invokeInfo);
         this.uriMap.put(uri, invokeInfo);
     }
 
-    private void register(Object service) {
+    public void register(Object service) {
         Method[] methods;
         if (service instanceof Class) {
             methods = ((Class) service).getMethods();
