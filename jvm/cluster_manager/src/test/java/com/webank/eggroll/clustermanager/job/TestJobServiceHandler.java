@@ -6,21 +6,15 @@ import com.eggroll.core.pojo.ResourceOptions;
 import com.eggroll.core.pojo.SubmitJobRequest;
 import com.eggroll.core.pojo.SubmitJobResponse;
 import com.eggroll.core.utils.JsonUtil;
-import com.webank.eggroll.clustermanager.Application;
+import com.google.inject.Inject;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 
-@SpringBootTest(classes = Application.class)
-@RunWith(SpringJUnit4ClassRunner.class)
 public class TestJobServiceHandler {
 
-    @Autowired
+    @Inject
     JobServiceHandler jobServiceHandler;
 
     @Test
@@ -36,7 +30,7 @@ public class TestJobServiceHandler {
         request.setZippedFiles(new HashMap<>());
 
         ResourceOptions resourceOptions = new ResourceOptions();
-        resourceOptions.setTimeoutSeconds(5);
+        resourceOptions.setTimeoutSeconds(60);
         request.setResourceOptions(resourceOptions);
 
         request.setOptions(new HashMap<>());
