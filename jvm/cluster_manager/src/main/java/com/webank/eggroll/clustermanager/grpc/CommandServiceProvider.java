@@ -14,6 +14,7 @@ import com.google.protobuf.ByteString;
 import com.webank.eggroll.clustermanager.cluster.ClusterManagerService;
 import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
 import com.webank.eggroll.clustermanager.dao.impl.StoreCrudOperator;
+import com.webank.eggroll.clustermanager.job.JobServiceHandler;
 import com.webank.eggroll.clustermanager.processor.DefaultProcessorManager;
 import com.webank.eggroll.clustermanager.session.DefaultSessionManager;
 import com.webank.eggroll.core.command.Command;
@@ -22,7 +23,6 @@ import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.PostConstruct;
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -44,6 +44,8 @@ public class CommandServiceProvider extends CommandServiceGrpc.CommandServiceImp
     StoreCrudOperator storeCrudOperator;
     @Inject
     ClusterManagerService  clusterManagerService;
+    @Inject
+    JobServiceHandler jobServiceHandler;
 
 
     public void call(Command.CommandRequest request,
@@ -177,9 +179,34 @@ public class CommandServiceProvider extends CommandServiceGrpc.CommandServiceImp
     }
 
 
+    @URI(value = submitJob)
+    public SubmitJobResponse submitJob(Context context ,SubmitJobRequest request) throws InterruptedException {
+        return jobServiceHandler.handleSubmit(request);
+    }
 
-    @PostConstruct
-    public void afterPropertiesSet() throws Exception {
+    @URI(value = queryJobStatus)
+    public QueryJobStatusResponse queryJobStatus(Context context ,QueryJobStatusRequest request) throws InterruptedException {
+        return jobServiceHandler.handleJobStatusQuery(request);
+    }
+
+    @URI(value = queryJob)
+    public QueryJobResponse queryJob(Context context ,QueryJobRequest request) throws InterruptedException {
+        return jobServiceHandler.handleJobQuery(request);
+    }
+
+    @URI(value = killJob)
+    public KillJobResponse killJob(Context context ,KillJobRequest request) throws InterruptedException {
+        return jobServiceHandler.handleJobKill(request);
+    }
+
+    @URI(value = stopJob)
+    public StopJobResponse stopJob(Context context ,StopJobRequest request) throws InterruptedException {
+        return jobServiceHandler.handleJobStop(request);
+    }
+
+
+    @Inject
+    public void afterPropertiesSet(){
         register(this);
     }
 

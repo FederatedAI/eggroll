@@ -17,7 +17,7 @@ import io.grpc.netty.shaded.io.netty.handler.ssl.SslContextBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
+import javax.inject.Provider;
 import javax.net.ssl.SSLException;
 import java.io.File;
 import java.net.InetSocketAddress;
@@ -28,10 +28,14 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
 @Singleton
-public class GrpcServer   {
+public class GrpcServer{
 
     Logger logger = LoggerFactory.getLogger(GrpcServer.class);
 
+    @Inject
+    public GrpcServer(){
+        System.out.println(111);
+    }
 
     @Inject
     CommandServiceProvider  commandServiceProvider;
@@ -129,6 +133,7 @@ public class GrpcServer   {
         }
        return nettyServerBuilder.build();
     }
+
 
 
 }
