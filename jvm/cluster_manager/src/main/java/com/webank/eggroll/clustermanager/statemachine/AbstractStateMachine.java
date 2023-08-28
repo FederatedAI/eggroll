@@ -2,7 +2,8 @@ package com.webank.eggroll.clustermanager.statemachine;
 
 
 import com.eggroll.core.context.Context;
-import org.springframework.transaction.annotation.Transactional;
+import org.mybatis.guice.transactional.Transactional;
+
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingDeque;

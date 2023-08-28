@@ -3,10 +3,10 @@
 package com.webank.eggroll.nodemanager.env;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.inject.Singleton;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
 
 import java.io.*;
 import java.math.BigInteger;
@@ -16,7 +16,7 @@ import java.util.HashSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-@Service
+@Singleton
 public class SysInfoLinux extends SysInfo {
   private static final Logger LOG =
       LoggerFactory.getLogger(SysInfoLinux.class);

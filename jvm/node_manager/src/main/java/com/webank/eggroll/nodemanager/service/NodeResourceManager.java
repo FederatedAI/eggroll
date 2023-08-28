@@ -8,29 +8,28 @@ import com.eggroll.core.pojo.ErNodeHeartbeat;
 import com.eggroll.core.pojo.ErResource;
 import com.eggroll.core.pojo.ErServerNode;
 import com.eggroll.core.utils.NetUtils;
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import com.webank.eggroll.nodemanager.env.Shell;
 import com.webank.eggroll.nodemanager.env.SysInfoLinux;
 import com.webank.eggroll.nodemanager.meta.NodeManagerMeta;
 import com.webank.eggroll.nodemanager.pojo.ResourceWrapper;
 import com.webank.eggroll.nodemanager.schedule.NodeManagerTask;
 import com.webank.eggroll.nodemanager.utils.GetSystemInfo;
+import org.apache.commons.beanutils.BeanUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.ApplicationListener;
-import org.springframework.stereotype.Service;
-
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 
-@Service
-public class NodeResourceManager implements ApplicationListener<ApplicationReadyEvent> {
+@Singleton
+public class NodeResourceManager {
 
     Logger logger = LoggerFactory.getLogger(NodeResourceManager.class);
-    @Autowired
+
+    @Inject
     private SysInfoLinux sysInfo;
 
     ClusterManagerClient client;
@@ -42,7 +41,6 @@ public class NodeResourceManager implements ApplicationListener<ApplicationReady
     Map<String, ResourceWrapper> resourceMap;
 
     public NodeResourceManager() {
-
         int cpus = MetaInfo.CONFKEY_NODE_MANAGER_CPU_VCORES == null ? getAvailableProcessors() : MetaInfo.CONFKEY_NODE_MANAGER_CPU_VCORES;
         int gpus = MetaInfo.CONFKEY_NODE_MANAGER_GPU_VCORES == null ? getGpuSize() : MetaInfo.CONFKEY_NODE_MANAGER_GPU_VCORES;
         ResourceWrapper cpuCore = new ResourceWrapper(Dict.VCPU_CORE, new AtomicLong(cpus));
@@ -159,9 +157,13 @@ public class NodeResourceManager implements ApplicationListener<ApplicationReady
 
     }
 
-    public ErServerNode queryNodeResource(ErServerNode erServerNode) {
+    public ErServerNode queryNodeResource(ErServerNode erServerNode){
         ErServerNode newErServerNode = new ErServerNode();
-        BeanUtils.copyProperties(erServerNode, newErServerNode);
+        try {
+            BeanUtils.copyProperties(erServerNode, newErServerNode);
+        }catch ( InvocationTargetException | IllegalAccessException e) {
+            logger.error("copyProperties error: {}",e.getMessage());
+        }
         newErServerNode.setId(NodeManagerMeta.serverNodeId);
         Iterator<ResourceWrapper> iterator = resourceMap.values().iterator();
         List<ErResource> resources = new ArrayList<>();
@@ -178,11 +180,6 @@ public class NodeResourceManager implements ApplicationListener<ApplicationReady
         }
         newErServerNode.setResources(resources);
         return newErServerNode;
-    }
-
-    @Override
-    public void onApplicationEvent(ApplicationReadyEvent event) {
-        this.start();
     }
 
     class ResourceCountThread extends Thread {

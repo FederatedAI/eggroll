@@ -9,17 +9,16 @@ import com.google.inject.Singleton;
 import com.webank.eggroll.clustermanager.dao.mapper.SessionProcessorMapper;
 import com.webank.eggroll.clustermanager.entity.ProcessorResource;
 import com.webank.eggroll.clustermanager.entity.SessionProcessor;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
+
 
 import java.util.List;
 import java.util.stream.Collectors;
 
-@Service
+
 @Singleton
 public class ProcessorService extends EggRollBaseServiceImpl<SessionProcessorMapper,SessionProcessor>{
 
-    @Autowired
+
     @Inject
     ProcessorResourceService   processorResourceService ;
 

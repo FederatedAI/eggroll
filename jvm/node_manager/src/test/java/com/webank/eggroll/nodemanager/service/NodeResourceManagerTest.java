@@ -1,26 +1,28 @@
 package com.webank.eggroll.nodemanager.service;
 
 import com.eggroll.core.config.Dict;
+import com.google.inject.Guice;
+import com.google.inject.Injector;
+import com.webank.eggroll.guice.module.NodeModule;
 import com.webank.eggroll.nodemanager.pojo.ResourceWrapper;
-import junit.framework.TestCase;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
 
-@SpringBootTest
-@RunWith(SpringJUnit4ClassRunner.class)
-public class NodeResourceManagerTest extends TestCase {
+public class NodeResourceManagerTest {
 
-    @Autowired
-    private NodeResourceManager nodeResourceManager;
+    private static NodeResourceManager nodeResourceManager;
+
+    @BeforeClass
+    public static void before() {
+        Injector injector = Guice.createInjector(new NodeModule());
+        nodeResourceManager = injector.getInstance(NodeResourceManager.class);
+    }
 
     @Test
     public void testGetResourceWrapper() {
-        ResourceWrapper resourceWrapper =nodeResourceManager.getResourceWrapper(Dict.VCPU_CORE);
+        ResourceWrapper resourceWrapper = nodeResourceManager.getResourceWrapper(Dict.VCPU_CORE);
         Assert.assertTrue(resourceWrapper.getTotal().get() > 0);
     }
 
@@ -59,7 +61,7 @@ public class NodeResourceManagerTest extends TestCase {
 
     @Test
     public void testGetGpuSize() {
-        Assert.assertSame(0,nodeResourceManager.getGpuSize());
+        Assert.assertSame(0, nodeResourceManager.getGpuSize());
     }
 
     @Test
@@ -78,7 +80,7 @@ public class NodeResourceManagerTest extends TestCase {
     public void testCountMemoryResource() {
         try {
             nodeResourceManager.countMemoryResource();
-        }catch (Exception e) {
+        } catch (Exception e) {
             e.printStackTrace();
             Assert.assertTrue(false);
         }
@@ -89,7 +91,7 @@ public class NodeResourceManagerTest extends TestCase {
     public void testCountCpuResource() {
         try {
             nodeResourceManager.countCpuResource();
-        }catch (Exception e) {
+        } catch (Exception e) {
             e.printStackTrace();
             Assert.assertTrue(false);
         }
@@ -100,7 +102,7 @@ public class NodeResourceManagerTest extends TestCase {
     public void testCountGpuResource() {
         try {
             nodeResourceManager.countGpuResource();
-        }catch (Exception e) {
+        } catch (Exception e) {
             e.printStackTrace();
             Assert.assertTrue(false);
         }

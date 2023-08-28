@@ -1,15 +1,13 @@
 package com.webank.eggroll.nodemanager.service;
 
 import com.eggroll.core.config.Dict;
-import com.eggroll.core.config.MetaInfo;
 import com.eggroll.core.pojo.ErProcessor;
 import com.eggroll.core.pojo.ErSessionMeta;
 import com.eggroll.core.pojo.RuntimeErConf;
+import com.google.inject.Singleton;
 import com.webank.eggroll.nodemanager.pojo.ContainerParam;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -17,7 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
 
-@Service
+@Singleton
 public class ContainerService {
 
     Logger logger = LoggerFactory.getLogger(ContainerService.class);
@@ -49,17 +47,15 @@ public class ContainerService {
         return sessionMeta;
     }
 
-
     private boolean start(ContainerParam param) {
         String pythonPathArgs = "";
         String pythonVenvArgs = "";
-        if (StringUtils.hasText(param.getPythonPath())) {
+        if (param.getPythonPath() != null && !param.getPythonPath().isEmpty()) {
             pythonPathArgs = "--python-path " + param.getPythonPath();
         }
-        if (StringUtils.hasText(param.getPythonVenv())) {
+        if (param.getPythonVenv() != null && !param.getPythonVenv().isEmpty()) {
             pythonVenvArgs = "--python-venv " + param.getPythonVenv();
         }
-
         StringJoiner joiner = new StringJoiner(" ");
         joiner.add(param.getExeCmd())
                 .add(param.getBoot())
@@ -127,7 +123,7 @@ public class ContainerService {
         return new Thread(() -> {
             ProcessBuilder processorBuilder = new ProcessBuilder(param.getBootStrapShell(), param.getBootStrapShellArgs(), param.getStartCmd());
             Map<String, String> builderEnv = processorBuilder.environment();
-            if (StringUtils.hasText(System.getProperty("eggroll.standalone.tag"))) {
+            if (System.getProperty("eggroll.standalone.tag") != null && !System.getProperty("eggroll.standalone.tag").isEmpty()) {
                 logger.info("set EGGROLL_STANDALONE_PORT :", param.getCmPort());
                 builderEnv.put("EGGROLL_STANDALONE_PORT", String.valueOf(param.getCmPort()));
             }

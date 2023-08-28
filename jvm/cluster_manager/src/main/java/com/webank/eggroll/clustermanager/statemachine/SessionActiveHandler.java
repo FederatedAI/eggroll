@@ -8,9 +8,9 @@ import com.eggroll.core.pojo.ErProcessor;
 import com.eggroll.core.pojo.ErSessionMeta;
 import com.google.inject.Singleton;
 import com.webank.eggroll.clustermanager.entity.SessionMain;
-import org.springframework.stereotype.Service;
 
-@Service
+
+
 @Singleton
 public class SessionActiveHandler extends AbstractSessionStateHandler{
 

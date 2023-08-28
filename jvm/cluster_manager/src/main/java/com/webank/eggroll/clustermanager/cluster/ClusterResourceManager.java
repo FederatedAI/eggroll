@@ -8,6 +8,8 @@ import com.eggroll.core.pojo.*;
 import com.eggroll.core.utils.JsonUtil;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import com.webank.eggroll.clustermanager.dao.impl.NodeResourceService;
 import com.webank.eggroll.clustermanager.dao.impl.ProcessorResourceService;
 import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
@@ -20,10 +22,7 @@ import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.ApplicationArguments;
-import org.springframework.boot.ApplicationRunner;
-import org.springframework.stereotype.Service;
+
 
 import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -32,26 +31,23 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
-@Service
+
 @Data
-public class ClusterResourceManager implements ApplicationRunner {
+@Singleton
+public class ClusterResourceManager {
 
     Logger log = LoggerFactory.getLogger(ClusterResourceManager.class);
 
     private Map<String, ReentrantLock> sessionLockMap = new ConcurrentHashMap<>();
     private Map<String, Long> killJobMap = new ConcurrentHashMap<>();
     private FifoBroker<ResourceApplication> applicationQueue = new FifoBroker<>();
-
-    @Autowired
+    @Inject
     SessionMainService sessionMainService;
-    @Autowired
+    @Inject
     ServerNodeService serverNodeService;
-//    @Autowired
-//    SessionMetaDao sessionMetaDao;
-
-    @Autowired
+    @Inject
     NodeResourceService nodeResourceService;
-    @Autowired
+    @Inject
     ProcessorResourceService processorResourceService;
 
 
@@ -543,11 +539,11 @@ public class ClusterResourceManager implements ApplicationRunner {
         }
     }
 
-    @Override
-    public void run(ApplicationArguments args) throws Exception {
-        ClusterManagerTask.runTask(dispatchThread);
-        ClusterManagerTask.runTask(lockCleanThread);
-
-        log.info("{} run() end !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", this.getClass().getSimpleName());
-    }
+//    @Override
+//    public void run(ApplicationArguments args) throws Exception {
+//        ClusterManagerTask.runTask(dispatchThread);
+//        ClusterManagerTask.runTask(lockCleanThread);
+//
+//        log.info("{} run() end !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", this.getClass().getSimpleName());
+//    }
 }
