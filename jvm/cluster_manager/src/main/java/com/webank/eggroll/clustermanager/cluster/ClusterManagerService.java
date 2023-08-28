@@ -20,15 +20,17 @@ import com.webank.eggroll.clustermanager.job.JobServiceHandler;
 import com.webank.eggroll.clustermanager.schedule.ClusterManagerTask;
 import com.webank.eggroll.clustermanager.session.SessionManager;
 import com.webank.eggroll.clustermanager.statemachine.ProcessorStateMachine;
+import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.ApplicationArguments;
-import org.springframework.boot.ApplicationRunner;
-import org.springframework.stereotype.Service;
 
+
+
+
+import javax.inject.Inject;
+import javax.inject.Singleton;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -37,26 +39,35 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 
-@Service
-public class ClusterManagerService implements ApplicationRunner {
+
+@Singleton
+public class ClusterManagerService   {
 
     Logger logger = LoggerFactory.getLogger(ClusterManagerService.class);
 
-    @Autowired
+
+    @Inject
     ServerNodeService serverNodeService;
-    @Autowired
+
+    @Inject
     NodeResourceService nodeResourceService;
-    @Autowired
+
+    @Inject
     SessionProcessorService sessionProcessorService;
-    @Autowired
+
+    @Inject
     ProcessorStateMachine processorStateMachine;
-    @Autowired
+
+    @Inject
     SessionMainService sessionMainService;
-    @Autowired
+
+    @Inject
     JobServiceHandler jobServiceHandler;
-    @Autowired
+
+    @Inject
     SessionManager sessionManager;
-    @Autowired
+
+    @Inject
     ClusterResourceManager clusterResourceManager;
 
     Logger log = LoggerFactory.getLogger(ClusterManagerService.class);
@@ -393,7 +404,13 @@ public class ClusterManagerService implements ApplicationRunner {
         List<ErResource> existResources = new ArrayList<>();
         for (NodeResource resource : nodeResourceList) {
             ErResource erResource = new ErResource();
-            BeanUtils.copyProperties(resource, erResource);
+            try {
+                BeanUtils.copyProperties(resource, erResource);
+            } catch (IllegalAccessException e) {
+                e.printStackTrace();
+            } catch (InvocationTargetException e) {
+                e.printStackTrace();
+            }
             existResources.add(erResource);
         }
         List<ErResource> registedResources = data.getResources();
@@ -405,7 +422,13 @@ public class ClusterManagerService implements ApplicationRunner {
             for (ErResource r : registedResources) {
                 if (r.getResourceType().equals(e.getResourceType())) {
                     ErResource updatedResource = new ErResource();
-                    BeanUtils.copyProperties(r, updatedResource);
+                    try {
+                        BeanUtils.copyProperties(r, updatedResource);
+                    } catch (IllegalAccessException ex) {
+                        ex.printStackTrace();
+                    } catch (InvocationTargetException ex) {
+                        ex.printStackTrace();
+                    }
                     updatedResource.setAllocated(-1L);
                     needUpdate = true;
                     updateResources.add(updatedResource);
@@ -432,12 +455,15 @@ public class ClusterManagerService implements ApplicationRunner {
         return registerResource(serverNode);
     }
 
-    @Override
-    public void run(ApplicationArguments args){
-        ClusterManagerTask.runTask(sessionWatcher);
-        ClusterManagerTask.runTask(nodeHeartbeatChecker);
-        ClusterManagerTask.runTask(nodeProcessChecker);
-        ClusterManagerTask.runTask(redidualProcessorChecker);
-        log.info("{} run() end !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",this.getClass().getSimpleName());
-    }
+
+
+
+//    @Override
+//    public void run(ApplicationArguments args){
+//        ClusterManagerTask.runTask(sessionWatcher);
+//        ClusterManagerTask.runTask(nodeHeartbeatChecker);
+//        ClusterManagerTask.runTask(nodeProcessChecker);
+//        ClusterManagerTask.runTask(redidualProcessorChecker);
+//        log.info("{} run() end !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",this.getClass().getSimpleName());
+//    }
 }

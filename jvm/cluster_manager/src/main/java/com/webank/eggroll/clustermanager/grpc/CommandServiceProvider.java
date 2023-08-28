@@ -20,7 +20,6 @@ import com.webank.eggroll.clustermanager.session.DefaultSessionManager;
 import com.webank.eggroll.core.command.Command;
 import com.webank.eggroll.core.command.CommandServiceGrpc;
 import io.grpc.stub.StreamObserver;
-import lombok.val;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;

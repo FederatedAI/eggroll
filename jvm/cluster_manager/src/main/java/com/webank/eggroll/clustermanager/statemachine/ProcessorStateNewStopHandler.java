@@ -5,11 +5,11 @@ import com.eggroll.core.context.Context;
 import com.eggroll.core.pojo.ErProcessor;
 import com.google.inject.Singleton;
 import com.webank.eggroll.clustermanager.entity.SessionProcessor;
-import org.springframework.stereotype.Service;
+
 
 import java.util.Date;
 
-@Service
+
 @Singleton
 public class ProcessorStateNewStopHandler extends AbstractProcessorStateHandler {
 

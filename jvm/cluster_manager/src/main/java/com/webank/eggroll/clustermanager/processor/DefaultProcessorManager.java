@@ -8,16 +8,15 @@ import com.google.common.cache.Cache;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.webank.eggroll.clustermanager.statemachine.ProcessorStateMachine;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
+
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
-@Service
+
 @Singleton
 public class DefaultProcessorManager {
-    @Autowired
+
     @Inject
     ProcessorStateMachine processorStateMachine;
 

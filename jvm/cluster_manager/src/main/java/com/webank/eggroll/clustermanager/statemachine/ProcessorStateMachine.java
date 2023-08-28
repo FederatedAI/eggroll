@@ -10,39 +10,21 @@ import com.webank.eggroll.clustermanager.entity.SessionProcessor;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.InitializingBean;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
-@Service
 @Singleton
-public class ProcessorStateMachine extends  AbstractStateMachine<ErProcessor>  implements InitializingBean {
+public class ProcessorStateMachine extends  AbstractStateMachine<ErProcessor> {
     Logger logger = LoggerFactory.getLogger(ProcessorStateMachine.class);
-    @Autowired
     @Inject
     ProcessorService  processorService;
-    @Autowired
     @Inject
     ResourceStateMechine  resourceStateMechine;
-    @Autowired
     @Inject
     ProcessorStateRunningHandler     processorStateRunningHandler;
-    @Autowired
     @Inject
     ProcessorStatusRunningStopHandler       processorStatusRunningStopHandler  ;
-    @Autowired
     @Inject
     ProcessorStateNewStopHandler   processorStateNewStopHandler;
-
-    @Autowired
     @Inject
     ProcessorCreateHandler   processorCreateHandler;
-
-
-//    public List<ErProcessor>  getProcessorBySessionId(String sessionId){
-//        return processorService.getProcessorBySession(sessionId);
-//    }
-
 
     @Override
     String buildStateChangeLine(Context context, ErProcessor erProcessor, String preStateParam, String desStateParam) {
@@ -70,7 +52,7 @@ public class ProcessorStateMachine extends  AbstractStateMachine<ErProcessor>  i
 
 
 
-    @Override
+
     public void afterPropertiesSet() throws Exception {
         this.registeStateHander( "_NEW",processorCreateHandler);
         this.registeStateHander( "NEW_RUNNING",processorCreateHandler);
