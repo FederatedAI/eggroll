@@ -16,11 +16,7 @@ import io.grpc.netty.shaded.io.netty.handler.ssl.ClientAuth;
 import io.grpc.netty.shaded.io.netty.handler.ssl.SslContextBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.InitializingBean;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.ApplicationArguments;
-import org.springframework.boot.ApplicationRunner;
-import org.springframework.stereotype.Service;
+
 
 import javax.net.ssl.SSLException;
 import java.io.File;
@@ -30,13 +26,13 @@ import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
-@Service
+
 @Singleton
-public class GrpcServer implements ApplicationRunner  {
+public class GrpcServer   {
 
     Logger logger = LoggerFactory.getLogger(GrpcServer.class);
 
-    @Autowired
+
     @Inject
     CommandServiceProvider  commandServiceProvider;
 
@@ -134,10 +130,5 @@ public class GrpcServer implements ApplicationRunner  {
        return nettyServerBuilder.build();
     }
 
-    @Override
-    public void run(ApplicationArguments args) throws Exception {
 
-        start();
-        logger.info("{} run() end !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",this.getClass().getSimpleName());
-    }
 }

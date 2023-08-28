@@ -1,10 +1,13 @@
 package com.webank.eggroll.guice.module;
 
+import com.baomidou.mybatisplus.core.toolkit.reflect.GenericTypeUtils;
 import com.eggroll.core.config.Config;
 import com.eggroll.core.config.MetaInfo;
 import com.google.inject.AbstractModule;
 import com.google.inject.name.Names;
- import org.apache.ibatis.transaction.jdbc.JdbcTransactionFactory;
+import com.webank.eggroll.clustermanager.session.DefaultSessionManager;
+import com.webank.eggroll.clustermanager.session.SessionManager;
+import org.apache.ibatis.transaction.jdbc.JdbcTransactionFactory;
 import org.mybatis.guice.MyBatisModule;
 import org.mybatis.guice.datasource.hikaricp.HikariCPProvider;
 
@@ -51,10 +54,13 @@ public class ClusterModule extends AbstractModule {
         conf.put("mybatis.environment.id","cluster-manager-mybatis");
 
         Names.bindProperties(binder(), conf);
-       // bind(DbQueryService.class).to(DbQueryServiceImpl.class);
+
+
+        bind(SessionManager.class).to(DefaultSessionManager.class);
         this.install(new MyBatisModule() {
             @Override
             protected void initialize() {
+                GenericTypeUtils.setGenericTypeResolver(new MybatisPlusUtil());
                 //绑定我们自定义的数据源provider，也可以使用guice已经编写好的
                 useConfigurationProvider(MybatisPlusConfigurationProvider.class);
                 useSqlSessionFactoryProvider(MybatisPlusSqlSessionProvider.class);

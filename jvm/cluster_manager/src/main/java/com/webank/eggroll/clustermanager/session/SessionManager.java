@@ -4,7 +4,7 @@ package com.webank.eggroll.clustermanager.session;
 import com.eggroll.core.context.Context;
 import com.eggroll.core.pojo.ErProcessor;
 import com.eggroll.core.pojo.ErSessionMeta;
-import org.springframework.stereotype.Service;
+
 
 
 public interface SessionManager {

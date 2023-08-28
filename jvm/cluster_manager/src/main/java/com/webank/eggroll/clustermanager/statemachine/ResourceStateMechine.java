@@ -4,15 +4,13 @@ import com.eggroll.core.context.Context;
 import com.eggroll.core.pojo.ErProcessor;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import org.springframework.beans.factory.InitializingBean;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
 
-@Service
+
+
 @Singleton
-public class ResourceStateMechine extends AbstractStateMachine<ErProcessor> implements InitializingBean {
+public class ResourceStateMechine extends AbstractStateMachine<ErProcessor> {
 
-    @Autowired
+
     @Inject
     ResourceStateHandler resourceStateHandler;
 
@@ -29,7 +27,7 @@ public class ResourceStateMechine extends AbstractStateMachine<ErProcessor> impl
     }
 
 
-    @Override
+
     public void afterPropertiesSet() throws Exception {
         this.registeStateHander("init_pre_allocated",resourceStateHandler);
         this.registeStateHander("pre_allocated_allocated",resourceStateHandler);

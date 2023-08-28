@@ -15,29 +15,28 @@ import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
 import com.webank.eggroll.clustermanager.dao.impl.SessionMainService;
 import com.webank.eggroll.clustermanager.entity.SessionMain;
 import com.webank.eggroll.clustermanager.statemachine.SessionStateMachine;
+import lombok.Data;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
 import java.util.Arrays;
 import java.util.List;
 
-@Service
+
 @Singleton
+@Data
 public class DefaultSessionManager implements SessionManager {
 
     Logger logger = LoggerFactory.getLogger(DefaultSessionManager.class);
-    @Autowired
+
     @Inject
     SessionMainService sessionService;
-    @Autowired
+
     @Inject
     SessionStateMachine sessionStateMachine;
-    @Autowired
+
     @Inject
     ServerNodeService serverNodeService;
-    @Autowired
+
     @Inject
     SessionMainService sessionMainService;
 
