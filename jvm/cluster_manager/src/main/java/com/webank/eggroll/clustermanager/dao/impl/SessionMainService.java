@@ -2,10 +2,12 @@ package com.webank.eggroll.clustermanager.dao.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
+import com.baomidou.mybatisplus.core.mapper.Mapper;
 import com.eggroll.core.pojo.*;
 import com.google.common.collect.Maps;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import com.webank.eggroll.clustermanager.dao.mapper.NodeResourceMapper;
 import com.webank.eggroll.clustermanager.dao.mapper.SessionMainMapper;
 import com.webank.eggroll.clustermanager.entity.SessionMain;
 import com.webank.eggroll.clustermanager.entity.SessionOption;
@@ -104,6 +106,12 @@ public class SessionMainService extends EggRollBaseServiceImpl<SessionMainMapper
             result.add(sessionMain.toErSessionMeta());
         }
         return result;
+    }
+
+    @Override
+    public SessionMainMapper getBaseMapper() {
+        log.error("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+        return super.getBaseMapper();
     }
 
     @Transactional
