@@ -4,22 +4,21 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.eggroll.core.pojo.ErResource;
 import com.google.common.collect.Lists;
+import com.google.inject.Singleton;
 import com.webank.eggroll.clustermanager.dao.mapper.NodeResourceMapper;
 import com.webank.eggroll.clustermanager.entity.NodeResource;
 import org.apache.commons.lang3.StringUtils;
-import org.jetbrains.annotations.NotNull;
+
+import org.mybatis.guice.transactional.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
-@Service
+@Singleton
 public class NodeResourceService extends EggRollBaseServiceImpl<NodeResourceMapper, NodeResource> {
 
     Logger log = LoggerFactory.getLogger(NodeResourceService.class);
-
     @Transactional
     public void registerResource(Long serverNodeId, List<ErResource> insertData, List<ErResource> updateData, List<ErResource> deleteData) {
         if (insertData != null && insertData.size() > 0) {
@@ -33,7 +32,7 @@ public class NodeResourceService extends EggRollBaseServiceImpl<NodeResourceMapp
         }
     }
 
-    public void doInsertNodeResource(Long serverNodeId, @NotNull List<ErResource> resources) {
+    public void doInsertNodeResource(Long serverNodeId,  List<ErResource> resources) {
         log.info("insertNodeResource======== {} ,size {}", serverNodeId, resources.size());
 
         List<NodeResource>  nodeResourceList = Lists.newArrayList();
@@ -52,7 +51,7 @@ public class NodeResourceService extends EggRollBaseServiceImpl<NodeResourceMapp
         }
     }
 
-    public void doUpdateNodeResource(Long serverNodeId, @NotNull List<ErResource> resources) {
+    public void doUpdateNodeResource(Long serverNodeId,  List<ErResource> resources) {
         for (ErResource erResource : resources) {
             UpdateWrapper<NodeResource> updateWrapper = new UpdateWrapper<>();
             updateWrapper.lambda().set(erResource.getTotal() >= 0, NodeResource::getTotal, erResource.getTotal())
@@ -66,7 +65,7 @@ public class NodeResourceService extends EggRollBaseServiceImpl<NodeResourceMapp
         }
     }
 
-    public void doDeleteNodeResource(Long serverNodeId, @NotNull List<ErResource> resources) {
+    public void doDeleteNodeResource(Long serverNodeId, List<ErResource> resources) {
         for (ErResource erResource : resources) {
             QueryWrapper<NodeResource> deleteWrapper = new QueryWrapper<>();
             deleteWrapper.lambda().eq(NodeResource::getServerNodeId, serverNodeId)

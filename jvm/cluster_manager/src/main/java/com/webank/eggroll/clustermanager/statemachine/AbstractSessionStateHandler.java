@@ -3,19 +3,20 @@ package com.webank.eggroll.clustermanager.statemachine;
 import com.eggroll.core.constant.SessionStatus;
 import com.eggroll.core.context.Context;
 import com.eggroll.core.pojo.ErSessionMeta;
+import com.google.inject.Inject;
 import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
 import com.webank.eggroll.clustermanager.dao.impl.SessionMainService;
 import com.webank.eggroll.clustermanager.entity.SessionMain;
-import org.springframework.beans.factory.annotation.Autowired;
+
 
 import java.util.Date;
 
 public abstract class AbstractSessionStateHandler implements   StateHandler<ErSessionMeta>{
-    @Autowired
+    @Inject
     SessionMainService  sessionMainService;
-    @Autowired
+    @Inject
     ProcessorStateMachine processorStateMachine;
-    @Autowired
+    @Inject
     ServerNodeService   serverNodeService;
 
 

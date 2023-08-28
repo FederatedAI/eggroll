@@ -8,13 +8,13 @@ import com.eggroll.core.pojo.ErProcessor;
 import com.google.inject.Inject;
 import com.webank.eggroll.clustermanager.dao.impl.ProcessorService;
 import com.webank.eggroll.clustermanager.entity.SessionProcessor;
-import org.springframework.beans.factory.annotation.Autowired;
+
 
 public abstract class  AbstractProcessorStateHandler  implements   StateHandler<ErProcessor>{
-    @Autowired
+
     @Inject
     ResourceStateMechine  resourceStateMechine;
-    @Autowired
+
     @Inject
     ProcessorService processorService;
 

@@ -11,9 +11,6 @@ import org.apache.curator.retry.RetryNTimes;
 import org.apache.zookeeper.CreateMode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.ApplicationListener;
-import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -26,9 +23,9 @@ import java.util.Map;
  * Description:
  */
 
-@Service
+
 @Singleton
-public class ZooKeeperRegistration implements ApplicationListener<ApplicationReadyEvent> {
+public class ZooKeeperRegistration {
     private static final Logger logger = LoggerFactory.getLogger(ZooKeeperRegistration.class);
     private CuratorFramework client;
 
@@ -103,9 +100,5 @@ public class ZooKeeperRegistration implements ApplicationListener<ApplicationRea
     }
 
 
-    @Override
-    public void onApplicationEvent(ApplicationReadyEvent event) {
-        register();
-        logger.info("{} onApplicationEvent() end !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",this.getClass().getSimpleName());
-    }
+
 }
