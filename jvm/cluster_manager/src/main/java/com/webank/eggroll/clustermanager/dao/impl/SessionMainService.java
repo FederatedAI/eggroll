@@ -11,9 +11,8 @@ import com.webank.eggroll.clustermanager.entity.SessionMain;
 import com.webank.eggroll.clustermanager.entity.SessionOption;
 import com.webank.eggroll.clustermanager.entity.SessionProcessor;
 import com.webank.eggroll.clustermanager.entity.SessionRanks;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.mybatis.guice.transactional.Transactional;
+
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,20 +20,20 @@ import java.util.Map;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-@Service
+
 @Singleton
 public class SessionMainService extends EggRollBaseServiceImpl<SessionMainMapper, SessionMain>{
 
-    @Autowired
+
     @Inject
     SessionOptionService  sessionOptionService;
-    @Autowired
+
     @Inject
     ProcessorService   processorService;
-    @Autowired
+
     @Inject
     SessionProcessorService sessionProcessorService;
-    @Autowired
+
     @Inject
     SessionRanksService sessionRanksService;
 

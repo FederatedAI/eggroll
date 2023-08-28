@@ -3,15 +3,16 @@ package com.webank.eggroll.clustermanager.dao.impl;
 import com.eggroll.core.pojo.ErProcessor;
 import com.eggroll.core.pojo.ErResource;
 import com.google.common.collect.Lists;
+import com.google.inject.Singleton;
 import com.webank.eggroll.clustermanager.dao.mapper.ProcessorResourceMapper;
 import com.webank.eggroll.clustermanager.dao.mapper.SessionProcessorMapper;
 import com.webank.eggroll.clustermanager.entity.ProcessorResource;
 import com.webank.eggroll.clustermanager.entity.SessionProcessor;
-import org.springframework.stereotype.Service;
+
 
 import java.util.List;
 
-@Service
+@Singleton
 public class ProcessorResourceService extends EggRollBaseServiceImpl<ProcessorResourceMapper, ProcessorResource>{
 
     public  void  insertProcessorResource(ErProcessor  erProcessor){

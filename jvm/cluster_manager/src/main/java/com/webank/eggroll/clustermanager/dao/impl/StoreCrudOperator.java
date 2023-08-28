@@ -7,6 +7,8 @@ import com.eggroll.core.constant.StringConstants;
 import com.eggroll.core.exceptions.CrudException;
 import com.eggroll.core.pojo.*;
 import com.eggroll.core.utils.JsonUtil;
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import com.webank.eggroll.clustermanager.entity.ServerNode;
 import com.webank.eggroll.clustermanager.entity.StoreLocator;
 import com.webank.eggroll.clustermanager.entity.StoreOption;
@@ -14,9 +16,8 @@ import com.webank.eggroll.clustermanager.entity.StorePartition;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.mybatis.guice.transactional.Transactional;
+
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -25,16 +26,16 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-@Service
+@Singleton
 public class StoreCrudOperator {
 
-    @Autowired
+    @Inject
     StoreLocatorService storeLocatorService;
-    @Autowired
+    @Inject
     StorePartitionService storePartitionService;
-    @Autowired
+    @Inject
     ServerNodeService serverNodeService;
-    @Autowired
+    @Inject
     StoreOptionService storeOptionService;
 
     private final Map<Long, Object> nodeIdToNode = new ConcurrentHashMap<>();

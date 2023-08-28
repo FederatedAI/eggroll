@@ -4,23 +4,22 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.eggroll.core.pojo.ErEndpoint;
 import com.eggroll.core.pojo.ErServerNode;
+import com.google.inject.Singleton;
 import com.webank.eggroll.clustermanager.dao.mapper.ServerNodeMapper;
 import com.webank.eggroll.clustermanager.entity.ServerNode;
 import org.apache.commons.lang3.StringUtils;
-import org.jetbrains.annotations.NotNull;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.ApplicationContextAware;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+
+import org.mybatis.guice.transactional.Transactional;
+
 
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-@Service
+@Singleton
 public class ServerNodeService extends EggRollBaseServiceImpl<ServerNodeMapper, ServerNode> {
 
-    public ServerNode getByEndPoint(@NotNull ErEndpoint input) {
+    public ServerNode getByEndPoint( ErEndpoint input) {
         ServerNode serverNode = new ServerNode();
         serverNode.setHost(input.getHost());
         serverNode.setPort(input.getPort());
