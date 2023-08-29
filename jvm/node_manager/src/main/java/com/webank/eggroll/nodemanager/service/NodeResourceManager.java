@@ -160,7 +160,7 @@ public class NodeResourceManager {
     public ErServerNode queryNodeResource(ErServerNode erServerNode){
         ErServerNode newErServerNode = new ErServerNode();
         try {
-            BeanUtils.copyProperties(erServerNode, newErServerNode);
+            BeanUtils.copyProperties(newErServerNode, erServerNode);
         }catch ( InvocationTargetException | IllegalAccessException e) {
             logger.error("copyProperties error: {}",e.getMessage());
         }

@@ -16,12 +16,15 @@ import com.google.common.collect.Lists;
 import com.google.inject.Singleton;
 import com.webank.eggroll.clustermanager.entity.ServerNode;
 import org.apache.commons.collections.CollectionUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 import java.util.List;
 
 @Singleton
 public class SessionCreateHandler  extends AbstractSessionStateHandler{
+    Logger logger = LoggerFactory.getLogger(SessionCreateHandler.class);
     @Override
     public ErSessionMeta prepare(Context context, ErSessionMeta data , String preStateParam, String desStateParam) {
         ErServerNode   serverNode = new  ErServerNode();
