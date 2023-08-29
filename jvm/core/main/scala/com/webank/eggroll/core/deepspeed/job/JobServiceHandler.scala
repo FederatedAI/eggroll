@@ -118,7 +118,7 @@ object JobServiceHandler extends Logging {
 
         contentMap.remove(p.serverNodeId.toString)
       } else{
-        logInfo(s"================= cannot found ${p.serverNodeId}")
+        logInfo(s"download cannot found node ${p.serverNodeId}")
       }
     })
 
@@ -177,18 +177,21 @@ object JobServiceHandler extends Logging {
   }
 
   private def waitSubmittedContainers(sessionId: String, expectedWorldSize: Int, timeout: Long): Array[ErProcessor] = {
+    logInfo(s"session $sessionId wait container start begin")
     var isStarted = false
     breakable {
       while (System.currentTimeMillis() <= timeout) {
         val cur = smDao.getSessionMain(sessionId)
         if (cur.activeProcCount < expectedWorldSize) {
           // assert no container error
+          val activeCount = cur.activeProcCount
+          logInfo(s"session $sessionId active $activeCount  expect $expectedWorldSize")
           smDao.getSession(sessionId).processors.foreach { processor =>
             if (processor.status == ProcessorStatus.ERROR) {
               throw new ErSessionException(s"processor ${processor.id} failed to start")
             }
           }
-          Thread.sleep(100)
+          Thread.sleep(300)
         } else {
           isStarted = true
           break
@@ -313,17 +316,25 @@ object JobServiceHandler extends Logging {
 
 
         deepspeedConfigsWithNode.groupBy(_._2).par.foreach { case (node, nodeAndConfigs) =>
-          val nodeManagerClient = new NodeManagerClient(node.endpoint)
-          nodeManagerClient.startJobContainers(
-            StartDeepspeedContainerRequest(
-              sessionId = sessionId,
-              name = submitJobRequest.name,
-              commandArguments = submitJobRequest.commandArguments,
-              environmentVariables = submitJobRequest.environmentVariables,
-              files = submitJobRequest.files,
-              zippedFiles = submitJobRequest.zippedFiles,
-              deepspeedConfigs = nodeAndConfigs.map { case (containerId, _, config) => containerId -> config }(collection.breakOut),
-              options = submitJobRequest.options))
+          new Thread(new Runnable {
+            override def run(): Unit = {
+              val nodeManagerClient = new NodeManagerClient(node.endpoint)
+              var begin= System.currentTimeMillis()
+              logInfo(s"session id $sessionId prepare to start container")
+              nodeManagerClient.startJobContainers(
+                StartDeepspeedContainerRequest(
+                  sessionId = sessionId,
+                  name = submitJobRequest.name,
+                  commandArguments = submitJobRequest.commandArguments,
+                  environmentVariables = submitJobRequest.environmentVariables,
+                  files = submitJobRequest.files,
+                  zippedFiles = submitJobRequest.zippedFiles,
+                  deepspeedConfigs = nodeAndConfigs.map { case (containerId, _, config) => containerId -> config }(collection.breakOut),
+                  options = submitJobRequest.options))
+              var cost =System.currentTimeMillis()-begin
+              logInfo(s"session id $sessionId start container cost $cost")
+            }
+          }).start()
         }
 
         // wait for containers to start, throw exception if timeout
@@ -340,6 +351,7 @@ object JobServiceHandler extends Logging {
         }
 
         // active
+
         smDao.updateSessionStatus(sessionId = sessionId,
           status = SessionStatus.ACTIVE,
           required_old_status = Some(SessionStatus.NEW))
@@ -359,7 +371,7 @@ object JobServiceHandler extends Logging {
   }
 
   def killJob(sessionId: String, isTimeout: Boolean): Unit = {
-    logInfo(s"killing job $sessionId")
+    logInfo(s"try killing job $sessionId")
     try {
       ClusterResourceManager.lockSession(sessionId)
       ClusterResourceManager.killJobMap.put(sessionId,System.currentTimeMillis())
@@ -367,7 +379,7 @@ object JobServiceHandler extends Logging {
         return
       }
     val sessionMeta = smDao.getSession(sessionId)
-    if (StringUtils.equalsAny(sessionMeta.status, SessionStatus.KILLED, SessionStatus.CLOSED, SessionStatus.ERROR)) {
+    if (StringUtils.equalsAny(sessionMeta.status, SessionStatus.FINISHED,SessionStatus.KILLED, SessionStatus.CLOSED, SessionStatus.ERROR)) {
       return
     }
     val serverNodeCrudOperator = new ServerNodeCrudOperator()
@@ -378,14 +390,21 @@ object JobServiceHandler extends Logging {
       }
       nodeAndProcessors.par.foreach { case (node, processors) =>
         try {
+          logInfo(s"send to node $node ,kill $sessionId ")
           new NodeManagerClient(node.endpoint)
             .killJobContainers(KillContainersRequest(sessionId = sessionId, containers = processors.map(_.id)))
+          logInfo(s"send to node $node ,kill $sessionId  over")
         } catch {
           case e: Exception =>
+            logError(s"kill $sessionId  container error,node  $node",e)
             e.printStackTrace()
         }
       }
-    smDao.updateSessionMain(sessionMeta.copy(status = SessionStatus.ERROR), afterCall = defaultSessionCallback)
+      logInfo(s"killing job send to node over $sessionId")
+      var now = System.currentTimeMillis()
+      smDao.updateSessionMain(sessionMeta.copy(status = SessionStatus.ERROR), afterCall = defaultSessionCallback)
+      var cost = System.currentTimeMillis()-now
+      logInfo(s"killing job update session main over $sessionId ,cost $cost")
     }finally {
       ClusterResourceManager.unlockSession(sessionId)
     }
