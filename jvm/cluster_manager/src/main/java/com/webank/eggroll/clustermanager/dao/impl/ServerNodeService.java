@@ -45,6 +45,7 @@ public class ServerNodeService extends EggRollBaseServiceImpl<ServerNodeMapper, 
     public void updateByErNode(ErServerNode input, Boolean isHeartbeat) {
         ServerNode serverNode = new ServerNode();
         serverNode.setServerNodeId(input.getId());
+        serverNode.setName(input.getName());
         serverNode.setHost(input.getEndpoint().getHost());
         serverNode.setPort(input.getEndpoint().getPort());
         serverNode.setStatus(input.getStatus());

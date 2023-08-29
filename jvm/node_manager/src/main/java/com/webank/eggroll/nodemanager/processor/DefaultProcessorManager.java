@@ -58,7 +58,7 @@ public class DefaultProcessorManager implements ProcessorManager{
     public ErProcessor checkNodeProcess(Context context, ErProcessor processor){
         ErProcessor result = new ErProcessor();
         try {
-            BeanUtils.copyProperties(processor,result);
+            BeanUtils.copyProperties(result,processor);
         }catch (InvocationTargetException | IllegalAccessException e ) {
             logger.error("copyProperties error: {}",e.getMessage());
         }

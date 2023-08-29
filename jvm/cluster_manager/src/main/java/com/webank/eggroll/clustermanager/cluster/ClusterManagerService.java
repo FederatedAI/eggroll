@@ -17,16 +17,12 @@ import com.webank.eggroll.clustermanager.entity.NodeResource;
 import com.webank.eggroll.clustermanager.entity.ServerNode;
 import com.webank.eggroll.clustermanager.entity.SessionProcessor;
 import com.webank.eggroll.clustermanager.job.JobServiceHandler;
-import com.webank.eggroll.clustermanager.schedule.ClusterManagerTask;
 import com.webank.eggroll.clustermanager.session.SessionManager;
 import com.webank.eggroll.clustermanager.statemachine.ProcessorStateMachine;
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-
-
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -405,7 +401,7 @@ public class ClusterManagerService   {
         for (NodeResource resource : nodeResourceList) {
             ErResource erResource = new ErResource();
             try {
-                BeanUtils.copyProperties(resource, erResource);
+                BeanUtils.copyProperties(erResource,resource);
             } catch (IllegalAccessException e) {
                 e.printStackTrace();
             } catch (InvocationTargetException e) {
@@ -423,7 +419,7 @@ public class ClusterManagerService   {
                 if (r.getResourceType().equals(e.getResourceType())) {
                     ErResource updatedResource = new ErResource();
                     try {
-                        BeanUtils.copyProperties(r, updatedResource);
+                        BeanUtils.copyProperties(updatedResource,r);
                     } catch (IllegalAccessException ex) {
                         ex.printStackTrace();
                     } catch (InvocationTargetException ex) {
