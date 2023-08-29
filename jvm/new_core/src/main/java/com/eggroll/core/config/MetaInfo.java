@@ -278,9 +278,6 @@ public class MetaInfo {
     @Config(confKey = "eggroll.session.context.rollpair.count", pattern = Dict.POSITIVE_INTEGER_PATTERN)
     public static Integer CONFKEY_SESSION_CONTEXT_ROLLPAIR_COUNT;
 
-    @Config(confKey = "eggroll.session.id", pattern = Dict.POSITIVE_INTEGER_PATTERN)
-    public static String CONFKEY_SESSION_ID;
-
     @Config(confKey = "eggroll.session.start.timeout.ms", pattern = Dict.POSITIVE_INTEGER_PATTERN)
     public static Integer EGGROLL_SESSION_START_TIMEOUT_MS = 20000;
 
