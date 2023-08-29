@@ -183,6 +183,7 @@
         <caffeine.version>2.9.3</caffeine.version>
         <disruptor.version>3.4.4</disruptor.version>
         <jna.version>5.10.0</jna.version>
+        <inject.version>1</inject.version>
         <!--    <protobuf.version>3.16.1</protobuf.version>-->
         <protobuf.version>3.24.2</protobuf.version>
         <rocksdb.version>6.8.1</rocksdb.version>
@@ -247,7 +248,7 @@
             <dependency>
                 <groupId>javax.inject</groupId>
                 <artifactId>javax.inject</artifactId>
-                <version>1</version>
+                <version>${inject.version}</version>
             </dependency>
 
             <dependency>
