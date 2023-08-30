@@ -49,14 +49,14 @@ echo "processor_tag=$processor_tag"
 main() {
 	case "$module" in
 		clustermanager)
-			main_class=com.webank.eggroll.clustermanager.Application
+			main_class=com.webank.eggroll.clustermanager.Bootstrap
 			get_property "eggroll.resourcemanager.clustermanager.port"
 			port=${property_value}
 			get_property "eggroll.resourcemanager.clustermanager.jvm.options"
 			jvm_options=${property_value}
 			;;
 		nodemanager)
-			main_class=com.webank.eggroll.nodemanager.Application
+			main_class=com.webank.eggroll.nodemanager.Bootstrap
 			get_property "eggroll.resourcemanager.nodemanager.port"
 			port=${property_value}
 			get_property "eggroll.resourcemanager.nodemanager.jvm.options"
