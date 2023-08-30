@@ -2,6 +2,7 @@ package com.webank.eggroll.nodemanager.grpc;
 
 import com.eggroll.core.config.MetaInfo;
 import com.eggroll.core.utils.FileSystemUtils;
+import com.eggroll.core.utils.NetUtils;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
@@ -58,9 +59,7 @@ public class GrpcServer {
         Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
             @Override
             public void run() {
-                logger.info("*** shutting down gRPC server in shutdown hook. host: ${host}, port ${port} ***");
-
-                logger.info("*** server shut down. host: ${host}, port ${port} ***");
+                logger.info("*** shutting down gRPC server in shutdown hook. host: {}, port: {} ***",NetUtils.getLocalHost(),MetaInfo.CONFKEY_NODE_MANAGER_PORT);
             }
         }));
 
