@@ -169,7 +169,8 @@ object SessionConfKeys {
   var EGGROLL_SESSION_USE_RESOURCE_DISPATCH = "eggroll.session.use.resource.dispatch"
   val EGGROLL_RESOURCE_DISPATCH_INTERVAL = ErConfKey("eggroll.session.resource.dispatch.interval", 3000)
   val EGGROLL_RESOURCE_LOCK_EXPIRE_INTERVAL = ErConfKey("eggroll.resource.lock.expire.interval", 3600000)
-
+  val EGGROLL_RESOURCE_COUNT_INTERVAL = ErConfKey("eggroll.resource.count.interval", 10000)
+  val EGGROLL_RESOURCE_SYSTEM_UPDATE_INTERVAL = ErConfKey("eggroll.resource.count.interval", 60000)
   //, false
 }
 

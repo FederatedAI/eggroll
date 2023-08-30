@@ -233,7 +233,9 @@ object JobServiceHandler extends Logging {
     val sessionId = submitJobRequest.sessionId
 
     val worldSize = submitJobRequest.worldSize
-
+    if(!ClusterResourceManager.checkMaxResource(ResourceTypes.VGPU_CORE,worldSize)){
+      throw new ErSessionException(s"resource request gpu count ${worldSize} is too big")
+    }
     // prepare processors
     val prepareProcessors = Array.fill(worldSize)(ErProcessor(
       processorType = JobProcessorTypes.DeepSpeed.toString,
