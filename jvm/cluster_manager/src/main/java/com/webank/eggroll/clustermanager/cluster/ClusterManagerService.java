@@ -444,7 +444,6 @@ public class ClusterManagerService   {
                 insertResources.add(r);
             }
         }
-
         nodeResourceService.registerResource(data.getId(), insertResources, updateResources, deleteResources);
         return data;
     }
@@ -458,7 +457,7 @@ public class ClusterManagerService   {
 
 
 
-//    @Override
+
 //    public void run(ApplicationArguments args){
 //        ClusterManagerTask.runTask(sessionWatcher);
 //        ClusterManagerTask.runTask(nodeHeartbeatChecker);
