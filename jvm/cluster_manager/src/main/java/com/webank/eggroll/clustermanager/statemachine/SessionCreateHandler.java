@@ -14,11 +14,9 @@ import com.eggroll.core.pojo.ErServerNode;
 import com.eggroll.core.pojo.ErSessionMeta;
 import com.google.common.collect.Lists;
 import com.google.inject.Singleton;
-import com.webank.eggroll.clustermanager.entity.ServerNode;
 import org.apache.commons.collections.CollectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 
 import java.util.List;
 

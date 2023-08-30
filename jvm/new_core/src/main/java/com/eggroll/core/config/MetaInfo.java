@@ -63,6 +63,22 @@ public class MetaInfo {
     public static String CONFKEY_CORE_GRPC_TRANSFER_SERVER_PORT = "0";
 
 
+    @Config(confKey = "eggroll.resourcemanager.bootstrap.egg_pair.exepath")
+    public static String CONFKEY_RESOURCE_MANAGER_BOOTSTRAP_EGG_PAIR_EXE_PATH = "";
+    @Config(confKey = "eggroll.resourcemanager.bootstrap.egg_pair.venv")
+    public static String CONFKEY_RESOURCE_MANAGER_BOOTSTRAP_EGG_PAIR_VENV = "";
+    @Config(confKey = "eggroll.resourcemanager.bootstrap.egg_pair.pythonpath")
+    public static String CONFKEY_RESOURCE_MANAGER_BOOTSTRAP_EGG_PAIR_PYTHON_PATH = "";
+    @Config(confKey = "eggroll.resourcemanager.bootstrap.egg_pair.filepath")
+    public static String CONFKEY_RESOURCE_MANAGER_BOOTSTRAP_EGG_PAIR_FILE_PATH = "";
+
+
+    @Config(confKey = "eggroll.resourcemanager.bootstrap.egg_frame.exepath")
+    public static String CONFKEY_RESOURCE_MANAGER_BOOTSTRAP_EGG_FRAME_EXE_PATH = "";
+
+
+
+
     @Config(confKey = "eggroll.core.grpc.channel.cache.expire.sec", pattern = Dict.POSITIVE_INTEGER_PATTERN)
     public static Integer CONFKEY_CORE_GRPC_CHANNEL_CACHE_EXPIRE_SEC = 86400;
     @Config(confKey = "eggroll.core.grpc.channel.cache.size", pattern = Dict.POSITIVE_INTEGER_PATTERN)
@@ -230,8 +246,10 @@ public class MetaInfo {
     public static String CONFKEY_SESSION_NAME;
     @Config(confKey = "python.path")
     public static String EGGROLL_SESSION_PYTHON_PATH;
+
     @Config(confKey = "python.venv")
     public static String EGGROLL_SESSION_PYTHON_VENV;
+
     @Config(confKey = "eggroll.session.use.resource.dispatch")
     public static Boolean EGGROLL_SESSION_USE_RESOURCE_DISPATCH = false;
     @Config(confKey = "eggroll.session.processors.per.node")
@@ -259,8 +277,6 @@ public class MetaInfo {
 
     @Config(confKey = "eggroll.session.context.rollpair.count", pattern = Dict.POSITIVE_INTEGER_PATTERN)
     public static Integer CONFKEY_SESSION_CONTEXT_ROLLPAIR_COUNT;
-    @Config(confKey = "eggroll.session.id", pattern = Dict.POSITIVE_INTEGER_PATTERN)
-    public static Integer CONFKEY_SESSION_ID;
 
     @Config(confKey = "eggroll.session.start.timeout.ms", pattern = Dict.POSITIVE_INTEGER_PATTERN)
     public static Integer EGGROLL_SESSION_START_TIMEOUT_MS = 20000;
