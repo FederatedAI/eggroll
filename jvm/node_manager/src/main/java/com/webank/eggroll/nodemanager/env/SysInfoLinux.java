@@ -16,7 +16,7 @@ import java.util.HashSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-@Singleton
+//@Singleton
 public class SysInfoLinux extends SysInfo {
   private static final Logger LOG =
       LoggerFactory.getLogger(SysInfoLinux.class);
