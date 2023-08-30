@@ -6,6 +6,8 @@ import com.eggroll.core.utils.FileSystemUtils;
 import com.eggroll.core.utils.PropertiesUtil;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
+import com.google.inject.spi.Element;
+import com.google.inject.spi.Elements;
 import com.webank.eggroll.clustermanager.dao.mapper.ServerNodeMapper;
 import com.webank.eggroll.guice.module.ClusterModule;
 import org.apache.commons.cli.CommandLine;
@@ -20,10 +22,7 @@ public class Bootstrap {
     static  Logger  logger = LoggerFactory.getLogger(Bootstrap.class);
 
     public static  void main(String[] args){
-
-
         CommandLine cmd = CommandArgsUtils.parseArgs(args);
-
         //this.sessionId = cmd.getOptionValue('s')
         String confPath = cmd.getOptionValue('c', "./conf/eggroll.properties");
         logger.info("load config file {}",confPath);
@@ -36,6 +35,8 @@ public class Bootstrap {
         // start the server to handle incoming requests.
 //      ServerNodeMapper  nodeMapper =  injector.getInstance(ServerNodeMapper.class);
 ////        logger.info("{}",nodeMapper.selectById(1));
+      //  System.err.println(injector.getAllBindings());
+
         GrpcServer  grpcServer = injector.getInstance(GrpcServer.class);
         try {
             grpcServer.start();
