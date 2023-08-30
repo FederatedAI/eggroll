@@ -29,7 +29,7 @@ public class NodeResourceManager {
 
     Logger logger = LoggerFactory.getLogger(NodeResourceManager.class);
 
-    @Inject
+//    @Inject
     private SysInfoLinux sysInfo;
 
     ClusterManagerClient client;
@@ -41,6 +41,7 @@ public class NodeResourceManager {
     Map<String, ResourceWrapper> resourceMap;
 
     public NodeResourceManager() {
+        sysInfo = new SysInfoLinux();
         int cpus = MetaInfo.CONFKEY_NODE_MANAGER_CPU_VCORES == null ? getAvailableProcessors() : MetaInfo.CONFKEY_NODE_MANAGER_CPU_VCORES;
         int gpus = MetaInfo.CONFKEY_NODE_MANAGER_GPU_VCORES == null ? getGpuSize() : MetaInfo.CONFKEY_NODE_MANAGER_GPU_VCORES;
         ResourceWrapper cpuCore = new ResourceWrapper(Dict.VCPU_CORE, new AtomicLong(cpus));
