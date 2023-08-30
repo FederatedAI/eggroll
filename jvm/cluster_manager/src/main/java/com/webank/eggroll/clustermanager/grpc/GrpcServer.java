@@ -1,6 +1,7 @@
 package com.webank.eggroll.clustermanager.grpc;
 
 import com.eggroll.core.config.MetaInfo;
+import com.eggroll.core.postprocessor.ApplicationStartedListener;
 import com.eggroll.core.utils.FileSystemUtils;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -28,23 +29,19 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
 @Singleton
-public class GrpcServer{
+public class GrpcServer extends ApplicationStartedListener {
+
+
 
     Logger logger = LoggerFactory.getLogger(GrpcServer.class);
 
     @Inject
     public GrpcServer(){
-        System.out.println(111);
+        this.setSequenceId(Integer.MAX_VALUE);
     }
 
     @Inject
     CommandServiceProvider  commandServiceProvider;
-
-    public void start() throws Exception{
-        this.commandServiceProvider.register(this.commandServiceProvider);
-        Server  server =  createServer("0.0.0.0",MetaInfo.CONFKEY_CLUSTER_MANAGER_PORT, Lists.newArrayList(commandServiceProvider),Lists.newArrayList(), Maps.newHashMap());
-        server.start();
-    }
 
     public Server createServer(String host,
                         int port,
@@ -135,5 +132,10 @@ public class GrpcServer{
     }
 
 
-
+    @Override
+    public void onApplicationStarted(String[] args) throws Exception{
+        this.commandServiceProvider.register(this.commandServiceProvider);
+        Server  server =  createServer("0.0.0.0",MetaInfo.CONFKEY_CLUSTER_MANAGER_PORT, Lists.newArrayList(commandServiceProvider),Lists.newArrayList(), Maps.newHashMap());
+        server.start();
+    }
 }

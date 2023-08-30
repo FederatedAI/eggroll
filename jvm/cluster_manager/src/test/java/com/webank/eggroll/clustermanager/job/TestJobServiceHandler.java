@@ -3,13 +3,14 @@ package com.webank.eggroll.clustermanager.job;
 
 import com.eggroll.core.grpc.CommandClient;
 import com.eggroll.core.pojo.*;
-import com.eggroll.core.utils.JsonUtil;
 import com.eggroll.core.utils.NetUtils;
 import com.google.inject.Inject;
 import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+
+import static com.eggroll.core.grpc.CommandUri.submitJob;
 
 public class TestJobServiceHandler {
 
@@ -40,7 +41,10 @@ public class TestJobServiceHandler {
         request.setResourceOptions(resourceOptions);
 
         request.setOptions(new HashMap<>());
-//        sendGrpc(endpoint,)
+        byte[] bytes = sendGrpc(endpoint, submitJob, request);
+        SubmitJobResponse response = new SubmitJobResponse();
+        response.deserialize(bytes);
+        System.out.println(response);
 //        SubmitJobResponse submitJobResponse = jobServiceHandler.handleSubmit(request);
 //        System.err.println("=============== => " + JsonUtil.object2Json(submitJobResponse));
     }

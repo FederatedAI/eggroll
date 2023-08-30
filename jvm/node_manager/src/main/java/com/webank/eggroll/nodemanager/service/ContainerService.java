@@ -4,7 +4,9 @@ import com.eggroll.core.config.Dict;
 import com.eggroll.core.pojo.ErProcessor;
 import com.eggroll.core.pojo.ErSessionMeta;
 import com.eggroll.core.pojo.RuntimeErConf;
+import com.eggroll.core.utils.JsonUtil;
 import com.google.inject.Singleton;
+import com.webank.eggroll.nodemanager.meta.NodeManagerMeta;
 import com.webank.eggroll.nodemanager.pojo.ContainerParam;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,12 +25,13 @@ public class ContainerService {
     public ErSessionMeta operateContainers(ErSessionMeta sessionMeta, String opType) {
         List<ErProcessor> processors = sessionMeta.getProcessors();
         RuntimeErConf runtimeErConf = new RuntimeErConf(sessionMeta);
-        Long myServerNodeId = runtimeErConf.get(Dict.SERVER_NODE_ID, -1L);
+        Long myServerNodeId = NodeManagerMeta.serverNodeId;
+        logger.info("operateContainers param opType: {}, myServerNodeId:{}",opType,myServerNodeId);
         for (ErProcessor p : processors) {
             if (p.getServerNodeId() != myServerNodeId) {
                 continue;
             }
-            ContainerParam param = new ContainerParam(runtimeErConf,p.getProcessorType(),p.getId());
+            ContainerParam param = new ContainerParam(runtimeErConf, p.getProcessorType(), p.getId());
             switch (opType) {
                 case Dict.NODE_CMD_START:
                     start(param);
@@ -70,14 +73,14 @@ public class ContainerService {
                 .add("--server-node-id")
                 .add(param.getServerNodeId())
                 .add("--processor-id")
-                .add(param.getProcessorId() +  "\"")
+                .add(param.getProcessorId() + "\"")
                 .add(param.getModuleName() + "-" + param.getProcessorId())
                 .add("&");
 
         param.setStartCmd(joiner.toString());
         String standaloneTag = System.getProperty("eggroll.standalone.tag", "");
         logger.info(standaloneTag + joiner);
-
+        logger.info("============runCommand===========: {}", JsonUtil.object2Json(param));
         Thread thread = runCommand(param);
         thread.start();
         try {
@@ -89,14 +92,14 @@ public class ContainerService {
     }
 
     private boolean stop(ContainerParam param) {
-        return doStop(param,false);
+        return doStop(param, false);
     }
 
     private boolean kill(ContainerParam param) {
-        return doStop(param,true);
+        return doStop(param, true);
     }
 
-    private boolean doStop(ContainerParam param,boolean force) {
+    private boolean doStop(ContainerParam param, boolean force) {
         String option = force ? "kill" : "stop";
         String linuxSubCmd = String.format("ps aux | grep 'session-id %s' | grep 'server-node-id %s' | grep 'processor-id %s", param.getSessionId(), param.getServerNodeId(), param.getProcessorId());
         String subCmd = param.isWindows() ? "None" : linuxSubCmd;
@@ -104,8 +107,8 @@ public class ContainerService {
                 .add(param.getExeCmd())
                 .add(param.getBoot())
                 .add(option)
-                .add(String.format("\"%s\"",subCmd))
-                .add(String.format("%s-%s",param.getModuleName(),param.getProcessorId()))
+                .add(String.format("\"%s\"", subCmd))
+                .add(String.format("%s-%s", param.getModuleName(), param.getProcessorId()))
                 .toString();
         logger.info("doStopCmd : {}", doStopCmd);
         param.setExeCmd(doStopCmd);

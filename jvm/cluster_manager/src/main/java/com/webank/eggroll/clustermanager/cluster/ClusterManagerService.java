@@ -8,6 +8,7 @@ import com.eggroll.core.context.Context;
 import com.eggroll.core.exceptions.ErSessionException;
 import com.eggroll.core.grpc.NodeManagerClient;
 import com.eggroll.core.pojo.*;
+import com.eggroll.core.postprocessor.ApplicationStartedListener;
 import com.eggroll.core.utils.JsonUtil;
 import com.webank.eggroll.clustermanager.dao.impl.NodeResourceService;
 import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
@@ -25,9 +26,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
-
-
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.lang.reflect.InvocationTargetException;
@@ -41,7 +39,7 @@ import java.util.stream.Collectors;
 
 
 @Singleton
-public class ClusterManagerService   {
+public class ClusterManagerService extends ApplicationStartedListener {
 
     Logger logger = LoggerFactory.getLogger(ClusterManagerService.class);
 
@@ -405,7 +403,7 @@ public class ClusterManagerService   {
         for (NodeResource resource : nodeResourceList) {
             ErResource erResource = new ErResource();
             try {
-                BeanUtils.copyProperties(resource, erResource);
+                BeanUtils.copyProperties(erResource,resource);
             } catch (IllegalAccessException e) {
                 e.printStackTrace();
             } catch (InvocationTargetException e) {
@@ -423,7 +421,7 @@ public class ClusterManagerService   {
                 if (r.getResourceType().equals(e.getResourceType())) {
                     ErResource updatedResource = new ErResource();
                     try {
-                        BeanUtils.copyProperties(r, updatedResource);
+                        BeanUtils.copyProperties(updatedResource,r);
                     } catch (IllegalAccessException ex) {
                         ex.printStackTrace();
                     } catch (InvocationTargetException ex) {
@@ -444,6 +442,7 @@ public class ClusterManagerService   {
                 insertResources.add(r);
             }
         }
+
         nodeResourceService.registerResource(data.getId(), insertResources, updateResources, deleteResources);
         return data;
     }
@@ -454,15 +453,12 @@ public class ClusterManagerService   {
         return registerResource(serverNode);
     }
 
-
-
-
-
-//    public void run(ApplicationArguments args){
-//        ClusterManagerTask.runTask(sessionWatcher);
-//        ClusterManagerTask.runTask(nodeHeartbeatChecker);
-//        ClusterManagerTask.runTask(nodeProcessChecker);
-//        ClusterManagerTask.runTask(redidualProcessorChecker);
-//        log.info("{} run() end !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",this.getClass().getSimpleName());
-//    }
+    @Override
+    public void onApplicationStarted(String[] args) throws Exception {
+        ClusterManagerTask.runTask(sessionWatcher);
+        ClusterManagerTask.runTask(nodeHeartbeatChecker);
+        ClusterManagerTask.runTask(nodeProcessChecker);
+        ClusterManagerTask.runTask(redidualProcessorChecker);
+        log.info("{} run() end !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",this.getClass().getSimpleName());
+    }
 }

@@ -108,12 +108,6 @@ public class SessionMainService extends EggRollBaseServiceImpl<SessionMainMapper
         return result;
     }
 
-    @Override
-    public SessionMainMapper getBaseMapper() {
-        log.error("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
-        return super.getBaseMapper();
-    }
-
     @Transactional
     public void registerRanks(List<Tuple<Long, ErServerNode, DeepspeedContainerConfig>> configs,String sesssionId){
         for (Tuple<Long, ErServerNode, DeepspeedContainerConfig> config : configs) {
