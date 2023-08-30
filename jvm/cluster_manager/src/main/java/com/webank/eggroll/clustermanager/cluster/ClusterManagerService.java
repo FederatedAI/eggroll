@@ -8,6 +8,7 @@ import com.eggroll.core.context.Context;
 import com.eggroll.core.exceptions.ErSessionException;
 import com.eggroll.core.grpc.NodeManagerClient;
 import com.eggroll.core.pojo.*;
+import com.eggroll.core.postprocessor.ApplicationStartedListener;
 import com.eggroll.core.utils.JsonUtil;
 import com.webank.eggroll.clustermanager.dao.impl.NodeResourceService;
 import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
@@ -17,6 +18,7 @@ import com.webank.eggroll.clustermanager.entity.NodeResource;
 import com.webank.eggroll.clustermanager.entity.ServerNode;
 import com.webank.eggroll.clustermanager.entity.SessionProcessor;
 import com.webank.eggroll.clustermanager.job.JobServiceHandler;
+import com.webank.eggroll.clustermanager.schedule.ClusterManagerTask;
 import com.webank.eggroll.clustermanager.session.SessionManager;
 import com.webank.eggroll.clustermanager.statemachine.ProcessorStateMachine;
 import org.apache.commons.beanutils.BeanUtils;
@@ -37,7 +39,7 @@ import java.util.stream.Collectors;
 
 
 @Singleton
-public class ClusterManagerService   {
+public class ClusterManagerService extends ApplicationStartedListener {
 
     Logger logger = LoggerFactory.getLogger(ClusterManagerService.class);
 
@@ -451,15 +453,12 @@ public class ClusterManagerService   {
         return registerResource(serverNode);
     }
 
-
-
-
-//    @Override
-//    public void run(ApplicationArguments args){
-//        ClusterManagerTask.runTask(sessionWatcher);
-//        ClusterManagerTask.runTask(nodeHeartbeatChecker);
-//        ClusterManagerTask.runTask(nodeProcessChecker);
-//        ClusterManagerTask.runTask(redidualProcessorChecker);
-//        log.info("{} run() end !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",this.getClass().getSimpleName());
-//    }
+    @Override
+    public void onApplicationStarted(String[] args) throws Exception {
+        ClusterManagerTask.runTask(sessionWatcher);
+        ClusterManagerTask.runTask(nodeHeartbeatChecker);
+        ClusterManagerTask.runTask(nodeProcessChecker);
+        ClusterManagerTask.runTask(redidualProcessorChecker);
+        log.info("{} run() end !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",this.getClass().getSimpleName());
+    }
 }
