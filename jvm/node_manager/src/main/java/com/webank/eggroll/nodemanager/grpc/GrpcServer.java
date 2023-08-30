@@ -116,10 +116,7 @@ public class GrpcServer {
             else sslContextBuilder.clientAuth(ClientAuth.OPTIONAL);
 
             nettyServerBuilder.sslContext(sslContextBuilder.build());
-//            logInfo(s"gRPC server at port=${port} starting in secure mode. " +
-//                    s"server private key path: ${key.getAbsolutePath}, " +
-//                    s"key crt path: ${keyCrt.getAbsoluteFile}, " +
-//                    s"ca crt path: ${caCrt.getAbsolutePath}")
+
         } else {
             logger.info("gRPC server at {} starting in insecure mode", port);
         }

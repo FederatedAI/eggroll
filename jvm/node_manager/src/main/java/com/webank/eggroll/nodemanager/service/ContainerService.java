@@ -4,6 +4,7 @@ import com.eggroll.core.config.Dict;
 import com.eggroll.core.pojo.ErProcessor;
 import com.eggroll.core.pojo.ErSessionMeta;
 import com.eggroll.core.pojo.RuntimeErConf;
+import com.eggroll.core.utils.JsonUtil;
 import com.google.inject.Singleton;
 import com.webank.eggroll.nodemanager.meta.NodeManagerMeta;
 import com.webank.eggroll.nodemanager.pojo.ContainerParam;
@@ -25,6 +26,7 @@ public class ContainerService {
         List<ErProcessor> processors = sessionMeta.getProcessors();
         RuntimeErConf runtimeErConf = new RuntimeErConf(sessionMeta);
         Long myServerNodeId = NodeManagerMeta.serverNodeId;
+        logger.info("operateContainers param opType: {}, myServerNodeId:{}",opType,myServerNodeId);
         for (ErProcessor p : processors) {
             if (p.getServerNodeId() != myServerNodeId) {
                 continue;
@@ -78,7 +80,7 @@ public class ContainerService {
         param.setStartCmd(joiner.toString());
         String standaloneTag = System.getProperty("eggroll.standalone.tag", "");
         logger.info(standaloneTag + joiner);
-
+        logger.info("============runCommand===========: {}", JsonUtil.object2Json(param));
         Thread thread = runCommand(param);
         thread.start();
         try {
