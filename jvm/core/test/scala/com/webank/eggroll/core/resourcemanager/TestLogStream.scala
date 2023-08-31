@@ -32,10 +32,11 @@ class TestLogStream {
         System.err.println("receive log onCompleted ")
       }
     })
+    //deepspeed_session_20230705-175508-766715
     var request : Extend.GetLogRequest = Extend.GetLogRequest.newBuilder().setSessionId("deepspeed_session_20230705-175508-766715").setLogType("INFO").build();
     requestSb.onNext(request)
     Thread.sleep(10000)
-    //requestSb.onCompleted()
+    requestSb.onCompleted()
 
     latch.await()
 
