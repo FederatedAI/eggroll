@@ -1,7 +1,7 @@
 package com.webank.eggroll.clustermanager.grpc;
 
 import com.eggroll.core.config.MetaInfo;
-import com.eggroll.core.postprocessor.ApplicationStartedListener;
+import com.eggroll.core.postprocessor.ApplicationStartedRunner;
 import com.eggroll.core.utils.FileSystemUtils;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -18,7 +18,6 @@ import io.grpc.netty.shaded.io.netty.handler.ssl.SslContextBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.inject.Provider;
 import javax.net.ssl.SSLException;
 import java.io.File;
 import java.net.InetSocketAddress;
@@ -29,7 +28,7 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
 @Singleton
-public class GrpcServer extends ApplicationStartedListener {
+public class GrpcServer extends ApplicationStartedRunner {
 
 
 
@@ -133,7 +132,7 @@ public class GrpcServer extends ApplicationStartedListener {
 
 
     @Override
-    public void onApplicationStarted(String[] args) throws Exception{
+    public void run(String[] args) throws Exception{
         this.commandServiceProvider.register(this.commandServiceProvider);
         Server  server =  createServer("0.0.0.0",MetaInfo.CONFKEY_CLUSTER_MANAGER_PORT, Lists.newArrayList(commandServiceProvider),Lists.newArrayList(), Maps.newHashMap());
         server.start();
