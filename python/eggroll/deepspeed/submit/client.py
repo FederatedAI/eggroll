@@ -195,9 +195,7 @@ class DeepspeedJob:
             pool.join()
 
             zipped_container_content.sort(key=lambda  x:x[0])
-            print(zipped_container_content)
             final_content= list(map(lambda d:d[1],zipped_container_content))
-
             return deepspeed_pb2.DownloadJobResponse(session_id=self._session_id,container_content=final_content)
             # print(final_content)
         finally:
