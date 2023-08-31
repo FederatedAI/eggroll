@@ -219,7 +219,7 @@ public class ClusterResourceManager extends ApplicationStartedRunner {
                                     break;
                             }
                         }
-                        switch (resourceApplication.getResourceExhaustedStrategy()) {
+                        switch (resourceApplication.getDispatchStrategy()) {
                             case Dict.REMAIN_MOST_FIRST:
                                 remainMostFirstDispatch(serverNodes, resourceApplication);
                                 break;
@@ -263,7 +263,7 @@ public class ClusterResourceManager extends ApplicationStartedRunner {
 
                 }
             } catch (Exception e) {
-                log.error("dispatch resource error: " + e);
+                log.error("dispatch resource error: ", e);
             }
         }
         log.error("!!!!!!!!!!!!!!!!!!!resource dispatch thread quit!!!!!!!!!!!!!!!!");
@@ -354,6 +354,10 @@ public class ClusterResourceManager extends ApplicationStartedRunner {
     public ResourceApplication remainMostFirstDispatch(List<ErServerNode> serverNodes, ResourceApplication resourceApplication) {
         List<ErProcessor> requiredProcessors = resourceApplication.getProcessors();
         List<ErServerNode> sortedNodes = serverNodes.stream().sorted(Comparator.comparingLong(node -> getFirstUnAllocatedResource(node, resourceApplication))).collect(Collectors.toList());
+        List<Pair<ErServerNode,ErResource>> nodeResourceTupes = new ArrayList<>();
+        for (ErServerNode sortedNode : sortedNodes) {
+            nodeResourceTupes.add(new Pair<>(sortedNode,sortedNode.getResources().get(0)));
+        }
         Map<ErServerNode, Long> sortMap = new HashMap<>();
         for (ErServerNode node : sortedNodes) {
             sortMap.put(node, getFirstUnAllocatedResource(node, resourceApplication));
@@ -362,7 +366,7 @@ public class ClusterResourceManager extends ApplicationStartedRunner {
 
         for (int index = 0; index < requiredProcessors.size(); index++) {
             ErProcessor requiredProcessor = requiredProcessors.get(index);
-            ErServerNode node = sortedNodes.get(index);
+            ErServerNode node = nodeResourceTupes.get(0).getKey();
 
             int nextGpuIndex = -1;
             List<ErResource> newResources = new ArrayList<>();
@@ -374,7 +378,10 @@ public class ClusterResourceManager extends ApplicationStartedRunner {
                     if (!gpuResourcesInNodeArray.isEmpty()) {
                         ErResource gpuResourcesInNode = gpuResourcesInNodeArray.get(0);
 
-                        List<String> extentionCache = Arrays.asList(gpuResourcesInNode.getExtention().split(","));
+                        List<String> extentionCache = new ArrayList<>();
+                        if (gpuResourcesInNode.getExtention() != null) {
+                            extentionCache = Arrays.asList(gpuResourcesInNode.getExtention().split(","));
+                        }
                         nextGpuIndex = getNextGpuIndex(gpuResourcesInNode.getTotal(), extentionCache);
                         extentionCache.add(String.valueOf(nextGpuIndex));
                         r.setExtention(String.valueOf(nextGpuIndex));
