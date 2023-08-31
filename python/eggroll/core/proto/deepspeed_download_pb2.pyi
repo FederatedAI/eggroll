@@ -1,6 +1,6 @@
 from google.protobuf import duration_pb2 as _duration_pb2
 import meta_pb2 as _meta_pb2
-from eggroll.core.proto import containers_pb2 as _containers_pb2
+import containers_pb2 as _containers_pb2
 from google.protobuf.internal import containers as _containers
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
@@ -29,6 +29,12 @@ class DsDownloadResponse(_message.Message):
     container_content: _containers.RepeatedCompositeFieldContainer[_containers_pb2.ContainerContent]
     session_id: str
     def __init__(self, session_id: Optional[str] = ..., container_content: Optional[Iterable[Union[_containers_pb2.ContainerContent, Mapping]]] = ...) -> None: ...
+
+class DsDownloadSplitResponse(_message.Message):
+    __slots__ = ["data"]
+    DATA_FIELD_NUMBER: ClassVar[int]
+    data: bytes
+    def __init__(self, data: Optional[bytes] = ...) -> None: ...
 
 class PrepareDownloadRequest(_message.Message):
     __slots__ = ["compress_level", "compress_method", "content_type", "ranks", "session_id"]
