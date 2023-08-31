@@ -6,7 +6,7 @@ import com.eggroll.core.utils.PropertiesUtil;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.webank.eggroll.clustermanager.grpc.GrpcServer;
-import com.webank.eggroll.clustermanager.processor.ApplicationStartedRunner;
+import com.webank.eggroll.clustermanager.processor.ApplicationStartedRunnerUtils;
 import com.webank.eggroll.guice.module.ClusterModule;
 import org.apache.commons.cli.CommandLine;
 import org.slf4j.Logger;
@@ -36,7 +36,7 @@ public class Bootstrap {
 //      ServerNodeMapper  nodeMapper =  injector.getInstance(ServerNodeMapper.class);
 ////        logger.info("{}",nodeMapper.selectById(1));
         GrpcServer grpcServer = injector.getInstance(GrpcServer.class);
-        ApplicationStartedRunner.run(injector, args);
+        ApplicationStartedRunnerUtils.run(injector, args);
         synchronized (injector) {
             try {
                 injector.wait();

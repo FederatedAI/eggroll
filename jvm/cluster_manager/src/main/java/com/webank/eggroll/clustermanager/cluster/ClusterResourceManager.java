@@ -5,7 +5,7 @@ import com.eggroll.core.config.Dict;
 import com.eggroll.core.config.MetaInfo;
 import com.eggroll.core.constant.*;
 import com.eggroll.core.pojo.*;
-import com.eggroll.core.postprocessor.ApplicationStartedListener;
+import com.eggroll.core.postprocessor.ApplicationStartedRunner;
 import com.eggroll.core.utils.JsonUtil;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -32,7 +32,7 @@ import java.util.stream.Collectors;
 
 @Data
 @Singleton
-public class ClusterResourceManager extends ApplicationStartedListener {
+public class ClusterResourceManager extends ApplicationStartedRunner {
 
     Logger log = LoggerFactory.getLogger(ClusterResourceManager.class);
 
@@ -538,7 +538,7 @@ public class ClusterResourceManager extends ApplicationStartedListener {
     }
 
     @Override
-    public void onApplicationStarted(String[] args) throws Exception {
+    public void run(String[] args) throws Exception {
         ClusterManagerTask.runTask(dispatchThread);
         ClusterManagerTask.runTask(lockCleanThread);
         log.info("{} run() end !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", this.getClass().getSimpleName());

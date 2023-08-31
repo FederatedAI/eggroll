@@ -42,8 +42,8 @@ public class NodeResourceManager {
 
     public NodeResourceManager() {
         sysInfo = new SysInfoLinux();
-        int cpus = MetaInfo.CONFKEY_NODE_MANAGER_CPU_VCORES == null ? getAvailableProcessors() : MetaInfo.CONFKEY_NODE_MANAGER_CPU_VCORES;
-        int gpus = MetaInfo.CONFKEY_NODE_MANAGER_GPU_VCORES == null ? getGpuSize() : MetaInfo.CONFKEY_NODE_MANAGER_GPU_VCORES;
+        int cpus = getAvailableProcessors();
+        int gpus = getGpuSize();
         ResourceWrapper cpuCore = new ResourceWrapper(Dict.VCPU_CORE, new AtomicLong(cpus));
         ResourceWrapper physicalMemory = new ResourceWrapper(Dict.PHYSICAL_MEMORY, new AtomicLong(getPhysicalMemorySize()));
         ResourceWrapper gpuCore = new ResourceWrapper(Dict.VGPU_CORE, new AtomicLong(gpus));
