@@ -3,23 +3,23 @@ package com.webank.eggroll.nodemanager.service;
 
 import com.eggroll.core.config.Dict;
 import com.eggroll.core.config.MetaInfo;
-import com.eggroll.core.pojo.ErProcessor;
-import com.eggroll.core.pojo.ErSessionMeta;
+import com.eggroll.core.pojo.*;
 import com.eggroll.core.utils.PropertiesUtil;
 import com.google.inject.Guice;
+import com.google.inject.Inject;
 import com.google.inject.Injector;
 import com.webank.eggroll.guice.module.NodeModule;
+import com.webank.eggroll.nodemanager.processor.DefaultProcessorManager;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Properties;
+import java.util.*;
 
 public class ContainerServiceTest {
 
-
     private static ContainerService containerService;
+
+    private static DefaultProcessorManager defaultProcessorManager;
 
     @BeforeClass
     public static void before() {
@@ -30,7 +30,7 @@ public class ContainerServiceTest {
 
         Injector injector = Guice.createInjector(new NodeModule());
         containerService = injector.getInstance(ContainerService.class);
-
+        defaultProcessorManager = injector.getInstance(DefaultProcessorManager.class);
 
     }
 
@@ -52,6 +52,30 @@ public class ContainerServiceTest {
         ErSessionMeta sessionMeta = getParam();
         containerService.operateContainers(sessionMeta, Dict.NODE_CMD_START);
         containerService.operateContainers(sessionMeta,Dict.NODE_CMD_KILL);
+    }
+
+
+    @Test
+    public void testStartJobContainers() {
+        StartContainersRequest startContainersRequest = new StartContainersRequest();
+        startContainersRequest.setJobType(JobProcessorTypes.DeepSpeed.name());
+        startContainersRequest.setSessionId("testSessionId");
+        startContainersRequest.setName("testSessionName");
+
+        DeepspeedContainerConfig deepspeedContainerConfig = new DeepspeedContainerConfig();
+        deepspeedContainerConfig.setBackend("testBackend");
+        deepspeedContainerConfig.setCrossRank(5);
+        deepspeedContainerConfig.setStoreHost("localhost");
+        deepspeedContainerConfig.setStorePort(3306);
+
+        byte[] serialize = deepspeedContainerConfig.serialize();
+
+        Map<Long, byte[]> typedExtraConfigs = new HashMap<>();
+        typedExtraConfigs.put(1001L,serialize);
+        startContainersRequest.setTypedExtraConfigs(typedExtraConfigs);
+
+        defaultProcessorManager.startJobContainers(startContainersRequest);
+
     }
 
     private ErSessionMeta getParam() {

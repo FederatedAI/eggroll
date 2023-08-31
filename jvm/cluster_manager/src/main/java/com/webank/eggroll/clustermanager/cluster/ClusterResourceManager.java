@@ -17,6 +17,7 @@ import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
 import com.webank.eggroll.clustermanager.dao.impl.SessionMainService;
 import com.webank.eggroll.clustermanager.entity.ProcessorResource;
 import com.webank.eggroll.clustermanager.schedule.ClusterManagerTask;
+import com.webank.eggroll.clustermanager.schedule.Schedule;
 import javafx.util.Pair;
 import lombok.Data;
 import org.slf4j.Logger;
@@ -210,7 +211,6 @@ public class ClusterResourceManager extends ApplicationStartedRunner {
                                 case Dict.WAITING:
                                     Thread.sleep(MetaInfo.EGGROLL_RESOURCE_DISPATCH_INTERVAL);
                                     log.info("resource is not enough, waiting next loop");
-                                    flag = false;
                                     break;
                                 case Dict.THROW_ERROR:
                                     resourceApplication.getStatus().set(1);
@@ -274,7 +274,7 @@ public class ClusterResourceManager extends ApplicationStartedRunner {
         ErServerNode erServerNode = new ErServerNode();
         erServerNode.setStatus(ServerNodeStatus.HEALTHY.name());
         erServerNode.setNodeType(ServerNodeTypes.NODE_MANAGER.name());
-        return serverNodeService.getListByErServerNode(erServerNode);
+        return serverNodeService.getServerNodesWithResource(erServerNode);
     }
 
     private Boolean checkResourceEnough(List<ErServerNode> erServerNodes, ResourceApplication resourceApplication) {
@@ -535,6 +535,10 @@ public class ClusterResourceManager extends ApplicationStartedRunner {
             log.info("unlock session {}", sessionId);
             lock.unlock();
         }
+    }
+    @Schedule(cron = "0/5 * * * * ?")
+    public void  testCron(){
+            System.err.println("test cron");
     }
 
     @Override
