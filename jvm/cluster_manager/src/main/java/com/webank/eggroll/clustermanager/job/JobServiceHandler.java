@@ -77,7 +77,7 @@ public class JobServiceHandler {
     public SubmitJobResponse handleSubmit(SubmitJobRequest submitJobMeta) throws InterruptedException {
         if (JobProcessorTypes.DeepSpeed.name().equals(submitJobMeta.getJobType())) {
             return handleDeepspeedSubmit(submitJobMeta);
-        } else {
+        }else {
             throw new IllegalArgumentException("unsupported job type: " + submitJobMeta.getJobType());
         }
     }

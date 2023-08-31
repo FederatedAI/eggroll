@@ -16,32 +16,29 @@ import java.util.stream.Collectors;
 
 
 @Singleton
-public class ProcessorService extends EggRollBaseServiceImpl<SessionProcessorMapper,SessionProcessor>{
-
+public class ProcessorService extends EggRollBaseServiceImpl<SessionProcessorMapper, SessionProcessor> {
 
     @Inject
-    ProcessorResourceService   processorResourceService ;
+    ProcessorResourceService processorResourceService;
 
 
-    public List<ErProcessor> getProcessorBySession(String sessionId,boolean withResource){
-        List<ErProcessor>  processors = this.list(new LambdaQueryWrapper<SessionProcessor>().eq(SessionProcessor::getSessionId,sessionId))
-                 .stream().map((x)->{ return x.toErProcessor();}).collect(Collectors.toList());
-          if(withResource){
-              processors.forEach(erProcessor -> {
-                  List<ProcessorResource>  resourceList =  processorResourceService.list(new LambdaQueryWrapper<ProcessorResource>().eq(ProcessorResource::getProcessorId,erProcessor.getId()));
-                  List<ErResource> changedList  = resourceList.stream().map(processorResource -> {  return processorResource.toErResource();}).collect(Collectors.toList());
-                  erProcessor.setResources(changedList);
-              });
-          }
-          return processors;
+    public List<ErProcessor> getProcessorBySession(String sessionId, boolean withResource) {
+        processorResourceService.list();
+        List<ErProcessor> processors = this.list(new LambdaQueryWrapper<SessionProcessor>().eq(SessionProcessor::getSessionId, sessionId))
+                .stream().map((x) -> {
+                    return x.toErProcessor();
+                }).collect(Collectors.toList());
+        if (withResource) {
+            processors.forEach(erProcessor -> {
+                List<ProcessorResource> resourceList = processorResourceService.list(new LambdaQueryWrapper<ProcessorResource>().eq(ProcessorResource::getProcessorId, erProcessor.getId()));
+                List<ErResource> changedList = resourceList.stream().map(processorResource -> {
+                    return processorResource.toErResource();
+                }).collect(Collectors.toList());
+                erProcessor.setResources(changedList);
+            });
+        }
+        return processors;
     }
-
-
-
-
-
-
-
 
 
 }

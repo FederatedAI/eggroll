@@ -37,7 +37,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 
-
 @Singleton
 public class ClusterManagerService extends ApplicationStartedRunner {
 
@@ -351,7 +350,7 @@ public class ClusterManagerService extends ApplicationStartedRunner {
 //    }
 
 
-    public ErNodeHeartbeat nodeHeartbeat(Context  context ,ErNodeHeartbeat nodeHeartbeat) {
+    public ErNodeHeartbeat nodeHeartbeat(Context context, ErNodeHeartbeat nodeHeartbeat) {
         ErServerNode serverNode = nodeHeartbeat.getNode();
 
         synchronized (serverNode.getId().toString().intern()) {
@@ -401,15 +400,7 @@ public class ClusterManagerService extends ApplicationStartedRunner {
         List<NodeResource> nodeResourceList = nodeResourceService.list(nodeResource);
         List<ErResource> existResources = new ArrayList<>();
         for (NodeResource resource : nodeResourceList) {
-            ErResource erResource = new ErResource();
-            try {
-                BeanUtils.copyProperties(erResource,resource);
-            } catch (IllegalAccessException e) {
-                e.printStackTrace();
-            } catch (InvocationTargetException e) {
-                e.printStackTrace();
-            }
-            existResources.add(erResource);
+            existResources.add(resource.toErResource());
         }
         List<ErResource> registedResources = data.getResources();
         List<ErResource> updateResources = new ArrayList<>();
@@ -419,17 +410,9 @@ public class ClusterManagerService extends ApplicationStartedRunner {
             boolean needUpdate = false;
             for (ErResource r : registedResources) {
                 if (r.getResourceType().equals(e.getResourceType())) {
-                    ErResource updatedResource = new ErResource();
-                    try {
-                        BeanUtils.copyProperties(updatedResource,r);
-                    } catch (IllegalAccessException ex) {
-                        ex.printStackTrace();
-                    } catch (InvocationTargetException ex) {
-                        ex.printStackTrace();
-                    }
-                    updatedResource.setAllocated(-1L);
+                    r.setAllocated(-1L);
                     needUpdate = true;
-                    updateResources.add(updatedResource);
+                    updateResources.add(r);
                 }
             }
             if (!needUpdate) {
@@ -459,6 +442,6 @@ public class ClusterManagerService extends ApplicationStartedRunner {
         ClusterManagerTask.runTask(nodeHeartbeatChecker);
         ClusterManagerTask.runTask(nodeProcessChecker);
         ClusterManagerTask.runTask(redidualProcessorChecker);
-        log.info("{} run() end !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",this.getClass().getSimpleName());
+        log.info("{} run() end !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", this.getClass().getSimpleName());
     }
 }
