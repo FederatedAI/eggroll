@@ -74,6 +74,7 @@ public class CommandServiceProvider extends CommandServiceGrpc.CommandServiceImp
             try {
                 RpcMessage rpcMessage = (RpcMessage) invokeInfo.getParamClass().newInstance();
                 rpcMessage.deserialize(data);
+                context.setRequest(rpcMessage);
                 RpcMessage response = (RpcMessage) invokeInfo.getMethod().invoke(invokeInfo.getObject(), context, rpcMessage);
                 return response.serialize();
             } catch (Exception e) {

@@ -1,5 +1,6 @@
 package com.eggroll.core.context;
 
+import com.eggroll.core.pojo.RpcMessage;
 import com.eggroll.core.utils.JsonUtil;
 import lombok.Data;
 import org.apache.commons.lang3.StringUtils;
@@ -27,7 +28,7 @@ public class Context {
 
     Map<String, String> options;
 
-
+    RpcMessage request;
 
     Map dataMap = new HashMap<String,Object>();
 
@@ -54,8 +55,12 @@ public class Context {
         if(StringUtils.isNotEmpty(nodeId)){
             stringBuffer.append("nodeId:").append(nodeId).append(SPLIT);
         }
+
         if(options!=null){
             stringBuffer.append("option:").append(JsonUtil.object2Json(options)).append(SPLIT);
+        }
+        if(request!=null){
+            stringBuffer.append("").append(request.toString()).append(SPLIT);
         }
         if (this.getReturnCode() != null) {
             stringBuffer.append("code:").append(this.getReturnCode()).append(SPLIT);
@@ -64,6 +69,7 @@ public class Context {
         if (this.getReturnMsg() != null) {
             stringBuffer.append("msg:").append(this.getReturnMsg());
         }
+
         return  stringBuffer.toString();
     }
     static final String SPLIT= "|";
