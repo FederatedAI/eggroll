@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Data
 public class ErServerNode implements RpcMessage {
@@ -90,6 +91,9 @@ public class ErServerNode implements RpcMessage {
             builder.setStatus(this.status);
         if (this.endpoint != null)
             builder.setEndpoint(endpoint.toProto());
+        if(this.resources != null){
+            builder.addAllResources(this.resources.stream().map(ErResource::toProto).collect(Collectors.toList()));
+        }
         return builder.build();
     }
 
@@ -114,6 +118,7 @@ public class ErServerNode implements RpcMessage {
             this.nodeType = serverNode.getNodeType();
             this.status = serverNode.getStatus();
             this.endpoint = ErEndpoint.fromProto(serverNode.getEndpoint());
+            this.resources = serverNode.getResourcesList().stream().map(ErResource::fromProto).collect(Collectors.toList());
         } catch (Exception e) {
             log.error("deserialize error : ", e);
         }

@@ -25,17 +25,20 @@ public class SessionCreateHandler  extends AbstractSessionStateHandler{
     Logger logger = LoggerFactory.getLogger(SessionCreateHandler.class);
     @Override
     public ErSessionMeta prepare(Context context, ErSessionMeta data , String preStateParam, String desStateParam) {
+        logger.info("session create prepare {}",data);
         ErServerNode   serverNode = new  ErServerNode();
         serverNode.setStatus(ServerNodeStatus.HEALTHY.name());
         serverNode.setNodeType(ServerNodeTypes.NODE_MANAGER.name());
         List<ErServerNode>  serverNodes = serverNodeService.getListByErServerNode(serverNode);
 //        System.err.println("xxxxxxxxxxx"+serverNodes);
+        logger.info("session create , health node {}",serverNodes);
         context.putData(Dict.SERVER_NODES,serverNodes);
         return data;
     }
 
     @Override
     public ErSessionMeta handle(Context context, ErSessionMeta erSessionMeta, String preStateParam, String desStateParam) {
+        logger.info("session create handle begin");
         ErSessionMeta   sessionInDb =  sessionMainService.getSession(erSessionMeta.getId(),true,true,false);
         if(sessionInDb!=null)
             return  sessionInDb;
@@ -49,6 +52,9 @@ public class SessionCreateHandler  extends AbstractSessionStateHandler{
         if(erSessionMeta.getOptions().get("eggroll.session.processors.per.node")!=null){
             eggsPerNode =  Integer.parseInt(erSessionMeta.getOptions().get("eggroll.session.processors.per.node"));
         }
+
+
+
         for(ErServerNode  erServerNode:serverNodeList) {
             for(int i=0;i<eggsPerNode;i++){
                 ErProcessor  processor= new ErProcessor();
@@ -70,7 +76,7 @@ public class SessionCreateHandler  extends AbstractSessionStateHandler{
 
     @Override
     public void asynPostHandle(Context context, ErSessionMeta data, String preStateParam, String desStateParam) {
-
+        logger.info("create session  asyn post handle begin");
        List<ErServerNode> serverNodes = (List<ErServerNode>)context.getData(Dict.SERVER_NODES);
         serverNodes.parallelStream().forEach(node->{
             ErSessionMeta  sendSession =new ErSessionMeta();
@@ -86,5 +92,6 @@ public class SessionCreateHandler  extends AbstractSessionStateHandler{
                 nodeManagerClient.startContainers(sendSession);
 
         });
+
     }
 }
