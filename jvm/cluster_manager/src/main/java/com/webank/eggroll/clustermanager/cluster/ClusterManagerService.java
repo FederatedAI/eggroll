@@ -8,7 +8,7 @@ import com.eggroll.core.context.Context;
 import com.eggroll.core.exceptions.ErSessionException;
 import com.eggroll.core.grpc.NodeManagerClient;
 import com.eggroll.core.pojo.*;
-import com.eggroll.core.postprocessor.ApplicationStartedListener;
+import com.eggroll.core.postprocessor.ApplicationStartedRunner;
 import com.eggroll.core.utils.JsonUtil;
 import com.webank.eggroll.clustermanager.dao.impl.NodeResourceService;
 import com.webank.eggroll.clustermanager.dao.impl.ServerNodeService;
@@ -39,7 +39,7 @@ import java.util.stream.Collectors;
 
 
 @Singleton
-public class ClusterManagerService extends ApplicationStartedListener {
+public class ClusterManagerService extends ApplicationStartedRunner {
 
     Logger logger = LoggerFactory.getLogger(ClusterManagerService.class);
 
@@ -454,7 +454,7 @@ public class ClusterManagerService extends ApplicationStartedListener {
     }
 
     @Override
-    public void onApplicationStarted(String[] args) throws Exception {
+    public void run(String[] args) throws Exception {
         ClusterManagerTask.runTask(sessionWatcher);
         ClusterManagerTask.runTask(nodeHeartbeatChecker);
         ClusterManagerTask.runTask(nodeProcessChecker);
